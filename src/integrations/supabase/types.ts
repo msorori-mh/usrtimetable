@@ -230,6 +230,51 @@ export type Database = {
           },
         ]
       }
+      course_offerings: {
+        Row: {
+          college_id: string
+          course_id: string
+          created_at: string
+          expected_students: number
+          id: string
+          is_active: boolean
+          level_id: string | null
+          notes: string | null
+          program_id: string | null
+          sections_count: number
+          term_id: string
+          updated_at: string
+        }
+        Insert: {
+          college_id: string
+          course_id: string
+          created_at?: string
+          expected_students?: number
+          id?: string
+          is_active?: boolean
+          level_id?: string | null
+          notes?: string | null
+          program_id?: string | null
+          sections_count?: number
+          term_id: string
+          updated_at?: string
+        }
+        Update: {
+          college_id?: string
+          course_id?: string
+          created_at?: string
+          expected_students?: number
+          id?: string
+          is_active?: boolean
+          level_id?: string | null
+          notes?: string | null
+          program_id?: string | null
+          sections_count?: number
+          term_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       courses: {
         Row: {
           code: string
@@ -319,6 +364,90 @@ export type Database = {
           },
         ]
       }
+      instructor_availability: {
+        Row: {
+          availability_type: string
+          college_id: string
+          created_at: string
+          day_of_week: number
+          end_time: string
+          id: string
+          instructor_id: string
+          notes: string | null
+          start_time: string
+          updated_at: string
+        }
+        Insert: {
+          availability_type?: string
+          college_id: string
+          created_at?: string
+          day_of_week: number
+          end_time: string
+          id?: string
+          instructor_id: string
+          notes?: string | null
+          start_time: string
+          updated_at?: string
+        }
+        Update: {
+          availability_type?: string
+          college_id?: string
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          instructor_id?: string
+          notes?: string | null
+          start_time?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      instructors: {
+        Row: {
+          academic_rank: string | null
+          college_id: string
+          created_at: string
+          department_id: string | null
+          email: string | null
+          employment_type: string
+          full_name: string
+          id: string
+          is_active: boolean
+          max_weekly_hours: number
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          academic_rank?: string | null
+          college_id: string
+          created_at?: string
+          department_id?: string | null
+          email?: string | null
+          employment_type?: string
+          full_name: string
+          id?: string
+          is_active?: boolean
+          max_weekly_hours?: number
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          academic_rank?: string | null
+          college_id?: string
+          created_at?: string
+          department_id?: string | null
+          email?: string | null
+          employment_type?: string
+          full_name?: string
+          id?: string
+          is_active?: boolean
+          max_weekly_hours?: number
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       plan_courses: {
         Row: {
           college_id: string
@@ -404,6 +533,90 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      room_unavailability: {
+        Row: {
+          college_id: string
+          created_at: string
+          day_of_week: number | null
+          end_date: string | null
+          end_time: string | null
+          id: string
+          reason: string | null
+          room_id: string
+          start_date: string | null
+          start_time: string | null
+          updated_at: string
+        }
+        Insert: {
+          college_id: string
+          created_at?: string
+          day_of_week?: number | null
+          end_date?: string | null
+          end_time?: string | null
+          id?: string
+          reason?: string | null
+          room_id: string
+          start_date?: string | null
+          start_time?: string | null
+          updated_at?: string
+        }
+        Update: {
+          college_id?: string
+          created_at?: string
+          day_of_week?: number | null
+          end_date?: string | null
+          end_time?: string | null
+          id?: string
+          reason?: string | null
+          room_id?: string
+          start_date?: string | null
+          start_time?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      rooms: {
+        Row: {
+          building: string | null
+          capacity: number
+          code: string
+          college_id: string
+          created_at: string
+          floor: string | null
+          id: string
+          is_active: boolean
+          name: string
+          room_type: string
+          updated_at: string
+        }
+        Insert: {
+          building?: string | null
+          capacity?: number
+          code: string
+          college_id: string
+          created_at?: string
+          floor?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          room_type?: string
+          updated_at?: string
+        }
+        Update: {
+          building?: string | null
+          capacity?: number
+          code?: string
+          college_id?: string
+          created_at?: string
+          floor?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          room_type?: string
           updated_at?: string
         }
         Relationships: []
@@ -516,6 +729,84 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      teaching_assignments: {
+        Row: {
+          college_id: string
+          course_offering_id: string
+          created_at: string
+          id: string
+          instructor_id: string
+          notes: string | null
+          required_room_type: string | null
+          section_number: string | null
+          session_type: string
+          updated_at: string
+          weekly_hours: number
+        }
+        Insert: {
+          college_id: string
+          course_offering_id: string
+          created_at?: string
+          id?: string
+          instructor_id: string
+          notes?: string | null
+          required_room_type?: string | null
+          section_number?: string | null
+          session_type?: string
+          updated_at?: string
+          weekly_hours?: number
+        }
+        Update: {
+          college_id?: string
+          course_offering_id?: string
+          created_at?: string
+          id?: string
+          instructor_id?: string
+          notes?: string | null
+          required_room_type?: string | null
+          section_number?: string | null
+          session_type?: string
+          updated_at?: string
+          weekly_hours?: number
+        }
+        Relationships: []
+      }
+      time_slots: {
+        Row: {
+          college_id: string
+          created_at: string
+          day_of_week: number
+          end_time: string
+          id: string
+          is_active: boolean
+          slot_order: number
+          start_time: string
+          updated_at: string
+        }
+        Insert: {
+          college_id: string
+          created_at?: string
+          day_of_week: number
+          end_time: string
+          id?: string
+          is_active?: boolean
+          slot_order?: number
+          start_time: string
+          updated_at?: string
+        }
+        Update: {
+          college_id?: string
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          is_active?: boolean
+          slot_order?: number
+          start_time?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       universities: {
         Row: {
