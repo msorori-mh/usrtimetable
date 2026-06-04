@@ -28,6 +28,7 @@ import { Route as AuthenticatedProgramsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedMyCollegeRouteImport } from './routes/_authenticated/my-college'
 import { Route as AuthenticatedInstructorsRouteImport } from './routes/_authenticated/instructors'
 import { Route as AuthenticatedInstructorTypesRouteImport } from './routes/_authenticated/instructor-types'
+import { Route as AuthenticatedImportTemplatesRouteImport } from './routes/_authenticated/import-templates'
 import { Route as AuthenticatedDepartmentsRouteImport } from './routes/_authenticated/departments'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCoursesRouteImport } from './routes/_authenticated/courses'
@@ -138,6 +139,12 @@ const AuthenticatedInstructorTypesRoute =
     path: '/instructor-types',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedImportTemplatesRoute =
+  AuthenticatedImportTemplatesRouteImport.update({
+    id: '/import-templates',
+    path: '/import-templates',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDepartmentsRoute =
   AuthenticatedDepartmentsRouteImport.update({
     id: '/departments',
@@ -194,6 +201,7 @@ export interface FileRoutesByFullPath {
   '/courses': typeof AuthenticatedCoursesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/departments': typeof AuthenticatedDepartmentsRoute
+  '/import-templates': typeof AuthenticatedImportTemplatesRoute
   '/instructor-types': typeof AuthenticatedInstructorTypesRoute
   '/instructors': typeof AuthenticatedInstructorsRoute
   '/my-college': typeof AuthenticatedMyCollegeRoute
@@ -222,6 +230,7 @@ export interface FileRoutesByTo {
   '/courses': typeof AuthenticatedCoursesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/departments': typeof AuthenticatedDepartmentsRoute
+  '/import-templates': typeof AuthenticatedImportTemplatesRoute
   '/instructor-types': typeof AuthenticatedInstructorTypesRoute
   '/instructors': typeof AuthenticatedInstructorsRoute
   '/my-college': typeof AuthenticatedMyCollegeRoute
@@ -252,6 +261,7 @@ export interface FileRoutesById {
   '/_authenticated/courses': typeof AuthenticatedCoursesRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/departments': typeof AuthenticatedDepartmentsRoute
+  '/_authenticated/import-templates': typeof AuthenticatedImportTemplatesRoute
   '/_authenticated/instructor-types': typeof AuthenticatedInstructorTypesRoute
   '/_authenticated/instructors': typeof AuthenticatedInstructorsRoute
   '/_authenticated/my-college': typeof AuthenticatedMyCollegeRoute
@@ -282,6 +292,7 @@ export interface FileRouteTypes {
     | '/courses'
     | '/dashboard'
     | '/departments'
+    | '/import-templates'
     | '/instructor-types'
     | '/instructors'
     | '/my-college'
@@ -310,6 +321,7 @@ export interface FileRouteTypes {
     | '/courses'
     | '/dashboard'
     | '/departments'
+    | '/import-templates'
     | '/instructor-types'
     | '/instructors'
     | '/my-college'
@@ -339,6 +351,7 @@ export interface FileRouteTypes {
     | '/_authenticated/courses'
     | '/_authenticated/dashboard'
     | '/_authenticated/departments'
+    | '/_authenticated/import-templates'
     | '/_authenticated/instructor-types'
     | '/_authenticated/instructors'
     | '/_authenticated/my-college'
@@ -498,6 +511,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedInstructorTypesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/import-templates': {
+      id: '/_authenticated/import-templates'
+      path: '/import-templates'
+      fullPath: '/import-templates'
+      preLoaderRoute: typeof AuthenticatedImportTemplatesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/departments': {
       id: '/_authenticated/departments'
       path: '/departments'
@@ -566,6 +586,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCoursesRoute: typeof AuthenticatedCoursesRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedDepartmentsRoute: typeof AuthenticatedDepartmentsRoute
+  AuthenticatedImportTemplatesRoute: typeof AuthenticatedImportTemplatesRoute
   AuthenticatedInstructorTypesRoute: typeof AuthenticatedInstructorTypesRoute
   AuthenticatedInstructorsRoute: typeof AuthenticatedInstructorsRoute
   AuthenticatedMyCollegeRoute: typeof AuthenticatedMyCollegeRoute
@@ -593,6 +614,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCoursesRoute: AuthenticatedCoursesRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedDepartmentsRoute: AuthenticatedDepartmentsRoute,
+  AuthenticatedImportTemplatesRoute: AuthenticatedImportTemplatesRoute,
   AuthenticatedInstructorTypesRoute: AuthenticatedInstructorTypesRoute,
   AuthenticatedInstructorsRoute: AuthenticatedInstructorsRoute,
   AuthenticatedMyCollegeRoute: AuthenticatedMyCollegeRoute,

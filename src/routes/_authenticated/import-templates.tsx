@@ -68,7 +68,17 @@ function TemplatesPage() {
     mutationFn: async () => {
       if (!active) throw new Error("اختر كلّية");
       if (!form.template_key || !form.name_ar || !form.target_entity) throw new Error("الرمز والاسم والكيان المستهدف مطلوبة");
-      const payload = { ...form, college_id: active.id, version: form.version ?? 1, is_active: form.is_active ?? true };
+      const payload = {
+        college_id: active.id,
+        template_key: form.template_key,
+        name_ar: form.name_ar,
+        target_entity: form.target_entity,
+        version: form.version ?? 1,
+        is_active: form.is_active ?? true,
+        description: form.description ?? null,
+        sheet_name: form.sheet_name ?? null,
+        sample_file_url: form.sample_file_url ?? null,
+      };
       if (editing) {
         const { error } = await supabase.from("import_templates").update(payload).eq("id", editing.id);
         if (error) throw error;
