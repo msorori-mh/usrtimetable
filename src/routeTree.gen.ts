@@ -14,15 +14,21 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated/users'
 import { Route as AuthenticatedUniversitiesRouteImport } from './routes/_authenticated/universities'
+import { Route as AuthenticatedTimeSlotsRouteImport } from './routes/_authenticated/time-slots'
 import { Route as AuthenticatedTermsRouteImport } from './routes/_authenticated/terms'
+import { Route as AuthenticatedTeachingAssignmentsRouteImport } from './routes/_authenticated/teaching-assignments'
 import { Route as AuthenticatedStudyPlansRouteImport } from './routes/_authenticated/study-plans'
 import { Route as AuthenticatedSectionsRouteImport } from './routes/_authenticated/sections'
+import { Route as AuthenticatedRoomsRouteImport } from './routes/_authenticated/rooms'
 import { Route as AuthenticatedProgramsRouteImport } from './routes/_authenticated/programs'
 import { Route as AuthenticatedMyCollegeRouteImport } from './routes/_authenticated/my-college'
+import { Route as AuthenticatedInstructorsRouteImport } from './routes/_authenticated/instructors'
 import { Route as AuthenticatedDepartmentsRouteImport } from './routes/_authenticated/departments'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCoursesRouteImport } from './routes/_authenticated/courses'
+import { Route as AuthenticatedCourseOfferingsRouteImport } from './routes/_authenticated/course-offerings'
 import { Route as AuthenticatedCollegesRouteImport } from './routes/_authenticated/colleges'
+import { Route as AuthenticatedAvailabilityRouteImport } from './routes/_authenticated/availability'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -49,11 +55,22 @@ const AuthenticatedUniversitiesRoute =
     path: '/universities',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedTimeSlotsRoute = AuthenticatedTimeSlotsRouteImport.update({
+  id: '/time-slots',
+  path: '/time-slots',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedTermsRoute = AuthenticatedTermsRouteImport.update({
   id: '/terms',
   path: '/terms',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedTeachingAssignmentsRoute =
+  AuthenticatedTeachingAssignmentsRouteImport.update({
+    id: '/teaching-assignments',
+    path: '/teaching-assignments',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedStudyPlansRoute = AuthenticatedStudyPlansRouteImport.update({
   id: '/study-plans',
   path: '/study-plans',
@@ -62,6 +79,11 @@ const AuthenticatedStudyPlansRoute = AuthenticatedStudyPlansRouteImport.update({
 const AuthenticatedSectionsRoute = AuthenticatedSectionsRouteImport.update({
   id: '/sections',
   path: '/sections',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedRoomsRoute = AuthenticatedRoomsRouteImport.update({
+  id: '/rooms',
+  path: '/rooms',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedProgramsRoute = AuthenticatedProgramsRouteImport.update({
@@ -74,6 +96,12 @@ const AuthenticatedMyCollegeRoute = AuthenticatedMyCollegeRouteImport.update({
   path: '/my-college',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedInstructorsRoute =
+  AuthenticatedInstructorsRouteImport.update({
+    id: '/instructors',
+    path: '/instructors',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDepartmentsRoute =
   AuthenticatedDepartmentsRouteImport.update({
     id: '/departments',
@@ -90,39 +118,63 @@ const AuthenticatedCoursesRoute = AuthenticatedCoursesRouteImport.update({
   path: '/courses',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedCourseOfferingsRoute =
+  AuthenticatedCourseOfferingsRouteImport.update({
+    id: '/course-offerings',
+    path: '/course-offerings',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedCollegesRoute = AuthenticatedCollegesRouteImport.update({
   id: '/colleges',
   path: '/colleges',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAvailabilityRoute =
+  AuthenticatedAvailabilityRouteImport.update({
+    id: '/availability',
+    path: '/availability',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/availability': typeof AuthenticatedAvailabilityRoute
   '/colleges': typeof AuthenticatedCollegesRoute
+  '/course-offerings': typeof AuthenticatedCourseOfferingsRoute
   '/courses': typeof AuthenticatedCoursesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/departments': typeof AuthenticatedDepartmentsRoute
+  '/instructors': typeof AuthenticatedInstructorsRoute
   '/my-college': typeof AuthenticatedMyCollegeRoute
   '/programs': typeof AuthenticatedProgramsRoute
+  '/rooms': typeof AuthenticatedRoomsRoute
   '/sections': typeof AuthenticatedSectionsRoute
   '/study-plans': typeof AuthenticatedStudyPlansRoute
+  '/teaching-assignments': typeof AuthenticatedTeachingAssignmentsRoute
   '/terms': typeof AuthenticatedTermsRoute
+  '/time-slots': typeof AuthenticatedTimeSlotsRoute
   '/universities': typeof AuthenticatedUniversitiesRoute
   '/users': typeof AuthenticatedUsersRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/availability': typeof AuthenticatedAvailabilityRoute
   '/colleges': typeof AuthenticatedCollegesRoute
+  '/course-offerings': typeof AuthenticatedCourseOfferingsRoute
   '/courses': typeof AuthenticatedCoursesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/departments': typeof AuthenticatedDepartmentsRoute
+  '/instructors': typeof AuthenticatedInstructorsRoute
   '/my-college': typeof AuthenticatedMyCollegeRoute
   '/programs': typeof AuthenticatedProgramsRoute
+  '/rooms': typeof AuthenticatedRoomsRoute
   '/sections': typeof AuthenticatedSectionsRoute
   '/study-plans': typeof AuthenticatedStudyPlansRoute
+  '/teaching-assignments': typeof AuthenticatedTeachingAssignmentsRoute
   '/terms': typeof AuthenticatedTermsRoute
+  '/time-slots': typeof AuthenticatedTimeSlotsRoute
   '/universities': typeof AuthenticatedUniversitiesRoute
   '/users': typeof AuthenticatedUsersRoute
 }
@@ -131,15 +183,21 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/availability': typeof AuthenticatedAvailabilityRoute
   '/_authenticated/colleges': typeof AuthenticatedCollegesRoute
+  '/_authenticated/course-offerings': typeof AuthenticatedCourseOfferingsRoute
   '/_authenticated/courses': typeof AuthenticatedCoursesRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/departments': typeof AuthenticatedDepartmentsRoute
+  '/_authenticated/instructors': typeof AuthenticatedInstructorsRoute
   '/_authenticated/my-college': typeof AuthenticatedMyCollegeRoute
   '/_authenticated/programs': typeof AuthenticatedProgramsRoute
+  '/_authenticated/rooms': typeof AuthenticatedRoomsRoute
   '/_authenticated/sections': typeof AuthenticatedSectionsRoute
   '/_authenticated/study-plans': typeof AuthenticatedStudyPlansRoute
+  '/_authenticated/teaching-assignments': typeof AuthenticatedTeachingAssignmentsRoute
   '/_authenticated/terms': typeof AuthenticatedTermsRoute
+  '/_authenticated/time-slots': typeof AuthenticatedTimeSlotsRoute
   '/_authenticated/universities': typeof AuthenticatedUniversitiesRoute
   '/_authenticated/users': typeof AuthenticatedUsersRoute
 }
@@ -148,30 +206,42 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/availability'
     | '/colleges'
+    | '/course-offerings'
     | '/courses'
     | '/dashboard'
     | '/departments'
+    | '/instructors'
     | '/my-college'
     | '/programs'
+    | '/rooms'
     | '/sections'
     | '/study-plans'
+    | '/teaching-assignments'
     | '/terms'
+    | '/time-slots'
     | '/universities'
     | '/users'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
+    | '/availability'
     | '/colleges'
+    | '/course-offerings'
     | '/courses'
     | '/dashboard'
     | '/departments'
+    | '/instructors'
     | '/my-college'
     | '/programs'
+    | '/rooms'
     | '/sections'
     | '/study-plans'
+    | '/teaching-assignments'
     | '/terms'
+    | '/time-slots'
     | '/universities'
     | '/users'
   id:
@@ -179,15 +249,21 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/availability'
     | '/_authenticated/colleges'
+    | '/_authenticated/course-offerings'
     | '/_authenticated/courses'
     | '/_authenticated/dashboard'
     | '/_authenticated/departments'
+    | '/_authenticated/instructors'
     | '/_authenticated/my-college'
     | '/_authenticated/programs'
+    | '/_authenticated/rooms'
     | '/_authenticated/sections'
     | '/_authenticated/study-plans'
+    | '/_authenticated/teaching-assignments'
     | '/_authenticated/terms'
+    | '/_authenticated/time-slots'
     | '/_authenticated/universities'
     | '/_authenticated/users'
   fileRoutesById: FileRoutesById
@@ -235,11 +311,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedUniversitiesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/time-slots': {
+      id: '/_authenticated/time-slots'
+      path: '/time-slots'
+      fullPath: '/time-slots'
+      preLoaderRoute: typeof AuthenticatedTimeSlotsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/terms': {
       id: '/_authenticated/terms'
       path: '/terms'
       fullPath: '/terms'
       preLoaderRoute: typeof AuthenticatedTermsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/teaching-assignments': {
+      id: '/_authenticated/teaching-assignments'
+      path: '/teaching-assignments'
+      fullPath: '/teaching-assignments'
+      preLoaderRoute: typeof AuthenticatedTeachingAssignmentsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/study-plans': {
@@ -256,6 +346,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSectionsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/rooms': {
+      id: '/_authenticated/rooms'
+      path: '/rooms'
+      fullPath: '/rooms'
+      preLoaderRoute: typeof AuthenticatedRoomsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/programs': {
       id: '/_authenticated/programs'
       path: '/programs'
@@ -268,6 +365,13 @@ declare module '@tanstack/react-router' {
       path: '/my-college'
       fullPath: '/my-college'
       preLoaderRoute: typeof AuthenticatedMyCollegeRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/instructors': {
+      id: '/_authenticated/instructors'
+      path: '/instructors'
+      fullPath: '/instructors'
+      preLoaderRoute: typeof AuthenticatedInstructorsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/departments': {
@@ -291,6 +395,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCoursesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/course-offerings': {
+      id: '/_authenticated/course-offerings'
+      path: '/course-offerings'
+      fullPath: '/course-offerings'
+      preLoaderRoute: typeof AuthenticatedCourseOfferingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/colleges': {
       id: '/_authenticated/colleges'
       path: '/colleges'
@@ -298,33 +409,52 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCollegesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/availability': {
+      id: '/_authenticated/availability'
+      path: '/availability'
+      fullPath: '/availability'
+      preLoaderRoute: typeof AuthenticatedAvailabilityRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAvailabilityRoute: typeof AuthenticatedAvailabilityRoute
   AuthenticatedCollegesRoute: typeof AuthenticatedCollegesRoute
+  AuthenticatedCourseOfferingsRoute: typeof AuthenticatedCourseOfferingsRoute
   AuthenticatedCoursesRoute: typeof AuthenticatedCoursesRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedDepartmentsRoute: typeof AuthenticatedDepartmentsRoute
+  AuthenticatedInstructorsRoute: typeof AuthenticatedInstructorsRoute
   AuthenticatedMyCollegeRoute: typeof AuthenticatedMyCollegeRoute
   AuthenticatedProgramsRoute: typeof AuthenticatedProgramsRoute
+  AuthenticatedRoomsRoute: typeof AuthenticatedRoomsRoute
   AuthenticatedSectionsRoute: typeof AuthenticatedSectionsRoute
   AuthenticatedStudyPlansRoute: typeof AuthenticatedStudyPlansRoute
+  AuthenticatedTeachingAssignmentsRoute: typeof AuthenticatedTeachingAssignmentsRoute
   AuthenticatedTermsRoute: typeof AuthenticatedTermsRoute
+  AuthenticatedTimeSlotsRoute: typeof AuthenticatedTimeSlotsRoute
   AuthenticatedUniversitiesRoute: typeof AuthenticatedUniversitiesRoute
   AuthenticatedUsersRoute: typeof AuthenticatedUsersRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAvailabilityRoute: AuthenticatedAvailabilityRoute,
   AuthenticatedCollegesRoute: AuthenticatedCollegesRoute,
+  AuthenticatedCourseOfferingsRoute: AuthenticatedCourseOfferingsRoute,
   AuthenticatedCoursesRoute: AuthenticatedCoursesRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedDepartmentsRoute: AuthenticatedDepartmentsRoute,
+  AuthenticatedInstructorsRoute: AuthenticatedInstructorsRoute,
   AuthenticatedMyCollegeRoute: AuthenticatedMyCollegeRoute,
   AuthenticatedProgramsRoute: AuthenticatedProgramsRoute,
+  AuthenticatedRoomsRoute: AuthenticatedRoomsRoute,
   AuthenticatedSectionsRoute: AuthenticatedSectionsRoute,
   AuthenticatedStudyPlansRoute: AuthenticatedStudyPlansRoute,
+  AuthenticatedTeachingAssignmentsRoute: AuthenticatedTeachingAssignmentsRoute,
   AuthenticatedTermsRoute: AuthenticatedTermsRoute,
+  AuthenticatedTimeSlotsRoute: AuthenticatedTimeSlotsRoute,
   AuthenticatedUniversitiesRoute: AuthenticatedUniversitiesRoute,
   AuthenticatedUsersRoute: AuthenticatedUsersRoute,
 }
@@ -340,13 +470,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
