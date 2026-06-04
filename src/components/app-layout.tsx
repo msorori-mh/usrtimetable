@@ -2,13 +2,19 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   BookOpen,
+  Briefcase,
   Building2,
+  CalendarClock,
   CalendarRange,
+  ClipboardList,
+  Clock,
+  DoorOpen,
   GraduationCap,
   LayoutDashboard,
   Library,
   LogOut,
   School,
+  UserSquare2,
   Users,
   Users2,
 } from "lucide-react";
@@ -39,7 +45,14 @@ const NAV: NavItem[] = [
   { to: "/courses", label: "المقررات", icon: <Library className="h-4 w-4" />, roles: ALL, group: "البنية الأكاديمية" },
   { to: "/terms", label: "الفصول الدراسية", icon: <CalendarRange className="h-4 w-4" />, roles: ALL, group: "البنية الأكاديمية" },
   { to: "/sections", label: "الشُّعب", icon: <Users2 className="h-4 w-4" />, roles: ALL, group: "البنية الأكاديمية" },
+  { to: "/instructors", label: "المحاضرون", icon: <UserSquare2 className="h-4 w-4" />, roles: ALL, group: "موارد التدريس" },
+  { to: "/rooms", label: "القاعات والمختبرات", icon: <DoorOpen className="h-4 w-4" />, roles: ALL, group: "موارد التدريس" },
+  { to: "/time-slots", label: "الفترات الزمنية", icon: <Clock className="h-4 w-4" />, roles: ALL, group: "موارد التدريس" },
+  { to: "/availability", label: "التوفّر/عدم التوفّر", icon: <CalendarClock className="h-4 w-4" />, roles: ALL, group: "موارد التدريس" },
+  { to: "/course-offerings", label: "مقررات الفصل", icon: <ClipboardList className="h-4 w-4" />, roles: ALL, group: "موارد التدريس" },
+  { to: "/teaching-assignments", label: "التكليفات التدريسية", icon: <Briefcase className="h-4 w-4" />, roles: ALL, group: "موارد التدريس" },
 ];
+
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { data: user, isLoading } = useCurrentUser();
