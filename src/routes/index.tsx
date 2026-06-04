@@ -94,5 +94,3 @@ function FeatureCard({ icon, title, desc }: { icon: React.ReactNode; title: stri
   );
 }
 
-// silence unused import warning while keeping API symmetric
-void redirect;
