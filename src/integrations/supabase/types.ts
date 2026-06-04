@@ -14,6 +14,146 @@ export type Database = {
   }
   public: {
     Tables: {
+      academic_levels: {
+        Row: {
+          college_id: string
+          created_at: string
+          id: string
+          level_number: number
+          name: string
+          program_id: string
+          updated_at: string
+        }
+        Insert: {
+          college_id: string
+          created_at?: string
+          id?: string
+          level_number: number
+          name: string
+          program_id: string
+          updated_at?: string
+        }
+        Update: {
+          college_id?: string
+          created_at?: string
+          id?: string
+          level_number?: number
+          name?: string
+          program_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "academic_levels_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "academic_levels_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "academic_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      academic_programs: {
+        Row: {
+          code: string
+          college_id: string
+          created_at: string
+          degree_type: string
+          department_id: string
+          duration_years: number
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          college_id: string
+          created_at?: string
+          degree_type?: string
+          department_id: string
+          duration_years?: number
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          college_id?: string
+          created_at?: string
+          degree_type?: string
+          department_id?: string
+          duration_years?: number
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "academic_programs_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "academic_programs_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      academic_terms: {
+        Row: {
+          code: string
+          college_id: string
+          created_at: string
+          end_date: string | null
+          id: string
+          is_active: boolean
+          name: string
+          start_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          college_id: string
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          start_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          college_id?: string
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          start_date?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "academic_terms_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -90,6 +230,160 @@ export type Database = {
           },
         ]
       }
+      courses: {
+        Row: {
+          code: string
+          college_id: string
+          created_at: string
+          credit_hours: number
+          department_id: string
+          id: string
+          name: string
+          practical_hours: number
+          theory_hours: number
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          college_id: string
+          created_at?: string
+          credit_hours?: number
+          department_id: string
+          id?: string
+          name: string
+          practical_hours?: number
+          theory_hours?: number
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          college_id?: string
+          created_at?: string
+          credit_hours?: number
+          department_id?: string
+          id?: string
+          name?: string
+          practical_hours?: number
+          theory_hours?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courses_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "courses_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      departments: {
+        Row: {
+          code: string
+          college_id: string
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          college_id: string
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          college_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "departments_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plan_courses: {
+        Row: {
+          college_id: string
+          course_id: string
+          created_at: string
+          id: string
+          is_required: boolean
+          level_id: string | null
+          semester: number
+          study_plan_id: string
+          updated_at: string
+        }
+        Insert: {
+          college_id: string
+          course_id: string
+          created_at?: string
+          id?: string
+          is_required?: boolean
+          level_id?: string | null
+          semester?: number
+          study_plan_id: string
+          updated_at?: string
+        }
+        Update: {
+          college_id?: string
+          course_id?: string
+          created_at?: string
+          id?: string
+          is_required?: boolean
+          level_id?: string | null
+          semester?: number
+          study_plan_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_courses_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_courses_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_courses_level_id_fkey"
+            columns: ["level_id"]
+            isOneToOne: false
+            referencedRelation: "academic_levels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_courses_study_plan_id_fkey"
+            columns: ["study_plan_id"]
+            isOneToOne: false
+            referencedRelation: "study_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -113,6 +407,115 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      sections: {
+        Row: {
+          capacity: number
+          college_id: string
+          course_id: string
+          created_at: string
+          id: string
+          section_number: string
+          term_id: string
+          updated_at: string
+        }
+        Insert: {
+          capacity?: number
+          college_id: string
+          course_id: string
+          created_at?: string
+          id?: string
+          section_number: string
+          term_id: string
+          updated_at?: string
+        }
+        Update: {
+          capacity?: number
+          college_id?: string
+          course_id?: string
+          created_at?: string
+          id?: string
+          section_number?: string
+          term_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sections_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sections_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sections_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "academic_terms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      study_plans: {
+        Row: {
+          code: string
+          college_id: string
+          created_at: string
+          effective_year: number | null
+          id: string
+          is_active: boolean
+          name: string
+          program_id: string
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          code: string
+          college_id: string
+          created_at?: string
+          effective_year?: number | null
+          id?: string
+          is_active?: boolean
+          name: string
+          program_id: string
+          updated_at?: string
+          version?: string
+        }
+        Update: {
+          code?: string
+          college_id?: string
+          created_at?: string
+          effective_year?: number | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          program_id?: string
+          updated_at?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_plans_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "study_plans_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "academic_programs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       universities: {
         Row: {
@@ -193,6 +596,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_manage_college: {
+        Args: { _college_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_view_college: {
+        Args: { _college_id: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
