@@ -109,7 +109,7 @@ function TemplatesPage() {
         header_ar: colForm.header_ar, field_key: colForm.field_key,
         data_type: colForm.data_type ?? "text",
         is_required: colForm.is_required ?? false,
-        enum_values: colForm.enum_values ?? null,
+        enum_values: (colForm.enum_values ?? null) as never,
         example: colForm.example ?? null, notes: colForm.notes ?? null,
       };
       if (colEdit) {
