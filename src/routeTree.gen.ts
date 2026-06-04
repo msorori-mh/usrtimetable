@@ -30,6 +30,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedCoursesRouteImport } from './routes/_authenticated/courses'
 import { Route as AuthenticatedCourseOfferingsRouteImport } from './routes/_authenticated/course-offerings'
 import { Route as AuthenticatedCollegesRouteImport } from './routes/_authenticated/colleges'
+import { Route as AuthenticatedBuildingsRouteImport } from './routes/_authenticated/buildings'
 import { Route as AuthenticatedAvailabilityRouteImport } from './routes/_authenticated/availability'
 
 const AuthRoute = AuthRouteImport.update({
@@ -142,6 +143,11 @@ const AuthenticatedCollegesRoute = AuthenticatedCollegesRouteImport.update({
   path: '/colleges',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedBuildingsRoute = AuthenticatedBuildingsRouteImport.update({
+  id: '/buildings',
+  path: '/buildings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedAvailabilityRoute =
   AuthenticatedAvailabilityRouteImport.update({
     id: '/availability',
@@ -153,6 +159,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/availability': typeof AuthenticatedAvailabilityRoute
+  '/buildings': typeof AuthenticatedBuildingsRoute
   '/colleges': typeof AuthenticatedCollegesRoute
   '/course-offerings': typeof AuthenticatedCourseOfferingsRoute
   '/courses': typeof AuthenticatedCoursesRoute
@@ -176,6 +183,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/availability': typeof AuthenticatedAvailabilityRoute
+  '/buildings': typeof AuthenticatedBuildingsRoute
   '/colleges': typeof AuthenticatedCollegesRoute
   '/course-offerings': typeof AuthenticatedCourseOfferingsRoute
   '/courses': typeof AuthenticatedCoursesRoute
@@ -201,6 +209,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/availability': typeof AuthenticatedAvailabilityRoute
+  '/_authenticated/buildings': typeof AuthenticatedBuildingsRoute
   '/_authenticated/colleges': typeof AuthenticatedCollegesRoute
   '/_authenticated/course-offerings': typeof AuthenticatedCourseOfferingsRoute
   '/_authenticated/courses': typeof AuthenticatedCoursesRoute
@@ -226,6 +235,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/availability'
+    | '/buildings'
     | '/colleges'
     | '/course-offerings'
     | '/courses'
@@ -249,6 +259,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/availability'
+    | '/buildings'
     | '/colleges'
     | '/course-offerings'
     | '/courses'
@@ -273,6 +284,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/availability'
+    | '/_authenticated/buildings'
     | '/_authenticated/colleges'
     | '/_authenticated/course-offerings'
     | '/_authenticated/courses'
@@ -448,6 +460,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCollegesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/buildings': {
+      id: '/_authenticated/buildings'
+      path: '/buildings'
+      fullPath: '/buildings'
+      preLoaderRoute: typeof AuthenticatedBuildingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/availability': {
       id: '/_authenticated/availability'
       path: '/availability'
@@ -460,6 +479,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAvailabilityRoute: typeof AuthenticatedAvailabilityRoute
+  AuthenticatedBuildingsRoute: typeof AuthenticatedBuildingsRoute
   AuthenticatedCollegesRoute: typeof AuthenticatedCollegesRoute
   AuthenticatedCourseOfferingsRoute: typeof AuthenticatedCourseOfferingsRoute
   AuthenticatedCoursesRoute: typeof AuthenticatedCoursesRoute
@@ -482,6 +502,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAvailabilityRoute: AuthenticatedAvailabilityRoute,
+  AuthenticatedBuildingsRoute: AuthenticatedBuildingsRoute,
   AuthenticatedCollegesRoute: AuthenticatedCollegesRoute,
   AuthenticatedCourseOfferingsRoute: AuthenticatedCourseOfferingsRoute,
   AuthenticatedCoursesRoute: AuthenticatedCoursesRoute,
