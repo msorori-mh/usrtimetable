@@ -59,6 +59,14 @@ const NAV: NavItem[] = [
   { to: "/availability", label: "التوفّر/عدم التوفّر", icon: <CalendarClock className="h-4 w-4" />, roles: ALL, group: "موارد التدريس" },
   { to: "/course-offerings", label: "مقررات الفصل", icon: <ClipboardList className="h-4 w-4" />, roles: ALL, group: "موارد التدريس" },
   { to: "/teaching-assignments", label: "التكليفات التدريسية", icon: <Briefcase className="h-4 w-4" />, roles: ALL, group: "موارد التدريس" },
+  { to: "/instructor-types", label: "أنواع المحاضرين", icon: <UserCog className="h-4 w-4" />, roles: ALL, group: "التهيئة الأكاديمية" },
+  { to: "/room-types", label: "أنواع القاعات", icon: <Boxes className="h-4 w-4" />, roles: ALL, group: "التهيئة الأكاديمية" },
+  { to: "/buildings", label: "المباني", icon: <Building className="h-4 w-4" />, roles: ALL, group: "التهيئة الأكاديمية" },
+  { to: "/session-types", label: "أنواع الجلسات", icon: <Presentation className="h-4 w-4" />, roles: ALL, group: "التهيئة الأكاديمية" },
+  { to: "/scheduling-settings", label: "إعدادات الجدولة", icon: <Settings2 className="h-4 w-4" />, roles: ALL, group: "التهيئة الأكاديمية" },
+  { to: "/academic-calendar", label: "التقويم الأكاديمي", icon: <CalendarDays className="h-4 w-4" />, roles: ALL, group: "التهيئة الأكاديمية" },
+  { to: "/shared-courses", label: "المقررات المشتركة", icon: <Share2 className="h-4 w-4" />, roles: ALL, group: "التهيئة الأكاديمية" },
+  { to: "/import-templates", label: "قوالب الاستيراد", icon: <FileSpreadsheet className="h-4 w-4" />, roles: ALL, group: "التهيئة الأكاديمية" },
 ];
 
 
