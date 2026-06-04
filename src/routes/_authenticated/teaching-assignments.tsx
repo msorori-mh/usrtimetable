@@ -128,11 +128,14 @@ function AssignmentsPage() {
   };
   const startCreate = () => { setEditing(null); setForm(emptyForm()); setOpen(true); };
 
-  type OfferingRow = { id: string; courses: { code: string; name: string } | null; academic_terms: { name: string } | null };
+  type OfferingRow = { id: string; course_id: string; term_id: string };
+  const courseLabel = new Map((courses ?? []).map((c) => [c.id, `${c.code} — ${c.name}`]));
+  const termLabel = new Map((terms ?? []).map((t) => [t.id, t.name]));
   const offMap = new Map(((offerings ?? []) as OfferingRow[]).map((o) => {
-    const label = `${o.courses?.code ?? ""} — ${o.courses?.name ?? ""} (${o.academic_terms?.name ?? ""})`;
+    const label = `${courseLabel.get(o.course_id) ?? "—"} (${termLabel.get(o.term_id) ?? "—"})`;
     return [o.id, label];
   }));
+
   const insMap = new Map((instructors ?? []).map((i) => [i.id, i.full_name]));
 
   return (
