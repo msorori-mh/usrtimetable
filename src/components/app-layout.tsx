@@ -1,12 +1,16 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  BookOpen,
   Building2,
+  CalendarRange,
   GraduationCap,
   LayoutDashboard,
+  Library,
   LogOut,
   School,
   Users,
+  Users2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -18,14 +22,23 @@ interface NavItem {
   label: string;
   icon: React.ReactNode;
   roles: Array<"super_admin" | "college_admin" | "read_only">;
+  group?: string;
 }
 
+const ALL: NavItem["roles"] = ["super_admin", "college_admin", "read_only"];
+
 const NAV: NavItem[] = [
-  { to: "/dashboard", label: "لوحة التحكم", icon: <LayoutDashboard className="h-4 w-4" />, roles: ["super_admin", "college_admin", "read_only"] },
-  { to: "/universities", label: "الجامعة", icon: <Building2 className="h-4 w-4" />, roles: ["super_admin"] },
-  { to: "/colleges", label: "الكلّيات", icon: <School className="h-4 w-4" />, roles: ["super_admin"] },
-  { to: "/users", label: "المستخدمون", icon: <Users className="h-4 w-4" />, roles: ["super_admin"] },
-  { to: "/my-college", label: "كلّيتي", icon: <School className="h-4 w-4" />, roles: ["college_admin", "read_only"] },
+  { to: "/dashboard", label: "لوحة التحكم", icon: <LayoutDashboard className="h-4 w-4" />, roles: ALL },
+  { to: "/universities", label: "الجامعة", icon: <Building2 className="h-4 w-4" />, roles: ["super_admin"], group: "إدارة النظام" },
+  { to: "/colleges", label: "الكلّيات", icon: <School className="h-4 w-4" />, roles: ["super_admin"], group: "إدارة النظام" },
+  { to: "/users", label: "المستخدمون", icon: <Users className="h-4 w-4" />, roles: ["super_admin"], group: "إدارة النظام" },
+  { to: "/my-college", label: "كلّيتي", icon: <School className="h-4 w-4" />, roles: ["college_admin", "read_only"], group: "كلّيتي" },
+  { to: "/departments", label: "الأقسام", icon: <Building2 className="h-4 w-4" />, roles: ALL, group: "البنية الأكاديمية" },
+  { to: "/programs", label: "البرامج", icon: <GraduationCap className="h-4 w-4" />, roles: ALL, group: "البنية الأكاديمية" },
+  { to: "/study-plans", label: "الخطط الدراسية", icon: <BookOpen className="h-4 w-4" />, roles: ALL, group: "البنية الأكاديمية" },
+  { to: "/courses", label: "المقررات", icon: <Library className="h-4 w-4" />, roles: ALL, group: "البنية الأكاديمية" },
+  { to: "/terms", label: "الفصول الدراسية", icon: <CalendarRange className="h-4 w-4" />, roles: ALL, group: "البنية الأكاديمية" },
+  { to: "/sections", label: "الشُّعب", icon: <Users2 className="h-4 w-4" />, roles: ALL, group: "البنية الأكاديمية" },
 ];
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
