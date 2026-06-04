@@ -18,6 +18,7 @@ import { Route as AuthenticatedTimeSlotsRouteImport } from './routes/_authentica
 import { Route as AuthenticatedTermsRouteImport } from './routes/_authenticated/terms'
 import { Route as AuthenticatedTeachingAssignmentsRouteImport } from './routes/_authenticated/teaching-assignments'
 import { Route as AuthenticatedStudyPlansRouteImport } from './routes/_authenticated/study-plans'
+import { Route as AuthenticatedSessionTypesRouteImport } from './routes/_authenticated/session-types'
 import { Route as AuthenticatedSectionsRouteImport } from './routes/_authenticated/sections'
 import { Route as AuthenticatedRoomsRouteImport } from './routes/_authenticated/rooms'
 import { Route as AuthenticatedRoomTypesRouteImport } from './routes/_authenticated/room-types'
@@ -79,6 +80,12 @@ const AuthenticatedStudyPlansRoute = AuthenticatedStudyPlansRouteImport.update({
   path: '/study-plans',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSessionTypesRoute =
+  AuthenticatedSessionTypesRouteImport.update({
+    id: '/session-types',
+    path: '/session-types',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSectionsRoute = AuthenticatedSectionsRouteImport.update({
   id: '/sections',
   path: '/sections',
@@ -172,6 +179,7 @@ export interface FileRoutesByFullPath {
   '/room-types': typeof AuthenticatedRoomTypesRoute
   '/rooms': typeof AuthenticatedRoomsRoute
   '/sections': typeof AuthenticatedSectionsRoute
+  '/session-types': typeof AuthenticatedSessionTypesRoute
   '/study-plans': typeof AuthenticatedStudyPlansRoute
   '/teaching-assignments': typeof AuthenticatedTeachingAssignmentsRoute
   '/terms': typeof AuthenticatedTermsRoute
@@ -196,6 +204,7 @@ export interface FileRoutesByTo {
   '/room-types': typeof AuthenticatedRoomTypesRoute
   '/rooms': typeof AuthenticatedRoomsRoute
   '/sections': typeof AuthenticatedSectionsRoute
+  '/session-types': typeof AuthenticatedSessionTypesRoute
   '/study-plans': typeof AuthenticatedStudyPlansRoute
   '/teaching-assignments': typeof AuthenticatedTeachingAssignmentsRoute
   '/terms': typeof AuthenticatedTermsRoute
@@ -222,6 +231,7 @@ export interface FileRoutesById {
   '/_authenticated/room-types': typeof AuthenticatedRoomTypesRoute
   '/_authenticated/rooms': typeof AuthenticatedRoomsRoute
   '/_authenticated/sections': typeof AuthenticatedSectionsRoute
+  '/_authenticated/session-types': typeof AuthenticatedSessionTypesRoute
   '/_authenticated/study-plans': typeof AuthenticatedStudyPlansRoute
   '/_authenticated/teaching-assignments': typeof AuthenticatedTeachingAssignmentsRoute
   '/_authenticated/terms': typeof AuthenticatedTermsRoute
@@ -248,6 +258,7 @@ export interface FileRouteTypes {
     | '/room-types'
     | '/rooms'
     | '/sections'
+    | '/session-types'
     | '/study-plans'
     | '/teaching-assignments'
     | '/terms'
@@ -272,6 +283,7 @@ export interface FileRouteTypes {
     | '/room-types'
     | '/rooms'
     | '/sections'
+    | '/session-types'
     | '/study-plans'
     | '/teaching-assignments'
     | '/terms'
@@ -297,6 +309,7 @@ export interface FileRouteTypes {
     | '/_authenticated/room-types'
     | '/_authenticated/rooms'
     | '/_authenticated/sections'
+    | '/_authenticated/session-types'
     | '/_authenticated/study-plans'
     | '/_authenticated/teaching-assignments'
     | '/_authenticated/terms'
@@ -374,6 +387,13 @@ declare module '@tanstack/react-router' {
       path: '/study-plans'
       fullPath: '/study-plans'
       preLoaderRoute: typeof AuthenticatedStudyPlansRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/session-types': {
+      id: '/_authenticated/session-types'
+      path: '/session-types'
+      fullPath: '/session-types'
+      preLoaderRoute: typeof AuthenticatedSessionTypesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/sections': {
@@ -492,6 +512,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedRoomTypesRoute: typeof AuthenticatedRoomTypesRoute
   AuthenticatedRoomsRoute: typeof AuthenticatedRoomsRoute
   AuthenticatedSectionsRoute: typeof AuthenticatedSectionsRoute
+  AuthenticatedSessionTypesRoute: typeof AuthenticatedSessionTypesRoute
   AuthenticatedStudyPlansRoute: typeof AuthenticatedStudyPlansRoute
   AuthenticatedTeachingAssignmentsRoute: typeof AuthenticatedTeachingAssignmentsRoute
   AuthenticatedTermsRoute: typeof AuthenticatedTermsRoute
@@ -515,6 +536,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedRoomTypesRoute: AuthenticatedRoomTypesRoute,
   AuthenticatedRoomsRoute: AuthenticatedRoomsRoute,
   AuthenticatedSectionsRoute: AuthenticatedSectionsRoute,
+  AuthenticatedSessionTypesRoute: AuthenticatedSessionTypesRoute,
   AuthenticatedStudyPlansRoute: AuthenticatedStudyPlansRoute,
   AuthenticatedTeachingAssignmentsRoute: AuthenticatedTeachingAssignmentsRoute,
   AuthenticatedTermsRoute: AuthenticatedTermsRoute,
