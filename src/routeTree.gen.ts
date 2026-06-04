@@ -18,17 +18,25 @@ import { Route as AuthenticatedTimeSlotsRouteImport } from './routes/_authentica
 import { Route as AuthenticatedTermsRouteImport } from './routes/_authenticated/terms'
 import { Route as AuthenticatedTeachingAssignmentsRouteImport } from './routes/_authenticated/teaching-assignments'
 import { Route as AuthenticatedStudyPlansRouteImport } from './routes/_authenticated/study-plans'
+import { Route as AuthenticatedSharedCoursesRouteImport } from './routes/_authenticated/shared-courses'
+import { Route as AuthenticatedSessionTypesRouteImport } from './routes/_authenticated/session-types'
 import { Route as AuthenticatedSectionsRouteImport } from './routes/_authenticated/sections'
+import { Route as AuthenticatedSchedulingSettingsRouteImport } from './routes/_authenticated/scheduling-settings'
 import { Route as AuthenticatedRoomsRouteImport } from './routes/_authenticated/rooms'
+import { Route as AuthenticatedRoomTypesRouteImport } from './routes/_authenticated/room-types'
 import { Route as AuthenticatedProgramsRouteImport } from './routes/_authenticated/programs'
 import { Route as AuthenticatedMyCollegeRouteImport } from './routes/_authenticated/my-college'
 import { Route as AuthenticatedInstructorsRouteImport } from './routes/_authenticated/instructors'
+import { Route as AuthenticatedInstructorTypesRouteImport } from './routes/_authenticated/instructor-types'
+import { Route as AuthenticatedImportTemplatesRouteImport } from './routes/_authenticated/import-templates'
 import { Route as AuthenticatedDepartmentsRouteImport } from './routes/_authenticated/departments'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCoursesRouteImport } from './routes/_authenticated/courses'
 import { Route as AuthenticatedCourseOfferingsRouteImport } from './routes/_authenticated/course-offerings'
 import { Route as AuthenticatedCollegesRouteImport } from './routes/_authenticated/colleges'
+import { Route as AuthenticatedBuildingsRouteImport } from './routes/_authenticated/buildings'
 import { Route as AuthenticatedAvailabilityRouteImport } from './routes/_authenticated/availability'
+import { Route as AuthenticatedAcademicCalendarRouteImport } from './routes/_authenticated/academic-calendar'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -76,14 +84,37 @@ const AuthenticatedStudyPlansRoute = AuthenticatedStudyPlansRouteImport.update({
   path: '/study-plans',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSharedCoursesRoute =
+  AuthenticatedSharedCoursesRouteImport.update({
+    id: '/shared-courses',
+    path: '/shared-courses',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSessionTypesRoute =
+  AuthenticatedSessionTypesRouteImport.update({
+    id: '/session-types',
+    path: '/session-types',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSectionsRoute = AuthenticatedSectionsRouteImport.update({
   id: '/sections',
   path: '/sections',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSchedulingSettingsRoute =
+  AuthenticatedSchedulingSettingsRouteImport.update({
+    id: '/scheduling-settings',
+    path: '/scheduling-settings',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedRoomsRoute = AuthenticatedRoomsRouteImport.update({
   id: '/rooms',
   path: '/rooms',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedRoomTypesRoute = AuthenticatedRoomTypesRouteImport.update({
+  id: '/room-types',
+  path: '/room-types',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedProgramsRoute = AuthenticatedProgramsRouteImport.update({
@@ -100,6 +131,18 @@ const AuthenticatedInstructorsRoute =
   AuthenticatedInstructorsRouteImport.update({
     id: '/instructors',
     path: '/instructors',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedInstructorTypesRoute =
+  AuthenticatedInstructorTypesRouteImport.update({
+    id: '/instructor-types',
+    path: '/instructor-types',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedImportTemplatesRoute =
+  AuthenticatedImportTemplatesRouteImport.update({
+    id: '/import-templates',
+    path: '/import-templates',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedDepartmentsRoute =
@@ -129,27 +172,46 @@ const AuthenticatedCollegesRoute = AuthenticatedCollegesRouteImport.update({
   path: '/colleges',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedBuildingsRoute = AuthenticatedBuildingsRouteImport.update({
+  id: '/buildings',
+  path: '/buildings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedAvailabilityRoute =
   AuthenticatedAvailabilityRouteImport.update({
     id: '/availability',
     path: '/availability',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAcademicCalendarRoute =
+  AuthenticatedAcademicCalendarRouteImport.update({
+    id: '/academic-calendar',
+    path: '/academic-calendar',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/academic-calendar': typeof AuthenticatedAcademicCalendarRoute
   '/availability': typeof AuthenticatedAvailabilityRoute
+  '/buildings': typeof AuthenticatedBuildingsRoute
   '/colleges': typeof AuthenticatedCollegesRoute
   '/course-offerings': typeof AuthenticatedCourseOfferingsRoute
   '/courses': typeof AuthenticatedCoursesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/departments': typeof AuthenticatedDepartmentsRoute
+  '/import-templates': typeof AuthenticatedImportTemplatesRoute
+  '/instructor-types': typeof AuthenticatedInstructorTypesRoute
   '/instructors': typeof AuthenticatedInstructorsRoute
   '/my-college': typeof AuthenticatedMyCollegeRoute
   '/programs': typeof AuthenticatedProgramsRoute
+  '/room-types': typeof AuthenticatedRoomTypesRoute
   '/rooms': typeof AuthenticatedRoomsRoute
+  '/scheduling-settings': typeof AuthenticatedSchedulingSettingsRoute
   '/sections': typeof AuthenticatedSectionsRoute
+  '/session-types': typeof AuthenticatedSessionTypesRoute
+  '/shared-courses': typeof AuthenticatedSharedCoursesRoute
   '/study-plans': typeof AuthenticatedStudyPlansRoute
   '/teaching-assignments': typeof AuthenticatedTeachingAssignmentsRoute
   '/terms': typeof AuthenticatedTermsRoute
@@ -160,17 +222,25 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/academic-calendar': typeof AuthenticatedAcademicCalendarRoute
   '/availability': typeof AuthenticatedAvailabilityRoute
+  '/buildings': typeof AuthenticatedBuildingsRoute
   '/colleges': typeof AuthenticatedCollegesRoute
   '/course-offerings': typeof AuthenticatedCourseOfferingsRoute
   '/courses': typeof AuthenticatedCoursesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/departments': typeof AuthenticatedDepartmentsRoute
+  '/import-templates': typeof AuthenticatedImportTemplatesRoute
+  '/instructor-types': typeof AuthenticatedInstructorTypesRoute
   '/instructors': typeof AuthenticatedInstructorsRoute
   '/my-college': typeof AuthenticatedMyCollegeRoute
   '/programs': typeof AuthenticatedProgramsRoute
+  '/room-types': typeof AuthenticatedRoomTypesRoute
   '/rooms': typeof AuthenticatedRoomsRoute
+  '/scheduling-settings': typeof AuthenticatedSchedulingSettingsRoute
   '/sections': typeof AuthenticatedSectionsRoute
+  '/session-types': typeof AuthenticatedSessionTypesRoute
+  '/shared-courses': typeof AuthenticatedSharedCoursesRoute
   '/study-plans': typeof AuthenticatedStudyPlansRoute
   '/teaching-assignments': typeof AuthenticatedTeachingAssignmentsRoute
   '/terms': typeof AuthenticatedTermsRoute
@@ -183,17 +253,25 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/academic-calendar': typeof AuthenticatedAcademicCalendarRoute
   '/_authenticated/availability': typeof AuthenticatedAvailabilityRoute
+  '/_authenticated/buildings': typeof AuthenticatedBuildingsRoute
   '/_authenticated/colleges': typeof AuthenticatedCollegesRoute
   '/_authenticated/course-offerings': typeof AuthenticatedCourseOfferingsRoute
   '/_authenticated/courses': typeof AuthenticatedCoursesRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/departments': typeof AuthenticatedDepartmentsRoute
+  '/_authenticated/import-templates': typeof AuthenticatedImportTemplatesRoute
+  '/_authenticated/instructor-types': typeof AuthenticatedInstructorTypesRoute
   '/_authenticated/instructors': typeof AuthenticatedInstructorsRoute
   '/_authenticated/my-college': typeof AuthenticatedMyCollegeRoute
   '/_authenticated/programs': typeof AuthenticatedProgramsRoute
+  '/_authenticated/room-types': typeof AuthenticatedRoomTypesRoute
   '/_authenticated/rooms': typeof AuthenticatedRoomsRoute
+  '/_authenticated/scheduling-settings': typeof AuthenticatedSchedulingSettingsRoute
   '/_authenticated/sections': typeof AuthenticatedSectionsRoute
+  '/_authenticated/session-types': typeof AuthenticatedSessionTypesRoute
+  '/_authenticated/shared-courses': typeof AuthenticatedSharedCoursesRoute
   '/_authenticated/study-plans': typeof AuthenticatedStudyPlansRoute
   '/_authenticated/teaching-assignments': typeof AuthenticatedTeachingAssignmentsRoute
   '/_authenticated/terms': typeof AuthenticatedTermsRoute
@@ -206,17 +284,25 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/academic-calendar'
     | '/availability'
+    | '/buildings'
     | '/colleges'
     | '/course-offerings'
     | '/courses'
     | '/dashboard'
     | '/departments'
+    | '/import-templates'
+    | '/instructor-types'
     | '/instructors'
     | '/my-college'
     | '/programs'
+    | '/room-types'
     | '/rooms'
+    | '/scheduling-settings'
     | '/sections'
+    | '/session-types'
+    | '/shared-courses'
     | '/study-plans'
     | '/teaching-assignments'
     | '/terms'
@@ -227,17 +313,25 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/academic-calendar'
     | '/availability'
+    | '/buildings'
     | '/colleges'
     | '/course-offerings'
     | '/courses'
     | '/dashboard'
     | '/departments'
+    | '/import-templates'
+    | '/instructor-types'
     | '/instructors'
     | '/my-college'
     | '/programs'
+    | '/room-types'
     | '/rooms'
+    | '/scheduling-settings'
     | '/sections'
+    | '/session-types'
+    | '/shared-courses'
     | '/study-plans'
     | '/teaching-assignments'
     | '/terms'
@@ -249,17 +343,25 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/academic-calendar'
     | '/_authenticated/availability'
+    | '/_authenticated/buildings'
     | '/_authenticated/colleges'
     | '/_authenticated/course-offerings'
     | '/_authenticated/courses'
     | '/_authenticated/dashboard'
     | '/_authenticated/departments'
+    | '/_authenticated/import-templates'
+    | '/_authenticated/instructor-types'
     | '/_authenticated/instructors'
     | '/_authenticated/my-college'
     | '/_authenticated/programs'
+    | '/_authenticated/room-types'
     | '/_authenticated/rooms'
+    | '/_authenticated/scheduling-settings'
     | '/_authenticated/sections'
+    | '/_authenticated/session-types'
+    | '/_authenticated/shared-courses'
     | '/_authenticated/study-plans'
     | '/_authenticated/teaching-assignments'
     | '/_authenticated/terms'
@@ -339,6 +441,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedStudyPlansRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/shared-courses': {
+      id: '/_authenticated/shared-courses'
+      path: '/shared-courses'
+      fullPath: '/shared-courses'
+      preLoaderRoute: typeof AuthenticatedSharedCoursesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/session-types': {
+      id: '/_authenticated/session-types'
+      path: '/session-types'
+      fullPath: '/session-types'
+      preLoaderRoute: typeof AuthenticatedSessionTypesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/sections': {
       id: '/_authenticated/sections'
       path: '/sections'
@@ -346,11 +462,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSectionsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/scheduling-settings': {
+      id: '/_authenticated/scheduling-settings'
+      path: '/scheduling-settings'
+      fullPath: '/scheduling-settings'
+      preLoaderRoute: typeof AuthenticatedSchedulingSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/rooms': {
       id: '/_authenticated/rooms'
       path: '/rooms'
       fullPath: '/rooms'
       preLoaderRoute: typeof AuthenticatedRoomsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/room-types': {
+      id: '/_authenticated/room-types'
+      path: '/room-types'
+      fullPath: '/room-types'
+      preLoaderRoute: typeof AuthenticatedRoomTypesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/programs': {
@@ -372,6 +502,20 @@ declare module '@tanstack/react-router' {
       path: '/instructors'
       fullPath: '/instructors'
       preLoaderRoute: typeof AuthenticatedInstructorsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/instructor-types': {
+      id: '/_authenticated/instructor-types'
+      path: '/instructor-types'
+      fullPath: '/instructor-types'
+      preLoaderRoute: typeof AuthenticatedInstructorTypesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/import-templates': {
+      id: '/_authenticated/import-templates'
+      path: '/import-templates'
+      fullPath: '/import-templates'
+      preLoaderRoute: typeof AuthenticatedImportTemplatesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/departments': {
@@ -409,6 +553,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCollegesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/buildings': {
+      id: '/_authenticated/buildings'
+      path: '/buildings'
+      fullPath: '/buildings'
+      preLoaderRoute: typeof AuthenticatedBuildingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/availability': {
       id: '/_authenticated/availability'
       path: '/availability'
@@ -416,21 +567,36 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAvailabilityRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/academic-calendar': {
+      id: '/_authenticated/academic-calendar'
+      path: '/academic-calendar'
+      fullPath: '/academic-calendar'
+      preLoaderRoute: typeof AuthenticatedAcademicCalendarRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAcademicCalendarRoute: typeof AuthenticatedAcademicCalendarRoute
   AuthenticatedAvailabilityRoute: typeof AuthenticatedAvailabilityRoute
+  AuthenticatedBuildingsRoute: typeof AuthenticatedBuildingsRoute
   AuthenticatedCollegesRoute: typeof AuthenticatedCollegesRoute
   AuthenticatedCourseOfferingsRoute: typeof AuthenticatedCourseOfferingsRoute
   AuthenticatedCoursesRoute: typeof AuthenticatedCoursesRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedDepartmentsRoute: typeof AuthenticatedDepartmentsRoute
+  AuthenticatedImportTemplatesRoute: typeof AuthenticatedImportTemplatesRoute
+  AuthenticatedInstructorTypesRoute: typeof AuthenticatedInstructorTypesRoute
   AuthenticatedInstructorsRoute: typeof AuthenticatedInstructorsRoute
   AuthenticatedMyCollegeRoute: typeof AuthenticatedMyCollegeRoute
   AuthenticatedProgramsRoute: typeof AuthenticatedProgramsRoute
+  AuthenticatedRoomTypesRoute: typeof AuthenticatedRoomTypesRoute
   AuthenticatedRoomsRoute: typeof AuthenticatedRoomsRoute
+  AuthenticatedSchedulingSettingsRoute: typeof AuthenticatedSchedulingSettingsRoute
   AuthenticatedSectionsRoute: typeof AuthenticatedSectionsRoute
+  AuthenticatedSessionTypesRoute: typeof AuthenticatedSessionTypesRoute
+  AuthenticatedSharedCoursesRoute: typeof AuthenticatedSharedCoursesRoute
   AuthenticatedStudyPlansRoute: typeof AuthenticatedStudyPlansRoute
   AuthenticatedTeachingAssignmentsRoute: typeof AuthenticatedTeachingAssignmentsRoute
   AuthenticatedTermsRoute: typeof AuthenticatedTermsRoute
@@ -440,17 +606,25 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAcademicCalendarRoute: AuthenticatedAcademicCalendarRoute,
   AuthenticatedAvailabilityRoute: AuthenticatedAvailabilityRoute,
+  AuthenticatedBuildingsRoute: AuthenticatedBuildingsRoute,
   AuthenticatedCollegesRoute: AuthenticatedCollegesRoute,
   AuthenticatedCourseOfferingsRoute: AuthenticatedCourseOfferingsRoute,
   AuthenticatedCoursesRoute: AuthenticatedCoursesRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedDepartmentsRoute: AuthenticatedDepartmentsRoute,
+  AuthenticatedImportTemplatesRoute: AuthenticatedImportTemplatesRoute,
+  AuthenticatedInstructorTypesRoute: AuthenticatedInstructorTypesRoute,
   AuthenticatedInstructorsRoute: AuthenticatedInstructorsRoute,
   AuthenticatedMyCollegeRoute: AuthenticatedMyCollegeRoute,
   AuthenticatedProgramsRoute: AuthenticatedProgramsRoute,
+  AuthenticatedRoomTypesRoute: AuthenticatedRoomTypesRoute,
   AuthenticatedRoomsRoute: AuthenticatedRoomsRoute,
+  AuthenticatedSchedulingSettingsRoute: AuthenticatedSchedulingSettingsRoute,
   AuthenticatedSectionsRoute: AuthenticatedSectionsRoute,
+  AuthenticatedSessionTypesRoute: AuthenticatedSessionTypesRoute,
+  AuthenticatedSharedCoursesRoute: AuthenticatedSharedCoursesRoute,
   AuthenticatedStudyPlansRoute: AuthenticatedStudyPlansRoute,
   AuthenticatedTeachingAssignmentsRoute: AuthenticatedTeachingAssignmentsRoute,
   AuthenticatedTermsRoute: AuthenticatedTermsRoute,
@@ -470,13 +644,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
