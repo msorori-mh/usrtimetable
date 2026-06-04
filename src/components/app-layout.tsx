@@ -76,25 +76,37 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <p className="text-[11px] text-sidebar-foreground/70">إدارة جامعية</p>
           </div>
         </div>
-        <nav className="flex-1 space-y-1 px-3 py-4">
-          {items.map((item) => {
-            const active = pathname === item.to;
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition",
-                  active
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
-                )}
-              >
-                {item.icon}
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
+        <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4">
+          {Array.from(
+            items.reduce((m, it) => {
+              const k = it.group ?? "";
+              if (!m.has(k)) m.set(k, []);
+              m.get(k)!.push(it);
+              return m;
+            }, new Map<string, NavItem[]>()),
+          ).map(([group, list]) => (
+            <div key={group} className="space-y-1">
+              {group && <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50">{group}</p>}
+              {list.map((item) => {
+                const active = pathname === item.to;
+                return (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    className={cn(
+                      "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition",
+                      active
+                        ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                        : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
+                    )}
+                  >
+                    {item.icon}
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
         <div className="border-t border-sidebar-border p-4">
           <div className="mb-3">
