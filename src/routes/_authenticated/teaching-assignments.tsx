@@ -48,15 +48,24 @@ function AssignmentsPage() {
     queryKey: ["offerings-min", active?.id], enabled: !!active,
     queryFn: async () => {
       const { data } = await supabase.from("course_offerings")
-        .select("id, course_id, term_id, courses(code, name), academic_terms(name)")
+        .select("id, course_id, term_id")
         .eq("college_id", active!.id);
       return data ?? [];
     },
+  });
+  const { data: courses } = useQuery({
+    queryKey: ["courses-min2", active?.id], enabled: !!active,
+    queryFn: async () => (await supabase.from("courses").select("id, code, name").eq("college_id", active!.id)).data ?? [],
+  });
+  const { data: terms } = useQuery({
+    queryKey: ["terms-min2", active?.id], enabled: !!active,
+    queryFn: async () => (await supabase.from("academic_terms").select("id, name").eq("college_id", active!.id)).data ?? [],
   });
   const { data: instructors } = useQuery({
     queryKey: ["instr-min", active?.id], enabled: !!active,
     queryFn: async () => (await supabase.from("instructors").select("id, full_name").eq("college_id", active!.id).eq("is_active", true).order("full_name")).data ?? [],
   });
+
 
   const { data: rows, isLoading } = useQuery({
     queryKey: ["assignments", active?.id], enabled: !!active,
