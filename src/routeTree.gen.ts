@@ -38,6 +38,7 @@ import { Route as AuthenticatedDailyBreaksRouteImport } from './routes/_authenti
 import { Route as AuthenticatedCoursesRouteImport } from './routes/_authenticated/courses'
 import { Route as AuthenticatedCourseOfferingsRouteImport } from './routes/_authenticated/course-offerings'
 import { Route as AuthenticatedConstraintSettingsRouteImport } from './routes/_authenticated/constraint-settings'
+import { Route as AuthenticatedConflictChecksRouteImport } from './routes/_authenticated/conflict-checks'
 import { Route as AuthenticatedCollegesRouteImport } from './routes/_authenticated/colleges'
 import { Route as AuthenticatedBuildingsRouteImport } from './routes/_authenticated/buildings'
 import { Route as AuthenticatedAvailabilityRouteImport } from './routes/_authenticated/availability'
@@ -201,6 +202,12 @@ const AuthenticatedConstraintSettingsRoute =
     path: '/constraint-settings',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedConflictChecksRoute =
+  AuthenticatedConflictChecksRouteImport.update({
+    id: '/conflict-checks',
+    path: '/conflict-checks',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedCollegesRoute = AuthenticatedCollegesRouteImport.update({
   id: '/colleges',
   path: '/colleges',
@@ -231,6 +238,7 @@ export interface FileRoutesByFullPath {
   '/availability': typeof AuthenticatedAvailabilityRoute
   '/buildings': typeof AuthenticatedBuildingsRoute
   '/colleges': typeof AuthenticatedCollegesRoute
+  '/conflict-checks': typeof AuthenticatedConflictChecksRoute
   '/constraint-settings': typeof AuthenticatedConstraintSettingsRoute
   '/course-offerings': typeof AuthenticatedCourseOfferingsRoute
   '/courses': typeof AuthenticatedCoursesRoute
@@ -265,6 +273,7 @@ export interface FileRoutesByTo {
   '/availability': typeof AuthenticatedAvailabilityRoute
   '/buildings': typeof AuthenticatedBuildingsRoute
   '/colleges': typeof AuthenticatedCollegesRoute
+  '/conflict-checks': typeof AuthenticatedConflictChecksRoute
   '/constraint-settings': typeof AuthenticatedConstraintSettingsRoute
   '/course-offerings': typeof AuthenticatedCourseOfferingsRoute
   '/courses': typeof AuthenticatedCoursesRoute
@@ -301,6 +310,7 @@ export interface FileRoutesById {
   '/_authenticated/availability': typeof AuthenticatedAvailabilityRoute
   '/_authenticated/buildings': typeof AuthenticatedBuildingsRoute
   '/_authenticated/colleges': typeof AuthenticatedCollegesRoute
+  '/_authenticated/conflict-checks': typeof AuthenticatedConflictChecksRoute
   '/_authenticated/constraint-settings': typeof AuthenticatedConstraintSettingsRoute
   '/_authenticated/course-offerings': typeof AuthenticatedCourseOfferingsRoute
   '/_authenticated/courses': typeof AuthenticatedCoursesRoute
@@ -337,6 +347,7 @@ export interface FileRouteTypes {
     | '/availability'
     | '/buildings'
     | '/colleges'
+    | '/conflict-checks'
     | '/constraint-settings'
     | '/course-offerings'
     | '/courses'
@@ -371,6 +382,7 @@ export interface FileRouteTypes {
     | '/availability'
     | '/buildings'
     | '/colleges'
+    | '/conflict-checks'
     | '/constraint-settings'
     | '/course-offerings'
     | '/courses'
@@ -406,6 +418,7 @@ export interface FileRouteTypes {
     | '/_authenticated/availability'
     | '/_authenticated/buildings'
     | '/_authenticated/colleges'
+    | '/_authenticated/conflict-checks'
     | '/_authenticated/constraint-settings'
     | '/_authenticated/course-offerings'
     | '/_authenticated/courses'
@@ -645,6 +658,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedConstraintSettingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/conflict-checks': {
+      id: '/_authenticated/conflict-checks'
+      path: '/conflict-checks'
+      fullPath: '/conflict-checks'
+      preLoaderRoute: typeof AuthenticatedConflictChecksRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/colleges': {
       id: '/_authenticated/colleges'
       path: '/colleges'
@@ -681,6 +701,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAvailabilityRoute: typeof AuthenticatedAvailabilityRoute
   AuthenticatedBuildingsRoute: typeof AuthenticatedBuildingsRoute
   AuthenticatedCollegesRoute: typeof AuthenticatedCollegesRoute
+  AuthenticatedConflictChecksRoute: typeof AuthenticatedConflictChecksRoute
   AuthenticatedConstraintSettingsRoute: typeof AuthenticatedConstraintSettingsRoute
   AuthenticatedCourseOfferingsRoute: typeof AuthenticatedCourseOfferingsRoute
   AuthenticatedCoursesRoute: typeof AuthenticatedCoursesRoute
@@ -714,6 +735,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAvailabilityRoute: AuthenticatedAvailabilityRoute,
   AuthenticatedBuildingsRoute: AuthenticatedBuildingsRoute,
   AuthenticatedCollegesRoute: AuthenticatedCollegesRoute,
+  AuthenticatedConflictChecksRoute: AuthenticatedConflictChecksRoute,
   AuthenticatedConstraintSettingsRoute: AuthenticatedConstraintSettingsRoute,
   AuthenticatedCourseOfferingsRoute: AuthenticatedCourseOfferingsRoute,
   AuthenticatedCoursesRoute: AuthenticatedCoursesRoute,
