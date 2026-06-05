@@ -60,7 +60,7 @@ function ImportPage() {
       const { headers, rows } = await parseExcel(file);
       const result = await validate(entity, headers, rows, active.id);
       const jobId = await createJobAndPersistErrors(entity, mode, active.id, file.name, rows.length, result.validRows, result.errors, user.id);
-      return { valid: result.validRows, invalid: result.invalidRows, errors: result.errors, jobId, total: rows.length };
+      return { valid: result.validRows, invalid: result.invalidRows, errors: result.errors, jobId, total: rows.length, missingHeaders: result.missingHeaders };
     },
     onSuccess: (r) => { setPreview(r); toast.success(`تم تحليل ${r.total} صف`); },
     onError: (e: Error) => toast.error(e.message),
