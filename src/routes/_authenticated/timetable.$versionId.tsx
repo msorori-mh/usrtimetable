@@ -166,7 +166,7 @@ function TimetablePage() {
     const deptName = (id: string | null) => lookups?.depts.find((d: any) => d.id === id)?.name ?? "—";
     const progName = (id: string | null) => lookups?.progs.find((p: any) => p.id === id)?.name ?? "—";
     const lvlName = (id: string | null) => lookups?.levels.find((l: any) => l.id === id)?.name ?? "—";
-    for (const o of unscheduled) {
+    for (const o of unscheduled as any[]) {
       const dk = deptName(o.courses?.department_id ?? null);
       const pk = progName(o.program_id ?? null);
       const lk = lvlName(o.level_id ?? null);
