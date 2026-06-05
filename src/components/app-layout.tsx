@@ -68,6 +68,8 @@ const NAV: NavItem[] = [
   { to: "/daily-breaks", label: "الاستراحات اليومية", icon: <Clock className="h-4 w-4" />, roles: ALL, group: "التهيئة الأكاديمية" },
   { to: "/shared-courses", label: "المقررات المشتركة", icon: <Share2 className="h-4 w-4" />, roles: ALL, group: "التهيئة الأكاديمية" },
   { to: "/import-templates", label: "قوالب الاستيراد", icon: <FileSpreadsheet className="h-4 w-4" />, roles: ALL, group: "التهيئة الأكاديمية" },
+  { to: "/import", label: "استيراد Excel", icon: <FileSpreadsheet className="h-4 w-4" />, roles: ["super_admin", "college_admin"], group: "استيراد البيانات" },
+  { to: "/import-history", label: "سجل الاستيراد", icon: <History className="h-4 w-4" />, roles: ALL, group: "استيراد البيانات" },
 ];
 
 
