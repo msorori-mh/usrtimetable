@@ -29,6 +29,8 @@ import { Route as AuthenticatedMyCollegeRouteImport } from './routes/_authentica
 import { Route as AuthenticatedInstructorsRouteImport } from './routes/_authenticated/instructors'
 import { Route as AuthenticatedInstructorTypesRouteImport } from './routes/_authenticated/instructor-types'
 import { Route as AuthenticatedImportTemplatesRouteImport } from './routes/_authenticated/import-templates'
+import { Route as AuthenticatedImportHistoryRouteImport } from './routes/_authenticated/import-history'
+import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated/import'
 import { Route as AuthenticatedDepartmentsRouteImport } from './routes/_authenticated/departments'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedDailyBreaksRouteImport } from './routes/_authenticated/daily-breaks'
@@ -146,6 +148,17 @@ const AuthenticatedImportTemplatesRoute =
     path: '/import-templates',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedImportHistoryRoute =
+  AuthenticatedImportHistoryRouteImport.update({
+    id: '/import-history',
+    path: '/import-history',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedImportRoute = AuthenticatedImportRouteImport.update({
+  id: '/import',
+  path: '/import',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedDepartmentsRoute =
   AuthenticatedDepartmentsRouteImport.update({
     id: '/departments',
@@ -209,6 +222,8 @@ export interface FileRoutesByFullPath {
   '/daily-breaks': typeof AuthenticatedDailyBreaksRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/departments': typeof AuthenticatedDepartmentsRoute
+  '/import': typeof AuthenticatedImportRoute
+  '/import-history': typeof AuthenticatedImportHistoryRoute
   '/import-templates': typeof AuthenticatedImportTemplatesRoute
   '/instructor-types': typeof AuthenticatedInstructorTypesRoute
   '/instructors': typeof AuthenticatedInstructorsRoute
@@ -239,6 +254,8 @@ export interface FileRoutesByTo {
   '/daily-breaks': typeof AuthenticatedDailyBreaksRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/departments': typeof AuthenticatedDepartmentsRoute
+  '/import': typeof AuthenticatedImportRoute
+  '/import-history': typeof AuthenticatedImportHistoryRoute
   '/import-templates': typeof AuthenticatedImportTemplatesRoute
   '/instructor-types': typeof AuthenticatedInstructorTypesRoute
   '/instructors': typeof AuthenticatedInstructorsRoute
@@ -271,6 +288,8 @@ export interface FileRoutesById {
   '/_authenticated/daily-breaks': typeof AuthenticatedDailyBreaksRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/departments': typeof AuthenticatedDepartmentsRoute
+  '/_authenticated/import': typeof AuthenticatedImportRoute
+  '/_authenticated/import-history': typeof AuthenticatedImportHistoryRoute
   '/_authenticated/import-templates': typeof AuthenticatedImportTemplatesRoute
   '/_authenticated/instructor-types': typeof AuthenticatedInstructorTypesRoute
   '/_authenticated/instructors': typeof AuthenticatedInstructorsRoute
@@ -303,6 +322,8 @@ export interface FileRouteTypes {
     | '/daily-breaks'
     | '/dashboard'
     | '/departments'
+    | '/import'
+    | '/import-history'
     | '/import-templates'
     | '/instructor-types'
     | '/instructors'
@@ -333,6 +354,8 @@ export interface FileRouteTypes {
     | '/daily-breaks'
     | '/dashboard'
     | '/departments'
+    | '/import'
+    | '/import-history'
     | '/import-templates'
     | '/instructor-types'
     | '/instructors'
@@ -364,6 +387,8 @@ export interface FileRouteTypes {
     | '/_authenticated/daily-breaks'
     | '/_authenticated/dashboard'
     | '/_authenticated/departments'
+    | '/_authenticated/import'
+    | '/_authenticated/import-history'
     | '/_authenticated/import-templates'
     | '/_authenticated/instructor-types'
     | '/_authenticated/instructors'
@@ -531,6 +556,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedImportTemplatesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/import-history': {
+      id: '/_authenticated/import-history'
+      path: '/import-history'
+      fullPath: '/import-history'
+      preLoaderRoute: typeof AuthenticatedImportHistoryRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/import': {
+      id: '/_authenticated/import'
+      path: '/import'
+      fullPath: '/import'
+      preLoaderRoute: typeof AuthenticatedImportRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/departments': {
       id: '/_authenticated/departments'
       path: '/departments'
@@ -607,6 +646,8 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDailyBreaksRoute: typeof AuthenticatedDailyBreaksRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedDepartmentsRoute: typeof AuthenticatedDepartmentsRoute
+  AuthenticatedImportRoute: typeof AuthenticatedImportRoute
+  AuthenticatedImportHistoryRoute: typeof AuthenticatedImportHistoryRoute
   AuthenticatedImportTemplatesRoute: typeof AuthenticatedImportTemplatesRoute
   AuthenticatedInstructorTypesRoute: typeof AuthenticatedInstructorTypesRoute
   AuthenticatedInstructorsRoute: typeof AuthenticatedInstructorsRoute
@@ -636,6 +677,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDailyBreaksRoute: AuthenticatedDailyBreaksRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedDepartmentsRoute: AuthenticatedDepartmentsRoute,
+  AuthenticatedImportRoute: AuthenticatedImportRoute,
+  AuthenticatedImportHistoryRoute: AuthenticatedImportHistoryRoute,
   AuthenticatedImportTemplatesRoute: AuthenticatedImportTemplatesRoute,
   AuthenticatedInstructorTypesRoute: AuthenticatedInstructorTypesRoute,
   AuthenticatedInstructorsRoute: AuthenticatedInstructorsRoute,

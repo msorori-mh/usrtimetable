@@ -601,6 +601,99 @@ export type Database = {
           },
         ]
       }
+      import_errors: {
+        Row: {
+          college_id: string
+          column_name: string | null
+          created_at: string
+          error_code: string
+          id: string
+          job_id: string
+          message: string
+          raw_value: string | null
+          row_number: number
+        }
+        Insert: {
+          college_id: string
+          column_name?: string | null
+          created_at?: string
+          error_code: string
+          id?: string
+          job_id: string
+          message: string
+          raw_value?: string | null
+          row_number: number
+        }
+        Update: {
+          college_id?: string
+          column_name?: string | null
+          created_at?: string
+          error_code?: string
+          id?: string
+          job_id?: string
+          message?: string
+          raw_value?: string | null
+          row_number?: number
+        }
+        Relationships: []
+      }
+      import_jobs: {
+        Row: {
+          college_id: string
+          created_at: string
+          created_by: string | null
+          file_name: string | null
+          id: string
+          inserted_rows: number
+          invalid_rows: number
+          mode: string
+          notes: string | null
+          skipped_rows: number
+          status: string
+          target_entity: string
+          total_rows: number
+          updated_at: string
+          updated_rows: number
+          valid_rows: number
+        }
+        Insert: {
+          college_id: string
+          created_at?: string
+          created_by?: string | null
+          file_name?: string | null
+          id?: string
+          inserted_rows?: number
+          invalid_rows?: number
+          mode?: string
+          notes?: string | null
+          skipped_rows?: number
+          status?: string
+          target_entity: string
+          total_rows?: number
+          updated_at?: string
+          updated_rows?: number
+          valid_rows?: number
+        }
+        Update: {
+          college_id?: string
+          created_at?: string
+          created_by?: string | null
+          file_name?: string | null
+          id?: string
+          inserted_rows?: number
+          invalid_rows?: number
+          mode?: string
+          notes?: string | null
+          skipped_rows?: number
+          status?: string
+          target_entity?: string
+          total_rows?: number
+          updated_at?: string
+          updated_rows?: number
+          valid_rows?: number
+        }
+        Relationships: []
+      }
       import_template_columns: {
         Row: {
           college_id: string
