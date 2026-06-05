@@ -152,7 +152,15 @@ function InstructorsPage() {
             <DialogContent className="max-w-lg">
               <DialogHeader><DialogTitle>{editing ? "تعديل محاضر" : "محاضر جديد"}</DialogTitle></DialogHeader>
               <div className="space-y-3">
-                <div><Label>الاسم الكامل</Label><Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>رقم الموظف</Label><Input value={form.employee_number} onChange={(e) => setForm({ ...form, employee_number: e.target.value })} /></div>
+                  <div><Label>التخصص</Label><Input value={form.specialization} onChange={(e) => setForm({ ...form, specialization: e.target.value })} /></div>
+                </div>
+                <div><Label>الاسم الكامل (افتراضي)</Label><Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>الاسم بالعربية</Label><Input value={form.full_name_ar} onChange={(e) => setForm({ ...form, full_name_ar: e.target.value })} /></div>
+                  <div><Label>الاسم بالإنجليزية</Label><Input dir="ltr" value={form.full_name_en} onChange={(e) => setForm({ ...form, full_name_en: e.target.value })} /></div>
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div><Label>الرتبة العلمية</Label>
                     <Select value={form.academic_rank} onValueChange={(v) => setForm({ ...form, academic_rank: v })}>
