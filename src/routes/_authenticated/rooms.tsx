@@ -96,7 +96,7 @@ function RoomsPage() {
     setEditing(r);
     setForm({
       code: r.code, name: r.name, room_type: r.room_type, capacity: r.capacity,
-      building: r.building ?? "", floor: r.floor ?? "", is_active: r.is_active,
+      building: r.building ?? "", floor: r.floor ?? "", is_active: r.is_active, notes: r.notes ?? "",
     });
     setOpen(true);
   };
