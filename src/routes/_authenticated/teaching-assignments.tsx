@@ -24,7 +24,7 @@ export const Route = createFileRoute("/_authenticated/teaching-assignments")({
 interface TA {
   id: string; college_id: string; course_offering_id: string; instructor_id: string;
   section_number: string | null; session_type: string; weekly_hours: number;
-  required_room_type: string | null; notes: string | null;
+  required_room_type: string | null; notes: string | null; expected_students: number;
 }
 
 const SESSION_TYPES = [
@@ -34,7 +34,7 @@ const SESSION_TYPES = [
   { v: "seminar", l: "حلقة بحث" },
 ];
 
-function emptyForm() { return { course_offering_id: "", instructor_id: "", section_number: "", session_type: "lecture", weekly_hours: 3, required_room_type: "", notes: "" }; }
+function emptyForm() { return { course_offering_id: "", instructor_id: "", section_number: "", session_type: "lecture", weekly_hours: 3, required_room_type: "", notes: "", expected_students: 0 }; }
 
 function AssignmentsPage() {
   const { active } = useActiveCollege();
@@ -88,6 +88,7 @@ function AssignmentsPage() {
         weekly_hours: Number(form.weekly_hours) || 0,
         required_room_type: form.required_room_type || null,
         notes: form.notes.trim() || null,
+        expected_students: Number(form.expected_students) || 0,
       };
       if (editing) {
         const { error } = await supabase.from("teaching_assignments").update(payload).eq("id", editing.id);
@@ -123,6 +124,7 @@ function AssignmentsPage() {
       course_offering_id: a.course_offering_id, instructor_id: a.instructor_id,
       section_number: a.section_number ?? "", session_type: a.session_type,
       weekly_hours: a.weekly_hours, required_room_type: a.required_room_type ?? "", notes: a.notes ?? "",
+      expected_students: a.expected_students ?? 0,
     });
     setOpen(true);
   };
@@ -183,6 +185,9 @@ function AssignmentsPage() {
                   </div>
                   <div><Label>الشُّعبة</Label><Input value={form.section_number} onChange={(e) => setForm({ ...form, section_number: e.target.value })} placeholder="A" /></div>
                   <div><Label>ساعات/أسبوع</Label><Input type="number" step="0.5" value={form.weekly_hours} onChange={(e) => setForm({ ...form, weekly_hours: Number(e.target.value) })} /></div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>عدد الطلاب المتوقع</Label><Input type="number" value={form.expected_students} onChange={(e) => setForm({ ...form, expected_students: Number(e.target.value) })} /></div>
                 </div>
                 <div><Label>نوع القاعة المطلوبة (اختياري)</Label>
                   <Select value={form.required_room_type || "_any"} onValueChange={(v) => setForm({ ...form, required_room_type: v === "_any" ? "" : v })}>

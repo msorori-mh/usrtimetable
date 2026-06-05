@@ -669,57 +669,75 @@ export type Database = {
           academic_degree: string | null
           academic_rank: string | null
           admin_tasks: string | null
+          administrative_release_hours: number
           college_id: string
           created_at: string
           department_id: string | null
           email: string | null
+          employee_number: string | null
           employment_type: string
           external_source: string | null
           full_name: string
+          full_name_ar: string | null
+          full_name_en: string | null
           id: string
           instructor_type_id: string | null
           is_active: boolean
           max_hours_per_day: number | null
           max_weekly_hours: number
+          notes: string | null
           phone: string | null
+          specialization: string | null
           updated_at: string
         }
         Insert: {
           academic_degree?: string | null
           academic_rank?: string | null
           admin_tasks?: string | null
+          administrative_release_hours?: number
           college_id: string
           created_at?: string
           department_id?: string | null
           email?: string | null
+          employee_number?: string | null
           employment_type?: string
           external_source?: string | null
           full_name: string
+          full_name_ar?: string | null
+          full_name_en?: string | null
           id?: string
           instructor_type_id?: string | null
           is_active?: boolean
           max_hours_per_day?: number | null
           max_weekly_hours?: number
+          notes?: string | null
           phone?: string | null
+          specialization?: string | null
           updated_at?: string
         }
         Update: {
           academic_degree?: string | null
           academic_rank?: string | null
           admin_tasks?: string | null
+          administrative_release_hours?: number
           college_id?: string
           created_at?: string
           department_id?: string | null
           email?: string | null
+          employee_number?: string | null
           employment_type?: string
           external_source?: string | null
           full_name?: string
+          full_name_ar?: string | null
+          full_name_en?: string | null
           id?: string
           instructor_type_id?: string | null
           is_active?: boolean
           max_hours_per_day?: number | null
           max_weekly_hours?: number
+          notes?: string | null
           phone?: string | null
+          specialization?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -809,6 +827,42 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      room_availability: {
+        Row: {
+          college_id: string
+          created_at: string
+          day_of_week: number
+          end_time: string
+          id: string
+          notes: string | null
+          room_id: string
+          start_time: string
+          updated_at: string
+        }
+        Insert: {
+          college_id: string
+          created_at?: string
+          day_of_week: number
+          end_time: string
+          id?: string
+          notes?: string | null
+          room_id: string
+          start_time: string
+          updated_at?: string
+        }
+        Update: {
+          college_id?: string
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          notes?: string | null
+          room_id?: string
+          start_time?: string
           updated_at?: string
         }
         Relationships: []
@@ -915,6 +969,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          notes: string | null
           room_type: string
           room_type_id: string | null
           updated_at: string
@@ -933,6 +988,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          notes?: string | null
           room_type?: string
           room_type_id?: string | null
           updated_at?: string
@@ -951,6 +1007,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          notes?: string | null
           room_type?: string
           room_type_id?: string | null
           updated_at?: string
@@ -1176,6 +1233,7 @@ export type Database = {
           college_id: string
           course_offering_id: string
           created_at: string
+          expected_students: number
           id: string
           instructor_id: string
           notes: string | null
@@ -1189,6 +1247,7 @@ export type Database = {
           college_id: string
           course_offering_id: string
           created_at?: string
+          expected_students?: number
           id?: string
           instructor_id: string
           notes?: string | null
@@ -1202,6 +1261,7 @@ export type Database = {
           college_id?: string
           course_offering_id?: string
           created_at?: string
+          expected_students?: number
           id?: string
           instructor_id?: string
           notes?: string | null

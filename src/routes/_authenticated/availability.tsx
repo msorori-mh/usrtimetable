@@ -39,9 +39,11 @@ function AvailabilityPage() {
         <Tabs defaultValue="instructor">
           <TabsList>
             <TabsTrigger value="instructor">توفّر المحاضرين</TabsTrigger>
+            <TabsTrigger value="room_avail">توفّر القاعات</TabsTrigger>
             <TabsTrigger value="room">عدم توفّر القاعات</TabsTrigger>
           </TabsList>
           <TabsContent value="instructor" className="mt-4"><InstructorAvailability /></TabsContent>
+          <TabsContent value="room_avail" className="mt-4"><RoomAvailability /></TabsContent>
           <TabsContent value="room" className="mt-4"><RoomUnavailability /></TabsContent>
         </Tabs>
       )}
@@ -245,6 +247,103 @@ function RoomUnavailability() {
                       {(r.start_date || r.end_date) && <span dir="ltr"> · {r.start_date ?? "?"} → {r.end_date ?? "?"}</span>}
                     </p>
                     {r.reason && <p className="text-xs text-muted-foreground">{r.reason}</p>}
+                  </div>
+                  {canManage && <Button size="sm" variant="ghost" onClick={() => del.mutate(r.id)}><Trash2 className="h-3.5 w-3.5" /></Button>}
+                </li>
+              ))}
+            </ul>}
+      </Card>
+    </div>
+  );
+}
+
+interface RA { id: string; room_id: string; day_of_week: number; start_time: string; end_time: string; notes: string | null }
+
+function RoomAvailability() {
+  const { active } = useActiveCollege();
+  const canManage = useCanManageActiveCollege();
+  const qc = useQueryClient();
+  const [roomId, setRoomId] = useState("");
+  const [form, setForm] = useState({ day_of_week: 0, start_time: "08:00", end_time: "14:00", notes: "" });
+
+  const { data: rooms } = useQuery({
+    queryKey: ["rooms-all2", active?.id], enabled: !!active,
+    queryFn: async () => (await supabase.from("rooms").select("id, code, name").eq("college_id", active!.id).order("code")).data ?? [],
+  });
+  const { data: rows } = useQuery({
+    queryKey: ["ra", active?.id, roomId], enabled: !!active && !!roomId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("room_availability").select("*")
+        .eq("college_id", active!.id).eq("room_id", roomId).order("day_of_week").order("start_time");
+      if (error) throw error; return (data ?? []) as RA[];
+    },
+  });
+
+  const add = useMutation({
+    mutationFn: async () => {
+      if (!active || !roomId) throw new Error("اختر قاعة");
+      if (form.end_time <= form.start_time) throw new Error("وقت النهاية يجب أن يكون بعد البداية");
+      const payload = {
+        college_id: active.id, room_id: roomId,
+        day_of_week: Number(form.day_of_week),
+        start_time: form.start_time, end_time: form.end_time,
+        notes: form.notes || null,
+      };
+      const { data, error } = await supabase.from("room_availability").insert(payload).select("id").single();
+      if (error) throw error;
+      await logAudit({ action: "create", entity: "room_availability", entityId: data?.id, collegeId: active.id });
+    },
+    onSuccess: () => { toast.success("تمت الإضافة"); qc.invalidateQueries({ queryKey: ["ra", active?.id, roomId] }); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const del = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("room_availability").delete().eq("id", id);
+      if (error) throw error;
+      await logAudit({ action: "delete", entity: "room_availability", entityId: id, collegeId: active?.id });
+    },
+    onSuccess: () => { toast.success("تم الحذف"); qc.invalidateQueries({ queryKey: ["ra", active?.id, roomId] }); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="max-w-md">
+        <Label>القاعة</Label>
+        <Select value={roomId} onValueChange={setRoomId}>
+          <SelectTrigger><SelectValue placeholder="اختر قاعة" /></SelectTrigger>
+          <SelectContent>{(rooms ?? []).map((r) => <SelectItem key={r.id} value={r.id}>{r.code} — {r.name}</SelectItem>)}</SelectContent>
+        </Select>
+      </div>
+
+      {roomId && canManage && (
+        <Card className="p-4">
+          <p className="mb-3 text-sm font-semibold">إضافة فترة توفّر للقاعة</p>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+            <div><Label>اليوم</Label>
+              <Select value={String(form.day_of_week)} onValueChange={(v) => setForm({ ...form, day_of_week: Number(v) })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{DAYS.map((d, i) => <SelectItem key={i} value={String(i)}>{d}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div><Label>من</Label><Input dir="ltr" type="time" value={form.start_time} onChange={(e) => setForm({ ...form, start_time: e.target.value })} /></div>
+            <div><Label>إلى</Label><Input dir="ltr" type="time" value={form.end_time} onChange={(e) => setForm({ ...form, end_time: e.target.value })} /></div>
+            <div><Label>ملاحظات</Label><Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
+            <div className="flex items-end"><Button onClick={() => add.mutate()} disabled={add.isPending} className="w-full">إضافة</Button></div>
+          </div>
+        </Card>
+      )}
+
+      <Card className="overflow-hidden">
+        {!roomId ? <p className="p-6 text-center text-muted-foreground">اختر قاعة لعرض فتراتها.</p>
+          : !rows || rows.length === 0 ? <p className="p-6 text-center text-muted-foreground">لا توجد فترات. سيتم استخدام إعدادات القاعة الافتراضية.</p>
+          : <ul className="divide-y divide-border">
+              {rows.map((r) => (
+                <li key={r.id} className="flex items-center justify-between p-3">
+                  <div>
+                    <p className="text-sm font-medium">{DAYS[r.day_of_week]} <span dir="ltr">{r.start_time.slice(0, 5)} → {r.end_time.slice(0, 5)}</span></p>
+                    {r.notes && <p className="text-xs text-muted-foreground">{r.notes}</p>}
                   </div>
                   {canManage && <Button size="sm" variant="ghost" onClick={() => del.mutate(r.id)}><Trash2 className="h-3.5 w-3.5" /></Button>}
                 </li>

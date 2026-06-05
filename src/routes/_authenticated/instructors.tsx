@@ -25,6 +25,8 @@ interface Instructor {
   id: string; college_id: string; department_id: string | null;
   full_name: string; academic_rank: string | null; email: string | null; phone: string | null;
   employment_type: string; max_weekly_hours: number; is_active: boolean;
+  employee_number: string | null; full_name_ar: string | null; full_name_en: string | null;
+  specialization: string | null; administrative_release_hours: number; notes: string | null;
 }
 
 const RANKS = ["معيد", "محاضر", "أستاذ مساعد", "أستاذ مشارك", "أستاذ"];
@@ -36,7 +38,12 @@ const EMP = [
 ];
 
 function emptyForm() {
-  return { full_name: "", academic_rank: "", email: "", phone: "", department_id: "", employment_type: "full_time", max_weekly_hours: 18, is_active: true };
+  return {
+    full_name: "", academic_rank: "", email: "", phone: "", department_id: "",
+    employment_type: "full_time", max_weekly_hours: 18, is_active: true,
+    employee_number: "", full_name_ar: "", full_name_en: "", specialization: "",
+    administrative_release_hours: 0, notes: "",
+  };
 }
 
 function InstructorsPage() {
@@ -56,7 +63,7 @@ function InstructorsPage() {
     queryKey: ["instructors", active?.id], enabled: !!active,
     queryFn: async () => {
       const { data, error } = await supabase.from("instructors")
-        .select("id, college_id, department_id, full_name, academic_rank, email, phone, employment_type, max_weekly_hours, is_active")
+        .select("id, college_id, department_id, full_name, academic_rank, email, phone, employment_type, max_weekly_hours, is_active, employee_number, full_name_ar, full_name_en, specialization, administrative_release_hours, notes")
         .eq("college_id", active!.id).order("full_name");
       if (error) throw error; return (data ?? []) as Instructor[];
     },
@@ -68,12 +75,18 @@ function InstructorsPage() {
       if (!form.full_name.trim()) throw new Error("الاسم مطلوب");
       const payload = {
         full_name: form.full_name.trim(),
+        full_name_ar: form.full_name_ar.trim() || form.full_name.trim(),
+        full_name_en: form.full_name_en.trim() || null,
+        employee_number: form.employee_number.trim() || null,
+        specialization: form.specialization.trim() || null,
         academic_rank: form.academic_rank || null,
         email: form.email.trim() || null,
         phone: form.phone.trim() || null,
         department_id: form.department_id || null,
         employment_type: form.employment_type,
         max_weekly_hours: Number(form.max_weekly_hours) || 0,
+        administrative_release_hours: Number(form.administrative_release_hours) || 0,
+        notes: form.notes.trim() || null,
         is_active: form.is_active,
         college_id: active.id,
       };
@@ -92,7 +105,7 @@ function InstructorsPage() {
       qc.invalidateQueries({ queryKey: ["instructors", active?.id] });
       setOpen(false); setEditing(null);
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message.includes("duplicate") ? "رقم الموظف مستخدم بالفعل في هذه الكلّية" : e.message),
   });
 
   const del = useMutation({
@@ -111,6 +124,9 @@ function InstructorsPage() {
       full_name: i.full_name, academic_rank: i.academic_rank ?? "", email: i.email ?? "",
       phone: i.phone ?? "", department_id: i.department_id ?? "", employment_type: i.employment_type,
       max_weekly_hours: i.max_weekly_hours, is_active: i.is_active,
+      employee_number: i.employee_number ?? "", full_name_ar: i.full_name_ar ?? "",
+      full_name_en: i.full_name_en ?? "", specialization: i.specialization ?? "",
+      administrative_release_hours: i.administrative_release_hours ?? 0, notes: i.notes ?? "",
     });
     setOpen(true);
   };
@@ -136,7 +152,15 @@ function InstructorsPage() {
             <DialogContent className="max-w-lg">
               <DialogHeader><DialogTitle>{editing ? "تعديل محاضر" : "محاضر جديد"}</DialogTitle></DialogHeader>
               <div className="space-y-3">
-                <div><Label>الاسم الكامل</Label><Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>رقم الموظف</Label><Input value={form.employee_number} onChange={(e) => setForm({ ...form, employee_number: e.target.value })} /></div>
+                  <div><Label>التخصص</Label><Input value={form.specialization} onChange={(e) => setForm({ ...form, specialization: e.target.value })} /></div>
+                </div>
+                <div><Label>الاسم الكامل (افتراضي)</Label><Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>الاسم بالعربية</Label><Input value={form.full_name_ar} onChange={(e) => setForm({ ...form, full_name_ar: e.target.value })} /></div>
+                  <div><Label>الاسم بالإنجليزية</Label><Input dir="ltr" value={form.full_name_en} onChange={(e) => setForm({ ...form, full_name_en: e.target.value })} /></div>
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div><Label>الرتبة العلمية</Label>
                     <Select value={form.academic_rank} onValueChange={(v) => setForm({ ...form, academic_rank: v })}>
@@ -163,6 +187,10 @@ function InstructorsPage() {
                     </Select>
                   </div>
                   <div><Label>الحد الأسبوعي للساعات</Label><Input type="number" value={form.max_weekly_hours} onChange={(e) => setForm({ ...form, max_weekly_hours: Number(e.target.value) })} /></div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>ساعات الإعفاء الإداري</Label><Input type="number" value={form.administrative_release_hours} onChange={(e) => setForm({ ...form, administrative_release_hours: Number(e.target.value) })} /></div>
+                  <div><Label>ملاحظات</Label><Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
                 </div>
                 <div className="flex items-center justify-between rounded border border-border p-3">
                   <Label>نشط</Label>

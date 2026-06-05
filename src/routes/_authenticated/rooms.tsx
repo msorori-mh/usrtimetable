@@ -24,6 +24,7 @@ export const Route = createFileRoute("/_authenticated/rooms")({
 interface Room {
   id: string; college_id: string; code: string; name: string;
   room_type: string; capacity: number; building: string | null; floor: string | null; is_active: boolean;
+  notes: string | null;
 }
 
 export const ROOM_TYPES = [
@@ -35,7 +36,7 @@ export const ROOM_TYPES = [
 ];
 
 function emptyForm() {
-  return { code: "", name: "", room_type: "lecture_room", capacity: 30, building: "", floor: "", is_active: true };
+  return { code: "", name: "", room_type: "lecture_room", capacity: 30, building: "", floor: "", is_active: true, notes: "" };
 }
 
 function RoomsPage() {
@@ -61,7 +62,7 @@ function RoomsPage() {
       const payload = {
         code: form.code.trim(), name: form.name.trim(), room_type: form.room_type,
         capacity: Number(form.capacity) || 0, building: form.building.trim() || null, floor: form.floor.trim() || null,
-        is_active: form.is_active, college_id: active.id,
+        is_active: form.is_active, college_id: active.id, notes: form.notes.trim() || null,
       };
       if (editing) {
         const { error } = await supabase.from("rooms").update(payload).eq("id", editing.id);
@@ -95,7 +96,7 @@ function RoomsPage() {
     setEditing(r);
     setForm({
       code: r.code, name: r.name, room_type: r.room_type, capacity: r.capacity,
-      building: r.building ?? "", floor: r.floor ?? "", is_active: r.is_active,
+      building: r.building ?? "", floor: r.floor ?? "", is_active: r.is_active, notes: r.notes ?? "",
     });
     setOpen(true);
   };
@@ -136,6 +137,7 @@ function RoomsPage() {
                   <div><Label>المبنى</Label><Input value={form.building} onChange={(e) => setForm({ ...form, building: e.target.value })} /></div>
                   <div><Label>الدور</Label><Input value={form.floor} onChange={(e) => setForm({ ...form, floor: e.target.value })} /></div>
                 </div>
+                <div><Label>ملاحظات</Label><Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
                 <div className="flex items-center justify-between rounded border border-border p-3">
                   <Label>نشط</Label>
                   <Switch checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />
