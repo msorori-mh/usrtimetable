@@ -64,7 +64,7 @@ function DepartmentsPage() {
     onSuccess: () => {
       toast.success(editing ? "تم التحديث" : "تمت الإضافة");
       qc.invalidateQueries({ queryKey: ["departments", active?.id] });
-      setOpen(false); setEditing(null); setForm({ name: "", code: "" });
+      setOpen(false); setEditing(null); setForm({ name: "", code: "", study_system: "regular" });
     },
     onError: (e: Error) => toast.error(e.message),
   });
