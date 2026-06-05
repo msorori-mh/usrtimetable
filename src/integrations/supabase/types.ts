@@ -205,6 +205,7 @@ export type Database = {
       }
       academic_terms: {
         Row: {
+          academic_year: string | null
           code: string
           college_id: string
           created_at: string
@@ -213,9 +214,12 @@ export type Database = {
           is_active: boolean
           name: string
           start_date: string | null
+          teaching_weeks_count: number | null
+          term_type: string | null
           updated_at: string
         }
         Insert: {
+          academic_year?: string | null
           code: string
           college_id: string
           created_at?: string
@@ -224,9 +228,12 @@ export type Database = {
           is_active?: boolean
           name: string
           start_date?: string | null
+          teaching_weeks_count?: number | null
+          term_type?: string | null
           updated_at?: string
         }
         Update: {
+          academic_year?: string | null
           code?: string
           college_id?: string
           created_at?: string
@@ -235,6 +242,8 @@ export type Database = {
           is_active?: boolean
           name?: string
           start_date?: string | null
+          teaching_weeks_count?: number | null
+          term_type?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -347,6 +356,39 @@ export type Database = {
         }
         Relationships: []
       }
+      course_offering_sections: {
+        Row: {
+          college_id: string
+          course_offering_id: string
+          created_at: string
+          expected_students: number
+          id: string
+          section_id: string
+          section_number: string | null
+          updated_at: string
+        }
+        Insert: {
+          college_id: string
+          course_offering_id: string
+          created_at?: string
+          expected_students?: number
+          id?: string
+          section_id: string
+          section_number?: string | null
+          updated_at?: string
+        }
+        Update: {
+          college_id?: string
+          course_offering_id?: string
+          created_at?: string
+          expected_students?: number
+          id?: string
+          section_id?: string
+          section_number?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       course_offerings: {
         Row: {
           college_id: string
@@ -357,8 +399,11 @@ export type Database = {
           is_active: boolean
           level_id: string | null
           notes: string | null
+          plan_course_id: string | null
           program_id: string | null
           sections_count: number
+          status: string
+          study_plan_id: string | null
           term_id: string
           updated_at: string
         }
@@ -371,8 +416,11 @@ export type Database = {
           is_active?: boolean
           level_id?: string | null
           notes?: string | null
+          plan_course_id?: string | null
           program_id?: string | null
           sections_count?: number
+          status?: string
+          study_plan_id?: string | null
           term_id: string
           updated_at?: string
         }
@@ -385,9 +433,39 @@ export type Database = {
           is_active?: boolean
           level_id?: string | null
           notes?: string | null
+          plan_course_id?: string | null
           program_id?: string | null
           sections_count?: number
+          status?: string
+          study_plan_id?: string | null
           term_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      course_programs: {
+        Row: {
+          college_id: string
+          course_id: string
+          created_at: string
+          id: string
+          program_id: string
+          updated_at: string
+        }
+        Insert: {
+          college_id: string
+          course_id: string
+          created_at?: string
+          id?: string
+          program_id: string
+          updated_at?: string
+        }
+        Update: {
+          college_id?: string
+          course_id?: string
+          created_at?: string
+          id?: string
+          program_id?: string
           updated_at?: string
         }
         Relationships: []
@@ -451,6 +529,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      daily_breaks: {
+        Row: {
+          affects_scheduling: boolean
+          college_id: string
+          created_at: string
+          days: number[]
+          end_time: string
+          id: string
+          name: string
+          start_time: string
+          updated_at: string
+        }
+        Insert: {
+          affects_scheduling?: boolean
+          college_id: string
+          created_at?: string
+          days?: number[]
+          end_time: string
+          id?: string
+          name: string
+          start_time: string
+          updated_at?: string
+        }
+        Update: {
+          affects_scheduling?: boolean
+          college_id?: string
+          created_at?: string
+          days?: number[]
+          end_time?: string
+          id?: string
+          name?: string
+          start_time?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       departments: {
         Row: {
@@ -749,7 +863,13 @@ export type Database = {
           created_at: string
           id: string
           is_required: boolean
+          lab_session_duration: number
+          labs_per_week: number
+          lecture_session_duration: number
+          lectures_per_week: number
           level_id: string | null
+          required_room_type_for_lab: string | null
+          required_room_type_for_lecture: string | null
           semester: number
           study_plan_id: string
           updated_at: string
@@ -760,7 +880,13 @@ export type Database = {
           created_at?: string
           id?: string
           is_required?: boolean
+          lab_session_duration?: number
+          labs_per_week?: number
+          lecture_session_duration?: number
+          lectures_per_week?: number
           level_id?: string | null
+          required_room_type_for_lab?: string | null
+          required_room_type_for_lecture?: string | null
           semester?: number
           study_plan_id: string
           updated_at?: string
@@ -771,7 +897,13 @@ export type Database = {
           created_at?: string
           id?: string
           is_required?: boolean
+          lab_session_duration?: number
+          labs_per_week?: number
+          lecture_session_duration?: number
+          lectures_per_week?: number
           level_id?: string | null
+          required_room_type_for_lab?: string | null
+          required_room_type_for_lecture?: string | null
           semester?: number
           study_plan_id?: string
           updated_at?: string
@@ -1018,6 +1150,7 @@ export type Database = {
         Row: {
           allow_3h_sessions: boolean
           allow_back_to_back: boolean
+          allowed_session_durations: number[]
           break_between_sessions_min: number
           college_id: string
           created_at: string
@@ -1037,6 +1170,7 @@ export type Database = {
         Insert: {
           allow_3h_sessions?: boolean
           allow_back_to_back?: boolean
+          allowed_session_durations?: number[]
           break_between_sessions_min?: number
           college_id: string
           created_at?: string
@@ -1056,6 +1190,7 @@ export type Database = {
         Update: {
           allow_3h_sessions?: boolean
           allow_back_to_back?: boolean
+          allowed_session_durations?: number[]
           break_between_sessions_min?: number
           college_id?: string
           created_at?: string
@@ -1071,6 +1206,69 @@ export type Database = {
           updated_at?: string
           week_start_day?: number
           working_days?: number[]
+        }
+        Relationships: []
+      }
+      section_group_members: {
+        Row: {
+          college_id: string
+          created_at: string
+          expected_students: number
+          id: string
+          section_group_id: string
+          section_id: string
+        }
+        Insert: {
+          college_id: string
+          created_at?: string
+          expected_students?: number
+          id?: string
+          section_group_id: string
+          section_id: string
+        }
+        Update: {
+          college_id?: string
+          created_at?: string
+          expected_students?: number
+          id?: string
+          section_group_id?: string
+          section_id?: string
+        }
+        Relationships: []
+      }
+      section_groups: {
+        Row: {
+          academic_term_id: string
+          college_id: string
+          course_id: string
+          created_at: string
+          expected_students_total: number
+          group_name: string
+          id: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          academic_term_id: string
+          college_id: string
+          course_id: string
+          created_at?: string
+          expected_students_total?: number
+          group_name: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          academic_term_id?: string
+          college_id?: string
+          course_id?: string
+          created_at?: string
+          expected_students_total?: number
+          group_name?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1238,6 +1436,7 @@ export type Database = {
           instructor_id: string
           notes: string | null
           required_room_type: string | null
+          section_id: string | null
           section_number: string | null
           session_type: string
           updated_at: string
@@ -1252,6 +1451,7 @@ export type Database = {
           instructor_id: string
           notes?: string | null
           required_room_type?: string | null
+          section_id?: string | null
           section_number?: string | null
           session_type?: string
           updated_at?: string
@@ -1266,6 +1466,7 @@ export type Database = {
           instructor_id?: string
           notes?: string | null
           required_room_type?: string | null
+          section_id?: string | null
           section_number?: string | null
           session_type?: string
           updated_at?: string

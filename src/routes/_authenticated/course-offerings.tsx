@@ -24,9 +24,10 @@ interface Offering {
   id: string; college_id: string; term_id: string; course_id: string;
   program_id: string | null; level_id: string | null;
   expected_students: number; sections_count: number; notes: string | null; is_active: boolean;
+  status: string;
 }
 
-function emptyForm() { return { term_id: "", course_id: "", program_id: "", level_id: "", expected_students: 0, sections_count: 1, notes: "", is_active: true }; }
+function emptyForm() { return { term_id: "", course_id: "", program_id: "", level_id: "", expected_students: 0, sections_count: 1, notes: "", is_active: true, status: "draft" }; }
 
 function OfferingsPage() {
   const { active } = useActiveCollege();
@@ -75,6 +76,7 @@ function OfferingsPage() {
         expected_students: Number(form.expected_students) || 0,
         sections_count: Number(form.sections_count) || 1,
         notes: form.notes.trim() || null, is_active: form.is_active,
+        status: form.status || "draft",
       };
       if (editing) {
         const { error } = await supabase.from("course_offerings").update(payload).eq("id", editing.id);
@@ -109,6 +111,7 @@ function OfferingsPage() {
     setForm({
       term_id: o.term_id, course_id: o.course_id, program_id: o.program_id ?? "", level_id: o.level_id ?? "",
       expected_students: o.expected_students, sections_count: o.sections_count, notes: o.notes ?? "", is_active: o.is_active,
+      status: o.status ?? "draft",
     });
     setOpen(true);
   };
@@ -177,7 +180,18 @@ function OfferingsPage() {
                   <div><Label>عدد الطلاب المتوقع</Label><Input type="number" value={form.expected_students} onChange={(e) => setForm({ ...form, expected_students: Number(e.target.value) })} /></div>
                   <div><Label>عدد الشُّعب</Label><Input type="number" value={form.sections_count} onChange={(e) => setForm({ ...form, sections_count: Number(e.target.value) })} /></div>
                 </div>
-                <div><Label>ملاحظات</Label><Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>ملاحظات</Label><Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
+                  <div>
+                    <Label>الحالة</Label>
+                    <select className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+                      <option value="draft">مسودة</option>
+                      <option value="approved">معتمد</option>
+                      <option value="scheduled">مجدول</option>
+                      <option value="cancelled">ملغى</option>
+                    </select>
+                  </div>
+                </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setOpen(false)}>إلغاء</Button>

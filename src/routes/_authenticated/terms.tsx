@@ -20,7 +20,7 @@ export const Route = createFileRoute("/_authenticated/terms")({
   component: TermsPage,
 });
 
-interface Term { id: string; name: string; code: string; start_date: string | null; end_date: string | null; is_active: boolean; college_id: string }
+interface Term { id: string; name: string; code: string; start_date: string | null; end_date: string | null; is_active: boolean; college_id: string; academic_year: string | null; term_type: string | null; teaching_weeks_count: number | null }
 
 function TermsPage() {
   const { active } = useActiveCollege();
@@ -28,13 +28,13 @@ function TermsPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Term | null>(null);
-  const [form, setForm] = useState({ name: "", code: "", start_date: "", end_date: "", is_active: false });
+  const [form, setForm] = useState({ name: "", code: "", start_date: "", end_date: "", is_active: false, academic_year: "", term_type: "", teaching_weeks_count: "" });
 
   const { data: rows, isLoading } = useQuery({
     queryKey: ["terms", active?.id], enabled: !!active,
     queryFn: async () => {
       const { data, error } = await supabase.from("academic_terms")
-        .select("id, name, code, start_date, end_date, is_active, college_id")
+        .select("id, name, code, start_date, end_date, is_active, college_id, academic_year, term_type, teaching_weeks_count")
         .eq("college_id", active!.id).order("start_date", { ascending: false });
       if (error) throw error; return (data ?? []) as Term[];
     },
@@ -48,6 +48,9 @@ function TermsPage() {
         name: form.name.trim(), code: form.code.trim(),
         start_date: form.start_date || null, end_date: form.end_date || null,
         is_active: form.is_active, college_id: active.id,
+        academic_year: form.academic_year.trim() || null,
+        term_type: form.term_type || null,
+        teaching_weeks_count: form.teaching_weeks_count ? parseInt(form.teaching_weeks_count, 10) : null,
       };
       if (editing) {
         const { error } = await supabase.from("academic_terms").update(payload).eq("id", editing.id);
@@ -77,8 +80,8 @@ function TermsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const startEdit = (t: Term) => { setEditing(t); setForm({ name: t.name, code: t.code, start_date: t.start_date ?? "", end_date: t.end_date ?? "", is_active: t.is_active }); setOpen(true); };
-  const startCreate = () => { setEditing(null); setForm({ name: "", code: "", start_date: "", end_date: "", is_active: false }); setOpen(true); };
+  const startEdit = (t: Term) => { setEditing(t); setForm({ name: t.name, code: t.code, start_date: t.start_date ?? "", end_date: t.end_date ?? "", is_active: t.is_active, academic_year: t.academic_year ?? "", term_type: t.term_type ?? "", teaching_weeks_count: t.teaching_weeks_count?.toString() ?? "" }); setOpen(true); };
+  const startCreate = () => { setEditing(null); setForm({ name: "", code: "", start_date: "", end_date: "", is_active: false, academic_year: "", term_type: "", teaching_weeks_count: "" }); setOpen(true); };
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -103,6 +106,19 @@ function TermsPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div><Label>تاريخ البداية</Label><Input type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} /></div>
                   <div><Label>تاريخ النهاية</Label><Input type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} /></div>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div><Label>السنة الأكاديمية</Label><Input placeholder="2025-2026" value={form.academic_year} onChange={(e) => setForm({ ...form, academic_year: e.target.value })} /></div>
+                  <div>
+                    <Label>نوع الفصل</Label>
+                    <select className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm" value={form.term_type} onChange={(e) => setForm({ ...form, term_type: e.target.value })}>
+                      <option value="">—</option>
+                      <option value="fall">خريف</option>
+                      <option value="spring">ربيع</option>
+                      <option value="summer">صيف</option>
+                    </select>
+                  </div>
+                  <div><Label>عدد أسابيع التدريس</Label><Input type="number" min="0" value={form.teaching_weeks_count} onChange={(e) => setForm({ ...form, teaching_weeks_count: e.target.value })} /></div>
                 </div>
                 <label className="flex items-center gap-2 text-sm"><Checkbox checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: !!v })} /> الفصل الحالي</label>
               </div>
