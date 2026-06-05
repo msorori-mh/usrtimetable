@@ -24,6 +24,7 @@ export const Route = createFileRoute("/_authenticated/rooms")({
 interface Room {
   id: string; college_id: string; code: string; name: string;
   room_type: string; capacity: number; building: string | null; floor: string | null; is_active: boolean;
+  notes: string | null;
 }
 
 export const ROOM_TYPES = [
