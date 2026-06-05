@@ -34,7 +34,7 @@ function TermsPage() {
     queryKey: ["terms", active?.id], enabled: !!active,
     queryFn: async () => {
       const { data, error } = await supabase.from("academic_terms")
-        .select("id, name, code, start_date, end_date, is_active, college_id")
+        .select("id, name, code, start_date, end_date, is_active, college_id, academic_year, term_type, teaching_weeks_count")
         .eq("college_id", active!.id).order("start_date", { ascending: false });
       if (error) throw error; return (data ?? []) as Term[];
     },
