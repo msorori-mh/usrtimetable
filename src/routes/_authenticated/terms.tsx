@@ -80,8 +80,8 @@ function TermsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const startEdit = (t: Term) => { setEditing(t); setForm({ name: t.name, code: t.code, start_date: t.start_date ?? "", end_date: t.end_date ?? "", is_active: t.is_active }); setOpen(true); };
-  const startCreate = () => { setEditing(null); setForm({ name: "", code: "", start_date: "", end_date: "", is_active: false }); setOpen(true); };
+  const startEdit = (t: Term) => { setEditing(t); setForm({ name: t.name, code: t.code, start_date: t.start_date ?? "", end_date: t.end_date ?? "", is_active: t.is_active, academic_year: t.academic_year ?? "", term_type: t.term_type ?? "", teaching_weeks_count: t.teaching_weeks_count?.toString() ?? "" }); setOpen(true); };
+  const startCreate = () => { setEditing(null); setForm({ name: "", code: "", start_date: "", end_date: "", is_active: false, academic_year: "", term_type: "", teaching_weeks_count: "" }); setOpen(true); };
 
   return (
     <div className="mx-auto max-w-5xl">
