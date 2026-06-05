@@ -25,6 +25,8 @@ interface Instructor {
   id: string; college_id: string; department_id: string | null;
   full_name: string; academic_rank: string | null; email: string | null; phone: string | null;
   employment_type: string; max_weekly_hours: number; is_active: boolean;
+  employee_number: string | null; full_name_ar: string | null; full_name_en: string | null;
+  specialization: string | null; administrative_release_hours: number; notes: string | null;
 }
 
 const RANKS = ["معيد", "محاضر", "أستاذ مساعد", "أستاذ مشارك", "أستاذ"];
@@ -36,7 +38,12 @@ const EMP = [
 ];
 
 function emptyForm() {
-  return { full_name: "", academic_rank: "", email: "", phone: "", department_id: "", employment_type: "full_time", max_weekly_hours: 18, is_active: true };
+  return {
+    full_name: "", academic_rank: "", email: "", phone: "", department_id: "",
+    employment_type: "full_time", max_weekly_hours: 18, is_active: true,
+    employee_number: "", full_name_ar: "", full_name_en: "", specialization: "",
+    administrative_release_hours: 0, notes: "",
+  };
 }
 
 function InstructorsPage() {
