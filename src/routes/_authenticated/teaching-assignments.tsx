@@ -24,7 +24,7 @@ export const Route = createFileRoute("/_authenticated/teaching-assignments")({
 interface TA {
   id: string; college_id: string; course_offering_id: string; instructor_id: string;
   section_number: string | null; session_type: string; weekly_hours: number;
-  required_room_type: string | null; notes: string | null;
+  required_room_type: string | null; notes: string | null; expected_students: number;
 }
 
 const SESSION_TYPES = [
@@ -34,7 +34,7 @@ const SESSION_TYPES = [
   { v: "seminar", l: "حلقة بحث" },
 ];
 
-function emptyForm() { return { course_offering_id: "", instructor_id: "", section_number: "", session_type: "lecture", weekly_hours: 3, required_room_type: "", notes: "" }; }
+function emptyForm() { return { course_offering_id: "", instructor_id: "", section_number: "", session_type: "lecture", weekly_hours: 3, required_room_type: "", notes: "", expected_students: 0 }; }
 
 function AssignmentsPage() {
   const { active } = useActiveCollege();
