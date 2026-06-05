@@ -76,6 +76,7 @@ function OfferingsPage() {
         expected_students: Number(form.expected_students) || 0,
         sections_count: Number(form.sections_count) || 1,
         notes: form.notes.trim() || null, is_active: form.is_active,
+        status: form.status || "draft",
       };
       if (editing) {
         const { error } = await supabase.from("course_offerings").update(payload).eq("id", editing.id);
