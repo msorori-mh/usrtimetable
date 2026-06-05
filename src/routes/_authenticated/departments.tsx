@@ -34,7 +34,7 @@ function DepartmentsPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Dept | null>(null);
-  const [form, setForm] = useState({ name: "", code: "" });
+  const [form, setForm] = useState<{ name: string; code: string; study_system: "regular" | "parallel" | "both" }>({ name: "", code: "", study_system: "regular" });
 
   const { data: rows, isLoading } = useQuery({
     queryKey: ["departments", active?.id],
