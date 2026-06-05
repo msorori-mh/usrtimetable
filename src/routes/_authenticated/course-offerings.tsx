@@ -111,6 +111,7 @@ function OfferingsPage() {
     setForm({
       term_id: o.term_id, course_id: o.course_id, program_id: o.program_id ?? "", level_id: o.level_id ?? "",
       expected_students: o.expected_students, sections_count: o.sections_count, notes: o.notes ?? "", is_active: o.is_active,
+      status: o.status ?? "draft",
     });
     setOpen(true);
   };
