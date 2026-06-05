@@ -20,7 +20,7 @@ export const Route = createFileRoute("/_authenticated/terms")({
   component: TermsPage,
 });
 
-interface Term { id: string; name: string; code: string; start_date: string | null; end_date: string | null; is_active: boolean; college_id: string }
+interface Term { id: string; name: string; code: string; start_date: string | null; end_date: string | null; is_active: boolean; college_id: string; academic_year: string | null; term_type: string | null; teaching_weeks_count: number | null }
 
 function TermsPage() {
   const { active } = useActiveCollege();
