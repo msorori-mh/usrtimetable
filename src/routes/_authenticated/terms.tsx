@@ -107,6 +107,19 @@ function TermsPage() {
                   <div><Label>تاريخ البداية</Label><Input type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} /></div>
                   <div><Label>تاريخ النهاية</Label><Input type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} /></div>
                 </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div><Label>السنة الأكاديمية</Label><Input placeholder="2025-2026" value={form.academic_year} onChange={(e) => setForm({ ...form, academic_year: e.target.value })} /></div>
+                  <div>
+                    <Label>نوع الفصل</Label>
+                    <select className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm" value={form.term_type} onChange={(e) => setForm({ ...form, term_type: e.target.value })}>
+                      <option value="">—</option>
+                      <option value="fall">خريف</option>
+                      <option value="spring">ربيع</option>
+                      <option value="summer">صيف</option>
+                    </select>
+                  </div>
+                  <div><Label>عدد أسابيع التدريس</Label><Input type="number" min="0" value={form.teaching_weeks_count} onChange={(e) => setForm({ ...form, teaching_weeks_count: e.target.value })} /></div>
+                </div>
                 <label className="flex items-center gap-2 text-sm"><Checkbox checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: !!v })} /> الفصل الحالي</label>
               </div>
               <DialogFooter>
