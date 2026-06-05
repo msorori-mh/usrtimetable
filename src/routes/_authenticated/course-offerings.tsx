@@ -180,7 +180,18 @@ function OfferingsPage() {
                   <div><Label>عدد الطلاب المتوقع</Label><Input type="number" value={form.expected_students} onChange={(e) => setForm({ ...form, expected_students: Number(e.target.value) })} /></div>
                   <div><Label>عدد الشُّعب</Label><Input type="number" value={form.sections_count} onChange={(e) => setForm({ ...form, sections_count: Number(e.target.value) })} /></div>
                 </div>
-                <div><Label>ملاحظات</Label><Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>ملاحظات</Label><Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
+                  <div>
+                    <Label>الحالة</Label>
+                    <select className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+                      <option value="draft">مسودة</option>
+                      <option value="approved">معتمد</option>
+                      <option value="scheduled">مجدول</option>
+                      <option value="cancelled">ملغى</option>
+                    </select>
+                  </div>
+                </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setOpen(false)}>إلغاء</Button>
