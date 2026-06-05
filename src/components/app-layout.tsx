@@ -13,6 +13,7 @@ import {
   Clock,
   DoorOpen,
   FileSpreadsheet,
+  History as HistoryIcon,
   GraduationCap,
   LayoutDashboard,
   Library,
