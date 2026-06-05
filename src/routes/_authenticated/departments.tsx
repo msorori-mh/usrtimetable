@@ -49,7 +49,7 @@ function DepartmentsPage() {
   const save = useMutation({
     mutationFn: async () => {
       if (!active) throw new Error("اختر كلّية");
-      const payload = { name: form.name.trim(), code: form.code.trim(), college_id: active.id };
+      const payload = { name: form.name.trim(), code: form.code.trim(), study_system: form.study_system, college_id: active.id };
       if (!payload.name || !payload.code) throw new Error("الاسم والرمز مطلوبان");
       if (editing) {
         const { error } = await supabase.from("departments").update(payload).eq("id", editing.id);
