@@ -297,6 +297,71 @@ export type Database = {
           },
         ]
       }
+      auto_schedule_runs: {
+        Row: {
+          algorithm: string
+          college_id: string
+          created_at: string
+          duration_ms: number | null
+          hard_conflicts_after: number
+          id: string
+          placed_sessions: number
+          quality_score_after: number | null
+          run_by: string | null
+          schedule_version_id: string
+          soft_violations_after: number
+          status: string
+          summary: Json | null
+          total_offerings: number
+          unplaced: Json | null
+          unplaced_sessions: number
+        }
+        Insert: {
+          algorithm?: string
+          college_id: string
+          created_at?: string
+          duration_ms?: number | null
+          hard_conflicts_after?: number
+          id?: string
+          placed_sessions?: number
+          quality_score_after?: number | null
+          run_by?: string | null
+          schedule_version_id: string
+          soft_violations_after?: number
+          status?: string
+          summary?: Json | null
+          total_offerings?: number
+          unplaced?: Json | null
+          unplaced_sessions?: number
+        }
+        Update: {
+          algorithm?: string
+          college_id?: string
+          created_at?: string
+          duration_ms?: number | null
+          hard_conflicts_after?: number
+          id?: string
+          placed_sessions?: number
+          quality_score_after?: number | null
+          run_by?: string | null
+          schedule_version_id?: string
+          soft_violations_after?: number
+          status?: string
+          summary?: Json | null
+          total_offerings?: number
+          unplaced?: Json | null
+          unplaced_sessions?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auto_schedule_runs_schedule_version_id_fkey"
+            columns: ["schedule_version_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       college_constraint_settings: {
         Row: {
           college_id: string
