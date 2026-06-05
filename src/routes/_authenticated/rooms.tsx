@@ -137,6 +137,7 @@ function RoomsPage() {
                   <div><Label>المبنى</Label><Input value={form.building} onChange={(e) => setForm({ ...form, building: e.target.value })} /></div>
                   <div><Label>الدور</Label><Input value={form.floor} onChange={(e) => setForm({ ...form, floor: e.target.value })} /></div>
                 </div>
+                <div><Label>ملاحظات</Label><Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
                 <div className="flex items-center justify-between rounded border border-border p-3">
                   <Label>نشط</Label>
                   <Switch checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />
