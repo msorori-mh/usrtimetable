@@ -20,7 +20,13 @@ export const Route = createFileRoute("/_authenticated/departments")({
   component: DepartmentsPage,
 });
 
-interface Dept { id: string; name: string; code: string; college_id: string }
+interface Dept { id: string; name: string; code: string; college_id: string; study_system: "regular" | "parallel" | "both" }
+
+const STUDY_SYSTEM_LABELS: Record<string, string> = {
+  regular: "النظام العام / الصباحي",
+  parallel: "النظام الموازي / المسائي",
+  both: "عام وموازي",
+};
 
 function DepartmentsPage() {
   const { active } = useActiveCollege();
