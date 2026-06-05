@@ -108,7 +108,11 @@ function ImportPage() {
           <div>
             <Label>نوع البيانات</Label>
             <select className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm" value={entity} onChange={(e) => { setEntity(e.target.value as ImportEntity); reset(); }}>
-              {ENTITIES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              {Array.from(new Set(ENTITIES.map((e) => e.group))).map((g) => (
+                <optgroup key={g} label={g}>
+                  {ENTITIES.filter((e) => e.group === g).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </optgroup>
+              ))}
             </select>
           </div>
           <div>
