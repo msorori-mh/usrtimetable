@@ -72,7 +72,8 @@ export async function validate(entity: ImportEntity, headers: string[], rows: Re
   const uniqueColHeader = tpl.columns.find((c) => c.key === tpl.uniqueKey)?.header;
   const table = entity;
   const uniqueCol = tpl.uniqueKey;
-  const { data: existing } = await supabase.from(table as never).select(`${uniqueCol}`).eq("college_id", collegeId);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: existing } = await (supabase.from(entity as never) as any).select(uniqueCol).eq("college_id", collegeId);
   (existing ?? []).forEach((r: Record<string, unknown>) => {
     const k = r[uniqueCol];
     if (k) existingKeys.add(String(k).toLowerCase());
