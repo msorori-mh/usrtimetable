@@ -48,6 +48,9 @@ function TermsPage() {
         name: form.name.trim(), code: form.code.trim(),
         start_date: form.start_date || null, end_date: form.end_date || null,
         is_active: form.is_active, college_id: active.id,
+        academic_year: form.academic_year.trim() || null,
+        term_type: form.term_type || null,
+        teaching_weeks_count: form.teaching_weeks_count ? parseInt(form.teaching_weeks_count, 10) : null,
       };
       if (editing) {
         const { error } = await supabase.from("academic_terms").update(payload).eq("id", editing.id);
