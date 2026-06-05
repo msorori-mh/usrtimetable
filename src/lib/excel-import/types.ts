@@ -1,28 +1,43 @@
-export type ImportEntity = "instructors" | "rooms" | "academic_terms" | "daily_breaks";
+export type ImportEntity =
+  | "instructors"
+  | "rooms"
+  | "academic_terms"
+  | "daily_breaks"
+  | "study_plan_courses"
+  | "full_study_plan"
+  | "course_offerings"
+  | "teaching_assignments"
+  | "course_programs"
+  | "section_groups";
+
 export type ImportMode = "insert_only" | "update_existing" | "upsert";
 
 export interface ColumnDef {
-  key: string;          // internal field key
-  header: string;       // Arabic header in Excel
+  key: string;
+  header: string;
   required?: boolean;
   example?: string;
   enumValues?: string[];
-  type?: "text" | "number" | "time" | "boolean" | "days_csv";
+  type?: "text" | "number" | "time" | "boolean" | "days_csv" | "csv";
 }
 
 export interface TemplateDef {
   entity: ImportEntity;
-  label: string;        // Arabic label
+  label: string;
   sheetName: string;
   columns: ColumnDef[];
-  uniqueKey: string;    // field key used to detect duplicates / match existing rows
+  uniqueKey: string;        // for simple table imports OR a logical composite label
   uniqueKeyLabel: string;
+  /** "table" = generic 1:1 mapping to a table; "custom" = entity-specific commit handler */
+  commitMode?: "table" | "custom";
+  /** target table for simple table mode (defaults to entity) */
+  targetTable?: string;
 }
 
 export interface ParsedRow {
-  rowNumber: number;            // 1-based excel row (data rows start at 2 — header is row 1)
-  raw: Record<string, unknown>; // header -> raw value
-  values: Record<string, unknown>; // key -> normalized value
+  rowNumber: number;
+  raw: Record<string, unknown>;
+  values: Record<string, unknown>;
 }
 
 export interface RowError {
