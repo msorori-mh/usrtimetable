@@ -28,7 +28,7 @@ function TermsPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Term | null>(null);
-  const [form, setForm] = useState({ name: "", code: "", start_date: "", end_date: "", is_active: false });
+  const [form, setForm] = useState({ name: "", code: "", start_date: "", end_date: "", is_active: false, academic_year: "", term_type: "", teaching_weeks_count: "" });
 
   const { data: rows, isLoading } = useQuery({
     queryKey: ["terms", active?.id], enabled: !!active,
