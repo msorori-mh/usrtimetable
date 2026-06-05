@@ -186,6 +186,9 @@ function AssignmentsPage() {
                   <div><Label>الشُّعبة</Label><Input value={form.section_number} onChange={(e) => setForm({ ...form, section_number: e.target.value })} placeholder="A" /></div>
                   <div><Label>ساعات/أسبوع</Label><Input type="number" step="0.5" value={form.weekly_hours} onChange={(e) => setForm({ ...form, weekly_hours: Number(e.target.value) })} /></div>
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>عدد الطلاب المتوقع</Label><Input type="number" value={form.expected_students} onChange={(e) => setForm({ ...form, expected_students: Number(e.target.value) })} /></div>
+                </div>
                 <div><Label>نوع القاعة المطلوبة (اختياري)</Label>
                   <Select value={form.required_room_type || "_any"} onValueChange={(v) => setForm({ ...form, required_room_type: v === "_any" ? "" : v })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
