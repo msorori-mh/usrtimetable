@@ -21,11 +21,17 @@ export const Route = createFileRoute("/_authenticated/import")({
   component: ImportPage,
 });
 
-const ENTITIES: { value: ImportEntity; label: string }[] = [
-  { value: "instructors", label: "المحاضرون" },
-  { value: "rooms", label: "القاعات والمختبرات" },
-  { value: "academic_terms", label: "الفصول الدراسية" },
-  { value: "daily_breaks", label: "الاستراحات اليومية" },
+const ENTITIES: { value: ImportEntity; label: string; group: string }[] = [
+  { value: "instructors", label: "المحاضرون", group: "موارد" },
+  { value: "rooms", label: "القاعات والمختبرات", group: "موارد" },
+  { value: "academic_terms", label: "الفصول الدراسية", group: "موارد" },
+  { value: "daily_breaks", label: "الاستراحات اليومية", group: "موارد" },
+  { value: "study_plan_courses", label: "خطة دراسية (مستوى/فصل)", group: "خطط دراسية" },
+  { value: "full_study_plan", label: "خطة دراسية كاملة", group: "خطط دراسية" },
+  { value: "course_offerings", label: "طرح المقررات", group: "تحضير التدريس" },
+  { value: "teaching_assignments", label: "الإسناد التدريسي", group: "تحضير التدريس" },
+  { value: "course_programs", label: "ربط مقررات ببرامج", group: "مقررات مشتركة" },
+  { value: "section_groups", label: "مجموعات شعب مدمجة", group: "مقررات مشتركة" },
 ];
 
 const MODES: { value: ImportMode; label: string; desc: string }[] = [
