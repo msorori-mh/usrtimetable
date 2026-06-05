@@ -23,6 +23,7 @@ import { Route as AuthenticatedSharedCoursesRouteImport } from './routes/_authen
 import { Route as AuthenticatedSessionTypesRouteImport } from './routes/_authenticated/session-types'
 import { Route as AuthenticatedSectionsRouteImport } from './routes/_authenticated/sections'
 import { Route as AuthenticatedSchedulingSettingsRouteImport } from './routes/_authenticated/scheduling-settings'
+import { Route as AuthenticatedScheduleQualityRouteImport } from './routes/_authenticated/schedule-quality'
 import { Route as AuthenticatedRoomsRouteImport } from './routes/_authenticated/rooms'
 import { Route as AuthenticatedRoomTypesRouteImport } from './routes/_authenticated/room-types'
 import { Route as AuthenticatedProgramsRouteImport } from './routes/_authenticated/programs'
@@ -117,6 +118,12 @@ const AuthenticatedSchedulingSettingsRoute =
   AuthenticatedSchedulingSettingsRouteImport.update({
     id: '/scheduling-settings',
     path: '/scheduling-settings',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedScheduleQualityRoute =
+  AuthenticatedScheduleQualityRouteImport.update({
+    id: '/schedule-quality',
+    path: '/schedule-quality',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedRoomsRoute = AuthenticatedRoomsRouteImport.update({
@@ -254,6 +261,7 @@ export interface FileRoutesByFullPath {
   '/programs': typeof AuthenticatedProgramsRoute
   '/room-types': typeof AuthenticatedRoomTypesRoute
   '/rooms': typeof AuthenticatedRoomsRoute
+  '/schedule-quality': typeof AuthenticatedScheduleQualityRoute
   '/scheduling-settings': typeof AuthenticatedSchedulingSettingsRoute
   '/sections': typeof AuthenticatedSectionsRoute
   '/session-types': typeof AuthenticatedSessionTypesRoute
@@ -289,6 +297,7 @@ export interface FileRoutesByTo {
   '/programs': typeof AuthenticatedProgramsRoute
   '/room-types': typeof AuthenticatedRoomTypesRoute
   '/rooms': typeof AuthenticatedRoomsRoute
+  '/schedule-quality': typeof AuthenticatedScheduleQualityRoute
   '/scheduling-settings': typeof AuthenticatedSchedulingSettingsRoute
   '/sections': typeof AuthenticatedSectionsRoute
   '/session-types': typeof AuthenticatedSessionTypesRoute
@@ -326,6 +335,7 @@ export interface FileRoutesById {
   '/_authenticated/programs': typeof AuthenticatedProgramsRoute
   '/_authenticated/room-types': typeof AuthenticatedRoomTypesRoute
   '/_authenticated/rooms': typeof AuthenticatedRoomsRoute
+  '/_authenticated/schedule-quality': typeof AuthenticatedScheduleQualityRoute
   '/_authenticated/scheduling-settings': typeof AuthenticatedSchedulingSettingsRoute
   '/_authenticated/sections': typeof AuthenticatedSectionsRoute
   '/_authenticated/session-types': typeof AuthenticatedSessionTypesRoute
@@ -363,6 +373,7 @@ export interface FileRouteTypes {
     | '/programs'
     | '/room-types'
     | '/rooms'
+    | '/schedule-quality'
     | '/scheduling-settings'
     | '/sections'
     | '/session-types'
@@ -398,6 +409,7 @@ export interface FileRouteTypes {
     | '/programs'
     | '/room-types'
     | '/rooms'
+    | '/schedule-quality'
     | '/scheduling-settings'
     | '/sections'
     | '/session-types'
@@ -434,6 +446,7 @@ export interface FileRouteTypes {
     | '/_authenticated/programs'
     | '/_authenticated/room-types'
     | '/_authenticated/rooms'
+    | '/_authenticated/schedule-quality'
     | '/_authenticated/scheduling-settings'
     | '/_authenticated/sections'
     | '/_authenticated/session-types'
@@ -551,6 +564,13 @@ declare module '@tanstack/react-router' {
       path: '/scheduling-settings'
       fullPath: '/scheduling-settings'
       preLoaderRoute: typeof AuthenticatedSchedulingSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/schedule-quality': {
+      id: '/_authenticated/schedule-quality'
+      path: '/schedule-quality'
+      fullPath: '/schedule-quality'
+      preLoaderRoute: typeof AuthenticatedScheduleQualityRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/rooms': {
@@ -717,6 +737,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedProgramsRoute: typeof AuthenticatedProgramsRoute
   AuthenticatedRoomTypesRoute: typeof AuthenticatedRoomTypesRoute
   AuthenticatedRoomsRoute: typeof AuthenticatedRoomsRoute
+  AuthenticatedScheduleQualityRoute: typeof AuthenticatedScheduleQualityRoute
   AuthenticatedSchedulingSettingsRoute: typeof AuthenticatedSchedulingSettingsRoute
   AuthenticatedSectionsRoute: typeof AuthenticatedSectionsRoute
   AuthenticatedSessionTypesRoute: typeof AuthenticatedSessionTypesRoute
@@ -751,6 +772,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedProgramsRoute: AuthenticatedProgramsRoute,
   AuthenticatedRoomTypesRoute: AuthenticatedRoomTypesRoute,
   AuthenticatedRoomsRoute: AuthenticatedRoomsRoute,
+  AuthenticatedScheduleQualityRoute: AuthenticatedScheduleQualityRoute,
   AuthenticatedSchedulingSettingsRoute: AuthenticatedSchedulingSettingsRoute,
   AuthenticatedSectionsRoute: AuthenticatedSectionsRoute,
   AuthenticatedSessionTypesRoute: AuthenticatedSessionTypesRoute,
@@ -775,3 +797,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
