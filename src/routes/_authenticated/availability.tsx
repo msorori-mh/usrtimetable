@@ -147,7 +147,7 @@ function InstructorAvailability() {
                 <li key={r.id} className="flex items-center justify-between p-3">
                   <div>
                     <p className="text-sm font-medium">{DAYS[r.day_of_week]} <span dir="ltr">{r.start_time.slice(0, 5)} → {r.end_time.slice(0, 5)}</span></p>
-                    <p className="text-xs text-muted-foreground">{AVAIL_TYPES.find((a) => a.v === r.availability_type)?.l}</p>
+                    <p className="text-xs text-muted-foreground">{AVAIL_TYPES.find((a) => a.v === r.availability_type)?.l} · {r.is_preference ? "تفضيل (Soft)" : "إلزامي (Hard)"}</p>
                   </div>
                   {canManage && <Button size="sm" variant="ghost" onClick={() => del.mutate(r.id)}><Trash2 className="h-3.5 w-3.5" /></Button>}
                 </li>
