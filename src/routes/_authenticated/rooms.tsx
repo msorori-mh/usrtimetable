@@ -62,7 +62,7 @@ function RoomsPage() {
       const payload = {
         code: form.code.trim(), name: form.name.trim(), room_type: form.room_type,
         capacity: Number(form.capacity) || 0, building: form.building.trim() || null, floor: form.floor.trim() || null,
-        is_active: form.is_active, college_id: active.id,
+        is_active: form.is_active, college_id: active.id, notes: form.notes.trim() || null,
       };
       if (editing) {
         const { error } = await supabase.from("rooms").update(payload).eq("id", editing.id);
