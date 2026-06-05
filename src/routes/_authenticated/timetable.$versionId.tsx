@@ -230,7 +230,7 @@ function TimetablePage() {
         room_id: existing.room_id,
         section_id: existing.section_id,
         section_group_id: existing.section_group_id,
-        study_system: existing.study_system,
+        study_system: existing.study_system as any,
         day_of_week: day,
         start_time: startTime,
         end_time: newEnd,
