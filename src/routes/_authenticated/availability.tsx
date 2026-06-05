@@ -59,7 +59,7 @@ function InstructorAvailability() {
   const canManage = useCanManageActiveCollege();
   const qc = useQueryClient();
   const [instructorId, setInstructorId] = useState("");
-  const [form, setForm] = useState({ day_of_week: 0, start_time: "08:00", end_time: "12:00", availability_type: "available", notes: "" });
+  const [form, setForm] = useState({ day_of_week: 0, start_time: "08:00", end_time: "12:00", availability_type: "available", is_preference: false, notes: "" });
 
   const { data: instructors } = useQuery({
     queryKey: ["instr-all", active?.id], enabled: !!active,
