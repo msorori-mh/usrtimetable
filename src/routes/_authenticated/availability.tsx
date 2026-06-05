@@ -51,7 +51,7 @@ function AvailabilityPage() {
   );
 }
 
-interface IA { id: string; instructor_id: string; day_of_week: number; start_time: string; end_time: string; availability_type: string; notes: string | null }
+interface IA { id: string; instructor_id: string; day_of_week: number; start_time: string; end_time: string; availability_type: string; is_preference: boolean; notes: string | null }
 const AVAIL_TYPES = [{ v: "available", l: "متاح" }, { v: "preferred", l: "مفضّل" }, { v: "unavailable", l: "غير متاح" }];
 
 function InstructorAvailability() {
