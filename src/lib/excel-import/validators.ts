@@ -70,7 +70,7 @@ export async function validate(entity: ImportEntity, headers: string[], rows: Re
   // Existing rows for duplicate-detection in same college
   const existingKeys = new Set<string>();
   const uniqueColHeader = tpl.columns.find((c) => c.key === tpl.uniqueKey)?.header;
-  const uniqueColHeader2 = uniqueColHeader; // referenced below
+  
   const uniqueCol = tpl.uniqueKey;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: existing } = await (supabase.from(entity as never) as any).select(uniqueCol).eq("college_id", collegeId);
