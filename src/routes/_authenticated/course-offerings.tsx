@@ -24,9 +24,10 @@ interface Offering {
   id: string; college_id: string; term_id: string; course_id: string;
   program_id: string | null; level_id: string | null;
   expected_students: number; sections_count: number; notes: string | null; is_active: boolean;
+  status: string;
 }
 
-function emptyForm() { return { term_id: "", course_id: "", program_id: "", level_id: "", expected_students: 0, sections_count: 1, notes: "", is_active: true }; }
+function emptyForm() { return { term_id: "", course_id: "", program_id: "", level_id: "", expected_students: 0, sections_count: 1, notes: "", is_active: true, status: "draft" }; }
 
 function OfferingsPage() {
   const { active } = useActiveCollege();
