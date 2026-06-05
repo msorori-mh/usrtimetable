@@ -338,6 +338,47 @@ export type Database = {
           },
         ]
       }
+      college_quality_settings: {
+        Row: {
+          college_id: string
+          created_at: string
+          enabled: boolean
+          id: string
+          notes: string | null
+          quality_metric_id: string
+          updated_at: string
+          weight: number
+        }
+        Insert: {
+          college_id: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          notes?: string | null
+          quality_metric_id: string
+          updated_at?: string
+          weight?: number
+        }
+        Update: {
+          college_id?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          notes?: string | null
+          quality_metric_id?: string
+          updated_at?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "college_quality_settings_quality_metric_id_fkey"
+            columns: ["quality_metric_id"]
+            isOneToOne: false
+            referencedRelation: "quality_metrics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       colleges: {
         Row: {
           code: string | null
@@ -430,6 +471,7 @@ export type Database = {
           metadata: Json | null
           related_session_id: string | null
           schedule_session_id: string | null
+          score_impact: number
           severity: string
         }
         Insert: {
@@ -444,6 +486,7 @@ export type Database = {
           metadata?: Json | null
           related_session_id?: string | null
           schedule_session_id?: string | null
+          score_impact?: number
           severity?: string
         }
         Update: {
@@ -458,6 +501,7 @@ export type Database = {
           metadata?: Json | null
           related_session_id?: string | null
           schedule_session_id?: string | null
+          score_impact?: number
           severity?: string
         }
         Relationships: [
@@ -1249,6 +1293,42 @@ export type Database = {
         }
         Relationships: []
       }
+      quality_metrics: {
+        Row: {
+          code: string
+          created_at: string
+          default_weight: number
+          description: string | null
+          id: string
+          is_active: boolean
+          name_ar: string
+          name_en: string | null
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          default_weight?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name_ar: string
+          name_en?: string | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          default_weight?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name_ar?: string
+          name_en?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       room_availability: {
         Row: {
           college_id: string
@@ -1429,6 +1509,45 @@ export type Database = {
           room_type?: string
           room_type_id?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      schedule_quality_runs: {
+        Row: {
+          college_id: string
+          created_at: string
+          hard_conflicts_count: number
+          id: string
+          metrics_breakdown: Json | null
+          run_by: string | null
+          schedule_version_id: string
+          soft_conflicts_count: number
+          total_deductions: number
+          total_score: number
+        }
+        Insert: {
+          college_id: string
+          created_at?: string
+          hard_conflicts_count?: number
+          id?: string
+          metrics_breakdown?: Json | null
+          run_by?: string | null
+          schedule_version_id: string
+          soft_conflicts_count?: number
+          total_deductions?: number
+          total_score?: number
+        }
+        Update: {
+          college_id?: string
+          created_at?: string
+          hard_conflicts_count?: number
+          id?: string
+          metrics_breakdown?: Json | null
+          run_by?: string | null
+          schedule_version_id?: string
+          soft_conflicts_count?: number
+          total_deductions?: number
+          total_score?: number
         }
         Relationships: []
       }
