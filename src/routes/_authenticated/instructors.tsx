@@ -188,6 +188,10 @@ function InstructorsPage() {
                   </div>
                   <div><Label>الحد الأسبوعي للساعات</Label><Input type="number" value={form.max_weekly_hours} onChange={(e) => setForm({ ...form, max_weekly_hours: Number(e.target.value) })} /></div>
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>ساعات الإعفاء الإداري</Label><Input type="number" value={form.administrative_release_hours} onChange={(e) => setForm({ ...form, administrative_release_hours: Number(e.target.value) })} /></div>
+                  <div><Label>ملاحظات</Label><Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
+                </div>
                 <div className="flex items-center justify-between rounded border border-border p-3">
                   <Label>نشط</Label>
                   <Switch checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />
