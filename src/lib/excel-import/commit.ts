@@ -27,24 +27,19 @@ export async function commitImport(
   for (const row of validRows) {
     const exists = !!row.values._exists;
     const payload = buildDbPayload(entity, row, collegeId);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tbl = supabase.from(table as never) as any;
 
     try {
       if (exists) {
-        if (mode === "insert_only") {
-          skipped++;
-          continue;
-        }
-        // update_existing or upsert
+        if (mode === "insert_only") { skipped++; continue; }
         const uniqVal = row.values[tpl.uniqueKey];
-        const { error } = await supabase.from(table as never).update(payload).eq("college_id", collegeId).eq(tpl.uniqueKey, uniqVal as string);
+        const { error } = await tbl.update(payload).eq("college_id", collegeId).eq(tpl.uniqueKey, uniqVal);
         if (error) throw error;
         updated++;
       } else {
-        if (mode === "update_existing") {
-          skipped++;
-          continue;
-        }
-        const { error } = await supabase.from(table as never).insert(payload);
+        if (mode === "update_existing") { skipped++; continue; }
+        const { error } = await tbl.insert(payload);
         if (error) throw error;
         inserted++;
       }
