@@ -31,6 +31,7 @@ import { Route as AuthenticatedInstructorTypesRouteImport } from './routes/_auth
 import { Route as AuthenticatedImportTemplatesRouteImport } from './routes/_authenticated/import-templates'
 import { Route as AuthenticatedDepartmentsRouteImport } from './routes/_authenticated/departments'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedDailyBreaksRouteImport } from './routes/_authenticated/daily-breaks'
 import { Route as AuthenticatedCoursesRouteImport } from './routes/_authenticated/courses'
 import { Route as AuthenticatedCourseOfferingsRouteImport } from './routes/_authenticated/course-offerings'
 import { Route as AuthenticatedCollegesRouteImport } from './routes/_authenticated/colleges'
@@ -156,6 +157,12 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedDailyBreaksRoute =
+  AuthenticatedDailyBreaksRouteImport.update({
+    id: '/daily-breaks',
+    path: '/daily-breaks',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedCoursesRoute = AuthenticatedCoursesRouteImport.update({
   id: '/courses',
   path: '/courses',
@@ -199,6 +206,7 @@ export interface FileRoutesByFullPath {
   '/colleges': typeof AuthenticatedCollegesRoute
   '/course-offerings': typeof AuthenticatedCourseOfferingsRoute
   '/courses': typeof AuthenticatedCoursesRoute
+  '/daily-breaks': typeof AuthenticatedDailyBreaksRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/departments': typeof AuthenticatedDepartmentsRoute
   '/import-templates': typeof AuthenticatedImportTemplatesRoute
@@ -228,6 +236,7 @@ export interface FileRoutesByTo {
   '/colleges': typeof AuthenticatedCollegesRoute
   '/course-offerings': typeof AuthenticatedCourseOfferingsRoute
   '/courses': typeof AuthenticatedCoursesRoute
+  '/daily-breaks': typeof AuthenticatedDailyBreaksRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/departments': typeof AuthenticatedDepartmentsRoute
   '/import-templates': typeof AuthenticatedImportTemplatesRoute
@@ -259,6 +268,7 @@ export interface FileRoutesById {
   '/_authenticated/colleges': typeof AuthenticatedCollegesRoute
   '/_authenticated/course-offerings': typeof AuthenticatedCourseOfferingsRoute
   '/_authenticated/courses': typeof AuthenticatedCoursesRoute
+  '/_authenticated/daily-breaks': typeof AuthenticatedDailyBreaksRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/departments': typeof AuthenticatedDepartmentsRoute
   '/_authenticated/import-templates': typeof AuthenticatedImportTemplatesRoute
@@ -290,6 +300,7 @@ export interface FileRouteTypes {
     | '/colleges'
     | '/course-offerings'
     | '/courses'
+    | '/daily-breaks'
     | '/dashboard'
     | '/departments'
     | '/import-templates'
@@ -319,6 +330,7 @@ export interface FileRouteTypes {
     | '/colleges'
     | '/course-offerings'
     | '/courses'
+    | '/daily-breaks'
     | '/dashboard'
     | '/departments'
     | '/import-templates'
@@ -349,6 +361,7 @@ export interface FileRouteTypes {
     | '/_authenticated/colleges'
     | '/_authenticated/course-offerings'
     | '/_authenticated/courses'
+    | '/_authenticated/daily-breaks'
     | '/_authenticated/dashboard'
     | '/_authenticated/departments'
     | '/_authenticated/import-templates'
@@ -532,6 +545,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/daily-breaks': {
+      id: '/_authenticated/daily-breaks'
+      path: '/daily-breaks'
+      fullPath: '/daily-breaks'
+      preLoaderRoute: typeof AuthenticatedDailyBreaksRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/courses': {
       id: '/_authenticated/courses'
       path: '/courses'
@@ -584,6 +604,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCollegesRoute: typeof AuthenticatedCollegesRoute
   AuthenticatedCourseOfferingsRoute: typeof AuthenticatedCourseOfferingsRoute
   AuthenticatedCoursesRoute: typeof AuthenticatedCoursesRoute
+  AuthenticatedDailyBreaksRoute: typeof AuthenticatedDailyBreaksRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedDepartmentsRoute: typeof AuthenticatedDepartmentsRoute
   AuthenticatedImportTemplatesRoute: typeof AuthenticatedImportTemplatesRoute
@@ -612,6 +633,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCollegesRoute: AuthenticatedCollegesRoute,
   AuthenticatedCourseOfferingsRoute: AuthenticatedCourseOfferingsRoute,
   AuthenticatedCoursesRoute: AuthenticatedCoursesRoute,
+  AuthenticatedDailyBreaksRoute: AuthenticatedDailyBreaksRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedDepartmentsRoute: AuthenticatedDepartmentsRoute,
   AuthenticatedImportTemplatesRoute: AuthenticatedImportTemplatesRoute,
