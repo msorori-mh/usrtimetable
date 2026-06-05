@@ -373,6 +373,110 @@ export type Database = {
           },
         ]
       }
+      conflict_checks: {
+        Row: {
+          check_type: string
+          checked_by: string | null
+          college_id: string
+          completed_at: string | null
+          created_at: string
+          id: string
+          schedule_version_id: string
+          status: string
+          total_conflicts: number
+        }
+        Insert: {
+          check_type?: string
+          checked_by?: string | null
+          college_id: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          schedule_version_id: string
+          status?: string
+          total_conflicts?: number
+        }
+        Update: {
+          check_type?: string
+          checked_by?: string | null
+          college_id?: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          schedule_version_id?: string
+          status?: string
+          total_conflicts?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conflict_checks_schedule_version_id_fkey"
+            columns: ["schedule_version_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conflict_results: {
+        Row: {
+          college_id: string
+          conflict_check_id: string
+          conflict_code: string
+          conflict_type_id: string | null
+          created_at: string
+          id: string
+          message_ar: string
+          message_en: string
+          metadata: Json | null
+          related_session_id: string | null
+          schedule_session_id: string | null
+          severity: string
+        }
+        Insert: {
+          college_id: string
+          conflict_check_id: string
+          conflict_code: string
+          conflict_type_id?: string | null
+          created_at?: string
+          id?: string
+          message_ar: string
+          message_en: string
+          metadata?: Json | null
+          related_session_id?: string | null
+          schedule_session_id?: string | null
+          severity?: string
+        }
+        Update: {
+          college_id?: string
+          conflict_check_id?: string
+          conflict_code?: string
+          conflict_type_id?: string | null
+          created_at?: string
+          id?: string
+          message_ar?: string
+          message_en?: string
+          metadata?: Json | null
+          related_session_id?: string | null
+          schedule_session_id?: string | null
+          severity?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conflict_results_conflict_check_id_fkey"
+            columns: ["conflict_check_id"]
+            isOneToOne: false
+            referencedRelation: "conflict_checks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conflict_results_conflict_type_id_fkey"
+            columns: ["conflict_type_id"]
+            isOneToOne: false
+            referencedRelation: "constraint_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       constraint_types: {
         Row: {
           code: string
@@ -1324,6 +1428,110 @@ export type Database = {
           notes?: string | null
           room_type?: string
           room_type_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      schedule_sessions: {
+        Row: {
+          college_id: string
+          course_offering_id: string
+          created_at: string
+          day_of_week: number
+          end_time: string
+          expected_students: number
+          id: string
+          instructor_id: string
+          room_id: string | null
+          schedule_version_id: string
+          section_group_id: string | null
+          section_id: string | null
+          session_type: string
+          start_time: string
+          study_system: string
+          teaching_assignment_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          college_id: string
+          course_offering_id: string
+          created_at?: string
+          day_of_week: number
+          end_time: string
+          expected_students?: number
+          id?: string
+          instructor_id: string
+          room_id?: string | null
+          schedule_version_id: string
+          section_group_id?: string | null
+          section_id?: string | null
+          session_type?: string
+          start_time: string
+          study_system?: string
+          teaching_assignment_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          college_id?: string
+          course_offering_id?: string
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          expected_students?: number
+          id?: string
+          instructor_id?: string
+          room_id?: string | null
+          schedule_version_id?: string
+          section_group_id?: string | null
+          section_id?: string | null
+          session_type?: string
+          start_time?: string
+          study_system?: string
+          teaching_assignment_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_sessions_schedule_version_id_fkey"
+            columns: ["schedule_version_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      schedule_versions: {
+        Row: {
+          academic_term_id: string
+          college_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          notes: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          academic_term_id: string
+          college_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          academic_term_id?: string
+          college_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          status?: string
           updated_at?: string
         }
         Relationships: []
