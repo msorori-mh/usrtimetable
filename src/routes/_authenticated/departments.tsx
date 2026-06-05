@@ -102,6 +102,17 @@ function DepartmentsPage() {
               <div className="space-y-3">
                 <div><Label>الاسم</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
                 <div><Label>الرمز</Label><Input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} /></div>
+                <div>
+                  <Label>نظام الدراسة</Label>
+                  <Select value={form.study_system} onValueChange={(v) => setForm({ ...form, study_system: v as "regular" | "parallel" | "both" })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="regular">{STUDY_SYSTEM_LABELS.regular}</SelectItem>
+                      <SelectItem value="parallel">{STUDY_SYSTEM_LABELS.parallel}</SelectItem>
+                      <SelectItem value="both">{STUDY_SYSTEM_LABELS.both}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setOpen(false)}>إلغاء</Button>
