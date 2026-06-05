@@ -41,7 +41,7 @@ function DepartmentsPage() {
     enabled: !!active,
     queryFn: async () => {
       const { data, error } = await supabase.from("departments")
-        .select("id, name, code, college_id").eq("college_id", active!.id).order("name");
+        .select("id, name, code, college_id, study_system").eq("college_id", active!.id).order("name");
       if (error) throw error; return (data ?? []) as Dept[];
     },
   });
