@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { Building2, Pencil, Trash2 } from "lucide-react";
@@ -19,7 +20,13 @@ export const Route = createFileRoute("/_authenticated/departments")({
   component: DepartmentsPage,
 });
 
-interface Dept { id: string; name: string; code: string; college_id: string }
+interface Dept { id: string; name: string; code: string; college_id: string; study_system: "regular" | "parallel" | "both" }
+
+const STUDY_SYSTEM_LABELS: Record<string, string> = {
+  regular: "النظام العام / الصباحي",
+  parallel: "النظام الموازي / المسائي",
+  both: "عام وموازي",
+};
 
 function DepartmentsPage() {
   const { active } = useActiveCollege();
@@ -27,14 +34,14 @@ function DepartmentsPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Dept | null>(null);
-  const [form, setForm] = useState({ name: "", code: "" });
+  const [form, setForm] = useState<{ name: string; code: string; study_system: "regular" | "parallel" | "both" }>({ name: "", code: "", study_system: "regular" });
 
   const { data: rows, isLoading } = useQuery({
     queryKey: ["departments", active?.id],
     enabled: !!active,
     queryFn: async () => {
       const { data, error } = await supabase.from("departments")
-        .select("id, name, code, college_id").eq("college_id", active!.id).order("name");
+        .select("id, name, code, college_id, study_system").eq("college_id", active!.id).order("name");
       if (error) throw error; return (data ?? []) as Dept[];
     },
   });
@@ -42,7 +49,7 @@ function DepartmentsPage() {
   const save = useMutation({
     mutationFn: async () => {
       if (!active) throw new Error("اختر كلّية");
-      const payload = { name: form.name.trim(), code: form.code.trim(), college_id: active.id };
+      const payload = { name: form.name.trim(), code: form.code.trim(), study_system: form.study_system, college_id: active.id };
       if (!payload.name || !payload.code) throw new Error("الاسم والرمز مطلوبان");
       if (editing) {
         const { error } = await supabase.from("departments").update(payload).eq("id", editing.id);
@@ -57,7 +64,7 @@ function DepartmentsPage() {
     onSuccess: () => {
       toast.success(editing ? "تم التحديث" : "تمت الإضافة");
       qc.invalidateQueries({ queryKey: ["departments", active?.id] });
-      setOpen(false); setEditing(null); setForm({ name: "", code: "" });
+      setOpen(false); setEditing(null); setForm({ name: "", code: "", study_system: "regular" });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -72,8 +79,8 @@ function DepartmentsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const startEdit = (d: Dept) => { setEditing(d); setForm({ name: d.name, code: d.code }); setOpen(true); };
-  const startCreate = () => { setEditing(null); setForm({ name: "", code: "" }); setOpen(true); };
+  const startEdit = (d: Dept) => { setEditing(d); setForm({ name: d.name, code: d.code, study_system: d.study_system ?? "regular" }); setOpen(true); };
+  const startCreate = () => { setEditing(null); setForm({ name: "", code: "", study_system: "regular" }); setOpen(true); };
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -95,6 +102,17 @@ function DepartmentsPage() {
               <div className="space-y-3">
                 <div><Label>الاسم</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
                 <div><Label>الرمز</Label><Input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} /></div>
+                <div>
+                  <Label>نظام الدراسة</Label>
+                  <Select value={form.study_system} onValueChange={(v) => setForm({ ...form, study_system: v as "regular" | "parallel" | "both" })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="regular">{STUDY_SYSTEM_LABELS.regular}</SelectItem>
+                      <SelectItem value="parallel">{STUDY_SYSTEM_LABELS.parallel}</SelectItem>
+                      <SelectItem value="both">{STUDY_SYSTEM_LABELS.both}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setOpen(false)}>إلغاء</Button>
@@ -113,7 +131,7 @@ function DepartmentsPage() {
                 <li key={d.id} className="flex items-center justify-between p-4">
                   <div>
                     <p className="font-semibold">{d.name}</p>
-                    <p className="text-xs text-muted-foreground" dir="ltr">{d.code}</p>
+                    <p className="text-xs text-muted-foreground"><span dir="ltr">{d.code}</span> · {STUDY_SYSTEM_LABELS[d.study_system ?? "regular"]}</p>
                   </div>
                   {canManage && (
                     <div className="flex gap-1">
