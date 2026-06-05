@@ -13,6 +13,12 @@ export interface GridSession {
   badge?: string;
 }
 
+export interface AvailabilityWindow {
+  day_of_week: number;
+  start_time: string; // HH:MM
+  end_time: string;
+}
+
 const DAY_LABELS: Record<number, string> = {
   6: "السبت", 0: "الأحد", 1: "الإثنين", 2: "الثلاثاء",
   3: "الأربعاء", 4: "الخميس", 5: "الجمعة",
@@ -24,18 +30,30 @@ const mins = (s: string) => {
   return h * 60 + m;
 };
 
+export interface DropPayload {
+  kind: "unscheduled" | "session";
+  id: string;
+}
+
 export function TimetableGrid({
   sessions,
   workingDays = [6, 0, 1, 2, 3, 4],
   startHour = 8,
   endHour = 21,
+  availability,
   onSessionClick,
+  onDropAt,
+  draggable = false,
 }: {
   sessions: GridSession[];
   workingDays?: number[];
   startHour?: number;
   endHour?: number;
+  /** If provided, anything OUTSIDE these windows is rendered as unavailable. */
+  availability?: AvailabilityWindow[];
   onSessionClick?: (id: string) => void;
+  onDropAt?: (params: { day: number; startTime: string; payload: DropPayload }) => void;
+  draggable?: boolean;
 }) {
   const slots = useMemo(() => {
     const arr: { label: string; mins: number }[] = [];
@@ -50,15 +68,45 @@ export function TimetableGrid({
 
   const colorByType = (t: string) => {
     switch (t) {
-      case "lab": return "bg-emerald-500/15 border-emerald-500/40";
-      case "tutorial": return "bg-amber-500/15 border-amber-500/40";
-      case "lecture": default: return "bg-primary/15 border-primary/40";
+      case "lab": return "bg-emerald-500/20 border-emerald-500/50";
+      case "tutorial": return "bg-amber-500/20 border-amber-500/50";
+      case "lecture": default: return "bg-primary/20 border-primary/50";
     }
+  };
+
+  // For each day, compute available zones (else everything is available)
+  const availByDay = useMemo(() => {
+    const map = new Map<number, AvailabilityWindow[]>();
+    (availability ?? []).forEach((w) => {
+      if (!map.has(w.day_of_week)) map.set(w.day_of_week, []);
+      map.get(w.day_of_week)!.push(w);
+    });
+    return map;
+  }, [availability]);
+
+  const isInsideAvailability = (day: number, hourMinutes: number) => {
+    if (!availability || availability.length === 0) return true;
+    const wins = availByDay.get(day);
+    if (!wins || wins.length === 0) return false;
+    return wins.some((w) => hourMinutes >= mins(w.start_time) && hourMinutes < mins(w.end_time));
+  };
+
+  const handleDrop = (e: React.DragEvent, day: number, slotMins: number) => {
+    e.preventDefault();
+    if (!onDropAt) return;
+    const raw = e.dataTransfer.getData("application/x-lovable-drop");
+    if (!raw) return;
+    try {
+      const payload = JSON.parse(raw) as DropPayload;
+      const hh = String(Math.floor(slotMins / 60)).padStart(2, "0");
+      const mm = String(slotMins % 60).padStart(2, "0");
+      onDropAt({ day, startTime: `${hh}:${mm}`, payload });
+    } catch { /* noop */ }
   };
 
   return (
     <div className="overflow-auto border rounded-md" dir="rtl">
-      <div className="grid" style={{ gridTemplateColumns: `80px repeat(${workingDays.length}, minmax(160px, 1fr))` }}>
+      <div className="grid" style={{ gridTemplateColumns: `80px repeat(${workingDays.length}, minmax(170px, 1fr))` }}>
         <div className="bg-muted/40 border-b border-l p-2 text-xs font-medium sticky top-0 z-10">الوقت</div>
         {workingDays.map((d) => (
           <div key={d} className="bg-muted/40 border-b border-l p-2 text-xs font-medium text-center sticky top-0 z-10">
@@ -78,20 +126,38 @@ export function TimetableGrid({
           const daySessions = sessions.filter((s) => s.day_of_week === d);
           return (
             <div key={d} className="relative border-l" style={{ height: totalHeight }}>
-              {slots.map((s) => (
-                <div key={s.mins} className="border-b" style={{ height: SLOT_PX }} />
-              ))}
+              {slots.map((s) => {
+                const ok = isInsideAvailability(d, s.mins);
+                return (
+                  <div
+                    key={s.mins}
+                    className={cn(
+                      "border-b transition-colors",
+                      ok ? "hover:bg-primary/5" : "bg-muted/40 bg-[repeating-linear-gradient(45deg,transparent,transparent_6px,rgba(0,0,0,0.04)_6px,rgba(0,0,0,0.04)_12px)]",
+                    )}
+                    style={{ height: SLOT_PX }}
+                    onDragOver={(e) => { if (ok && onDropAt) e.preventDefault(); }}
+                    onDrop={(e) => ok && handleDrop(e, d, s.mins)}
+                  />
+                );
+              })}
               {daySessions.map((sess) => {
                 const top = ((mins(sess.start_time) - startHour * 60) / 60) * SLOT_PX;
                 const height = ((mins(sess.end_time) - mins(sess.start_time)) / 60) * SLOT_PX;
                 if (top < 0 || height <= 0) return null;
                 return (
-                  <button
+                  <div
                     key={sess.id}
+                    draggable={draggable}
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData("application/x-lovable-drop", JSON.stringify({ kind: "session", id: sess.id } as DropPayload));
+                      e.dataTransfer.effectAllowed = "move";
+                    }}
                     onClick={() => onSessionClick?.(sess.id)}
                     className={cn(
                       "absolute right-1 left-1 rounded border text-right p-2 text-xs hover:opacity-90 transition cursor-pointer",
                       colorByType(sess.session_type),
+                      draggable && "active:opacity-70",
                     )}
                     style={{ top: top + 1, height: height - 2 }}
                   >
@@ -101,7 +167,7 @@ export function TimetableGrid({
                       <span className="text-[9px] bg-background/60 rounded px-1">{sess.start_time.slice(0,5)}–{sess.end_time.slice(0,5)}</span>
                       {sess.badge && <span className="text-[9px] bg-background/60 rounded px-1">{sess.badge}</span>}
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>
