@@ -37,6 +37,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedDailyBreaksRouteImport } from './routes/_authenticated/daily-breaks'
 import { Route as AuthenticatedCoursesRouteImport } from './routes/_authenticated/courses'
 import { Route as AuthenticatedCourseOfferingsRouteImport } from './routes/_authenticated/course-offerings'
+import { Route as AuthenticatedConstraintSettingsRouteImport } from './routes/_authenticated/constraint-settings'
 import { Route as AuthenticatedCollegesRouteImport } from './routes/_authenticated/colleges'
 import { Route as AuthenticatedBuildingsRouteImport } from './routes/_authenticated/buildings'
 import { Route as AuthenticatedAvailabilityRouteImport } from './routes/_authenticated/availability'
@@ -194,6 +195,12 @@ const AuthenticatedCourseOfferingsRoute =
     path: '/course-offerings',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedConstraintSettingsRoute =
+  AuthenticatedConstraintSettingsRouteImport.update({
+    id: '/constraint-settings',
+    path: '/constraint-settings',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedCollegesRoute = AuthenticatedCollegesRouteImport.update({
   id: '/colleges',
   path: '/colleges',
@@ -224,6 +231,7 @@ export interface FileRoutesByFullPath {
   '/availability': typeof AuthenticatedAvailabilityRoute
   '/buildings': typeof AuthenticatedBuildingsRoute
   '/colleges': typeof AuthenticatedCollegesRoute
+  '/constraint-settings': typeof AuthenticatedConstraintSettingsRoute
   '/course-offerings': typeof AuthenticatedCourseOfferingsRoute
   '/courses': typeof AuthenticatedCoursesRoute
   '/daily-breaks': typeof AuthenticatedDailyBreaksRoute
@@ -257,6 +265,7 @@ export interface FileRoutesByTo {
   '/availability': typeof AuthenticatedAvailabilityRoute
   '/buildings': typeof AuthenticatedBuildingsRoute
   '/colleges': typeof AuthenticatedCollegesRoute
+  '/constraint-settings': typeof AuthenticatedConstraintSettingsRoute
   '/course-offerings': typeof AuthenticatedCourseOfferingsRoute
   '/courses': typeof AuthenticatedCoursesRoute
   '/daily-breaks': typeof AuthenticatedDailyBreaksRoute
@@ -292,6 +301,7 @@ export interface FileRoutesById {
   '/_authenticated/availability': typeof AuthenticatedAvailabilityRoute
   '/_authenticated/buildings': typeof AuthenticatedBuildingsRoute
   '/_authenticated/colleges': typeof AuthenticatedCollegesRoute
+  '/_authenticated/constraint-settings': typeof AuthenticatedConstraintSettingsRoute
   '/_authenticated/course-offerings': typeof AuthenticatedCourseOfferingsRoute
   '/_authenticated/courses': typeof AuthenticatedCoursesRoute
   '/_authenticated/daily-breaks': typeof AuthenticatedDailyBreaksRoute
@@ -327,6 +337,7 @@ export interface FileRouteTypes {
     | '/availability'
     | '/buildings'
     | '/colleges'
+    | '/constraint-settings'
     | '/course-offerings'
     | '/courses'
     | '/daily-breaks'
@@ -360,6 +371,7 @@ export interface FileRouteTypes {
     | '/availability'
     | '/buildings'
     | '/colleges'
+    | '/constraint-settings'
     | '/course-offerings'
     | '/courses'
     | '/daily-breaks'
@@ -394,6 +406,7 @@ export interface FileRouteTypes {
     | '/_authenticated/availability'
     | '/_authenticated/buildings'
     | '/_authenticated/colleges'
+    | '/_authenticated/constraint-settings'
     | '/_authenticated/course-offerings'
     | '/_authenticated/courses'
     | '/_authenticated/daily-breaks'
@@ -625,6 +638,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCourseOfferingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/constraint-settings': {
+      id: '/_authenticated/constraint-settings'
+      path: '/constraint-settings'
+      fullPath: '/constraint-settings'
+      preLoaderRoute: typeof AuthenticatedConstraintSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/colleges': {
       id: '/_authenticated/colleges'
       path: '/colleges'
@@ -661,6 +681,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAvailabilityRoute: typeof AuthenticatedAvailabilityRoute
   AuthenticatedBuildingsRoute: typeof AuthenticatedBuildingsRoute
   AuthenticatedCollegesRoute: typeof AuthenticatedCollegesRoute
+  AuthenticatedConstraintSettingsRoute: typeof AuthenticatedConstraintSettingsRoute
   AuthenticatedCourseOfferingsRoute: typeof AuthenticatedCourseOfferingsRoute
   AuthenticatedCoursesRoute: typeof AuthenticatedCoursesRoute
   AuthenticatedDailyBreaksRoute: typeof AuthenticatedDailyBreaksRoute
@@ -693,6 +714,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAvailabilityRoute: AuthenticatedAvailabilityRoute,
   AuthenticatedBuildingsRoute: AuthenticatedBuildingsRoute,
   AuthenticatedCollegesRoute: AuthenticatedCollegesRoute,
+  AuthenticatedConstraintSettingsRoute: AuthenticatedConstraintSettingsRoute,
   AuthenticatedCourseOfferingsRoute: AuthenticatedCourseOfferingsRoute,
   AuthenticatedCoursesRoute: AuthenticatedCoursesRoute,
   AuthenticatedDailyBreaksRoute: AuthenticatedDailyBreaksRoute,
