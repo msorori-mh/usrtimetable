@@ -42,7 +42,7 @@ function ImportPage() {
   const [entity, setEntity] = useState<ImportEntity>("instructors");
   const [mode, setMode] = useState<ImportMode>("insert_only");
   const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<{ valid: ParsedRow[]; invalid: ParsedRow[]; errors: RowError[]; jobId: string | null; total: number } | null>(null);
+  const [preview, setPreview] = useState<{ valid: ParsedRow[]; invalid: ParsedRow[]; errors: RowError[]; jobId: string | null; total: number; missingHeaders: string[] } | null>(null);
 
   const downloadTemplate = async () => {
     try {
@@ -60,7 +60,7 @@ function ImportPage() {
       const { headers, rows } = await parseExcel(file);
       const result = await validate(entity, headers, rows, active.id);
       const jobId = await createJobAndPersistErrors(entity, mode, active.id, file.name, rows.length, result.validRows, result.errors, user.id);
-      return { valid: result.validRows, invalid: result.invalidRows, errors: result.errors, jobId, total: rows.length };
+      return { valid: result.validRows, invalid: result.invalidRows, errors: result.errors, jobId, total: rows.length, missingHeaders: result.missingHeaders };
     },
     onSuccess: (r) => { setPreview(r); toast.success(`تم تحليل ${r.total} صف`); },
     onError: (e: Error) => toast.error(e.message),
@@ -142,6 +142,14 @@ function ImportPage() {
             <Stat label="صفوف خاطئة" value={preview.invalid.length} tone={preview.invalid.length ? "err" : "ok"} />
             <Stat label="عدد الأخطاء" value={preview.errors.length} tone={preview.errors.length ? "err" : "ok"} />
           </div>
+
+          {preview.missingHeaders.length > 0 && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
+              <p className="font-semibold text-destructive flex items-center gap-2"><AlertCircle className="h-4 w-4" /> القالب غير مطابق — أعمدة مطلوبة مفقودة</p>
+              <p className="mt-1 text-destructive/90">الأعمدة الناقصة: {preview.missingHeaders.join("، ")}</p>
+              <p className="mt-1 text-muted-foreground">نزّل القالب الرسمي وأعد الرفع. زر التأكيد معطّل.</p>
+            </div>
+          )}
 
           {preview.errors.length > 0 && (
             <div className="space-y-1">
