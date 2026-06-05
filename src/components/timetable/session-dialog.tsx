@@ -16,7 +16,15 @@ import { logAudit } from "@/lib/audit";
 import { validateProposed, type Conflict } from "@/lib/conflict-engine/validator";
 import { AlertTriangle, Trash2 } from "lucide-react";
 
+const toMin = (s: string) => { const [h, m] = s.slice(0,5).split(":").map(Number); return h * 60 + m; };
+const addMin = (s: string, add: number) => {
+  const total = toMin(s) + add;
+  const h = Math.floor(total / 60) % 24, m = total % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+};
+
 interface Props {
+
   open: boolean;
   onOpenChange: (b: boolean) => void;
   collegeId: string;
@@ -121,7 +129,11 @@ export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId
     mutationFn: async () => {
       if (!form.course_offering_id || !form.instructor_id) throw new Error("المقرر والمحاضر مطلوبان");
       const res = await runValidate();
-      if (res.length > 0) throw new Error("لا يمكن الحفظ — توجد تعارضات إلزامية");
+      if (res.length > 0) {
+        toast.error(`⚠️ يوجد ${res.length} تعارض إلزامي — لا يمكن الحفظ`);
+        await logAudit({ action: "blocked_conflict", entity: "schedule_sessions", entityId: sessionId ?? null, collegeId, details: { codes: res.map(r => r.code) } });
+        throw new Error("لا يمكن الحفظ — توجد تعارضات إلزامية");
+      }
       const payload = { ...form, college_id: collegeId, schedule_version_id: scheduleVersionId };
       if (sessionId) {
         const { error } = await supabase.from("schedule_sessions").update(payload).eq("id", sessionId);
@@ -261,16 +273,32 @@ export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId
           </div>
           <div>
             <Label>من</Label>
-            <Input type="time" value={form.start_time.slice(0,5)} onChange={(e) => setForm({ ...form, start_time: e.target.value })} />
+            <Input type="time" value={form.start_time.slice(0,5)} onChange={(e) => {
+              const start = e.target.value;
+              // preserve duration when changing start
+              const dur = Math.max(60, (toMin(form.end_time) - toMin(form.start_time)) || 60);
+              setForm({ ...form, start_time: start, end_time: addMin(start, dur) });
+            }} />
           </div>
           <div>
-            <Label>إلى</Label>
-            <Input type="time" value={form.end_time.slice(0,5)} onChange={(e) => setForm({ ...form, end_time: e.target.value })} />
+            <Label>المدة</Label>
+            <Select
+              value={String(Math.max(1, Math.round((toMin(form.end_time) - toMin(form.start_time)) / 60)))}
+              onValueChange={(v) => setForm({ ...form, end_time: addMin(form.start_time, Number(v) * 60) })}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">ساعة واحدة</SelectItem>
+                <SelectItem value="2">ساعتان</SelectItem>
+                <SelectItem value="3">ثلاث ساعات</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <Label>العدد المتوقع</Label>
             <Input type="number" value={form.expected_students} onChange={(e) => setForm({ ...form, expected_students: Number(e.target.value) })} />
           </div>
+
         </div>
 
         {conflicts.length > 0 && (
