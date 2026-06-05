@@ -75,12 +75,18 @@ function InstructorsPage() {
       if (!form.full_name.trim()) throw new Error("الاسم مطلوب");
       const payload = {
         full_name: form.full_name.trim(),
+        full_name_ar: form.full_name_ar.trim() || form.full_name.trim(),
+        full_name_en: form.full_name_en.trim() || null,
+        employee_number: form.employee_number.trim() || null,
+        specialization: form.specialization.trim() || null,
         academic_rank: form.academic_rank || null,
         email: form.email.trim() || null,
         phone: form.phone.trim() || null,
         department_id: form.department_id || null,
         employment_type: form.employment_type,
         max_weekly_hours: Number(form.max_weekly_hours) || 0,
+        administrative_release_hours: Number(form.administrative_release_hours) || 0,
+        notes: form.notes.trim() || null,
         is_active: form.is_active,
         college_id: active.id,
       };
@@ -99,7 +105,7 @@ function InstructorsPage() {
       qc.invalidateQueries({ queryKey: ["instructors", active?.id] });
       setOpen(false); setEditing(null);
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message.includes("duplicate") ? "رقم الموظف مستخدم بالفعل في هذه الكلّية" : e.message),
   });
 
   const del = useMutation({
@@ -118,6 +124,9 @@ function InstructorsPage() {
       full_name: i.full_name, academic_rank: i.academic_rank ?? "", email: i.email ?? "",
       phone: i.phone ?? "", department_id: i.department_id ?? "", employment_type: i.employment_type,
       max_weekly_hours: i.max_weekly_hours, is_active: i.is_active,
+      employee_number: i.employee_number ?? "", full_name_ar: i.full_name_ar ?? "",
+      full_name_en: i.full_name_en ?? "", specialization: i.specialization ?? "",
+      administrative_release_hours: i.administrative_release_hours ?? 0, notes: i.notes ?? "",
     });
     setOpen(true);
   };
