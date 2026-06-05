@@ -23,6 +23,7 @@ import { Route as AuthenticatedSharedCoursesRouteImport } from './routes/_authen
 import { Route as AuthenticatedSessionTypesRouteImport } from './routes/_authenticated/session-types'
 import { Route as AuthenticatedSectionsRouteImport } from './routes/_authenticated/sections'
 import { Route as AuthenticatedSchedulingSettingsRouteImport } from './routes/_authenticated/scheduling-settings'
+import { Route as AuthenticatedScheduleVersionsRouteImport } from './routes/_authenticated/schedule-versions'
 import { Route as AuthenticatedScheduleQualityRouteImport } from './routes/_authenticated/schedule-quality'
 import { Route as AuthenticatedRoomsRouteImport } from './routes/_authenticated/rooms'
 import { Route as AuthenticatedRoomTypesRouteImport } from './routes/_authenticated/room-types'
@@ -44,6 +45,7 @@ import { Route as AuthenticatedCollegesRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedBuildingsRouteImport } from './routes/_authenticated/buildings'
 import { Route as AuthenticatedAvailabilityRouteImport } from './routes/_authenticated/availability'
 import { Route as AuthenticatedAcademicCalendarRouteImport } from './routes/_authenticated/academic-calendar'
+import { Route as AuthenticatedTimetableVersionIdRouteImport } from './routes/_authenticated/timetable.$versionId'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -118,6 +120,12 @@ const AuthenticatedSchedulingSettingsRoute =
   AuthenticatedSchedulingSettingsRouteImport.update({
     id: '/scheduling-settings',
     path: '/scheduling-settings',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedScheduleVersionsRoute =
+  AuthenticatedScheduleVersionsRouteImport.update({
+    id: '/schedule-versions',
+    path: '/schedule-versions',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedScheduleQualityRoute =
@@ -237,6 +245,12 @@ const AuthenticatedAcademicCalendarRoute =
     path: '/academic-calendar',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedTimetableVersionIdRoute =
+  AuthenticatedTimetableVersionIdRouteImport.update({
+    id: '/timetable/$versionId',
+    path: '/timetable/$versionId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -262,6 +276,7 @@ export interface FileRoutesByFullPath {
   '/room-types': typeof AuthenticatedRoomTypesRoute
   '/rooms': typeof AuthenticatedRoomsRoute
   '/schedule-quality': typeof AuthenticatedScheduleQualityRoute
+  '/schedule-versions': typeof AuthenticatedScheduleVersionsRoute
   '/scheduling-settings': typeof AuthenticatedSchedulingSettingsRoute
   '/sections': typeof AuthenticatedSectionsRoute
   '/session-types': typeof AuthenticatedSessionTypesRoute
@@ -273,6 +288,7 @@ export interface FileRoutesByFullPath {
   '/time-slots': typeof AuthenticatedTimeSlotsRoute
   '/universities': typeof AuthenticatedUniversitiesRoute
   '/users': typeof AuthenticatedUsersRoute
+  '/timetable/$versionId': typeof AuthenticatedTimetableVersionIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -298,6 +314,7 @@ export interface FileRoutesByTo {
   '/room-types': typeof AuthenticatedRoomTypesRoute
   '/rooms': typeof AuthenticatedRoomsRoute
   '/schedule-quality': typeof AuthenticatedScheduleQualityRoute
+  '/schedule-versions': typeof AuthenticatedScheduleVersionsRoute
   '/scheduling-settings': typeof AuthenticatedSchedulingSettingsRoute
   '/sections': typeof AuthenticatedSectionsRoute
   '/session-types': typeof AuthenticatedSessionTypesRoute
@@ -309,6 +326,7 @@ export interface FileRoutesByTo {
   '/time-slots': typeof AuthenticatedTimeSlotsRoute
   '/universities': typeof AuthenticatedUniversitiesRoute
   '/users': typeof AuthenticatedUsersRoute
+  '/timetable/$versionId': typeof AuthenticatedTimetableVersionIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -336,6 +354,7 @@ export interface FileRoutesById {
   '/_authenticated/room-types': typeof AuthenticatedRoomTypesRoute
   '/_authenticated/rooms': typeof AuthenticatedRoomsRoute
   '/_authenticated/schedule-quality': typeof AuthenticatedScheduleQualityRoute
+  '/_authenticated/schedule-versions': typeof AuthenticatedScheduleVersionsRoute
   '/_authenticated/scheduling-settings': typeof AuthenticatedSchedulingSettingsRoute
   '/_authenticated/sections': typeof AuthenticatedSectionsRoute
   '/_authenticated/session-types': typeof AuthenticatedSessionTypesRoute
@@ -347,6 +366,7 @@ export interface FileRoutesById {
   '/_authenticated/time-slots': typeof AuthenticatedTimeSlotsRoute
   '/_authenticated/universities': typeof AuthenticatedUniversitiesRoute
   '/_authenticated/users': typeof AuthenticatedUsersRoute
+  '/_authenticated/timetable/$versionId': typeof AuthenticatedTimetableVersionIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -374,6 +394,7 @@ export interface FileRouteTypes {
     | '/room-types'
     | '/rooms'
     | '/schedule-quality'
+    | '/schedule-versions'
     | '/scheduling-settings'
     | '/sections'
     | '/session-types'
@@ -385,6 +406,7 @@ export interface FileRouteTypes {
     | '/time-slots'
     | '/universities'
     | '/users'
+    | '/timetable/$versionId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -410,6 +432,7 @@ export interface FileRouteTypes {
     | '/room-types'
     | '/rooms'
     | '/schedule-quality'
+    | '/schedule-versions'
     | '/scheduling-settings'
     | '/sections'
     | '/session-types'
@@ -421,6 +444,7 @@ export interface FileRouteTypes {
     | '/time-slots'
     | '/universities'
     | '/users'
+    | '/timetable/$versionId'
   id:
     | '__root__'
     | '/'
@@ -447,6 +471,7 @@ export interface FileRouteTypes {
     | '/_authenticated/room-types'
     | '/_authenticated/rooms'
     | '/_authenticated/schedule-quality'
+    | '/_authenticated/schedule-versions'
     | '/_authenticated/scheduling-settings'
     | '/_authenticated/sections'
     | '/_authenticated/session-types'
@@ -458,6 +483,7 @@ export interface FileRouteTypes {
     | '/_authenticated/time-slots'
     | '/_authenticated/universities'
     | '/_authenticated/users'
+    | '/_authenticated/timetable/$versionId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -564,6 +590,13 @@ declare module '@tanstack/react-router' {
       path: '/scheduling-settings'
       fullPath: '/scheduling-settings'
       preLoaderRoute: typeof AuthenticatedSchedulingSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/schedule-versions': {
+      id: '/_authenticated/schedule-versions'
+      path: '/schedule-versions'
+      fullPath: '/schedule-versions'
+      preLoaderRoute: typeof AuthenticatedScheduleVersionsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/schedule-quality': {
@@ -713,6 +746,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAcademicCalendarRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/timetable/$versionId': {
+      id: '/_authenticated/timetable/$versionId'
+      path: '/timetable/$versionId'
+      fullPath: '/timetable/$versionId'
+      preLoaderRoute: typeof AuthenticatedTimetableVersionIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -738,6 +778,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedRoomTypesRoute: typeof AuthenticatedRoomTypesRoute
   AuthenticatedRoomsRoute: typeof AuthenticatedRoomsRoute
   AuthenticatedScheduleQualityRoute: typeof AuthenticatedScheduleQualityRoute
+  AuthenticatedScheduleVersionsRoute: typeof AuthenticatedScheduleVersionsRoute
   AuthenticatedSchedulingSettingsRoute: typeof AuthenticatedSchedulingSettingsRoute
   AuthenticatedSectionsRoute: typeof AuthenticatedSectionsRoute
   AuthenticatedSessionTypesRoute: typeof AuthenticatedSessionTypesRoute
@@ -749,6 +790,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedTimeSlotsRoute: typeof AuthenticatedTimeSlotsRoute
   AuthenticatedUniversitiesRoute: typeof AuthenticatedUniversitiesRoute
   AuthenticatedUsersRoute: typeof AuthenticatedUsersRoute
+  AuthenticatedTimetableVersionIdRoute: typeof AuthenticatedTimetableVersionIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -773,6 +815,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedRoomTypesRoute: AuthenticatedRoomTypesRoute,
   AuthenticatedRoomsRoute: AuthenticatedRoomsRoute,
   AuthenticatedScheduleQualityRoute: AuthenticatedScheduleQualityRoute,
+  AuthenticatedScheduleVersionsRoute: AuthenticatedScheduleVersionsRoute,
   AuthenticatedSchedulingSettingsRoute: AuthenticatedSchedulingSettingsRoute,
   AuthenticatedSectionsRoute: AuthenticatedSectionsRoute,
   AuthenticatedSessionTypesRoute: AuthenticatedSessionTypesRoute,
@@ -784,6 +827,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedTimeSlotsRoute: AuthenticatedTimeSlotsRoute,
   AuthenticatedUniversitiesRoute: AuthenticatedUniversitiesRoute,
   AuthenticatedUsersRoute: AuthenticatedUsersRoute,
+  AuthenticatedTimetableVersionIdRoute: AuthenticatedTimetableVersionIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -797,13 +841,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
