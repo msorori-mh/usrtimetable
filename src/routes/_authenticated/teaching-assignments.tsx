@@ -124,6 +124,7 @@ function AssignmentsPage() {
       course_offering_id: a.course_offering_id, instructor_id: a.instructor_id,
       section_number: a.section_number ?? "", session_type: a.session_type,
       weekly_hours: a.weekly_hours, required_room_type: a.required_room_type ?? "", notes: a.notes ?? "",
+      expected_students: a.expected_students ?? 0,
     });
     setOpen(true);
   };
