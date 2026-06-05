@@ -21,6 +21,7 @@ import {
   Presentation,
   School,
   Settings2,
+  ShieldAlert,
   Share2,
   UserCog,
   UserSquare2,
