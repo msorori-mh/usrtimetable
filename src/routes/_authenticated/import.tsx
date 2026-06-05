@@ -143,6 +143,14 @@ function ImportPage() {
             <Stat label="عدد الأخطاء" value={preview.errors.length} tone={preview.errors.length ? "err" : "ok"} />
           </div>
 
+          {preview.missingHeaders.length > 0 && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
+              <p className="font-semibold text-destructive flex items-center gap-2"><AlertCircle className="h-4 w-4" /> القالب غير مطابق — أعمدة مطلوبة مفقودة</p>
+              <p className="mt-1 text-destructive/90">الأعمدة الناقصة: {preview.missingHeaders.join("، ")}</p>
+              <p className="mt-1 text-muted-foreground">نزّل القالب الرسمي وأعد الرفع. زر التأكيد معطّل.</p>
+            </div>
+          )}
+
           {preview.errors.length > 0 && (
             <div className="space-y-1">
               <h3 className="flex items-center gap-2 font-semibold text-destructive"><AlertCircle className="h-4 w-4" /> تفاصيل الأخطاء (أول 50)</h3>
