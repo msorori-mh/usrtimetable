@@ -297,6 +297,47 @@ export type Database = {
           },
         ]
       }
+      college_constraint_settings: {
+        Row: {
+          college_id: string
+          constraint_type_id: string
+          created_at: string
+          enabled: boolean
+          id: string
+          notes: string | null
+          updated_at: string
+          weight: number
+        }
+        Insert: {
+          college_id: string
+          constraint_type_id: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          weight?: number
+        }
+        Update: {
+          college_id?: string
+          constraint_type_id?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "college_constraint_settings_constraint_type_id_fkey"
+            columns: ["constraint_type_id"]
+            isOneToOne: false
+            referencedRelation: "constraint_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       colleges: {
         Row: {
           code: string | null
@@ -331,6 +372,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      constraint_types: {
+        Row: {
+          code: string
+          constraint_category: string
+          created_at: string
+          default_weight: number
+          description: string | null
+          id: string
+          is_active: boolean
+          is_hard: boolean
+          name_ar: string
+          name_en: string | null
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          constraint_category: string
+          created_at?: string
+          default_weight?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_hard?: boolean
+          name_ar: string
+          name_en?: string | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          constraint_category?: string
+          created_at?: string
+          default_weight?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_hard?: boolean
+          name_ar?: string
+          name_en?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       course_departments: {
         Row: {
