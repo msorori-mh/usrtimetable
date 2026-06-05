@@ -67,6 +67,7 @@ const NAV: NavItem[] = [
   { to: "/scheduling-settings", label: "إعدادات الجدولة", icon: <Settings2 className="h-4 w-4" />, roles: ALL, group: "التهيئة الأكاديمية" },
   { to: "/academic-calendar", label: "التقويم الأكاديمي", icon: <CalendarDays className="h-4 w-4" />, roles: ALL, group: "التهيئة الأكاديمية" },
   { to: "/daily-breaks", label: "الاستراحات اليومية", icon: <Clock className="h-4 w-4" />, roles: ALL, group: "التهيئة الأكاديمية" },
+  { to: "/time-slot-templates", label: "قوالب الفترات (نظام الدراسة)", icon: <Clock className="h-4 w-4" />, roles: ALL, group: "التهيئة الأكاديمية" },
   { to: "/shared-courses", label: "المقررات المشتركة", icon: <Share2 className="h-4 w-4" />, roles: ALL, group: "التهيئة الأكاديمية" },
   { to: "/import-templates", label: "قوالب الاستيراد", icon: <FileSpreadsheet className="h-4 w-4" />, roles: ALL, group: "التهيئة الأكاديمية" },
   { to: "/import", label: "استيراد Excel", icon: <FileSpreadsheet className="h-4 w-4" />, roles: ["super_admin", "college_admin"], group: "استيراد البيانات" },
