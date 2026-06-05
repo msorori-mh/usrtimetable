@@ -17,6 +17,13 @@ import { validateProposed, type Conflict } from "@/lib/conflict-engine/validator
 import { AlertTriangle, Trash2 } from "lucide-react";
 
 interface Props {
+const toMin = (s: string) => { const [h, m] = s.slice(0,5).split(":").map(Number); return h * 60 + m; };
+const addMin = (s: string, add: number) => {
+  const total = toMin(s) + add;
+  const h = Math.floor(total / 60) % 24, m = total % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+};
+
   open: boolean;
   onOpenChange: (b: boolean) => void;
   collegeId: string;
