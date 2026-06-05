@@ -51,7 +51,7 @@ function AvailabilityPage() {
   );
 }
 
-interface IA { id: string; instructor_id: string; day_of_week: number; start_time: string; end_time: string; availability_type: string; notes: string | null }
+interface IA { id: string; instructor_id: string; day_of_week: number; start_time: string; end_time: string; availability_type: string; is_preference: boolean; notes: string | null }
 const AVAIL_TYPES = [{ v: "available", l: "متاح" }, { v: "preferred", l: "مفضّل" }, { v: "unavailable", l: "غير متاح" }];
 
 function InstructorAvailability() {
@@ -59,7 +59,7 @@ function InstructorAvailability() {
   const canManage = useCanManageActiveCollege();
   const qc = useQueryClient();
   const [instructorId, setInstructorId] = useState("");
-  const [form, setForm] = useState({ day_of_week: 0, start_time: "08:00", end_time: "12:00", availability_type: "available", notes: "" });
+  const [form, setForm] = useState({ day_of_week: 0, start_time: "08:00", end_time: "12:00", availability_type: "available", is_preference: false, notes: "" });
 
   const { data: instructors } = useQuery({
     queryKey: ["instr-all", active?.id], enabled: !!active,
@@ -110,7 +110,7 @@ function InstructorAvailability() {
       {instructorId && canManage && (
         <Card className="p-4">
           <p className="mb-3 text-sm font-semibold">إضافة فترة توفّر</p>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
             <div><Label>اليوم</Label>
               <Select value={String(form.day_of_week)} onValueChange={(v) => setForm({ ...form, day_of_week: Number(v) })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -123,6 +123,15 @@ function InstructorAvailability() {
               <Select value={form.availability_type} onValueChange={(v) => setForm({ ...form, availability_type: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>{AVAIL_TYPES.map((a) => <SelectItem key={a.v} value={a.v}>{a.l}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div><Label>النوع</Label>
+              <Select value={form.is_preference ? "pref" : "hard"} onValueChange={(v) => setForm({ ...form, is_preference: v === "pref" })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="hard">إلزامي (Hard)</SelectItem>
+                  <SelectItem value="pref">تفضيل (Soft)</SelectItem>
+                </SelectContent>
               </Select>
             </div>
             <div className="flex items-end"><Button onClick={() => add.mutate()} disabled={add.isPending} className="w-full">إضافة</Button></div>
@@ -138,7 +147,7 @@ function InstructorAvailability() {
                 <li key={r.id} className="flex items-center justify-between p-3">
                   <div>
                     <p className="text-sm font-medium">{DAYS[r.day_of_week]} <span dir="ltr">{r.start_time.slice(0, 5)} → {r.end_time.slice(0, 5)}</span></p>
-                    <p className="text-xs text-muted-foreground">{AVAIL_TYPES.find((a) => a.v === r.availability_type)?.l}</p>
+                    <p className="text-xs text-muted-foreground">{AVAIL_TYPES.find((a) => a.v === r.availability_type)?.l} · {r.is_preference ? "تفضيل (Soft)" : "إلزامي (Hard)"}</p>
                   </div>
                   {canManage && <Button size="sm" variant="ghost" onClick={() => del.mutate(r.id)}><Trash2 className="h-3.5 w-3.5" /></Button>}
                 </li>

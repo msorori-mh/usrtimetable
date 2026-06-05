@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated/users'
 import { Route as AuthenticatedUniversitiesRouteImport } from './routes/_authenticated/universities'
 import { Route as AuthenticatedTimeSlotsRouteImport } from './routes/_authenticated/time-slots'
+import { Route as AuthenticatedTimeSlotTemplatesRouteImport } from './routes/_authenticated/time-slot-templates'
 import { Route as AuthenticatedTermsRouteImport } from './routes/_authenticated/terms'
 import { Route as AuthenticatedTeachingAssignmentsRouteImport } from './routes/_authenticated/teaching-assignments'
 import { Route as AuthenticatedStudyPlansRouteImport } from './routes/_authenticated/study-plans'
@@ -71,6 +72,12 @@ const AuthenticatedTimeSlotsRoute = AuthenticatedTimeSlotsRouteImport.update({
   path: '/time-slots',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedTimeSlotTemplatesRoute =
+  AuthenticatedTimeSlotTemplatesRouteImport.update({
+    id: '/time-slot-templates',
+    path: '/time-slot-templates',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedTermsRoute = AuthenticatedTermsRouteImport.update({
   id: '/terms',
   path: '/terms',
@@ -238,6 +245,7 @@ export interface FileRoutesByFullPath {
   '/study-plans': typeof AuthenticatedStudyPlansRoute
   '/teaching-assignments': typeof AuthenticatedTeachingAssignmentsRoute
   '/terms': typeof AuthenticatedTermsRoute
+  '/time-slot-templates': typeof AuthenticatedTimeSlotTemplatesRoute
   '/time-slots': typeof AuthenticatedTimeSlotsRoute
   '/universities': typeof AuthenticatedUniversitiesRoute
   '/users': typeof AuthenticatedUsersRoute
@@ -270,6 +278,7 @@ export interface FileRoutesByTo {
   '/study-plans': typeof AuthenticatedStudyPlansRoute
   '/teaching-assignments': typeof AuthenticatedTeachingAssignmentsRoute
   '/terms': typeof AuthenticatedTermsRoute
+  '/time-slot-templates': typeof AuthenticatedTimeSlotTemplatesRoute
   '/time-slots': typeof AuthenticatedTimeSlotsRoute
   '/universities': typeof AuthenticatedUniversitiesRoute
   '/users': typeof AuthenticatedUsersRoute
@@ -304,6 +313,7 @@ export interface FileRoutesById {
   '/_authenticated/study-plans': typeof AuthenticatedStudyPlansRoute
   '/_authenticated/teaching-assignments': typeof AuthenticatedTeachingAssignmentsRoute
   '/_authenticated/terms': typeof AuthenticatedTermsRoute
+  '/_authenticated/time-slot-templates': typeof AuthenticatedTimeSlotTemplatesRoute
   '/_authenticated/time-slots': typeof AuthenticatedTimeSlotsRoute
   '/_authenticated/universities': typeof AuthenticatedUniversitiesRoute
   '/_authenticated/users': typeof AuthenticatedUsersRoute
@@ -338,6 +348,7 @@ export interface FileRouteTypes {
     | '/study-plans'
     | '/teaching-assignments'
     | '/terms'
+    | '/time-slot-templates'
     | '/time-slots'
     | '/universities'
     | '/users'
@@ -370,6 +381,7 @@ export interface FileRouteTypes {
     | '/study-plans'
     | '/teaching-assignments'
     | '/terms'
+    | '/time-slot-templates'
     | '/time-slots'
     | '/universities'
     | '/users'
@@ -403,6 +415,7 @@ export interface FileRouteTypes {
     | '/_authenticated/study-plans'
     | '/_authenticated/teaching-assignments'
     | '/_authenticated/terms'
+    | '/_authenticated/time-slot-templates'
     | '/_authenticated/time-slots'
     | '/_authenticated/universities'
     | '/_authenticated/users'
@@ -456,6 +469,13 @@ declare module '@tanstack/react-router' {
       path: '/time-slots'
       fullPath: '/time-slots'
       preLoaderRoute: typeof AuthenticatedTimeSlotsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/time-slot-templates': {
+      id: '/_authenticated/time-slot-templates'
+      path: '/time-slot-templates'
+      fullPath: '/time-slot-templates'
+      preLoaderRoute: typeof AuthenticatedTimeSlotTemplatesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/terms': {
@@ -662,6 +682,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedStudyPlansRoute: typeof AuthenticatedStudyPlansRoute
   AuthenticatedTeachingAssignmentsRoute: typeof AuthenticatedTeachingAssignmentsRoute
   AuthenticatedTermsRoute: typeof AuthenticatedTermsRoute
+  AuthenticatedTimeSlotTemplatesRoute: typeof AuthenticatedTimeSlotTemplatesRoute
   AuthenticatedTimeSlotsRoute: typeof AuthenticatedTimeSlotsRoute
   AuthenticatedUniversitiesRoute: typeof AuthenticatedUniversitiesRoute
   AuthenticatedUsersRoute: typeof AuthenticatedUsersRoute
@@ -693,6 +714,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedStudyPlansRoute: AuthenticatedStudyPlansRoute,
   AuthenticatedTeachingAssignmentsRoute: AuthenticatedTeachingAssignmentsRoute,
   AuthenticatedTermsRoute: AuthenticatedTermsRoute,
+  AuthenticatedTimeSlotTemplatesRoute: AuthenticatedTimeSlotTemplatesRoute,
   AuthenticatedTimeSlotsRoute: AuthenticatedTimeSlotsRoute,
   AuthenticatedUniversitiesRoute: AuthenticatedUniversitiesRoute,
   AuthenticatedUsersRoute: AuthenticatedUsersRoute,
