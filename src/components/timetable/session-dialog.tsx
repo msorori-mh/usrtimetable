@@ -129,7 +129,11 @@ export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId
     mutationFn: async () => {
       if (!form.course_offering_id || !form.instructor_id) throw new Error("المقرر والمحاضر مطلوبان");
       const res = await runValidate();
-      if (res.length > 0) throw new Error("لا يمكن الحفظ — توجد تعارضات إلزامية");
+      if (res.length > 0) {
+        toast.error(`⚠️ يوجد ${res.length} تعارض إلزامي — لا يمكن الحفظ`);
+        await logAudit({ action: "blocked_conflict", entity: "schedule_sessions", entityId: sessionId ?? null, collegeId, details: { codes: res.map(r => r.code) } });
+        throw new Error("لا يمكن الحفظ — توجد تعارضات إلزامية");
+      }
       const payload = { ...form, college_id: collegeId, schedule_version_id: scheduleVersionId };
       if (sessionId) {
         const { error } = await supabase.from("schedule_sessions").update(payload).eq("id", sessionId);
