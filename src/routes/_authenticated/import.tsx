@@ -42,7 +42,7 @@ function ImportPage() {
   const [entity, setEntity] = useState<ImportEntity>("instructors");
   const [mode, setMode] = useState<ImportMode>("insert_only");
   const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<{ valid: ParsedRow[]; invalid: ParsedRow[]; errors: RowError[]; jobId: string | null; total: number } | null>(null);
+  const [preview, setPreview] = useState<{ valid: ParsedRow[]; invalid: ParsedRow[]; errors: RowError[]; jobId: string | null; total: number; missingHeaders: string[] } | null>(null);
 
   const downloadTemplate = async () => {
     try {
