@@ -799,6 +799,7 @@ export type Database = {
           end_time: string
           id: string
           instructor_id: string
+          is_preference: boolean
           notes: string | null
           start_time: string
           updated_at: string
@@ -811,6 +812,7 @@ export type Database = {
           end_time: string
           id?: string
           instructor_id: string
+          is_preference?: boolean
           notes?: string | null
           start_time: string
           updated_at?: string
@@ -823,6 +825,7 @@ export type Database = {
           end_time?: string
           id?: string
           instructor_id?: string
+          is_preference?: boolean
           notes?: string | null
           start_time?: string
           updated_at?: string
@@ -1567,6 +1570,45 @@ export type Database = {
           session_type?: string
           updated_at?: string
           weekly_hours?: number
+        }
+        Relationships: []
+      }
+      time_slot_templates: {
+        Row: {
+          college_id: string
+          created_at: string
+          day_of_week: number
+          end_time: string
+          id: string
+          is_active: boolean
+          slot_duration_minutes: number
+          start_time: string
+          study_system: string
+          updated_at: string
+        }
+        Insert: {
+          college_id: string
+          created_at?: string
+          day_of_week: number
+          end_time: string
+          id?: string
+          is_active?: boolean
+          slot_duration_minutes?: number
+          start_time: string
+          study_system?: string
+          updated_at?: string
+        }
+        Update: {
+          college_id?: string
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          is_active?: boolean
+          slot_duration_minutes?: number
+          start_time?: string
+          study_system?: string
+          updated_at?: string
         }
         Relationships: []
       }
