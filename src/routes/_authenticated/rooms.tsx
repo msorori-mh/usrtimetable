@@ -36,7 +36,7 @@ export const ROOM_TYPES = [
 ];
 
 function emptyForm() {
-  return { code: "", name: "", room_type: "lecture_room", capacity: 30, building: "", floor: "", is_active: true };
+  return { code: "", name: "", room_type: "lecture_room", capacity: 30, building: "", floor: "", is_active: true, notes: "" };
 }
 
 function RoomsPage() {
