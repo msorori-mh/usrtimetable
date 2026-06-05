@@ -39,9 +39,11 @@ function AvailabilityPage() {
         <Tabs defaultValue="instructor">
           <TabsList>
             <TabsTrigger value="instructor">توفّر المحاضرين</TabsTrigger>
+            <TabsTrigger value="room_avail">توفّر القاعات</TabsTrigger>
             <TabsTrigger value="room">عدم توفّر القاعات</TabsTrigger>
           </TabsList>
           <TabsContent value="instructor" className="mt-4"><InstructorAvailability /></TabsContent>
+          <TabsContent value="room_avail" className="mt-4"><RoomAvailability /></TabsContent>
           <TabsContent value="room" className="mt-4"><RoomUnavailability /></TabsContent>
         </Tabs>
       )}
