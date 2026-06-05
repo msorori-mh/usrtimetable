@@ -131,7 +131,7 @@ function DepartmentsPage() {
                 <li key={d.id} className="flex items-center justify-between p-4">
                   <div>
                     <p className="font-semibold">{d.name}</p>
-                    <p className="text-xs text-muted-foreground" dir="ltr">{d.code}</p>
+                    <p className="text-xs text-muted-foreground"><span dir="ltr">{d.code}</span> · {STUDY_SYSTEM_LABELS[d.study_system ?? "regular"]}</p>
                   </div>
                   {canManage && (
                     <div className="flex gap-1">
