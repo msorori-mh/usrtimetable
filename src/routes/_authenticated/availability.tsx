@@ -110,7 +110,7 @@ function InstructorAvailability() {
       {instructorId && canManage && (
         <Card className="p-4">
           <p className="mb-3 text-sm font-semibold">إضافة فترة توفّر</p>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
             <div><Label>اليوم</Label>
               <Select value={String(form.day_of_week)} onValueChange={(v) => setForm({ ...form, day_of_week: Number(v) })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -123,6 +123,15 @@ function InstructorAvailability() {
               <Select value={form.availability_type} onValueChange={(v) => setForm({ ...form, availability_type: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>{AVAIL_TYPES.map((a) => <SelectItem key={a.v} value={a.v}>{a.l}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div><Label>النوع</Label>
+              <Select value={form.is_preference ? "pref" : "hard"} onValueChange={(v) => setForm({ ...form, is_preference: v === "pref" })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="hard">إلزامي (Hard)</SelectItem>
+                  <SelectItem value="pref">تفضيل (Soft)</SelectItem>
+                </SelectContent>
               </Select>
             </div>
             <div className="flex items-end"><Button onClick={() => add.mutate()} disabled={add.isPending} className="w-full">إضافة</Button></div>
