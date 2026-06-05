@@ -88,6 +88,7 @@ function AssignmentsPage() {
         weekly_hours: Number(form.weekly_hours) || 0,
         required_room_type: form.required_room_type || null,
         notes: form.notes.trim() || null,
+        expected_students: Number(form.expected_students) || 0,
       };
       if (editing) {
         const { error } = await supabase.from("teaching_assignments").update(payload).eq("id", editing.id);
