@@ -79,8 +79,8 @@ function DepartmentsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const startEdit = (d: Dept) => { setEditing(d); setForm({ name: d.name, code: d.code }); setOpen(true); };
-  const startCreate = () => { setEditing(null); setForm({ name: "", code: "" }); setOpen(true); };
+  const startEdit = (d: Dept) => { setEditing(d); setForm({ name: d.name, code: d.code, study_system: d.study_system ?? "regular" }); setOpen(true); };
+  const startCreate = () => { setEditing(null); setForm({ name: "", code: "", study_system: "regular" }); setOpen(true); };
 
   return (
     <div className="mx-auto max-w-5xl">
