@@ -29,53 +29,47 @@ interface Lookups {
   sectionGroups?: Map<string, string>; // key: term_id|course_id|group_name → group_id
 }
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 async function loadLookups(entity: ImportEntity, collegeId: string): Promise<Lookups> {
   const lk: Lookups = {};
-  const ensure = async <T,>(p: Promise<{ data: T[] | null }>): Promise<T[]> => ((await p).data ?? []);
+  const fetchAll = async (table: string, cols: string): Promise<any[]> => {
+    const { data } = await (supabase.from(table as never) as any).select(cols).eq("college_id", collegeId);
+    return (data ?? []) as any[];
+  };
 
-  // Foundational lookups
-  if (["instructors"].includes(entity)) {
-    const [it, dp] = await Promise.all([
-      supabase.from("instructor_types").select("id, code").eq("college_id", collegeId),
-      supabase.from("departments").select("id, code").eq("college_id", collegeId),
-    ]);
-    lk.instructorTypes = new Map((it.data ?? []).map((r) => [r.code, r.id]));
-    lk.departments = new Map((dp.data ?? []).map((r) => [r.code, r.id]));
+  if (entity === "instructors") {
+    const [it, dp] = await Promise.all([fetchAll("instructor_types", "id, code"), fetchAll("departments", "id, code")]);
+    lk.instructorTypes = new Map(it.map((r) => [r.code, r.id]));
+    lk.departments = new Map(dp.map((r) => [r.code, r.id]));
   }
-  if (["rooms"].includes(entity)) {
-    const [rt, bd] = await Promise.all([
-      supabase.from("room_types").select("id, code").eq("college_id", collegeId),
-      supabase.from("academic_buildings").select("id, code").eq("college_id", collegeId),
-    ]);
-    lk.roomTypes = new Map((rt.data ?? []).map((r) => [r.code, r.id]));
-    lk.buildings = new Map((bd.data ?? []).map((r) => [r.code, r.id]));
+  if (entity === "rooms") {
+    const [rt, bd] = await Promise.all([fetchAll("room_types", "id, code"), fetchAll("academic_buildings", "id, code")]);
+    lk.roomTypes = new Map(rt.map((r) => [r.code, r.id]));
+    lk.buildings = new Map(bd.map((r) => [r.code, r.id]));
   }
   if (["study_plan_courses", "full_study_plan", "course_offerings", "course_programs"].includes(entity)) {
-    const [dp, pg] = await Promise.all([
-      supabase.from("departments").select("id, code").eq("college_id", collegeId),
-      supabase.from("academic_programs").select("id, code, department_id").eq("college_id", collegeId),
-    ]);
-    lk.departments = new Map((dp.data ?? []).map((r) => [r.code, r.id]));
-    lk.programs = new Map((pg.data ?? []).map((r) => [r.code, { id: r.id, department_id: r.department_id }]));
+    const [dp, pg] = await Promise.all([fetchAll("departments", "id, code"), fetchAll("academic_programs", "id, code, department_id")]);
+    lk.departments = new Map(dp.map((r) => [r.code, r.id]));
+    lk.programs = new Map(pg.map((r) => [r.code, { id: r.id, department_id: r.department_id }]));
   }
   if (["course_offerings", "teaching_assignments", "section_groups"].includes(entity)) {
-    const t = await ensure(supabase.from("academic_terms").select("id, code").eq("college_id", collegeId));
+    const t = await fetchAll("academic_terms", "id, code");
     lk.terms = new Map(t.map((r) => [r.code, r.id]));
   }
   if (["course_offerings", "teaching_assignments", "course_programs", "section_groups"].includes(entity)) {
-    const c = await ensure(supabase.from("courses").select("id, code, department_id").eq("college_id", collegeId));
+    const c = await fetchAll("courses", "id, code, department_id");
     lk.courses = new Map(c.map((r) => [r.code, { id: r.id, department_id: r.department_id }]));
   }
   if (entity === "teaching_assignments") {
-    const ins = await ensure(supabase.from("instructors").select("id, employee_number").eq("college_id", collegeId));
+    const ins = await fetchAll("instructors", "id, employee_number");
     lk.instructors = new Map(ins.filter((r) => r.employee_number).map((r) => [r.employee_number as string, r.id]));
   }
   if (entity === "course_offerings") {
-    const sp = await ensure(supabase.from("study_plans").select("id, code, version, program_id").eq("college_id", collegeId));
+    const sp = await fetchAll("study_plans", "id, code, version, program_id");
     lk.studyPlans = new Map(sp.map((r) => [`${r.program_id}|${r.code}|${r.version}`, r.id]));
-    const pc = await ensure(supabase.from("plan_courses").select("id, study_plan_id, course_id").eq("college_id", collegeId));
+    const pc = await fetchAll("plan_courses", "id, study_plan_id, course_id");
     lk.planCourses = new Map(pc.map((r) => [`${r.study_plan_id}|${r.course_id}`, r.id]));
-    const lv = await ensure(supabase.from("academic_levels").select("id, program_id, level_number").eq("college_id", collegeId));
+    const lv = await fetchAll("academic_levels", "id, program_id, level_number");
     lk.levels = new Map(lv.map((r) => [`${r.program_id}|${r.level_number}`, r.id]));
   }
   return lk;
