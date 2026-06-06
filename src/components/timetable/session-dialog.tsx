@@ -46,6 +46,9 @@ interface FormState {
   end_time: string;
   session_type: string;
   expected_students: number;
+  is_locked: boolean;
+  lock_reason: string | null;
+  source_type: "manual" | "auto_generated" | "cloned";
 }
 
 const empty: FormState = {
@@ -53,6 +56,7 @@ const empty: FormState = {
   room_id: null, section_id: null, section_group_id: null,
   study_system: "regular", day_of_week: 0, start_time: "08:00", end_time: "10:00",
   session_type: "lecture", expected_students: 0,
+  is_locked: false, lock_reason: null, source_type: "manual",
 };
 
 export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId, sessionId, defaults }: Props) {
