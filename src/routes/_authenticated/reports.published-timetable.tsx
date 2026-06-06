@@ -40,7 +40,7 @@ function Page() {
   const { data: depts } = useQuery({ queryKey: ["pt-d", active?.id], enabled: !!active, queryFn: async () => (await supabase.from("departments").select("id, name").eq("college_id", active!.id)).data ?? [] });
   const { data: progs } = useQuery({ queryKey: ["pt-p", active?.id], enabled: !!active, queryFn: async () => (await supabase.from("academic_programs").select("id, name").eq("college_id", active!.id)).data ?? [] });
   const { data: levels } = useQuery({ queryKey: ["pt-l", active?.id], enabled: !!active, queryFn: async () => (await supabase.from("academic_levels").select("id, name").eq("college_id", active!.id)).data ?? [] });
-  const { data: secs } = useQuery({ queryKey: ["pt-s", active?.id], enabled: !!active, queryFn: async () => (await supabase.from("sections").select("id, name").eq("college_id", active!.id)).data ?? [] });
+  const { data: secs } = useQuery({ queryKey: ["pt-s", active?.id], enabled: !!active, queryFn: async () => (await supabase.from("sections").select("id, section_number").eq("college_id", active!.id)).data ?? [] });
   const { data: ins } = useQuery({ queryKey: ["pt-i", active?.id], enabled: !!active, queryFn: async () => (await supabase.from("instructors").select("id, full_name").eq("college_id", active!.id)).data ?? [] });
   const { data: rooms } = useQuery({ queryKey: ["pt-r", active?.id], enabled: !!active, queryFn: async () => (await supabase.from("rooms").select("id, code, name").eq("college_id", active!.id)).data ?? [] });
 
