@@ -70,6 +70,7 @@ function AutoSchedulePage() {
       const result = await runGreedyAutoSchedule({
         collegeId: active.id,
         scheduleVersionId: versionId,
+        mode,
       });
       await logAudit({
         action: "auto_schedule_run",
