@@ -77,6 +77,7 @@ const NAV: NavItem[] = [
   { to: "/auto-schedule", label: "الجدولة التلقائية", icon: <Sparkles className="h-4 w-4" />, roles: ["super_admin", "college_admin"], group: "الجدولة" },
   { to: "/conflict-checks", label: "فحص التعارضات", icon: <ShieldAlert className="h-4 w-4" />, roles: ALL, group: "الجدولة" },
   { to: "/schedule-quality", label: "جودة الجدول", icon: <Gauge className="h-4 w-4" />, roles: ALL, group: "الجدولة" },
+  { to: "/reports", label: "التقارير", icon: <FileBarChart2 className="h-4 w-4" />, roles: ALL, group: "التقارير" },
   { to: "/shared-courses", label: "المقررات المشتركة", icon: <Share2 className="h-4 w-4" />, roles: ALL, group: "التهيئة الأكاديمية" },
   { to: "/import-templates", label: "قوالب الاستيراد", icon: <FileSpreadsheet className="h-4 w-4" />, roles: ALL, group: "التهيئة الأكاديمية" },
   { to: "/import", label: "استيراد Excel", icon: <FileSpreadsheet className="h-4 w-4" />, roles: ["super_admin", "college_admin"], group: "استيراد البيانات" },
