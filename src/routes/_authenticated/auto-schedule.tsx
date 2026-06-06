@@ -183,10 +183,14 @@ function AutoSchedulePage() {
             const sum = latest.summary as {
               algorithm_version?: string;
               ordering_strategy?: string;
+              mode?: AutoRunMode;
               backtracking_attempts?: number;
               max_backtracking_attempts?: number;
               relocated_sessions?: number;
               preserved_existing_sessions?: number;
+              deleted_auto_sessions?: number;
+              skipped_locked_sessions?: number;
+              regenerated_sessions?: number;
               quality_before?: number;
               quality_after?: number;
               improvement_delta?: number;
