@@ -80,7 +80,10 @@ function AutoSchedulePage() {
       return result;
     },
     onSuccess: (r) => {
-      toast.success(`تم وضع ${r.placed} جلسة. غير مجدول: ${r.unplaced.length}.`);
+      const delta = r.improvementDelta;
+      toast.success(
+        `وُضع ${r.placed}/${r.totalRequired} — غير مجدول ${r.unplaced.length} — جودة ${r.qualityScoreBefore}→${r.qualityScoreAfter} (${delta >= 0 ? "+" : ""}${delta}) — أُعيد توطين ${r.relocatedSessions}`,
+      );
       qc.invalidateQueries({ queryKey: ["auto-runs"] });
     },
     onError: (e) => toast.error((e as Error).message),
