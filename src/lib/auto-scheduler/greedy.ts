@@ -92,8 +92,12 @@ interface PrefRow {
 export async function runGreedyAutoSchedule(params: {
   collegeId: string;
   scheduleVersionId: string;
+  mode?: AutoRunMode;
 }): Promise<AutoRunResult> {
   const { collegeId, scheduleVersionId } = params;
+  const mode: AutoRunMode = params.mode ?? "fill_missing";
+  let deletedAutoSessions = 0;
+  let skippedLockedSessions = 0;
   const t0 = performance.now();
   const warnings: string[] = [];
 
