@@ -22,10 +22,19 @@ export interface AutoRunResult {
   warnings: string[];
   hardConflictsAfter: number;
   softViolationsAfter: number;
+  qualityScoreBefore: number;
   qualityScoreAfter: number;
+  improvementDelta: number;
+  preservedExistingSessions: number;
+  relocatedSessions: number;
+  backtrackingAttempts: number;
   durationMs: number;
   totalOfferings: number;
 }
+
+const ALGORITHM_VERSION = "greedy-v2-difficulty-backtrack";
+const ORDERING_STRATEGY = "difficulty:rooms,slots,students,roomtype,duration";
+const MAX_BACKTRACKING_ATTEMPTS = 50;
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const toMin = (s: string) => {
@@ -33,6 +42,7 @@ const toMin = (s: string) => {
   return h * 60 + m;
 };
 const fromMin = (m: number) => `${pad(Math.floor(m / 60))}:${pad(m % 60)}:00`;
+const t = (s: string) => (s.length === 5 ? `${s}:00` : s);
 
 interface CandidateSlot {
   day: number;
@@ -41,18 +51,38 @@ interface CandidateSlot {
 }
 
 interface SessionUnit {
+  ta_id: string;
+  course_offering_id: string;
+  instructor_id: string;
+  section_id: string | null;
+  course_id: string;
+  expected_students: number;
+  study_system: StudySystem;
   session_type: "lecture" | "lab";
   duration_min: number;
   required_room_type: string | null;
   unit_index: number;
+  // computed difficulty inputs
+  candidate_room_count: number;
+  candidate_slot_count: number;
+}
+
+interface PrefRow {
+  instructor_id: string;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  availability_type: string | null;
 }
 
 /**
- * Greedy auto-placer (V1.1 — multi-session expansion).
- * - Expands each teaching_assignment into N session units derived from plan_courses.
- * - Lecture units use lectures_per_week × lecture_session_duration and required_room_type_for_lecture.
- * - Lab units use labs_per_week × lab_session_duration and required_room_type_for_lab.
- * - Falls back to a single session when no plan pattern is found (logged as a warning).
+ * Greedy auto-placer V2 (Phase 8B).
+ * Improvements over V1.1:
+ *  - Difficulty-based ordering of session units (hardest first).
+ *  - Candidate scoring (capacity match + instructor preferences).
+ *  - Limited backtracking: relocate previously placed (this-run) sessions to free slots.
+ *  - Preserve all pre-existing sessions; never delete or overwrite them.
+ *  - Run summary extended with algorithm_version, ordering_strategy, quality_before/after, etc.
  */
 export async function runGreedyAutoSchedule(params: {
   collegeId: string;
@@ -62,12 +92,15 @@ export async function runGreedyAutoSchedule(params: {
   const t0 = performance.now();
   const warnings: string[] = [];
 
-  // 1. Scheduling settings (fallback windows)
+  // 1. Quality BEFORE
+  const { result: qBefore } = await scoreScheduleVersion({
+    collegeId, scheduleVersionId, persist: false,
+  });
+
+  // 2. Scheduling settings (fallback windows)
   const { data: settingsRow } = await supabase
     .from("scheduling_settings")
-    .select("*")
-    .eq("college_id", collegeId)
-    .maybeSingle();
+    .select("*").eq("college_id", collegeId).maybeSingle();
   const workingDays: number[] = settingsRow?.working_days ?? [6, 0, 1, 2, 3, 4];
   const dayStart = (settingsRow?.day_start_time ?? "08:00:00") as string;
   const dayEnd = (settingsRow?.day_end_time ?? "14:00:00") as string;
@@ -75,41 +108,39 @@ export async function runGreedyAutoSchedule(params: {
   const minH = Number(settingsRow?.min_session_hours ?? 1);
   const maxH = Number(settingsRow?.max_session_hours ?? 4);
 
-  // 2. Time-slot templates
+  // 3. Time-slot templates
   const { data: templates } = await supabase
     .from("time_slot_templates")
     .select("study_system, day_of_week, start_time, end_time")
-    .eq("college_id", collegeId)
-    .eq("is_active", true);
+    .eq("college_id", collegeId).eq("is_active", true);
 
-  // 3. Existing sessions for this version (to know what's already placed per TA + type)
+  // 4. Existing sessions — preserved (we will not touch these)
   const { data: existingSessions } = await supabase
     .from("schedule_sessions")
-    .select("teaching_assignment_id, session_type")
+    .select("id, teaching_assignment_id, session_type")
     .eq("college_id", collegeId)
     .eq("schedule_version_id", scheduleVersionId);
-  const existingCount = new Map<string, number>(); // key = `${ta}|${type}`
+  const preservedExistingSessions = (existingSessions ?? []).length;
+  const preservedIds = new Set((existingSessions ?? []).map((s) => s.id));
+  const existingCount = new Map<string, number>();
   for (const s of existingSessions ?? []) {
     if (!s.teaching_assignment_id) continue;
     const k = `${s.teaching_assignment_id}|${s.session_type}`;
     existingCount.set(k, (existingCount.get(k) ?? 0) + 1);
   }
 
-  // 4. Offerings + TAs + courses/departments/plan_courses
+  // 5. Offerings / TAs / courses / plan_courses / depts
   const { data: offerings } = await supabase
     .from("course_offerings")
     .select("id, course_id, expected_students, college_id, study_plan_id, plan_course_id")
-    .eq("college_id", collegeId)
-    .eq("is_active", true);
+    .eq("college_id", collegeId).eq("is_active", true);
   const totalOfferings = (offerings ?? []).length;
   const offeringIds = (offerings ?? []).map((o) => o.id);
 
   const { data: tas } = offeringIds.length
     ? await supabase
         .from("teaching_assignments")
-        .select(
-          "id, course_offering_id, instructor_id, session_type, weekly_hours, required_room_type, expected_students, section_id",
-        )
+        .select("id, course_offering_id, instructor_id, session_type, weekly_hours, required_room_type, expected_students, section_id")
         .in("course_offering_id", offeringIds)
     : { data: [] };
 
@@ -117,9 +148,7 @@ export async function runGreedyAutoSchedule(params: {
   const { data: courses } = courseIds.length
     ? await supabase.from("courses").select("id, department_id").in("id", courseIds)
     : { data: [] };
-  const depIds = Array.from(
-    new Set((courses ?? []).map((c) => c.department_id).filter(Boolean) as string[]),
-  );
+  const depIds = Array.from(new Set((courses ?? []).map((c) => c.department_id).filter(Boolean) as string[]));
   const { data: deps } = depIds.length
     ? await supabase.from("departments").select("id, study_system").in("id", depIds)
     : { data: [] };
@@ -127,67 +156,64 @@ export async function runGreedyAutoSchedule(params: {
   const courseDep = new Map((courses ?? []).map((c) => [c.id, c.department_id as string | null]));
   const offMap = new Map((offerings ?? []).map((o) => [o.id, o]));
 
-  // Plan-courses lookup: prefer offering.plan_course_id, else (study_plan_id, course_id)
-  const planCourseIds = Array.from(
-    new Set((offerings ?? []).map((o) => o.plan_course_id).filter(Boolean) as string[]),
-  );
+  const planCourseIds = Array.from(new Set((offerings ?? []).map((o) => o.plan_course_id).filter(Boolean) as string[]));
   const { data: pcsById } = planCourseIds.length
-    ? await supabase
-        .from("plan_courses")
-        .select(
-          "id, study_plan_id, course_id, lectures_per_week, lecture_session_duration, labs_per_week, lab_session_duration, required_room_type_for_lecture, required_room_type_for_lab",
-        )
-        .in("id", planCourseIds)
+    ? await supabase.from("plan_courses").select(
+        "id, study_plan_id, course_id, lectures_per_week, lecture_session_duration, labs_per_week, lab_session_duration, required_room_type_for_lecture, required_room_type_for_lab",
+      ).in("id", planCourseIds)
     : { data: [] };
   const pcById = new Map((pcsById ?? []).map((p) => [p.id, p]));
 
-  // Also pull plan_courses by (study_plan_id, course_id) as backup
-  const planIds = Array.from(
-    new Set((offerings ?? []).map((o) => o.study_plan_id).filter(Boolean) as string[]),
-  );
+  const planIds = Array.from(new Set((offerings ?? []).map((o) => o.study_plan_id).filter(Boolean) as string[]));
   const { data: pcsByPlan } = planIds.length
-    ? await supabase
-        .from("plan_courses")
-        .select(
-          "id, study_plan_id, course_id, lectures_per_week, lecture_session_duration, labs_per_week, lab_session_duration, required_room_type_for_lecture, required_room_type_for_lab",
-        )
-        .in("study_plan_id", planIds)
+    ? await supabase.from("plan_courses").select(
+        "id, study_plan_id, course_id, lectures_per_week, lecture_session_duration, labs_per_week, lab_session_duration, required_room_type_for_lecture, required_room_type_for_lab",
+      ).in("study_plan_id", planIds)
     : { data: [] };
-  const pcByPlanCourse = new Map(
-    (pcsByPlan ?? []).map((p) => [`${p.study_plan_id}|${p.course_id}`, p]),
-  );
+  const pcByPlanCourse = new Map((pcsByPlan ?? []).map((p) => [`${p.study_plan_id}|${p.course_id}`, p]));
 
-  // rooms
+  // 6. Rooms
   const { data: rooms } = await supabase
-    .from("rooms")
-    .select("id, capacity, room_type")
-    .eq("college_id", collegeId);
+    .from("rooms").select("id, capacity, room_type").eq("college_id", collegeId);
+  const allRooms = rooms ?? [];
 
-  const unplaced: UnplacedItem[] = [];
-  let placed = 0;
-  let totalRequired = 0;
-  const byType: Record<string, { required: number; placed: number; unplaced: number }> = {};
-  const bump = (type: string, field: "required" | "placed" | "unplaced") => {
-    if (!byType[type]) byType[type] = { required: 0, placed: 0, unplaced: 0 };
-    byType[type][field]++;
-  };
+  // 7. Instructor preferences (soft) — for candidate scoring
+  const instructorIds = Array.from(new Set((tas ?? []).map((ta) => ta.instructor_id)));
+  const { data: prefData } = instructorIds.length
+    ? await supabase
+        .from("instructor_availability")
+        .select("instructor_id, day_of_week, start_time, end_time, availability_type, is_preference")
+        .in("instructor_id", instructorIds)
+        .eq("is_preference", true)
+    : { data: [] };
+  const prefsByInstr = new Map<string, PrefRow[]>();
+  for (const p of (prefData ?? []) as PrefRow[]) {
+    const arr = prefsByInstr.get(p.instructor_id) ?? [];
+    arr.push(p);
+    prefsByInstr.set(p.instructor_id, arr);
+  }
 
+  // Helpers
   const clampDuration = (h: number): number => {
     const hh = Math.min(maxH, Math.max(minH, h > 0 ? h : minH));
     return Math.round(hh * 60);
   };
+  const isLecLike = (st: string | null | undefined) =>
+    !st || ["lecture", "lec", "نظري", "محاضرة"].includes(st);
+  const isLabLike = (st: string | null | undefined) =>
+    !!st && ["lab", "practical", "عملي", "مختبر"].includes(st);
 
   const buildCandidates = (system: StudySystem, durationMin: number): CandidateSlot[] => {
     const out: CandidateSlot[] = [];
     const tpls = (templates ?? []).filter(
-      (t) => t.study_system === system || t.study_system === "both" || system === "both",
+      (tp) => tp.study_system === system || tp.study_system === "both" || system === "both",
     );
     if (tpls.length > 0) {
-      for (const t of tpls) {
-        const ws = toMin(t.start_time);
-        const we = toMin(t.end_time);
+      for (const tp of tpls) {
+        const ws = toMin(tp.start_time);
+        const we = toMin(tp.end_time);
         for (let s = ws; s + durationMin <= we; s += slotMin) {
-          out.push({ day: t.day_of_week, start: fromMin(s), end: fromMin(s + durationMin) });
+          out.push({ day: tp.day_of_week, start: fromMin(s), end: fromMin(s + durationMin) });
         }
       }
     } else {
@@ -203,94 +229,124 @@ export async function runGreedyAutoSchedule(params: {
     return out;
   };
 
-  const isLecLike = (st: string | null | undefined) =>
-    !st || ["lecture", "lec", "نظري", "محاضرة"].includes(st);
-  const isLabLike = (st: string | null | undefined) =>
-    !!st && ["lab", "practical", "عملي", "مختبر"].includes(st);
+  const roomPoolFor = (requiredType: string | null, expected: number) => {
+    const filtered = allRooms
+      .filter((r) => (requiredType ? r.room_type === requiredType : true))
+      .filter((r) => (expected > 0 ? r.capacity >= expected : true))
+      .sort((a, b) => a.capacity - b.capacity);
+    if (filtered.length > 0) return filtered;
+    return allRooms
+      .filter((r) => (expected > 0 ? r.capacity >= expected : true))
+      .sort((a, b) => a.capacity - b.capacity);
+  };
 
-  // Build session units for a TA from plan pattern (or fallback)
+  // Score a (slot, room) candidate. Higher is better.
+  const scoreCandidate = (
+    unit: SessionUnit,
+    slot: CandidateSlot,
+    room: { id: string; capacity: number; room_type: string | null },
+  ): number => {
+    let score = 0;
+    // Capacity fit: prefer smallest sufficient room (penalize waste)
+    if (unit.expected_students > 0) {
+      const waste = Math.max(0, room.capacity - unit.expected_students);
+      score -= waste * 0.05;
+    }
+    // Room type match exact
+    if (unit.required_room_type && room.room_type === unit.required_room_type) score += 2;
+    // Instructor preferences
+    const prefs = (prefsByInstr.get(unit.instructor_id) ?? []).filter(
+      (p) => p.day_of_week === slot.day,
+    );
+    if (prefs.length > 0) {
+      const wanted = prefs.filter((p) => p.availability_type !== "unavailable");
+      const blocked = prefs.filter((p) => p.availability_type === "unavailable");
+      const fits = wanted.length === 0 ||
+        wanted.some((w) => t(slot.start) >= t(w.start_time) && t(slot.end) <= t(w.end_time));
+      const hitsBlocked = blocked.some(
+        (w) => t(slot.start) < t(w.end_time) && t(w.start_time) < t(slot.end),
+      );
+      if (fits && !hitsBlocked) score += 5;
+      if (hitsBlocked) score -= 10;
+      if (!fits) score -= 3;
+    }
+    // Prefer mornings (small tie-break)
+    score -= toMin(slot.start) * 0.0005;
+    return score;
+  };
+
+  // 8. Build units for every TA
   const buildUnits = (ta: NonNullable<typeof tas>[number]): SessionUnit[] => {
     const off = offMap.get(ta.course_offering_id);
     if (!off) return [];
-    let pc =
+    const sys = depSystem.get(courseDep.get(off.course_id) ?? "") ?? "regular";
+    const expected = ta.expected_students || off.expected_students || 0;
+
+    const pc =
       (off.plan_course_id ? pcById.get(off.plan_course_id) : undefined) ??
       (off.study_plan_id ? pcByPlanCourse.get(`${off.study_plan_id}|${off.course_id}`) : undefined);
 
-    const units: SessionUnit[] = [];
+    const out: SessionUnit[] = [];
     const taType = (ta.session_type ?? "lecture").toLowerCase();
+    const mkUnit = (
+      session_type: "lecture" | "lab",
+      duration_min: number,
+      required_room_type: string | null,
+      unit_index: number,
+    ): SessionUnit => ({
+      ta_id: ta.id,
+      course_offering_id: ta.course_offering_id,
+      instructor_id: ta.instructor_id,
+      section_id: ta.section_id ?? null,
+      course_id: off.course_id,
+      expected_students: expected,
+      study_system: sys,
+      session_type, duration_min, required_room_type, unit_index,
+      candidate_room_count: 0, candidate_slot_count: 0,
+    });
 
     if (!pc) {
-      // Fallback: single session from weekly_hours, using TA's session_type + required_room_type
-      warnings.push(
-        `no plan_courses pattern for offering ${off.id} — fallback single session for TA ${ta.id}`,
-      );
-      units.push({
-        session_type: isLabLike(taType) ? "lab" : "lecture",
-        duration_min: clampDuration(Number(ta.weekly_hours ?? 0)),
-        required_room_type: ta.required_room_type ?? null,
-        unit_index: 1,
-      });
-      return units;
+      warnings.push(`no plan_courses pattern for offering ${off.id} — fallback single session for TA ${ta.id}`);
+      out.push(mkUnit(
+        isLabLike(taType) ? "lab" : "lecture",
+        clampDuration(Number(ta.weekly_hours ?? 0)),
+        ta.required_room_type ?? null, 1,
+      ));
+      return out;
     }
-
     const wantLec = isLecLike(taType) || taType === "both" || taType === "mixed";
     const wantLab = isLabLike(taType) || taType === "both" || taType === "mixed";
-
     if (wantLec) {
       const n = Number(pc.lectures_per_week ?? 0);
       const dh = Number(pc.lecture_session_duration ?? 0);
       for (let i = 1; i <= n; i++) {
-        units.push({
-          session_type: "lecture",
-          duration_min: clampDuration(dh),
-          required_room_type:
-            pc.required_room_type_for_lecture ?? ta.required_room_type ?? null,
-          unit_index: i,
-        });
+        out.push(mkUnit("lecture", clampDuration(dh),
+          pc.required_room_type_for_lecture ?? ta.required_room_type ?? null, i));
       }
     }
     if (wantLab) {
       const n = Number(pc.labs_per_week ?? 0);
       const dh = Number(pc.lab_session_duration ?? 0);
       for (let i = 1; i <= n; i++) {
-        units.push({
-          session_type: "lab",
-          duration_min: clampDuration(dh),
-          required_room_type:
-            pc.required_room_type_for_lab ?? ta.required_room_type ?? null,
-          unit_index: i,
-        });
+        out.push(mkUnit("lab", clampDuration(dh),
+          pc.required_room_type_for_lab ?? ta.required_room_type ?? null, i));
       }
     }
-
-    if (units.length === 0) {
-      // Pattern existed but had zeros — fallback to weekly_hours single session
-      warnings.push(
-        `plan_courses pattern has zero sessions for offering ${off.id} — fallback single session`,
-      );
-      units.push({
-        session_type: isLabLike(taType) ? "lab" : "lecture",
-        duration_min: clampDuration(Number(ta.weekly_hours ?? 0)),
-        required_room_type: ta.required_room_type ?? null,
-        unit_index: 1,
-      });
+    if (out.length === 0) {
+      warnings.push(`plan_courses pattern has zero sessions for offering ${off.id} — fallback`);
+      out.push(mkUnit(
+        isLabLike(taType) ? "lab" : "lecture",
+        clampDuration(Number(ta.weekly_hours ?? 0)),
+        ta.required_room_type ?? null, 1,
+      ));
     }
-    return units;
+    return out;
   };
 
-  const sortedTAs = [...(tas ?? [])].sort((a, b) =>
-    (a.course_offering_id + a.id).localeCompare(b.course_offering_id + b.id),
-  );
-
-  for (const ta of sortedTAs) {
-    const off = offMap.get(ta.course_offering_id);
-    if (!off) continue;
-    const sys = depSystem.get(courseDep.get(off.course_id) ?? "") ?? "regular";
-    const expected = ta.expected_students || off.expected_students || 0;
+  // Build the full unit pool, subtract already-placed per (ta, session_type)
+  const allUnits: SessionUnit[] = [];
+  for (const ta of tas ?? []) {
     const units = buildUnits(ta);
-
-    // Subtract already-placed sessions per type for this TA
-    const remaining: SessionUnit[] = [];
     const placedPerType: Record<string, number> = {};
     for (const u of units) {
       const already = existingCount.get(`${ta.id}|${u.session_type}`) ?? 0;
@@ -298,108 +354,218 @@ export async function runGreedyAutoSchedule(params: {
       if (doneSoFar < already) {
         placedPerType[u.session_type] = doneSoFar + 1;
       } else {
-        remaining.push(u);
-      }
-    }
-
-    for (const unit of remaining) {
-      totalRequired++;
-      bump(unit.session_type, "required");
-
-      const candidates = buildCandidates(sys, unit.duration_min);
-      const candidateRooms = [...(rooms ?? [])]
-        .filter((r) => (unit.required_room_type ? r.room_type === unit.required_room_type : true))
-        .filter((r) => (expected > 0 ? r.capacity >= expected : true))
-        .sort((a, b) => a.capacity - b.capacity);
-      const roomPool =
-        candidateRooms.length > 0
-          ? candidateRooms
-          : [...(rooms ?? [])]
-              .filter((r) => (expected > 0 ? r.capacity >= expected : true))
-              .sort((a, b) => a.capacity - b.capacity);
-
-      let placedThis = false;
-      let lastReason = unit.required_room_type
-        ? `لا تتوفر قاعة من النوع المطلوب (${unit.required_room_type}) أو فترة زمنية مناسبة`
-        : "لا تتوفر فترة زمنية أو قاعة مناسبة";
-
-      if (roomPool.length === 0) {
-        lastReason = "لا توجد قاعات متاحة في الكلية";
-      }
-
-      outer: for (const slot of candidates) {
-        for (const room of roomPool) {
-          const proposed: ProposedSession = {
-            course_offering_id: ta.course_offering_id,
-            teaching_assignment_id: ta.id,
-            instructor_id: ta.instructor_id,
-            room_id: room.id,
-            section_id: ta.section_id ?? null,
-            study_system: sys,
-            day_of_week: slot.day,
-            start_time: slot.start,
-            end_time: slot.end,
-            session_type: unit.session_type,
-            expected_students: expected,
-          };
-          const conflicts = await validateProposed({
-            collegeId,
-            scheduleVersionId,
-            sessions: [proposed],
-          });
-          if (conflicts.length === 0) {
-            const { error: ie } = await supabase.from("schedule_sessions").insert({
-              college_id: collegeId,
-              schedule_version_id: scheduleVersionId,
-              course_offering_id: proposed.course_offering_id,
-              teaching_assignment_id: proposed.teaching_assignment_id,
-              instructor_id: proposed.instructor_id,
-              room_id: proposed.room_id,
-              section_id: proposed.section_id,
-              study_system: proposed.study_system,
-              day_of_week: proposed.day_of_week,
-              start_time: proposed.start_time,
-              end_time: proposed.end_time,
-              session_type: proposed.session_type ?? "lecture",
-              expected_students: proposed.expected_students ?? 0,
-            });
-            if (!ie) {
-              placed++;
-              bump(unit.session_type, "placed");
-              placedThis = true;
-              break outer;
-            }
-            lastReason = ie.message;
-          } else {
-            lastReason = conflicts[0].message_ar;
-          }
-        }
-      }
-      if (!placedThis) {
-        bump(unit.session_type, "unplaced");
-        unplaced.push({
-          course_offering_id: ta.course_offering_id,
-          teaching_assignment_id: ta.id,
-          instructor_id: ta.instructor_id,
-          course_id: off.course_id,
-          session_type: unit.session_type,
-          duration_minutes: unit.duration_min,
-          unit_index: unit.unit_index,
-          reason: lastReason,
-        });
+        allUnits.push(u);
       }
     }
   }
 
-  // Final score
-  const { result } = await scoreScheduleVersion({
-    collegeId,
-    scheduleVersionId,
-    persist: false,
+  // 9. Difficulty ordering — annotate candidate counts then sort
+  for (const u of allUnits) {
+    u.candidate_room_count = roomPoolFor(u.required_room_type, u.expected_students).length;
+    u.candidate_slot_count = buildCandidates(u.study_system, u.duration_min).length;
+  }
+  // Hardest first: fewer rooms, fewer slots, larger students, stricter type, longer duration
+  allUnits.sort((a, b) => {
+    if (a.candidate_room_count !== b.candidate_room_count)
+      return a.candidate_room_count - b.candidate_room_count;
+    if (a.candidate_slot_count !== b.candidate_slot_count)
+      return a.candidate_slot_count - b.candidate_slot_count;
+    if (a.expected_students !== b.expected_students)
+      return b.expected_students - a.expected_students;
+    const rt = (a.required_room_type ? 1 : 0) - (b.required_room_type ? 1 : 0);
+    if (rt !== 0) return -rt;
+    if (a.duration_min !== b.duration_min) return b.duration_min - a.duration_min;
+    return 0;
+  });
+
+  // 10. Place units (with limited backtracking)
+  const unplaced: UnplacedItem[] = [];
+  let placed = 0;
+  let totalRequired = allUnits.length;
+  const byType: Record<string, { required: number; placed: number; unplaced: number }> = {};
+  const bump = (type: string, field: "required" | "placed" | "unplaced") => {
+    if (!byType[type]) byType[type] = { required: 0, placed: 0, unplaced: 0 };
+    byType[type][field]++;
+  };
+  for (const u of allUnits) bump(u.session_type, "required");
+
+  // Track which sessions were placed by THIS run (relocatable)
+  const placedThisRun = new Map<string, SessionUnit>();
+  let backtrackingAttempts = 0;
+  let relocatedSessions = 0;
+
+  // Helper: try to insert proposed session; returns id on success, null on failure
+  const insertProposed = async (proposed: ProposedSession): Promise<string | null> => {
+    const { data, error } = await supabase.from("schedule_sessions").insert({
+      college_id: collegeId,
+      schedule_version_id: scheduleVersionId,
+      course_offering_id: proposed.course_offering_id,
+      teaching_assignment_id: proposed.teaching_assignment_id,
+      instructor_id: proposed.instructor_id,
+      room_id: proposed.room_id,
+      section_id: proposed.section_id,
+      study_system: proposed.study_system,
+      day_of_week: proposed.day_of_week,
+      start_time: proposed.start_time,
+      end_time: proposed.end_time,
+      session_type: proposed.session_type ?? "lecture",
+      expected_students: proposed.expected_students ?? 0,
+    }).select("id").single();
+    if (error || !data) return null;
+    return data.id;
+  };
+
+  // Build & rank candidate (slot, room) tuples for a unit
+  const buildRankedCandidates = (unit: SessionUnit) => {
+    const slots = buildCandidates(unit.study_system, unit.duration_min);
+    const roomPool = roomPoolFor(unit.required_room_type, unit.expected_students);
+    const tuples: Array<{
+      slot: CandidateSlot;
+      room: { id: string; capacity: number; room_type: string | null };
+      score: number;
+    }> = [];
+    for (const slot of slots) {
+      for (const room of roomPool) {
+        tuples.push({ slot, room, score: scoreCandidate(unit, slot, room) });
+      }
+    }
+    tuples.sort((a, b) => b.score - a.score);
+    return tuples;
+  };
+
+  // Try place a single unit. Returns true if placed.
+  const tryPlace = async (unit: SessionUnit, allowBacktrack: boolean): Promise<{ ok: boolean; reason: string }> => {
+    const candidates = buildRankedCandidates(unit);
+    let lastReason = unit.required_room_type
+      ? `لا تتوفر قاعة من النوع المطلوب (${unit.required_room_type}) أو فترة زمنية مناسبة`
+      : "لا تتوفر فترة زمنية أو قاعة مناسبة";
+    if (candidates.length === 0) lastReason = "لا توجد قاعات أو فترات متاحة في الكلية";
+
+    // Pass 1: try without backtracking
+    for (const c of candidates) {
+      const proposed: ProposedSession = {
+        course_offering_id: unit.course_offering_id,
+        teaching_assignment_id: unit.ta_id,
+        instructor_id: unit.instructor_id,
+        room_id: c.room.id,
+        section_id: unit.section_id,
+        study_system: unit.study_system,
+        day_of_week: c.slot.day,
+        start_time: c.slot.start,
+        end_time: c.slot.end,
+        session_type: unit.session_type,
+        expected_students: unit.expected_students,
+      };
+      const conflicts = await validateProposed({ collegeId, scheduleVersionId, sessions: [proposed] });
+      if (conflicts.length === 0) {
+        const id = await insertProposed(proposed);
+        if (id) {
+          placedThisRun.set(id, unit);
+          return { ok: true, reason: "" };
+        }
+        lastReason = "insert failed";
+      } else {
+        lastReason = conflicts[0].message_ar;
+      }
+    }
+
+    if (!allowBacktrack) return { ok: false, reason: lastReason };
+
+    // Pass 2: limited backtracking — try to relocate ONE this-run session blocking each candidate
+    for (const c of candidates) {
+      if (backtrackingAttempts >= MAX_BACKTRACKING_ATTEMPTS) break;
+      const proposed: ProposedSession = {
+        course_offering_id: unit.course_offering_id,
+        teaching_assignment_id: unit.ta_id,
+        instructor_id: unit.instructor_id,
+        room_id: c.room.id,
+        section_id: unit.section_id,
+        study_system: unit.study_system,
+        day_of_week: c.slot.day,
+        start_time: c.slot.start,
+        end_time: c.slot.end,
+        session_type: unit.session_type,
+        expected_students: unit.expected_students,
+      };
+      // Identify candidate blockers among this-run placed sessions
+      for (const [blockerId, blockerUnit] of placedThisRun) {
+        if (preservedIds.has(blockerId)) continue; // safety
+        if (backtrackingAttempts >= MAX_BACKTRACKING_ATTEMPTS) break;
+        // Test: would removing this blocker free the candidate?
+        const conflicts = await validateProposed({
+          collegeId, scheduleVersionId, sessions: [proposed],
+          excludeExistingSessionIds: [blockerId],
+        });
+        if (conflicts.length !== 0) continue;
+        backtrackingAttempts++;
+        // Delete the blocker
+        const { error: de } = await supabase
+          .from("schedule_sessions").delete().eq("id", blockerId);
+        if (de) continue;
+        placedThisRun.delete(blockerId);
+        // Insert the new unit in the freed slot
+        const newId = await insertProposed(proposed);
+        if (!newId) {
+          // restore — best effort by re-running placement of blocker later
+          warnings.push(`backtrack insert failed; blocker ${blockerId.slice(0,8)} lost`);
+          return { ok: false, reason: "backtrack insert failed" };
+        }
+        placedThisRun.set(newId, unit);
+        relocatedSessions++;
+        // Try to re-place the displaced blocker unit (no further backtracking to avoid cascades)
+        const re = await tryPlace(blockerUnit, false);
+        if (!re.ok) {
+          // Displaced blocker couldn't be re-placed; record it as unplaced and continue.
+          bump(blockerUnit.session_type, "unplaced");
+          unplaced.push({
+            course_offering_id: blockerUnit.course_offering_id,
+            teaching_assignment_id: blockerUnit.ta_id,
+            instructor_id: blockerUnit.instructor_id,
+            course_id: blockerUnit.course_id,
+            session_type: blockerUnit.session_type,
+            duration_minutes: blockerUnit.duration_min,
+            unit_index: blockerUnit.unit_index,
+            reason: `أُزيلت أثناء التراجع المحدود ولم تُعد جدولتها: ${re.reason}`,
+          });
+          // Decrement placed since we earlier counted it
+          placed -= 1;
+          if (byType[blockerUnit.session_type]) byType[blockerUnit.session_type].placed -= 1;
+        }
+        return { ok: true, reason: "" };
+      }
+    }
+    return { ok: false, reason: lastReason };
+  };
+
+  for (const unit of allUnits) {
+    const res = await tryPlace(unit, true);
+    if (res.ok) {
+      placed++;
+      bump(unit.session_type, "placed");
+    } else {
+      bump(unit.session_type, "unplaced");
+      unplaced.push({
+        course_offering_id: unit.course_offering_id,
+        teaching_assignment_id: unit.ta_id,
+        instructor_id: unit.instructor_id,
+        course_id: unit.course_id,
+        session_type: unit.session_type,
+        duration_minutes: unit.duration_min,
+        unit_index: unit.unit_index,
+        reason: res.reason,
+      });
+    }
+  }
+
+  // 11. Quality AFTER
+  const { result: qAfter } = await scoreScheduleVersion({
+    collegeId, scheduleVersionId, persist: false,
   });
 
   const durationMs = Math.round(performance.now() - t0);
   const { data: userData } = await supabase.auth.getUser();
+  const improvementDelta = (qAfter.total_score ?? 0) - (qBefore.total_score ?? 0);
+
   const { data: row, error } = await supabase
     .from("auto_schedule_runs")
     .insert({
@@ -410,21 +576,29 @@ export async function runGreedyAutoSchedule(params: {
       total_offerings: totalOfferings,
       placed_sessions: placed,
       unplaced_sessions: unplaced.length,
-      hard_conflicts_after: result.hard_conflicts_count,
-      soft_violations_after: result.soft_conflicts_count,
-      quality_score_after: result.total_score,
+      hard_conflicts_after: qAfter.hard_conflicts_count,
+      soft_violations_after: qAfter.soft_conflicts_count,
+      quality_score_after: qAfter.total_score,
       duration_ms: durationMs,
       summary: {
+        algorithm_version: ALGORITHM_VERSION,
+        ordering_strategy: ORDERING_STRATEGY,
+        max_backtracking_attempts: MAX_BACKTRACKING_ATTEMPTS,
+        backtracking_attempts: backtrackingAttempts,
+        relocated_sessions: relocatedSessions,
+        preserved_existing_sessions: preservedExistingSessions,
+        quality_before: qBefore.total_score,
+        quality_after: qAfter.total_score,
+        improvement_delta: improvementDelta,
         total_required_sessions: totalRequired,
         by_session_type: byType,
         warnings: warnings.slice(0, 50),
-        breakdown: result.metrics_breakdown,
+        breakdown: qAfter.metrics_breakdown,
       } as never,
       unplaced: unplaced as never,
       run_by: userData.user?.id ?? null,
     })
-    .select("id")
-    .single();
+    .select("id").single();
   if (error) throw error;
 
   return {
@@ -434,9 +608,14 @@ export async function runGreedyAutoSchedule(params: {
     totalRequired,
     byType,
     warnings,
-    hardConflictsAfter: result.hard_conflicts_count,
-    softViolationsAfter: result.soft_conflicts_count,
-    qualityScoreAfter: result.total_score,
+    hardConflictsAfter: qAfter.hard_conflicts_count,
+    softViolationsAfter: qAfter.soft_conflicts_count,
+    qualityScoreBefore: qBefore.total_score,
+    qualityScoreAfter: qAfter.total_score,
+    improvementDelta,
+    preservedExistingSessions,
+    relocatedSessions,
+    backtrackingAttempts,
     durationMs,
     totalOfferings,
   };
