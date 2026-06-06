@@ -11,9 +11,13 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
-import { runGreedyAutoSchedule } from "@/lib/auto-scheduler/greedy";
+import { runGreedyAutoSchedule, type AutoRunMode } from "@/lib/auto-scheduler/greedy";
 import { Sparkles, AlertCircle, CheckCircle2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/auto-schedule")({
