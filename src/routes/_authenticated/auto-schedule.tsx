@@ -11,9 +11,13 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
-import { runGreedyAutoSchedule } from "@/lib/auto-scheduler/greedy";
+import { runGreedyAutoSchedule, type AutoRunMode } from "@/lib/auto-scheduler/greedy";
 import { Sparkles, AlertCircle, CheckCircle2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/auto-schedule")({
@@ -26,6 +30,8 @@ function AutoSchedulePage() {
   const canManage = useCanManageActiveCollege();
   const qc = useQueryClient();
   const [versionId, setVersionId] = useState<string>("");
+  const [mode, setMode] = useState<AutoRunMode>("fill_missing");
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const { data: versions } = useQuery({
     queryKey: ["sv-for-auto", active?.id],
@@ -64,6 +70,7 @@ function AutoSchedulePage() {
       const result = await runGreedyAutoSchedule({
         collegeId: active.id,
         scheduleVersionId: versionId,
+        mode,
       });
       await logAudit({
         action: "auto_schedule_run",
@@ -120,27 +127,70 @@ function AutoSchedulePage() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="min-w-56">
+                <label className="text-xs text-muted-foreground">وضع التشغيل</label>
+                <Select value={mode} onValueChange={(v) => setMode(v as AutoRunMode)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="fill_missing">إكمال الناقص فقط (آمن)</SelectItem>
+                    <SelectItem value="regenerate_auto">إعادة توليد الجلسات التلقائية</SelectItem>
+                    <SelectItem value="full_rebuild">إعادة بناء كامل (خطر)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <Button
                 disabled={!canManage || !versionId || run.isPending}
-                onClick={() => run.mutate()}
+                onClick={() => {
+                  if (mode === "fill_missing") run.mutate();
+                  else setConfirmOpen(true);
+                }}
               >
                 <Sparkles className="h-4 w-4 ml-1" />
                 {run.isPending ? "جارٍ التشغيل..." : "تشغيل الجدولة التلقائية"}
               </Button>
             </div>
             <p className="text-[11px] text-muted-foreground">
-              التشغيل يضيف جلسات جديدة فقط للتكليفات غير المجدولة في هذه النسخة. لا يُعدّل ولا يحذف الجلسات القائمة.
+              {mode === "fill_missing"
+                ? "إكمال الناقص: يضيف جلسات للتكليفات غير المجدولة فقط، ويحافظ على جميع الجلسات القائمة."
+                : mode === "regenerate_auto"
+                ? "إعادة توليد التلقائي: يحذف الجلسات المولّدة تلقائياً غير المقفلة، ويحافظ على الجلسات اليدوية والمقفلة، ثم يعيد توليد المطلوب."
+                : "إعادة بناء كامل: يحذف جميع الجلسات غير المقفلة (تلقائية ويدوية)، ويحافظ على الجلسات المقفلة فقط. غير قابل للتراجع."}
             </p>
           </Card>
+
+          <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+            <AlertDialogContent dir="rtl">
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {mode === "full_rebuild" ? "تأكيد إعادة البناء الكامل" : "تأكيد إعادة التوليد"}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  {mode === "full_rebuild"
+                    ? "سيتم حذف جميع الجلسات غير المقفلة (التلقائية واليدوية على حدٍّ سواء) في هذه النسخة. الجلسات المقفلة فقط ستبقى. لا يمكن التراجع."
+                    : "سيتم حذف الجلسات المولّدة تلقائياً وغير المقفلة فقط. تبقى الجلسات اليدوية والمقفلة كما هي."}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                <AlertDialogAction onClick={() => { setConfirmOpen(false); run.mutate(); }}>
+                  متابعة
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           {latest && (() => {
             const sum = latest.summary as {
               algorithm_version?: string;
               ordering_strategy?: string;
+              mode?: AutoRunMode;
               backtracking_attempts?: number;
               max_backtracking_attempts?: number;
               relocated_sessions?: number;
               preserved_existing_sessions?: number;
+              deleted_auto_sessions?: number;
+              skipped_locked_sessions?: number;
+              regenerated_sessions?: number;
               quality_before?: number;
               quality_after?: number;
               improvement_delta?: number;
@@ -162,9 +212,22 @@ function AutoSchedulePage() {
                 {sum?.algorithm_version && (
                   <Badge variant="outline" className="text-[10px]">{sum.algorithm_version}</Badge>
                 )}
+                {sum?.mode && (
+                  <Badge variant="outline" className="text-[10px]">
+                    {sum.mode === "fill_missing" ? "إكمال" : sum.mode === "regenerate_auto" ? "إعادة توليد" : "إعادة بناء"}
+                  </Badge>
+                )}
                 <span className="text-xs text-muted-foreground mr-auto">
                   {new Date(latest.created_at).toLocaleString("ar")}
                 </span>
+              </div>
+
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+                <Stat label="مولّدة" value={sum?.regenerated_sessions ?? latest.placed_sessions} />
+                <Stat label="محذوفة تلقائية" value={sum?.deleted_auto_sessions ?? 0} accent={(sum?.deleted_auto_sessions ?? 0) > 0 ? "warn" : undefined} />
+                <Stat label="مقفلة (تم تخطيها)" value={sum?.skipped_locked_sessions ?? 0} />
+                <Stat label="محفوظة (قائمة)" value={sum?.preserved_existing_sessions ?? 0} />
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">

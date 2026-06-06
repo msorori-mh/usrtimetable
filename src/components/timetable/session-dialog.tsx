@@ -7,6 +7,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -14,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { validateProposed, type Conflict } from "@/lib/conflict-engine/validator";
-import { AlertTriangle, Trash2 } from "lucide-react";
+import { AlertTriangle, Trash2, Lock, Unlock } from "lucide-react";
 
 const toMin = (s: string) => { const [h, m] = s.slice(0,5).split(":").map(Number); return h * 60 + m; };
 const addMin = (s: string, add: number) => {
@@ -46,6 +48,9 @@ interface FormState {
   end_time: string;
   session_type: string;
   expected_students: number;
+  is_locked: boolean;
+  lock_reason: string | null;
+  source_type: "manual" | "auto_generated" | "cloned";
 }
 
 const empty: FormState = {
@@ -53,6 +58,7 @@ const empty: FormState = {
   room_id: null, section_id: null, section_group_id: null,
   study_system: "regular", day_of_week: 0, start_time: "08:00", end_time: "10:00",
   session_type: "lecture", expected_students: 0,
+  is_locked: false, lock_reason: null, source_type: "manual",
 };
 
 export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId, sessionId, defaults }: Props) {
@@ -300,6 +306,42 @@ export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId
           </div>
 
         </div>
+
+        <div className="mt-3 border rounded-md p-3 space-y-3 bg-muted/30">
+          <div className="flex items-center gap-2 flex-wrap text-xs">
+            <span className="font-semibold">مصدر الجلسة:</span>
+            <Badge variant={form.source_type === "manual" ? "secondary" : form.source_type === "auto_generated" ? "default" : "outline"}>
+              {form.source_type === "manual" ? "يدوي" : form.source_type === "auto_generated" ? "تلقائي" : "منسوخ"}
+            </Badge>
+            {form.is_locked ? (
+              <Badge variant="default" className="gap-1"><Lock className="h-3 w-3" /> مقفل</Badge>
+            ) : (
+              <Badge variant="outline" className="gap-1"><Unlock className="h-3 w-3" /> غير مقفل</Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <Switch
+              id="lock-switch"
+              checked={form.is_locked}
+              onCheckedChange={(v) => setForm({ ...form, is_locked: v, lock_reason: v ? form.lock_reason : null })}
+            />
+            <Label htmlFor="lock-switch" className="text-sm cursor-pointer">
+              قفل الجلسة (تمنع المجدول التلقائي من تحريكها أو حذفها)
+            </Label>
+          </div>
+          {form.is_locked && (
+            <div>
+              <Label className="text-xs">سبب القفل</Label>
+              <Textarea
+                rows={2}
+                value={form.lock_reason ?? ""}
+                onChange={(e) => setForm({ ...form, lock_reason: e.target.value })}
+                placeholder="مثال: قاعة ثابتة بطلب رئيس القسم"
+              />
+            </div>
+          )}
+        </div>
+
 
         {conflicts.length > 0 && (
           <div className="mt-3 border border-destructive/40 rounded-md p-3 bg-destructive/5 space-y-2">

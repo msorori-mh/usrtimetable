@@ -1618,6 +1618,7 @@ export type Database = {
       }
       schedule_sessions: {
         Row: {
+          auto_schedule_run_id: string | null
           college_id: string
           course_offering_id: string
           created_at: string
@@ -1626,17 +1627,21 @@ export type Database = {
           expected_students: number
           id: string
           instructor_id: string
+          is_locked: boolean
+          lock_reason: string | null
           room_id: string | null
           schedule_version_id: string
           section_group_id: string | null
           section_id: string | null
           session_type: string
+          source_type: string
           start_time: string
           study_system: string
           teaching_assignment_id: string | null
           updated_at: string
         }
         Insert: {
+          auto_schedule_run_id?: string | null
           college_id: string
           course_offering_id: string
           created_at?: string
@@ -1645,17 +1650,21 @@ export type Database = {
           expected_students?: number
           id?: string
           instructor_id: string
+          is_locked?: boolean
+          lock_reason?: string | null
           room_id?: string | null
           schedule_version_id: string
           section_group_id?: string | null
           section_id?: string | null
           session_type?: string
+          source_type?: string
           start_time: string
           study_system?: string
           teaching_assignment_id?: string | null
           updated_at?: string
         }
         Update: {
+          auto_schedule_run_id?: string | null
           college_id?: string
           course_offering_id?: string
           created_at?: string
@@ -1664,11 +1673,14 @@ export type Database = {
           expected_students?: number
           id?: string
           instructor_id?: string
+          is_locked?: boolean
+          lock_reason?: string | null
           room_id?: string | null
           schedule_version_id?: string
           section_group_id?: string | null
           section_id?: string | null
           session_type?: string
+          source_type?: string
           start_time?: string
           study_system?: string
           teaching_assignment_id?: string | null
