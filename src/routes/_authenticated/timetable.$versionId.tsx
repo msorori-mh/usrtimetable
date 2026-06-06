@@ -220,6 +220,10 @@ function TimetablePage() {
     // Move existing session
     const existing = (sessions ?? []).find((s: any) => s.id === payload.id);
     if (!existing) return;
+    if (existing.is_locked) {
+      toast.error("الجلسة مقفلة — يجب فك القفل قبل التحريك");
+      return;
+    }
     const duration = toMin(existing.end_time) - toMin(existing.start_time);
     const newEnd = addMin(startTime, duration);
     // Validate (excluding self)
