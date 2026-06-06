@@ -144,23 +144,52 @@ function AutoSchedulePage() {
                   {new Date(latest.created_at).toLocaleString("ar")}
                 </span>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-center">
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-3 text-center">
+                <Stat label="مطلوب" value={(latest.summary as { total_required_sessions?: number } | null)?.total_required_sessions ?? (latest.placed_sessions + latest.unplaced_sessions)} />
                 <Stat label="جلسات موضوعة" value={latest.placed_sessions} />
                 <Stat label="غير مجدول" value={latest.unplaced_sessions} accent={latest.unplaced_sessions > 0 ? "warn" : undefined} />
                 <Stat label="تعارضات إلزامية" value={latest.hard_conflicts_after} accent={latest.hard_conflicts_after > 0 ? "danger" : undefined} />
                 <Stat label="مخالفات مرنة" value={latest.soft_violations_after} />
                 <Stat label="درجة الجودة" value={latest.quality_score_after ?? "—"} />
               </div>
+              {(() => {
+                const sum = latest.summary as { by_session_type?: Record<string, { required: number; placed: number; unplaced: number }>; warnings?: string[] } | null;
+                const bt = sum?.by_session_type;
+                if (!bt) return null;
+                return (
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(bt).map(([type, v]) => (
+                      <Badge key={type} variant="outline" className="text-[11px]">
+                        {type}: {v.placed}/{v.required} {v.unplaced > 0 ? `(غير مجدول ${v.unplaced})` : ""}
+                      </Badge>
+                    ))}
+                  </div>
+                );
+              })()}
               <div className="text-[11px] text-muted-foreground">
                 المدة: {latest.duration_ms ?? 0} ms — إجمالي العروض: {latest.total_offerings}
               </div>
+              {(() => {
+                const w = (latest.summary as { warnings?: string[] } | null)?.warnings ?? [];
+                if (w.length === 0) return null;
+                return (
+                  <div className="border rounded-md p-2 bg-amber-50 dark:bg-amber-950/30 text-[11px] max-h-32 overflow-y-auto">
+                    <p className="font-semibold mb-1">تحذيرات ({w.length})</p>
+                    <ul className="space-y-0.5">
+                      {w.slice(0, 10).map((m, i) => <li key={i}>• {m}</li>)}
+                    </ul>
+                  </div>
+                );
+              })()}
               {Array.isArray(latest.unplaced) && (latest.unplaced as unknown[]).length > 0 && (
                 <div className="border rounded-md p-3 max-h-80 overflow-y-auto bg-muted/30">
                   <p className="text-sm font-semibold mb-2">قائمة غير المجدول</p>
                   <ul className="text-xs space-y-1">
-                    {(latest.unplaced as Array<{ teaching_assignment_id: string; session_type: string; reason: string }>).map((u, i) => (
+                    {(latest.unplaced as Array<{ teaching_assignment_id: string; session_type: string; duration_minutes?: number; unit_index?: number; reason: string }>).map((u, i) => (
                       <li key={i} className="flex justify-between gap-2 border-b py-1">
-                        <span className="text-muted-foreground">{u.session_type} — {u.teaching_assignment_id?.slice(0, 8)}</span>
+                        <span className="text-muted-foreground">
+                          {u.session_type}#{u.unit_index ?? 1} ({u.duration_minutes ?? 0}د) — {u.teaching_assignment_id?.slice(0, 8)}
+                        </span>
                         <span className="truncate">{u.reason}</span>
                       </li>
                     ))}
