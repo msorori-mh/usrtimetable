@@ -154,8 +154,8 @@ function TimetablePage() {
     end_time: s.end_time,
     study_system: s.study_system,
     session_type: s.session_type,
-    title: `${s.course_offerings?.courses?.code ?? ""} — ${s.course_offerings?.courses?.name ?? ""}`,
-    subtitle: `${s.instructors?.full_name ?? ""}${s.rooms ? ` • ${s.rooms.code}` : ""}`,
+    title: `${s.is_locked ? "🔒 " : ""}${s.course_offerings?.courses?.code ?? ""} — ${s.course_offerings?.courses?.name ?? ""}`,
+    subtitle: `${s.instructors?.full_name ?? ""}${s.rooms ? ` • ${s.rooms.code}` : ""}${s.source_type === "auto_generated" ? " • تلقائي" : s.source_type === "cloned" ? " • منسوخ" : ""}`,
     badge: s.study_system === "parallel" ? "موازي" : s.study_system === "both" ? "م/م" : "انتظام",
   })), [filtered]);
 
