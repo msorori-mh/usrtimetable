@@ -123,14 +123,43 @@ export async function runGreedyAutoSchedule(params: {
     .select("study_system, day_of_week, start_time, end_time")
     .eq("college_id", collegeId).eq("is_active", true);
 
-  // 4. Existing sessions — preserved (we will not touch these)
+  // 4. Apply destructive mode actions BEFORE reading existing sessions.
+  // Locked sessions are NEVER touched (DB trigger also blocks deletion).
+  if (mode === "regenerate_auto") {
+    const { data: del } = await supabase
+      .from("schedule_sessions")
+      .delete()
+      .eq("college_id", collegeId)
+      .eq("schedule_version_id", scheduleVersionId)
+      .eq("source_type", "auto_generated")
+      .eq("is_locked", false)
+      .select("id");
+    deletedAutoSessions = (del ?? []).length;
+  } else if (mode === "full_rebuild") {
+    // Aggressive: remove all unlocked sessions (auto + manual). Locked stays.
+    const { data: del } = await supabase
+      .from("schedule_sessions")
+      .delete()
+      .eq("college_id", collegeId)
+      .eq("schedule_version_id", scheduleVersionId)
+      .eq("is_locked", false)
+      .select("id, source_type");
+    deletedAutoSessions = (del ?? []).filter((r) => r.source_type === "auto_generated").length;
+    if ((del ?? []).length > deletedAutoSessions) {
+      warnings.push(`full_rebuild: deleted ${(del ?? []).length - deletedAutoSessions} manual unlocked session(s)`);
+    }
+  }
+
+  // Existing sessions — preserved (we will not touch these)
   const { data: existingSessions } = await supabase
     .from("schedule_sessions")
-    .select("id, teaching_assignment_id, session_type")
+    .select("id, teaching_assignment_id, session_type, is_locked, source_type")
     .eq("college_id", collegeId)
     .eq("schedule_version_id", scheduleVersionId);
   const preservedExistingSessions = (existingSessions ?? []).length;
+  skippedLockedSessions = (existingSessions ?? []).filter((s) => s.is_locked).length;
   const preservedIds = new Set((existingSessions ?? []).map((s) => s.id));
+  const lockedIds = new Set((existingSessions ?? []).filter((s) => s.is_locked).map((s) => s.id));
   const existingCount = new Map<string, number>();
   for (const s of existingSessions ?? []) {
     if (!s.teaching_assignment_id) continue;
