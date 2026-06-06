@@ -61,6 +61,10 @@ function TimetablePage() {
     },
   });
 
+  const isLocked = version?.status === "published" || version?.status === "archived";
+  const canManage = canManageRole && !isLocked;
+
+
   const { data: sessions } = useQuery({
     queryKey: ["sessions-for-version", versionId],
     enabled: !!active,
