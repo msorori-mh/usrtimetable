@@ -212,16 +212,17 @@ function AutoSchedulePage() {
                 {sum?.algorithm_version && (
                   <Badge variant="outline" className="text-[10px]">{sum.algorithm_version}</Badge>
                 )}
-                <span className="text-xs text-muted-foreground mr-auto">
-                  {new Date(latest.created_at).toLocaleString("ar")}
-                </span>
-              </div>
-
                 {sum?.mode && (
                   <Badge variant="outline" className="text-[10px]">
                     {sum.mode === "fill_missing" ? "إكمال" : sum.mode === "regenerate_auto" ? "إعادة توليد" : "إعادة بناء"}
                   </Badge>
                 )}
+                <span className="text-xs text-muted-foreground mr-auto">
+                  {new Date(latest.created_at).toLocaleString("ar")}
+                </span>
+              </div>
+
+
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
                 <Stat label="مولّدة" value={sum?.regenerated_sessions ?? latest.placed_sessions} />
                 <Stat label="محذوفة تلقائية" value={sum?.deleted_auto_sessions ?? 0} accent={(sum?.deleted_auto_sessions ?? 0) > 0 ? "warn" : undefined} />
