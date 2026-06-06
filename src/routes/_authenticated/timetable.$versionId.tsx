@@ -35,7 +35,7 @@ const addMin = (s: string, add: number) => {
 function TimetablePage() {
   const { versionId } = Route.useParams();
   const { active } = useActiveCollege();
-  const canManage = useCanManageActiveCollege();
+  const canManageRole = useCanManageActiveCollege();
   const qc = useQueryClient();
 
   const [dialogOpen, setDialogOpen] = useState(false);
