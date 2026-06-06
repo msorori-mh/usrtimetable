@@ -112,7 +112,7 @@ function Page() {
           <Sel label="القسم" value={deptId} onChange={setDeptId} items={[{ id: "all", name: "الكل" }, ...(depts ?? []).map((d) => ({ id: d.id, name: d.name }))]} />
           <Sel label="البرنامج" value={progId} onChange={setProgId} items={[{ id: "all", name: "الكل" }, ...(progs ?? []).map((p) => ({ id: p.id, name: p.name }))]} />
           <Sel label="المستوى" value={lvlId} onChange={setLvlId} items={[{ id: "all", name: "الكل" }, ...(levels ?? []).map((l) => ({ id: l.id, name: l.name }))]} />
-          <Sel label="الشعبة" value={secId} onChange={setSecId} items={[{ id: "all", name: "الكل" }, ...(secs ?? []).map((s) => ({ id: s.id, name: s.name }))]} />
+          <Sel label="الشعبة" value={secId} onChange={setSecId} items={[{ id: "all", name: "الكل" }, ...(secs ?? []).map((s) => ({ id: s.id, name: s.section_number }))]} />
           <Sel label="المحاضر" value={insId} onChange={setInsId} items={[{ id: "all", name: "الكل" }, ...(ins ?? []).map((i) => ({ id: i.id, name: i.full_name }))]} />
           <Sel label="القاعة" value={roomId} onChange={setRoomId} items={[{ id: "all", name: "الكل" }, ...(rooms ?? []).map((r) => ({ id: r.id, name: `${r.code ?? ""} ${r.name ?? ""}` }))]} />
         </div>
