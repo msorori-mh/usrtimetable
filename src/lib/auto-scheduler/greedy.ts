@@ -448,6 +448,7 @@ export async function runGreedyAutoSchedule(params: {
       end_time: proposed.end_time,
       session_type: proposed.session_type ?? "lecture",
       expected_students: proposed.expected_students ?? 0,
+      source_type: "auto_generated",
     }).select("id").single();
     if (error || !data) return null;
     return data.id;
