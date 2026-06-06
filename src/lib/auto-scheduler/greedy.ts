@@ -623,10 +623,14 @@ export async function runGreedyAutoSchedule(params: {
       summary: {
         algorithm_version: ALGORITHM_VERSION,
         ordering_strategy: ORDERING_STRATEGY,
+        mode,
         max_backtracking_attempts: MAX_BACKTRACKING_ATTEMPTS,
         backtracking_attempts: backtrackingAttempts,
         relocated_sessions: relocatedSessions,
         preserved_existing_sessions: preservedExistingSessions,
+        deleted_auto_sessions: deletedAutoSessions,
+        skipped_locked_sessions: skippedLockedSessions,
+        regenerated_sessions: mode === "fill_missing" ? 0 : placed,
         quality_before: qBefore.total_score,
         quality_after: qAfter.total_score,
         improvement_delta: improvementDelta,
@@ -640,6 +644,15 @@ export async function runGreedyAutoSchedule(params: {
     })
     .select("id").single();
   if (error) throw error;
+
+  // Back-fill auto_schedule_run_id on sessions placed by this run
+  const placedIds = Array.from(placedThisRun.keys());
+  if (placedIds.length > 0) {
+    await supabase
+      .from("schedule_sessions")
+      .update({ auto_schedule_run_id: row.id })
+      .in("id", placedIds);
+  }
 
   return {
     runId: row.id,
@@ -658,5 +671,8 @@ export async function runGreedyAutoSchedule(params: {
     backtrackingAttempts,
     durationMs,
     totalOfferings,
+    mode,
+    deletedAutoSessions,
+    skippedLockedSessions,
   };
 }
