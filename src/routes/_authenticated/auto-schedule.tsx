@@ -127,18 +127,57 @@ function AutoSchedulePage() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="min-w-56">
+                <label className="text-xs text-muted-foreground">وضع التشغيل</label>
+                <Select value={mode} onValueChange={(v) => setMode(v as AutoRunMode)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="fill_missing">إكمال الناقص فقط (آمن)</SelectItem>
+                    <SelectItem value="regenerate_auto">إعادة توليد الجلسات التلقائية</SelectItem>
+                    <SelectItem value="full_rebuild">إعادة بناء كامل (خطر)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <Button
                 disabled={!canManage || !versionId || run.isPending}
-                onClick={() => run.mutate()}
+                onClick={() => {
+                  if (mode === "fill_missing") run.mutate();
+                  else setConfirmOpen(true);
+                }}
               >
                 <Sparkles className="h-4 w-4 ml-1" />
                 {run.isPending ? "جارٍ التشغيل..." : "تشغيل الجدولة التلقائية"}
               </Button>
             </div>
             <p className="text-[11px] text-muted-foreground">
-              التشغيل يضيف جلسات جديدة فقط للتكليفات غير المجدولة في هذه النسخة. لا يُعدّل ولا يحذف الجلسات القائمة.
+              {mode === "fill_missing"
+                ? "إكمال الناقص: يضيف جلسات للتكليفات غير المجدولة فقط، ويحافظ على جميع الجلسات القائمة."
+                : mode === "regenerate_auto"
+                ? "إعادة توليد التلقائي: يحذف الجلسات المولّدة تلقائياً غير المقفلة، ويحافظ على الجلسات اليدوية والمقفلة، ثم يعيد توليد المطلوب."
+                : "إعادة بناء كامل: يحذف جميع الجلسات غير المقفلة (تلقائية ويدوية)، ويحافظ على الجلسات المقفلة فقط. غير قابل للتراجع."}
             </p>
           </Card>
+
+          <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+            <AlertDialogContent dir="rtl">
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {mode === "full_rebuild" ? "تأكيد إعادة البناء الكامل" : "تأكيد إعادة التوليد"}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  {mode === "full_rebuild"
+                    ? "سيتم حذف جميع الجلسات غير المقفلة (التلقائية واليدوية على حدٍّ سواء) في هذه النسخة. الجلسات المقفلة فقط ستبقى. لا يمكن التراجع."
+                    : "سيتم حذف الجلسات المولّدة تلقائياً وغير المقفلة فقط. تبقى الجلسات اليدوية والمقفلة كما هي."}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                <AlertDialogAction onClick={() => { setConfirmOpen(false); run.mutate(); }}>
+                  متابعة
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           {latest && (() => {
             const sum = latest.summary as {
