@@ -529,6 +529,7 @@ export async function runGreedyAutoSchedule(params: {
       // Identify candidate blockers among this-run placed sessions
       for (const [blockerId, blockerUnit] of placedThisRun) {
         if (preservedIds.has(blockerId)) continue; // safety
+        if (lockedIds.has(blockerId)) continue; // never touch locked
         if (backtrackingAttempts >= MAX_BACKTRACKING_ATTEMPTS) break;
         // Test: would removing this blocker free the candidate?
         const conflicts = await validateProposed({
