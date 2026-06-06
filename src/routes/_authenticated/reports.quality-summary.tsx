@@ -35,7 +35,8 @@ function Page() {
   });
 
   const latestByVersion = useMemo(() => {
-    const m = new Map<string, typeof runs extends Array<infer T> ? T : never>();
+    type Run = NonNullable<typeof runs>[number];
+    const m = new Map<string, Run>();
     for (const r of runs ?? []) {
       if (!m.has(r.schedule_version_id)) m.set(r.schedule_version_id, r);
     }
