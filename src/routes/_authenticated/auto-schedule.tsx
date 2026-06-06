@@ -30,6 +30,8 @@ function AutoSchedulePage() {
   const canManage = useCanManageActiveCollege();
   const qc = useQueryClient();
   const [versionId, setVersionId] = useState<string>("");
+  const [mode, setMode] = useState<AutoRunMode>("fill_missing");
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const { data: versions } = useQuery({
     queryKey: ["sv-for-auto", active?.id],
