@@ -34,7 +34,7 @@ function Page() {
       const { data } = await supabase.from("schedule_sessions")
         .select(`id, day_of_week, start_time, end_time, session_type,
           course_offerings(courses(name, code), academic_programs(name)),
-          sections(name),
+          sections(section_number),
           rooms(code, name)`)
         .eq("college_id", active!.id).eq("schedule_version_id", versionId).eq("instructor_id", insId)
         .order("day_of_week").order("start_time");
@@ -49,7 +49,7 @@ function Page() {
       room: s.rooms ? `${s.rooms.code ?? ""} ${s.rooms.name ?? ""}` : "",
       day: DAY_NAMES_AR[s.day_of_week] ?? "",
       time: `${fmtTime(s.start_time)} - ${fmtTime(s.end_time)}`,
-      section_program: `${s.sections?.name ?? ""} ${s.course_offerings?.academic_programs?.name ?? ""}`,
+      section_program: `${s.sections?.section_number ?? ""} ${s.course_offerings?.academic_programs?.name ?? ""}`,
       hours: Number(hoursBetween(s.start_time, s.end_time).toFixed(2)),
       session_type: s.session_type === "lab" ? "عملي" : "نظري",
     }));

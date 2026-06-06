@@ -56,7 +56,7 @@ function Page() {
       let q = supabase.from("schedule_sessions")
         .select(`id, day_of_week, start_time, end_time, session_type,
           course_offerings!inner(program_id, level_id, courses!inner(name, code, department_id, departments(name)), academic_programs(name), academic_levels(name)),
-          sections(id, name), instructors(id, full_name), rooms(id, code, name),
+          sections(id, section_number), instructors(id, full_name), rooms(id, code, name),
           schedule_versions!inner(name)`)
         .eq("college_id", active!.id).in("schedule_version_id", versionIds)
         .order("day_of_week").order("start_time");
@@ -78,7 +78,7 @@ function Page() {
       department: s.course_offerings?.courses?.departments?.name ?? "",
       program: s.course_offerings?.academic_programs?.name ?? "",
       level: s.course_offerings?.academic_levels?.name ?? "",
-      section: s.sections?.name ?? "",
+      section: s.sections?.section_number ?? "",
       course: `${s.course_offerings?.courses?.code ?? ""} ${s.course_offerings?.courses?.name ?? ""}`,
       day: DAY_NAMES_AR[s.day_of_week] ?? "",
       time: `${fmtTime(s.start_time)} - ${fmtTime(s.end_time)}`,
