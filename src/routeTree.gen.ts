@@ -27,6 +27,7 @@ import { Route as AuthenticatedScheduleVersionsRouteImport } from './routes/_aut
 import { Route as AuthenticatedScheduleQualityRouteImport } from './routes/_authenticated/schedule-quality'
 import { Route as AuthenticatedRoomsRouteImport } from './routes/_authenticated/rooms'
 import { Route as AuthenticatedRoomTypesRouteImport } from './routes/_authenticated/room-types'
+import { Route as AuthenticatedPublishedSchedulesRouteImport } from './routes/_authenticated/published-schedules'
 import { Route as AuthenticatedProgramsRouteImport } from './routes/_authenticated/programs'
 import { Route as AuthenticatedMyCollegeRouteImport } from './routes/_authenticated/my-college'
 import { Route as AuthenticatedInstructorsRouteImport } from './routes/_authenticated/instructors'
@@ -145,6 +146,12 @@ const AuthenticatedRoomTypesRoute = AuthenticatedRoomTypesRouteImport.update({
   path: '/room-types',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPublishedSchedulesRoute =
+  AuthenticatedPublishedSchedulesRouteImport.update({
+    id: '/published-schedules',
+    path: '/published-schedules',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedProgramsRoute = AuthenticatedProgramsRouteImport.update({
   id: '/programs',
   path: '/programs',
@@ -281,6 +288,7 @@ export interface FileRoutesByFullPath {
   '/instructors': typeof AuthenticatedInstructorsRoute
   '/my-college': typeof AuthenticatedMyCollegeRoute
   '/programs': typeof AuthenticatedProgramsRoute
+  '/published-schedules': typeof AuthenticatedPublishedSchedulesRoute
   '/room-types': typeof AuthenticatedRoomTypesRoute
   '/rooms': typeof AuthenticatedRoomsRoute
   '/schedule-quality': typeof AuthenticatedScheduleQualityRoute
@@ -320,6 +328,7 @@ export interface FileRoutesByTo {
   '/instructors': typeof AuthenticatedInstructorsRoute
   '/my-college': typeof AuthenticatedMyCollegeRoute
   '/programs': typeof AuthenticatedProgramsRoute
+  '/published-schedules': typeof AuthenticatedPublishedSchedulesRoute
   '/room-types': typeof AuthenticatedRoomTypesRoute
   '/rooms': typeof AuthenticatedRoomsRoute
   '/schedule-quality': typeof AuthenticatedScheduleQualityRoute
@@ -361,6 +370,7 @@ export interface FileRoutesById {
   '/_authenticated/instructors': typeof AuthenticatedInstructorsRoute
   '/_authenticated/my-college': typeof AuthenticatedMyCollegeRoute
   '/_authenticated/programs': typeof AuthenticatedProgramsRoute
+  '/_authenticated/published-schedules': typeof AuthenticatedPublishedSchedulesRoute
   '/_authenticated/room-types': typeof AuthenticatedRoomTypesRoute
   '/_authenticated/rooms': typeof AuthenticatedRoomsRoute
   '/_authenticated/schedule-quality': typeof AuthenticatedScheduleQualityRoute
@@ -402,6 +412,7 @@ export interface FileRouteTypes {
     | '/instructors'
     | '/my-college'
     | '/programs'
+    | '/published-schedules'
     | '/room-types'
     | '/rooms'
     | '/schedule-quality'
@@ -441,6 +452,7 @@ export interface FileRouteTypes {
     | '/instructors'
     | '/my-college'
     | '/programs'
+    | '/published-schedules'
     | '/room-types'
     | '/rooms'
     | '/schedule-quality'
@@ -481,6 +493,7 @@ export interface FileRouteTypes {
     | '/_authenticated/instructors'
     | '/_authenticated/my-college'
     | '/_authenticated/programs'
+    | '/_authenticated/published-schedules'
     | '/_authenticated/room-types'
     | '/_authenticated/rooms'
     | '/_authenticated/schedule-quality'
@@ -631,6 +644,13 @@ declare module '@tanstack/react-router' {
       path: '/room-types'
       fullPath: '/room-types'
       preLoaderRoute: typeof AuthenticatedRoomTypesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/published-schedules': {
+      id: '/_authenticated/published-schedules'
+      path: '/published-schedules'
+      fullPath: '/published-schedules'
+      preLoaderRoute: typeof AuthenticatedPublishedSchedulesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/programs': {
@@ -796,6 +816,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedInstructorsRoute: typeof AuthenticatedInstructorsRoute
   AuthenticatedMyCollegeRoute: typeof AuthenticatedMyCollegeRoute
   AuthenticatedProgramsRoute: typeof AuthenticatedProgramsRoute
+  AuthenticatedPublishedSchedulesRoute: typeof AuthenticatedPublishedSchedulesRoute
   AuthenticatedRoomTypesRoute: typeof AuthenticatedRoomTypesRoute
   AuthenticatedRoomsRoute: typeof AuthenticatedRoomsRoute
   AuthenticatedScheduleQualityRoute: typeof AuthenticatedScheduleQualityRoute
@@ -834,6 +855,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedInstructorsRoute: AuthenticatedInstructorsRoute,
   AuthenticatedMyCollegeRoute: AuthenticatedMyCollegeRoute,
   AuthenticatedProgramsRoute: AuthenticatedProgramsRoute,
+  AuthenticatedPublishedSchedulesRoute: AuthenticatedPublishedSchedulesRoute,
   AuthenticatedRoomTypesRoute: AuthenticatedRoomTypesRoute,
   AuthenticatedRoomsRoute: AuthenticatedRoomsRoute,
   AuthenticatedScheduleQualityRoute: AuthenticatedScheduleQualityRoute,
@@ -863,13 +885,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

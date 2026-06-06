@@ -18,17 +18,19 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
-import { CalendarClock, Plus, ExternalLink } from "lucide-react";
+import {
+  CalendarClock, Plus, ExternalLink, Copy, History, AlertTriangle, CheckCircle2,
+} from "lucide-react";
+import {
+  STATUS_LABEL_AR, STATUS_BADGE_VARIANT, nextActions,
+  evaluateEligibility, validateGate, transitionVersion, cloneVersion,
+  type SVStatus,
+} from "@/lib/schedule-versions/lifecycle";
 
 export const Route = createFileRoute("/_authenticated/schedule-versions")({
   head: () => ({ meta: [{ title: "نسخ الجدول الزمني" }] }),
   component: SchedVersionsPage,
 });
-
-const STATUS_LABEL: Record<string, string> = {
-  draft: "مسودة", review: "قيد المراجعة", approved: "معتمد",
-  published: "منشور", archived: "مؤرشف",
-};
 
 function SchedVersionsPage() {
   const { active } = useActiveCollege();
@@ -39,6 +41,8 @@ function SchedVersionsPage() {
   const [name, setName] = useState("");
   const [termId, setTermId] = useState<string>("");
   const [notes, setNotes] = useState("");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [cloneFor, setCloneFor] = useState<{ id: string; name: string } | null>(null);
 
   const { data: terms } = useQuery({
     queryKey: ["terms-for-sv", active?.id],
@@ -90,10 +94,13 @@ function SchedVersionsPage() {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-2xl font-bold">نسخ الجدول الزمني</h1>
-          <p className="text-sm text-muted-foreground">إنشاء وإدارة نسخ الجدول لكل فصل دراسي.</p>
+          <p className="text-sm text-muted-foreground">إنشاء وإدارة نسخ الجدول لكل فصل دراسي، مع دورة حياة الاعتماد والنشر.</p>
         </div>
         <div className="flex items-center gap-2">
           <CollegeSwitcher />
+          <Button variant="outline" asChild>
+            <Link to="/published-schedules"><CheckCircle2 className="h-4 w-4 ml-1" /> الجداول المنشورة</Link>
+          </Button>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button disabled={!canManage}><Plus className="h-4 w-4 ml-1" /> نسخة جديدة</Button>
@@ -135,23 +142,16 @@ function SchedVersionsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {(versions ?? []).map((v) => (
-            <Card key={v.id} className="p-4 space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <CalendarClock className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-semibold">{v.name}</span>
-                </div>
-                <Badge variant={v.status === "draft" ? "secondary" : "default"}>{STATUS_LABEL[v.status] ?? v.status}</Badge>
-              </div>
-              <div className="text-xs text-muted-foreground">الفصل: {termName(v.academic_term_id)}</div>
-              {v.notes && <div className="text-xs">{v.notes}</div>}
-              <div className="text-[10px] text-muted-foreground">{new Date(v.created_at).toLocaleString("ar")}</div>
-              <Button variant="outline" size="sm" asChild className="w-full">
-                <Link to="/timetable/$versionId" params={{ versionId: v.id }}>
-                  <ExternalLink className="h-4 w-4 ml-1" /> فتح الجدول
-                </Link>
-              </Button>
-            </Card>
+            <VersionCard
+              key={v.id}
+              v={v}
+              termName={termName(v.academic_term_id)}
+              collegeId={active.id}
+              canManage={canManage}
+              expanded={expandedId === v.id}
+              onToggle={() => setExpandedId(expandedId === v.id ? null : v.id)}
+              onClone={() => setCloneFor({ id: v.id, name: v.name })}
+            />
           ))}
           {versions && versions.length === 0 && (
             <Card className="p-6 text-center text-muted-foreground col-span-full">
@@ -160,6 +160,248 @@ function SchedVersionsPage() {
           )}
         </div>
       )}
+
+      {cloneFor && active && (
+        <CloneDialog
+          collegeId={active.id}
+          sourceId={cloneFor.id}
+          sourceName={cloneFor.name}
+          terms={terms ?? []}
+          onClose={() => setCloneFor(null)}
+          onCloned={() => {
+            setCloneFor(null);
+            qc.invalidateQueries({ queryKey: ["schedule_versions_list"] });
+          }}
+        />
+      )}
     </div>
   );
+}
+
+function VersionCard({
+  v, termName, collegeId, canManage, expanded, onToggle, onClone,
+}: {
+  v: { id: string; name: string; status: string; academic_term_id: string; notes: string | null; created_at: string };
+  termName: string;
+  collegeId: string;
+  canManage: boolean;
+  expanded: boolean;
+  onToggle: () => void;
+  onClone: () => void;
+}) {
+  const qc = useQueryClient();
+  const status = v.status as SVStatus;
+  const actions = nextActions(status);
+
+  const elig = useQuery({
+    queryKey: ["sv-eligibility", v.id],
+    enabled: expanded,
+    queryFn: () => evaluateEligibility({ collegeId, scheduleVersionId: v.id }),
+  });
+
+  const events = useQuery({
+    queryKey: ["sv-events", v.id],
+    enabled: expanded,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("schedule_version_events")
+        .select("*")
+        .eq("schedule_version_id", v.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error; return data ?? [];
+    },
+  });
+
+  const doTransition = useMutation({
+    mutationFn: async (to: SVStatus) => {
+      await transitionVersion({ collegeId, scheduleVersionId: v.id, from: status, to });
+      await logAudit({
+        action: `sv_transition_${to}`, entity: "schedule_versions",
+        entityId: v.id, collegeId, details: { from: status, to },
+      });
+    },
+    onSuccess: () => {
+      toast.success("تم تحديث الحالة");
+      qc.invalidateQueries({ queryKey: ["schedule_versions_list"] });
+      qc.invalidateQueries({ queryKey: ["sv-eligibility", v.id] });
+      qc.invalidateQueries({ queryKey: ["sv-events", v.id] });
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  return (
+    <Card className="p-4 space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <CalendarClock className="h-4 w-4 text-muted-foreground" />
+          <span className="font-semibold">{v.name}</span>
+        </div>
+        <Badge variant={STATUS_BADGE_VARIANT[status] ?? "secondary"}>{STATUS_LABEL_AR[status] ?? status}</Badge>
+      </div>
+      <div className="text-xs text-muted-foreground">الفصل: {termName}</div>
+      {v.notes && <div className="text-xs">{v.notes}</div>}
+      <div className="text-[10px] text-muted-foreground">{new Date(v.created_at).toLocaleString("ar")}</div>
+
+      <div className="flex gap-2 flex-wrap">
+        <Button variant="outline" size="sm" asChild className="flex-1">
+          <Link to="/timetable/$versionId" params={{ versionId: v.id }}>
+            <ExternalLink className="h-4 w-4 ml-1" /> فتح
+          </Link>
+        </Button>
+        <Button variant="outline" size="sm" onClick={onToggle}>
+          {expanded ? "إخفاء" : "الإجراءات"}
+        </Button>
+      </div>
+
+      {expanded && (
+        <div className="border-t pt-3 space-y-3">
+          {elig.isLoading ? (
+            <p className="text-xs text-muted-foreground">جارٍ الفحص...</p>
+          ) : elig.data ? (
+            <div className="space-y-2">
+              <div className="grid grid-cols-3 gap-2 text-center text-[11px]">
+                <Stat label="جلسات" value={elig.data.sessionsCount} />
+                <Stat label="تعارضات إلزامية" value={elig.data.hardConflicts} accent={elig.data.hardConflicts > 0 ? "danger" : "ok"} />
+                <Stat label="جودة" value={elig.data.qualityScore ?? "—"} />
+              </div>
+              {elig.data.warnings.length > 0 && (
+                <div className="rounded bg-amber-50 dark:bg-amber-950/30 p-2 text-[11px] flex gap-1">
+                  <AlertTriangle className="h-3 w-3 mt-0.5 text-amber-600" />
+                  <div>{elig.data.warnings.join(" • ")}</div>
+                </div>
+              )}
+
+              <div className="space-y-1">
+                {actions.length === 0 && (
+                  <p className="text-[11px] text-muted-foreground">لا توجد إجراءات متاحة لهذه الحالة.</p>
+                )}
+                {actions.map((a) => {
+                  const blockers = validateGate(a.to, elig.data!);
+                  const blocked = blockers.length > 0;
+                  return (
+                    <div key={a.to} className="flex flex-col gap-1">
+                      <Button
+                        size="sm"
+                        variant={a.kind === "rollback" ? "outline" : "default"}
+                        disabled={!canManage || blocked || doTransition.isPending}
+                        onClick={() => doTransition.mutate(a.to)}
+                      >
+                        {a.label}
+                      </Button>
+                      {blocked && (
+                        <div className="text-[10px] text-destructive flex gap-1">
+                          <AlertTriangle className="h-3 w-3 mt-0.5" /> {blockers.join(" • ")}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <Button size="sm" variant="outline" className="w-full" disabled={!canManage} onClick={onClone}>
+                <Copy className="h-4 w-4 ml-1" /> استنساخ النسخة
+              </Button>
+            </div>
+          ) : null}
+
+          {events.data && events.data.length > 0 && (
+            <div className="border-t pt-2">
+              <div className="text-[11px] font-semibold flex items-center gap-1 mb-1">
+                <History className="h-3 w-3" /> سجل الأحداث
+              </div>
+              <ul className="space-y-0.5 max-h-32 overflow-y-auto text-[10px]">
+                {events.data.map((e) => (
+                  <li key={e.id} className="flex justify-between border-b py-0.5 gap-2">
+                    <span>{eventLabel(e.event_type)} {e.from_status && `(${e.from_status}→${e.to_status})`}</span>
+                    <span className="text-muted-foreground">{new Date(e.created_at).toLocaleString("ar")}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function CloneDialog({
+  collegeId, sourceId, sourceName, terms, onClose, onCloned,
+}: {
+  collegeId: string;
+  sourceId: string;
+  sourceName: string;
+  terms: Array<{ id: string; name: string; academic_year: string | null }>;
+  onClose: () => void;
+  onCloned: () => void;
+}) {
+  const [tid, setTid] = useState("");
+  const [nm, setNm] = useState(`${sourceName} (نسخة)`);
+
+  const m = useMutation({
+    mutationFn: async () => {
+      if (!tid || !nm.trim()) throw new Error("الرجاء إدخال الفصل والاسم");
+      const id = await cloneVersion({ collegeId, sourceVersionId: sourceId, targetTermId: tid, newName: nm.trim() });
+      await logAudit({ action: "sv_clone", entity: "schedule_versions", entityId: id, collegeId, details: { source: sourceId } });
+      return id;
+    },
+    onSuccess: () => { toast.success("تم الاستنساخ"); onCloned(); },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  return (
+    <Dialog open onOpenChange={(b) => !b && onClose()}>
+      <DialogContent dir="rtl">
+        <DialogHeader><DialogTitle>استنساخ نسخة الجدول</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label>الفصل الدراسي الهدف</Label>
+            <Select value={tid} onValueChange={setTid}>
+              <SelectTrigger><SelectValue placeholder="اختر الفصل" /></SelectTrigger>
+              <SelectContent>
+                {terms.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>{t.name} {t.academic_year ? `— ${t.academic_year}` : ""}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>اسم النسخة الجديدة</Label>
+            <Input value={nm} onChange={(e) => setNm(e.target.value)} />
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            يُنسخ: بيانات النسخة + جلسات الجدول. لا يُنسخ: فحوصات التعارض، نتائج الجودة، عمليات الجدولة التلقائية.
+          </p>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>إلغاء</Button>
+          <Button onClick={() => m.mutate()} disabled={m.isPending}>استنساخ</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function Stat({ label, value, accent }: { label: string; value: number | string; accent?: "ok" | "danger" }) {
+  const c = accent === "danger" ? "text-destructive" : accent === "ok" ? "text-emerald-600" : "";
+  return (
+    <div className="rounded border p-1.5">
+      <div className={`text-base font-bold ${c}`}>{value}</div>
+      <div className="text-[10px] text-muted-foreground">{label}</div>
+    </div>
+  );
+}
+
+function eventLabel(t: string): string {
+  const m: Record<string, string> = {
+    submitted_for_review: "أُرسل للمراجعة",
+    approved: "اعتُمد",
+    published: "نُشر",
+    archived: "أُرشف",
+    cloned: "استنسخ",
+    rolled_back_to_draft: "أُعيد إلى مسودة",
+    rolled_back_to_review: "أُعيد إلى المراجعة",
+    reverted: "تراجع",
+  };
+  return m[t] ?? t;
 }

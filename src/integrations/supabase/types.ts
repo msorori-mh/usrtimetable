@@ -1684,6 +1684,53 @@ export type Database = {
           },
         ]
       }
+      schedule_version_events: {
+        Row: {
+          college_id: string
+          created_at: string
+          event_type: string
+          from_status: string | null
+          id: string
+          metadata: Json | null
+          notes: string | null
+          performed_by: string | null
+          schedule_version_id: string
+          to_status: string | null
+        }
+        Insert: {
+          college_id: string
+          created_at?: string
+          event_type: string
+          from_status?: string | null
+          id?: string
+          metadata?: Json | null
+          notes?: string | null
+          performed_by?: string | null
+          schedule_version_id: string
+          to_status?: string | null
+        }
+        Update: {
+          college_id?: string
+          created_at?: string
+          event_type?: string
+          from_status?: string | null
+          id?: string
+          metadata?: Json | null
+          notes?: string | null
+          performed_by?: string | null
+          schedule_version_id?: string
+          to_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_version_events_schedule_version_id_fkey"
+            columns: ["schedule_version_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       schedule_versions: {
         Row: {
           academic_term_id: string

@@ -35,7 +35,7 @@ const addMin = (s: string, add: number) => {
 function TimetablePage() {
   const { versionId } = Route.useParams();
   const { active } = useActiveCollege();
-  const canManage = useCanManageActiveCollege();
+  const canManageRole = useCanManageActiveCollege();
   const qc = useQueryClient();
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -60,6 +60,10 @@ function TimetablePage() {
       if (error) throw error; return data;
     },
   });
+
+  const isLocked = version?.status === "published" || version?.status === "archived";
+  const canManage = canManageRole && !isLocked;
+
 
   const { data: sessions } = useQuery({
     queryKey: ["sessions-for-version", versionId],
@@ -282,7 +286,14 @@ function TimetablePage() {
           <Button disabled={!canManage} onClick={() => { setEditId(null); setPrefill(undefined); setDialogOpen(true); }}>
             <Plus className="h-4 w-4 ml-1" /> جلسة جديدة
           </Button>
+      </div>
+
+      {isLocked && (
+        <div className="rounded-md border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30 p-3 text-sm">
+          🔒 هذه النسخة <strong>{version?.status === "published" ? "منشورة" : "مؤرشفة"}</strong> — العرض للقراءة فقط. لا يمكن إضافة أو تعديل أو حذف الجلسات.
         </div>
+      )}
+
       </div>
 
       {quality && (
