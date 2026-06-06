@@ -13,6 +13,7 @@ import {
   Clock,
   DoorOpen,
   FileSpreadsheet,
+  FileBarChart2,
   Gauge,
   History as HistoryIcon,
   Sparkles,
