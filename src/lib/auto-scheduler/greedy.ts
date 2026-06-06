@@ -13,6 +13,8 @@ export interface UnplacedItem {
   reason: string;
 }
 
+export type AutoRunMode = "fill_missing" | "regenerate_auto" | "full_rebuild";
+
 export interface AutoRunResult {
   runId: string;
   placed: number;
@@ -30,6 +32,9 @@ export interface AutoRunResult {
   backtrackingAttempts: number;
   durationMs: number;
   totalOfferings: number;
+  mode: AutoRunMode;
+  deletedAutoSessions: number;
+  skippedLockedSessions: number;
 }
 
 const ALGORITHM_VERSION = "greedy-v2-difficulty-backtrack";
