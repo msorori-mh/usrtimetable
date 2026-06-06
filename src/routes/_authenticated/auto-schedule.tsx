@@ -217,6 +217,18 @@ function AutoSchedulePage() {
                 </span>
               </div>
 
+                {sum?.mode && (
+                  <Badge variant="outline" className="text-[10px]">
+                    {sum.mode === "fill_missing" ? "إكمال" : sum.mode === "regenerate_auto" ? "إعادة توليد" : "إعادة بناء"}
+                  </Badge>
+                )}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+                <Stat label="مولّدة" value={sum?.regenerated_sessions ?? latest.placed_sessions} />
+                <Stat label="محذوفة تلقائية" value={sum?.deleted_auto_sessions ?? 0} accent={(sum?.deleted_auto_sessions ?? 0) > 0 ? "warn" : undefined} />
+                <Stat label="مقفلة (تم تخطيها)" value={sum?.skipped_locked_sessions ?? 0} />
+                <Stat label="محفوظة (قائمة)" value={sum?.preserved_existing_sessions ?? 0} />
+              </div>
+
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
                 <Stat label="مطلوب" value={sum?.total_required_sessions ?? (latest.placed_sessions + latest.unplaced_sessions)} />
                 <Stat label="جلسات موضوعة" value={latest.placed_sessions} />
