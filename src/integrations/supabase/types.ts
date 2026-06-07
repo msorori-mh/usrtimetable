@@ -700,6 +700,7 @@ export type Database = {
           sections_count: number
           status: string
           study_plan_id: string | null
+          study_system: string
           term_id: string
           updated_at: string
         }
@@ -717,6 +718,7 @@ export type Database = {
           sections_count?: number
           status?: string
           study_plan_id?: string | null
+          study_system?: string
           term_id: string
           updated_at?: string
         }
@@ -734,6 +736,7 @@ export type Database = {
           sections_count?: number
           status?: string
           study_plan_id?: string | null
+          study_system?: string
           term_id?: string
           updated_at?: string
         }
@@ -1913,6 +1916,7 @@ export type Database = {
           created_at: string
           id: string
           section_number: string
+          study_system: string
           term_id: string
           updated_at: string
         }
@@ -1923,6 +1927,7 @@ export type Database = {
           created_at?: string
           id?: string
           section_number: string
+          study_system?: string
           term_id: string
           updated_at?: string
         }
@@ -1933,6 +1938,7 @@ export type Database = {
           created_at?: string
           id?: string
           section_number?: string
+          study_system?: string
           term_id?: string
           updated_at?: string
         }
