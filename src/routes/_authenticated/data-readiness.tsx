@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveCollege } from "@/hooks/use-colleges";
@@ -174,6 +174,9 @@ function DataReadinessPage() {
           <h1 className="text-2xl font-bold">جاهزية البيانات</h1>
           <p className="text-sm text-muted-foreground">تقييم جاهزية البيانات الأكاديمية لتوليد جدول واقعي (للقراءة فقط).</p>
         </div>
+        <Link to="/data-templates" className="text-sm text-primary underline-offset-4 hover:underline">
+          قوالب البيانات ←
+        </Link>
       </header>
 
       <div className="mb-5"><CollegeSwitcher /></div>
