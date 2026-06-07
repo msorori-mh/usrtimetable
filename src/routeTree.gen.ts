@@ -37,6 +37,7 @@ import { Route as AuthenticatedImportTemplatesRouteImport } from './routes/_auth
 import { Route as AuthenticatedImportHistoryRouteImport } from './routes/_authenticated/import-history'
 import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated/import'
 import { Route as AuthenticatedDepartmentsRouteImport } from './routes/_authenticated/departments'
+import { Route as AuthenticatedDataReadinessRouteImport } from './routes/_authenticated/data-readiness'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedDailyBreaksRouteImport } from './routes/_authenticated/daily-breaks'
 import { Route as AuthenticatedCoursesRouteImport } from './routes/_authenticated/courses'
@@ -210,6 +211,12 @@ const AuthenticatedDepartmentsRoute =
     path: '/departments',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedDataReadinessRoute =
+  AuthenticatedDataReadinessRouteImport.update({
+    id: '/data-readiness',
+    path: '/data-readiness',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -335,6 +342,7 @@ export interface FileRoutesByFullPath {
   '/courses': typeof AuthenticatedCoursesRoute
   '/daily-breaks': typeof AuthenticatedDailyBreaksRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/data-readiness': typeof AuthenticatedDataReadinessRoute
   '/departments': typeof AuthenticatedDepartmentsRoute
   '/import': typeof AuthenticatedImportRoute
   '/import-history': typeof AuthenticatedImportHistoryRoute
@@ -383,6 +391,7 @@ export interface FileRoutesByTo {
   '/courses': typeof AuthenticatedCoursesRoute
   '/daily-breaks': typeof AuthenticatedDailyBreaksRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/data-readiness': typeof AuthenticatedDataReadinessRoute
   '/departments': typeof AuthenticatedDepartmentsRoute
   '/import': typeof AuthenticatedImportRoute
   '/import-history': typeof AuthenticatedImportHistoryRoute
@@ -433,6 +442,7 @@ export interface FileRoutesById {
   '/_authenticated/courses': typeof AuthenticatedCoursesRoute
   '/_authenticated/daily-breaks': typeof AuthenticatedDailyBreaksRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/data-readiness': typeof AuthenticatedDataReadinessRoute
   '/_authenticated/departments': typeof AuthenticatedDepartmentsRoute
   '/_authenticated/import': typeof AuthenticatedImportRoute
   '/_authenticated/import-history': typeof AuthenticatedImportHistoryRoute
@@ -483,6 +493,7 @@ export interface FileRouteTypes {
     | '/courses'
     | '/daily-breaks'
     | '/dashboard'
+    | '/data-readiness'
     | '/departments'
     | '/import'
     | '/import-history'
@@ -531,6 +542,7 @@ export interface FileRouteTypes {
     | '/courses'
     | '/daily-breaks'
     | '/dashboard'
+    | '/data-readiness'
     | '/departments'
     | '/import'
     | '/import-history'
@@ -580,6 +592,7 @@ export interface FileRouteTypes {
     | '/_authenticated/courses'
     | '/_authenticated/daily-breaks'
     | '/_authenticated/dashboard'
+    | '/_authenticated/data-readiness'
     | '/_authenticated/departments'
     | '/_authenticated/import'
     | '/_authenticated/import-history'
@@ -819,6 +832,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDepartmentsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/data-readiness': {
+      id: '/_authenticated/data-readiness'
+      path: '/data-readiness'
+      fullPath: '/data-readiness'
+      preLoaderRoute: typeof AuthenticatedDataReadinessRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -996,6 +1016,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCoursesRoute: typeof AuthenticatedCoursesRoute
   AuthenticatedDailyBreaksRoute: typeof AuthenticatedDailyBreaksRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedDataReadinessRoute: typeof AuthenticatedDataReadinessRoute
   AuthenticatedDepartmentsRoute: typeof AuthenticatedDepartmentsRoute
   AuthenticatedImportRoute: typeof AuthenticatedImportRoute
   AuthenticatedImportHistoryRoute: typeof AuthenticatedImportHistoryRoute
@@ -1036,6 +1057,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCoursesRoute: AuthenticatedCoursesRoute,
   AuthenticatedDailyBreaksRoute: AuthenticatedDailyBreaksRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedDataReadinessRoute: AuthenticatedDataReadinessRoute,
   AuthenticatedDepartmentsRoute: AuthenticatedDepartmentsRoute,
   AuthenticatedImportRoute: AuthenticatedImportRoute,
   AuthenticatedImportHistoryRoute: AuthenticatedImportHistoryRoute,
@@ -1075,13 +1097,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
