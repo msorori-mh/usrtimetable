@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -98,7 +98,12 @@ function ImportPage() {
         <span className="grid h-11 w-11 place-items-center rounded-lg bg-secondary text-primary"><FileSpreadsheet className="h-5 w-5" /></span>
         <div className="flex-1">
           <h1 className="text-2xl font-bold">استيراد البيانات من Excel</h1>
-          <p className="text-sm text-muted-foreground">حمّل القالب، عبّئه، ارفعه، عاين، ثم احفظ.</p>
+          <p className="text-sm text-muted-foreground">
+            حمّل القالب، عبّئه، ارفعه، عاين، ثم احفظ.{" "}
+            <Link to="/data-templates" className="text-primary underline-offset-4 hover:underline">
+              عرض كل القوالب ←
+            </Link>
+          </p>
         </div>
         <CollegeSwitcher />
       </header>
