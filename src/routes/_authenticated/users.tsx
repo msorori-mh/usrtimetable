@@ -84,7 +84,7 @@ function UsersPage() {
         supabase.from("profiles").select("id, full_name, email, created_at").order("created_at"),
         supabase.from("user_roles").select("user_id, role"),
         supabase.from("user_colleges").select("user_id, college_id"),
-        listMeta({ data: undefined as never }).catch(() => [] as Awaited<ReturnType<typeof listMeta>>),
+        listMeta().catch(() => [] as Awaited<ReturnType<typeof listMeta>>),
       ]);
       const metaMap = new Map((meta ?? []).map((m) => [m.id, m]));
       return (profiles ?? []).map((p) => ({
