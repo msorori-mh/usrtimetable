@@ -103,11 +103,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   const items = NAV.filter((n) => !user || user.roles.some((r) => n.roles.includes(r)));
   const roleLabel = user?.isSuperAdmin
-    ? "مدير عام"
+    ? "مدير المؤسسة"
     : user?.isCollegeAdmin
       ? "مدير كلّية"
       : user?.isReadOnly
-        ? "قراءة فقط"
+        ? "مشاهد"
         : "—";
 
   return (
