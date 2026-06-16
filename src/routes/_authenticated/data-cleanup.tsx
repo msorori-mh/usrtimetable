@@ -534,7 +534,7 @@ function CoursesSection({
           const rows = (data?.planCourses ?? []).filter((p) => ids.includes(p.id));
           let ok = 0, fail = 0;
           for (const r of rows) {
-            const upd: Record<string, string> = {};
+            const upd: { required_room_type_for_lecture?: string; required_room_type_for_lab?: string } = {};
             if ((r.lectures_per_week ?? 0) > 0 && !r.required_room_type_for_lecture) upd.required_room_type_for_lecture = lectureRoom;
             if ((r.labs_per_week ?? 0) > 0 && !r.required_room_type_for_lab) upd.required_room_type_for_lab = labRoom;
             if (Object.keys(upd).length === 0) continue;
