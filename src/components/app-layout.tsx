@@ -30,6 +30,7 @@ import {
   UserSquare2,
   Users,
   Users2,
+  Wrench,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUser } from "@/hooks/use-current-user";
