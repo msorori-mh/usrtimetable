@@ -49,6 +49,7 @@ const ALL: NavItem["roles"] = ["super_admin", "college_admin", "read_only"];
 const NAV: NavItem[] = [
   { to: "/dashboard", label: "لوحة التحكم", icon: <LayoutDashboard className="h-4 w-4" />, roles: ALL },
   { to: "/data-readiness", label: "جاهزية البيانات", icon: <Gauge className="h-4 w-4" />, roles: ALL },
+  { to: "/data-cleanup", label: "تنظيف البيانات", icon: <Wrench className="h-4 w-4" />, roles: ["super_admin", "college_admin"] },
   { to: "/universities", label: "الجامعة", icon: <Building2 className="h-4 w-4" />, roles: ["super_admin"], group: "إدارة النظام" },
   { to: "/colleges", label: "الكلّيات", icon: <School className="h-4 w-4" />, roles: ["super_admin"], group: "إدارة النظام" },
   { to: "/users", label: "المستخدمون", icon: <Users className="h-4 w-4" />, roles: ["super_admin"], group: "إدارة النظام" },
