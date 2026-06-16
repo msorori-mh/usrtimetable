@@ -87,12 +87,11 @@ const REF_STUDY_SYSTEM: TemplateRef = {
 };
 
 const REF_TERM_TYPES: TemplateRef = {
-  title: "نوع الفصل",
+  title: "الفصل الدراسي",
   rows: [
     ["الرمز", "الوصف"],
-    ["fall", "خريف"],
-    ["spring", "ربيع"],
-    ["summer", "صيف"],
+    ["first", "الفصل الدراسي الأول"],
+    ["second", "الفصل الدراسي الثاني"],
   ],
 };
 
@@ -188,23 +187,23 @@ export const CATALOG: TemplateDef[] = [
     name: "الفصول الدراسية",
     group: "foundational",
     groupLabel: GROUPS.foundational,
-    purpose: "تعريف الفصول الدراسية (خريف/ربيع/صيف).",
+    purpose: "تعريف الفصول الدراسية (الأول/الثاني).",
     requiredBeforeScheduling: true,
     importOrder: 5,
     sheetName: "terms",
     columns: [
-      { header: "الرمز", required: true, example: "2025-F" },
-      { header: "الاسم", required: true, example: "خريف 2025" },
+      { header: "الرمز", required: true, example: "2025-T1" },
+      { header: "الاسم", required: true, example: "الفصل الدراسي الأول 2025" },
       { header: "السنة_الأكاديمية", example: "2025-2026" },
-      { header: "نوع_الفصل", example: "fall", allowed: "fall | spring | summer" },
+      { header: "الفصل_الدراسي", example: "first", allowed: "first | second" },
       { header: "تاريخ_البداية", example: "2025-09-01" },
       { header: "تاريخ_النهاية", example: "2026-01-15" },
       { header: "عدد_أسابيع_التدريس", example: "15" },
       { header: "نشط", example: "false" },
     ],
-    sampleRows: [["2025-F", "خريف 2025", "2025-2026", "fall", "2025-09-01", "2026-01-15", "15", "true"]],
+    sampleRows: [["2025-T1", "الفصل الدراسي الأول 2025", "2025-2026", "first", "2025-09-01", "2026-01-15", "15", "true"]],
     references: [REF_TERM_TYPES],
-    commonErrors: ["تنسيق تاريخ غير صحيح", "نوع فصل غير معروف"],
+    commonErrors: ["تنسيق تاريخ غير صحيح", "قيمة الفصل الدراسي غير معروفة (المسموح: first / second)"],
   },
 
   // ============= B. Academic Plan =============

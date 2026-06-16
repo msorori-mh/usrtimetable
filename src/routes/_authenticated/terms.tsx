@@ -110,12 +110,11 @@ function TermsPage() {
                 <div className="grid grid-cols-3 gap-3">
                   <div><Label>السنة الأكاديمية</Label><Input placeholder="2025-2026" value={form.academic_year} onChange={(e) => setForm({ ...form, academic_year: e.target.value })} /></div>
                   <div>
-                    <Label>نوع الفصل</Label>
+                    <Label>الفصل الدراسي</Label>
                     <select className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm" value={form.term_type} onChange={(e) => setForm({ ...form, term_type: e.target.value })}>
                       <option value="">—</option>
-                      <option value="fall">خريف</option>
-                      <option value="spring">ربيع</option>
-                      <option value="summer">صيف</option>
+                      <option value="first">الفصل الدراسي الأول</option>
+                      <option value="second">الفصل الدراسي الثاني</option>
                     </select>
                   </div>
                   <div><Label>عدد أسابيع التدريس</Label><Input type="number" min="0" value={form.teaching_weeks_count} onChange={(e) => setForm({ ...form, teaching_weeks_count: e.target.value })} /></div>
@@ -139,7 +138,7 @@ function TermsPage() {
                 <li key={t.id} className="flex items-center justify-between p-4">
                   <div>
                     <p className="font-semibold">{t.name} {t.is_active && <span className="rounded bg-accent/20 px-2 py-0.5 text-[11px] text-accent-foreground">حالي</span>}</p>
-                    <p className="text-xs text-muted-foreground"><span dir="ltr">{t.code}</span> · {t.start_date ?? "—"} ← {t.end_date ?? "—"}</p>
+                    <p className="text-xs text-muted-foreground"><span dir="ltr">{t.code}</span> · {t.start_date ?? "—"} ← {t.end_date ?? "—"}{t.term_type ? ` · ${t.term_type === "first" ? "الفصل الدراسي الأول" : t.term_type === "second" ? "الفصل الدراسي الثاني" : t.term_type}` : ""}</p>
                   </div>
                   {canManage && (
                     <div className="flex gap-1">

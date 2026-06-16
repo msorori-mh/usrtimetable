@@ -63,7 +63,7 @@ export const TEMPLATES: Record<string, TemplateDef> = {
       { key: "code", header: "الرمز", required: true, example: "2025-F" },
       { key: "name", header: "الاسم", required: true, example: "خريف 2025" },
       { key: "academic_year", header: "السنة_الأكاديمية", example: "2025-2026" },
-      { key: "term_type", header: "نوع_الفصل", enumValues: ["fall", "spring", "summer"], example: "fall" },
+      { key: "term_type", header: "الفصل_الدراسي", enumValues: ["first", "second"], example: "first" },
       { key: "start_date", header: "تاريخ_البداية", example: "2025-09-01" },
       { key: "end_date", header: "تاريخ_النهاية", example: "2026-01-15" },
       { key: "teaching_weeks_count", header: "عدد_أسابيع_التدريس", type: "number", example: "15" },
