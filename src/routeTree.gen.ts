@@ -39,6 +39,7 @@ import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedDepartmentsRouteImport } from './routes/_authenticated/departments'
 import { Route as AuthenticatedDataTemplatesRouteImport } from './routes/_authenticated/data-templates'
 import { Route as AuthenticatedDataReadinessRouteImport } from './routes/_authenticated/data-readiness'
+import { Route as AuthenticatedDataCleanupRouteImport } from './routes/_authenticated/data-cleanup'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedDailyBreaksRouteImport } from './routes/_authenticated/daily-breaks'
 import { Route as AuthenticatedCoursesRouteImport } from './routes/_authenticated/courses'
@@ -224,6 +225,12 @@ const AuthenticatedDataReadinessRoute =
     path: '/data-readiness',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedDataCleanupRoute =
+  AuthenticatedDataCleanupRouteImport.update({
+    id: '/data-cleanup',
+    path: '/data-cleanup',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -349,6 +356,7 @@ export interface FileRoutesByFullPath {
   '/courses': typeof AuthenticatedCoursesRoute
   '/daily-breaks': typeof AuthenticatedDailyBreaksRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/data-cleanup': typeof AuthenticatedDataCleanupRoute
   '/data-readiness': typeof AuthenticatedDataReadinessRoute
   '/data-templates': typeof AuthenticatedDataTemplatesRoute
   '/departments': typeof AuthenticatedDepartmentsRoute
@@ -399,6 +407,7 @@ export interface FileRoutesByTo {
   '/courses': typeof AuthenticatedCoursesRoute
   '/daily-breaks': typeof AuthenticatedDailyBreaksRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/data-cleanup': typeof AuthenticatedDataCleanupRoute
   '/data-readiness': typeof AuthenticatedDataReadinessRoute
   '/data-templates': typeof AuthenticatedDataTemplatesRoute
   '/departments': typeof AuthenticatedDepartmentsRoute
@@ -451,6 +460,7 @@ export interface FileRoutesById {
   '/_authenticated/courses': typeof AuthenticatedCoursesRoute
   '/_authenticated/daily-breaks': typeof AuthenticatedDailyBreaksRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/data-cleanup': typeof AuthenticatedDataCleanupRoute
   '/_authenticated/data-readiness': typeof AuthenticatedDataReadinessRoute
   '/_authenticated/data-templates': typeof AuthenticatedDataTemplatesRoute
   '/_authenticated/departments': typeof AuthenticatedDepartmentsRoute
@@ -503,6 +513,7 @@ export interface FileRouteTypes {
     | '/courses'
     | '/daily-breaks'
     | '/dashboard'
+    | '/data-cleanup'
     | '/data-readiness'
     | '/data-templates'
     | '/departments'
@@ -553,6 +564,7 @@ export interface FileRouteTypes {
     | '/courses'
     | '/daily-breaks'
     | '/dashboard'
+    | '/data-cleanup'
     | '/data-readiness'
     | '/data-templates'
     | '/departments'
@@ -604,6 +616,7 @@ export interface FileRouteTypes {
     | '/_authenticated/courses'
     | '/_authenticated/daily-breaks'
     | '/_authenticated/dashboard'
+    | '/_authenticated/data-cleanup'
     | '/_authenticated/data-readiness'
     | '/_authenticated/data-templates'
     | '/_authenticated/departments'
@@ -859,6 +872,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDataReadinessRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/data-cleanup': {
+      id: '/_authenticated/data-cleanup'
+      path: '/data-cleanup'
+      fullPath: '/data-cleanup'
+      preLoaderRoute: typeof AuthenticatedDataCleanupRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -1036,6 +1056,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCoursesRoute: typeof AuthenticatedCoursesRoute
   AuthenticatedDailyBreaksRoute: typeof AuthenticatedDailyBreaksRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedDataCleanupRoute: typeof AuthenticatedDataCleanupRoute
   AuthenticatedDataReadinessRoute: typeof AuthenticatedDataReadinessRoute
   AuthenticatedDataTemplatesRoute: typeof AuthenticatedDataTemplatesRoute
   AuthenticatedDepartmentsRoute: typeof AuthenticatedDepartmentsRoute
@@ -1078,6 +1099,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCoursesRoute: AuthenticatedCoursesRoute,
   AuthenticatedDailyBreaksRoute: AuthenticatedDailyBreaksRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedDataCleanupRoute: AuthenticatedDataCleanupRoute,
   AuthenticatedDataReadinessRoute: AuthenticatedDataReadinessRoute,
   AuthenticatedDataTemplatesRoute: AuthenticatedDataTemplatesRoute,
   AuthenticatedDepartmentsRoute: AuthenticatedDepartmentsRoute,
