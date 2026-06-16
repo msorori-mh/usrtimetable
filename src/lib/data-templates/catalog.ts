@@ -87,12 +87,11 @@ const REF_STUDY_SYSTEM: TemplateRef = {
 };
 
 const REF_TERM_TYPES: TemplateRef = {
-  title: "نوع الفصل",
+  title: "الفصل الدراسي",
   rows: [
     ["الرمز", "الوصف"],
-    ["fall", "خريف"],
-    ["spring", "ربيع"],
-    ["summer", "صيف"],
+    ["first", "الفصل الدراسي الأول"],
+    ["second", "الفصل الدراسي الثاني"],
   ],
 };
 
