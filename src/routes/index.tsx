@@ -49,7 +49,7 @@ function LandingPage() {
                 المرحلة الأولى — الأساس
               </span>
               <h1 className="mt-4 text-4xl font-bold leading-tight md:text-5xl">
-                منصّة موحّدة لإدارة <span className="text-primary">كلّيات جامعتك</span>
+                المنصّة الموحّدة لإدارة <span className="text-primary">الجداول الجامعية</span>
               </h1>
               <p className="mt-5 text-lg leading-relaxed text-muted-foreground">
                 ابدأ بإعداد جامعتك وكلّياتها، ثم أنشئ مستخدمين وعيّن صلاحياتهم.
