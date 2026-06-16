@@ -68,7 +68,7 @@ function AuthPage() {
         </div>
         <div>
           <h2 className="text-3xl font-bold leading-tight">
-            أهلاً بك في النظام الموحّد لإدارة الكلّيات
+            النظام الموحد لإدارة الجداول الدراسية في جميع الكليات
           </h2>
           <p className="mt-4 max-w-md text-primary-foreground/80">
             أوّل مستخدم يُسجَّل في النظام يحصل تلقائياً على صلاحيات
