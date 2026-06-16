@@ -739,7 +739,7 @@ function RoomsSection({
         onConfirm={async (ids) => {
           if (!roomTypeId) { toast.error("اختر النوع"); return; }
           const rt = (data?.roomTypes ?? []).find((t) => t.id === roomTypeId);
-          const upd: Record<string, unknown> = { room_type_id: roomTypeId };
+          const upd: { room_type_id: string; room_type?: string } = { room_type_id: roomTypeId };
           // also sync legacy text column if code maps to allowed enum
           if (rt?.code && ["lecture_room", "computer_lab", "network_lab", "general_lab", "auditorium"].includes(rt.code)) {
             upd.room_type = rt.code;
