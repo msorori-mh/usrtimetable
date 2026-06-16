@@ -138,7 +138,7 @@ function TermsPage() {
                 <li key={t.id} className="flex items-center justify-between p-4">
                   <div>
                     <p className="font-semibold">{t.name} {t.is_active && <span className="rounded bg-accent/20 px-2 py-0.5 text-[11px] text-accent-foreground">حالي</span>}</p>
-                    <p className="text-xs text-muted-foreground"><span dir="ltr">{t.code}</span> · {t.start_date ?? "—"} ← {t.end_date ?? "—"}</p>
+                    <p className="text-xs text-muted-foreground"><span dir="ltr">{t.code}</span> · {t.start_date ?? "—"} ← {t.end_date ?? "—"}{t.term_type ? ` · ${t.term_type === "first" ? "الفصل الدراسي الأول" : t.term_type === "second" ? "الفصل الدراسي الثاني" : t.term_type}` : ""}</p>
                   </div>
                   {canManage && (
                     <div className="flex gap-1">
