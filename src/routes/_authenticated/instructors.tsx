@@ -62,11 +62,16 @@ function InstructorsPage() {
     queryFn: async () => (await supabase.from("departments").select("id, name").eq("college_id", active!.id).order("name")).data ?? [],
   });
 
+  const { data: types } = useQuery({
+    queryKey: ["instructor-types", active?.id], enabled: !!active,
+    queryFn: async () => (await supabase.from("instructor_types").select("id, code, name_ar, is_external").eq("college_id", active!.id).eq("is_active", true).order("display_order")).data ?? [],
+  });
+
   const { data: rows, isLoading } = useQuery({
     queryKey: ["instructors", active?.id], enabled: !!active,
     queryFn: async () => {
       const { data, error } = await supabase.from("instructors")
-        .select("id, college_id, department_id, full_name, academic_rank, email, phone, employment_type, max_weekly_hours, is_active, employee_number, full_name_ar, full_name_en, specialization, administrative_release_hours, notes")
+        .select("id, college_id, department_id, full_name, academic_rank, email, phone, employment_type, max_weekly_hours, is_active, employee_number, full_name_ar, full_name_en, specialization, administrative_release_hours, notes, instructor_type_id")
         .eq("college_id", active!.id).order("full_name");
       if (error) throw error; return (data ?? []) as Instructor[];
     },
