@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { categorizeInstructor, requiresAvailability } from "@/lib/instructor-category";
 
 export type StudySystem = "regular" | "parallel" | "both";
 
