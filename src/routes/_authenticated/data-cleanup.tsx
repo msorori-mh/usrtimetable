@@ -447,7 +447,7 @@ function CoursesSection({
   // dialog state
   const [codePrefix, setCodePrefix] = useState("");
   const [natureVal, setNatureVal] = useState<"department" | "college" | "university">("department");
-  const [lectureRoom, setLectureRoom] = useState("lecture_room");
+  const [lectureRoom, setLectureRoom] = useState("lecture_hall");
   const [labRoom, setLabRoom] = useState("computer_lab");
 
   const tempIds = issues?.temp_codes.ids ?? [];
