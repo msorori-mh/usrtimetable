@@ -202,6 +202,35 @@ function InstructorsPage() {
                   <div><Label>ساعات الإعفاء الإداري</Label><Input type="number" value={form.administrative_release_hours} onChange={(e) => setForm({ ...form, administrative_release_hours: Number(e.target.value) })} /></div>
                   <div><Label>ملاحظات</Label><Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
                 </div>
+                <div className="grid grid-cols-1 gap-3">
+                  <div><Label>فئة المحاضر</Label>
+                    <Select value={form.instructor_type_id || "_none"} onValueChange={(v) => setForm({ ...form, instructor_type_id: v === "_none" ? "" : v })}>
+                      <SelectTrigger><SelectValue placeholder="اختر الفئة" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="_none">— غير محدد —</SelectItem>
+                        {(types ?? []).map((t: any) => <SelectItem key={t.id} value={t.id}>{t.name_ar}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {(() => {
+                    const selected = (types ?? []).find((t: any) => t.id === form.instructor_type_id);
+                    const cat = categorizeInstructor(selected as any);
+                    const isPerm = cat === "permanent";
+                    const tone = isPerm
+                      ? "bg-sky-500/10 text-sky-700 border-sky-500/20"
+                      : "bg-amber-500/10 text-amber-700 border-amber-500/20";
+                    const Icon = isPerm ? Info : AlertTriangle;
+                    return (
+                      <div className={`flex items-start gap-2 rounded border p-3 text-xs ${tone}`}>
+                        <Icon className="mt-0.5 h-4 w-4 shrink-0" />
+                        <div>
+                          <p className="font-semibold">{CATEGORY_LABEL_AR[cat]}</p>
+                          <p className="mt-0.5">{INSTRUCTOR_FORM_HINT_AR[cat]}</p>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
                 <div className="flex items-center justify-between rounded border border-border p-3">
                   <Label>نشط</Label>
                   <Switch checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />
