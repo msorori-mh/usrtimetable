@@ -256,9 +256,42 @@ function DataReadinessPage() {
             </div>
           </Card>
 
+          <div className="mb-4">
+            <Card className="p-5">
+              <h2 className="mb-3 flex items-center gap-2 text-base font-semibold">
+                <CalendarCheck className="h-4 w-4" /> توفّر المحاضرين حسب الفئة
+              </h2>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                {(["permanent", "external", "other_college"] as InstructorCategory[]).map((c) => {
+                  const v = data.availabilityByCategory[c];
+                  const isPerm = c === "permanent";
+                  const missing = v.total - v.configured;
+                  const tone = isPerm
+                    ? "bg-sky-500/10 text-sky-700 border-sky-500/20"
+                    : missing === 0
+                    ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20"
+                    : "bg-red-500/10 text-red-700 border-red-500/20";
+                  return (
+                    <div key={c} className={`rounded border p-4 ${tone}`}>
+                      <p className="text-sm font-medium">{CATEGORY_LABEL_AR[c]}</p>
+                      <p className="mt-1 text-2xl font-bold">{v.configured} / {v.total}</p>
+                      <p className="mt-1 text-xs">
+                        {isPerm
+                          ? "افتراضي: متاح خلال أوقات العمل الرسمية"
+                          : missing === 0
+                          ? "جميع المحاضرين لديهم أوقات توفّر"
+                          : `${missing} بحاجة إلى إدخال أوقات التوفر (إلزامي)`}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          </div>
+
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <Section title="جاهزية الخطط الدراسية" icon={<BookOpen className="h-4 w-4" />} metrics={data.studyPlan} />
-            <Section title="جاهزية الموارد" icon={<Users className="h-4 w-4" />} metrics={data.resources} />
+            <Section title="جاهزية الموارد" icon={<Users className="h-4 w-4" />} metrics={[...data.resources, ...data.availability]} />
             <Section title="جاهزية الجدولة" icon={<CalendarClock className="h-4 w-4" />} metrics={data.scheduling} />
           </div>
         </>
