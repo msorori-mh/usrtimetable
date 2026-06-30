@@ -6,7 +6,8 @@ import { CollegeSwitcher } from "@/components/college-switcher";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Gauge, BookOpen, Users, CalendarClock, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
+import { Gauge, BookOpen, Users, CalendarClock, AlertTriangle, CheckCircle2, XCircle, CalendarCheck } from "lucide-react";
+import { categorizeInstructor, type InstructorCategory, CATEGORY_LABEL_AR } from "@/lib/instructor-category";
 
 export const Route = createFileRoute("/_authenticated/data-readiness")({
   head: () => ({ meta: [{ title: "جاهزية البيانات" }] }),
