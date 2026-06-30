@@ -1,0 +1,44 @@
+// Phase 1.5A — Instructor availability business rules.
+// Three categories derived from instructor_types.code / is_external:
+//   - "permanent"     → Permanent faculty. Availability is OPTIONAL; default
+//                       working week is assumed when no rows exist.
+//   - "other_college" → Lecturer from another college in the same university.
+//                       Availability is MANDATORY (home-college commitments).
+//   - "external"      → External lecturer (outside the university). Availability
+//                       is MANDATORY before scheduling.
+// When an instructor has no type assigned, we default to "permanent" to avoid
+// false-positive readiness penalties on legacy data.
+
+export type InstructorCategory = "permanent" | "other_college" | "external";
+
+export interface TypeLike {
+  code?: string | null;
+  is_external?: boolean | null;
+}
+
+export function categorizeInstructor(type: TypeLike | null | undefined): InstructorCategory {
+  if (!type) return "permanent";
+  const code = (type.code ?? "").toLowerCase();
+  if (code === "from_other_college") return "other_college";
+  if (code === "permanent") return "permanent";
+  if (type.is_external) return "external";
+  // Unknown type code with is_external=false → treat as permanent.
+  return "permanent";
+}
+
+export function requiresAvailability(cat: InstructorCategory): boolean {
+  return cat !== "permanent";
+}
+
+export const CATEGORY_LABEL_AR: Record<InstructorCategory, string> = {
+  permanent: "محاضر دائم",
+  other_college: "محاضر من كلية أخرى",
+  external: "محاضر خارجي",
+};
+
+export const INSTRUCTOR_FORM_HINT_AR: Record<InstructorCategory, string> = {
+  permanent:
+    "سيعتبر المحاضر متاحاً تلقائياً خلال أوقات العمل الرسمية، ويمكن إضافة استثناءات اختيارية.",
+  other_college: "يجب تحديد أيام وأوقات التوفر قبل إدخاله في الجدولة.",
+  external: "يجب تحديد أيام وأوقات التوفر قبل إدخاله في الجدولة.",
+};

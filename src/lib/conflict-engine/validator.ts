@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { categorizeInstructor, requiresAvailability } from "@/lib/instructor-category";
 
 export type StudySystem = "regular" | "parallel" | "both";
 
@@ -93,6 +94,7 @@ export async function validateProposed(params: {
     { data: instrAvail },
     { data: offerings },
     { data: templates },
+    { data: instrRows },
   ] = await Promise.all([
     roomIds.length
       ? supabase.from("rooms").select("id, capacity, college_id").in("id", roomIds)
@@ -119,7 +121,18 @@ export async function validateProposed(params: {
       .select("study_system, day_of_week, start_time, end_time, is_active, college_id")
       .eq("college_id", collegeId)
       .eq("is_active", true),
+    instructorIds.length
+      ? supabase
+          .from("instructors")
+          .select("id, instructor_type_id, instructor_types:instructor_type_id ( code, is_external )")
+          .in("id", instructorIds)
+      : Promise.resolve({ data: [] as Array<{ id: string; instructor_type_id: string | null; instructor_types: { code: string | null; is_external: boolean | null } | null }> }),
   ]);
+
+  // Per-instructor category (permanent / external / other_college)
+  const instrCategory = new Map(
+    (instrRows ?? []).map((r: any) => [r.id, categorizeInstructor(r.instructor_types)]),
+  );
 
   // College isolation guard
   const allRoomsOk = (rooms ?? []).every((r) => r.college_id === collegeId);
@@ -196,11 +209,31 @@ export async function validateProposed(params: {
       }
     }
 
-    // 5. instructor availability (hard windows only)
-    const hardWindows = (instrAvail ?? []).filter(
-      (a) => a.instructor_id === s.instructor_id && a.day_of_week === s.day_of_week,
+    // 5. instructor availability — per category (Phase 1.5A business rules)
+    const cat = instrCategory.get(s.instructor_id) ?? "permanent";
+    const allWindows = (instrAvail ?? []).filter(
+      (a) => a.instructor_id === s.instructor_id,
     );
-    if (hardWindows.length > 0) {
+    const hardWindows = allWindows.filter((a) => a.day_of_week === s.day_of_week);
+    if (hardWindows.length === 0) {
+      // No availability rows for this day.
+      // Permanent: assume default working week → no conflict.
+      // External / Other college: availability is mandatory → block.
+      if (requiresAvailability(cat)) {
+        conflicts.push({
+          code: "instructor_availability_required",
+          severity: "hard",
+          message_ar:
+            cat === "external"
+              ? "المحاضر الخارجي يتطلب تعريف أوقات التوفر قبل الجدولة."
+              : "المحاضر من كلية أخرى يتطلب تعريف أوقات التوفر قبل الجدولة.",
+          message_en:
+            "Instructor availability is mandatory for this category and not defined.",
+          schedule_session_id: sid,
+          metadata: { instructor_id: s.instructor_id, category: cat, day_of_week: s.day_of_week },
+        });
+      }
+    } else {
       const fits = hardWindows.some(
         (w) => w.availability_type !== "unavailable" &&
           within(s.start_time, s.end_time, w.start_time, w.end_time),
@@ -215,7 +248,7 @@ export async function validateProposed(params: {
           message_ar: "الجلسة خارج نطاق توفّر المحاضر الإلزامي.",
           message_en: "Session outside instructor's hard availability window.",
           schedule_session_id: sid,
-          metadata: { instructor_id: s.instructor_id, day_of_week: s.day_of_week },
+          metadata: { instructor_id: s.instructor_id, day_of_week: s.day_of_week, category: cat },
         });
       }
     }

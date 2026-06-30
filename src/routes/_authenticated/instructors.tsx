@@ -14,7 +14,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
-import { UserSquare2, Pencil, Trash2 } from "lucide-react";
+import { UserSquare2, Pencil, Trash2, Info, AlertTriangle } from "lucide-react";
+import { categorizeInstructor, INSTRUCTOR_FORM_HINT_AR, CATEGORY_LABEL_AR } from "@/lib/instructor-category";
 
 export const Route = createFileRoute("/_authenticated/instructors")({
   head: () => ({ meta: [{ title: "المحاضرون" }] }),
@@ -27,6 +28,7 @@ interface Instructor {
   employment_type: string; max_weekly_hours: number; is_active: boolean;
   employee_number: string | null; full_name_ar: string | null; full_name_en: string | null;
   specialization: string | null; administrative_release_hours: number; notes: string | null;
+  instructor_type_id: string | null;
 }
 
 const RANKS = ["معيد", "محاضر", "أستاذ مساعد", "أستاذ مشارك", "أستاذ"];
@@ -43,6 +45,7 @@ function emptyForm() {
     employment_type: "full_time", max_weekly_hours: 18, is_active: true,
     employee_number: "", full_name_ar: "", full_name_en: "", specialization: "",
     administrative_release_hours: 0, notes: "",
+    instructor_type_id: "",
   };
 }
 
@@ -59,11 +62,16 @@ function InstructorsPage() {
     queryFn: async () => (await supabase.from("departments").select("id, name").eq("college_id", active!.id).order("name")).data ?? [],
   });
 
+  const { data: types } = useQuery({
+    queryKey: ["instructor-types", active?.id], enabled: !!active,
+    queryFn: async () => (await supabase.from("instructor_types").select("id, code, name_ar, is_external").eq("college_id", active!.id).eq("is_active", true).order("display_order")).data ?? [],
+  });
+
   const { data: rows, isLoading } = useQuery({
     queryKey: ["instructors", active?.id], enabled: !!active,
     queryFn: async () => {
       const { data, error } = await supabase.from("instructors")
-        .select("id, college_id, department_id, full_name, academic_rank, email, phone, employment_type, max_weekly_hours, is_active, employee_number, full_name_ar, full_name_en, specialization, administrative_release_hours, notes")
+        .select("id, college_id, department_id, full_name, academic_rank, email, phone, employment_type, max_weekly_hours, is_active, employee_number, full_name_ar, full_name_en, specialization, administrative_release_hours, notes, instructor_type_id")
         .eq("college_id", active!.id).order("full_name");
       if (error) throw error; return (data ?? []) as Instructor[];
     },
@@ -88,6 +96,7 @@ function InstructorsPage() {
         administrative_release_hours: Number(form.administrative_release_hours) || 0,
         notes: form.notes.trim() || null,
         is_active: form.is_active,
+        instructor_type_id: form.instructor_type_id || null,
         college_id: active.id,
       };
       if (editing) {
@@ -127,6 +136,7 @@ function InstructorsPage() {
       employee_number: i.employee_number ?? "", full_name_ar: i.full_name_ar ?? "",
       full_name_en: i.full_name_en ?? "", specialization: i.specialization ?? "",
       administrative_release_hours: i.administrative_release_hours ?? 0, notes: i.notes ?? "",
+      instructor_type_id: i.instructor_type_id ?? "",
     });
     setOpen(true);
   };
@@ -191,6 +201,35 @@ function InstructorsPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div><Label>ساعات الإعفاء الإداري</Label><Input type="number" value={form.administrative_release_hours} onChange={(e) => setForm({ ...form, administrative_release_hours: Number(e.target.value) })} /></div>
                   <div><Label>ملاحظات</Label><Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
+                </div>
+                <div className="grid grid-cols-1 gap-3">
+                  <div><Label>فئة المحاضر</Label>
+                    <Select value={form.instructor_type_id || "_none"} onValueChange={(v) => setForm({ ...form, instructor_type_id: v === "_none" ? "" : v })}>
+                      <SelectTrigger><SelectValue placeholder="اختر الفئة" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="_none">— غير محدد —</SelectItem>
+                        {(types ?? []).map((t: any) => <SelectItem key={t.id} value={t.id}>{t.name_ar}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {(() => {
+                    const selected = (types ?? []).find((t: any) => t.id === form.instructor_type_id);
+                    const cat = categorizeInstructor(selected as any);
+                    const isPerm = cat === "permanent";
+                    const tone = isPerm
+                      ? "bg-sky-500/10 text-sky-700 border-sky-500/20"
+                      : "bg-amber-500/10 text-amber-700 border-amber-500/20";
+                    const Icon = isPerm ? Info : AlertTriangle;
+                    return (
+                      <div className={`flex items-start gap-2 rounded border p-3 text-xs ${tone}`}>
+                        <Icon className="mt-0.5 h-4 w-4 shrink-0" />
+                        <div>
+                          <p className="font-semibold">{CATEGORY_LABEL_AR[cat]}</p>
+                          <p className="mt-0.5">{INSTRUCTOR_FORM_HINT_AR[cat]}</p>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
                 <div className="flex items-center justify-between rounded border border-border p-3">
                   <Label>نشط</Label>

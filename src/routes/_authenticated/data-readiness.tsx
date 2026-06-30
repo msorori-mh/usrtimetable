@@ -6,7 +6,8 @@ import { CollegeSwitcher } from "@/components/college-switcher";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Gauge, BookOpen, Users, CalendarClock, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
+import { Gauge, BookOpen, Users, CalendarClock, AlertTriangle, CheckCircle2, XCircle, CalendarCheck } from "lucide-react";
+import { categorizeInstructor, type InstructorCategory, CATEGORY_LABEL_AR } from "@/lib/instructor-category";
 
 export const Route = createFileRoute("/_authenticated/data-readiness")({
   head: () => ({ meta: [{ title: "جاهزية البيانات" }] }),
@@ -27,15 +28,17 @@ async function fetchReadiness(collegeId: string) {
     assignments,
     sessions,
     roomTypes,
+    availability,
   ] = await Promise.all([
     eq(supabase.from("courses").select("id, code, name", { count: "exact" })),
     eq(supabase.from("plan_courses").select("id, level_id, semester, lectures_per_week, labs_per_week, lecture_session_duration, lab_session_duration, course_id", { count: "exact" })),
-    eq(supabase.from("instructors").select("id, specialization, department_id", { count: "exact" })),
+    eq(supabase.from("instructors").select("id, specialization, department_id, instructor_type_id, instructor_types:instructor_type_id ( code, is_external )", { count: "exact" })),
     eq(supabase.from("rooms").select("id, capacity, room_type_id, room_type", { count: "exact" })),
     eq(supabase.from("course_offerings").select("id, expected_students", { count: "exact" })),
     eq(supabase.from("teaching_assignments").select("id, instructor_id, course_offering_id", { count: "exact" })),
     eq(supabase.from("schedule_sessions").select("id, room_id, start_time, end_time, day_of_week", { count: "exact" })),
     eq(supabase.from("room_types").select("id, default_capacity")),
+    eq(supabase.from("instructor_availability").select("instructor_id")),
   ]);
 
   const coursesRows = courses.data ?? [];
@@ -46,6 +49,7 @@ async function fetchReadiness(collegeId: string) {
   const assignmentsRows = assignments.data ?? [];
   const sessionsRows = sessions.data ?? [];
   const roomTypeMap = new Map((roomTypes.data ?? []).map((r: any) => [r.id, r.default_capacity]));
+  const instructorsWithAvail = new Set(((availability.data ?? []) as any[]).map((a) => a.instructor_id));
 
   const linkedCourseIds = new Set(planRows.map((p: any) => p.course_id));
   const offeringsWithAssignments = new Set(assignmentsRows.map((a: any) => a.course_offering_id));
@@ -70,6 +74,40 @@ async function fetchReadiness(collegeId: string) {
     { label: "قاعات بسعة ≤ 0", total: roomsRows.length, missing: roomsRows.filter((r: any) => !r.capacity || r.capacity <= 0).length, critical: true },
   ];
 
+  // Instructor availability — per category (Phase 1.5A)
+  const byCategory: Record<InstructorCategory, { total: number; configured: number }> = {
+    permanent: { total: 0, configured: 0 },
+    external: { total: 0, configured: 0 },
+    other_college: { total: 0, configured: 0 },
+  };
+  for (const i of instructorsRows as any[]) {
+    const cat = categorizeInstructor(i.instructor_types);
+    byCategory[cat].total += 1;
+    if (instructorsWithAvail.has(i.id)) byCategory[cat].configured += 1;
+  }
+  // Availability readiness rules:
+  //   permanent → informational (no penalty, default working week assumed)
+  //   external / other_college → critical (mandatory before scheduling)
+  const avail: Metric[] = [
+    {
+      label: `محاضرون دائمون (افتراضي): ${byCategory.permanent.configured} / ${byCategory.permanent.total} مُعرَّف صراحة`,
+      total: 0, // informational only — excluded from score
+      missing: 0,
+    },
+    {
+      label: "محاضرون خارجيون بدون أوقات توفّر",
+      total: byCategory.external.total,
+      missing: byCategory.external.total - byCategory.external.configured,
+      critical: true,
+    },
+    {
+      label: "محاضرون من كلية أخرى بدون أوقات توفّر",
+      total: byCategory.other_college.total,
+      missing: byCategory.other_college.total - byCategory.other_college.configured,
+      critical: true,
+    },
+  ];
+
   // Scheduling metrics
   const sch: Metric[] = [
     { label: "عروض مقررات بأعداد طلاب ≤ 0", total: offeringsRows.length, missing: offeringsRows.filter((o: any) => !o.expected_students || o.expected_students <= 0).length },
@@ -82,12 +120,12 @@ async function fetchReadiness(collegeId: string) {
   const score = (items: Metric[]) => {
     const denom = items.reduce((s, m) => s + (m.total || 0), 0);
     const miss = items.reduce((s, m) => s + (m.missing || 0), 0);
-    if (denom === 0) return 0;
+    if (denom === 0) return 100;
     return Math.max(0, Math.min(100, Math.round(100 - (miss * 100) / denom)));
   };
 
   const studyPlanScore = score(sp);
-  const resourcesScore = score(res);
+  const resourcesScore = score([...res, ...avail]);
   const schedulingScore = score(sch);
   const overall = Math.round((studyPlanScore + resourcesScore + schedulingScore) / 3);
 
@@ -103,6 +141,8 @@ async function fetchReadiness(collegeId: string) {
     },
     studyPlan: sp,
     resources: res,
+    availability: avail,
+    availabilityByCategory: byCategory,
     scheduling: sch,
     scores: { studyPlanScore, resourcesScore, schedulingScore, overall },
   };
@@ -216,9 +256,42 @@ function DataReadinessPage() {
             </div>
           </Card>
 
+          <div className="mb-4">
+            <Card className="p-5">
+              <h2 className="mb-3 flex items-center gap-2 text-base font-semibold">
+                <CalendarCheck className="h-4 w-4" /> توفّر المحاضرين حسب الفئة
+              </h2>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                {(["permanent", "external", "other_college"] as InstructorCategory[]).map((c) => {
+                  const v = data.availabilityByCategory[c];
+                  const isPerm = c === "permanent";
+                  const missing = v.total - v.configured;
+                  const tone = isPerm
+                    ? "bg-sky-500/10 text-sky-700 border-sky-500/20"
+                    : missing === 0
+                    ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20"
+                    : "bg-red-500/10 text-red-700 border-red-500/20";
+                  return (
+                    <div key={c} className={`rounded border p-4 ${tone}`}>
+                      <p className="text-sm font-medium">{CATEGORY_LABEL_AR[c]}</p>
+                      <p className="mt-1 text-2xl font-bold">{v.configured} / {v.total}</p>
+                      <p className="mt-1 text-xs">
+                        {isPerm
+                          ? "افتراضي: متاح خلال أوقات العمل الرسمية"
+                          : missing === 0
+                          ? "جميع المحاضرين لديهم أوقات توفّر"
+                          : `${missing} بحاجة إلى إدخال أوقات التوفر (إلزامي)`}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          </div>
+
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <Section title="جاهزية الخطط الدراسية" icon={<BookOpen className="h-4 w-4" />} metrics={data.studyPlan} />
-            <Section title="جاهزية الموارد" icon={<Users className="h-4 w-4" />} metrics={data.resources} />
+            <Section title="جاهزية الموارد" icon={<Users className="h-4 w-4" />} metrics={[...data.resources, ...data.availability]} />
             <Section title="جاهزية الجدولة" icon={<CalendarClock className="h-4 w-4" />} metrics={data.scheduling} />
           </div>
         </>
