@@ -28,15 +28,17 @@ async function fetchReadiness(collegeId: string) {
     assignments,
     sessions,
     roomTypes,
+    availability,
   ] = await Promise.all([
     eq(supabase.from("courses").select("id, code, name", { count: "exact" })),
     eq(supabase.from("plan_courses").select("id, level_id, semester, lectures_per_week, labs_per_week, lecture_session_duration, lab_session_duration, course_id", { count: "exact" })),
-    eq(supabase.from("instructors").select("id, specialization, department_id", { count: "exact" })),
+    eq(supabase.from("instructors").select("id, specialization, department_id, instructor_type_id, instructor_types:instructor_type_id ( code, is_external )", { count: "exact" })),
     eq(supabase.from("rooms").select("id, capacity, room_type_id, room_type", { count: "exact" })),
     eq(supabase.from("course_offerings").select("id, expected_students", { count: "exact" })),
     eq(supabase.from("teaching_assignments").select("id, instructor_id, course_offering_id", { count: "exact" })),
     eq(supabase.from("schedule_sessions").select("id, room_id, start_time, end_time, day_of_week", { count: "exact" })),
     eq(supabase.from("room_types").select("id, default_capacity")),
+    eq(supabase.from("instructor_availability").select("instructor_id")),
   ]);
 
   const coursesRows = courses.data ?? [];
@@ -47,6 +49,7 @@ async function fetchReadiness(collegeId: string) {
   const assignmentsRows = assignments.data ?? [];
   const sessionsRows = sessions.data ?? [];
   const roomTypeMap = new Map((roomTypes.data ?? []).map((r: any) => [r.id, r.default_capacity]));
+  const instructorsWithAvail = new Set(((availability.data ?? []) as any[]).map((a) => a.instructor_id));
 
   const linkedCourseIds = new Set(planRows.map((p: any) => p.course_id));
   const offeringsWithAssignments = new Set(assignmentsRows.map((a: any) => a.course_offering_id));
