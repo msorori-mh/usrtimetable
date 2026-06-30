@@ -322,14 +322,14 @@ export const CATALOG: TemplateDef[] = [
       { header: "lecture_session_duration", example: "2", description: "بالساعات" },
       { header: "labs_per_week", example: "1" },
       { header: "lab_session_duration", example: "2", description: "بالساعات" },
-      { header: "required_room_type_for_lecture", example: "lecture_room", allowed: "lecture_room | auditorium" },
-      { header: "required_room_type_for_lab", example: "computer_lab", allowed: "computer_lab | network_lab | general_lab" },
+      { header: "required_room_type_for_lecture", example: "lecture_hall", allowed: "lecture_hall | seminar_room" },
+      { header: "required_room_type_for_lab", example: "computer_lab", allowed: "computer_lab | network_lab | cybersecurity_lab | electronics_lab | workshop" },
       { header: "prerequisite_code", example: "CS100", description: "رمز المقرر المتطلب السابق" },
       { header: "notes", example: "" },
     ],
     sampleRows: [
-      ["CS", "CS-2024", "خطة علوم الحاسب 2024", "1", "1", "CS101", "مقدمة في الحاسب", "Introduction to Computing", "department", "false", "true", "3", "2", "2", "0", "1", "2", "1", "2", "lecture_room", "computer_lab", "", "مقرر تأسيسي"],
-      ["CS", "CS-2024", "خطة علوم الحاسب 2024", "2", "1", "CS201", "هياكل البيانات", "Data Structures", "department", "false", "true", "3", "2", "2", "0", "1", "2", "1", "2", "lecture_room", "computer_lab", "CS101", ""],
+      ["CS", "CS-2024", "خطة علوم الحاسب 2024", "1", "1", "CS101", "مقدمة في الحاسب", "Introduction to Computing", "department", "false", "true", "3", "2", "2", "0", "1", "2", "1", "2", "lecture_hall", "computer_lab", "", "مقرر تأسيسي"],
+      ["CS", "CS-2024", "خطة علوم الحاسب 2024", "2", "1", "CS201", "هياكل البيانات", "Data Structures", "department", "false", "true", "3", "2", "2", "0", "1", "2", "1", "2", "lecture_hall", "computer_lab", "CS101", ""],
     ],
     references: [REF_ROOM_TYPES, REF_STUDY_SYSTEM],
     commonErrors: [
