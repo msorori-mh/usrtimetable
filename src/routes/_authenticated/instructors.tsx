@@ -14,7 +14,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
-import { UserSquare2, Pencil, Trash2 } from "lucide-react";
+import { UserSquare2, Pencil, Trash2, Info, AlertTriangle } from "lucide-react";
+import { categorizeInstructor, INSTRUCTOR_FORM_HINT_AR, CATEGORY_LABEL_AR } from "@/lib/instructor-category";
 
 export const Route = createFileRoute("/_authenticated/instructors")({
   head: () => ({ meta: [{ title: "المحاضرون" }] }),
