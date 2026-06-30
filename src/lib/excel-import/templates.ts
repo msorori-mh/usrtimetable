@@ -150,7 +150,7 @@ export const TEMPLATES: Record<string, TemplateDef> = {
       { key: "lecture_session_duration", header: "مدة_المحاضرة", type: "number", example: "2" },
       { key: "labs_per_week", header: "عدد_المختبرات_أسبوعياً", type: "number", example: "1" },
       { key: "lab_session_duration", header: "مدة_المختبر", type: "number", example: "2" },
-      { key: "required_room_type_for_lecture", header: "نوع_قاعة_المحاضرة", example: "lecture_room" },
+      { key: "required_room_type_for_lecture", header: "نوع_قاعة_المحاضرة", example: "lecture_hall" },
       { key: "required_room_type_for_lab", header: "نوع_قاعة_المختبر", example: "computer_lab" },
     ],
   },
