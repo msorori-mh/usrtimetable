@@ -57,11 +57,13 @@ const REF_ROOM_TYPES: TemplateRef = {
   title: "أنواع القاعات",
   rows: [
     ["الرمز", "الوصف"],
-    ["lecture_room", "قاعة محاضرات"],
+    ["lecture_hall", "قاعة محاضرات"],
     ["computer_lab", "مختبر حاسوب"],
     ["network_lab", "مختبر شبكات"],
-    ["general_lab", "مختبر عام"],
-    ["auditorium", "مدرّج"],
+    ["cybersecurity_lab", "مختبر أمن سيبراني"],
+    ["electronics_lab", "مختبر إلكترونيات"],
+    ["workshop", "ورشة"],
+    ["seminar_room", "قاعة ندوات"],
   ],
 };
 
