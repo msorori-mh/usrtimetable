@@ -136,6 +136,7 @@ function InstructorsPage() {
       employee_number: i.employee_number ?? "", full_name_ar: i.full_name_ar ?? "",
       full_name_en: i.full_name_en ?? "", specialization: i.specialization ?? "",
       administrative_release_hours: i.administrative_release_hours ?? 0, notes: i.notes ?? "",
+      instructor_type_id: i.instructor_type_id ?? "",
     });
     setOpen(true);
   };
