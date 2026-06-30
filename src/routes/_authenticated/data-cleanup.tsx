@@ -447,7 +447,7 @@ function CoursesSection({
   // dialog state
   const [codePrefix, setCodePrefix] = useState("");
   const [natureVal, setNatureVal] = useState<"department" | "college" | "university">("department");
-  const [lectureRoom, setLectureRoom] = useState("lecture_room");
+  const [lectureRoom, setLectureRoom] = useState("lecture_hall");
   const [labRoom, setLabRoom] = useState("computer_lab");
 
   const tempIds = issues?.temp_codes.ids ?? [];
@@ -553,8 +553,8 @@ function CoursesSection({
             <Select value={lectureRoom} onValueChange={setLectureRoom}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="lecture_room">قاعة محاضرات</SelectItem>
-                <SelectItem value="auditorium">مدرّج</SelectItem>
+                <SelectItem value="lecture_hall">قاعة محاضرات</SelectItem>
+                <SelectItem value="seminar_room">قاعة ندوات</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -565,7 +565,8 @@ function CoursesSection({
               <SelectContent>
                 <SelectItem value="computer_lab">مختبر حاسوب</SelectItem>
                 <SelectItem value="network_lab">مختبر شبكات</SelectItem>
-                <SelectItem value="general_lab">مختبر عام</SelectItem>
+                <SelectItem value="cybersecurity_lab">مختبر أمن سيبراني</SelectItem>
+                <SelectItem value="electronics_lab">مختبر إلكترونيات</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -741,7 +742,7 @@ function RoomsSection({
           const rt = (data?.roomTypes ?? []).find((t) => t.id === roomTypeId);
           const upd: { room_type_id: string; room_type?: string } = { room_type_id: roomTypeId };
           // also sync legacy text column if code maps to allowed enum
-          if (rt?.code && ["lecture_room", "computer_lab", "network_lab", "general_lab", "auditorium"].includes(rt.code)) {
+          if (rt?.code && ["lecture_hall", "computer_lab", "network_lab", "cybersecurity_lab", "electronics_lab", "workshop", "seminar_room"].includes(rt.code)) {
             upd.room_type = rt.code;
           }
           const { error } = await supabase.from("rooms").update(upd).in("id", ids);

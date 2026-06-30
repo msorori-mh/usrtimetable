@@ -28,15 +28,17 @@ interface Room {
 }
 
 export const ROOM_TYPES = [
-  { v: "lecture_room", l: "قاعة محاضرات" },
+  { v: "lecture_hall", l: "قاعة محاضرات" },
   { v: "computer_lab", l: "مختبر حاسوب" },
   { v: "network_lab", l: "مختبر شبكات" },
-  { v: "general_lab", l: "مختبر عام" },
-  { v: "auditorium", l: "قاعة كبرى" },
+  { v: "cybersecurity_lab", l: "مختبر أمن سيبراني" },
+  { v: "electronics_lab", l: "مختبر إلكترونيات" },
+  { v: "workshop", l: "ورشة" },
+  { v: "seminar_room", l: "قاعة ندوات" },
 ];
 
 function emptyForm() {
-  return { code: "", name: "", room_type: "lecture_room", capacity: 30, building: "", floor: "", is_active: true, notes: "" };
+  return { code: "", name: "", room_type: "lecture_hall", capacity: 30, building: "", floor: "", is_active: true, notes: "" };
 }
 
 function RoomsPage() {
