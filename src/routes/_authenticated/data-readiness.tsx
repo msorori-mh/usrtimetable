@@ -74,6 +74,40 @@ async function fetchReadiness(collegeId: string) {
     { label: "قاعات بسعة ≤ 0", total: roomsRows.length, missing: roomsRows.filter((r: any) => !r.capacity || r.capacity <= 0).length, critical: true },
   ];
 
+  // Instructor availability — per category (Phase 1.5A)
+  const byCategory: Record<InstructorCategory, { total: number; configured: number }> = {
+    permanent: { total: 0, configured: 0 },
+    external: { total: 0, configured: 0 },
+    other_college: { total: 0, configured: 0 },
+  };
+  for (const i of instructorsRows as any[]) {
+    const cat = categorizeInstructor(i.instructor_types);
+    byCategory[cat].total += 1;
+    if (instructorsWithAvail.has(i.id)) byCategory[cat].configured += 1;
+  }
+  // Availability readiness rules:
+  //   permanent → informational (no penalty, default working week assumed)
+  //   external / other_college → critical (mandatory before scheduling)
+  const avail: Metric[] = [
+    {
+      label: `محاضرون دائمون (افتراضي): ${byCategory.permanent.configured} / ${byCategory.permanent.total} مُعرَّف صراحة`,
+      total: 0, // informational only — excluded from score
+      missing: 0,
+    },
+    {
+      label: "محاضرون خارجيون بدون أوقات توفّر",
+      total: byCategory.external.total,
+      missing: byCategory.external.total - byCategory.external.configured,
+      critical: true,
+    },
+    {
+      label: "محاضرون من كلية أخرى بدون أوقات توفّر",
+      total: byCategory.other_college.total,
+      missing: byCategory.other_college.total - byCategory.other_college.configured,
+      critical: true,
+    },
+  ];
+
   // Scheduling metrics
   const sch: Metric[] = [
     { label: "عروض مقررات بأعداد طلاب ≤ 0", total: offeringsRows.length, missing: offeringsRows.filter((o: any) => !o.expected_students || o.expected_students <= 0).length },
@@ -86,12 +120,12 @@ async function fetchReadiness(collegeId: string) {
   const score = (items: Metric[]) => {
     const denom = items.reduce((s, m) => s + (m.total || 0), 0);
     const miss = items.reduce((s, m) => s + (m.missing || 0), 0);
-    if (denom === 0) return 0;
+    if (denom === 0) return 100;
     return Math.max(0, Math.min(100, Math.round(100 - (miss * 100) / denom)));
   };
 
   const studyPlanScore = score(sp);
-  const resourcesScore = score(res);
+  const resourcesScore = score([...res, ...avail]);
   const schedulingScore = score(sch);
   const overall = Math.round((studyPlanScore + resourcesScore + schedulingScore) / 3);
 
@@ -107,6 +141,8 @@ async function fetchReadiness(collegeId: string) {
     },
     studyPlan: sp,
     resources: res,
+    availability: avail,
+    availabilityByCategory: byCategory,
     scheduling: sch,
     scores: { studyPlanScore, resourcesScore, schedulingScore, overall },
   };
