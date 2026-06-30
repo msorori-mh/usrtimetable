@@ -372,7 +372,7 @@ export function buildDbPayload(entity: ImportEntity, row: ParsedRow, collegeId: 
   if (entity === "rooms") {
     return { ...base,
       code: v.code, name: v.name, capacity: v.capacity ?? 30,
-      room_type: v.room_type ?? "lecture_room", room_type_id: v._room_type_id ?? null,
+      room_type: v.room_type ?? "lecture_hall", room_type_id: v._room_type_id ?? null,
       building_id: v._building_id ?? null, building: v.building ?? null, floor: v.floor ?? null,
       available_start_time: v.available_start_time ?? null, available_end_time: v.available_end_time ?? null,
       notes: v.notes ?? null, is_active: v.is_active ?? true };
