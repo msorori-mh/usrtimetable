@@ -28,6 +28,7 @@ interface Instructor {
   employment_type: string; max_weekly_hours: number; is_active: boolean;
   employee_number: string | null; full_name_ar: string | null; full_name_en: string | null;
   specialization: string | null; administrative_release_hours: number; notes: string | null;
+  instructor_type_id: string | null;
 }
 
 const RANKS = ["معيد", "محاضر", "أستاذ مساعد", "أستاذ مشارك", "أستاذ"];
@@ -44,6 +45,7 @@ function emptyForm() {
     employment_type: "full_time", max_weekly_hours: 18, is_active: true,
     employee_number: "", full_name_ar: "", full_name_en: "", specialization: "",
     administrative_release_hours: 0, notes: "",
+    instructor_type_id: "",
   };
 }
 
