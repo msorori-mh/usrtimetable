@@ -94,6 +94,7 @@ export async function validateProposed(params: {
     { data: instrAvail },
     { data: offerings },
     { data: templates },
+    { data: instrRows },
   ] = await Promise.all([
     roomIds.length
       ? supabase.from("rooms").select("id, capacity, college_id").in("id", roomIds)
@@ -120,7 +121,18 @@ export async function validateProposed(params: {
       .select("study_system, day_of_week, start_time, end_time, is_active, college_id")
       .eq("college_id", collegeId)
       .eq("is_active", true),
+    instructorIds.length
+      ? supabase
+          .from("instructors")
+          .select("id, instructor_type_id, instructor_types:instructor_type_id ( code, is_external )")
+          .in("id", instructorIds)
+      : Promise.resolve({ data: [] as Array<{ id: string; instructor_type_id: string | null; instructor_types: { code: string | null; is_external: boolean | null } | null }> }),
   ]);
+
+  // Per-instructor category (permanent / external / other_college)
+  const instrCategory = new Map(
+    (instrRows ?? []).map((r: any) => [r.id, categorizeInstructor(r.instructor_types)]),
+  );
 
   // College isolation guard
   const allRoomsOk = (rooms ?? []).every((r) => r.college_id === collegeId);
