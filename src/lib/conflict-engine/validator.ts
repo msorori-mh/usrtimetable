@@ -209,11 +209,31 @@ export async function validateProposed(params: {
       }
     }
 
-    // 5. instructor availability (hard windows only)
-    const hardWindows = (instrAvail ?? []).filter(
-      (a) => a.instructor_id === s.instructor_id && a.day_of_week === s.day_of_week,
+    // 5. instructor availability — per category (Phase 1.5A business rules)
+    const cat = instrCategory.get(s.instructor_id) ?? "permanent";
+    const allWindows = (instrAvail ?? []).filter(
+      (a) => a.instructor_id === s.instructor_id,
     );
-    if (hardWindows.length > 0) {
+    const hardWindows = allWindows.filter((a) => a.day_of_week === s.day_of_week);
+    if (hardWindows.length === 0) {
+      // No availability rows for this day.
+      // Permanent: assume default working week → no conflict.
+      // External / Other college: availability is mandatory → block.
+      if (requiresAvailability(cat)) {
+        conflicts.push({
+          code: "instructor_availability_required",
+          severity: "hard",
+          message_ar:
+            cat === "external"
+              ? "المحاضر الخارجي يتطلب تعريف أوقات التوفر قبل الجدولة."
+              : "المحاضر من كلية أخرى يتطلب تعريف أوقات التوفر قبل الجدولة.",
+          message_en:
+            "Instructor availability is mandatory for this category and not defined.",
+          schedule_session_id: sid,
+          metadata: { instructor_id: s.instructor_id, category: cat, day_of_week: s.day_of_week },
+        });
+      }
+    } else {
       const fits = hardWindows.some(
         (w) => w.availability_type !== "unavailable" &&
           within(s.start_time, s.end_time, w.start_time, w.end_time),
@@ -228,7 +248,7 @@ export async function validateProposed(params: {
           message_ar: "الجلسة خارج نطاق توفّر المحاضر الإلزامي.",
           message_en: "Session outside instructor's hard availability window.",
           schedule_session_id: sid,
-          metadata: { instructor_id: s.instructor_id, day_of_week: s.day_of_week },
+          metadata: { instructor_id: s.instructor_id, day_of_week: s.day_of_week, category: cat },
         });
       }
     }
