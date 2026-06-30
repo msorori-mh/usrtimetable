@@ -553,8 +553,8 @@ function CoursesSection({
             <Select value={lectureRoom} onValueChange={setLectureRoom}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="lecture_room">قاعة محاضرات</SelectItem>
-                <SelectItem value="auditorium">مدرّج</SelectItem>
+                <SelectItem value="lecture_hall">قاعة محاضرات</SelectItem>
+                <SelectItem value="seminar_room">قاعة ندوات</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -565,7 +565,8 @@ function CoursesSection({
               <SelectContent>
                 <SelectItem value="computer_lab">مختبر حاسوب</SelectItem>
                 <SelectItem value="network_lab">مختبر شبكات</SelectItem>
-                <SelectItem value="general_lab">مختبر عام</SelectItem>
+                <SelectItem value="cybersecurity_lab">مختبر أمن سيبراني</SelectItem>
+                <SelectItem value="electronics_lab">مختبر إلكترونيات</SelectItem>
               </SelectContent>
             </Select>
           </div>
