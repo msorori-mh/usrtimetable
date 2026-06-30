@@ -75,6 +75,7 @@ const REF_SESSION_TYPES: TemplateRef = {
     ["lab", "مختبر"],
     ["tutorial", "تمارين"],
     ["seminar", "ندوة"],
+    ["workshop", "ورشة"],
   ],
 };
 
