@@ -41,7 +41,7 @@ export const TEMPLATES: Record<string, TemplateDef> = {
       { key: "code", header: "رمز_القاعة", required: true, example: "R-101" },
       { key: "name", header: "اسم_القاعة", required: true, example: "قاعة 101" },
       { key: "capacity", header: "السعة", required: true, type: "number", example: "30" },
-      { key: "room_type", header: "نوع_القاعة", example: "lecture_room" },
+      { key: "room_type", header: "نوع_القاعة", example: "lecture_hall" },
       { key: "room_type_code", header: "نوع_القاعة_رمز", example: "LEC" },
       { key: "building_code", header: "رمز_المبنى", example: "A" },
       { key: "floor", header: "الطابق", example: "1" },
