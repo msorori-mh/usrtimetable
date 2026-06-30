@@ -96,6 +96,7 @@ function InstructorsPage() {
         administrative_release_hours: Number(form.administrative_release_hours) || 0,
         notes: form.notes.trim() || null,
         is_active: form.is_active,
+        instructor_type_id: form.instructor_type_id || null,
         college_id: active.id,
       };
       if (editing) {
