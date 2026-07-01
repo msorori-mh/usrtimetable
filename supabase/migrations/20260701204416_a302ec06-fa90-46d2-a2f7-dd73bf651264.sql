@@ -1,0 +1,1 @@
+CREATE POLICY cr_update ON public.conflict_results FOR UPDATE USING (can_manage_college(auth.uid(), college_id)) WITH CHECK (can_manage_college(auth.uid(), college_id));
