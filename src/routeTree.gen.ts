@@ -53,12 +53,17 @@ import { Route as AuthenticatedAutoScheduleRouteImport } from './routes/_authent
 import { Route as AuthenticatedAcademicCalendarRouteImport } from './routes/_authenticated/academic-calendar'
 import { Route as AuthenticatedTimetableVersionIdRouteImport } from './routes/_authenticated/timetable.$versionId'
 import { Route as AuthenticatedReportsUnscheduledRouteImport } from './routes/_authenticated/reports.unscheduled'
+import { Route as AuthenticatedReportsSectionTimetableRouteImport } from './routes/_authenticated/reports.section-timetable'
 import { Route as AuthenticatedReportsRoomUtilizationRouteImport } from './routes/_authenticated/reports.room-utilization'
+import { Route as AuthenticatedReportsRoomTimetableRouteImport } from './routes/_authenticated/reports.room-timetable'
 import { Route as AuthenticatedReportsQualitySummaryRouteImport } from './routes/_authenticated/reports.quality-summary'
 import { Route as AuthenticatedReportsPublishedTimetableRouteImport } from './routes/_authenticated/reports.published-timetable'
+import { Route as AuthenticatedReportsProgramLevelTimetableRouteImport } from './routes/_authenticated/reports.program-level-timetable'
 import { Route as AuthenticatedReportsInstructorWorkloadRouteImport } from './routes/_authenticated/reports.instructor-workload'
 import { Route as AuthenticatedReportsInstructorScheduleRouteImport } from './routes/_authenticated/reports.instructor-schedule'
 import { Route as AuthenticatedReportsDepartmentScheduleRouteImport } from './routes/_authenticated/reports.department-schedule'
+import { Route as AuthenticatedReportsDataReadinessRouteImport } from './routes/_authenticated/reports.data-readiness'
+import { Route as AuthenticatedReportsConflictsRouteImport } from './routes/_authenticated/reports.conflicts'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -305,10 +310,22 @@ const AuthenticatedReportsUnscheduledRoute =
     path: '/unscheduled',
     getParentRoute: () => AuthenticatedReportsRoute,
   } as any)
+const AuthenticatedReportsSectionTimetableRoute =
+  AuthenticatedReportsSectionTimetableRouteImport.update({
+    id: '/section-timetable',
+    path: '/section-timetable',
+    getParentRoute: () => AuthenticatedReportsRoute,
+  } as any)
 const AuthenticatedReportsRoomUtilizationRoute =
   AuthenticatedReportsRoomUtilizationRouteImport.update({
     id: '/room-utilization',
     path: '/room-utilization',
+    getParentRoute: () => AuthenticatedReportsRoute,
+  } as any)
+const AuthenticatedReportsRoomTimetableRoute =
+  AuthenticatedReportsRoomTimetableRouteImport.update({
+    id: '/room-timetable',
+    path: '/room-timetable',
     getParentRoute: () => AuthenticatedReportsRoute,
   } as any)
 const AuthenticatedReportsQualitySummaryRoute =
@@ -321,6 +338,12 @@ const AuthenticatedReportsPublishedTimetableRoute =
   AuthenticatedReportsPublishedTimetableRouteImport.update({
     id: '/published-timetable',
     path: '/published-timetable',
+    getParentRoute: () => AuthenticatedReportsRoute,
+  } as any)
+const AuthenticatedReportsProgramLevelTimetableRoute =
+  AuthenticatedReportsProgramLevelTimetableRouteImport.update({
+    id: '/program-level-timetable',
+    path: '/program-level-timetable',
     getParentRoute: () => AuthenticatedReportsRoute,
   } as any)
 const AuthenticatedReportsInstructorWorkloadRoute =
@@ -339,6 +362,18 @@ const AuthenticatedReportsDepartmentScheduleRoute =
   AuthenticatedReportsDepartmentScheduleRouteImport.update({
     id: '/department-schedule',
     path: '/department-schedule',
+    getParentRoute: () => AuthenticatedReportsRoute,
+  } as any)
+const AuthenticatedReportsDataReadinessRoute =
+  AuthenticatedReportsDataReadinessRouteImport.update({
+    id: '/data-readiness',
+    path: '/data-readiness',
+    getParentRoute: () => AuthenticatedReportsRoute,
+  } as any)
+const AuthenticatedReportsConflictsRoute =
+  AuthenticatedReportsConflictsRouteImport.update({
+    id: '/conflicts',
+    path: '/conflicts',
     getParentRoute: () => AuthenticatedReportsRoute,
   } as any)
 
@@ -384,12 +419,17 @@ export interface FileRoutesByFullPath {
   '/time-slots': typeof AuthenticatedTimeSlotsRoute
   '/universities': typeof AuthenticatedUniversitiesRoute
   '/users': typeof AuthenticatedUsersRoute
+  '/reports/conflicts': typeof AuthenticatedReportsConflictsRoute
+  '/reports/data-readiness': typeof AuthenticatedReportsDataReadinessRoute
   '/reports/department-schedule': typeof AuthenticatedReportsDepartmentScheduleRoute
   '/reports/instructor-schedule': typeof AuthenticatedReportsInstructorScheduleRoute
   '/reports/instructor-workload': typeof AuthenticatedReportsInstructorWorkloadRoute
+  '/reports/program-level-timetable': typeof AuthenticatedReportsProgramLevelTimetableRoute
   '/reports/published-timetable': typeof AuthenticatedReportsPublishedTimetableRoute
   '/reports/quality-summary': typeof AuthenticatedReportsQualitySummaryRoute
+  '/reports/room-timetable': typeof AuthenticatedReportsRoomTimetableRoute
   '/reports/room-utilization': typeof AuthenticatedReportsRoomUtilizationRoute
+  '/reports/section-timetable': typeof AuthenticatedReportsSectionTimetableRoute
   '/reports/unscheduled': typeof AuthenticatedReportsUnscheduledRoute
   '/timetable/$versionId': typeof AuthenticatedTimetableVersionIdRoute
 }
@@ -435,12 +475,17 @@ export interface FileRoutesByTo {
   '/time-slots': typeof AuthenticatedTimeSlotsRoute
   '/universities': typeof AuthenticatedUniversitiesRoute
   '/users': typeof AuthenticatedUsersRoute
+  '/reports/conflicts': typeof AuthenticatedReportsConflictsRoute
+  '/reports/data-readiness': typeof AuthenticatedReportsDataReadinessRoute
   '/reports/department-schedule': typeof AuthenticatedReportsDepartmentScheduleRoute
   '/reports/instructor-schedule': typeof AuthenticatedReportsInstructorScheduleRoute
   '/reports/instructor-workload': typeof AuthenticatedReportsInstructorWorkloadRoute
+  '/reports/program-level-timetable': typeof AuthenticatedReportsProgramLevelTimetableRoute
   '/reports/published-timetable': typeof AuthenticatedReportsPublishedTimetableRoute
   '/reports/quality-summary': typeof AuthenticatedReportsQualitySummaryRoute
+  '/reports/room-timetable': typeof AuthenticatedReportsRoomTimetableRoute
   '/reports/room-utilization': typeof AuthenticatedReportsRoomUtilizationRoute
+  '/reports/section-timetable': typeof AuthenticatedReportsSectionTimetableRoute
   '/reports/unscheduled': typeof AuthenticatedReportsUnscheduledRoute
   '/timetable/$versionId': typeof AuthenticatedTimetableVersionIdRoute
 }
@@ -488,12 +533,17 @@ export interface FileRoutesById {
   '/_authenticated/time-slots': typeof AuthenticatedTimeSlotsRoute
   '/_authenticated/universities': typeof AuthenticatedUniversitiesRoute
   '/_authenticated/users': typeof AuthenticatedUsersRoute
+  '/_authenticated/reports/conflicts': typeof AuthenticatedReportsConflictsRoute
+  '/_authenticated/reports/data-readiness': typeof AuthenticatedReportsDataReadinessRoute
   '/_authenticated/reports/department-schedule': typeof AuthenticatedReportsDepartmentScheduleRoute
   '/_authenticated/reports/instructor-schedule': typeof AuthenticatedReportsInstructorScheduleRoute
   '/_authenticated/reports/instructor-workload': typeof AuthenticatedReportsInstructorWorkloadRoute
+  '/_authenticated/reports/program-level-timetable': typeof AuthenticatedReportsProgramLevelTimetableRoute
   '/_authenticated/reports/published-timetable': typeof AuthenticatedReportsPublishedTimetableRoute
   '/_authenticated/reports/quality-summary': typeof AuthenticatedReportsQualitySummaryRoute
+  '/_authenticated/reports/room-timetable': typeof AuthenticatedReportsRoomTimetableRoute
   '/_authenticated/reports/room-utilization': typeof AuthenticatedReportsRoomUtilizationRoute
+  '/_authenticated/reports/section-timetable': typeof AuthenticatedReportsSectionTimetableRoute
   '/_authenticated/reports/unscheduled': typeof AuthenticatedReportsUnscheduledRoute
   '/_authenticated/timetable/$versionId': typeof AuthenticatedTimetableVersionIdRoute
 }
@@ -541,12 +591,17 @@ export interface FileRouteTypes {
     | '/time-slots'
     | '/universities'
     | '/users'
+    | '/reports/conflicts'
+    | '/reports/data-readiness'
     | '/reports/department-schedule'
     | '/reports/instructor-schedule'
     | '/reports/instructor-workload'
+    | '/reports/program-level-timetable'
     | '/reports/published-timetable'
     | '/reports/quality-summary'
+    | '/reports/room-timetable'
     | '/reports/room-utilization'
+    | '/reports/section-timetable'
     | '/reports/unscheduled'
     | '/timetable/$versionId'
   fileRoutesByTo: FileRoutesByTo
@@ -592,12 +647,17 @@ export interface FileRouteTypes {
     | '/time-slots'
     | '/universities'
     | '/users'
+    | '/reports/conflicts'
+    | '/reports/data-readiness'
     | '/reports/department-schedule'
     | '/reports/instructor-schedule'
     | '/reports/instructor-workload'
+    | '/reports/program-level-timetable'
     | '/reports/published-timetable'
     | '/reports/quality-summary'
+    | '/reports/room-timetable'
     | '/reports/room-utilization'
+    | '/reports/section-timetable'
     | '/reports/unscheduled'
     | '/timetable/$versionId'
   id:
@@ -644,12 +704,17 @@ export interface FileRouteTypes {
     | '/_authenticated/time-slots'
     | '/_authenticated/universities'
     | '/_authenticated/users'
+    | '/_authenticated/reports/conflicts'
+    | '/_authenticated/reports/data-readiness'
     | '/_authenticated/reports/department-schedule'
     | '/_authenticated/reports/instructor-schedule'
     | '/_authenticated/reports/instructor-workload'
+    | '/_authenticated/reports/program-level-timetable'
     | '/_authenticated/reports/published-timetable'
     | '/_authenticated/reports/quality-summary'
+    | '/_authenticated/reports/room-timetable'
     | '/_authenticated/reports/room-utilization'
+    | '/_authenticated/reports/section-timetable'
     | '/_authenticated/reports/unscheduled'
     | '/_authenticated/timetable/$versionId'
   fileRoutesById: FileRoutesById
@@ -970,11 +1035,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedReportsUnscheduledRouteImport
       parentRoute: typeof AuthenticatedReportsRoute
     }
+    '/_authenticated/reports/section-timetable': {
+      id: '/_authenticated/reports/section-timetable'
+      path: '/section-timetable'
+      fullPath: '/reports/section-timetable'
+      preLoaderRoute: typeof AuthenticatedReportsSectionTimetableRouteImport
+      parentRoute: typeof AuthenticatedReportsRoute
+    }
     '/_authenticated/reports/room-utilization': {
       id: '/_authenticated/reports/room-utilization'
       path: '/room-utilization'
       fullPath: '/reports/room-utilization'
       preLoaderRoute: typeof AuthenticatedReportsRoomUtilizationRouteImport
+      parentRoute: typeof AuthenticatedReportsRoute
+    }
+    '/_authenticated/reports/room-timetable': {
+      id: '/_authenticated/reports/room-timetable'
+      path: '/room-timetable'
+      fullPath: '/reports/room-timetable'
+      preLoaderRoute: typeof AuthenticatedReportsRoomTimetableRouteImport
       parentRoute: typeof AuthenticatedReportsRoute
     }
     '/_authenticated/reports/quality-summary': {
@@ -989,6 +1068,13 @@ declare module '@tanstack/react-router' {
       path: '/published-timetable'
       fullPath: '/reports/published-timetable'
       preLoaderRoute: typeof AuthenticatedReportsPublishedTimetableRouteImport
+      parentRoute: typeof AuthenticatedReportsRoute
+    }
+    '/_authenticated/reports/program-level-timetable': {
+      id: '/_authenticated/reports/program-level-timetable'
+      path: '/program-level-timetable'
+      fullPath: '/reports/program-level-timetable'
+      preLoaderRoute: typeof AuthenticatedReportsProgramLevelTimetableRouteImport
       parentRoute: typeof AuthenticatedReportsRoute
     }
     '/_authenticated/reports/instructor-workload': {
@@ -1012,32 +1098,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedReportsDepartmentScheduleRouteImport
       parentRoute: typeof AuthenticatedReportsRoute
     }
+    '/_authenticated/reports/data-readiness': {
+      id: '/_authenticated/reports/data-readiness'
+      path: '/data-readiness'
+      fullPath: '/reports/data-readiness'
+      preLoaderRoute: typeof AuthenticatedReportsDataReadinessRouteImport
+      parentRoute: typeof AuthenticatedReportsRoute
+    }
+    '/_authenticated/reports/conflicts': {
+      id: '/_authenticated/reports/conflicts'
+      path: '/conflicts'
+      fullPath: '/reports/conflicts'
+      preLoaderRoute: typeof AuthenticatedReportsConflictsRouteImport
+      parentRoute: typeof AuthenticatedReportsRoute
+    }
   }
 }
 
 interface AuthenticatedReportsRouteChildren {
+  AuthenticatedReportsConflictsRoute: typeof AuthenticatedReportsConflictsRoute
+  AuthenticatedReportsDataReadinessRoute: typeof AuthenticatedReportsDataReadinessRoute
   AuthenticatedReportsDepartmentScheduleRoute: typeof AuthenticatedReportsDepartmentScheduleRoute
   AuthenticatedReportsInstructorScheduleRoute: typeof AuthenticatedReportsInstructorScheduleRoute
   AuthenticatedReportsInstructorWorkloadRoute: typeof AuthenticatedReportsInstructorWorkloadRoute
+  AuthenticatedReportsProgramLevelTimetableRoute: typeof AuthenticatedReportsProgramLevelTimetableRoute
   AuthenticatedReportsPublishedTimetableRoute: typeof AuthenticatedReportsPublishedTimetableRoute
   AuthenticatedReportsQualitySummaryRoute: typeof AuthenticatedReportsQualitySummaryRoute
+  AuthenticatedReportsRoomTimetableRoute: typeof AuthenticatedReportsRoomTimetableRoute
   AuthenticatedReportsRoomUtilizationRoute: typeof AuthenticatedReportsRoomUtilizationRoute
+  AuthenticatedReportsSectionTimetableRoute: typeof AuthenticatedReportsSectionTimetableRoute
   AuthenticatedReportsUnscheduledRoute: typeof AuthenticatedReportsUnscheduledRoute
 }
 
 const AuthenticatedReportsRouteChildren: AuthenticatedReportsRouteChildren = {
+  AuthenticatedReportsConflictsRoute: AuthenticatedReportsConflictsRoute,
+  AuthenticatedReportsDataReadinessRoute:
+    AuthenticatedReportsDataReadinessRoute,
   AuthenticatedReportsDepartmentScheduleRoute:
     AuthenticatedReportsDepartmentScheduleRoute,
   AuthenticatedReportsInstructorScheduleRoute:
     AuthenticatedReportsInstructorScheduleRoute,
   AuthenticatedReportsInstructorWorkloadRoute:
     AuthenticatedReportsInstructorWorkloadRoute,
+  AuthenticatedReportsProgramLevelTimetableRoute:
+    AuthenticatedReportsProgramLevelTimetableRoute,
   AuthenticatedReportsPublishedTimetableRoute:
     AuthenticatedReportsPublishedTimetableRoute,
   AuthenticatedReportsQualitySummaryRoute:
     AuthenticatedReportsQualitySummaryRoute,
+  AuthenticatedReportsRoomTimetableRoute:
+    AuthenticatedReportsRoomTimetableRoute,
   AuthenticatedReportsRoomUtilizationRoute:
     AuthenticatedReportsRoomUtilizationRoute,
+  AuthenticatedReportsSectionTimetableRoute:
+    AuthenticatedReportsSectionTimetableRoute,
   AuthenticatedReportsUnscheduledRoute: AuthenticatedReportsUnscheduledRoute,
 }
 
@@ -1141,3 +1255,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
