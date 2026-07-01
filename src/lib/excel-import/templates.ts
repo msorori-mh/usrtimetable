@@ -211,7 +211,7 @@ export const TEMPLATES: Record<string, TemplateDef> = {
 
   section_groups: {
     entity: "section_groups",
-    label: "مجموعات الشعب المدمجة",
+    label: "المجموعات المدمجة",
     sheetName: "section_groups",
     uniqueKey: "_logical",
     uniqueKeyLabel: "فصل + مقرر + اسم المجموعة",

@@ -178,7 +178,7 @@ function OfferingsPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div><Label>عدد الطلاب المتوقع</Label><Input type="number" value={form.expected_students} onChange={(e) => setForm({ ...form, expected_students: Number(e.target.value) })} /></div>
-                  <div><Label>عدد الشُّعب</Label><Input type="number" value={form.sections_count} onChange={(e) => setForm({ ...form, sections_count: Number(e.target.value) })} /></div>
+                  <div><Label>عدد المجموعات</Label><Input type="number" value={form.sections_count} onChange={(e) => setForm({ ...form, sections_count: Number(e.target.value) })} /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div><Label>ملاحظات</Label><Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
@@ -214,7 +214,7 @@ function OfferingsPage() {
                       {termMap.get(o.term_id) ?? "—"}
                       {o.program_id && ` · ${progMap.get(o.program_id) ?? ""}`}
                       {o.level_id && ` · ${levelMap.get(o.level_id) ?? ""}`}
-                      {` · ${o.sections_count} شُعبة · ${o.expected_students} طالب`}
+                      {` · ${o.sections_count} مجموعة · ${o.expected_students} طالب`}
                     </p>
                   </div>
                   {canManage && (

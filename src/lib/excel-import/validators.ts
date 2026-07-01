@@ -349,7 +349,7 @@ function runEntityValidation(entity: ImportEntity, row: ParsedRow, lk: Lookups, 
     if (c) v._course_id = c.id;
     const members = v.member_section_numbers as string[] | null;
     if (!members || members.length === 0)
-      errs.push({ rowNumber: row.rowNumber, columnName: "أرقام_الشعب", errorCode: "required", message: "حدّد رقم شعبة واحد على الأقل" });
+      errs.push({ rowNumber: row.rowNumber, columnName: "أرقام_الشعب", errorCode: "required", message: "حدّد رقم مجموعة واحد على الأقل" });
   }
 }
 

@@ -121,7 +121,7 @@ function SettingsPage() {
 
           <div className="grid grid-cols-3 gap-3">
             <div><Label>سقف ساعات المحاضر/يوم</Label><Input type="number" value={form.max_daily_hours_per_instructor} onChange={(e) => setForm({ ...form, max_daily_hours_per_instructor: Number(e.target.value) })} disabled={!canManage} /></div>
-            <div><Label>سقف ساعات الشُّعبة/يوم</Label><Input type="number" value={form.max_daily_hours_per_section} onChange={(e) => setForm({ ...form, max_daily_hours_per_section: Number(e.target.value) })} disabled={!canManage} /></div>
+            <div><Label>سقف ساعات المجموعة/يوم</Label><Input type="number" value={form.max_daily_hours_per_section} onChange={(e) => setForm({ ...form, max_daily_hours_per_section: Number(e.target.value) })} disabled={!canManage} /></div>
             <div><Label>الفاصل بين الجلسات (دقائق)</Label><Input type="number" value={form.break_between_sessions_min} onChange={(e) => setForm({ ...form, break_between_sessions_min: Number(e.target.value) })} disabled={!canManage} /></div>
           </div>
 

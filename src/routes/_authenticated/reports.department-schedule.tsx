@@ -65,7 +65,7 @@ function Page() {
     { key: "department", label: "القسم" },
     { key: "program", label: "البرنامج" },
     { key: "level", label: "المستوى" },
-    { key: "section", label: "الشعبة" },
+    { key: "section", label: "المجموعة" },
     { key: "course", label: "المقرر" },
     { key: "day", label: "اليوم" },
     { key: "time", label: "الوقت" },
@@ -75,7 +75,7 @@ function Page() {
   ];
 
   return (
-    <ReportShell title="تقرير جدول الأقسام" description="الجدول مجمّعًا حسب القسم/البرنامج/المستوى/الشعبة."
+    <ReportShell title="تقرير جدول الأقسام" description="الجدول مجمّعًا حسب القسم/البرنامج/المستوى/المجموعة."
       filename="department_schedule" rows={rows} headers={headers} isLoading={isLoading}
       emptyMessage={!versionId ? "اختر نسخة جدول للبدء." : "لا توجد جلسات."}
       filters={

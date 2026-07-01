@@ -279,7 +279,7 @@ async function commitSectionGroups(mode: ImportMode, collegeId: string, rows: Pa
       for (const num of memberNums) {
         const { data: sec } = await (supabase.from("sections") as any).select("id, capacity")
           .eq("college_id", collegeId).eq("course_id", v._course_id).eq("term_id", v._term_id).eq("section_number", String(num)).maybeSingle();
-        if (!sec?.id) throw new Error(`شعبة غير موجودة: ${num}`);
+        if (!sec?.id) throw new Error(`مجموعة غير موجودة: ${num}`);
         sectionIds.push({ id: sec.id, expected: sec.capacity ?? 0 });
       }
       const expectedTotal = sectionIds.reduce((s, x) => s + (x.expected ?? 0), 0);

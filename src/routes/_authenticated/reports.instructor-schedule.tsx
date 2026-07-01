@@ -62,7 +62,7 @@ function Page() {
     { key: "room", label: "القاعة" },
     { key: "day", label: "اليوم" },
     { key: "time", label: "الوقت" },
-    { key: "section_program", label: "الشعبة/البرنامج" },
+    { key: "section_program", label: "المجموعة/البرنامج" },
     { key: "session_type", label: "النوع" },
     { key: "hours", label: "الساعات" },
   ];

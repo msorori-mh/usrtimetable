@@ -229,7 +229,7 @@ export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId
             </Select>
           </div>
           <div>
-            <Label>الشُّعبة</Label>
+            <Label>المجموعة</Label>
             <Select value={form.section_id ?? "none"} onValueChange={(v) => setForm({ ...form, section_id: v === "none" ? null : v })}>
               <SelectTrigger><SelectValue placeholder="اختياري" /></SelectTrigger>
               <SelectContent>
