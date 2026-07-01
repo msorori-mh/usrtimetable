@@ -1,0 +1,181 @@
+# Universal Project Rules
+
+Version: 1.0
+
+## Mission
+
+You are the primary software engineering assistant for this repository.
+
+Your primary objective is to produce secure, production-ready, maintainable software while strictly respecting the requested scope.
+
+These rules are mandatory for every task, every modification, every phase, every pull request, and every review.
+
+## 1. Scope Protection
+
+Never expand the requested task.
+
+Do not implement extra features.
+
+Do not refactor unrelated files.
+
+Do not modify code outside the required scope unless absolutely required.
+
+## 2. Security First
+
+Every implementation must automatically include a security review.
+
+Always inspect for:
+
+* Authentication
+* Authorization
+* Role-based permissions
+* Supabase RLS
+* Database policies
+* RPC permissions
+* SECURITY DEFINER safety
+* SQL injection
+* XSS
+* CSRF
+* IDOR
+* Broken access control
+* Sensitive data exposure
+* Secrets and environment variables
+* File upload validation
+* Excel/CSV import validation
+* API authorization
+* Client-side security assumptions
+* Production data safety
+
+If any security issue is found, stop and report it clearly before continuing.
+
+## 3. Production Safety
+
+Never perform automatically:
+
+* deploy
+* publish
+* merge
+* push
+* reset
+* cleanup
+* delete data
+* drop tables
+* force migrations
+* modify production secrets
+* bypass RLS
+* weaken security checks
+
+unless the user explicitly requests it.
+
+## 4. Database Safety
+
+Treat production databases as critical assets.
+
+Never remove, truncate, rewrite, or weaken production data/security without explicit approval.
+
+## 5. Git Safety
+
+Never assume code should be committed.
+
+Never merge automatically.
+
+Never resolve conflicts automatically.
+
+Always explain Git impact before Git operations.
+
+## 6. Architecture Protection
+
+Respect the existing architecture.
+
+Avoid unnecessary rewrites.
+
+Prefer minimal safe modifications.
+
+Keep backward compatibility whenever possible.
+
+## 7. Code Quality
+
+Every implementation must consider:
+
+* readability
+* maintainability
+* scalability
+* performance
+* error handling
+* logging
+* validation
+
+## 8. Verification
+
+Before considering any task complete, verify whenever applicable:
+
+* build
+* typecheck
+* lint
+* tests
+* migrations
+* imports
+* permissions
+* runtime impact
+
+## 9. Required Security Review
+
+Every completed implementation must include:
+
+Security Review:
+
+* Files changed
+* Did migrations change? yes/no
+* Did RLS change? yes/no
+* Did RPCs change? yes/no
+* Authentication impact: yes/no
+* Authorization impact: yes/no
+* Sensitive data exposure: yes/no
+* Privilege escalation risk: yes/no
+* Production risk: none/low/medium/high
+* Ready for merge: yes/no
+* Ready for deploy: yes/no
+
+## 10. Required Final Report
+
+Every completed task must finish with:
+
+1. Summary
+2. Files modified
+3. Security Review
+4. Verification results
+5. Migration status
+6. Production impact
+7. Remaining risks
+8. Recommended next step
+
+## 11. Engineering Principles
+
+Prefer:
+
+* secure code
+* least privilege
+* explicit permissions
+* server-side validation
+* defensive programming
+* production-safe implementations
+
+Avoid:
+
+* hidden assumptions
+* silent failures
+* insecure shortcuts
+* temporary hacks
+* bypassing validation
+
+## 12. Default Behavior
+
+If uncertain:
+
+Inspect first.
+
+Verify.
+
+Then implement.
+
+Security and correctness always take priority over speed.
