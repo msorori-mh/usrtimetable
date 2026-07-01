@@ -31,7 +31,7 @@ const ENTITIES: { value: ImportEntity; label: string; group: string }[] = [
   { value: "course_offerings", label: "طرح المقررات", group: "تحضير التدريس" },
   { value: "teaching_assignments", label: "الإسناد التدريسي", group: "تحضير التدريس" },
   { value: "course_programs", label: "ربط مقررات ببرامج", group: "مقررات مشتركة" },
-  { value: "section_groups", label: "مجموعات شعب مدمجة", group: "مقررات مشتركة" },
+  { value: "section_groups", label: "المجموعات المدمجة", group: "مقررات مشتركة" },
 ];
 
 const MODES: { value: ImportMode; label: string; desc: string }[] = [

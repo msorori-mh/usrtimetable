@@ -183,7 +183,7 @@ function AssignmentsPage() {
                       <SelectContent>{SESSION_TYPES.map((s) => <SelectItem key={s.v} value={s.v}>{s.l}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  <div><Label>الشُّعبة</Label><Input value={form.section_number} onChange={(e) => setForm({ ...form, section_number: e.target.value })} placeholder="A" /></div>
+                  <div><Label>المجموعة</Label><Input value={form.section_number} onChange={(e) => setForm({ ...form, section_number: e.target.value })} placeholder="A" /></div>
                   <div><Label>ساعات/أسبوع</Label><Input type="number" step="0.5" value={form.weekly_hours} onChange={(e) => setForm({ ...form, weekly_hours: Number(e.target.value) })} /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -219,7 +219,7 @@ function AssignmentsPage() {
                     <p className="font-semibold">{insMap.get(a.instructor_id) ?? "—"}</p>
                     <p className="text-xs text-muted-foreground">
                       {offMap.get(a.course_offering_id) ?? "—"} · {SESSION_TYPES.find((s) => s.v === a.session_type)?.l}
-                      {a.section_number && ` · شُعبة ${a.section_number}`} · {a.weekly_hours} س/أ
+                      {a.section_number && ` · مجموعة ${a.section_number}`} · {a.weekly_hours} س/أ
                       {a.required_room_type && ` · ${ROOM_TYPES.find((t) => t.v === a.required_room_type)?.l}`}
                     </p>
                   </div>

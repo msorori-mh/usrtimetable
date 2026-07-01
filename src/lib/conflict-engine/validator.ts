@@ -184,7 +184,7 @@ export async function validateProposed(params: {
             overlap(s.start_time, s.end_time, p.start_time, p.end_time)) {
           conflicts.push({
             code: "section_conflict", severity: "hard",
-            message_ar: "تعارض الشُّعبة: نفس الشُّعبة لديها جلسة أخرى في نفس الوقت.",
+            message_ar: "تعارض المجموعة: نفس المجموعة لديها جلسة أخرى في نفس الوقت.",
             message_en: "Section conflict: same section has another overlapping session.",
             schedule_session_id: sid, related_session_id: p.id,
             metadata: { section_id: s.section_id, day_of_week: s.day_of_week },

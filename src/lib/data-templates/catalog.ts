@@ -546,10 +546,10 @@ export const CATALOG: TemplateDef[] = [
   },
   {
     id: "sections",
-    name: "الشُّعب",
+    name: "المجموعات الدراسية",
     group: "scheduling",
     groupLabel: GROUPS.scheduling,
-    purpose: "تعريف الشعب لكل مقرر مطروح.",
+    purpose: "تعريف المجموعات لكل مقرر مطروح.",
     requiredBeforeScheduling: false,
     importOrder: 18,
     sheetName: "sections",
@@ -566,10 +566,10 @@ export const CATALOG: TemplateDef[] = [
   },
   {
     id: "section_groups",
-    name: "مجموعات الشُّعب المدمجة",
+    name: "المجموعات المدمجة",
     group: "scheduling",
     groupLabel: GROUPS.scheduling,
-    purpose: "دمج عدة شعب في مجموعة واحدة لجلسة مشتركة.",
+    purpose: "دمج عدة مجموعات في مجموعة مدمجة واحدة لجلسة مشتركة.",
     requiredBeforeScheduling: false,
     importOrder: 19,
     sheetName: "section_groups",
@@ -739,6 +739,6 @@ export const IMPORT_ORDER: { step: number; label: string; templateId?: string }[
   { step: 10, label: "قوالب الفترات الزمنية", templateId: "time_slot_templates" },
   { step: 11, label: "طرح المقررات", templateId: "course_offerings" },
   { step: 12, label: "التكليفات التدريسية", templateId: "teaching_assignments" },
-  { step: 13, label: "الشُّعب / مجموعات الشعب", templateId: "sections" },
+  { step: 13, label: "المجموعات الدراسية / المجموعات المدمجة", templateId: "sections" },
   { step: 14, label: "الجلسات المجدوَلة (اختياري)", templateId: "existing_schedule_sessions" },
 ];

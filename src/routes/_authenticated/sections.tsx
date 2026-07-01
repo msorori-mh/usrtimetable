@@ -16,7 +16,7 @@ import { logAudit } from "@/lib/audit";
 import { Users, Pencil, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/sections")({
-  head: () => ({ meta: [{ title: "الشُّعب" }] }),
+  head: () => ({ meta: [{ title: "المجموعات الدراسية" }] }),
   component: SectionsPage,
 });
 
@@ -100,8 +100,8 @@ function SectionsPage() {
       <header className="mb-6 flex items-center gap-3">
         <span className="grid h-11 w-11 place-items-center rounded-lg bg-secondary text-primary"><Users className="h-5 w-5" /></span>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold">الشُّعب</h1>
-          <p className="text-sm text-muted-foreground">شُعب المقررات لكل فصل دراسي.</p>
+          <h1 className="text-2xl font-bold">المجموعات الدراسية</h1>
+          <p className="text-sm text-muted-foreground">مجموعات المقررات لكل فصل دراسي.</p>
         </div>
       </header>
 
@@ -120,9 +120,9 @@ function SectionsPage() {
         </div>
         {canManage && (
           <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild><Button onClick={startCreate} disabled={!ready}>شعبة جديدة</Button></DialogTrigger>
+            <DialogTrigger asChild><Button onClick={startCreate} disabled={!ready}>مجموعة جديدة</Button></DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>{editing ? "تعديل الشعبة" : "شعبة جديدة"}</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{editing ? "تعديل المجموعة" : "مجموعة جديدة"}</DialogTitle></DialogHeader>
               <div className="space-y-3">
                 <div><Label>المقرر</Label>
                   <Select value={form.course_id} onValueChange={(v) => setForm({ ...form, course_id: v })}>
@@ -137,7 +137,7 @@ function SectionsPage() {
                   </Select>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div><Label>رقم الشعبة</Label><Input value={form.section_number} onChange={(e) => setForm({ ...form, section_number: e.target.value })} /></div>
+                  <div><Label>رقم المجموعة</Label><Input value={form.section_number} onChange={(e) => setForm({ ...form, section_number: e.target.value })} /></div>
                   <div><Label>السعة</Label><Input type="number" min={1} value={form.capacity} onChange={(e) => setForm({ ...form, capacity: Number(e.target.value) })} /></div>
                 </div>
               </div>
@@ -159,13 +159,13 @@ function SectionsPage() {
               {rows.map((s) => (
                 <li key={s.id} className="flex items-center justify-between p-4">
                   <div>
-                    <p className="font-semibold">{courseMap.get(s.course_id) ?? "—"} · شعبة {s.section_number}</p>
+                    <p className="font-semibold">{courseMap.get(s.course_id) ?? "—"} · مجموعة {s.section_number}</p>
                     <p className="text-xs text-muted-foreground">{termMap.get(s.term_id) ?? "—"} · السعة {s.capacity}</p>
                   </div>
                   {canManage && (
                     <div className="flex gap-1">
                       <Button size="sm" variant="ghost" onClick={() => startEdit(s)}><Pencil className="h-3.5 w-3.5" /></Button>
-                      <Button size="sm" variant="ghost" onClick={() => { if (confirm("حذف الشعبة؟")) del.mutate(s.id); }}><Trash2 className="h-3.5 w-3.5" /></Button>
+                      <Button size="sm" variant="ghost" onClick={() => { if (confirm("حذف المجموعة؟")) del.mutate(s.id); }}><Trash2 className="h-3.5 w-3.5" /></Button>
                     </div>
                   )}
                 </li>
