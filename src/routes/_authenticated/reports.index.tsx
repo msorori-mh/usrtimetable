@@ -30,6 +30,8 @@ interface ReportCard {
   desc: string;
   icon: ReactNode;
   badge?: "official" | "legacy";
+  /** Distinct accessible name when sidebar shares similar label (e.g. /data-readiness vs report). */
+  linkLabel?: string;
 }
 
 const TIMETABLE_REPORTS: ReportCard[] = [
@@ -46,7 +48,13 @@ const ANALYTICS_REPORTS: ReportCard[] = [
 
 const OPERATIONAL_REPORTS: ReportCard[] = [
   { to: "/reports/conflicts", title: "تعارضات الجدول", desc: "قراءة conflict_results · لا يشغّل Conflict Engine.", icon: <ShieldAlert className="h-5 w-5" /> },
-  { to: "/reports/data-readiness", title: "جاهزية البيانات", desc: "فحوص الجاهزية · قابل للتصدير · على مستوى الكلية.", icon: <ClipboardCheck className="h-5 w-5" /> },
+  {
+    to: "/reports/data-readiness",
+    title: "تقرير جاهزية البيانات",
+    linkLabel: "تقرير جاهزية البيانات — التقارير",
+    desc: "فحوص الجاهزية · قابل للتصدير · على مستوى الكلية (تقرير التقارير).",
+    icon: <ClipboardCheck className="h-5 w-5" />,
+  },
   { to: "/reports/unscheduled", title: "الجلسات غير المجدوَلة", desc: "الناقص vs المطلوب · أسباب من آخر auto_schedule_run.", icon: <AlertTriangle className="h-5 w-5" /> },
   { to: "/reports/quality-summary", title: "ملخص الجودة", desc: "آخر quality run · نسخة واحدة · لا يشغّل Quality Engine.", icon: <Gauge className="h-5 w-5" /> },
 ];
@@ -116,7 +124,13 @@ function ReportGrid({ items }: { items: ReportCard[] }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {items.map((r) => (
-        <Link key={r.to} to={r.to} className="block">
+        <Link
+          key={r.to}
+          to={r.to}
+          className="block"
+          aria-label={r.linkLabel ?? r.title}
+          data-report-hub-link={r.to === "/reports/data-readiness" ? "data-readiness-report" : undefined}
+        >
           <Card className="p-4 hover:shadow-md transition-shadow cursor-pointer h-full">
             <div className="flex items-start gap-3">
               <div className="rounded-md bg-primary/10 text-primary p-2">{r.icon}</div>
