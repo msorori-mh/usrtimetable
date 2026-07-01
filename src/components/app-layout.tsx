@@ -35,6 +35,11 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { toast } from "sonner";
+import { UsrBrandMark } from "@/components/branding/usr-brand-mark";
+import {
+  USR_PLATFORM_NAME_AR,
+  USR_UNIVERSITY_NAME_AR,
+} from "@/lib/branding/usr";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -116,13 +121,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen bg-background">
       <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-l border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
-        <div className="flex items-center gap-3 border-b border-sidebar-border px-5 py-5">
-          <div className="grid h-9 w-9 place-items-center rounded-lg bg-white/10">
-            <GraduationCap className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold leading-tight">منصّة الجداول</p>
-            <p className="text-[11px] text-sidebar-foreground/70">إدارة جامعية</p>
+        <div className="usr-gold-rule shrink-0" />
+        <div className="flex items-center gap-3 border-b border-sidebar-border px-5 py-4">
+          <UsrBrandMark size="sm" className="ring-white/25" />
+          <div className="min-w-0">
+            <p className="text-xs font-bold leading-tight">{USR_UNIVERSITY_NAME_AR}</p>
+            <p className="truncate text-[11px] text-sidebar-foreground/75">{USR_PLATFORM_NAME_AR}</p>
           </div>
         </div>
         <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4">
@@ -172,7 +176,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <main className="flex-1 px-6 py-8 md:px-10">
+      <main className="usr-internal-main flex-1 px-6 py-8 md:px-10">
         {isLoading ? (
           <div className="grid h-64 place-items-center text-muted-foreground">جارٍ التحميل...</div>
         ) : (

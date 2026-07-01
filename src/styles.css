@@ -4,9 +4,8 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* University Scheduler — Arabic RTL Academic Design System
-   Calm scholarly palette: deep teal-navy + warm gold on ivory.
-   All colors in oklch. Use semantic tokens; never hardcode in components. */
+/* University Scheduler — USR Visual Identity (Phase 1.6B-2)
+   Exact palette aligned with usr.edu.ye: deep teal-blue + institutional gold. */
 
 @theme inline {
   --font-sans: "Cairo", "Tajawal", system-ui, sans-serif;
@@ -54,54 +53,71 @@
 :root {
   --radius: 0.625rem;
 
-  /* Warm ivory background, deep navy ink */
-  --background: oklch(0.985 0.008 85);
-  --foreground: oklch(0.22 0.035 250);
+  /* ── USR exact palette (Phase 1.6B-2) ── */
+  --usr-primary: #105B7D;
+  --usr-primary-dark: #0B4964;
+  --usr-primary-deeper: #08384E;
+  --usr-primary-soft: #E8F2F5;
+  --usr-gold: #D99A17;
+  --usr-gold-dark: #B87900;
+  --usr-gold-soft: #FFF4DA;
+  --usr-bg: #F7F8FA;
+  --usr-card: #FFFFFF;
+  --usr-border: #DDE6EA;
+  --usr-text: #102333;
+  --usr-muted: #667985;
 
-  --surface: oklch(1 0 0);
-  --surface-foreground: oklch(0.22 0.035 250);
+  /* Semantic tokens ← USR */
+  --background: var(--usr-bg);
+  --foreground: var(--usr-text);
 
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.22 0.035 250);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.22 0.035 250);
+  --surface: var(--usr-card);
+  --surface-foreground: var(--usr-text);
 
-  /* Deep teal-navy primary */
-  --primary: oklch(0.38 0.09 230);
-  --primary-foreground: oklch(0.985 0.008 85);
-  --primary-glow: oklch(0.55 0.11 220);
+  --card: var(--usr-card);
+  --card-foreground: var(--usr-text);
+  --popover: var(--usr-card);
+  --popover-foreground: var(--usr-text);
 
-  --secondary: oklch(0.95 0.015 240);
-  --secondary-foreground: oklch(0.28 0.05 240);
+  --primary: var(--usr-primary);
+  --primary-foreground: #FFFFFF;
+  --primary-glow: #1A7AA3;
 
-  --muted: oklch(0.95 0.012 80);
-  --muted-foreground: oklch(0.48 0.02 250);
+  --secondary: var(--usr-primary-soft);
+  --secondary-foreground: var(--usr-primary-dark);
 
-  /* Warm gold accent */
-  --accent: oklch(0.78 0.13 75);
-  --accent-foreground: oklch(0.22 0.04 60);
+  --muted: #EEF1F4;
+  --muted-foreground: var(--usr-muted);
 
-  --destructive: oklch(0.58 0.21 25);
-  --destructive-foreground: oklch(0.985 0.008 85);
-  --success: oklch(0.62 0.14 155);
-  --success-foreground: oklch(0.985 0.008 85);
-  --warning: oklch(0.75 0.15 65);
-  --warning-foreground: oklch(0.22 0.04 60);
+  --accent: var(--usr-gold);
+  --accent-foreground: var(--usr-primary-deeper);
 
-  --border: oklch(0.90 0.015 240);
-  --input: oklch(0.92 0.012 240);
-  --ring: oklch(0.55 0.11 220);
+  --destructive: #C53030;
+  --destructive-foreground: #FFFFFF;
+  --success: #2F855A;
+  --success-foreground: #FFFFFF;
+  --warning: var(--usr-gold);
+  --warning-foreground: var(--usr-primary-deeper);
 
-  --sidebar: oklch(0.30 0.06 235);
-  --sidebar-foreground: oklch(0.96 0.012 85);
-  --sidebar-accent: oklch(0.38 0.08 230);
-  --sidebar-accent-foreground: oklch(0.99 0.005 85);
-  --sidebar-border: oklch(0.35 0.06 235);
+  --border: var(--usr-border);
+  --input: var(--usr-border);
+  --ring: var(--usr-primary);
 
-  --gradient-hero: linear-gradient(135deg, var(--primary) 0%, var(--primary-glow) 100%);
-  --gradient-gold: linear-gradient(135deg, var(--accent) 0%, oklch(0.85 0.10 70) 100%);
-  --shadow-card: 0 1px 2px oklch(0.22 0.035 250 / 0.04), 0 8px 24px oklch(0.22 0.035 250 / 0.06);
-  --shadow-elevated: 0 4px 12px oklch(0.22 0.035 250 / 0.08), 0 24px 48px oklch(0.22 0.035 250 / 0.10);
+  --sidebar: var(--usr-primary-deeper);
+  --sidebar-foreground: #F7FAFC;
+  --sidebar-accent: var(--usr-primary);
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: var(--usr-primary-dark);
+
+  --gradient-hero: linear-gradient(
+    135deg,
+    var(--usr-primary-deeper) 0%,
+    var(--usr-primary-dark) 40%,
+    var(--usr-primary) 100%
+  );
+  --gradient-gold: linear-gradient(90deg, var(--usr-gold-dark) 0%, var(--usr-gold) 50%, var(--usr-gold-dark) 100%);
+  --shadow-card: 0 1px 3px rgb(16 35 51 / 0.06), 0 8px 24px rgb(16 35 51 / 0.08);
+  --shadow-elevated: 0 4px 16px rgb(16 35 51 / 0.1), 0 24px 48px rgb(16 35 51 / 0.12);
 }
 
 .dark {
@@ -142,11 +158,332 @@
   * { border-color: var(--color-border); }
   html { direction: rtl; }
   body {
-    background-color: var(--color-background);
+    background-color: var(--usr-bg);
     color: var(--color-foreground);
     font-family: var(--font-sans);
     font-feature-settings: "kern", "liga", "ss01";
     -webkit-font-smoothing: antialiased;
   }
   h1, h2, h3, h4 { font-family: var(--font-display); letter-spacing: -0.01em; }
+}
+
+@layer components {
+  .usr-topbar {
+    background: var(--usr-primary-deeper);
+    color: #fff;
+    font-size: 0.75rem;
+    padding: 0.375rem 1.5rem;
+    text-align: center;
+  }
+
+  .usr-nav-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: var(--usr-card);
+    border-bottom: 1px solid var(--usr-border);
+    padding: 1rem 1.5rem;
+    box-shadow: 0 1px 0 rgb(16 35 51 / 0.04);
+  }
+
+  .usr-nav-brand-text {
+    min-width: 0;
+  }
+
+  .usr-nav-university {
+    font-family: var(--font-display);
+    font-size: 1.125rem;
+    font-weight: 800;
+    line-height: 1.25;
+    color: var(--usr-primary-dark);
+  }
+
+  .usr-nav-platform {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--usr-muted);
+    margin-top: 0.125rem;
+  }
+
+  .usr-site-header {
+    border-bottom: 1px solid var(--usr-border);
+    background: var(--surface);
+    box-shadow: 0 2px 8px rgb(16 35 51 / 0.06);
+  }
+
+  .usr-gold-rule {
+    height: 4px;
+    background: var(--gradient-gold);
+    flex-shrink: 0;
+  }
+
+  .usr-hero-deep {
+    background: var(--gradient-hero);
+    color: #fff;
+    padding: 2.5rem 1.5rem 3rem;
+  }
+
+  .usr-hero-deep-inner {
+    max-width: 44rem;
+    margin-inline: auto;
+    text-align: center;
+    border-right: 4px solid var(--usr-gold);
+    padding-right: 1.25rem;
+  }
+
+  .usr-hero-university {
+    font-family: var(--font-display);
+    font-size: clamp(2.25rem, 6vw, 3.25rem);
+    font-weight: 800;
+    line-height: 1.12;
+    color: #fff;
+    letter-spacing: -0.02em;
+  }
+
+  .usr-hero-platform {
+    margin-top: 0.75rem;
+    font-family: var(--font-display);
+    font-size: clamp(1.25rem, 3vw, 1.625rem);
+    font-weight: 600;
+    color: rgb(255 255 255 / 0.92);
+  }
+
+  .usr-hero-desc {
+    margin-top: 1.25rem;
+    font-size: 1rem;
+    line-height: 1.75;
+    color: rgb(255 255 255 / 0.85);
+  }
+
+  .usr-access-notice {
+    border-radius: var(--radius-lg);
+    border: 1px solid rgb(217 154 23 / 0.45);
+    background: rgb(255 244 218 / 0.95);
+    padding: 0.75rem 1rem;
+    font-size: 0.8125rem;
+    line-height: 1.65;
+    color: var(--usr-primary-deeper);
+    text-align: center;
+  }
+
+  .usr-access-notice--on-dark {
+    border-color: rgb(255 255 255 / 0.25);
+    background: rgb(255 255 255 / 0.1);
+    color: rgb(255 255 255 / 0.92);
+  }
+
+  .usr-hero-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 12rem;
+    padding: 0.75rem 2rem;
+    border-radius: var(--radius-lg);
+    background: var(--usr-gold);
+    color: var(--usr-primary-deeper);
+    font-size: 1rem;
+    font-weight: 700;
+    box-shadow: 0 4px 14px rgb(0 0 0 / 0.2);
+    transition: background 0.15s ease, transform 0.15s ease;
+  }
+
+  .usr-hero-cta:hover {
+    background: var(--usr-gold-dark);
+    color: #fff;
+  }
+
+  .usr-features-section {
+    background: var(--usr-bg);
+    padding: 2.5rem 1.5rem 3rem;
+  }
+
+  .usr-feature-card-lite {
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--usr-border);
+    border-top: 3px solid var(--usr-gold);
+    background: var(--usr-card);
+    padding: 1rem;
+    box-shadow: 0 1px 2px rgb(16 35 51 / 0.04);
+  }
+
+  .usr-feature-icon {
+    display: grid;
+    height: 2.25rem;
+    width: 2.25rem;
+    place-items: center;
+    border-radius: var(--radius-md);
+    background: var(--usr-gold-soft);
+    color: var(--usr-primary);
+    border: 1px solid rgb(217 154 23 / 0.25);
+  }
+
+  .usr-auth-card {
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--usr-border);
+    background: var(--usr-card);
+    padding: 2rem;
+    box-shadow: var(--shadow-card);
+  }
+
+  .usr-auth-header {
+    background: var(--gradient-hero);
+    color: #fff;
+    padding: 1.25rem 1.5rem;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    border-bottom: 4px solid var(--usr-gold);
+  }
+
+  .usr-page-header {
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--usr-border);
+  }
+
+  .usr-page-header-icon {
+    display: grid;
+    height: 2.75rem;
+    width: 2.75rem;
+    place-items: center;
+    border-radius: var(--radius-lg);
+    background: var(--usr-primary-soft);
+    color: var(--usr-primary);
+    border: 1px solid rgb(16 91 125 / 0.15);
+  }
+
+  .usr-section-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--foreground);
+  }
+
+  .usr-institutional-card {
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--usr-border);
+    background: var(--card);
+    padding: 1.25rem;
+    box-shadow: var(--shadow-card);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .usr-institutional-card:hover {
+    border-color: rgb(16 91 125 / 0.3);
+  }
+
+  .usr-internal-main {
+    background: var(--usr-bg);
+  }
+
+  .usr-dashboard-header {
+    border-radius: var(--radius-xl);
+    border: 1px solid rgb(16 91 125 / 0.18);
+    background: linear-gradient(to left, var(--usr-primary-soft), var(--usr-card));
+    padding: 1.5rem;
+    box-shadow: var(--shadow-card);
+  }
+}
+
+/* ── Report print layout (Phase 1.5E-B5-A) ── */
+@media print {
+  @page {
+    margin: 1.2cm 1.5cm;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* Hide app chrome */
+  aside,
+  .report-no-print,
+  [data-sonner-toaster] {
+    display: none !important;
+  }
+
+  main {
+    padding: 0 !important;
+    max-width: none !important;
+  }
+
+  .report-print-root {
+    padding: 0;
+    max-width: none;
+  }
+
+  /* Screen-only page title duplicates */
+  .report-print-root > .report-no-print {
+    display: none !important;
+  }
+
+  .report-official-header {
+    display: block !important;
+    margin-bottom: 1rem;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    box-shadow: none !important;
+  }
+
+  .report-print-body {
+    overflow: visible !important;
+  }
+
+  /* Tables */
+  .report-print-body table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10pt;
+  }
+
+  .report-print-body thead {
+    display: table-header-group;
+  }
+
+  .report-print-body tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .report-print-body th,
+  .report-print-body td {
+    border: 1px solid #ccc;
+    padding: 4px 6px;
+  }
+
+  .report-print-body th {
+    background: #f0f0f0 !important;
+    font-weight: 600;
+  }
+
+  /* Cards lose shadow for print */
+  .report-print-body .rounded-md,
+  .report-print-body [class*="Card"] {
+    box-shadow: none !important;
+    border: 1px solid #ddd;
+  }
+
+  /* Timetable grid */
+  .report-timetable-grid {
+    overflow: visible !important;
+    max-height: none !important;
+    page-break-inside: auto;
+  }
+
+  .report-timetable-grid .sticky {
+    position: static !important;
+  }
+
+  .report-timetable-grid [class*="absolute"] {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  h2, h3 {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
 }
