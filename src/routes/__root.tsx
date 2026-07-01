@@ -9,6 +9,8 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
+/* Side-effect import ensures theme CSS loads on client navigation (Phase 1.6B-VERIFY). */
+import "../styles.css";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -68,8 +70,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "نظام إدارة الجداول الجامعية" },
-      { name: "description", content: "منصة جامعية متعددة الكليات لإدارة الجداول الدراسية، الأقسام، والمستخدمين." },
+      { title: "منصة إدارة الجداول الجامعية — جامعة إقليم سبأ" },
+      { name: "description", content: "منصة إدارة الجداول الجامعية — جامعة إقليم سبأ — كلية تكنولوجيا المعلومات وعلوم الحاسوب." },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -89,7 +91,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="ar" dir="rtl">
+    <html lang="ar" dir="rtl" data-theme="usr">
       <head>
         <HeadContent />
       </head>
