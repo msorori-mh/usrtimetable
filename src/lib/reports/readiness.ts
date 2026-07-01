@@ -1,0 +1,177 @@
+import { supabase } from "@/integrations/supabase/client";
+
+export interface ReadinessMetric {
+  label: string;
+  total: number;
+  missing: number;
+  critical?: boolean;
+  category: "study_plan" | "resources" | "scheduling";
+}
+
+export interface ReadinessCheckRow extends Record<string, unknown> {
+  category: string;
+  check_name: string;
+  status: string;
+  missing_count: number;
+  total_count: number;
+  pct_missing: number;
+  severity: string;
+  message: string;
+  suggested_action: string;
+}
+
+export interface ReadinessData {
+  totals: Record<string, number>;
+  studyPlan: ReadinessMetric[];
+  resources: ReadinessMetric[];
+  scheduling: ReadinessMetric[];
+  scores: { studyPlanScore: number; resourcesScore: number; schedulingScore: number; overall: number };
+}
+
+const CATEGORY_LABELS: Record<ReadinessMetric["category"], string> = {
+  study_plan: "الخطط الدراسية",
+  resources: "الموارد",
+  scheduling: "الجدولة",
+};
+
+const SUGGESTED_ACTIONS: Record<string, string> = {
+  study_plan: "راجع الخطط الدراسية واربط المقررات بالمستويات والفصول.",
+  resources: "أكمل بيانات المحاضرين والقاعات في صفحات الموارد.",
+  scheduling: "راجع عروض المقررات والتكليفات قبل الجدولة.",
+};
+
+function score(items: ReadinessMetric[]): number {
+  const denom = items.reduce((s, m) => s + (m.total || 0), 0);
+  const miss = items.reduce((s, m) => s + (m.missing || 0), 0);
+  if (denom === 0) return 0;
+  return Math.max(0, Math.min(100, Math.round(100 - (miss * 100) / denom)));
+}
+
+function metricStatus(m: ReadinessMetric): string {
+  if (m.missing === 0) return "جاهز";
+  if (m.critical) return "حرج";
+  const pct = m.total > 0 ? (m.missing * 100) / m.total : 100;
+  if (pct >= 50) return "حرج";
+  if (pct >= 20) return "يحتاج مراجعة";
+  return "تحذير";
+}
+
+function metricSeverity(m: ReadinessMetric): string {
+  const st = metricStatus(m);
+  if (st === "جاهز") return "منخفض";
+  if (st === "حرج") return "عالٍ";
+  if (st === "يحتاج مراجعة") return "متوسط";
+  return "منخفض";
+}
+
+/** Score band for dashboard cards (shared with /data-readiness). */
+export function readinessScoreStatus(score: number): { label: string; tone: "ok" | "warn" | "bad" } {
+  if (score >= 80) return { label: "جاهز", tone: "ok" };
+  if (score >= 50) return { label: "يحتاج مراجعة", tone: "warn" };
+  return { label: "حرج", tone: "bad" };
+}
+
+/** College-level readiness checks (read-only). Same logic as /data-readiness dashboard. */
+export async function fetchCollegeReadiness(collegeId: string): Promise<ReadinessData> {
+  const [
+    courses,
+    planCourses,
+    instructors,
+    rooms,
+    offerings,
+    assignments,
+    sessions,
+    roomTypes,
+  ] = await Promise.all([
+    supabase.from("courses").select("id, code, name", { count: "exact" }).eq("college_id", collegeId),
+    supabase.from("plan_courses").select("id, level_id, semester, lectures_per_week, labs_per_week, lecture_session_duration, lab_session_duration, course_id", { count: "exact" }).eq("college_id", collegeId),
+    supabase.from("instructors").select("id, specialization, department_id", { count: "exact" }).eq("college_id", collegeId),
+    supabase.from("rooms").select("id, capacity, room_type_id, room_type", { count: "exact" }).eq("college_id", collegeId),
+    supabase.from("course_offerings").select("id, expected_students", { count: "exact" }).eq("college_id", collegeId),
+    supabase.from("teaching_assignments").select("id, instructor_id, course_offering_id", { count: "exact" }).eq("college_id", collegeId),
+    supabase.from("schedule_sessions").select("id, room_id, start_time, end_time, day_of_week", { count: "exact" }).eq("college_id", collegeId),
+    supabase.from("room_types").select("id, default_capacity").eq("college_id", collegeId),
+  ]);
+
+  const coursesRows = courses.data ?? [];
+  const planRows = planCourses.data ?? [];
+  const instructorsRows = instructors.data ?? [];
+  const roomsRows = rooms.data ?? [];
+  const offeringsRows = offerings.data ?? [];
+  const assignmentsRows = assignments.data ?? [];
+  const sessionsRows = sessions.data ?? [];
+  const roomTypeMap = new Map((roomTypes.data ?? []).map((r: { id: string; default_capacity: number }) => [r.id, r.default_capacity]));
+
+  const linkedCourseIds = new Set(planRows.map((p: { course_id: string }) => p.course_id));
+  const offeringsWithAssignments = new Set(assignmentsRows.map((a: { course_offering_id: string }) => a.course_offering_id));
+
+  const studyPlan: ReadinessMetric[] = [
+    { label: "مقررات غير مرتبطة بأي خطة دراسية", total: coursesRows.length, missing: coursesRows.filter((c: { id: string }) => !linkedCourseIds.has(c.id)).length, category: "study_plan" },
+    { label: "صفوف الخطة بدون مستوى", total: planRows.length, missing: planRows.filter((p: { level_id: string | null }) => !p.level_id).length, category: "study_plan" },
+    { label: "صفوف الخطة بدون فصل (semester)", total: planRows.length, missing: planRows.filter((p: { semester: number | null }) => !p.semester).length, category: "study_plan" },
+    { label: "بدون عدد محاضرات أسبوعية", total: planRows.length, missing: planRows.filter((p: { lectures_per_week: number | null }) => !p.lectures_per_week).length, category: "study_plan" },
+    { label: "بدون عدد مختبرات أسبوعية", total: planRows.length, missing: planRows.filter((p: { labs_per_week: number | null | undefined }) => p.labs_per_week === null || p.labs_per_week === undefined).length, category: "study_plan" },
+    { label: "بدون مدة جلسة محاضرة", total: planRows.length, missing: planRows.filter((p: { lecture_session_duration: number | null }) => !p.lecture_session_duration).length, category: "study_plan" },
+    { label: "بدون مدة جلسة مختبر", total: planRows.length, missing: planRows.filter((p: { labs_per_week: number; lab_session_duration: number | null }) => p.labs_per_week > 0 && !p.lab_session_duration).length, category: "study_plan" },
+  ];
+
+  const resources: ReadinessMetric[] = [
+    { label: "محاضرون بدون تخصص", total: instructorsRows.length, missing: instructorsRows.filter((i: { specialization: string | null }) => !i.specialization).length, category: "resources" },
+    { label: "محاضرون بدون قسم", total: instructorsRows.length, missing: instructorsRows.filter((i: { department_id: string | null }) => !i.department_id).length, category: "resources" },
+    { label: "قاعات بسعة افتراضية (مطابقة للنوع)", total: roomsRows.length, missing: roomsRows.filter((r: { room_type_id: string | null; capacity: number }) => r.room_type_id && r.capacity === roomTypeMap.get(r.room_type_id)).length, category: "resources" },
+    { label: "قاعات بدون نوع قاعة", total: roomsRows.length, missing: roomsRows.filter((r: { room_type_id: string | null; room_type: string | null }) => !r.room_type_id && !r.room_type).length, category: "resources" },
+    { label: "قاعات بسعة ≤ 0", total: roomsRows.length, missing: roomsRows.filter((r: { capacity: number | null }) => !r.capacity || r.capacity <= 0).length, critical: true, category: "resources" },
+  ];
+
+  const scheduling: ReadinessMetric[] = [
+    { label: "عروض مقررات بأعداد طلاب ≤ 0", total: offeringsRows.length, missing: offeringsRows.filter((o: { expected_students: number | null }) => !o.expected_students || o.expected_students <= 0).length, category: "scheduling" },
+    { label: "عروض مقررات بدون تكليفات تدريسية", total: offeringsRows.length, missing: offeringsRows.filter((o: { id: string }) => !offeringsWithAssignments.has(o.id)).length, category: "scheduling" },
+    { label: "تكليفات بدون محاضر", total: assignmentsRows.length, missing: assignmentsRows.filter((a: { instructor_id: string | null }) => !a.instructor_id).length, critical: true, category: "scheduling" },
+    { label: "جلسات بدون قاعة", total: sessionsRows.length, missing: sessionsRows.filter((s: { room_id: string | null }) => !s.room_id).length, category: "scheduling" },
+    { label: "جلسات بدون وقت", total: sessionsRows.length, missing: sessionsRows.filter((s: { start_time: string | null; end_time: string | null; day_of_week: number | null }) => !s.start_time || !s.end_time || s.day_of_week === null).length, category: "scheduling" },
+  ];
+
+  const studyPlanScore = score(studyPlan);
+  const resourcesScore = score(resources);
+  const schedulingScore = score(scheduling);
+
+  return {
+    totals: {
+      courses: courses.count ?? 0,
+      planCourses: planCourses.count ?? 0,
+      instructors: instructors.count ?? 0,
+      rooms: rooms.count ?? 0,
+      offerings: offerings.count ?? 0,
+      assignments: assignments.count ?? 0,
+      sessions: sessions.count ?? 0,
+    },
+    studyPlan,
+    resources,
+    scheduling,
+    scores: {
+      studyPlanScore,
+      resourcesScore,
+      schedulingScore,
+      overall: Math.round((studyPlanScore + resourcesScore + schedulingScore) / 3),
+    },
+  };
+}
+
+export function readinessMetricsToRows(data: ReadinessData): ReadinessCheckRow[] {
+  const all = [...data.studyPlan, ...data.resources, ...data.scheduling];
+  return all.map((m) => {
+    const pct = m.total > 0 ? Math.round((m.missing * 100) / m.total) : 0;
+    const status = metricStatus(m);
+    return {
+      category: CATEGORY_LABELS[m.category],
+      check_name: m.label,
+      status,
+      missing_count: m.missing,
+      total_count: m.total,
+      pct_missing: pct,
+      severity: metricSeverity(m),
+      message: m.missing === 0 ? "لا توجد مشكلات." : `${m.missing} من ${m.total} (${pct}%)`,
+      suggested_action: m.missing === 0 ? "—" : SUGGESTED_ACTIONS[m.category],
+    };
+  });
+}
