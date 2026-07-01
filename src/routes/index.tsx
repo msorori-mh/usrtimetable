@@ -93,8 +93,13 @@ function LandingPage() {
         </div>
       </section>
 
-      <footer className="border-t border-border bg-surface py-5 text-center text-xs text-muted-foreground mt-auto">
-        {USR_FOOTER_AR} — {new Date().getFullYear()}
+      <footer className="border-t border-border bg-surface py-5 mt-auto">
+        <div className="flex flex-col items-center gap-2 text-center text-xs text-muted-foreground">
+          <UsrBrandMark size="md" className="opacity-90" />
+          <p>
+            {USR_FOOTER_AR} — {new Date().getFullYear()}
+          </p>
+        </div>
       </footer>
     </div>
   );
