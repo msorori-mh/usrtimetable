@@ -1,5 +1,5 @@
-import { GraduationCap } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { USR_UNIVERSITY_LOGO_SRC, USR_UNIVERSITY_NAME_AR } from "@/lib/branding/usr";
 
 interface Props {
   size?: "sm" | "md" | "lg" | "xl" | "hero";
@@ -8,29 +8,29 @@ interface Props {
 }
 
 const sizeMap = {
-  sm: { box: "h-8 w-8", icon: "h-4 w-4" },
-  md: { box: "h-10 w-10", icon: "h-5 w-5" },
-  lg: { box: "h-12 w-12", icon: "h-6 w-6" },
-  xl: { box: "h-16 w-16", icon: "h-8 w-8" },
-  hero: { box: "h-24 w-24 md:h-28 md:w-28", icon: "h-11 w-11 md:h-14 md:w-14" },
+  sm: "h-8 w-8",
+  md: "h-10 w-10",
+  lg: "h-12 w-12",
+  xl: "h-16 w-16",
+  hero: "h-28 w-28 md:h-32 md:w-32",
 };
 
-/** رمز مؤقت رسمي — بدون شعار خارجي. */
+/** شعار جامعة إقليم سبأ الرسمي */
 export function UsrBrandMark({ size = "md", variant = "default", className }: Props) {
-  const s = sizeMap[size];
   return (
-    <div
+    <img
+      src={USR_UNIVERSITY_LOGO_SRC}
+      alt={`شعار ${USR_UNIVERSITY_NAME_AR}`}
+      width={128}
+      height={128}
       className={cn(
-        "grid place-items-center rounded-lg shadow-sm",
-        variant === "default"
-          ? "bg-[image:var(--gradient-hero)] text-primary-foreground ring-2 ring-[var(--usr-gold)]/40 shadow-[var(--shadow-card)]"
-          : "bg-white/15 text-primary-foreground ring-2 ring-white/30 backdrop-blur",
-        s.box,
+        "object-contain shrink-0",
+        sizeMap[size],
+        variant === "onPrimary"
+          ? "drop-shadow-[0_4px_12px_rgb(0_0_0_/_0.35)]"
+          : "drop-shadow-sm",
         className,
       )}
-      aria-hidden
-    >
-      <GraduationCap className={s.icon} />
-    </div>
+    />
   );
 }
