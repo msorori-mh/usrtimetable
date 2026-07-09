@@ -17,7 +17,7 @@ import { ROOM_TYPES } from "./rooms";
 import { Briefcase, Pencil, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/teaching-assignments")({
-  head: () => ({ meta: [{ title: "التكليفات التدريسية" }] }),
+  head: () => ({ meta: [{ title: "الإسناد التدريسي" }] }),
   component: AssignmentsPage,
 });
 
@@ -105,7 +105,7 @@ function AssignmentsPage() {
       qc.invalidateQueries({ queryKey: ["assignments", active?.id] });
       setOpen(false); setEditing(null);
     },
-    onError: (e: Error) => toast.error(e.message.includes("duplicate") ? "هذا التكليف موجود مسبقاً" : e.message),
+    onError: (e: Error) => toast.error(e.message.includes("duplicate") ? "هذا الإسناد موجود مسبقاً" : e.message),
   });
 
   const del = useMutation({
@@ -145,7 +145,7 @@ function AssignmentsPage() {
       <header className="mb-6 flex items-center gap-3">
         <span className="grid h-11 w-11 place-items-center rounded-lg bg-secondary text-primary"><Briefcase className="h-5 w-5" /></span>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold">التكليفات التدريسية</h1>
+          <h1 className="text-2xl font-bold">الإسناد التدريسي</h1>
           <p className="text-sm text-muted-foreground">ربط المحاضرين بالمقررات المسندة.</p>
         </div>
       </header>
@@ -155,10 +155,10 @@ function AssignmentsPage() {
         {canManage && (
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button onClick={startCreate} disabled={!offerings?.length || !instructors?.length}>تكليف جديد</Button>
+              <Button onClick={startCreate} disabled={!offerings?.length || !instructors?.length}>إسناد جديد</Button>
             </DialogTrigger>
             <DialogContent className="max-w-lg">
-              <DialogHeader><DialogTitle>{editing ? "تعديل تكليف" : "تكليف جديد"}</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{editing ? "تعديل إسناد" : "إسناد جديد"}</DialogTitle></DialogHeader>
               <div className="space-y-3">
                 <div><Label>المقرر المسند</Label>
                   <Select value={form.course_offering_id} onValueChange={(v) => setForm({ ...form, course_offering_id: v })}>
@@ -211,7 +211,7 @@ function AssignmentsPage() {
 
       <Card className="overflow-hidden">
         {isLoading ? <p className="p-6 text-center text-muted-foreground">جارٍ التحميل...</p>
-          : !rows || rows.length === 0 ? <p className="p-6 text-center text-muted-foreground">لا توجد تكليفات بعد.</p>
+          : !rows || rows.length === 0 ? <p className="p-6 text-center text-muted-foreground">لا يوجد إسناد بعد.</p>
           : <ul className="divide-y divide-border">
               {rows.map((a) => (
                 <li key={a.id} className="flex items-center justify-between p-4">
@@ -226,7 +226,7 @@ function AssignmentsPage() {
                   {canManage && (
                     <div className="flex gap-1">
                       <Button size="sm" variant="ghost" onClick={() => startEdit(a)}><Pencil className="h-3.5 w-3.5" /></Button>
-                      <Button size="sm" variant="ghost" onClick={() => { if (confirm("حذف التكليف؟")) del.mutate(a.id); }}><Trash2 className="h-3.5 w-3.5" /></Button>
+                      <Button size="sm" variant="ghost" onClick={() => { if (confirm("حذف الإسناد؟")) del.mutate(a.id); }}><Trash2 className="h-3.5 w-3.5" /></Button>
                     </div>
                   )}
                 </li>

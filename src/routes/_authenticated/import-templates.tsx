@@ -23,7 +23,7 @@ export const Route = createFileRoute("/_authenticated/import-templates")({
 
 const ENTITIES = [
   { v: "study_plan_full", l: "خطة دراسية كاملة" },
-  { v: "teaching_assignments", l: "تكليفات تدريسية" },
+  { v: "teaching_assignments", l: "إسناد تدريسي" },
   { v: "instructors", l: "محاضرون" },
   { v: "rooms", l: "قاعات" },
   { v: "courses", l: "مقررات" },

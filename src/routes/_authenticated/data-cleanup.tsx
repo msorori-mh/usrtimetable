@@ -268,7 +268,7 @@ function computeDiagnostics(d: Awaited<ReturnType<typeof fetchAll>>): Diagnostic
     room_inactive: mk("room_inactive", "قاعات غير نشطة", roomInactive, totals.rooms, "low", 0.05),
 
     off_zero_students: mk("off_zero_students", "طرح بـ expected_students = 0", offZero, totals.offerings, "critical", 0.5),
-    off_no_assignment: mk("off_no_assignment", "طرح بدون تكليف تدريسي", offNoAssign, totals.offerings, "critical", 0.5),
+    off_no_assignment: mk("off_no_assignment", "طرح بدون إسناد تدريسي", offNoAssign, totals.offerings, "critical", 0.5),
     off_no_system: mk("off_no_system", "طرح بدون نظام دراسة", offNoSystem, totals.offerings, "low", 0.1),
     off_no_plan_course: mk("off_no_plan_course", "طرح غير مرتبط بمقرر خطة", offNoPlanCourse, totals.offerings, "medium", 0.3),
   };

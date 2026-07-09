@@ -193,7 +193,7 @@ export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId
             </Select>
           </div>
           <div>
-            <Label>التكليف التدريسي</Label>
+            <Label>الإسناد التدريسي</Label>
             <Select value={form.teaching_assignment_id ?? "none"} onValueChange={(v) => setForm({ ...form, teaching_assignment_id: v === "none" ? null : v, instructor_id: v === "none" ? form.instructor_id : (tas?.find(t => t.id === v)?.instructor_id ?? form.instructor_id) })}>
               <SelectTrigger><SelectValue placeholder="اختياري" /></SelectTrigger>
               <SelectContent>
