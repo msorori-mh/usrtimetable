@@ -1,5 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
 import { categorizeInstructor, requiresAvailability } from "@/lib/instructor-category";
+import {
+  buildApprovedExceptionIndex,
+  findMatchingException,
+  summarizeConflictExceptions,
+  type ApprovedException,
+} from "./exceptions";
 
 export type StudySystem = "regular" | "parallel" | "both";
 
@@ -28,6 +34,16 @@ export interface Conflict {
   schedule_session_id?: string | null;
   related_session_id?: string | null;
   metadata?: Record<string, unknown>;
+  approved_exception?: boolean;
+  exception_id?: string | null;
+  exception_reason?: string | null;
+}
+
+export interface ValidationResult {
+  conflicts: Conflict[];
+  totalHardConflicts: number;
+  approvedHardConflicts: number;
+  unapprovedHardConflicts: number;
 }
 
 const t = (s: string) => (s.length === 5 ? `${s}:00` : s);
@@ -66,12 +82,40 @@ async function fetchExistingSessions(
  * Validate one or more proposed sessions against a schedule version (dry-run).
  * Does not persist anything. Returns a flat list of conflicts.
  */
+export function applyApprovedExceptions(
+  conflicts: Conflict[],
+  scheduleVersionId: string,
+  approvedExceptions?: ApprovedException[],
+): ValidationResult {
+  const index = buildApprovedExceptionIndex(approvedExceptions ?? [], scheduleVersionId);
+  const enriched = conflicts.map((c) => {
+    const match = findMatchingException(index, {
+      scheduleVersionId,
+      conflictCode: c.code,
+      sessionId: c.schedule_session_id,
+      relatedSessionId: c.related_session_id,
+    });
+    if (!match) {
+      return { ...c, approved_exception: false, exception_id: null, exception_reason: null };
+    }
+    return {
+      ...c,
+      approved_exception: true,
+      exception_id: match.id,
+      exception_reason: match.reason,
+    };
+  });
+  const summary = summarizeConflictExceptions(enriched);
+  return { conflicts: enriched, ...summary };
+}
+
 export async function validateProposed(params: {
   collegeId: string;
   scheduleVersionId: string;
   sessions: ProposedSession[];
   excludeExistingSessionIds?: string[];
-}): Promise<Conflict[]> {
+  approvedExceptions?: ApprovedException[];
+}): Promise<ValidationResult> {
   const { collegeId, scheduleVersionId, sessions } = params;
   const conflicts: Conflict[] = [];
 
@@ -87,6 +131,9 @@ export async function validateProposed(params: {
   );
   const instructorIds = Array.from(new Set(sessions.map((s) => s.instructor_id)));
   const offeringIds = Array.from(new Set(sessions.map((s) => s.course_offering_id)));
+  const taIds = Array.from(
+    new Set(sessions.map((s) => s.teaching_assignment_id).filter(Boolean) as string[]),
+  );
 
   const [
     { data: rooms },
@@ -95,10 +142,11 @@ export async function validateProposed(params: {
     { data: offerings },
     { data: templates },
     { data: instrRows },
+    { data: taRows },
   ] = await Promise.all([
     roomIds.length
-      ? supabase.from("rooms").select("id, capacity, college_id").in("id", roomIds)
-      : Promise.resolve({ data: [] as Array<{ id: string; capacity: number; college_id: string }> }),
+      ? supabase.from("rooms").select("id, capacity, college_id, room_type").in("id", roomIds)
+      : Promise.resolve({ data: [] as Array<{ id: string; capacity: number; college_id: string; room_type: string | null }> }),
     roomIds.length
       ? supabase
           .from("room_availability")
@@ -127,6 +175,12 @@ export async function validateProposed(params: {
           .select("id, instructor_type_id, instructor_types:instructor_type_id ( code, is_external )")
           .in("id", instructorIds)
       : Promise.resolve({ data: [] as Array<{ id: string; instructor_type_id: string | null; instructor_types: { code: string | null; is_external: boolean | null } | null }> }),
+    taIds.length
+      ? supabase
+          .from("teaching_assignments")
+          .select("id, required_room_type, college_id")
+          .in("id", taIds)
+      : Promise.resolve({ data: [] as Array<{ id: string; required_room_type: string | null; college_id: string }> }),
   ]);
 
   // Per-instructor category (permanent / external / other_college)
@@ -137,18 +191,21 @@ export async function validateProposed(params: {
   // College isolation guard
   const allRoomsOk = (rooms ?? []).every((r) => r.college_id === collegeId);
   const allOffOk = (offerings ?? []).every((o) => o.college_id === collegeId);
-  if (!allRoomsOk || !allOffOk) {
+  const allTasOk = (taRows ?? []).every((ta) => ta.college_id === collegeId);
+  if (!allRoomsOk || !allOffOk || !allTasOk) {
     throw new Error("Cross-college reference detected");
   }
 
   const roomMap = new Map((rooms ?? []).map((r) => [r.id, r]));
   const offMap = new Map((offerings ?? []).map((o) => [o.id, o]));
+  const taMap = new Map((taRows ?? []).map((ta) => [ta.id, ta]));
 
   for (const s of sessions) {
     const sid = s.id ?? null;
 
     // 1. instructor conflict
     for (const p of peers) {
+      if (sid && p.id === sid) continue;
       if (p.instructor_id === s.instructor_id && p.day_of_week === s.day_of_week &&
           overlap(s.start_time, s.end_time, p.start_time, p.end_time)) {
         conflicts.push({
@@ -164,6 +221,7 @@ export async function validateProposed(params: {
     // 2. room conflict
     if (s.room_id) {
       for (const p of peers) {
+        if (sid && p.id === sid) continue;
         if (p.room_id === s.room_id && p.day_of_week === s.day_of_week &&
             overlap(s.start_time, s.end_time, p.start_time, p.end_time)) {
           conflicts.push({
@@ -180,6 +238,7 @@ export async function validateProposed(params: {
     // 3. section conflict
     if (s.section_id) {
       for (const p of peers) {
+        if (sid && p.id === sid) continue;
         if (p.section_id === s.section_id && p.day_of_week === s.day_of_week &&
             overlap(s.start_time, s.end_time, p.start_time, p.end_time)) {
           conflicts.push({
@@ -193,7 +252,7 @@ export async function validateProposed(params: {
       }
     }
 
-    // 4. room capacity
+    // 4. room capacity + required room type
     if (s.room_id) {
       const room = roomMap.get(s.room_id);
       const offering = offMap.get(s.course_offering_id);
@@ -205,6 +264,23 @@ export async function validateProposed(params: {
           message_en: `Room capacity insufficient: capacity ${room.capacity}, expected ${expected}.`,
           schedule_session_id: sid,
           metadata: { capacity: room.capacity, expected_students: expected },
+        });
+      }
+      const requiredType = s.teaching_assignment_id
+        ? taMap.get(s.teaching_assignment_id)?.required_room_type ?? null
+        : null;
+      if (room && requiredType && room.room_type !== requiredType) {
+        conflicts.push({
+          code: "room_type_mismatch", severity: "hard",
+          message_ar: `نوع القاعة لا يطابق المطلوب: المطلوب ${requiredType} والقاعة ${room.room_type ?? "unknown"}.`,
+          message_en: `Room type mismatch: required ${requiredType}, room is ${room.room_type ?? "unknown"}.`,
+          schedule_session_id: sid,
+          metadata: {
+            required_room_type: requiredType,
+            room_type: room.room_type,
+            room_id: s.room_id,
+            teaching_assignment_id: s.teaching_assignment_id,
+          },
         });
       }
     }
@@ -286,7 +362,7 @@ export async function validateProposed(params: {
     }
   }
 
-  return conflicts;
+  return applyApprovedExceptions(conflicts, scheduleVersionId, params.approvedExceptions);
 }
 
 /**
@@ -297,7 +373,7 @@ export async function validateScheduleVersion(params: {
   collegeId: string;
   scheduleVersionId: string;
   persist?: boolean; // default true
-}): Promise<{ checkId: string | null; conflicts: Conflict[] }> {
+}): Promise<{ checkId: string | null; result: ValidationResult }> {
   const { collegeId, scheduleVersionId } = params;
   const persist = params.persist ?? true;
 
@@ -334,10 +410,11 @@ export async function validateScheduleVersion(params: {
       sessions: [p],
       excludeExistingSessionIds: p.id ? [p.id] : [],
     });
-    conflicts.push(...sub);
+    conflicts.push(...sub.conflicts);
   }
+  const result = applyApprovedExceptions(conflicts, scheduleVersionId);
 
-  if (!persist) return { checkId: null, conflicts };
+  if (!persist) return { checkId: null, result };
 
   const { data: userData } = await supabase.auth.getUser();
   const { data: chk, error: ce } = await supabase
@@ -347,7 +424,7 @@ export async function validateScheduleVersion(params: {
       schedule_version_id: scheduleVersionId,
       check_type: "hard",
       status: "completed",
-      total_conflicts: conflicts.length,
+      total_conflicts: result.totalHardConflicts,
       checked_by: userData.user?.id ?? null,
       completed_at: new Date().toISOString(),
     })
@@ -355,16 +432,16 @@ export async function validateScheduleVersion(params: {
     .single();
   if (ce) throw ce;
 
-  if (conflicts.length > 0) {
+  if (result.conflicts.length > 0) {
     // Map codes → constraint_type_id (best-effort)
-    const codes = Array.from(new Set(conflicts.map((c) => c.code)));
+    const codes = Array.from(new Set(result.conflicts.map((c) => c.code)));
     const { data: ctypes } = await supabase
       .from("constraint_types")
       .select("id, code")
       .in("code", codes);
     const codeMap = new Map((ctypes ?? []).map((c) => [c.code, c.id]));
 
-    const rows = conflicts.map((c) => ({
+    const rows = result.conflicts.map((c) => ({
       college_id: collegeId,
       conflict_check_id: chk.id,
       schedule_session_id: c.schedule_session_id ?? null,
@@ -380,5 +457,5 @@ export async function validateScheduleVersion(params: {
     if (re) throw re;
   }
 
-  return { checkId: chk.id, conflicts };
+  return { checkId: chk.id, result };
 }

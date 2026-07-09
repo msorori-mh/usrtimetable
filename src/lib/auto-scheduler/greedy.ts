@@ -272,10 +272,12 @@ export async function runGreedyAutoSchedule(params: {
       .filter((r) => (requiredType ? r.room_type === requiredType : true))
       .filter((r) => (expected > 0 ? r.capacity >= expected : true))
       .sort((a, b) => a.capacity - b.capacity);
-    if (filtered.length > 0) return filtered;
-    return allRooms
-      .filter((r) => (expected > 0 ? r.capacity >= expected : true))
-      .sort((a, b) => a.capacity - b.capacity);
+    if (requiredType) return filtered;
+    return filtered.length > 0
+      ? filtered
+      : allRooms
+          .filter((r) => (expected > 0 ? r.capacity >= expected : true))
+          .sort((a, b) => a.capacity - b.capacity);
   };
 
   // Score a (slot, room) candidate. Higher is better.
@@ -495,8 +497,8 @@ export async function runGreedyAutoSchedule(params: {
         session_type: unit.session_type,
         expected_students: unit.expected_students,
       };
-      const conflicts = await validateProposed({ collegeId, scheduleVersionId, sessions: [proposed] });
-      if (conflicts.length === 0) {
+      const validation = await validateProposed({ collegeId, scheduleVersionId, sessions: [proposed] });
+      if (validation.unapprovedHardConflicts === 0) {
         const id = await insertProposed(proposed);
         if (id) {
           placedThisRun.set(id, unit);
@@ -504,7 +506,7 @@ export async function runGreedyAutoSchedule(params: {
         }
         lastReason = "insert failed";
       } else {
-        lastReason = conflicts[0].message_ar;
+        lastReason = validation.conflicts[0].message_ar;
       }
     }
 
@@ -532,11 +534,11 @@ export async function runGreedyAutoSchedule(params: {
         if (lockedIds.has(blockerId)) continue; // never touch locked
         if (backtrackingAttempts >= MAX_BACKTRACKING_ATTEMPTS) break;
         // Test: would removing this blocker free the candidate?
-        const conflicts = await validateProposed({
+        const validation = await validateProposed({
           collegeId, scheduleVersionId, sessions: [proposed],
           excludeExistingSessionIds: [blockerId],
         });
-        if (conflicts.length !== 0) continue;
+        if (validation.unapprovedHardConflicts !== 0) continue;
         backtrackingAttempts++;
         // Delete the blocker
         const { error: de } = await supabase

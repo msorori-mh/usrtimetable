@@ -88,7 +88,7 @@ function ConflictChecksPage() {
   const run = useMutation({
     mutationFn: async () => {
       if (!active || !versionId) throw new Error("اختر إصداراً");
-      const { checkId, conflicts } = await validateScheduleVersion({
+      const { checkId, result } = await validateScheduleVersion({
         collegeId: active.id,
         scheduleVersionId: versionId,
       });
@@ -97,9 +97,9 @@ function ConflictChecksPage() {
         entity: "schedule_versions",
         entityId: versionId,
         collegeId: active.id,
-        details: { check_id: checkId, total: conflicts.length },
+        details: { check_id: checkId, total: result.totalHardConflicts },
       });
-      return { checkId, count: conflicts.length };
+      return { checkId, count: result.totalHardConflicts };
     },
     onSuccess: ({ checkId, count }) => {
       toast.success(count === 0 ? "لا توجد تعارضات" : `تم العثور على ${count} تعارض`);

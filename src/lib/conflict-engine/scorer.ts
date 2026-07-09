@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { validateProposed, type Conflict, type ProposedSession } from "./validator";
+import { loadApprovedExceptions } from "./exceptions";
 
 export interface SoftViolation {
   code: string;
@@ -12,7 +13,10 @@ export interface SoftViolation {
 
 export interface QualityResult {
   total_score: number;
+  /** Unapproved hard conflicts — affects publish eligibility. */
   hard_conflicts_count: number;
+  total_hard_conflicts_count: number;
+  approved_hard_conflicts_count: number;
   soft_conflicts_count: number;
   total_deductions: number;
   hard_conflicts: Conflict[];
@@ -36,11 +40,22 @@ export async function scoreSchedule(params: {
   collegeId: string;
   scheduleVersionId: string;
   sessions: ProposedSession[];
+  approvedExceptions?: Awaited<ReturnType<typeof loadApprovedExceptions>>;
 }): Promise<QualityResult> {
   const { collegeId, scheduleVersionId, sessions } = params;
 
-  // 1. Hard conflicts (re-use validator)
-  const hard = await validateProposed({ collegeId, scheduleVersionId, sessions });
+  const approvedExceptions =
+    params.approvedExceptions ??
+    (await loadApprovedExceptions({ scheduleVersionId }));
+
+  // 1. Hard conflicts (re-use validator; all visible, unapproved drives score gate)
+  const validation = await validateProposed({
+    collegeId,
+    scheduleVersionId,
+    sessions,
+    approvedExceptions,
+  });
+  const hard = validation.conflicts;
 
   // 2. Weights (college overrides → default)
   const { data: metrics } = await supabase.from("quality_metrics").select("*").eq("is_active", true);
@@ -189,7 +204,9 @@ export async function scoreSchedule(params: {
 
   return {
     total_score,
-    hard_conflicts_count: hard.length,
+    hard_conflicts_count: validation.unapprovedHardConflicts,
+    total_hard_conflicts_count: validation.totalHardConflicts,
+    approved_hard_conflicts_count: validation.approvedHardConflicts,
     soft_conflicts_count: soft.length,
     total_deductions,
     hard_conflicts: hard,
