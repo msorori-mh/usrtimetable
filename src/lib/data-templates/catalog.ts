@@ -523,7 +523,7 @@ export const CATALOG: TemplateDef[] = [
   },
   {
     id: "teaching_assignments",
-    name: "التكليفات التدريسية",
+    name: "الإسناد التدريسي",
     group: "scheduling",
     groupLabel: GROUPS.scheduling,
     purpose: "إسناد المحاضرين للمحاضرات.",
@@ -542,7 +542,7 @@ export const CATALOG: TemplateDef[] = [
     ],
     sampleRows: [["2025-F", "CS101", "EMP001", "1", "lecture", "3", "30", "lecture_hall"]],
     references: [REF_SESSION_TYPES, REF_ROOM_TYPES],
-    commonErrors: ["رقم موظف غير معروف", "نوع محاضرة غير صحيح", "تكليف بدون طرح مقابل"],
+    commonErrors: ["رقم موظف غير معروف", "نوع محاضرة غير صحيح", "إسناد بدون طرح مقابل"],
   },
   {
     id: "sections",
@@ -738,7 +738,7 @@ export const IMPORT_ORDER: { step: number; label: string; templateId?: string }[
   { step: 9, label: "توفّر المحاضرين", templateId: "instructor_availability" },
   { step: 10, label: "قوالب الفترات الزمنية", templateId: "time_slot_templates" },
   { step: 11, label: "إسناد المقررات", templateId: "course_offerings" },
-  { step: 12, label: "التكليفات التدريسية", templateId: "teaching_assignments" },
+  { step: 12, label: "الإسناد التدريسي", templateId: "teaching_assignments" },
   { step: 13, label: "المجموعات الدراسية / المجموعات المدمجة", templateId: "sections" },
   { step: 14, label: "المحاضرات المجدوَلة (اختياري)", templateId: "existing_schedule_sessions" },
 ];

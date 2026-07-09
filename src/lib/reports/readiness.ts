@@ -37,7 +37,7 @@ const CATEGORY_LABELS: Record<ReadinessMetric["category"], string> = {
 const SUGGESTED_ACTIONS: Record<string, string> = {
   study_plan: "راجع الخطط الدراسية واربط المقررات بالمستويات والفصول.",
   resources: "أكمل بيانات المحاضرين والقاعات في صفحات الموارد.",
-  scheduling: "راجع عروض المقررات والتكليفات قبل الجدولة.",
+  scheduling: "راجع عروض المقررات والإسناد قبل الجدولة.",
 };
 
 function score(items: ReadinessMetric[]): number {
@@ -125,8 +125,8 @@ export async function fetchCollegeReadiness(collegeId: string): Promise<Readines
 
   const scheduling: ReadinessMetric[] = [
     { label: "عروض مقررات بأعداد طلاب ≤ 0", total: offeringsRows.length, missing: offeringsRows.filter((o: { expected_students: number | null }) => !o.expected_students || o.expected_students <= 0).length, category: "scheduling" },
-    { label: "عروض مقررات بدون تكليفات تدريسية", total: offeringsRows.length, missing: offeringsRows.filter((o: { id: string }) => !offeringsWithAssignments.has(o.id)).length, category: "scheduling" },
-    { label: "تكليفات بدون محاضر", total: assignmentsRows.length, missing: assignmentsRows.filter((a: { instructor_id: string | null }) => !a.instructor_id).length, critical: true, category: "scheduling" },
+    { label: "عروض مقررات بدون إسناد تدريسي", total: offeringsRows.length, missing: offeringsRows.filter((o: { id: string }) => !offeringsWithAssignments.has(o.id)).length, category: "scheduling" },
+    { label: "إسناد بدون محاضر", total: assignmentsRows.length, missing: assignmentsRows.filter((a: { instructor_id: string | null }) => !a.instructor_id).length, critical: true, category: "scheduling" },
     { label: "محاضرات بدون قاعة", total: sessionsRows.length, missing: sessionsRows.filter((s: { room_id: string | null }) => !s.room_id).length, category: "scheduling" },
     { label: "محاضرات بدون وقت", total: sessionsRows.length, missing: sessionsRows.filter((s: { start_time: string | null; end_time: string | null; day_of_week: number | null }) => !s.start_time || !s.end_time || s.day_of_week === null).length, category: "scheduling" },
   ];
