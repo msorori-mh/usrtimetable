@@ -117,17 +117,23 @@ async function fetchReadiness(collegeId: string) {
     { label: "محاضرات بدون وقت", total: sessionsRows.length, missing: sessionsRows.filter((s: any) => !s.start_time || !s.end_time || s.day_of_week === null).length },
   ];
 
-  const score = (items: Metric[]) => {
+  const score = (items: Metric[]): number | null => {
     const denom = items.reduce((s, m) => s + (m.total || 0), 0);
     const miss = items.reduce((s, m) => s + (m.missing || 0), 0);
-    if (denom === 0) return 100;
+    if (denom === 0) return null;
     return Math.max(0, Math.min(100, Math.round(100 - (miss * 100) / denom)));
   };
 
   const studyPlanScore = score(sp);
   const resourcesScore = score([...res, ...avail]);
   const schedulingScore = score(sch);
-  const overall = Math.round((studyPlanScore + resourcesScore + schedulingScore) / 3);
+  const presentScores = [studyPlanScore, resourcesScore, schedulingScore].filter(
+    (s): s is number => s !== null,
+  );
+  const overall =
+    presentScores.length === 0
+      ? null
+      : Math.round(presentScores.reduce((a, b) => a + b, 0) / presentScores.length);
 
   return {
     totals: {
@@ -148,25 +154,31 @@ async function fetchReadiness(collegeId: string) {
   };
 }
 
-function statusOf(score: number): { label: string; tone: "ok" | "warn" | "bad" } {
+function statusOf(score: number | null): { label: string; tone: "ok" | "warn" | "bad" | "empty" } {
+  if (score === null) return { label: "لا توجد بيانات", tone: "empty" };
   if (score >= 80) return { label: "جاهز", tone: "ok" };
   if (score >= 50) return { label: "يحتاج مراجعة", tone: "warn" };
   return { label: "حرج", tone: "bad" };
 }
 
-function ScoreCard({ title, score, icon }: { title: string; score: number; icon: React.ReactNode }) {
+function ScoreCard({ title, score, icon }: { title: string; score: number | null; icon: React.ReactNode }) {
   const s = statusOf(score);
-  const tone = s.tone === "ok" ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" :
+  const tone =
+    s.tone === "ok" ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" :
     s.tone === "warn" ? "bg-amber-500/10 text-amber-600 border-amber-500/20" :
-    "bg-red-500/10 text-red-600 border-red-500/20";
+    s.tone === "bad" ? "bg-red-500/10 text-red-600 border-red-500/20" :
+    "bg-muted text-muted-foreground border-border";
   return (
     <Card className="p-5">
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">{icon}{title}</div>
         <Badge variant="outline" className={tone}>{s.label}</Badge>
       </div>
-      <p className="text-3xl font-bold">{score}<span className="text-base text-muted-foreground">/100</span></p>
-      <Progress value={score} className="mt-3" />
+      <p className="text-3xl font-bold">
+        {score === null ? <span className="text-muted-foreground">—</span> : score}
+        <span className="text-base text-muted-foreground">/100</span>
+      </p>
+      <Progress value={score ?? 0} className="mt-3" />
     </Card>
   );
 }
@@ -227,6 +239,24 @@ function DataReadinessPage() {
         <Card className="p-6 text-center text-muted-foreground">جارٍ حساب الجاهزية…</Card>
       ) : (
         <>
+          {(() => {
+            const t = data.totals;
+            const isEmpty = t.courses + t.planCourses + t.instructors + t.rooms + t.offerings + t.assignments + t.sessions === 0;
+            return isEmpty ? (
+              <Card className="mb-5 border-amber-500/30 bg-amber-500/5 p-4 text-sm">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-600" />
+                  <div>
+                    <p className="font-medium text-amber-700">هذه الكلية لا تحتوي على بيانات بعد</p>
+                    <p className="mt-1 text-muted-foreground">
+                      ابدأ باستيراد البيانات من{" "}
+                      <Link to="/data-templates" className="text-primary underline-offset-4 hover:underline">قوالب البيانات</Link>.
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            ) : null;
+          })()}
           <div className="mb-5 grid grid-cols-1 gap-4 md:grid-cols-4">
             <ScoreCard title="الجاهزية العامة" score={data.scores.overall} icon={<Gauge className="h-4 w-4" />} />
             <ScoreCard title="الخطط الدراسية" score={data.scores.studyPlanScore} icon={<BookOpen className="h-4 w-4" />} />
@@ -245,16 +275,22 @@ function DataReadinessPage() {
               <div><p className="text-muted-foreground">الإسناد</p><p className="text-lg font-semibold">{data.totals.assignments}</p></div>
               <div><p className="text-muted-foreground">المحاضرات</p><p className="text-lg font-semibold">{data.totals.sessions}</p></div>
             </div>
-            <div className="mt-4 space-y-1 text-sm">
-              {[...data.scheduling, ...data.resources, ...data.studyPlan]
+            {(() => {
+              const items = [...data.scheduling, ...data.resources, ...data.studyPlan]
                 .filter((m) => m.missing > 0)
                 .sort((a, b) => b.missing - a.missing)
-                .slice(0, 4)
-                .map((m, i) => (
-                  <p key={i} className="text-muted-foreground">• {m.missing} {m.label}</p>
-                ))}
-            </div>
+                .slice(0, 4);
+              if (items.length === 0) return null;
+              return (
+                <div className="mt-4 space-y-1 text-sm">
+                  {items.map((m, i) => (
+                    <p key={i} className="text-muted-foreground">• {m.missing} {m.label}</p>
+                  ))}
+                </div>
+              );
+            })()}
           </Card>
+
 
           <div className="mb-4">
             <Card className="p-5">
