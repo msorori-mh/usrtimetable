@@ -1,0 +1,172 @@
+{
+  "meta": {
+    "project": "USR University Scheduling",
+    "phase": "USR-SCHEDULING-DESIGN-SYSTEM-EXPORT-01",
+    "source": "src/styles.css (Tailwind v4, @theme inline)",
+    "themeMode": "light-only in shell; dark theme defined but not activated"
+  },
+  "fonts": {
+    "loader": {
+      "type": "google-fonts-link",
+      "href": "https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Tajawal:wght@500;700;800&display=swap",
+      "preconnect": ["https://fonts.googleapis.com", "https://fonts.gstatic.com"],
+      "installedIn": "src/routes/__root.tsx head().links"
+    },
+    "families": {
+      "sans": { "token": "--font-sans", "stack": "\"Cairo\", \"Tajawal\", system-ui, sans-serif", "weights": [400, 500, 600, 700] },
+      "display": { "token": "--font-display", "stack": "\"Tajawal\", \"Cairo\", serif", "weights": [500, 700, 800] }
+    },
+    "baseRules": {
+      "body": { "family": "var(--font-sans)", "features": "kern, liga, ss01", "smoothing": "antialiased" },
+      "headings": { "family": "var(--font-display)", "letterSpacing": "-0.01em" }
+    }
+  },
+  "colors": {
+    "brand": {
+      "primary":        { "var": "--usr-primary",        "hex": "#105B7D" },
+      "primaryDark":    { "var": "--usr-primary-dark",   "hex": "#0B4964" },
+      "primaryDeeper":  { "var": "--usr-primary-deeper", "hex": "#08384E" },
+      "primarySoft":    { "var": "--usr-primary-soft",   "hex": "#E8F2F5" },
+      "gold":           { "var": "--usr-gold",           "hex": "#D99A17" },
+      "goldDark":       { "var": "--usr-gold-dark",      "hex": "#B87900" },
+      "goldSoft":       { "var": "--usr-gold-soft",      "hex": "#FFF4DA" },
+      "bg":             { "var": "--usr-bg",             "hex": "#F7F8FA" },
+      "card":           { "var": "--usr-card",           "hex": "#FFFFFF" },
+      "border":         { "var": "--usr-border",         "hex": "#DDE6EA" },
+      "text":           { "var": "--usr-text",           "hex": "#102333" },
+      "muted":          { "var": "--usr-muted",          "hex": "#667985" }
+    },
+    "semanticLight": {
+      "background":            { "value": "#F7F8FA" },
+      "foreground":            { "value": "#102333" },
+      "surface":               { "value": "#FFFFFF" },
+      "surfaceForeground":     { "value": "#102333" },
+      "card":                  { "value": "#FFFFFF" },
+      "cardForeground":        { "value": "#102333" },
+      "popover":               { "value": "#FFFFFF" },
+      "popoverForeground":     { "value": "#102333" },
+      "primary":               { "value": "#105B7D" },
+      "primaryForeground":     { "value": "#FFFFFF" },
+      "primaryGlow":           { "value": "#1A7AA3" },
+      "secondary":             { "value": "#E8F2F5" },
+      "secondaryForeground":   { "value": "#0B4964" },
+      "muted":                 { "value": "#EEF1F4" },
+      "mutedForeground":       { "value": "#667985" },
+      "accent":                { "value": "#D99A17" },
+      "accentForeground":      { "value": "#08384E" },
+      "destructive":           { "value": "#C53030" },
+      "destructiveForeground": { "value": "#FFFFFF" },
+      "success":               { "value": "#2F855A" },
+      "successForeground":     { "value": "#FFFFFF" },
+      "warning":               { "value": "#D99A17" },
+      "warningForeground":     { "value": "#08384E" },
+      "border":                { "value": "#DDE6EA" },
+      "input":                 { "value": "#DDE6EA" },
+      "ring":                  { "value": "#105B7D" },
+      "sidebar":               { "value": "#08384E" },
+      "sidebarForeground":     { "value": "#F7FAFC" },
+      "sidebarAccent":         { "value": "#105B7D" },
+      "sidebarAccentForeground": { "value": "#FFFFFF" },
+      "sidebarBorder":         { "value": "#0B4964" }
+    },
+    "semanticDark": {
+      "note": "Defined in .dark selector using oklch; not currently activated in the shell",
+      "background": "oklch(0.18 0.025 245)",
+      "foreground": "oklch(0.96 0.012 85)",
+      "surface":    "oklch(0.22 0.030 245)",
+      "primary":    "oklch(0.70 0.12 220)",
+      "primaryForeground": "oklch(0.18 0.025 245)",
+      "primaryGlow":"oklch(0.78 0.11 215)",
+      "secondary":  "oklch(0.28 0.04 240)",
+      "muted":      "oklch(0.26 0.03 240)",
+      "mutedForeground": "oklch(0.72 0.02 240)",
+      "accent":     "oklch(0.78 0.13 75)",
+      "accentForeground": "oklch(0.22 0.04 60)",
+      "destructive":"oklch(0.68 0.20 25)",
+      "success":    "oklch(0.70 0.14 155)",
+      "warning":    "oklch(0.80 0.15 65)",
+      "border":     "oklch(0.30 0.03 240)",
+      "input":      "oklch(0.28 0.03 240)",
+      "ring":       "oklch(0.70 0.12 220)",
+      "sidebar":    "oklch(0.20 0.030 245)",
+      "sidebarAccent": "oklch(0.28 0.04 240)"
+    }
+  },
+  "radius": {
+    "base": "0.625rem",
+    "sm":   "calc(var(--radius) - 4px)",
+    "md":   "calc(var(--radius) - 2px)",
+    "lg":   "var(--radius)",
+    "xl":   "calc(var(--radius) + 4px)",
+    "2xl":  "calc(var(--radius) + 8px)"
+  },
+  "shadows": {
+    "card":     "0 1px 3px rgb(16 35 51 / 0.06), 0 8px 24px rgb(16 35 51 / 0.08)",
+    "elevated": "0 4px 16px rgb(16 35 51 / 0.10), 0 24px 48px rgb(16 35 51 / 0.12)"
+  },
+  "gradients": {
+    "hero": "linear-gradient(135deg, #08384E 0%, #0B4964 40%, #105B7D 100%)",
+    "gold": "linear-gradient(90deg, #B87900 0%, #D99A17 50%, #B87900 100%)"
+  },
+  "spacing": {
+    "sidebarWidth": "16rem",
+    "headerHeight": "3.5rem",
+    "cardPadding": "1.5rem",
+    "sectionGap": "1.5rem",
+    "gridGap": "1rem",
+    "inputHeight": "2.25rem",
+    "buttonHeight": { "sm": "2rem", "default": "2.25rem", "lg": "2.5rem", "icon": "2.25rem" },
+    "pageMaxWidth": { "form": "48rem", "wide": "72rem" }
+  },
+  "typography": {
+    "scale": {
+      "xs": "0.75rem", "sm": "0.875rem", "base": "1rem", "lg": "1.125rem",
+      "xl": "1.25rem", "2xl": "1.5rem", "3xl": "1.875rem"
+    },
+    "hero": {
+      "university": "clamp(2.25rem, 6vw, 3.25rem) / 800 / -0.02em",
+      "platform":   "clamp(1.25rem, 3vw, 1.625rem) / 600",
+      "desc":       "1rem / 1.75"
+    }
+  },
+  "components": {
+    "button": {
+      "base": "inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium transition-colors focus-visible:ring-2 ring-ring ring-offset-2",
+      "variants": {
+        "default":     "bg-primary text-primary-foreground shadow, hover:bg-[--usr-primary-dark]",
+        "destructive": "bg-destructive text-destructive-foreground",
+        "outline":     "border border-[--usr-border] bg-background, hover:bg-[--usr-primary-soft] text-[--usr-primary-dark]",
+        "secondary":   "bg-secondary text-secondary-foreground",
+        "ghost":       "hover:bg-accent hover:text-accent-foreground",
+        "link":        "text-primary underline-offset-4 hover:underline"
+      },
+      "sizes": { "sm": "h-8 px-3 text-xs", "default": "h-9 px-4", "lg": "h-10 px-8", "icon": "h-9 w-9" }
+    },
+    "card":  { "class": "rounded-xl border bg-card text-card-foreground shadow-[--shadow-card]", "padding": "p-6" },
+    "badge": { "base": "rounded-md border px-2.5 py-0.5 text-xs font-semibold" },
+    "input": { "base": "h-9 rounded-md border border-input bg-transparent px-3 py-1 shadow-sm focus-visible:ring-1 ring-ring" },
+    "sidebar": {
+      "background": "var(--sidebar)",
+      "foreground": "var(--sidebar-foreground)",
+      "activeItem": "bg-sidebar-accent text-sidebar-accent-foreground",
+      "border":     "var(--sidebar-border)"
+    },
+    "utilityClasses": [
+      "usr-topbar", "usr-nav-header", "usr-nav-brand-text", "usr-nav-university", "usr-nav-platform",
+      "usr-site-header", "usr-gold-rule",
+      "usr-hero-deep", "usr-hero-deep-inner", "usr-hero-university", "usr-hero-platform", "usr-hero-desc", "usr-hero-cta",
+      "usr-access-notice", "usr-access-notice--on-dark",
+      "usr-features-section", "usr-feature-card-lite", "usr-feature-icon",
+      "usr-auth-card", "usr-auth-header",
+      "usr-page-header", "usr-page-header-icon", "usr-section-title",
+      "usr-institutional-card", "usr-internal-main", "usr-dashboard-header"
+    ]
+  },
+  "assets": {
+    "logo": "public/branding/usr-university-logo.png",
+    "favicon": null,
+    "pwaIcons": null,
+    "backgrounds": null,
+    "iconLibrary": "lucide-react"
+  }
+}
