@@ -1699,6 +1699,82 @@ export type Database = {
           },
         ]
       }
+      schedule_version_conflict_exceptions: {
+        Row: {
+          approval_type: string
+          approved_at: string | null
+          approved_by: string | null
+          college_id: string
+          conflict_code: string
+          created_at: string
+          id: string
+          metadata: Json | null
+          reason: string
+          related_session_id: string | null
+          schedule_version_id: string
+          session_id: string
+          source: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          approval_type: string
+          approved_at?: string | null
+          approved_by?: string | null
+          college_id: string
+          conflict_code: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          reason: string
+          related_session_id?: string | null
+          schedule_version_id: string
+          session_id: string
+          source?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          approval_type?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          college_id?: string
+          conflict_code?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          reason?: string
+          related_session_id?: string | null
+          schedule_version_id?: string
+          session_id?: string
+          source?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_version_conflict_exceptions_related_session_id_fkey"
+            columns: ["related_session_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_version_conflict_exceptions_schedule_version_id_fkey"
+            columns: ["schedule_version_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_version_conflict_exceptions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       schedule_version_events: {
         Row: {
           college_id: string
