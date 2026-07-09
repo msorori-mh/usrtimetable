@@ -1,0 +1,316 @@
+{
+  "schedule_version_id": "482af19b-0d44-4631-b80a-753f5ead4089",
+  "college_id": "7168345f-cf9d-4789-b2ad-547abb687dc8",
+  "sessions_count": 198,
+  "totalHardConflicts": 96,
+  "approvedHardConflicts": 86,
+  "unapprovedHardConflicts": 10,
+  "eligibility_ok": false,
+  "by_code": {
+    "instructor_conflict": {
+      "total": 44,
+      "approved": 44,
+      "unapproved": 0
+    },
+    "room_conflict": {
+      "total": 40,
+      "approved": 40,
+      "unapproved": 0
+    },
+    "room_type_mismatch": {
+      "total": 11,
+      "approved": 2,
+      "unapproved": 9
+    },
+    "study_system_time_template": {
+      "total": 1,
+      "approved": 0,
+      "unapproved": 1
+    }
+  },
+  "unapproved_blockers": [
+    {
+      "code": "room_type_mismatch",
+      "sid": "0b91795a-7885-4a18-aa1c-def693968981",
+      "rid": null,
+      "meta": {
+        "required": "lecture_hall",
+        "room_type": "computer_lab",
+        "room_id": "8193e6c9-0552-458b-ba2d-97b63159322b"
+      },
+      "approved_exception": false
+    },
+    {
+      "code": "room_type_mismatch",
+      "sid": "7e123577-4997-48b8-9b7f-10d1346aacfc",
+      "rid": null,
+      "meta": {
+        "required": "seminar_room",
+        "room_type": "lecture_hall",
+        "room_id": "314feae5-6b97-48cf-9305-486ecb586506"
+      },
+      "approved_exception": false
+    },
+    {
+      "code": "room_type_mismatch",
+      "sid": "9490ee5c-2b08-4b36-b86e-e671c2d36f0c",
+      "rid": null,
+      "meta": {
+        "required": "lecture_hall",
+        "room_type": "seminar_room",
+        "room_id": "1526a649-333e-4376-bb85-a12d5daba9cd"
+      },
+      "approved_exception": false
+    },
+    {
+      "code": "room_type_mismatch",
+      "sid": "130ecd4f-bb73-49a2-85ba-0ea6f9a655ae",
+      "rid": null,
+      "meta": {
+        "required": "lecture_hall",
+        "room_type": "seminar_room",
+        "room_id": "1526a649-333e-4376-bb85-a12d5daba9cd"
+      },
+      "approved_exception": false
+    },
+    {
+      "code": "room_type_mismatch",
+      "sid": "5c142cf0-e45a-43d0-a40e-ac81ba3f2773",
+      "rid": null,
+      "meta": {
+        "required": "lecture_hall",
+        "room_type": "seminar_room",
+        "room_id": "1526a649-333e-4376-bb85-a12d5daba9cd"
+      },
+      "approved_exception": false
+    },
+    {
+      "code": "room_type_mismatch",
+      "sid": "de7d031e-c9e3-48e6-bc14-d2aef338002c",
+      "rid": null,
+      "meta": {
+        "required": "lecture_hall",
+        "room_type": "seminar_room",
+        "room_id": "1526a649-333e-4376-bb85-a12d5daba9cd"
+      },
+      "approved_exception": false
+    },
+    {
+      "code": "room_type_mismatch",
+      "sid": "5a1c58c8-8f72-46e0-80e2-14424da279d4",
+      "rid": null,
+      "meta": {
+        "required": "lecture_hall",
+        "room_type": "seminar_room",
+        "room_id": "1526a649-333e-4376-bb85-a12d5daba9cd"
+      },
+      "approved_exception": false
+    },
+    {
+      "code": "room_type_mismatch",
+      "sid": "ef28f402-4c8e-463b-8204-ea49b5f128ba",
+      "rid": null,
+      "meta": {
+        "required": "lecture_hall",
+        "room_type": "seminar_room",
+        "room_id": "1526a649-333e-4376-bb85-a12d5daba9cd"
+      },
+      "approved_exception": false
+    },
+    {
+      "code": "study_system_time_template",
+      "sid": "2989f01a-7832-4bd9-b014-2518df7e906c",
+      "rid": null,
+      "meta": {
+        "study_system": "parallel",
+        "day": 4
+      },
+      "approved_exception": false
+    },
+    {
+      "code": "room_type_mismatch",
+      "sid": "df71252b-32d7-4e33-999e-f29f8af8c1f2",
+      "rid": null,
+      "meta": {
+        "required": "seminar_room",
+        "room_type": "lecture_hall",
+        "room_id": "c7af7386-ee32-4ef2-855c-f8c11443d619"
+      },
+      "approved_exception": false
+    }
+  ],
+  "approved_samples": [
+    {
+      "code": "instructor_conflict",
+      "sid": "57a7781c-f463-4212-8738-b76cae714f05",
+      "rid": "86630e15-97c8-4222-aa60-37ea8540ec91",
+      "approved_exception": true,
+      "exception_id": "b54e7a8e-c29a-4398-8f0c-e08b30a9c999",
+      "exception_reason": "Owner-approved legacy parity: same instructor/room overlaps existed in legacy timetable a90aa87e; documented exception f"
+    },
+    {
+      "code": "room_conflict",
+      "sid": "57a7781c-f463-4212-8738-b76cae714f05",
+      "rid": "86630e15-97c8-4222-aa60-37ea8540ec91",
+      "approved_exception": true,
+      "exception_id": "11a6237b-475a-4c90-8ef1-05ad49f9ef06",
+      "exception_reason": "Owner-approved legacy parity: same instructor/room overlaps existed in legacy timetable a90aa87e; documented exception f"
+    },
+    {
+      "code": "instructor_conflict",
+      "sid": "0c3f8e4b-3369-4ba1-a631-86370adb1d4b",
+      "rid": "ec83454f-3c43-4f1d-a183-57e4e1bea182",
+      "approved_exception": true,
+      "exception_id": "7abb507c-c399-47e8-9f1d-6a080846064d",
+      "exception_reason": "Owner-approved legacy parity: same instructor/room overlaps existed in legacy timetable a90aa87e; documented exception f"
+    },
+    {
+      "code": "room_conflict",
+      "sid": "0c3f8e4b-3369-4ba1-a631-86370adb1d4b",
+      "rid": "ec83454f-3c43-4f1d-a183-57e4e1bea182",
+      "approved_exception": true,
+      "exception_id": "3b18ae8d-115b-4966-8920-ad855690bdbb",
+      "exception_reason": "Owner-approved legacy parity: same instructor/room overlaps existed in legacy timetable a90aa87e; documented exception f"
+    },
+    {
+      "code": "instructor_conflict",
+      "sid": "ec83454f-3c43-4f1d-a183-57e4e1bea182",
+      "rid": "0c3f8e4b-3369-4ba1-a631-86370adb1d4b",
+      "approved_exception": true,
+      "exception_id": "7abb507c-c399-47e8-9f1d-6a080846064d",
+      "exception_reason": "Owner-approved legacy parity: same instructor/room overlaps existed in legacy timetable a90aa87e; documented exception f"
+    },
+    {
+      "code": "room_conflict",
+      "sid": "ec83454f-3c43-4f1d-a183-57e4e1bea182",
+      "rid": "0c3f8e4b-3369-4ba1-a631-86370adb1d4b",
+      "approved_exception": true,
+      "exception_id": "3b18ae8d-115b-4966-8920-ad855690bdbb",
+      "exception_reason": "Owner-approved legacy parity: same instructor/room overlaps existed in legacy timetable a90aa87e; documented exception f"
+    },
+    {
+      "code": "instructor_conflict",
+      "sid": "5eab13e9-ae2f-4207-bb74-1f2ea39dbb5a",
+      "rid": "5dffc36f-2220-4524-8f87-63fe273537d2",
+      "approved_exception": true,
+      "exception_id": "816d9ec7-a4dd-4757-a8f8-2822a6cc17f0",
+      "exception_reason": "Owner-approved legacy parity: same instructor/room overlaps existed in legacy timetable a90aa87e; documented exception f"
+    },
+    {
+      "code": "room_conflict",
+      "sid": "5eab13e9-ae2f-4207-bb74-1f2ea39dbb5a",
+      "rid": "5dffc36f-2220-4524-8f87-63fe273537d2",
+      "approved_exception": true,
+      "exception_id": "e3f57577-604e-4856-ad06-95d08234c168",
+      "exception_reason": "Owner-approved legacy parity: same instructor/room overlaps existed in legacy timetable a90aa87e; documented exception f"
+    },
+    {
+      "code": "instructor_conflict",
+      "sid": "05bb911c-dcf9-46c4-a486-4a569da9d22f",
+      "rid": "6f8abf2d-7707-48ed-b3bb-6e6d9691e974",
+      "approved_exception": true,
+      "exception_id": "dab6b3dc-c456-4d4c-bcf5-dcfdf717cb51",
+      "exception_reason": "Owner-approved legacy parity: same instructor/room overlaps existed in legacy timetable a90aa87e; documented exception f"
+    },
+    {
+      "code": "room_conflict",
+      "sid": "05bb911c-dcf9-46c4-a486-4a569da9d22f",
+      "rid": "6f8abf2d-7707-48ed-b3bb-6e6d9691e974",
+      "approved_exception": true,
+      "exception_id": "b9320b10-f421-4bd9-b43b-a9fc4419757c",
+      "exception_reason": "Owner-approved legacy parity: same instructor/room overlaps existed in legacy timetable a90aa87e; documented exception f"
+    },
+    {
+      "code": "instructor_conflict",
+      "sid": "5dffc36f-2220-4524-8f87-63fe273537d2",
+      "rid": "5eab13e9-ae2f-4207-bb74-1f2ea39dbb5a",
+      "approved_exception": true,
+      "exception_id": "816d9ec7-a4dd-4757-a8f8-2822a6cc17f0",
+      "exception_reason": "Owner-approved legacy parity: same instructor/room overlaps existed in legacy timetable a90aa87e; documented exception f"
+    },
+    {
+      "code": "room_conflict",
+      "sid": "5dffc36f-2220-4524-8f87-63fe273537d2",
+      "rid": "5eab13e9-ae2f-4207-bb74-1f2ea39dbb5a",
+      "approved_exception": true,
+      "exception_id": "e3f57577-604e-4856-ad06-95d08234c168",
+      "exception_reason": "Owner-approved legacy parity: same instructor/room overlaps existed in legacy timetable a90aa87e; documented exception f"
+    },
+    {
+      "code": "instructor_conflict",
+      "sid": "6f8abf2d-7707-48ed-b3bb-6e6d9691e974",
+      "rid": "05bb911c-dcf9-46c4-a486-4a569da9d22f",
+      "approved_exception": true,
+      "exception_id": "dab6b3dc-c456-4d4c-bcf5-dcfdf717cb51",
+      "exception_reason": "Owner-approved legacy parity: same instructor/room overlaps existed in legacy timetable a90aa87e; documented exception f"
+    },
+    {
+      "code": "room_conflict",
+      "sid": "6f8abf2d-7707-48ed-b3bb-6e6d9691e974",
+      "rid": "05bb911c-dcf9-46c4-a486-4a569da9d22f",
+      "approved_exception": true,
+      "exception_id": "b9320b10-f421-4bd9-b43b-a9fc4419757c",
+      "exception_reason": "Owner-approved legacy parity: same instructor/room overlaps existed in legacy timetable a90aa87e; documented exception f"
+    },
+    {
+      "code": "instructor_conflict",
+      "sid": "86630e15-97c8-4222-aa60-37ea8540ec91",
+      "rid": "57a7781c-f463-4212-8738-b76cae714f05",
+      "approved_exception": true,
+      "exception_id": "b54e7a8e-c29a-4398-8f0c-e08b30a9c999",
+      "exception_reason": "Owner-approved legacy parity: same instructor/room overlaps existed in legacy timetable a90aa87e; documented exception f"
+    },
+    {
+      "code": "room_conflict",
+      "sid": "86630e15-97c8-4222-aa60-37ea8540ec91",
+      "rid": "57a7781c-f463-4212-8738-b76cae714f05",
+      "approved_exception": true,
+      "exception_id": "11a6237b-475a-4c90-8ef1-05ad49f9ef06",
+      "exception_reason": "Owner-approved legacy parity: same instructor/room overlaps existed in legacy timetable a90aa87e; documented exception f"
+    },
+    {
+      "code": "room_type_mismatch",
+      "sid": "ddf40bf9-40ef-40f1-a69a-948b7241e6bd",
+      "rid": null,
+      "meta": {
+        "required": "computer_lab",
+        "room_type": "lecture_hall",
+        "room_id": "ed1c6e45-0137-440f-b70b-159433a3a953"
+      },
+      "approved_exception": true,
+      "exception_id": "398c2699-102f-4070-8ce5-5be99778b6bb",
+      "exception_reason": "no free computer_lab in same time slot"
+    },
+    {
+      "code": "room_type_mismatch",
+      "sid": "a61fe880-81cb-4579-a785-a99c2db994bd",
+      "rid": null,
+      "meta": {
+        "required": "computer_lab",
+        "room_type": "lecture_hall",
+        "room_id": "43fcc737-195d-4f38-b03a-8533674a5a6b"
+      },
+      "approved_exception": true,
+      "exception_id": "f993cddf-066b-4b0a-a7f5-c1524e6651b8",
+      "exception_reason": "no free computer_lab in same time slot"
+    },
+    {
+      "code": "instructor_conflict",
+      "sid": "6f410307-2841-4ec3-940e-da5232df548d",
+      "rid": "30add77a-aa00-47e0-8bfc-f6054f2b24d9",
+      "approved_exception": true,
+      "exception_id": "851cd1e2-465e-4f96-910f-e69c2e184d1f",
+      "exception_reason": "Owner-approved legacy parity: same instructor/room overlaps existed in legacy timetable a90aa87e; documented exception f"
+    },
+    {
+      "code": "room_conflict",
+      "sid": "6f410307-2841-4ec3-940e-da5232df548d",
+      "rid": "30add77a-aa00-47e0-8bfc-f6054f2b24d9",
+      "approved_exception": true,
+      "exception_id": "de0eb5f4-7381-42e4-95e7-efc2182592e4",
+      "exception_reason": "Owner-approved legacy parity: same instructor/room overlaps existed in legacy timetable a90aa87e; documented exception f"
+    }
+  ],
+  "exception_row_count": 44,
+  "exception_index_size": 44
+}
