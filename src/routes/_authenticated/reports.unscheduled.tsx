@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 export const Route = createFileRoute("/_authenticated/reports/unscheduled")({
-  head: () => ({ meta: [{ title: "تقرير الجلسات غير المجدوَلة" }] }),
+  head: () => ({ meta: [{ title: "تقرير المحاضرات غير المجدوَلة" }] }),
   component: Page,
 });
 
@@ -99,7 +99,7 @@ function Page() {
   ];
 
   return (
-    <ReportShell title="تقرير الجلسات غير المجدوَلة" description="الجلسات المطلوبة وفق الخطط مقابل المجدوَلة."
+    <ReportShell title="تقرير المحاضرات غير المجدوَلة" description="الجلسات المطلوبة وفق الخطط مقابل المجدوَلة."
       filename="unscheduled_sessions" rows={rows} headers={headers} isLoading={oLoad}
       emptyMessage={!versionId ? "اختر نسخة جدول." : "كل الجلسات مجدوَلة."}
       filters={

@@ -23,7 +23,7 @@ export const Route = createFileRoute("/_authenticated/import")({
 
 const ENTITIES: { value: ImportEntity; label: string; group: string }[] = [
   { value: "instructors", label: "المحاضرون", group: "موارد" },
-  { value: "rooms", label: "القاعات والمختبرات", group: "موارد" },
+  { value: "rooms", label: "القاعات والمعامل", group: "موارد" },
   { value: "academic_terms", label: "الفصول الدراسية", group: "موارد" },
   { value: "daily_breaks", label: "الاستراحات اليومية", group: "موارد" },
   { value: "study_plan_courses", label: "خطة دراسية (مستوى/فصل)", group: "خطط دراسية" },

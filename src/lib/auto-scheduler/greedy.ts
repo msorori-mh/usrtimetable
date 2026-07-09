@@ -239,7 +239,7 @@ export async function runGreedyAutoSchedule(params: {
   const isLecLike = (st: string | null | undefined) =>
     !st || ["lecture", "lec", "نظري", "محاضرة"].includes(st);
   const isLabLike = (st: string | null | undefined) =>
-    !!st && ["lab", "practical", "عملي", "مختبر"].includes(st);
+    !!st && ["lab", "practical", "عملي", "معمل"].includes(st);
 
   const buildCandidates = (system: StudySystem, durationMin: number): CandidateSlot[] => {
     const out: CandidateSlot[] = [];

@@ -17,7 +17,7 @@ import { logAudit } from "@/lib/audit";
 import { DoorOpen, Pencil, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/rooms")({
-  head: () => ({ meta: [{ title: "القاعات والمختبرات" }] }),
+  head: () => ({ meta: [{ title: "القاعات والمعامل" }] }),
   component: RoomsPage,
 });
 
@@ -29,10 +29,10 @@ interface Room {
 
 export const ROOM_TYPES = [
   { v: "lecture_hall", l: "قاعة محاضرات" },
-  { v: "computer_lab", l: "مختبر حاسوب" },
-  { v: "network_lab", l: "مختبر شبكات" },
-  { v: "cybersecurity_lab", l: "مختبر أمن سيبراني" },
-  { v: "electronics_lab", l: "مختبر إلكترونيات" },
+  { v: "computer_lab", l: "معمل حاسوب" },
+  { v: "network_lab", l: "معمل شبكات" },
+  { v: "cybersecurity_lab", l: "معمل أمن سيبراني" },
+  { v: "electronics_lab", l: "معمل إلكترونيات" },
   { v: "workshop", l: "ورشة" },
   { v: "seminar_room", l: "قاعة ندوات" },
 ];
@@ -109,8 +109,8 @@ function RoomsPage() {
       <header className="mb-6 flex items-center gap-3">
         <span className="grid h-11 w-11 place-items-center rounded-lg bg-secondary text-primary"><DoorOpen className="h-5 w-5" /></span>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold">القاعات والمختبرات</h1>
-          <p className="text-sm text-muted-foreground">إدارة قاعات الدراسة والمختبرات في الكلّية.</p>
+          <h1 className="text-2xl font-bold">القاعات والمعامل</h1>
+          <p className="text-sm text-muted-foreground">إدارة قاعات الدراسة والمعامل في الكلّية.</p>
         </div>
       </header>
 
@@ -118,7 +118,7 @@ function RoomsPage() {
         <CollegeSwitcher />
         {canManage && (
           <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild><Button onClick={startCreate}>قاعة/مختبر جديد</Button></DialogTrigger>
+            <DialogTrigger asChild><Button onClick={startCreate}>قاعة/معمل جديد</Button></DialogTrigger>
             <DialogContent>
               <DialogHeader><DialogTitle>{editing ? "تعديل القاعة" : "قاعة جديدة"}</DialogTitle></DialogHeader>
               <div className="space-y-3">
