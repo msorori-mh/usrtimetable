@@ -150,11 +150,11 @@ function SectionsPage() {
         )}
       </div>
 
-      {!ready && <p className="mb-3 rounded border border-dashed border-border bg-muted/30 p-3 text-sm text-muted-foreground">يلزم وجود مقررات وفصل دراسي قبل إنشاء شُعب.</p>}
+      {!ready && <p className="mb-3 rounded border border-dashed border-border bg-muted/30 p-3 text-sm text-muted-foreground">يلزم وجود مقررات وفصل دراسي قبل إنشاء مجموعات.</p>}
 
       <Card className="overflow-hidden">
         {isLoading ? <p className="p-6 text-center text-muted-foreground">جارٍ التحميل...</p>
-          : !rows || rows.length === 0 ? <p className="p-6 text-center text-muted-foreground">لا توجد شُعب بعد.</p>
+          : !rows || rows.length === 0 ? <p className="p-6 text-center text-muted-foreground">لا توجد مجموعات بعد.</p>
           : <ul className="divide-y divide-border">
               {rows.map((s) => (
                 <li key={s.id} className="flex items-center justify-between p-4">

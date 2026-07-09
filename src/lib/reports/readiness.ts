@@ -110,9 +110,9 @@ export async function fetchCollegeReadiness(collegeId: string): Promise<Readines
     { label: "صفوف الخطة بدون مستوى", total: planRows.length, missing: planRows.filter((p: { level_id: string | null }) => !p.level_id).length, category: "study_plan" },
     { label: "صفوف الخطة بدون فصل (semester)", total: planRows.length, missing: planRows.filter((p: { semester: number | null }) => !p.semester).length, category: "study_plan" },
     { label: "بدون عدد محاضرات أسبوعية", total: planRows.length, missing: planRows.filter((p: { lectures_per_week: number | null }) => !p.lectures_per_week).length, category: "study_plan" },
-    { label: "بدون عدد مختبرات أسبوعية", total: planRows.length, missing: planRows.filter((p: { labs_per_week: number | null | undefined }) => p.labs_per_week === null || p.labs_per_week === undefined).length, category: "study_plan" },
+    { label: "بدون عدد معامل أسبوعية", total: planRows.length, missing: planRows.filter((p: { labs_per_week: number | null | undefined }) => p.labs_per_week === null || p.labs_per_week === undefined).length, category: "study_plan" },
     { label: "بدون مدة جلسة محاضرة", total: planRows.length, missing: planRows.filter((p: { lecture_session_duration: number | null }) => !p.lecture_session_duration).length, category: "study_plan" },
-    { label: "بدون مدة جلسة مختبر", total: planRows.length, missing: planRows.filter((p: { labs_per_week: number; lab_session_duration: number | null }) => p.labs_per_week > 0 && !p.lab_session_duration).length, category: "study_plan" },
+    { label: "بدون مدة جلسة معمل", total: planRows.length, missing: planRows.filter((p: { labs_per_week: number; lab_session_duration: number | null }) => p.labs_per_week > 0 && !p.lab_session_duration).length, category: "study_plan" },
   ];
 
   const resources: ReadinessMetric[] = [

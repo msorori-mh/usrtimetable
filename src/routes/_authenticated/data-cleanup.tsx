@@ -528,7 +528,7 @@ function CoursesSection({
         open={dlg === "room_req"}
         onOpenChange={(v) => !v && setDlg(null)}
         title="تعيين متطلبات نوع القاعة (لمقررات الخطة)"
-        description="يُطبَّق فقط حيث القيمة فارغة، ووفقاً لوجود محاضرات/مختبرات."
+        description="يُطبَّق فقط حيث القيمة فارغة، ووفقاً لوجود محاضرات/معامل."
         ids={roomReqIds}
         onConfirm={async (ids) => {
           const rows = (data?.planCourses ?? []).filter((p) => ids.includes(p.id));
@@ -559,14 +559,14 @@ function CoursesSection({
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>قاعة المختبر</Label>
+            <Label>قاعة المعمل</Label>
             <Select value={labRoom} onValueChange={setLabRoom}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="computer_lab">مختبر حاسوب</SelectItem>
-                <SelectItem value="network_lab">مختبر شبكات</SelectItem>
-                <SelectItem value="cybersecurity_lab">مختبر أمن سيبراني</SelectItem>
-                <SelectItem value="electronics_lab">مختبر إلكترونيات</SelectItem>
+                <SelectItem value="computer_lab">معمل حاسوب</SelectItem>
+                <SelectItem value="network_lab">معمل شبكات</SelectItem>
+                <SelectItem value="cybersecurity_lab">معمل أمن سيبراني</SelectItem>
+                <SelectItem value="electronics_lab">معمل إلكترونيات</SelectItem>
               </SelectContent>
             </Select>
           </div>

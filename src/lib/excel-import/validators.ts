@@ -283,7 +283,7 @@ function runEntityValidation(entity: ImportEntity, row: ParsedRow, lk: Lookups, 
     if (lec > 0 && !(Number(v.lecture_session_duration) > 0))
       errs.push({ rowNumber: row.rowNumber, columnName: "مدة_المحاضرة", errorCode: "invalid_pattern", message: "مدة المحاضرة يجب أن تكون > 0 عند وجود محاضرات" });
     if (lab > 0 && !(Number(v.lab_session_duration) > 0))
-      errs.push({ rowNumber: row.rowNumber, columnName: "مدة_المختبر", errorCode: "invalid_pattern", message: "مدة المختبر يجب أن تكون > 0 عند وجود مختبرات" });
+      errs.push({ rowNumber: row.rowNumber, columnName: "مدة_المعمل", errorCode: "invalid_pattern", message: "مدة المعمل يجب أن تكون > 0 عند وجود معامل" });
   }
 
   if (entity === "course_offerings") {
@@ -349,7 +349,7 @@ function runEntityValidation(entity: ImportEntity, row: ParsedRow, lk: Lookups, 
     if (c) v._course_id = c.id;
     const members = v.member_section_numbers as string[] | null;
     if (!members || members.length === 0)
-      errs.push({ rowNumber: row.rowNumber, columnName: "أرقام_الشعب", errorCode: "required", message: "حدّد رقم مجموعة واحد على الأقل" });
+      errs.push({ rowNumber: row.rowNumber, columnName: "أرقام_المجموعات", errorCode: "required", message: "حدّد رقم مجموعة واحد على الأقل" });
   }
 }
 

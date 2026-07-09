@@ -11,7 +11,7 @@ export const Route = createFileRoute("/_authenticated/room-types")({
     <LookupPage<Row>
       table="room_types"
       title="أنواع القاعات"
-      subtitle="محاضرات / مختبرات / قاعات عرض…"
+      subtitle="محاضرات / معامل / قاعات عرض…"
       icon={<Boxes className="h-5 w-5" />}
       orderBy="display_order"
       emptyForm={() => ({ code: "", name_ar: "", name_en: "", default_capacity: 30, color: "", display_order: 0, is_active: true, features: [] })}

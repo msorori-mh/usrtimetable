@@ -27,13 +27,13 @@ export const Route = createFileRoute("/_authenticated/session-types")({
           <div><Label>الاسم بالعربية</Label><Input value={String(f.name_ar ?? "")} onChange={(e) => set({ ...f, name_ar: e.target.value })} /></div>
           <div><Label>الاسم بالإنجليزية</Label><Input value={String(f.name_en ?? "")} onChange={(e) => set({ ...f, name_en: e.target.value })} /></div>
           <div><Label>اللون (hex)</Label><Input value={String(f.color ?? "")} onChange={(e) => set({ ...f, color: e.target.value })} placeholder="#f59e0b" /></div>
-          <label className="flex items-center gap-2 text-sm"><Checkbox checked={Boolean(f.requires_lab)} onCheckedChange={(v) => set({ ...f, requires_lab: !!v })} /> يتطلب مختبراً</label>
+          <label className="flex items-center gap-2 text-sm"><Checkbox checked={Boolean(f.requires_lab)} onCheckedChange={(v) => set({ ...f, requires_lab: !!v })} /> يتطلب معملاً</label>
           <label className="flex items-center gap-2 text-sm"><Checkbox checked={Boolean(f.is_active)} onCheckedChange={(v) => set({ ...f, is_active: !!v })} /> نشط</label>
         </>
       )}
       renderRow={(r) => (
         <>
-          <p className="font-semibold">{r.name_ar} {r.requires_lab && <span className="rounded bg-accent/20 px-2 py-0.5 text-[11px]">مختبر</span>}</p>
+          <p className="font-semibold">{r.name_ar} {r.requires_lab && <span className="rounded bg-accent/20 px-2 py-0.5 text-[11px]">معمل</span>}</p>
           <p className="text-xs text-muted-foreground"><span dir="ltr">{r.code}</span> · {Number(r.default_duration_hours)} ساعة افتراضي</p>
         </>
       )}

@@ -60,9 +60,9 @@ async function fetchReadiness(collegeId: string) {
     { label: "صفوف الخطة بدون مستوى", total: planRows.length, missing: planRows.filter((p: any) => !p.level_id).length },
     { label: "صفوف الخطة بدون فصل (semester)", total: planRows.length, missing: planRows.filter((p: any) => !p.semester).length },
     { label: "بدون عدد محاضرات أسبوعية", total: planRows.length, missing: planRows.filter((p: any) => !p.lectures_per_week).length },
-    { label: "بدون عدد مختبرات أسبوعية", total: planRows.length, missing: planRows.filter((p: any) => p.labs_per_week === null || p.labs_per_week === undefined).length },
+    { label: "بدون عدد معامل أسبوعية", total: planRows.length, missing: planRows.filter((p: any) => p.labs_per_week === null || p.labs_per_week === undefined).length },
     { label: "بدون مدة جلسة محاضرة", total: planRows.length, missing: planRows.filter((p: any) => !p.lecture_session_duration).length },
-    { label: "بدون مدة جلسة مختبر", total: planRows.length, missing: planRows.filter((p: any) => p.labs_per_week > 0 && !p.lab_session_duration).length },
+    { label: "بدون مدة جلسة معمل", total: planRows.length, missing: planRows.filter((p: any) => p.labs_per_week > 0 && !p.lab_session_duration).length },
   ];
 
   // Resource metrics

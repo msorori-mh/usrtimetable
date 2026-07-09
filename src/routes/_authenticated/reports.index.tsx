@@ -55,7 +55,7 @@ const OPERATIONAL_REPORTS: ReportCard[] = [
     desc: "فحوص الجاهزية · قابل للتصدير · على مستوى الكلية (تقرير التقارير).",
     icon: <ClipboardCheck className="h-5 w-5" />,
   },
-  { to: "/reports/unscheduled", title: "الجلسات غير المجدوَلة", desc: "الناقص vs المطلوب · أسباب من آخر auto_schedule_run.", icon: <AlertTriangle className="h-5 w-5" /> },
+  { to: "/reports/unscheduled", title: "المحاضرات غير المجدوَلة", desc: "الناقص vs المطلوب · أسباب من آخر auto_schedule_run.", icon: <AlertTriangle className="h-5 w-5" /> },
   { to: "/reports/quality-summary", title: "ملخص الجودة", desc: "آخر quality run · نسخة واحدة · لا يشغّل Quality Engine.", icon: <Gauge className="h-5 w-5" /> },
 ];
 

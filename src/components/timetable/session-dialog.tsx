@@ -272,7 +272,7 @@ export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="lecture">محاضرة</SelectItem>
-                <SelectItem value="lab">مختبر</SelectItem>
+                <SelectItem value="lab">معمل</SelectItem>
                 <SelectItem value="tutorial">تطبيق</SelectItem>
               </SelectContent>
             </Select>
