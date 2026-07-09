@@ -118,7 +118,7 @@ export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId
     }
   }, [open, sessionId]);
 
-  const runValidate = async (): Promise<Conflict[]> => {
+  const runValidate = async () => {
     setValidating(true);
     try {
       const res = await validateProposed({
@@ -126,7 +126,7 @@ export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId
         sessions: [{ id: sessionId ?? undefined, ...form } as any],
         excludeExistingSessionIds: sessionId ? [sessionId] : [],
       });
-      setConflicts(res);
+      setConflicts(res.conflicts);
       return res;
     } finally { setValidating(false); }
   };
@@ -135,9 +135,9 @@ export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId
     mutationFn: async () => {
       if (!form.course_offering_id || !form.instructor_id) throw new Error("المقرر والمحاضر مطلوبان");
       const res = await runValidate();
-      if (res.length > 0) {
-        toast.error(`⚠️ يوجد ${res.length} تعارض إلزامي — لا يمكن الحفظ`);
-        await logAudit({ action: "blocked_conflict", entity: "schedule_sessions", entityId: sessionId ?? null, collegeId, details: { codes: res.map(r => r.code) } });
+      if (res.unapprovedHardConflicts > 0) {
+        toast.error(`⚠️ يوجد ${res.unapprovedHardConflicts} تعارض إلزامي — لا يمكن الحفظ`);
+        await logAudit({ action: "blocked_conflict", entity: "schedule_sessions", entityId: sessionId ?? null, collegeId, details: { codes: res.conflicts.map(r => r.code) } });
         throw new Error("لا يمكن الحفظ — توجد تعارضات إلزامية");
       }
       const payload = { ...form, college_id: collegeId, schedule_version_id: scheduleVersionId };

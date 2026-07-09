@@ -227,7 +227,7 @@ function TimetablePage() {
     const duration = toMin(existing.end_time) - toMin(existing.start_time);
     const newEnd = addMin(startTime, duration);
     // Validate (excluding self)
-    const conflicts = await validateProposed({
+    const validation = await validateProposed({
       collegeId: active.id,
       scheduleVersionId: versionId,
       sessions: [{
@@ -247,9 +247,9 @@ function TimetablePage() {
       }],
       excludeExistingSessionIds: [existing.id],
     });
-    if (conflicts.length > 0) {
-      toast.error(`⚠️ نقل مرفوض — ${conflicts.length} تعارض (${conflicts[0].message_ar})`);
-      await logAudit({ action: "blocked_conflict", entity: "schedule_sessions", entityId: existing.id, collegeId: active.id, details: { codes: conflicts.map(c => c.code) } });
+    if (validation.unapprovedHardConflicts > 0) {
+      toast.error(`⚠️ نقل مرفوض — ${validation.unapprovedHardConflicts} تعارض (${validation.conflicts[0].message_ar})`);
+      await logAudit({ action: "blocked_conflict", entity: "schedule_sessions", entityId: existing.id, collegeId: active.id, details: { codes: validation.conflicts.map(c => c.code) } });
       return;
     }
     const { error } = await supabase.from("schedule_sessions").update({

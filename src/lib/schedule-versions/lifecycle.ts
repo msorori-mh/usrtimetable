@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { validateProposed, type ProposedSession } from "@/lib/conflict-engine/validator";
+import { loadApprovedExceptions } from "@/lib/conflict-engine/exceptions";
 import { scoreScheduleVersion } from "@/lib/conflict-engine/scorer";
 
 export type SVStatus = "draft" | "review" | "approved" | "published" | "archived";
@@ -73,7 +74,11 @@ export interface EligibilityResult {
   ok: boolean;
   reasons: string[];
   warnings: string[];
+  /** Unapproved hard conflicts — used for gate eligibility. */
   hardConflicts: number;
+  totalHardConflicts: number;
+  approvedHardConflicts: number;
+  unapprovedHardConflicts: number;
   qualityScore: number | null;
   sessionsCount: number;
 }
@@ -112,10 +117,24 @@ export async function evaluateEligibility(params: {
     expected_students: s.expected_students,
   }));
 
-  let hard = 0;
+  let totalHard = 0;
+  let approvedHard = 0;
+  let unapprovedHard = 0;
   if (sessions.length > 0) {
-    const conflicts = await validateProposed({ collegeId, scheduleVersionId, sessions: proposed });
-    hard = conflicts.length;
+    const approvedExceptions = await loadApprovedExceptions({ scheduleVersionId });
+    const validation = await validateProposed({
+      collegeId,
+      scheduleVersionId,
+      sessions: proposed,
+      approvedExceptions,
+    });
+    totalHard = validation.totalHardConflicts;
+    approvedHard = validation.approvedHardConflicts;
+    unapprovedHard = validation.unapprovedHardConflicts;
+  }
+
+  if (unapprovedHard > 0) {
+    reasons.push(`يوجد ${unapprovedHard} تعارض إلزامي غير معتمد (${totalHard} إجمالي، ${approvedHard} معتمد).`);
   }
 
   // Latest quality run
@@ -136,7 +155,10 @@ export async function evaluateEligibility(params: {
     ok: reasons.length === 0,
     reasons,
     warnings,
-    hardConflicts: hard,
+    hardConflicts: unapprovedHard,
+    totalHardConflicts: totalHard,
+    approvedHardConflicts: approvedHard,
+    unapprovedHardConflicts: unapprovedHard,
     qualityScore: qrow?.total_score ?? null,
     sessionsCount: sessions.length,
   };
@@ -147,12 +169,25 @@ export function validateGate(target: SVStatus, e: EligibilityResult): string[] {
   const errs: string[] = [];
   if (target === "review") {
     if (e.sessionsCount < 1) errs.push("النسخة لا تحتوي على أي محاضرات.");
+    if (e.unapprovedHardConflicts > 0) {
+      errs.push(
+        `يوجد ${e.unapprovedHardConflicts} تعارض إلزامي غير معتمد — يجب معالجته قبل المراجعة (${e.totalHardConflicts} إجمالي، ${e.approvedHardConflicts} معتمد).`,
+      );
+    }
   }
   if (target === "approved") {
-    if (e.hardConflicts > 0) errs.push(`يوجد ${e.hardConflicts} تعارض إلزامي — يجب أن يكون صفراً.`);
+    if (e.unapprovedHardConflicts > 0) {
+      errs.push(
+        `يوجد ${e.unapprovedHardConflicts} تعارض إلزامي غير معتمد — يجب أن يكون صفراً (${e.totalHardConflicts} إجمالي، ${e.approvedHardConflicts} معتمد).`,
+      );
+    }
   }
   if (target === "published") {
-    if (e.hardConflicts > 0) errs.push(`يوجد ${e.hardConflicts} تعارض إلزامي — يجب أن يكون صفراً.`);
+    if (e.unapprovedHardConflicts > 0) {
+      errs.push(
+        `يوجد ${e.unapprovedHardConflicts} تعارض إلزامي غير معتمد — يجب أن يكون صفراً (${e.totalHardConflicts} إجمالي، ${e.approvedHardConflicts} معتمد).`,
+      );
+    }
     if (e.qualityScore === null) errs.push("يجب وجود نتيجة جودة — شغّل تقييم الجودة أولاً.");
   }
   return errs;

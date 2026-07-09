@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "moduleResolution": "Bundler",
+    "paths": {
+      "@/*": ["../../src/*"]
+    }
+  },
+  "include": ["./**/*.ts", "../../src/lib/conflict-engine/**/*.ts", "../../src/lib/schedule-versions/lifecycle.ts"]
+}
