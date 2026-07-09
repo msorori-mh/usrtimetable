@@ -146,7 +146,7 @@ export async function evaluateEligibility(params: {
 export function validateGate(target: SVStatus, e: EligibilityResult): string[] {
   const errs: string[] = [];
   if (target === "review") {
-    if (e.sessionsCount < 1) errs.push("النسخة لا تحتوي على أي جلسات.");
+    if (e.sessionsCount < 1) errs.push("النسخة لا تحتوي على أي محاضرات.");
   }
   if (target === "approved") {
     if (e.hardConflicts > 0) errs.push(`يوجد ${e.hardConflicts} تعارض إلزامي — يجب أن يكون صفراً.`);

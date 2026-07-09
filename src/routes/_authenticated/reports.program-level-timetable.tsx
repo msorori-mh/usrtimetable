@@ -98,14 +98,14 @@ function Page() {
   return (
     <ReportShell
       title="تقرير جدول البرنامج/المستوى"
-      description={`المجموع: ${totalHours.toFixed(2)} ساعة/أسبوع · ${sessions.length} جلسة.`}
+      description={`المجموع: ${totalHours.toFixed(2)} ساعة/أسبوع · ${sessions.length} محاضرة.`}
       filterSummary={ctx.filterSummary}
       reportContext={ctx}
       filename="program_level_timetable"
       rows={rows}
       headers={TIMETABLE_TABLE_HEADERS}
       isLoading={isLoading}
-      emptyMessage={!ready ? "اختر نسخة جدول." : "لا توجد جلسات بهذه المعايير."}
+      emptyMessage={!ready ? "اختر نسخة جدول." : "لا توجد محاضرات بهذه المعايير."}
       filters={
         <ReportFilters context={ctx}>
           <div>

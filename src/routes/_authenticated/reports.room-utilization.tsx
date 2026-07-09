@@ -96,7 +96,7 @@ function Page() {
     { key: "building", label: "المبنى" },
     { key: "scheduled_hours", label: "ساعات مستخدمة" },
     { key: "utilization_pct", label: "نسبة الاستخدام %" },
-    { key: "usage_count", label: "عدد الجلسات" },
+    { key: "usage_count", label: "عدد المحاضرات" },
     { key: "idle_hours", label: "ساعات فارغة" },
   ];
 

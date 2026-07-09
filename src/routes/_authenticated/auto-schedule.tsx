@@ -104,7 +104,7 @@ function AutoSchedulePage() {
         <div>
           <h1 className="text-2xl font-bold">الجدولة التلقائية</h1>
           <p className="text-sm text-muted-foreground">
-            خوارزمية شَرِهة محسّنة (V2): ترتيب الوحدات حسب الصعوبة، تسجيل المرشحين، وتراجع محدود لإعادة توطين جلسات هذا التشغيل عند الحاجة — مع الحفاظ على جميع الجلسات القائمة.
+            خوارزمية شَرِهة محسّنة (V2): ترتيب الوحدات حسب الصعوبة، تسجيل المرشحين، وتراجع محدود لإعادة توطين محاضرات هذا التشغيل عند الحاجة — مع الحفاظ على جميع المحاضرات القائمة.
           </p>
         </div>
         <CollegeSwitcher />
@@ -133,7 +133,7 @@ function AutoSchedulePage() {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="fill_missing">إكمال الناقص فقط (آمن)</SelectItem>
-                    <SelectItem value="regenerate_auto">إعادة توليد الجلسات التلقائية</SelectItem>
+                    <SelectItem value="regenerate_auto">إعادة توليد المحاضرات التلقائية</SelectItem>
                     <SelectItem value="full_rebuild">إعادة بناء كامل (خطر)</SelectItem>
                   </SelectContent>
                 </Select>
@@ -151,10 +151,10 @@ function AutoSchedulePage() {
             </div>
             <p className="text-[11px] text-muted-foreground">
               {mode === "fill_missing"
-                ? "إكمال الناقص: يضيف جلسات للتكليفات غير المجدولة فقط، ويحافظ على جميع الجلسات القائمة."
+                ? "إكمال الناقص: يضيف محاضرات للتكليفات غير المجدولة فقط، ويحافظ على جميع المحاضرات القائمة."
                 : mode === "regenerate_auto"
-                ? "إعادة توليد التلقائي: يحذف الجلسات المولّدة تلقائياً غير المقفلة، ويحافظ على الجلسات اليدوية والمقفلة، ثم يعيد توليد المطلوب."
-                : "إعادة بناء كامل: يحذف جميع الجلسات غير المقفلة (تلقائية ويدوية)، ويحافظ على الجلسات المقفلة فقط. غير قابل للتراجع."}
+                ? "إعادة توليد التلقائي: يحذف المحاضرات المولّدة تلقائياً غير المقفلة، ويحافظ على المحاضرات اليدوية والمقفلة، ثم يعيد توليد المطلوب."
+                : "إعادة بناء كامل: يحذف جميع المحاضرات غير المقفلة (تلقائية ويدوية)، ويحافظ على المحاضرات المقفلة فقط. غير قابل للتراجع."}
             </p>
           </Card>
 
@@ -166,8 +166,8 @@ function AutoSchedulePage() {
                 </AlertDialogTitle>
                 <AlertDialogDescription>
                   {mode === "full_rebuild"
-                    ? "سيتم حذف جميع الجلسات غير المقفلة (التلقائية واليدوية على حدٍّ سواء) في هذه النسخة. الجلسات المقفلة فقط ستبقى. لا يمكن التراجع."
-                    : "سيتم حذف الجلسات المولّدة تلقائياً وغير المقفلة فقط. تبقى الجلسات اليدوية والمقفلة كما هي."}
+                    ? "سيتم حذف جميع المحاضرات غير المقفلة (التلقائية واليدوية على حدٍّ سواء) في هذه النسخة. المحاضرات المقفلة فقط ستبقى. لا يمكن التراجع."
+                    : "سيتم حذف المحاضرات المولّدة تلقائياً وغير المقفلة فقط. تبقى المحاضرات اليدوية والمقفلة كما هي."}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -232,7 +232,7 @@ function AutoSchedulePage() {
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
                 <Stat label="مطلوب" value={sum?.total_required_sessions ?? (latest.placed_sessions + latest.unplaced_sessions)} />
-                <Stat label="جلسات موضوعة" value={latest.placed_sessions} />
+                <Stat label="محاضرات موضوعة" value={latest.placed_sessions} />
                 <Stat label="غير مجدول" value={latest.unplaced_sessions} accent={latest.unplaced_sessions > 0 ? "warn" : undefined} />
                 <Stat label="محفوظة (قائمة)" value={sum?.preserved_existing_sessions ?? 0} />
               </div>
@@ -254,7 +254,7 @@ function AutoSchedulePage() {
                   label="محاولات تراجع"
                   value={`${sum?.backtracking_attempts ?? 0}/${sum?.max_backtracking_attempts ?? 0}`}
                 />
-                <Stat label="جلسات أُعيد توطينها" value={sum?.relocated_sessions ?? 0} />
+                <Stat label="محاضرات أُعيد توطينها" value={sum?.relocated_sessions ?? 0} />
                 <Stat label="المدة (ms)" value={latest.duration_ms ?? 0} />
               </div>
 
@@ -287,7 +287,7 @@ function AutoSchedulePage() {
                 <div className="border rounded-md p-3 max-h-80 overflow-y-auto bg-muted/30">
                   <p className="text-sm font-semibold mb-1">قائمة غير المجدول وأسبابها</p>
                   <p className="text-[11px] text-muted-foreground mb-2">
-                    السبب يُظهر أول قيد إلزامي منعَ وضع الجلسة (محاضر/قاعة/قسم/فترة) بعد استنفاد كل المرشحين ومحاولات التراجع المسموح بها.
+                    السبب يُظهر أول قيد إلزامي منعَ وضع المحاضرة (محاضر/قاعة/قسم/فترة) بعد استنفاد كل المرشحين ومحاولات التراجع المسموح بها.
                   </p>
                   <ul className="text-xs space-y-1">
                     {(latest.unplaced as Array<{ teaching_assignment_id: string; session_type: string; duration_minutes?: number; unit_index?: number; reason: string }>).map((u, i) => (

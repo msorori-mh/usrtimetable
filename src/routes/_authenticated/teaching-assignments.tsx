@@ -78,7 +78,7 @@ function AssignmentsPage() {
   const save = useMutation({
     mutationFn: async () => {
       if (!active) throw new Error("اختر كلّية");
-      if (!form.course_offering_id || !form.instructor_id) throw new Error("المقرر المطروح والمحاضر مطلوبان");
+      if (!form.course_offering_id || !form.instructor_id) throw new Error("المقرر المسند والمحاضر مطلوبان");
       const payload = {
         college_id: active.id,
         course_offering_id: form.course_offering_id,
@@ -146,7 +146,7 @@ function AssignmentsPage() {
         <span className="grid h-11 w-11 place-items-center rounded-lg bg-secondary text-primary"><Briefcase className="h-5 w-5" /></span>
         <div className="flex-1">
           <h1 className="text-2xl font-bold">التكليفات التدريسية</h1>
-          <p className="text-sm text-muted-foreground">ربط المحاضرين بالمقررات المطروحة.</p>
+          <p className="text-sm text-muted-foreground">ربط المحاضرين بالمقررات المسندة.</p>
         </div>
       </header>
 
@@ -160,7 +160,7 @@ function AssignmentsPage() {
             <DialogContent className="max-w-lg">
               <DialogHeader><DialogTitle>{editing ? "تعديل تكليف" : "تكليف جديد"}</DialogTitle></DialogHeader>
               <div className="space-y-3">
-                <div><Label>المقرر المطروح</Label>
+                <div><Label>المقرر المسند</Label>
                   <Select value={form.course_offering_id} onValueChange={(v) => setForm({ ...form, course_offering_id: v })}>
                     <SelectTrigger><SelectValue placeholder="اختر" /></SelectTrigger>
                     <SelectContent>
@@ -177,7 +177,7 @@ function AssignmentsPage() {
                   </Select>
                 </div>
                 <div className="grid grid-cols-3 gap-3">
-                  <div><Label>نوع الجلسة</Label>
+                  <div><Label>نوع المحاضرة</Label>
                     <Select value={form.session_type} onValueChange={(v) => setForm({ ...form, session_type: v })}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>{SESSION_TYPES.map((s) => <SelectItem key={s.v} value={s.v}>{s.l}</SelectItem>)}</SelectContent>

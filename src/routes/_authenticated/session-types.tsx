@@ -6,11 +6,11 @@ import { LookupPage, LookupRow } from "@/components/lookup-page";
 import { Presentation } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/session-types")({
-  head: () => ({ meta: [{ title: "أنواع الجلسات" }] }),
+  head: () => ({ meta: [{ title: "أنواع المحاضرات" }] }),
   component: () => (
     <LookupPage<Row>
       table="session_types"
-      title="أنواع الجلسات"
+      title="أنواع المحاضرات"
       subtitle="محاضرة / عملي / تمارين / حلقة بحث…"
       icon={<Presentation className="h-5 w-5" />}
       orderBy="display_order"

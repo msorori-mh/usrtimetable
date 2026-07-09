@@ -68,7 +68,7 @@ const REF_ROOM_TYPES: TemplateRef = {
 };
 
 const REF_SESSION_TYPES: TemplateRef = {
-  title: "أنواع الجلسات",
+  title: "أنواع المحاضرات",
   rows: [
     ["الرمز", "الوصف"],
     ["lecture", "محاضرة"],
@@ -500,10 +500,10 @@ export const CATALOG: TemplateDef[] = [
   // ============= D. Scheduling =============
   {
     id: "course_offerings",
-    name: "طرح المقررات",
+    name: "إسناد المقررات",
     group: "scheduling",
     groupLabel: GROUPS.scheduling,
-    purpose: "تحديد المقررات المطروحة في فصل دراسي معيّن.",
+    purpose: "تحديد المقررات المسندة في فصل دراسي معيّن.",
     requiredBeforeScheduling: true,
     importOrder: 16,
     sheetName: "offerings",
@@ -526,7 +526,7 @@ export const CATALOG: TemplateDef[] = [
     name: "التكليفات التدريسية",
     group: "scheduling",
     groupLabel: GROUPS.scheduling,
-    purpose: "إسناد المحاضرين للجلسات.",
+    purpose: "إسناد المحاضرين للمحاضرات.",
     requiredBeforeScheduling: true,
     importOrder: 17,
     sheetName: "assignments",
@@ -535,21 +535,21 @@ export const CATALOG: TemplateDef[] = [
       { header: "رمز_المقرر", required: true, example: "CS101" },
       { header: "رقم_الموظف_للمحاضر", required: true, example: "EMP001" },
       { header: "رقم_المجموعة", example: "1" },
-      { header: "نوع_الجلسة", required: true, example: "lecture", allowed: "lecture | lab | tutorial | seminar | workshop" },
+      { header: "نوع_المحاضرة", required: true, example: "lecture", allowed: "lecture | lab | tutorial | seminar | workshop" },
       { header: "ساعات_أسبوعية", example: "3" },
       { header: "الطلاب_المتوقعون", example: "30" },
       { header: "نوع_القاعة_المطلوب", example: "lecture_hall" },
     ],
     sampleRows: [["2025-F", "CS101", "EMP001", "1", "lecture", "3", "30", "lecture_hall"]],
     references: [REF_SESSION_TYPES, REF_ROOM_TYPES],
-    commonErrors: ["رقم موظف غير معروف", "نوع جلسة غير صحيح", "تكليف بدون طرح مقابل"],
+    commonErrors: ["رقم موظف غير معروف", "نوع محاضرة غير صحيح", "تكليف بدون طرح مقابل"],
   },
   {
     id: "sections",
     name: "المجموعات الدراسية",
     group: "scheduling",
     groupLabel: GROUPS.scheduling,
-    purpose: "تعريف المجموعات لكل مقرر مطروح.",
+    purpose: "تعريف المجموعات لكل مقرر مسند.",
     requiredBeforeScheduling: false,
     importOrder: 18,
     sheetName: "sections",
@@ -569,7 +569,7 @@ export const CATALOG: TemplateDef[] = [
     name: "المجموعات المدمجة",
     group: "scheduling",
     groupLabel: GROUPS.scheduling,
-    purpose: "دمج عدة مجموعات في مجموعة مدمجة واحدة لجلسة مشتركة.",
+    purpose: "دمج عدة مجموعات في مجموعة مدمجة واحدة لمحاضرة مشتركة.",
     requiredBeforeScheduling: false,
     importOrder: 19,
     sheetName: "section_groups",
@@ -586,7 +586,7 @@ export const CATALOG: TemplateDef[] = [
   // ============= E. Optional / Operational =============
   {
     id: "existing_schedule_sessions",
-    name: "الجلسات المجدوَلة الموجودة",
+    name: "المحاضرات المجدوَلة الموجودة",
     group: "optional",
     groupLabel: GROUPS.optional,
     purpose: "استيراد جدول قائم (من نظام سابق) للمعاينة فقط.",
@@ -597,7 +597,7 @@ export const CATALOG: TemplateDef[] = [
       { header: "رمز_الفصل", required: true, example: "2025-F" },
       { header: "رمز_المقرر", required: true, example: "CS101" },
       { header: "رقم_المجموعة", example: "1" },
-      { header: "نوع_الجلسة", required: true, example: "lecture" },
+      { header: "نوع_المحاضرة", required: true, example: "lecture" },
       { header: "اليوم", required: true, example: "0", allowed: "0..6" },
       { header: "من_الساعة", required: true, example: "08:00" },
       { header: "إلى_الساعة", required: true, example: "10:00" },
@@ -737,8 +737,8 @@ export const IMPORT_ORDER: { step: number; label: string; templateId?: string }[
   { step: 8, label: "المحاضرون", templateId: "instructors" },
   { step: 9, label: "توفّر المحاضرين", templateId: "instructor_availability" },
   { step: 10, label: "قوالب الفترات الزمنية", templateId: "time_slot_templates" },
-  { step: 11, label: "طرح المقررات", templateId: "course_offerings" },
+  { step: 11, label: "إسناد المقررات", templateId: "course_offerings" },
   { step: 12, label: "التكليفات التدريسية", templateId: "teaching_assignments" },
   { step: 13, label: "المجموعات الدراسية / المجموعات المدمجة", templateId: "sections" },
-  { step: 14, label: "الجلسات المجدوَلة (اختياري)", templateId: "existing_schedule_sessions" },
+  { step: 14, label: "المحاضرات المجدوَلة (اختياري)", templateId: "existing_schedule_sessions" },
 ];

@@ -65,7 +65,7 @@ function Page() {
       rows={rows}
       headers={TIMETABLE_TABLE_HEADERS}
       isLoading={isLoading}
-      emptyMessage={!ready ? "اختر نسخة جدول وقاعة." : "لا توجد جلسات."}
+      emptyMessage={!ready ? "اختر نسخة جدول وقاعة." : "لا توجد محاضرات."}
       filters={
         <ReportFilters context={ctx}>
           <div>

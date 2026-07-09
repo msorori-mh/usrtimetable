@@ -144,7 +144,7 @@ export function TimetableGridReport({
 
   if (!sessions.length) {
     return (
-      <p className="text-sm text-muted-foreground text-center py-6">لا توجد جلسات لعرضها في الشبكة.</p>
+      <p className="text-sm text-muted-foreground text-center py-6">لا توجد محاضرات لعرضها في الشبكة.</p>
     );
   }
 

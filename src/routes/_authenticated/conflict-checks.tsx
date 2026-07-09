@@ -118,7 +118,7 @@ function ConflictChecksPage() {
         <div className="flex-1">
           <h1 className="text-2xl font-bold">فحص التعارضات الإلزامية</h1>
           <p className="text-sm text-muted-foreground">
-            اختر إصداراً للجدول وقم بتشغيل فحص القيود الإلزامية. لن يتم تعديل الجلسات.
+            اختر إصداراً للجدول وقم بتشغيل فحص القيود الإلزامية. لن يتم تعديل المحاضرات.
           </p>
         </div>
         <CollegeSwitcher />

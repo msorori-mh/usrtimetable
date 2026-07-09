@@ -91,7 +91,7 @@ export async function scoreSchedule(params: {
         const dedu = pdW.weight;
         soft.push({
           code: "preferred_days", severity: "soft", score_impact: dedu,
-          message_ar: "الجلسة خارج تفضيلات المحاضر المرنة.",
+          message_ar: "المحاضرة خارج تفضيلات المحاضر المرنة.",
           message_en: "Session outside instructor's preferred times.",
           metadata: { instructor_id: s.instructor_id, day_of_week: s.day_of_week },
         });
@@ -163,7 +163,7 @@ export async function scoreSchedule(params: {
       const dedu = dbW.weight * 2;
       soft.push({
         code: "distribution_balance", severity: "soft", score_impact: dedu,
-        message_ar: "التوزيع الأسبوعي ضعيف — تركّز الجلسات على أيام قليلة.",
+        message_ar: "التوزيع الأسبوعي ضعيف — تركّز المحاضرات على أيام قليلة.",
         message_en: "Weak weekly distribution — sessions concentrated on few days.",
         metadata: { used_days: usedDays },
       });
@@ -175,7 +175,7 @@ export async function scoreSchedule(params: {
         const dedu = dbW.weight;
         soft.push({
           code: "distribution_balance", severity: "soft", score_impact: dedu,
-          message_ar: "تفاوت كبير في توزيع الجلسات بين الأيام.",
+          message_ar: "تفاوت كبير في توزيع المحاضرات بين الأيام.",
           message_en: "Large variance in per-day session counts.",
           metadata: { max, min },
         });

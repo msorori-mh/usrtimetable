@@ -28,7 +28,7 @@ const ENTITIES: { value: ImportEntity; label: string; group: string }[] = [
   { value: "daily_breaks", label: "الاستراحات اليومية", group: "موارد" },
   { value: "study_plan_courses", label: "خطة دراسية (مستوى/فصل)", group: "خطط دراسية" },
   { value: "full_study_plan", label: "خطة دراسية كاملة", group: "خطط دراسية" },
-  { value: "course_offerings", label: "طرح المقررات", group: "تحضير التدريس" },
+  { value: "course_offerings", label: "إسناد المقررات", group: "تحضير التدريس" },
   { value: "teaching_assignments", label: "الإسناد التدريسي", group: "تحضير التدريس" },
   { value: "course_programs", label: "ربط مقررات ببرامج", group: "مقررات مشتركة" },
   { value: "section_groups", label: "المجموعات المدمجة", group: "مقررات مشتركة" },

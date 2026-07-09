@@ -142,7 +142,7 @@ function DataCleanupPage() {
           <TabsTrigger value="courses"><Library className="ml-2 h-4 w-4" /> المقررات</TabsTrigger>
           <TabsTrigger value="instructors"><UserSquare2 className="ml-2 h-4 w-4" /> المحاضرون</TabsTrigger>
           <TabsTrigger value="rooms"><DoorOpen className="ml-2 h-4 w-4" /> القاعات</TabsTrigger>
-          <TabsTrigger value="offerings"><ClipboardList className="ml-2 h-4 w-4" /> طرح المقررات</TabsTrigger>
+          <TabsTrigger value="offerings"><ClipboardList className="ml-2 h-4 w-4" /> إسناد المقررات</TabsTrigger>
         </TabsList>
 
         <TabsContent value="courses" className="mt-4">
@@ -254,7 +254,7 @@ function computeDiagnostics(d: Awaited<ReturnType<typeof fetchAll>>): Diagnostic
     temp_codes: mk("temp_codes", "مقررات برموز مؤقتة (CRS-)", tempCodes, totals.courses, "critical", 0.4),
     course_no_plan: mk("course_no_plan", "مقررات غير مرتبطة بأي خطة دراسية", courseNoPlan, totals.courses, "medium", 0.3),
     course_missing_nature: mk("course_missing_nature", "مقررات بدون طبيعة (course_nature)", courseNoNature, totals.courses, "low", 0.1),
-    course_no_pattern: mk("course_no_pattern", "مقررات الخطة بدون نمط جلسات صحيح", noPattern, totals.planCourses, "critical", 0.5),
+    course_no_pattern: mk("course_no_pattern", "مقررات الخطة بدون نمط محاضرات صحيح", noPattern, totals.planCourses, "critical", 0.5),
     course_no_room_req: mk("course_no_room_req", "مقررات الخطة بدون متطلبات قاعة", noRoomReq, totals.planCourses, "medium", 0.3),
 
     ins_no_spec: mk("ins_no_spec", "محاضرون بدون تخصص", insNoSpec, totals.instructors, "medium", 0.2),

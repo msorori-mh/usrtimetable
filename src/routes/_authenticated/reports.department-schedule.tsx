@@ -77,7 +77,7 @@ function Page() {
   return (
     <ReportShell title="تقرير جدول الأقسام" description="الجدول مجمّعًا حسب القسم/البرنامج/المستوى/المجموعة."
       filename="department_schedule" rows={rows} headers={headers} isLoading={isLoading}
-      emptyMessage={!versionId ? "اختر نسخة جدول للبدء." : "لا توجد جلسات."}
+      emptyMessage={!versionId ? "اختر نسخة جدول للبدء." : "لا توجد محاضرات."}
       filters={
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>

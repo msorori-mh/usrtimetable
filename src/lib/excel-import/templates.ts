@@ -157,7 +157,7 @@ export const TEMPLATES: Record<string, TemplateDef> = {
 
   course_offerings: {
     entity: "course_offerings",
-    label: "طرح المقررات",
+    label: "إسناد المقررات",
     sheetName: "offerings",
     uniqueKey: "_logical",
     uniqueKeyLabel: "فصل + برنامج + مقرر",
@@ -181,14 +181,14 @@ export const TEMPLATES: Record<string, TemplateDef> = {
     label: "الإسناد التدريسي",
     sheetName: "assignments",
     uniqueKey: "_logical",
-    uniqueKeyLabel: "محاضر + طرح + نوع جلسة",
+    uniqueKeyLabel: "محاضر + طرح + نوع محاضرة",
     commitMode: "custom",
     columns: [
       { key: "term_code", header: "رمز_الفصل", required: true, example: "2025-F" },
       { key: "course_code", header: "رمز_المقرر", required: true, example: "CS101" },
       { key: "employee_number", header: "رقم_الموظف_للمحاضر", required: true, example: "EMP001" },
       { key: "section_number", header: "رقم_المجموعة", example: "1" },
-      { key: "session_type", header: "نوع_الجلسة", enumValues: ["lecture", "lab", "tutorial", "seminar", "workshop"], required: true, example: "lecture" },
+      { key: "session_type", header: "نوع_المحاضرة", enumValues: ["lecture", "lab", "tutorial", "seminar", "workshop"], required: true, example: "lecture" },
       { key: "weekly_hours", header: "ساعات_أسبوعية", type: "number", example: "3" },
       { key: "expected_students", header: "الطلاب_المتوقعون", type: "number", example: "30" },
       { key: "required_room_type", header: "نوع_القاعة_المطلوب", enumValues: ["lecture_hall", "computer_lab", "network_lab", "cybersecurity_lab", "electronics_lab", "workshop", "seminar_room"] },

@@ -93,7 +93,7 @@ function OfferingsPage() {
       qc.invalidateQueries({ queryKey: ["offerings", active?.id] });
       setOpen(false); setEditing(null);
     },
-    onError: (e: Error) => toast.error(e.message.includes("duplicate") ? "هذا المقرر مطروح مسبقاً لنفس الفصل/البرنامج/المستوى" : e.message),
+    onError: (e: Error) => toast.error(e.message.includes("duplicate") ? "هذا المقرر مسند مسبقاً لنفس الفصل/البرنامج/المستوى" : e.message),
   });
 
   const del = useMutation({
@@ -128,7 +128,7 @@ function OfferingsPage() {
         <span className="grid h-11 w-11 place-items-center rounded-lg bg-secondary text-primary"><ClipboardList className="h-5 w-5" /></span>
         <div className="flex-1">
           <h1 className="text-2xl font-bold">مقررات الفصل</h1>
-          <p className="text-sm text-muted-foreground">طرح المقررات في الفصول الدراسية.</p>
+          <p className="text-sm text-muted-foreground">إسناد المقررات في الفصول الدراسية.</p>
         </div>
       </header>
 
