@@ -239,6 +239,24 @@ function DataReadinessPage() {
         <Card className="p-6 text-center text-muted-foreground">جارٍ حساب الجاهزية…</Card>
       ) : (
         <>
+          {(() => {
+            const t = data.totals;
+            const isEmpty = t.courses + t.planCourses + t.instructors + t.rooms + t.offerings + t.assignments + t.sessions === 0;
+            return isEmpty ? (
+              <Card className="mb-5 border-amber-500/30 bg-amber-500/5 p-4 text-sm">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-600" />
+                  <div>
+                    <p className="font-medium text-amber-700">هذه الكلية لا تحتوي على بيانات بعد</p>
+                    <p className="mt-1 text-muted-foreground">
+                      ابدأ باستيراد البيانات من{" "}
+                      <Link to="/data-templates" className="text-primary underline-offset-4 hover:underline">قوالب البيانات</Link>.
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            ) : null;
+          })()}
           <div className="mb-5 grid grid-cols-1 gap-4 md:grid-cols-4">
             <ScoreCard title="الجاهزية العامة" score={data.scores.overall} icon={<Gauge className="h-4 w-4" />} />
             <ScoreCard title="الخطط الدراسية" score={data.scores.studyPlanScore} icon={<BookOpen className="h-4 w-4" />} />
@@ -257,16 +275,22 @@ function DataReadinessPage() {
               <div><p className="text-muted-foreground">الإسناد</p><p className="text-lg font-semibold">{data.totals.assignments}</p></div>
               <div><p className="text-muted-foreground">المحاضرات</p><p className="text-lg font-semibold">{data.totals.sessions}</p></div>
             </div>
-            <div className="mt-4 space-y-1 text-sm">
-              {[...data.scheduling, ...data.resources, ...data.studyPlan]
+            {(() => {
+              const items = [...data.scheduling, ...data.resources, ...data.studyPlan]
                 .filter((m) => m.missing > 0)
                 .sort((a, b) => b.missing - a.missing)
-                .slice(0, 4)
-                .map((m, i) => (
-                  <p key={i} className="text-muted-foreground">• {m.missing} {m.label}</p>
-                ))}
-            </div>
+                .slice(0, 4);
+              if (items.length === 0) return null;
+              return (
+                <div className="mt-4 space-y-1 text-sm">
+                  {items.map((m, i) => (
+                    <p key={i} className="text-muted-foreground">• {m.missing} {m.label}</p>
+                  ))}
+                </div>
+              );
+            })()}
           </Card>
+
 
           <div className="mb-4">
             <Card className="p-5">
