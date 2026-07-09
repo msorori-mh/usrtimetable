@@ -117,17 +117,23 @@ async function fetchReadiness(collegeId: string) {
     { label: "محاضرات بدون وقت", total: sessionsRows.length, missing: sessionsRows.filter((s: any) => !s.start_time || !s.end_time || s.day_of_week === null).length },
   ];
 
-  const score = (items: Metric[]) => {
+  const score = (items: Metric[]): number | null => {
     const denom = items.reduce((s, m) => s + (m.total || 0), 0);
     const miss = items.reduce((s, m) => s + (m.missing || 0), 0);
-    if (denom === 0) return 100;
+    if (denom === 0) return null;
     return Math.max(0, Math.min(100, Math.round(100 - (miss * 100) / denom)));
   };
 
   const studyPlanScore = score(sp);
   const resourcesScore = score([...res, ...avail]);
   const schedulingScore = score(sch);
-  const overall = Math.round((studyPlanScore + resourcesScore + schedulingScore) / 3);
+  const presentScores = [studyPlanScore, resourcesScore, schedulingScore].filter(
+    (s): s is number => s !== null,
+  );
+  const overall =
+    presentScores.length === 0
+      ? null
+      : Math.round(presentScores.reduce((a, b) => a + b, 0) / presentScores.length);
 
   return {
     totals: {
@@ -148,25 +154,31 @@ async function fetchReadiness(collegeId: string) {
   };
 }
 
-function statusOf(score: number): { label: string; tone: "ok" | "warn" | "bad" } {
+function statusOf(score: number | null): { label: string; tone: "ok" | "warn" | "bad" | "empty" } {
+  if (score === null) return { label: "لا توجد بيانات", tone: "empty" };
   if (score >= 80) return { label: "جاهز", tone: "ok" };
   if (score >= 50) return { label: "يحتاج مراجعة", tone: "warn" };
   return { label: "حرج", tone: "bad" };
 }
 
-function ScoreCard({ title, score, icon }: { title: string; score: number; icon: React.ReactNode }) {
+function ScoreCard({ title, score, icon }: { title: string; score: number | null; icon: React.ReactNode }) {
   const s = statusOf(score);
-  const tone = s.tone === "ok" ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" :
+  const tone =
+    s.tone === "ok" ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" :
     s.tone === "warn" ? "bg-amber-500/10 text-amber-600 border-amber-500/20" :
-    "bg-red-500/10 text-red-600 border-red-500/20";
+    s.tone === "bad" ? "bg-red-500/10 text-red-600 border-red-500/20" :
+    "bg-muted text-muted-foreground border-border";
   return (
     <Card className="p-5">
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">{icon}{title}</div>
         <Badge variant="outline" className={tone}>{s.label}</Badge>
       </div>
-      <p className="text-3xl font-bold">{score}<span className="text-base text-muted-foreground">/100</span></p>
-      <Progress value={score} className="mt-3" />
+      <p className="text-3xl font-bold">
+        {score === null ? <span className="text-muted-foreground">—</span> : score}
+        <span className="text-base text-muted-foreground">/100</span>
+      </p>
+      <Progress value={score ?? 0} className="mt-3" />
     </Card>
   );
 }
