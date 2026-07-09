@@ -179,7 +179,7 @@ export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent dir="rtl" className="max-w-3xl max-h-[90vh] overflow-auto">
-        <DialogHeader><DialogTitle>{sessionId ? "تعديل جلسة" : "إضافة جلسة"}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{sessionId ? "تعديل محاضرة" : "إضافة محاضرة"}</DialogTitle></DialogHeader>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <Label>المقرر (Course Offering)</Label>
@@ -267,7 +267,7 @@ export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId
             </Select>
           </div>
           <div>
-            <Label>نوع الجلسة</Label>
+            <Label>نوع المحاضرة</Label>
             <Select value={form.session_type} onValueChange={(v) => setForm({ ...form, session_type: v })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -309,7 +309,7 @@ export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId
 
         <div className="mt-3 border rounded-md p-3 space-y-3 bg-muted/30">
           <div className="flex items-center gap-2 flex-wrap text-xs">
-            <span className="font-semibold">مصدر الجلسة:</span>
+            <span className="font-semibold">مصدر المحاضرة:</span>
             <Badge variant={form.source_type === "manual" ? "secondary" : form.source_type === "auto_generated" ? "default" : "outline"}>
               {form.source_type === "manual" ? "يدوي" : form.source_type === "auto_generated" ? "تلقائي" : "منسوخ"}
             </Badge>
@@ -326,7 +326,7 @@ export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId
               onCheckedChange={(v) => setForm({ ...form, is_locked: v, lock_reason: v ? form.lock_reason : null })}
             />
             <Label htmlFor="lock-switch" className="text-sm cursor-pointer">
-              قفل الجلسة (تمنع المجدول التلقائي من تحريكها أو حذفها)
+              قفل المحاضرة (تمنع المجدول التلقائي من تحريكها أو حذفها)
             </Label>
           </div>
           {form.is_locked && (

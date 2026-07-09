@@ -61,8 +61,8 @@ async function fetchReadiness(collegeId: string) {
     { label: "صفوف الخطة بدون فصل (semester)", total: planRows.length, missing: planRows.filter((p: any) => !p.semester).length },
     { label: "بدون عدد محاضرات أسبوعية", total: planRows.length, missing: planRows.filter((p: any) => !p.lectures_per_week).length },
     { label: "بدون عدد معامل أسبوعية", total: planRows.length, missing: planRows.filter((p: any) => p.labs_per_week === null || p.labs_per_week === undefined).length },
-    { label: "بدون مدة جلسة محاضرة", total: planRows.length, missing: planRows.filter((p: any) => !p.lecture_session_duration).length },
-    { label: "بدون مدة جلسة معمل", total: planRows.length, missing: planRows.filter((p: any) => p.labs_per_week > 0 && !p.lab_session_duration).length },
+    { label: "بدون مدة محاضرة محاضرة", total: planRows.length, missing: planRows.filter((p: any) => !p.lecture_session_duration).length },
+    { label: "بدون مدة محاضرة معمل", total: planRows.length, missing: planRows.filter((p: any) => p.labs_per_week > 0 && !p.lab_session_duration).length },
   ];
 
   // Resource metrics
@@ -113,8 +113,8 @@ async function fetchReadiness(collegeId: string) {
     { label: "عروض مقررات بأعداد طلاب ≤ 0", total: offeringsRows.length, missing: offeringsRows.filter((o: any) => !o.expected_students || o.expected_students <= 0).length },
     { label: "عروض مقررات بدون تكليفات تدريسية", total: offeringsRows.length, missing: offeringsRows.filter((o: any) => !offeringsWithAssignments.has(o.id)).length },
     { label: "تكليفات بدون محاضر", total: assignmentsRows.length, missing: assignmentsRows.filter((a: any) => !a.instructor_id).length, critical: true },
-    { label: "جلسات بدون قاعة", total: sessionsRows.length, missing: sessionsRows.filter((s: any) => !s.room_id).length },
-    { label: "جلسات بدون وقت", total: sessionsRows.length, missing: sessionsRows.filter((s: any) => !s.start_time || !s.end_time || s.day_of_week === null).length },
+    { label: "محاضرات بدون قاعة", total: sessionsRows.length, missing: sessionsRows.filter((s: any) => !s.room_id).length },
+    { label: "محاضرات بدون وقت", total: sessionsRows.length, missing: sessionsRows.filter((s: any) => !s.start_time || !s.end_time || s.day_of_week === null).length },
   ];
 
   const score = (items: Metric[]) => {
@@ -243,7 +243,7 @@ function DataReadinessPage() {
               <div><p className="text-muted-foreground">القاعات</p><p className="text-lg font-semibold">{data.totals.rooms}</p></div>
               <div><p className="text-muted-foreground">عروض المقررات</p><p className="text-lg font-semibold">{data.totals.offerings}</p></div>
               <div><p className="text-muted-foreground">التكليفات</p><p className="text-lg font-semibold">{data.totals.assignments}</p></div>
-              <div><p className="text-muted-foreground">الجلسات</p><p className="text-lg font-semibold">{data.totals.sessions}</p></div>
+              <div><p className="text-muted-foreground">المحاضرات</p><p className="text-lg font-semibold">{data.totals.sessions}</p></div>
             </div>
             <div className="mt-4 space-y-1 text-sm">
               {[...data.scheduling, ...data.resources, ...data.studyPlan]

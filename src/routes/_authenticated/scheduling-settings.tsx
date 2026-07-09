@@ -88,7 +88,7 @@ function SettingsPage() {
         <span className="grid h-11 w-11 place-items-center rounded-lg bg-secondary text-primary"><Settings2 className="h-5 w-5" /></span>
         <div className="flex-1">
           <h1 className="text-2xl font-bold">إعدادات الجدولة</h1>
-          <p className="text-sm text-muted-foreground">القواعد العامة للأسبوع الدراسي والجلسات.</p>
+          <p className="text-sm text-muted-foreground">القواعد العامة للأسبوع الدراسي والمحاضرات.</p>
         </div>
       </header>
       <div className="mb-4"><CollegeSwitcher /></div>
@@ -115,19 +115,19 @@ function SettingsPage() {
 
           <div className="grid grid-cols-3 gap-3">
             <div><Label>حجم الفترة (دقائق)</Label><Input type="number" value={form.slot_minutes} onChange={(e) => setForm({ ...form, slot_minutes: Number(e.target.value) })} disabled={!canManage} /></div>
-            <div><Label>أقل مدة جلسة (س)</Label><Input type="number" step="0.5" value={form.min_session_hours} onChange={(e) => setForm({ ...form, min_session_hours: Number(e.target.value) })} disabled={!canManage} /></div>
-            <div><Label>أقصى مدة جلسة (س)</Label><Input type="number" step="0.5" value={form.max_session_hours} onChange={(e) => setForm({ ...form, max_session_hours: Number(e.target.value) })} disabled={!canManage} /></div>
+            <div><Label>أقل مدة محاضرة (س)</Label><Input type="number" step="0.5" value={form.min_session_hours} onChange={(e) => setForm({ ...form, min_session_hours: Number(e.target.value) })} disabled={!canManage} /></div>
+            <div><Label>أقصى مدة محاضرة (س)</Label><Input type="number" step="0.5" value={form.max_session_hours} onChange={(e) => setForm({ ...form, max_session_hours: Number(e.target.value) })} disabled={!canManage} /></div>
           </div>
 
           <div className="grid grid-cols-3 gap-3">
             <div><Label>سقف ساعات المحاضر/يوم</Label><Input type="number" value={form.max_daily_hours_per_instructor} onChange={(e) => setForm({ ...form, max_daily_hours_per_instructor: Number(e.target.value) })} disabled={!canManage} /></div>
             <div><Label>سقف ساعات المجموعة/يوم</Label><Input type="number" value={form.max_daily_hours_per_section} onChange={(e) => setForm({ ...form, max_daily_hours_per_section: Number(e.target.value) })} disabled={!canManage} /></div>
-            <div><Label>الفاصل بين الجلسات (دقائق)</Label><Input type="number" value={form.break_between_sessions_min} onChange={(e) => setForm({ ...form, break_between_sessions_min: Number(e.target.value) })} disabled={!canManage} /></div>
+            <div><Label>الفاصل بين المحاضرات (دقائق)</Label><Input type="number" value={form.break_between_sessions_min} onChange={(e) => setForm({ ...form, break_between_sessions_min: Number(e.target.value) })} disabled={!canManage} /></div>
           </div>
 
           <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm"><Checkbox checked={form.allow_3h_sessions} onCheckedChange={(v) => setForm({ ...form, allow_3h_sessions: !!v })} disabled={!canManage} /> السماح بجلسات ٣ ساعات</label>
-            <label className="flex items-center gap-2 text-sm"><Checkbox checked={form.allow_back_to_back} onCheckedChange={(v) => setForm({ ...form, allow_back_to_back: !!v })} disabled={!canManage} /> السماح بجلسات متتالية</label>
+            <label className="flex items-center gap-2 text-sm"><Checkbox checked={form.allow_3h_sessions} onCheckedChange={(v) => setForm({ ...form, allow_3h_sessions: !!v })} disabled={!canManage} /> السماح بمحاضرات ٣ ساعات</label>
+            <label className="flex items-center gap-2 text-sm"><Checkbox checked={form.allow_back_to_back} onCheckedChange={(v) => setForm({ ...form, allow_back_to_back: !!v })} disabled={!canManage} /> السماح بمحاضرات متتالية</label>
           </div>
 
           <div><Label>ملاحظات</Label><Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} disabled={!canManage} /></div>

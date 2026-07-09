@@ -260,7 +260,7 @@ function VersionCard({
           ) : elig.data ? (
             <div className="space-y-2">
               <div className="grid grid-cols-3 gap-2 text-center text-[11px]">
-                <Stat label="جلسات" value={elig.data.sessionsCount} />
+                <Stat label="محاضرات" value={elig.data.sessionsCount} />
                 <Stat label="تعارضات إلزامية" value={elig.data.hardConflicts} accent={elig.data.hardConflicts > 0 ? "danger" : "ok"} />
                 <Stat label="جودة" value={elig.data.qualityScore ?? "—"} />
               </div>
@@ -370,7 +370,7 @@ function CloneDialog({
             <Input value={nm} onChange={(e) => setNm(e.target.value)} />
           </div>
           <p className="text-[11px] text-muted-foreground">
-            يُنسخ: بيانات النسخة + جلسات الجدول. لا يُنسخ: فحوصات التعارض، نتائج الجودة، عمليات الجدولة التلقائية.
+            يُنسخ: بيانات النسخة + محاضرات الجدول. لا يُنسخ: فحوصات التعارض، نتائج الجودة، عمليات الجدولة التلقائية.
           </p>
         </div>
         <DialogFooter>

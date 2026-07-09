@@ -99,9 +99,9 @@ function Page() {
   ];
 
   return (
-    <ReportShell title="تقرير المحاضرات غير المجدوَلة" description="الجلسات المطلوبة وفق الخطط مقابل المجدوَلة."
+    <ReportShell title="تقرير المحاضرات غير المجدوَلة" description="المحاضرات المطلوبة وفق الخطط مقابل المجدوَلة."
       filename="unscheduled_sessions" rows={rows} headers={headers} isLoading={oLoad}
-      emptyMessage={!versionId ? "اختر نسخة جدول." : "كل الجلسات مجدوَلة."}
+      emptyMessage={!versionId ? "اختر نسخة جدول." : "كل المحاضرات مجدوَلة."}
       filters={
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>

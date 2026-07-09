@@ -111,8 +111,8 @@ export async function fetchCollegeReadiness(collegeId: string): Promise<Readines
     { label: "صفوف الخطة بدون فصل (semester)", total: planRows.length, missing: planRows.filter((p: { semester: number | null }) => !p.semester).length, category: "study_plan" },
     { label: "بدون عدد محاضرات أسبوعية", total: planRows.length, missing: planRows.filter((p: { lectures_per_week: number | null }) => !p.lectures_per_week).length, category: "study_plan" },
     { label: "بدون عدد معامل أسبوعية", total: planRows.length, missing: planRows.filter((p: { labs_per_week: number | null | undefined }) => p.labs_per_week === null || p.labs_per_week === undefined).length, category: "study_plan" },
-    { label: "بدون مدة جلسة محاضرة", total: planRows.length, missing: planRows.filter((p: { lecture_session_duration: number | null }) => !p.lecture_session_duration).length, category: "study_plan" },
-    { label: "بدون مدة جلسة معمل", total: planRows.length, missing: planRows.filter((p: { labs_per_week: number; lab_session_duration: number | null }) => p.labs_per_week > 0 && !p.lab_session_duration).length, category: "study_plan" },
+    { label: "بدون مدة محاضرة محاضرة", total: planRows.length, missing: planRows.filter((p: { lecture_session_duration: number | null }) => !p.lecture_session_duration).length, category: "study_plan" },
+    { label: "بدون مدة محاضرة معمل", total: planRows.length, missing: planRows.filter((p: { labs_per_week: number; lab_session_duration: number | null }) => p.labs_per_week > 0 && !p.lab_session_duration).length, category: "study_plan" },
   ];
 
   const resources: ReadinessMetric[] = [
@@ -127,8 +127,8 @@ export async function fetchCollegeReadiness(collegeId: string): Promise<Readines
     { label: "عروض مقررات بأعداد طلاب ≤ 0", total: offeringsRows.length, missing: offeringsRows.filter((o: { expected_students: number | null }) => !o.expected_students || o.expected_students <= 0).length, category: "scheduling" },
     { label: "عروض مقررات بدون تكليفات تدريسية", total: offeringsRows.length, missing: offeringsRows.filter((o: { id: string }) => !offeringsWithAssignments.has(o.id)).length, category: "scheduling" },
     { label: "تكليفات بدون محاضر", total: assignmentsRows.length, missing: assignmentsRows.filter((a: { instructor_id: string | null }) => !a.instructor_id).length, critical: true, category: "scheduling" },
-    { label: "جلسات بدون قاعة", total: sessionsRows.length, missing: sessionsRows.filter((s: { room_id: string | null }) => !s.room_id).length, category: "scheduling" },
-    { label: "جلسات بدون وقت", total: sessionsRows.length, missing: sessionsRows.filter((s: { start_time: string | null; end_time: string | null; day_of_week: number | null }) => !s.start_time || !s.end_time || s.day_of_week === null).length, category: "scheduling" },
+    { label: "محاضرات بدون قاعة", total: sessionsRows.length, missing: sessionsRows.filter((s: { room_id: string | null }) => !s.room_id).length, category: "scheduling" },
+    { label: "محاضرات بدون وقت", total: sessionsRows.length, missing: sessionsRows.filter((s: { start_time: string | null; end_time: string | null; day_of_week: number | null }) => !s.start_time || !s.end_time || s.day_of_week === null).length, category: "scheduling" },
   ];
 
   const studyPlanScore = score(studyPlan);

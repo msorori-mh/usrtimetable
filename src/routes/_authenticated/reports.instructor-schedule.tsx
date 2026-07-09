@@ -70,7 +70,7 @@ function Page() {
   return (
     <ReportShell title="تقرير جدول المحاضر الفردي" description={`المجموع: ${totalHours.toFixed(2)} ساعة/أسبوع.`}
       filename="instructor_schedule" rows={rows} headers={headers} isLoading={isLoading}
-      emptyMessage={!versionId || !insId ? "اختر نسخة جدول ومحاضرًا." : "لا توجد جلسات."}
+      emptyMessage={!versionId || !insId ? "اختر نسخة جدول ومحاضرًا." : "لا توجد محاضرات."}
       filters={
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>

@@ -153,7 +153,7 @@ export async function validateProposed(params: {
           overlap(s.start_time, s.end_time, p.start_time, p.end_time)) {
         conflicts.push({
           code: "instructor_conflict", severity: "hard",
-          message_ar: "تعارض المحاضر: نفس المحاضر لديه جلسة أخرى في نفس الوقت.",
+          message_ar: "تعارض المحاضر: نفس المحاضر لديه محاضرة أخرى في نفس الوقت.",
           message_en: "Instructor conflict: same instructor has another overlapping session.",
           schedule_session_id: sid, related_session_id: p.id,
           metadata: { instructor_id: s.instructor_id, day_of_week: s.day_of_week },
@@ -184,7 +184,7 @@ export async function validateProposed(params: {
             overlap(s.start_time, s.end_time, p.start_time, p.end_time)) {
           conflicts.push({
             code: "section_conflict", severity: "hard",
-            message_ar: "تعارض المجموعة: نفس المجموعة لديها جلسة أخرى في نفس الوقت.",
+            message_ar: "تعارض المجموعة: نفس المجموعة لديها محاضرة أخرى في نفس الوقت.",
             message_en: "Section conflict: same section has another overlapping session.",
             schedule_session_id: sid, related_session_id: p.id,
             metadata: { section_id: s.section_id, day_of_week: s.day_of_week },
@@ -245,7 +245,7 @@ export async function validateProposed(params: {
       if (!fits || blocked) {
         conflicts.push({
           code: "instructor_availability", severity: "hard",
-          message_ar: "الجلسة خارج نطاق توفّر المحاضر الإلزامي.",
+          message_ar: "المحاضرة خارج نطاق توفّر المحاضر الإلزامي.",
           message_en: "Session outside instructor's hard availability window.",
           schedule_session_id: sid,
           metadata: { instructor_id: s.instructor_id, day_of_week: s.day_of_week, category: cat },
@@ -261,7 +261,7 @@ export async function validateProposed(params: {
       if (windows.length > 0 && !windows.some((w) => within(s.start_time, s.end_time, w.start_time, w.end_time))) {
         conflicts.push({
           code: "room_availability", severity: "hard",
-          message_ar: "الجلسة خارج نطاق توفّر القاعة المحدد.",
+          message_ar: "المحاضرة خارج نطاق توفّر القاعة المحدد.",
           message_en: "Session outside room's defined availability window.",
           schedule_session_id: sid,
           metadata: { room_id: s.room_id, day_of_week: s.day_of_week },
@@ -278,7 +278,7 @@ export async function validateProposed(params: {
     if (sysTemplates.length > 0 && !sysTemplates.some((w) => within(s.start_time, s.end_time, w.start_time, w.end_time))) {
       conflicts.push({
         code: "study_system_time_template", severity: "hard",
-        message_ar: "الجلسة خارج قوالب الفترات المسموحة لنظام الدراسة.",
+        message_ar: "المحاضرة خارج قوالب الفترات المسموحة لنظام الدراسة.",
         message_en: "Session outside allowed time-slot templates for the study system.",
         schedule_session_id: sid,
         metadata: { study_system: s.study_system, day_of_week: s.day_of_week },
