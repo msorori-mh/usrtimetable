@@ -3,6 +3,7 @@ import { categorizeInstructor, requiresAvailability } from "@/lib/instructor-cat
 import {
   buildApprovedExceptionIndex,
   findMatchingException,
+  loadApprovedExceptions,
   summarizeConflictExceptions,
   type ApprovedException,
 } from "./exceptions";
@@ -412,7 +413,8 @@ export async function validateScheduleVersion(params: {
     });
     conflicts.push(...sub.conflicts);
   }
-  const result = applyApprovedExceptions(conflicts, scheduleVersionId);
+  const approvedExceptions = await loadApprovedExceptions({ scheduleVersionId });
+  const result = applyApprovedExceptions(conflicts, scheduleVersionId, approvedExceptions);
 
   if (!persist) return { checkId: null, result };
 

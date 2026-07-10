@@ -13,6 +13,7 @@ const root = path.join(__dirname, "../..");
 const harnesses = [
   "exception-aware-impl-01a.harness.ts",
   "f001-session-version-integrity.harness.ts",
+  "f002-validate-schedule-version.harness.ts",
 ];
 
 let exitCode = 0;
