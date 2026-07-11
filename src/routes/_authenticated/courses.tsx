@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { useCanManageActiveCollege } from "@/hooks/use-can-manage";
@@ -13,14 +13,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
-import { Library, Pencil, Trash2 } from "lucide-react";
+import { exportRowsToXlsx } from "@/lib/admin-export/to-xlsx";
+import { Library, Pencil, Trash2, Download } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/courses")({
   head: () => ({ meta: [{ title: "المقررات" }] }),
   component: CoursesPage,
 });
 
-interface Course { id: string; name: string; code: string; department_id: string; credit_hours: number; theory_hours: number; practical_hours: number; college_id: string }
+interface Course { id: string; name: string; code: string; department_id: string; credit_hours: number; theory_hours: number; practical_hours: number; college_id: string; course_nature?: string | null; is_shared?: boolean | null }
+interface Program { id: string; name: string; department_id: string | null }
+interface Department { id: string; name: string }
+interface StudyPlan { id: string; name: string; program_id: string; version: string }
+
+const ALL = "__all__";
 
 function CoursesPage() {
   const { active } = useActiveCollege();
@@ -30,16 +36,40 @@ function CoursesPage() {
   const [editing, setEditing] = useState<Course | null>(null);
   const [form, setForm] = useState({ name: "", code: "", department_id: "", credit_hours: 3, theory_hours: 3, practical_hours: 0 });
 
+  const [deptFilter, setDeptFilter] = useState<string>(ALL);
+  const [progFilter, setProgFilter] = useState<string>(ALL);
+  const [planFilter, setPlanFilter] = useState<string>(ALL);
+
   const { data: depts } = useQuery({
     queryKey: ["dept-min", active?.id], enabled: !!active,
-    queryFn: async () => (await supabase.from("departments").select("id, name").eq("college_id", active!.id).order("name")).data ?? [],
+    queryFn: async () => ((await supabase.from("departments").select("id, name").eq("college_id", active!.id).order("name")).data ?? []) as Department[],
+  });
+
+  const { data: progs } = useQuery({
+    queryKey: ["prog-min-dep", active?.id], enabled: !!active,
+    queryFn: async () => ((await supabase.from("academic_programs").select("id, name, department_id").eq("college_id", active!.id).order("name")).data ?? []) as Program[],
+  });
+
+  const { data: plans } = useQuery({
+    queryKey: ["study-plans-min", active?.id], enabled: !!active,
+    queryFn: async () => ((await supabase.from("study_plans").select("id, name, program_id, version").eq("college_id", active!.id).order("name")).data ?? []) as StudyPlan[],
+  });
+
+  const { data: coursePrograms } = useQuery({
+    queryKey: ["course-programs", active?.id], enabled: !!active,
+    queryFn: async () => ((await supabase.from("course_programs").select("course_id, program_id").eq("college_id", active!.id)).data ?? []) as { course_id: string; program_id: string }[],
+  });
+
+  const { data: planCourses } = useQuery({
+    queryKey: ["plan-courses-min", active?.id], enabled: !!active,
+    queryFn: async () => ((await supabase.from("plan_courses").select("study_plan_id, course_id").eq("college_id", active!.id)).data ?? []) as { study_plan_id: string; course_id: string }[],
   });
 
   const { data: rows, isLoading } = useQuery({
     queryKey: ["courses", active?.id], enabled: !!active,
     queryFn: async () => {
       const { data, error } = await supabase.from("courses")
-        .select("id, name, code, department_id, credit_hours, theory_hours, practical_hours, college_id")
+        .select("id, name, code, department_id, credit_hours, theory_hours, practical_hours, college_id, course_nature, is_shared")
         .eq("college_id", active!.id).order("code");
       if (error) throw error; return (data ?? []) as Course[];
     },
@@ -81,7 +111,56 @@ function CoursesPage() {
   const startEdit = (c: Course) => { setEditing(c); setForm({ name: c.name, code: c.code, department_id: c.department_id, credit_hours: c.credit_hours, theory_hours: c.theory_hours, practical_hours: c.practical_hours }); setOpen(true); };
   const startCreate = () => { setEditing(null); setForm({ name: "", code: "", department_id: "", credit_hours: 3, theory_hours: 3, practical_hours: 0 }); setOpen(true); };
 
-  const deptMap = new Map((depts ?? []).map((d) => [d.id, d.name]));
+  const deptMap = useMemo(() => new Map((depts ?? []).map((d) => [d.id, d.name])), [depts]);
+  const progMap = useMemo(() => new Map((progs ?? []).map((p) => [p.id, p])), [progs]);
+
+  const filteredProgs = useMemo(
+    () => (progs ?? []).filter((p) => deptFilter === ALL || p.department_id === deptFilter),
+    [progs, deptFilter],
+  );
+
+  const plansForProgram = useMemo(
+    () => (progFilter === ALL ? [] : (plans ?? []).filter((pl) => pl.program_id === progFilter)),
+    [plans, progFilter],
+  );
+  const showPlanFilter = plansForProgram.length > 1;
+
+  const programCourseIds = useMemo(() => {
+    if (progFilter === ALL) return null;
+    return new Set((coursePrograms ?? []).filter((r) => r.program_id === progFilter).map((r) => r.course_id));
+  }, [coursePrograms, progFilter]);
+
+  const planCourseIds = useMemo(() => {
+    if (planFilter === ALL) return null;
+    return new Set((planCourses ?? []).filter((r) => r.study_plan_id === planFilter).map((r) => r.course_id));
+  }, [planCourses, planFilter]);
+
+  const filtered = useMemo(() => {
+    return (rows ?? []).filter((c) => {
+      if (deptFilter !== ALL && c.department_id !== deptFilter) return false;
+      if (programCourseIds && !programCourseIds.has(c.id)) return false;
+      if (planCourseIds && !planCourseIds.has(c.id)) return false;
+      return true;
+    });
+  }, [rows, deptFilter, programCourseIds, planCourseIds]);
+
+  const handleExport = () => {
+    if (filtered.length === 0) { toast.info("لا توجد سجلات للتصدير"); return; }
+    const data = filtered.map((c) => ({
+      "الرمز": c.code,
+      "الاسم": c.name,
+      "القسم": deptMap.get(c.department_id) ?? "",
+      "الساعات المعتمدة": c.credit_hours,
+      "نظري": c.theory_hours,
+      "عملي": c.practical_hours,
+      "طبيعة المقرر": c.course_nature ?? "",
+      "مشترك": c.is_shared ? "نعم" : "لا",
+    }));
+    const parts = ["courses"];
+    if (progFilter !== ALL) parts.push(progMap.get(progFilter)?.name ?? "");
+    if (planFilter !== ALL) parts.push((plans ?? []).find((p) => p.id === planFilter)?.name ?? "");
+    exportRowsToXlsx(parts.filter(Boolean).join("-"), "المقررات", data);
+  };
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -95,44 +174,87 @@ function CoursesPage() {
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <CollegeSwitcher />
-        {canManage && (
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild><Button onClick={startCreate} disabled={!depts || depts.length === 0}>مقرر جديد</Button></DialogTrigger>
-            <DialogContent>
-              <DialogHeader><DialogTitle>{editing ? "تعديل المقرر" : "مقرر جديد"}</DialogTitle></DialogHeader>
-              <div className="space-y-3">
-                <div><Label>القسم</Label>
-                  <Select value={form.department_id} onValueChange={(v) => setForm({ ...form, department_id: v })}>
-                    <SelectTrigger><SelectValue placeholder="اختر القسم" /></SelectTrigger>
-                    <SelectContent>{(depts ?? []).map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent>
-                  </Select>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleExport} disabled={!rows || rows.length === 0}>
+            <Download className="ms-1 h-4 w-4" /> تصدير Excel
+          </Button>
+          {canManage && (
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild><Button onClick={startCreate} disabled={!depts || depts.length === 0}>مقرر جديد</Button></DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>{editing ? "تعديل المقرر" : "مقرر جديد"}</DialogTitle></DialogHeader>
+                <div className="space-y-3">
+                  <div><Label>القسم</Label>
+                    <Select value={form.department_id} onValueChange={(v) => setForm({ ...form, department_id: v })}>
+                      <SelectTrigger><SelectValue placeholder="اختر القسم" /></SelectTrigger>
+                      <SelectContent>{(depts ?? []).map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label>الرمز</Label><Input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} /></div>
+                    <div><Label>الاسم</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div><Label>الساعات المعتمدة</Label><Input type="number" step="0.5" value={form.credit_hours} onChange={(e) => setForm({ ...form, credit_hours: Number(e.target.value) })} /></div>
+                    <div><Label>نظري</Label><Input type="number" value={form.theory_hours} onChange={(e) => setForm({ ...form, theory_hours: Number(e.target.value) })} /></div>
+                    <div><Label>عملي</Label><Input type="number" value={form.practical_hours} onChange={(e) => setForm({ ...form, practical_hours: Number(e.target.value) })} /></div>
+                  </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><Label>الرمز</Label><Input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} /></div>
-                  <div><Label>الاسم</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div><Label>الساعات المعتمدة</Label><Input type="number" step="0.5" value={form.credit_hours} onChange={(e) => setForm({ ...form, credit_hours: Number(e.target.value) })} /></div>
-                  <div><Label>نظري</Label><Input type="number" value={form.theory_hours} onChange={(e) => setForm({ ...form, theory_hours: Number(e.target.value) })} /></div>
-                  <div><Label>عملي</Label><Input type="number" value={form.practical_hours} onChange={(e) => setForm({ ...form, practical_hours: Number(e.target.value) })} /></div>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setOpen(false)}>إلغاء</Button>
-                <Button onClick={() => save.mutate()} disabled={save.isPending}>حفظ</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setOpen(false)}>إلغاء</Button>
+                  <Button onClick={() => save.mutate()} disabled={save.isPending}>حفظ</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
       </div>
+
+      <Card className="mb-4 p-3">
+        <div className={`grid grid-cols-1 gap-3 ${showPlanFilter ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+          <div>
+            <Label className="text-xs">القسم</Label>
+            <Select value={deptFilter} onValueChange={(v) => { setDeptFilter(v); setProgFilter(ALL); setPlanFilter(ALL); }}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>الكل</SelectItem>
+                {(depts ?? []).map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">البرنامج</Label>
+            <Select value={progFilter} onValueChange={(v) => { setProgFilter(v); setPlanFilter(ALL); }}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>الكل</SelectItem>
+                {filteredProgs.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          {showPlanFilter && (
+            <div>
+              <Label className="text-xs">الخطة</Label>
+              <Select value={planFilter} onValueChange={setPlanFilter}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>الكل</SelectItem>
+                  {plansForProgram.map((pl) => <SelectItem key={pl.id} value={pl.id}>{pl.name} (v{pl.version})</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+      </Card>
 
       {(!depts || depts.length === 0) && <p className="mb-3 rounded border border-dashed border-border bg-muted/30 p-3 text-sm text-muted-foreground">أنشئ قسمًا أولاً.</p>}
 
       <Card className="overflow-hidden">
         {isLoading ? <p className="p-6 text-center text-muted-foreground">جارٍ التحميل...</p>
           : !rows || rows.length === 0 ? <p className="p-6 text-center text-muted-foreground">لا توجد مقررات بعد.</p>
+          : filtered.length === 0 ? <p className="p-6 text-center text-muted-foreground">لا توجد نتائج مطابقة للفلاتر.</p>
           : <ul className="divide-y divide-border">
-              {rows.map((c) => (
+              {filtered.map((c) => (
                 <li key={c.id} className="flex items-center justify-between p-4">
                   <div>
                     <p className="font-semibold"><span dir="ltr">{c.code}</span> — {c.name}</p>

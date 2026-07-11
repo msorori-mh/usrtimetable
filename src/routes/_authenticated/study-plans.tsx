@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { useCanManageActiveCollege } from "@/hooks/use-can-manage";
@@ -14,7 +14,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
-import { BookOpen, Pencil, Trash2 } from "lucide-react";
+import { exportRowsToXlsx } from "@/lib/admin-export/to-xlsx";
+import { BookOpen, Pencil, Trash2, Download } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/study-plans")({
   head: () => ({ meta: [{ title: "الخطط الدراسية" }] }),
@@ -22,6 +23,10 @@ export const Route = createFileRoute("/_authenticated/study-plans")({
 });
 
 interface Plan { id: string; name: string; code: string; version: string; program_id: string; effective_year: number | null; is_active: boolean; college_id: string }
+interface Program { id: string; name: string; department_id: string | null }
+interface Department { id: string; name: string }
+
+const ALL = "__all__";
 
 function StudyPlansPage() {
   const { active } = useActiveCollege();
@@ -31,9 +36,18 @@ function StudyPlansPage() {
   const [editing, setEditing] = useState<Plan | null>(null);
   const [form, setForm] = useState({ name: "", code: "", version: "1", program_id: "", effective_year: new Date().getFullYear(), is_active: true });
 
+  const [deptFilter, setDeptFilter] = useState<string>(ALL);
+  const [progFilter, setProgFilter] = useState<string>(ALL);
+  const [statusFilter, setStatusFilter] = useState<string>(ALL);
+
+  const { data: depts } = useQuery({
+    queryKey: ["dept-min", active?.id], enabled: !!active,
+    queryFn: async () => ((await supabase.from("departments").select("id, name").eq("college_id", active!.id).order("name")).data ?? []) as Department[],
+  });
+
   const { data: progs } = useQuery({
-    queryKey: ["prog-min", active?.id], enabled: !!active,
-    queryFn: async () => (await supabase.from("academic_programs").select("id, name").eq("college_id", active!.id).order("name")).data ?? [],
+    queryKey: ["prog-min-dep", active?.id], enabled: !!active,
+    queryFn: async () => ((await supabase.from("academic_programs").select("id, name, department_id").eq("college_id", active!.id).order("name")).data ?? []) as Program[],
   });
 
   const { data: rows, isLoading } = useQuery({
@@ -82,7 +96,41 @@ function StudyPlansPage() {
   const startEdit = (p: Plan) => { setEditing(p); setForm({ name: p.name, code: p.code, version: p.version, program_id: p.program_id, effective_year: p.effective_year ?? new Date().getFullYear(), is_active: p.is_active }); setOpen(true); };
   const startCreate = () => { setEditing(null); setForm({ name: "", code: "", version: "1", program_id: "", effective_year: new Date().getFullYear(), is_active: true }); setOpen(true); };
 
-  const progMap = new Map((progs ?? []).map((p) => [p.id, p.name]));
+  const progMap = useMemo(() => new Map((progs ?? []).map((p) => [p.id, p])), [progs]);
+  const deptMap = useMemo(() => new Map((depts ?? []).map((d) => [d.id, d.name])), [depts]);
+
+  const filteredProgs = useMemo(
+    () => (progs ?? []).filter((p) => deptFilter === ALL || p.department_id === deptFilter),
+    [progs, deptFilter],
+  );
+
+  const filtered = useMemo(() => {
+    return (rows ?? []).filter((p) => {
+      const prog = progMap.get(p.program_id);
+      if (deptFilter !== ALL && prog?.department_id !== deptFilter) return false;
+      if (progFilter !== ALL && p.program_id !== progFilter) return false;
+      if (statusFilter === "active" && !p.is_active) return false;
+      if (statusFilter === "inactive" && p.is_active) return false;
+      return true;
+    });
+  }, [rows, progMap, deptFilter, progFilter, statusFilter]);
+
+  const handleExport = () => {
+    if (filtered.length === 0) { toast.info("لا توجد سجلات للتصدير"); return; }
+    const data = filtered.map((p) => {
+      const prog = progMap.get(p.program_id);
+      return {
+        "الاسم": p.name,
+        "الرمز": p.code,
+        "الإصدار": p.version,
+        "البرنامج": prog?.name ?? "",
+        "القسم": prog?.department_id ? (deptMap.get(prog.department_id) ?? "") : "",
+        "سنة السريان": p.effective_year ?? "",
+        "سارية": p.is_active ? "نعم" : "لا",
+      };
+    });
+    exportRowsToXlsx("study-plans", "الخطط الدراسية", data);
+  };
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -96,55 +144,101 @@ function StudyPlansPage() {
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <CollegeSwitcher />
-        {canManage && (
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild><Button onClick={startCreate} disabled={!progs || progs.length === 0}>خطة جديدة</Button></DialogTrigger>
-            <DialogContent>
-              <DialogHeader><DialogTitle>{editing ? "تعديل الخطة" : "خطة جديدة"}</DialogTitle></DialogHeader>
-              <div className="space-y-3">
-                <div><Label>البرنامج</Label>
-                  <Select value={form.program_id} onValueChange={(v) => setForm({ ...form, program_id: v })}>
-                    <SelectTrigger><SelectValue placeholder="اختر البرنامج" /></SelectTrigger>
-                    <SelectContent>{(progs ?? []).map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-                  </Select>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleExport} disabled={!rows || rows.length === 0}>
+            <Download className="ms-1 h-4 w-4" /> تصدير Excel
+          </Button>
+          {canManage && (
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild><Button onClick={startCreate} disabled={!progs || progs.length === 0}>خطة جديدة</Button></DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>{editing ? "تعديل الخطة" : "خطة جديدة"}</DialogTitle></DialogHeader>
+                <div className="space-y-3">
+                  <div><Label>البرنامج</Label>
+                    <Select value={form.program_id} onValueChange={(v) => setForm({ ...form, program_id: v })}>
+                      <SelectTrigger><SelectValue placeholder="اختر البرنامج" /></SelectTrigger>
+                      <SelectContent>{(progs ?? []).map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div><Label>الاسم</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label>الرمز</Label><Input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} /></div>
+                    <div><Label>الإصدار</Label><Input value={form.version} onChange={(e) => setForm({ ...form, version: e.target.value })} /></div>
+                  </div>
+                  <div><Label>سنة السريان</Label><Input type="number" value={form.effective_year} onChange={(e) => setForm({ ...form, effective_year: Number(e.target.value) })} /></div>
+                  <label className="flex items-center gap-2 text-sm"><Checkbox checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: !!v })} /> سارية</label>
                 </div>
-                <div><Label>الاسم</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><Label>الرمز</Label><Input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} /></div>
-                  <div><Label>الإصدار</Label><Input value={form.version} onChange={(e) => setForm({ ...form, version: e.target.value })} /></div>
-                </div>
-                <div><Label>سنة السريان</Label><Input type="number" value={form.effective_year} onChange={(e) => setForm({ ...form, effective_year: Number(e.target.value) })} /></div>
-                <label className="flex items-center gap-2 text-sm"><Checkbox checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: !!v })} /> سارية</label>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setOpen(false)}>إلغاء</Button>
-                <Button onClick={() => save.mutate()} disabled={save.isPending}>حفظ</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setOpen(false)}>إلغاء</Button>
+                  <Button onClick={() => save.mutate()} disabled={save.isPending}>حفظ</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
       </div>
+
+      <Card className="mb-4 p-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div>
+            <Label className="text-xs">القسم</Label>
+            <Select value={deptFilter} onValueChange={(v) => { setDeptFilter(v); setProgFilter(ALL); }}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>الكل</SelectItem>
+                {(depts ?? []).map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">البرنامج</Label>
+            <Select value={progFilter} onValueChange={setProgFilter}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>الكل</SelectItem>
+                {filteredProgs.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">الحالة</Label>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>الكل</SelectItem>
+                <SelectItem value="active">سارية</SelectItem>
+                <SelectItem value="inactive">غير سارية</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </Card>
 
       {(!progs || progs.length === 0) && <p className="mb-3 rounded border border-dashed border-border bg-muted/30 p-3 text-sm text-muted-foreground">أنشئ برنامجًا أولاً.</p>}
 
       <Card className="overflow-hidden">
         {isLoading ? <p className="p-6 text-center text-muted-foreground">جارٍ التحميل...</p>
           : !rows || rows.length === 0 ? <p className="p-6 text-center text-muted-foreground">لا توجد خطط بعد.</p>
+          : filtered.length === 0 ? <p className="p-6 text-center text-muted-foreground">لا توجد نتائج مطابقة للفلاتر.</p>
           : <ul className="divide-y divide-border">
-              {rows.map((p) => (
-                <li key={p.id} className="flex items-center justify-between p-4">
-                  <div>
-                    <p className="font-semibold">{p.name} {!p.is_active && <span className="text-xs text-muted-foreground">(غير سارية)</span>}</p>
-                    <p className="text-xs text-muted-foreground"><span dir="ltr">{p.code}@v{p.version}</span> · {progMap.get(p.program_id) ?? "—"} · {p.effective_year ?? "—"}</p>
-                  </div>
-                  {canManage && (
-                    <div className="flex gap-1">
-                      <Button size="sm" variant="ghost" onClick={() => startEdit(p)}><Pencil className="h-3.5 w-3.5" /></Button>
-                      <Button size="sm" variant="ghost" onClick={() => { if (confirm("حذف الخطة؟")) del.mutate(p.id); }}><Trash2 className="h-3.5 w-3.5" /></Button>
+              {filtered.map((p) => {
+                const prog = progMap.get(p.program_id);
+                const deptName = prog?.department_id ? deptMap.get(prog.department_id) : null;
+                return (
+                  <li key={p.id} className="flex items-center justify-between p-4">
+                    <div>
+                      <p className="font-semibold">{p.name} {!p.is_active && <span className="text-xs text-muted-foreground">(غير سارية)</span>}</p>
+                      <p className="text-xs text-muted-foreground"><span dir="ltr">{p.code}@v{p.version}</span> · {prog?.name ?? "—"}{deptName ? ` · ${deptName}` : ""} · {p.effective_year ?? "—"}</p>
                     </div>
-                  )}
-                </li>
-              ))}
+                    {canManage && (
+                      <div className="flex gap-1">
+                        <Button size="sm" variant="ghost" onClick={() => startEdit(p)}><Pencil className="h-3.5 w-3.5" /></Button>
+                        <Button size="sm" variant="ghost" onClick={() => { if (confirm("حذف الخطة؟")) del.mutate(p.id); }}><Trash2 className="h-3.5 w-3.5" /></Button>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
             </ul>}
       </Card>
     </div>
