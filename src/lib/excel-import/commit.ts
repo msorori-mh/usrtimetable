@@ -82,6 +82,7 @@ async function commitCustom(entity: ImportEntity, mode: ImportMode, collegeId: s
   if (entity === "teaching_assignments") return commitTeachingAssignments(mode, collegeId, rows, r);
   if (entity === "course_programs") return commitCoursePrograms(mode, collegeId, rows, r);
   if (entity === "section_groups") return commitSectionGroups(mode, collegeId, rows, r);
+  if (entity === "sections") return commitSections(mode, collegeId, rows, r);
 }
 
 async function findOrCreateCourse(collegeId: string, v: Record<string, any>, cache: Map<string, string>): Promise<string> {
@@ -314,6 +315,53 @@ async function commitSectionGroups(mode: ImportMode, collegeId: string, rows: Pa
     } catch (e) {
       r.failed++;
       r.errors.push({ rowNumber: row.rowNumber, errorCode: "db_error", message: `فشل: ${e instanceof Error ? e.message : String(e)}` });
+    }
+  }
+}
+
+async function commitSections(mode: ImportMode, collegeId: string, rows: ParsedRow[], r: CommitResult) {
+  for (const row of rows) {
+    const v = row.values as any;
+    try {
+      const { data: ex } = await (supabase.from("sections") as any)
+        .select("id")
+        .eq("college_id", collegeId)
+        .eq("course_id", v._course_id)
+        .eq("term_id", v._term_id)
+        .eq("section_number", String(v.section_number))
+        .maybeSingle();
+      const payload = {
+        college_id: collegeId,
+        course_id: v._course_id,
+        term_id: v._term_id,
+        section_number: String(v.section_number),
+        capacity: v.capacity ?? 30,
+        study_system: v.study_system ?? "regular",
+      };
+      if (ex?.id) {
+        if (mode === "insert_only") {
+          r.skipped++;
+          continue;
+        }
+        const { error } = await (supabase.from("sections") as any).update(payload).eq("id", ex.id);
+        if (error) throw error;
+        r.updated++;
+      } else {
+        if (mode === "update_existing") {
+          r.skipped++;
+          continue;
+        }
+        const { error } = await (supabase.from("sections") as any).insert(payload);
+        if (error) throw error;
+        r.inserted++;
+      }
+    } catch (e) {
+      r.failed++;
+      r.errors.push({
+        rowNumber: row.rowNumber,
+        errorCode: "db_error",
+        message: `فشل: ${e instanceof Error ? e.message : String(e)}`,
+      });
     }
   }
 }

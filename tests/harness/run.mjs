@@ -14,16 +14,19 @@ const harnesses = [
   "exception-aware-impl-01a.harness.ts",
   "f001-session-version-integrity.harness.ts",
   "f002-validate-schedule-version.harness.ts",
+  "room-import-normalize.harness.ts",
+  "weekly-time-templates.harness.ts",
+  "terminology-labels.harness.ts",
 ];
 
 let exitCode = 0;
 for (const file of harnesses) {
   console.log(`\n=== Running ${file} ===`);
-  const r = spawnSync(
-    "npx",
-    ["tsx", "--tsconfig", tsconfig, path.join(__dirname, file)],
-    { stdio: "inherit", shell: true, cwd: root },
-  );
+  const r = spawnSync("npx", ["tsx", "--tsconfig", tsconfig, path.join(__dirname, file)], {
+    stdio: "inherit",
+    shell: true,
+    cwd: root,
+  });
   if ((r.status ?? 1) !== 0) exitCode = 1;
 }
 

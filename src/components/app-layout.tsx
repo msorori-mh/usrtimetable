@@ -36,10 +36,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { toast } from "sonner";
 import { UsrBrandMark } from "@/components/branding/usr-brand-mark";
-import {
-  USR_PLATFORM_NAME_AR,
-  USR_UNIVERSITY_NAME_AR,
-} from "@/lib/branding/usr";
+import { USR_PLATFORM_NAME_AR, USR_UNIVERSITY_NAME_AR } from "@/lib/branding/usr";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -53,47 +50,277 @@ interface NavItem {
 const ALL: NavItem["roles"] = ["super_admin", "college_admin", "read_only"];
 
 const NAV: NavItem[] = [
-  { to: "/dashboard", label: "لوحة التحكم", icon: <LayoutDashboard className="h-4 w-4" />, roles: ALL },
-  { to: "/data-readiness", label: "جاهزية البيانات", icon: <Gauge className="h-4 w-4" />, roles: ALL },
-  { to: "/data-cleanup", label: "تنظيف البيانات", icon: <Wrench className="h-4 w-4" />, roles: ["super_admin", "college_admin"] },
-  { to: "/universities", label: "الجامعة", icon: <Building2 className="h-4 w-4" />, roles: ["super_admin"], group: "إدارة النظام" },
-  { to: "/colleges", label: "الكلّيات", icon: <School className="h-4 w-4" />, roles: ["super_admin"], group: "إدارة النظام" },
-  { to: "/users", label: "المستخدمون", icon: <Users className="h-4 w-4" />, roles: ["super_admin"], group: "إدارة النظام" },
-  { to: "/my-college", label: "كلّيتي", icon: <School className="h-4 w-4" />, roles: ["college_admin", "read_only"], group: "كلّيتي" },
-  { to: "/departments", label: "الأقسام", icon: <Building2 className="h-4 w-4" />, roles: ALL, group: "البنية الأكاديمية" },
-  { to: "/programs", label: "البرامج", icon: <GraduationCap className="h-4 w-4" />, roles: ALL, group: "البنية الأكاديمية" },
-  { to: "/study-plans", label: "الخطط الدراسية", icon: <BookOpen className="h-4 w-4" />, roles: ALL, group: "البنية الأكاديمية" },
-  { to: "/courses", label: "المقررات", icon: <Library className="h-4 w-4" />, roles: ALL, group: "البنية الأكاديمية" },
-  { to: "/terms", label: "الفصول الدراسية", icon: <CalendarRange className="h-4 w-4" />, roles: ALL, group: "البنية الأكاديمية" },
-  { to: "/sections", label: "المجموعات الدراسية", icon: <Users2 className="h-4 w-4" />, roles: ALL, group: "البنية الأكاديمية" },
-  { to: "/instructors", label: "المحاضرون", icon: <UserSquare2 className="h-4 w-4" />, roles: ALL, group: "موارد التدريس" },
-  { to: "/rooms", label: "القاعات والمعامل", icon: <DoorOpen className="h-4 w-4" />, roles: ALL, group: "موارد التدريس" },
-  { to: "/time-slots", label: "الفترات الزمنية", icon: <Clock className="h-4 w-4" />, roles: ALL, group: "موارد التدريس" },
-  { to: "/availability", label: "التوفّر/عدم التوفّر", icon: <CalendarClock className="h-4 w-4" />, roles: ALL, group: "موارد التدريس" },
-  { to: "/course-offerings", label: "مقررات الفصل", icon: <ClipboardList className="h-4 w-4" />, roles: ALL, group: "موارد التدريس" },
-  { to: "/teaching-assignments", label: "الإسناد التدريسي", icon: <Briefcase className="h-4 w-4" />, roles: ALL, group: "موارد التدريس" },
-  { to: "/instructor-types", label: "أنواع المحاضرين", icon: <UserCog className="h-4 w-4" />, roles: ALL, group: "التهيئة الأكاديمية" },
-  { to: "/room-types", label: "أنواع القاعات", icon: <Boxes className="h-4 w-4" />, roles: ALL, group: "التهيئة الأكاديمية" },
-  { to: "/buildings", label: "المباني", icon: <Building className="h-4 w-4" />, roles: ALL, group: "التهيئة الأكاديمية" },
-  { to: "/session-types", label: "أنواع المحاضرات", icon: <Presentation className="h-4 w-4" />, roles: ALL, group: "التهيئة الأكاديمية" },
-  { to: "/scheduling-settings", label: "إعدادات الجدولة", icon: <Settings2 className="h-4 w-4" />, roles: ALL, group: "التهيئة الأكاديمية" },
-  { to: "/academic-calendar", label: "التقويم الأكاديمي", icon: <CalendarDays className="h-4 w-4" />, roles: ALL, group: "التهيئة الأكاديمية" },
-  { to: "/daily-breaks", label: "الاستراحات اليومية", icon: <Clock className="h-4 w-4" />, roles: ALL, group: "التهيئة الأكاديمية" },
-  { to: "/time-slot-templates", label: "قوالب الفترات (نظام الدراسة)", icon: <Clock className="h-4 w-4" />, roles: ALL, group: "التهيئة الأكاديمية" },
-  { to: "/constraint-settings", label: "إعدادات القيود (الجدولة)", icon: <Settings2 className="h-4 w-4" />, roles: ALL, group: "التهيئة الأكاديمية" },
-  { to: "/schedule-versions", label: "نسخ الجدول", icon: <CalendarClock className="h-4 w-4" />, roles: ALL, group: "الجدولة" },
-  { to: "/published-schedules", label: "الجداول المنشورة", icon: <CalendarClock className="h-4 w-4" />, roles: ALL, group: "الجدولة" },
-  { to: "/auto-schedule", label: "الجدولة التلقائية", icon: <Sparkles className="h-4 w-4" />, roles: ["super_admin", "college_admin"], group: "الجدولة" },
-  { to: "/conflict-checks", label: "فحص التعارضات", icon: <ShieldAlert className="h-4 w-4" />, roles: ALL, group: "الجدولة" },
-  { to: "/schedule-quality", label: "جودة الجدول", icon: <Gauge className="h-4 w-4" />, roles: ALL, group: "الجدولة" },
-  { to: "/reports", label: "التقارير", icon: <FileBarChart2 className="h-4 w-4" />, roles: ALL, group: "التقارير" },
-  { to: "/shared-courses", label: "المقررات المشتركة", icon: <Share2 className="h-4 w-4" />, roles: ALL, group: "التهيئة الأكاديمية" },
-  { to: "/import-templates", label: "قوالب الاستيراد", icon: <FileSpreadsheet className="h-4 w-4" />, roles: ALL, group: "التهيئة الأكاديمية" },
-  { to: "/data-templates", label: "قوالب البيانات", icon: <FileSpreadsheet className="h-4 w-4" />, roles: ALL, group: "استيراد البيانات" },
-  { to: "/import", label: "استيراد Excel", icon: <FileSpreadsheet className="h-4 w-4" />, roles: ["super_admin", "college_admin"], group: "استيراد البيانات" },
-  { to: "/import-history", label: "سجل الاستيراد", icon: <HistoryIcon className="h-4 w-4" />, roles: ALL, group: "استيراد البيانات" },
+  {
+    to: "/dashboard",
+    label: "لوحة التحكم",
+    icon: <LayoutDashboard className="h-4 w-4" />,
+    roles: ALL,
+  },
+  {
+    to: "/data-readiness",
+    label: "جاهزية البيانات",
+    icon: <Gauge className="h-4 w-4" />,
+    roles: ALL,
+  },
+  {
+    to: "/data-cleanup",
+    label: "تنظيف البيانات",
+    icon: <Wrench className="h-4 w-4" />,
+    roles: ["super_admin", "college_admin"],
+  },
+  {
+    to: "/universities",
+    label: "الجامعة",
+    icon: <Building2 className="h-4 w-4" />,
+    roles: ["super_admin"],
+    group: "إدارة النظام",
+  },
+  {
+    to: "/colleges",
+    label: "الكلّيات",
+    icon: <School className="h-4 w-4" />,
+    roles: ["super_admin"],
+    group: "إدارة النظام",
+  },
+  {
+    to: "/users",
+    label: "المستخدمون",
+    icon: <Users className="h-4 w-4" />,
+    roles: ["super_admin"],
+    group: "إدارة النظام",
+  },
+  {
+    to: "/my-college",
+    label: "كلّيتي",
+    icon: <School className="h-4 w-4" />,
+    roles: ["college_admin", "read_only"],
+    group: "كلّيتي",
+  },
+  {
+    to: "/departments",
+    label: "الأقسام",
+    icon: <Building2 className="h-4 w-4" />,
+    roles: ALL,
+    group: "البنية الأكاديمية",
+  },
+  {
+    to: "/programs",
+    label: "البرامج",
+    icon: <GraduationCap className="h-4 w-4" />,
+    roles: ALL,
+    group: "البنية الأكاديمية",
+  },
+  {
+    to: "/study-plans",
+    label: "الخطط الدراسية",
+    icon: <BookOpen className="h-4 w-4" />,
+    roles: ALL,
+    group: "البنية الأكاديمية",
+  },
+  {
+    to: "/courses",
+    label: "المقررات",
+    icon: <Library className="h-4 w-4" />,
+    roles: ALL,
+    group: "البنية الأكاديمية",
+  },
+  {
+    to: "/terms",
+    label: "الفصول الأكاديمية",
+    icon: <CalendarRange className="h-4 w-4" />,
+    roles: ALL,
+    group: "البنية الأكاديمية",
+  },
+  {
+    to: "/sections",
+    label: "المجموعات الدراسية",
+    icon: <Users2 className="h-4 w-4" />,
+    roles: ALL,
+    group: "البنية الأكاديمية",
+  },
+  {
+    to: "/instructors",
+    label: "المحاضرون",
+    icon: <UserSquare2 className="h-4 w-4" />,
+    roles: ALL,
+    group: "موارد التدريس",
+  },
+  {
+    to: "/rooms",
+    label: "القاعات والمعامل",
+    icon: <DoorOpen className="h-4 w-4" />,
+    roles: ALL,
+    group: "موارد التدريس",
+  },
+  {
+    to: "/time-slots",
+    label: "فترات الجدول اليدوية",
+    icon: <Clock className="h-4 w-4" />,
+    roles: ALL,
+    group: "موارد التدريس",
+  },
+  {
+    to: "/availability",
+    label: "التوفّر/عدم التوفّر",
+    icon: <CalendarClock className="h-4 w-4" />,
+    roles: ALL,
+    group: "موارد التدريس",
+  },
+  {
+    to: "/course-offerings",
+    label: "مقررات الفصل",
+    icon: <ClipboardList className="h-4 w-4" />,
+    roles: ALL,
+    group: "موارد التدريس",
+  },
+  {
+    to: "/teaching-assignments",
+    label: "الإسناد التدريسي",
+    icon: <Briefcase className="h-4 w-4" />,
+    roles: ALL,
+    group: "موارد التدريس",
+  },
+  {
+    to: "/instructor-types",
+    label: "أنواع المحاضرين",
+    icon: <UserCog className="h-4 w-4" />,
+    roles: ALL,
+    group: "التهيئة الأكاديمية",
+  },
+  {
+    to: "/room-types",
+    label: "أنواع القاعات",
+    icon: <Boxes className="h-4 w-4" />,
+    roles: ALL,
+    group: "التهيئة الأكاديمية",
+  },
+  {
+    to: "/buildings",
+    label: "المباني",
+    icon: <Building className="h-4 w-4" />,
+    roles: ALL,
+    group: "التهيئة الأكاديمية",
+  },
+  {
+    to: "/session-types",
+    label: "أنواع المحاضرات",
+    icon: <Presentation className="h-4 w-4" />,
+    roles: ALL,
+    group: "التهيئة الأكاديمية",
+  },
+  {
+    to: "/scheduling-settings",
+    label: "إعدادات الجدولة",
+    icon: <Settings2 className="h-4 w-4" />,
+    roles: ALL,
+    group: "التهيئة الأكاديمية",
+  },
+  {
+    to: "/academic-calendar",
+    label: "التقويم الأكاديمي",
+    icon: <CalendarDays className="h-4 w-4" />,
+    roles: ALL,
+    group: "التهيئة الأكاديمية",
+  },
+  {
+    to: "/daily-breaks",
+    label: "الاستراحات اليومية",
+    icon: <Clock className="h-4 w-4" />,
+    roles: ALL,
+    group: "التهيئة الأكاديمية",
+  },
+  {
+    to: "/time-slot-templates",
+    label: "قوالب أوقات المحاضرات",
+    icon: <Clock className="h-4 w-4" />,
+    roles: ALL,
+    group: "التهيئة الأكاديمية",
+  },
+  {
+    to: "/constraint-settings",
+    label: "إعدادات القيود (الجدولة)",
+    icon: <Settings2 className="h-4 w-4" />,
+    roles: ALL,
+    group: "التهيئة الأكاديمية",
+  },
+  {
+    to: "/schedule-versions",
+    label: "نسخ الجدول",
+    icon: <CalendarClock className="h-4 w-4" />,
+    roles: ALL,
+    group: "الجدولة",
+  },
+  {
+    to: "/published-schedules",
+    label: "الجداول المنشورة",
+    icon: <CalendarClock className="h-4 w-4" />,
+    roles: ALL,
+    group: "الجدولة",
+  },
+  {
+    to: "/auto-schedule",
+    label: "الجدولة التلقائية",
+    icon: <Sparkles className="h-4 w-4" />,
+    roles: ["super_admin", "college_admin"],
+    group: "الجدولة",
+  },
+  {
+    to: "/conflict-checks",
+    label: "فحص التعارضات",
+    icon: <ShieldAlert className="h-4 w-4" />,
+    roles: ALL,
+    group: "الجدولة",
+  },
+  {
+    to: "/schedule-quality",
+    label: "جودة الجدول",
+    icon: <Gauge className="h-4 w-4" />,
+    roles: ALL,
+    group: "الجدولة",
+  },
+  {
+    to: "/reports",
+    label: "التقارير",
+    icon: <FileBarChart2 className="h-4 w-4" />,
+    roles: ALL,
+    group: "التقارير",
+  },
+  {
+    to: "/shared-courses",
+    label: "المقررات المشتركة",
+    icon: <Share2 className="h-4 w-4" />,
+    roles: ALL,
+    group: "التهيئة الأكاديمية",
+  },
+  {
+    to: "/import-templates",
+    label: "قوالب الاستيراد",
+    icon: <FileSpreadsheet className="h-4 w-4" />,
+    roles: ALL,
+    group: "التهيئة الأكاديمية",
+  },
+  {
+    to: "/data-templates",
+    label: "قوالب البيانات",
+    icon: <FileSpreadsheet className="h-4 w-4" />,
+    roles: ALL,
+    group: "استيراد البيانات",
+  },
+  {
+    to: "/import",
+    label: "استيراد Excel",
+    icon: <FileSpreadsheet className="h-4 w-4" />,
+    roles: ["super_admin", "college_admin"],
+    group: "استيراد البيانات",
+  },
+  {
+    to: "/import-history",
+    label: "سجل الاستيراد",
+    icon: <HistoryIcon className="h-4 w-4" />,
+    roles: ALL,
+    group: "استيراد البيانات",
+  },
 ];
-
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { data: user, isLoading } = useCurrentUser();
@@ -126,7 +353,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <UsrBrandMark size="sm" className="ring-white/25" />
           <div className="min-w-0">
             <p className="text-xs font-bold leading-tight">{USR_UNIVERSITY_NAME_AR}</p>
-            <p className="truncate text-[11px] text-sidebar-foreground/75">{USR_PLATFORM_NAME_AR}</p>
+            <p className="truncate text-[11px] text-sidebar-foreground/75">
+              {USR_PLATFORM_NAME_AR}
+            </p>
           </div>
         </div>
         <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4">
@@ -139,7 +368,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             }, new Map<string, NavItem[]>()),
           ).map(([group, list]) => (
             <div key={group} className="space-y-1">
-              {group && <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50">{group}</p>}
+              {group && (
+                <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50">
+                  {group}
+                </p>
+              )}
               {list.map((item) => {
                 const active = pathname === item.to;
                 return (
@@ -164,7 +397,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="border-t border-sidebar-border p-4">
           <div className="mb-3">
             <p className="truncate text-sm font-medium">{user?.fullName ?? user?.email ?? "—"}</p>
-            <p className="mt-1 inline-block rounded bg-white/10 px-2 py-0.5 text-[11px]">{roleLabel}</p>
+            <p className="mt-1 inline-block rounded bg-white/10 px-2 py-0.5 text-[11px]">
+              {roleLabel}
+            </p>
           </div>
           <button
             onClick={handleSignOut}

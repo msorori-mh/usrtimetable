@@ -20,10 +20,20 @@ export const TEMPLATES: Record<string, TemplateDef> = {
       { key: "academic_rank", header: "الرتبة_الأكاديمية", example: "أستاذ مساعد" },
       { key: "instructor_type_code", header: "نوع_المحاضر_رمز", example: "PERM" },
       { key: "department_code", header: "رمز_القسم", example: "CS" },
-      { key: "employment_type", header: "نوع_التوظيف", example: "full_time", enumValues: ["full_time", "part_time", "visiting"] },
+      {
+        key: "employment_type",
+        header: "نوع_التوظيف",
+        example: "full_time",
+        enumValues: ["full_time", "part_time", "visiting"],
+      },
       { key: "max_weekly_hours", header: "أقصى_ساعات_أسبوعية", type: "number", example: "18" },
       { key: "max_hours_per_day", header: "أقصى_ساعات_يومية", type: "number", example: "6" },
-      { key: "administrative_release_hours", header: "ساعات_إعفاء_إداري", type: "number", example: "0" },
+      {
+        key: "administrative_release_hours",
+        header: "ساعات_إعفاء_إداري",
+        type: "number",
+        example: "0",
+      },
       { key: "admin_tasks", header: "المهام_الإدارية" },
       { key: "external_source", header: "الجهة_الخارجية" },
       { key: "notes", header: "ملاحظات" },
@@ -41,8 +51,22 @@ export const TEMPLATES: Record<string, TemplateDef> = {
       { key: "code", header: "رمز_القاعة", required: true, example: "R-101" },
       { key: "name", header: "اسم_القاعة", required: true, example: "قاعة 101" },
       { key: "capacity", header: "السعة", required: true, type: "number", example: "30" },
-      { key: "room_type", header: "نوع_القاعة", example: "lecture_hall" },
-      { key: "room_type_code", header: "نوع_القاعة_رمز", example: "LEC" },
+      {
+        key: "room_type",
+        header: "نوع_القاعة",
+        example: "lecture_hall",
+        enumValues: [
+          "lecture_hall",
+          "computer_lab",
+          "network_lab",
+          "cybersecurity_lab",
+          "electronics_lab",
+          "workshop",
+          "seminar_room",
+        ],
+      },
+      // Optional legacy compatibility — not a competing source of truth
+      { key: "room_type_code", header: "نوع_القاعة_رمز", example: "" },
       { key: "building_code", header: "رمز_المبنى", example: "A" },
       { key: "floor", header: "الطابق", example: "1" },
       { key: "building", header: "المبنى_نص" },
@@ -54,16 +78,21 @@ export const TEMPLATES: Record<string, TemplateDef> = {
   },
   academic_terms: {
     entity: "academic_terms",
-    label: "الفصول الدراسية",
+    label: "الفصول الأكاديمية",
     sheetName: "terms",
     uniqueKey: "code",
     uniqueKeyLabel: "رمز الفصل",
     commitMode: "table",
     columns: [
       { key: "code", header: "الرمز", required: true, example: "2025-F" },
-      { key: "name", header: "الاسم", required: true, example: "خريف 2025" },
+      { key: "name", header: "الاسم", required: true, example: "الفصل الأكاديمي الأول 2025" },
       { key: "academic_year", header: "السنة_الأكاديمية", example: "2025-2026" },
-      { key: "term_type", header: "الفصل_الدراسي", enumValues: ["first", "second"], example: "first" },
+      {
+        key: "term_type",
+        header: "الفصل_الدراسي",
+        enumValues: ["first", "second"],
+        example: "first",
+      },
       { key: "start_date", header: "تاريخ_البداية", example: "2025-09-01" },
       { key: "end_date", header: "تاريخ_النهاية", example: "2026-01-15" },
       { key: "teaching_weeks_count", header: "عدد_أسابيع_التدريس", type: "number", example: "15" },
@@ -83,6 +112,27 @@ export const TEMPLATES: Record<string, TemplateDef> = {
       { key: "end_time", header: "إلى_الساعة", required: true, type: "time", example: "12:30" },
       { key: "days", header: "الأيام", type: "days_csv", example: "0,1,2,3,4", required: true },
       { key: "affects_scheduling", header: "يؤثر_على_الجدولة", type: "boolean", example: "true" },
+    ],
+  },
+
+  sections: {
+    entity: "sections",
+    label: "المجموعات الدراسية",
+    sheetName: "sections",
+    uniqueKey: "_logical",
+    uniqueKeyLabel: "فصل + مقرر + رقم المجموعة",
+    commitMode: "custom",
+    columns: [
+      { key: "term_code", header: "رمز_الفصل", required: true, example: "2025-F" },
+      { key: "course_code", header: "رمز_المقرر", required: true, example: "CS101" },
+      { key: "section_number", header: "رقم_المجموعة", required: true, example: "1" },
+      { key: "capacity", header: "السعة_القصوى", type: "number", example: "30" },
+      {
+        key: "study_system",
+        header: "نظام_الدراسة",
+        example: "regular",
+        enumValues: ["regular", "parallel", "both"],
+      },
     ],
   },
 
@@ -106,17 +156,32 @@ export const TEMPLATES: Record<string, TemplateDef> = {
       { key: "department_code", header: "رمز_القسم", required: true, example: "CS" },
       { key: "course_code", header: "رمز_المقرر", required: true, example: "CS101" },
       { key: "course_name", header: "اسم_المقرر", required: true, example: "مقدمة في الحاسب" },
-      { key: "credit_hours", header: "الساعات_المعتمدة", type: "number", required: true, example: "3" },
+      {
+        key: "credit_hours",
+        header: "الساعات_المعتمدة",
+        type: "number",
+        required: true,
+        example: "3",
+      },
       { key: "theory_hours", header: "ساعات_نظري", type: "number", example: "2" },
       { key: "practical_hours", header: "ساعات_عملي", type: "number", example: "2" },
-      { key: "course_nature", header: "طبيعة_المقرر", enumValues: ["department", "faculty", "university"], example: "department" },
+      {
+        key: "course_nature",
+        header: "طبيعة_المقرر",
+        enumValues: ["department", "faculty", "university"],
+        example: "department",
+      },
       { key: "is_shared", header: "مشترك", type: "boolean", example: "false" },
       { key: "is_required", header: "إجباري", type: "boolean", example: "true" },
       { key: "lectures_per_week", header: "عدد_المحاضرات_أسبوعياً", type: "number", example: "1" },
       { key: "lecture_session_duration", header: "مدة_المحاضرة", type: "number", example: "2" },
       { key: "labs_per_week", header: "عدد_المعامل_أسبوعياً", type: "number", example: "1" },
       { key: "lab_session_duration", header: "مدة_المعمل", type: "number", example: "2" },
-      { key: "required_room_type_for_lecture", header: "نوع_قاعة_المحاضرة", example: "lecture_hall" },
+      {
+        key: "required_room_type_for_lecture",
+        header: "نوع_قاعة_المحاضرة",
+        example: "lecture_hall",
+      },
       { key: "required_room_type_for_lab", header: "نوع_قاعة_المعمل", example: "computer_lab" },
     ],
   },
@@ -140,17 +205,32 @@ export const TEMPLATES: Record<string, TemplateDef> = {
       { key: "department_code", header: "رمز_القسم", required: true, example: "CS" },
       { key: "course_code", header: "رمز_المقرر", required: true, example: "CS101" },
       { key: "course_name", header: "اسم_المقرر", required: true, example: "مقدمة في الحاسب" },
-      { key: "credit_hours", header: "الساعات_المعتمدة", type: "number", required: true, example: "3" },
+      {
+        key: "credit_hours",
+        header: "الساعات_المعتمدة",
+        type: "number",
+        required: true,
+        example: "3",
+      },
       { key: "theory_hours", header: "ساعات_نظري", type: "number", example: "2" },
       { key: "practical_hours", header: "ساعات_عملي", type: "number", example: "2" },
-      { key: "course_nature", header: "طبيعة_المقرر", enumValues: ["department", "faculty", "university"], example: "department" },
+      {
+        key: "course_nature",
+        header: "طبيعة_المقرر",
+        enumValues: ["department", "faculty", "university"],
+        example: "department",
+      },
       { key: "is_shared", header: "مشترك", type: "boolean", example: "false" },
       { key: "is_required", header: "إجباري", type: "boolean", example: "true" },
       { key: "lectures_per_week", header: "عدد_المحاضرات_أسبوعياً", type: "number", example: "1" },
       { key: "lecture_session_duration", header: "مدة_المحاضرة", type: "number", example: "2" },
       { key: "labs_per_week", header: "عدد_المعامل_أسبوعياً", type: "number", example: "1" },
       { key: "lab_session_duration", header: "مدة_المعمل", type: "number", example: "2" },
-      { key: "required_room_type_for_lecture", header: "نوع_قاعة_المحاضرة", example: "lecture_hall" },
+      {
+        key: "required_room_type_for_lecture",
+        header: "نوع_قاعة_المحاضرة",
+        example: "lecture_hall",
+      },
       { key: "required_room_type_for_lab", header: "نوع_قاعة_المعمل", example: "computer_lab" },
     ],
   },
@@ -170,7 +250,12 @@ export const TEMPLATES: Record<string, TemplateDef> = {
       { key: "plan_code", header: "رمز_الخطة", example: "CS-2024" },
       { key: "expected_students", header: "الطلاب_المتوقعون", type: "number", example: "60" },
       { key: "sections_count", header: "عدد_المجموعات", type: "number", example: "2" },
-      { key: "status", header: "الحالة", enumValues: ["draft", "approved", "scheduled", "cancelled"], example: "draft" },
+      {
+        key: "status",
+        header: "الحالة",
+        enumValues: ["draft", "approved", "scheduled", "cancelled"],
+        example: "draft",
+      },
       { key: "is_active", header: "نشط", type: "boolean", example: "true" },
       { key: "notes", header: "ملاحظات" },
     ],
@@ -188,10 +273,28 @@ export const TEMPLATES: Record<string, TemplateDef> = {
       { key: "course_code", header: "رمز_المقرر", required: true, example: "CS101" },
       { key: "employee_number", header: "رقم_الموظف_للمحاضر", required: true, example: "EMP001" },
       { key: "section_number", header: "رقم_المجموعة", example: "1" },
-      { key: "session_type", header: "نوع_المحاضرة", enumValues: ["lecture", "lab", "tutorial", "seminar", "workshop"], required: true, example: "lecture" },
+      {
+        key: "session_type",
+        header: "نوع_المحاضرة",
+        enumValues: ["lecture", "lab", "tutorial", "seminar", "workshop"],
+        required: true,
+        example: "lecture",
+      },
       { key: "weekly_hours", header: "ساعات_أسبوعية", type: "number", example: "3" },
       { key: "expected_students", header: "الطلاب_المتوقعون", type: "number", example: "30" },
-      { key: "required_room_type", header: "نوع_القاعة_المطلوب", enumValues: ["lecture_hall", "computer_lab", "network_lab", "cybersecurity_lab", "electronics_lab", "workshop", "seminar_room"] },
+      {
+        key: "required_room_type",
+        header: "نوع_القاعة_المطلوب",
+        enumValues: [
+          "lecture_hall",
+          "computer_lab",
+          "network_lab",
+          "cybersecurity_lab",
+          "electronics_lab",
+          "workshop",
+          "seminar_room",
+        ],
+      },
       { key: "notes", header: "ملاحظات" },
     ],
   },
@@ -220,7 +323,13 @@ export const TEMPLATES: Record<string, TemplateDef> = {
       { key: "term_code", header: "رمز_الفصل", required: true, example: "2025-F" },
       { key: "course_code", header: "رمز_المقرر", required: true, example: "UNI100" },
       { key: "group_name", header: "اسم_المجموعة", required: true, example: "مجموعة A" },
-      { key: "member_section_numbers", header: "أرقام_المجموعات", type: "csv", required: true, example: "1,2,3" },
+      {
+        key: "member_section_numbers",
+        header: "أرقام_المجموعات",
+        type: "csv",
+        required: true,
+        example: "1,2,3",
+      },
       { key: "notes", header: "ملاحظات" },
     ],
   },
@@ -234,9 +343,31 @@ export async function buildTemplateWorkbook(entity: string): Promise<Blob> {
   const example = tpl.columns.map((c) => c.example ?? "");
   const ws = XLSX.utils.aoa_to_sheet([headers, example]);
   ws["!cols"] = headers.map(() => ({ wch: 22 }));
+
+  // Excel data-validation dropdowns for columns with enumValues (best-effort via SheetJS)
+  const validations: Array<{ sqref: string; formula1: string }> = [];
+  tpl.columns.forEach((c, idx) => {
+    if (!c.enumValues || c.enumValues.length === 0) return;
+    const col = XLSX.utils.encode_col(idx);
+    validations.push({
+      sqref: `${col}2:${col}1000`,
+      formula1: `"${c.enumValues.join(",")}"`,
+    });
+  });
+  if (validations.length > 0) {
+    // SheetJS community: store as custom property consumed by Excel when present
+    (ws as Record<string, unknown>)["!dataValidation"] = validations.map((v) => ({
+      type: "list",
+      allowBlank: true,
+      sqref: v.sqref,
+      formulas: [v.formula1],
+    }));
+  }
+
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, tpl.sheetName);
-  const notes = [
+
+  const notes: (string | number)[][] = [
     ["تعليمات الاستيراد"],
     [""],
     [`الكيان: ${tpl.label}`],
@@ -244,16 +375,55 @@ export async function buildTemplateWorkbook(entity: string): Promise<Blob> {
     [""],
     ["الأعمدة:"],
     ["الحقل", "العنوان", "إلزامي", "مثال", "قيم مسموحة"],
-    ...tpl.columns.map((c) => [c.key, c.header, c.required ? "نعم" : "لا", c.example ?? "", (c.enumValues ?? []).join(" | ")]),
+    ...tpl.columns.map((c) => [
+      c.key,
+      c.header,
+      c.required ? "نعم" : "لا",
+      c.example ?? "",
+      (c.enumValues ?? []).join(" | "),
+    ]),
   ];
+  if (entity === "rooms") {
+    notes.push(
+      [""],
+      ["ملاحظات أنواع القاعات"],
+      ["نوع_القاعة", "الحقل الأساسي — استخدم القيم المرجعية الإنجليزية أعلاه."],
+      [
+        "نوع_القاعة_رمز",
+        "اختياري للتوافق مع القوالب القديمة فقط (مثل LEC → lecture_hall، LAB → computer_lab).",
+      ],
+      ["لا تضع علامة * في أسماء الأعمدة — يجب أن تطابق العناوين حرفياً."],
+    );
+  }
   const wsNotes = XLSX.utils.aoa_to_sheet(notes);
-  wsNotes["!cols"] = [{ wch: 25 }, { wch: 22 }, { wch: 10 }, { wch: 20 }, { wch: 40 }];
+  wsNotes["!cols"] = [{ wch: 25 }, { wch: 22 }, { wch: 10 }, { wch: 20 }, { wch: 50 }];
   XLSX.utils.book_append_sheet(wb, wsNotes, "تعليمات");
+
+  if (entity === "rooms") {
+    const ref = [
+      ["الرمز", "الوصف", "رموز قديمة مقبولة"],
+      ["lecture_hall", "قاعة محاضرات", "LEC"],
+      ["computer_lab", "معمل حاسوب", "LAB"],
+      ["network_lab", "معمل شبكات", ""],
+      ["cybersecurity_lab", "معمل أمن سيبراني", ""],
+      ["electronics_lab", "معمل إلكترونيات", ""],
+      ["workshop", "ورشة", ""],
+      ["seminar_room", "قاعة ندوات", ""],
+    ];
+    const wsRef = XLSX.utils.aoa_to_sheet(ref);
+    wsRef["!cols"] = [{ wch: 22 }, { wch: 24 }, { wch: 22 }];
+    XLSX.utils.book_append_sheet(wb, wsRef, "أنواع_القاعات");
+  }
+
   const out = XLSX.write(wb, { type: "array", bookType: "xlsx" });
-  return new Blob([out], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  return new Blob([out], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
 }
 
-export async function parseExcel(file: File): Promise<{ headers: string[]; rows: Record<string, unknown>[] }> {
+export async function parseExcel(
+  file: File,
+): Promise<{ headers: string[]; rows: Record<string, unknown>[] }> {
   const XLSX = await import("xlsx");
   const buf = await file.arrayBuffer();
   const wb = XLSX.read(buf, { type: "array" });
