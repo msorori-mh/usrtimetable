@@ -1,6 +1,7 @@
 export type ImportEntity =
   | "instructors"
   | "rooms"
+  | "sections"
   | "academic_terms"
   | "daily_breaks"
   | "study_plan_courses"

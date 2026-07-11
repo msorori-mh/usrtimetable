@@ -2,22 +2,22 @@
 // Read-only metadata + Excel builders. No DB access.
 
 export type TemplateCol = {
-  header: string;       // Arabic header in data sheet
+  header: string; // Arabic header in data sheet
   required?: boolean;
   example?: string;
-  allowed?: string;     // allowed values text
+  allowed?: string; // allowed values text
   notes?: string;
   description?: string; // long description for instructions sheet
 };
 
 export type TemplateRef = {
   title: string;
-  rows: string[][];     // 2D array including header row
+  rows: string[][]; // 2D array including header row
 };
 
 export type TemplateDef = {
   id: string;
-  name: string;             // Arabic display name
+  name: string; // Arabic display name
   group: "foundational" | "academic_plan" | "resources" | "scheduling" | "optional";
   groupLabel: string;
   purpose: string;
@@ -187,10 +187,10 @@ export const CATALOG: TemplateDef[] = [
   },
   {
     id: "academic_terms",
-    name: "الفصول الدراسية",
+    name: "الفصول الأكاديمية",
     group: "foundational",
     groupLabel: GROUPS.foundational,
-    purpose: "تعريف الفصول الدراسية (الأول/الثاني).",
+    purpose: "الفصول المرتبطة بالعام الأكاديمي، مثل الفصل الأول والفصل الثاني.",
     requiredBeforeScheduling: true,
     importOrder: 5,
     sheetName: "terms",
@@ -204,9 +204,23 @@ export const CATALOG: TemplateDef[] = [
       { header: "عدد_أسابيع_التدريس", example: "15" },
       { header: "نشط", example: "false" },
     ],
-    sampleRows: [["2025-T1", "الفصل الدراسي الأول 2025", "2025-2026", "first", "2025-09-01", "2026-01-15", "15", "true"]],
+    sampleRows: [
+      [
+        "2025-T1",
+        "الفصل الدراسي الأول 2025",
+        "2025-2026",
+        "first",
+        "2025-09-01",
+        "2026-01-15",
+        "15",
+        "true",
+      ],
+    ],
     references: [REF_TERM_TYPES],
-    commonErrors: ["تنسيق تاريخ غير صحيح", "قيمة الفصل الدراسي غير معروفة (المسموح: first / second)"],
+    commonErrors: [
+      "تنسيق تاريخ غير صحيح",
+      "قيمة الفصل الدراسي غير معروفة (المسموح: first / second)",
+    ],
   },
 
   // ============= B. Academic Plan =============
@@ -230,10 +244,33 @@ export const CATALOG: TemplateDef[] = [
       { header: "مدة_المحاضرة", example: "2" },
       { header: "عدد_المعامل_أسبوعياً", example: "1" },
       { header: "مدة_المعمل", example: "2" },
-      { header: "نوع_قاعة_المحاضرة", example: "lecture_hall", allowed: "lecture_hall | seminar_room" },
-      { header: "نوع_قاعة_المعمل", example: "computer_lab", allowed: "computer_lab | network_lab | cybersecurity_lab | electronics_lab | workshop" },
+      {
+        header: "نوع_قاعة_المحاضرة",
+        example: "lecture_hall",
+        allowed: "lecture_hall | seminar_room",
+      },
+      {
+        header: "نوع_قاعة_المعمل",
+        example: "computer_lab",
+        allowed: "computer_lab | network_lab | cybersecurity_lab | electronics_lab | workshop",
+      },
     ],
-    sampleRows: [["CS", "CS101", "مقدمة في الحاسب", "3", "2", "2", "1", "2", "1", "2", "lecture_hall", "computer_lab"]],
+    sampleRows: [
+      [
+        "CS",
+        "CS101",
+        "مقدمة في الحاسب",
+        "3",
+        "2",
+        "2",
+        "1",
+        "2",
+        "1",
+        "2",
+        "lecture_hall",
+        "computer_lab",
+      ],
+    ],
     references: [REF_ROOM_TYPES],
     commonErrors: ["رمز قسم غير معروف", "رمز مقرر مكرر", "ساعات معتمدة مفقودة"],
   },
@@ -280,7 +317,11 @@ export const CATALOG: TemplateDef[] = [
       { header: "الساعات_المعتمدة", required: true, example: "3" },
       { header: "ساعات_نظري", example: "2" },
       { header: "ساعات_عملي", example: "2" },
-      { header: "طبيعة_المقرر", example: "department", allowed: "department | faculty | university" },
+      {
+        header: "طبيعة_المقرر",
+        example: "department",
+        allowed: "department | faculty | university",
+      },
       { header: "مشترك", example: "false" },
       { header: "إجباري", example: "true" },
       { header: "عدد_المحاضرات_أسبوعياً", example: "1" },
@@ -290,7 +331,32 @@ export const CATALOG: TemplateDef[] = [
       { header: "نوع_قاعة_المحاضرة", example: "lecture_hall" },
       { header: "نوع_قاعة_المعمل", example: "computer_lab" },
     ],
-    sampleRows: [["CS", "CS-2024", "خطة علوم الحاسب 2024", "1", "2024", "1", "1", "CS", "CS101", "مقدمة في الحاسب", "3", "2", "2", "department", "false", "true", "1", "2", "1", "2", "lecture_hall", "computer_lab"]],
+    sampleRows: [
+      [
+        "CS",
+        "CS-2024",
+        "خطة علوم الحاسب 2024",
+        "1",
+        "2024",
+        "1",
+        "1",
+        "CS",
+        "CS101",
+        "مقدمة في الحاسب",
+        "3",
+        "2",
+        "2",
+        "department",
+        "false",
+        "true",
+        "1",
+        "2",
+        "1",
+        "2",
+        "lecture_hall",
+        "computer_lab",
+      ],
+    ],
     references: [REF_ROOM_TYPES],
     commonErrors: ["رمز خطة غير معروف", "رمز مقرر غير معروف", "تكرار مقرر داخل نفس المستوى/الفصل"],
   },
@@ -299,7 +365,8 @@ export const CATALOG: TemplateDef[] = [
     name: "الخطة الدراسية الكاملة (Full Study Plan)",
     group: "academic_plan",
     groupLabel: GROUPS.academic_plan,
-    purpose: "استيراد الخطة الأكاديمية الرسمية الكاملة للبرنامج بكافة المستويات والفصول والمقررات. هذا أهم قالب لاستيراد الخطط.",
+    purpose:
+      "استيراد الخطة الأكاديمية الرسمية الكاملة للبرنامج بكافة المستويات والفصول والمقررات. هذا أهم قالب لاستيراد الخطط.",
     requiredBeforeScheduling: true,
     importOrder: 8,
     sheetName: "full_study_plan",
@@ -312,7 +379,11 @@ export const CATALOG: TemplateDef[] = [
       { header: "course_code", required: true, example: "CS101" },
       { header: "course_name_ar", required: true, example: "مقدمة في الحاسب" },
       { header: "course_name_en", example: "Introduction to Computing" },
-      { header: "course_nature", example: "department", allowed: "department | faculty | university | college" },
+      {
+        header: "course_nature",
+        example: "department",
+        allowed: "department | faculty | university | college",
+      },
       { header: "is_shared", example: "false", allowed: "true | false" },
       { header: "is_required", example: "true", allowed: "true | false" },
       { header: "credit_hours", required: true, example: "3" },
@@ -323,14 +394,70 @@ export const CATALOG: TemplateDef[] = [
       { header: "lecture_session_duration", example: "2", description: "بالساعات" },
       { header: "labs_per_week", example: "1" },
       { header: "lab_session_duration", example: "2", description: "بالساعات" },
-      { header: "required_room_type_for_lecture", example: "lecture_hall", allowed: "lecture_hall | seminar_room" },
-      { header: "required_room_type_for_lab", example: "computer_lab", allowed: "computer_lab | network_lab | cybersecurity_lab | electronics_lab | workshop" },
+      {
+        header: "required_room_type_for_lecture",
+        example: "lecture_hall",
+        allowed: "lecture_hall | seminar_room",
+      },
+      {
+        header: "required_room_type_for_lab",
+        example: "computer_lab",
+        allowed: "computer_lab | network_lab | cybersecurity_lab | electronics_lab | workshop",
+      },
       { header: "prerequisite_code", example: "CS100", description: "رمز المقرر المتطلب السابق" },
       { header: "notes", example: "" },
     ],
     sampleRows: [
-      ["CS", "CS-2024", "خطة علوم الحاسب 2024", "1", "1", "CS101", "مقدمة في الحاسب", "Introduction to Computing", "department", "false", "true", "3", "2", "2", "0", "1", "2", "1", "2", "lecture_hall", "computer_lab", "", "مقرر تأسيسي"],
-      ["CS", "CS-2024", "خطة علوم الحاسب 2024", "2", "1", "CS201", "هياكل البيانات", "Data Structures", "department", "false", "true", "3", "2", "2", "0", "1", "2", "1", "2", "lecture_hall", "computer_lab", "CS101", ""],
+      [
+        "CS",
+        "CS-2024",
+        "خطة علوم الحاسب 2024",
+        "1",
+        "1",
+        "CS101",
+        "مقدمة في الحاسب",
+        "Introduction to Computing",
+        "department",
+        "false",
+        "true",
+        "3",
+        "2",
+        "2",
+        "0",
+        "1",
+        "2",
+        "1",
+        "2",
+        "lecture_hall",
+        "computer_lab",
+        "",
+        "مقرر تأسيسي",
+      ],
+      [
+        "CS",
+        "CS-2024",
+        "خطة علوم الحاسب 2024",
+        "2",
+        "1",
+        "CS201",
+        "هياكل البيانات",
+        "Data Structures",
+        "department",
+        "false",
+        "true",
+        "3",
+        "2",
+        "2",
+        "0",
+        "1",
+        "2",
+        "1",
+        "2",
+        "lecture_hall",
+        "computer_lab",
+        "CS101",
+        "",
+      ],
     ],
     references: [REF_ROOM_TYPES, REF_STUDY_SYSTEM],
     commonErrors: [
@@ -340,7 +467,8 @@ export const CATALOG: TemplateDef[] = [
       "قيم غير صحيحة في required_room_type_for_lecture/lab",
       "prerequisite_code يشير إلى مقرر غير موجود",
     ],
-    notes: "هذا القالب يدمج إنشاء/تحديث الخطة (study_plans) وربط المقررات بها (plan_courses) في عملية واحدة. أعمدة الإنجليزية بأسماء مفاتيح ثابتة للتسهيل على أنظمة التصدير من الجامعات.",
+    notes:
+      "هذا القالب يدمج إنشاء/تحديث الخطة (study_plans) وربط المقررات بها (plan_courses) في عملية واحدة. أعمدة الإنجليزية بأسماء مفاتيح ثابتة للتسهيل على أنظمة التصدير من الجامعات.",
   },
   {
     id: "course_programs",
@@ -355,7 +483,10 @@ export const CATALOG: TemplateDef[] = [
       { header: "رمز_المقرر", required: true, example: "UNI100" },
       { header: "رمز_البرنامج", required: true, example: "CS" },
     ],
-    sampleRows: [["UNI100", "CS"], ["UNI100", "IT"]],
+    sampleRows: [
+      ["UNI100", "CS"],
+      ["UNI100", "IT"],
+    ],
     commonErrors: ["رمز مقرر غير معروف", "رمز برنامج غير معروف"],
   },
 
@@ -386,7 +517,25 @@ export const CATALOG: TemplateDef[] = [
       { header: "أقصى_ساعات_يومية", example: "6" },
       { header: "نشط", example: "true" },
     ],
-    sampleRows: [["EMP001", "أحمد محمد", "أحمد محمد", "Ahmed Mohamed", "a@x.com", "0555555555", "أمن المعلومات", "دكتوراه", "أستاذ مساعد", "PERM", "CS", "full_time", "18", "6", "true"]],
+    sampleRows: [
+      [
+        "EMP001",
+        "أحمد محمد",
+        "أحمد محمد",
+        "Ahmed Mohamed",
+        "a@x.com",
+        "0555555555",
+        "أمن المعلومات",
+        "دكتوراه",
+        "أستاذ مساعد",
+        "PERM",
+        "CS",
+        "full_time",
+        "18",
+        "6",
+        "true",
+      ],
+    ],
     references: [REF_INSTRUCTOR_TYPES],
     commonErrors: ["رقم موظف مفقود أو مكرر", "نوع توظيف غير صحيح"],
   },
@@ -416,7 +565,7 @@ export const CATALOG: TemplateDef[] = [
     name: "القاعات والمعامل",
     group: "resources",
     groupLabel: GROUPS.resources,
-    purpose: "بيانات القاعات والسعات.",
+    purpose: "الأماكن المادية المستخدمة لتقديم المحاضرات والتطبيقات.",
     requiredBeforeScheduling: true,
     importOrder: 12,
     sheetName: "rooms",
@@ -424,17 +573,29 @@ export const CATALOG: TemplateDef[] = [
       { header: "رمز_القاعة", required: true, example: "R-101" },
       { header: "اسم_القاعة", required: true, example: "قاعة 101" },
       { header: "السعة", required: true, example: "30" },
-      { header: "نوع_القاعة", example: "lecture_hall" },
-      { header: "نوع_القاعة_رمز", example: "LEC" },
+      {
+        header: "نوع_القاعة",
+        example: "lecture_hall",
+        allowed:
+          "lecture_hall | computer_lab | network_lab | cybersecurity_lab | electronics_lab | workshop | seminar_room",
+      },
+      { header: "نوع_القاعة_رمز", example: "", allowed: "اختياري للتوافق القديم: LEC | LAB" },
       { header: "رمز_المبنى", example: "A" },
       { header: "الطابق", example: "1" },
       { header: "متاح_من", example: "08:00" },
       { header: "متاح_إلى", example: "14:00" },
       { header: "نشط", example: "true" },
     ],
-    sampleRows: [["R-101", "قاعة 101", "30", "lecture_hall", "LEC", "A", "1", "08:00", "14:00", "true"]],
+    sampleRows: [
+      ["R-101", "قاعة 101", "30", "lecture_hall", "", "A", "1", "08:00", "14:00", "true"],
+    ],
     references: [REF_ROOM_TYPES],
-    commonErrors: ["رمز قاعة مكرر", "نوع قاعة غير معروف", "سعة مفقودة"],
+    commonErrors: [
+      "رمز قاعة مكرر",
+      "نوع قاعة غير معروف",
+      "تعارض بين نوع القاعة ورمز نوع القاعة",
+      "سعة مفقودة",
+    ],
   },
   {
     id: "room_availability",
@@ -469,7 +630,12 @@ export const CATALOG: TemplateDef[] = [
       { header: "الاسم", required: true, example: "استراحة الظهر" },
       { header: "من_الساعة", required: true, example: "12:00" },
       { header: "إلى_الساعة", required: true, example: "12:30" },
-      { header: "الأيام", required: true, example: "0,1,2,3,4", allowed: "قائمة 0..6 مفصولة بفواصل" },
+      {
+        header: "الأيام",
+        required: true,
+        example: "0,1,2,3,4",
+        allowed: "قائمة 0..6 مفصولة بفواصل",
+      },
       { header: "يؤثر_على_الجدولة", example: "true", allowed: "true | false" },
     ],
     sampleRows: [["استراحة الظهر", "12:00", "12:30", "0,1,2,3,4", "true"]],
@@ -477,16 +643,21 @@ export const CATALOG: TemplateDef[] = [
   },
   {
     id: "time_slot_templates",
-    name: "قوالب الفترات الزمنية",
+    name: "قوالب أوقات المحاضرات",
     group: "resources",
     groupLabel: GROUPS.resources,
-    purpose: "تعريف قوالب فترات زمنية لكل نظام دراسة.",
+    purpose: "تحديد أيام وساعات التدريس والمدد المسموح بها لتوليد أوقات الجدولة.",
     requiredBeforeScheduling: true,
     importOrder: 15,
     sheetName: "time_slot_templates",
     columns: [
       { header: "اسم_القالب", required: true, example: "نظام الانتظام" },
-      { header: "نظام_الدراسة", required: true, example: "regular", allowed: "regular | parallel | both" },
+      {
+        header: "نظام_الدراسة",
+        required: true,
+        example: "regular",
+        allowed: "regular | parallel | both",
+      },
       { header: "من_الساعة", required: true, example: "08:00" },
       { header: "إلى_الساعة", required: true, example: "21:00" },
       { header: "مدة_الفترة_دقيقة", example: "60" },
@@ -535,7 +706,12 @@ export const CATALOG: TemplateDef[] = [
       { header: "رمز_المقرر", required: true, example: "CS101" },
       { header: "رقم_الموظف_للمحاضر", required: true, example: "EMP001" },
       { header: "رقم_المجموعة", example: "1" },
-      { header: "نوع_المحاضرة", required: true, example: "lecture", allowed: "lecture | lab | tutorial | seminar | workshop" },
+      {
+        header: "نوع_المحاضرة",
+        required: true,
+        example: "lecture",
+        allowed: "lecture | lab | tutorial | seminar | workshop",
+      },
       { header: "ساعات_أسبوعية", example: "3" },
       { header: "الطلاب_المتوقعون", example: "30" },
       { header: "نوع_القاعة_المطلوب", example: "lecture_hall" },
@@ -549,7 +725,7 @@ export const CATALOG: TemplateDef[] = [
     name: "المجموعات الدراسية",
     group: "scheduling",
     groupLabel: GROUPS.scheduling,
-    purpose: "تعريف المجموعات لكل مقرر مسند.",
+    purpose: "إنشاء وتنظيم مجموعات الطلاب وربطها بالبرنامج والمستوى ونظام الدراسة.",
     requiredBeforeScheduling: false,
     importOrder: 18,
     sheetName: "sections",
@@ -558,10 +734,9 @@ export const CATALOG: TemplateDef[] = [
       { header: "رمز_المقرر", required: true, example: "CS101" },
       { header: "رقم_المجموعة", required: true, example: "1" },
       { header: "السعة_القصوى", example: "30" },
-      { header: "نظام_الدراسة", example: "regular" },
-      { header: "نشط", example: "true" },
+      { header: "نظام_الدراسة", example: "regular", allowed: "regular | parallel | both" },
     ],
-    sampleRows: [["2025-F", "CS101", "1", "30", "regular", "true"]],
+    sampleRows: [["2025-F", "CS101", "1", "30", "regular"]],
     references: [REF_STUDY_SYSTEM],
   },
   {
@@ -577,7 +752,12 @@ export const CATALOG: TemplateDef[] = [
       { header: "رمز_الفصل", required: true, example: "2025-F" },
       { header: "رمز_المقرر", required: true, example: "UNI100" },
       { header: "اسم_المجموعة", required: true, example: "مجموعة A" },
-      { header: "أرقام_المجموعات", required: true, example: "1,2,3", allowed: "قائمة أرقام مفصولة بفواصل" },
+      {
+        header: "أرقام_المجموعات",
+        required: true,
+        example: "1,2,3",
+        allowed: "قائمة أرقام مفصولة بفواصل",
+      },
       { header: "ملاحظات" },
     ],
     sampleRows: [["2025-F", "UNI100", "مجموعة A", "1,2,3", ""]],
@@ -673,16 +853,18 @@ export async function buildCatalogTemplate(id: string): Promise<Blob> {
   const wb = XLSX.utils.book_new();
 
   // Sheet 1: data entry
-  const headers = tpl.columns.map((c) => (c.required ? `${c.header} *` : c.header));
-  const sample = tpl.sampleRows && tpl.sampleRows.length > 0
-    ? tpl.sampleRows
-    : [tpl.columns.map((c) => c.example ?? "")];
+  // Headers must match the import parser literally — never append " *" to names.
+  const headers = tpl.columns.map((c) => c.header);
+  const sample =
+    tpl.sampleRows && tpl.sampleRows.length > 0
+      ? tpl.sampleRows
+      : [tpl.columns.map((c) => c.example ?? "")];
   const aoa: (string | number)[][] = [headers, ...sample];
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   ws["!cols"] = headers.map(() => ({ wch: 22 }));
   XLSX.utils.book_append_sheet(wb, ws, tpl.sheetName.slice(0, 31));
 
-  // Sheet 2: instructions
+  // Sheet 2: instructions (required flags live here, not in header text)
   const instr: (string | number)[][] = [
     ["تعليمات الاستيراد"],
     [""],
@@ -690,6 +872,7 @@ export async function buildCatalogTemplate(id: string): Promise<Blob> {
     [`الغرض: ${tpl.purpose}`],
     [`مطلوب قبل الجدولة: ${tpl.requiredBeforeScheduling ? "نعم" : "لا"}`],
     [`ترتيب الاستيراد: ${tpl.importOrder}`],
+    ["لا تضع علامة * في أسماء الأعمدة — يجب أن تطابق العناوين حرفياً."],
     [""],
     ["وصف الأعمدة:"],
     ["العمود", "إلزامي", "مثال", "قيم مسموحة", "ملاحظات / وصف"],
@@ -722,21 +905,23 @@ export async function buildCatalogTemplate(id: string): Promise<Blob> {
   }
 
   const out = XLSX.write(wb, { type: "array", bookType: "xlsx" });
-  return new Blob([out], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  return new Blob([out], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
 }
 
 export const IMPORT_ORDER: { step: number; label: string; templateId?: string }[] = [
-  { step: 1, label: "الفصول الدراسية", templateId: "academic_terms" },
+  { step: 1, label: "الفصول الأكاديمية", templateId: "academic_terms" },
   { step: 2, label: "الأقسام", templateId: "departments" },
   { step: 3, label: "البرامج", templateId: "programs" },
   { step: 4, label: "المستويات الأكاديمية", templateId: "academic_levels" },
   { step: 5, label: "المقررات", templateId: "courses" },
   { step: 6, label: "الخطة الدراسية الكاملة (Full Study Plan)", templateId: "full_study_plan" },
   { step: 7, label: "الخطط / مقررات الخطة (تفصيلي)", templateId: "plan_courses" },
-  { step: 7, label: "القاعات", templateId: "rooms" },
+  { step: 7, label: "القاعات والمعامل", templateId: "rooms" },
   { step: 8, label: "المحاضرون", templateId: "instructors" },
   { step: 9, label: "توفّر المحاضرين", templateId: "instructor_availability" },
-  { step: 10, label: "قوالب الفترات الزمنية", templateId: "time_slot_templates" },
+  { step: 10, label: "قوالب أوقات المحاضرات", templateId: "time_slot_templates" },
   { step: 11, label: "إسناد المقررات", templateId: "course_offerings" },
   { step: 12, label: "الإسناد التدريسي", templateId: "teaching_assignments" },
   { step: 13, label: "المجموعات الدراسية / المجموعات المدمجة", templateId: "sections" },
