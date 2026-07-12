@@ -1,6 +1,23 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  getActiveCollegeId,
+  resolveActiveCollege,
+  setActiveCollegeId,
+  subscribeActiveCollegeId,
+} from "@/lib/active-college-store";
+
+export {
+  ACTIVE_COLLEGE_STORAGE_KEY,
+  buildCollegeScopedSavePayload,
+  collegeScopedQueryKey,
+  getActiveCollegeId,
+  resolveActiveCollege,
+  setActiveCollegeId,
+  shouldResetTermFilter,
+  subscribeActiveCollegeId,
+} from "@/lib/active-college-store";
 
 export interface CollegeRef {
   id: string;
@@ -24,33 +41,22 @@ export function useAccessibleColleges() {
   });
 }
 
-const KEY = "active-college-id";
-
 export function useActiveCollege() {
   const { data: colleges, isLoading } = useAccessibleColleges();
-  const [activeId, setActiveId] = useState<string | null>(() =>
-    typeof window === "undefined" ? null : localStorage.getItem(KEY),
-  );
+  const activeId = useSyncExternalStore(subscribeActiveCollegeId, getActiveCollegeId, () => null);
 
   useEffect(() => {
     if (!colleges || colleges.length === 0) return;
     if (!activeId || !colleges.some((c) => c.id === activeId)) {
-      const next = colleges[0].id;
-      setActiveId(next);
-      localStorage.setItem(KEY, next);
+      setActiveCollegeId(colleges[0].id);
     }
   }, [colleges, activeId]);
-
-  const set = (id: string) => {
-    setActiveId(id);
-    localStorage.setItem(KEY, id);
-  };
 
   return {
     colleges: colleges ?? [],
     activeId,
-    active: colleges?.find((c) => c.id === activeId) ?? null,
-    setActiveId: set,
+    active: resolveActiveCollege(colleges ?? [], activeId),
+    setActiveId: setActiveCollegeId,
     isLoading,
   };
 }

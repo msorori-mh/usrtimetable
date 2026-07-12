@@ -1,8 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useActiveCollege } from "@/hooks/use-colleges";
+import {
+  buildCollegeScopedSavePayload,
+  collegeScopedQueryKey,
+  shouldResetTermFilter,
+  useActiveCollege,
+} from "@/hooks/use-colleges";
 import { useCanManageActiveCollege } from "@/hooks/use-can-manage";
 import { CollegeSwitcher } from "@/components/college-switcher";
 import { Button } from "@/components/ui/button";
@@ -71,6 +76,7 @@ function TimeSlotTemplatesPage() {
   const { active } = useActiveCollege();
   const canManage = useCanManageActiveCollege();
   const qc = useQueryClient();
+  const collegeId = active?.id ?? null;
 
   const [filterSystem, setFilterSystem] = useState<StudySystem | "all">("all");
   const [termFilter, setTermFilter] = useState<string>("all");
@@ -112,37 +118,50 @@ function TimeSlotTemplatesPage() {
     slot_duration_minutes: 120,
   });
 
+  // College switch: drop college-scoped UI state so card/queries never show prior college data.
+  useEffect(() => {
+    setTermFilter("all");
+    setPreview(null);
+    setPreviewMeta(null);
+  }, [collegeId]);
+
   const { data: terms } = useQuery({
-    queryKey: ["terms-min", active?.id],
-    enabled: !!active,
+    queryKey: collegeScopedQueryKey("terms-min", collegeId),
+    enabled: !!collegeId,
     queryFn: async () =>
       (
         await supabase
           .from("academic_terms")
           .select("id, name, is_active")
-          .eq("college_id", active!.id)
+          .eq("college_id", collegeId!)
           .order("name")
       ).data ?? [],
   });
 
+  useEffect(() => {
+    if (shouldResetTermFilter(termFilter, terms)) {
+      setTermFilter("all");
+    }
+  }, [terms, termFilter]);
+
   const { data: breaks } = useQuery({
-    queryKey: ["daily-breaks", active?.id],
-    enabled: !!active,
+    queryKey: collegeScopedQueryKey("daily-breaks", collegeId),
+    enabled: !!collegeId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("daily_breaks")
         .select("id, name, start_time, end_time, days, affects_scheduling")
-        .eq("college_id", active!.id);
+        .eq("college_id", collegeId!);
       if (error) throw error;
       return data ?? [];
     },
   });
 
   const { data: rows, isLoading } = useQuery({
-    queryKey: ["tst", active?.id, filterSystem],
-    enabled: !!active,
+    queryKey: collegeScopedQueryKey("tst", collegeId, filterSystem),
+    enabled: !!collegeId,
     queryFn: async () => {
-      let q = supabase.from("time_slot_templates").select("*").eq("college_id", active!.id);
+      let q = supabase.from("time_slot_templates").select("*").eq("college_id", collegeId!);
       if (filterSystem !== "all") q = q.eq("study_system", filterSystem);
       const { data, error } = await q
         .order("study_system")
@@ -244,14 +263,14 @@ function TimeSlotTemplatesPage() {
 
   const saveWeekly = useMutation({
     mutationFn: async () => {
-      if (!active) throw new Error("اختر كلّية");
+      if (!collegeId) throw new Error("اختر كلّية");
       if (!preview || !previewMeta) throw new Error("عاين القوالب أولاً");
 
       // Re-load latest rows immediately before save (application-level idempotency).
       const { data: freshRows, error: freshErr } = await supabase
         .from("time_slot_templates")
         .select("*")
-        .eq("college_id", active.id)
+        .eq("college_id", collegeId)
         .eq("study_system", studySystem);
       if (freshErr) throw freshErr;
 
@@ -270,16 +289,20 @@ function TimeSlotTemplatesPage() {
       ) {
         throw new Error("تم إلغاء الحفظ");
       }
-      const payload = diff.toInsert.map((t) => ({
-        college_id: active.id,
-        study_system: t.study_system,
-        day_of_week: t.day_of_week,
-        start_time: t.start_time,
-        end_time: t.end_time,
-        slot_duration_minutes: t.slot_duration_minutes,
-        is_active: true,
-      }));
-      const { error, data } = await supabase.from("time_slot_templates").insert(payload).select("id");
+      const payload = diff.toInsert.map((t) =>
+        buildCollegeScopedSavePayload(collegeId, {
+          study_system: t.study_system,
+          day_of_week: t.day_of_week,
+          start_time: t.start_time,
+          end_time: t.end_time,
+          slot_duration_minutes: t.slot_duration_minutes,
+          is_active: true,
+        }),
+      );
+      const { error, data } = await supabase
+        .from("time_slot_templates")
+        .insert(payload)
+        .select("id");
       if (error) throw error;
       const inserted = data?.length ?? 0;
       if (inserted !== payload.length) {
@@ -291,7 +314,7 @@ function TimeSlotTemplatesPage() {
         action: "create",
         entity: "time_slot_templates",
         entityId: null,
-        collegeId: active.id,
+        collegeId,
       });
       return inserted;
     },
@@ -299,7 +322,7 @@ function TimeSlotTemplatesPage() {
       toast.success(`تم حفظ ${n} قالبًا`);
       setPreview(null);
       setPreviewMeta(null);
-      qc.invalidateQueries({ queryKey: ["tst", active?.id] });
+      qc.invalidateQueries({ queryKey: collegeScopedQueryKey("tst", collegeId) });
     },
     onError: (e: Error) => {
       if (e.message !== "تم إلغاء الحفظ") toast.error(e.message);
@@ -308,7 +331,7 @@ function TimeSlotTemplatesPage() {
 
   const addSingle = useMutation({
     mutationFn: async () => {
-      if (!active) throw new Error("اختر كلّية");
+      if (!collegeId) throw new Error("اختر كلّية");
       if (singleForm.end_time <= singleForm.start_time)
         throw new Error("يجب أن يكون وقت نهاية الدوام بعد وقت البداية.");
       if (singleForm.slot_duration_minutes < 15 || singleForm.slot_duration_minutes > 480)
@@ -322,7 +345,10 @@ function TimeSlotTemplatesPage() {
           r.slot_duration_minutes === singleForm.slot_duration_minutes,
       );
       if (dup) throw new Error("يوجد قالب مطابق مسبقًا لهذا اليوم والنظام.");
-      const payload = { ...singleForm, college_id: active.id, is_active: true };
+      const payload = buildCollegeScopedSavePayload(collegeId, {
+        ...singleForm,
+        is_active: true,
+      });
       const { data, error } = await supabase
         .from("time_slot_templates")
         .insert(payload)
@@ -333,12 +359,12 @@ function TimeSlotTemplatesPage() {
         action: "create",
         entity: "time_slot_templates",
         entityId: data?.id,
-        collegeId: active.id,
+        collegeId,
       });
     },
     onSuccess: () => {
       toast.success("تمت إضافة القالب المفرد");
-      qc.invalidateQueries({ queryKey: ["tst", active?.id] });
+      qc.invalidateQueries({ queryKey: collegeScopedQueryKey("tst", collegeId) });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -354,10 +380,10 @@ function TimeSlotTemplatesPage() {
         action: "update",
         entity: "time_slot_templates",
         entityId: r.id,
-        collegeId: active?.id,
+        collegeId: collegeId ?? undefined,
       });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["tst", active?.id] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: collegeScopedQueryKey("tst", collegeId) }),
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -369,12 +395,12 @@ function TimeSlotTemplatesPage() {
         action: "delete",
         entity: "time_slot_templates",
         entityId: id,
-        collegeId: active?.id,
+        collegeId: collegeId ?? undefined,
       });
     },
     onSuccess: () => {
       toast.success("تم الحذف");
-      qc.invalidateQueries({ queryKey: ["tst", active?.id] });
+      qc.invalidateQueries({ queryKey: collegeScopedQueryKey("tst", collegeId) });
     },
     onError: (e: Error) => toast.error(e.message),
   });
