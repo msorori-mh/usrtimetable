@@ -17,6 +17,7 @@ const harnesses = [
   "room-import-normalize.harness.ts",
   "weekly-time-templates.harness.ts",
   "terminology-labels.harness.ts",
+  "time-templates-college-context-sync.harness.ts",
 ];
 
 let exitCode = 0;
