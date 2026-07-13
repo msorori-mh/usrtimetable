@@ -245,6 +245,13 @@ const NAV: NavItem[] = [
   },
   {
     to: "/schedule-versions",
+    label: "بناء الجدول",
+    icon: <CalendarRange className="h-4 w-4" />,
+    roles: ALL,
+    group: "الجدولة",
+  },
+  {
+    to: "/schedule-versions",
     label: "نسخ الجدول",
     icon: <CalendarClock className="h-4 w-4" />,
     roles: ALL,

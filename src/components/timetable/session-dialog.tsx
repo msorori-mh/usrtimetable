@@ -26,13 +26,14 @@ const addMin = (s: string, add: number) => {
 };
 
 interface Props {
-
   open: boolean;
   onOpenChange: (b: boolean) => void;
   collegeId: string;
   scheduleVersionId: string;
   sessionId?: string | null;
   defaults?: Partial<FormState>;
+  /** When true: view-only — no save, delete, or field mutations. */
+  readOnly?: boolean;
 }
 
 interface FormState {
@@ -61,14 +62,24 @@ const empty: FormState = {
   is_locked: false, lock_reason: null, source_type: "manual",
 };
 
-export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId, sessionId, defaults }: Props) {
+export function SessionDialog({
+  open,
+  onOpenChange,
+  collegeId,
+  scheduleVersionId,
+  sessionId,
+  defaults,
+  readOnly = false,
+}: Props) {
   const qc = useQueryClient();
   const [form, setForm] = useState<FormState>({ ...empty, ...(defaults ?? {}) });
   const [conflicts, setConflicts] = useState<Conflict[]>([]);
   const [validating, setValidating] = useState(false);
+  const canMutate = !readOnly;
 
   const { data: offerings } = useQuery({
     queryKey: ["co-for-sched", collegeId],
+    enabled: open && !!collegeId,
     queryFn: async () => {
       const { data } = await supabase.from("course_offerings")
         .select("id, course_id, expected_students, courses(code, name)")
@@ -78,6 +89,7 @@ export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId
   });
   const { data: instructors } = useQuery({
     queryKey: ["inst-for-sched", collegeId],
+    enabled: open && !!collegeId,
     queryFn: async () => {
       const { data } = await supabase.from("instructors")
         .select("id, full_name").eq("college_id", collegeId).limit(500);
@@ -86,6 +98,7 @@ export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId
   });
   const { data: rooms } = useQuery({
     queryKey: ["rooms-for-sched", collegeId],
+    enabled: open && !!collegeId,
     queryFn: async () => {
       const { data } = await supabase.from("rooms").select("id, code, name, capacity").eq("college_id", collegeId).limit(500);
       return data ?? [];
@@ -93,6 +106,7 @@ export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId
   });
   const { data: sections } = useQuery({
     queryKey: ["sec-for-sched", collegeId],
+    enabled: open && !!collegeId,
     queryFn: async () => {
       const { data } = await supabase.from("sections").select("id, section_number, study_system").eq("college_id", collegeId).limit(500);
       return data ?? [];
@@ -100,6 +114,7 @@ export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId
   });
   const { data: tas } = useQuery({
     queryKey: ["ta-for-sched", collegeId],
+    enabled: open && !!collegeId,
     queryFn: async () => {
       const { data } = await supabase.from("teaching_assignments")
         .select("id, course_offering_id, instructor_id").eq("college_id", collegeId).limit(1000);
@@ -119,6 +134,7 @@ export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId
   }, [open, sessionId]);
 
   const runValidate = async () => {
+    if (!canMutate) return { conflicts: [] as Conflict[], unapprovedHardConflicts: 0 };
     setValidating(true);
     try {
       const res = await validateProposed({
@@ -133,11 +149,12 @@ export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId
 
   const save = useMutation({
     mutationFn: async () => {
+      if (!canMutate) throw new Error("العرض للقراءة فقط — لا يمكن الحفظ");
       if (!form.course_offering_id || !form.instructor_id) throw new Error("المقرر والمحاضر مطلوبان");
       const res = await runValidate();
-      if (res.unapprovedHardConflicts > 0) {
-        toast.error(`⚠️ يوجد ${res.unapprovedHardConflicts} تعارض إلزامي — لا يمكن الحفظ`);
-        await logAudit({ action: "blocked_conflict", entity: "schedule_sessions", entityId: sessionId ?? null, collegeId, details: { codes: res.conflicts.map(r => r.code) } });
+      if (!res || res.unapprovedHardConflicts > 0) {
+        toast.error(`⚠️ يوجد ${res?.unapprovedHardConflicts ?? 0} تعارض إلزامي — لا يمكن الحفظ`);
+        await logAudit({ action: "blocked_conflict", entity: "schedule_sessions", entityId: sessionId ?? null, collegeId, details: { codes: (res?.conflicts ?? []).map(r => r.code) } });
         throw new Error("لا يمكن الحفظ — توجد تعارضات إلزامية");
       }
       const payload = { ...form, college_id: collegeId, schedule_version_id: scheduleVersionId };
@@ -161,6 +178,7 @@ export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId
 
   const del = useMutation({
     mutationFn: async () => {
+      if (!canMutate) throw new Error("العرض للقراءة فقط — لا يمكن الحذف");
       if (!sessionId) return;
       const { error } = await supabase.from("schedule_sessions").delete().eq("id", sessionId);
       if (error) throw error;
@@ -176,14 +194,29 @@ export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId
 
   const filteredTAs = (tas ?? []).filter((t) => !form.course_offering_id || t.course_offering_id === form.course_offering_id);
 
+  const title = readOnly
+    ? "عرض محاضرة"
+    : sessionId
+      ? "تعديل محاضرة"
+      : "إضافة محاضرة";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent dir="rtl" className="max-w-3xl max-h-[90vh] overflow-auto">
-        <DialogHeader><DialogTitle>{sessionId ? "تعديل محاضرة" : "إضافة محاضرة"}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
+        {readOnly && (
+          <p className="text-sm text-muted-foreground -mt-1 mb-1">
+            العرض للقراءة فقط — لا يمكن الحفظ أو الحذف أو التعديل.
+          </p>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <Label>المقرر (Course Offering)</Label>
-            <Select value={form.course_offering_id} onValueChange={(v) => setForm({ ...form, course_offering_id: v })}>
+            <Select
+              value={form.course_offering_id}
+              disabled={readOnly}
+              onValueChange={(v) => canMutate && setForm({ ...form, course_offering_id: v })}
+            >
               <SelectTrigger><SelectValue placeholder="اختر المقرر" /></SelectTrigger>
               <SelectContent>
                 {(offerings ?? []).map((o: any) => (
@@ -194,7 +227,15 @@ export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId
           </div>
           <div>
             <Label>الإسناد التدريسي</Label>
-            <Select value={form.teaching_assignment_id ?? "none"} onValueChange={(v) => setForm({ ...form, teaching_assignment_id: v === "none" ? null : v, instructor_id: v === "none" ? form.instructor_id : (tas?.find(t => t.id === v)?.instructor_id ?? form.instructor_id) })}>
+            <Select
+              value={form.teaching_assignment_id ?? "none"}
+              disabled={readOnly}
+              onValueChange={(v) => canMutate && setForm({
+                ...form,
+                teaching_assignment_id: v === "none" ? null : v,
+                instructor_id: v === "none" ? form.instructor_id : (tas?.find(t => t.id === v)?.instructor_id ?? form.instructor_id),
+              })}
+            >
               <SelectTrigger><SelectValue placeholder="اختياري" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">— بدون —</SelectItem>
@@ -207,7 +248,11 @@ export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId
           </div>
           <div>
             <Label>المحاضر</Label>
-            <Select value={form.instructor_id} onValueChange={(v) => setForm({ ...form, instructor_id: v })}>
+            <Select
+              value={form.instructor_id}
+              disabled={readOnly}
+              onValueChange={(v) => canMutate && setForm({ ...form, instructor_id: v })}
+            >
               <SelectTrigger><SelectValue placeholder="اختر المحاضر" /></SelectTrigger>
               <SelectContent>
                 {(instructors ?? []).map((i: any) => (
@@ -218,7 +263,11 @@ export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId
           </div>
           <div>
             <Label>القاعة</Label>
-            <Select value={form.room_id ?? "none"} onValueChange={(v) => setForm({ ...form, room_id: v === "none" ? null : v })}>
+            <Select
+              value={form.room_id ?? "none"}
+              disabled={readOnly}
+              onValueChange={(v) => canMutate && setForm({ ...form, room_id: v === "none" ? null : v })}
+            >
               <SelectTrigger><SelectValue placeholder="اختياري" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">— بدون —</SelectItem>
@@ -230,7 +279,11 @@ export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId
           </div>
           <div>
             <Label>المجموعة</Label>
-            <Select value={form.section_id ?? "none"} onValueChange={(v) => setForm({ ...form, section_id: v === "none" ? null : v })}>
+            <Select
+              value={form.section_id ?? "none"}
+              disabled={readOnly}
+              onValueChange={(v) => canMutate && setForm({ ...form, section_id: v === "none" ? null : v })}
+            >
               <SelectTrigger><SelectValue placeholder="اختياري" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">— بدون —</SelectItem>
@@ -242,7 +295,11 @@ export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId
           </div>
           <div>
             <Label>نظام الدراسة</Label>
-            <Select value={form.study_system} onValueChange={(v) => setForm({ ...form, study_system: v as any })}>
+            <Select
+              value={form.study_system}
+              disabled={readOnly}
+              onValueChange={(v) => canMutate && setForm({ ...form, study_system: v as any })}
+            >
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="regular">انتظام</SelectItem>
@@ -253,7 +310,11 @@ export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId
           </div>
           <div>
             <Label>اليوم</Label>
-            <Select value={String(form.day_of_week)} onValueChange={(v) => setForm({ ...form, day_of_week: Number(v) })}>
+            <Select
+              value={String(form.day_of_week)}
+              disabled={readOnly}
+              onValueChange={(v) => canMutate && setForm({ ...form, day_of_week: Number(v) })}
+            >
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="6">السبت</SelectItem>
@@ -268,7 +329,11 @@ export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId
           </div>
           <div>
             <Label>نوع المحاضرة</Label>
-            <Select value={form.session_type} onValueChange={(v) => setForm({ ...form, session_type: v })}>
+            <Select
+              value={form.session_type}
+              disabled={readOnly}
+              onValueChange={(v) => canMutate && setForm({ ...form, session_type: v })}
+            >
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="lecture">محاضرة</SelectItem>
@@ -279,18 +344,24 @@ export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId
           </div>
           <div>
             <Label>من</Label>
-            <Input type="time" value={form.start_time.slice(0,5)} onChange={(e) => {
-              const start = e.target.value;
-              // preserve duration when changing start
-              const dur = Math.max(60, (toMin(form.end_time) - toMin(form.start_time)) || 60);
-              setForm({ ...form, start_time: start, end_time: addMin(start, dur) });
-            }} />
+            <Input
+              type="time"
+              disabled={readOnly}
+              value={form.start_time.slice(0,5)}
+              onChange={(e) => {
+                if (!canMutate) return;
+                const start = e.target.value;
+                const dur = Math.max(60, (toMin(form.end_time) - toMin(form.start_time)) || 60);
+                setForm({ ...form, start_time: start, end_time: addMin(start, dur) });
+              }}
+            />
           </div>
           <div>
             <Label>المدة</Label>
             <Select
               value={String(Math.max(1, Math.round((toMin(form.end_time) - toMin(form.start_time)) / 60)))}
-              onValueChange={(v) => setForm({ ...form, end_time: addMin(form.start_time, Number(v) * 60) })}
+              disabled={readOnly}
+              onValueChange={(v) => canMutate && setForm({ ...form, end_time: addMin(form.start_time, Number(v) * 60) })}
             >
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -302,7 +373,12 @@ export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId
           </div>
           <div>
             <Label>العدد المتوقع</Label>
-            <Input type="number" value={form.expected_students} onChange={(e) => setForm({ ...form, expected_students: Number(e.target.value) })} />
+            <Input
+              type="number"
+              disabled={readOnly}
+              value={form.expected_students}
+              onChange={(e) => canMutate && setForm({ ...form, expected_students: Number(e.target.value) })}
+            />
           </div>
 
         </div>
@@ -319,23 +395,26 @@ export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId
               <Badge variant="outline" className="gap-1"><Unlock className="h-3 w-3" /> غير مقفل</Badge>
             )}
           </div>
-          <div className="flex items-center gap-3">
-            <Switch
-              id="lock-switch"
-              checked={form.is_locked}
-              onCheckedChange={(v) => setForm({ ...form, is_locked: v, lock_reason: v ? form.lock_reason : null })}
-            />
-            <Label htmlFor="lock-switch" className="text-sm cursor-pointer">
-              قفل المحاضرة (تمنع المجدول التلقائي من تحريكها أو حذفها)
-            </Label>
-          </div>
+          {canMutate && (
+            <div className="flex items-center gap-3">
+              <Switch
+                id="lock-switch"
+                checked={form.is_locked}
+                onCheckedChange={(v) => setForm({ ...form, is_locked: v, lock_reason: v ? form.lock_reason : null })}
+              />
+              <Label htmlFor="lock-switch" className="text-sm cursor-pointer">
+                قفل المحاضرة (تمنع المجدول التلقائي من تحريكها أو حذفها)
+              </Label>
+            </div>
+          )}
           {form.is_locked && (
             <div>
               <Label className="text-xs">سبب القفل</Label>
               <Textarea
                 rows={2}
+                disabled={readOnly}
                 value={form.lock_reason ?? ""}
-                onChange={(e) => setForm({ ...form, lock_reason: e.target.value })}
+                onChange={(e) => canMutate && setForm({ ...form, lock_reason: e.target.value })}
                 placeholder="مثال: قاعة ثابتة بطلب رئيس القسم"
               />
             </div>
@@ -359,15 +438,22 @@ export function SessionDialog({ open, onOpenChange, collegeId, scheduleVersionId
         )}
 
         <DialogFooter className="gap-2">
-          {sessionId && (
+          {canMutate && sessionId && (
             <Button variant="destructive" onClick={() => del.mutate()} disabled={del.isPending}>
               <Trash2 className="h-4 w-4 ml-1" /> حذف
             </Button>
           )}
-          <Button variant="outline" onClick={runValidate} disabled={validating}>
-            {validating ? "جاري التحقق..." : "تحقق من التعارضات"}
-          </Button>
-          <Button onClick={() => save.mutate()} disabled={save.isPending}>حفظ</Button>
+          {canMutate && (
+            <Button variant="outline" onClick={runValidate} disabled={validating}>
+              {validating ? "جاري التحقق..." : "تحقق من التعارضات"}
+            </Button>
+          )}
+          {canMutate && (
+            <Button onClick={() => save.mutate()} disabled={save.isPending}>حفظ</Button>
+          )}
+          {readOnly && (
+            <Button variant="outline" onClick={() => onOpenChange(false)}>إغلاق</Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
