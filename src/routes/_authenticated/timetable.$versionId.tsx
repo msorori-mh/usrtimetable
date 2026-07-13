@@ -19,9 +19,17 @@ import { scoreScheduleVersion, type QualityResult } from "@/lib/conflict-engine/
 import { validateProposed } from "@/lib/conflict-engine/validator";
 import { logAudit } from "@/lib/audit";
 import { toast } from "sonner";
+import {
+  SCHEDULE_BUILDER_COLLEGE_MISMATCH_AR,
+  SCHEDULE_BUILDER_NO_COLLEGE_AR,
+  isScheduleVersionInActiveCollege,
+  isSessionDialogReadOnly,
+  resolveTimetableGridHours,
+  shouldLoadScheduleBuilderData,
+} from "@/lib/schedule-builder/access";
 
 export const Route = createFileRoute("/_authenticated/timetable/$versionId")({
-  head: () => ({ meta: [{ title: "محرر الجدول الزمني" }] }),
+  head: () => ({ meta: [{ title: "بناء الجدول" }] }),
   component: TimetablePage,
 });
 
@@ -52,7 +60,7 @@ function TimetablePage() {
   const [fStudy, setFStudy] = useState<string>("all");
   const [gridStudy, setGridStudy] = useState<"regular" | "parallel" | "both">("regular");
 
-  const { data: version } = useQuery({
+  const { data: version, isLoading: versionLoading, isError: versionError } = useQuery({
     queryKey: ["sv-detail", versionId],
     queryFn: async () => {
       const { data, error } = await supabase.from("schedule_versions")
@@ -61,24 +69,34 @@ function TimetablePage() {
     },
   });
 
-  const isLocked = version?.status === "published" || version?.status === "archived";
-  const canManage = canManageRole && !isLocked;
+  const collegeMatches = isScheduleVersionInActiveCollege(version, active?.id);
+  const canLoadData = shouldLoadScheduleBuilderData({
+    hasActiveCollege: !!active,
+    versionLoaded: !!version,
+    collegeMatches,
+  });
 
+  const dialogReadOnly = isSessionDialogReadOnly({
+    canManageRole,
+    versionStatus: version?.status,
+  });
+  const canManage = !dialogReadOnly;
 
   const { data: sessions } = useQuery({
-    queryKey: ["sessions-for-version", versionId],
-    enabled: !!active,
+    queryKey: ["sessions-for-version", versionId, active?.id],
+    enabled: canLoadData,
     queryFn: async () => {
       const { data, error } = await supabase.from("schedule_sessions")
         .select("*, course_offerings(course_id, program_id, level_id, courses(code, name, department_id)), instructors(full_name), rooms(code, name)")
-        .eq("schedule_version_id", versionId);
+        .eq("schedule_version_id", versionId)
+        .eq("college_id", active!.id);
       if (error) throw error; return data ?? [];
     },
   });
 
   const { data: lookups } = useQuery({
     queryKey: ["timetable-lookups", active?.id, version?.academic_term_id],
-    enabled: !!active,
+    enabled: canLoadData,
     queryFn: async () => {
       const [depts, progs, levels, instrs, rooms, offerings, tas, templates, settings, roomTypes] = await Promise.all([
         supabase.from("departments").select("id, name").eq("college_id", active!.id),
@@ -106,14 +124,16 @@ function TimetablePage() {
     },
   });
 
-  // Working days & hours from settings or default
   const workingDays = lookups?.settings?.working_days ?? [6, 0, 1, 2, 3, 4];
-  const startHour = lookups?.settings?.day_start_time
-    ? parseInt(String(lookups.settings.day_start_time).slice(0, 2), 10) : 8;
-  const endHour = lookups?.settings?.day_end_time
-    ? parseInt(String(lookups.settings.day_end_time).slice(0, 2), 10) : 20;
+  const { startHour, endHour } = useMemo(
+    () =>
+      resolveTimetableGridHours({
+        settings: lookups?.settings ?? null,
+        templates: lookups?.templates ?? [],
+      }),
+    [lookups?.settings, lookups?.templates],
+  );
 
-  // Availability windows from templates (filtered by selected gridStudy), else from settings day range
   const availability: AvailabilityWindow[] | undefined = useMemo(() => {
     const tpl = (lookups?.templates ?? []).filter(
       (t: any) => t.study_system === gridStudy || t.study_system === "both" || gridStudy === "both",
@@ -164,7 +184,6 @@ function TimetablePage() {
     return (lookups?.offerings ?? []).filter((o: any) => !scheduledOfferingIds.has(o.id));
   }, [sessions, lookups]);
 
-  // Group unscheduled by department > program > level
   const grouped = useMemo(() => {
     const map = new Map<string, Map<string, Map<string, any[]>>>();
     const deptName = (id: string | null) => lookups?.depts.find((d: any) => d.id === id)?.name ?? "—";
@@ -185,7 +204,7 @@ function TimetablePage() {
   }, [unscheduled, lookups]);
 
   const runQuality = async () => {
-    if (!active) return;
+    if (!active || !canLoadData) return;
     setScoring(true);
     try {
       const { result } = await scoreScheduleVersion({ collegeId: active.id, scheduleVersionId: versionId });
@@ -195,9 +214,8 @@ function TimetablePage() {
     finally { setScoring(false); }
   };
 
-  // Drop handler: from unscheduled OR from existing session (move)
   const handleDrop = async (params: { day: number; startTime: string; payload: DropPayload }) => {
-    if (!active || !canManage) return;
+    if (!active || !canManage || !canLoadData) return;
     const { day, startTime, payload } = params;
     if (payload.kind === "unscheduled") {
       const offering = unscheduled.find((o: any) => o.id === payload.id);
@@ -217,7 +235,6 @@ function TimetablePage() {
       setDialogOpen(true);
       return;
     }
-    // Move existing session
     const existing = (sessions ?? []).find((s: any) => s.id === payload.id);
     if (!existing) return;
     if (existing.is_locked) {
@@ -226,7 +243,6 @@ function TimetablePage() {
     }
     const duration = toMin(existing.end_time) - toMin(existing.start_time);
     const newEnd = addMin(startTime, duration);
-    // Validate (excluding self)
     const validation = await validateProposed({
       collegeId: active.id,
       scheduleVersionId: versionId,
@@ -261,6 +277,51 @@ function TimetablePage() {
     qc.invalidateQueries({ queryKey: ["sessions-for-version", versionId] });
   };
 
+  if (!active) {
+    return (
+      <div className="space-y-4" dir="rtl">
+        <p className="rounded-md border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
+          {SCHEDULE_BUILDER_NO_COLLEGE_AR}
+        </p>
+        <Button variant="outline" asChild>
+          <Link to="/schedule-versions"><ArrowRight className="h-4 w-4 ml-1" /> عودة للنسخ</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  if (versionLoading) {
+    return <p className="p-6 text-center text-muted-foreground" dir="rtl">جارٍ التحميل...</p>;
+  }
+
+  if (versionError || !version) {
+    return (
+      <div className="space-y-4" dir="rtl">
+        <p className="rounded-md border border-destructive/40 bg-destructive/5 p-4 text-sm">
+          تعذّر تحميل نسخة الجدول.
+        </p>
+        <Button variant="outline" asChild>
+          <Link to="/schedule-versions"><ArrowRight className="h-4 w-4 ml-1" /> عودة للنسخ</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  if (!collegeMatches) {
+    return (
+      <div className="space-y-4" dir="rtl">
+        <Button variant="ghost" size="sm" asChild>
+          <Link to="/schedule-versions"><ArrowRight className="h-4 w-4 ml-1" /> عودة للنسخ</Link>
+        </Button>
+        <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-4 text-sm">
+          {SCHEDULE_BUILDER_COLLEGE_MISMATCH_AR}
+        </div>
+      </div>
+    );
+  }
+
+  const isLocked = version.status === "published" || version.status === "archived";
+
   return (
     <div className="space-y-4" dir="rtl">
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -269,7 +330,7 @@ function TimetablePage() {
             <Link to="/schedule-versions"><ArrowRight className="h-4 w-4 ml-1" /> عودة للنسخ</Link>
           </Button>
           <h1 className="text-2xl font-bold mt-1">
-            {version?.name ?? "..."} <Badge variant="secondary">{version?.status}</Badge>
+            {version.name} <Badge variant="secondary">{version.status}</Badge>
           </h1>
         </div>
         <div className="flex gap-2 items-end">
@@ -290,15 +351,14 @@ function TimetablePage() {
           <Button disabled={!canManage} onClick={() => { setEditId(null); setPrefill(undefined); setDialogOpen(true); }}>
             <Plus className="h-4 w-4 ml-1" /> محاضرة جديدة
           </Button>
+        </div>
       </div>
 
       {isLocked && (
         <div className="rounded-md border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30 p-3 text-sm">
-          🔒 هذه النسخة <strong>{version?.status === "published" ? "منشورة" : "مؤرشفة"}</strong> — العرض للقراءة فقط. لا يمكن إضافة أو تعديل أو حذف المحاضرات.
+          🔒 هذه النسخة <strong>{version.status === "published" ? "منشورة" : "مؤرشفة"}</strong> — العرض للقراءة فقط. لا يمكن إضافة أو تعديل أو حذف المحاضرات.
         </div>
       )}
-
-      </div>
 
       {quality && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -399,16 +459,15 @@ function TimetablePage() {
         </Card>
       </div>
 
-      {active && (
-        <SessionDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          collegeId={active.id}
-          scheduleVersionId={versionId}
-          sessionId={editId}
-          defaults={prefill}
-        />
-      )}
+      <SessionDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        collegeId={active.id}
+        scheduleVersionId={versionId}
+        sessionId={editId}
+        defaults={prefill}
+        readOnly={dialogReadOnly}
+      />
     </div>
   );
 }
