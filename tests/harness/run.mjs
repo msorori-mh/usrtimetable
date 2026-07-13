@@ -21,6 +21,7 @@ const harnesses = [
   "unauthorized-access-ux.harness.ts",
   "schedule-builder-foundation.harness.ts",
   "schedule-builder-workspace-read-model.harness.ts",
+  "schedule-builder-edit-local-state-ui.harness.ts",
 ];
 
 let exitCode = 0;

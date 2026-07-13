@@ -1,12 +1,12 @@
 /**
- * Schedule Builder — read-only workspace.
- * Loads real schedule data scoped to the active college.
- * No mutations, scheduler, publish, or drag-and-drop.
+ * Schedule Builder workspace — read model + Phase A local edit state/UI.
+ * Pending changes stay in page state only. No mutations, scheduler, publish, or drag-and-drop.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useActiveCollege } from "@/hooks/use-colleges";
+import { useCanManageActiveCollege } from "@/hooks/use-can-manage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,20 +19,45 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TimetableGrid } from "@/components/timetable/timetable-grid";
 import { SessionDetailsSheet } from "@/components/schedule-builder/session-details-sheet";
+import { SessionEditSheet } from "@/components/schedule-builder/session-edit-sheet";
+import { UnsavedLocalChangesDialog } from "@/components/schedule-builder/unsaved-local-changes-dialog";
 import {
   SCHEDULE_BUILDER_WORKSPACE_FILTER_EMPTY_AR,
   SCHEDULE_BUILDER_WORKSPACE_NO_COLLEGE_AR,
   SCHEDULE_BUILDER_WORKSPACE_NO_SESSIONS_AR,
   SCHEDULE_BUILDER_WORKSPACE_NO_TERM_AR,
   SCHEDULE_BUILDER_WORKSPACE_NO_VERSIONS_AR,
+  isScheduleVersionWriteLocked,
   resolveTimetableGridHours,
   shouldLoadWorkspaceCollegeScoped,
   shouldLoadWorkspaceSessions,
   shouldLoadWorkspaceVersions,
+  type ScheduleVersionStatus,
 } from "@/lib/schedule-builder/access";
 import {
+  canEnterEditMode,
+  canOpenSessionForLocalEdit,
+  editModeBlockedReason,
+  SCHEDULE_BUILDER_EDIT_MODE_LABEL_AR,
+  SCHEDULE_BUILDER_EXIT_EDIT_MODE_LABEL_AR,
+  SCHEDULE_BUILDER_NO_DB_SAVE_NOTICE_AR,
+  SCHEDULE_BUILDER_UNSAVED_BADGE_AR,
+  SCHEDULE_BUILDER_VERSION_NOT_EDITABLE_AR,
+} from "@/lib/schedule-builder/edit-access";
+import {
+  applyPendingToSessions,
+  buildPendingChange,
+  hasPendingChanges,
+  toGridSessionsWithPending,
+  validateLocalEditForm,
+  type LocalEditFormValues,
+  type PendingScheduleSessionChange,
+} from "@/lib/schedule-builder/pending-change";
+import {
+  fetchWorkspaceRooms,
   fetchWorkspaceSchedulingSettings,
   fetchWorkspaceSessions,
   fetchWorkspaceTerms,
@@ -46,7 +71,6 @@ import {
   computeWorkspaceStats,
   filterWorkspaceSessions,
   mapWorkspaceSessions,
-  toGridSessions,
   type WorkspaceFilters,
   type WorkspaceSessionView,
 } from "@/lib/schedule-builder/workspace";
@@ -56,7 +80,7 @@ import {
   type SVStatus,
 } from "@/lib/schedule-versions/lifecycle";
 import { STUDY_SYSTEM_LABELS } from "@/lib/reports/filters";
-import { AlertCircle, CalendarRange, RotateCcw } from "lucide-react";
+import { AlertCircle, CalendarRange, Pencil, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/schedule-builder")({
@@ -65,6 +89,12 @@ export const Route = createFileRoute("/_authenticated/schedule-builder")({
 });
 
 const DEFAULT_WORKING_DAYS = [6, 0, 1, 2, 3, 4];
+
+type PendingAction =
+  | { kind: "exit-edit" }
+  | { kind: "set-term"; termId: string }
+  | { kind: "set-version"; versionId: string }
+  | { kind: "set-study-system"; studySystem: WorkspaceStudySystem };
 
 function formatUpdatedAt(iso: string): string {
   try {
@@ -79,6 +109,7 @@ function formatUpdatedAt(iso: string): string {
 
 function ScheduleBuilderWorkspacePage() {
   const { active } = useActiveCollege();
+  const canManageRole = useCanManageActiveCollege();
   const collegeId = active?.id ?? null;
   const canLoadCollege = shouldLoadWorkspaceCollegeScoped(!!collegeId);
 
@@ -88,15 +119,32 @@ function ScheduleBuilderWorkspacePage() {
   const [filters, setFilters] = useState<WorkspaceFilters>(EMPTY_WORKSPACE_FILTERS);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [editSheetOpen, setEditSheetOpen] = useState(false);
+  const [editModeActive, setEditModeActive] = useState(false);
+  const [pending, setPending] = useState<PendingScheduleSessionChange | null>(null);
+  const [unsavedOpen, setUnsavedOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+
+  const clearLocalEditState = useCallback(() => {
+    setPending(null);
+    setSelectedSessionId(null);
+    setDetailsOpen(false);
+    setEditSheetOpen(false);
+  }, []);
+
+  const discardPendingKeepEdit = useCallback(() => {
+    setPending(null);
+    setEditSheetOpen(false);
+  }, []);
 
   // Reset local selection when college changes (page-local only — no DB write).
   useEffect(() => {
     setTermId(null);
     setVersionId(null);
     setFilters(EMPTY_WORKSPACE_FILTERS);
-    setSelectedSessionId(null);
-    setDetailsOpen(false);
-  }, [collegeId]);
+    setEditModeActive(false);
+    clearLocalEditState();
+  }, [collegeId, clearLocalEditState]);
 
   const termsQuery = useQuery({
     queryKey: ["schedule-builder", "terms", collegeId],
@@ -104,7 +152,6 @@ function ScheduleBuilderWorkspacePage() {
     queryFn: () => fetchWorkspaceTerms(collegeId!),
   });
 
-  // Prefer active term once terms load.
   useEffect(() => {
     if (!termsQuery.data?.length) return;
     if (termId && termsQuery.data.some((t) => t.id === termId)) return;
@@ -120,11 +167,9 @@ function ScheduleBuilderWorkspacePage() {
   const versionsQuery = useQuery({
     queryKey: ["schedule-builder", "versions", collegeId, termId],
     enabled: canLoadVersions,
-    queryFn: () =>
-      fetchWorkspaceVersions({ collegeId: collegeId!, termId: termId! }),
+    queryFn: () => fetchWorkspaceVersions({ collegeId: collegeId!, termId: termId! }),
   });
 
-  // Auto-select newest version when term/versions change; clear if list empty.
   useEffect(() => {
     if (!versionsQuery.data) return;
     if (versionsQuery.data.length === 0) {
@@ -150,6 +195,12 @@ function ScheduleBuilderWorkspacePage() {
         versionId: versionId!,
         studySystem,
       }),
+  });
+
+  const roomsQuery = useQuery({
+    queryKey: ["schedule-builder", "rooms", collegeId],
+    enabled: canLoadCollege,
+    queryFn: () => fetchWorkspaceRooms(collegeId!),
   });
 
   const settingsQuery = useQuery({
@@ -182,26 +233,179 @@ function ScheduleBuilderWorkspacePage() {
     [sessionsQuery.data],
   );
 
-  const filterOptions = useMemo(() => buildFilterOptions(allSessions), [allSessions]);
+  const rooms = roomsQuery.data ?? [];
 
-  const filteredSessions = useMemo(
-    () => filterWorkspaceSessions(allSessions, filters),
-    [allSessions, filters],
+  const displaySessions = useMemo(
+    () => applyPendingToSessions(allSessions, pending, rooms),
+    [allSessions, pending, rooms],
   );
 
-  const gridSessions = useMemo(() => toGridSessions(filteredSessions), [filteredSessions]);
+  const filterOptions = useMemo(() => buildFilterOptions(displaySessions), [displaySessions]);
+
+  const filteredSessions = useMemo(
+    () => filterWorkspaceSessions(displaySessions, filters),
+    [displaySessions, filters],
+  );
+
+  const gridSessions = useMemo(
+    () =>
+      toGridSessionsWithPending(
+        filteredSessions,
+        pending,
+        editModeActive ? selectedSessionId : null,
+      ),
+    [filteredSessions, pending, editModeActive, selectedSessionId],
+  );
+
   const stats = useMemo(() => computeWorkspaceStats(allSessions), [allSessions]);
 
   const selectedSession: WorkspaceSessionView | null = useMemo(() => {
+    if (!selectedSessionId) return null;
+    return displaySessions.find((s) => s.id === selectedSessionId) ?? null;
+  }, [displaySessions, selectedSessionId]);
+
+  const originalSelectedSession: WorkspaceSessionView | null = useMemo(() => {
     if (!selectedSessionId) return null;
     return allSessions.find((s) => s.id === selectedSessionId) ?? null;
   }, [allSessions, selectedSessionId]);
 
   const selectedVersion = versionsQuery.data?.find((v) => v.id === versionId) ?? null;
+  const versionStatus = (selectedVersion?.status ?? null) as ScheduleVersionStatus | null;
+  const versionWriteLocked = isScheduleVersionWriteLocked(versionStatus);
+
+  const mayEnterEdit = canEnterEditMode({
+    canManageRole,
+    hasActiveCollege: !!collegeId,
+    versionId,
+    versionStatus,
+  });
+
+  const editBlockedReason = editModeBlockedReason({
+    canManageRole,
+    hasActiveCollege: !!collegeId,
+    versionId,
+    versionStatus,
+  });
+
+  // Drop edit mode if context becomes non-editable (e.g. auto-selected published version).
+  useEffect(() => {
+    if (editModeActive && !mayEnterEdit) {
+      setEditModeActive(false);
+      clearLocalEditState();
+    }
+  }, [editModeActive, mayEnterEdit, clearLocalEditState]);
+
+  // Warn on browser refresh/close when local pending exists.
+  useEffect(() => {
+    if (!hasPendingChanges(pending)) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [pending]);
+
+  const requestWithUnsavedGuard = (action: PendingAction) => {
+    if (hasPendingChanges(pending)) {
+      setPendingAction(action);
+      setUnsavedOpen(true);
+      return;
+    }
+    runPendingAction(action);
+  };
+
+  const runPendingAction = (action: PendingAction) => {
+    switch (action.kind) {
+      case "exit-edit":
+        setEditModeActive(false);
+        clearLocalEditState();
+        break;
+      case "set-term":
+        setTermId(action.termId);
+        setVersionId(null);
+        setFilters(EMPTY_WORKSPACE_FILTERS);
+        setEditModeActive(false);
+        clearLocalEditState();
+        break;
+      case "set-version":
+        setVersionId(action.versionId);
+        setFilters(EMPTY_WORKSPACE_FILTERS);
+        clearLocalEditState();
+        break;
+      case "set-study-system":
+        setStudySystem(action.studySystem);
+        setFilters(EMPTY_WORKSPACE_FILTERS);
+        clearLocalEditState();
+        break;
+    }
+  };
 
   const onSessionClick = (id: string) => {
+    const session = allSessions.find((s) => s.id === id) ?? null;
+    if (
+      editModeActive &&
+      canOpenSessionForLocalEdit({
+        editModeActive: true,
+        canEnterEdit: mayEnterEdit,
+        session,
+      })
+    ) {
+      setSelectedSessionId(id);
+      setDetailsOpen(false);
+      setEditSheetOpen(true);
+      return;
+    }
     setSelectedSessionId(id);
+    setEditSheetOpen(false);
     setDetailsOpen(true);
+  };
+
+  const toggleEditMode = () => {
+    if (editModeActive) {
+      requestWithUnsavedGuard({ kind: "exit-edit" });
+      return;
+    }
+    if (!mayEnterEdit) return;
+    setEditModeActive(true);
+    setDetailsOpen(false);
+    setEditSheetOpen(false);
+    setSelectedSessionId(null);
+  };
+
+  const onApplyLocal = (form: LocalEditFormValues) => {
+    if (!mayEnterEdit || !editModeActive) {
+      return { ok: false as const, message: "وضع التعديل غير متاح." };
+    }
+    const base = originalSelectedSession;
+    if (!base) return { ok: false as const, message: "لم تُحدد جلسة." };
+    if (base.is_locked) {
+      return { ok: false as const, message: "هذه الجلسة مقفلة ولا يمكن تعديلها محليًا." };
+    }
+    const validated = validateLocalEditForm(form, {
+      day_of_week: base.day_of_week,
+      start_time: base.start_time,
+      end_time: base.end_time,
+      room_id: base.room_id,
+    });
+    if (!validated.ok) return validated;
+    setPending(
+      buildPendingChange({
+        session: base,
+        proposed: validated.proposed,
+        changeReason: validated.changeReason,
+      }),
+    );
+    return { ok: true as const };
+  };
+
+  const onCancelSessionChange = () => {
+    setPending(null);
+  };
+
+  const onCancelAllChanges = () => {
+    setPending(null);
+    setEditSheetOpen(false);
   };
 
   const resetFilters = () => setFilters(EMPTY_WORKSPACE_FILTERS);
@@ -210,7 +414,6 @@ function ScheduleBuilderWorkspacePage() {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
-  // --- Guard: no college ---
   if (!collegeId) {
     return (
       <div className="p-6" dir="rtl">
@@ -225,12 +428,77 @@ function ScheduleBuilderWorkspacePage() {
 
   return (
     <div className="flex flex-col gap-4 p-4 md:p-6" dir="rtl">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight">بناء الجدول</h1>
-        <p className="text-sm text-muted-foreground">
-          مساحة عمل قرائية لعرض بيانات الجدول الحالية دون كتابة أو توليد أو إصدار.
-        </p>
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold tracking-tight">بناء الجدول</h1>
+          <p className="text-sm text-muted-foreground">
+            مساحة عمل لعرض الجدول مع وضع تعديل محلي غير محفوظ — دون كتابة على قاعدة البيانات في هذه
+            المرحلة.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {editModeActive ? (
+            <Badge variant="secondary" className="gap-1">
+              <Pencil className="h-3 w-3" aria-hidden />
+              وضع التعديل
+            </Badge>
+          ) : null}
+          {hasPendingChanges(pending) ? (
+            <Badge variant="destructive" aria-label={SCHEDULE_BUILDER_UNSAVED_BADGE_AR}>
+              {SCHEDULE_BUILDER_UNSAVED_BADGE_AR}
+            </Badge>
+          ) : null}
+          {canManageRole ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex">
+                    <Button
+                      type="button"
+                      variant={editModeActive ? "secondary" : "default"}
+                      disabled={!editModeActive && !mayEnterEdit}
+                      onClick={toggleEditMode}
+                      aria-disabled={!editModeActive && !mayEnterEdit}
+                    >
+                      {editModeActive
+                        ? SCHEDULE_BUILDER_EXIT_EDIT_MODE_LABEL_AR
+                        : SCHEDULE_BUILDER_EDIT_MODE_LABEL_AR}
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {!editModeActive && editBlockedReason ? (
+                  <TooltipContent side="bottom" className="max-w-xs">
+                    {editBlockedReason}
+                  </TooltipContent>
+                ) : null}
+              </Tooltip>
+            </TooltipProvider>
+          ) : null}
+          {hasPendingChanges(pending) ? (
+            <Button type="button" variant="outline" size="sm" onClick={onCancelAllChanges}>
+              إلغاء جميع التغييرات
+            </Button>
+          ) : null}
+        </div>
       </header>
+
+      {versionWriteLocked && selectedVersion ? (
+        <div
+          className="rounded-md border border-muted-foreground/30 bg-muted/40 px-3 py-2 text-sm"
+          role="status"
+        >
+          {SCHEDULE_BUILDER_VERSION_NOT_EDITABLE_AR}
+        </div>
+      ) : null}
+
+      {editModeActive ? (
+        <div
+          className="rounded-md border border-dashed border-primary/40 bg-primary/5 px-3 py-2 text-sm text-muted-foreground"
+          role="status"
+        >
+          انقر جلسة لفتح لوحة التعديل المحلي. {SCHEDULE_BUILDER_NO_DB_SAVE_NOTICE_AR}
+        </div>
+      ) : null}
 
       {/* Context bar */}
       <Card>
@@ -245,14 +513,14 @@ function ScheduleBuilderWorkspacePage() {
             ) : termsQuery.isError ? (
               <ErrorInline message="تعذّر تحميل الفصول الدراسية." />
             ) : !termsQuery.data?.length ? (
-              <p className="text-sm text-muted-foreground">{SCHEDULE_BUILDER_WORKSPACE_NO_TERM_AR}</p>
+              <p className="text-sm text-muted-foreground">
+                {SCHEDULE_BUILDER_WORKSPACE_NO_TERM_AR}
+              </p>
             ) : (
               <Select
                 value={termId ?? undefined}
                 onValueChange={(v) => {
-                  setTermId(v);
-                  setVersionId(null);
-                  setFilters(EMPTY_WORKSPACE_FILTERS);
+                  requestWithUnsavedGuard({ kind: "set-term", termId: v });
                 }}
               >
                 <SelectTrigger>
@@ -280,14 +548,14 @@ function ScheduleBuilderWorkspacePage() {
             ) : versionsQuery.isError ? (
               <ErrorInline message="تعذّر تحميل نسخ الجدول." />
             ) : !versionsQuery.data?.length ? (
-              <p className="text-sm text-muted-foreground">{SCHEDULE_BUILDER_WORKSPACE_NO_VERSIONS_AR}</p>
+              <p className="text-sm text-muted-foreground">
+                {SCHEDULE_BUILDER_WORKSPACE_NO_VERSIONS_AR}
+              </p>
             ) : (
               <Select
                 value={versionId ?? undefined}
                 onValueChange={(v) => {
-                  setVersionId(v);
-                  setFilters(EMPTY_WORKSPACE_FILTERS);
-                  setSelectedSessionId(null);
+                  requestWithUnsavedGuard({ kind: "set-version", versionId: v });
                 }}
               >
                 <SelectTrigger>
@@ -309,9 +577,10 @@ function ScheduleBuilderWorkspacePage() {
             <Select
               value={studySystem}
               onValueChange={(v) => {
-                setStudySystem(v as WorkspaceStudySystem);
-                setFilters(EMPTY_WORKSPACE_FILTERS);
-                setSelectedSessionId(null);
+                requestWithUnsavedGuard({
+                  kind: "set-study-system",
+                  studySystem: v as WorkspaceStudySystem,
+                });
               }}
             >
               <SelectTrigger>
@@ -332,20 +601,19 @@ function ScheduleBuilderWorkspacePage() {
           {versionsQuery.data.map((v) => {
             const isSelected = v.id === versionId;
             const isPublished = v.status === "published";
-            const sessionCount =
-              isSelected && sessionsQuery.isSuccess ? allSessions.length : null;
+            const sessionCount = isSelected && sessionsQuery.isSuccess ? allSessions.length : null;
             return (
               <button
                 key={v.id}
                 type="button"
                 onClick={() => {
-                  setVersionId(v.id);
-                  setFilters(EMPTY_WORKSPACE_FILTERS);
-                  setSelectedSessionId(null);
+                  requestWithUnsavedGuard({ kind: "set-version", versionId: v.id });
                 }}
                 className={cn(
                   "text-right rounded-md border p-3 transition-colors",
-                  isSelected ? "border-primary bg-primary/5 ring-1 ring-primary/30" : "hover:bg-muted/40",
+                  isSelected
+                    ? "border-primary bg-primary/5 ring-1 ring-primary/30"
+                    : "hover:bg-muted/40",
                   isPublished && "border-emerald-500/40",
                 )}
               >
@@ -465,7 +733,12 @@ function ScheduleBuilderWorkspacePage() {
             <div className="flex flex-col items-center gap-2 py-10 text-center">
               <AlertCircle className="h-8 w-8 text-destructive" />
               <p className="text-sm text-destructive">فشل تحميل جلسات النسخة المختارة.</p>
-              <Button type="button" variant="outline" size="sm" onClick={() => sessionsQuery.refetch()}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => sessionsQuery.refetch()}
+              >
                 إعادة المحاولة
               </Button>
             </div>
@@ -494,6 +767,45 @@ function ScheduleBuilderWorkspacePage() {
         open={detailsOpen}
         onOpenChange={setDetailsOpen}
         session={selectedSession}
+      />
+
+      <SessionEditSheet
+        open={editSheetOpen && editModeActive && mayEnterEdit}
+        onOpenChange={(open) => {
+          if (!open) setEditSheetOpen(false);
+        }}
+        session={originalSelectedSession}
+        rooms={rooms}
+        workingDays={workingDays}
+        versionName={selectedVersion?.name ?? null}
+        pending={pending}
+        onApplyLocal={onApplyLocal}
+        onCancelChange={onCancelSessionChange}
+      />
+
+      <UnsavedLocalChangesDialog
+        open={unsavedOpen}
+        onOpenChange={setUnsavedOpen}
+        title="تغييرات محلية غير محفوظة"
+        description="توجد تغييرات محلية غير محفوظة. الحفظ غير متاح في هذه المرحلة. يمكنك المتابعة في التعديل أو تجاهل التغييرات."
+        stayLabel="متابعة التعديل"
+        discardLabel={
+          pendingAction?.kind === "exit-edit"
+            ? "تجاهل التغييرات والخروج"
+            : "تجاهل التغييرات والمتابعة"
+        }
+        onStay={() => {
+          setUnsavedOpen(false);
+          setPendingAction(null);
+        }}
+        onDiscard={() => {
+          const action = pendingAction;
+          setUnsavedOpen(false);
+          setPendingAction(null);
+          setPending(null);
+          if (action) runPendingAction(action);
+          else discardPendingKeepEdit();
+        }}
       />
     </div>
   );
@@ -549,15 +861,7 @@ function FilterSelect({
   );
 }
 
-function EmptyState({
-  icon,
-  title,
-  message,
-}: {
-  icon: ReactNode;
-  title: string;
-  message: string;
-}) {
+function EmptyState({ icon, title, message }: { icon: ReactNode; title: string; message: string }) {
   return (
     <Card>
       <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
