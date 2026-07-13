@@ -244,7 +244,7 @@ const NAV: NavItem[] = [
     group: "التهيئة الأكاديمية",
   },
   {
-    to: "/schedule-versions",
+    to: "/schedule-builder",
     label: "بناء الجدول",
     icon: <CalendarRange className="h-4 w-4" />,
     roles: ALL,

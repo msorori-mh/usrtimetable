@@ -32,14 +32,12 @@ function readSrc(rel: string) {
 function run() {
   // --- Navigation ---
   assert(SCHEDULE_BUILDER_NAV_LABEL_AR === "بناء الجدول", "nav label");
-  assert(SCHEDULE_BUILDER_NAV_TO === "/schedule-versions", "nav targets versions (no fixed version id)");
+  assert(SCHEDULE_BUILDER_NAV_TO === "/schedule-builder", "nav targets schedule-builder (no fixed version id)");
   const layout = readSrc("src/components/app-layout.tsx");
   assert(layout.includes('label: "بناء الجدول"'), "layout has بناء الجدول");
   assert(
-    /label:\s*"بناء الجدول"[\s\S]*?to:\s*"\/schedule-versions"|to:\s*"\/schedule-versions"[\s\S]*?label:\s*"بناء الجدول"/.test(
-      layout,
-    ) || (layout.includes('label: "بناء الجدول"') && layout.includes('to: "/schedule-versions"')),
-    "nav entry points at /schedule-versions",
+    layout.includes('label: "بناء الجدول"') && layout.includes('to: "/schedule-builder"'),
+    "nav entry points at /schedule-builder",
   );
 
   // --- College mismatch / load gate ---

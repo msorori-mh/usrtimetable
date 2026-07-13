@@ -25,6 +25,7 @@ import { Route as AuthenticatedSectionsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedSchedulingSettingsRouteImport } from './routes/_authenticated/scheduling-settings'
 import { Route as AuthenticatedScheduleVersionsRouteImport } from './routes/_authenticated/schedule-versions'
 import { Route as AuthenticatedScheduleQualityRouteImport } from './routes/_authenticated/schedule-quality'
+import { Route as AuthenticatedScheduleBuilderRouteImport } from './routes/_authenticated/schedule-builder'
 import { Route as AuthenticatedRoomsRouteImport } from './routes/_authenticated/rooms'
 import { Route as AuthenticatedRoomTypesRouteImport } from './routes/_authenticated/room-types'
 import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
@@ -151,6 +152,12 @@ const AuthenticatedScheduleQualityRoute =
   AuthenticatedScheduleQualityRouteImport.update({
     id: '/schedule-quality',
     path: '/schedule-quality',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedScheduleBuilderRoute =
+  AuthenticatedScheduleBuilderRouteImport.update({
+    id: '/schedule-builder',
+    path: '/schedule-builder',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedRoomsRoute = AuthenticatedRoomsRouteImport.update({
@@ -413,6 +420,7 @@ export interface FileRoutesByFullPath {
   '/reports': typeof AuthenticatedReportsRouteWithChildren
   '/room-types': typeof AuthenticatedRoomTypesRoute
   '/rooms': typeof AuthenticatedRoomsRoute
+  '/schedule-builder': typeof AuthenticatedScheduleBuilderRoute
   '/schedule-quality': typeof AuthenticatedScheduleQualityRoute
   '/schedule-versions': typeof AuthenticatedScheduleVersionsRoute
   '/scheduling-settings': typeof AuthenticatedSchedulingSettingsRoute
@@ -469,6 +477,7 @@ export interface FileRoutesByTo {
   '/published-schedules': typeof AuthenticatedPublishedSchedulesRoute
   '/room-types': typeof AuthenticatedRoomTypesRoute
   '/rooms': typeof AuthenticatedRoomsRoute
+  '/schedule-builder': typeof AuthenticatedScheduleBuilderRoute
   '/schedule-quality': typeof AuthenticatedScheduleQualityRoute
   '/schedule-versions': typeof AuthenticatedScheduleVersionsRoute
   '/scheduling-settings': typeof AuthenticatedSchedulingSettingsRoute
@@ -528,6 +537,7 @@ export interface FileRoutesById {
   '/_authenticated/reports': typeof AuthenticatedReportsRouteWithChildren
   '/_authenticated/room-types': typeof AuthenticatedRoomTypesRoute
   '/_authenticated/rooms': typeof AuthenticatedRoomsRoute
+  '/_authenticated/schedule-builder': typeof AuthenticatedScheduleBuilderRoute
   '/_authenticated/schedule-quality': typeof AuthenticatedScheduleQualityRoute
   '/_authenticated/schedule-versions': typeof AuthenticatedScheduleVersionsRoute
   '/_authenticated/scheduling-settings': typeof AuthenticatedSchedulingSettingsRoute
@@ -587,6 +597,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/room-types'
     | '/rooms'
+    | '/schedule-builder'
     | '/schedule-quality'
     | '/schedule-versions'
     | '/scheduling-settings'
@@ -643,6 +654,7 @@ export interface FileRouteTypes {
     | '/published-schedules'
     | '/room-types'
     | '/rooms'
+    | '/schedule-builder'
     | '/schedule-quality'
     | '/schedule-versions'
     | '/scheduling-settings'
@@ -701,6 +713,7 @@ export interface FileRouteTypes {
     | '/_authenticated/reports'
     | '/_authenticated/room-types'
     | '/_authenticated/rooms'
+    | '/_authenticated/schedule-builder'
     | '/_authenticated/schedule-quality'
     | '/_authenticated/schedule-versions'
     | '/_authenticated/scheduling-settings'
@@ -848,6 +861,13 @@ declare module '@tanstack/react-router' {
       path: '/schedule-quality'
       fullPath: '/schedule-quality'
       preLoaderRoute: typeof AuthenticatedScheduleQualityRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/schedule-builder': {
+      id: '/_authenticated/schedule-builder'
+      path: '/schedule-builder'
+      fullPath: '/schedule-builder'
+      preLoaderRoute: typeof AuthenticatedScheduleBuilderRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/rooms': {
@@ -1205,6 +1225,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedReportsRoute: typeof AuthenticatedReportsRouteWithChildren
   AuthenticatedRoomTypesRoute: typeof AuthenticatedRoomTypesRoute
   AuthenticatedRoomsRoute: typeof AuthenticatedRoomsRoute
+  AuthenticatedScheduleBuilderRoute: typeof AuthenticatedScheduleBuilderRoute
   AuthenticatedScheduleQualityRoute: typeof AuthenticatedScheduleQualityRoute
   AuthenticatedScheduleVersionsRoute: typeof AuthenticatedScheduleVersionsRoute
   AuthenticatedSchedulingSettingsRoute: typeof AuthenticatedSchedulingSettingsRoute
@@ -1248,6 +1269,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedReportsRoute: AuthenticatedReportsRouteWithChildren,
   AuthenticatedRoomTypesRoute: AuthenticatedRoomTypesRoute,
   AuthenticatedRoomsRoute: AuthenticatedRoomsRoute,
+  AuthenticatedScheduleBuilderRoute: AuthenticatedScheduleBuilderRoute,
   AuthenticatedScheduleQualityRoute: AuthenticatedScheduleQualityRoute,
   AuthenticatedScheduleVersionsRoute: AuthenticatedScheduleVersionsRoute,
   AuthenticatedSchedulingSettingsRoute: AuthenticatedSchedulingSettingsRoute,

@@ -3,12 +3,49 @@
  */
 
 export const SCHEDULE_BUILDER_NAV_LABEL_AR = "بناء الجدول";
-export const SCHEDULE_BUILDER_NAV_TO = "/schedule-versions" as const;
+export const SCHEDULE_BUILDER_NAV_TO = "/schedule-builder" as const;
 
 export const SCHEDULE_BUILDER_COLLEGE_MISMATCH_AR =
   "نسخة الجدول لا تنتمي إلى الكلية النشطة. اختر الكلية الصحيحة من المبدّل أو افتح نسخة من نسخ هذه الكلية.";
 
 export const SCHEDULE_BUILDER_NO_COLLEGE_AR = "اختر كلية نشطة لعرض محرر الجدول.";
+
+export const SCHEDULE_BUILDER_WORKSPACE_NO_COLLEGE_AR =
+  "اختر كلية نشطة لعرض مساحة بناء الجدول.";
+
+export const SCHEDULE_BUILDER_WORKSPACE_NO_TERM_AR =
+  "لا توجد فصول دراسية لهذه الكلية. أضف فصلًا دراسيًا أولًا.";
+
+export const SCHEDULE_BUILDER_WORKSPACE_NO_VERSIONS_AR =
+  "لا توجد نسخ جدول للفصل المختار.";
+
+export const SCHEDULE_BUILDER_WORKSPACE_NO_SESSIONS_AR =
+  "النسخة المختارة لا تحتوي على جلسات مجدولة.";
+
+export const SCHEDULE_BUILDER_WORKSPACE_FILTER_EMPTY_AR =
+  "لا توجد جلسات تطابق المرشحات الحالية.";
+
+/** Terms / versions / sessions load only after an active college is set. */
+export function shouldLoadWorkspaceCollegeScoped(hasActiveCollege: boolean): boolean {
+  return !!hasActiveCollege;
+}
+
+/** Version list requires college + selected term. */
+export function shouldLoadWorkspaceVersions(opts: {
+  hasActiveCollege: boolean;
+  termId: string | null | undefined;
+}): boolean {
+  return !!opts.hasActiveCollege && !!opts.termId;
+}
+
+/** Session grid requires college + term + version. */
+export function shouldLoadWorkspaceSessions(opts: {
+  hasActiveCollege: boolean;
+  termId: string | null | undefined;
+  versionId: string | null | undefined;
+}): boolean {
+  return !!opts.hasActiveCollege && !!opts.termId && !!opts.versionId;
+}
 
 export const SCHEDULE_BUILDER_DEFAULT_START_HOUR = 8;
 export const SCHEDULE_BUILDER_DEFAULT_END_HOUR = 14;
