@@ -18,6 +18,7 @@ const harnesses = [
   "weekly-time-templates.harness.ts",
   "terminology-labels.harness.ts",
   "time-templates-college-context-sync.harness.ts",
+  "unauthorized-access-ux.harness.ts",
 ];
 
 let exitCode = 0;

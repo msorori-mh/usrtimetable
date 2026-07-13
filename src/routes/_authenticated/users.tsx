@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
@@ -10,6 +10,11 @@ import {
   adminListUserMeta,
   adminSetUserEnabled,
 } from "@/lib/users.functions";
+import { UnauthorizedAccess } from "@/components/unauthorized-access";
+import {
+  resolveSuperAdminPageAccess,
+  shouldLoadSuperAdminPageData,
+} from "@/lib/unauthorized-access";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -64,7 +69,9 @@ type UserRow = {
 };
 
 function UsersPage() {
-  const { data: me } = useCurrentUser();
+  const { data: me, isLoading: meLoading } = useCurrentUser();
+  const pageAccess = resolveSuperAdminPageAccess(me, meLoading);
+  const canLoadAdminData = shouldLoadSuperAdminPageData(pageAccess);
   const qc = useQueryClient();
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -78,7 +85,7 @@ function UsersPage() {
 
   const { data: users, isLoading } = useQuery({
     queryKey: ["all-users-admin"],
-    enabled: !!me?.isSuperAdmin,
+    enabled: canLoadAdminData,
     queryFn: async (): Promise<UserRow[]> => {
       const [{ data: profiles }, { data: roles }, { data: ucs }, meta] = await Promise.all([
         supabase.from("profiles").select("id, full_name, email, created_at").order("created_at"),
@@ -102,7 +109,9 @@ function UsersPage() {
 
   const { data: colleges } = useQuery({
     queryKey: ["colleges-min"],
-    queryFn: async () => (await supabase.from("colleges").select("id, name").order("name")).data ?? [],
+    enabled: canLoadAdminData,
+    queryFn: async () =>
+      (await supabase.from("colleges").select("id, name").order("name")).data ?? [],
   });
 
   const setRole = useMutation({
@@ -210,7 +219,12 @@ function UsersPage() {
     });
   }, [users, search, roleFilter, collegeFilter]);
 
-  if (me && !me.isSuperAdmin) throw redirect({ to: "/dashboard" });
+  if (pageAccess === "loading") {
+    return <p className="p-6 text-center text-muted-foreground">جارٍ التحميل...</p>;
+  }
+  if (pageAccess === "forbidden") {
+    return <UnauthorizedAccess />;
+  }
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -537,8 +551,7 @@ function CreateUserDialog({
   };
 
   const generatePassword = () => {
-    const chars =
-      "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%";
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%";
     let s = "";
     for (let i = 0; i < 14; i++) s += chars[Math.floor(Math.random() * chars.length)];
     setForm((f) => ({ ...f, password: s }));
