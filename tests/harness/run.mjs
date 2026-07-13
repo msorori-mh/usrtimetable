@@ -20,6 +20,7 @@ const harnesses = [
   "time-templates-college-context-sync.harness.ts",
   "unauthorized-access-ux.harness.ts",
   "schedule-builder-foundation.harness.ts",
+  "schedule-builder-workspace-read-model.harness.ts",
 ];
 
 let exitCode = 0;
