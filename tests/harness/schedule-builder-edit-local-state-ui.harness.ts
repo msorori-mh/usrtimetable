@@ -69,12 +69,20 @@ function sampleSession(
   };
 }
 
-function forbidWritePatterns(src: string, label: string) {
+function forbidWritePatterns(src: string, label: string, opts?: { allowSessionMoveRpc?: boolean }) {
   assert(!src.includes(".insert("), `${label}: no insert`);
   assert(!src.includes(".update("), `${label}: no update`);
   assert(!src.includes(".delete("), `${label}: no delete`);
   assert(!src.includes(".upsert("), `${label}: no upsert`);
-  assert(!/\.rpc\s*\(/.test(src), `${label}: no rpc`);
+  if (opts?.allowSessionMoveRpc) {
+    const stripped = src
+      .replace(/\.rpc\(\s*"validate_schedule_session_move"/g, ".RPC_OK(")
+      .replace(/\.rpc\(\s*"move_or_reschedule_schedule_session"/g, ".RPC_OK(");
+    // Page may import helpers that call rpc; still forbid direct table writes above.
+    assert(!/\.rpc\s*\(/.test(stripped), `${label}: only session-move rpcs allowed`);
+  } else {
+    assert(!/\.rpc\s*\(/.test(src), `${label}: no rpc`);
+  }
   assert(!src.includes("mutationFn"), `${label}: no mutationFn`);
   assert(!src.includes("useMutation"), `${label}: no useMutation`);
   assert(!src.includes("run_auto_schedule"), `${label}: no auto-schedule`);
@@ -203,10 +211,10 @@ function run() {
       page.includes("SCHEDULE_BUILDER_EXIT_EDIT_MODE_LABEL_AR"),
     "exit edit label",
   );
-  forbidWritePatterns(page, "schedule-builder page");
+  forbidWritePatterns(page, "schedule-builder page", { allowSessionMoveRpc: true });
   forbidWritePatterns(editAccess, "edit-access");
   forbidWritePatterns(pendingSrc, "pending-change");
-  forbidWritePatterns(editSheet, "session-edit-sheet");
+  forbidWritePatterns(editSheet, "session-edit-sheet", { allowSessionMoveRpc: true });
   forbidWritePatterns(unsavedDlg, "unsaved dialog");
 
   // 7–8. View → details; Edit → edit sheet
@@ -233,7 +241,7 @@ function run() {
   assert(editSheet.includes("وقت النهاية"), "end time field");
   assert(editSheet.includes("القاعة"), "room field");
   assert(editSheet.includes("تطبيق محليًا"), "apply local button");
-  assert(!editSheet.includes("حفظ التغييرات"), "no save changes button");
+  assert(!editSheet.includes("حفظ التغييرات"), "no generic save-all wording");
   assert(!editSheet.includes("تم الحفظ"), "no saved copy");
 
   const session = sampleSession({ id: "sess-1" });
@@ -318,9 +326,12 @@ function run() {
   );
   assert(grid[0].badge?.includes("محدد") === true, "selected marker not color-only");
 
-  // 19. original data not treated as saved — no cache mutation APIs in page
+  // 19. original data not treated as saved via optimistic cache rewrite
   assert(!page.includes("queryClient.setQueryData"), "no query cache mutation");
-  assert(!page.includes("invalidateQueries"), "no invalidate implying save");
+  assert(
+    page.includes("invalidateQueries") && page.includes("moveOrRescheduleScheduleSession"),
+    "invalidate only after RPC save path",
+  );
 
   // 20. cancel restores — clearing pending returns original display
   const cleared = applyPendingToSessions([session], null, rooms);
@@ -342,12 +353,10 @@ function run() {
     "pending cleared on context change",
   );
 
-  // 24. no effective Save button
-  assert(
-    !editSheet.includes(">حفظ<") && !editSheet.includes("حفظ التغييرات"),
-    "no save button in edit sheet",
-  );
-  assert(!page.includes("حفظ التغييرات"), "no save on page");
+  // 24. no generic Save-all button; RPC save is explicit «حفظ التغيير»
+  assert(!editSheet.includes("حفظ التغييرات"), "no save-all button in edit sheet");
+  assert(editSheet.includes("حفظ التغيير"), "explicit single-session save button");
+  assert(!page.includes("حفظ التغييرات"), "no save-all on page");
 
   // 25–27. no DB writes / scheduler / publish actions in phase files
   assert(
@@ -404,12 +413,14 @@ function run() {
   );
 
   // Copy guards
-  assert(SCHEDULE_BUILDER_LOCAL_ONLY_NOTICE_AR.includes("محلي"), "local-only notice");
-  assert(SCHEDULE_BUILDER_NO_DB_SAVE_NOTICE_AR.includes("قاعدة البيانات"), "no-db-save notice");
+  assert(SCHEDULE_BUILDER_LOCAL_ONLY_NOTICE_AR.includes("محلي"), "local-only notice constant");
   assert(
-    editSheet.includes("SCHEDULE_BUILDER_LOCAL_ONLY_NOTICE_AR") ||
-      editSheet.includes(SCHEDULE_BUILDER_LOCAL_ONLY_NOTICE_AR),
-    "notice in sheet",
+    SCHEDULE_BUILDER_NO_DB_SAVE_NOTICE_AR.includes("قاعدة البيانات"),
+    "no-db-save notice constant",
+  );
+  assert(
+    editSheet.includes("افحص التعارضات قبل الحفظ") || editSheet.includes("فحص التعارضات"),
+    "conflict/save notice in sheet",
   );
 
   // No localStorage

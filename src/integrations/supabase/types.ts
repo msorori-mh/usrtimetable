@@ -2359,9 +2359,32 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      move_or_reschedule_schedule_session: {
+        Args: {
+          p_session_id: string
+          p_expected_updated_at: string | null
+          p_target_day_of_week: number
+          p_target_start_time: string
+          p_target_end_time: string
+          p_target_room_id: string | null
+          p_change_reason?: string | null
+        }
+        Returns: Json
+      }
       user_in_college: {
         Args: { _college_id: string; _user_id: string }
         Returns: boolean
+      }
+      validate_schedule_session_move: {
+        Args: {
+          p_session_id: string
+          p_expected_updated_at: string | null
+          p_target_day_of_week: number
+          p_target_start_time: string
+          p_target_end_time: string
+          p_target_room_id: string | null
+        }
+        Returns: Json
       }
     }
     Enums: {

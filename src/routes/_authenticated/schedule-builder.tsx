@@ -1,10 +1,11 @@
 /**
- * Schedule Builder workspace — read model + Phase A local edit state/UI.
- * Pending changes stay in page state only. No mutations, scheduler, publish, or drag-and-drop.
+ * Schedule Builder workspace — read model + local edit + conflict validate/save via RPC.
+ * No direct schedule_sessions updates, no scheduler, publish, or drag-and-drop.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { useCanManageActiveCollege } from "@/hooks/use-can-manage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -57,6 +58,12 @@ import {
   type PendingScheduleSessionChange,
 } from "@/lib/schedule-builder/pending-change";
 import {
+  canSaveAfterValidation,
+  moveOrRescheduleScheduleSession,
+  validateScheduleSessionMove,
+  type ValidateSessionMoveResult,
+} from "@/lib/schedule-builder/session-move-rpc";
+import {
   fetchWorkspaceRooms,
   fetchWorkspaceSchedulingSettings,
   fetchWorkspaceSessions,
@@ -108,6 +115,7 @@ function formatUpdatedAt(iso: string): string {
 }
 
 function ScheduleBuilderWorkspacePage() {
+  const queryClient = useQueryClient();
   const { active } = useActiveCollege();
   const canManageRole = useCanManageActiveCollege();
   const collegeId = active?.id ?? null;
@@ -122,11 +130,17 @@ function ScheduleBuilderWorkspacePage() {
   const [editSheetOpen, setEditSheetOpen] = useState(false);
   const [editModeActive, setEditModeActive] = useState(false);
   const [pending, setPending] = useState<PendingScheduleSessionChange | null>(null);
+  const [validation, setValidation] = useState<ValidateSessionMoveResult | null>(null);
+  const [validateLoading, setValidateLoading] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [unsavedOpen, setUnsavedOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
 
   const clearLocalEditState = useCallback(() => {
     setPending(null);
+    setValidation(null);
+    setSaveMessage(null);
     setSelectedSessionId(null);
     setDetailsOpen(false);
     setEditSheetOpen(false);
@@ -134,6 +148,8 @@ function ScheduleBuilderWorkspacePage() {
 
   const discardPendingKeepEdit = useCallback(() => {
     setPending(null);
+    setValidation(null);
+    setSaveMessage(null);
     setEditSheetOpen(false);
   }, []);
 
@@ -396,16 +412,104 @@ function ScheduleBuilderWorkspacePage() {
         changeReason: validated.changeReason,
       }),
     );
+    setValidation(null);
+    setSaveMessage(null);
     return { ok: true as const };
   };
 
   const onCancelSessionChange = () => {
     setPending(null);
+    setValidation(null);
+    setSaveMessage(null);
   };
 
   const onCancelAllChanges = () => {
     setPending(null);
+    setValidation(null);
+    setSaveMessage(null);
     setEditSheetOpen(false);
+  };
+
+  const onValidateConflicts = async () => {
+    if (!pending || !hasPendingChanges(pending) || !mayEnterEdit) return;
+    setValidateLoading(true);
+    setSaveMessage(null);
+    try {
+      const result = await validateScheduleSessionMove(pending);
+      setValidation(result);
+      if (result.stale) {
+        toast.error(result.message_ar ?? "الجلسة أصبحت قديمة.");
+      } else if (!result.valid) {
+        toast.error(result.message_ar ?? "توجد تعارضات أو قيود تمنع الحفظ.");
+      } else {
+        toast.success("التحقق ناجح — لا توجد تعارضات مانعة.");
+      }
+    } catch {
+      setValidation({
+        valid: false,
+        blocking_conflicts: [],
+        warnings: [],
+        approved_exceptions: [],
+        stale: false,
+        normalized_proposal: null,
+        code: "RPC_ERROR",
+        message_ar: "فشل الاتصال أثناء فحص التعارضات.",
+      });
+      toast.error("فشل الاتصال أثناء فحص التعارضات.");
+    } finally {
+      setValidateLoading(false);
+    }
+  };
+
+  const onSaveChange = async () => {
+    if (!pending || !hasPendingChanges(pending) || !mayEnterEdit) return;
+    if (!canSaveAfterValidation(validation)) {
+      toast.error("افحص التعارضات بنجاح قبل الحفظ.");
+      return;
+    }
+    setSaveLoading(true);
+    setSaveMessage(null);
+    try {
+      const result = await moveOrRescheduleScheduleSession(pending);
+      if (result.ok) {
+        setPending(null);
+        setValidation(null);
+        setSaveMessage("تم حفظ التغيير بنجاح.");
+        toast.success("تم حفظ تغيير الجلسة.");
+        await queryClient.invalidateQueries({ queryKey: ["schedule-builder"] });
+        return;
+      }
+      if (result.blocking_conflicts.length || result.warnings.length) {
+        setValidation({
+          valid: false,
+          blocking_conflicts: result.blocking_conflicts,
+          warnings: result.warnings,
+          approved_exceptions: result.approved_exceptions,
+          stale: result.stale,
+          normalized_proposal: null,
+          code: result.code,
+          message_ar: result.message_ar,
+        });
+      } else if (result.stale) {
+        setValidation({
+          valid: false,
+          blocking_conflicts: [],
+          warnings: [],
+          approved_exceptions: [],
+          stale: true,
+          normalized_proposal: null,
+          code: result.code ?? "STALE_SESSION",
+          message_ar: result.message_ar,
+        });
+      }
+      setSaveMessage(result.message_ar ?? "تعذّر الحفظ. بقي التغيير المحلي غير محفوظ.");
+      toast.error(result.message_ar ?? "تعذّر حفظ التغيير.");
+    } catch {
+      setSaveMessage("فشل الاتصال أثناء الحفظ. بقي التغيير المحلي.");
+      toast.error("فشل الاتصال أثناء الحفظ.");
+    } finally {
+      setSaveLoading(false);
+    }
   };
 
   const resetFilters = () => setFilters(EMPTY_WORKSPACE_FILTERS);
@@ -432,8 +536,7 @@ function ScheduleBuilderWorkspacePage() {
         <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight">بناء الجدول</h1>
           <p className="text-sm text-muted-foreground">
-            مساحة عمل لعرض الجدول مع وضع تعديل محلي غير محفوظ — دون كتابة على قاعدة البيانات في هذه
-            المرحلة.
+            مساحة عمل لتعديل الجلسات محليًا ثم فحص التعارضات والحفظ الآمن عبر RPC.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -496,7 +599,11 @@ function ScheduleBuilderWorkspacePage() {
           className="rounded-md border border-dashed border-primary/40 bg-primary/5 px-3 py-2 text-sm text-muted-foreground"
           role="status"
         >
-          انقر جلسة لفتح لوحة التعديل المحلي. {SCHEDULE_BUILDER_NO_DB_SAVE_NOTICE_AR}
+          انقر جلسة لفتح لوحة التعديل. طبّق محليًا ثم افحص التعارضات قبل الحفظ.{" "}
+          {SCHEDULE_BUILDER_NO_DB_SAVE_NOTICE_AR.replace(
+            "ضمن هذه المرحلة",
+            "إلا عبر زر الحفظ الآمن",
+          )}
         </div>
       ) : null}
 
@@ -779,15 +886,21 @@ function ScheduleBuilderWorkspacePage() {
         workingDays={workingDays}
         versionName={selectedVersion?.name ?? null}
         pending={pending}
+        validation={validation}
+        validateLoading={validateLoading}
+        saveLoading={saveLoading}
+        saveMessage={saveMessage}
         onApplyLocal={onApplyLocal}
         onCancelChange={onCancelSessionChange}
+        onValidateConflicts={onValidateConflicts}
+        onSaveChange={onSaveChange}
       />
 
       <UnsavedLocalChangesDialog
         open={unsavedOpen}
         onOpenChange={setUnsavedOpen}
         title="تغييرات محلية غير محفوظة"
-        description="توجد تغييرات محلية غير محفوظة. الحفظ غير متاح في هذه المرحلة. يمكنك المتابعة في التعديل أو تجاهل التغييرات."
+        description="توجد تغييرات محلية غير محفوظة. يمكنك المتابعة في التعديل أو تجاهل التغييرات. الحفظ يتم فقط عبر زر حفظ التغيير بعد فحص التعارضات."
         stayLabel="متابعة التعديل"
         discardLabel={
           pendingAction?.kind === "exit-edit"
@@ -803,6 +916,8 @@ function ScheduleBuilderWorkspacePage() {
           setUnsavedOpen(false);
           setPendingAction(null);
           setPending(null);
+          setValidation(null);
+          setSaveMessage(null);
           if (action) runPendingAction(action);
           else discardPendingKeepEdit();
         }}

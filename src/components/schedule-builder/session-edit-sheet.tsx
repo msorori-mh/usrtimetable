@@ -1,6 +1,5 @@
 /**
- * Local edit sheet for Schedule Builder — applies pending changes in page state only.
- * No save / mutation / DB write.
+ * Schedule Builder session edit sheet — local pending + conflict validate + RPC save.
  */
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -27,11 +26,7 @@ import { SESSION_TYPE_LABELS, SESSION_STUDY_SYSTEM_LABELS } from "@/lib/reports/
 import { DAY_NAMES_AR } from "@/lib/reports/formatters";
 import type { WorkspaceSessionView } from "@/lib/schedule-builder/workspace";
 import type { WorkspaceRoomOption } from "@/lib/schedule-builder/queries";
-import {
-  SCHEDULE_BUILDER_LOCAL_ONLY_NOTICE_AR,
-  SCHEDULE_BUILDER_NO_DB_SAVE_NOTICE_AR,
-  SCHEDULE_BUILDER_UNSAVED_BADGE_AR,
-} from "@/lib/schedule-builder/edit-access";
+import { SCHEDULE_BUILDER_UNSAVED_BADGE_AR } from "@/lib/schedule-builder/edit-access";
 import {
   buildBeforeAfterRows,
   formValuesFromSession,
@@ -39,12 +34,48 @@ import {
   type LocalEditFormValues,
   type PendingScheduleSessionChange,
 } from "@/lib/schedule-builder/pending-change";
+import {
+  canSaveAfterValidation,
+  type SessionMoveConflict,
+  type ValidateSessionMoveResult,
+} from "@/lib/schedule-builder/session-move-rpc";
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="grid grid-cols-[7rem_1fr] gap-2 text-sm py-1.5 border-b border-border/50 last:border-0">
       <dt className="text-muted-foreground">{label}</dt>
       <dd className="font-medium break-words">{value || "—"}</dd>
+    </div>
+  );
+}
+
+function ConflictList({
+  title,
+  items,
+  variant,
+}: {
+  title: string;
+  items: SessionMoveConflict[];
+  variant: "destructive" | "secondary" | "outline";
+}) {
+  if (items.length === 0) return null;
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-medium">{title}</p>
+      <ul className="space-y-2">
+        {items.map((c, i) => (
+          <li key={`${c.code}-${i}`} className="rounded-md border p-2 text-sm space-y-1">
+            <div className="flex flex-wrap gap-2 items-center">
+              <Badge variant={variant}>{c.code}</Badge>
+              {c.approved_exception ? <Badge variant="outline">استثناء معتمد</Badge> : null}
+            </div>
+            <p>{c.message_ar ?? c.message_en ?? c.code}</p>
+            {c.exception_reason ? (
+              <p className="text-xs text-muted-foreground">سبب الاستثناء: {c.exception_reason}</p>
+            ) : null}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -57,8 +88,14 @@ export function SessionEditSheet({
   workingDays,
   versionName,
   pending,
+  validation,
+  validateLoading,
+  saveLoading,
+  saveMessage,
   onApplyLocal,
   onCancelChange,
+  onValidateConflicts,
+  onSaveChange,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -67,8 +104,14 @@ export function SessionEditSheet({
   workingDays: number[];
   versionName: string | null;
   pending: PendingScheduleSessionChange | null;
+  validation: ValidateSessionMoveResult | null;
+  validateLoading: boolean;
+  saveLoading: boolean;
+  saveMessage: string | null;
   onApplyLocal: (form: LocalEditFormValues) => { ok: true } | { ok: false; message: string };
   onCancelChange: () => void;
+  onValidateConflicts: () => void;
+  onSaveChange: () => void;
 }) {
   const [form, setForm] = useState<LocalEditFormValues>(() =>
     session
@@ -89,7 +132,6 @@ export function SessionEditSheet({
       ? pending
       : null;
 
-  // Sync form when opening a session or when pending is cleared/applied externally.
   useEffect(() => {
     if (!session || !open) return;
     if (sessionPending) {
@@ -105,7 +147,6 @@ export function SessionEditSheet({
     }
     setError(null);
     setAppliedNotice(null);
-    // Intentionally key off session id + pending identity/dirty, not every form keystroke.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- pending snapshot sync only
   }, [
     session?.id,
@@ -148,6 +189,9 @@ export function SessionEditSheet({
     ? (SESSION_STUDY_SYSTEM_LABELS[session.study_system] ?? session.study_system)
     : "";
 
+  const saveEnabled =
+    !!sessionPending && !validateLoading && !saveLoading && canSaveAfterValidation(validation);
+
   const handleApply = () => {
     if (!session) return;
     const result = onApplyLocal(form);
@@ -157,7 +201,7 @@ export function SessionEditSheet({
       return;
     }
     setError(null);
-    setAppliedNotice("تم تطبيق التغيير محليًا.");
+    setAppliedNotice("تم تطبيق التغيير محليًا. افحص التعارضات قبل الحفظ.");
   };
 
   const handleCancelChange = () => {
@@ -172,7 +216,7 @@ export function SessionEditSheet({
       <SheetContent side="left" className="w-full sm:max-w-md overflow-y-auto" dir="rtl">
         <SheetHeader>
           <SheetTitle className="flex flex-wrap items-center gap-2">
-            تعديل الجلسة (محلي)
+            تعديل الجلسة
             {sessionPending ? (
               <Badge variant="destructive" aria-label={SCHEDULE_BUILDER_UNSAVED_BADGE_AR}>
                 {SCHEDULE_BUILDER_UNSAVED_BADGE_AR}
@@ -180,15 +224,15 @@ export function SessionEditSheet({
             ) : null}
           </SheetTitle>
           <SheetDescription>
-            اقتراح يوم ووقت وقاعة داخل الصفحة فقط — دون حفظ في النظام.
+            اقتراح محلي ثم فحص تعارضات وحفظ آمن عبر RPC — دون تحديث مباشر للجدول.
           </SheetDescription>
         </SheetHeader>
 
         {session ? (
           <div className="mt-4 space-y-5">
             <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-xs text-muted-foreground space-y-1">
-              <p>{SCHEDULE_BUILDER_LOCAL_ONLY_NOTICE_AR}</p>
-              <p>{SCHEDULE_BUILDER_NO_DB_SAVE_NOTICE_AR}</p>
+              <p>افحص التعارضات قبل الحفظ. الحفظ يمر عبر دالة آمنة فقط.</p>
+              <p>لا يُسمح بالحفظ عند وجود تعارضات مانعة أو تحذيرات أو بيانات قديمة.</p>
             </div>
 
             <div>
@@ -234,7 +278,7 @@ export function SessionEditSheet({
             ) : null}
 
             <div className="space-y-3">
-              <p className="text-sm font-medium">حقول قابلة للتغيير محليًا</p>
+              <p className="text-sm font-medium">حقول قابلة للتغيير</p>
 
               <div className="space-y-2">
                 <Label htmlFor="edit-day">اليوم</Label>
@@ -306,10 +350,39 @@ export function SessionEditSheet({
                   rows={2}
                   value={form.changeReason}
                   onChange={(e) => setForm((f) => ({ ...f, changeReason: e.target.value }))}
-                  placeholder="اختياري — لا يُحفظ في هذه المرحلة"
+                  placeholder="اختياري — يُسجَّل في سجل التدقيق عند الحفظ"
                 />
               </div>
             </div>
+
+            {validation ? (
+              <div className="space-y-3">
+                {validation.stale ? (
+                  <p className="text-sm text-destructive" role="alert">
+                    {validation.message_ar ?? "الجلسة أصبحت قديمة. أعد التحميل."}
+                  </p>
+                ) : null}
+                {validation.code && validation.code !== "OK" && !validation.stale ? (
+                  <p className="text-sm text-muted-foreground">رمز النتيجة: {validation.code}</p>
+                ) : null}
+                <ConflictList
+                  title="تعارضات مانعة"
+                  items={validation.blocking_conflicts}
+                  variant="destructive"
+                />
+                <ConflictList title="تحذيرات" items={validation.warnings} variant="secondary" />
+                <ConflictList
+                  title="استثناءات معتمدة"
+                  items={validation.approved_exceptions}
+                  variant="outline"
+                />
+                {canSaveAfterValidation(validation) ? (
+                  <p className="text-sm text-emerald-700 dark:text-emerald-400" role="status">
+                    التحقق ناجح — يمكن حفظ التغيير.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
 
             {error ? (
               <p className="text-sm text-destructive" role="alert">
@@ -321,20 +394,41 @@ export function SessionEditSheet({
                 {appliedNotice}
               </p>
             ) : null}
+            {saveMessage ? (
+              <p className="text-sm" role="status">
+                {saveMessage}
+              </p>
+            ) : null}
           </div>
         ) : (
           <p className="mt-4 text-sm text-muted-foreground">لم تُحدد جلسة.</p>
         )}
 
         <SheetFooter className="mt-6 flex-col gap-2 sm:flex-col">
-          <Button type="button" onClick={handleApply} disabled={!session}>
+          <Button type="button" onClick={handleApply} disabled={!session || saveLoading}>
             تطبيق محليًا
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onValidateConflicts}
+            disabled={!sessionPending || validateLoading || saveLoading}
+          >
+            {validateLoading ? "جارٍ الفحص…" : "فحص التعارضات"}
+          </Button>
+          <Button
+            type="button"
+            onClick={onSaveChange}
+            disabled={!saveEnabled}
+            aria-disabled={!saveEnabled}
+          >
+            {saveLoading ? "جارٍ الحفظ…" : "حفظ التغيير"}
           </Button>
           <Button
             type="button"
             variant="outline"
             onClick={handleCancelChange}
-            disabled={!sessionPending}
+            disabled={!sessionPending || saveLoading}
           >
             إلغاء التغيير
           </Button>
