@@ -34,7 +34,9 @@ function readSrc(rel: string) {
   return readFileSync(join(root, rel), "utf8");
 }
 
-function sampleSession(partial: Partial<WorkspaceSessionView> & { id: string }): WorkspaceSessionView {
+function sampleSession(
+  partial: Partial<WorkspaceSessionView> & { id: string },
+): WorkspaceSessionView {
   return {
     day_of_week: 6,
     start_time: "08:00:00",
@@ -54,6 +56,8 @@ function sampleSession(partial: Partial<WorkspaceSessionView> & { id: string }):
     room_id: "r1",
     program_id: "p1",
     level_id: "l1",
+    updated_at: "2026-01-01T00:00:00Z",
+    is_locked: false,
     ...partial,
   };
 }
@@ -101,16 +105,31 @@ function run() {
   );
 
   // 5–6. Study system scoping (client mirror of server filter)
-  assert(sessionMatchesWorkspaceStudySystem("regular", "regular") === true, "regular matches regular");
-  assert(sessionMatchesWorkspaceStudySystem("parallel", "regular") === false, "parallel not in regular");
-  assert(sessionMatchesWorkspaceStudySystem("regular", "parallel") === false, "regular not in parallel");
-  assert(sessionMatchesWorkspaceStudySystem("parallel", "parallel") === true, "parallel matches parallel");
+  assert(
+    sessionMatchesWorkspaceStudySystem("regular", "regular") === true,
+    "regular matches regular",
+  );
+  assert(
+    sessionMatchesWorkspaceStudySystem("parallel", "regular") === false,
+    "parallel not in regular",
+  );
+  assert(
+    sessionMatchesWorkspaceStudySystem("regular", "parallel") === false,
+    "regular not in parallel",
+  );
+  assert(
+    sessionMatchesWorkspaceStudySystem("parallel", "parallel") === true,
+    "parallel matches parallel",
+  );
   assert(sessionMatchesWorkspaceStudySystem("both", "regular") === true, "both in regular");
   assert(sessionMatchesWorkspaceStudySystem("both", "parallel") === true, "both in parallel");
 
   // Query source: applyStudySystemFilter used in fetchWorkspaceSessions
   const queriesSrc = readSrc("src/lib/schedule-builder/queries.ts");
-  assert(queriesSrc.includes("applyStudySystemFilter"), "sessions query applies study system filter");
+  assert(
+    queriesSrc.includes("applyStudySystemFilter"),
+    "sessions query applies study system filter",
+  );
   assert(queriesSrc.includes('.eq("college_id"'), "queries college scoped");
   assert(queriesSrc.includes("schedule_version_id"), "sessions scoped to version");
   assert(!/\.insert\s*\(/.test(queriesSrc), "queries: no insert");
@@ -181,7 +200,7 @@ function run() {
   // Page source guards
   const page = readSrc("src/routes/_authenticated/schedule-builder.tsx");
   assert(page.includes("shouldLoadWorkspaceCollegeScoped"), "page uses college guard");
-  assert(page.includes('enabled: canLoadCollege'), "terms gated on college");
+  assert(page.includes("enabled: canLoadCollege"), "terms gated on college");
   assert(page.includes("canLoadVersions"), "versions gated");
   assert(page.includes("canLoadSessions"), "sessions gated");
   assert(page.includes('queryKey: ["schedule-builder", "terms", collegeId]'), "terms query key");
@@ -200,7 +219,12 @@ function run() {
   assert(!/\.insert\s*\(/.test(page), "page: no insert");
   assert(!/\.update\s*\(/.test(page), "page: no update");
   assert(!/\.delete\s*\(/.test(page), "page: no delete");
-  assert(!/runScheduler|invokeScheduler|generateSchedule|publishVersion|unpublish|cloneVersion/i.test(page), "no scheduler/publish/clone");
+  assert(
+    !/runScheduler|invokeScheduler|generateSchedule|publishVersion|unpublish|cloneVersion/i.test(
+      page,
+    ),
+    "no scheduler/publish/clone",
+  );
   assert(!/>حفظ</.test(page) && !page.includes('"حفظ"'), "no save button");
   assert(!/>حذف</.test(page) && !page.includes('"حذف"'), "no delete button");
   assert(!/>نشر</.test(page) && !page.includes('"نشر"'), "no publish button");
@@ -212,11 +236,21 @@ function run() {
   assert(!/>تعديل</.test(sheet), "sheet: no edit button");
   assert(!/>حذف</.test(sheet), "sheet: no delete button");
   assert(!/>نشر</.test(sheet), "sheet: no publish button");
-  assert(!/Scheduler|scheduler|useMutation|\.insert\s*\(|\.update\s*\(|\.delete\s*\(/.test(sheet), "sheet: no writes/scheduler");
+  assert(
+    !/Scheduler|scheduler|useMutation|\.insert\s*\(|\.update\s*\(|\.delete\s*\(/.test(sheet),
+    "sheet: no writes/scheduler",
+  );
 
   // Empty / error copy present
-  assert(page.includes("SCHEDULE_BUILDER_WORKSPACE_NO_VERSIONS_AR") || page.includes("لا توجد نسخ"), "empty versions");
-  assert(page.includes("SCHEDULE_BUILDER_WORKSPACE_NO_SESSIONS_AR") || page.includes("لا تحتوي على جلسات"), "empty sessions");
+  assert(
+    page.includes("SCHEDULE_BUILDER_WORKSPACE_NO_VERSIONS_AR") || page.includes("لا توجد نسخ"),
+    "empty versions",
+  );
+  assert(
+    page.includes("SCHEDULE_BUILDER_WORKSPACE_NO_SESSIONS_AR") ||
+      page.includes("لا تحتوي على جلسات"),
+    "empty sessions",
+  );
   assert(page.includes("فشل تحميل"), "error state");
 
   // No migrations in this phase folder / no migration files touched by impl paths

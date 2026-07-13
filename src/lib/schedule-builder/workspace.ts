@@ -1,10 +1,7 @@
 /**
  * Pure helpers for Schedule Builder read-only workspace (filters, stats, display).
  */
-import {
-  SESSION_TYPE_LABELS,
-  SESSION_STUDY_SYSTEM_LABELS,
-} from "@/lib/reports/session-mappers";
+import { SESSION_TYPE_LABELS, SESSION_STUDY_SYSTEM_LABELS } from "@/lib/reports/session-mappers";
 import { matchesStudySystem } from "@/lib/reports/filters";
 import type { GridSession } from "@/components/timetable/timetable-grid";
 import type { WorkspaceStudySystem } from "@/lib/schedule-builder/queries";
@@ -47,6 +44,8 @@ export interface WorkspaceSessionView {
   room_id: string | null;
   program_id: string | null;
   level_id: string | null;
+  updated_at: string | null;
+  is_locked: boolean;
 }
 
 /** Loose joined row from TIMETABLE_SESSION_SELECT (nullable relations). */
@@ -60,6 +59,8 @@ interface RawWorkspaceSessionRow {
   instructor_id?: string | null;
   section_id?: string | null;
   room_id?: string | null;
+  updated_at?: string | null;
+  is_locked?: boolean | null;
   course_offerings?: {
     program_id?: string | null;
     level_id?: string | null;
@@ -92,7 +93,9 @@ export function mapWorkspaceSessions(raw: unknown[]): WorkspaceSessionView[] {
       course_code: course?.code ?? "—",
       course_name: course?.name ?? "—",
       instructor_name: s.instructors?.full_name ?? "—",
-      room_label: s.rooms ? `${s.rooms.code ?? ""}${s.rooms.name ? ` — ${s.rooms.name}` : ""}` : "—",
+      room_label: s.rooms
+        ? `${s.rooms.code ?? ""}${s.rooms.name ? ` — ${s.rooms.name}` : ""}`
+        : "—",
       section_number: s.sections?.section_number != null ? String(s.sections.section_number) : "—",
       program_name: offering?.academic_programs?.name ?? "—",
       level_name: offering?.academic_levels?.name ?? "—",
@@ -102,6 +105,8 @@ export function mapWorkspaceSessions(raw: unknown[]): WorkspaceSessionView[] {
       room_id: s.room_id ?? null,
       program_id: offering?.program_id ?? null,
       level_id: offering?.level_id ?? null,
+      updated_at: s.updated_at ?? null,
+      is_locked: !!s.is_locked,
     };
   });
 }

@@ -4,7 +4,6 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 import { applyStudySystemFilter } from "@/lib/reports/filters";
-import { TIMETABLE_SESSION_SELECT } from "@/lib/reports/queries/session-queries";
 import type { SVStatus } from "@/lib/schedule-versions/lifecycle";
 
 export type WorkspaceStudySystem = "regular" | "parallel";
@@ -57,6 +56,21 @@ export async function fetchWorkspaceVersions(params: {
   return (data ?? []) as WorkspaceVersion[];
 }
 
+/** Timetable select plus concurrency / lock fields for local edit state (still read-only). */
+const WORKSPACE_SESSION_SELECT = `
+  id, day_of_week, start_time, end_time, session_type, study_system,
+  section_id, instructor_id, room_id, updated_at, is_locked,
+  course_offerings(
+    program_id, level_id,
+    courses(name, code, department_id, departments(name)),
+    academic_programs(name),
+    academic_levels(name, level_number)
+  ),
+  sections(section_number),
+  instructors(full_name),
+  rooms(code, name)
+` as const;
+
 export async function fetchWorkspaceSessions(params: {
   collegeId: string;
   versionId: string;
@@ -64,7 +78,7 @@ export async function fetchWorkspaceSessions(params: {
 }) {
   let q = supabase
     .from("schedule_sessions")
-    .select(TIMETABLE_SESSION_SELECT)
+    .select(WORKSPACE_SESSION_SELECT)
     .eq("college_id", params.collegeId)
     .eq("schedule_version_id", params.versionId)
     .order("day_of_week")
@@ -75,6 +89,28 @@ export async function fetchWorkspaceSessions(params: {
   const { data, error } = await q;
   if (error) throw error;
   return data ?? [];
+}
+
+export interface WorkspaceRoomOption {
+  id: string;
+  code: string;
+  name: string | null;
+}
+
+/** College-scoped active rooms for local edit UI (read-only list). */
+export async function fetchWorkspaceRooms(collegeId: string): Promise<WorkspaceRoomOption[]> {
+  const { data, error } = await supabase
+    .from("rooms")
+    .select("id, code, name, is_active")
+    .eq("college_id", collegeId)
+    .eq("is_active", true)
+    .order("code");
+  if (error) throw error;
+  return (data ?? []).map((r) => ({
+    id: r.id as string,
+    code: String(r.code ?? ""),
+    name: (r.name as string | null) ?? null,
+  }));
 }
 
 export async function fetchWorkspaceSchedulingSettings(
