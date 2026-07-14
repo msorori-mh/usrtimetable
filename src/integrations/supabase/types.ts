@@ -2343,6 +2343,24 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _collect_schedule_session_move_conflicts: {
+        Args: {
+          p_college_id: string
+          p_course_offering_id: string
+          p_day_of_week: number
+          p_end_time: string
+          p_expected_students: number
+          p_instructor_id: string
+          p_room_id: string
+          p_section_id: string
+          p_session_id: string
+          p_start_time: string
+          p_study_system: string
+          p_teaching_assignment_id: string
+          p_version_id: string
+        }
+        Returns: Json
+      }
       can_manage_college: {
         Args: { _college_id: string; _user_id: string }
         Returns: boolean
@@ -2359,9 +2377,32 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      move_or_reschedule_schedule_session: {
+        Args: {
+          p_change_reason?: string
+          p_expected_updated_at: string
+          p_session_id: string
+          p_target_day_of_week: number
+          p_target_end_time: string
+          p_target_room_id: string
+          p_target_start_time: string
+        }
+        Returns: Json
+      }
       user_in_college: {
         Args: { _college_id: string; _user_id: string }
         Returns: boolean
+      }
+      validate_schedule_session_move: {
+        Args: {
+          p_expected_updated_at: string
+          p_session_id: string
+          p_target_day_of_week: number
+          p_target_end_time: string
+          p_target_room_id: string
+          p_target_start_time: string
+        }
+        Returns: Json
       }
     }
     Enums: {
