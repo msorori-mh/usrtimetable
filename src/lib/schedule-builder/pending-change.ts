@@ -47,6 +47,58 @@ export function timeToMinutes(value: string): number | null {
   return h * 60 + min;
 }
 
+export function addMinutesToTime(start: string, addMinutes: number): string | null {
+  const base = timeToMinutes(start);
+  if (base == null || !Number.isFinite(addMinutes)) return null;
+  const total = base + addMinutes;
+  if (total < 0) return null;
+  const h = Math.floor(total / 60) % 24;
+  const m = total % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+export type DragDropProposalResult =
+  | { ok: true; proposed: PendingScheduleSlot }
+  | { ok: false; message: string };
+
+/**
+ * Drag-drop proposes a new day/start only.
+ * Duration and room are preserved from the source slot; no DB write.
+ */
+export function proposeSlotFromDragDrop(opts: {
+  sourceSlot: PendingScheduleSlot;
+  day_of_week: number;
+  start_time: string;
+}): DragDropProposalResult {
+  const start = normalizeTimeHHMM(opts.start_time);
+  const startMins = timeToMinutes(start);
+  if (startMins == null) return { ok: false, message: "وقت البداية غير صالح." };
+
+  const sourceStart = timeToMinutes(opts.sourceSlot.start_time);
+  const sourceEnd = timeToMinutes(opts.sourceSlot.end_time);
+  if (sourceStart == null || sourceEnd == null) {
+    return { ok: false, message: "مدة الجلسة غير صالحة." };
+  }
+  const duration = sourceEnd - sourceStart;
+  if (duration <= 0) return { ok: false, message: "مدة الجلسة غير صالحة." };
+
+  const end = addMinutesToTime(start, duration);
+  if (!end) return { ok: false, message: "تعذّر حساب وقت النهاية." };
+
+  const proposed: PendingScheduleSlot = {
+    day_of_week: Number(opts.day_of_week),
+    start_time: start,
+    end_time: end,
+    room_id: opts.sourceSlot.room_id ?? null,
+  };
+
+  if (slotsEqual(opts.sourceSlot, proposed)) {
+    return { ok: false, message: "لا يوجد فرق عن القيم الحالية." };
+  }
+
+  return { ok: true, proposed };
+}
+
 export function snapshotOriginalFromSession(session: WorkspaceSessionView): PendingScheduleSlot {
   return {
     day_of_week: session.day_of_week,

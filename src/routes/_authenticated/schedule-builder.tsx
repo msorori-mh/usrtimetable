@@ -1,6 +1,6 @@
 /**
- * Schedule Builder workspace — read model + local edit + conflict validate/save via RPC.
- * No direct schedule_sessions updates, no scheduler, publish, or drag-and-drop.
+ * Schedule Builder workspace — read model + local edit + drag-drop pending + conflict validate/save via RPC.
+ * Drag-drop updates local pending only (no save RPC / no direct schedule_sessions updates).
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { TimetableGrid } from "@/components/timetable/timetable-grid";
+import { TimetableGrid, type DropPayload } from "@/components/timetable/timetable-grid";
 import { SessionDetailsSheet } from "@/components/schedule-builder/session-details-sheet";
 import { SessionEditSheet } from "@/components/schedule-builder/session-edit-sheet";
 import { UnsavedLocalChangesDialog } from "@/components/schedule-builder/unsaved-local-changes-dialog";
@@ -52,6 +52,8 @@ import {
   applyPendingToSessions,
   buildPendingChange,
   hasPendingChanges,
+  proposeSlotFromDragDrop,
+  snapshotOriginalFromSession,
   toGridSessionsWithPending,
   validateLocalEditForm,
   type LocalEditFormValues,
@@ -415,6 +417,52 @@ function ScheduleBuilderWorkspacePage() {
     setValidation(null);
     setSaveMessage(null);
     return { ok: true as const };
+  };
+
+  /** HTML5 drop → local pending only (preserve duration + room; clear prior validation; no RPC). */
+  const onGridDrop = (params: { day: number; startTime: string; payload: DropPayload }) => {
+    if (!mayEnterEdit || !editModeActive) return;
+    if (params.payload.kind !== "session") return;
+
+    const session = allSessions.find((s) => s.id === params.payload.id) ?? null;
+    if (
+      !canOpenSessionForLocalEdit({
+        editModeActive: true,
+        canEnterEdit: mayEnterEdit,
+        session,
+      })
+    ) {
+      if (session?.is_locked) {
+        toast.error("هذه الجلسة مقفلة ولا يمكن تحريكها محليًا.");
+      }
+      return;
+    }
+    if (!session) return;
+
+    const sourceSlot =
+      pending && pending.sessionId === session.id && hasPendingChanges(pending)
+        ? pending.proposed
+        : snapshotOriginalFromSession(session);
+
+    const proposed = proposeSlotFromDragDrop({
+      sourceSlot,
+      day_of_week: params.day,
+      start_time: params.startTime,
+    });
+    if (!proposed.ok) return;
+
+    setPending(
+      buildPendingChange({
+        session,
+        proposed: proposed.proposed,
+        changeReason: pending?.sessionId === session.id ? pending.changeReason : "",
+      }),
+    );
+    setValidation(null);
+    setSaveMessage(null);
+    setSelectedSessionId(session.id);
+    setDetailsOpen(false);
+    setEditSheetOpen(true);
   };
 
   const onCancelSessionChange = () => {
@@ -864,7 +912,8 @@ function ScheduleBuilderWorkspacePage() {
               startHour={startHour}
               endHour={endHour}
               onSessionClick={onSessionClick}
-              draggable={false}
+              draggable={editModeActive && mayEnterEdit}
+              onDropAt={onGridDrop}
             />
           )}
         </CardContent>

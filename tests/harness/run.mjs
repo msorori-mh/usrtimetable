@@ -23,6 +23,7 @@ const harnesses = [
   "schedule-builder-workspace-read-model.harness.ts",
   "schedule-builder-edit-local-state-ui.harness.ts",
   "schedule-builder-conflict-save-integration.harness.ts",
+  "schedule-builder-drag-drop.harness.ts",
 ];
 
 let exitCode = 0;

@@ -214,7 +214,11 @@ function run() {
   );
   assert(page.includes("إعادة تعيين المرشحات"), "reset filters button");
   assert(page.includes("SessionDetailsSheet"), "details sheet wired");
-  assert(page.includes("draggable={false}"), "grid not draggable");
+  assert(
+    page.includes("draggable={editModeActive && mayEnterEdit}"),
+    "grid drag only in edit mode",
+  );
+  assert(page.includes("onDropAt={onGridDrop}"), "drop creates pending only");
   assert(!page.includes("useMutation"), "page: no useMutation");
   assert(!/\.insert\s*\(/.test(page), "page: no insert");
   assert(!/\.update\s*\(/.test(page), "page: no update");

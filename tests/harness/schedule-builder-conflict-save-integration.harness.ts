@@ -84,7 +84,13 @@ function run() {
   assert(page.includes("onValidateConflicts"), "page validate handler");
   assert(page.includes("onSaveChange"), "page save handler");
   assert(page.includes("invalidateQueries"), "reload after save");
-  assert(page.includes("draggable={false}"), "no drag-and-drop");
+  assert(
+    page.includes("draggable={editModeActive && mayEnterEdit}"),
+    "drag gated to edit mode (pending-only drop)",
+  );
+  assert(page.includes("onDropAt={onGridDrop}"), "drop wired to pending handler");
+  assert(page.includes("onValidateConflicts"), "validate remains explicit");
+  assert(page.includes("moveOrRescheduleScheduleSession"), "save still via RPC helper");
 
   // Instructor / create / delete not offered
   assert(!sheet.includes('htmlFor="edit-instructor"'), "no instructor edit");
