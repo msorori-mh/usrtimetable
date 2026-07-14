@@ -1,10 +1,23 @@
 /**
  * Read-only Schedule Builder workspace queries.
  * College-scoped; no mutations.
+ *
+ * Sessions are loaded with flat selects + client-side hydration.
+ * PostgREST embeds on schedule_sessions are unavailable (PGRST200):
+ * only schedule_version_id has a real FK; rooms/instructors/sections/
+ * course_offerings are uuid columns without relationships in the schema cache.
  */
 import { supabase } from "@/integrations/supabase/client";
 import { applyStudySystemFilter } from "@/lib/reports/filters";
 import type { SVStatus } from "@/lib/schedule-versions/lifecycle";
+import {
+  assembleWorkspaceSessionRows,
+  type WorkspaceSessionFlatRow,
+  type WorkspaceSessionHydratedRow,
+} from "@/lib/schedule-builder/session-hydrate";
+
+export type { WorkspaceSessionFlatRow, WorkspaceSessionHydratedRow };
+export { assembleWorkspaceSessionRows } from "@/lib/schedule-builder/session-hydrate";
 
 export type WorkspaceStudySystem = "regular" | "parallel";
 
@@ -56,29 +69,124 @@ export async function fetchWorkspaceVersions(params: {
   return (data ?? []) as WorkspaceVersion[];
 }
 
-/** Timetable select plus concurrency / lock fields for local edit state (still read-only). */
-const WORKSPACE_SESSION_SELECT = `
+/** Flat session columns only — no PostgREST embeds (avoids PGRST200). */
+export const WORKSPACE_SESSION_FLAT_SELECT = `
   id, day_of_week, start_time, end_time, session_type, study_system,
   section_id, instructor_id, room_id, updated_at, is_locked,
-  course_offerings(
-    program_id, level_id,
-    courses(name, code, department_id, departments(name)),
-    academic_programs(name),
-    academic_levels(name, level_number)
-  ),
-  sections(section_number),
-  instructors(full_name),
-  rooms(code, name)
+  course_offering_id
 ` as const;
+
+function uniqueIds(ids: Array<string | null | undefined>): string[] {
+  return [...new Set(ids.filter((id): id is string => typeof id === "string" && id.length > 0))];
+}
+
+async function fetchRowsByIds<T extends { id: string }>(
+  table:
+    | "course_offerings"
+    | "courses"
+    | "departments"
+    | "academic_programs"
+    | "academic_levels"
+    | "sections"
+    | "instructors"
+    | "rooms",
+  ids: string[],
+  select: string,
+): Promise<T[]> {
+  if (ids.length === 0) return [];
+  const out: T[] = [];
+  const chunkSize = 100;
+  for (let i = 0; i < ids.length; i += chunkSize) {
+    const chunk = ids.slice(i, i + chunkSize);
+    const { data, error } = await supabase.from(table).select(select).in("id", chunk);
+    if (error) throw error;
+    out.push(...((data ?? []) as unknown as T[]));
+  }
+  return out;
+}
+
+async function hydrateWorkspaceSessions(
+  flat: WorkspaceSessionFlatRow[],
+): Promise<WorkspaceSessionHydratedRow[]> {
+  const offeringIds = uniqueIds(flat.map((s) => s.course_offering_id));
+  const sectionIds = uniqueIds(flat.map((s) => s.section_id));
+  const instructorIds = uniqueIds(flat.map((s) => s.instructor_id));
+  const roomIds = uniqueIds(flat.map((s) => s.room_id));
+
+  const offerings = await fetchRowsByIds<{
+    id: string;
+    program_id: string | null;
+    level_id: string | null;
+    course_id: string;
+  }>("course_offerings", offeringIds, "id, program_id, level_id, course_id");
+
+  const courseIds = uniqueIds(offerings.map((o) => o.course_id));
+  const programIds = uniqueIds(offerings.map((o) => o.program_id));
+  const levelIds = uniqueIds(offerings.map((o) => o.level_id));
+
+  const [courses, programs, levels, sections, instructors, rooms] = await Promise.all([
+    fetchRowsByIds<{
+      id: string;
+      name: string | null;
+      code: string | null;
+      department_id: string | null;
+    }>("courses", courseIds, "id, name, code, department_id"),
+    fetchRowsByIds<{ id: string; name: string | null }>(
+      "academic_programs",
+      programIds,
+      "id, name",
+    ),
+    fetchRowsByIds<{ id: string; name: string | null; level_number: number | null }>(
+      "academic_levels",
+      levelIds,
+      "id, name, level_number",
+    ),
+    fetchRowsByIds<{ id: string; section_number: string | number | null }>(
+      "sections",
+      sectionIds,
+      "id, section_number",
+    ),
+    fetchRowsByIds<{ id: string; full_name: string | null }>(
+      "instructors",
+      instructorIds,
+      "id, full_name",
+    ),
+    fetchRowsByIds<{ id: string; code: string | null; name: string | null }>(
+      "rooms",
+      roomIds,
+      "id, code, name",
+    ),
+  ]);
+
+  const departmentIds = uniqueIds(courses.map((c) => c.department_id));
+  const departments = await fetchRowsByIds<{ id: string; name: string | null }>(
+    "departments",
+    departmentIds,
+    "id, name",
+  );
+
+  const toMap = <T extends { id: string }>(rows: T[]) => new Map(rows.map((r) => [r.id, r]));
+
+  return assembleWorkspaceSessionRows(flat, {
+    offerings: toMap(offerings),
+    courses: toMap(courses),
+    departments: toMap(departments),
+    programs: toMap(programs),
+    levels: toMap(levels),
+    sections: toMap(sections),
+    instructors: toMap(instructors),
+    rooms: toMap(rooms),
+  });
+}
 
 export async function fetchWorkspaceSessions(params: {
   collegeId: string;
   versionId: string;
   studySystem: WorkspaceStudySystem;
-}) {
+}): Promise<WorkspaceSessionHydratedRow[]> {
   let q = supabase
     .from("schedule_sessions")
-    .select(WORKSPACE_SESSION_SELECT)
+    .select(WORKSPACE_SESSION_FLAT_SELECT)
     .eq("college_id", params.collegeId)
     .eq("schedule_version_id", params.versionId)
     .order("day_of_week")
@@ -88,7 +196,8 @@ export async function fetchWorkspaceSessions(params: {
 
   const { data, error } = await q;
   if (error) throw error;
-  return data ?? [];
+  const flat = (data ?? []) as WorkspaceSessionFlatRow[];
+  return hydrateWorkspaceSessions(flat);
 }
 
 export interface WorkspaceRoomOption {
