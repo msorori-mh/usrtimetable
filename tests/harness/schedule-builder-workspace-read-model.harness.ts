@@ -12,6 +12,7 @@ import {
   shouldLoadWorkspaceSessions,
   shouldLoadWorkspaceVersions,
 } from "../../src/lib/schedule-builder/access";
+import { assembleWorkspaceSessionRows } from "../../src/lib/schedule-builder/session-hydrate";
 import {
   EMPTY_WORKSPACE_FILTERS,
   buildFilterOptions,
@@ -132,9 +133,86 @@ function run() {
   );
   assert(queriesSrc.includes('.eq("college_id"'), "queries college scoped");
   assert(queriesSrc.includes("schedule_version_id"), "sessions scoped to version");
+  assert(
+    queriesSrc.includes("WORKSPACE_SESSION_FLAT_SELECT"),
+    "sessions use flat select (no PostgREST embeds)",
+  );
+  assert(
+    queriesSrc.includes("assembleWorkspaceSessionRows") ||
+      queriesSrc.includes("session-hydrate"),
+    "client-side hydration assembles relation labels",
+  );
+  const hydrateSrc = readSrc("src/lib/schedule-builder/session-hydrate.ts");
+  assert(
+    hydrateSrc.includes("export function assembleWorkspaceSessionRows"),
+    "pure hydrate module exports assemble",
+  );
+  assert(
+    !queriesSrc.includes("course_offerings(") &&
+      !queriesSrc.includes("instructors(") &&
+      !queriesSrc.includes("rooms(") &&
+      !queriesSrc.includes("sections("),
+    "queries must not use PGRST200-prone embeds on schedule_sessions",
+  );
   assert(!/\.insert\s*\(/.test(queriesSrc), "queries: no insert");
   assert(!/\.update\s*\(/.test(queriesSrc), "queries: no update");
   assert(!/\.delete\s*\(/.test(queriesSrc), "queries: no delete");
+
+  // Pure assemble: missing lookups → null relations (mapper shows dashes)
+  const assembled = assembleWorkspaceSessionRows(
+    [
+      {
+        id: "sess-1",
+        day_of_week: 0,
+        start_time: "08:00:00",
+        end_time: "10:00:00",
+        session_type: "lecture",
+        study_system: "regular",
+        section_id: "sec-1",
+        instructor_id: "ins-1",
+        room_id: "room-missing",
+        updated_at: null,
+        is_locked: false,
+        course_offering_id: "off-1",
+      },
+    ],
+    {
+      offerings: new Map([
+        [
+          "off-1",
+          {
+            id: "off-1",
+            program_id: "prog-1",
+            level_id: "lvl-1",
+            course_id: "course-1",
+          },
+        ],
+      ]),
+      courses: new Map([
+        [
+          "course-1",
+          {
+            id: "course-1",
+            name: "برمجة",
+            code: "CS101",
+            department_id: "dept-1",
+          },
+        ],
+      ]),
+      departments: new Map([["dept-1", { id: "dept-1", name: "علوم الحاسوب" }]]),
+      programs: new Map([["prog-1", { id: "prog-1", name: "IT" }]]),
+      levels: new Map([["lvl-1", { id: "lvl-1", name: "1", level_number: 1 }]]),
+      sections: new Map([["sec-1", { id: "sec-1", section_number: "A" }]]),
+      instructors: new Map([["ins-1", { id: "ins-1", full_name: "د. أحمد" }]]),
+      rooms: new Map(), // orphan room_id → null rooms relation
+    },
+  );
+  assert(assembled[0].course_offerings?.courses?.code === "CS101", "assemble course code");
+  assert(assembled[0].instructors?.full_name === "د. أحمد", "assemble instructor");
+  assert(assembled[0].rooms == null, "orphan room stays null (no silent fake room)");
+  const mappedAssembled = mapWorkspaceSessions(assembled);
+  assert(mappedAssembled[0].room_label === "—", "orphan room maps to dash");
+  assert(mappedAssembled[0].course_code === "CS101", "assembled course maps");
 
   // Map raw → view; partial data does not throw
   const mapped = mapWorkspaceSessions([
