@@ -2534,6 +2534,16 @@ export type Database = {
         }
         Returns: boolean
       }
+      _ss_set: {
+        Args: {
+          p_cid: string
+          p_dow: number
+          p_et: string
+          p_sid: string
+          p_st: string
+        }
+        Returns: Json
+      }
       _ss_sg: { Args: { p_id: string }; Returns: string }
       _ss_tmpl: {
         Args: {
