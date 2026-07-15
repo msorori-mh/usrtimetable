@@ -122,10 +122,11 @@ async function hydrateWorkspaceSessions(
     course_id: string;
     expected_students: number | null;
     enrollment_count_status: string | null;
+    enrollment_count_updated_at: string | null;
   }>(
     "course_offerings",
     offeringIds,
-    "id, program_id, level_id, course_id, expected_students, enrollment_count_status",
+    "id, program_id, level_id, course_id, expected_students, enrollment_count_status, enrollment_count_updated_at",
   );
 
   const courseIds = uniqueIds(offerings.map((o) => o.course_id));

@@ -58,6 +58,9 @@ function sampleSession(
     subgroup_code: null,
     subgroup_expected_students: null,
     enrollment_count_status: "unverified",
+    enrollment_count: null,
+    enrollment_count_updated_at: null,
+    course_offering_id: null,
     program_name: "علوم حاسب",
     level_name: "الأول",
     department_name: "حاسب",
@@ -225,7 +228,11 @@ function run() {
   assert(page.includes("SessionDetailsSheet"), "details sheet present");
   assert(page.includes("SessionEditSheet"), "edit sheet present");
   assert(page.includes("editModeActive"), "edit mode state");
-  assert(detailsSheet.includes("عرض فقط"), "details remain read-only");
+  assert(
+    detailsSheet.includes("حفظ الجلسة منفصل") || detailsSheet.includes("عرض فقط"),
+    "details do not own session save",
+  );
+  assert(detailsSheet.includes("canEditEnrollment"), "enrollment edit gated by prop");
 
   // 9. Single selected session
   assert(page.includes("selectedSessionId"), "single selected session id");

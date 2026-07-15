@@ -46,6 +46,10 @@ export interface WorkspaceSessionView {
   subgroup_code: string | null;
   subgroup_expected_students: number | null;
   enrollment_count_status: EnrollmentCountStatus;
+  /** Offering headcount (expected_students store). */
+  enrollment_count: number | null;
+  enrollment_count_updated_at: string | null;
+  course_offering_id: string | null;
   program_name: string;
   level_name: string;
   department_name: string;
@@ -72,11 +76,13 @@ interface RawWorkspaceSessionRow {
   room_id?: string | null;
   updated_at?: string | null;
   is_locked?: boolean | null;
+  course_offering_id?: string | null;
   course_offerings?: {
     program_id?: string | null;
     level_id?: string | null;
     expected_students?: number | null;
     enrollment_count_status?: string | null;
+    enrollment_count_updated_at?: string | null;
     courses?: {
       name?: string | null;
       code?: string | null;
@@ -121,6 +127,14 @@ export function mapWorkspaceSessions(raw: unknown[]): WorkspaceSessionView[] {
       subgroup_expected_students:
         s.section_subgroups?.expected_students ?? s.expected_students ?? null,
       enrollment_count_status: normalizeEnrollmentCountStatus(offering?.enrollment_count_status),
+      enrollment_count:
+        offering?.expected_students != null
+          ? Number(offering.expected_students)
+          : s.expected_students != null
+            ? Number(s.expected_students)
+            : null,
+      enrollment_count_updated_at: offering?.enrollment_count_updated_at ?? null,
+      course_offering_id: s.course_offering_id ?? null,
       program_name: offering?.academic_programs?.name ?? "—",
       level_name: offering?.academic_levels?.name ?? "—",
       department_name: dept?.name ?? "—",

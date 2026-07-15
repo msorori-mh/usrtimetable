@@ -26,6 +26,7 @@ const harnesses = [
   "schedule-builder-drag-drop.harness.ts",
   "section-subgroups-capacity.harness.ts",
   "conflict-rpc-compact-equivalence.harness.ts",
+  "enrollment-ownership-split-proposal-ui.harness.ts",
 ];
 
 let exitCode = 0;

@@ -34,11 +34,13 @@ export interface WorkspaceSessionHydratedRow {
   room_id?: string | null;
   updated_at?: string | null;
   is_locked?: boolean | null;
+  course_offering_id?: string;
   course_offerings?: {
     program_id?: string | null;
     level_id?: string | null;
     expected_students?: number | null;
     enrollment_count_status?: string | null;
+    enrollment_count_updated_at?: string | null;
     courses?: {
       name?: string | null;
       code?: string | null;
@@ -71,6 +73,7 @@ export interface WorkspaceSessionLookups {
       course_id: string;
       expected_students?: number | null;
       enrollment_count_status?: string | null;
+      enrollment_count_updated_at?: string | null;
     }
   >;
   courses: Map<
@@ -130,17 +133,20 @@ export function assembleWorkspaceSessionRows(
       instructor_id: s.instructor_id,
       section_id: s.section_id,
       section_subgroup_id: s.section_subgroup_id ?? null,
-      expected_students: s.expected_students ?? subgroup?.expected_students ?? null,
+      expected_students:
+        offering?.expected_students ?? s.expected_students ?? subgroup?.expected_students ?? null,
       replaced_by_split: s.replaced_by_split ?? false,
       room_id: s.room_id,
       updated_at: s.updated_at,
       is_locked: s.is_locked,
+      course_offering_id: s.course_offering_id,
       course_offerings: offering
         ? {
             program_id: offering.program_id,
             level_id: offering.level_id,
             expected_students: offering.expected_students ?? null,
             enrollment_count_status: offering.enrollment_count_status ?? "unverified",
+            enrollment_count_updated_at: offering.enrollment_count_updated_at ?? null,
             courses: course
               ? {
                   name: course.name,

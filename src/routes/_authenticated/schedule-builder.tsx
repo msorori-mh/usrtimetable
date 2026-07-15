@@ -138,6 +138,17 @@ function ScheduleBuilderWorkspacePage() {
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [unsavedOpen, setUnsavedOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  /** Local enrollment trust overlay — independent of session pending; no query cache rewrite. */
+  const [enrollmentOverlay, setEnrollmentOverlay] = useState<
+    Record<
+      string,
+      {
+        enrollmentCount: number;
+        enrollmentCountStatus: WorkspaceSessionView["enrollment_count_status"];
+        enrollmentCountUpdatedAt: string;
+      }
+    >
+  >({});
 
   const clearLocalEditState = useCallback(() => {
     setPending(null);
@@ -161,6 +172,7 @@ function ScheduleBuilderWorkspacePage() {
     setVersionId(null);
     setFilters(EMPTY_WORKSPACE_FILTERS);
     setEditModeActive(false);
+    setEnrollmentOverlay({});
     clearLocalEditState();
   }, [collegeId, clearLocalEditState]);
 
@@ -246,10 +258,20 @@ function ScheduleBuilderWorkspacePage() {
     [settingsQuery.data, templatesQuery.data],
   );
 
-  const allSessions = useMemo(
-    () => mapWorkspaceSessions(sessionsQuery.data ?? []),
-    [sessionsQuery.data],
-  );
+  const allSessions = useMemo(() => {
+    const mapped = mapWorkspaceSessions(sessionsQuery.data ?? []);
+    if (!Object.keys(enrollmentOverlay).length) return mapped;
+    return mapped.map((s) => {
+      const off = s.course_offering_id ? enrollmentOverlay[s.course_offering_id] : undefined;
+      if (!off) return s;
+      return {
+        ...s,
+        enrollment_count: off.enrollmentCount,
+        enrollment_count_status: off.enrollmentCountStatus,
+        enrollment_count_updated_at: off.enrollmentCountUpdatedAt,
+      };
+    });
+  }, [sessionsQuery.data, enrollmentOverlay]);
 
   const rooms = roomsQuery.data ?? [];
 
@@ -923,6 +945,21 @@ function ScheduleBuilderWorkspacePage() {
         open={detailsOpen}
         onOpenChange={setDetailsOpen}
         session={selectedSession}
+        collegeId={collegeId}
+        rooms={rooms}
+        canEditEnrollment={canManageRole}
+        onEnrollmentSaved={(payload) => {
+          // Overlay only — preserves session pending; does not rewrite query cache.
+          setEnrollmentOverlay((prev) => ({
+            ...prev,
+            [payload.courseOfferingId]: {
+              enrollmentCount: payload.enrollmentCount,
+              enrollmentCountStatus: payload.enrollmentCountStatus,
+              enrollmentCountUpdatedAt: payload.enrollmentCountUpdatedAt,
+            },
+          }));
+          toast.success("تم حفظ عدد الطلاب وحالة الموثوقية.");
+        }}
       />
 
       <SessionEditSheet
