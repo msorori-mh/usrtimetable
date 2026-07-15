@@ -14,21 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      _phase6_b64_stage: {
-        Row: {
-          chunk: string
-          seq: number
-        }
-        Insert: {
-          chunk: string
-          seq: number
-        }
-        Update: {
-          chunk?: string
-          seq?: number
-        }
-        Relationships: []
-      }
       academic_buildings: {
         Row: {
           address: string | null
