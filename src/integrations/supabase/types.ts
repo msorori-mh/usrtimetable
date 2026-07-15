@@ -2461,6 +2461,18 @@ export type Database = {
         }
         Returns: Json
       }
+      _ss_peer_r: {
+        Args: {
+          p_cid: string
+          p_dow: number
+          p_et: string
+          p_rid: string
+          p_sid: string
+          p_st: string
+          p_vid: string
+        }
+        Returns: Json
+      }
       _ss_sec_hit: {
         Args: {
           p_peer_sec: string
