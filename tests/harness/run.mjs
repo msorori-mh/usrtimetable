@@ -31,6 +31,7 @@ const harnesses = [
   "experimental-schedule-reset-room-integrity.harness.ts",
   "schedule-builder-phase6-uat-fixture.harness.ts",
   "term-reference-remediation.harness.ts",
+  "course-offering-dependency-fk.harness.ts",
 ];
 
 let exitCode = 0;

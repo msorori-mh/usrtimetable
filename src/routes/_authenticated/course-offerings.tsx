@@ -26,6 +26,12 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
+import {
+  isOfferingInUse,
+  isOfferingInUseDeleteError,
+  offeringDeleteBlockedToastMessage,
+  type OfferingDependencyUsage,
+} from "@/lib/course-offerings/offering-delete-guard";
 import { ClipboardList, Pencil, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/course-offerings")({
@@ -192,6 +198,34 @@ function OfferingsPage() {
 
   const del = useMutation({
     mutationFn: async (id: string) => {
+      const [ta, cos, sessions] = await Promise.all([
+        supabase
+          .from("teaching_assignments")
+          .select("id", { count: "exact", head: true })
+          .eq("course_offering_id", id),
+        supabase
+          .from("course_offering_sections")
+          .select("id", { count: "exact", head: true })
+          .eq("course_offering_id", id),
+        supabase
+          .from("schedule_sessions")
+          .select("id", { count: "exact", head: true })
+          .eq("course_offering_id", id),
+      ]);
+      if (ta.error) throw ta.error;
+      if (cos.error) throw cos.error;
+      if (sessions.error) throw sessions.error;
+
+      const usage: OfferingDependencyUsage = {
+        offeringId: id,
+        teachingAssignmentCount: ta.count ?? 0,
+        courseOfferingSectionCount: cos.count ?? 0,
+        scheduleSessionCount: sessions.count ?? 0,
+      };
+      if (isOfferingInUse(usage)) {
+        throw new Error(`OFFERING_IN_USE:${JSON.stringify(usage)}`);
+      }
+
       const { error } = await supabase.from("course_offerings").delete().eq("id", id);
       if (error) throw error;
       await logAudit({
@@ -205,7 +239,24 @@ function OfferingsPage() {
       toast.success("تم الحذف");
       qc.invalidateQueries({ queryKey: ["offerings", active?.id] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      const msg = e.message ?? "";
+      if (msg.startsWith("OFFERING_IN_USE:")) {
+        try {
+          const usage = JSON.parse(msg.slice("OFFERING_IN_USE:".length)) as OfferingDependencyUsage;
+          toast.error(offeringDeleteBlockedToastMessage(usage));
+          return;
+        } catch {
+          toast.error(offeringDeleteBlockedToastMessage());
+          return;
+        }
+      }
+      if (isOfferingInUseDeleteError(msg)) {
+        toast.error(offeringDeleteBlockedToastMessage());
+        return;
+      }
+      toast.error(msg);
+    },
   });
 
   const startEdit = (o: Offering) => {
