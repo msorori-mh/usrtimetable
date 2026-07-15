@@ -135,7 +135,7 @@ export async function moveOrRescheduleScheduleSession(
     p_target_end_time: toTimeParam(pending.proposed.end_time),
     p_target_room_id: pending.proposed.room_id,
     p_change_reason: pending.changeReason || null,
-  });
+  } as never);
 
   if (error) {
     return {
