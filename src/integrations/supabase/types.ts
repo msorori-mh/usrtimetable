@@ -2433,6 +2433,10 @@ export type Database = {
         }
         Returns: Json
       }
+      _ss_cap: {
+        Args: { cap: number; n: number; sid: string; st: string }
+        Returns: Json
+      }
       _ss_ci: {
         Args: { c: string; m?: Json; rid: string; s: string; sid: string }
         Returns: Json
