@@ -2589,6 +2589,20 @@ export type Database = {
         }
         Returns: Json
       }
+      approve_capacity_split_proposal: {
+        Args: {
+          p_college_id: string
+          p_course_offering_id: string
+          p_expected_enrollment_count_updated_at: string
+          p_expected_students: number
+          p_groups: Json
+          p_room_capacity: number
+          p_room_id: string
+          p_section_id: string
+          p_source_session_id: string
+        }
+        Returns: Json
+      }
       can_manage_college: {
         Args: { _college_id: string; _user_id: string }
         Returns: boolean
