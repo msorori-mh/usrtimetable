@@ -1,65 +1,128 @@
--- PHASE-6: Harden schedule room references (SOURCE ONLY — do not auto-apply).
--- Apply AFTER experimental schedule reset (no orphan session.room_id values).
--- 1) Index on schedule_sessions(room_id)
--- 2) FK schedule_sessions.room_id → rooms(id) ON DELETE RESTRICT (cascade forbidden)
--- 3) Availability FKs use RESTRICT; unused-room deletes clear metadata in trigger
--- 4) BEFORE DELETE on rooms: block if sessions reference; audit snapshot never NULL
+-- PHASE-6: Self-verifying room reference hardening (SOURCE ONLY — do not auto-apply).
+-- Apply AFTER experimental schedule reset.
+-- Migration executor verifies orphans, index, FK RESTRICT, and room delete snapshot — no anon preflight.
 
--- Fail fast if orphans remain (must run reset migration first)
+BEGIN;
+
 DO $$
-DECLARE orphan_count integer;
+DECLARE
+  v_orphan_count integer;
+  v_fk_exists boolean;
+  v_confdeltype char;
+  v_convalidated boolean;
+  v_index_exists boolean;
+  v_executed_at timestamptz := clock_timestamp();
 BEGIN
-  SELECT COUNT(*)::integer INTO orphan_count
+  SELECT COUNT(*)::integer INTO v_orphan_count
   FROM public.schedule_sessions s
   WHERE s.room_id IS NOT NULL
     AND NOT EXISTS (SELECT 1 FROM public.rooms r WHERE r.id = s.room_id);
 
-  IF orphan_count > 0 THEN
-    RAISE EXCEPTION
-      'ROOM_FK_BLOCKED: % schedule_sessions.room_id values are orphans; apply experimental schedule reset first',
-      orphan_count
+  IF v_orphan_count > 0 THEN
+    RAISE EXCEPTION 'ORPHAN_ROOM_REFERENCES_REMAIN'
       USING ERRCODE = 'foreign_key_violation';
   END IF;
-END $$;
 
-CREATE INDEX IF NOT EXISTS idx_schedule_sessions_room_id
-  ON public.schedule_sessions (room_id);
+  SELECT EXISTS (
+    SELECT 1 FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+      AND c.relkind = 'i'
+      AND c.relname = 'idx_schedule_sessions_room_id'
+  ) INTO v_index_exists;
 
--- Schedule sessions: prevent orphan room refs + prevent delete of rooms in use
-ALTER TABLE public.schedule_sessions
-  DROP CONSTRAINT IF EXISTS schedule_sessions_room_id_fkey;
+  IF NOT v_index_exists THEN
+    EXECUTE 'CREATE INDEX idx_schedule_sessions_room_id ON public.schedule_sessions (room_id)';
+  END IF;
 
-ALTER TABLE public.schedule_sessions
-  ADD CONSTRAINT schedule_sessions_room_id_fkey
-  FOREIGN KEY (room_id)
-  REFERENCES public.rooms(id)
-  ON DELETE RESTRICT;
+  SELECT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'schedule_sessions_room_id_fkey'
+      AND conrelid = 'public.schedule_sessions'::regclass
+  ) INTO v_fk_exists;
 
--- Room availability / unavailability: RESTRICT (cascade-on-delete forbidden in this migration)
-ALTER TABLE public.room_availability
-  DROP CONSTRAINT IF EXISTS room_availability_room_id_fkey;
+  IF v_fk_exists THEN
+    SELECT c.confdeltype, c.convalidated
+      INTO v_confdeltype, v_convalidated
+    FROM pg_constraint c
+    WHERE c.conname = 'schedule_sessions_room_id_fkey'
+      AND c.conrelid = 'public.schedule_sessions'::regclass;
 
-ALTER TABLE public.room_availability
-  ADD CONSTRAINT room_availability_room_id_fkey
-  FOREIGN KEY (room_id)
-  REFERENCES public.rooms(id)
-  ON DELETE RESTRICT;
+    IF v_confdeltype = 'c' OR COALESCE(v_convalidated, false) = false THEN
+      EXECUTE 'ALTER TABLE public.schedule_sessions DROP CONSTRAINT schedule_sessions_room_id_fkey';
+      v_fk_exists := false;
+    END IF;
+  END IF;
 
-ALTER TABLE public.room_unavailability
-  DROP CONSTRAINT IF EXISTS room_unavailability_room_id_fkey;
+  IF NOT v_fk_exists THEN
+    EXECUTE $ddl$
+      ALTER TABLE public.schedule_sessions
+        ADD CONSTRAINT schedule_sessions_room_id_fkey
+        FOREIGN KEY (room_id)
+        REFERENCES public.rooms(id)
+        ON DELETE RESTRICT
+    $ddl$;
+  END IF;
 
-ALTER TABLE public.room_unavailability
-  ADD CONSTRAINT room_unavailability_room_id_fkey
-  FOREIGN KEY (room_id)
-  REFERENCES public.rooms(id)
-  ON DELETE RESTRICT;
+  SELECT c.confdeltype, c.convalidated
+    INTO v_confdeltype, v_convalidated
+  FROM pg_constraint c
+  WHERE c.conname = 'schedule_sessions_room_id_fkey'
+    AND c.conrelid = 'public.schedule_sessions'::regclass;
 
+  IF v_confdeltype IS NULL THEN
+    RAISE EXCEPTION 'ROOM_FK_MISSING_AFTER_HARDEN'
+      USING ERRCODE = 'foreign_key_violation';
+  END IF;
+
+  IF v_confdeltype = 'c' THEN
+    RAISE EXCEPTION 'ROOM_FK_CASCADE_FORBIDDEN'
+      USING ERRCODE = 'check_violation';
+  END IF;
+
+  IF v_confdeltype IS DISTINCT FROM 'r' AND v_confdeltype IS DISTINCT FROM 'a' THEN
+    RAISE EXCEPTION 'ROOM_FK_DELETE_ACTION_INVALID'
+      USING ERRCODE = 'check_violation';
+  END IF;
+
+  IF COALESCE(v_convalidated, false) = false THEN
+    RAISE EXCEPTION 'ROOM_FK_NOT_VALIDATED'
+      USING ERRCODE = 'check_violation';
+  END IF;
+
+  -- Availability FKs: RESTRICT only (no cascade-on-delete)
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'room_availability'
+  ) THEN
+    EXECUTE 'ALTER TABLE public.room_availability DROP CONSTRAINT IF EXISTS room_availability_room_id_fkey';
+    EXECUTE $ddl$
+      ALTER TABLE public.room_availability
+        ADD CONSTRAINT room_availability_room_id_fkey
+        FOREIGN KEY (room_id) REFERENCES public.rooms(id) ON DELETE RESTRICT
+    $ddl$;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'room_unavailability'
+  ) THEN
+    EXECUTE 'ALTER TABLE public.room_unavailability DROP CONSTRAINT IF EXISTS room_unavailability_room_id_fkey';
+    EXECUTE $ddl$
+      ALTER TABLE public.room_unavailability
+        ADD CONSTRAINT room_unavailability_room_id_fkey
+        FOREIGN KEY (room_id) REFERENCES public.rooms(id) ON DELETE RESTRICT
+    $ddl$;
+  END IF;
+
+  -- Room delete integrity + non-null snapshot (runtime may use auth.uid(); migration audit does not)
+  EXECUTE $fn$
 CREATE OR REPLACE FUNCTION public.enforce_room_delete_integrity()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $body$
 DECLARE
   v_session_refs integer;
   v_deleted_at timestamptz := now();
@@ -75,11 +138,9 @@ BEGIN
       USING ERRCODE = 'foreign_key_violation';
   END IF;
 
-  -- Clear room metadata so RESTRICT FKs do not block unused-room deletes
   DELETE FROM public.room_availability WHERE room_id = OLD.id;
   DELETE FROM public.room_unavailability WHERE room_id = OLD.id;
 
-  -- Full snapshot for unused room deletes (details must not be NULL)
   INSERT INTO public.audit_logs (actor_id, action, entity, entity_id, college_id, details)
   VALUES (
     v_deleted_by,
@@ -99,22 +160,82 @@ BEGIN
       'deleted_at', v_deleted_at,
       'snapshot', to_jsonb(OLD),
       'session_refs', 0,
-      'note', 'Unused room deleted; required snapshot fields retained in audit_logs.details'
+      'note', 'Unused room deleted; required snapshot fields retained in audit_logs.details (never NULL)'
     )
   );
 
   RETURN OLD;
 END;
-$$;
+$body$;
+  $fn$;
 
-DROP TRIGGER IF EXISTS trg_rooms_delete_integrity ON public.rooms;
+  EXECUTE 'DROP TRIGGER IF EXISTS trg_rooms_delete_integrity ON public.rooms';
+  EXECUTE $trg$
 CREATE TRIGGER trg_rooms_delete_integrity
   BEFORE DELETE ON public.rooms
   FOR EACH ROW
-  EXECUTE FUNCTION public.enforce_room_delete_integrity();
+  EXECUTE FUNCTION public.enforce_room_delete_integrity()
+  $trg$;
 
-REVOKE ALL ON FUNCTION public.enforce_room_delete_integrity() FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.enforce_room_delete_integrity() TO authenticated, service_role;
-
+  EXECUTE 'REVOKE ALL ON FUNCTION public.enforce_room_delete_integrity() FROM PUBLIC, anon';
+  EXECUTE 'GRANT EXECUTE ON FUNCTION public.enforce_room_delete_integrity() TO authenticated, service_role';
+  EXECUTE $cmt$
 COMMENT ON CONSTRAINT schedule_sessions_room_id_fkey ON public.schedule_sessions IS
-  'Prevents orphan room_id and blocks deleting rooms referenced by schedule sessions (ON DELETE RESTRICT; cascade forbidden).';
+  'Prevents orphan room_id and blocks deleting rooms referenced by schedule sessions (ON DELETE RESTRICT; cascade forbidden).'
+  $cmt$;
+
+  -- Re-read catalog for success audit
+  SELECT EXISTS (
+    SELECT 1 FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relkind = 'i' AND c.relname = 'idx_schedule_sessions_room_id'
+  ) INTO v_index_exists;
+
+  SELECT c.confdeltype, c.convalidated
+    INTO v_confdeltype, v_convalidated
+  FROM pg_constraint c
+  WHERE c.conname = 'schedule_sessions_room_id_fkey'
+    AND c.conrelid = 'public.schedule_sessions'::regclass;
+
+  SELECT COUNT(*)::integer INTO v_orphan_count
+  FROM public.schedule_sessions s
+  WHERE s.room_id IS NOT NULL
+    AND NOT EXISTS (SELECT 1 FROM public.rooms r WHERE r.id = s.room_id);
+
+  INSERT INTO public.audit_logs (actor_id, action, entity, entity_id, college_id, details)
+  VALUES (
+    NULL,
+    'ROOM_REFERENCE_HARDENING',
+    'schedule_sessions',
+    NULL,
+    NULL,
+    jsonb_build_object(
+      'operation', 'ROOM_REFERENCE_HARDENING',
+      'actor', 'migration_executor',
+      'index_name', 'idx_schedule_sessions_room_id',
+      'index_exists', v_index_exists,
+      'fk_name', 'schedule_sessions_room_id_fkey',
+      'fk_validated', v_convalidated,
+      'on_delete_behavior', CASE v_confdeltype
+        WHEN 'r' THEN 'RESTRICT'
+        WHEN 'a' THEN 'NO ACTION'
+        WHEN 'c' THEN 'CASCADE'
+        ELSE v_confdeltype::text
+      END,
+      'confdeltype', v_confdeltype,
+      'orphan_count', v_orphan_count,
+      'snapshot_mechanism_installed', true,
+      'snapshot_trigger', 'trg_rooms_delete_integrity',
+      'snapshot_function', 'enforce_room_delete_integrity',
+      'result', 'success',
+      'executed_at', v_executed_at
+    )
+  );
+
+  IF v_orphan_count <> 0 OR v_index_exists IS NOT TRUE OR v_convalidated IS NOT TRUE THEN
+    RAISE EXCEPTION 'ROOM_REFERENCE_HARDENING_POSTCHECK_FAILED'
+      USING ERRCODE = 'check_violation';
+  END IF;
+END $$;
+
+COMMIT;
