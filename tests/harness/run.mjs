@@ -28,6 +28,7 @@ const harnesses = [
   "conflict-rpc-compact-equivalence.harness.ts",
   "enrollment-ownership-split-proposal-ui.harness.ts",
   "explicit-split-approval-contract-ui.harness.ts",
+  "experimental-schedule-reset-room-integrity.harness.ts",
 ];
 
 let exitCode = 0;
