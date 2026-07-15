@@ -42,17 +42,28 @@ export function resolveBestEligibleRoomCapacity(params: {
   rooms: LiveRoomCapacity[];
   sessionType: string;
   requiredRoomType?: string | null;
-}): { bestCapacity: number | null; eligibleCount: number; preferredTypes: string[] } {
+}): {
+  bestCapacity: number | null;
+  bestRoomId: string | null;
+  eligibleCount: number;
+  preferredTypes: string[];
+} {
   const preferredTypes = preferredRoomTypesForSessionType(params.sessionType);
   const eligible = filterRoomsByEligibility(asFilterRooms(params.rooms), {
     sessionType: params.sessionType,
     requiredRoomType: params.requiredRoomType,
   }).filter((r) => typeof r.capacity === "number" && r.capacity! > 0);
   if (!eligible.length) {
-    return { bestCapacity: null, eligibleCount: 0, preferredTypes };
+    return { bestCapacity: null, bestRoomId: null, eligibleCount: 0, preferredTypes };
   }
   const bestCapacity = Math.max(...eligible.map((r) => Number(r.capacity)));
-  return { bestCapacity, eligibleCount: eligible.length, preferredTypes };
+  const best = eligible.find((r) => Number(r.capacity) === bestCapacity);
+  return {
+    bestCapacity,
+    bestRoomId: best?.id ?? null,
+    eligibleCount: eligible.length,
+    preferredTypes,
+  };
 }
 
 export function shouldOfferSplitProposal(params: {

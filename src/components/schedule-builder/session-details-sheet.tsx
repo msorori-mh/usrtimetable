@@ -32,7 +32,11 @@ import {
   EnrollmentEditDialog,
   type EnrollmentEditTarget,
 } from "@/components/schedule-builder/enrollment-edit-dialog";
-import { SplitProposalDialog } from "@/components/schedule-builder/split-proposal-dialog";
+import {
+  SplitProposalDialog,
+  type SplitApprovalTarget,
+} from "@/components/schedule-builder/split-proposal-dialog";
+import { SPLIT_APPROVED_AWAITING_SCHEDULE_AR } from "@/lib/schedule-builder/split-approval";
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
@@ -63,6 +67,7 @@ export function SessionDetailsSheet({
   rooms,
   canEditEnrollment,
   onEnrollmentSaved,
+  onSplitApproved,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -77,9 +82,15 @@ export function SessionDetailsSheet({
     enrollmentCountStatus: ReturnType<typeof normalizeEnrollmentCountStatus>;
     enrollmentCountUpdatedAt: string;
   }) => void;
+  onSplitApproved?: (payload: {
+    sectionId: string;
+    statusAr: string;
+    createdSubgroupIds: string[];
+  }) => void;
 }) {
   const [editOpen, setEditOpen] = useState(false);
   const [splitOpen, setSplitOpen] = useState(false);
+  const [splitApprovedStatus, setSplitApprovedStatus] = useState<string | null>(null);
 
   const typeLabel = session
     ? (SESSION_TYPE_LABELS[session.session_type] ?? session.session_type)
@@ -104,13 +115,48 @@ export function SessionDetailsSheet({
   }, [rooms, session?.room_id]);
 
   const bestEligible = useMemo(() => {
-    if (!session) return { bestCapacity: null as number | null, eligibleCount: 0 };
+    if (!session) {
+      return {
+        bestCapacity: null as number | null,
+        bestRoomId: null as string | null,
+        eligibleCount: 0,
+      };
+    }
     return resolveBestEligibleRoomCapacity({
       rooms,
       sessionType: session.session_type,
       requiredRoomType: null,
     });
   }, [rooms, session]);
+
+  const approvalRoom = useMemo(() => {
+    if (!session) return null;
+    const selectedCap = selectedRoom?.capacity ?? null;
+    const n = enrollmentCount ?? 0;
+    if (selectedRoom && selectedCap != null && selectedCap > 0 && n > selectedCap + 5) {
+      return { roomId: selectedRoom.id, roomCapacity: selectedCap };
+    }
+    if (bestEligible.bestRoomId != null && bestEligible.bestCapacity != null) {
+      return {
+        roomId: bestEligible.bestRoomId,
+        roomCapacity: bestEligible.bestCapacity,
+      };
+    }
+    return null;
+  }, [session, selectedRoom, enrollmentCount, bestEligible]);
+
+  const approvalTarget: SplitApprovalTarget | null =
+    session && collegeId && session.course_offering_id && session.section_id && approvalRoom
+      ? {
+          collegeId,
+          courseOfferingId: session.course_offering_id,
+          sectionId: session.section_id,
+          sourceSessionId: session.id,
+          enrollmentCountUpdatedAt: session.enrollment_count_updated_at,
+          roomId: approvalRoom.roomId,
+          roomCapacity: approvalRoom.roomCapacity,
+        }
+      : null;
 
   const capacityFit = useMemo(() => {
     if (status !== "confirmed" || enrollmentCount == null) return null;
@@ -210,6 +256,12 @@ export function SessionDetailsSheet({
                   </div>
                 ) : null}
 
+                {splitApprovedStatus ? (
+                  <p className="text-sm font-medium text-green-700 dark:text-green-400">
+                    {splitApprovedStatus}
+                  </p>
+                ) : null}
+
                 <div className="flex flex-wrap gap-2 pt-2">
                   {canEditEnrollment && editTarget ? (
                     <Button type="button" size="sm" onClick={() => setEditOpen(true)}>
@@ -275,6 +327,18 @@ export function SessionDetailsSheet({
           rooms={rooms}
           selectedRoomCapacity={selectedRoom?.capacity ?? null}
           selectedRoomType={selectedRoom?.room_type ?? null}
+          approvalTarget={approvalTarget}
+          canApprove={canEditEnrollment}
+          onApproved={(payload) => {
+            setSplitApprovedStatus(payload.statusAr || SPLIT_APPROVED_AWAITING_SCHEDULE_AR);
+            if (session.section_id) {
+              onSplitApproved?.({
+                sectionId: session.section_id,
+                statusAr: payload.statusAr,
+                createdSubgroupIds: payload.createdSubgroupIds,
+              });
+            }
+          }}
         />
       ) : null}
     </>
