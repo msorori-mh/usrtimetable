@@ -2415,20 +2415,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      approve_capacity_split_proposal: {
-        Args: {
-          p_college_id: string
-          p_course_offering_id: string
-          p_section_id: string
-          p_source_session_id: string
-          p_expected_students: number
-          p_expected_enrollment_count_updated_at: string
-          p_room_id: string
-          p_room_capacity: number
-          p_groups: Json
-        }
-        Returns: Json
-      }
       _collect_schedule_session_move_conflicts: {
         Args: {
           p_college_id: string
