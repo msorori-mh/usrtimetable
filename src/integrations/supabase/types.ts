@@ -2455,6 +2455,10 @@ export type Database = {
         Args: { p_exp: number; p_off: string }
         Returns: Record<string, unknown>
       }
+      _ss_ex_match: {
+        Args: { p_code: string; p_rid: string; p_sid: string; p_vid: string }
+        Returns: Record<string, unknown>
+      }
       _ss_iavail_req: {
         Args: { p_cid: string; p_dow: number; p_iid: string; p_sid: string }
         Returns: Json
