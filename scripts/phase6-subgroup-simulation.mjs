@@ -1,7 +1,13 @@
 /**
- * Offline Phase-6 subgroup creation + auto-scheduling simulation.
- * Writes reports under implementation-reports/... — no DB writes.
+ * SUPERSEDED_BY_OWNER_DATA_POLICY
+ * Historical offline simulation only. Do not use for production inventory,
+ * operating hours, or enrollment-driven splits. Exits without applying anything.
  */
+console.error(
+  "SUPERSEDED_BY_OWNER_DATA_POLICY: simulation disabled - experimental enrollment/inventory assumptions revoked.",
+);
+process.exit(2);
+
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";

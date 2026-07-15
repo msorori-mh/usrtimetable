@@ -37,6 +37,8 @@ export interface WorkspaceSessionHydratedRow {
   course_offerings?: {
     program_id?: string | null;
     level_id?: string | null;
+    expected_students?: number | null;
+    enrollment_count_status?: string | null;
     courses?: {
       name?: string | null;
       code?: string | null;
@@ -67,6 +69,8 @@ export interface WorkspaceSessionLookups {
       program_id: string | null;
       level_id: string | null;
       course_id: string;
+      expected_students?: number | null;
+      enrollment_count_status?: string | null;
     }
   >;
   courses: Map<
@@ -135,6 +139,8 @@ export function assembleWorkspaceSessionRows(
         ? {
             program_id: offering.program_id,
             level_id: offering.level_id,
+            expected_students: offering.expected_students ?? null,
+            enrollment_count_status: offering.enrollment_count_status ?? "unverified",
             courses: course
               ? {
                   name: course.name,

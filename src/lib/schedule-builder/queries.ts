@@ -120,7 +120,13 @@ async function hydrateWorkspaceSessions(
     program_id: string | null;
     level_id: string | null;
     course_id: string;
-  }>("course_offerings", offeringIds, "id, program_id, level_id, course_id");
+    expected_students: number | null;
+    enrollment_count_status: string | null;
+  }>(
+    "course_offerings",
+    offeringIds,
+    "id, program_id, level_id, course_id, expected_students, enrollment_count_status",
+  );
 
   const courseIds = uniqueIds(offerings.map((o) => o.course_id));
   const programIds = uniqueIds(offerings.map((o) => o.program_id));
@@ -214,13 +220,16 @@ export interface WorkspaceRoomOption {
   id: string;
   code: string;
   name: string | null;
+  /** Live inventory fields — never hardcode hall/lab counts in UI. */
+  room_type?: string | null;
+  capacity?: number | null;
 }
 
 /** College-scoped active rooms for local edit UI (read-only list). */
 export async function fetchWorkspaceRooms(collegeId: string): Promise<WorkspaceRoomOption[]> {
   const { data, error } = await supabase
     .from("rooms")
-    .select("id, code, name, is_active")
+    .select("id, code, name, is_active, room_type, capacity")
     .eq("college_id", collegeId)
     .eq("is_active", true)
     .order("code");
@@ -229,6 +238,8 @@ export async function fetchWorkspaceRooms(collegeId: string): Promise<WorkspaceR
     id: r.id as string,
     code: String(r.code ?? ""),
     name: (r.name as string | null) ?? null,
+    room_type: (r.room_type as string | null) ?? null,
+    capacity: typeof r.capacity === "number" ? r.capacity : Number(r.capacity ?? 0),
   }));
 }
 

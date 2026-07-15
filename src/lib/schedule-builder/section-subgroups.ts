@@ -1,12 +1,31 @@
 /**
  * Within-section capacity subgroups (distinct from multi-section section_groups).
+ * Proposal helpers only — never auto-create subgroups or sessions.
  */
+
+import {
+  isHardCapacityStatus,
+  normalizeEnrollmentCountStatus,
+  type EnrollmentCountStatus,
+} from "@/lib/schedule-builder/enrollment-trust";
 
 export const SUBGROUP_CODES = ["A", "B", "C", "D"] as const;
 export type SubgroupCode = (typeof SUBGROUP_CODES)[number];
 
 export const CAPACITY_EXCEPTION_LIMIT = 5;
 export const MAX_SUBGROUPS = 4;
+
+export interface CapacitySplitProposal {
+  enrollmentCount: number;
+  enrollmentStatus: EnrollmentCountStatus;
+  roomCapacity: number;
+  capacityPlusException: number;
+  minimumGroups: number;
+  proposedDistribution: SubgroupPlanRow[];
+  needsExtraSlots: boolean;
+  /** Proposal only — caller must get explicit user confirmation before any writes. */
+  autoCreateForbidden: true;
+}
 
 export interface SubgroupPlanRow {
   ordinal: number;
@@ -42,6 +61,42 @@ export function maxAllowedInRoom(roomCapacity: number): number {
 
 export function subgroupFitsRoom(students: number, roomCapacity: number): boolean {
   return students <= maxAllowedInRoom(roomCapacity);
+}
+
+/**
+ * On-demand split proposal when enrollment is confirmed and exceeds capacity+5.
+ * Returns null when status is not confirmed or count fits — never creates rows.
+ */
+export function proposeCapacitySplit(params: {
+  enrollmentCount: number;
+  enrollmentStatus: EnrollmentCountStatus | string | null | undefined;
+  roomCapacity: number;
+}): CapacitySplitProposal | null {
+  const status = normalizeEnrollmentCountStatus(params.enrollmentStatus);
+  const count = Math.max(0, Math.floor(params.enrollmentCount));
+  const roomCapacity = Math.max(0, Math.floor(params.roomCapacity));
+  const capacityPlusException = maxAllowedInRoom(roomCapacity);
+
+  if (!isHardCapacityStatus(status)) return null;
+  if (count <= 0 || count <= capacityPlusException) return null;
+
+  const minimumGroups = Math.min(
+    MAX_SUBGROUPS,
+    Math.max(2, Math.ceil(count / capacityPlusException)),
+  );
+  const proposedDistribution = planSubgroups(count, minimumGroups);
+  const needsExtraSlots = minimumGroups > 1;
+
+  return {
+    enrollmentCount: count,
+    enrollmentStatus: status,
+    roomCapacity,
+    capacityPlusException,
+    minimumGroups,
+    proposedDistribution,
+    needsExtraSlots,
+    autoCreateForbidden: true,
+  };
 }
 
 export function validateSubgroupPlan(

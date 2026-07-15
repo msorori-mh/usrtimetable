@@ -106,3 +106,21 @@ COMMENT ON COLUMN public.schedule_sessions.replaced_by_split IS
   'True when this session was superseded by capacity-subgroup child sessions; exclude from active scheduling/conflicts.';
 COMMENT ON COLUMN public.schedule_sessions.section_subgroup_id IS
   'Optional FK-style link to section_subgroups for child sessions.';
+
+-- Enrollment trust (numeric store remains expected_students; no backfill of values)
+ALTER TABLE public.course_offerings
+  ADD COLUMN IF NOT EXISTS enrollment_count_status text NOT NULL DEFAULT 'unverified';
+
+ALTER TABLE public.course_offerings
+  DROP CONSTRAINT IF EXISTS course_offerings_enrollment_count_status_chk;
+ALTER TABLE public.course_offerings
+  ADD CONSTRAINT course_offerings_enrollment_count_status_chk
+  CHECK (enrollment_count_status IN ('confirmed', 'estimated', 'unverified', 'test'));
+
+ALTER TABLE public.course_offerings
+  ADD COLUMN IF NOT EXISTS enrollment_count_updated_at timestamptz NULL;
+
+COMMENT ON COLUMN public.course_offerings.expected_students IS
+  'Enrollment headcount numeric store. Trust governed by enrollment_count_status.';
+COMMENT ON COLUMN public.course_offerings.enrollment_count_status IS
+  'confirmed | estimated | unverified | test. Only confirmed drives hard capacity (+5). Default unverified — test data must not auto-split or block.';

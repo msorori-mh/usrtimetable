@@ -44,6 +44,7 @@ function sampleSession(
     section_number: "1",
     subgroup_code: null,
     subgroup_expected_students: null,
+    enrollment_count_status: "unverified",
     program_name: "علوم حاسب",
     level_name: "الأول",
     department_name: "حاسب",

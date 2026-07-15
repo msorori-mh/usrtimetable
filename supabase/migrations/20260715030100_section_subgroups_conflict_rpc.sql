@@ -28,6 +28,7 @@ DECLARE
   v_peer record;
   v_room record;
   v_expected integer;
+  v_enroll_status text;
   v_required_type text;
   v_instr_type_code text;
   v_instr_is_external boolean;
@@ -47,6 +48,7 @@ DECLARE
   v_enriched jsonb := '[]'::jsonb;
   v_blocking jsonb := '[]'::jsonb;
   v_approved_list jsonb := '[]'::jsonb;
+  v_warnings jsonb := '[]'::jsonb;
   v_item jsonb;
 BEGIN
   -- Peer overlaps (exclude self)
@@ -143,13 +145,21 @@ BEGIN
       ));
     ELSE
       v_expected := COALESCE(p_expected_students, 0);
-      IF v_expected = 0 THEN
-        SELECT COALESCE(expected_students, 0) INTO v_expected
-        FROM public.course_offerings
-        WHERE id = p_course_offering_id;
-        v_expected := COALESCE(v_expected, 0);
+      v_enroll_status := 'unverified';
+      SELECT COALESCE(expected_students, 0), COALESCE(enrollment_count_status, 'unverified')
+        INTO v_expected, v_enroll_status
+      FROM public.course_offerings
+      WHERE id = p_course_offering_id;
+      IF COALESCE(p_expected_students, 0) > 0 THEN
+        v_expected := p_expected_students;
       END IF;
-      IF v_expected > 0 AND v_room.capacity + 5 < v_expected THEN
+      v_expected := COALESCE(v_expected, 0);
+      v_enroll_status := COALESCE(v_enroll_status, 'unverified');
+
+      IF v_enroll_status = 'confirmed'
+         AND v_expected > 0
+         AND v_room.capacity + 5 < v_expected
+      THEN
         v_conflicts := v_conflicts || jsonb_build_array(jsonb_build_object(
           'code', 'room_capacity',
           'severity', 'hard',
@@ -157,7 +167,29 @@ BEGIN
           'message_en', format('Room capacity insufficient: capacity %s, expected %s.', v_room.capacity, v_expected),
           'schedule_session_id', p_session_id,
           'related_session_id', NULL,
-          'metadata', jsonb_build_object('capacity', v_room.capacity, 'expected_students', v_expected)
+          'metadata', jsonb_build_object(
+            'capacity', v_room.capacity,
+            'expected_students', v_expected,
+            'enrollment_count_status', v_enroll_status
+          )
+        ));
+      ELSIF v_enroll_status IN ('estimated', 'unverified', 'test')
+            AND v_expected > 0
+            AND v_room.capacity + 5 < v_expected
+      THEN
+        v_conflicts := v_conflicts || jsonb_build_array(jsonb_build_object(
+          'code', 'room_capacity_unverified',
+          'severity', 'soft',
+          'message_ar', format('تحذير سعة: العدد غير معتمد (%s). السعة %s (+5) والعدد %s.', v_enroll_status, v_room.capacity, v_expected),
+          'message_en', format('Capacity warning: enrollment status %s. capacity %s (+5), count %s.', v_enroll_status, v_room.capacity, v_expected),
+          'schedule_session_id', p_session_id,
+          'related_session_id', NULL,
+          'metadata', jsonb_build_object(
+            'capacity', v_room.capacity,
+            'expected_students', v_expected,
+            'enrollment_count_status', v_enroll_status,
+            'blocking', false
+          )
         ));
       END IF;
 
@@ -423,7 +455,9 @@ BEGIN
       'exception_reason', v_ex_reason
     );
     v_enriched := v_enriched || jsonb_build_array(v_item);
-    IF v_approved THEN
+    IF COALESCE(v_conflict->>'severity','hard') = 'soft' THEN
+      v_warnings := v_warnings || jsonb_build_array(v_item);
+    ELSIF v_approved THEN
       v_approved_list := v_approved_list || jsonb_build_array(v_item);
     ELSE
       v_blocking := v_blocking || jsonb_build_array(v_item);
@@ -434,7 +468,7 @@ BEGIN
     'all_conflicts', v_enriched,
     'blocking_conflicts', v_blocking,
     'approved_exceptions', v_approved_list,
-    'warnings', '[]'::jsonb
+    'warnings', v_warnings
   );
 END;
 $$;

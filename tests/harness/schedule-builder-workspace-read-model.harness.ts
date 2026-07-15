@@ -51,6 +51,7 @@ function sampleSession(
     section_number: "1",
     subgroup_code: null,
     subgroup_expected_students: null,
+    enrollment_count_status: "unverified",
     program_name: "علوم حاسب",
     level_name: "الأول",
     department_name: "حاسب",
@@ -141,8 +142,7 @@ function run() {
     "sessions use flat select (no PostgREST embeds)",
   );
   assert(
-    queriesSrc.includes("assembleWorkspaceSessionRows") ||
-      queriesSrc.includes("session-hydrate"),
+    queriesSrc.includes("assembleWorkspaceSessionRows") || queriesSrc.includes("session-hydrate"),
     "client-side hydration assembles relation labels",
   );
   const hydrateSrc = readSrc("src/lib/schedule-builder/session-hydrate.ts");

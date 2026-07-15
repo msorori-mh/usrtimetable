@@ -6,6 +6,10 @@ import type { WorkspaceRoomOption } from "@/lib/schedule-builder/queries";
 import type { GridSession } from "@/components/timetable/timetable-grid";
 import { SESSION_TYPE_LABELS, SESSION_STUDY_SYSTEM_LABELS } from "@/lib/reports/session-mappers";
 import { SCHEDULE_BUILDER_UNSAVED_BADGE_AR } from "@/lib/schedule-builder/edit-access";
+import {
+  showUnverifiedEnrollmentBadge,
+  UNVERIFIED_ENROLLMENT_BADGE_AR,
+} from "@/lib/schedule-builder/enrollment-trust";
 
 export type PendingScheduleSlot = {
   day_of_week: number;
@@ -222,6 +226,9 @@ export function toGridSessionsWithPending(
     const isPending = !!pending && hasPendingChanges(pending) && pending.sessionId === s.id;
     const isSelected = selectedSessionId === s.id;
     const badges = [`${typeAr} · ${sysAr}`];
+    if (showUnverifiedEnrollmentBadge(s.enrollment_count_status)) {
+      badges.push(UNVERIFIED_ENROLLMENT_BADGE_AR);
+    }
     if (isPending) badges.push(SCHEDULE_BUILDER_UNSAVED_BADGE_AR);
     if (isSelected) badges.push("محدد");
     return {

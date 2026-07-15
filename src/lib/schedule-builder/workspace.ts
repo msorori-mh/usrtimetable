@@ -5,6 +5,12 @@ import { SESSION_TYPE_LABELS, SESSION_STUDY_SYSTEM_LABELS } from "@/lib/reports/
 import { matchesStudySystem } from "@/lib/reports/filters";
 import type { GridSession } from "@/components/timetable/timetable-grid";
 import type { WorkspaceStudySystem } from "@/lib/schedule-builder/queries";
+import {
+  normalizeEnrollmentCountStatus,
+  showUnverifiedEnrollmentBadge,
+  UNVERIFIED_ENROLLMENT_BADGE_AR,
+  type EnrollmentCountStatus,
+} from "@/lib/schedule-builder/enrollment-trust";
 
 export interface WorkspaceFilters {
   instructor: string; // "all" | id
@@ -39,6 +45,7 @@ export interface WorkspaceSessionView {
   /** Capacity subgroup code (A–D) when session is a split child. */
   subgroup_code: string | null;
   subgroup_expected_students: number | null;
+  enrollment_count_status: EnrollmentCountStatus;
   program_name: string;
   level_name: string;
   department_name: string;
@@ -68,6 +75,8 @@ interface RawWorkspaceSessionRow {
   course_offerings?: {
     program_id?: string | null;
     level_id?: string | null;
+    expected_students?: number | null;
+    enrollment_count_status?: string | null;
     courses?: {
       name?: string | null;
       code?: string | null;
@@ -111,6 +120,7 @@ export function mapWorkspaceSessions(raw: unknown[]): WorkspaceSessionView[] {
       subgroup_code: s.section_subgroups?.subgroup_code ?? null,
       subgroup_expected_students:
         s.section_subgroups?.expected_students ?? s.expected_students ?? null,
+      enrollment_count_status: normalizeEnrollmentCountStatus(offering?.enrollment_count_status),
       program_name: offering?.academic_programs?.name ?? "—",
       level_name: offering?.academic_levels?.name ?? "—",
       department_name: dept?.name ?? "—",
@@ -147,6 +157,10 @@ export function toGridSessions(sessions: WorkspaceSessionView[]): GridSession[] 
     const sysAr = SESSION_STUDY_SYSTEM_LABELS[s.study_system] ?? s.study_system;
     const start = String(s.start_time).slice(0, 5);
     const end = String(s.end_time).slice(0, 5);
+    const badges = [`${typeAr} · ${sysAr}`];
+    if (showUnverifiedEnrollmentBadge(s.enrollment_count_status)) {
+      badges.push(UNVERIFIED_ENROLLMENT_BADGE_AR);
+    }
     return {
       id: s.id,
       day_of_week: s.day_of_week,
@@ -156,7 +170,7 @@ export function toGridSessions(sessions: WorkspaceSessionView[]): GridSession[] 
       session_type: s.session_type,
       title: `${s.course_code} · ش${s.section_number}`,
       subtitle: `${s.instructor_name} · ${s.room_label} · ${start}–${end}`,
-      badge: `${typeAr} · ${sysAr}`,
+      badge: badges.join(" · "),
     };
   });
 }

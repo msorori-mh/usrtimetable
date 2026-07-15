@@ -1,6 +1,8 @@
 /**
- * Deterministic offline auto-scheduler for capacity-subgroup child sessions.
+ * Deterministic offline helper for capacity-subgroup slot simulation.
  * Does not write to the database.
+ * Does not auto-create subgroups/sessions/rooms or extend operating hours.
+ * Production path: proposeCapacitySplit (proposal only) + explicit user confirm.
  */
 
 import {

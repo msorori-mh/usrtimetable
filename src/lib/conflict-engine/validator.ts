@@ -1,9 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
 import { categorizeInstructor, requiresAvailability } from "@/lib/instructor-category";
+import { evaluateCapacityAgainstRoom } from "@/lib/schedule-builder/enrollment-trust";
 import {
   CAPACITY_EXCEPTION_LIMIT,
   sameSectionSubgroupConflict,
 } from "@/lib/schedule-builder/section-subgroups";
+import { sessionTypeRequiredRoomTypeConflict } from "@/lib/schedule-builder/room-type-policy";
 import {
   buildApprovedExceptionIndex,
   findMatchingException,
@@ -30,12 +32,13 @@ export interface ProposedSession {
   end_time: string;
   session_type?: string;
   expected_students?: number;
+  enrollment_count_status?: string | null;
   replaced_by_split?: boolean;
 }
 
 export interface Conflict {
   code: string;
-  severity: "hard";
+  severity: "hard" | "soft";
   message_ar: string;
   message_en: string;
   schedule_session_id?: string | null;
@@ -185,10 +188,15 @@ export async function validateProposed(params: {
     offeringIds.length
       ? supabase
           .from("course_offerings")
-          .select("id, expected_students, college_id")
+          .select("id, expected_students, enrollment_count_status, college_id")
           .in("id", offeringIds)
       : Promise.resolve({
-          data: [] as Array<{ id: string; expected_students: number; college_id: string }>,
+          data: [] as Array<{
+            id: string;
+            expected_students: number;
+            enrollment_count_status: string | null;
+            college_id: string;
+          }>,
         }),
     supabase
       .from("time_slot_templates")
@@ -310,28 +318,78 @@ export async function validateProposed(params: {
       }
     }
 
-    // 4. room capacity (+5 owner policy) + required room type
+    // 4. room capacity (+5 for confirmed only) + required room type
     if (s.room_id) {
       const room = roomMap.get(s.room_id);
-      const offering = offMap.get(s.course_offering_id);
+      const offering = offMap.get(s.course_offering_id) as
+        | {
+            expected_students: number;
+            enrollment_count_status?: string | null;
+          }
+        | undefined;
       const expected = s.expected_students ?? offering?.expected_students ?? 0;
-      if (room && expected > 0 && room.capacity + CAPACITY_EXCEPTION_LIMIT < expected) {
-        conflicts.push({
-          code: "room_capacity",
-          severity: "hard",
-          message_ar: `سعة القاعة غير كافية: السعة ${room.capacity} (+${CAPACITY_EXCEPTION_LIMIT}) والعدد المتوقع ${expected}.`,
-          message_en: `Room capacity insufficient: capacity ${room.capacity} (+${CAPACITY_EXCEPTION_LIMIT}), expected ${expected}.`,
-          schedule_session_id: sid,
-          metadata: {
-            capacity: room.capacity,
-            capacity_plus_exception: room.capacity + CAPACITY_EXCEPTION_LIMIT,
-            expected_students: expected,
-          },
+      const enrollStatus =
+        s.enrollment_count_status ?? offering?.enrollment_count_status ?? "unverified";
+      if (room) {
+        const cap = evaluateCapacityAgainstRoom({
+          enrollmentCount: expected,
+          enrollmentStatus: enrollStatus,
+          roomCapacity: room.capacity,
+          capacityExceptionLimit: CAPACITY_EXCEPTION_LIMIT,
         });
+        if (cap.outcome === "hard_block") {
+          conflicts.push({
+            code: "room_capacity",
+            severity: "hard",
+            message_ar: `سعة القاعة غير كافية للعدد المعتمد: السعة ${room.capacity} (+${CAPACITY_EXCEPTION_LIMIT}) والعدد ${expected}.`,
+            message_en: `Room capacity insufficient for confirmed enrollment: capacity ${room.capacity} (+${CAPACITY_EXCEPTION_LIMIT}), count ${expected}.`,
+            schedule_session_id: sid,
+            metadata: {
+              capacity: room.capacity,
+              capacity_plus_exception: room.capacity + CAPACITY_EXCEPTION_LIMIT,
+              expected_students: expected,
+              enrollment_count_status: cap.status,
+            },
+          });
+        } else if (cap.outcome === "soft_warning") {
+          conflicts.push({
+            code: "room_capacity_unverified",
+            severity: "soft",
+            message_ar: `تحذير سعة: العدد غير معتمد (${cap.status}). السعة ${room.capacity} (+${CAPACITY_EXCEPTION_LIMIT}) والعدد ${expected}.`,
+            message_en: `Capacity warning: enrollment status ${cap.status}. capacity ${room.capacity} (+${CAPACITY_EXCEPTION_LIMIT}), count ${expected}.`,
+            schedule_session_id: sid,
+            metadata: {
+              capacity: room.capacity,
+              capacity_plus_exception: room.capacity + CAPACITY_EXCEPTION_LIMIT,
+              expected_students: expected,
+              enrollment_count_status: cap.status,
+              blocking: false,
+            },
+          });
+        }
       }
       const requiredType = s.teaching_assignment_id
         ? (taMap.get(s.teaching_assignment_id)?.required_room_type ?? null)
         : null;
+      const dq = sessionTypeRequiredRoomTypeConflict({
+        sessionType: s.session_type,
+        requiredRoomType: requiredType,
+      });
+      if (dq.conflict) {
+        conflicts.push({
+          code: "session_room_type_data_quality",
+          severity: "soft",
+          message_ar: `تحذير جودة بيانات: نوع الجلسة يقترح ${dq.sessionPreferred.join("/")} بينما required_room_type=${dq.requiredRoomType}.`,
+          message_en: `Data quality warning: session_type prefers ${dq.sessionPreferred.join("/")} but required_room_type=${dq.requiredRoomType}.`,
+          schedule_session_id: sid,
+          metadata: {
+            session_type: s.session_type ?? null,
+            session_preferred: dq.sessionPreferred,
+            required_room_type: dq.requiredRoomType,
+            auto_corrected: false,
+          },
+        });
+      }
       if (room && requiredType && room.room_type !== requiredType) {
         conflicts.push({
           code: "room_type_mismatch",

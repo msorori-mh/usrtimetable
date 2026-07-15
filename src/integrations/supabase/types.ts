@@ -690,6 +690,8 @@ export type Database = {
           college_id: string
           course_id: string
           created_at: string
+          enrollment_count_status: string
+          enrollment_count_updated_at: string | null
           expected_students: number
           id: string
           is_active: boolean
@@ -708,6 +710,8 @@ export type Database = {
           college_id: string
           course_id: string
           created_at?: string
+          enrollment_count_status?: string
+          enrollment_count_updated_at?: string | null
           expected_students?: number
           id?: string
           is_active?: boolean
@@ -726,6 +730,8 @@ export type Database = {
           college_id?: string
           course_id?: string
           created_at?: string
+          enrollment_count_status?: string
+          enrollment_count_updated_at?: string | null
           expected_students?: number
           id?: string
           is_active?: boolean
