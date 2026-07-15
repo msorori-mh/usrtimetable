@@ -36,11 +36,15 @@ export interface WorkspaceSessionView {
   instructor_name: string;
   room_label: string;
   section_number: string;
+  /** Capacity subgroup code (A–D) when session is a split child. */
+  subgroup_code: string | null;
+  subgroup_expected_students: number | null;
   program_name: string;
   level_name: string;
   department_name: string;
   instructor_id: string | null;
   section_id: string | null;
+  section_subgroup_id: string | null;
   room_id: string | null;
   program_id: string | null;
   level_id: string | null;
@@ -73,6 +77,13 @@ interface RawWorkspaceSessionRow {
     academic_levels?: { name?: string | null } | null;
   } | null;
   sections?: { section_number?: string | number | null } | null;
+  section_subgroups?: {
+    subgroup_code?: string | null;
+    ordinal?: number | null;
+    expected_students?: number | null;
+  } | null;
+  section_subgroup_id?: string | null;
+  expected_students?: number | null;
   instructors?: { full_name?: string | null } | null;
   rooms?: { code?: string | null; name?: string | null } | null;
 }
@@ -97,11 +108,15 @@ export function mapWorkspaceSessions(raw: unknown[]): WorkspaceSessionView[] {
         ? `${s.rooms.code ?? ""}${s.rooms.name ? ` — ${s.rooms.name}` : ""}`
         : "—",
       section_number: s.sections?.section_number != null ? String(s.sections.section_number) : "—",
+      subgroup_code: s.section_subgroups?.subgroup_code ?? null,
+      subgroup_expected_students:
+        s.section_subgroups?.expected_students ?? s.expected_students ?? null,
       program_name: offering?.academic_programs?.name ?? "—",
       level_name: offering?.academic_levels?.name ?? "—",
       department_name: dept?.name ?? "—",
       instructor_id: s.instructor_id ?? null,
       section_id: s.section_id ?? null,
+      section_subgroup_id: s.section_subgroup_id ?? null,
       room_id: s.room_id ?? null,
       program_id: offering?.program_id ?? null,
       level_id: offering?.level_id ?? null,

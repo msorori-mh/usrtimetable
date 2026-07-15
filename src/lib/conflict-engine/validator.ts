@@ -1,6 +1,10 @@
 import { supabase } from "@/integrations/supabase/client";
 import { categorizeInstructor, requiresAvailability } from "@/lib/instructor-category";
 import {
+  CAPACITY_EXCEPTION_LIMIT,
+  sameSectionSubgroupConflict,
+} from "@/lib/schedule-builder/section-subgroups";
+import {
   buildApprovedExceptionIndex,
   findMatchingException,
   loadApprovedExceptions,
@@ -19,12 +23,14 @@ export interface ProposedSession {
   room_id?: string | null;
   section_id?: string | null;
   section_group_id?: string | null;
+  section_subgroup_id?: string | null;
   study_system: StudySystem;
   day_of_week: number;
   start_time: string; // HH:MM or HH:MM:SS
   end_time: string;
   session_type?: string;
   expected_students?: number;
+  replaced_by_split?: boolean;
 }
 
 export interface Conflict {
@@ -57,9 +63,11 @@ interface ExistingSession {
   instructor_id: string;
   room_id: string | null;
   section_id: string | null;
+  section_subgroup_id: string | null;
   day_of_week: number;
   start_time: string;
   end_time: string;
+  replaced_by_split?: boolean | null;
 }
 
 async function fetchExistingSessions(
@@ -69,9 +77,12 @@ async function fetchExistingSessions(
 ): Promise<ExistingSession[]> {
   let q = supabase
     .from("schedule_sessions")
-    .select("id, instructor_id, room_id, section_id, day_of_week, start_time, end_time")
+    .select(
+      "id, instructor_id, room_id, section_id, section_subgroup_id, day_of_week, start_time, end_time, replaced_by_split",
+    )
     .eq("college_id", collegeId)
-    .eq("schedule_version_id", versionId);
+    .eq("schedule_version_id", versionId)
+    .eq("replaced_by_split", false);
   if (excludeSessionId) q = q.neq("id", excludeSessionId);
   const { data, error } = await q;
   if (error) throw error;
@@ -270,14 +281,17 @@ export async function validateProposed(params: {
       }
     }
 
-    // 3. section conflict
+    // 3. section / capacity-subgroup conflict
     if (s.section_id) {
       for (const p of peers) {
         if (sid && p.id === sid) continue;
         if (
-          p.section_id === s.section_id &&
           p.day_of_week === s.day_of_week &&
-          overlap(s.start_time, s.end_time, p.start_time, p.end_time)
+          overlap(s.start_time, s.end_time, p.start_time, p.end_time) &&
+          sameSectionSubgroupConflict(
+            { section_id: s.section_id, section_subgroup_id: s.section_subgroup_id ?? null },
+            { section_id: p.section_id, section_subgroup_id: p.section_subgroup_id ?? null },
+          )
         ) {
           conflicts.push({
             code: "section_conflict",
@@ -286,25 +300,33 @@ export async function validateProposed(params: {
             message_en: "Section conflict: same section has another overlapping session.",
             schedule_session_id: sid,
             related_session_id: p.id,
-            metadata: { section_id: s.section_id, day_of_week: s.day_of_week },
+            metadata: {
+              section_id: s.section_id,
+              section_subgroup_id: s.section_subgroup_id ?? null,
+              day_of_week: s.day_of_week,
+            },
           });
         }
       }
     }
 
-    // 4. room capacity + required room type
+    // 4. room capacity (+5 owner policy) + required room type
     if (s.room_id) {
       const room = roomMap.get(s.room_id);
       const offering = offMap.get(s.course_offering_id);
       const expected = s.expected_students ?? offering?.expected_students ?? 0;
-      if (room && expected > 0 && room.capacity < expected) {
+      if (room && expected > 0 && room.capacity + CAPACITY_EXCEPTION_LIMIT < expected) {
         conflicts.push({
           code: "room_capacity",
           severity: "hard",
-          message_ar: `سعة القاعة غير كافية: السعة ${room.capacity} والعدد المتوقع ${expected}.`,
-          message_en: `Room capacity insufficient: capacity ${room.capacity}, expected ${expected}.`,
+          message_ar: `سعة القاعة غير كافية: السعة ${room.capacity} (+${CAPACITY_EXCEPTION_LIMIT}) والعدد المتوقع ${expected}.`,
+          message_en: `Room capacity insufficient: capacity ${room.capacity} (+${CAPACITY_EXCEPTION_LIMIT}), expected ${expected}.`,
           schedule_session_id: sid,
-          metadata: { capacity: room.capacity, expected_students: expected },
+          metadata: {
+            capacity: room.capacity,
+            capacity_plus_exception: room.capacity + CAPACITY_EXCEPTION_LIMIT,
+            expected_students: expected,
+          },
         });
       }
       const requiredType = s.teaching_assignment_id

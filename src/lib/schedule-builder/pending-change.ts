@@ -231,8 +231,12 @@ export function toGridSessionsWithPending(
       end_time: s.end_time,
       study_system: s.study_system,
       session_type: s.session_type,
-      title: `${isPending ? "◌ " : ""}${s.course_code} · ش${s.section_number}`,
-      subtitle: `${s.instructor_name} · ${s.room_label} · ${start}–${end}`,
+      title: `${isPending ? "◌ " : ""}${s.course_code} · ش${s.section_number}${
+        s.subgroup_code ? `/${s.subgroup_code}` : ""
+      }`,
+      subtitle: `${s.instructor_name} · ${s.room_label}${
+        s.subgroup_expected_students != null ? ` · ${s.subgroup_expected_students}ط` : ""
+      } · ${start}–${end}`,
       badge: badges.join(" · "),
     };
   });
