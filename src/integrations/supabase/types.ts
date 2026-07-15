@@ -2433,6 +2433,162 @@ export type Database = {
         }
         Returns: Json
       }
+      _ss_brk: {
+        Args: {
+          p_cid: string
+          p_dow: number
+          p_et: string
+          p_sid: string
+          p_st: string
+        }
+        Returns: Json
+      }
+      _ss_cap: {
+        Args: { cap: number; n: number; sid: string; st: string }
+        Returns: Json
+      }
+      _ss_ci: {
+        Args: { c: string; m?: Json; rid: string; s: string; sid: string }
+        Returns: Json
+      }
+      _ss_enroll: {
+        Args: { p_exp: number; p_off: string }
+        Returns: Record<string, unknown>
+      }
+      _ss_ex_match: {
+        Args: { p_code: string; p_rid: string; p_sid: string; p_vid: string }
+        Returns: Record<string, unknown>
+      }
+      _ss_gather: {
+        Args: {
+          a: string
+          b: string
+          c: string
+          d: string
+          e: string
+          f: string
+          g: string
+          h: string
+          i: number
+          j: number
+          k: string
+          l: string
+          m: string
+        }
+        Returns: Json
+      }
+      _ss_iavail_req: {
+        Args: { p_cid: string; p_dow: number; p_iid: string; p_sid: string }
+        Returns: Json
+      }
+      _ss_iavail_win: {
+        Args: {
+          p_cid: string
+          p_dow: number
+          p_et: string
+          p_iid: string
+          p_sid: string
+          p_st: string
+        }
+        Returns: Json
+      }
+      _ss_ov: {
+        Args: { a: string; b: string; c: string; d: string }
+        Returns: boolean
+      }
+      _ss_pack: { Args: { p_conflicts: Json; p_vid: string }; Returns: Json }
+      _ss_peer_i: {
+        Args: {
+          p_cid: string
+          p_dow: number
+          p_et: string
+          p_iid: string
+          p_sid: string
+          p_st: string
+          p_vid: string
+        }
+        Returns: Json
+      }
+      _ss_peer_r: {
+        Args: {
+          p_cid: string
+          p_dow: number
+          p_et: string
+          p_rid: string
+          p_sid: string
+          p_st: string
+          p_vid: string
+        }
+        Returns: Json
+      }
+      _ss_peer_s: {
+        Args: {
+          p_cid: string
+          p_dow: number
+          p_et: string
+          p_sec: string
+          p_sid: string
+          p_st: string
+          p_vid: string
+        }
+        Returns: Json
+      }
+      _ss_room_av: {
+        Args: {
+          p_cid: string
+          p_dow: number
+          p_et: string
+          p_rid: string
+          p_sid: string
+          p_st: string
+        }
+        Returns: Json
+      }
+      _ss_room_cap: {
+        Args: {
+          p_cid: string
+          p_exp: number
+          p_off: string
+          p_rid: string
+          p_sid: string
+        }
+        Returns: Json
+      }
+      _ss_room_type: {
+        Args: { p_cid: string; p_rid: string; p_sid: string; p_ta: string }
+        Returns: Json
+      }
+      _ss_sec_hit: {
+        Args: {
+          p_peer_sec: string
+          p_peer_sg: string
+          p_sec: string
+          p_sg: string
+        }
+        Returns: boolean
+      }
+      _ss_set: {
+        Args: {
+          p_cid: string
+          p_dow: number
+          p_et: string
+          p_sid: string
+          p_st: string
+        }
+        Returns: Json
+      }
+      _ss_sg: { Args: { p_id: string }; Returns: string }
+      _ss_tmpl: {
+        Args: {
+          p_cid: string
+          p_dow: number
+          p_et: string
+          p_sid: string
+          p_st: string
+          p_sys: string
+        }
+        Returns: Json
+      }
       can_manage_college: {
         Args: { _college_id: string; _user_id: string }
         Returns: boolean
