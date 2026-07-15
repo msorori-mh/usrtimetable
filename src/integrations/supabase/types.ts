@@ -2433,6 +2433,16 @@ export type Database = {
         }
         Returns: Json
       }
+      _ss_brk: {
+        Args: {
+          p_cid: string
+          p_dow: number
+          p_et: string
+          p_sid: string
+          p_st: string
+        }
+        Returns: Json
+      }
       _ss_cap: {
         Args: { cap: number; n: number; sid: string; st: string }
         Returns: Json
