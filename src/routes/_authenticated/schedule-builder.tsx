@@ -960,6 +960,10 @@ function ScheduleBuilderWorkspacePage() {
           }));
           toast.success("تم حفظ عدد الطلاب وحالة الموثوقية.");
         }}
+        onSplitApproved={(payload) => {
+          // Independent of session pending save — subgroups only when RPC applied.
+          toast.success(payload.statusAr);
+        }}
       />
 
       <SessionEditSheet

@@ -232,15 +232,23 @@ function run() {
     assert(Math.max(...sizes) - Math.min(...sizes) <= 1, `balanced ${g}`);
   }
 
-  // 13–15. proposal does not create DB rows / subgroups / sessions
-  assert(splitDlg.includes("لا يُنشئ مجموعات"), "split dialog no create claim");
+  // 13–15. dialog does not create sessions; subgroup create only via gated RPC path
+  assert(
+    splitDlg.includes("لا يُنشئ جلسات") || splitDlg.includes("لن تُنشأ جلسات"),
+    "split dialog no session create claim",
+  );
   assert(splitDlg.includes("اعتماد الاقتراح"), "approve button present");
-  assert(splitDlg.includes("disabled"), "approve disabled");
+  // Explicit approve is gated by canApprove + confirmation; creation only via RPC when applied.
+  assert(splitDlg.includes("canApprove"), "approve permission gated");
+  assert(splitDlg.includes("تأكيد اعتماد التقسيم"), "explicit confirmation");
   assert(splitUiSrc.includes("proposeCapacitySplit"), "uses proposal helper");
   assert(!splitUiSrc.includes(".insert("), "split-ui no insert");
-  assert(!splitDlg.includes(".insert("), "split dialog no insert");
+  assert(!splitDlg.includes(".from("), "split dialog no direct table write");
   assert(!detailsSheet.includes(".insert("), "details no insert");
-  assert(subgroupsSrc.includes("autoCreateForbidden: true"), "proposal forbids auto create");
+  assert(
+    subgroupsSrc.includes("autoCreateForbidden: true"),
+    "proposal math still forbids auto create",
+  );
 
   // 16. live inventory dynamic
   const rooms = liveInventoryFixture();
