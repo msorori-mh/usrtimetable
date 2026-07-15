@@ -690,6 +690,8 @@ export type Database = {
           college_id: string
           course_id: string
           created_at: string
+          enrollment_count_status: string
+          enrollment_count_updated_at: string | null
           expected_students: number
           id: string
           is_active: boolean
@@ -708,6 +710,8 @@ export type Database = {
           college_id: string
           course_id: string
           created_at?: string
+          enrollment_count_status?: string
+          enrollment_count_updated_at?: string | null
           expected_students?: number
           id?: string
           is_active?: boolean
@@ -726,6 +730,8 @@ export type Database = {
           college_id?: string
           course_id?: string
           created_at?: string
+          enrollment_count_status?: string
+          enrollment_count_updated_at?: string | null
           expected_students?: number
           id?: string
           is_active?: boolean
@@ -1632,12 +1638,15 @@ export type Database = {
           instructor_id: string
           is_locked: boolean
           lock_reason: string | null
+          replaced_by_split: boolean
           room_id: string | null
           schedule_version_id: string
           section_group_id: string | null
           section_id: string | null
+          section_subgroup_id: string | null
           session_type: string
           source_type: string
+          split_source_session_id: string | null
           start_time: string
           study_system: string
           teaching_assignment_id: string | null
@@ -1655,12 +1664,15 @@ export type Database = {
           instructor_id: string
           is_locked?: boolean
           lock_reason?: string | null
+          replaced_by_split?: boolean
           room_id?: string | null
           schedule_version_id: string
           section_group_id?: string | null
           section_id?: string | null
+          section_subgroup_id?: string | null
           session_type?: string
           source_type?: string
+          split_source_session_id?: string | null
           start_time: string
           study_system?: string
           teaching_assignment_id?: string | null
@@ -1678,12 +1690,15 @@ export type Database = {
           instructor_id?: string
           is_locked?: boolean
           lock_reason?: string | null
+          replaced_by_split?: boolean
           room_id?: string | null
           schedule_version_id?: string
           section_group_id?: string | null
           section_id?: string | null
+          section_subgroup_id?: string | null
           session_type?: string
           source_type?: string
+          split_source_session_id?: string | null
           start_time?: string
           study_system?: string
           teaching_assignment_id?: string | null
@@ -1980,6 +1995,63 @@ export type Database = {
           group_name?: string
           id?: string
           notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      section_subgroups: {
+        Row: {
+          academic_term_id: string
+          college_id: string
+          course_id: string
+          created_at: string
+          expected_students: number
+          id: string
+          is_active: boolean
+          notes: string | null
+          ordinal: number
+          owner_approval_ref: string | null
+          section_id: string
+          source_policy: string
+          study_system: string
+          subgroup_code: string
+          teaching_assignment_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          academic_term_id: string
+          college_id: string
+          course_id: string
+          created_at?: string
+          expected_students?: number
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          ordinal: number
+          owner_approval_ref?: string | null
+          section_id: string
+          source_policy: string
+          study_system?: string
+          subgroup_code: string
+          teaching_assignment_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          academic_term_id?: string
+          college_id?: string
+          course_id?: string
+          created_at?: string
+          expected_students?: number
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          ordinal?: number
+          owner_approval_ref?: string | null
+          section_id?: string
+          source_policy?: string
+          study_system?: string
+          subgroup_code?: string
+          teaching_assignment_id?: string | null
           updated_at?: string
         }
         Relationships: []
