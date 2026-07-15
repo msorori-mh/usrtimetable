@@ -2485,6 +2485,16 @@ export type Database = {
         }
         Returns: Json
       }
+      _ss_room_cap: {
+        Args: {
+          p_cid: string
+          p_exp: number
+          p_off: string
+          p_rid: string
+          p_sid: string
+        }
+        Returns: Json
+      }
       _ss_sec_hit: {
         Args: {
           p_peer_sec: string
