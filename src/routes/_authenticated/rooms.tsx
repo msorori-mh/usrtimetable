@@ -27,6 +27,10 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
+import {
+  isRoomInUseDeleteError,
+  roomDeleteBlockedToastMessage,
+} from "@/lib/rooms/room-delete-guard";
 import { DoorOpen, Pencil, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/rooms")({
@@ -139,6 +143,14 @@ function RoomsPage() {
 
   const del = useMutation({
     mutationFn: async (id: string) => {
+      const { count, error: countError } = await supabase
+        .from("schedule_sessions")
+        .select("id", { count: "exact", head: true })
+        .eq("room_id", id);
+      if (countError) throw countError;
+      if ((count ?? 0) > 0) {
+        throw new Error(`ROOM_IN_USE:${count}`);
+      }
       const { error } = await supabase.from("rooms").delete().eq("id", id);
       if (error) throw error;
       await logAudit({ action: "delete", entity: "rooms", entityId: id, collegeId: active?.id });
@@ -149,12 +161,8 @@ function RoomsPage() {
     },
     onError: (e: Error) => {
       const msg = e.message ?? "";
-      if (
-        msg.includes("ROOM_IN_USE") ||
-        msg.includes("foreign key") ||
-        msg.includes("schedule_sessions_room_id_fkey")
-      ) {
-        toast.error("لا يمكن حذف قاعة مستخدمة في جلسات الجدول. انقل أو احذف الجلسات أولاً.");
+      if (isRoomInUseDeleteError(msg) || msg.startsWith("ROOM_IN_USE:")) {
+        toast.error(roomDeleteBlockedToastMessage());
         return;
       }
       toast.error(msg);
@@ -324,7 +332,12 @@ function RoomsPage() {
                       size="sm"
                       variant="ghost"
                       onClick={() => {
-                        if (confirm("حذف القاعة؟")) del.mutate(r.id);
+                        if (
+                          confirm(
+                            "حذف القاعة؟ إذا كانت مستخدمة في جلسات دراسية فسيُمنع الحذف؛ عطّل القاعة بدلًا من ذلك.",
+                          )
+                        )
+                          del.mutate(r.id);
                       }}
                     >
                       <Trash2 className="h-3.5 w-3.5" />

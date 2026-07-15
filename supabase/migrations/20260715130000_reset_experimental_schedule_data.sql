@@ -3,6 +3,7 @@
 -- Preserves academic masters (colleges, courses, offerings, sections, rooms, instructors, users).
 -- Does NOT modify expected_students / enrollment_count_status.
 -- Does NOT create a new schedule version (UAT rebuild is a later phase).
+-- Entire DO block runs in a single transaction; any exception rolls back all deletes.
 
 DO $$
 DECLARE
@@ -101,7 +102,7 @@ BEGIN
   INSERT INTO public.audit_logs (actor_id, action, entity, entity_id, college_id, details)
   VALUES (
     NULL,
-    'experimental_schedule_reset',
+    'EXPERIMENTAL_SCHEDULE_RESET',
     'schedule_versions',
     NULL,
     NULL,
