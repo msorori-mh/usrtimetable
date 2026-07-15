@@ -5,6 +5,10 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { PendingScheduleSessionChange } from "@/lib/schedule-builder/pending-change";
 import { normalizeTimeHHMM } from "@/lib/schedule-builder/pending-change";
+import {
+  conflictMessageAr,
+  enrichConflictMessages,
+} from "@/lib/schedule-builder/conflict-code-messages";
 
 export type SessionMoveConflict = {
   code: string;
@@ -55,7 +59,15 @@ export type SaveSessionMoveResult = {
 
 function asConflictArray(value: unknown): SessionMoveConflict[] {
   if (!Array.isArray(value)) return [];
-  return value as SessionMoveConflict[];
+  return (value as SessionMoveConflict[]).map((c) => enrichConflictMessages(c));
+}
+
+function resolveRpcMessageAr(
+  code: string | null | undefined,
+  fallback?: string | null,
+): string | null {
+  if (code) return conflictMessageAr(code);
+  return fallback ?? null;
 }
 
 function toTimeParam(value: string): string {
@@ -98,6 +110,7 @@ export async function validateScheduleSessionMove(
   }
 
   const row = (data ?? {}) as Record<string, unknown>;
+  const code = (row.code as string | null | undefined) ?? null;
   return {
     valid: !!row.valid,
     blocking_conflicts: asConflictArray(row.blocking_conflicts),
@@ -106,8 +119,8 @@ export async function validateScheduleSessionMove(
     stale: !!row.stale,
     normalized_proposal:
       (row.normalized_proposal as ValidateSessionMoveResult["normalized_proposal"]) ?? null,
-    code: (row.code as string | null | undefined) ?? null,
-    message_ar: (row.message_ar as string | null | undefined) ?? null,
+    code,
+    message_ar: resolveRpcMessageAr(code, row.message_ar as string | null | undefined),
   };
 }
 
@@ -138,11 +151,12 @@ export async function moveOrRescheduleScheduleSession(
   }
 
   const row = (data ?? {}) as Record<string, unknown>;
+  const code = (row.code as string | null | undefined) ?? null;
   return {
     ok: !!row.ok,
-    code: (row.code as string | null | undefined) ?? null,
+    code,
     stale: !!row.stale,
-    message_ar: (row.message_ar as string | null | undefined) ?? null,
+    message_ar: resolveRpcMessageAr(code, row.message_ar as string | null | undefined),
     blocking_conflicts: asConflictArray(row.blocking_conflicts),
     warnings: asConflictArray(row.warnings),
     approved_exceptions: asConflictArray(row.approved_exceptions),

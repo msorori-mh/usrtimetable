@@ -49,11 +49,15 @@ function sampleSession(
     instructor_name: "د. أحمد",
     room_label: "A1",
     section_number: "1",
+    subgroup_code: null,
+    subgroup_expected_students: null,
+    enrollment_count_status: "unverified",
     program_name: "علوم حاسب",
     level_name: "الأول",
     department_name: "حاسب",
     instructor_id: "i1",
     section_id: "s1",
+    section_subgroup_id: null,
     room_id: "r1",
     program_id: "p1",
     level_id: "l1",
@@ -138,8 +142,7 @@ function run() {
     "sessions use flat select (no PostgREST embeds)",
   );
   assert(
-    queriesSrc.includes("assembleWorkspaceSessionRows") ||
-      queriesSrc.includes("session-hydrate"),
+    queriesSrc.includes("assembleWorkspaceSessionRows") || queriesSrc.includes("session-hydrate"),
     "client-side hydration assembles relation labels",
   );
   const hydrateSrc = readSrc("src/lib/schedule-builder/session-hydrate.ts");
@@ -203,6 +206,7 @@ function run() {
       programs: new Map([["prog-1", { id: "prog-1", name: "IT" }]]),
       levels: new Map([["lvl-1", { id: "lvl-1", name: "1", level_number: 1 }]]),
       sections: new Map([["sec-1", { id: "sec-1", section_number: "A" }]]),
+      subgroups: new Map(),
       instructors: new Map([["ins-1", { id: "ins-1", full_name: "د. أحمد" }]]),
       rooms: new Map(), // orphan room_id → null rooms relation
     },

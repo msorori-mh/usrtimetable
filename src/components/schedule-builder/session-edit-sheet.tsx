@@ -27,6 +27,7 @@ import { DAY_NAMES_AR } from "@/lib/reports/formatters";
 import type { WorkspaceSessionView } from "@/lib/schedule-builder/workspace";
 import type { WorkspaceRoomOption } from "@/lib/schedule-builder/queries";
 import { SCHEDULE_BUILDER_UNSAVED_BADGE_AR } from "@/lib/schedule-builder/edit-access";
+import { conflictMessageAr } from "@/lib/schedule-builder/conflict-code-messages";
 import {
   buildBeforeAfterRows,
   formValuesFromSession,
@@ -69,7 +70,7 @@ function ConflictList({
               <Badge variant={variant}>{c.code}</Badge>
               {c.approved_exception ? <Badge variant="outline">استثناء معتمد</Badge> : null}
             </div>
-            <p>{c.message_ar ?? c.message_en ?? c.code}</p>
+            <p>{c.message_ar ?? conflictMessageAr(c.code, c.metadata) ?? c.message_en ?? c.code}</p>
             {c.exception_reason ? (
               <p className="text-xs text-muted-foreground">سبب الاستثناء: {c.exception_reason}</p>
             ) : null}

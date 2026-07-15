@@ -37,10 +37,7 @@ export function exceptionMatchKey(params: {
   sessionId: string;
   relatedSessionId?: string | null;
 }): string {
-  const { primary, secondary } = normalizeSessionPair(
-    params.sessionId,
-    params.relatedSessionId,
-  );
+  const { primary, secondary } = normalizeSessionPair(params.sessionId, params.relatedSessionId);
   if (secondary) {
     return `${params.scheduleVersionId}|${params.conflictCode}|${primary}|${secondary}`;
   }
@@ -112,10 +109,11 @@ export interface ConflictExceptionSummary {
 }
 
 export function summarizeConflictExceptions(
-  conflicts: Array<{ approved_exception?: boolean }>,
+  conflicts: Array<{ approved_exception?: boolean; severity?: "hard" | "soft" }>,
 ): ConflictExceptionSummary {
-  const totalHardConflicts = conflicts.length;
-  const approvedHardConflicts = conflicts.filter((c) => c.approved_exception).length;
+  const hard = conflicts.filter((c) => (c.severity ?? "hard") === "hard");
+  const totalHardConflicts = hard.length;
+  const approvedHardConflicts = hard.filter((c) => c.approved_exception).length;
   return {
     totalHardConflicts,
     approvedHardConflicts,

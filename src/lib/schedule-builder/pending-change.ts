@@ -6,6 +6,10 @@ import type { WorkspaceRoomOption } from "@/lib/schedule-builder/queries";
 import type { GridSession } from "@/components/timetable/timetable-grid";
 import { SESSION_TYPE_LABELS, SESSION_STUDY_SYSTEM_LABELS } from "@/lib/reports/session-mappers";
 import { SCHEDULE_BUILDER_UNSAVED_BADGE_AR } from "@/lib/schedule-builder/edit-access";
+import {
+  showUnverifiedEnrollmentBadge,
+  UNVERIFIED_ENROLLMENT_BADGE_AR,
+} from "@/lib/schedule-builder/enrollment-trust";
 
 export type PendingScheduleSlot = {
   day_of_week: number;
@@ -222,6 +226,9 @@ export function toGridSessionsWithPending(
     const isPending = !!pending && hasPendingChanges(pending) && pending.sessionId === s.id;
     const isSelected = selectedSessionId === s.id;
     const badges = [`${typeAr} · ${sysAr}`];
+    if (showUnverifiedEnrollmentBadge(s.enrollment_count_status)) {
+      badges.push(UNVERIFIED_ENROLLMENT_BADGE_AR);
+    }
     if (isPending) badges.push(SCHEDULE_BUILDER_UNSAVED_BADGE_AR);
     if (isSelected) badges.push("محدد");
     return {
@@ -231,8 +238,12 @@ export function toGridSessionsWithPending(
       end_time: s.end_time,
       study_system: s.study_system,
       session_type: s.session_type,
-      title: `${isPending ? "◌ " : ""}${s.course_code} · ش${s.section_number}`,
-      subtitle: `${s.instructor_name} · ${s.room_label} · ${start}–${end}`,
+      title: `${isPending ? "◌ " : ""}${s.course_code} · ش${s.section_number}${
+        s.subgroup_code ? `/${s.subgroup_code}` : ""
+      }`,
+      subtitle: `${s.instructor_name} · ${s.room_label}${
+        s.subgroup_expected_students != null ? ` · ${s.subgroup_expected_students}ط` : ""
+      } · ${start}–${end}`,
       badge: badges.join(" · "),
     };
   });

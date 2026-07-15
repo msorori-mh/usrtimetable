@@ -72,8 +72,8 @@ export async function fetchWorkspaceVersions(params: {
 /** Flat session columns only — no PostgREST embeds (avoids PGRST200). */
 export const WORKSPACE_SESSION_FLAT_SELECT = `
   id, day_of_week, start_time, end_time, session_type, study_system,
-  section_id, instructor_id, room_id, updated_at, is_locked,
-  course_offering_id
+  section_id, section_subgroup_id, instructor_id, room_id, updated_at, is_locked,
+  replaced_by_split, expected_students, course_offering_id
 ` as const;
 
 function uniqueIds(ids: Array<string | null | undefined>): string[] {
@@ -88,6 +88,7 @@ async function fetchRowsByIds<T extends { id: string }>(
     | "academic_programs"
     | "academic_levels"
     | "sections"
+    | "section_subgroups"
     | "instructors"
     | "rooms",
   ids: string[],
@@ -110,6 +111,7 @@ async function hydrateWorkspaceSessions(
 ): Promise<WorkspaceSessionHydratedRow[]> {
   const offeringIds = uniqueIds(flat.map((s) => s.course_offering_id));
   const sectionIds = uniqueIds(flat.map((s) => s.section_id));
+  const subgroupIds = uniqueIds(flat.map((s) => s.section_subgroup_id));
   const instructorIds = uniqueIds(flat.map((s) => s.instructor_id));
   const roomIds = uniqueIds(flat.map((s) => s.room_id));
 
@@ -118,13 +120,19 @@ async function hydrateWorkspaceSessions(
     program_id: string | null;
     level_id: string | null;
     course_id: string;
-  }>("course_offerings", offeringIds, "id, program_id, level_id, course_id");
+    expected_students: number | null;
+    enrollment_count_status: string | null;
+  }>(
+    "course_offerings",
+    offeringIds,
+    "id, program_id, level_id, course_id, expected_students, enrollment_count_status",
+  );
 
   const courseIds = uniqueIds(offerings.map((o) => o.course_id));
   const programIds = uniqueIds(offerings.map((o) => o.program_id));
   const levelIds = uniqueIds(offerings.map((o) => o.level_id));
 
-  const [courses, programs, levels, sections, instructors, rooms] = await Promise.all([
+  const [courses, programs, levels, sections, subgroups, instructors, rooms] = await Promise.all([
     fetchRowsByIds<{
       id: string;
       name: string | null;
@@ -146,6 +154,12 @@ async function hydrateWorkspaceSessions(
       sectionIds,
       "id, section_number",
     ),
+    fetchRowsByIds<{
+      id: string;
+      subgroup_code: string | null;
+      ordinal: number | null;
+      expected_students: number | null;
+    }>("section_subgroups", subgroupIds, "id, subgroup_code, ordinal, expected_students"),
     fetchRowsByIds<{ id: string; full_name: string | null }>(
       "instructors",
       instructorIds,
@@ -174,6 +188,7 @@ async function hydrateWorkspaceSessions(
     programs: toMap(programs),
     levels: toMap(levels),
     sections: toMap(sections),
+    subgroups: toMap(subgroups),
     instructors: toMap(instructors),
     rooms: toMap(rooms),
   });
@@ -189,6 +204,7 @@ export async function fetchWorkspaceSessions(params: {
     .select(WORKSPACE_SESSION_FLAT_SELECT)
     .eq("college_id", params.collegeId)
     .eq("schedule_version_id", params.versionId)
+    .eq("replaced_by_split", false)
     .order("day_of_week")
     .order("start_time");
 
@@ -204,13 +220,16 @@ export interface WorkspaceRoomOption {
   id: string;
   code: string;
   name: string | null;
+  /** Live inventory fields — never hardcode hall/lab counts in UI. */
+  room_type?: string | null;
+  capacity?: number | null;
 }
 
 /** College-scoped active rooms for local edit UI (read-only list). */
 export async function fetchWorkspaceRooms(collegeId: string): Promise<WorkspaceRoomOption[]> {
   const { data, error } = await supabase
     .from("rooms")
-    .select("id, code, name, is_active")
+    .select("id, code, name, is_active, room_type, capacity")
     .eq("college_id", collegeId)
     .eq("is_active", true)
     .order("code");
@@ -219,6 +238,8 @@ export async function fetchWorkspaceRooms(collegeId: string): Promise<WorkspaceR
     id: r.id as string,
     code: String(r.code ?? ""),
     name: (r.name as string | null) ?? null,
+    room_type: (r.room_type as string | null) ?? null,
+    capacity: typeof r.capacity === "number" ? r.capacity : Number(r.capacity ?? 0),
   }));
 }
 
