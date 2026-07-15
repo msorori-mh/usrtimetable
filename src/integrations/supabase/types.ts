@@ -2441,6 +2441,15 @@ export type Database = {
         Args: { a: string; b: string; c: string; d: string }
         Returns: boolean
       }
+      _ss_sec_hit: {
+        Args: {
+          p_peer_sec: string
+          p_peer_sg: string
+          p_sec: string
+          p_sg: string
+        }
+        Returns: boolean
+      }
       _ss_sg: { Args: { p_id: string }; Returns: string }
       can_manage_college: {
         Args: { _college_id: string; _user_id: string }
