@@ -2437,6 +2437,10 @@ export type Database = {
         Args: { c: string; m?: Json; rid: string; s: string; sid: string }
         Returns: Json
       }
+      _ss_ov: {
+        Args: { a: string; b: string; c: string; d: string }
+        Returns: boolean
+      }
       can_manage_college: {
         Args: { _college_id: string; _user_id: string }
         Returns: boolean
