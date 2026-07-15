@@ -2478,6 +2478,7 @@ export type Database = {
         Args: { a: string; b: string; c: string; d: string }
         Returns: boolean
       }
+      _ss_pack: { Args: { p_conflicts: Json; p_vid: string }; Returns: Json }
       _ss_peer_i: {
         Args: {
           p_cid: string
