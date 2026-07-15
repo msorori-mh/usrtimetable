@@ -2459,6 +2459,24 @@ export type Database = {
         Args: { p_code: string; p_rid: string; p_sid: string; p_vid: string }
         Returns: Record<string, unknown>
       }
+      _ss_gather: {
+        Args: {
+          a: string
+          b: string
+          c: string
+          d: string
+          e: string
+          f: string
+          g: string
+          h: string
+          i: number
+          j: number
+          k: string
+          l: string
+          m: string
+        }
+        Returns: Json
+      }
       _ss_iavail_req: {
         Args: { p_cid: string; p_dow: number; p_iid: string; p_sid: string }
         Returns: Json
