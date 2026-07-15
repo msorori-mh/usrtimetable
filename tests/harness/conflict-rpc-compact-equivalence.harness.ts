@@ -50,7 +50,11 @@ function run() {
     ),
     "old 30000 name gone",
   );
-  const schemaBuf = readFileSync(join(root, schemaPath));
+  // Normalize CRLF→LF so Windows checkouts match the applied LF artifact SHA.
+  const schemaBuf = Buffer.from(
+    readFileSync(join(root, schemaPath)).toString("utf8").replace(/\r\n/g, "\n"),
+    "utf8",
+  );
   assert(schemaBuf.length === 5732, `schema size ${schemaBuf.length}`);
   assert(
     createHash("sha256").update(schemaBuf).digest("hex") ===
