@@ -178,7 +178,7 @@ function run() {
   assert(summary.unapprovedHardConflicts === 1, "soft excluded from hard count");
 
   // 7–8. No auto subgroup/session creation in schema/data migrations
-  const schema = readSrc("supabase/migrations/20260715030000_section_subgroups_capacity_model.sql");
+  const schema = readSrc("supabase/migrations/20260715012000_section_subgroups_capacity_model.sql");
   assert(schema.includes("section_subgroups"), "schema table retained");
   assert(schema.includes("enrollment_count_status"), "trust column");
   assert(!schema.includes("INSERT INTO public.section_subgroups"), "no subgroup data apply");
@@ -189,18 +189,18 @@ function run() {
   );
   assert(
     !existsSync(
-      join(root, "supabase/migrations/20260715030200_section_subgroups_data_apply_deferred.sql"),
+      join(root, "supabase/migrations/20260715030100_section_subgroups_conflict_rpc.sql"),
     ),
-    "deferred data-apply file deleted",
+    "large 30100 removed",
   );
 
-  // 9–10. No operating-hours / NEW-* creation in migrations
-  const rpc = readSrc("supabase/migrations/20260715030100_section_subgroups_conflict_rpc.sql");
-  assert(rpc.includes("enrollment_count_status"), "rpc trust-aware");
-  assert(rpc.includes("room_capacity_unverified"), "rpc soft capacity");
-  assert(!rpc.includes("NEW-HALL"), "rpc no temp rooms");
-  assert(!rpc.includes("UPDATE scheduling_settings"), "rpc does not rewrite operating hours");
-  assert(!rpc.includes("18:00"), "rpc no 18:00 extension");
+  // 9–10. Compact RPC chain: trust + soft capacity; no NEW-* / hours rewrite
+  const cap = readSrc("supabase/migrations/20260715012600_ss_capacity_item.sql");
+  assert(cap.includes("room_capacity_unverified"), "soft capacity helper");
+  assert(cap.includes("'confirmed'"), "confirmed hard path");
+  const peers = readSrc("supabase/migrations/20260715012700_ss_peer_instructor.sql");
+  assert(peers.includes("replaced_by_split"), "retired parents skipped");
+  assert(!cap.includes("NEW-HALL") && !peers.includes("18:00"), "no temp rooms/hours");
 
   // Balanced plan helpers still work for confirmed proposals
   for (const n of [2, 3, 4]) {
