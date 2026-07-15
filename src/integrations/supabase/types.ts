@@ -2441,6 +2441,7 @@ export type Database = {
         Args: { a: string; b: string; c: string; d: string }
         Returns: boolean
       }
+      _ss_sg: { Args: { p_id: string }; Returns: string }
       can_manage_college: {
         Args: { _college_id: string; _user_id: string }
         Returns: boolean
