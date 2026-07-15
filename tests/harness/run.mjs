@@ -30,6 +30,7 @@ const harnesses = [
   "explicit-split-approval-contract-ui.harness.ts",
   "experimental-schedule-reset-room-integrity.harness.ts",
   "schedule-builder-phase6-uat-fixture.harness.ts",
+  "term-reference-remediation.harness.ts",
 ];
 
 let exitCode = 0;
