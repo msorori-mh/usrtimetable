@@ -2433,6 +2433,10 @@ export type Database = {
         }
         Returns: Json
       }
+      _ss_ci: {
+        Args: { c: string; m?: Json; rid: string; s: string; sid: string }
+        Returns: Json
+      }
       can_manage_college: {
         Args: { _college_id: string; _user_id: string }
         Returns: boolean
