@@ -94,7 +94,7 @@ export async function validateScheduleSessionMove(
     p_target_start_time: toTimeParam(pending.proposed.start_time),
     p_target_end_time: toTimeParam(pending.proposed.end_time),
     p_target_room_id: pending.proposed.room_id,
-  });
+  } as never);
 
   if (error) {
     return {
