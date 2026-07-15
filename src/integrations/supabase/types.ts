@@ -2437,6 +2437,10 @@ export type Database = {
         Args: { c: string; m?: Json; rid: string; s: string; sid: string }
         Returns: Json
       }
+      _ss_enroll: {
+        Args: { p_exp: number; p_off: string }
+        Returns: Record<string, unknown>
+      }
       _ss_ov: {
         Args: { a: string; b: string; c: string; d: string }
         Returns: boolean
