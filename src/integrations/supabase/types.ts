@@ -107,6 +107,83 @@ export type Database = {
         }
         Relationships: []
       }
+      academic_cohorts: {
+        Row: {
+          active: boolean
+          code: string | null
+          college_id: string
+          count_status: string
+          created_at: string
+          entry_year: number
+          expected_students: number
+          id: string
+          level_id: string
+          program_id: string
+          study_system: string
+          term_id: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          code?: string | null
+          college_id: string
+          count_status?: string
+          created_at?: string
+          entry_year: number
+          expected_students?: number
+          id?: string
+          level_id: string
+          program_id: string
+          study_system: string
+          term_id: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          code?: string | null
+          college_id?: string
+          count_status?: string
+          created_at?: string
+          entry_year?: number
+          expected_students?: number
+          id?: string
+          level_id?: string
+          program_id?: string
+          study_system?: string
+          term_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "academic_cohorts_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "academic_cohorts_level_id_fkey"
+            columns: ["level_id"]
+            isOneToOne: false
+            referencedRelation: "academic_levels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "academic_cohorts_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "academic_programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "academic_cohorts_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "academic_terms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       academic_levels: {
         Row: {
           college_id: string
@@ -358,6 +435,74 @@ export type Database = {
             columns: ["schedule_version_id"]
             isOneToOne: false
             referencedRelation: "schedule_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cohort_elective_selections: {
+        Row: {
+          cohort_id: string
+          college_id: string
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          elective_slot_id: string
+          id: string
+          notes: string | null
+          selected_course_id: string
+          updated_at: string
+        }
+        Insert: {
+          cohort_id: string
+          college_id: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          elective_slot_id: string
+          id?: string
+          notes?: string | null
+          selected_course_id: string
+          updated_at?: string
+        }
+        Update: {
+          cohort_id?: string
+          college_id?: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          elective_slot_id?: string
+          id?: string
+          notes?: string | null
+          selected_course_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_elective_selections_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "academic_cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cohort_elective_selections_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cohort_elective_selections_elective_slot_id_fkey"
+            columns: ["elective_slot_id"]
+            isOneToOne: false
+            referencedRelation: "elective_slots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cohort_elective_selections_selected_course_id_fkey"
+            columns: ["selected_course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
             referencedColumns: ["id"]
           },
         ]
@@ -887,6 +1032,77 @@ export type Database = {
         }
         Relationships: []
       }
+      delivery_groups: {
+        Row: {
+          active: boolean
+          capacity_limit: number | null
+          cohort_id: string
+          college_id: string
+          component_id: string
+          created_at: string
+          expected_students: number
+          group_code: string
+          id: string
+          plan_course_id: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          capacity_limit?: number | null
+          cohort_id: string
+          college_id: string
+          component_id: string
+          created_at?: string
+          expected_students?: number
+          group_code: string
+          id?: string
+          plan_course_id: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          capacity_limit?: number | null
+          cohort_id?: string
+          college_id?: string
+          component_id?: string
+          created_at?: string
+          expected_students?: number
+          group_code?: string
+          id?: string
+          plan_course_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_groups_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "academic_cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_groups_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_groups_component_id_fkey"
+            columns: ["component_id"]
+            isOneToOne: false
+            referencedRelation: "plan_course_components"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_groups_plan_course_id_fkey"
+            columns: ["plan_course_id"]
+            isOneToOne: false
+            referencedRelation: "plan_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       departments: {
         Row: {
           code: string
@@ -921,6 +1137,122 @@ export type Database = {
             columns: ["college_id"]
             isOneToOne: false
             referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      elective_slot_courses: {
+        Row: {
+          active: boolean
+          college_id: string
+          course_id: string
+          created_at: string
+          elective_slot_id: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          college_id: string
+          course_id: string
+          created_at?: string
+          elective_slot_id: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          college_id?: string
+          course_id?: string
+          created_at?: string
+          elective_slot_id?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "elective_slot_courses_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "elective_slot_courses_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "elective_slot_courses_elective_slot_id_fkey"
+            columns: ["elective_slot_id"]
+            isOneToOne: false
+            referencedRelation: "elective_slots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      elective_slots: {
+        Row: {
+          active: boolean
+          college_id: string
+          created_at: string
+          id: string
+          label: string | null
+          level_id: string | null
+          required_component_type: string
+          semester: number
+          slot_code: string
+          study_plan_id: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          college_id: string
+          created_at?: string
+          id?: string
+          label?: string | null
+          level_id?: string | null
+          required_component_type?: string
+          semester: number
+          slot_code: string
+          study_plan_id: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          college_id?: string
+          created_at?: string
+          id?: string
+          label?: string | null
+          level_id?: string | null
+          required_component_type?: string
+          semester?: number
+          slot_code?: string
+          study_plan_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "elective_slots_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "elective_slots_level_id_fkey"
+            columns: ["level_id"]
+            isOneToOne: false
+            referencedRelation: "academic_levels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "elective_slots_study_plan_id_fkey"
+            columns: ["study_plan_id"]
+            isOneToOne: false
+            referencedRelation: "study_plans"
             referencedColumns: ["id"]
           },
         ]
@@ -1276,6 +1608,73 @@ export type Database = {
         }
         Relationships: []
       }
+      plan_course_components: {
+        Row: {
+          college_id: string
+          compensation_mode: string
+          component_type: string
+          counts_toward_overtime: boolean
+          counts_toward_regular_load: boolean
+          created_at: string
+          id: string
+          is_timetabled: boolean
+          plan_course_id: string
+          required_room_type_id: string | null
+          updated_at: string
+          weekly_contact_hours: number
+        }
+        Insert: {
+          college_id: string
+          compensation_mode?: string
+          component_type: string
+          counts_toward_overtime?: boolean
+          counts_toward_regular_load?: boolean
+          created_at?: string
+          id?: string
+          is_timetabled?: boolean
+          plan_course_id: string
+          required_room_type_id?: string | null
+          updated_at?: string
+          weekly_contact_hours?: number
+        }
+        Update: {
+          college_id?: string
+          compensation_mode?: string
+          component_type?: string
+          counts_toward_overtime?: boolean
+          counts_toward_regular_load?: boolean
+          created_at?: string
+          id?: string
+          is_timetabled?: boolean
+          plan_course_id?: string
+          required_room_type_id?: string | null
+          updated_at?: string
+          weekly_contact_hours?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_course_components_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_course_components_plan_course_id_fkey"
+            columns: ["plan_course_id"]
+            isOneToOne: false
+            referencedRelation: "plan_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_course_components_required_room_type_id_fkey"
+            columns: ["required_room_type_id"]
+            isOneToOne: false
+            referencedRelation: "room_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plan_courses: {
         Row: {
           college_id: string
@@ -1476,6 +1875,7 @@ export type Database = {
           is_active: boolean
           name_ar: string
           name_en: string | null
+          strict_capacity: boolean
           updated_at: string
         }
         Insert: {
@@ -1490,6 +1890,7 @@ export type Database = {
           is_active?: boolean
           name_ar: string
           name_en?: string | null
+          strict_capacity?: boolean
           updated_at?: string
         }
         Update: {
@@ -1504,6 +1905,7 @@ export type Database = {
           is_active?: boolean
           name_ar?: string
           name_en?: string | null
+          strict_capacity?: boolean
           updated_at?: string
         }
         Relationships: []
@@ -1660,16 +2062,19 @@ export type Database = {
       schedule_sessions: {
         Row: {
           auto_schedule_run_id: string | null
+          cohort_id: string | null
           college_id: string
           course_offering_id: string
           created_at: string
           day_of_week: number
+          delivery_group_id: string | null
           end_time: string
           expected_students: number
           id: string
           instructor_id: string
           is_locked: boolean
           lock_reason: string | null
+          plan_course_component_id: string | null
           replaced_by_split: boolean
           room_id: string | null
           schedule_version_id: string
@@ -1686,16 +2091,19 @@ export type Database = {
         }
         Insert: {
           auto_schedule_run_id?: string | null
+          cohort_id?: string | null
           college_id: string
           course_offering_id: string
           created_at?: string
           day_of_week: number
+          delivery_group_id?: string | null
           end_time: string
           expected_students?: number
           id?: string
           instructor_id: string
           is_locked?: boolean
           lock_reason?: string | null
+          plan_course_component_id?: string | null
           replaced_by_split?: boolean
           room_id?: string | null
           schedule_version_id: string
@@ -1712,16 +2120,19 @@ export type Database = {
         }
         Update: {
           auto_schedule_run_id?: string | null
+          cohort_id?: string | null
           college_id?: string
           course_offering_id?: string
           created_at?: string
           day_of_week?: number
+          delivery_group_id?: string | null
           end_time?: string
           expected_students?: number
           id?: string
           instructor_id?: string
           is_locked?: boolean
           lock_reason?: string | null
+          plan_course_component_id?: string | null
           replaced_by_split?: boolean
           room_id?: string | null
           schedule_version_id?: string
@@ -1738,10 +2149,31 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "schedule_sessions_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "academic_cohorts"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "schedule_sessions_course_offering_id_fkey"
             columns: ["course_offering_id"]
             isOneToOne: false
             referencedRelation: "course_offerings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_sessions_delivery_group_id_fkey"
+            columns: ["delivery_group_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_sessions_plan_course_component_id_fkey"
+            columns: ["plan_course_component_id"]
+            isOneToOne: false
+            referencedRelation: "plan_course_components"
             referencedColumns: ["id"]
           },
           {
@@ -2261,13 +2693,16 @@ export type Database = {
       }
       teaching_assignments: {
         Row: {
+          cohort_id: string | null
           college_id: string
           course_offering_id: string
           created_at: string
+          delivery_group_id: string | null
           expected_students: number
           id: string
           instructor_id: string
           notes: string | null
+          plan_course_component_id: string | null
           required_room_type: string | null
           section_id: string | null
           section_number: string | null
@@ -2276,13 +2711,16 @@ export type Database = {
           weekly_hours: number
         }
         Insert: {
+          cohort_id?: string | null
           college_id: string
           course_offering_id: string
           created_at?: string
+          delivery_group_id?: string | null
           expected_students?: number
           id?: string
           instructor_id: string
           notes?: string | null
+          plan_course_component_id?: string | null
           required_room_type?: string | null
           section_id?: string | null
           section_number?: string | null
@@ -2291,13 +2729,16 @@ export type Database = {
           weekly_hours?: number
         }
         Update: {
+          cohort_id?: string | null
           college_id?: string
           course_offering_id?: string
           created_at?: string
+          delivery_group_id?: string | null
           expected_students?: number
           id?: string
           instructor_id?: string
           notes?: string | null
+          plan_course_component_id?: string | null
           required_room_type?: string | null
           section_id?: string | null
           section_number?: string | null
@@ -2307,10 +2748,31 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "teaching_assignments_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "academic_cohorts"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "teaching_assignments_course_offering_id_fkey"
             columns: ["course_offering_id"]
             isOneToOne: false
             referencedRelation: "course_offerings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teaching_assignments_delivery_group_id_fkey"
+            columns: ["delivery_group_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teaching_assignments_plan_course_component_id_fkey"
+            columns: ["plan_course_component_id"]
+            isOneToOne: false
+            referencedRelation: "plan_course_components"
             referencedColumns: ["id"]
           },
         ]
