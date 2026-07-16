@@ -165,6 +165,14 @@ export const TEMPLATES: Record<string, TemplateDef> = {
       },
       { key: "theory_hours", header: "ساعات_نظري", type: "number", example: "2" },
       { key: "practical_hours", header: "ساعات_عملي", type: "number", example: "2" },
+      { key: "tutorial_hours", header: "ساعات_تمارين", type: "number", example: "0" },
+      { key: "project_hours", header: "ساعات_مشروع", type: "number", example: "0" },
+      {
+        key: "summer_training_hours",
+        header: "ساعات_تدريب_صيفي",
+        type: "number",
+        example: "0",
+      },
       {
         key: "course_nature",
         header: "طبيعة_المقرر",
@@ -214,6 +222,14 @@ export const TEMPLATES: Record<string, TemplateDef> = {
       },
       { key: "theory_hours", header: "ساعات_نظري", type: "number", example: "2" },
       { key: "practical_hours", header: "ساعات_عملي", type: "number", example: "2" },
+      { key: "tutorial_hours", header: "ساعات_تمارين", type: "number", example: "0" },
+      { key: "project_hours", header: "ساعات_مشروع", type: "number", example: "0" },
+      {
+        key: "summer_training_hours",
+        header: "ساعات_تدريب_صيفي",
+        type: "number",
+        example: "0",
+      },
       {
         key: "course_nature",
         header: "طبيعة_المقرر",
@@ -235,9 +251,10 @@ export const TEMPLATES: Record<string, TemplateDef> = {
     ],
   },
 
+  /** Internal compatibility layer — hidden from operational import UI. */
   course_offerings: {
     entity: "course_offerings",
-    label: "إسناد المقررات",
+    label: "إسناد المقررات (داخلي — مولَّد آليًا)",
     sheetName: "offerings",
     uniqueKey: "_logical",
     uniqueKeyLabel: "فصل + برنامج + مقرر",
@@ -261,23 +278,107 @@ export const TEMPLATES: Record<string, TemplateDef> = {
     ],
   },
 
+  academic_cohorts: {
+    entity: "academic_cohorts",
+    label: "الدفعات الأكاديمية",
+    sheetName: "cohorts",
+    uniqueKey: "_logical",
+    uniqueKeyLabel: "برنامج + مستوى + نظام + سنة دخول + فصل",
+    commitMode: "custom",
+    columns: [
+      { key: "program_code", header: "رمز_البرنامج", required: true, example: "CS" },
+      { key: "level_number", header: "رقم_المستوى", type: "number", required: true, example: "3" },
+      {
+        key: "study_system",
+        header: "نظام_الدراسة",
+        required: true,
+        example: "regular",
+        enumValues: ["regular", "parallel", "evening", "distance", "other"],
+      },
+      { key: "term_code", header: "رمز_الفصل", required: true, example: "2025-F" },
+      { key: "entry_year", header: "سنة_الدخول", type: "number", required: true, example: "2023" },
+      {
+        key: "student_count",
+        header: "عدد_الطلاب",
+        type: "number",
+        required: true,
+        example: "60",
+      },
+      { key: "cohort_code", header: "رمز_الدفعة", example: "CS-L3-R-2023" },
+      {
+        key: "count_status",
+        header: "حالة_العدد",
+        example: "estimated",
+        enumValues: ["estimated", "confirmed", "locked"],
+      },
+    ],
+  },
+
+  cohort_elective_selections: {
+    entity: "cohort_elective_selections",
+    label: "اختيارات المقررات الاختيارية",
+    sheetName: "elective_selections",
+    uniqueKey: "_logical",
+    uniqueKeyLabel: "دفعة + خانة اختيارية",
+    commitMode: "custom",
+    columns: [
+      { key: "program_code", header: "رمز_البرنامج", required: true, example: "CS" },
+      { key: "level_number", header: "رقم_المستوى", type: "number", required: true, example: "3" },
+      {
+        key: "study_system",
+        header: "نظام_الدراسة",
+        required: true,
+        example: "regular",
+        enumValues: ["regular", "parallel", "evening", "distance", "other"],
+      },
+      { key: "term_code", header: "رمز_الفصل", required: true, example: "2025-F" },
+      { key: "entry_year", header: "سنة_الدخول", type: "number", required: true, example: "2023" },
+      { key: "slot_code", header: "رمز_الخانة_الاختيارية", required: true, example: "CY3XX(E)" },
+      {
+        key: "selected_course_code",
+        header: "رمز_المقرر_المختار",
+        required: true,
+        example: "CY301",
+      },
+      { key: "notes", header: "ملاحظات" },
+    ],
+  },
+
   teaching_assignments: {
     entity: "teaching_assignments",
     label: "الإسناد التدريسي",
     sheetName: "assignments",
     uniqueKey: "_logical",
-    uniqueKeyLabel: "محاضر + طرح + نوع محاضرة",
+    uniqueKeyLabel: "محاضر + دفعة/طرح + مكوّن + مجموعة",
     commitMode: "custom",
     columns: [
       { key: "term_code", header: "رمز_الفصل", required: true, example: "2025-F" },
       { key: "course_code", header: "رمز_المقرر", required: true, example: "CS101" },
       { key: "employee_number", header: "رقم_الموظف_للمحاضر", required: true, example: "EMP001" },
-      { key: "section_number", header: "رقم_المجموعة", example: "1" },
+      // V2 path (preferred)
+      { key: "program_code", header: "رمز_البرنامج", example: "CS" },
+      { key: "level_number", header: "رقم_المستوى", type: "number", example: "3" },
+      {
+        key: "study_system",
+        header: "نظام_الدراسة",
+        example: "regular",
+        enumValues: ["regular", "parallel", "evening", "distance", "other"],
+      },
+      { key: "entry_year", header: "سنة_الدخول", type: "number", example: "2023" },
+      {
+        key: "component_type",
+        header: "نوع_المكوّن",
+        enumValues: ["theory", "practical", "tutorial", "project", "summer_training"],
+        example: "theory",
+      },
+      { key: "group_code", header: "رمز_مجموعة_التسليم", example: "G1" },
+      { key: "group_number", header: "رقم_المجموعة", example: "1" },
+      // Legacy path
+      { key: "section_number", header: "رقم_المجموعة_قديم", example: "1" },
       {
         key: "session_type",
         header: "نوع_المحاضرة",
         enumValues: ["lecture", "lab", "tutorial", "seminar", "workshop"],
-        required: true,
         example: "lecture",
       },
       { key: "weekly_hours", header: "ساعات_أسبوعية", type: "number", example: "3" },
@@ -393,6 +494,61 @@ export async function buildTemplateWorkbook(entity: string): Promise<Blob> {
         "اختياري للتوافق مع القوالب القديمة فقط (مثل LEC → lecture_hall، LAB → computer_lab).",
       ],
       ["لا تضع علامة * في أسماء الأعمدة — يجب أن تطابق العناوين حرفياً."],
+    );
+  }
+  if (entity === "study_plan_courses" || entity === "full_study_plan") {
+    notes.push(
+      [""],
+      ["ملاحظات ساعات المكونات (Phase 9.2)"],
+      [
+        "ساعات المكونات",
+        "ساعات_نظري / ساعات_عملي / ساعات_تمارين / ساعات_مشروع / ساعات_تدريب_صيفي — صريحة وإلزامية.",
+      ],
+      [
+        "لا تخمين",
+        "الملفات القديمة بلا ساعات صريحة تُرفض؛ لا يُستنتج التوزيع من الساعات المعتمدة أو عدد المحاضرات.",
+      ],
+      ["صفر أو فارغ", "لا يُنشأ مكوّن عندما تكون ساعاته صفرًا أو فارغة."],
+      ["مشروع", "ساعات_مشروع تظهر في الجدول وخارج النصاب العادي."],
+      ["تدريب صيفي", "ساعات_تدريب_صيفي لا تولّد جلسات أسبوعية."],
+    );
+  }
+  if (entity === "academic_cohorts") {
+    notes.push(
+      [""],
+      ["بعد الاستيراد"],
+      [
+        "مولّد V2",
+        "بعد نجاح الاستيراد استدعِ صراحةً «توليد نموذج التسليم» للدفعة — ليس أثرًا جانبيًا مخفيًا.",
+      ],
+      [
+        "المفتاح الطبيعي",
+        "برنامج + مستوى + نظام دراسة + سنة دخول + فصل — يمنع التكرار (idempotent upsert).",
+      ],
+    );
+  }
+  if (entity === "cohort_elective_selections") {
+    notes.push(
+      [""],
+      ["اختيارات اختيارية"],
+      ["الخانة", "يجب أن تتبع خطة الدفعة (رمز_الخانة_الاختيارية)."],
+      ["المقرر", "يجب أن يكون ضمن المقررات المسموحة للخانة."],
+      ["عرض", "يُعرض لاحقًا بالشكل: مقرر اختياري (اسم المقرر الفعلي)."],
+    );
+  }
+  if (entity === "teaching_assignments") {
+    notes.push(
+      [""],
+      ["مسار V2 (مفضّل)"],
+      [
+        "الحقول",
+        "رمز_البرنامج + رقم_المستوى + نظام_الدراسة + سنة_الدخول + نوع_المكوّن + رمز_مجموعة_التسليم",
+      ],
+      ["summer_training", "ممنوع إسناده لجدولة أسبوعية."],
+      ["project", "مسموح مع استبعاده من النصاب العادي."],
+      [""],
+      ["مسار قديم"],
+      ["نوع_المحاضرة + رقم_المجموعة_قديم", "يبقى للتوافق؛ يُفضّل الانتقال لمسار V2."],
     );
   }
   const wsNotes = XLSX.utils.aoa_to_sheet(notes);

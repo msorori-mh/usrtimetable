@@ -9,7 +9,6 @@ import {
   CalendarClock,
   CalendarDays,
   CalendarRange,
-  ClipboardList,
   Clock,
   DoorOpen,
   FileSpreadsheet,
@@ -166,13 +165,7 @@ const NAV: NavItem[] = [
     roles: ALL,
     group: "موارد التدريس",
   },
-  {
-    to: "/course-offerings",
-    label: "مقررات الفصل",
-    icon: <ClipboardList className="h-4 w-4" />,
-    roles: ALL,
-    group: "موارد التدريس",
-  },
+  // course-offerings hidden from operational nav (Phase 9.2) — internal auto-generated compat layer
   {
     to: "/teaching-assignments",
     label: "الإسناد التدريسي",

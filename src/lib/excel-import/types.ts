@@ -9,7 +9,9 @@ export type ImportEntity =
   | "course_offerings"
   | "teaching_assignments"
   | "course_programs"
-  | "section_groups";
+  | "section_groups"
+  | "academic_cohorts"
+  | "cohort_elective_selections";
 
 export type ImportMode = "insert_only" | "update_existing" | "upsert";
 
@@ -27,7 +29,7 @@ export interface TemplateDef {
   label: string;
   sheetName: string;
   columns: ColumnDef[];
-  uniqueKey: string;        // for simple table imports OR a logical composite label
+  uniqueKey: string; // for simple table imports OR a logical composite label
   uniqueKeyLabel: string;
   /** "table" = generic 1:1 mapping to a table; "custom" = entity-specific commit handler */
   commitMode?: "table" | "custom";

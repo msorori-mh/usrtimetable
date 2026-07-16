@@ -32,6 +32,7 @@ const harnesses = [
   "schedule-builder-phase6-uat-fixture.harness.ts",
   "term-reference-remediation.harness.ts",
   "course-offering-dependency-fk.harness.ts",
+  "academic-delivery-v2-generator.harness.ts",
 ];
 
 let exitCode = 0;

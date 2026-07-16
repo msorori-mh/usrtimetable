@@ -21,6 +21,7 @@ import {
 import { TEMPLATES, buildTemplateWorkbook, parseExcel } from "@/lib/excel-import/templates";
 import { validate } from "@/lib/excel-import/validators";
 import { commitImport, createJobAndPersistErrors } from "@/lib/excel-import/commit";
+import { invokeGenerateAcademicDelivery } from "@/lib/academic-delivery-v2/invoke-generator";
 import type { ImportEntity, ImportMode, ParsedRow, RowError } from "@/lib/excel-import/types";
 
 export const Route = createFileRoute("/_authenticated/import")({
@@ -63,13 +64,14 @@ const ENTITIES: { value: ImportEntity; label: string; group: string; description
     value: "study_plan_courses",
     label: "الخطط الدراسية",
     group: "بيانات أكاديمية",
-    description: "مقررات الخطة حسب المستوى والفصل.",
+    description:
+      "مقررات الخطة حسب المستوى والفصل مع ساعات المكونات الصريحة (نظري/عملي/تمارين/مشروع/تدريب صيفي).",
   },
   {
     value: "full_study_plan",
     label: "خطة دراسية كاملة",
     group: "بيانات أكاديمية",
-    description: "استيراد الخطة الأكاديمية الكاملة للبرنامج.",
+    description: "استيراد الخطة الأكاديمية الكاملة للبرنامج مع ساعات المكونات الصريحة.",
   },
   {
     value: "course_programs",
@@ -78,16 +80,24 @@ const ENTITIES: { value: ImportEntity; label: string; group: string; description
     description: "ربط المقررات المشتركة بالبرامج.",
   },
   {
-    value: "course_offerings",
-    label: "إسناد المقررات",
-    group: "تحضير التدريس",
-    description: "طرح المقررات في فصل أكاديمي محدد.",
+    value: "academic_cohorts",
+    label: "الدفعات الأكاديمية",
+    group: "نموذج التسليم V2",
+    description:
+      "استيراد الدفعات (برنامج + مستوى + نظام + فصل + عدد الطلاب). بعد النجاح استدعِ مولّد التسليم صراحةً.",
+  },
+  {
+    value: "cohort_elective_selections",
+    label: "اختيارات المقررات الاختيارية",
+    group: "نموذج التسليم V2",
+    description: "ربط كل دفعة بخانة اختيارية ومقرر فعلي مسموح داخل الخانة.",
   },
   {
     value: "teaching_assignments",
     label: "الإسناد التدريسي",
     group: "تحضير التدريس",
-    description: "ربط المحاضرين بالمقررات وأنواع الجلسات.",
+    description:
+      "إسناد V2: دفعة + مقرر + مكوّن + مجموعة تسليم + محاضر. المسار القديم (نوع المحاضرة) يبقى للتوافق.",
   },
   {
     value: "section_groups",
@@ -119,6 +129,8 @@ function ImportPage() {
     total: number;
     missingHeaders: string[];
   } | null>(null);
+  const [pendingGeneratorCohortIds, setPendingGeneratorCohortIds] = useState<string[]>([]);
+  const [generatorNote, setGeneratorNote] = useState<string | null>(null);
 
   const downloadTemplate = async () => {
     try {
@@ -168,15 +180,92 @@ function ImportPage() {
   const commitMut = useMutation({
     mutationFn: async () => {
       if (!active || !preview || !preview.jobId) throw new Error("لا توجد معاينة");
-      return commitImport(entity, mode, active.id, preview.jobId, preview.valid);
+      const result = await commitImport(entity, mode, active.id, preview.jobId, preview.valid);
+      let cohortIds: string[] = [];
+      if (entity === "academic_cohorts" && result.failed === 0) {
+        // Resolve cohort ids for explicit generator step (not auto-run)
+        const keys = preview.valid
+          .map((row) => {
+            const v = row.values;
+            return {
+              program_id: v._program_id as string | undefined,
+              level_id: v._level_id as string | undefined,
+              study_system: v.study_system as string | undefined,
+              entry_year: v.entry_year as number | undefined,
+              term_id: v._term_id as string | undefined,
+            };
+          })
+          .filter(
+            (k) =>
+              k.program_id && k.level_id && k.study_system && k.entry_year != null && k.term_id,
+          );
+        if (keys.length > 0) {
+          const { data } = await supabase
+            .from("academic_cohorts")
+            .select("id, program_id, level_id, study_system, entry_year, term_id")
+            .eq("college_id", active.id);
+          const want = new Set(
+            keys.map(
+              (k) => `${k.program_id}|${k.level_id}|${k.study_system}|${k.entry_year}|${k.term_id}`,
+            ),
+          );
+          cohortIds = (data ?? [])
+            .filter((c) =>
+              want.has(
+                `${c.program_id}|${c.level_id}|${c.study_system}|${c.entry_year}|${c.term_id}`,
+              ),
+            )
+            .map((c) => c.id);
+        }
+      }
+      return { result, cohortIds };
     },
-    onSuccess: (r) => {
+    onSuccess: ({ result: r, cohortIds }) => {
       toast.success(
         `تم: ${r.inserted} إدراج، ${r.updated} تحديث، ${r.skipped} تجاهل، ${r.failed} فشل`,
       );
       setFile(null);
       setPreview(null);
       qc.invalidateQueries({ queryKey: ["import-jobs"] });
+      if (entity === "academic_cohorts" && r.failed === 0) {
+        setPendingGeneratorCohortIds(cohortIds);
+        setGeneratorNote(
+          cohortIds.length > 0
+            ? `استيراد الدفعات نجح. الخطوة التالية الصريحة: توليد نموذج التسليم V2 لـ ${cohortIds.length} دفعة (لا يعمل تلقائيًا).`
+            : "استيراد الدفعات نجح. يمكنك لاحقًا استدعاء مولّد التسليم V2 صراحةً بعد تطبيق migration.",
+        );
+      } else {
+        setPendingGeneratorCohortIds([]);
+        setGeneratorNote(null);
+      }
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const generateMut = useMutation({
+    mutationFn: async () => {
+      if (!active) throw new Error("لا توجد كلية نشطة");
+      if (pendingGeneratorCohortIds.length === 0) {
+        throw new Error("لا توجد دفعات محددة للتوليد");
+      }
+      return invokeGenerateAcademicDelivery({
+        collegeId: active.id,
+        cohortIds: pendingGeneratorCohortIds,
+      });
+    },
+    onSuccess: (r) => {
+      if (r.ok) {
+        toast.success(r.message_ar ?? "اكتمل توليد نموذج التسليم");
+        setPendingGeneratorCohortIds([]);
+        setGeneratorNote(
+          `مولّد V2: عروض ${r.summary.offerings_created}/${r.summary.offerings_updated} · مجموعات ${r.summary.delivery_groups_created}/${r.summary.delivery_groups_updated}`,
+        );
+      } else {
+        toast.error(r.message_ar ?? r.code ?? "فشل التوليد");
+        setGeneratorNote(
+          r.message_ar ?? "فشل استدعاء المولّد — تأكد من تطبيق migration Phase 9.2.",
+        );
+      }
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -301,6 +390,26 @@ function ImportPage() {
           )}
         </div>
       </Card>
+
+      {(generatorNote || pendingGeneratorCohortIds.length > 0) && (
+        <Card className="space-y-3 border-amber-500/40 bg-amber-500/5 p-4">
+          <h2 className="font-semibold">خطوة صريحة: مولّد نموذج التسليم V2</h2>
+          {generatorNote && <p className="text-sm text-muted-foreground">{generatorNote}</p>}
+          <p className="text-xs text-muted-foreground">
+            التوليد idempotent ومحدود بالدفعات المحددة فقط — ليس أثرًا جانبيًا عند الاستيراد.
+          </p>
+          {pendingGeneratorCohortIds.length > 0 && (
+            <Button
+              onClick={() => generateMut.mutate()}
+              disabled={generateMut.isPending}
+              variant="secondary"
+            >
+              {generateMut.isPending ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : null}
+              توليد نموذج التسليم للدفعات المستوردة ({pendingGeneratorCohortIds.length})
+            </Button>
+          )}
+        </Card>
+      )}
 
       {preview && (
         <Card className="p-4 space-y-4">

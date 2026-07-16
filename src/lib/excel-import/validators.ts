@@ -1,6 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
 import { TEMPLATES } from "./templates";
 import { resolveRoomTypeFields } from "./room-type-normalize";
+import {
+  parsePlanComponentHours,
+  isApprovedComponentType,
+} from "@/lib/academic-delivery-v2/component-hours";
+import { componentTypeToSessionType } from "@/lib/academic-delivery-v2/types";
 import type { ImportEntity, ParsedRow, RowError, ValidationResult } from "./types";
 
 const TIME_RE = /^([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
@@ -15,7 +20,7 @@ function toBool(v: unknown): boolean | null {
 
 interface Lookups {
   instructorTypes?: Map<string, string>;
-  roomTypes?: Map<string, string>;
+  roomTypes?: Map<string, string>; // code → id
   departments?: Map<string, string>;
   buildings?: Map<string, string>;
   programs?: Map<string, { id: string; department_id: string }>;
@@ -28,6 +33,11 @@ interface Lookups {
   sections?: Map<string, string>; // key: course_id|term_id|section_number → section_id
   levels?: Map<string, string>; // key: program_id|level_number → level_id
   sectionGroups?: Map<string, string>; // key: term_id|course_id|group_name → group_id
+  cohorts?: Map<string, string>; // program|level|system|entry_year|term → cohort_id
+  electiveSlots?: Map<string, { id: string; study_plan_id: string }>; // slot_code → ...
+  electiveSlotCourses?: Map<string, Set<string>>; // elective_slot_id → course_ids
+  deliveryGroups?: Map<string, string>; // cohort|course_code|component|group_code → dg_id
+  planComponents?: Map<string, { id: string; plan_course_id: string; component_type: string }>;
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -57,9 +67,15 @@ async function loadLookups(entity: ImportEntity, collegeId: string): Promise<Loo
     lk.buildings = new Map(bd.map((r) => [r.code, r.id]));
   }
   if (
-    ["study_plan_courses", "full_study_plan", "course_offerings", "course_programs"].includes(
-      entity,
-    )
+    [
+      "study_plan_courses",
+      "full_study_plan",
+      "course_offerings",
+      "course_programs",
+      "academic_cohorts",
+      "cohort_elective_selections",
+      "teaching_assignments",
+    ].includes(entity)
   ) {
     const [dp, pg] = await Promise.all([
       fetchAll("departments", "id, code"),
@@ -68,7 +84,16 @@ async function loadLookups(entity: ImportEntity, collegeId: string): Promise<Loo
     lk.departments = new Map(dp.map((r) => [r.code, r.id]));
     lk.programs = new Map(pg.map((r) => [r.code, { id: r.id, department_id: r.department_id }]));
   }
-  if (["course_offerings", "teaching_assignments", "section_groups", "sections"].includes(entity)) {
+  if (
+    [
+      "course_offerings",
+      "teaching_assignments",
+      "section_groups",
+      "sections",
+      "academic_cohorts",
+      "cohort_elective_selections",
+    ].includes(entity)
+  ) {
     const t = await fetchAll("academic_terms", "id, code");
     lk.terms = new Map(t.map((r) => [r.code, r.id]));
   }
@@ -79,6 +104,7 @@ async function loadLookups(entity: ImportEntity, collegeId: string): Promise<Loo
       "course_programs",
       "section_groups",
       "sections",
+      "cohort_elective_selections",
     ].includes(entity)
   ) {
     const c = await fetchAll("courses", "id, code, department_id");
@@ -95,6 +121,50 @@ async function loadLookups(entity: ImportEntity, collegeId: string): Promise<Loo
     lk.instructors = new Map(
       ins.filter((r) => r.employee_number).map((r) => [r.employee_number as string, r.id]),
     );
+    const lv = await fetchAll("academic_levels", "id, program_id, level_number");
+    lk.levels = new Map(lv.map((r) => [`${r.program_id}|${r.level_number}`, r.id]));
+    const cohorts = await fetchAll(
+      "academic_cohorts",
+      "id, program_id, level_id, study_system, entry_year, term_id",
+    );
+    lk.cohorts = new Map(
+      cohorts.map((r) => [
+        `${r.program_id}|${r.level_id}|${r.study_system}|${r.entry_year}|${r.term_id}`,
+        r.id,
+      ]),
+    );
+    try {
+      const dg = await fetchAll(
+        "delivery_groups",
+        "id, cohort_id, group_code, component_id, plan_course_id",
+      );
+      const pcc = await fetchAll("plan_course_components", "id, plan_course_id, component_type");
+      const pccById = new Map(pcc.map((r) => [r.id, r]));
+      const pc = await fetchAll("plan_courses", "id, course_id");
+      const courseByPc = new Map(pc.map((r) => [r.id, r.course_id]));
+      lk.deliveryGroups = new Map();
+      for (const g of dg) {
+        const comp = pccById.get(g.component_id);
+        const courseId = courseByPc.get(g.plan_course_id);
+        if (!comp || !courseId) continue;
+        const courseCode = [...(lk.courses?.entries() ?? [])].find(
+          ([, c]) => c.id === courseId,
+        )?.[0];
+        if (!courseCode) continue;
+        lk.deliveryGroups.set(
+          `${g.cohort_id}|${courseCode}|${comp.component_type}|${g.group_code}`.toLowerCase(),
+          g.id,
+        );
+      }
+      lk.planComponents = new Map(
+        pcc.map((r) => [
+          `${r.plan_course_id}|${r.component_type}`,
+          { id: r.id, plan_course_id: r.plan_course_id, component_type: r.component_type },
+        ]),
+      );
+    } catch {
+      // V2 tables may be unavailable until migration apply — legacy TA path still works
+    }
   }
   if (entity === "course_offerings") {
     const sp = await fetchAll("study_plans", "id, code, version, program_id");
@@ -103,6 +173,53 @@ async function loadLookups(entity: ImportEntity, collegeId: string): Promise<Loo
     lk.planCourses = new Map(pc.map((r) => [`${r.study_plan_id}|${r.course_id}`, r.id]));
     const lv = await fetchAll("academic_levels", "id, program_id, level_number");
     lk.levels = new Map(lv.map((r) => [`${r.program_id}|${r.level_number}`, r.id]));
+  }
+  if (entity === "academic_cohorts") {
+    const lv = await fetchAll("academic_levels", "id, program_id, level_number");
+    lk.levels = new Map(lv.map((r) => [`${r.program_id}|${r.level_number}`, r.id]));
+  }
+  if (entity === "cohort_elective_selections") {
+    const lv = await fetchAll("academic_levels", "id, program_id, level_number");
+    lk.levels = new Map(lv.map((r) => [`${r.program_id}|${r.level_number}`, r.id]));
+    const cohorts = await fetchAll(
+      "academic_cohorts",
+      "id, program_id, level_id, study_system, entry_year, term_id",
+    );
+    lk.cohorts = new Map(
+      cohorts.map((r) => [
+        `${r.program_id}|${r.level_id}|${r.study_system}|${r.entry_year}|${r.term_id}`,
+        r.id,
+      ]),
+    );
+    try {
+      const slots = await fetchAll("elective_slots", "id, slot_code, study_plan_id, active");
+      lk.electiveSlots = new Map(
+        slots
+          .filter((r) => r.active !== false)
+          .map((r) => [
+            String(r.slot_code).toLowerCase(),
+            { id: r.id, study_plan_id: r.study_plan_id },
+          ]),
+      );
+      const esc = await fetchAll("elective_slot_courses", "elective_slot_id, course_id, active");
+      lk.electiveSlotCourses = new Map();
+      for (const r of esc) {
+        if (r.active === false) continue;
+        const set = lk.electiveSlotCourses.get(r.elective_slot_id) ?? new Set<string>();
+        set.add(r.course_id);
+        lk.electiveSlotCourses.set(r.elective_slot_id, set);
+      }
+    } catch {
+      // V2 tables unavailable until migration apply
+    }
+  }
+  if (entity === "study_plan_courses" || entity === "full_study_plan") {
+    try {
+      const rt = await fetchAll("room_types", "id, code");
+      lk.roomTypes = new Map(rt.map((r) => [r.code, r.id]));
+    } catch {
+      /* optional */
+    }
   }
   return lk;
 }
@@ -394,8 +511,19 @@ function buildLogicalKey(entity: ImportEntity, row: ParsedRow): string | null {
       return `${v.program_code}|${v.plan_code}|${v.plan_version ?? "1"}|${v.course_code}`.toLowerCase();
     case "course_offerings":
       return `${v.term_code}|${v.course_code}|${v.program_code ?? ""}`.toLowerCase();
-    case "teaching_assignments":
-      return `${v.term_code}|${v.course_code}|${v.employee_number}|${v.session_type}|${v.section_number ?? ""}`.toLowerCase();
+    case "teaching_assignments": {
+      const group =
+        v.group_code ??
+        (v.group_number != null ? `G${v.group_number}` : null) ??
+        v.section_number ??
+        "";
+      const kind = v.component_type ?? v.session_type ?? "";
+      return `${v.term_code}|${v.course_code}|${v.employee_number}|${kind}|${group}|${v.program_code ?? ""}|${v.level_number ?? ""}|${v.study_system ?? ""}|${v.entry_year ?? ""}`.toLowerCase();
+    }
+    case "academic_cohorts":
+      return `${v.program_code}|${v.level_number}|${v.study_system}|${v.entry_year}|${v.term_code}`.toLowerCase();
+    case "cohort_elective_selections":
+      return `${v.program_code}|${v.level_number}|${v.study_system}|${v.entry_year}|${v.term_code}|${v.slot_code}`.toLowerCase();
     case "course_programs":
       return `${v.course_code}|${v.program_code}`.toLowerCase();
     case "section_groups":
@@ -454,6 +582,48 @@ function runEntityValidation(
         errorCode: "invalid_pattern",
         message: "مدة المعمل يجب أن تكون > 0 عند وجود معامل",
       });
+
+    // Phase 9.2: explicit component hours required (no silent distribution guess)
+    const hoursResult = parsePlanComponentHours(
+      {
+        theory_hours: v.theory_hours as number | null,
+        practical_hours: v.practical_hours as number | null,
+        tutorial_hours: v.tutorial_hours as number | null,
+        project_hours: v.project_hours as number | null,
+        summer_training_hours: v.summer_training_hours as number | null,
+      },
+      { credit_hours: v.credit_hours as number | null, requireExplicit: true },
+    );
+    if (!hoursResult.ok) {
+      for (const e of hoursResult.errors) {
+        errs.push({
+          rowNumber: row.rowNumber,
+          columnName: e.column
+            ? (
+                {
+                  theory_hours: "ساعات_نظري",
+                  practical_hours: "ساعات_عملي",
+                  tutorial_hours: "ساعات_تمارين",
+                  project_hours: "ساعات_مشروع",
+                  summer_training_hours: "ساعات_تدريب_صيفي",
+                } as Record<string, string>
+              )[e.column]
+            : undefined,
+          errorCode: e.code,
+          message: e.message_ar,
+        });
+      }
+    } else {
+      v._plan_components = hoursResult.data.components;
+      if (v.required_room_type_for_lecture && lk.roomTypes) {
+        const rid = lk.roomTypes.get(String(v.required_room_type_for_lecture));
+        if (rid) v._lecture_room_type_id = rid;
+      }
+      if (v.required_room_type_for_lab && lk.roomTypes) {
+        const rid = lk.roomTypes.get(String(v.required_room_type_for_lab));
+        if (rid) v._lab_room_type_id = rid;
+      }
+    }
   }
 
   if (entity === "course_offerings") {
@@ -523,6 +693,220 @@ function runEntityValidation(
     if (tId) v._term_id = tId;
     if (c) v._course_id = c.id;
     if (insId) v._instructor_id = insId;
+
+    const hasV2 =
+      v.program_code != null &&
+      v.level_number != null &&
+      v.study_system != null &&
+      v.entry_year != null &&
+      v.component_type != null;
+
+    if (hasV2) {
+      const prog = lk.programs?.get(String(v.program_code));
+      need(
+        !!prog,
+        "رمز_البرنامج",
+        "unknown_program",
+        `برنامج غير معروف: ${v.program_code}`,
+        v.program_code,
+      );
+      if (prog) {
+        v._program_id = prog.id;
+        const lvId = lk.levels?.get(`${prog.id}|${v.level_number}`);
+        need(
+          !!lvId,
+          "رقم_المستوى",
+          "unknown_level",
+          `مستوى غير معروف: ${v.level_number}`,
+          v.level_number,
+        );
+        if (lvId) v._level_id = lvId;
+      }
+      if (v.component_type && !isApprovedComponentType(String(v.component_type))) {
+        errs.push({
+          rowNumber: row.rowNumber,
+          columnName: "نوع_المكوّن",
+          errorCode: "unsupported_component",
+          message: `مكوّن غير معتمد: ${v.component_type}`,
+          rawValue: String(v.component_type),
+        });
+      }
+      if (v.component_type === "summer_training") {
+        errs.push({
+          rowNumber: row.rowNumber,
+          columnName: "نوع_المكوّن",
+          errorCode: "summer_training_not_schedulable",
+          message: "لا يمكن إسناد التدريب الصيفي لجدولة أسبوعية.",
+        });
+      }
+      const groupCode =
+        (v.group_code as string | null) ?? (v.group_number != null ? `G${v.group_number}` : null);
+      need(
+        !!groupCode,
+        "رمز_مجموعة_التسليم",
+        "required",
+        "رمز أو رقم مجموعة التسليم مطلوب لمسار V2",
+      );
+      if (prog && v._level_id && tId && groupCode && v.component_type) {
+        const cohortKey = `${prog.id}|${v._level_id}|${v.study_system}|${v.entry_year}|${tId}`;
+        const cohortId = lk.cohorts?.get(cohortKey);
+        need(
+          !!cohortId,
+          "رمز_البرنامج",
+          "unknown_cohort",
+          "دفعة أكاديمية غير معروفة لهذه التركيبة",
+          cohortKey,
+        );
+        if (cohortId) {
+          v._cohort_id = cohortId;
+          v._group_code = groupCode;
+          v._session_type =
+            componentTypeToSessionType(v.component_type as never) ?? v.session_type ?? "lecture";
+          if (v.component_type === "project") v._exclude_from_regular_load = true;
+          const dgKey =
+            `${cohortId}|${String(v.course_code)}|${v.component_type}|${groupCode}`.toLowerCase();
+          const dgId = lk.deliveryGroups?.get(dgKey);
+          need(
+            !!dgId,
+            "رمز_مجموعة_التسليم",
+            "unknown_delivery_group",
+            `مجموعة تسليم غير موجودة: ${groupCode} / ${v.component_type}`,
+            groupCode,
+          );
+          if (dgId) v._delivery_group_id = dgId;
+        }
+      }
+      v._import_path = "v2";
+    } else {
+      // Legacy path: session_type required
+      need(
+        v.session_type != null && v.session_type !== "",
+        "نوع_المحاضرة",
+        "required",
+        "نوع المحاضرة مطلوب في المسار القديم، أو استخدم حقول V2 (برنامج/مستوى/مكوّن/مجموعة).",
+      );
+      if (v.section_number != null && v.section_number !== "")
+        v._group_code = String(v.section_number);
+      v._session_type = v.session_type;
+      v._import_path = "legacy";
+    }
+  }
+
+  if (entity === "academic_cohorts") {
+    const prog = lk.programs?.get(String(v.program_code));
+    need(
+      !!prog,
+      "رمز_البرنامج",
+      "unknown_program",
+      `برنامج غير معروف: ${v.program_code}`,
+      v.program_code,
+    );
+    const tId = lk.terms?.get(String(v.term_code));
+    need(!!tId, "رمز_الفصل", "unknown_term", `فصل غير معروف: ${v.term_code}`, v.term_code);
+    if (prog) {
+      v._program_id = prog.id;
+      const lvId = lk.levels?.get(`${prog.id}|${v.level_number}`);
+      need(
+        !!lvId,
+        "رقم_المستوى",
+        "unknown_level",
+        `مستوى غير معروف للبرنامج: ${v.level_number}`,
+        v.level_number,
+      );
+      if (lvId) v._level_id = lvId;
+    }
+    if (tId) v._term_id = tId;
+    const sc = v.student_count;
+    if (sc != null && (!(typeof sc === "number") || !Number.isInteger(sc) || sc < 0)) {
+      errs.push({
+        rowNumber: row.rowNumber,
+        columnName: "عدد_الطلاب",
+        errorCode: "invalid_student_count",
+        message: "عدد الطلاب يجب أن يكون عددًا صحيحًا ≥ 0",
+        rawValue: String(sc),
+      });
+    }
+    const ey = v.entry_year;
+    if (
+      ey != null &&
+      (!(typeof ey === "number") || !Number.isInteger(ey) || ey < 1990 || ey > 2100)
+    ) {
+      errs.push({
+        rowNumber: row.rowNumber,
+        columnName: "سنة_الدخول",
+        errorCode: "invalid_entry_year",
+        message: "سنة الدخول غير صالحة",
+        rawValue: String(ey),
+      });
+    }
+  }
+
+  if (entity === "cohort_elective_selections") {
+    const prog = lk.programs?.get(String(v.program_code));
+    need(
+      !!prog,
+      "رمز_البرنامج",
+      "unknown_program",
+      `برنامج غير معروف: ${v.program_code}`,
+      v.program_code,
+    );
+    const tId = lk.terms?.get(String(v.term_code));
+    need(!!tId, "رمز_الفصل", "unknown_term", `فصل غير معروف: ${v.term_code}`, v.term_code);
+    const course = lk.courses?.get(String(v.selected_course_code));
+    need(
+      !!course,
+      "رمز_المقرر_المختار",
+      "unknown_course",
+      `مقرر غير معروف: ${v.selected_course_code}`,
+      v.selected_course_code,
+    );
+    if (prog && tId) {
+      v._program_id = prog.id;
+      v._term_id = tId;
+      const lvId = lk.levels?.get(`${prog.id}|${v.level_number}`);
+      need(
+        !!lvId,
+        "رقم_المستوى",
+        "unknown_level",
+        `مستوى غير معروف: ${v.level_number}`,
+        v.level_number,
+      );
+      if (lvId) {
+        v._level_id = lvId;
+        const cohortKey = `${prog.id}|${lvId}|${v.study_system}|${v.entry_year}|${tId}`;
+        const cohortId = lk.cohorts?.get(cohortKey);
+        need(
+          !!cohortId,
+          "رمز_البرنامج",
+          "unknown_cohort",
+          "دفعة أكاديمية غير معروفة — استورد الدفعات أولًا",
+          cohortKey,
+        );
+        if (cohortId) v._cohort_id = cohortId;
+      }
+    }
+    if (course) v._selected_course_id = course.id;
+    const slot = lk.electiveSlots?.get(String(v.slot_code).toLowerCase());
+    need(
+      !!slot,
+      "رمز_الخانة_الاختيارية",
+      "unknown_elective_slot",
+      `خانة اختيارية غير معروفة: ${v.slot_code}`,
+      v.slot_code,
+    );
+    if (slot) {
+      v._elective_slot_id = slot.id;
+      if (course && lk.electiveSlotCourses) {
+        const allowed = lk.electiveSlotCourses.get(slot.id);
+        need(
+          !!allowed?.has(course.id),
+          "رمز_المقرر_المختار",
+          "elective_course_not_allowed",
+          `المقرر ${v.selected_course_code} غير مسموح في الخانة ${v.slot_code}`,
+          v.selected_course_code,
+        );
+      }
+    }
   }
 
   if (entity === "course_programs") {

@@ -1,47 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveCollege } from "@/hooks/use-colleges";
-import { useCanManageActiveCollege } from "@/hooks/use-can-manage";
 import { CollegeSwitcher } from "@/components/college-switcher";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { toast } from "sonner";
-import { logAudit } from "@/lib/audit";
-import {
-  isOfferingInUse,
-  isOfferingInUseDeleteError,
-  offeringDeleteBlockedToastMessage,
-  type OfferingDependencyUsage,
-} from "@/lib/course-offerings/offering-delete-guard";
-import { ClipboardList, Pencil, Trash2 } from "lucide-react";
+import { ClipboardList } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/course-offerings")({
-  head: () => ({ meta: [{ title: "مقررات الفصل" }] }),
+  head: () => ({ meta: [{ title: "مقررات الفصل (داخلي)" }] }),
   component: OfferingsPage,
 });
 
 interface Offering {
   id: string;
-  college_id: string;
   term_id: string;
   course_id: string;
   program_id: string | null;
@@ -53,74 +24,53 @@ interface Offering {
   status: string;
 }
 
-function emptyForm() {
-  return {
-    term_id: "",
-    course_id: "",
-    program_id: "",
-    level_id: "",
-    expected_students: 0,
-    sections_count: 1,
-    notes: "",
-    is_active: true,
-    status: "draft",
-  };
-}
-
 function OfferingsPage() {
   const { active } = useActiveCollege();
-  const canManage = useCanManageActiveCollege();
-  const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<Offering | null>(null);
-  const [form, setForm] = useState(emptyForm());
 
   const { data: terms } = useQuery({
     queryKey: ["terms-min", active?.id],
     enabled: !!active,
-    queryFn: async () =>
-      (
-        await supabase
-          .from("academic_terms")
-          .select("id, name")
-          .eq("college_id", active!.id)
-          .order("start_date", { ascending: false })
-      ).data ?? [],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("academic_terms")
+        .select("id, name")
+        .eq("college_id", active!.id);
+      return data ?? [];
+    },
   });
+
   const { data: courses } = useQuery({
     queryKey: ["courses-min", active?.id],
     enabled: !!active,
-    queryFn: async () =>
-      (
-        await supabase
-          .from("courses")
-          .select("id, code, name")
-          .eq("college_id", active!.id)
-          .order("code")
-      ).data ?? [],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("courses")
+        .select("id, code, name")
+        .eq("college_id", active!.id);
+      return data ?? [];
+    },
   });
+
   const { data: programs } = useQuery({
     queryKey: ["programs-min", active?.id],
     enabled: !!active,
-    queryFn: async () =>
-      (
-        await supabase
-          .from("academic_programs")
-          .select("id, name")
-          .eq("college_id", active!.id)
-          .order("name")
-      ).data ?? [],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("academic_programs")
+        .select("id, name")
+        .eq("college_id", active!.id);
+      return data ?? [];
+    },
   });
+
   const { data: levels } = useQuery({
-    queryKey: ["levels-min", active?.id, form.program_id],
+    queryKey: ["levels-min-all", active?.id],
     enabled: !!active,
     queryFn: async () => {
-      const q = supabase
+      const { data } = await supabase
         .from("academic_levels")
-        .select("id, name, program_id")
-        .eq("college_id", active!.id)
-        .order("level_number");
-      const { data } = form.program_id ? await q.eq("program_id", form.program_id) : await q;
+        .select("id, name")
+        .eq("college_id", active!.id);
       return data ?? [];
     },
   });
@@ -139,146 +89,14 @@ function OfferingsPage() {
     },
   });
 
-  const save = useMutation({
-    mutationFn: async () => {
-      if (!active) throw new Error("اختر كلّية");
-      if (!form.term_id || !form.course_id) throw new Error("الفصل والمقرر مطلوبان");
-      const payload = {
-        college_id: active.id,
-        term_id: form.term_id,
-        course_id: form.course_id,
-        program_id: form.program_id || null,
-        level_id: form.level_id || null,
-        expected_students: Number(form.expected_students) || 0,
-        sections_count: Number(form.sections_count) || 1,
-        notes: form.notes.trim() || null,
-        is_active: form.is_active,
-        status: form.status || "draft",
-      };
-      if (editing) {
-        const { error } = await supabase
-          .from("course_offerings")
-          .update(payload)
-          .eq("id", editing.id);
-        if (error) throw error;
-        await logAudit({
-          action: "update",
-          entity: "course_offerings",
-          entityId: editing.id,
-          collegeId: active.id,
-        });
-      } else {
-        const { data, error } = await supabase
-          .from("course_offerings")
-          .insert(payload)
-          .select("id")
-          .single();
-        if (error) throw error;
-        await logAudit({
-          action: "create",
-          entity: "course_offerings",
-          entityId: data?.id,
-          collegeId: active.id,
-        });
-      }
-    },
-    onSuccess: () => {
-      toast.success(editing ? "تم التحديث" : "تمت الإضافة");
-      qc.invalidateQueries({ queryKey: ["offerings", active?.id] });
-      setOpen(false);
-      setEditing(null);
-    },
-    onError: (e: Error) =>
-      toast.error(
-        e.message.includes("duplicate")
-          ? "هذا المقرر مسند مسبقاً لنفس الفصل/البرنامج/المستوى"
-          : e.message,
-      ),
-  });
-
-  const del = useMutation({
-    mutationFn: async (id: string) => {
-      const [ta, cos, sessions] = await Promise.all([
-        supabase
-          .from("teaching_assignments")
-          .select("id", { count: "exact", head: true })
-          .eq("course_offering_id", id),
-        supabase
-          .from("course_offering_sections")
-          .select("id", { count: "exact", head: true })
-          .eq("course_offering_id", id),
-        supabase
-          .from("schedule_sessions")
-          .select("id", { count: "exact", head: true })
-          .eq("course_offering_id", id),
-      ]);
-      if (ta.error) throw ta.error;
-      if (cos.error) throw cos.error;
-      if (sessions.error) throw sessions.error;
-
-      const usage: OfferingDependencyUsage = {
-        offeringId: id,
-        teachingAssignmentCount: ta.count ?? 0,
-        courseOfferingSectionCount: cos.count ?? 0,
-        scheduleSessionCount: sessions.count ?? 0,
-      };
-      if (isOfferingInUse(usage)) {
-        throw new Error(`OFFERING_IN_USE:${JSON.stringify(usage)}`);
-      }
-
-      const { error } = await supabase.from("course_offerings").delete().eq("id", id);
-      if (error) throw error;
-      await logAudit({
-        action: "delete",
-        entity: "course_offerings",
-        entityId: id,
-        collegeId: active?.id,
-      });
-    },
-    onSuccess: () => {
-      toast.success("تم الحذف");
-      qc.invalidateQueries({ queryKey: ["offerings", active?.id] });
-    },
-    onError: (e: Error) => {
-      const msg = e.message ?? "";
-      if (msg.startsWith("OFFERING_IN_USE:")) {
-        try {
-          const usage = JSON.parse(msg.slice("OFFERING_IN_USE:".length)) as OfferingDependencyUsage;
-          toast.error(offeringDeleteBlockedToastMessage(usage));
-          return;
-        } catch {
-          toast.error(offeringDeleteBlockedToastMessage());
-          return;
-        }
-      }
-      if (isOfferingInUseDeleteError(msg)) {
-        toast.error(offeringDeleteBlockedToastMessage());
-        return;
-      }
-      toast.error(msg);
-    },
-  });
-
-  const startEdit = (o: Offering) => {
-    setEditing(o);
-    setForm({
-      term_id: o.term_id,
-      course_id: o.course_id,
-      program_id: o.program_id ?? "",
-      level_id: o.level_id ?? "",
-      expected_students: o.expected_students,
-      sections_count: o.sections_count,
-      notes: o.notes ?? "",
-      is_active: o.is_active,
-      status: o.status ?? "draft",
-    });
-    setOpen(true);
-  };
-  const startCreate = () => {
-    setEditing(null);
-    setForm(emptyForm());
-    setOpen(true);
-  };
+  if (!active) {
+    return (
+      <div className="p-6">
+        <CollegeSwitcher />
+        <p className="mt-4 text-muted-foreground">اختر كلّية للبدء.</p>
+      </div>
+    );
+  }
 
   const termMap = new Map((terms ?? []).map((t) => [t.id, t.name]));
   const courseMap = new Map((courses ?? []).map((c) => [c.id, `${c.code} — ${c.name}`]));
@@ -292,159 +110,26 @@ function OfferingsPage() {
           <ClipboardList className="h-5 w-5" />
         </span>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold">مقررات الفصل</h1>
-          <p className="text-sm text-muted-foreground">إسناد المقررات في الفصول الأكاديمية.</p>
+          <h1 className="text-2xl font-bold">مقررات الفصل (طبقة داخلية)</h1>
+          <p className="text-sm text-muted-foreground">
+            طبقة توافق مولَّدة آليًا من نموذج التسليم V2 — ليست مسارًا تشغيليًا لإنشاء/تعديل يدوي.
+          </p>
         </div>
       </header>
 
+      <Card className="mb-4 border-amber-500/40 bg-amber-500/5 p-4 text-sm">
+        <p className="font-medium">Phase 9.2 — مسار تشغيلي مغلق</p>
+        <p className="mt-1 text-muted-foreground">
+          يُنشئ مولّد الدفعات سجلات course_offerings تلقائيًا للتوافق مع Schedule Builder. الإنشاء
+          والتعديل اليدوي معطّلان في الواجهة التشغيلية. هذه الصفحة للتشخيص فقط.
+        </p>
+      </Card>
+
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <CollegeSwitcher />
-        {canManage && (
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={startCreate} disabled={!terms?.length || !courses?.length}>
-                طرح مقرر
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-lg">
-              <DialogHeader>
-                <DialogTitle>{editing ? "تعديل طرح" : "طرح جديد"}</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label>الفصل</Label>
-                    <Select
-                      value={form.term_id}
-                      onValueChange={(v) => setForm({ ...form, term_id: v })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="اختر" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(terms ?? []).map((t) => (
-                          <SelectItem key={t.id} value={t.id}>
-                            {t.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>المقرر</Label>
-                    <Select
-                      value={form.course_id}
-                      onValueChange={(v) => setForm({ ...form, course_id: v })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="اختر" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(courses ?? []).map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.code} — {c.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label>البرنامج (اختياري)</Label>
-                    <Select
-                      value={form.program_id || "_none"}
-                      onValueChange={(v) =>
-                        setForm({ ...form, program_id: v === "_none" ? "" : v, level_id: "" })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="_none">— الكل —</SelectItem>
-                        {(programs ?? []).map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>المستوى (اختياري)</Label>
-                    <Select
-                      value={form.level_id || "_none"}
-                      onValueChange={(v) => setForm({ ...form, level_id: v === "_none" ? "" : v })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="_none">— الكل —</SelectItem>
-                        {(levels ?? []).map((l) => (
-                          <SelectItem key={l.id} value={l.id}>
-                            {l.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label>عدد الطلاب المتوقع</Label>
-                    <Input
-                      type="number"
-                      value={form.expected_students}
-                      onChange={(e) =>
-                        setForm({ ...form, expected_students: Number(e.target.value) })
-                      }
-                    />
-                  </div>
-                  <div>
-                    <Label>عدد المجموعات</Label>
-                    <Input
-                      type="number"
-                      value={form.sections_count}
-                      onChange={(e) => setForm({ ...form, sections_count: Number(e.target.value) })}
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label>ملاحظات</Label>
-                    <Input
-                      value={form.notes}
-                      onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label>الحالة</Label>
-                    <select
-                      className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-                      value={form.status}
-                      onChange={(e) => setForm({ ...form, status: e.target.value })}
-                    >
-                      <option value="draft">مسودة</option>
-                      <option value="approved">معتمد</option>
-                      <option value="scheduled">مجدول</option>
-                      <option value="cancelled">ملغى</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setOpen(false)}>
-                  إلغاء
-                </Button>
-                <Button onClick={() => save.mutate()} disabled={save.isPending}>
-                  حفظ
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )}
+        <p className="text-xs text-muted-foreground">
+          الإنشاء اليدوي معطّل — استخدم استيراد الدفعات ثم مولّد V2.
+        </p>
       </div>
 
       <Card className="overflow-hidden">
@@ -463,24 +148,10 @@ function OfferingsPage() {
                     {o.program_id && ` · ${progMap.get(o.program_id) ?? ""}`}
                     {o.level_id && ` · ${levelMap.get(o.level_id) ?? ""}`}
                     {` · ${o.sections_count} مجموعة · ${o.expected_students} طالب`}
+                    {o.notes?.startsWith("elective:") ? " · اختياري" : ""}
                   </p>
                 </div>
-                {canManage && (
-                  <div className="flex gap-1">
-                    <Button size="sm" variant="ghost" onClick={() => startEdit(o)}>
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        if (confirm("حذف الطرح؟")) del.mutate(o.id);
-                      }}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                )}
+                <span className="text-xs text-muted-foreground">للقراءة فقط</span>
               </li>
             ))}
           </ul>
