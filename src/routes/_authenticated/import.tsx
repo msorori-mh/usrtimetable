@@ -48,12 +48,6 @@ const ENTITIES: { value: ImportEntity; label: string; group: string; description
     description: "فترات الاستراحة التي تؤثر على توليد أوقات الجدولة.",
   },
   {
-    value: "sections",
-    label: "المجموعات الدراسية",
-    group: "موارد",
-    description: "مجموعات الطلاب المرتبطة بالبرنامج والمستوى ونظام الدراسة.",
-  },
-  {
     value: "academic_terms",
     label: "الفصول الأكاديمية",
     group: "بيانات أكاديمية",
@@ -69,7 +63,7 @@ const ENTITIES: { value: ImportEntity; label: string; group: string; description
     value: "full_study_plan",
     label: "خطة دراسية كاملة",
     group: "بيانات أكاديمية",
-    description: "استيراد الخطة الأكاديمية الكاملة للبرنامج.",
+    description: "استيراد الخطة الأكاديمية الكاملة مع المكوّنات والخانات الاختيارية.",
   },
   {
     value: "course_programs",
@@ -78,22 +72,28 @@ const ENTITIES: { value: ImportEntity; label: string; group: string; description
     description: "ربط المقررات المشتركة بالبرامج.",
   },
   {
-    value: "course_offerings",
-    label: "إسناد المقررات",
-    group: "تحضير التدريس",
-    description: "طرح المقررات في فصل أكاديمي محدد.",
+    value: "academic_cohorts",
+    label: "الدفعات الأكاديمية (V2)",
+    group: "نموذج التقديم V2",
+    description: "دفعات البرنامج/المستوى/نظام الدراسة للفصل المستهدف.",
   },
   {
-    value: "teaching_assignments",
-    label: "الإسناد التدريسي",
-    group: "تحضير التدريس",
-    description: "ربط المحاضرين بالمقررات وأنواع الجلسات.",
+    value: "elective_slot_courses",
+    label: "مقررات الخانات الاختيارية (V2)",
+    group: "نموذج التقديم V2",
+    description: "المقررات الفعلية المسموح اختيارها داخل خانة اختيارية.",
   },
   {
-    value: "section_groups",
-    label: "المجموعات المرتبطة بالمقررات",
-    group: "تحضير التدريس",
-    description: "دمج مجموعات دراسية لمقرر مشترك.",
+    value: "cohort_elective_selections",
+    label: "اختيارات الدفعات (V2)",
+    group: "نموذج التقديم V2",
+    description: "المقرر الفعلي المختار لكل دفعة وخانة اختيارية.",
+  },
+  {
+    value: "teaching_assignments_v2",
+    label: "الإسناد التدريسي V2",
+    group: "نموذج التقديم V2",
+    description: "إسناد محاضر لدفعة + مقرر + مكوّن (ومجموعة تقديم اختيارية).",
   },
 ];
 

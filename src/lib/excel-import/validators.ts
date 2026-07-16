@@ -28,6 +28,12 @@ interface Lookups {
   sections?: Map<string, string>; // key: course_id|term_id|section_number → section_id
   levels?: Map<string, string>; // key: program_id|level_number → level_id
   sectionGroups?: Map<string, string>; // key: term_id|course_id|group_name → group_id
+  cohortsByCode?: Map<string, any>; // code → cohort row
+  electiveSlots?: Map<string, string>; // study_plan_id|slot_code → id
+  /** elective_slot_id|course_id → true when active membership exists */
+  electiveSlotCourses?: Map<string, boolean>;
+  components?: Map<string, string>; // plan_course_id|component_type → id
+  deliveryGroups?: Map<string, string>; // cohort_id|component_id|group_code → id
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -57,9 +63,15 @@ async function loadLookups(entity: ImportEntity, collegeId: string): Promise<Loo
     lk.buildings = new Map(bd.map((r) => [r.code, r.id]));
   }
   if (
-    ["study_plan_courses", "full_study_plan", "course_offerings", "course_programs"].includes(
-      entity,
-    )
+    [
+      "study_plan_courses",
+      "full_study_plan",
+      "course_offerings",
+      "course_programs",
+      "academic_cohorts",
+      "elective_slot_courses",
+      "teaching_assignments_v2",
+    ].includes(entity)
   ) {
     const [dp, pg] = await Promise.all([
       fetchAll("departments", "id, code"),
@@ -68,7 +80,16 @@ async function loadLookups(entity: ImportEntity, collegeId: string): Promise<Loo
     lk.departments = new Map(dp.map((r) => [r.code, r.id]));
     lk.programs = new Map(pg.map((r) => [r.code, { id: r.id, department_id: r.department_id }]));
   }
-  if (["course_offerings", "teaching_assignments", "section_groups", "sections"].includes(entity)) {
+  if (
+    [
+      "course_offerings",
+      "teaching_assignments",
+      "teaching_assignments_v2",
+      "section_groups",
+      "sections",
+      "academic_cohorts",
+    ].includes(entity)
+  ) {
     const t = await fetchAll("academic_terms", "id, code");
     lk.terms = new Map(t.map((r) => [r.code, r.id]));
   }
@@ -76,9 +97,12 @@ async function loadLookups(entity: ImportEntity, collegeId: string): Promise<Loo
     [
       "course_offerings",
       "teaching_assignments",
+      "teaching_assignments_v2",
       "course_programs",
       "section_groups",
       "sections",
+      "elective_slot_courses",
+      "cohort_elective_selections",
     ].includes(entity)
   ) {
     const c = await fetchAll("courses", "id, code, department_id");
@@ -90,19 +114,72 @@ async function loadLookups(entity: ImportEntity, collegeId: string): Promise<Loo
       sec.map((r) => [`${r.course_id}|${r.term_id}|${r.section_number}`, r.id]),
     );
   }
-  if (entity === "teaching_assignments") {
+  if (entity === "teaching_assignments" || entity === "teaching_assignments_v2") {
     const ins = await fetchAll("instructors", "id, employee_number");
     lk.instructors = new Map(
       ins.filter((r) => r.employee_number).map((r) => [r.employee_number as string, r.id]),
     );
   }
-  if (entity === "course_offerings") {
+  if (
+    entity === "course_offerings" ||
+    entity === "elective_slot_courses" ||
+    entity === "teaching_assignments_v2"
+  ) {
     const sp = await fetchAll("study_plans", "id, code, version, program_id");
     lk.studyPlans = new Map(sp.map((r) => [`${r.program_id}|${r.code}|${r.version}`, r.id]));
     const pc = await fetchAll("plan_courses", "id, study_plan_id, course_id");
     lk.planCourses = new Map(pc.map((r) => [`${r.study_plan_id}|${r.course_id}`, r.id]));
     const lv = await fetchAll("academic_levels", "id, program_id, level_number");
     lk.levels = new Map(lv.map((r) => [`${r.program_id}|${r.level_number}`, r.id]));
+  }
+  if (entity === "academic_cohorts") {
+    const lv = await fetchAll("academic_levels", "id, program_id, level_number");
+    lk.levels = new Map(lv.map((r) => [`${r.program_id}|${r.level_number}`, r.id]));
+  }
+  if (
+    entity === "elective_slot_courses" ||
+    entity === "cohort_elective_selections" ||
+    entity === "teaching_assignments_v2"
+  ) {
+    const slots = await fetchAll(
+      "elective_slots",
+      "id, study_plan_id, slot_code, semester, level_id, active",
+    );
+    lk.electiveSlots = new Map(slots.map((r) => [`${r.study_plan_id}|${r.slot_code}`, r.id]));
+    const cohorts = await fetchAll(
+      "academic_cohorts",
+      "id, code, program_id, level_id, study_system, term_id",
+    );
+    lk.cohortsByCode = new Map(cohorts.filter((r) => r.code).map((r) => [String(r.code), r]));
+  }
+  if (entity === "cohort_elective_selections") {
+    const esc = await fetchAll("elective_slot_courses", "elective_slot_id, course_id, active");
+    lk.electiveSlotCourses = new Map(
+      esc
+        .filter((r) => r.active !== false)
+        .map((r) => [`${r.elective_slot_id}|${r.course_id}`, true]),
+    );
+  }
+  if (entity === "teaching_assignments_v2") {
+    const comps = await fetchAll("plan_course_components", "id, plan_course_id, component_type");
+    lk.components = new Map(comps.map((r) => [`${r.plan_course_id}|${r.component_type}`, r.id]));
+    const dgs = await fetchAll("delivery_groups", "id, cohort_id, component_id, group_code");
+    lk.deliveryGroups = new Map(
+      dgs.map((r) => [`${r.cohort_id}|${r.component_id}|${r.group_code}`, r.id]),
+    );
+    const offs = await fetchAll(
+      "course_offerings",
+      "id, term_id, course_id, program_id, level_id, study_system",
+    );
+    lk.offerings = new Map(
+      offs.map(
+        (r) =>
+          [
+            `${r.term_id}|${r.course_id}|${r.program_id ?? ""}|${r.level_id ?? ""}|${r.study_system}`,
+            r.id,
+          ] as const,
+      ),
+    );
   }
   return lk;
 }
@@ -402,6 +479,14 @@ function buildLogicalKey(entity: ImportEntity, row: ParsedRow): string | null {
       return `${v.term_code}|${v.course_code}|${v.group_name}`.toLowerCase();
     case "sections":
       return `${v.term_code}|${v.course_code}|${v.section_number}`.toLowerCase();
+    case "academic_cohorts":
+      return `${v.program_code}|${v.level_number}|${v.study_system}|${v.entry_year}|${v.term_code}`.toLowerCase();
+    case "elective_slot_courses":
+      return `${v.plan_code}|${v.elective_slot_code}|${v.course_code}`.toLowerCase();
+    case "cohort_elective_selections":
+      return `${v.cohort_code}|${v.elective_slot_code}`.toLowerCase();
+    case "teaching_assignments_v2":
+      return `${v.cohort_code}|${v.course_code}|${v.component_type}|${v.employee_number}`.toLowerCase();
     default:
       return null;
   }
@@ -523,6 +608,160 @@ function runEntityValidation(
     if (tId) v._term_id = tId;
     if (c) v._course_id = c.id;
     if (insId) v._instructor_id = insId;
+  }
+
+  if (entity === "academic_cohorts") {
+    const p = lk.programs?.get(String(v.program_code));
+    need(
+      !!p,
+      "رمز_البرنامج",
+      "unknown_program",
+      `برنامج غير معروف: ${v.program_code}`,
+      v.program_code,
+    );
+    if (p) {
+      v._program_id = p.id;
+      const lvId = lk.levels?.get(`${p.id}|${v.level_number}`);
+      need(
+        !!lvId,
+        "رقم_المستوى",
+        "unknown_level",
+        `مستوى غير معروف: ${v.level_number}`,
+        v.level_number,
+      );
+      if (lvId) v._level_id = lvId;
+    }
+    const tId = lk.terms?.get(String(v.term_code));
+    need(!!tId, "رمز_الفصل", "unknown_term", `فصل غير معروف: ${v.term_code}`, v.term_code);
+    if (tId) v._term_id = tId;
+  }
+
+  if (entity === "elective_slot_courses") {
+    const p = lk.programs?.get(String(v.program_code));
+    need(
+      !!p,
+      "رمز_البرنامج",
+      "unknown_program",
+      `برنامج غير معروف: ${v.program_code}`,
+      v.program_code,
+    );
+    const ver = String(v.plan_version ?? "1");
+    const spId = p ? lk.studyPlans?.get(`${p.id}|${v.plan_code}|${ver}`) : null;
+    need(!!spId, "رمز_الخطة", "unknown_plan", `خطة غير معروفة: ${v.plan_code}`, v.plan_code);
+    const slotId = spId ? lk.electiveSlots?.get(`${spId}|${v.elective_slot_code}`) : null;
+    need(
+      !!slotId,
+      "رمز_الخانة_الاختيارية",
+      "unknown_elective_slot",
+      `خانة اختيارية غير معروفة: ${v.elective_slot_code}`,
+      v.elective_slot_code,
+    );
+    const c = lk.courses?.get(String(v.course_code));
+    need(!!c, "رمز_المقرر", "unknown_course", `مقرر غير معروف: ${v.course_code}`, v.course_code);
+    if (slotId) v._elective_slot_id = slotId;
+    if (c) v._course_id = c.id;
+  }
+
+  if (entity === "cohort_elective_selections") {
+    const cohort = lk.cohortsByCode?.get(String(v.cohort_code));
+    need(
+      !!cohort,
+      "رمز_الدفعة",
+      "unknown_cohort",
+      `دفعة غير معروفة: ${v.cohort_code}`,
+      v.cohort_code,
+    );
+    if (cohort) {
+      v._cohort_id = cohort.id;
+      // Prefer slots on study plans for the cohort program; fall back to code match.
+      let slotId: string | null = null;
+      for (const [k, id] of lk.electiveSlots ?? []) {
+        if (!k.endsWith(`|${v.elective_slot_code}`)) continue;
+        // Prefer first match; membership check below still enforces elective_slot_courses.
+        slotId = id;
+        break;
+      }
+      need(
+        !!slotId,
+        "رمز_الخانة_الاختيارية",
+        "unknown_elective_slot",
+        `خانة اختيارية غير معروفة: ${v.elective_slot_code}`,
+        v.elective_slot_code,
+      );
+      if (slotId) v._elective_slot_id = slotId;
+    }
+    const c = lk.courses?.get(String(v.selected_course_code));
+    need(
+      !!c,
+      "رمز_المقرر_المختار",
+      "unknown_course",
+      `مقرر غير معروف: ${v.selected_course_code}`,
+      v.selected_course_code,
+    );
+    if (c) v._course_id = c.id;
+    // Defense in depth: selection alone is insufficient — course must be in elective_slot_courses.
+    if (v._elective_slot_id && v._course_id) {
+      const key = `${v._elective_slot_id}|${v._course_id}`;
+      need(
+        lk.electiveSlotCourses?.get(key) === true,
+        "رمز_المقرر_المختار",
+        "elective_course_not_in_slot",
+        `المقرر المختار غير مدرج ضمن مقررات الخانة الاختيارية: ${v.selected_course_code}`,
+        v.selected_course_code,
+      );
+    }
+  }
+
+  if (entity === "teaching_assignments_v2") {
+    const cohort = lk.cohortsByCode?.get(String(v.cohort_code));
+    need(
+      !!cohort,
+      "رمز_الدفعة",
+      "unknown_cohort",
+      `دفعة غير معروفة: ${v.cohort_code}`,
+      v.cohort_code,
+    );
+    const c = lk.courses?.get(String(v.course_code));
+    need(!!c, "رمز_المقرر", "unknown_course", `مقرر غير معروف: ${v.course_code}`, v.course_code);
+    const insId = lk.instructors?.get(String(v.employee_number));
+    need(
+      !!insId,
+      "رقم_الموظف_للمحاضر",
+      "unknown_instructor",
+      `محاضر غير معروف: ${v.employee_number}`,
+      v.employee_number,
+    );
+    if (cohort) v._cohort_id = cohort.id;
+    if (c) v._course_id = c.id;
+    if (insId) v._instructor_id = insId;
+    if (cohort && c) {
+      // find plan_course via any study plan for program
+      let planCourseId: string | null = null;
+      for (const [k, id] of lk.planCourses ?? []) {
+        if (k.endsWith(`|${c.id}`)) {
+          planCourseId = id;
+          break;
+        }
+      }
+      const compId = planCourseId
+        ? lk.components?.get(`${planCourseId}|${v.component_type}`)
+        : null;
+      need(
+        !!compId,
+        "نوع_المكوّن",
+        "unknown_component",
+        `مكوّن غير موجود للمقرر: ${v.component_type}`,
+        v.component_type,
+      );
+      if (compId) v._component_id = compId;
+      const offKey = `${cohort.term_id}|${c.id}|${cohort.program_id}|${cohort.level_id}|${cohort.study_system}`;
+      const offId = lk.offerings?.get(offKey);
+      if (offId) v._offering_id = offId;
+      if (v.delivery_group_code && compId) {
+        const dg = lk.deliveryGroups?.get(`${cohort.id}|${compId}|${v.delivery_group_code}`);
+        if (dg) v._delivery_group_id = dg;
+      }
+    }
   }
 
   if (entity === "course_programs") {
