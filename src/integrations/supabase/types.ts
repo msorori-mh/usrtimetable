@@ -683,7 +683,15 @@ export type Database = {
           section_number?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "course_offering_sections_course_offering_id_fkey"
+            columns: ["course_offering_id"]
+            isOneToOne: false
+            referencedRelation: "course_offerings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       course_offerings: {
         Row: {
@@ -1730,6 +1738,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "schedule_sessions_course_offering_id_fkey"
+            columns: ["course_offering_id"]
+            isOneToOne: false
+            referencedRelation: "course_offerings"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "schedule_sessions_room_id_fkey"
             columns: ["room_id"]
             isOneToOne: false
@@ -2290,7 +2305,15 @@ export type Database = {
           updated_at?: string
           weekly_hours?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "teaching_assignments_course_offering_id_fkey"
+            columns: ["course_offering_id"]
+            isOneToOne: false
+            referencedRelation: "course_offerings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       time_slot_templates: {
         Row: {
