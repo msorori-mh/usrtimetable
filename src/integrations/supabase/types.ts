@@ -1040,9 +1040,12 @@ export type Database = {
           college_id: string
           component_id: string
           created_at: string
+          excluded_from_standard_workload: boolean
           expected_students: number
           group_code: string
+          group_number: number | null
           id: string
+          is_obsolete: boolean
           plan_course_id: string
           updated_at: string
         }
@@ -1053,9 +1056,12 @@ export type Database = {
           college_id: string
           component_id: string
           created_at?: string
+          excluded_from_standard_workload?: boolean
           expected_students?: number
           group_code: string
+          group_number?: number | null
           id?: string
+          is_obsolete?: boolean
           plan_course_id: string
           updated_at?: string
         }
@@ -1066,9 +1072,12 @@ export type Database = {
           college_id?: string
           component_id?: string
           created_at?: string
+          excluded_from_standard_workload?: boolean
           expected_students?: number
           group_code?: string
+          group_number?: number | null
           id?: string
+          is_obsolete?: boolean
           plan_course_id?: string
           updated_at?: string
         }
@@ -1253,6 +1262,47 @@ export type Database = {
             columns: ["study_plan_id"]
             isOneToOne: false
             referencedRelation: "study_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      faculty_workload_policies: {
+        Row: {
+          active: boolean
+          college_id: string
+          created_at: string
+          id: string
+          rank_aliases: string[]
+          rank_code: string
+          required_load_hours: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          college_id: string
+          created_at?: string
+          id?: string
+          rank_aliases?: string[]
+          rank_code: string
+          required_load_hours: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          college_id?: string
+          created_at?: string
+          id?: string
+          rank_aliases?: string[]
+          rank_code?: string
+          required_load_hours?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "faculty_workload_policies_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
             referencedColumns: ["id"]
           },
         ]
@@ -1616,6 +1666,7 @@ export type Database = {
           counts_toward_overtime: boolean
           counts_toward_regular_load: boolean
           created_at: string
+          explicit_group_size: number | null
           id: string
           is_timetabled: boolean
           plan_course_id: string
@@ -1630,6 +1681,7 @@ export type Database = {
           counts_toward_overtime?: boolean
           counts_toward_regular_load?: boolean
           created_at?: string
+          explicit_group_size?: number | null
           id?: string
           is_timetabled?: boolean
           plan_course_id: string
@@ -1644,6 +1696,7 @@ export type Database = {
           counts_toward_overtime?: boolean
           counts_toward_regular_load?: boolean
           created_at?: string
+          explicit_group_size?: number | null
           id?: string
           is_timetabled?: boolean
           plan_course_id?: string
@@ -2693,6 +2746,7 @@ export type Database = {
       }
       teaching_assignments: {
         Row: {
+          assigned_component_hours: number | null
           cohort_id: string | null
           college_id: string
           course_offering_id: string
@@ -2711,6 +2765,7 @@ export type Database = {
           weekly_hours: number
         }
         Insert: {
+          assigned_component_hours?: number | null
           cohort_id?: string | null
           college_id: string
           course_offering_id: string
@@ -2729,6 +2784,7 @@ export type Database = {
           weekly_hours?: number
         }
         Update: {
+          assigned_component_hours?: number | null
           cohort_id?: string | null
           college_id?: string
           course_offering_id?: string
@@ -2928,7 +2984,33 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_instructor_delivery_workload: {
+        Row: {
+          academic_rank: string | null
+          cohort_id: string | null
+          college_id: string | null
+          instructor_id: string | null
+          project_supervision_hours: number | null
+          standard_assigned_hours: number | null
+          term_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "academic_cohorts_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "academic_terms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teaching_assignments_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "academic_cohorts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       _collect_schedule_session_move_conflicts: {
@@ -3127,7 +3209,15 @@ export type Database = {
         Args: { _college_id: string; _user_id: string }
         Returns: boolean
       }
+      compute_instructor_standard_workload: {
+        Args: { p_instructor_id: string; p_term_id?: string }
+        Returns: Json
+      }
       generate_cohort_curriculum: {
+        Args: { p_cohort_id: string }
+        Returns: Json
+      }
+      generate_cohort_delivery_groups: {
         Args: { p_cohort_id: string }
         Returns: Json
       }
@@ -3149,6 +3239,10 @@ export type Database = {
           p_target_room_id: string
           p_target_start_time: string
         }
+        Returns: Json
+      }
+      resolve_compatibility_offering_set: {
+        Args: { p_offerings: Json }
         Returns: Json
       }
       user_in_college: {
