@@ -1040,8 +1040,10 @@ export type Database = {
           college_id: string
           component_id: string
           created_at: string
+          excluded_from_standard_workload: boolean
           expected_students: number
           group_code: string
+          group_number: number | null
           id: string
           plan_course_id: string
           updated_at: string
@@ -1053,8 +1055,10 @@ export type Database = {
           college_id: string
           component_id: string
           created_at?: string
+          excluded_from_standard_workload?: boolean
           expected_students?: number
           group_code: string
+          group_number?: number | null
           id?: string
           plan_course_id: string
           updated_at?: string
@@ -1066,8 +1070,10 @@ export type Database = {
           college_id?: string
           component_id?: string
           created_at?: string
+          excluded_from_standard_workload?: boolean
           expected_students?: number
           group_code?: string
+          group_number?: number | null
           id?: string
           plan_course_id?: string
           updated_at?: string
@@ -1134,6 +1140,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "departments_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      faculty_workload_policies: {
+        Row: {
+          active: boolean
+          college_id: string
+          created_at: string
+          id: string
+          rank_aliases: string[]
+          rank_code: string
+          required_load_hours: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          college_id: string
+          created_at?: string
+          id?: string
+          rank_aliases?: string[]
+          rank_code: string
+          required_load_hours: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          college_id?: string
+          created_at?: string
+          id?: string
+          rank_aliases?: string[]
+          rank_code?: string
+          required_load_hours?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "faculty_workload_policies_college_id_fkey"
             columns: ["college_id"]
             isOneToOne: false
             referencedRelation: "colleges"
@@ -1616,6 +1663,7 @@ export type Database = {
           counts_toward_overtime: boolean
           counts_toward_regular_load: boolean
           created_at: string
+          explicit_group_size: number | null
           id: string
           is_timetabled: boolean
           plan_course_id: string
@@ -1630,6 +1678,7 @@ export type Database = {
           counts_toward_overtime?: boolean
           counts_toward_regular_load?: boolean
           created_at?: string
+          explicit_group_size?: number | null
           id?: string
           is_timetabled?: boolean
           plan_course_id: string
@@ -1644,6 +1693,7 @@ export type Database = {
           counts_toward_overtime?: boolean
           counts_toward_regular_load?: boolean
           created_at?: string
+          explicit_group_size?: number | null
           id?: string
           is_timetabled?: boolean
           plan_course_id?: string
@@ -3129,6 +3179,14 @@ export type Database = {
       }
       generate_cohort_curriculum: {
         Args: { p_cohort_id: string }
+        Returns: Json
+      }
+      generate_cohort_delivery_groups: {
+        Args: { p_cohort_id: string }
+        Returns: Json
+      }
+      compute_instructor_standard_workload: {
+        Args: { p_instructor_id: string; p_term_id?: string | null }
         Returns: Json
       }
       has_role: {
