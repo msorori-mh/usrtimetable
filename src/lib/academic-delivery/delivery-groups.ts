@@ -167,6 +167,7 @@ export type ExistingGroup = {
   groupNumber: number;
   hasTeachingAssignment: boolean;
   hasScheduleSession: boolean;
+  isObsolete?: boolean;
 };
 
 export type ReconcileInput = {
@@ -179,6 +180,8 @@ export type ReconcilePlan = {
   updateNumbers: number[];
   unchangedNumbers: number[];
   obsoleteNumbers: number[];
+  /** Natural keys to clear is_obsolete when needed again (same group_number). */
+  reactivateNumbers: number[];
   warnings: Array<{ code: string; groupNumber: number; message: string }>;
   /** V1: never auto-delete */
   deleteNumbers: never[];
@@ -186,6 +189,7 @@ export type ReconcilePlan = {
 
 /**
  * Non-destructive reconciliation: create missing, mark obsolete, never delete.
+ * Reactivation reuses the same natural key (cohort, component, group_number).
  */
 export function planDeliveryGroupReconciliation(input: ReconcileInput): ReconcilePlan {
   const required = Math.max(0, Math.floor(input.requiredGroupCount));
@@ -194,11 +198,16 @@ export function planDeliveryGroupReconciliation(input: ReconcileInput): Reconcil
   const updateNumbers: number[] = [];
   const unchangedNumbers: number[] = [];
   const obsoleteNumbers: number[] = [];
+  const reactivateNumbers: number[] = [];
   const warnings: ReconcilePlan["warnings"] = [];
 
   for (let n = 1; n <= required; n++) {
-    if (byNum.has(n)) {
+    const existing = byNum.get(n);
+    if (existing) {
       updateNumbers.push(n);
+      if (existing.isObsolete) {
+        reactivateNumbers.push(n);
+      }
     } else {
       createNumbers.push(n);
     }
@@ -211,13 +220,13 @@ export function planDeliveryGroupReconciliation(input: ReconcileInput): Reconcil
         warnings.push({
           code: "OBSOLETE_GROUP_LINKED",
           groupNumber: g.groupNumber,
-          message: "obsolete group has operational links; not deleted",
+          message: "obsolete group has operational links; marked obsolete, not deleted",
         });
       } else {
         warnings.push({
           code: "OBSOLETE_GROUP_UNUSED",
           groupNumber: g.groupNumber,
-          message: "obsolete unused group retained (non-destructive V1)",
+          message: "obsolete unused group marked obsolete and retained (non-destructive)",
         });
       }
     } else if (!createNumbers.includes(g.groupNumber) && !updateNumbers.includes(g.groupNumber)) {
@@ -225,15 +234,64 @@ export function planDeliveryGroupReconciliation(input: ReconcileInput): Reconcil
     }
   }
 
-  // Treat existing-in-range as update candidates; harness may distinguish unchanged after compare
   return {
     createNumbers,
     updateNumbers,
     unchangedNumbers,
     obsoleteNumbers,
+    reactivateNumbers,
     warnings,
     deleteNumbers: [],
   };
+}
+
+export type CompatibilityOffering = {
+  id: string;
+  planCourseId: string;
+  createdAt: string;
+  isActive?: boolean;
+};
+
+/**
+ * Source of truth for generation: cohort + plan_course + component.
+ * Same plan_course_id → deterministic newest created_at then id.
+ * Multiple plan_course_id values → ambiguous (validation error).
+ */
+export function resolveCompatibilityOffering(
+  offerings: CompatibilityOffering[],
+):
+  | { ok: true; offeringId: string; planCourseId: string }
+  | { ok: false; code: "NO_COMPATIBILITY_OFFERING" | "AMBIGUOUS_COMPATIBILITY_OFFERINGS" } {
+  const active = offerings.filter((o) => o.isActive !== false);
+  if (active.length === 0) {
+    return { ok: false, code: "NO_COMPATIBILITY_OFFERING" };
+  }
+  const planIds = new Set(active.map((o) => o.planCourseId));
+  if (planIds.size > 1) {
+    return { ok: false, code: "AMBIGUOUS_COMPATIBILITY_OFFERINGS" };
+  }
+  const sorted = [...active].sort((a, b) => {
+    const t = b.createdAt.localeCompare(a.createdAt);
+    if (t !== 0) return t;
+    return a.id.localeCompare(b.id);
+  });
+  return {
+    ok: true,
+    offeringId: sorted[0]!.id,
+    planCourseId: sorted[0]!.planCourseId,
+  };
+}
+
+/** Deduplicate components so multiple offerings never multiply generation passes. */
+export function uniqueComponentsById<T extends { componentId: string }>(rows: T[]): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const row of rows) {
+    if (seen.has(row.componentId)) continue;
+    seen.add(row.componentId);
+    out.push(row);
+  }
+  return out;
 }
 
 export function groupCodeForNumber(groupNumber: number): string {

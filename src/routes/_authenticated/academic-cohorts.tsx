@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { useCanManageActiveCollege } from "@/hooks/use-can-manage";
 import { useGenerateDeliveryGroups } from "@/hooks/use-generate-delivery-groups";
+import type { DeliveryGroupGeneratorSummary } from "@/lib/academic-delivery/delivery-group-generator-summary";
 import { CollegeSwitcher } from "@/components/college-switcher";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,7 @@ type DeliveryGroupRow = {
   expected_students: number;
   capacity_limit: number | null;
   excluded_from_standard_workload?: boolean;
+  is_obsolete?: boolean;
   active: boolean;
   plan_course_components: {
     component_type: string;
@@ -69,6 +71,7 @@ function AcademicCohortsPage() {
   const generate = useGenerateDeliveryGroups();
   const [selectedCohortId, setSelectedCohortId] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [lastSummary, setLastSummary] = useState<DeliveryGroupGeneratorSummary | null>(null);
 
   const { data: programs } = useQuery({
     queryKey: ["programs-min", active?.id],
@@ -129,7 +132,18 @@ function AcademicCohortsPage() {
     queryKey: ["delivery-groups", active?.id, effectiveCohortId],
     enabled: !!active && !!effectiveCohortId,
     queryFn: async () => {
-      // Select Phase 9.1 base columns so the read path works before 9.3 migration apply.
+      // Prefer 9.3 columns when present; fall back to 9.1 base if migration not applied yet.
+      const full = await supabase
+        .from("delivery_groups")
+        .select(
+          "id, cohort_id, component_id, group_code, group_number, expected_students, capacity_limit, active, excluded_from_standard_workload, is_obsolete, plan_course_components(component_type, weekly_contact_hours)",
+        )
+        .eq("college_id", active!.id)
+        .eq("cohort_id", effectiveCohortId!)
+        .order("group_code", { ascending: true });
+      if (!full.error) {
+        return (full.data ?? []) as unknown as DeliveryGroupRow[];
+      }
       const { data, error } = await supabase
         .from("delivery_groups")
         .select(
@@ -265,14 +279,19 @@ function AcademicCohortsPage() {
                         <th className="px-3 py-2 text-right font-medium">رقم المجموعة</th>
                         <th className="px-3 py-2 text-right font-medium">طلاب متوقع</th>
                         <th className="px-3 py-2 text-right font-medium">السعة</th>
+                        <th className="px-3 py-2 text-right font-medium">الحالة</th>
                         <th className="px-3 py-2 text-right font-medium">الإسناد</th>
                       </tr>
                     </thead>
                     <tbody>
                       {(groups ?? []).map((g) => {
                         const assigned = assignmentCounts?.get(g.id) ?? 0;
+                        const obsolete = Boolean(g.is_obsolete);
                         return (
-                          <tr key={g.id} className="border-t">
+                          <tr
+                            key={g.id}
+                            className={`border-t ${obsolete ? "bg-muted/30 text-muted-foreground" : ""}`}
+                          >
                             <td className="px-3 py-2">
                               {g.plan_course_components?.component_type ?? "—"}
                               {isExcludedFromWorkload(g) ? (
@@ -287,6 +306,15 @@ function AcademicCohortsPage() {
                             <td className="px-3 py-2">{g.expected_students}</td>
                             <td className="px-3 py-2">{g.capacity_limit ?? "—"}</td>
                             <td className="px-3 py-2">
+                              {obsolete ? (
+                                <span className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                                  obsolete — لا تكليفات/جلسات جديدة
+                                </span>
+                              ) : (
+                                "نشطة"
+                              )}
+                            </td>
+                            <td className="px-3 py-2">
                               {assigned > 0 ? `مسند (${assigned})` : "غير مسند"}
                             </td>
                           </tr>
@@ -297,6 +325,38 @@ function AcademicCohortsPage() {
                 </div>
               )}
             </Card>
+
+            {lastSummary ? (
+              <Card className="space-y-2 p-4 text-sm" data-testid="generator-summary-panel">
+                <p className="font-medium">
+                  نتيجة التوليد: <span dir="ltr">{lastSummary.status}</span>
+                </p>
+                <p className="text-muted-foreground">
+                  إنشاء {lastSummary.groups_created} · تحديث {lastSummary.groups_updated} · دون
+                  تغيير {lastSummary.groups_unchanged} · obsolete {lastSummary.groups_obsolete}
+                </p>
+                {(lastSummary.validation_errors?.length ?? 0) > 0 ? (
+                  <ul className="list-disc ps-5 text-destructive">
+                    {lastSummary.validation_errors.map((e, i) => (
+                      <li key={`${e.code}-${i}`}>
+                        {e.code}
+                        {e.message ? `: ${e.message}` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                {(lastSummary.warnings?.length ?? 0) > 0 ? (
+                  <ul className="list-disc ps-5 text-amber-700 dark:text-amber-400">
+                    {lastSummary.warnings.map((w, i) => (
+                      <li key={`${w.code}-${i}`}>
+                        {w.code}
+                        {w.message ? `: ${w.message}` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </Card>
+            ) : null}
           </div>
         </div>
       )}
@@ -316,7 +376,9 @@ function AcademicCohortsPage() {
               onClick={() => {
                 if (!effectiveCohortId) return;
                 setConfirmOpen(false);
-                generate.mutate(effectiveCohortId);
+                generate.mutate(effectiveCohortId, {
+                  onSuccess: (summary) => setLastSummary(summary),
+                });
               }}
             >
               تأكيد التوليد

@@ -1045,6 +1045,7 @@ export type Database = {
           group_code: string
           group_number: number | null
           id: string
+          is_obsolete: boolean
           plan_course_id: string
           updated_at: string
         }
@@ -1060,6 +1061,7 @@ export type Database = {
           group_code: string
           group_number?: number | null
           id?: string
+          is_obsolete?: boolean
           plan_course_id: string
           updated_at?: string
         }
@@ -1075,6 +1077,7 @@ export type Database = {
           group_code?: string
           group_number?: number | null
           id?: string
+          is_obsolete?: boolean
           plan_course_id?: string
           updated_at?: string
         }
@@ -2743,6 +2746,7 @@ export type Database = {
       }
       teaching_assignments: {
         Row: {
+          assigned_component_hours: number | null
           cohort_id: string | null
           college_id: string
           course_offering_id: string
@@ -2761,6 +2765,7 @@ export type Database = {
           weekly_hours: number
         }
         Insert: {
+          assigned_component_hours?: number | null
           cohort_id?: string | null
           college_id: string
           course_offering_id: string
@@ -2779,6 +2784,7 @@ export type Database = {
           weekly_hours?: number
         }
         Update: {
+          assigned_component_hours?: number | null
           cohort_id?: string | null
           college_id?: string
           course_offering_id?: string
@@ -2978,7 +2984,18 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_instructor_delivery_workload: {
+        Row: {
+          academic_rank: string | null
+          cohort_id: string | null
+          college_id: string | null
+          instructor_id: string | null
+          project_supervision_hours: number | null
+          standard_assigned_hours: number | null
+          term_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       _collect_schedule_session_move_conflicts: {
@@ -3187,6 +3204,10 @@ export type Database = {
       }
       compute_instructor_standard_workload: {
         Args: { p_instructor_id: string; p_term_id?: string | null }
+        Returns: Json
+      }
+      resolve_compatibility_offering_set: {
+        Args: { p_offerings: Json }
         Returns: Json
       }
       has_role: {

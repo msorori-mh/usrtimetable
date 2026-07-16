@@ -1,6 +1,11 @@
 /**
  * Phase 9.3 — pure standard-workload calculation (fixtures/harness).
  * Mirrors compute_instructor_standard_workload SQL semantics.
+ *
+ * Co-teaching contract:
+ * - assigned_component_hours (assignedWeeklyHours) is the explicit V2 source.
+ * - Sole instructor may fall back to component weekly_contact_hours.
+ * - Multi-instructor requires explicit assigned hours; never legacy weekly_hours DEFAULT 3.
  */
 
 import type { DeliveryComponentType } from "./delivery-groups.ts";
@@ -35,11 +40,16 @@ export type AssignmentWorkloadInput = {
   deliveryGroupId: string;
   componentType: DeliveryComponentType;
   weeklyContactHours: number;
-  /** Assignment weekly_hours when present */
+  /**
+   * V2 assigned_component_hours. null/undefined = unspecified.
+   * Do not pass legacy weekly_hours DEFAULT 3 as a stand-in.
+   */
   assignedWeeklyHours: number | null | undefined;
   countsTowardRegularLoad: boolean;
-  /** Other instructors sharing the same delivery_group */
+  /** Other instructors sharing the same delivery_group (0 = sole). */
   coInstructorCount: number;
+  /** When true, group is obsolete; existing assignments may still count. */
+  isObsolete?: boolean;
 };
 
 export type InstructorWorkloadInput = {
@@ -88,8 +98,8 @@ export function resolveRequiredLoadHours(
  * Hours credited for one assignment.
  * - project → project_supervision only
  * - summer_training → ignored
- * - multi-instructor group → use assignedWeeklyHours when set; else do not auto-full-count
- * - sole instructor → component weekly hours (not legacy total course hours)
+ * - multi-instructor → assigned_component_hours only (0 if unspecified)
+ * - sole instructor → assigned_component_hours or component weekly hours
  */
 export function hoursForAssignment(a: AssignmentWorkloadInput): {
   standard: number;
@@ -100,9 +110,13 @@ export function hoursForAssignment(a: AssignmentWorkloadInput): {
   }
   if (a.componentType === "project" || !a.countsTowardRegularLoad) {
     const ph =
-      a.coInstructorCount > 0 && a.assignedWeeklyHours != null
-        ? n(a.assignedWeeklyHours)
-        : n(a.weeklyContactHours);
+      a.coInstructorCount > 0
+        ? a.assignedWeeklyHours != null
+          ? n(a.assignedWeeklyHours)
+          : 0
+        : a.assignedWeeklyHours != null
+          ? n(a.assignedWeeklyHours)
+          : n(a.weeklyContactHours);
     return { standard: 0, project: a.componentType === "project" ? ph : 0 };
   }
 
@@ -111,10 +125,44 @@ export function hoursForAssignment(a: AssignmentWorkloadInput): {
     if (a.assignedWeeklyHours != null && Number.isFinite(Number(a.assignedWeeklyHours))) {
       return { standard: n(a.assignedWeeklyHours), project: 0 };
     }
-    // Shared group without explicit split — do not auto-full-count each instructor
+    // Shared group without explicit split — do not use DEFAULT 3 / full component
     return { standard: 0, project: 0 };
   }
+  if (a.assignedWeeklyHours != null && Number.isFinite(Number(a.assignedWeeklyHours))) {
+    return { standard: n(a.assignedWeeklyHours), project: 0 };
+  }
   return { standard: componentHours, project: 0 };
+}
+
+export type CoTeachingHoursValidation =
+  | { ok: true }
+  | {
+      ok: false;
+      code:
+        | "CO_TEACHING_HOURS_SPLIT_REQUIRED"
+        | "CO_TEACHING_HOURS_OVER_ALLOCATED"
+        | "OBSOLETE_DELIVERY_GROUP_ASSIGNMENT_FORBIDDEN";
+    };
+
+/** Pure validation mirroring ensure_ta_college co-teaching / obsolete rules. */
+export function validateCoTeachingHours(input: {
+  isObsolete?: boolean;
+  componentWeeklyHours: number;
+  /** All assignments on the group including the candidate (assigned hours may be null). */
+  assignedHours: Array<number | null | undefined>;
+}): CoTeachingHoursValidation {
+  if (input.isObsolete) {
+    return { ok: false, code: "OBSOLETE_DELIVERY_GROUP_ASSIGNMENT_FORBIDDEN" };
+  }
+  const hours = input.assignedHours;
+  if (hours.length > 1 && hours.some((h) => h == null || !Number.isFinite(Number(h)))) {
+    return { ok: false, code: "CO_TEACHING_HOURS_SPLIT_REQUIRED" };
+  }
+  const sum = hours.reduce<number>((acc, h) => acc + (h == null ? 0 : Number(h)), 0);
+  if (sum > Number(input.componentWeeklyHours)) {
+    return { ok: false, code: "CO_TEACHING_HOURS_OVER_ALLOCATED" };
+  }
+  return { ok: true };
 }
 
 export function computeInstructorWorkload(
@@ -194,6 +242,46 @@ export function validateAssignmentComponentMatch(input: {
     input.deliveryGroupCohortId !== input.assignmentCohortId
   ) {
     return { ok: false, code: "ASSIGNMENT_COHORT_MISMATCH" };
+  }
+  return { ok: true };
+}
+
+/** Offering ↔ delivery group plan_course / component integrity (V2). */
+export function validateOfferingDeliveryGroupMatch(input: {
+  offeringPlanCourseId: string | null | undefined;
+  deliveryGroupPlanCourseId: string | null | undefined;
+  componentPlanCourseId: string | null | undefined;
+  offeringCollegeId: string | null | undefined;
+  deliveryGroupCollegeId: string | null | undefined;
+  cohortCollegeId: string | null | undefined;
+}): { ok: true } | { ok: false; code: string } {
+  if (
+    input.offeringCollegeId &&
+    input.deliveryGroupCollegeId &&
+    input.offeringCollegeId !== input.deliveryGroupCollegeId
+  ) {
+    return { ok: false, code: "ASSIGNMENT_CROSS_COLLEGE_FORBIDDEN" };
+  }
+  if (
+    input.cohortCollegeId &&
+    input.deliveryGroupCollegeId &&
+    input.cohortCollegeId !== input.deliveryGroupCollegeId
+  ) {
+    return { ok: false, code: "ASSIGNMENT_COHORT_COLLEGE_MISMATCH" };
+  }
+  if (
+    input.offeringPlanCourseId &&
+    input.deliveryGroupPlanCourseId &&
+    input.offeringPlanCourseId !== input.deliveryGroupPlanCourseId
+  ) {
+    return { ok: false, code: "OFFERING_PLAN_COURSE_MISMATCH" };
+  }
+  if (
+    input.componentPlanCourseId &&
+    input.deliveryGroupPlanCourseId &&
+    input.componentPlanCourseId !== input.deliveryGroupPlanCourseId
+  ) {
+    return { ok: false, code: "COMPONENT_PLAN_COURSE_MISMATCH" };
   }
   return { ok: true };
 }

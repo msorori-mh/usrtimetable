@@ -19,6 +19,7 @@ type Row = {
   expected_students: number;
   capacity_limit: number | null;
   excluded_from_standard_workload?: boolean;
+  is_obsolete?: boolean;
   cohort_id: string;
   component_id: string;
   plan_course_components: { component_type: string } | null;
@@ -37,6 +38,16 @@ function DeliveryGroupsPage() {
     queryKey: ["delivery-groups", active?.id, "all"],
     enabled: !!active,
     queryFn: async () => {
+      const full = await supabase
+        .from("delivery_groups")
+        .select(
+          "id, group_code, group_number, expected_students, capacity_limit, is_obsolete, excluded_from_standard_workload, cohort_id, component_id, plan_course_components(component_type)",
+        )
+        .eq("college_id", active!.id)
+        .order("group_code", { ascending: true });
+      if (!full.error) {
+        return (full.data ?? []) as unknown as Row[];
+      }
       const { data, error } = await supabase
         .from("delivery_groups")
         .select(
@@ -104,12 +115,16 @@ function DeliveryGroupsPage() {
                   <th className="px-3 py-2 text-right font-medium">رقم المجموعة</th>
                   <th className="px-3 py-2 text-right font-medium">طلاب متوقع</th>
                   <th className="px-3 py-2 text-right font-medium">السعة</th>
+                  <th className="px-3 py-2 text-right font-medium">الحالة</th>
                   <th className="px-3 py-2 text-right font-medium">حالة الإسناد</th>
                 </tr>
               </thead>
               <tbody>
                 {(rows ?? []).map((g) => (
-                  <tr key={g.id} className="border-t">
+                  <tr
+                    key={g.id}
+                    className={`border-t ${g.is_obsolete ? "bg-muted/30 text-muted-foreground" : ""}`}
+                  >
                     <td className="px-3 py-2">
                       {g.plan_course_components?.component_type ?? "—"}
                       {isExcluded(g) ? (
@@ -121,6 +136,15 @@ function DeliveryGroupsPage() {
                     </td>
                     <td className="px-3 py-2">{g.expected_students}</td>
                     <td className="px-3 py-2">{g.capacity_limit ?? "—"}</td>
+                    <td className="px-3 py-2">
+                      {g.is_obsolete ? (
+                        <span className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                          obsolete
+                        </span>
+                      ) : (
+                        "نشطة"
+                      )}
+                    </td>
                     <td className="px-3 py-2">{assignmentRows?.has(g.id) ? "مسند" : "غير مسند"}</td>
                   </tr>
                 ))}
