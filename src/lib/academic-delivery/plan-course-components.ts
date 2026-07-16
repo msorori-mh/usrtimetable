@@ -136,3 +136,93 @@ export function selectCoursesForCurriculumGeneration(
     return timetabled.length > 0 || c.components.length === 0;
   });
 }
+
+/** Map academic_terms.term_type → plan_courses.semester (fail closed on unknown/null). */
+export function termTypeToSemester(termType: string | null | undefined): number | null {
+  if (termType === "first") return 1;
+  if (termType === "second") return 2;
+  return null;
+}
+
+export type PlanCourseSemesterCandidate = {
+  courseCode: string;
+  levelId: string;
+  semester: number;
+  programId: string;
+  studySystem: string;
+};
+
+/** Filter plan courses to the cohort's program/level/study_system/semester context. */
+export function filterPlanCoursesByCohortContext(
+  courses: PlanCourseSemesterCandidate[],
+  ctx: { programId: string; levelId: string; studySystem: string; semester: number },
+): PlanCourseSemesterCandidate[] {
+  return courses.filter(
+    (c) =>
+      c.programId === ctx.programId &&
+      c.levelId === ctx.levelId &&
+      c.studySystem === ctx.studySystem &&
+      c.semester === ctx.semester,
+  );
+}
+
+export type ElectiveSlotCourseMembership = {
+  electiveSlotId: string;
+  courseId: string;
+  active?: boolean;
+};
+
+export type ElectiveSelectionCandidate = {
+  electiveSlotId: string;
+  selectedCourseId: string;
+  slotStudyPlanId: string;
+  slotSemester: number;
+  slotLevelId: string | null;
+  slotActive?: boolean;
+  courseCode?: string;
+};
+
+export type ElectiveValidationContext = {
+  studyPlanId: string;
+  semester: number;
+  levelId: string;
+  allowed: ElectiveSlotCourseMembership[];
+};
+
+export type ElectiveValidationResult =
+  | { ok: true }
+  | {
+      ok: false;
+      code:
+        | "ELECTIVE_SLOT_CONTEXT_MISMATCH"
+        | "ELECTIVE_COURSE_NOT_IN_SLOT"
+        | "ELECTIVE_PLACEHOLDER_FORBIDDEN";
+    };
+
+/** Mirror RPC elective gates (static / unit contract — no DB). */
+export function validateElectiveSelectionForGeneration(
+  selection: ElectiveSelectionCandidate,
+  ctx: ElectiveValidationContext,
+): ElectiveValidationResult {
+  if (
+    selection.slotStudyPlanId !== ctx.studyPlanId ||
+    selection.slotSemester !== ctx.semester ||
+    selection.slotActive === false ||
+    (selection.slotLevelId != null && selection.slotLevelId !== ctx.levelId)
+  ) {
+    return { ok: false, code: "ELECTIVE_SLOT_CONTEXT_MISMATCH" };
+  }
+  if (selection.courseCode && isElectivePlaceholderCode(selection.courseCode)) {
+    return { ok: false, code: "ELECTIVE_PLACEHOLDER_FORBIDDEN" };
+  }
+  const allowed = ctx.allowed.some(
+    (m) =>
+      m.electiveSlotId === selection.electiveSlotId &&
+      m.courseId === selection.selectedCourseId &&
+      m.active !== false,
+  );
+  if (!allowed) {
+    return { ok: false, code: "ELECTIVE_COURSE_NOT_IN_SLOT" };
+  }
+  return { ok: true };
+}

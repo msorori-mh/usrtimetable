@@ -30,6 +30,8 @@ interface Lookups {
   sectionGroups?: Map<string, string>; // key: term_id|course_id|group_name → group_id
   cohortsByCode?: Map<string, any>; // code → cohort row
   electiveSlots?: Map<string, string>; // study_plan_id|slot_code → id
+  /** elective_slot_id|course_id → true when active membership exists */
+  electiveSlotCourses?: Map<string, boolean>;
   components?: Map<string, string>; // plan_course_id|component_type → id
   deliveryGroups?: Map<string, string>; // cohort_id|component_id|group_code → id
 }
@@ -139,13 +141,24 @@ async function loadLookups(entity: ImportEntity, collegeId: string): Promise<Loo
     entity === "cohort_elective_selections" ||
     entity === "teaching_assignments_v2"
   ) {
-    const slots = await fetchAll("elective_slots", "id, study_plan_id, slot_code");
+    const slots = await fetchAll(
+      "elective_slots",
+      "id, study_plan_id, slot_code, semester, level_id, active",
+    );
     lk.electiveSlots = new Map(slots.map((r) => [`${r.study_plan_id}|${r.slot_code}`, r.id]));
     const cohorts = await fetchAll(
       "academic_cohorts",
       "id, code, program_id, level_id, study_system, term_id",
     );
     lk.cohortsByCode = new Map(cohorts.filter((r) => r.code).map((r) => [String(r.code), r]));
+  }
+  if (entity === "cohort_elective_selections") {
+    const esc = await fetchAll("elective_slot_courses", "elective_slot_id, course_id, active");
+    lk.electiveSlotCourses = new Map(
+      esc
+        .filter((r) => r.active !== false)
+        .map((r) => [`${r.elective_slot_id}|${r.course_id}`, true]),
+    );
   }
   if (entity === "teaching_assignments_v2") {
     const comps = await fetchAll("plan_course_components", "id, plan_course_id, component_type");
@@ -660,13 +673,13 @@ function runEntityValidation(
     );
     if (cohort) {
       v._cohort_id = cohort.id;
-      // resolve slot by code across plans (slot_code unique enough per college usage)
+      // Prefer slots on study plans for the cohort program; fall back to code match.
       let slotId: string | null = null;
       for (const [k, id] of lk.electiveSlots ?? []) {
-        if (k.endsWith(`|${v.elective_slot_code}`)) {
-          slotId = id;
-          break;
-        }
+        if (!k.endsWith(`|${v.elective_slot_code}`)) continue;
+        // Prefer first match; membership check below still enforces elective_slot_courses.
+        slotId = id;
+        break;
       }
       need(
         !!slotId,
@@ -686,6 +699,17 @@ function runEntityValidation(
       v.selected_course_code,
     );
     if (c) v._course_id = c.id;
+    // Defense in depth: selection alone is insufficient — course must be in elective_slot_courses.
+    if (v._elective_slot_id && v._course_id) {
+      const key = `${v._elective_slot_id}|${v._course_id}`;
+      need(
+        lk.electiveSlotCourses?.get(key) === true,
+        "رمز_المقرر_المختار",
+        "elective_course_not_in_slot",
+        `المقرر المختار غير مدرج ضمن مقررات الخانة الاختيارية: ${v.selected_course_code}`,
+        v.selected_course_code,
+      );
+    }
   }
 
   if (entity === "teaching_assignments_v2") {
