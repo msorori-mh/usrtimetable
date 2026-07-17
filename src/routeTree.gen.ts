@@ -38,6 +38,7 @@ import { Route as AuthenticatedImportTemplatesRouteImport } from './routes/_auth
 import { Route as AuthenticatedImportHistoryRouteImport } from './routes/_authenticated/import-history'
 import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated/import'
 import { Route as AuthenticatedDepartmentsRouteImport } from './routes/_authenticated/departments'
+import { Route as AuthenticatedDeliveryGroupsRouteImport } from './routes/_authenticated/delivery-groups'
 import { Route as AuthenticatedDataTemplatesRouteImport } from './routes/_authenticated/data-templates'
 import { Route as AuthenticatedDataReadinessRouteImport } from './routes/_authenticated/data-readiness'
 import { Route as AuthenticatedDataCleanupRouteImport } from './routes/_authenticated/data-cleanup'
@@ -51,6 +52,7 @@ import { Route as AuthenticatedCollegesRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedBuildingsRouteImport } from './routes/_authenticated/buildings'
 import { Route as AuthenticatedAvailabilityRouteImport } from './routes/_authenticated/availability'
 import { Route as AuthenticatedAutoScheduleRouteImport } from './routes/_authenticated/auto-schedule'
+import { Route as AuthenticatedAcademicCohortsRouteImport } from './routes/_authenticated/academic-cohorts'
 import { Route as AuthenticatedAcademicCalendarRouteImport } from './routes/_authenticated/academic-calendar'
 import { Route as AuthenticatedReportsIndexRouteImport } from './routes/_authenticated/reports.index'
 import { Route as AuthenticatedTimetableVersionIdRouteImport } from './routes/_authenticated/timetable.$versionId'
@@ -226,6 +228,12 @@ const AuthenticatedDepartmentsRoute =
     path: '/departments',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedDeliveryGroupsRoute =
+  AuthenticatedDeliveryGroupsRouteImport.update({
+    id: '/delivery-groups',
+    path: '/delivery-groups',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDataTemplatesRoute =
   AuthenticatedDataTemplatesRouteImport.update({
     id: '/data-templates',
@@ -298,6 +306,12 @@ const AuthenticatedAutoScheduleRoute =
   AuthenticatedAutoScheduleRouteImport.update({
     id: '/auto-schedule',
     path: '/auto-schedule',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAcademicCohortsRoute =
+  AuthenticatedAcademicCohortsRouteImport.update({
+    id: '/academic-cohorts',
+    path: '/academic-cohorts',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedAcademicCalendarRoute =
@@ -395,6 +409,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/academic-calendar': typeof AuthenticatedAcademicCalendarRoute
+  '/academic-cohorts': typeof AuthenticatedAcademicCohortsRoute
   '/auto-schedule': typeof AuthenticatedAutoScheduleRoute
   '/availability': typeof AuthenticatedAvailabilityRoute
   '/buildings': typeof AuthenticatedBuildingsRoute
@@ -408,6 +423,7 @@ export interface FileRoutesByFullPath {
   '/data-cleanup': typeof AuthenticatedDataCleanupRoute
   '/data-readiness': typeof AuthenticatedDataReadinessRoute
   '/data-templates': typeof AuthenticatedDataTemplatesRoute
+  '/delivery-groups': typeof AuthenticatedDeliveryGroupsRoute
   '/departments': typeof AuthenticatedDepartmentsRoute
   '/import': typeof AuthenticatedImportRoute
   '/import-history': typeof AuthenticatedImportHistoryRoute
@@ -453,6 +469,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/academic-calendar': typeof AuthenticatedAcademicCalendarRoute
+  '/academic-cohorts': typeof AuthenticatedAcademicCohortsRoute
   '/auto-schedule': typeof AuthenticatedAutoScheduleRoute
   '/availability': typeof AuthenticatedAvailabilityRoute
   '/buildings': typeof AuthenticatedBuildingsRoute
@@ -466,6 +483,7 @@ export interface FileRoutesByTo {
   '/data-cleanup': typeof AuthenticatedDataCleanupRoute
   '/data-readiness': typeof AuthenticatedDataReadinessRoute
   '/data-templates': typeof AuthenticatedDataTemplatesRoute
+  '/delivery-groups': typeof AuthenticatedDeliveryGroupsRoute
   '/departments': typeof AuthenticatedDepartmentsRoute
   '/import': typeof AuthenticatedImportRoute
   '/import-history': typeof AuthenticatedImportHistoryRoute
@@ -512,6 +530,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/academic-calendar': typeof AuthenticatedAcademicCalendarRoute
+  '/_authenticated/academic-cohorts': typeof AuthenticatedAcademicCohortsRoute
   '/_authenticated/auto-schedule': typeof AuthenticatedAutoScheduleRoute
   '/_authenticated/availability': typeof AuthenticatedAvailabilityRoute
   '/_authenticated/buildings': typeof AuthenticatedBuildingsRoute
@@ -525,6 +544,7 @@ export interface FileRoutesById {
   '/_authenticated/data-cleanup': typeof AuthenticatedDataCleanupRoute
   '/_authenticated/data-readiness': typeof AuthenticatedDataReadinessRoute
   '/_authenticated/data-templates': typeof AuthenticatedDataTemplatesRoute
+  '/_authenticated/delivery-groups': typeof AuthenticatedDeliveryGroupsRoute
   '/_authenticated/departments': typeof AuthenticatedDepartmentsRoute
   '/_authenticated/import': typeof AuthenticatedImportRoute
   '/_authenticated/import-history': typeof AuthenticatedImportHistoryRoute
@@ -572,6 +592,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/academic-calendar'
+    | '/academic-cohorts'
     | '/auto-schedule'
     | '/availability'
     | '/buildings'
@@ -585,6 +606,7 @@ export interface FileRouteTypes {
     | '/data-cleanup'
     | '/data-readiness'
     | '/data-templates'
+    | '/delivery-groups'
     | '/departments'
     | '/import'
     | '/import-history'
@@ -630,6 +652,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/academic-calendar'
+    | '/academic-cohorts'
     | '/auto-schedule'
     | '/availability'
     | '/buildings'
@@ -643,6 +666,7 @@ export interface FileRouteTypes {
     | '/data-cleanup'
     | '/data-readiness'
     | '/data-templates'
+    | '/delivery-groups'
     | '/departments'
     | '/import'
     | '/import-history'
@@ -688,6 +712,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/academic-calendar'
+    | '/_authenticated/academic-cohorts'
     | '/_authenticated/auto-schedule'
     | '/_authenticated/availability'
     | '/_authenticated/buildings'
@@ -701,6 +726,7 @@ export interface FileRouteTypes {
     | '/_authenticated/data-cleanup'
     | '/_authenticated/data-readiness'
     | '/_authenticated/data-templates'
+    | '/_authenticated/delivery-groups'
     | '/_authenticated/departments'
     | '/_authenticated/import'
     | '/_authenticated/import-history'
@@ -954,6 +980,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDepartmentsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/delivery-groups': {
+      id: '/_authenticated/delivery-groups'
+      path: '/delivery-groups'
+      fullPath: '/delivery-groups'
+      preLoaderRoute: typeof AuthenticatedDeliveryGroupsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/data-templates': {
       id: '/_authenticated/data-templates'
       path: '/data-templates'
@@ -1043,6 +1076,13 @@ declare module '@tanstack/react-router' {
       path: '/auto-schedule'
       fullPath: '/auto-schedule'
       preLoaderRoute: typeof AuthenticatedAutoScheduleRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/academic-cohorts': {
+      id: '/_authenticated/academic-cohorts'
+      path: '/academic-cohorts'
+      fullPath: '/academic-cohorts'
+      preLoaderRoute: typeof AuthenticatedAcademicCohortsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/academic-calendar': {
@@ -1200,6 +1240,7 @@ const AuthenticatedReportsRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAcademicCalendarRoute: typeof AuthenticatedAcademicCalendarRoute
+  AuthenticatedAcademicCohortsRoute: typeof AuthenticatedAcademicCohortsRoute
   AuthenticatedAutoScheduleRoute: typeof AuthenticatedAutoScheduleRoute
   AuthenticatedAvailabilityRoute: typeof AuthenticatedAvailabilityRoute
   AuthenticatedBuildingsRoute: typeof AuthenticatedBuildingsRoute
@@ -1213,6 +1254,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDataCleanupRoute: typeof AuthenticatedDataCleanupRoute
   AuthenticatedDataReadinessRoute: typeof AuthenticatedDataReadinessRoute
   AuthenticatedDataTemplatesRoute: typeof AuthenticatedDataTemplatesRoute
+  AuthenticatedDeliveryGroupsRoute: typeof AuthenticatedDeliveryGroupsRoute
   AuthenticatedDepartmentsRoute: typeof AuthenticatedDepartmentsRoute
   AuthenticatedImportRoute: typeof AuthenticatedImportRoute
   AuthenticatedImportHistoryRoute: typeof AuthenticatedImportHistoryRoute
@@ -1244,6 +1286,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAcademicCalendarRoute: AuthenticatedAcademicCalendarRoute,
+  AuthenticatedAcademicCohortsRoute: AuthenticatedAcademicCohortsRoute,
   AuthenticatedAutoScheduleRoute: AuthenticatedAutoScheduleRoute,
   AuthenticatedAvailabilityRoute: AuthenticatedAvailabilityRoute,
   AuthenticatedBuildingsRoute: AuthenticatedBuildingsRoute,
@@ -1257,6 +1300,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDataCleanupRoute: AuthenticatedDataCleanupRoute,
   AuthenticatedDataReadinessRoute: AuthenticatedDataReadinessRoute,
   AuthenticatedDataTemplatesRoute: AuthenticatedDataTemplatesRoute,
+  AuthenticatedDeliveryGroupsRoute: AuthenticatedDeliveryGroupsRoute,
   AuthenticatedDepartmentsRoute: AuthenticatedDepartmentsRoute,
   AuthenticatedImportRoute: AuthenticatedImportRoute,
   AuthenticatedImportHistoryRoute: AuthenticatedImportHistoryRoute,
@@ -1297,3 +1341,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

@@ -1,8 +1,23 @@
 -- PHASE-9.3: Delivery Groups generator + standard workload engine
+-- SOURCE ONLY — CREATED / NOT APPLIED. Do not auto-apply.
 -- Additive schema + RPCs only. No backfill. No generator invocation. No data seed.
+-- Auth: SECURITY DEFINER with auth.uid + can_manage_college (college from cohort row).
+--
+-- Remediation-01 notes:
+-- A) Workload view uses security_invoker=true so underlying RLS (can_view_college) applies.
+--    PUBLIC/anon revoked. App path remains college-gated RPC.
+-- B) V2 assigned_component_hours (nullable) is the explicit co-teaching hour source;
+--    legacy weekly_hours DEFAULT 3 is ignored by V2 workload math.
+-- C) Offering↔ delivery_group plan_course integrity enforced on V2 writes.
+-- D) Generator pre-validates all components; validation errors abort before any DML (atomic).
+-- E) is_obsolete marks surplus groups; blocks new assignments/sessions; never deletes.
+-- F) Components keyed by cohort+plan_course+component; one deterministic offering per component.
 
 BEGIN;
 
+-- ---------------------------------------------------------------------------
+-- 1) Schema readiness: delivery_groups identity + workload + obsolete flag
+-- ---------------------------------------------------------------------------
 ALTER TABLE public.delivery_groups
   ADD COLUMN IF NOT EXISTS group_number INTEGER,
   ADD COLUMN IF NOT EXISTS excluded_from_standard_workload BOOLEAN NOT NULL DEFAULT FALSE,
@@ -21,10 +36,14 @@ ALTER TABLE public.delivery_groups
   ADD CONSTRAINT dg_group_number_positive_chk
   CHECK (group_number IS NULL OR group_number >= 1);
 
+-- Unique identity: cohort + component + group_number (component implies plan_course + type)
 CREATE UNIQUE INDEX IF NOT EXISTS dg_cohort_component_group_number_uniq
   ON public.delivery_groups (cohort_id, component_id, group_number)
   WHERE group_number IS NOT NULL;
 
+-- ---------------------------------------------------------------------------
+-- 2) Explicit group size on components (tutorial/project); never invent in SQL
+-- ---------------------------------------------------------------------------
 ALTER TABLE public.plan_course_components
   ADD COLUMN IF NOT EXISTS explicit_group_size INTEGER;
 
@@ -37,6 +56,9 @@ ALTER TABLE public.plan_course_components
 COMMENT ON COLUMN public.plan_course_components.explicit_group_size IS
   'Optional explicit group size for tutorial/project. Generator must not invent capacity.';
 
+-- ---------------------------------------------------------------------------
+-- 2b) V2 explicit assignment hours (nullable) — do not use legacy weekly_hours DEFAULT 3
+-- ---------------------------------------------------------------------------
 ALTER TABLE public.teaching_assignments
   ADD COLUMN IF NOT EXISTS assigned_component_hours NUMERIC(5,2);
 
@@ -49,6 +71,9 @@ ALTER TABLE public.teaching_assignments
 COMMENT ON COLUMN public.teaching_assignments.assigned_component_hours IS
   'V2 explicit hours for this instructor on the delivery group. NULL = unspecified. Legacy weekly_hours DEFAULT 3 must not drive V2 workload.';
 
+-- ---------------------------------------------------------------------------
+-- 3) Extensible faculty workload policy (locale-neutral rank_code + aliases)
+-- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.faculty_workload_policies (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   college_id UUID NOT NULL REFERENCES public.colleges(id) ON DELETE RESTRICT,
@@ -91,6 +116,12 @@ FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 COMMENT ON TABLE public.faculty_workload_policies IS
   'College-scoped required teaching load by rank_code. No Arabic-only hardcoding; use rank_aliases for match.';
 
+-- Suggested reference codes (documentation only — no seed/backfill):
+-- assistant_professor → 12h, associate_professor → 9h, associate_dean → 6h
+
+-- ---------------------------------------------------------------------------
+-- 4) Teaching assignment V2 integrity helper (extends existing trg_ta_college)
+-- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.ensure_ta_college()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -133,6 +164,7 @@ BEGIN
     RAISE EXCEPTION 'offering/instructor/college mismatch' USING ERRCODE = 'check_violation';
   END IF;
 
+  -- V2 optional links: when present, must align cohort/component/group/college
   IF NEW.delivery_group_id IS NOT NULL THEN
     SELECT dg.college_id, dg.cohort_id, dg.component_id, dg.plan_course_id, dg.is_obsolete
       INTO dg_college, dg_cohort, dg_component, dg_plan_course, dg_obsolete
@@ -155,6 +187,7 @@ BEGIN
        AND NEW.plan_course_component_id IS DISTINCT FROM dg_component THEN
       RAISE EXCEPTION 'ASSIGNMENT_COMPONENT_MISMATCH' USING ERRCODE = 'check_violation';
     END IF;
+    -- Default cohort/component from delivery group when omitted
     IF NEW.cohort_id IS NULL THEN
       NEW.cohort_id := dg_cohort;
     END IF;
@@ -162,6 +195,7 @@ BEGIN
       NEW.plan_course_component_id := dg_component;
     END IF;
 
+    -- Offering ↔ delivery group plan_course / cohort context integrity (V2 only)
     IF co_plan_course IS NULL OR co_plan_course IS DISTINCT FROM dg_plan_course THEN
       RAISE EXCEPTION 'OFFERING_PLAN_COURSE_MISMATCH' USING ERRCODE = 'check_violation';
     END IF;
@@ -201,6 +235,7 @@ BEGIN
         RAISE EXCEPTION 'COMPONENT_PLAN_COURSE_MISMATCH' USING ERRCODE = 'check_violation';
       END IF;
 
+      -- Co-teaching hour contract (V2): never trust legacy weekly_hours DEFAULT 3
       IF NEW.assigned_component_hours IS NOT NULL
          AND pcc_hours IS NOT NULL
          AND NEW.assigned_component_hours > pcc_hours THEN
@@ -217,6 +252,7 @@ BEGIN
       FROM public.teaching_assignments ta
       WHERE ta.delivery_group_id = NEW.delivery_group_id;
 
+      -- Include NEW in co-count when inserting (UPDATE row already in set)
       IF TG_OP = 'INSERT' THEN
         v_co_count := v_co_count + 1;
       ELSIF TG_OP = 'UPDATE' AND OLD.delivery_group_id IS DISTINCT FROM NEW.delivery_group_id THEN
@@ -246,10 +282,14 @@ BEGIN
 END;
 $$;
 
+-- Helpful uniqueness for V2 delivery-group assignments (nullable-safe; legacy rows untouched)
 CREATE UNIQUE INDEX IF NOT EXISTS ta_v2_delivery_group_instructor_uniq
   ON public.teaching_assignments (college_id, delivery_group_id, instructor_id)
   WHERE delivery_group_id IS NOT NULL;
 
+-- ---------------------------------------------------------------------------
+-- 4b) Schedule sessions: block new links to obsolete delivery groups (V2 only)
+-- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.ensure_ss_college()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -295,6 +335,7 @@ BEGIN
     IF tac IS NULL OR tac <> NEW.college_id THEN RAISE EXCEPTION 'teaching_assignment/college mismatch'; END IF;
   END IF;
 
+  -- V2: new/updated session may not target an obsolete delivery group
   IF NEW.delivery_group_id IS NOT NULL THEN
     SELECT dg.college_id, dg.is_obsolete
       INTO dg_college, dg_obsolete
@@ -316,6 +357,9 @@ BEGIN
 END;
 $$;
 
+-- ---------------------------------------------------------------------------
+-- 5a) Compatibility offering resolution helper (deterministic vs ambiguous)
+-- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.resolve_compatibility_offering_set(p_offerings jsonb)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -368,6 +412,9 @@ GRANT EXECUTE ON FUNCTION public.resolve_compatibility_offering_set(jsonb) TO au
 COMMENT ON FUNCTION public.resolve_compatibility_offering_set(jsonb) IS
   'PHASE-9.3: resolve one compatibility offering. Same plan_course → newest created_at then id. Multiple plan_course_id → AMBIGUOUS_COMPATIBILITY_OFFERINGS.';
 
+-- ---------------------------------------------------------------------------
+-- 5) generate_cohort_delivery_groups — idempotent, non-destructive, atomic validate
+-- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.generate_cohort_delivery_groups(p_cohort_id uuid)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -422,6 +469,8 @@ BEGIN
     RAISE EXCEPTION 'INVALID_STUDENT_COUNT' USING ERRCODE = 'check_violation';
   END IF;
 
+  -- Materialize one row per component (deterministic offering). Source of truth:
+  -- cohort + actual plan_course + plan_course_component.
   CREATE TEMP TABLE IF NOT EXISTS _dg_gen_components (
     component_id uuid PRIMARY KEY,
     plan_course_id uuid NOT NULL,
@@ -488,11 +537,16 @@ BEGIN
     ORDER BY pcc.id, co.created_at DESC NULLS LAST, co.id ASC
   ) x;
 
+  -- ---- Pass 1: pre-validate all components (no DML) ----
   FOR r IN
     SELECT * FROM _dg_gen_components
     ORDER BY plan_course_id, component_type, component_id
   LOOP
     v_components_processed := v_components_processed + 1;
+
+    -- offering_count > 1: deterministic pick already applied (newest created_at, then id).
+    -- Duplicate same-plan_course offerings are resolvable → do not fail; pass-2 will not
+    -- multiply groups because components are keyed by component_id uniquely.
 
     IF r.component_type = 'summer_training' THEN
       CONTINUE;
@@ -551,8 +605,10 @@ BEGIN
     );
   END IF;
 
+  -- Reset processed counter for pass 2 accounting
   v_components_processed := 0;
 
+  -- ---- Pass 2: atomic DML (only when validation passed) ----
   FOR r IN
     SELECT * FROM _dg_gen_components
     ORDER BY plan_course_id, component_type, component_id
@@ -678,6 +734,7 @@ BEGIN
       END IF;
     END LOOP;
 
+    -- Obsolete groups (required decreased): mark is_obsolete, never delete
     FOR v_row IN
       SELECT *
       FROM public.delivery_groups dg
@@ -754,6 +811,13 @@ GRANT EXECUTE ON FUNCTION public.generate_cohort_delivery_groups(uuid) TO authen
 COMMENT ON FUNCTION public.generate_cohort_delivery_groups(uuid) IS
   'PHASE-9.3 idempotent delivery-group generator for one academic_cohort. Pre-validates then atomic DML. Non-destructive. NOT auto-invoked.';
 
+-- ---------------------------------------------------------------------------
+-- 6) Workload view + RPC
+--    Isolation: security_invoker=true so SELECT uses caller privileges + RLS on
+--    teaching_assignments / instructors / delivery_groups / plan_course_components /
+--    academic_cohorts (all college-scoped via can_view_college).
+--    Do not rely on security_barrier owner bypass. PUBLIC/anon have no SELECT.
+-- ---------------------------------------------------------------------------
 DROP VIEW IF EXISTS public.v_instructor_delivery_workload;
 
 CREATE VIEW public.v_instructor_delivery_workload
@@ -770,6 +834,8 @@ SELECT
       WHEN pcc.component_type = 'summer_training' THEN 0
       WHEN pcc.component_type = 'project' OR COALESCE(dg.excluded_from_standard_workload, false)
            OR COALESCE(pcc.counts_toward_regular_load, true) = false THEN 0
+      -- Sole instructor: explicit assigned_component_hours or component weekly hours.
+      -- Co-teaching: only explicit assigned_component_hours (never legacy weekly_hours DEFAULT 3).
       WHEN (
         SELECT COUNT(*)::integer FROM public.teaching_assignments ta2
         WHERE ta2.delivery_group_id = ta.delivery_group_id
@@ -842,6 +908,7 @@ BEGIN
     RAISE EXCEPTION 'insufficient_privilege' USING ERRCODE = '42501';
   END IF;
 
+  -- Permission gate before any sensitive aggregate read
   IF NOT (
     public.can_view_college(v_uid, v_instructor.college_id)
     OR public.can_manage_college(v_uid, v_instructor.college_id)
@@ -878,6 +945,7 @@ BEGIN
     v_status := 'policy_missing';
   ELSIF v_standard = 0 THEN
     v_status := 'unassigned';
+    v_deficit := v_required;
   ELSIF v_standard > v_required THEN
     v_status := 'overload';
     v_overload := v_standard - v_required;

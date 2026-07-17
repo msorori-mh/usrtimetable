@@ -17,6 +17,7 @@ import {
   History as HistoryIcon,
   Sparkles,
   GraduationCap,
+  Layers3,
   LayoutDashboard,
   Library,
   LogOut,
@@ -29,6 +30,7 @@ import {
   UserSquare2,
   Users,
   Users2,
+  UsersRound,
   Wrench,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -134,6 +136,20 @@ const NAV: NavItem[] = [
     to: "/sections",
     label: "المجموعات الدراسية",
     icon: <Users2 className="h-4 w-4" />,
+    roles: ALL,
+    group: "البنية الأكاديمية",
+  },
+  {
+    to: "/academic-cohorts",
+    label: "الدفعات الأكاديمية",
+    icon: <Layers3 className="h-4 w-4" />,
+    roles: ALL,
+    group: "البنية الأكاديمية",
+  },
+  {
+    to: "/delivery-groups",
+    label: "مجموعات التدريس",
+    icon: <UsersRound className="h-4 w-4" />,
     roles: ALL,
     group: "البنية الأكاديمية",
   },
