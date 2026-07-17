@@ -20,7 +20,10 @@ assert(sql.includes("BEGIN;") && sql.includes("COMMIT;"), "migration is transact
 assert(sql.includes("CROSS_COLLEGE_PREFLIGHT_FAILED"), "invalid existing rows abort preflight");
 assert(sql.includes("CROSS_COLLEGE_PREFLIGHT_MISSING_TABLE"), "incomplete history fails closed");
 assert(sql.includes("CROSS_COLLEGE_POSTCHECK_FAILED"), "validated constraints are postchecked");
-assert(sql.includes("CROSS_COLLEGE_CONSTRAINT_NAME_COLLISION"), "wrong same-name constraint aborts");
+assert(
+  sql.includes("CROSS_COLLEGE_CONSTRAINT_NAME_COLLISION"),
+  "wrong same-name constraint aborts",
+);
 assert(!/\b(INSERT|UPDATE|DELETE)\s+(INTO\s+|FROM\s+)?public\./i.test(sql), "no business DML");
 assert(!/ON\s+DELETE\s+(CASCADE|SET\s+NULL)/i.test(sql), "no destructive delete behavior");
 assert(!/ON\s+UPDATE\s+CASCADE/i.test(sql), "parent identity/college updates never cascade");
@@ -54,24 +57,36 @@ for (const [child, column, parent] of refs) {
   assert(sql.includes(`('${child}','${column}','${parent}'`), `${child}.${column} is covered`);
 }
 
-assert((sql.match(/FOREIGN KEY \(%I, college_id\)/g) ?? []).length === 1, "generic composite FK DDL");
-assert(sql.includes("REFERENCES public.%I (id, college_id) ON DELETE RESTRICT NOT VALID"), "new writes are protected before validation");
+assert(
+  (sql.match(/FOREIGN KEY \(%I, college_id\)/g) ?? []).length === 1,
+  "generic composite FK DDL",
+);
+assert(
+  sql.includes("REFERENCES public.%I (id, college_id) ON DELETE RESTRICT NOT VALID"),
+  "new writes are protected before validation",
+);
 assert(sql.includes("VALIDATE CONSTRAINT %I"), "all constraints are validated");
 assert(sql.includes("UNIQUE (id, college_id)"), "parent college changes are protected");
 assert(sql.includes("c.%I IS NOT NULL"), "nullable references retain MATCH SIMPLE behavior");
 assert(sql.includes("FROM pg_attribute"), "catalog column identities are resolved by attnum");
 assert(sql.includes("c.conkey = ARRAY["), "ordered child columns are catalog-verified");
 assert(sql.includes("c.confkey = ARRAY["), "ordered parent columns are catalog-verified");
-assert(sql.includes("c.confrelid = format('public.%I', r.parent_table)::regclass"), "parent relation is catalog-verified");
+assert(
+  sql.includes("c.confrelid = format('public.%I', r.parent_table)::regclass"),
+  "parent relation is catalog-verified",
+);
 assert(sql.includes("c.contype = 'f'"), "constraint type is catalog-verified");
 assert(sql.includes("c.confdeltype = 'r'"), "RESTRICT behavior is catalog-verified");
 assert(sql.includes("c.confupdtype = 'a'"), "ON UPDATE NO ACTION is catalog-verified");
 assert(sql.includes("AND c.convalidated"), "validation state is checked per mapping");
 assert(!sql.includes("c.conname IN ("), "postcheck does not use an ANY-name list");
 
-const postcheckInsideMappingLoop = sql.indexOf("CROSS_COLLEGE_POSTCHECK_FAILED") >
+const postcheckInsideMappingLoop =
+  sql.indexOf("CROSS_COLLEGE_POSTCHECK_FAILED") >
   sql.indexOf("FOR r IN", sql.indexOf("Composite referenced keys"));
 assert(postcheckInsideMappingLoop, "postcheck executes for every mapping");
 
 console.log("cross-college reference integrity source contract: PASS");
-console.log("NOTE: catalog contract is static; ephemeral PostgreSQL integration remains required before merge/apply.");
+console.log(
+  "NOTE: catalog contract is static; ephemeral PostgreSQL integration remains required before merge/apply.",
+);
