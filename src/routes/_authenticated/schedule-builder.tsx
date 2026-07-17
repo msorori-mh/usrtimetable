@@ -25,6 +25,7 @@ import { TimetableGrid, type DropPayload } from "@/components/timetable/timetabl
 import { SessionDetailsSheet } from "@/components/schedule-builder/session-details-sheet";
 import { SessionEditSheet } from "@/components/schedule-builder/session-edit-sheet";
 import { UnsavedLocalChangesDialog } from "@/components/schedule-builder/unsaved-local-changes-dialog";
+import { V2WorkItemsPanel } from "@/components/schedule-builder/v2-work-items-panel";
 import {
   SCHEDULE_BUILDER_WORKSPACE_FILTER_EMPTY_AR,
   SCHEDULE_BUILDER_WORKSPACE_NO_COLLEGE_AR,
@@ -828,6 +829,15 @@ function ScheduleBuilderWorkspacePage() {
           <StatCard label="القاعات والمعامل" value={stats.roomCount} />
         </div>
       )}
+
+      {canLoadSessions && sessionsQuery.isSuccess && versionId ? (
+        <V2WorkItemsPanel
+          scheduleVersionId={versionId}
+          studySystem={studySystem}
+          rooms={rooms}
+          canManage={canManageRole}
+        />
+      ) : null}
 
       {/* Filters */}
       {canLoadSessions && sessionsQuery.isSuccess && allSessions.length > 0 && (
