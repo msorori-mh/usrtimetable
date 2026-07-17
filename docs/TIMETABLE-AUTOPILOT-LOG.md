@@ -14,6 +14,20 @@
 - Created and activated the hourly thread automation `University Timetable Autopilot Hourly Continuation`; the current cycle is its first execution. The available automation API has no run-now operation.
 - Production impact: none.
 
+## 2026-07-17 — Accelerated continuation cycle
+
+- Began with `origin/main` at `9b7519e` and kept dirty local `main` untouched.
+- Independently reviewed PR #35, confirmed its SQL change was comment-only, marked it ready, and merged it as `f77277d` without deleting the branch.
+- Re-ran TypeScript, build, scoped lint baseline comparison, and independent review for PR #34; merged it as `7494b37` without deleting the branch.
+- Verified PR #33 on disposable local PostgreSQL 15: all 21 same-college references passed, all 21 cross-college references failed correctly, nullable legacy paths passed, second apply was idempotent, and collision/preflight failures rolled back without cleanup.
+- Removed all disposable PostgreSQL containers. Temporary test SQL remains outside the repository at `C:\projects\pr33-disposable-pg` because environment policy rejected its removal.
+- Re-ran PR #33 source harness, TypeScript, production build, scoped lint, and `git diff --check`; final security review found no HIGH/CRITICAL findings.
+- Marked PR #33 ready and merged it source-only as `5c20ea6`. Status: `MERGED_SOURCE_ONLY — PRODUCTION_APPLY_REQUIRES_USER_APPROVAL`.
+- PR #30 remains conflicting and isolated.
+- Resumed Phase 9.5 Schedule Builder V2 assignment-integration foundation in its preserved worktree and completed its initial gap inventory. The four untracked files remain unchanged; UI wiring, targeted tests, generated RPC types, and disposable PostgreSQL security verification are the next gates.
+- Database writes: disposable local PostgreSQL fixtures only; production writes: none.
+- Production migration apply, deploy, and publish: none.
+
 ## 2026-07-17 — Continuation cycle 2
 
 - Fetched remote refs; `origin/main` remained `9b7519e`, local `main` remained 28 commits behind and preserved dirty.
