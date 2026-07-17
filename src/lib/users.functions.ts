@@ -80,7 +80,10 @@ export const adminCreateUser = createServerFn({ method: "POST" })
     if (roleErr) throw new Error(roleErr.message);
 
     if (data.college_ids.length > 0) {
-      const rows = data.college_ids.map((cid) => ({ user_id: newId, college_id: cid }));
+      const rows = data.college_ids.map((collegeId: string) => ({
+        user_id: newId,
+        college_id: collegeId,
+      }));
       const { error: ucErr } = await supabaseAdmin.from("user_colleges").insert(rows);
       if (ucErr) throw new Error(ucErr.message);
     }
