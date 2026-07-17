@@ -38,6 +38,7 @@ const harnesses = [
   "cross-college-reference-integrity.harness.ts",
   "phase-9-5-assignment-integration.harness.ts",
   "schedule-version-lifecycle-optimistic.harness.ts",
+  "draft-lecturer-report.harness.ts",
 ];
 
 let exitCode = 0;
