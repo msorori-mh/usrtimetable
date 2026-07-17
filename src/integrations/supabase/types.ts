@@ -3220,6 +3220,13 @@ export type Database = {
         Args: { p_instructor_id: string; p_term_id?: string }
         Returns: Json
       }
+      commit_teaching_assignments_v2_import: {
+        Args: {
+          p_mode?: string
+          p_rows: Json
+        }
+        Returns: Json
+      }
       create_teaching_assignment_v2: {
         Args: {
           p_assigned_component_hours?: number

@@ -198,6 +198,12 @@ function TeachingAssignmentsV2Page() {
       toast.error("المجموعة ملغاة — لا إسناد جديد");
       return;
     }
+    if (row.active === false) {
+      toast.error(
+        "المجموعة غير نشطة — لا إسناد جديد (DELIVERY_GROUP_INACTIVE_ASSIGNMENT_FORBIDDEN)",
+      );
+      return;
+    }
     setSelected(row);
     setInstructorId("");
     setHours("");
@@ -486,7 +492,7 @@ function TeachingAssignmentsV2Page() {
                           {ALLOCATION_LABELS[row.allocation_status] ?? row.allocation_status}
                         </td>
                         <td className="px-3 py-2">
-                          {!readOnly && !row.is_obsolete ? (
+                          {!readOnly && !row.is_obsolete && row.active !== false ? (
                             <div className="flex flex-wrap gap-1">
                               <Button
                                 size="sm"
@@ -525,8 +531,13 @@ function TeachingAssignmentsV2Page() {
                                 </Button>
                               ))}
                             </div>
-                          ) : row.is_obsolete ? (
-                            <span className="text-xs text-muted-foreground">لا إسناد</span>
+                          ) : row.is_obsolete || row.active === false ? (
+                            <span
+                              className="text-xs text-muted-foreground"
+                              data-testid="ta-v2-inactive-or-obsolete-no-assign"
+                            >
+                              لا إسناد
+                            </span>
                           ) : null}
                         </td>
                       </tr>

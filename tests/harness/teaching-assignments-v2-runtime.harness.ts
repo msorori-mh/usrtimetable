@@ -11,6 +11,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  canAssignToDeliveryGroup,
   computeAllocationSummary,
   mapAssignmentRpcError,
   previewWorkloadImpact,
@@ -100,6 +101,123 @@ function run() {
   assert(sql93.includes("generate_cohort_delivery_groups"), "9.3 generator preserved");
   assert(!sql.includes("ALTER TABLE public.course_offerings DROP"), "no offering column drop");
 
+  // ---------- Remediation static SQL contract ----------
+  // 1) workspace: no JSON operator on record
+  assert(
+    sql.includes("ASSERT: allocation_json is jsonb scalar"),
+    "1 workspace jsonb assertion comment",
+  );
+  assert(
+    sql.includes("compute_delivery_group_allocation(dg.id) AS allocation_json"),
+    "1 allocation_json scalar alias",
+  );
+  assert(
+    !/CROSS JOIN LATERAL \(\s*SELECT \* FROM public\.compute_delivery_group_allocation/.test(sql),
+    "1 no SELECT * FROM allocation into record",
+  );
+  assert(!/alloc_raw\s*->>/.test(sql), "1 no ->> on alloc_raw record");
+  assert(
+    sql.includes("alloc_src.allocation_json->>'assigned_hours_total'"),
+    "2 workspace allocation contract fields",
+  );
+  assert(
+    sql.includes("DELIVERY_GROUP_INACTIVE_ASSIGNMENT_FORBIDDEN"),
+    "3 inactive delivery group create rejected code",
+  );
+  assert(
+    sql.includes("assert_delivery_group_assignable"),
+    "3/4 assert_delivery_group_assignable helper",
+  );
+  assert(
+    sql.includes("INACTIVE_ASSIGNMENT_SESSION_FORBIDDEN"),
+    "5 inactive assignment session insert rejected",
+  );
+  assert(
+    sql.includes("DELIVERY_GROUP_INACTIVE_SESSION_FORBIDDEN"),
+    "5 inactive DG session rejected",
+  );
+  assert(
+    sql.includes("CREATE OR REPLACE FUNCTION public.ensure_ss_college()"),
+    "5/6 ensure_ss_college replaced in 9.4 only",
+  );
+  assert(
+    sql.includes("v_ta_link_changing") &&
+      sql.includes("OLD.teaching_assignment_id IS DISTINCT FROM"),
+    "6/7 reassignment rejected; historical unrelated updates preserved",
+  );
+  assert(sql.includes("commit_teaching_assignments_v2_import"), "9 import batch gated RPC");
+  assert(
+    sql.includes("Pre-validate") ||
+      sql.includes("pre-validate") ||
+      sql.includes("Phase 1: pre-validate"),
+    "10 batch pre-validation before DML",
+  );
+  assert(
+    sql.includes("lock_delivery_group_for_assignment") &&
+      sql.includes("ORDER BY ta.id") &&
+      sql.includes("array_agg(x ORDER BY x)"),
+    "11 deterministic lock ordering",
+  );
+  assert(
+    sql.includes("validate_assignment_allocation_locked"),
+    "12/13 concurrent allocation protection helper",
+  );
+  assert(
+    sql.includes("'status', 'failed'") && sql.includes("rows_created', 0"),
+    "14 batch validation failure zero DML counters",
+  );
+  assert(
+    sql.includes("teaching_assignment_created") &&
+      sql.includes("teaching_assignment_reactivated") &&
+      sql.includes("import_batch_id"),
+    "16/18 batch per-row audit + reactivation event",
+  );
+  assert(
+    sql.includes("SECURITY INVOKER") &&
+      sql.includes(
+        "REVOKE ALL ON FUNCTION public.resolve_offering_for_delivery_group(uuid) FROM authenticated",
+      ),
+    "19 resolve_offering not client-executable",
+  );
+  assert(
+    sql.includes(
+      "REVOKE ALL ON FUNCTION public.assert_delivery_group_assignable(boolean, boolean) FROM PUBLIC",
+    ) &&
+      sql.includes(
+        "REVOKE ALL ON FUNCTION public.assert_delivery_group_assignable(boolean, boolean) FROM anon",
+      ) &&
+      sql.includes(
+        "REVOKE ALL ON FUNCTION public.assert_delivery_group_assignable(boolean, boolean) FROM authenticated",
+      ),
+    "20 PUBLIC/anon/authenticated ACL on internal helpers",
+  );
+  assert(
+    sql.includes(
+      "REVOKE ALL ON FUNCTION public.lock_delivery_group_for_assignment(uuid) FROM authenticated",
+    ),
+    "20 lock helper authenticated denied",
+  );
+  assert(
+    !/GRANT EXECUTE ON FUNCTION public\.resolve_offering_for_delivery_group/.test(sql),
+    "19 no grant resolve_offering to clients",
+  );
+  assert(
+    sql.includes("STALE_ASSIGNMENT_UPDATE") && sql.includes("p_expected_updated_at"),
+    "21 optimistic concurrency retained",
+  );
+  assert(
+    !/INSERT\s+INTO\s+public\.schedule_sessions/i.test(sql) &&
+      !/PERFORM\s+public\.generate_cohort_delivery_groups/i.test(sql) &&
+      !/UPDATE\s+public\.teaching_assignments\s+SET/i.test(
+        sql.replace(/CREATE OR REPLACE FUNCTION[\s\S]*?\$\$;/g, ""),
+      ),
+    "30 migration no top-level TA backfill DML / no session insert / no generator invoke",
+  );
+  assert(
+    sql.includes("No backfill") || sql.includes("NOT APPLIED"),
+    "30 migration banner declares no backfill / not applied",
+  );
+
   // ---------- Pure logic ----------
   // 10 sole fallback
   {
@@ -165,6 +283,19 @@ function run() {
     assert(
       !v.ok && v.code === "OBSOLETE_DELIVERY_GROUP_ASSIGNMENT_FORBIDDEN",
       "7 obsolete rejected",
+    );
+  }
+
+  // inactive delivery group (distinct from obsolete)
+  {
+    const v = validateCoTeachingHours({
+      isActiveGroup: false,
+      componentWeeklyHours: 3,
+      assignedHours: [3],
+    });
+    assert(
+      !v.ok && v.code === "DELIVERY_GROUP_INACTIVE_ASSIGNMENT_FORBIDDEN",
+      "inactive group create rejected (pure)",
     );
   }
 
@@ -285,6 +416,25 @@ function run() {
     assert(p.warnings.includes("workload_overload"), "23 overload warning");
   }
 
+  // ---------- Pure inactive / co-teach helpers ----------
+  assert(
+    !canAssignToDeliveryGroup({ is_obsolete: false, active: false }),
+    "3 pure inactive group not assignable",
+  );
+  assert(
+    !canAssignToDeliveryGroup({ is_obsolete: true, active: true }),
+    "obsolete distinct from inactive",
+  );
+  assert(
+    canAssignToDeliveryGroup({ is_obsolete: false, active: true }),
+    "active non-obsolete assignable",
+  );
+  assert(
+    mapAssignmentRpcError("DELIVERY_GROUP_INACTIVE_ASSIGNMENT_FORBIDDEN").code ===
+      "DELIVERY_GROUP_INACTIVE_ASSIGNMENT_FORBIDDEN",
+    "inactive group error mapping",
+  );
+
   // ---------- Import alignment ----------
   const tpl = read("src/lib/excel-import/templates.ts");
   const validators = read("src/lib/excel-import/validators.ts");
@@ -298,20 +448,42 @@ function run() {
   );
   assert(validators.includes("unknown_delivery_group"), "27 dependency on delivery_groups");
   assert(validators.includes("summer_training_forbidden"), "summer rejection in validator");
-  assert(commit.includes("assigned_component_hours"), "commit writes assigned_component_hours");
+  assert(validators.includes("inactive_delivery_group"), "import rejects inactive DG");
+  assert(validators.includes("obsolete_delivery_group"), "import rejects obsolete DG");
+  assert(commit.includes("assigned_component_hours"), "commit payload assigned_component_hours");
   assert(commit.includes("co_teaching_hours_split_required"), "28 import co-teach split");
   assert(commit.includes("is_active"), "import is_active");
-  assert(commit.includes("effectiveWeekly ?? 0"), "v2 commit uses explicit hours not DEFAULT 3");
+  assert(
+    commit.includes("commitTeachingAssignmentsV2Import"),
+    "9 import uses service batch RPC wrapper",
+  );
+  assert(
+    commit.includes("Atomic contract") || commit.includes("atomic"),
+    "import atomic contract documented",
+  );
   const v2CommitFn = commit.slice(
     commit.indexOf("async function commitTeachingAssignmentsV2"),
     commit.indexOf("async function commitCourseOfferings"),
   );
   assert(!v2CommitFn.includes("weekly_hours ?? 3"), "no DEFAULT 3 inside v2 commit fn");
+  assert(
+    !v2CommitFn.includes('.from("teaching_assignments")') &&
+      !v2CommitFn.includes(".from('teaching_assignments')"),
+    "8 import code has no direct teaching_assignments DML",
+  );
+  assert(
+    !v2CommitFn.includes(".insert(") &&
+      !v2CommitFn.includes(".update(") &&
+      !v2CommitFn.includes(".upsert("),
+    "8 no direct insert/update/upsert in v2 commit",
+  );
+  assert(v2CommitFn.includes("commitTeachingAssignmentsV2Import"), "9 batch RPC via service");
 
   // ---------- UI / service static ----------
   const page = read("src/routes/_authenticated/teaching-assignments.tsx");
   const svc = read("src/lib/academic-delivery/teaching-assignments-v2-service.ts");
   const hook = read("src/hooks/use-teaching-assignments-v2.ts");
+  const sessionDialog = read("src/components/timetable/session-dialog.tsx");
   assert(page.includes("teaching-assignments-v2-page"), "UI page marker");
   assert(page.includes("ta-v2-filters"), "filters present");
   assert(page.includes("ta-v2-workload-preview"), "workload preview UI");
@@ -321,6 +493,11 @@ function run() {
   );
   assert(page.includes("useCanManageActiveCollege"), "auth gate UI");
   assert(page.includes("ta-v2-obsolete-badge") || page.includes("obsolete"), "obsolete visible");
+  assert(
+    page.includes("row.active === false") || page.includes("row.active !== false"),
+    "inactive group UI gating",
+  );
+  assert(page.includes("ta-v2-inactive-or-obsolete-no-assign"), "inactive/obsolete no-assign UI");
   assert(page.includes("AlertDialog"), "explicit confirmation");
   assert(
     !page.includes('from("teaching_assignments").insert') &&
@@ -329,10 +506,16 @@ function run() {
   );
   assert(svc.includes("create_teaching_assignment_v2"), "service uses create rpc");
   assert(svc.includes("list_teaching_assignment_workspace"), "service uses workspace rpc");
+  assert(svc.includes("commit_teaching_assignments_v2_import"), "service import batch rpc");
   assert(!svc.includes('.from("teaching_assignments")'), "service no direct table write");
   assert(hook.includes("toast.error"), "hook errors via toast");
   assert(hook.includes("if (!result.ok)"), "24 no success on validation failure pattern");
   assert(page.includes("assignment_conflicts"), "24 blocks save on conflicts");
+  assert(
+    sessionDialog.includes('.eq("is_active", true)') ||
+      sessionDialog.includes(".eq('is_active', true)"),
+    "session selector excludes inactive assignments",
+  );
 
   // ---------- Schedule Builder compatibility ----------
   const sbQueries = read("src/lib/schedule-builder/queries.ts");

@@ -66,6 +66,7 @@ DECLARE
   dg_component uuid;
   dg_plan_course uuid;
   dg_obsolete boolean;
+  dg_active boolean;
   co_plan_course uuid;
   co_term uuid;
   co_program uuid;
@@ -114,8 +115,8 @@ BEGIN
   END IF;
 
   IF NEW.delivery_group_id IS NOT NULL THEN
-    SELECT dg.college_id, dg.cohort_id, dg.component_id, dg.plan_course_id, dg.is_obsolete
-      INTO dg_college, dg_cohort, dg_component, dg_plan_course, dg_obsolete
+    SELECT dg.college_id, dg.cohort_id, dg.component_id, dg.plan_course_id, dg.is_obsolete, dg.active
+      INTO dg_college, dg_cohort, dg_component, dg_plan_course, dg_obsolete, dg_active
     FROM public.delivery_groups dg
     WHERE dg.id = NEW.delivery_group_id;
 
@@ -125,9 +126,12 @@ BEGIN
     IF dg_college <> NEW.college_id THEN
       RAISE EXCEPTION 'ASSIGNMENT_CROSS_COLLEGE_FORBIDDEN' USING ERRCODE = 'check_violation';
     END IF;
-    -- Obsolete groups reject active assignments only (deactivate remains allowed)
+    -- Obsolete / inactive groups reject active assignments only (deactivate remains allowed)
     IF COALESCE(dg_obsolete, false) AND COALESCE(NEW.is_active, true) THEN
       RAISE EXCEPTION 'OBSOLETE_DELIVERY_GROUP_ASSIGNMENT_FORBIDDEN' USING ERRCODE = 'check_violation';
+    END IF;
+    IF COALESCE(dg_active, true) = false AND COALESCE(NEW.is_active, true) THEN
+      RAISE EXCEPTION 'DELIVERY_GROUP_INACTIVE_ASSIGNMENT_FORBIDDEN' USING ERRCODE = 'check_violation';
     END IF;
     IF NEW.cohort_id IS NOT NULL AND NEW.cohort_id IS DISTINCT FROM dg_cohort THEN
       RAISE EXCEPTION 'ASSIGNMENT_COHORT_MISMATCH' USING ERRCODE = 'check_violation';
@@ -455,16 +459,17 @@ BEGIN
     JOIN public.plan_course_components pcc ON pcc.id = dg.component_id
     JOIN public.plan_courses pc ON pc.id = dg.plan_course_id
     JOIN public.courses c ON c.id = pc.course_id
+    -- ASSERT: allocation_json is jsonb scalar; never apply ->> to a record alias
     CROSS JOIN LATERAL (
-      SELECT * FROM public.compute_delivery_group_allocation(dg.id)
-    ) alloc_raw
+      SELECT public.compute_delivery_group_allocation(dg.id) AS allocation_json
+    ) alloc_src
     CROSS JOIN LATERAL (
       SELECT
-        (alloc_raw->>'assigned_hours_total')::numeric AS assigned_hours_total,
-        (alloc_raw->>'remaining_hours')::numeric AS remaining_hours,
-        (alloc_raw->>'assignment_count')::integer AS assignment_count,
-        (alloc_raw->>'is_co_taught')::boolean AS is_co_taught,
-        alloc_raw->>'allocation_status' AS allocation_status
+        COALESCE((alloc_src.allocation_json->>'assigned_hours_total')::numeric, 0) AS assigned_hours_total,
+        COALESCE((alloc_src.allocation_json->>'remaining_hours')::numeric, 0) AS remaining_hours,
+        COALESCE((alloc_src.allocation_json->>'assignment_count')::integer, 0) AS assignment_count,
+        COALESCE((alloc_src.allocation_json->>'is_co_taught')::boolean, false) AS is_co_taught,
+        COALESCE(alloc_src.allocation_json->>'allocation_status', 'unassigned') AS allocation_status
     ) alloc
     LEFT JOIN LATERAL (
       SELECT jsonb_agg(
@@ -489,6 +494,9 @@ BEGIN
       FROM (
         SELECT 'OBSOLETE_DELIVERY_GROUP' AS c_code
         WHERE COALESCE(dg.is_obsolete, false)
+        UNION ALL
+        SELECT 'INACTIVE_DELIVERY_GROUP' AS c_code
+        WHERE COALESCE(dg.active, true) = false
         UNION ALL
         SELECT 'UNDER_ALLOCATED'
         WHERE alloc.allocation_status = 'under_allocated' AND alloc.assignment_count > 0
@@ -516,6 +524,7 @@ BEGIN
         OR (p_assignment_status = 'under_allocated' AND alloc.allocation_status = 'under_allocated')
         OR (p_assignment_status = 'fully_allocated' AND alloc.allocation_status = 'fully_allocated')
         OR (p_assignment_status = 'obsolete' AND COALESCE(dg.is_obsolete, false))
+        OR (p_assignment_status = 'inactive' AND COALESCE(dg.active, true) = false)
       )
   ) x;
 
@@ -595,11 +604,13 @@ BEGIN
     'delivery_group_id', p_delivery_group_id,
     'college_id', v_dg.college_id,
     'is_obsolete', COALESCE(v_dg.is_obsolete, false),
+    'active', COALESCE(v_dg.active, true),
     'component_type', v_pcc.component_type,
     'component_hours', v_pcc.weekly_contact_hours,
     'allocation', v_alloc,
     'candidates', v_candidates,
     'assignable', NOT COALESCE(v_dg.is_obsolete, false)
+      AND COALESCE(v_dg.active, true)
       AND COALESCE(v_pcc.component_type, '') IS DISTINCT FROM 'summer_training'
       AND public.can_manage_college(v_uid, v_dg.college_id)
   );
@@ -676,6 +687,9 @@ BEGIN
   END IF;
   IF COALESCE(v_dg.is_obsolete, false) THEN
     v_conflicts := v_conflicts || jsonb_build_array('OBSOLETE_DELIVERY_GROUP_ASSIGNMENT_FORBIDDEN');
+  END IF;
+  IF COALESCE(v_dg.active, true) = false THEN
+    v_conflicts := v_conflicts || jsonb_build_array('DELIVERY_GROUP_INACTIVE_ASSIGNMENT_FORBIDDEN');
   END IF;
 
   SELECT * INTO v_pcc FROM public.plan_course_components WHERE id = v_dg.component_id;
@@ -844,13 +858,14 @@ COMMENT ON FUNCTION public.preview_instructor_workload_after_assignment(uuid, uu
   'PHASE-9.4 read-only workload impact preview. No DML. Uses compute_instructor_standard_workload. Overload = warning only.';
 
 -- ---------------------------------------------------------------------------
--- 9) Resolve compatibility offering for a delivery group
+-- 9) Resolve compatibility offering for a delivery group (internal-only)
+-- SECURITY INVOKER + revoke client EXECUTE. Called only from gated DEFINER RPCs.
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.resolve_offering_for_delivery_group(p_delivery_group_id uuid)
 RETURNS uuid
 LANGUAGE plpgsql
 STABLE
-SECURITY DEFINER
+SECURITY INVOKER
 SET search_path = public
 AS $$
 DECLARE
@@ -883,8 +898,141 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.resolve_offering_for_delivery_group(uuid) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.resolve_offering_for_delivery_group(uuid) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.resolve_offering_for_delivery_group(uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.resolve_offering_for_delivery_group(uuid) FROM anon;
+REVOKE ALL ON FUNCTION public.resolve_offering_for_delivery_group(uuid) FROM authenticated;
+-- Intentionally no GRANT to authenticated — internal helper for DEFINER RPCs only.
+
+-- ---------------------------------------------------------------------------
+-- 9b) Internal validation / locking helpers (not client-executable)
+-- Lock order (all write RPCs):
+--   1) delivery_group FOR UPDATE
+--   2) active teaching_assignments for that group ORDER BY id FOR UPDATE
+--   3) target assignment row FOR UPDATE (update/deactivate)
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.assert_delivery_group_assignable(
+  p_is_obsolete boolean,
+  p_active boolean
+)
+RETURNS void
+LANGUAGE plpgsql
+STABLE
+SECURITY INVOKER
+SET search_path = public
+AS $$
+BEGIN
+  IF COALESCE(p_is_obsolete, false) THEN
+    RAISE EXCEPTION 'OBSOLETE_DELIVERY_GROUP_ASSIGNMENT_FORBIDDEN' USING ERRCODE = 'check_violation';
+  END IF;
+  IF COALESCE(p_active, true) = false THEN
+    RAISE EXCEPTION 'DELIVERY_GROUP_INACTIVE_ASSIGNMENT_FORBIDDEN' USING ERRCODE = 'check_violation';
+  END IF;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.assert_delivery_group_assignable(boolean, boolean) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.assert_delivery_group_assignable(boolean, boolean) FROM anon;
+REVOKE ALL ON FUNCTION public.assert_delivery_group_assignable(boolean, boolean) FROM authenticated;
+
+CREATE OR REPLACE FUNCTION public.lock_delivery_group_for_assignment(p_delivery_group_id uuid)
+RETURNS public.delivery_groups
+LANGUAGE plpgsql
+VOLATILE
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+  v_dg public.delivery_groups%ROWTYPE;
+BEGIN
+  IF p_delivery_group_id IS NULL THEN
+    RAISE EXCEPTION 'DELIVERY_GROUP_ID_REQUIRED' USING ERRCODE = 'check_violation';
+  END IF;
+
+  SELECT * INTO v_dg
+  FROM public.delivery_groups dg
+  WHERE dg.id = p_delivery_group_id
+  FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'DELIVERY_GROUP_NOT_FOUND' USING ERRCODE = 'no_data_found';
+  END IF;
+
+  -- Deterministic lock of active assignment rows for this group
+  PERFORM 1
+  FROM public.teaching_assignments ta
+  WHERE ta.delivery_group_id = p_delivery_group_id
+    AND ta.is_active = TRUE
+  ORDER BY ta.id
+  FOR UPDATE;
+
+  RETURN v_dg;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.lock_delivery_group_for_assignment(uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.lock_delivery_group_for_assignment(uuid) FROM anon;
+REVOKE ALL ON FUNCTION public.lock_delivery_group_for_assignment(uuid) FROM authenticated;
+
+CREATE OR REPLACE FUNCTION public.validate_assignment_allocation_locked(
+  p_delivery_group_id uuid,
+  p_exclude_assignment_id uuid,
+  p_new_hours numeric,
+  p_component_hours numeric,
+  p_include_new_row boolean DEFAULT true
+)
+RETURNS void
+LANGUAGE plpgsql
+STABLE
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+  v_co_count integer;
+  v_null_split_count integer;
+  v_sum_assigned numeric;
+BEGIN
+  SELECT COUNT(*)::integer,
+         COUNT(*) FILTER (
+           WHERE ta.assigned_component_hours IS NULL
+             AND (p_exclude_assignment_id IS NULL OR ta.id IS DISTINCT FROM p_exclude_assignment_id)
+         )::integer
+           + CASE WHEN p_include_new_row AND p_new_hours IS NULL THEN 1 ELSE 0 END,
+         COALESCE(
+           SUM(ta.assigned_component_hours) FILTER (
+             WHERE p_exclude_assignment_id IS NULL OR ta.id IS DISTINCT FROM p_exclude_assignment_id
+           ),
+           0
+         )
+           + CASE WHEN p_include_new_row THEN COALESCE(p_new_hours, 0) ELSE 0 END
+    INTO v_co_count, v_null_split_count, v_sum_assigned
+  FROM public.teaching_assignments ta
+  WHERE ta.delivery_group_id = p_delivery_group_id
+    AND ta.is_active = TRUE;
+
+  IF p_include_new_row
+     AND (
+       p_exclude_assignment_id IS NULL
+       OR NOT EXISTS (
+         SELECT 1 FROM public.teaching_assignments ta2
+         WHERE ta2.id = p_exclude_assignment_id
+           AND ta2.delivery_group_id = p_delivery_group_id
+           AND ta2.is_active = TRUE
+       )
+     ) THEN
+    v_co_count := v_co_count + 1;
+  END IF;
+
+  IF v_co_count > 1 AND v_null_split_count > 0 THEN
+    RAISE EXCEPTION 'CO_TEACHING_HOURS_SPLIT_REQUIRED' USING ERRCODE = 'check_violation';
+  END IF;
+  IF p_component_hours IS NOT NULL AND v_sum_assigned > p_component_hours THEN
+    RAISE EXCEPTION 'CO_TEACHING_HOURS_OVER_ALLOCATED' USING ERRCODE = 'check_violation';
+  END IF;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.validate_assignment_allocation_locked(uuid, uuid, numeric, numeric, boolean) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.validate_assignment_allocation_locked(uuid, uuid, numeric, numeric, boolean) FROM anon;
+REVOKE ALL ON FUNCTION public.validate_assignment_allocation_locked(uuid, uuid, numeric, numeric, boolean) FROM authenticated;
 
 -- ---------------------------------------------------------------------------
 -- 10) create_teaching_assignment_v2
@@ -920,19 +1068,14 @@ BEGIN
     RAISE EXCEPTION 'DELIVERY_GROUP_AND_INSTRUCTOR_REQUIRED' USING ERRCODE = 'check_violation';
   END IF;
 
-  -- Lock delivery group for co-teaching race safety
-  SELECT * INTO v_dg FROM public.delivery_groups WHERE id = p_delivery_group_id FOR UPDATE;
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'DELIVERY_GROUP_NOT_FOUND' USING ERRCODE = 'no_data_found';
-  END IF;
+  -- Lock order: delivery_group → active assignment rows
+  v_dg := public.lock_delivery_group_for_assignment(p_delivery_group_id);
 
   IF NOT public.can_manage_college(v_uid, v_dg.college_id) THEN
     RAISE EXCEPTION 'insufficient_privilege' USING ERRCODE = '42501';
   END IF;
 
-  IF COALESCE(v_dg.is_obsolete, false) THEN
-    RAISE EXCEPTION 'OBSOLETE_DELIVERY_GROUP_ASSIGNMENT_FORBIDDEN' USING ERRCODE = 'check_violation';
-  END IF;
+  PERFORM public.assert_delivery_group_assignable(v_dg.is_obsolete, v_dg.active);
 
   SELECT * INTO v_instructor FROM public.instructors WHERE id = p_instructor_id;
   IF NOT FOUND THEN
@@ -954,12 +1097,7 @@ BEGIN
     RAISE EXCEPTION 'ASSIGNED_HOURS_MUST_BE_POSITIVE' USING ERRCODE = 'check_violation';
   END IF;
 
-  -- Lock related active assignments
-  PERFORM 1 FROM public.teaching_assignments ta
-  WHERE ta.delivery_group_id = p_delivery_group_id AND ta.is_active = TRUE
-  FOR UPDATE;
-
-  -- Reactivate inactive natural key if present
+  -- Reactivate inactive natural key if present (target row lock)
   SELECT * INTO v_existing
   FROM public.teaching_assignments ta
   WHERE ta.college_id = v_dg.college_id
@@ -987,6 +1125,14 @@ BEGIN
   END;
 
   v_effective_hours := COALESCE(p_assigned_component_hours, v_pcc.weekly_contact_hours, 0);
+
+  PERFORM public.validate_assignment_allocation_locked(
+    p_delivery_group_id,
+    CASE WHEN v_existing.id IS NOT NULL AND NOT v_existing.is_active THEN v_existing.id ELSE NULL END,
+    p_assigned_component_hours,
+    v_pcc.weekly_contact_hours,
+    true
+  );
 
   IF v_existing.id IS NOT NULL AND NOT v_existing.is_active THEN
     UPDATE public.teaching_assignments SET
@@ -1093,9 +1239,13 @@ AS $$
 DECLARE
   v_uid uuid := auth.uid();
   v_row public.teaching_assignments%ROWTYPE;
+  v_dg public.delivery_groups%ROWTYPE;
   v_old_hours numeric;
   v_pcc_type text;
+  v_pcc_hours numeric;
   v_effective numeric;
+  v_dg_id uuid;
+  v_college_id uuid;
 BEGIN
   IF v_uid IS NULL THEN
     RAISE EXCEPTION 'insufficient_privilege' USING ERRCODE = '42501';
@@ -1104,15 +1254,30 @@ BEGIN
     RAISE EXCEPTION 'ASSIGNMENT_ID_AND_EXPECTED_UPDATED_AT_REQUIRED' USING ERRCODE = 'check_violation';
   END IF;
 
-  SELECT * INTO v_row FROM public.teaching_assignments WHERE id = p_assignment_id FOR UPDATE;
-  IF NOT FOUND THEN
+  -- Resolve context without locking assignment first (stable lock order)
+  SELECT ta.delivery_group_id, ta.college_id
+    INTO v_dg_id, v_college_id
+  FROM public.teaching_assignments ta
+  WHERE ta.id = p_assignment_id;
+  IF v_college_id IS NULL THEN
     RAISE EXCEPTION 'ASSIGNMENT_NOT_FOUND' USING ERRCODE = 'no_data_found';
   END IF;
-  IF NOT public.can_manage_college(v_uid, v_row.college_id) THEN
+  IF NOT public.can_manage_college(v_uid, v_college_id) THEN
     RAISE EXCEPTION 'insufficient_privilege' USING ERRCODE = '42501';
   END IF;
-  IF v_row.delivery_group_id IS NULL THEN
+  IF v_dg_id IS NULL THEN
     RAISE EXCEPTION 'LEGACY_ASSIGNMENT_NOT_SUPPORTED_BY_V2_RPC' USING ERRCODE = 'check_violation';
+  END IF;
+
+  v_dg := public.lock_delivery_group_for_assignment(v_dg_id);
+  PERFORM public.assert_delivery_group_assignable(v_dg.is_obsolete, v_dg.active);
+
+  SELECT * INTO v_row
+  FROM public.teaching_assignments
+  WHERE id = p_assignment_id
+  FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'ASSIGNMENT_NOT_FOUND' USING ERRCODE = 'no_data_found';
   END IF;
   IF v_row.updated_at IS DISTINCT FROM p_expected_updated_at THEN
     RAISE EXCEPTION 'STALE_ASSIGNMENT_UPDATE' USING ERRCODE = 'check_violation';
@@ -1121,20 +1286,25 @@ BEGIN
     RAISE EXCEPTION 'INACTIVE_ASSIGNMENT_UPDATE_FORBIDDEN' USING ERRCODE = 'check_violation';
   END IF;
 
-  PERFORM 1 FROM public.delivery_groups WHERE id = v_row.delivery_group_id FOR UPDATE;
-  PERFORM 1 FROM public.teaching_assignments ta
-  WHERE ta.delivery_group_id = v_row.delivery_group_id AND ta.is_active = TRUE
-  FOR UPDATE;
-
   IF p_assigned_component_hours IS NOT NULL AND p_assigned_component_hours <= 0 THEN
     RAISE EXCEPTION 'ASSIGNED_HOURS_MUST_BE_POSITIVE' USING ERRCODE = 'check_violation';
   END IF;
 
   v_old_hours := v_row.assigned_component_hours;
-  SELECT pcc.component_type, COALESCE(p_assigned_component_hours, v_row.assigned_component_hours, pcc.weekly_contact_hours, 0)
-    INTO v_pcc_type, v_effective
+  SELECT pcc.component_type,
+         pcc.weekly_contact_hours,
+         COALESCE(p_assigned_component_hours, v_row.assigned_component_hours, pcc.weekly_contact_hours, 0)
+    INTO v_pcc_type, v_pcc_hours, v_effective
   FROM public.plan_course_components pcc
   WHERE pcc.id = v_row.plan_course_component_id;
+
+  PERFORM public.validate_assignment_allocation_locked(
+    v_dg_id,
+    p_assignment_id,
+    COALESCE(p_assigned_component_hours, v_row.assigned_component_hours),
+    v_pcc_hours,
+    true
+  );
 
   UPDATE public.teaching_assignments SET
     assigned_component_hours = COALESCE(p_assigned_component_hours, assigned_component_hours),
@@ -1192,6 +1362,8 @@ DECLARE
   v_row public.teaching_assignments%ROWTYPE;
   v_pcc_type text;
   v_old_hours numeric;
+  v_dg_id uuid;
+  v_college_id uuid;
 BEGIN
   IF v_uid IS NULL THEN
     RAISE EXCEPTION 'insufficient_privilege' USING ERRCODE = '42501';
@@ -1200,15 +1372,29 @@ BEGIN
     RAISE EXCEPTION 'ASSIGNMENT_ID_AND_EXPECTED_UPDATED_AT_REQUIRED' USING ERRCODE = 'check_violation';
   END IF;
 
-  SELECT * INTO v_row FROM public.teaching_assignments WHERE id = p_assignment_id FOR UPDATE;
-  IF NOT FOUND THEN
+  SELECT ta.delivery_group_id, ta.college_id
+    INTO v_dg_id, v_college_id
+  FROM public.teaching_assignments ta
+  WHERE ta.id = p_assignment_id;
+  IF v_college_id IS NULL THEN
     RAISE EXCEPTION 'ASSIGNMENT_NOT_FOUND' USING ERRCODE = 'no_data_found';
   END IF;
-  IF NOT public.can_manage_college(v_uid, v_row.college_id) THEN
+  IF NOT public.can_manage_college(v_uid, v_college_id) THEN
     RAISE EXCEPTION 'insufficient_privilege' USING ERRCODE = '42501';
   END IF;
-  IF v_row.delivery_group_id IS NULL THEN
+  IF v_dg_id IS NULL THEN
     RAISE EXCEPTION 'LEGACY_ASSIGNMENT_NOT_SUPPORTED_BY_V2_RPC' USING ERRCODE = 'check_violation';
+  END IF;
+
+  -- Lock group even for deactivate (consistent order); assignable not required
+  PERFORM public.lock_delivery_group_for_assignment(v_dg_id);
+
+  SELECT * INTO v_row
+  FROM public.teaching_assignments
+  WHERE id = p_assignment_id
+  FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'ASSIGNMENT_NOT_FOUND' USING ERRCODE = 'no_data_found';
   END IF;
   IF v_row.updated_at IS DISTINCT FROM p_expected_updated_at THEN
     RAISE EXCEPTION 'STALE_ASSIGNMENT_UPDATE' USING ERRCODE = 'check_violation';
@@ -1272,5 +1458,584 @@ GRANT EXECUTE ON FUNCTION public.deactivate_teaching_assignment_v2(uuid, timesta
 
 COMMENT ON FUNCTION public.deactivate_teaching_assignment_v2(uuid, timestamptz, text) IS
   'PHASE-9.4 soft deactivate. Preserves history. Optimistic concurrency. Audit. No hard delete.';
+
+-- ---------------------------------------------------------------------------
+-- 13) ensure_ss_college — preserve Phase 9.3 checks + inactive assignment guard
+-- Applied only on INSERT or when teaching_assignment_id / delivery_group_id change.
+-- Historical sessions with unrelated UPDATEs remain untouched.
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.ensure_ss_college()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
+DECLARE
+  vc uuid;
+  oc uuid;
+  ic uuid;
+  rc uuid;
+  sc uuid;
+  gc uuid;
+  tac uuid;
+  ta_active boolean;
+  ta_dg uuid;
+  dg_college uuid;
+  dg_obsolete boolean;
+  dg_active boolean;
+  v_ta_link_changing boolean;
+  v_dg_link_changing boolean;
+BEGIN
+  SELECT college_id INTO vc FROM public.schedule_versions WHERE id = NEW.schedule_version_id;
+  IF vc IS NULL OR vc <> NEW.college_id THEN RAISE EXCEPTION 'version/college mismatch'; END IF;
+
+  SELECT college_id INTO oc FROM public.course_offerings WHERE id = NEW.course_offering_id;
+  IF oc IS NULL OR oc <> NEW.college_id THEN RAISE EXCEPTION 'offering/college mismatch'; END IF;
+
+  SELECT college_id INTO ic FROM public.instructors WHERE id = NEW.instructor_id;
+  IF ic IS NULL OR ic <> NEW.college_id THEN RAISE EXCEPTION 'instructor/college mismatch'; END IF;
+
+  IF NEW.room_id IS NOT NULL THEN
+    SELECT college_id INTO rc FROM public.rooms WHERE id = NEW.room_id;
+    IF rc IS NULL OR rc <> NEW.college_id THEN RAISE EXCEPTION 'room/college mismatch'; END IF;
+  END IF;
+
+  IF NEW.section_id IS NOT NULL THEN
+    SELECT college_id INTO sc FROM public.sections WHERE id = NEW.section_id;
+    IF sc IS NULL OR sc <> NEW.college_id THEN RAISE EXCEPTION 'section/college mismatch'; END IF;
+  END IF;
+
+  IF NEW.section_group_id IS NOT NULL THEN
+    SELECT college_id INTO gc FROM public.section_groups WHERE id = NEW.section_group_id;
+    IF gc IS NULL OR gc <> NEW.college_id THEN RAISE EXCEPTION 'section_group/college mismatch'; END IF;
+  END IF;
+
+  v_ta_link_changing := (
+    TG_OP = 'INSERT'
+    OR OLD.teaching_assignment_id IS DISTINCT FROM NEW.teaching_assignment_id
+  );
+  v_dg_link_changing := (
+    TG_OP = 'INSERT'
+    OR OLD.delivery_group_id IS DISTINCT FROM NEW.delivery_group_id
+  );
+
+  IF NEW.teaching_assignment_id IS NOT NULL THEN
+    SELECT ta.college_id, ta.is_active, ta.delivery_group_id
+      INTO tac, ta_active, ta_dg
+    FROM public.teaching_assignments ta
+    WHERE ta.id = NEW.teaching_assignment_id;
+    IF tac IS NULL OR tac <> NEW.college_id THEN
+      RAISE EXCEPTION 'teaching_assignment/college mismatch';
+    END IF;
+    IF v_ta_link_changing AND COALESCE(ta_active, true) = false THEN
+      RAISE EXCEPTION 'INACTIVE_ASSIGNMENT_SESSION_FORBIDDEN' USING ERRCODE = 'check_violation';
+    END IF;
+    IF v_ta_link_changing AND ta_dg IS NOT NULL THEN
+      SELECT dg.college_id, dg.is_obsolete, dg.active
+        INTO dg_college, dg_obsolete, dg_active
+      FROM public.delivery_groups dg
+      WHERE dg.id = ta_dg;
+      IF dg_college IS NULL THEN
+        RAISE EXCEPTION 'DELIVERY_GROUP_NOT_FOUND' USING ERRCODE = 'foreign_key_violation';
+      END IF;
+      IF dg_college <> NEW.college_id THEN
+        RAISE EXCEPTION 'SESSION_DELIVERY_GROUP_CROSS_COLLEGE_FORBIDDEN' USING ERRCODE = 'check_violation';
+      END IF;
+      IF COALESCE(dg_obsolete, false) THEN
+        RAISE EXCEPTION 'OBSOLETE_DELIVERY_GROUP_SESSION_FORBIDDEN' USING ERRCODE = 'check_violation';
+      END IF;
+      IF COALESCE(dg_active, true) = false THEN
+        RAISE EXCEPTION 'DELIVERY_GROUP_INACTIVE_SESSION_FORBIDDEN' USING ERRCODE = 'check_violation';
+      END IF;
+    END IF;
+  END IF;
+
+  IF NEW.delivery_group_id IS NOT NULL THEN
+    SELECT dg.college_id, dg.is_obsolete, dg.active
+      INTO dg_college, dg_obsolete, dg_active
+    FROM public.delivery_groups dg
+    WHERE dg.id = NEW.delivery_group_id;
+    IF dg_college IS NULL THEN
+      RAISE EXCEPTION 'DELIVERY_GROUP_NOT_FOUND' USING ERRCODE = 'foreign_key_violation';
+    END IF;
+    IF dg_college <> NEW.college_id THEN
+      RAISE EXCEPTION 'SESSION_DELIVERY_GROUP_CROSS_COLLEGE_FORBIDDEN' USING ERRCODE = 'check_violation';
+    END IF;
+    IF v_dg_link_changing AND COALESCE(dg_obsolete, false) THEN
+      RAISE EXCEPTION 'OBSOLETE_DELIVERY_GROUP_SESSION_FORBIDDEN' USING ERRCODE = 'check_violation';
+    END IF;
+    IF v_dg_link_changing AND COALESCE(dg_active, true) = false THEN
+      RAISE EXCEPTION 'DELIVERY_GROUP_INACTIVE_SESSION_FORBIDDEN' USING ERRCODE = 'check_violation';
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+COMMENT ON FUNCTION public.ensure_ss_college() IS
+  'PHASE-9.4: college integrity + obsolete/inactive delivery_group + inactive teaching_assignment guards for new/changed session links. Historical unrelated updates preserved.';
+
+-- ---------------------------------------------------------------------------
+-- 14) Atomic import batch RPC (import-only; not a general bulk UI API)
+-- Pre-validates all rows before first DML. Locks delivery_groups in id ASC order.
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.commit_teaching_assignments_v2_import(
+  p_rows jsonb,
+  p_mode text DEFAULT 'upsert'
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_uid uuid := auth.uid();
+  v_mode text := lower(COALESCE(NULLIF(btrim(p_mode), ''), 'upsert'));
+  v_batch_id uuid := gen_random_uuid();
+  v_errors jsonb := '[]'::jsonb;
+  v_warnings jsonb := '[]'::jsonb;
+  v_rows_received integer := 0;
+  v_created integer := 0;
+  v_updated integer := 0;
+  v_reactivated integer := 0;
+  v_unchanged integer := 0;
+  v_elem jsonb;
+  v_row_number integer;
+  v_dg_id uuid;
+  v_instructor_id uuid;
+  v_hours numeric;
+  v_notes text;
+  v_is_active boolean;
+  v_offering_id uuid;
+  v_expected_students integer;
+  v_required_room_type text;
+  v_session_type text;
+  v_natural_key text;
+  v_dg public.delivery_groups%ROWTYPE;
+  v_pcc public.plan_course_components%ROWTYPE;
+  v_instructor public.instructors%ROWTYPE;
+  v_existing public.teaching_assignments%ROWTYPE;
+  v_row public.teaching_assignments%ROWTYPE;
+  v_effective numeric;
+  v_college_ids uuid[];
+  v_dg_ids uuid[];
+  v_id uuid;
+  v_idx integer;
+  v_same_hours boolean;
+  v_same_notes boolean;
+  v_batch_instructors integer;
+  v_null_hours integer;
+  v_comp_hours numeric;
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'insufficient_privilege' USING ERRCODE = '42501';
+  END IF;
+  IF p_rows IS NULL OR jsonb_typeof(p_rows) <> 'array' THEN
+    RAISE EXCEPTION 'IMPORT_ROWS_REQUIRED' USING ERRCODE = 'check_violation';
+  END IF;
+  IF v_mode NOT IN ('insert_only', 'update_existing', 'upsert') THEN
+    RAISE EXCEPTION 'IMPORT_MODE_INVALID' USING ERRCODE = 'check_violation';
+  END IF;
+
+  v_rows_received := jsonb_array_length(p_rows);
+
+  -- -------- Phase 1: pre-validate all rows (no DML) --------
+  FOR v_idx IN 0 .. GREATEST(v_rows_received - 1, -1) LOOP
+    v_elem := p_rows -> v_idx;
+    v_row_number := COALESCE((v_elem->>'row_number')::integer, v_idx + 1);
+    BEGIN
+      v_dg_id := NULLIF(v_elem->>'delivery_group_id', '')::uuid;
+      v_instructor_id := NULLIF(v_elem->>'instructor_id', '')::uuid;
+    EXCEPTION WHEN others THEN
+      v_errors := v_errors || jsonb_build_array(jsonb_build_object(
+        'row_number', v_row_number,
+        'natural_key', NULL,
+        'error_code', 'INVALID_UUID',
+        'error_message', 'delivery_group_id/instructor_id invalid uuid',
+        'blocking', true
+      ));
+      CONTINUE;
+    END;
+
+    v_natural_key := COALESCE(v_dg_id::text, '') || '|' || COALESCE(v_instructor_id::text, '');
+    IF v_dg_id IS NULL OR v_instructor_id IS NULL THEN
+      v_errors := v_errors || jsonb_build_array(jsonb_build_object(
+        'row_number', v_row_number,
+        'natural_key', v_natural_key,
+        'error_code', 'DELIVERY_GROUP_AND_INSTRUCTOR_REQUIRED',
+        'error_message', 'delivery_group_id and instructor_id required',
+        'blocking', true
+      ));
+      CONTINUE;
+    END IF;
+
+    SELECT * INTO v_dg FROM public.delivery_groups WHERE id = v_dg_id;
+    IF NOT FOUND THEN
+      v_errors := v_errors || jsonb_build_array(jsonb_build_object(
+        'row_number', v_row_number, 'natural_key', v_natural_key,
+        'error_code', 'DELIVERY_GROUP_NOT_FOUND',
+        'error_message', 'delivery group not found', 'blocking', true
+      ));
+      CONTINUE;
+    END IF;
+    IF NOT public.can_manage_college(v_uid, v_dg.college_id) THEN
+      v_errors := v_errors || jsonb_build_array(jsonb_build_object(
+        'row_number', v_row_number, 'natural_key', v_natural_key,
+        'error_code', 'insufficient_privilege',
+        'error_message', 'cannot manage college for delivery group', 'blocking', true
+      ));
+      CONTINUE;
+    END IF;
+    IF COALESCE(v_dg.is_obsolete, false) THEN
+      v_errors := v_errors || jsonb_build_array(jsonb_build_object(
+        'row_number', v_row_number, 'natural_key', v_natural_key,
+        'error_code', 'OBSOLETE_DELIVERY_GROUP_ASSIGNMENT_FORBIDDEN',
+        'error_message', 'obsolete delivery group', 'blocking', true
+      ));
+      CONTINUE;
+    END IF;
+    IF COALESCE(v_dg.active, true) = false THEN
+      v_errors := v_errors || jsonb_build_array(jsonb_build_object(
+        'row_number', v_row_number, 'natural_key', v_natural_key,
+        'error_code', 'DELIVERY_GROUP_INACTIVE_ASSIGNMENT_FORBIDDEN',
+        'error_message', 'inactive delivery group', 'blocking', true
+      ));
+      CONTINUE;
+    END IF;
+
+    SELECT * INTO v_instructor FROM public.instructors WHERE id = v_instructor_id;
+    IF NOT FOUND THEN
+      v_errors := v_errors || jsonb_build_array(jsonb_build_object(
+        'row_number', v_row_number, 'natural_key', v_natural_key,
+        'error_code', 'INSTRUCTOR_NOT_FOUND',
+        'error_message', 'instructor not found', 'blocking', true
+      ));
+      CONTINUE;
+    END IF;
+    IF v_instructor.college_id <> v_dg.college_id THEN
+      v_errors := v_errors || jsonb_build_array(jsonb_build_object(
+        'row_number', v_row_number, 'natural_key', v_natural_key,
+        'error_code', 'ASSIGNMENT_CROSS_COLLEGE_FORBIDDEN',
+        'error_message', 'cross-college assignment', 'blocking', true
+      ));
+      CONTINUE;
+    END IF;
+
+    SELECT * INTO v_pcc FROM public.plan_course_components WHERE id = v_dg.component_id;
+    IF NOT FOUND THEN
+      v_errors := v_errors || jsonb_build_array(jsonb_build_object(
+        'row_number', v_row_number, 'natural_key', v_natural_key,
+        'error_code', 'ASSIGNMENT_COMPONENT_MISMATCH',
+        'error_message', 'component missing', 'blocking', true
+      ));
+      CONTINUE;
+    END IF;
+    IF v_pcc.component_type = 'summer_training' THEN
+      v_errors := v_errors || jsonb_build_array(jsonb_build_object(
+        'row_number', v_row_number, 'natural_key', v_natural_key,
+        'error_code', 'SUMMER_TRAINING_WEEKLY_ASSIGNMENT_FORBIDDEN',
+        'error_message', 'summer training forbidden', 'blocking', true
+      ));
+      CONTINUE;
+    END IF;
+
+    IF v_elem ? 'assigned_component_hours'
+       AND v_elem->>'assigned_component_hours' IS NOT NULL
+       AND btrim(v_elem->>'assigned_component_hours') <> '' THEN
+      v_hours := (v_elem->>'assigned_component_hours')::numeric;
+      IF v_hours <= 0 THEN
+        v_errors := v_errors || jsonb_build_array(jsonb_build_object(
+          'row_number', v_row_number, 'natural_key', v_natural_key,
+          'error_code', 'ASSIGNED_HOURS_MUST_BE_POSITIVE',
+          'error_message', 'hours must be positive', 'blocking', true
+        ));
+        CONTINUE;
+      END IF;
+    END IF;
+
+    v_offering_id := NULLIF(v_elem->>'course_offering_id', '')::uuid;
+    IF v_offering_id IS NULL THEN
+      v_offering_id := public.resolve_offering_for_delivery_group(v_dg_id);
+    END IF;
+    IF v_offering_id IS NULL THEN
+      v_errors := v_errors || jsonb_build_array(jsonb_build_object(
+        'row_number', v_row_number, 'natural_key', v_natural_key,
+        'error_code', 'NO_COMPATIBILITY_OFFERING',
+        'error_message', 'no compatibility offering', 'blocking', true
+      ));
+      CONTINUE;
+    END IF;
+  END LOOP;
+
+  -- Batch co-teaching split check (pre-DML, pre-lock)
+  SELECT COALESCE(array_agg(x ORDER BY x), ARRAY[]::uuid[])
+    INTO v_dg_ids
+  FROM (
+    SELECT DISTINCT NULLIF(e->>'delivery_group_id', '')::uuid AS x
+    FROM jsonb_array_elements(p_rows) e
+    WHERE NULLIF(e->>'delivery_group_id', '') IS NOT NULL
+  ) s;
+
+  FOREACH v_id IN ARRAY COALESCE(v_dg_ids, ARRAY[]::uuid[]) LOOP
+    SELECT COUNT(DISTINCT NULLIF(e->>'instructor_id', '')::uuid)::integer,
+           COUNT(*) FILTER (
+             WHERE e->>'assigned_component_hours' IS NULL
+                OR btrim(COALESCE(e->>'assigned_component_hours', '')) = ''
+           )::integer
+      INTO v_batch_instructors, v_null_hours
+    FROM jsonb_array_elements(p_rows) e
+    WHERE NULLIF(e->>'delivery_group_id', '')::uuid = v_id
+      AND COALESCE((e->>'is_active')::boolean, true) = true;
+
+    IF v_batch_instructors > 1 AND v_null_hours > 0 THEN
+      v_errors := v_errors || jsonb_build_array(jsonb_build_object(
+        'row_number', NULL,
+        'natural_key', v_id::text,
+        'error_code', 'CO_TEACHING_HOURS_SPLIT_REQUIRED',
+        'error_message', 'co-teaching rows require explicit assigned_component_hours',
+        'blocking', true
+      ));
+    END IF;
+  END LOOP;
+
+  IF jsonb_array_length(v_errors) > 0 THEN
+    RETURN jsonb_build_object(
+      'status', 'failed',
+      'rows_received', v_rows_received,
+      'rows_created', 0,
+      'rows_updated', 0,
+      'rows_reactivated', 0,
+      'rows_unchanged', 0,
+      'validation_errors', v_errors,
+      'warnings', v_warnings,
+      'import_batch_id', v_batch_id
+    );
+  END IF;
+
+  -- -------- Phase 2: lock delivery groups in deterministic ASC order --------
+  IF v_dg_ids IS NOT NULL THEN
+    FOREACH v_id IN ARRAY v_dg_ids LOOP
+      PERFORM public.lock_delivery_group_for_assignment(v_id);
+    END LOOP;
+  END IF;
+
+  -- -------- Phase 3: apply rows atomically --------
+  FOR v_idx IN 0 .. GREATEST(v_rows_received - 1, -1) LOOP
+    v_elem := p_rows -> v_idx;
+    v_row_number := COALESCE((v_elem->>'row_number')::integer, v_idx + 1);
+    v_dg_id := (v_elem->>'delivery_group_id')::uuid;
+    v_instructor_id := (v_elem->>'instructor_id')::uuid;
+    v_natural_key := v_dg_id::text || '|' || v_instructor_id::text;
+    v_notes := v_elem->>'notes';
+    v_is_active := COALESCE((v_elem->>'is_active')::boolean, true);
+    IF v_elem ? 'assigned_component_hours'
+       AND v_elem->>'assigned_component_hours' IS NOT NULL
+       AND btrim(v_elem->>'assigned_component_hours') <> '' THEN
+      v_hours := (v_elem->>'assigned_component_hours')::numeric;
+    ELSE
+      v_hours := NULL;
+    END IF;
+    v_expected_students := COALESCE((v_elem->>'expected_students')::integer, 0);
+    v_required_room_type := NULLIF(v_elem->>'required_room_type', '');
+    v_offering_id := NULLIF(v_elem->>'course_offering_id', '')::uuid;
+    IF v_offering_id IS NULL THEN
+      v_offering_id := public.resolve_offering_for_delivery_group(v_dg_id);
+    END IF;
+
+    SELECT * INTO v_dg FROM public.delivery_groups WHERE id = v_dg_id;
+    PERFORM public.assert_delivery_group_assignable(v_dg.is_obsolete, v_dg.active);
+    SELECT * INTO v_pcc FROM public.plan_course_components WHERE id = v_dg.component_id;
+
+    v_session_type := COALESCE(
+      NULLIF(v_elem->>'session_type', ''),
+      CASE v_pcc.component_type
+        WHEN 'theory' THEN 'lecture'
+        WHEN 'practical' THEN 'lab'
+        WHEN 'tutorial' THEN 'tutorial'
+        WHEN 'project' THEN 'seminar'
+        ELSE 'lecture'
+      END
+    );
+    v_effective := COALESCE(v_hours, v_pcc.weekly_contact_hours, 0);
+
+    SELECT * INTO v_existing
+    FROM public.teaching_assignments ta
+    WHERE ta.college_id = v_dg.college_id
+      AND ta.delivery_group_id = v_dg_id
+      AND ta.instructor_id = v_instructor_id
+    ORDER BY ta.is_active DESC, ta.updated_at DESC
+    LIMIT 1
+    FOR UPDATE;
+
+    IF v_existing.id IS NOT NULL AND v_existing.is_active AND NOT v_is_active THEN
+      UPDATE public.teaching_assignments SET is_active = FALSE
+      WHERE id = v_existing.id
+      RETURNING * INTO v_row;
+      INSERT INTO public.audit_logs (actor_id, action, entity, entity_id, college_id, details)
+      VALUES (
+        v_uid, 'teaching_assignment_deactivated', 'teaching_assignments', v_row.id, v_dg.college_id,
+        jsonb_build_object(
+          'assignment_id', v_row.id,
+          'delivery_group_id', v_dg_id,
+          'instructor_id', v_instructor_id,
+          'import_batch_id', v_batch_id,
+          'lifecycle_action', 'deactivated'
+        )
+      );
+      v_updated := v_updated + 1;
+      CONTINUE;
+    END IF;
+
+    IF NOT v_is_active THEN
+      -- inactive row with no existing active match → skip (no create of inactive)
+      v_unchanged := v_unchanged + 1;
+      CONTINUE;
+    END IF;
+
+    IF v_existing.id IS NOT NULL AND v_existing.is_active THEN
+      IF v_mode = 'insert_only' THEN
+        v_unchanged := v_unchanged + 1;
+        CONTINUE;
+      END IF;
+      v_same_hours := v_existing.assigned_component_hours IS NOT DISTINCT FROM v_hours;
+      v_same_notes := v_existing.notes IS NOT DISTINCT FROM v_notes;
+      IF v_same_hours AND v_same_notes
+         AND v_existing.course_offering_id IS NOT DISTINCT FROM v_offering_id THEN
+        v_unchanged := v_unchanged + 1;
+        CONTINUE;
+      END IF;
+
+      PERFORM public.validate_assignment_allocation_locked(
+        v_dg_id, v_existing.id, v_hours, v_pcc.weekly_contact_hours, true
+      );
+
+      UPDATE public.teaching_assignments SET
+        assigned_component_hours = v_hours,
+        weekly_hours = v_effective,
+        notes = COALESCE(v_notes, notes),
+        course_offering_id = v_offering_id,
+        expected_students = COALESCE(v_expected_students, expected_students),
+        required_room_type = COALESCE(v_required_room_type, required_room_type),
+        session_type = v_session_type,
+        cohort_id = v_dg.cohort_id,
+        plan_course_component_id = v_dg.component_id
+      WHERE id = v_existing.id
+      RETURNING * INTO v_row;
+
+      INSERT INTO public.audit_logs (actor_id, action, entity, entity_id, college_id, details)
+      VALUES (
+        v_uid, 'teaching_assignment_hours_updated', 'teaching_assignments', v_row.id, v_dg.college_id,
+        jsonb_build_object(
+          'assignment_id', v_row.id,
+          'delivery_group_id', v_dg_id,
+          'instructor_id', v_instructor_id,
+          'old_assigned_hours', v_existing.assigned_component_hours,
+          'new_assigned_hours', v_row.assigned_component_hours,
+          'import_batch_id', v_batch_id
+        )
+      );
+      v_updated := v_updated + 1;
+      CONTINUE;
+    END IF;
+
+    IF v_existing.id IS NOT NULL AND NOT v_existing.is_active THEN
+      IF v_mode = 'insert_only' THEN
+        v_unchanged := v_unchanged + 1;
+        CONTINUE;
+      END IF;
+
+      PERFORM public.validate_assignment_allocation_locked(
+        v_dg_id, v_existing.id, v_hours, v_pcc.weekly_contact_hours, true
+      );
+
+      UPDATE public.teaching_assignments SET
+        is_active = TRUE,
+        assigned_component_hours = v_hours,
+        weekly_hours = v_effective,
+        notes = COALESCE(v_notes, notes),
+        course_offering_id = v_offering_id,
+        cohort_id = v_dg.cohort_id,
+        plan_course_component_id = v_dg.component_id,
+        session_type = v_session_type,
+        expected_students = COALESCE(v_expected_students, v_dg.expected_students, expected_students),
+        required_room_type = COALESCE(v_required_room_type, required_room_type)
+      WHERE id = v_existing.id
+      RETURNING * INTO v_row;
+
+      INSERT INTO public.audit_logs (actor_id, action, entity, entity_id, college_id, details)
+      VALUES (
+        v_uid, 'teaching_assignment_reactivated', 'teaching_assignments', v_row.id, v_dg.college_id,
+        jsonb_build_object(
+          'assignment_id', v_row.id,
+          'delivery_group_id', v_dg_id,
+          'instructor_id', v_instructor_id,
+          'new_assigned_hours', v_hours,
+          'import_batch_id', v_batch_id,
+          'lifecycle_action', 'reactivated'
+        )
+      );
+      v_reactivated := v_reactivated + 1;
+      CONTINUE;
+    END IF;
+
+    -- no existing row
+    IF v_mode = 'update_existing' THEN
+      v_unchanged := v_unchanged + 1;
+      CONTINUE;
+    END IF;
+
+    PERFORM public.validate_assignment_allocation_locked(
+      v_dg_id, NULL, v_hours, v_pcc.weekly_contact_hours, true
+    );
+
+    INSERT INTO public.teaching_assignments (
+      college_id, course_offering_id, instructor_id, section_number, session_type,
+      weekly_hours, notes, expected_students, required_room_type, cohort_id,
+      plan_course_component_id, delivery_group_id, assigned_component_hours, is_active
+    ) VALUES (
+      v_dg.college_id, v_offering_id, v_instructor_id,
+      COALESCE(v_dg.group_code, v_dg.group_number::text), v_session_type,
+      v_effective, v_notes, COALESCE(v_expected_students, v_dg.expected_students, 0),
+      v_required_room_type, v_dg.cohort_id, v_dg.component_id, v_dg_id, v_hours, TRUE
+    )
+    RETURNING * INTO v_row;
+
+    INSERT INTO public.audit_logs (actor_id, action, entity, entity_id, college_id, details)
+    VALUES (
+      v_uid, 'teaching_assignment_created', 'teaching_assignments', v_row.id, v_dg.college_id,
+      jsonb_build_object(
+        'assignment_id', v_row.id,
+        'delivery_group_id', v_dg_id,
+        'instructor_id', v_instructor_id,
+        'new_assigned_hours', v_hours,
+        'import_batch_id', v_batch_id,
+        'lifecycle_action', 'created'
+      )
+    );
+    v_created := v_created + 1;
+  END LOOP;
+
+  RETURN jsonb_build_object(
+    'status', 'ok',
+    'rows_received', v_rows_received,
+    'rows_created', v_created,
+    'rows_updated', v_updated,
+    'rows_reactivated', v_reactivated,
+    'rows_unchanged', v_unchanged,
+    'validation_errors', '[]'::jsonb,
+    'warnings', v_warnings,
+    'import_batch_id', v_batch_id
+  );
+EXCEPTION WHEN OTHERS THEN
+  -- Any mid-apply failure rolls back the whole transaction (atomic)
+  RAISE;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.commit_teaching_assignments_v2_import(jsonb, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.commit_teaching_assignments_v2_import(jsonb, text) TO authenticated, service_role;
+
+COMMENT ON FUNCTION public.commit_teaching_assignments_v2_import(jsonb, text) IS
+  'PHASE-9.4 atomic teaching_assignments_v2 Excel import. Pre-validate then lock DGs ASC. Per-row audit. No sessions. No client direct DML.';
 
 COMMIT;

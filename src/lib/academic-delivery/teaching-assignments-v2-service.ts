@@ -11,6 +11,7 @@ import {
   parseWorkspacePayload,
   type AssignmentMutationResult,
   type TeachingAssignmentWorkspace,
+  type TeachingAssignmentsV2ImportCommitResult,
   type WorkloadImpactPreview,
   type WorkspaceFilters,
 } from "@/lib/academic-delivery/teaching-assignments-v2";
@@ -124,4 +125,31 @@ export async function deactivateTeachingAssignmentV2(input: {
   const result = parseMutationResult(data);
   if (!result.ok) throw new Error("ASSIGNMENT_MUTATION_FAILED");
   return result;
+}
+
+/**
+ * Atomic Excel import commit via gated batch RPC.
+ * No client-side insert/update/upsert on teaching_assignments.
+ */
+export async function commitTeachingAssignmentsV2Import(input: {
+  mode: "insert_only" | "update_existing" | "upsert";
+  rows: Array<Record<string, unknown>>;
+}): Promise<TeachingAssignmentsV2ImportCommitResult> {
+  const { data, error } = await client().rpc("commit_teaching_assignments_v2_import", {
+    p_rows: input.rows,
+    p_mode: input.mode,
+  });
+  if (error) throwMapped(error);
+  const payload = (data ?? {}) as TeachingAssignmentsV2ImportCommitResult;
+  return {
+    status: payload.status ?? "failed",
+    rows_received: Number(payload.rows_received ?? 0),
+    rows_created: Number(payload.rows_created ?? 0),
+    rows_updated: Number(payload.rows_updated ?? 0),
+    rows_reactivated: Number(payload.rows_reactivated ?? 0),
+    rows_unchanged: Number(payload.rows_unchanged ?? 0),
+    validation_errors: Array.isArray(payload.validation_errors) ? payload.validation_errors : [],
+    warnings: Array.isArray(payload.warnings) ? payload.warnings : [],
+    import_batch_id: payload.import_batch_id,
+  };
 }

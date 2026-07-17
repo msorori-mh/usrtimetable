@@ -129,6 +129,9 @@ export type WorkspaceFilters = {
 const RPC_ERROR_MESSAGES: Record<string, string> = {
   insufficient_privilege: "ليست لديك صلاحية لهذا الإجراء",
   OBSOLETE_DELIVERY_GROUP_ASSIGNMENT_FORBIDDEN: "لا يمكن الإسناد لمجموعة تدريس ملغاة (obsolete)",
+  DELIVERY_GROUP_INACTIVE_ASSIGNMENT_FORBIDDEN: "لا يمكن الإسناد لمجموعة تدريس غير نشطة",
+  INACTIVE_ASSIGNMENT_SESSION_FORBIDDEN: "لا يمكن ربط جلسة جديدة بتكليف غير نشط",
+  DELIVERY_GROUP_INACTIVE_SESSION_FORBIDDEN: "لا يمكن ربط جلسة بمجموعة تدريس غير نشطة",
   SUMMER_TRAINING_WEEKLY_ASSIGNMENT_FORBIDDEN: "التدريب الصيفي لا يُسند كتدريس أسبوعي",
   CO_TEACHING_HOURS_SPLIT_REQUIRED: "عند التدريس المشترك يجب تحديد ساعات كل مدرس صراحة",
   CO_TEACHING_HOURS_OVER_ALLOCATED: "مجموع ساعات الإسناد يتجاوز ساعات المكوّن",
@@ -155,6 +158,32 @@ export function mapAssignmentRpcError(raw: string | null | undefined): Assignmen
   }
   return { code: "RPC_ERROR", message: text };
 }
+
+/** Pure helper: delivery group may receive new/reactivated assignments. */
+export function canAssignToDeliveryGroup(row: {
+  is_obsolete?: boolean;
+  active?: boolean;
+}): boolean {
+  return row.is_obsolete !== true && row.active !== false;
+}
+
+export type TeachingAssignmentsV2ImportCommitResult = {
+  status: "ok" | "failed" | string;
+  rows_received: number;
+  rows_created: number;
+  rows_updated: number;
+  rows_reactivated: number;
+  rows_unchanged: number;
+  validation_errors: Array<{
+    row_number?: number | null;
+    natural_key?: string | null;
+    error_code: string;
+    error_message: string;
+    blocking?: boolean;
+  }>;
+  warnings?: unknown[];
+  import_batch_id?: string;
+};
 
 export function computeAllocationSummary(input: {
   deliveryGroupId: string;

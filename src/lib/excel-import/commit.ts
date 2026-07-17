@@ -7,6 +7,7 @@ import {
   derivePlanCourseComponents,
   isElectivePlaceholderCode,
 } from "@/lib/academic-delivery/plan-course-components";
+import { commitTeachingAssignmentsV2Import } from "@/lib/academic-delivery/teaching-assignments-v2-service";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -568,9 +569,14 @@ async function commitCohortElectiveSelections(
   }
 }
 
+/**
+ * Phase 9.4 V2 import — preparation/validation in TS; atomic commit via gated RPC.
+ * Atomic contract: all rows succeed or zero teaching_assignments DML / audit.
+ * No client-side insert/update/upsert/delete on teaching_assignments.
+ */
 async function commitTeachingAssignmentsV2(
   mode: ImportMode,
-  collegeId: string,
+  _collegeId: string,
   rows: ParsedRow[],
   r: CommitResult,
 ) {
@@ -582,7 +588,7 @@ async function commitTeachingAssignmentsV2(
     summer_training: "seminar",
   };
 
-  // Co-teaching split: same delivery_group with >1 instructor requires explicit hours on every row
+  // Local pre-checks (also enforced in RPC). Blocking → do not call commit RPC.
   const byGroup = new Map<string, ParsedRow[]>();
   for (const row of rows) {
     const v = row.values as any;
@@ -592,6 +598,7 @@ async function commitTeachingAssignmentsV2(
     list.push(row);
     byGroup.set(key, list);
   }
+  let localBlocking = false;
   for (const [, groupRows] of byGroup) {
     const instructors = new Set(
       groupRows.map((row) => String((row.values as any)._instructor_id ?? "")),
@@ -600,6 +607,7 @@ async function commitTeachingAssignmentsV2(
       for (const row of groupRows) {
         const v = row.values as any;
         if (v._assigned_component_hours == null) {
+          localBlocking = true;
           r.failed++;
           r.errors.push({
             rowNumber: row.rowNumber,
@@ -611,79 +619,92 @@ async function commitTeachingAssignmentsV2(
       }
     }
   }
+  if (localBlocking) {
+    // Atomic: do not partially commit when local co-teach validation failed
+    return;
+  }
 
+  const payloadRows: Array<Record<string, unknown>> = [];
   for (const row of rows) {
     const v = row.values as any;
     if (v._skip_commit) continue;
-    try {
-      if (!v._cohort_id) throw new Error("دفعة غير معروفة");
-      if (!v._course_id) throw new Error("مقرر غير معروف");
-      if (!v._component_id) throw new Error("مكوّن خطة غير معروف — استورد الخطة أولًا");
-      if (!v._delivery_group_id)
-        throw new Error("مجموعة تدريس مطلوبة — ولّد delivery_groups أولاً");
-      if (!v._offering_id)
-        throw new Error("لا يوجد طرح داخلي — شغّل generate_cohort_curriculum أولًا");
-      if (v.component_type === "summer_training")
-        throw new Error("لا يُسند التدريب الصيفي عبر الإسناد المجدول");
-
-      const assignedHours =
-        v._assigned_component_hours != null
-          ? Number(v._assigned_component_hours)
-          : v.assigned_component_hours != null && v.assigned_component_hours !== ""
-            ? Number(v.assigned_component_hours)
-            : null;
-      const effectiveWeekly =
-        assignedHours != null && Number.isFinite(assignedHours) ? assignedHours : null;
-
-      const { data: ex } = await (supabase.from("teaching_assignments") as any)
-        .select("id")
-        .eq("college_id", collegeId)
-        .eq("delivery_group_id", v._delivery_group_id)
-        .eq("instructor_id", v._instructor_id)
-        .maybeSingle();
-      const payload: Record<string, unknown> = {
-        college_id: collegeId,
-        course_offering_id: v._offering_id,
-        instructor_id: v._instructor_id,
-        cohort_id: v._cohort_id,
-        plan_course_component_id: v._component_id,
-        delivery_group_id: v._delivery_group_id,
-        session_type: sessionTypeMap[String(v.component_type)] ?? "lecture",
-        // V2: never invent DEFAULT 3; use explicit assigned hours when provided
-        weekly_hours: effectiveWeekly ?? 0,
-        assigned_component_hours: assignedHours,
-        expected_students: v.expected_students ?? 0,
-        required_room_type: v.required_room_type ?? null,
-        notes: v.notes ?? null,
-        is_active: v._is_active !== false,
-      };
-      if (ex?.id) {
-        if (mode === "insert_only") {
-          r.skipped++;
-          continue;
-        }
-        const { error } = await (supabase.from("teaching_assignments") as any)
-          .update(payload)
-          .eq("id", ex.id);
-        if (error) throw error;
-        r.updated++;
-      } else {
-        if (mode === "update_existing") {
-          r.skipped++;
-          continue;
-        }
-        const { error } = await (supabase.from("teaching_assignments") as any).insert(payload);
-        if (error) throw error;
-        r.inserted++;
-      }
-    } catch (e) {
+    if (!v._cohort_id || !v._course_id || !v._component_id || !v._delivery_group_id) {
       r.failed++;
       r.errors.push({
         rowNumber: row.rowNumber,
-        errorCode: "db_error",
-        message: `فشل: ${e instanceof Error ? e.message : String(e)}`,
+        errorCode: "required",
+        message: "حقول إلزامية ناقصة للدفعة/المقرر/المكوّن/مجموعة التدريس",
       });
+      continue;
     }
+    if (v.component_type === "summer_training") {
+      r.failed++;
+      r.errors.push({
+        rowNumber: row.rowNumber,
+        errorCode: "summer_training_forbidden",
+        message: "لا يُسند التدريب الصيفي عبر الإسناد المجدول",
+      });
+      continue;
+    }
+    const assignedHours =
+      v._assigned_component_hours != null
+        ? Number(v._assigned_component_hours)
+        : v.assigned_component_hours != null && v.assigned_component_hours !== ""
+          ? Number(v.assigned_component_hours)
+          : null;
+    payloadRows.push({
+      row_number: row.rowNumber,
+      delivery_group_id: v._delivery_group_id,
+      instructor_id: v._instructor_id,
+      assigned_component_hours:
+        assignedHours != null && Number.isFinite(assignedHours) ? assignedHours : null,
+      notes: v.notes ?? null,
+      is_active: v._is_active !== false,
+      course_offering_id: v._offering_id ?? null,
+      expected_students: v.expected_students ?? 0,
+      required_room_type: v.required_room_type ?? null,
+      session_type: sessionTypeMap[String(v.component_type)] ?? "lecture",
+    });
+  }
+
+  if (r.failed > 0) {
+    // Atomic: validation errors collected → do not call RPC
+    return;
+  }
+  if (payloadRows.length === 0) {
+    return;
+  }
+
+  try {
+    const result = await commitTeachingAssignmentsV2Import({ mode, rows: payloadRows });
+    if (result.status !== "ok") {
+      r.failed += result.validation_errors.length || 1;
+      for (const err of result.validation_errors) {
+        r.errors.push({
+          rowNumber: err.row_number ?? 0,
+          errorCode: err.error_code,
+          message: err.error_message,
+        });
+      }
+      if (result.validation_errors.length === 0) {
+        r.errors.push({
+          rowNumber: 0,
+          errorCode: "import_batch_failed",
+          message: "فشل استيراد تكليفات التدريس V2 دون تفاصيل صفوف",
+        });
+      }
+      return;
+    }
+    r.inserted += result.rows_created + result.rows_reactivated;
+    r.updated += result.rows_updated;
+    r.skipped += result.rows_unchanged;
+  } catch (e) {
+    r.failed++;
+    r.errors.push({
+      rowNumber: 0,
+      errorCode: "db_error",
+      message: `فشل الاستيراد الذري: ${e instanceof Error ? e.message : String(e)}`,
+    });
   }
 }
 

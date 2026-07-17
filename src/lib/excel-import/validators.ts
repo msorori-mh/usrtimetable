@@ -44,7 +44,7 @@ interface Lookups {
   electiveSlotCourses?: Map<string, boolean>;
   components?: Map<string, string>; // plan_course_id|component_type → id
   deliveryGroups?: Map<string, string>; // cohort_id|component_id|group_code → id
-  deliveryGroupMeta?: Map<string, { is_obsolete: boolean }>;
+  deliveryGroupMeta?: Map<string, { is_obsolete: boolean; active: boolean }>;
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -176,7 +176,7 @@ async function loadLookups(entity: ImportEntity, collegeId: string): Promise<Loo
     lk.components = new Map(comps.map((r) => [`${r.plan_course_id}|${r.component_type}`, r.id]));
     const dgs = await fetchAll(
       "delivery_groups",
-      "id, cohort_id, component_id, group_code, is_obsolete",
+      "id, cohort_id, component_id, group_code, is_obsolete, active",
     );
     lk.deliveryGroups = new Map(
       dgs.map((r) => [`${r.cohort_id}|${r.component_id}|${r.group_code}`, r.id]),
@@ -184,7 +184,10 @@ async function loadLookups(entity: ImportEntity, collegeId: string): Promise<Loo
     lk.deliveryGroupMeta = new Map(
       dgs.map((r) => [
         r.id as string,
-        { is_obsolete: Boolean((r as { is_obsolete?: boolean }).is_obsolete) },
+        {
+          is_obsolete: Boolean((r as { is_obsolete?: boolean }).is_obsolete),
+          active: (r as { active?: boolean }).active !== false,
+        },
       ]),
     );
     const offs = await fetchAll(
@@ -837,6 +840,15 @@ function runEntityValidation(
               columnName: "رمز_مجموعة_التقديم",
               errorCode: "obsolete_delivery_group",
               message: "لا يمكن إسناد مجموعة تدريس ملغاة (obsolete)",
+              rawValue: String(v.delivery_group_code),
+            });
+          } else if (meta?.active === false) {
+            errs.push({
+              rowNumber: row.rowNumber,
+              columnName: "رمز_مجموعة_التقديم",
+              errorCode: "inactive_delivery_group",
+              message:
+                "لا يمكن إسناد مجموعة تدريس غير نشطة (DELIVERY_GROUP_INACTIVE_ASSIGNMENT_FORBIDDEN)",
               rawValue: String(v.delivery_group_code),
             });
           }
