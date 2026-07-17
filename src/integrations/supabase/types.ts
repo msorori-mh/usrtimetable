@@ -3204,6 +3204,10 @@ export type Database = {
         }
         Returns: Json
       }
+      assert_delivery_group_assignable: {
+        Args: { p_active: boolean; p_is_obsolete: boolean }
+        Returns: undefined
+      }
       can_manage_college: {
         Args: { _college_id: string; _user_id: string }
         Returns: boolean
@@ -3212,19 +3216,16 @@ export type Database = {
         Args: { _college_id: string; _user_id: string }
         Returns: boolean
       }
+      commit_teaching_assignments_v2_import: {
+        Args: { p_mode?: string; p_rows: Json }
+        Returns: Json
+      }
       compute_delivery_group_allocation: {
         Args: { p_delivery_group_id: string }
         Returns: Json
       }
       compute_instructor_standard_workload: {
         Args: { p_instructor_id: string; p_term_id?: string }
-        Returns: Json
-      }
-      commit_teaching_assignments_v2_import: {
-        Args: {
-          p_mode?: string
-          p_rows: Json
-        }
         Returns: Json
       }
       create_teaching_assignment_v2: {
@@ -3256,6 +3257,14 @@ export type Database = {
         Args: { p_delivery_group_id: string }
         Returns: Json
       }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       list_teaching_assignment_workspace: {
         Args: {
           p_assignment_status?: string
@@ -3269,6 +3278,43 @@ export type Database = {
         }
         Returns: Json
       }
+      lock_delivery_group_for_assignment: {
+        Args: { p_delivery_group_id: string }
+        Returns: {
+          active: boolean
+          capacity_limit: number | null
+          cohort_id: string
+          college_id: string
+          component_id: string
+          created_at: string
+          excluded_from_standard_workload: boolean
+          expected_students: number
+          group_code: string
+          group_number: number | null
+          id: string
+          is_obsolete: boolean
+          plan_course_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "delivery_groups"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      move_or_reschedule_schedule_session: {
+        Args: {
+          p_change_reason?: string
+          p_expected_updated_at: string
+          p_session_id: string
+          p_target_day_of_week: number
+          p_target_end_time: string
+          p_target_room_id: string
+          p_target_start_time: string
+        }
+        Returns: Json
+      }
       preview_instructor_workload_after_assignment: {
         Args: {
           p_assigned_component_hours?: number
@@ -3276,6 +3322,10 @@ export type Database = {
           p_delivery_group_id: string
           p_instructor_id: string
         }
+        Returns: Json
+      }
+      resolve_compatibility_offering_set: {
+        Args: { p_offerings: Json }
         Returns: Json
       }
       resolve_offering_for_delivery_group: {
@@ -3291,33 +3341,19 @@ export type Database = {
         }
         Returns: Json
       }
-      has_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: boolean
-      }
-      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
-      move_or_reschedule_schedule_session: {
-        Args: {
-          p_change_reason?: string
-          p_expected_updated_at: string
-          p_session_id: string
-          p_target_day_of_week: number
-          p_target_end_time: string
-          p_target_room_id: string
-          p_target_start_time: string
-        }
-        Returns: Json
-      }
-      resolve_compatibility_offering_set: {
-        Args: { p_offerings: Json }
-        Returns: Json
-      }
       user_in_college: {
         Args: { _college_id: string; _user_id: string }
         Returns: boolean
+      }
+      validate_assignment_allocation_locked: {
+        Args: {
+          p_component_hours: number
+          p_delivery_group_id: string
+          p_exclude_assignment_id: string
+          p_include_new_row?: boolean
+          p_new_hours: number
+        }
+        Returns: undefined
       }
       validate_schedule_session_move: {
         Args: {
