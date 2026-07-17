@@ -1461,6 +1461,8 @@ COMMENT ON FUNCTION public.deactivate_teaching_assignment_v2(uuid, timestamptz, 
 
 -- ---------------------------------------------------------------------------
 -- 13) ensure_ss_college — preserve Phase 9.3 checks + inactive assignment guard
+-- Applied only on INSERT or when teaching_assignment_id / delivery_group_id change.
+-- Historical sessions with unrelated UPDATEs remain untouched.
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.ensure_ss_college()
 RETURNS trigger
@@ -1575,6 +1577,7 @@ COMMENT ON FUNCTION public.ensure_ss_college() IS
 
 -- ---------------------------------------------------------------------------
 -- 14) Atomic import batch RPC (import-only; not a general bulk UI API)
+-- Pre-validates all rows before first DML. Locks delivery_groups in id ASC order.
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.commit_teaching_assignments_v2_import(
   p_rows jsonb,
@@ -1884,6 +1887,7 @@ BEGIN
     END IF;
 
     IF NOT v_is_active THEN
+      -- inactive row with no existing active match → skip (no create of inactive)
       v_unchanged := v_unchanged + 1;
       CONTINUE;
     END IF;

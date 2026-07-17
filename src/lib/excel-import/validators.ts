@@ -28,12 +28,23 @@ interface Lookups {
   sections?: Map<string, string>; // key: course_id|term_id|section_number → section_id
   levels?: Map<string, string>; // key: program_id|level_number → level_id
   sectionGroups?: Map<string, string>; // key: term_id|course_id|group_name → group_id
-  cohortsByCode?: Map<string, any>; // code → cohort row
+  cohortsByCode?: Map<
+    string,
+    {
+      id: string;
+      code?: string | null;
+      program_id: string;
+      level_id: string;
+      study_system: string;
+      term_id: string;
+    }
+  >; // code → cohort row
   electiveSlots?: Map<string, string>; // study_plan_id|slot_code → id
   /** elective_slot_id|course_id → true when active membership exists */
   electiveSlotCourses?: Map<string, boolean>;
   components?: Map<string, string>; // plan_course_id|component_type → id
   deliveryGroups?: Map<string, string>; // cohort_id|component_id|group_code → id
+  deliveryGroupMeta?: Map<string, { is_obsolete: boolean; active: boolean }>;
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -163,9 +174,21 @@ async function loadLookups(entity: ImportEntity, collegeId: string): Promise<Loo
   if (entity === "teaching_assignments_v2") {
     const comps = await fetchAll("plan_course_components", "id, plan_course_id, component_type");
     lk.components = new Map(comps.map((r) => [`${r.plan_course_id}|${r.component_type}`, r.id]));
-    const dgs = await fetchAll("delivery_groups", "id, cohort_id, component_id, group_code");
+    const dgs = await fetchAll(
+      "delivery_groups",
+      "id, cohort_id, component_id, group_code, is_obsolete, active",
+    );
     lk.deliveryGroups = new Map(
       dgs.map((r) => [`${r.cohort_id}|${r.component_id}|${r.group_code}`, r.id]),
+    );
+    lk.deliveryGroupMeta = new Map(
+      dgs.map((r) => [
+        r.id as string,
+        {
+          is_obsolete: Boolean((r as { is_obsolete?: boolean }).is_obsolete),
+          active: (r as { active?: boolean }).active !== false,
+        },
+      ]),
     );
     const offs = await fetchAll(
       "course_offerings",
@@ -486,7 +509,7 @@ function buildLogicalKey(entity: ImportEntity, row: ParsedRow): string | null {
     case "cohort_elective_selections":
       return `${v.cohort_code}|${v.elective_slot_code}`.toLowerCase();
     case "teaching_assignments_v2":
-      return `${v.cohort_code}|${v.course_code}|${v.component_type}|${v.employee_number}`.toLowerCase();
+      return `${v.cohort_code}|${v.course_code}|${v.component_type}|${v.delivery_group_code}|${v.employee_number}`.toLowerCase();
     default:
       return null;
   }
@@ -731,10 +754,52 @@ function runEntityValidation(
       `محاضر غير معروف: ${v.employee_number}`,
       v.employee_number,
     );
+    need(
+      !!String(v.delivery_group_code ?? "").trim(),
+      "رمز_مجموعة_التقديم",
+      "required",
+      "رمز مجموعة التدريس مطلوب — يعتمد الاستيراد على delivery_groups المولَّدة مسبقاً",
+      v.delivery_group_code,
+    );
+    if (String(v.component_type) === "summer_training") {
+      errs.push({
+        rowNumber: row.rowNumber,
+        columnName: "نوع_المكوّن",
+        errorCode: "summer_training_forbidden",
+        message: "التدريب الصيفي لا يُسند كتدريس أسبوعي",
+        rawValue: String(v.component_type),
+      });
+    }
+    const hoursRaw = v.assigned_component_hours;
+    if (hoursRaw !== null && hoursRaw !== undefined && hoursRaw !== "") {
+      const h = Number(hoursRaw);
+      need(
+        Number.isFinite(h) && h > 0,
+        "ساعات_المكوّن_المسندة",
+        "invalid_hours",
+        "ساعات المكوّن المسندة يجب أن تكون موجبة",
+        hoursRaw,
+      );
+      v._assigned_component_hours = h;
+    }
+    if (v.is_active !== null && v.is_active !== undefined && v.is_active !== "") {
+      const b = toBool(v.is_active);
+      need(b !== null, "نشط", "invalid_boolean", "قيمة نشط غير صالحة", v.is_active);
+      if (b !== null) v._is_active = b;
+    }
     if (cohort) v._cohort_id = cohort.id;
     if (c) v._course_id = c.id;
     if (insId) v._instructor_id = insId;
     if (cohort && c) {
+      if (v.study_system && String(v.study_system) !== String(cohort.study_system)) {
+        errs.push({
+          rowNumber: row.rowNumber,
+          columnName: "نظام_الدراسة",
+          errorCode: "study_system_mismatch",
+          message: `نظام الدراسة لا يطابق الدفعة (${cohort.study_system})`,
+          rawValue: String(v.study_system),
+        });
+      }
       // find plan_course via any study plan for program
       let planCourseId: string | null = null;
       for (const [k, id] of lk.planCourses ?? []) {
@@ -759,7 +824,35 @@ function runEntityValidation(
       if (offId) v._offering_id = offId;
       if (v.delivery_group_code && compId) {
         const dg = lk.deliveryGroups?.get(`${cohort.id}|${compId}|${v.delivery_group_code}`);
-        if (dg) v._delivery_group_id = dg;
+        need(
+          !!dg,
+          "رمز_مجموعة_التقديم",
+          "unknown_delivery_group",
+          `مجموعة تدريس غير معروفة — ولّد delivery_groups أولاً: ${v.delivery_group_code}`,
+          v.delivery_group_code,
+        );
+        if (dg) {
+          v._delivery_group_id = dg;
+          const meta = lk.deliveryGroupMeta?.get(dg);
+          if (meta?.is_obsolete) {
+            errs.push({
+              rowNumber: row.rowNumber,
+              columnName: "رمز_مجموعة_التقديم",
+              errorCode: "obsolete_delivery_group",
+              message: "لا يمكن إسناد مجموعة تدريس ملغاة (obsolete)",
+              rawValue: String(v.delivery_group_code),
+            });
+          } else if (meta?.active === false) {
+            errs.push({
+              rowNumber: row.rowNumber,
+              columnName: "رمز_مجموعة_التقديم",
+              errorCode: "inactive_delivery_group",
+              message:
+                "لا يمكن إسناد مجموعة تدريس غير نشطة (DELIVERY_GROUP_INACTIVE_ASSIGNMENT_FORBIDDEN)",
+              rawValue: String(v.delivery_group_code),
+            });
+          }
+        }
       }
     }
   }

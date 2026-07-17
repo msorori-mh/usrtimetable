@@ -141,18 +141,24 @@ export type CoTeachingHoursValidation =
       code:
         | "CO_TEACHING_HOURS_SPLIT_REQUIRED"
         | "CO_TEACHING_HOURS_OVER_ALLOCATED"
-        | "OBSOLETE_DELIVERY_GROUP_ASSIGNMENT_FORBIDDEN";
+        | "OBSOLETE_DELIVERY_GROUP_ASSIGNMENT_FORBIDDEN"
+        | "DELIVERY_GROUP_INACTIVE_ASSIGNMENT_FORBIDDEN";
     };
 
-/** Pure validation mirroring ensure_ta_college co-teaching / obsolete rules. */
+/** Pure validation mirroring ensure_ta_college co-teaching / obsolete / inactive rules. */
 export function validateCoTeachingHours(input: {
   isObsolete?: boolean;
+  /** delivery_groups.active — false rejects active assignments */
+  isActiveGroup?: boolean;
   componentWeeklyHours: number;
   /** All assignments on the group including the candidate (assigned hours may be null). */
   assignedHours: Array<number | null | undefined>;
 }): CoTeachingHoursValidation {
   if (input.isObsolete) {
     return { ok: false, code: "OBSOLETE_DELIVERY_GROUP_ASSIGNMENT_FORBIDDEN" };
+  }
+  if (input.isActiveGroup === false) {
+    return { ok: false, code: "DELIVERY_GROUP_INACTIVE_ASSIGNMENT_FORBIDDEN" };
   }
   const hours = input.assignedHours;
   if (hours.length > 1 && hours.some((h) => h == null || !Number.isFinite(Number(h)))) {

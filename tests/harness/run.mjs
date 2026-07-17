@@ -33,6 +33,8 @@ const harnesses = [
   "term-reference-remediation.harness.ts",
   "course-offering-dependency-fk.harness.ts",
   "academic-delivery-v2-import-generator.harness.ts",
+  "delivery-groups-workload-engine.harness.ts",
+  "teaching-assignments-v2-runtime.harness.ts",
 ];
 
 let exitCode = 0;

@@ -424,10 +424,10 @@ export const TEMPLATES: Record<string, TemplateDef> = {
 
   teaching_assignments_v2: {
     entity: "teaching_assignments_v2",
-    label: "الإسناد التدريسي V2 (دفعة + مكوّن)",
+    label: "الإسناد التدريسي V2 (دفعة + مجموعة تدريس)",
     sheetName: "assignments_v2",
     uniqueKey: "_logical",
-    uniqueKeyLabel: "دفعة + مقرر + مكوّن + محاضر",
+    uniqueKeyLabel: "دفعة + مقرر + مكوّن + مجموعة + محاضر",
     commitMode: "custom",
     columns: [
       { key: "cohort_code", header: "رمز_الدفعة", required: true, example: "CS-L3-2024" },
@@ -439,9 +439,31 @@ export const TEMPLATES: Record<string, TemplateDef> = {
         enumValues: ["theory", "practical", "tutorial", "project", "summer_training"],
         example: "theory",
       },
+      {
+        key: "delivery_group_code",
+        header: "رمز_مجموعة_التقديم",
+        required: true,
+        example: "G1",
+      },
       { key: "employee_number", header: "رقم_الموظف_للمحاضر", required: true, example: "EMP001" },
-      { key: "delivery_group_code", header: "رمز_مجموعة_التقديم", example: "" },
-      { key: "weekly_hours", header: "ساعات_أسبوعية", type: "number", example: "3" },
+      {
+        key: "assigned_component_hours",
+        header: "ساعات_المكوّن_المسندة",
+        type: "number",
+        example: "3",
+      },
+      {
+        key: "study_system",
+        header: "نظام_الدراسة",
+        enumValues: ["regular", "parallel", "evening", "distance", "other"],
+        example: "regular",
+      },
+      {
+        key: "is_active",
+        header: "نشط",
+        type: "boolean",
+        example: "true",
+      },
       { key: "expected_students", header: "الطلاب_المتوقعون", type: "number", example: "30" },
       {
         key: "required_room_type",

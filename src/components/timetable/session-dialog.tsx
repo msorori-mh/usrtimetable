@@ -2,7 +2,11 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +14,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -18,10 +26,14 @@ import { logAudit } from "@/lib/audit";
 import { validateProposed, type Conflict } from "@/lib/conflict-engine/validator";
 import { AlertTriangle, Trash2, Lock, Unlock } from "lucide-react";
 
-const toMin = (s: string) => { const [h, m] = s.slice(0,5).split(":").map(Number); return h * 60 + m; };
+const toMin = (s: string) => {
+  const [h, m] = s.slice(0, 5).split(":").map(Number);
+  return h * 60 + m;
+};
 const addMin = (s: string, add: number) => {
   const total = toMin(s) + add;
-  const h = Math.floor(total / 60) % 24, m = total % 60;
+  const h = Math.floor(total / 60) % 24,
+    m = total % 60;
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 };
 
@@ -55,11 +67,21 @@ interface FormState {
 }
 
 const empty: FormState = {
-  course_offering_id: "", teaching_assignment_id: null, instructor_id: "",
-  room_id: null, section_id: null, section_group_id: null,
-  study_system: "regular", day_of_week: 0, start_time: "08:00", end_time: "10:00",
-  session_type: "lecture", expected_students: 0,
-  is_locked: false, lock_reason: null, source_type: "manual",
+  course_offering_id: "",
+  teaching_assignment_id: null,
+  instructor_id: "",
+  room_id: null,
+  section_id: null,
+  section_group_id: null,
+  study_system: "regular",
+  day_of_week: 0,
+  start_time: "08:00",
+  end_time: "10:00",
+  session_type: "lecture",
+  expected_students: 0,
+  is_locked: false,
+  lock_reason: null,
+  source_type: "manual",
 };
 
 export function SessionDialog({
@@ -81,9 +103,11 @@ export function SessionDialog({
     queryKey: ["co-for-sched", collegeId],
     enabled: open && !!collegeId,
     queryFn: async () => {
-      const { data } = await supabase.from("course_offerings")
+      const { data } = await supabase
+        .from("course_offerings")
         .select("id, course_id, expected_students, courses(code, name)")
-        .eq("college_id", collegeId).limit(500);
+        .eq("college_id", collegeId)
+        .limit(500);
       return data ?? [];
     },
   });
@@ -91,8 +115,11 @@ export function SessionDialog({
     queryKey: ["inst-for-sched", collegeId],
     enabled: open && !!collegeId,
     queryFn: async () => {
-      const { data } = await supabase.from("instructors")
-        .select("id, full_name").eq("college_id", collegeId).limit(500);
+      const { data } = await supabase
+        .from("instructors")
+        .select("id, full_name")
+        .eq("college_id", collegeId)
+        .limit(500);
       return data ?? [];
     },
   });
@@ -100,7 +127,11 @@ export function SessionDialog({
     queryKey: ["rooms-for-sched", collegeId],
     enabled: open && !!collegeId,
     queryFn: async () => {
-      const { data } = await supabase.from("rooms").select("id, code, name, capacity").eq("college_id", collegeId).limit(500);
+      const { data } = await supabase
+        .from("rooms")
+        .select("id, code, name, capacity")
+        .eq("college_id", collegeId)
+        .limit(500);
       return data ?? [];
     },
   });
@@ -108,7 +139,11 @@ export function SessionDialog({
     queryKey: ["sec-for-sched", collegeId],
     enabled: open && !!collegeId,
     queryFn: async () => {
-      const { data } = await supabase.from("sections").select("id, section_number, study_system").eq("college_id", collegeId).limit(500);
+      const { data } = await supabase
+        .from("sections")
+        .select("id, section_number, study_system")
+        .eq("college_id", collegeId)
+        .limit(500);
       return data ?? [];
     },
   });
@@ -116,8 +151,13 @@ export function SessionDialog({
     queryKey: ["ta-for-sched", collegeId],
     enabled: open && !!collegeId,
     queryFn: async () => {
-      const { data } = await supabase.from("teaching_assignments")
-        .select("id, course_offering_id, instructor_id").eq("college_id", collegeId).limit(1000);
+      // New sessions: only active assignments (inactive blocked in DB as well)
+      const { data } = await supabase
+        .from("teaching_assignments")
+        .select("id, course_offering_id, instructor_id, is_active")
+        .eq("college_id", collegeId)
+        .eq("is_active", true)
+        .limit(1000);
       return data ?? [];
     },
   });
@@ -125,8 +165,14 @@ export function SessionDialog({
   useEffect(() => {
     if (!open) return;
     if (sessionId) {
-      supabase.from("schedule_sessions").select("*").eq("id", sessionId).single()
-        .then(({ data }) => { if (data) setForm({ ...empty, ...data } as FormState); });
+      supabase
+        .from("schedule_sessions")
+        .select("*")
+        .eq("id", sessionId)
+        .single()
+        .then(({ data }) => {
+          if (data) setForm({ ...empty, ...data } as FormState);
+        });
     } else {
       setForm({ ...empty, ...(defaults ?? {}) });
       setConflicts([]);
@@ -138,34 +184,63 @@ export function SessionDialog({
     setValidating(true);
     try {
       const res = await validateProposed({
-        collegeId, scheduleVersionId,
+        collegeId,
+        scheduleVersionId,
         sessions: [{ id: sessionId ?? undefined, ...form } as any],
         excludeExistingSessionIds: sessionId ? [sessionId] : [],
       });
       setConflicts(res.conflicts);
       return res;
-    } finally { setValidating(false); }
+    } finally {
+      setValidating(false);
+    }
   };
 
   const save = useMutation({
     mutationFn: async () => {
       if (!canMutate) throw new Error("العرض للقراءة فقط — لا يمكن الحفظ");
-      if (!form.course_offering_id || !form.instructor_id) throw new Error("المقرر والمحاضر مطلوبان");
+      if (!form.course_offering_id || !form.instructor_id)
+        throw new Error("المقرر والمحاضر مطلوبان");
       const res = await runValidate();
       if (!res || res.unapprovedHardConflicts > 0) {
         toast.error(`⚠️ يوجد ${res?.unapprovedHardConflicts ?? 0} تعارض إلزامي — لا يمكن الحفظ`);
-        await logAudit({ action: "blocked_conflict", entity: "schedule_sessions", entityId: sessionId ?? null, collegeId, details: { codes: (res?.conflicts ?? []).map(r => r.code) } });
+        await logAudit({
+          action: "blocked_conflict",
+          entity: "schedule_sessions",
+          entityId: sessionId ?? null,
+          collegeId,
+          details: { codes: (res?.conflicts ?? []).map((r) => r.code) },
+        });
         throw new Error("لا يمكن الحفظ — توجد تعارضات إلزامية");
       }
       const payload = { ...form, college_id: collegeId, schedule_version_id: scheduleVersionId };
       if (sessionId) {
-        const { error } = await supabase.from("schedule_sessions").update(payload).eq("id", sessionId);
+        const { error } = await supabase
+          .from("schedule_sessions")
+          .update(payload)
+          .eq("id", sessionId);
         if (error) throw error;
-        await logAudit({ action: "update", entity: "schedule_sessions", entityId: sessionId, collegeId, details: { day_of_week: form.day_of_week } });
+        await logAudit({
+          action: "update",
+          entity: "schedule_sessions",
+          entityId: sessionId,
+          collegeId,
+          details: { day_of_week: form.day_of_week },
+        });
       } else {
-        const { data, error } = await supabase.from("schedule_sessions").insert(payload).select("id").single();
+        const { data, error } = await supabase
+          .from("schedule_sessions")
+          .insert(payload)
+          .select("id")
+          .single();
         if (error) throw error;
-        await logAudit({ action: "create", entity: "schedule_sessions", entityId: data.id, collegeId, details: { day_of_week: form.day_of_week } });
+        await logAudit({
+          action: "create",
+          entity: "schedule_sessions",
+          entityId: data.id,
+          collegeId,
+          details: { day_of_week: form.day_of_week },
+        });
       }
     },
     onSuccess: () => {
@@ -182,7 +257,12 @@ export function SessionDialog({
       if (!sessionId) return;
       const { error } = await supabase.from("schedule_sessions").delete().eq("id", sessionId);
       if (error) throw error;
-      await logAudit({ action: "delete", entity: "schedule_sessions", entityId: sessionId, collegeId });
+      await logAudit({
+        action: "delete",
+        entity: "schedule_sessions",
+        entityId: sessionId,
+        collegeId,
+      });
     },
     onSuccess: () => {
       toast.success("تم الحذف");
@@ -192,18 +272,18 @@ export function SessionDialog({
     onError: (e) => toast.error((e as Error).message),
   });
 
-  const filteredTAs = (tas ?? []).filter((t) => !form.course_offering_id || t.course_offering_id === form.course_offering_id);
+  const filteredTAs = (tas ?? []).filter(
+    (t) => !form.course_offering_id || t.course_offering_id === form.course_offering_id,
+  );
 
-  const title = readOnly
-    ? "عرض محاضرة"
-    : sessionId
-      ? "تعديل محاضرة"
-      : "إضافة محاضرة";
+  const title = readOnly ? "عرض محاضرة" : sessionId ? "تعديل محاضرة" : "إضافة محاضرة";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent dir="rtl" className="max-w-3xl max-h-[90vh] overflow-auto">
-        <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
         {readOnly && (
           <p className="text-sm text-muted-foreground -mt-1 mb-1">
             العرض للقراءة فقط — لا يمكن الحفظ أو الحذف أو التعديل.
@@ -217,10 +297,14 @@ export function SessionDialog({
               disabled={readOnly}
               onValueChange={(v) => canMutate && setForm({ ...form, course_offering_id: v })}
             >
-              <SelectTrigger><SelectValue placeholder="اختر المقرر" /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="اختر المقرر" />
+              </SelectTrigger>
               <SelectContent>
                 {(offerings ?? []).map((o: any) => (
-                  <SelectItem key={o.id} value={o.id}>{o.courses?.code} — {o.courses?.name}</SelectItem>
+                  <SelectItem key={o.id} value={o.id}>
+                    {o.courses?.code} — {o.courses?.name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -230,18 +314,30 @@ export function SessionDialog({
             <Select
               value={form.teaching_assignment_id ?? "none"}
               disabled={readOnly}
-              onValueChange={(v) => canMutate && setForm({
-                ...form,
-                teaching_assignment_id: v === "none" ? null : v,
-                instructor_id: v === "none" ? form.instructor_id : (tas?.find(t => t.id === v)?.instructor_id ?? form.instructor_id),
-              })}
+              onValueChange={(v) =>
+                canMutate &&
+                setForm({
+                  ...form,
+                  teaching_assignment_id: v === "none" ? null : v,
+                  instructor_id:
+                    v === "none"
+                      ? form.instructor_id
+                      : (tas?.find((t) => t.id === v)?.instructor_id ?? form.instructor_id),
+                })
+              }
             >
-              <SelectTrigger><SelectValue placeholder="اختياري" /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="اختياري" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">— بدون —</SelectItem>
                 {filteredTAs.map((t: any) => {
-                  const ins = instructors?.find(i => i.id === t.instructor_id);
-                  return <SelectItem key={t.id} value={t.id}>{ins?.full_name ?? t.id.slice(0, 6)}</SelectItem>;
+                  const ins = instructors?.find((i) => i.id === t.instructor_id);
+                  return (
+                    <SelectItem key={t.id} value={t.id}>
+                      {ins?.full_name ?? t.id.slice(0, 6)}
+                    </SelectItem>
+                  );
                 })}
               </SelectContent>
             </Select>
@@ -253,10 +349,14 @@ export function SessionDialog({
               disabled={readOnly}
               onValueChange={(v) => canMutate && setForm({ ...form, instructor_id: v })}
             >
-              <SelectTrigger><SelectValue placeholder="اختر المحاضر" /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="اختر المحاضر" />
+              </SelectTrigger>
               <SelectContent>
                 {(instructors ?? []).map((i: any) => (
-                  <SelectItem key={i.id} value={i.id}>{i.full_name}</SelectItem>
+                  <SelectItem key={i.id} value={i.id}>
+                    {i.full_name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -266,13 +366,19 @@ export function SessionDialog({
             <Select
               value={form.room_id ?? "none"}
               disabled={readOnly}
-              onValueChange={(v) => canMutate && setForm({ ...form, room_id: v === "none" ? null : v })}
+              onValueChange={(v) =>
+                canMutate && setForm({ ...form, room_id: v === "none" ? null : v })
+              }
             >
-              <SelectTrigger><SelectValue placeholder="اختياري" /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="اختياري" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">— بدون —</SelectItem>
                 {(rooms ?? []).map((r: any) => (
-                  <SelectItem key={r.id} value={r.id}>{r.code} — {r.name} (سعة {r.capacity})</SelectItem>
+                  <SelectItem key={r.id} value={r.id}>
+                    {r.code} — {r.name} (سعة {r.capacity})
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -282,13 +388,19 @@ export function SessionDialog({
             <Select
               value={form.section_id ?? "none"}
               disabled={readOnly}
-              onValueChange={(v) => canMutate && setForm({ ...form, section_id: v === "none" ? null : v })}
+              onValueChange={(v) =>
+                canMutate && setForm({ ...form, section_id: v === "none" ? null : v })
+              }
             >
-              <SelectTrigger><SelectValue placeholder="اختياري" /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="اختياري" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">— بدون —</SelectItem>
                 {(sections ?? []).map((s: any) => (
-                  <SelectItem key={s.id} value={s.id}>{s.section_number}</SelectItem>
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.section_number}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -300,7 +412,9 @@ export function SessionDialog({
               disabled={readOnly}
               onValueChange={(v) => canMutate && setForm({ ...form, study_system: v as any })}
             >
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="regular">انتظام</SelectItem>
                 <SelectItem value="parallel">موازي</SelectItem>
@@ -315,7 +429,9 @@ export function SessionDialog({
               disabled={readOnly}
               onValueChange={(v) => canMutate && setForm({ ...form, day_of_week: Number(v) })}
             >
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="6">السبت</SelectItem>
                 <SelectItem value="0">الأحد</SelectItem>
@@ -334,7 +450,9 @@ export function SessionDialog({
               disabled={readOnly}
               onValueChange={(v) => canMutate && setForm({ ...form, session_type: v })}
             >
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="lecture">محاضرة</SelectItem>
                 <SelectItem value="lab">معمل</SelectItem>
@@ -347,11 +465,11 @@ export function SessionDialog({
             <Input
               type="time"
               disabled={readOnly}
-              value={form.start_time.slice(0,5)}
+              value={form.start_time.slice(0, 5)}
               onChange={(e) => {
                 if (!canMutate) return;
                 const start = e.target.value;
-                const dur = Math.max(60, (toMin(form.end_time) - toMin(form.start_time)) || 60);
+                const dur = Math.max(60, toMin(form.end_time) - toMin(form.start_time) || 60);
                 setForm({ ...form, start_time: start, end_time: addMin(start, dur) });
               }}
             />
@@ -359,11 +477,17 @@ export function SessionDialog({
           <div>
             <Label>المدة</Label>
             <Select
-              value={String(Math.max(1, Math.round((toMin(form.end_time) - toMin(form.start_time)) / 60)))}
+              value={String(
+                Math.max(1, Math.round((toMin(form.end_time) - toMin(form.start_time)) / 60)),
+              )}
               disabled={readOnly}
-              onValueChange={(v) => canMutate && setForm({ ...form, end_time: addMin(form.start_time, Number(v) * 60) })}
+              onValueChange={(v) =>
+                canMutate && setForm({ ...form, end_time: addMin(form.start_time, Number(v) * 60) })
+              }
             >
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="1">ساعة واحدة</SelectItem>
                 <SelectItem value="2">ساعتان</SelectItem>
@@ -377,22 +501,39 @@ export function SessionDialog({
               type="number"
               disabled={readOnly}
               value={form.expected_students}
-              onChange={(e) => canMutate && setForm({ ...form, expected_students: Number(e.target.value) })}
+              onChange={(e) =>
+                canMutate && setForm({ ...form, expected_students: Number(e.target.value) })
+              }
             />
           </div>
-
         </div>
 
         <div className="mt-3 border rounded-md p-3 space-y-3 bg-muted/30">
           <div className="flex items-center gap-2 flex-wrap text-xs">
             <span className="font-semibold">مصدر المحاضرة:</span>
-            <Badge variant={form.source_type === "manual" ? "secondary" : form.source_type === "auto_generated" ? "default" : "outline"}>
-              {form.source_type === "manual" ? "يدوي" : form.source_type === "auto_generated" ? "تلقائي" : "منسوخ"}
+            <Badge
+              variant={
+                form.source_type === "manual"
+                  ? "secondary"
+                  : form.source_type === "auto_generated"
+                    ? "default"
+                    : "outline"
+              }
+            >
+              {form.source_type === "manual"
+                ? "يدوي"
+                : form.source_type === "auto_generated"
+                  ? "تلقائي"
+                  : "منسوخ"}
             </Badge>
             {form.is_locked ? (
-              <Badge variant="default" className="gap-1"><Lock className="h-3 w-3" /> مقفل</Badge>
+              <Badge variant="default" className="gap-1">
+                <Lock className="h-3 w-3" /> مقفل
+              </Badge>
             ) : (
-              <Badge variant="outline" className="gap-1"><Unlock className="h-3 w-3" /> غير مقفل</Badge>
+              <Badge variant="outline" className="gap-1">
+                <Unlock className="h-3 w-3" /> غير مقفل
+              </Badge>
             )}
           </div>
           {canMutate && (
@@ -400,7 +541,9 @@ export function SessionDialog({
               <Switch
                 id="lock-switch"
                 checked={form.is_locked}
-                onCheckedChange={(v) => setForm({ ...form, is_locked: v, lock_reason: v ? form.lock_reason : null })}
+                onCheckedChange={(v) =>
+                  setForm({ ...form, is_locked: v, lock_reason: v ? form.lock_reason : null })
+                }
               />
               <Label htmlFor="lock-switch" className="text-sm cursor-pointer">
                 قفل المحاضرة (تمنع المجدول التلقائي من تحريكها أو حذفها)
@@ -421,7 +564,6 @@ export function SessionDialog({
           )}
         </div>
 
-
         {conflicts.length > 0 && (
           <div className="mt-3 border border-destructive/40 rounded-md p-3 bg-destructive/5 space-y-2">
             <div className="flex items-center gap-2 text-destructive font-semibold text-sm">
@@ -429,7 +571,9 @@ export function SessionDialog({
             </div>
             {conflicts.map((c, i) => (
               <div key={i} className="text-xs">
-                <Badge variant="destructive" className="ml-1">{c.code}</Badge>
+                <Badge variant="destructive" className="ml-1">
+                  {c.code}
+                </Badge>
                 {c.message_ar}
                 <div className="text-muted-foreground text-[10px]">{c.message_en}</div>
               </div>
@@ -449,10 +593,14 @@ export function SessionDialog({
             </Button>
           )}
           {canMutate && (
-            <Button onClick={() => save.mutate()} disabled={save.isPending}>حفظ</Button>
+            <Button onClick={() => save.mutate()} disabled={save.isPending}>
+              حفظ
+            </Button>
           )}
           {readOnly && (
-            <Button variant="outline" onClick={() => onOpenChange(false)}>إغلاق</Button>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              إغلاق
+            </Button>
           )}
         </DialogFooter>
       </DialogContent>
