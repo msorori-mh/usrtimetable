@@ -14,3 +14,4 @@ Only decisions that cannot safely be inferred belong here.
 - Phase 9.5 assignment-integration migration is merged source-only as PR #37; production application remains prohibited without separate approval, payload identity verification, and migration preflight.
 - PR #30 remains isolated because it conflicts with `main`.
 - Published and archived schedule versions remain locked against ordinary editing.
+- Draft PR #38 remains fail-closed and unmerged until lifecycle status mutation plus audit insertion are one atomic transaction and unauthorized/audit-failure runtime cases pass; the current HIGH finding cannot be waived.

@@ -1,5 +1,17 @@
 # Timetable Autopilot Log
 
+## 2026-07-18 — Multi-agent orchestration cycle
+
+- Verified Codex CLI `0.144.5`, fetched `origin/main`, and inventoried worktrees, branches, PRs, checks, agent registry, logs, and results; dirty local `main` remained untouched.
+- Captured Phase 9.5 as `COMPLETE_ALREADY_MERGED` from PR #37 without repeating implementation.
+- Completed the draft lecturer timetable report fix in an isolated worktree and closed independent-review findings for query errors, stale lecturer selection across colleges, loading state, harness registration, and root-cause wording.
+- Focused harness, TypeScript, production build, scoped lint, `git diff --check`, and final independent review passed with no BLOCKER/HIGH/MEDIUM findings.
+- Committed `8c2bdaf`, pushed, opened PR #39, marked it ready after gates, and merged it as `df0dad5`.
+- Synchronized Draft PR #38 with the new main and preserved both lifecycle and report harness registrations.
+- Lifecycle review found a HIGH atomicity defect: schedule status can commit while audit identity/insertion fails. PR #38 remains Draft/BLOCKED; remediation requires a source-only transactional RPC or equivalent and runtime authorization/audit-failure tests before merge.
+- PR #30 remains conflicting and isolated. GitHub Actions/required checks remain unconfigured.
+- Production database writes, migration apply, deploy, publish, operational import, and real schedule publication: none.
+
 ## 2026-07-17 — Initial cycle
 
 - Read the initialization request and confirmed repository/project identity.
