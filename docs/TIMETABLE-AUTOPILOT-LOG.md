@@ -27,4 +27,5 @@
 - Independent security review found and closed two HIGH catalog-validation gaps (wrong same-name constraint definition and `ON UPDATE CASCADE`). Final source review passed with no HIGH/CRITICAL findings.
 - Committed and pushed security commit `8b1d74b`; opened Draft PR #33. It is not merge-ready until disposable PostgreSQL integration succeeds.
 - Isolated and fixed the two TypeScript implicit-any baseline errors. TypeScript and independent review passed; commit `d327dca` was pushed and Draft PR #34 opened.
+- Committed durable state files and the comment-only SQL repair as `22e4a9d`; opened Draft PR #35. Generated `src/routeTree.gen.ts` and `package-lock.json` were explicitly excluded and preserved.
 - Production impact: none.

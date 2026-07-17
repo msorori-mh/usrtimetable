@@ -22,6 +22,7 @@ Updated: 2026-07-17 (Asia/Riyadh)
 - Open PR #30: `feat/phase-9-2-academic-delivery-model-v2-import-generator`; status `CONFLICTING/DIRTY`; no checks.
 - Draft PR #33: cross-college reference-integrity source hardening; commit `8b1d74b`; source review passed, PostgreSQL integration gate pending.
 - Draft PR #34: implicit-any TypeScript fixes; commit `d327dca`; TypeScript and independent review passed.
+- Draft PR #35: durable autopilot state files plus the source-only SQL comment repair; commit `22e4a9d`.
 - Recent merged PRs: #32 (Phase 9.4), #31 (Phase 9.3), #29 (Phase 9.2).
 - GitHub Actions: no workflows and no runs were found. CI status: `NOT_CONFIGURED`.
 
@@ -68,5 +69,6 @@ Updated: 2026-07-17 (Asia/Riyadh)
 - TypeScript: baseline failures fixed on Draft PR #34; `tsc --noEmit` passes there.
 - Lint: `BASELINE_FAIL`, dominated by repository-wide CRLF/Prettier findings; no formatting sweep was performed.
 - Security Draft PR #33 targeted harness, `git diff --check`, and independent source review: `PASS`; disposable PostgreSQL enforcement test remains unavailable.
+- Build/install generated an uncommitted `src/routeTree.gen.ts` change and `package-lock.json`; both are excluded from PR #35 and preserved as known generated artifacts.
 
 Estimated completion is not asserted from file count. Current source maturity is strongest in builder/conflicts and weakest in cohorts, end-to-end imports, regression coverage, and verified runtime state.
