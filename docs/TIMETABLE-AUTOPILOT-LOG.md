@@ -1,5 +1,13 @@
 # Timetable Autopilot Log
 
+## 2026-07-18 — Next agent wave initialization
+
+- Created a clean leader worktree from live `origin/main` `df0dad5`; preserved dirty `C:\projects\usrtimetable-mainline` untouched.
+- Recorded the binding academic model: approved study plan and cohort curriculum are authoritative, electives are approved at cohort level, `academic_cohort` is the primary student context, and delivery groups are teaching splits only.
+- Classified `sections` and `course_offering_sections` as Legacy-only compatibility structures and prohibited new `section_id` dependencies without documented compatibility need.
+- Reconfirmed strict `regular`/`parallel` isolation and all production prohibitions.
+- Prepared the next three isolated agent scopes: atomic schedule lifecycle, academic-plan/cohort alignment, and conflict/exception reporting.
+
 ## 2026-07-17 — Initial cycle
 
 - Read the initialization request and confirmed repository/project identity.
