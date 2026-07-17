@@ -19,7 +19,7 @@ G0 identity gate: clean worktree, branch correct, local = remote = PR head, PR o
 
 | Path | Change |
 |---|---|
-| `supabase/migrations/20260716070000_delivery_groups_workload_engine.sql` | Remediation SQL (unapplied source) |
+| `supabase/migrations/20260716233716_73dc0ba0-e4ba-43be-8628-ef2c36564a62.sql` | Canonical Phase 9.3 SQL (applied payload; original source version `20260716070000`) |
 | `src/lib/academic-delivery/workload.ts` | Co-teaching + plan/course pure validators |
 | `src/lib/academic-delivery/delivery-groups.ts` | Obsolete lifecycle + offering resolve/dedupe |
 | `src/lib/academic-delivery/delivery-group-generator-summary.ts` | `status` contract + helpers |
@@ -97,11 +97,14 @@ Adopted **atomic pre-validate**:
 - Structured summary panel shows status / errors / warnings.
 - No Schedule Builder changes; no manual DG CRUD.
 
-## 11. Migration path — NOT APPLIED
+## 11. Migration path — canonical after Lovable apply
 
-File: `supabase/migrations/20260716070000_delivery_groups_workload_engine.sql`
-
-**CREATED — NOT APPLIED**
+- Original implementation source version: `20260716070000`
+- Canonical repository/history version: `20260716233716`
+- File: `supabase/migrations/20260716233716_73dc0ba0-e4ba-43be-8628-ef2c36564a62.sql`
+- Applied payload SHA-256: `AAF86E1C625F671C336EF5367A6F3013A3C0ACDADC8583E72491A8EBA9700445`
+- Payload unchanged; migration not reapplied in remediation.
+- Duplicate source `20260716070000_delivery_groups_workload_engine.sql` removed to prevent future pending/reapply risk.
 
 No Supabase CLI, no db push/reset/seed/repair, no generator execution, no live DML.
 

@@ -134,9 +134,13 @@ Flow:
 
 | Item | Value |
 |---|---|
-| Path | `supabase/migrations/20260716070000_delivery_groups_workload_engine.sql` |
-| Status | **CREATED — NOT APPLIED** |
-| Apply method | Lovable / Supabase management only (out of scope) |
+| Original implementation source version | `20260716070000` |
+| Canonical repository/history version (after Lovable apply) | `20260716233716` |
+| Path | `supabase/migrations/20260716233716_73dc0ba0-e4ba-43be-8628-ef2c36564a62.sql` |
+| Applied payload SHA-256 | `AAF86E1C625F671C336EF5367A6F3013A3C0ACDADC8583E72491A8EBA9700445` |
+| Status | **APPLIED (remote history) — payload unchanged; not reapplied** |
+| Duplicate source removed | `20260716070000_delivery_groups_workload_engine.sql` (prevents future pending/reapply) |
+| Apply method | Lovable / Supabase management only (out of scope for this report phase) |
 | Backfill / seed / generator invoke | None |
 | Generator auto-trigger | None |
 

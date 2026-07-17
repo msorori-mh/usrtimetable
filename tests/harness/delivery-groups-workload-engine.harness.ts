@@ -37,7 +37,8 @@ function assert(cond: boolean, msg: string) {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "../..");
-const MIG = "supabase/migrations/20260716070000_delivery_groups_workload_engine.sql";
+const MIG =
+  "supabase/migrations/20260716233716_73dc0ba0-e4ba-43be-8628-ef2c36564a62.sql";
 
 function read(rel: string) {
   return readFileSync(join(root, rel), "utf8");

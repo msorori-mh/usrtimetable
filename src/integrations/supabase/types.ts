@@ -1150,47 +1150,6 @@ export type Database = {
           },
         ]
       }
-      faculty_workload_policies: {
-        Row: {
-          active: boolean
-          college_id: string
-          created_at: string
-          id: string
-          rank_aliases: string[]
-          rank_code: string
-          required_load_hours: number
-          updated_at: string
-        }
-        Insert: {
-          active?: boolean
-          college_id: string
-          created_at?: string
-          id?: string
-          rank_aliases?: string[]
-          rank_code: string
-          required_load_hours: number
-          updated_at?: string
-        }
-        Update: {
-          active?: boolean
-          college_id?: string
-          created_at?: string
-          id?: string
-          rank_aliases?: string[]
-          rank_code?: string
-          required_load_hours?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "faculty_workload_policies_college_id_fkey"
-            columns: ["college_id"]
-            isOneToOne: false
-            referencedRelation: "colleges"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       elective_slot_courses: {
         Row: {
           active: boolean
@@ -1303,6 +1262,47 @@ export type Database = {
             columns: ["study_plan_id"]
             isOneToOne: false
             referencedRelation: "study_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      faculty_workload_policies: {
+        Row: {
+          active: boolean
+          college_id: string
+          created_at: string
+          id: string
+          rank_aliases: string[]
+          rank_code: string
+          required_load_hours: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          college_id: string
+          created_at?: string
+          id?: string
+          rank_aliases?: string[]
+          rank_code: string
+          required_load_hours: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          college_id?: string
+          created_at?: string
+          id?: string
+          rank_aliases?: string[]
+          rank_code?: string
+          required_load_hours?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "faculty_workload_policies_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
             referencedColumns: ["id"]
           },
         ]
@@ -2994,7 +2994,22 @@ export type Database = {
           standard_assigned_hours: number | null
           term_id: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "academic_cohorts_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "academic_terms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teaching_assignments_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "academic_cohorts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Functions: {
@@ -3194,20 +3209,16 @@ export type Database = {
         Args: { _college_id: string; _user_id: string }
         Returns: boolean
       }
+      compute_instructor_standard_workload: {
+        Args: { p_instructor_id: string; p_term_id?: string }
+        Returns: Json
+      }
       generate_cohort_curriculum: {
         Args: { p_cohort_id: string }
         Returns: Json
       }
       generate_cohort_delivery_groups: {
         Args: { p_cohort_id: string }
-        Returns: Json
-      }
-      compute_instructor_standard_workload: {
-        Args: { p_instructor_id: string; p_term_id?: string | null }
-        Returns: Json
-      }
-      resolve_compatibility_offering_set: {
-        Args: { p_offerings: Json }
         Returns: Json
       }
       has_role: {
@@ -3228,6 +3239,10 @@ export type Database = {
           p_target_room_id: string
           p_target_start_time: string
         }
+        Returns: Json
+      }
+      resolve_compatibility_offering_set: {
+        Args: { p_offerings: Json }
         Returns: Json
       }
       user_in_college: {
