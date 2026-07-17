@@ -1,13 +1,13 @@
 # University Timetable Platform — Execution State
 
-Updated: 2026-07-17 (Asia/Riyadh), accelerated continuation cycle
+Updated: 2026-07-18 (Asia/Riyadh), next-agent-wave initialization
 
 ## Repository state
 
 - Repository: `msorori-mh/usrtimetable`
 - Main worktree: `C:\projects\usrtimetable-mainline`
 - Local `main`: `8ef4226c06fbf5d45aca83212065f46f7c1de325` (28 commits behind)
-- `origin/main`: `5c20ea69b7556dc417ee1bcfdc16b26712baf8b8`
+- `origin/main`: `df0dad52155c06bef987439bbd5ab2ae86ca232f`
 - Autopilot worktree: `C:\projects\usrtimetable-autopilot`
 - Autopilot branch: `codex/timetable-autopilot-state`
 - Security hardening worktree: `C:\projects\usrtimetable-security-hardening`
@@ -30,13 +30,13 @@ Updated: 2026-07-17 (Asia/Riyadh), accelerated continuation cycle
 
 | Area | Status | Evidence / next action |
 | --- | --- | --- |
-| Schedule builder | REVIEW | Read/local edit, move, room change, optimistic timestamp, conflict validation, audit and locks exist; runtime UAT remains unproven. |
-| Version lifecycle | REVIEW | Transitions and gates exist; add optimistic status predicate, explicit authorization review, and superseding policy. |
-| Curriculum/cohorts | BLOCKED | Source schema exists; UI, generation, idempotency and regression tests are missing. Runtime schema status is unknown. |
+| Schedule builder | COMPLETE | Phase 9.5 assignment integration merged as PR #37; production migration remains unapplied. |
+| Version lifecycle | READY | New isolated agent will implement atomic lifecycle/audit, permissions, concurrency, and publish blockers without publishing actual data. |
+| Curriculum/cohorts | READY | Approved study plan and `academic_cohort` are authoritative; new flow must remove operational section dependence while preserving Legacy adapters. |
 | Offerings/assignments | REVIEW | CRUD and dependency hardening exist; CRUD policy requires an authoritative decision; generation is missing. |
 | Imports | REVIEW | Preview/validate/commit framework exists; broad entity, authorization and rollback coverage is missing. |
-| Conflicts | REVIEW | Strong source and harness coverage; runtime migration state remains unknown. |
-| Reports | REVIEW | Instructor/draft and export source paths exist; regression tests, including the draft-zero case, are missing. |
+| Conflicts | READY | New isolated agent will audit hard conflicts, warnings, approved exceptions, evidence requirements, and reporting isolation. |
+| Reports | COMPLETE | Draft lecturer schedule regression and shared version-scoped reporting merged as PR #39. |
 | Security/isolation | COMPLETE | Source-only composite-FK hardening for 21 cross-college references was verified on disposable PostgreSQL and merged; production apply remains separately gated. |
 
 ## Migrations and runtime
@@ -53,12 +53,22 @@ Updated: 2026-07-17 (Asia/Riyadh), accelerated continuation cycle
 
 1. `COMPLETE` — malformed source-only SQL comment repaired; independent review and `git diff --check` passed.
 2. `COMPLETE` — PR #33 merged source-only after disposable PostgreSQL and final security review passed.
-3. `READY` — add report regression coverage for instructor draft schedules/zero-value behavior.
+3. `COMPLETE` — instructor draft schedule/zero-value regression merged as PR #39.
 4. `COMPLETE` — PR #34 merged; TypeScript passes.
-5. `ACTIVE` — Phase 9.5 Schedule Builder V2 assignment-integration foundation resumed in its preserved worktree.
-6. `READY` — harden lifecycle optimistic update and authorization tests.
-7. `BLOCKED` — PR #30 remains conflicting and isolated.
-8. `REQUIRES_USER_APPROVAL` — production application of the merged source-only migration, or any deploy/publish action.
+5. `COMPLETE` — Phase 9.5 Schedule Builder V2 assignment integration merged as PR #37.
+6. `READY` — atomic schedule-version lifecycle and authorization hardening.
+7. `READY` — study-plan/cohort alignment and Legacy-section transition map.
+8. `READY` — conflict/exception reporting evidence and isolation hardening.
+9. `BLOCKED` — PR #30 remains conflicting and isolated.
+10. `REQUIRES_USER_APPROVAL` — production application of any source-only migration, or any deploy/publish action.
+
+## Binding academic decision
+
+- Approved study plans define core cohort courses by level and semester; there is no free individual core-course registration in timetable operations.
+- Approved electives are cohort-level academic decisions.
+- `academic_cohort` is authoritative for students; `delivery_groups` split teaching components only for capacity or delivery nature.
+- Sections are absent from the new operating model. `sections` and `course_offering_sections` are Legacy-only compatibility structures, and new `section_id` dependencies require explicit compatibility documentation.
+- `regular` and `parallel` are strictly isolated.
 
 ## Quality gates
 
