@@ -37,6 +37,7 @@ const harnesses = [
   "teaching-assignments-v2-runtime.harness.ts",
   "cross-college-reference-integrity.harness.ts",
   "phase-9-5-assignment-integration.harness.ts",
+  "schedule-version-lifecycle-optimistic.harness.ts",
 ];
 
 let exitCode = 0;

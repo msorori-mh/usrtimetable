@@ -7,7 +7,7 @@ Updated: 2026-07-17 (Asia/Riyadh), accelerated continuation cycle
 - Repository: `msorori-mh/usrtimetable`
 - Main worktree: `C:\projects\usrtimetable-mainline`
 - Local `main`: `8ef4226c06fbf5d45aca83212065f46f7c1de325` (28 commits behind)
-- `origin/main`: `5c20ea69b7556dc417ee1bcfdc16b26712baf8b8`
+- `origin/main`: `d9881f353a62fa2b6dae5500837665eb37ea708d`
 - Autopilot worktree: `C:\projects\usrtimetable-autopilot`
 - Autopilot branch: `codex/timetable-autopilot-state`
 - Security hardening worktree: `C:\projects\usrtimetable-security-hardening`
@@ -30,7 +30,7 @@ Updated: 2026-07-17 (Asia/Riyadh), accelerated continuation cycle
 
 | Area | Status | Evidence / next action |
 | --- | --- | --- |
-| Schedule builder | REVIEW | Read/local edit, move, room change, optimistic timestamp, conflict validation, audit and locks exist; runtime UAT remains unproven. |
+| Schedule builder | COMPLETE | Phase 9.5 assignment-driven work items and atomic manual draft-session creation passed disposable PostgreSQL and merged source-only as PR #37. |
 | Version lifecycle | REVIEW | Transitions and gates exist; add optimistic status predicate, explicit authorization review, and superseding policy. |
 | Curriculum/cohorts | BLOCKED | Source schema exists; UI, generation, idempotency and regression tests are missing. Runtime schema status is unknown. |
 | Offerings/assignments | REVIEW | CRUD and dependency hardening exist; CRUD policy requires an authoritative decision; generation is missing. |
@@ -55,8 +55,8 @@ Updated: 2026-07-17 (Asia/Riyadh), accelerated continuation cycle
 2. `COMPLETE` — PR #33 merged source-only after disposable PostgreSQL and final security review passed.
 3. `READY` — add report regression coverage for instructor draft schedules/zero-value behavior.
 4. `COMPLETE` — PR #34 merged; TypeScript passes.
-5. `ACTIVE` — Phase 9.5 Schedule Builder V2 assignment-integration foundation resumed in its preserved worktree.
-6. `READY` — harden lifecycle optimistic update and authorization tests.
+5. `COMPLETE` — Phase 9.5 merged source-only as PR #37 (`d9881f3`) after all local and PostgreSQL gates passed.
+6. `ACTIVE` — harden Schedule Version Lifecycle optimistic transition and authorization tests.
 7. `BLOCKED` — PR #30 remains conflicting and isolated.
 8. `REQUIRES_USER_APPROVAL` — production application of the merged source-only migration, or any deploy/publish action.
 
@@ -72,11 +72,10 @@ Updated: 2026-07-17 (Asia/Riyadh), accelerated continuation cycle
 - Security PR #33: disposable PostgreSQL 15, targeted harness, TypeScript, build, scoped lint, `git diff --check`, and final independent security review all `PASS`.
 - Build/install generated an uncommitted `src/routeTree.gen.ts` change and `package-lock.json`; both are excluded from PR #35 and preserved as known generated artifacts.
 
-## Phase 9.5 start
+## Phase 9.5 completion
 
-- Preserved four untracked implementation files unchanged in `C:\projects\usrtimetable-phase9-5-schedule-builder-v2`.
-- The branch is nine commits behind current `origin/main`; no direct path collision was found.
-- First gaps: the add-session dialog/service are not wired into a screen, no targeted harness exists, generated RPC types are absent, and the migration redefines security-sensitive schedule functions.
-- Next gate: merge current main into the Phase 9.5 branch without rebasing, add targeted source tests, then run disposable PostgreSQL and security review before any source merge. No migration apply is authorized.
+- PR #37 merged source-only at `d9881f3`; migration `20260717093000_schedule_builder_v2_assignment_integration.sql` is not applied to production.
+- PostgreSQL 15 disposable compilation/runtime, two-client concurrency race, targeted harness, TypeScript, build, scoped lint, diff-check, and independent security review passed.
+- Status: `MERGED_SOURCE_ONLY — PRODUCTION_APPLY_REQUIRES_USER_APPROVAL`.
 
 Estimated completion is not asserted from file count. Current source maturity is strongest in builder/conflicts and weakest in cohorts, end-to-end imports, regression coverage, and verified runtime state.

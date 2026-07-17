@@ -28,6 +28,16 @@
 - Database writes: disposable local PostgreSQL fixtures only; production writes: none.
 - Production migration apply, deploy, and publish: none.
 
+## 2026-07-17 — Phase 9.5 accelerated completion
+
+- Completed the assignment-driven Schedule Builder V2 work-item UI, RPC-only manual draft-session flow, targeted harness, and tenant/term guards.
+- Closed review findings for tenant-scoped SECURITY DEFINER joins, same-cohort overlap across delivery groups, and cross-term assignment creation.
+- Disposable PostgreSQL 15 passed authorization, isolation, status gates, conflicts, co-teaching limits, over-scheduling, audit, legacy compatibility, and a real two-client concurrency race.
+- TypeScript, production build, scoped lint, harness, and `git diff --check` passed; final review found no BLOCKER/HIGH/CRITICAL findings.
+- PR #37 merged source-only as `d9881f3`; no production migration apply or deployment occurred.
+- Started the next READY task: Schedule Version Lifecycle optimistic transition and authorization hardening.
+- Added the first lifecycle hardening increment locally: compare the expected `from` status during update and reject stale transitions before writing an audit event; targeted verification is in progress.
+
 ## 2026-07-17 — Continuation cycle 2
 
 - Fetched remote refs; `origin/main` remained `9b7519e`, local `main` remained 28 commits behind and preserved dirty.

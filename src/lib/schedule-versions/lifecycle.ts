@@ -222,12 +222,18 @@ export async function transitionVersion(params: {
     if (errs.length > 0) throw new Error(errs.join(" • "));
   }
 
-  const { error: ue } = await supabase
+  const { data: transitioned, error: ue } = await supabase
     .from("schedule_versions")
     .update({ status: to })
     .eq("id", scheduleVersionId)
-    .eq("college_id", collegeId);
+    .eq("college_id", collegeId)
+    .eq("status", from)
+    .select("id")
+    .maybeSingle();
   if (ue) throw ue;
+  if (!transitioned) {
+    throw new Error("STALE_VERSION_STATUS");
+  }
 
   const { data: userRes } = await supabase.auth.getUser();
   const event_type = EVENT_FOR[`${from}->${to}`] ?? "reverted";
