@@ -1,4 +1,4 @@
-- PHASE-6: Harden course_offerings.term_id (SOURCE ONLY â€” do not auto-apply).
+-- PHASE-6: Harden course_offerings.term_id (SOURCE ONLY - do not auto-apply).
 -- Adds NOT VALID FK so 213 legacy orphan term_ids do not block apply.
 -- New/updated offerings cannot reference missing terms; ON DELETE RESTRICT.
 -- Does NOT run VALIDATE on the FK. Does NOT modify legacy offering rows.

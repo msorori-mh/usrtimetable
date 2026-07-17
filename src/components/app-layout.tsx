@@ -341,7 +341,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { data: user, isLoading } = useCurrentUser();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const pathname = useRouterState({
+    select: (state: { location: { pathname: string } }) => state.location.pathname,
+  });
 
   const handleSignOut = async () => {
     await queryClient.cancelQueries();

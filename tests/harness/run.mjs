@@ -35,6 +35,7 @@ const harnesses = [
   "academic-delivery-v2-import-generator.harness.ts",
   "delivery-groups-workload-engine.harness.ts",
   "teaching-assignments-v2-runtime.harness.ts",
+  "cross-college-reference-integrity.harness.ts",
 ];
 
 let exitCode = 0;
