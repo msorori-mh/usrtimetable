@@ -581,36 +581,81 @@ async function commitTeachingAssignmentsV2(
     project: "seminar",
     summer_training: "seminar",
   };
+
+  // Co-teaching split: same delivery_group with >1 instructor requires explicit hours on every row
+  const byGroup = new Map<string, ParsedRow[]>();
   for (const row of rows) {
     const v = row.values as any;
+    const key = String(v._delivery_group_id ?? "");
+    if (!key) continue;
+    const list = byGroup.get(key) ?? [];
+    list.push(row);
+    byGroup.set(key, list);
+  }
+  for (const [, groupRows] of byGroup) {
+    const instructors = new Set(
+      groupRows.map((row) => String((row.values as any)._instructor_id ?? "")),
+    );
+    if (instructors.size > 1) {
+      for (const row of groupRows) {
+        const v = row.values as any;
+        if (v._assigned_component_hours == null) {
+          r.failed++;
+          r.errors.push({
+            rowNumber: row.rowNumber,
+            errorCode: "co_teaching_hours_split_required",
+            message: "عند التدريس المشترك يجب تحديد ساعات_المكوّن_المسندة لكل مدرس",
+          });
+          (row.values as any)._skip_commit = true;
+        }
+      }
+    }
+  }
+
+  for (const row of rows) {
+    const v = row.values as any;
+    if (v._skip_commit) continue;
     try {
       if (!v._cohort_id) throw new Error("دفعة غير معروفة");
       if (!v._course_id) throw new Error("مقرر غير معروف");
       if (!v._component_id) throw new Error("مكوّن خطة غير معروف — استورد الخطة أولًا");
+      if (!v._delivery_group_id)
+        throw new Error("مجموعة تدريس مطلوبة — ولّد delivery_groups أولاً");
       if (!v._offering_id)
         throw new Error("لا يوجد طرح داخلي — شغّل generate_cohort_curriculum أولًا");
       if (v.component_type === "summer_training")
         throw new Error("لا يُسند التدريب الصيفي عبر الإسناد المجدول");
 
+      const assignedHours =
+        v._assigned_component_hours != null
+          ? Number(v._assigned_component_hours)
+          : v.assigned_component_hours != null && v.assigned_component_hours !== ""
+            ? Number(v.assigned_component_hours)
+            : null;
+      const effectiveWeekly =
+        assignedHours != null && Number.isFinite(assignedHours) ? assignedHours : null;
+
       const { data: ex } = await (supabase.from("teaching_assignments") as any)
         .select("id")
         .eq("college_id", collegeId)
-        .eq("course_offering_id", v._offering_id)
+        .eq("delivery_group_id", v._delivery_group_id)
         .eq("instructor_id", v._instructor_id)
-        .eq("plan_course_component_id", v._component_id)
         .maybeSingle();
-      const payload = {
+      const payload: Record<string, unknown> = {
         college_id: collegeId,
         course_offering_id: v._offering_id,
         instructor_id: v._instructor_id,
         cohort_id: v._cohort_id,
         plan_course_component_id: v._component_id,
-        delivery_group_id: v._delivery_group_id ?? null,
+        delivery_group_id: v._delivery_group_id,
         session_type: sessionTypeMap[String(v.component_type)] ?? "lecture",
-        weekly_hours: v.weekly_hours ?? 3,
+        // V2: never invent DEFAULT 3; use explicit assigned hours when provided
+        weekly_hours: effectiveWeekly ?? 0,
+        assigned_component_hours: assignedHours,
         expected_students: v.expected_students ?? 0,
         required_room_type: v.required_room_type ?? null,
         notes: v.notes ?? null,
+        is_active: v._is_active !== false,
       };
       if (ex?.id) {
         if (mode === "insert_only") {

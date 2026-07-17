@@ -1,238 +1,708 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Briefcase } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { useCanManageActiveCollege } from "@/hooks/use-can-manage";
+import {
+  useCreateTeachingAssignmentV2,
+  useDeactivateTeachingAssignmentV2,
+  useTeachingAssignmentWorkspace,
+  useUpdateTeachingAssignmentV2,
+  useWorkloadPreview,
+} from "@/hooks/use-teaching-assignments-v2";
+import type {
+  TeachingAssignmentWorkspaceRow,
+  WorkspaceFilters,
+} from "@/lib/academic-delivery/teaching-assignments-v2";
 import { CollegeSwitcher } from "@/components/college-switcher";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { toast } from "sonner";
-import { logAudit } from "@/lib/audit";
-import { ROOM_TYPES } from "./rooms";
-import { Briefcase, Pencil, Trash2 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_authenticated/teaching-assignments")({
-  head: () => ({ meta: [{ title: "الإسناد التدريسي" }] }),
-  component: AssignmentsPage,
+  head: () => ({ meta: [{ title: "تكليفات التدريس V2" }] }),
+  component: TeachingAssignmentsV2Page,
 });
 
-interface TA {
-  id: string; college_id: string; course_offering_id: string; instructor_id: string;
-  section_number: string | null; session_type: string; weekly_hours: number;
-  required_room_type: string | null; notes: string | null; expected_students: number;
-}
+const COMPONENT_LABELS: Record<string, string> = {
+  theory: "نظري",
+  practical: "عملي",
+  tutorial: "تمارين",
+  project: "مشروع",
+};
 
-const SESSION_TYPES = [
-  { v: "lecture", l: "محاضرة" },
-  { v: "lab", l: "عملي" },
-  { v: "tutorial", l: "تمارين" },
-  { v: "seminar", l: "حلقة بحث" },
-];
+const ALLOCATION_LABELS: Record<string, string> = {
+  unassigned: "غير مسند",
+  under_allocated: "توزيع جزئي",
+  fully_allocated: "مكتمل",
+  over_allocated: "تجاوز الساعات",
+};
 
-function emptyForm() { return { course_offering_id: "", instructor_id: "", section_number: "", session_type: "lecture", weekly_hours: 3, required_room_type: "", notes: "", expected_students: 0 }; }
-
-function AssignmentsPage() {
+function TeachingAssignmentsV2Page() {
   const { active } = useActiveCollege();
   const canManage = useCanManageActiveCollege();
-  const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<TA | null>(null);
-  const [form, setForm] = useState(emptyForm());
 
-  const { data: offerings } = useQuery({
-    queryKey: ["offerings-min", active?.id], enabled: !!active,
-    queryFn: async () => {
-      const { data } = await supabase.from("course_offerings")
-        .select("id, course_id, term_id")
-        .eq("college_id", active!.id);
-      return data ?? [];
-    },
+  const [programId, setProgramId] = useState<string>("");
+  const [levelId, setLevelId] = useState<string>("");
+  const [termId, setTermId] = useState<string>("");
+  const [studySystem, setStudySystem] = useState<string>("");
+  const [cohortId, setCohortId] = useState<string>("");
+  const [componentType, setComponentType] = useState<string>("");
+  const [assignmentStatus, setAssignmentStatus] = useState<string>("");
+
+  const [selected, setSelected] = useState<TeachingAssignmentWorkspaceRow | null>(null);
+  const [instructorId, setInstructorId] = useState("");
+  const [hours, setHours] = useState<string>("");
+  const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(null);
+  const [expectedUpdatedAt, setExpectedUpdatedAt] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deactivateTarget, setDeactivateTarget] = useState<{
+    id: string;
+    updatedAt: string;
+    name: string;
+  } | null>(null);
+
+  const filters: WorkspaceFilters | null = useMemo(() => {
+    if (!active?.id) return null;
+    return {
+      collegeId: active.id,
+      programId: programId || null,
+      levelId: levelId || null,
+      termId: termId || null,
+      studySystem: studySystem || null,
+      cohortId: cohortId || null,
+      componentType: componentType || null,
+      assignmentStatus: assignmentStatus || null,
+    };
+  }, [
+    active?.id,
+    programId,
+    levelId,
+    termId,
+    studySystem,
+    cohortId,
+    componentType,
+    assignmentStatus,
+  ]);
+
+  const workspace = useTeachingAssignmentWorkspace(filters);
+  const createMut = useCreateTeachingAssignmentV2(filters);
+  const updateMut = useUpdateTeachingAssignmentV2(filters);
+  const deactivateMut = useDeactivateTeachingAssignmentV2(filters);
+
+  const { data: programs } = useQuery({
+    queryKey: ["programs-ta-v2", active?.id],
+    enabled: !!active,
+    queryFn: async () =>
+      (
+        await supabase
+          .from("academic_programs")
+          .select("id, name, code")
+          .eq("college_id", active!.id)
+      ).data ?? [],
   });
-  const { data: courses } = useQuery({
-    queryKey: ["courses-min2", active?.id], enabled: !!active,
-    queryFn: async () => (await supabase.from("courses").select("id, code, name").eq("college_id", active!.id)).data ?? [],
+  const { data: levels } = useQuery({
+    queryKey: ["levels-ta-v2", active?.id, programId],
+    enabled: !!active && !!programId,
+    queryFn: async () =>
+      (
+        await supabase
+          .from("academic_levels")
+          .select("id, name, level_number")
+          .eq("college_id", active!.id)
+          .eq("program_id", programId)
+          .order("level_number")
+      ).data ?? [],
   });
   const { data: terms } = useQuery({
-    queryKey: ["terms-min2", active?.id], enabled: !!active,
-    queryFn: async () => (await supabase.from("academic_terms").select("id, name").eq("college_id", active!.id)).data ?? [],
+    queryKey: ["terms-ta-v2", active?.id],
+    enabled: !!active,
+    queryFn: async () =>
+      (await supabase.from("academic_terms").select("id, name").eq("college_id", active!.id))
+        .data ?? [],
   });
-  const { data: instructors } = useQuery({
-    queryKey: ["instr-min", active?.id], enabled: !!active,
-    queryFn: async () => (await supabase.from("instructors").select("id, full_name").eq("college_id", active!.id).eq("is_active", true).order("full_name")).data ?? [],
-  });
-
-
-  const { data: rows, isLoading } = useQuery({
-    queryKey: ["assignments", active?.id], enabled: !!active,
+  const { data: cohorts } = useQuery({
+    queryKey: ["cohorts-ta-v2", active?.id, programId, levelId, termId, studySystem],
+    enabled: !!active,
     queryFn: async () => {
-      const { data, error } = await supabase.from("teaching_assignments").select("*").eq("college_id", active!.id).order("created_at", { ascending: false });
-      if (error) throw error; return (data ?? []) as TA[];
+      let q = supabase
+        .from("academic_cohorts")
+        .select("id, code, program_id, level_id, term_id, study_system")
+        .eq("college_id", active!.id);
+      if (programId) q = q.eq("program_id", programId);
+      if (levelId) q = q.eq("level_id", levelId);
+      if (termId) q = q.eq("term_id", termId);
+      if (studySystem) q = q.eq("study_system", studySystem);
+      return (await q.order("code")).data ?? [];
     },
   });
 
-  const save = useMutation({
-    mutationFn: async () => {
-      if (!active) throw new Error("اختر كلّية");
-      if (!form.course_offering_id || !form.instructor_id) throw new Error("المقرر المسند والمحاضر مطلوبان");
-      const payload = {
-        college_id: active.id,
-        course_offering_id: form.course_offering_id,
-        instructor_id: form.instructor_id,
-        section_number: form.section_number.trim() || null,
-        session_type: form.session_type,
-        weekly_hours: Number(form.weekly_hours) || 0,
-        required_room_type: form.required_room_type || null,
-        notes: form.notes.trim() || null,
-        expected_students: Number(form.expected_students) || 0,
-      };
-      if (editing) {
-        const { error } = await supabase.from("teaching_assignments").update(payload).eq("id", editing.id);
-        if (error) throw error;
-        await logAudit({ action: "update", entity: "teaching_assignments", entityId: editing.id, collegeId: active.id });
-      } else {
-        const { data, error } = await supabase.from("teaching_assignments").insert(payload).select("id").single();
-        if (error) throw error;
-        await logAudit({ action: "create", entity: "teaching_assignments", entityId: data?.id, collegeId: active.id });
-      }
-    },
-    onSuccess: () => {
-      toast.success(editing ? "تم التحديث" : "تمت الإضافة");
-      qc.invalidateQueries({ queryKey: ["assignments", active?.id] });
-      setOpen(false); setEditing(null);
-    },
-    onError: (e: Error) => toast.error(e.message.includes("duplicate") ? "هذا الإسناد موجود مسبقاً" : e.message),
-  });
-
-  const del = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("teaching_assignments").delete().eq("id", id);
+  const { data: candidates } = useQuery({
+    queryKey: ["ta-v2-candidates", selected?.delivery_group_id],
+    enabled: !!selected?.delivery_group_id && canManage,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc(
+        "get_delivery_group_assignment_candidates" as never,
+        {
+          p_delivery_group_id: selected!.delivery_group_id,
+        } as never,
+      );
       if (error) throw error;
-      await logAudit({ action: "delete", entity: "teaching_assignments", entityId: id, collegeId: active?.id });
+      const root = (data ?? {}) as { candidates?: Array<Record<string, unknown>> };
+      return root.candidates ?? [];
     },
-    onSuccess: () => { toast.success("تم الحذف"); qc.invalidateQueries({ queryKey: ["assignments", active?.id] }); },
-    onError: (e: Error) => toast.error(e.message),
   });
 
-  const startEdit = (a: TA) => {
-    setEditing(a);
-    setForm({
-      course_offering_id: a.course_offering_id, instructor_id: a.instructor_id,
-      section_number: a.section_number ?? "", session_type: a.session_type,
-      weekly_hours: a.weekly_hours, required_room_type: a.required_room_type ?? "", notes: a.notes ?? "",
-      expected_students: a.expected_students ?? 0,
-    });
-    setOpen(true);
+  const hoursNum = hours.trim() === "" ? null : Number(hours);
+  const preview = useWorkloadPreview({
+    instructorId: instructorId || null,
+    deliveryGroupId: selected?.delivery_group_id ?? null,
+    assignedComponentHours: hoursNum != null && Number.isFinite(hoursNum) ? hoursNum : null,
+    assignmentId: editingAssignmentId,
+    enabled: !!selected && !!instructorId && confirmOpen === false,
+  });
+
+  const rows = workspace.data?.rows ?? [];
+  const readOnly = !canManage || workspace.data?.can_manage === false;
+
+  const openAssign = (row: TeachingAssignmentWorkspaceRow) => {
+    if (row.is_obsolete) {
+      toast.error("المجموعة ملغاة — لا إسناد جديد");
+      return;
+    }
+    setSelected(row);
+    setInstructorId("");
+    setHours("");
+    setEditingAssignmentId(null);
+    setExpectedUpdatedAt(null);
   };
-  const startCreate = () => { setEditing(null); setForm(emptyForm()); setOpen(true); };
 
-  type OfferingRow = { id: string; course_id: string; term_id: string };
-  const courseLabel = new Map((courses ?? []).map((c) => [c.id, `${c.code} — ${c.name}`]));
-  const termLabel = new Map((terms ?? []).map((t) => [t.id, t.name]));
-  const offMap = new Map(((offerings ?? []) as OfferingRow[]).map((o) => {
-    const label = `${courseLabel.get(o.course_id) ?? "—"} (${termLabel.get(o.term_id) ?? "—"})`;
-    return [o.id, label];
-  }));
+  const openEditHours = (row: TeachingAssignmentWorkspaceRow, assignmentId: string) => {
+    const a = row.instructors.find((i) => i.assignment_id === assignmentId);
+    if (!a) return;
+    setSelected(row);
+    setInstructorId(a.instructor_id);
+    setHours(a.assigned_component_hours == null ? "" : String(a.assigned_component_hours));
+    setEditingAssignmentId(a.assignment_id);
+    setExpectedUpdatedAt(a.updated_at);
+  };
 
-  const insMap = new Map((instructors ?? []).map((i) => [i.id, i.full_name]));
+  const runMutation = async () => {
+    if (!selected || !instructorId) {
+      toast.error("اختر المدرس");
+      return;
+    }
+    if (preview.data?.assignment_conflicts?.length) {
+      toast.error(`تعارض يمنع الحفظ: ${preview.data.assignment_conflicts.join(", ")}`);
+      return;
+    }
+    try {
+      if (editingAssignmentId && expectedUpdatedAt) {
+        const result = await updateMut.mutateAsync({
+          assignmentId: editingAssignmentId,
+          expectedUpdatedAt,
+          assignedComponentHours: hoursNum,
+        });
+        if (!result.ok) return;
+      } else {
+        const result = await createMut.mutateAsync({
+          deliveryGroupId: selected.delivery_group_id,
+          instructorId,
+          assignedComponentHours: hoursNum,
+        });
+        if (!result.ok) return;
+      }
+      setSelected(null);
+      setConfirmOpen(false);
+    } catch {
+      // toast handled in hook
+    }
+  };
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-6xl" data-testid="teaching-assignments-v2-page">
       <header className="mb-6 flex items-center gap-3">
-        <span className="grid h-11 w-11 place-items-center rounded-lg bg-secondary text-primary"><Briefcase className="h-5 w-5" /></span>
+        <span className="grid h-11 w-11 place-items-center rounded-lg bg-secondary text-primary">
+          <Briefcase className="h-5 w-5" />
+        </span>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold">الإسناد التدريسي</h1>
-          <p className="text-sm text-muted-foreground">ربط المحاضرين بالمقررات المسندة.</p>
+          <h1 className="text-2xl font-bold">تكليفات التدريس V2</h1>
+          <p className="text-sm text-muted-foreground">
+            إسناد مجموعات التدريس إلى أعضاء هيئة التدريس مع ساعات ونصاب وتحققات — بدون توليد جلسات.
+          </p>
         </div>
       </header>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <CollegeSwitcher />
-        {canManage && (
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={startCreate} disabled={!offerings?.length || !instructors?.length}>إسناد جديد</Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-lg">
-              <DialogHeader><DialogTitle>{editing ? "تعديل إسناد" : "إسناد جديد"}</DialogTitle></DialogHeader>
-              <div className="space-y-3">
-                <div><Label>المقرر المسند</Label>
-                  <Select value={form.course_offering_id} onValueChange={(v) => setForm({ ...form, course_offering_id: v })}>
-                    <SelectTrigger><SelectValue placeholder="اختر" /></SelectTrigger>
-                    <SelectContent>
-                      {((offerings ?? []) as OfferingRow[]).map((o) => (
-                        <SelectItem key={o.id} value={o.id}>{offMap.get(o.id)}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div><Label>المحاضر</Label>
-                  <Select value={form.instructor_id} onValueChange={(v) => setForm({ ...form, instructor_id: v })}>
-                    <SelectTrigger><SelectValue placeholder="اختر" /></SelectTrigger>
-                    <SelectContent>{(instructors ?? []).map((i) => <SelectItem key={i.id} value={i.id}>{i.full_name}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div><Label>نوع المحاضرة</Label>
-                    <Select value={form.session_type} onValueChange={(v) => setForm({ ...form, session_type: v })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>{SESSION_TYPES.map((s) => <SelectItem key={s.v} value={s.v}>{s.l}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                  <div><Label>المجموعة</Label><Input value={form.section_number} onChange={(e) => setForm({ ...form, section_number: e.target.value })} placeholder="A" /></div>
-                  <div><Label>ساعات/أسبوع</Label><Input type="number" step="0.5" value={form.weekly_hours} onChange={(e) => setForm({ ...form, weekly_hours: Number(e.target.value) })} /></div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><Label>عدد الطلاب المتوقع</Label><Input type="number" value={form.expected_students} onChange={(e) => setForm({ ...form, expected_students: Number(e.target.value) })} /></div>
-                </div>
-                <div><Label>نوع القاعة المطلوبة (اختياري)</Label>
-                  <Select value={form.required_room_type || "_any"} onValueChange={(v) => setForm({ ...form, required_room_type: v === "_any" ? "" : v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="_any">— غير محدد —</SelectItem>
-                      {ROOM_TYPES.map((t) => <SelectItem key={t.v} value={t.v}>{t.l}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div><Label>ملاحظات</Label><Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setOpen(false)}>إلغاء</Button>
-                <Button onClick={() => save.mutate()} disabled={save.isPending}>حفظ</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )}
+        <Button asChild variant="outline" size="sm">
+          <Link to="/delivery-groups">مجموعات التدريس</Link>
+        </Button>
       </div>
 
-      <Card className="overflow-hidden">
-        {isLoading ? <p className="p-6 text-center text-muted-foreground">جارٍ التحميل...</p>
-          : !rows || rows.length === 0 ? <p className="p-6 text-center text-muted-foreground">لا يوجد إسناد بعد.</p>
-          : <ul className="divide-y divide-border">
-              {rows.map((a) => (
-                <li key={a.id} className="flex items-center justify-between p-4">
-                  <div>
-                    <p className="font-semibold">{insMap.get(a.instructor_id) ?? "—"}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {offMap.get(a.course_offering_id) ?? "—"} · {SESSION_TYPES.find((s) => s.v === a.session_type)?.l}
-                      {a.section_number && ` · مجموعة ${a.section_number}`} · {a.weekly_hours} س/أ
-                      {a.required_room_type && ` · ${ROOM_TYPES.find((t) => t.v === a.required_room_type)?.l}`}
+      {!active ? (
+        <p className="text-sm text-muted-foreground">اختر كلية.</p>
+      ) : (
+        <>
+          <Card className="mb-4 grid gap-3 p-4 md:grid-cols-4" data-testid="ta-v2-filters">
+            <div>
+              <Label>البرنامج</Label>
+              <Select
+                value={programId || "_all"}
+                onValueChange={(v) => {
+                  setProgramId(v === "_all" ? "" : v);
+                  setLevelId("");
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="الكل" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_all">الكل</SelectItem>
+                  {(programs ?? []).map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.code} — {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>المستوى</Label>
+              <Select
+                value={levelId || "_all"}
+                onValueChange={(v) => setLevelId(v === "_all" ? "" : v)}
+                disabled={!programId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="الكل" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_all">الكل</SelectItem>
+                  {(levels ?? []).map((l) => (
+                    <SelectItem key={l.id} value={l.id}>
+                      {l.name ?? `مستوى ${l.level_number}`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>الفصل</Label>
+              <Select
+                value={termId || "_all"}
+                onValueChange={(v) => setTermId(v === "_all" ? "" : v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="الكل" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_all">الكل</SelectItem>
+                  {(terms ?? []).map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>نظام الدراسة</Label>
+              <Select
+                value={studySystem || "_all"}
+                onValueChange={(v) => setStudySystem(v === "_all" ? "" : v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="الكل" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_all">الكل</SelectItem>
+                  <SelectItem value="regular">regular</SelectItem>
+                  <SelectItem value="parallel">parallel</SelectItem>
+                  <SelectItem value="evening">evening</SelectItem>
+                  <SelectItem value="distance">distance</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>الدفعة</Label>
+              <Select
+                value={cohortId || "_all"}
+                onValueChange={(v) => setCohortId(v === "_all" ? "" : v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="الكل" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_all">الكل</SelectItem>
+                  {(cohorts ?? []).map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.code ?? c.id.slice(0, 8)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>نوع المكوّن</Label>
+              <Select
+                value={componentType || "_all"}
+                onValueChange={(v) => setComponentType(v === "_all" ? "" : v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="الكل" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_all">الكل</SelectItem>
+                  {Object.entries(COMPONENT_LABELS).map(([k, l]) => (
+                    <SelectItem key={k} value={k}>
+                      {l}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>حالة الإسناد</Label>
+              <Select
+                value={assignmentStatus || "_all"}
+                onValueChange={(v) => setAssignmentStatus(v === "_all" ? "" : v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="الكل" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_all">الكل</SelectItem>
+                  <SelectItem value="unassigned">غير مسند</SelectItem>
+                  <SelectItem value="assigned">مسند</SelectItem>
+                  <SelectItem value="under_allocated">توزيع جزئي</SelectItem>
+                  <SelectItem value="fully_allocated">مكتمل</SelectItem>
+                  <SelectItem value="obsolete">ملغى (obsolete)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {readOnly && (
+              <div className="flex items-end">
+                <p className="text-xs text-muted-foreground" data-testid="ta-v2-readonly-banner">
+                  وضع قراءة فقط — لا أزرار كتابة.
+                </p>
+              </div>
+            )}
+          </Card>
+
+          <Card className="overflow-hidden" data-testid="ta-v2-groups-table">
+            {workspace.isLoading ? (
+              <p className="p-6 text-center text-muted-foreground">جاري التحميل…</p>
+            ) : workspace.isError ? (
+              <p className="p-6 text-center text-destructive">
+                تعذّر تحميل مساحة العمل. تأكد من صلاحية العرض وأن Migration مطبّقة عند الحاجة.
+              </p>
+            ) : rows.length === 0 ? (
+              <p className="p-6 text-center text-muted-foreground">
+                لا توجد مجموعات تدريس أسبوعية مطابقة. ولّد المجموعات من الدفعات الأكاديمية أولاً.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/40 text-muted-foreground">
+                    <tr>
+                      <th className="px-3 py-2 text-right font-medium">المقرر</th>
+                      <th className="px-3 py-2 text-right font-medium">المكوّن</th>
+                      <th className="px-3 py-2 text-right font-medium">المجموعة</th>
+                      <th className="px-3 py-2 text-right font-medium">طلاب</th>
+                      <th className="px-3 py-2 text-right font-medium">سعة</th>
+                      <th className="px-3 py-2 text-right font-medium">الحالة</th>
+                      <th className="px-3 py-2 text-right font-medium">المدرسون</th>
+                      <th className="px-3 py-2 text-right font-medium">ساعات</th>
+                      <th className="px-3 py-2 text-right font-medium">التوزيع</th>
+                      <th className="px-3 py-2 text-right font-medium">إجراء</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {rows.map((row) => (
+                      <tr
+                        key={row.delivery_group_id}
+                        className={row.is_obsolete ? "opacity-70" : ""}
+                      >
+                        <td className="px-3 py-2">
+                          <div className="font-medium">{row.course_code}</div>
+                          <div className="text-xs text-muted-foreground">{row.course_name}</div>
+                        </td>
+                        <td className="px-3 py-2">
+                          {COMPONENT_LABELS[row.component_type] ?? row.component_type}
+                        </td>
+                        <td className="px-3 py-2">{row.group_number ?? row.group_code}</td>
+                        <td className="px-3 py-2">{row.expected_students}</td>
+                        <td className="px-3 py-2">{row.capacity_limit ?? "—"}</td>
+                        <td className="px-3 py-2">
+                          {row.is_obsolete ? (
+                            <span className="text-destructive" data-testid="ta-v2-obsolete-badge">
+                              obsolete
+                            </span>
+                          ) : row.active ? (
+                            "active"
+                          ) : (
+                            "inactive"
+                          )}
+                        </td>
+                        <td className="px-3 py-2">
+                          {row.instructors.length === 0
+                            ? "—"
+                            : row.instructors.map((i) => i.instructor_name ?? "—").join("، ")}
+                        </td>
+                        <td className="px-3 py-2">
+                          {row.assigned_hours_total}/{row.component_hours ?? "?"}
+                          {row.remaining_hours > 0 ? ` (متبقي ${row.remaining_hours})` : ""}
+                        </td>
+                        <td className="px-3 py-2">
+                          {ALLOCATION_LABELS[row.allocation_status] ?? row.allocation_status}
+                        </td>
+                        <td className="px-3 py-2">
+                          {!readOnly && !row.is_obsolete ? (
+                            <div className="flex flex-wrap gap-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                data-testid="ta-v2-assign-btn"
+                                onClick={() => openAssign(row)}
+                              >
+                                إسناد
+                              </Button>
+                              {row.instructors[0] && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() =>
+                                    openEditHours(row, row.instructors[0]!.assignment_id)
+                                  }
+                                >
+                                  ساعات
+                                </Button>
+                              )}
+                              {row.instructors.map((i) => (
+                                <Button
+                                  key={i.assignment_id}
+                                  size="sm"
+                                  variant="ghost"
+                                  data-testid="ta-v2-deactivate-btn"
+                                  onClick={() =>
+                                    setDeactivateTarget({
+                                      id: i.assignment_id,
+                                      updatedAt: i.updated_at,
+                                      name: i.instructor_name ?? "",
+                                    })
+                                  }
+                                >
+                                  تعطيل
+                                </Button>
+                              ))}
+                            </div>
+                          ) : row.is_obsolete ? (
+                            <span className="text-xs text-muted-foreground">لا إسناد</span>
+                          ) : null}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        </>
+      )}
+
+      <Dialog open={!!selected && !deactivateTarget} onOpenChange={(o) => !o && setSelected(null)}>
+        <DialogContent className="max-w-lg" data-testid="ta-v2-assign-panel">
+          <DialogHeader>
+            <DialogTitle>
+              {editingAssignmentId ? "تحديث ساعات الإسناد" : "إسناد مجموعة تدريس"}
+            </DialogTitle>
+          </DialogHeader>
+          {selected && (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                {selected.course_code} ·{" "}
+                {COMPONENT_LABELS[selected.component_type] ?? selected.component_type} · مجموعة{" "}
+                {selected.group_number ?? selected.group_code} · ساعات المكوّن{" "}
+                {selected.component_hours ?? "—"}
+              </p>
+              {!editingAssignmentId && (
+                <div>
+                  <Label>المدرس</Label>
+                  <Select value={instructorId || undefined} onValueChange={setInstructorId}>
+                    <SelectTrigger data-testid="ta-v2-instructor-select">
+                      <SelectValue placeholder="اختر مدرساً" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(candidates ?? [])
+                        .filter((c) => !c.already_assigned)
+                        .map((c) => (
+                          <SelectItem key={String(c.instructor_id)} value={String(c.instructor_id)}>
+                            {String(c.full_name ?? "")}
+                            {c.employee_number ? ` (${String(c.employee_number)})` : ""}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <div>
+                <Label>ساعات المكوّن المسندة (اختياري لمدرس واحد؛ إلزامي عند المشاركة)</Label>
+                <Input
+                  type="number"
+                  step="0.5"
+                  min="0.5"
+                  value={hours}
+                  onChange={(e) => setHours(e.target.value)}
+                  data-testid="ta-v2-hours-input"
+                  placeholder={
+                    selected.is_co_taught || selected.assignment_count > 0
+                      ? "مطلوب عند التدريس المشترك"
+                      : "اتركه فارغاً لاستخدام ساعات المكوّن"
+                  }
+                />
+              </div>
+
+              {preview.data && (
+                <div
+                  className="rounded-md border border-border bg-muted/30 p-3 text-xs space-y-1"
+                  data-testid="ta-v2-workload-preview"
+                >
+                  <p>
+                    النصاب المطلوب: {preview.data.required_load_hours ?? "—"} · الحالي:{" "}
+                    {preview.data.current_standard_assigned_hours} → المتوقع:{" "}
+                    {preview.data.projected_standard_assigned_hours}
+                  </p>
+                  <p>
+                    المشروع: {preview.data.current_project_hours} →{" "}
+                    {preview.data.projected_project_hours}
+                  </p>
+                  <p>
+                    الحالة: {preview.data.status_before} → {preview.data.status_after}
+                  </p>
+                  {preview.data.policy_missing && (
+                    <p className="text-amber-700" data-testid="ta-v2-policy-missing">
+                      تحذير: لا توجد سياسة نصاب للرتبة (policy_missing)
                     </p>
-                  </div>
-                  {canManage && (
-                    <div className="flex gap-1">
-                      <Button size="sm" variant="ghost" onClick={() => startEdit(a)}><Pencil className="h-3.5 w-3.5" /></Button>
-                      <Button size="sm" variant="ghost" onClick={() => { if (confirm("حذف الإسناد؟")) del.mutate(a.id); }}><Trash2 className="h-3.5 w-3.5" /></Button>
-                    </div>
                   )}
-                </li>
-              ))}
-            </ul>}
-      </Card>
+                  {preview.data.warnings.map((w) => (
+                    <p key={w} className="text-amber-700" data-testid="ta-v2-warning">
+                      تحذير: {w}
+                    </p>
+                  ))}
+                  {preview.data.assignment_conflicts.map((c) => (
+                    <p key={c} className="text-destructive" data-testid="ta-v2-conflict">
+                      مانع: {c}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSelected(null)}>
+              إلغاء
+            </Button>
+            {!readOnly && (
+              <Button
+                data-testid="ta-v2-confirm-open"
+                disabled={
+                  createMut.isPending ||
+                  updateMut.isPending ||
+                  !instructorId ||
+                  (preview.data?.assignment_conflicts?.length ?? 0) > 0
+                }
+                onClick={() => setConfirmOpen(true)}
+              >
+                متابعة للتأكيد
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent data-testid="ta-v2-confirm-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>تأكيد الإسناد</AlertDialogTitle>
+            <AlertDialogDescription>
+              سيتم حفظ التكليف عبر RPC الآمن دون إنشاء جلسات أو تشغيل مولّد المجموعات. أي تجاوز
+              لنصاب يظهر كتحذير ولا يمنع الحفظ تلقائياً؛ تجاوز ساعات المكوّن مانع.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              data-testid="ta-v2-confirm-save"
+              onClick={(e) => {
+                e.preventDefault();
+                void runMutation();
+              }}
+            >
+              تأكيد الحفظ
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!deactivateTarget} onOpenChange={(o) => !o && setDeactivateTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>تعطيل الإسناد؟</AlertDialogTitle>
+            <AlertDialogDescription>
+              سيتم تعطيل إسناد {deactivateTarget?.name || "المدرس"} مع الإبقاء على السجل للتاريخ. لن
+              يُحذف التكليف.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              data-testid="ta-v2-confirm-deactivate"
+              onClick={(e) => {
+                e.preventDefault();
+                if (!deactivateTarget) return;
+                void deactivateMut
+                  .mutateAsync({
+                    assignmentId: deactivateTarget.id,
+                    expectedUpdatedAt: deactivateTarget.updatedAt,
+                    reason: "ui_deactivate",
+                  })
+                  .then(() => setDeactivateTarget(null));
+              }}
+            >
+              تعطيل
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

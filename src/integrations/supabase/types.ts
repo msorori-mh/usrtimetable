@@ -2755,6 +2755,7 @@ export type Database = {
           expected_students: number
           id: string
           instructor_id: string
+          is_active: boolean
           notes: string | null
           plan_course_component_id: string | null
           required_room_type: string | null
@@ -2774,6 +2775,7 @@ export type Database = {
           expected_students?: number
           id?: string
           instructor_id: string
+          is_active?: boolean
           notes?: string | null
           plan_course_component_id?: string | null
           required_room_type?: string | null
@@ -2793,6 +2795,7 @@ export type Database = {
           expected_students?: number
           id?: string
           instructor_id?: string
+          is_active?: boolean
           notes?: string | null
           plan_course_component_id?: string | null
           required_room_type?: string | null
@@ -3209,8 +3212,29 @@ export type Database = {
         Args: { _college_id: string; _user_id: string }
         Returns: boolean
       }
+      compute_delivery_group_allocation: {
+        Args: { p_delivery_group_id: string }
+        Returns: Json
+      }
       compute_instructor_standard_workload: {
         Args: { p_instructor_id: string; p_term_id?: string }
+        Returns: Json
+      }
+      create_teaching_assignment_v2: {
+        Args: {
+          p_assigned_component_hours?: number
+          p_delivery_group_id: string
+          p_instructor_id: string
+          p_notes?: string
+        }
+        Returns: Json
+      }
+      deactivate_teaching_assignment_v2: {
+        Args: {
+          p_assignment_id: string
+          p_expected_updated_at: string
+          p_reason?: string
+        }
         Returns: Json
       }
       generate_cohort_curriculum: {
@@ -3219,6 +3243,45 @@ export type Database = {
       }
       generate_cohort_delivery_groups: {
         Args: { p_cohort_id: string }
+        Returns: Json
+      }
+      get_delivery_group_assignment_candidates: {
+        Args: { p_delivery_group_id: string }
+        Returns: Json
+      }
+      list_teaching_assignment_workspace: {
+        Args: {
+          p_assignment_status?: string
+          p_cohort_id?: string
+          p_college_id: string
+          p_component_type?: string
+          p_level_id?: string
+          p_program_id?: string
+          p_study_system?: string
+          p_term_id?: string
+        }
+        Returns: Json
+      }
+      preview_instructor_workload_after_assignment: {
+        Args: {
+          p_assigned_component_hours?: number
+          p_assignment_id?: string
+          p_delivery_group_id: string
+          p_instructor_id: string
+        }
+        Returns: Json
+      }
+      resolve_offering_for_delivery_group: {
+        Args: { p_delivery_group_id: string }
+        Returns: string
+      }
+      update_teaching_assignment_v2: {
+        Args: {
+          p_assigned_component_hours?: number
+          p_assignment_id: string
+          p_expected_updated_at: string
+          p_notes?: string
+        }
         Returns: Json
       }
       has_role: {
