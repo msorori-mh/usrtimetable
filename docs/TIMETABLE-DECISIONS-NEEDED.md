@@ -10,6 +10,6 @@ Only decisions that cannot safely be inferred belong here.
 
 ## Engineering decisions currently fail-closed
 
-- Cross-tenant foreign-key hardening will be drafted only; it will not be applied.
+- Cross-tenant foreign-key hardening is merged source-only as PR #33; production application remains prohibited without separate approval and remote-history preflight.
 - PR #30 remains isolated because it conflicts with `main`.
 - Published and archived schedule versions remain locked against ordinary editing.
