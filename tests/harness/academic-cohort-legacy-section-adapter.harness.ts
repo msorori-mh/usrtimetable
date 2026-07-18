@@ -20,6 +20,8 @@ const cohort = resolveAcademicDeliveryContext({
   sectionId: "legacy-section-1",
   cohortStudySystem: "regular",
   recordStudySystem: "regular",
+  deliveryGroupCohortId: "cohort-1",
+  deliveryGroupStudySystem: "regular",
 });
 assert(cohort.mode === "academic_cohort", "cohort path is authoritative");
 assert(cohort.deliveryGroupId === "group-1", "delivery group retained");
@@ -28,6 +30,35 @@ assert(cohort.legacySectionId === "legacy-section-1", "legacy id may round-trip 
 expectError(
   () => resolveAcademicDeliveryContext({ deliveryGroupId: "group-1" }),
   "DELIVERY_GROUP_REQUIRES_ACADEMIC_COHORT",
+);
+expectError(
+  () =>
+    resolveAcademicDeliveryContext({
+      cohortId: "cohort-1",
+      cohortStudySystem: "regular",
+    }),
+  "ACADEMIC_COHORT_STUDY_SYSTEM_REQUIRED",
+);
+expectError(
+  () =>
+    resolveAcademicDeliveryContext({
+      cohortId: "cohort-1",
+      cohortStudySystem: "both",
+      recordStudySystem: "both",
+    }),
+  "ACADEMIC_COHORT_STUDY_SYSTEM_AMBIGUOUS",
+);
+expectError(
+  () =>
+    resolveAcademicDeliveryContext({
+      cohortId: "cohort-1",
+      deliveryGroupId: "group-1",
+      deliveryGroupCohortId: "cohort-2",
+      deliveryGroupStudySystem: "regular",
+      cohortStudySystem: "regular",
+      recordStudySystem: "regular",
+    }),
+  "DELIVERY_GROUP_COHORT_MISMATCH",
 );
 expectError(
   () => resolveAcademicDeliveryContext({ sectionId: "section-1" }),
@@ -45,8 +76,8 @@ expectError(
 
 const legacy = resolveAcademicDeliveryContext({
   sectionId: "section-1",
-  allowLegacySectionFallback: true,
+  legacySectionFallbackPolicy: "legacy_compatibility_required",
 });
-assert(legacy.mode === "legacy_section", "explicit Legacy fallback remains available");
+assert(legacy.mode === "legacy_section", "explicit Legacy policy fallback remains available");
 
 console.log("academic-cohort-legacy-section-adapter.harness.ts: PASS");

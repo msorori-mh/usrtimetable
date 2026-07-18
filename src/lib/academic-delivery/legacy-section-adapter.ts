@@ -2,7 +2,7 @@
  * Compatibility boundary for records that may still carry a Legacy section_id.
  * New academic-delivery callers must provide cohort/delivery-group context.
  */
-export type StudySystem = "regular" | "parallel";
+export type StudySystem = "regular" | "parallel" | "both";
 
 export type AcademicDeliveryContext =
   | {
@@ -22,7 +22,13 @@ export type ResolveAcademicDeliveryContextInput = {
   sectionId?: string | null;
   cohortStudySystem?: StudySystem | null;
   recordStudySystem?: StudySystem | null;
-  allowLegacySectionFallback?: boolean;
+  deliveryGroupCohortId?: string | null;
+  deliveryGroupStudySystem?: StudySystem | null;
+  /**
+   * Compatibility policy only. This is not an authorization check; callers must
+   * complete their authenticated college/capability check before opting in.
+   */
+  legacySectionFallbackPolicy?: "legacy_compatibility_required";
 };
 
 export function resolveAcademicDeliveryContext(
@@ -36,16 +42,30 @@ export function resolveAcademicDeliveryContext(
     throw new Error("DELIVERY_GROUP_REQUIRES_ACADEMIC_COHORT");
   }
 
-  if (
-    cohortId &&
-    input.cohortStudySystem &&
-    input.recordStudySystem &&
-    input.cohortStudySystem !== input.recordStudySystem
-  ) {
-    throw new Error("ACADEMIC_COHORT_STUDY_SYSTEM_MISMATCH");
-  }
-
   if (cohortId) {
+    if (!input.cohortStudySystem || !input.recordStudySystem) {
+      throw new Error("ACADEMIC_COHORT_STUDY_SYSTEM_REQUIRED");
+    }
+    if (input.cohortStudySystem === "both" || input.recordStudySystem === "both") {
+      throw new Error("ACADEMIC_COHORT_STUDY_SYSTEM_AMBIGUOUS");
+    }
+    if (input.cohortStudySystem !== input.recordStudySystem) {
+      throw new Error("ACADEMIC_COHORT_STUDY_SYSTEM_MISMATCH");
+    }
+    if (deliveryGroupId) {
+      if (!input.deliveryGroupCohortId || !input.deliveryGroupStudySystem) {
+        throw new Error("DELIVERY_GROUP_CONTEXT_REQUIRED");
+      }
+      if (input.deliveryGroupCohortId !== cohortId) {
+        throw new Error("DELIVERY_GROUP_COHORT_MISMATCH");
+      }
+      if (
+        input.deliveryGroupStudySystem === "both" ||
+        input.deliveryGroupStudySystem !== input.cohortStudySystem
+      ) {
+        throw new Error("DELIVERY_GROUP_STUDY_SYSTEM_MISMATCH");
+      }
+    }
     return {
       mode: "academic_cohort",
       cohortId,
@@ -56,7 +76,7 @@ export function resolveAcademicDeliveryContext(
     };
   }
 
-  if (sectionId && input.allowLegacySectionFallback === true) {
+  if (sectionId && input.legacySectionFallbackPolicy === "legacy_compatibility_required") {
     return { mode: "legacy_section", sectionId };
   }
 

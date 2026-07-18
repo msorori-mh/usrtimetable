@@ -10,14 +10,14 @@ No lifecycle, conflict/exception, central state/policy/log/decision file, migrat
 
 ## Transition map
 
-| Legacy responsibility | Cohort-first authority | Transition rule |
-| --- | --- | --- |
-| `sections` identifies a student teaching population | `academic_cohorts` identifies the student academic context | New flows require `cohort_id`; a section may be read only through an explicitly authorized Legacy adapter. |
-| `course_offering_sections` links offerings to populations | Approved study plan -> cohort curriculum; `delivery_groups` link a cohort to a plan-course component | Do not create COS rows in new generation. Keep existing rows readable for Legacy screens and reports. |
-| `section_subgroups` expresses splits | `delivery_groups` expresses capacity/delivery-nature splits | New assignments and sessions use `delivery_group_id`; subgroup data remains Legacy-only. |
-| `schedule_sessions.section_id` and `teaching_assignments.section_id` | `cohort_id` plus optional `delivery_group_id` | When both models exist, cohort/group is authoritative and section is round-trip compatibility metadata only. |
-| Section study system | `academic_cohorts.study_system` and matching offering/session predicates | Reject cross-system context; `regular` and `parallel` must never share resolution paths. |
-| Individual registration/enrollment ownership | Cohort plan plus approved cohort elective selection | Expected counts are planning metadata, not evidence of individual core-course registration. |
+| Legacy responsibility                                                | Cohort-first authority                                                                               | Transition rule                                                                                                                                            |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sections` identifies a student teaching population                  | `academic_cohorts` identifies the student academic context                                           | New flows require `cohort_id`; a section may be read only after the caller completes authorization and explicitly selects the Legacy compatibility policy. |
+| `course_offering_sections` links offerings to populations            | Approved study plan -> cohort curriculum; `delivery_groups` link a cohort to a plan-course component | Do not create COS rows in new generation. Keep existing rows readable for Legacy screens and reports.                                                      |
+| `section_subgroups` expresses splits                                 | `delivery_groups` expresses capacity/delivery-nature splits                                          | New assignments and sessions use `delivery_group_id`; subgroup data remains Legacy-only.                                                                   |
+| `schedule_sessions.section_id` and `teaching_assignments.section_id` | `cohort_id` plus optional `delivery_group_id`                                                        | When both models exist, cohort/group is authoritative and section is round-trip compatibility metadata only.                                               |
+| Section study system                                                 | `academic_cohorts.study_system` and matching offering/session predicates                             | Reject cross-system context; `regular` and `parallel` must never share resolution paths.                                                                   |
+| Individual registration/enrollment ownership                         | Cohort plan plus approved cohort elective selection                                                  | Expected counts are planning metadata, not evidence of individual core-course registration.                                                                |
 
 ## Audit findings
 
@@ -41,15 +41,15 @@ These paths need deliberate caller-by-caller migration. Bulk removal would break
 
 ## Implemented safe fix
 
-Added `legacy-section-adapter.ts`, a pure compatibility boundary that:
+Added `legacy-section-adapter.ts`, a pure compatibility-policy mapper, not an authorization boundary, that:
 
-- requires `academic_cohort` when a delivery group is supplied;
+- requires `academic_cohort` plus matching cohort and study-system evidence when a delivery group is supplied;
 - makes cohort/group authoritative when a legacy section is also present;
-- rejects a section-only path unless the caller explicitly opts into Legacy fallback;
-- rejects `regular`/`parallel` study-system mismatch;
+- rejects a section-only path unless an already-authorized caller explicitly opts into Legacy compatibility policy;
+- rejects missing, ambiguous (`both`), or mismatched study-system evidence;
 - performs no database writes or migration.
 
-A focused harness covers the cohort-first, explicit Legacy fallback, orphan delivery-group, unauthorized section, and study-system isolation cases.
+A focused harness covers cohort-first mapping, explicit Legacy policy fallback, orphan/cross-cohort delivery groups, section default-deny, and missing/ambiguous/mismatched study-system evidence. Registration in `tests/harness/run.mjs` is deferred because that shared runner is currently owned by the active lifecycle agent (`OWNERSHIP_CONFLICT`); the focused command remains mandatory.
 
 ## Ownership and follow-up
 
