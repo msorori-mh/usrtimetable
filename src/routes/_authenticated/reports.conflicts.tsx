@@ -98,7 +98,9 @@ function Page() {
       headers={headers}
       isLoading={ctx.isLoading || isLoading}
       emptyMessage={
-        !ctx.versionId
+        error
+          ? "تعذر تحميل تقرير التعارضات. لم تُعرض حالة فارغة لأن الاستعلام فشل."
+          : !ctx.versionId
           ? "اختر نسخة جدول."
           : !check
             ? "لا يوجد فحص تعارضات لهذه النسخة — شغّل الفحص من صفحة فحص التعارضات."
@@ -106,11 +108,6 @@ function Page() {
       }
       filters={<ReportFilters context={ctx} />}
     >
-      {error ? (
-        <Card className="report-no-print mb-4 border-destructive p-4 text-sm text-destructive">
-          تعذر تحميل تقرير التعارضات. لم تُعرض حالة فارغة لأن الاستعلام فشل.
-        </Card>
-      ) : null}
       <Card className="report-no-print mb-4 flex gap-3 border-primary/20 bg-primary/5 p-4">
         <Info className="h-5 w-5 shrink-0 text-primary mt-0.5" />
         <div className="text-sm space-y-1">
