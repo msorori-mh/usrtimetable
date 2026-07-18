@@ -6,6 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { useCanManageActiveCollege } from "@/hooks/use-can-manage";
 import { useGenerateDeliveryGroups } from "@/hooks/use-generate-delivery-groups";
+import { useGenerateCohortCurriculum } from "@/hooks/use-generate-cohort-curriculum";
+import type { CohortCurriculumSummary } from "@/lib/academic-delivery/cohort-curriculum";
 import type { DeliveryGroupGeneratorSummary } from "@/lib/academic-delivery/delivery-group-generator-summary";
 import { CollegeSwitcher } from "@/components/college-switcher";
 import { Card } from "@/components/ui/card";
@@ -69,9 +71,12 @@ function AcademicCohortsPage() {
   const { active } = useActiveCollege();
   const canManage = useCanManageActiveCollege();
   const generate = useGenerateDeliveryGroups();
+  const generateCurriculum = useGenerateCohortCurriculum();
   const [selectedCohortId, setSelectedCohortId] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [lastSummary, setLastSummary] = useState<DeliveryGroupGeneratorSummary | null>(null);
+  const [lastCurriculumSummary, setLastCurriculumSummary] =
+    useState<CohortCurriculumSummary | null>(null);
 
   const { data: programs } = useQuery({
     queryKey: ["programs-min", active?.id],
@@ -249,13 +254,28 @@ function AcademicCohortsPage() {
                   </p>
                 </div>
                 {canManage ? (
-                  <Button
-                    size="sm"
-                    disabled={generate.isPending}
-                    onClick={() => setConfirmOpen(true)}
-                  >
-                    توليد مجموعات التدريس
-                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={generateCurriculum.isPending}
+                      onClick={() => {
+                        if (!effectiveCohortId) return;
+                        generateCurriculum.mutate(effectiveCohortId, {
+                          onSuccess: setLastCurriculumSummary,
+                        });
+                      }}
+                    >
+                      توليد منهج الدفعة
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={generate.isPending}
+                      onClick={() => setConfirmOpen(true)}
+                    >
+                      توليد مجموعات التدريس
+                    </Button>
+                  </div>
                 ) : (
                   <p className="text-xs text-muted-foreground">التوليد متاح لمديري الكلية فقط.</p>
                 )}
@@ -325,6 +345,26 @@ function AcademicCohortsPage() {
                 </div>
               )}
             </Card>
+
+            {lastCurriculumSummary ? (
+              <Card className="space-y-2 p-4 text-sm" data-testid="cohort-curriculum-summary">
+                <p className="font-medium">تم توليد منهج الدفعة من الخطة الدراسية المعتمدة.</p>
+                <p className="text-muted-foreground">
+                  أضيف {lastCurriculumSummary.inserted_offerings} · موجود مسبقاً{" "}
+                  {lastCurriculumSummary.skipped_existing} · مقررات اختيارية معتمدة{" "}
+                  {lastCurriculumSummary.elective_candidates}
+                </p>
+                {lastCurriculumSummary.skipped_unselected_elective > 0 ? (
+                  <p className="text-amber-700 dark:text-amber-400">
+                    لم تُنشأ مقررات {lastCurriculumSummary.skipped_unselected_elective} من الخانات
+                    الاختيارية لعدم وجود اختيار معتمد للدفعة.
+                  </p>
+                ) : null}
+                <p className="text-xs text-muted-foreground">
+                  لم يُنشأ تسجيل فردي Legacy أو شعبة تشغيلية أو مجموعة تدريس أو جلسة.
+                </p>
+              </Card>
+            ) : null}
 
             {lastSummary ? (
               <Card className="space-y-2 p-4 text-sm" data-testid="generator-summary-panel">

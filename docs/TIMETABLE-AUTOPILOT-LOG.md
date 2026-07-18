@@ -1,5 +1,21 @@
 # Timetable Autopilot Log
 
+## 2026-07-18 — Agent wave launch failure
+
+- Prepared clean worktrees from `origin/main` for atomic import dispatch and migration-history reconciliation.
+- Both Codex CLI processes exited before repository inspection or edits because the authenticated CLI account reached its usage limit; reported retry time: 2026-07-24 08:59.
+- Verified both PIDs ended, both locks were removed, result files recorded exit code 1, and both worktrees remain clean at the source baseline. No random restart was attempted.
+- Draft PR #45 remains isolated with its HIGH atomicity finding; no merge occurred.
+- Production DB writes: none. Migration apply: none. Deploy/publish: none.
+
+## 2026-07-18 — Source-only wave remediation
+
+- Launched three clean agents from `origin/main` without touching the preserved dirty mainline.
+- PR #47 replaced network/shell harness execution with locked local `tsx`, registered merged harnesses, added deterministic summaries and a 120-second per-harness timeout. Independent review found no remaining BLOCKER/HIGH/MEDIUM; merged as `ae14d6d4429ab125dda829ceb189baf5bcc499b2`.
+- PR #46 initially failed review for historical-migration mutation and incomplete concurrency invariants. Remediation restored the historical migration, added forward-only `20260718183000_forward_harden_cohort_curriculum_runtime.sql`, enforced one active plan, approved elective decisions, shared input-writer locks including courses, uniform tenant denial, idempotency and atomic audit. PostgreSQL 15 old-baseline then forward proof passed; merged source-only as `c7785c638957cc64d48601c6f3c8ba9408ad9636`.
+- Draft PR #45 closed same-count payload substitution, replay and job/audit CAS gaps, but independent review retained HIGH because entity domain writes are still client-side across multiple requests and cannot roll back atomically. PR #45 remains Draft and isolated; no merge.
+- Production DB writes: none. Migration apply: none. Deploy/publish: none. Actual import/publication: none.
+
 ## 2026-07-18 — Active wave completion
 
 - Preserved dirty `C:\projects\usrtimetable-mainline` and executed only in isolated worktrees from live `origin/main`.
