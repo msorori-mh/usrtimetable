@@ -3016,6 +3016,10 @@ export type Database = {
       }
     }
     Functions: {
+      transition_schedule_version: {
+        Args: { p_college_id: string; p_schedule_version_id: string; p_expected_status: string; p_target_status: string; p_notes?: string }
+        Returns: Json
+      }
       _collect_schedule_session_move_conflicts: {
         Args: {
           p_college_id: string
