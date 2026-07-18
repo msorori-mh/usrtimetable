@@ -248,6 +248,68 @@ CREATE TRIGGER trg_svce_lifecycle_dependency_lock BEFORE INSERT OR UPDATE OR DEL
 ON public.schedule_version_conflict_exceptions FOR EACH ROW EXECUTE FUNCTION public.invalidate_schedule_version_eligibility();
 DROP TRIGGER IF EXISTS trg_sqr_lifecycle_dependency_lock ON public.schedule_quality_runs;
 
+-- College-wide scorer inputs have no schedule_version_id. Conservatively
+-- invalidate every version in OLD and NEW colleges; global metric changes
+-- invalidate every version. Locks are always acquired in UUID order.
+CREATE OR REPLACE FUNCTION public.invalidate_college_schedule_eligibility()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
+DECLARE
+  v_old_college uuid := CASE WHEN TG_OP IN ('UPDATE', 'DELETE') AND TG_TABLE_NAME <> 'quality_metrics' THEN OLD.college_id END;
+  v_new_college uuid := CASE WHEN TG_OP IN ('INSERT', 'UPDATE') AND TG_TABLE_NAME <> 'quality_metrics' THEN NEW.college_id END;
+  v_version_id uuid;
+BEGIN
+  IF TG_TABLE_NAME <> 'quality_metrics'
+     AND ((TG_OP IN ('UPDATE', 'DELETE') AND v_old_college IS NULL)
+       OR (TG_OP IN ('INSERT', 'UPDATE') AND v_new_college IS NULL)) THEN
+    RAISE EXCEPTION 'LIFECYCLE_INPUT_TENANT_REQUIRED' USING ERRCODE = '23514';
+  END IF;
+
+  FOR v_version_id IN
+    SELECT sv.id
+    FROM public.schedule_versions sv
+    WHERE TG_TABLE_NAME = 'quality_metrics'
+       OR sv.college_id IN (v_old_college, v_new_college)
+    ORDER BY sv.id::text
+  LOOP
+    PERFORM pg_advisory_xact_lock(hashtextextended(v_version_id::text, 9174));
+  END LOOP;
+
+  UPDATE public.schedule_versions sv
+  SET eligibility_revision = eligibility_revision + 1
+  WHERE TG_TABLE_NAME = 'quality_metrics'
+     OR sv.college_id IN (v_old_college, v_new_college);
+  RETURN COALESCE(NEW, OLD);
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_rooms_lifecycle_invalidate ON public.rooms;
+CREATE TRIGGER trg_rooms_lifecycle_invalidate BEFORE INSERT OR UPDATE OR DELETE ON public.rooms
+FOR EACH ROW EXECUTE FUNCTION public.invalidate_college_schedule_eligibility();
+DROP TRIGGER IF EXISTS trg_ra_lifecycle_invalidate ON public.room_availability;
+CREATE TRIGGER trg_ra_lifecycle_invalidate BEFORE INSERT OR UPDATE OR DELETE ON public.room_availability
+FOR EACH ROW EXECUTE FUNCTION public.invalidate_college_schedule_eligibility();
+DROP TRIGGER IF EXISTS trg_ia_lifecycle_invalidate ON public.instructor_availability;
+CREATE TRIGGER trg_ia_lifecycle_invalidate BEFORE INSERT OR UPDATE OR DELETE ON public.instructor_availability
+FOR EACH ROW EXECUTE FUNCTION public.invalidate_college_schedule_eligibility();
+DROP TRIGGER IF EXISTS trg_co_lifecycle_invalidate ON public.course_offerings;
+CREATE TRIGGER trg_co_lifecycle_invalidate BEFORE INSERT OR UPDATE OR DELETE ON public.course_offerings
+FOR EACH ROW EXECUTE FUNCTION public.invalidate_college_schedule_eligibility();
+DROP TRIGGER IF EXISTS trg_tst_lifecycle_invalidate ON public.time_slot_templates;
+CREATE TRIGGER trg_tst_lifecycle_invalidate BEFORE INSERT OR UPDATE OR DELETE ON public.time_slot_templates
+FOR EACH ROW EXECUTE FUNCTION public.invalidate_college_schedule_eligibility();
+DROP TRIGGER IF EXISTS trg_instructors_lifecycle_invalidate ON public.instructors;
+CREATE TRIGGER trg_instructors_lifecycle_invalidate BEFORE INSERT OR UPDATE OR DELETE ON public.instructors
+FOR EACH ROW EXECUTE FUNCTION public.invalidate_college_schedule_eligibility();
+DROP TRIGGER IF EXISTS trg_ta_lifecycle_invalidate ON public.teaching_assignments;
+CREATE TRIGGER trg_ta_lifecycle_invalidate BEFORE INSERT OR UPDATE OR DELETE ON public.teaching_assignments
+FOR EACH ROW EXECUTE FUNCTION public.invalidate_college_schedule_eligibility();
+DROP TRIGGER IF EXISTS trg_cqs_lifecycle_invalidate ON public.college_quality_settings;
+CREATE TRIGGER trg_cqs_lifecycle_invalidate BEFORE INSERT OR UPDATE OR DELETE ON public.college_quality_settings
+FOR EACH ROW EXECUTE FUNCTION public.invalidate_college_schedule_eligibility();
+DROP TRIGGER IF EXISTS trg_qm_lifecycle_invalidate ON public.quality_metrics;
+CREATE TRIGGER trg_qm_lifecycle_invalidate BEFORE INSERT OR UPDATE OR DELETE ON public.quality_metrics
+FOR EACH ROW EXECUTE FUNCTION public.invalidate_college_schedule_eligibility();
+
 CREATE OR REPLACE FUNCTION public.enforce_schedule_version_immutability()
 RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$
 BEGIN

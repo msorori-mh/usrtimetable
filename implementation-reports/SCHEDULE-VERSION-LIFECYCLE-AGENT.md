@@ -21,7 +21,7 @@ PR #38 was inspected from its locally available branch `origin/codex/lifecycle-o
 
 ## Verification
 
-- Lifecycle advancement now requires a current quality run; mutations to sessions, conflict checks, or exceptions invalidate older quality evidence through `eligibility_updated_at`.
+- Lifecycle advancement now requires quality evidence stamped with the exact numeric `eligibility_revision`; every scorer/validator input invalidates affected versions, including deterministic OLD+NEW college/version moves and global quality-metric changes.
 
 - Focused Bun harness: **PASS**.
 - `git diff --check`: **PASS** (line-ending conversion warnings only).

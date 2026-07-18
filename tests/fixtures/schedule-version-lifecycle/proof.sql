@@ -35,6 +35,15 @@ CREATE TABLE public.schedule_version_conflict_exceptions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), college_id uuid NOT NULL,
   schedule_version_id uuid NOT NULL
 );
+CREATE TABLE public.rooms (id uuid PRIMARY KEY, college_id uuid NOT NULL, capacity integer NOT NULL);
+CREATE TABLE public.room_availability (id uuid PRIMARY KEY, college_id uuid NOT NULL, room_id uuid NOT NULL, note text);
+CREATE TABLE public.instructor_availability (id uuid PRIMARY KEY, college_id uuid NOT NULL);
+CREATE TABLE public.course_offerings (id uuid PRIMARY KEY, college_id uuid NOT NULL);
+CREATE TABLE public.time_slot_templates (id uuid PRIMARY KEY, college_id uuid NOT NULL);
+CREATE TABLE public.instructors (id uuid PRIMARY KEY, college_id uuid NOT NULL);
+CREATE TABLE public.teaching_assignments (id uuid PRIMARY KEY, college_id uuid NOT NULL);
+CREATE TABLE public.quality_metrics (id uuid PRIMARY KEY, code text NOT NULL);
+CREATE TABLE public.college_quality_settings (id uuid PRIMARY KEY, college_id uuid NOT NULL);
 CREATE FUNCTION public.can_manage_college(p_actor uuid, p_college uuid)
 RETURNS boolean LANGUAGE sql STABLE AS $$ SELECT p_actor = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid AND p_college = 'cccccccc-cccc-cccc-cccc-cccccccccccc'::uuid $$;
 CREATE FUNCTION public.enforce_sv_transition() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RETURN NEW; END $$;
@@ -46,8 +55,12 @@ INSERT INTO schedule_versions (id, college_id, academic_term_id, name, status)
 VALUES ('11111111-1111-1111-1111-111111111111', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'dddddddd-dddd-dddd-dddd-dddddddddddd', 'proof', 'draft');
 INSERT INTO schedule_versions (id, college_id, academic_term_id, name, status)
 VALUES ('22222222-2222-2222-2222-222222222222', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'dddddddd-dddd-dddd-dddd-dddddddddddd', 'proof-2', 'draft');
+INSERT INTO schedule_versions (id, college_id, academic_term_id, name, status)
+VALUES ('55555555-5555-5555-5555-555555555555', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'dddddddd-dddd-dddd-dddd-dddddddddddd', 'proof-other-college', 'draft');
 INSERT INTO schedule_sessions (college_id, schedule_version_id)
 VALUES ('cccccccc-cccc-cccc-cccc-cccccccccccc', '11111111-1111-1111-1111-111111111111');
+INSERT INTO rooms VALUES ('33333333-3333-3333-3333-333333333333', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 30);
+INSERT INTO room_availability VALUES ('44444444-4444-4444-4444-444444444444', 'cccccccc-cccc-cccc-cccc-cccccccccccc', '33333333-3333-3333-3333-333333333333', 'open');
 
 SET test.uid = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
 DO $$ BEGIN
@@ -61,6 +74,38 @@ DO $$ BEGIN
   RAISE EXCEPTION 'missing quality run was accepted';
 EXCEPTION WHEN check_violation THEN
   IF SQLERRM <> 'PUBLISH_BLOCKER:QUALITY_RUN_REQUIRED' THEN RAISE; END IF;
+END $$;
+
+-- Room capacity is a validator input: changing it after begin must reject persist.
+DO $$
+DECLARE stale_revision bigint;
+BEGIN
+  stale_revision := (begin_schedule_quality_snapshot(
+    'cccccccc-cccc-cccc-cccc-cccccccccccc', '11111111-1111-1111-1111-111111111111'
+  )->>'eligibility_revision')::bigint;
+  UPDATE rooms SET capacity = capacity + 1 WHERE id = '33333333-3333-3333-3333-333333333333';
+  BEGIN
+    PERFORM persist_schedule_quality_run(
+      'cccccccc-cccc-cccc-cccc-cccccccccccc', '11111111-1111-1111-1111-111111111111',
+      stale_revision, 100, 0, 0, 0, '{}'::jsonb
+    );
+    RAISE EXCEPTION 'capacity mutation did not stale snapshot';
+  EXCEPTION WHEN serialization_failure THEN NULL; END;
+END $$;
+
+SELECT persist_schedule_quality_run(
+  'cccccccc-cccc-cccc-cccc-cccccccccccc', '11111111-1111-1111-1111-111111111111',
+  (begin_schedule_quality_snapshot('cccccccc-cccc-cccc-cccc-cccccccccccc', '11111111-1111-1111-1111-111111111111')->>'eligibility_revision')::bigint,
+  100, 0, 0, 0, '{}'::jsonb
+);
+-- Availability mutation after persist must make transition reject that run.
+UPDATE room_availability SET note = 'changed'
+WHERE id = '44444444-4444-4444-4444-444444444444';
+DO $$ BEGIN
+  PERFORM transition_schedule_version('cccccccc-cccc-cccc-cccc-cccccccccccc', '11111111-1111-1111-1111-111111111111', 'draft', 'review');
+  RAISE EXCEPTION 'availability mutation did not stale quality evidence';
+EXCEPTION WHEN check_violation THEN
+  IF SQLERRM <> 'PUBLISH_BLOCKER:QUALITY_RUN_STALE' THEN RAISE; END IF;
 END $$;
 SELECT persist_schedule_quality_run(
   'cccccccc-cccc-cccc-cccc-cccccccccccc', '11111111-1111-1111-1111-111111111111',
@@ -144,6 +189,20 @@ BEGIN
   IF (SELECT eligibility_revision FROM schedule_versions WHERE id = '11111111-1111-1111-1111-111111111111') <> before_old + 1
      OR (SELECT eligibility_revision FROM schedule_versions WHERE id = '22222222-2222-2222-2222-222222222222') <> before_new + 1 THEN
     RAISE EXCEPTION 'OLD+NEW invalidation failed';
+  END IF;
+END $$;
+
+-- A college move fans out to both OLD and NEW tenants under deterministic locks.
+DO $$
+DECLARE before_old bigint; before_new bigint;
+BEGIN
+  SELECT eligibility_revision INTO before_old FROM schedule_versions WHERE id = '22222222-2222-2222-2222-222222222222';
+  SELECT eligibility_revision INTO before_new FROM schedule_versions WHERE id = '55555555-5555-5555-5555-555555555555';
+  UPDATE rooms SET college_id = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'
+  WHERE id = '33333333-3333-3333-3333-333333333333';
+  IF (SELECT eligibility_revision FROM schedule_versions WHERE id = '22222222-2222-2222-2222-222222222222') <> before_old + 1
+     OR (SELECT eligibility_revision FROM schedule_versions WHERE id = '55555555-5555-5555-5555-555555555555') <> before_new + 1 THEN
+    RAISE EXCEPTION 'OLD+NEW college invalidation failed';
   END IF;
 END $$;
 

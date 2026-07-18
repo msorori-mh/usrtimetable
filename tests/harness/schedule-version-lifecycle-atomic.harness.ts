@@ -63,6 +63,27 @@ assert(
   migration.includes("LIFECYCLE_DEPENDENCY_TENANT_MISMATCH"),
   "dependency rows are tenant validated",
 );
+for (const trigger of [
+  "trg_rooms_lifecycle_invalidate",
+  "trg_ra_lifecycle_invalidate",
+  "trg_ia_lifecycle_invalidate",
+  "trg_co_lifecycle_invalidate",
+  "trg_tst_lifecycle_invalidate",
+  "trg_instructors_lifecycle_invalidate",
+  "trg_ta_lifecycle_invalidate",
+  "trg_cqs_lifecycle_invalidate",
+  "trg_qm_lifecycle_invalidate",
+]) {
+  assert(migration.includes(trigger), `missing scorer-input invalidation: ${trigger}`);
+}
+assert(
+  migration.includes("sv.college_id IN (v_old_college, v_new_college)"),
+  "college moves invalidate both OLD and NEW tenants",
+);
+assert(
+  migration.includes("TG_TABLE_NAME = 'quality_metrics'"),
+  "global quality metric changes invalidate all versions",
+);
 assert(
   scorer.indexOf('rpc(\n    "begin_schedule_quality_snapshot"') <
     scorer.indexOf('.from("schedule_sessions")'),
