@@ -39,6 +39,8 @@ assert(route.includes("skipped_unselected_elective"), "route reports unapproved 
 assert(hardening.includes("uq_study_plans_one_active_per_program"), "active plan is unique");
 assert(hardening.includes("ELECTIVE_DECISION_NOT_APPROVED"), "draft elective fails closed");
 assert(hardening.includes("pg_advisory_xact_lock(9262, 1)"), "input snapshot lock is shared");
+assert(hardening.includes("trg_curriculum_lock_courses"), "course mutations share snapshot lock");
+assert(hardening.includes("COHORT_NOT_FOUND_OR_FORBIDDEN"), "tenant lookup is uniform");
 assert(
   hardening.includes("generate_cohort_curriculum_legacy_impl"),
   "forward wrapper preserves history",

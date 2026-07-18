@@ -53,6 +53,9 @@ FOR EACH STATEMENT EXECUTE FUNCTION public.lock_cohort_curriculum_inputs();
 DROP TRIGGER IF EXISTS trg_curriculum_lock_terms ON public.academic_terms;
 CREATE TRIGGER trg_curriculum_lock_terms BEFORE INSERT OR UPDATE OR DELETE ON public.academic_terms
 FOR EACH STATEMENT EXECUTE FUNCTION public.lock_cohort_curriculum_inputs();
+DROP TRIGGER IF EXISTS trg_curriculum_lock_courses ON public.courses;
+CREATE TRIGGER trg_curriculum_lock_courses BEFORE INSERT OR UPDATE OR DELETE ON public.courses
+FOR EACH STATEMENT EXECUTE FUNCTION public.lock_cohort_curriculum_inputs();
 
 ALTER FUNCTION public.generate_cohort_curriculum(uuid)
   RENAME TO generate_cohort_curriculum_legacy_impl;
@@ -81,12 +84,13 @@ BEGIN
 
   -- Same lock is taken by every writer of a curriculum input table.
   PERFORM pg_catalog.pg_advisory_xact_lock(9262, 1);
-  SELECT * INTO v_cohort FROM public.academic_cohorts WHERE id = p_cohort_id FOR UPDATE;
+  SELECT * INTO v_cohort
+  FROM public.academic_cohorts
+  WHERE id = p_cohort_id
+    AND public.can_manage_college(v_uid, college_id)
+  FOR UPDATE;
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'COHORT_NOT_FOUND' USING ERRCODE = 'P0002';
-  END IF;
-  IF NOT public.can_manage_college(v_uid, v_cohort.college_id) THEN
-    RAISE EXCEPTION 'insufficient_privilege' USING ERRCODE = '42501';
+    RAISE EXCEPTION 'COHORT_NOT_FOUND_OR_FORBIDDEN' USING ERRCODE = '42501';
   END IF;
 
   SELECT count(*)::integer, (array_agg(id ORDER BY id))[1]
