@@ -31,15 +31,35 @@ function count(value: unknown, field: string): number {
   return Number(value);
 }
 
-export function parseCohortCurriculumSummary(value: unknown): CohortCurriculumSummary {
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function parseCohortCurriculumSummary(
+  value: unknown,
+  expectedCohortId?: string,
+): CohortCurriculumSummary {
   const row = record(value);
   if (row.operation !== "generate_cohort_curriculum" || row.result !== "success") {
     throw new Error("COHORT_CURRICULUM_UNEXPECTED_RESULT");
   }
-  if (typeof row.cohort_id !== "string" || typeof row.study_plan_id !== "string") {
+  if (
+    typeof row.cohort_id !== "string" ||
+    !UUID.test(row.cohort_id) ||
+    typeof row.study_plan_id !== "string" ||
+    !UUID.test(row.study_plan_id)
+  ) {
     throw new Error("COHORT_CURRICULUM_MISSING_CONTEXT");
   }
-  if (row.created_sections !== 0 || row.created_delivery_groups !== 0 || row.created_sessions !== 0) {
+  if (expectedCohortId && row.cohort_id !== expectedCohortId) {
+    throw new Error("COHORT_CURRICULUM_COHORT_MISMATCH");
+  }
+  if (row.term_type !== "first" && row.term_type !== "second") {
+    throw new Error("COHORT_CURRICULUM_INVALID_TERM_TYPE");
+  }
+  if (
+    row.created_sections !== 0 ||
+    row.created_delivery_groups !== 0 ||
+    row.created_sessions !== 0
+  ) {
     throw new Error("COHORT_CURRICULUM_OPERATIONAL_SIDE_EFFECT_REPORTED");
   }
   return {
@@ -48,11 +68,14 @@ export function parseCohortCurriculumSummary(value: unknown): CohortCurriculumSu
     cohort_id: row.cohort_id,
     study_plan_id: row.study_plan_id,
     semester: count(row.semester, "semester"),
-    term_type: typeof row.term_type === "string" ? row.term_type : "",
+    term_type: row.term_type,
     inserted_offerings: count(row.inserted_offerings, "inserted_offerings"),
     skipped_existing: count(row.skipped_existing, "skipped_existing"),
     skipped_summer_only: count(row.skipped_summer_only, "skipped_summer_only"),
-    skipped_unselected_elective: count(row.skipped_unselected_elective, "skipped_unselected_elective"),
+    skipped_unselected_elective: count(
+      row.skipped_unselected_elective,
+      "skipped_unselected_elective",
+    ),
     required_candidates: count(row.required_candidates, "required_candidates"),
     elective_candidates: count(row.elective_candidates, "elective_candidates"),
     warnings: Array.isArray(row.warnings) ? row.warnings.map(record) : [],

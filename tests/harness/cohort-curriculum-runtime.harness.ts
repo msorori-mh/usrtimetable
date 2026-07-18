@@ -22,16 +22,22 @@ const service = readFileSync(join(root, "src/lib/academic-delivery/cohort-curric
 const route = readFileSync(join(root, "src/routes/_authenticated/academic-cohorts.tsx"), "utf8");
 
 assert(service.includes('supabase.rpc("generate_cohort_curriculum"'), "runtime calls cohort RPC");
-assert(!service.includes("course_offering_sections"), "runtime has no operational-section dependency");
-assert(!service.includes('.from("registrations")'), "runtime has no individual-registration dependency");
+assert(
+  !service.includes("course_offering_sections"),
+  "runtime has no operational-section dependency",
+);
+assert(
+  !service.includes('.from("registrations")'),
+  "runtime has no individual-registration dependency",
+);
 assert(route.includes("useGenerateCohortCurriculum"), "cohort route exposes curriculum action");
 assert(route.includes("skipped_unselected_elective"), "route reports unapproved elective slots");
 
 const summary = parseCohortCurriculumSummary({
   operation: "generate_cohort_curriculum",
   result: "success",
-  cohort_id: "cohort-regular",
-  study_plan_id: "plan-regular",
+  cohort_id: "11111111-1111-4111-8111-111111111111",
+  study_plan_id: "22222222-2222-4222-8222-222222222222",
   semester: 1,
   term_type: "first",
   inserted_offerings: 4,
@@ -45,12 +51,27 @@ const summary = parseCohortCurriculumSummary({
   created_delivery_groups: 0,
   created_sessions: 0,
 });
-assert(summary.cohort_id === "cohort-regular", "summary remains cohort-scoped");
+assert(
+  summary.cohort_id === "11111111-1111-4111-8111-111111111111",
+  "summary remains cohort-scoped",
+);
 assert(summary.skipped_unselected_elective === 1, "unapproved elective remains skipped");
 
 rejects(
   () => parseCohortCurriculumSummary({ ...summary, created_sections: 1 }),
   "COHORT_CURRICULUM_OPERATIONAL_SIDE_EFFECT_REPORTED",
+);
+rejects(
+  () => parseCohortCurriculumSummary({ ...summary, cohort_id: "not-a-uuid" }),
+  "COHORT_CURRICULUM_MISSING_CONTEXT",
+);
+rejects(
+  () => parseCohortCurriculumSummary(summary, "33333333-3333-4333-8333-333333333333"),
+  "COHORT_CURRICULUM_COHORT_MISMATCH",
+);
+rejects(
+  () => parseCohortCurriculumSummary({ ...summary, term_type: "summer" }),
+  "COHORT_CURRICULUM_INVALID_TERM_TYPE",
 );
 rejects(
   () => parseCohortCurriculumSummary({ ...summary, result: "partial" }),
