@@ -20,6 +20,10 @@ function rejects(fn: () => unknown, expected: string) {
 const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const service = readFileSync(join(root, "src/lib/academic-delivery/cohort-curriculum.ts"), "utf8");
 const route = readFileSync(join(root, "src/routes/_authenticated/academic-cohorts.tsx"), "utf8");
+const hardening = readFileSync(
+  join(root, "supabase/migrations/20260718183000_forward_harden_cohort_curriculum_runtime.sql"),
+  "utf8",
+);
 
 assert(service.includes('supabase.rpc("generate_cohort_curriculum"'), "runtime calls cohort RPC");
 assert(
@@ -32,6 +36,13 @@ assert(
 );
 assert(route.includes("useGenerateCohortCurriculum"), "cohort route exposes curriculum action");
 assert(route.includes("skipped_unselected_elective"), "route reports unapproved elective slots");
+assert(hardening.includes("uq_study_plans_one_active_per_program"), "active plan is unique");
+assert(hardening.includes("ELECTIVE_DECISION_NOT_APPROVED"), "draft elective fails closed");
+assert(hardening.includes("pg_advisory_xact_lock(9262, 1)"), "input snapshot lock is shared");
+assert(
+  hardening.includes("generate_cohort_curriculum_legacy_impl"),
+  "forward wrapper preserves history",
+);
 
 const summary = parseCohortCurriculumSummary({
   operation: "generate_cohort_curriculum",

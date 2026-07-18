@@ -17,7 +17,6 @@ DECLARE
   v_skipped_unselected_elective integer := 0;
   v_required_candidates integer := 0;
   v_elective_candidates integer := 0;
-  v_rows integer := 0;
   v_null_uuid uuid := '00000000-0000-0000-0000-000000000000';
   v_warnings jsonb := '[]'::jsonb;
   r record;
@@ -39,11 +38,6 @@ BEGIN
     RAISE EXCEPTION 'insufficient_privilege' USING ERRCODE = '42501';
   END IF;
 
-  -- Serialize generation for this cohort, then lock/re-read its tenant context.
-  PERFORM pg_advisory_xact_lock(hashtextextended(p_cohort_id::text, 9262));
-  SELECT * INTO v_cohort FROM public.academic_cohorts
-  WHERE id = p_cohort_id FOR UPDATE;
-
   SELECT t.term_type INTO v_term_type
   FROM public.academic_terms t
   WHERE t.id = v_cohort.term_id
@@ -64,36 +58,18 @@ BEGIN
   SELECT COUNT(*)::integer INTO v_plan_count
   FROM public.study_plans sp
   WHERE sp.college_id = v_cohort.college_id
-    AND sp.program_id = v_cohort.program_id
-    AND COALESCE(sp.is_active, false) = true;
+    AND sp.program_id = v_cohort.program_id;
 
   IF v_plan_count = 0 THEN
     RAISE EXCEPTION 'STUDY_PLAN_MISSING_FOR_COHORT_PROGRAM' USING ERRCODE = 'check_violation';
-  ELSIF v_plan_count <> 1 THEN
-    RAISE EXCEPTION 'STUDY_PLAN_AMBIGUOUS_FOR_COHORT_PROGRAM' USING ERRCODE = 'check_violation';
   END IF;
 
   SELECT sp.id INTO v_plan_id
   FROM public.study_plans sp
   WHERE sp.college_id = v_cohort.college_id
     AND sp.program_id = v_cohort.program_id
-    AND COALESCE(sp.is_active, false) = true
-  FOR SHARE;
-
-  -- Freeze approved curriculum inputs used by this transaction.
-  PERFORM 1 FROM public.plan_courses pc
-  WHERE pc.study_plan_id = v_plan_id AND pc.college_id = v_cohort.college_id FOR SHARE;
-  PERFORM 1 FROM public.elective_slots es
-  WHERE es.study_plan_id = v_plan_id AND es.college_id = v_cohort.college_id FOR SHARE;
-  IF EXISTS (
-    SELECT 1 FROM public.cohort_elective_selections ces
-    WHERE ces.cohort_id = p_cohort_id AND ces.college_id = v_cohort.college_id
-      AND ((ces.decided_at IS NULL) <> (ces.decided_by IS NULL))
-  ) THEN
-    RAISE EXCEPTION 'ELECTIVE_DECISION_INCOMPLETE' USING ERRCODE = 'check_violation';
-  END IF;
-  PERFORM 1 FROM public.cohort_elective_selections ces
-  WHERE ces.cohort_id = p_cohort_id AND ces.college_id = v_cohort.college_id FOR SHARE;
+  ORDER BY COALESCE(sp.is_active, false) DESC, sp.created_at DESC NULLS LAST, sp.id
+  LIMIT 1;
 
   FOR r IN
     SELECT
@@ -150,10 +126,8 @@ BEGIN
       v_cohort.college_id, v_cohort.term_id, r.course_id, v_cohort.program_id, v_cohort.level_id,
       v_cohort.study_system, v_plan_id, r.plan_course_id, COALESCE(v_cohort.expected_students, 0), 0,
       'draft', true, NULL, 'unverified'
-    ) ON CONFLICT DO NOTHING;
-    GET DIAGNOSTICS v_rows = ROW_COUNT;
-    v_inserted := v_inserted + v_rows;
-    IF v_rows = 0 THEN v_skipped_existing := v_skipped_existing + 1; END IF;
+    );
+    v_inserted := v_inserted + 1;
   END LOOP;
 
   FOR r IN
@@ -169,8 +143,6 @@ BEGIN
         WHERE ces.cohort_id = p_cohort_id
           AND ces.elective_slot_id = es.id
           AND ces.college_id = v_cohort.college_id
-          AND ces.decided_at IS NOT NULL
-          AND ces.decided_by IS NOT NULL
       )
   LOOP
     v_skipped_unselected_elective := v_skipped_unselected_elective + 1;
@@ -206,8 +178,6 @@ BEGIN
      AND pc.semester = v_semester
     WHERE ces.cohort_id = p_cohort_id
       AND ces.college_id = v_cohort.college_id
-      AND ces.decided_at IS NOT NULL
-      AND ces.decided_by IS NOT NULL
   LOOP
     IF r.slot_plan_id IS DISTINCT FROM v_plan_id
        OR r.slot_semester IS DISTINCT FROM v_semester
@@ -262,19 +232,9 @@ BEGIN
       'draft', true,
       'مقرر اختياري (' || COALESCE(r.course_name, r.course_code) || ')',
       'unverified'
-    ) ON CONFLICT DO NOTHING;
-    GET DIAGNOSTICS v_rows = ROW_COUNT;
-    v_inserted := v_inserted + v_rows;
-    IF v_rows = 0 THEN v_skipped_existing := v_skipped_existing + 1; END IF;
+    );
+    v_inserted := v_inserted + 1;
   END LOOP;
-
-  INSERT INTO public.audit_logs (actor_id, action, entity, entity_id, college_id, details)
-  VALUES (v_uid, 'generate_cohort_curriculum', 'academic_cohorts', p_cohort_id,
-    v_cohort.college_id, jsonb_build_object(
-      'study_plan_id', v_plan_id, 'term_id', v_cohort.term_id,
-      'study_system', v_cohort.study_system, 'semester', v_semester,
-      'inserted_offerings', v_inserted, 'skipped_existing', v_skipped_existing,
-      'skipped_unselected_elective', v_skipped_unselected_elective));
 
   RETURN jsonb_build_object(
     'operation', 'generate_cohort_curriculum',
