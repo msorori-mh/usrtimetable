@@ -2,6 +2,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { applyStudySystemFilter, assertSingleVersion } from "@/lib/reports/filters";
 import { DAY_NAMES_AR, fmtTime } from "@/lib/reports/formatters";
 import type { ReportStudySystem } from "@/lib/reports/types";
+import { buildApprovedExceptionIndex, loadApprovedExceptions } from "@/lib/conflict-engine/exceptions";
+import {
+  approvedExceptionForResult,
+  classifyConflict,
+  type ConflictSessionEvidence,
+} from "@/lib/reports/conflict-read-model";
 
 export interface ConflictCheckSummary {
   id: string;
@@ -56,11 +62,15 @@ export async function fetchConflictResults(
 
 interface SessionDetail {
   id: string;
+  schedule_version_id: string;
   day_of_week: number;
   start_time: string;
   end_time: string;
   study_system: string;
   session_type: string;
+  updated_at: string;
+  cohort_id: string | null;
+  delivery_group_id: string | null;
   instructors: { full_name: string } | null;
   rooms: { code: string; name: string } | null;
   sections: { section_number: string } | null;
@@ -70,7 +80,8 @@ interface SessionDetail {
 }
 
 const CONFLICT_SESSION_SELECT = `
-  id, day_of_week, start_time, end_time, study_system, session_type,
+  id, schedule_version_id, day_of_week, start_time, end_time, study_system, session_type, updated_at,
+  cohort_id, delivery_group_id,
   instructors(full_name),
   rooms(code, name),
   sections(section_number),
@@ -118,10 +129,15 @@ export async function fetchConflictReportRows(params: {
   studySystem: ReportStudySystem;
 }) {
   assertSingleVersion(params.versionId);
-  const check = await fetchLatestConflictCheck(params.collegeId, params.versionId);
+  const versionId = params.versionId;
+  const check = await fetchLatestConflictCheck(params.collegeId, versionId);
   if (!check) return { check: null, rows: [] as Record<string, unknown>[] };
 
-  const results = await fetchConflictResults(params.collegeId, check.id);
+  const [results, exceptions] = await Promise.all([
+    fetchConflictResults(params.collegeId, check.id),
+    loadApprovedExceptions({ scheduleVersionId: versionId, collegeId: params.collegeId }),
+  ]);
+  const exceptionIndex = buildApprovedExceptionIndex(exceptions, versionId);
   const ids = new Set<string>();
   for (const r of results) {
     if (r.schedule_session_id) ids.add(r.schedule_session_id);
@@ -129,7 +145,7 @@ export async function fetchConflictReportRows(params: {
   }
   const sessionMap = await fetchSessionsByIds(
     params.collegeId,
-    params.versionId,
+    versionId,
     Array.from(ids),
     params.studySystem,
   );
@@ -139,12 +155,27 @@ export async function fetchConflictReportRows(params: {
       if (params.studySystem === "all") return true;
       const primary = r.schedule_session_id ? sessionMap.get(r.schedule_session_id) : undefined;
       const related = r.related_session_id ? sessionMap.get(r.related_session_id) : undefined;
-      return !!(primary || related);
+      return r.schedule_session_id && r.related_session_id
+        ? !!(primary && related)
+        : !!(primary || related);
     })
     .map((r) => {
       const primary = r.schedule_session_id ? sessionMap.get(r.schedule_session_id) : undefined;
       const related = r.related_session_id ? sessionMap.get(r.related_session_id) : undefined;
       const sess = primary ?? related;
+      const approvedException = approvedExceptionForResult(exceptionIndex, versionId, r);
+      const classified = classifyConflict({
+        result: r,
+        versionId,
+        primary: primary as ConflictSessionEvidence | undefined,
+        related: related as ConflictSessionEvidence | undefined,
+        approvedException,
+        checkCreatedAt: check.created_at,
+      });
+      const day = primary?.day_of_week ?? related?.day_of_week;
+      const overlapText = classified.overlap
+        ? `${DAY_NAMES_AR[day ?? -1] ?? day ?? ""} ${fmtTime(classified.overlap.start)}-${fmtTime(classified.overlap.end)}`
+        : "";
       return {
         conflict_code: r.conflict_code,
         severity: r.severity,
@@ -153,10 +184,22 @@ export async function fetchConflictReportRows(params: {
         course: sessionLabel(primary) || sessionLabel(related),
         instructor: sess?.instructors?.full_name ?? "",
         room: sess?.rooms ? `${sess.rooms.code ?? ""} ${sess.rooms.name ?? ""}`.trim() : "",
-        section: sess?.sections?.section_number ?? "",
-        day_time: sessionTime(primary) || sessionTime(related),
+        cohort: sess?.cohort_id ?? "",
+        delivery_group: sess?.delivery_group_id ?? "",
+        legacy_section: sess?.sections?.section_number ?? "",
+        day_time: overlapText || sessionTime(primary) || sessionTime(related),
         study_system: sess?.study_system ?? "",
         check_status: check.status,
+        classification: classified.classification,
+        evidence_status: classified.evidenceStatus,
+        schedule_version_id: versionId,
+        primary_session_id: r.schedule_session_id ?? "",
+        related_session_id: r.related_session_id ?? "",
+        resolution_detail: approvedException
+          ? `${approvedException.approval_type}: ${approvedException.reason}`
+          : classified.classification === "unknown"
+            ? "readiness/unknown — session version/day/overlap evidence is incomplete"
+            : "—",
         resolution: "—",
       };
     });

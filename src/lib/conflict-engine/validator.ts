@@ -544,7 +544,7 @@ export async function validateScheduleVersion(params: {
     });
     conflicts.push(...sub.conflicts);
   }
-  const approvedExceptions = await loadApprovedExceptions({ scheduleVersionId });
+  const approvedExceptions = await loadApprovedExceptions({ scheduleVersionId, collegeId });
   const result = applyApprovedExceptions(conflicts, scheduleVersionId, approvedExceptions);
 
   if (!persist) return { checkId: null, result };
