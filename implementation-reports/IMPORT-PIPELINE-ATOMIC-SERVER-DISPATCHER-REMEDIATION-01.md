@@ -16,6 +16,7 @@ HIGH `HIGH_DOMAIN_DML_NOT_ATOMIC_PR_45_ARCHITECTURAL_BATCH_RPC_REQUIRED` is clos
 | Branch | `codex/import-pipeline-safety-agent` |
 | PR | https://github.com/msorori-mh/usrtimetable/pull/45 (Draft, not merged) |
 | Old PR head | `e082cd553cd0ba2fbccdce09629e2a7d545f5448` |
+| New PR head | `0c3577f460bc06bbdd5287dd14a88d313deaf7b6` |
 | origin/main used | `b0147349934a1fa217e6c3eaf972bbcc03733ff7` (merged via `--no-ff`) |
 
 ## Implementation
