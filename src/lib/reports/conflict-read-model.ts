@@ -17,6 +17,7 @@ export interface ConflictSessionEvidence {
   start_time: string | null;
   end_time: string | null;
   study_system: string;
+  updated_at: string;
 }
 
 export interface ConflictReadInput {
@@ -50,12 +51,17 @@ export function classifyConflict(params: {
   primary?: ConflictSessionEvidence;
   related?: ConflictSessionEvidence;
   approvedException?: ApprovedExceptionEvidence | null;
+  checkCreatedAt: string;
 }) {
   const sessions = [params.primary, params.related].filter(Boolean) as ConflictSessionEvidence[];
   const overlap = overlappingInterval(params.primary, params.related);
   const isolatedStudySystem = sessions.length < 2 || sessions.every((s) => s.study_system === sessions[0].study_system);
+  const snapshotIsFresh = sessions.every(
+    (session) => Date.parse(session.updated_at) <= Date.parse(params.checkCreatedAt),
+  );
   const evidenceStatus: "verified" | "unknown" = sessions.length > 0 &&
     sessions.every((s) => s.schedule_version_id === params.versionId) &&
+    snapshotIsFresh &&
     isolatedStudySystem &&
     (!PAIR_TEMPORAL_CODES.has(params.result.conflict_code) || overlap !== null)
     ? "verified" : "unknown";

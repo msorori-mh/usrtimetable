@@ -68,6 +68,7 @@ interface SessionDetail {
   end_time: string;
   study_system: string;
   session_type: string;
+  updated_at: string;
   cohort_id: string | null;
   delivery_group_id: string | null;
   instructors: { full_name: string } | null;
@@ -79,7 +80,7 @@ interface SessionDetail {
 }
 
 const CONFLICT_SESSION_SELECT = `
-  id, schedule_version_id, day_of_week, start_time, end_time, study_system, session_type,
+  id, schedule_version_id, day_of_week, start_time, end_time, study_system, session_type, updated_at,
   cohort_id, delivery_group_id,
   instructors(full_name),
   rooms(code, name),
@@ -169,6 +170,7 @@ export async function fetchConflictReportRows(params: {
         primary: primary as ConflictSessionEvidence | undefined,
         related: related as ConflictSessionEvidence | undefined,
         approvedException,
+        checkCreatedAt: check.created_at,
       });
       const day = primary?.day_of_week ?? related?.day_of_week;
       const overlapText = classified.overlap

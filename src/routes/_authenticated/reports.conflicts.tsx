@@ -57,7 +57,7 @@ function ConflictSeverityBadge({ severity }: { severity: unknown }) {
 function Page() {
   const ctx = useReportContext({ defaultStatusMode: "specific_version", defaultStudySystem: "all" });
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["rep-conflicts", ctx.collegeId, ctx.versionId, ctx.studySystem],
     enabled: !!ctx.collegeId && !!ctx.versionId,
     queryFn: () =>
@@ -106,6 +106,11 @@ function Page() {
       }
       filters={<ReportFilters context={ctx} />}
     >
+      {error ? (
+        <Card className="report-no-print mb-4 border-destructive p-4 text-sm text-destructive">
+          تعذر تحميل تقرير التعارضات. لم تُعرض حالة فارغة لأن الاستعلام فشل.
+        </Card>
+      ) : null}
       <Card className="report-no-print mb-4 flex gap-3 border-primary/20 bg-primary/5 p-4">
         <Info className="h-5 w-5 shrink-0 text-primary mt-0.5" />
         <div className="text-sm space-y-1">
