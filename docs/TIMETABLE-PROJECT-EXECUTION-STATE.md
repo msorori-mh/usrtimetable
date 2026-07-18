@@ -32,9 +32,9 @@ Updated: 2026-07-18 (Asia/Riyadh), next-agent-wave initialization
 | --- | --- | --- |
 | Schedule builder | COMPLETE | Phase 9.5 assignment integration merged as PR #37; production migration remains unapplied. |
 | Version lifecycle | COMPLETE_SOURCE_ONLY | PR #42 merged as `a1862a8`; atomic revision-bound quality evidence, authorization, audit, concurrency and publish blockers passed disposable PostgreSQL and independent review. Migration is not applied. |
-| Curriculum/cohorts | COMPLETE | PR #41 merged as `99bd0b2`; cohort-first context and default-deny Legacy section adapter passed independent review. |
+| Curriculum/cohorts | COMPLETE_SOURCE_ONLY | PR #41 established cohort-first context; PR #46 added approved curriculum runtime and forward-only DB hardening with PostgreSQL concurrency/rollback proof. Production migration remains unapplied. |
 | Offerings/assignments | REVIEW | CRUD and dependency hardening exist; CRUD policy requires an authoritative decision; generation is missing. |
-| Imports | REVIEW | Preview/validate/commit framework exists; broad entity, authorization and rollback coverage is missing. |
+| Imports | BLOCKED_HIGH | Draft PR #45 closes payload substitution/replay and improves tenant binding, but operational entity writes remain multi-request and non-atomic. Do not merge until a server-side batch dispatcher provides domain rollback and server-derived audit results. |
 | Conflicts | COMPLETE | PR #43 merged as `75e346e`; hard blockers, warnings, approved exceptions and stale/unknown evidence are separated with tenant and study-system isolation. |
 | Reports | COMPLETE | Draft lecturer schedule regression and shared version-scoped reporting merged as PR #39. |
 | Security/isolation | COMPLETE | Source-only composite-FK hardening for 21 cross-college references was verified on disposable PostgreSQL and merged; production apply remains separately gated. |
@@ -61,6 +61,9 @@ Updated: 2026-07-18 (Asia/Riyadh), next-agent-wave initialization
 8. `COMPLETE` — conflict/exception reporting evidence and isolation hardening merged as PR #43.
 9. `BLOCKED` — PR #30 remains conflicting and isolated.
 10. `REQUIRES_USER_APPROVAL` — production application of any source-only migration, or any deploy/publish action.
+11. `COMPLETE` — deterministic offline harness runner merged as PR #47 (`ae14d6d`), including per-harness timeout and strict failure summaries.
+12. `COMPLETE_SOURCE_ONLY` — approved cohort curriculum runtime merged as PR #46 (`c7785c6`) after forward-migration, concurrency, authorization, audit and rollback review.
+13. `BLOCKED_HIGH` — Draft PR #45 remains isolated; atomic server-side domain import execution is required before merge.
 
 ## Binding academic decision
 
@@ -81,6 +84,8 @@ Updated: 2026-07-18 (Asia/Riyadh), next-agent-wave initialization
 - Lint: `BASELINE_FAIL`, dominated by repository-wide CRLF/Prettier findings; no formatting sweep was performed.
 - Security PR #33: disposable PostgreSQL 15, targeted harness, TypeScript, build, scoped lint, `git diff --check`, and final independent security review all `PASS`.
 - Active wave PRs #41/#42/#43: focused harnesses, TypeScript, production build, scoped lint, diff-check and independent review passed. PR #42 additionally passed disposable PostgreSQL 15 compilation, positive/negative, rollback and concurrency/freshness fixtures.
+- PR #46: disposable PostgreSQL 15 applied the historical baseline followed by the new forward migration; authorization, active-plan uniqueness, approved electives, input-writer locking, idempotency, audit, rollback and real concurrency waiting passed.
+- PR #47: runner tests, TypeScript, build, scoped lint and independent portability/failure review passed.
 - Build/install generated an uncommitted `src/routeTree.gen.ts` change and `package-lock.json`; both are excluded from PR #35 and preserved as known generated artifacts.
 
 ## Phase 9.5 start
