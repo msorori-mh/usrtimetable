@@ -64,6 +64,7 @@ Updated: 2026-07-18 (Asia/Riyadh), next-agent-wave initialization
 11. `COMPLETE` — deterministic offline harness runner merged as PR #47 (`ae14d6d`), including per-harness timeout and strict failure summaries.
 12. `COMPLETE_SOURCE_ONLY` — approved cohort curriculum runtime merged as PR #46 (`c7785c6`) after forward-migration, concurrency, authorization, audit and rollback review.
 13. `BLOCKED_HIGH` — Draft PR #45 remains isolated; atomic server-side domain import execution is required before merge.
+14. `BLOCKED_EXTERNAL` — atomic-import dispatcher and migration-reconciliation agents could not start because Codex CLI usage was exhausted; clean worktrees remain unchanged. CLI reported retry availability on 2026-07-24 at 08:59.
 
 ## Binding academic decision
 
