@@ -3041,6 +3041,10 @@ export type Database = {
         Args: { p_job_id: string; p_college_id: string; p_target_entity: string; p_mode: string; p_validated_payload: Json }
         Returns: Json
       }
+      commit_import_job_atomic: {
+        Args: { p_job_id: string; p_expected_updated_at?: string | null }
+        Returns: Json
+      }
       create_import_preview_manifest: {
         Args: { p_college_id: string; p_target_entity: string; p_mode: string; p_file_name: string; p_total_rows: number; p_validated_payload: Json; p_errors?: Json }
         Returns: string

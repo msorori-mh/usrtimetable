@@ -360,9 +360,23 @@ function run() {
   void sbHits;
 
   const commit = read("src/lib/excel-import/commit.ts");
-  assert(commit.includes("derivePlanCourseComponents"), "commit uses derivation");
-  assert(commit.includes("syncPlanCourseComponents"), "components sync");
-  assert(commit.includes("isElectivePlaceholderCode"), "placeholder guard");
+  const atomicImport = read(
+    "supabase/migrations/20260718210000_source_only_atomic_import_job_commit.sql",
+  );
+  assert(commit.includes("commit_import_job_atomic"), "commit is server atomic RPC");
+  assert(
+    atomicImport.includes("_import_sync_plan_course_components") ||
+      atomicImport.includes("plan_course_components"),
+    "components sync",
+  );
+  assert(
+    atomicImport.includes("_import_is_elective_placeholder") || atomicImport.includes("elective"),
+    "placeholder guard",
+  );
+  assert(
+    atomicImport.includes("theory_hours") || atomicImport.includes("weekly_contact_hours"),
+    "commit uses derivation",
+  );
 
   // Phase 9.1 migration untouched by this remediation (harness cannot prove git; file still present)
   assert(

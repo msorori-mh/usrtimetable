@@ -54,18 +54,32 @@ assert(
 const safety = read("src/lib/excel-import/safety.ts");
 const validators = read("src/lib/excel-import/validators.ts");
 const commit = read("src/lib/excel-import/commit.ts");
-const migration = read("supabase/migrations/20260718180000_import_manifest_contract.sql");
+const manifestMigration = read("supabase/migrations/20260718180000_import_manifest_contract.sql");
+const atomicMigration = read(
+  "supabase/migrations/20260718210000_source_only_atomic_import_job_commit.sql",
+);
+
 assert(safety.includes("requireImportManager"), "authorization guard exists");
 assert(safety.includes('.eq("college_id", collegeId)'), "authorization is college-scoped");
-assert(safety.includes('rpc("claim_import_job_manifest"'), "job claim is server-observable");
 assert(validators.includes("await requireImportManager(collegeId)"), "preview is authorized");
-assert(commit.includes("await claimImportJob"), "commit binds and claims preview job");
-assert(commit.includes("claimedRows"), "commit consumes the server-stored payload");
-assert(commit.includes("await finalizeImportJob"), "finalization is observable");
-assert(commit.includes("await failImportJob"), "interrupted commits have a recovery transition");
-assert(migration.includes("validated_payload IS DISTINCT FROM p_validated_payload"), "same-count substitution is rejected");
-assert(migration.includes("FOR UPDATE"), "job transitions are serialized");
-assert(migration.includes("REVOKE INSERT, UPDATE, DELETE ON public.import_jobs"), "direct mutations are revoked");
-assert(migration.includes("INSERT INTO public.audit_logs"), "audit writes share RPC transactions");
+assert(commit.includes('rpc("commit_import_job_atomic"'), "commit is a single atomic RPC");
+assert(commit.includes("create_import_preview_manifest"), "preview persists server manifest");
+assert(!commit.includes("claimImportJob"), "commit no longer uses client claim path");
+assert(!commit.includes("finalizeImportJob"), "commit no longer uses client finalize path");
+assert(
+  manifestMigration.includes("validated_payload IS DISTINCT FROM p_validated_payload"),
+  "same-count substitution is rejected at claim (legacy RPC retained)",
+);
+assert(manifestMigration.includes("FOR UPDATE"), "job transitions are serialized");
+assert(
+  manifestMigration.includes("REVOKE INSERT, UPDATE, DELETE ON public.import_jobs"),
+  "direct mutations are revoked",
+);
+assert(
+  manifestMigration.includes("INSERT INTO public.audit_logs"),
+  "audit writes share RPC transactions",
+);
+assert(atomicMigration.includes("commit_import_job_atomic"), "atomic commit migration present");
+assert(atomicMigration.includes("import_job_committed"), "atomic success audit present");
 
 console.log("import-pipeline-safety.harness.ts: PASS");
