@@ -1345,15 +1345,19 @@ export type Database = {
       }
       import_jobs: {
         Row: {
+          claimed_at: string | null
           college_id: string
           created_at: string
           created_by: string | null
+          failure_message: string | null
           file_name: string | null
+          finished_at: string | null
           id: string
           inserted_rows: number
           invalid_rows: number
           mode: string
           notes: string | null
+          payload_manifest: string | null
           skipped_rows: number
           status: string
           target_entity: string
@@ -1361,17 +1365,22 @@ export type Database = {
           updated_at: string
           updated_rows: number
           valid_rows: number
+          validated_payload: Json | null
         }
         Insert: {
+          claimed_at?: string | null
           college_id: string
           created_at?: string
           created_by?: string | null
+          failure_message?: string | null
           file_name?: string | null
+          finished_at?: string | null
           id?: string
           inserted_rows?: number
           invalid_rows?: number
           mode?: string
           notes?: string | null
+          payload_manifest?: string | null
           skipped_rows?: number
           status?: string
           target_entity: string
@@ -1379,17 +1388,22 @@ export type Database = {
           updated_at?: string
           updated_rows?: number
           valid_rows?: number
+          validated_payload?: Json | null
         }
         Update: {
+          claimed_at?: string | null
           college_id?: string
           created_at?: string
           created_by?: string | null
+          failure_message?: string | null
           file_name?: string | null
+          finished_at?: string | null
           id?: string
           inserted_rows?: number
           invalid_rows?: number
           mode?: string
           notes?: string | null
+          payload_manifest?: string | null
           skipped_rows?: number
           status?: string
           target_entity?: string
@@ -1397,6 +1411,7 @@ export type Database = {
           updated_at?: string
           updated_rows?: number
           valid_rows?: number
+          validated_payload?: Json | null
         }
         Relationships: []
       }
@@ -3216,6 +3231,16 @@ export type Database = {
         Args: { _college_id: string; _user_id: string }
         Returns: boolean
       }
+      claim_import_job_manifest: {
+        Args: {
+          p_college_id: string
+          p_job_id: string
+          p_mode: string
+          p_target_entity: string
+          p_validated_payload: Json
+        }
+        Returns: Json
+      }
       commit_teaching_assignments_v2_import: {
         Args: { p_mode?: string; p_rows: Json }
         Returns: Json
@@ -3227,6 +3252,18 @@ export type Database = {
       compute_instructor_standard_workload: {
         Args: { p_instructor_id: string; p_term_id?: string }
         Returns: Json
+      }
+      create_import_preview_manifest: {
+        Args: {
+          p_college_id: string
+          p_errors?: Json
+          p_file_name: string
+          p_mode: string
+          p_target_entity: string
+          p_total_rows: number
+          p_validated_payload: Json
+        }
+        Returns: string
       }
       create_teaching_assignment_v2: {
         Args: {
@@ -3244,6 +3281,22 @@ export type Database = {
           p_reason?: string
         }
         Returns: Json
+      }
+      fail_import_job: {
+        Args: { p_college_id: string; p_job_id: string; p_message: string }
+        Returns: undefined
+      }
+      finalize_import_job: {
+        Args: {
+          p_college_id: string
+          p_errors?: Json
+          p_failed_rows: number
+          p_inserted_rows: number
+          p_job_id: string
+          p_skipped_rows: number
+          p_updated_rows: number
+        }
+        Returns: undefined
       }
       generate_cohort_curriculum: {
         Args: { p_cohort_id: string }
@@ -3264,6 +3317,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      import_manager_actor: { Args: { p_college_id: string }; Returns: string }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       list_teaching_assignment_workspace: {
         Args: {
