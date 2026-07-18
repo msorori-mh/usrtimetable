@@ -53,7 +53,7 @@ A focused harness covers cohort-first mapping, explicit Legacy policy fallback, 
 
 ## Ownership and follow-up
 
-No overlapping owned file was modified, so no `OWNERSHIP_CONFLICT` was recorded.
+No overlapping owned file was modified. Registration in the shared runner was intentionally skipped and recorded above as an `OWNERSHIP_CONFLICT` boundary.
 
 Recommended follow-up is to route individual Legacy boundaries (auto-scheduler, builder persistence, section reports) through the compatibility adapter as their owners migrate them. Each conversion should first establish a complete cohort/delivery-group read model and retain the section round-trip only where a documented compatibility consumer remains.
 

@@ -81,7 +81,7 @@ export function resolveAcademicDeliveryContext(
   }
 
   if (sectionId) {
-    throw new Error("LEGACY_SECTION_FALLBACK_NOT_AUTHORIZED");
+    throw new Error("LEGACY_SECTION_FALLBACK_POLICY_NOT_ENABLED");
   }
 
   throw new Error("ACADEMIC_COHORT_CONTEXT_REQUIRED");

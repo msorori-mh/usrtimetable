@@ -62,7 +62,29 @@ expectError(
 );
 expectError(
   () => resolveAcademicDeliveryContext({ sectionId: "section-1" }),
-  "LEGACY_SECTION_FALLBACK_NOT_AUTHORIZED",
+  "LEGACY_SECTION_FALLBACK_POLICY_NOT_ENABLED",
+);
+expectError(
+  () =>
+    resolveAcademicDeliveryContext({
+      cohortId: "cohort-1",
+      deliveryGroupId: "group-1",
+      cohortStudySystem: "regular",
+      recordStudySystem: "regular",
+    }),
+  "DELIVERY_GROUP_CONTEXT_REQUIRED",
+);
+expectError(
+  () =>
+    resolveAcademicDeliveryContext({
+      cohortId: "cohort-1",
+      deliveryGroupId: "group-1",
+      deliveryGroupCohortId: "cohort-1",
+      deliveryGroupStudySystem: "parallel",
+      cohortStudySystem: "regular",
+      recordStudySystem: "regular",
+    }),
+  "DELIVERY_GROUP_STUDY_SYSTEM_MISMATCH",
 );
 expectError(
   () =>
