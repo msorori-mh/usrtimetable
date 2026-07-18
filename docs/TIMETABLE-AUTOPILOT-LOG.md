@@ -1,5 +1,15 @@
 # Timetable Autopilot Log
 
+## 2026-07-18 — Active wave completion
+
+- Preserved dirty `C:\projects\usrtimetable-mainline` and executed only in isolated worktrees from live `origin/main`.
+- PR #41 academic-plan/cohort alignment passed focused harness, TypeScript, build, scoped lint, diff-check and independent review; merged with merge commit `99bd0b24fc02133eec8d99f257b8eea4cc37759a`.
+- PR #43 conflict/exception reporting closed a HIGH stale-evidence finding by failing closed when session evidence postdates the stored conflict check; merged with merge commit `75e346e1246c9181f563fe340cba1a109c637d70`.
+- PR #42 lifecycle closed repeated HIGH concurrency/freshness findings using eligibility revisions, conditional quality-run persistence, deterministic OLD/NEW invalidation, tenant-wide invalidation for all scorer inputs, and direct quality DML revocation. Disposable PostgreSQL 15 compilation, positive/negative fixtures, rollback and race proofs passed; merged source-only with merge commit `a1862a8a5ff1a3a546d1e12e545c75c5d5a9dfb1`.
+- Independent final review reported no BLOCKER/HIGH/MEDIUM on PR #42 and no BLOCKER/HIGH on PRs #41/#43 before merge. Known LOW: conservative lifecycle invalidation may cause write amplification under bulk configuration edits.
+- All external agent PIDs ended normally and proven-stale locks were removed; completed agents were not restarted.
+- Production DB writes: none. Migration apply: none. Deploy/publish: none. Actual timetable publication: none.
+
 ## 2026-07-18 — Next agent wave initialization
 
 - Created a clean leader worktree from live `origin/main` `df0dad5`; preserved dirty `C:\projects\usrtimetable-mainline` untouched.

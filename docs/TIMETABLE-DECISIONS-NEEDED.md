@@ -6,6 +6,7 @@ Only decisions that cannot safely be inferred belong here.
 
 1. Any production migration/apply, database write, deploy, publish, or change of an actual schedule version to `published`.
 2. Migration-history reconciliation and an approved one-migration apply sequence after the remote applied list can be obtained. Runtime remains closed meanwhile.
+3. Production application of `20260718120000_source_only_atomic_schedule_version_lifecycle.sql` requires a separate explicit approval. Payload identity must be pinned to merge `a1862a8a5ff1a3a546d1e12e545c75c5d5a9dfb1` and the migration checksum captured immediately before execution. Preflight: reconcile remote migration history; verify required tables/columns/functions, authenticated grants/RLS, tenant references, backup/rollback window, and zero active publishing operations. Post-verification: catalog compilation, RPC authorization negatives, revision freshness, OLD/NEW and college/global invalidation, audit atomicity, published/archived immutability, and no unintended schedule-status transition. No apply has been performed.
 
 ## Resolved binding academic decision
 
