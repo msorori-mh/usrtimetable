@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { classifyResult, harnesses, runHarnesses } from "./run.mjs";
+import { classifyResult, HARNESS_TIMEOUT_MS, harnesses, runHarnesses } from "./run.mjs";
 
 test("registers each focused harness exactly once", () => {
   assert.equal(new Set(harnesses).size, harnesses.length);
@@ -24,6 +24,26 @@ test("uses the local tsx CLI without a shell or package runner", () => {
   assert.equal(calls[0].command, process.execPath);
   assert.match(calls[0].args[0], /node_modules[\\/]tsx[\\/]dist[\\/]cli\.mjs$/);
   assert.equal(calls[0].options.shell, false);
+  assert.equal(calls[0].options.timeout, HARNESS_TIMEOUT_MS);
+  assert.equal(calls[0].options.killSignal, "SIGTERM");
+});
+
+test("times out a stuck harness, reports it, and keeps the suite nonzero", () => {
+  const output = [];
+  let call = 0;
+  const code = runHarnesses({
+    fileExists: () => true,
+    out: { write(value) { output.push(value); } },
+    spawn() {
+      call += 1;
+      return call === 1
+        ? { status: null, signal: "SIGTERM", error: Object.assign(new Error("timed out"), { code: "ETIMEDOUT" }) }
+        : { status: 0, stdout: "", stderr: "" };
+    },
+  });
+  assert.equal(code, 1);
+  assert.match(output.join(""), /HARNESS_TIMEOUT:/);
+  assert.equal(call, harnesses.length);
 });
 
 test("separates an exact missing historical artifact from true failures", () => {

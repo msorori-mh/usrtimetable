@@ -9,6 +9,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "../..");
 const tsconfig = path.join(__dirname, "tsconfig.json");
 const tsxCli = path.join(root, "node_modules", "tsx", "dist", "cli.mjs");
+export const HARNESS_TIMEOUT_MS = 120_000;
 
 export const harnesses = [
   "exception-aware-impl-01a.harness.ts",
@@ -88,10 +89,17 @@ export function runHarnesses({ spawn = spawnSync, fileExists = existsSync, out =
     const result = spawn(
       process.execPath,
       [tsxCli, "--tsconfig", tsconfig, path.join(__dirname, file)],
-      { cwd: root, encoding: "utf8", shell: false },
+      { cwd: root, encoding: "utf8", shell: false, timeout: HARNESS_TIMEOUT_MS, killSignal: "SIGTERM" },
     );
     if (result.stdout) out.write(result.stdout);
     if (result.stderr) out.write(result.stderr);
+    if (result.error?.code === "ETIMEDOUT") {
+      out.write(`HARNESS_TIMEOUT: ${file} exceeded ${HARNESS_TIMEOUT_MS}ms\n`);
+    } else if (result.error) {
+      out.write(`HARNESS_SPAWN_ERROR: ${file}: ${result.error.message}\n`);
+    } else if (result.signal) {
+      out.write(`HARNESS_SIGNAL: ${file}: ${result.signal}\n`);
+    }
 
     const classification = classifyResult(file, result, fileExists);
     totals[classification] += 1;

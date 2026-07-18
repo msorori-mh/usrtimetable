@@ -18,7 +18,7 @@ No owned file contained overlapping work, so no `OWNERSHIP_CONFLICT` was recorde
 
 ## Verification
 
-- Focused runner tests: PASS (3 tests).
+- Focused runner tests: PASS (4 tests), including bounded timeout and continued summary behavior.
 - Runner baseline before the change: FAIL because `npx` attempted an unavailable registry lookup for every harness.
 - Updated runner without installed dependencies: expected infrastructure exit 2 with a local `tsx` installation message; no network lookup attempted.
 - Full runner, TypeScript, build, and scoped lint: blocked in this clean worktree because dependencies are not installed and network access is unavailable.
@@ -26,4 +26,4 @@ No owned file contained overlapping work, so no `OWNERSHIP_CONFLICT` was recorde
 
 ## Publication
 
-Draft PR publication was not safe: refreshing `origin/main` is blocked because this sandbox cannot write the linked worktree's external Git metadata, and the configured GitHub CLI account token is invalid.
+Draft PR #47 was created by the leader after all local gates passed. Independent review requested a bounded per-harness timeout; the runner now terminates a stuck child after 120 seconds, records it as a failure, and continues to the deterministic suite summary.
