@@ -1,0 +1,63 @@
+export type CohortCurriculumSummary = {
+  operation: "generate_cohort_curriculum";
+  result: "success";
+  cohort_id: string;
+  study_plan_id: string;
+  semester: number;
+  term_type: string;
+  inserted_offerings: number;
+  skipped_existing: number;
+  skipped_summer_only: number;
+  skipped_unselected_elective: number;
+  required_candidates: number;
+  elective_candidates: number;
+  warnings: Record<string, unknown>[];
+  created_sections: 0;
+  created_delivery_groups: 0;
+  created_sessions: 0;
+};
+
+function record(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("COHORT_CURRICULUM_INVALID_RESPONSE");
+  }
+  return value as Record<string, unknown>;
+}
+
+function count(value: unknown, field: string): number {
+  if (!Number.isInteger(value) || Number(value) < 0) {
+    throw new Error(`COHORT_CURRICULUM_INVALID_${field.toUpperCase()}`);
+  }
+  return Number(value);
+}
+
+export function parseCohortCurriculumSummary(value: unknown): CohortCurriculumSummary {
+  const row = record(value);
+  if (row.operation !== "generate_cohort_curriculum" || row.result !== "success") {
+    throw new Error("COHORT_CURRICULUM_UNEXPECTED_RESULT");
+  }
+  if (typeof row.cohort_id !== "string" || typeof row.study_plan_id !== "string") {
+    throw new Error("COHORT_CURRICULUM_MISSING_CONTEXT");
+  }
+  if (row.created_sections !== 0 || row.created_delivery_groups !== 0 || row.created_sessions !== 0) {
+    throw new Error("COHORT_CURRICULUM_OPERATIONAL_SIDE_EFFECT_REPORTED");
+  }
+  return {
+    operation: "generate_cohort_curriculum",
+    result: "success",
+    cohort_id: row.cohort_id,
+    study_plan_id: row.study_plan_id,
+    semester: count(row.semester, "semester"),
+    term_type: typeof row.term_type === "string" ? row.term_type : "",
+    inserted_offerings: count(row.inserted_offerings, "inserted_offerings"),
+    skipped_existing: count(row.skipped_existing, "skipped_existing"),
+    skipped_summer_only: count(row.skipped_summer_only, "skipped_summer_only"),
+    skipped_unselected_elective: count(row.skipped_unselected_elective, "skipped_unselected_elective"),
+    required_candidates: count(row.required_candidates, "required_candidates"),
+    elective_candidates: count(row.elective_candidates, "elective_candidates"),
+    warnings: Array.isArray(row.warnings) ? row.warnings.map(record) : [],
+    created_sections: 0,
+    created_delivery_groups: 0,
+    created_sessions: 0,
+  };
+}
