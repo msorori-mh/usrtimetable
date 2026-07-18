@@ -1,5 +1,13 @@
 # Timetable Autopilot Log
 
+## 2026-07-18 — Agent wave launch failure
+
+- Prepared clean worktrees from `origin/main` for atomic import dispatch and migration-history reconciliation.
+- Both Codex CLI processes exited before repository inspection or edits because the authenticated CLI account reached its usage limit; reported retry time: 2026-07-24 08:59.
+- Verified both PIDs ended, both locks were removed, result files recorded exit code 1, and both worktrees remain clean at the source baseline. No random restart was attempted.
+- Draft PR #45 remains isolated with its HIGH atomicity finding; no merge occurred.
+- Production DB writes: none. Migration apply: none. Deploy/publish: none.
+
 ## 2026-07-18 — Source-only wave remediation
 
 - Launched three clean agents from `origin/main` without touching the preserved dirty mainline.
