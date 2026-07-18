@@ -8,6 +8,7 @@ import {
   isElectivePlaceholderCode,
 } from "@/lib/academic-delivery/plan-course-components";
 import { commitTeachingAssignmentsV2Import } from "@/lib/academic-delivery/teaching-assignments-v2-service";
+import { claimImportJob, requireImportManager } from "./safety";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -26,6 +27,8 @@ export async function commitImport(
   jobId: string,
   validRows: ParsedRow[],
 ): Promise<CommitResult> {
+  const actorId = await requireImportManager(collegeId);
+  await claimImportJob({ jobId, collegeId, actorId, entity, mode, rows: validRows });
   const tpl = TEMPLATES[entity];
   const result: CommitResult = { inserted: 0, updated: 0, skipped: 0, failed: 0, errors: [] };
 
@@ -36,7 +39,7 @@ export async function commitImport(
   }
 
   if (result.errors.length > 0) {
-    await supabase.from("import_errors").insert(
+    const { error: persistError } = await supabase.from("import_errors").insert(
       result.errors.map((er) => ({
         college_id: collegeId,
         job_id: jobId,
@@ -47,17 +50,22 @@ export async function commitImport(
         raw_value: er.rawValue ?? null,
       })),
     );
+    if (persistError) throw persistError;
   }
 
-  await supabase
+  const { error: finalizeError } = await supabase
     .from("import_jobs")
     .update({
-      status: result.failed > 0 && result.inserted + result.updated === 0 ? "failed" : "committed",
+      status: result.failed > 0 ? "failed" : "committed",
       inserted_rows: result.inserted,
       updated_rows: result.updated,
       skipped_rows: result.skipped,
     })
-    .eq("id", jobId);
+    .eq("id", jobId)
+    .eq("college_id", collegeId)
+    .eq("created_by", actorId)
+    .eq("status", "committing");
+  if (finalizeError) throw finalizeError;
 
   await logAudit({
     action: "import_commit",
@@ -162,6 +170,7 @@ async function syncPlanCourseComponents(
   for (const d of derived) {
     const { data: ex } = await (supabase.from("plan_course_components") as any)
       .select("id")
+      .eq("college_id", collegeId)
       .eq("plan_course_id", planCourseId)
       .eq("component_type", d.component_type)
       .maybeSingle();
@@ -178,7 +187,8 @@ async function syncPlanCourseComponents(
     if (ex?.id) {
       const { error } = await (supabase.from("plan_course_components") as any)
         .update(payload)
-        .eq("id", ex.id);
+        .eq("id", ex.id)
+        .eq("college_id", collegeId);
       if (error) throw error;
     } else {
       const { error } = await (supabase.from("plan_course_components") as any).insert(payload);
@@ -340,7 +350,8 @@ async function commitStudyPlan(
           }
           const { error } = await (supabase.from("elective_slots") as any)
             .update(slotPayload)
-            .eq("id", slotEx.id);
+            .eq("id", slotEx.id)
+            .eq("college_id", collegeId);
           if (error) throw error;
           r.updated++;
         } else {
@@ -384,7 +395,8 @@ async function commitStudyPlan(
         }
         const { error } = await (supabase.from("plan_courses") as any)
           .update(payload)
-          .eq("id", pcEx.id);
+          .eq("id", pcEx.id)
+          .eq("college_id", collegeId);
         if (error) throw error;
         r.updated++;
       } else {
@@ -449,7 +461,8 @@ async function commitAcademicCohorts(
         }
         const { error } = await (supabase.from("academic_cohorts") as any)
           .update(payload)
-          .eq("id", ex.id);
+          .eq("id", ex.id)
+          .eq("college_id", collegeId);
         if (error) throw error;
         r.updated++;
       } else {
@@ -483,6 +496,7 @@ async function commitElectiveSlotCourses(
     try {
       const { data: ex } = await (supabase.from("elective_slot_courses") as any)
         .select("id")
+        .eq("college_id", collegeId)
         .eq("elective_slot_id", v._elective_slot_id)
         .eq("course_id", v._course_id)
         .maybeSingle();
@@ -528,6 +542,7 @@ async function commitCohortElectiveSelections(
     try {
       const { data: ex } = await (supabase.from("cohort_elective_selections") as any)
         .select("id")
+        .eq("college_id", collegeId)
         .eq("cohort_id", v._cohort_id)
         .eq("elective_slot_id", v._elective_slot_id)
         .maybeSingle();
@@ -544,7 +559,8 @@ async function commitCohortElectiveSelections(
         }
         const { error } = await (supabase.from("cohort_elective_selections") as any)
           .update(payload)
-          .eq("id", ex.id);
+          .eq("id", ex.id)
+          .eq("college_id", collegeId);
         if (error) throw error;
         r.updated++;
       } else {
@@ -746,7 +762,8 @@ async function commitCourseOfferings(
         }
         const { error } = await (supabase.from("course_offerings") as any)
           .update(payload)
-          .eq("id", ex.id);
+          .eq("id", ex.id)
+          .eq("college_id", collegeId);
         if (error) throw error;
         r.updated++;
       } else {
@@ -828,7 +845,8 @@ async function commitTeachingAssignments(
         }
         const { error } = await (supabase.from("teaching_assignments") as any)
           .update(payload)
-          .eq("id", ex.id);
+          .eq("id", ex.id)
+          .eq("college_id", collegeId);
         if (error) throw error;
         r.updated++;
       } else {
@@ -938,13 +956,15 @@ async function commitSectionGroups(
             expected_students_total: expectedTotal,
             notes: v.notes ?? null,
           })
-          .eq("id", ex.id);
+          .eq("id", ex.id)
+          .eq("college_id", collegeId);
         if (error) throw error;
         groupId = ex.id;
         r.updated++;
         await (supabase.from("section_group_members") as any)
           .delete()
-          .eq("section_group_id", groupId);
+          .eq("section_group_id", groupId)
+          .eq("college_id", collegeId);
       } else {
         if (mode === "update_existing") {
           r.skipped++;
@@ -1002,6 +1022,7 @@ async function commitSections(
         .eq("course_id", v._course_id)
         .eq("term_id", v._term_id)
         .eq("section_number", String(v.section_number))
+        .eq("study_system", v.study_system ?? "regular")
         .maybeSingle();
       const payload = {
         college_id: collegeId,
@@ -1016,7 +1037,10 @@ async function commitSections(
           r.skipped++;
           continue;
         }
-        const { error } = await (supabase.from("sections") as any).update(payload).eq("id", ex.id);
+        const { error } = await (supabase.from("sections") as any)
+          .update(payload)
+          .eq("id", ex.id)
+          .eq("college_id", collegeId);
         if (error) throw error;
         r.updated++;
       } else {
@@ -1049,6 +1073,10 @@ export async function createJobAndPersistErrors(
   errors: RowError[],
   actorId: string,
 ): Promise<string> {
+  const authenticatedActorId = await requireImportManager(collegeId);
+  if (actorId !== authenticatedActorId) {
+    throw new Error("Import actor does not match the authenticated user");
+  }
   const { data, error } = await supabase
     .from("import_jobs")
     .insert({
@@ -1068,7 +1096,7 @@ export async function createJobAndPersistErrors(
   const jobId = data!.id as string;
 
   if (errors.length > 0) {
-    await supabase.from("import_errors").insert(
+    const { error: persistError } = await supabase.from("import_errors").insert(
       errors.map((er) => ({
         college_id: collegeId,
         job_id: jobId,
@@ -1079,6 +1107,7 @@ export async function createJobAndPersistErrors(
         raw_value: er.rawValue ?? null,
       })),
     );
+    if (persistError) throw persistError;
   }
   await logAudit({
     action: "import_preview",
