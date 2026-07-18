@@ -1349,15 +1349,11 @@ export type Database = {
           created_at: string
           created_by: string | null
           file_name: string | null
-          failure_message: string | null
-          finished_at: string | null
           id: string
           inserted_rows: number
           invalid_rows: number
           mode: string
           notes: string | null
-          payload_manifest: string | null
-          claimed_at: string | null
           skipped_rows: number
           status: string
           target_entity: string
@@ -1365,22 +1361,17 @@ export type Database = {
           updated_at: string
           updated_rows: number
           valid_rows: number
-          validated_payload: Json | null
         }
         Insert: {
           college_id: string
           created_at?: string
           created_by?: string | null
           file_name?: string | null
-          failure_message?: string | null
-          finished_at?: string | null
           id?: string
           inserted_rows?: number
           invalid_rows?: number
           mode?: string
           notes?: string | null
-          payload_manifest?: string | null
-          claimed_at?: string | null
           skipped_rows?: number
           status?: string
           target_entity: string
@@ -1388,22 +1379,17 @@ export type Database = {
           updated_at?: string
           updated_rows?: number
           valid_rows?: number
-          validated_payload?: Json | null
         }
         Update: {
           college_id?: string
           created_at?: string
           created_by?: string | null
           file_name?: string | null
-          failure_message?: string | null
-          finished_at?: string | null
           id?: string
           inserted_rows?: number
           invalid_rows?: number
           mode?: string
           notes?: string | null
-          payload_manifest?: string | null
-          claimed_at?: string | null
           skipped_rows?: number
           status?: string
           target_entity?: string
@@ -1411,7 +1397,6 @@ export type Database = {
           updated_at?: string
           updated_rows?: number
           valid_rows?: number
-          validated_payload?: Json | null
         }
         Relationships: []
       }
@@ -2092,7 +2077,6 @@ export type Database = {
         Row: {
           college_id: string
           created_at: string
-          eligibility_revision: number
           hard_conflicts_count: number
           id: string
           metrics_breakdown: Json | null
@@ -2105,7 +2089,6 @@ export type Database = {
         Insert: {
           college_id: string
           created_at?: string
-          eligibility_revision?: number
           hard_conflicts_count?: number
           id?: string
           metrics_breakdown?: Json | null
@@ -2118,7 +2101,6 @@ export type Database = {
         Update: {
           college_id?: string
           created_at?: string
-          eligibility_revision?: number
           hard_conflicts_count?: number
           id?: string
           metrics_breakdown?: Json | null
@@ -2392,7 +2374,6 @@ export type Database = {
           college_id: string
           created_at: string
           created_by: string | null
-          eligibility_revision: number
           id: string
           name: string
           notes: string | null
@@ -2404,7 +2385,6 @@ export type Database = {
           college_id: string
           created_at?: string
           created_by?: string | null
-          eligibility_revision?: number
           id?: string
           name: string
           notes?: string | null
@@ -2416,7 +2396,6 @@ export type Database = {
           college_id?: string
           created_at?: string
           created_by?: string | null
-          eligibility_revision?: number
           id?: string
           name?: string
           notes?: string | null
@@ -3037,47 +3016,6 @@ export type Database = {
       }
     }
     Functions: {
-      claim_import_job_manifest: {
-        Args: { p_job_id: string; p_college_id: string; p_target_entity: string; p_mode: string; p_validated_payload: Json }
-        Returns: Json
-      }
-      commit_import_job_atomic: {
-        Args: { p_job_id: string; p_expected_updated_at?: string | null }
-        Returns: Json
-      }
-      create_import_preview_manifest: {
-        Args: { p_college_id: string; p_target_entity: string; p_mode: string; p_file_name: string; p_total_rows: number; p_validated_payload: Json; p_errors?: Json }
-        Returns: string
-      }
-      fail_import_job: {
-        Args: { p_job_id: string; p_college_id: string; p_message: string }
-        Returns: undefined
-      }
-      finalize_import_job: {
-        Args: { p_job_id: string; p_college_id: string; p_inserted_rows: number; p_updated_rows: number; p_skipped_rows: number; p_failed_rows: number; p_errors?: Json }
-        Returns: undefined
-      }
-      begin_schedule_quality_snapshot: {
-        Args: { p_college_id: string; p_schedule_version_id: string }
-        Returns: Json
-      }
-      persist_schedule_quality_run: {
-        Args: {
-          p_college_id: string
-          p_schedule_version_id: string
-          p_expected_eligibility_revision: number
-          p_total_score: number
-          p_hard_conflicts_count: number
-          p_soft_conflicts_count: number
-          p_total_deductions: number
-          p_metrics_breakdown: Json
-        }
-        Returns: string
-      }
-      transition_schedule_version: {
-        Args: { p_college_id: string; p_schedule_version_id: string; p_expected_status: string; p_target_status: string; p_notes?: string }
-        Returns: Json
-      }
       _collect_schedule_session_move_conflicts: {
         Args: {
           p_college_id: string
