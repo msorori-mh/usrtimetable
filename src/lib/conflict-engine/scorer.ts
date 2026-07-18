@@ -224,6 +224,22 @@ export async function scoreScheduleVersion(params: {
   const { collegeId, scheduleVersionId } = params;
   const persist = params.persist ?? true;
 
+  // Snapshot before any eligibility input is read. Persistence is conditional
+  // on this exact revision, so a concurrent edit cannot produce fresh-looking
+  // quality evidence for stale scorer inputs.
+  const { data: snapshotData, error: snapshotError } = await supabase.rpc(
+    "begin_schedule_quality_snapshot",
+    { p_college_id: collegeId, p_schedule_version_id: scheduleVersionId },
+  );
+  if (snapshotError) throw snapshotError;
+  const snapshot = snapshotData as {
+    eligibility_revision?: number | string;
+  } | null;
+  const eligibilityRevision = Number(snapshot?.eligibility_revision);
+  if (!Number.isSafeInteger(eligibilityRevision) || eligibilityRevision < 0) {
+    throw new Error("INVALID_ELIGIBILITY_REVISION");
+  }
+
   const { data: sessions, error } = await supabase
     .from("schedule_sessions")
     .select("*")
@@ -247,21 +263,16 @@ export async function scoreScheduleVersion(params: {
 
   if (!persist) return { runId: null, result };
 
-  const { data: userData } = await supabase.auth.getUser();
-  const { data: row, error: ie } = await supabase
-    .from("schedule_quality_runs")
-    .insert({
-      college_id: collegeId,
-      schedule_version_id: scheduleVersionId,
-      total_score: result.total_score,
-      hard_conflicts_count: result.hard_conflicts_count,
-      soft_conflicts_count: result.soft_conflicts_count,
-      total_deductions: result.total_deductions,
-      metrics_breakdown: result.metrics_breakdown as never,
-      run_by: userData.user?.id ?? null,
-    })
-    .select("id")
-    .single();
+  const { data: row, error: ie } = await supabase.rpc("persist_schedule_quality_run", {
+    p_college_id: collegeId,
+    p_schedule_version_id: scheduleVersionId,
+    p_expected_eligibility_revision: eligibilityRevision,
+    p_total_score: result.total_score,
+    p_hard_conflicts_count: result.hard_conflicts_count,
+    p_soft_conflicts_count: result.soft_conflicts_count,
+    p_total_deductions: result.total_deductions,
+    p_metrics_breakdown: result.metrics_breakdown,
+  });
   if (ie) throw ie;
-  return { runId: row.id, result };
+  return { runId: row, result };
 }

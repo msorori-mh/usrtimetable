@@ -8,6 +8,7 @@ function assert(value: unknown, message: string): asserts value {
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const source = readFileSync(join(root, "src/lib/schedule-versions/lifecycle.ts"), "utf8");
+const scorer = readFileSync(join(root, "src/lib/conflict-engine/scorer.ts"), "utf8");
 const migration = readFileSync(
   join(
     root,
@@ -23,7 +24,17 @@ assert(
   "RPC authorizes actor in tenant",
 );
 assert(migration.includes("STALE_VERSION_STATUS"), "RPC rejects stale expected status");
-assert(migration.includes("eligibility_updated_at"), "dependency writes advance eligibility revision");
+assert(migration.includes("eligibility_revision bigint"), "numeric eligibility revision is persisted");
+assert(
+  migration.includes("begin_schedule_quality_snapshot") &&
+    migration.includes("persist_schedule_quality_run"),
+  "quality snapshot and conditional persist RPCs exist",
+);
+assert(migration.includes("STALE_QUALITY_SNAPSHOT"), "stale scoring snapshot fails closed");
+assert(
+  migration.includes("v_quality_revision IS DISTINCT FROM v_version.eligibility_revision"),
+  "transition requires exact quality revision",
+);
 assert(migration.includes("QUALITY_RUN_REQUIRED"), "upward transitions require explicit quality evidence");
 assert(migration.includes("QUALITY_RUN_STALE"), "stale quality evidence fails closed");
 assert(migration.includes("pg_advisory_xact_lock"), "eligibility inputs serialize with transition");
@@ -38,6 +49,29 @@ assert(
 assert(
   migration.includes("REVOKE UPDATE ON public.schedule_versions"),
   "direct status updates are closed",
+);
+assert(
+  migration.includes("REVOKE INSERT, UPDATE, DELETE ON public.schedule_quality_runs"),
+  "direct quality-run forgery is closed",
+);
+assert(
+  migration.includes("ARRAY[v_old_id, v_new_id]") &&
+    migration.includes("ORDER BY ids.x::text"),
+  "OLD and NEW versions are invalidated under deterministic locks",
+);
+assert(
+  migration.includes("LIFECYCLE_DEPENDENCY_TENANT_MISMATCH"),
+  "dependency rows are tenant validated",
+);
+assert(
+  scorer.indexOf('rpc(\n    "begin_schedule_quality_snapshot"') <
+    scorer.indexOf('.from("schedule_sessions")'),
+  "scorer snapshots revision before eligibility reads",
+);
+assert(
+  scorer.includes('rpc("persist_schedule_quality_run"') &&
+    !scorer.includes('.from("schedule_quality_runs")\n    .insert'),
+  "scorer persists conditionally through RPC only",
 );
 assert(
   migration.indexOf("UPDATE public.schedule_versions SET status") <

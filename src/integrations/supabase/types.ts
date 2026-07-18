@@ -2077,6 +2077,7 @@ export type Database = {
         Row: {
           college_id: string
           created_at: string
+          eligibility_revision: number
           hard_conflicts_count: number
           id: string
           metrics_breakdown: Json | null
@@ -2089,6 +2090,7 @@ export type Database = {
         Insert: {
           college_id: string
           created_at?: string
+          eligibility_revision?: number
           hard_conflicts_count?: number
           id?: string
           metrics_breakdown?: Json | null
@@ -2101,6 +2103,7 @@ export type Database = {
         Update: {
           college_id?: string
           created_at?: string
+          eligibility_revision?: number
           hard_conflicts_count?: number
           id?: string
           metrics_breakdown?: Json | null
@@ -2374,7 +2377,7 @@ export type Database = {
           college_id: string
           created_at: string
           created_by: string | null
-          eligibility_updated_at: string
+          eligibility_revision: number
           id: string
           name: string
           notes: string | null
@@ -2386,7 +2389,7 @@ export type Database = {
           college_id: string
           created_at?: string
           created_by?: string | null
-          eligibility_updated_at?: string
+          eligibility_revision?: number
           id?: string
           name: string
           notes?: string | null
@@ -2398,7 +2401,7 @@ export type Database = {
           college_id?: string
           created_at?: string
           created_by?: string | null
-          eligibility_updated_at?: string
+          eligibility_revision?: number
           id?: string
           name?: string
           notes?: string | null
@@ -3019,6 +3022,23 @@ export type Database = {
       }
     }
     Functions: {
+      begin_schedule_quality_snapshot: {
+        Args: { p_college_id: string; p_schedule_version_id: string }
+        Returns: Json
+      }
+      persist_schedule_quality_run: {
+        Args: {
+          p_college_id: string
+          p_schedule_version_id: string
+          p_expected_eligibility_revision: number
+          p_total_score: number
+          p_hard_conflicts_count: number
+          p_soft_conflicts_count: number
+          p_total_deductions: number
+          p_metrics_breakdown: Json
+        }
+        Returns: string
+      }
       transition_schedule_version: {
         Args: { p_college_id: string; p_schedule_version_id: string; p_expected_status: string; p_target_status: string; p_notes?: string }
         Returns: Json
