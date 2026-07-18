@@ -1,7 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { validateProposed, type ProposedSession } from "@/lib/conflict-engine/validator";
 import { loadApprovedExceptions } from "@/lib/conflict-engine/exceptions";
-import { scoreScheduleVersion } from "@/lib/conflict-engine/scorer";
 
 export type SVStatus = "draft" | "review" | "approved" | "published" | "archived";
 
@@ -60,15 +59,6 @@ function actionLabel(from: SVStatus, to: SVStatus): string {
   if (from === "approved" && to === "review") return "إعادة إلى المراجعة";
   return `${from} → ${to}`;
 }
-
-const EVENT_FOR: Record<string, string> = {
-  "draft->review": "submitted_for_review",
-  "review->approved": "approved",
-  "approved->published": "published",
-  "published->archived": "archived",
-  "review->draft": "rolled_back_to_draft",
-  "approved->review": "rolled_back_to_review",
-};
 
 export interface EligibilityResult {
   ok: boolean;
@@ -202,44 +192,16 @@ export async function transitionVersion(params: {
   notes?: string;
 }): Promise<void> {
   const { collegeId, scheduleVersionId, from, to, notes } = params;
-  if (!canTransition(from, to)) {
-    throw new Error(`انتقال غير مسموح: ${from} → ${to}`);
-  }
+  if (!canTransition(from, to)) throw new Error(`Invalid transition: ${from} -> ${to}`);
 
-  // Hard gates for forward transitions
-  if (to === "review" || to === "approved" || to === "published") {
-    const e = await evaluateEligibility({ collegeId, scheduleVersionId });
-    // For published, auto-score if missing to guarantee a score
-    if (to === "published" && e.qualityScore === null) {
-      try {
-        await scoreScheduleVersion({ collegeId, scheduleVersionId, persist: true });
-      } catch {
-        // ignore — gate will fail below
-      }
-    }
-    const refreshed = to === "published" ? await evaluateEligibility({ collegeId, scheduleVersionId }) : e;
-    const errs = validateGate(to, refreshed);
-    if (errs.length > 0) throw new Error(errs.join(" • "));
-  }
-
-  const { error: ue } = await supabase
-    .from("schedule_versions")
-    .update({ status: to })
-    .eq("id", scheduleVersionId)
-    .eq("college_id", collegeId);
-  if (ue) throw ue;
-
-  const { data: userRes } = await supabase.auth.getUser();
-  const event_type = EVENT_FOR[`${from}->${to}`] ?? "reverted";
-  await supabase.from("schedule_version_events").insert({
-    college_id: collegeId,
-    schedule_version_id: scheduleVersionId,
-    event_type,
-    from_status: from,
-    to_status: to,
-    performed_by: userRes.user?.id ?? null,
-    notes: notes ?? null,
+  const { error } = await supabase.rpc("transition_schedule_version", {
+    p_college_id: collegeId,
+    p_schedule_version_id: scheduleVersionId,
+    p_expected_status: from,
+    p_target_status: to,
+    p_notes: notes ?? undefined,
   });
+  if (error) throw error;
 }
 
 /** Clone version: copies metadata + sessions only. */
