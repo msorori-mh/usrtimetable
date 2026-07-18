@@ -54,11 +54,18 @@ assert(
 const safety = read("src/lib/excel-import/safety.ts");
 const validators = read("src/lib/excel-import/validators.ts");
 const commit = read("src/lib/excel-import/commit.ts");
+const migration = read("supabase/migrations/20260718180000_import_manifest_contract.sql");
 assert(safety.includes("requireImportManager"), "authorization guard exists");
 assert(safety.includes('.eq("college_id", collegeId)'), "authorization is college-scoped");
-assert(safety.includes('.eq("status", "preview")'), "job claim is compare-and-set");
+assert(safety.includes('rpc("claim_import_job_manifest"'), "job claim is server-observable");
 assert(validators.includes("await requireImportManager(collegeId)"), "preview is authorized");
 assert(commit.includes("await claimImportJob"), "commit binds and claims preview job");
-assert(commit.includes('status: result.failed > 0 ? "failed" : "committed"'), "partial failures reported");
+assert(commit.includes("claimedRows"), "commit consumes the server-stored payload");
+assert(commit.includes("await finalizeImportJob"), "finalization is observable");
+assert(commit.includes("await failImportJob"), "interrupted commits have a recovery transition");
+assert(migration.includes("validated_payload IS DISTINCT FROM p_validated_payload"), "same-count substitution is rejected");
+assert(migration.includes("FOR UPDATE"), "job transitions are serialized");
+assert(migration.includes("REVOKE INSERT, UPDATE, DELETE ON public.import_jobs"), "direct mutations are revoked");
+assert(migration.includes("INSERT INTO public.audit_logs"), "audit writes share RPC transactions");
 
 console.log("import-pipeline-safety.harness.ts: PASS");

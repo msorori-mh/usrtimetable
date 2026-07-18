@@ -57,36 +57,54 @@ interface ClaimImportJobInput {
   rows: ParsedRow[];
 }
 
-export async function claimImportJob(input: ClaimImportJobInput): Promise<void> {
-  const { data: job, error: readError } = await supabase
-    .from("import_jobs")
-    .select("id, college_id, created_by, target_entity, mode, status, valid_rows")
-    .eq("id", input.jobId)
-    .eq("college_id", input.collegeId)
-    .maybeSingle();
-  if (readError || !job) throw new ImportSafetyError("invalid_import_job", "Import preview not found");
-  if (
-    job.created_by !== input.actorId ||
-    job.target_entity !== input.entity ||
-    job.mode !== input.mode ||
-    job.valid_rows !== input.rows.length
-  ) {
-    throw new ImportSafetyError("import_job_mismatch", "Import preview does not match this commit");
-  }
-  if (job.status !== "preview") {
-    throw new ImportSafetyError("import_job_replayed", "Import preview was already committed or claimed");
-  }
-
-  const { data: claimed, error: claimError } = await supabase
-    .from("import_jobs")
-    .update({ status: "committing" })
-    .eq("id", input.jobId)
-    .eq("college_id", input.collegeId)
-    .eq("created_by", input.actorId)
-    .eq("status", "preview")
-    .select("id")
-    .maybeSingle();
-  if (claimError || !claimed) {
+export async function claimImportJob(input: ClaimImportJobInput): Promise<ParsedRow[]> {
+  const { data, error } = await supabase.rpc("claim_import_job_manifest", {
+    p_job_id: input.jobId,
+    p_college_id: input.collegeId,
+    p_target_entity: input.entity,
+    p_mode: input.mode,
+    p_validated_payload: input.rows as never,
+  });
+  if (error || !data) {
     throw new ImportSafetyError("import_job_replayed", "Import preview could not be claimed");
   }
+  const payload = (data as { validated_payload?: unknown }).validated_payload;
+  if (!Array.isArray(payload)) {
+    throw new ImportSafetyError("invalid_import_job", "Claimed import payload is missing");
+  }
+  return payload as ParsedRow[];
+}
+
+export async function finalizeImportJob(params: {
+  jobId: string;
+  collegeId: string;
+  entity: ImportEntity;
+  mode: ImportMode;
+  result: { inserted: number; updated: number; skipped: number; failed: number; errors: unknown[] };
+}): Promise<void> {
+  const { error } = await supabase.rpc("finalize_import_job", {
+    p_job_id: params.jobId,
+    p_college_id: params.collegeId,
+    p_inserted_rows: params.result.inserted,
+    p_updated_rows: params.result.updated,
+    p_skipped_rows: params.result.skipped,
+    p_failed_rows: params.result.failed,
+    p_errors: params.result.errors as never,
+  });
+  if (error) throw error;
+}
+
+export async function failImportJob(params: {
+  jobId: string;
+  collegeId: string;
+  entity: ImportEntity;
+  mode: ImportMode;
+  message: string;
+}): Promise<void> {
+  const { error } = await supabase.rpc("fail_import_job", {
+    p_job_id: params.jobId,
+    p_college_id: params.collegeId,
+    p_message: params.message,
+  });
+  if (error) throw error;
 }

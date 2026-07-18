@@ -1,14 +1,19 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 import { TEMPLATES } from "./templates";
 import { buildDbPayload } from "./validators";
 import type { ImportEntity, ImportMode, ParsedRow, RowError } from "./types";
-import { logAudit } from "@/lib/audit";
 import {
   derivePlanCourseComponents,
   isElectivePlaceholderCode,
 } from "@/lib/academic-delivery/plan-course-components";
 import { commitTeachingAssignmentsV2Import } from "@/lib/academic-delivery/teaching-assignments-v2-service";
-import { claimImportJob, requireImportManager } from "./safety";
+import {
+  claimImportJob,
+  failImportJob,
+  finalizeImportJob,
+  requireImportManager,
+} from "./safety";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -28,58 +33,32 @@ export async function commitImport(
   validRows: ParsedRow[],
 ): Promise<CommitResult> {
   const actorId = await requireImportManager(collegeId);
-  await claimImportJob({ jobId, collegeId, actorId, entity, mode, rows: validRows });
+  const claimedRows = await claimImportJob({ jobId, collegeId, actorId, entity, mode, rows: validRows });
   const tpl = TEMPLATES[entity];
   const result: CommitResult = { inserted: 0, updated: 0, skipped: 0, failed: 0, errors: [] };
 
-  if (tpl.commitMode === "custom") {
-    await commitCustom(entity, mode, collegeId, validRows, result);
-  } else {
-    await commitTable(entity, mode, collegeId, validRows, result);
+  try {
+    if (tpl.commitMode === "custom") {
+      await commitCustom(entity, mode, collegeId, claimedRows, result);
+    } else {
+      await commitTable(entity, mode, collegeId, claimedRows, result);
+    }
+
+    await finalizeImportJob({ jobId, collegeId, entity, mode, result });
+  } catch (error) {
+    try {
+      await failImportJob({
+        jobId,
+        collegeId,
+        entity,
+        mode,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    } catch {
+      // Preserve the primary failure. A later retry can recover a still-committing job.
+    }
+    throw error;
   }
-
-  if (result.errors.length > 0) {
-    const { error: persistError } = await supabase.from("import_errors").insert(
-      result.errors.map((er) => ({
-        college_id: collegeId,
-        job_id: jobId,
-        row_number: er.rowNumber,
-        column_name: er.columnName ?? null,
-        error_code: er.errorCode,
-        message: er.message,
-        raw_value: er.rawValue ?? null,
-      })),
-    );
-    if (persistError) throw persistError;
-  }
-
-  const { error: finalizeError } = await supabase
-    .from("import_jobs")
-    .update({
-      status: result.failed > 0 ? "failed" : "committed",
-      inserted_rows: result.inserted,
-      updated_rows: result.updated,
-      skipped_rows: result.skipped,
-    })
-    .eq("id", jobId)
-    .eq("college_id", collegeId)
-    .eq("created_by", actorId)
-    .eq("status", "committing");
-  if (finalizeError) throw finalizeError;
-
-  await logAudit({
-    action: "import_commit",
-    entity: `import_${entity}`,
-    entityId: jobId,
-    collegeId,
-    details: {
-      inserted: result.inserted,
-      updated: result.updated,
-      skipped: result.skipped,
-      failed: result.failed,
-      mode,
-    },
-  });
 
   return result;
 }
@@ -1077,44 +1056,15 @@ export async function createJobAndPersistErrors(
   if (actorId !== authenticatedActorId) {
     throw new Error("Import actor does not match the authenticated user");
   }
-  const { data, error } = await supabase
-    .from("import_jobs")
-    .insert({
-      college_id: collegeId,
-      target_entity: entity,
-      mode,
-      status: "preview",
-      file_name: fileName,
-      total_rows: totalRows,
-      valid_rows: validRows.length,
-      invalid_rows: totalRows - validRows.length,
-      created_by: actorId,
-    })
-    .select("id")
-    .single();
-  if (error) throw error;
-  const jobId = data!.id as string;
-
-  if (errors.length > 0) {
-    const { error: persistError } = await supabase.from("import_errors").insert(
-      errors.map((er) => ({
-        college_id: collegeId,
-        job_id: jobId,
-        row_number: er.rowNumber,
-        column_name: er.columnName ?? null,
-        error_code: er.errorCode,
-        message: er.message,
-        raw_value: er.rawValue ?? null,
-      })),
-    );
-    if (persistError) throw persistError;
-  }
-  await logAudit({
-    action: "import_preview",
-    entity: `import_${entity}`,
-    entityId: jobId,
-    collegeId,
-    details: { totalRows, valid: validRows.length, invalid: totalRows - validRows.length, mode },
+  const { data, error } = await supabase.rpc("create_import_preview_manifest", {
+    p_college_id: collegeId,
+    p_target_entity: entity,
+    p_mode: mode,
+    p_file_name: fileName,
+    p_total_rows: totalRows,
+    p_validated_payload: validRows as unknown as Json,
+    p_errors: errors as unknown as Json,
   });
-  return jobId;
+  if (error) throw error;
+  return data as string;
 }
