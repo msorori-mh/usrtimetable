@@ -16,6 +16,8 @@ export const harnesses = [
   "f001-session-version-integrity.harness.ts",
   "f002-validate-schedule-version.harness.ts",
   "room-import-normalize.harness.ts",
+  "import-pipeline-safety.harness.ts",
+  "import-pipeline-atomic-commit.harness.ts",
   "weekly-time-templates.harness.ts",
   "terminology-labels.harness.ts",
   "time-templates-college-context-sync.harness.ts",

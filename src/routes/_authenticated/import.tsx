@@ -168,12 +168,30 @@ function ImportPage() {
   const commitMut = useMutation({
     mutationFn: async () => {
       if (!active || !preview || !preview.jobId) throw new Error("لا توجد معاينة");
-      return commitImport(entity, mode, active.id, preview.jobId, preview.valid);
+      // Atomic server commit: job_id (+ optional concurrency token) only.
+      // Stored validated payload is authoritative; no client operational DML.
+      const { data: jobRow, error: jobErr } = await supabase
+        .from("import_jobs")
+        .select("updated_at")
+        .eq("id", preview.jobId)
+        .eq("college_id", active.id)
+        .maybeSingle();
+      if (jobErr) throw jobErr;
+      return commitImport({
+        jobId: preview.jobId,
+        expectedUpdatedAt: jobRow?.updated_at ?? null,
+      });
     },
     onSuccess: (r) => {
-      toast.success(
-        `تم: ${r.inserted} إدراج، ${r.updated} تحديث، ${r.skipped} تجاهل، ${r.failed} فشل`,
-      );
+      if (r.replay) {
+        toast.success(
+          `إعادة تشغيل آمنة: ${r.inserted} إدراج، ${r.updated} تحديث، ${r.skipped} تجاهل`,
+        );
+      } else {
+        toast.success(
+          `تم: ${r.inserted} إدراج، ${r.updated} تحديث، ${r.skipped} تجاهل، ${r.failed} فشل`,
+        );
+      }
       setFile(null);
       setPreview(null);
       qc.invalidateQueries({ queryKey: ["import-jobs"] });

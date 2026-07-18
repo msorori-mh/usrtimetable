@@ -1,6 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import { TEMPLATES } from "./templates";
 import { resolveRoomTypeFields } from "./room-type-normalize";
+import { deliveryGroupIsolationKey, sectionIsolationKey } from "./keys";
+import { requireImportManager } from "./safety";
 import type { ImportEntity, ParsedRow, RowError, ValidationResult } from "./types";
 
 const TIME_RE = /^([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
@@ -120,9 +122,12 @@ async function loadLookups(entity: ImportEntity, collegeId: string): Promise<Loo
     lk.courses = new Map(c.map((r) => [r.code, { id: r.id, department_id: r.department_id }]));
   }
   if (entity === "sections") {
-    const sec = await fetchAll("sections", "id, course_id, term_id, section_number");
+    const sec = await fetchAll("sections", "id, course_id, term_id, section_number, study_system");
     lk.sections = new Map(
-      sec.map((r) => [`${r.course_id}|${r.term_id}|${r.section_number}`, r.id]),
+      sec.map((r) => [
+        `${r.course_id}|${r.term_id}|${r.section_number}|${r.study_system ?? "regular"}`,
+        r.id,
+      ]),
     );
   }
   if (entity === "teaching_assignments" || entity === "teaching_assignments_v2") {
@@ -255,6 +260,7 @@ export async function validate(
   rows: Record<string, unknown>[],
   collegeId: string,
 ): Promise<ValidationResult & { missingHeaders: string[] }> {
+  await requireImportManager(collegeId);
   const tpl = TEMPLATES[entity];
   const { parsed, missingHeaders } = normalize(headers, rows, entity);
   const errors: RowError[] = [];
@@ -501,7 +507,7 @@ function buildLogicalKey(entity: ImportEntity, row: ParsedRow): string | null {
     case "section_groups":
       return `${v.term_code}|${v.course_code}|${v.group_name}`.toLowerCase();
     case "sections":
-      return `${v.term_code}|${v.course_code}|${v.section_number}`.toLowerCase();
+      return sectionIsolationKey(v);
     case "academic_cohorts":
       return `${v.program_code}|${v.level_number}|${v.study_system}|${v.entry_year}|${v.term_code}`.toLowerCase();
     case "elective_slot_courses":
@@ -509,7 +515,7 @@ function buildLogicalKey(entity: ImportEntity, row: ParsedRow): string | null {
     case "cohort_elective_selections":
       return `${v.cohort_code}|${v.elective_slot_code}`.toLowerCase();
     case "teaching_assignments_v2":
-      return `${v.cohort_code}|${v.course_code}|${v.component_type}|${v.delivery_group_code}|${v.employee_number}`.toLowerCase();
+      return deliveryGroupIsolationKey(v);
     default:
       return null;
   }
@@ -897,7 +903,7 @@ function runEntityValidation(
     if (tId) v._term_id = tId;
     if (c) v._course_id = c.id;
     if (tId && c && v.section_number != null && v.section_number !== "") {
-      const key = `${c.id}|${tId}|${v.section_number}`;
+      const key = `${c.id}|${tId}|${v.section_number}|${v.study_system ?? "regular"}`;
       if (lk.sections?.has(key)) v._exists = true;
     }
   }

@@ -120,7 +120,7 @@ export const TEMPLATES: Record<string, TemplateDef> = {
     label: "المجموعات الدراسية",
     sheetName: "sections",
     uniqueKey: "_logical",
-    uniqueKeyLabel: "فصل + مقرر + رقم المجموعة",
+    uniqueKeyLabel: "فصل + مقرر + رقم المجموعة + نظام الدراسة",
     commitMode: "custom",
     columns: [
       { key: "term_code", header: "رمز_الفصل", required: true, example: "2025-F" },
