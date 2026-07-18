@@ -90,14 +90,17 @@ export function findMatchingException(
 /** Load approved (non-revoked) exceptions for a schedule version. */
 export async function loadApprovedExceptions(params: {
   scheduleVersionId: string;
+  collegeId?: string;
 }): Promise<ApprovedException[]> {
-  const { data, error } = await supabase
+  let query = supabase
     .from("schedule_version_conflict_exceptions")
     .select(
       "id, schedule_version_id, conflict_code, session_id, related_session_id, approval_type, reason, source, status, approved_by, approved_at, metadata",
     )
     .eq("schedule_version_id", params.scheduleVersionId)
     .eq("status", "approved");
+  if (params.collegeId) query = query.eq("college_id", params.collegeId);
+  const { data, error } = await query;
   if (error) throw error;
   return (data ?? []) as ApprovedException[];
 }

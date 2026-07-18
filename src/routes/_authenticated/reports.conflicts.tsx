@@ -17,17 +17,20 @@ export const Route = createFileRoute("/_authenticated/reports/conflicts")({
 });
 
 const headers = [
+  { key: "classification", label: "Classification" },
+  { key: "evidence_status", label: "Evidence" },
+  { key: "cohort", label: "Cohort" },
+  { key: "delivery_group", label: "Delivery group" },
+  { key: "legacy_section", label: "Legacy section" },
+  { key: "resolution_detail", label: "Exception / resolution" },
   { key: "conflict_code", label: "رمز التعارض" },
-  { key: "severity", label: "الخطورة" },
   { key: "message", label: "الرسالة" },
   { key: "course", label: "المقرر" },
   { key: "instructor", label: "المحاضر" },
   { key: "room", label: "القاعة" },
-  { key: "section", label: "المجموعة" },
   { key: "day_time", label: "اليوم/الوقت" },
   { key: "study_system", label: "نظام الدراسة" },
   { key: "check_status", label: "حالة الفحص" },
-  { key: "resolution", label: "المعالجة" },
 ];
 
 const SEVERITY_META: Record<string, { label: string; variant: "destructive" | "secondary" | "outline"; rowClass: string }> = {
@@ -69,11 +72,11 @@ function Page() {
   const check = data?.check;
 
   const hardCount = useMemo(
-    () => rows.filter((r) => String(r.severity).toLowerCase() === "hard").length,
+    () => rows.filter((r) => r.classification === "hard_blocker").length,
     [rows],
   );
   const softCount = useMemo(
-    () => rows.filter((r) => String(r.severity).toLowerCase() === "soft").length,
+    () => rows.filter((r) => r.classification === "warning").length,
     [rows],
   );
 
@@ -139,22 +142,37 @@ function Page() {
             </TableHeader>
             <TableBody>
               {rows.map((r, i) => {
-                const meta = severityMeta(r.severity);
+                const meta = severityMeta(
+                  r.classification === "hard_blocker"
+                    ? "hard"
+                    : r.classification === "warning"
+                      ? "soft"
+                      : "warning",
+                );
                 return (
                   <TableRow key={i} className={cn(meta.rowClass)}>
+                    <TableCell>
+                      <ConflictSeverityBadge severity={r.classification} />
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{String(r.evidence_status)}</Badge>
+                    </TableCell>
+                    <TableCell>{String(r.cohort)}</TableCell>
+                    <TableCell>{String(r.delivery_group)}</TableCell>
+                    <TableCell>{String(r.legacy_section)}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground italic">
+                      {String(r.resolution_detail)}
+                    </TableCell>
                     <TableCell className="font-mono text-xs">{String(r.conflict_code)}</TableCell>
-                    <TableCell><ConflictSeverityBadge severity={r.severity} /></TableCell>
                     <TableCell>{String(r.message)}</TableCell>
                     <TableCell>{String(r.course)}</TableCell>
                     <TableCell>{String(r.instructor)}</TableCell>
                     <TableCell>{String(r.room)}</TableCell>
-                    <TableCell>{String(r.section)}</TableCell>
                     <TableCell className="text-xs whitespace-nowrap">{String(r.day_time)}</TableCell>
                     <TableCell>{String(r.study_system)}</TableCell>
                     <TableCell>
                       <Badge variant="outline">{String(r.check_status)}</Badge>
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground italic">{String(r.resolution)}</TableCell>
                   </TableRow>
                 );
               })}
