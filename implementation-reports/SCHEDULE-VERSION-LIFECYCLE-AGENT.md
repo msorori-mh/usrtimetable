@@ -21,6 +21,8 @@ PR #38 was inspected from its locally available branch `origin/codex/lifecycle-o
 
 ## Verification
 
+- Lifecycle advancement now requires a current quality run; mutations to sessions, conflict checks, or exceptions invalidate older quality evidence through `eligibility_updated_at`.
+
 - Focused Bun harness: **PASS**.
 - `git diff --check`: **PASS** (line-ending conversion warnings only).
 - Disposable PostgreSQL 15 proof: **PASS** for compilation, unauthorized actor, stale status, forced audit-failure rollback, positive transitions, publish blockers, audit count, and published immutability. The disposable container was removed.

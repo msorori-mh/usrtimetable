@@ -23,6 +23,9 @@ assert(
   "RPC authorizes actor in tenant",
 );
 assert(migration.includes("STALE_VERSION_STATUS"), "RPC rejects stale expected status");
+assert(migration.includes("eligibility_updated_at"), "dependency writes advance eligibility revision");
+assert(migration.includes("QUALITY_RUN_REQUIRED"), "upward transitions require explicit quality evidence");
+assert(migration.includes("QUALITY_RUN_STALE"), "stale quality evidence fails closed");
 assert(migration.includes("pg_advisory_xact_lock"), "eligibility inputs serialize with transition");
 assert(
   migration.includes("trg_cc_lifecycle_dependency_lock"),

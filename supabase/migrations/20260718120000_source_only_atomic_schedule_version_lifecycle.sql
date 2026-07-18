@@ -3,6 +3,9 @@
 
 BEGIN;
 
+ALTER TABLE public.schedule_versions
+ADD COLUMN IF NOT EXISTS eligibility_updated_at timestamptz NOT NULL DEFAULT clock_timestamp();
+
 CREATE OR REPLACE FUNCTION public.transition_schedule_version(
   p_college_id uuid,
   p_schedule_version_id uuid,
@@ -21,6 +24,7 @@ DECLARE
   v_session_count integer;
   v_quality_score numeric;
   v_hard_conflicts integer;
+  v_quality_created_at timestamptz;
 BEGIN
   IF v_actor IS NULL THEN
     RAISE EXCEPTION 'AUTHENTICATION_REQUIRED' USING ERRCODE = '42501';
@@ -60,15 +64,18 @@ BEGIN
       RAISE EXCEPTION 'PUBLISH_BLOCKER:NO_SESSIONS' USING ERRCODE = '23514';
     END IF;
 
-    SELECT total_score, hard_conflicts_count
-    INTO v_quality_score, v_hard_conflicts
+    SELECT total_score, hard_conflicts_count, created_at
+    INTO v_quality_score, v_hard_conflicts, v_quality_created_at
     FROM public.schedule_quality_runs
     WHERE schedule_version_id = p_schedule_version_id AND college_id = p_college_id
     ORDER BY created_at DESC, id DESC
     LIMIT 1;
 
-    IF p_target_status = 'published' AND v_quality_score IS NULL THEN
+    IF v_quality_created_at IS NULL THEN
       RAISE EXCEPTION 'PUBLISH_BLOCKER:QUALITY_RUN_REQUIRED' USING ERRCODE = '23514';
+    END IF;
+    IF v_quality_created_at < v_version.eligibility_updated_at THEN
+      RAISE EXCEPTION 'PUBLISH_BLOCKER:QUALITY_RUN_STALE' USING ERRCODE = '23514';
     END IF;
     IF COALESCE(v_hard_conflicts, 0) > 0 THEN
       RAISE EXCEPTION 'PUBLISH_BLOCKER:UNAPPROVED_HARD_CONFLICTS' USING ERRCODE = '23514';
@@ -114,12 +121,17 @@ REVOKE UPDATE ON public.schedule_versions FROM authenticated;
 GRANT UPDATE (name, notes) ON public.schedule_versions TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.lock_schedule_version_lifecycle_dependency()
-RETURNS trigger LANGUAGE plpgsql SET search_path = public, pg_temp AS $$
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE
   v_version_id uuid;
 BEGIN
   v_version_id := COALESCE(NEW.schedule_version_id, OLD.schedule_version_id);
   PERFORM pg_advisory_xact_lock(hashtextextended(v_version_id::text, 9174));
+  IF TG_TABLE_NAME <> 'schedule_quality_runs' THEN
+    UPDATE public.schedule_versions
+    SET eligibility_updated_at = clock_timestamp()
+    WHERE id = v_version_id;
+  END IF;
   RETURN COALESCE(NEW, OLD);
 END;
 $$;

@@ -52,6 +52,14 @@ DO $$ BEGIN
 EXCEPTION WHEN insufficient_privilege THEN NULL; END $$;
 
 SET test.uid = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+DO $$ BEGIN
+  PERFORM transition_schedule_version('cccccccc-cccc-cccc-cccc-cccccccccccc', '11111111-1111-1111-1111-111111111111', 'draft', 'review');
+  RAISE EXCEPTION 'missing quality run was accepted';
+EXCEPTION WHEN check_violation THEN
+  IF SQLERRM <> 'PUBLISH_BLOCKER:QUALITY_RUN_REQUIRED' THEN RAISE; END IF;
+END $$;
+INSERT INTO schedule_quality_runs (college_id, schedule_version_id, total_score, hard_conflicts_count, created_at)
+VALUES ('cccccccc-cccc-cccc-cccc-cccccccccccc', '11111111-1111-1111-1111-111111111111', 100, 0, clock_timestamp());
 SELECT transition_schedule_version('cccccccc-cccc-cccc-cccc-cccccccccccc', '11111111-1111-1111-1111-111111111111', 'draft', 'review');
 DO $$ BEGIN
   PERFORM transition_schedule_version('cccccccc-cccc-cccc-cccc-cccccccccccc', '11111111-1111-1111-1111-111111111111', 'draft', 'review');
@@ -72,9 +80,17 @@ DO $$ BEGIN
 END $$;
 
 DROP TRIGGER fail_lifecycle_audit ON schedule_version_events;
+UPDATE schedule_sessions SET updated_at = clock_timestamp()
+WHERE schedule_version_id = '11111111-1111-1111-1111-111111111111';
+DO $$ BEGIN
+  PERFORM transition_schedule_version('cccccccc-cccc-cccc-cccc-cccccccccccc', '11111111-1111-1111-1111-111111111111', 'review', 'approved');
+  RAISE EXCEPTION 'stale quality run was accepted';
+EXCEPTION WHEN check_violation THEN
+  IF SQLERRM <> 'PUBLISH_BLOCKER:QUALITY_RUN_STALE' THEN RAISE; END IF;
+END $$;
+INSERT INTO schedule_quality_runs (college_id, schedule_version_id, total_score, hard_conflicts_count, created_at)
+VALUES ('cccccccc-cccc-cccc-cccc-cccccccccccc', '11111111-1111-1111-1111-111111111111', 100, 0, clock_timestamp());
 SELECT transition_schedule_version('cccccccc-cccc-cccc-cccc-cccccccccccc', '11111111-1111-1111-1111-111111111111', 'review', 'approved');
-INSERT INTO schedule_quality_runs (college_id, schedule_version_id, total_score, hard_conflicts_count)
-VALUES ('cccccccc-cccc-cccc-cccc-cccccccccccc', '11111111-1111-1111-1111-111111111111', 100, 0);
 SELECT transition_schedule_version('cccccccc-cccc-cccc-cccc-cccccccccccc', '11111111-1111-1111-1111-111111111111', 'approved', 'published');
 DO $$ BEGIN
   UPDATE schedule_versions SET name = 'mutated' WHERE id = '11111111-1111-1111-1111-111111111111';

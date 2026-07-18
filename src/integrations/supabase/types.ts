@@ -2374,6 +2374,7 @@ export type Database = {
           college_id: string
           created_at: string
           created_by: string | null
+          eligibility_updated_at: string
           id: string
           name: string
           notes: string | null
@@ -2385,6 +2386,7 @@ export type Database = {
           college_id: string
           created_at?: string
           created_by?: string | null
+          eligibility_updated_at?: string
           id?: string
           name: string
           notes?: string | null
@@ -2396,6 +2398,7 @@ export type Database = {
           college_id?: string
           created_at?: string
           created_by?: string | null
+          eligibility_updated_at?: string
           id?: string
           name?: string
           notes?: string | null
