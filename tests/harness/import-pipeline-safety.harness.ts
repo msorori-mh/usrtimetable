@@ -76,6 +76,12 @@ assert(
   "direct mutations are revoked",
 );
 assert(
+  /REVOKE\s+INSERT\s*,\s*UPDATE\s*,\s*DELETE\s+ON\s+public\.import_jobs\s+FROM\s+PUBLIC\s*,\s*anon\s*,\s*authenticated/i.test(
+    atomicMigration,
+  ),
+  "atomic migration re-asserts anon/authenticated/PUBLIC table DML revoke",
+);
+assert(
   manifestMigration.includes("INSERT INTO public.audit_logs"),
   "audit writes share RPC transactions",
 );
