@@ -1,48 +1,6 @@
--- =============================================================================
--- SOURCE-ONLY MIGRATION — NOT APPLIED
--- PR #45 import pipeline: atomic server-side commit for import jobs.
---
--- This migration is FORWARD and SOURCE-ONLY. It:
---   * Creates functions only (DDL). It does NOT run any import, backfill, seed,
---     or invocation of these functions during apply.
---   * Does NOT mutate any production/business data during apply.
---   * Does NOT DROP or TRUNCATE data, and does NOT ALTER historical migrations.
---   * Must be gated by the production deployment process before being applied.
---
--- It adds public.commit_import_job_atomic(...) which performs the entire import
--- (all domain writes + audit + job status update) inside a single transaction.
--- Any exception rolls back EVERYTHING (no partial success, no success audit).
---
--- All internal helpers are prefixed `_import_` / `_import_apply_` and have
--- EXECUTE revoked from PUBLIC, anon and authenticated. Only the definer function
--- (running as its owner) may call them. The public entrypoint is granted to
--- authenticated (and optionally service_role) only — never anon.
---
--- Pre-apply security hardening (table ACL):
---   Historical source: 20260605002216 granted INSERT/UPDATE/DELETE on
---   import_jobs and import_errors to authenticated; 20260718180000 revoked those
---   from authenticated. This migration re-asserts the revoke for authenticated,
---   and also closes anon + PUBLIC table DML so client paths cannot rely on
---   schema defaults, PUBLIC membership, or residual grants. SELECT for
---   authenticated (UI history) is intentionally left; all writes go through
---   authorized RPCs (create_import_preview_manifest / commit_import_job_atomic /
---   claim|finalize|fail_import_job). service_role table ALL is unchanged and is
---   not a browser client path.
--- =============================================================================
-
-BEGIN;
-
--- ---------------------------------------------------------------------------
--- Small pure helpers
--- ---------------------------------------------------------------------------
-
--- Extract the `values` object from a stored ParsedRow `{rowNumber, values}`,
--- or return the element itself when it already is a values object.
+-- PR #45 atomic import job commit — sha256 6a7d55515959b48129abdf95dddb1dc65b72c8d6f7bbf1f9047bd5bdf276fa44
 CREATE OR REPLACE FUNCTION public._import_row_values(elem jsonb)
-RETURNS jsonb
-LANGUAGE sql
-IMMUTABLE
-AS $fn$
+RETURNS jsonb LANGUAGE sql IMMUTABLE AS $fn$
   SELECT CASE
     WHEN elem IS NULL THEN '{}'::jsonb
     WHEN jsonb_typeof(elem) = 'object' AND elem ? 'values'
@@ -51,32 +9,18 @@ AS $fn$
   END;
 $fn$;
 
--- Resolve the human row number from a stored ParsedRow, defaulting to idx.
 CREATE OR REPLACE FUNCTION public._import_row_number(elem jsonb, idx int)
-RETURNS int
-LANGUAGE sql
-IMMUTABLE
-AS $fn$
-  SELECT COALESCE(
-    NULLIF(elem->>'rowNumber', '')::int,
-    NULLIF(elem->>'row_number', '')::int,
-    idx
-  );
+RETURNS int LANGUAGE sql IMMUTABLE AS $fn$
+  SELECT COALESCE(NULLIF(elem->>'rowNumber', '')::int, NULLIF(elem->>'row_number', '')::int, idx);
 $fn$;
 
 CREATE OR REPLACE FUNCTION public._import_counters_new()
-RETURNS jsonb
-LANGUAGE sql
-IMMUTABLE
-AS $fn$
+RETURNS jsonb LANGUAGE sql IMMUTABLE AS $fn$
   SELECT jsonb_build_object('inserted', 0, 'updated', 0, 'skipped', 0);
 $fn$;
 
 CREATE OR REPLACE FUNCTION public._import_counters_add(a jsonb, b jsonb)
-RETURNS jsonb
-LANGUAGE sql
-IMMUTABLE
-AS $fn$
+RETURNS jsonb LANGUAGE sql IMMUTABLE AS $fn$
   SELECT jsonb_build_object(
     'inserted', COALESCE((a->>'inserted')::int, 0) + COALESCE((b->>'inserted')::int, 0),
     'updated',  COALESCE((a->>'updated')::int, 0)  + COALESCE((b->>'updated')::int, 0),
@@ -84,18 +28,8 @@ AS $fn$
   );
 $fn$;
 
--- Given the mode and whether the target row already exists, decide the action.
---   insert_only     + exists      -> skip
---   insert_only     + not exists  -> insert
---   update_existing + exists      -> update
---   update_existing + not exists  -> skip
---   upsert          + exists      -> update
---   upsert          + not exists  -> insert
 CREATE OR REPLACE FUNCTION public._import_mode_action(p_mode text, p_exists boolean)
-RETURNS text
-LANGUAGE sql
-IMMUTABLE
-AS $fn$
+RETURNS text LANGUAGE sql IMMUTABLE AS $fn$
   SELECT CASE
     WHEN p_exists AND p_mode = 'insert_only' THEN 'skip'
     WHEN p_exists THEN 'update'
@@ -104,48 +38,23 @@ AS $fn$
   END;
 $fn$;
 
--- Placeholder elective codes like CY3XX(E) must never become real courses/offerings.
 CREATE OR REPLACE FUNCTION public._import_is_elective_placeholder(code text)
-RETURNS boolean
-LANGUAGE sql
-IMMUTABLE
-AS $fn$
+RETURNS boolean LANGUAGE sql IMMUTABLE AS $fn$
   SELECT CASE
     WHEN code IS NULL THEN false
-    ELSE upper(btrim(code)) ~ '\(E\)$'
-      OR upper(btrim(code)) ~ '^[A-Z]{2,}[0-9]XX\(E\)$'
+    ELSE upper(btrim(code)) ~ '\(E\)$' OR upper(btrim(code)) ~ '^[A-Z]{2,}[0-9]XX\(E\)$'
   END;
 $fn$;
 
--- ---------------------------------------------------------------------------
--- Table-entity apply helper (instructors, rooms, academic_terms, daily_breaks)
--- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public._import_apply_table_entity(
-  p_college uuid,
-  p_entity text,
-  p_mode text,
-  p_rows jsonb
-) RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $fn$
+  p_college uuid, p_entity text, p_mode text, p_rows jsonb
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $fn$
 DECLARE
   v_len int := COALESCE(jsonb_array_length(p_rows), 0);
-  v_idx int;
-  v_elem jsonb;
-  v jsonb;
-  v_rn int;
-  v_uniq text;
-  v_id uuid;
-  v_exists boolean;
-  v_action text;
-  v_counters jsonb := public._import_counters_new();
-  v_ins int := 0;
-  v_upd int := 0;
-  v_skp int := 0;
+  v_idx int; v_elem jsonb; v jsonb; v_rn int; v_uniq text; v_id uuid;
+  v_exists boolean; v_action text;
+  v_ins int := 0; v_upd int := 0; v_skp int := 0;
 BEGIN
-  -- Phase 1: pre-validate ALL rows before any operational DML.
   FOR v_idx IN 0 .. v_len - 1 LOOP
     v := public._import_row_values(p_rows -> v_idx);
     v_rn := public._import_row_number(p_rows -> v_idx, v_idx + 1);
@@ -170,11 +79,9 @@ BEGIN
     END IF;
   END LOOP;
 
-  -- Phase 2: apply. Existing target rows are locked (id ASC) before writes.
   FOR v_idx IN 0 .. v_len - 1 LOOP
     v := public._import_row_values(p_rows -> v_idx);
     v_id := NULL;
-
     IF p_entity = 'instructors' THEN
       v_uniq := v->>'employee_number';
       SELECT id INTO v_id FROM public.instructors
@@ -182,8 +89,7 @@ BEGIN
         ORDER BY id ASC LIMIT 1 FOR UPDATE;
       v_exists := v_id IS NOT NULL;
       v_action := public._import_mode_action(p_mode, v_exists);
-      IF v_action = 'skip' THEN
-        v_skp := v_skp + 1;
+      IF v_action = 'skip' THEN v_skp := v_skp + 1;
       ELSIF v_action = 'insert' THEN
         INSERT INTO public.instructors (
           college_id, employee_number, full_name, full_name_ar, full_name_en, email, phone,
@@ -210,8 +116,7 @@ BEGIN
           full_name = v->>'full_name',
           full_name_ar = COALESCE(NULLIF(v->>'full_name_ar', ''), v->>'full_name'),
           full_name_en = NULLIF(v->>'full_name_en', ''),
-          email = NULLIF(v->>'email', ''),
-          phone = NULLIF(v->>'phone', ''),
+          email = NULLIF(v->>'email', ''), phone = NULLIF(v->>'phone', ''),
           specialization = NULLIF(v->>'specialization', ''),
           academic_degree = NULLIF(v->>'academic_degree', ''),
           academic_rank = NULLIF(v->>'academic_rank', ''),
@@ -228,7 +133,6 @@ BEGIN
         WHERE id = v_id;
         v_upd := v_upd + 1;
       END IF;
-
     ELSIF p_entity = 'rooms' THEN
       v_uniq := v->>'code';
       SELECT id INTO v_id FROM public.rooms
@@ -236,8 +140,7 @@ BEGIN
         ORDER BY id ASC LIMIT 1 FOR UPDATE;
       v_exists := v_id IS NOT NULL;
       v_action := public._import_mode_action(p_mode, v_exists);
-      IF v_action = 'skip' THEN
-        v_skp := v_skp + 1;
+      IF v_action = 'skip' THEN v_skp := v_skp + 1;
       ELSIF v_action = 'insert' THEN
         INSERT INTO public.rooms (
           college_id, code, name, capacity, room_type, room_type_id, building_id, building,
@@ -253,13 +156,11 @@ BEGIN
         v_ins := v_ins + 1;
       ELSE
         UPDATE public.rooms SET
-          name = v->>'name',
-          capacity = COALESCE(NULLIF(v->>'capacity', '')::int, 30),
+          name = v->>'name', capacity = COALESCE(NULLIF(v->>'capacity', '')::int, 30),
           room_type = v->>'room_type',
           room_type_id = NULLIF(v->>'_room_type_id', '')::uuid,
           building_id = NULLIF(v->>'_building_id', '')::uuid,
-          building = NULLIF(v->>'building', ''),
-          floor = NULLIF(v->>'floor', ''),
+          building = NULLIF(v->>'building', ''), floor = NULLIF(v->>'floor', ''),
           available_start_time = NULLIF(v->>'available_start_time', '')::time,
           available_end_time = NULLIF(v->>'available_end_time', '')::time,
           notes = NULLIF(v->>'notes', ''),
@@ -267,7 +168,6 @@ BEGIN
         WHERE id = v_id;
         v_upd := v_upd + 1;
       END IF;
-
     ELSIF p_entity = 'academic_terms' THEN
       v_uniq := v->>'code';
       SELECT id INTO v_id FROM public.academic_terms
@@ -275,8 +175,7 @@ BEGIN
         ORDER BY id ASC LIMIT 1 FOR UPDATE;
       v_exists := v_id IS NOT NULL;
       v_action := public._import_mode_action(p_mode, v_exists);
-      IF v_action = 'skip' THEN
-        v_skp := v_skp + 1;
+      IF v_action = 'skip' THEN v_skp := v_skp + 1;
       ELSIF v_action = 'insert' THEN
         INSERT INTO public.academic_terms (
           college_id, code, name, academic_year, term_type, start_date, end_date,
@@ -290,8 +189,7 @@ BEGIN
         v_ins := v_ins + 1;
       ELSE
         UPDATE public.academic_terms SET
-          name = v->>'name',
-          academic_year = NULLIF(v->>'academic_year', ''),
+          name = v->>'name', academic_year = NULLIF(v->>'academic_year', ''),
           term_type = NULLIF(v->>'term_type', ''),
           start_date = NULLIF(v->>'start_date', '')::date,
           end_date = NULLIF(v->>'end_date', '')::date,
@@ -300,7 +198,6 @@ BEGIN
         WHERE id = v_id;
         v_upd := v_upd + 1;
       END IF;
-
     ELSIF p_entity = 'daily_breaks' THEN
       v_uniq := v->>'name';
       SELECT id INTO v_id FROM public.daily_breaks
@@ -308,8 +205,7 @@ BEGIN
         ORDER BY id ASC LIMIT 1 FOR UPDATE;
       v_exists := v_id IS NOT NULL;
       v_action := public._import_mode_action(p_mode, v_exists);
-      IF v_action = 'skip' THEN
-        v_skp := v_skp + 1;
+      IF v_action = 'skip' THEN v_skp := v_skp + 1;
       ELSIF v_action = 'insert' THEN
         INSERT INTO public.daily_breaks (
           college_id, name, start_time, end_time, days, affects_scheduling
@@ -323,8 +219,7 @@ BEGIN
         v_ins := v_ins + 1;
       ELSE
         UPDATE public.daily_breaks SET
-          start_time = (v->>'start_time')::time,
-          end_time = (v->>'end_time')::time,
+          start_time = (v->>'start_time')::time, end_time = (v->>'end_time')::time,
           days = CASE WHEN jsonb_typeof(v->'days') = 'array'
                       THEN ARRAY(SELECT (e)::int FROM jsonb_array_elements_text(v->'days') e)
                       ELSE ARRAY[]::int[] END,
@@ -334,33 +229,18 @@ BEGIN
       END IF;
     END IF;
   END LOOP;
-
   RETURN jsonb_build_object('inserted', v_ins, 'updated', v_upd, 'skipped', v_skp);
 END;
 $fn$;
 
--- ---------------------------------------------------------------------------
--- Custom: sections
--- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public._import_apply_sections(
   p_college uuid, p_mode text, p_rows jsonb
-) RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $fn$
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $fn$
 DECLARE
   v_len int := COALESCE(jsonb_array_length(p_rows), 0);
-  v_idx int;
-  v jsonb;
-  v_rn int;
-  v_ss text;
-  v_id uuid;
-  v_exists boolean;
-  v_action text;
+  v_idx int; v jsonb; v_rn int; v_ss text; v_id uuid; v_exists boolean; v_action text;
   v_ins int := 0; v_upd int := 0; v_skp int := 0;
 BEGIN
-  -- Phase 1: pre-validate.
   FOR v_idx IN 0 .. v_len - 1 LOOP
     v := public._import_row_values(p_rows -> v_idx);
     v_rn := public._import_row_number(p_rows -> v_idx, v_idx + 1);
@@ -374,7 +254,6 @@ BEGIN
     END IF;
   END LOOP;
 
-  -- Phase 2: apply (lock matching id ASC before write).
   FOR v_idx IN 0 .. v_len - 1 LOOP
     v := public._import_row_values(p_rows -> v_idx);
     v_ss := COALESCE(NULLIF(v->>'study_system', ''), 'regular');
@@ -388,8 +267,7 @@ BEGIN
       ORDER BY id ASC LIMIT 1 FOR UPDATE;
     v_exists := v_id IS NOT NULL;
     v_action := public._import_mode_action(p_mode, v_exists);
-    IF v_action = 'skip' THEN
-      v_skp := v_skp + 1;
+    IF v_action = 'skip' THEN v_skp := v_skp + 1;
     ELSIF v_action = 'insert' THEN
       INSERT INTO public.sections (college_id, course_id, term_id, section_number, capacity, study_system)
       VALUES (
@@ -404,29 +282,16 @@ BEGIN
       v_upd := v_upd + 1;
     END IF;
   END LOOP;
-
   RETURN jsonb_build_object('inserted', v_ins, 'updated', v_upd, 'skipped', v_skp);
 END;
 $fn$;
 
--- ---------------------------------------------------------------------------
--- Custom: academic_cohorts
--- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public._import_apply_academic_cohorts(
   p_college uuid, p_mode text, p_rows jsonb
-) RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $fn$
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $fn$
 DECLARE
   v_len int := COALESCE(jsonb_array_length(p_rows), 0);
-  v_idx int;
-  v jsonb;
-  v_rn int;
-  v_id uuid;
-  v_exists boolean;
-  v_action text;
+  v_idx int; v jsonb; v_rn int; v_id uuid; v_exists boolean; v_action text;
   v_ins int := 0; v_upd int := 0; v_skp int := 0;
 BEGIN
   FOR v_idx IN 0 .. v_len - 1 LOOP
@@ -452,8 +317,7 @@ BEGIN
       ORDER BY id ASC LIMIT 1 FOR UPDATE;
     v_exists := v_id IS NOT NULL;
     v_action := public._import_mode_action(p_mode, v_exists);
-    IF v_action = 'skip' THEN
-      v_skp := v_skp + 1;
+    IF v_action = 'skip' THEN v_skp := v_skp + 1;
     ELSIF v_action = 'insert' THEN
       INSERT INTO public.academic_cohorts (
         college_id, program_id, level_id, study_system, entry_year, term_id,
@@ -476,30 +340,16 @@ BEGIN
       v_upd := v_upd + 1;
     END IF;
   END LOOP;
-
   RETURN jsonb_build_object('inserted', v_ins, 'updated', v_upd, 'skipped', v_skp);
 END;
 $fn$;
 
--- ---------------------------------------------------------------------------
--- Custom: course_offerings
--- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public._import_apply_course_offerings(
   p_college uuid, p_mode text, p_rows jsonb
-) RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $fn$
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $fn$
 DECLARE
   v_len int := COALESCE(jsonb_array_length(p_rows), 0);
-  v_idx int;
-  v jsonb;
-  v_rn int;
-  v_prog uuid;
-  v_id uuid;
-  v_exists boolean;
-  v_action text;
+  v_idx int; v jsonb; v_rn int; v_prog uuid; v_id uuid; v_exists boolean; v_action text;
   v_ins int := 0; v_upd int := 0; v_skp int := 0;
 BEGIN
   FOR v_idx IN 0 .. v_len - 1 LOOP
@@ -527,8 +377,7 @@ BEGIN
     END IF;
     v_exists := v_id IS NOT NULL;
     v_action := public._import_mode_action(p_mode, v_exists);
-    IF v_action = 'skip' THEN
-      v_skp := v_skp + 1;
+    IF v_action = 'skip' THEN v_skp := v_skp + 1;
     ELSIF v_action = 'insert' THEN
       INSERT INTO public.course_offerings (
         college_id, term_id, course_id, program_id, level_id, study_plan_id, plan_course_id,
@@ -558,31 +407,17 @@ BEGIN
       v_upd := v_upd + 1;
     END IF;
   END LOOP;
-
   RETURN jsonb_build_object('inserted', v_ins, 'updated', v_upd, 'skipped', v_skp);
 END;
 $fn$;
 
--- ---------------------------------------------------------------------------
--- Custom: teaching_assignments (legacy V1)
--- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public._import_apply_teaching_assignments(
   p_college uuid, p_mode text, p_rows jsonb
-) RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $fn$
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $fn$
 DECLARE
   v_len int := COALESCE(jsonb_array_length(p_rows), 0);
-  v_idx int;
-  v jsonb;
-  v_rn int;
-  v_offering uuid;
-  v_section uuid;
-  v_id uuid;
-  v_exists boolean;
-  v_action text;
+  v_idx int; v jsonb; v_rn int; v_offering uuid; v_section uuid; v_id uuid;
+  v_exists boolean; v_action text;
   v_ins int := 0; v_upd int := 0; v_skp int := 0;
 BEGIN
   FOR v_idx IN 0 .. v_len - 1 LOOP
@@ -592,7 +427,6 @@ BEGIN
        OR NULLIF(v->>'_instructor_id', '') IS NULL OR NULLIF(v->>'session_type', '') IS NULL THEN
       RAISE EXCEPTION 'teaching_assignments row % missing term/course/instructor/session_type', v_rn USING ERRCODE = '22023';
     END IF;
-    -- offering must resolve
     PERFORM 1 FROM public.course_offerings
       WHERE college_id = p_college AND term_id = (v->>'_term_id')::uuid
         AND course_id = (v->>'_course_id')::uuid LIMIT 1;
@@ -604,7 +438,6 @@ BEGIN
   FOR v_idx IN 0 .. v_len - 1 LOOP
     v := public._import_row_values(p_rows -> v_idx);
     v_offering := NULL; v_section := NULL; v_id := NULL;
-
     SELECT id INTO v_offering FROM public.course_offerings
       WHERE college_id = p_college AND term_id = (v->>'_term_id')::uuid
         AND course_id = (v->>'_course_id')::uuid
@@ -612,14 +445,12 @@ BEGIN
     IF v_offering IS NULL THEN
       RAISE EXCEPTION 'teaching_assignments: no matching course offering' USING ERRCODE = '22023';
     END IF;
-
     IF NULLIF(v->>'section_number', '') IS NOT NULL THEN
       SELECT id INTO v_section FROM public.sections
         WHERE college_id = p_college AND course_id = (v->>'_course_id')::uuid
           AND term_id = (v->>'_term_id')::uuid AND section_number = (v->>'section_number')
         ORDER BY id ASC LIMIT 1;
     END IF;
-
     SELECT id INTO v_id FROM public.teaching_assignments
       WHERE college_id = p_college AND course_offering_id = v_offering
         AND instructor_id = (v->>'_instructor_id')::uuid
@@ -628,8 +459,7 @@ BEGIN
       ORDER BY id ASC LIMIT 1 FOR UPDATE;
     v_exists := v_id IS NOT NULL;
     v_action := public._import_mode_action(p_mode, v_exists);
-    IF v_action = 'skip' THEN
-      v_skp := v_skp + 1;
+    IF v_action = 'skip' THEN v_skp := v_skp + 1;
     ELSIF v_action = 'insert' THEN
       INSERT INTO public.teaching_assignments (
         college_id, course_offering_id, instructor_id, session_type, section_number, section_id,
@@ -654,28 +484,16 @@ BEGIN
       v_upd := v_upd + 1;
     END IF;
   END LOOP;
-
   RETURN jsonb_build_object('inserted', v_ins, 'updated', v_upd, 'skipped', v_skp);
 END;
 $fn$;
 
--- ---------------------------------------------------------------------------
--- Custom: course_programs (pure link table; existing -> skip)
--- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public._import_apply_course_programs(
   p_college uuid, p_mode text, p_rows jsonb
-) RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $fn$
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $fn$
 DECLARE
   v_len int := COALESCE(jsonb_array_length(p_rows), 0);
-  v_idx int;
-  v jsonb;
-  v_rn int;
-  v_id uuid;
-  v_exists boolean;
+  v_idx int; v jsonb; v_rn int; v_id uuid; v_exists boolean;
   v_ins int := 0; v_upd int := 0; v_skp int := 0;
 BEGIN
   FOR v_idx IN 0 .. v_len - 1 LOOP
@@ -685,7 +503,6 @@ BEGIN
       RAISE EXCEPTION 'course_programs row % missing course/program', v_rn USING ERRCODE = '22023';
     END IF;
   END LOOP;
-
   FOR v_idx IN 0 .. v_len - 1 LOOP
     v := public._import_row_values(p_rows -> v_idx);
     v_id := NULL;
@@ -694,45 +511,26 @@ BEGIN
         AND program_id = (v->>'_program_id')::uuid
       ORDER BY id ASC LIMIT 1 FOR UPDATE;
     v_exists := v_id IS NOT NULL;
-    IF v_exists THEN
-      -- Pure link: nothing meaningful to update, always skip when present.
-      v_skp := v_skp + 1;
-    ELSIF p_mode = 'update_existing' THEN
-      v_skp := v_skp + 1;
+    IF v_exists THEN v_skp := v_skp + 1;
+    ELSIF p_mode = 'update_existing' THEN v_skp := v_skp + 1;
     ELSE
       INSERT INTO public.course_programs (college_id, course_id, program_id)
       VALUES (p_college, (v->>'_course_id')::uuid, (v->>'_program_id')::uuid);
       v_ins := v_ins + 1;
     END IF;
   END LOOP;
-
   RETURN jsonb_build_object('inserted', v_ins, 'updated', v_upd, 'skipped', v_skp);
 END;
 $fn$;
 
--- ---------------------------------------------------------------------------
--- Custom: section_groups (+ members)
--- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public._import_apply_section_groups(
   p_college uuid, p_mode text, p_rows jsonb
-) RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $fn$
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $fn$
 DECLARE
   v_len int := COALESCE(jsonb_array_length(p_rows), 0);
-  v_idx int;
-  v jsonb;
-  v_rn int;
-  v_members jsonb;
-  v_group uuid;
-  v_exists boolean;
-  v_action text;
-  v_expected_total int;
-  v_num text;
-  v_sec_id uuid;
-  v_sec_cap int;
+  v_idx int; v jsonb; v_rn int; v_members jsonb; v_group uuid;
+  v_exists boolean; v_action text; v_expected_total int; v_num text;
+  v_sec_id uuid; v_sec_cap int;
   v_ins int := 0; v_upd int := 0; v_skp int := 0;
 BEGIN
   FOR v_idx IN 0 .. v_len - 1 LOOP
@@ -746,7 +544,6 @@ BEGIN
     IF v_members IS NULL OR jsonb_typeof(v_members) <> 'array' OR jsonb_array_length(v_members) = 0 THEN
       RAISE EXCEPTION 'section_groups row % requires at least one member section', v_rn USING ERRCODE = '22023';
     END IF;
-    -- every member section must resolve
     FOR v_num IN SELECT jsonb_array_elements_text(v_members) LOOP
       PERFORM 1 FROM public.sections
         WHERE college_id = p_college AND course_id = (v->>'_course_id')::uuid
@@ -761,27 +558,22 @@ BEGIN
     v := public._import_row_values(p_rows -> v_idx);
     v_members := v->'member_section_numbers';
     v_group := NULL;
-
     SELECT COALESCE(SUM(COALESCE(s.capacity, 0)), 0)::int INTO v_expected_total
     FROM jsonb_array_elements_text(v_members) AS m(num)
     JOIN public.sections s
       ON s.college_id = p_college AND s.course_id = (v->>'_course_id')::uuid
      AND s.term_id = (v->>'_term_id')::uuid AND s.section_number = m.num;
-
     SELECT id INTO v_group FROM public.section_groups
       WHERE college_id = p_college AND academic_term_id = (v->>'_term_id')::uuid
         AND course_id = (v->>'_course_id')::uuid AND group_name = v->>'group_name'
       ORDER BY id ASC LIMIT 1 FOR UPDATE;
     v_exists := v_group IS NOT NULL;
     v_action := public._import_mode_action(p_mode, v_exists);
-
     IF v_action = 'skip' THEN
-      v_skp := v_skp + 1;
-      CONTINUE;
+      v_skp := v_skp + 1; CONTINUE;
     ELSIF v_action = 'update' THEN
       UPDATE public.section_groups SET
-        expected_students_total = v_expected_total,
-        notes = NULLIF(v->>'notes', '')
+        expected_students_total = v_expected_total, notes = NULLIF(v->>'notes', '')
       WHERE id = v_group;
       DELETE FROM public.section_group_members
         WHERE section_group_id = v_group AND college_id = p_college;
@@ -795,8 +587,6 @@ BEGIN
       ) RETURNING id INTO v_group;
       v_ins := v_ins + 1;
     END IF;
-
-    -- (re)insert members within the same transaction
     FOR v_num IN SELECT jsonb_array_elements_text(v_members) LOOP
       SELECT id, COALESCE(capacity, 0) INTO v_sec_id, v_sec_cap FROM public.sections
         WHERE college_id = p_college AND course_id = (v->>'_course_id')::uuid
@@ -806,28 +596,16 @@ BEGIN
       VALUES (p_college, v_group, v_sec_id, v_sec_cap);
     END LOOP;
   END LOOP;
-
   RETURN jsonb_build_object('inserted', v_ins, 'updated', v_upd, 'skipped', v_skp);
 END;
 $fn$;
 
--- ---------------------------------------------------------------------------
--- Custom: elective_slot_courses (insert if missing else skip)
--- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public._import_apply_elective_slot_courses(
   p_college uuid, p_mode text, p_rows jsonb
-) RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $fn$
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $fn$
 DECLARE
   v_len int := COALESCE(jsonb_array_length(p_rows), 0);
-  v_idx int;
-  v jsonb;
-  v_rn int;
-  v_id uuid;
-  v_exists boolean;
+  v_idx int; v jsonb; v_rn int; v_id uuid; v_exists boolean;
   v_ins int := 0; v_upd int := 0; v_skp int := 0;
 BEGIN
   FOR v_idx IN 0 .. v_len - 1 LOOP
@@ -837,7 +615,6 @@ BEGIN
       RAISE EXCEPTION 'elective_slot_courses row % missing slot/course', v_rn USING ERRCODE = '22023';
     END IF;
   END LOOP;
-
   FOR v_idx IN 0 .. v_len - 1 LOOP
     v := public._import_row_values(p_rows -> v_idx);
     v_id := NULL;
@@ -846,39 +623,24 @@ BEGIN
         AND course_id = (v->>'_course_id')::uuid
       ORDER BY id ASC LIMIT 1 FOR UPDATE;
     v_exists := v_id IS NOT NULL;
-    IF v_exists THEN
-      v_skp := v_skp + 1;                 -- link exists: always skip
-    ELSIF p_mode = 'update_existing' THEN
-      v_skp := v_skp + 1;
+    IF v_exists THEN v_skp := v_skp + 1;
+    ELSIF p_mode = 'update_existing' THEN v_skp := v_skp + 1;
     ELSE
       INSERT INTO public.elective_slot_courses (college_id, elective_slot_id, course_id)
       VALUES (p_college, (v->>'_elective_slot_id')::uuid, (v->>'_course_id')::uuid);
       v_ins := v_ins + 1;
     END IF;
   END LOOP;
-
   RETURN jsonb_build_object('inserted', v_ins, 'updated', v_upd, 'skipped', v_skp);
 END;
 $fn$;
 
--- ---------------------------------------------------------------------------
--- Custom: cohort_elective_selections (upsert by cohort+slot)
--- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public._import_apply_cohort_elective_selections(
   p_college uuid, p_mode text, p_rows jsonb
-) RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $fn$
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $fn$
 DECLARE
   v_len int := COALESCE(jsonb_array_length(p_rows), 0);
-  v_idx int;
-  v jsonb;
-  v_rn int;
-  v_id uuid;
-  v_exists boolean;
-  v_action text;
+  v_idx int; v jsonb; v_rn int; v_id uuid; v_exists boolean; v_action text;
   v_ins int := 0; v_upd int := 0; v_skp int := 0;
 BEGIN
   FOR v_idx IN 0 .. v_len - 1 LOOP
@@ -889,7 +651,6 @@ BEGIN
       RAISE EXCEPTION 'cohort_elective_selections row % missing cohort/slot/course', v_rn USING ERRCODE = '22023';
     END IF;
   END LOOP;
-
   FOR v_idx IN 0 .. v_len - 1 LOOP
     v := public._import_row_values(p_rows -> v_idx);
     v_id := NULL;
@@ -899,8 +660,7 @@ BEGIN
       ORDER BY id ASC LIMIT 1 FOR UPDATE;
     v_exists := v_id IS NOT NULL;
     v_action := public._import_mode_action(p_mode, v_exists);
-    IF v_action = 'skip' THEN
-      v_skp := v_skp + 1;
+    IF v_action = 'skip' THEN v_skp := v_skp + 1;
     ELSIF v_action = 'insert' THEN
       INSERT INTO public.cohort_elective_selections (
         college_id, cohort_id, elective_slot_id, selected_course_id
@@ -915,31 +675,20 @@ BEGIN
       v_upd := v_upd + 1;
     END IF;
   END LOOP;
-
   RETURN jsonb_build_object('inserted', v_ins, 'updated', v_upd, 'skipped', v_skp);
 END;
 $fn$;
 
--- ---------------------------------------------------------------------------
--- Study plan internal find-or-create + component sync helpers
--- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public._import_find_or_create_study_plan(p_college uuid, v jsonb)
-RETURNS uuid
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $fn$
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $fn$
 DECLARE
-  v_ver text := COALESCE(NULLIF(v->>'plan_version', ''), '1');
-  v_id uuid;
+  v_ver text := COALESCE(NULLIF(v->>'plan_version', ''), '1'); v_id uuid;
 BEGIN
   SELECT id INTO v_id FROM public.study_plans
     WHERE college_id = p_college AND program_id = (v->>'_program_id')::uuid
       AND code = v->>'plan_code' AND version = v_ver
     ORDER BY id ASC LIMIT 1;
-  IF v_id IS NOT NULL THEN
-    RETURN v_id;
-  END IF;
+  IF v_id IS NOT NULL THEN RETURN v_id; END IF;
   INSERT INTO public.study_plans (college_id, program_id, code, name, version, effective_year)
   VALUES (
     p_college, (v->>'_program_id')::uuid, v->>'plan_code',
@@ -951,20 +700,13 @@ END;
 $fn$;
 
 CREATE OR REPLACE FUNCTION public._import_find_or_create_level(p_college uuid, p_program uuid, p_level int)
-RETURNS uuid
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $fn$
-DECLARE
-  v_id uuid;
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $fn$
+DECLARE v_id uuid;
 BEGIN
   SELECT id INTO v_id FROM public.academic_levels
     WHERE college_id = p_college AND program_id = p_program AND level_number = p_level
     ORDER BY id ASC LIMIT 1;
-  IF v_id IS NOT NULL THEN
-    RETURN v_id;
-  END IF;
+  IF v_id IS NOT NULL THEN RETURN v_id; END IF;
   INSERT INTO public.academic_levels (college_id, program_id, level_number, name)
   VALUES (p_college, p_program, p_level, 'المستوى ' || p_level::text)
   RETURNING id INTO v_id;
@@ -973,20 +715,13 @@ END;
 $fn$;
 
 CREATE OR REPLACE FUNCTION public._import_find_or_create_course(p_college uuid, v jsonb)
-RETURNS uuid
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $fn$
-DECLARE
-  v_id uuid;
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $fn$
+DECLARE v_id uuid;
 BEGIN
   SELECT id INTO v_id FROM public.courses
     WHERE college_id = p_college AND code = v->>'course_code'
     ORDER BY id ASC LIMIT 1;
-  IF v_id IS NOT NULL THEN
-    RETURN v_id;
-  END IF;
+  IF v_id IS NOT NULL THEN RETURN v_id; END IF;
   INSERT INTO public.courses (
     college_id, department_id, code, name, credit_hours, theory_hours, practical_hours,
     course_nature, is_shared
@@ -1002,15 +737,9 @@ BEGIN
 END;
 $fn$;
 
--- Port of derivePlanCourseComponents: build components strictly from explicit
--- hour fields/flags (credit_hours is ignored) and upsert them by component_type.
 CREATE OR REPLACE FUNCTION public._import_sync_plan_course_components(
   p_college uuid, p_plan_course uuid, v jsonb
-) RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $fn$
+) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $fn$
 DECLARE
   v_theory numeric := COALESCE(NULLIF(v->>'theory_hours', '')::numeric, 0);
   v_practical numeric := COALESCE(NULLIF(v->>'practical_hours', '')::numeric, 0);
@@ -1033,7 +762,6 @@ BEGIN
       counts_toward_overtime = EXCLUDED.counts_toward_overtime,
       compensation_mode = EXCLUDED.compensation_mode;
   END IF;
-
   IF v_practical > 0 THEN
     INSERT INTO public.plan_course_components (
       college_id, plan_course_id, component_type, weekly_contact_hours,
@@ -1046,7 +774,6 @@ BEGIN
       counts_toward_overtime = EXCLUDED.counts_toward_overtime,
       compensation_mode = EXCLUDED.compensation_mode;
   END IF;
-
   IF v_tutorial > 0 AND NOT v_summer THEN
     INSERT INTO public.plan_course_components (
       college_id, plan_course_id, component_type, weekly_contact_hours,
@@ -1059,7 +786,6 @@ BEGIN
       counts_toward_overtime = EXCLUDED.counts_toward_overtime,
       compensation_mode = EXCLUDED.compensation_mode;
   END IF;
-
   IF v_project > 0 OR v_grad THEN
     INSERT INTO public.plan_course_components (
       college_id, plan_course_id, component_type, weekly_contact_hours,
@@ -1075,7 +801,6 @@ BEGIN
       counts_toward_overtime = EXCLUDED.counts_toward_overtime,
       compensation_mode = EXCLUDED.compensation_mode;
   END IF;
-
   IF v_summer THEN
     INSERT INTO public.plan_course_components (
       college_id, plan_course_id, component_type, weekly_contact_hours,
@@ -1095,34 +820,16 @@ BEGIN
 END;
 $fn$;
 
--- ---------------------------------------------------------------------------
--- Custom: study_plan (study_plan_courses + full_study_plan)
--- Does NOT create sections. Elective-slot rows create elective_slots only.
--- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public._import_apply_study_plan(
   p_college uuid, p_mode text, p_rows jsonb
-) RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $fn$
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $fn$
 DECLARE
   v_len int := COALESCE(jsonb_array_length(p_rows), 0);
-  v_idx int;
-  v jsonb;
-  v_rn int;
-  v_plan uuid;
-  v_level uuid;
-  v_course uuid;
-  v_slot_code text;
-  v_is_slot boolean;
-  v_id uuid;
-  v_exists boolean;
-  v_action text;
+  v_idx int; v jsonb; v_rn int; v_plan uuid; v_level uuid; v_course uuid;
+  v_slot_code text; v_is_slot boolean; v_id uuid; v_exists boolean; v_action text;
   v_plan_course uuid;
   v_ins int := 0; v_upd int := 0; v_skp int := 0;
 BEGIN
-  -- Phase 1: pre-validate required identity fields.
   FOR v_idx IN 0 .. v_len - 1 LOOP
     v := public._import_row_values(p_rows -> v_idx);
     v_rn := public._import_row_number(p_rows -> v_idx, v_idx + 1);
@@ -1139,7 +846,6 @@ BEGIN
     END IF;
   END LOOP;
 
-  -- Phase 2: apply.
   FOR v_idx IN 0 .. v_len - 1 LOOP
     v := public._import_row_values(p_rows -> v_idx);
     v_plan := public._import_find_or_create_study_plan(p_college, v);
@@ -1149,11 +855,9 @@ BEGIN
         p_college, (v->>'_program_id')::uuid, (v->>'level_number')::int
       );
     END IF;
-
     v_is_slot := COALESCE(NULLIF(v->>'is_elective_slot', '')::boolean, false)
       OR (NULLIF(v->>'elective_slot_code', '') IS NOT NULL
           AND public._import_is_elective_placeholder(COALESCE(NULLIF(v->>'course_code', ''), v->>'elective_slot_code')));
-
     IF v_is_slot THEN
       v_slot_code := COALESCE(NULLIF(v->>'elective_slot_code', ''), v->>'course_code');
       v_id := NULL;
@@ -1162,8 +866,7 @@ BEGIN
         ORDER BY id ASC LIMIT 1 FOR UPDATE;
       v_exists := v_id IS NOT NULL;
       v_action := public._import_mode_action(p_mode, v_exists);
-      IF v_action = 'skip' THEN
-        v_skp := v_skp + 1;
+      IF v_action = 'skip' THEN v_skp := v_skp + 1;
       ELSIF v_action = 'insert' THEN
         INSERT INTO public.elective_slots (
           college_id, study_plan_id, level_id, semester, slot_code, label,
@@ -1178,15 +881,12 @@ BEGIN
           level_id = v_level,
           semester = COALESCE(NULLIF(v->>'semester', '')::int, 1),
           label = COALESCE(NULLIF(v->>'course_name', ''), v_slot_code),
-          required_component_type = 'theory',
-          active = true
+          required_component_type = 'theory', active = true
         WHERE id = v_id;
         v_upd := v_upd + 1;
       END IF;
       CONTINUE;
     END IF;
-
-    -- Regular plan course row.
     v_course := public._import_find_or_create_course(p_college, v);
     v_plan_course := NULL;
     SELECT id INTO v_plan_course FROM public.plan_courses
@@ -1194,10 +894,7 @@ BEGIN
       ORDER BY id ASC LIMIT 1 FOR UPDATE;
     v_exists := v_plan_course IS NOT NULL;
     v_action := public._import_mode_action(p_mode, v_exists);
-
-    IF v_action = 'skip' THEN
-      v_skp := v_skp + 1;
-      CONTINUE;
+    IF v_action = 'skip' THEN v_skp := v_skp + 1; CONTINUE;
     ELSIF v_action = 'update' THEN
       UPDATE public.plan_courses SET
         level_id = v_level,
@@ -1228,36 +925,21 @@ BEGIN
       ) RETURNING id INTO v_plan_course;
       v_ins := v_ins + 1;
     END IF;
-
     IF v_plan_course IS NOT NULL THEN
       PERFORM public._import_sync_plan_course_components(p_college, v_plan_course, v);
     END IF;
   END LOOP;
-
   RETURN jsonb_build_object('inserted', v_ins, 'updated', v_upd, 'skipped', v_skp);
 END;
 $fn$;
 
--- ---------------------------------------------------------------------------
--- Custom: teaching_assignments_v2 — transform stored ParsedRows into the V2
--- payload and delegate to the existing atomic RPC.
--- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public._import_apply_teaching_assignments_v2(
   p_college uuid, p_mode text, p_rows jsonb
-) RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $fn$
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $fn$
 DECLARE
   v_len int := COALESCE(jsonb_array_length(p_rows), 0);
-  v_idx int;
-  v jsonb;
-  v_rn int;
-  v_payload jsonb;
-  v_res jsonb;
+  v_idx int; v jsonb; v_rn int; v_payload jsonb; v_res jsonb;
 BEGIN
-  -- Pre-validate: required resolved fields; summer training is forbidden here.
   FOR v_idx IN 0 .. v_len - 1 LOOP
     v := public._import_row_values(p_rows -> v_idx);
     v_rn := public._import_row_number(p_rows -> v_idx, v_idx + 1);
@@ -1269,7 +951,6 @@ BEGIN
     END IF;
   END LOOP;
 
-  -- Build the V2 payload array in row order.
   SELECT COALESCE(jsonb_agg(
     jsonb_build_object(
       'row_number', public._import_row_number(p_rows -> ord, ord + 1),
@@ -1306,8 +987,6 @@ BEGIN
     RETURN public._import_counters_new();
   END IF;
 
-  -- Delegate to the existing atomic V2 RPC (co-teaching split + all V2 gates
-  -- enforced inside it). On any non-ok result, RAISE to roll everything back.
   v_res := public.commit_teaching_assignments_v2_import(v_payload, p_mode);
   IF COALESCE(v_res->>'status', '') <> 'ok' THEN
     RAISE EXCEPTION 'teaching_assignments_v2 import failed: %',
@@ -1323,21 +1002,13 @@ BEGIN
 END;
 $fn$;
 
--- ---------------------------------------------------------------------------
--- Dispatcher
--- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public._import_dispatch(
   p_college uuid, p_entity text, p_mode text, p_rows jsonb
-) RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $fn$
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $fn$
 BEGIN
   IF p_rows IS NULL OR jsonb_typeof(p_rows) <> 'array' THEN
     RAISE EXCEPTION 'import payload must be a jsonb array' USING ERRCODE = '22023';
   END IF;
-
   CASE p_entity
     WHEN 'instructors', 'rooms', 'academic_terms', 'daily_breaks' THEN
       RETURN public._import_apply_table_entity(p_college, p_entity, p_mode, p_rows);
@@ -1367,80 +1038,47 @@ BEGIN
 END;
 $fn$;
 
--- ---------------------------------------------------------------------------
--- Public entrypoint: atomic server-side commit
--- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.commit_import_job_atomic(
-  p_job_id uuid,
-  p_expected_updated_at timestamptz DEFAULT NULL
-) RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $fn$
+  p_job_id uuid, p_expected_updated_at timestamptz DEFAULT NULL
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $fn$
 DECLARE
   v_job public.import_jobs%ROWTYPE;
-  v_actor uuid;
-  v_college uuid;
-  v_entity text;
-  v_mode text;
-  v_payload jsonb;
-  v_counters jsonb;
+  v_actor uuid; v_college uuid; v_entity text; v_mode text;
+  v_payload jsonb; v_counters jsonb;
 BEGIN
-  -- 1) Authentication is required before any job lookup or lock.
   IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'authentication required' USING ERRCODE = '28000';
   END IF;
-
-  -- 2) Lock the job row FOR UPDATE (prevents concurrent double-commit).
   SELECT * INTO v_job FROM public.import_jobs WHERE id = p_job_id FOR UPDATE;
   IF NOT FOUND THEN
     RAISE EXCEPTION 'import job not found' USING ERRCODE = '55000';
   END IF;
-
-  v_college := v_job.college_id;   -- college ALWAYS from the job, never the client/payload
-  v_entity := v_job.target_entity; -- entity from job only
-  v_mode := v_job.mode;            -- mode from job only
-
-  -- 3) Require an authenticated import manager for the job's college.
+  v_college := v_job.college_id;
+  v_entity := v_job.target_entity;
+  v_mode := v_job.mode;
   v_actor := public.import_manager_actor(v_college);
-
-  -- 3) Actor must be the job creator.
   IF v_job.created_by IS DISTINCT FROM v_actor THEN
     RAISE EXCEPTION 'import job actor mismatch' USING ERRCODE = '42501';
   END IF;
-
-  -- 4) Idempotent replay: already committed by the same actor -> return saved
-  --    counters without re-writing anything.
   IF v_job.status = 'committed' THEN
     RETURN jsonb_build_object(
       'status', 'ok',
       'inserted', COALESCE(v_job.inserted_rows, 0),
       'updated', COALESCE(v_job.updated_rows, 0),
       'skipped', COALESCE(v_job.skipped_rows, 0),
-      'failed', 0,
-      'replay', true,
-      'job_id', v_job.id,
-      'entity', v_entity,
-      'mode', v_mode,
-      'college_id', v_college,
+      'failed', 0, 'replay', true, 'job_id', v_job.id,
+      'entity', v_entity, 'mode', v_mode, 'college_id', v_college,
       'payload_manifest', v_job.payload_manifest
     );
   END IF;
-
-  -- 5) Only a preview job may be committed atomically.
   IF v_job.status <> 'preview' THEN
     RAISE EXCEPTION 'import job is not in a committable (preview) state: %', v_job.status
       USING ERRCODE = '55000';
   END IF;
-
-  -- 6) Optimistic-concurrency guard.
   IF p_expected_updated_at IS NOT NULL
      AND v_job.updated_at IS DISTINCT FROM p_expected_updated_at THEN
     RAISE EXCEPTION 'import job stale' USING ERRCODE = '40001';
   END IF;
-
-  -- 7) Payload integrity: must be a jsonb array whose manifest matches.
   v_payload := v_job.validated_payload;
   IF v_payload IS NULL OR jsonb_typeof(v_payload) <> 'array' THEN
     RAISE EXCEPTION 'import validated_payload must be a jsonb array' USING ERRCODE = '22023';
@@ -1448,12 +1086,7 @@ BEGIN
   IF v_job.payload_manifest IS DISTINCT FROM md5(v_payload::text) THEN
     RAISE EXCEPTION 'import payload manifest mismatch' USING ERRCODE = '23000';
   END IF;
-
-  -- 8) Apply all domain writes (pre-validated per entity before any DML). Any
-  --    exception here rolls back the whole transaction (no partial success).
   v_counters := public._import_dispatch(v_college, v_entity, v_mode, v_payload);
-
-  -- 9) Flip the job to committed with the resulting counters.
   UPDATE public.import_jobs SET
     status = 'committed',
     inserted_rows = (v_counters->>'inserted')::int,
@@ -1465,45 +1098,31 @@ BEGIN
   IF NOT FOUND THEN
     RAISE EXCEPTION 'import job commit lost (concurrent state change)' USING ERRCODE = '40001';
   END IF;
-
-  -- 10) Success audit (only reached when everything above succeeded).
   INSERT INTO public.audit_logs (actor_id, action, entity, entity_id, college_id, details)
   VALUES (
     v_actor, 'import_job_committed', 'import_' || v_entity, v_job.id, v_college,
     jsonb_build_object(
-      'actor', v_actor,
-      'college_id', v_college,
-      'entity', v_entity,
-      'mode', v_mode,
+      'actor', v_actor, 'college_id', v_college, 'entity', v_entity, 'mode', v_mode,
       'study_system', v_job.validated_payload -> 0 -> 'values' ->> 'study_system',
       'inserted', (v_counters->>'inserted')::int,
       'updated', (v_counters->>'updated')::int,
       'skipped', (v_counters->>'skipped')::int,
-      'failed', 0,
-      'job_id', v_job.id,
+      'failed', 0, 'job_id', v_job.id,
       'payload_manifest', v_job.payload_manifest
     )
   );
-
   RETURN jsonb_build_object(
     'status', 'ok',
     'inserted', (v_counters->>'inserted')::int,
     'updated', (v_counters->>'updated')::int,
     'skipped', (v_counters->>'skipped')::int,
-    'failed', 0,
-    'replay', false,
-    'job_id', v_job.id,
-    'entity', v_entity,
-    'mode', v_mode,
-    'college_id', v_college,
+    'failed', 0, 'replay', false, 'job_id', v_job.id,
+    'entity', v_entity, 'mode', v_mode, 'college_id', v_college,
     'payload_manifest', v_job.payload_manifest
   );
 END;
 $fn$;
 
--- ---------------------------------------------------------------------------
--- Grants: helpers are callable ONLY from the definer entrypoint (as its owner).
--- ---------------------------------------------------------------------------
 REVOKE ALL ON FUNCTION public._import_row_values(jsonb) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public._import_row_number(jsonb, int) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public._import_counters_new() FROM PUBLIC, anon, authenticated;
@@ -1527,19 +1146,9 @@ REVOKE ALL ON FUNCTION public._import_apply_study_plan(uuid, text, jsonb) FROM P
 REVOKE ALL ON FUNCTION public._import_apply_teaching_assignments_v2(uuid, text, jsonb) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public._import_dispatch(uuid, text, text, jsonb) FROM PUBLIC, anon, authenticated;
 
--- Public entrypoint: authenticated only (never anon). service_role optional.
 REVOKE ALL ON FUNCTION public.commit_import_job_atomic(uuid, timestamptz) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.commit_import_job_atomic(uuid, timestamptz) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.commit_import_job_atomic(uuid, timestamptz) TO service_role;
 
--- ---------------------------------------------------------------------------
--- Table ACL hardening: no direct client DML on import control tables.
--- Closes authenticated residual grants (re-assert 20260718180000), anon (never
--- granted in source but revoked for defense-in-depth), and PUBLIC (schema
--- default / membership inheritance). SELECT remains for authenticated UI reads
--- under existing RLS; service_role ALL unchanged (non-browser path).
--- ---------------------------------------------------------------------------
 REVOKE INSERT, UPDATE, DELETE ON public.import_jobs FROM PUBLIC, anon, authenticated;
 REVOKE INSERT, UPDATE, DELETE ON public.import_errors FROM PUBLIC, anon, authenticated;
-
-COMMIT;
