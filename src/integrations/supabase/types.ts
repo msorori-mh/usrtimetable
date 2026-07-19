@@ -155,6 +155,27 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "ac_level_college_fkey"
+            columns: ["level_id", "college_id"]
+            isOneToOne: false
+            referencedRelation: "academic_levels"
+            referencedColumns: ["id", "college_id"]
+          },
+          {
+            foreignKeyName: "ac_program_college_fkey"
+            columns: ["program_id", "college_id"]
+            isOneToOne: false
+            referencedRelation: "academic_programs"
+            referencedColumns: ["id", "college_id"]
+          },
+          {
+            foreignKeyName: "ac_term_college_fkey"
+            columns: ["term_id", "college_id"]
+            isOneToOne: false
+            referencedRelation: "academic_terms"
+            referencedColumns: ["id", "college_id"]
+          },
+          {
             foreignKeyName: "academic_cohorts_college_id_fkey"
             columns: ["college_id"]
             isOneToOne: false
@@ -477,6 +498,27 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "ces_cohort_college_fkey"
+            columns: ["cohort_id", "college_id"]
+            isOneToOne: false
+            referencedRelation: "academic_cohorts"
+            referencedColumns: ["id", "college_id"]
+          },
+          {
+            foreignKeyName: "ces_course_college_fkey"
+            columns: ["selected_course_id", "college_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id", "college_id"]
+          },
+          {
+            foreignKeyName: "ces_slot_college_fkey"
+            columns: ["elective_slot_id", "college_id"]
+            isOneToOne: false
+            referencedRelation: "elective_slots"
+            referencedColumns: ["id", "college_id"]
+          },
           {
             foreignKeyName: "cohort_elective_selections_cohort_id_fkey"
             columns: ["cohort_id"]
@@ -1110,6 +1152,27 @@ export type Database = {
             referencedRelation: "plan_courses"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "dg_cohort_college_fkey"
+            columns: ["cohort_id", "college_id"]
+            isOneToOne: false
+            referencedRelation: "academic_cohorts"
+            referencedColumns: ["id", "college_id"]
+          },
+          {
+            foreignKeyName: "dg_component_college_fkey"
+            columns: ["component_id", "college_id"]
+            isOneToOne: false
+            referencedRelation: "plan_course_components"
+            referencedColumns: ["id", "college_id"]
+          },
+          {
+            foreignKeyName: "dg_plan_course_college_fkey"
+            columns: ["plan_course_id", "college_id"]
+            isOneToOne: false
+            referencedRelation: "plan_courses"
+            referencedColumns: ["id", "college_id"]
+          },
         ]
       }
       departments: {
@@ -1200,6 +1263,20 @@ export type Database = {
             referencedRelation: "elective_slots"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "esc_course_college_fkey"
+            columns: ["course_id", "college_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id", "college_id"]
+          },
+          {
+            foreignKeyName: "esc_slot_college_fkey"
+            columns: ["elective_slot_id", "college_id"]
+            isOneToOne: false
+            referencedRelation: "elective_slots"
+            referencedColumns: ["id", "college_id"]
+          },
         ]
       }
       elective_slots: {
@@ -1263,6 +1340,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "study_plans"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "es_level_college_fkey"
+            columns: ["level_id", "college_id"]
+            isOneToOne: false
+            referencedRelation: "academic_levels"
+            referencedColumns: ["id", "college_id"]
+          },
+          {
+            foreignKeyName: "es_study_plan_college_fkey"
+            columns: ["study_plan_id", "college_id"]
+            isOneToOne: false
+            referencedRelation: "study_plans"
+            referencedColumns: ["id", "college_id"]
           },
         ]
       }
@@ -1720,6 +1811,20 @@ export type Database = {
           weekly_contact_hours?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "pcc_plan_course_college_fkey"
+            columns: ["plan_course_id", "college_id"]
+            isOneToOne: false
+            referencedRelation: "plan_courses"
+            referencedColumns: ["id", "college_id"]
+          },
+          {
+            foreignKeyName: "pcc_room_type_college_fkey"
+            columns: ["required_room_type_id", "college_id"]
+            isOneToOne: false
+            referencedRelation: "room_types"
+            referencedColumns: ["id", "college_id"]
+          },
           {
             foreignKeyName: "plan_course_components_college_id_fkey"
             columns: ["college_id"]
@@ -2260,6 +2365,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "schedule_versions"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ss_cohort_college_fkey"
+            columns: ["cohort_id", "college_id"]
+            isOneToOne: false
+            referencedRelation: "academic_cohorts"
+            referencedColumns: ["id", "college_id"]
+          },
+          {
+            foreignKeyName: "ss_component_college_fkey"
+            columns: ["plan_course_component_id", "college_id"]
+            isOneToOne: false
+            referencedRelation: "plan_course_components"
+            referencedColumns: ["id", "college_id"]
+          },
+          {
+            foreignKeyName: "ss_delivery_group_college_fkey"
+            columns: ["delivery_group_id", "college_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_groups"
+            referencedColumns: ["id", "college_id"]
           },
         ]
       }
@@ -2828,6 +2954,27 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "ta_cohort_college_fkey"
+            columns: ["cohort_id", "college_id"]
+            isOneToOne: false
+            referencedRelation: "academic_cohorts"
+            referencedColumns: ["id", "college_id"]
+          },
+          {
+            foreignKeyName: "ta_component_college_fkey"
+            columns: ["plan_course_component_id", "college_id"]
+            isOneToOne: false
+            referencedRelation: "plan_course_components"
+            referencedColumns: ["id", "college_id"]
+          },
+          {
+            foreignKeyName: "ta_delivery_group_college_fkey"
+            columns: ["delivery_group_id", "college_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_groups"
+            referencedColumns: ["id", "college_id"]
+          },
+          {
             foreignKeyName: "teaching_assignments_cohort_id_fkey"
             columns: ["cohort_id"]
             isOneToOne: false
@@ -3025,6 +3172,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "academic_terms"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ta_cohort_college_fkey"
+            columns: ["cohort_id", "college_id"]
+            isOneToOne: false
+            referencedRelation: "academic_cohorts"
+            referencedColumns: ["id", "college_id"]
           },
           {
             foreignKeyName: "teaching_assignments_cohort_id_fkey"
