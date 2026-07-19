@@ -2,6 +2,7 @@
 
 **Phase:** SYSTEM-WIDE-DOMAIN-AND-ADMIN-ARCHITECTURE-AUDIT-01
 **Baseline:** `c6b0d861f006d4202349bfa77ed24a5508e2b727`
+**Delta refresh:** `1af8787e676f6040b824dc3e177b3aacbcfdaec2`
 **Status:** Binding for remediation design (not yet enforced by nav/UX cleanup)
 
 ## Core identity rules
@@ -88,3 +89,18 @@
 
 20. **Legacy compatibility is quarantined.**
     `sections`, `course_offering_sections`, `section_groups*`, Legacy imports remain out of primary IA until removed after migration.
+
+## Terminology and shared-delivery invariants
+
+21. **Catalog sharing is not teaching sharing.**
+    `course_programs` and `course_departments` are catalog association/eligibility links. They do not merge cohorts,
+    offerings, delivery groups, assignments, sessions, capacity, conflicts, or reports.
+
+22. **A delivery group has one cohort authority.**
+    Every generated `delivery_group` belongs to exactly one `academic_cohort` and one plan-course component.
+    The label “shared course” must never be used to infer a cross-cohort delivery group.
+
+23. **Cross-cohort shared delivery fails closed.**
+    The current model has no authoritative shared-delivery aggregate. A future design requires explicit participant
+    cohorts, college and `study_system` isolation, capacity allocation, assignment/session identity, conflict rules,
+    authorization, and audit. Until separately approved and implemented, cross-cohort delivery is prohibited.

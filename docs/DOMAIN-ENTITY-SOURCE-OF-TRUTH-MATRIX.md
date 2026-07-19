@@ -2,6 +2,7 @@
 
 **Phase:** SYSTEM-WIDE-DOMAIN-AND-ADMIN-ARCHITECTURE-AUDIT-01
 **Baseline:** `c6b0d861f006d4202349bfa77ed24a5508e2b727`
+**Delta refresh:** `1af8787e676f6040b824dc3e177b3aacbcfdaec2`
 **Sources:** `src/integrations/supabase/types.ts`, migrations, services, RPCs, routes, import registry
 
 ## Schema inventory
@@ -80,7 +81,7 @@
 | audit_logs | Mutation trail | Compliance | `audit_logs` | writers | System | append | college | — | yes | — | **no viewer** | — | Current | Yes |
 | auto_schedule_runs | Auto-scheduler runs | Automation log | `auto_schedule_runs` | `/auto-schedule` | System | — | version | — | yes | — | auto-schedule | vs builder | Current | Optional |
 | Lookups (instructor_types, room_types, buildings, session_types, quality_*) | Reference data | Classification | respective tables | Lookup pages | UI_ONLY | — | college/global | code | mostly college | n/a | lookup routes | — | Current | Yes (subset) |
-| course_programs / course_departments | Sharing links | Shared courses | those tables | `/shared-courses` + import | UI/import | — | course↔program | pair | yes | — | shared-courses | — | Current | Yes |
+| course_programs / course_departments | Catalog eligibility/ownership links | Associate one catalog course with approved programs/departments; **not a shared teaching delivery** | those tables | `/shared-courses` + import | UI/import | — | course↔program/department | pair | yes | — | shared-courses (misleading label) | Must not create cross-cohort delivery | Current | Yes |
 | reports | Read models | Views only | lib/reports | n/a | Derived | — | versions | — | yes | filtered | `/reports/*` | Must not recreate domain | Current | Yes |
 
 ---
@@ -99,6 +100,8 @@
 | DEV-08 | Catalog offers UI-only foundational templates (colleges/depts/programs) implying import | MEDIUM |
 | DEV-09 | Schema allows cohort study_system beyond Pilot (`evening`/`distance`/`other`) | MEDIUM |
 | DEV-10 | Program↔department enforced in DB/UI — **compliant** | OK |
+| DEV-11 | `/shared-courses` and «المقررات المشتركة» can be read as shared delivery, but the stored links only express catalog eligibility/ownership | BLOCKER (terminology) |
+| DEV-12 | No authoritative aggregate exists for one delivery shared by multiple cohorts; treating a delivery group as cross-cohort would violate its `cohort_id` identity | BLOCKER (model lock) |
 
 ---
 
@@ -114,3 +117,20 @@ study_plans (+ components, electives)
   → schedule_versions + schedule_sessions (builder)
   → conflict_results / quality_runs / publish
 ```
+
+## Terminology and shared-delivery lock
+
+| Current term | Locked meaning | Required admin wording |
+| --- | --- | --- |
+| `academic_cohort` | The student academic set for one program/level/term/study system | دفعة أكاديمية |
+| `course_programs` | A catalog course is eligible for/associated with a program | ارتباط المقرر بالبرنامج |
+| `course_departments` | A catalog course is owned by or visible to departments | ارتباط المقرر بالأقسام |
+| “shared course” | Ambiguous legacy UI shorthand for the two catalog links above | Do not use as a delivery term |
+| `delivery_group` | A capacity or delivery-nature split of one plan-course component for **one cohort** | مجموعة تدريس للدفعة |
+| `sections` / `section_id` | Legacy compatibility only | شعبة Legacy (hidden from new flows) |
+| shared delivery | One teaching event serving more than one cohort | **Not modeled; fail closed** |
+
+**Lock:** linking a course to multiple programs or departments never authorizes merging cohorts, delivery groups,
+teaching assignments, sessions, capacity, conflicts, or reports. A future cross-cohort delivery requires a separately
+approved model with participant cohorts, ownership, study-system/college isolation, capacity allocation, audit, and
+conflict semantics. Until then, every generated delivery group remains owned by exactly one `academic_cohort`.

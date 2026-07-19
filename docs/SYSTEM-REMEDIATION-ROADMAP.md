@@ -2,6 +2,7 @@
 
 **Phase:** SYSTEM-WIDE-DOMAIN-AND-ADMIN-ARCHITECTURE-AUDIT-01
 **Baseline:** `c6b0d861f006d4202349bfa77ed24a5508e2b727`
+**Delta refresh:** `1af8787e676f6040b824dc3e177b3aacbcfdaec2`
 **Note:** Design only — **no fixes executed in this audit.**
 
 Complexity: S / M / L · Launch: REQUIRED / POST_LAUNCH
@@ -86,6 +87,19 @@ Complexity: S / M / L · Launch: REQUIRED / POST_LAUNCH
 | Risk | Low |
 | Tests | Import registry harness |
 | Complexity | S |
+| Launch | **REQUIRED** |
+
+### A07 — Replace ambiguous shared-course terminology and enforce the shared-delivery lock
+| | |
+| --- | --- |
+| Description | Rename `/shared-courses` labels to catalog program/department associations; state that these links never merge cohort delivery. Reject any inferred cross-cohort delivery until an explicit model is approved. |
+| Affected files | `shared-courses.tsx`, navigation/copy, labels harness, admin help text |
+| DB impact | None for terminology. A future shared-delivery model is a separate decision and is out of scope. |
+| Migration | No |
+| Dependencies | Binding cohort/DG model; G02 terminology sweep |
+| Risk | High if operators interpret “shared” as permission to combine cohorts or capacity |
+| Tests | Labels harness; cohort ownership assertions; negative cross-cohort fixtures |
+| Complexity | S for terminology; future model not estimated |
 | Launch | **REQUIRED** |
 
 ---
@@ -185,7 +199,7 @@ Complexity: S / M / L · Launch: REQUIRED / POST_LAUNCH
 
 | REQUIRED for initial launch | POST_LAUNCH |
 | --- | --- |
-| A01–A06, B01–B04, C01, C03, D01, D03, E01, F01–F03, G02–G03 | C02, D02, E03, F04–F05, G01 polish |
+| A01–A07, B01–B04, C01, C03, D01, D03, E01, F01–F03, G02–G03 | C02, D02, E03, F04–F05, G01 polish |
 
 ## Estimated launch readiness (architecture)
 

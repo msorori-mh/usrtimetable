@@ -13,6 +13,21 @@ Architecture audit completed from source contracts (routes, types, migrations te
 
 Findings are substantial; remediation is planned only (`docs/SYSTEM-REMEDIATION-ROADMAP.md`).
 
+### Delta refresh — terminology and shared-delivery lock
+
+The audit was refreshed after merging live `origin/main` at
+`1af8787e676f6040b824dc3e177b3aacbcfdaec2`. The upstream delta is the availability bulk-entry change (#56) and
+does not alter the cohort/delivery ownership conclusion.
+
+**Decision:** `PASS_WITH_FINDINGS — TERMINOLOGY_AND_SHARED_DELIVERY_LOCKED`.
+
+- `/shared-courses` currently maintains `course_departments`; `course_programs` is the corresponding program link.
+- These links describe catalog association/eligibility only, not a shared timetable delivery.
+- A `delivery_group` remains a split of one plan-course component owned by one `academic_cohort`.
+- Cross-cohort shared delivery has no authoritative entity and therefore fails closed.
+- Phase A now includes A07: replace ambiguous UI terminology and add negative cross-cohort ownership tests.
+- This delta changed documentation/report artifacts only; no product source or migration was edited.
+
 ---
 
 ## Baseline
@@ -145,6 +160,7 @@ Plan → Cohort → Elective selections → Curriculum offerings → Delivery gr
 5. Prove/apply gated runtime migrations (curriculum, lifecycle, import atomic, tenant FK) **with user approval**
 6. Elective approval + generate curriculum clarity in cohort hub
 7. Hard/Soft IA split
+8. Replace ambiguous “shared course” wording and enforce the one-cohort delivery-group lock (A07)
 
 Roadmap: `docs/SYSTEM-REMEDIATION-ROADMAP.md` (Phases A–G)
 
@@ -215,6 +231,6 @@ Roadmap: `docs/SYSTEM-REMEDIATION-ROADMAP.md` (Phases A–G)
 
 ## Final decision
 
-**PASS_WITH_FINDINGS — SYSTEM_ARCHITECTURE_AUDIT_COMPLETE**
+**PASS_WITH_FINDINGS — TERMINOLOGY_AND_SHARED_DELIVERY_LOCKED**
 
-Next step for humans: **USER REVIEW OF SYSTEM REMEDIATION ROADMAP.**
+Next step: **USER REVIEW AND MERGE APPROVAL FOR PR #55.**
