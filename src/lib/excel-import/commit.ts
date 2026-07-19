@@ -31,7 +31,7 @@ export async function commitImport(input: {
 
   const { data, error } = await supabase.rpc("commit_import_job_atomic", {
     p_job_id: input.jobId,
-    p_expected_updated_at: input.expectedUpdatedAt ?? null,
+    p_expected_updated_at: input.expectedUpdatedAt ?? undefined,
   });
 
   if (error) {
