@@ -3049,6 +3049,92 @@ export type Database = {
         }
         Returns: Json
       }
+      _import_apply_academic_cohorts: {
+        Args: { p_college: string; p_mode: string; p_rows: Json }
+        Returns: Json
+      }
+      _import_apply_cohort_elective_selections: {
+        Args: { p_college: string; p_mode: string; p_rows: Json }
+        Returns: Json
+      }
+      _import_apply_course_offerings: {
+        Args: { p_college: string; p_mode: string; p_rows: Json }
+        Returns: Json
+      }
+      _import_apply_course_programs: {
+        Args: { p_college: string; p_mode: string; p_rows: Json }
+        Returns: Json
+      }
+      _import_apply_elective_slot_courses: {
+        Args: { p_college: string; p_mode: string; p_rows: Json }
+        Returns: Json
+      }
+      _import_apply_section_groups: {
+        Args: { p_college: string; p_mode: string; p_rows: Json }
+        Returns: Json
+      }
+      _import_apply_sections: {
+        Args: { p_college: string; p_mode: string; p_rows: Json }
+        Returns: Json
+      }
+      _import_apply_study_plan: {
+        Args: { p_college: string; p_mode: string; p_rows: Json }
+        Returns: Json
+      }
+      _import_apply_table_entity: {
+        Args: {
+          p_college: string
+          p_entity: string
+          p_mode: string
+          p_rows: Json
+        }
+        Returns: Json
+      }
+      _import_apply_teaching_assignments: {
+        Args: { p_college: string; p_mode: string; p_rows: Json }
+        Returns: Json
+      }
+      _import_apply_teaching_assignments_v2: {
+        Args: { p_college: string; p_mode: string; p_rows: Json }
+        Returns: Json
+      }
+      _import_counters_add: { Args: { a: Json; b: Json }; Returns: Json }
+      _import_counters_new: { Args: never; Returns: Json }
+      _import_dispatch: {
+        Args: {
+          p_college: string
+          p_entity: string
+          p_mode: string
+          p_rows: Json
+        }
+        Returns: Json
+      }
+      _import_find_or_create_course: {
+        Args: { p_college: string; v: Json }
+        Returns: string
+      }
+      _import_find_or_create_level: {
+        Args: { p_college: string; p_level: number; p_program: string }
+        Returns: string
+      }
+      _import_find_or_create_study_plan: {
+        Args: { p_college: string; v: Json }
+        Returns: string
+      }
+      _import_is_elective_placeholder: {
+        Args: { code: string }
+        Returns: boolean
+      }
+      _import_mode_action: {
+        Args: { p_exists: boolean; p_mode: string }
+        Returns: string
+      }
+      _import_row_number: { Args: { elem: Json; idx: number }; Returns: number }
+      _import_row_values: { Args: { elem: Json }; Returns: Json }
+      _import_sync_plan_course_components: {
+        Args: { p_college: string; p_plan_course: string; v: Json }
+        Returns: undefined
+      }
       _ss_brk: {
         Args: {
           p_cid: string
@@ -3239,6 +3325,10 @@ export type Database = {
           p_target_entity: string
           p_validated_payload: Json
         }
+        Returns: Json
+      }
+      commit_import_job_atomic: {
+        Args: { p_expected_updated_at?: string; p_job_id: string }
         Returns: Json
       }
       commit_teaching_assignments_v2_import: {
