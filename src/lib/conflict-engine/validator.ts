@@ -429,22 +429,28 @@ export async function validateProposed(params: {
         });
       }
     } else {
-      const fits = hardWindows.some(
-        (w) =>
-          w.availability_type !== "unavailable" &&
-          within(s.start_time, s.end_time, w.start_time, w.end_time),
-      );
+      // Domain: active instructors are available by default during working days.
+      // Hard unavailability rows are a blacklist. Positive hard windows (if any)
+      // remain a whitelist for that day. Soft preferences are ignored here.
       const blocked = hardWindows.some(
         (w) =>
           w.availability_type === "unavailable" &&
           overlap(s.start_time, s.end_time, w.start_time, w.end_time),
       );
-      if (!fits || blocked) {
+      const positiveWindows = hardWindows.filter((w) => w.availability_type !== "unavailable");
+      const fits =
+        positiveWindows.length === 0 ||
+        positiveWindows.some((w) => within(s.start_time, s.end_time, w.start_time, w.end_time));
+      if (blocked || !fits) {
         conflicts.push({
           code: "instructor_availability",
           severity: "hard",
-          message_ar: "المحاضرة خارج نطاق توفّر المحاضر الإلزامي.",
-          message_en: "Session outside instructor's hard availability window.",
+          message_ar: blocked
+            ? "المحاضرة تتعارض مع فترة عدم توفّر المحاضر الإلزامية."
+            : "المحاضرة خارج نطاق توفّر المحاضر الإلزامي.",
+          message_en: blocked
+            ? "Session overlaps instructor hard unavailability."
+            : "Session outside instructor's hard availability window.",
           schedule_session_id: sid,
           metadata: { instructor_id: s.instructor_id, day_of_week: s.day_of_week, category: cat },
         });

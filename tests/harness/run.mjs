@@ -20,6 +20,7 @@ export const harnesses = [
   "import-pipeline-atomic-commit.harness.ts",
   "import-pipeline-preapply-security.harness.ts",
   "import-templates-final-audit.harness.ts",
+  "availability-all-active-days.harness.ts",
   "weekly-time-templates.harness.ts",
   "terminology-labels.harness.ts",
   "time-templates-college-context-sync.harness.ts",
@@ -82,7 +83,11 @@ export function classifyResult(file, result, fileExists = existsSync) {
   return "fail";
 }
 
-export function runHarnesses({ spawn = spawnSync, fileExists = existsSync, out = process.stdout } = {}) {
+export function runHarnesses({
+  spawn = spawnSync,
+  fileExists = existsSync,
+  out = process.stdout,
+} = {}) {
   if (!fileExists(tsxCli)) {
     out.write(`HARNESS_RUNNER_ERROR: local tsx runtime is missing at ${tsxCli}\n`);
     out.write("Install the locked dependencies before running the harness suite.\n");
@@ -95,7 +100,13 @@ export function runHarnesses({ spawn = spawnSync, fileExists = existsSync, out =
     const result = spawn(
       process.execPath,
       [tsxCli, "--tsconfig", tsconfig, path.join(__dirname, file)],
-      { cwd: root, encoding: "utf8", shell: false, timeout: HARNESS_TIMEOUT_MS, killSignal: "SIGTERM" },
+      {
+        cwd: root,
+        encoding: "utf8",
+        shell: false,
+        timeout: HARNESS_TIMEOUT_MS,
+        killSignal: "SIGTERM",
+      },
     );
     if (result.stdout) out.write(result.stdout);
     if (result.stderr) out.write(result.stderr);

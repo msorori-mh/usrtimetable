@@ -176,7 +176,7 @@ const NAV: NavItem[] = [
   },
   {
     to: "/availability",
-    label: "التوفّر/عدم التوفّر",
+    label: "عدم التوفّر",
     icon: <CalendarClock className="h-4 w-4" />,
     roles: ALL,
     group: "موارد التدريس",
