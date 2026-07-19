@@ -17,6 +17,17 @@
 -- EXECUTE revoked from PUBLIC, anon and authenticated. Only the definer function
 -- (running as its owner) may call them. The public entrypoint is granted to
 -- authenticated (and optionally service_role) only — never anon.
+--
+-- Pre-apply security hardening (table ACL):
+--   Historical source: 20260605002216 granted INSERT/UPDATE/DELETE on
+--   import_jobs and import_errors to authenticated; 20260718180000 revoked those
+--   from authenticated. This migration re-asserts the revoke for authenticated,
+--   and also closes anon + PUBLIC table DML so client paths cannot rely on
+--   schema defaults, PUBLIC membership, or residual grants. SELECT for
+--   authenticated (UI history) is intentionally left; all writes go through
+--   authorized RPCs (create_import_preview_manifest / commit_import_job_atomic /
+--   claim|finalize|fail_import_job). service_role table ALL is unchanged and is
+--   not a browser client path.
 -- =============================================================================
 
 BEGIN;
@@ -1520,5 +1531,15 @@ REVOKE ALL ON FUNCTION public._import_dispatch(uuid, text, text, jsonb) FROM PUB
 REVOKE ALL ON FUNCTION public.commit_import_job_atomic(uuid, timestamptz) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.commit_import_job_atomic(uuid, timestamptz) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.commit_import_job_atomic(uuid, timestamptz) TO service_role;
+
+-- ---------------------------------------------------------------------------
+-- Table ACL hardening: no direct client DML on import control tables.
+-- Closes authenticated residual grants (re-assert 20260718180000), anon (never
+-- granted in source but revoked for defense-in-depth), and PUBLIC (schema
+-- default / membership inheritance). SELECT remains for authenticated UI reads
+-- under existing RLS; service_role ALL unchanged (non-browser path).
+-- ---------------------------------------------------------------------------
+REVOKE INSERT, UPDATE, DELETE ON public.import_jobs FROM PUBLIC, anon, authenticated;
+REVOKE INSERT, UPDATE, DELETE ON public.import_errors FROM PUBLIC, anon, authenticated;
 
 COMMIT;
