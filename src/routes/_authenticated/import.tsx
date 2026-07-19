@@ -21,6 +21,11 @@ import {
 import { TEMPLATES, buildTemplateWorkbook, parseExcel } from "@/lib/excel-import/templates";
 import { validate } from "@/lib/excel-import/validators";
 import { commitImport, createJobAndPersistErrors } from "@/lib/excel-import/commit";
+import {
+  listImportUiEntities,
+  suggestedTemplateFilename,
+  OFFICIAL_IMPORT_ORDER,
+} from "@/lib/excel-import/registry";
 import type { ImportEntity, ImportMode, ParsedRow, RowError } from "@/lib/excel-import/types";
 
 export const Route = createFileRoute("/_authenticated/import")({
@@ -28,74 +33,13 @@ export const Route = createFileRoute("/_authenticated/import")({
   component: ImportPage,
 });
 
-const ENTITIES: { value: ImportEntity; label: string; group: string; description: string }[] = [
-  {
-    value: "instructors",
-    label: "المحاضرون",
-    group: "موارد",
-    description: "بيانات المحاضرين وأنواع التوظيف والحدود الأسبوعية.",
-  },
-  {
-    value: "rooms",
-    label: "القاعات والمعامل",
-    group: "موارد",
-    description: "الأماكن المادية المستخدمة لتقديم المحاضرات والتطبيقات.",
-  },
-  {
-    value: "daily_breaks",
-    label: "الاستراحات اليومية",
-    group: "موارد",
-    description: "فترات الاستراحة التي تؤثر على توليد أوقات الجدولة.",
-  },
-  {
-    value: "academic_terms",
-    label: "الفصول الأكاديمية",
-    group: "بيانات أكاديمية",
-    description: "الفصل الأول أو الثاني ضمن العام الأكاديمي.",
-  },
-  {
-    value: "study_plan_courses",
-    label: "الخطط الدراسية",
-    group: "بيانات أكاديمية",
-    description: "مقررات الخطة حسب المستوى والفصل.",
-  },
-  {
-    value: "full_study_plan",
-    label: "خطة دراسية كاملة",
-    group: "بيانات أكاديمية",
-    description: "استيراد الخطة الأكاديمية الكاملة مع المكوّنات والخانات الاختيارية.",
-  },
-  {
-    value: "course_programs",
-    label: "البرامج (ربط مقررات)",
-    group: "بيانات أكاديمية",
-    description: "ربط المقررات المشتركة بالبرامج.",
-  },
-  {
-    value: "academic_cohorts",
-    label: "الدفعات الأكاديمية (V2)",
-    group: "نموذج التقديم V2",
-    description: "دفعات البرنامج/المستوى/نظام الدراسة للفصل المستهدف.",
-  },
-  {
-    value: "elective_slot_courses",
-    label: "مقررات الخانات الاختيارية (V2)",
-    group: "نموذج التقديم V2",
-    description: "المقررات الفعلية المسموح اختيارها داخل خانة اختيارية.",
-  },
-  {
-    value: "cohort_elective_selections",
-    label: "اختيارات الدفعات (V2)",
-    group: "نموذج التقديم V2",
-    description: "المقرر الفعلي المختار لكل دفعة وخانة اختيارية.",
-  },
-  {
-    value: "teaching_assignments_v2",
-    label: "الإسناد التدريسي V2",
-    group: "نموذج التقديم V2",
-    description: "إسناد محاضر لدفعة + مقرر + مكوّن (ومجموعة تقديم اختيارية).",
-  },
-];
+const ENTITIES = listImportUiEntities().map((m) => ({
+  value: m.entity,
+  label: m.label,
+  group: m.group,
+  description: m.description,
+  dependsOn: m.dependsOn,
+}));
 
 const MODES: { value: ImportMode; label: string; desc: string }[] = [
   { value: "insert_only", label: "إدراج فقط", desc: "تجاهل الصفوف الموجودة" },
@@ -108,7 +52,7 @@ function ImportPage() {
   const canManage = useCanManageActiveCollege();
   const { data: user } = useCurrentUser();
   const qc = useQueryClient();
-  const [entity, setEntity] = useState<ImportEntity>("instructors");
+  const [entity, setEntity] = useState<ImportEntity>("academic_terms");
   const [mode, setMode] = useState<ImportMode>("insert_only");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<{
@@ -126,7 +70,9 @@ function ImportPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `template_${entity}.xlsx`;
+      a.download = suggestedTemplateFilename(entity, {
+        collegeCode: active?.code ?? undefined,
+      });
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
@@ -231,14 +177,32 @@ function ImportPage() {
         <div className="flex-1">
           <h1 className="text-2xl font-bold">استيراد البيانات من Excel</h1>
           <p className="text-sm text-muted-foreground">
-            حمّل القالب، عبّئه، ارفعه، عاين، ثم احفظ.{" "}
+            مسار التشغيل الجديد فقط — بدون نماذج الشعب أو التسجيل الفردي. Commit عبر RPC ذري.{" "}
             <Link to="/data-templates" className="text-primary underline-offset-4 hover:underline">
-              عرض كل القوالب ←
+              مركز القوالب ←
             </Link>
           </p>
         </div>
         <CollegeSwitcher />
       </header>
+
+      <Card className="p-3 text-xs text-muted-foreground space-y-1">
+        <p className="font-medium text-foreground">ترتيب الاستيراد الرسمي (مختصر)</p>
+        <ol className="list-decimal list-inside space-y-0.5">
+          {OFFICIAL_IMPORT_ORDER.filter((s) => s.kind === "import")
+            .slice(0, 8)
+            .map((s) => (
+              <li key={s.step}>
+                {s.label}
+                {s.notes ? ` — ${s.notes}` : ""}
+              </li>
+            ))}
+        </ol>
+        <p>
+          delivery_groups و course_offerings في المسار الجديد مولَّدة من النظام — ليست قوالب
+          تشغيلية. نماذج Legacy (sections / V1) مخفية هنا.
+        </p>
+      </Card>
 
       <Card className="p-4 space-y-4">
         <div className="grid gap-4 md:grid-cols-3">
@@ -263,7 +227,12 @@ function ImportPage() {
               ))}
             </select>
             {selectedMeta && (
-              <p className="mt-2 text-xs text-muted-foreground">{selectedMeta.description}</p>
+              <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                <p>{selectedMeta.description}</p>
+                {selectedMeta.dependsOn.length > 0 && (
+                  <p>الاعتماديات: {selectedMeta.dependsOn.join(" · ")}</p>
+                )}
+              </div>
             )}
           </div>
           <div>

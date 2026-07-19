@@ -313,11 +313,21 @@ function run() {
   assert(templatesSrc.includes('key: "is_elective_slot"'), "full plan elective flag");
 
   const importUi = read("src/routes/_authenticated/import.tsx");
+  assert(importUi.includes("listImportUiEntities"), "import UI uses official registry");
   assert(!importUi.includes('value: "course_offerings"'), "offerings hidden from import UI");
   assert(!importUi.includes('value: "teaching_assignments"'), "legacy TA hidden from import UI");
   assert(!importUi.includes('value: "sections"'), "sections hidden from import UI");
-  assert(importUi.includes('value: "teaching_assignments_v2"'), "v2 TA in import UI");
-  assert(importUi.includes('value: "academic_cohorts"'), "cohorts in import UI");
+  const registrySrc = read("src/lib/excel-import/registry.ts");
+  assert(
+    registrySrc.includes('"teaching_assignments_v2"') &&
+      registrySrc.includes("ACTIVE_NEW_FLOW_ENTITIES"),
+    "v2 TA in import UI registry",
+  );
+  assert(registrySrc.includes('"academic_cohorts"'), "cohorts in import UI registry");
+  assert(
+    registrySrc.includes("showInImportUi: false") && registrySrc.includes("LEGACY_ONLY"),
+    "legacy entities marked hidden",
+  );
 
   const nav = read("src/components/app-layout.tsx");
   assert(!nav.includes('to: "/course-offerings"'), "offerings hidden from nav");

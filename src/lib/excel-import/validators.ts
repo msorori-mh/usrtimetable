@@ -216,12 +216,29 @@ function normalize(
   headers: string[],
   rows: Record<string, unknown>[],
   entity: ImportEntity,
-): { parsed: ParsedRow[]; missingHeaders: string[] } {
+): {
+  parsed: ParsedRow[];
+  missingHeaders: string[];
+  unknownHeaders: string[];
+  duplicateHeaders: string[];
+} {
   const tpl = TEMPLATES[entity];
-  const headerSet = new Set(headers.map((h) => h.trim()));
+  const trimmed = headers.map((h) => h.trim()).filter(Boolean);
+  const headerSet = new Set(trimmed);
   const missingHeaders = tpl.columns
     .filter((c) => c.required && !headerSet.has(c.header))
     .map((c) => c.header);
+  const knownHeaders = new Set(tpl.columns.map((c) => c.header));
+  const unknownHeaders = [...headerSet].filter((h) => !knownHeaders.has(h));
+  const seen = new Set<string>();
+  const duplicateHeaders: string[] = [];
+  for (const h of trimmed) {
+    if (seen.has(h)) {
+      if (!duplicateHeaders.includes(h)) duplicateHeaders.push(h);
+    } else {
+      seen.add(h);
+    }
+  }
   const byHeader = new Map(tpl.columns.map((c) => [c.header, c]));
   const parsed: ParsedRow[] = rows.map((raw, i) => {
     const values: Record<string, unknown> = {};
@@ -251,7 +268,7 @@ function normalize(
     }
     return { rowNumber: i + 2, raw, values };
   });
-  return { parsed, missingHeaders };
+  return { parsed, missingHeaders, unknownHeaders, duplicateHeaders };
 }
 
 export async function validate(
@@ -259,13 +276,32 @@ export async function validate(
   headers: string[],
   rows: Record<string, unknown>[],
   collegeId: string,
-): Promise<ValidationResult & { missingHeaders: string[] }> {
+): Promise<ValidationResult & { missingHeaders: string[]; unknownHeaders: string[] }> {
   await requireImportManager(collegeId);
   const tpl = TEMPLATES[entity];
-  const { parsed, missingHeaders } = normalize(headers, rows, entity);
+  const { parsed, missingHeaders, unknownHeaders, duplicateHeaders } = normalize(
+    headers,
+    rows,
+    entity,
+  );
   const errors: RowError[] = [];
   const validRows: ParsedRow[] = [];
   const invalidRows: ParsedRow[] = [];
+
+  if (duplicateHeaders.length > 0) {
+    return {
+      validRows: [],
+      invalidRows: parsed,
+      errors: duplicateHeaders.map((h) => ({
+        rowNumber: 1,
+        columnName: h,
+        errorCode: "duplicate_header",
+        message: `عنوان عمود مكرر: ${h}`,
+      })),
+      missingHeaders,
+      unknownHeaders,
+    };
+  }
 
   if (missingHeaders.length > 0) {
     return {
@@ -278,6 +314,23 @@ export async function validate(
         message: `عمود مطلوب مفقود: ${h}`,
       })),
       missingHeaders,
+      unknownHeaders,
+    };
+  }
+
+  // Delivery policy: reject unknown columns for all ImportEntity templates (active + retained Legacy).
+  if (unknownHeaders.length > 0) {
+    return {
+      validRows: [],
+      invalidRows: parsed,
+      errors: unknownHeaders.map((h) => ({
+        rowNumber: 1,
+        columnName: h,
+        errorCode: "unknown_column",
+        message: `عمود غير معروف في القالب الرسمي: ${h}`,
+      })),
+      missingHeaders,
+      unknownHeaders,
     };
   }
 
@@ -412,6 +465,21 @@ export async function validate(
       }
     }
     if (entity === "rooms") {
+      const capacity = row.values.capacity;
+      if (
+        capacity !== null &&
+        capacity !== undefined &&
+        capacity !== "" &&
+        (typeof capacity !== "number" || !Number.isFinite(capacity) || capacity <= 0)
+      ) {
+        rowErrors.push({
+          rowNumber: row.rowNumber,
+          columnName: "السعة",
+          errorCode: "invalid_capacity",
+          message: "السعة يجب أن تكون رقمًا موجبًا أكبر من صفر",
+          rawValue: String(capacity),
+        });
+      }
       const st = row.values.available_start_time as string | null;
       const et = row.values.available_end_time as string | null;
       if (st && et && TIME_RE.test(st) && TIME_RE.test(et) && et <= st)
@@ -489,7 +557,7 @@ export async function validate(
     } else validRows.push(row);
   }
 
-  return { validRows, invalidRows, errors, missingHeaders: [] };
+  return { validRows, invalidRows, errors, missingHeaders: [], unknownHeaders: [] };
 }
 
 function buildLogicalKey(entity: ImportEntity, row: ParsedRow): string | null {
