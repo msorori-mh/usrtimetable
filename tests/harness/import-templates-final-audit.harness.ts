@@ -288,13 +288,19 @@ async function run() {
     assert(registered.has(e), `registry covers ${e}`);
   }
 
-  // Catalog full_study_plan aligned with TEMPLATES headers
+  // Catalog full_study_plan / plan_courses aligned with TEMPLATES headers
   const catFull = CATALOG.find((t) => t.id === "full_study_plan")!;
   const catHeaders = catFull.columns.map((c) => c.header);
   const tplHeaders = TEMPLATES.full_study_plan.columns.map((c) => c.header);
   assert(
     JSON.stringify(catHeaders) === JSON.stringify(tplHeaders),
     "catalog full_study_plan headers match TEMPLATES",
+  );
+  const catPlan = CATALOG.find((t) => t.id === "plan_courses")!;
+  assert(
+    JSON.stringify(catPlan.columns.map((c) => c.header)) ===
+      JSON.stringify(TEMPLATES.study_plan_courses.columns.map((c) => c.header)),
+    "catalog plan_courses headers match TEMPLATES.study_plan_courses",
   );
 
   // Legacy section fields must not appear in V2 templates

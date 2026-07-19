@@ -31,9 +31,10 @@ study plan
 | 9 | `academic_cohorts` | استيراد ذري | برامج، مستويات، فصول |
 | 10 | `elective_slot_courses` | استيراد ذري | خطة، خانات، مقررات |
 | 11 | `cohort_elective_selections` | استيراد ذري | دفعات، elective_slot_courses |
-| 12 | توليد منهج الدفعة + delivery groups | RPC مولَّد | دفعات، خطة، اختيارات |
-| 13 | `teaching_assignments_v2` | استيراد ذري | دفعات، delivery_groups، محاضرون |
-| 14 | محرر الجدول | نظام | إسناد V2، قاعات، فترات |
+| 12 | توليد منهج الدفعة (cohort curriculum) | RPC مولَّد | دفعات، خطة، اختيارات |
+| 13 | توليد مجموعات التقديم (delivery groups) | RPC مولَّد | منهج الدفعة |
+| 14 | `teaching_assignments_v2` | استيراد ذري | دفعات، delivery_groups، محاضرون |
+| 15 | محرر الجدول | نظام | إسناد V2، قاعات، فترات |
 
 ## مستبعد من الاستيراد التشغيلي
 

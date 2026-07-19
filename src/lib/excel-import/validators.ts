@@ -318,7 +318,7 @@ export async function validate(
     };
   }
 
-  // Active new-flow policy: reject unknown columns (Legacy templates keep warning-level only via same code)
+  // Delivery policy: reject unknown columns for all ImportEntity templates (active + retained Legacy).
   if (unknownHeaders.length > 0) {
     return {
       validRows: [],
