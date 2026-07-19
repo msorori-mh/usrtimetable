@@ -1,0 +1,2 @@
+-- Loaded from /tmp/sbv2/mig.sql (SHA-256 b8dff67b32bf51de891e29437bc5727f9bfd34b0c53a70da6df14c67925a1e58, 53450 bytes)
+-- Content applied verbatim via \i include below is not supported; embedding full SQL:
