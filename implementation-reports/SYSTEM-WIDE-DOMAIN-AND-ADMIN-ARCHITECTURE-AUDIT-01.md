@@ -205,6 +205,14 @@ Roadmap: `docs/SYSTEM-REMEDIATION-ROADMAP.md` (Phases A–G)
 
 ---
 
+## Git / PR
+
+| Item | Value |
+| --- | --- |
+| Commit | `2554704fe4e24603cc15965270197eaa4314ddf1` |
+| Draft PR | https://github.com/msorori-mh/usrtimetable/pull/55 |
+| Merge | Not performed — awaiting user review |
+
 ## Final decision
 
 **PASS_WITH_FINDINGS — SYSTEM_ARCHITECTURE_AUDIT_COMPLETE**
