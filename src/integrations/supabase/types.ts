@@ -2092,6 +2092,7 @@ export type Database = {
         Row: {
           college_id: string
           created_at: string
+          eligibility_revision: number
           hard_conflicts_count: number
           id: string
           metrics_breakdown: Json | null
@@ -2104,6 +2105,7 @@ export type Database = {
         Insert: {
           college_id: string
           created_at?: string
+          eligibility_revision?: number
           hard_conflicts_count?: number
           id?: string
           metrics_breakdown?: Json | null
@@ -2116,6 +2118,7 @@ export type Database = {
         Update: {
           college_id?: string
           created_at?: string
+          eligibility_revision?: number
           hard_conflicts_count?: number
           id?: string
           metrics_breakdown?: Json | null
@@ -2389,6 +2392,7 @@ export type Database = {
           college_id: string
           created_at: string
           created_by: string | null
+          eligibility_revision: number
           id: string
           name: string
           notes: string | null
@@ -2400,6 +2404,7 @@ export type Database = {
           college_id: string
           created_at?: string
           created_by?: string | null
+          eligibility_revision?: number
           id?: string
           name: string
           notes?: string | null
@@ -2411,6 +2416,7 @@ export type Database = {
           college_id?: string
           created_at?: string
           created_by?: string | null
+          eligibility_revision?: number
           id?: string
           name?: string
           notes?: string | null
@@ -3309,6 +3315,10 @@ export type Database = {
         Args: { p_active: boolean; p_is_obsolete: boolean }
         Returns: undefined
       }
+      begin_schedule_quality_snapshot: {
+        Args: { p_college_id: string; p_schedule_version_id: string }
+        Returns: Json
+      }
       can_manage_college: {
         Args: { _college_id: string; _user_id: string }
         Returns: boolean
@@ -3459,6 +3469,19 @@ export type Database = {
         }
         Returns: Json
       }
+      persist_schedule_quality_run: {
+        Args: {
+          p_college_id: string
+          p_expected_eligibility_revision: number
+          p_hard_conflicts_count: number
+          p_metrics_breakdown: Json
+          p_schedule_version_id: string
+          p_soft_conflicts_count: number
+          p_total_deductions: number
+          p_total_score: number
+        }
+        Returns: string
+      }
       preview_instructor_workload_after_assignment: {
         Args: {
           p_assigned_component_hours?: number
@@ -3475,6 +3498,16 @@ export type Database = {
       resolve_offering_for_delivery_group: {
         Args: { p_delivery_group_id: string }
         Returns: string
+      }
+      transition_schedule_version: {
+        Args: {
+          p_college_id: string
+          p_expected_status: string
+          p_notes?: string
+          p_schedule_version_id: string
+          p_target_status: string
+        }
+        Returns: Json
       }
       update_teaching_assignment_v2: {
         Args: {
