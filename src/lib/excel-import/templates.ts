@@ -1,4 +1,6 @@
 import type { TemplateDef } from "./types";
+import { escapeSpreadsheetCell } from "./formula-escape";
+import { IMPORT_CONTRACT_VERSION, PILOT_STUDY_SYSTEMS, TA_V2_COMPONENT_TYPES } from "./registry";
 
 export const TEMPLATES: Record<string, TemplateDef> = {
   instructors: {
@@ -54,6 +56,7 @@ export const TEMPLATES: Record<string, TemplateDef> = {
       {
         key: "room_type",
         header: "نوع_القاعة",
+        required: true,
         example: "lecture_hall",
         enumValues: [
           "lecture_hall",
@@ -360,7 +363,8 @@ export const TEMPLATES: Record<string, TemplateDef> = {
         key: "study_system",
         header: "نظام_الدراسة",
         required: true,
-        enumValues: ["regular", "parallel", "evening", "distance", "other"],
+        // Pilot official: regular | parallel (fully isolated). Schema also allows evening|distance|other.
+        enumValues: [...PILOT_STUDY_SYSTEMS],
         example: "regular",
       },
       { key: "entry_year", header: "سنة_الدخول", type: "number", required: true, example: "2024" },
@@ -436,7 +440,8 @@ export const TEMPLATES: Record<string, TemplateDef> = {
         key: "component_type",
         header: "نوع_المكوّن",
         required: true,
-        enumValues: ["theory", "practical", "tutorial", "project", "summer_training"],
+        // summer_training exists in schema but is forbidden for weekly TA import
+        enumValues: [...TA_V2_COMPONENT_TYPES],
         example: "theory",
       },
       {
@@ -455,7 +460,7 @@ export const TEMPLATES: Record<string, TemplateDef> = {
       {
         key: "study_system",
         header: "نظام_الدراسة",
-        enumValues: ["regular", "parallel", "evening", "distance", "other"],
+        enumValues: [...PILOT_STUDY_SYSTEMS],
         example: "regular",
       },
       {
@@ -488,7 +493,7 @@ export async function buildTemplateWorkbook(entity: string): Promise<Blob> {
   const tpl = TEMPLATES[entity];
   if (!tpl) throw new Error("قالب غير معروف");
   const headers = tpl.columns.map((c) => c.header);
-  const example = tpl.columns.map((c) => c.example ?? "");
+  const example = tpl.columns.map((c) => escapeSpreadsheetCell(c.example ?? ""));
   const ws = XLSX.utils.aoa_to_sheet([headers, example]);
   ws["!cols"] = headers.map(() => ({ wch: 22 }));
 
@@ -503,7 +508,6 @@ export async function buildTemplateWorkbook(entity: string): Promise<Blob> {
     });
   });
   if (validations.length > 0) {
-    // SheetJS community: store as custom property consumed by Excel when present
     (ws as Record<string, unknown>)["!dataValidation"] = validations.map((v) => ({
       type: "list",
       allowBlank: true,
@@ -515,11 +519,19 @@ export async function buildTemplateWorkbook(entity: string): Promise<Blob> {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, tpl.sheetName);
 
+  const generatedAt = new Date().toISOString();
   const notes: (string | number)[][] = [
     ["تعليمات الاستيراد"],
     [""],
+    [`entity_key: ${tpl.entity}`],
+    [`contract_version: ${IMPORT_CONTRACT_VERSION}`],
+    [`generated_at: ${generatedAt}`],
     [`الكيان: ${tpl.label}`],
     [`المفتاح الفريد: ${tpl.uniqueKeyLabel}`],
+    ["أسماء الأعمدة الإنجليزية (key) ثابتة — لا تعتمد على ترجمة العنوان العربي."],
+    ["لا تضع علامة * في أسماء الأعمدة — يجب أن تطابق العناوين حرفياً."],
+    ["التواريخ: YYYY-MM-DD · الأوقات: HH:MM · المنطقي: true/false"],
+    ["لا تستخدم formulas أو macros. لا تخزّن كلمات مرور أو بيانات تشغيلية حقيقية."],
     [""],
     ["الأعمدة:"],
     ["الحقل", "العنوان", "إلزامي", "مثال", "قيم مسموحة"],
@@ -527,7 +539,7 @@ export async function buildTemplateWorkbook(entity: string): Promise<Blob> {
       c.key,
       c.header,
       c.required ? "نعم" : "لا",
-      c.example ?? "",
+      escapeSpreadsheetCell(c.example ?? ""),
       (c.enumValues ?? []).join(" | "),
     ]),
   ];
@@ -535,17 +547,56 @@ export async function buildTemplateWorkbook(entity: string): Promise<Blob> {
     notes.push(
       [""],
       ["ملاحظات أنواع القاعات"],
-      ["نوع_القاعة", "الحقل الأساسي — استخدم القيم المرجعية الإنجليزية أعلاه."],
+      ["نوع_القاعة", "إلزامي — استخدم القيم المرجعية الإنجليزية."],
       [
         "نوع_القاعة_رمز",
-        "اختياري للتوافق مع القوالب القديمة فقط (مثل LEC → lecture_hall، LAB → computer_lab).",
+        "اختياري للتوافق القديم فقط (مثل LEC → lecture_hall، LAB → computer_lab).",
       ],
-      ["لا تضع علامة * في أسماء الأعمدة — يجب أن تطابق العناوين حرفياً."],
+    );
+  }
+  if (entity === "teaching_assignments_v2") {
+    notes.push(
+      [""],
+      ["قيود V2"],
+      ["لا يوجد عمود section_id أو section_number في هذا القالب."],
+      ["summer_training ممنوع في الإسناد الأسبوعي."],
+      [
+        "عند التدريس المشترك: عيّن assigned_component_hours لكل محاضر بحيث لا يتجاوز مجموع ساعات المكوّن.",
+      ],
+      ["delivery_groups تُولَّد من النظام قبل الاستيراد — لا تُستورد هنا."],
+    );
+  }
+  if (entity === "academic_cohorts") {
+    notes.push(
+      [""],
+      ["قيود الدفعات"],
+      ["academic_cohort هي السياق الأكاديمي الأساسي — لا تستخدم الشعب (sections)."],
+      ["Pilot: نظام الدراسة regular أو parallel فقط (منفصلان تمامًا)."],
+      ["لا يوجد عمود plan_code — الخطة تُربط عبر منهج الدفعة المولَّد."],
+    );
+  }
+  if (entity === "sections" || entity === "teaching_assignments" || entity === "section_groups") {
+    notes.push(
+      [""],
+      ["تحذير Legacy"],
+      ["هذا القالب للتوافق القديم فقط — لا تستخدمه في مسار التشغيل الجديد V2."],
     );
   }
   const wsNotes = XLSX.utils.aoa_to_sheet(notes);
   wsNotes["!cols"] = [{ wch: 25 }, { wch: 22 }, { wch: 10 }, { wch: 20 }, { wch: 50 }];
   XLSX.utils.book_append_sheet(wb, wsNotes, "تعليمات");
+
+  const meta = [
+    ["key", "value"],
+    ["entity_key", tpl.entity],
+    ["contract_version", IMPORT_CONTRACT_VERSION],
+    ["generated_at", generatedAt],
+    ["sheet_data", tpl.sheetName],
+    ["unique_key_label", tpl.uniqueKeyLabel],
+  ];
+  const wsMeta = XLSX.utils.aoa_to_sheet(meta);
+  wsMeta["!cols"] = [{ wch: 22 }, { wch: 40 }];
+  XLSX.utils.book_append_sheet(wb, wsMeta, "Metadata");
 
   if (entity === "rooms") {
     const ref = [

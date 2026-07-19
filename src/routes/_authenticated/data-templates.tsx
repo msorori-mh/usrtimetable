@@ -6,9 +6,22 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import {
-  FileSpreadsheet, Download, ListOrdered, AlertTriangle, Info, ChevronDown, ChevronLeft, Search,
+  FileSpreadsheet,
+  Download,
+  ListOrdered,
+  AlertTriangle,
+  Info,
+  ChevronDown,
+  ChevronLeft,
+  Search,
 } from "lucide-react";
-import { CATALOG, GROUPS, IMPORT_ORDER, buildCatalogTemplate, type TemplateDef } from "@/lib/data-templates/catalog";
+import {
+  CATALOG,
+  GROUPS,
+  IMPORT_ORDER,
+  buildCatalogTemplate,
+  type TemplateDef,
+} from "@/lib/data-templates/catalog";
 
 export const Route = createFileRoute("/_authenticated/data-templates")({
   head: () => ({ meta: [{ title: "قوالب البيانات" }] }),
@@ -48,10 +61,18 @@ function DataTemplatesPage() {
 
   const handleDownload = async (tpl: TemplateDef) => {
     try {
+      if (tpl.classification === "GENERATED_NOT_IMPORTED") {
+        toast.error("هذا الكيان مولَّد من النظام ولا يُنزَّل كقالب تشغيلي.");
+        return;
+      }
       setDownloading(tpl.id);
       const blob = await buildCatalogTemplate(tpl.id);
       downloadBlob(blob, `template_${tpl.id}.xlsx`);
-      toast.success(`تم تنزيل قالب: ${tpl.name}`);
+      if (tpl.classification === "LEGACY_ONLY") {
+        toast.warning(`تم تنزيل قالب Legacy: ${tpl.name} — لا تستخدمه في المسار الجديد.`);
+      } else {
+        toast.success(`تم تنزيل قالب: ${tpl.name}`);
+      }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "فشل التنزيل";
       toast.error(msg);
@@ -79,7 +100,8 @@ function DataTemplatesPage() {
       </div>
 
       <p className="text-sm text-muted-foreground">
-        مركز موحّد لجميع قوالب Excel اللازمة لتشغيل نظام إدارة الجداول الجامعية. هذه الصفحة للقراءة وتنزيل القوالب فقط — لا تجري أي عمليات استيراد أو كتابة على قاعدة البيانات.
+        مركز موحّد لجميع قوالب Excel اللازمة لتشغيل نظام إدارة الجداول الجامعية. هذه الصفحة للقراءة
+        وتنزيل القوالب فقط — لا تجري أي عمليات استيراد أو كتابة على قاعدة البيانات.
       </p>
 
       {/* Import order guide */}
@@ -152,29 +174,65 @@ function DataTemplatesPage() {
                             <Badge variant="outline" className="text-[10px]">
                               ترتيب #{tpl.importOrder}
                             </Badge>
+                            {tpl.classification === "ACTIVE_NEW_FLOW" && (
+                              <Badge className="bg-emerald-600 text-white">مسار جديد</Badge>
+                            )}
+                            {tpl.classification === "LEGACY_ONLY" && (
+                              <Badge variant="destructive">Legacy فقط</Badge>
+                            )}
+                            {tpl.classification === "GENERATED_NOT_IMPORTED" && (
+                              <Badge variant="secondary">مولَّد — لا يُستورد</Badge>
+                            )}
+                            {tpl.classification === "UI_MANAGED_NOT_IMPORTED" && (
+                              <Badge variant="outline">واجهة — ليس استيرادًا ذريًا</Badge>
+                            )}
+                            {tpl.atomicImport ? (
+                              <Badge className="bg-sky-700 text-white">Commit ذري</Badge>
+                            ) : (
+                              <Badge variant="secondary">تنزيل/مرجع</Badge>
+                            )}
                             {tpl.requiredBeforeScheduling ? (
-                              <Badge className="bg-emerald-600 text-white">مطلوب قبل الجدولة</Badge>
+                              <Badge className="bg-emerald-600/80 text-white">
+                                مطلوب قبل الجدولة
+                              </Badge>
                             ) : (
                               <Badge variant="secondary">اختياري</Badge>
                             )}
                           </div>
                           <p className="text-sm text-muted-foreground">{tpl.purpose}</p>
+                          {tpl.classification === "LEGACY_ONLY" && (
+                            <p className="text-xs text-destructive">
+                              تحذير: قالب توافق قديم — لا تستخدمه في مسار التشغيل الجديد (V2).
+                            </p>
+                          )}
                         </div>
                         <div className="flex items-center gap-2">
                           <Button
                             size="sm"
+                            variant={tpl.classification === "LEGACY_ONLY" ? "outline" : "default"}
                             onClick={() => handleDownload(tpl)}
-                            disabled={downloading === tpl.id}
+                            disabled={
+                              downloading === tpl.id ||
+                              tpl.classification === "GENERATED_NOT_IMPORTED"
+                            }
                           >
                             <Download className="h-4 w-4" />
-                            {downloading === tpl.id ? "جارٍ التنزيل..." : "تنزيل القالب"}
+                            {downloading === tpl.id
+                              ? "جارٍ التنزيل..."
+                              : tpl.classification === "GENERATED_NOT_IMPORTED"
+                                ? "غير متاح للاستيراد"
+                                : "تنزيل القالب"}
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => setExpanded((p) => ({ ...p, [tpl.id]: !open }))}
                           >
-                            {open ? <ChevronDown className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                            {open ? (
+                              <ChevronDown className="h-4 w-4" />
+                            ) : (
+                              <ChevronLeft className="h-4 w-4" />
+                            )}
                             {open ? "إخفاء التفاصيل" : "عرض التفاصيل"}
                           </Button>
                         </div>
@@ -197,7 +255,9 @@ function DataTemplatesPage() {
                                 >
                                   <span className="font-mono text-xs">{c.header}</span>
                                   {c.allowed && (
-                                    <span className="text-[10px] text-muted-foreground">{c.allowed}</span>
+                                    <span className="text-[10px] text-muted-foreground">
+                                      {c.allowed}
+                                    </span>
                                   )}
                                 </li>
                               ))}
@@ -218,7 +278,9 @@ function DataTemplatesPage() {
                                   >
                                     <span className="font-mono text-xs">{c.header}</span>
                                     {c.allowed && (
-                                      <span className="text-[10px] text-muted-foreground">{c.allowed}</span>
+                                      <span className="text-[10px] text-muted-foreground">
+                                        {c.allowed}
+                                      </span>
                                     )}
                                   </li>
                                 ))}
@@ -270,7 +332,9 @@ function DataTemplatesPage() {
                           )}
 
                           {tpl.notes && (
-                            <div className="rounded border bg-muted/30 p-2 text-xs">{tpl.notes}</div>
+                            <div className="rounded border bg-muted/30 p-2 text-xs">
+                              {tpl.notes}
+                            </div>
                           )}
                         </div>
                       )}

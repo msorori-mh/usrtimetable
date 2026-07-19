@@ -19,6 +19,7 @@ export const harnesses = [
   "import-pipeline-safety.harness.ts",
   "import-pipeline-atomic-commit.harness.ts",
   "import-pipeline-preapply-security.harness.ts",
+  "import-templates-final-audit.harness.ts",
   "weekly-time-templates.harness.ts",
   "terminology-labels.harness.ts",
   "time-templates-college-context-sync.harness.ts",
