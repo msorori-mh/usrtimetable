@@ -3295,6 +3295,34 @@ export type Database = {
         Args: { p_college: string; p_plan_course: string; v: Json }
         Returns: undefined
       }
+      _sb_v2_assignment_guard: {
+        Args: { p_teaching_assignment_id: string }
+        Returns: Json
+      }
+      _sb_v2_delivery_group_overlap: {
+        Args: {
+          p_cohort_id: string
+          p_day_of_week: number
+          p_delivery_group_id: string
+          p_end_time: string
+          p_exclude_session_id?: string
+          p_schedule_version_id: string
+          p_start_time: string
+        }
+        Returns: Json
+      }
+      _sb_v2_scheduled_hours_for_assignment: {
+        Args: {
+          p_exclude_session_id?: string
+          p_schedule_version_id: string
+          p_teaching_assignment_id: string
+        }
+        Returns: number
+      }
+      _sb_v2_wall_hours: {
+        Args: { p_end: string; p_start: string }
+        Returns: number
+      }
       _ss_brk: {
         Args: {
           p_cid: string
@@ -3519,6 +3547,19 @@ export type Database = {
         }
         Returns: string
       }
+      create_schedule_session_from_assignment_v2: {
+        Args: {
+          p_day_of_week: number
+          p_end_time: string
+          p_expected_version_updated_at: string
+          p_note?: string
+          p_room_id: string
+          p_schedule_version_id: string
+          p_start_time: string
+          p_teaching_assignment_id: string
+        }
+        Returns: Json
+      }
       create_teaching_assignment_v2: {
         Args: {
           p_assigned_component_hours?: number
@@ -3573,6 +3614,19 @@ export type Database = {
       }
       import_manager_actor: { Args: { p_college_id: string }; Returns: string }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      list_schedule_builder_v2_work_items: {
+        Args: {
+          p_cohort_id?: string
+          p_component_type?: string
+          p_instructor_id?: string
+          p_level_id?: string
+          p_program_id?: string
+          p_schedule_version_id: string
+          p_scheduling_status?: string
+          p_study_system?: string
+        }
+        Returns: Json
+      }
       list_teaching_assignment_workspace: {
         Args: {
           p_assignment_status?: string
