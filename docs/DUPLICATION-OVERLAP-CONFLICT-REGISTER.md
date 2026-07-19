@@ -1,5 +1,18 @@
 # Duplication / Overlap / Conflict Register
 
+## Delta completion — catalog sharing versus shared delivery
+
+| ID | Type | Finding | Required resolution | Severity |
+| --- | --- | --- | --- | --- |
+| TERM-SD-01 | Terminology collision | «المقرر المشترك» can mean a catalog course associated with several programs/departments or one lecture delivered to several cohorts | Reserve catalog wording for program/department association; name the new execution capability «المجموعات المشتركة للمحاضرات» | BLOCKER |
+| MODEL-SD-01 | Missing target capability | Current `delivery_groups` are owned by one cohort and cannot represent a session shared by several cohort courses | Deliver a separate, approved component-scoped model; do not overload `delivery_groups` or Legacy sections | BLOCKER |
+| MODEL-SD-02 | Projection/counting risk | Duplicating a shared session per cohort would double-count instructor/room use | One authoritative session, projected to all participating cohorts and counted once for instructor/room | HIGH |
+| MODEL-SD-03 | Isolation risk | Shared delivery could accidentally combine colleges or `regular`/`parallel` | Validate college, study system, authorization, capacity, conflicts, and hours; fail closed and never combine regular/parallel by default | BLOCKER |
+
+The target does not academically merge cohorts: each cohort course remains independent in its plan and curriculum.
+Sharing is optional per component, so theory may be shared while practical delivery remains separate. No final table
+name or migration is selected in this audit.
+
 **Phase:** SYSTEM-WIDE-DOMAIN-AND-ADMIN-ARCHITECTURE-AUDIT-01
 **Baseline:** `c6b0d861f006d4202349bfa77ed24a5508e2b727`
 

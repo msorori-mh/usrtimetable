@@ -2,6 +2,36 @@
 
 **Phase:** SYSTEM-WIDE-DOMAIN-AND-ADMIN-ARCHITECTURE-AUDIT-01
 **Baseline:** `c6b0d861f006d4202349bfa77ed24a5508e2b727`
+**Delta completion:** `SYSTEM-AUDIT-DELTA-COMPLETION-01`
+
+## Official target terminology
+
+| Domain contract | Required UI label |
+| --- | --- |
+| `academic_cohort` | الدفعة الدراسية |
+| `cohort_elective_selections` | المقررات الاختيارية المعتمدة |
+| `scheduling_settings` / working days / time slots | أيام وفترات الدوام |
+| `delivery_groups` | مجموعات المحاضرات والمعامل |
+| `teaching_assignments` | الإسناد التدريسي |
+
+These five labels are mandatory in the target UI. Technical names remain documentation identifiers only.
+
+## Target shared-delivery concept
+
+Catalog sharing means that one course is associated with several programs or departments. It does not combine
+academic delivery. The distinct target capability is **«المجموعات المشتركة للمحاضرات»**: an optional shared group
+for one course component when several independently defined cohort courses are delivered together.
+
+- Every participating cohort course remains independent in its study plan and generated curriculum.
+- Cohorts are never academically merged.
+- One optional shared lecture group links several participating cohort-course components.
+- It has one or more teaching assignments and produces one session visible to every participating cohort.
+- That session appears once in the instructor timetable and once in the room timetable.
+- Capacity, conflicts, assigned hours, college, study system, and authorization must be validated.
+- `regular` and `parallel` are not combined by default.
+- A theory component may be shared while labs remain separate.
+- No implementation exists. The capability remains fail-closed until a separately approved model is delivered.
+- This audit intentionally does not choose a final table name or migration design.
 
 ## Classification legend
 

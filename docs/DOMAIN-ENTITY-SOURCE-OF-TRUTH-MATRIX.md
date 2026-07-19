@@ -122,15 +122,24 @@ study_plans (+ components, electives)
 
 | Current term | Locked meaning | Required admin wording |
 | --- | --- | --- |
-| `academic_cohort` | The student academic set for one program/level/term/study system | دفعة أكاديمية |
+| `academic_cohort` | The student academic set for one program/level/term/study system | الدفعة الدراسية |
+| `cohort_elective_selections` | Approved cohort-level elective decisions | المقررات الاختيارية المعتمدة |
+| `scheduling_settings` / working days / time slots | Operating days and schedulable periods | أيام وفترات الدوام |
 | `course_programs` | A catalog course is eligible for/associated with a program | ارتباط المقرر بالبرنامج |
 | `course_departments` | A catalog course is owned by or visible to departments | ارتباط المقرر بالأقسام |
 | “shared course” | Ambiguous legacy UI shorthand for the two catalog links above | Do not use as a delivery term |
-| `delivery_group` | A capacity or delivery-nature split of one plan-course component for **one cohort** | مجموعة تدريس للدفعة |
+| `delivery_groups` | Capacity/delivery-nature splits of plan-course components for one cohort | مجموعات المحاضرات والمعامل |
+| `teaching_assignments` | Instructor-to-delivery responsibility and hours | الإسناد التدريسي |
 | `sections` / `section_id` | Legacy compatibility only | شعبة Legacy (hidden from new flows) |
-| shared delivery | One teaching event serving more than one cohort | **Not modeled; fail closed** |
+| shared delivery | Optional one-component teaching event serving multiple independent cohort courses | المجموعات المشتركة للمحاضرات — **not modeled; fail closed** |
 
 **Lock:** linking a course to multiple programs or departments never authorizes merging cohorts, delivery groups,
 teaching assignments, sessions, capacity, conflicts, or reports. A future cross-cohort delivery requires a separately
 approved model with participant cohorts, ownership, study-system/college isolation, capacity allocation, audit, and
 conflict semantics. Until then, every generated delivery group remains owned by exactly one `academic_cohort`.
+
+The target shared group may link several participating cohort-course components, have one or more teaching
+assignments, and produce one session projected to all participating cohorts while appearing once for the instructor
+and room. It must validate capacity, conflicts, hours, college, study system, and authorization. `regular` and
+`parallel` remain separate by default, and theory may be shared without sharing practical components. This is a
+target concept only; no final table name or migration is defined here.

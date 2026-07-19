@@ -4,6 +4,29 @@
 **Baseline:** `c6b0d861f006d4202349bfa77ed24a5508e2b727`
 **Hypothesis tested against:** actual nav in `app-layout.tsx` + route contracts + mandatory academic model
 
+## Locked target navigation labels
+
+### البنية الأكاديمية
+
+- الدفعات الدراسية
+- المقررات الاختيارية المعتمدة
+
+### التدريس
+
+- مقررات الدفعات
+- المجموعات المشتركة للمحاضرات
+- مجموعات المحاضرات والمعامل
+- الإسناد التدريسي
+- النصاب التدريسي
+
+### الموارد
+
+- أيام وفترات الدوام
+
+These labels supersede shorter or technical alternatives elsewhere in this target document. The new shared-groups
+entry is a target capability only and must remain unavailable/fail-closed until its independent model is implemented.
+The catalog association screen must not use «المقرر المشترك» alone to imply shared delivery.
+
 ## Current menu (as shipped)
 
 1. Ungrouped: لوحة التحكم · جاهزية البيانات · تنظيف البيانات

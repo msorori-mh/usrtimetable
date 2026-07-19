@@ -1,6 +1,6 @@
 # SYSTEM-WIDE-DOMAIN-AND-ADMIN-ARCHITECTURE-AUDIT-01
 
-**Decision:** `PASS_WITH_FINDINGS — SYSTEM_ARCHITECTURE_AUDIT_COMPLETE`
+**Decision:** `PASS_WITH_FINDINGS — TARGET_TERMINOLOGY_AND_SHARED_DELIVERY_MODEL_COMPLETE`
 **Date:** 2026-07-19 (Asia/Riyadh)
 **Repository:** `msorori-mh/usrtimetable`
 **Worktree:** `C:\projects\usrtimetable-full-system-architecture-audit`
@@ -27,6 +27,25 @@ does not alter the cohort/delivery ownership conclusion.
 - Cross-cohort shared delivery has no authoritative entity and therefore fails closed.
 - Phase A now includes A07: replace ambiguous UI terminology and add negative cross-cohort ownership tests.
 - This delta changed documentation/report artifacts only; no product source or migration was edited.
+
+### Delta completion — official labels and target shared groups
+
+`SYSTEM-AUDIT-DELTA-COMPLETION-01` completes the target model across all required architecture artifacts.
+
+- Official labels: الدفعات الدراسية، المقررات الاختيارية المعتمدة، أيام وفترات الدوام، مجموعات المحاضرات والمعامل، الإسناد التدريسي.
+- Catalog association and execution sharing are now separate concepts.
+- The target execution capability is «المجموعات المشتركة للمحاضرات» and is optional per course component.
+- Participating cohort courses remain academically independent; one shared session is projected to each cohort and
+  counted once for the instructor and room.
+- Current runtime remains fail-closed. No final table name, migration, product implementation, or production action
+  is introduced by this completion.
+
+**Updated Phase A launch packages:**
+
+1. A1 — النموذج الأكاديمي وعزل Legacy.
+2. A2 — المجموعات المشتركة للمحاضرات.
+3. A3 — الوقت وعدم التوفر والنصاب والاستيراد.
+4. A4 — الاعتماد والصلاحيات والإثبات.
 
 ---
 
@@ -231,6 +250,6 @@ Roadmap: `docs/SYSTEM-REMEDIATION-ROADMAP.md` (Phases A–G)
 
 ## Final decision
 
-**PASS_WITH_FINDINGS — TERMINOLOGY_AND_SHARED_DELIVERY_LOCKED**
+**PASS_WITH_FINDINGS — TARGET_TERMINOLOGY_AND_SHARED_DELIVERY_MODEL_COMPLETE**
 
 Next step: **USER REVIEW AND MERGE APPROVAL FOR PR #55.**

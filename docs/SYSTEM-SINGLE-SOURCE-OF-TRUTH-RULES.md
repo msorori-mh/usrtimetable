@@ -92,6 +92,16 @@
 
 ## Terminology and shared-delivery invariants
 
+### Official UI mapping
+
+| Contract | Official label |
+| --- | --- |
+| `academic_cohort` | الدفعة الدراسية |
+| `cohort_elective_selections` | المقررات الاختيارية المعتمدة |
+| `scheduling_settings` / working days / time slots | أيام وفترات الدوام |
+| `delivery_groups` | مجموعات المحاضرات والمعامل |
+| `teaching_assignments` | الإسناد التدريسي |
+
 21. **Catalog sharing is not teaching sharing.**
     `course_programs` and `course_departments` are catalog association/eligibility links. They do not merge cohorts,
     offerings, delivery groups, assignments, sessions, capacity, conflicts, or reports.
@@ -104,3 +114,14 @@
     The current model has no authoritative shared-delivery aggregate. A future design requires explicit participant
     cohorts, college and `study_system` isolation, capacity allocation, assignment/session identity, conflict rules,
     authorization, and audit. Until separately approved and implemented, cross-cohort delivery is prohibited.
+
+24. **The target capability is named «المجموعات المشتركة للمحاضرات».**
+    It is optional and component-scoped. It may link multiple independently generated cohort-course components to
+    one or more teaching assignments and one schedule session, without academically merging cohorts. The session is
+    projected to every participating cohort but counted once for its instructor and room. Theory may be shared while
+    practical components remain separate. Capacity, conflicts, hours, college, study system, and authorization are
+    mandatory checks; `regular` and `parallel` never combine by default.
+
+25. **No schema is implied by this target rule.**
+    No final table name or migration is selected. Current runtime remains fail-closed until the independent model,
+    authorization, audit, concurrency, conflict, and reporting contracts are approved and implemented.

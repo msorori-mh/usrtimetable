@@ -11,6 +11,19 @@ Complexity: S / M / L · Launch: REQUIRED / POST_LAUNCH
 
 ## Phase A — Launch blockers
 
+Phase A is governed by four launch packages. The detailed legacy task numbers below are implementation inputs and
+must be planned under these packages; they are not an alternative launch definition.
+
+| Package | Required scope | Exit gate |
+| --- | --- | --- |
+| **A1 — النموذج الأكاديمي وعزل Legacy** | Enforce plan → الدفعة الدراسية → المقررات الاختيارية المعتمدة → cohort courses; remove sections from new navigation/writes and quarantine Legacy reports/imports | New flows are cohort-based; no undocumented `section_id` dependency |
+| **A2 — المجموعات المشتركة للمحاضرات** | Deliver the optional, component-scoped shared-group model linking independent cohort courses; teaching assignments; one authoritative session projected to participants; capacity/hours/conflict/college/study-system/authz/audit checks; theory-only sharing supported | Independent model approved and tested; no double counting; `regular`/`parallel` not combined by default; fail-closed until complete |
+| **A3 — الوقت وعدم التوفر والنصاب والاستيراد** | Make أيام وفترات الدوام the single target surface; separate Hard unavailability from preferences; expose workload policy administration; simplify templates and retain only approved atomic import paths | One time authority; workload configured; Hard/Soft behavior and import boundaries proven |
+| **A4 — الاعتماد والصلاحيات والإثبات** | Complete lifecycle authorization, optimistic concurrency, audit and publish blockers; prove migrations/runtime only through separately approved gates; retain test evidence | Harness, TypeScript/build/lint where applicable, disposable PostgreSQL for migrations, independent review, and explicit production approval |
+
+**A2 is an implementation package, not merely a terminology finding.** No final table name or migration is selected
+by this audit, and current shared delivery remains fail-closed until the package is separately designed and approved.
+
 ### A01 — Hide Legacy sections from primary admin path
 | | |
 | --- | --- |
@@ -199,7 +212,7 @@ Complexity: S / M / L · Launch: REQUIRED / POST_LAUNCH
 
 | REQUIRED for initial launch | POST_LAUNCH |
 | --- | --- |
-| A01–A07, B01–B04, C01, C03, D01, D03, E01, F01–F03, G02–G03 | C02, D02, E03, F04–F05, G01 polish |
+| A1–A4 packages, B01–B04, C01, C03, D01, D03, E01, F01–F03, G02–G03 | C02, D02, E03, F04–F05, G01 polish |
 
 ## Estimated launch readiness (architecture)
 
