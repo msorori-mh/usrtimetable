@@ -171,6 +171,18 @@ assert(
   "grants: authenticated execute",
 );
 assert(migration.includes("REVOKE ALL ON FUNCTION public._import_dispatch"), "helpers revoked");
+assert(
+  /REVOKE\s+INSERT\s*,\s*UPDATE\s*,\s*DELETE\s+ON\s+public\.import_jobs\s+FROM\s+PUBLIC\s*,\s*anon\s*,\s*authenticated/i.test(
+    migration,
+  ),
+  "grants: table DML revoked from PUBLIC/anon/authenticated on import_jobs",
+);
+assert(
+  /REVOKE\s+INSERT\s*,\s*UPDATE\s*,\s*DELETE\s+ON\s+public\.import_errors\s+FROM\s+PUBLIC\s*,\s*anon\s*,\s*authenticated/i.test(
+    migration,
+  ),
+  "grants: table DML revoked from PUBLIC/anon/authenticated on import_errors",
+);
 assert(safety.includes("requireImportManager"), "preview auth still present");
 
 console.log("import-pipeline-atomic-commit.harness.ts: PASS");

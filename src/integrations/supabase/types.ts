@@ -3241,6 +3241,10 @@ export type Database = {
         }
         Returns: Json
       }
+      commit_import_job_atomic: {
+        Args: { p_expected_updated_at?: string | null; p_job_id: string }
+        Returns: Json
+      }
       commit_teaching_assignments_v2_import: {
         Args: { p_mode?: string; p_rows: Json }
         Returns: Json

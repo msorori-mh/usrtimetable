@@ -238,9 +238,83 @@ BEGIN
 END;
 $$;
 
+-- Historical / residual table ACL (simulates 20260605 grants + accidental PUBLIC/anon).
+-- Migrations under test must close these before any client path can use them.
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.import_jobs TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.import_errors TO authenticated;
+GRANT INSERT, UPDATE, DELETE ON public.import_jobs TO anon;
+GRANT INSERT, UPDATE, DELETE ON public.import_errors TO anon;
+GRANT INSERT, UPDATE, DELETE ON public.import_jobs TO PUBLIC;
+GRANT INSERT, UPDATE, DELETE ON public.import_errors TO PUBLIC;
+
 -- When run from repo: paths relative to this file. Disposable runner co-locates copies.
 \ir ./20260718180000_import_manifest_contract.sql
 \ir ./20260718210000_source_only_atomic_import_job_commit.sql
+
+-- ACL proof: anon / authenticated / PUBLIC must not retain table DML after hardening.
+DO $$
+DECLARE
+  r record;
+BEGIN
+  FOR r IN
+    SELECT * FROM (VALUES
+      ('anon'::name, 'public.import_jobs'::text),
+      ('anon', 'public.import_errors'),
+      ('authenticated', 'public.import_jobs'),
+      ('authenticated', 'public.import_errors'),
+      ('public', 'public.import_jobs'),
+      ('public', 'public.import_errors')
+    ) AS t(rol, tbl)
+  LOOP
+    IF has_table_privilege(r.rol, r.tbl, 'INSERT')
+       OR has_table_privilege(r.rol, r.tbl, 'UPDATE')
+       OR has_table_privilege(r.rol, r.tbl, 'DELETE') THEN
+      RAISE EXCEPTION 'table DML privilege remains: % on %', r.rol, r.tbl;
+    END IF;
+  END LOOP;
+END $$;
+
+DO $$
+BEGIN
+  BEGIN
+    SET LOCAL ROLE anon;
+    INSERT INTO public.import_jobs (college_id, target_entity, mode, status)
+    VALUES ('30000000-0000-0000-0000-000000000001', 'rooms', 'upsert', 'preview');
+    RESET ROLE;
+    RAISE EXCEPTION 'anon INSERT import_jobs was accepted';
+  EXCEPTION
+    WHEN insufficient_privilege THEN RESET ROLE;
+  END;
+END $$;
+
+DO $$
+BEGIN
+  BEGIN
+    SET LOCAL ROLE authenticated;
+    UPDATE public.import_jobs SET notes = 'hack' WHERE false;
+    RESET ROLE;
+    RAISE EXCEPTION 'authenticated UPDATE import_jobs was accepted';
+  EXCEPTION
+    WHEN insufficient_privilege THEN RESET ROLE;
+  END;
+END $$;
+
+DO $$
+BEGIN
+  BEGIN
+    SET LOCAL ROLE authenticated;
+    INSERT INTO public.import_errors (college_id, job_id, row_number, error_code, message)
+    VALUES (
+      '30000000-0000-0000-0000-000000000001',
+      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      1, 'x', 'y'
+    );
+    RESET ROLE;
+    RAISE EXCEPTION 'authenticated INSERT import_errors was accepted';
+  EXCEPTION
+    WHEN insufficient_privilege THEN RESET ROLE;
+  END;
+END $$;
 
 -- Fixtures
 INSERT INTO universities VALUES
