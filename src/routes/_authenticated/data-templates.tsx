@@ -45,14 +45,17 @@ function DataTemplatesPage() {
   const [downloading, setDownloading] = useState<string | null>(null);
 
   const q = query.trim().toLowerCase();
+  // The operational catalog is New Flow only. Legacy definitions remain in the
+  // source registry for compatibility/audit, but have no active download entry.
+  const activeCatalog = CATALOG.filter((t) => t.classification !== "LEGACY_ONLY");
   const filtered = q
-    ? CATALOG.filter(
+    ? activeCatalog.filter(
         (t) =>
           t.name.toLowerCase().includes(q) ||
           t.purpose.toLowerCase().includes(q) ||
           t.id.toLowerCase().includes(q),
       )
-    : CATALOG;
+    : activeCatalog;
 
   const grouped = filtered.reduce<Record<string, TemplateDef[]>>((acc, t) => {
     (acc[t.group] ||= []).push(t);
@@ -68,11 +71,7 @@ function DataTemplatesPage() {
       setDownloading(tpl.id);
       const blob = await buildCatalogTemplate(tpl.id);
       downloadBlob(blob, `template_${tpl.id}.xlsx`);
-      if (tpl.classification === "LEGACY_ONLY") {
-        toast.warning(`تم تنزيل قالب Legacy: ${tpl.name} — لا تستخدمه في المسار الجديد.`);
-      } else {
-        toast.success(`تم تنزيل قالب: ${tpl.name}`);
-      }
+      toast.success(`تم تنزيل قالب: ${tpl.name}`);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "فشل التنزيل";
       toast.error(msg);

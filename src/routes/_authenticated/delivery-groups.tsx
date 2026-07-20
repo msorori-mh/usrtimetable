@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/delivery-groups")({
-  head: () => ({ meta: [{ title: "مجموعات التدريس" }] }),
+  head: () => ({ meta: [{ title: "مجموعات المحاضرات والمعامل" }] }),
   component: DeliveryGroupsPage,
 });
 
@@ -82,9 +82,10 @@ function DeliveryGroupsPage() {
           <UsersRound className="h-5 w-5" />
         </span>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold">مجموعات التدريس</h1>
+          <h1 className="text-2xl font-bold">مجموعات المحاضرات والمعامل</h1>
           <p className="text-sm text-muted-foreground">
-            عرض قراءة فقط لمجموعات مكوّنات المقررات حسب الدفعة. التوليد من صفحة الدفعات الأكاديمية.
+            مجموعات مكوّنات المقررات حسب الدفعة الدراسية؛ تُولّد من مقررات الدفعة ولا تستخدم
+            Sections.
           </p>
         </div>
       </header>
@@ -92,9 +93,19 @@ function DeliveryGroupsPage() {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <CollegeSwitcher />
         <Button asChild variant="outline" size="sm">
-          <Link to="/academic-cohorts">الدفعات الأكاديمية</Link>
+          <Link to="/academic-cohorts">الدفعات الدراسية</Link>
         </Button>
       </div>
+
+      <Card className="mb-4 border-primary/30 bg-primary/5 p-4 text-sm">
+        <p className="font-semibold">الخطوة التالية</p>
+        <p className="mt-1 text-muted-foreground">
+          راجع المجموعات المولّدة، ثم انتقل إلى الإسناد التدريسي قبل بناء الجدول.
+        </p>
+        <Button asChild variant="link" className="mt-1 h-auto p-0">
+          <Link to="/teaching-assignments">الإسناد التدريسي</Link>
+        </Button>
+      </Card>
 
       {!active ? (
         <p className="text-sm text-muted-foreground">اختر كلية.</p>

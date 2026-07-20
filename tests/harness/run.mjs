@@ -48,6 +48,7 @@ export const harnesses = [
   "schedule-version-lifecycle-atomic.harness.ts",
   "draft-lecturer-report.harness.ts",
   "admin-routes-inventory.harness.ts",
+  "phase-a1-legacy-navigation-terminology.harness.ts",
   "domain-contract-static.harness.ts",
 ];
 

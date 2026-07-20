@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_authenticated/academic-cohorts")({
-  head: () => ({ meta: [{ title: "الدفعات الأكاديمية" }] }),
+  head: () => ({ meta: [{ title: "الدفعات الدراسية" }] }),
   component: AcademicCohortsPage,
 });
 
@@ -194,10 +194,9 @@ function AcademicCohortsPage() {
           <Layers3 className="h-5 w-5" />
         </span>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold">الدفعات ومجموعات التدريس</h1>
+          <h1 className="text-2xl font-bold">الدفعات الدراسية</h1>
           <p className="text-sm text-muted-foreground">
-            تشخيص قراءة فقط للدفعات الأكاديمية ومجموعات مكوّنات المقررات (Phase 9.3). التوليد يدوي
-            وصريح للمخوّلين.
+            الدفعة الدراسية تربط الخطة الدراسية بالمقررات الاختيارية المعتمدة ومقررات الدفعة.
           </p>
         </div>
       </header>
@@ -205,13 +204,20 @@ function AcademicCohortsPage() {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <CollegeSwitcher />
         <Button asChild variant="outline" size="sm">
-          <Link to="/delivery-groups">عرض مجموعات التدريس</Link>
+          <Link to="/delivery-groups">عرض مجموعات المحاضرات والمعامل</Link>
         </Button>
       </div>
 
       <Card className="mb-4 border-dashed p-4 text-sm text-muted-foreground">
         لا يوجد CRUD موسّع في هذه المرحلة. استيراد الدفعات يتم عبر قوالب Excel؛ توليد مجموعات
         التدريس لا يعمل تلقائيًا بعد الاستيراد.
+      </Card>
+      <Card className="mb-4 border-primary/30 bg-primary/5 p-4 text-sm">
+        <p className="font-semibold">الخطوة التالية</p>
+        <p className="mt-1 text-muted-foreground">
+          اعتمد المقررات الاختيارية، ثم ولّد مقررات الدفعة ومجموعات المحاضرات والمعامل، وبعدها انتقل
+          إلى الإسناد التدريسي.
+        </p>
       </Card>
 
       {!active ? (

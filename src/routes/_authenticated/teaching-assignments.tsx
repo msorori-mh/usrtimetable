@@ -48,7 +48,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_authenticated/teaching-assignments")({
-  head: () => ({ meta: [{ title: "تكليفات التدريس V2" }] }),
+  head: () => ({ meta: [{ title: "الإسناد التدريسي" }] }),
   component: TeachingAssignmentsV2Page,
 });
 
@@ -260,9 +260,9 @@ function TeachingAssignmentsV2Page() {
           <Briefcase className="h-5 w-5" />
         </span>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold">تكليفات التدريس V2</h1>
+          <h1 className="text-2xl font-bold">الإسناد التدريسي</h1>
           <p className="text-sm text-muted-foreground">
-            إسناد مجموعات التدريس إلى أعضاء هيئة التدريس مع ساعات ونصاب وتحققات — بدون توليد جلسات.
+            إسناد مجموعات المحاضرات والمعامل إلى أعضاء هيئة التدريس مع الساعات والنصاب والتحققات.
           </p>
         </div>
       </header>
@@ -270,9 +270,19 @@ function TeachingAssignmentsV2Page() {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <CollegeSwitcher />
         <Button asChild variant="outline" size="sm">
-          <Link to="/delivery-groups">مجموعات التدريس</Link>
+          <Link to="/delivery-groups">مجموعات المحاضرات والمعامل</Link>
         </Button>
       </div>
+
+      <Card className="mb-4 border-primary/30 bg-primary/5 p-4 text-sm">
+        <p className="font-semibold">الخطوة التالية</p>
+        <p className="mt-1 text-muted-foreground">
+          أكمل الإسناد التدريسي للمجموعات، ثم انتقل إلى بناء الجدول.
+        </p>
+        <Button asChild variant="link" className="mt-1 h-auto p-0">
+          <Link to="/schedule-builder">بناء الجدول</Link>
+        </Button>
+      </Card>
 
       {!active ? (
         <p className="text-sm text-muted-foreground">اختر كلية.</p>
