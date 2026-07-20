@@ -210,7 +210,7 @@ function AcademicCohortsPage() {
 
       <Card className="mb-4 border-dashed p-4 text-sm text-muted-foreground">
         لا يوجد CRUD موسّع في هذه المرحلة. استيراد الدفعات يتم عبر قوالب Excel؛ توليد مجموعات
-        التدريس لا يعمل تلقائيًا بعد الاستيراد.
+        المحاضرات والمعامل لا يعمل تلقائيًا بعد الاستيراد.
       </Card>
       <Card className="mb-4 border-primary/30 bg-primary/5 p-4 text-sm">
         <p className="font-semibold">الخطوة التالية</p>
@@ -279,7 +279,7 @@ function AcademicCohortsPage() {
                       disabled={generate.isPending}
                       onClick={() => setConfirmOpen(true)}
                     >
-                      توليد مجموعات التدريس
+                      توليد مجموعات المحاضرات والمعامل
                     </Button>
                   </div>
                 ) : (
@@ -294,7 +294,7 @@ function AcademicCohortsPage() {
                 <p className="p-4 text-sm text-muted-foreground">جاري التحميل…</p>
               ) : (groups ?? []).length === 0 ? (
                 <p className="p-4 text-sm text-muted-foreground">
-                  لا توجد مجموعات بعد. ولّد المجموعات بعد وجود طروحات توافقية ومكوّنات خطة.
+                  لا توجد مجموعات بعد. ولّد المجموعات بعد توفر مقررات الدفعة الدراسية ومكوّنات الخطة.
                 </p>
               ) : (
                 <div className="overflow-x-auto">
@@ -367,7 +367,7 @@ function AcademicCohortsPage() {
                   </p>
                 ) : null}
                 <p className="text-xs text-muted-foreground">
-                  لم يُنشأ تسجيل فردي Legacy أو شعبة تشغيلية أو مجموعة تدريس أو جلسة.
+                  لم يُنشأ تسجيل فردي Legacy أو شعبة تشغيلية أو مجموعة محاضرات ومعامل أو جلسة.
                 </p>
               </Card>
             ) : null}
@@ -410,7 +410,7 @@ function AcademicCohortsPage() {
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent dir="rtl">
           <AlertDialogHeader>
-            <AlertDialogTitle>تأكيد توليد مجموعات التدريس</AlertDialogTitle>
+            <AlertDialogTitle>تأكيد توليد مجموعات المحاضرات والمعامل</AlertDialogTitle>
             <AlertDialogDescription>
               سيتم توليد أو تحديث مجموعات المكوّنات لهذه الدفعة فقط بشكل غير مدمّر (بدون حذف
               المجموعات المرتبطة بتكليفات أو جلسات). لن يُشغَّل المولّد على دفعات أخرى.

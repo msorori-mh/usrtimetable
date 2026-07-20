@@ -113,8 +113,8 @@ function DeliveryGroupsPage() {
         <p className="text-sm text-muted-foreground">جاري التحميل…</p>
       ) : (rows ?? []).length === 0 ? (
         <Card className="border-dashed p-6 text-sm text-muted-foreground">
-          لا توجد مجموعات تدريس بعد. استخدم صفحة الدفعات لتوليد المجموعات بعد توفر الطروحات
-          التوافقية.
+          لا توجد مجموعات محاضرات ومعامل بعد. استخدم صفحة الدفعات لتوليد المجموعات بعد توفر مقررات
+          الدفعة الدراسية.
         </Card>
       ) : (
         <Card className="overflow-hidden">

@@ -48,4 +48,32 @@ assert.ok(
 );
 assert.ok(assignments.includes('to="/schedule-builder"'), "workflow must end at Builder V2");
 
+// Negative assertions (AUTO_SAFE): Legacy terminology residues must not regress
+// in the New Flow pages touched by this phase. Whitespace is squashed so that
+// phrases split across JSX line breaks are still caught.
+// Note: the sixth legacy term "المجموعات المشتركة للمحاضرات" is intentionally
+// NOT covered here — deferred to Phase A2 per leadership decision D-005.
+const squashWs = (s: string) => s.replace(/\s+/g, " ");
+const newFlowPages: Array<[string, string]> = [
+  ["academic-cohorts.tsx", cohorts],
+  ["delivery-groups.tsx", groups],
+  ["teaching-assignments.tsx", assignments],
+];
+for (const [pageName, pageContent] of newFlowPages) {
+  const flat = squashWs(pageContent);
+  for (const legacy of [
+    "مجموعات التدريس",
+    "مجموعة تدريس",
+    "الدفعات الأكاديمية",
+    "طروحات توافقية",
+    "الطروحات التوافقية",
+  ]) {
+    assert.equal(
+      flat.includes(legacy),
+      false,
+      `${pageName} must not contain legacy term: ${legacy}`,
+    );
+  }
+}
+
 console.log(JSON.stringify({ harness: "phase-a1-legacy-navigation-terminology", status: "pass" }));

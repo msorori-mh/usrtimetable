@@ -443,7 +443,7 @@ function TeachingAssignmentsV2Page() {
               </p>
             ) : rows.length === 0 ? (
               <p className="p-6 text-center text-muted-foreground">
-                لا توجد مجموعات تدريس أسبوعية مطابقة. ولّد المجموعات من الدفعات الأكاديمية أولاً.
+                لا توجد مجموعات محاضرات ومعامل أسبوعية مطابقة. ولّد المجموعات من الدفعات الدراسية أولاً.
               </p>
             ) : (
               <div className="overflow-x-auto">
@@ -564,7 +564,7 @@ function TeachingAssignmentsV2Page() {
         <DialogContent className="max-w-lg" data-testid="ta-v2-assign-panel">
           <DialogHeader>
             <DialogTitle>
-              {editingAssignmentId ? "تحديث ساعات الإسناد" : "إسناد مجموعة تدريس"}
+              {editingAssignmentId ? "تحديث ساعات الإسناد" : "إسناد مجموعة محاضرات ومعامل"}
             </DialogTitle>
           </DialogHeader>
           {selected && (
