@@ -53,9 +53,12 @@ function ProgramsPage() {
     mutationFn: async () => {
       if (!active) throw new Error("اختر كلّية");
       if (!form.name.trim() || !form.code.trim() || !form.department_id) throw new Error("جميع الحقول مطلوبة");
+      if (!(depts ?? []).some((department) => department.id === form.department_id)) {
+        throw new Error("يجب اختيار قسم من الكلية النشطة");
+      }
       const payload = { ...form, name: form.name.trim(), code: form.code.trim(), college_id: active.id };
       if (editing) {
-        const { error } = await supabase.from("academic_programs").update(payload).eq("id", editing.id);
+        const { error } = await supabase.from("academic_programs").update(payload).eq("id", editing.id).eq("college_id", active.id);
         if (error) throw error;
         await logAudit({ action: "update", entity: "academic_programs", entityId: editing.id, collegeId: active.id });
       } else {
@@ -74,7 +77,8 @@ function ProgramsPage() {
 
   const del = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("academic_programs").delete().eq("id", id);
+      if (!active) throw new Error("اختر كلّية");
+      const { error } = await supabase.from("academic_programs").delete().eq("id", id).eq("college_id", active.id);
       if (error) throw error;
       await logAudit({ action: "delete", entity: "academic_programs", entityId: id, collegeId: active?.id });
     },
@@ -123,7 +127,7 @@ function ProgramsPage() {
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setOpen(false)}>إلغاء</Button>
-                <Button onClick={() => save.mutate()} disabled={save.isPending}>حفظ</Button>
+                <Button onClick={() => save.mutate()} disabled={save.isPending || !form.department_id}>حفظ</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>

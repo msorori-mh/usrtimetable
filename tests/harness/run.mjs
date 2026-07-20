@@ -49,6 +49,7 @@ export const harnesses = [
   "draft-lecturer-report.harness.ts",
   "admin-routes-inventory.harness.ts",
   "domain-contract-static.harness.ts",
+  "program-department-integrity.harness.ts",
 ];
 
 const historicalArtifacts = new Map([
