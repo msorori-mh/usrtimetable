@@ -29,7 +29,6 @@ import {
   UserCog,
   UserSquare2,
   Users,
-  Users2,
   UsersRound,
   Wrench,
 } from "lucide-react";
@@ -133,22 +132,15 @@ const NAV: NavItem[] = [
     group: "البنية الأكاديمية",
   },
   {
-    to: "/sections",
-    label: "المجموعات الدراسية",
-    icon: <Users2 className="h-4 w-4" />,
-    roles: ALL,
-    group: "البنية الأكاديمية",
-  },
-  {
     to: "/academic-cohorts",
-    label: "الدفعات الأكاديمية",
+    label: "الدفعات الدراسية",
     icon: <Layers3 className="h-4 w-4" />,
     roles: ALL,
     group: "البنية الأكاديمية",
   },
   {
     to: "/delivery-groups",
-    label: "مجموعات التدريس",
+    label: "مجموعات المحاضرات والمعامل",
     icon: <UsersRound className="h-4 w-4" />,
     roles: ALL,
     group: "البنية الأكاديمية",
@@ -169,7 +161,7 @@ const NAV: NavItem[] = [
   },
   {
     to: "/time-slots",
-    label: "فترات الجدول اليدوية",
+    label: "أيام وفترات الدوام",
     icon: <Clock className="h-4 w-4" />,
     roles: ALL,
     group: "موارد التدريس",

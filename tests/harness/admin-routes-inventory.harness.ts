@@ -18,16 +18,19 @@ const navToMatches = [...layout.matchAll(/to:\s*"([^"]+)"/g)].map((m) => m[1]);
 const navLabelMatches = [...layout.matchAll(/label:\s*"([^"]+)"/g)].map((m) => m[1]);
 
 assert.ok(navToMatches.length >= 35, `expected >=35 nav routes, got ${navToMatches.length}`);
-assert.ok(navLabelMatches.includes("الدفعات الأكاديمية"), "cohorts must appear in NAV");
-assert.ok(navLabelMatches.includes("مجموعات التدريس"), "delivery groups must appear in NAV");
+assert.ok(navLabelMatches.includes("الدفعات الدراسية"), "cohorts must appear in NAV");
 assert.ok(
-  navLabelMatches.includes("المجموعات الدراسية"),
-  "Legacy sections label currently present — inventory must detect it for remediation tracking",
+  navLabelMatches.includes("مجموعات المحاضرات والمعامل"),
+  "delivery groups must appear in NAV",
 );
+assert.equal(navToMatches.includes("/sections"), false, "Legacy sections must be absent from NAV");
 
 const authDir = path.join(root, "src/routes/_authenticated");
 const routeFiles = readdirSync(authDir).filter((f) => f.endsWith(".tsx"));
-assert.ok(routeFiles.length >= 50, `expected >=50 authenticated route modules, got ${routeFiles.length}`);
+assert.ok(
+  routeFiles.length >= 50,
+  `expected >=50 authenticated route modules, got ${routeFiles.length}`,
+);
 
 const requiredRoutes = [
   "academic-cohorts.tsx",
@@ -70,7 +73,7 @@ console.log(
       navRoutes: navToMatches.length,
       navLabels: navLabelMatches.length,
       authenticatedRouteModules: routeFiles.length,
-      legacySectionsInNav: navLabelMatches.includes("المجموعات الدراسية"),
+      legacySectionsInNav: navToMatches.includes("/sections"),
       workloadPoliciesRoutePresent: hasWorkloadPoliciesRoute,
       status: "pass",
     },
