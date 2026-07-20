@@ -33,6 +33,18 @@ export const Route = createFileRoute("/_authenticated/sections")({
   component: SectionsPage,
 });
 
+/**
+ * A1.3a — Legacy write blocking.
+ * جدول sections هو Legacy فقط: حُجب إنشاء/تعديل/حذف الصفوف من هذه الصفحة ضمن A1.3a.
+ * يبقى الكود التاريخي أدناه للمرجعية دون حذف، لكنه غير قابل للوصول من الواجهة،
+ * وأي استدعاء مباشر للطفرات (mutations) يُرفض برسالة واضحة.
+ * حجب الكتابة على مستوى قاعدة البيانات يأتي في A1.3c بعد معالجة البيانات اليتيمة
+ * وفق خطة A1.3b وبوابة APPROVE_LEGACY_DATA_REMEDIATION.
+ */
+const LEGACY_SECTIONS_WRITE_BLOCKED = true;
+const LEGACY_SECTION_WRITE_BLOCKED_MESSAGE =
+  "LEGACY_SECTION_WRITE_BLOCKED: جدول sections أصبح Legacy للعرض التاريخي فقط ضمن A1.3a؛ استخدم الدفعات الدراسية ومجموعات المحاضرات والمعامل.";
+
 interface Section {
   id: string;
   course_id: string;
@@ -98,6 +110,7 @@ function SectionsPage() {
 
   const save = useMutation({
     mutationFn: async () => {
+      if (LEGACY_SECTIONS_WRITE_BLOCKED) throw new Error(LEGACY_SECTION_WRITE_BLOCKED_MESSAGE);
       if (!active) throw new Error("اختر كلّية");
       if (!form.course_id || !form.term_id || !form.section_number.trim())
         throw new Error("الحقول مطلوبة");
@@ -142,6 +155,7 @@ function SectionsPage() {
 
   const del = useMutation({
     mutationFn: async (id: string) => {
+      if (LEGACY_SECTIONS_WRITE_BLOCKED) throw new Error(LEGACY_SECTION_WRITE_BLOCKED_MESSAGE);
       const { error } = await supabase.from("sections").delete().eq("id", id);
       if (error) throw error;
       await logAudit({ action: "delete", entity: "sections", entityId: id, collegeId: active?.id });
@@ -180,7 +194,9 @@ function SectionsPage() {
         <h1 className="font-semibold">Legacy — للعرض التاريخي</h1>
         <p className="mt-1 text-muted-foreground">
           هذه الصفحة خارج مسار التشغيل الجديد. الدفعات الدراسية ومجموعات المحاضرات والمعامل هي
-          المسار المعتمد؛ حجب الكتابة على مستوى قاعدة البيانات مؤجل إلى A1.3.
+          المسار المعتمد. ضمن A1.3a حُجبت الكتابة هنا (إنشاء/تعديل/حذف) وأصبح العرض للقراءة
+          فقط؛ ويُستكمل حجب الكتابة على مستوى قاعدة البيانات في A1.3c بعد معالجة البيانات
+          اليتيمة وفق خطة A1.3b.
         </p>
       </Card>
       <header className="mb-6 flex items-center gap-3">
@@ -190,7 +206,7 @@ function SectionsPage() {
         <div className="flex-1">
           <h1 className="text-2xl font-bold">تقسيم المجموعات الدراسية</h1>
           <p className="text-sm text-muted-foreground">
-            إنشاء وتنظيم مجموعات الطلاب وربطها بالبرنامج والمستوى ونظام الدراسة.
+            سجلات Legacy تاريخية لتقسيم مجموعات الطلاب — للعرض فقط.
           </p>
         </div>
       </header>
@@ -214,7 +230,7 @@ function SectionsPage() {
             </Select>
           </div>
         </div>
-        {canManage && (
+        {canManage && !LEGACY_SECTIONS_WRITE_BLOCKED && (
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button onClick={startCreate} disabled={!ready}>
@@ -296,7 +312,7 @@ function SectionsPage() {
 
       {!ready && (
         <p className="mb-3 rounded border border-dashed border-border bg-muted/30 p-3 text-sm text-muted-foreground">
-          يلزم وجود مقررات وفصل دراسي قبل إنشاء مجموعات.
+          لا تتوفر بيانات مقررات أو فصول دراسية لعرض سياق هذه السجلات التاريخية.
         </p>
       )}
 
@@ -317,7 +333,7 @@ function SectionsPage() {
                     {termMap.get(s.term_id) ?? "—"} · السعة {s.capacity}
                   </p>
                 </div>
-                {canManage && (
+                {canManage && !LEGACY_SECTIONS_WRITE_BLOCKED && (
                   <div className="flex gap-1">
                     <Button size="sm" variant="ghost" onClick={() => startEdit(s)}>
                       <Pencil className="h-3.5 w-3.5" />

@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import type { ImportEntity, ImportMode, ParsedRow, RowError } from "./types";
+import { LEGACY_ONLY_ENTITIES } from "./registry";
 import { ImportSafetyError, requireImportManager } from "./safety";
 
 export interface CommitResult {
@@ -18,6 +19,21 @@ export interface CommitResult {
 }
 
 /**
+ * A1.3a — Legacy write blocking (defense in depth).
+ * An import job targeting a LEGACY_ONLY entity (sections / course_offerings /
+ * teaching_assignments V1 / section_groups) must never reach the atomic commit
+ * RPC from this client. The historical server-side dispatcher remains for
+ * compatibility; DB-level blocking is drafted under A1.3c after the orphan
+ * remediation (A1.3b) and stays gated behind explicit approvals.
+ */
+const LEGACY_IMPORT_COMMIT_BLOCKED_MESSAGE =
+  "LEGACY_IMPORT_COMMIT_BLOCKED: كيانات Legacy (sections / course_offerings / teaching_assignments V1 / section_groups) محجوبة الكتابة ضمن A1.3a؛ لا يمكن تنفيذ استيرادها من هذا العميل.";
+
+function isLegacyOnlyImportEntity(entity: string | null | undefined): boolean {
+  return !!entity && (LEGACY_ONLY_ENTITIES as readonly string[]).includes(entity);
+}
+
+/**
  * Atomic import commit: single server RPC. No client operational DML.
  * Sends job_id (+ optional concurrency token) only; stored payload is authoritative.
  */
@@ -27,6 +43,18 @@ export async function commitImport(input: {
 }): Promise<CommitResult> {
   if (!input.jobId) {
     throw new ImportSafetyError("invalid_import_job", "Import job id is required");
+  }
+
+  // A1.3a guard: resolve the job's target entity before committing. A LEGACY_ONLY
+  // job (reachable only outside the New-Flow UI) is rejected with a clear message.
+  const { data: jobRow, error: jobRowError } = await supabase
+    .from("import_jobs")
+    .select("target_entity")
+    .eq("id", input.jobId)
+    .maybeSingle();
+  if (jobRowError) throw jobRowError;
+  if (isLegacyOnlyImportEntity(jobRow?.target_entity)) {
+    throw new ImportSafetyError("import_legacy_entity_blocked", LEGACY_IMPORT_COMMIT_BLOCKED_MESSAGE);
   }
 
   const { data, error } = await supabase.rpc("commit_import_job_atomic", {
