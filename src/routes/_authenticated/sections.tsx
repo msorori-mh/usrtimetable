@@ -29,7 +29,7 @@ import { logAudit } from "@/lib/audit";
 import { Users, Pencil, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/sections")({
-  head: () => ({ meta: [{ title: "تقسيم المجموعات الدراسية" }] }),
+  head: () => ({ meta: [{ title: "Legacy — للعرض التاريخي" }] }),
   component: SectionsPage,
 });
 
@@ -176,6 +176,13 @@ function SectionsPage() {
 
   return (
     <div className="mx-auto max-w-5xl">
+      <Card className="mb-5 border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+        <h1 className="font-semibold">Legacy — للعرض التاريخي</h1>
+        <p className="mt-1 text-muted-foreground">
+          هذه الصفحة خارج مسار التشغيل الجديد. الدفعات الدراسية ومجموعات المحاضرات والمعامل هي
+          المسار المعتمد؛ حجب الكتابة على مستوى قاعدة البيانات مؤجل إلى A1.3.
+        </p>
+      </Card>
       <header className="mb-6 flex items-center gap-3">
         <span className="grid h-11 w-11 place-items-center rounded-lg bg-secondary text-primary">
           <Users className="h-5 w-5" />
