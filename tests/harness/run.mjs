@@ -47,6 +47,8 @@ export const harnesses = [
   "phase-9-5-assignment-integration.harness.ts",
   "schedule-version-lifecycle-atomic.harness.ts",
   "draft-lecturer-report.harness.ts",
+  "admin-routes-inventory.harness.ts",
+  "domain-contract-static.harness.ts",
 ];
 
 const historicalArtifacts = new Map([
