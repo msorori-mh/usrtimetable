@@ -356,8 +356,8 @@ BEGIN
     AND (
       lower(fwp.rank_code) = lower(COALESCE(v_instructor.academic_rank, ''))
       OR EXISTS (
-        SELECT 1 FROM unnest(fwp.rank_aliases) alias
-        WHERE lower(alias) = lower(COALESCE(v_instructor.academic_rank, ''))
+        SELECT 1 FROM unnest(fwp.rank_aliases) a
+        WHERE lower(a) = lower(COALESCE(v_instructor.academic_rank, ''))
       )
     )
     AND (p_study_system IS NULL OR fwp.study_system IS NULL OR fwp.study_system = p_study_system)
@@ -449,8 +449,8 @@ BEGIN
         AND (
           lower(fwp.rank_code) = lower(COALESCE(i.academic_rank, ''))
           OR EXISTS (
-            SELECT 1 FROM unnest(fwp.rank_aliases) alias
-            WHERE lower(alias) = lower(COALESCE(i.academic_rank, ''))
+            SELECT 1 FROM unnest(fwp.rank_aliases) a
+            WHERE lower(a) = lower(COALESCE(i.academic_rank, ''))
           )
         )
         AND (p_study_system IS NULL OR fwp.study_system IS NULL OR fwp.study_system = p_study_system)
