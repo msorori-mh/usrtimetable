@@ -9,11 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   mapRawSessions,
   timetableSessionsToRows,
-  TIMETABLE_TABLE_HEADERS,
+  NEW_FLOW_TIMETABLE_TABLE_HEADERS,
 } from "@/lib/reports/session-mappers";
 import {
-  fetchDeliveryGroupOptions,
-  deliveryGroupLabelMap,
+  fetchCohortDeliveryGroupLabels,
   fetchRoomTimetableSessions,
 } from "@/lib/reports/queries/session-queries";
 import { useReportContext } from "@/hooks/reports/useReportContext";
@@ -40,28 +39,25 @@ function Page() {
       ).data ?? [],
   });
 
-  const { data: groupOptions } = useQuery({
-    queryKey: ["rt-groups", ctx.collegeId],
-    enabled: !!ctx.collegeId,
-    queryFn: () => fetchDeliveryGroupOptions(ctx.collegeId!),
-  });
-
-  const { data: rawSessions, isLoading: sessionsLoading } = useQuery({
+  const { data: sessionsBundle, isLoading: sessionsLoading } = useQuery({
     queryKey: ["rt-sess", ctx.collegeId, ctx.versionId, ctx.studySystem, roomId],
     enabled: !!ctx.collegeId && !!ctx.versionId && !!roomId,
-    queryFn: () =>
-      fetchRoomTimetableSessions({
+    queryFn: async () => {
+      const raw = await fetchRoomTimetableSessions({
         collegeId: ctx.collegeId!,
         versionId: ctx.versionId,
         roomId,
         studySystem: ctx.studySystem,
-      }),
+      });
+      // A1.5: resolve New Flow cohort/DG labels for display + export.
+      const labels = await fetchCohortDeliveryGroupLabels(ctx.collegeId!, raw);
+      return { raw, labels };
+    },
   });
 
-  const groupLabels = useMemo(() => deliveryGroupLabelMap(groupOptions ?? []), [groupOptions]);
   const sessions = useMemo(
-    () => mapRawSessions(rawSessions ?? [], groupLabels),
-    [rawSessions, groupLabels],
+    () => mapRawSessions(sessionsBundle?.raw ?? [], sessionsBundle?.labels),
+    [sessionsBundle],
   );
   const rows = useMemo(() => timetableSessionsToRows(sessions), [sessions]);
   const totalHours = rows.reduce((sum, r) => sum + Number(r.hours ?? 0), 0);
@@ -77,7 +73,7 @@ function Page() {
       reportContext={ctx}
       filename="room_timetable"
       rows={rows}
-      headers={TIMETABLE_TABLE_HEADERS}
+      headers={NEW_FLOW_TIMETABLE_TABLE_HEADERS}
       isLoading={isLoading}
       emptyMessage={!ready ? "اختر نسخة جدول وقاعة." : "لا توجد محاضرات."}
       filters={
@@ -100,7 +96,9 @@ function Page() {
         </ReportFilters>
       }
     >
-      {ready && sessions.length > 0 && <ReportTimetableView sessions={sessions} />}
+      {ready && sessions.length > 0 && (
+        <ReportTimetableView sessions={sessions} headers={NEW_FLOW_TIMETABLE_TABLE_HEADERS} />
+      )}
     </ReportShell>
   );
 }

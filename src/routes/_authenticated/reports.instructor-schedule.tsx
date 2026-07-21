@@ -15,11 +15,10 @@ import {
 import {
   mapRawSessions,
   timetableSessionsToRows,
-  TIMETABLE_TABLE_HEADERS,
+  NEW_FLOW_TIMETABLE_TABLE_HEADERS,
 } from "@/lib/reports/session-mappers";
 import {
-  fetchDeliveryGroupOptions,
-  deliveryGroupLabelMap,
+  fetchCohortDeliveryGroupLabels,
   fetchInstructorScheduleSessions,
 } from "@/lib/reports/queries/session-queries";
 import { useReportContext } from "@/hooks/reports/useReportContext";
@@ -58,32 +57,29 @@ function Page() {
     },
   });
 
-  const { data: groupOptions } = useQuery({
-    queryKey: ["is-groups", ctx.collegeId],
-    enabled: !!ctx.collegeId,
-    queryFn: () => fetchDeliveryGroupOptions(ctx.collegeId!),
-  });
-
   const {
-    data: rawSessions,
+    data: sessionsBundle,
     isLoading: sessionsLoading,
     error: sessionsError,
   } = useQuery({
     queryKey: ["is-sess", ctx.collegeId, ctx.versionId, ctx.studySystem, insId],
     enabled: !!ctx.collegeId && !!ctx.versionId && !!insId,
-    queryFn: () =>
-      fetchInstructorScheduleSessions({
+    queryFn: async () => {
+      const raw = await fetchInstructorScheduleSessions({
         collegeId: ctx.collegeId!,
         versionId: ctx.versionId,
         instructorId: insId,
         studySystem: ctx.studySystem,
-      }),
+      });
+      // A1.5: resolve New Flow cohort/DG labels for display + export.
+      const labels = await fetchCohortDeliveryGroupLabels(ctx.collegeId!, raw);
+      return { raw, labels };
+    },
   });
 
-  const groupLabels = useMemo(() => deliveryGroupLabelMap(groupOptions ?? []), [groupOptions]);
   const sessions = useMemo(
-    () => mapRawSessions(rawSessions ?? [], groupLabels),
-    [rawSessions, groupLabels],
+    () => mapRawSessions(sessionsBundle?.raw ?? [], sessionsBundle?.labels),
+    [sessionsBundle],
   );
   const rows = useMemo(() => timetableSessionsToRows(sessions), [sessions]);
   const totalHours = rows.reduce((sum, r) => sum + Number(r.hours ?? 0), 0);
@@ -99,7 +95,7 @@ function Page() {
       reportContext={ctx}
       filename="instructor_schedule"
       rows={rows}
-      headers={TIMETABLE_TABLE_HEADERS}
+      headers={NEW_FLOW_TIMETABLE_TABLE_HEADERS}
       isLoading={isLoading}
       emptyMessage={
         queryError
@@ -128,7 +124,9 @@ function Page() {
         </ReportFilters>
       }
     >
-      {ready && sessions.length > 0 && <ReportTimetableView sessions={sessions} />}
+      {ready && sessions.length > 0 && (
+        <ReportTimetableView sessions={sessions} headers={NEW_FLOW_TIMETABLE_TABLE_HEADERS} />
+      )}
     </ReportShell>
   );
 }
