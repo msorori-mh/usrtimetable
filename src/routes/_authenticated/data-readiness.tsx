@@ -16,6 +16,37 @@ export const Route = createFileRoute("/_authenticated/data-readiness")({
 
 type Metric = { label: string; total: number; missing: number; critical?: boolean };
 
+// A1.5: New Flow readiness signals (cohort/DG/TA V2) — fail-closed; any schema
+// gap degrades to one informational metric instead of breaking the dashboard.
+async function fetchNewFlowMetrics(collegeId: string): Promise<Metric[]> {
+  try {
+    const [cohorts, deliveryGroups, dgAssignments, sessionIdentity] = await Promise.all([
+      supabase.from("academic_cohorts").select("id, active").eq("college_id", collegeId),
+      supabase.from("delivery_groups").select("id, cohort_id").eq("college_id", collegeId),
+      supabase.from("teaching_assignments").select("delivery_group_id, instructor_id").eq("college_id", collegeId).not("delivery_group_id", "is", null),
+      supabase.from("schedule_sessions").select("id, cohort_id, delivery_group_id").eq("college_id", collegeId),
+    ]);
+    if (cohorts.error || deliveryGroups.error || dgAssignments.error || sessionIdentity.error) {
+      return [{ label: "مقاييس التدفق الجديد (الدفعات/المجموعات) غير متاحة — بنية V2 غير مكتملة في هذه البيئة", total: 0, missing: 0 }];
+    }
+    const cohortRows = (cohorts.data ?? []) as any[];
+    const dgRows = (deliveryGroups.data ?? []) as any[];
+    const taRows = (dgAssignments.data ?? []) as any[];
+    const sessRows = (sessionIdentity.data ?? []) as any[];
+    const activeCohorts = cohortRows.filter((c) => c.active !== false);
+    const cohortsWithGroups = new Set(dgRows.map((d) => d.cohort_id));
+    const assignedGroups = new Set(taRows.map((a) => a.delivery_group_id));
+    return [
+      { label: "دفعات دراسية نشطة بدون مجموعات محاضرات/معامل", total: activeCohorts.length, missing: activeCohorts.filter((c) => !cohortsWithGroups.has(c.id)).length },
+      { label: "مجموعات محاضرات/معامل بدون إسناد تدريسي (V2)", total: dgRows.length, missing: dgRows.filter((d) => !assignedGroups.has(d.id)).length },
+      { label: "إسناد تدريسي (V2) بدون محاضر", total: taRows.length, missing: taRows.filter((a) => !a.instructor_id).length, critical: true },
+      { label: "محاضرات بدون هوية دفعة/مجموعة (توافقية)", total: sessRows.length, missing: sessRows.filter((s) => !s.cohort_id && !s.delivery_group_id).length },
+    ];
+  } catch {
+    return [{ label: "مقاييس التدفق الجديد (الدفعات/المجموعات) غير متاحة — بنية V2 غير مكتملة في هذه البيئة", total: 0, missing: 0 }];
+  }
+}
+
 async function fetchReadiness(collegeId: string) {
   const eq = (q: any) => q.eq("college_id", collegeId);
 
@@ -116,6 +147,9 @@ async function fetchReadiness(collegeId: string) {
     { label: "محاضرات بدون قاعة", total: sessionsRows.length, missing: sessionsRows.filter((s: any) => !s.room_id).length },
     { label: "محاضرات بدون وقت", total: sessionsRows.length, missing: sessionsRows.filter((s: any) => !s.start_time || !s.end_time || s.day_of_week === null).length },
   ];
+
+  // A1.5: New Flow cohort/DG/TA V2 readiness (fail-closed, additive).
+  sch.push(...(await fetchNewFlowMetrics(collegeId)));
 
   const score = (items: Metric[]): number | null => {
     const denom = items.reduce((s, m) => s + (m.total || 0), 0);
