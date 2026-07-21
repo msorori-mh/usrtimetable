@@ -7,7 +7,7 @@
 --   must create UNIQUE(id, college_id) on academic_cohorts / academic_terms first,
 --   because this migration uses composite FKs (cohort_id, college_id) and
 --   (term_id, college_id).
--- No DML against operational business rows. No backfill. No default headcounts.
+-- No DML against operational business rows. No seed defaults. No invented headcounts.
 
 CREATE TABLE public.scheduling_cohort_term_headcounts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
