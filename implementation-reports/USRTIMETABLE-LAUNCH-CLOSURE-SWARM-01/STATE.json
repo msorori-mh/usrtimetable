@@ -5,17 +5,51 @@
   "recovery_run": "USRTIMETABLE-SWARM-STATE-RECOVERY-AND-NEXT-SAFE-ACTIONS-01",
   "last_resume_run": "USRTIMETABLE-SWARM-RESUME-GATES-AND-SCHEMA-MAP-PREP-01",
   "last_handoff_phase": "PHASE-A1-LATEST-MAIN-GATES-AND-SCHEMA-MAP-HANDOFF-01",
-  "last_verify_hold_run": "USRTIMETABLE-SWARM-RESUME-VERIFY-HOLD-01",
+  "last_verify_hold_run": "USRTIMETABLE-SWARM-RESUME-VERIFY-HOLD-02",
   "current_origin_main": "1c23c80885871ba800db3b3d9bc0e1f089ef0077",
   "origin_main_user_confirmed": "91b5f65eef0c8f3b82538cf17c26f8b87c0fad46",
   "origin_main_g0_resolution": {
     "resolved_at": "2026-07-22",
     "current_origin_main": "1c23c80885871ba800db3b3d9bc0e1f089ef0077",
-    "commit_order_after_pr62": ["91b5f65", "8fcc583", "0b8f78e", "836d227", "6c4401bb", "053d3bc", "213af452", "1c23c808"],
+    "commit_order_after_pr62": [
+      "91b5f65",
+      "8fcc583",
+      "0b8f78e",
+      "836d227",
+      "6c4401bb",
+      "053d3bc",
+      "213af452",
+      "1c23c808"
+    ],
     "product_source_changed_after_pr62": false,
     "scope_note": "lovable-dev commits touched bun.lock/package.json/src/integrations/supabase/types.ts/src/routeTree.gen.ts (manifests + generated files only). Swarm commits 053d3bc/213af452/1c23c808 touched implementation-reports/ state+docs only. No hand-written product source changed after PR #62."
   },
   "origin_main_drift_note": "91b5f65 (PR #62 merge) is an ancestor of current origin/main (1c23c808). Superseded package USRTIMETABLE-FINAL-MAIN-91B5F65-LOCAL-GATES.zip must NOT be used anymore; use USRTIMETABLE-LATEST-MAIN-LOCAL-GATES.zip pinned to 1c23c808 (self-HOLDs if origin/main moves).",
+  "origin_main_verify_hold_02": {
+    "observed_at": "2026-07-22",
+    "observed_tip": "b731c640c2446a641431df4ad690705e39bd7a42",
+    "reference_tip_from_user_brief": "7d738204c7824e12668d017d4c3de4f0d0af1f55",
+    "commits_after_pinned_1c23c808": [
+      "b6a5a491f9f70f1cfba5dc5696fb33f64dbcee6b (PR #64 — STATE.json pin + handoff-01 state update; docs only)",
+      "7d738204c7824e12668d017d4c3de4f0d0af1f55 (USRTIMETABLE-SWARM-RESUME-VERIFY-HOLD-01 — RUNLOG.md + STATE.json; state only)",
+      "1881759de1df40ac6e655457c31c2099d26db26e (PR #65 — TRACKS 9-10 docs: DATA-PREPARATION-PACK-01.md + PILOT-AND-RELEASE-PACK-01.md)",
+      "87fbbe9d10b78cd63127ea62219fd9fa7e2f2f88 (PR #67 — TRACK 3 doc: A3-TIME-AVAILABILITY-GAP-AND-PLAN-01.md)",
+      "b731c640c2446a641431df4ad690705e39bd7a42 (PR #68 — TRACKS 6-7 docs: A4-AUTHORIZATION-MATRIX-01.md + A4-AUDIT-VIEWER-DESIGN-01.md + A4-READINESS-DASHBOARD-DESIGN-01.md)"
+    ],
+    "product_source_changed_after_1c23c808": false,
+    "migrations_changed_after_1c23c808": false,
+    "evidence": "Per-commit file lists fetched via GitHub API on 2026-07-22: all five commits touch only files under implementation-reports/ (docs/state). PR #60/#61/#62 re-verified MERGED (2026-07-21T17:59:41Z / 2026-07-21T18:08:14Z / 2026-07-21T18:43:41Z).",
+    "wave03_docs_consistency": "The six new WAVE-03 docs (PRs #65/#67/#68) are PREPARATION_ONLY/NO EXECUTION and reaffirm the same pending gates, the same production facts (174 TA, 5 COS, sections=0, academic_programs=0), LEGACY_ORPHAN_CLASSIFICATION_V1 REJECTED, and schema-map V2 results pending from user. No evidence conflict with STATE.json.",
+    "open_draft_prs_observed": {
+      "66": "A2.1 shared lecture groups domain model + source-only migration 20260722090000 (draft, NOT merged, base 7d738204) — A2 on main remains NOT_STARTED; no merge/advance action taken by this swarm",
+      "69": "TRACK 4 faculty workload policies source-only migration 20260722110000 + import catalog inventory (draft, NOT merged, base 7d738204)",
+      "70": "A4 schedule version lifecycle transitions source-only gap-fill (draft, NOT merged, base 7d738204; recommends closing #38 as superseded — user decision)",
+      "38": "old draft (2026-07-17) lifecycle hardening; PR #70 recommends close as superseded — user decision",
+      "30": "old open (2026-07-16) Phase 9.2 V2 imports/generator — untouched"
+    },
+    "gates_package_consequence": "USRTIMETABLE-LATEST-MAIN-LOCAL-GATES.zip is pinned to 1c23c808 and self-HOLDs on SHA change; against observed tip b731c640 it will halt with HOLD — ORIGIN_MAIN_CHANGED_REGENERATE_PACKAGE by design. Drift after 1c23c808 is docs-only, so gate content (G1 bun install, G2 tsc, G3 vite build, G4 harness suite, G5 eslint on product source) is unaffected. USER DECISION REQUIRED: request a regenerated package pinned to the current tip, or run the delivered package and treat its designed self-HOLD as the regeneration trigger.",
+    "schema_map_package_consequence": "PHASE-A1-LEGACY-RELATIONSHIP-SCHEMA-MAP is read-only Production SQL executed via Lovable; unaffected by repo drift. Still runnable as delivered."
+  },
   "completed_tasks": [
     "PR60_MERGED",
     "PR61_MERGED",
@@ -77,19 +111,41 @@
       "status": "DELIVERED_AWAITING_USER_EXECUTION",
       "pinned_current_origin_main": "1c23c80885871ba800db3b3d9bc0e1f089ef0077",
       "hold_on_sha_change": "HOLD — ORIGIN_MAIN_CHANGED_REGENERATE_PACKAGE",
-      "contents": ["RUN-LATEST-MAIN-GATES.ps1", "INSTRUCTIONS.md", "EXPECTED-RESULTS.md", "GATE-MANIFEST.json", "RESULTS-TEMPLATE.json"],
+      "contents": [
+        "RUN-LATEST-MAIN-GATES.ps1",
+        "INSTRUCTIONS.md",
+        "EXPECTED-RESULTS.md",
+        "GATE-MANIFEST.json",
+        "RESULTS-TEMPLATE.json"
+      ],
       "stop_condition": "USER_RUNS_LATEST_MAIN_GATES"
     },
     "PHASE-A1-LEGACY-RELATIONSHIP-SCHEMA-MAP": {
       "status": "DELIVERED_AWAITING_USER_EXECUTION",
-      "contents": ["PHASE-A1-LEGACY-RELATIONSHIP-SCHEMA-MAP-READONLY.sql", "PHASE-A1-LEGACY-RELATIONSHIP-SCHEMA-MAP-LOVABLE-EXEC.txt", "PHASE-A1-LEGACY-RELATIONSHIP-SCHEMA-MAP-COMBINED.txt"],
+      "contents": [
+        "PHASE-A1-LEGACY-RELATIONSHIP-SCHEMA-MAP-READONLY.sql",
+        "PHASE-A1-LEGACY-RELATIONSHIP-SCHEMA-MAP-LOVABLE-EXEC.txt",
+        "PHASE-A1-LEGACY-RELATIONSHIP-SCHEMA-MAP-COMBINED.txt"
+      ],
       "verification": "10 statements parsed with a real PostgreSQL parser (pglast); all SelectStmt; zero DML/DDL/dynamic/temp/RPC tokens; delivery_groups.course_offering_id appears only as a string literal in catalog existence probes, never as a column reference",
-      "classification_labels": ["PROVEN_BY_FK", "PROVEN_BY_UNIQUE_KEY", "SOURCE_ONLY_NOT_IN_PRODUCTION", "NO_PROVEN_RELATION", "UNKNOWN"],
+      "classification_labels": [
+        "PROVEN_BY_FK",
+        "PROVEN_BY_UNIQUE_KEY",
+        "SOURCE_ONLY_NOT_IN_PRODUCTION",
+        "NO_PROVEN_RELATION",
+        "UNKNOWN"
+      ],
       "stop_condition": "USER_RUNS_LEGACY_RELATIONSHIP_SCHEMA_MAP"
     },
     "USRTIMETABLE-LATEST-MAIN-AND-SCHEMA-MAP-HANDOFF.zip": {
       "status": "DELIVERED",
-      "contents": ["USRTIMETABLE-LATEST-MAIN-LOCAL-GATES.zip", "schema map x3", "SCHEDULING-HEADCOUNT-PRODUCTION-DEPENDENCY-MAP.md", "STATE.json snapshot", "HANDOFF-INSTRUCTIONS.md"]
+      "contents": [
+        "USRTIMETABLE-LATEST-MAIN-LOCAL-GATES.zip",
+        "schema map x3",
+        "SCHEDULING-HEADCOUNT-PRODUCTION-DEPENDENCY-MAP.md",
+        "STATE.json snapshot",
+        "HANDOFF-INSTRUCTIONS.md"
+      ]
     },
     "USRTIMETABLE-FINAL-MAIN-91B5F65-LOCAL-GATES.zip": {
       "status": "SUPERSEDED_DO_NOT_USE",
@@ -115,9 +171,25 @@
   ],
   "migration_20260721090000_rule": "Conditional on Legacy remediation first; do not apply now.",
   "prs": {
-    "60": {"state": "MERGED", "merged_at": "2026-07-21T17:59:41Z", "title": "A1.3: Legacy write blocking", "url": "https://github.com/msorori-mh/usrtimetable/pull/60"},
-    "61": {"state": "MERGED", "merged_at": "2026-07-21T18:08:14Z", "title": "A1.5: remediate report data sources away from Legacy sections", "url": "https://github.com/msorori-mh/usrtimetable/pull/61"},
-    "62": {"state": "MERGED", "merged_at": "2026-07-21T18:43:41Z", "merge_commit": "91b5f65eef0c8f3b82538cf17c26f8b87c0fad46", "title": "Scheduling headcount foundation (source-only)", "url": "https://github.com/msorori-mh/usrtimetable/pull/62"}
+    "60": {
+      "state": "MERGED",
+      "merged_at": "2026-07-21T17:59:41Z",
+      "title": "A1.3: Legacy write blocking",
+      "url": "https://github.com/msorori-mh/usrtimetable/pull/60"
+    },
+    "61": {
+      "state": "MERGED",
+      "merged_at": "2026-07-21T18:08:14Z",
+      "title": "A1.5: remediate report data sources away from Legacy sections",
+      "url": "https://github.com/msorori-mh/usrtimetable/pull/61"
+    },
+    "62": {
+      "state": "MERGED",
+      "merged_at": "2026-07-21T18:43:41Z",
+      "merge_commit": "91b5f65eef0c8f3b82538cf17c26f8b87c0fad46",
+      "title": "Scheduling headcount foundation (source-only)",
+      "url": "https://github.com/msorori-mh/usrtimetable/pull/62"
+    }
   },
   "tracks": {
     "A1_SOURCE": "COMPLETE",

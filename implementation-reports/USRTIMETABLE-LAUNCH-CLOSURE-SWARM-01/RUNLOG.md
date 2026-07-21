@@ -2,6 +2,19 @@
 
 State source of truth: this folder (origin/main). Sandbox copies are ephemeral and never authoritative.
 
+## 2026-07-22 — USRTIMETABLE-SWARM-RESUME-VERIFY-HOLD-02
+
+- Session resumed per D-STATE-01: STATE.json fetched from origin/main (tip b731c640c2446a641431df4ad690705e39bd7a42; STATE.json blob 2ea455ad609c4f143c9840ebfd6ff21018217deb). No Sandbox state used.
+- RUNLOG reviewed before any action (no-duplicate / no-re-execution rule): all completed phases left untouched; this run opens no PRs.
+- next_safe_action = USER_RUNS_LATEST_MAIN_GATES_AND_LEGACY_SCHEMA_MAP → user-side gate → HOLD. No agent execution performed; awaiting user gate results (USRTIMETABLE-LATEST-MAIN-LOCAL-GATES.zip + PHASE-A1-LEGACY-RELATIONSHIP-SCHEMA-MAP, both DELIVERED_AWAITING_USER_EXECUTION).
+- Re-verified via GitHub API: PR #60 MERGED 2026-07-21T17:59:41Z; PR #61 MERGED 2026-07-21T18:08:14Z; PR #62 MERGED 2026-07-21T18:43:41Z (merge commit 91b5f65eef0c8f3b82538cf17c26f8b87c0fad46, ancestor of current main).
+- Drift check: origin/main advanced past reference tip 7d738204 to b731c640 via PRs #65 (TRACKS 9-10 docs), #67 (TRACK 3 doc), #68 (TRACKS 6-7 docs). Per-commit file lists confirm every commit after pinned 1c23c808 (b6a5a491, 7d738204, 1881759d, 87fbbe9d, b731c640) touches only implementation-reports/ — zero product-source and zero migration changes.
+- Consistency check: the six new WAVE-03 docs are PREPARATION_ONLY — NO EXECUTION and reaffirm the same pending gates, the same production facts (174 TA / 5 COS / sections = 0 / academic_programs = 0), LEGACY_ORPHAN_CLASSIFICATION_V1 REJECTED, and schema-map V2 results pending from user. No evidence conflict with STATE.json.
+- Open draft PRs observed (parallel WAVE-03 effort; none merged; no action taken): #66 (A2.1 shared lecture groups, source-only migration 20260722090000 — A2 on main remains NOT_STARTED), #69 (TRACK 4 faculty workload policies, source-only migration 20260722110000), #70 (A4 lifecycle transitions gap-fill, source-only; recommends closing old draft #38 as superseded — user decision). Old open PRs #38/#30 untouched.
+- Consequence for the user gates: USRTIMETABLE-LATEST-MAIN-LOCAL-GATES.zip (pinned 1c23c808, self-HOLDs on SHA change) will halt with HOLD — ORIGIN_MAIN_CHANGED_REGENERATE_PACKAGE against tip b731c640 by design; drift is docs-only, so gate content is unaffected — user decision needed (regenerate/re-pin the package to the current tip, or run it and treat the designed self-HOLD as the regeneration trigger). The PHASE-A1-LEGACY-RELATIONSHIP-SCHEMA-MAP package is read-only Production SQL and is unaffected by repo drift.
+- Side branch swarm/restore-headcount-types-and-state-01 unchanged (NO_PR_NO_MERGE_AWAITING_USER_DECISION); retained per no-deletion rule.
+- No DB writes, no migration apply, no backfill/cleanup, no touching the 174 TA / 5 COS rows, no A2 start/advance, no real import, no deploy/publish, no duplicate PRs, no re-execution of completed phases, no branch/worktree deletion, no production-ready claim.
+
 ## 2026-07-22 — USRTIMETABLE-SWARM-RESUME-VERIFY-HOLD-01
 
 - Session resumed per D-STATE-01: state fetched from origin/main (tip b6a5a491f9f70f1cfba5dc5696fb33f64dbcee6b, PR #64; STATE.json blob abf0b80d8fadd4686cba6824273740a4a018925c). No Sandbox state used.
