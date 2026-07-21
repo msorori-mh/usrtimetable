@@ -27,10 +27,20 @@ export interface TimetableReportSession {
   course_name: string;
   instructor_name: string;
   room_label: string;
+  /** Legacy historical identity — populated only by the Legacy read model. */
   section_number: string;
+  /** New Flow identity (A1.5) — resolved from cohort/delivery-group FK ids. */
+  cohort_label: string;
+  delivery_group_label: string;
   program_name: string;
   level_name: string;
   department_name: string;
+}
+
+/** Label maps used to resolve New Flow cohort/DG ids to display labels (A1.5). */
+export interface CohortDeliveryGroupLabelMaps {
+  cohorts: ReadonlyMap<string, string>;
+  deliveryGroups: ReadonlyMap<string, string>;
 }
 
 export function sessionTypeLabel(type: string): string {
@@ -42,7 +52,10 @@ export function studySystemLabel(sys: string | null | undefined): string {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function mapRawToTimetableSession(raw: any): TimetableReportSession {
+export function mapRawToTimetableSession(
+  raw: any,
+  labels?: CohortDeliveryGroupLabelMaps,
+): TimetableReportSession {
   const co = raw.course_offerings;
   const course = co?.courses;
   return {
@@ -57,15 +70,21 @@ export function mapRawToTimetableSession(raw: any): TimetableReportSession {
     instructor_name: raw.instructors?.full_name ?? "",
     room_label: raw.rooms ? `${raw.rooms.code ?? ""} ${raw.rooms.name ?? ""}`.trim() : "",
     section_number: raw.sections?.section_number ?? "",
+    cohort_label: (raw.cohort_id && labels?.cohorts.get(raw.cohort_id)) || "",
+    delivery_group_label:
+      (raw.delivery_group_id && labels?.deliveryGroups.get(raw.delivery_group_id)) || "",
     program_name: co?.academic_programs?.name ?? "",
     level_name: co?.academic_levels?.name ?? "",
     department_name: course?.departments?.name ?? "",
   };
 }
 
-export function mapRawSessions(raw: unknown[]): TimetableReportSession[] {
+export function mapRawSessions(
+  raw: unknown[],
+  labels?: CohortDeliveryGroupLabelMaps,
+): TimetableReportSession[] {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (raw as any[]).map(mapRawToTimetableSession);
+  return (raw as any[]).map((r) => mapRawToTimetableSession(r, labels));
 }
 
 export const TIMETABLE_TABLE_HEADERS: { key: string; label: string }[] = [
@@ -83,12 +102,35 @@ export const TIMETABLE_TABLE_HEADERS: { key: string; label: string }[] = [
   { key: "hours", label: "الساعات" },
 ];
 
+/**
+ * New Flow timetable headers (A1.5): the Legacy "المجموعة" (sections) column is
+ * replaced by cohort + delivery-group identity columns. The Legacy headers above
+ * are retained unchanged for the historical section report.
+ */
+export const NEW_FLOW_TIMETABLE_TABLE_HEADERS: { key: string; label: string }[] = [
+  { key: "department", label: "القسم" },
+  { key: "program", label: "البرنامج" },
+  { key: "level", label: "المستوى" },
+  { key: "cohort", label: "الدفعة الدراسية" },
+  { key: "delivery_group", label: "مجموعة المحاضرات/المعامل" },
+  { key: "course", label: "المقرر" },
+  { key: "day", label: "اليوم" },
+  { key: "time", label: "الوقت" },
+  { key: "session_type", label: "النوع" },
+  { key: "instructor", label: "المحاضر" },
+  { key: "room", label: "القاعة" },
+  { key: "study_system", label: "نظام الدراسة" },
+  { key: "hours", label: "الساعات" },
+];
+
 export function timetableSessionToRow(s: TimetableReportSession): Row {
   return {
     department: s.department_name,
     program: s.program_name,
     level: s.level_name,
     section: s.section_number,
+    cohort: s.cohort_label,
+    delivery_group: s.delivery_group_label,
     course: `${s.course_code} ${s.course_name}`.trim(),
     day: DAY_NAMES_AR[s.day_of_week] ?? "",
     time: `${fmtTime(s.start_time)} - ${fmtTime(s.end_time)}`,

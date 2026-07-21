@@ -71,6 +71,90 @@ export function readinessScoreStatus(score: number): { label: string; tone: "ok"
   return { label: "حرج", tone: "bad" };
 }
 
+/**
+ * A1.5 New Flow readiness signals (cohort / delivery-group / TA V2 / session
+ * identity). Fail-closed by design: any error (e.g. Phase 9.x columns not yet
+ * applied in a given environment) yields `null`, and the caller surfaces a
+ * single informational metric instead of presenting stale V1 data as New Flow
+ * truth — and never breaks the base readiness report.
+ */
+interface NewFlowSignals {
+  cohorts: { id: string; active: boolean | null }[];
+  deliveryGroups: { id: string; cohort_id: string | null }[];
+  dgAssignments: { delivery_group_id: string | null; instructor_id: string | null }[];
+  sessionIdentity: { id: string; cohort_id: string | null; delivery_group_id: string | null }[];
+}
+
+async function fetchNewFlowSignals(collegeId: string): Promise<NewFlowSignals | null> {
+  try {
+    const [cohorts, deliveryGroups, dgAssignments, sessionIdentity] = await Promise.all([
+      supabase.from("academic_cohorts").select("id, active").eq("college_id", collegeId),
+      supabase.from("delivery_groups").select("id, cohort_id").eq("college_id", collegeId),
+      supabase
+        .from("teaching_assignments")
+        .select("delivery_group_id, instructor_id")
+        .eq("college_id", collegeId)
+        .not("delivery_group_id", "is", null),
+      supabase.from("schedule_sessions").select("id, cohort_id, delivery_group_id").eq("college_id", collegeId),
+    ]);
+    if (cohorts.error || deliveryGroups.error || dgAssignments.error || sessionIdentity.error) {
+      return null;
+    }
+    return {
+      cohorts: (cohorts.data ?? []) as NewFlowSignals["cohorts"],
+      deliveryGroups: (deliveryGroups.data ?? []) as NewFlowSignals["deliveryGroups"],
+      dgAssignments: (dgAssignments.data ?? []) as NewFlowSignals["dgAssignments"],
+      sessionIdentity: (sessionIdentity.data ?? []) as NewFlowSignals["sessionIdentity"],
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** New Flow (cohort/DG/TA V2) readiness metrics — appended to the scheduling category. */
+export function newFlowReadinessMetrics(signals: NewFlowSignals | null): ReadinessMetric[] {
+  if (signals === null) {
+    return [
+      {
+        label: "مقاييس التدفق الجديد (الدفعات/المجموعات) غير متاحة — بنية V2 غير مكتملة في هذه البيئة",
+        total: 0,
+        missing: 0,
+        category: "scheduling",
+      },
+    ];
+  }
+  const activeCohorts = signals.cohorts.filter((c) => c.active !== false);
+  const cohortsWithGroups = new Set(signals.deliveryGroups.map((d) => d.cohort_id));
+  const assignedGroups = new Set(signals.dgAssignments.map((a) => a.delivery_group_id));
+  return [
+    {
+      label: "دفعات دراسية نشطة بدون مجموعات محاضرات/معامل",
+      total: activeCohorts.length,
+      missing: activeCohorts.filter((c) => !cohortsWithGroups.has(c.id)).length,
+      category: "scheduling",
+    },
+    {
+      label: "مجموعات محاضرات/معامل بدون إسناد تدريسي (V2)",
+      total: signals.deliveryGroups.length,
+      missing: signals.deliveryGroups.filter((d) => !assignedGroups.has(d.id)).length,
+      category: "scheduling",
+    },
+    {
+      label: "إسناد تدريسي (V2) بدون محاضر",
+      total: signals.dgAssignments.length,
+      missing: signals.dgAssignments.filter((a) => !a.instructor_id).length,
+      critical: true,
+      category: "scheduling",
+    },
+    {
+      label: "محاضرات بدون هوية دفعة/مجموعة (توافقية)",
+      total: signals.sessionIdentity.length,
+      missing: signals.sessionIdentity.filter((s) => !s.cohort_id && !s.delivery_group_id).length,
+      category: "scheduling",
+    },
+  ];
+}
+
 /** College-level readiness checks (read-only). Same logic as /data-readiness dashboard. */
 export async function fetchCollegeReadiness(collegeId: string): Promise<ReadinessData> {
   const [
@@ -130,6 +214,11 @@ export async function fetchCollegeReadiness(collegeId: string): Promise<Readines
     { label: "محاضرات بدون قاعة", total: sessionsRows.length, missing: sessionsRows.filter((s: { room_id: string | null }) => !s.room_id).length, category: "scheduling" },
     { label: "محاضرات بدون وقت", total: sessionsRows.length, missing: sessionsRows.filter((s: { start_time: string | null; end_time: string | null; day_of_week: number | null }) => !s.start_time || !s.end_time || s.day_of_week === null).length, category: "scheduling" },
   ];
+
+  // A1.5: New Flow cohort/DG/TA V2 readiness — separate fail-closed fetch so a
+  // partially-applied V2 schema degrades to an informational note, never a crash.
+  const newFlowSignals = await fetchNewFlowSignals(collegeId);
+  scheduling.push(...newFlowReadinessMetrics(newFlowSignals));
 
   const studyPlanScore = score(studyPlan);
   const resourcesScore = score(resources);

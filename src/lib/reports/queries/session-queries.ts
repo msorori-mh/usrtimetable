@@ -2,8 +2,32 @@ import { supabase } from "@/integrations/supabase/client";
 import { applyStudySystemFilter, assertSingleVersion } from "@/lib/reports/filters";
 import type { ReportStudySystem } from "@/lib/reports/types";
 
-/** Shared select for timetable-style reports (single version). */
+/**
+ * Shared New Flow select for timetable-style reports (single version).
+ * A1.5: New Flow reports never join Legacy `sections`; session identity is
+ * cohort/delivery-group based. Cohort/DG labels are resolved separately via
+ * fetchCohortDeliveryGroupLabels (no fragile embeds, same pattern as the
+ * conflict read model).
+ */
 export const TIMETABLE_SESSION_SELECT = `
+  id, day_of_week, start_time, end_time, session_type, study_system,
+  cohort_id, delivery_group_id, instructor_id, room_id,
+  course_offerings(
+    program_id, level_id,
+    courses(name, code, department_id, departments(name)),
+    academic_programs(name),
+    academic_levels(name, level_number)
+  ),
+  instructors(full_name),
+  rooms(code, name)
+` as const;
+
+/**
+ * Legacy historical select (A1.5) — retained EXCLUSIVELY for the Legacy
+ * section timetable report. Historical data stays readable and unchanged;
+ * do not use for New Flow surfaces.
+ */
+export const LEGACY_TIMETABLE_SESSION_SELECT = `
   id, day_of_week, start_time, end_time, session_type, study_system,
   section_id, instructor_id, room_id,
   course_offerings(
@@ -26,6 +50,8 @@ export interface FetchVersionSessionsParams {
   select?: string;
   instructorId?: string;
   sectionId?: string;
+  cohortId?: string;
+  deliveryGroupId?: string;
   roomId?: string;
 }
 
@@ -50,6 +76,8 @@ export async function fetchSessionsForVersion<T = Record<string, unknown>>(
 
   if (params.instructorId) q = q.eq("instructor_id", params.instructorId);
   if (params.sectionId) q = q.eq("section_id", params.sectionId);
+  if (params.cohortId) q = q.eq("cohort_id", params.cohortId);
+  if (params.deliveryGroupId) q = q.eq("delivery_group_id", params.deliveryGroupId);
   if (params.roomId) q = q.eq("room_id", params.roomId);
 
   const { data, error } = await q;
@@ -76,7 +104,11 @@ export async function fetchInstructorScheduleSessions(
   });
 }
 
-/** Section timetable — single version, single section. */
+/**
+ * Legacy section timetable — single version, single Legacy section.
+ * A1.5: historical-only surface; reads the preserved Legacy projection
+ * (sections join) and is never used by New Flow reports.
+ */
 export async function fetchSectionTimetableSessions(
   params: TimetableSessionsBaseParams & { sectionId: string },
 ) {
@@ -84,7 +116,7 @@ export async function fetchSectionTimetableSessions(
     collegeId: params.collegeId,
     versionId: params.versionId,
     studySystem: params.studySystem,
-    select: TIMETABLE_SESSION_SELECT,
+    select: LEGACY_TIMETABLE_SESSION_SELECT,
     sectionId: params.sectionId,
   });
 }
@@ -106,12 +138,14 @@ export interface ProgramLevelFilterParams {
   departmentId?: string | null;
   programId?: string | null;
   levelId?: string | null;
-  sectionId?: string | null;
+  cohortId?: string | null;
+  deliveryGroupId?: string | null;
 }
 
 /**
- * Program/Level timetable — single version; optional dept/program/level/section filters.
- * Department filter applied client-side (PostgREST nested eq limitation).
+ * Program/Level timetable — single version; optional dept/program/level/cohort/
+ * delivery-group filters. Department filter applied client-side (PostgREST
+ * nested eq limitation). A1.5: cohort/DG filters replace the Legacy section filter.
  */
 export async function fetchProgramLevelTimetableSessions(
   params: TimetableSessionsBaseParams & ProgramLevelFilterParams,
@@ -130,7 +164,8 @@ export async function fetchProgramLevelTimetableSessions(
 
   if (params.programId) q = q.eq("course_offerings.program_id", params.programId);
   if (params.levelId) q = q.eq("course_offerings.level_id", params.levelId);
-  if (params.sectionId) q = q.eq("section_id", params.sectionId);
+  if (params.cohortId) q = q.eq("cohort_id", params.cohortId);
+  if (params.deliveryGroupId) q = q.eq("delivery_group_id", params.deliveryGroupId);
 
   const { data, error } = await q;
   if (error) throw error;
@@ -199,11 +234,15 @@ export async function fetchRoomUtilizationSessions(
   return (data ?? []) as RoomUtilizationSession[];
 }
 
-/** Official published timetable — single published version only. */
+/**
+ * Official published timetable — single published version only.
+ * A1.5: New Flow projection is cohort/DG based; no Legacy sections join.
+ */
 export const PUBLISHED_TIMETABLE_SELECT = `
   id, day_of_week, start_time, end_time, session_type, study_system,
+  cohort_id, delivery_group_id,
   course_offerings!inner(program_id, level_id, courses!inner(name, code, department_id, departments(name)), academic_programs(name), academic_levels(name)),
-  sections(id, section_number), instructors(id, full_name), rooms(id, code, name),
+  instructors(id, full_name), rooms(id, code, name),
   schedule_versions!inner(name)
 ` as const;
 
@@ -213,7 +252,8 @@ export async function fetchPublishedTimetableSessions(params: {
   studySystem: ReportStudySystem;
   programId?: string | null;
   levelId?: string | null;
-  sectionId?: string | null;
+  cohortId?: string | null;
+  deliveryGroupId?: string | null;
   instructorId?: string | null;
   roomId?: string | null;
   departmentId?: string | null;
@@ -231,7 +271,8 @@ export async function fetchPublishedTimetableSessions(params: {
   q = applyStudySystemFilter(q, params.studySystem);
   if (params.programId) q = q.eq("course_offerings.program_id", params.programId);
   if (params.levelId) q = q.eq("course_offerings.level_id", params.levelId);
-  if (params.sectionId) q = q.eq("section_id", params.sectionId);
+  if (params.cohortId) q = q.eq("cohort_id", params.cohortId);
+  if (params.deliveryGroupId) q = q.eq("delivery_group_id", params.deliveryGroupId);
   if (params.instructorId) q = q.eq("instructor_id", params.instructorId);
   if (params.roomId) q = q.eq("room_id", params.roomId);
 
@@ -246,4 +287,67 @@ export async function fetchPublishedTimetableSessions(params: {
     );
   }
   return rows;
+}
+
+/** Resolved New Flow identity labels for timetable report rows. */
+export interface CohortDeliveryGroupLabels {
+  cohorts: Map<string, string>;
+  deliveryGroups: Map<string, string>;
+}
+
+/**
+ * Resolve cohort/delivery-group display labels for raw timetable sessions.
+ * Two batched, tenant-scoped SELECTs keyed by the session FK ids — no
+ * PostgREST embeds (mirrors the conflict read model evidence lookup) and
+ * therefore safe while Phase 9.x FK/column rollout completes.
+ */
+export async function fetchCohortDeliveryGroupLabels(
+  collegeId: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  rawSessions: any[],
+): Promise<CohortDeliveryGroupLabels> {
+  const cohortIds = [
+    ...new Set(
+      rawSessions.map((s) => s?.cohort_id as string | null).filter((v): v is string => !!v),
+    ),
+  ];
+  const deliveryGroupIds = [
+    ...new Set(
+      rawSessions
+        .map((s) => s?.delivery_group_id as string | null)
+        .filter((v): v is string => !!v),
+    ),
+  ];
+
+  const [cohortsRes, deliveryGroupsRes] = await Promise.all([
+    cohortIds.length
+      ? supabase
+          .from("academic_cohorts")
+          .select("id, code")
+          .eq("college_id", collegeId)
+          .in("id", cohortIds)
+      : Promise.resolve({ data: [], error: null }),
+    deliveryGroupIds.length
+      ? supabase
+          .from("delivery_groups")
+          .select("id, group_code")
+          .eq("college_id", collegeId)
+          .in("id", deliveryGroupIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+
+  if (cohortsRes.error) throw cohortsRes.error;
+  if (deliveryGroupsRes.error) throw deliveryGroupsRes.error;
+
+  return {
+    cohorts: new Map(
+      ((cohortsRes.data ?? []) as { id: string; code: string }[]).map((c) => [c.id, c.code]),
+    ),
+    deliveryGroups: new Map(
+      ((deliveryGroupsRes.data ?? []) as { id: string; group_code: string }[]).map((d) => [
+        d.id,
+        d.group_code,
+      ]),
+    ),
+  };
 }

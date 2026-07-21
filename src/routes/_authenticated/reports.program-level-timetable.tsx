@@ -9,9 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   mapRawSessions,
   timetableSessionsToRows,
-  TIMETABLE_TABLE_HEADERS,
+  NEW_FLOW_TIMETABLE_TABLE_HEADERS,
 } from "@/lib/reports/session-mappers";
-import { fetchProgramLevelTimetableSessions } from "@/lib/reports/queries/session-queries";
+import {
+  fetchCohortDeliveryGroupLabels,
+  fetchProgramLevelTimetableSessions,
+} from "@/lib/reports/queries/session-queries";
 import { useReportContext } from "@/hooks/reports/useReportContext";
 
 export const Route = createFileRoute("/_authenticated/reports/program-level-timetable")({
@@ -24,7 +27,8 @@ function Page() {
   const [deptId, setDeptId] = useState("all");
   const [progId, setProgId] = useState("all");
   const [lvlId, setLvlId] = useState("all");
-  const [secId, setSecId] = useState("all");
+  const [cohortId, setCohortId] = useState("all");
+  const [dgId, setDgId] = useState("all");
 
   const { data: depts } = useQuery({
     queryKey: ["plt-depts", ctx.collegeId],
@@ -50,21 +54,43 @@ function Page() {
       (await supabase.from("academic_levels").select("id, name").eq("college_id", ctx.collegeId!)).data ?? [],
   });
 
-  const { data: sections } = useQuery({
-    queryKey: ["plt-sections", ctx.collegeId, ctx.termId],
+  // A1.5: New Flow cohort/DG filter sources replace the Legacy sections selector.
+  const { data: cohorts } = useQuery({
+    queryKey: ["plt-cohorts", ctx.collegeId, ctx.termId],
     enabled: !!ctx.collegeId && !!ctx.termId,
     queryFn: async () =>
       (
         await supabase
-          .from("sections")
-          .select("id, section_number")
+          .from("academic_cohorts")
+          .select("id, code")
           .eq("college_id", ctx.collegeId!)
           .eq("term_id", ctx.termId!)
-          .order("section_number")
+          .order("code")
       ).data ?? [],
   });
 
-  const { data: rawSessions, isLoading: sessionsLoading } = useQuery({
+  const { data: deliveryGroups } = useQuery({
+    queryKey: ["plt-dgs", ctx.collegeId],
+    enabled: !!ctx.collegeId,
+    queryFn: async () =>
+      (
+        await supabase
+          .from("delivery_groups")
+          .select("id, group_code, cohort_id")
+          .eq("college_id", ctx.collegeId!)
+          .order("group_code")
+      ).data ?? [],
+  });
+
+  const filteredDeliveryGroups = useMemo(
+    () =>
+      (deliveryGroups ?? []).filter(
+        (d) => cohortId === "all" || (d.cohort_id as string | null) === cohortId,
+      ),
+    [deliveryGroups, cohortId],
+  );
+
+  const { data: sessionsBundle, isLoading: sessionsLoading } = useQuery({
     queryKey: [
       "plt-sess",
       ctx.collegeId,
@@ -73,22 +99,30 @@ function Page() {
       deptId,
       progId,
       lvlId,
-      secId,
+      cohortId,
+      dgId,
     ],
     enabled: !!ctx.collegeId && !!ctx.versionId,
-    queryFn: () =>
-      fetchProgramLevelTimetableSessions({
+    queryFn: async () => {
+      const raw = await fetchProgramLevelTimetableSessions({
         collegeId: ctx.collegeId!,
         versionId: ctx.versionId,
         studySystem: ctx.studySystem,
         departmentId: deptId === "all" ? null : deptId,
         programId: progId === "all" ? null : progId,
         levelId: lvlId === "all" ? null : lvlId,
-        sectionId: secId === "all" ? null : secId,
-      }),
+        cohortId: cohortId === "all" ? null : cohortId,
+        deliveryGroupId: dgId === "all" ? null : dgId,
+      });
+      const labels = await fetchCohortDeliveryGroupLabels(ctx.collegeId!, raw);
+      return { raw, labels };
+    },
   });
 
-  const sessions = useMemo(() => mapRawSessions(rawSessions ?? []), [rawSessions]);
+  const sessions = useMemo(
+    () => mapRawSessions(sessionsBundle?.raw ?? [], sessionsBundle?.labels),
+    [sessionsBundle],
+  );
   const rows = useMemo(() => timetableSessionsToRows(sessions), [sessions]);
   const totalHours = rows.reduce((sum, r) => sum + Number(r.hours ?? 0), 0);
 
@@ -103,7 +137,7 @@ function Page() {
       reportContext={ctx}
       filename="program_level_timetable"
       rows={rows}
-      headers={TIMETABLE_TABLE_HEADERS}
+      headers={NEW_FLOW_TIMETABLE_TABLE_HEADERS}
       isLoading={isLoading}
       emptyMessage={!ready ? "اختر نسخة جدول." : "لا توجد محاضرات بهذه المعايير."}
       filters={
@@ -145,13 +179,31 @@ function Page() {
             </Select>
           </div>
           <div>
-            <label className="text-xs text-muted-foreground">المجموعة (اختياري)</label>
-            <Select value={secId} onValueChange={setSecId}>
+            <label className="text-xs text-muted-foreground">الدفعة الدراسية</label>
+            <Select
+              value={cohortId}
+              onValueChange={(v) => {
+                setCohortId(v);
+                setDgId("all");
+              }}
+            >
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">الكل</SelectItem>
-                {(sections ?? []).map((s) => (
-                  <SelectItem key={s.id} value={s.id}>{s.section_number}</SelectItem>
+                {(cohorts ?? []).map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.code}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground">مجموعة المحاضرات/المعامل</label>
+            <Select value={dgId} onValueChange={setDgId}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">الكل</SelectItem>
+                {filteredDeliveryGroups.map((d) => (
+                  <SelectItem key={d.id} value={d.id}>{d.group_code}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -159,7 +211,9 @@ function Page() {
         </ReportFilters>
       }
     >
-      {ready && sessions.length > 0 && <ReportTimetableView sessions={sessions} />}
+      {ready && sessions.length > 0 && (
+        <ReportTimetableView sessions={sessions} headers={NEW_FLOW_TIMETABLE_TABLE_HEADERS} />
+      )}
     </ReportShell>
   );
 }
