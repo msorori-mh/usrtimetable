@@ -218,6 +218,8 @@ export function TimetableGridReport({
                     <div className="text-[10px] truncate text-muted-foreground">
                       {sess.room_label || "—"}
                       {sess.section_number ? ` · ش${sess.section_number}` : ""}
+                      {sess.cohort_label ? ` · ${sess.cohort_label}` : ""}
+                      {sess.delivery_group_label ? ` · ${sess.delivery_group_label}` : ""}
                     </div>
                     <div className="flex gap-1 mt-0.5 flex-wrap">
                       <span className="text-[9px] bg-background/70 rounded px-1">
