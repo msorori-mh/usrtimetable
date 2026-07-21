@@ -1,29 +1,31 @@
 # RUNLOG — USRTIMETABLE-LAUNCH-CLOSURE-SWARM-01
 
-State source of truth: this folder (origin/main). Sandbox copies are ephemeral and never authoritative. If this folder is missing remotely, automation must HOLD.
+State source of truth: this folder (origin/main). Sandbox copies are ephemeral and never authoritative.
 
-## 2026-07-22 — USRTIMETABLE-SWARM-STATE-RECOVERY-AND-RESUME-01
+## 2026-07-22 — USRTIMETABLE-SWARM-RESUME-GATES-AND-SCHEMA-MAP-PREP-01
 
-- Canonical state files found remotely (created by the previous recovery run) — loaded as truth, NOT rebuilt from memory. Tag: RECONSTRUCTED_FROM_REPO_EVIDENCE retained.
-- New user-confirmed facts merged into STATE.json:
-  - course_offerings.term_id -> academic_terms.id, FK validated=true, delete behavior=RESTRICT.
-  - 20260715120000_approve_capacity_split_proposal.sql added to source-only NOT APPLIED list (now 7 migrations).
-- Resumed pending safe work only (all already prepared, verified still valid):
-  1. Final-main local gates package for main@91b5f65e — ready (ZIP export cached; awaiting USER_RUNS_FINAL_MAIN_GATES).
-  2. Legacy Relationship Schema Map read-only package — ready (awaiting USER_RUNS_LEGACY_RELATIONSHIP_SCHEMA_MAP).
-  3. Headcount production dependency map — canonical copy in this folder.
-- Explicitly NOT done: no final classification SQL, no A2, no migration apply, no production data modification, no duplicate PRs.
+- Session resumed per D-STATE-01: state fetched from origin/main (HEAD 053d3bc1a7a82f982acfa57e7133d0f65681a01a). No Sandbox state used.
+- Re-verified via GitHub API: PR #60 MERGED 2026-07-21T17:59:41Z; PR #61 MERGED 2026-07-21T18:08:14Z; PR #62 MERGED 2026-07-21T18:43:41Z (merge commit 91b5f65eef0c8f3b82538cf17c26f8b87c0fad46, ancestor of current main). Drift commits 8fcc583/0b8f78e/836d227/6c4401bb unchanged.
+- Executed next_safe_action PREPARE_FINAL_MAIN_GATES_AND_LEGACY_RELATIONSHIP_SCHEMA_MAP:
+  - TRACK 1: rebuilt USRTIMETABLE-FINAL-MAIN-91B5F65-LOCAL-GATES.zip (RUN-FINAL-MAIN-GATES.ps1 + INSTRUCTIONS.md + EXPECTED-RESULTS.md + GATE-MANIFEST.json + RESULTS-TEMPLATE.json). Gates: G0 repo state at TargetSha (default 91b5f65; -TargetSha override per D-DRIFT-01; candidates 6c4401bb / 053d3bc1), G1 bun install --frozen-lockfile, G2 tsc --noEmit, G3 vite build, G4 full 42-harness suite (acceptance includes the 2 documented missing-historical-artifact cases), G5 eslint. Fail-fast; writes RESULTS.json + per-gate logs only. No PASS claimed by the agent; awaits USER_RUNS_FINAL_MAIN_GATES.
+  - TRACK 2: rebuilt PHASE-A1-LEGACY-RELATIONSHIP-SCHEMA-MAP package (READONLY.sql with Q1-Q10 + LOVABLE-EXEC.txt + COMBINED.txt). Q1-Q4 catalog-only (column inventory, FK list, unique keys, relationship verdict matrix); Q5-Q10 aggregate-only data probes guarded by Q1/Q4 confirmation. Verified with a real PostgreSQL parser: 12 statements, all SELECT/WITH-SELECT; delivery_groups.course_offering_id referenced only in catalog existence checks (never as a data column). Awaits USER_RUNS_LEGACY_RELATIONSHIP_SCHEMA_MAP.
+  - Track 2 source evidence: delivery_groups identity = cohort_id + plan_course_id + component_id (+ group_code/group_number) per Phase 9.3 migration 20260716233716 and cross-college migration 20260717050000; course_offerings.plan_course_id is the bridge V1 lacked. All SOURCE-side claims until Production catalog proof arrives via Q1-Q4.
+- Open user decision unchanged: gates target SHA (91b5f65 user-confirmed vs 6c4401bb drift head vs 053d3bc1 current tip).
+- No DB writes, no migration apply, no backfill/cleanup, no touching the 174 TA / 5 COS rows, no A2, no real import, no deploy/publish, no duplicate PRs, no re-execution of PR #60/#61/#62, no branch/worktree deletion, no production-ready claim.
 
 ## 2026-07-22 — USRTIMETABLE-SWARM-STATE-RECOVERY-AND-NEXT-SAFE-ACTIONS-01
 
 - STOP CONDITION on lost Sandbox STATE.json lifted by explicit user authorization.
 - State rebuilt from GitHub evidence + user-confirmed facts only. No undocumented memory used.
-- Verified via GitHub API: PR #60 MERGED (17:59:41Z), PR #61 MERGED (18:08:14Z), PR #62 MERGED (18:43:41Z, merge commit 91b5f65).
-- All 6 then-known source-only migrations present in supabase/migrations; none confirmed applied remotely.
-- DRIFT NOTE: origin/main advanced to 6c4401bb (4 lovable-dev commits after 91b5f65, latest "Held classification due to schema"). User to confirm gates target SHA.
-- TRACK 1: actual gates run NOT possible from agent environment (private repo). No PASS claimed. Built USRTIMETABLE-FINAL-MAIN-91B5F65-LOCAL-GATES.zip.
-- TRACK 2: built PHASE-A1-LEGACY-RELATIONSHIP-SCHEMA-MAP read-only package (10 statements, all SelectStmt — verified with pglast parser). Not executed by the agent.
-- TRACK 3: wrote SCHEDULING-HEADCOUNT-PRODUCTION-DEPENDENCY-MAP.md.
+- Verified via GitHub API:
+  - PR #60 MERGED 2026-07-21T17:59:41Z (A1.3 Legacy write blocking).
+  - PR #61 MERGED 2026-07-21T18:08:14Z (A1.5 reports remediation).
+  - PR #62 MERGED 2026-07-21T18:43:41Z, merge commit 91b5f65eef0c8f3b82538cf17c26f8b87c0fad46 (Scheduling headcount foundation, source-only).
+  - All 6 source-only migrations present in supabase/migrations; none confirmed applied remotely.
+- DRIFT NOTE: origin/main advanced to 6c4401bb0bc18e35b23761a276776cdbb755ebf8 (4 lovable-dev commits after 91b5f65, latest "Held classification due to schema" 2026-07-21T19:03:52Z). Documented in STATE.json; user to confirm gates target SHA.
+- TRACK 1: actual gates run NOT possible from the agent environment (private repo, no clone credentials; bun-based toolchain unavailable). No PASS claimed. Built USRTIMETABLE-FINAL-MAIN-91B5F65-LOCAL-GATES.zip for user-side Windows execution.
+- TRACK 2: built PHASE-A1-LEGACY-RELATIONSHIP-SCHEMA-MAP read-only package (SELECT/WITH SELECT only). Not executed by the agent; awaits user execution in Lovable/Supabase SQL Editor.
+- TRACK 3: wrote SCHEDULING-HEADCOUNT-PRODUCTION-DEPENDENCY-MAP.md from source review of 20260721180000 and its prerequisites.
 - No DB writes, no migration apply, no backfill/cleanup, no A2, no deploy/publish, no duplicate PRs, no branch/worktree deletion.
 
 ## 2026-07-21 (prior run, preserved)
