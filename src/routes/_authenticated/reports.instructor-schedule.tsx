@@ -17,7 +17,11 @@ import {
   timetableSessionsToRows,
   TIMETABLE_TABLE_HEADERS,
 } from "@/lib/reports/session-mappers";
-import { fetchInstructorScheduleSessions } from "@/lib/reports/queries/session-queries";
+import {
+  fetchDeliveryGroupOptions,
+  deliveryGroupLabelMap,
+  fetchInstructorScheduleSessions,
+} from "@/lib/reports/queries/session-queries";
 import { useReportContext } from "@/hooks/reports/useReportContext";
 
 export const Route = createFileRoute("/_authenticated/reports/instructor-schedule")({
@@ -54,6 +58,12 @@ function Page() {
     },
   });
 
+  const { data: groupOptions } = useQuery({
+    queryKey: ["is-groups", ctx.collegeId],
+    enabled: !!ctx.collegeId,
+    queryFn: () => fetchDeliveryGroupOptions(ctx.collegeId!),
+  });
+
   const {
     data: rawSessions,
     isLoading: sessionsLoading,
@@ -70,7 +80,11 @@ function Page() {
       }),
   });
 
-  const sessions = useMemo(() => mapRawSessions(rawSessions ?? []), [rawSessions]);
+  const groupLabels = useMemo(() => deliveryGroupLabelMap(groupOptions ?? []), [groupOptions]);
+  const sessions = useMemo(
+    () => mapRawSessions(rawSessions ?? [], groupLabels),
+    [rawSessions, groupLabels],
+  );
   const rows = useMemo(() => timetableSessionsToRows(sessions), [sessions]);
   const totalHours = rows.reduce((sum, r) => sum + Number(r.hours ?? 0), 0);
   const isLoading = ctx.isLoading || instructorsLoading || sessionsLoading;

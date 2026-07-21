@@ -11,7 +11,11 @@ import {
   timetableSessionsToRows,
   TIMETABLE_TABLE_HEADERS,
 } from "@/lib/reports/session-mappers";
-import { fetchRoomTimetableSessions } from "@/lib/reports/queries/session-queries";
+import {
+  fetchDeliveryGroupOptions,
+  deliveryGroupLabelMap,
+  fetchRoomTimetableSessions,
+} from "@/lib/reports/queries/session-queries";
 import { useReportContext } from "@/hooks/reports/useReportContext";
 
 export const Route = createFileRoute("/_authenticated/reports/room-timetable")({
@@ -36,6 +40,12 @@ function Page() {
       ).data ?? [],
   });
 
+  const { data: groupOptions } = useQuery({
+    queryKey: ["rt-groups", ctx.collegeId],
+    enabled: !!ctx.collegeId,
+    queryFn: () => fetchDeliveryGroupOptions(ctx.collegeId!),
+  });
+
   const { data: rawSessions, isLoading: sessionsLoading } = useQuery({
     queryKey: ["rt-sess", ctx.collegeId, ctx.versionId, ctx.studySystem, roomId],
     enabled: !!ctx.collegeId && !!ctx.versionId && !!roomId,
@@ -48,7 +58,11 @@ function Page() {
       }),
   });
 
-  const sessions = useMemo(() => mapRawSessions(rawSessions ?? []), [rawSessions]);
+  const groupLabels = useMemo(() => deliveryGroupLabelMap(groupOptions ?? []), [groupOptions]);
+  const sessions = useMemo(
+    () => mapRawSessions(rawSessions ?? [], groupLabels),
+    [rawSessions, groupLabels],
+  );
   const rows = useMemo(() => timetableSessionsToRows(sessions), [sessions]);
   const totalHours = rows.reduce((sum, r) => sum + Number(r.hours ?? 0), 0);
 

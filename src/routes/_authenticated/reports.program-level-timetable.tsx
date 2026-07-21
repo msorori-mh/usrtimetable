@@ -11,7 +11,11 @@ import {
   timetableSessionsToRows,
   TIMETABLE_TABLE_HEADERS,
 } from "@/lib/reports/session-mappers";
-import { fetchProgramLevelTimetableSessions } from "@/lib/reports/queries/session-queries";
+import {
+  fetchDeliveryGroupOptions,
+  deliveryGroupLabelMap,
+  fetchProgramLevelTimetableSessions,
+} from "@/lib/reports/queries/session-queries";
 import { useReportContext } from "@/hooks/reports/useReportContext";
 
 export const Route = createFileRoute("/_authenticated/reports/program-level-timetable")({
@@ -24,7 +28,7 @@ function Page() {
   const [deptId, setDeptId] = useState("all");
   const [progId, setProgId] = useState("all");
   const [lvlId, setLvlId] = useState("all");
-  const [secId, setSecId] = useState("all");
+  const [groupId, setGroupId] = useState("all");
 
   const { data: depts } = useQuery({
     queryKey: ["plt-depts", ctx.collegeId],
@@ -50,18 +54,10 @@ function Page() {
       (await supabase.from("academic_levels").select("id, name").eq("college_id", ctx.collegeId!)).data ?? [],
   });
 
-  const { data: sections } = useQuery({
-    queryKey: ["plt-sections", ctx.collegeId, ctx.termId],
-    enabled: !!ctx.collegeId && !!ctx.termId,
-    queryFn: async () =>
-      (
-        await supabase
-          .from("sections")
-          .select("id, section_number")
-          .eq("college_id", ctx.collegeId!)
-          .eq("term_id", ctx.termId!)
-          .order("section_number")
-      ).data ?? [],
+  const { data: groupOptions } = useQuery({
+    queryKey: ["plt-groups", ctx.collegeId],
+    enabled: !!ctx.collegeId,
+    queryFn: () => fetchDeliveryGroupOptions(ctx.collegeId!),
   });
 
   const { data: rawSessions, isLoading: sessionsLoading } = useQuery({
@@ -73,7 +69,7 @@ function Page() {
       deptId,
       progId,
       lvlId,
-      secId,
+      groupId,
     ],
     enabled: !!ctx.collegeId && !!ctx.versionId,
     queryFn: () =>
@@ -84,11 +80,15 @@ function Page() {
         departmentId: deptId === "all" ? null : deptId,
         programId: progId === "all" ? null : progId,
         levelId: lvlId === "all" ? null : lvlId,
-        sectionId: secId === "all" ? null : secId,
+        deliveryGroupId: groupId === "all" ? null : groupId,
       }),
   });
 
-  const sessions = useMemo(() => mapRawSessions(rawSessions ?? []), [rawSessions]);
+  const groupLabels = useMemo(() => deliveryGroupLabelMap(groupOptions ?? []), [groupOptions]);
+  const sessions = useMemo(
+    () => mapRawSessions(rawSessions ?? [], groupLabels),
+    [rawSessions, groupLabels],
+  );
   const rows = useMemo(() => timetableSessionsToRows(sessions), [sessions]);
   const totalHours = rows.reduce((sum, r) => sum + Number(r.hours ?? 0), 0);
 
@@ -145,13 +145,13 @@ function Page() {
             </Select>
           </div>
           <div>
-            <label className="text-xs text-muted-foreground">المجموعة (اختياري)</label>
-            <Select value={secId} onValueChange={setSecId}>
+            <label className="text-xs text-muted-foreground">مجموعات المحاضرات والمعامل (اختياري)</label>
+            <Select value={groupId} onValueChange={setGroupId}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">الكل</SelectItem>
-                {(sections ?? []).map((s) => (
-                  <SelectItem key={s.id} value={s.id}>{s.section_number}</SelectItem>
+                {(groupOptions ?? []).map((g) => (
+                  <SelectItem key={g.id} value={g.id}>{g.group_code}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
