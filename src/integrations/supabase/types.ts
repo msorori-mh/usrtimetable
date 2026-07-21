@@ -266,7 +266,7 @@ export type Database = {
           code: string
           college_id: string
           created_at?: string
-          degree_type: string
+          degree_type?: string
           department_id: string
           duration_years?: number
           id?: string
@@ -325,7 +325,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
-          start_date: string | null
+          start_date?: string | null
           teaching_weeks_count?: number | null
           term_type?: string | null
           updated_at?: string
@@ -339,7 +339,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
-          start_date: string | null
+          start_date?: string | null
           teaching_weeks_count?: number | null
           term_type?: string | null
           updated_at?: string
@@ -1550,7 +1550,7 @@ export type Database = {
           payload_manifest?: string | null
           skipped_rows?: number
           status?: string
-          target_entity: string
+          target_entity?: string
           total_rows?: number
           updated_at?: string
           updated_rows?: number
@@ -2065,7 +2065,7 @@ export type Database = {
           notes?: string | null
           room_id: string
           start_time: string
-          updated_at?: string
+          updated_at: string
         }
         Update: {
           college_id?: string
@@ -2324,12 +2324,12 @@ export type Database = {
           college_id: string
           course_offering_id: string
           created_at?: string
-          day_of_week?: number
+          day_of_week: number
           delivery_group_id?: string | null
-          end_time?: string
+          end_time: string
           expected_students?: number
           id?: string
-          instructor_id?: string
+          instructor_id: string
           is_locked?: boolean
           lock_reason?: string | null
           plan_course_component_id?: string | null
@@ -2342,7 +2342,7 @@ export type Database = {
           session_type?: string
           source_type?: string
           split_source_session_id?: string | null
-          start_time?: string
+          start_time: string
           study_system?: string
           teaching_assignment_id?: string | null
           updated_at?: string
