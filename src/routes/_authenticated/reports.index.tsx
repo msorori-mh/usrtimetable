@@ -36,9 +36,8 @@ interface ReportCard {
 
 const TIMETABLE_REPORTS: ReportCard[] = [
   { to: "/reports/instructor-schedule", title: "جدول المحاضر الفردي", desc: "عرض Grid + جدول · نسخة واحدة · قابل للطباعة.", icon: <CalendarClock className="h-5 w-5" /> },
-  { to: "/reports/section-timetable", title: "جدول المجموعة", desc: "عرض Grid + جدول · نسخة واحدة.", icon: <Users2 className="h-5 w-5" /> },
   { to: "/reports/room-timetable", title: "جدول القاعة", desc: "عرض Grid + جدول · نسخة واحدة.", icon: <DoorOpen className="h-5 w-5" /> },
-  { to: "/reports/program-level-timetable", title: "جدول البرنامج/المستوى", desc: "فلاتر قسم/برنامج/مستوى · البديل الموصى به لجدول الأقسام.", icon: <LayoutGrid className="h-5 w-5" /> },
+  { to: "/reports/program-level-timetable", title: "جدول البرنامج/المستوى", desc: "فلاتر قسم/برنامج/مستوى/مجموعة محاضرات ومعامل · البديل الموصى به لجدول الأقسام.", icon: <LayoutGrid className="h-5 w-5" /> },
 ];
 
 const ANALYTICS_REPORTS: ReportCard[] = [
@@ -73,8 +72,15 @@ const LEGACY_REPORTS: ReportCard[] = [
   {
     to: "/reports/department-schedule",
     title: "جدول الأقسام",
-    desc: "Legacy — لم يُرحّل. استخدم جدول البرنامج/المستوى بدلاً منه.",
+    desc: "Legacy — للعرض التاريخي · لم يُرحّل. استخدم جدول البرنامج/المستوى بدلاً منه.",
     icon: <Building2 className="h-5 w-5" />,
+    badge: "legacy",
+  },
+  {
+    to: "/reports/section-timetable",
+    title: "جدول المجموعة",
+    desc: "Legacy — للعرض التاريخي · يقرأ نموذج sections التاريخي؛ مجموعات المحاضرات والمعامل هي المسار المعتمد.",
+    icon: <Users2 className="h-5 w-5" />,
     badge: "legacy",
   },
 ];
@@ -114,7 +120,7 @@ const SECTIONS: {
   {
     id: "legacy",
     title: "Legacy — تقارير قديمة",
-    description: "مسارات محفوظة للتوافق — يُفضّل البدائل الحديثة في الأقسام أعلاه.",
+    description: "مسارات محفوظة للعرض التاريخي — يُفضّل البدائل الحديثة في الأقسام أعلاه.",
     items: LEGACY_REPORTS,
     accent: "border-amber-500/30 bg-amber-500/5",
   },

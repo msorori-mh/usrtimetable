@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/card";
 import { DAY_NAMES_AR, fmtTime } from "@/lib/reports/export";
 
 export const Route = createFileRoute("/_authenticated/reports/department-schedule")({
-  head: () => ({ meta: [{ title: "تقرير جدول الأقسام" }] }),
+  head: () => ({ meta: [{ title: "Legacy — للعرض التاريخي" }] }),
   component: Page,
 });
 
@@ -75,40 +75,49 @@ function Page() {
   ];
 
   return (
-    <ReportShell title="تقرير جدول الأقسام" description="الجدول مجمّعًا حسب القسم/البرنامج/المستوى/المجموعة."
-      filename="department_schedule" rows={rows} headers={headers} isLoading={isLoading}
-      emptyMessage={!versionId ? "اختر نسخة جدول للبدء." : "لا توجد محاضرات."}
-      filters={
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <label className="text-xs text-muted-foreground">نسخة الجدول</label>
-            <Select value={versionId} onValueChange={setVersionId}>
-              <SelectTrigger><SelectValue placeholder="اختر نسخة" /></SelectTrigger>
-              <SelectContent>{(versions ?? []).map((v) => <SelectItem key={v.id} value={v.id}>{v.name} — {v.status}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-          <div>
-            <label className="text-xs text-muted-foreground">القسم</label>
-            <Select value={deptId} onValueChange={setDeptId}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">الكل</SelectItem>
-                {(depts ?? []).map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      }>
-      <Card className="p-0 overflow-hidden">
-        <Table>
-          <TableHeader><TableRow>{headers.map((h) => <TableHead key={h.key}>{h.label}</TableHead>)}</TableRow></TableHeader>
-          <TableBody>
-            {rows.map((r, i) => (
-              <TableRow key={i}>{headers.map((h) => <TableCell key={h.key}>{String(r[h.key as keyof typeof r])}</TableCell>)}</TableRow>
-            ))}
-          </TableBody>
-        </Table>
+    <div className="space-y-4" dir="rtl">
+      <Card className="border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+        <h1 className="font-semibold">Legacy — للعرض التاريخي</h1>
+        <p className="mt-1 text-muted-foreground">
+          هذا التقرير يقرأ نموذج sections التاريخي ولم يُرحَّل. استخدم «تقرير جدول البرنامج/المستوى»
+          بدلاً منه.
+        </p>
       </Card>
-    </ReportShell>
+      <ReportShell title="تقرير جدول الأقسام" description="الجدول مجمّعًا حسب القسم/البرنامج/المستوى/المجموعة."
+        filename="department_schedule" rows={rows} headers={headers} isLoading={isLoading}
+        emptyMessage={!versionId ? "اختر نسخة جدول للبدء." : "لا توجد محاضرات."}
+        filters={
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-muted-foreground">نسخة الجدول</label>
+              <Select value={versionId} onValueChange={setVersionId}>
+                <SelectTrigger><SelectValue placeholder="اختر نسخة" /></SelectTrigger>
+                <SelectContent>{(versions ?? []).map((v) => <SelectItem key={v.id} value={v.id}>{v.name} — {v.status}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">القسم</label>
+              <Select value={deptId} onValueChange={setDeptId}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">الكل</SelectItem>
+                  {(depts ?? []).map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        }>
+        <Card className="p-0 overflow-hidden">
+          <Table>
+            <TableHeader><TableRow>{headers.map((h) => <TableHead key={h.key}>{h.label}</TableHead>)}</TableRow></TableHeader>
+            <TableBody>
+              {rows.map((r, i) => (
+                <TableRow key={i}>{headers.map((h) => <TableCell key={h.key}>{String(r[h.key as keyof typeof r])}</TableCell>)}</TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+      </ReportShell>
+    </div>
   );
 }

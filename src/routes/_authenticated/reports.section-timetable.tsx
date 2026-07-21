@@ -6,16 +6,17 @@ import { ReportShell } from "@/components/reports/report-shell";
 import { ReportFilters } from "@/components/reports/report-filters";
 import { ReportTimetableView } from "@/components/reports/report-timetable-view";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card } from "@/components/ui/card";
 import {
   mapRawSessions,
   timetableSessionsToRows,
   TIMETABLE_TABLE_HEADERS,
 } from "@/lib/reports/session-mappers";
-import { fetchSectionTimetableSessions } from "@/lib/reports/queries/session-queries";
+import { fetchSectionTimetableSessions } from "@/lib/reports/queries/legacy-session-queries";
 import { useReportContext } from "@/hooks/reports/useReportContext";
 
 export const Route = createFileRoute("/_authenticated/reports/section-timetable")({
-  head: () => ({ meta: [{ title: "تقرير جدول المجموعة" }] }),
+  head: () => ({ meta: [{ title: "Legacy — للعرض التاريخي" }] }),
   component: Page,
 });
 
@@ -57,44 +58,53 @@ function Page() {
   const ready = !!ctx.versionId && !!sectionId;
 
   return (
-    <ReportShell
-      title="تقرير جدول المجموعة"
-      description={`المجموع: ${totalHours.toFixed(2)} ساعة/أسبوع.`}
-      filterSummary={ctx.filterSummary}
-      reportContext={ctx}
-      filename="section_timetable"
-      rows={rows}
-      headers={TIMETABLE_TABLE_HEADERS}
-      isLoading={isLoading}
-      emptyMessage={!ready ? "اختر نسخة جدول ومجموعة." : "لا توجد محاضرات."}
-      filters={
-        <ReportFilters context={ctx}>
-          <div>
-            <label className="text-xs text-muted-foreground">المجموعة</label>
-            <Select value={sectionId} onValueChange={setSectionId}>
-              <SelectTrigger>
-                <SelectValue placeholder="اختر المجموعة" />
-              </SelectTrigger>
-              <SelectContent>
-                {(sections ?? []).map((s) => {
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  const c = (s as any).courses;
-                  const label = c
-                    ? `${s.section_number} — ${c.code ?? ""} ${c.name ?? ""}`
-                    : s.section_number;
-                  return (
-                    <SelectItem key={s.id} value={s.id}>
-                      {label}
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-          </div>
-        </ReportFilters>
-      }
-    >
-      {ready && sessions.length > 0 && <ReportTimetableView sessions={sessions} />}
-    </ReportShell>
+    <div className="space-y-4" dir="rtl">
+      <Card className="border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+        <h1 className="font-semibold">Legacy — للعرض التاريخي</h1>
+        <p className="mt-1 text-muted-foreground">
+          هذا التقرير يقرأ نموذج sections التاريخي وهو خارج مسار التشغيل الجديد.
+          مجموعات المحاضرات والمعامل هي المسار المعتمد لجدولة المجموعات.
+        </p>
+      </Card>
+      <ReportShell
+        title="تقرير جدول المجموعة"
+        description={`المجموع: ${totalHours.toFixed(2)} ساعة/أسبوع.`}
+        filterSummary={ctx.filterSummary}
+        reportContext={ctx}
+        filename="section_timetable"
+        rows={rows}
+        headers={TIMETABLE_TABLE_HEADERS}
+        isLoading={isLoading}
+        emptyMessage={!ready ? "اختر نسخة جدول ومجموعة." : "لا توجد محاضرات."}
+        filters={
+          <ReportFilters context={ctx}>
+            <div>
+              <label className="text-xs text-muted-foreground">المجموعة</label>
+              <Select value={sectionId} onValueChange={setSectionId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="اختر المجموعة" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(sections ?? []).map((s) => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const c = (s as any).courses;
+                    const label = c
+                      ? `${s.section_number} — ${c.code ?? ""} ${c.name ?? ""}`
+                      : s.section_number;
+                    return (
+                      <SelectItem key={s.id} value={s.id}>
+                        {label}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+          </ReportFilters>
+        }
+      >
+        {ready && sessions.length > 0 && <ReportTimetableView sessions={sessions} />}
+      </ReportShell>
+    </div>
   );
 }
