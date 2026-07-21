@@ -47,6 +47,7 @@ export const harnesses = [
   "cross-college-reference-integrity.harness.ts",
   "phase-9-5-assignment-integration.harness.ts",
   "schedule-version-lifecycle-atomic.harness.ts",
+  "schedule-version-lifecycle.harness.ts",
   "scheduling-headcount-foundation.harness.ts",
   "draft-lecturer-report.harness.ts",
   "admin-routes-inventory.harness.ts",
