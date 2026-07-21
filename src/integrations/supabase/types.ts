@@ -1631,7 +1631,7 @@ export type Database = {
           name_ar: string
           sample_file_url?: string | null
           sheet_name?: string | null
-          target_entity?: string
+          target_entity: string
           template_key: string
           updated_at?: string
           version?: number
