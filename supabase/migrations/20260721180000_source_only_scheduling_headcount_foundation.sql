@@ -1,6 +1,13 @@
 -- SOURCE ONLY — NOT APPLIED — waiting APPROVE_DB_MIGRATION_APPLY.
 -- Scheduling headcount foundation. This file is intentionally not applied by this change.
 -- A2 shared groups will later SUM scheduling_headcount for explicitly participating cohorts.
+--
+-- Apply prerequisites (also currently NOT APPLIED on Production until approved):
+--   20260717050000_source_only_harden_cross_college_references.sql
+--   must create UNIQUE(id, college_id) on academic_cohorts / academic_terms first,
+--   because this migration uses composite FKs (cohort_id, college_id) and
+--   (term_id, college_id).
+-- No DML against operational business rows. No backfill. No default headcounts.
 
 CREATE TABLE public.scheduling_cohort_term_headcounts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -126,6 +133,9 @@ BEGIN
   SELECT * INTO v_cohort FROM public.academic_cohorts WHERE id = p_cohort_id;
   IF NOT FOUND OR v_cohort.term_id <> p_term_id THEN RETURN jsonb_build_object('ok', false, 'code', 'COHORT_TERM_NOT_FOUND', 'message', 'Cohort and term must match'); END IF;
   IF NOT public.can_manage_college(v_uid, v_cohort.college_id) THEN RETURN jsonb_build_object('ok', false, 'code', 'FORBIDDEN', 'message', 'College management permission required'); END IF;
+  IF NULLIF(btrim(p_source), '') IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'code', 'SOURCE_REQUIRED', 'message', 'Headcount source is required');
+  END IF;
   IF p_registered_student_count < 0 OR p_eligible_student_count < 0 OR p_expected_attendance_count < 0
     OR p_reserve_margin < 0 OR p_scheduling_headcount < 0 OR p_exam_eligible_count < 0 THEN
     RETURN jsonb_build_object('ok', false, 'code', 'NEGATIVE_COUNT', 'message', 'Counts cannot be negative');
@@ -193,15 +203,44 @@ BEGIN
   IF p_course_offering_id IS NULL AND p_plan_course_component_id IS NULL THEN RETURN jsonb_build_object('ok', false, 'code', 'OVERRIDE_TARGET_REQUIRED', 'message', 'Offering or component is required'); END IF;
   IF p_scheduling_headcount < 0 OR p_exam_eligible_count < 0 OR p_reserve_margin < 0 THEN RETURN jsonb_build_object('ok', false, 'code', 'NEGATIVE_COUNT', 'message', 'Counts cannot be negative'); END IF;
   IF p_scheduling_headcount > v_base.eligible_student_count AND (NOT p_allow_over_eligible OR NULLIF(btrim(p_notes), '') IS NULL) THEN RETURN jsonb_build_object('ok', false, 'code', 'OVER_ELIGIBLE_REQUIRES_REASON', 'message', 'Over-eligible override requires manager override and notes'); END IF;
+  IF NULLIF(btrim(p_source), '') IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'code', 'SOURCE_REQUIRED', 'message', 'Override source is required');
+  END IF;
   IF p_course_offering_id IS NOT NULL THEN SELECT college_id INTO v_offering_college FROM public.course_offerings WHERE id = p_course_offering_id; END IF;
   IF p_plan_course_component_id IS NOT NULL THEN SELECT college_id INTO v_component_college FROM public.plan_course_components WHERE id = p_plan_course_component_id; END IF;
   IF (p_course_offering_id IS NOT NULL AND v_offering_college IS DISTINCT FROM v_base.college_id)
     OR (p_plan_course_component_id IS NOT NULL AND v_component_college IS DISTINCT FROM v_base.college_id) THEN RETURN jsonb_build_object('ok', false, 'code', 'COLLEGE_MISMATCH', 'message', 'Override target must belong to the same college'); END IF;
-  INSERT INTO public.scheduling_headcount_overrides (college_id, headcount_id, course_offering_id, plan_course_component_id, scheduling_headcount, exam_eligible_count, reserve_margin, approval_status, source, notes, approved_by, approved_at)
-  VALUES (v_base.college_id, p_headcount_id, p_course_offering_id, p_plan_course_component_id, p_scheduling_headcount, p_exam_eligible_count, p_reserve_margin, 'approved', p_source, p_notes, v_uid, now())
-  ON CONFLICT (headcount_id, (COALESCE(course_offering_id, '00000000-0000-0000-0000-000000000000'::uuid)), (COALESCE(plan_course_component_id, '00000000-0000-0000-0000-000000000000'::uuid))) WHERE active
-  DO UPDATE SET scheduling_headcount = EXCLUDED.scheduling_headcount, exam_eligible_count = EXCLUDED.exam_eligible_count, reserve_margin = EXCLUDED.reserve_margin, source = EXCLUDED.source, notes = EXCLUDED.notes, approval_status = 'approved', approved_by = v_uid, approved_at = now()
-  RETURNING * INTO v_row;
+  -- Manual upsert against the partial unique index (expression ON CONFLICT is fragile).
+  SELECT * INTO v_row
+  FROM public.scheduling_headcount_overrides
+  WHERE headcount_id = p_headcount_id
+    AND active
+    AND course_offering_id IS NOT DISTINCT FROM p_course_offering_id
+    AND plan_course_component_id IS NOT DISTINCT FROM p_plan_course_component_id
+  FOR UPDATE;
+  IF FOUND THEN
+    UPDATE public.scheduling_headcount_overrides SET
+      scheduling_headcount = p_scheduling_headcount,
+      exam_eligible_count = p_exam_eligible_count,
+      reserve_margin = p_reserve_margin,
+      source = p_source,
+      notes = p_notes,
+      approval_status = 'approved',
+      approved_by = v_uid,
+      approved_at = now()
+    WHERE id = v_row.id
+    RETURNING * INTO v_row;
+  ELSE
+    INSERT INTO public.scheduling_headcount_overrides (
+      college_id, headcount_id, course_offering_id, plan_course_component_id,
+      scheduling_headcount, exam_eligible_count, reserve_margin, approval_status,
+      source, notes, approved_by, approved_at
+    ) VALUES (
+      v_base.college_id, p_headcount_id, p_course_offering_id, p_plan_course_component_id,
+      p_scheduling_headcount, p_exam_eligible_count, p_reserve_margin, 'approved',
+      p_source, p_notes, v_uid, now()
+    ) RETURNING * INTO v_row;
+  END IF;
   INSERT INTO public.scheduling_headcount_revisions (college_id, headcount_id, override_id, revision_kind, snapshot, changed_by, notes)
     VALUES (v_base.college_id, v_base.id, v_row.id, 'override_upsert', to_jsonb(v_row), v_uid, p_notes);
   INSERT INTO public.audit_logs (actor_id, action, entity, entity_id, college_id, details)
