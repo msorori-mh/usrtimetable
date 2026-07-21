@@ -73,18 +73,20 @@ interface SessionDetail {
   delivery_group_id: string | null;
   instructors: { full_name: string } | null;
   rooms: { code: string; name: string } | null;
-  sections: { section_number: string } | null;
   course_offerings: {
     courses: { code: string; name: string } | null;
   } | null;
 }
 
+/**
+ * Session evidence columns for conflict drill-down — V2 delivery model only
+ * (cohort_id / delivery_group_id). Legacy sections are never joined here.
+ */
 const CONFLICT_SESSION_SELECT = `
   id, schedule_version_id, day_of_week, start_time, end_time, study_system, session_type, updated_at,
   cohort_id, delivery_group_id,
   instructors(full_name),
   rooms(code, name),
-  sections(section_number),
   course_offerings(courses(code, name))
 `;
 
@@ -186,7 +188,6 @@ export async function fetchConflictReportRows(params: {
         room: sess?.rooms ? `${sess.rooms.code ?? ""} ${sess.rooms.name ?? ""}`.trim() : "",
         cohort: sess?.cohort_id ?? "",
         delivery_group: sess?.delivery_group_id ?? "",
-        legacy_section: sess?.sections?.section_number ?? "",
         day_time: overlapText || sessionTime(primary) || sessionTime(related),
         study_system: sess?.study_system ?? "",
         check_status: check.status,
