@@ -1,0 +1,48 @@
+{
+  "swarm": "USRTIMETABLE-LAUNCH-CLOSURE-SWARM-01",
+  "phase": "PHASE-A1-SOURCE-CLOSURE-LEGACY-CLASSIFICATION-AND-SCHEDULING-HEADCOUNT-FOUNDATION-01",
+  "reconciled_at": "2026-07-21T18:30:00Z",
+  "origin_main_at_phase_start": "cbd4546886057297fee1bc8adec4eebfde729ab1",
+  "origin_main_current": "f9413193485f4f6aad2ce320ac2f951763910bde",
+  "decision_target": "PASS_WITH_NOTES — A1_SOURCE_CLOSED_HEADCOUNT_SOURCE_COMPLETE_APPROVALS_REQUIRED",
+  "tracks": {
+    "A1-S1": "COMPLETE",
+    "A1-S2": "COMPLETE",
+    "A1-S3_PACKAGE": "COMPLETE",
+    "A1-S3_PRODUCTION_VERIFY": "COMPLETE",
+    "A1-S4": "MERGED",
+    "A1-S5": "MERGED",
+    "A1_SOURCE": "COMPLETE",
+    "A1_PRODUCTION_REMEDIATION": "PENDING",
+    "LEGACY_ORPHAN_CLASSIFICATION_PACKAGE": "COMPLETE_WAITING_APPROVE_LEGACY_DATA_REMEDIATION",
+    "SCHEDULING_HEADCOUNT_FOUNDATION": "SOURCE_PR_READY",
+    "SCHEDULING_HEADCOUNT_SOURCE": "IN_PROGRESS_MERGE",
+    "SCHEDULING_HEADCOUNT_PRODUCTION": "WAITING_APPROVE_DB_MIGRATION_APPLY"
+  },
+  "prs": {
+    "60": {
+      "state": "MERGED",
+      "mergeCommit": "52a9726bca91d7a9a3f30dab6648583e06dcfd40",
+      "url": "https://github.com/msorori-mh/usrtimetable/pull/60"
+    },
+    "61": {
+      "state": "MERGED",
+      "mergeCommit": "f9413193485f4f6aad2ce320ac2f951763910bde",
+      "url": "https://github.com/msorori-mh/usrtimetable/pull/61"
+    },
+    "62": {
+      "state": "OPEN_DRAFT_OR_READY",
+      "branch": "swarm/scheduling-headcount-foundation",
+      "head": "73dc8fa",
+      "url": "https://github.com/msorori-mh/usrtimetable/pull/62"
+    }
+  },
+  "db_writes": false,
+  "migration_apply": false,
+  "deploy_publish": false,
+  "a2_started": false,
+  "pending_approvals": [
+    "APPROVE_LEGACY_DATA_REMEDIATION",
+    "APPROVE_DB_MIGRATION_APPLY"
+  ]
+}
