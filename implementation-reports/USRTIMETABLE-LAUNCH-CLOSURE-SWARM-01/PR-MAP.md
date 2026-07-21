@@ -1,10 +1,11 @@
-# PR-MAP — USRTIMETABLE-LAUNCH-CLOSURE-SWARM-01
+# PR MAP — USRTIMETABLE-LAUNCH-CLOSURE-SWARM-01
 
-| PR | Branch | Role | State (reconciled) |
-|----|--------|------|--------------------|
-| #60 | `swarm/a1-3-legacy-write-blocking` | A1.3 legacy write blocking + A1.3b plan + A1.3c source migration | OPEN draft MERGEABLE CLEAN @ `029bbe4e` |
-| #61 | `swarm/a1-5-reports-remediation` | A1.5 reports off Sections / New Flow sources | OPEN draft MERGEABLE CLEAN @ `c964cf59` |
-| (pending) | `swarm/scheduling-headcount-foundation` | Scheduling headcount source foundation | NOT OPEN YET |
+| PR | Title | State | Merged at | Notes |
+|---|---|---|---|---|
+| #60 | A1.3: Legacy write blocking (A1.3a code + A1.3b remediation plan + A1.3c hardening draft) | MERGED | 2026-07-21T17:59:41Z | sections.tsx read-only; import commit guard; legacy-write-blocking harness; A1.3b/A1.3c design only |
+| #61 | A1.5: remediate report data sources away from Legacy sections | MERGED | 2026-07-21T18:08:14Z | Reports on delivery_groups via raw delivery_group_id; Legacy reports tagged; reports-sources harness |
+| #62 | Scheduling headcount foundation (source-only) | MERGED | 2026-07-21T18:43:41Z | Merge commit 91b5f65; migration 20260721180000 NOT APPLIED; no A2 shared groups |
 
-No duplicate alternate PRs found for A1.3 / A1.5 at reconcile time.
-Do not open duplicate PRs.
+Post-#62 main drift (not PRs): 8fcc583, 0b8f78e, 836d227, 6c4401bb "Held classification due to schema" (lovable-dev, 2026-07-21T19:03:52Z).
+
+Rules: no duplicate PRs; do not re-execute #60/#61/#62; do not delete branches/worktrees.

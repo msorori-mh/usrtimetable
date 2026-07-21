@@ -1,48 +1,82 @@
 {
   "swarm": "USRTIMETABLE-LAUNCH-CLOSURE-SWARM-01",
-  "phase": "PHASE-A1-SOURCE-CLOSURE-LEGACY-CLASSIFICATION-AND-SCHEDULING-HEADCOUNT-FOUNDATION-01",
-  "reconciled_at": "2026-07-21T18:30:00Z",
-  "origin_main_at_phase_start": "cbd4546886057297fee1bc8adec4eebfde729ab1",
-  "origin_main_current": "f9413193485f4f6aad2ce320ac2f951763910bde",
-  "decision_target": "PASS_WITH_NOTES — A1_SOURCE_CLOSED_HEADCOUNT_SOURCE_COMPLETE_APPROVALS_REQUIRED",
-  "tracks": {
-    "A1-S1": "COMPLETE",
-    "A1-S2": "COMPLETE",
-    "A1-S3_PACKAGE": "COMPLETE",
-    "A1-S3_PRODUCTION_VERIFY": "COMPLETE",
-    "A1-S4": "MERGED",
-    "A1-S5": "MERGED",
-    "A1_SOURCE": "COMPLETE",
-    "A1_PRODUCTION_REMEDIATION": "PENDING",
-    "LEGACY_ORPHAN_CLASSIFICATION_PACKAGE": "COMPLETE_WAITING_APPROVE_LEGACY_DATA_REMEDIATION",
-    "SCHEDULING_HEADCOUNT_FOUNDATION": "SOURCE_PR_READY",
-    "SCHEDULING_HEADCOUNT_SOURCE": "IN_PROGRESS_MERGE",
-    "SCHEDULING_HEADCOUNT_PRODUCTION": "WAITING_APPROVE_DB_MIGRATION_APPLY"
+  "current_phase": "PHASE_A1_POSTMERGE_VERIFICATION_AND_LEGACY_SCHEMA_MAP",
+  "reconciled_at": "2026-07-22",
+  "recovery_run": "USRTIMETABLE-SWARM-STATE-RECOVERY-AND-NEXT-SAFE-ACTIONS-01",
+  "current_origin_main": "91b5f65eef0c8f3b82538cf17c26f8b87c0fad46",
+  "origin_main_user_confirmed": "91b5f65eef0c8f3b82538cf17c26f8b87c0fad46",
+  "origin_main_actual_at_recovery": "6c4401bb0bc18e35b23761a276776cdbb755ebf8",
+  "origin_main_drift_note": "91b5f65 (PR #62 merge) is an ancestor of current origin/main. 4 lovable-dev commits followed (8fcc583, 0b8f78e, 836d227, 6c4401bb 'Held classification due to schema', 2026-07-21T19:03:52Z), touching bun.lock, package.json, src/integrations/supabase/types.ts, src/routeTree.gen.ts. Consistent with the confirmed fact that LEGACY_ORPHAN_CLASSIFICATION_V1 was rejected on schema grounds. User confirmation required on which SHA the final-main gates must target.",
+  "completed_tasks": [
+    "PR60_MERGED",
+    "PR61_MERGED",
+    "PR62_MERGED",
+    "A1_SOURCE_COMPLETE",
+    "SCHEDULING_HEADCOUNT_SOURCE_COMPLETE",
+    "PRODUCTION_READONLY_DELTA_COMPLETE"
+  ],
+  "blocked_tasks": [
+    "LEGACY_ORPHAN_CLASSIFICATION",
+    "LEGACY_DATA_REMEDIATION",
+    "MIGRATION_APPLY",
+    "A2"
+  ],
+  "pending_approvals": [
+    "APPROVE_LEGACY_DATA_REMEDIATION",
+    "APPROVE_DB_MIGRATION_APPLY",
+    "APPROVE_TEST_DATA_CLEANUP",
+    "APPROVE_REAL_DATA_IMPORT",
+    "APPROVE_PILOT_EXECUTION",
+    "APPROVE_DEPLOY_PUBLISH"
+  ],
+  "production_facts": {
+    "academic_programs": 0,
+    "sections": 0,
+    "orphan_teaching_assignments_carrying_section_id": 174,
+    "orphan_course_offering_sections": 5,
+    "ta_v2_carrying_section_id": 0,
+    "new_flow_schedule_sessions_carrying_section_id": 0
   },
-  "prs": {
-    "60": {
-      "state": "MERGED",
-      "mergeCommit": "52a9726bca91d7a9a3f30dab6648583e06dcfd40",
-      "url": "https://github.com/msorori-mh/usrtimetable/pull/60"
-    },
-    "61": {
-      "state": "MERGED",
-      "mergeCommit": "f9413193485f4f6aad2ce320ac2f951763910bde",
-      "url": "https://github.com/msorori-mh/usrtimetable/pull/61"
-    },
-    "62": {
-      "state": "OPEN_DRAFT_OR_READY",
-      "branch": "swarm/scheduling-headcount-foundation",
-      "head": "73dc8fa",
-      "url": "https://github.com/msorori-mh/usrtimetable/pull/62"
+  "rejected_packages": {
+    "LEGACY_ORPHAN_CLASSIFICATION_V1": {
+      "status": "REJECTED",
+      "reason": "Assumed delivery_groups.course_offering_id; this column does not exist in Production.",
+      "rule": "Do not rerun. Do not guess the delivery-group relationship. Run PHASE-A1-LEGACY-RELATIONSHIP-SCHEMA-MAP (read-only) first."
     }
   },
+  "source_only_migrations_not_applied": [
+    "20260717050000_source_only_harden_cross_college_references.sql",
+    "20260718183000_forward_harden_cohort_curriculum_runtime.sql",
+    "20260720120000_source_only_availability_all_active_days.sql",
+    "20260720143000_source_only_program_department_integrity.sql",
+    "20260721090000_source_only_legacy_write_hardening.sql",
+    "20260721180000_source_only_scheduling_headcount_foundation.sql"
+  ],
+  "migration_apply_rule": "No migration is considered applied without remote evidence.",
+  "expected_migration_apply_order": [
+    "20260717050000",
+    "20260720143000 (when its need and ordering are confirmed)",
+    "20260721180000",
+    "Insert approved cohort headcounts",
+    "Then A2"
+  ],
+  "migration_20260721090000_rule": "Conditional on Legacy remediation first; do not apply now.",
+  "prs": {
+    "60": {"state": "MERGED", "merged_at": "2026-07-21T17:59:41Z", "title": "A1.3: Legacy write blocking", "url": "https://github.com/msorori-mh/usrtimetable/pull/60"},
+    "61": {"state": "MERGED", "merged_at": "2026-07-21T18:08:14Z", "title": "A1.5: remediate report data sources away from Legacy sections", "url": "https://github.com/msorori-mh/usrtimetable/pull/61"},
+    "62": {"state": "MERGED", "merged_at": "2026-07-21T18:43:41Z", "merge_commit": "91b5f65eef0c8f3b82538cf17c26f8b87c0fad46", "title": "Scheduling headcount foundation (source-only)", "url": "https://github.com/msorori-mh/usrtimetable/pull/62"}
+  },
+  "tracks": {
+    "A1_SOURCE": "COMPLETE",
+    "A1_PRODUCTION_REMEDIATION": "PENDING",
+    "SCHEDULING_HEADCOUNT_SOURCE": "COMPLETE",
+    "SCHEDULING_HEADCOUNT_PRODUCTION": "PENDING_MIGRATION_APPLY",
+    "A2": "NOT_STARTED"
+  },
+  "next_safe_action": "PREPARE_FINAL_MAIN_GATES_AND_LEGACY_RELATIONSHIP_SCHEMA_MAP",
+  "state_provenance": "RECONSTRUCTED_FROM_GITHUB_AND_USER_CONFIRMED_EVIDENCE",
   "db_writes": false,
   "migration_apply": false,
   "deploy_publish": false,
-  "a2_started": false,
-  "pending_approvals": [
-    "APPROVE_LEGACY_DATA_REMEDIATION",
-    "APPROVE_DB_MIGRATION_APPLY"
-  ]
+  "a2_started": false
 }

@@ -1,13 +1,14 @@
 # APPROVAL GATES — USRTIMETABLE-LAUNCH-CLOSURE-SWARM-01
 
-| Gate | Purpose | Status |
-|------|---------|--------|
-| G-SOURCE-PR60 | Review + merge PR #60 | IN_PROGRESS |
-| G-SOURCE-PR61 | Reconcile + merge PR #61 | PENDING |
-| G-A1-POST-MERGE | Clean-main harness/tsc/build gates | PENDING |
-| APPROVE_LEGACY_DATA_REMEDIATION | Allow remediation of 174 TA + 5 COS | WAITING |
-| APPROVE_DB_MIGRATION_APPLY | Apply source-only migrations to Production | WAITING |
-| G-A2-START | Begin A2 shared delivery | BLOCKED until headcount source COMPLETE |
+All gates are EXPLICIT user approvals. The swarm never self-approves.
 
-Source merges of approved architecture PRs are allowed after quality gates without a separate human gate.
-Production data remediation and migration apply are never automatic.
+| Gate | Status | Scope when approved |
+|---|---|---|
+| APPROVE_LEGACY_DATA_REMEDIATION | PENDING | A1.3b execution: backup (zz_backup_a1_3b_*_20260721), dry-run, then remediation of 174 TA + 5 COS per exact-IDs manifest |
+| APPROVE_DB_MIGRATION_APPLY | PENDING | Applying source-only migrations in the approved order (20260717050000 -> 20260720143000 if confirmed -> 20260721180000); 20260721090000 only after Legacy remediation |
+| APPROVE_TEST_DATA_CLEANUP | PENDING | Removal of confirmed test/generated data after classification |
+| APPROVE_REAL_DATA_IMPORT | PENDING | Import of real academic data |
+| APPROVE_PILOT_EXECUTION | PENDING | Pilot run |
+| APPROVE_DEPLOY_PUBLISH | PENDING | Deploy/publish |
+
+Automation stop conditions: USER_RUNS_FINAL_MAIN_GATES, USER_RUNS_LEGACY_RELATIONSHIP_SCHEMA_MAP, APPROVE_LEGACY_DATA_REMEDIATION, APPROVE_DB_MIGRATION_APPLY.
