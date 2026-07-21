@@ -4,11 +4,17 @@
   "reconciled_at": "2026-07-22",
   "recovery_run": "USRTIMETABLE-SWARM-STATE-RECOVERY-AND-NEXT-SAFE-ACTIONS-01",
   "last_resume_run": "USRTIMETABLE-SWARM-RESUME-GATES-AND-SCHEMA-MAP-PREP-01",
-  "current_origin_main": "91b5f65eef0c8f3b82538cf17c26f8b87c0fad46",
+  "last_handoff_phase": "PHASE-A1-LATEST-MAIN-GATES-AND-SCHEMA-MAP-HANDOFF-01",
+  "current_origin_main": "1c23c80885871ba800db3b3d9bc0e1f089ef0077",
   "origin_main_user_confirmed": "91b5f65eef0c8f3b82538cf17c26f8b87c0fad46",
-  "origin_main_actual_at_recovery": "6c4401bb0bc18e35b23761a276776cdbb755ebf8",
-  "origin_main_observed_at_resume": "053d3bc1a7a82f982acfa57e7133d0f65681a01a",
-  "origin_main_drift_note": "91b5f65 (PR #62 merge) is an ancestor of current origin/main. 4 lovable-dev commits followed (8fcc583, 0b8f78e, 836d227, 6c4401bb 'Held classification due to schema', 2026-07-21T19:03:52Z), touching bun.lock, package.json, src/integrations/supabase/types.ts, src/routeTree.gen.ts; then 053d3bc1 (swarm state-only). Consistent with the confirmed fact that LEGACY_ORPHAN_CLASSIFICATION_V1 was rejected on schema grounds. User confirmation required on which SHA the final-main gates must target.",
+  "origin_main_g0_resolution": {
+    "resolved_at": "2026-07-22",
+    "current_origin_main": "1c23c80885871ba800db3b3d9bc0e1f089ef0077",
+    "commit_order_after_pr62": ["91b5f65", "8fcc583", "0b8f78e", "836d227", "6c4401bb", "053d3bc", "213af452", "1c23c808"],
+    "product_source_changed_after_pr62": false,
+    "scope_note": "lovable-dev commits touched bun.lock/package.json/src/integrations/supabase/types.ts/src/routeTree.gen.ts (manifests + generated files only). Swarm commits 053d3bc/213af452/1c23c808 touched implementation-reports/ state+docs only. No hand-written product source changed after PR #62."
+  },
+  "origin_main_drift_note": "91b5f65 (PR #62 merge) is an ancestor of current origin/main (1c23c808). Superseded package USRTIMETABLE-FINAL-MAIN-91B5F65-LOCAL-GATES.zip must NOT be used anymore; use USRTIMETABLE-LATEST-MAIN-LOCAL-GATES.zip pinned to 1c23c808 (self-HOLDs if origin/main moves).",
   "completed_tasks": [
     "PR60_MERGED",
     "PR61_MERGED",
@@ -17,7 +23,9 @@
     "SCHEDULING_HEADCOUNT_SOURCE_COMPLETE",
     "PRODUCTION_READONLY_DELTA_COMPLETE",
     "FINAL_MAIN_GATES_PACKAGE_PREPARED",
-    "LEGACY_RELATIONSHIP_SCHEMA_MAP_PACKAGE_PREPARED"
+    "LEGACY_RELATIONSHIP_SCHEMA_MAP_PACKAGE_PREPARED",
+    "LATEST_MAIN_GATES_PACKAGE_REGENERATED",
+    "HANDOFF_PACKAGE_DELIVERED"
   ],
   "blocked_tasks": [
     "LEGACY_ORPHAN_CLASSIFICATION",
@@ -39,8 +47,15 @@
     "orphan_teaching_assignments_carrying_section_id": 174,
     "orphan_course_offering_sections": 5,
     "ta_v2_carrying_section_id": 0,
-    "new_flow_schedule_sessions_carrying_section_id": 0
+    "new_flow_schedule_sessions_carrying_section_id": 0,
+    "course_offerings_term_id_fk": {
+      "relationship": "course_offerings.term_id -> academic_terms.id",
+      "fk_validated": true,
+      "delete_behavior": "RESTRICT",
+      "evidence": "USER_CONFIRMED_PRODUCTION_FACT (USRTIMETABLE-SWARM-STATE-RECOVERY-AND-RESUME-01)"
+    }
   },
+  "state_correction_note": "Commit 1c23c808 (parallel session) inadvertently dropped the user-confirmed facts merged in 213af452 (course_offerings_term_id_fk and 20260715120000 in the not-applied list). This update restores them; both remain user-confirmed.",
   "rejected_packages": {
     "LEGACY_ORPHAN_CLASSIFICATION_V1": {
       "status": "REJECTED",
@@ -49,24 +64,31 @@
     }
   },
   "prepared_packages": {
-    "USRTIMETABLE-FINAL-MAIN-91B5F65-LOCAL-GATES.zip": {
-      "status": "PREPARED_AWAITING_USER_EXECUTION",
-      "contents": ["RUN-FINAL-MAIN-GATES.ps1", "INSTRUCTIONS.md", "EXPECTED-RESULTS.md", "GATE-MANIFEST.json", "RESULTS-TEMPLATE.json"],
-      "gates": ["G0 REPO_STATE", "G1 DEPS_INSTALL (bun install --frozen-lockfile)", "G2 TYPECHECK (tsc --noEmit)", "G3 BUILD (vite build)", "G4 HARNESS_SUITE (42 harnesses, documented missing-historical-artifact acceptance)", "G5 LINT (eslint)"],
-      "target_sha_default": "91b5f65eef0c8f3b82538cf17c26f8b87c0fad46",
-      "target_sha_override": "-TargetSha (user decides per D-DRIFT-01)",
-      "stop_condition": "USER_RUNS_FINAL_MAIN_GATES"
+    "USRTIMETABLE-LATEST-MAIN-LOCAL-GATES.zip": {
+      "status": "DELIVERED_AWAITING_USER_EXECUTION",
+      "pinned_current_origin_main": "1c23c80885871ba800db3b3d9bc0e1f089ef0077",
+      "hold_on_sha_change": "HOLD — ORIGIN_MAIN_CHANGED_REGENERATE_PACKAGE",
+      "contents": ["RUN-LATEST-MAIN-GATES.ps1", "INSTRUCTIONS.md", "EXPECTED-RESULTS.md", "GATE-MANIFEST.json", "RESULTS-TEMPLATE.json"],
+      "stop_condition": "USER_RUNS_LATEST_MAIN_GATES"
     },
     "PHASE-A1-LEGACY-RELATIONSHIP-SCHEMA-MAP": {
-      "status": "PREPARED_AWAITING_USER_EXECUTION",
+      "status": "DELIVERED_AWAITING_USER_EXECUTION",
       "contents": ["PHASE-A1-LEGACY-RELATIONSHIP-SCHEMA-MAP-READONLY.sql", "PHASE-A1-LEGACY-RELATIONSHIP-SCHEMA-MAP-LOVABLE-EXEC.txt", "PHASE-A1-LEGACY-RELATIONSHIP-SCHEMA-MAP-COMBINED.txt"],
-      "questions": "Q1-Q10: Q1-Q4 catalog-only (columns, FKs, unique keys, relationship verdict matrix); Q5-Q10 guarded aggregate data probes (counters, offering context, delivery-group matchability, section liveness, V2 alternatives, verdict+manifests)",
-      "verification": "12 statements parsed with a real PostgreSQL parser; all SELECT/WITH-SELECT; delivery_groups.course_offering_id referenced only in catalog existence checks",
+      "verification": "10 statements parsed with a real PostgreSQL parser (pglast); all SelectStmt; zero DML/DDL/dynamic/temp/RPC tokens; delivery_groups.course_offering_id appears only as a string literal in catalog existence probes, never as a column reference",
       "classification_labels": ["PROVEN_BY_FK", "PROVEN_BY_UNIQUE_KEY", "SOURCE_ONLY_NOT_IN_PRODUCTION", "NO_PROVEN_RELATION", "UNKNOWN"],
       "stop_condition": "USER_RUNS_LEGACY_RELATIONSHIP_SCHEMA_MAP"
+    },
+    "USRTIMETABLE-LATEST-MAIN-AND-SCHEMA-MAP-HANDOFF.zip": {
+      "status": "DELIVERED",
+      "contents": ["USRTIMETABLE-LATEST-MAIN-LOCAL-GATES.zip", "schema map x3", "SCHEDULING-HEADCOUNT-PRODUCTION-DEPENDENCY-MAP.md", "STATE.json snapshot", "HANDOFF-INSTRUCTIONS.md"]
+    },
+    "USRTIMETABLE-FINAL-MAIN-91B5F65-LOCAL-GATES.zip": {
+      "status": "SUPERSEDED_DO_NOT_USE",
+      "reason": "91b5f65 is no longer latest origin/main."
     }
   },
   "source_only_migrations_not_applied": [
+    "20260715120000_approve_capacity_split_proposal.sql",
     "20260717050000_source_only_harden_cross_college_references.sql",
     "20260718183000_forward_harden_cohort_curriculum_runtime.sql",
     "20260720120000_source_only_availability_all_active_days.sql",
@@ -95,7 +117,7 @@
     "SCHEDULING_HEADCOUNT_PRODUCTION": "PENDING_MIGRATION_APPLY",
     "A2": "NOT_STARTED"
   },
-  "next_safe_action": "AWAIT_USER_EXECUTION_OF_FINAL_MAIN_GATES_AND_LEGACY_RELATIONSHIP_SCHEMA_MAP",
+  "next_safe_action": "USER_RUNS_LATEST_MAIN_GATES_AND_LEGACY_SCHEMA_MAP",
   "state_provenance": "RECONSTRUCTED_FROM_GITHUB_AND_USER_CONFIRMED_EVIDENCE",
   "db_writes": false,
   "migration_apply": false,
