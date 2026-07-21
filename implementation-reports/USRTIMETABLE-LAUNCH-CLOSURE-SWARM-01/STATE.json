@@ -5,6 +5,7 @@
   "recovery_run": "USRTIMETABLE-SWARM-STATE-RECOVERY-AND-NEXT-SAFE-ACTIONS-01",
   "last_resume_run": "USRTIMETABLE-SWARM-RESUME-GATES-AND-SCHEMA-MAP-PREP-01",
   "last_handoff_phase": "PHASE-A1-LATEST-MAIN-GATES-AND-SCHEMA-MAP-HANDOFF-01",
+  "last_verify_hold_run": "USRTIMETABLE-SWARM-RESUME-VERIFY-HOLD-01",
   "current_origin_main": "1c23c80885871ba800db3b3d9bc0e1f089ef0077",
   "origin_main_user_confirmed": "91b5f65eef0c8f3b82538cf17c26f8b87c0fad46",
   "origin_main_g0_resolution": {
@@ -56,6 +57,14 @@
     }
   },
   "state_correction_note": "Commit 1c23c808 (parallel session) inadvertently dropped the user-confirmed facts merged in 213af452 (course_offerings_term_id_fk and 20260715120000 in the not-applied list). This update restores them; both remain user-confirmed.",
+  "side_branch_note": {
+    "branch": "swarm/restore-headcount-types-and-state-01",
+    "tip": "0fc247ff399eac8d193f9e0ee54f9b749db3ac8c",
+    "contents": "Byte-exact restoration of generated files to their 91b5f65 (PR #62) blobs: src/integrations/supabase/types.ts (blob 340856c3bd0a889fd2195831507d49aed4516ad0, 119334 bytes) and src/routeTree.gen.ts (blob 3a545d43154a53421daa861c185d226998f1ceec, 62179 bytes), verified via GitHub blob SHAs.",
+    "origin": "In-flight work resumed from the lost Sandbox session (USRTIMETABLE-SWARM-RESUME-VERIFY-HOLD-01, 2026-07-22).",
+    "status": "NO_PR_NO_MERGE_AWAITING_USER_DECISION",
+    "main_impact": "none"
+  },
   "rejected_packages": {
     "LEGACY_ORPHAN_CLASSIFICATION_V1": {
       "status": "REJECTED",

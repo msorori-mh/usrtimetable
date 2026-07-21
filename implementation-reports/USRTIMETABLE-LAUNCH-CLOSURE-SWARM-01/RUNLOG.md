@@ -2,6 +2,15 @@
 
 State source of truth: this folder (origin/main). Sandbox copies are ephemeral and never authoritative.
 
+## 2026-07-22 — USRTIMETABLE-SWARM-RESUME-VERIFY-HOLD-01
+
+- Session resumed per D-STATE-01: state fetched from origin/main (tip b6a5a491f9f70f1cfba5dc5696fb33f64dbcee6b, PR #64; STATE.json blob abf0b80d8fadd4686cba6824273740a4a018925c). No Sandbox state used.
+- Re-verified via GitHub API: PR #60 MERGED 2026-07-21T17:59:41Z; PR #61 MERGED 2026-07-21T18:08:14Z; PR #62 MERGED 2026-07-21T18:43:41Z (merge commit 91b5f65eef0c8f3b82538cf17c26f8b87c0fad46, ancestor of current main). origin/main tip = b6a5a491 with current_origin_main pinned to 1c23c80885871ba800db3b3d9bc0e1f089ef0077.
+- Phase check: USRTIMETABLE-SWARM-STATE-RECOVERY-AND-NEXT-SAFE-ACTIONS-01 already complete on main (053d3bc1a7a82f982acfa57e7133d0f65681a01a). NOT re-executed (no-duplicate rule).
+- next_safe_action = USER_RUNS_LATEST_MAIN_GATES_AND_LEGACY_SCHEMA_MAP → user-side gate → HOLD. No agent execution performed; awaiting user gate results (USRTIMETABLE-LATEST-MAIN-LOCAL-GATES.zip + PHASE-A1-LEGACY-RELATIONSHIP-SCHEMA-MAP package, both DELIVERED_AWAITING_USER_EXECUTION).
+- Side branch note: swarm/restore-headcount-types-and-state-01 (tip 0fc247ff399eac8d193f9e0ee54f9b749db3ac8c) holds byte-exact restorations of two generated files to their 91b5f65 (PR #62) blobs — src/integrations/supabase/types.ts (blob 340856c3bd0a889fd2195831507d49aed4516ad0, 119334 bytes) and src/routeTree.gen.ts (blob 3a545d43154a53421daa861c185d226998f1ceec, 62179 bytes) — each verified via GitHub blob SHA equality. Origin: in-flight work resumed from the lost Sandbox session. No PR opened, not merged, zero main impact; branch retained per no-deletion rule. Awaiting user decision.
+- No DB writes, no migration apply, no backfill/cleanup, no touching the 174 TA / 5 COS rows, no A2, no real import, no deploy/publish, no duplicate PRs, no re-execution of completed phases, no branch/worktree deletion, no production-ready claim.
+
 ## 2026-07-22 — USRTIMETABLE-SWARM-RESUME-GATES-AND-SCHEMA-MAP-PREP-01
 
 - Session resumed per D-STATE-01: state fetched from origin/main (HEAD 053d3bc1a7a82f982acfa57e7133d0f65681a01a). No Sandbox state used.
