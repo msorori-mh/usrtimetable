@@ -23,6 +23,7 @@ import { Route as AuthenticatedSharedCoursesRouteImport } from './routes/_authen
 import { Route as AuthenticatedSessionTypesRouteImport } from './routes/_authenticated/session-types'
 import { Route as AuthenticatedSectionsRouteImport } from './routes/_authenticated/sections'
 import { Route as AuthenticatedSchedulingSettingsRouteImport } from './routes/_authenticated/scheduling-settings'
+import { Route as AuthenticatedSchedulingHeadcountsRouteImport } from './routes/_authenticated/scheduling-headcounts'
 import { Route as AuthenticatedScheduleVersionsRouteImport } from './routes/_authenticated/schedule-versions'
 import { Route as AuthenticatedScheduleQualityRouteImport } from './routes/_authenticated/schedule-quality'
 import { Route as AuthenticatedScheduleBuilderRouteImport } from './routes/_authenticated/schedule-builder'
@@ -142,6 +143,12 @@ const AuthenticatedSchedulingSettingsRoute =
   AuthenticatedSchedulingSettingsRouteImport.update({
     id: '/scheduling-settings',
     path: '/scheduling-settings',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSchedulingHeadcountsRoute =
+  AuthenticatedSchedulingHeadcountsRouteImport.update({
+    id: '/scheduling-headcounts',
+    path: '/scheduling-headcounts',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedScheduleVersionsRoute =
@@ -439,6 +446,7 @@ export interface FileRoutesByFullPath {
   '/schedule-builder': typeof AuthenticatedScheduleBuilderRoute
   '/schedule-quality': typeof AuthenticatedScheduleQualityRoute
   '/schedule-versions': typeof AuthenticatedScheduleVersionsRoute
+  '/scheduling-headcounts': typeof AuthenticatedSchedulingHeadcountsRoute
   '/scheduling-settings': typeof AuthenticatedSchedulingSettingsRoute
   '/sections': typeof AuthenticatedSectionsRoute
   '/session-types': typeof AuthenticatedSessionTypesRoute
@@ -498,6 +506,7 @@ export interface FileRoutesByTo {
   '/schedule-builder': typeof AuthenticatedScheduleBuilderRoute
   '/schedule-quality': typeof AuthenticatedScheduleQualityRoute
   '/schedule-versions': typeof AuthenticatedScheduleVersionsRoute
+  '/scheduling-headcounts': typeof AuthenticatedSchedulingHeadcountsRoute
   '/scheduling-settings': typeof AuthenticatedSchedulingSettingsRoute
   '/sections': typeof AuthenticatedSectionsRoute
   '/session-types': typeof AuthenticatedSessionTypesRoute
@@ -560,6 +569,7 @@ export interface FileRoutesById {
   '/_authenticated/schedule-builder': typeof AuthenticatedScheduleBuilderRoute
   '/_authenticated/schedule-quality': typeof AuthenticatedScheduleQualityRoute
   '/_authenticated/schedule-versions': typeof AuthenticatedScheduleVersionsRoute
+  '/_authenticated/scheduling-headcounts': typeof AuthenticatedSchedulingHeadcountsRoute
   '/_authenticated/scheduling-settings': typeof AuthenticatedSchedulingSettingsRoute
   '/_authenticated/sections': typeof AuthenticatedSectionsRoute
   '/_authenticated/session-types': typeof AuthenticatedSessionTypesRoute
@@ -622,6 +632,7 @@ export interface FileRouteTypes {
     | '/schedule-builder'
     | '/schedule-quality'
     | '/schedule-versions'
+    | '/scheduling-headcounts'
     | '/scheduling-settings'
     | '/sections'
     | '/session-types'
@@ -681,6 +692,7 @@ export interface FileRouteTypes {
     | '/schedule-builder'
     | '/schedule-quality'
     | '/schedule-versions'
+    | '/scheduling-headcounts'
     | '/scheduling-settings'
     | '/sections'
     | '/session-types'
@@ -742,6 +754,7 @@ export interface FileRouteTypes {
     | '/_authenticated/schedule-builder'
     | '/_authenticated/schedule-quality'
     | '/_authenticated/schedule-versions'
+    | '/_authenticated/scheduling-headcounts'
     | '/_authenticated/scheduling-settings'
     | '/_authenticated/sections'
     | '/_authenticated/session-types'
@@ -873,6 +886,13 @@ declare module '@tanstack/react-router' {
       path: '/scheduling-settings'
       fullPath: '/scheduling-settings'
       preLoaderRoute: typeof AuthenticatedSchedulingSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/scheduling-headcounts': {
+      id: '/_authenticated/scheduling-headcounts'
+      path: '/scheduling-headcounts'
+      fullPath: '/scheduling-headcounts'
+      preLoaderRoute: typeof AuthenticatedSchedulingHeadcountsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/schedule-versions': {
@@ -1270,6 +1290,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedScheduleBuilderRoute: typeof AuthenticatedScheduleBuilderRoute
   AuthenticatedScheduleQualityRoute: typeof AuthenticatedScheduleQualityRoute
   AuthenticatedScheduleVersionsRoute: typeof AuthenticatedScheduleVersionsRoute
+  AuthenticatedSchedulingHeadcountsRoute: typeof AuthenticatedSchedulingHeadcountsRoute
   AuthenticatedSchedulingSettingsRoute: typeof AuthenticatedSchedulingSettingsRoute
   AuthenticatedSectionsRoute: typeof AuthenticatedSectionsRoute
   AuthenticatedSessionTypesRoute: typeof AuthenticatedSessionTypesRoute
@@ -1316,6 +1337,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedScheduleBuilderRoute: AuthenticatedScheduleBuilderRoute,
   AuthenticatedScheduleQualityRoute: AuthenticatedScheduleQualityRoute,
   AuthenticatedScheduleVersionsRoute: AuthenticatedScheduleVersionsRoute,
+  AuthenticatedSchedulingHeadcountsRoute:
+    AuthenticatedSchedulingHeadcountsRoute,
   AuthenticatedSchedulingSettingsRoute: AuthenticatedSchedulingSettingsRoute,
   AuthenticatedSectionsRoute: AuthenticatedSectionsRoute,
   AuthenticatedSessionTypesRoute: AuthenticatedSessionTypesRoute,

@@ -25,7 +25,12 @@ export interface ReadinessData {
   studyPlan: ReadinessMetric[];
   resources: ReadinessMetric[];
   scheduling: ReadinessMetric[];
-  scores: { studyPlanScore: number; resourcesScore: number; schedulingScore: number; overall: number };
+  scores: {
+    studyPlanScore: number;
+    resourcesScore: number;
+    schedulingScore: number;
+    overall: number;
+  };
 }
 
 const CATEGORY_LABELS: Record<ReadinessMetric["category"], string> = {
@@ -65,7 +70,10 @@ function metricSeverity(m: ReadinessMetric): string {
 }
 
 /** Score band for dashboard cards (shared with /data-readiness). */
-export function readinessScoreStatus(score: number): { label: string; tone: "ok" | "warn" | "bad" } {
+export function readinessScoreStatus(score: number): {
+  label: string;
+  tone: "ok" | "warn" | "bad";
+} {
   if (score >= 80) return { label: "جاهز", tone: "ok" };
   if (score >= 50) return { label: "يحتاج مراجعة", tone: "warn" };
   return { label: "حرج", tone: "bad" };
@@ -79,25 +87,41 @@ export function readinessScoreStatus(score: number): { label: string; tone: "ok"
  * truth — and never breaks the base readiness report.
  */
 interface NewFlowSignals {
-  cohorts: { id: string; active: boolean | null }[];
+  cohorts: { id: string; active: boolean | null; term_id: string }[];
   deliveryGroups: { id: string; cohort_id: string | null }[];
   dgAssignments: { delivery_group_id: string | null; instructor_id: string | null }[];
   sessionIdentity: { id: string; cohort_id: string | null; delivery_group_id: string | null }[];
+  approvedHeadcounts: { cohort_id: string; term_id: string }[];
 }
 
 async function fetchNewFlowSignals(collegeId: string): Promise<NewFlowSignals | null> {
   try {
-    const [cohorts, deliveryGroups, dgAssignments, sessionIdentity] = await Promise.all([
-      supabase.from("academic_cohorts").select("id, active").eq("college_id", collegeId),
-      supabase.from("delivery_groups").select("id, cohort_id").eq("college_id", collegeId),
-      supabase
-        .from("teaching_assignments")
-        .select("delivery_group_id, instructor_id")
-        .eq("college_id", collegeId)
-        .not("delivery_group_id", "is", null),
-      supabase.from("schedule_sessions").select("id, cohort_id, delivery_group_id").eq("college_id", collegeId),
-    ]);
-    if (cohorts.error || deliveryGroups.error || dgAssignments.error || sessionIdentity.error) {
+    const [cohorts, deliveryGroups, dgAssignments, sessionIdentity, approvedHeadcounts] =
+      await Promise.all([
+        supabase.from("academic_cohorts").select("id, active, term_id").eq("college_id", collegeId),
+        supabase.from("delivery_groups").select("id, cohort_id").eq("college_id", collegeId),
+        supabase
+          .from("teaching_assignments")
+          .select("delivery_group_id, instructor_id")
+          .eq("college_id", collegeId)
+          .not("delivery_group_id", "is", null),
+        supabase
+          .from("schedule_sessions")
+          .select("id, cohort_id, delivery_group_id")
+          .eq("college_id", collegeId),
+        supabase
+          .from("scheduling_cohort_term_headcounts")
+          .select("cohort_id, term_id")
+          .eq("college_id", collegeId)
+          .eq("approval_status", "approved"),
+      ]);
+    if (
+      cohorts.error ||
+      deliveryGroups.error ||
+      dgAssignments.error ||
+      sessionIdentity.error ||
+      approvedHeadcounts.error
+    ) {
       return null;
     }
     return {
@@ -105,6 +129,7 @@ async function fetchNewFlowSignals(collegeId: string): Promise<NewFlowSignals | 
       deliveryGroups: (deliveryGroups.data ?? []) as NewFlowSignals["deliveryGroups"],
       dgAssignments: (dgAssignments.data ?? []) as NewFlowSignals["dgAssignments"],
       sessionIdentity: (sessionIdentity.data ?? []) as NewFlowSignals["sessionIdentity"],
+      approvedHeadcounts: (approvedHeadcounts.data ?? []) as NewFlowSignals["approvedHeadcounts"],
     };
   } catch {
     return null;
@@ -116,7 +141,8 @@ export function newFlowReadinessMetrics(signals: NewFlowSignals | null): Readine
   if (signals === null) {
     return [
       {
-        label: "مقاييس التدفق الجديد (الدفعات/المجموعات) غير متاحة — بنية V2 غير مكتملة في هذه البيئة",
+        label:
+          "مقاييس التدفق الجديد (الدفعات/المجموعات) غير متاحة — بنية V2 غير مكتملة في هذه البيئة",
         total: 0,
         missing: 0,
         category: "scheduling",
@@ -126,7 +152,18 @@ export function newFlowReadinessMetrics(signals: NewFlowSignals | null): Readine
   const activeCohorts = signals.cohorts.filter((c) => c.active !== false);
   const cohortsWithGroups = new Set(signals.deliveryGroups.map((d) => d.cohort_id));
   const assignedGroups = new Set(signals.dgAssignments.map((a) => a.delivery_group_id));
+  const approvedHeadcountKeys = new Set(
+    signals.approvedHeadcounts.map((h) => `${h.cohort_id}:${h.term_id}`),
+  );
   return [
+    {
+      label: "دفعات نشطة دون عدد معتمد للجدولة (SCHEDULING_HEADCOUNT_MISSING)",
+      total: activeCohorts.length,
+      missing: activeCohorts.filter((c) => !approvedHeadcountKeys.has(`${c.id}:${c.term_id}`))
+        .length,
+      critical: true,
+      category: "scheduling",
+    },
     {
       label: "دفعات دراسية نشطة بدون مجموعات محاضرات/معامل",
       total: activeCohorts.length,
@@ -157,25 +194,41 @@ export function newFlowReadinessMetrics(signals: NewFlowSignals | null): Readine
 
 /** College-level readiness checks (read-only). Same logic as /data-readiness dashboard. */
 export async function fetchCollegeReadiness(collegeId: string): Promise<ReadinessData> {
-  const [
-    courses,
-    planCourses,
-    instructors,
-    rooms,
-    offerings,
-    assignments,
-    sessions,
-    roomTypes,
-  ] = await Promise.all([
-    supabase.from("courses").select("id, code, name", { count: "exact" }).eq("college_id", collegeId),
-    supabase.from("plan_courses").select("id, level_id, semester, lectures_per_week, labs_per_week, lecture_session_duration, lab_session_duration, course_id", { count: "exact" }).eq("college_id", collegeId),
-    supabase.from("instructors").select("id, specialization, department_id", { count: "exact" }).eq("college_id", collegeId),
-    supabase.from("rooms").select("id, capacity, room_type_id, room_type", { count: "exact" }).eq("college_id", collegeId),
-    supabase.from("course_offerings").select("id, expected_students", { count: "exact" }).eq("college_id", collegeId),
-    supabase.from("teaching_assignments").select("id, instructor_id, course_offering_id", { count: "exact" }).eq("college_id", collegeId),
-    supabase.from("schedule_sessions").select("id, room_id, start_time, end_time, day_of_week", { count: "exact" }).eq("college_id", collegeId),
-    supabase.from("room_types").select("id, default_capacity").eq("college_id", collegeId),
-  ]);
+  const [courses, planCourses, instructors, rooms, offerings, assignments, sessions, roomTypes] =
+    await Promise.all([
+      supabase
+        .from("courses")
+        .select("id, code, name", { count: "exact" })
+        .eq("college_id", collegeId),
+      supabase
+        .from("plan_courses")
+        .select(
+          "id, level_id, semester, lectures_per_week, labs_per_week, lecture_session_duration, lab_session_duration, course_id",
+          { count: "exact" },
+        )
+        .eq("college_id", collegeId),
+      supabase
+        .from("instructors")
+        .select("id, specialization, department_id", { count: "exact" })
+        .eq("college_id", collegeId),
+      supabase
+        .from("rooms")
+        .select("id, capacity, room_type_id, room_type", { count: "exact" })
+        .eq("college_id", collegeId),
+      supabase
+        .from("course_offerings")
+        .select("id, expected_students", { count: "exact" })
+        .eq("college_id", collegeId),
+      supabase
+        .from("teaching_assignments")
+        .select("id, instructor_id, course_offering_id", { count: "exact" })
+        .eq("college_id", collegeId),
+      supabase
+        .from("schedule_sessions")
+        .select("id, room_id, start_time, end_time, day_of_week", { count: "exact" })
+        .eq("college_id", collegeId),
+      supabase.from("room_types").select("id, default_capacity").eq("college_id", collegeId),
+    ]);
 
   const coursesRows = courses.data ?? [];
   const planRows = planCourses.data ?? [];
@@ -184,35 +237,155 @@ export async function fetchCollegeReadiness(collegeId: string): Promise<Readines
   const offeringsRows = offerings.data ?? [];
   const assignmentsRows = assignments.data ?? [];
   const sessionsRows = sessions.data ?? [];
-  const roomTypeMap = new Map((roomTypes.data ?? []).map((r: { id: string; default_capacity: number }) => [r.id, r.default_capacity]));
+  const roomTypeMap = new Map(
+    (roomTypes.data ?? []).map((r: { id: string; default_capacity: number }) => [
+      r.id,
+      r.default_capacity,
+    ]),
+  );
 
   const linkedCourseIds = new Set(planRows.map((p: { course_id: string }) => p.course_id));
-  const offeringsWithAssignments = new Set(assignmentsRows.map((a: { course_offering_id: string }) => a.course_offering_id));
+  const offeringsWithAssignments = new Set(
+    assignmentsRows.map((a: { course_offering_id: string }) => a.course_offering_id),
+  );
 
   const studyPlan: ReadinessMetric[] = [
-    { label: "مقررات غير مرتبطة بأي خطة دراسية", total: coursesRows.length, missing: coursesRows.filter((c: { id: string }) => !linkedCourseIds.has(c.id)).length, category: "study_plan" },
-    { label: "صفوف الخطة بدون مستوى", total: planRows.length, missing: planRows.filter((p: { level_id: string | null }) => !p.level_id).length, category: "study_plan" },
-    { label: "صفوف الخطة بدون فصل (semester)", total: planRows.length, missing: planRows.filter((p: { semester: number | null }) => !p.semester).length, category: "study_plan" },
-    { label: "بدون عدد محاضرات أسبوعية", total: planRows.length, missing: planRows.filter((p: { lectures_per_week: number | null }) => !p.lectures_per_week).length, category: "study_plan" },
-    { label: "بدون عدد معامل أسبوعية", total: planRows.length, missing: planRows.filter((p: { labs_per_week: number | null | undefined }) => p.labs_per_week === null || p.labs_per_week === undefined).length, category: "study_plan" },
-    { label: "بدون مدة محاضرة محاضرة", total: planRows.length, missing: planRows.filter((p: { lecture_session_duration: number | null }) => !p.lecture_session_duration).length, category: "study_plan" },
-    { label: "بدون مدة محاضرة معمل", total: planRows.length, missing: planRows.filter((p: { labs_per_week: number; lab_session_duration: number | null }) => p.labs_per_week > 0 && !p.lab_session_duration).length, category: "study_plan" },
+    {
+      label: "مقررات غير مرتبطة بأي خطة دراسية",
+      total: coursesRows.length,
+      missing: coursesRows.filter((c: { id: string }) => !linkedCourseIds.has(c.id)).length,
+      category: "study_plan",
+    },
+    {
+      label: "صفوف الخطة بدون مستوى",
+      total: planRows.length,
+      missing: planRows.filter((p: { level_id: string | null }) => !p.level_id).length,
+      category: "study_plan",
+    },
+    {
+      label: "صفوف الخطة بدون فصل (semester)",
+      total: planRows.length,
+      missing: planRows.filter((p: { semester: number | null }) => !p.semester).length,
+      category: "study_plan",
+    },
+    {
+      label: "بدون عدد محاضرات أسبوعية",
+      total: planRows.length,
+      missing: planRows.filter((p: { lectures_per_week: number | null }) => !p.lectures_per_week)
+        .length,
+      category: "study_plan",
+    },
+    {
+      label: "بدون عدد معامل أسبوعية",
+      total: planRows.length,
+      missing: planRows.filter(
+        (p: { labs_per_week: number | null | undefined }) =>
+          p.labs_per_week === null || p.labs_per_week === undefined,
+      ).length,
+      category: "study_plan",
+    },
+    {
+      label: "بدون مدة محاضرة محاضرة",
+      total: planRows.length,
+      missing: planRows.filter(
+        (p: { lecture_session_duration: number | null }) => !p.lecture_session_duration,
+      ).length,
+      category: "study_plan",
+    },
+    {
+      label: "بدون مدة محاضرة معمل",
+      total: planRows.length,
+      missing: planRows.filter(
+        (p: { labs_per_week: number; lab_session_duration: number | null }) =>
+          p.labs_per_week > 0 && !p.lab_session_duration,
+      ).length,
+      category: "study_plan",
+    },
   ];
 
   const resources: ReadinessMetric[] = [
-    { label: "محاضرون بدون تخصص", total: instructorsRows.length, missing: instructorsRows.filter((i: { specialization: string | null }) => !i.specialization).length, category: "resources" },
-    { label: "محاضرون بدون قسم", total: instructorsRows.length, missing: instructorsRows.filter((i: { department_id: string | null }) => !i.department_id).length, category: "resources" },
-    { label: "قاعات بسعة افتراضية (مطابقة للنوع)", total: roomsRows.length, missing: roomsRows.filter((r: { room_type_id: string | null; capacity: number }) => r.room_type_id && r.capacity === roomTypeMap.get(r.room_type_id)).length, category: "resources" },
-    { label: "قاعات بدون نوع قاعة", total: roomsRows.length, missing: roomsRows.filter((r: { room_type_id: string | null; room_type: string | null }) => !r.room_type_id && !r.room_type).length, category: "resources" },
-    { label: "قاعات بسعة ≤ 0", total: roomsRows.length, missing: roomsRows.filter((r: { capacity: number | null }) => !r.capacity || r.capacity <= 0).length, critical: true, category: "resources" },
+    {
+      label: "محاضرون بدون تخصص",
+      total: instructorsRows.length,
+      missing: instructorsRows.filter((i: { specialization: string | null }) => !i.specialization)
+        .length,
+      category: "resources",
+    },
+    {
+      label: "محاضرون بدون قسم",
+      total: instructorsRows.length,
+      missing: instructorsRows.filter((i: { department_id: string | null }) => !i.department_id)
+        .length,
+      category: "resources",
+    },
+    {
+      label: "قاعات بسعة افتراضية (مطابقة للنوع)",
+      total: roomsRows.length,
+      missing: roomsRows.filter(
+        (r: { room_type_id: string | null; capacity: number }) =>
+          r.room_type_id && r.capacity === roomTypeMap.get(r.room_type_id),
+      ).length,
+      category: "resources",
+    },
+    {
+      label: "قاعات بدون نوع قاعة",
+      total: roomsRows.length,
+      missing: roomsRows.filter(
+        (r: { room_type_id: string | null; room_type: string | null }) =>
+          !r.room_type_id && !r.room_type,
+      ).length,
+      category: "resources",
+    },
+    {
+      label: "قاعات بسعة ≤ 0",
+      total: roomsRows.length,
+      missing: roomsRows.filter((r: { capacity: number | null }) => !r.capacity || r.capacity <= 0)
+        .length,
+      critical: true,
+      category: "resources",
+    },
   ];
 
   const scheduling: ReadinessMetric[] = [
-    { label: "عروض مقررات بأعداد طلاب ≤ 0", total: offeringsRows.length, missing: offeringsRows.filter((o: { expected_students: number | null }) => !o.expected_students || o.expected_students <= 0).length, category: "scheduling" },
-    { label: "عروض مقررات بدون إسناد تدريسي", total: offeringsRows.length, missing: offeringsRows.filter((o: { id: string }) => !offeringsWithAssignments.has(o.id)).length, category: "scheduling" },
-    { label: "إسناد بدون محاضر", total: assignmentsRows.length, missing: assignmentsRows.filter((a: { instructor_id: string | null }) => !a.instructor_id).length, critical: true, category: "scheduling" },
-    { label: "محاضرات بدون قاعة", total: sessionsRows.length, missing: sessionsRows.filter((s: { room_id: string | null }) => !s.room_id).length, category: "scheduling" },
-    { label: "محاضرات بدون وقت", total: sessionsRows.length, missing: sessionsRows.filter((s: { start_time: string | null; end_time: string | null; day_of_week: number | null }) => !s.start_time || !s.end_time || s.day_of_week === null).length, category: "scheduling" },
+    {
+      label: "عروض مقررات بأعداد طلاب ≤ 0",
+      total: offeringsRows.length,
+      missing: offeringsRows.filter(
+        (o: { expected_students: number | null }) =>
+          !o.expected_students || o.expected_students <= 0,
+      ).length,
+      category: "scheduling",
+    },
+    {
+      label: "عروض مقررات بدون إسناد تدريسي",
+      total: offeringsRows.length,
+      missing: offeringsRows.filter((o: { id: string }) => !offeringsWithAssignments.has(o.id))
+        .length,
+      category: "scheduling",
+    },
+    {
+      label: "إسناد بدون محاضر",
+      total: assignmentsRows.length,
+      missing: assignmentsRows.filter((a: { instructor_id: string | null }) => !a.instructor_id)
+        .length,
+      critical: true,
+      category: "scheduling",
+    },
+    {
+      label: "محاضرات بدون قاعة",
+      total: sessionsRows.length,
+      missing: sessionsRows.filter((s: { room_id: string | null }) => !s.room_id).length,
+      category: "scheduling",
+    },
+    {
+      label: "محاضرات بدون وقت",
+      total: sessionsRows.length,
+      missing: sessionsRows.filter(
+        (s: { start_time: string | null; end_time: string | null; day_of_week: number | null }) =>
+          !s.start_time || !s.end_time || s.day_of_week === null,
+      ).length,
+      category: "scheduling",
+    },
   ];
 
   // A1.5: New Flow cohort/DG/TA V2 readiness — separate fail-closed fetch so a

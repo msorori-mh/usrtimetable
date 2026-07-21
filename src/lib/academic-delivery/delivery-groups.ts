@@ -50,6 +50,25 @@ export type GroupCalcErr = {
 
 export type GroupCalcResult = GroupCalcOk | GroupCalcSkip | GroupCalcErr;
 
+/**
+ * The delivery-group split source is the approved scheduling headcount.
+ * Registered/legacy expected counts are deliberately not accepted as fallback inputs.
+ */
+export function requireSchedulingHeadcountForSplit(
+  value: number | null | undefined,
+):
+  | { ok: true; studentCount: number }
+  | { ok: false; code: "SCHEDULING_HEADCOUNT_MISSING"; message: string } {
+  if (!Number.isInteger(value) || (value ?? 0) <= 0) {
+    return {
+      ok: false,
+      code: "SCHEDULING_HEADCOUNT_MISSING",
+      message: "A positive approved scheduling_headcount is required for delivery-group splitting.",
+    };
+  }
+  return { ok: true, studentCount: Number(value) };
+}
+
 function ceilDiv(n: number, d: number): number {
   return Math.ceil(n / d);
 }

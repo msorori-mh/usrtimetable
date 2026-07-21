@@ -20,6 +20,10 @@ const navLabelMatches = [...layout.matchAll(/label:\s*"([^"]+)"/g)].map((m) => m
 assert.ok(navToMatches.length >= 35, `expected >=35 nav routes, got ${navToMatches.length}`);
 assert.ok(navLabelMatches.includes("الدفعات الدراسية"), "cohorts must appear in NAV");
 assert.ok(
+  navLabelMatches.includes("أعداد الدفعات المعتمدة للجدولة"),
+  "scheduling headcounts must appear in NAV",
+);
+assert.ok(
   navLabelMatches.includes("مجموعات المحاضرات والمعامل"),
   "delivery groups must appear in NAV",
 );
@@ -34,6 +38,7 @@ assert.ok(
 
 const requiredRoutes = [
   "academic-cohorts.tsx",
+  "scheduling-headcounts.tsx",
   "delivery-groups.tsx",
   "teaching-assignments.tsx",
   "schedule-builder.tsx",
