@@ -21,6 +21,7 @@ const headers = [
   { key: "evidence_status", label: "Evidence" },
   { key: "cohort", label: "Cohort" },
   { key: "delivery_group", label: "Delivery group" },
+  { key: "legacy_section", label: "Legacy section" },
   { key: "resolution_detail", label: "Exception / resolution" },
   { key: "conflict_code", label: "رمز التعارض" },
   { key: "message", label: "الرسالة" },
@@ -160,6 +161,7 @@ function Page() {
                     </TableCell>
                     <TableCell>{String(r.cohort)}</TableCell>
                     <TableCell>{String(r.delivery_group)}</TableCell>
+                    <TableCell>{String(r.legacy_section)}</TableCell>
                     <TableCell className="text-xs text-muted-foreground italic">
                       {String(r.resolution_detail)}
                     </TableCell>
