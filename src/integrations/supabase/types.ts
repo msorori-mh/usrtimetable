@@ -82,10 +82,10 @@ export type Database = {
           event_kind?: string
           id?: string
           notes?: string | null
-          start_date: string
+          start_date?: string
           start_time?: string | null
           term_id?: string | null
-          title: string
+          title?: string
           updated_at?: string
         }
         Update: {
@@ -354,6 +354,59 @@ export type Database = {
           },
         ]
       }
+      scheduling_cohort_term_headcounts: {
+        Row: {
+          approval_status: string
+          approved_at: string | null
+          approved_by: string | null
+          college_id: string
+          cohort_id: string
+          created_at: string
+          eligible_student_count: number
+          exam_eligible_count: number
+          expected_attendance_count: number
+          id: string
+          notes: string | null
+          registered_student_count: number
+          reserve_margin: number
+          scheduling_headcount: number
+          source: string
+          study_system: string
+          term_id: string
+          updated_at: string
+        }
+        Insert: {
+          approval_status?: string; approved_at?: string | null; approved_by?: string | null; college_id: string; cohort_id: string; created_at?: string; eligible_student_count: number; exam_eligible_count: number; expected_attendance_count: number; id?: string; notes?: string | null; registered_student_count: number; reserve_margin?: number; scheduling_headcount: number; source: string; study_system: string; term_id: string; updated_at?: string
+        }
+        Update: {
+          approval_status?: string; approved_at?: string | null; approved_by?: string | null; college_id?: string; cohort_id?: string; created_at?: string; eligible_student_count?: number; exam_eligible_count?: number; expected_attendance_count?: number; id?: string; notes?: string | null; registered_student_count?: number; reserve_margin?: number; scheduling_headcount?: number; source?: string; study_system?: string; term_id?: string; updated_at?: string
+        }
+        Relationships: []
+      }
+      scheduling_headcount_overrides: {
+        Row: {
+          active: boolean; approval_status: string; approved_at: string | null; approved_by: string | null; college_id: string; course_offering_id: string | null; created_at: string; exam_eligible_count: number | null; headcount_id: string; id: string; notes: string | null; plan_course_component_id: string | null; reserve_margin: number | null; scheduling_headcount: number; source: string; updated_at: string
+        }
+        Insert: {
+          active?: boolean; approval_status?: string; approved_at?: string | null; approved_by?: string | null; college_id: string; course_offering_id?: string | null; created_at?: string; exam_eligible_count?: number | null; headcount_id: string; id?: string; notes?: string | null; plan_course_component_id?: string | null; reserve_margin?: number | null; scheduling_headcount?: number; source: string; updated_at?: string
+        }
+        Update: {
+          active?: boolean; approval_status?: string; approved_at?: string | null; approved_by?: string | null; college_id?: string; course_offering_id?: string | null; created_at?: string; exam_eligible_count?: number | null; headcount_id?: string; id?: string; notes?: string | null; plan_course_component_id?: string | null; reserve_margin?: number | null; scheduling_headcount?: number; source?: string; updated_at?: string
+        }
+        Relationships: []
+      }
+      scheduling_headcount_revisions: {
+        Row: {
+          changed_at: string; changed_by: string; college_id: string; headcount_id: string; id: string; notes: string | null; override_id: string | null; revision_kind: string; snapshot: Json
+        }
+        Insert: {
+          changed_at?: string; changed_by: string; college_id: string; headcount_id: string; id?: string; notes?: string | null; override_id?: string | null; revision_kind: string; snapshot: Json
+        }
+        Update: {
+          changed_at?: string; changed_by: string; college_id?: string; headcount_id?: string; id?: string; notes?: string | null; override_id?: string | null; revision_kind?: string; snapshot?: Json
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -442,7 +495,7 @@ export type Database = {
           placed_sessions?: number
           quality_score_after?: number | null
           run_by?: string | null
-          schedule_version_id?: string
+          schedule_version_id: string
           soft_violations_after?: number
           status?: string
           summary?: Json | null
@@ -692,7 +745,7 @@ export type Database = {
         Update: {
           check_type?: string
           checked_by?: string | null
-          college_id?: string
+          college_id: string
           completed_at?: string | null
           created_at?: string
           id?: string
@@ -1013,7 +1066,7 @@ export type Database = {
           course_nature?: string
           created_at?: string
           credit_hours?: number
-          department_id?: string
+          department_id: string
           id?: string
           is_shared?: boolean
           name?: string
@@ -1055,10 +1108,10 @@ export type Database = {
           college_id: string
           created_at?: string
           days?: number[]
-          end_time: string
+          end_time?: string
           id?: string
-          name: string
-          start_time: string
+          name?: string
+          start_time?: string
           updated_at?: string
         }
         Update: {
@@ -1301,9 +1354,9 @@ export type Database = {
           label?: string | null
           level_id?: string | null
           required_component_type?: string
-          semester: number
-          slot_code: string
-          study_plan_id: string
+          semester?: number
+          slot_code?: string
+          study_plan_id?: string
           updated_at?: string
         }
         Update: {
@@ -1374,8 +1427,8 @@ export type Database = {
           created_at?: string
           id?: string
           rank_aliases?: string[]
-          rank_code: string
-          required_load_hours: number
+          rank_code?: string
+          required_load_hours?: number
           updated_at?: string
         }
         Update: {
@@ -1414,12 +1467,12 @@ export type Database = {
           college_id: string
           column_name?: string | null
           created_at?: string
-          error_code: string
+          error_code?: string
           id?: string
-          job_id: string
-          message: string
+          job_id?: string
+          message?: string
           raw_value?: string | null
-          row_number: number
+          row_number?: number
         }
         Update: {
           college_id?: string
@@ -1529,12 +1582,12 @@ export type Database = {
           data_type?: string
           enum_values?: Json | null
           example?: string | null
-          field_key: string
-          header_ar: string
+          field_key?: string
+          header_ar?: string
           id?: string
           is_required?: boolean
           notes?: string | null
-          template_id: string
+          template_id?: string
           updated_at?: string
         }
         Update: {
@@ -1575,11 +1628,11 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
-          name_ar: string
+          name_ar?: string
           sample_file_url?: string | null
           sheet_name?: string | null
-          target_entity: string
-          template_key: string
+          target_entity?: string
+          template_key?: string
           updated_at?: string
           version?: number
         }
@@ -1615,15 +1668,15 @@ export type Database = {
         }
         Insert: {
           availability_type?: string
-          college_id: string
+          college_id?: string
           created_at?: string
-          day_of_week: number
-          end_time: string
+          day_of_week?: number
+          end_time?: string
           id?: string
-          instructor_id: string
+          instructor_id?: string
           is_preference?: boolean
           notes?: string | null
-          start_time: string
+          start_time?: string
           updated_at?: string
         }
         Update: {
@@ -1666,7 +1719,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_external?: boolean
-          name_ar: string
+          name_ar?: string
           name_en?: string | null
           updated_at?: string
         }
@@ -1783,14 +1836,14 @@ export type Database = {
         Insert: {
           college_id: string
           compensation_mode?: string
-          component_type: string
+          component_type?: string
           counts_toward_overtime?: boolean
           counts_toward_regular_load?: boolean
           created_at?: string
           explicit_group_size?: number | null
           id?: string
           is_timetabled?: boolean
-          plan_course_id: string
+          plan_course_id?: string
           required_room_type_id?: string | null
           updated_at?: string
           weekly_contact_hours?: number
@@ -1880,7 +1933,7 @@ export type Database = {
           required_room_type_for_lab?: string | null
           required_room_type_for_lecture?: string | null
           semester?: number
-          study_plan_id: string
+          study_plan_id?: string
           updated_at?: string
         }
         Update: {
@@ -1943,7 +1996,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           full_name?: string | null
-          id: string
+          id?: string
           updated_at?: string
         }
         Update: {
@@ -1974,7 +2027,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
-          name_ar: string
+          name_ar?: string
           name_en?: string | null
           updated_at?: string
         }
@@ -2006,12 +2059,12 @@ export type Database = {
         Insert: {
           college_id: string
           created_at?: string
-          day_of_week: number
-          end_time: string
+          day_of_week?: number
+          end_time?: string
           id?: string
           notes?: string | null
-          room_id: string
-          start_time: string
+          room_id?: string
+          start_time?: string
           updated_at?: string
         }
         Update: {
@@ -2061,7 +2114,7 @@ export type Database = {
           features?: Json
           id?: string
           is_active?: boolean
-          name_ar: string
+          name_ar?: string
           name_en?: string | null
           strict_capacity?: boolean
           updated_at?: string
@@ -2105,7 +2158,7 @@ export type Database = {
           end_time?: string | null
           id?: string
           reason?: string | null
-          room_id: string
+          room_id?: string
           start_date?: string | null
           start_time?: string | null
           updated_at?: string
@@ -2160,13 +2213,13 @@ export type Database = {
           building?: string | null
           building_id?: string | null
           capacity?: number
-          code: string
-          college_id: string
+          code?: string
+          college_id?: string
           created_at?: string
           floor?: string | null
           id?: string
           is_active?: boolean
-          name: string
+          name?: string
           notes?: string | null
           room_type?: string
           room_type_id?: string | null
@@ -2215,7 +2268,7 @@ export type Database = {
           id?: string
           metrics_breakdown?: Json | null
           run_by?: string | null
-          schedule_version_id: string
+          schedule_version_id?: string
           soft_conflicts_count?: number
           total_deductions?: number
           total_score?: number
@@ -2269,27 +2322,27 @@ export type Database = {
           auto_schedule_run_id?: string | null
           cohort_id?: string | null
           college_id: string
-          course_offering_id: string
+          course_offering_id?: string
           created_at?: string
-          day_of_week: number
+          day_of_week?: number
           delivery_group_id?: string | null
-          end_time: string
+          end_time?: string
           expected_students?: number
           id?: string
-          instructor_id: string
+          instructor_id?: string
           is_locked?: boolean
           lock_reason?: string | null
           plan_course_component_id?: string | null
           replaced_by_split?: boolean
           room_id?: string | null
-          schedule_version_id: string
+          schedule_version_id?: string
           section_group_id?: string | null
           section_id?: string | null
           section_subgroup_id?: string | null
           session_type?: string
           source_type?: string
           split_source_session_id?: string | null
-          start_time: string
+          start_time?: string
           study_system?: string
           teaching_assignment_id?: string | null
           updated_at?: string
@@ -2411,15 +2464,15 @@ export type Database = {
           approval_type: string
           approved_at?: string | null
           approved_by?: string | null
-          college_id: string
-          conflict_code: string
+          college_id?: string
+          conflict_code?: string
           created_at?: string
           id?: string
           metadata?: Json | null
-          reason: string
+          reason?: string
           related_session_id?: string | null
-          schedule_version_id: string
-          session_id: string
+          schedule_version_id?: string
+          session_id?: string
           source?: string | null
           status?: string
           updated_at?: string
@@ -2479,15 +2532,15 @@ export type Database = {
           to_status: string | null
         }
         Insert: {
-          college_id: string
+          college_id?: string
           created_at?: string
-          event_type: string
+          event_type?: string
           from_status?: string | null
           id?: string
           metadata?: Json | null
           notes?: string | null
           performed_by?: string | null
-          schedule_version_id: string
+          schedule_version_id?: string
           to_status?: string | null
         }
         Update: {
@@ -2532,7 +2585,7 @@ export type Database = {
           created_by?: string | null
           eligibility_revision?: number
           id?: string
-          name: string
+          name?: string
           notes?: string | null
           status?: string
           updated_at?: string
@@ -2577,7 +2630,7 @@ export type Database = {
           allow_back_to_back?: boolean
           allowed_session_durations?: number[]
           break_between_sessions_min?: number
-          college_id: string
+          college_id?: string
           created_at?: string
           day_end_time?: string
           day_start_time?: string
@@ -2654,12 +2707,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          academic_term_id: string
+          academic_term_id?: string
           college_id: string
-          course_id: string
+          course_id?: string
           created_at?: string
           expected_students_total?: number
-          group_name: string
+          group_name?: string
           id?: string
           notes?: string | null
           updated_at?: string
@@ -2697,20 +2750,20 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          academic_term_id: string
-          college_id: string
-          course_id: string
+          academic_term_id?: string
+          college_id?: string
+          course_id?: string
           created_at?: string
           expected_students?: number
           id?: string
           is_active?: boolean
           notes?: string | null
-          ordinal: number
+          ordinal?: number
           owner_approval_ref?: string | null
-          section_id: string
-          source_policy: string
+          section_id?: string
+          source_policy?: string
           study_system?: string
-          subgroup_code: string
+          subgroup_code?: string
           teaching_assignment_id?: string | null
           updated_at?: string
         }
@@ -2749,12 +2802,12 @@ export type Database = {
         Insert: {
           capacity?: number
           college_id: string
-          course_id: string
+          course_id?: string
           created_at?: string
           id?: string
-          section_number: string
+          section_number?: string
           study_system?: string
-          term_id: string
+          term_id?: string
           updated_at?: string
         }
         Update: {
@@ -2816,7 +2869,7 @@ export type Database = {
           display_order?: number
           id?: string
           is_active?: boolean
-          name_ar: string
+          name_ar?: string
           name_en?: string | null
           requires_lab?: boolean
           updated_at?: string
@@ -2857,8 +2910,8 @@ export type Database = {
           effective_year?: number | null
           id?: string
           is_active?: boolean
-          name: string
-          program_id: string
+          name?: string
+          program_id?: string
           updated_at?: string
           version?: string
         }
@@ -2915,13 +2968,13 @@ export type Database = {
         Insert: {
           assigned_component_hours?: number | null
           cohort_id?: string | null
-          college_id: string
-          course_offering_id: string
+          college_id?: string
+          course_offering_id?: string
           created_at?: string
           delivery_group_id?: string | null
           expected_students?: number
           id?: string
-          instructor_id: string
+          instructor_id?: string
           is_active?: boolean
           notes?: string | null
           plan_course_component_id?: string | null
@@ -3020,12 +3073,12 @@ export type Database = {
         Insert: {
           college_id: string
           created_at?: string
-          day_of_week: number
-          end_time: string
+          day_of_week?: number
+          end_time?: string
           id?: string
           is_active?: boolean
           slot_duration_minutes?: number
-          start_time: string
+          start_time?: string
           study_system?: string
           updated_at?: string
         }
@@ -3058,12 +3111,12 @@ export type Database = {
         Insert: {
           college_id: string
           created_at?: string
-          day_of_week: number
-          end_time: string
+          day_of_week?: number
+          end_time?: string
           id?: string
           is_active?: boolean
           slot_order?: number
-          start_time: string
+          start_time?: string
           updated_at?: string
         }
         Update: {
@@ -3091,7 +3144,7 @@ export type Database = {
           code?: string | null
           created_at?: string
           id?: string
-          name: string
+          name?: string
           updated_at?: string
         }
         Update: {
@@ -3111,10 +3164,10 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          college_id: string
+          college_id?: string
           created_at?: string
           id?: string
-          user_id: string
+          user_id?: string
         }
         Update: {
           college_id?: string
@@ -3142,8 +3195,8 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
         }
         Update: {
           created_at?: string
@@ -3191,6 +3244,14 @@ export type Database = {
       }
     }
     Functions: {
+      approve_scheduling_cohort_term_headcount: {
+        Args: { p_id: string; p_notes?: string | null }
+        Returns: Json
+      }
+      archive_scheduling_headcount_override: {
+        Args: { p_id: string; p_notes?: string | null }
+        Returns: Json
+      }
       _collect_schedule_session_move_conflicts: {
         Args: {
           p_college_id: string
@@ -3206,6 +3267,26 @@ export type Database = {
           p_study_system: string
           p_teaching_assignment_id: string
           p_version_id: string
+        }
+        Returns: Json
+      }
+      list_scheduling_headcount_revisions: {
+        Args: { p_headcount_id: string }
+        Returns: Json
+      }
+      resolve_scheduling_headcount: {
+        Args: { p_college_id: string; p_cohort_id: string; p_course_offering_id?: string | null; p_plan_course_component_id?: string | null; p_term_id: string }
+        Returns: Json
+      }
+      upsert_scheduling_cohort_term_headcount: {
+        Args: {
+          p_allow_over_eligible?: boolean; p_cohort_id: string; p_eligible_student_count: number; p_exam_eligible_count?: number; p_expected_attendance_count: number; p_notes?: string | null; p_registered_student_count: number; p_reserve_margin?: number; p_scheduling_headcount?: number; p_source?: string; p_term_id: string
+        }
+        Returns: Json
+      }
+      upsert_scheduling_headcount_override: {
+        Args: {
+          p_allow_over_eligible?: boolean; p_course_offering_id?: string | null; p_exam_eligible_count?: number | null; p_headcount_id: string; p_notes?: string | null; p_plan_course_component_id?: string | null; p_reserve_margin?: number | null; p_scheduling_headcount?: number; p_source?: string
         }
         Returns: Json
       }
@@ -3550,7 +3631,7 @@ export type Database = {
       create_schedule_session_from_assignment_v2: {
         Args: {
           p_day_of_week: number
-          p_end_time: string
+          p_end_time: number
           p_expected_version_updated_at: string
           p_note?: string
           p_room_id: string
