@@ -1,10 +1,11 @@
 {
   "swarm": "USRTIMETABLE-LAUNCH-CLOSURE-SWARM-01",
-  "phase": "PHASE-A1-SOURCE-CLOSURE-LEGACY-CLASSIFICATION-AND-SCHEDULING-HEADCOUNT-FOUNDATION-01",
-  "reconciled_at": "2026-07-21T18:30:00Z",
-  "origin_main_at_phase_start": "cbd4546886057297fee1bc8adec4eebfde729ab1",
-  "origin_main_current": "f9413193485f4f6aad2ce320ac2f951763910bde",
-  "decision_target": "PASS_WITH_NOTES — A1_SOURCE_CLOSED_HEADCOUNT_SOURCE_COMPLETE_APPROVALS_REQUIRED",
+  "phase": "PHASE-A1-POSTMERGE-GATES-AND-LEGACY-SCHEMA-MAP-RECOVERY-01",
+  "reconciled_at": "2026-07-21T21:30:00Z",
+  "origin_main_at_phase_start": "91b5f65eef0c8f3b82538cf17c26f8b87c0fad46",
+  "origin_main_current": "6c4401bb0bc18e35b23761a276776cdbb755ebf8",
+  "origin_main_note": "6c4401bb = Lovable tooling commit (vite-plugin 2.7.7 + types.ts/routeTree regen removing un-applied headcount types). No product logic change.",
+  "previous_phase": "PHASE-A1-SOURCE-CLOSURE-LEGACY-CLASSIFICATION-AND-SCHEDULING-HEADCOUNT-FOUNDATION-01 (complete; PRs #60/#61/#62 all MERGED)",
   "tracks": {
     "A1-S1": "COMPLETE",
     "A1-S2": "COMPLETE",
@@ -14,28 +15,19 @@
     "A1-S5": "MERGED",
     "A1_SOURCE": "COMPLETE",
     "A1_PRODUCTION_REMEDIATION": "PENDING",
-    "LEGACY_ORPHAN_CLASSIFICATION_PACKAGE": "COMPLETE_WAITING_APPROVE_LEGACY_DATA_REMEDIATION",
-    "SCHEDULING_HEADCOUNT_FOUNDATION": "SOURCE_PR_READY",
-    "SCHEDULING_HEADCOUNT_SOURCE": "IN_PROGRESS_MERGE",
-    "SCHEDULING_HEADCOUNT_PRODUCTION": "WAITING_APPROVE_DB_MIGRATION_APPLY"
+    "SCHEDULING_HEADCOUNT_FOUNDATION": "MERGED_SOURCE_ONLY (PR #62, migration 20260721180000 NOT APPLIED)",
+    "SCHEDULING_HEADCOUNT_PRODUCTION": "WAITING_APPROVE_DB_MIGRATION_APPLY",
+    "LEGACY_ORPHAN_CLASSIFICATION_V1": "FAILED_IN_PRODUCTION — package assumed delivery_groups.course_offering_id which does not exist (Lovable run 2026-07-21). Do NOT rerun.",
+    "LEGACY_RELATIONSHIP_SCHEMA_MAP": "PACKAGE_PREPARED — PHASE-A1-LEGACY-RELATIONSHIP-SCHEMA-MAP-01 (read-only, 10 SELECT statements, parser-validated). Waiting operator execution via Lovable on emzytxqkxjjhsivqxdiu.",
+    "CLASSIFICATION_V2": "DESIGN_HOLD — no SQL until schema-map results return (design doc: PHASE-A1-CLASSIFICATION-V2-DESIGN-HOLD.md)",
+    "FINAL_MAIN_POSTMERGE_GATES": "PACKAGE_PREPARED — USRTIMETABLE-FINAL-MAIN-91B5F65-LOCAL-GATES.zip (gates actual origin/main, documents drift, results.json with PASS/FAIL_CHANGE_RELATED/FAIL_BASELINE/NOT_RUN). Waiting operator run; results dir C:\\projects\\usrtimetable-final-main-gates-results.",
+    "HEADCOUNT_DEPENDENCY_MAP": "COMPLETE — SCHEDULING-HEADCOUNT-PRODUCTION-DEPENDENCY-MAP.md (prerequisite: 20260717050000 composite keys; 20260720143000 independent; 20260721090000 independent, sequenced after A1.3b)",
+    "A2_SHARED_DELIVERY": "BLOCKED — headcount migration apply + approved data first"
   },
   "prs": {
-    "60": {
-      "state": "MERGED",
-      "mergeCommit": "52a9726bca91d7a9a3f30dab6648583e06dcfd40",
-      "url": "https://github.com/msorori-mh/usrtimetable/pull/60"
-    },
-    "61": {
-      "state": "MERGED",
-      "mergeCommit": "f9413193485f4f6aad2ce320ac2f951763910bde",
-      "url": "https://github.com/msorori-mh/usrtimetable/pull/61"
-    },
-    "62": {
-      "state": "OPEN_DRAFT_OR_READY",
-      "branch": "swarm/scheduling-headcount-foundation",
-      "head": "73dc8fa",
-      "url": "https://github.com/msorori-mh/usrtimetable/pull/62"
-    }
+    "60": { "state": "MERGED", "mergeCommit": "52a9726bca91d7a9a3f30dab6648583e06dcfd40" },
+    "61": { "state": "MERGED", "mergeCommit": "f9413193485f4f6aad2ce320ac2f951763910bde" },
+    "62": { "state": "MERGED", "mergeCommit": "91b5f65eef0c8f3b82538cf17c26f8b87c0fad46", "merged_at": "2026-07-21T18:43:41Z" }
   },
   "db_writes": false,
   "migration_apply": false,
@@ -44,5 +36,11 @@
   "pending_approvals": [
     "APPROVE_LEGACY_DATA_REMEDIATION",
     "APPROVE_DB_MIGRATION_APPLY"
-  ]
+  ],
+  "stop_points": [
+    "USER_RUNS_FINAL_MAIN_GATES (ZIP, actual origin/main)",
+    "USER_RUNS_LEGACY_RELATIONSHIP_SCHEMA_MAP (read-only Lovable SQL)"
+  ],
+  "next_safe_action": "HOLD — swarm waits for (a) final-main gate results and (b) schema-map CSVs. Then: Classification V2 SQL draft (proven paths only), remediation planning under APPROVE_LEGACY_DATA_REMEDIATION, migration apply sequencing under APPROVE_DB_MIGRATION_APPLY.",
+  "resume_token": "swarm-postmerge-gates-schema-map-01-awaiting-operator-runs"
 }
