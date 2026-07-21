@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,10 +7,11 @@ import { ReportShell } from "@/components/reports/report-shell";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
+import { Archive } from "lucide-react";
 import { DAY_NAMES_AR, fmtTime } from "@/lib/reports/export";
 
 export const Route = createFileRoute("/_authenticated/reports/department-schedule")({
-  head: () => ({ meta: [{ title: "Legacy — للعرض التاريخي" }] }),
+  head: () => ({ meta: [{ title: "Legacy — تقرير جدول الأقسام (تاريخي)" }] }),
   component: Page,
 });
 
@@ -75,15 +76,22 @@ function Page() {
   ];
 
   return (
-    <div className="space-y-4" dir="rtl">
-      <Card className="border-amber-500/40 bg-amber-500/10 p-4 text-sm">
-        <h1 className="font-semibold">Legacy — للعرض التاريخي</h1>
-        <p className="mt-1 text-muted-foreground">
-          هذا التقرير يقرأ نموذج sections التاريخي ولم يُرحَّل. استخدم «تقرير جدول البرنامج/المستوى»
-          بدلاً منه.
-        </p>
+    <div className="space-y-4">
+      <Card className="report-no-print flex gap-3 border-amber-500/30 bg-amber-500/5 p-4">
+        <Archive className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" />
+        <div className="text-sm space-y-1">
+          <p className="font-medium text-amber-700">تقرير Legacy — لم يُرحّل ويُزال بعد الإطلاق (A1.5)</p>
+          <p className="text-xs text-muted-foreground">
+            يعرض هوية <code className="text-[11px]">sections</code> القديمة — قراءة فقط
+            ولا تعتمد عليه تدفقات العمل الجديدة. استخدم{" "}
+            <Link to="/reports/program-level-timetable" className="text-primary underline-offset-4 hover:underline">
+              جدول البرنامج/المستوى
+            </Link>{" "}
+            بفلاتر الدفعة الدراسية ومجموعة المحاضرات/المعامل بدلاً منه.
+          </p>
+        </div>
       </Card>
-      <ReportShell title="تقرير جدول الأقسام" description="الجدول مجمّعًا حسب القسم/البرنامج/المستوى/المجموعة."
+      <ReportShell title="تقرير جدول الأقسام (Legacy)" description="الجدول مجمّعًا حسب القسم/البرنامج/المستوى/المجموعة."
         filename="department_schedule" rows={rows} headers={headers} isLoading={isLoading}
         emptyMessage={!versionId ? "اختر نسخة جدول للبدء." : "لا توجد محاضرات."}
         filters={
@@ -107,16 +115,16 @@ function Page() {
             </div>
           </div>
         }>
-        <Card className="p-0 overflow-hidden">
-          <Table>
-            <TableHeader><TableRow>{headers.map((h) => <TableHead key={h.key}>{h.label}</TableHead>)}</TableRow></TableHeader>
-            <TableBody>
-              {rows.map((r, i) => (
-                <TableRow key={i}>{headers.map((h) => <TableCell key={h.key}>{String(r[h.key as keyof typeof r])}</TableCell>)}</TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Card>
+      <Card className="p-0 overflow-hidden">
+        <Table>
+          <TableHeader><TableRow>{headers.map((h) => <TableHead key={h.key}>{h.label}</TableHead>)}</TableRow></TableHeader>
+          <TableBody>
+            {rows.map((r, i) => (
+              <TableRow key={i}>{headers.map((h) => <TableCell key={h.key}>{String(r[h.key as keyof typeof r])}</TableCell>)}</TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
       </ReportShell>
     </div>
   );

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,16 +7,17 @@ import { ReportFilters } from "@/components/reports/report-filters";
 import { ReportTimetableView } from "@/components/reports/report-timetable-view";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
+import { Archive } from "lucide-react";
 import {
   mapRawSessions,
   timetableSessionsToRows,
   TIMETABLE_TABLE_HEADERS,
 } from "@/lib/reports/session-mappers";
-import { fetchSectionTimetableSessions } from "@/lib/reports/queries/legacy-session-queries";
+import { fetchSectionTimetableSessions } from "@/lib/reports/queries/session-queries";
 import { useReportContext } from "@/hooks/reports/useReportContext";
 
 export const Route = createFileRoute("/_authenticated/reports/section-timetable")({
-  head: () => ({ meta: [{ title: "Legacy — للعرض التاريخي" }] }),
+  head: () => ({ meta: [{ title: "Legacy — تقرير جدول المجموعة (تاريخي)" }] }),
   component: Page,
 });
 
@@ -58,16 +59,23 @@ function Page() {
   const ready = !!ctx.versionId && !!sectionId;
 
   return (
-    <div className="space-y-4" dir="rtl">
-      <Card className="border-amber-500/40 bg-amber-500/10 p-4 text-sm">
-        <h1 className="font-semibold">Legacy — للعرض التاريخي</h1>
-        <p className="mt-1 text-muted-foreground">
-          هذا التقرير يقرأ نموذج sections التاريخي وهو خارج مسار التشغيل الجديد.
-          مجموعات المحاضرات والمعامل هي المسار المعتمد لجدولة المجموعات.
-        </p>
+    <div className="space-y-4">
+      <Card className="report-no-print flex gap-3 border-amber-500/30 bg-amber-500/5 p-4">
+        <Archive className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" />
+        <div className="text-sm space-y-1">
+          <p className="font-medium text-amber-700">تقرير Legacy — للعرض التاريخي فقط (A1.5)</p>
+          <p className="text-xs text-muted-foreground">
+            مصدره جداول <code className="text-[11px]">sections</code> المحفوظة للتوافق — قراءة فقط
+            ولا تعتمد عليه تدفقات العمل الجديدة. للجداول الحديثة استخدم{" "}
+            <Link to="/reports/program-level-timetable" className="text-primary underline-offset-4 hover:underline">
+              جدول البرنامج/المستوى
+            </Link>{" "}
+            بفلاتر الدفعة الدراسية ومجموعة المحاضرات/المعامل.
+          </p>
+        </div>
       </Card>
       <ReportShell
-        title="تقرير جدول المجموعة"
+        title="تقرير جدول المجموعة (Legacy)"
         description={`المجموع: ${totalHours.toFixed(2)} ساعة/أسبوع.`}
         filterSummary={ctx.filterSummary}
         reportContext={ctx}
