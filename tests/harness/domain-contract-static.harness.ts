@@ -23,6 +23,9 @@ const requiredTables = [
   "plan_course_components",
   "elective_slots",
   "academic_cohorts",
+  "scheduling_cohort_term_headcounts",
+  "scheduling_headcount_overrides",
+  "scheduling_headcount_revisions",
   "cohort_elective_selections",
   "course_offerings",
   "sections",
@@ -59,7 +62,7 @@ assert.ok(!types.includes("academic_years: {"), "academic_years must not be a ta
 
 const programs = read("src/routes/_authenticated/programs.tsx");
 assert.ok(
-  programs.includes('if (!form.name.trim() || !form.code.trim() || !form.department_id)'),
+  programs.includes("if (!form.name.trim() || !form.code.trim() || !form.department_id)"),
   "programs UI must require department_id",
 );
 

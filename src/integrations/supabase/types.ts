@@ -354,6 +354,59 @@ export type Database = {
           },
         ]
       }
+      scheduling_cohort_term_headcounts: {
+        Row: {
+          approval_status: string
+          approved_at: string | null
+          approved_by: string | null
+          college_id: string
+          cohort_id: string
+          created_at: string
+          eligible_student_count: number
+          exam_eligible_count: number
+          expected_attendance_count: number
+          id: string
+          notes: string | null
+          registered_student_count: number
+          reserve_margin: number
+          scheduling_headcount: number
+          source: string
+          study_system: string
+          term_id: string
+          updated_at: string
+        }
+        Insert: {
+          approval_status?: string; approved_at?: string | null; approved_by?: string | null; college_id: string; cohort_id: string; created_at?: string; eligible_student_count: number; exam_eligible_count: number; expected_attendance_count: number; id?: string; notes?: string | null; registered_student_count: number; reserve_margin?: number; scheduling_headcount: number; source: string; study_system: string; term_id: string; updated_at?: string
+        }
+        Update: {
+          approval_status?: string; approved_at?: string | null; approved_by?: string | null; college_id?: string; cohort_id?: string; created_at?: string; eligible_student_count?: number; exam_eligible_count?: number; expected_attendance_count?: number; id?: string; notes?: string | null; registered_student_count?: number; reserve_margin?: number; scheduling_headcount?: number; source?: string; study_system?: string; term_id?: string; updated_at?: string
+        }
+        Relationships: []
+      }
+      scheduling_headcount_overrides: {
+        Row: {
+          active: boolean; approval_status: string; approved_at: string | null; approved_by: string | null; college_id: string; course_offering_id: string | null; created_at: string; exam_eligible_count: number | null; headcount_id: string; id: string; notes: string | null; plan_course_component_id: string | null; reserve_margin: number | null; scheduling_headcount: number; source: string; updated_at: string
+        }
+        Insert: {
+          active?: boolean; approval_status?: string; approved_at?: string | null; approved_by?: string | null; college_id: string; course_offering_id?: string | null; created_at?: string; exam_eligible_count?: number | null; headcount_id: string; id?: string; notes?: string | null; plan_course_component_id?: string | null; reserve_margin?: number | null; scheduling_headcount: number; source: string; updated_at?: string
+        }
+        Update: {
+          active?: boolean; approval_status?: string; approved_at?: string | null; approved_by?: string | null; college_id?: string; course_offering_id?: string | null; created_at?: string; exam_eligible_count?: number | null; headcount_id?: string; id?: string; notes?: string | null; plan_course_component_id?: string | null; reserve_margin?: number | null; scheduling_headcount?: number; source?: string; updated_at?: string
+        }
+        Relationships: []
+      }
+      scheduling_headcount_revisions: {
+        Row: {
+          changed_at: string; changed_by: string; college_id: string; headcount_id: string; id: string; notes: string | null; override_id: string | null; revision_kind: string; snapshot: Json
+        }
+        Insert: {
+          changed_at?: string; changed_by: string; college_id: string; headcount_id: string; id?: string; notes?: string | null; override_id?: string | null; revision_kind: string; snapshot: Json
+        }
+        Update: {
+          changed_at?: string; changed_by?: string; college_id?: string; headcount_id?: string; id?: string; notes?: string | null; override_id?: string | null; revision_kind?: string; snapshot?: Json
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -3191,6 +3244,14 @@ export type Database = {
       }
     }
     Functions: {
+      approve_scheduling_cohort_term_headcount: {
+        Args: { p_id: string; p_notes?: string | null }
+        Returns: Json
+      }
+      archive_scheduling_headcount_override: {
+        Args: { p_id: string; p_notes?: string | null }
+        Returns: Json
+      }
       _collect_schedule_session_move_conflicts: {
         Args: {
           p_college_id: string
@@ -3206,6 +3267,26 @@ export type Database = {
           p_study_system: string
           p_teaching_assignment_id: string
           p_version_id: string
+        }
+        Returns: Json
+      }
+      list_scheduling_headcount_revisions: {
+        Args: { p_headcount_id: string }
+        Returns: Json
+      }
+      resolve_scheduling_headcount: {
+        Args: { p_college_id: string; p_cohort_id: string; p_course_offering_id?: string | null; p_plan_course_component_id?: string | null; p_term_id: string }
+        Returns: Json
+      }
+      upsert_scheduling_cohort_term_headcount: {
+        Args: {
+          p_allow_over_eligible?: boolean; p_cohort_id: string; p_eligible_student_count: number; p_exam_eligible_count?: number; p_expected_attendance_count: number; p_notes?: string | null; p_registered_student_count: number; p_reserve_margin?: number; p_scheduling_headcount?: number; p_source?: string; p_term_id: string
+        }
+        Returns: Json
+      }
+      upsert_scheduling_headcount_override: {
+        Args: {
+          p_allow_over_eligible?: boolean; p_course_offering_id?: string | null; p_exam_eligible_count?: number | null; p_headcount_id: string; p_notes?: string | null; p_plan_course_component_id?: string | null; p_reserve_margin?: number | null; p_scheduling_headcount?: number; p_source?: string
         }
         Returns: Json
       }

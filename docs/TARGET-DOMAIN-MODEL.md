@@ -137,6 +137,7 @@ flowchart TB
 | Tenant | `colleges` |
 | Program ownership | `academic_programs.department_id` |
 | Student academic set | `academic_cohorts` |
+| Scheduling headcount | approved `scheduling_cohort_term_headcounts` (with approved scoped overrides) |
 | Curriculum membership | approved `study_plans` + `plan_courses` |
 | Contact hours / component type | `plan_course_components` |
 | Elective decision | `cohort_elective_selections` |
@@ -151,6 +152,13 @@ flowchart TB
 | Detected conflicts | `conflict_results` (never master-edited as rules) |
 | Workload standard | `faculty_workload_policies` |
 | Isolation axes | `college_id` + `study_system` (`regular`\|`parallel`) |
+
+## Scheduling headcount foundation
+
+Scheduling uses only the approved cohort × term `scheduling_headcount`; it never falls back to
+`academic_cohorts.expected_students`. Optional approved overrides may scope the final count to a
+course offering and/or plan-course component. The source-only migration is **NOT APPLIED** pending
+`APPROVE_DB_MIGRATION_APPLY`; A2 shared delivery remains blocked until application and data entry.
 
 ## Explicit non-SoT (must not drive Pilot)
 

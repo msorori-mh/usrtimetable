@@ -1,0 +1,47 @@
+PHASE-A1-LEGACY-ORPHAN-CLASSIFICATION-COMBINED
+==============================================
+Package path:
+  implementation-reports/PHASE-A1-LEGACY-ORPHAN-CLASSIFICATION-01/
+
+Files
+1) PHASE-A1-LEGACY-ORPHAN-CLASSIFICATION-READONLY.sql
+   SELECT-only classifier for 174 TA + 5 COS.
+2) PHASE-A1-LEGACY-ORPHAN-CLASSIFICATION-LOVABLE-EXEC.txt
+   Lovable/operator run instructions (read-only).
+3) PHASE-A1-LEGACY-ORPHAN-REMEDIATION-PLAN.md
+   Future remediation plan — gated; not executable now.
+
+Production facts (confirmed, not re-invented)
+- academic_programs = 0
+- sections = 0
+- course_offering_sections = 5
+- orphan teaching_assignments section references = 174 (all active)
+- TA V2 / New Flow sessions with section_id = 0
+- college_id = 7168345f-cf9d-4789-b2ad-547abb687dc8
+- term: الفصل الدراسي الأول 2026-2027
+
+Column reality (from source types)
+teaching_assignments: id, college_id, course_offering_id, instructor_id,
+  section_id, delivery_group_id, cohort_id, is_active, created_at, updated_at,
+  session_type, expected_students, notes, plan_course_component_id
+  — NO import_job_id, NO study_system (joined via offering/cohort)
+course_offering_sections: id, college_id, course_offering_id, section_id,
+  section_number, expected_students, created_at, updated_at
+  — NO is_active (use offering.is_active), NO instructor/cohort
+
+Classification logic (summary)
+- TEST: test/dummy/تجريب markers in instructor/course/notes/section_number
+- MIGRATABLE_TO_V2: V2 TA alternative exists; no session dependency; section missing
+- SAFE_TO_UNLINK: dangling section; no sessions; matching delivery_group; (COS: no TA refs)
+- REQUIRED_FOR_OPERATION: schedule_sessions or TA still depend on the section/TA
+- LEGACY_HISTORICAL: dangling legacy shape without stronger evidence
+- UNKNOWN: default when evidence is insufficient
+
+Safety verification
+- SQL file contains only SELECT / WITH...SELECT
+- No DML / DDL / RPC / temp objects / dynamic SQL
+- No placeholders requiring manual table renames
+- Remediation not started
+
+Pending approval
+APPROVE_LEGACY_DATA_REMEDIATION

@@ -139,6 +139,13 @@ const NAV: NavItem[] = [
     group: "البنية الأكاديمية",
   },
   {
+    to: "/scheduling-headcounts",
+    label: "أعداد الدفعات المعتمدة للجدولة",
+    icon: <Users className="h-4 w-4" />,
+    roles: ALL,
+    group: "البنية الأكاديمية",
+  },
+  {
     to: "/delivery-groups",
     label: "مجموعات المحاضرات والمعامل",
     icon: <UsersRound className="h-4 w-4" />,
