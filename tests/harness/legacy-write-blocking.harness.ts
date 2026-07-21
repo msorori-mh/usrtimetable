@@ -34,20 +34,14 @@ assert(
 );
 const mutationGuards =
   sections.split("if (LEGACY_SECTIONS_WRITE_BLOCKED) throw new Error(").length - 1;
-assert(
-  mutationGuards === 2,
-  "save + delete mutations both self-reject while writes are blocked",
-);
+assert(mutationGuards === 2, "save + delete mutations both self-reject while writes are blocked");
 assert(
   !sections.includes("{canManage && ("),
   "no active canManage write control remains in sections.tsx",
 );
 const gatedControls =
   sections.split("{canManage && !LEGACY_SECTIONS_WRITE_BLOCKED && (").length - 1;
-assert(
-  gatedControls === 2,
-  "create dialog and row actions are both gated behind the block flag",
-);
+assert(gatedControls === 2, "create dialog and row actions are both gated behind the block flag");
 assert(
   sections.includes('meta: [{ title: "Legacy — للعرض التاريخي" }]'),
   "Legacy historical title retained",
@@ -56,10 +50,7 @@ assert(
   sections.includes('.from("sections")') && sections.includes(".select("),
   "historical SELECT view of sections retained (read-only)",
 );
-assert(
-  sections.includes("A1.3a"),
-  "page banner documents the A1.3a write block",
-);
+assert(sections.includes("A1.3a"), "page banner documents the A1.3a write block");
 
 // ---------- 2) no active Legacy-table DML in modern UI/source paths ----------
 const LEGACY_TABLES = [
@@ -135,7 +126,8 @@ assert(
 
 const commit = read("src/lib/excel-import/commit.ts");
 assert(
-  commit.includes("import_legacy_entity_blocked") && commit.includes("LEGACY_IMPORT_COMMIT_BLOCKED"),
+  commit.includes("import_legacy_entity_blocked") &&
+    commit.includes("LEGACY_IMPORT_COMMIT_BLOCKED"),
   "client commit refuses LEGACY_ONLY import jobs (A1.3a guard)",
 );
 

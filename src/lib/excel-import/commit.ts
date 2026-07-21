@@ -54,7 +54,10 @@ export async function commitImport(input: {
     .maybeSingle();
   if (jobRowError) throw jobRowError;
   if (isLegacyOnlyImportEntity(jobRow?.target_entity)) {
-    throw new ImportSafetyError("import_legacy_entity_blocked", LEGACY_IMPORT_COMMIT_BLOCKED_MESSAGE);
+    throw new ImportSafetyError(
+      "import_legacy_entity_blocked",
+      LEGACY_IMPORT_COMMIT_BLOCKED_MESSAGE,
+    );
   }
 
   const { data, error } = await supabase.rpc("commit_import_job_atomic", {
