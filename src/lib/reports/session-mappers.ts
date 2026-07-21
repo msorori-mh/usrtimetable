@@ -27,6 +27,7 @@ export interface TimetableReportSession {
   course_name: string;
   instructor_name: string;
   room_label: string;
+  /** Group label — delivery-group code for active reports, Legacy section number for Legacy-tagged ones. */
   section_number: string;
   program_name: string;
   level_name: string;
@@ -42,7 +43,10 @@ export function studySystemLabel(sys: string | null | undefined): string {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function mapRawToTimetableSession(raw: any): TimetableReportSession {
+export function mapRawToTimetableSession(
+  raw: any,
+  deliveryGroupLabels?: ReadonlyMap<string, string>,
+): TimetableReportSession {
   const co = raw.course_offerings;
   const course = co?.courses;
   return {
@@ -56,16 +60,25 @@ export function mapRawToTimetableSession(raw: any): TimetableReportSession {
     course_name: course?.name ?? "",
     instructor_name: raw.instructors?.full_name ?? "",
     room_label: raw.rooms ? `${raw.rooms.code ?? ""} ${raw.rooms.name ?? ""}`.trim() : "",
-    section_number: raw.sections?.section_number ?? "",
+    // V2-first: resolve the delivery-group code (مجموعات المحاضرات والمعامل) via the
+    // caller-provided label map; fall back to the Legacy sections embed only for
+    // Legacy-tagged reports that still read the historical model.
+    section_number:
+      (raw.delivery_group_id ? deliveryGroupLabels?.get(raw.delivery_group_id) : undefined) ??
+      raw.sections?.section_number ??
+      "",
     program_name: co?.academic_programs?.name ?? "",
     level_name: co?.academic_levels?.name ?? "",
     department_name: course?.departments?.name ?? "",
   };
 }
 
-export function mapRawSessions(raw: unknown[]): TimetableReportSession[] {
+export function mapRawSessions(
+  raw: unknown[],
+  deliveryGroupLabels?: ReadonlyMap<string, string>,
+): TimetableReportSession[] {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (raw as any[]).map(mapRawToTimetableSession);
+  return (raw as any[]).map((r) => mapRawToTimetableSession(r, deliveryGroupLabels));
 }
 
 export const TIMETABLE_TABLE_HEADERS: { key: string; label: string }[] = [

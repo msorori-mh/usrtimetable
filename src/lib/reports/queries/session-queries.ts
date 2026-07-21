@@ -2,17 +2,22 @@ import { supabase } from "@/integrations/supabase/client";
 import { applyStudySystemFilter, assertSingleVersion } from "@/lib/reports/filters";
 import type { ReportStudySystem } from "@/lib/reports/types";
 
-/** Shared select for timetable-style reports (single version). */
+/**
+ * Shared select for timetable-style reports (single version) — V2 delivery model.
+ * The group dimension comes from delivery_groups (مجموعات المحاضرات والمعامل):
+ * this select carries the raw delivery_group_id column and never joins Legacy
+ * sections. Historical section reads live in queries/legacy-session-queries.ts
+ * and are reserved for Legacy-tagged reports only.
+ */
 export const TIMETABLE_SESSION_SELECT = `
   id, day_of_week, start_time, end_time, session_type, study_system,
-  section_id, instructor_id, room_id,
+  delivery_group_id, instructor_id, room_id,
   course_offerings(
     program_id, level_id,
     courses(name, code, department_id, departments(name)),
     academic_programs(name),
     academic_levels(name, level_number)
   ),
-  sections(section_number),
   instructors(full_name),
   rooms(code, name)
 ` as const;
@@ -25,7 +30,7 @@ export interface FetchVersionSessionsParams {
   studySystem: ReportStudySystem;
   select?: string;
   instructorId?: string;
-  sectionId?: string;
+  deliveryGroupId?: string;
   roomId?: string;
 }
 
@@ -49,7 +54,7 @@ export async function fetchSessionsForVersion<T = Record<string, unknown>>(
   q = applyStudySystemFilter(q, params.studySystem);
 
   if (params.instructorId) q = q.eq("instructor_id", params.instructorId);
-  if (params.sectionId) q = q.eq("section_id", params.sectionId);
+  if (params.deliveryGroupId) q = q.eq("delivery_group_id", params.deliveryGroupId);
   if (params.roomId) q = q.eq("room_id", params.roomId);
 
   const { data, error } = await q;
@@ -76,19 +81,6 @@ export async function fetchInstructorScheduleSessions(
   });
 }
 
-/** Section timetable — single version, single section. */
-export async function fetchSectionTimetableSessions(
-  params: TimetableSessionsBaseParams & { sectionId: string },
-) {
-  return fetchSessionsForVersion({
-    collegeId: params.collegeId,
-    versionId: params.versionId,
-    studySystem: params.studySystem,
-    select: TIMETABLE_SESSION_SELECT,
-    sectionId: params.sectionId,
-  });
-}
-
 /** Room timetable — single version, single room. */
 export async function fetchRoomTimetableSessions(
   params: TimetableSessionsBaseParams & { roomId: string },
@@ -102,15 +94,42 @@ export async function fetchRoomTimetableSessions(
   });
 }
 
+export interface DeliveryGroupOption {
+  id: string;
+  group_code: string;
+}
+
+/**
+ * Delivery-group options for report pickers and group-label lookup —
+ * مجموعات المحاضرات والمعامل (V2 group source). College-scoped, matching the
+ * delivery-groups diagnostics page (delivery_groups carries no direct term_id).
+ */
+export async function fetchDeliveryGroupOptions(
+  collegeId: string,
+): Promise<DeliveryGroupOption[]> {
+  const { data, error } = await supabase
+    .from("delivery_groups")
+    .select("id, group_code")
+    .eq("college_id", collegeId)
+    .order("group_code");
+  if (error) throw error;
+  return (data ?? []) as DeliveryGroupOption[];
+}
+
+/** Build a delivery_group_id → group_code label map for report rendering. */
+export function deliveryGroupLabelMap(options: DeliveryGroupOption[]): Map<string, string> {
+  return new Map(options.map((g) => [g.id, g.group_code]));
+}
+
 export interface ProgramLevelFilterParams {
   departmentId?: string | null;
   programId?: string | null;
   levelId?: string | null;
-  sectionId?: string | null;
+  deliveryGroupId?: string | null;
 }
 
 /**
- * Program/Level timetable — single version; optional dept/program/level/section filters.
+ * Program/Level timetable — single version; optional dept/program/level/delivery-group filters.
  * Department filter applied client-side (PostgREST nested eq limitation).
  */
 export async function fetchProgramLevelTimetableSessions(
@@ -130,7 +149,7 @@ export async function fetchProgramLevelTimetableSessions(
 
   if (params.programId) q = q.eq("course_offerings.program_id", params.programId);
   if (params.levelId) q = q.eq("course_offerings.level_id", params.levelId);
-  if (params.sectionId) q = q.eq("section_id", params.sectionId);
+  if (params.deliveryGroupId) q = q.eq("delivery_group_id", params.deliveryGroupId);
 
   const { data, error } = await q;
   if (error) throw error;
@@ -202,8 +221,9 @@ export async function fetchRoomUtilizationSessions(
 /** Official published timetable — single published version only. */
 export const PUBLISHED_TIMETABLE_SELECT = `
   id, day_of_week, start_time, end_time, session_type, study_system,
+  delivery_group_id,
   course_offerings!inner(program_id, level_id, courses!inner(name, code, department_id, departments(name)), academic_programs(name), academic_levels(name)),
-  sections(id, section_number), instructors(id, full_name), rooms(id, code, name),
+  instructors(id, full_name), rooms(id, code, name),
   schedule_versions!inner(name)
 ` as const;
 
@@ -213,7 +233,7 @@ export async function fetchPublishedTimetableSessions(params: {
   studySystem: ReportStudySystem;
   programId?: string | null;
   levelId?: string | null;
-  sectionId?: string | null;
+  deliveryGroupId?: string | null;
   instructorId?: string | null;
   roomId?: string | null;
   departmentId?: string | null;
@@ -231,7 +251,7 @@ export async function fetchPublishedTimetableSessions(params: {
   q = applyStudySystemFilter(q, params.studySystem);
   if (params.programId) q = q.eq("course_offerings.program_id", params.programId);
   if (params.levelId) q = q.eq("course_offerings.level_id", params.levelId);
-  if (params.sectionId) q = q.eq("section_id", params.sectionId);
+  if (params.deliveryGroupId) q = q.eq("delivery_group_id", params.deliveryGroupId);
   if (params.instructorId) q = q.eq("instructor_id", params.instructorId);
   if (params.roomId) q = q.eq("room_id", params.roomId);
 
