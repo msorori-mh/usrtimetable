@@ -51,6 +51,7 @@ export const harnesses = [
   "phase-a1-legacy-navigation-terminology.harness.ts",
   "domain-contract-static.harness.ts",
   "program-department-integrity.harness.ts",
+  "reports-sources.harness.ts",
 ];
 
 const historicalArtifacts = new Map([
