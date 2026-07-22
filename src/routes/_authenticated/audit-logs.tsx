@@ -27,8 +27,8 @@ import {
 /**
  * Audit Viewer — READ-ONLY (A4-AUDIT-VIEWER-DESIGN-01).
  * No-write guarantee: this file contains no insert/update/delete call and
- * never imports `logAudit`; enforcement stays in RLS (`al_select`) and in the
- * missing UPDATE/DELETE grants on public.audit_logs.
+ * never calls the audit-write helper; enforcement stays in RLS (`al_select`)
+ * and in the missing UPDATE/DELETE grants on public.audit_logs.
  * Sidebar/nav visibility is UX only — RLS is the authorization boundary.
  */
 export const Route = createFileRoute("/_authenticated/audit-logs")({
