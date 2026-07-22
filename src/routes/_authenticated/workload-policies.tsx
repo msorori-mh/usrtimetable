@@ -392,6 +392,7 @@ function WorkloadPoliciesPage() {
 
       {(creating || editing) && active && (
         <PolicyForm
+          key={editing?.id ?? "new"}
           value={editing}
           collegeId={active.id}
           terms={terms}
@@ -463,6 +464,11 @@ function PolicyForm({
   return (
     <Card className="space-y-3 p-4">
       <h2 className="font-semibold">{value ? "تعديل سياسة النصاب" : "إضافة سياسة نصاب"}</h2>
+      {value && !value.active && (
+        <p className="rounded border border-amber-500/40 bg-amber-50 p-2 text-sm dark:bg-amber-950/20">
+          هذه السياسة موقوفة حاليًا — الحفظ سيعيد تفعيلها تلقائيًا (upsert يفرض active=true).
+        </p>
+      )}
       <div className="grid gap-2 md:grid-cols-2">
         <input
           className="rounded border p-2"
