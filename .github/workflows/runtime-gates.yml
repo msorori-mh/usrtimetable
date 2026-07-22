@@ -1,0 +1,75 @@
+name: runtime-gates
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Ref to checkout and gate (branch/SHA)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  gates:
+    name: runtime-gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.sha }}
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies (frozen lockfile)
+        run: bun install --frozen-lockfile
+
+      - name: Compute diff range
+        id: range
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          else
+            BEFORE="${{ github.event.before }}"
+            if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+              BEFORE="HEAD~1"
+            fi
+            BASE="$BEFORE"
+          fi
+          echo "base=$BASE" >> "$GITHUB_OUTPUT"
+          echo "Diff base: $BASE"
+
+      - name: git diff --check
+        shell: bash
+        run: git diff --check "${{ steps.range.outputs.base }}" HEAD
+
+      - name: Scoped ESLint (changed files only)
+        shell: bash
+        run: |
+          FILES=$(git diff --name-only --diff-filter=ACMR "${{ steps.range.outputs.base }}" HEAD -- '*.ts' '*.tsx' '*.js' '*.mjs' || true)
+          if [ -n "$FILES" ]; then
+            echo "Linting changed files:"
+            echo "$FILES"
+            echo "$FILES" | xargs bunx eslint
+          else
+            echo "No lintable files changed — scoped ESLint PASS (vacuous)."
+          fi
+
+      - name: TypeScript (tsc --noEmit)
+        run: bunx tsc --noEmit
+
+      - name: Production build (vite build)
+        run: bun run build
+
+      - name: Static harness suite
+        run: bun run test:harness
