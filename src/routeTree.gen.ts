@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedWorkloadPoliciesRouteImport } from './routes/_authenticated/workload-policies'
 import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated/users'
 import { Route as AuthenticatedUniversitiesRouteImport } from './routes/_authenticated/universities'
 import { Route as AuthenticatedTimeSlotsRouteImport } from './routes/_authenticated/time-slots'
@@ -84,6 +85,12 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedWorkloadPoliciesRoute =
+  AuthenticatedWorkloadPoliciesRouteImport.update({
+    id: '/workload-policies',
+    path: '/workload-policies',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedUsersRoute = AuthenticatedUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -458,6 +465,7 @@ export interface FileRoutesByFullPath {
   '/time-slots': typeof AuthenticatedTimeSlotsRoute
   '/universities': typeof AuthenticatedUniversitiesRoute
   '/users': typeof AuthenticatedUsersRoute
+  '/workload-policies': typeof AuthenticatedWorkloadPoliciesRoute
   '/reports/conflicts': typeof AuthenticatedReportsConflictsRoute
   '/reports/data-readiness': typeof AuthenticatedReportsDataReadinessRoute
   '/reports/department-schedule': typeof AuthenticatedReportsDepartmentScheduleRoute
@@ -518,6 +526,7 @@ export interface FileRoutesByTo {
   '/time-slots': typeof AuthenticatedTimeSlotsRoute
   '/universities': typeof AuthenticatedUniversitiesRoute
   '/users': typeof AuthenticatedUsersRoute
+  '/workload-policies': typeof AuthenticatedWorkloadPoliciesRoute
   '/reports/conflicts': typeof AuthenticatedReportsConflictsRoute
   '/reports/data-readiness': typeof AuthenticatedReportsDataReadinessRoute
   '/reports/department-schedule': typeof AuthenticatedReportsDepartmentScheduleRoute
@@ -581,6 +590,7 @@ export interface FileRoutesById {
   '/_authenticated/time-slots': typeof AuthenticatedTimeSlotsRoute
   '/_authenticated/universities': typeof AuthenticatedUniversitiesRoute
   '/_authenticated/users': typeof AuthenticatedUsersRoute
+  '/_authenticated/workload-policies': typeof AuthenticatedWorkloadPoliciesRoute
   '/_authenticated/reports/conflicts': typeof AuthenticatedReportsConflictsRoute
   '/_authenticated/reports/data-readiness': typeof AuthenticatedReportsDataReadinessRoute
   '/_authenticated/reports/department-schedule': typeof AuthenticatedReportsDepartmentScheduleRoute
@@ -644,6 +654,7 @@ export interface FileRouteTypes {
     | '/time-slots'
     | '/universities'
     | '/users'
+    | '/workload-policies'
     | '/reports/conflicts'
     | '/reports/data-readiness'
     | '/reports/department-schedule'
@@ -704,6 +715,7 @@ export interface FileRouteTypes {
     | '/time-slots'
     | '/universities'
     | '/users'
+    | '/workload-policies'
     | '/reports/conflicts'
     | '/reports/data-readiness'
     | '/reports/department-schedule'
@@ -766,6 +778,7 @@ export interface FileRouteTypes {
     | '/_authenticated/time-slots'
     | '/_authenticated/universities'
     | '/_authenticated/users'
+    | '/_authenticated/workload-policies'
     | '/_authenticated/reports/conflicts'
     | '/_authenticated/reports/data-readiness'
     | '/_authenticated/reports/department-schedule'
@@ -810,6 +823,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/workload-policies': {
+      id: '/_authenticated/workload-policies'
+      path: '/workload-policies'
+      fullPath: '/workload-policies'
+      preLoaderRoute: typeof AuthenticatedWorkloadPoliciesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/users': {
       id: '/_authenticated/users'
@@ -996,6 +1016,7 @@ declare module '@tanstack/react-router' {
     '/_authenticated/departments': {
       id: '/_authenticated/departments'
       path: '/departments'
+      fullPath: '/departments'
       fullPath: '/departments'
       preLoaderRoute: typeof AuthenticatedDepartmentsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
@@ -1302,6 +1323,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedTimeSlotsRoute: typeof AuthenticatedTimeSlotsRoute
   AuthenticatedUniversitiesRoute: typeof AuthenticatedUniversitiesRoute
   AuthenticatedUsersRoute: typeof AuthenticatedUsersRoute
+  AuthenticatedWorkloadPoliciesRoute: typeof AuthenticatedWorkloadPoliciesRoute
   AuthenticatedTimetableVersionIdRoute: typeof AuthenticatedTimetableVersionIdRoute
 }
 
@@ -1350,6 +1372,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedTimeSlotsRoute: AuthenticatedTimeSlotsRoute,
   AuthenticatedUniversitiesRoute: AuthenticatedUniversitiesRoute,
   AuthenticatedUsersRoute: AuthenticatedUsersRoute,
+  AuthenticatedWorkloadPoliciesRoute: AuthenticatedWorkloadPoliciesRoute,
   AuthenticatedTimetableVersionIdRoute: AuthenticatedTimetableVersionIdRoute,
 }
 
