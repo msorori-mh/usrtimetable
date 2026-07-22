@@ -4,10 +4,12 @@
  * Static inspection only (no runtime gates, no DB, no Supabase client):
  *  - route/lib files exist and are wired (nav, route tree, harness registry)
  *  - writes go through the A3 RPCs only (no direct DML on faculty_workload_policies)
- *  - every RPC used by the UI is defined in the source-only A3 migration
+ *  - every RPC used by the UI is defined in the source-only A3 migration,
+ *    and every p_* argument the UI passes exists in the migration signature
  *  - no Legacy references (sections/section_id/section_number/…) in the new files
  *  - official terminology + readiness-blocker documentation
  *  - G1: inbound formula-injection sanitation wired into the import parse path
+ *    (trimStart-tolerant, original value preserved)
  */
 import { readFileSync, existsSync } from "node:fs";
 
@@ -30,6 +32,27 @@ const A3_RPCS = [
   "list_faculty_workload_assigned_hours",
   "list_faculty_workload_overload_warnings",
 ];
+
+/** p_* arguments the UI passes to each A3 RPC (must exist in the migration signature). */
+const RPC_PARAMS: Record<string, string[]> = {
+  upsert_faculty_workload_policy: [
+    "p_college_id",
+    "p_rank_code",
+    "p_required_load_hours",
+    "p_rank_label_ar",
+    "p_rank_aliases",
+    "p_study_system",
+    "p_term_id",
+    "p_min_load_hours",
+    "p_max_load_hours",
+    "p_overload_allowed",
+    "p_notes",
+  ],
+  deactivate_faculty_workload_policy: ["p_id", "p_notes"],
+  resolve_faculty_workload_policy: ["p_instructor_id", "p_term_id", "p_study_system"],
+  list_faculty_workload_assigned_hours: ["p_college_id", "p_term_id", "p_study_system"],
+  list_faculty_workload_overload_warnings: ["p_college_id", "p_term_id", "p_study_system"],
+};
 
 const checks: { name: string; ok: boolean; detail: string }[] = [];
 function check(name: string, ok: boolean, detail: string) {
@@ -66,6 +89,23 @@ if (allPresent) {
     );
   }
 
+  // Argument-name contract: every p_* the UI passes exists in the migration signature
+  for (const [fn, params] of Object.entries(RPC_PARAMS)) {
+    const sig = new RegExp(
+      `CREATE OR REPLACE FUNCTION public\\.${fn}\\(([\\s\\S]*?)\\)\\s*RETURNS`,
+      "i",
+    ).exec(mig)?.[1];
+    check(`RPC ${fn} signature slice found`, typeof sig === "string", "migration signature");
+    for (const param of params) {
+      check(`UI passes ${param} to ${fn}`, api.includes(param), "api.ts argument");
+      check(
+        `migration accepts ${param} for ${fn}`,
+        typeof sig === "string" && sig.includes(param),
+        "signature cross-check",
+      );
+    }
+  }
+
   // No direct DML on faculty_workload_policies anywhere in the new UI layer
   const dmlRe =
     /\.from\(\s*["'`]faculty_workload_policies["'`]\s*\)\s*\.\s*(insert|update|delete|upsert)/;
@@ -84,6 +124,16 @@ if (allPresent) {
     "college_admin manage, read_only view-only; super_admin via college switcher",
   );
   check("college switcher present", route.includes("CollegeSwitcher"), "college scoping");
+  check(
+    "form remounts per edit target",
+    route.includes('key={editing?.id ?? "new"}'),
+    "prevents stale-state writes to the wrong row",
+  );
+  check(
+    "inactive-policy re-activation notice",
+    route.includes("سيعيد تفعيلها"),
+    "upsert forces active=true; user must be told",
+  );
 
   // Readiness blocker documented in the UI
   check(
@@ -144,6 +194,11 @@ if (allPresent) {
     "G1: export-side escape preserved",
     formula.includes("export function escapeSpreadsheetCell"),
     "no regression on export side",
+  );
+  check(
+    "G1: checks are trimStart-tolerant",
+    formula.includes("trimStart"),
+    "covers leading whitespace/TAB/CR before the formula trigger",
   );
   check(
     "G1: parse path sanitizes inbound cells",
