@@ -2,6 +2,16 @@
 
 State source of truth: this folder (origin/main). Sandbox copies are ephemeral and never authoritative.
 
+## 2026-07-22 — USRTIMETABLE-SWARM-RESUME-VERIFY-HOLD-04
+
+- Session resumed per D-STATE-01: STATE.json fetched from origin/main (tip e59cf7d50e124683dce37e397049fa1cd0fcc3ee; STATE.json blob 0c9ffb871cb8b0f52e2115d6522c92315071aba9). No Sandbox state used.
+- RUNLOG reviewed before any action (no-duplicate / no-re-execution rule): all completed phases left untouched; this run opens no PRs.
+- next_safe_action = USER_RUNS_LATEST_MAIN_GATES_AND_LEGACY_SCHEMA_MAP → user-side gate → HOLD. No agent execution performed; awaiting user gate results (USRTIMETABLE-LATEST-MAIN-LOCAL-GATES.zip + PHASE-A1-LEGACY-RELATIONSHIP-SCHEMA-MAP, both DELIVERED_AWAITING_USER_EXECUTION).
+- Drift check: origin/main advanced past STATE-recorded 64f7bdf to e59cf7d via the HOLD-03 state-only log commit itself. Per-commit file list confirms e59cf7d touches only implementation-reports/USRTIMETABLE-LAUNCH-CLOSURE-SWARM-01/{RUNLOG.md,STATE.json} — zero product-source and zero migration changes. STATE.json current_origin_main updated 64f7bdf -> e59cf7d.
+- Consistency check: STATE.json substance unchanged — same pending user gates, same production facts (174 TA / 5 COS / sections = 0 / academic_programs = 0), LEGACY_ORPHAN_CLASSIFICATION_V1 REJECTED (not rerun), schema-map results still pending from user. Open PRs re-verified via GitHub API: #66/#69/#70 still OPEN_DRAFT awaiting user runtime gates; #38 (OPEN_DRAFT_SUPERSEDED_RECOMMEND_CLOSE — user decision) and #30 (OPEN_OLD) untouched; no new PRs and nothing merged since HOLD-03. No evidence conflict.
+- Gate consequence unchanged from HOLD-02/03: gates zip pinned 1c23c808 self-HOLDs on SHA change (HOLD — ORIGIN_MAIN_CHANGED_REGENERATE_PACKAGE by design); drift is docs/state-only so gate content is unaffected — user decision (regenerate/re-pin to current tip, or run and treat the designed self-HOLD as the regeneration trigger). PHASE-A1-LEGACY-RELATIONSHIP-SCHEMA-MAP is read-only Production SQL, unaffected by repo drift.
+- No DB writes, no migration apply, no backfill/cleanup, no touching the 174 TA / 5 COS rows, no A2 start/advance, no real import, no deploy/publish, no duplicate PRs, no re-execution of completed phases, no branch/worktree deletion, no production-ready claim.
+
 ## 2026-07-22 — USRTIMETABLE-SWARM-RESUME-VERIFY-HOLD-03
 
 - Session resumed per D-STATE-01: STATE.json fetched from origin/main (tip 64f7bfdfeecc1ad774f3ba75e0425264580d228f; STATE.json blob c86ece9f1d6bf6b00e01cfe72b2d71ff06af47ce). No Sandbox state used.
@@ -32,7 +42,7 @@ State source of truth: this folder (origin/main). Sandbox copies are ephemeral a
 - Phase check: USRTIMETABLE-SWARM-STATE-RECOVERY-AND-NEXT-SAFE-ACTIONS-01 already complete on main (053d3bc1a7a82f982acfa57e7133d0f65681a01a). NOT re-executed (no-duplicate rule).
 - next_safe_action = USER_RUNS_LATEST_MAIN_GATES_AND_LEGACY_SCHEMA_MAP → user-side gate → HOLD. No agent execution performed; awaiting user gate results (USRTIMETABLE-LATEST-MAIN-LOCAL-GATES.zip + PHASE-A1-LEGACY-RELATIONSHIP-SCHEMA-MAP package, both DELIVERED_AWAITING_USER_EXECUTION).
 - Side branch note: swarm/restore-headcount-types-and-state-01 (tip 0fc247ff399eac8d193f9e0ee54f9b749db3ac8c) holds byte-exact restorations of two generated files to their 91b5f65 (PR #62) blobs — src/integrations/supabase/types.ts (blob 340856c3bd0a889fd2195831507d49aed4516ad0, 119334 bytes) and src/routeTree.gen.ts (blob 3a545d43154a53421daa861c185d226998f1ceec, 62179 bytes) — each verified via GitHub blob SHA equality. Origin: in-flight work resumed from the lost Sandbox session. No PR opened, not merged, zero main impact; branch retained per no-deletion rule. Awaiting user decision.
-- No DB writes, no migration apply, no backfill/cleanup, no touching the 174 TA / 5 COS rows, no A2, no real import, no deploy/publish, no duplicate PRs, no re-execution of completed phases, no branch/worktree deletion, no production-ready claim.
+- No DB writes, no migration apply, no backfill/cleanup, no touching the 174 TA / 5 COS rows, no A2, no real import, no deploy/publish, no duplicate PRs, no re-execution of PR #60/#61/#62, no branch/worktree deletion, no production-ready claim.
 
 ## 2026-07-22 — USRTIMETABLE-SWARM-RESUME-GATES-AND-SCHEMA-MAP-PREP-01
 
