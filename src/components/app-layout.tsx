@@ -153,6 +153,13 @@ const NAV: NavItem[] = [
     group: "البنية الأكاديمية",
   },
   {
+    to: "/shared-lecture-groups",
+    label: "المجموعات المشتركة للمحاضرات",
+    icon: <Share2 className="h-4 w-4" />,
+    roles: ALL,
+    group: "البنية الأكاديمية",
+  },
+  {
     to: "/instructors",
     label: "المحاضرون",
     icon: <UserSquare2 className="h-4 w-4" />,
