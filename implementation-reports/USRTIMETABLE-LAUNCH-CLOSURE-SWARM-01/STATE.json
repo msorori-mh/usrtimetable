@@ -3,8 +3,8 @@
   "current_phase": "PHASE_A1_POSTMERGE_VERIFICATION_AND_LEGACY_SCHEMA_MAP",
   "reconciled_at": "2026-07-22",
   "last_wave": "USRTIMETABLE-AUTONOMOUS-SOURCE-CLOSURE-WAVE-03",
-  "current_origin_main": "679955f710b21531ee085b706c0011b6e5ed6875",
-  "origin_main_note": "main advanced through docs/state merges only (1c23c808 -> b6a5a49 PR#64 -> 7d738204 parallel-session state log -> 1881759d PR#65 -> 87fbbe9d PR#67 -> b731c640 PR#68 -> 3591d698 PR#71 -> 64f7bdf PR#72 state results update -> e59cf7d state-only HOLD-03 resume-verify log -> 5e15d006 state-only HOLD-04 resume-verify log -> 40fea646 state-only HOLD-05 resume-verify log -> 9847a7e8 state-only HOLD-06 resume-verify log -> 475557c6 state-only HOLD-07 resume-verify log -> 1d10c13d state-only HOLD-08 resume-verify log -> e216621e + 6daefd97 state-only HOLD-09 resume-verify log (two commits: RUNLOG+STATE update, then RUNLOG fix-up) -> efef14a0 + 4712407c state-only HOLD-10 resume-verify log (two commits: STATE.json update, then RUNLOG entry) -> ab09bd7b + 46fdacd state-only HOLD-11 resume-verify log (two commits: STATE.json update, then RUNLOG entry) -> ddb18f07 + 976af646 state-only HOLD-12 resume-verify log (two commits: STATE.json update, then RUNLOG entry) -> 85bbb231 state-only HOLD-13 resume-verify log (single commit: RUNLOG+STATE update) -> 727d0d05 state-only HOLD-14 resume-verify log (single commit: RUNLOG+STATE update) -> 679955f7 state-only HOLD-15 resume-verify log (single commit: RUNLOG+STATE update)). No hand-written product source changed on main during WAVE-03.",
+  "current_origin_main": "70686c1c66a3abadddbc47c3f7aaa558df395ceb",
+  "origin_main_note": "main advanced through docs/state merges only (1c23c808 -> b6a5a49 PR#64 -> 7d738204 parallel-session state log -> 1881759d PR#65 -> 87fbbe9d PR#67 -> b731c640 PR#68 -> 3591d698 PR#71 -> 64f7bdf PR#72 state results update -> e59cf7d state-only HOLD-03 resume-verify log -> 5e15d006 state-only HOLD-04 resume-verify log -> 40fea646 state-only HOLD-05 resume-verify log -> 9847a7e8 state-only HOLD-06 resume-verify log -> 475557c6 state-only HOLD-07 resume-verify log -> 1d10c13d state-only HOLD-08 resume-verify log -> e216621e + 6daefd97 state-only HOLD-09 resume-verify log (two commits: RUNLOG+STATE update, then RUNLOG fix-up) -> efef14a0 + 4712407c state-only HOLD-10 resume-verify log (two commits: STATE.json update, then RUNLOG entry) -> ab09bd7b + 46fdacd state-only HOLD-11 resume-verify log (two commits: STATE.json update, then RUNLOG entry) -> ddb18f07 + 976af646 state-only HOLD-12 resume-verify log (two commits: STATE.json update, then RUNLOG entry) -> 85bbb231 state-only HOLD-13 resume-verify log (single commit: RUNLOG+STATE update) -> 727d0d05 state-only HOLD-14 resume-verify log (single commit: RUNLOG+STATE update) -> 679955f7 state-only HOLD-15 resume-verify log (single commit: RUNLOG+STATE update) -> 3f09302b PR #76 squash-merge WAVE-04 results update (STATE.json only, merged 2026-07-22T13:04:16Z) -> 70686c1c state-only HOLD-16 resume-verify log (single commit: RUNLOG+STATE update; removed the PR #76 WAVE-04 STATE content - see evidence_conflicts CONFLICT-01)). No hand-written product source changed on main during WAVE-03.",
   "completed_tasks": [
     "PR60_MERGED", "PR61_MERGED", "PR62_MERGED", "PR64_MERGED",
     "A1_SOURCE_COMPLETE", "SCHEDULING_HEADCOUNT_SOURCE_COMPLETE", "PRODUCTION_READONLY_DELTA_COMPLETE",
@@ -75,13 +75,34 @@
     "66": {"state": "OPEN_DRAFT"}, "69": {"state": "OPEN_DRAFT"}, "70": {"state": "OPEN_DRAFT"},
     "38": {"state": "CLOSED_SUPERSEDED"}, "30": {"state": "OPEN_OLD"},
     "73": {"state": "OPEN_DRAFT"}, "74": {"state": "OPEN_DRAFT"},
-    "75": {"state": "OPEN_DRAFT"}, "76": {"state": "CLOSED_UNMERGED"}
+    "75": {"state": "OPEN_DRAFT"}, "76": {"state": "MERGED"},
+    "77": {"state": "OPEN_DRAFT"}, "78": {"state": "OPEN_DRAFT"}
   },
   "tracks": {
     "A1_SOURCE": "COMPLETE", "A1_PRODUCTION_REMEDIATION": "PENDING",
     "SCHEDULING_HEADCOUNT_SOURCE": "COMPLETE", "SCHEDULING_HEADCOUNT_PRODUCTION": "PENDING_MIGRATION_APPLY",
     "A2": "SOURCE_STARTED_A2_1_DRAFT", "A3": "REVIEW_COMPLETE_WORKLOAD_DRAFT", "A4": "DESIGNS_COMPLETE_LIFECYCLE_DRAFT"
   },
+  "evidence_conflicts": [
+    {
+      "id": "CONFLICT-01",
+      "detected_by": "USRTIMETABLE-SWARM-RESUME-VERIFY-HOLD-17",
+      "detected_at": "2026-07-22",
+      "status": "PENDING_USER_DECISION",
+      "topic": "PR #76 (WAVE-04 state update) merged per GitHub API vs recorded CLOSED_UNMERGED by HOLD-16",
+      "facts": [
+        "GitHub API: PR #76 'State: WAVE-04 results update (docs only)' merged=true, merged_at 2026-07-22T13:04:16Z, merged_by msorori-mh; squash commit 3f09302b852922e16cdefaccc4a51ac0fa6d9fd2 on main touches only STATE.json (+46/-14, matching the PR).",
+        "HOLD-16 RUNLOG entry and the post-HOLD-16 prs.76 recorded PR #76 as CLOSED_UNMERGED ('closed without merge; no merge commit; tip still 679955f7') - contradicted by the main parent chain 679955f7 -> 3f09302b -> 70686c1c.",
+        "HOLD-16 commit 70686c1c66a3abadddbc47c3f7aaa558df395ceb (2026-07-22T13:15:26Z, ~11 min after the merge) modified STATE.json (+17/-48), removing the WAVE-04 content PR #76 had just merged: WAVE-04 review results for #73/#74/#75, the CI_WORKFLOW_SCOPE blocker (runtime-gates.yml said delivered to the user for .github/workflows/ on main), the proposed next_safe_action USER_ADDS_CI_WORKFLOW_FILE + USER_RUNS_LEGACY_SCHEMA_MAP, and the WAVE-05 launch record.",
+        "New OPEN_DRAFT PRs #77 (A2.3 shared lecture groups UI, stacked on #73; created 2026-07-22T13:57:27Z) and #78 (A3 soft preferences UI + G5 harness reference fix, base main@70686c1c; created 2026-07-22T14:08:42Z) match the WAVE-05 launch described in the merged PR #76 body."
+      ],
+      "options": {
+        "A_intentional_revert": "The user merged #76 by mistake, or decided after merging not to adopt its content; the HOLD-16 removal stands. Keep current STATE.json as authoritative; no further action beyond this record.",
+        "B_accidental_revert": "HOLD-16 gathered its evidence before the 13:04:16Z merge and committed at 13:15:26Z on the false unmerged premise; the user wants the merged WAVE-04 state adopted. Re-apply the PR #76 STATE.json content (head 2a60e0a74b7d6010d4bc495138d0074c8c3c2c01) via a new state-only update; next_safe_action then becomes USER_ADDS_CI_WORKFLOW_FILE + USER_RUNS_LEGACY_SCHEMA_MAP per the merged WAVE-04 update."
+      },
+      "agent_action": "NONE - HOLD. prs.76 corrected CLOSED_UNMERGED -> MERGED (GitHub API fact) and drafts #77/#78 recorded; no WAVE-04 content adopted or re-applied by the agent; next_safe_action unchanged (USER_RUNS_LATEST_MAIN_GATES_AND_LEGACY_SCHEMA_MAP) pending user decision."
+    }
+  ],
   "next_safe_action": "USER_RUNS_LATEST_MAIN_GATES_AND_LEGACY_SCHEMA_MAP",
   "state_provenance": "RECONSTRUCTED_FROM_GITHUB_AND_USER_CONFIRMED_EVIDENCE",
   "db_writes": false, "migration_apply": false, "deploy_publish": false, "a2_started": false
