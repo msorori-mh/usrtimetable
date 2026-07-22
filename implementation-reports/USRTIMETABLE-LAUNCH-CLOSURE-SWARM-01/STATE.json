@@ -1,101 +1,90 @@
 {
   "swarm": "USRTIMETABLE-LAUNCH-CLOSURE-SWARM-01",
-  "current_phase": "PHASE_A1_POSTMERGE_VERIFICATION_AND_LEGACY_SCHEMA_MAP",
-  "reconciled_at": "2026-07-22",
-  "recovery_run": "USRTIMETABLE-SWARM-STATE-RECOVERY-AND-NEXT-SAFE-ACTIONS-01",
-  "last_resume_run": "USRTIMETABLE-SWARM-RESUME-GATES-AND-SCHEMA-MAP-PREP-01",
-  "last_handoff_phase": "PHASE-A1-LATEST-MAIN-GATES-AND-SCHEMA-MAP-HANDOFF-01",
-  "last_verify_hold_run": "USRTIMETABLE-SWARM-RESUME-VERIFY-HOLD-01",
-  "current_origin_main": "1c23c80885871ba800db3b3d9bc0e1f089ef0077",
-  "origin_main_user_confirmed": "91b5f65eef0c8f3b82538cf17c26f8b87c0fad46",
-  "origin_main_g0_resolution": {
-    "resolved_at": "2026-07-22",
-    "current_origin_main": "1c23c80885871ba800db3b3d9bc0e1f089ef0077",
-    "commit_order_after_pr62": ["91b5f65", "8fcc583", "0b8f78e", "836d227", "6c4401bb", "053d3bc", "213af452", "1c23c808"],
-    "product_source_changed_after_pr62": false,
-    "scope_note": "lovable-dev commits touched bun.lock/package.json/src/integrations/supabase/types.ts/src/routeTree.gen.ts (manifests + generated files only). Swarm commits 053d3bc/213af452/1c23c808 touched implementation-reports/ state+docs only. No hand-written product source changed after PR #62."
-  },
-  "origin_main_drift_note": "91b5f65 (PR #62 merge) is an ancestor of current origin/main (1c23c808). Superseded package USRTIMETABLE-FINAL-MAIN-91B5F65-LOCAL-GATES.zip must NOT be used anymore; use USRTIMETABLE-LATEST-MAIN-LOCAL-GATES.zip pinned to 1c23c808 (self-HOLDs if origin/main moves).",
+  "current_phase": "PHASE_WAVE05_SOURCE_EXPANSION_COMPLETE_PENDING_CI_GATES",
+  "reconciled_at": "2026-07-23",
+  "last_wave": "USRTIMETABLE-AUTONOMOUS-SOURCE-CLOSURE-WAVE-05",
+  "current_origin_main": "e77318b809efec4a8e13ecffdae5c21ad7ffd723",
+  "origin_main_note": "main advanced through docs/state commits only (… -> 3f09302b PR #76 WAVE-04 state update -> 70686c1c HOLD-16 (accidentally reverted PR #76 WAVE-04 content on stale pre-merge evidence — see CONFLICT-01 resolution) -> 851197da HOLD-17 (recorded CONFLICT-01) -> 800a1939 PR #79 WAVE-05 results update + CONFLICT-01 resolution (STATE.json only) -> f8b42de7 + 7d2d659f HOLD-17 RUNLOG log + fix-up (RUNLOG.md only) -> 1ac9c7fa HOLD-17-RECONCILE STATE.json drift update (STATE.json only) -> c1c80a1a HOLD-17-RECONCILE RUNLOG log (RUNLOG.md only) -> b22b23b7 HOLD-18 STATE.json drift update (STATE.json only) -> f1efa92f HOLD-18 RUNLOG log (RUNLOG.md only) -> 8c9cc1b7 HOLD-19 STATE.json drift update (STATE.json only) -> e77318b8 HOLD-19 RUNLOG log (RUNLOG.md only)). No hand-written product source changed on main during WAVE-03/WAVE-04/WAVE-05 or in any HOLD state-log commit.",
   "completed_tasks": [
-    "PR60_MERGED",
-    "PR61_MERGED",
-    "PR62_MERGED",
-    "A1_SOURCE_COMPLETE",
-    "SCHEDULING_HEADCOUNT_SOURCE_COMPLETE",
-    "PRODUCTION_READONLY_DELTA_COMPLETE",
-    "FINAL_MAIN_GATES_PACKAGE_PREPARED",
+    "PR60_MERGED", "PR61_MERGED", "PR62_MERGED", "PR64_MERGED",
+    "A1_SOURCE_COMPLETE", "SCHEDULING_HEADCOUNT_SOURCE_COMPLETE", "PRODUCTION_READONLY_DELTA_COMPLETE",
     "LEGACY_RELATIONSHIP_SCHEMA_MAP_PACKAGE_PREPARED",
-    "LATEST_MAIN_GATES_PACKAGE_REGENERATED",
-    "HANDOFF_PACKAGE_DELIVERED"
+    "LATEST_MAIN_GATES_PACKAGE_REGENERATED", "HANDOFF_PACKAGE_DELIVERED",
+    "WAVE03_TRACK3_A3_REVIEW_MERGED_PR67",
+    "WAVE03_TRACK4_WORKLOAD_IMPORTS_DRAFT_PR69",
+    "WAVE03_TRACK5_A4_LIFECYCLE_DRAFT_PR70",
+    "WAVE03_TRACKS6_7_AUTHZ_AUDIT_READINESS_MERGED_PR68",
+    "WAVE03_TRACK8_MIGRATION_MATRIX_MERGED_PR71",
+    "WAVE03_TRACKS9_10_DATA_PILOT_RELEASE_MERGED_PR65",
+    "WAVE03_A2_1_SHARED_LECTURE_GROUPS_DRAFT_PR66",
+    "WAVE03_A2_2_SHARED_LECTURE_GROUPS_AUTHZ_DRAFT_PR73",
+    "WAVE03_A3_5_WORKLOAD_UI_IMPORT_FIX_DRAFT_PR74",
+    "WAVE04_RECONCILIATION_COMPLETE",
+    "WAVE04_PR38_CLOSED_SUPERSEDED",
+    "WAVE04_A2_2_AUTHZ_PR73_REVIEWED_FIXED",
+    "WAVE04_A3_5_WORKLOAD_UI_PR74_REVIEWED_FIXED",
+    "WAVE04_A4_AUDIT_READINESS_UI_DRAFT_PR75_REVIEWED_FIXED",
+    "WAVE04_CI_WORKFLOW_PREPARED_USER_ACTION_REQUIRED",
+    "WAVE05_A2_3_SHARED_GROUPS_UI_DRAFT_PR77_REVIEWED",
+    "WAVE05_A3_PREFERENCES_UI_G5_FIX_DRAFT_PR78_REVIEWED",
+    "WAVE05_CONFLICT_01_RESOLVED"
   ],
-  "blocked_tasks": [
-    "LEGACY_ORPHAN_CLASSIFICATION",
-    "LEGACY_DATA_REMEDIATION",
-    "MIGRATION_APPLY",
-    "A2"
-  ],
+  "blocked_tasks": ["LEGACY_ORPHAN_CLASSIFICATION", "LEGACY_DATA_REMEDIATION", "MIGRATION_APPLY", "A2_RUNTIME", "CI_WORKFLOW_SCOPE"],
   "pending_approvals": [
-    "APPROVE_LEGACY_DATA_REMEDIATION",
-    "APPROVE_DB_MIGRATION_APPLY",
-    "APPROVE_TEST_DATA_CLEANUP",
-    "APPROVE_REAL_DATA_IMPORT",
-    "APPROVE_PILOT_EXECUTION",
-    "APPROVE_DEPLOY_PUBLISH"
+    "APPROVE_LEGACY_DATA_REMEDIATION", "APPROVE_DB_MIGRATION_APPLY", "APPROVE_TEST_DATA_CLEANUP",
+    "APPROVE_REAL_DATA_IMPORT", "APPROVE_PILOT_EXECUTION", "APPROVE_DEPLOY_PUBLISH"
   ],
   "production_facts": {
-    "academic_programs": 0,
-    "sections": 0,
+    "academic_programs": 0, "sections": 0,
     "orphan_teaching_assignments_carrying_section_id": 174,
     "orphan_course_offering_sections": 5,
     "ta_v2_carrying_section_id": 0,
     "new_flow_schedule_sessions_carrying_section_id": 0,
-    "course_offerings_term_id_fk": {
-      "relationship": "course_offerings.term_id -> academic_terms.id",
-      "fk_validated": true,
-      "delete_behavior": "RESTRICT",
-      "evidence": "USER_CONFIRMED_PRODUCTION_FACT (USRTIMETABLE-SWARM-STATE-RECOVERY-AND-RESUME-01)"
-    }
-  },
-  "state_correction_note": "Commit 1c23c808 (parallel session) inadvertently dropped the user-confirmed facts merged in 213af452 (course_offerings_term_id_fk and 20260715120000 in the not-applied list). This update restores them; both remain user-confirmed.",
-  "side_branch_note": {
-    "branch": "swarm/restore-headcount-types-and-state-01",
-    "tip": "0fc247ff399eac8d193f9e0ee54f9b749db3ac8c",
-    "contents": "Byte-exact restoration of generated files to their 91b5f65 (PR #62) blobs: src/integrations/supabase/types.ts (blob 340856c3bd0a889fd2195831507d49aed4516ad0, 119334 bytes) and src/routeTree.gen.ts (blob 3a545d43154a53421daa861c185d226998f1ceec, 62179 bytes), verified via GitHub blob SHAs.",
-    "origin": "In-flight work resumed from the lost Sandbox session (USRTIMETABLE-SWARM-RESUME-VERIFY-HOLD-01, 2026-07-22).",
-    "status": "NO_PR_NO_MERGE_AWAITING_USER_DECISION",
-    "main_impact": "none"
+    "course_offerings_term_id_fk": {"relationship": "course_offerings.term_id -> academic_terms.id", "fk_validated": true, "delete_behavior": "RESTRICT", "evidence": "USER_CONFIRMED_PRODUCTION_FACT"}
   },
   "rejected_packages": {
-    "LEGACY_ORPHAN_CLASSIFICATION_V1": {
-      "status": "REJECTED",
-      "reason": "Assumed delivery_groups.course_offering_id; this column does not exist in Production.",
-      "rule": "Do not rerun. Do not guess the delivery-group relationship. Run PHASE-A1-LEGACY-RELATIONSHIP-SCHEMA-MAP (read-only) first."
+    "LEGACY_ORPHAN_CLASSIFICATION_V1": {"status": "REJECTED", "reason": "Assumed delivery_groups.course_offering_id; this column does not exist in Production.", "rule": "Do not rerun. Run PHASE-A1-LEGACY-RELATIONSHIP-SCHEMA-MAP (read-only) first; classification V2 only after results."}
+  },
+  "wave03_deliverables": {
+    "merged_docs_prs": {"65": "DATA-PREPARATION-PACK-01 + PILOT-AND-RELEASE-PACK-01", "67": "A3-TIME-AVAILABILITY-GAP-AND-PLAN-01", "68": "A4-AUTHORIZATION-MATRIX-01 + A4-AUDIT-VIEWER-DESIGN-01 + A4-READINESS-DASHBOARD-DESIGN-01", "71": "MIGRATION-RECONCILIATION-MATRIX-01"},
+    "draft_source_prs_awaiting_runtime_gates": {"66": "A2.1 shared lecture groups: migration 20260722090000 + harness + domain model", "69": "A3 faculty workload policies: migration 20260722110000 + harness + import inventory", "70": "A4 lifecycle transitions: migration 20260722100000 + harness + spec"},
+    "recommendations": ["PR #38 closed as superseded by atomic lifecycle RPC on main + PR #70 gap-fill (closed unmerged 2026-07-22T11:22:37Z)", "PR #63 closed as superseded by #64"]
+  },
+  "wave04_deliverables": {
+    "new_draft_prs": {
+      "73": "A2.2 shared lecture groups RPC/AuthZ hardening: migration 20260722120000 (status lifecycle draft->active->locked->archived, super_admin cross-college path + cohort-college audit mirror + RLS visibility, remove_component draft-only + precise schedule_sessions.plan_course_component_id guard), harness, report. Stacked on #66. Independent review APPROVE_WITH_NOTES; findings F1-F6 all addressed in fix commits.",
+      "74": "A3.5 faculty workload policies UI (RPC-only writes, overload advisory, G1 formula-injection sanitize with trimStart coverage), harness with p_* arg-signature cross-check, report. Stacked on #69. Independent review REVISE -> fixed: HIGH-1 PolicyForm key (silent wrong-row update), LOW-1 trimStart, LOW-3 reactivation notice, LOW-2 harness arg matching.",
+      "75": "A4 Audit Viewer (/audit-logs, composite keyset cursor created_at+id, recursive sensitive-field redaction) + Readiness Dashboard (15 checks B1-B15, B4 distinct-cohort coverage fail-closed), NAV + routeTree, harness (executed locally by agent on branch bytes: PASS), report. Based on main. Independent review APPROVE_WITH_NOTES; HIGH-1 composite cursor + MEDIUM-1 B4 false-PASS + LOWs fixed."
+    },
+    "pr38": "CLOSED_SUPERSEDED (leader decision; superseded by atomic lifecycle RPC on main + PR #70 gap-fill; branch retained per no-auto-delete rule)",
+    "ci_gates": {
+      "status": "BLOCKED_ON_USER_ACTION",
+      "blocker": "CI_WORKFLOW_SCOPE",
+      "detail": "Kimi sandbox has no network path to clone the private repo (github.com:443 unreachable; codeload/raw unauthenticated 404; npm registry reachable). GitHub MCP token can read/write normal files but lacks the 'workflow' scope, so .github/workflows/runtime-gates.yml could not be pushed (404 verified with write probe). A ready runtime-gates.yml (bun install --frozen-lockfile, git diff --check, scoped ESLint on changed files only, tsc --noEmit, vite build, full harness suite; triggers: push all branches + pull_request->main + workflow_dispatch with ref input) was delivered to the user as a file. USER ACTION: add it as .github/workflows/runtime-gates.yml on main via GitHub web UI (Add file). After that, gates run automatically on every PR including #66/#69/#70/#73/#74/#75/#77/#78.",
+      "effect": "All draft source PRs remain Draft until CI gates pass (quality policy: no PASS claims without runtime)."
+    },
+    "review_notes": {
+      "73": "F1: schedule_sessions.plan_course_component_id EXISTS (20260716025117, hardened 20260717050000) — precise unlink guard implemented; F2: cohort home college now sees cross-college membership (RLS OR cohort_college_id + audit mirror rows); NOOP transitions unaudited by design.",
+      "74": "HIGH-1 was a real silent wrong-row update bug (missing React key) — fixed. parseExcel confirmed the ONLY inbound import path; no sanitize bypass.",
+      "75": "HIGH-1 composite cursor fixed (batch audit writers share created_at); MEDIUM-1 B4 rewritten to distinct-cohort coverage (was false-PASS prone once 20260721180000 applies). Agent posted ~8 noise comments on #75 via tool error (no delete-comment tool available); official fix summary = comment id 5046038162."
     }
   },
-  "prepared_packages": {
-    "USRTIMETABLE-LATEST-MAIN-LOCAL-GATES.zip": {
-      "status": "DELIVERED_AWAITING_USER_EXECUTION",
-      "pinned_current_origin_main": "1c23c80885871ba800db3b3d9bc0e1f089ef0077",
-      "hold_on_sha_change": "HOLD — ORIGIN_MAIN_CHANGED_REGENERATE_PACKAGE",
-      "contents": ["RUN-LATEST-MAIN-GATES.ps1", "INSTRUCTIONS.md", "EXPECTED-RESULTS.md", "GATE-MANIFEST.json", "RESULTS-TEMPLATE.json"],
-      "stop_condition": "USER_RUNS_LATEST_MAIN_GATES"
+  "wave05_deliverables": {
+    "new_draft_prs": {
+      "77": "A2.3 shared lecture groups UI (RPC-only api layer for all 10 RPCs, list/create/detail: components, cohorts, super_admin cross-college section, status transitions with allowed-edges-only, capacity via resolve RPC with fail-closed blocked state, revisions), routeTree+NAV, harness, report. Stacked on feat/a2-2 (on #73). Implementer executed 3 harnesses locally on blob-verified branch bytes: PASS x3. Independent review APPROVE_WITH_NOTES — no CRITICAL/HIGH/MEDIUM; 5 LOW, no mandatory fixes.",
+      "78": "A3 soft preferences UI (instructor-preferences.tsx on instructor_availability is_preference=true ONLY — verified present in base migrations 20260604230713+20260605011516 and consumed by greedy solver +5/-3/-10; structurally impossible to flip hard<->soft; RLS-managed writes + logAudit; read_only view-only) + G5 harness reference fix (teaching-assignments-v2-runtime.harness.ts: 20260717043000 -> actual 20260717035611_82eaf255; Import alignment refs updated post-A1.3a restructure), new soft-preferences-ui harness, report. Both harnesses executed locally: PASS. Independent review APPROVE_WITH_NOTES — no CRITICAL/HIGH; 6 LOW, no mandatory fixes."
     },
-    "PHASE-A1-LEGACY-RELATIONSHIP-SCHEMA-MAP": {
-      "status": "DELIVERED_AWAITING_USER_EXECUTION",
-      "contents": ["PHASE-A1-LEGACY-RELATIONSHIP-SCHEMA-MAP-READONLY.sql", "PHASE-A1-LEGACY-RELATIONSHIP-SCHEMA-MAP-LOVABLE-EXEC.txt", "PHASE-A1-LEGACY-RELATIONSHIP-SCHEMA-MAP-COMBINED.txt"],
-      "verification": "10 statements parsed with a real PostgreSQL parser (pglast); all SelectStmt; zero DML/DDL/dynamic/temp/RPC tokens; delivery_groups.course_offering_id appears only as a string literal in catalog existence probes, never as a column reference",
-      "classification_labels": ["PROVEN_BY_FK", "PROVEN_BY_UNIQUE_KEY", "SOURCE_ONLY_NOT_IN_PRODUCTION", "NO_PROVEN_RELATION", "UNKNOWN"],
-      "stop_condition": "USER_RUNS_LEGACY_RELATIONSHIP_SCHEMA_MAP"
-    },
-    "USRTIMETABLE-LATEST-MAIN-AND-SCHEMA-MAP-HANDOFF.zip": {
-      "status": "DELIVERED",
-      "contents": ["USRTIMETABLE-LATEST-MAIN-LOCAL-GATES.zip", "schema map x3", "SCHEDULING-HEADCOUNT-PRODUCTION-DEPENDENCY-MAP.md", "STATE.json snapshot", "HANDOFF-INSTRUCTIONS.md"]
-    },
-    "USRTIMETABLE-FINAL-MAIN-91B5F65-LOCAL-GATES.zip": {
-      "status": "SUPERSEDED_DO_NOT_USE",
-      "reason": "91b5f65 is no longer latest origin/main."
-    }
+    "new_source_only_migrations_not_applied": []
   },
+  "key_wave03_findings": [
+    "time_slot_templates = single source of truth for the grid; time_slots legacy (deprecate->audit->drop, approval-gated)",
+    "20260720120000 verdict PASS (atomic all-active-days, HARD-only, no all-marker); UI already calls its RPCs -> runtime drift until applied",
+    "room_availability whitelist table + _ss_room_av violates A3.2 (top gap, removal approval-gated)",
+    "AuthZ: 9 consolidated gaps (GAP-1..9) incl. legacy DB write block unapplied and no lifecycle separation of duties",
+    "20260718120000 already provides atomic transition_schedule_version; PR #70 gap-fills roles/notes/audit only",
+    "faculty_workload_policies already existed (20260716233716); PR #69 extends (rank_label_ar/study_system/min-max/overload/gated RPCs)",
+    "TRACK 8: 109 migrations inventoried, 97 SHA256 byte-verified; 20260716070000 NOT FOUND; filename source_only marker set != confirmed NOT-APPLIED set (20260718120000/20260718210000 marker but UNKNOWN remote; 20260715120000/20260718183000 pending without marker)"
+  ],
   "source_only_migrations_not_applied": [
     "20260715120000_approve_capacity_split_proposal.sql",
     "20260717050000_source_only_harden_cross_college_references.sql",
@@ -103,33 +92,40 @@
     "20260720120000_source_only_availability_all_active_days.sql",
     "20260720143000_source_only_program_department_integrity.sql",
     "20260721090000_source_only_legacy_write_hardening.sql",
-    "20260721180000_source_only_scheduling_headcount_foundation.sql"
+    "20260721180000_source_only_scheduling_headcount_foundation.sql",
+    "20260722090000_source_only_shared_lecture_groups.sql",
+    "20260722100000_source_only_schedule_version_lifecycle.sql",
+    "20260722110000_source_only_faculty_workload_policies.sql",
+    "20260722120000_source_only_shared_lecture_groups_authz.sql"
   ],
-  "migration_apply_rule": "No migration is considered applied without remote evidence.",
-  "expected_migration_apply_order": [
-    "20260717050000",
-    "20260720143000 (when its need and ordering are confirmed)",
-    "20260721180000",
-    "Insert approved cohort headcounts",
-    "Then A2"
-  ],
+  "migration_apply_rule": "No migration is considered applied without remote evidence. Full matrix: MIGRATION-RECONCILIATION-MATRIX-01.md",
+  "expected_migration_apply_order": ["20260717050000", "20260720143000 (when its need and ordering are confirmed)", "20260721180000", "Insert approved cohort headcounts", "Then A2"],
   "migration_20260721090000_rule": "Conditional on Legacy remediation first; do not apply now.",
   "prs": {
-    "60": {"state": "MERGED", "merged_at": "2026-07-21T17:59:41Z", "title": "A1.3: Legacy write blocking", "url": "https://github.com/msorori-mh/usrtimetable/pull/60"},
-    "61": {"state": "MERGED", "merged_at": "2026-07-21T18:08:14Z", "title": "A1.5: remediate report data sources away from Legacy sections", "url": "https://github.com/msorori-mh/usrtimetable/pull/61"},
-    "62": {"state": "MERGED", "merged_at": "2026-07-21T18:43:41Z", "merge_commit": "91b5f65eef0c8f3b82538cf17c26f8b87c0fad46", "title": "Scheduling headcount foundation (source-only)", "url": "https://github.com/msorori-mh/usrtimetable/pull/62"}
+    "60": {"state": "MERGED"}, "61": {"state": "MERGED"}, "62": {"state": "MERGED"}, "64": {"state": "MERGED"},
+    "63": {"state": "CLOSED_SUPERSEDED"}, "65": {"state": "MERGED"}, "67": {"state": "MERGED"}, "68": {"state": "MERGED"}, "71": {"state": "MERGED"}, "76": {"state": "MERGED"},
+    "66": {"state": "OPEN_DRAFT"}, "69": {"state": "OPEN_DRAFT"}, "70": {"state": "OPEN_DRAFT"},
+    "73": {"state": "OPEN_DRAFT", "stacked_on": "66"}, "74": {"state": "OPEN_DRAFT", "stacked_on": "69"}, "75": {"state": "OPEN_DRAFT"},
+    "77": {"state": "OPEN_DRAFT", "stacked_on": "73"}, "78": {"state": "OPEN_DRAFT"},
+    "38": {"state": "CLOSED_SUPERSEDED"}, "30": {"state": "OPEN_OLD"}
   },
   "tracks": {
-    "A1_SOURCE": "COMPLETE",
-    "A1_PRODUCTION_REMEDIATION": "PENDING",
-    "SCHEDULING_HEADCOUNT_SOURCE": "COMPLETE",
-    "SCHEDULING_HEADCOUNT_PRODUCTION": "PENDING_MIGRATION_APPLY",
-    "A2": "NOT_STARTED"
+    "A1_SOURCE": "COMPLETE", "A1_PRODUCTION_REMEDIATION": "PENDING",
+    "SCHEDULING_HEADCOUNT_SOURCE": "COMPLETE", "SCHEDULING_HEADCOUNT_PRODUCTION": "PENDING_MIGRATION_APPLY",
+    "A2": "SOURCE_A2_1_A2_2_A2_3_DRAFT", "A3": "WORKLOAD_UI_DRAFT_PREFERENCES_UI_DRAFT", "A4": "AUDIT_READINESS_UI_DRAFT"
   },
-  "next_safe_action": "USER_RUNS_LATEST_MAIN_GATES_AND_LEGACY_SCHEMA_MAP",
+  "evidence_conflicts": [
+    {
+      "id": "CONFLICT-01",
+      "detected_by": "USRTIMETABLE-SWARM-RESUME-VERIFY-HOLD-17",
+      "detected_at": "2026-07-22",
+      "status": "RESOLVED_ACCIDENTAL_REVERT",
+      "resolution": "Option B confirmed by the swarm leader (WAVE-04/05 execution session): HOLD-16 gathered evidence before the 2026-07-22T13:04:16Z merge of PR #76 and committed at 13:15:26Z on the false unmerged premise, reverting the freshly merged WAVE-04 STATE content. All WAVE-04/05 facts (PRs #73/#74/#75/#76-merged/#77/#78, reviews, fixes, CI_WORKFLOW_SCOPE blocker) are independently verifiable via GitHub API. The WAVE-04 content is re-applied and WAVE-05 content added by this state update. No user decision required: this is factual reconciliation, not a production gate.",
+      "original_topic": "PR #76 (WAVE-04 state update) merged per GitHub API vs recorded CLOSED_UNMERGED by HOLD-16",
+      "prevent_recurrence": "Parallel resume-verify sessions MUST re-fetch PR states and main HEAD immediately before committing state logs, and must not revert content added by merged state PRs."
+    }
+  ],
+  "next_safe_action": "USER_ADDS_CI_WORKFLOW_FILE (.github/workflows/runtime-gates.yml from delivered file) + USER_RUNS_LEGACY_SCHEMA_MAP; then CI gates on PRs 66/69/70/73/74/75/77/78 and leader merges in dependency order; remaining source tracks: A2.4 builder/conflicts/capacity/reports, A3 remaining P-items, lifecycle UI on PR70",
   "state_provenance": "RECONSTRUCTED_FROM_GITHUB_AND_USER_CONFIRMED_EVIDENCE",
-  "db_writes": false,
-  "migration_apply": false,
-  "deploy_publish": false,
-  "a2_started": false
+  "db_writes": false, "migration_apply": false, "deploy_publish": false, "a2_started": true
 }
