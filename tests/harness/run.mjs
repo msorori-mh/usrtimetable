@@ -49,6 +49,7 @@ export const harnesses = [
   "schedule-version-lifecycle-atomic.harness.ts",
   "scheduling-headcount-foundation.harness.ts",
   "shared-lecture-groups.harness.ts",
+  "shared-lecture-groups-authz.harness.ts",
   "draft-lecturer-report.harness.ts",
   "admin-routes-inventory.harness.ts",
   "phase-a1-legacy-navigation-terminology.harness.ts",
