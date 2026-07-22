@@ -3,8 +3,8 @@
   "current_phase": "PHASE_A1_POSTMERGE_VERIFICATION_AND_LEGACY_SCHEMA_MAP",
   "reconciled_at": "2026-07-22",
   "last_wave": "USRTIMETABLE-AUTONOMOUS-SOURCE-CLOSURE-WAVE-03",
-  "current_origin_main": "85bbb23195d3551f2100f4da4a9b961fcef074c8",
-  "origin_main_note": "main advanced through docs/state merges only (1c23c808 -> b6a5a49 PR#64 -> 7d738204 parallel-session state log -> 1881759d PR#65 -> 87fbbe9d PR#67 -> b731c640 PR#68 -> 3591d698 PR#71 -> 64f7bdf PR#72 state results update -> e59cf7d state-only HOLD-03 resume-verify log -> 5e15d006 state-only HOLD-04 resume-verify log -> 40fea646 state-only HOLD-05 resume-verify log -> 9847a7e8 state-only HOLD-06 resume-verify log -> 475557c6 state-only HOLD-07 resume-verify log -> 1d10c13d state-only HOLD-08 resume-verify log -> e216621e + 6daefd97 state-only HOLD-09 resume-verify log (two commits: RUNLOG+STATE update, then RUNLOG fix-up) -> efef14a0 + 4712407c state-only HOLD-10 resume-verify log (two commits: STATE.json update, then RUNLOG entry) -> ab09bd7b + 46fdacd state-only HOLD-11 resume-verify log (two commits: STATE.json update, then RUNLOG entry) -> ddb18f07 + 976af646 state-only HOLD-12 resume-verify log (two commits: STATE.json update, then RUNLOG entry) -> 85bbb231 state-only HOLD-13 resume-verify log (single commit: RUNLOG+STATE update)). No hand-written product source changed on main during WAVE-03.",
+  "current_origin_main": "727d0d059b9e87262ad1034f8f4b637831b71aab",
+  "origin_main_note": "main advanced through docs/state merges only (1c23c808 -> b6a5a49 PR#64 -> 7d738204 parallel-session state log -> 1881759d PR#65 -> 87fbbe9d PR#67 -> b731c640 PR#68 -> 3591d698 PR#71 -> 64f7bdf PR#72 state results update -> e59cf7d state-only HOLD-03 resume-verify log -> 5e15d006 state-only HOLD-04 resume-verify log -> 40fea646 state-only HOLD-05 resume-verify log -> 9847a7e8 state-only HOLD-06 resume-verify log -> 475557c6 state-only HOLD-07 resume-verify log -> 1d10c13d state-only HOLD-08 resume-verify log -> e216621e + 6daefd97 state-only HOLD-09 resume-verify log (two commits: RUNLOG+STATE update, then RUNLOG fix-up) -> efef14a0 + 4712407c state-only HOLD-10 resume-verify log (two commits: STATE.json update, then RUNLOG entry) -> ab09bd7b + 46fdacd state-only HOLD-11 resume-verify log (two commits: STATE.json update, then RUNLOG entry) -> ddb18f07 + 976af646 state-only HOLD-12 resume-verify log (two commits: STATE.json update, then RUNLOG entry) -> 85bbb231 state-only HOLD-13 resume-verify log (single commit: RUNLOG+STATE update) -> 727d0d05 state-only HOLD-14 resume-verify log (single commit: RUNLOG+STATE update)). No hand-written product source changed on main during WAVE-03.",
   "completed_tasks": [
     "PR60_MERGED", "PR61_MERGED", "PR62_MERGED", "PR64_MERGED",
     "A1_SOURCE_COMPLETE", "SCHEDULING_HEADCOUNT_SOURCE_COMPLETE", "PRODUCTION_READONLY_DELTA_COMPLETE",
@@ -16,7 +16,9 @@
     "WAVE03_TRACKS6_7_AUTHZ_AUDIT_READINESS_MERGED_PR68",
     "WAVE03_TRACK8_MIGRATION_MATRIX_MERGED_PR71",
     "WAVE03_TRACKS9_10_DATA_PILOT_RELEASE_MERGED_PR65",
-    "WAVE03_A2_1_SHARED_LECTURE_GROUPS_DRAFT_PR66"
+    "WAVE03_A2_1_SHARED_LECTURE_GROUPS_DRAFT_PR66",
+    "WAVE03_A2_2_SHARED_LECTURE_GROUPS_AUTHZ_DRAFT_PR73",
+    "WAVE03_A3_5_WORKLOAD_UI_IMPORT_FIX_DRAFT_PR74"
   ],
   "blocked_tasks": ["LEGACY_ORPHAN_CLASSIFICATION", "LEGACY_DATA_REMEDIATION", "MIGRATION_APPLY", "A2_RUNTIME"],
   "pending_approvals": [
@@ -36,14 +38,15 @@
   },
   "wave03_deliverables": {
     "merged_docs_prs": {"65": "DATA-PREPARATION-PACK-01 + PILOT-AND-RELEASE-PACK-01", "67": "A3-TIME-AVAILABILITY-GAP-AND-PLAN-01", "68": "A4-AUTHORIZATION-MATRIX-01 + A4-AUDIT-VIEWER-DESIGN-01 + A4-READINESS-DASHBOARD-DESIGN-01", "71": "MIGRATION-RECONCILIATION-MATRIX-01"},
-    "draft_source_prs_awaiting_runtime_gates": {"66": "A2.1 shared lecture groups: migration 20260722090000 + harness + domain model", "69": "A3 faculty workload policies: migration 20260722110000 + harness + import inventory", "70": "A4 lifecycle transitions: migration 20260722100000 + harness + spec"},
+    "draft_source_prs_awaiting_runtime_gates": {"66": "A2.1 shared lecture groups: migration 20260722090000 + harness + domain model", "69": "A3 faculty workload policies: migration 20260722110000 + harness + import inventory", "70": "A4 lifecycle transitions: migration 20260722100000 + harness + spec", "73": "A2.2 shared lecture groups RPC/AuthZ hardening: migration 20260722120000 + harness + report (stacked on #66)", "74": "A3.5 faculty workload policies UI + import formula-injection sanitization (stacked on #69)"},
     "new_source_only_migrations_not_applied": [
       "20260722090000_source_only_shared_lecture_groups.sql",
       "20260722100000_source_only_schedule_version_lifecycle.sql",
-      "20260722110000_source_only_faculty_workload_policies.sql"
+      "20260722110000_source_only_faculty_workload_policies.sql",
+      "20260722120000_source_only_shared_lecture_groups_authz.sql"
     ],
-    "runtime_gates_note": "KIMI env cannot run tsc/build/harness. Draft source PRs (#66/#69/#70) must NOT merge until user runtime gates pass (USRTIMETABLE-LATEST-MAIN-LOCAL-GATES.zip or the final USRTIMETABLE-FINAL-SOURCE-MAIN-LOCAL-GATES.zip after all source PRs merge).",
-    "recommendations": ["Close PR #38 (superseded by atomic lifecycle RPC on main + PR #70 gap-fill)", "PR #63 closed as superseded by #64"]
+    "runtime_gates_note": "KIMI env cannot run tsc/build/harness. Draft source PRs (#66/#69/#70/#73/#74) must NOT merge until user runtime gates pass (USRTIMETABLE-LATEST-MAIN-LOCAL-GATES.zip or the final USRTIMETABLE-FINAL-SOURCE-MAIN-LOCAL-GATES.zip after all source PRs merge).",
+    "recommendations": ["PR #38 closed as superseded by atomic lifecycle RPC on main + PR #70 gap-fill (closed unmerged 2026-07-22T11:22:37Z)", "PR #63 closed as superseded by #64"]
   },
   "key_wave03_findings": [
     "time_slot_templates = single source of truth for the grid; time_slots legacy (deprecate->audit->drop, approval-gated)",
@@ -70,7 +73,8 @@
     "60": {"state": "MERGED"}, "61": {"state": "MERGED"}, "62": {"state": "MERGED"}, "64": {"state": "MERGED"},
     "63": {"state": "CLOSED_SUPERSEDED"}, "65": {"state": "MERGED"}, "67": {"state": "MERGED"}, "68": {"state": "MERGED"}, "71": {"state": "MERGED"},
     "66": {"state": "OPEN_DRAFT"}, "69": {"state": "OPEN_DRAFT"}, "70": {"state": "OPEN_DRAFT"},
-    "38": {"state": "OPEN_DRAFT_SUPERSEDED_RECOMMEND_CLOSE"}, "30": {"state": "OPEN_OLD"}
+    "38": {"state": "CLOSED_SUPERSEDED"}, "30": {"state": "OPEN_OLD"},
+    "73": {"state": "OPEN_DRAFT"}, "74": {"state": "OPEN_DRAFT"}
   },
   "tracks": {
     "A1_SOURCE": "COMPLETE", "A1_PRODUCTION_REMEDIATION": "PENDING",
