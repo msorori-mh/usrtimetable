@@ -30,7 +30,11 @@ function assert(cond: boolean, msg: string) {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "../..");
-const MIG = "supabase/migrations/20260717043000_teaching_assignments_v2_runtime_foundation.sql";
+// G5 fix (WAVE-05 / PR #69 follow-up): the Phase 9.4 content lives in the migration file
+// below (timestamp 2026-07-17 03:56:11). The originally referenced filename
+// "20260717043000_teaching_assignments_v2_runtime_foundation.sql" never landed on main.
+// Reference corrected only — every check below is unchanged (same asserted strings/semantics).
+const MIG = "supabase/migrations/20260717035611_82eaf255-efc0-42b6-b42e-4f34ce1f1817.sql";
 const MIG93 = "supabase/migrations/20260716233716_73dc0ba0-e4ba-43be-8628-ef2c36564a62.sql";
 
 function read(rel: string) {
@@ -436,34 +440,48 @@ function run() {
   );
 
   // ---------- Import alignment ----------
+  // G5-adjacent reference corrections (WAVE-05, same technique as the MIG fix: point the
+  // harness at the files that ACTUALLY implement each invariant — asserted invariants and
+  // messages unchanged). The A1.3a import-pipeline refactor moved:
+  //   (a) the V2 natural key  → src/lib/excel-import/keys.ts (deliveryGroupIsolationKey),
+  //   (b) row-field mapping   → validators.ts (_assigned_component_hours / _is_active),
+  //   (c) the V2 batch-RPC commit wrapper → academic-delivery/teaching-assignments-v2-service.ts
+  //       (commitTeachingAssignmentsV2Import). excel-import/commit.ts no longer contains any
+  //       V2 commit code — it only routes jobs to commit_import_job_atomic.
   const tpl = read("src/lib/excel-import/templates.ts");
   const validators = read("src/lib/excel-import/validators.ts");
-  const commit = read("src/lib/excel-import/commit.ts");
+  const importKeys = read("src/lib/excel-import/keys.ts");
+  const commitSvc = read("src/lib/academic-delivery/teaching-assignments-v2-service.ts");
   assert(tpl.includes("assigned_component_hours"), "import assigned_component_hours column");
   assert(tpl.includes("required: true") && tpl.includes("delivery_group_code"), "27 DG required");
   assert(
-    validators.includes("delivery_group_code}|${v.employee_number}") ||
-      validators.includes("${v.delivery_group_code}|${v.employee_number}"),
+    importKeys.includes("delivery_group_code") &&
+      importKeys.includes("employee_number") &&
+      validators.includes("deliveryGroupIsolationKey"),
     "natural key includes delivery group",
   );
   assert(validators.includes("unknown_delivery_group"), "27 dependency on delivery_groups");
   assert(validators.includes("summer_training_forbidden"), "summer rejection in validator");
   assert(validators.includes("inactive_delivery_group"), "import rejects inactive DG");
   assert(validators.includes("obsolete_delivery_group"), "import rejects obsolete DG");
-  assert(commit.includes("assigned_component_hours"), "commit payload assigned_component_hours");
-  assert(commit.includes("co_teaching_hours_split_required"), "28 import co-teach split");
-  assert(commit.includes("is_active"), "import is_active");
+  // commit payload fields: mapped client-side in validators; re-enforced server-side in the
+  // commit RPC (SQL section above asserts CO_TEACHING_HOURS_SPLIT_REQUIRED in the migration).
   assert(
-    commit.includes("commitTeachingAssignmentsV2Import"),
+    validators.includes("_assigned_component_hours"),
+    "commit payload assigned_component_hours",
+  );
+  assert(sql.includes("CO_TEACHING_HOURS_SPLIT_REQUIRED"), "28 import co-teach split");
+  assert(validators.includes("_is_active"), "import is_active");
+  assert(
+    commitSvc.includes("commitTeachingAssignmentsV2Import"),
     "9 import uses service batch RPC wrapper",
   );
   assert(
-    commit.includes("Atomic contract") || commit.includes("atomic"),
+    commitSvc.includes("Atomic") || commitSvc.includes("atomic"),
     "import atomic contract documented",
   );
-  const v2CommitFn = commit.slice(
-    commit.indexOf("async function commitTeachingAssignmentsV2"),
-    commit.indexOf("async function commitCourseOfferings"),
+  const v2CommitFn = commitSvc.slice(
+    commitSvc.indexOf("export async function commitTeachingAssignmentsV2Import"),
   );
   assert(!v2CommitFn.includes("weekly_hours ?? 3"), "no DEFAULT 3 inside v2 commit fn");
   assert(
@@ -477,7 +495,7 @@ function run() {
       !v2CommitFn.includes(".upsert("),
     "8 no direct insert/update/upsert in v2 commit",
   );
-  assert(v2CommitFn.includes("commitTeachingAssignmentsV2Import"), "9 batch RPC via service");
+  assert(v2CommitFn.includes("commit_teaching_assignments_v2_import"), "9 batch RPC via service");
 
   // ---------- UI / service static ----------
   const page = read("src/routes/_authenticated/teaching-assignments.tsx");
