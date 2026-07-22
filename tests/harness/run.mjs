@@ -50,6 +50,7 @@ export const harnesses = [
   "scheduling-headcount-foundation.harness.ts",
   "shared-lecture-groups.harness.ts",
   "shared-lecture-groups-authz.harness.ts",
+  "shared-lecture-groups-ui.harness.ts",
   "draft-lecturer-report.harness.ts",
   "admin-routes-inventory.harness.ts",
   "phase-a1-legacy-navigation-terminology.harness.ts",
