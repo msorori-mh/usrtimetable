@@ -1,5 +1,5 @@
 import type { TemplateDef } from "./types";
-import { escapeSpreadsheetCell } from "./formula-escape";
+import { escapeSpreadsheetCell, sanitizeImportCellValue } from "./formula-escape";
 import { IMPORT_CONTRACT_VERSION, PILOT_STUDY_SYSTEMS, TA_V2_COMPONENT_TYPES } from "./registry";
 
 export const TEMPLATES: Record<string, TemplateDef> = {
@@ -622,7 +622,7 @@ export async function buildTemplateWorkbook(entity: string): Promise<Blob> {
 
 export async function parseExcel(
   file: File,
-): Promise<{ headers: string[]; rows: Record<string, unknown>[] }> {
+): Promise<{ headers: string[]; rows: Record<string, unknown>[]; sanitizedCells: number }> {
   const XLSX = await import("xlsx");
   const buf = await file.arrayBuffer();
   const wb = XLSX.read(buf, { type: "array" });
@@ -630,5 +630,17 @@ export async function parseExcel(
   const ws = wb.Sheets[sheetName];
   const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "", raw: false });
   const headers = json.length > 0 ? Object.keys(json[0]) : [];
-  return { headers, rows: json };
+  // A3.5 / gap G1: neutralize inbound formula-injection before the payload
+  // enters the import manifest/commit path (mirrors the export-side escape).
+  let sanitizedCells = 0;
+  const rows = json.map((row) => {
+    const next: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(row)) {
+      const sanitized = sanitizeImportCellValue(value);
+      if (sanitized !== value) sanitizedCells += 1;
+      next[key] = sanitized;
+    }
+    return next;
+  });
+  return { headers, rows, sanitizedCells };
 }
