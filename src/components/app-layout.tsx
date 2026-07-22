@@ -188,6 +188,13 @@ const NAV: NavItem[] = [
     group: "موارد التدريس",
   },
   {
+    to: "/workload-policies",
+    label: "النصاب التدريسي",
+    icon: <Gauge className="h-4 w-4" />,
+    roles: ALL,
+    group: "موارد التدريس",
+  },
+  {
     to: "/instructor-types",
     label: "أنواع المحاضرين",
     icon: <UserCog className="h-4 w-4" />,
