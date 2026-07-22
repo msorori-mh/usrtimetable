@@ -21,6 +21,7 @@ import {
   formatValue,
   redactDetails,
   summarizeDetails,
+  type AuditCursor,
   type AuditLogRow,
 } from "@/lib/audit-logs/model";
 
@@ -46,8 +47,8 @@ function AuditLogsPage() {
   const [actorId, setActorId] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [cursorStack, setCursorStack] = useState<Array<string | null>>([]);
+  const [cursor, setCursor] = useState<AuditCursor | null>(null);
+  const [cursorStack, setCursorStack] = useState<Array<AuditCursor | null>>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [total, setTotal] = useState<number | null>(null);
 
