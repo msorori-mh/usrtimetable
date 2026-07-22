@@ -30,6 +30,7 @@ import { Route as AuthenticatedScheduleBuilderRouteImport } from './routes/_auth
 import { Route as AuthenticatedRoomsRouteImport } from './routes/_authenticated/rooms'
 import { Route as AuthenticatedRoomTypesRouteImport } from './routes/_authenticated/room-types'
 import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
+import { Route as AuthenticatedReadinessDashboardRouteImport } from './routes/_authenticated/readiness-dashboard'
 import { Route as AuthenticatedPublishedSchedulesRouteImport } from './routes/_authenticated/published-schedules'
 import { Route as AuthenticatedProgramsRouteImport } from './routes/_authenticated/programs'
 import { Route as AuthenticatedMyCollegeRouteImport } from './routes/_authenticated/my-college'
@@ -53,6 +54,7 @@ import { Route as AuthenticatedCollegesRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedBuildingsRouteImport } from './routes/_authenticated/buildings'
 import { Route as AuthenticatedAvailabilityRouteImport } from './routes/_authenticated/availability'
 import { Route as AuthenticatedAutoScheduleRouteImport } from './routes/_authenticated/auto-schedule'
+import { Route as AuthenticatedAuditLogsRouteImport } from './routes/_authenticated/audit-logs'
 import { Route as AuthenticatedAcademicCohortsRouteImport } from './routes/_authenticated/academic-cohorts'
 import { Route as AuthenticatedAcademicCalendarRouteImport } from './routes/_authenticated/academic-calendar'
 import { Route as AuthenticatedReportsIndexRouteImport } from './routes/_authenticated/reports.index'
@@ -184,6 +186,12 @@ const AuthenticatedReportsRoute = AuthenticatedReportsRouteImport.update({
   path: '/reports',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedReadinessDashboardRoute =
+  AuthenticatedReadinessDashboardRouteImport.update({
+    id: '/readiness-dashboard',
+    path: '/readiness-dashboard',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedPublishedSchedulesRoute =
   AuthenticatedPublishedSchedulesRouteImport.update({
     id: '/published-schedules',
@@ -315,6 +323,11 @@ const AuthenticatedAutoScheduleRoute =
     path: '/auto-schedule',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAuditLogsRoute = AuthenticatedAuditLogsRouteImport.update({
+  id: '/audit-logs',
+  path: '/audit-logs',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedAcademicCohortsRoute =
   AuthenticatedAcademicCohortsRouteImport.update({
     id: '/academic-cohorts',
@@ -417,6 +430,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/academic-calendar': typeof AuthenticatedAcademicCalendarRoute
   '/academic-cohorts': typeof AuthenticatedAcademicCohortsRoute
+  '/audit-logs': typeof AuthenticatedAuditLogsRoute
   '/auto-schedule': typeof AuthenticatedAutoScheduleRoute
   '/availability': typeof AuthenticatedAvailabilityRoute
   '/buildings': typeof AuthenticatedBuildingsRoute
@@ -440,6 +454,7 @@ export interface FileRoutesByFullPath {
   '/my-college': typeof AuthenticatedMyCollegeRoute
   '/programs': typeof AuthenticatedProgramsRoute
   '/published-schedules': typeof AuthenticatedPublishedSchedulesRoute
+  '/readiness-dashboard': typeof AuthenticatedReadinessDashboardRoute
   '/reports': typeof AuthenticatedReportsRouteWithChildren
   '/room-types': typeof AuthenticatedRoomTypesRoute
   '/rooms': typeof AuthenticatedRoomsRoute
@@ -478,6 +493,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/academic-calendar': typeof AuthenticatedAcademicCalendarRoute
   '/academic-cohorts': typeof AuthenticatedAcademicCohortsRoute
+  '/audit-logs': typeof AuthenticatedAuditLogsRoute
   '/auto-schedule': typeof AuthenticatedAutoScheduleRoute
   '/availability': typeof AuthenticatedAvailabilityRoute
   '/buildings': typeof AuthenticatedBuildingsRoute
@@ -501,6 +517,7 @@ export interface FileRoutesByTo {
   '/my-college': typeof AuthenticatedMyCollegeRoute
   '/programs': typeof AuthenticatedProgramsRoute
   '/published-schedules': typeof AuthenticatedPublishedSchedulesRoute
+  '/readiness-dashboard': typeof AuthenticatedReadinessDashboardRoute
   '/room-types': typeof AuthenticatedRoomTypesRoute
   '/rooms': typeof AuthenticatedRoomsRoute
   '/schedule-builder': typeof AuthenticatedScheduleBuilderRoute
@@ -540,6 +557,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/academic-calendar': typeof AuthenticatedAcademicCalendarRoute
   '/_authenticated/academic-cohorts': typeof AuthenticatedAcademicCohortsRoute
+  '/_authenticated/audit-logs': typeof AuthenticatedAuditLogsRoute
   '/_authenticated/auto-schedule': typeof AuthenticatedAutoScheduleRoute
   '/_authenticated/availability': typeof AuthenticatedAvailabilityRoute
   '/_authenticated/buildings': typeof AuthenticatedBuildingsRoute
@@ -563,6 +581,7 @@ export interface FileRoutesById {
   '/_authenticated/my-college': typeof AuthenticatedMyCollegeRoute
   '/_authenticated/programs': typeof AuthenticatedProgramsRoute
   '/_authenticated/published-schedules': typeof AuthenticatedPublishedSchedulesRoute
+  '/_authenticated/readiness-dashboard': typeof AuthenticatedReadinessDashboardRoute
   '/_authenticated/reports': typeof AuthenticatedReportsRouteWithChildren
   '/_authenticated/room-types': typeof AuthenticatedRoomTypesRoute
   '/_authenticated/rooms': typeof AuthenticatedRoomsRoute
@@ -603,6 +622,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/academic-calendar'
     | '/academic-cohorts'
+    | '/audit-logs'
     | '/auto-schedule'
     | '/availability'
     | '/buildings'
@@ -626,6 +646,7 @@ export interface FileRouteTypes {
     | '/my-college'
     | '/programs'
     | '/published-schedules'
+    | '/readiness-dashboard'
     | '/reports'
     | '/room-types'
     | '/rooms'
@@ -664,6 +685,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/academic-calendar'
     | '/academic-cohorts'
+    | '/audit-logs'
     | '/auto-schedule'
     | '/availability'
     | '/buildings'
@@ -687,6 +709,7 @@ export interface FileRouteTypes {
     | '/my-college'
     | '/programs'
     | '/published-schedules'
+    | '/readiness-dashboard'
     | '/room-types'
     | '/rooms'
     | '/schedule-builder'
@@ -725,6 +748,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/academic-calendar'
     | '/_authenticated/academic-cohorts'
+    | '/_authenticated/audit-logs'
     | '/_authenticated/auto-schedule'
     | '/_authenticated/availability'
     | '/_authenticated/buildings'
@@ -748,6 +772,7 @@ export interface FileRouteTypes {
     | '/_authenticated/my-college'
     | '/_authenticated/programs'
     | '/_authenticated/published-schedules'
+    | '/_authenticated/readiness-dashboard'
     | '/_authenticated/reports'
     | '/_authenticated/room-types'
     | '/_authenticated/rooms'
@@ -944,6 +969,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPublishedSchedulesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/readiness-dashboard': {
+      id: '/_authenticated/readiness-dashboard'
+      path: '/readiness-dashboard'
+      fullPath: '/readiness-dashboard'
+      preLoaderRoute: typeof AuthenticatedReadinessDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/programs': {
       id: '/_authenticated/programs'
       path: '/programs'
@@ -1105,6 +1137,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAcademicCohortsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/audit-logs': {
+      id: '/_authenticated/audit-logs'
+      path: '/audit-logs'
+      fullPath: '/audit-logs'
+      preLoaderRoute: typeof AuthenticatedAuditLogsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/academic-calendar': {
       id: '/_authenticated/academic-calendar'
       path: '/academic-calendar'
@@ -1261,6 +1300,7 @@ const AuthenticatedReportsRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAcademicCalendarRoute: typeof AuthenticatedAcademicCalendarRoute
   AuthenticatedAcademicCohortsRoute: typeof AuthenticatedAcademicCohortsRoute
+  AuthenticatedAuditLogsRoute: typeof AuthenticatedAuditLogsRoute
   AuthenticatedAutoScheduleRoute: typeof AuthenticatedAutoScheduleRoute
   AuthenticatedAvailabilityRoute: typeof AuthenticatedAvailabilityRoute
   AuthenticatedBuildingsRoute: typeof AuthenticatedBuildingsRoute
@@ -1284,6 +1324,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMyCollegeRoute: typeof AuthenticatedMyCollegeRoute
   AuthenticatedProgramsRoute: typeof AuthenticatedProgramsRoute
   AuthenticatedPublishedSchedulesRoute: typeof AuthenticatedPublishedSchedulesRoute
+  AuthenticatedReadinessDashboardRoute: typeof AuthenticatedReadinessDashboardRoute
   AuthenticatedReportsRoute: typeof AuthenticatedReportsRouteWithChildren
   AuthenticatedRoomTypesRoute: typeof AuthenticatedRoomTypesRoute
   AuthenticatedRoomsRoute: typeof AuthenticatedRoomsRoute
@@ -1308,6 +1349,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAcademicCalendarRoute: AuthenticatedAcademicCalendarRoute,
   AuthenticatedAcademicCohortsRoute: AuthenticatedAcademicCohortsRoute,
+  AuthenticatedAuditLogsRoute: AuthenticatedAuditLogsRoute,
   AuthenticatedAutoScheduleRoute: AuthenticatedAutoScheduleRoute,
   AuthenticatedAvailabilityRoute: AuthenticatedAvailabilityRoute,
   AuthenticatedBuildingsRoute: AuthenticatedBuildingsRoute,
@@ -1331,6 +1373,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMyCollegeRoute: AuthenticatedMyCollegeRoute,
   AuthenticatedProgramsRoute: AuthenticatedProgramsRoute,
   AuthenticatedPublishedSchedulesRoute: AuthenticatedPublishedSchedulesRoute,
+  AuthenticatedReadinessDashboardRoute:
+    AuthenticatedReadinessDashboardRoute,
   AuthenticatedReportsRoute: AuthenticatedReportsRouteWithChildren,
   AuthenticatedRoomTypesRoute: AuthenticatedRoomTypesRoute,
   AuthenticatedRoomsRoute: AuthenticatedRoomsRoute,
