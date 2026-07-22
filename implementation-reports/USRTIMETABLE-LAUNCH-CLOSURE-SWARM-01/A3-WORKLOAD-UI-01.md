@@ -69,7 +69,18 @@ No other ACTIVE-import template/validator gaps were found that are both clearly 
 - `tests/harness/faculty-workload-ui.harness.ts`: file presence, RPC-only writes (no direct DML), RPC↔migration contract cross-check, role reflection, readiness-blocker banner, advisory-overload doctrine, no Legacy references, terminology, nav/route-tree/registry wiring, G1 sanitizer wiring (inbound added, export preserved).
 - Not run here (no local toolchain in this environment): `tsc`, harness suite, dev server. Residual risk: `parseExcel`'s new return field and the routeTree hand-edit are unverified by a real build; first CI run must confirm.
 
-## 8. UNKNOWNs / BLOCKERs
+## 8. Review round 1 fixes (PR #74, verdict REVISE)
+
+| Item | Fix | Commit |
+|---|---|---|
+| HIGH-1: `PolicyForm` not remounted when switching targets (stale state could silently update the wrong row; create→edit stuck state) | Added `key={editing?.id ?? "new"}` so the form remounts per edit target. Harness now asserts the key. | `2994293` |
+| LOW-1: formula-injection checks missed leading whitespace/TAB/CR | `escapeSpreadsheetCell`, `looksLikeFormulaInjection`, `looksLikeInboundFormula` now test after `trimStart()`; the returned/sanitized value keeps its **original** leading whitespace (only the `'` prefix is added). Comments updated; harness asserts `trimStart` presence. Note: export side behavior tightens slightly (cells like `" =x"` are now escaped) — intended. | `bb0b2bd` |
+| LOW-3: editing an `active=false` policy silently re-activates it on save (upsert forces `active=true`) | Amber notice inside the form when editing a deactivated policy: "هذه السياسة موقوفة حاليًا — الحفظ سيعيد تفعيلها تلقائيًا". Harness asserts the notice text. | `2994293` |
+| LOW-2 (optional): harness only checked RPC names, not argument names | Harness now slices each `CREATE OR REPLACE FUNCTION public.<fn>(…) RETURNS` signature from migration `20260722110000` and asserts every `p_*` the UI passes exists there (and in `api.ts`). | `fa57d68` |
+
+No rebase/force-push; fixes are additive commits on `feat/a3-workload-ui`.
+
+## 9. UNKNOWNs / BLOCKERs
 
 - **BLOCKER (readiness)**: A3 migration + all dependencies are SOURCE ONLY / NOT APPLIED; every write and both list RPCs fail at runtime until approval + apply. Documented in-page and here.
 - **UNKNOWN**: G3, G4 (above).
