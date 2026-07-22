@@ -54,6 +54,7 @@ export const harnesses = [
   "domain-contract-static.harness.ts",
   "program-department-integrity.harness.ts",
   "reports-read-model-a1-5.harness.ts",
+  "soft-preferences-ui.harness.ts",
 ];
 
 const historicalArtifacts = new Map([
@@ -64,13 +65,10 @@ const historicalArtifacts = new Map([
       failureMarker: "post-apply verification SQL present (local report)",
     },
   ],
-  [
-    "teaching-assignments-v2-runtime.harness.ts",
-    {
-      path: "supabase/migrations/20260717043000_teaching_assignments_v2_runtime_foundation.sql",
-      failureMarker: "Phase 9.4 migration present",
-    },
-  ],
+  // G5 (WAVE-05): the teaching-assignments-v2-runtime entry was removed. The Phase 9.4
+  // migration file (supabase/migrations/20260717035611_82eaf255-efc0-42b6-b42e-4f34ce1f1817.sql)
+  // exists on main and is now a required artifact — a missing file must be a hard FAIL,
+  // not a tolerated "missing-historical-artifact".
 ]);
 
 export function classifyResult(file, result, fileExists = existsSync) {
