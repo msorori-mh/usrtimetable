@@ -14,13 +14,14 @@ const firstLine = migration.split("\n", 1)[0];
 assert.match(firstLine, /^-- SOURCE ONLY — NOT APPLIED — gate APPROVE_DB_MIGRATION_APPLY/);
 assert.match(migration, /20260722090000/, "must declare the A2.1 prerequisite");
 assert.match(migration, /20260721180000/, "must declare the headcount prerequisite");
+assert.match(migration, /20260717050000/, "must declare the cross-college references prerequisite");
 assert.doesNotMatch(migration, /\bBACKFILL\b/i);
 // The legacy model must never appear in this migration.
 assert.doesNotMatch(migration, /\bsections?\b/i);
 // No DML against operational business rows.
 assert.doesNotMatch(
   migration,
-  /INSERT\s+INTO\s+public\.(academic_cohorts|delivery_groups|plan_course_components|course_offerings|scheduling_cohort_term_headcounts)\b/i,
+  /INSERT\s+INTO\s+public\.(academic_cohorts|delivery_groups|plan_course_components|course_offerings|scheduling_cohort_term_headcounts|schedule_sessions)\b/i,
 );
 assert.doesNotMatch(migration, /\b(national_id|student_name|student_email|student_phone)\b/i);
 
@@ -46,17 +47,25 @@ assert.match(migration, /SHARED_GROUP_NO_COHORTS/);
 assert.match(migration, /SHARED_GROUP_HEADCOUNT_MISSING/);
 assert.match(migration, /approval_status = 'approved'/);
 
-// Component unlink RPC with fail-closed UNKNOWN session dependency.
+// Component unlink RPC: precise scheduled-session guard (any status) + draft-only guard.
 assert.match(migration, /FUNCTION public\.remove_component_from_shared_lecture_group/);
+assert.match(migration, /SHARED_GROUP_COMPONENT_IN_USE/);
+assert.match(
+  migration,
+  /EXISTS \(\s*SELECT 1 FROM public\.schedule_sessions ss\s*WHERE ss\.plan_course_component_id = p_plan_course_component_id\s*AND ss\.college_id = v_group\.college_id\s*\)/,
+  "precise schedule_sessions dependency check must exist",
+);
 assert.match(migration, /SHARED_GROUP_COMPONENT_UNLINK_BLOCKED/);
-assert.match(migration, /dependency_evidence', 'UNKNOWN'/);
 assert.match(migration, /DELETE FROM public\.shared_lecture_group_components/);
 assert.doesNotMatch(migration, /DELETE FROM public\.plan_course_components/);
 assert.doesNotMatch(migration, /DELETE FROM public\.delivery_groups/);
+assert.doesNotMatch(migration, /DELETE FROM public\.schedule_sessions/);
 
 // super_admin cross-college path on a dedicated table; composite same-college FKs untouched.
 assert.match(migration, /CREATE TABLE public\.shared_lecture_group_cross_college_cohorts/);
 assert.match(migration, /ALTER TABLE public\.shared_lecture_group_cross_college_cohorts ENABLE ROW LEVEL SECURITY/);
+// Both the group college and the cohort's home college can read cross-college memberships.
+assert.match(migration, /can_view_college\(auth\.uid\(\), cohort_college_id\)/);
 assert.match(migration, /FUNCTION public\.add_cross_college_cohort_to_shared_lecture_group/);
 assert.match(migration, /FUNCTION public\.remove_cross_college_cohort_from_shared_lecture_group/);
 assert.match(migration, /CROSS_COLLEGE_REQUIRES_SUPER_ADMIN/);
@@ -68,6 +77,11 @@ assert.doesNotMatch(
   /ALTER TABLE public\.shared_lecture_group_(components|cohorts)\s+DROP CONSTRAINT/,
   "A2.1 composite FKs must not be weakened",
 );
+
+// Cross-college audit is dual-keyed (group college + cohort home college mirror).
+assert.match(migration, /mirror_reason', 'cohort_college_visibility'/);
+assert.match(migration, /'shared_lecture_group_add_cross_college_cohort', 'shared_lecture_group_cross_college_cohorts', v_row\.id, v_cohort\.college_id/);
+assert.match(migration, /'shared_lecture_group_remove_cross_college_cohort', 'shared_lecture_group_cross_college_cohorts', v_row\.id, v_row\.cohort_college_id/);
 
 // Locked groups reject membership/component changes in every write RPC.
 assert.match(migration, /GROUP_LOCKED/);
@@ -81,9 +95,9 @@ assert.match(migration, /'create', 'add_component', 'add_cohort', 'remove_cohort
 assert.match(migration, /'remove_component', 'status_transition'/);
 assert.match(migration, /'add_cross_college_cohort', 'remove_cross_college_cohort'/);
 
-// Every write RPC audits.
+// Every write RPC audits (incl. 2 mirror rows for the cross-college path).
 const auditCount = (migration.match(/INSERT INTO public\.audit_logs/g) ?? []).length;
-assert.ok(auditCount >= 8, `expected >= 8 audit inserts, found ${auditCount}`);
+assert.ok(auditCount >= 10, `expected >= 10 audit inserts, found ${auditCount}`);
 
 // House privilege discipline.
 assert.match(migration, /SECURITY DEFINER SET search_path = public, pg_temp/g);
@@ -102,6 +116,7 @@ assert.match(report, /NOT APPLIED/);
 assert.match(report, /UNKNOWN/);
 assert.match(report, /super_admin/);
 assert.match(report, /SHARED_GROUP_COMPONENT_UNLINK_BLOCKED/);
+assert.match(report, /SHARED_GROUP_COMPONENT_IN_USE/);
 
 console.log(
   JSON.stringify({ harness: "shared-lecture-groups-authz", status: "pass" }, null, 2),
