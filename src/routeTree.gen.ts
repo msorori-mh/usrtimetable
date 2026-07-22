@@ -19,6 +19,7 @@ import { Route as AuthenticatedTimeSlotTemplatesRouteImport } from './routes/_au
 import { Route as AuthenticatedTermsRouteImport } from './routes/_authenticated/terms'
 import { Route as AuthenticatedTeachingAssignmentsRouteImport } from './routes/_authenticated/teaching-assignments'
 import { Route as AuthenticatedStudyPlansRouteImport } from './routes/_authenticated/study-plans'
+import { Route as AuthenticatedSharedLectureGroupsRouteImport } from './routes/_authenticated/shared-lecture-groups'
 import { Route as AuthenticatedSharedCoursesRouteImport } from './routes/_authenticated/shared-courses'
 import { Route as AuthenticatedSessionTypesRouteImport } from './routes/_authenticated/session-types'
 import { Route as AuthenticatedSectionsRouteImport } from './routes/_authenticated/sections'
@@ -122,6 +123,12 @@ const AuthenticatedStudyPlansRoute = AuthenticatedStudyPlansRouteImport.update({
   path: '/study-plans',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSharedLectureGroupsRoute =
+  AuthenticatedSharedLectureGroupsRouteImport.update({
+    id: '/shared-lecture-groups',
+    path: '/shared-lecture-groups',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSharedCoursesRoute =
   AuthenticatedSharedCoursesRouteImport.update({
     id: '/shared-courses',
@@ -451,6 +458,7 @@ export interface FileRoutesByFullPath {
   '/sections': typeof AuthenticatedSectionsRoute
   '/session-types': typeof AuthenticatedSessionTypesRoute
   '/shared-courses': typeof AuthenticatedSharedCoursesRoute
+  '/shared-lecture-groups': typeof AuthenticatedSharedLectureGroupsRoute
   '/study-plans': typeof AuthenticatedStudyPlansRoute
   '/teaching-assignments': typeof AuthenticatedTeachingAssignmentsRoute
   '/terms': typeof AuthenticatedTermsRoute
@@ -511,6 +519,7 @@ export interface FileRoutesByTo {
   '/sections': typeof AuthenticatedSectionsRoute
   '/session-types': typeof AuthenticatedSessionTypesRoute
   '/shared-courses': typeof AuthenticatedSharedCoursesRoute
+  '/shared-lecture-groups': typeof AuthenticatedSharedLectureGroupsRoute
   '/study-plans': typeof AuthenticatedStudyPlansRoute
   '/teaching-assignments': typeof AuthenticatedTeachingAssignmentsRoute
   '/terms': typeof AuthenticatedTermsRoute
@@ -574,6 +583,7 @@ export interface FileRoutesById {
   '/_authenticated/sections': typeof AuthenticatedSectionsRoute
   '/_authenticated/session-types': typeof AuthenticatedSessionTypesRoute
   '/_authenticated/shared-courses': typeof AuthenticatedSharedCoursesRoute
+  '/_authenticated/shared-lecture-groups': typeof AuthenticatedSharedLectureGroupsRoute
   '/_authenticated/study-plans': typeof AuthenticatedStudyPlansRoute
   '/_authenticated/teaching-assignments': typeof AuthenticatedTeachingAssignmentsRoute
   '/_authenticated/terms': typeof AuthenticatedTermsRoute
@@ -637,6 +647,7 @@ export interface FileRouteTypes {
     | '/sections'
     | '/session-types'
     | '/shared-courses'
+    | '/shared-lecture-groups'
     | '/study-plans'
     | '/teaching-assignments'
     | '/terms'
@@ -697,6 +708,7 @@ export interface FileRouteTypes {
     | '/sections'
     | '/session-types'
     | '/shared-courses'
+    | '/shared-lecture-groups'
     | '/study-plans'
     | '/teaching-assignments'
     | '/terms'
@@ -759,6 +771,7 @@ export interface FileRouteTypes {
     | '/_authenticated/sections'
     | '/_authenticated/session-types'
     | '/_authenticated/shared-courses'
+    | '/_authenticated/shared-lecture-groups'
     | '/_authenticated/study-plans'
     | '/_authenticated/teaching-assignments'
     | '/_authenticated/terms'
@@ -858,6 +871,13 @@ declare module '@tanstack/react-router' {
       path: '/study-plans'
       fullPath: '/study-plans'
       preLoaderRoute: typeof AuthenticatedStudyPlansRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/shared-lecture-groups': {
+      id: '/_authenticated/shared-lecture-groups'
+      path: '/shared-lecture-groups'
+      fullPath: '/shared-lecture-groups'
+      preLoaderRoute: typeof AuthenticatedSharedLectureGroupsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/shared-courses': {
@@ -1295,6 +1315,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSectionsRoute: typeof AuthenticatedSectionsRoute
   AuthenticatedSessionTypesRoute: typeof AuthenticatedSessionTypesRoute
   AuthenticatedSharedCoursesRoute: typeof AuthenticatedSharedCoursesRoute
+  AuthenticatedSharedLectureGroupsRoute: typeof AuthenticatedSharedLectureGroupsRoute
   AuthenticatedStudyPlansRoute: typeof AuthenticatedStudyPlansRoute
   AuthenticatedTeachingAssignmentsRoute: typeof AuthenticatedTeachingAssignmentsRoute
   AuthenticatedTermsRoute: typeof AuthenticatedTermsRoute
@@ -1343,6 +1364,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSectionsRoute: AuthenticatedSectionsRoute,
   AuthenticatedSessionTypesRoute: AuthenticatedSessionTypesRoute,
   AuthenticatedSharedCoursesRoute: AuthenticatedSharedCoursesRoute,
+  AuthenticatedSharedLectureGroupsRoute: AuthenticatedSharedLectureGroupsRoute,
   AuthenticatedStudyPlansRoute: AuthenticatedStudyPlansRoute,
   AuthenticatedTeachingAssignmentsRoute: AuthenticatedTeachingAssignmentsRoute,
   AuthenticatedTermsRoute: AuthenticatedTermsRoute,
