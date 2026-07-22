@@ -2,6 +2,17 @@
 
 State source of truth: this folder (origin/main). Sandbox copies are ephemeral and never authoritative.
 
+## 2026-07-22 — USRTIMETABLE-SWARM-RESUME-VERIFY-HOLD-13
+
+- Session resumed per D-STATE-01: STATE.json fetched from origin/main (tip 976af646fba21e407cef0186fa79f70db0fa5c97; STATE.json blob 19b637963a1a592c0e5395281cd95a524df089a5). No Sandbox state used.
+- Full goal brief re-received from the user this session and re-verified against STATE.json: no change to gates, tracks, decisions, or next_safe_action. Brief's reference tip 7d738204 is stale relative to actual tip 976af646, but every commit in between is state/docs-only (verified below), so the brief and STATE.json agree in substance. Brief reconfirms: user runtime gates must pass before any draft source PR merges; USRTIMETABLE-FINAL-MAIN-91B5F65-LOCAL-GATES.zip is SUPERSEDED (not used); LEGACY_ORPHAN_CLASSIFICATION_V1 REJECTED (not rerun); no guessing of delivery_groups relationships.
+- RUNLOG reviewed before any action (no-duplicate / no-re-execution rule): all completed phases left untouched; this run opens no PRs.
+- next_safe_action = USER_RUNS_LATEST_MAIN_GATES_AND_LEGACY_SCHEMA_MAP → user-side gate → HOLD. No agent execution performed; awaiting user gate results (USRTIMETABLE-LATEST-MAIN-LOCAL-GATES.zip + PHASE-A1-LEGACY-RELATIONSHIP-SCHEMA-MAP, both DELIVERED_AWAITING_USER_EXECUTION).
+- Drift check: origin/main advanced past STATE-recorded 46fdacd to 976af646 via the HOLD-12 state-only log commits (ddb18f07 STATE.json update, then 976af646 RUNLOG entry). Per-commit file lists confirm both touch only implementation-reports/USRTIMETABLE-LAUNCH-CLOSURE-SWARM-01/{RUNLOG.md,STATE.json} — zero product-source and zero migration changes. STATE.json current_origin_main updated 46fdacd -> 976af646.
+- Consistency check: STATE.json substance unchanged — same pending user gates, same production facts (174 TA / 5 COS / sections = 0 / academic_programs = 0), LEGACY_ORPHAN_CLASSIFICATION_V1 REJECTED (not rerun), schema-map results still pending from user. Open PRs re-verified via GitHub API: #66/#69/#70 still OPEN_DRAFT awaiting user runtime gates; #38 (OPEN_DRAFT_SUPERSEDED_RECOMMEND_CLOSE — user decision) and #30 (OPEN_OLD) untouched; no new PRs and nothing merged since HOLD-12. Reports folder re-listed: no gate results files present (no RESULTS.json, no schema-map output). No evidence conflict.
+- Gate consequence unchanged from HOLD-02/03/04/05/06/07/08/09/10/11/12: gates zip pinned 1c23c808 self-HOLDs on SHA change (HOLD — ORIGIN_MAIN_CHANGED_REGENERATE_PACKAGE by design); drift is docs/state-only so gate content is unaffected — user decision (regenerate/re-pin to current tip, or run and treat the designed self-HOLD as the regeneration trigger). PHASE-A1-LEGACY-RELATIONSHIP-SCHEMA-MAP is read-only Production SQL, unaffected by repo drift.
+- No DB writes, no migration apply, no backfill/cleanup, no touching the 174 TA / 5 COS rows, no A2 start/advance, no real import, no deploy/publish, no duplicate PRs, no re-execution of completed phases, no branch/worktree deletion, no production-ready claim.
+
 ## 2026-07-22 — USRTIMETABLE-SWARM-RESUME-VERIFY-HOLD-12
 
 - Session resumed per D-STATE-01: STATE.json fetched from origin/main (tip 46fdacd63226bbc6292e3fffed5206fddf072f3d; STATE.json blob 624426462e335f8122f9088c80677885b8c3b188). No Sandbox state used.
