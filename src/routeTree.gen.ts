@@ -35,6 +35,7 @@ import { Route as AuthenticatedProgramsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedMyCollegeRouteImport } from './routes/_authenticated/my-college'
 import { Route as AuthenticatedInstructorsRouteImport } from './routes/_authenticated/instructors'
 import { Route as AuthenticatedInstructorTypesRouteImport } from './routes/_authenticated/instructor-types'
+import { Route as AuthenticatedInstructorPreferencesRouteImport } from './routes/_authenticated/instructor-preferences'
 import { Route as AuthenticatedImportTemplatesRouteImport } from './routes/_authenticated/import-templates'
 import { Route as AuthenticatedImportHistoryRouteImport } from './routes/_authenticated/import-history'
 import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated/import'
@@ -210,6 +211,12 @@ const AuthenticatedInstructorTypesRoute =
   AuthenticatedInstructorTypesRouteImport.update({
     id: '/instructor-types',
     path: '/instructor-types',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedInstructorPreferencesRoute =
+  AuthenticatedInstructorPreferencesRouteImport.update({
+    id: '/instructor-preferences',
+    path: '/instructor-preferences',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedImportTemplatesRoute =
@@ -435,6 +442,7 @@ export interface FileRoutesByFullPath {
   '/import': typeof AuthenticatedImportRoute
   '/import-history': typeof AuthenticatedImportHistoryRoute
   '/import-templates': typeof AuthenticatedImportTemplatesRoute
+  '/instructor-preferences': typeof AuthenticatedInstructorPreferencesRoute
   '/instructor-types': typeof AuthenticatedInstructorTypesRoute
   '/instructors': typeof AuthenticatedInstructorsRoute
   '/my-college': typeof AuthenticatedMyCollegeRoute
@@ -496,6 +504,7 @@ export interface FileRoutesByTo {
   '/import': typeof AuthenticatedImportRoute
   '/import-history': typeof AuthenticatedImportHistoryRoute
   '/import-templates': typeof AuthenticatedImportTemplatesRoute
+  '/instructor-preferences': typeof AuthenticatedInstructorPreferencesRoute
   '/instructor-types': typeof AuthenticatedInstructorTypesRoute
   '/instructors': typeof AuthenticatedInstructorsRoute
   '/my-college': typeof AuthenticatedMyCollegeRoute
@@ -558,6 +567,7 @@ export interface FileRoutesById {
   '/_authenticated/import': typeof AuthenticatedImportRoute
   '/_authenticated/import-history': typeof AuthenticatedImportHistoryRoute
   '/_authenticated/import-templates': typeof AuthenticatedImportTemplatesRoute
+  '/_authenticated/instructor-preferences': typeof AuthenticatedInstructorPreferencesRoute
   '/_authenticated/instructor-types': typeof AuthenticatedInstructorTypesRoute
   '/_authenticated/instructors': typeof AuthenticatedInstructorsRoute
   '/_authenticated/my-college': typeof AuthenticatedMyCollegeRoute
@@ -621,6 +631,7 @@ export interface FileRouteTypes {
     | '/import'
     | '/import-history'
     | '/import-templates'
+    | '/instructor-preferences'
     | '/instructor-types'
     | '/instructors'
     | '/my-college'
@@ -682,6 +693,7 @@ export interface FileRouteTypes {
     | '/import'
     | '/import-history'
     | '/import-templates'
+    | '/instructor-preferences'
     | '/instructor-types'
     | '/instructors'
     | '/my-college'
@@ -743,6 +755,7 @@ export interface FileRouteTypes {
     | '/_authenticated/import'
     | '/_authenticated/import-history'
     | '/_authenticated/import-templates'
+    | '/_authenticated/instructor-preferences'
     | '/_authenticated/instructor-types'
     | '/_authenticated/instructors'
     | '/_authenticated/my-college'
@@ -816,14 +829,14 @@ declare module '@tanstack/react-router' {
       path: '/users'
       fullPath: '/users'
       preLoaderRoute: typeof AuthenticatedUsersRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/universities': {
       id: '/_authenticated/universities'
       path: '/universities'
       fullPath: '/universities'
       preLoaderRoute: typeof AuthenticatedUniversitiesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/time-slots': {
       id: '/_authenticated/time-slots'
@@ -970,6 +983,13 @@ declare module '@tanstack/react-router' {
       path: '/instructor-types'
       fullPath: '/instructor-types'
       preLoaderRoute: typeof AuthenticatedInstructorTypesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/instructor-preferences': {
+      id: '/_authenticated/instructor-preferences'
+      path: '/instructor-preferences'
+      fullPath: '/instructor-preferences'
+      preLoaderRoute: typeof AuthenticatedInstructorPreferencesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/import-templates': {
@@ -1279,6 +1299,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedImportRoute: typeof AuthenticatedImportRoute
   AuthenticatedImportHistoryRoute: typeof AuthenticatedImportHistoryRoute
   AuthenticatedImportTemplatesRoute: typeof AuthenticatedImportTemplatesRoute
+  AuthenticatedInstructorPreferencesRoute: typeof AuthenticatedInstructorPreferencesRoute
   AuthenticatedInstructorTypesRoute: typeof AuthenticatedInstructorTypesRoute
   AuthenticatedInstructorsRoute: typeof AuthenticatedInstructorsRoute
   AuthenticatedMyCollegeRoute: typeof AuthenticatedMyCollegeRoute
@@ -1326,6 +1347,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedImportRoute: AuthenticatedImportRoute,
   AuthenticatedImportHistoryRoute: AuthenticatedImportHistoryRoute,
   AuthenticatedImportTemplatesRoute: AuthenticatedImportTemplatesRoute,
+  AuthenticatedInstructorPreferencesRoute: AuthenticatedInstructorPreferencesRoute,
   AuthenticatedInstructorTypesRoute: AuthenticatedInstructorTypesRoute,
   AuthenticatedInstructorsRoute: AuthenticatedInstructorsRoute,
   AuthenticatedMyCollegeRoute: AuthenticatedMyCollegeRoute,
