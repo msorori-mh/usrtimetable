@@ -1,7 +1,7 @@
 # A4-AUDIT-READINESS-UI-01 — Audit Viewer + Readiness Dashboard (source-only UI)
 
 - **Swarm:** USRTIMETABLE-LAUNCH-CLOSURE-SWARM-01 · Wave WAVE-04 · Agent AGENT-AUDIT-READINESS-A4
-- **Branch:** `feat/a4-audit-readiness-ui` (from `main`) · **PR:** Draft, base `main`
+- **Branch:** `feat/a4-audit-readiness-ui` (from `main`) · **PR:** Draft #75, base `main`
 - **Designs:** `A4-AUDIT-VIEWER-DESIGN-01.md`, `A4-READINESS-DASHBOARD-DESIGN-01.md`, `A4-AUTHORIZATION-MATRIX-01.md`
 - **Scope:** UI source only. **No DB writes, no migration apply, no deploy.** Validation = static review only — runtime gates pending CI.
 
@@ -9,7 +9,7 @@
 
 ### 1.1 Audit Viewer — `/audit-logs` (READ-ONLY)
 - `src/routes/_authenticated/audit-logs.tsx` + `src/lib/audit-logs/model.ts`.
-- Keyset (cursor) pagination over `audit_logs` (`created_at DESC, id DESC`, `.lt("created_at", cursor)`, page size 50) — **no offset** (design §5: append-heavy table).
+- **Composite keyset cursor** over `audit_logs`: ordering `(created_at DESC, id DESC)` with predicate `created_at < C OR (created_at = C AND id < ID)`, page size 50 — **no offset** and **no row loss on shared timestamps** (batch writers such as `import_commit`).
 - Filters: date range (من/إلى), action (dropdown from known-action dictionary with Arabic labels), entity (free text), actor UUID (**super_admin only**).
 - Before/after field-level **diff** (changed keys only) + full details behind `<details>`, with recursive **redaction** of sensitive keys matching `/token|secret|password|apikey|api_key|jwt/i` → `•••` (design §4.2). Sensitive fields are never rendered even inside the diff.
 - RLS posture (design §4.4): **no college selector for non-super_admin** (selector = UX only; RLS is the boundary). college_admin/read_only are scoped by RLS to their college; super_admin gets the standard `CollegeSwitcher` (UX only).
@@ -34,10 +34,10 @@
 | B5 | منهج الدفعة | `academic_cohorts.plan_id` + `plan_courses` (fail-closed probe) | `/academic-cohorts` |
 | B6 | مجموعات المحاضرات والمعامل | `delivery_groups` per active cohort | `/academic-cohorts` |
 | B7 | الإسناد التدريسي | `teaching_assignments` coverage/instructor_id | `/teaching-assignments` |
-| B8 | القاعات | `rooms` type+capacity | `/rooms` |
+| B8 | القاعات | `rooms` (`room_type_id` + capacity) | `/rooms` |
 | B14 | أيام وفترات الدوام | `scheduling_settings.working_days` + `time_slot_templates` | `/scheduling-settings` |
 | B13 | توفر المحاضرين الخارجيين | `instructors` (categorized) − `instructor_availability` | `/availability` |
-| B4 | أعداد الدفعات المعتمدة للجدولة | `scheduling_cohort_term_headcounts` (approved) — **UNKNOWN pre-apply** | `/scheduling-headcounts` |
+| B4 | أعداد الدفعات المعتمدة للجدولة | `scheduling_cohort_term_headcounts` (distinct approved cohorts) — **UNKNOWN pre-apply** | `/scheduling-headcounts` |
 | B9 | السعة مقابل الأعداد | `delivery_groups.expected_students` vs max `rooms.capacity` | `/delivery-groups` |
 | B10 | التعارضات الإلزامية | latest `schedule_quality_runs.hard_conflicts_count` | `/conflict-checks` |
 | B12 | دورة حياة النسخ | `schedule_versions` status summary (WARN) | `/schedule-versions` |
@@ -49,37 +49,45 @@
 - `src/components/app-layout.tsx`: NAV entries "جاهزية الإطلاق" (ungrouped, after جاهزية البيانات) and "سجل التدقيق" (group التقارير) — both `roles: ALL` (visibility ≠ authorization).
 
 ### 1.5 Harness
-- `tests/harness/audit-readiness-ui.harness.ts` (10 groups): route registration in routeTree + NAV; **no DML/RPC/audit-writer** in the 4 new files; keyset-only pagination (no `.range(`); redaction pattern; super_admin-only college selector; **no Legacy access** (`sections`, `course_offering_sections`, `section_groups`, `section_id` filters, "مجموعات التدريس"); all 7 mandated terms present; all 15 check IDs registered; B11 manifest tokens; fail-closed headcount link.
+- `tests/harness/audit-readiness-ui.harness.ts` (10 groups): route registration in routeTree + NAV; **no DML/RPC/audit-writer** in the 4 new files (RPC ban is alias-proof: `/\.rpc\(/`); **composite keyset-only pagination** (`.or(` + `created_at.lt.` + `created_at.eq.` + `id.lt.`, no `.range(`); redaction pattern; super_admin-only college selector; **no Legacy access** (`sections`, `course_offering_sections`, `section_groups`, `section_id` filters, "مجموعات التدريس"); all 7 mandated terms present; all 15 check IDs registered; B11 manifest tokens; B4 distinct-cohort implementation.
 - Registered in `tests/harness/run.mjs` at the alphabetical slot (before `availability-all-active-days.harness.ts`). Note: the existing list is historically append-ordered; the task explicitly requested alphabetical registration.
 
 ## 2. Validation evidence (static only)
-- Harness executed locally (tsx) against the **exact branch bytes** (every file verified by git blob SHA before running): `{"harness":"audit-readiness-ui","status":"pass"}` — exit 0.
+- Harness executed locally (tsx) against the **exact branch bytes** (every file verified by git blob SHA before running): `{"harness":"audit-readiness-ui","status":"pass"}` — exit 0. Re-run after Review round 1 fixes: **pass** (exit 0).
 - All 7 new/modified files pass `tsc` **syntax** transpile check (React JSX, ES2022) — no full project typecheck locally (deps not installed); runtime gates pending CI.
+- Every uploaded file verified byte-identical via returned git blob SHA.
 - No writes to `main`; no rebase; no force-push; file-by-file `create_or_update_file`.
 
-## 3. Deviations from design (documented)
+## 3. Review round 1 fixes (APPROVE_WITH_NOTES on PR #75)
+1. **HIGH-1 (fixed):** the keyset cursor used `created_at` only while ordering was composite — rows sharing a timestamp could be silently skipped. Now a **composite cursor** `{created_at, id}` with predicate `created_at < C OR (created_at = C AND id < ID)` in `src/lib/audit-logs/model.ts`; viewer paging state carries both values; harness asserts the composite tokens. (Deviation #6 of round 0 is resolved.)
+2. **MEDIUM-1 (fixed):** `runB4` compared row counts (active cohorts vs approved headcount rows) — a false PASS was possible post-apply (multiple approved rows per cohort). Now it selects `cohort_id, approval_status`, builds the set of **distinct covered cohorts**, and computes `missing = active cohorts without approval`. Still fail-closed (any query error → UNKNOWN).
+3. **LOW-2 (fixed):** harness RPC ban widened from `supabase.rpc(` to `/\.rpc\(/` so the `db` alias cannot bypass it.
+4. **LOW-1 (fixed):** B8 now uses the confirmed `room_type_id` column only; the speculative `room_type` fallback was removed (if the schema ever renames it, the probe errors → UNKNOWN — honest, not silently misleading).
+5. **LOW-4 (fixed):** active-cohort predicate unified as `active !== false` across B3/B4/B5/B6 (B3 previously used `eq("active", true)`).
+
+## 4. Deviations from design (documented)
 1. **Lane 2** implemented as a link to `/data-readiness` + `/reports/data-readiness` instead of duplicated score cards — reuses the existing implementation unchanged and avoids logic drift.
 2. **Global audit rows** (`college_id IS NULL`) are not displayed in V1: the viewer always scopes to the active college (RLS would allow them for super_admin). Known limitation, safe direction.
 3. **B5** probes `academic_cohorts.plan_id`; **B9** probes `delivery_groups.expected_students`. If either column name differs at runtime, the check degrades to UNKNOWN (fail-closed) — schema could not be verified statically (UNKNOWN).
 4. **B10** uses `schedule_quality_runs` only; pending conflict-exception counts (design optional) not queried in V1 to avoid an unverified table dependency — noted as follow-up.
 5. **Actor names (GAP-A2):** option (a) — non-super_admin sees own/short-id only (profiles RLS = self + super_admin). Dictionary-driven name resolution for college_admin deferred.
-6. **Keyset cursor** uses `created_at` only (matches the design sketch); rows sharing the exact cursor timestamp across a page boundary could be skipped — accepted per design sketch; tie-breaker can be added later without schema change.
+6. ~~**Keyset cursor** uses `created_at` only~~ — **RESOLVED in Review round 1 (HIGH-1):** composite `(created_at, id)` cursor.
 7. **B11/B15** are static mirrors of STATE.json (UNKNOWN/HELD) — remote apply-state is unverifiable by design ("لا يُعتد بأي ترحيل كمطبَّق دون دليل عن بُعد").
 8. **Entity deep-links** in the audit viewer skipped in V1 (design: "when known"); entity shown as name + short id.
 
-## 4. UNKNOWNs / BLOCKERs
+## 5. UNKNOWNs / BLOCKERs
 - UNKNOWN: full `tsc`/build/CI result (not runnable locally) — syntax + harness verified only.
 - UNKNOWN: runtime column presence for B1 (`academic_terms.is_active`), B5 (`plan_id`), B9 (`expected_students`) — all fail-closed to UNKNOWN if absent.
 - UNKNOWN: actual migration apply-state on production (mirrored as UNKNOWN/HELD, per gate discipline).
 - BLOCKER (pre-existing, surfaced not created): 20260721180000 (headcount), 20260717050000 (cross-college hardening), 20260715120000 (capacity split), 20260718183000 (cohort curriculum runtime), 20260720120000 (availability all active days), 20260720143000 (program-department integrity) — all await APPROVE_DB_MIGRATION_APPLY; 20260721090000 HELD pending A1.3b (APPROVE_LEGACY_DATA_REMEDIATION).
 
-## 5. Files
-- `src/routes/_authenticated/audit-logs.tsx` (new)
-- `src/lib/audit-logs/model.ts` (new)
+## 6. Files
+- `src/routes/_authenticated/audit-logs.tsx` (new; updated in round 1)
+- `src/lib/audit-logs/model.ts` (new; updated in round 1)
 - `src/routes/_authenticated/readiness-dashboard.tsx` (new)
-- `src/lib/readiness/checks.ts` (new)
+- `src/lib/readiness/checks.ts` (new; updated in round 1)
 - `src/routeTree.gen.ts` (updated — 2 routes)
 - `src/components/app-layout.tsx` (updated — 2 NAV entries, 2 icons)
-- `tests/harness/audit-readiness-ui.harness.ts` (new)
+- `tests/harness/audit-readiness-ui.harness.ts` (new; updated in round 1)
 - `tests/harness/run.mjs` (updated — registration)
 - `implementation-reports/USRTIMETABLE-LAUNCH-CLOSURE-SWARM-01/A4-AUDIT-READINESS-UI-01.md` (this file)
