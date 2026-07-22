@@ -3,8 +3,8 @@
   "current_phase": "PHASE_A1_POSTMERGE_VERIFICATION_AND_LEGACY_SCHEMA_MAP",
   "reconciled_at": "2026-07-22",
   "last_wave": "USRTIMETABLE-AUTONOMOUS-SOURCE-CLOSURE-WAVE-03",
-  "current_origin_main": "5e15d006d851164add794137f3dc2bee004f99f0",
-  "origin_main_note": "main advanced through docs/state merges only (1c23c808 -> b6a5a49 PR#64 -> 7d738204 parallel-session state log -> 1881759d PR#65 -> 87fbbe9d PR#67 -> b731c640 PR#68 -> 3591d698 PR#71 -> 64f7bdf PR#72 state results update -> e59cf7d state-only HOLD-03 resume-verify log -> 5e15d006 state-only HOLD-04 resume-verify log). No hand-written product source changed on main during WAVE-03.",
+  "current_origin_main": "40fea646ab49905debd9af389a57f358688a6ef6",
+  "origin_main_note": "main advanced through docs/state merges only (1c23c808 -> b6a5a49 PR#64 -> 7d738204 parallel-session state log -> 1881759d PR#65 -> 87fbbe9d PR#67 -> b731c640 PR#68 -> 3591d698 PR#71 -> 64f7bdf PR#72 state results update -> e59cf7d state-only HOLD-03 resume-verify log -> 5e15d006 state-only HOLD-04 resume-verify log -> 40fea646 state-only HOLD-05 resume-verify log). No hand-written product source changed on main during WAVE-03.",
   "completed_tasks": [
     "PR60_MERGED", "PR61_MERGED", "PR62_MERGED", "PR64_MERGED",
     "A1_SOURCE_COMPLETE", "SCHEDULING_HEADCOUNT_SOURCE_COMPLETE", "PRODUCTION_READONLY_DELTA_COMPLETE",
