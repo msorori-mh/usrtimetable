@@ -47,12 +47,15 @@ for (const [name, content] of [
     false,
     `${name} must not contain direct DML (insert/update/delete/upsert)`,
   );
-  assert.equal(content.includes("supabase.rpc("), false, `${name} must not call RPCs`);
+  assert.equal(/\.rpc\(/.test(content), false, `${name} must not call RPCs (any client alias)`);
   assert.equal(content.includes("logAudit"), false, `${name} must not write audit logs`);
 }
 
-// 3) Keyset pagination (never offset) for the append-heavy audit table
-assert.ok(auditModel.includes('.lt("created_at"'), "audit model must use keyset cursor pagination");
+// 3) Composite keyset pagination (never offset) for the append-heavy audit table:
+//    (created_at, id) cursor so rows sharing one timestamp are never skipped (HIGH-1).
+for (const token of [".or(", "created_at.lt.", "created_at.eq.", "id.lt."]) {
+  assert.ok(auditModel.includes(token), `audit model must use composite keyset cursor: ${token}`);
+}
 assert.equal(auditModel.includes(".range("), false, "audit model must not use offset pagination");
 
 // 4) Sensitive-field redaction (design §4.2)
@@ -130,10 +133,15 @@ for (const token of [
   assert.ok(checksLib.includes(token), `migration manifest missing: ${token}`);
 }
 
-// 10) Fail-closed headcount link (PR #62 pattern): B4 degrades to UNKNOWN pre-apply
+// 10) Fail-closed headcount link (PR #62 pattern): B4 degrades to UNKNOWN pre-apply,
+//     and compares DISTINCT cohorts (not row counts) to avoid false PASS (MEDIUM-1).
 assert.ok(
   checksLib.includes("scheduling_cohort_term_headcounts"),
   "B4 must link to scheduling headcount (fail-closed UNKNOWN pre-apply)",
+);
+assert.ok(
+  checksLib.includes('"cohort_id, approval_status"'),
+  "B4 must select cohort_id per headcount row (distinct-cohort comparison)",
 );
 
 console.log(JSON.stringify({ harness: "audit-readiness-ui", status: "pass" }));
