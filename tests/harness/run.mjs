@@ -21,6 +21,7 @@ export const harnesses = [
   "import-pipeline-preapply-security.harness.ts",
   "import-templates-final-audit.harness.ts",
   "legacy-write-blocking.harness.ts",
+  "audit-readiness-ui.harness.ts",
   "availability-all-active-days.harness.ts",
   "weekly-time-templates.harness.ts",
   "terminology-labels.harness.ts",
