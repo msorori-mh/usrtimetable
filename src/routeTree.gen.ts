@@ -437,6 +437,7 @@ export interface FileRoutesByFullPath {
   '/data-cleanup': typeof AuthenticatedDataCleanupRoute
   '/data-readiness': typeof AuthenticatedDataReadinessRoute
   '/data-templates': typeof AuthenticatedDataTemplatesRoute
+
   '/delivery-groups': typeof AuthenticatedDeliveryGroupsRoute
   '/departments': typeof AuthenticatedDepartmentsRoute
   '/import': typeof AuthenticatedImportRoute
@@ -829,14 +830,14 @@ declare module '@tanstack/react-router' {
       path: '/users'
       fullPath: '/users'
       preLoaderRoute: typeof AuthenticatedUsersRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/universities': {
       id: '/_authenticated/universities'
       path: '/universities'
       fullPath: '/universities'
       preLoaderRoute: typeof AuthenticatedUniversitiesRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/time-slots': {
       id: '/_authenticated/time-slots'
