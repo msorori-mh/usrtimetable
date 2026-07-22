@@ -113,32 +113,43 @@ async function runB2(collegeId: string): Promise<CheckOutcome> {
 }
 
 async function runB3(collegeId: string): Promise<CheckOutcome> {
-  const cohorts = await countRows("academic_cohorts", collegeId, (q) => q.eq("active", true));
+  // Active predicate unified across B3/B4/B5/B6: `active !== false` (LOW-4).
+  const cohorts = await selectRows("academic_cohorts", collegeId, "id, active");
   if (cohorts === null) return UNAVAILABLE("تعذر الاستعلام عن الدفعات الدراسية.");
-  return cohorts === 0
+  const active = cohorts.filter((c) => c.active !== false).length;
+  return active === 0
     ? blocked(1, 1, "لا توجد دفعة دراسية نشطة.")
-    : pass(cohorts, `${cohorts} دفعة دراسية نشطة.`);
+    : pass(active, `${active} دفعة دراسية نشطة.`);
 }
 
 async function runB4(collegeId: string): Promise<CheckOutcome> {
   // Fail-closed link to scheduling headcount (migration 20260721180000 is
   // source-only, NOT APPLIED): if the table is missing this check degrades to
   // UNKNOWN instead of silently passing.
+  // Compare DISTINCT cohorts (not row counts): multiple approved rows may exist
+  // per cohort (e.g. per term), so counting rows could produce a false PASS.
   const [cohorts, headcounts] = await Promise.all([
-    countRows("academic_cohorts", collegeId, (q) => q.eq("active", true)),
-    countRows("scheduling_cohort_term_headcounts", collegeId, (q) =>
-      q.eq("approval_status", "approved"),
-    ),
+    selectRows("academic_cohorts", collegeId, "id, active"),
+    selectRows("scheduling_cohort_term_headcounts", collegeId, "cohort_id, approval_status"),
   ]);
   if (headcounts === null)
     return UNAVAILABLE(
       "جدول أعداد الدفعات المعتمدة للجدولة غير متاح — الترحيل 20260721180000 لم يُطبَّق (انظر B11).",
     );
   if (cohorts === null) return UNAVAILABLE("تعذر الاستعلام عن الدفعات الدراسية.");
-  const missing = Math.max(0, cohorts - headcounts);
+  const active = cohorts.filter((c) => c.active !== false);
+  if (active.length === 0) return pass(0, "لا توجد دفعات نشطة بعد — يُحسم بعد B3.");
+  const covered = new Set(
+    headcounts.filter((h) => h.approval_status === "approved").map((h) => h.cohort_id),
+  );
+  const missing = active.filter((c) => !covered.has(c.id)).length;
   return missing > 0
-    ? blocked(missing, cohorts, `معتمد: ${headcounts} من ${cohorts} دفعة نشطة.`)
-    : pass(cohorts, "كل الدفعات النشطة لديها أعداد معتمدة.");
+    ? blocked(
+        missing,
+        active.length,
+        `معتمد: ${active.length - missing} من ${active.length} دفعة نشطة.`,
+      )
+    : pass(active.length, "كل الدفعات النشطة لديها أعداد معتمدة.");
 }
 
 async function runB5(collegeId: string): Promise<CheckOutcome> {
@@ -204,10 +215,12 @@ async function runB7(collegeId: string): Promise<CheckOutcome> {
 }
 
 async function runB8(collegeId: string): Promise<CheckOutcome> {
-  const rooms = await selectRows("rooms", collegeId, "id, capacity, room_type_id, room_type");
+  // room_type_id is the confirmed column (LOW-1); a `room_type` relation/column
+  // is not assumed — if it ever replaces room_type_id the probe errors → UNKNOWN.
+  const rooms = await selectRows("rooms", collegeId, "id, capacity, room_type_id");
   if (rooms === null) return UNAVAILABLE("تعذر الاستعلام عن القاعات.");
   if (rooms.length === 0) return blocked(1, 1, "لا توجد قاعات.");
-  const noType = rooms.filter((r) => !r.room_type_id && !r.room_type).length;
+  const noType = rooms.filter((r) => !r.room_type_id).length;
   const badCapacity = rooms.filter((r) => !r.capacity || r.capacity <= 0).length;
   const missing = noType + badCapacity;
   return missing > 0
