@@ -437,7 +437,6 @@ export interface FileRoutesByFullPath {
   '/data-cleanup': typeof AuthenticatedDataCleanupRoute
   '/data-readiness': typeof AuthenticatedDataReadinessRoute
   '/data-templates': typeof AuthenticatedDataTemplatesRoute
-
   '/delivery-groups': typeof AuthenticatedDeliveryGroupsRoute
   '/departments': typeof AuthenticatedDepartmentsRoute
   '/import': typeof AuthenticatedImportRoute
