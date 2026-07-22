@@ -202,7 +202,7 @@ CREATE OR REPLACE FUNCTION public.transition_shared_lecture_group_status(
 ) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE v_uid uuid := auth.uid(); v_group public.shared_lecture_groups%ROWTYPE;
-  v_missing jsonb; v_member_count integer; v_component_count integer;
+  v_missing jsonb; v_member_count integer; v_component_count integer; v_from_status text;
 BEGIN
   IF v_uid IS NULL THEN RETURN jsonb_build_object('ok', false, 'code', 'AUTH_REQUIRED', 'message', 'Authentication required'); END IF;
   SELECT * INTO v_group FROM public.shared_lecture_groups WHERE id = p_group_id FOR UPDATE;
@@ -253,14 +253,15 @@ BEGIN
         'message', 'Approved scheduling headcount is required for every participating cohort before activation');
     END IF;
   END IF;
+  v_from_status := v_group.status;
   UPDATE public.shared_lecture_groups SET status = p_target_status WHERE id = p_group_id RETURNING * INTO v_group;
   INSERT INTO public.shared_lecture_group_revisions (college_id, group_id, revision_kind, snapshot, changed_by, notes)
     VALUES (v_group.college_id, p_group_id, 'status_transition',
-      jsonb_build_object('from_status', (SELECT status FROM public.shared_lecture_groups WHERE id = p_group_id), 'to_status', p_target_status, 'group', to_jsonb(v_group)),
+      jsonb_build_object('from_status', v_from_status, 'to_status', p_target_status, 'group', to_jsonb(v_group)),
       v_uid, p_notes);
   INSERT INTO public.audit_logs (actor_id, action, entity, entity_id, college_id, details)
     VALUES (v_uid, 'shared_lecture_group_status_transition', 'shared_lecture_groups', v_group.id, v_group.college_id,
-      jsonb_build_object('to_status', p_target_status));
+      jsonb_build_object('from_status', v_from_status, 'to_status', p_target_status));
   RETURN jsonb_build_object('ok', true, 'group', to_jsonb(v_group));
 END; $$;
 
@@ -298,8 +299,8 @@ BEGIN
   RETURN jsonb_build_object('ok', true, 'removed_component_link', to_jsonb(v_row));
 END; $$;
 
--- super_admin-only cross-college membership. Mandatory audit on every call (success
--- or governance rejection is returned, never raised, so callers can surface blockers).
+-- super_admin-only cross-college membership. Audit + revision rows are mandatory on every
+-- successful mutation; governance rejections are returned (never raised) as blockers.
 CREATE OR REPLACE FUNCTION public.add_cross_college_cohort_to_shared_lecture_group(
   p_group_id uuid, p_cohort_id uuid, p_notes text DEFAULT NULL
 ) RETURNS jsonb
