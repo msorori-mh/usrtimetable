@@ -56,6 +56,7 @@
   - لا Sections/section_id. المصطلح الرسمي «أيام وفترات الدوام» مستخدم للوقت.
 - **تنقّل:** عنصر «تفضيلات المحاضرين» (أيقونة Star) ضمن مجموعة «موارد التدريس» في `src/components/app-layout.tsx` — **مستقل** عن عنصر «عدم التوفّر».
 - **تسجيل المسار:** `src/routeTree.gen.ts` حُدّث يدويًا باتباع نمط الملف المولَّد حرفيًا (11 موضع إدخال: import، route const، 3 واجهات routes، 3 اتحادات أنواع، كتلة FileRoutesByPath، واجهة + ثابت children). سيُعاد توليده تلقائيًا عند أول `vite dev/build` — التحديث اليدوي يجعل الشجرة المرتكزة متسقة فورًا.
+  - **ملاحظة شفافية (مراجعة ذاتية بعد فتح الـPR):** اكتشفتُ بفحص diff الـPR زلّة نسخ مني في النسخة الأولى (سطرا `parentRoute` لمسارَي `/users` و`/universities` داخل كتلة `FileRoutesByPath` النوعية فقط، وسطر فارغ زائد). أُصلحتا في commitَي `aa99870c` و`37380a91`. الـdiff النهائي للملف **+22/−0** — مواضع الإدخال المقصودة فقط، دون أي تغيير على المسارات القائمة.
 - **Harness ساكن جديد** `tests/harness/soft-preferences-ui.harness.ts` (بدون imports من src — يعمل مستقلًا): يفحص وجود الدعم الفعلي (migrations الأساسية)، عقد الكتابة Soft فقط، عقد الـsolver (+5/−10/−3 ودلالات `availability_type`)، الاستقلال عن شاشة Hard وعن RPCs الجملة source-only، غياب تفضيلات القاعات (لا دعم schema)، المصطلحات، الصلاحيات/القراءة فقط، والتسجيل في التنقّل/routeTree. مُسجّل في `run.mjs`.
   - **تحقق محلي:** `PASS — A3.3 soft-preferences-ui harness (static)` عبر tsx (بايتات حقيقية للصفحة؛ مقتطفات حرفية موثّقة من الملفات الكبيرة بعد قراءتها كاملة).
 
@@ -77,7 +78,7 @@
 | `tests/harness/teaching-assignments-v2-runtime.harness.ts` | G5: مرجع MIG إلى الملف الفعلي + تصحيح مراجع قسم الاستيراد (موثّق، نفس الدلالات) |
 | `src/routes/_authenticated/instructor-preferences.tsx` | **جديد** — شاشة التفضيلات الناعمة |
 | `src/components/app-layout.tsx` | عنصر تنقّل «تفضيلات المحاضرين» + أيقونة Star |
-| `src/routeTree.gen.ts` | تسجيل المسار (نمط المولّد) |
+| `src/routeTree.gen.ts` | تسجيل المسار (نمط المولّد؛ +22/−0 نهائيًا) |
 | `tests/harness/soft-preferences-ui.harness.ts` | **جديد** — harness ساكن، مسجَّل في run.mjs |
 | `tests/harness/run.mjs` | تسجيل الـharness + إزالة إدخال G5 المتقادم |
 | `implementation-reports/USRTIMETABLE-LAUNCH-CLOSURE-SWARM-01/A3-PREFERENCES-UI-AND-G5-01.md` | هذا التقرير |
@@ -85,4 +86,5 @@
 ## 4) الفحوص المُنفّذة
 - `npx tsx tests/harness/teaching-assignments-v2-runtime.harness.ts` → **PASS** (بايتات الفرع، محليًا؛ تفاصيل البايتات/البدائل في §1).
 - `npx tsx tests/harness/soft-preferences-ui.harness.ts` → **PASS** (محليًا).
+- فحص diff الـPR كاملًا عبر GitHub API (`get_files`) — كل الملفات السبعة تطابق التغييرات المقصودة فقط.
 - لم تُشغَّل: مجموعة الـharness الكاملة (تتطلب node_modules كاملة)، ولا build/tsc — موثّق أعلاه.
