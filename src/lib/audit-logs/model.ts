@@ -20,6 +20,16 @@ export interface AuditLogRow {
   created_at: string;
 }
 
+/**
+ * Composite keyset cursor matching the (created_at, id) sort order.
+ * Rows sharing the same created_at (common with batch writers such as
+ * import_commit) must never be skipped — the id is the tie-breaker.
+ */
+export interface AuditCursor {
+  created_at: string;
+  id: string;
+}
+
 export interface AuditLogFilters {
   collegeId?: string | null;
   action?: string | null;
@@ -27,7 +37,7 @@ export interface AuditLogFilters {
   actorId?: string | null;
   from?: string | null; // ISO date (yyyy-mm-dd)
   to?: string | null; // ISO date (yyyy-mm-dd)
-  cursor?: string | null; // created_at of the last row of the previous page (keyset)
+  cursor?: AuditCursor | null; // last row of the previous page (keyset)
 }
 
 /** Known-action dictionary → Arabic labels (extend as new writers appear). */
@@ -104,13 +114,16 @@ export interface AuditLogsPage {
   rows: AuditLogRow[];
   /** Total matching rows — only requested on the first page (cursor === null). */
   total: number | null;
-  nextCursor: string | null;
+  nextCursor: AuditCursor | null;
   error: string | null;
 }
 
 /**
- * Keyset (cursor) pagination — never offset. Audit is append-heavy; offset
- * scans degrade and skip rows under concurrent appends (design §5).
+ * Composite keyset (cursor) pagination — never offset. Audit is append-heavy;
+ * offset scans degrade and skip rows under concurrent appends (design §5).
+ * The predicate mirrors the (created_at DESC, id DESC) ordering exactly:
+ *   created_at < C OR (created_at = C AND id < ID)
+ * so rows sharing one timestamp are never skipped (review HIGH-1).
  */
 export async function fetchAuditLogsPage(filters: AuditLogFilters): Promise<AuditLogsPage> {
   let query = supabase
@@ -122,7 +135,10 @@ export async function fetchAuditLogsPage(filters: AuditLogFilters): Promise<Audi
     .order("id", { ascending: false })
     .limit(AUDIT_PAGE_SIZE);
 
-  if (filters.cursor) query = query.lt("created_at", filters.cursor);
+  if (filters.cursor) {
+    const { created_at: c, id } = filters.cursor;
+    query = query.or(`created_at.lt.${c},and(created_at.eq.${c},id.lt.${id})`);
+  }
   if (filters.collegeId) query = query.eq("college_id", filters.collegeId);
   if (filters.action) query = query.eq("action", filters.action);
   if (filters.entity) query = query.eq("entity", filters.entity);
@@ -137,10 +153,12 @@ export async function fetchAuditLogsPage(filters: AuditLogFilters): Promise<Audi
     return { rows: [], total: null, nextCursor: null, error: error.message };
   }
   const rows = (data ?? []) as AuditLogRow[];
+  const last = rows[rows.length - 1];
   return {
     rows,
     total: filters.cursor ? null : (count ?? null),
-    nextCursor: rows.length === AUDIT_PAGE_SIZE ? rows[rows.length - 1].created_at : null,
+    nextCursor:
+      rows.length === AUDIT_PAGE_SIZE && last ? { created_at: last.created_at, id: last.id } : null,
     error: null,
   };
 }
