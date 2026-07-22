@@ -2,6 +2,16 @@
 
 State source of truth: this folder (origin/main). Sandbox copies are ephemeral and never authoritative.
 
+## 2026-07-22 — USRTIMETABLE-SWARM-RESUME-VERIFY-HOLD-08
+
+- Session resumed per D-STATE-01: STATE.json fetched from origin/main (tip 475557c676401bfe9cca7441e1df13ac411f5fb3; STATE.json blob 36c6e9159d70c5d7d7df34bf2ae0d6d8df082dca). No Sandbox state used.
+- RUNLOG reviewed before any action (no-duplicate / no-re-execution rule): all completed phases left untouched; this run opens no PRs.
+- next_safe_action = USER_RUNS_LATEST_MAIN_GATES_AND_LEGACY_SCHEMA_MAP → user-side gate → HOLD. No agent execution performed; awaiting user gate results (USRTIMETABLE-LATEST-MAIN-LOCAL-GATES.zip + PHASE-A1-LEGACY-RELATIONSHIP-SCHEMA-MAP, both DELIVERED_AWAITING_USER_EXECUTION).
+- Drift check: origin/main advanced past STATE-recorded 9847a7e8 to 475557c6 via the HOLD-07 state-only log commit itself. Per-commit file list confirms 475557c6 touches only implementation-reports/USRTIMETABLE-LAUNCH-CLOSURE-SWARM-01/{RUNLOG.md,STATE.json} — zero product-source and zero migration changes. STATE.json current_origin_main updated 9847a7e8 -> 475557c6.
+- Consistency check: STATE.json substance unchanged — same pending user gates, same production facts (174 TA / 5 COS / sections = 0 / academic_programs = 0), LEGACY_ORPHAN_CLASSIFICATION_V1 REJECTED (not rerun), schema-map results still pending from user. Open PRs re-verified via GitHub API: #66/#69/#70 still OPEN_DRAFT awaiting user runtime gates; #38 (OPEN_DRAFT_SUPERSEDED_RECOMMEND_CLOSE — user decision) and #30 (OPEN_OLD) untouched; no new PRs and nothing merged since HOLD-07. Reports folder re-listed: no gate results files present (no RESULTS.json, no schema-map output). No evidence conflict.
+- Gate consequence unchanged from HOLD-02/03/04/05/06/07: gates zip pinned 1c23c808 self-HOLDs on SHA change (HOLD — ORIGIN_MAIN_CHANGED_REGENERATE_PACKAGE by design); drift is docs/state-only so gate content is unaffected — user decision (regenerate/re-pin to current tip, or run and treat the designed self-HOLD as the regeneration trigger). PHASE-A1-LEGACY-RELATIONSHIP-SCHEMA-MAP is read-only Production SQL, unaffected by repo drift.
+- No DB writes, no migration apply, no backfill/cleanup, no touching the 174 TA / 5 COS rows, no A2 start/advance, no real import, no deploy/publish, no duplicate PRs, no re-execution of completed phases, no branch/worktree deletion, no production-ready claim.
+
 ## 2026-07-22 — USRTIMETABLE-SWARM-RESUME-VERIFY-HOLD-07
 
 - Session resumed per D-STATE-01: STATE.json fetched from origin/main (tip 9847a7e89a28f14e1ea4b1bfaabcc06b8731613a; STATE.json blob 91a6c946865889ec5c528a92977e52dc708e3da5). No Sandbox state used.
