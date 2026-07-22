@@ -56,6 +56,11 @@ const blocked = (missing: number, total: number, note?: string): CheckOutcome =>
   note,
 });
 
+// Table names are dynamic here so a missing table/column (e.g. a source-only
+// migration that was never applied) surfaces as a query error → UNKNOWN,
+// never as a silent pass. The untyped client keeps that fail-closed at runtime.
+const db = supabase as any;
+
 /** Count rows matching filters; null = query failed (fail-closed). */
 async function countRows(
   table: string,
@@ -63,7 +68,7 @@ async function countRows(
   extra?: (q: any) => any,
 ): Promise<number | null> {
   try {
-    let q: any = supabase.from(table as never).select("id", { count: "exact", head: true });
+    let q: any = db.from(table).select("id", { count: "exact", head: true });
     q = q.eq("college_id", collegeId);
     if (extra) q = extra(q);
     const { count, error } = await q;
@@ -76,10 +81,7 @@ async function countRows(
 
 async function selectRows(table: string, collegeId: string, columns: string): Promise<any[] | null> {
   try {
-    const { data, error } = await supabase
-      .from(table as never)
-      .select(columns)
-      .eq("college_id", collegeId);
+    const { data, error } = await db.from(table).select(columns).eq("college_id", collegeId);
     if (error) return null;
     return (data ?? []) as any[];
   } catch {
@@ -238,7 +240,7 @@ async function runB9(collegeId: string): Promise<CheckOutcome> {
 
 async function runB10(collegeId: string): Promise<CheckOutcome> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("schedule_quality_runs")
       .select("hard_conflicts_count, created_at")
       .eq("college_id", collegeId)
@@ -268,8 +270,7 @@ function runB11(): CheckOutcome {
 async function runB12(collegeId: string): Promise<CheckOutcome> {
   const versions = await selectRows("schedule_versions", collegeId, "id, status");
   if (versions === null) return UNAVAILABLE("تعذر الاستعلام عن نسخ الجدول.");
-  if (versions.length === 0)
-    return blocked(1, 1, "لا توجد نسخة جدول — ابدأ نسخة جدول.");
+  if (versions.length === 0) return blocked(1, 1, "لا توجد نسخة جدول — ابدأ نسخة جدول.");
   const byStatus = versions.reduce<Record<string, number>>((acc, v) => {
     const s = String(v.status ?? "unknown");
     acc[s] = (acc[s] ?? 0) + 1;
@@ -306,7 +307,7 @@ async function runB14(collegeId: string): Promise<CheckOutcome> {
   const [settings, templates] = await Promise.all([
     (async () => {
       try {
-        const { data, error } = await supabase
+        const { data, error } = await db
           .from("scheduling_settings")
           .select("id, working_days")
           .eq("college_id", collegeId)
@@ -319,8 +320,7 @@ async function runB14(collegeId: string): Promise<CheckOutcome> {
     })(),
     countRows("time_slot_templates", collegeId),
   ]);
-  if (templates === null)
-    return UNAVAILABLE("تعذر الاستعلام عن قوالب الفترات الزمنية.");
+  if (templates === null) return UNAVAILABLE("تعذر الاستعلام عن قوالب الفترات الزمنية.");
   const settingsRow = settings as { id?: string; working_days?: unknown } | null;
   const settingsMissing =
     !settingsRow || !Array.isArray(settingsRow.working_days) || settingsRow.working_days.length === 0;
@@ -411,8 +411,7 @@ export const MIGRATION_MANIFEST: MigrationManifestItem[] = [
 export const LEGACY_RESIDUE = {
   orphanTeachingAssignments: 174,
   orphanCourseOfferingSections: 5,
-  remediationPlanDoc:
-    "implementation-reports/A1-3B-LEGACY-ORPHAN-REMEDIATION-PLAN-01.md",
+  remediationPlanDoc: "implementation-reports/A1-3B-LEGACY-ORPHAN-REMEDIATION-PLAN-01.md",
 } as const;
 
 export const DEPENDENCY_MAP_DOC =
