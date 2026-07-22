@@ -3,8 +3,8 @@
   "current_phase": "PHASE_A1_POSTMERGE_VERIFICATION_AND_LEGACY_SCHEMA_MAP",
   "reconciled_at": "2026-07-22",
   "last_wave": "USRTIMETABLE-AUTONOMOUS-SOURCE-CLOSURE-WAVE-03",
-  "current_origin_main": "6daefd97c8b047419335c887e1de36706450202a",
-  "origin_main_note": "main advanced through docs/state merges only (1c23c808 -> b6a5a49 PR#64 -> 7d738204 parallel-session state log -> 1881759d PR#65 -> 87fbbe9d PR#67 -> b731c640 PR#68 -> 3591d698 PR#71 -> 64f7bdf PR#72 state results update -> e59cf7d state-only HOLD-03 resume-verify log -> 5e15d006 state-only HOLD-04 resume-verify log -> 40fea646 state-only HOLD-05 resume-verify log -> 9847a7e8 state-only HOLD-06 resume-verify log -> 475557c6 state-only HOLD-07 resume-verify log -> 1d10c13d state-only HOLD-08 resume-verify log -> e216621e + 6daefd97 state-only HOLD-09 resume-verify log (two commits: RUNLOG+STATE update, then RUNLOG fix-up)). No hand-written product source changed on main during WAVE-03.",
+  "current_origin_main": "4712407c02483baf895660bf4f90d16d04855f38",
+  "origin_main_note": "main advanced through docs/state merges only (1c23c808 -> b6a5a49 PR#64 -> 7d738204 parallel-session state log -> 1881759d PR#65 -> 87fbbe9d PR#67 -> b731c640 PR#68 -> 3591d698 PR#71 -> 64f7bdf PR#72 state results update -> e59cf7d state-only HOLD-03 resume-verify log -> 5e15d006 state-only HOLD-04 resume-verify log -> 40fea646 state-only HOLD-05 resume-verify log -> 9847a7e8 state-only HOLD-06 resume-verify log -> 475557c6 state-only HOLD-07 resume-verify log -> 1d10c13d state-only HOLD-08 resume-verify log -> e216621e + 6daefd97 state-only HOLD-09 resume-verify log (two commits: RUNLOG+STATE update, then RUNLOG fix-up) -> efef14a0 + 4712407c state-only HOLD-10 resume-verify log (two commits: STATE.json update, then RUNLOG entry)). No hand-written product source changed on main during WAVE-03.",
   "completed_tasks": [
     "PR60_MERGED", "PR61_MERGED", "PR62_MERGED", "PR64_MERGED",
     "A1_SOURCE_COMPLETE", "SCHEDULING_HEADCOUNT_SOURCE_COMPLETE", "PRODUCTION_READONLY_DELTA_COMPLETE",
