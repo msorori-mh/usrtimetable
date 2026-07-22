@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, ChevronUp, History } from "lucide-react";
@@ -49,6 +49,7 @@ function AuditLogsPage() {
   const [cursor, setCursor] = useState<string | null>(null);
   const [cursorStack, setCursorStack] = useState<Array<string | null>>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [total, setTotal] = useState<number | null>(null);
 
   const filters = {
     // college_admin / read_only: implicit college scoping from RLS — the viewer
@@ -68,6 +69,12 @@ function AuditLogsPage() {
     queryFn: () => fetchAuditLogsPage(filters),
     placeholderData: (prev) => prev,
   });
+
+  // Total is only requested on the first page (keyset cursor makes later
+  // counts shrink); keep the first-page count for display.
+  useEffect(() => {
+    if (!cursor && page?.total !== null && page?.total !== undefined) setTotal(page.total);
+  }, [cursor, page?.total]);
 
   const actorIds = useMemo(
     () => (page?.rows ?? []).map((r) => r.actor_id).filter((v): v is string => Boolean(v)),
@@ -99,11 +106,6 @@ function AuditLogsPage() {
     });
     setExpandedId(null);
   };
-
-  const [total, setTotal] = useState<number | null>(null);
-  if (page?.total !== null && page?.total !== undefined && page.total !== total && !cursor) {
-    setTotal(page.total);
-  }
 
   return (
     <div className="mx-auto max-w-6xl space-y-4">
@@ -265,7 +267,7 @@ function AuditRow({
   return (
     <>
       <tr className="border-t">
-        <td className="px-3 py-2 whitespace-nowrap" title={row.created_at}>
+        <td className="whitespace-nowrap px-3 py-2" title={row.created_at}>
           {new Date(row.created_at).toLocaleString("ar")}
         </td>
         <td className="px-3 py-2">{actorName}</td>
