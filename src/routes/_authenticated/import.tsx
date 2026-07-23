@@ -29,7 +29,7 @@ import {
 import type { ImportEntity, ImportMode, ParsedRow, RowError } from "@/lib/excel-import/types";
 
 export const Route = createFileRoute("/_authenticated/import")({
-  head: () => ({ meta: [{ title: "استيراد البيانات" }] }),
+  head: () => ({ meta: [{ title: "استيراد البيانات من Excel" }, { name: "description", content: "تنزيل القوالب الرسمية ورفع ملفات Excel وتحليلها ثم تأكيد الاستيراد." }] }),
   component: ImportPage,
 });
 
