@@ -9,6 +9,7 @@ import { useCanManageActiveCollege } from "@/hooks/use-can-manage";
 import { CollegeSwitcher } from "@/components/college-switcher";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import {
   approveSchedulingCohortTermHeadcount,
   listSchedulingHeadcountRevisions,
@@ -325,7 +326,7 @@ function HeadcountForm({
       setForm({ ...form, [key]: Number(event.target.value) }),
   });
   return (
-    <Card className="space-y-3 p-4">
+    <Card className="space-y-3 p-4" dir="rtl">
       <h2 className="font-semibold">تعديل عدد الدفعة</h2>
       <select
         className="w-full rounded border p-2"
@@ -345,18 +346,47 @@ function HeadcountForm({
           </option>
         ))}
       </select>
-      <div className="grid gap-2 md:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {(
           [
-            "registered_student_count",
-            "eligible_student_count",
-            "expected_attendance_count",
-            "reserve_margin",
-            "scheduling_headcount",
-            "exam_eligible_count",
+            {
+              key: "registered_student_count",
+              id: "headcount-registered-student-count",
+              label: "عدد المسجلين",
+            },
+            {
+              key: "eligible_student_count",
+              id: "headcount-eligible-student-count",
+              label: "عدد المؤهلين",
+            },
+            {
+              key: "expected_attendance_count",
+              id: "headcount-expected-attendance-count",
+              label: "الحضور المتوقع",
+            },
+            {
+              key: "reserve_margin",
+              id: "headcount-reserve-margin",
+              label: "هامش الاحتياط",
+            },
+            {
+              key: "scheduling_headcount",
+              id: "headcount-scheduling-headcount",
+              label: "العدد المعتمد للجدولة",
+            },
+            {
+              key: "exam_eligible_count",
+              id: "headcount-exam-eligible-count",
+              label: "المؤهلون للاختبار",
+            },
           ] as const
-        ).map((key) => (
-          <input key={key} aria-label={key} className="rounded border p-2" {...number(key)} />
+        ).map(({ key, id, label }) => (
+          <div key={key} className="space-y-2">
+            <Label className="block text-right" htmlFor={id}>
+              {label}
+            </Label>
+            <input id={id} className="w-full rounded border p-2" {...number(key)} />
+          </div>
         ))}
       </div>
       <input
