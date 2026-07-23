@@ -24,7 +24,7 @@ import {
 } from "@/lib/data-templates/catalog";
 
 export const Route = createFileRoute("/_authenticated/data-templates")({
-  head: () => ({ meta: [{ title: "قوالب البيانات" }] }),
+  head: () => ({ meta: [{ title: "دليل تجهيز البيانات" }, { name: "description", content: "خطوات تجهيز بيانات الكلية بالترتيب، مع توضيح الاعتماديات وطريقة إدخال كل نوع من البيانات." }] }),
   component: DataTemplatesPage,
 });
 
@@ -85,7 +85,7 @@ function DataTemplatesPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <FileSpreadsheet className="h-6 w-6" />
-          <h1 className="text-2xl font-bold">قوالب البيانات</h1>
+          <h1 className="text-2xl font-bold">دليل تجهيز البيانات</h1>
         </div>
         <div className="flex items-center gap-2 text-sm">
           <Link to="/data-readiness" className="text-primary underline-offset-4 hover:underline">
@@ -93,7 +93,7 @@ function DataTemplatesPage() {
           </Link>
           <span className="text-muted-foreground">|</span>
           <Link to="/import" className="text-primary underline-offset-4 hover:underline">
-            استيراد Excel ←
+            استيراد البيانات من Excel ←
           </Link>
         </div>
       </div>
@@ -220,7 +220,7 @@ function DataTemplatesPage() {
                               ? "جارٍ التنزيل..."
                               : tpl.classification === "GENERATED_NOT_IMPORTED"
                                 ? "غير متاح للاستيراد"
-                                : "تنزيل القالب"}
+                                : "تنزيل قالب Excel"}
                           </Button>
                           <Button
                             variant="ghost"
