@@ -24,7 +24,7 @@ import {
 } from "@/lib/data-templates/catalog";
 
 export const Route = createFileRoute("/_authenticated/data-templates")({
-  head: () => ({ meta: [{ title: "قوالب البيانات" }] }),
+  head: () => ({ meta: [{ title: "دليل تجهيز البيانات" }, { name: "description", content: "خطوات تجهيز بيانات الكلية بالترتيب، مع توضيح الاعتماديات وطريقة إدخال كل نوع من البيانات." }] }),
   component: DataTemplatesPage,
 });
 
