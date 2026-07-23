@@ -232,7 +232,7 @@ export const TEMPLATES: Record<string, TemplateDef> = {
       {
         key: "course_nature",
         header: "طبيعة_المقرر",
-        enumValues: ["department", "faculty", "university"],
+        enumValues: ["department", "college", "university"],
         example: "department",
       },
       { key: "is_shared", header: "مشترك", type: "boolean", example: "false" },

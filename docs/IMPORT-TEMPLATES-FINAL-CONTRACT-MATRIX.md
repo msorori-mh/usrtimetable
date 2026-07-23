@@ -133,7 +133,7 @@
 | elective_slot_code | رمز_الخانة_الاختيارية | optional | text | — | trim | elective_slots.slot_code | invalid_enum / type | composite | CY3XX(E) |  |
 | is_summer_training | تدريب_صيفي | optional | boolean | — | toBool | — | invalid_enum / type | composite | false |  |
 | is_graduation_project | مشروع_تخرج | optional | boolean | — | toBool | — | invalid_enum / type | composite | false |  |
-| course_nature | طبيعة_المقرر | optional | text | department, faculty, university | trim | courses.code | invalid_enum / type | composite | department |  |
+| course_nature | طبيعة_المقرر | optional | text | department, college, university | trim | courses.code | invalid_enum / type | composite | department |  |
 | is_shared | مشترك | optional | boolean | — | toBool | — | invalid_enum / type | composite | false |  |
 | is_required | إجباري | optional | boolean | — | toBool | — | invalid_enum / type | composite | true |  |
 | lectures_per_week | عدد_المحاضرات_أسبوعياً | optional | number | — | Number | — | invalid_enum / type | composite | 1 |  |
