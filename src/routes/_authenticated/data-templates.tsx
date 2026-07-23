@@ -220,7 +220,7 @@ function DataTemplatesPage() {
                               ? "جارٍ التنزيل..."
                               : tpl.classification === "GENERATED_NOT_IMPORTED"
                                 ? "غير متاح للاستيراد"
-                                : "تنزيل القالب"}
+                                : "تنزيل قالب Excel"}
                           </Button>
                           <Button
                             variant="ghost"
