@@ -4,6 +4,7 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import {
   parseDeliveryGroupGeneratorSummary,
   type DeliveryGroupGeneratorSummary,
@@ -17,6 +18,21 @@ export type {
 } from "@/lib/academic-delivery/delivery-group-generator-summary";
 
 export { parseDeliveryGroupGeneratorSummary } from "@/lib/academic-delivery/delivery-group-generator-summary";
+
+type ResolveSchedulingHeadcountReturns =
+  Database["public"]["Functions"]["resolve_scheduling_headcount"]["Returns"];
+
+/**
+ * Fail-closed narrowing of the jsonb resolution payload (no casts): anything
+ * that is not an explicit `{ ok: true }` without `blocker` is treated as a
+ * missing approved scheduling headcount.
+ */
+function isSchedulingHeadcountMissing(resolved: ResolveSchedulingHeadcountReturns): boolean {
+  if (typeof resolved !== "object" || resolved === null || Array.isArray(resolved)) {
+    return true;
+  }
+  return resolved.ok !== true || resolved.blocker === true;
+}
 
 export async function generateCohortDeliveryGroups(
   cohortId: string,
@@ -38,13 +54,10 @@ export async function generateCohortDeliveryGroups(
       p_college_id: cohort.college_id,
       p_cohort_id: cohortId,
       p_term_id: cohort.term_id,
-      p_course_offering_id: null,
-      p_plan_course_component_id: null,
     },
   );
   if (resolveError) throw resolveError;
-  const resolution = resolved as { ok?: boolean; blocker?: boolean } | null;
-  if (!resolution?.ok || resolution.blocker) {
+  if (isSchedulingHeadcountMissing(resolved)) {
     throw new Error(
       "SCHEDULING_HEADCOUNT_MISSING: يلزم اعتماد عدد الدفعة للجدولة قبل توليد المجموعات / An approved scheduling headcount is required before generating delivery groups.",
     );
