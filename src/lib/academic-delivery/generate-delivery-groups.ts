@@ -32,7 +32,7 @@ export async function generateCohortDeliveryGroups(
   if (cohortError) throw cohortError;
   if (!cohort) throw new Error("COHORT_NOT_FOUND");
 
-  const { data: resolved, error: resolveError } = await supabase.rpc(
+  const { data: resolved, error: resolveError } = await (supabase.rpc as any)(
     "resolve_scheduling_headcount",
     {
       p_college_id: cohort.college_id,
