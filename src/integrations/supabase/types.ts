@@ -2551,6 +2551,91 @@ export type Database = {
         }
         Relationships: []
       }
+      scheduling_cohort_term_headcounts: {
+        Row: {
+          approval_status: string
+          approved_at: string | null
+          approved_by: string | null
+          cohort_id: string
+          college_id: string
+          created_at: string
+          eligible_student_count: number
+          exam_eligible_count: number
+          expected_attendance_count: number
+          id: string
+          notes: string | null
+          registered_student_count: number
+          reserve_margin: number
+          scheduling_headcount: number
+          source: string
+          study_system: string
+          term_id: string
+          updated_at: string
+        }
+        Insert: {
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          cohort_id: string
+          college_id: string
+          created_at?: string
+          eligible_student_count: number
+          exam_eligible_count: number
+          expected_attendance_count: number
+          id?: string
+          notes?: string | null
+          registered_student_count: number
+          reserve_margin?: number
+          scheduling_headcount: number
+          source: string
+          study_system: string
+          term_id: string
+          updated_at?: string
+        }
+        Update: {
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          cohort_id?: string
+          college_id?: string
+          created_at?: string
+          eligible_student_count?: number
+          exam_eligible_count?: number
+          expected_attendance_count?: number
+          id?: string
+          notes?: string | null
+          registered_student_count?: number
+          reserve_margin?: number
+          scheduling_headcount?: number
+          source?: string
+          study_system?: string
+          term_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduling_cohort_term_headcounts_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduling_headcount_cohort_college_fkey"
+            columns: ["cohort_id", "college_id"]
+            isOneToOne: false
+            referencedRelation: "academic_cohorts"
+            referencedColumns: ["id", "college_id"]
+          },
+          {
+            foreignKeyName: "scheduling_headcount_term_college_fkey"
+            columns: ["term_id", "college_id"]
+            isOneToOne: false
+            referencedRelation: "academic_terms"
+            referencedColumns: ["id", "college_id"]
+          },
+        ]
+      }
       scheduling_settings: {
         Row: {
           allow_3h_sessions: boolean
