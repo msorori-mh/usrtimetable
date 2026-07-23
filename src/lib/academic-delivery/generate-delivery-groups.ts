@@ -42,11 +42,7 @@ export async function generateCohortDeliveryGroups(
   );
   if (resolveError) throw resolveError;
   const resolution =
-    typeof resolved === "object" &&
-    resolved !== null &&
-    !Array.isArray(resolved)
-      ? resolved
-      : null;
+    typeof resolved === "object" && resolved !== null && !Array.isArray(resolved) ? resolved : null;
   if (resolution?.ok !== true || resolution.blocker === true) {
     throw new Error(
       "SCHEDULING_HEADCOUNT_MISSING: يلزم اعتماد عدد الدفعة للجدولة قبل توليد المجموعات / An approved scheduling headcount is required before generating delivery groups.",
