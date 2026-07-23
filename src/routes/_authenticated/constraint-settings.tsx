@@ -40,6 +40,29 @@ interface CSetting {
 
 interface RowState { enabled: boolean; weight: number; settingId: string | null }
 
+// UI-only display overrides. Keep the technical `code` and DB values unchanged.
+const DISPLAY_OVERRIDES: Record<
+  string,
+  { name_ar?: string; description?: string | null }
+> = {
+  gap_penalty: {
+    name_ar: "تقليل الفجوات بين المحاضرات",
+    description:
+      "تقليل أوقات الانتظار الفارغة بين محاضرات الدفعات والمحاضرين",
+  },
+};
+
+function displayFor(type: CType) {
+  const override = DISPLAY_OVERRIDES[type.code];
+  return {
+    name_ar: override?.name_ar ?? type.name_ar,
+    description:
+      override?.description !== undefined
+        ? override.description
+        : type.description,
+  };
+}
+
 function ConstraintSettingsPage() {
   const { active } = useActiveCollege();
   const canManage = useCanManageActiveCollege();
