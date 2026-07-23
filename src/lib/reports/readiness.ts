@@ -129,7 +129,8 @@ async function fetchNewFlowSignals(collegeId: string): Promise<NewFlowSignals | 
       deliveryGroups: (deliveryGroups.data ?? []) as NewFlowSignals["deliveryGroups"],
       dgAssignments: (dgAssignments.data ?? []) as NewFlowSignals["dgAssignments"],
       sessionIdentity: (sessionIdentity.data ?? []) as NewFlowSignals["sessionIdentity"],
-      approvedHeadcounts: (approvedHeadcounts.data ?? []) as NewFlowSignals["approvedHeadcounts"],
+      // Inferred directly from the generated scheduling_cohort_term_headcounts row type.
+      approvedHeadcounts: approvedHeadcounts.data ?? [],
     };
   } catch {
     return null;
