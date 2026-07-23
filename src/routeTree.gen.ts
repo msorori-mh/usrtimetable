@@ -9,310 +9,85 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated/users'
-import { Route as AuthenticatedUniversitiesRouteImport } from './routes/_authenticated/universities'
-import { Route as AuthenticatedTimeSlotsRouteImport } from './routes/_authenticated/time-slots'
-import { Route as AuthenticatedTimeSlotTemplatesRouteImport } from './routes/_authenticated/time-slot-templates'
-import { Route as AuthenticatedTermsRouteImport } from './routes/_authenticated/terms'
-import { Route as AuthenticatedTeachingAssignmentsRouteImport } from './routes/_authenticated/teaching-assignments'
-import { Route as AuthenticatedStudyPlansRouteImport } from './routes/_authenticated/study-plans'
-import { Route as AuthenticatedSharedCoursesRouteImport } from './routes/_authenticated/shared-courses'
-import { Route as AuthenticatedSessionTypesRouteImport } from './routes/_authenticated/session-types'
-import { Route as AuthenticatedSectionsRouteImport } from './routes/_authenticated/sections'
-import { Route as AuthenticatedSchedulingSettingsRouteImport } from './routes/_authenticated/scheduling-settings'
-import { Route as AuthenticatedSchedulingHeadcountsRouteImport } from './routes/_authenticated/scheduling-headcounts'
-import { Route as AuthenticatedScheduleVersionsRouteImport } from './routes/_authenticated/schedule-versions'
-import { Route as AuthenticatedScheduleQualityRouteImport } from './routes/_authenticated/schedule-quality'
-import { Route as AuthenticatedScheduleBuilderRouteImport } from './routes/_authenticated/schedule-builder'
-import { Route as AuthenticatedRoomsRouteImport } from './routes/_authenticated/rooms'
-import { Route as AuthenticatedRoomTypesRouteImport } from './routes/_authenticated/room-types'
-import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
-import { Route as AuthenticatedPublishedSchedulesRouteImport } from './routes/_authenticated/published-schedules'
-import { Route as AuthenticatedProgramsRouteImport } from './routes/_authenticated/programs'
-import { Route as AuthenticatedMyCollegeRouteImport } from './routes/_authenticated/my-college'
-import { Route as AuthenticatedInstructorsRouteImport } from './routes/_authenticated/instructors'
-import { Route as AuthenticatedInstructorTypesRouteImport } from './routes/_authenticated/instructor-types'
-import { Route as AuthenticatedImportTemplatesRouteImport } from './routes/_authenticated/import-templates'
-import { Route as AuthenticatedImportHistoryRouteImport } from './routes/_authenticated/import-history'
-import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated/import'
-import { Route as AuthenticatedDepartmentsRouteImport } from './routes/_authenticated/departments'
-import { Route as AuthenticatedDeliveryGroupsRouteImport } from './routes/_authenticated/delivery-groups'
-import { Route as AuthenticatedDataTemplatesRouteImport } from './routes/_authenticated/data-templates'
-import { Route as AuthenticatedDataReadinessRouteImport } from './routes/_authenticated/data-readiness'
-import { Route as AuthenticatedDataCleanupRouteImport } from './routes/_authenticated/data-cleanup'
-import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
-import { Route as AuthenticatedDailyBreaksRouteImport } from './routes/_authenticated/daily-breaks'
-import { Route as AuthenticatedCoursesRouteImport } from './routes/_authenticated/courses'
-import { Route as AuthenticatedCourseOfferingsRouteImport } from './routes/_authenticated/course-offerings'
-import { Route as AuthenticatedConstraintSettingsRouteImport } from './routes/_authenticated/constraint-settings'
-import { Route as AuthenticatedConflictChecksRouteImport } from './routes/_authenticated/conflict-checks'
-import { Route as AuthenticatedCollegesRouteImport } from './routes/_authenticated/colleges'
-import { Route as AuthenticatedBuildingsRouteImport } from './routes/_authenticated/buildings'
-import { Route as AuthenticatedAvailabilityRouteImport } from './routes/_authenticated/availability'
-import { Route as AuthenticatedAutoScheduleRouteImport } from './routes/_authenticated/auto-schedule'
-import { Route as AuthenticatedAcademicCohortsRouteImport } from './routes/_authenticated/academic-cohorts'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedAcademicCalendarRouteImport } from './routes/_authenticated/academic-calendar'
+import { Route as AuthenticatedAcademicCohortsRouteImport } from './routes/_authenticated/academic-cohorts'
+import { Route as AuthenticatedAutoScheduleRouteImport } from './routes/_authenticated/auto-schedule'
+import { Route as AuthenticatedAvailabilityRouteImport } from './routes/_authenticated/availability'
+import { Route as AuthenticatedBuildingsRouteImport } from './routes/_authenticated/buildings'
+import { Route as AuthenticatedCollegesRouteImport } from './routes/_authenticated/colleges'
+import { Route as AuthenticatedConflictChecksRouteImport } from './routes/_authenticated/conflict-checks'
+import { Route as AuthenticatedConstraintSettingsRouteImport } from './routes/_authenticated/constraint-settings'
+import { Route as AuthenticatedCourseOfferingsRouteImport } from './routes/_authenticated/course-offerings'
+import { Route as AuthenticatedCoursesRouteImport } from './routes/_authenticated/courses'
+import { Route as AuthenticatedDailyBreaksRouteImport } from './routes/_authenticated/daily-breaks'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedDataCleanupRouteImport } from './routes/_authenticated/data-cleanup'
+import { Route as AuthenticatedDataReadinessRouteImport } from './routes/_authenticated/data-readiness'
+import { Route as AuthenticatedDataTemplatesRouteImport } from './routes/_authenticated/data-templates'
+import { Route as AuthenticatedDeliveryGroupsRouteImport } from './routes/_authenticated/delivery-groups'
+import { Route as AuthenticatedDepartmentsRouteImport } from './routes/_authenticated/departments'
+import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated/import'
+import { Route as AuthenticatedImportHistoryRouteImport } from './routes/_authenticated/import-history'
+import { Route as AuthenticatedImportTemplatesRouteImport } from './routes/_authenticated/import-templates'
+import { Route as AuthenticatedInstructorTypesRouteImport } from './routes/_authenticated/instructor-types'
+import { Route as AuthenticatedInstructorsRouteImport } from './routes/_authenticated/instructors'
+import { Route as AuthenticatedMyCollegeRouteImport } from './routes/_authenticated/my-college'
+import { Route as AuthenticatedProgramsRouteImport } from './routes/_authenticated/programs'
+import { Route as AuthenticatedPublishedSchedulesRouteImport } from './routes/_authenticated/published-schedules'
+import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
+import { Route as AuthenticatedRoomTypesRouteImport } from './routes/_authenticated/room-types'
+import { Route as AuthenticatedRoomsRouteImport } from './routes/_authenticated/rooms'
+import { Route as AuthenticatedScheduleBuilderRouteImport } from './routes/_authenticated/schedule-builder'
+import { Route as AuthenticatedScheduleQualityRouteImport } from './routes/_authenticated/schedule-quality'
+import { Route as AuthenticatedScheduleVersionsRouteImport } from './routes/_authenticated/schedule-versions'
+import { Route as AuthenticatedSchedulingHeadcountsRouteImport } from './routes/_authenticated/scheduling-headcounts'
+import { Route as AuthenticatedSchedulingSettingsRouteImport } from './routes/_authenticated/scheduling-settings'
+import { Route as AuthenticatedSectionsRouteImport } from './routes/_authenticated/sections'
+import { Route as AuthenticatedSessionTypesRouteImport } from './routes/_authenticated/session-types'
+import { Route as AuthenticatedSharedCoursesRouteImport } from './routes/_authenticated/shared-courses'
+import { Route as AuthenticatedStudyPlansRouteImport } from './routes/_authenticated/study-plans'
+import { Route as AuthenticatedTeachingAssignmentsRouteImport } from './routes/_authenticated/teaching-assignments'
+import { Route as AuthenticatedTermsRouteImport } from './routes/_authenticated/terms'
+import { Route as AuthenticatedTimeSlotTemplatesRouteImport } from './routes/_authenticated/time-slot-templates'
+import { Route as AuthenticatedTimeSlotsRouteImport } from './routes/_authenticated/time-slots'
+import { Route as AuthenticatedUniversitiesRouteImport } from './routes/_authenticated/universities'
+import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated/users'
 import { Route as AuthenticatedReportsIndexRouteImport } from './routes/_authenticated/reports.index'
-import { Route as AuthenticatedTimetableVersionIdRouteImport } from './routes/_authenticated/timetable.$versionId'
-import { Route as AuthenticatedReportsUnscheduledRouteImport } from './routes/_authenticated/reports.unscheduled'
-import { Route as AuthenticatedReportsSectionTimetableRouteImport } from './routes/_authenticated/reports.section-timetable'
-import { Route as AuthenticatedReportsRoomUtilizationRouteImport } from './routes/_authenticated/reports.room-utilization'
-import { Route as AuthenticatedReportsRoomTimetableRouteImport } from './routes/_authenticated/reports.room-timetable'
-import { Route as AuthenticatedReportsQualitySummaryRouteImport } from './routes/_authenticated/reports.quality-summary'
-import { Route as AuthenticatedReportsPublishedTimetableRouteImport } from './routes/_authenticated/reports.published-timetable'
-import { Route as AuthenticatedReportsProgramLevelTimetableRouteImport } from './routes/_authenticated/reports.program-level-timetable'
-import { Route as AuthenticatedReportsInstructorWorkloadRouteImport } from './routes/_authenticated/reports.instructor-workload'
-import { Route as AuthenticatedReportsInstructorScheduleRouteImport } from './routes/_authenticated/reports.instructor-schedule'
-import { Route as AuthenticatedReportsDepartmentScheduleRouteImport } from './routes/_authenticated/reports.department-schedule'
-import { Route as AuthenticatedReportsDataReadinessRouteImport } from './routes/_authenticated/reports.data-readiness'
 import { Route as AuthenticatedReportsConflictsRouteImport } from './routes/_authenticated/reports.conflicts'
+import { Route as AuthenticatedReportsDataReadinessRouteImport } from './routes/_authenticated/reports.data-readiness'
+import { Route as AuthenticatedReportsDepartmentScheduleRouteImport } from './routes/_authenticated/reports.department-schedule'
+import { Route as AuthenticatedReportsInstructorScheduleRouteImport } from './routes/_authenticated/reports.instructor-schedule'
+import { Route as AuthenticatedReportsInstructorWorkloadRouteImport } from './routes/_authenticated/reports.instructor-workload'
+import { Route as AuthenticatedReportsProgramLevelTimetableRouteImport } from './routes/_authenticated/reports.program-level-timetable'
+import { Route as AuthenticatedReportsPublishedTimetableRouteImport } from './routes/_authenticated/reports.published-timetable'
+import { Route as AuthenticatedReportsQualitySummaryRouteImport } from './routes/_authenticated/reports.quality-summary'
+import { Route as AuthenticatedReportsRoomTimetableRouteImport } from './routes/_authenticated/reports.room-timetable'
+import { Route as AuthenticatedReportsRoomUtilizationRouteImport } from './routes/_authenticated/reports.room-utilization'
+import { Route as AuthenticatedReportsSectionTimetableRouteImport } from './routes/_authenticated/reports.section-timetable'
+import { Route as AuthenticatedReportsUnscheduledRouteImport } from './routes/_authenticated/reports.unscheduled'
+import { Route as AuthenticatedTimetableVersionIdRouteImport } from './routes/_authenticated/timetable.$versionId'
 
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedUsersRoute = AuthenticatedUsersRouteImport.update({
-  id: '/users',
-  path: '/users',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedUniversitiesRoute =
-  AuthenticatedUniversitiesRouteImport.update({
-    id: '/universities',
-    path: '/universities',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedTimeSlotsRoute = AuthenticatedTimeSlotsRouteImport.update({
-  id: '/time-slots',
-  path: '/time-slots',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedTimeSlotTemplatesRoute =
-  AuthenticatedTimeSlotTemplatesRouteImport.update({
-    id: '/time-slot-templates',
-    path: '/time-slot-templates',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedTermsRoute = AuthenticatedTermsRouteImport.update({
-  id: '/terms',
-  path: '/terms',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedTeachingAssignmentsRoute =
-  AuthenticatedTeachingAssignmentsRouteImport.update({
-    id: '/teaching-assignments',
-    path: '/teaching-assignments',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedStudyPlansRoute = AuthenticatedStudyPlansRouteImport.update({
-  id: '/study-plans',
-  path: '/study-plans',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedSharedCoursesRoute =
-  AuthenticatedSharedCoursesRouteImport.update({
-    id: '/shared-courses',
-    path: '/shared-courses',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedSessionTypesRoute =
-  AuthenticatedSessionTypesRouteImport.update({
-    id: '/session-types',
-    path: '/session-types',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedSectionsRoute = AuthenticatedSectionsRouteImport.update({
-  id: '/sections',
-  path: '/sections',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedSchedulingSettingsRoute =
-  AuthenticatedSchedulingSettingsRouteImport.update({
-    id: '/scheduling-settings',
-    path: '/scheduling-settings',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedSchedulingHeadcountsRoute =
-  AuthenticatedSchedulingHeadcountsRouteImport.update({
-    id: '/scheduling-headcounts',
-    path: '/scheduling-headcounts',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedScheduleVersionsRoute =
-  AuthenticatedScheduleVersionsRouteImport.update({
-    id: '/schedule-versions',
-    path: '/schedule-versions',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedScheduleQualityRoute =
-  AuthenticatedScheduleQualityRouteImport.update({
-    id: '/schedule-quality',
-    path: '/schedule-quality',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedScheduleBuilderRoute =
-  AuthenticatedScheduleBuilderRouteImport.update({
-    id: '/schedule-builder',
-    path: '/schedule-builder',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedRoomsRoute = AuthenticatedRoomsRouteImport.update({
-  id: '/rooms',
-  path: '/rooms',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedRoomTypesRoute = AuthenticatedRoomTypesRouteImport.update({
-  id: '/room-types',
-  path: '/room-types',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedReportsRoute = AuthenticatedReportsRouteImport.update({
-  id: '/reports',
-  path: '/reports',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedPublishedSchedulesRoute =
-  AuthenticatedPublishedSchedulesRouteImport.update({
-    id: '/published-schedules',
-    path: '/published-schedules',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedProgramsRoute = AuthenticatedProgramsRouteImport.update({
-  id: '/programs',
-  path: '/programs',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedMyCollegeRoute = AuthenticatedMyCollegeRouteImport.update({
-  id: '/my-college',
-  path: '/my-college',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedInstructorsRoute =
-  AuthenticatedInstructorsRouteImport.update({
-    id: '/instructors',
-    path: '/instructors',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedInstructorTypesRoute =
-  AuthenticatedInstructorTypesRouteImport.update({
-    id: '/instructor-types',
-    path: '/instructor-types',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedImportTemplatesRoute =
-  AuthenticatedImportTemplatesRouteImport.update({
-    id: '/import-templates',
-    path: '/import-templates',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedImportHistoryRoute =
-  AuthenticatedImportHistoryRouteImport.update({
-    id: '/import-history',
-    path: '/import-history',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedImportRoute = AuthenticatedImportRouteImport.update({
-  id: '/import',
-  path: '/import',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedDepartmentsRoute =
-  AuthenticatedDepartmentsRouteImport.update({
-    id: '/departments',
-    path: '/departments',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedDeliveryGroupsRoute =
-  AuthenticatedDeliveryGroupsRouteImport.update({
-    id: '/delivery-groups',
-    path: '/delivery-groups',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedDataTemplatesRoute =
-  AuthenticatedDataTemplatesRouteImport.update({
-    id: '/data-templates',
-    path: '/data-templates',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedDataReadinessRoute =
-  AuthenticatedDataReadinessRouteImport.update({
-    id: '/data-readiness',
-    path: '/data-readiness',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedDataCleanupRoute =
-  AuthenticatedDataCleanupRouteImport.update({
-    id: '/data-cleanup',
-    path: '/data-cleanup',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedDailyBreaksRoute =
-  AuthenticatedDailyBreaksRouteImport.update({
-    id: '/daily-breaks',
-    path: '/daily-breaks',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedCoursesRoute = AuthenticatedCoursesRouteImport.update({
-  id: '/courses',
-  path: '/courses',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedCourseOfferingsRoute =
-  AuthenticatedCourseOfferingsRouteImport.update({
-    id: '/course-offerings',
-    path: '/course-offerings',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedConstraintSettingsRoute =
-  AuthenticatedConstraintSettingsRouteImport.update({
-    id: '/constraint-settings',
-    path: '/constraint-settings',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedConflictChecksRoute =
-  AuthenticatedConflictChecksRouteImport.update({
-    id: '/conflict-checks',
-    path: '/conflict-checks',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedCollegesRoute = AuthenticatedCollegesRouteImport.update({
-  id: '/colleges',
-  path: '/colleges',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedBuildingsRoute = AuthenticatedBuildingsRouteImport.update({
-  id: '/buildings',
-  path: '/buildings',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedAvailabilityRoute =
-  AuthenticatedAvailabilityRouteImport.update({
-    id: '/availability',
-    path: '/availability',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedAutoScheduleRoute =
-  AuthenticatedAutoScheduleRouteImport.update({
-    id: '/auto-schedule',
-    path: '/auto-schedule',
+const AuthenticatedAcademicCalendarRoute =
+  AuthenticatedAcademicCalendarRouteImport.update({
+    id: '/academic-calendar',
+    path: '/academic-calendar',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedAcademicCohortsRoute =
@@ -321,82 +96,247 @@ const AuthenticatedAcademicCohortsRoute =
     path: '/academic-cohorts',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedAcademicCalendarRoute =
-  AuthenticatedAcademicCalendarRouteImport.update({
-    id: '/academic-calendar',
-    path: '/academic-calendar',
+const AuthenticatedAutoScheduleRoute =
+  AuthenticatedAutoScheduleRouteImport.update({
+    id: '/auto-schedule',
+    path: '/auto-schedule',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAvailabilityRoute =
+  AuthenticatedAvailabilityRouteImport.update({
+    id: '/availability',
+    path: '/availability',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedBuildingsRoute = AuthenticatedBuildingsRouteImport.update({
+  id: '/buildings',
+  path: '/buildings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedCollegesRoute = AuthenticatedCollegesRouteImport.update({
+  id: '/colleges',
+  path: '/colleges',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedConflictChecksRoute =
+  AuthenticatedConflictChecksRouteImport.update({
+    id: '/conflict-checks',
+    path: '/conflict-checks',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedConstraintSettingsRoute =
+  AuthenticatedConstraintSettingsRouteImport.update({
+    id: '/constraint-settings',
+    path: '/constraint-settings',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedCourseOfferingsRoute =
+  AuthenticatedCourseOfferingsRouteImport.update({
+    id: '/course-offerings',
+    path: '/course-offerings',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedCoursesRoute = AuthenticatedCoursesRouteImport.update({
+  id: '/courses',
+  path: '/courses',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDailyBreaksRoute =
+  AuthenticatedDailyBreaksRouteImport.update({
+    id: '/daily-breaks',
+    path: '/daily-breaks',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDataCleanupRoute =
+  AuthenticatedDataCleanupRouteImport.update({
+    id: '/data-cleanup',
+    path: '/data-cleanup',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedDataReadinessRoute =
+  AuthenticatedDataReadinessRouteImport.update({
+    id: '/data-readiness',
+    path: '/data-readiness',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedDataTemplatesRoute =
+  AuthenticatedDataTemplatesRouteImport.update({
+    id: '/data-templates',
+    path: '/data-templates',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedDeliveryGroupsRoute =
+  AuthenticatedDeliveryGroupsRouteImport.update({
+    id: '/delivery-groups',
+    path: '/delivery-groups',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedDepartmentsRoute =
+  AuthenticatedDepartmentsRouteImport.update({
+    id: '/departments',
+    path: '/departments',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedImportRoute = AuthenticatedImportRouteImport.update({
+  id: '/import',
+  path: '/import',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedImportHistoryRoute =
+  AuthenticatedImportHistoryRouteImport.update({
+    id: '/import-history',
+    path: '/import-history',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedImportTemplatesRoute =
+  AuthenticatedImportTemplatesRouteImport.update({
+    id: '/import-templates',
+    path: '/import-templates',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedInstructorTypesRoute =
+  AuthenticatedInstructorTypesRouteImport.update({
+    id: '/instructor-types',
+    path: '/instructor-types',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedInstructorsRoute =
+  AuthenticatedInstructorsRouteImport.update({
+    id: '/instructors',
+    path: '/instructors',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMyCollegeRoute = AuthenticatedMyCollegeRouteImport.update({
+  id: '/my-college',
+  path: '/my-college',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedProgramsRoute = AuthenticatedProgramsRouteImport.update({
+  id: '/programs',
+  path: '/programs',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPublishedSchedulesRoute =
+  AuthenticatedPublishedSchedulesRouteImport.update({
+    id: '/published-schedules',
+    path: '/published-schedules',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsRoute = AuthenticatedReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedRoomTypesRoute = AuthenticatedRoomTypesRouteImport.update({
+  id: '/room-types',
+  path: '/room-types',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedRoomsRoute = AuthenticatedRoomsRouteImport.update({
+  id: '/rooms',
+  path: '/rooms',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedScheduleBuilderRoute =
+  AuthenticatedScheduleBuilderRouteImport.update({
+    id: '/schedule-builder',
+    path: '/schedule-builder',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedScheduleQualityRoute =
+  AuthenticatedScheduleQualityRouteImport.update({
+    id: '/schedule-quality',
+    path: '/schedule-quality',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedScheduleVersionsRoute =
+  AuthenticatedScheduleVersionsRouteImport.update({
+    id: '/schedule-versions',
+    path: '/schedule-versions',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSchedulingHeadcountsRoute =
+  AuthenticatedSchedulingHeadcountsRouteImport.update({
+    id: '/scheduling-headcounts',
+    path: '/scheduling-headcounts',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSchedulingSettingsRoute =
+  AuthenticatedSchedulingSettingsRouteImport.update({
+    id: '/scheduling-settings',
+    path: '/scheduling-settings',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSectionsRoute = AuthenticatedSectionsRouteImport.update({
+  id: '/sections',
+  path: '/sections',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSessionTypesRoute =
+  AuthenticatedSessionTypesRouteImport.update({
+    id: '/session-types',
+    path: '/session-types',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSharedCoursesRoute =
+  AuthenticatedSharedCoursesRouteImport.update({
+    id: '/shared-courses',
+    path: '/shared-courses',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedStudyPlansRoute = AuthenticatedStudyPlansRouteImport.update({
+  id: '/study-plans',
+  path: '/study-plans',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedTeachingAssignmentsRoute =
+  AuthenticatedTeachingAssignmentsRouteImport.update({
+    id: '/teaching-assignments',
+    path: '/teaching-assignments',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedTermsRoute = AuthenticatedTermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedTimeSlotTemplatesRoute =
+  AuthenticatedTimeSlotTemplatesRouteImport.update({
+    id: '/time-slot-templates',
+    path: '/time-slot-templates',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedTimeSlotsRoute = AuthenticatedTimeSlotsRouteImport.update({
+  id: '/time-slots',
+  path: '/time-slots',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedUniversitiesRoute =
+  AuthenticatedUniversitiesRouteImport.update({
+    id: '/universities',
+    path: '/universities',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedUsersRoute = AuthenticatedUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedReportsIndexRoute =
   AuthenticatedReportsIndexRouteImport.update({
     id: '/',
     path: '/',
     getParentRoute: () => AuthenticatedReportsRoute,
   } as any)
-const AuthenticatedTimetableVersionIdRoute =
-  AuthenticatedTimetableVersionIdRouteImport.update({
-    id: '/timetable/$versionId',
-    path: '/timetable/$versionId',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedReportsUnscheduledRoute =
-  AuthenticatedReportsUnscheduledRouteImport.update({
-    id: '/unscheduled',
-    path: '/unscheduled',
-    getParentRoute: () => AuthenticatedReportsRoute,
-  } as any)
-const AuthenticatedReportsSectionTimetableRoute =
-  AuthenticatedReportsSectionTimetableRouteImport.update({
-    id: '/section-timetable',
-    path: '/section-timetable',
-    getParentRoute: () => AuthenticatedReportsRoute,
-  } as any)
-const AuthenticatedReportsRoomUtilizationRoute =
-  AuthenticatedReportsRoomUtilizationRouteImport.update({
-    id: '/room-utilization',
-    path: '/room-utilization',
-    getParentRoute: () => AuthenticatedReportsRoute,
-  } as any)
-const AuthenticatedReportsRoomTimetableRoute =
-  AuthenticatedReportsRoomTimetableRouteImport.update({
-    id: '/room-timetable',
-    path: '/room-timetable',
-    getParentRoute: () => AuthenticatedReportsRoute,
-  } as any)
-const AuthenticatedReportsQualitySummaryRoute =
-  AuthenticatedReportsQualitySummaryRouteImport.update({
-    id: '/quality-summary',
-    path: '/quality-summary',
-    getParentRoute: () => AuthenticatedReportsRoute,
-  } as any)
-const AuthenticatedReportsPublishedTimetableRoute =
-  AuthenticatedReportsPublishedTimetableRouteImport.update({
-    id: '/published-timetable',
-    path: '/published-timetable',
-    getParentRoute: () => AuthenticatedReportsRoute,
-  } as any)
-const AuthenticatedReportsProgramLevelTimetableRoute =
-  AuthenticatedReportsProgramLevelTimetableRouteImport.update({
-    id: '/program-level-timetable',
-    path: '/program-level-timetable',
-    getParentRoute: () => AuthenticatedReportsRoute,
-  } as any)
-const AuthenticatedReportsInstructorWorkloadRoute =
-  AuthenticatedReportsInstructorWorkloadRouteImport.update({
-    id: '/instructor-workload',
-    path: '/instructor-workload',
-    getParentRoute: () => AuthenticatedReportsRoute,
-  } as any)
-const AuthenticatedReportsInstructorScheduleRoute =
-  AuthenticatedReportsInstructorScheduleRouteImport.update({
-    id: '/instructor-schedule',
-    path: '/instructor-schedule',
-    getParentRoute: () => AuthenticatedReportsRoute,
-  } as any)
-const AuthenticatedReportsDepartmentScheduleRoute =
-  AuthenticatedReportsDepartmentScheduleRouteImport.update({
-    id: '/department-schedule',
-    path: '/department-schedule',
+const AuthenticatedReportsConflictsRoute =
+  AuthenticatedReportsConflictsRouteImport.update({
+    id: '/conflicts',
+    path: '/conflicts',
     getParentRoute: () => AuthenticatedReportsRoute,
   } as any)
 const AuthenticatedReportsDataReadinessRoute =
@@ -405,11 +345,71 @@ const AuthenticatedReportsDataReadinessRoute =
     path: '/data-readiness',
     getParentRoute: () => AuthenticatedReportsRoute,
   } as any)
-const AuthenticatedReportsConflictsRoute =
-  AuthenticatedReportsConflictsRouteImport.update({
-    id: '/conflicts',
-    path: '/conflicts',
+const AuthenticatedReportsDepartmentScheduleRoute =
+  AuthenticatedReportsDepartmentScheduleRouteImport.update({
+    id: '/department-schedule',
+    path: '/department-schedule',
     getParentRoute: () => AuthenticatedReportsRoute,
+  } as any)
+const AuthenticatedReportsInstructorScheduleRoute =
+  AuthenticatedReportsInstructorScheduleRouteImport.update({
+    id: '/instructor-schedule',
+    path: '/instructor-schedule',
+    getParentRoute: () => AuthenticatedReportsRoute,
+  } as any)
+const AuthenticatedReportsInstructorWorkloadRoute =
+  AuthenticatedReportsInstructorWorkloadRouteImport.update({
+    id: '/instructor-workload',
+    path: '/instructor-workload',
+    getParentRoute: () => AuthenticatedReportsRoute,
+  } as any)
+const AuthenticatedReportsProgramLevelTimetableRoute =
+  AuthenticatedReportsProgramLevelTimetableRouteImport.update({
+    id: '/program-level-timetable',
+    path: '/program-level-timetable',
+    getParentRoute: () => AuthenticatedReportsRoute,
+  } as any)
+const AuthenticatedReportsPublishedTimetableRoute =
+  AuthenticatedReportsPublishedTimetableRouteImport.update({
+    id: '/published-timetable',
+    path: '/published-timetable',
+    getParentRoute: () => AuthenticatedReportsRoute,
+  } as any)
+const AuthenticatedReportsQualitySummaryRoute =
+  AuthenticatedReportsQualitySummaryRouteImport.update({
+    id: '/quality-summary',
+    path: '/quality-summary',
+    getParentRoute: () => AuthenticatedReportsRoute,
+  } as any)
+const AuthenticatedReportsRoomTimetableRoute =
+  AuthenticatedReportsRoomTimetableRouteImport.update({
+    id: '/room-timetable',
+    path: '/room-timetable',
+    getParentRoute: () => AuthenticatedReportsRoute,
+  } as any)
+const AuthenticatedReportsRoomUtilizationRoute =
+  AuthenticatedReportsRoomUtilizationRouteImport.update({
+    id: '/room-utilization',
+    path: '/room-utilization',
+    getParentRoute: () => AuthenticatedReportsRoute,
+  } as any)
+const AuthenticatedReportsSectionTimetableRoute =
+  AuthenticatedReportsSectionTimetableRouteImport.update({
+    id: '/section-timetable',
+    path: '/section-timetable',
+    getParentRoute: () => AuthenticatedReportsRoute,
+  } as any)
+const AuthenticatedReportsUnscheduledRoute =
+  AuthenticatedReportsUnscheduledRouteImport.update({
+    id: '/unscheduled',
+    path: '/unscheduled',
+    getParentRoute: () => AuthenticatedReportsRoute,
+  } as any)
+const AuthenticatedTimetableVersionIdRoute =
+  AuthenticatedTimetableVersionIdRouteImport.update({
+    id: '/timetable/$versionId',
+    path: '/timetable/$versionId',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -790,11 +790,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -804,298 +804,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/users': {
-      id: '/_authenticated/users'
-      path: '/users'
-      fullPath: '/users'
-      preLoaderRoute: typeof AuthenticatedUsersRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/universities': {
-      id: '/_authenticated/universities'
-      path: '/universities'
-      fullPath: '/universities'
-      preLoaderRoute: typeof AuthenticatedUniversitiesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/time-slots': {
-      id: '/_authenticated/time-slots'
-      path: '/time-slots'
-      fullPath: '/time-slots'
-      preLoaderRoute: typeof AuthenticatedTimeSlotsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/time-slot-templates': {
-      id: '/_authenticated/time-slot-templates'
-      path: '/time-slot-templates'
-      fullPath: '/time-slot-templates'
-      preLoaderRoute: typeof AuthenticatedTimeSlotTemplatesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/terms': {
-      id: '/_authenticated/terms'
-      path: '/terms'
-      fullPath: '/terms'
-      preLoaderRoute: typeof AuthenticatedTermsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/teaching-assignments': {
-      id: '/_authenticated/teaching-assignments'
-      path: '/teaching-assignments'
-      fullPath: '/teaching-assignments'
-      preLoaderRoute: typeof AuthenticatedTeachingAssignmentsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/study-plans': {
-      id: '/_authenticated/study-plans'
-      path: '/study-plans'
-      fullPath: '/study-plans'
-      preLoaderRoute: typeof AuthenticatedStudyPlansRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/shared-courses': {
-      id: '/_authenticated/shared-courses'
-      path: '/shared-courses'
-      fullPath: '/shared-courses'
-      preLoaderRoute: typeof AuthenticatedSharedCoursesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/session-types': {
-      id: '/_authenticated/session-types'
-      path: '/session-types'
-      fullPath: '/session-types'
-      preLoaderRoute: typeof AuthenticatedSessionTypesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/sections': {
-      id: '/_authenticated/sections'
-      path: '/sections'
-      fullPath: '/sections'
-      preLoaderRoute: typeof AuthenticatedSectionsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/scheduling-settings': {
-      id: '/_authenticated/scheduling-settings'
-      path: '/scheduling-settings'
-      fullPath: '/scheduling-settings'
-      preLoaderRoute: typeof AuthenticatedSchedulingSettingsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/scheduling-headcounts': {
-      id: '/_authenticated/scheduling-headcounts'
-      path: '/scheduling-headcounts'
-      fullPath: '/scheduling-headcounts'
-      preLoaderRoute: typeof AuthenticatedSchedulingHeadcountsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/schedule-versions': {
-      id: '/_authenticated/schedule-versions'
-      path: '/schedule-versions'
-      fullPath: '/schedule-versions'
-      preLoaderRoute: typeof AuthenticatedScheduleVersionsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/schedule-quality': {
-      id: '/_authenticated/schedule-quality'
-      path: '/schedule-quality'
-      fullPath: '/schedule-quality'
-      preLoaderRoute: typeof AuthenticatedScheduleQualityRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/schedule-builder': {
-      id: '/_authenticated/schedule-builder'
-      path: '/schedule-builder'
-      fullPath: '/schedule-builder'
-      preLoaderRoute: typeof AuthenticatedScheduleBuilderRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/rooms': {
-      id: '/_authenticated/rooms'
-      path: '/rooms'
-      fullPath: '/rooms'
-      preLoaderRoute: typeof AuthenticatedRoomsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/room-types': {
-      id: '/_authenticated/room-types'
-      path: '/room-types'
-      fullPath: '/room-types'
-      preLoaderRoute: typeof AuthenticatedRoomTypesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/reports': {
-      id: '/_authenticated/reports'
-      path: '/reports'
-      fullPath: '/reports'
-      preLoaderRoute: typeof AuthenticatedReportsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/published-schedules': {
-      id: '/_authenticated/published-schedules'
-      path: '/published-schedules'
-      fullPath: '/published-schedules'
-      preLoaderRoute: typeof AuthenticatedPublishedSchedulesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/programs': {
-      id: '/_authenticated/programs'
-      path: '/programs'
-      fullPath: '/programs'
-      preLoaderRoute: typeof AuthenticatedProgramsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/my-college': {
-      id: '/_authenticated/my-college'
-      path: '/my-college'
-      fullPath: '/my-college'
-      preLoaderRoute: typeof AuthenticatedMyCollegeRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/instructors': {
-      id: '/_authenticated/instructors'
-      path: '/instructors'
-      fullPath: '/instructors'
-      preLoaderRoute: typeof AuthenticatedInstructorsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/instructor-types': {
-      id: '/_authenticated/instructor-types'
-      path: '/instructor-types'
-      fullPath: '/instructor-types'
-      preLoaderRoute: typeof AuthenticatedInstructorTypesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/import-templates': {
-      id: '/_authenticated/import-templates'
-      path: '/import-templates'
-      fullPath: '/import-templates'
-      preLoaderRoute: typeof AuthenticatedImportTemplatesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/import-history': {
-      id: '/_authenticated/import-history'
-      path: '/import-history'
-      fullPath: '/import-history'
-      preLoaderRoute: typeof AuthenticatedImportHistoryRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/import': {
-      id: '/_authenticated/import'
-      path: '/import'
-      fullPath: '/import'
-      preLoaderRoute: typeof AuthenticatedImportRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/departments': {
-      id: '/_authenticated/departments'
-      path: '/departments'
-      fullPath: '/departments'
-      preLoaderRoute: typeof AuthenticatedDepartmentsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/delivery-groups': {
-      id: '/_authenticated/delivery-groups'
-      path: '/delivery-groups'
-      fullPath: '/delivery-groups'
-      preLoaderRoute: typeof AuthenticatedDeliveryGroupsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/data-templates': {
-      id: '/_authenticated/data-templates'
-      path: '/data-templates'
-      fullPath: '/data-templates'
-      preLoaderRoute: typeof AuthenticatedDataTemplatesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/data-readiness': {
-      id: '/_authenticated/data-readiness'
-      path: '/data-readiness'
-      fullPath: '/data-readiness'
-      preLoaderRoute: typeof AuthenticatedDataReadinessRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/data-cleanup': {
-      id: '/_authenticated/data-cleanup'
-      path: '/data-cleanup'
-      fullPath: '/data-cleanup'
-      preLoaderRoute: typeof AuthenticatedDataCleanupRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/dashboard': {
-      id: '/_authenticated/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/daily-breaks': {
-      id: '/_authenticated/daily-breaks'
-      path: '/daily-breaks'
-      fullPath: '/daily-breaks'
-      preLoaderRoute: typeof AuthenticatedDailyBreaksRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/courses': {
-      id: '/_authenticated/courses'
-      path: '/courses'
-      fullPath: '/courses'
-      preLoaderRoute: typeof AuthenticatedCoursesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/course-offerings': {
-      id: '/_authenticated/course-offerings'
-      path: '/course-offerings'
-      fullPath: '/course-offerings'
-      preLoaderRoute: typeof AuthenticatedCourseOfferingsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/constraint-settings': {
-      id: '/_authenticated/constraint-settings'
-      path: '/constraint-settings'
-      fullPath: '/constraint-settings'
-      preLoaderRoute: typeof AuthenticatedConstraintSettingsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/conflict-checks': {
-      id: '/_authenticated/conflict-checks'
-      path: '/conflict-checks'
-      fullPath: '/conflict-checks'
-      preLoaderRoute: typeof AuthenticatedConflictChecksRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/colleges': {
-      id: '/_authenticated/colleges'
-      path: '/colleges'
-      fullPath: '/colleges'
-      preLoaderRoute: typeof AuthenticatedCollegesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/buildings': {
-      id: '/_authenticated/buildings'
-      path: '/buildings'
-      fullPath: '/buildings'
-      preLoaderRoute: typeof AuthenticatedBuildingsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/availability': {
-      id: '/_authenticated/availability'
-      path: '/availability'
-      fullPath: '/availability'
-      preLoaderRoute: typeof AuthenticatedAvailabilityRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/auto-schedule': {
-      id: '/_authenticated/auto-schedule'
-      path: '/auto-schedule'
-      fullPath: '/auto-schedule'
-      preLoaderRoute: typeof AuthenticatedAutoScheduleRouteImport
+    '/_authenticated/academic-calendar': {
+      id: '/_authenticated/academic-calendar'
+      path: '/academic-calendar'
+      fullPath: '/academic-calendar'
+      preLoaderRoute: typeof AuthenticatedAcademicCalendarRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/academic-cohorts': {
@@ -1105,11 +825,291 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAcademicCohortsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/academic-calendar': {
-      id: '/_authenticated/academic-calendar'
-      path: '/academic-calendar'
-      fullPath: '/academic-calendar'
-      preLoaderRoute: typeof AuthenticatedAcademicCalendarRouteImport
+    '/_authenticated/auto-schedule': {
+      id: '/_authenticated/auto-schedule'
+      path: '/auto-schedule'
+      fullPath: '/auto-schedule'
+      preLoaderRoute: typeof AuthenticatedAutoScheduleRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/availability': {
+      id: '/_authenticated/availability'
+      path: '/availability'
+      fullPath: '/availability'
+      preLoaderRoute: typeof AuthenticatedAvailabilityRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/buildings': {
+      id: '/_authenticated/buildings'
+      path: '/buildings'
+      fullPath: '/buildings'
+      preLoaderRoute: typeof AuthenticatedBuildingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/colleges': {
+      id: '/_authenticated/colleges'
+      path: '/colleges'
+      fullPath: '/colleges'
+      preLoaderRoute: typeof AuthenticatedCollegesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/conflict-checks': {
+      id: '/_authenticated/conflict-checks'
+      path: '/conflict-checks'
+      fullPath: '/conflict-checks'
+      preLoaderRoute: typeof AuthenticatedConflictChecksRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/constraint-settings': {
+      id: '/_authenticated/constraint-settings'
+      path: '/constraint-settings'
+      fullPath: '/constraint-settings'
+      preLoaderRoute: typeof AuthenticatedConstraintSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/course-offerings': {
+      id: '/_authenticated/course-offerings'
+      path: '/course-offerings'
+      fullPath: '/course-offerings'
+      preLoaderRoute: typeof AuthenticatedCourseOfferingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/courses': {
+      id: '/_authenticated/courses'
+      path: '/courses'
+      fullPath: '/courses'
+      preLoaderRoute: typeof AuthenticatedCoursesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/daily-breaks': {
+      id: '/_authenticated/daily-breaks'
+      path: '/daily-breaks'
+      fullPath: '/daily-breaks'
+      preLoaderRoute: typeof AuthenticatedDailyBreaksRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/data-cleanup': {
+      id: '/_authenticated/data-cleanup'
+      path: '/data-cleanup'
+      fullPath: '/data-cleanup'
+      preLoaderRoute: typeof AuthenticatedDataCleanupRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/data-readiness': {
+      id: '/_authenticated/data-readiness'
+      path: '/data-readiness'
+      fullPath: '/data-readiness'
+      preLoaderRoute: typeof AuthenticatedDataReadinessRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/data-templates': {
+      id: '/_authenticated/data-templates'
+      path: '/data-templates'
+      fullPath: '/data-templates'
+      preLoaderRoute: typeof AuthenticatedDataTemplatesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/delivery-groups': {
+      id: '/_authenticated/delivery-groups'
+      path: '/delivery-groups'
+      fullPath: '/delivery-groups'
+      preLoaderRoute: typeof AuthenticatedDeliveryGroupsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/departments': {
+      id: '/_authenticated/departments'
+      path: '/departments'
+      fullPath: '/departments'
+      preLoaderRoute: typeof AuthenticatedDepartmentsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/import': {
+      id: '/_authenticated/import'
+      path: '/import'
+      fullPath: '/import'
+      preLoaderRoute: typeof AuthenticatedImportRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/import-history': {
+      id: '/_authenticated/import-history'
+      path: '/import-history'
+      fullPath: '/import-history'
+      preLoaderRoute: typeof AuthenticatedImportHistoryRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/import-templates': {
+      id: '/_authenticated/import-templates'
+      path: '/import-templates'
+      fullPath: '/import-templates'
+      preLoaderRoute: typeof AuthenticatedImportTemplatesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/instructor-types': {
+      id: '/_authenticated/instructor-types'
+      path: '/instructor-types'
+      fullPath: '/instructor-types'
+      preLoaderRoute: typeof AuthenticatedInstructorTypesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/instructors': {
+      id: '/_authenticated/instructors'
+      path: '/instructors'
+      fullPath: '/instructors'
+      preLoaderRoute: typeof AuthenticatedInstructorsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/my-college': {
+      id: '/_authenticated/my-college'
+      path: '/my-college'
+      fullPath: '/my-college'
+      preLoaderRoute: typeof AuthenticatedMyCollegeRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/programs': {
+      id: '/_authenticated/programs'
+      path: '/programs'
+      fullPath: '/programs'
+      preLoaderRoute: typeof AuthenticatedProgramsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/published-schedules': {
+      id: '/_authenticated/published-schedules'
+      path: '/published-schedules'
+      fullPath: '/published-schedules'
+      preLoaderRoute: typeof AuthenticatedPublishedSchedulesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports': {
+      id: '/_authenticated/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof AuthenticatedReportsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/room-types': {
+      id: '/_authenticated/room-types'
+      path: '/room-types'
+      fullPath: '/room-types'
+      preLoaderRoute: typeof AuthenticatedRoomTypesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/rooms': {
+      id: '/_authenticated/rooms'
+      path: '/rooms'
+      fullPath: '/rooms'
+      preLoaderRoute: typeof AuthenticatedRoomsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/schedule-builder': {
+      id: '/_authenticated/schedule-builder'
+      path: '/schedule-builder'
+      fullPath: '/schedule-builder'
+      preLoaderRoute: typeof AuthenticatedScheduleBuilderRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/schedule-quality': {
+      id: '/_authenticated/schedule-quality'
+      path: '/schedule-quality'
+      fullPath: '/schedule-quality'
+      preLoaderRoute: typeof AuthenticatedScheduleQualityRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/schedule-versions': {
+      id: '/_authenticated/schedule-versions'
+      path: '/schedule-versions'
+      fullPath: '/schedule-versions'
+      preLoaderRoute: typeof AuthenticatedScheduleVersionsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/scheduling-headcounts': {
+      id: '/_authenticated/scheduling-headcounts'
+      path: '/scheduling-headcounts'
+      fullPath: '/scheduling-headcounts'
+      preLoaderRoute: typeof AuthenticatedSchedulingHeadcountsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/scheduling-settings': {
+      id: '/_authenticated/scheduling-settings'
+      path: '/scheduling-settings'
+      fullPath: '/scheduling-settings'
+      preLoaderRoute: typeof AuthenticatedSchedulingSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/sections': {
+      id: '/_authenticated/sections'
+      path: '/sections'
+      fullPath: '/sections'
+      preLoaderRoute: typeof AuthenticatedSectionsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/session-types': {
+      id: '/_authenticated/session-types'
+      path: '/session-types'
+      fullPath: '/session-types'
+      preLoaderRoute: typeof AuthenticatedSessionTypesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/shared-courses': {
+      id: '/_authenticated/shared-courses'
+      path: '/shared-courses'
+      fullPath: '/shared-courses'
+      preLoaderRoute: typeof AuthenticatedSharedCoursesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/study-plans': {
+      id: '/_authenticated/study-plans'
+      path: '/study-plans'
+      fullPath: '/study-plans'
+      preLoaderRoute: typeof AuthenticatedStudyPlansRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/teaching-assignments': {
+      id: '/_authenticated/teaching-assignments'
+      path: '/teaching-assignments'
+      fullPath: '/teaching-assignments'
+      preLoaderRoute: typeof AuthenticatedTeachingAssignmentsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/terms': {
+      id: '/_authenticated/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof AuthenticatedTermsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/time-slot-templates': {
+      id: '/_authenticated/time-slot-templates'
+      path: '/time-slot-templates'
+      fullPath: '/time-slot-templates'
+      preLoaderRoute: typeof AuthenticatedTimeSlotTemplatesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/time-slots': {
+      id: '/_authenticated/time-slots'
+      path: '/time-slots'
+      fullPath: '/time-slots'
+      preLoaderRoute: typeof AuthenticatedTimeSlotsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/universities': {
+      id: '/_authenticated/universities'
+      path: '/universities'
+      fullPath: '/universities'
+      preLoaderRoute: typeof AuthenticatedUniversitiesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/users': {
+      id: '/_authenticated/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: typeof AuthenticatedUsersRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/reports/': {
@@ -1119,81 +1119,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedReportsIndexRouteImport
       parentRoute: typeof AuthenticatedReportsRoute
     }
-    '/_authenticated/timetable/$versionId': {
-      id: '/_authenticated/timetable/$versionId'
-      path: '/timetable/$versionId'
-      fullPath: '/timetable/$versionId'
-      preLoaderRoute: typeof AuthenticatedTimetableVersionIdRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/reports/unscheduled': {
-      id: '/_authenticated/reports/unscheduled'
-      path: '/unscheduled'
-      fullPath: '/reports/unscheduled'
-      preLoaderRoute: typeof AuthenticatedReportsUnscheduledRouteImport
-      parentRoute: typeof AuthenticatedReportsRoute
-    }
-    '/_authenticated/reports/section-timetable': {
-      id: '/_authenticated/reports/section-timetable'
-      path: '/section-timetable'
-      fullPath: '/reports/section-timetable'
-      preLoaderRoute: typeof AuthenticatedReportsSectionTimetableRouteImport
-      parentRoute: typeof AuthenticatedReportsRoute
-    }
-    '/_authenticated/reports/room-utilization': {
-      id: '/_authenticated/reports/room-utilization'
-      path: '/room-utilization'
-      fullPath: '/reports/room-utilization'
-      preLoaderRoute: typeof AuthenticatedReportsRoomUtilizationRouteImport
-      parentRoute: typeof AuthenticatedReportsRoute
-    }
-    '/_authenticated/reports/room-timetable': {
-      id: '/_authenticated/reports/room-timetable'
-      path: '/room-timetable'
-      fullPath: '/reports/room-timetable'
-      preLoaderRoute: typeof AuthenticatedReportsRoomTimetableRouteImport
-      parentRoute: typeof AuthenticatedReportsRoute
-    }
-    '/_authenticated/reports/quality-summary': {
-      id: '/_authenticated/reports/quality-summary'
-      path: '/quality-summary'
-      fullPath: '/reports/quality-summary'
-      preLoaderRoute: typeof AuthenticatedReportsQualitySummaryRouteImport
-      parentRoute: typeof AuthenticatedReportsRoute
-    }
-    '/_authenticated/reports/published-timetable': {
-      id: '/_authenticated/reports/published-timetable'
-      path: '/published-timetable'
-      fullPath: '/reports/published-timetable'
-      preLoaderRoute: typeof AuthenticatedReportsPublishedTimetableRouteImport
-      parentRoute: typeof AuthenticatedReportsRoute
-    }
-    '/_authenticated/reports/program-level-timetable': {
-      id: '/_authenticated/reports/program-level-timetable'
-      path: '/program-level-timetable'
-      fullPath: '/reports/program-level-timetable'
-      preLoaderRoute: typeof AuthenticatedReportsProgramLevelTimetableRouteImport
-      parentRoute: typeof AuthenticatedReportsRoute
-    }
-    '/_authenticated/reports/instructor-workload': {
-      id: '/_authenticated/reports/instructor-workload'
-      path: '/instructor-workload'
-      fullPath: '/reports/instructor-workload'
-      preLoaderRoute: typeof AuthenticatedReportsInstructorWorkloadRouteImport
-      parentRoute: typeof AuthenticatedReportsRoute
-    }
-    '/_authenticated/reports/instructor-schedule': {
-      id: '/_authenticated/reports/instructor-schedule'
-      path: '/instructor-schedule'
-      fullPath: '/reports/instructor-schedule'
-      preLoaderRoute: typeof AuthenticatedReportsInstructorScheduleRouteImport
-      parentRoute: typeof AuthenticatedReportsRoute
-    }
-    '/_authenticated/reports/department-schedule': {
-      id: '/_authenticated/reports/department-schedule'
-      path: '/department-schedule'
-      fullPath: '/reports/department-schedule'
-      preLoaderRoute: typeof AuthenticatedReportsDepartmentScheduleRouteImport
+    '/_authenticated/reports/conflicts': {
+      id: '/_authenticated/reports/conflicts'
+      path: '/conflicts'
+      fullPath: '/reports/conflicts'
+      preLoaderRoute: typeof AuthenticatedReportsConflictsRouteImport
       parentRoute: typeof AuthenticatedReportsRoute
     }
     '/_authenticated/reports/data-readiness': {
@@ -1203,12 +1133,82 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedReportsDataReadinessRouteImport
       parentRoute: typeof AuthenticatedReportsRoute
     }
-    '/_authenticated/reports/conflicts': {
-      id: '/_authenticated/reports/conflicts'
-      path: '/conflicts'
-      fullPath: '/reports/conflicts'
-      preLoaderRoute: typeof AuthenticatedReportsConflictsRouteImport
+    '/_authenticated/reports/department-schedule': {
+      id: '/_authenticated/reports/department-schedule'
+      path: '/department-schedule'
+      fullPath: '/reports/department-schedule'
+      preLoaderRoute: typeof AuthenticatedReportsDepartmentScheduleRouteImport
       parentRoute: typeof AuthenticatedReportsRoute
+    }
+    '/_authenticated/reports/instructor-schedule': {
+      id: '/_authenticated/reports/instructor-schedule'
+      path: '/instructor-schedule'
+      fullPath: '/reports/instructor-schedule'
+      preLoaderRoute: typeof AuthenticatedReportsInstructorScheduleRouteImport
+      parentRoute: typeof AuthenticatedReportsRoute
+    }
+    '/_authenticated/reports/instructor-workload': {
+      id: '/_authenticated/reports/instructor-workload'
+      path: '/instructor-workload'
+      fullPath: '/reports/instructor-workload'
+      preLoaderRoute: typeof AuthenticatedReportsInstructorWorkloadRouteImport
+      parentRoute: typeof AuthenticatedReportsRoute
+    }
+    '/_authenticated/reports/program-level-timetable': {
+      id: '/_authenticated/reports/program-level-timetable'
+      path: '/program-level-timetable'
+      fullPath: '/reports/program-level-timetable'
+      preLoaderRoute: typeof AuthenticatedReportsProgramLevelTimetableRouteImport
+      parentRoute: typeof AuthenticatedReportsRoute
+    }
+    '/_authenticated/reports/published-timetable': {
+      id: '/_authenticated/reports/published-timetable'
+      path: '/published-timetable'
+      fullPath: '/reports/published-timetable'
+      preLoaderRoute: typeof AuthenticatedReportsPublishedTimetableRouteImport
+      parentRoute: typeof AuthenticatedReportsRoute
+    }
+    '/_authenticated/reports/quality-summary': {
+      id: '/_authenticated/reports/quality-summary'
+      path: '/quality-summary'
+      fullPath: '/reports/quality-summary'
+      preLoaderRoute: typeof AuthenticatedReportsQualitySummaryRouteImport
+      parentRoute: typeof AuthenticatedReportsRoute
+    }
+    '/_authenticated/reports/room-timetable': {
+      id: '/_authenticated/reports/room-timetable'
+      path: '/room-timetable'
+      fullPath: '/reports/room-timetable'
+      preLoaderRoute: typeof AuthenticatedReportsRoomTimetableRouteImport
+      parentRoute: typeof AuthenticatedReportsRoute
+    }
+    '/_authenticated/reports/room-utilization': {
+      id: '/_authenticated/reports/room-utilization'
+      path: '/room-utilization'
+      fullPath: '/reports/room-utilization'
+      preLoaderRoute: typeof AuthenticatedReportsRoomUtilizationRouteImport
+      parentRoute: typeof AuthenticatedReportsRoute
+    }
+    '/_authenticated/reports/section-timetable': {
+      id: '/_authenticated/reports/section-timetable'
+      path: '/section-timetable'
+      fullPath: '/reports/section-timetable'
+      preLoaderRoute: typeof AuthenticatedReportsSectionTimetableRouteImport
+      parentRoute: typeof AuthenticatedReportsRoute
+    }
+    '/_authenticated/reports/unscheduled': {
+      id: '/_authenticated/reports/unscheduled'
+      path: '/unscheduled'
+      fullPath: '/reports/unscheduled'
+      preLoaderRoute: typeof AuthenticatedReportsUnscheduledRouteImport
+      parentRoute: typeof AuthenticatedReportsRoute
+    }
+    '/_authenticated/timetable/$versionId': {
+      id: '/_authenticated/timetable/$versionId'
+      path: '/timetable/$versionId'
+      fullPath: '/timetable/$versionId'
+      preLoaderRoute: typeof AuthenticatedTimetableVersionIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
   }
 }
@@ -1364,13 +1364,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

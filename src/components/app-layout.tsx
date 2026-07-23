@@ -315,14 +315,14 @@ const NAV: NavItem[] = [
   },
   {
     to: "/data-templates",
-    label: "قوالب البيانات",
+    label: "دليل تجهيز البيانات",
     icon: <FileSpreadsheet className="h-4 w-4" />,
     roles: ALL,
     group: "استيراد البيانات",
   },
   {
     to: "/import",
-    label: "استيراد Excel",
+    label: "استيراد البيانات من Excel",
     icon: <FileSpreadsheet className="h-4 w-4" />,
     roles: ["super_admin", "college_admin"],
     group: "استيراد البيانات",

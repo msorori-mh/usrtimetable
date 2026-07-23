@@ -40,6 +40,29 @@ interface CSetting {
 
 interface RowState { enabled: boolean; weight: number; settingId: string | null }
 
+// UI-only display overrides. Keep the technical `code` and DB values unchanged.
+const DISPLAY_OVERRIDES: Record<
+  string,
+  { name_ar?: string; description?: string | null }
+> = {
+  gap_penalty: {
+    name_ar: "تقليل الفجوات بين المحاضرات",
+    description:
+      "تقليل أوقات الانتظار الفارغة بين محاضرات الدفعات والمحاضرين",
+  },
+};
+
+function displayFor(type: CType) {
+  const override = DISPLAY_OVERRIDES[type.code];
+  return {
+    name_ar: override?.name_ar ?? type.name_ar,
+    description:
+      override?.description !== undefined
+        ? override.description
+        : type.description,
+  };
+}
+
 function ConstraintSettingsPage() {
   const { active } = useActiveCollege();
   const canManage = useCanManageActiveCollege();
@@ -176,15 +199,16 @@ function ConstraintSettingsPage() {
         {lock && <Badge variant="destructive">قيود إلزامية — لا يمكن تعطيلها</Badge>}
       </div>
       <div className="space-y-2">
-        {items.map((t) => {
+          {items.map((t) => {
           const row = state[t.id];
           if (!row) return null;
+          const display = displayFor(t);
           return (
             <div key={t.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center border rounded-md p-3">
               <div className="md:col-span-5">
-                <div className="font-medium">{t.name_ar}</div>
+                <div className="font-medium">{display.name_ar}</div>
                 <div className="text-xs text-muted-foreground">{t.code} {t.name_en ? `• ${t.name_en}` : ""}</div>
-                {t.description && <div className="text-xs text-muted-foreground mt-1">{t.description}</div>}
+                {display.description && <div className="text-xs text-muted-foreground mt-1">{display.description}</div>}
               </div>
               <div className="md:col-span-2 flex items-center gap-2">
                 <Switch

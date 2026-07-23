@@ -261,7 +261,7 @@ function DataReadinessPage() {
           <p className="text-sm text-muted-foreground">تقييم جاهزية البيانات الأكاديمية لتوليد جدول واقعي (للقراءة فقط).</p>
         </div>
         <Link to="/data-templates" className="text-sm text-primary underline-offset-4 hover:underline">
-          قوالب البيانات ←
+          دليل تجهيز البيانات ←
         </Link>
       </header>
 
@@ -284,7 +284,7 @@ function DataReadinessPage() {
                     <p className="font-medium text-amber-700">هذه الكلية لا تحتوي على بيانات بعد</p>
                     <p className="mt-1 text-muted-foreground">
                       ابدأ باستيراد البيانات من{" "}
-                      <Link to="/data-templates" className="text-primary underline-offset-4 hover:underline">قوالب البيانات</Link>.
+                      <Link to="/data-templates" className="text-primary underline-offset-4 hover:underline">دليل تجهيز البيانات</Link>.
                     </p>
                   </div>
                 </div>
