@@ -109,7 +109,7 @@ async function fetchNewFlowSignals(collegeId: string): Promise<NewFlowSignals | 
           .from("schedule_sessions")
           .select("id, cohort_id, delivery_group_id")
           .eq("college_id", collegeId),
-        supabase
+        (supabase as any)
           .from("scheduling_cohort_term_headcounts")
           .select("cohort_id, term_id")
           .eq("college_id", collegeId)
