@@ -38,13 +38,16 @@ export async function generateCohortDeliveryGroups(
       p_college_id: cohort.college_id,
       p_cohort_id: cohortId,
       p_term_id: cohort.term_id,
-      p_course_offering_id: null,
-      p_plan_course_component_id: null,
     },
   );
   if (resolveError) throw resolveError;
-  const resolution = resolved as { ok?: boolean; blocker?: boolean } | null;
-  if (!resolution?.ok || resolution.blocker) {
+  const resolution =
+    typeof resolved === "object" &&
+    resolved !== null &&
+    !Array.isArray(resolved)
+      ? resolved
+      : null;
+  if (resolution?.ok !== true || resolution.blocker === true) {
     throw new Error(
       "SCHEDULING_HEADCOUNT_MISSING: يلزم اعتماد عدد الدفعة للجدولة قبل توليد المجموعات / An approved scheduling headcount is required before generating delivery groups.",
     );
