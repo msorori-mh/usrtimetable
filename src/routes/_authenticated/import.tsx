@@ -177,9 +177,9 @@ function ImportPage() {
         <div className="flex-1">
           <h1 className="text-2xl font-bold">استيراد البيانات من Excel</h1>
           <p className="text-sm text-muted-foreground">
-            مسار التشغيل الجديد فقط — بدون نماذج الشعب أو التسجيل الفردي. Commit عبر RPC ذري.{" "}
+            تنزيل القوالب الرسمية ورفع ملفات Excel وتحليلها ثم تأكيد الاستيراد.{" "}
             <Link to="/data-templates" className="text-primary underline-offset-4 hover:underline">
-              مركز القوالب ←
+              دليل تجهيز البيانات ←
             </Link>
           </p>
         </div>
@@ -251,7 +251,7 @@ function ImportPage() {
           </div>
           <div className="flex items-end">
             <Button variant="outline" className="w-full" onClick={downloadTemplate}>
-              <Download className="ml-2 h-4 w-4" /> تنزيل القالب
+              <Download className="ml-2 h-4 w-4" /> تنزيل قالب Excel
             </Button>
           </div>
         </div>
