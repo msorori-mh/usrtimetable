@@ -2630,6 +2630,150 @@ export type Database = {
           },
         ];
       };
+      scheduling_headcount_overrides: {
+        Row: {
+          active: boolean;
+          approval_status: string;
+          approved_at: string | null;
+          approved_by: string | null;
+          college_id: string;
+          course_offering_id: string | null;
+          created_at: string;
+          exam_eligible_count: number | null;
+          headcount_id: string;
+          id: string;
+          notes: string | null;
+          plan_course_component_id: string | null;
+          reserve_margin: number | null;
+          scheduling_headcount: number;
+          source: string;
+          updated_at: string;
+        };
+        Insert: {
+          active?: boolean;
+          approval_status?: string;
+          approved_at?: string | null;
+          approved_by?: string | null;
+          college_id: string;
+          course_offering_id?: string | null;
+          created_at?: string;
+          exam_eligible_count?: number | null;
+          headcount_id: string;
+          id?: string;
+          notes?: string | null;
+          plan_course_component_id?: string | null;
+          reserve_margin?: number | null;
+          scheduling_headcount: number;
+          source: string;
+          updated_at?: string;
+        };
+        Update: {
+          active?: boolean;
+          approval_status?: string;
+          approved_at?: string | null;
+          approved_by?: string | null;
+          college_id?: string;
+          course_offering_id?: string | null;
+          created_at?: string;
+          exam_eligible_count?: number | null;
+          headcount_id?: string;
+          id?: string;
+          notes?: string | null;
+          plan_course_component_id?: string | null;
+          reserve_margin?: number | null;
+          scheduling_headcount?: number;
+          source?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "scheduling_headcount_overrides_college_id_fkey";
+            columns: ["college_id"];
+            isOneToOne: false;
+            referencedRelation: "colleges";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "scheduling_headcount_overrides_course_offering_id_fkey";
+            columns: ["course_offering_id"];
+            isOneToOne: false;
+            referencedRelation: "course_offerings";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "scheduling_headcount_overrides_headcount_id_fkey";
+            columns: ["headcount_id"];
+            isOneToOne: false;
+            referencedRelation: "scheduling_cohort_term_headcounts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "scheduling_headcount_overrides_plan_course_component_id_fkey";
+            columns: ["plan_course_component_id"];
+            isOneToOne: false;
+            referencedRelation: "plan_course_components";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      scheduling_headcount_revisions: {
+        Row: {
+          changed_at: string;
+          changed_by: string;
+          college_id: string;
+          headcount_id: string;
+          id: string;
+          notes: string | null;
+          override_id: string | null;
+          revision_kind: string;
+          snapshot: Json;
+        };
+        Insert: {
+          changed_at?: string;
+          changed_by: string;
+          college_id: string;
+          headcount_id: string;
+          id?: string;
+          notes?: string | null;
+          override_id?: string | null;
+          revision_kind: string;
+          snapshot: Json;
+        };
+        Update: {
+          changed_at?: string;
+          changed_by?: string;
+          college_id?: string;
+          headcount_id?: string;
+          id?: string;
+          notes?: string | null;
+          override_id?: string | null;
+          revision_kind?: string;
+          snapshot?: Json;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "scheduling_headcount_revisions_college_id_fkey";
+            columns: ["college_id"];
+            isOneToOne: false;
+            referencedRelation: "colleges";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "scheduling_headcount_revisions_headcount_id_fkey";
+            columns: ["headcount_id"];
+            isOneToOne: false;
+            referencedRelation: "scheduling_cohort_term_headcounts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "scheduling_headcount_revisions_override_id_fkey";
+            columns: ["override_id"];
+            isOneToOne: false;
+            referencedRelation: "scheduling_headcount_overrides";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       scheduling_settings: {
         Row: {
           allow_3h_sessions: boolean;
