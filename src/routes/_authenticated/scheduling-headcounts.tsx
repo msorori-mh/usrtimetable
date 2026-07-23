@@ -28,11 +28,26 @@ export const Route = createFileRoute("/_authenticated/scheduling-headcounts")({
 type Cohort = { id: string; code: string | null; term_id: string; study_system: string };
 type Term = { id: string; name: string };
 
+/** Editable subset of the generated scheduling_cohort_term_headcounts row. */
+type SchedulingHeadcountFormValue = Pick<
+  SchedulingHeadcount,
+  | "cohort_id"
+  | "term_id"
+  | "registered_student_count"
+  | "eligible_student_count"
+  | "expected_attendance_count"
+  | "reserve_margin"
+  | "scheduling_headcount"
+  | "exam_eligible_count"
+  | "source"
+  | "notes"
+>;
+
 function SchedulingHeadcountsPage() {
   const { active } = useActiveCollege();
   const canManage = useCanManageActiveCollege();
   const queryClient = useQueryClient();
-  const [editing, setEditing] = useState<SchedulingHeadcount | null>(null);
+  const [editing, setEditing] = useState<SchedulingHeadcountFormValue | null>(null);
   const [historyId, setHistoryId] = useState<string | null>(null);
 
   const { data: cohorts = [] } = useQuery({
@@ -45,7 +60,7 @@ function SchedulingHeadcountsPage() {
         .eq("college_id", active!.id)
         .eq("active", true);
       if (error) throw error;
-      return data as Cohort[];
+      return data ?? [];
     },
   });
   const { data: terms = [] } = useQuery({
@@ -57,7 +72,7 @@ function SchedulingHeadcountsPage() {
         .select("id, name")
         .eq("college_id", active!.id);
       if (error) throw error;
-      return data as Term[];
+      return data ?? [];
     },
   });
   const { data: rows = [], isLoading } = useQuery({
@@ -70,7 +85,7 @@ function SchedulingHeadcountsPage() {
         .eq("college_id", active!.id)
         .order("updated_at", { ascending: false });
       if (error) throw error;
-      return data as SchedulingHeadcount[];
+      return data ?? [];
     },
   });
   const { data: history } = useQuery({
@@ -144,7 +159,7 @@ function SchedulingHeadcountsPage() {
                 exam_eligible_count: 0,
                 source: "",
                 notes: null,
-              } as SchedulingHeadcount)
+              })
             }
           >
             إضافة عدد
@@ -241,14 +256,7 @@ function SchedulingHeadcountsPage() {
             </Button>
           </div>
           {history?.ok ? (
-            (
-              (history.revisions ?? []) as Array<{
-                id: string;
-                revision_kind: string;
-                changed_at: string;
-                notes: string | null;
-              }>
-            ).map((revision) => (
+            (history.revisions ?? []).map((revision) => (
               <p key={revision.id} className="text-sm">
                 {revision.revision_kind} · {new Date(revision.changed_at).toLocaleString()} ·{" "}
                 {revision.notes ?? "—"}
@@ -278,7 +286,7 @@ function HeadcountForm({
   onCancel,
   onSave,
 }: {
-  value: SchedulingHeadcount;
+  value: SchedulingHeadcountFormValue;
   cohorts: Cohort[];
   canManage: boolean;
   busy: boolean;
@@ -318,7 +326,7 @@ function HeadcountForm({
       allowOverEligible: true,
     });
   };
-  const number = (key: keyof SchedulingHeadcount) => ({
+  const number = (key: keyof SchedulingHeadcountFormValue) => ({
     type: "number",
     value: Number(form[key] ?? 0),
     onChange: (event: React.ChangeEvent<HTMLInputElement>) =>
