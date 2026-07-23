@@ -85,7 +85,7 @@ function DataTemplatesPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <FileSpreadsheet className="h-6 w-6" />
-          <h1 className="text-2xl font-bold">قوالب البيانات</h1>
+          <h1 className="text-2xl font-bold">دليل تجهيز البيانات</h1>
         </div>
         <div className="flex items-center gap-2 text-sm">
           <Link to="/data-readiness" className="text-primary underline-offset-4 hover:underline">
@@ -93,7 +93,7 @@ function DataTemplatesPage() {
           </Link>
           <span className="text-muted-foreground">|</span>
           <Link to="/import" className="text-primary underline-offset-4 hover:underline">
-            استيراد Excel ←
+            استيراد البيانات من Excel ←
           </Link>
         </div>
       </div>
