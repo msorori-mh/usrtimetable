@@ -497,7 +497,7 @@ export const CATALOG: TemplateDef[] = [
       {
         header: "طبيعة_المقرر",
         example: "department",
-        allowed: "department | faculty | university",
+        allowed: "department | college | university",
         description: "course_nature",
       },
       { header: "مشترك", example: "false", allowed: "true | false", description: "is_shared" },
