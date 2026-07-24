@@ -272,7 +272,7 @@ function AcademicCohortsPage() {
                         });
                       }}
                     >
-                      توليد منهج الدفعة
+                      توليد مقررات الدفعة
                     </Button>
                     <Button
                       size="sm"
