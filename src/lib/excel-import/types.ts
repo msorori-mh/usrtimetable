@@ -20,6 +20,8 @@ export type ImportMode = "insert_only" | "update_existing" | "upsert";
 export interface ColumnDef {
   key: string;
   header: string;
+  /** Accepted input headers that map to the same key; exports keep `header` canonical. */
+  aliases?: string[];
   required?: boolean;
   example?: string;
   enumValues?: string[];
@@ -51,6 +53,15 @@ export interface RowError {
   errorCode: string;
   message: string;
   rawValue?: string;
+  programCode?: string;
+  courseCode?: string;
+  courseName?: string;
+  levelNumber?: number | string;
+  semester?: number | string;
+  componentType?: string;
+  componentHours?: number;
+  field?: string;
+  reason?: string;
 }
 
 export interface ValidationResult {

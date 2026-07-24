@@ -4,6 +4,11 @@ import { resolveRoomTypeFields } from "./room-type-normalize";
 import { deliveryGroupIsolationKey, sectionIsolationKey } from "./keys";
 import { requireImportManager } from "./safety";
 import type { ImportEntity, ParsedRow, RowError, ValidationResult } from "./types";
+import {
+  buildPlanComponentSyncPayload,
+  validatePlanComponentRoomTypes,
+  type RoomTypeCatalogEntry,
+} from "@/lib/academic-delivery/plan-component-room-types";
 
 const TIME_RE = /^([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
 
@@ -18,6 +23,7 @@ function toBool(v: unknown): boolean | null {
 interface Lookups {
   instructorTypes?: Map<string, string>;
   roomTypes?: Map<string, string>;
+  roomTypeCatalog?: RoomTypeCatalogEntry[];
   departments?: Map<string, string>;
   buildings?: Map<string, string>;
   programs?: Map<string, { id: string; department_id: string }>;
@@ -58,6 +64,10 @@ async function loadLookups(entity: ImportEntity, collegeId: string): Promise<Loo
       .eq("college_id", collegeId);
     return (data ?? []) as any[];
   };
+  const fetchAccessible = async (table: string, cols: string): Promise<any[]> => {
+    const { data } = await (supabase.from(table as never) as any).select(cols);
+    return (data ?? []) as any[];
+  };
 
   if (entity === "instructors") {
     const [it, dp] = await Promise.all([
@@ -92,6 +102,19 @@ async function loadLookups(entity: ImportEntity, collegeId: string): Promise<Loo
     ]);
     lk.departments = new Map(dp.map((r) => [r.code, r.id]));
     lk.programs = new Map(pg.map((r) => [r.code, { id: r.id, department_id: r.department_id }]));
+    if (entity === "study_plan_courses" || entity === "full_study_plan") {
+      const rt = await fetchAccessible(
+        "room_types",
+        "id, code, college_id, is_active, default_capacity",
+      );
+      lk.roomTypeCatalog = rt.map((r) => ({
+        id: String(r.id),
+        code: String(r.code),
+        college_id: String(r.college_id),
+        is_active: r.is_active !== false,
+        default_capacity: Number(r.default_capacity ?? 0),
+      }));
+    }
   }
   if (
     [
@@ -228,7 +251,7 @@ function normalize(
   const missingHeaders = tpl.columns
     .filter((c) => c.required && !headerSet.has(c.header))
     .map((c) => c.header);
-  const knownHeaders = new Set(tpl.columns.map((c) => c.header));
+  const knownHeaders = new Set(tpl.columns.flatMap((c) => [c.header, ...(c.aliases ?? [])]));
   const unknownHeaders = [...headerSet].filter((h) => !knownHeaders.has(h));
   const seen = new Set<string>();
   const duplicateHeaders: string[] = [];
@@ -239,7 +262,11 @@ function normalize(
       seen.add(h);
     }
   }
-  const byHeader = new Map(tpl.columns.map((c) => [c.header, c]));
+  const byHeader = new Map(
+    tpl.columns.flatMap((c) =>
+      [c.header, ...(c.aliases ?? [])].map((header) => [header, c] as const),
+    ),
+  );
   const parsed: ParsedRow[] = rows.map((raw, i) => {
     const values: Record<string, unknown> = {};
     for (const [h, v] of Object.entries(raw)) {
@@ -399,7 +426,7 @@ export async function validate(
     }
 
     // Entity-specific validation
-    runEntityValidation(entity, row, lk, rowErrors);
+    runEntityValidation(entity, row, lk, rowErrors, collegeId);
 
     // Duplicate / existence
     if (tpl.commitMode === "custom") {
@@ -594,6 +621,7 @@ function runEntityValidation(
   row: ParsedRow,
   lk: Lookups,
   errs: RowError[],
+  collegeId: string,
 ): void {
   const v = row.values;
   const need = (cond: boolean, header: string, code: string, msg: string, raw?: unknown) => {
@@ -636,6 +664,52 @@ function runEntityValidation(
         errorCode: "invalid_pattern",
         message: "مدة المعمل يجب أن تكون > 0 عند وجود معامل",
       });
+  }
+
+  if (entity === "study_plan_courses" || entity === "full_study_plan") {
+    const hours = {
+      theory_hours: v.theory_hours as number | null | undefined,
+      practical_hours: v.practical_hours as number | null | undefined,
+      tutorial_hours: v.tutorial_hours as number | null | undefined,
+      project_hours: v.project_hours as number | null | undefined,
+      is_summer_training: v.is_summer_training as boolean | null | undefined,
+      is_graduation_project: v.is_graduation_project as boolean | null | undefined,
+    };
+    const roomTypes = validatePlanComponentRoomTypes({
+      context: {
+        rowNumber: row.rowNumber,
+        programCode: String(v.program_code ?? ""),
+        courseCode: String(v.course_code ?? ""),
+        courseName: String(v.course_name ?? ""),
+        levelNumber: String(v.level_number ?? ""),
+        semester: String(v.semester ?? ""),
+      },
+      hours,
+      values: v,
+      collegeId,
+      catalog: lk.roomTypeCatalog ?? [],
+    });
+    for (const roomTypeError of roomTypes.errors) {
+      errs.push({
+        rowNumber: roomTypeError.rowNumber,
+        columnName: roomTypeError.field,
+        errorCode: roomTypeError.errorCode,
+        message: roomTypeError.message,
+        rawValue: roomTypeError.rawValue,
+        programCode: roomTypeError.programCode,
+        courseCode: roomTypeError.courseCode,
+        courseName: roomTypeError.courseName,
+        levelNumber: roomTypeError.levelNumber,
+        semester: roomTypeError.semester,
+        componentType: roomTypeError.componentType,
+        componentHours: roomTypeError.componentHours,
+        field: roomTypeError.field,
+        reason: roomTypeError.reason,
+      });
+    }
+    if (roomTypes.errors.length === 0) {
+      v._plan_component_sync = buildPlanComponentSyncPayload(hours, roomTypes.resolvedIds);
+    }
   }
 
   if (entity === "course_offerings") {

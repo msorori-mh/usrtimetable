@@ -1,4 +1,9 @@
 import { supabase } from "@/integrations/supabase/client";
+import {
+  collectPlanComponentRoomTypeIssues,
+  type PlanComponentReadinessRow,
+  type PlanComponentRoomTypeIssue,
+} from "@/lib/academic-delivery/plan-component-room-types";
 
 export interface ReadinessMetric {
   label: string;
@@ -25,12 +30,92 @@ export interface ReadinessData {
   studyPlan: ReadinessMetric[];
   resources: ReadinessMetric[];
   scheduling: ReadinessMetric[];
+  planComponentRoomTypeIssues: PlanComponentRoomTypeIssue[];
   scores: {
     studyPlanScore: number;
     resourcesScore: number;
     schedulingScore: number;
     overall: number;
   };
+}
+
+export async function fetchPlanComponentRoomTypeIssues(
+  collegeId: string,
+): Promise<PlanComponentRoomTypeIssue[]> {
+  const [college, programs, plans, levels, courses, planCourses, components] = await Promise.all([
+    supabase.from("colleges").select("id, code").eq("id", collegeId).maybeSingle(),
+    supabase.from("academic_programs").select("id, code").eq("college_id", collegeId),
+    supabase
+      .from("study_plans")
+      .select("id, program_id")
+      .eq("college_id", collegeId)
+      .eq("is_active", true),
+    supabase.from("academic_levels").select("id, level_number").eq("college_id", collegeId),
+    supabase.from("courses").select("id, code, name").eq("college_id", collegeId),
+    supabase
+      .from("plan_courses")
+      .select("id, study_plan_id, course_id, level_id, semester")
+      .eq("college_id", collegeId),
+    supabase
+      .from("plan_course_components")
+      .select(
+        "id, plan_course_id, component_type, weekly_contact_hours, is_timetabled, required_room_type_id",
+      )
+      .eq("college_id", collegeId),
+  ]);
+  for (const result of [college, programs, plans, levels, courses, planCourses, components]) {
+    if (result.error) throw result.error;
+  }
+  const activePlans = new Map((plans.data ?? []).map((row) => [row.id, row]));
+  const activePlanCourses = (planCourses.data ?? []).filter((row) =>
+    activePlans.has(row.study_plan_id),
+  );
+  const planCourseById = new Map(activePlanCourses.map((row) => [row.id, row]));
+  const relevantComponents = (components.data ?? []).filter((row) =>
+    planCourseById.has(row.plan_course_id),
+  );
+  const roomTypeIds = [
+    ...new Set(relevantComponents.map((row) => row.required_room_type_id).filter(Boolean)),
+  ] as string[];
+  const roomTypes =
+    roomTypeIds.length === 0
+      ? { data: [], error: null }
+      : await supabase
+          .from("room_types")
+          .select("id, code, college_id, is_active, default_capacity")
+          .in("id", roomTypeIds);
+  if (roomTypes.error) throw roomTypes.error;
+  const roomTypeById = new Map((roomTypes.data ?? []).map((row) => [row.id, row]));
+  const programById = new Map((programs.data ?? []).map((row) => [row.id, row.code]));
+  const levelById = new Map((levels.data ?? []).map((row) => [row.id, row.level_number]));
+  const courseById = new Map((courses.data ?? []).map((row) => [row.id, row]));
+  const rows: PlanComponentReadinessRow[] = relevantComponents.map((component) => {
+    const planCourse = planCourseById.get(component.plan_course_id)!;
+    const plan = activePlans.get(planCourse.study_plan_id)!;
+    const course = courseById.get(planCourse.course_id);
+    const roomType = component.required_room_type_id
+      ? roomTypeById.get(component.required_room_type_id)
+      : null;
+    return {
+      college_code: college.data?.code ?? collegeId,
+      college_id: collegeId,
+      program_code: programById.get(plan.program_id) ?? plan.program_id,
+      study_plan_id: planCourse.study_plan_id,
+      level_number: planCourse.level_id ? (levelById.get(planCourse.level_id) ?? 0) : 0,
+      semester: planCourse.semester,
+      course_code: course?.code ?? planCourse.course_id,
+      course_name: course?.name ?? planCourse.course_id,
+      component_type: component.component_type as PlanComponentReadinessRow["component_type"],
+      component_hours: Number(component.weekly_contact_hours),
+      is_timetabled: component.is_timetabled,
+      room_type_id: component.required_room_type_id,
+      room_type_code: roomType?.code ?? null,
+      room_type_college_id: roomType?.college_id ?? null,
+      room_type_active: roomType?.is_active ?? null,
+      room_type_capacity: roomType?.default_capacity ?? null,
+    };
+  });
+  return collectPlanComponentRoomTypeIssues(rows);
 }
 
 const CATEGORY_LABELS: Record<ReadinessMetric["category"], string> = {
@@ -109,6 +194,8 @@ async function fetchNewFlowSignals(collegeId: string): Promise<NewFlowSignals | 
           .from("schedule_sessions")
           .select("id, cohort_id, delivery_group_id")
           .eq("college_id", collegeId),
+        // Generated types predate the scheduling headcount table.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabase as any)
           .from("scheduling_cohort_term_headcounts")
           .select("cohort_id, term_id")
@@ -194,41 +281,54 @@ export function newFlowReadinessMetrics(signals: NewFlowSignals | null): Readine
 
 /** College-level readiness checks (read-only). Same logic as /data-readiness dashboard. */
 export async function fetchCollegeReadiness(collegeId: string): Promise<ReadinessData> {
-  const [courses, planCourses, instructors, rooms, offerings, assignments, sessions, roomTypes] =
-    await Promise.all([
-      supabase
-        .from("courses")
-        .select("id, code, name", { count: "exact" })
-        .eq("college_id", collegeId),
-      supabase
-        .from("plan_courses")
-        .select(
-          "id, level_id, semester, lectures_per_week, labs_per_week, lecture_session_duration, lab_session_duration, course_id",
-          { count: "exact" },
-        )
-        .eq("college_id", collegeId),
-      supabase
-        .from("instructors")
-        .select("id, specialization, department_id", { count: "exact" })
-        .eq("college_id", collegeId),
-      supabase
-        .from("rooms")
-        .select("id, capacity, room_type_id, room_type", { count: "exact" })
-        .eq("college_id", collegeId),
-      supabase
-        .from("course_offerings")
-        .select("id, expected_students", { count: "exact" })
-        .eq("college_id", collegeId),
-      supabase
-        .from("teaching_assignments")
-        .select("id, instructor_id, course_offering_id", { count: "exact" })
-        .eq("college_id", collegeId),
-      supabase
-        .from("schedule_sessions")
-        .select("id, room_id, start_time, end_time, day_of_week", { count: "exact" })
-        .eq("college_id", collegeId),
-      supabase.from("room_types").select("id, default_capacity").eq("college_id", collegeId),
-    ]);
+  const [
+    courses,
+    planCourses,
+    instructors,
+    rooms,
+    offerings,
+    assignments,
+    sessions,
+    roomTypes,
+    components,
+  ] = await Promise.all([
+    supabase
+      .from("courses")
+      .select("id, code, name", { count: "exact" })
+      .eq("college_id", collegeId),
+    supabase
+      .from("plan_courses")
+      .select(
+        "id, level_id, semester, lectures_per_week, labs_per_week, lecture_session_duration, lab_session_duration, course_id",
+        { count: "exact" },
+      )
+      .eq("college_id", collegeId),
+    supabase
+      .from("instructors")
+      .select("id, specialization, department_id", { count: "exact" })
+      .eq("college_id", collegeId),
+    supabase
+      .from("rooms")
+      .select("id, capacity, room_type_id, room_type", { count: "exact" })
+      .eq("college_id", collegeId),
+    supabase
+      .from("course_offerings")
+      .select("id, expected_students", { count: "exact" })
+      .eq("college_id", collegeId),
+    supabase
+      .from("teaching_assignments")
+      .select("id, instructor_id, course_offering_id", { count: "exact" })
+      .eq("college_id", collegeId),
+    supabase
+      .from("schedule_sessions")
+      .select("id, room_id, start_time, end_time, day_of_week", { count: "exact" })
+      .eq("college_id", collegeId),
+    supabase.from("room_types").select("id, default_capacity").eq("college_id", collegeId),
+    supabase
+      .from("plan_course_components")
+      .select("id", { count: "exact" })
+      .eq("college_id", collegeId),
+  ]);
 
   const coursesRows = courses.data ?? [];
   const planRows = planCourses.data ?? [];
@@ -302,6 +402,14 @@ export async function fetchCollegeReadiness(collegeId: string): Promise<Readines
       category: "study_plan",
     },
   ];
+  const planComponentRoomTypeIssues = await fetchPlanComponentRoomTypeIssues(collegeId);
+  studyPlan.push({
+    label: "PLAN_COMPONENT_ROOM_TYPE_MISSING",
+    total: (components.data ?? []).length,
+    missing: planComponentRoomTypeIssues.length,
+    critical: true,
+    category: "study_plan",
+  });
 
   const resources: ReadinessMetric[] = [
     {
@@ -410,6 +518,7 @@ export async function fetchCollegeReadiness(collegeId: string): Promise<Readines
     studyPlan,
     resources,
     scheduling,
+    planComponentRoomTypeIssues,
     scores: {
       studyPlanScore,
       resourcesScore,

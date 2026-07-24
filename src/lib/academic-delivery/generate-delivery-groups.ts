@@ -8,6 +8,8 @@ import {
   parseDeliveryGroupGeneratorSummary,
   type DeliveryGroupGeneratorSummary,
 } from "@/lib/academic-delivery/delivery-group-generator-summary";
+import { checkCohortRoomTypeGate } from "./cohort-room-type-gate";
+import { MissingRoomTypeComponentsError } from "./plan-component-room-types";
 
 export type {
   DeliveryGroupGeneratorSummary,
@@ -32,6 +34,13 @@ export async function generateCohortDeliveryGroups(
   if (cohortError) throw cohortError;
   if (!cohort) throw new Error("COHORT_NOT_FOUND");
 
+  const roomTypeGate = await checkCohortRoomTypeGate(cohortId);
+  if (!roomTypeGate.ok) {
+    throw new MissingRoomTypeComponentsError(roomTypeGate.issues);
+  }
+
+  // Generated types do not yet include this read-only RPC.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: resolved, error: resolveError } = await (supabase.rpc as any)(
     "resolve_scheduling_headcount",
     {

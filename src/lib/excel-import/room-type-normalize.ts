@@ -31,7 +31,7 @@ export function normalizeToken(raw: string | null | undefined): string | null {
   if (raw === null || raw === undefined) return null;
   const s = String(raw).trim();
   if (!s) return null;
-  return s.toLowerCase();
+  return s.toLowerCase().replace(/\s+/g, "_");
 }
 
 export function isCanonicalRoomType(value: string): value is CanonicalRoomType {

@@ -29,6 +29,9 @@ export interface CommitResult {
 const LEGACY_IMPORT_COMMIT_BLOCKED_MESSAGE =
   "LEGACY_IMPORT_COMMIT_BLOCKED: كيانات Legacy (sections / course_offerings / teaching_assignments V1 / section_groups) محجوبة الكتابة ضمن A1.3a؛ لا يمكن تنفيذ استيرادها من هذا العميل.";
 
+export const PLAN_COMPONENT_ROOM_TYPE_PERSISTENCE_RPC_REQUIRED =
+  "PLAN_COMPONENT_ROOM_TYPE_PERSISTENCE_RPC_REQUIRED: commit_import_job_atomic does not persist validated plan_course_components.required_room_type_id; study-plan commit is blocked to preserve atomicity and prevent partial or misleading success.";
+
 function isLegacyOnlyImportEntity(entity: string | null | undefined): boolean {
   return !!entity && (LEGACY_ONLY_ENTITIES as readonly string[]).includes(entity);
 }
@@ -57,6 +60,15 @@ export async function commitImport(input: {
     throw new ImportSafetyError(
       "import_legacy_entity_blocked",
       LEGACY_IMPORT_COMMIT_BLOCKED_MESSAGE,
+    );
+  }
+  if (
+    jobRow?.target_entity === "study_plan_courses" ||
+    jobRow?.target_entity === "full_study_plan"
+  ) {
+    throw new ImportSafetyError(
+      "plan_component_room_type_persistence_rpc_required",
+      PLAN_COMPONENT_ROOM_TYPE_PERSISTENCE_RPC_REQUIRED,
     );
   }
 

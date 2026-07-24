@@ -9,6 +9,7 @@ import { useGenerateDeliveryGroups } from "@/hooks/use-generate-delivery-groups"
 import { useGenerateCohortCurriculum } from "@/hooks/use-generate-cohort-curriculum";
 import type { CohortCurriculumSummary } from "@/lib/academic-delivery/cohort-curriculum";
 import type { DeliveryGroupGeneratorSummary } from "@/lib/academic-delivery/delivery-group-generator-summary";
+import { checkCohortRoomTypeGate } from "@/lib/academic-delivery/cohort-room-type-gate";
 import { CollegeSwitcher } from "@/components/college-switcher";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -132,6 +133,12 @@ function AcademicCohortsPage() {
   });
 
   const effectiveCohortId = selectedCohortId ?? cohorts?.[0]?.id ?? null;
+  const { data: roomTypeGate } = useQuery({
+    queryKey: ["cohort-room-type-gate", effectiveCohortId],
+    enabled: !!effectiveCohortId,
+    queryFn: () => checkCohortRoomTypeGate(effectiveCohortId!),
+  });
+  const roomTypeIssues = roomTypeGate && !roomTypeGate.ok ? roomTypeGate.issues : [];
 
   const { data: groups, isLoading: groupsLoading } = useQuery({
     queryKey: ["delivery-groups", active?.id, effectiveCohortId],
@@ -276,7 +283,7 @@ function AcademicCohortsPage() {
                     </Button>
                     <Button
                       size="sm"
-                      disabled={generate.isPending}
+                      disabled={generate.isPending || roomTypeIssues.length > 0}
                       onClick={() => setConfirmOpen(true)}
                     >
                       توليد مجموعات المحاضرات والمعامل
@@ -288,13 +295,35 @@ function AcademicCohortsPage() {
               </Card>
             )}
 
+            {roomTypeIssues.length > 0 ? (
+              <Card className="border-destructive/40 bg-destructive/5 p-4 text-sm">
+                <p className="font-semibold text-destructive">
+                  MISSING_ROOM_TYPE_COMPONENTS — تعذر توليد مجموعات المحاضرات والمعامل
+                </p>
+                <p className="mt-1 text-muted-foreground">
+                  أصلح نوع القاعة في الخطة ثم أعد المحاولة. عدد المكوّنات: {roomTypeIssues.length}
+                </p>
+                <ul className="mt-3 space-y-1 text-xs">
+                  {roomTypeIssues.map((issue) => (
+                    <li key={`${issue.study_plan_id}:${issue.course_code}:${issue.component_type}`}>
+                      البرنامج {issue.program_code} · المستوى {issue.level_number} · الفصل{" "}
+                      {issue.semester} · المقرر {issue.course_code} ({issue.course_name}) · المكوّن{" "}
+                      {issue.component_type} · {issue.issue_code} · الإجراء: استيراد رمز نوع قاعة
+                      صالح يتبع الكلية
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            ) : null}
+
             <Card className="overflow-hidden">
               <div className="border-b px-4 py-3 text-sm font-medium">مجموعات المكوّنات</div>
               {groupsLoading ? (
                 <p className="p-4 text-sm text-muted-foreground">جاري التحميل…</p>
               ) : (groups ?? []).length === 0 ? (
                 <p className="p-4 text-sm text-muted-foreground">
-                  لا توجد مجموعات بعد. ولّد المجموعات بعد توفر مقررات الدفعة الدراسية ومكوّنات الخطة.
+                  لا توجد مجموعات بعد. ولّد المجموعات بعد توفر مقررات الدفعة الدراسية ومكوّنات
+                  الخطة.
                 </p>
               ) : (
                 <div className="overflow-x-auto">
