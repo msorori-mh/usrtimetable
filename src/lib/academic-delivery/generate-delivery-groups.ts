@@ -9,6 +9,7 @@ import {
   type DeliveryGroupGeneratorSummary,
 } from "@/lib/academic-delivery/delivery-group-generator-summary";
 import { checkCohortDeliveryGroupRoomTypes } from "@/lib/academic-delivery/cohort-delivery-group-room-type-gate";
+import { resolveSchedulingHeadcountRpc } from "@/lib/scheduling-headcount/api";
 
 export type {
   DeliveryGroupGeneratorSummary,
@@ -46,18 +47,12 @@ export async function generateCohortDeliveryGroups(
   if (cohortError) throw cohortError;
   if (!cohort) throw new Error("COHORT_NOT_FOUND");
 
-  const { data: resolved, error: resolveError } = await (supabase.rpc as any)(
-    "resolve_scheduling_headcount",
-    {
-      p_college_id: cohort.college_id,
-      p_cohort_id: cohortId,
-      p_term_id: cohort.term_id,
-    },
-  );
-  if (resolveError) throw resolveError;
-  const resolution =
-    typeof resolved === "object" && resolved !== null && !Array.isArray(resolved) ? resolved : null;
-  if (resolution?.ok !== true || resolution.blocker === true) {
+  const resolution = await resolveSchedulingHeadcountRpc({
+    collegeId: cohort.college_id,
+    cohortId,
+    termId: cohort.term_id,
+  });
+  if (resolution.ok !== true || resolution.blocker === true) {
     throw new Error(
       "SCHEDULING_HEADCOUNT_MISSING: يلزم اعتماد عدد الدفعة للجدولة قبل توليد المجموعات / An approved scheduling headcount is required before generating delivery groups.",
     );

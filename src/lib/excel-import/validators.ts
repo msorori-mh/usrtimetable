@@ -648,9 +648,13 @@ function studyPlanRoomTypeCodesFromValues(
   return {
     required_room_type_code_lecture: v.required_room_type_code_lecture as string | null | undefined,
     required_room_type_code_practical: v.required_room_type_code_practical as
-      string | null | undefined,
+      | string
+      | null
+      | undefined,
     required_room_type_code_tutorial: v.required_room_type_code_tutorial as
-      string | null | undefined,
+      | string
+      | null
+      | undefined,
     required_room_type_code_project: v.required_room_type_code_project as string | null | undefined,
   };
 }

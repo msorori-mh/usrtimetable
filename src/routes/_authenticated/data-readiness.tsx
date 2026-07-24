@@ -34,6 +34,53 @@ export const Route = createFileRoute("/_authenticated/data-readiness")({
 
 type Metric = { label: string; total: number; missing: number; critical?: boolean };
 
+type ReadinessCourseRow = { id: string; code: string; name: string };
+type ReadinessPlanCourseRow = {
+  id: string;
+  level_id: string | null;
+  semester: number | null;
+  lectures_per_week: number | null;
+  labs_per_week: number | null;
+  lecture_session_duration: number | null;
+  lab_session_duration: number | null;
+  course_id: string;
+};
+type ReadinessInstructorRow = {
+  id: string;
+  specialization: string | null;
+  department_id: string | null;
+  instructor_type_id: string | null;
+  instructor_types: { code: string; is_external: boolean } | null;
+};
+type ReadinessRoomRow = {
+  id: string;
+  capacity: number | null;
+  room_type_id: string | null;
+  room_type: string | null;
+};
+type ReadinessOfferingRow = { id: string; expected_students: number | null };
+type ReadinessAssignmentRow = {
+  id: string;
+  instructor_id: string | null;
+  course_offering_id: string;
+};
+type ReadinessSessionRow = {
+  id: string;
+  room_id: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  day_of_week: number | null;
+};
+type ReadinessRoomTypeRow = { id: string; default_capacity: number | null };
+type ReadinessAvailabilityRow = { instructor_id: string };
+
+function withCollegeScope<T extends { eq: (column: string, value: string) => T }>(
+  query: T,
+  collegeId: string,
+): T {
+  return query.eq("college_id", collegeId);
+}
+
 // A1.5: New Flow readiness signals (cohort/DG/TA V2) — fail-closed; any schema
 // gap degrades to one informational metric instead of breaking the dashboard.
 async function fetchNewFlowMetrics(collegeId: string): Promise<Metric[]> {
@@ -111,7 +158,8 @@ async function fetchNewFlowMetrics(collegeId: string): Promise<Metric[]> {
 }
 
 async function fetchReadiness(collegeId: string) {
-  const eq = (q: any) => q.eq("college_id", collegeId);
+  const scope = <T extends { eq: (column: string, value: string) => T }>(query: T) =>
+    withCollegeScope(query, collegeId);
 
   const [
     courses,
@@ -124,8 +172,8 @@ async function fetchReadiness(collegeId: string) {
     roomTypes,
     availability,
   ] = await Promise.all([
-    eq(supabase.from("courses").select("id, code, name", { count: "exact" })),
-    eq(
+    scope(supabase.from("courses").select("id, code, name", { count: "exact" })),
+    scope(
       supabase
         .from("plan_courses")
         .select(
@@ -133,7 +181,7 @@ async function fetchReadiness(collegeId: string) {
           { count: "exact" },
         ),
     ),
-    eq(
+    scope(
       supabase
         .from("instructors")
         .select(
@@ -141,75 +189,78 @@ async function fetchReadiness(collegeId: string) {
           { count: "exact" },
         ),
     ),
-    eq(supabase.from("rooms").select("id, capacity, room_type_id, room_type", { count: "exact" })),
-    eq(supabase.from("course_offerings").select("id, expected_students", { count: "exact" })),
-    eq(
+    scope(
+      supabase.from("rooms").select("id, capacity, room_type_id, room_type", { count: "exact" }),
+    ),
+    scope(supabase.from("course_offerings").select("id, expected_students", { count: "exact" })),
+    scope(
       supabase
         .from("teaching_assignments")
         .select("id, instructor_id, course_offering_id", { count: "exact" }),
     ),
-    eq(
+    scope(
       supabase
         .from("schedule_sessions")
         .select("id, room_id, start_time, end_time, day_of_week", { count: "exact" }),
     ),
-    eq(supabase.from("room_types").select("id, default_capacity")),
-    eq(supabase.from("instructor_availability").select("instructor_id")),
+    scope(supabase.from("room_types").select("id, default_capacity")),
+    scope(supabase.from("instructor_availability").select("instructor_id")),
   ]);
 
-  const coursesRows = courses.data ?? [];
-  const planRows = planCourses.data ?? [];
-  const instructorsRows = instructors.data ?? [];
-  const roomsRows = rooms.data ?? [];
-  const offeringsRows = offerings.data ?? [];
-  const assignmentsRows = assignments.data ?? [];
-  const sessionsRows = sessions.data ?? [];
-  const roomTypeMap = new Map((roomTypes.data ?? []).map((r: any) => [r.id, r.default_capacity]));
+  const coursesRows = (courses.data ?? []) as ReadinessCourseRow[];
+  const planRows = (planCourses.data ?? []) as ReadinessPlanCourseRow[];
+  const instructorsRows = (instructors.data ?? []) as ReadinessInstructorRow[];
+  const roomsRows = (rooms.data ?? []) as ReadinessRoomRow[];
+  const offeringsRows = (offerings.data ?? []) as ReadinessOfferingRow[];
+  const assignmentsRows = (assignments.data ?? []) as ReadinessAssignmentRow[];
+  const sessionsRows = (sessions.data ?? []) as ReadinessSessionRow[];
+  const roomTypeMap = new Map(
+    ((roomTypes.data ?? []) as ReadinessRoomTypeRow[]).map((r) => [r.id, r.default_capacity]),
+  );
   const instructorsWithAvail = new Set(
-    ((availability.data ?? []) as any[]).map((a) => a.instructor_id),
+    ((availability.data ?? []) as ReadinessAvailabilityRow[]).map((a) => a.instructor_id),
   );
 
-  const linkedCourseIds = new Set(planRows.map((p: any) => p.course_id));
-  const offeringsWithAssignments = new Set(assignmentsRows.map((a: any) => a.course_offering_id));
+  const linkedCourseIds = new Set(planRows.map((p) => p.course_id));
+  const offeringsWithAssignments = new Set(assignmentsRows.map((a) => a.course_offering_id));
 
   // Study Plan metrics
   const sp: Metric[] = [
     {
       label: "مقررات غير مرتبطة بأي خطة دراسية",
       total: coursesRows.length,
-      missing: coursesRows.filter((c: any) => !linkedCourseIds.has(c.id)).length,
+      missing: coursesRows.filter((c) => !linkedCourseIds.has(c.id)).length,
     },
     {
       label: "صفوف الخطة بدون مستوى",
       total: planRows.length,
-      missing: planRows.filter((p: any) => !p.level_id).length,
+      missing: planRows.filter((p) => !p.level_id).length,
     },
     {
       label: "صفوف الخطة بدون فصل (semester)",
       total: planRows.length,
-      missing: planRows.filter((p: any) => !p.semester).length,
+      missing: planRows.filter((p) => !p.semester).length,
     },
     {
       label: "بدون عدد محاضرات أسبوعية",
       total: planRows.length,
-      missing: planRows.filter((p: any) => !p.lectures_per_week).length,
+      missing: planRows.filter((p) => !p.lectures_per_week).length,
     },
     {
       label: "بدون عدد معامل أسبوعية",
       total: planRows.length,
-      missing: planRows.filter(
-        (p: any) => p.labs_per_week === null || p.labs_per_week === undefined,
-      ).length,
+      missing: planRows.filter((p) => p.labs_per_week === null || p.labs_per_week === undefined)
+        .length,
     },
     {
       label: "بدون مدة محاضرة محاضرة",
       total: planRows.length,
-      missing: planRows.filter((p: any) => !p.lecture_session_duration).length,
+      missing: planRows.filter((p) => !p.lecture_session_duration).length,
     },
     {
       label: "بدون مدة محاضرة معمل",
       total: planRows.length,
-      missing: planRows.filter((p: any) => p.labs_per_week > 0 && !p.lab_session_duration).length,
+      missing: planRows.filter((p) => (p.labs_per_week ?? 0) > 0 && !p.lab_session_duration).length,
     },
   ];
 
@@ -231,29 +282,29 @@ async function fetchReadiness(collegeId: string) {
     {
       label: "محاضرون بدون تخصص",
       total: instructorsRows.length,
-      missing: instructorsRows.filter((i: any) => !i.specialization).length,
+      missing: instructorsRows.filter((i) => !i.specialization).length,
     },
     {
       label: "محاضرون بدون قسم",
       total: instructorsRows.length,
-      missing: instructorsRows.filter((i: any) => !i.department_id).length,
+      missing: instructorsRows.filter((i) => !i.department_id).length,
     },
     {
       label: "قاعات بسعة افتراضية (مطابقة للنوع)",
       total: roomsRows.length,
       missing: roomsRows.filter(
-        (r: any) => r.room_type_id && r.capacity === roomTypeMap.get(r.room_type_id),
+        (r) => r.room_type_id && r.capacity === roomTypeMap.get(r.room_type_id),
       ).length,
     },
     {
       label: "قاعات بدون نوع قاعة",
       total: roomsRows.length,
-      missing: roomsRows.filter((r: any) => !r.room_type_id && !r.room_type).length,
+      missing: roomsRows.filter((r) => !r.room_type_id && !r.room_type).length,
     },
     {
       label: "قاعات بسعة ≤ 0",
       total: roomsRows.length,
-      missing: roomsRows.filter((r: any) => !r.capacity || r.capacity <= 0).length,
+      missing: roomsRows.filter((r) => !r.capacity || r.capacity <= 0).length,
       critical: true,
     },
   ];
@@ -264,7 +315,7 @@ async function fetchReadiness(collegeId: string) {
     external: { total: 0, configured: 0 },
     other_college: { total: 0, configured: 0 },
   };
-  for (const i of instructorsRows as any[]) {
+  for (const i of instructorsRows) {
     const cat = categorizeInstructor(i.instructor_types);
     byCategory[cat].total += 1;
     if (instructorsWithAvail.has(i.id)) byCategory[cat].configured += 1;
@@ -297,31 +348,29 @@ async function fetchReadiness(collegeId: string) {
     {
       label: "عروض مقررات بأعداد طلاب ≤ 0",
       total: offeringsRows.length,
-      missing: offeringsRows.filter((o: any) => !o.expected_students || o.expected_students <= 0)
-        .length,
+      missing: offeringsRows.filter((o) => !o.expected_students || o.expected_students <= 0).length,
     },
     {
       label: "عروض مقررات بدون إسناد تدريسي",
       total: offeringsRows.length,
-      missing: offeringsRows.filter((o: any) => !offeringsWithAssignments.has(o.id)).length,
+      missing: offeringsRows.filter((o) => !offeringsWithAssignments.has(o.id)).length,
     },
     {
       label: "إسناد بدون محاضر",
       total: assignmentsRows.length,
-      missing: assignmentsRows.filter((a: any) => !a.instructor_id).length,
+      missing: assignmentsRows.filter((a) => !a.instructor_id).length,
       critical: true,
     },
     {
       label: "محاضرات بدون قاعة",
       total: sessionsRows.length,
-      missing: sessionsRows.filter((s: any) => !s.room_id).length,
+      missing: sessionsRows.filter((s) => !s.room_id).length,
     },
     {
       label: "محاضرات بدون وقت",
       total: sessionsRows.length,
-      missing: sessionsRows.filter(
-        (s: any) => !s.start_time || !s.end_time || s.day_of_week === null,
-      ).length,
+      missing: sessionsRows.filter((s) => !s.start_time || !s.end_time || s.day_of_week === null)
+        .length,
     },
   ];
 
