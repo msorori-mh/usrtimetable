@@ -27,13 +27,13 @@ export async function fetchCollegePlanComponentRoomTypeMissing(
       explicit_group_size,
       required_room_type_id,
       college_id,
-      plan_courses(
+      plan_courses!pcc_plan_course_college_fkey(
         semester,
         courses(code, name),
         academic_levels(name),
         study_plans(academic_programs(name))
       ),
-      room_types(id, college_id, is_active, default_capacity)
+      room_types!pcc_room_type_college_fkey(id, college_id, is_active, default_capacity)
     `,
     )
     .eq("college_id", collegeId);

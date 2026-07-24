@@ -142,7 +142,7 @@ function AcademicCohortsPage() {
       const full = await supabase
         .from("delivery_groups")
         .select(
-          "id, cohort_id, component_id, group_code, group_number, expected_students, capacity_limit, active, excluded_from_standard_workload, is_obsolete, plan_course_components(component_type, weekly_contact_hours)",
+          "id, cohort_id, component_id, group_code, group_number, expected_students, capacity_limit, active, excluded_from_standard_workload, is_obsolete, plan_course_components!dg_component_college_fkey(component_type, weekly_contact_hours)",
         )
         .eq("college_id", active!.id)
         .eq("cohort_id", effectiveCohortId!)
@@ -153,7 +153,7 @@ function AcademicCohortsPage() {
       const { data, error } = await supabase
         .from("delivery_groups")
         .select(
-          "id, cohort_id, component_id, group_code, expected_students, capacity_limit, active, plan_course_components(component_type, weekly_contact_hours)",
+          "id, cohort_id, component_id, group_code, expected_students, capacity_limit, active, plan_course_components!dg_component_college_fkey(component_type, weekly_contact_hours)",
         )
         .eq("college_id", active!.id)
         .eq("cohort_id", effectiveCohortId!)

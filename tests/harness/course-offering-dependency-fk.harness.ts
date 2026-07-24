@@ -90,12 +90,16 @@ function run() {
     "orphan insert rejected by validated FK",
   );
 
-  // UI / guard: used offering delete rejected; unused allowed; bulk respects constraints
-  assert(ui.includes("teaching_assignments"), "UI counts TA");
-  assert(ui.includes("course_offering_sections"), "UI counts COS");
-  assert(ui.includes("schedule_sessions"), "UI counts sessions");
-  assert(ui.includes("offeringDeleteBlockedToastMessage"), "UI Arabic toast");
-  assert(ui.includes("OFFERING_IN_USE"), "UI in-use gate");
+  // Offerings UI is read-only (Phase 9.2); delete guard lives in offering-delete-guard.ts.
+  assert(
+    ui.includes("Read-only diagnostic") || ui.includes("manual Create/Edit/Delete/import disabled"),
+    "offerings UI read-only diagnostic",
+  );
+  assert(guard.includes("teachingAssignmentCount"), "guard counts TA");
+  assert(guard.includes("courseOfferingSectionCount"), "guard counts COS");
+  assert(guard.includes("scheduleSessionCount"), "guard counts sessions");
+  assert(guard.includes("offeringDeleteBlockedToastMessage"), "guard Arabic toast");
+  assert(guard.includes("OFFERING_IN_USE"), "guard in-use gate");
   assert(guard.includes(OFFERING_IN_USE_DELETE_MESSAGE), "Arabic message constant");
 
   assert(
