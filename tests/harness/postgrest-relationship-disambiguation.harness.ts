@@ -68,6 +68,7 @@ const SCAN_PATHS = [
   "src/routes/_authenticated/teaching-assignments.tsx",
   "src/lib/reports/readiness.ts",
   "src/lib/academic-delivery/cohort-delivery-group-room-type-gate.ts",
+  "src/lib/academic-delivery/cohort-curriculum-plan-courses.ts",
   "src/lib/academic-delivery/plan-component-room-type-readiness.ts",
   "src/lib/academic-delivery/generate-delivery-groups.ts",
   "src/lib/schedule-builder/queries.ts",
@@ -124,12 +125,22 @@ function run() {
 
   const gate = read("src/lib/academic-delivery/cohort-delivery-group-room-type-gate.ts");
   assert(
-    gate.includes("academic_programs!ac_program_college_fkey(name)"),
-    "cohort gate disambiguates academic_programs",
+    !gate.includes('from("course_offerings")'),
+    "cohort gate does not query legacy course_offerings",
   );
   assert(
-    !gate.includes("academic_programs(name)"),
-    "cohort gate has no bare academic_programs embed",
+    gate.includes("resolveCohortCurriculumPlanCourses"),
+    "cohort gate uses plan_courses curriculum resolver",
+  );
+
+  const curriculum = read("src/lib/academic-delivery/cohort-curriculum-plan-courses.ts");
+  assert(
+    curriculum.includes("academic_programs!ac_program_college_fkey(name)"),
+    "curriculum resolver disambiguates academic_programs",
+  );
+  assert(
+    !curriculum.includes("academic_programs(name)"),
+    "curriculum resolver has no bare academic_programs embed",
   );
 
   const readiness = read("src/lib/academic-delivery/plan-component-room-type-readiness.ts");
