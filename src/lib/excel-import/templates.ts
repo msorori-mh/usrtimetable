@@ -187,11 +187,35 @@ export const TEMPLATES: Record<string, TemplateDef> = {
       { key: "labs_per_week", header: "عدد_المعامل_أسبوعياً", type: "number", example: "1" },
       { key: "lab_session_duration", header: "مدة_المعمل", type: "number", example: "2" },
       {
-        key: "required_room_type_for_lecture",
+        key: "required_room_type_code_lecture",
+        header: "رمز_نوع_قاعة_المحاضرة",
+        example: "lecture_hall",
+      },
+      {
+        key: "required_room_type_code_practical",
+        header: "رمز_نوع_قاعة_المعمل",
+        example: "computer_lab",
+      },
+      {
+        key: "required_room_type_code_tutorial",
+        header: "رمز_نوع_قاعة_التمرين",
+        example: "lecture_hall",
+      },
+      {
+        key: "required_room_type_code_project",
+        header: "رمز_نوع_قاعة_المشروع",
+        example: "seminar_room",
+      },
+      {
+        key: "_legacy_required_room_type_code_lecture",
         header: "نوع_قاعة_المحاضرة",
         example: "lecture_hall",
       },
-      { key: "required_room_type_for_lab", header: "نوع_قاعة_المعمل", example: "computer_lab" },
+      {
+        key: "_legacy_required_room_type_code_practical",
+        header: "نوع_قاعة_المعمل",
+        example: "computer_lab",
+      },
     ],
   },
 
@@ -242,11 +266,35 @@ export const TEMPLATES: Record<string, TemplateDef> = {
       { key: "labs_per_week", header: "عدد_المعامل_أسبوعياً", type: "number", example: "1" },
       { key: "lab_session_duration", header: "مدة_المعمل", type: "number", example: "2" },
       {
-        key: "required_room_type_for_lecture",
+        key: "required_room_type_code_lecture",
+        header: "رمز_نوع_قاعة_المحاضرة",
+        example: "lecture_hall",
+      },
+      {
+        key: "required_room_type_code_practical",
+        header: "رمز_نوع_قاعة_المعمل",
+        example: "computer_lab",
+      },
+      {
+        key: "required_room_type_code_tutorial",
+        header: "رمز_نوع_قاعة_التمرين",
+        example: "lecture_hall",
+      },
+      {
+        key: "required_room_type_code_project",
+        header: "رمز_نوع_قاعة_المشروع",
+        example: "seminar_room",
+      },
+      {
+        key: "_legacy_required_room_type_code_lecture",
         header: "نوع_قاعة_المحاضرة",
         example: "lecture_hall",
       },
-      { key: "required_room_type_for_lab", header: "نوع_قاعة_المعمل", example: "computer_lab" },
+      {
+        key: "_legacy_required_room_type_code_practical",
+        header: "نوع_قاعة_المعمل",
+        example: "computer_lab",
+      },
     ],
   },
 

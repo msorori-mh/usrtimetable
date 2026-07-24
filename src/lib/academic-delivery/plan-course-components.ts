@@ -79,7 +79,7 @@ export function derivePlanCourseComponents(input: ExplicitHoursInput): DerivedCo
     out.push({
       component_type: "project",
       weekly_contact_hours: project > 0 ? project : 0,
-      is_timetabled: true,
+      is_timetabled: project > 0,
       counts_toward_regular_load: false,
       counts_toward_overtime: false,
       compensation_mode: "none",

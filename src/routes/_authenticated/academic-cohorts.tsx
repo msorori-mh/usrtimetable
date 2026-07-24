@@ -7,6 +7,7 @@ import { useActiveCollege } from "@/hooks/use-colleges";
 import { useCanManageActiveCollege } from "@/hooks/use-can-manage";
 import { useGenerateDeliveryGroups } from "@/hooks/use-generate-delivery-groups";
 import { useGenerateCohortCurriculum } from "@/hooks/use-generate-cohort-curriculum";
+import { checkCohortDeliveryGroupRoomTypes } from "@/lib/academic-delivery/cohort-delivery-group-room-type-gate";
 import type { CohortCurriculumSummary } from "@/lib/academic-delivery/cohort-curriculum";
 import type { DeliveryGroupGeneratorSummary } from "@/lib/academic-delivery/delivery-group-generator-summary";
 import { CollegeSwitcher } from "@/components/college-switcher";
@@ -162,6 +163,14 @@ function AcademicCohortsPage() {
     },
   });
 
+  const { data: roomTypeGate } = useQuery({
+    queryKey: ["cohort-dg-room-type-gate", effectiveCohortId],
+    enabled: !!effectiveCohortId,
+    queryFn: () => checkCohortDeliveryGroupRoomTypes(effectiveCohortId!),
+  });
+
+  const roomTypeBlocker = roomTypeGate && !roomTypeGate.ok ? roomTypeGate.components : [];
+
   const { data: assignmentCounts } = useQuery({
     queryKey: ["delivery-group-assignments", active?.id, effectiveCohortId],
     enabled: !!active && !!effectiveCohortId && (groups?.length ?? 0) > 0,
@@ -276,7 +285,7 @@ function AcademicCohortsPage() {
                     </Button>
                     <Button
                       size="sm"
-                      disabled={generate.isPending}
+                      disabled={generate.isPending || roomTypeBlocker.length > 0}
                       onClick={() => setConfirmOpen(true)}
                     >
                       توليد مجموعات المحاضرات والمعامل
@@ -288,13 +297,36 @@ function AcademicCohortsPage() {
               </Card>
             )}
 
+            {roomTypeBlocker.length > 0 ? (
+              <Card
+                className="border-destructive/40 bg-destructive/5 p-4 text-sm"
+                data-testid="cohort-room-type-blocker"
+              >
+                <p className="font-semibold text-destructive">
+                  لا يمكن توليد مجموعات المحاضرات والمعامل — أنواع قاعات مفقودة أو غير صالحة
+                </p>
+                <p className="mt-1 text-muted-foreground">
+                  أكمل رموز أنواع القاعات في استيراد الخطة الدراسية للمكوّنات المجدولة أدناه، ثم أعد
+                  الاستيراد.
+                </p>
+                <ul className="mt-3 max-h-48 space-y-1 overflow-y-auto text-xs">
+                  {roomTypeBlocker.map((m) => (
+                    <li key={m.componentId}>
+                      {m.courseCode} ({m.courseName}) · {m.componentType} · {m.referenceState}
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            ) : null}
+
             <Card className="overflow-hidden">
               <div className="border-b px-4 py-3 text-sm font-medium">مجموعات المكوّنات</div>
               {groupsLoading ? (
                 <p className="p-4 text-sm text-muted-foreground">جاري التحميل…</p>
               ) : (groups ?? []).length === 0 ? (
                 <p className="p-4 text-sm text-muted-foreground">
-                  لا توجد مجموعات بعد. ولّد المجموعات بعد توفر مقررات الدفعة الدراسية ومكوّنات الخطة.
+                  لا توجد مجموعات بعد. ولّد المجموعات بعد توفر مقررات الدفعة الدراسية ومكوّنات
+                  الخطة.
                 </p>
               ) : (
                 <div className="overflow-x-auto">
