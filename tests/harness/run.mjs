@@ -58,6 +58,7 @@ export const harnesses = [
   "postgrest-relationship-disambiguation.harness.ts",
   "postgrest-relationship-disambiguation-runtime.harness.ts",
   "scheduling-initial-delivery-runtime-closure.harness.ts",
+  "teaching-assignments-source-workbook-import.harness.ts",
 ];
 
 const historicalArtifacts = new Map([

@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveCollege } from "@/hooks/use-colleges";
@@ -27,9 +27,28 @@ import {
   OFFICIAL_IMPORT_ORDER,
 } from "@/lib/excel-import/registry";
 import type { ImportEntity, ImportMode, ParsedRow, RowError } from "@/lib/excel-import/types";
+import {
+  detectWorkbookMode,
+  previewSourceWorkbookImport,
+} from "@/lib/excel-import/teaching-assignments-source-import";
+import { parseSourceWorkbookFile } from "@/lib/excel-import/teaching-assignments-source-parser";
+import {
+  SOURCE_STUDY_SYSTEM_OPTIONS,
+  type SourceStudySystemScope,
+  type TeachingImportWorkbookMode,
+} from "@/lib/excel-import/teaching-assignments-source-schema";
+import type { SourceResolutionPreview } from "@/lib/excel-import/teaching-assignments-source-resolver";
 
 export const Route = createFileRoute("/_authenticated/import")({
-  head: () => ({ meta: [{ title: "استيراد البيانات من Excel" }, { name: "description", content: "تنزيل القوالب الرسمية ورفع ملفات Excel وتحليلها ثم تأكيد الاستيراد." }] }),
+  head: () => ({
+    meta: [
+      { title: "استيراد البيانات من Excel" },
+      {
+        name: "description",
+        content: "تنزيل القوالب الرسمية ورفع ملفات Excel وتحليلها ثم تأكيد الاستيراد.",
+      },
+    ],
+  }),
   component: ImportPage,
 });
 
@@ -55,6 +74,9 @@ function ImportPage() {
   const [entity, setEntity] = useState<ImportEntity>("academic_terms");
   const [mode, setMode] = useState<ImportMode>("insert_only");
   const [file, setFile] = useState<File | null>(null);
+  const [workbookMode, setWorkbookMode] = useState<TeachingImportWorkbookMode | null>(null);
+  const [studySystemScope, setStudySystemScope] = useState<SourceStudySystemScope>("regular_only");
+  const [sheetTermMap, setSheetTermMap] = useState<Record<string, string>>({});
   const [preview, setPreview] = useState<{
     valid: ParsedRow[];
     invalid: ParsedRow[];
@@ -62,7 +84,24 @@ function ImportPage() {
     jobId: string | null;
     total: number;
     missingHeaders: string[];
+    sourceResolution?: SourceResolutionPreview;
+    sourceSheets?: string[];
   } | null>(null);
+
+  const { data: collegeTerms = [] } = useQuery({
+    queryKey: ["import-academic-terms", active?.id],
+    enabled: !!active && entity === "teaching_assignments_v2",
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("academic_terms")
+        .select("id, code, name, term_type")
+        .eq("college_id", active!.id)
+        .eq("is_active", true)
+        .order("code");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
 
   const downloadTemplate = async () => {
     try {
@@ -83,6 +122,50 @@ function ImportPage() {
   const previewMut = useMutation({
     mutationFn: async () => {
       if (!active || !file || !user) throw new Error("بيانات ناقصة");
+
+      if (entity === "teaching_assignments_v2") {
+        const detectedMode = await detectWorkbookMode(file);
+        setWorkbookMode(detectedMode);
+
+        if (detectedMode === "academic_source_workbook") {
+          const missingTerms = Object.keys(sheetTermMap).length === 0;
+          const sourcePreview = await previewSourceWorkbookImport({
+            file,
+            collegeId: active.id,
+            sheetTermMap,
+            studySystemScope,
+          });
+          const sheetNames = sourcePreview.workbook.sheets.map((s) => s.sheetName);
+          const unmappedSheets = sheetNames.filter((n) => !sheetTermMap[n]);
+          if (unmappedSheets.length > 0) {
+            throw new Error(`حدد الفصل الأكاديمي لكل ورقة: ${unmappedSheets.join("، ")}`);
+          }
+          if (missingTerms && sheetNames.length > 0) {
+            throw new Error("حدد الفصل الأكاديمي لكل ورقة في الدفتر");
+          }
+          const jobId = await createJobAndPersistErrors(
+            entity,
+            mode,
+            active.id,
+            file.name,
+            sourcePreview.resolution.totals.sourceRows,
+            sourcePreview.validRows,
+            sourcePreview.errors,
+            user.id,
+          );
+          return {
+            valid: sourcePreview.validRows,
+            invalid: [],
+            errors: sourcePreview.errors,
+            jobId,
+            total: sourcePreview.resolution.totals.sourceRows,
+            missingHeaders: [],
+            sourceResolution: sourcePreview.resolution,
+            sourceSheets: sheetNames,
+          };
+        }
+      }
+
       const { headers, rows } = await parseExcel(file);
       const result = await validate(entity, headers, rows, active.id);
       const jobId = await createJobAndPersistErrors(
@@ -148,6 +231,24 @@ function ImportPage() {
   const reset = () => {
     setFile(null);
     setPreview(null);
+    setWorkbookMode(null);
+    setSheetTermMap({});
+  };
+
+  const onFileSelected = async (next: File | null) => {
+    setFile(next);
+    setPreview(null);
+    setSheetTermMap({});
+    if (next && entity === "teaching_assignments_v2") {
+      try {
+        const detected = await detectWorkbookMode(next);
+        setWorkbookMode(detected);
+      } catch {
+        setWorkbookMode(null);
+      }
+    } else {
+      setWorkbookMode(null);
+    }
   };
 
   if (!active)
@@ -164,6 +265,13 @@ function ImportPage() {
         <p className="mt-4 text-muted-foreground">لا تملك صلاحية الاستيراد لهذه الكلّية.</p>
       </div>
     );
+
+  const isSourceMode =
+    entity === "teaching_assignments_v2" && workbookMode === "academic_source_workbook";
+  const allSheetTermsSelected =
+    !isSourceMode ||
+    (Object.keys(sheetTermMap).length > 0 &&
+      Object.values(sheetTermMap).every((v) => String(v).trim() !== ""));
 
   const tpl = TEMPLATES[entity];
   const selectedMeta = ENTITIES.find((e) => e.value === entity);
@@ -249,6 +357,22 @@ function ImportPage() {
               ))}
             </select>
           </div>
+          {entity === "teaching_assignments_v2" && (
+            <div>
+              <Label>نظام الدراسة (دفتر الإسناد الأكاديمي)</Label>
+              <select
+                className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                value={studySystemScope}
+                onChange={(e) => setStudySystemScope(e.target.value as SourceStudySystemScope)}
+              >
+                {SOURCE_STUDY_SYSTEM_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="flex items-end">
             <Button variant="outline" className="w-full" onClick={downloadTemplate}>
               <Download className="ml-2 h-4 w-4" /> تنزيل قالب Excel
@@ -263,8 +387,7 @@ function ImportPage() {
             accept=".xlsx"
             className="hidden"
             onChange={(e) => {
-              setFile(e.target.files?.[0] ?? null);
-              setPreview(null);
+              void onFileSelected(e.target.files?.[0] ?? null);
             }}
           />
           <label htmlFor="xfile" className="flex cursor-pointer flex-col items-center gap-2">
@@ -272,12 +395,32 @@ function ImportPage() {
             <span className="font-medium">{file ? file.name : "اختر ملف .xlsx أو اسحبه هنا"}</span>
             <span className="text-xs text-muted-foreground">
               الكيان: {tpl.label} · المفتاح الفريد: {tpl.uniqueKeyLabel}
+              {workbookMode === "academic_source_workbook"
+                ? " · وضع: دفتر إسناد أكاديمي"
+                : workbookMode === "official_template"
+                  ? " · وضع: القالب الرسمي"
+                  : ""}
             </span>
           </label>
         </div>
 
+        {entity === "teaching_assignments_v2" &&
+          file &&
+          workbookMode === "academic_source_workbook" &&
+          !preview && (
+            <SourceSheetTermPicker
+              file={file}
+              terms={collegeTerms}
+              sheetTermMap={sheetTermMap}
+              onChange={setSheetTermMap}
+            />
+          )}
+
         <div className="flex flex-wrap gap-2">
-          <Button onClick={() => previewMut.mutate()} disabled={!file || previewMut.isPending}>
+          <Button
+            onClick={() => previewMut.mutate()}
+            disabled={!file || previewMut.isPending || (isSourceMode && !allSheetTermsSelected)}
+          >
             {previewMut.isPending ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : null}
             تحليل ومعاينة
           </Button>
@@ -305,6 +448,27 @@ function ImportPage() {
               tone={preview.errors.length ? "err" : "ok"}
             />
           </div>
+
+          {preview.sourceResolution && (
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              <Stat label="مصدر — متجاهل" value={preview.sourceResolution.totals.ignored} />
+              <Stat
+                label="مصدر — matched"
+                value={preview.sourceResolution.totals.matched}
+                tone="ok"
+              />
+              <Stat
+                label="مصدر — BLOCKED"
+                value={preview.sourceResolution.totals.blocked}
+                tone={preview.sourceResolution.totals.blocked ? "err" : "ok"}
+              />
+              <Stat
+                label="توسيع الإسنادات"
+                value={preview.sourceResolution.totals.expandedAssignments}
+                tone="ok"
+              />
+            </div>
+          )}
 
           {preview.missingHeaders.length > 0 && (
             <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
@@ -396,7 +560,12 @@ function ImportPage() {
             </Button>
             <Button
               onClick={() => commitMut.mutate()}
-              disabled={preview.valid.length === 0 || commitMut.isPending}
+              disabled={
+                preview.valid.length === 0 ||
+                commitMut.isPending ||
+                preview.missingHeaders.length > 0 ||
+                (preview.sourceResolution?.hasBlockers ?? false)
+              }
             >
               {commitMut.isPending ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : null}
               تأكيد الاستيراد ({preview.valid.length} صف)
@@ -404,6 +573,64 @@ function ImportPage() {
           </div>
         </Card>
       )}
+    </div>
+  );
+}
+
+function SourceSheetTermPicker({
+  file,
+  terms,
+  sheetTermMap,
+  onChange,
+}: {
+  file: File;
+  terms: Array<{ id: string; code: string; name: string; term_type: string | null }>;
+  sheetTermMap: Record<string, string>;
+  onChange: (next: Record<string, string>) => void;
+}) {
+  const [sheetNames, setSheetNames] = useState<string[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const wb = await parseSourceWorkbookFile(file);
+      if (cancelled) return;
+      const names = wb.sheets.map((s) => s.sheetName);
+      setSheetNames(names);
+      const next: Record<string, string> = { ...sheetTermMap };
+      for (const n of names) {
+        if (!next[n]) next[n] = "";
+      }
+      onChange(next);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- initialize term map once per file
+  }, [file]);
+
+  if (sheetNames.length === 0) return null;
+
+  return (
+    <div className="rounded-md border border-border p-3 space-y-2">
+      <p className="text-sm font-medium">ربط كل ورقة بالفصل الأكاديمي (لا تخلط الفصول)</p>
+      {sheetNames.map((name) => (
+        <div key={name} className="grid gap-2 md:grid-cols-2 items-center">
+          <span className="text-sm text-muted-foreground">{name}</span>
+          <select
+            className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+            value={sheetTermMap[name] ?? ""}
+            onChange={(e) => onChange({ ...sheetTermMap, [name]: e.target.value })}
+          >
+            <option value="">— اختر الفصل —</option>
+            {terms.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.code} — {t.name}
+                {t.term_type ? ` (${t.term_type})` : ""}
+              </option>
+            ))}
+          </select>
+        </div>
+      ))}
     </div>
   );
 }
