@@ -166,6 +166,7 @@ fail-closed, and no plan, component, or audit data is deleted.
 | Static harnesses passed | 39 | 40 | +1 |
 | Static harness failures | 2 | 2 | 0 new failures |
 | Missing historical artifacts | 2 | 2 | unchanged |
+| GitHub Actions `runtime-gates` | baseline suite fails | FAIL (shared suite only) | 0 new failures |
 
 The shared baseline failures are:
 
@@ -178,6 +179,14 @@ The shared missing historical files are:
 
 - `implementation-reports/phase-6-reset-hardening-self-verifying-migrations-01/post-apply-verification.sql`
 - `supabase/migrations/20260717043000_teaching_assignments_v2_runtime_foundation.sql`
+
+Both GitHub Actions runs for commit `d750dff` completed the full workflow.
+Checkout, frozen install, `git diff --check`, scoped ESLint, TypeScript, and
+production build passed. The final harness step reported exactly `40 passed, 2
+failed, 2 missing historical artifacts`; the two failures and two missing files
+are the same clean-baseline findings above. No phase-owned or newly introduced
+check failed. The unrelated baseline artifacts were deliberately not repaired
+or masked in this phase.
 
 The PostgreSQL 17 harness covers legal theory/practical/tutorial/project
 persistence, multi-course batch, replay, legal UUID update, correct actor,
