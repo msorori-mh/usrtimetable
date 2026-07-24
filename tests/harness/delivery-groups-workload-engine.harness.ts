@@ -37,8 +37,7 @@ function assert(cond: boolean, msg: string) {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "../..");
-const MIG =
-  "supabase/migrations/20260716233716_73dc0ba0-e4ba-43be-8628-ef2c36564a62.sql";
+const MIG = "supabase/migrations/20260716233716_73dc0ba0-e4ba-43be-8628-ef2c36564a62.sql";
 
 function read(rel: string) {
   return readFileSync(join(root, rel), "utf8");
@@ -128,7 +127,7 @@ function run() {
 
   // UI / service contracts
   const page = read("src/routes/_authenticated/academic-cohorts.tsx");
-  assert(page.includes("توليد مجموعات التدريس"), "generate button label");
+  assert(page.includes("توليد مجموعات المحاضرات والمعامل"), "generate button label");
   assert(page.includes("AlertDialog"), "explicit confirmation");
   assert(page.includes("useCanManageActiveCollege"), "auth gate UI");
   assert(page.includes("useGenerateDeliveryGroups"), "hook wired");
