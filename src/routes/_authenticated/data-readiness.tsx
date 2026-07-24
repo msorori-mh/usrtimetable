@@ -50,8 +50,8 @@ type ReadinessInstructorRow = {
   specialization: string | null;
   department_id: string | null;
   instructor_type_id: string | null;
-  instructor_types: { code: string; is_external: boolean } | null;
 };
+type ReadinessInstructorTypeRow = { id: string; code: string; is_external: boolean };
 type ReadinessRoomRow = {
   id: string;
   capacity: number | null;
@@ -184,10 +184,7 @@ async function fetchReadiness(collegeId: string) {
     scope(
       supabase
         .from("instructors")
-        .select(
-          "id, specialization, department_id, instructor_type_id, instructor_types:instructor_type_id ( code, is_external )",
-          { count: "exact" },
-        ),
+        .select("id, specialization, department_id, instructor_type_id", { count: "exact" }),
     ),
     scope(
       supabase.from("rooms").select("id, capacity, room_type_id, room_type", { count: "exact" }),
@@ -209,26 +206,23 @@ async function fetchReadiness(collegeId: string) {
 
   const coursesRows = (courses.data ?? []) as ReadinessCourseRow[];
   const planRows = (planCourses.data ?? []) as ReadinessPlanCourseRow[];
-  const instructorsRows: ReadinessInstructorRow[] = (instructors.data ?? []).map((row) => {
-    const record = row as {
-      id: string;
-      specialization: string | null;
-      department_id: string | null;
-      instructor_type_id: string | null;
-      instructor_types?: { code: string; is_external: boolean } | null;
-    };
-    const joined = record.instructor_types;
-    return {
-      id: record.id,
-      specialization: record.specialization,
-      department_id: record.department_id,
-      instructor_type_id: record.instructor_type_id,
-      instructor_types:
-        joined && typeof joined === "object" && "code" in joined
-          ? { code: joined.code, is_external: joined.is_external }
-          : null,
-    };
-  });
+  const instructorsRows = (instructors.data ?? []) as ReadinessInstructorRow[];
+  const instructorTypeIds = [
+    ...new Set(
+      instructorsRows.map((i) => i.instructor_type_id).filter((id): id is string => Boolean(id)),
+    ),
+  ];
+  const { data: instructorTypeRows } =
+    instructorTypeIds.length > 0
+      ? await supabase
+          .from("instructor_types")
+          .select("id, code, is_external")
+          .eq("college_id", collegeId)
+          .in("id", instructorTypeIds)
+      : { data: [] as ReadinessInstructorTypeRow[] };
+  const instructorTypeMap = new Map(
+    ((instructorTypeRows ?? []) as ReadinessInstructorTypeRow[]).map((t) => [t.id, t]),
+  );
   const roomsRows = (rooms.data ?? []) as ReadinessRoomRow[];
   const offeringsRows = (offerings.data ?? []) as ReadinessOfferingRow[];
   const assignmentsRows = (assignments.data ?? []) as ReadinessAssignmentRow[];
@@ -335,7 +329,9 @@ async function fetchReadiness(collegeId: string) {
     other_college: { total: 0, configured: 0 },
   };
   for (const i of instructorsRows) {
-    const cat = categorizeInstructor(i.instructor_types);
+    const cat = categorizeInstructor(
+      i.instructor_type_id ? instructorTypeMap.get(i.instructor_type_id) ?? null : null,
+    );
     byCategory[cat].total += 1;
     if (instructorsWithAvail.has(i.id)) byCategory[cat].configured += 1;
   }
