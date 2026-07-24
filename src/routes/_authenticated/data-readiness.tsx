@@ -330,7 +330,7 @@ async function fetchReadiness(collegeId: string) {
   };
   for (const i of instructorsRows) {
     const cat = categorizeInstructor(
-      i.instructor_type_id ? instructorTypeMap.get(i.instructor_type_id) ?? null : null,
+      i.instructor_type_id ? (instructorTypeMap.get(i.instructor_type_id) ?? null) : null,
     );
     byCategory[cat].total += 1;
     if (instructorsWithAvail.has(i.id)) byCategory[cat].configured += 1;
