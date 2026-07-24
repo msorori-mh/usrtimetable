@@ -57,6 +57,7 @@ export const harnesses = [
   "plan-component-room-type-permanent-fix.harness.ts",
   "postgrest-relationship-disambiguation.harness.ts",
   "postgrest-relationship-disambiguation-runtime.harness.ts",
+  "scheduling-initial-delivery-runtime-closure.harness.ts",
 ];
 
 const historicalArtifacts = new Map([

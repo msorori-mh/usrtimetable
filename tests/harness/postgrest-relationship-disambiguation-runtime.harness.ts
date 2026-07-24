@@ -86,12 +86,26 @@ function run() {
 
   const gateSrc = read("src/lib/academic-delivery/cohort-delivery-group-room-type-gate.ts");
   assert(
-    gateSrc.includes("academic_programs!ac_program_college_fkey(name)"),
-    "room type gate query is disambiguated for programs",
+    !gateSrc.includes('from("course_offerings")'),
+    "room type gate does not query legacy course_offerings",
+  );
+  assert(
+    gateSrc.includes("resolveCohortCurriculumPlanCourses"),
+    "room type gate resolves plan courses via New Flow path",
   );
   assert(
     gateSrc.includes("room_types!pcc_room_type_college_fkey("),
     "room type gate query is disambiguated for room types",
+  );
+
+  const curriculumSrc = read("src/lib/academic-delivery/cohort-curriculum-plan-courses.ts");
+  assert(
+    curriculumSrc.includes("academic_programs!ac_program_college_fkey(name)"),
+    "curriculum resolver disambiguates academic_programs",
+  );
+  assert(
+    !curriculumSrc.includes('from("course_offerings")'),
+    "curriculum resolver avoids legacy course_offerings",
   );
 
   const gateOk = collectMissingRoomTypeComponents(
