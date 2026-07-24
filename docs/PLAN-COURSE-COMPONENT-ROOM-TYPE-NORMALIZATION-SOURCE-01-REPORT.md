@@ -109,6 +109,13 @@ DG والزر الفعلي. لا يحتوي التغيير Migration أو SQL ت
   (`experimental-schedule-reset-room-integrity` و`teaching-assignments-v2-runtime`).
 - lint الشامل: `HOLD_BASELINE_CRLF`؛ آلاف مخالفات CRLF في ملفات غير معدلة. لم تنفذ
   إعادة تنسيق شاملة خارج النطاق.
+- GitHub `runtime-gates` (push وpull_request): FAIL بالملخص نفسه
+  `38 passed, 2 failed, 2 missing historical artifacts`. تشغيل `main` للـHEAD الأساسي
+  `1be21e667a2c0eeac51278450e95d61e1f2f63dd` فاشل أيضًا
+  ([run 30058205019](https://github.com/msorori-mh/usrtimetable/actions/runs/30058205019)).
+  لذلك صنفت النتيجة `HOLD_BASELINE_CI`. لا يمكن إصلاح فشل label داخل هذه المرحلة:
+  harness DG يطلب `مجموعات التدريس` بينما
+  `phase-a1-legacy-navigation-terminology` يمنع المصطلح نفسه صراحة.
 
 ## المرحلة E المؤجلة
 
