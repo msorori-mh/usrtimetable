@@ -2551,6 +2551,235 @@ export type Database = {
         }
         Relationships: []
       }
+      scheduling_cohort_term_headcounts: {
+        Row: {
+          approval_status: string
+          approved_at: string | null
+          approved_by: string | null
+          cohort_id: string
+          college_id: string
+          created_at: string
+          eligible_student_count: number
+          exam_eligible_count: number
+          expected_attendance_count: number
+          id: string
+          notes: string | null
+          registered_student_count: number
+          reserve_margin: number
+          scheduling_headcount: number
+          source: string
+          study_system: string
+          term_id: string
+          updated_at: string
+        }
+        Insert: {
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          cohort_id: string
+          college_id: string
+          created_at?: string
+          eligible_student_count: number
+          exam_eligible_count: number
+          expected_attendance_count: number
+          id?: string
+          notes?: string | null
+          registered_student_count: number
+          reserve_margin?: number
+          scheduling_headcount: number
+          source: string
+          study_system: string
+          term_id: string
+          updated_at?: string
+        }
+        Update: {
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          cohort_id?: string
+          college_id?: string
+          created_at?: string
+          eligible_student_count?: number
+          exam_eligible_count?: number
+          expected_attendance_count?: number
+          id?: string
+          notes?: string | null
+          registered_student_count?: number
+          reserve_margin?: number
+          scheduling_headcount?: number
+          source?: string
+          study_system?: string
+          term_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduling_cohort_term_headcounts_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduling_headcount_cohort_college_fkey"
+            columns: ["cohort_id", "college_id"]
+            isOneToOne: false
+            referencedRelation: "academic_cohorts"
+            referencedColumns: ["id", "college_id"]
+          },
+          {
+            foreignKeyName: "scheduling_headcount_term_college_fkey"
+            columns: ["term_id", "college_id"]
+            isOneToOne: false
+            referencedRelation: "academic_terms"
+            referencedColumns: ["id", "college_id"]
+          },
+        ]
+      }
+      scheduling_headcount_overrides: {
+        Row: {
+          active: boolean
+          approval_status: string
+          approved_at: string | null
+          approved_by: string | null
+          college_id: string
+          course_offering_id: string | null
+          created_at: string
+          exam_eligible_count: number | null
+          headcount_id: string
+          id: string
+          notes: string | null
+          plan_course_component_id: string | null
+          reserve_margin: number | null
+          scheduling_headcount: number
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          college_id: string
+          course_offering_id?: string | null
+          created_at?: string
+          exam_eligible_count?: number | null
+          headcount_id: string
+          id?: string
+          notes?: string | null
+          plan_course_component_id?: string | null
+          reserve_margin?: number | null
+          scheduling_headcount: number
+          source: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          college_id?: string
+          course_offering_id?: string | null
+          created_at?: string
+          exam_eligible_count?: number | null
+          headcount_id?: string
+          id?: string
+          notes?: string | null
+          plan_course_component_id?: string | null
+          reserve_margin?: number | null
+          scheduling_headcount?: number
+          source?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduling_headcount_overrides_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduling_headcount_overrides_course_offering_id_fkey"
+            columns: ["course_offering_id"]
+            isOneToOne: false
+            referencedRelation: "course_offerings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduling_headcount_overrides_headcount_id_fkey"
+            columns: ["headcount_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_cohort_term_headcounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduling_headcount_overrides_plan_course_component_id_fkey"
+            columns: ["plan_course_component_id"]
+            isOneToOne: false
+            referencedRelation: "plan_course_components"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scheduling_headcount_revisions: {
+        Row: {
+          changed_at: string
+          changed_by: string
+          college_id: string
+          headcount_id: string
+          id: string
+          notes: string | null
+          override_id: string | null
+          revision_kind: string
+          snapshot: Json
+        }
+        Insert: {
+          changed_at?: string
+          changed_by: string
+          college_id: string
+          headcount_id: string
+          id?: string
+          notes?: string | null
+          override_id?: string | null
+          revision_kind: string
+          snapshot: Json
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string
+          college_id?: string
+          headcount_id?: string
+          id?: string
+          notes?: string | null
+          override_id?: string | null
+          revision_kind?: string
+          snapshot?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduling_headcount_revisions_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduling_headcount_revisions_headcount_id_fkey"
+            columns: ["headcount_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_cohort_term_headcounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduling_headcount_revisions_override_id_fkey"
+            columns: ["override_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_headcount_overrides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scheduling_settings: {
         Row: {
           allow_3h_sessions: boolean
@@ -3493,6 +3722,14 @@ export type Database = {
         }
         Returns: Json
       }
+      approve_scheduling_cohort_term_headcount: {
+        Args: { p_id: string; p_notes?: string }
+        Returns: Json
+      }
+      archive_scheduling_headcount_override: {
+        Args: { p_id: string; p_notes?: string }
+        Returns: Json
+      }
       assert_delivery_group_assignable: {
         Args: { p_active: boolean; p_is_obsolete: boolean }
         Returns: undefined
@@ -3627,6 +3864,10 @@ export type Database = {
         }
         Returns: Json
       }
+      list_scheduling_headcount_revisions: {
+        Args: { p_headcount_id: string }
+        Returns: Json
+      }
       list_teaching_assignment_workspace: {
         Args: {
           p_assignment_status?: string
@@ -3707,6 +3948,16 @@ export type Database = {
         Args: { p_delivery_group_id: string }
         Returns: string
       }
+      resolve_scheduling_headcount: {
+        Args: {
+          p_cohort_id: string
+          p_college_id: string
+          p_course_offering_id?: string
+          p_plan_course_component_id?: string
+          p_term_id: string
+        }
+        Returns: Json
+      }
       transition_schedule_version: {
         Args: {
           p_college_id: string
@@ -3723,6 +3974,36 @@ export type Database = {
           p_assignment_id: string
           p_expected_updated_at: string
           p_notes?: string
+        }
+        Returns: Json
+      }
+      upsert_scheduling_cohort_term_headcount: {
+        Args: {
+          p_allow_over_eligible?: boolean
+          p_cohort_id: string
+          p_eligible_student_count: number
+          p_exam_eligible_count?: number
+          p_expected_attendance_count: number
+          p_notes?: string
+          p_registered_student_count: number
+          p_reserve_margin?: number
+          p_scheduling_headcount?: number
+          p_source?: string
+          p_term_id: string
+        }
+        Returns: Json
+      }
+      upsert_scheduling_headcount_override: {
+        Args: {
+          p_allow_over_eligible?: boolean
+          p_course_offering_id?: string
+          p_exam_eligible_count?: number
+          p_headcount_id: string
+          p_notes?: string
+          p_plan_course_component_id?: string
+          p_reserve_margin?: number
+          p_scheduling_headcount?: number
+          p_source?: string
         }
         Returns: Json
       }
