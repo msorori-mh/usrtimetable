@@ -54,6 +54,7 @@ export const harnesses = [
   "domain-contract-static.harness.ts",
   "program-department-integrity.harness.ts",
   "reports-read-model-a1-5.harness.ts",
+  "plan-component-room-type-permanent-fix.harness.ts",
 ];
 
 const historicalArtifacts = new Map([

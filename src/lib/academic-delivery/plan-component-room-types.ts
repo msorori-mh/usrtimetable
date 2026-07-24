@@ -1,287 +1,347 @@
+/**
+ * PLAN-COMPONENT-ROOM-TYPE-PERMANENT-FIX-01 — room type requirements for schedulable
+ * plan_course_components. Pure logic (no DB writes); mirrors future import sync + DG gate.
+ */
+
 import {
   derivePlanCourseComponents,
   type ComponentType,
+  type DerivedComponent,
   type ExplicitHoursInput,
 } from "./plan-course-components";
 import { normalizeToken, resolveAliasToCanonical } from "@/lib/excel-import/room-type-normalize";
 
-export type PlanRoomTypeField =
+export type PlanComponentRoomTypeField =
   | "required_room_type_code_lecture"
   | "required_room_type_code_practical"
   | "required_room_type_code_tutorial"
   | "required_room_type_code_project";
 
-export type PlanRoomTypeErrorCode =
-  | "ROOM_TYPE_CODE_REQUIRED"
-  | "ROOM_TYPE_CODE_UNKNOWN"
-  | "ROOM_TYPE_CODE_AMBIGUOUS"
-  | "ROOM_TYPE_INACTIVE"
-  | "ROOM_TYPE_ZERO_CAPACITY"
-  | "ROOM_TYPE_WRONG_COLLEGE"
-  | "ROOM_TYPE_ALIAS_CONFLICT";
+export type RoomTypeReferenceState = "NULL" | "ORPHAN" | "INACTIVE" | "ZERO_CAPACITY" | "OK";
 
-export const PLAN_ROOM_TYPE_HEADERS: Record<PlanRoomTypeField, string> = {
-  required_room_type_code_lecture: "نوع_قاعة_المحاضرة_رمز",
-  required_room_type_code_practical: "نوع_قاعة_العملي_رمز",
-  required_room_type_code_tutorial: "نوع_قاعة_التمرين_رمز",
-  required_room_type_code_project: "نوع_قاعة_المشروع_رمز",
+export type RoomTypeCatalogEntry = {
+  id: string;
+  code: string;
+  college_id: string;
+  is_active: boolean;
+  default_capacity: number;
 };
 
-export const PLAN_ROOM_TYPE_ALIASES = {
-  required_room_type_code_lecture: ["نوع_قاعة_المحاضرة", "required_room_type_for_lecture"],
-  required_room_type_code_practical: ["نوع_قاعة_المعمل", "required_room_type_for_lab"],
-  required_room_type_code_tutorial: [],
-  required_room_type_code_project: [],
-} satisfies Record<PlanRoomTypeField, string[]>;
-
-const COMPONENT_FIELD: Record<Exclude<ComponentType, "summer_training">, PlanRoomTypeField> = {
+const COMPONENT_ROOM_TYPE_FIELD: Record<
+  Exclude<ComponentType, "summer_training">,
+  PlanComponentRoomTypeField
+> = {
   theory: "required_room_type_code_lecture",
   practical: "required_room_type_code_practical",
   tutorial: "required_room_type_code_tutorial",
   project: "required_room_type_code_project",
 };
 
-export interface RoomTypeCatalogEntry {
-  id: string;
-  code: string;
-  college_id: string;
-  is_active: boolean;
-  default_capacity: number;
-}
+/** Legacy Excel headers → canonical import field keys. */
+export const STUDY_PLAN_ROOM_TYPE_HEADER_ALIASES: Record<string, PlanComponentRoomTypeField> = {
+  نوع_قاعة_المحاضرة: "required_room_type_code_lecture",
+  نوع_قاعة_المعمل: "required_room_type_code_practical",
+};
 
-export interface PlanRoomTypeContext {
-  rowNumber: number;
-  programCode: string;
-  courseCode: string;
-  courseName: string;
-  levelNumber: number | string;
-  semester: number | string;
-}
+export const STUDY_PLAN_ROOM_TYPE_FIELD_HEADERS: Record<PlanComponentRoomTypeField, string> = {
+  required_room_type_code_lecture: "رمز_نوع_قاعة_المحاضرة",
+  required_room_type_code_practical: "رمز_نوع_قاعة_المعمل",
+  required_room_type_code_tutorial: "رمز_نوع_قاعة_التمرين",
+  required_room_type_code_project: "رمز_نوع_قاعة_المشروع",
+};
 
-export interface PlanRoomTypeError extends PlanRoomTypeContext {
-  errorCode: PlanRoomTypeErrorCode;
-  componentType: ComponentType;
-  componentHours: number;
-  field: PlanRoomTypeField;
-  rawValue?: string;
-  reason: string;
-  message: string;
-}
-
-export type PlanRoomTypeValues = Partial<Record<PlanRoomTypeField, unknown>> &
-  Record<string, unknown>;
-
-function canonical(raw: unknown): string | null {
-  const token = normalizeToken(raw == null ? null : String(raw));
-  return token ? resolveAliasToCanonical(token) : null;
-}
-
-function present(raw: unknown): boolean {
-  return raw != null && String(raw).trim() !== "";
-}
-
-export function resolvePlanRoomTypeField(
-  field: PlanRoomTypeField,
-  values: PlanRoomTypeValues,
-): { raw: string | null; canonicalCode: string | null; conflict: boolean } {
-  const candidates = [field, ...PLAN_ROOM_TYPE_ALIASES[field]]
-    .map((key) => values[key])
-    .filter(present)
-    .map((raw) => ({ raw: String(raw).trim(), canonical: canonical(raw) }));
-  const distinct = new Set(
-    candidates.map((item) => item.canonical ?? `?${item.raw.toLowerCase()}`),
-  );
-  return {
-    raw: candidates[0]?.raw ?? null,
-    canonicalCode: candidates[0]?.canonical ?? null,
-    conflict: distinct.size > 1,
-  };
-}
-
-function error(
-  context: PlanRoomTypeContext,
+export function roomTypeFieldForComponent(
   componentType: ComponentType,
-  componentHours: number,
-  field: PlanRoomTypeField,
-  errorCode: PlanRoomTypeErrorCode,
-  rawValue: string | null,
-  reason: string,
-): PlanRoomTypeError {
-  const message = [
-    `Excel row=${context.rowNumber}`,
-    `program=${context.programCode}`,
-    `course=${context.courseCode} (${context.courseName})`,
-    `level=${context.levelNumber}`,
-    `semester=${context.semester}`,
-    `component=${componentType}`,
-    `hours=${componentHours}`,
-    `field=${field}`,
-    `raw=${rawValue ?? "<empty>"}`,
-    `reason=${reason}`,
-  ].join("; ");
-  return {
-    ...context,
-    componentType,
-    componentHours,
-    field,
-    errorCode,
-    rawValue: rawValue ?? undefined,
-    reason,
-    message,
-  };
+): PlanComponentRoomTypeField | null {
+  if (componentType === "summer_training") return null;
+  return COMPONENT_ROOM_TYPE_FIELD[componentType];
+}
+
+/** Room type mandatory only when weekly hours > 0 and component enters scheduling. */
+export function requiresRoomTypeForComponent(component: DerivedComponent): boolean {
+  if (component.component_type === "summer_training") return false;
+  if (!component.is_timetabled) return false;
+  if (component.weekly_contact_hours <= 0) return false;
+  return true;
+}
+
+export function classifyRoomTypeReference(
+  roomTypeId: string | null | undefined,
+  catalogById: Map<string, RoomTypeCatalogEntry>,
+  collegeId: string,
+): RoomTypeReferenceState {
+  if (!roomTypeId) return "NULL";
+  const row = catalogById.get(roomTypeId);
+  if (!row) return "ORPHAN";
+  if (row.college_id !== collegeId) return "ORPHAN";
+  if (!row.is_active) return "INACTIVE";
+  if (!(row.default_capacity > 0)) return "ZERO_CAPACITY";
+  return "OK";
+}
+
+export type PlanRoomTypeValidationError = {
+  errorCode:
+    | "missing_room_type_code"
+    | "unknown_room_type_code"
+    | "inactive_room_type"
+    | "zero_capacity_room_type"
+    | "cross_college_room_type";
+  courseCode: string;
+  componentType: ComponentType;
+  fieldName: PlanComponentRoomTypeField;
+  header: string;
+  message: string;
+  rawValue?: string;
+};
+
+export type PlanRoomTypeCodeInput = Partial<
+  Record<PlanComponentRoomTypeField, string | null | undefined>
+>;
+
+function resolveCodeToCatalogId(
+  rawCode: string | null | undefined,
+  catalogByCode: Map<string, RoomTypeCatalogEntry>,
+): { canonical: string | null; catalog: RoomTypeCatalogEntry | null } {
+  const tok = normalizeToken(rawCode);
+  if (!tok) return { canonical: null, catalog: null };
+  const canonical = resolveAliasToCanonical(tok);
+  if (!canonical) return { canonical: null, catalog: null };
+  return { canonical, catalog: catalogByCode.get(canonical) ?? null };
 }
 
 /**
- * Resolve every schedulable positive-hour component. Summer training is intentionally
- * excluded because it is non-timetabled; callers that schedule it must fail separately
- * with SUMMER_TRAINING_ROOM_POLICY_REQUIRED.
+ * Validate room type codes for all schedulable components on one import row.
+ * Collects every error — never stops at the first failure.
  */
-export function validatePlanComponentRoomTypes(input: {
-  context: PlanRoomTypeContext;
+export function validatePlanRowRoomTypes(input: {
+  courseCode: string;
   hours: ExplicitHoursInput;
-  values: PlanRoomTypeValues;
+  roomTypeCodes: PlanRoomTypeCodeInput;
   collegeId: string;
   catalog: RoomTypeCatalogEntry[];
-}): {
-  errors: PlanRoomTypeError[];
-  resolvedIds: Partial<Record<ComponentType, string>>;
-} {
-  const errors: PlanRoomTypeError[] = [];
+}): { errors: PlanRoomTypeValidationError[]; resolvedIds: Partial<Record<ComponentType, string>> } {
+  const catalogByCode = new Map(input.catalog.map((r) => [r.code, r]));
+  const catalogById = new Map(input.catalog.map((r) => [r.id, r]));
+  const components = derivePlanCourseComponents(input.hours);
+  const errors: PlanRoomTypeValidationError[] = [];
   const resolvedIds: Partial<Record<ComponentType, string>> = {};
 
-  for (const component of derivePlanCourseComponents(input.hours)) {
-    if (
-      component.component_type === "summer_training" ||
-      !component.is_timetabled ||
-      component.weekly_contact_hours <= 0
-    ) {
+  for (const component of components) {
+    if (!requiresRoomTypeForComponent(component)) continue;
+
+    const field = roomTypeFieldForComponent(component.component_type);
+    if (!field) continue;
+
+    const header = STUDY_PLAN_ROOM_TYPE_FIELD_HEADERS[field];
+    const rawCode = input.roomTypeCodes[field];
+    const { canonical, catalog } = resolveCodeToCatalogId(rawCode, catalogByCode);
+
+    if (!canonical || !rawCode || String(rawCode).trim() === "") {
+      errors.push({
+        errorCode: "missing_room_type_code",
+        courseCode: input.courseCode,
+        componentType: component.component_type,
+        fieldName: field,
+        header,
+        message: `المقرر ${input.courseCode}: المكوّن ${component.component_type} يتطلب ${header} (ساعات أسبوعية=${component.weekly_contact_hours})`,
+        rawValue: rawCode == null ? undefined : String(rawCode),
+      });
       continue;
     }
-    const field = COMPONENT_FIELD[component.component_type];
-    const resolved = resolvePlanRoomTypeField(field, input.values);
-    const fail = (code: PlanRoomTypeErrorCode, reason: string) =>
-      errors.push(
-        error(
-          input.context,
-          component.component_type,
-          component.weekly_contact_hours,
-          field,
-          code,
-          resolved.raw,
-          reason,
-        ),
-      );
-    if (resolved.conflict) {
-      fail("ROOM_TYPE_ALIAS_CONFLICT", "canonical and alias values disagree");
+
+    if (!catalog) {
+      errors.push({
+        errorCode: "unknown_room_type_code",
+        courseCode: input.courseCode,
+        componentType: component.component_type,
+        fieldName: field,
+        header,
+        message: `المقرر ${input.courseCode}: المكوّن ${component.component_type} — ${header} غير معروف: ${rawCode}`,
+        rawValue: String(rawCode),
+      });
       continue;
     }
-    if (!resolved.raw) {
-      fail("ROOM_TYPE_CODE_REQUIRED", "positive schedulable component hours require a code");
+
+    if (catalog.college_id !== input.collegeId) {
+      errors.push({
+        errorCode: "cross_college_room_type",
+        courseCode: input.courseCode,
+        componentType: component.component_type,
+        fieldName: field,
+        header,
+        message: `المقرر ${input.courseCode}: المكوّن ${component.component_type} — ${header} (${rawCode}) لا يتبع نفس الكلية`,
+        rawValue: String(rawCode),
+      });
       continue;
     }
-    if (!resolved.canonicalCode) {
-      fail("ROOM_TYPE_CODE_UNKNOWN", "code or alias is not recognized");
+
+    if (!catalog.is_active) {
+      errors.push({
+        errorCode: "inactive_room_type",
+        courseCode: input.courseCode,
+        componentType: component.component_type,
+        fieldName: field,
+        header,
+        message: `المقرر ${input.courseCode}: المكوّن ${component.component_type} — نوع القاعة ${rawCode} غير نشط`,
+        rawValue: String(rawCode),
+      });
       continue;
     }
-    const matches = input.catalog.filter((row) => canonical(row.code) === resolved.canonicalCode);
-    const local = matches.filter((row) => row.college_id === input.collegeId);
-    if (local.length === 0 && matches.length > 0) {
-      fail("ROOM_TYPE_WRONG_COLLEGE", "code exists only outside the plan college");
+
+    if (!(catalog.default_capacity > 0)) {
+      errors.push({
+        errorCode: "zero_capacity_room_type",
+        courseCode: input.courseCode,
+        componentType: component.component_type,
+        fieldName: field,
+        header,
+        message: `المقرر ${input.courseCode}: المكوّن ${component.component_type} — نوع القاعة ${rawCode} سعته الافتراضية ≤ 0`,
+        rawValue: String(rawCode),
+      });
       continue;
     }
-    if (local.length === 0) {
-      fail("ROOM_TYPE_CODE_UNKNOWN", "canonical code does not exist");
+
+    const refState = classifyRoomTypeReference(catalog.id, catalogById, input.collegeId);
+    if (refState !== "OK") {
+      errors.push({
+        errorCode:
+          refState === "INACTIVE"
+            ? "inactive_room_type"
+            : refState === "ZERO_CAPACITY"
+              ? "zero_capacity_room_type"
+              : "unknown_room_type_code",
+        courseCode: input.courseCode,
+        componentType: component.component_type,
+        fieldName: field,
+        header,
+        message: `المقرر ${input.courseCode}: المكوّن ${component.component_type} — ${header} (${rawCode}) حالة=${refState}`,
+        rawValue: String(rawCode),
+      });
       continue;
     }
-    if (local.length !== 1) {
-      fail("ROOM_TYPE_CODE_AMBIGUOUS", "canonical code resolves more than once");
-      continue;
-    }
-    const roomType = local[0];
-    if (!roomType.is_active) {
-      fail("ROOM_TYPE_INACTIVE", "resolved room type is inactive");
-      continue;
-    }
-    if (!(Number(roomType.default_capacity) > 0)) {
-      fail("ROOM_TYPE_ZERO_CAPACITY", "resolved room type capacity is not positive");
-      continue;
-    }
-    resolvedIds[component.component_type] = roomType.id;
+
+    resolvedIds[component.component_type] = catalog.id;
   }
+
   return { errors, resolvedIds };
 }
 
-export function buildPlanComponentSyncPayload(
-  hours: ExplicitHoursInput,
-  resolvedIds: Partial<Record<ComponentType, string>>,
-) {
-  return derivePlanCourseComponents(hours).map((component) => ({
-    ...component,
-    required_room_type_id:
-      component.is_timetabled && component.weekly_contact_hours > 0
-        ? (resolvedIds[component.component_type] ?? null)
-        : null,
+export type PlanComponentSyncRow = {
+  component_type: ComponentType;
+  weekly_contact_hours: number;
+  is_timetabled: boolean;
+  counts_toward_regular_load: boolean;
+  counts_toward_overtime: boolean;
+  compensation_mode: "per_hour" | "per_group_flat" | "none";
+  required_room_type_id: string | null;
+};
+
+/**
+ * Build plan_course_components sync payload for import commit (TS contract for RPC).
+ */
+export function buildPlanComponentSyncPayload(input: {
+  hours: ExplicitHoursInput;
+  resolvedRoomTypeIds: Partial<Record<ComponentType, string>>;
+}): PlanComponentSyncRow[] {
+  return derivePlanCourseComponents(input.hours).map((c) => ({
+    component_type: c.component_type,
+    weekly_contact_hours: c.weekly_contact_hours,
+    is_timetabled: c.is_timetabled,
+    counts_toward_regular_load: c.counts_toward_regular_load,
+    counts_toward_overtime: c.counts_toward_overtime,
+    compensation_mode: c.compensation_mode,
+    required_room_type_id: requiresRoomTypeForComponent(c)
+      ? (input.resolvedRoomTypeIds[c.component_type] ?? null)
+      : null,
   }));
 }
 
-export type PlanComponentRoomTypeIssueCode =
-  | "NULL_REQUIRED_ROOM_TYPE"
-  | "ORPHAN_ROOM_TYPE"
-  | "INACTIVE_ROOM_TYPE"
-  | "ZERO_CAPACITY_ROOM_TYPE"
-  | "WRONG_COLLEGE_ROOM_TYPE";
-
-export interface PlanComponentReadinessRow {
-  college_code: string;
-  college_id: string;
-  program_code: string;
-  study_plan_id: string;
-  level_number: number;
+export type CohortPlanComponentRow = {
+  componentId: string;
+  componentType: ComponentType;
+  weeklyContactHours: number;
+  isTimetabled: boolean;
+  explicitGroupSize?: number | null;
+  requiredRoomTypeId: string | null;
+  courseCode: string;
+  courseName: string;
+  programName: string;
+  levelName: string;
   semester: number;
-  course_code: string;
-  course_name: string;
-  component_type: ComponentType;
-  component_hours: number;
-  is_timetabled: boolean;
-  room_type_id: string | null;
-  room_type_code: string | null;
-  room_type_college_id: string | null;
-  room_type_active: boolean | null;
-  room_type_capacity: number | null;
-}
+  roomDefaultCapacity?: number | null;
+  roomTypeActive?: boolean | null;
+  roomTypeCollegeId?: string | null;
+};
 
-export interface PlanComponentRoomTypeIssue extends PlanComponentReadinessRow {
-  issue_code: PlanComponentRoomTypeIssueCode;
-  issue_message: string;
-}
+export type MissingRoomTypeComponent = {
+  program: string;
+  level: string;
+  term: string;
+  courseCode: string;
+  courseName: string;
+  componentType: ComponentType;
+  referenceState: Exclude<RoomTypeReferenceState, "OK">;
+  componentId: string;
+};
 
-export function collectPlanComponentRoomTypeIssues(
-  rows: PlanComponentReadinessRow[],
-): PlanComponentRoomTypeIssue[] {
-  return rows.flatMap((row) => {
+export type MissingRoomTypeGateResult =
+  | { ok: true }
+  | {
+      ok: false;
+      code: "MISSING_ROOM_TYPE_COMPONENTS";
+      components: MissingRoomTypeComponent[];
+    };
+
+/** Pre-generation gate: batch all missing/invalid room types for cohort plan components. */
+export function collectMissingRoomTypeComponents(
+  rows: CohortPlanComponentRow[],
+  ctx: { collegeId: string; termLabel: string },
+): MissingRoomTypeGateResult {
+  const missing: MissingRoomTypeComponent[] = [];
+
+  for (const row of rows) {
+    if (row.componentType === "summer_training") continue;
+    if (row.componentType === "project" && (row.weeklyContactHours ?? 0) <= 0) continue;
+    if (!row.isTimetabled || (row.weeklyContactHours ?? 0) <= 0) continue;
     if (
-      row.component_type === "summer_training" ||
-      !row.is_timetabled ||
-      row.component_hours <= 0
+      row.componentType === "tutorial" &&
+      row.explicitGroupSize != null &&
+      row.explicitGroupSize > 0
     ) {
-      return [];
+      continue;
     }
-    let issue: [PlanComponentRoomTypeIssueCode, string] | null = null;
-    if (!row.room_type_id) issue = ["NULL_REQUIRED_ROOM_TYPE", "نوع القاعة مطلوب"];
-    else if (!row.room_type_code) issue = ["ORPHAN_ROOM_TYPE", "مرجع نوع القاعة غير موجود"];
-    else if (row.room_type_college_id !== row.college_id)
-      issue = ["WRONG_COLLEGE_ROOM_TYPE", "نوع القاعة يتبع كلية أخرى"];
-    else if (row.room_type_active === false) issue = ["INACTIVE_ROOM_TYPE", "نوع القاعة غير نشط"];
-    else if (!(Number(row.room_type_capacity) > 0))
-      issue = ["ZERO_CAPACITY_ROOM_TYPE", "سعة نوع القاعة ليست موجبة"];
-    return issue ? [{ ...row, issue_code: issue[0], issue_message: issue[1] }] : [];
-  });
+    if (row.componentType === "project") continue;
+
+    let referenceState: Exclude<RoomTypeReferenceState, "OK"> | null = null;
+
+    if (!row.requiredRoomTypeId) {
+      referenceState = "NULL";
+    } else if (row.roomTypeCollegeId != null && row.roomTypeCollegeId !== ctx.collegeId) {
+      referenceState = "ORPHAN";
+    } else if (row.roomTypeActive === false) {
+      referenceState = "INACTIVE";
+    } else if (row.roomDefaultCapacity == null) {
+      referenceState = "ORPHAN";
+    } else if (row.roomDefaultCapacity <= 0) {
+      referenceState = "ZERO_CAPACITY";
+    }
+
+    if (referenceState) {
+      missing.push({
+        program: row.programName,
+        level: row.levelName,
+        term: ctx.termLabel,
+        courseCode: row.courseCode,
+        courseName: row.courseName,
+        componentType: row.componentType,
+        referenceState,
+        componentId: row.componentId,
+      });
+    }
+  }
+
+  if (missing.length === 0) return { ok: true };
+  return { ok: false, code: "MISSING_ROOM_TYPE_COMPONENTS", components: missing };
 }
 
-export class MissingRoomTypeComponentsError extends Error {
-  readonly code = "MISSING_ROOM_TYPE_COMPONENTS";
-  constructor(readonly issues: PlanComponentRoomTypeIssue[]) {
-    super(`MISSING_ROOM_TYPE_COMPONENTS: ${issues.length}`);
-    this.name = "MissingRoomTypeComponentsError";
-  }
-}
+export const PLAN_COMPONENT_ROOM_TYPE_MISSING_BLOCKER = "PLAN_COMPONENT_ROOM_TYPE_MISSING";

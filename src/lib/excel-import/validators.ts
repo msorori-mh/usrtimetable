@@ -6,8 +6,8 @@ import { requireImportManager } from "./safety";
 import type { ImportEntity, ParsedRow, RowError, ValidationResult } from "./types";
 import {
   buildPlanComponentSyncPayload,
-  validatePlanComponentRoomTypes,
-  type RoomTypeCatalogEntry,
+  validatePlanRowRoomTypes,
+  type PlanComponentRoomTypeField,
 } from "@/lib/academic-delivery/plan-component-room-types";
 
 const TIME_RE = /^([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
@@ -23,7 +23,13 @@ function toBool(v: unknown): boolean | null {
 interface Lookups {
   instructorTypes?: Map<string, string>;
   roomTypes?: Map<string, string>;
-  roomTypeCatalog?: RoomTypeCatalogEntry[];
+  roomTypeCatalog?: Array<{
+    id: string;
+    code: string;
+    college_id: string;
+    is_active: boolean;
+    default_capacity: number;
+  }>;
   departments?: Map<string, string>;
   buildings?: Map<string, string>;
   programs?: Map<string, { id: string; department_id: string }>;
@@ -64,10 +70,6 @@ async function loadLookups(entity: ImportEntity, collegeId: string): Promise<Loo
       .eq("college_id", collegeId);
     return (data ?? []) as any[];
   };
-  const fetchAccessible = async (table: string, cols: string): Promise<any[]> => {
-    const { data } = await (supabase.from(table as never) as any).select(cols);
-    return (data ?? []) as any[];
-  };
 
   if (entity === "instructors") {
     const [it, dp] = await Promise.all([
@@ -96,25 +98,21 @@ async function loadLookups(entity: ImportEntity, collegeId: string): Promise<Loo
       "teaching_assignments_v2",
     ].includes(entity)
   ) {
-    const [dp, pg] = await Promise.all([
+    const [dp, pg, rt] = await Promise.all([
       fetchAll("departments", "id, code"),
       fetchAll("academic_programs", "id, code, department_id"),
+      fetchAll("room_types", "id, code, college_id, is_active, default_capacity"),
     ]);
     lk.departments = new Map(dp.map((r) => [r.code, r.id]));
     lk.programs = new Map(pg.map((r) => [r.code, { id: r.id, department_id: r.department_id }]));
-    if (entity === "study_plan_courses" || entity === "full_study_plan") {
-      const rt = await fetchAccessible(
-        "room_types",
-        "id, code, college_id, is_active, default_capacity",
-      );
-      lk.roomTypeCatalog = rt.map((r) => ({
-        id: String(r.id),
-        code: String(r.code),
-        college_id: String(r.college_id),
-        is_active: r.is_active !== false,
-        default_capacity: Number(r.default_capacity ?? 0),
-      }));
-    }
+    lk.roomTypes = new Map(rt.map((r) => [r.code, r.id]));
+    lk.roomTypeCatalog = rt.map((r) => ({
+      id: r.id as string,
+      code: r.code as string,
+      college_id: r.college_id as string,
+      is_active: r.is_active !== false,
+      default_capacity: Number(r.default_capacity ?? 0),
+    }));
   }
   if (
     [
@@ -251,7 +249,7 @@ function normalize(
   const missingHeaders = tpl.columns
     .filter((c) => c.required && !headerSet.has(c.header))
     .map((c) => c.header);
-  const knownHeaders = new Set(tpl.columns.flatMap((c) => [c.header, ...(c.aliases ?? [])]));
+  const knownHeaders = new Set(tpl.columns.map((c) => c.header));
   const unknownHeaders = [...headerSet].filter((h) => !knownHeaders.has(h));
   const seen = new Set<string>();
   const duplicateHeaders: string[] = [];
@@ -262,11 +260,7 @@ function normalize(
       seen.add(h);
     }
   }
-  const byHeader = new Map(
-    tpl.columns.flatMap((c) =>
-      [c.header, ...(c.aliases ?? [])].map((header) => [header, c] as const),
-    ),
-  );
+  const byHeader = new Map(tpl.columns.map((c) => [c.header, c]));
   const parsed: ParsedRow[] = rows.map((raw, i) => {
     const values: Record<string, unknown> = {};
     for (const [h, v] of Object.entries(raw)) {
@@ -426,6 +420,9 @@ export async function validate(
     }
 
     // Entity-specific validation
+    if (entity === "study_plan_courses" || entity === "full_study_plan") {
+      mergeStudyPlanLegacyRoomTypeFields(row.values);
+    }
     runEntityValidation(entity, row, lk, rowErrors, collegeId);
 
     // Duplicate / existence
@@ -616,12 +613,58 @@ function buildLogicalKey(entity: ImportEntity, row: ParsedRow): string | null {
   }
 }
 
+function mergeStudyPlanLegacyRoomTypeFields(values: Record<string, unknown>): void {
+  const pairs: Array<[string, string]> = [
+    ["required_room_type_code_lecture", "_legacy_required_room_type_code_lecture"],
+    ["required_room_type_code_practical", "_legacy_required_room_type_code_practical"],
+  ];
+  for (const [canonical, legacy] of pairs) {
+    const cur = values[canonical];
+    if (cur === null || cur === undefined || cur === "") {
+      const leg = values[legacy];
+      if (leg !== null && leg !== undefined && leg !== "") {
+        values[canonical] = leg;
+      }
+    }
+    delete values[legacy];
+  }
+}
+
+function studyPlanHoursFromValues(v: Record<string, unknown>) {
+  return {
+    theory_hours: v.theory_hours as number | null | undefined,
+    practical_hours: v.practical_hours as number | null | undefined,
+    tutorial_hours: v.tutorial_hours as number | null | undefined,
+    training_hours: v.training_hours as number | null | undefined,
+    project_hours: v.project_hours as number | null | undefined,
+    is_summer_training: v.is_summer_training as boolean | null | undefined,
+    is_graduation_project: v.is_graduation_project as boolean | null | undefined,
+  };
+}
+
+function studyPlanRoomTypeCodesFromValues(
+  v: Record<string, unknown>,
+): Partial<Record<PlanComponentRoomTypeField, string | null | undefined>> {
+  return {
+    required_room_type_code_lecture: v.required_room_type_code_lecture as string | null | undefined,
+    required_room_type_code_practical: v.required_room_type_code_practical as
+      | string
+      | null
+      | undefined,
+    required_room_type_code_tutorial: v.required_room_type_code_tutorial as
+      | string
+      | null
+      | undefined,
+    required_room_type_code_project: v.required_room_type_code_project as string | null | undefined,
+  };
+}
+
 function runEntityValidation(
   entity: ImportEntity,
   row: ParsedRow,
   lk: Lookups,
   errs: RowError[],
-  collegeId: string,
+  collegeId?: string,
 ): void {
   const v = row.values;
   const need = (cond: boolean, header: string, code: string, msg: string, raw?: unknown) => {
@@ -664,51 +707,31 @@ function runEntityValidation(
         errorCode: "invalid_pattern",
         message: "مدة المعمل يجب أن تكون > 0 عند وجود معامل",
       });
-  }
 
-  if (entity === "study_plan_courses" || entity === "full_study_plan") {
-    const hours = {
-      theory_hours: v.theory_hours as number | null | undefined,
-      practical_hours: v.practical_hours as number | null | undefined,
-      tutorial_hours: v.tutorial_hours as number | null | undefined,
-      project_hours: v.project_hours as number | null | undefined,
-      is_summer_training: v.is_summer_training as boolean | null | undefined,
-      is_graduation_project: v.is_graduation_project as boolean | null | undefined,
-    };
-    const roomTypes = validatePlanComponentRoomTypes({
-      context: {
-        rowNumber: row.rowNumber,
-        programCode: String(v.program_code ?? ""),
-        courseCode: String(v.course_code ?? ""),
-        courseName: String(v.course_name ?? ""),
-        levelNumber: String(v.level_number ?? ""),
-        semester: String(v.semester ?? ""),
-      },
-      hours,
-      values: v,
-      collegeId,
-      catalog: lk.roomTypeCatalog ?? [],
-    });
-    for (const roomTypeError of roomTypes.errors) {
-      errs.push({
-        rowNumber: roomTypeError.rowNumber,
-        columnName: roomTypeError.field,
-        errorCode: roomTypeError.errorCode,
-        message: roomTypeError.message,
-        rawValue: roomTypeError.rawValue,
-        programCode: roomTypeError.programCode,
-        courseCode: roomTypeError.courseCode,
-        courseName: roomTypeError.courseName,
-        levelNumber: roomTypeError.levelNumber,
-        semester: roomTypeError.semester,
-        componentType: roomTypeError.componentType,
-        componentHours: roomTypeError.componentHours,
-        field: roomTypeError.field,
-        reason: roomTypeError.reason,
+    if (collegeId && lk.roomTypeCatalog) {
+      const courseCode = String(v.course_code ?? "");
+      const { errors: rtErrors, resolvedIds } = validatePlanRowRoomTypes({
+        courseCode,
+        hours: studyPlanHoursFromValues(v),
+        roomTypeCodes: studyPlanRoomTypeCodesFromValues(v),
+        collegeId,
+        catalog: lk.roomTypeCatalog,
       });
-    }
-    if (roomTypes.errors.length === 0) {
-      v._plan_component_sync = buildPlanComponentSyncPayload(hours, roomTypes.resolvedIds);
+      for (const e of rtErrors) {
+        errs.push({
+          rowNumber: row.rowNumber,
+          columnName: e.header,
+          errorCode: e.errorCode,
+          message: e.message,
+          rawValue: e.rawValue,
+        });
+      }
+      if (rtErrors.length === 0) {
+        v._plan_component_sync = buildPlanComponentSyncPayload({
+          hours: studyPlanHoursFromValues(v),
+          resolvedRoomTypeIds: resolvedIds,
+        });
+      }
     }
   }
 
