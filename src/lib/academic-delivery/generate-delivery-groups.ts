@@ -52,7 +52,7 @@ export async function generateCohortDeliveryGroups(
     cohortId,
     termId: cohort.term_id,
   });
-  if (resolution.ok !== true || resolution.blocker === true) {
+  if (resolution.ok === false) {
     throw new Error(
       "SCHEDULING_HEADCOUNT_MISSING: يلزم اعتماد عدد الدفعة للجدولة قبل توليد المجموعات / An approved scheduling headcount is required before generating delivery groups.",
     );

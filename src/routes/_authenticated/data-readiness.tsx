@@ -209,7 +209,26 @@ async function fetchReadiness(collegeId: string) {
 
   const coursesRows = (courses.data ?? []) as ReadinessCourseRow[];
   const planRows = (planCourses.data ?? []) as ReadinessPlanCourseRow[];
-  const instructorsRows = (instructors.data ?? []) as ReadinessInstructorRow[];
+  const instructorsRows: ReadinessInstructorRow[] = (instructors.data ?? []).map((row) => {
+    const record = row as {
+      id: string;
+      specialization: string | null;
+      department_id: string | null;
+      instructor_type_id: string | null;
+      instructor_types?: { code: string; is_external: boolean } | null;
+    };
+    const joined = record.instructor_types;
+    return {
+      id: record.id,
+      specialization: record.specialization,
+      department_id: record.department_id,
+      instructor_type_id: record.instructor_type_id,
+      instructor_types:
+        joined && typeof joined === "object" && "code" in joined
+          ? { code: joined.code, is_external: joined.is_external }
+          : null,
+    };
+  });
   const roomsRows = (rooms.data ?? []) as ReadinessRoomRow[];
   const offeringsRows = (offerings.data ?? []) as ReadinessOfferingRow[];
   const assignmentsRows = (assignments.data ?? []) as ReadinessAssignmentRow[];
