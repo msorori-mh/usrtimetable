@@ -1,7 +1,8 @@
 /**
  * Official import-templates registry for Pilot / new academic delivery flow.
  * Source of truth for UI visibility, classification, and suggested filenames.
- * Commit path remains TEMPLATES + commit_import_job_atomic — this module does not invent columns.
+ * Plan imports use the atomic V2 room-type contract; unrelated entities retain
+ * commit_import_job_atomic.
  */
 
 import type { ImportEntity } from "./types";
@@ -37,7 +38,7 @@ export interface OfficialImportEntityMeta {
   studySystemScoped: boolean;
   targetTables: string[];
   naturalKey: string;
-  commitRpc: "commit_import_job_atomic";
+  commitRpc: "commit_import_job_atomic" | "commit_plan_component_import_job_atomic_v2";
 }
 
 /** Entities that appear in the operational import UI (Pilot new flow). */
@@ -265,7 +266,7 @@ const META: Record<ImportEntity, OfficialImportEntityMeta> = {
       "elective_slots",
     ],
     naturalKey: "program_code|plan_code|plan_version|course_code",
-    commitRpc: "commit_import_job_atomic",
+    commitRpc: "commit_plan_component_import_job_atomic_v2",
   },
   study_plan_courses: {
     entity: "study_plan_courses",
@@ -286,7 +287,7 @@ const META: Record<ImportEntity, OfficialImportEntityMeta> = {
       "elective_slots",
     ],
     naturalKey: "program_code|plan_code|plan_version|course_code",
-    commitRpc: "commit_import_job_atomic",
+    commitRpc: "commit_plan_component_import_job_atomic_v2",
   },
   course_programs: {
     entity: "course_programs",

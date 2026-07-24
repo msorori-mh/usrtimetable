@@ -62,7 +62,11 @@ async function run() {
   for (const e of ACTIVE_NEW_FLOW_ENTITIES) {
     assert(TEMPLATES[e], `every active entity has template: ${e}`);
     assert(TEMPLATES[e].columns.length > 0, `template columns present: ${e}`);
-    assert(getEntityMeta(e).commitRpc === "commit_import_job_atomic", `commit RPC mapped: ${e}`);
+    const expectedRpc =
+      e === "study_plan_courses" || e === "full_study_plan"
+        ? "commit_plan_component_import_job_atomic_v2"
+        : "commit_import_job_atomic";
+    assert(getEntityMeta(e).commitRpc === expectedRpc, `commit RPC mapped: ${e}`);
   }
 
   const validatorsSrc = read("src/lib/excel-import/validators.ts");
@@ -72,7 +76,11 @@ async function run() {
   assert(validatorsSrc.includes("summer_training_forbidden"), "summer_training rejection");
 
   const commitSrc = read("src/lib/excel-import/commit.ts");
-  assert(commitSrc.includes('rpc("commit_import_job_atomic"'), "atomic commit only");
+  assert(
+    commitSrc.includes('rpc("commit_import_job_atomic"') &&
+      commitSrc.includes('rpc("commit_plan_component_import_job_atomic_v2"'),
+    "each entity uses its single atomic commit RPC",
+  );
   assert(!commitSrc.includes(".insert("), "no direct client DML in commit");
   assert(!commitSrc.includes(".update("), "no direct client update DML in commit");
   assert(!commitSrc.includes(".upsert("), "no direct client upsert DML in commit");

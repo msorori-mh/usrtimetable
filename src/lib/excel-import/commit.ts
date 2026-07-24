@@ -16,6 +16,13 @@ export interface CommitResult {
   mode?: string;
   collegeId?: string;
   payloadManifest?: string | null;
+  studyPlanId?: string | null;
+  planCoursesInserted?: number;
+  planCoursesUpdated?: number;
+  componentsInserted?: number;
+  componentsUpdated?: number;
+  expectedRequiredRoomComponents?: number;
+  persistedComponentsWithRequiredRoomTypeId?: number;
 }
 
 /**
@@ -29,8 +36,8 @@ export interface CommitResult {
 const LEGACY_IMPORT_COMMIT_BLOCKED_MESSAGE =
   "LEGACY_IMPORT_COMMIT_BLOCKED: كيانات Legacy (sections / course_offerings / teaching_assignments V1 / section_groups) محجوبة الكتابة ضمن A1.3a؛ لا يمكن تنفيذ استيرادها من هذا العميل.";
 
-export const PLAN_COMPONENT_ROOM_TYPE_PERSISTENCE_RPC_REQUIRED =
-  "PLAN_COMPONENT_ROOM_TYPE_PERSISTENCE_RPC_REQUIRED: commit_import_job_atomic does not persist validated plan_course_components.required_room_type_id; study-plan commit is blocked to preserve atomicity and prevent partial or misleading success.";
+export const ATOMIC_PLAN_COMPONENT_PERSISTENCE_RPC_UNAVAILABLE =
+  "ATOMIC_PLAN_COMPONENT_PERSISTENCE_RPC_UNAVAILABLE";
 
 function isLegacyOnlyImportEntity(entity: string | null | undefined): boolean {
   return !!entity && (LEGACY_ONLY_ENTITIES as readonly string[]).includes(entity);
@@ -62,23 +69,31 @@ export async function commitImport(input: {
       LEGACY_IMPORT_COMMIT_BLOCKED_MESSAGE,
     );
   }
-  if (
-    jobRow?.target_entity === "study_plan_courses" ||
-    jobRow?.target_entity === "full_study_plan"
-  ) {
-    throw new ImportSafetyError(
-      "plan_component_room_type_persistence_rpc_required",
-      PLAN_COMPONENT_ROOM_TYPE_PERSISTENCE_RPC_REQUIRED,
-    );
-  }
-
-  const { data, error } = await supabase.rpc("commit_import_job_atomic", {
-    p_job_id: input.jobId,
-    p_expected_updated_at: input.expectedUpdatedAt ?? undefined,
-  });
+  const isPlanImport =
+    jobRow?.target_entity === "study_plan_courses" || jobRow?.target_entity === "full_study_plan";
+  const { data, error } = isPlanImport
+    ? await supabase.rpc("commit_plan_component_import_job_atomic_v2", {
+        p_job_id: input.jobId,
+        p_expected_updated_at: input.expectedUpdatedAt ?? undefined,
+      })
+    : await supabase.rpc("commit_import_job_atomic", {
+        p_job_id: input.jobId,
+        p_expected_updated_at: input.expectedUpdatedAt ?? undefined,
+      });
 
   if (error) {
     const message = error.message || "Import commit failed";
+    if (
+      isPlanImport &&
+      (/commit_plan_component_import_job_atomic_v2/i.test(message) ||
+        /function .* does not exist/i.test(message) ||
+        /PGRST202/i.test(message))
+    ) {
+      throw new ImportSafetyError(
+        "atomic_plan_component_persistence_rpc_unavailable",
+        ATOMIC_PLAN_COMPONENT_PERSISTENCE_RPC_UNAVAILABLE,
+      );
+    }
     if (/unauthenticated|authentication required/i.test(message)) {
       throw new ImportSafetyError("unauthenticated", message);
     }
@@ -107,6 +122,21 @@ export async function commitImport(input: {
       typeof payload.message === "string" ? payload.message : "Import commit did not return ok",
     );
   }
+  if (isPlanImport) {
+    const expected = Number(payload.expected_required_room_components);
+    const persisted = Number(payload.persisted_components_with_required_room_type_id);
+    if (
+      !Number.isInteger(expected) ||
+      !Number.isInteger(persisted) ||
+      expected < 0 ||
+      expected !== persisted
+    ) {
+      throw new ImportSafetyError(
+        "atomic_room_type_persistence_count_mismatch",
+        "ATOMIC_ROOM_TYPE_PERSISTENCE_COUNT_MISMATCH",
+      );
+    }
+  }
 
   return {
     inserted: Number(payload.inserted ?? 0),
@@ -120,6 +150,15 @@ export async function commitImport(input: {
     mode: typeof payload.mode === "string" ? payload.mode : undefined,
     collegeId: typeof payload.college_id === "string" ? payload.college_id : undefined,
     payloadManifest: typeof payload.payload_manifest === "string" ? payload.payload_manifest : null,
+    studyPlanId: typeof payload.study_plan_id === "string" ? payload.study_plan_id : null,
+    planCoursesInserted: Number(payload.plan_courses_inserted ?? payload.inserted ?? 0),
+    planCoursesUpdated: Number(payload.plan_courses_updated ?? payload.updated ?? 0),
+    componentsInserted: Number(payload.components_inserted ?? 0),
+    componentsUpdated: Number(payload.components_updated ?? 0),
+    expectedRequiredRoomComponents: Number(payload.expected_required_room_components ?? 0),
+    persistedComponentsWithRequiredRoomTypeId: Number(
+      payload.persisted_components_with_required_room_type_id ?? 0,
+    ),
   };
 }
 

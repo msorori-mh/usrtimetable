@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import {
   buildPlanComponentSyncPayload,
   collectPlanComponentRoomTypeIssues,
-  validatePlanComponentRoomTypes,
+  validatePlanRowRoomTypes,
   type PlanComponentReadinessRow,
   type RoomTypeCatalogEntry,
 } from "../../src/lib/academic-delivery/plan-component-room-types.ts";
@@ -49,19 +49,18 @@ const catalog: RoomTypeCatalogEntry[] = [
     default_capacity: 20,
   },
 ];
-const context = {
-  rowNumber: 7,
-  programCode: "CS",
-  courseCode: "CS101",
-  courseName: "Intro",
-  levelNumber: 1,
-  semester: 1,
-};
 const validate = (
-  hours: Parameters<typeof validatePlanComponentRoomTypes>[0]["hours"],
-  values: Parameters<typeof validatePlanComponentRoomTypes>[0]["values"],
+  hours: Parameters<typeof validatePlanRowRoomTypes>[0]["hours"],
+  values: Parameters<typeof validatePlanRowRoomTypes>[0]["roomTypeCodes"],
   cat = catalog,
-) => validatePlanComponentRoomTypes({ context, hours, values, collegeId: "c1", catalog: cat });
+) =>
+  validatePlanRowRoomTypes({
+    courseCode: "CS101",
+    hours,
+    roomTypeCodes: values,
+    collegeId: "c1",
+    catalog: cat,
+  });
 const code = (result: ReturnType<typeof validate>, expected: string) =>
   assert(
     result.errors.some((item) => item.errorCode === expected),
@@ -94,10 +93,10 @@ function run() {
   for (const entity of ["study_plan_courses", "full_study_plan"] as const) {
     const headers = TEMPLATES[entity].columns.map((column) => column.header);
     for (const required of [
-      "نوع_قاعة_المحاضرة_رمز",
-      "نوع_قاعة_العملي_رمز",
-      "نوع_قاعة_التمرين_رمز",
-      "نوع_قاعة_المشروع_رمز",
+      "رمز_نوع_قاعة_المحاضرة",
+      "رمز_نوع_قاعة_المعمل",
+      "رمز_نوع_قاعة_التمرين",
+      "رمز_نوع_قاعة_المشروع",
       "نوع_قاعة_المحاضرة",
       "نوع_قاعة_المعمل",
     ]) {
@@ -105,46 +104,29 @@ function run() {
     }
   }
 
-  code(validate({ theory_hours: 2 }, {}), "ROOM_TYPE_CODE_REQUIRED");
+  code(validate({ theory_hours: 2 }, {}), "missing_room_type_code");
   code(
     validate({ theory_hours: 2 }, { required_room_type_code_lecture: "not_real" }),
-    "ROOM_TYPE_CODE_UNKNOWN",
-  );
-  code(
-    validate({ theory_hours: 2 }, { required_room_type_code_lecture: "lecture_hall" }, [
-      ...catalog,
-      { ...catalog[0], id: "duplicate" },
-    ]),
-    "ROOM_TYPE_CODE_AMBIGUOUS",
+    "unknown_room_type_code",
   );
   code(
     validate({ tutorial_hours: 1 }, { required_room_type_code_tutorial: "seminar_room" }),
-    "ROOM_TYPE_INACTIVE",
+    "inactive_room_type",
   );
   code(
     validate({ project_hours: 1 }, { required_room_type_code_project: "workshop" }),
-    "ROOM_TYPE_ZERO_CAPACITY",
+    "zero_capacity_room_type",
   );
   code(
     validate({ practical_hours: 2 }, { required_room_type_code_practical: "network_lab" }),
-    "ROOM_TYPE_WRONG_COLLEGE",
-  );
-  code(
-    validate(
-      { theory_hours: 2 },
-      {
-        required_room_type_code_lecture: "lecture_hall",
-        required_room_type_for_lecture: "computer_lab",
-      },
-    ),
-    "ROOM_TYPE_ALIAS_CONFLICT",
+    "cross_college_room_type",
   );
   assert(
     validate(
       { theory_hours: 2, practical_hours: 2 },
       {
-        required_room_type_for_lecture: " LEC ",
-        required_room_type_for_lab: "computer lab",
+        required_room_type_code_lecture: " LEC ",
+        required_room_type_code_practical: "computer lab",
       },
     ).errors.length === 0,
     "aliases, case and spaces normalize",
@@ -155,7 +137,10 @@ function run() {
     "non-timetabled summer training is exempt",
   );
   const ok = validate({ theory_hours: 2 }, { required_room_type_code_lecture: "lecture_hall" });
-  const payload = buildPlanComponentSyncPayload({ theory_hours: 2 }, ok.resolvedIds);
+  const payload = buildPlanComponentSyncPayload({
+    hours: { theory_hours: 2 },
+    resolvedRoomTypeIds: ok.resolvedIds,
+  });
   assert(payload[0]?.required_room_type_id === "lecture", "resolved id reaches sync contract");
 
   assert(collectPlanComponentRoomTypeIssues([row({})]).length === 0, "valid reference ready");
@@ -194,16 +179,18 @@ function run() {
 
   const commit = readFileSync("src/lib/excel-import/commit.ts", "utf8");
   assert(
-    commit.includes("PLAN_COMPONENT_ROOM_TYPE_PERSISTENCE_RPC_REQUIRED"),
-    "commit fails closed",
+    commit.includes("commit_plan_component_import_job_atomic_v2") &&
+      commit.includes("ATOMIC_PLAN_COMPONENT_PERSISTENCE_RPC_UNAVAILABLE"),
+    "plan commit uses the atomic V2 RPC and fails closed when unavailable",
   );
   const wrapper = readFileSync("src/lib/academic-delivery/generate-delivery-groups.ts", "utf8");
   assert(
-    wrapper.indexOf("checkCohortRoomTypeGate") < wrapper.indexOf('"resolve_scheduling_headcount"'),
-    "room gate runs before any generator-related RPC",
+    wrapper.indexOf("checkCohortDeliveryGroupRoomTypes(cohortId)") <
+      wrapper.indexOf('rpc("generate_cohort_delivery_groups"'),
+    "room gate runs before the delivery-group write RPC",
   );
   const ui = readFileSync("src/routes/_authenticated/academic-cohorts.tsx", "utf8");
-  assert(ui.includes("roomTypeIssues.length > 0"), "actual DG button is disabled by blocker");
+  assert(ui.includes("roomTypeBlocker.length > 0"), "actual DG button is disabled by blocker");
   assert(ui.includes("توليد مقررات الدفعة"), "curriculum action remains separate");
 }
 

@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 export type Json =
   | string
   | number
@@ -3757,6 +3758,10 @@ export type Database = {
         Returns: Json
       }
       commit_import_job_atomic: {
+        Args: { p_expected_updated_at?: string; p_job_id: string }
+        Returns: Json
+      }
+      commit_plan_component_import_job_atomic_v2: {
         Args: { p_expected_updated_at?: string; p_job_id: string }
         Returns: Json
       }
