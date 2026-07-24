@@ -208,50 +208,89 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </p>
           </div>
         </div>
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-          {visibleGroups.map((group) => {
+        <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-3">
+          {visibleGroups.map((group, idx) => {
             const isOpen = openKey === group.key;
             const hasActive = group.items.some((it) => it.to === pathname);
             return (
-              <div key={group.key} className="space-y-1">
+              <div
+                key={group.key}
+                className={cn(
+                  "py-1",
+                  idx > 0 && "mt-1 border-t border-sidebar-border/40 pt-2",
+                )}
+              >
                 <button
                   type="button"
                   onClick={() => setOpenKey(isOpen ? null : group.key)}
                   aria-expanded={isOpen}
                   className={cn(
-                    "flex w-full items-center justify-between rounded-md px-3 py-2 text-[11px] font-semibold uppercase tracking-wider transition",
+                    "group/head flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-[11px] font-bold tracking-wider transition",
                     hasActive
                       ? "text-sidebar-foreground"
-                      : "text-sidebar-foreground/60 hover:text-sidebar-foreground",
+                      : "text-sidebar-foreground/55 hover:bg-white/5 hover:text-sidebar-foreground",
                   )}
                 >
-                  <span>{group.label}</span>
+                  <span className="flex items-center gap-2">
+                    <span
+                      className={cn(
+                        "inline-block h-1.5 w-1.5 rounded-full transition",
+                        hasActive ? "bg-primary" : "bg-sidebar-foreground/25",
+                      )}
+                    />
+                    {group.label}
+                    <span className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] font-medium text-sidebar-foreground/60">
+                      {group.items.length}
+                    </span>
+                  </span>
                   <ChevronDown
-                    className={cn("h-3.5 w-3.5 transition-transform", isOpen ? "rotate-180" : "")}
+                    className={cn(
+                      "h-3.5 w-3.5 shrink-0 transition-transform",
+                      isOpen ? "rotate-180" : "",
+                    )}
                   />
                 </button>
-                {isOpen && (
-                  <div className="space-y-1 pb-1">
-                    {group.items.map((item) => {
-                      const active = pathname === item.to;
-                      return (
-                        <Link
-                          key={item.to}
-                          to={item.to}
-                          className={cn(
-                            "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition",
-                            active
-                              ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                              : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
-                          )}
-                        >
-                          {item.icon}
-                          <span>{item.label}</span>
-                        </Link>
-                      );
-                    })}
+                <div
+                  className={cn(
+                    "grid overflow-hidden transition-[grid-template-rows] duration-200",
+                    isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+                  )}
+                >
+                  <div className="min-h-0">
+                    <div className="mt-1 space-y-0.5 pb-1 pr-2">
+                      {group.items.map((item) => {
+                        const active = pathname === item.to;
+                        return (
+                          <Link
+                            key={item.to}
+                            to={item.to}
+                            className={cn(
+                              "relative flex items-center gap-3 rounded-md px-3 py-2 text-[13px] leading-none transition",
+                              active
+                                ? "bg-sidebar-accent font-semibold text-sidebar-accent-foreground shadow-sm"
+                                : "text-sidebar-foreground/75 hover:bg-white/5 hover:text-sidebar-foreground",
+                            )}
+                          >
+                            {active && (
+                              <span className="absolute inset-y-1.5 right-0 w-0.5 rounded-full bg-primary" />
+                            )}
+                            <span
+                              className={cn(
+                                "grid h-6 w-6 shrink-0 place-items-center rounded-md transition",
+                                active
+                                  ? "bg-primary/15 text-primary"
+                                  : "text-sidebar-foreground/60 group-hover:text-sidebar-foreground",
+                              )}
+                            >
+                              {item.icon}
+                            </span>
+                            <span className="truncate">{item.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
                   </div>
-                )}
+                </div>
               </div>
             );
           })}
