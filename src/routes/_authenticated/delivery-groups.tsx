@@ -41,7 +41,7 @@ function DeliveryGroupsPage() {
       const full = await supabase
         .from("delivery_groups")
         .select(
-          "id, group_code, group_number, expected_students, capacity_limit, is_obsolete, excluded_from_standard_workload, cohort_id, component_id, plan_course_components(component_type)",
+          "id, group_code, group_number, expected_students, capacity_limit, is_obsolete, excluded_from_standard_workload, cohort_id, component_id, plan_course_components!dg_component_college_fkey(component_type)",
         )
         .eq("college_id", active!.id)
         .order("group_code", { ascending: true });
@@ -51,7 +51,7 @@ function DeliveryGroupsPage() {
       const { data, error } = await supabase
         .from("delivery_groups")
         .select(
-          "id, group_code, expected_students, capacity_limit, cohort_id, component_id, plan_course_components(component_type)",
+          "id, group_code, expected_students, capacity_limit, cohort_id, component_id, plan_course_components!dg_component_college_fkey(component_type)",
         )
         .eq("college_id", active!.id)
         .order("group_code", { ascending: true });

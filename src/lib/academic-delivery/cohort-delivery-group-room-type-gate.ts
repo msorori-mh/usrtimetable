@@ -26,7 +26,7 @@ export async function checkCohortDeliveryGroupRoomTypes(
   const { data: cohort, error: cohortError } = await supabase
     .from("academic_cohorts")
     .select(
-      "id, college_id, program_id, level_id, term_id, study_system, academic_programs(name), academic_levels(name), academic_terms(name)",
+      "id, college_id, program_id, level_id, term_id, study_system, academic_programs!ac_program_college_fkey(name), academic_levels!ac_level_college_fkey(name), academic_terms!ac_term_college_fkey(name)",
     )
     .eq("id", cohortId)
     .maybeSingle();
@@ -72,7 +72,7 @@ export async function checkCohortDeliveryGroupRoomTypes(
   const { data: components, error: compError } = await supabase
     .from("plan_course_components")
     .select(
-      "id, plan_course_id, component_type, weekly_contact_hours, is_timetabled, explicit_group_size, required_room_type_id, room_types(id, college_id, is_active, default_capacity)",
+      "id, plan_course_id, component_type, weekly_contact_hours, is_timetabled, explicit_group_size, required_room_type_id, room_types!pcc_room_type_college_fkey(id, college_id, is_active, default_capacity)",
     )
     .eq("college_id", cohort.college_id)
     .in("plan_course_id", planCourseIds);
