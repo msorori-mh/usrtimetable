@@ -59,7 +59,7 @@ const OFFICIAL_REQUIRED = TEMPLATES.teaching_assignments_v2.columns
   .filter((c) => c.required)
   .map((c) => c.header);
 
-function headerSet(headers: string[]): Set<string> {
+function headerSet(headers: ReadonlyArray<string>): Set<string> {
   return new Set(headers.map((h) => h.trim()).filter(Boolean));
 }
 
