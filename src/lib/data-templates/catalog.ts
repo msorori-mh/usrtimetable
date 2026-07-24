@@ -395,14 +395,34 @@ export const CATALOG: TemplateDef[] = [
       { header: "عدد_المعامل_أسبوعياً", example: "1", description: "labs_per_week" },
       { header: "مدة_المعمل", example: "2", description: "lab_session_duration" },
       {
+        header: "رمز_نوع_قاعة_المحاضرة",
+        example: "lecture_hall",
+        description: "required_room_type_code_lecture",
+      },
+      {
+        header: "رمز_نوع_قاعة_المعمل",
+        example: "computer_lab",
+        description: "required_room_type_code_practical",
+      },
+      {
+        header: "رمز_نوع_قاعة_التمرين",
+        example: "lecture_hall",
+        description: "required_room_type_code_tutorial",
+      },
+      {
+        header: "رمز_نوع_قاعة_المشروع",
+        example: "seminar_room",
+        description: "required_room_type_code_project",
+      },
+      {
         header: "نوع_قاعة_المحاضرة",
         example: "lecture_hall",
-        description: "required_room_type_for_lecture",
+        description: "alias → required_room_type_code_lecture",
       },
       {
         header: "نوع_قاعة_المعمل",
         example: "computer_lab",
-        description: "required_room_type_for_lab",
+        description: "alias → required_room_type_code_practical",
       },
     ],
     sampleRows: [
@@ -507,16 +527,36 @@ export const CATALOG: TemplateDef[] = [
       { header: "عدد_المعامل_أسبوعياً", example: "1", description: "labs_per_week" },
       { header: "مدة_المعمل", example: "2", description: "lab_session_duration" },
       {
-        header: "نوع_قاعة_المحاضرة",
+        header: "رمز_نوع_قاعة_المحاضرة",
         example: "lecture_hall",
         allowed: "lecture_hall | seminar_room",
-        description: "required_room_type_for_lecture",
+        description: "required_room_type_code_lecture",
+      },
+      {
+        header: "رمز_نوع_قاعة_المعمل",
+        example: "computer_lab",
+        allowed: "computer_lab | network_lab | cybersecurity_lab | electronics_lab | workshop",
+        description: "required_room_type_code_practical",
+      },
+      {
+        header: "رمز_نوع_قاعة_التمرين",
+        example: "lecture_hall",
+        description: "required_room_type_code_tutorial",
+      },
+      {
+        header: "رمز_نوع_قاعة_المشروع",
+        example: "seminar_room",
+        description: "required_room_type_code_project",
+      },
+      {
+        header: "نوع_قاعة_المحاضرة",
+        example: "lecture_hall",
+        description: "alias → required_room_type_code_lecture",
       },
       {
         header: "نوع_قاعة_المعمل",
         example: "computer_lab",
-        allowed: "computer_lab | network_lab | cybersecurity_lab | electronics_lab | workshop",
-        description: "required_room_type_for_lab",
+        description: "alias → required_room_type_code_practical",
       },
     ],
     sampleRows: [

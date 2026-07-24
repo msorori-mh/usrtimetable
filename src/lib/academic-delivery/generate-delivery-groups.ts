@@ -8,6 +8,7 @@ import {
   parseDeliveryGroupGeneratorSummary,
   type DeliveryGroupGeneratorSummary,
 } from "@/lib/academic-delivery/delivery-group-generator-summary";
+import { checkCohortDeliveryGroupRoomTypes } from "@/lib/academic-delivery/cohort-delivery-group-room-type-gate";
 
 export type {
   DeliveryGroupGeneratorSummary,
@@ -17,6 +18,19 @@ export type {
 } from "@/lib/academic-delivery/delivery-group-generator-summary";
 
 export { parseDeliveryGroupGeneratorSummary } from "@/lib/academic-delivery/delivery-group-generator-summary";
+
+export class DeliveryGroupRoomTypeGateError extends Error {
+  readonly code = "MISSING_ROOM_TYPE_COMPONENTS";
+  readonly gate: Awaited<ReturnType<typeof checkCohortDeliveryGroupRoomTypes>>;
+
+  constructor(
+    gate: Extract<Awaited<ReturnType<typeof checkCohortDeliveryGroupRoomTypes>>, { ok: false }>,
+  ) {
+    super("MISSING_ROOM_TYPE_COMPONENTS");
+    this.name = "DeliveryGroupRoomTypeGateError";
+    this.gate = gate;
+  }
+}
 
 export async function generateCohortDeliveryGroups(
   cohortId: string,
@@ -47,6 +61,11 @@ export async function generateCohortDeliveryGroups(
     throw new Error(
       "SCHEDULING_HEADCOUNT_MISSING: يلزم اعتماد عدد الدفعة للجدولة قبل توليد المجموعات / An approved scheduling headcount is required before generating delivery groups.",
     );
+  }
+
+  const roomTypeGate = await checkCohortDeliveryGroupRoomTypes(cohortId);
+  if (!roomTypeGate.ok) {
+    throw new DeliveryGroupRoomTypeGateError(roomTypeGate);
   }
 
   const { data, error } = await supabase.rpc("generate_cohort_delivery_groups", {

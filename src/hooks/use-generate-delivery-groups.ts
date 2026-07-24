@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   generateCohortDeliveryGroups,
+  DeliveryGroupRoomTypeGateError,
   type DeliveryGroupGeneratorSummary,
 } from "@/lib/academic-delivery/generate-delivery-groups";
 import { isGeneratorSuccessStatus } from "@/lib/academic-delivery/delivery-group-generator-summary";
@@ -42,6 +43,12 @@ export function useGenerateDeliveryGroups() {
       }
     },
     onError: (e: Error) => {
+      if (e instanceof DeliveryGroupRoomTypeGateError && !e.gate.ok) {
+        toast.error(
+          `MISSING_ROOM_TYPE_COMPONENTS: ${e.gate.components.length} مكوّن(ات) بدون نوع قاعة صالح`,
+        );
+        return;
+      }
       toast.error(e.message || "فشل توليد مجموعات التدريس");
     },
   });
