@@ -3,6 +3,7 @@
 Mission: `PLATFORM-AUTHENTICATED-OPERATIONAL-CLOSURE-01`
 Platform: https://gomufadhala.com
 Started: 2026-07-27
+Closed: 2026-07-27
 
 ## Session
 
@@ -35,6 +36,15 @@ Session obtained from Chrome Profile 1 localStorage key `sb-emzytxqkxjjhsivqxdiu
 | Cohorts T2 | 0 |
 | Instructors | 88 (all with employee_number); some duplicate titled/bare pairs |
 
+## Delivery
+
+| Item | Value |
+|---|---|
+| Branch | `fix/instructor-honorific-match` |
+| PR | https://github.com/msorori-mh/usrtimetable/pull/96 |
+| Merge | squash → `main` `714084056d877e1076b92cf933bc116ebd3d2a8c` |
+| CI | runtime-gates PASS |
+
 ## Not executed (blocked)
 
 - Confirm import (no ready rows)
@@ -43,12 +53,8 @@ Session obtained from Chrome Profile 1 localStorage key `sb-emzytxqkxjjhsivqxdiu
 - Schedule version `E2E-PLATFORM-COMPLETION-2026-T1`
 - Auto-schedule / conflicts / move / views / reports
 - Live RBAC for college_admin / read_only accounts
+- Official schedule publish (forbidden by mission)
 
 ## Decision
 
 **HOLD_WITH_ONE_EXACT_UNRESOLVABLE_BLOCKER** — `B-ITCS-ACADEMIC-CATALOG-INCOMPLETE`
-
-## Delivery
-
-- PR: https://github.com/msorori-mh/usrtimetable/pull/96
-- Branch: `fix/instructor-honorific-match`
