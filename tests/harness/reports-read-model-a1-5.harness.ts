@@ -37,7 +37,9 @@ const between = (body: string, start: string, end: string) => {
   return body.slice(i, j);
 };
 const noDml = (body: string, file: string, table: string) => {
-  const re = new RegExp(`\\.from\\(\\s*["']${table}["']\\s*\\)\\s*\\.(insert|update|upsert|delete)\\s*\\(`);
+  const re = new RegExp(
+    `\\.from\\(\\s*["']${table}["']\\s*\\)\\s*\\.(insert|update|upsert|delete)\\s*\\(`,
+  );
   assert(!re.test(body.replace(/\s+/g, " ")), `${file} performs DML against ${table}`);
 };
 
@@ -77,7 +79,8 @@ assert(
   "section timetable head title marked Legacy",
 );
 assert(
-  sectionReport.includes('.from("sections")') && sectionReport.includes("fetchSectionTimetableSessions"),
+  sectionReport.includes('.from("sections")') &&
+    sectionReport.includes("fetchSectionTimetableSessions"),
   "historical sections SELECT retained for the Legacy report (read-only)",
 );
 noDml(sectionReport, "reports.section-timetable.tsx", "sections");
@@ -113,12 +116,20 @@ assert(
   legacySelect.includes("sections(section_number)") && legacySelect.includes("section_id"),
   "LEGACY_TIMETABLE_SESSION_SELECT retains the historical sections projection",
 );
-const legacyFetch = between(queries, "export async function fetchSectionTimetableSessions", "export async function");
+const legacyFetch = between(
+  queries,
+  "export async function fetchSectionTimetableSessions",
+  "export async function",
+);
 assert(
   legacyFetch.includes("select: LEGACY_TIMETABLE_SESSION_SELECT"),
   "Legacy section report fetches via the Legacy projection only",
 );
-const programFetch = between(queries, "export async function fetchProgramLevelTimetableSessions", "/** Analytics:");
+const programFetch = between(
+  queries,
+  "export async function fetchProgramLevelTimetableSessions",
+  "/** Analytics:",
+);
 assert(
   programFetch.includes('q.eq("cohort_id"') && programFetch.includes('q.eq("delivery_group_id"'),
   "program-level query filters by cohort_id / delivery_group_id",
@@ -129,12 +140,20 @@ assert(
 );
 const publishedSelect = between(queries, "export const PUBLISHED_TIMETABLE_SELECT", "as const");
 assert(
-  publishedSelect.includes("cohort_id") && publishedSelect.includes("delivery_group_id") && !publishedSelect.includes("sections("),
+  publishedSelect.includes("cohort_id") &&
+    publishedSelect.includes("delivery_group_id") &&
+    !publishedSelect.includes("sections("),
   "PUBLISHED_TIMETABLE_SELECT is cohort/DG based (no sections join)",
 );
-const publishedFetch = between(queries, "export async function fetchPublishedTimetableSessions", "/** Resolved New Flow identity labels");
+const publishedFetch = between(
+  queries,
+  "export async function fetchPublishedTimetableSessions",
+  "/** Resolved New Flow identity labels",
+);
 assert(
-  publishedFetch.includes('q.eq("cohort_id"') && publishedFetch.includes('q.eq("delivery_group_id"') && !publishedFetch.includes("section_id"),
+  publishedFetch.includes('q.eq("cohort_id"') &&
+    publishedFetch.includes('q.eq("delivery_group_id"') &&
+    !publishedFetch.includes("section_id"),
   "published timetable query filters by cohort/DG, never section_id",
 );
 assert(
@@ -143,7 +162,8 @@ assert(
 );
 const labelFetch = between(queries, "export async function fetchCohortDeliveryGroupLabels", "\n}");
 assert(
-  labelFetch.includes('.from("academic_cohorts")') && labelFetch.includes('.from("delivery_groups")'),
+  labelFetch.includes('.from("academic_cohorts")') &&
+    labelFetch.includes('.from("delivery_groups")'),
   "labels resolve from academic_cohorts + delivery_groups",
 );
 assert(
@@ -176,7 +196,8 @@ assert(
   "Legacy headers retained unchanged for the historical report",
 );
 assert(
-  mappers.includes("cohort: s.cohort_label") && mappers.includes("delivery_group: s.delivery_group_label"),
+  mappers.includes("cohort: s.cohort_label") &&
+    mappers.includes("delivery_group: s.delivery_group_label"),
   "export rows carry cohort/DG values",
 );
 
@@ -213,16 +234,19 @@ for (const rel of [
 }
 const programRoute = read("src/routes/_authenticated/reports.program-level-timetable.tsx");
 assert(
-  programRoute.includes('.from("academic_cohorts")') && programRoute.includes('.from("delivery_groups")'),
+  programRoute.includes('.from("academic_cohorts")') &&
+    programRoute.includes('.from("delivery_groups")'),
   "program-level filter sources are cohorts + delivery groups",
 );
 const publishedRoute = read("src/routes/_authenticated/reports.published-timetable.tsx");
 assert(
-  publishedRoute.includes('.from("academic_cohorts")') && publishedRoute.includes('.from("delivery_groups")'),
+  publishedRoute.includes('.from("academic_cohorts")') &&
+    publishedRoute.includes('.from("delivery_groups")'),
   "published filter sources are cohorts + delivery groups",
 );
 assert(
-  publishedRoute.includes('q.eq("cohort_id"') && publishedRoute.includes('q.eq("delivery_group_id"'),
+  publishedRoute.includes('q.eq("cohort_id"') &&
+    publishedRoute.includes('q.eq("delivery_group_id"'),
   "published inline query filters by cohort/DG",
 );
 assert(
@@ -262,7 +286,8 @@ assert(
 
 const dashboard = read("src/routes/_authenticated/data-readiness.tsx");
 assert(
-  dashboard.includes("async function fetchNewFlowMetrics") && dashboard.includes("sch.push(...(await fetchNewFlowMetrics(collegeId)))"),
+  dashboard.includes("async function fetchNewFlowMetrics") &&
+    dashboard.includes("sch.push(...(await fetchNewFlowMetrics(collegeId)))"),
   "dashboard readiness includes the same fail-closed New Flow metrics",
 );
 assert(
@@ -272,7 +297,11 @@ assert(
 
 // ---------- 7) conflict Legacy evidence retained; other surfaces stay clean ----------
 const operational = read("src/lib/reports/queries/operational-queries.ts");
-const conflictSelect = between(operational, "const CONFLICT_SESSION_SELECT", "async function fetchSessionsByIds");
+const conflictSelect = between(
+  operational,
+  "const CONFLICT_SESSION_SELECT",
+  "async function fetchSessionsByIds",
+);
 assert(
   conflictSelect.includes("sections(section_number)"),
   "conflict read model keeps its documented diagnostic Legacy section evidence (read-only)",

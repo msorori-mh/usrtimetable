@@ -310,10 +310,7 @@ function run() {
   assert(parsed1.rows[1].courseName === "CS102", "course carry-forward not needed row2");
   assert(parsed1.rows[1].instructorName === "أحمد محمد", "instructor carry-forward");
 
-  const realLayout = parseSourceSheetMatrix(
-    "اسناد الفصل الاول 2026",
-    anonymizedRealWorkbookSheet,
-  );
+  const realLayout = parseSourceSheetMatrix("اسناد الفصل الاول 2026", anonymizedRealWorkbookSheet);
   assert(realLayout.rows[1].programRaw === "علوم حاسوب", "program carry-forward");
   assert(realLayout.rows[1].levelNumber === 2, "level carry-forward");
   assert(realLayout.rows[1].courseName === "هياكل البيانات", "course carry-forward");
@@ -363,8 +360,7 @@ function run() {
     (a) => a.outcome === "MATCHED" && a.courseCode === "CS102",
   );
   assert(
-    cs102Expanded.length === 2 &&
-      cs102Expanded.every((a) => a.assignedComponentHours === 2),
+    cs102Expanded.length === 2 && cs102Expanded.every((a) => a.assignedComponentHours === 2),
     "expand_all emits each component's own server-valid hours",
   );
   assert(

@@ -18,13 +18,7 @@ const ALIAS_ENTRIES: ReadonlyArray<{ code: ProgramAliasCode; labels: readonly st
   { code: "IT", labels: ["تكنولوجيا", "تقنية", "تقنية المعلومات"] },
   {
     code: "CYB",
-    labels: [
-      "امن سيبراني",
-      "أمن سيبراني",
-      "الأمن السيبراني",
-      "امن سبراني",
-      "سيبراني",
-    ],
+    labels: ["امن سيبراني", "أمن سيبراني", "الأمن السيبراني", "امن سبراني", "سيبراني"],
   },
 ];
 
