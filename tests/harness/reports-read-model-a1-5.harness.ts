@@ -233,8 +233,9 @@ assert(
 // ---------- 6) readiness New Flow metrics (fail-closed) ----------
 const readiness = read("src/lib/reports/readiness.ts");
 assert(
-  readiness.includes("async function fetchNewFlowSignals") && readiness.includes("return null;"),
-  "readiness New Flow fetch is fail-closed (null on error)",
+  readiness.includes("async function fetchNewFlowSignals") &&
+    readiness.includes("NEW_FLOW_READINESS_QUERY_FAILED"),
+  "readiness New Flow fetch is fail-closed (throws the query error)",
 );
 assert(
   readiness.includes("export function newFlowReadinessMetrics"),
