@@ -1,4 +1,4 @@
-# PLATFORM-RELEASE-LEAD-PR95-MERGE-AND-LIVE-E2E-01 — FINAL REPORT
+﻿# PLATFORM-PR95-MERGE-PUBLISH-LIVE-CLOSURE-01 — FINAL REPORT
 
 ## Decision
 
@@ -6,71 +6,81 @@
 
 Exact blocker:
 
-`B-LIVE-OPERATOR-AND-LOVABLE-AUTH` — PR #95 is merged and `runtime-gates` on `main` is green, but authenticated live E2E and Lovable Publish cannot proceed: Chrome Profile 1 JWT for `gomufadhala.com` is expired (`exp=1785185540`, `last_sign_in_at=2026-07-27T19:52:20Z`), `refresh_token` already used, agent browser has no `sb-emzytxqkxjjhsivqxdiu-auth-token`, and Lovable login requires interactive OAuth with no `LOVABLE_*` / Cloudflare token in this environment. Live remains pre-PR#95 deployment `71b93a56…` (`LIVE_HAS_PR95_MARKERS=false`).
+`B-LOVABLE-PUBLISH-UNAVAILABLE` — PR #95 is merged and `runtime-gates` on `main` is green, but the agent browser has no Lovable project session (`You don't have access` → Google OAuth). Live remains pre-PR#95 deployment `71b93a56…` (`LIVE_HAS_PR95_MARKERS=false`) while `MAIN_SHA=ee1f9e25…`. Live Import V2 preview of the real workbook therefore cannot be closed on the published PR#95 UI; under the admin API session, `IMPORT_READY_ROWS=0` after official CS/CIS/IT plan load (scoped course/level/term mismatches + non-inventable program aliases).
 
 ## Identifiers
 
 | Field | Value |
 |---|---|
-| Mission | `PLATFORM-RELEASE-LEAD-PR95-MERGE-AND-LIVE-E2E-01` |
+| Mission | `PLATFORM-PR95-MERGE-PUBLISH-LIVE-CLOSURE-01` |
+| PR95_STATE | `MERGED` |
 | PR95_MERGE_COMMIT | `26fa5121667e19dc20544e197ef2b17d6d74cdb4` |
-| MAIN_SHA | `26fa5121667e19dc20544e197ef2b17d6d74cdb4` |
-| PR95 HEAD (pre-merge) | `bd66f8a76ecd0541b095ec221ee7152ad96cdf20` |
-| LIVE_SHA / x-deployment-id | `71b93a56c607f018aaa88654429307e5b24593cade6b2027ca026142c78d459c` (not updated) |
-| Platform | https://gomufadhala.com |
-| Codex assurance | `docs/PLATFORM-COMPLETION-SWARM-01/CODEX-FINAL-SOURCE-ASSURANCE.md` |
+| MAIN_SHA | `ee1f9e25c6f1dd8d224d7333f8f3e90ccdfc96ff` |
+| LIVE_SHA | `71b93a56c607f018aaa88654429307e5b24593cade6b2027ca026142c78d459c` |
+| runtime-gates (main) | PASS `30308698816` |
 
-## Metrics (requested)
+## Metrics
 
 | Metric | Value |
 |---|---|
+| PR95_STATE | MERGED |
 | PR95_MERGE_COMMIT | `26fa5121667e19dc20544e197ef2b17d6d74cdb4` |
-| MAIN_SHA | `26fa5121667e19dc20544e197ef2b17d6d74cdb4` |
+| MAIN_SHA | `ee1f9e25c6f1dd8d224d7333f8f3e90ccdfc96ff` |
 | LIVE_SHA | `71b93a56c607f018aaa88654429307e5b24593cade6b2027ca026142c78d459c` |
-| IMPORT_SOURCE_ROWS | NOT_RUN (auth blocked) |
-| IMPORT_READY_ROWS | NOT_RUN |
-| IMPORTED_ASSIGNMENTS | NOT_RUN |
-| BLOCKED_ROWS | NOT_RUN |
-| READINESS_RESULT | NOT_RUN |
-| SCHEDULE_VERSION | NOT_CREATED (`E2E-ITCS-FINAL-CLOSURE-2026`) |
+| IMPORT_SOURCE_ROWS | 131 |
+| IMPORT_READY_ROWS | 0 |
+| IMPORTED_ASSIGNMENTS | 0 |
+| BLOCKED_ROWS | 252 (expanded outcomes; see hist) |
+| READINESS_RESULT | NOT_CLOSED |
+| SCHEDULE_VERSION | NOT_CREATED |
 | SCHEDULED_SESSIONS | NOT_RUN |
 | UNSCHEDULED_SESSIONS | NOT_RUN |
 | CONFLICT_RESULTS | NOT_RUN |
 | QUALITY_RESULT | NOT_RUN |
-| RBAC_RESULT | NOT_RUN |
+| FINAL_DECISION | HOLD_WITH_ONE_EXACT_UNRESOLVABLE_BLOCKER |
+
+### Import preview histogram (admin session, post catalog load)
+
+- `ERROR:course_not_found` 164 (program/level/term scoped)
+- `ERROR:unknown_program` 19 (campus aliases — not inventable)
+- `AMBIGUOUS:ambiguous_component` 24 / `ambiguous_instructor` 17
+- `BLOCKED:delivery_groups` 22
+- matched / READY: 0
 
 ## What completed
 
 | Step | Result |
 |---|---|
-| PR #95 review (no secrets, no migrations, scoped to scheduling/UX/harness/docs) | PASS |
-| Delete temp scripts `_tmp-itcs-*.mjs` | PASS (not committed) |
-| Local `git diff --check` / `tsc` / `build` / `bun test` / `test:harness` (48/0/0) on PR head | PASS |
-| Merge PR #95 via **merge commit** | PASS → `26fa512` |
-| `runtime-gates` on `main` @ `26fa512` | PASS (run `30306978736`) |
-| Lovable Publish | BLOCKED — no Lovable session / OAuth |
-| Live Import V2 / readiness / schedule / RBAC | BLOCKED — no usable platform JWT |
+| PR #95 state | Already MERGED (merge commit `26fa512`) |
+| main sync + whitespace fix for gates | `ee1f9e2`; gates PASS |
+| Lovable Publish | BLOCKED — no agent Lovable auth |
+| Live fingerprint vs MAIN | FAIL |
+| Admin session | Valid (`msorori201201@gmail.com` / super_admin) |
+| Official CS/CIS/IT `full_study_plan` upsert | 144 rows committed; levels 16; plans 4; components 308 |
+| Cohorts + curriculum + DGs | 64 cohorts; 181 delivery_groups |
+| TA V2 preview (real workbook) | SOURCE 131 / READY 0 |
+| Schedule E2E | NOT_RUN (no READY import) |
 
 ## Security Review
 
 | Item | Value |
 |---|---|
-| Files changed (this closeout) | FINAL-REPORT / FINAL-OPERATIONAL-RUNLOG only |
+| Files changed | FINAL-REPORT / FINAL-OPERATIONAL-RUNLOG only (docs) |
 | Migrations changed? | no |
 | RLS / RPCs changed? | no |
-| Authentication impact | no (could not obtain live session) |
+| Authentication impact | no |
 | Authorization impact | no |
 | Sensitive data exposure | no |
 | Privilege escalation risk | no |
-| Production risk | none for merge; live E2E not executed |
-| Ready for merge | yes — PR #95 already merged |
+| Production risk | low — catalog/cohort operational writes under super_admin; no official schedule publish; no migrations |
+| Ready for merge | PR #95 already merged |
 | Ready for deploy | code ready; Lovable publish blocked |
 
 ## Verification
 
-- Source/CI: PASS
-- Live publish fingerprint: FAIL match to MAIN_SHA
-- Authenticated operational path: NOT executed
+- Source/CI: PASS on `ee1f9e2`
+- Live publish: FAIL match to MAIN
+- Import READY: 0
 
 ## Migration status
 
@@ -78,15 +88,17 @@ None.
 
 ## Production impact
 
-- `main` advanced by merge of PR #95 only.
-- No teaching assignment import, no schedule version, no official publish, no DB catalog writes in this mission step.
+- Operational DB writes: CS/CIS/IT study plans, levels, plan courses/components, additional cohorts, delivery groups.
+- No official schedule published/replaced.
+- No deletions of official data.
+- Temp `_tmp-*` scripts not committed.
 
 ## Remaining risks
 
-Until a fresh `super_admin` session is available in the agent browser (or extractable from Chrome after re-login) **and** Lovable Publish can run, live site will not include PR #95 auto-schedule/readiness UX, and Import V2 E2E cannot be closed.
+Until Lovable Publish succeeds for current `main`, live UI lacks PR #95. Until course/level/term name matches (or confirmed aliases) yield READY rows, Import V2 + experimental schedule cannot close.
 
 ## Recommended next step
 
-1. Re-login as `msorori201201@gmail.com` in the **agent browser** tab on `/auth` (or refresh Chrome Profile 1 session so LS contains a non-expired token).
-2. Authenticate Lovable and Publish once from `main` `26fa512` (no migrations).
-3. Resume Import V2 → readiness → `E2E-ITCS-FINAL-CLOSURE-2026` → RBAC from the failure point.
+1. Publish once from authenticated Lovable project `c14ffafc-2bc4-44f0-aef6-c8785e7ca67b` for `main` `ee1f9e2` (no migrations).
+2. Confirm live markers / new `x-deployment-id`.
+3. Resume Import V2 with confirmed course aliases only — do not invent campus program labels.
