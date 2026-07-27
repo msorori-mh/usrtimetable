@@ -91,7 +91,11 @@ Static RBAC audit PASS for production-relevant patterns:
 |---|---|
 | Restore `implementation-reports/.../post-apply-verification.sql` | Close harness missing-historical-artifact (Phase-6 SOURCE-only) |
 | Update runlog + final report | Delivery pack |
+| Branch pushed | `cursor/platform-final-operational-completion-01` @ `c6b1a5c` |
+| PR open via `gh` | BLOCKED (`gh` not logged in; browser GitHub session absent). Open manually: https://github.com/msorori-mh/usrtimetable/pull/new/cursor/platform-final-operational-completion-01 |
 
-## G8 — Decision inputs
+## G8 — Decision
 
-Exact unresolvable blocker remains publish authentication. All non-blocked local gates green after Phase-6 artifact restore.
+**HOLD_WITH_ONE_EXACT_UNRESOLVABLE_BLOCKER**
+
+Blocker id: `B-PUBLISH-OPERATOR-AUTH`
