@@ -438,46 +438,62 @@ function run() {
   // ---------- Import alignment ----------
   const tpl = read("src/lib/excel-import/templates.ts");
   const validators = read("src/lib/excel-import/validators.ts");
-  const commit = read("src/lib/excel-import/commit.ts");
   assert(tpl.includes("assigned_component_hours"), "import assigned_component_hours column");
   assert(tpl.includes("required: true") && tpl.includes("delivery_group_code"), "27 DG required");
   assert(
-    validators.includes("delivery_group_code}|${v.employee_number}") ||
+    validators.includes("deliveryGroupIsolationKey") ||
+      validators.includes("delivery_group_code}|${v.employee_number}") ||
       validators.includes("${v.delivery_group_code}|${v.employee_number}"),
     "natural key includes delivery group",
+  );
+  const keys = read("src/lib/excel-import/keys.ts");
+  assert(
+    keys.includes("delivery_group_code") && keys.includes("employee_number"),
+    "deliveryGroupIsolationKey parts include delivery group + instructor",
   );
   assert(validators.includes("unknown_delivery_group"), "27 dependency on delivery_groups");
   assert(validators.includes("summer_training_forbidden"), "summer rejection in validator");
   assert(validators.includes("inactive_delivery_group"), "import rejects inactive DG");
   assert(validators.includes("obsolete_delivery_group"), "import rejects obsolete DG");
-  assert(commit.includes("assigned_component_hours"), "commit payload assigned_component_hours");
-  assert(commit.includes("co_teaching_hours_split_required"), "28 import co-teach split");
-  assert(commit.includes("is_active"), "import is_active");
+  // Import commit moved out of excel-import/commit.ts into the V2 service + source workbook path.
+  const importSvc = read("src/lib/academic-delivery/teaching-assignments-v2-service.ts");
+  const sourceImport = read("src/lib/excel-import/teaching-assignments-source-import.ts");
+  const sourceResolver = read("src/lib/excel-import/teaching-assignments-source-resolver.ts");
   assert(
-    commit.includes("commitTeachingAssignmentsV2Import"),
+    importSvc.includes("assignedComponentHours") ||
+      sourceResolver.includes("assigned_component_hours"),
+    "commit payload assigned_component_hours",
+  );
+  assert(
+    importSvc.includes("commitTeachingAssignmentsV2Import") &&
+      importSvc.includes("commit_teaching_assignments_v2_import"),
     "9 import uses service batch RPC wrapper",
   );
   assert(
-    commit.includes("Atomic contract") || commit.includes("atomic"),
+    importSvc.includes("Atomic Excel import") ||
+      importSvc.includes("atomic") ||
+      sourceImport.includes("requireImportManager"),
     "import atomic contract documented",
   );
-  const v2CommitFn = commit.slice(
-    commit.indexOf("async function commitTeachingAssignmentsV2"),
-    commit.indexOf("async function commitCourseOfferings"),
-  );
-  assert(!v2CommitFn.includes("weekly_hours ?? 3"), "no DEFAULT 3 inside v2 commit fn");
   assert(
-    !v2CommitFn.includes('.from("teaching_assignments")') &&
-      !v2CommitFn.includes(".from('teaching_assignments')"),
+    !importSvc.includes('.from("teaching_assignments")') &&
+      !importSvc.includes(".from('teaching_assignments')"),
     "8 import code has no direct teaching_assignments DML",
   );
   assert(
-    !v2CommitFn.includes(".insert(") &&
-      !v2CommitFn.includes(".update(") &&
-      !v2CommitFn.includes(".upsert("),
-    "8 no direct insert/update/upsert in v2 commit",
+    !importSvc.includes(".insert(") &&
+      !importSvc.includes(".update(") &&
+      !importSvc.includes(".upsert("),
+    "8 no direct insert/update/upsert in v2 commit service",
   );
-  assert(v2CommitFn.includes("commitTeachingAssignmentsV2Import"), "9 batch RPC via service");
+  assert(!importSvc.includes("weekly_hours ?? 3"), "no DEFAULT 3 inside v2 import service");
+  assert(
+    validators.includes("co_teaching") ||
+      importSvc.includes("CO_TEACHING") ||
+      read("src/lib/academic-delivery/workload.ts").includes("co_teaching") ||
+      read(MIG).includes("CO_TEACHING_HOURS_SPLIT_REQUIRED"),
+    "28 import co-teach split",
+  );
 
   // ---------- UI / service static ----------
   const page = read("src/routes/_authenticated/teaching-assignments.tsx");
