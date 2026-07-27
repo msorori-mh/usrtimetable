@@ -6,7 +6,7 @@ import {
   instructorMatchKey,
   looksLikeCourseCode,
   looksLikeEmployeeNumber,
-  normalizedMatchKey, 
+  normalizedMatchKey,
 } from "./arabic-normalize";
 import {
   PROGRAM_ALIAS_TARGETS,

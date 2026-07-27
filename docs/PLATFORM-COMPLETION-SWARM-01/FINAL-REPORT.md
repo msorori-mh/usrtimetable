@@ -12,7 +12,7 @@ Exact blocker:
 
 | Field | Value |
 |---|---|
-| FINAL_SHA | `684021e7a71928cab082e8eadc57eec6dc4a38d8` |
+| FINAL_SHA | `PENDING_COMMIT` |
 | Mission | `PLATFORM-AUTHENTICATED-OPERATIONAL-CLOSURE-01` |
 | Platform | https://gomufadhala.com |
 | Operator session | `msorori201201@gmail.com` · role `super_admin` · Super Admin |
@@ -36,6 +36,8 @@ Exact blocker:
 | Sem2 term activation | DONE — existing official row `is_active` flipped true only |
 
 ## Code change (regression)
+
+PR: https://github.com/msorori-mh/usrtimetable/pull/96
 
 Files:
 
