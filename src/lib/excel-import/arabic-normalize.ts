@@ -25,9 +25,47 @@ export function normalizeArabicText(raw: string | null | undefined): string {
   return s;
 }
 
+/**
+ * Strip leading academic / professional honorifics used in source workbooks
+ * (e.g. أ.م.د.، أ.د.، د.، م.، Dr.) so names match catalog rows stored without titles.
+ */
+export function stripAcademicHonorifics(raw: string | null | undefined): string {
+  let s = String(raw ?? "").trim();
+  if (!s) return "";
+  // Longest prefixes first. Allow optional dots/spaces (د.مقبول or د. مقبول).
+  const prefixes: RegExp[] = [
+    /^(?:أ|ا)\.?\s*م\.?\s*د\.?\s*/u,
+    /^(?:أ|ا)\.?\s*د\.?\s*/u,
+    /^د\.?\s*/u,
+    /^م\.?\s+/u,
+    /^(?:أ|ا)\.?\s+/u,
+    /^dr\.?\s*/i,
+    /^eng\.?\s*/i,
+    /^prof\.?\s*/i,
+  ];
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const re of prefixes) {
+      const next = s.replace(re, "").trim();
+      if (next !== s && next.length > 0) {
+        s = next;
+        changed = true;
+        break;
+      }
+    }
+  }
+  return s;
+}
+
 /** Case-insensitive key for maps (Arabic + Latin). */
 export function normalizedMatchKey(raw: string | null | undefined): string {
   return normalizeArabicText(raw).toLocaleLowerCase("en-US");
+}
+
+/** Instructor name key: honorifics stripped then Arabic-normalized. */
+export function instructorMatchKey(raw: string | null | undefined): string {
+  return normalizedMatchKey(stripAcademicHonorifics(raw));
 }
 
 /** True when cell looks like a course code (e.g. CS101, CY301). */

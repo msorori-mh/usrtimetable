@@ -3,8 +3,10 @@
  * Synthetic fixture — no DB writes.
  */
 import {
+  instructorMatchKey,
   normalizeArabicText,
   normalizedMatchKey,
+  stripAcademicHonorifics,
 } from "../../src/lib/excel-import/arabic-normalize";
 import { resolveProgramField } from "../../src/lib/excel-import/program-aliases";
 import {
@@ -248,6 +250,15 @@ function run() {
     "spaces collapsed",
   );
   assert(normalizedMatchKey("أحمد") === normalizedMatchKey("احمد"), "alef normalized");
+  assert(
+    stripAcademicHonorifics("أ.م.د. مقبول قايد عبده الكامل") === "مقبول قايد عبده الكامل",
+    "strip أ.م.د. honorific",
+  );
+  assert(
+    instructorMatchKey("د. اسامه عبدالجليل احمد سيف") ===
+      instructorMatchKey("اسامه عبدالجليل احمد سيف"),
+    "instructor key ignores د.",
+  );
 
   // Program aliases + compound
   assert(resolveProgramField("علوم حاسوب").kind === "codes", "cs alias");
