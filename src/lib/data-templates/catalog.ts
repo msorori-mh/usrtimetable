@@ -841,7 +841,7 @@ export const CATALOG: TemplateDef[] = [
     sampleRows: [["CS", "3", "regular", "2024", "2026-F", "60", "estimated", "CS-L3-2024", "true"]],
     references: [REF_STUDY_SYSTEM],
     commonErrors: ["رمز برنامج غير معروف", "فصل غير معروف", "نظام دراسة خارج Pilot"],
-    notes: "لا يوجد plan_code. الخطة تُربط عبر توليد منهج الدفعة.",
+    notes: "لا يوجد plan_code. الخطة تُربط عبر توليد مقررات الدفعة.",
   },
   {
     id: "elective_slot_courses",
@@ -1210,7 +1210,7 @@ export const IMPORT_ORDER: { step: number; label: string; templateId?: string; n
   { step: 11, label: "اختيارات الدفعات", templateId: "cohort_elective_selections" },
   {
     step: 12,
-    label: "توليد منهج الدفعة (cohort curriculum)",
+    label: "توليد مقررات الدفعة",
     note: "مولَّد من النظام — ليس Excel",
   },
   {

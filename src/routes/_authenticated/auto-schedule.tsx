@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,15 +9,26 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { runGreedyAutoSchedule, type AutoRunMode } from "@/lib/auto-scheduler/greedy";
+import { fetchCollegeReadiness } from "@/lib/reports/readiness";
 import { Sparkles, AlertCircle, CheckCircle2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/auto-schedule")({
@@ -47,6 +58,23 @@ function AutoSchedulePage() {
       return data ?? [];
     },
   });
+
+  const {
+    data: readiness,
+    isLoading: readinessLoading,
+    isError: readinessError,
+  } = useQuery({
+    queryKey: ["auto-schedule-readiness", active?.id],
+    enabled: !!active,
+    queryFn: () => fetchCollegeReadiness(active!.id),
+  });
+  const readinessBlockers = readiness
+    ? [...readiness.studyPlan, ...readiness.resources, ...readiness.scheduling].filter(
+        (metric) => metric.critical && metric.missing > 0,
+      )
+    : [];
+  const readinessIncomplete =
+    readinessLoading || readinessError || !readiness || readinessBlockers.length > 0;
 
   const { data: runs } = useQuery({
     queryKey: ["auto-runs", active?.id, versionId],
@@ -104,7 +132,8 @@ function AutoSchedulePage() {
         <div>
           <h1 className="text-2xl font-bold">الجدولة التلقائية</h1>
           <p className="text-sm text-muted-foreground">
-            خوارزمية شَرِهة محسّنة (V2): ترتيب الوحدات حسب الصعوبة، تسجيل المرشحين، وتراجع محدود لإعادة توطين محاضرات هذا التشغيل عند الحاجة — مع الحفاظ على جميع المحاضرات القائمة.
+            خوارزمية شَرِهة محسّنة (V2): ترتيب الوحدات حسب الصعوبة، تسجيل المرشحين، وتراجع محدود
+            لإعادة توطين محاضرات هذا التشغيل عند الحاجة — مع الحفاظ على جميع المحاضرات القائمة.
           </p>
         </div>
         <CollegeSwitcher />
@@ -119,10 +148,14 @@ function AutoSchedulePage() {
               <div className="min-w-64">
                 <label className="text-xs text-muted-foreground">نسخة الجدول</label>
                 <Select value={versionId} onValueChange={setVersionId}>
-                  <SelectTrigger><SelectValue placeholder="اختر النسخة" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="اختر النسخة" />
+                  </SelectTrigger>
                   <SelectContent>
                     {(versions ?? []).map((v) => (
-                      <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
+                      <SelectItem key={v.id} value={v.id}>
+                        {v.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -130,7 +163,9 @@ function AutoSchedulePage() {
               <div className="min-w-56">
                 <label className="text-xs text-muted-foreground">وضع التشغيل</label>
                 <Select value={mode} onValueChange={(v) => setMode(v as AutoRunMode)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="fill_missing">إكمال الناقص فقط (آمن)</SelectItem>
                     <SelectItem value="regenerate_auto">إعادة توليد المحاضرات التلقائية</SelectItem>
@@ -139,7 +174,7 @@ function AutoSchedulePage() {
                 </Select>
               </div>
               <Button
-                disabled={!canManage || !versionId || run.isPending}
+                disabled={!canManage || !versionId || run.isPending || readinessIncomplete}
                 onClick={() => {
                   if (mode === "fill_missing") run.mutate();
                   else setConfirmOpen(true);
@@ -149,12 +184,36 @@ function AutoSchedulePage() {
                 {run.isPending ? "جارٍ التشغيل..." : "تشغيل الجدولة التلقائية"}
               </Button>
             </div>
+            {readinessIncomplete ? (
+              <div
+                className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-sm"
+                role="alert"
+                data-testid="auto-schedule-readiness-blocker"
+              >
+                <p className="font-medium text-amber-700">
+                  لا يمكن تشغيل الجدولة قبل اكتمال جاهزية البيانات.
+                </p>
+                <p className="mt-1 text-muted-foreground">
+                  {readinessLoading
+                    ? "جارٍ التحقق من الجاهزية…"
+                    : readinessError
+                      ? "تعذر التحقق من الجاهزية؛ أُوقف التشغيل احترازيًا."
+                      : `${readinessBlockers.length} فحوص حرجة تحتاج إلى معالجة.`}
+                </p>
+                <Link
+                  to="/data-readiness"
+                  className="mt-2 inline-block text-primary underline-offset-4 hover:underline"
+                >
+                  فتح شاشة جاهزية البيانات
+                </Link>
+              </div>
+            ) : null}
             <p className="text-[11px] text-muted-foreground">
               {mode === "fill_missing"
                 ? "إكمال الناقص: يضيف محاضرات للإسناد غير المجدولة فقط، ويحافظ على جميع المحاضرات القائمة."
                 : mode === "regenerate_auto"
-                ? "إعادة توليد التلقائي: يحذف المحاضرات المولّدة تلقائياً غير المقفلة، ويحافظ على المحاضرات اليدوية والمقفلة، ثم يعيد توليد المطلوب."
-                : "إعادة بناء كامل: يحذف جميع المحاضرات غير المقفلة (تلقائية ويدوية)، ويحافظ على المحاضرات المقفلة فقط. غير قابل للتراجع."}
+                  ? "إعادة توليد التلقائي: يحذف المحاضرات المولّدة تلقائياً غير المقفلة، ويحافظ على المحاضرات اليدوية والمقفلة، ثم يعيد توليد المطلوب."
+                  : "إعادة بناء كامل: يحذف جميع المحاضرات غير المقفلة (تلقائية ويدوية)، ويحافظ على المحاضرات المقفلة فقط. غير قابل للتراجع."}
             </p>
           </Card>
 
@@ -172,138 +231,190 @@ function AutoSchedulePage() {
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>إلغاء</AlertDialogCancel>
-                <AlertDialogAction onClick={() => { setConfirmOpen(false); run.mutate(); }}>
+                <AlertDialogAction
+                  onClick={() => {
+                    setConfirmOpen(false);
+                    run.mutate();
+                  }}
+                >
                   متابعة
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
 
-          {latest && (() => {
-            const sum = latest.summary as {
-              algorithm_version?: string;
-              ordering_strategy?: string;
-              mode?: AutoRunMode;
-              backtracking_attempts?: number;
-              max_backtracking_attempts?: number;
-              relocated_sessions?: number;
-              preserved_existing_sessions?: number;
-              deleted_auto_sessions?: number;
-              skipped_locked_sessions?: number;
-              regenerated_sessions?: number;
-              quality_before?: number;
-              quality_after?: number;
-              improvement_delta?: number;
-              total_required_sessions?: number;
-              by_session_type?: Record<string, { required: number; placed: number; unplaced: number }>;
-              warnings?: string[];
-            } | null;
-            const delta = sum?.improvement_delta ?? 0;
-            return (
-            <Card className="p-4 space-y-3">
-              <div className="flex items-center gap-2 flex-wrap">
-                {latest.status === "completed" ? (
-                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                ) : (
-                  <AlertCircle className="h-5 w-5 text-amber-600" />
-                )}
-                <span className="font-semibold">نتيجة آخر تشغيل</span>
-                <Badge variant="secondary">{latest.status}</Badge>
-                {sum?.algorithm_version && (
-                  <Badge variant="outline" className="text-[10px]">{sum.algorithm_version}</Badge>
-                )}
-                {sum?.mode && (
-                  <Badge variant="outline" className="text-[10px]">
-                    {sum.mode === "fill_missing" ? "إكمال" : sum.mode === "regenerate_auto" ? "إعادة توليد" : "إعادة بناء"}
-                  </Badge>
-                )}
-                <span className="text-xs text-muted-foreground mr-auto">
-                  {new Date(latest.created_at).toLocaleString("ar")}
-                </span>
-              </div>
+          {latest &&
+            (() => {
+              const sum = latest.summary as {
+                algorithm_version?: string;
+                ordering_strategy?: string;
+                mode?: AutoRunMode;
+                backtracking_attempts?: number;
+                max_backtracking_attempts?: number;
+                relocated_sessions?: number;
+                preserved_existing_sessions?: number;
+                deleted_auto_sessions?: number;
+                skipped_locked_sessions?: number;
+                regenerated_sessions?: number;
+                quality_before?: number;
+                quality_after?: number;
+                improvement_delta?: number;
+                total_required_sessions?: number;
+                by_session_type?: Record<
+                  string,
+                  { required: number; placed: number; unplaced: number }
+                >;
+                warnings?: string[];
+              } | null;
+              const delta = sum?.improvement_delta ?? 0;
+              return (
+                <Card className="p-4 space-y-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {latest.status === "completed" ? (
+                      <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                    ) : (
+                      <AlertCircle className="h-5 w-5 text-amber-600" />
+                    )}
+                    <span className="font-semibold">نتيجة آخر تشغيل</span>
+                    <Badge variant="secondary">{latest.status}</Badge>
+                    {sum?.algorithm_version && (
+                      <Badge variant="outline" className="text-[10px]">
+                        {sum.algorithm_version}
+                      </Badge>
+                    )}
+                    {sum?.mode && (
+                      <Badge variant="outline" className="text-[10px]">
+                        {sum.mode === "fill_missing"
+                          ? "إكمال"
+                          : sum.mode === "regenerate_auto"
+                            ? "إعادة توليد"
+                            : "إعادة بناء"}
+                      </Badge>
+                    )}
+                    <span className="text-xs text-muted-foreground mr-auto">
+                      {new Date(latest.created_at).toLocaleString("ar")}
+                    </span>
+                  </div>
 
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+                    <Stat
+                      label="مولّدة"
+                      value={sum?.regenerated_sessions ?? latest.placed_sessions}
+                    />
+                    <Stat
+                      label="محذوفة تلقائية"
+                      value={sum?.deleted_auto_sessions ?? 0}
+                      accent={(sum?.deleted_auto_sessions ?? 0) > 0 ? "warn" : undefined}
+                    />
+                    <Stat label="مقفلة (تم تخطيها)" value={sum?.skipped_locked_sessions ?? 0} />
+                    <Stat label="محفوظة (قائمة)" value={sum?.preserved_existing_sessions ?? 0} />
+                  </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
-                <Stat label="مولّدة" value={sum?.regenerated_sessions ?? latest.placed_sessions} />
-                <Stat label="محذوفة تلقائية" value={sum?.deleted_auto_sessions ?? 0} accent={(sum?.deleted_auto_sessions ?? 0) > 0 ? "warn" : undefined} />
-                <Stat label="مقفلة (تم تخطيها)" value={sum?.skipped_locked_sessions ?? 0} />
-                <Stat label="محفوظة (قائمة)" value={sum?.preserved_existing_sessions ?? 0} />
-              </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+                    <Stat
+                      label="مطلوب"
+                      value={
+                        sum?.total_required_sessions ??
+                        latest.placed_sessions + latest.unplaced_sessions
+                      }
+                    />
+                    <Stat label="محاضرات موضوعة" value={latest.placed_sessions} />
+                    <Stat
+                      label="غير مجدول"
+                      value={latest.unplaced_sessions}
+                      accent={latest.unplaced_sessions > 0 ? "warn" : undefined}
+                    />
+                    <Stat label="محفوظة (قائمة)" value={sum?.preserved_existing_sessions ?? 0} />
+                  </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
-                <Stat label="مطلوب" value={sum?.total_required_sessions ?? (latest.placed_sessions + latest.unplaced_sessions)} />
-                <Stat label="محاضرات موضوعة" value={latest.placed_sessions} />
-                <Stat label="غير مجدول" value={latest.unplaced_sessions} accent={latest.unplaced_sessions > 0 ? "warn" : undefined} />
-                <Stat label="محفوظة (قائمة)" value={sum?.preserved_existing_sessions ?? 0} />
-              </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+                    <Stat label="جودة قبل" value={sum?.quality_before ?? "—"} />
+                    <Stat
+                      label="جودة بعد"
+                      value={sum?.quality_after ?? latest.quality_score_after ?? "—"}
+                    />
+                    <Stat
+                      label="تحسّن الجودة"
+                      value={delta > 0 ? `+${delta}` : String(delta)}
+                      accent={delta < 0 ? "danger" : undefined}
+                    />
+                    <Stat
+                      label="تعارضات إلزامية"
+                      value={latest.hard_conflicts_after}
+                      accent={latest.hard_conflicts_after > 0 ? "danger" : undefined}
+                    />
+                  </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
-                <Stat label="جودة قبل" value={sum?.quality_before ?? "—"} />
-                <Stat label="جودة بعد" value={sum?.quality_after ?? latest.quality_score_after ?? "—"} />
-                <Stat
-                  label="تحسّن الجودة"
-                  value={delta > 0 ? `+${delta}` : String(delta)}
-                  accent={delta < 0 ? "danger" : undefined}
-                />
-                <Stat label="تعارضات إلزامية" value={latest.hard_conflicts_after} accent={latest.hard_conflicts_after > 0 ? "danger" : undefined} />
-              </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+                    <Stat label="مخالفات مرنة" value={latest.soft_violations_after} />
+                    <Stat
+                      label="محاولات تراجع"
+                      value={`${sum?.backtracking_attempts ?? 0}/${sum?.max_backtracking_attempts ?? 0}`}
+                    />
+                    <Stat label="محاضرات أُعيد توطينها" value={sum?.relocated_sessions ?? 0} />
+                    <Stat label="المدة (ms)" value={latest.duration_ms ?? 0} />
+                  </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
-                <Stat label="مخالفات مرنة" value={latest.soft_violations_after} />
-                <Stat
-                  label="محاولات تراجع"
-                  value={`${sum?.backtracking_attempts ?? 0}/${sum?.max_backtracking_attempts ?? 0}`}
-                />
-                <Stat label="محاضرات أُعيد توطينها" value={sum?.relocated_sessions ?? 0} />
-                <Stat label="المدة (ms)" value={latest.duration_ms ?? 0} />
-              </div>
+                  {sum?.ordering_strategy && (
+                    <div className="text-[11px] text-muted-foreground">
+                      استراتيجية الترتيب: <span className="font-mono">{sum.ordering_strategy}</span>{" "}
+                      — إجمالي العروض: {latest.total_offerings}
+                    </div>
+                  )}
 
-              {sum?.ordering_strategy && (
-                <div className="text-[11px] text-muted-foreground">
-                  استراتيجية الترتيب: <span className="font-mono">{sum.ordering_strategy}</span> — إجمالي العروض: {latest.total_offerings}
-                </div>
-              )}
+                  {sum?.by_session_type && (
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(sum.by_session_type).map(([type, v]) => (
+                        <Badge key={type} variant="outline" className="text-[11px]">
+                          {type}: {v.placed}/{v.required}{" "}
+                          {v.unplaced > 0 ? `(غير مجدول ${v.unplaced})` : ""}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
 
-              {sum?.by_session_type && (
-                <div className="flex flex-wrap gap-2">
-                  {Object.entries(sum.by_session_type).map(([type, v]) => (
-                    <Badge key={type} variant="outline" className="text-[11px]">
-                      {type}: {v.placed}/{v.required} {v.unplaced > 0 ? `(غير مجدول ${v.unplaced})` : ""}
-                    </Badge>
-                  ))}
-                </div>
-              )}
+                  {(sum?.warnings ?? []).length > 0 && (
+                    <div className="border rounded-md p-2 bg-amber-50 dark:bg-amber-950/30 text-[11px] max-h-32 overflow-y-auto">
+                      <p className="font-semibold mb-1">تحذيرات ({(sum?.warnings ?? []).length})</p>
+                      <ul className="space-y-0.5">
+                        {(sum?.warnings ?? []).slice(0, 10).map((m, i) => (
+                          <li key={i}>• {m}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
 
-              {(sum?.warnings ?? []).length > 0 && (
-                <div className="border rounded-md p-2 bg-amber-50 dark:bg-amber-950/30 text-[11px] max-h-32 overflow-y-auto">
-                  <p className="font-semibold mb-1">تحذيرات ({(sum?.warnings ?? []).length})</p>
-                  <ul className="space-y-0.5">
-                    {(sum?.warnings ?? []).slice(0, 10).map((m, i) => <li key={i}>• {m}</li>)}
-                  </ul>
-                </div>
-              )}
-
-              {Array.isArray(latest.unplaced) && (latest.unplaced as unknown[]).length > 0 && (
-                <div className="border rounded-md p-3 max-h-80 overflow-y-auto bg-muted/30">
-                  <p className="text-sm font-semibold mb-1">قائمة غير المجدول وأسبابها</p>
-                  <p className="text-[11px] text-muted-foreground mb-2">
-                    السبب يُظهر أول قيد إلزامي منعَ وضع المحاضرة (محاضر/قاعة/قسم/فترة) بعد استنفاد كل المرشحين ومحاولات التراجع المسموح بها.
-                  </p>
-                  <ul className="text-xs space-y-1">
-                    {(latest.unplaced as Array<{ teaching_assignment_id: string; session_type: string; duration_minutes?: number; unit_index?: number; reason: string }>).map((u, i) => (
-                      <li key={i} className="flex justify-between gap-2 border-b py-1">
-                        <span className="text-muted-foreground">
-                          {u.session_type}#{u.unit_index ?? 1} ({u.duration_minutes ?? 0}د) — {u.teaching_assignment_id?.slice(0, 8)}
-                        </span>
-                        <span className="truncate">{u.reason}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </Card>
-            );
-          })()}
+                  {Array.isArray(latest.unplaced) && (latest.unplaced as unknown[]).length > 0 && (
+                    <div className="border rounded-md p-3 max-h-80 overflow-y-auto bg-muted/30">
+                      <p className="text-sm font-semibold mb-1">قائمة غير المجدول وأسبابها</p>
+                      <p className="text-[11px] text-muted-foreground mb-2">
+                        السبب يُظهر أول قيد إلزامي منعَ وضع المحاضرة (محاضر/قاعة/قسم/فترة) بعد
+                        استنفاد كل المرشحين ومحاولات التراجع المسموح بها.
+                      </p>
+                      <ul className="text-xs space-y-1">
+                        {(
+                          latest.unplaced as Array<{
+                            teaching_assignment_id: string;
+                            session_type: string;
+                            duration_minutes?: number;
+                            unit_index?: number;
+                            reason: string;
+                          }>
+                        ).map((u, i) => (
+                          <li key={i} className="flex justify-between gap-2 border-b py-1">
+                            <span className="text-muted-foreground">
+                              {u.session_type}#{u.unit_index ?? 1} ({u.duration_minutes ?? 0}د) —{" "}
+                              {u.teaching_assignment_id?.slice(0, 8)}
+                            </span>
+                            <span className="truncate">{u.reason}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </Card>
+              );
+            })()}
 
           {runs && runs.length > 1 && (
             <Card className="p-4">
@@ -312,7 +423,10 @@ function AutoSchedulePage() {
                 {runs.slice(1).map((r) => (
                   <div key={r.id} className="flex justify-between border-b py-1">
                     <span>{new Date(r.created_at).toLocaleString("ar")}</span>
-                    <span>وُضع {r.placed_sessions} / غير مجدول {r.unplaced_sessions} / جودة {r.quality_score_after ?? "—"}</span>
+                    <span>
+                      وُضع {r.placed_sessions} / غير مجدول {r.unplaced_sessions} / جودة{" "}
+                      {r.quality_score_after ?? "—"}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -324,8 +438,17 @@ function AutoSchedulePage() {
   );
 }
 
-function Stat({ label, value, accent }: { label: string; value: number | string; accent?: "warn" | "danger" }) {
-  const color = accent === "danger" ? "text-destructive" : accent === "warn" ? "text-amber-600" : "";
+function Stat({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: number | string;
+  accent?: "warn" | "danger";
+}) {
+  const color =
+    accent === "danger" ? "text-destructive" : accent === "warn" ? "text-amber-600" : "";
   return (
     <div className="rounded-md border p-2">
       <div className={`text-xl font-bold ${color}`}>{value}</div>

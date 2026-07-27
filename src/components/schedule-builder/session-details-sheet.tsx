@@ -214,7 +214,7 @@ export function SessionDetailsSheet({
               <dl>
                 <Row label="المقرر" value={`${session.course_code} — ${session.course_name}`} />
                 <Row label="رمز المقرر" value={session.course_code} />
-                <Row label="الشعبة" value={session.section_number} />
+                <Row label="مجموعة المحاضرة أو المعمل" value={session.section_number} />
                 <Row label="البرنامج" value={session.program_name} />
                 <Row label="المستوى" value={session.level_name} />
                 <Row label="القسم" value={session.department_name} />
