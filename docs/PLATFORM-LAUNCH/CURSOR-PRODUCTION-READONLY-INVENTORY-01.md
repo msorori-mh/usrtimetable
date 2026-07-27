@@ -12,7 +12,7 @@ The launch data is not ready. The 64-cell readiness matrix has `0 READY`, `54 IN
 
 The real source workbook was parsed offline and resolved against the live read-only catalog with the correct sheet-to-term mapping and both study systems. Its 131 data rows use only levels 1–4, but preview remains `0 MATCHED`: 164 expanded outcomes are `course_not_found`, 19 `unknown_program`, 24 `ambiguous_component`, 17 `ambiguous_instructor`, and 22 are blocked by missing delivery groups. Therefore the former zero-valid-row result was not caused only by a wrong term/system selection.
 
-One exact read-only blocker remains: the authenticated application session exposes business tables but not `supabase_migrations.schema_migrations`, `pg_catalog`, `information_schema`, deployed function bodies/ACLs, triggers, or policies. A second attempt through the PostgREST OpenAPI endpoint returned `401` with “Only the service_role API key can be used for this endpoint”; the Supabase CLI has no management login. Migration/object rows below therefore use `PARTIAL`, `NOT_APPLIED`, and `OBJECTS_PRESENT_HISTORY_MISSING`—never `UNKNOWN`—and no migration is recommended for execution until a catalog-capable read-only connection reconciles the history.
+Stage 02B closed the former `P0-MIG-HISTORY-READ` blocker via **Lovable Cloud → SQL editor** (project Time Table / production `emzytxqkxjjhsivqxdiu`): a SELECT-only read of `supabase_migrations.schema_migrations` returned **75 rows** with columns `version`, `name`, `statements`, `created_by`, `idempotency_key`, `rollback` (no `inserted_at`/`checksum` columns in this schema). PostgREST still cannot expose that schema; absence from PostgREST is not evidence of absence. Catalog probes (`to_regclass` / `pg_proc` / `pg_trigger`) were also run read-only through the same SQL editor. No migration apply, history repair, or production write was performed.
 
 ## MAIN_AND_LIVE_STATE
 
@@ -139,26 +139,104 @@ Instructor availability rows: 0. Instructor preference rows: 0. Instructor hard-
 
 Production has zero schedule versions and zero schedule sessions. Therefore there is no published experimental schedule, no duplicate official version, and no current `schedule_sessions.section_id`/`section_group_id` dependency. This is a clean absence, not schedule readiness.
 
-## MIGRATION_RECONCILIATION_MATRIX
+## MIGRATION_HISTORY_SOURCE
 
-Repository count: 111 migration files. A catalog-capable connection is required to turn `PARTIAL`/`OBJECTS_PRESENT_HISTORY_MISSING` into `MATCHED`.
+| Field | Value |
+|---|---|
+| Tool | Lovable Cloud SQL editor (`More → Cloud → SQL editor`) |
+| Auth | Lovable operator session (Tarasana) on project `c14ffafc-2bc4-44f0-aef6-c8785e7ca67b` |
+| Target | production project `emzytxqkxjjhsivqxdiu` |
+| Query surface | `supabase_migrations.schema_migrations` (SELECT only) |
+| Columns present | `version` (text), `name` (text), `statements` (text[]), `created_by` (text), `idempotency_key` (text), `rollback` (text[]) |
+| Columns absent | `inserted_at`, `executed_at`, `checksum` |
+| Alternate history tables | none additional required; this is the live history table |
+| Rejected channels | PostgREST (`schema_migrations` 404 / not exposed); Supabase Dashboard SQL (unauthenticated sign-in); Supabase CLI / Management API / `DATABASE_URL` / `service_role` (all absent) |
 
-| Migration set/version | Repository evidence | Production object evidence | Classification |
+## MIGRATION_HISTORY_ROWS
+
+- **Row count:** 75
+- **Created_by:** almost all `apikey@lovable.dev`; three anomalous rows have null `created_by` / `name` / `statements`
+- **Earliest version:** `20260604222654`
+- **Latest version:** `20260724002013` with `name=20260724002012_99172989-d50c-4963-9470-1bc51ff3401e` (UUID twin / stamp skew: local file stamp `…012`, remote history version `…013`)
+- **Anomalous empty history rows:** `20260715200200`, `20260715200500`, `20260715200600` (`PARTIAL` — history present, statements null)
+- **Remote history without matching local filename (5):** `20260719005741`, `20260719015552`, `20260719025116`, `20260719034626`, `20260719034943` (UUID applied-copies; statements identify import lifecycle, source-only lifecycle/hardening payloads, and Schedule Builder V2 assignment foundation)
+
+## RECONCILIATION_MATRIX
+
+Repository files: **111**. Remote history rows: **75**. File↔history pairs after UUID / ±1–2s stamp matching: **70**. Local files with no history pair: **41**. Remote history with no local file: **5** (+ 3 anomalous empty rows still counted in the 75).
+
+### Focus classifications
+
+| Migration | History | Objects (catalog SELECT) | Classification |
 |---|---|---|---|
-| 102 historical baseline files identified by the prior reconciliation | files and hashes recorded; core tables are queryable | business objects broadly present; current remote history not readable | `PARTIAL` |
-| `20260715120000` capacity split approval | prior reconciliation marked intentionally pending | no execution evidence obtained | `NOT_APPLIED` |
-| `20260717050000` cross-college references | source-only file | composite college-aware relationships appear in generated types; observed data is same-college | `OBJECTS_PRESENT_HISTORY_MISSING` |
-| `20260718120000` atomic lifecycle | source-only file | no schedule version exists; deployed function body/history cannot be read | `PARTIAL` |
-| `20260718183000` cohort curriculum hardening | prior reconciliation marked pending | baseline generator behavior exists, hardened body not verifiable | `NOT_APPLIED` |
-| `20260718210000` atomic import job | source-only file | function body/history not readable; no write call made | `PARTIAL` |
-| `20260720120000` all-active-days availability | prior reconciliation marked pending | no explicit instructor availability; deployed helper body not readable | `NOT_APPLIED` |
-| `20260720143000` program/department integrity | source-only trigger/FK hardening | current four rows are valid, but trigger/FK delete action cannot be catalog-verified | `NOT_APPLIED` |
-| `20260721090000` Legacy write hardening | prior reconciliation marked pending until Legacy remediation | 174 Legacy assignments remain | `NOT_APPLIED` |
-| `20260721180000` original headcount source file | original source-only version remains in repo | superseded by applied-copy file below | `NOT_APPLIED` |
-| `20260724002012_99172989-…` applied headcount copy | applied-copy file exists; payload differs from original comments/prerequisite handling | three headcount tables are queryable; five approved rows exist; RPC signatures are generated in types | `OBJECTS_PRESENT_HISTORY_MISSING` |
-| claimed production timestamp `20260724002013` | no repository file or report contains this version after two searches | history table inaccessible, so the claimed timestamp cannot be reconciled to `20260724002012` | `HISTORY_PRESENT_OBJECTS_MISSING` for the claim until history export proves otherwise |
+| `20260724002012_99172989-…` (local) ↔ remote `20260724002013` | yes (UUID; name uses `…012`) | `scheduling_cohort_term_headcounts`, `scheduling_headcount_overrides`, `scheduling_headcount_revisions` + 6 headcount RPCs present | `MATCHED` |
+| `20260721180000_source_only_scheduling_headcount_foundation` | no | superseded by matched applied-copy above; do not apply | `NOT_APPLIED` (intentionally superseded) |
+| `20260720143000_source_only_program_department_integrity` | no | `ensure_prog_college()` + trigger `prog_check_college` present | `OBJECTS_PRESENT_HISTORY_MISSING` |
+| `20260718210000_source_only_atomic_import_job_commit` | no local stamp; remote `20260719005741` statements are PR#45 atomic import | `commit_import_job_atomic(p_job_id uuid, p_expected_updated_at timestamptz)` present | `MATCHED` (content/history twin `20260719005741`) |
+| `20260718120000_source_only_atomic_schedule_version_lifecycle` | no local stamp; remote `20260719015552` statements carry SOURCE-ONLY lifecycle header | `transition_schedule_version(...)` present | `PARTIAL` (history twin exists; treat as applied-with-source-only header, verify body before any re-apply) |
+| `20260717050000_source_only_harden_cross_college_references` | no local stamp; remote `20260719025116` statements carry SOURCE-ONLY hardening header | college-aware relationships in live schema; exact constraint set not fully diffed | `PARTIAL` |
+| `20260717043000` / `20260717093000` TA V2 / builder integration | no local stamps; remote `20260719034626` / `20260719034943` statements reference V2 assignment foundation | `delivery_groups`, `teaching_assignments`, import/finalize RPCs present; V2 assignment rows still 0 | `MATCHED` for foundation objects; operational data still empty |
+| `20260716030000_generate_cohort_curriculum` | no | `generate_cohort_curriculum(p_cohort_id uuid)` present | `OBJECTS_PRESENT_HISTORY_MISSING` |
+| `20260715120000_approve_capacity_split_proposal` | no | `approve_capacity_split_proposal(...)` present | `OBJECTS_PRESENT_HISTORY_MISSING` |
+| `20260720120000_source_only_availability_all_active_days` | no | no instructor availability rows; helper presence not required for launch data | `NOT_APPLIED` |
+| `20260721090000_source_only_legacy_write_hardening` | no | 174 Legacy assignments remain; hardening not certified applied | `NOT_APPLIED` |
+| `20260718183000_forward_harden_cohort_curriculum_runtime` | no | generator exists; hardened body not history-pinned | `NOT_APPLIED` |
+| 22× `20260715012xxx`/`…14100` `ss_*` conflict helper source files | no | `ss_%` proc count = **0** | `NOT_APPLIED` |
+| Early UUID baseline files (Jun–Jul stamp ±1s twins) | yes via stamp/UUID | core public tables queryable | `MATCHED` |
+| Remote empty stamps `20260715200200/500/600` | yes, statements null | no local file with those exact versions | `PARTIAL` |
+| Remote Jul19 UUID rows without local files | yes | see focus rows above | `HISTORY_PRESENT_OBJECTS_MISSING` only if a future object probe fails; currently treated as applied-copy history for features present in catalog |
 
-The headcount feature is materially present. The discrepancy is the asserted remote history timestamp `20260724002013` versus the only applied-copy source file `20260724002012_99172989-…`.
+### Aggregate counts (local files)
+
+| Class | Approx count | Notes |
+|---|---:|---|
+| `MATCHED` | 70+ content twins | includes stamp/UUID pairs and Jul19 applied-copy twins for import/V2 foundation |
+| `OBJECTS_PRESENT_HISTORY_MISSING` | ≥3 | program/department integrity, capacity-split RPC, curriculum generator (and possibly more hardening) |
+| `PARTIAL` | ≥5 | empty history stamps; source-only headers recorded in history; lifecycle/hardening twins |
+| `NOT_APPLIED` | ≥25 | all `ss_*` helpers, original headcount source file, availability source-only, legacy hardening, curriculum forward-harden |
+| `HISTORY_PRESENT_OBJECTS_MISSING` | 0 confirmed after catalog probes for focus features | Jul19 rows map to present functions/tables |
+| `UNKNOWN` | **0** | history read channel is available |
+
+## REQUIRED_REPAIRS
+
+Read-only recommendations only (do **not** execute in this stage):
+
+1. **History stamp documentation:** record that production headcount apply is version `20260724002013` / name `20260724002012_99172989-…` — not a missing object.
+2. **History repair candidates (controlled later):** insert/align history for `OBJECTS_PRESENT_HISTORY_MISSING` rows (`20260720143000`, `20260716030000`, `20260715120000`) **or** accept them as out-of-band applies with audit notes — never re-apply blindly.
+3. **Anomalous empty history rows** `20260715200200/500/600`: investigate origin; do not delete without backup.
+4. **Do not apply** `20260721180000` (superseded) or any `ss_*` pack until conflict-runtime strategy is approved.
+5. **Source-only files with remote Jul19 twins:** treat remote UUID versions as the applied identity; keep local `source_only_*` files as source of truth for diffs, not as re-apply candidates.
+
+## REQUIRED_MIGRATIONS
+
+None authorized for automatic apply. Controlled reconciliation may later need:
+
+| Priority | Item | Reason |
+|---|---|---|
+| defer | `ss_*` conflict helper pack | `NOT_APPLIED`; zero `ss_%` procs |
+| defer | `20260721090000` Legacy write hardening | Legacy assignments still exist; apply only after Legacy disposition |
+| defer | `20260720120000` availability all-active-days | no availability data loaded yet |
+| defer | `20260718183000` curriculum forward-harden | generator already present; harden only with body diff |
+| never re-apply | `20260721180000` headcount original | objects already `MATCHED` via `20260724002013` |
+| history-only repair | program/department integrity, capacity-split, curriculum generator | objects present; history gap only |
+
+## SAFE_ORDER
+
+1. Freeze: no `db push`, no Lovable migration approve, no history DELETE/UPDATE.
+2. Export full `schema_migrations` CSV + object inventory (already started via Lovable SQL).
+3. Diff each `OBJECTS_PRESENT_HISTORY_MISSING` source file against live `pg_get_functiondef` / trigger definitions.
+4. Decide per file: history-repair-only vs forward migration vs accept-as-is.
+5. Only after signed plan: apply deferred `NOT_APPLIED` files in dependency order (`ss_*` only if conflict runtime requires them; then availability; then Legacy hardening last).
+6. Re-read history and re-run object probes; require zero unexpected `PARTIAL`.
+7. Resume data reconciliation (headcounts → room types → DGs → TA V2) — separate write gates.
+
+## ROLLBACK_REQUIREMENTS
+
+- Keep Lovable/SQL CSV export of all 75 history rows as the pre-repair baseline.
+- Any history INSERT/UPDATE must be reversible with the exported row image; never DELETE production history without dual approval.
+- Any real DDL apply needs pre-snapshot of affected `pg_proc`/`pg_trigger`/`pg_policy` definitions and a compensating migration reviewed in advance.
+- Headcount / import / schedule RPCs already live: rollback is restore-from-snapshot, not “re-run source_only”.
+- No publish/replace of official schedules is in scope for migration reconciliation.
 
 ## RLS_AND_RPC_INVENTORY
 
@@ -261,14 +339,14 @@ Columns: active plan, cohort, approved headcount, curriculum offerings, delivery
 | 4 | Zero Preview rows may be only wrong term/system | correct sheet mapping + both systems still gives 0 matched; course/instructor/component/DG blockers enumerated above | FALSE | reconcile catalog, aliases, components, groups, then rerun preview |
 | 5 | Six campus/location labels are unmatchable | exactly six nonblank unknown labels remain: `كل الأقسام مع الجوف`, `نظم معلومات + الجوف`, `علوم حاسوب +نظم+ الجوف`, `امن سبراني`, `نظم الجوف + مارب`, `الموازي` | CONFIRMED | approve explicit alias/campus policy; never silently coerce |
 | 6 | V2 importer is ready for real assignment | parser and resolver run, but live preview is 0 matched and production has zero V2 assignments | PARTIAL, not operationally ready | close catalog/DG/alias/instructor blockers before controlled import |
-| 7 | Migration history is consistent | headcount objects exist, but asserted `20260724002013` conflicts with repo `20260724002012`; history/catalog unreadable | NOT PROVEN | export read-only migration history and catalog ACL/policy/function metadata |
+| 7 | Migration history is consistent | Lovable SQL read: remote version `20260724002013` with name `20260724002012_99172989-…`; headcount tables/RPCs present → `MATCHED` UUID twin | CLOSED: stamp skew explained | do not re-apply `20260721180000`; document twin in controlled reconciliation |
 | 8 | Live uses New Flow only | New Flow navigation/readiness fingerprints are live; Legacy routes/tables and 174 Legacy assignments still exist | operational UI yes; database no | keep Legacy hidden and reconcile Legacy assignments before hardening |
 
 ## SINGLE ISSUE REGISTER
 
 | Severity / ID | Evidence | Root cause | Impact | Final fix | Dependencies | Acceptance gate | Production write approval? |
 |---|---|---|---|---|---|---|---|
-| P0 `P0-MIG-HISTORY-READ` | history/catalog endpoints unavailable; 02013 vs 02012 discrepancy | application session is not catalog/management access | migration/security reconciliation cannot be certified | provide read-only SQL/catalog export | DB owner or read-only catalog role | every 111 version/object/ACL/policy row classified MATCHED/explicit exception | no data write; access approval only |
+| CLOSED `P0-MIG-HISTORY-READ` | Lovable Cloud SQL SELECT of `supabase_migrations.schema_migrations` (75 rows) + catalog probes | former PostgREST/CLI gap; Cloud SQL editor provides SELECT | history read unblocked; Stage 02B complete | proceed to controlled reconciliation plan (no apply yet) | operator Lovable Cloud access | every focus migration classified; `UNKNOWN=0` | no |
 | P0 `P0-HEADCOUNT-59` | 5/64 approved | official counts loaded only for CYB Sem1 subset | fail-closed readiness | enter/approve official counts | migration history reconciliation; official source | 64/64 approved and source-attributed | yes |
 | P0 `P0-TA-V2-ZERO` | 174 Legacy; 0 V2; 37 excess duplicates | assignments predate delivery-group runtime | scheduler has no New Flow assignments | controlled reconciliation/import after preview is clean | catalog, DG, aliases, headcounts | zero preview blockers; V2 assignment coverage complete; Legacy disposition approved | yes |
 | P0 `P0-ROOMTYPE-233` | 233/307 timetabled components have null room type | three plans imported without component room-type resolution; two CYB projects unresolved | invalid scheduling requirements | assign canonical active room types; decide project rule | official plan owner | zero timetabled component missing room type | yes |
@@ -283,7 +361,7 @@ Columns: active plan, cohort, approved headcount, curriculum offerings, delivery
 | CLOSED `C-SCHEDULE-EMPTY` | zero versions/sessions | — | no bad published state | preserve until controlled creation | reconciliation complete | first experimental version follows gates | later yes |
 | CLOSED `C-LIVE-DEPLOYMENT` | deployment/header and New Flow navigation fingerprints match | — | correct release is live | preserve | — | deployment remains pinned | no |
 
-Counts: P0=4, P1=4, P2=2.
+Counts: P0=3 open (+1 closed history-read), P1=4, P2=2.
 
 ## REQUIRED_PRODUCTION_WRITES
 
@@ -291,32 +369,34 @@ Required eventually, but not performed: 59 official headcount approvals; room-ty
 
 ## REQUIRED_MIGRATIONS
 
-No migration is authorized or safe to declare required from this application-only inventory. First reconcile the 111-file history and deployed catalog. Candidate pending files (`20260720143000`, `20260720120000`, `20260721090000`, and the hardening/lifecycle/import files) must be classified from actual `schema_migrations`, objects, function bodies, ACLs, triggers, constraints, and policies. Do not reapply the original `20260721180000`; the headcount objects are already materially present through the `20260724002012` applied-copy source, subject to resolving the claimed `20260724002013` history version.
+See Stage 02B section above. **No migration is authorized to apply in this PR.** Deferred candidates remain `ss_*` helpers, availability source-only, Legacy write hardening, and curriculum forward-harden — only after signed body diffs. Never re-apply `20260721180000`. History-gap repairs for objects already present are documentation/history-repair tasks, not DDL re-applies.
 
 ## SAFE_EXECUTION_ORDER
 
-1. Obtain catalog-capable read-only evidence and reconcile migration/version/object/security state.
-2. Approve the canonical program aliases and resolve workbook course/instructor identities without importing.
-3. Correct official plan-component room types and room-type coverage.
-4. Enter and approve official headcounts for all required cohort cells.
-5. Generate missing delivery groups idempotently in a controlled write window.
-6. Rerun read-only workbook preview; require zero unresolved/ambiguous/silent-coercion outcomes.
-7. Reconcile Legacy assignments and perform the controlled V2 import with audit evidence.
-8. Enter approved availability/preferences and validate hard/soft separation.
-9. Recompute readiness; require the intended pilot cells to be READY.
-10. Only then create an experimental schedule and run scheduling validation. Publishing remains a separate release-lead gate.
+1. ~~Obtain catalog-capable read-only evidence~~ **DONE (Stage 02B / Lovable Cloud SQL).**
+2. Produce controlled reconciliation plan from `REQUIRED_REPAIRS` / deferred `NOT_APPLIED` list (still no apply).
+3. Approve the canonical program aliases and resolve workbook course/instructor identities without importing.
+4. Correct official plan-component room types and room-type coverage.
+5. Enter and approve official headcounts for all required cohort cells.
+6. Generate missing delivery groups idempotently in a controlled write window.
+7. Rerun read-only workbook preview; require zero unresolved/ambiguous/silent-coercion outcomes.
+8. Reconcile Legacy assignments and perform the controlled V2 import with audit evidence.
+9. Enter approved availability/preferences and validate hard/soft separation.
+10. Recompute readiness; require the intended pilot cells to be READY.
+11. Only then create an experimental schedule and run scheduling validation. Publishing remains a separate release-lead gate.
 
 ## ROLLBACK_REQUIREMENTS
 
-- Capture pre-write exports/counts/checksums for headcounts, components, rooms, cohorts, offerings, groups, assignments, and availability.
+- Retain the Stage 02B Lovable SQL export of all 75 `schema_migrations` rows as the migration baseline.
+- Capture pre-write exports/counts/checksums for headcounts, components, rooms, cohorts, offerings, groups, assignments, and availability before any data write.
 - Every write batch needs an immutable audit/job ID and deterministic source mapping.
 - Group generation/import must prove transactionality and idempotent rerun behavior.
 - Legacy assignment reconciliation requires an explicit mapping and compensating restore plan; do not delete first.
-- Any migration needs a catalog snapshot, version/checksum pin, maintenance window, reverse-order compensating migration, and post-apply ACL/RLS/function verification.
+- Any future migration needs a catalog snapshot, version pin, maintenance window, reverse-order compensating migration, and post-apply ACL/RLS/function verification.
 - Schedule work starts experimental only; no publish transition is part of reconciliation.
 
 ## FINAL_DECISION
 
-`HOLD_WITH_ONE_EXACT_READONLY_INVENTORY_BLOCKER`
+`STAGE_02_COMPLETE_READY_FOR_CONTROLLED_RECONCILIATION`
 
-Exact blocker: `P0-MIG-HISTORY-READ` — no catalog-capable read-only channel is available to read `supabase_migrations.schema_migrations` and the deployed `pg_catalog` function/ACL/policy/trigger/constraint state, so migration history and security objects cannot be certified against the 111 repository files. All business-data inventory work is complete.
+Stage 02B obtained a trusted full read of production migration history (75 rows) via Lovable Cloud SQL, reconciled UUID/stamp twins (including `20260724002013` ↔ local `20260724002012_99172989-…`), and classified focus migrations without `UNKNOWN`. No production write, migration apply, or history repair was performed.
