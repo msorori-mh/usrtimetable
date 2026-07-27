@@ -13,7 +13,7 @@ Exact blocker:
 | Field | Value |
 |---|---|
 | START_SHA | `f8137e9b14d597a65e39038a07704e0bf8677ca1` (`origin/main` after pull) |
-| FINAL_SHA | *(pinned after docs commit)* |
+| FINAL_SHA | `ba6183479ed8bc0fc20c77f26fde6dde1f9703df` |
 | MAIN_SHA | `f8137e9b14d597a65e39038a07704e0bf8677ca1` |
 | LIVE deployment id | `71b93a56c607f018aaa88654429307e5b24593cade6b2027ca026142c78d459c` |
 | LIVE importer fingerprint | PASS — `academic_source_workbook` / sheet-term UI in `assets/import-Cyy5tMv2.js` |
