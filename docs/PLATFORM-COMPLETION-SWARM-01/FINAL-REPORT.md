@@ -1,4 +1,4 @@
-# PLATFORM-FINAL-OPERATIONAL-COMPLETION-01 — FINAL REPORT
+# PLATFORM-FINAL-COMPLETION-RESUME-02 — FINAL REPORT
 
 ## Decision
 
@@ -6,141 +6,111 @@
 
 Exact blocker:
 
-`B-PUBLISH-OPERATOR-AUTH` — This environment cannot non-interactively authenticate to Lovable Publish (Google/passkey), has no Cloudflare/Wrangler credentials for `gomufadhala.com`, and has no Lovable API token. Live deployment therefore remains on pre-PR#90 fingerprint `24df3e0f…` and cannot receive `origin/main`. Authenticated production E2E (import → schedule → publish lifecycle → live RBAC) cannot complete until that publish path is unblocked (or equivalent deploy credentials are provided).
+`B-PUBLISH-OPERATOR-AUTH` — Lovable Publish requires interactive Google/GitHub/Apple OAuth (passkey/password). No `LOVABLE_API_KEY`, Cloudflare/Wrangler token, or authenticated Lovable session exists in this environment. Live site therefore remains on deployment `24df3e0f…` and does not include `origin/main` (source-workbook importer). Authenticated production E2E (import → schedule → RBAC matrix with real data) cannot complete until publish (or equivalent deploy credentials) is available.
 
 ## Identifiers
 
 | Field | Value |
 |---|---|
-| START_SHA | `7fa9f2df47a3ec6bdfe18463daff0ae340b60c21` |
-| FINAL_SHA | `c6b1a5c5840027a4c2fad96ebdff16bc71bbbfd8` (content tip; see branch for latest docs nudge) |
-| MAIN_SHA (at start) | `7fa9f2df47a3ec6bdfe18463daff0ae340b60c21` |
-| LIVE_SHA / deployment | `24df3e0fb830d860cb90a65e9871f3c61f3139255520330e3baaa049d7099355` (≠ main tip) |
+| START_SHA (RESUME-02) | `89e7b051e8a5fe1a9af6796b6eb5131927f844f2` (pre-doc tip was `7fa9f2d` at mission open; main now includes harness artifact) |
+| FINAL_SHA | *(set to tip after this report commit)* |
+| MAIN_SHA | `89e7b051e8a5fe1a9af6796b6eb5131927f844f2` at merge of completion branch; tip advances with this docs commit |
+| LIVE_SHA / deployment | `24df3e0fb830d860cb90a65e9871f3c61f3139255520330e3baaa049d7099355` |
 | Platform URL | https://gomufadhala.com |
 | Supabase Production | `emzytxqkxjjhsivqxdiu` |
 
-## PRs merged previously (not re-done)
+## Parallel tracks (k3 / Codex)
 
-| PR | Title |
+| Track | Branch | Result |
+|---|---|---|
+| K3 | `k3/platform-data-runtime-completion-01` | **Absent** on origin (no commits / no PR) |
+| Codex | `codex/platform-product-e2e-completion-01` | **Absent** on origin (no commits / no PR) |
+
+Nothing to review/merge from parallel models.
+
+## Merged this resume
+
+| Action | Result |
 |---|---|
-| #86 | plan-component room type permanent |
-| #88 | PostgREST relationship disambiguation |
-| #89 | scheduling initial-delivery runtime closure |
-| #90 | teaching assignments academic source workbook |
-| #91 | CI Phase 9.4 migration artifact + TA v2 harness |
-| #92–#94 | PLATFORM-COMPLETION-SWARM docs |
+| Fast-forward `main` ← `cursor/platform-final-operational-completion-01` | Pushed `7fa9f2d..89e7b05` |
+| Content | Phase-6 `post-apply-verification.sql` + prior FINAL docs |
 
-## Change in this completion run
+No GitHub PR number (merged via direct FF push; `gh` CLI unauthenticated).
 
-| Item | Result |
+## Prior completed work (not re-executed)
+
+Headcount foundation · five cohort delivery groups · `required_room_type_id` · PostgREST disambiguation · teaching-assignment source workbook (2 sheets) · CI/harness closures through PR #91–#94.
+
+## Migrations / production writes
+
+| Item | Status |
 |---|---|
-| Restore Phase-6 `post-apply-verification.sql` SOURCE artifact | Closes harness missing-historical-artifact |
-| Docs: `FINAL-OPERATIONAL-RUNLOG.md` + this report | Delivery pack |
-| Migrations applied to production | **None** |
+| Migrations applied | **None** |
 | Production writes | **None** |
-| E2E-prefixed data | **None written** |
+| E2E-prefixed experimental data | **None** |
 
-## Gate results
-
-### G1 — Code / tests
+## Gate results (RESUME-02)
 
 | Gate | Result |
 |---|---|
-| ESLint (CI scoped model) | PASS on tip (vacuous when no lintable delta); artifact is SQL/docs |
-| TypeScript | PASS |
-| Build | PASS |
-| Harness | **47 passed / 0 failed / 0 missing** |
-| Harness runner | PASS |
+| bun install --frozen-lockfile | PASS |
+| git diff --check | PASS |
+| Scoped ESLint | PASS (vacuous — docs/SQL only) |
+| bunx tsc --noEmit | PASS |
+| bun run build | PASS |
+| bun run test:harness | **47 / 0 / 0** PASS |
+| bun run test:harness-runner | PASS |
 | runtime-gates (local equivalent) | PASS |
 
-### G2 — Publish
+## Publish
 
-| Item | Result |
+| Check | Result |
 |---|---|
 | Live == origin/main | **NO** |
-| Live source-workbook importer | **NO** (`academic_source_workbook` absent; local build present) |
-| Lovable/CF publish | **BLOCKED** (`B-PUBLISH-OPERATOR-AUTH`) |
+| Live has `academic_source_workbook` | **NO** |
+| Local build has importer | **YES** |
+| Lovable login | Interactive OAuth only → **BLOCKED** |
 
-### G3 — Academic assignment import
+## Operational E2E
 
-| Item | Result |
+| Area | Result |
 |---|---|
-| Real workbook on disk | Not found |
-| Synthetic harness path | PASS |
-| Live UI path | Blocked by publish + no platform session |
+| Real workbook `اسناد الفصل الاول/الثاني 2026` | Not found on disk |
+| Synthetic source-workbook harness | PASS |
+| Data readiness counts (production) | Not measured (anon RLS empty/401; no service_role / platform session) |
+| Schedule create / auto / move / quality / reports | Not executed on production |
+| RBAC live matrix | Static audit PASS; live UI/RPC not exercised |
 
-### G4 — Data readiness
+### Static permissions matrix
 
-Operational counts on production: **not measured** (anon RLS empty/401; no authenticated session). No blockers closed via production writes (none performed).
-
-### G5 — Schedule path
-
-Production schedule create/auto-schedule/manual move/export/lifecycle: **not executed** (auth + publish). Local related harnesses PASS.
-
-### G6 — Permissions matrix
-
-| Role | Static | Live UI/RPC |
+| Role | Domain writes | College scope |
 |---|---|---|
-| super_admin | PASS (helpers + org writes) | Not exercised live |
-| college_admin | PASS (college-scoped manage) | Not exercised live |
-| read_only | PASS (no domain writes) | Not exercised live |
+| super_admin | allowed | global |
+| college_admin | allowed via `can_manage_college` | membership-scoped |
+| read_only | blocked (RLS + UI + sampled DEFINER) | view if member |
 
 ## Operational counts (production)
 
-| Metric | Value |
-|---|---|
-| Programs ready | not measured (auth) |
-| Cohorts | not measured |
-| delivery_groups | not measured |
-| teaching_assignments | not measured |
-| schedule_sessions | not measured |
-| Unscheduled sessions / reasons | not measured |
-| Conflicts | not measured |
-| Quality | not measured |
-| Publish lifecycle (experimental only) | not executed |
-| Reports | not executed live |
+All **not measured** due to publish/auth blocker (programs, cohorts, delivery_groups, teaching_assignments, schedule_sessions, unscheduled, conflicts, quality).
 
 ## Security Review
 
 | Item | Value |
 |---|---|
-| Files changed | `implementation-reports/phase-6-reset-hardening-self-verifying-migrations-01/post-apply-verification.sql`, `docs/PLATFORM-COMPLETION-SWARM-01/FINAL-OPERATIONAL-RUNLOG.md`, `docs/PLATFORM-COMPLETION-SWARM-01/FINAL-REPORT.md` |
-| Did migrations change? | no (SOURCE verification SQL only; not a `supabase/migrations` apply) |
-| Did RLS change? | no |
-| Did RPCs change? | no |
-| Authentication impact | no |
-| Authorization impact | no |
+| Files changed (resume) | docs + SOURCE verification SQL (already on main) |
+| Migrations change? | no |
+| RLS/RPC change? | no |
+| Authn/Authz impact | no |
 | Sensitive data exposure | no |
-| Privilege escalation risk | no |
-| Production risk | none from this commit; live still on older deploy |
-| Ready for merge | yes (docs + SOURCE artifact) |
-| Ready for deploy | **no** — publish auth blocked |
+| Privilege escalation | no |
+| Production risk | none from merges; live still stale |
+| Ready for merge | yes (already on main) |
+| Ready for deploy | **no** |
 
-## Verification results
+## Verification
 
-- Local: install / tsc / build / harness 47/0/0 PASS
-- Live: still pre-importer deployment
-- Anon Supabase probe: RLS empty inventory (expected)
-
-## Migration status
-
-No production migration apply. Phase-6 post-apply verification SQL restored as SOURCE-only historical artifact for harness truthfulness.
-
-## Production impact
-
-No production data/schema mutation. Live site unchanged.
-
-## Remaining notes (non-blocking relative to the exact blocker)
-
-- Real academic assignment workbook sheets not present on this machine.
-- `gh` CLI not logged in in this shell; git HTTPS remote reachable via credential manager.
-- Static RBAC residual: authenticated `audit_logs` INSERT policy (low, non-academic).
+Local gates green on tip. Live fingerprint unchanged. No production mutation.
 
 ## Unblocking requirement (exact)
 
-Provide one of:
-
-1. Authenticated Lovable session / `LOVABLE_API_KEY` + project Publish rights for `gomufadhala.com`, **or**
-2. Cloudflare/Wrangler credentials able to deploy the current `origin/main` build to `gomufadhala.com`,
-
-then publish and re-run authenticated G3–G6 operational verification.
+Provide Lovable Publish session / API key with project rights, **or** Cloudflare/Wrangler credentials for `gomufadhala.com`, then publish `origin/main` and re-run authenticated G3–G6.

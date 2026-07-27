@@ -1,101 +1,55 @@
-# PLATFORM-FINAL-OPERATIONAL-COMPLETION-01 — RUNLOG
+# PLATFORM-FINAL-COMPLETION-RESUME-02 — RUNLOG
 
-Mission: `PLATFORM-FINAL-OPERATIONAL-COMPLETION-01`
+Mission: `PLATFORM-FINAL-COMPLETION-RESUME-02`
 Started: 2026-07-27
 Platform: https://gomufadhala.com
 Supabase Production: `emzytxqkxjjhsivqxdiu`
 Workspace: `C:\Projects\usrtimetable`
 
-## G0 — Discovery
+## 1 — State fix
 
 | Field | Value |
 |---|---|
-| START_SHA | `7fa9f2df47a3ec6bdfe18463daff0ae340b60c21` |
-| origin/main at start | equals START_SHA |
-| Branch at start | `main` clean vs `origin/main` |
-| Prior swarm decision | `HOLD_WITH_ONE_EXACT_UNRESOLVABLE_BLOCKER` (`B-PUBLISH-OPERATOR-AUTH`) |
+| Mission-open origin/main | `7fa9f2d` |
+| After FF merge to main | `89e7b05` |
+| Working branch at resume start | `cursor/platform-final-operational-completion-01` @ `89e7b05` |
+| k3 completion branch | absent |
+| Codex completion branch | absent |
+| Live deployment | `24df3e0f…` (pre-importer) |
 
-### Already completed (not re-executed)
+### Already done (do not redo)
 
-| Area | Evidence |
-|---|---|
-| Teaching-assignments source workbook (2 sheets) | PR #90 / `af0ea7b` |
-| TA v2 importer + Phase 9.4 migration artifact | PR #91 |
-| PostgREST relationship disambiguation | PR #88 |
-| Plan component room types | PR #86 |
-| Scheduling initial-delivery runtime | PR #89 |
-| Swarm docs pack | PRs #92–#94 |
+PR #86 room types · #88 PostgREST · #89 scheduling delivery · #90 source workbook · #91 CI/harness · #92–#94 docs · Phase-6 verification SQL restore on completion branch.
 
-## G1 — Local gates
+## 2 — Parallel models
+
+No PRs/commits on `k3/platform-data-runtime-completion-01` or `codex/platform-product-e2e-completion-01`.
+
+## 3 — Gates (RESUME-02)
 
 | Gate | Result |
 |---|---|
-| bun install --frozen-lockfile | PASS (Bun 1.3.14 installed locally) |
-| git diff --check | PASS |
-| bunx tsc --noEmit | PASS |
-| bun run build | PASS (output `.output/`) |
-| bun run test:harness | Initially 46/0/1 missing → restored Phase-6 verification SQL → **47/0/0 PASS** |
-| bun run test:harness-runner | PASS |
-| Scoped ESLint (CI model: changed files) | N/A vacuous on clean tip; after this closure commit will lint staged files |
+| install / diff-check / eslint / tsc / build | PASS |
+| harness | 47/0/0 PASS |
+| harness-runner | PASS |
 
-## G2 — Live publish
+## 4 — Publish
 
-| Check | Result |
+Lovable `/login` shows Google/GitHub/Apple OAuth only. No session. **B-PUBLISH-OPERATOR-AUTH**.
+
+## 5 — Operational
+
+| Item | Result |
 |---|---|
-| Site HTTP | 200 |
-| Live deployment id | `24df3e0fb830d860cb90a65e9871f3c61f3139255520330e3baaa049d7099355` (unchanged) |
-| Live has `academic_source_workbook` / sheet-term mapping UI | **FAIL** (absent) |
-| Local `.output` has importer chunk `import-y_27h7Ex.js` | PASS |
-| Live `/assets/import-y_27h7Ex.js` | 404 |
-| Lovable session | Not authenticated (marketing login only) |
-| Cloudflare/Wrangler/LOVABLE tokens | Missing |
-| Publish | **BLOCKED** → `B-PUBLISH-OPERATOR-AUTH` |
+| Real assignment xlsx | not found |
+| Synthetic importer harness | PASS |
+| Prod inventory / schedule / live RBAC | blocked (no auth + live stale) |
+| Production writes / migrations | none |
 
-## G3 — Academic assignment workbook
+## 6 — Mainline action
 
-| Check | Result |
-|---|---|
-| Real Excel with sheets `اسناد الفصل الاول 2026` / `اسناد الفصل الثاني 2026` | Not found under Downloads/Documents/Projects |
-| Synthetic source-workbook harness | PASS (`teaching-assignments-source-workbook-import.harness.ts`) |
-| Authenticated UI import on production | Not executable (no platform session; live missing importer) |
+Fast-forward pushed: `origin/main` `7fa9f2d..89e7b05` (harness artifact + docs).
 
-## G4 — Data readiness (anon probe)
+## 7 — Decision
 
-Anon publishable key against `emzytxqkxjjhsivqxdiu.supabase.co`:
-
-| Table | Anon result |
-|---|---|
-| colleges / departments / study_plans / instructors / rooms / room_types / schedule_* / teaching_assignments | 200 empty (`*/0`) — RLS denies unauthenticated inventory |
-| academic_cohorts / delivery_groups / plan_course_components | 401 |
-| programs / terms / cohort_courses | 404 (name mismatch or not exposed) |
-
-Authenticated production inventory **not measured** (same publish/auth blocker). No production writes performed. No E2E-prefixed rows written.
-
-## G5 — Schedule create/test
-
-Not executed on production (requires authenticated college_admin/super_admin + published importer build). Local scheduling harnesses PASS (conflict, lifecycle, delivery runtime, headcount, builder).
-
-## G6 — Permissions
-
-Static RBAC audit PASS for production-relevant patterns:
-
-- `college_admin` scoped via `can_manage_college` / `user_in_college`
-- `read_only` blocked from domain writes (UI + RLS + sampled DEFINER RPCs)
-- SECURITY DEFINER GRANT/REVOKE hygiene PASS
-- Residual low note: authenticated `audit_logs` INSERT (not academic DML)
-- Live role matrix RPC exercise: not run (no role sessions)
-
-## G7 — Auto-fix this run
-
-| Change | Purpose |
-|---|---|
-| Restore `implementation-reports/.../post-apply-verification.sql` | Close harness missing-historical-artifact (Phase-6 SOURCE-only) |
-| Update runlog + final report | Delivery pack |
-| Branch pushed | `cursor/platform-final-operational-completion-01` @ `c6b1a5c` |
-| PR open via `gh` | BLOCKED (`gh` not logged in; browser GitHub session absent). Open manually: https://github.com/msorori-mh/usrtimetable/pull/new/cursor/platform-final-operational-completion-01 |
-
-## G8 — Decision
-
-**HOLD_WITH_ONE_EXACT_UNRESOLVABLE_BLOCKER**
-
-Blocker id: `B-PUBLISH-OPERATOR-AUTH`
+**HOLD_WITH_ONE_EXACT_UNRESOLVABLE_BLOCKER** — `B-PUBLISH-OPERATOR-AUTH`
