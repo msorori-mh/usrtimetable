@@ -1,4 +1,4 @@
-# PLATFORM-AUTHENTICATED-OPERATIONAL-CLOSURE-01 — FINAL REPORT
+# PLATFORM-RELEASE-LEAD-PR95-MERGE-AND-LIVE-E2E-01 — FINAL REPORT
 
 ## Decision
 
@@ -6,69 +6,71 @@
 
 Exact blocker:
 
-`B-ITCS-ACADEMIC-CATALOG-INCOMPLETE` — On college ITCS, authenticated source-workbook preview of the real assignment file yields **0 valid / ready rows**. `academic_levels` exist only for program CYB (levels 1–4); CS / CIS / IT have **zero** levels. `academic_cohorts` for Sem2 (`term_id=0e40bd71-…`) are **empty**. Completing import would require creating official levels/cohorts (and related delivery structure) — forbidden as inventing official academic catalog data in this mission.
+`B-LIVE-OPERATOR-AND-LOVABLE-AUTH` — PR #95 is merged and `runtime-gates` on `main` is green, but authenticated live E2E and Lovable Publish cannot proceed: Chrome Profile 1 JWT for `gomufadhala.com` is expired (`exp=1785185540`, `last_sign_in_at=2026-07-27T19:52:20Z`), `refresh_token` already used, agent browser has no `sb-emzytxqkxjjhsivqxdiu-auth-token`, and Lovable login requires interactive OAuth with no `LOVABLE_*` / Cloudflare token in this environment. Live remains pre-PR#95 deployment `71b93a56…` (`LIVE_HAS_PR95_MARKERS=false`).
 
 ## Identifiers
 
 | Field | Value |
 |---|---|
-| FINAL_SHA | `43b354373c1c5fc9ab3300a38a0853b02f787bbe` |
-| Mission | `PLATFORM-AUTHENTICATED-OPERATIONAL-CLOSURE-01` |
+| Mission | `PLATFORM-RELEASE-LEAD-PR95-MERGE-AND-LIVE-E2E-01` |
+| PR95_MERGE_COMMIT | `26fa5121667e19dc20544e197ef2b17d6d74cdb4` |
+| MAIN_SHA | `26fa5121667e19dc20544e197ef2b17d6d74cdb4` |
+| PR95 HEAD (pre-merge) | `bd66f8a76ecd0541b095ec221ee7152ad96cdf20` |
+| LIVE_SHA / x-deployment-id | `71b93a56c607f018aaa88654429307e5b24593cade6b2027ca026142c78d459c` (not updated) |
 | Platform | https://gomufadhala.com |
-| Operator session | `msorori201201@gmail.com` · role `super_admin` · Super Admin |
-| Active college | ITCS `7168345f-cf9d-4789-b2ad-547abb687dc8` |
-| Workbook | `C:\Users\Elite\Downloads\b002982d-763d-4aa7-a7f3-fed38fca4da9.xlsx` |
-| Term map | sheet الثاني → Sem2 `0e40bd71-…` (activated `is_active=true`); sheet الاول → 2026-T1 `18dd364a-…` |
-| Study system | `both` (منتظم + نفقة خاصة) |
-| Regression PR | https://github.com/msorori-mh/usrtimetable/pull/96 (merged) |
+| Codex assurance | `docs/PLATFORM-COMPLETION-SWARM-01/CODEX-FINAL-SOURCE-ASSURANCE.md` |
+
+## Metrics (requested)
+
+| Metric | Value |
+|---|---|
+| PR95_MERGE_COMMIT | `26fa5121667e19dc20544e197ef2b17d6d74cdb4` |
+| MAIN_SHA | `26fa5121667e19dc20544e197ef2b17d6d74cdb4` |
+| LIVE_SHA | `71b93a56c607f018aaa88654429307e5b24593cade6b2027ca026142c78d459c` |
+| IMPORT_SOURCE_ROWS | NOT_RUN (auth blocked) |
+| IMPORT_READY_ROWS | NOT_RUN |
+| IMPORTED_ASSIGNMENTS | NOT_RUN |
+| BLOCKED_ROWS | NOT_RUN |
+| READINESS_RESULT | NOT_RUN |
+| SCHEDULE_VERSION | NOT_CREATED (`E2E-ITCS-FINAL-CLOSURE-2026`) |
+| SCHEDULED_SESSIONS | NOT_RUN |
+| UNSCHEDULED_SESSIONS | NOT_RUN |
+| CONFLICT_RESULTS | NOT_RUN |
+| QUALITY_RESULT | NOT_RUN |
+| RBAC_RESULT | NOT_RUN |
 
 ## What completed
 
 | Step | Result |
 |---|---|
-| Login + role | PASS — `super_admin` |
-| Import V2 UI open + upload | PASS — file attached; sheet–term pickers used |
-| Live UI preview | PASS run — 131 source rows; 0 valid (pre-fix: instructor titles blocked all) |
-| Honorific match root-cause | FIXED — strip `أ.م.د.` / `د.` etc.; prefer bare-name on ambiguity |
-| PR #96 | MERGED to `main` @ `7140840` — runtime-gates PASS |
-| Local re-preview with fix | 131 source · matched 0 · blocked ~196 (levels/cohorts) · unknown programs ERROR as required |
-| Unknown program labels | Left as ERROR/BLOCKED — no invented aliases: `امن سبراني`, `كل الأقسام مع الجوف`, `نظم معلومات + الجوف`, `علوم حاسوب +نظم+ الجوف`, `نظم الجوف + مارب`, `الموازي`, blank program |
-| Import confirm | NOT executed — 0 ready rows |
-| Data readiness / schedule / move / RBAC matrix | NOT reached (blocked by catalog) |
-| Sem2 term activation | DONE — existing official row `is_active` flipped true only |
-| Official schedule publish | NOT done (forbidden) |
-
-## Code change (regression)
-
-Files:
-
-- `src/lib/excel-import/arabic-normalize.ts` — `stripAcademicHonorifics`, `instructorMatchKey`
-- `src/lib/excel-import/teaching-assignments-source-resolver.ts` — honorific-aware instructor index + exact-then-stripped match
-- `tests/harness/teaching-assignments-source-workbook-import.harness.ts` — assertions
-
-Harness: teaching-assignments-source-workbook-import **PASS**.
+| PR #95 review (no secrets, no migrations, scoped to scheduling/UX/harness/docs) | PASS |
+| Delete temp scripts `_tmp-itcs-*.mjs` | PASS (not committed) |
+| Local `git diff --check` / `tsc` / `build` / `bun test` / `test:harness` (48/0/0) on PR head | PASS |
+| Merge PR #95 via **merge commit** | PASS → `26fa512` |
+| `runtime-gates` on `main` @ `26fa512` | PASS (run `30306978736`) |
+| Lovable Publish | BLOCKED — no Lovable session / OAuth |
+| Live Import V2 / readiness / schedule / RBAC | BLOCKED — no usable platform JWT |
 
 ## Security Review
 
 | Item | Value |
 |---|---|
-| Files changed | honorific match + harness + this report/runlog |
+| Files changed (this closeout) | FINAL-REPORT / FINAL-OPERATIONAL-RUNLOG only |
 | Migrations changed? | no |
-| RLS changed? | no |
-| RPCs changed? | no |
-| Authentication impact | no (used existing operator session) |
+| RLS / RPCs changed? | no |
+| Authentication impact | no (could not obtain live session) |
 | Authorization impact | no |
-| Sensitive data exposure | no (session tokens not committed) |
+| Sensitive data exposure | no |
 | Privilege escalation risk | no |
-| Production risk | low — Sem2 `is_active` only; no import write; no official catalog invent |
-| Ready for merge (code fix) | yes — merged |
-| Ready for deploy | yes for match fix; **not** ready for full operational import until catalog completed by operators |
+| Production risk | none for merge; live E2E not executed |
+| Ready for merge | yes — PR #95 already merged |
+| Ready for deploy | code ready; Lovable publish blocked |
 
 ## Verification
 
-- Live login / Import V2 / preview: executed
-- Local preview with fixed matcher: executed (0 valid)
-- Import commit / schedule version / auto-schedule / move / reports / full RBAC: **not** executed
+- Source/CI: PASS
+- Live publish fingerprint: FAIL match to MAIN_SHA
+- Authenticated operational path: NOT executed
 
 ## Migration status
 
@@ -76,17 +78,15 @@ None.
 
 ## Production impact
 
-- Sem2 academic term marked active (pre-existing official row).
-- No teaching_assignments inserted.
-- No schedule version created/published as official.
-- Honorific matcher merged to `main` (PR #96).
+- `main` advanced by merge of PR #95 only.
+- No teaching assignment import, no schedule version, no official publish, no DB catalog writes in this mission step.
 
 ## Remaining risks
 
-Operators must create **official** ITCS levels for CS/CIS/IT and Sem2 cohorts (regular + parallel) before assignment import can succeed. Duplicate instructor rows (titled + bare) remain ambiguous for a few names (`عيسى محمد` duplicated EMP ids).
+Until a fresh `super_admin` session is available in the agent browser (or extractable from Chrome after re-login) **and** Lovable Publish can run, live site will not include PR #95 auto-schedule/readiness UX, and Import V2 E2E cannot be closed.
 
 ## Recommended next step
 
-1. Operator builds official ITCS levels for CS/CIS/IT and Sem2 cohorts/delivery_groups without inventing unofficial names.
-2. Ensure live site has published `main` including PR #96 honorific matcher.
-3. Re-run Import V2 preview → commit ready rows only → resume schedule E2E (`E2E-PLATFORM-COMPLETION-2026-T1`).
+1. Re-login as `msorori201201@gmail.com` in the **agent browser** tab on `/auth` (or refresh Chrome Profile 1 session so LS contains a non-expired token).
+2. Authenticate Lovable and Publish once from `main` `26fa512` (no migrations).
+3. Resume Import V2 → readiness → `E2E-ITCS-FINAL-CLOSURE-2026` → RBAC from the failure point.

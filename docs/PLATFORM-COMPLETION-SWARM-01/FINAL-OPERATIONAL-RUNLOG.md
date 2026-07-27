@@ -1,60 +1,31 @@
-# PLATFORM-AUTHENTICATED-OPERATIONAL-CLOSURE-01 — RUNLOG
+# FINAL OPERATIONAL RUNLOG — PLATFORM-RELEASE-LEAD-PR95-MERGE-AND-LIVE-E2E-01
 
-Mission: `PLATFORM-AUTHENTICATED-OPERATIONAL-CLOSURE-01`
-Platform: https://gomufadhala.com
-Started: 2026-07-27
-Closed: 2026-07-27
+## Timeline
 
-## Session
+| UTC+3 | Action | Result |
+|---|---|---|
+| Mission start | Confirm PR #95 open @ `bd66f8a` | Confirmed |
+| Review | Diff scope: scheduling readiness UX, docs, harnesses | No secrets / no migrations / no prod data |
+| Cleanup | Deleted local temp `scripts/_tmp-itcs-catalog-closure-ops.mjs`, `scripts/_tmp-itcs-offline-prep.mjs` | Not in Git |
+| Verify | `tsc`, `vite build`, `bun test`, `bun run test:harness` | 48 passed, 0 failed |
+| Merge | `gh pr merge 95 --merge` | Merge commit `26fa5121667e19dc20544e197ef2b17d6d74cdb4` |
+| Sync | `git checkout main && git pull` | MAIN_SHA = `26fa512` |
+| CI | `runtime-gates` on main | PASS run `30306978736` |
+| Live probe | `https://gomufadhala.com` `x-deployment-id` | Still `71b93a56…`; `LIVE_HAS_PR95_MARKERS=false` |
+| Lovable | Navigate `/login` | Unauthenticated; OAuth required |
+| Platform auth | Chrome LS `sb-emzytxqkxjjhsivqxdiu-auth-token` | Expired; refresh already used |
+| Agent browser | `/auth` | No session; login form only |
+| Import / schedule / RBAC | — | NOT_RUN |
 
-| Item | Value |
-|---|---|
-| Operator | `msorori201201@gmail.com` |
-| Role | `super_admin` (user_roles) |
-| UI label | Super Admin / مدير المؤسسة |
-| College | ITCS |
+## Constraints honored
 
-Session obtained from Chrome Profile 1 localStorage key `sb-emzytxqkxjjhsivqxdiu-auth-token` and injected into agent browser (operator had authenticated manually).
-
-## Import path
-
-1. `/import` → entity `teaching_assignments_v2` → mode `insert_only` → study system `both`.
-2. Uploaded `b002982d-763d-4aa7-a7f3-fed38fca4da9.xlsx` (CORS localhost helper → File input).
-3. Sheet map: `اسناد الفصل الثاني 2026` → Sem2; `اسناد الفصل الاول 2026` → 2026-T1.
-4. Activated existing Sem2 (`is_active=true`) so it appears in term pickers.
-5. UI Preview: 131 total, 0 valid, 114 errors (instructor titles) before code fix.
-6. Root-cause: workbook names include `أ.م.د.` / `د.` while catalog often stores bare names.
-7. Local preview after fix: still **0 valid** — dominant BLOCKED = missing levels (CS/CIS/IT) + missing Sem2 cohorts. Unknown programs left unaliased.
-
-## Catalog evidence (ITCS)
-
-| Fact | Value |
-|---|---|
-| Programs | cs, cis, It, cyb |
-| Levels | 4 rows — all under CYB only |
-| Cohorts T1 | 5 |
-| Cohorts T2 | 0 |
-| Instructors | 88 (all with employee_number); some duplicate titled/bare pairs |
-
-## Delivery
-
-| Item | Value |
-|---|---|
-| Branch | `fix/instructor-honorific-match` |
-| PR | https://github.com/msorori-mh/usrtimetable/pull/96 |
-| Merge | squash → `main` `714084056d877e1076b92cf933bc116ebd3d2a8c` |
-| CI | runtime-gates PASS |
-
-## Not executed (blocked)
-
-- Confirm import (no ready rows)
-- Idempotent re-import write
-- Data-readiness closer beyond Sem2 activation
-- Schedule version `E2E-PLATFORM-COMPLETION-2026-T1`
-- Auto-schedule / conflicts / move / views / reports
-- Live RBAC for college_admin / read_only accounts
-- Official schedule publish (forbidden by mission)
+- No migrations applied
+- No official data deleted
+- No official schedule published/replaced
+- No inventing academic aliases
+- Temp untracked ops scripts not committed
 
 ## Decision
 
-**HOLD_WITH_ONE_EXACT_UNRESOLVABLE_BLOCKER** — `B-ITCS-ACADEMIC-CATALOG-INCOMPLETE`
+`HOLD_WITH_ONE_EXACT_UNRESOLVABLE_BLOCKER`  
+`B-LIVE-OPERATOR-AND-LOVABLE-AUTH`
