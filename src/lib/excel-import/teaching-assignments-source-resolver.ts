@@ -3,6 +3,7 @@
  * Pure logic with injectable lookup context (harness + runtime).
  */
 import {
+  instructorMatchKey,
   looksLikeCourseCode,
   looksLikeEmployeeNumber,
   normalizedMatchKey,
@@ -164,9 +165,16 @@ function buildInstructorIndex(ctx: SourceResolverContext): Map<string, ResolverI
   for (const ins of ctx.instructors) {
     const keys = new Set<string>();
     if (ins.employee_number) keys.add(normalizedMatchKey(ins.employee_number));
-    if (ins.full_name_ar) keys.add(normalizedMatchKey(ins.full_name_ar));
-    if (ins.full_name) keys.add(normalizedMatchKey(ins.full_name));
+    if (ins.full_name_ar) {
+      keys.add(normalizedMatchKey(ins.full_name_ar));
+      keys.add(instructorMatchKey(ins.full_name_ar));
+    }
+    if (ins.full_name) {
+      keys.add(normalizedMatchKey(ins.full_name));
+      keys.add(instructorMatchKey(ins.full_name));
+    }
     for (const k of keys) {
+      if (!k) continue;
       const arr = byKey.get(k) ?? [];
       arr.push(ins);
       byKey.set(k, arr);
@@ -202,10 +210,31 @@ function matchInstructor(
       message: `محاضر غير موجود لرقم الموظف: ${trimmed}`,
     };
   }
-  const key = normalizedMatchKey(trimmed);
-  const hits = index.get(key) ?? [];
+  const exactKey = normalizedMatchKey(trimmed);
+  const exactHits = [...new Map((index.get(exactKey) ?? []).map((h) => [h.id, h])).values()];
+  if (exactHits.length === 1) return { ok: true, instructor: exactHits[0] };
+  if (exactHits.length > 1) {
+    return {
+      ok: false,
+      code: "ambiguous_instructor",
+      message: `أكثر من محاضر للاسم: ${trimmed}`,
+    };
+  }
+
+  const key = instructorMatchKey(trimmed);
+  const hitsRaw = index.get(key) ?? [];
+  const hits = [...new Map(hitsRaw.map((h) => [h.id, h])).values()];
   if (hits.length === 1) return { ok: true, instructor: hits[0] };
   if (hits.length > 1) {
+    // Catalog often stores both "د. فلان" and "فلان" — prefer the bare-name row.
+    const bare = hits.filter((h) => {
+      const ar = String(h.full_name_ar ?? "").trim();
+      const en = String(h.full_name ?? "").trim();
+      const candidate = ar || en;
+      if (!candidate) return false;
+      return instructorMatchKey(candidate) === normalizedMatchKey(candidate);
+    });
+    if (bare.length === 1) return { ok: true, instructor: bare[0] };
     return {
       ok: false,
       code: "ambiguous_instructor",
