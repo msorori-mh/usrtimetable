@@ -13,8 +13,8 @@ Exact blocker:
 | Field | Value |
 |---|---|
 | START_SHA (RESUME-02) | `89e7b051e8a5fe1a9af6796b6eb5131927f844f2` (pre-doc tip was `7fa9f2d` at mission open; main now includes harness artifact) |
-| FINAL_SHA | *(set to tip after this report commit)* |
-| MAIN_SHA | `89e7b051e8a5fe1a9af6796b6eb5131927f844f2` at merge of completion branch; tip advances with this docs commit |
+| FINAL_SHA | `350314be04eb5b5adaff4ec4f82db891d724784d` |
+| MAIN_SHA | `350314be04eb5b5adaff4ec4f82db891d724784d` |
 | LIVE_SHA / deployment | `24df3e0fb830d860cb90a65e9871f3c61f3139255520330e3baaa049d7099355` |
 | Platform URL | https://gomufadhala.com |
 | Supabase Production | `emzytxqkxjjhsivqxdiu` |
