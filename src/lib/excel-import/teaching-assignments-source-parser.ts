@@ -92,6 +92,7 @@ export function parseSourceSheetMatrix(sheetName: string, matrix: SheetMatrix): 
   let lastInstructor = "";
   let lastCourse = "";
   let lastLevel: number | null = null;
+  let lastProgram = "";
   const rows: ParsedSourceRow[] = [];
   let ignoredRowCount = 0;
 
@@ -114,7 +115,7 @@ export function parseSourceSheetMatrix(sheetName: string, matrix: SheetMatrix): 
     const instructorRaw = getCol(rawRow, headerColMap, SOURCE_COLUMN_KEYS.instructorName);
     let courseName = getCol(rawRow, headerColMap, SOURCE_COLUMN_KEYS.courseName);
     const levelRaw = getCol(rawRow, headerColMap, SOURCE_COLUMN_KEYS.level);
-    const programRaw = getCol(rawRow, headerColMap, SOURCE_COLUMN_KEYS.program);
+    let programRaw = getCol(rawRow, headerColMap, SOURCE_COLUMN_KEYS.program);
     const hoursRaw = getCol(rawRow, headerColMap, SOURCE_COLUMN_KEYS.totalHours);
     const notes = getCol(rawRow, headerColMap, SOURCE_COLUMN_KEYS.notes) || null;
 
@@ -135,6 +136,9 @@ export function parseSourceSheetMatrix(sheetName: string, matrix: SheetMatrix): 
     let levelNumber = parseLevel(levelRaw);
     if (levelNumber === null && lastLevel !== null) levelNumber = lastLevel;
     else if (levelNumber !== null) lastLevel = levelNumber;
+
+    if (!programRaw) programRaw = lastProgram;
+    else lastProgram = programRaw;
 
     const totalHours = parseHours(hoursRaw);
 
