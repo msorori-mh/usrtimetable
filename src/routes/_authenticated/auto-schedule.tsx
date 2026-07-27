@@ -63,6 +63,7 @@ function AutoSchedulePage() {
     data: readiness,
     isLoading: readinessLoading,
     isError: readinessError,
+    error: readinessQueryError,
   } = useQuery({
     queryKey: ["auto-schedule-readiness", active?.id],
     enabled: !!active,
@@ -95,6 +96,17 @@ function AutoSchedulePage() {
   const run = useMutation({
     mutationFn: async () => {
       if (!active || !versionId) throw new Error("اختر النسخة");
+      const freshReadiness = await fetchCollegeReadiness(active.id);
+      const freshBlockers = [
+        ...freshReadiness.studyPlan,
+        ...freshReadiness.resources,
+        ...freshReadiness.scheduling,
+      ].filter((metric) => metric.critical && metric.missing > 0);
+      if (freshBlockers.length > 0) {
+        throw new Error(
+          `READINESS_BLOCKED: ${freshBlockers.map((metric) => metric.label).join("؛ ")}`,
+        );
+      }
       const result = await runGreedyAutoSchedule({
         collegeId: active.id,
         scheduleVersionId: versionId,
@@ -197,7 +209,11 @@ function AutoSchedulePage() {
                   {readinessLoading
                     ? "جارٍ التحقق من الجاهزية…"
                     : readinessError
-                      ? "تعذر التحقق من الجاهزية؛ أُوقف التشغيل احترازيًا."
+                      ? `تعذر التحقق من الجاهزية؛ أُوقف التشغيل احترازيًا: ${
+                          readinessQueryError instanceof Error
+                            ? readinessQueryError.message
+                            : "خطأ استعلام غير معروف"
+                        }`
                       : `${readinessBlockers.length} فحوص حرجة تحتاج إلى معالجة.`}
                 </p>
                 <Link

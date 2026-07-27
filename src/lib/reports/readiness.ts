@@ -115,15 +115,13 @@ async function fetchNewFlowSignals(collegeId: string): Promise<NewFlowSignals | 
           .eq("college_id", collegeId)
           .eq("approval_status", "approved"),
       ]);
-    if (
+    const error =
       cohorts.error ||
       deliveryGroups.error ||
       dgAssignments.error ||
       sessionIdentity.error ||
-      approvedHeadcounts.error
-    ) {
-      return null;
-    }
+      approvedHeadcounts.error;
+    if (error) throw new Error(`NEW_FLOW_READINESS_QUERY_FAILED: ${error.message}`);
     return {
       cohorts: (cohorts.data ?? []) as NewFlowSignals["cohorts"],
       deliveryGroups: (deliveryGroups.data ?? []) as NewFlowSignals["deliveryGroups"],
@@ -131,8 +129,10 @@ async function fetchNewFlowSignals(collegeId: string): Promise<NewFlowSignals | 
       sessionIdentity: (sessionIdentity.data ?? []) as NewFlowSignals["sessionIdentity"],
       approvedHeadcounts: (approvedHeadcounts.data ?? []) as NewFlowSignals["approvedHeadcounts"],
     };
-  } catch {
-    return null;
+  } catch (error) {
+    throw error instanceof Error
+      ? error
+      : new Error("NEW_FLOW_READINESS_QUERY_FAILED: unknown query failure");
   }
 }
 
@@ -143,8 +143,9 @@ export function newFlowReadinessMetrics(signals: NewFlowSignals | null): Readine
       {
         label:
           "مقاييس التدفق الجديد (الدفعات/المجموعات) غير متاحة — بنية V2 غير مكتملة في هذه البيئة",
-        total: 0,
-        missing: 0,
+        total: 1,
+        missing: 1,
+        critical: true,
         category: "scheduling",
       },
     ];
@@ -229,6 +230,22 @@ export async function fetchCollegeReadiness(collegeId: string): Promise<Readines
         .eq("college_id", collegeId),
       supabase.from("room_types").select("id, default_capacity").eq("college_id", collegeId),
     ]);
+
+  const baseQueries = [
+    ["courses", courses],
+    ["plan_courses", planCourses],
+    ["instructors", instructors],
+    ["rooms", rooms],
+    ["course_offerings", offerings],
+    ["teaching_assignments", assignments],
+    ["schedule_sessions", sessions],
+    ["room_types", roomTypes],
+  ] as const;
+  for (const [relation, result] of baseQueries) {
+    if (result.error) {
+      throw new Error(`READINESS_QUERY_FAILED[${relation}]: ${result.error.message}`);
+    }
+  }
 
   const coursesRows = courses.data ?? [];
   const planRows = planCourses.data ?? [];

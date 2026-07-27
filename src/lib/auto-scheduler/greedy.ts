@@ -107,9 +107,10 @@ export async function runGreedyAutoSchedule(params: {
   });
 
   // 2. Scheduling settings (fallback windows)
-  const { data: settingsRow } = await supabase
+  const { data: settingsRow, error: settingsError } = await supabase
     .from("scheduling_settings")
     .select("*").eq("college_id", collegeId).maybeSingle();
+  if (settingsError) throw new Error(`AUTO_SCHEDULE_QUERY_FAILED[scheduling_settings]: ${settingsError.message}`);
   const workingDays: number[] = settingsRow?.working_days ?? [6, 0, 1, 2, 3, 4];
   const dayStart = (settingsRow?.day_start_time ?? "08:00:00") as string;
   const dayEnd = (settingsRow?.day_end_time ?? "14:00:00") as string;
@@ -118,15 +119,16 @@ export async function runGreedyAutoSchedule(params: {
   const maxH = Number(settingsRow?.max_session_hours ?? 4);
 
   // 3. Time-slot templates
-  const { data: templates } = await supabase
+  const { data: templates, error: templatesError } = await supabase
     .from("time_slot_templates")
     .select("study_system, day_of_week, start_time, end_time")
     .eq("college_id", collegeId).eq("is_active", true);
+  if (templatesError) throw new Error(`AUTO_SCHEDULE_QUERY_FAILED[time_slot_templates]: ${templatesError.message}`);
 
   // 4. Apply destructive mode actions BEFORE reading existing sessions.
   // Locked sessions are NEVER touched (DB trigger also blocks deletion).
   if (mode === "regenerate_auto") {
-    const { data: del } = await supabase
+    const { data: del, error: deleteError } = await supabase
       .from("schedule_sessions")
       .delete()
       .eq("college_id", collegeId)
@@ -134,16 +136,18 @@ export async function runGreedyAutoSchedule(params: {
       .eq("source_type", "auto_generated")
       .eq("is_locked", false)
       .select("id");
+    if (deleteError) throw new Error(`AUTO_SCHEDULE_DELETE_FAILED: ${deleteError.message}`);
     deletedAutoSessions = (del ?? []).length;
   } else if (mode === "full_rebuild") {
     // Aggressive: remove all unlocked sessions (auto + manual). Locked stays.
-    const { data: del } = await supabase
+    const { data: del, error: deleteError } = await supabase
       .from("schedule_sessions")
       .delete()
       .eq("college_id", collegeId)
       .eq("schedule_version_id", scheduleVersionId)
       .eq("is_locked", false)
       .select("id, source_type");
+    if (deleteError) throw new Error(`AUTO_SCHEDULE_DELETE_FAILED: ${deleteError.message}`);
     deletedAutoSessions = (del ?? []).filter((r) => r.source_type === "auto_generated").length;
     if ((del ?? []).length > deletedAutoSessions) {
       warnings.push(`full_rebuild: deleted ${(del ?? []).length - deletedAutoSessions} manual unlocked session(s)`);
@@ -151,11 +155,14 @@ export async function runGreedyAutoSchedule(params: {
   }
 
   // Existing sessions — preserved (we will not touch these)
-  const { data: existingSessions } = await supabase
+  const { data: existingSessions, error: existingSessionsError } = await supabase
     .from("schedule_sessions")
     .select("id, teaching_assignment_id, session_type, is_locked, source_type")
     .eq("college_id", collegeId)
     .eq("schedule_version_id", scheduleVersionId);
+  if (existingSessionsError) {
+    throw new Error(`AUTO_SCHEDULE_QUERY_FAILED[schedule_sessions]: ${existingSessionsError.message}`);
+  }
   const preservedExistingSessions = (existingSessions ?? []).length;
   skippedLockedSessions = (existingSessions ?? []).filter((s) => s.is_locked).length;
   const preservedIds = new Set((existingSessions ?? []).map((s) => s.id));
@@ -168,62 +175,70 @@ export async function runGreedyAutoSchedule(params: {
   }
 
   // 5. Offerings / TAs / courses / plan_courses / depts
-  const { data: offerings } = await supabase
+  const { data: offerings, error: offeringsError } = await supabase
     .from("course_offerings")
     .select("id, course_id, expected_students, college_id, study_plan_id, plan_course_id")
     .eq("college_id", collegeId).eq("is_active", true);
+  if (offeringsError) throw new Error(`AUTO_SCHEDULE_QUERY_FAILED[course_offerings]: ${offeringsError.message}`);
   const totalOfferings = (offerings ?? []).length;
   const offeringIds = (offerings ?? []).map((o) => o.id);
 
-  const { data: tas } = offeringIds.length
+  const { data: tas, error: tasError } = offeringIds.length
     ? await supabase
         .from("teaching_assignments")
         .select("id, course_offering_id, instructor_id, session_type, weekly_hours, required_room_type, expected_students, section_id")
         .in("course_offering_id", offeringIds)
-    : { data: [] };
+    : { data: [], error: null };
+  if (tasError) throw new Error(`AUTO_SCHEDULE_QUERY_FAILED[teaching_assignments]: ${tasError.message}`);
 
   const courseIds = Array.from(new Set((offerings ?? []).map((o) => o.course_id)));
-  const { data: courses } = courseIds.length
+  const { data: courses, error: coursesError } = courseIds.length
     ? await supabase.from("courses").select("id, department_id").in("id", courseIds)
-    : { data: [] };
+    : { data: [], error: null };
+  if (coursesError) throw new Error(`AUTO_SCHEDULE_QUERY_FAILED[courses]: ${coursesError.message}`);
   const depIds = Array.from(new Set((courses ?? []).map((c) => c.department_id).filter(Boolean) as string[]));
-  const { data: deps } = depIds.length
+  const { data: deps, error: depsError } = depIds.length
     ? await supabase.from("departments").select("id, study_system").in("id", depIds)
-    : { data: [] };
+    : { data: [], error: null };
+  if (depsError) throw new Error(`AUTO_SCHEDULE_QUERY_FAILED[departments]: ${depsError.message}`);
   const depSystem = new Map((deps ?? []).map((d) => [d.id, d.study_system as StudySystem]));
   const courseDep = new Map((courses ?? []).map((c) => [c.id, c.department_id as string | null]));
   const offMap = new Map((offerings ?? []).map((o) => [o.id, o]));
 
   const planCourseIds = Array.from(new Set((offerings ?? []).map((o) => o.plan_course_id).filter(Boolean) as string[]));
-  const { data: pcsById } = planCourseIds.length
+  const { data: pcsById, error: pcsByIdError } = planCourseIds.length
     ? await supabase.from("plan_courses").select(
         "id, study_plan_id, course_id, lectures_per_week, lecture_session_duration, labs_per_week, lab_session_duration, required_room_type_for_lecture, required_room_type_for_lab",
       ).in("id", planCourseIds)
-    : { data: [] };
+    : { data: [], error: null };
+  if (pcsByIdError) throw new Error(`AUTO_SCHEDULE_QUERY_FAILED[plan_courses]: ${pcsByIdError.message}`);
   const pcById = new Map((pcsById ?? []).map((p) => [p.id, p]));
 
   const planIds = Array.from(new Set((offerings ?? []).map((o) => o.study_plan_id).filter(Boolean) as string[]));
-  const { data: pcsByPlan } = planIds.length
+  const { data: pcsByPlan, error: pcsByPlanError } = planIds.length
     ? await supabase.from("plan_courses").select(
         "id, study_plan_id, course_id, lectures_per_week, lecture_session_duration, labs_per_week, lab_session_duration, required_room_type_for_lecture, required_room_type_for_lab",
       ).in("study_plan_id", planIds)
-    : { data: [] };
+    : { data: [], error: null };
+  if (pcsByPlanError) throw new Error(`AUTO_SCHEDULE_QUERY_FAILED[plan_courses]: ${pcsByPlanError.message}`);
   const pcByPlanCourse = new Map((pcsByPlan ?? []).map((p) => [`${p.study_plan_id}|${p.course_id}`, p]));
 
   // 6. Rooms
-  const { data: rooms } = await supabase
+  const { data: rooms, error: roomsError } = await supabase
     .from("rooms").select("id, capacity, room_type").eq("college_id", collegeId);
+  if (roomsError) throw new Error(`AUTO_SCHEDULE_QUERY_FAILED[rooms]: ${roomsError.message}`);
   const allRooms = rooms ?? [];
 
   // 7. Instructor preferences (soft) — for candidate scoring
   const instructorIds = Array.from(new Set((tas ?? []).map((ta) => ta.instructor_id)));
-  const { data: prefData } = instructorIds.length
+  const { data: prefData, error: prefError } = instructorIds.length
     ? await supabase
         .from("instructor_availability")
         .select("instructor_id, day_of_week, start_time, end_time, availability_type, is_preference")
         .in("instructor_id", instructorIds)
         .eq("is_preference", true)
-    : { data: [] };
+    : { data: [], error: null };
+  if (prefError) throw new Error(`AUTO_SCHEDULE_QUERY_FAILED[instructor_availability]: ${prefError.message}`);
   const prefsByInstr = new Map<string, PrefRow[]>();
   for (const p of (prefData ?? []) as PrefRow[]) {
     const arr = prefsByInstr.get(p.instructor_id) ?? [];
@@ -435,7 +450,7 @@ export async function runGreedyAutoSchedule(params: {
   let relocatedSessions = 0;
 
   // Helper: try to insert proposed session; returns id on success, null on failure
-  const insertProposed = async (proposed: ProposedSession): Promise<string | null> => {
+  const insertProposed = async (proposed: ProposedSession): Promise<string> => {
     const { data, error } = await supabase.from("schedule_sessions").insert({
       college_id: collegeId,
       schedule_version_id: scheduleVersionId,
@@ -452,7 +467,8 @@ export async function runGreedyAutoSchedule(params: {
       expected_students: proposed.expected_students ?? 0,
       source_type: "auto_generated",
     }).select("id").single();
-    if (error || !data) return null;
+    if (error) throw new Error(`AUTO_SCHEDULE_INSERT_FAILED: ${error.message}`);
+    if (!data) throw new Error("AUTO_SCHEDULE_INSERT_FAILED: no inserted row returned");
     return data.id;
   };
 
@@ -500,11 +516,8 @@ export async function runGreedyAutoSchedule(params: {
       const validation = await validateProposed({ collegeId, scheduleVersionId, sessions: [proposed] });
       if (validation.unapprovedHardConflicts === 0) {
         const id = await insertProposed(proposed);
-        if (id) {
-          placedThisRun.set(id, unit);
-          return { ok: true, reason: "" };
-        }
-        lastReason = "insert failed";
+        placedThisRun.set(id, unit);
+        return { ok: true, reason: "" };
       } else {
         lastReason = validation.conflicts[0].message_ar;
       }
