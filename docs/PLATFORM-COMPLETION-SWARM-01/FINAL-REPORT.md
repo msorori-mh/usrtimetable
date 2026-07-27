@@ -12,7 +12,7 @@ Exact blocker:
 
 | Field | Value |
 |---|---|
-| FINAL_SHA | `PENDING_COMMIT` |
+| FINAL_SHA | `fcae44568dbec9337fa4afbd9bc5adefa3825c28` |
 | Mission | `PLATFORM-AUTHENTICATED-OPERATIONAL-CLOSURE-01` |
 | Platform | https://gomufadhala.com |
 | Operator session | `msorori201201@gmail.com` · role `super_admin` · Super Admin |
