@@ -1,9 +1,9 @@
 # PLATFORM-COMPLETION-SWARM-01 — STATE
 
-Mission: `PLATFORM-COMPLETION-RELEASE-LEAD-01`  
-Platform: https://gomufadhala.com  
-Supabase Production: `emzytxqkxjjhsivqxdiu`  
-Repo: `msorori-mh/usrtimetable`  
+Mission: `PLATFORM-COMPLETION-RELEASE-LEAD-01`
+Platform: https://gomufadhala.com
+Supabase Production: `emzytxqkxjjhsivqxdiu`
+Repo: `msorori-mh/usrtimetable`
 Mainline: `C:\projects\usrtimetable-mainline`
 
 ## Baseline
@@ -35,5 +35,5 @@ Mainline: `C:\projects\usrtimetable-mainline`
 
 ## Decision snapshot
 
-Work continues on all non-blocked paths (CI closure, docs, K3/Codex watch, local gates).  
+Work continues on all non-blocked paths (CI closure, docs, K3/Codex watch, local gates).
 Final platform-ready verdict cannot be `PLATFORM_READY_FOR_OPERATION` until Lovable publish + authenticated E2E complete.
