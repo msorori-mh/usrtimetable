@@ -13,7 +13,7 @@ Exact blocker:
 | Field | Value |
 |---|---|
 | START_SHA | `7fa9f2df47a3ec6bdfe18463daff0ae340b60c21` |
-| FINAL_SHA | `e7b91e73b2d3cca5d50d66070f60113686599e78` (branch tip; MAIN after merge) |
+| FINAL_SHA | `77b3465a94f2195ffbe3b5c6a1dffaf7f0ab3060` (branch tip; MAIN after merge) |
 | MAIN_SHA (at start) | `7fa9f2df47a3ec6bdfe18463daff0ae340b60c21` |
 | LIVE_SHA / deployment | `24df3e0fb830d860cb90a65e9871f3c61f3139255520330e3baaa049d7099355` (≠ main tip) |
 | Platform URL | https://gomufadhala.com |
