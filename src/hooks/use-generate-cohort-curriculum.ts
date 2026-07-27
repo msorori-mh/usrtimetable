@@ -11,11 +11,13 @@ export function useGenerateCohortCurriculum() {
       void queryClient.invalidateQueries({ queryKey: ["course-offerings"] });
       void queryClient.invalidateQueries({ queryKey: ["academic-cohorts"] });
       if (summary.skipped_unselected_elective > 0) {
-        toast.warning(`${summary.skipped_unselected_elective} elective slot(s) await approved cohort selection.`);
+        toast.warning(
+          `${summary.skipped_unselected_elective} elective slot(s) await approved cohort selection.`,
+        );
       } else if (summary.inserted_offerings === 0) {
         toast.message("Cohort curriculum is already current.");
       } else {
-        toast.success(`Generated ${summary.inserted_offerings} cohort course offering(s).`);
+        toast.success(`تم توليد ${summary.inserted_offerings} من مقررات الدفعة.`);
       }
     },
     onError: (error: Error) => toast.error(error.message || "Cohort curriculum generation failed."),

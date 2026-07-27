@@ -243,7 +243,7 @@ function run() {
   assert(!editSheet.includes("تغيير المدرس"), "no instructor change copy");
   assert(editSheet.includes("بيانات ثابتة"), "readonly block present");
   assert(editSheet.includes("المدرس"), "instructor shown read-only");
-  assert(editSheet.includes("الشعبة"), "section read-only");
+  assert(editSheet.includes("مجموعة المحاضرة أو المعمل"), "delivery group read-only");
   assert(editSheet.includes("نوع الجلسة"), "type read-only");
 
   // 12–14. Local day/time/room fields

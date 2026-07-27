@@ -386,7 +386,7 @@ function AcademicCohortsPage() {
 
             {lastCurriculumSummary ? (
               <Card className="space-y-2 p-4 text-sm" data-testid="cohort-curriculum-summary">
-                <p className="font-medium">تم توليد منهج الدفعة من الخطة الدراسية المعتمدة.</p>
+                <p className="font-medium">تم توليد مقررات الدفعة من الخطة الدراسية المعتمدة.</p>
                 <p className="text-muted-foreground">
                   أضيف {lastCurriculumSummary.inserted_offerings} · موجود مسبقاً{" "}
                   {lastCurriculumSummary.skipped_existing} · مقررات اختيارية معتمدة{" "}
@@ -399,7 +399,7 @@ function AcademicCohortsPage() {
                   </p>
                 ) : null}
                 <p className="text-xs text-muted-foreground">
-                  لم يُنشأ تسجيل فردي Legacy أو شعبة تشغيلية أو مجموعة محاضرات ومعامل أو جلسة.
+                  لم يُنشأ تسجيل فردي قديم أو مجموعة تشغيلية أو مجموعة محاضرات ومعامل أو جلسة.
                 </p>
               </Card>
             ) : null}

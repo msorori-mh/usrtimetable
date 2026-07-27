@@ -241,7 +241,7 @@ export function SessionEditSheet({
               <dl>
                 <Row label="المقرر" value={`${session.course_code} — ${session.course_name}`} />
                 <Row label="رمز المقرر" value={session.course_code} />
-                <Row label="الشعبة" value={session.section_number} />
+                <Row label="مجموعة المحاضرة أو المعمل" value={session.section_number} />
                 <Row label="المدرس" value={session.instructor_name} />
                 <Row label="نوع الجلسة" value={typeLabel} />
                 <Row label="النظام الدراسي" value={sysLabel} />

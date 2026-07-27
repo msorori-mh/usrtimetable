@@ -274,7 +274,7 @@ function ScheduleBuilderWorkspacePage() {
     });
   }, [sessionsQuery.data, enrollmentOverlay]);
 
-  const rooms = roomsQuery.data ?? [];
+  const rooms = useMemo(() => roomsQuery.data ?? [], [roomsQuery.data]);
 
   const displaySessions = useMemo(
     () => applyPendingToSessions(allSessions, pending, rooms),
@@ -857,7 +857,7 @@ function ScheduleBuilderWorkspacePage() {
               options={filterOptions.instructors}
             />
             <FilterSelect
-              label="الشعبة"
+              label="مجموعة المحاضرة أو المعمل"
               value={filters.section}
               onChange={(v) => setFilter("section", v)}
               options={filterOptions.sections}

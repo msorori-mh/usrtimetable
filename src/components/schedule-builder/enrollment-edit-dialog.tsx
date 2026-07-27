@@ -148,7 +148,7 @@ export function EnrollmentEditDialog({
                   {target.courseLabel}
                 </p>
                 <p>
-                  <span className="text-muted-foreground">الشعبة / العرض: </span>
+                  <span className="text-muted-foreground">مجموعة المحاضرة أو المعمل: </span>
                   {target.sectionLabel}
                 </p>
                 <p>
