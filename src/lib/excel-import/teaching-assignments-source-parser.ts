@@ -8,6 +8,7 @@ import {
   isTotalOrSummaryRow,
   type SourceWorkbookColumn,
 } from "./teaching-assignments-source-schema";
+import { normalizeDecimalDigits } from "./arabic-normalize";
 
 export interface ParsedSourceRow {
   sheetName: string;
@@ -44,7 +45,7 @@ function cellStr(v: unknown): string {
 }
 
 function parseLevel(raw: string): number | null {
-  const s = raw.trim();
+  const s = normalizeDecimalDigits(raw).trim();
   if (!s) return null;
   const digits = s.replace(/[^\d]/g, "");
   if (!digits) return null;
@@ -53,7 +54,7 @@ function parseLevel(raw: string): number | null {
 }
 
 function parseHours(raw: string): number | null {
-  const s = raw.trim().replace(",", ".");
+  const s = normalizeDecimalDigits(raw).trim().replace(/[،,]/g, ".");
   if (!s) return null;
   const n = Number(s);
   return Number.isFinite(n) && n >= 0 ? n : null;

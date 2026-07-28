@@ -3,6 +3,8 @@
  * Synthetic fixture — no DB writes.
  */
 import {
+  canonicalCourseCodeKey,
+  courseNameMatchKey,
   instructorMatchKey,
   normalizeArabicText,
   normalizedMatchKey,
@@ -24,6 +26,10 @@ import {
   type SourceResolverContext,
 } from "../../src/lib/excel-import/teaching-assignments-source-resolver";
 import { anonymizedRealWorkbookSheet } from "../fixtures/teaching-assignments-source/anonymized-real-layout";
+import {
+  stage03cAnonymousMatchingCases,
+  stage03cLivePreviewDistribution,
+} from "../fixtures/teaching-assignments-source/stage-03c-live-preview-anonymized";
 
 function assert(cond: boolean, msg: string) {
   if (!cond) throw new Error(msg);
@@ -55,6 +61,7 @@ function buildSyntheticContext(): SourceResolverContext {
       { id: "c-cs101", code: "CS101", name: "مقدمة في البرمجة" },
       { id: "c-cs102", code: "CS102", name: "هياكل البيانات" },
       { id: "c-shared", code: "UNI100", name: "مهارات التواصل" },
+      { id: "c-cis-cs101", code: "CS101", name: "مقرر مختلف بنفس الرمز" },
     ],
     levels: [
       { id: "l-cs-1", program_id: "p-cs", level_number: 1 },
@@ -99,6 +106,13 @@ function buildSyntheticContext(): SourceResolverContext {
         id: "pc-uni-cis",
         study_plan_id: "sp-cis",
         course_id: "c-shared",
+        level_id: "l-cis-1",
+        semester: 1,
+      },
+      {
+        id: "pc-cis-duplicate-code",
+        study_plan_id: "sp-cis",
+        course_id: "c-cis-cs101",
         level_id: "l-cis-1",
         semester: 1,
       },
@@ -252,6 +266,18 @@ function run() {
   );
   assert(normalizedMatchKey("أحمد") === normalizedMatchKey("احمد"), "alef normalized");
   assert(
+    new Set(stage03cAnonymousMatchingCases.courseCodes.map(canonicalCourseCodeKey)).size === 1,
+    "course codes normalize spaces, punctuation, width and Arabic/Persian digits",
+  );
+  assert(
+    new Set(stage03cAnonymousMatchingCases.courseNames.map(courseNameMatchKey)).size === 1,
+    "course names normalize spacing and punctuation without fuzzy matching",
+  );
+  assert(
+    instructorMatchKey("أحمد، محمد") === instructorMatchKey("احمدمحمد"),
+    "instructor punctuation and spacing normalize",
+  );
+  assert(
     stripAcademicHonorifics("أ.م.د. مقبول قايد عبده الكامل") === "مقبول قايد عبده الكامل",
     "strip أ.م.د. honorific",
   );
@@ -309,6 +335,12 @@ function run() {
   assert(parsed1.dataRowCount === 2, "two data rows");
   assert(parsed1.rows[1].courseName === "CS102", "course carry-forward not needed row2");
   assert(parsed1.rows[1].instructorName === "أحمد محمد", "instructor carry-forward");
+  const arabicNumericCells = parseSourceSheetMatrix("S", [
+    ["م", "الاسم", "اسم المادة", "المستوى", "البرنامج", "اجمالي الساعات", "ملاحظات"],
+    ["١", "محاضر اختباري", "CS-١٠١", "٢", "علوم حاسوب", "٣", ""],
+  ]);
+  assert(arabicNumericCells.rows[0].levelNumber === 2, "Arabic level digit parsed");
+  assert(arabicNumericCells.rows[0].totalHours === 3, "Arabic hours digit parsed");
 
   const realLayout = parseSourceSheetMatrix("اسناد الفصل الاول 2026", anonymizedRealWorkbookSheet);
   assert(realLayout.rows[1].programRaw === "علوم حاسوب", "program carry-forward");
@@ -346,7 +378,51 @@ function run() {
   assert(preview.totals.matched > 0, "some matched");
   assert(
     preview.assignments.some((a) => a.outcome === "MATCHED" && a.courseCode === "CS101"),
-    "CS101 matched",
+    "CS101 matched inside program/level/term scope despite duplicate code elsewhere",
+  );
+  const arabicDigitCode = resolveSourceTeachingAssignments({
+    rows: [
+      {
+        sheetName: "S",
+        rowNumber: 3,
+        instructorName: "أحمد،محمد",
+        courseName: "CS-١٠١",
+        levelNumber: 1,
+        programRaw: "علوم حاسوب",
+        totalHours: 3,
+        notes: null,
+        ignored: false,
+      },
+    ],
+    ctx,
+    sheetTermMap: { S: "term-f1" },
+    studySystemScope: "regular_only",
+  });
+  assert(
+    arabicDigitCode.assignments.some((a) => a.outcome === "MATCHED" && a.courseCode === "CS101"),
+    "formatted code and instructor punctuation do not cause false NOT_FOUND",
+  );
+  const formattedArabicName = resolveSourceTeachingAssignments({
+    rows: [
+      {
+        sheetName: "S",
+        rowNumber: 4,
+        instructorName: "أحمد محمد",
+        courseName: "مقدمة،في-البرمجة",
+        levelNumber: 1,
+        programRaw: "علوم حاسوب",
+        totalHours: 3,
+        notes: null,
+        ignored: false,
+      },
+    ],
+    ctx,
+    sheetTermMap: { S: "term-f1" },
+    studySystemScope: "regular_only",
+  });
+  assert(
+    formattedArabicName.assignments.some((a) => a.outcome === "MATCHED"),
+    "formatted Arabic course name does not cause false NOT_FOUND",
   );
   assert(
     preview.assignments.some((a) => a.outcome === "MATCHED" && a.componentType === "theory"),
@@ -440,6 +516,54 @@ function run() {
     amb.assignments.some((a) => a.outcome === "AMBIGUOUS"),
     "ambiguous hours",
   );
+
+  const officialInstructorAmbiguity = resolveSourceTeachingAssignments({
+    rows: [
+      {
+        sheetName: "S",
+        rowNumber: 7,
+        instructorName: "أحمد محمد",
+        courseName: "CS101",
+        levelNumber: 1,
+        programRaw: "علوم حاسوب",
+        totalHours: 3,
+        notes: null,
+        ignored: false,
+      },
+    ],
+    ctx: {
+      ...ctx,
+      instructors: [
+        ...ctx.instructors,
+        {
+          id: "ins-duplicate",
+          employee_number: "EMP099",
+          full_name_ar: "أحمد،محمد",
+          full_name: null,
+        },
+      ],
+    },
+    sheetTermMap: { S: "term-f1" },
+    studySystemScope: "regular_only",
+  });
+  assert(
+    officialInstructorAmbiguity.assignments.some(
+      (a) => a.outcome === "AMBIGUOUS" && a.errorCode === "ambiguous_instructor",
+    ),
+    "true duplicate instructor remains AMBIGUOUS",
+  );
+
+  assert(
+    stage03cLivePreviewDistribution.courseNotFound +
+      stage03cLivePreviewDistribution.ambiguousComponent +
+      stage03cLivePreviewDistribution.ambiguousInstructor +
+      stage03cLivePreviewDistribution.unknownProgram +
+      stage03cLivePreviewDistribution.missingDeliveryGroups ===
+      stage03cLivePreviewDistribution.expandedRows,
+    "anonymized fixture reproduces 131 source / 265 expanded / 0 READY distribution",
+  );
+  assert(stage03cLivePreviewDistribution.sourceRows === 131, "live source row count");
+  assert(stage03cLivePreviewDistribution.ready === 0, "live READY count");
 
   const { validRows } = sourcePreviewToValidatedRows(preview);
   assert(validRows.length > 0, "valid import rows produced");

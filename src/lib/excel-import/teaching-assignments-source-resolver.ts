@@ -3,6 +3,8 @@
  * Pure logic with injectable lookup context (harness + runtime).
  */
 import {
+  canonicalCourseCodeKey,
+  courseNameMatchKey,
   instructorMatchKey,
   looksLikeCourseCode,
   looksLikeEmployeeNumber,
@@ -210,31 +212,11 @@ function matchInstructor(
       message: `محاضر غير موجود لرقم الموظف: ${trimmed}`,
     };
   }
-  const exactKey = normalizedMatchKey(trimmed);
-  const exactHits = [...new Map((index.get(exactKey) ?? []).map((h) => [h.id, h])).values()];
-  if (exactHits.length === 1) return { ok: true, instructor: exactHits[0] };
-  if (exactHits.length > 1) {
-    return {
-      ok: false,
-      code: "ambiguous_instructor",
-      message: `أكثر من محاضر للاسم: ${trimmed}`,
-    };
-  }
-
   const key = instructorMatchKey(trimmed);
   const hitsRaw = index.get(key) ?? [];
   const hits = [...new Map(hitsRaw.map((h) => [h.id, h])).values()];
   if (hits.length === 1) return { ok: true, instructor: hits[0] };
   if (hits.length > 1) {
-    // Catalog often stores both "د. فلان" and "فلان" — prefer the bare-name row.
-    const bare = hits.filter((h) => {
-      const ar = String(h.full_name_ar ?? "").trim();
-      const en = String(h.full_name ?? "").trim();
-      const candidate = ar || en;
-      if (!candidate) return false;
-      return instructorMatchKey(candidate) === normalizedMatchKey(candidate);
-    });
-    if (bare.length === 1) return { ok: true, instructor: bare[0] };
     return {
       ok: false,
       code: "ambiguous_instructor",
@@ -259,17 +241,6 @@ function matchCourse(
   if (!raw) {
     return { ok: false, code: "missing_course", message: "اسم المقرر مطلوب" };
   }
-  if (looksLikeCourseCode(raw)) {
-    const codeHit = ctx.courses.filter((c) => c.code.toUpperCase() === raw.toUpperCase());
-    if (codeHit.length === 1) return { ok: true, course: codeHit[0] };
-    if (codeHit.length > 1) {
-      return {
-        ok: false,
-        code: "ambiguous_course_code",
-        message: `رمز مقرر مكرر: ${raw}`,
-      };
-    }
-  }
   const activePlans = ctx.studyPlans.filter((sp) => sp.is_active && sp.program_id === programId);
   const planIds = new Set(activePlans.map((sp) => sp.id));
   const planCourseCourseIds = new Set(
@@ -280,9 +251,23 @@ function matchCourse(
       )
       .map((pc) => pc.course_id),
   );
-  const key = normalizedMatchKey(raw);
+  if (looksLikeCourseCode(raw)) {
+    const codeKey = canonicalCourseCodeKey(raw);
+    const codeHit = ctx.courses.filter(
+      (c) => planCourseCourseIds.has(c.id) && canonicalCourseCodeKey(c.code) === codeKey,
+    );
+    if (codeHit.length === 1) return { ok: true, course: codeHit[0] };
+    if (codeHit.length > 1) {
+      return {
+        ok: false,
+        code: "ambiguous_course_code",
+        message: `رمز مقرر مكرر: ${raw}`,
+      };
+    }
+  }
+  const key = courseNameMatchKey(raw);
   const nameHits = ctx.courses.filter(
-    (c) => planCourseCourseIds.has(c.id) && normalizedMatchKey(c.name) === key,
+    (c) => planCourseCourseIds.has(c.id) && courseNameMatchKey(c.name) === key,
   );
   if (nameHits.length === 1) return { ok: true, course: nameHits[0] };
   if (nameHits.length > 1) {
