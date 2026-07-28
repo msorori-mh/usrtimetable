@@ -27,7 +27,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
-import { runGreedyAutoSchedule, type AutoRunMode } from "@/lib/auto-scheduler/greedy";
+import type { AutoRunMode } from "@/lib/auto-scheduler/greedy";
+import { runV2AutoSchedule } from "@/lib/auto-scheduler/v2";
 import { fetchCollegeReadiness } from "@/lib/reports/readiness";
 import { Sparkles, AlertCircle, CheckCircle2 } from "lucide-react";
 
@@ -107,7 +108,7 @@ function AutoSchedulePage() {
           `READINESS_BLOCKED: ${freshBlockers.map((metric) => metric.label).join("؛ ")}`,
         );
       }
-      const result = await runGreedyAutoSchedule({
+      const result = await runV2AutoSchedule({
         collegeId: active.id,
         scheduleVersionId: versionId,
         mode,

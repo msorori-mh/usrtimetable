@@ -52,6 +52,33 @@ assert.ok(
 );
 assert.ok(route.includes("READINESS_BLOCKED:"), "real blocker reason reaches the operator");
 assert.ok(route.includes("readinessQueryError.message"), "query failure reason is visible");
+assert.ok(route.includes("runV2AutoSchedule"), "auto-schedule route uses New Flow V2 scheduler");
+assert.equal(
+  route.includes("runGreedyAutoSchedule"),
+  false,
+  "auto-schedule route cannot invoke the Legacy scheduler",
+);
+
+const v2Scheduler = read("src/lib/auto-scheduler/v2.ts");
+for (const identity of [
+  "teaching_assignment_id",
+  "delivery_group_id",
+  "cohort_id",
+  "study_system",
+]) {
+  assert.ok(v2Scheduler.includes(identity), `V2 scheduler identity: ${identity}`);
+}
+assert.ok(
+  v2Scheduler.includes("createScheduleSessionFromAssignmentV2"),
+  "V2 scheduler writes only through guarded session RPC service",
+);
+assert.ok(
+  v2Scheduler.includes("V2_DESTRUCTIVE_MODE_BLOCKED"),
+  "destructive modes fail closed until an atomic V2 reset RPC exists",
+);
+assert.equal(v2Scheduler.includes('.from("sections")'), false, "no Legacy sections dependency");
+assert.equal(v2Scheduler.includes("section_id"), false, "no Legacy section identity");
+assert.equal(v2Scheduler.includes('.from("course_offerings")'), false, "no Legacy offering query");
 
 const scheduler = read("src/lib/auto-scheduler/greedy.ts");
 for (const marker of [
