@@ -27,6 +27,8 @@ export type SourceWorkbookPreview = {
   resolution: SourceResolutionPreview;
   validRows: ParsedRow[];
   errors: RowError[];
+  sourceReadyRows: number;
+  canonicalOperations: number;
 };
 
 async function fetchAll<T extends Record<string, unknown>>(
@@ -164,6 +166,15 @@ export async function previewSourceWorkbookImport(input: {
     sheetTermMap: input.sheetTermMap,
     studySystemScope: input.studySystemScope,
   });
-  const { validRows, errors } = sourcePreviewToValidatedRows(resolution);
-  return { mode, workbook, resolution, validRows, errors };
+  const { validRows, errors, sourceReadyRows, canonicalOperations } =
+    sourcePreviewToValidatedRows(resolution);
+  return {
+    mode,
+    workbook,
+    resolution,
+    validRows,
+    errors,
+    sourceReadyRows,
+    canonicalOperations,
+  };
 }
