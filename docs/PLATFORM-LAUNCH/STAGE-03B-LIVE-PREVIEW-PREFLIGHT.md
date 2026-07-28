@@ -267,8 +267,8 @@ Method: same as Stage 03B — Super Admin JWT + identical parser/resolver path; 
 
 ### NEXT_ATOMIC_DATA_PACKAGE
 
-`OFFICIAL_DATA_PACKAGE_01` — delivered as Stage 03D docs package (PR #104):  
-`docs/PLATFORM-LAUNCH/STAGE-03D-OFFICIAL-DATA-SOURCE-PACKAGE.md` + fill templates under `docs/PLATFORM-LAUNCH/STAGE-03D-TEMPLATES/`.  
+`OFFICIAL_DATA_PACKAGE_01` — delivered as Stage 03D docs package (PR #104):
+`docs/PLATFORM-LAUNCH/STAGE-03D-OFFICIAL-DATA-SOURCE-PACKAGE.md` + fill templates under `docs/PLATFORM-LAUNCH/STAGE-03D-TEMPLATES/`.
 265-row ledger reconciled (247 live + 18 `SKIPPED` PR103 expansion delta). **No production writes.** User must return signed fills before any apply wave.
 
 ### 265 vs 247 reconciliation (Stage 03D)
