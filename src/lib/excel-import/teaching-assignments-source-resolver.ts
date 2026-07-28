@@ -397,10 +397,11 @@ function toImportRow(
   dg: ResolverDeliveryGroup,
   instructor: ResolverInstructor,
   hours: number | null,
+  expandedAll: boolean,
   notes: string | null,
 ): ParsedRow {
   const perComponentHours =
-    hours !== null && component.component_type !== "project"
+    !expandedAll && hours !== null && component.component_type !== "project"
       ? hours
       : component.weekly_contact_hours;
   const values: Record<string, unknown> = {
@@ -759,6 +760,7 @@ export function resolveSourceTeachingAssignments(input: {
               dg,
               insMatch.instructor,
               row.totalHours,
+              compMatch.kind === "expand_all",
               row.notes,
             );
             matched++;

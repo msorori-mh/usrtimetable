@@ -23,6 +23,7 @@ import {
   sourcePreviewToValidatedRows,
   type SourceResolverContext,
 } from "../../src/lib/excel-import/teaching-assignments-source-resolver";
+import { anonymizedRealWorkbookSheet } from "../fixtures/teaching-assignments-source/anonymized-real-layout";
 
 function assert(cond: boolean, msg: string) {
   if (!cond) throw new Error(msg);
@@ -268,6 +269,17 @@ function run() {
     "compound split",
   );
   assert(resolveProgramField("جميع الأقسام").kind === "all_departments", "all departments");
+  assert(
+    resolveProgramField("كل الاقسام مع الجوف").kind === "all_departments",
+    "real workbook all-departments campus alias",
+  );
+  assert(resolveProgramField("امن سبراني").kind === "codes", "documented CYB spelling");
+  assert(
+    resolveProgramField("علوم حاسوب + نظم + الجوف").kind === "codes" &&
+      (resolveProgramField("علوم حاسوب + نظم + الجوف") as { codes: string[] }).codes.length === 2,
+    "known campus qualifier is ignored without guessing a program",
+  );
+  assert(resolveProgramField("علوم").kind === "unknown", "partial labels never guess");
   assert(resolveProgramField("برنامج مجهول").kind === "unknown", "unknown program");
 
   // Mode detection
@@ -297,6 +309,11 @@ function run() {
   assert(parsed1.dataRowCount === 2, "two data rows");
   assert(parsed1.rows[1].courseName === "CS102", "course carry-forward not needed row2");
   assert(parsed1.rows[1].instructorName === "أحمد محمد", "instructor carry-forward");
+
+  const realLayout = parseSourceSheetMatrix("اسناد الفصل الاول 2026", anonymizedRealWorkbookSheet);
+  assert(realLayout.rows[1].programRaw === "علوم حاسوب", "program carry-forward");
+  assert(realLayout.rows[1].levelNumber === 2, "level carry-forward");
+  assert(realLayout.rows[1].courseName === "هياكل البيانات", "course carry-forward");
 
   assert(isSourceWorkbookHeaderRow(["م", "الاسم", "اسم المادة", "البرنامج"]), "header detect");
   assert(isTotalOrSummaryRow({ البرنامج: "اجمالي الساعات" }), "total row");
@@ -338,6 +355,13 @@ function run() {
   assert(
     preview.assignments.some((a) => a.outcome === "MATCHED" && a.componentType === "practical"),
     "hours-sum expands to practical",
+  );
+  const cs102Expanded = preview.assignments.filter(
+    (a) => a.outcome === "MATCHED" && a.courseCode === "CS102",
+  );
+  assert(
+    cs102Expanded.length === 2 && cs102Expanded.every((a) => a.assignedComponentHours === 2),
+    "expand_all emits each component's own server-valid hours",
   );
   assert(
     preview.assignments.filter((a) => a.outcome === "MATCHED" && a.courseCode === "UNI100")
