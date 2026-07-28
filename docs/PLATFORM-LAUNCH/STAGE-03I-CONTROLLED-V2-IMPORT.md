@@ -234,6 +234,91 @@ Formula: `130` unique singles + `8` identical-payload canonical groups = **138**
 
 ---
 
+
+---
+
+## POST_PR110_CANONICAL_REBASELINE
+
+Mission follow-on: `PLATFORM-LAUNCH-STAGE-03I-C-PR110-MERGE-PUBLISH-REBASELINE-01`
+Generated: 2026-07-28 (Asia/Riyadh)
+
+### Git / merge
+
+| Field | Value |
+|---|---|
+| PR110_STATE | MERGED |
+| PR110_HEAD | `a69853ef6ada437ded731395b7cb29cfceabbf37` |
+| PR110_MERGE_COMMIT / MAIN_SHA | `b430a2349af80640ab24e6a761bb09c90e06c908` |
+| Migration applied | **no** (source-only `20260728010000_…` remains unapplied) |
+| DB writes | **none** |
+
+### Publish
+
+| Field | Value |
+|---|---|
+| Lovable status | Reported `Published` / `Up to date` after scheduled publish (no code/migration/Supabase changes) |
+| LIVE `x-deployment-id` | `d921ed553dd374d8fbe49e6956c8eb2406f2ac9d446d177ce8e6c86b527f41b4` (unchanged through 8 probes) |
+| LIVE PR110 markers (`canonicalOperations` / `_source_provenance` / `conflicting_assignment_duplicate`) | **false** |
+| PUBLISH_RESULT | `CLAIMED_BY_LOVABLE_LIVE_NOT_UPDATED` |
+
+### Preview rebaseline (same workbook; read-only; main @ `b430a23`)
+
+Workbook: `C:\Users\Elite\Downloads\b002982d-763d-4aa7-a7f3-fed38fca4da9.xlsx`
+FILE_SHA256: `fbc23368ca36af452935ab086e239fff5b61bae668dd9be5887b330143a35098`
+
+| Metric | Value |
+|---|---:|
+| SOURCE_ROWS | 131 |
+| EXPANDED_ROWS | 314 |
+| READY_SOURCE_ROWS (MATCHED) | 156 |
+| BLOCKED | 18 |
+| AMBIGUOUS | 18 |
+| NOT_FOUND (ERROR) | 122 |
+| CONFLICT (resolver outcome) | 0 |
+| Unique natural keys among READY | 142 |
+| IDENTICAL_DUPLICATE_GROUPS | 8 |
+| CONFLICTING_DUPLICATE_GROUPS | 4 |
+| Analytical executable if partial-block | **138** (= 130 singles + 8 identical) |
+| **CANONICAL_IMPORT_OPERATIONS (PR #110 emit)** | **0** |
+
+### Contract behavior observed
+
+`canonicalizeTeachingAssignmentsV2` **fail-closes the whole batch** when any natural-key fingerprint conflict exists:
+
+- identical duplicates → would collapse to 1 op with `_source_provenance` (proven by harness)
+- conflicting duplicates → `conflicting_assignment_duplicate` errors; **all** canonical ops emptied
+- Live ITCS has **4** conflicting groups → emitted import ops = **0** (not 138)
+- No conflicting payload enters a non-empty canonical array (fail-closed)
+- No first-row / last-row silent overwrite for conflicts
+
+Codex fixture `156→142` assumed **zero** payload conflicts; live data does not.
+
+### Exact import count / blocked groups
+
+| Item | Value |
+|---|---|
+| Exact import count under PR #110 as shipped | **0** (whole-batch fail-closed) |
+| Exact import count under Stage 03I-B partial plan | **138** |
+| Exact blocked conflict groups | **4** (10 READY rows) |
+| V2 assignments | 0 (unchanged; no write) |
+| Legacy count | 174 (unchanged) |
+
+### Required updated approval (next)
+
+Do **not** approve a 138 V2 import against the shipped whole-batch fail-closed client until one of:
+
+1. **Source fix:** resolve the 4 hour-conflict groups so READY natural keys have no fingerprint conflicts, then re-preview must show `CANONICAL_IMPORT_OPERATIONS` matching the clean unique-key set; or
+2. **Contract change (new PR):** emit partial-block canonical ops (138) while keeping conflicting keys fail-closed / non-importable; then re-merge/publish/rebaseline; or
+3. **Live publish fix:** land PR #110 assets on `gomufadhala.com` (deployment id must change + markers true) before any live UI import approval.
+
+Also still required: do **not** apply `20260728010000_teaching_assignments_v2_duplicate_contract.sql` until separately approved.
+
+### Stage 03I-C FINAL_DECISION
+
+`HOLD_WITH_ONE_EXACT_CANONICAL_IMPORT_RELEASE_BLOCKER`
+
+Exact blocker: `B-CANONICAL-OPS-ZERO-NOT-138` — PR #110 whole-batch fail-closed yields `CANONICAL_IMPORT_OPERATIONS=0` on live ITCS READY data with 4 conflicting groups; required Stage 03I-C proof is `138`. Secondary: live deployment still lacks PR #110 markers.
+
 ## Security Review
 
 | Item | Value |
