@@ -9,11 +9,23 @@ const TAA_MARBUTA = /\u0629/g;
 const HAMZA_VARIANTS = /[\u0624\u0626]/g;
 const TATWEEL = /\u0640/g;
 const DIACRITICS = /[\u064B-\u065F\u0670]/g;
+const ARABIC_INDIC_DIGITS = /[\u0660-\u0669]/g;
+const EASTERN_ARABIC_DIGITS = /[\u06F0-\u06F9]/g;
+const PUNCTUATION_OR_SYMBOL = /[\p{P}\p{S}]/gu;
+
+/** Normalize Arabic-Indic and Eastern Arabic digits to ASCII. */
+export function normalizeDecimalDigits(raw: string | null | undefined): string {
+  return String(raw ?? "")
+    .replace(ARABIC_INDIC_DIGITS, (digit) => String(digit.charCodeAt(0) - "\u0660".charCodeAt(0)))
+    .replace(EASTERN_ARABIC_DIGITS, (digit) =>
+      String(digit.charCodeAt(0) - "\u06F0".charCodeAt(0)),
+    );
+}
 
 /** Normalize Arabic (and mixed) text for equality checks. */
 export function normalizeArabicText(raw: string | null | undefined): string {
   if (raw === null || raw === undefined) return "";
-  let s = String(raw).trim();
+  let s = normalizeDecimalDigits(raw).trim();
   if (!s) return "";
   s = s.replace(TATWEEL, "");
   s = s.replace(DIACRITICS, "");
@@ -65,12 +77,32 @@ export function normalizedMatchKey(raw: string | null | undefined): string {
 
 /** Instructor name key: honorifics stripped then Arabic-normalized. */
 export function instructorMatchKey(raw: string | null | undefined): string {
-  return normalizedMatchKey(stripAcademicHonorifics(raw));
+  return normalizedMatchKey(stripAcademicHonorifics(raw))
+    .replace(PUNCTUATION_OR_SYMBOL, "")
+    .replace(/\s+/g, "");
+}
+
+/**
+ * Canonical course code: Latin letters/digits only after digit normalization.
+ * This treats `CS ١٠١`, `CS-101`, and `cs101` as the same code without using
+ * fuzzy/substring matching.
+ */
+export function canonicalCourseCodeKey(raw: string | null | undefined): string {
+  return normalizeDecimalDigits(raw)
+    .normalize("NFKC")
+    .replace(PUNCTUATION_OR_SYMBOL, "")
+    .replace(/\s+/g, "")
+    .toUpperCase();
+}
+
+/** Canonical Arabic/mixed course-name key with formatting symbols removed. */
+export function courseNameMatchKey(raw: string | null | undefined): string {
+  return normalizedMatchKey(raw).replace(PUNCTUATION_OR_SYMBOL, "").replace(/\s+/g, "");
 }
 
 /** True when cell looks like a course code (e.g. CS101, CY301). */
 export function looksLikeCourseCode(raw: string | null | undefined): boolean {
-  const s = String(raw ?? "").trim();
+  const s = canonicalCourseCodeKey(raw);
   if (!s) return false;
   return /^[A-Za-z]{2,5}\d{2,4}[A-Za-z]?(\([A-Za-z]\))?$/.test(s);
 }
