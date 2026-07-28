@@ -11,10 +11,18 @@ export type ProgramAliasCode = (typeof PROGRAM_ALIAS_TARGETS)[number];
 
 const ALIAS_ENTRIES: ReadonlyArray<{ code: ProgramAliasCode; labels: readonly string[] }> = [
   { code: "CS", labels: ["علوم حاسوب", "علوم الحاسب", "علوم الحاسوب", "حاسوب"] },
-  { code: "CIS", labels: ["نظم", "نظم معلومات", "نظم المعلومات", "نظم معلوماتية"] },
+  {
+    code: "CIS",
+    labels: ["نظم", "نظم معلومات", "نظم المعلومات", "نظم معلوماتية", "نظم الجوف"],
+  },
   { code: "IT", labels: ["تكنولوجيا", "تقنية", "تقنية المعلومات"] },
-  { code: "CYB", labels: ["امن سيبراني", "أمن سيبراني", "الأمن السيبراني", "سيبراني"] },
+  {
+    code: "CYB",
+    labels: ["امن سيبراني", "أمن سيبراني", "الأمن السيبراني", "امن سبراني", "سيبراني"],
+  },
 ];
+
+const CAMPUS_QUALIFIERS = new Set(["الجوف", "مارب", "مأرب"]);
 
 function labelToKey(label: string): string {
   return normalizedMatchKey(normalizeArabicText(label));
@@ -28,12 +36,7 @@ const LABEL_TO_CODE = new Map<string, ProgramAliasCode>(
 export function resolveProgramAliasFragment(raw: string): ProgramAliasCode | null {
   const key = labelToKey(raw);
   if (!key) return null;
-  const direct = LABEL_TO_CODE.get(key);
-  if (direct) return direct;
-  for (const [labelKey, code] of LABEL_TO_CODE) {
-    if (key.includes(labelKey) || labelKey.includes(key)) return code;
-  }
-  return null;
+  return LABEL_TO_CODE.get(key) ?? null;
 }
 
 export type ProgramResolution =
@@ -46,7 +49,13 @@ export function resolveProgramField(raw: string | null | undefined): ProgramReso
   const text = normalizeArabicText(String(raw ?? ""));
   if (!text) return { kind: "unknown", raw: "" };
   const allKey = labelToKey(ALL_DEPARTMENTS_LABEL);
-  if (normalizedMatchKey(text) === allKey || text.includes("جميع")) {
+  const normalized = normalizedMatchKey(text);
+  if (
+    normalized === allKey ||
+    normalized === labelToKey("كل الأقسام") ||
+    normalized === labelToKey("كل الاقسام مع الجوف") ||
+    normalized === labelToKey("جميع الأقسام مع الجوف")
+  ) {
     return { kind: "all_departments" };
   }
   const parts = text
@@ -56,6 +65,7 @@ export function resolveProgramField(raw: string | null | undefined): ProgramReso
   if (parts.length === 0) return { kind: "unknown", raw: text };
   const codes: ProgramAliasCode[] = [];
   for (const part of parts) {
+    if (CAMPUS_QUALIFIERS.has(normalizedMatchKey(part))) continue;
     const code = resolveProgramAliasFragment(part);
     if (!code) return { kind: "unknown", raw: text };
     if (!codes.includes(code)) codes.push(code);

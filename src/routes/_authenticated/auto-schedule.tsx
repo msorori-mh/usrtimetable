@@ -27,7 +27,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
-import { runGreedyAutoSchedule, type AutoRunMode } from "@/lib/auto-scheduler/greedy";
+import type { AutoRunMode } from "@/lib/auto-scheduler/greedy";
+import { runV2AutoSchedule } from "@/lib/auto-scheduler/v2";
 import { fetchCollegeReadiness } from "@/lib/reports/readiness";
 import { Sparkles, AlertCircle, CheckCircle2 } from "lucide-react";
 
@@ -63,6 +64,7 @@ function AutoSchedulePage() {
     data: readiness,
     isLoading: readinessLoading,
     isError: readinessError,
+    error: readinessQueryError,
   } = useQuery({
     queryKey: ["auto-schedule-readiness", active?.id],
     enabled: !!active,
@@ -95,7 +97,18 @@ function AutoSchedulePage() {
   const run = useMutation({
     mutationFn: async () => {
       if (!active || !versionId) throw new Error("اختر النسخة");
-      const result = await runGreedyAutoSchedule({
+      const freshReadiness = await fetchCollegeReadiness(active.id);
+      const freshBlockers = [
+        ...freshReadiness.studyPlan,
+        ...freshReadiness.resources,
+        ...freshReadiness.scheduling,
+      ].filter((metric) => metric.critical && metric.missing > 0);
+      if (freshBlockers.length > 0) {
+        throw new Error(
+          `READINESS_BLOCKED: ${freshBlockers.map((metric) => metric.label).join("؛ ")}`,
+        );
+      }
+      const result = await runV2AutoSchedule({
         collegeId: active.id,
         scheduleVersionId: versionId,
         mode,
@@ -197,7 +210,11 @@ function AutoSchedulePage() {
                   {readinessLoading
                     ? "جارٍ التحقق من الجاهزية…"
                     : readinessError
-                      ? "تعذر التحقق من الجاهزية؛ أُوقف التشغيل احترازيًا."
+                      ? `تعذر التحقق من الجاهزية؛ أُوقف التشغيل احترازيًا: ${
+                          readinessQueryError instanceof Error
+                            ? readinessQueryError.message
+                            : "خطأ استعلام غير معروف"
+                        }`
                       : `${readinessBlockers.length} فحوص حرجة تحتاج إلى معالجة.`}
                 </p>
                 <Link

@@ -37,6 +37,12 @@ for (const legacyTable of [
 
 const autoSchedule = read("src/routes/_authenticated/auto-schedule.tsx");
 assert.ok(autoSchedule.includes("fetchCollegeReadiness"), "auto-schedule loads readiness");
+assert.ok(autoSchedule.includes("runV2AutoSchedule"), "auto-schedule invokes V2 identity path");
+assert.equal(
+  autoSchedule.includes("runGreedyAutoSchedule"),
+  false,
+  "Legacy greedy path is not operational",
+);
 assert.ok(autoSchedule.includes("readinessIncomplete"), "auto-schedule computes fail-closed gate");
 assert.ok(
   autoSchedule.includes('data-testid="auto-schedule-readiness-blocker"'),
