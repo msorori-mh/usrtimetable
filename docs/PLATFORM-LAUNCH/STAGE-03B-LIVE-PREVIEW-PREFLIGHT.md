@@ -183,3 +183,88 @@ Observed live labels (non-exhaustive):
 - This report only (docs PR).
 - Temp preview JSON used during the session was not committed.
 - No application/code/migration changes.
+
+---
+
+## POST_PR103_REBASELINE
+
+Mission: `PLATFORM-LAUNCH-STAGE-03C-PR103-MERGE-PUBLISH-REBASELINE-01`
+Rebaseline time: `2026-07-28T04:00:20+03:00` (live deploy detect) · Preview replay after publish
+PR #103 HEAD: `af41e3c94769e110a970a018196f6a65465108e9`
+PR #103 merge commit / MAIN_SHA: `1e389c418540cdae3a4fb378ff9f9503f487e258`
+Live deployment: `370d917b3ce93706948c8b90c0a4874b8a2dfca326139b6cfc5a62cc8e8b5cec`
+Method: same as Stage 03B — Super Admin JWT + identical parser/resolver path; Preview only; no import confirm; no DB writes.
+
+### BEFORE (pre-PR #103 — authoritative Stage 03B)
+
+| Metric | Count |
+|---|---:|
+| TOTAL_SOURCE_ROWS | 131 |
+| TOTAL_EXPANDED_ROWS | 265 |
+| READY | 0 |
+| BLOCKED | 24 |
+| AMBIGUOUS | 53 |
+| NOT_FOUND | 188 |
+| CONFLICT | 0 |
+| DUPLICATES | 0 |
+| `course_not_found` | 186 |
+| `ambiguous_component` | 36 |
+| `delivery_groups` | 24 |
+| `ambiguous_instructor` | 17 |
+| `unknown_program` | 2 |
+
+### AFTER (post-PR #103 publish)
+
+| Metric | Count | Δ vs BEFORE |
+|---|---:|---:|
+| SEM1_SOURCE_ROWS | 66 | 0 |
+| SEM2_SOURCE_ROWS | 65 | 0 |
+| TOTAL_SOURCE_ROWS | **131** | 0 |
+| TOTAL_EXPANDED_ROWS | **247** | −18 |
+| READY | **0** | 0 |
+| BLOCKED | **20** | −4 |
+| AMBIGUOUS | **69** | +16 |
+| NOT_FOUND | **158** | −30 |
+| CONFLICT | **0** | 0 |
+| DUPLICATES | **0** | 0 |
+| `course_not_found` | **156** | −30 |
+| `ambiguous_component` | **34** | −2 |
+| `delivery_groups` | **20** | −4 |
+| `ambiguous_instructor` | **35** | +18 |
+| `unknown_program` | **2** | 0 |
+
+**Interpretation:** Count drops are **not** treated as import success. READY remains **0**. Matching stays fail-closed and scoped to program×level×term×system. The rise in `ambiguous_instructor` is expected after removing bare-name preference (ambiguity must not become READY). Remaining blockers are official-data / operational dependencies, not unresolved source-matching defects.
+
+### CLOSED_SOURCE_MATCHING_ISSUES
+
+- Arabic digit / punctuation normalization gaps that previously blocked scoped code/name matching.
+- Unscoped global course-code matching (now plan×level×semester scoped).
+- Instructor bare-name preference that could collapse ambiguity incorrectly.
+- Regression coverage via anonymized Stage 03C fixture + harness cases on main (PR #103).
+
+### REMAINING_OFFICIAL_DATA_BLOCKERS
+
+- Catalog / plan gaps driving `course_not_found` (156) — still the dominant class (`CATALOG_DATA_MISSING`, wrong level/term/program, approved aliases only).
+- Duplicate / hours-mismatched plan components (`ambiguous_component` 34).
+- Duplicate instructor display names requiring official disambiguation (`ambiguous_instructor` 35; same two names as Stage 03C recon).
+- Unmapped program labels (`unknown_program` 2: `علوم`, `الموازي`) needing official clarification — no guessed aliases.
+
+### REMAINING_OPERATIONAL_DEPENDENCIES
+
+- Approved headcounts for active cohorts (readiness still blocked).
+- Room types on plan components where required for DG generation.
+- Generate delivery groups after HC + room-type readiness (`delivery_groups` 20 remaining; none READY after dependencies alone).
+- No import confirm until READY > 0 under official package.
+
+### REQUIRED_USER_SOURCES
+
+1. Official course catalog / active-plan corrections for missing and wrong-level/term/program titles (no agent-invented aliases).
+2. Official component dedupe / hours decisions for ambiguous plan components.
+3. Official instructor identity resolution for duplicate names.
+4. Official mapping or rejection for program labels `علوم` and `الموازي`.
+5. Approved headcount sheet (or equivalent) for active cohorts.
+6. Confirmed room-type assignments where DG generation requires them.
+
+### NEXT_ATOMIC_DATA_PACKAGE
+
+`OFFICIAL_DATA_PACKAGE_01` — signed academic package covering catalog/plan fixes + approved aliases + instructor disambiguation + program clarifications + headcounts/room types, then re-Preview only (still no confirm until READY rows appear under scoped matching).
