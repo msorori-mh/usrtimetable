@@ -20,6 +20,7 @@ import type { ParsedRow, RowError } from "./types";
 import type { ParsedSourceRow } from "./teaching-assignments-source-parser";
 import type { SourceStudySystemScope } from "./teaching-assignments-source-schema";
 import { expandStudySystems } from "./teaching-assignments-source-schema";
+import { canonicalizeTeachingAssignmentsV2 } from "./teaching-assignments-v2-canonical";
 
 export type TimetabledComponentType = (typeof TA_V2_COMPONENT_TYPES)[number];
 
@@ -793,9 +794,31 @@ export function resolveSourceTeachingAssignments(input: {
 export function sourcePreviewToValidatedRows(preview: SourceResolutionPreview): {
   validRows: ParsedRow[];
   errors: RowError[];
+  sourceReadyRows: number;
+  canonicalOperations: number;
 } {
-  const validRows = preview.assignments
-    .filter((a) => a.outcome === "MATCHED" && a.importRow)
-    .map((a) => a.importRow as ParsedRow);
-  return { validRows, errors: preview.errors };
+  const readyAssignments = preview.assignments.filter(
+    (a) => a.outcome === "MATCHED" && a.importRow,
+  );
+  const readyRows = readyAssignments.map((a, index) => {
+    const row = a.importRow as ParsedRow;
+    return {
+      ...row,
+      values: {
+        ...row.values,
+        _source_sheet: a.sourceSheet,
+        _source_row_number: a.sourceRowNumber,
+        _expansion_index: index + 1,
+      },
+    };
+  });
+  const canonical = canonicalizeTeachingAssignmentsV2(readyRows);
+  const errors = [...preview.errors, ...canonical.conflicts];
+  const validRows = canonical.conflicts.length === 0 ? canonical.canonicalOperations : [];
+  return {
+    validRows,
+    errors,
+    sourceReadyRows: canonical.sourceReadyRows,
+    canonicalOperations: canonical.canonicalOperations.length,
+  };
 }
