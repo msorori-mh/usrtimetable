@@ -1,10 +1,10 @@
 # STAGE-03E — Official Source Intake Package
 
-Mission: `PLATFORM-LAUNCH-STAGE-03E-OFFICIAL-SOURCE-INTAKE-PACKAGE-01`  
-Generated: 2026-07-28 (Asia/Riyadh)  
-Scope: **intake packaging only — no production writes**  
-Baseline: Stage 03D (`STAGE-03D-OFFICIAL-DATA-SOURCE-PACKAGE.md` / PR #104)  
-MAIN_SHA: `1e389c418540cdae3a4fb378ff9f9503f487e258`  
+Mission: `PLATFORM-LAUNCH-STAGE-03E-OFFICIAL-SOURCE-INTAKE-PACKAGE-01`
+Generated: 2026-07-28 (Asia/Riyadh)
+Scope: **intake packaging only — no production writes**
+Baseline: Stage 03D (`STAGE-03D-OFFICIAL-DATA-SOURCE-PACKAGE.md` / PR #104)
+MAIN_SHA: `1e389c418540cdae3a4fb378ff9f9503f487e258`
 LIVE_DEPLOYMENT: `370d917b3ce93706948c8b90c0a4874b8a2dfca326139b6cfc5a62cc8e8b5cec`
 
 **Hard bans honored:** no import confirm, no INSERT/UPDATE/DELETE, no migrations, no DG/curriculum generation, no Publish, no schedule. **Filled Excel templates and real student data were not committed to GitHub.**
@@ -67,11 +67,11 @@ The empty intake package is assembled locally for official completion. Empty `_F
 
 See `00_README_AR.md` in the ZIP. Approvers also listed in the manifest:
 
-1. Courses → academic committee / study-plan owner  
-2. Instructors → faculty affairs / academic HR  
-3. Headcounts → student affairs / cohort coordinator  
-4. Components + room types → academic committee + rooms owner  
-5. Program labels → college dean / academic committee  
+1. Courses → academic committee / study-plan owner
+2. Instructors → faculty affairs / academic HR
+3. Headcounts → student affairs / cohort coordinator
+4. Components + room types → academic committee + rooms owner
+5. Program labels → college dean / academic committee
 
 Empty rows stay blocked from Preview READY and import confirm.
 
@@ -79,8 +79,8 @@ Empty rows stay blocked from Preview READY and import confirm.
 
 ## Git policy for this PR
 
-- **Included:** this documentation file only.  
-- **Excluded from GitHub:** intake `.xlsx`, ZIP, filled returns, student extracts.  
+- **Included:** this documentation file only.
+- **Excluded from GitHub:** intake `.xlsx`, ZIP, filled returns, student extracts.
 - PR #102 / #104 unchanged regarding merge (not merged here).
 
 ---
