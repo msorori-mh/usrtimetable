@@ -246,7 +246,7 @@ Method: same as Stage 03B — Super Admin JWT + identical parser/resolver path; 
 
 - Catalog / plan gaps driving `course_not_found` (156) — still the dominant class (`CATALOG_DATA_MISSING`, wrong level/term/program, approved aliases only).
 - Duplicate / hours-mismatched plan components (`ambiguous_component` 34).
-- Duplicate instructor display names requiring official disambiguation (`ambiguous_instructor` 35; same two names as Stage 03C recon).
+- Duplicate instructor display names requiring official disambiguation (`ambiguous_instructor` 35; **4** distinct names after PR103 — عيسى محمد، مبارك السفياني، حمود الشلبي، محمد مكرد).
 - Unmapped program labels (`unknown_program` 2: `علوم`, `الموازي`) needing official clarification — no guessed aliases.
 
 ### REMAINING_OPERATIONAL_DEPENDENCIES
@@ -267,4 +267,15 @@ Method: same as Stage 03B — Super Admin JWT + identical parser/resolver path; 
 
 ### NEXT_ATOMIC_DATA_PACKAGE
 
-`OFFICIAL_DATA_PACKAGE_01` — signed academic package covering catalog/plan fixes + approved aliases + instructor disambiguation + program clarifications + headcounts/room types, then re-Preview only (still no confirm until READY rows appear under scoped matching).
+`OFFICIAL_DATA_PACKAGE_01` — delivered as Stage 03D docs package (PR #104):  
+`docs/PLATFORM-LAUNCH/STAGE-03D-OFFICIAL-DATA-SOURCE-PACKAGE.md` + fill templates under `docs/PLATFORM-LAUNCH/STAGE-03D-TEMPLATES/`.  
+265-row ledger reconciled (247 live + 18 `SKIPPED` PR103 expansion delta). **No production writes.** User must return signed fills before any apply wave.
+
+### 265 vs 247 reconciliation (Stage 03D)
+
+| Bucket | Count |
+|---|---:|
+| Post-PR103 live expanded | 247 |
+| `SKIPPED` / `PR103_EXPANSION_FANOUT_REMOVED` | 18 |
+| **TOTAL_EXPANDED_RECONCILED** | **265** |
+| UNACCOUNTED_ROWS | **0** |
