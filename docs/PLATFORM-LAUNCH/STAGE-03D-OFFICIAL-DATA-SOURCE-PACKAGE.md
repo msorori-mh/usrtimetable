@@ -1,11 +1,11 @@
 # STAGE-03D — Official Data Source Package
 
-Mission: `PLATFORM-LAUNCH-STAGE-03D-OFFICIAL-DATA-SOURCE-PACKAGE-01`  
-Generated: 2026-07-28 (Asia/Riyadh)  
-Scope: **read / analyze / document / template only — no production writes**  
-MAIN_SHA: `1e389c418540cdae3a4fb378ff9f9503f487e258`  
-LIVE_DEPLOYMENT: `370d917b3ce93706948c8b90c0a4874b8a2dfca326139b6cfc5a62cc8e8b5cec`  
-Production: `emzytxqkxjjhsivqxdiu` · ITCS `7168345f-cf9d-4789-b2ad-547abb687dc8`  
+Mission: `PLATFORM-LAUNCH-STAGE-03D-OFFICIAL-DATA-SOURCE-PACKAGE-01`
+Generated: 2026-07-28 (Asia/Riyadh)
+Scope: **read / analyze / document / template only — no production writes**
+MAIN_SHA: `1e389c418540cdae3a4fb378ff9f9503f487e258`
+LIVE_DEPLOYMENT: `370d917b3ce93706948c8b90c0a4874b8a2dfca326139b6cfc5a62cc8e8b5cec`
+Production: `emzytxqkxjjhsivqxdiu` · ITCS `7168345f-cf9d-4789-b2ad-547abb687dc8`
 Workbook: `C:\Users\Elite\Downloads\b002982d-763d-4aa7-a7f3-fed38fca4da9.xlsx`
 
 **Hard bans honored:** no import confirm, no INSERT/UPDATE/DELETE, no migrations / history repair, no DG/curriculum generation, no headcount/room-type writes, no Publish, no schedule create/run.
@@ -76,10 +76,10 @@ Searched: `C:\Users\Elite\Downloads`, `C:\Users\Elite\Documents`, `C:\Projects`,
 
 ### OFFICIAL_FILES_MISSING (required from user)
 
-1. Signed 2026–2027 study plans / course catalog for **CYB / CS / CIS / IT** (codes, names, level, semester).  
-2. Official component matrix (type + weekly hours + **required room type**).  
-3. Official HR instructor list resolving duplicate names to **one employee_number**.  
-4. Authorized **2026–2027** cohort headcounts (or signed year-carry from 2025–2026 prepared files).  
+1. Signed 2026–2027 study plans / course catalog for **CYB / CS / CIS / IT** (codes, names, level, semester).
+2. Official component matrix (type + weekly hours + **required room type**).
+3. Official HR instructor list resolving duplicate names to **one employee_number**.
+4. Authorized **2026–2027** cohort headcounts (or signed year-carry from 2025–2026 prepared files).
 5. Official program-label decisions for **`علوم`** and **`الموازي`**.
 
 ---
@@ -103,7 +103,7 @@ Classified against live catalog + **active** plans only. No aliases invented.
 | COURSES_READY_FOR_DATA_FIX | **52** (`WRONG_LEVEL` + `WRONG_TERM` + `COURSE_NOT_IN_ACTIVE_PLAN`) — **planned** fix list only |
 | COURSES_REQUIRING_CLARIFICATION | **104** (`CATALOG_ROW_MISSING` + `OFFICIAL_CLARIFICATION_REQUIRED`) |
 
-Template (affected rows only): `STAGE-03D-TEMPLATES/missing_course_catalog.xlsx`  
+Template (affected rows only): `STAGE-03D-TEMPLATES/missing_course_catalog.xlsx`
 Fill columns: official code/name/program/level/semester + alias yes/no. **Empty fill fields — no assumed data.**
 
 ---
@@ -207,7 +207,7 @@ Requires completing **all** missing official sources in G1/G5, then dependency c
 
 Candidate **only after** official mini-package for that slice:
 
-- Prefer cells that already have approved HC + DGs (**5 CYB Sem1**), **plus** signed course/instructor/component fixes for those rows only.  
+- Prefer cells that already have approved HC + DGs (**5 CYB Sem1**), **plus** signed course/instructor/component fixes for those rows only.
 - Or: one program × one term with complete official catalog + HC + room types.
 
 **Not chosen by this agent.** Both options remain user decisions.
@@ -216,20 +216,20 @@ Candidate **only after** official mini-package for that slice:
 
 ## G7 — Atomic apply runbook (**DO NOT EXECUTE**)
 
-1. **Preflight:** MAIN_SHA + LIVE deploy fingerprints; RLS/role = Super Admin; backup counts for courses, plan_courses, components, instructors, headcounts, DGs, TA V2; confirm templates signed.  
-2. **Exact write set (future):** only rows marked READY_FOR_DATA_FIX with signed fills — catalog/plan links, component dedupe/hours, room types, instructor deactivate/merge, headcount approve, then DG generate RPC.  
-3. **Expected before/after:** document counts per table; Preview READY must rise only for scoped correct matches.  
-4. **Atomicity:** prefer single RPC / transaction per domain wave; never mixed catalog+import.  
-5. **Post-verification:** re-read counts; re-Preview; assert no ambiguity→READY.  
-6. **Rollback:** restore from preflight export; revoke approvals; do not leave half-applied DG.  
-7. **Re-Preview:** mandatory after each wave.  
+1. **Preflight:** MAIN_SHA + LIVE deploy fingerprints; RLS/role = Super Admin; backup counts for courses, plan_courses, components, instructors, headcounts, DGs, TA V2; confirm templates signed.
+2. **Exact write set (future):** only rows marked READY_FOR_DATA_FIX with signed fills — catalog/plan links, component dedupe/hours, room types, instructor deactivate/merge, headcount approve, then DG generate RPC.
+3. **Expected before/after:** document counts per table; Preview READY must rise only for scoped correct matches.
+4. **Atomicity:** prefer single RPC / transaction per domain wave; never mixed catalog+import.
+5. **Post-verification:** re-read counts; re-Preview; assert no ambiguity→READY.
+6. **Rollback:** restore from preflight export; revoke approvals; do not leave half-applied DG.
+7. **Re-Preview:** mandatory after each wave.
 8. **Import ban:** **forbid** V2 confirm if any READY row is unscoped, aliased without signature, or instructor matched by partial name.
 
 ---
 
 ## G8 — Git / PR
 
-- This report + templates on branch `cursor/platform-stage-03d-official-data-source-package-01`.  
+- This report + templates on branch `cursor/platform-stage-03d-official-data-source-package-01`.
 - PR #102 remains Draft; POST_PR103_REBASELINE updated with pointer to this package. **Not merged.**
 
 ---
