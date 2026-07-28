@@ -1,17 +1,18 @@
 # STAGE-03A — Controlled Reconciliation Package
 
-Mission: `PLATFORM-LAUNCH-STAGE-03A-CONTROLLED-RECONCILIATION-PACKAGE-01`  
-Generated: 2026-07-28 (Asia/Riyadh)  
-College: ITCS `7168345f-cf9d-4789-b2ad-547abb687dc8`  
-Production: `emzytxqkxjjhsivqxdiu`  
-Baseline main (after merge of docs PR #97 + #99): see `git rev-parse origin/main`  
-Live deployment (Stage 02): `d8a28b82b1d73a02518dc2c5716a7f882b527a719e224a6356daa3e19fa801ac`  
+Mission: `PLATFORM-LAUNCH-STAGE-03A-CONTROLLED-RECONCILIATION-PACKAGE-01`
+Generated: 2026-07-28 (Asia/Riyadh)
+College: ITCS `7168345f-cf9d-4789-b2ad-547abb687dc8`
+Production: `emzytxqkxjjhsivqxdiu`
+Baseline main: after merge of docs PR #97 + #99 and source PR #101 (`91f340d`)
+Live deployment (pre-Stage-03A release): `d8a28b82b1d73a02518dc2c5716a7f882b527a719e224a6356daa3e19fa801ac`
 
 **Scope of this package:** planning only. No production write. No migration apply. No history repair.
 
-Primary live evidence source: `docs/PLATFORM-LAUNCH/CURSOR-PRODUCTION-READONLY-INVENTORY-01.md`  
-Audit source (must be matched to main/live): K3 `PLATFORM-LAUNCH-GAP-AUDIT-K3-01.md` on PR #98 (not merged)  
-Code evidence: current `origin/main` after PR #95 publish.
+Primary live evidence source: `docs/PLATFORM-LAUNCH/CURSOR-PRODUCTION-READONLY-INVENTORY-01.md`
+Audit source (must be matched to main/live): K3 `PLATFORM-LAUNCH-GAP-AUDIT-K3-01.md` on PR #98 (not merged)
+Code evidence: `origin/main` after PR #101 (source remediation + V2 auto-schedule).
+Source remediation report: `docs/PLATFORM-LAUNCH/CODEX-STAGE-03A-SOURCE-REMEDIATION.md`
 
 ---
 
@@ -19,7 +20,7 @@ Code evidence: current `origin/main` after PR #95 publish.
 
 `STAGE_03A_READY_FOR_CONTROLLED_APPLY_APPROVAL`
 
-The package is complete for operator approvals. Apply itself is blocked until the approvals listed in `REQUIRED_USER_APPROVALS` are signed. Headcount apply payloads are intentionally empty because no **authorized 2026–2027** official counts exist yet (prior-year `students_*` files are candidates only).
+The package is complete for operator approvals. Source fail-closed / importer / V2 scheduler gaps from PR #101 are merged on main. Apply itself is blocked until the approvals listed in `REQUIRED_USER_APPROVALS` are signed. Headcount apply payloads are intentionally empty because no **authorized 2026–2027** official counts exist yet (prior-year `students_*` files are candidates only).
 
 ---
 
@@ -38,6 +39,9 @@ The package is complete for operator approvals. Apply itself is blocked until th
 | `20260721180000` | maybe apply | NOT_APPLIED / SUPERSEDED / MUST_NOT_REAPPLY | CLOSED as decision |
 | K3 claim “Sem2 cohorts missing” | risk | 32/32 Sem2 present | REJECTED_AS_FALSE_POSITIVE |
 | K3 claim “plans/levels absent” | risk | all present | REJECTED_AS_FALSE_POSITIVE |
+| `P1-READINESS-BASE-FAILOPEN` / K3 `P0-READINESS-FAILOPEN` | base readiness fail-open | PR #101 throws `READINESS_QUERY_FAILED` / `NEW_FLOW_READINESS_QUERY_FAILED` | CLOSED (source) |
+| `P1-SCHEDULER-ERROR-SWALLOW` | greedy swallowed query errors | PR #101 throws relation-specific errors; `/auto-schedule` uses `runV2AutoSchedule` (no `section_id`) | CLOSED (source) |
+| Importer carry-forward / expand_all / alias guessing | source bugs | PR #101 fixed; harness + anonymized fixture | CLOSED (source) |
 
 ### CONFIRMED_P0
 
@@ -45,8 +49,8 @@ The package is complete for operator approvals. Apply itself is blocked until th
 |---|---|---|---|
 | `P0-HEADCOUNT-59` | 5/64 approved; 59 missing | fail-closed readiness / DG generation gate | HEADCOUNT_PACKAGE |
 | `P0-ROOMTYPE-233` | 233/307 timetabled components null `required_room_type_id` | INVALID_DATA for most cells; DG/schedule unsafe | prerequisite before DG/TA |
-| `P0-TA-V2-ZERO` | 174 Legacy TA; 0 V2; 37 excess composite rows | scheduler New Flow has no V2 assignments | ASSIGNMENT_IMPORT_PACKAGE |
-| `P0-IMPORT-PREVIEW-BLOCKED` (was K3 `P0-IMPORT-REAL-FILE`, narrowed) | real workbook present; live/offline preview remains 0 MATCHED (course/alias/component/instructor/DG blockers) | cannot import until catalog+DG+alias gates clear | ASSIGNMENT_IMPORT_PACKAGE |
+| `P0-TA-V2-ZERO` | 174 Legacy TA; 0 V2; 37 excess composite rows | New Flow scheduler needs V2 assignments | ASSIGNMENT_IMPORT_PACKAGE |
+| `P0-IMPORT-PREVIEW-BLOCKED` (was K3 `P0-IMPORT-REAL-FILE`, narrowed) | real workbook present; preview still blocked by catalog/DG/course gaps (parser source bugs closed) | cannot import until catalog+DG gates clear | ASSIGNMENT_IMPORT_PACKAGE |
 
 ### CONFIRMED_P1
 
@@ -54,12 +58,10 @@ The package is complete for operator approvals. Apply itself is blocked until th
 |---|---|---|
 | `P1-DG-48` | 48/64 cells have 0 delivery groups (CYB has 181 groups) | after approved HC + room types |
 | `P1-ROOM-COVERAGE` | cyber/network room types exist; rooms typed generic `computer_lab` | facilities decision |
-| `P1-WORKBOOK-ALIASES` | six unmatchable campus/program labels remain | explicit alias policy required |
+| `P1-WORKBOOK-ALIASES` | remaining campus/unknown labels after exact-alias fix | explicit alias policy for leftover labels |
 | `P1-INSTRUCTOR-DEPT-46` | 46/88 instructors missing `department_id` | HR/college master |
-| `P1-READINESS-BASE-FAILOPEN` (K3 `P0-READINESS-FAILOPEN`, reclassified) | `fetchCollegeReadiness` still uses `data ?? []` without throwing; New Flow path is fail-closed | source fix on main still needed before trusting empty metrics |
-| `P1-SCHEDULER-ERROR-SWALLOW` | greedy soft-completes on empty inputs | source fix before experimental schedule |
 | `P1-PUBLISH-HARDENING` (K3 `P0-PUBLISH-GATE-MISSING`, reclassified) | `transition_schedule_version` **present** in production catalog; RLS direct-status bypass still needs negative live proof | DOCUMENT + negative RPC/RLS test in Stage 03B; not “missing RPC” anymore |
-| `P1-HEADCOUNT-NOT-CONSUMED` | greedy uses cohort `expected_students` | wire approved headcount into capacity after HC load |
+| `P1-HEADCOUNT-NOT-CONSUMED` | capacity still needs approved headcount wiring in placement | after HC load |
 | `P1-LEGACY-SECTION-ID` | 174 Legacy `section_id` assignments live | Legacy untouched; V2 independent |
 
 ### CONFIRMED_P2
@@ -80,7 +82,7 @@ The package is complete for operator approvals. Apply itself is blocked until th
 | Structural foundation missing | 4/16/4/64 proven |
 | All K3 P0s remain P0 as written | publish RPC missing & live stale & migration unread are closed or reclassified |
 
-**Counts:** CLOSED=9 · CONFIRMED_P0=4 · CONFIRMED_P1=9 · CONFIRMED_P2=3 · FALSE_POSITIVE=5
+**Counts:** CLOSED=12 · CONFIRMED_P0=4 · CONFIRMED_P1=7 · CONFIRMED_P2=3 · FALSE_POSITIVE=5
 
 ---
 
@@ -115,7 +117,7 @@ Retain the five approved CYB Sem1 rows already in `scheduling_cohort_term_headco
 
 ### Apply payload status
 
-`HEADCOUNTS_READY_FOR_APPLY = 0`  
+`HEADCOUNTS_READY_FOR_APPLY = 0`
 No RPC payload file is generated with numbers. Template for Stage 03B once sources are approved:
 
 ```text
@@ -142,7 +144,7 @@ Do not call upsert/approve until `OFFICIAL_COUNT_AVAILABLE > 0` under signed yea
 | Cells needing first-time `generate_cohort_curriculum` | **0** |
 | Refresh batches (optional, plan-change only) | 0 planned |
 
-RPC: `generate_cohort_curriculum(p_cohort_id uuid)` — idempotent refresh only if plan/components changed.  
+RPC: `generate_cohort_curriculum(p_cohort_id uuid)` — idempotent refresh only if plan/components changed.
 **Do not** generate summer_training as timetabled; **do not** invent project hours.
 
 `CURRICULUM_BATCH_COUNT = 0` for mandatory apply.
@@ -157,7 +159,7 @@ RPC: `generate_cohort_curriculum(p_cohort_id uuid)` — idempotent refresh only 
 | Cells with DG | 16 |
 | Cells needing `generate_cohort_delivery_groups` | **48** |
 
-RPC: `generate_cohort_delivery_groups(p_cohort_id uuid)`  
+RPC: `generate_cohort_delivery_groups(p_cohort_id uuid)`
 Client preflight (must pass): approved headcount via `resolve_scheduling_headcount`, component room types present.
 
 Atomic batch plan (not executed): one transaction/job per college wave of N cohorts after HC+room-type gates; verify same-college, regular/parallel isolation, no Legacy `section_id` creation, exclude non-timetabled summer training, exclude 0h project from standard workload per existing generator rules.
@@ -195,11 +197,11 @@ Expected before/after (illustrative): DG rows `181 → 181+Δ` where Δ is gener
 
 ### Transition plan (mandatory)
 
-1. Legacy remains untouched (no delete, no rewrite).  
-2. V2 imported independently via `commit_teaching_assignments_v2_import` / `commit_import_job_atomic`.  
-3. No cross-link Legacy↔V2.  
-4. No silent replacement.  
-5. No duplicate V2 (`insert_only` first wave).  
+1. Legacy remains untouched (no delete, no rewrite).
+2. V2 imported independently via `commit_teaching_assignments_v2_import` / `commit_import_job_atomic`.
+3. No cross-link Legacy↔V2.
+4. No silent replacement.
+5. No duplicate V2 (`insert_only` first wave).
 6. Rollback by import job/run id (`replay` / compensating archive), not by TRUNCATE.
 
 ### Import execution package status
@@ -267,17 +269,17 @@ For each `HISTORY_BACKFILL_REQUIRED` item, Stage 03B must supply: exact version,
 
 Single order (matches Stage 03B runbook):
 
-1. Source fixes merged and deployed (readiness fail-closed, importer dry-preview green, scheduler input fail)  
-2. Migration/history reconciliation **if** signed (backfill only; no blind DDL)  
-3. Headcounts (official sources only)  
-4. Curriculum refresh **only if** plan drift  
-5. Delivery groups (48 cells)  
-6. Time templates (exact duplicate policy)  
-7. Teaching assignments V2 import  
-8. Readiness verification (64-cell matrix)  
-9. Experimental schedule  
-10. RBAC/RLS negative proofs  
-11. Launch / publish gate  
+1. Source fixes merged and deployed (readiness fail-closed, importer dry-preview green, scheduler input fail)
+2. Migration/history reconciliation **if** signed (backfill only; no blind DDL)
+3. Headcounts (official sources only)
+4. Curriculum refresh **only if** plan drift
+5. Delivery groups (48 cells)
+6. Time templates (exact duplicate policy)
+7. Teaching assignments V2 import
+8. Readiness verification (64-cell matrix)
+9. Experimental schedule
+10. RBAC/RLS negative proofs
+11. Launch / publish gate
 
 Each step’s preflight / write set / expected counts / post-verify / rollback / stop condition: see `STAGE-03B-PRODUCTION-APPLY-RUNBOOK.md`.
 
@@ -312,20 +314,22 @@ Each step’s preflight / write set / expected counts / post-verify / rollback /
 
 ## REQUIRED_USER_APPROVALS
 
-1. Year policy for prior-year student files **or** delivery of 2026–2027 official headcount workbook.  
-2. Alias/campus policy for six unmatchable labels.  
-3. Room-type assignment for 233 components + lab reclassification.  
-4. Approval to generate DGs for 48 cells after HC.  
-5. Approval to import V2 TA with Legacy untouched.  
-6. Template exact-duplicate keep/drop choice.  
-7. Any history backfill (separate from DDL).  
-8. Experimental schedule creation (later).  
+1. Year policy for prior-year student files **or** delivery of 2026–2027 official headcount workbook.
+2. Alias/campus policy for six unmatchable labels.
+3. Room-type assignment for 233 components + lab reclassification.
+4. Approval to generate DGs for 48 cells after HC.
+5. Approval to import V2 TA with Legacy untouched.
+6. Template exact-duplicate keep/drop choice.
+7. Any history backfill (separate from DDL).
+8. Experimental schedule creation (later).
 
 ---
 
 ## RELEASE_GATES
 
-- No production apply from Stage 03A alone.  
-- Stage 03B runbook must be followed step-by-step with stop conditions.  
-- PR #98 (K3 audit) remains open / unmerged by design (audit trail; claims reconciled here).  
+- No production apply from Stage 03A alone.
+- Stage 03B runbook must be followed step-by-step with stop conditions.
+- PR #98 (K3 audit) remains open / unmerged by design (audit trail; claims reconciled here).
 - Docs PR #97 and #99 merged into main as non-conflicting documentation.
+- Source PR #101 merged (`91f340d`); Lovable publish of that main is required before treating live UI as remediated.
+- Step 1 of EXECUTION_ORDER (source fixes) is satisfied on main; remaining gates are data + live verify.

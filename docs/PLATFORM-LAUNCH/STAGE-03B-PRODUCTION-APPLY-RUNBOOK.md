@@ -1,6 +1,6 @@
 # STAGE-03B — Production Apply Runbook
 
-Companion to `STAGE-03A-CONTROLLED-RECONCILIATION-PACKAGE.md`.  
+Companion to `STAGE-03A-CONTROLLED-RECONCILIATION-PACKAGE.md`.
 **Status:** READY FOR APPROVAL — do not execute until `REQUIRED_USER_APPROVALS` are signed.
 
 Production: `emzytxqkxjjhsivqxdiu` · College ITCS `7168345f-cf9d-4789-b2ad-547abb687dc8`
@@ -11,10 +11,10 @@ Hard bans until explicitly lifted: no `db push` of unreviewed SQL, no history DE
 
 ## Global preflight (every step)
 
-1. Confirm live `x-deployment-id` still matches intended release.  
-2. Confirm operator is `super_admin` / `can_manage_college` for ITCS.  
-3. Export before-counts JSON (cohorts, HC, offerings, DG, TA, templates).  
-4. Open a dated audit folder; record job IDs.  
+1. Confirm live `x-deployment-id` still matches intended release.
+2. Confirm operator is `super_admin` / `can_manage_college` for ITCS.
+3. Export before-counts JSON (cohorts, HC, offerings, DG, TA, templates).
+4. Open a dated audit folder; record job IDs.
 5. Stop on any unexpected count drift or RPC error.
 
 ---
@@ -45,8 +45,8 @@ Hard bans until explicitly lifted: no `db push` of unreviewed SQL, no history DE
 | Rollback | DELETE inserted history row under dual approval |
 | Stop | if statements evidence incomplete |
 
-`MUST_NOT_REAPPLY`: `20260721180000`  
-`NO_ACTION`: `20260724002013`/`…012` twin  
+`MUST_NOT_REAPPLY`: `20260721180000`
+`NO_ACTION`: `20260724002013`/`…012` twin
 
 ---
 
@@ -178,14 +178,14 @@ Source file: `b002982d-763d-4aa7-a7f3-fed38fca4da9.xlsx`.
 
 ## RELEASE_GATES checklist
 
-- [ ] Approvals 1–8 from Stage 03A signed  
-- [ ] Headcount sources year-authorized  
-- [ ] Room types 233 cleared  
-- [ ] DG 48 generated with post-verify  
-- [ ] TA V2 imported; Legacy untouched  
-- [ ] READY pilot agreed  
-- [ ] RBAC negatives recorded  
-- [ ] Publish is a separate explicit gate  
+- [ ] Approvals 1–8 from Stage 03A signed
+- [ ] Headcount sources year-authorized
+- [ ] Room types 233 cleared
+- [ ] DG 48 generated with post-verify
+- [ ] TA V2 imported; Legacy untouched
+- [ ] READY pilot agreed
+- [ ] RBAC negatives recorded
+- [ ] Publish is a separate explicit gate
 
 ---
 
