@@ -1,27 +1,27 @@
 # STAGE-03I — Controlled Teaching Assignments V2 Import
 
 Mission: `PLATFORM-LAUNCH-STAGE-03I-CONTROLLED-V2-IMPORT-01`
+Follow-on: `PLATFORM-LAUNCH-STAGE-03I-B-NATURAL-KEY-DUPLICATE-RECONCILIATION-01`
 Generated: 2026-07-28 (Asia/Riyadh)
 Production: `emzytxqkxjjhsivqxdiu` · ITCS `7168345f-cf9d-4789-b2ad-547abb687dc8`
 
-**Hard bans honored:** no catalog/headcount/DG changes; no DELETE; no migrations; no Publish; no schedule; no Legacy mutation.
+**Hard bans honored:** no catalog/headcount/DG changes; no DELETE; no migrations; no Publish; no schedule; no Legacy mutation; no import confirm.
 
 ---
 
 ## FINAL_DECISION
 
-`HOLD_WITH_ONE_EXACT_V2_IMPORT_BLOCKER`
+### Stage 03I (import attempt)
 
-### Exact blocker
-
-`B-V2-IMPORT-READY-NATURAL-KEY-DUPLICATES`
-
-READY Preview rows = **156**, but unique V2 natural keys (`delivery_group_id|instructor_id`) = **142**.
-Extra collapsed rows = **14** across **12** duplicate keys (same DG + instructor from multiple source rows with differing hours / repeated lines).
-
-Dry-run gate requires `duplicate_target_keys = 0` and `operations_expected = 156`.
-Both cannot be satisfied without upsert/overwrite of the same natural key.
+`HOLD_WITH_ONE_EXACT_V2_IMPORT_BLOCKER` — `B-V2-IMPORT-READY-NATURAL-KEY-DUPLICATES`
 Import was **not** executed.
+
+### Stage 03I-B (reconciliation)
+
+`STAGE_03I_B_DUPLICATES_RECONCILED_READY_FOR_IMPORT_PLAN`
+
+All **14** extra READY rows are classified with evidence.
+Correct executable import count after reconciliation = **138** (not 142 and not 156).
 
 ---
 
@@ -148,15 +148,89 @@ Planned filter (if import later succeeds): `notes ILIKE '%import_run=E2E-ITCS-20
 
 `NO` (V2 import not committed)
 
-## Recommended next step (outside this mission)
+## NATURAL_KEY_DUPLICATE_RECONCILIATION
 
-Resolve READY natural-key collisions before re-attempt:
+Mission: `PLATFORM-LAUNCH-STAGE-03I-B-NATURAL-KEY-DUPLICATE-RECONCILIATION-01`
+Scope: **read / classify / document only** — no production writes.
+File SHA256 (unchanged): `fbc23368ca36af452935ab086e239fff5b61bae668dd9be5887b330143a35098`
+Preview re-run: SOURCE 131 · EXPANDED 314 · READY **156** · BLOCKED 18 · AMBIGUOUS 18 · NOT_FOUND 122 · CONFLICT 0
 
-1. Deduplicate source lines that map to the same DG+instructor, **or**
-2. Adjust Preview READY accounting to unique import keys, **or**
-3. Explicit upsert policy with hours-merge rules (requires separate approval; not `insert_only` pure create=156).
+### Metrics
 
-Do **not** import BLOCKED/AMBIGUOUS/NOT_FOUND to inflate counts.
+| Metric | Value |
+|---|---:|
+| READY_SOURCE_ROWS | 156 |
+| DUPLICATE_SOURCE_ROWS (extra) | 14 |
+| DUPLICATE_KEY_GROUPS | 12 |
+| IDENTICAL_DUPLICATE_ROWS (extra) | 8 |
+| CONFLICTING_DUPLICATE_ROWS (all members blocked) | 10 |
+| CONFLICTING_DUPLICATE_GROUPS | 4 |
+| UNIQUE_SINGLE_KEYS | 130 |
+| TOTAL_NATURAL_KEYS before conflict filter | 142 |
+| CANONICAL_UNIQUE_ASSIGNMENTS | **138** |
+| BLOCKED_AFTER_RECONCILIATION (groups) | 4 |
+
+### Is 142 correct?
+
+**No.** 142 counts every natural key including 4 conflict groups.
+After blocking conflict groups: `142 − 4 = 138` executable unique assignments.
+
+Formula: `130` unique singles + `8` identical-payload canonical groups = **138**.
+
+### Classification rules applied
+
+- Identical import payload (`delivery_group_id`, `instructor_id`, `assigned_component_hours`, `component_type`, `is_active`, offering) → **one canonical assignment**; retain all source-row identities as evidence. No first/last-row silent pick beyond “any identical member is equivalent”.
+- Differing affecting payload (hours) → **CONFLICT_BLOCK** entire group; no row dropped as winner; no overwrite.
+- Natural key `delivery_group_id|instructor_id` retained (DG already binds cohort/course/component). No architectural key change.
+- No EXPANSION_DUPLICATE of same source row onto the same key observed; regular/parallel use **different** DG ids (correct).
+
+### Classification counts (12 groups)
+
+| Primary class | Groups | Decision |
+|---|---:|---|
+| `SAME_ASSIGNMENT_IDENTICAL_PAYLOAD` | 8 | CANONICAL (1 assignment each) |
+| `SOURCE_DATA_CONFLICT` (+ `SAME_ASSIGNMENT_DIFFERENT_PAYLOAD`) | 4 | CONFLICT_BLOCK |
+
+### Conflict groups (must not import)
+
+| Course | System | Term | Emp | Hours variants | Source rows | Key (short) |
+|---|---|---|---|---|---|---|
+| IT232 theory G1 | regular | Sem2 | EMP013 | 2 / 12 / 0 | Sem2 rows 94,95,97 | `feea17a4…\|f03b5a33…` |
+| IT232 theory G1 | parallel | Sem2 | EMP013 | 2 / 12 / 0 | Sem2 rows 94,95,97 | `4bb7ca2c…\|f03b5a33…` |
+| TST-IT-L1-S1-001 theory G1 | regular | 2026-T1 | EMP007 | 2 / 8 | Sem1 rows 47,51 | `6b24617f…\|6a88cdfe…` |
+| TST-IT-L1-S1-001 theory G1 | parallel | 2026-T1 | EMP007 | 2 / 8 | Sem1 rows 47,51 | `3f6d18f6…\|6a88cdfe…` |
+
+### Identical-payload canonical groups (import once)
+
+| Course | Systems | Term | Emp | Hours | Source rows (each system) |
+|---|---|---|---|---:|---|
+| TST-CIS-L4-S1-001 | regular + parallel | 2026-T1 | EMP002 | 3 | Sem1 9, 11 |
+| TST-CIS-L4-S1-007 | regular + parallel | 2026-T1 | EMP005 | 2 | Sem1 32, 33 |
+| TST-CIS-L2-S1-001 | regular + parallel | 2026-T1 | EMP008 | 2 | Sem1 52, 53 |
+| TST-CIS-L3-S1-003 | regular + parallel | 2026-T1 | EMP008 | 2 | Sem1 54, 55 |
+
+(8 groups = 4 courses × regular/parallel DG pairs.)
+
+### Extra-row accounting (14)
+
+| Bucket | Extra rows |
+|---|---:|
+| Identical-payload collapse (8 groups × 1 extra) | 8 |
+| Conflict groups extras (3+3+2+2 − 4 keys) | 6 |
+| **Total** | **14** |
+| Unexplained | **0** |
+
+### Import plan (next mission; not executed here)
+
+1. Build insert_only payload with **138** unique `delivery_group_id|instructor_id` keys.
+2. For the 8 identical groups: include **one** payload member; keep source-row list in notes/audit evidence.
+3. Exclude all 10 READY members of the 4 conflict groups (treat as blocked until official hours clarification).
+4. Do **not** import BLOCKED/AMBIGUOUS/NOT_FOUND to inflate counts.
+5. Expected create = **138**; expected skip on idempotent replay = 138.
+
+### Stage 03I-B FINAL_DECISION
+
+`STAGE_03I_B_DUPLICATES_RECONCILED_READY_FOR_IMPORT_PLAN`
 
 ---
 
@@ -169,5 +243,5 @@ Do **not** import BLOCKED/AMBIGUOUS/NOT_FOUND to inflate counts.
 | Production V2 writes | none |
 | Legacy changed | no |
 | Secrets in git | no |
-| Production risk | none (no import write) |
+| Production risk | none (analysis only) |
 | Ready for merge (docs) | yes after CI |
