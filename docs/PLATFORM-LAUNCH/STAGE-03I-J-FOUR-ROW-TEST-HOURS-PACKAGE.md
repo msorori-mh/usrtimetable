@@ -1,7 +1,7 @@
 # STAGE 03I-J — Four-Row TEST Hours Package
 
-Mission: `PLATFORM-LAUNCH-STAGE-03I-J-FOUR-ROW-TEST-HOURS-PACKAGE-01`  
-Generated: 2026-07-29 (Asia/Riyadh)  
+Mission: `PLATFORM-LAUNCH-STAGE-03I-J-FOUR-ROW-TEST-HOURS-PACKAGE-01`
+Generated: 2026-07-29 (Asia/Riyadh)
 Scope: **package + offline simulation only** — no import, no DB writes, no migration, no publish, no merge of PR #114, no modification of the official attribution workbook.
 
 Related: PR #112 (docs), PR #114 (code remediation — **open, not merged**), Stage 03I-I reconciliation.

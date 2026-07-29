@@ -1,6 +1,6 @@
 # STAGE 03I-F — Controlled 138 Canonical V2 Import
 
-Mission: `PLATFORM-LAUNCH-STAGE-03I-F-CONTROLLED-138-CANONICAL-V2-IMPORT-01`  
+Mission: `PLATFORM-LAUNCH-STAGE-03I-F-CONTROLLED-138-CANONICAL-V2-IMPORT-01`
 Generated: 2026-07-29 (Asia/Riyadh)
 
 ## APPROVAL_TEXT
@@ -46,8 +46,8 @@ auto-schedule, Legacy mutation, and silent overwrite remain forbidden.
 
 ## BACKUP_SHA256
 
-Backup folder: `C:\Users\Elite\Downloads\ITCS-STAGE03I-F-BACKUP-E2E-ITCS-20260728-01`  
-`BACKUP_SHA256 = 11cc59d8bd845b864a9d63ca956b2222a7862e2bf5031cc8f62660b5b6d01b98`  
+Backup folder: `C:\Users\Elite\Downloads\ITCS-STAGE03I-F-BACKUP-E2E-ITCS-20260728-01`
+`BACKUP_SHA256 = 11cc59d8bd845b864a9d63ca956b2222a7862e2bf5031cc8f62660b5b6d01b98`
 `BACKUP_RESULT = PASS`
 
 Contents (no secrets): V2 before count/IDs, Legacy fingerprint, canonical 138 natural keys,
@@ -206,11 +206,11 @@ Exact blocker id: `B-138-CO-TEACHING-HOURS-OVER-ALLOCATED`
 
 ## TEACHING_HOURS_OVERALLOCATION_RECONCILIATION
 
-Mission: `PLATFORM-LAUNCH-STAGE-03I-G-TEACHING-HOURS-OVERALLOCATION-RECONCILIATION-01`  
-Generated: 2026-07-29 (Asia/Riyadh)  
+Mission: `PLATFORM-LAUNCH-STAGE-03I-G-TEACHING-HOURS-OVERALLOCATION-RECONCILIATION-01`
+Generated: 2026-07-29 (Asia/Riyadh)
 Scope: **read / analyze / remediation package only** — no import confirm, no INSERT/UPDATE/DELETE, no migration, no publish, no schedule, no production hour/instructor edits.
 
-Artifact (local, not in git):  
+Artifact (local, not in git):
 `C:\Users\Elite\Downloads\ITCS-STAGE03I-G-HOURS-RECONCILIATION\reconciliation.json`
 
 ### G0 — Blocker reproduction
@@ -344,7 +344,7 @@ Full matrix: `reconciliation.json` → `G1_MATRIX`.
 
 ## POST_PR113_TEACHING_HOURS_REBASELINE
 
-Mission: `PLATFORM-LAUNCH-STAGE-03I-H-PR113-MERGE-PUBLISH-HOURS-VERIFY-01`  
+Mission: `PLATFORM-LAUNCH-STAGE-03I-H-PR113-MERGE-PUBLISH-HOURS-VERIFY-01`
 Generated: 2026-07-29 (Asia/Riyadh)
 
 ### PR113 merge
@@ -426,8 +426,8 @@ Exact blocker: live contract correctly rejects the unremediated TEST hours (co-t
 
 ## POST_PR113_READY_DROP_RECONCILIATION
 
-Mission: `PLATFORM-LAUNCH-STAGE-03I-I-POST-PR113-READY-DROP-RECONCILIATION-01`  
-Generated: 2026-07-29 (Asia/Riyadh)  
+Mission: `PLATFORM-LAUNCH-STAGE-03I-I-POST-PR113-READY-DROP-RECONCILIATION-01`
+Generated: 2026-07-29 (Asia/Riyadh)
 Scope: **read / analyze / simulation only** — no import, no DB writes, no hour edits, no migration, no publish.
 
 Local artifact: `C:\Users\Elite\Downloads\ITCS-STAGE03I-I\` (`before.json` @ `65e5848`, `after.json` @ `2cbff41`, `reconciliation.json`)
@@ -462,7 +462,7 @@ Outcome shift: MATCHED −63; AMBIGUOUS +70; BLOCKED −8; ERROR 0; net EXPANDED
 | parallel | 1× MATCHED practical (G1) | 1× AMBIGUOUS |
 | Total expansions | **3** | **2** |
 
-Message after: `تعارض ساعات المصدر (2) مع ساعات المكوّن (4)`.  
+Message after: `تعارض ساعات المصدر (2) مع ساعات المكوّن (4)`.
 Reason: multi-DG MATCHED collapsed to one AMBIGUOUS per study_system when PR113 single-component hours equality failed. **No unexplained residual.**
 
 ### G2 — READY drop (63)
@@ -498,7 +498,7 @@ Solution: TEST_DATA co-teacher split (do not invent shares); optional SOURCE_FIX
 
 ### G5 — Hours semantics
 
-Excel `اجمالي الساعات` → `totalHours`. PR113 requires equality with component weekly on single-component path. TEST values often look like course-totals.  
+Excel `اجمالي الساعات` → `totalHours`. PR113 requires equality with component weekly on single-component path. TEST values often look like course-totals.
 **`OFFICIAL_HOURS_SEMANTICS_REQUIRED`**.
 
 ### G6 — Simulations (no writes)
@@ -546,15 +546,15 @@ Generated: 2026-07-29 (Asia/Riyadh)
 |---|---|
 | LOVABLE_SESSION_STATUS | OPEN_AUTHENTICATED (operator CDP Profile 1) |
 | Lovable project | `c14ffafc-2bc4-44f0-aef6-c8785e7ca67b` (Time Table) |
-| Linked repo | `msorori-mh/usrtimetable` (project bound; page contains `usrtimetable`) |
+| Linked repo | `msorori-mh/usrtimetable` (`gitsync.synced=true`; GitHub provider) |
 | Intended source commit | `149edd2ce36608fa7ec74738fd051c0404fa9d3d` (main / PR #115 merge) |
 | PUBLISH_COUNT | **1** (single “Publish changes”; no second publish) |
-| PUBLISH_RESULT | SUCCESS — UI “Your website was updated”; Publish aria no longer “unpublished changes available” |
+| PUBLISH_RESULT | SUCCESS — UI “Your website was updated”; deployment progress `status=completed` |
 | DEPLOYMENT_ID (pre) | `bc9d35bc2da1f6f1a25cb5c04c31c85f8df22cd877a37a0f08ddf4619cbcda53` |
 | DEPLOYMENT_ID (post) | `18ec657dd018d4f11e225028dd3d95fac11e309fa3b58a4dfe39eb908d91e5f2` |
-| PUBLISH_TIME | `2026-07-29T17:04:29Z` (approx; DEPLOYMENT_ID artifact write) |
+| PUBLISH_TIME | `2026-07-29T17:04:02.506086Z` (Lovable `last_published_at`) |
 | LIVE_URL | `https://gomufadhala.com` |
-| DEPLOYED_COMMIT_SHA | `149edd2ce36608fa7ec74738fd051c0404fa9d3d` (evidenced by live PR #115 markers + main tip at publish) |
+| DEPLOYED_COMMIT_SHA | `149edd2ce36608fa7ec74738fd051c0404fa9d3d` (Lovable project `preview_build_commit_sha`; live PR #115 markers verified) |
 
 ### Live PR #115 fix verification
 
@@ -577,9 +577,9 @@ Also present on live: `teaching-assignments-Bp3uM_mW.js` (`assigned_component_ho
 
 ### Live preview + dry-run (read-only; corrected workbook unchanged)
 
-Workbook: `C:/Users/Elite/Downloads/ITCS-TEACHING-ASSIGNMENTS-E2E-03I-K-CORRECTED.xlsx`  
-FILE_SHA256: `391b1d2e76756f73e56160cea58827378f89d2179b27835f6be1b30f7236ccb7`  
-College: ITCS `7168345f-cf9d-4789-b2ad-547abb687dc8`  
+Workbook: `C:/Users/Elite/Downloads/ITCS-TEACHING-ASSIGNMENTS-E2E-03I-K-CORRECTED.xlsx`
+FILE_SHA256: `391b1d2e76756f73e56160cea58827378f89d2179b27835f6be1b30f7236ccb7`
+College: ITCS `7168345f-cf9d-4789-b2ad-547abb687dc8`
 Import confirm: **not executed**. DB writes: **0**. Migrations applied: **0**.
 
 | Metric | Value |
