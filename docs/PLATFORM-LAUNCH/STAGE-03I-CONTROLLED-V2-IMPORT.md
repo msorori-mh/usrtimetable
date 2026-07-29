@@ -384,3 +384,76 @@ Generated: 2026-07-29 (Asia/Riyadh)
 The exact blocker `B-CANONICAL-OPS-ZERO-NOT-138` is remediated in source and covered by a
 deterministic fixture. Production import remains unexecuted and unapproved until the code is
 merged and independently published/rebaselined.
+
+---
+
+## POST_PR109_LIVE_CANONICAL_VERIFICATION
+
+Mission: `PLATFORM-LAUNCH-STAGE-03I-E-PR109-MERGE-PUBLISH-CANONICAL-VERIFY-01`
+
+Generated: 2026-07-29 (Asia/Riyadh)
+
+### Merge + publish
+
+| Field | Value |
+|---|---|
+| PR109_STATE | MERGED |
+| PR109_HEAD | `d96f68d093d3bb8388446002046d20386a64ccbd` |
+| PR109_MERGE_COMMIT / MAIN_SHA | `8cf3f080e0c392252bf7edd2f784a262b2cf661c` |
+| DEPLOYMENT_ID | `7267337616764b206eaae80edfc44f92d03a91f504fb7b86885b92d3c074796b` |
+| PUBLISH_TIME | `2026-07-29T02:56:30Z` (approx; single Lovable Update) |
+| Live markers | PASS — `assets/import-CP84eul0.js` contains `canonicalOperations`, `_source_provenance`, `conflicting_assignment_duplicate`, `صفوف المصدر READY`, `عمليات الاستيراد` |
+| Prior stale deploy | `d921ed553dd374d8…` (no longer served) |
+
+### Main verification
+
+| Check | Result |
+|---|---|
+| `git diff --check` | PASS |
+| `bunx tsc --noEmit` | PASS |
+| `bun run build` | PASS |
+| `bun test` | PASS |
+| `bun run test:harness` | PASS (`51 passed, 0 failed, 0 missing`) |
+| `runtime-gates` on main | SUCCESS |
+
+### Live / production-equivalent preview (read-only)
+
+Workbook: `b002982d-763d-4aa7-a7f3-fed38fca4da9.xlsx`  
+FILE_SHA256: `fbc23368ca36af452935ab086e239fff5b61bae668dd9be5887b330143a35098`  
+College: ITCS `7168345f-cf9d-4789-b2ad-547abb687dc8`  
+Sheet→term: `اسناد الفصل الاول 2026`→`2026-T1`; `اسناد الفصل الثاني 2026`→`Sem2`  
+Import confirm: **not executed**. DB writes: **0**. Migrations applied: **0**.
+
+| Metric | Value |
+|---|---:|
+| SOURCE_ROWS | 131 |
+| EXPANDED_ROWS | 314 |
+| READY_SOURCE_ROWS | 156 |
+| CANONICAL_IMPORT_OPERATIONS | **138** |
+| IDENTICAL_DUPLICATE_GROUPS | 8 |
+| CONFLICTING_DUPLICATE_GROUPS | 4 |
+| CONFLICTING_SOURCE_ROWS | 10 |
+| BLOCKED | 18 |
+| AMBIGUOUS | 18 |
+| NOT_FOUND (resolver ERROR) | 122 |
+| CONFLICT (resolver) | 0 |
+| V2_ASSIGNMENTS | 0 |
+| LEGACY_ASSIGNMENTS | 174 |
+| Conflicting keys in executable payload | **0** |
+| Duplicate canonical keys | **0** |
+
+### Proof vs prior blocker
+
+| Prior (PR #110 whole-batch) | After PR #109 partial-block |
+|---|---|
+| CANONICAL_IMPORT_OPERATIONS = 0 | CANONICAL_IMPORT_OPERATIONS = **138** |
+| Local conflict emptied whole batch | Conflict blocks 4 keys only; safe groups remain importable |
+
+### Next approval count
+
+**138** canonical V2 import operations — awaiting explicit import approval.  
+Do **not** apply `20260728010000_teaching_assignments_v2_duplicate_contract.sql` until separately approved.
+
+### Stage 03I-E FINAL_DECISION
+
+`STAGE_03I_E_COMPLETE_READY_FOR_138_IMPORT_APPROVAL`
