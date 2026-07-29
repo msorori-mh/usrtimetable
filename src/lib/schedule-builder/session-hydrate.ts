@@ -19,6 +19,13 @@ export interface WorkspaceSessionFlatRow {
   replaced_by_split?: boolean | null;
   course_offering_id: string;
   expected_students?: number | null;
+  /** New Flow identity (optional; preserved through hydrate). */
+  cohort_id?: string | null;
+  delivery_group_id?: string | null;
+  source_type?: string | null;
+  teaching_assignment_id?: string | null;
+  section_group_id?: string | null;
+  schedule_version_id?: string | null;
 }
 
 /** Nested shape expected by mapWorkspaceSessions (assembled client-side). */
@@ -35,6 +42,12 @@ export interface WorkspaceSessionHydratedRow {
   updated_at?: string | null;
   is_locked?: boolean | null;
   course_offering_id?: string;
+  cohort_id?: string | null;
+  delivery_group_id?: string | null;
+  source_type?: string | null;
+  teaching_assignment_id?: string | null;
+  section_group_id?: string | null;
+  schedule_version_id?: string | null;
   course_offerings?: {
     program_id?: string | null;
     level_id?: string | null;
@@ -133,6 +146,12 @@ export function assembleWorkspaceSessionRows(
       instructor_id: s.instructor_id,
       section_id: s.section_id,
       section_subgroup_id: s.section_subgroup_id ?? null,
+      cohort_id: s.cohort_id ?? null,
+      delivery_group_id: s.delivery_group_id ?? null,
+      source_type: s.source_type ?? null,
+      teaching_assignment_id: s.teaching_assignment_id ?? null,
+      section_group_id: s.section_group_id ?? null,
+      schedule_version_id: s.schedule_version_id ?? null,
       expected_students:
         offering?.expected_students ?? s.expected_students ?? subgroup?.expected_students ?? null,
       replaced_by_split: s.replaced_by_split ?? false,
@@ -147,6 +166,7 @@ export function assembleWorkspaceSessionRows(
             expected_students: offering.expected_students ?? null,
             enrollment_count_status: offering.enrollment_count_status ?? "unverified",
             enrollment_count_updated_at: offering.enrollment_count_updated_at ?? null,
+            // Missing course stays null for this row only — never drop the session.
             courses: course
               ? {
                   name: course.name,

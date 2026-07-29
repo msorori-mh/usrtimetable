@@ -2,12 +2,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { applyStudySystemFilter, assertSingleVersion } from "@/lib/reports/filters";
 import { DAY_NAMES_AR, fmtTime } from "@/lib/reports/formatters";
 import type { ReportStudySystem } from "@/lib/reports/types";
-import { buildApprovedExceptionIndex, loadApprovedExceptions } from "@/lib/conflict-engine/exceptions";
+import {
+  buildApprovedExceptionIndex,
+  loadApprovedExceptions,
+} from "@/lib/conflict-engine/exceptions";
 import {
   approvedExceptionForResult,
   classifyConflict,
   type ConflictSessionEvidence,
 } from "@/lib/reports/conflict-read-model";
+import {
+  hydrateWorkspaceSessions,
+  type WorkspaceSessionFlatRow,
+  type WorkspaceSessionHydratedRow,
+} from "@/lib/schedule-builder/queries";
 
 export interface ConflictCheckSummary {
   id: string;
@@ -52,7 +60,9 @@ export async function fetchConflictResults(
 ): Promise<ConflictResultRow[]> {
   const { data, error } = await supabase
     .from("conflict_results")
-    .select("id, conflict_code, severity, message_ar, message_en, schedule_session_id, related_session_id, conflict_check_id")
+    .select(
+      "id, conflict_code, severity, message_ar, message_en, schedule_session_id, related_session_id, conflict_check_id",
+    )
     .eq("college_id", collegeId)
     .eq("conflict_check_id", conflictCheckId)
     .order("created_at");
@@ -60,32 +70,14 @@ export async function fetchConflictResults(
   return data ?? [];
 }
 
-interface SessionDetail {
-  id: string;
-  schedule_version_id: string;
-  day_of_week: number;
-  start_time: string;
-  end_time: string;
-  study_system: string;
-  session_type: string;
-  updated_at: string;
-  cohort_id: string | null;
-  delivery_group_id: string | null;
-  instructors: { full_name: string } | null;
-  rooms: { code: string; name: string } | null;
-  sections: { section_number: string } | null;
-  course_offerings: {
-    courses: { code: string; name: string } | null;
-  } | null;
-}
+type SessionDetail = WorkspaceSessionHydratedRow;
 
+/** Flat conflict evidence select — no nested courses()/instructors()/rooms() embeds. */
 const CONFLICT_SESSION_SELECT = `
-  id, schedule_version_id, day_of_week, start_time, end_time, study_system, session_type, updated_at,
-  cohort_id, delivery_group_id,
-  instructors(full_name),
-  rooms(code, name),
-  sections(section_number),
-  course_offerings(courses(code, name))
+  id, schedule_version_id, day_of_week, start_time, end_time, session_type, study_system,
+  section_id, section_subgroup_id, instructor_id, room_id, updated_at, is_locked,
+  replaced_by_split, expected_students, course_offering_id,
+  cohort_id, delivery_group_id, source_type, teaching_assignment_id, section_group_id
 `;
 
 async function fetchSessionsByIds(
@@ -104,8 +96,9 @@ async function fetchSessionsByIds(
   q = applyStudySystemFilter(q, studySystem);
   const { data, error } = await q;
   if (error) throw error;
+  const hydrated = await hydrateWorkspaceSessions((data ?? []) as WorkspaceSessionFlatRow[]);
   const map = new Map<string, SessionDetail>();
-  for (const s of (data ?? []) as unknown as SessionDetail[]) {
+  for (const s of hydrated) {
     map.set(s.id, s);
   }
   return map;
@@ -114,7 +107,8 @@ async function fetchSessionsByIds(
 function sessionLabel(s: SessionDetail | undefined): string {
   if (!s) return "";
   const c = s.course_offerings?.courses;
-  return c ? `${c.code ?? ""} ${c.name ?? ""}`.trim() : "";
+  if (!c) return "مقرر غير متاح";
+  return `${c.code ?? "—"} ${c.name ?? "مقرر غير متاح"}`.trim();
 }
 
 function sessionTime(s: SessionDetail | undefined): string {
@@ -226,7 +220,9 @@ export async function fetchLatestQualityRun(
   assertSingleVersion(versionId);
   const { data, error } = await supabase
     .from("schedule_quality_runs")
-    .select("id, schedule_version_id, total_score, hard_conflicts_count, soft_conflicts_count, total_deductions, metrics_breakdown, created_at")
+    .select(
+      "id, schedule_version_id, total_score, hard_conflicts_count, soft_conflicts_count, total_deductions, metrics_breakdown, created_at",
+    )
     .eq("college_id", collegeId)
     .eq("schedule_version_id", versionId)
     .order("created_at", { ascending: false })

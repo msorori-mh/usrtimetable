@@ -51,8 +51,8 @@ export function studySystemLabel(sys: string | null | undefined): string {
   return SESSION_STUDY_SYSTEM_LABELS[sys ?? "regular"] ?? sys ?? "";
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function mapRawToTimetableSession(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- hydrated session row shape
   raw: any,
   labels?: CohortDeliveryGroupLabelMaps,
 ): TimetableReportSession {
@@ -65,8 +65,8 @@ export function mapRawToTimetableSession(
     end_time: raw.end_time,
     session_type: raw.session_type ?? "lecture",
     study_system: raw.study_system ?? "regular",
-    course_code: course?.code ?? "",
-    course_name: course?.name ?? "",
+    course_code: course?.code ?? "—",
+    course_name: course?.name ?? "مقرر غير متاح",
     instructor_name: raw.instructors?.full_name ?? "",
     room_label: raw.rooms ? `${raw.rooms.code ?? ""} ${raw.rooms.name ?? ""}`.trim() : "",
     section_number: raw.sections?.section_number ?? "",
