@@ -14,7 +14,9 @@ const assert = (condition: unknown, message: string) => {
 const nestedCourses = (body: string) => {
   const stripped = body.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
   const literals = [...stripped.matchAll(/=\s*`([\s\S]*?)`/g)].map((m) => m[1]);
-  return literals.some((lit) => /course_offerings\s*\([^)]*courses\s*\(/i.test(lit.replace(/\s+/g, " ")));
+  return literals.some((lit) =>
+    /course_offerings\s*\([^)]*courses\s*\(/i.test(lit.replace(/\s+/g, " ")),
+  );
 };
 
 const timetable = read("src/routes/_authenticated/timetable.$versionId.tsx");

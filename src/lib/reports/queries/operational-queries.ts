@@ -2,7 +2,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { applyStudySystemFilter, assertSingleVersion } from "@/lib/reports/filters";
 import { DAY_NAMES_AR, fmtTime } from "@/lib/reports/formatters";
 import type { ReportStudySystem } from "@/lib/reports/types";
-import { buildApprovedExceptionIndex, loadApprovedExceptions } from "@/lib/conflict-engine/exceptions";
+import {
+  buildApprovedExceptionIndex,
+  loadApprovedExceptions,
+} from "@/lib/conflict-engine/exceptions";
 import {
   approvedExceptionForResult,
   classifyConflict,
@@ -57,7 +60,9 @@ export async function fetchConflictResults(
 ): Promise<ConflictResultRow[]> {
   const { data, error } = await supabase
     .from("conflict_results")
-    .select("id, conflict_code, severity, message_ar, message_en, schedule_session_id, related_session_id, conflict_check_id")
+    .select(
+      "id, conflict_code, severity, message_ar, message_en, schedule_session_id, related_session_id, conflict_check_id",
+    )
     .eq("college_id", collegeId)
     .eq("conflict_check_id", conflictCheckId)
     .order("created_at");
@@ -215,7 +220,9 @@ export async function fetchLatestQualityRun(
   assertSingleVersion(versionId);
   const { data, error } = await supabase
     .from("schedule_quality_runs")
-    .select("id, schedule_version_id, total_score, hard_conflicts_count, soft_conflicts_count, total_deductions, metrics_breakdown, created_at")
+    .select(
+      "id, schedule_version_id, total_score, hard_conflicts_count, soft_conflicts_count, total_deductions, metrics_breakdown, created_at",
+    )
     .eq("college_id", collegeId)
     .eq("schedule_version_id", versionId)
     .order("created_at", { ascending: false })

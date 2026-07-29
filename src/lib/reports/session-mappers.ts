@@ -51,8 +51,8 @@ export function studySystemLabel(sys: string | null | undefined): string {
   return SESSION_STUDY_SYSTEM_LABELS[sys ?? "regular"] ?? sys ?? "";
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function mapRawToTimetableSession(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- hydrated session row shape
   raw: any,
   labels?: CohortDeliveryGroupLabelMaps,
 ): TimetableReportSession {

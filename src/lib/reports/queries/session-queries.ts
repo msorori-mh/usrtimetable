@@ -231,9 +231,7 @@ export async function fetchProgramLevelTimetableSessions(
   });
 
   if (params.departmentId) {
-    rows = rows.filter(
-      (s) => s.course_offerings?.courses?.department_id === params.departmentId,
-    );
+    rows = rows.filter((s) => s.course_offerings?.courses?.department_id === params.departmentId);
   }
   return rows;
 }
@@ -329,9 +327,7 @@ export async function fetchPublishedTimetableSessions(params: {
   });
 
   if (params.departmentId) {
-    rows = rows.filter(
-      (s) => s.course_offerings?.courses?.department_id === params.departmentId,
-    );
+    rows = rows.filter((s) => s.course_offerings?.courses?.department_id === params.departmentId);
   }
   return rows;
 }
@@ -360,9 +356,7 @@ export async function fetchCohortDeliveryGroupLabels(
   ];
   const deliveryGroupIds = [
     ...new Set(
-      rawSessions
-        .map((s) => s?.delivery_group_id as string | null)
-        .filter((v): v is string => !!v),
+      rawSessions.map((s) => s?.delivery_group_id as string | null).filter((v): v is string => !!v),
     ),
   ];
 

@@ -18,9 +18,7 @@ describe("timetable session course visibility (PGRST200)", () => {
     expect(selectContainsNestedCoursesEmbed(LEGACY_TIMETABLE_SESSION_SELECT)).toBe(false);
     expect(selectContainsNestedCoursesEmbed(PUBLISHED_TIMETABLE_SELECT)).toBe(false);
     expect(
-      selectContainsNestedCoursesEmbed(
-        "course_offerings(program_id, courses(code, name))",
-      ),
+      selectContainsNestedCoursesEmbed("course_offerings(program_id, courses(code, name))"),
     ).toBe(true);
   });
 
@@ -41,9 +39,9 @@ describe("timetable session course visibility (PGRST200)", () => {
     expect(operational.includes("hydrateWorkspaceSessions")).toBe(true);
     expect(sessionQueries.includes("hydrateWorkspaceSessions")).toBe(true);
     // Live select string literals must not contain nested courses embeds.
-    const selectLiterals = [...sessionQueries.matchAll(/export const \w+_SELECT = `([\s\S]*?)` as const/g)].map(
-      (m) => m[1],
-    );
+    const selectLiterals = [
+      ...sessionQueries.matchAll(/export const \w+_SELECT = `([\s\S]*?)` as const/g),
+    ].map((m) => m[1]);
     for (const lit of selectLiterals) {
       expect(selectContainsNestedCoursesEmbed(lit)).toBe(false);
     }

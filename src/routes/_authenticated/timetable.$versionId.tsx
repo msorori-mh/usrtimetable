@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable react-hooks/exhaustive-deps */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -9,11 +11,25 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { ArrowRight, Plus, Gauge, Activity, AlertTriangle, GripVertical } from "lucide-react";
-import { TimetableGrid, type GridSession, type AvailabilityWindow, type DropPayload } from "@/components/timetable/timetable-grid";
+import {
+  TimetableGrid,
+  type GridSession,
+  type AvailabilityWindow,
+  type DropPayload,
+} from "@/components/timetable/timetable-grid";
 import { SessionDialog } from "@/components/timetable/session-dialog";
 import { scoreScheduleVersion, type QualityResult } from "@/lib/conflict-engine/scorer";
 import { validateProposed } from "@/lib/conflict-engine/validator";
@@ -34,10 +50,14 @@ export const Route = createFileRoute("/_authenticated/timetable/$versionId")({
   component: TimetablePage,
 });
 
-const toMin = (s: string) => { const [h, m] = s.slice(0,5).split(":").map(Number); return h * 60 + m; };
+const toMin = (s: string) => {
+  const [h, m] = s.slice(0, 5).split(":").map(Number);
+  return h * 60 + m;
+};
 const addMin = (s: string, add: number) => {
   const total = toMin(s) + add;
-  const h = Math.floor(total / 60) % 24, m = total % 60;
+  const h = Math.floor(total / 60) % 24,
+    m = total % 60;
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 };
 
@@ -61,12 +81,20 @@ function TimetablePage() {
   const [fStudy, setFStudy] = useState<string>("all");
   const [gridStudy, setGridStudy] = useState<"regular" | "parallel" | "both">("regular");
 
-  const { data: version, isLoading: versionLoading, isError: versionError } = useQuery({
+  const {
+    data: version,
+    isLoading: versionLoading,
+    isError: versionError,
+  } = useQuery({
     queryKey: ["sv-detail", versionId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("schedule_versions")
-        .select("id, name, status, college_id, academic_term_id").eq("id", versionId).single();
-      if (error) throw error; return data;
+      const { data, error } = await supabase
+        .from("schedule_versions")
+        .select("id, name, status, college_id, academic_term_id")
+        .eq("id", versionId)
+        .single();
+      if (error) throw error;
+      return data;
     },
   });
 
@@ -100,39 +128,64 @@ function TimetablePage() {
     queryKey: ["timetable-lookups", active?.id, version?.academic_term_id],
     enabled: canLoadData,
     queryFn: async () => {
-      const [depts, progs, levels, instrs, rooms, offeringsRes, tas, templates, settings, roomTypes] =
-        await Promise.all([
-          supabase.from("departments").select("id, name").eq("college_id", active!.id),
-          supabase.from("academic_programs").select("id, name, department_id").eq("college_id", active!.id),
-          supabase.from("academic_levels").select("id, name, program_id").eq("college_id", active!.id),
-          supabase.from("instructors").select("id, full_name").eq("college_id", active!.id),
-          supabase.from("rooms").select("id, code, name, room_type_id").eq("college_id", active!.id),
-          // Flat offerings only — no nested courses() embed (PGRST200).
-          supabase
-            .from("course_offerings")
-            .select("id, course_id, program_id, level_id, expected_students, plan_course_id")
-            .eq("college_id", active!.id)
-            .eq("term_id", version?.academic_term_id ?? ""),
-          supabase
-            .from("teaching_assignments")
-            .select("id, course_offering_id, instructor_id")
-            .eq("college_id", active!.id),
-          supabase.from("time_slot_templates").select("*").eq("college_id", active!.id).eq("is_active", true),
-          supabase.from("scheduling_settings").select("*").eq("college_id", active!.id).maybeSingle(),
-          supabase.from("room_types").select("id, name_ar").eq("college_id", active!.id),
-        ]);
+      const [
+        depts,
+        progs,
+        levels,
+        instrs,
+        rooms,
+        offeringsRes,
+        tas,
+        templates,
+        settings,
+        roomTypes,
+      ] = await Promise.all([
+        supabase.from("departments").select("id, name").eq("college_id", active!.id),
+        supabase
+          .from("academic_programs")
+          .select("id, name, department_id")
+          .eq("college_id", active!.id),
+        supabase
+          .from("academic_levels")
+          .select("id, name, program_id")
+          .eq("college_id", active!.id),
+        supabase.from("instructors").select("id, full_name").eq("college_id", active!.id),
+        supabase.from("rooms").select("id, code, name, room_type_id").eq("college_id", active!.id),
+        // Flat offerings only — no nested courses() embed (PGRST200).
+        supabase
+          .from("course_offerings")
+          .select("id, course_id, program_id, level_id, expected_students, plan_course_id")
+          .eq("college_id", active!.id)
+          .eq("term_id", version?.academic_term_id ?? ""),
+        supabase
+          .from("teaching_assignments")
+          .select("id, course_offering_id, instructor_id")
+          .eq("college_id", active!.id),
+        supabase
+          .from("time_slot_templates")
+          .select("*")
+          .eq("college_id", active!.id)
+          .eq("is_active", true),
+        supabase.from("scheduling_settings").select("*").eq("college_id", active!.id).maybeSingle(),
+        supabase.from("room_types").select("id, name_ar").eq("college_id", active!.id),
+      ]);
 
       const offeringsFlat = offeringsRes.data ?? [];
       const courseIds = [
         ...new Set(
-          offeringsFlat
-            .map((o) => o.course_id as string | null)
-            .filter((id): id is string => !!id),
+          offeringsFlat.map((o) => o.course_id as string | null).filter((id): id is string => !!id),
         ),
       ];
       const { data: courseRows } = courseIds.length
         ? await supabase.from("courses").select("id, code, name, department_id").in("id", courseIds)
-        : { data: [] as Array<{ id: string; code: string | null; name: string | null; department_id: string | null }> };
+        : {
+            data: [] as Array<{
+              id: string;
+              code: string | null;
+              name: string | null;
+              department_id: string | null;
+            }>,
+          };
       const courseById = new Map((courseRows ?? []).map((c) => [c.id, c]));
       const offerings = offeringsFlat.map((o) => {
         const course = courseById.get(o.course_id);
@@ -206,21 +259,26 @@ function TimetablePage() {
     });
   }, [sessions, fDept, fProg, fLevel, fInstr, fRoom, fStudy]);
 
-  const gridSessions: GridSession[] = useMemo(() => (filtered ?? []).map((s: any) => {
-    const code = s.course_offerings?.courses?.code ?? "—";
-    const name = s.course_offerings?.courses?.name ?? "مقرر غير متاح";
-    return {
-      id: s.id,
-      day_of_week: s.day_of_week,
-      start_time: s.start_time,
-      end_time: s.end_time,
-      study_system: s.study_system,
-      session_type: s.session_type,
-      title: `${s.is_locked ? "🔒 " : ""}${code} — ${name}`,
-      subtitle: `${s.instructors?.full_name ?? ""}${s.rooms ? ` • ${s.rooms.code}` : ""}${s.source_type === "auto_generated" ? " • تلقائي" : s.source_type === "cloned" ? " • منسوخ" : ""}`,
-      badge: s.study_system === "parallel" ? "موازي" : s.study_system === "both" ? "م/م" : "انتظام",
-    };
-  }), [filtered]);
+  const gridSessions: GridSession[] = useMemo(
+    () =>
+      (filtered ?? []).map((s: any) => {
+        const code = s.course_offerings?.courses?.code ?? "—";
+        const name = s.course_offerings?.courses?.name ?? "مقرر غير متاح";
+        return {
+          id: s.id,
+          day_of_week: s.day_of_week,
+          start_time: s.start_time,
+          end_time: s.end_time,
+          study_system: s.study_system,
+          session_type: s.session_type,
+          title: `${s.is_locked ? "🔒 " : ""}${code} — ${name}`,
+          subtitle: `${s.instructors?.full_name ?? ""}${s.rooms ? ` • ${s.rooms.code}` : ""}${s.source_type === "auto_generated" ? " • تلقائي" : s.source_type === "cloned" ? " • منسوخ" : ""}`,
+          badge:
+            s.study_system === "parallel" ? "موازي" : s.study_system === "both" ? "م/م" : "انتظام",
+        };
+      }),
+    [filtered],
+  );
 
   const unscheduled = useMemo(() => {
     const scheduledOfferingIds = new Set((sessions ?? []).map((s: any) => s.course_offering_id));
@@ -229,9 +287,12 @@ function TimetablePage() {
 
   const grouped = useMemo(() => {
     const map = new Map<string, Map<string, Map<string, any[]>>>();
-    const deptName = (id: string | null) => lookups?.depts.find((d: any) => d.id === id)?.name ?? "—";
-    const progName = (id: string | null) => lookups?.progs.find((p: any) => p.id === id)?.name ?? "—";
-    const lvlName = (id: string | null) => lookups?.levels.find((l: any) => l.id === id)?.name ?? "—";
+    const deptName = (id: string | null) =>
+      lookups?.depts.find((d: any) => d.id === id)?.name ?? "—";
+    const progName = (id: string | null) =>
+      lookups?.progs.find((p: any) => p.id === id)?.name ?? "—";
+    const lvlName = (id: string | null) =>
+      lookups?.levels.find((l: any) => l.id === id)?.name ?? "—";
     for (const o of unscheduled as any[]) {
       const dk = deptName(o.courses?.department_id ?? null);
       const pk = progName(o.program_id ?? null);
@@ -250,11 +311,17 @@ function TimetablePage() {
     if (!active || !canLoadData) return;
     setScoring(true);
     try {
-      const { result } = await scoreScheduleVersion({ collegeId: active.id, scheduleVersionId: versionId });
+      const { result } = await scoreScheduleVersion({
+        collegeId: active.id,
+        scheduleVersionId: versionId,
+      });
       setQuality(result);
       toast.success(`الجودة: ${result.total_score}/100`);
-    } catch (e) { toast.error((e as Error).message); }
-    finally { setScoring(false); }
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setScoring(false);
+    }
   };
 
   const handleDrop = async (params: { day: number; startTime: string; payload: DropPayload }) => {
@@ -289,33 +356,57 @@ function TimetablePage() {
     const validation = await validateProposed({
       collegeId: active.id,
       scheduleVersionId: versionId,
-      sessions: [{
-        id: existing.id,
-        course_offering_id: existing.course_offering_id ?? "",
-        teaching_assignment_id: existing.teaching_assignment_id ?? null,
-        instructor_id: existing.instructor_id ?? "",
-        room_id: existing.room_id,
-        section_id: existing.section_id,
-        section_group_id: existing.section_group_id,
-        study_system: existing.study_system as any,
-        day_of_week: day,
-        start_time: startTime,
-        end_time: newEnd,
-        session_type: existing.session_type ?? "lecture",
-        expected_students: existing.expected_students ?? undefined,
-      }],
+      sessions: [
+        {
+          id: existing.id,
+          course_offering_id: existing.course_offering_id ?? "",
+          teaching_assignment_id: existing.teaching_assignment_id ?? null,
+          instructor_id: existing.instructor_id ?? "",
+          room_id: existing.room_id,
+          section_id: existing.section_id,
+          section_group_id: existing.section_group_id,
+          study_system: existing.study_system as any,
+          day_of_week: day,
+          start_time: startTime,
+          end_time: newEnd,
+          session_type: existing.session_type ?? "lecture",
+          expected_students: existing.expected_students ?? undefined,
+        },
+      ],
       excludeExistingSessionIds: [existing.id],
     });
     if (validation.unapprovedHardConflicts > 0) {
-      toast.error(`⚠️ نقل مرفوض — ${validation.unapprovedHardConflicts} تعارض (${validation.conflicts[0].message_ar})`);
-      await logAudit({ action: "blocked_conflict", entity: "schedule_sessions", entityId: existing.id, collegeId: active.id, details: { codes: validation.conflicts.map(c => c.code) } });
+      toast.error(
+        `⚠️ نقل مرفوض — ${validation.unapprovedHardConflicts} تعارض (${validation.conflicts[0].message_ar})`,
+      );
+      await logAudit({
+        action: "blocked_conflict",
+        entity: "schedule_sessions",
+        entityId: existing.id,
+        collegeId: active.id,
+        details: { codes: validation.conflicts.map((c) => c.code) },
+      });
       return;
     }
-    const { error } = await supabase.from("schedule_sessions").update({
-      day_of_week: day, start_time: startTime, end_time: newEnd,
-    }).eq("id", existing.id);
-    if (error) { toast.error(error.message); return; }
-    await logAudit({ action: "drag_move", entity: "schedule_sessions", entityId: existing.id, collegeId: active.id, details: { day, start_time: startTime } });
+    const { error } = await supabase
+      .from("schedule_sessions")
+      .update({
+        day_of_week: day,
+        start_time: startTime,
+        end_time: newEnd,
+      })
+      .eq("id", existing.id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    await logAudit({
+      action: "drag_move",
+      entity: "schedule_sessions",
+      entityId: existing.id,
+      collegeId: active.id,
+      details: { day, start_time: startTime },
+    });
     toast.success("تم نقل المحاضرة");
     qc.invalidateQueries({ queryKey: ["sessions-for-version", versionId] });
   };
@@ -327,14 +418,20 @@ function TimetablePage() {
           {SCHEDULE_BUILDER_NO_COLLEGE_AR}
         </p>
         <Button variant="outline" asChild>
-          <Link to="/schedule-versions"><ArrowRight className="h-4 w-4 ml-1" /> عودة للنسخ</Link>
+          <Link to="/schedule-versions">
+            <ArrowRight className="h-4 w-4 ml-1" /> عودة للنسخ
+          </Link>
         </Button>
       </div>
     );
   }
 
   if (versionLoading) {
-    return <p className="p-6 text-center text-muted-foreground" dir="rtl">جارٍ التحميل...</p>;
+    return (
+      <p className="p-6 text-center text-muted-foreground" dir="rtl">
+        جارٍ التحميل...
+      </p>
+    );
   }
 
   if (versionError || !version) {
@@ -344,7 +441,9 @@ function TimetablePage() {
           تعذّر تحميل نسخة الجدول.
         </p>
         <Button variant="outline" asChild>
-          <Link to="/schedule-versions"><ArrowRight className="h-4 w-4 ml-1" /> عودة للنسخ</Link>
+          <Link to="/schedule-versions">
+            <ArrowRight className="h-4 w-4 ml-1" /> عودة للنسخ
+          </Link>
         </Button>
       </div>
     );
@@ -354,7 +453,9 @@ function TimetablePage() {
     return (
       <div className="space-y-4" dir="rtl">
         <Button variant="ghost" size="sm" asChild>
-          <Link to="/schedule-versions"><ArrowRight className="h-4 w-4 ml-1" /> عودة للنسخ</Link>
+          <Link to="/schedule-versions">
+            <ArrowRight className="h-4 w-4 ml-1" /> عودة للنسخ
+          </Link>
         </Button>
         <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-4 text-sm">
           {SCHEDULE_BUILDER_COLLEGE_MISMATCH_AR}
@@ -370,7 +471,9 @@ function TimetablePage() {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <Button variant="ghost" size="sm" asChild>
-            <Link to="/schedule-versions"><ArrowRight className="h-4 w-4 ml-1" /> عودة للنسخ</Link>
+            <Link to="/schedule-versions">
+              <ArrowRight className="h-4 w-4 ml-1" /> عودة للنسخ
+            </Link>
           </Button>
           <h1 className="text-2xl font-bold mt-1">
             {version.name} <Badge variant="secondary">{version.status}</Badge>
@@ -380,7 +483,9 @@ function TimetablePage() {
           <div>
             <Label className="text-xs">عرض شبكة</Label>
             <Select value={gridStudy} onValueChange={(v) => setGridStudy(v as any)}>
-              <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="regular">انتظام</SelectItem>
                 <SelectItem value="parallel">موازي</SelectItem>
@@ -391,7 +496,14 @@ function TimetablePage() {
           <Button variant="outline" onClick={runQuality} disabled={scoring}>
             <Gauge className="h-4 w-4 ml-1" /> {scoring ? "..." : "احتساب الجودة"}
           </Button>
-          <Button disabled={!canManage} onClick={() => { setEditId(null); setPrefill(undefined); setDialogOpen(true); }}>
+          <Button
+            disabled={!canManage}
+            onClick={() => {
+              setEditId(null);
+              setPrefill(undefined);
+              setDialogOpen(true);
+            }}
+          >
             <Plus className="h-4 w-4 ml-1" /> محاضرة جديدة
           </Button>
         </div>
@@ -399,43 +511,130 @@ function TimetablePage() {
 
       {isLocked && (
         <div className="rounded-md border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30 p-3 text-sm">
-          🔒 هذه النسخة <strong>{version.status === "published" ? "منشورة" : "مؤرشفة"}</strong> — العرض للقراءة فقط. لا يمكن إضافة أو تعديل أو حذف المحاضرات.
+          🔒 هذه النسخة <strong>{version.status === "published" ? "منشورة" : "مؤرشفة"}</strong> —
+          العرض للقراءة فقط. لا يمكن إضافة أو تعديل أو حذف المحاضرات.
         </div>
       )}
 
       {quality && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <Card className="p-3"><div className="text-xs text-muted-foreground flex items-center gap-1"><Gauge className="h-3 w-3" /> الجودة</div><div className="text-3xl font-bold">{quality.total_score}/100</div></Card>
-          <Card className="p-3"><div className="text-xs text-destructive flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> تعارضات إلزامية</div><div className="text-3xl font-bold">{quality.hard_conflicts_count}</div></Card>
-          <Card className="p-3"><div className="text-xs text-amber-600 flex items-center gap-1"><Activity className="h-3 w-3" /> مخالفات مرنة</div><div className="text-3xl font-bold">{quality.soft_conflicts_count}</div></Card>
+          <Card className="p-3">
+            <div className="text-xs text-muted-foreground flex items-center gap-1">
+              <Gauge className="h-3 w-3" /> الجودة
+            </div>
+            <div className="text-3xl font-bold">{quality.total_score}/100</div>
+          </Card>
+          <Card className="p-3">
+            <div className="text-xs text-destructive flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3" /> تعارضات إلزامية
+            </div>
+            <div className="text-3xl font-bold">{quality.hard_conflicts_count}</div>
+          </Card>
+          <Card className="p-3">
+            <div className="text-xs text-amber-600 flex items-center gap-1">
+              <Activity className="h-3 w-3" /> مخالفات مرنة
+            </div>
+            <div className="text-3xl font-bold">{quality.soft_conflicts_count}</div>
+          </Card>
         </div>
       )}
 
       <Card className="p-3">
         <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
-          <div><Label className="text-xs">القسم</Label>
-            <Select value={fDept} onValueChange={setFDept}><SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent><SelectItem value="all">الكل</SelectItem>{lookups?.depts.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent></Select></div>
-          <div><Label className="text-xs">البرنامج</Label>
-            <Select value={fProg} onValueChange={setFProg}><SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent><SelectItem value="all">الكل</SelectItem>{lookups?.progs.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent></Select></div>
-          <div><Label className="text-xs">المستوى</Label>
-            <Select value={fLevel} onValueChange={setFLevel}><SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent><SelectItem value="all">الكل</SelectItem>{lookups?.levels.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent></Select></div>
-          <div><Label className="text-xs">المحاضر</Label>
-            <Select value={fInstr} onValueChange={setFInstr}><SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent><SelectItem value="all">الكل</SelectItem>{lookups?.instrs.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.full_name}</SelectItem>)}</SelectContent></Select></div>
-          <div><Label className="text-xs">القاعة</Label>
-            <Select value={fRoom} onValueChange={setFRoom}><SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent><SelectItem value="all">الكل</SelectItem>{lookups?.rooms.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.code} — {d.name}</SelectItem>)}</SelectContent></Select></div>
-          <div><Label className="text-xs">نظام (تصفية)</Label>
-            <Select value={fStudy} onValueChange={setFStudy}><SelectTrigger><SelectValue /></SelectTrigger>
+          <div>
+            <Label className="text-xs">القسم</Label>
+            <Select value={fDept} onValueChange={setFDept}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">الكل</SelectItem>
+                {lookups?.depts.map((d: any) => (
+                  <SelectItem key={d.id} value={d.id}>
+                    {d.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">البرنامج</Label>
+            <Select value={fProg} onValueChange={setFProg}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">الكل</SelectItem>
+                {lookups?.progs.map((d: any) => (
+                  <SelectItem key={d.id} value={d.id}>
+                    {d.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">المستوى</Label>
+            <Select value={fLevel} onValueChange={setFLevel}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">الكل</SelectItem>
+                {lookups?.levels.map((d: any) => (
+                  <SelectItem key={d.id} value={d.id}>
+                    {d.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">المحاضر</Label>
+            <Select value={fInstr} onValueChange={setFInstr}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">الكل</SelectItem>
+                {lookups?.instrs.map((d: any) => (
+                  <SelectItem key={d.id} value={d.id}>
+                    {d.full_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">القاعة</Label>
+            <Select value={fRoom} onValueChange={setFRoom}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">الكل</SelectItem>
+                {lookups?.rooms.map((d: any) => (
+                  <SelectItem key={d.id} value={d.id}>
+                    {d.code} — {d.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">نظام (تصفية)</Label>
+            <Select value={fStudy} onValueChange={setFStudy}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">الكل</SelectItem>
                 <SelectItem value="regular">انتظام</SelectItem>
                 <SelectItem value="parallel">موازي</SelectItem>
                 <SelectItem value="both">كلاهما</SelectItem>
-              </SelectContent></Select></div>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </Card>
 
@@ -448,7 +647,11 @@ function TimetablePage() {
             endHour={endHour}
             availability={availability}
             draggable={canManage}
-            onSessionClick={(id) => { setEditId(id); setPrefill(undefined); setDialogOpen(true); }}
+            onSessionClick={(id) => {
+              setEditId(id);
+              setPrefill(undefined);
+              setDialogOpen(true);
+            }}
             onDropAt={handleDrop}
           />
         </div>
@@ -461,19 +664,27 @@ function TimetablePage() {
                 <AccordionContent>
                   {Array.from(progMap.entries()).map(([prog, lvlMap]) => (
                     <div key={prog} className="mb-2">
-                      <div className="text-[11px] font-medium text-muted-foreground mb-1">{prog}</div>
+                      <div className="text-[11px] font-medium text-muted-foreground mb-1">
+                        {prog}
+                      </div>
                       {Array.from(lvlMap.entries()).map(([lvl, items]) => (
                         <div key={lvl} className="pr-2">
                           <div className="text-[10px] text-muted-foreground">{lvl}</div>
                           <div className="space-y-1">
                             {items.map((o: any) => {
-                              const ta = lookups?.tas.find((t: any) => t.course_offering_id === o.id);
+                              const ta = lookups?.tas.find(
+                                (t: any) => t.course_offering_id === o.id,
+                              );
                               const insName = ta ? (ta as any).instructors?.full_name : "—";
                               return (
-                                <div key={o.id}
+                                <div
+                                  key={o.id}
                                   draggable={canManage}
                                   onDragStart={(e) => {
-                                    e.dataTransfer.setData("application/x-lovable-drop", JSON.stringify({ kind: "unscheduled", id: o.id }));
+                                    e.dataTransfer.setData(
+                                      "application/x-lovable-drop",
+                                      JSON.stringify({ kind: "unscheduled", id: o.id }),
+                                    );
                                     e.dataTransfer.effectAllowed = "copy";
                                   }}
                                   className="border rounded p-2 text-xs bg-card hover:bg-accent/30 cursor-grab active:cursor-grabbing"
@@ -481,9 +692,15 @@ function TimetablePage() {
                                   <div className="flex items-start gap-1">
                                     <GripVertical className="h-3 w-3 mt-0.5 text-muted-foreground" />
                                     <div className="flex-1">
-                                      <div className="font-medium">{o.courses?.code} — {o.courses?.name}</div>
-                                      <div className="text-[10px] text-muted-foreground">المحاضر: {insName}</div>
-                                      <div className="text-[10px] text-muted-foreground">الطلاب المتوقعون: {o.expected_students ?? 0}</div>
+                                      <div className="font-medium">
+                                        {o.courses?.code} — {o.courses?.name}
+                                      </div>
+                                      <div className="text-[10px] text-muted-foreground">
+                                        المحاضر: {insName}
+                                      </div>
+                                      <div className="text-[10px] text-muted-foreground">
+                                        الطلاب المتوقعون: {o.expected_students ?? 0}
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
@@ -498,7 +715,9 @@ function TimetablePage() {
               </AccordionItem>
             ))}
           </Accordion>
-          {unscheduled.length === 0 && <div className="text-xs text-muted-foreground">لا توجد عناصر.</div>}
+          {unscheduled.length === 0 && (
+            <div className="text-xs text-muted-foreground">لا توجد عناصر.</div>
+          )}
         </Card>
       </div>
 
