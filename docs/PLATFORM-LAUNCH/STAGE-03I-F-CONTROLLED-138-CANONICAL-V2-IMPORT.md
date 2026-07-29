@@ -340,16 +340,99 @@ Full matrix: `reconciliation.json` → `G1_MATRIX`.
 
 `STAGE_03I_G_READY_FOR_TEACHING_HOURS_REMEDIATION`
 
+---
+
+## POST_PR113_TEACHING_HOURS_REBASELINE
+
+Mission: `PLATFORM-LAUNCH-STAGE-03I-H-PR113-MERGE-PUBLISH-HOURS-VERIFY-01`  
+Generated: 2026-07-29 (Asia/Riyadh)
+
+### PR113 merge
+
+| Field | Value |
+|---|---|
+| PR113_STATE | MERGED |
+| PR113_HEAD | `3776bbc179ee26264542a6df753ffa95e577ec2a` |
+| PR113_MERGE_COMMIT | `2cbff419bd1ea05528e9e97c325150502110c488` |
+| NEW_MAIN_SHA / MAIN_SHA | `2cbff419bd1ea05528e9e97c325150502110c488` |
+| Scope | hours contract + V2 canonical preflight + harness + Stage 03I-G audit doc |
+| Secrets / Excel / migrations / prod writes in PR | none |
+
+### Main tests
+
+| Check | Result |
+|---|---|
+| `git diff --check` | PASS |
+| `bunx tsc --noEmit` | PASS |
+| `bun run build` | PASS |
+| `bun test` | PASS — 4/0 |
+| `bun run test:harness` | PASS — **52**/0/0 missing |
+| `runtime-gates` on merge push | SUCCESS |
+
+### Publish (single Lovable Update)
+
+| Field | Value |
+|---|---|
+| PUBLISH_TIME (UTC) | `2026-07-29T04:11:05Z` |
+| Lovable UI after Update | **Up to date** (one Update only) |
+| LIVE_IMPORT_ASSET | `import-B5m2-8mX.js` |
+| DEPLOYMENT_ID (sha256 of live import asset) | `635608c5385ea206a79a0ebbdf71047cd41c92f0af6892718341f495c90e1b07` |
+| Live marker proof | `teachingHoursContractBlockers`, `تعارض ساعات المصدر`, `_component_weekly_hours`, `CO_TEACHING_HOURS_OVER_ALLOCATED` present in live import chunk |
+| Migrations / DB writes / secrets during publish | **none** |
+
+### Preview + dry-run only (same workbook; **no import confirm**)
+
+`FILE_SHA256 = fbc23368ca36af452935ab086e239fff5b61bae668dd9be5887b330143a35098`
+
+| Metric | Pre-PR113 (03I-F/G) | Post-PR113 (this run) |
+|---|---:|---:|
+| SOURCE_ROWS | 131 | **131** |
+| EXPANDED_ROWS | 314 | **313** |
+| READY_SOURCE_ROWS | 156 | **93** |
+| CANONICAL_IMPORT_OPERATIONS | 138 | **87** |
+| IDENTICAL_DUPLICATE_GROUPS | 8 | **6** |
+| CONFLICTING_DUPLICATE_GROUPS | 4 | **0** |
+| CONFLICTING_SOURCE_ROWS | 10 | **0** |
+| AMBIGUOUS (expanded outcomes) | 18 | **88** |
+| OVERALLOCATED_INSTRUCTORS (workload gate) | 0 | **0** |
+| INVALID_TEACHING_HOURS / contract blockers | (server abort only) | **2** (`CO_TEACHING_HOURS_OVER_ALLOCATED` ×2) |
+| DUPLICATE_CANONICAL_KEYS | 0 | **0** |
+| CONFLICTING_KEYS_INCLUDED | 0 | **0** |
+| LEGACY_INCLUDED_IN_PREFLIGHT | 0 | **0** |
+| DRY_RUN_VALID | false (server) | **false** (client preflight now catches co-teach) |
+| V2_ASSIGNMENTS | 0 | **0** |
+| LEGACY_ASSIGNMENTS | 174 | **174** |
+
+### Hours validation interpretation
+
+1. **Single-component Excel≠weekly** now resolves to `AMBIGUOUS` (contract fix live) — those ops left the former 138 set.
+2. **FR231 co-teach** (EMP012+EMP017, regular+parallel) still enters canonical with full hours each → **2** client `CO_TEACHING_HOURS_OVER_ALLOCATED` blockers; Confirm remains disabled.
+3. Legacy is **not** in V2 preflight; terms and study systems remain keyed separately.
+4. No import attempted. Database writes this mission: **0**.
+
+### Count required for next approval
+
+- Historical target **138** is no longer a dry-run-valid payload under the fixed contract until TEST source hours are remediated (split co-teach + align Excel totals to component weekly, or an explicitly approved new count).
+- Current safe preview surface: **87** canonical ops with **2** remaining hour blockers → not import-ready.
+- Next approval: TEST hours remediation + re-preview, then controlled import re-approval of the **new** dry-run-valid canonical count.
+
+### FINAL_DECISION (03I-H)
+
+`HOLD_WITH_ONE_EXACT_TEACHING_HOURS_RELEASE_BLOCKER`
+
+Exact blocker: live contract correctly rejects the unremediated TEST hours (co-teach over-allocation in remaining payload; former Excel>weekly rows now AMBIGUOUS). Not ready for 138 import re-approval.
+
 ## Security Review
 
 | Item | Value |
 |---|---|
-| Files changed (git) | this report only |
-| Migrations / RLS / RPCs | no |
-| Did this mission write production? | **no** |
+| Files changed (this docs update) | this report only |
+| Migrations / RLS / RPCs | no (PR113 also: no) |
+| Did this mission write production DB? | **no** |
 | Production V2 rows created | 0 |
 | Legacy changed | no |
 | Secrets / Excel / backups in git | no |
-| Production risk | none (analysis + simulation only) |
-| Ready for merge (docs) | yes (draft PR) |
-| Ready for deploy | n/a |
+| Lovable publish | **one** Update; no migrations/secrets |
+| Production risk | low (frontend contract only; no DB mutation) |
+| Ready for merge (docs) | yes (draft PR #112) |
+| Ready for deploy | already published to live for PR113 |
