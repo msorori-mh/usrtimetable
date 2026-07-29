@@ -244,13 +244,26 @@ function UsersPage() {
             إنشاء الحسابات، تعيين الأدوار، إسناد الكلّيات، تعطيل/تمكين، وإعادة تعيين كلمة المرور.
           </p>
         </div>
-        <CreateUserDialog
-          colleges={colleges ?? []}
-          onCreate={async (input) => {
-            await createUserFn({ data: input });
-            qc.invalidateQueries({ queryKey: ["all-users-admin"] });
-          }}
-        />
+        <div className="flex flex-wrap gap-2">
+          <CreateUserDialog
+            colleges={colleges ?? []}
+            presetRole="college_admin"
+            triggerLabel="إنشاء مدير كلّية"
+            triggerVariant="outline"
+            triggerIcon={<ShieldCheck className="ml-1 h-4 w-4" />}
+            onCreate={async (input) => {
+              await createUserFn({ data: input });
+              qc.invalidateQueries({ queryKey: ["all-users-admin"] });
+            }}
+          />
+          <CreateUserDialog
+            colleges={colleges ?? []}
+            onCreate={async (input) => {
+              await createUserFn({ data: input });
+              qc.invalidateQueries({ queryKey: ["all-users-admin"] });
+            }}
+          />
+        </div>
       </header>
 
       <Card className="mb-4 p-4">
