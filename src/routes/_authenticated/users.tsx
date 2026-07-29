@@ -524,8 +524,16 @@ function AddCollegeAssign({
 function CreateUserDialog({
   colleges,
   onCreate,
+  presetRole,
+  triggerLabel = "مستخدم جديد",
+  triggerVariant = "default",
+  triggerIcon,
 }: {
   colleges: { id: string; name: string }[];
+  presetRole?: AppRole;
+  triggerLabel?: string;
+  triggerVariant?: "default" | "outline";
+  triggerIcon?: ReactNode;
   onCreate: (input: {
     full_name: string;
     email: string;
@@ -534,18 +542,19 @@ function CreateUserDialog({
     college_ids: string[];
   }) => Promise<void>;
 }) {
+  const initialRole: AppRole = presetRole ?? "read_only";
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     full_name: "",
     email: "",
     password: "",
-    role: "read_only" as AppRole,
+    role: initialRole,
     college_ids: [] as string[],
   });
   const [busy, setBusy] = useState(false);
 
   const reset = () =>
-    setForm({ full_name: "", email: "", password: "", role: "read_only", college_ids: [] });
+    setForm({ full_name: "", email: "", password: "", role: initialRole, college_ids: [] });
 
   const submit = async () => {
     if (!form.full_name.trim() || !form.email.trim() || form.password.length < 8) {
