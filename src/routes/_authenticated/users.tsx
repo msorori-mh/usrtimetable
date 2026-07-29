@@ -658,10 +658,18 @@ function CreateUserDialog({
                 ))}
               </SelectContent>
             </Select>
+            <p className="mt-1 text-[11px] text-muted-foreground">{ROLE_HINTS[form.role]}</p>
           </div>
           {form.role !== "super_admin" && (
             <div>
-              <Label>الكلّيات المُسندة</Label>
+              <Label>
+                الكلّيات المُسندة <span className="text-destructive">*</span>
+              </Label>
+              <p className="mb-1 text-[11px] text-muted-foreground">
+                {form.role === "college_admin"
+                  ? "سيحصل على كامل صلاحيات العمليات داخل الكلّيات المحددة. الإسناد إلزامي."
+                  : "الإسناد إلزامي لتفعيل الدور."}
+              </p>
               {colleges.length === 0 ? (
                 <p className="text-xs text-muted-foreground">أنشئ كلّية أولاً.</p>
               ) : (
