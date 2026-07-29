@@ -609,7 +609,7 @@ export async function buildTemplateWorkbook(entity: string): Promise<Blob> {
       ["لا يوجد عمود section_id أو section_number في هذا القالب."],
       ["summer_training ممنوع في الإسناد الأسبوعي."],
       [
-        "عند التدريس المشترك: عيّن assigned_component_hours لكل محاضر بحيث لا يتجاوز مجموع ساعات المكوّن.",
+        "عند التدريس المشترك: عيّن assigned_component_hours لكل محاضر صراحةً، ويجب أن يساوي مجموعها إجمالي ساعات المكوّن؛ لا يوزّع النظام الساعات تلقائيًا.",
       ],
       ["delivery_groups تُولَّد من النظام قبل الاستيراد — لا تُستورد هنا."],
     );

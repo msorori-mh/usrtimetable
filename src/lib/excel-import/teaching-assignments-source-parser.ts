@@ -4,6 +4,7 @@
 import {
   SOURCE_COLUMN_KEYS,
   SOURCE_WORKBOOK_SKIP_SHEETS,
+  isAssignedComponentHoursHeader,
   isSourceWorkbookHeaderRow,
   isTotalOrSummaryRow,
   type SourceWorkbookColumn,
@@ -18,6 +19,9 @@ export interface ParsedSourceRow {
   levelNumber: number | null;
   programRaw: string;
   totalHours: number | null;
+  assignedComponentHours?: number | null;
+  assignedComponentHoursProvided?: boolean;
+  assignedComponentHoursRaw?: string | null;
   notes: string | null;
   ignored: boolean;
   ignoreReason?: string;
@@ -75,6 +79,13 @@ function getCol(row: string[], colMap: Map<string, number>, header: SourceWorkbo
   return cellStr(row[idx]);
 }
 
+function getAssignedHoursCol(row: string[], colMap: Map<string, number>): string {
+  for (const [header, index] of colMap) {
+    if (isAssignedComponentHoursHeader(header)) return cellStr(row[index]);
+  }
+  return "";
+}
+
 export function parseSourceSheetMatrix(sheetName: string, matrix: SheetMatrix): ParsedSourceSheet {
   let headerColMap: Map<string, number> | null = null;
   let headerRowIndex = -1;
@@ -118,10 +129,17 @@ export function parseSourceSheetMatrix(sheetName: string, matrix: SheetMatrix): 
     const levelRaw = getCol(rawRow, headerColMap, SOURCE_COLUMN_KEYS.level);
     let programRaw = getCol(rawRow, headerColMap, SOURCE_COLUMN_KEYS.program);
     const hoursRaw = getCol(rawRow, headerColMap, SOURCE_COLUMN_KEYS.totalHours);
+    const assignedHoursRaw = getAssignedHoursCol(rawRow, headerColMap);
     const notes = getCol(rawRow, headerColMap, SOURCE_COLUMN_KEYS.notes) || null;
 
     const emptyRow =
-      !instructorRaw && !courseName && !levelRaw && !programRaw && !hoursRaw && !notes;
+      !instructorRaw &&
+      !courseName &&
+      !levelRaw &&
+      !programRaw &&
+      !hoursRaw &&
+      !assignedHoursRaw &&
+      !notes;
     if (emptyRow) {
       ignoredRowCount++;
       continue;
@@ -142,6 +160,8 @@ export function parseSourceSheetMatrix(sheetName: string, matrix: SheetMatrix): 
     else lastProgram = programRaw;
 
     const totalHours = parseHours(hoursRaw);
+    const assignedComponentHoursProvided = assignedHoursRaw !== "";
+    const assignedComponentHours = parseHours(assignedHoursRaw);
 
     const ignored = !programRaw && !courseName && totalHours === null;
     rows.push({
@@ -152,6 +172,9 @@ export function parseSourceSheetMatrix(sheetName: string, matrix: SheetMatrix): 
       levelNumber,
       programRaw,
       totalHours,
+      assignedComponentHours,
+      assignedComponentHoursProvided,
+      assignedComponentHoursRaw: assignedComponentHoursProvided ? assignedHoursRaw : null,
       notes,
       ignored,
       ignoreReason: ignored ? "empty_meaningful_fields" : undefined,

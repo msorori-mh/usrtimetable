@@ -12,6 +12,7 @@ import {
 } from "../../src/lib/excel-import/arabic-normalize";
 import { resolveProgramField } from "../../src/lib/excel-import/program-aliases";
 import {
+  ASSIGNED_COMPONENT_HOURS_COLUMN_ALIASES,
   detectTeachingImportWorkbookMode,
   isSourceWorkbookHeaderRow,
   isTotalOrSummaryRow,
@@ -341,6 +342,17 @@ function run() {
   ]);
   assert(arabicNumericCells.rows[0].levelNumber === 2, "Arabic level digit parsed");
   assert(arabicNumericCells.rows[0].totalHours === 3, "Arabic hours digit parsed");
+  for (const alias of ASSIGNED_COMPONENT_HOURS_COLUMN_ALIASES) {
+    const parsedAlias = parseSourceSheetMatrix("S", [
+      ["م", "الاسم", "اسم المادة", "المستوى", "البرنامج", "اجمالي الساعات", alias],
+      ["1", "أحمد محمد", "CS101", "1", "علوم حاسوب", "3", "1.5"],
+    ]);
+    assert(
+      parsedAlias.rows[0].assignedComponentHours === 1.5 &&
+        parsedAlias.rows[0].assignedComponentHoursProvided === true,
+      `assigned-hours alias parsed: ${alias}`,
+    );
+  }
 
   const realLayout = parseSourceSheetMatrix("اسناد الفصل الاول 2026", anonymizedRealWorkbookSheet);
   assert(realLayout.rows[1].programRaw === "علوم حاسوب", "program carry-forward");
@@ -451,6 +463,122 @@ function run() {
   assert(
     preview.assignments.some((a) => a.studySystem === "parallel" && a.outcome === "MATCHED"),
     "parallel system both scope",
+  );
+
+  const coTeachingRow = (
+    rowNumber: number,
+    instructorName: string,
+    assignedComponentHours?: number,
+  ) => ({
+    sheetName: "S",
+    rowNumber,
+    instructorName,
+    courseName: "UNI100",
+    levelNumber: 1,
+    programRaw: "علوم حاسوب",
+    totalHours: 2,
+    assignedComponentHours: assignedComponentHours ?? null,
+    assignedComponentHoursProvided: assignedComponentHours !== undefined,
+    assignedComponentHoursRaw:
+      assignedComponentHours === undefined ? null : String(assignedComponentHours),
+    notes: null,
+    ignored: false,
+  });
+  const validateCoTeaching = (
+    sourceRows: ReturnType<typeof coTeachingRow>[],
+    context: SourceResolverContext = ctx,
+  ) => {
+    const resolution = resolveSourceTeachingAssignments({
+      rows: sourceRows,
+      ctx: context,
+      sheetTermMap: { S: "term-f1" },
+      studySystemScope: "regular_only",
+    });
+    return { resolution, validated: sourcePreviewToValidatedRows(resolution) };
+  };
+
+  const singleTeacher = validateCoTeaching([coTeachingRow(20, "أحمد محمد")]);
+  assert(
+    singleTeacher.validated.sourceReadyRows === 1,
+    "single teacher without assigned hours READY",
+  );
+  assert(
+    singleTeacher.validated.validRows[0].values.component_total_hours === 2 &&
+      singleTeacher.validated.validRows[0].values.assigned_component_hours === 2,
+    "single-teacher fallback copies component total only when the group has one teacher",
+  );
+
+  const explicitOnePlusOne = validateCoTeaching([
+    coTeachingRow(21, "أحمد محمد", 1),
+    coTeachingRow(22, "سارة علي", 1),
+  ]);
+  assert(
+    explicitOnePlusOne.validated.sourceReadyRows === 2 &&
+      explicitOnePlusOne.validated.canonicalOperations === 2,
+    "explicit co-teacher 1+1 against component total 2 is valid",
+  );
+  assert(
+    explicitOnePlusOne.validated.validRows.every(
+      (row) =>
+        row.values.component_total_hours === 2 &&
+        row.values.assigned_component_hours === 1 &&
+        row.values.co_teacher_count === 2 &&
+        row.values.co_teaching_group_total === 2 &&
+        row.values._validation_status === "READY",
+    ),
+    "preview exposes separated totals, teacher count, group total, and READY status",
+  );
+
+  const missingCoTeacherHours = validateCoTeaching([
+    coTeachingRow(23, "أحمد محمد"),
+    coTeachingRow(24, "سارة علي"),
+  ]);
+  assert(
+    missingCoTeacherHours.validated.sourceReadyRows === 0 &&
+      missingCoTeacherHours.validated.validRows.length === 0 &&
+      missingCoTeacherHours.resolution.assignments.every((row) => row.outcome === "BLOCKED"),
+    "co-teacher rows without explicit assigned hours are BLOCKED with no false READY",
+  );
+  assert(
+    missingCoTeacherHours.validated.errors.filter(
+      (error) => error.errorCode === "CO_TEACHER_ASSIGNED_HOURS_REQUIRED",
+    ).length === 2,
+    "missing co-teacher hours emits the required fail-closed code",
+  );
+
+  const overAllocated = validateCoTeaching([
+    coTeachingRow(25, "أحمد محمد", 2),
+    coTeachingRow(26, "سارة علي", 2),
+  ]);
+  assert(
+    overAllocated.validated.errors.filter(
+      (error) => error.errorCode === "CO_TEACHING_HOURS_OVER_ALLOCATED",
+    ).length === 2 && overAllocated.validated.validRows.length === 0,
+    "2+2 against component total 2 is blocked",
+  );
+
+  const invalidAndUnder = validateCoTeaching([
+    coTeachingRow(27, "أحمد محمد", 1),
+    coTeachingRow(28, "سارة علي", 0),
+  ]);
+  assert(
+    invalidAndUnder.validated.errors.some(
+      (error) => error.errorCode === "ASSIGNED_HOURS_MUST_BE_POSITIVE",
+    ) &&
+      invalidAndUnder.validated.errors.some(
+        (error) => error.errorCode === "CO_TEACHING_HOURS_UNDER_ALLOCATED",
+      ) &&
+      invalidAndUnder.validated.validRows.length === 0,
+    "1+0 is explicitly invalid and under-allocated",
+  );
+
+  const fractional = validateCoTeaching([
+    coTeachingRow(29, "أحمد محمد", 0.5),
+    coTeachingRow(30, "سارة علي", 1.5),
+  ]);
+  assert(
+    fractional.validated.sourceReadyRows === 2 && fractional.validated.errors.length === 0,
+    "numeric assigned-hours contract accepts an exact fractional 0.5+1.5 split",
   );
 
   // Instructor not found

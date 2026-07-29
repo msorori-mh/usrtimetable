@@ -4,6 +4,7 @@ import {
   STAGE_03I_J_EXPECTED,
   stage03iJCorrectedReadySourceRows,
   stage03iJLegacyRows,
+  stage03iJMissingAssignedHoursRows,
   stage03iJReadySourceRows,
   stage03iJStrictDowngrades,
 } from "../fixtures/teaching-assignments-targeted-hours/stage-03i-j";
@@ -22,6 +23,7 @@ function hoursErrors(rows: typeof stage03iJReadySourceRows) {
 
 const before = hoursErrors(stage03iJReadySourceRows);
 const after = hoursErrors(stage03iJCorrectedReadySourceRows);
+const missing = hoursErrors(stage03iJMissingAssignedHoursRows);
 
 assert(
   stage03iJReadySourceRows.length === STAGE_03I_J_EXPECTED.readySourceRows,
@@ -47,6 +49,34 @@ assert(
 assert(
   after.preflight.errors.length === STAGE_03I_J_EXPECTED.invalidHoursAfterFixture,
   "the corrected 1+1 co-teacher fixture has no invalid hours",
+);
+assert(
+  after.canonical.canonicalOperations
+    .filter((row) => String(row.values._delivery_group_id).startsWith("fr231-"))
+    .every(
+      (row) => row.values.component_total_hours === 2 && row.values.assigned_component_hours === 1,
+    ),
+  "FR231 keeps component total 2 while EMP012 and EMP017 each receive assigned hours 1",
+);
+assert(
+  missing.preflight.errors.filter(
+    (error) => error.errorCode === "CO_TEACHER_ASSIGNED_HOURS_REQUIRED",
+  ).length === 4,
+  "missing assigned-hours fixture blocks all four regular/parallel FR231 operations",
+);
+assert(
+  stage03iJMissingAssignedHoursRows.filter((row) => {
+    const key = `${String(row.values._delivery_group_id)}|${String(row.values._instructor_id)}`;
+    return !missing.preflight.blockedNaturalKeys.has(key);
+  }).length === 89,
+  "missing assigned-hours fixture has 89 safe source rows and no four-row false READY",
+);
+assert(
+  missing.canonical.canonicalOperations.filter((row) => {
+    const key = `${String(row.values._delivery_group_id)}|${String(row.values._instructor_id)}`;
+    return !missing.preflight.blockedNaturalKeys.has(key);
+  }).length === 83,
+  "missing assigned-hours fixture has only 83 safe canonical operations",
 );
 assert(
   [...after.preflight.instructorTotals.values()].every((hours) => hours <= 18),
@@ -87,6 +117,10 @@ console.log(
     strictDowngrades: stage03iJStrictDowngrades.length,
     invalidHoursBefore: before.preflight.errors.length,
     invalidHoursAfter: after.preflight.errors.length,
+    missingAssignedHoursBlocked: missing.preflight.blockedNaturalKeys.size,
+    sourceRows: STAGE_03I_J_EXPECTED.sourceRows,
+    expandedRows: STAGE_03I_J_EXPECTED.expandedRows,
+    dryRun: STAGE_03I_J_EXPECTED.dryRun,
     overallocatedInstructors: 0,
     noLegacyMixing: true,
     noCrossTermMixing: true,
