@@ -415,21 +415,29 @@ function UsersPage() {
                             const isSelf = u.id === me?.id;
                             const lockSelf = role === "super_admin" && isSelf && isOn;
                             return (
-                              <label key={role} className="flex items-center gap-2 text-sm">
-                                <Checkbox
-                                  checked={isOn}
-                                  disabled={lockSelf || setRole.isPending}
-                                  onCheckedChange={(v) =>
-                                    setRole.mutate({ userId: u.id, role, on: !!v })
-                                  }
-                                />
-                                {ROLE_LABELS[role]}
-                                {lockSelf && (
-                                  <span className="text-xs text-muted-foreground">
-                                    (لا يمكنك إزالة دورك)
-                                  </span>
-                                )}
-                              </label>
+                              <div key={role} className="rounded-md border border-border/60 bg-card/50 p-2">
+                                <label className="flex items-center gap-2 text-sm">
+                                  <Checkbox
+                                    checked={isOn}
+                                    disabled={lockSelf || setRole.isPending}
+                                    onCheckedChange={(v) => {
+                                      setRole.mutate({ userId: u.id, role, on: !!v });
+                                      if (v && role === "college_admin" && u.collegeIds.length === 0) {
+                                        toast.info("لا تنسَ إسناد كلّية — الدور لا يُفعّل بدونها");
+                                      }
+                                    }}
+                                  />
+                                  {ROLE_LABELS[role]}
+                                  {lockSelf && (
+                                    <span className="text-xs text-muted-foreground">
+                                      (لا يمكنك إزالة دورك)
+                                    </span>
+                                  )}
+                                </label>
+                                <p className="mt-1 pr-6 text-[11px] leading-relaxed text-muted-foreground">
+                                  {ROLE_HINTS[role]}
+                                </p>
+                              </div>
                             );
                           })}
                         </div>
