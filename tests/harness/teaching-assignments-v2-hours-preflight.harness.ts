@@ -194,8 +194,8 @@ const coTeaching = [
   }),
 ];
 assert(
-  codes(coTeaching).includes("CO_TEACHING_HOURS_OVER_ALLOCATED"),
-  "delivery-group component capacity blocks 2+2 against 2",
+  codes(coTeaching).filter((code) => code === "CO_TEACHING_HOURS_OVER_ALLOCATED").length === 2,
+  "delivery-group component capacity identifies both invalid 2+2 rows against 2",
 );
 
 const legacyRecords = Array.from({ length: 174 }, (_, index) => ({
