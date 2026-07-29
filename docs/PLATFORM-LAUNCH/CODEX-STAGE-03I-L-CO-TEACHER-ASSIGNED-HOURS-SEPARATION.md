@@ -191,18 +191,27 @@ All five assigned-hours header aliases are parsed by deterministic tests.
 | `bun run build` | PASS |
 | `bun test` | PASS — 4 passed, 0 failed |
 | `bun run test:harness` | PASS — 53 passed, 0 failed, 0 missing |
-| runtime-gates equivalent | PASS |
+| local runtime-gates equivalent | PASS |
+| GitHub `runtime-gates` | BLOCKED before checkout — GitHub Actions reports failed account payments or an insufficient spending limit; no runner or workflow step started |
 | corrected FR231 dry run | PASS — READY=93, CANONICAL=87, INVALID=0, OVERALLOCATED_INSTRUCTORS=0 |
 | missing assigned-hours dry run | PASS — 4 BLOCKED, safe READY=89, safe CANONICAL=83 |
 
 ## PRODUCTION_ACTIONS_REQUIRED
 
-None in this change. No production write, import, migration apply, Lovable publish, Excel
-rewrite, or PR merge was performed.
+No application-production action is required. No production write, import, migration apply,
+Lovable publish, Excel rewrite, or PR merge was performed.
 
 After normal release approval, users may provide one of the supported optional assigned
 hours columns while keeping the FR231 component total at 2.
 
+Repository administration must restore GitHub Actions billing/spending availability and
+rerun PR #115. The PR must remain Draft until `runtime-gates` is green.
+
 ## FINAL_DECISION
 
-`READY_FOR_RELEASE_LEAD`
+`HOLD_WITH_ONE_EXACT_ASSIGNED_HOURS_SEPARATION_BLOCKER`
+
+Exact blocker: `B-CI-GITHUB-ACTIONS-BILLING-NO-RUNNER` — the required GitHub
+`runtime-gates` check cannot start because the account payment/spending gate rejects the
+job before checkout. Local runtime-gates-equivalent validation is fully green, but the
+mission explicitly requires green CI before Ready.
