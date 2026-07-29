@@ -57,6 +57,12 @@ const ROLE_TONE: Record<AppRole, string> = {
   read_only: "bg-muted text-muted-foreground border-border",
 };
 
+const ROLE_HINTS: Record<AppRole, string> = {
+  super_admin: "صلاحيات كاملة على جميع الكلّيات، وإدارة المستخدمين والأدوار.",
+  college_admin: "كامل صلاحيات العمليات داخل الكلّيات المُسندة له، بما فيها الاستيراد من Excel.",
+  read_only: "اطّلاع فقط على بيانات الكلّيات المُسندة، بدون أي تعديل.",
+};
+
 type UserRow = {
   id: string;
   email: string | null;
