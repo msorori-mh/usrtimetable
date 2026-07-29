@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUser, type AppRole } from "@/hooks/use-current-user";
 import {
@@ -38,7 +38,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
-import { Users, Plus, KeyRound, Power, Copy } from "lucide-react";
+import { Users, Plus, KeyRound, Power, Copy, ShieldCheck, AlertTriangle } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/users")({
   head: () => ({ meta: [{ title: "إدارة المستخدمين" }] }),
@@ -55,6 +55,12 @@ const ROLE_TONE: Record<AppRole, string> = {
   super_admin: "bg-primary/10 text-primary border-primary/20",
   college_admin: "bg-accent/20 text-accent-foreground border-accent/30",
   read_only: "bg-muted text-muted-foreground border-border",
+};
+
+const ROLE_HINTS: Record<AppRole, string> = {
+  super_admin: "صلاحيات كاملة على جميع الكلّيات، وإدارة المستخدمين والأدوار.",
+  college_admin: "كامل صلاحيات العمليات داخل الكلّيات المُسندة له، بما فيها الاستيراد من Excel.",
+  read_only: "اطّلاع فقط على بيانات الكلّيات المُسندة، بدون أي تعديل.",
 };
 
 type UserRow = {
@@ -238,13 +244,26 @@ function UsersPage() {
             إنشاء الحسابات، تعيين الأدوار، إسناد الكلّيات، تعطيل/تمكين، وإعادة تعيين كلمة المرور.
           </p>
         </div>
-        <CreateUserDialog
-          colleges={colleges ?? []}
-          onCreate={async (input) => {
-            await createUserFn({ data: input });
-            qc.invalidateQueries({ queryKey: ["all-users-admin"] });
-          }}
-        />
+        <div className="flex flex-wrap gap-2">
+          <CreateUserDialog
+            colleges={colleges ?? []}
+            presetRole="college_admin"
+            triggerLabel="إنشاء مدير كلّية"
+            triggerVariant="outline"
+            triggerIcon={<ShieldCheck className="ml-1 h-4 w-4" />}
+            onCreate={async (input) => {
+              await createUserFn({ data: input });
+              qc.invalidateQueries({ queryKey: ["all-users-admin"] });
+            }}
+          />
+          <CreateUserDialog
+            colleges={colleges ?? []}
+            onCreate={async (input) => {
+              await createUserFn({ data: input });
+              qc.invalidateQueries({ queryKey: ["all-users-admin"] });
+            }}
+          />
+        </div>
       </header>
 
       <Card className="mb-4 p-4">
@@ -338,6 +357,16 @@ function UsersPage() {
                           </Badge>
                         ))}
                       </div>
+                      {u.roles.includes("college_admin") && u.collegeIds.length === 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setExpandedUser(u.id)}
+                          className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[11px] font-medium text-amber-700 transition-colors hover:bg-amber-500/20"
+                        >
+                          <AlertTriangle className="h-3.5 w-3.5" />
+                          دور غير مفعّل — لم تُسنَد كلّية. اضغط للإسناد
+                        </button>
+                      )}
                       <p className="mt-2 text-[11px] text-muted-foreground">
                         آخر دخول:{" "}
                         {u.last_sign_in_at
@@ -386,21 +415,29 @@ function UsersPage() {
                             const isSelf = u.id === me?.id;
                             const lockSelf = role === "super_admin" && isSelf && isOn;
                             return (
-                              <label key={role} className="flex items-center gap-2 text-sm">
-                                <Checkbox
-                                  checked={isOn}
-                                  disabled={lockSelf || setRole.isPending}
-                                  onCheckedChange={(v) =>
-                                    setRole.mutate({ userId: u.id, role, on: !!v })
-                                  }
-                                />
-                                {ROLE_LABELS[role]}
-                                {lockSelf && (
-                                  <span className="text-xs text-muted-foreground">
-                                    (لا يمكنك إزالة دورك)
-                                  </span>
-                                )}
-                              </label>
+                              <div key={role} className="rounded-md border border-border/60 bg-card/50 p-2">
+                                <label className="flex items-center gap-2 text-sm">
+                                  <Checkbox
+                                    checked={isOn}
+                                    disabled={lockSelf || setRole.isPending}
+                                    onCheckedChange={(v) => {
+                                      setRole.mutate({ userId: u.id, role, on: !!v });
+                                      if (v && role === "college_admin" && u.collegeIds.length === 0) {
+                                        toast.info("لا تنسَ إسناد كلّية — الدور لا يُفعّل بدونها");
+                                      }
+                                    }}
+                                  />
+                                  {ROLE_LABELS[role]}
+                                  {lockSelf && (
+                                    <span className="text-xs text-muted-foreground">
+                                      (لا يمكنك إزالة دورك)
+                                    </span>
+                                  )}
+                                </label>
+                                <p className="mt-1 pr-6 text-[11px] leading-relaxed text-muted-foreground">
+                                  {ROLE_HINTS[role]}
+                                </p>
+                              </div>
                             );
                           })}
                         </div>
@@ -505,8 +542,16 @@ function AddCollegeAssign({
 function CreateUserDialog({
   colleges,
   onCreate,
+  presetRole,
+  triggerLabel = "مستخدم جديد",
+  triggerVariant = "default",
+  triggerIcon,
 }: {
   colleges: { id: string; name: string }[];
+  presetRole?: AppRole;
+  triggerLabel?: string;
+  triggerVariant?: "default" | "outline";
+  triggerIcon?: ReactNode;
   onCreate: (input: {
     full_name: string;
     email: string;
@@ -515,18 +560,19 @@ function CreateUserDialog({
     college_ids: string[];
   }) => Promise<void>;
 }) {
+  const initialRole: AppRole = presetRole ?? "read_only";
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     full_name: "",
     email: "",
     password: "",
-    role: "read_only" as AppRole,
+    role: initialRole,
     college_ids: [] as string[],
   });
   const [busy, setBusy] = useState(false);
 
   const reset = () =>
-    setForm({ full_name: "", email: "", password: "", role: "read_only", college_ids: [] });
+    setForm({ full_name: "", email: "", password: "", role: initialRole, college_ids: [] });
 
   const submit = async () => {
     if (!form.full_name.trim() || !form.email.trim() || form.password.length < 8) {
@@ -560,14 +606,14 @@ function CreateUserDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
-          <Plus className="ml-1 h-4 w-4" />
-          مستخدم جديد
+        <Button variant={triggerVariant}>
+          {triggerIcon ?? <Plus className="ml-1 h-4 w-4" />}
+          {triggerLabel}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>إنشاء مستخدم</DialogTitle>
+          <DialogTitle>{presetRole === "college_admin" ? "إنشاء مدير كلّية" : "إنشاء مستخدم"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div>
@@ -630,10 +676,18 @@ function CreateUserDialog({
                 ))}
               </SelectContent>
             </Select>
+            <p className="mt-1 text-[11px] text-muted-foreground">{ROLE_HINTS[form.role]}</p>
           </div>
           {form.role !== "super_admin" && (
             <div>
-              <Label>الكلّيات المُسندة</Label>
+              <Label>
+                الكلّيات المُسندة <span className="text-destructive">*</span>
+              </Label>
+              <p className="mb-1 text-[11px] text-muted-foreground">
+                {form.role === "college_admin"
+                  ? "سيحصل على كامل صلاحيات العمليات داخل الكلّيات المحددة. الإسناد إلزامي."
+                  : "الإسناد إلزامي لتفعيل الدور."}
+              </p>
               {colleges.length === 0 ? (
                 <p className="text-xs text-muted-foreground">أنشئ كلّية أولاً.</p>
               ) : (
