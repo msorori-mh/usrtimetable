@@ -73,7 +73,19 @@ export async function fetchWorkspaceVersions(params: {
 export const WORKSPACE_SESSION_FLAT_SELECT = `
   id, day_of_week, start_time, end_time, session_type, study_system,
   section_id, section_subgroup_id, instructor_id, room_id, updated_at, is_locked,
-  replaced_by_split, expected_students, course_offering_id
+  replaced_by_split, expected_students, course_offering_id,
+  cohort_id, delivery_group_id, source_type, teaching_assignment_id, section_group_id
+` as const;
+
+/**
+ * Report / editor flat select — same PGRST200-safe columns as workspace,
+ * plus schedule_version_id for conflict evidence rows.
+ */
+export const TIMETABLE_SESSION_FLAT_SELECT = `
+  id, schedule_version_id, day_of_week, start_time, end_time, session_type, study_system,
+  section_id, section_subgroup_id, instructor_id, room_id, updated_at, is_locked,
+  replaced_by_split, expected_students, course_offering_id,
+  cohort_id, delivery_group_id, source_type, teaching_assignment_id, section_group_id
 ` as const;
 
 function uniqueIds(ids: Array<string | null | undefined>): string[] {
@@ -106,7 +118,8 @@ async function fetchRowsByIds<T extends { id: string }>(
   return out;
 }
 
-async function hydrateWorkspaceSessions(
+/** Two-phase hydration: flat sessions + batched lookups (no nested courses embed). */
+export async function hydrateWorkspaceSessions(
   flat: WorkspaceSessionFlatRow[],
 ): Promise<WorkspaceSessionHydratedRow[]> {
   const offeringIds = uniqueIds(flat.map((s) => s.course_offering_id));
@@ -215,6 +228,32 @@ export async function fetchWorkspaceSessions(params: {
   if (error) throw error;
   const flat = (data ?? []) as WorkspaceSessionFlatRow[];
   return hydrateWorkspaceSessions(flat);
+}
+
+/**
+ * Timetable editor / reports: all study systems for one version (flat + hydrate).
+ * Does not filter replaced_by_split so editors see the full version set.
+ */
+export async function fetchHydratedVersionSessions(params: {
+  collegeId: string;
+  versionId: string;
+  studySystem?: "regular" | "parallel" | "all";
+}): Promise<WorkspaceSessionHydratedRow[]> {
+  let q = supabase
+    .from("schedule_sessions")
+    .select(TIMETABLE_SESSION_FLAT_SELECT)
+    .eq("college_id", params.collegeId)
+    .eq("schedule_version_id", params.versionId)
+    .order("day_of_week")
+    .order("start_time");
+
+  if (params.studySystem && params.studySystem !== "all") {
+    q = applyStudySystemFilter(q, params.studySystem);
+  }
+
+  const { data, error } = await q;
+  if (error) throw error;
+  return hydrateWorkspaceSessions((data ?? []) as WorkspaceSessionFlatRow[]);
 }
 
 export interface WorkspaceRoomOption {

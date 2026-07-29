@@ -108,13 +108,22 @@ assert(
   "TIMETABLE_SESSION_SELECT projects cohort_id + delivery_group_id",
 );
 assert(
-  !newFlowSelect.includes("sections(") && !newFlowSelect.includes("section_id"),
+  !newFlowSelect.includes("sections("),
   "TIMETABLE_SESSION_SELECT never joins Legacy sections",
+);
+assert(
+  !/course_offerings\s*\([^)]*courses\s*\(/i.test(newFlowSelect.replace(/\s+/g, " ")),
+  "TIMETABLE_SESSION_SELECT never nests courses() under course_offerings (PGRST200)",
+);
+assert(
+  queries.includes("hydrateWorkspaceSessions"),
+  "session queries hydrate course labels via separate lookups",
 );
 const legacySelect = between(queries, "export const LEGACY_TIMETABLE_SESSION_SELECT", "as const");
 assert(
-  legacySelect.includes("sections(section_number)") && legacySelect.includes("section_id"),
-  "LEGACY_TIMETABLE_SESSION_SELECT retains the historical sections projection",
+  legacySelect.includes("section_id") &&
+    !/course_offerings\s*\([^)]*courses\s*\(/i.test(legacySelect.replace(/\s+/g, " ")),
+  "LEGACY_TIMETABLE_SESSION_SELECT retains section_id without nested courses() embed",
 );
 const legacyFetch = between(
   queries,
@@ -131,11 +140,11 @@ const programFetch = between(
   "/** Analytics:",
 );
 assert(
-  programFetch.includes('q.eq("cohort_id"') && programFetch.includes('q.eq("delivery_group_id"'),
+  programFetch.includes("cohortId:") && programFetch.includes("deliveryGroupId:"),
   "program-level query filters by cohort_id / delivery_group_id",
 );
 assert(
-  !programFetch.includes("section_id") && !programFetch.includes("sectionId"),
+  !programFetch.includes("sectionId:"),
   "program-level query has no Legacy section filter left",
 );
 const publishedSelect = between(queries, "export const PUBLISHED_TIMETABLE_SELECT", "as const");
@@ -151,9 +160,9 @@ const publishedFetch = between(
   "/** Resolved New Flow identity labels",
 );
 assert(
-  publishedFetch.includes('q.eq("cohort_id"') &&
-    publishedFetch.includes('q.eq("delivery_group_id"') &&
-    !publishedFetch.includes("section_id"),
+  publishedFetch.includes("cohortId:") &&
+    publishedFetch.includes("deliveryGroupId:") &&
+    !publishedFetch.includes("sectionId:"),
   "published timetable query filters by cohort/DG, never section_id",
 );
 assert(
@@ -303,8 +312,11 @@ const conflictSelect = between(
   "async function fetchSessionsByIds",
 );
 assert(
-  conflictSelect.includes("sections(section_number)"),
-  "conflict read model keeps its documented diagnostic Legacy section evidence (read-only)",
+  conflictSelect.includes("section_id") &&
+    !/course_offerings\s*\([^)]*courses\s*\(/i.test(conflictSelect.replace(/\s+/g, " ")) &&
+    !conflictSelect.includes("instructors(") &&
+    operational.includes("hydrateWorkspaceSessions"),
+  "conflict read model keeps section_id evidence via flat+hydrate (no nested courses/instructors embeds)",
 );
 const conflictsRoute = read("src/routes/_authenticated/reports.conflicts.tsx");
 assert(

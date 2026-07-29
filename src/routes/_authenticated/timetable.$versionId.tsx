@@ -27,6 +27,7 @@ import {
   resolveTimetableGridHours,
   shouldLoadScheduleBuilderData,
 } from "@/lib/schedule-builder/access";
+import { fetchHydratedVersionSessions } from "@/lib/schedule-builder/queries";
 
 export const Route = createFileRoute("/_authenticated/timetable/$versionId")({
   head: () => ({ meta: [{ title: "بناء الجدول" }] }),
@@ -86,11 +87,12 @@ function TimetablePage() {
     queryKey: ["sessions-for-version", versionId, active?.id],
     enabled: canLoadData,
     queryFn: async () => {
-      const { data, error } = await supabase.from("schedule_sessions")
-        .select("*, course_offerings(course_id, program_id, level_id, courses(code, name, department_id)), instructors(full_name), rooms(code, name)")
-        .eq("schedule_version_id", versionId)
-        .eq("college_id", active!.id);
-      if (error) throw error; return data ?? [];
+      // Flat select + client hydrate — never nest courses() under course_offerings (PGRST200).
+      return fetchHydratedVersionSessions({
+        collegeId: active!.id,
+        versionId,
+        studySystem: "all",
+      });
     },
   });
 
@@ -98,27 +100,64 @@ function TimetablePage() {
     queryKey: ["timetable-lookups", active?.id, version?.academic_term_id],
     enabled: canLoadData,
     queryFn: async () => {
-      const [depts, progs, levels, instrs, rooms, offerings, tas, templates, settings, roomTypes] = await Promise.all([
-        supabase.from("departments").select("id, name").eq("college_id", active!.id),
-        supabase.from("academic_programs").select("id, name, department_id").eq("college_id", active!.id),
-        supabase.from("academic_levels").select("id, name, program_id").eq("college_id", active!.id),
-        supabase.from("instructors").select("id, full_name").eq("college_id", active!.id),
-        supabase.from("rooms").select("id, code, name, room_type_id").eq("college_id", active!.id),
-        supabase.from("course_offerings")
-          .select("id, course_id, program_id, level_id, expected_students, plan_course_id, courses(code, name, department_id)")
-          .eq("college_id", active!.id).eq("term_id", version?.academic_term_id ?? ""),
-        supabase.from("teaching_assignments")
-          .select("id, course_offering_id, instructor_id, instructors(full_name)")
-          .eq("college_id", active!.id),
-        supabase.from("time_slot_templates").select("*").eq("college_id", active!.id).eq("is_active", true),
-        supabase.from("scheduling_settings").select("*").eq("college_id", active!.id).maybeSingle(),
-        supabase.from("room_types").select("id, name_ar").eq("college_id", active!.id),
-      ]);
+      const [depts, progs, levels, instrs, rooms, offeringsRes, tas, templates, settings, roomTypes] =
+        await Promise.all([
+          supabase.from("departments").select("id, name").eq("college_id", active!.id),
+          supabase.from("academic_programs").select("id, name, department_id").eq("college_id", active!.id),
+          supabase.from("academic_levels").select("id, name, program_id").eq("college_id", active!.id),
+          supabase.from("instructors").select("id, full_name").eq("college_id", active!.id),
+          supabase.from("rooms").select("id, code, name, room_type_id").eq("college_id", active!.id),
+          // Flat offerings only — no nested courses() embed (PGRST200).
+          supabase
+            .from("course_offerings")
+            .select("id, course_id, program_id, level_id, expected_students, plan_course_id")
+            .eq("college_id", active!.id)
+            .eq("term_id", version?.academic_term_id ?? ""),
+          supabase
+            .from("teaching_assignments")
+            .select("id, course_offering_id, instructor_id")
+            .eq("college_id", active!.id),
+          supabase.from("time_slot_templates").select("*").eq("college_id", active!.id).eq("is_active", true),
+          supabase.from("scheduling_settings").select("*").eq("college_id", active!.id).maybeSingle(),
+          supabase.from("room_types").select("id, name_ar").eq("college_id", active!.id),
+        ]);
+
+      const offeringsFlat = offeringsRes.data ?? [];
+      const courseIds = [
+        ...new Set(
+          offeringsFlat
+            .map((o) => o.course_id as string | null)
+            .filter((id): id is string => !!id),
+        ),
+      ];
+      const { data: courseRows } = courseIds.length
+        ? await supabase.from("courses").select("id, code, name, department_id").in("id", courseIds)
+        : { data: [] as Array<{ id: string; code: string | null; name: string | null; department_id: string | null }> };
+      const courseById = new Map((courseRows ?? []).map((c) => [c.id, c]));
+      const offerings = offeringsFlat.map((o) => {
+        const course = courseById.get(o.course_id);
+        return {
+          ...o,
+          courses: course
+            ? {
+                code: course.code,
+                name: course.name,
+                department_id: course.department_id,
+              }
+            : { code: "—", name: "مقرر غير متاح", department_id: null },
+        };
+      });
+
       return {
-        depts: depts.data ?? [], progs: progs.data ?? [], levels: levels.data ?? [],
-        instrs: instrs.data ?? [], rooms: rooms.data ?? [],
-        offerings: offerings.data ?? [], tas: tas.data ?? [],
-        templates: templates.data ?? [], settings: settings.data ?? null,
+        depts: depts.data ?? [],
+        progs: progs.data ?? [],
+        levels: levels.data ?? [],
+        instrs: instrs.data ?? [],
+        rooms: rooms.data ?? [],
+        offerings,
+        tas: tas.data ?? [],
+        templates: templates.data ?? [],
+        settings: settings.data ?? null,
         roomTypes: roomTypes.data ?? [],
       };
     },
@@ -167,17 +206,21 @@ function TimetablePage() {
     });
   }, [sessions, fDept, fProg, fLevel, fInstr, fRoom, fStudy]);
 
-  const gridSessions: GridSession[] = useMemo(() => (filtered ?? []).map((s: any) => ({
-    id: s.id,
-    day_of_week: s.day_of_week,
-    start_time: s.start_time,
-    end_time: s.end_time,
-    study_system: s.study_system,
-    session_type: s.session_type,
-    title: `${s.is_locked ? "🔒 " : ""}${s.course_offerings?.courses?.code ?? ""} — ${s.course_offerings?.courses?.name ?? ""}`,
-    subtitle: `${s.instructors?.full_name ?? ""}${s.rooms ? ` • ${s.rooms.code}` : ""}${s.source_type === "auto_generated" ? " • تلقائي" : s.source_type === "cloned" ? " • منسوخ" : ""}`,
-    badge: s.study_system === "parallel" ? "موازي" : s.study_system === "both" ? "م/م" : "انتظام",
-  })), [filtered]);
+  const gridSessions: GridSession[] = useMemo(() => (filtered ?? []).map((s: any) => {
+    const code = s.course_offerings?.courses?.code ?? "—";
+    const name = s.course_offerings?.courses?.name ?? "مقرر غير متاح";
+    return {
+      id: s.id,
+      day_of_week: s.day_of_week,
+      start_time: s.start_time,
+      end_time: s.end_time,
+      study_system: s.study_system,
+      session_type: s.session_type,
+      title: `${s.is_locked ? "🔒 " : ""}${code} — ${name}`,
+      subtitle: `${s.instructors?.full_name ?? ""}${s.rooms ? ` • ${s.rooms.code}` : ""}${s.source_type === "auto_generated" ? " • تلقائي" : s.source_type === "cloned" ? " • منسوخ" : ""}`,
+      badge: s.study_system === "parallel" ? "موازي" : s.study_system === "both" ? "م/م" : "انتظام",
+    };
+  }), [filtered]);
 
   const unscheduled = useMemo(() => {
     const scheduledOfferingIds = new Set((sessions ?? []).map((s: any) => s.course_offering_id));
@@ -248,9 +291,9 @@ function TimetablePage() {
       scheduleVersionId: versionId,
       sessions: [{
         id: existing.id,
-        course_offering_id: existing.course_offering_id,
-        teaching_assignment_id: existing.teaching_assignment_id,
-        instructor_id: existing.instructor_id,
+        course_offering_id: existing.course_offering_id ?? "",
+        teaching_assignment_id: existing.teaching_assignment_id ?? null,
+        instructor_id: existing.instructor_id ?? "",
         room_id: existing.room_id,
         section_id: existing.section_id,
         section_group_id: existing.section_group_id,
@@ -258,8 +301,8 @@ function TimetablePage() {
         day_of_week: day,
         start_time: startTime,
         end_time: newEnd,
-        session_type: existing.session_type,
-        expected_students: existing.expected_students,
+        session_type: existing.session_type ?? "lecture",
+        expected_students: existing.expected_students ?? undefined,
       }],
       excludeExistingSessionIds: [existing.id],
     });

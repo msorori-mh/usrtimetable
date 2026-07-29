@@ -117,7 +117,7 @@ export function mapWorkspaceSessions(raw: unknown[]): WorkspaceSessionView[] {
       session_type: String(s.session_type ?? "lecture"),
       study_system: String(s.study_system ?? "regular"),
       course_code: course?.code ?? "—",
-      course_name: course?.name ?? "—",
+      course_name: course?.name ?? "مقرر غير متاح",
       instructor_name: s.instructors?.full_name ?? "—",
       room_label: s.rooms
         ? `${s.rooms.code ?? ""}${s.rooms.name ? ` — ${s.rooms.name}` : ""}`

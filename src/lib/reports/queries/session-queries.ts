@@ -1,6 +1,12 @@
 import { supabase } from "@/integrations/supabase/client";
 import { applyStudySystemFilter, assertSingleVersion } from "@/lib/reports/filters";
 import type { ReportStudySystem } from "@/lib/reports/types";
+import {
+  hydrateWorkspaceSessions,
+  TIMETABLE_SESSION_FLAT_SELECT,
+  type WorkspaceSessionFlatRow,
+  type WorkspaceSessionHydratedRow,
+} from "@/lib/schedule-builder/queries";
 
 /**
  * Shared New Flow select for timetable-style reports (single version).
@@ -8,40 +14,80 @@ import type { ReportStudySystem } from "@/lib/reports/types";
  * cohort/delivery-group based. Cohort/DG labels are resolved separately via
  * fetchCohortDeliveryGroupLabels (no fragile embeds, same pattern as the
  * conflict read model).
+ *
+ * PGRST200: never nest `courses(...)` under `course_offerings` — PostgREST
+ * schema cache has no course_offerings→courses FK. Course labels hydrate
+ * via separate batched `courses` lookups after the flat select.
  */
 export const TIMETABLE_SESSION_SELECT = `
-  id, day_of_week, start_time, end_time, session_type, study_system,
-  cohort_id, delivery_group_id, instructor_id, room_id,
-  course_offerings(
-    program_id, level_id,
-    courses(name, code, department_id, departments(name)),
-    academic_programs(name),
-    academic_levels(name, level_number)
-  ),
-  instructors(full_name),
-  rooms(code, name)
+  id, schedule_version_id, day_of_week, start_time, end_time, session_type, study_system,
+  section_id, section_subgroup_id, instructor_id, room_id, updated_at, is_locked,
+  replaced_by_split, expected_students, course_offering_id,
+  cohort_id, delivery_group_id, source_type, teaching_assignment_id, section_group_id
 ` as const;
 
 /**
  * Legacy historical select (A1.5) — retained EXCLUSIVELY for the Legacy
- * section timetable report. Historical data stays readable and unchanged;
- * do not use for New Flow surfaces.
+ * section timetable report. Flat columns only (+ section_id); section labels
+ * hydrate client-side. No nested courses() embed.
  */
 export const LEGACY_TIMETABLE_SESSION_SELECT = `
-  id, day_of_week, start_time, end_time, session_type, study_system,
-  section_id, instructor_id, room_id,
-  course_offerings(
-    program_id, level_id,
-    courses(name, code, department_id, departments(name)),
-    academic_programs(name),
-    academic_levels(name, level_number)
-  ),
-  sections(section_number),
-  instructors(full_name),
-  rooms(code, name)
+  id, schedule_version_id, day_of_week, start_time, end_time, session_type, study_system,
+  section_id, section_subgroup_id, instructor_id, room_id, updated_at, is_locked,
+  replaced_by_split, expected_students, course_offering_id,
+  cohort_id, delivery_group_id, source_type, teaching_assignment_id, section_group_id
 ` as const;
 
 export const INSTRUCTOR_SCHEDULE_SESSION_SELECT = TIMETABLE_SESSION_SELECT;
+
+/** True when a select string would trigger the known PGRST200 courses nest. */
+export function selectContainsNestedCoursesEmbed(select: string): boolean {
+  return /course_offerings\s*\([^)]*courses\s*\(/i.test(select.replace(/\s+/g, " "));
+}
+
+async function fetchFlatThenHydrate(params: {
+  collegeId: string;
+  versionId: string;
+  studySystem: ReportStudySystem;
+  instructorId?: string;
+  sectionId?: string;
+  cohortId?: string;
+  deliveryGroupId?: string;
+  roomId?: string;
+  programId?: string;
+  levelId?: string;
+}): Promise<WorkspaceSessionHydratedRow[]> {
+  assertSingleVersion(params.versionId);
+
+  let q = supabase
+    .from("schedule_sessions")
+    .select(TIMETABLE_SESSION_FLAT_SELECT)
+    .eq("college_id", params.collegeId)
+    .eq("schedule_version_id", params.versionId)
+    .order("day_of_week")
+    .order("start_time");
+
+  q = applyStudySystemFilter(q, params.studySystem);
+
+  if (params.instructorId) q = q.eq("instructor_id", params.instructorId);
+  if (params.sectionId) q = q.eq("section_id", params.sectionId);
+  if (params.cohortId) q = q.eq("cohort_id", params.cohortId);
+  if (params.deliveryGroupId) q = q.eq("delivery_group_id", params.deliveryGroupId);
+  if (params.roomId) q = q.eq("room_id", params.roomId);
+
+  const { data, error } = await q;
+  if (error) throw error;
+
+  let rows = await hydrateWorkspaceSessions((data ?? []) as WorkspaceSessionFlatRow[]);
+
+  if (params.programId) {
+    rows = rows.filter((s) => s.course_offerings?.program_id === params.programId);
+  }
+  if (params.levelId) {
+    rows = rows.filter((s) => s.course_offerings?.level_id === params.levelId);
+  }
+  return rows;
+}
 
 export interface FetchVersionSessionsParams {
   collegeId: string;
@@ -58,15 +104,39 @@ export interface FetchVersionSessionsParams {
 /**
  * Fetch sessions for exactly one schedule version.
  * Never aggregates across multiple versions — prevents double-counting.
+ * When `select` is omitted or is the timetable flat select, rows are hydrated.
  */
 export async function fetchSessionsForVersion<T = Record<string, unknown>>(
   params: FetchVersionSessionsParams,
 ): Promise<T[]> {
   assertSingleVersion(params.versionId);
 
+  const select = params.select ?? "id, day_of_week, start_time, end_time, study_system";
+  if (selectContainsNestedCoursesEmbed(select)) {
+    throw new Error("PGRST200_GUARD: nested course_offerings(...courses(...)) is forbidden");
+  }
+
+  const isTimetableFlat =
+    select === TIMETABLE_SESSION_SELECT ||
+    select === TIMETABLE_SESSION_FLAT_SELECT ||
+    select === LEGACY_TIMETABLE_SESSION_SELECT;
+
+  if (isTimetableFlat) {
+    return (await fetchFlatThenHydrate({
+      collegeId: params.collegeId,
+      versionId: params.versionId!,
+      studySystem: params.studySystem,
+      instructorId: params.instructorId,
+      sectionId: params.sectionId,
+      cohortId: params.cohortId,
+      deliveryGroupId: params.deliveryGroupId,
+      roomId: params.roomId,
+    })) as T[];
+  }
+
   let q = supabase
     .from("schedule_sessions")
-    .select(params.select ?? "id, day_of_week, start_time, end_time, study_system")
+    .select(select)
     .eq("college_id", params.collegeId)
     .eq("schedule_version_id", params.versionId)
     .order("day_of_week")
@@ -144,34 +214,22 @@ export interface ProgramLevelFilterParams {
 
 /**
  * Program/Level timetable — single version; optional dept/program/level/cohort/
- * delivery-group filters. Department filter applied client-side (PostgREST
- * nested eq limitation). A1.5: cohort/DG filters replace the Legacy section filter.
+ * delivery-group filters. Department filter applied client-side after hydrate.
+ * A1.5: cohort/DG filters replace the Legacy section filter.
  */
 export async function fetchProgramLevelTimetableSessions(
   params: TimetableSessionsBaseParams & ProgramLevelFilterParams,
 ) {
-  assertSingleVersion(params.versionId);
+  let rows = await fetchFlatThenHydrate({
+    collegeId: params.collegeId,
+    versionId: params.versionId!,
+    studySystem: params.studySystem,
+    cohortId: params.cohortId ?? undefined,
+    deliveryGroupId: params.deliveryGroupId ?? undefined,
+    programId: params.programId ?? undefined,
+    levelId: params.levelId ?? undefined,
+  });
 
-  let q = supabase
-    .from("schedule_sessions")
-    .select(TIMETABLE_SESSION_SELECT)
-    .eq("college_id", params.collegeId)
-    .eq("schedule_version_id", params.versionId)
-    .order("day_of_week")
-    .order("start_time");
-
-  q = applyStudySystemFilter(q, params.studySystem);
-
-  if (params.programId) q = q.eq("course_offerings.program_id", params.programId);
-  if (params.levelId) q = q.eq("course_offerings.level_id", params.levelId);
-  if (params.cohortId) q = q.eq("cohort_id", params.cohortId);
-  if (params.deliveryGroupId) q = q.eq("delivery_group_id", params.deliveryGroupId);
-
-  const { data, error } = await q;
-  if (error) throw error;
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let rows = (data ?? []) as any[];
   if (params.departmentId) {
     rows = rows.filter(
       (s) => s.course_offerings?.courses?.department_id === params.departmentId,
@@ -237,13 +295,13 @@ export async function fetchRoomUtilizationSessions(
 /**
  * Official published timetable — single published version only.
  * A1.5: New Flow projection is cohort/DG based; no Legacy sections join.
+ * Flat select + hydrate (no nested courses embed).
  */
 export const PUBLISHED_TIMETABLE_SELECT = `
-  id, day_of_week, start_time, end_time, session_type, study_system,
-  cohort_id, delivery_group_id,
-  course_offerings!inner(program_id, level_id, courses!inner(name, code, department_id, departments(name)), academic_programs(name), academic_levels(name)),
-  instructors(id, full_name), rooms(id, code, name),
-  schedule_versions!inner(name)
+  id, schedule_version_id, day_of_week, start_time, end_time, session_type, study_system,
+  section_id, section_subgroup_id, instructor_id, room_id, updated_at, is_locked,
+  replaced_by_split, expected_students, course_offering_id,
+  cohort_id, delivery_group_id, source_type, teaching_assignment_id, section_group_id
 ` as const;
 
 export async function fetchPublishedTimetableSessions(params: {
@@ -258,29 +316,18 @@ export async function fetchPublishedTimetableSessions(params: {
   roomId?: string | null;
   departmentId?: string | null;
 }) {
-  assertSingleVersion(params.versionId);
+  let rows = await fetchFlatThenHydrate({
+    collegeId: params.collegeId,
+    versionId: params.versionId!,
+    studySystem: params.studySystem,
+    cohortId: params.cohortId ?? undefined,
+    deliveryGroupId: params.deliveryGroupId ?? undefined,
+    instructorId: params.instructorId ?? undefined,
+    roomId: params.roomId ?? undefined,
+    programId: params.programId ?? undefined,
+    levelId: params.levelId ?? undefined,
+  });
 
-  let q = supabase
-    .from("schedule_sessions")
-    .select(PUBLISHED_TIMETABLE_SELECT)
-    .eq("college_id", params.collegeId)
-    .eq("schedule_version_id", params.versionId)
-    .order("day_of_week")
-    .order("start_time");
-
-  q = applyStudySystemFilter(q, params.studySystem);
-  if (params.programId) q = q.eq("course_offerings.program_id", params.programId);
-  if (params.levelId) q = q.eq("course_offerings.level_id", params.levelId);
-  if (params.cohortId) q = q.eq("cohort_id", params.cohortId);
-  if (params.deliveryGroupId) q = q.eq("delivery_group_id", params.deliveryGroupId);
-  if (params.instructorId) q = q.eq("instructor_id", params.instructorId);
-  if (params.roomId) q = q.eq("room_id", params.roomId);
-
-  const { data, error } = await q;
-  if (error) throw error;
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let rows = (data ?? []) as any[];
   if (params.departmentId) {
     rows = rows.filter(
       (s) => s.course_offerings?.courses?.department_id === params.departmentId,
