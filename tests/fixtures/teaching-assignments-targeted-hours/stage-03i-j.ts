@@ -12,9 +12,7 @@ export const STAGE_03I_J_EXPECTED = {
 function operation(index: number): ParsedRow {
   const coTeacher = index < 4;
   const regular = index < 2;
-  const deliveryGroup = coTeacher
-    ? `fr231-${regular ? "regular" : "parallel"}`
-    : `dg-${index}`;
+  const deliveryGroup = coTeacher ? `fr231-${regular ? "regular" : "parallel"}` : `dg-${index}`;
   const component = coTeacher
     ? `fr231-component-${regular ? "regular" : "parallel"}`
     : `component-${index}`;
@@ -47,9 +45,8 @@ function operation(index: number): ParsedRow {
   };
 }
 
-const canonicalBase = Array.from(
-  { length: STAGE_03I_J_EXPECTED.canonicalOperations },
-  (_, index) => operation(index),
+const canonicalBase = Array.from({ length: STAGE_03I_J_EXPECTED.canonicalOperations }, (_, index) =>
+  operation(index),
 );
 
 // Six byte-identical natural-key duplicates preserve 93 READY source rows while
@@ -63,8 +60,8 @@ export const stage03iJReadySourceRows: ParsedRow[] = [
   })),
 ];
 
-export const stage03iJCorrectedReadySourceRows: ParsedRow[] =
-  stage03iJReadySourceRows.map((row) => {
+export const stage03iJCorrectedReadySourceRows: ParsedRow[] = stage03iJReadySourceRows.map(
+  (row) => {
     const deliveryGroup = String(row.values._delivery_group_id ?? "");
     if (!deliveryGroup.startsWith("fr231-")) return row;
     return {
@@ -75,7 +72,8 @@ export const stage03iJCorrectedReadySourceRows: ParsedRow[] =
         _assigned_component_hours: 1,
       },
     };
-  });
+  },
+);
 
 export const stage03iJStrictDowngrades = Array.from(
   { length: STAGE_03I_J_EXPECTED.strictDowngrades },

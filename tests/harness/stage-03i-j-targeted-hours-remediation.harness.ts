@@ -36,9 +36,8 @@ assert(
   "93 READY rows canonicalize to 87 operations",
 );
 assert(
-  before.preflight.errors.filter(
-    (error) => error.errorCode === "CO_TEACHING_HOURS_OVER_ALLOCATED",
-  ).length === STAGE_03I_J_EXPECTED.invalidHoursBeforeFix,
+  before.preflight.errors.filter((error) => error.errorCode === "CO_TEACHING_HOURS_OVER_ALLOCATED")
+    .length === STAGE_03I_J_EXPECTED.invalidHoursBeforeFix,
   "the uncorrected fixture identifies all four invalid co-teacher rows",
 );
 assert(
