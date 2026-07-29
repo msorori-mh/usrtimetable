@@ -21,6 +21,10 @@ import type { ParsedSourceRow } from "./teaching-assignments-source-parser";
 import type { SourceStudySystemScope } from "./teaching-assignments-source-schema";
 import { expandStudySystems } from "./teaching-assignments-source-schema";
 import { canonicalizeTeachingAssignmentsV2 } from "./teaching-assignments-v2-canonical";
+import {
+  preflightCanonicalTeachingHours,
+  type ExistingTeachingAssignmentV2Hours,
+} from "./teaching-assignments-v2-hours-preflight";
 
 export type TimetabledComponentType = (typeof TA_V2_COMPONENT_TYPES)[number];
 
@@ -29,6 +33,8 @@ export interface ResolverInstructor {
   employee_number: string;
   full_name_ar: string | null;
   full_name: string | null;
+  academic_rank?: string | null;
+  max_weekly_hours?: number | null;
 }
 
 export interface ResolverProgram {
@@ -107,6 +113,7 @@ export interface SourceResolverContext {
   components: ResolverComponent[];
   cohorts: ResolverCohort[];
   deliveryGroups: ResolverDeliveryGroup[];
+  existingV2Assignments?: ExistingTeachingAssignmentV2Hours[];
 }
 
 export type SourceRowOutcome = "MATCHED" | "BLOCKED" | "ERROR" | "IGNORED" | "AMBIGUOUS";
@@ -144,6 +151,7 @@ export interface SourceResolutionPreview {
     expandedAssignments: number;
   };
   hasBlockers: boolean;
+  existingV2Assignments?: ExistingTeachingAssignmentV2Hours[];
 }
 
 function termTypeToSemester(termType: string | null | undefined): number | null {
@@ -338,6 +346,15 @@ function matchComponentsByHours(
     return { kind: "none", message: "لا توجد مكوّنات قابلة للجدولة" };
   }
   if (assignable.length === 1) {
+    if (
+      totalHours !== null &&
+      Math.abs(Number(assignable[0].weekly_contact_hours) - Number(totalHours)) >= 0.001
+    ) {
+      return {
+        kind: "ambiguous",
+        message: `تعارض ساعات المصدر (${Number(totalHours)}) مع ساعات المكوّن (${Number(assignable[0].weekly_contact_hours)})`,
+      };
+    }
     return { kind: "single", componentIds: [assignable[0].id] };
   }
   if (totalHours === null) {
@@ -403,8 +420,12 @@ function toImportRow(
     _cohort_id: cohort.id,
     _course_id: course.id,
     _component_id: component.id,
+    _component_weekly_hours: component.weekly_contact_hours,
     _delivery_group_id: dg.id,
     _instructor_id: instructor.id,
+    _instructor_academic_rank: instructor.academic_rank ?? null,
+    _instructor_max_weekly_hours: instructor.max_weekly_hours ?? null,
+    _term_id: cohort.term_id,
     _offering_id: null,
     _is_active: true,
   };
@@ -788,6 +809,7 @@ export function resolveSourceTeachingAssignments(input: {
       expandedAssignments,
     },
     hasBlockers,
+    existingV2Assignments: input.ctx.existingV2Assignments,
   };
 }
 
@@ -796,6 +818,7 @@ export function sourcePreviewToValidatedRows(preview: SourceResolutionPreview): 
   errors: RowError[];
   sourceReadyRows: number;
   canonicalOperations: number;
+  teachingHoursContractBlockers: number;
 } {
   const readyAssignments = preview.assignments.filter(
     (a) => a.outcome === "MATCHED" && a.importRow,
@@ -813,12 +836,17 @@ export function sourcePreviewToValidatedRows(preview: SourceResolutionPreview): 
     };
   });
   const canonical = canonicalizeTeachingAssignmentsV2(readyRows);
-  const errors = [...preview.errors, ...canonical.conflicts];
+  const hoursPreflight = preflightCanonicalTeachingHours({
+    canonicalOperations: canonical.canonicalOperations,
+    existingV2Assignments: preview.existingV2Assignments,
+  });
+  const errors = [...preview.errors, ...canonical.conflicts, ...hoursPreflight.errors];
   const validRows = canonical.canonicalOperations;
   return {
     validRows,
     errors,
     sourceReadyRows: canonical.sourceReadyRows,
     canonicalOperations: canonical.canonicalOperations.length,
+    teachingHoursContractBlockers: hoursPreflight.errors.length,
   };
 }

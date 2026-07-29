@@ -60,6 +60,7 @@ export const harnesses = [
   "scheduling-initial-delivery-runtime-closure.harness.ts",
   "teaching-assignments-source-workbook-import.harness.ts",
   "teaching-assignments-v2-duplicate-contract.harness.ts",
+  "teaching-assignments-v2-hours-preflight.harness.ts",
   "teaching-assignments-v2-duplicate-sql-contract.harness.ts",
   "stage-03a-fail-closed-contract.harness.ts",
   "platform-product-closure.harness.ts",

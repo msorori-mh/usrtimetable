@@ -88,6 +88,7 @@ function ImportPage() {
     sourceSheets?: string[];
     sourceReadyRows?: number;
     canonicalOperations?: number;
+    teachingHoursContractBlockers?: number;
   } | null>(null);
 
   const { data: collegeTerms = [] } = useQuery({
@@ -166,6 +167,7 @@ function ImportPage() {
             sourceSheets: sheetNames,
             sourceReadyRows: sourcePreview.sourceReadyRows,
             canonicalOperations: sourcePreview.canonicalOperations,
+            teachingHoursContractBlockers: sourcePreview.teachingHoursContractBlockers,
           };
         }
       }
@@ -573,7 +575,8 @@ function ImportPage() {
               disabled={
                 preview.valid.length === 0 ||
                 commitMut.isPending ||
-                preview.missingHeaders.length > 0
+                preview.missingHeaders.length > 0 ||
+                (preview.teachingHoursContractBlockers ?? 0) > 0
               }
             >
               {commitMut.isPending ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : null}
