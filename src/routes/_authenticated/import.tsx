@@ -86,6 +86,8 @@ function ImportPage() {
     missingHeaders: string[];
     sourceResolution?: SourceResolutionPreview;
     sourceSheets?: string[];
+    sourceReadyRows?: number;
+    canonicalOperations?: number;
   } | null>(null);
 
   const { data: collegeTerms = [] } = useQuery({
@@ -162,6 +164,8 @@ function ImportPage() {
             missingHeaders: [],
             sourceResolution: sourcePreview.resolution,
             sourceSheets: sheetNames,
+            sourceReadyRows: sourcePreview.sourceReadyRows,
+            canonicalOperations: sourcePreview.canonicalOperations,
           };
         }
       }
@@ -467,6 +471,12 @@ function ImportPage() {
                 value={preview.sourceResolution.totals.expandedAssignments}
                 tone="ok"
               />
+              <Stat label="صفوف المصدر READY" value={preview.sourceReadyRows ?? 0} tone="ok" />
+              <Stat
+                label="عمليات الاستيراد canonical"
+                value={preview.canonicalOperations ?? 0}
+                tone="ok"
+              />
             </div>
           )}
 
@@ -568,7 +578,7 @@ function ImportPage() {
               }
             >
               {commitMut.isPending ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : null}
-              تأكيد الاستيراد ({preview.valid.length} صف)
+              تأكيد الاستيراد ({preview.valid.length} عملية canonical)
             </Button>
           </div>
         </Card>
