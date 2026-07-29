@@ -357,6 +357,16 @@ function UsersPage() {
                           </Badge>
                         ))}
                       </div>
+                      {u.roles.includes("college_admin") && u.collegeIds.length === 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setExpandedUser(u.id)}
+                          className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[11px] font-medium text-amber-700 transition-colors hover:bg-amber-500/20"
+                        >
+                          <AlertTriangle className="h-3.5 w-3.5" />
+                          دور غير مفعّل — لم تُسنَد كلّية. اضغط للإسناد
+                        </button>
+                      )}
                       <p className="mt-2 text-[11px] text-muted-foreground">
                         آخر دخول:{" "}
                         {u.last_sign_in_at
