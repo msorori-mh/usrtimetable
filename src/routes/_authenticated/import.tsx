@@ -524,6 +524,47 @@ function ImportPage() {
             </div>
           )}
 
+          {preview.sourceResolution && (
+            <div className="space-y-1">
+              <h3 className="font-semibold">معاينة عقد ساعات الإسناد</h3>
+              <div className="max-h-96 overflow-auto rounded border border-border">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted text-xs">
+                    <tr>
+                      <th className="p-2 text-right">الورقة</th>
+                      <th className="p-2 text-right">الصف</th>
+                      <th className="p-2 text-right">النظام</th>
+                      <th className="p-2 text-right">المكوّن</th>
+                      <th className="p-2 text-right">component_total_hours</th>
+                      <th className="p-2 text-right">assigned_component_hours</th>
+                      <th className="p-2 text-right">co_teacher_count</th>
+                      <th className="p-2 text-right">co_teaching_group_total</th>
+                      <th className="p-2 text-right">validation status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {preview.sourceResolution.assignments.map((assignment, index) => (
+                      <tr
+                        key={`${assignment.sourceSheet}-${assignment.sourceRowNumber}-${assignment.studySystem}-${assignment.deliveryGroupCode ?? ""}-${index}`}
+                        className="border-t border-border"
+                      >
+                        <td className="p-2">{assignment.sourceSheet}</td>
+                        <td className="p-2">{assignment.sourceRowNumber}</td>
+                        <td className="p-2">{assignment.studySystem || "—"}</td>
+                        <td className="p-2">{assignment.componentType ?? "—"}</td>
+                        <td className="p-2">{assignment.componentTotalHours ?? "—"}</td>
+                        <td className="p-2">{assignment.assignedComponentHours ?? "—"}</td>
+                        <td className="p-2">{assignment.coTeacherCount ?? "—"}</td>
+                        <td className="p-2">{assignment.coTeachingGroupTotal ?? "—"}</td>
+                        <td className="p-2">{assignment.validationStatus ?? assignment.outcome}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {preview.valid.length > 0 && (
             <div className="space-y-1">
               <h3 className="flex items-center gap-2 font-semibold text-emerald-600">

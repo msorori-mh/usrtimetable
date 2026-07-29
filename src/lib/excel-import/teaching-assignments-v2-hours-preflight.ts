@@ -2,13 +2,15 @@ import type { ParsedRow, RowError } from "./types";
 
 type TeachingHoursOperation = {
   row: ParsedRow;
+  naturalKey: string;
   instructorId: string;
   termId: string;
   studySystem: string;
   deliveryGroupId: string;
   componentId: string;
   componentType: string;
-  assignedHours: number;
+  assignedHours: number | null;
+  componentTotalHours: number;
   componentWeeklyHours: number;
   instructorMaxWeeklyHours: number | null;
 };
@@ -26,10 +28,19 @@ export type ExistingTeachingAssignmentV2Hours = {
   isActive: boolean;
 };
 
+export type CoTeachingGroupSummary = {
+  coTeacherCount: number;
+  componentTotalHours: number;
+  assignedTotalHours: number | null;
+  validationStatus: "READY" | string;
+};
+
 export type TeachingHoursPreflightResult = {
   errors: RowError[];
   deliveryGroupTotals: Map<string, number>;
   instructorTotals: Map<string, number>;
+  blockedNaturalKeys: Set<string>;
+  groupSummaries: Map<string, CoTeachingGroupSummary>;
 };
 
 function requiredString(row: ParsedRow, key: string): string | null {
@@ -43,6 +54,12 @@ function finiteNumber(value: unknown): number | null {
   return Number.isFinite(number) ? number : null;
 }
 
+export function teachingAssignmentNaturalKey(row: ParsedRow): string | null {
+  const deliveryGroupId = requiredString(row, "_delivery_group_id");
+  const instructorId = requiredString(row, "_instructor_id");
+  return deliveryGroupId && instructorId ? `${deliveryGroupId}|${instructorId}` : null;
+}
+
 function operationFromCanonicalRow(row: ParsedRow): TeachingHoursOperation | null {
   const instructorId = requiredString(row, "_instructor_id");
   const termId = requiredString(row, "_term_id");
@@ -50,10 +67,16 @@ function operationFromCanonicalRow(row: ParsedRow): TeachingHoursOperation | nul
   const deliveryGroupId = requiredString(row, "_delivery_group_id");
   const componentId = requiredString(row, "_component_id");
   const componentType = requiredString(row, "component_type");
+  const naturalKey = teachingAssignmentNaturalKey(row);
   const assignedHours = finiteNumber(
     row.values._assigned_component_hours ?? row.values.assigned_component_hours,
   );
   const componentWeeklyHours = finiteNumber(row.values._component_weekly_hours);
+  const componentTotalHours = finiteNumber(
+    row.values._component_total_hours ??
+      row.values.component_total_hours ??
+      row.values._component_weekly_hours,
+  );
   if (
     !instructorId ||
     !termId ||
@@ -61,13 +84,15 @@ function operationFromCanonicalRow(row: ParsedRow): TeachingHoursOperation | nul
     !deliveryGroupId ||
     !componentId ||
     !componentType ||
-    assignedHours === null ||
+    !naturalKey ||
+    componentTotalHours === null ||
     componentWeeklyHours === null
   ) {
     return null;
   }
   return {
     row,
+    naturalKey,
     instructorId,
     termId,
     studySystem,
@@ -75,21 +100,29 @@ function operationFromCanonicalRow(row: ParsedRow): TeachingHoursOperation | nul
     componentId,
     componentType,
     assignedHours,
+    componentTotalHours,
     componentWeeklyHours,
     instructorMaxWeeklyHours: finiteNumber(row.values._instructor_max_weekly_hours),
   };
 }
 
-function deliveryGroupKey(operation: Omit<TeachingHoursOperation, "row">): string {
+function deliveryGroupKey(
+  operation: Pick<
+    TeachingHoursOperation,
+    "termId" | "studySystem" | "deliveryGroupId" | "componentId"
+  >,
+): string {
   return [
-    operation.termId,
-    operation.studySystem,
     operation.deliveryGroupId,
     operation.componentId,
+    operation.termId,
+    operation.studySystem,
   ].join("|");
 }
 
-function instructorKey(operation: Omit<TeachingHoursOperation, "row">): string {
+function instructorKey(
+  operation: Pick<TeachingHoursOperation, "instructorId" | "termId" | "studySystem">,
+): string {
   return [operation.instructorId, operation.termId, operation.studySystem].join("|");
 }
 
@@ -109,68 +142,131 @@ export function preflightCanonicalTeachingHours(input: {
     .map(operationFromCanonicalRow)
     .filter((operation): operation is TeachingHoursOperation => operation !== null);
   const errors: RowError[] = [];
+  const blockedNaturalKeys = new Set<string>();
   const deliveryGroupTotals = new Map<string, number>();
-  const deliveryGroupLimits = new Map<string, number>();
-  const deliveryGroupRows = new Map<string, ParsedRow[]>();
   const instructorTotals = new Map<string, number>();
   const instructorLimits = new Map<string, number>();
+  const groupOperations = new Map<string, TeachingHoursOperation[]>();
+  const groupSummaries = new Map<string, CoTeachingGroupSummary>();
 
-  const add = (
-    operation: Omit<TeachingHoursOperation, "row">,
-    rowNumber: number,
-    naturalKey: string,
+  const addInstructorHours = (
+    operation: Pick<
+      TeachingHoursOperation,
+      | "assignedHours"
+      | "componentType"
+      | "instructorId"
+      | "termId"
+      | "studySystem"
+      | "instructorMaxWeeklyHours"
+    >,
   ) => {
-    const dgKey = deliveryGroupKey(operation);
-    deliveryGroupTotals.set(dgKey, (deliveryGroupTotals.get(dgKey) ?? 0) + operation.assignedHours);
-    deliveryGroupLimits.set(dgKey, operation.componentWeeklyHours);
-
-    if (countsTowardWeeklyLimit(operation.componentType)) {
-      const insKey = instructorKey(operation);
-      instructorTotals.set(insKey, (instructorTotals.get(insKey) ?? 0) + operation.assignedHours);
-      if (operation.instructorMaxWeeklyHours !== null) {
-        instructorLimits.set(insKey, operation.instructorMaxWeeklyHours);
-      }
+    if (
+      operation.assignedHours === null ||
+      operation.assignedHours <= 0 ||
+      !countsTowardWeeklyLimit(operation.componentType)
+    ) {
+      return;
     }
-
-    if (operation.assignedHours <= 0) {
-      errors.push({
-        rowNumber,
-        columnName: "assigned_component_hours",
-        errorCode: "ASSIGNED_HOURS_MUST_BE_POSITIVE",
-        message: `ساعات الإسناد يجب أن تكون موجبة للمفتاح ${naturalKey}`,
-      });
+    const key = instructorKey(operation);
+    instructorTotals.set(key, (instructorTotals.get(key) ?? 0) + operation.assignedHours);
+    if (operation.instructorMaxWeeklyHours !== null) {
+      instructorLimits.set(key, operation.instructorMaxWeeklyHours);
     }
   };
 
   for (const existing of input.existingV2Assignments ?? []) {
     if (!existing.isActive) continue;
-    add(existing, 0, `${existing.deliveryGroupId}|${existing.instructorId}`);
-  }
-  for (const operation of operations) {
-    const dgKey = deliveryGroupKey(operation);
-    const rows = deliveryGroupRows.get(dgKey) ?? [];
-    rows.push(operation.row);
-    deliveryGroupRows.set(dgKey, rows);
-    add(
-      operation,
-      operation.row.rowNumber,
-      `${operation.deliveryGroupId}|${operation.instructorId}`,
-    );
+    addInstructorHours(existing);
   }
 
-  for (const [key, total] of deliveryGroupTotals) {
-    const limit = deliveryGroupLimits.get(key) ?? 0;
-    if (total > limit + 0.001) {
-      const affectedRows = deliveryGroupRows.get(key) ?? [];
-      const rowNumbers = affectedRows.length > 0 ? affectedRows.map((row) => row.rowNumber) : [0];
-      for (const rowNumber of rowNumbers) {
+  for (const operation of operations) {
+    const key = deliveryGroupKey(operation);
+    const members = groupOperations.get(key) ?? [];
+    members.push(operation);
+    groupOperations.set(key, members);
+    addInstructorHours(operation);
+  }
+
+  for (const [key, members] of groupOperations) {
+    const componentTotals = new Set(members.map((member) => member.componentTotalHours));
+    const componentTotalHours = members[0]?.componentTotalHours ?? 0;
+    const componentWeeklyHours = members[0]?.componentWeeklyHours ?? 0;
+    const coTeacherCount = new Set(members.map((member) => member.instructorId)).size;
+    const assignedValues = members.map((member) => member.assignedHours);
+    const assignedTotalHours = assignedValues.every(
+      (hours): hours is number => hours !== null && Number.isFinite(hours),
+    )
+      ? assignedValues.reduce((total, hours) => total + hours, 0)
+      : null;
+    if (assignedTotalHours !== null) deliveryGroupTotals.set(key, assignedTotalHours);
+
+    let validationStatus = "READY";
+    const blockGroup = (errorCode: string, message: string) => {
+      validationStatus = errorCode;
+      for (const member of members) {
+        blockedNaturalKeys.add(member.naturalKey);
         errors.push({
-          rowNumber,
+          rowNumber: member.row.rowNumber,
           columnName: "assigned_component_hours",
-          errorCode: "CO_TEACHING_HOURS_OVER_ALLOCATED",
-          message: `مجموع ساعات مجموعة التقديم ${total} يتجاوز ساعات المكوّن ${limit} (${key})`,
+          errorCode,
+          message,
         });
       }
+    };
+
+    if (
+      componentTotals.size !== 1 ||
+      Math.abs(componentTotalHours - componentWeeklyHours) >= 0.001
+    ) {
+      blockGroup(
+        "COMPONENT_TOTAL_HOURS_MISMATCH",
+        `إجمالي ساعات المكوّن ${componentTotalHours} لا يطابق ساعات الخطة ${componentWeeklyHours} (${key})`,
+      );
+    } else if (assignedValues.some((hours) => hours === null)) {
+      blockGroup(
+        "CO_TEACHER_ASSIGNED_HOURS_REQUIRED",
+        `ساعات كل محاضر مطلوبة صراحة عند التدريس المشترك (${key})`,
+      );
+    } else if (assignedValues.some((hours) => Number(hours) <= 0)) {
+      validationStatus = "ASSIGNED_HOURS_MUST_BE_POSITIVE";
+      for (const member of members) {
+        if ((member.assignedHours ?? 0) > 0) continue;
+        blockedNaturalKeys.add(member.naturalKey);
+        errors.push({
+          rowNumber: member.row.rowNumber,
+          columnName: "assigned_component_hours",
+          errorCode: "ASSIGNED_HOURS_MUST_BE_POSITIVE",
+          message: `ساعات الإسناد يجب أن تكون موجبة للمفتاح ${member.naturalKey}`,
+        });
+      }
+      if ((assignedTotalHours ?? 0) < componentTotalHours - 0.001) {
+        blockGroup(
+          "CO_TEACHING_HOURS_UNDER_ALLOCATED",
+          `مجموع ساعات التدريس المشترك ${assignedTotalHours ?? 0} أقل من إجمالي المكوّن ${componentTotalHours} (${key})`,
+        );
+      }
+    } else if ((assignedTotalHours ?? 0) > componentTotalHours + 0.001) {
+      blockGroup(
+        "CO_TEACHING_HOURS_OVER_ALLOCATED",
+        `مجموع ساعات التدريس المشترك ${assignedTotalHours} يتجاوز إجمالي المكوّن ${componentTotalHours} (${key})`,
+      );
+    } else if ((assignedTotalHours ?? 0) < componentTotalHours - 0.001) {
+      blockGroup(
+        "CO_TEACHING_HOURS_UNDER_ALLOCATED",
+        `مجموع ساعات التدريس المشترك ${assignedTotalHours} أقل من إجمالي المكوّن ${componentTotalHours} (${key})`,
+      );
+    }
+
+    groupSummaries.set(key, {
+      coTeacherCount,
+      componentTotalHours,
+      assignedTotalHours,
+      validationStatus,
+    });
+    for (const member of members) {
+      member.row.values.co_teacher_count = coTeacherCount;
+      member.row.values.co_teaching_group_total = assignedTotalHours;
+      member.row.values._validation_status = validationStatus;
     }
   }
 
@@ -183,8 +279,17 @@ export function preflightCanonicalTeachingHours(input: {
         errorCode: "INSTRUCTOR_TEACHING_HOURS_OVER_LIMIT",
         message: `ساعات المحاضر ${total} تتجاوز الحد الأسبوعي ${limit} (${key})`,
       });
+      for (const operation of operations) {
+        if (instructorKey(operation) === key) blockedNaturalKeys.add(operation.naturalKey);
+      }
     }
   }
 
-  return { errors, deliveryGroupTotals, instructorTotals };
+  return {
+    errors,
+    deliveryGroupTotals,
+    instructorTotals,
+    blockedNaturalKeys,
+    groupSummaries,
+  };
 }

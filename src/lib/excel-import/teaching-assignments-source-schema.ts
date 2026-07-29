@@ -27,6 +27,15 @@ export const SOURCE_COLUMN_KEYS = {
   notes: "ملاحظات",
 } as const;
 
+/** Optional source-workbook headers for the hours assigned to one instructor. */
+export const ASSIGNED_COMPONENT_HOURS_COLUMN_ALIASES = [
+  "assigned_component_hours",
+  "assigned hours",
+  "ساعات المحاضر",
+  "الساعات المسندة",
+  "ساعات الإسناد",
+] as const;
+
 /** Sheets skipped during source workbook parsing. */
 export const SOURCE_WORKBOOK_SKIP_SHEETS = new Set([
   "تعليمات",
@@ -61,6 +70,17 @@ const OFFICIAL_REQUIRED = TEMPLATES.teaching_assignments_v2.columns
 
 function headerSet(headers: ReadonlyArray<string>): Set<string> {
   return new Set(headers.map((h) => h.trim()).filter(Boolean));
+}
+
+export function normalizeSourceHeader(header: string): string {
+  return header.trim().toLocaleLowerCase("en");
+}
+
+export function isAssignedComponentHoursHeader(header: string): boolean {
+  const normalized = normalizeSourceHeader(header);
+  return ASSIGNED_COMPONENT_HOURS_COLUMN_ALIASES.some(
+    (alias) => normalizeSourceHeader(alias) === normalized,
+  );
 }
 
 /** Detect workbook mode from sheet headers. */

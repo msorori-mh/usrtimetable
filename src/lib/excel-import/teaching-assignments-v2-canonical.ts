@@ -10,6 +10,7 @@ export interface CanonicalTeachingAssignmentsV2Result {
   sourceReadyRows: number;
   canonicalOperations: ParsedRow[];
   conflicts: RowError[];
+  conflictingNaturalKeys: Set<string>;
 }
 
 const OPERATIONAL_FIELDS = [
@@ -17,6 +18,8 @@ const OPERATIONAL_FIELDS = [
   "_instructor_id",
   "_assigned_component_hours",
   "assigned_component_hours",
+  "_component_total_hours",
+  "component_total_hours",
   "_is_active",
   "is_active",
   "_offering_id",
@@ -124,5 +127,6 @@ export function canonicalizeTeachingAssignmentsV2(
       .filter(([key]) => !conflictingNaturalKeys.has(key))
       .map(([, value]) => value.canonical),
     conflicts,
+    conflictingNaturalKeys,
   };
 }

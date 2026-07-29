@@ -23,6 +23,7 @@ import { expandStudySystems } from "./teaching-assignments-source-schema";
 import { canonicalizeTeachingAssignmentsV2 } from "./teaching-assignments-v2-canonical";
 import {
   preflightCanonicalTeachingHours,
+  teachingAssignmentNaturalKey,
   type ExistingTeachingAssignmentV2Hours,
 } from "./teaching-assignments-v2-hours-preflight";
 
@@ -129,7 +130,11 @@ export interface ResolvedSourceAssignment {
   componentType?: string;
   deliveryGroupCode?: string;
   employeeNumber?: string;
-  assignedComponentHours?: number;
+  componentTotalHours?: number;
+  assignedComponentHours?: number | null;
+  coTeacherCount?: number;
+  coTeachingGroupTotal?: number | null;
+  validationStatus?: string;
   notes?: string | null;
   blockedDependency?: string;
   errorCode?: string;
@@ -399,13 +404,14 @@ function toImportRow(
   component: ResolverComponent,
   dg: ResolverDeliveryGroup,
   instructor: ResolverInstructor,
-  hours: number | null,
+  componentTotalHours: number | null,
+  assignedComponentHours: number | null,
   expandedAll: boolean,
   notes: string | null,
 ): ParsedRow {
-  const perComponentHours =
-    !expandedAll && hours !== null && component.component_type !== "project"
-      ? hours
+  const matchedComponentTotalHours =
+    !expandedAll && componentTotalHours !== null && component.component_type !== "project"
+      ? componentTotalHours
       : component.weekly_contact_hours;
   const values: Record<string, unknown> = {
     cohort_code: cohort.code,
@@ -413,14 +419,17 @@ function toImportRow(
     component_type: component.component_type,
     delivery_group_code: dg.group_code,
     employee_number: instructor.employee_number,
-    assigned_component_hours: perComponentHours,
+    component_total_hours: matchedComponentTotalHours,
+    assigned_component_hours: assignedComponentHours,
     study_system: cohort.study_system,
     is_active: true,
     notes: notes ?? null,
     _cohort_id: cohort.id,
     _course_id: course.id,
     _component_id: component.id,
+    _component_total_hours: matchedComponentTotalHours,
     _component_weekly_hours: component.weekly_contact_hours,
+    _assigned_component_hours: assignedComponentHours,
     _delivery_group_id: dg.id,
     _instructor_id: instructor.id,
     _instructor_academic_rank: instructor.academic_rank ?? null,
@@ -430,6 +439,88 @@ function toImportRow(
     _is_active: true,
   };
   return { rowNumber, raw: {}, values };
+}
+
+function sourceAssignmentNaturalKey(assignment: ResolvedSourceAssignment): string | null {
+  const row = assignment.importRow;
+  if (!row) return null;
+  const deliveryGroupId = String(row.values._delivery_group_id ?? "").trim();
+  const instructorId = String(row.values._instructor_id ?? "").trim();
+  return deliveryGroupId && instructorId ? `${deliveryGroupId}|${instructorId}` : null;
+}
+
+function sourceAssignmentGroupKey(assignment: ResolvedSourceAssignment): string | null {
+  const row = assignment.importRow;
+  if (!row) return null;
+  const parts = [
+    row.values._delivery_group_id,
+    row.values._component_id,
+    row.values._term_id,
+    row.values.study_system,
+  ].map((value) => String(value ?? "").trim());
+  return parts.every(Boolean) ? parts.join("|") : null;
+}
+
+/**
+ * Applies only the documented single-teacher fallback and decorates every expanded row.
+ * Co-teacher omissions remain null so the canonical group preflight can fail closed.
+ */
+function applyAssignedHoursFallbackAndPreview(assignments: ResolvedSourceAssignment[]): void {
+  const groups = new Map<string, ResolvedSourceAssignment[]>();
+  for (const assignment of assignments) {
+    if (assignment.outcome !== "MATCHED" || !assignment.importRow) continue;
+    const key = sourceAssignmentGroupKey(assignment);
+    if (!key) continue;
+    const rows = groups.get(key) ?? [];
+    rows.push(assignment);
+    groups.set(key, rows);
+  }
+
+  for (const group of groups.values()) {
+    const uniqueByNaturalKey = new Map<string, ResolvedSourceAssignment>();
+    for (const assignment of group) {
+      const key = sourceAssignmentNaturalKey(assignment);
+      if (key && !uniqueByNaturalKey.has(key)) uniqueByNaturalKey.set(key, assignment);
+    }
+    const uniqueAssignments = [...uniqueByNaturalKey.values()];
+    const coTeacherCount = new Set(
+      uniqueAssignments.map((assignment) =>
+        String(assignment.importRow?.values._instructor_id ?? ""),
+      ),
+    ).size;
+
+    if (coTeacherCount === 1) {
+      for (const assignment of group) {
+        if (assignment.assignedComponentHours !== null) continue;
+        const fallback = assignment.componentTotalHours ?? null;
+        assignment.assignedComponentHours = fallback;
+        if (assignment.importRow) {
+          assignment.importRow.values.assigned_component_hours = fallback;
+          assignment.importRow.values._assigned_component_hours = fallback;
+        }
+      }
+    }
+
+    const assignedByNaturalKey = [...uniqueByNaturalKey.values()].map(
+      (assignment) => assignment.assignedComponentHours,
+    );
+    const groupTotal = assignedByNaturalKey.every(
+      (hours): hours is number => hours !== null && hours !== undefined && Number.isFinite(hours),
+    )
+      ? assignedByNaturalKey.reduce((total, hours) => total + Number(hours), 0)
+      : null;
+
+    for (const assignment of group) {
+      assignment.coTeacherCount = coTeacherCount;
+      assignment.coTeachingGroupTotal = groupTotal;
+      assignment.validationStatus = "PENDING_HOURS_VALIDATION";
+      if (assignment.importRow) {
+        assignment.importRow.values.co_teacher_count = coTeacherCount;
+        assignment.importRow.values.co_teaching_group_total = groupTotal;
+        assignment.importRow.values._validation_status = "PENDING_HOURS_VALIDATION";
+      }
+    }
+  }
 }
 
 function resolveProgramsForRow(
@@ -545,6 +636,28 @@ export function resolveSourceTeachingAssignments(input: {
         programCode: row.programRaw,
         blockedDependency: "term",
         message: "نوع الفصل الأكاديمي غير مدعوم",
+      });
+      continue;
+    }
+
+    if (row.assignedComponentHoursProvided && row.assignedComponentHours === null) {
+      errorCount++;
+      errors.push({
+        rowNumber: row.rowNumber,
+        columnName: "assigned_component_hours",
+        errorCode: "INVALID_ASSIGNED_COMPONENT_HOURS",
+        message: "ساعات المحاضر يجب أن تكون رقمًا صالحًا غير سالب",
+        rawValue: row.assignedComponentHoursRaw ?? "",
+      });
+      assignments.push({
+        outcome: "ERROR",
+        sourceSheet: row.sheetName,
+        sourceRowNumber: row.rowNumber,
+        studySystem: "",
+        programCode: row.programRaw,
+        errorCode: "INVALID_ASSIGNED_COMPONENT_HOURS",
+        validationStatus: "INVALID_ASSIGNED_COMPONENT_HOURS",
+        message: "ساعات المحاضر يجب أن تكون رقمًا صالحًا غير سالب",
       });
       continue;
     }
@@ -767,6 +880,7 @@ export function resolveSourceTeachingAssignments(input: {
               dg,
               insMatch.instructor,
               row.totalHours,
+              row.assignedComponentHoursProvided ? (row.assignedComponentHours ?? null) : null,
               compMatch.kind === "expand_all",
               row.notes,
             );
@@ -783,7 +897,12 @@ export function resolveSourceTeachingAssignments(input: {
               componentType: component.component_type,
               deliveryGroupCode: dg.group_code,
               employeeNumber: insMatch.instructor.employee_number,
-              assignedComponentHours: importRow.values.assigned_component_hours as number,
+              componentTotalHours: importRow.values.component_total_hours as number,
+              assignedComponentHours:
+                importRow.values.assigned_component_hours === null
+                  ? null
+                  : (importRow.values.assigned_component_hours as number),
+              validationStatus: "PENDING_HOURS_VALIDATION",
               notes: row.notes,
               importRow,
             });
@@ -791,6 +910,11 @@ export function resolveSourceTeachingAssignments(input: {
         }
       }
     }
+  }
+
+  applyAssignedHoursFallbackAndPreview(assignments);
+  for (const assignment of assignments) {
+    assignment.validationStatus ??= assignment.outcome;
   }
 
   const hasBlockers = blocked > 0 || errorCount > 0 || ambiguous > 0;
@@ -840,13 +964,60 @@ export function sourcePreviewToValidatedRows(preview: SourceResolutionPreview): 
     canonicalOperations: canonical.canonicalOperations,
     existingV2Assignments: preview.existingV2Assignments,
   });
+  const blockedNaturalKeys = new Set([
+    ...canonical.conflictingNaturalKeys,
+    ...hoursPreflight.blockedNaturalKeys,
+  ]);
+  const validRows = canonical.canonicalOperations.filter((row) => {
+    const key = teachingAssignmentNaturalKey(row);
+    return key !== null && !blockedNaturalKeys.has(key);
+  });
+
+  for (const assignment of preview.assignments) {
+    if (!assignment.importRow) continue;
+    const naturalKey = sourceAssignmentNaturalKey(assignment);
+    const groupKey = sourceAssignmentGroupKey(assignment);
+    const summary = groupKey ? hoursPreflight.groupSummaries.get(groupKey) : undefined;
+    if (summary) {
+      assignment.coTeacherCount = summary.coTeacherCount;
+      assignment.coTeachingGroupTotal = summary.assignedTotalHours;
+      assignment.validationStatus = summary.validationStatus;
+      assignment.importRow.values.co_teacher_count = summary.coTeacherCount;
+      assignment.importRow.values.co_teaching_group_total = summary.assignedTotalHours;
+      assignment.importRow.values._validation_status = summary.validationStatus;
+    }
+    if (naturalKey && canonical.conflictingNaturalKeys.has(naturalKey)) {
+      assignment.outcome = "BLOCKED";
+      assignment.blockedDependency = "conflicting_assignment";
+      assignment.errorCode = "conflicting_assignment_duplicate";
+      assignment.validationStatus = "conflicting_assignment_duplicate";
+    } else if (naturalKey && hoursPreflight.blockedNaturalKeys.has(naturalKey)) {
+      assignment.outcome = "BLOCKED";
+      assignment.blockedDependency = "assigned_component_hours";
+      assignment.errorCode = assignment.validationStatus ?? "TEACHING_HOURS_INVALID";
+    } else if (assignment.outcome === "MATCHED") {
+      assignment.validationStatus = "READY";
+      assignment.importRow.values._validation_status = "READY";
+    }
+  }
+
+  preview.totals.matched = preview.assignments.filter((a) => a.outcome === "MATCHED").length;
+  preview.totals.blocked = preview.assignments.filter((a) => a.outcome === "BLOCKED").length;
+  preview.totals.errors = preview.assignments.filter((a) => a.outcome === "ERROR").length;
+  preview.totals.ambiguous = preview.assignments.filter((a) => a.outcome === "AMBIGUOUS").length;
+  preview.hasBlockers =
+    preview.totals.blocked > 0 || preview.totals.errors > 0 || preview.totals.ambiguous > 0;
+
   const errors = [...preview.errors, ...canonical.conflicts, ...hoursPreflight.errors];
-  const validRows = canonical.canonicalOperations;
+  const sourceReadyRows = readyRows.filter((row) => {
+    const key = teachingAssignmentNaturalKey(row);
+    return key !== null && !blockedNaturalKeys.has(key);
+  }).length;
   return {
     validRows,
     errors,
-    sourceReadyRows: canonical.sourceReadyRows,
-    canonicalOperations: canonical.canonicalOperations.length,
+    sourceReadyRows,
+    canonicalOperations: validRows.length,
     teachingHoursContractBlockers: hoursPreflight.errors.length,
   };
 }
