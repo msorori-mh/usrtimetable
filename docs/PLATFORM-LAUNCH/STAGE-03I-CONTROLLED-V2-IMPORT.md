@@ -457,3 +457,83 @@ Do **not** apply `20260728010000_teaching_assignments_v2_duplicate_contract.sql`
 ### Stage 03I-E FINAL_DECISION
 
 `STAGE_03I_E_COMPLETE_READY_FOR_138_IMPORT_APPROVAL`
+
+---
+
+## POST_PR115_87_REBASELINE
+
+Mission: `PLATFORM-LAUNCH-STAGE-03I-K-PR115-MERGE-PUBLISH-87-REBASELINE-01`
+
+Generated: 2026-07-29 (Asia/Riyadh)
+
+### Merge
+
+| Field | Value |
+|---|---|
+| PR115_STATE | MERGED |
+| PR115_HEAD | `9aa43834650231f0b3271f6595b74885da8bb36c` |
+| PR115_MERGE_COMMIT / MAIN_SHA | `149edd2ce36608fa7ec74738fd051c0404fa9d3d` |
+| Diff scope | Clean — schema/parser/resolver/canonical/preflight + fixtures/docs; no secrets, migrations, or Excel binaries |
+| runtime-gates (PR #115) | 2/2 PASS |
+| runtime-gates (main push) | PASS (`30470946230`) |
+
+### Main verification (post-merge)
+
+| Check | Result |
+|---|---|
+| `git diff --check` | PASS |
+| `bunx tsc --noEmit` | PASS |
+| `bun run build` | PASS |
+| `bun test` | PASS (`4/0`) |
+| `bun run test:harness` | PASS (`53/0/0`) |
+
+### Corrected workbook (original untouched)
+
+| Field | Value |
+|---|---|
+| Original SHA256 | `fbc23368ca36af452935ab086e239fff5b61bae668dd9be5887b330143a35098` (unchanged) |
+| FIX SHA256 | `19ce0f547c0c8ec176dc7224225168ed60f7c9d901fdf4a6e8647e8910358d82` |
+| Corrected path | `C:/Users/Elite/Downloads/ITCS-TEACHING-ASSIGNMENTS-E2E-03I-K-CORRECTED.xlsx` |
+| Corrected SHA256 | `391b1d2e76756f73e56160cea58827378f89d2179b27835f6be1b30f7236ccb7` |
+| Channel | Added `ساعات الإسناد` = 1 for EMP012 row82 + EMP017 row118; Excel `اجمالي الساعات` stays 2 |
+| MODIFIED_ROWS (FIX identities) | 4 |
+| PROTECTED_ROWS_CHANGED | 0 |
+
+### Preview + dry-run (read-only catalog; no import)
+
+| Metric | Value |
+|---:|
+| SOURCE_ROWS | 131 |
+| EXPANDED_ROWS | 313 |
+| READY_SOURCE_ROWS | 93 |
+| CANONICAL_IMPORT_OPERATIONS | **87** |
+| INVALID_TEACHING_HOURS | 0 |
+| OVERALLOCATED_INSTRUCTORS | 0 |
+| DUPLICATE_CANONICAL_KEYS | 0 |
+| LEGACY_INCLUDED_IN_PREFLIGHT | 0 |
+| DRY_RUN_VALID | true |
+| V2_ASSIGNMENTS | 0 |
+| LEGACY_ASSIGNMENTS | 174 |
+| DATABASE_WRITES | 0 |
+| MIGRATIONS_APPLIED | 0 |
+
+FR231 co-teachers after correction: EMP012/EMP017 assigned=1 (regular+parallel); EMP009 remains assigned=2 (solo).
+
+### Publish
+
+| Field | Value |
+|---|---|
+| PUBLISH_RESULT | **BLOCKED** — no authenticated Lovable operator session; CDP profiles show Sign-in wall for project `c14ffafc-…` |
+| DEPLOYMENT_ID (live, unchanged) | `bc9d35bc2da1f6f1a25cb5c04c31c85f8df22cd877a37a0f08ddf4619cbcda53` |
+| Live markers `component_total_hours` / `assigned_component_hours` | **absent** on current live assets |
+| Cloudflare/Wrangler tokens | absent |
+
+### Exact blocker
+
+`B-PUBLISH-OPERATOR-AUTH` — one Lovable Update of `main` `149edd2` is required to land PR #115 on `gomufadhala.com` and prove live markers before import approval.
+
+### Stage 03I-K FINAL_DECISION
+
+`HOLD_WITH_ONE_EXACT_87_REBASELINE_BLOCKER`
+
+Preview/dry-run 87 gates are green; live publish/markers remain the single blocker to `STAGE_03I_K_COMPLETE_READY_FOR_87_IMPORT_APPROVAL`.
