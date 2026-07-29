@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react-hooks/exhaustive-deps */
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveCollege } from "@/hooks/use-colleges";
@@ -44,6 +44,14 @@ import {
   shouldLoadScheduleBuilderData,
 } from "@/lib/schedule-builder/access";
 import { fetchHydratedVersionSessions } from "@/lib/schedule-builder/queries";
+import { listScheduleBuilderV2WorkItems } from "@/lib/schedule-builder/v2-assignment-service";
+import {
+  buildTimetableLevelOptions,
+  filterUnscheduledNewFlowWorkItems,
+  groupTimetableSidebarItems,
+  preserveTimetableLevelFilter,
+  sessionMatchesTimetableLevelFilter,
+} from "@/lib/schedule-builder/timetable-editor-filters";
 
 export const Route = createFileRoute("/_authenticated/timetable/$versionId")({
   head: () => ({ meta: [{ title: "بناء الجدول" }] }),
@@ -147,7 +155,7 @@ function TimetablePage() {
           .eq("college_id", active!.id),
         supabase
           .from("academic_levels")
-          .select("id, name, program_id")
+          .select("id, name, program_id, level_number")
           .eq("college_id", active!.id),
         supabase.from("instructors").select("id, full_name").eq("college_id", active!.id),
         supabase.from("rooms").select("id, code, name, room_type_id").eq("college_id", active!.id),
@@ -216,6 +224,12 @@ function TimetablePage() {
     },
   });
 
+  const { data: workItemsPayload } = useQuery({
+    queryKey: ["timetable-v2-work-items", versionId, active?.id],
+    enabled: canLoadData,
+    queryFn: async () => listScheduleBuilderV2WorkItems({ scheduleVersionId: versionId }),
+  });
+
   const workingDays = lookups?.settings?.working_days ?? [6, 0, 1, 2, 3, 4];
   const { startHour, endHour } = useMemo(
     () =>
@@ -247,17 +261,40 @@ function TimetablePage() {
     return undefined;
   }, [lookups, gridStudy, workingDays]);
 
+  const levelOptions = useMemo(
+    () =>
+      buildTimetableLevelOptions({
+        levels: lookups?.levels ?? [],
+        programs: lookups?.progs ?? [],
+        departmentId: fDept,
+        programId: fProg,
+      }),
+    [lookups?.levels, lookups?.progs, fDept, fProg],
+  );
+
+  useEffect(() => {
+    setFLevel((current) => preserveTimetableLevelFilter(current, levelOptions));
+  }, [levelOptions]);
+
   const filtered = useMemo(() => {
     return (sessions ?? []).filter((s: any) => {
       if (fDept !== "all" && s.course_offerings?.courses?.department_id !== fDept) return false;
       if (fProg !== "all" && s.course_offerings?.program_id !== fProg) return false;
-      if (fLevel !== "all" && s.course_offerings?.level_id !== fLevel) return false;
+      if (
+        !sessionMatchesTimetableLevelFilter({
+          filterValue: fLevel,
+          levelId: s.course_offerings?.level_id ?? null,
+          levels: lookups?.levels ?? [],
+        })
+      ) {
+        return false;
+      }
       if (fInstr !== "all" && s.instructor_id !== fInstr) return false;
       if (fRoom !== "all" && s.room_id !== fRoom) return false;
       if (fStudy !== "all" && s.study_system !== fStudy) return false;
       return true;
     });
-  }, [sessions, fDept, fProg, fLevel, fInstr, fRoom, fStudy]);
+  }, [sessions, fDept, fProg, fLevel, fInstr, fRoom, fStudy, lookups?.levels]);
 
   const gridSessions: GridSession[] = useMemo(
     () =>
@@ -280,32 +317,36 @@ function TimetablePage() {
     [filtered],
   );
 
-  const unscheduled = useMemo(() => {
-    const scheduledOfferingIds = new Set((sessions ?? []).map((s: any) => s.course_offering_id));
-    return (lookups?.offerings ?? []).filter((o: any) => !scheduledOfferingIds.has(o.id));
-  }, [sessions, lookups]);
+  // New Flow work items for this schedule version only — never all term offerings / Legacy.
+  const unscheduled = useMemo(
+    () =>
+      filterUnscheduledNewFlowWorkItems({
+        rows: workItemsPayload?.rows ?? [],
+        programs: lookups?.progs ?? [],
+        levels: lookups?.levels ?? [],
+        departments: lookups?.depts ?? [],
+        filters: {
+          departmentId: fDept,
+          programId: fProg,
+          levelValue: fLevel,
+          studySystem: fStudy,
+          instructorId: fInstr,
+        },
+      }),
+    [
+      workItemsPayload?.rows,
+      lookups?.progs,
+      lookups?.levels,
+      lookups?.depts,
+      fDept,
+      fProg,
+      fLevel,
+      fStudy,
+      fInstr,
+    ],
+  );
 
-  const grouped = useMemo(() => {
-    const map = new Map<string, Map<string, Map<string, any[]>>>();
-    const deptName = (id: string | null) =>
-      lookups?.depts.find((d: any) => d.id === id)?.name ?? "—";
-    const progName = (id: string | null) =>
-      lookups?.progs.find((p: any) => p.id === id)?.name ?? "—";
-    const lvlName = (id: string | null) =>
-      lookups?.levels.find((l: any) => l.id === id)?.name ?? "—";
-    for (const o of unscheduled as any[]) {
-      const dk = deptName(o.courses?.department_id ?? null);
-      const pk = progName(o.program_id ?? null);
-      const lk = lvlName(o.level_id ?? null);
-      if (!map.has(dk)) map.set(dk, new Map());
-      const pm = map.get(dk)!;
-      if (!pm.has(pk)) pm.set(pk, new Map());
-      const lm = pm.get(pk)!;
-      if (!lm.has(lk)) lm.set(lk, []);
-      lm.get(lk)!.push(o);
-    }
-    return map;
-  }, [unscheduled, lookups]);
+  const grouped = useMemo(() => groupTimetableSidebarItems(unscheduled), [unscheduled]);
 
   const runQuality = async () => {
     if (!active || !canLoadData) return;
@@ -328,19 +369,20 @@ function TimetablePage() {
     if (!active || !canManage || !canLoadData) return;
     const { day, startTime, payload } = params;
     if (payload.kind === "unscheduled") {
-      const offering = unscheduled.find((o: any) => o.id === payload.id);
-      if (!offering) return;
-      const ta = lookups?.tas.find((t: any) => t.course_offering_id === offering.id);
+      const item = unscheduled.find(
+        (o) => o.course_offering_id === payload.id || o.key === payload.id,
+      );
+      if (!item) return;
       setEditId(null);
       setPrefill({
-        course_offering_id: offering.id,
-        teaching_assignment_id: ta?.id ?? null,
-        instructor_id: ta?.instructor_id ?? "",
-        study_system: gridStudy,
+        course_offering_id: item.course_offering_id,
+        teaching_assignment_id: item.teaching_assignment_id,
+        instructor_id: item.instructor_id || "",
+        study_system: item.study_system || gridStudy,
         day_of_week: day,
         start_time: startTime,
         end_time: addMin(startTime, 120),
-        expected_students: offering.expected_students ?? 0,
+        expected_students: item.expected_students ?? 0,
       });
       setDialogOpen(true);
       return;
@@ -581,9 +623,9 @@ function TimetablePage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">الكل</SelectItem>
-                {lookups?.levels.map((d: any) => (
-                  <SelectItem key={d.id} value={d.id}>
-                    {d.name}
+                {levelOptions.map((d) => (
+                  <SelectItem key={d.value} value={d.value}>
+                    {d.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -671,41 +713,38 @@ function TimetablePage() {
                         <div key={lvl} className="pr-2">
                           <div className="text-[10px] text-muted-foreground">{lvl}</div>
                           <div className="space-y-1">
-                            {items.map((o: any) => {
-                              const ta = lookups?.tas.find(
-                                (t: any) => t.course_offering_id === o.id,
-                              );
-                              const insName = ta ? (ta as any).instructors?.full_name : "—";
-                              return (
-                                <div
-                                  key={o.id}
-                                  draggable={canManage}
-                                  onDragStart={(e) => {
-                                    e.dataTransfer.setData(
-                                      "application/x-lovable-drop",
-                                      JSON.stringify({ kind: "unscheduled", id: o.id }),
-                                    );
-                                    e.dataTransfer.effectAllowed = "copy";
-                                  }}
-                                  className="border rounded p-2 text-xs bg-card hover:bg-accent/30 cursor-grab active:cursor-grabbing"
-                                >
-                                  <div className="flex items-start gap-1">
-                                    <GripVertical className="h-3 w-3 mt-0.5 text-muted-foreground" />
-                                    <div className="flex-1">
-                                      <div className="font-medium">
-                                        {o.courses?.code} — {o.courses?.name}
-                                      </div>
-                                      <div className="text-[10px] text-muted-foreground">
-                                        المحاضر: {insName}
-                                      </div>
-                                      <div className="text-[10px] text-muted-foreground">
-                                        الطلاب المتوقعون: {o.expected_students ?? 0}
-                                      </div>
+                            {items.map((item) => (
+                              <div
+                                key={item.key}
+                                draggable={canManage}
+                                onDragStart={(e) => {
+                                  e.dataTransfer.setData(
+                                    "application/x-lovable-drop",
+                                    JSON.stringify({
+                                      kind: "unscheduled",
+                                      id: item.course_offering_id,
+                                    }),
+                                  );
+                                  e.dataTransfer.effectAllowed = "copy";
+                                }}
+                                className="border rounded p-2 text-xs bg-card hover:bg-accent/30 cursor-grab active:cursor-grabbing"
+                              >
+                                <div className="flex items-start gap-1">
+                                  <GripVertical className="h-3 w-3 mt-0.5 text-muted-foreground" />
+                                  <div className="flex-1">
+                                    <div className="font-medium">
+                                      {item.course_code} — {item.course_name}
+                                    </div>
+                                    <div className="text-[10px] text-muted-foreground">
+                                      المحاضر: {item.instructor_name}
+                                    </div>
+                                    <div className="text-[10px] text-muted-foreground">
+                                      الطلاب المتوقعون: {item.expected_students ?? 0}
                                     </div>
                                   </div>
                                 </div>
-                              );
-                            })}
+                              </div>
+                            ))}
                           </div>
                         </div>
                       ))}
