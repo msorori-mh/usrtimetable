@@ -111,6 +111,7 @@ export function preflightCanonicalTeachingHours(input: {
   const errors: RowError[] = [];
   const deliveryGroupTotals = new Map<string, number>();
   const deliveryGroupLimits = new Map<string, number>();
+  const deliveryGroupRows = new Map<string, ParsedRow[]>();
   const instructorTotals = new Map<string, number>();
   const instructorLimits = new Map<string, number>();
 
@@ -146,6 +147,10 @@ export function preflightCanonicalTeachingHours(input: {
     add(existing, 0, `${existing.deliveryGroupId}|${existing.instructorId}`);
   }
   for (const operation of operations) {
+    const dgKey = deliveryGroupKey(operation);
+    const rows = deliveryGroupRows.get(dgKey) ?? [];
+    rows.push(operation.row);
+    deliveryGroupRows.set(dgKey, rows);
     add(
       operation,
       operation.row.rowNumber,
@@ -156,12 +161,16 @@ export function preflightCanonicalTeachingHours(input: {
   for (const [key, total] of deliveryGroupTotals) {
     const limit = deliveryGroupLimits.get(key) ?? 0;
     if (total > limit + 0.001) {
-      errors.push({
-        rowNumber: 0,
-        columnName: "assigned_component_hours",
-        errorCode: "CO_TEACHING_HOURS_OVER_ALLOCATED",
-        message: `مجموع ساعات مجموعة التقديم ${total} يتجاوز ساعات المكوّن ${limit} (${key})`,
-      });
+      const affectedRows = deliveryGroupRows.get(key) ?? [];
+      const rowNumbers = affectedRows.length > 0 ? affectedRows.map((row) => row.rowNumber) : [0];
+      for (const rowNumber of rowNumbers) {
+        errors.push({
+          rowNumber,
+          columnName: "assigned_component_hours",
+          errorCode: "CO_TEACHING_HOURS_OVER_ALLOCATED",
+          message: `مجموع ساعات مجموعة التقديم ${total} يتجاوز ساعات المكوّن ${limit} (${key})`,
+        });
+      }
     }
   }
 
