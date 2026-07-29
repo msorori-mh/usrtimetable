@@ -814,7 +814,7 @@ export function sourcePreviewToValidatedRows(preview: SourceResolutionPreview): 
   });
   const canonical = canonicalizeTeachingAssignmentsV2(readyRows);
   const errors = [...preview.errors, ...canonical.conflicts];
-  const validRows = canonical.conflicts.length === 0 ? canonical.canonicalOperations : [];
+  const validRows = canonical.canonicalOperations;
   return {
     validRows,
     errors,

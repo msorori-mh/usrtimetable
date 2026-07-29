@@ -60,6 +60,7 @@ export function canonicalizeTeachingAssignmentsV2(
     string,
     { canonical: ParsedRow; fingerprint: string; provenance: TeachingAssignmentV2Provenance[] }
   >();
+  const conflictingNaturalKeys = new Set<string>();
   const conflicts: RowError[] = [];
 
   rows.forEach((row, index) => {
@@ -76,6 +77,17 @@ export function canonicalizeTeachingAssignmentsV2(
 
     const fingerprint = operationFingerprint(row);
     const provenance = provenanceFor(row, index + 1);
+    if (conflictingNaturalKeys.has(key)) {
+      conflicts.push({
+        rowNumber: row.rowNumber,
+        columnName: "delivery_group_id|instructor_id",
+        errorCode: "conflicting_assignment_duplicate",
+        message: `إسنادات متعارضة للمفتاح الطبيعي ${key}`,
+        rawValue: JSON.stringify([provenance]),
+      });
+      return;
+    }
+
     const existing = byNaturalKey.get(key);
     if (!existing) {
       byNaturalKey.set(key, {
@@ -91,6 +103,7 @@ export function canonicalizeTeachingAssignmentsV2(
     }
 
     if (existing.fingerprint !== fingerprint) {
+      conflictingNaturalKeys.add(key);
       conflicts.push({
         rowNumber: row.rowNumber,
         columnName: "delivery_group_id|instructor_id",
@@ -107,8 +120,9 @@ export function canonicalizeTeachingAssignmentsV2(
 
   return {
     sourceReadyRows: rows.length,
-    canonicalOperations:
-      conflicts.length === 0 ? [...byNaturalKey.values()].map((v) => v.canonical) : [],
+    canonicalOperations: [...byNaturalKey.entries()]
+      .filter(([key]) => !conflictingNaturalKeys.has(key))
+      .map(([, value]) => value.canonical),
     conflicts,
   };
 }
