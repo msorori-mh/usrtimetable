@@ -196,11 +196,149 @@ Remediation requires a new explicit approval to either:
 2. Exclude those 4 keys and approve a **134** import; or
 3. Change allocation policy/component hours with a separate approved change.
 
-## FINAL_DECISION
+## FINAL_DECISION (03I-F)
 
 `HOLD_WITH_ONE_EXACT_138_CANONICAL_IMPORT_BLOCKER`
 
 Exact blocker id: `B-138-CO-TEACHING-HOURS-OVER-ALLOCATED`
+
+---
+
+## TEACHING_HOURS_OVERALLOCATION_RECONCILIATION
+
+Mission: `PLATFORM-LAUNCH-STAGE-03I-G-TEACHING-HOURS-OVERALLOCATION-RECONCILIATION-01`  
+Generated: 2026-07-29 (Asia/Riyadh)  
+Scope: **read / analyze / remediation package only** — no import confirm, no INSERT/UPDATE/DELETE, no migration, no publish, no schedule, no production hour/instructor edits.
+
+Artifact (local, not in git):  
+`C:\Users\Elite\Downloads\ITCS-STAGE03I-G-HOURS-RECONCILIATION\reconciliation.json`
+
+### G0 — Blocker reproduction
+
+Same workbook + same preview rebuilt:
+
+| Metric | Value |
+|---|---:|
+| SOURCE / EXPANDED / READY / CANONICAL | 131 / 314 / 156 / **138** |
+| First abort code | `CO_TEACHING_HOURS_OVER_ALLOCATED` |
+| Co-teach overallocated DGs (abort surface) | **2** |
+| All DGs failing `sum(assigned) > weekly_contact_hours` | **54** |
+| Canonical ops needing hour change | **56** |
+| Max overage (hours) | **8** |
+
+**Abort surface (co-teach FR231):**
+
+| delivery_group_id | term | study_system | weekly | assigned sum | instructors | overage |
+|---|---|---|---:|---:|---|---:|
+| `154ae39d-bcf6-4213-b186-ac96b468530d` | 2026-T1 | regular | 2 | 4 | EMP012, EMP017 | 2 |
+| `803f19d0-b68b-4575-984d-5ae3b26b77d4` | 2026-T1 | parallel | 2 | 4 | EMP012, EMP017 | 2 |
+
+Atomic RPC aborts on the first failing DG. **52 additional single-instructor DGs** in the same 138 payload also have `assigned > weekly` and would fail the same allocation gate if reached.
+
+### G1 — Hours matrix (`instructor × term × study_system`)
+
+- Terms fully separated: `2026-T1` (30 cells) and `Sem2` (24 cells).
+- Regular / parallel never merged in a cell.
+- Instructor workload over cells (`total > max_weekly_hours`): **0**.
+- Blocker is **delivery-group allocation vs component weekly**, not faculty workload limits.
+
+Full matrix: `reconciliation.json` → `G1_MATRIX`.
+
+### G2 — Hours calculation verification
+
+| Question | Finding |
+|---|---|
+| What is Excel `اجمالي الساعات`? | Source `totalHours` — used for component matching; when match is not `expand_all`, copied into `assigned_component_hours` (except `project` type uses component weekly). |
+| Weekly vs course-total vs per-group? | Intended as **weekly contact hours of the matched component**; TEST Excel often carries **course-total / multi-component totals**. |
+| Delivery-group expansion | `both` study systems create **separate** DGs/ops; hours are per DG — **not** the co-teach 2+2 cause. |
+| Same source row twice? | No double-count in canonical (identical NK collapsed). |
+| Identical duplicates counted? | No — canonical unique keys = 138. |
+| Conflicting four groups included? | **0** conflicting keys in canonical payload. |
+| Theory/practical double? | `expand_all` assigns each component its weekly; single-match path copies Excel once per op. |
+| Cross-term mix? | No — matrix and DG checks are term-scoped via cohort. |
+| Regular/parallel mix in one DG check? | No — separate DGs. |
+| Legacy in V2 preflight? | **No** — V2 payload DGs only; Legacy count remains 174, unchanged. |
+
+**Confirmed source bugs (resolver):**
+
+1. `toImportRow` copies full Excel/component hours to **every** co-teacher on the same DG (no split).
+2. `matchComponentsByHours` short-circuits when `assignable.length === 1` **without** requiring Excel hours == weekly; then `toImportRow` copies Excel total even when it exceeds weekly.
+
+### G3 — Classification (one category per overallocated DG)
+
+| Category | Count (DGs) | Ops | Root |
+|---|---:|---:|---|
+| `SOURCE_HOURS_DUPLICATED` | 2 | 4 | Co-teachers each get full hours (FR231 EMP012+EMP017) |
+| `OTHER_WITH_EVIDENCE` | 52 | 52 | Single-component match + Excel total > weekly |
+| `EXPANSION_HOURS_DOUBLE_COUNT` | 0 | — | Ruled out |
+| `IDENTICAL_DUPLICATE_HOURS_COUNTED` | 0 | — | Ruled out |
+| `CROSS_TERM_AGGREGATION` | 0 | — | Ruled out |
+| `LEGACY_AND_V2_DOUBLE_COUNT` | 0 | — | Ruled out |
+| `TEST_INSTRUCTOR_OVERASSIGNED` | 0 | — | Workload matrix clean |
+| `WORKLOAD_LIMIT_CONFIGURATION_ERROR` | 0 | — | N/A |
+| `VALID_OVERALLOCATION` | 0 | — | RPC correctly rejects; payload invalid for import |
+
+### G4 — Remediation package (**not executed**)
+
+**A. Code (recommended for product; not applied here):**
+
+- `src/lib/excel-import/teaching-assignments-source-resolver.ts`
+  - `matchComponentsByHours`: do not silent-match single assignable when Excel ≠ weekly.
+  - `toImportRow`: never assign Excel hours above `weekly_contact_hours`; co-teach split policy or explicit shares.
+- Unit tests for co-teach full-hours and Excel-total-vs-weekly mismatch.
+
+**B. EMP remapping:** **not required** (0 workload-over cells; same 138 NKs kept).
+
+**C. TEST hours fix (preferred for this batch):**
+
+| Pattern | Ops | Before → After (simulation) |
+|---|---:|---|
+| Co-teach split | 4 | 2 → **1** |
+| Clamp Excel→weekly | 32 | 3 → **2** |
+| Clamp | 12 | 6 → **2** |
+| Clamp | 4 | 4 → **2** |
+| Clamp | 2 | 10 → **2** |
+| Clamp | 2 | 4 → **3** |
+| **Total** | **56** | same 138 natural keys |
+
+- `TEST_BATCH_ID` / cleanup key unchanged: `E2E-ITCS-20260728-01` / `E2E-ITCS-20260728-01-V2-CANONICAL-IMPORT-01`
+- No official plan-catalog hour edits outside TEST remediation path.
+
+### G5 — Simulation (post planned hours fix)
+
+| Gate | Result |
+|---|---|
+| canonical operations | **138** |
+| unique keys | **138** |
+| instructors overallocated (workload) | **0** |
+| DG hour overallocations | **0** |
+| invalid hours | **0** |
+| duplicate keys | **0** |
+| conflicting groups included | **0** |
+| regular/parallel mismatches | **0** |
+| cross-term aggregation | **0** |
+| Legacy changed | **0** |
+| dry-run valid | **true** |
+
+### Reconciliation board fields
+
+| Field | Value |
+|---|---|
+| ROOT_CAUSE | Co-teach full-hour copy + single-component Excel-total copy above weekly (`SOURCE_HOURS_DUPLICATED` + `OTHER_WITH_EVIDENCE`) |
+| AFFECTED_INSTRUCTORS | EMP001, EMP002, EMP003, EMP004, EMP006, EMP007, EMP008, EMP009, EMP010, EMP012, EMP013, EMP014, EMP017, INST-040 |
+| OVERALLOCATED_ASSIGNMENTS | 56 canonical ops / 54 DGs |
+| HOURS_BEFORE | see `G4_BEFORE_AFTER_HOURS` in artifact |
+| HOURS_AFTER_SIMULATION | clamp/split to component weekly (patterns above) |
+| SOURCE_FIX_REQUIRED | **YES** (resolver) — recommended before non-TEST imports |
+| TEST_DATA_FIX_REQUIRED | **YES** (assigned hours on 56 ops in import payload; mappings unchanged) |
+| EXACT_PRODUCTION_WRITE_SET | **none this mission**; later remediation = atomic `insert_only` of 138 with corrected hours + notes stamp (V2 still 0 today) |
+| EXPECTED_CANONICAL_COUNT | **138** |
+| ROLLBACK | unchanged filter: ITCS + `delivery_group_id IS NOT NULL` + `notes ILIKE '%import_run=E2E-ITCS-20260728-01-V2-CANONICAL-IMPORT-01%'` |
+| NEXT_APPROVAL_REQUIRED | Explicit Stage 03I-H (or hours-remediation) approval to apply TEST hour corrections and/or code fix, then re-run controlled 138 import |
+
+### FINAL_DECISION (03I-G)
+
+`STAGE_03I_G_READY_FOR_TEACHING_HOURS_REMEDIATION`
 
 ## Security Review
 
@@ -208,9 +346,10 @@ Exact blocker id: `B-138-CO-TEACHING-HOURS-OVER-ALLOCATED`
 |---|---|
 | Files changed (git) | this report only |
 | Migrations / RLS / RPCs | no |
+| Did this mission write production? | **no** |
 | Production V2 rows created | 0 |
 | Legacy changed | no |
 | Secrets / Excel / backups in git | no |
-| Production risk | none (aborted transaction) |
-| Ready for merge (docs) | yes (draft) |
+| Production risk | none (analysis + simulation only) |
+| Ready for merge (docs) | yes (draft PR) |
 | Ready for deploy | n/a |
