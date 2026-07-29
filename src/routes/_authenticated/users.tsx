@@ -38,7 +38,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
-import { Users, Plus, KeyRound, Power, Copy } from "lucide-react";
+import { Users, Plus, KeyRound, Power, Copy, ShieldCheck, AlertTriangle } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/users")({
   head: () => ({ meta: [{ title: "إدارة المستخدمين" }] }),
