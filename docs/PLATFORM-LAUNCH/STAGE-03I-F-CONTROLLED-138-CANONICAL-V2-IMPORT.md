@@ -422,6 +422,101 @@ Generated: 2026-07-29 (Asia/Riyadh)
 
 Exact blocker: live contract correctly rejects the unremediated TEST hours (co-teach over-allocation in remaining payload; former Excel>weekly rows now AMBIGUOUS). Not ready for 138 import re-approval.
 
+---
+
+## POST_PR113_READY_DROP_RECONCILIATION
+
+Mission: `PLATFORM-LAUNCH-STAGE-03I-I-POST-PR113-READY-DROP-RECONCILIATION-01`  
+Generated: 2026-07-29 (Asia/Riyadh)  
+Scope: **read / analyze / simulation only** — no import, no DB writes, no hour edits, no migration, no publish.
+
+Local artifact: `C:\Users\Elite\Downloads\ITCS-STAGE03I-I\` (`before.json` @ `65e5848`, `after.json` @ `2cbff41`, `reconciliation.json`)
+
+### G0 — Baseline
+
+| Field | Value |
+|---|---|
+| FILE_SHA256 | `fbc23368ca36af452935ab086e239fff5b61bae668dd9be5887b330143a35098` |
+| MAIN_SHA | `2cbff419bd1ea05528e9e97c325150502110c488` |
+| Live PR113 markers | present (`teachingHoursContractBlockers`, `تعارض ساعات المصدر`) |
+| After OUTCOME_SUM | **313** (= ERROR122 + AMBIGUOUS88 + MATCHED93 + BLOCKED10) |
+
+| | Before PR113 | After PR113 |
+|---|---:|---:|
+| EXPANDED | 314 | **313** |
+| READY | 156 | **93** |
+| CANONICAL | 138 | **87** |
+| INVALID teaching-hours blockers | (server-only) | **2** |
+| DRY_RUN_VALID | false | **false** |
+| V2 / Legacy | 0 / 174 | **0 / 174** |
+
+Outcome shift: MATCHED −63; AMBIGUOUS +70; BLOCKED −8; ERROR 0; net EXPANDED −1.
+
+### G1 — Expansion delta 314→313
+
+**Exactly one source row:** `اسناد الفصل الاول 2026` row **126** (USR07 / مهارات الحاسوب / INST-040).
+
+| | Before | After |
+|---|---|---|
+| regular | 2× MATCHED practical (G1+G2) | 1× AMBIGUOUS |
+| parallel | 1× MATCHED practical (G1) | 1× AMBIGUOUS |
+| Total expansions | **3** | **2** |
+
+Message after: `تعارض ساعات المصدر (2) مع ساعات المكوّن (4)`.  
+Reason: multi-DG MATCHED collapsed to one AMBIGUOUS per study_system when PR113 single-component hours equality failed. **No unexplained residual.**
+
+### G2 — READY drop (63)
+
+| Category | Count |
+|---|---:|
+| `HOURS_SEMANTICS_MISMATCH` | 60 |
+| `SOURCE_HOURS_INVALID` (Excel=0) | 2 |
+| `OTHER_WITH_EVIDENCE` (DG sibling collapsed under AMBIGUOUS) | 1 |
+| `FALSE_REJECTION_SOURCE_BUG` | **0** |
+| Valid strict under PR113 | **63** |
+
+### G3 — INVALID_TEACHING_HOURS = 2
+
+Still inside the 87 canonical ops:
+
+| DG | Course | SS | Weekly | Sum | Instructors | Rule |
+|---|---|---|---:|---:|---|---|
+| `154ae39d-…530d` | FR231 | regular | 2 | 4 | EMP012+EMP017 | `CO_TEACHING_HOURS_OVER_ALLOCATED` |
+| `803f19d0-…77d4` | FR231 | parallel | 2 | 4 | EMP012+EMP017 | same |
+
+Solution: TEST_DATA co-teacher split (do not invent shares); optional SOURCE_FIX for split policy.
+
+### G4 — Canonical 138→87 (Δ=51)
+
+| Bucket | Count |
+|---|---:|
+| Retained | 83 |
+| Removed — component hours mismatch | **55** |
+| Removed — invalid hours | 0 (4 invalid ops remain in 87) |
+| Added NKs | 4 |
+| Net | 55−4=**51** |
+
+### G5 — Hours semantics
+
+Excel `اجمالي الساعات` → `totalHours`. PR113 requires equality with component weekly on single-component path. TEST values often look like course-totals.  
+**`OFFICIAL_HOURS_SEMANTICS_REQUIRED`**.
+
+### G6 — Simulations (no writes)
+
+| Scenario | Canonical | Invalid | Dry-run |
+|---|---:|---:|---|
+| A. Split co-teach on current 87 | 87 | 0 | **true** |
+| B. Silent rewrite to fake 138 | rejected | — | forbidden |
+| C. TEST align Excel→weekly + split | ≤138 conditional | 0 if complete | conditional |
+
+### G7 — Package
+
+**C. BOTH** (+ **D** official clarification for Excel meaning). FALSE_REJECTIONS=0.
+
+### FINAL_DECISION (03I-I)
+
+`STAGE_03I_I_READY_FOR_TARGETED_HOURS_REMEDIATION`
+
 ## Security Review
 
 | Item | Value |
@@ -432,7 +527,7 @@ Exact blocker: live contract correctly rejects the unremediated TEST hours (co-t
 | Production V2 rows created | 0 |
 | Legacy changed | no |
 | Secrets / Excel / backups in git | no |
-| Lovable publish | **one** Update; no migrations/secrets |
-| Production risk | low (frontend contract only; no DB mutation) |
+| Lovable publish | none this mission (PR113 publish already recorded above) |
+| Production risk | none (analysis only) |
 | Ready for merge (docs) | yes (draft PR #112) |
-| Ready for deploy | already published to live for PR113 |
+| Ready for deploy | n/a |
