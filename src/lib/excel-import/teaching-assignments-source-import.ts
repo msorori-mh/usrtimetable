@@ -29,6 +29,7 @@ export type SourceWorkbookPreview = {
   errors: RowError[];
   sourceReadyRows: number;
   canonicalOperations: number;
+  teachingHoursContractBlockers: number;
 };
 
 async function fetchAll<T extends Record<string, unknown>>(
@@ -64,7 +65,13 @@ export async function loadSourceResolverContext(collegeId: string): Promise<Sour
       employee_number: string;
       full_name_ar: string | null;
       full_name: string | null;
-    }>("instructors", "id, employee_number, full_name_ar, full_name", collegeId),
+      academic_rank: string | null;
+      max_weekly_hours: number | null;
+    }>(
+      "instructors",
+      "id, employee_number, full_name_ar, full_name, academic_rank, max_weekly_hours",
+      collegeId,
+    ),
     fetchAll<{ id: string; code: string }>("academic_programs", "id, code", collegeId),
     fetchAll<{ id: string; code: string; name: string }>("courses", "id, code, name", collegeId),
     fetchAll<{ id: string; program_id: string; level_number: number }>(
@@ -166,7 +173,7 @@ export async function previewSourceWorkbookImport(input: {
     sheetTermMap: input.sheetTermMap,
     studySystemScope: input.studySystemScope,
   });
-  const { validRows, errors, sourceReadyRows, canonicalOperations } =
+  const { validRows, errors, sourceReadyRows, canonicalOperations, teachingHoursContractBlockers } =
     sourcePreviewToValidatedRows(resolution);
   return {
     mode,
@@ -176,5 +183,6 @@ export async function previewSourceWorkbookImport(input: {
     errors,
     sourceReadyRows,
     canonicalOperations,
+    teachingHoursContractBlockers,
   };
 }

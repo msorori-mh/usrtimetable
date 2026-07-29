@@ -517,6 +517,32 @@ function run() {
     "ambiguous hours",
   );
 
+  const singleComponentHoursMismatch = resolveSourceTeachingAssignments({
+    rows: [
+      {
+        sheetName: "S",
+        rowNumber: 7,
+        instructorName: "أحمد محمد",
+        courseName: "CS101",
+        levelNumber: 1,
+        programRaw: "علوم حاسوب",
+        totalHours: 6,
+        notes: null,
+        ignored: false,
+      },
+    ],
+    ctx,
+    sheetTermMap: { S: "term-f1" },
+    studySystemScope: "regular_only",
+  });
+  assert(
+    singleComponentHoursMismatch.assignments.some(
+      (assignment) =>
+        assignment.outcome === "AMBIGUOUS" && assignment.message?.includes("ساعات المكوّن"),
+    ),
+    "single component does not accept source hours above weekly hours",
+  );
+
   const officialInstructorAmbiguity = resolveSourceTeachingAssignments({
     rows: [
       {
