@@ -588,14 +588,14 @@ function CreateUserDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
-          <Plus className="ml-1 h-4 w-4" />
-          مستخدم جديد
+        <Button variant={triggerVariant}>
+          {triggerIcon ?? <Plus className="ml-1 h-4 w-4" />}
+          {triggerLabel}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>إنشاء مستخدم</DialogTitle>
+          <DialogTitle>{presetRole === "college_admin" ? "إنشاء مدير كلّية" : "إنشاء مستخدم"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div>
