@@ -519,21 +519,54 @@ Generated: 2026-07-29 (Asia/Riyadh)
 
 FR231 co-teachers after correction: EMP012/EMP017 assigned=1 (regular+parallel); EMP009 remains assigned=2 (solo).
 
-### Publish
+### Publish (superseded by live rebaseline below)
 
 | Field | Value |
 |---|---|
-| PUBLISH_RESULT | **BLOCKED** — no authenticated Lovable operator session; CDP profiles show Sign-in wall for project `c14ffafc-…` |
-| DEPLOYMENT_ID (live, unchanged) | `bc9d35bc2da1f6f1a25cb5c04c31c85f8df22cd877a37a0f08ddf4619cbcda53` |
-| Live markers `component_total_hours` / `assigned_component_hours` | **absent** on current live assets |
-| Cloudflare/Wrangler tokens | absent |
+| PUBLISH_RESULT (this section, historical) | Was BLOCKED on operator auth; resolved in `POST_PR115_LIVE_87_REBASELINE` |
 
-### Exact blocker
+---
 
-`B-PUBLISH-OPERATOR-AUTH` — one Lovable Update of `main` `149edd2` is required to land PR #115 on `gomufadhala.com` and prove live markers before import approval.
+## POST_PR115_LIVE_87_REBASELINE
+
+Mission: `PLATFORM-LAUNCH-STAGE-03I-K-LOVABLE-PUBLISH-LIVE-87-VERIFY-01`
+
+Generated: 2026-07-29 (Asia/Riyadh)
+
+### Lovable / publish
+
+| Field | Value |
+|---|---|
+| LOVABLE_SESSION_STATUS | OPEN_AUTHENTICATED |
+| Linked repo | `msorori-mh/usrtimetable` |
+| DEPLOYED_COMMIT_SHA | `149edd2ce36608fa7ec74738fd051c0404fa9d3d` |
+| PUBLISH_COUNT | 1 |
+| PUBLISH_RESULT | SUCCESS |
+| DEPLOYMENT_ID | `18ec657dd018d4f11e225028dd3d95fac11e309fa3b58a4dfe39eb908d91e5f2` |
+| PUBLISH_TIME | `2026-07-29T17:04:29Z` (approx) |
+| LIVE_URL | `https://gomufadhala.com` |
+| LIVE_PR115_FIX_VERIFIED | true (`import-BZSNNZl4.js` markers) |
+
+### Live preview + dry-run (corrected workbook; no import)
+
+| Metric | Value |
+|---:|
+| SOURCE_ROWS | 131 |
+| EXPANDED_ROWS | 313 |
+| READY_SOURCE_ROWS | 93 |
+| CANONICAL_IMPORT_OPERATIONS | **87** |
+| INVALID_TEACHING_HOURS | 0 |
+| OVERALLOCATED_INSTRUCTORS | 0 |
+| DUPLICATE_CANONICAL_KEYS | 0 |
+| LEGACY_INCLUDED_IN_PREFLIGHT | 0 |
+| DRY_RUN_VALID | true |
+| V2_ASSIGNMENTS | 0 |
+| LEGACY_ASSIGNMENTS | 174 |
+| DATABASE_WRITES | 0 |
+| MIGRATIONS_APPLIED | 0 |
+
+Canonical report path: `docs/PLATFORM-LAUNCH/STAGE-03I-F-CONTROLLED-138-CANONICAL-V2-IMPORT.md` § `POST_PR115_LIVE_87_REBASELINE`.
 
 ### Stage 03I-K FINAL_DECISION
 
-`HOLD_WITH_ONE_EXACT_87_REBASELINE_BLOCKER`
-
-Preview/dry-run 87 gates are green; live publish/markers remain the single blocker to `STAGE_03I_K_COMPLETE_READY_FOR_87_IMPORT_APPROVAL`.
+`STAGE_03I_K_COMPLETE_READY_FOR_87_IMPORT_APPROVAL`

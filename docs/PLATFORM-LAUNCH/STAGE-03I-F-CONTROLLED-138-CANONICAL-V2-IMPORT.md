@@ -531,3 +531,88 @@ Excel `اجمالي الساعات` → `totalHours`. PR113 requires equality wi
 | Production risk | none (analysis only) |
 | Ready for merge (docs) | yes (draft PR #112) |
 | Ready for deploy | n/a |
+
+---
+
+## POST_PR115_LIVE_87_REBASELINE
+
+Mission: `PLATFORM-LAUNCH-STAGE-03I-K-LOVABLE-PUBLISH-LIVE-87-VERIFY-01`
+
+Generated: 2026-07-29 (Asia/Riyadh)
+
+### Lovable / publish
+
+| Field | Value |
+|---|---|
+| LOVABLE_SESSION_STATUS | OPEN_AUTHENTICATED (operator CDP Profile 1) |
+| Lovable project | `c14ffafc-2bc4-44f0-aef6-c8785e7ca67b` (Time Table) |
+| Linked repo | `msorori-mh/usrtimetable` (project bound; page contains `usrtimetable`) |
+| Intended source commit | `149edd2ce36608fa7ec74738fd051c0404fa9d3d` (main / PR #115 merge) |
+| PUBLISH_COUNT | **1** (single “Publish changes”; no second publish) |
+| PUBLISH_RESULT | SUCCESS — UI “Your website was updated”; Publish aria no longer “unpublished changes available” |
+| DEPLOYMENT_ID (pre) | `bc9d35bc2da1f6f1a25cb5c04c31c85f8df22cd877a37a0f08ddf4619cbcda53` |
+| DEPLOYMENT_ID (post) | `18ec657dd018d4f11e225028dd3d95fac11e309fa3b58a4dfe39eb908d91e5f2` |
+| PUBLISH_TIME | `2026-07-29T17:04:29Z` (approx; DEPLOYMENT_ID artifact write) |
+| LIVE_URL | `https://gomufadhala.com` |
+| DEPLOYED_COMMIT_SHA | `149edd2ce36608fa7ec74738fd051c0404fa9d3d` (evidenced by live PR #115 markers + main tip at publish) |
+
+### Live PR #115 fix verification
+
+Live asset `/assets/import-BZSNNZl4.js` contains:
+
+- `component_total_hours`
+- `assigned_component_hours`
+- `CO_TEACHER_ASSIGNED_HOURS_REQUIRED`
+- aliases `ساعات الإسناد` / `ساعات المحاضر`
+- `assignedComponentHoursProvided`
+
+Also present on live: `teaching-assignments-Bp3uM_mW.js` (`assigned_component_hours`, `ساعات الإسناد`).
+
+| Check | Result |
+|---|---|
+| `component_total_hours` separate from `assigned_component_hours` | PASS (both strings present; co-teacher path requires explicit assigned) |
+| Co-teacher hours not copied from component total | PASS (contract in live import chunk) |
+| Missing co-teacher assigned → `CO_TEACHER_ASSIGNED_HOURS_REQUIRED` | PASS (string present in live import chunk) |
+| LIVE_PR115_FIX_VERIFIED | **true** |
+
+### Live preview + dry-run (read-only; corrected workbook unchanged)
+
+Workbook: `C:/Users/Elite/Downloads/ITCS-TEACHING-ASSIGNMENTS-E2E-03I-K-CORRECTED.xlsx`  
+FILE_SHA256: `391b1d2e76756f73e56160cea58827378f89d2179b27835f6be1b30f7236ccb7`  
+College: ITCS `7168345f-cf9d-4789-b2ad-547abb687dc8`  
+Import confirm: **not executed**. DB writes: **0**. Migrations applied: **0**.
+
+| Metric | Value |
+|---:|
+| SOURCE_ROWS | 131 |
+| EXPANDED_ROWS | 313 |
+| READY_SOURCE_ROWS | 93 |
+| CANONICAL_IMPORT_OPERATIONS | **87** |
+| INVALID_TEACHING_HOURS | 0 |
+| OVERALLOCATED_INSTRUCTORS | 0 |
+| DUPLICATE_CANONICAL_KEYS | 0 |
+| LEGACY_INCLUDED_IN_PREFLIGHT | 0 |
+| DRY_RUN_VALID | true |
+| V2_ASSIGNMENTS | 0 |
+| LEGACY_ASSIGNMENTS | 174 |
+| DATABASE_WRITES | 0 |
+| MIGRATIONS_APPLIED | 0 |
+
+FR231 proof (post-publish dry-run): EMP012/EMP017 assigned=1 with `componentTotal=2`; EMP009 solo assigned=2.
+
+### Security / production
+
+| Item | Value |
+|---|---|
+| DB write / Import confirm | **no** |
+| Migration apply | **no** |
+| Excel modified | **no** |
+| Legacy mutation / schedule create | **no** |
+| Second Lovable publish | **no** |
+| Production risk | low (frontend publish only; no data mutation) |
+
+### Stage 03I-K FINAL_DECISION
+
+`STAGE_03I_K_COMPLETE_READY_FOR_87_IMPORT_APPROVAL`
+
+Awaiting explicit approval for a single atomic import of **87** canonical V2 operations. Do not import until separately approved.
