@@ -573,8 +573,7 @@ function ImportPage() {
               disabled={
                 preview.valid.length === 0 ||
                 commitMut.isPending ||
-                preview.missingHeaders.length > 0 ||
-                (preview.sourceResolution?.hasBlockers ?? false)
+                preview.missingHeaders.length > 0
               }
             >
               {commitMut.isPending ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : null}

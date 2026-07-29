@@ -330,3 +330,57 @@ Exact blocker: `B-CANONICAL-OPS-ZERO-NOT-138` — PR #110 whole-batch fail-close
 | Secrets in git | no |
 | Production risk | none (analysis only) |
 | Ready for merge (docs) | yes after CI |
+
+---
+
+## STAGE_03I_D_CANONICAL_PARTIAL_CONFLICT_REMEDIATION
+
+Mission: `PLATFORM-LAUNCH-STAGE-03I-D-CANONICAL-PARTIAL-CONFLICT-REMEDIATION-01`
+
+Generated: 2026-07-29 (Asia/Riyadh)
+
+### Remediation
+
+- Synced the Stage 03I branch with `origin/main` at `b430a23` so the remediation is based on
+  the merged PR #110 canonical contract.
+- Changed canonicalization from whole-batch fail-close to natural-key fail-close:
+  every member of a conflicting `delivery_group_id|instructor_id` group is excluded, while
+  unrelated canonical operations remain executable.
+- Preserved explicit `conflicting_assignment_duplicate` errors for every conflicting extra
+  member and preserved provenance collapse for identical duplicates.
+- The source preview now persists the safe canonical subset even when resolver or duplicate
+  errors are displayed. Confirmation remains disabled when there are zero safe operations or
+  missing headers.
+- No database write, migration apply, Lovable publish, or PR merge was performed.
+
+### Exact regression proof
+
+| Metric | Result |
+|---|---:|
+| READY fixture rows | 156 |
+| Unique non-conflicting singles | 130 |
+| Identical duplicate groups | 8 |
+| Conflicting natural-key groups | 4 |
+| Conflicting READY members | 10 |
+| Emitted canonical operations | **138** |
+| Emitted members from conflicting keys | **0** |
+| Explicit conflicting extras | 6 |
+
+### Verification
+
+| Check | Result |
+|---|---|
+| Target duplicate-contract harness | PASS (`156 → 138`) |
+| Import pre-apply security harness | PASS |
+| Full harness suite | PASS (`51 passed, 0 failed`) |
+| Production build | PASS |
+| ESLint on changed source/test files | PASS |
+| Repository-wide lint | BASELINE FAIL — existing CRLF/Prettier findings outside this diff |
+
+### Stage 03I-D FINAL_DECISION
+
+`CANONICAL_PARTIAL_CONFLICT_REMEDIATION_READY_FOR_PR_CI`
+
+The exact blocker `B-CANONICAL-OPS-ZERO-NOT-138` is remediated in source and covered by a
+deterministic fixture. Production import remains unexecuted and unapproved until the code is
+merged and independently published/rebaselined.
