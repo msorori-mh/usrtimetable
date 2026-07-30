@@ -1,8 +1,8 @@
-bun.exe : [0.47ms] ".env"
-At C:\Users\Elite\AppData\Local\Temp\ps-script-aa7a890f-c0b1-44ae-9ca0-75b1d206ebab.ps1:20 char:179
-+ ... xe"; Set-Location C:\Projects\usrtimetable; & $bun audit 2>&1 | Tee-O ...
-+                                                 ~~~~~~~~~~~~~~~~~
-    + CategoryInfo          : NotSpecified: ([0.47ms] ".env":String) [], RemoteException
+bun.exe : [0.20ms] ".env"
+At C:\Users\Elite\AppData\Local\Temp\ps-script-1cfdf09e-2413-4733-930b-a2e2db056c42.ps1:34 char:179
++ ... rtimetable; & $bun audit *> docs\dependency-security-remediation-01\b ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([0.20ms] ".env":String) [], RemoteException
     + FullyQualifiedErrorId : NativeCommandError
 
 bun audit v1.3.14 (0d9b296a)
