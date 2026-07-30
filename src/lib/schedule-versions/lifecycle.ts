@@ -1,6 +1,18 @@
 import { supabase } from "@/integrations/supabase/client";
 import { validateProposed, type ProposedSession } from "@/lib/conflict-engine/validator";
 import { loadApprovedExceptions } from "@/lib/conflict-engine/exceptions";
+import {
+  canMarkDisposableTestClone,
+  type DisposablePurgeResult,
+  PURGE_RPC_NAME,
+} from "@/lib/schedule-versions/disposable-purge";
+
+export {
+  PROTECTED_ACCEPTED_SCHEDULE_VERSION_ID,
+  assertDisposablePurgeEligibility,
+  canMarkDisposableTestClone,
+  type DisposablePurgeResult,
+} from "@/lib/schedule-versions/disposable-purge";
 
 export type SVStatus = "draft" | "review" | "approved" | "published" | "archived";
 
@@ -12,7 +24,10 @@ export const STATUS_LABEL_AR: Record<SVStatus, string> = {
   archived: "مؤرشف",
 };
 
-export const STATUS_BADGE_VARIANT: Record<SVStatus, "secondary" | "default" | "outline" | "destructive"> = {
+export const STATUS_BADGE_VARIANT: Record<
+  SVStatus,
+  "secondary" | "default" | "outline" | "destructive"
+> = {
   draft: "secondary",
   review: "outline",
   approved: "default",
@@ -35,11 +50,14 @@ export function canTransition(from: SVStatus, to: SVStatus): boolean {
   return ALLOWED.some(([a, b]) => a === from && b === to);
 }
 
-export function nextActions(status: SVStatus): Array<{ to: SVStatus; label: string; kind: "forward" | "rollback" }> {
+export function nextActions(
+  status: SVStatus,
+): Array<{ to: SVStatus; label: string; kind: "forward" | "rollback" }> {
   const out: ReturnType<typeof nextActions> = [];
   for (const [a, b] of ALLOWED) {
     if (a !== status) continue;
-    const forward = ["review", "approved", "published", "archived"].indexOf(b) >
+    const forward =
+      ["review", "approved", "published", "archived"].indexOf(b) >
       ["draft", "review", "approved", "published"].indexOf(a);
     out.push({
       to: b,
@@ -124,7 +142,9 @@ export async function evaluateEligibility(params: {
   }
 
   if (unapprovedHard > 0) {
-    reasons.push(`يوجد ${unapprovedHard} تعارض إلزامي غير معتمد (${totalHard} إجمالي، ${approvedHard} معتمد).`);
+    reasons.push(
+      `يوجد ${unapprovedHard} تعارض إلزامي غير معتمد (${totalHard} إجمالي، ${approvedHard} معتمد).`,
+    );
   }
 
   // Latest quality run
@@ -211,8 +231,26 @@ export async function cloneVersion(params: {
   targetTermId: string;
   newName: string;
   notes?: string;
+  /** When true, marks the clone as disposable_test (super_admin only). Default false. */
+  disposableTest?: boolean;
 }): Promise<string> {
-  const { collegeId, sourceVersionId, targetTermId, newName, notes } = params;
+  const { collegeId, sourceVersionId, targetTermId, newName, notes, disposableTest } = params;
+
+  const markDisposable = disposableTest === true;
+  if (markDisposable) {
+    const { data: userRes } = await supabase.auth.getUser();
+    const uid = userRes.user?.id;
+    if (!uid) throw new Error("AUTHENTICATION_REQUIRED");
+    const { data: roles, error: rolesErr } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", uid);
+    if (rolesErr) throw rolesErr;
+    const isSuperAdmin = (roles ?? []).some((r) => r.role === "super_admin");
+    if (!canMarkDisposableTestClone(isSuperAdmin)) {
+      throw new Error("DISPOSABLE_CLONE_SUPER_ADMIN_REQUIRED");
+    }
+  }
 
   const { data: src, error: se } = await supabase
     .from("schedule_versions")
@@ -221,15 +259,18 @@ export async function cloneVersion(params: {
     .single();
   if (se) throw se;
 
+  const insertPayload = {
+    college_id: collegeId,
+    academic_term_id: targetTermId,
+    name: newName,
+    status: "draft",
+    notes: notes ?? src.notes ?? null,
+    disposable_test: markDisposable,
+  };
   const { data: newV, error: ie } = await supabase
     .from("schedule_versions")
-    .insert({
-      college_id: collegeId,
-      academic_term_id: targetTermId,
-      name: newName,
-      status: "draft",
-      notes: notes ?? src.notes ?? null,
-    })
+    // disposable_test is source-only until migration apply; cast keeps client typed against current generated schema.
+    .insert(insertPayload as never)
     .select("id")
     .single();
   if (ie) throw ie;
@@ -271,8 +312,27 @@ export async function cloneVersion(params: {
     to_status: "draft",
     performed_by: userRes.user?.id ?? null,
     notes: `Cloned from ${sourceVersionId}`,
-    metadata: { source_version_id: sourceVersionId, sessions_copied: sessions?.length ?? 0 },
+    metadata: {
+      source_version_id: sourceVersionId,
+      sessions_copied: sessions?.length ?? 0,
+      disposable_test: markDisposable,
+    },
   });
 
   return newV.id;
+}
+
+/** Atomic super_admin-only purge of an explicitly marked disposable draft version. */
+export async function purgeDisposableDraftScheduleVersion(
+  versionId: string,
+): Promise<DisposablePurgeResult> {
+  // RPC is source-only until controlled migration apply; cast avoids regenerating full types.ts in this PR.
+  const { data, error } = await supabase.rpc(
+    PURGE_RPC_NAME as never,
+    {
+      p_version_id: versionId,
+    } as never,
+  );
+  if (error) throw error;
+  return data as DisposablePurgeResult;
 }
