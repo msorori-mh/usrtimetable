@@ -9,6 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card } from "@/components/ui/card";
 import { DAY_NAMES_AR, fmtTime } from "@/lib/reports/export";
 import { fetchCohortDeliveryGroupLabels } from "@/lib/reports/queries/session-queries";
+import { DeliveryDemoWarningBanner } from "@/components/schedule/delivery-demo-warning-banner";
+import { isDeliveryDemoVersion } from "@/lib/schedule-versions/delivery-demo";
 
 export const Route = createFileRoute("/_authenticated/reports/published-timetable")({
   head: () => ({ meta: [{ title: "تقرير الجدول المنشور" }] }),
@@ -34,7 +36,11 @@ function Page() {
   const { data: versions } = useQuery({
     queryKey: ["pt-vers", active?.id, termId], enabled: !!active,
     queryFn: async () => {
-      let q = supabase.from("schedule_versions").select("id, name, academic_term_id").eq("college_id", active!.id).eq("status", "published");
+      let q = supabase
+        .from("schedule_versions")
+        .select("id, name, notes, academic_term_id")
+        .eq("college_id", active!.id)
+        .eq("status", "published");
       if (termId !== "all") q = q.eq("academic_term_id", termId);
       return (await q).data ?? [];
     },
@@ -122,6 +128,13 @@ function Page() {
     { key: "room", label: "القاعة" },
   ];
 
+  const selectedVersion =
+    versionId !== "all" ? (versions ?? []).find((v) => v.id === versionId) : null;
+  const demoBannerVersion =
+    selectedVersion ??
+    (versions ?? []).find((v) => isDeliveryDemoVersion({ name: v.name, notes: v.notes })) ??
+    null;
+
   return (
     <ReportShell title="تقرير الجدول المنشور" description="النسخ ذات حالة (منشور) فقط." filename="published_timetable"
       rows={rows} headers={headers} isLoading={isLoading}
@@ -138,6 +151,9 @@ function Page() {
           <Sel label="القاعة" value={roomId} onChange={setRoomId} items={[{ id: "all", name: "الكل" }, ...(rooms ?? []).map((r) => ({ id: r.id, name: `${r.code ?? ""} ${r.name ?? ""}` }))]} />
         </div>
       }>
+      {demoBannerVersion && (
+        <DeliveryDemoWarningBanner name={demoBannerVersion.name} notes={demoBannerVersion.notes} />
+      )}
       <Card className="p-0 overflow-hidden">
         <Table>
           <TableHeader><TableRow>{headers.map((h) => <TableHead key={h.key}>{h.label}</TableHead>)}</TableRow></TableHeader>

@@ -11,6 +11,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { CheckCircle2, ExternalLink } from "lucide-react";
+import { DeliveryDemoWarningBanner } from "@/components/schedule/delivery-demo-warning-banner";
+import { isDeliveryDemoVersion } from "@/lib/schedule-versions/delivery-demo";
 
 export const Route = createFileRoute("/_authenticated/published-schedules")({
   head: () => ({ meta: [{ title: "الجداول المنشورة" }] }),
@@ -158,6 +160,13 @@ function PublishedSchedulesPage() {
             </div>
           </Card>
 
+          {filtered.some((v) => isDeliveryDemoVersion({ name: v.name, notes: v.notes })) && (
+            <DeliveryDemoWarningBanner
+              name={filtered.find((v) => isDeliveryDemoVersion({ name: v.name, notes: v.notes }))?.name}
+              notes={filtered.find((v) => isDeliveryDemoVersion({ name: v.name, notes: v.notes }))?.notes}
+            />
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.length === 0 && (
               <Card className="p-6 text-center text-muted-foreground col-span-full">
@@ -170,6 +179,7 @@ function PublishedSchedulesPage() {
                   <span className="font-semibold">{v.name}</span>
                   <Badge>منشور</Badge>
                 </div>
+                <DeliveryDemoWarningBanner name={v.name} notes={v.notes} />
                 <div className="text-xs text-muted-foreground">الفصل: {termName(v.academic_term_id)}</div>
                 {v.notes && <div className="text-xs">{v.notes}</div>}
                 <div className="text-[10px] text-muted-foreground">{new Date(v.updated_at).toLocaleString("ar")}</div>
