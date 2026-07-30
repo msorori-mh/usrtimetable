@@ -1,0 +1,9 @@
+bun.exe : [0.20ms] ".env"
+At C:\Users\Elite\AppData\Local\Temp\ps-script-1cfdf09e-2413-4733-930b-a2e2db056c42.ps1:34 char:179
++ ... rtimetable; & $bun audit *> docs\dependency-security-remediation-01\b ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([0.20ms] ".env":String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+
+bun audit v1.3.14 (0d9b296a)
+No vulnerabilities found
