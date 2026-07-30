@@ -201,7 +201,7 @@ function Page() {
   const rows = useMemo(() => {
     const labels = sessionsBundle?.labels;
     return (sessionsBundle?.sessions ?? []).map((s) => ({
-      version: versionNameById.get(s.schedule_version_id) ?? "",
+      version: versionNameById.get(s.schedule_version_id ?? "") ?? "",
       department: s.course_offerings?.courses?.departments?.name ?? "",
       program: s.course_offerings?.academic_programs?.name ?? "",
       level: s.course_offerings?.academic_levels?.name ?? "",
