@@ -27,6 +27,8 @@ interface Props {
   /** Read-only note on header (default true). */
   readOnly?: boolean;
   filters?: ReactNode;
+  /** Always rendered above the loading/empty/body area (e.g. delivery-demo warning). */
+  leading?: ReactNode;
   rows: Row[];
   headers: { key: string; label: string }[];
   filename: string;
@@ -44,6 +46,7 @@ export function ReportShell({
   official,
   readOnly = true,
   filters,
+  leading,
   rows,
   headers,
   filename,
@@ -101,6 +104,8 @@ export function ReportShell({
       </div>
 
       {filters && <Card className="report-no-print p-4">{filters}</Card>}
+
+      {leading}
 
       <div className="report-print-body">
         {isLoading ? (

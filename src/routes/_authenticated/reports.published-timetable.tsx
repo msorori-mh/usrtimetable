@@ -22,6 +22,10 @@ import {
 import { Card } from "@/components/ui/card";
 import { DAY_NAMES_AR, fmtTime } from "@/lib/reports/export";
 import { fetchCohortDeliveryGroupLabels } from "@/lib/reports/queries/session-queries";
+import {
+  fetchHydratedVersionSessions,
+  type WorkspaceSessionHydratedRow,
+} from "@/lib/schedule-builder/queries";
 import { DeliveryDemoWarningBanner } from "@/components/schedule/delivery-demo-warning-banner";
 import { isDeliveryDemoVersion } from "@/lib/schedule-versions/delivery-demo";
 
@@ -136,6 +140,12 @@ function Page() {
     return (versions ?? []).map((v) => v.id);
   }, [versions, versionId]);
 
+  const versionNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const v of versions ?? []) map.set(v.id, v.name);
+    return map;
+  }, [versions]);
+
   const { data: sessionsBundle, isLoading } = useQuery({
     queryKey: [
       "pt-sess",
@@ -151,31 +161,40 @@ function Page() {
     ],
     enabled: !!active && versionIds.length > 0,
     queryFn: async () => {
-      // A1.5: New Flow projection — cohort/DG identity, no Legacy sections join.
-      let q = supabase
-        .from("schedule_sessions")
-        .select(
-          `id, day_of_week, start_time, end_time, session_type,
-          cohort_id, delivery_group_id,
-          course_offerings!inner(program_id, level_id, courses!inner(name, code, department_id, departments(name)), academic_programs(name), academic_levels(name)),
-          instructors(id, full_name), rooms(id, code, name),
-          schedule_versions!inner(name)`,
-        )
-        .eq("college_id", active!.id)
-        .in("schedule_version_id", versionIds)
-        .order("day_of_week")
-        .order("start_time");
-      if (progId !== "all") q = q.eq("course_offerings.program_id", progId);
-      if (lvlId !== "all") q = q.eq("course_offerings.level_id", lvlId);
-      if (cohortId !== "all") q = q.eq("cohort_id", cohortId);
-      if (dgId !== "all") q = q.eq("delivery_group_id", dgId);
-      if (insId !== "all") q = q.eq("instructor_id", insId);
-      if (roomId !== "all") q = q.eq("room_id", roomId);
-      const { data } = await q;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const filtered = ((data ?? []) as any[]).filter(
-        (s) => deptId === "all" || s.course_offerings?.courses?.department_id === deptId,
-      );
+      // Flat select + client hydrate — never nest courses under course_offerings (PGRST200).
+      const hydrated: WorkspaceSessionHydratedRow[] = [];
+      for (const vid of versionIds) {
+        const rowsForVersion = await fetchHydratedVersionSessions({
+          collegeId: active!.id,
+          versionId: vid,
+          studySystem: "all",
+        });
+        hydrated.push(...rowsForVersion);
+      }
+      let filtered = hydrated;
+      if (progId !== "all") {
+        filtered = filtered.filter((s) => s.course_offerings?.program_id === progId);
+      }
+      if (lvlId !== "all") {
+        filtered = filtered.filter((s) => s.course_offerings?.level_id === lvlId);
+      }
+      if (cohortId !== "all") {
+        filtered = filtered.filter((s) => s.cohort_id === cohortId);
+      }
+      if (dgId !== "all") {
+        filtered = filtered.filter((s) => s.delivery_group_id === dgId);
+      }
+      if (insId !== "all") {
+        filtered = filtered.filter((s) => s.instructor_id === insId);
+      }
+      if (roomId !== "all") {
+        filtered = filtered.filter((s) => s.room_id === roomId);
+      }
+      if (deptId !== "all") {
+        filtered = filtered.filter(
+          (s) => s.course_offerings?.courses?.department_id === deptId,
+        );
+      }
       const labels = await fetchCohortDeliveryGroupLabels(active!.id, filtered);
       return { sessions: filtered, labels };
     },
@@ -183,9 +202,8 @@ function Page() {
 
   const rows = useMemo(() => {
     const labels = sessionsBundle?.labels;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return ((sessionsBundle?.sessions ?? []) as any[]).map((s) => ({
-      version: s.schedule_versions?.name ?? "",
+    return (sessionsBundle?.sessions ?? []).map((s) => ({
+      version: versionNameById.get(s.schedule_version_id) ?? "",
       department: s.course_offerings?.courses?.departments?.name ?? "",
       program: s.course_offerings?.academic_programs?.name ?? "",
       level: s.course_offerings?.academic_levels?.name ?? "",
@@ -199,7 +217,7 @@ function Page() {
       instructor: s.instructors?.full_name ?? "",
       room: s.rooms ? `${s.rooms.code ?? ""} ${s.rooms.name ?? ""}` : "",
     }));
-  }, [sessionsBundle]);
+  }, [sessionsBundle, versionNameById]);
 
   const headers = [
     { key: "version", label: "النسخة" },
@@ -231,6 +249,14 @@ function Page() {
       rows={rows}
       headers={headers}
       isLoading={isLoading}
+      leading={
+        demoBannerVersion ? (
+          <DeliveryDemoWarningBanner
+            name={demoBannerVersion.name}
+            notes={demoBannerVersion.notes}
+          />
+        ) : null
+      }
       filters={
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Sel
@@ -323,9 +349,6 @@ function Page() {
         </div>
       }
     >
-      {demoBannerVersion && (
-        <DeliveryDemoWarningBanner name={demoBannerVersion.name} notes={demoBannerVersion.notes} />
-      )}
       <Card className="p-0 overflow-hidden">
         <Table>
           <TableHeader>
