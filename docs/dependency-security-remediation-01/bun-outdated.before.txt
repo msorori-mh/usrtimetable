@@ -1,11 +1,11 @@
-﻿bun outdated v1.3.14 (0d9b296a)
+bun outdated v1.3.14 (0d9b296a)
 bun.exe : [0.19ms] ".env"
 At C:\Users\Elite\AppData\Local\Temp\ps-script-74fcc488-4f7a-447f-87b5-a92861dbdbc1.ps1:20 char:549
 + ... -01/bun-audit.before.txt -Encoding utf8; & $bun outdated 2>&1 | Out-F ...
 +                                              ~~~~~~~~~~~~~~~~~~~~
     + CategoryInfo          : NotSpecified: ([0.19ms] ".env":String) [], RemoteException
     + FullyQualifiedErrorId : NativeCommandError
- 
+
 |-----------------------------------------------------------------------------------------------|
 | Package                                 | Current         | Update          | Latest          |
 |-----------------------------------------|-----------------|-----------------|-----------------|

@@ -1,11 +1,11 @@
-﻿bun.exe : [0.14ms] ".env"
+bun.exe : [0.14ms] ".env"
 At C:\Users\Elite\AppData\Local\Temp\ps-script-74fcc488-4f7a-447f-87b5-a92861dbdbc1.ps1:20 char:433
 + ... cy-security-remediation-01/bun.lock.before; & $bun audit 2>&1 | Out-F ...
 +                                                 ~~~~~~~~~~~~~~~~~
     + CategoryInfo          : NotSpecified: ([0.14ms] ".env":String) [], RemoteException
     + FullyQualifiedErrorId : NativeCommandError
- 
-[0m[1mbun audit [0m[2mv1.3.14 (0d9b296a)[0m
+
+bun audit v1.3.14 (0d9b296a)
 brace-expansion  >=5.0.0 <5.0.6
   eslint › @eslint/eslintrc › minimatch › brace-expansion
   typescript-eslint › @typescript-eslint/utils › @typescript-eslint/typescript-estree › minimatch › brace-expansion
@@ -80,4 +80,3 @@ To update all dependencies to the latest compatible versions:
 
 To update all dependencies to the latest versions (including breaking changes):
   bun update --latest
-
