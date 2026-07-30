@@ -61,6 +61,7 @@ export const harnesses = [
   "postgrest-relationship-disambiguation-runtime.harness.ts",
   "scheduling-initial-delivery-runtime-closure.harness.ts",
   "teaching-assignments-source-workbook-import.harness.ts",
+  "xlsx-remediation-regression.harness.ts",
   "teaching-assignments-v2-duplicate-contract.harness.ts",
   "teaching-assignments-v2-hours-preflight.harness.ts",
   "stage-03i-j-targeted-hours-remediation.harness.ts",

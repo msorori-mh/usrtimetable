@@ -1,0 +1,83 @@
+﻿bun.exe : [0.14ms] ".env"
+At C:\Users\Elite\AppData\Local\Temp\ps-script-74fcc488-4f7a-447f-87b5-a92861dbdbc1.ps1:20 char:433
++ ... cy-security-remediation-01/bun.lock.before; & $bun audit 2>&1 | Out-F ...
++                                                 ~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([0.14ms] ".env":String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+[0m[1mbun audit [0m[2mv1.3.14 (0d9b296a)[0m
+brace-expansion  >=5.0.0 <5.0.6
+  eslint › @eslint/eslintrc › minimatch › brace-expansion
+  typescript-eslint › @typescript-eslint/utils › @typescript-eslint/typescript-estree › minimatch › brace-expansion
+  moderate: brace-expansion: Large numeric range defeats documented `max` DoS protection - https://github.com/advisories/GHSA-jxxr-4gwj-5jf2
+  high: brace-expansion: DoS via exponential-time expansion of consecutive non-expanding {} groups - https://github.com/advisories/GHSA-3jxr-9vmj-r5cp
+  high: brace-expansion: DoS via exponential-time expansion of consecutive non-expanding {} groups - https://github.com/advisories/GHSA-3jxr-9vmj-r5cp
+  high: brace-expansion: DoS via unbounded expansion length causing an out-of-memory process crash - https://github.com/advisories/GHSA-mh99-v99m-4gvg
+
+postcss  <=8.5.11
+  vite › postcss
+  high: PostCSS: Arbitrary file read and information disclosure via attacker-controlled sourceMappingURL in CSS comments - https://github.com/advisories/GHSA-6g55-p6wh-862q
+  high: PostCSS: Path Traversal in Previous Source Map Auto-Loading (sourceMappingURL) leads to Arbitrary .map File Disclosure - https://github.com/advisories/GHSA-r28c-9q8g-f849
+
+vite  >=7.0.0 <=7.3.4
+  (direct dependency)
+  @lovable.dev/vite-tanstack-config › @lovable.dev/vite-plugin-hmr-gate › vite
+  @tailwindcss/vite › vite
+  @tanstack/react-start › vite
+  @tanstack/router-plugin › vite
+  @vitejs/plugin-react › vite
+  nitro › vite
+  vite-tsconfig-paths › vite
+  moderate: launch-editor: NTLMv2 hash disclosure via UNC path handling on Windows - https://github.com/advisories/GHSA-v6wh-96g9-6wx3
+  high: vite: `server.fs.deny` bypass on Windows alternate paths - https://github.com/advisories/GHSA-fx2h-pf6j-xcff
+
+undici  >=7.23.0 <7.28.0
+  @tanstack/react-start › @tanstack/start-plugin-core › cheerio › undici
+  high: undici vulnerable to TLS certificate validation bypass via dropped requestTls in SOCKS5 ProxyAgent - https://github.com/advisories/GHSA-vmh5-mc38-953g
+  moderate: undici vulnerable to HTTP header injection via Set-Cookie percent-decoding - https://github.com/advisories/GHSA-p88m-4jfj-68fv
+  high: undici WebSocket client vulnerable to denial of service via fragment count bypass - https://github.com/advisories/GHSA-vxpw-j846-p89q
+  high: undici vulnerable to cross-origin request routing via SOCKS5 proxy pool reuse - https://github.com/advisories/GHSA-hm92-r4w5-c3mj
+  low: undici vulnerable to HTTP response queue poisoning via keep-alive socket reuse - https://github.com/advisories/GHSA-35p6-xmwp-9g52
+  low: undici vulnerable to Set-Cookie SameSite attribute downgrade via permissive substring matching - https://github.com/advisories/GHSA-g8m3-5g58-fq7m
+  moderate: undici vulnerable to cross-user information disclosure via shared cache whitespace bypass - https://github.com/advisories/GHSA-pr7r-676h-xcf6
+
+@babel/core  <=7.29.0
+  @tanstack/router-plugin › @babel/plugin-syntax-typescript › @babel/core › @babel/helper-module-transforms
+  @vitejs/plugin-react › @babel/plugin-transform-react-jsx-source › @babel/core › @babel/helper-module-transforms
+  @tanstack/react-start › @tanstack/start-plugin-core › @tanstack/router-utils › @babel/core › @babel/helper-module-transforms
+  low: @babel/core: Arbitrary File Read via sourceMappingURL Comment - https://github.com/advisories/GHSA-4x5r-pxfx-6jf8
+
+xlsx  <0.19.3
+  (direct dependency)
+  high: Prototype Pollution in sheetJS - https://github.com/advisories/GHSA-4r6h-8v6p-xvw6
+  high: SheetJS Regular Expression Denial of Service (ReDoS) - https://github.com/advisories/GHSA-5pgg-2g8v-p4x9
+
+@tanstack/start-server-core  <1.167.30
+  @tanstack/react-start › @tanstack/start-server-core
+  moderate: TanStack Start - Server Core: Inbound server-function request deserialization could invoke a sibling client-referenced server function - https://github.com/advisories/GHSA-9m65-766c-r333
+
+seroval  <=1.5.2
+  @tanstack/react-router › @tanstack/router-core › seroval
+  @tanstack/router-plugin › @tanstack/router-generator › @tanstack/router-core › seroval
+  @tanstack/react-start › @tanstack/react-start-server › @tanstack/start-server-core › @tanstack/start-client-core › @tanstack/router-core › seroval
+  critical: seroval: `seroval.fromJSON()` Promise resolver type confusion invokes attacker-controlled methods during deserialization - https://github.com/advisories/GHSA-mv8w-475r-vwqw
+
+esbuild  >=0.27.3 <0.28.1
+  tsx › esbuild
+  vite › esbuild
+  low: esbuild allows arbitrary file read when running the development server on Windows - https://github.com/advisories/GHSA-g7r4-m6w7-qqqr
+
+js-yaml  >=4.0.0 <=4.1.1
+  eslint › @eslint/eslintrc › js-yaml
+  @tanstack/react-start › @tanstack/start-plugin-core › xmlbuilder2 › js-yaml
+  moderate: JS-YAML: Quadratic-complexity DoS in merge key handling via repeated aliases - https://github.com/advisories/GHSA-h67p-54hq-rp68
+  high: js-yaml: YAML merge-key chains can force quadratic CPU consumption - https://github.com/advisories/GHSA-52cp-r559-cp3m
+
+23 vulnerabilities (1 critical, 12 high, 6 moderate, 4 low)
+
+To update all dependencies to the latest compatible versions:
+  bun update
+
+To update all dependencies to the latest versions (including breaking changes):
+  bun update --latest
+
