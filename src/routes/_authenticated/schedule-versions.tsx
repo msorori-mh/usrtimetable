@@ -4,6 +4,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { useCanManageActiveCollege } from "@/hooks/use-can-manage";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { CollegeSwitcher } from "@/components/college-switcher";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -35,6 +36,7 @@ export const Route = createFileRoute("/_authenticated/schedule-versions")({
 function SchedVersionsPage() {
   const { active } = useActiveCollege();
   const canManage = useCanManageActiveCollege();
+  const { data: me } = useCurrentUser();
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -167,6 +169,7 @@ function SchedVersionsPage() {
           sourceId={cloneFor.id}
           sourceName={cloneFor.name}
           terms={terms ?? []}
+          canMarkDisposable={!!me?.isSuperAdmin}
           onClose={() => setCloneFor(null)}
           onCloned={() => {
             setCloneFor(null);
@@ -326,7 +329,7 @@ function VersionCard({
 }
 
 function CloneDialog({
-  collegeId, sourceId, sourceName, terms, onClose, onCloned,
+  collegeId, sourceId, sourceName, terms, onClose, onCloned, canMarkDisposable,
 }: {
   collegeId: string;
   sourceId: string;
@@ -334,15 +337,29 @@ function CloneDialog({
   terms: Array<{ id: string; name: string; academic_year: string | null }>;
   onClose: () => void;
   onCloned: () => void;
+  canMarkDisposable: boolean;
 }) {
   const [tid, setTid] = useState("");
   const [nm, setNm] = useState(`${sourceName} (نسخة)`);
+  const [disposableTest, setDisposableTest] = useState(false);
 
   const m = useMutation({
     mutationFn: async () => {
       if (!tid || !nm.trim()) throw new Error("الرجاء إدخال الفصل والاسم");
-      const id = await cloneVersion({ collegeId, sourceVersionId: sourceId, targetTermId: tid, newName: nm.trim() });
-      await logAudit({ action: "sv_clone", entity: "schedule_versions", entityId: id, collegeId, details: { source: sourceId } });
+      const id = await cloneVersion({
+        collegeId,
+        sourceVersionId: sourceId,
+        targetTermId: tid,
+        newName: nm.trim(),
+        disposableTest: canMarkDisposable && disposableTest,
+      });
+      await logAudit({
+        action: "sv_clone",
+        entity: "schedule_versions",
+        entityId: id,
+        collegeId,
+        details: { source: sourceId, disposable_test: canMarkDisposable && disposableTest },
+      });
       return id;
     },
     onSuccess: () => { toast.success("تم الاستنساخ"); onCloned(); },
@@ -369,6 +386,20 @@ function CloneDialog({
             <Label>اسم النسخة الجديدة</Label>
             <Input value={nm} onChange={(e) => setNm(e.target.value)} />
           </div>
+          {canMarkDisposable && (
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={disposableTest}
+                onChange={(e) => setDisposableTest(e.target.checked)}
+              />
+              <span>
+                وسم كـ disposable_test (قابل للحذف الآمن لاحقًا عبر مسار الـ purge الرسمي فقط).
+                النسخ العادية تبقى غير قابلة للحذف عبر هذا المسار.
+              </span>
+            </label>
+          )}
           <p className="text-[11px] text-muted-foreground">
             يُنسخ: بيانات النسخة + محاضرات الجدول. لا يُنسخ: فحوصات التعارض، نتائج الجودة، عمليات الجدولة التلقائية.
           </p>

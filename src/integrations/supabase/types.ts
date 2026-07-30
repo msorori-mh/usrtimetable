@@ -2518,6 +2518,7 @@ export type Database = {
           college_id: string
           created_at: string
           created_by: string | null
+          disposable_test: boolean
           eligibility_revision: number
           id: string
           name: string
@@ -2530,6 +2531,7 @@ export type Database = {
           college_id: string
           created_at?: string
           created_by?: string | null
+          disposable_test?: boolean
           eligibility_revision?: number
           id?: string
           name: string
@@ -2542,6 +2544,7 @@ export type Database = {
           college_id?: string
           created_at?: string
           created_by?: string | null
+          disposable_test?: boolean
           eligibility_revision?: number
           id?: string
           name?: string
@@ -3942,6 +3945,10 @@ export type Database = {
       }
       resolve_compatibility_offering_set: {
         Args: { p_offerings: Json }
+        Returns: Json
+      }
+      purge_disposable_draft_schedule_version: {
+        Args: { p_version_id: string }
         Returns: Json
       }
       resolve_offering_for_delivery_group: {
