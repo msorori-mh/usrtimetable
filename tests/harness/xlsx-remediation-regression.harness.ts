@@ -29,14 +29,17 @@ async function run() {
   assert(pkg.default.name === "@e965/xlsx", `xlsx remount name=${pkg.default.name}`);
   assert(pkg.default.version === "0.20.3", `xlsx remount version=${pkg.default.version}`);
 
-  for (const entity of ["teaching_assignments_v2", "study_plan_courses", "full_study_plan"] as const) {
+  for (const entity of [
+    "teaching_assignments_v2",
+    "study_plan_courses",
+    "full_study_plan",
+  ] as const) {
     const tpl = TEMPLATES[entity];
     const blob = await buildTemplateWorkbook(entity);
     const file = await blobToFile(blob, `${entity}.xlsx`);
     const { headers, rows } = await parseExcel(file);
     assert(
-      headers.length === tpl.columns.length &&
-        headers.every((h, i) => h === tpl.columns[i].header),
+      headers.length === tpl.columns.length && headers.every((h, i) => h === tpl.columns[i].header),
       `${entity}: headers match template contract`,
     );
     assert(rows.length >= 1, `${entity}: example row present`);

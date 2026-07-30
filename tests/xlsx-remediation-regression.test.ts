@@ -6,11 +6,7 @@ import { describe, expect, test } from "bun:test";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import * as XLSX from "xlsx";
-import {
-  TEMPLATES,
-  buildTemplateWorkbook,
-  parseExcel,
-} from "../src/lib/excel-import/templates";
+import { TEMPLATES, buildTemplateWorkbook, parseExcel } from "../src/lib/excel-import/templates";
 import { parseSourceWorkbookFile } from "../src/lib/excel-import/teaching-assignments-source-parser";
 import { anonymizedRealWorkbookSheet } from "./fixtures/teaching-assignments-source/anonymized-real-layout";
 
@@ -27,7 +23,11 @@ async function blobToFile(blob: Blob, name: string): Promise<File> {
   });
 }
 
-function aoaToXlsxFile(sheetName: string, aoa: readonly (readonly unknown[])[], name: string): File {
+function aoaToXlsxFile(
+  sheetName: string,
+  aoa: readonly (readonly unknown[])[],
+  name: string,
+): File {
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet(aoa.map((row) => [...row]));
   XLSX.utils.book_append_sheet(wb, ws, sheetName);
