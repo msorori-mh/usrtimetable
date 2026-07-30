@@ -254,9 +254,10 @@ assert(
   "published filter sources are cohorts + delivery groups",
 );
 assert(
-  publishedRoute.includes('q.eq("cohort_id"') &&
-    publishedRoute.includes('q.eq("delivery_group_id"'),
-  "published inline query filters by cohort/DG",
+  publishedRoute.includes("fetchHydratedVersionSessions") &&
+    publishedRoute.includes("s.cohort_id === cohortId") &&
+    publishedRoute.includes("s.delivery_group_id === dgId"),
+  "published hydrated query filters by cohort/DG",
 );
 assert(
   publishedRoute.includes('{ key: "cohort", label: "الدفعة الدراسية" }'),

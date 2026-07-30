@@ -27,6 +27,8 @@ interface Props {
   /** Read-only note on header (default true). */
   readOnly?: boolean;
   filters?: ReactNode;
+  /** Always rendered above the loading/empty/body area (e.g. delivery-demo warning). */
+  leading?: ReactNode;
   rows: Row[];
   headers: { key: string; label: string }[];
   filename: string;
@@ -44,6 +46,7 @@ export function ReportShell({
   official,
   readOnly = true,
   filters,
+  leading,
   rows,
   headers,
   filename,
@@ -68,17 +71,15 @@ export function ReportShell({
 
   return (
     <div className="report-print-root space-y-4" dir="rtl">
-      <ReportOfficialHeader
-        reportTitle={title}
-        filterSummary={filterSummary}
-        {...headerMeta}
-      />
+      <ReportOfficialHeader reportTitle={title} filterSummary={filterSummary} {...headerMeta} />
 
       <div className="report-no-print flex items-center justify-between flex-wrap gap-2">
         <div>
           <div className="flex items-center gap-2">
             <Button asChild variant="ghost" size="sm">
-              <Link to="/reports"><ArrowRight className="h-4 w-4 ml-1" /> العودة</Link>
+              <Link to="/reports">
+                <ArrowRight className="h-4 w-4 ml-1" /> العودة
+              </Link>
             </Button>
             <h1 className="text-2xl font-bold">{title}</h1>
           </div>
@@ -89,18 +90,28 @@ export function ReportShell({
           <Button variant="outline" size="sm" onClick={handlePrint}>
             <Printer className="h-4 w-4 ml-1" /> طباعة
           </Button>
-          <Button variant="outline" size="sm" disabled={!rows.length}
-            onClick={() => downloadCSV(rows, headers, filename)}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!rows.length}
+            onClick={() => downloadCSV(rows, headers, filename)}
+          >
             <Download className="h-4 w-4 ml-1" /> CSV
           </Button>
-          <Button variant="outline" size="sm" disabled={!rows.length}
-            onClick={() => downloadXLSX(rows, headers, filename)}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!rows.length}
+            onClick={() => downloadXLSX(rows, headers, filename)}
+          >
             <FileSpreadsheet className="h-4 w-4 ml-1" /> Excel
           </Button>
         </div>
       </div>
 
       {filters && <Card className="report-no-print p-4">{filters}</Card>}
+
+      {leading}
 
       <div className="report-print-body">
         {isLoading ? (
