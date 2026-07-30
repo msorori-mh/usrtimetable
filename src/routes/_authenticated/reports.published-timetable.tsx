@@ -191,9 +191,7 @@ function Page() {
         filtered = filtered.filter((s) => s.room_id === roomId);
       }
       if (deptId !== "all") {
-        filtered = filtered.filter(
-          (s) => s.course_offerings?.courses?.department_id === deptId,
-        );
+        filtered = filtered.filter((s) => s.course_offerings?.courses?.department_id === deptId);
       }
       const labels = await fetchCohortDeliveryGroupLabels(active!.id, filtered);
       return { sessions: filtered, labels };
