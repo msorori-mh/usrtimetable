@@ -31,6 +31,7 @@ import {
   type DropPayload,
 } from "@/components/timetable/timetable-grid";
 import { SessionDialog } from "@/components/timetable/session-dialog";
+import { DeliveryDemoWarningBanner } from "@/components/schedule/delivery-demo-warning-banner";
 import { scoreScheduleVersion, type QualityResult } from "@/lib/conflict-engine/scorer";
 import { validateProposed } from "@/lib/conflict-engine/validator";
 import { logAudit } from "@/lib/audit";
@@ -98,7 +99,7 @@ function TimetablePage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("schedule_versions")
-        .select("id, name, status, college_id, academic_term_id")
+        .select("id, name, status, college_id, academic_term_id, notes")
         .eq("id", versionId)
         .single();
       if (error) throw error;
@@ -510,6 +511,7 @@ function TimetablePage() {
 
   return (
     <div className="space-y-4" dir="rtl">
+      <DeliveryDemoWarningBanner name={version.name} notes={version.notes} />
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <Button variant="ghost" size="sm" asChild>
