@@ -99,7 +99,7 @@ function TimetablePage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("schedule_versions")
-        .select("id, name, status, college_id, academic_term_id")
+        .select("id, name, status, college_id, academic_term_id, notes")
         .eq("id", versionId)
         .single();
       if (error) throw error;
