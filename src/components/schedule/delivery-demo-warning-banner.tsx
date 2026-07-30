@@ -4,10 +4,7 @@ import {
   isDeliveryDemoVersion,
 } from "@/lib/schedule-versions/delivery-demo";
 
-export function DeliveryDemoWarningBanner(props: {
-  name?: string | null;
-  notes?: string | null;
-}) {
+export function DeliveryDemoWarningBanner(props: { name?: string | null; notes?: string | null }) {
   if (!isDeliveryDemoVersion(props)) return null;
   return (
     <div
