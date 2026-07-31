@@ -20,8 +20,13 @@ export interface AvailabilityWindow {
 }
 
 const DAY_LABELS: Record<number, string> = {
-  6: "السبت", 0: "الأحد", 1: "الإثنين", 2: "الثلاثاء",
-  3: "الأربعاء", 4: "الخميس", 5: "الجمعة",
+  6: "السبت",
+  0: "الأحد",
+  1: "الإثنين",
+  2: "الثلاثاء",
+  3: "الأربعاء",
+  4: "الخميس",
+  5: "الجمعة",
 };
 
 const t = (s: string) => (s.length === 5 ? `${s}:00` : s);
@@ -44,6 +49,8 @@ export function TimetableGrid({
   onSessionClick,
   onDropAt,
   draggable = false,
+  /** Optional safety tone while dragging (green=valid, red=forbidden). */
+  getDropTone,
 }: {
   sessions: GridSession[];
   workingDays?: number[];
@@ -54,6 +61,7 @@ export function TimetableGrid({
   onSessionClick?: (id: string) => void;
   onDropAt?: (params: { day: number; startTime: string; payload: DropPayload }) => void;
   draggable?: boolean;
+  getDropTone?: (day: number, startTimeHHMM: string) => "green" | "red" | null;
 }) {
   const slots = useMemo(() => {
     const arr: { label: string; mins: number }[] = [];
@@ -68,9 +76,13 @@ export function TimetableGrid({
 
   const colorByType = (t: string) => {
     switch (t) {
-      case "lab": return "bg-emerald-500/20 border-emerald-500/50";
-      case "tutorial": return "bg-amber-500/20 border-amber-500/50";
-      case "lecture": default: return "bg-primary/20 border-primary/50";
+      case "lab":
+        return "bg-emerald-500/20 border-emerald-500/50";
+      case "tutorial":
+        return "bg-amber-500/20 border-amber-500/50";
+      case "lecture":
+      default:
+        return "bg-primary/20 border-primary/50";
     }
   };
 
@@ -101,22 +113,36 @@ export function TimetableGrid({
       const hh = String(Math.floor(slotMins / 60)).padStart(2, "0");
       const mm = String(slotMins % 60).padStart(2, "0");
       onDropAt({ day, startTime: `${hh}:${mm}`, payload });
-    } catch { /* noop */ }
+    } catch {
+      /* noop */
+    }
   };
 
   return (
     <div className="overflow-auto border rounded-md" dir="rtl">
-      <div className="grid" style={{ gridTemplateColumns: `80px repeat(${workingDays.length}, minmax(170px, 1fr))` }}>
-        <div className="bg-muted/40 border-b border-l p-2 text-xs font-medium sticky top-0 z-10">الوقت</div>
+      <div
+        className="grid"
+        style={{ gridTemplateColumns: `80px repeat(${workingDays.length}, minmax(170px, 1fr))` }}
+      >
+        <div className="bg-muted/40 border-b border-l p-2 text-xs font-medium sticky top-0 z-10">
+          الوقت
+        </div>
         {workingDays.map((d) => (
-          <div key={d} className="bg-muted/40 border-b border-l p-2 text-xs font-medium text-center sticky top-0 z-10">
+          <div
+            key={d}
+            className="bg-muted/40 border-b border-l p-2 text-xs font-medium text-center sticky top-0 z-10"
+          >
             {DAY_LABELS[d]}
           </div>
         ))}
 
         <div className="border-l" style={{ height: totalHeight }}>
           {slots.map((s) => (
-            <div key={s.mins} className="text-[10px] text-muted-foreground p-1 border-b" style={{ height: SLOT_PX }}>
+            <div
+              key={s.mins}
+              className="text-[10px] text-muted-foreground p-1 border-b"
+              style={{ height: SLOT_PX }}
+            >
               {s.label}
             </div>
           ))}
@@ -128,16 +154,32 @@ export function TimetableGrid({
             <div key={d} className="relative border-l" style={{ height: totalHeight }}>
               {slots.map((s) => {
                 const ok = isInsideAvailability(d, s.mins);
+                const hh = String(Math.floor(s.mins / 60)).padStart(2, "0");
+                const mm = String(s.mins % 60).padStart(2, "0");
+                const tone = ok && getDropTone ? getDropTone(d, `${hh}:${mm}`) : null;
                 return (
                   <div
                     key={s.mins}
                     className={cn(
                       "border-b transition-colors",
-                      ok ? "hover:bg-primary/5" : "bg-muted/40 bg-[repeating-linear-gradient(45deg,transparent,transparent_6px,rgba(0,0,0,0.04)_6px,rgba(0,0,0,0.04)_12px)]",
+                      ok
+                        ? "hover:bg-primary/5"
+                        : "bg-muted/40 bg-[repeating-linear-gradient(45deg,transparent,transparent_6px,rgba(0,0,0,0.04)_6px,rgba(0,0,0,0.04)_12px)]",
+                      tone === "green" && "bg-emerald-500/25 ring-1 ring-emerald-600/40",
+                      tone === "red" && "bg-red-500/25 ring-1 ring-red-600/40",
                     )}
                     style={{ height: SLOT_PX }}
-                    onDragOver={(e) => { if (ok && onDropAt) e.preventDefault(); }}
+                    onDragOver={(e) => {
+                      if (ok && onDropAt) e.preventDefault();
+                    }}
                     onDrop={(e) => ok && handleDrop(e, d, s.mins)}
+                    title={
+                      tone === "red" ? "خانة ممنوعة" : tone === "green" ? "خانة صالحة" : undefined
+                    }
+                    role="gridcell"
+                    aria-label={
+                      tone === "red" ? "خانة ممنوعة" : tone === "green" ? "خانة صالحة" : undefined
+                    }
                   />
                 );
               })}
@@ -150,7 +192,10 @@ export function TimetableGrid({
                     key={sess.id}
                     draggable={draggable}
                     onDragStart={(e) => {
-                      e.dataTransfer.setData("application/x-lovable-drop", JSON.stringify({ kind: "session", id: sess.id } as DropPayload));
+                      e.dataTransfer.setData(
+                        "application/x-lovable-drop",
+                        JSON.stringify({ kind: "session", id: sess.id } as DropPayload),
+                      );
                       e.dataTransfer.effectAllowed = "move";
                     }}
                     onClick={() => onSessionClick?.(sess.id)}
@@ -162,10 +207,20 @@ export function TimetableGrid({
                     style={{ top: top + 1, height: height - 2 }}
                   >
                     <div className="font-semibold truncate">{sess.title}</div>
-                    {sess.subtitle && <div className="text-[10px] truncate text-muted-foreground">{sess.subtitle}</div>}
+                    {sess.subtitle && (
+                      <div className="text-[10px] truncate text-muted-foreground">
+                        {sess.subtitle}
+                      </div>
+                    )}
                     <div className="flex gap-1 mt-1 flex-wrap">
-                      <span className="text-[9px] bg-background/60 rounded px-1">{sess.start_time.slice(0,5)}–{sess.end_time.slice(0,5)}</span>
-                      {sess.badge && <span className="text-[9px] bg-background/60 rounded px-1">{sess.badge}</span>}
+                      <span className="text-[9px] bg-background/60 rounded px-1">
+                        {sess.start_time.slice(0, 5)}–{sess.end_time.slice(0, 5)}
+                      </span>
+                      {sess.badge && (
+                        <span className="text-[9px] bg-background/60 rounded px-1">
+                          {sess.badge}
+                        </span>
+                      )}
                     </div>
                   </div>
                 );

@@ -53,13 +53,19 @@ import {
   applyPendingToSessions,
   buildPendingChange,
   hasPendingChanges,
-  proposeSlotFromDragDrop,
   snapshotOriginalFromSession,
   toGridSessionsWithPending,
   validateLocalEditForm,
   type LocalEditFormValues,
   type PendingScheduleSessionChange,
 } from "@/lib/schedule-builder/pending-change";
+import {
+  evaluateDropTarget,
+  isProtectedDemoVersion,
+  popUndo,
+  publishedVersionConfirmMessage,
+  pushUndo,
+} from "@/lib/schedule-builder/drag-drop-safety";
 import {
   canSaveAfterValidation,
   moveOrRescheduleScheduleSession,
@@ -133,6 +139,8 @@ function ScheduleBuilderWorkspacePage() {
   const [editSheetOpen, setEditSheetOpen] = useState(false);
   const [editModeActive, setEditModeActive] = useState(false);
   const [pending, setPending] = useState<PendingScheduleSessionChange | null>(null);
+  const [undoStack, setUndoStack] = useState<PendingScheduleSessionChange[]>([]);
+  const [editLog, setEditLog] = useState<string[]>([]);
   const [validation, setValidation] = useState<ValidateSessionMoveResult | null>(null);
   const [validateLoading, setValidateLoading] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
@@ -446,6 +454,10 @@ function ScheduleBuilderWorkspacePage() {
   const onGridDrop = (params: { day: number; startTime: string; payload: DropPayload }) => {
     if (!mayEnterEdit || !editModeActive) return;
     if (params.payload.kind !== "session") return;
+    if (isProtectedDemoVersion(versionId)) {
+      toast.error("نسخة العرض المحمية — التعديل الحي مرفوض في هذه المهمة.");
+      return;
+    }
 
     const session = allSessions.find((s) => s.id === params.payload.id) ?? null;
     if (
@@ -467,25 +479,75 @@ function ScheduleBuilderWorkspacePage() {
         ? pending.proposed
         : snapshotOriginalFromSession(session);
 
-    const proposed = proposeSlotFromDragDrop({
+    const safety = evaluateDropTarget({
       sourceSlot,
+      movingSession: {
+        id: session.id,
+        instructor_id: session.instructor_id,
+        room_id: session.room_id,
+        cohort_id: null,
+        study_system: session.study_system,
+        day_of_week: session.day_of_week,
+        start_time: session.start_time,
+        end_time: session.end_time,
+        is_locked: session.is_locked,
+      },
       day_of_week: params.day,
       start_time: params.startTime,
+      others: allSessions.map((s) => ({
+        id: s.id,
+        instructor_id: s.instructor_id,
+        room_id: s.room_id,
+        cohort_id: null,
+        study_system: s.study_system,
+        day_of_week: s.day_of_week,
+        start_time: s.start_time,
+        end_time: s.end_time,
+        is_locked: s.is_locked,
+      })),
     });
-    if (!proposed.ok) return;
+    if (safety.kind === "forbidden" || !safety.proposed) {
+      toast.error(safety.reason_ar ?? "خانة ممنوعة قبل الإفلات.");
+      return;
+    }
 
-    setPending(
-      buildPendingChange({
-        session,
-        proposed: proposed.proposed,
-        changeReason: pending?.sessionId === session.id ? pending.changeReason : "",
-      }),
+    const confirmMsg = publishedVersionConfirmMessage(selectedVersion?.status ?? null);
+    if (confirmMsg) {
+      toast.message(confirmMsg);
+    }
+
+    const next = buildPendingChange({
+      session,
+      proposed: safety.proposed,
+      changeReason: pending?.sessionId === session.id ? pending.changeReason : "",
+    });
+    if (pending && hasPendingChanges(pending)) {
+      setUndoStack((stack) => pushUndo(stack, pending));
+    }
+    setPending(next);
+    setEditLog((log) =>
+      [
+        ...log,
+        `سحب → يوم ${params.day} ${params.startTime} (${session.course_code ?? session.id.slice(0, 8)})`,
+      ].slice(-30),
     );
     setValidation(null);
     setSaveMessage(null);
     setSelectedSessionId(session.id);
     setDetailsOpen(false);
     setEditSheetOpen(true);
+  };
+
+  const onUndoLocal = () => {
+    const { stack, item } = popUndo(undoStack);
+    setUndoStack(stack);
+    if (!item) {
+      setPending(null);
+      return;
+    }
+    setPending(item);
+    setEditLog((log) => [...log, "تراجع محلي قبل الحفظ"].slice(-30));
+    setValidation(null);
   };
 
   const onCancelSessionChange = () => {
@@ -496,6 +558,7 @@ function ScheduleBuilderWorkspacePage() {
 
   const onCancelAllChanges = () => {
     setPending(null);
+    setUndoStack([]);
     setValidation(null);
     setSaveMessage(null);
     setEditSheetOpen(false);
@@ -938,15 +1001,71 @@ function ScheduleBuilderWorkspacePage() {
               {SCHEDULE_BUILDER_WORKSPACE_FILTER_EMPTY_AR}
             </p>
           ) : (
-            <TimetableGrid
-              sessions={gridSessions}
-              workingDays={workingDays}
-              startHour={startHour}
-              endHour={endHour}
-              onSessionClick={onSessionClick}
-              draggable={editModeActive && mayEnterEdit}
-              onDropAt={onGridDrop}
-            />
+            <>
+              <TimetableGrid
+                sessions={gridSessions}
+                workingDays={workingDays}
+                startHour={startHour}
+                endHour={endHour}
+                onSessionClick={onSessionClick}
+                draggable={editModeActive && mayEnterEdit && !isProtectedDemoVersion(versionId)}
+                onDropAt={onGridDrop}
+                getDropTone={
+                  editModeActive && selectedSessionId
+                    ? (day, startTime) => {
+                        const session = allSessions.find((s) => s.id === selectedSessionId);
+                        if (!session) return null;
+                        const sourceSlot =
+                          pending && pending.sessionId === session.id && hasPendingChanges(pending)
+                            ? pending.proposed
+                            : snapshotOriginalFromSession(session);
+                        const safety = evaluateDropTarget({
+                          sourceSlot,
+                          movingSession: {
+                            id: session.id,
+                            instructor_id: session.instructor_id,
+                            room_id: session.room_id,
+                            study_system: session.study_system,
+                            day_of_week: session.day_of_week,
+                            start_time: session.start_time,
+                            end_time: session.end_time,
+                            is_locked: session.is_locked,
+                          },
+                          day_of_week: day,
+                          start_time: startTime,
+                          others: allSessions.map((s) => ({
+                            id: s.id,
+                            instructor_id: s.instructor_id,
+                            room_id: s.room_id,
+                            study_system: s.study_system,
+                            day_of_week: s.day_of_week,
+                            start_time: s.start_time,
+                            end_time: s.end_time,
+                            is_locked: s.is_locked,
+                          })),
+                        });
+                        return safety.tone;
+                      }
+                    : undefined
+                }
+              />
+              {editModeActive && (
+                <div className="mt-3 flex flex-wrap gap-2 items-center">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={onUndoLocal}
+                    disabled={undoStack.length === 0 && !pending}
+                  >
+                    تراجع محلي
+                  </Button>
+                  <span className="text-xs text-muted-foreground">
+                    سجل الجلسة: {editLog.slice(-3).join(" · ") || "—"}
+                  </span>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
