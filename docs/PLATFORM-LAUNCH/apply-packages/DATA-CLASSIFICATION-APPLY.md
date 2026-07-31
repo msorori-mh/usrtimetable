@@ -109,4 +109,3 @@ After approved apply, clients may include `data_classification` in `schedule_ver
 - PR: Ready + CI green → **DO NOT merge** while merge depends on migration being applied (or while waiting for explicit migration approval per mission).
 - **DO NOT** Lovable publish from this mission.
 - **DO NOT** apply migration without explicit `APPROVE_DB_MIGRATION_APPLY`.
-

@@ -1,0 +1,2 @@
+*.sql text eol=lf
+docs/PLATFORM-LAUNCH/apply-packages/*.md text eol=lf
