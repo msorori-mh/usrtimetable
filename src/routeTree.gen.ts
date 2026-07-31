@@ -25,6 +25,7 @@ import { Route as AuthenticatedCoursesRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedDailyBreaksRouteImport } from './routes/_authenticated/daily-breaks'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedDataCleanupRouteImport } from './routes/_authenticated/data-cleanup'
+import { Route as AuthenticatedDataOnboardingRouteImport } from './routes/_authenticated/data-onboarding'
 import { Route as AuthenticatedDataReadinessRouteImport } from './routes/_authenticated/data-readiness'
 import { Route as AuthenticatedDataTemplatesRouteImport } from './routes/_authenticated/data-templates'
 import { Route as AuthenticatedDeliveryGroupsRouteImport } from './routes/_authenticated/delivery-groups'
@@ -157,6 +158,12 @@ const AuthenticatedDataCleanupRoute =
   AuthenticatedDataCleanupRouteImport.update({
     id: '/data-cleanup',
     path: '/data-cleanup',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedDataOnboardingRoute =
+  AuthenticatedDataOnboardingRouteImport.update({
+    id: '/data-onboarding',
+    path: '/data-onboarding',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedDataReadinessRoute =
@@ -435,6 +442,7 @@ export interface FileRoutesByFullPath {
   '/daily-breaks': typeof AuthenticatedDailyBreaksRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/data-cleanup': typeof AuthenticatedDataCleanupRoute
+  '/data-onboarding': typeof AuthenticatedDataOnboardingRoute
   '/data-readiness': typeof AuthenticatedDataReadinessRoute
   '/data-templates': typeof AuthenticatedDataTemplatesRoute
   '/delivery-groups': typeof AuthenticatedDeliveryGroupsRoute
@@ -497,6 +505,7 @@ export interface FileRoutesByTo {
   '/daily-breaks': typeof AuthenticatedDailyBreaksRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/data-cleanup': typeof AuthenticatedDataCleanupRoute
+  '/data-onboarding': typeof AuthenticatedDataOnboardingRoute
   '/data-readiness': typeof AuthenticatedDataReadinessRoute
   '/data-templates': typeof AuthenticatedDataTemplatesRoute
   '/delivery-groups': typeof AuthenticatedDeliveryGroupsRoute
@@ -560,6 +569,7 @@ export interface FileRoutesById {
   '/_authenticated/daily-breaks': typeof AuthenticatedDailyBreaksRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/data-cleanup': typeof AuthenticatedDataCleanupRoute
+  '/_authenticated/data-onboarding': typeof AuthenticatedDataOnboardingRoute
   '/_authenticated/data-readiness': typeof AuthenticatedDataReadinessRoute
   '/_authenticated/data-templates': typeof AuthenticatedDataTemplatesRoute
   '/_authenticated/delivery-groups': typeof AuthenticatedDeliveryGroupsRoute
@@ -624,6 +634,7 @@ export interface FileRouteTypes {
     | '/daily-breaks'
     | '/dashboard'
     | '/data-cleanup'
+    | '/data-onboarding'
     | '/data-readiness'
     | '/data-templates'
     | '/delivery-groups'
@@ -686,6 +697,7 @@ export interface FileRouteTypes {
     | '/daily-breaks'
     | '/dashboard'
     | '/data-cleanup'
+    | '/data-onboarding'
     | '/data-readiness'
     | '/data-templates'
     | '/delivery-groups'
@@ -748,6 +760,7 @@ export interface FileRouteTypes {
     | '/_authenticated/daily-breaks'
     | '/_authenticated/dashboard'
     | '/_authenticated/data-cleanup'
+    | '/_authenticated/data-onboarding'
     | '/_authenticated/data-readiness'
     | '/_authenticated/data-templates'
     | '/_authenticated/delivery-groups'
@@ -913,6 +926,13 @@ declare module '@tanstack/react-router' {
       path: '/data-cleanup'
       fullPath: '/data-cleanup'
       preLoaderRoute: typeof AuthenticatedDataCleanupRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/data-onboarding': {
+      id: '/_authenticated/data-onboarding'
+      path: '/data-onboarding'
+      fullPath: '/data-onboarding'
+      preLoaderRoute: typeof AuthenticatedDataOnboardingRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/data-readiness': {
@@ -1292,6 +1312,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDailyBreaksRoute: typeof AuthenticatedDailyBreaksRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedDataCleanupRoute: typeof AuthenticatedDataCleanupRoute
+  AuthenticatedDataOnboardingRoute: typeof AuthenticatedDataOnboardingRoute
   AuthenticatedDataReadinessRoute: typeof AuthenticatedDataReadinessRoute
   AuthenticatedDataTemplatesRoute: typeof AuthenticatedDataTemplatesRoute
   AuthenticatedDeliveryGroupsRoute: typeof AuthenticatedDeliveryGroupsRoute
@@ -1340,6 +1361,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDailyBreaksRoute: AuthenticatedDailyBreaksRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedDataCleanupRoute: AuthenticatedDataCleanupRoute,
+  AuthenticatedDataOnboardingRoute: AuthenticatedDataOnboardingRoute,
   AuthenticatedDataReadinessRoute: AuthenticatedDataReadinessRoute,
   AuthenticatedDataTemplatesRoute: AuthenticatedDataTemplatesRoute,
   AuthenticatedDeliveryGroupsRoute: AuthenticatedDeliveryGroupsRoute,
@@ -1387,3 +1409,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

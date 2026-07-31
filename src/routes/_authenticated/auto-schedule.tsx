@@ -96,6 +96,10 @@ function AutoSchedulePage() {
 
   const run = useMutation({
     mutationFn: async () => {
+      // Dual gate: UI disables the button; mutation re-checks manage + readiness (fail-closed).
+      if (!canManage) {
+        throw new Error("UNAUTHORIZED: لا تملك صلاحية تشغيل الجدولة التلقائية لهذه الكلّية");
+      }
       if (!active || !versionId) throw new Error("اختر النسخة");
       const freshReadiness = await fetchCollegeReadiness(active.id);
       const freshBlockers = [
@@ -217,12 +221,20 @@ function AutoSchedulePage() {
                         }`
                       : `${readinessBlockers.length} فحوص حرجة تحتاج إلى معالجة.`}
                 </p>
-                <Link
-                  to="/data-readiness"
-                  className="mt-2 inline-block text-primary underline-offset-4 hover:underline"
-                >
-                  فتح شاشة جاهزية البيانات
-                </Link>
+                <div className="mt-2 flex flex-wrap gap-3">
+                  <Link
+                    to="/data-onboarding"
+                    className="text-primary underline-offset-4 hover:underline"
+                  >
+                    معالج إعداد البيانات
+                  </Link>
+                  <Link
+                    to="/data-readiness"
+                    className="text-primary underline-offset-4 hover:underline"
+                  >
+                    فتح شاشة جاهزية البيانات
+                  </Link>
+                </div>
               </div>
             ) : null}
             <p className="text-[11px] text-muted-foreground">

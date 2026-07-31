@@ -145,6 +145,29 @@ describe("print-center filters", () => {
     );
   });
 
+  it("ignores leftover programId/levelId/departmentId on instructor reports", () => {
+    const sessions = [
+      makeSession({ id: "1" }),
+      makeSession({
+        id: "2",
+        course_offerings: {
+          program_id: "prog-OTHER",
+          level_id: "lvl-OTHER",
+          courses: { code: "Z", name: "Z", department_id: "dept-OTHER" },
+        },
+      }),
+    ];
+    const out = filterPrintSessions(sessions, {
+      reportType: "instructor",
+      collegeId: "college-a",
+      programId: "prog-1",
+      levelId: "lvl-1",
+      departmentId: "dept-1",
+      studySystem: "all",
+    });
+    assert.deepEqual(out.map((s) => s.id).sort(), ["1", "2"]);
+  });
+
   it("separates regular and parallel in program grouping", () => {
     const sessions = [
       makeSession({ id: "r", study_system: "regular", day_of_week: 0 }),

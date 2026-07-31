@@ -1,6 +1,11 @@
 import { matchesStudySystem } from "@/lib/reports/filters";
 import type { ReportStudySystem } from "@/lib/reports/types";
-import type { PrintCenterFilters, PrintSessionLike, PrintStudySystem } from "./types";
+import type {
+  PrintCenterFilters,
+  PrintReportType,
+  PrintSessionLike,
+  PrintStudySystem,
+} from "./types";
 
 /** Reject sessions whose college_id does not match the active college. */
 export function sessionMatchesCollege(session: PrintSessionLike, collegeId: string): boolean {
@@ -23,6 +28,52 @@ export function rejectMismatchedCollege(
 
 function studyFilter(sys: PrintStudySystem | null | undefined): ReportStudySystem {
   return (sys ?? "all") as ReportStudySystem;
+}
+
+/** Dimensions that intentionally apply for each print report type. */
+export type PrintFilterDimension =
+  | "programId"
+  | "levelId"
+  | "departmentId"
+  | "instructorId"
+  | "roomId"
+  | "studySystem"
+  | "cohortId"
+  | "deliveryGroupId";
+
+const REPORT_TYPE_DIMENSIONS: Record<PrintReportType, ReadonlySet<PrintFilterDimension>> = {
+  student: new Set(["programId", "levelId", "studySystem", "cohortId", "deliveryGroupId"]),
+  department: new Set(["departmentId", "programId", "levelId", "studySystem"]),
+  program: new Set(["programId", "levelId", "studySystem"]),
+  level: new Set(["levelId", "studySystem"]),
+  instructor: new Set(["instructorId", "studySystem"]),
+  room: new Set(["roomId", "studySystem"]),
+};
+
+export function dimensionsForReportType(
+  reportType: PrintReportType,
+): ReadonlySet<PrintFilterDimension> {
+  return REPORT_TYPE_DIMENSIONS[reportType];
+}
+
+/**
+ * Drop leftover filter dimensions that are not intentional for the report type
+ * (e.g. programId left over after switching student → instructor).
+ */
+export function sanitizePrintFilters(filters: PrintCenterFilters): PrintCenterFilters {
+  const allowed = dimensionsForReportType(filters.reportType);
+  return {
+    reportType: filters.reportType,
+    collegeId: filters.collegeId,
+    programId: allowed.has("programId") ? filters.programId : null,
+    levelId: allowed.has("levelId") ? filters.levelId : null,
+    departmentId: allowed.has("departmentId") ? filters.departmentId : null,
+    instructorId: allowed.has("instructorId") ? filters.instructorId : null,
+    roomId: allowed.has("roomId") ? filters.roomId : null,
+    studySystem: allowed.has("studySystem") ? filters.studySystem : "all",
+    cohortId: allowed.has("cohortId") ? filters.cohortId : null,
+    deliveryGroupId: allowed.has("deliveryGroupId") ? filters.deliveryGroupId : null,
+  };
 }
 
 /**
@@ -58,18 +109,19 @@ export function filterPrintSessions(
   sessions: PrintSessionLike[],
   filters: PrintCenterFilters,
 ): PrintSessionLike[] {
-  const scoped = rejectMismatchedCollege(sessions, filters.collegeId);
+  const effective = sanitizePrintFilters(filters);
+  const scoped = rejectMismatchedCollege(sessions, effective.collegeId);
 
-  if (filters.reportType === "student" && !studentFiltersComplete(filters)) {
+  if (effective.reportType === "student" && !studentFiltersComplete(effective)) {
     return [];
   }
-  if (filters.reportType === "department" && !departmentFiltersComplete(filters)) {
+  if (effective.reportType === "department" && !departmentFiltersComplete(effective)) {
     return [];
   }
-  if (filters.reportType === "program" && !programFiltersComplete(filters)) {
+  if (effective.reportType === "program" && !programFiltersComplete(effective)) {
     return [];
   }
-  if (filters.reportType === "level" && !levelFiltersComplete(filters)) {
+  if (effective.reportType === "level" && !levelFiltersComplete(effective)) {
     return [];
   }
 
@@ -77,33 +129,31 @@ export function filterPrintSessions(
     const offering = s.course_offerings;
     const course = offering?.courses;
 
-    if (filters.departmentId) {
-      if (course?.department_id !== filters.departmentId) return false;
+    if (effective.departmentId) {
+      if (course?.department_id !== effective.departmentId) return false;
     }
-    if (filters.programId) {
-      if (offering?.program_id !== filters.programId) return false;
+    if (effective.programId) {
+      if (offering?.program_id !== effective.programId) return false;
     }
-    if (filters.levelId) {
-      if (offering?.level_id !== filters.levelId) return false;
+    if (effective.levelId) {
+      if (offering?.level_id !== effective.levelId) return false;
     }
-    if (filters.instructorId) {
-      if (s.instructor_id !== filters.instructorId) return false;
+    if (effective.instructorId) {
+      if (s.instructor_id !== effective.instructorId) return false;
     }
-    if (filters.roomId) {
-      if (s.room_id !== filters.roomId) return false;
+    if (effective.roomId) {
+      if (s.room_id !== effective.roomId) return false;
     }
-    if (filters.cohortId) {
-      if (s.cohort_id !== filters.cohortId) return false;
+    if (effective.cohortId) {
+      if (s.cohort_id !== effective.cohortId) return false;
     }
-    if (filters.deliveryGroupId) {
-      if (s.delivery_group_id !== filters.deliveryGroupId) return false;
+    if (effective.deliveryGroupId) {
+      if (s.delivery_group_id !== effective.deliveryGroupId) return false;
     }
-    if (filters.studySystem && filters.studySystem !== "all") {
-      if (!matchesStudySystem(s.study_system, studyFilter(filters.studySystem))) return false;
+    if (effective.studySystem && effective.studySystem !== "all") {
+      if (!matchesStudySystem(s.study_system, studyFilter(effective.studySystem))) return false;
     }
 
-    // Report-type defaults (when dimension ids not set):
-    // department / program / instructor / room / level still apply above when set.
     return true;
   });
 }
