@@ -54,6 +54,7 @@ function sampleSession(
     instructor_id: "i1",
     section_id: "s1",
     section_subgroup_id: null,
+    cohort_id: null,
     room_id: "r1",
     program_id: "p1",
     level_id: "l1",
@@ -78,6 +79,8 @@ function run() {
     page.includes("evaluateDropTarget") || page.includes("proposeSlotFromDragDrop"),
     "uses pure drag proposal/safety helper",
   );
+  assert(page.includes("buildEvaluateDropTargetInput"), "drop preview wires cohort/room input");
+  assert(!page.includes("cohort_id: null"), "drop path does not force cohort_id null");
   assert(page.includes("setValidation(null)"), "clears validation on local edit/drop");
 
   const dropStart = page.indexOf("const onGridDrop =");

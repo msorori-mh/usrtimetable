@@ -61,6 +61,7 @@ function sampleSession(
     instructor_id: "i1",
     section_id: "s1",
     section_subgroup_id: null,
+    cohort_id: null,
     room_id: "r1",
     program_id: "p1",
     level_id: "l1",
@@ -175,6 +176,7 @@ function run() {
         session_type: "lecture",
         study_system: "regular",
         section_id: "sec-1",
+        cohort_id: "coh-1",
         instructor_id: "ins-1",
         room_id: "room-missing",
         updated_at: null,
@@ -220,6 +222,10 @@ function run() {
   const mappedAssembled = mapWorkspaceSessions(assembled);
   assert(mappedAssembled[0].room_label === "—", "orphan room maps to dash");
   assert(mappedAssembled[0].course_code === "CS101", "assembled course maps");
+  assert(
+    mappedAssembled[0].cohort_id === "coh-1",
+    "cohort_id preserved through mapWorkspaceSessions",
+  );
 
   // Map raw → view; partial data does not throw
   const mapped = mapWorkspaceSessions([

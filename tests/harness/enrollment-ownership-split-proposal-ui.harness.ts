@@ -79,6 +79,7 @@ function sampleSession(
     instructor_id: "i1",
     section_id: "s1",
     section_subgroup_id: null,
+    cohort_id: null,
     room_id: "r1",
     program_id: "p1",
     level_id: "l1",

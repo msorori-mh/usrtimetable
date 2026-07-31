@@ -56,6 +56,8 @@ export interface WorkspaceSessionView {
   instructor_id: string | null;
   section_id: string | null;
   section_subgroup_id: string | null;
+  /** New Flow cohort identity for conflict preview (null when unset). */
+  cohort_id: string | null;
   room_id: string | null;
   program_id: string | null;
   level_id: string | null;
@@ -73,6 +75,7 @@ interface RawWorkspaceSessionRow {
   study_system?: string | null;
   instructor_id?: string | null;
   section_id?: string | null;
+  cohort_id?: string | null;
   room_id?: string | null;
   updated_at?: string | null;
   is_locked?: boolean | null;
@@ -141,6 +144,7 @@ export function mapWorkspaceSessions(raw: unknown[]): WorkspaceSessionView[] {
       instructor_id: s.instructor_id ?? null,
       section_id: s.section_id ?? null,
       section_subgroup_id: s.section_subgroup_id ?? null,
+      cohort_id: s.cohort_id ?? null,
       room_id: s.room_id ?? null,
       program_id: offering?.program_id ?? null,
       level_id: offering?.level_id ?? null,
