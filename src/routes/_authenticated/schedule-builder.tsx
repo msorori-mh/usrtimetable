@@ -60,6 +60,7 @@ import {
   type PendingScheduleSessionChange,
 } from "@/lib/schedule-builder/pending-change";
 import {
+  buildEvaluateDropTargetInput,
   evaluateDropTarget,
   isProtectedDemoVersion,
   popUndo,
@@ -479,33 +480,16 @@ function ScheduleBuilderWorkspacePage() {
         ? pending.proposed
         : snapshotOriginalFromSession(session);
 
-    const safety = evaluateDropTarget({
-      sourceSlot,
-      movingSession: {
-        id: session.id,
-        instructor_id: session.instructor_id,
-        room_id: session.room_id,
-        cohort_id: null,
-        study_system: session.study_system,
-        day_of_week: session.day_of_week,
-        start_time: session.start_time,
-        end_time: session.end_time,
-        is_locked: session.is_locked,
-      },
-      day_of_week: params.day,
-      start_time: params.startTime,
-      others: allSessions.map((s) => ({
-        id: s.id,
-        instructor_id: s.instructor_id,
-        room_id: s.room_id,
-        cohort_id: null,
-        study_system: s.study_system,
-        day_of_week: s.day_of_week,
-        start_time: s.start_time,
-        end_time: s.end_time,
-        is_locked: s.is_locked,
-      })),
-    });
+    const safety = evaluateDropTarget(
+      buildEvaluateDropTargetInput({
+        sourceSlot,
+        movingSession: session,
+        day_of_week: params.day,
+        start_time: params.startTime,
+        others: allSessions,
+        rooms,
+      }),
+    );
     if (safety.kind === "forbidden" || !safety.proposed) {
       toast.error(safety.reason_ar ?? "خانة ممنوعة قبل الإفلات.");
       return;
@@ -1019,31 +1003,16 @@ function ScheduleBuilderWorkspacePage() {
                           pending && pending.sessionId === session.id && hasPendingChanges(pending)
                             ? pending.proposed
                             : snapshotOriginalFromSession(session);
-                        const safety = evaluateDropTarget({
-                          sourceSlot,
-                          movingSession: {
-                            id: session.id,
-                            instructor_id: session.instructor_id,
-                            room_id: session.room_id,
-                            study_system: session.study_system,
-                            day_of_week: session.day_of_week,
-                            start_time: session.start_time,
-                            end_time: session.end_time,
-                            is_locked: session.is_locked,
-                          },
-                          day_of_week: day,
-                          start_time: startTime,
-                          others: allSessions.map((s) => ({
-                            id: s.id,
-                            instructor_id: s.instructor_id,
-                            room_id: s.room_id,
-                            study_system: s.study_system,
-                            day_of_week: s.day_of_week,
-                            start_time: s.start_time,
-                            end_time: s.end_time,
-                            is_locked: s.is_locked,
-                          })),
-                        });
+                        const safety = evaluateDropTarget(
+                          buildEvaluateDropTargetInput({
+                            sourceSlot,
+                            movingSession: session,
+                            day_of_week: day,
+                            start_time: startTime,
+                            others: allSessions,
+                            rooms,
+                          }),
+                        );
                         return safety.tone;
                       }
                     : undefined
