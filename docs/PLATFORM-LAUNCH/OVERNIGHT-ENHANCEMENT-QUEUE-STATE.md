@@ -33,15 +33,21 @@ DRAG_DROP_UNDO_STATUS=READY_CI_GREEN_PENDING_CONTROLLED_LIVE_WRITE_REVIEW
 DRAG_DROP_UNDO_PR=133
 Blocker: CONTROLLED_LIVE_DRAG_DROP_WRITE_TEST_REQUIRES_OWNER_APPROVAL
 No Publish · No live write test · JSX parse failure RESOLVED · unit 5/5 · runtime-gates PASS
+HEAD sync: local = remote = PR HEAD `08d7b8bac9c7e71952089a458db519717cbc9dcb`
 
 ## QUEUE 5 Advanced Reports
 
-PR_READY_CI_GREEN — PR #134 — based on origin/main (29a86f2), NOT on #133 — NOT merged (catalog only)
+PR_READY_CI_GREEN — PR #134 — based on origin/main (`29a86f2`), NOT on #133 — NOT merged (catalog only)
 
 ## QUEUE 6 Student/Instructor Portal
 
-PR_IN_PROGRESS — feat/student-instructor-portal-foundation-01 — source foundation only · no role migration · no production accounts
+PR_READY_CI_GREEN — PR #136 — `feat/student-instructor-portal-foundation-01` HEAD `aa04935dd40caa3fc81e49d2679bcece1982dbec`
+Source foundation only · no role migration · no production accounts · NOT merged overnight
 
 ## QUEUE 7 System Health Backup
 
 PR_READY_CI_GREEN — PR #135 — NOT merged (read-only health + runbook; no backup execution)
+
+## Protected schedule (live verify)
+
+version `835e50fe-3ad2-4232-8c15-0f403c668a7f` — published demo warning visible — visible session blocks **54** — unscheduled hint **0** — unchanged (no publish / no write)
