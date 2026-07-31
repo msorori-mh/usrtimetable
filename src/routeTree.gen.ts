@@ -70,6 +70,7 @@ import { Route as AuthenticatedReportsRoomTimetableRouteImport } from './routes/
 import { Route as AuthenticatedReportsRoomUtilizationRouteImport } from './routes/_authenticated/reports.room-utilization'
 import { Route as AuthenticatedReportsSectionTimetableRouteImport } from './routes/_authenticated/reports.section-timetable'
 import { Route as AuthenticatedReportsUnscheduledRouteImport } from './routes/_authenticated/reports.unscheduled'
+import { Route as AuthenticatedReportsVersionComparisonRouteImport } from './routes/_authenticated/reports.version-comparison'
 import { Route as AuthenticatedTimetableVersionIdRouteImport } from './routes/_authenticated/timetable.$versionId'
 import { Route as AuthenticatedTimetableVersionIdPrintRouteImport } from './routes/_authenticated/timetable_.$versionId.print'
 
@@ -420,6 +421,12 @@ const AuthenticatedReportsUnscheduledRoute =
     path: '/unscheduled',
     getParentRoute: () => AuthenticatedReportsRoute,
   } as any)
+const AuthenticatedReportsVersionComparisonRoute =
+  AuthenticatedReportsVersionComparisonRouteImport.update({
+    id: '/version-comparison',
+    path: '/version-comparison',
+    getParentRoute: () => AuthenticatedReportsRoute,
+  } as any)
 const AuthenticatedTimetableVersionIdRoute =
   AuthenticatedTimetableVersionIdRouteImport.update({
     id: '/timetable/$versionId',
@@ -493,6 +500,7 @@ export interface FileRoutesByFullPath {
   '/reports/room-utilization': typeof AuthenticatedReportsRoomUtilizationRoute
   '/reports/section-timetable': typeof AuthenticatedReportsSectionTimetableRoute
   '/reports/unscheduled': typeof AuthenticatedReportsUnscheduledRoute
+  '/reports/version-comparison': typeof AuthenticatedReportsVersionComparisonRoute
   '/timetable/$versionId': typeof AuthenticatedTimetableVersionIdRoute
   '/reports/': typeof AuthenticatedReportsIndexRoute
   '/timetable/$versionId/print': typeof AuthenticatedTimetableVersionIdPrintRoute
@@ -556,6 +564,7 @@ export interface FileRoutesByTo {
   '/reports/room-utilization': typeof AuthenticatedReportsRoomUtilizationRoute
   '/reports/section-timetable': typeof AuthenticatedReportsSectionTimetableRoute
   '/reports/unscheduled': typeof AuthenticatedReportsUnscheduledRoute
+  '/reports/version-comparison': typeof AuthenticatedReportsVersionComparisonRoute
   '/timetable/$versionId': typeof AuthenticatedTimetableVersionIdRoute
   '/reports': typeof AuthenticatedReportsIndexRoute
   '/timetable/$versionId/print': typeof AuthenticatedTimetableVersionIdPrintRoute
@@ -622,6 +631,7 @@ export interface FileRoutesById {
   '/_authenticated/reports/room-utilization': typeof AuthenticatedReportsRoomUtilizationRoute
   '/_authenticated/reports/section-timetable': typeof AuthenticatedReportsSectionTimetableRoute
   '/_authenticated/reports/unscheduled': typeof AuthenticatedReportsUnscheduledRoute
+  '/_authenticated/reports/version-comparison': typeof AuthenticatedReportsVersionComparisonRoute
   '/_authenticated/timetable/$versionId': typeof AuthenticatedTimetableVersionIdRoute
   '/_authenticated/reports/': typeof AuthenticatedReportsIndexRoute
   '/_authenticated/timetable_/$versionId/print': typeof AuthenticatedTimetableVersionIdPrintRoute
@@ -688,6 +698,7 @@ export interface FileRouteTypes {
     | '/reports/room-utilization'
     | '/reports/section-timetable'
     | '/reports/unscheduled'
+    | '/reports/version-comparison'
     | '/timetable/$versionId'
     | '/reports/'
     | '/timetable/$versionId/print'
@@ -751,6 +762,7 @@ export interface FileRouteTypes {
     | '/reports/room-utilization'
     | '/reports/section-timetable'
     | '/reports/unscheduled'
+    | '/reports/version-comparison'
     | '/timetable/$versionId'
     | '/reports'
     | '/timetable/$versionId/print'
@@ -816,6 +828,7 @@ export interface FileRouteTypes {
     | '/_authenticated/reports/room-utilization'
     | '/_authenticated/reports/section-timetable'
     | '/_authenticated/reports/unscheduled'
+    | '/_authenticated/reports/version-comparison'
     | '/_authenticated/timetable/$versionId'
     | '/_authenticated/reports/'
     | '/_authenticated/timetable_/$versionId/print'
@@ -1256,6 +1269,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedReportsUnscheduledRouteImport
       parentRoute: typeof AuthenticatedReportsRoute
     }
+    '/_authenticated/reports/version-comparison': {
+      id: '/_authenticated/reports/version-comparison'
+      path: '/version-comparison'
+      fullPath: '/reports/version-comparison'
+      preLoaderRoute: typeof AuthenticatedReportsVersionComparisonRouteImport
+      parentRoute: typeof AuthenticatedReportsRoute
+    }
     '/_authenticated/timetable/$versionId': {
       id: '/_authenticated/timetable/$versionId'
       path: '/timetable/$versionId'
@@ -1287,6 +1307,7 @@ interface AuthenticatedReportsRouteChildren {
   AuthenticatedReportsRoomUtilizationRoute: typeof AuthenticatedReportsRoomUtilizationRoute
   AuthenticatedReportsSectionTimetableRoute: typeof AuthenticatedReportsSectionTimetableRoute
   AuthenticatedReportsUnscheduledRoute: typeof AuthenticatedReportsUnscheduledRoute
+  AuthenticatedReportsVersionComparisonRoute: typeof AuthenticatedReportsVersionComparisonRoute
   AuthenticatedReportsIndexRoute: typeof AuthenticatedReportsIndexRoute
 }
 
@@ -1315,6 +1336,8 @@ const AuthenticatedReportsRouteChildren: AuthenticatedReportsRouteChildren = {
   AuthenticatedReportsSectionTimetableRoute:
     AuthenticatedReportsSectionTimetableRoute,
   AuthenticatedReportsUnscheduledRoute: AuthenticatedReportsUnscheduledRoute,
+  AuthenticatedReportsVersionComparisonRoute:
+    AuthenticatedReportsVersionComparisonRoute,
   AuthenticatedReportsIndexRoute: AuthenticatedReportsIndexRoute,
 }
 

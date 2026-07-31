@@ -102,6 +102,12 @@ const OPERATIONAL_REPORTS: ReportCard[] = [
     desc: "درجة تفسيرية · تعارضات/فجوات/حمل/قاعات · قراءة فقط دون تشغيل المجدول.",
     icon: <FileBarChart2 className="h-5 w-5" />,
   },
+  {
+    to: "/reports/version-comparison",
+    title: "مقارنة نسخ الجداول",
+    desc: "فرق جلسات بين نسختين · قراءة فقط · نفس الكلية والفصل.",
+    icon: <FileBarChart2 className="h-5 w-5" />,
+  },
 ];
 
 const OFFICIAL_REPORTS: ReportCard[] = [
