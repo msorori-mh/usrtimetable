@@ -23,7 +23,15 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { ArrowRight, Plus, Gauge, Activity, AlertTriangle, GripVertical } from "lucide-react";
+import {
+  ArrowRight,
+  Plus,
+  Gauge,
+  Activity,
+  AlertTriangle,
+  GripVertical,
+  Printer,
+} from "lucide-react";
 import {
   TimetableGrid,
   type GridSession,
@@ -537,6 +545,11 @@ function TimetablePage() {
               </SelectContent>
             </Select>
           </div>
+          <Button variant="outline" asChild>
+            <Link to="/timetable/$versionId/print" params={{ versionId }}>
+              <Printer className="h-4 w-4 ml-1" /> طباعة وتصدير الجدول
+            </Link>
+          </Button>
           <Button variant="outline" onClick={runQuality} disabled={scoring}>
             <Gauge className="h-4 w-4 ml-1" /> {scoring ? "..." : "احتساب الجودة"}
           </Button>

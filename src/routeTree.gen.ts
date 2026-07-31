@@ -69,6 +69,7 @@ import { Route as AuthenticatedReportsRoomUtilizationRouteImport } from './route
 import { Route as AuthenticatedReportsSectionTimetableRouteImport } from './routes/_authenticated/reports.section-timetable'
 import { Route as AuthenticatedReportsUnscheduledRouteImport } from './routes/_authenticated/reports.unscheduled'
 import { Route as AuthenticatedTimetableVersionIdRouteImport } from './routes/_authenticated/timetable.$versionId'
+import { Route as AuthenticatedTimetableVersionIdPrintRouteImport } from './routes/_authenticated/timetable_.$versionId.print'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -411,6 +412,12 @@ const AuthenticatedTimetableVersionIdRoute =
     path: '/timetable/$versionId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedTimetableVersionIdPrintRoute =
+  AuthenticatedTimetableVersionIdPrintRouteImport.update({
+    id: '/timetable_/$versionId/print',
+    path: '/timetable/$versionId/print',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -472,6 +479,7 @@ export interface FileRoutesByFullPath {
   '/reports/unscheduled': typeof AuthenticatedReportsUnscheduledRoute
   '/timetable/$versionId': typeof AuthenticatedTimetableVersionIdRoute
   '/reports/': typeof AuthenticatedReportsIndexRoute
+  '/timetable/$versionId/print': typeof AuthenticatedTimetableVersionIdPrintRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -532,6 +540,7 @@ export interface FileRoutesByTo {
   '/reports/unscheduled': typeof AuthenticatedReportsUnscheduledRoute
   '/timetable/$versionId': typeof AuthenticatedTimetableVersionIdRoute
   '/reports': typeof AuthenticatedReportsIndexRoute
+  '/timetable/$versionId/print': typeof AuthenticatedTimetableVersionIdPrintRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -595,6 +604,7 @@ export interface FileRoutesById {
   '/_authenticated/reports/unscheduled': typeof AuthenticatedReportsUnscheduledRoute
   '/_authenticated/timetable/$versionId': typeof AuthenticatedTimetableVersionIdRoute
   '/_authenticated/reports/': typeof AuthenticatedReportsIndexRoute
+  '/_authenticated/timetable_/$versionId/print': typeof AuthenticatedTimetableVersionIdPrintRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -658,6 +668,7 @@ export interface FileRouteTypes {
     | '/reports/unscheduled'
     | '/timetable/$versionId'
     | '/reports/'
+    | '/timetable/$versionId/print'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -718,6 +729,7 @@ export interface FileRouteTypes {
     | '/reports/unscheduled'
     | '/timetable/$versionId'
     | '/reports'
+    | '/timetable/$versionId/print'
   id:
     | '__root__'
     | '/'
@@ -780,6 +792,7 @@ export interface FileRouteTypes {
     | '/_authenticated/reports/unscheduled'
     | '/_authenticated/timetable/$versionId'
     | '/_authenticated/reports/'
+    | '/_authenticated/timetable_/$versionId/print'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1210,6 +1223,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTimetableVersionIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/timetable_/$versionId/print': {
+      id: '/_authenticated/timetable_/$versionId/print'
+      path: '/timetable/$versionId/print'
+      fullPath: '/timetable/$versionId/print'
+      preLoaderRoute: typeof AuthenticatedTimetableVersionIdPrintRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -1303,6 +1323,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedUniversitiesRoute: typeof AuthenticatedUniversitiesRoute
   AuthenticatedUsersRoute: typeof AuthenticatedUsersRoute
   AuthenticatedTimetableVersionIdRoute: typeof AuthenticatedTimetableVersionIdRoute
+  AuthenticatedTimetableVersionIdPrintRoute: typeof AuthenticatedTimetableVersionIdPrintRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -1351,6 +1372,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedUniversitiesRoute: AuthenticatedUniversitiesRoute,
   AuthenticatedUsersRoute: AuthenticatedUsersRoute,
   AuthenticatedTimetableVersionIdRoute: AuthenticatedTimetableVersionIdRoute,
+  AuthenticatedTimetableVersionIdPrintRoute:
+    AuthenticatedTimetableVersionIdPrintRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -1364,13 +1387,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

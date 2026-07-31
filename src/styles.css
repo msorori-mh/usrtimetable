@@ -54,16 +54,16 @@
   --radius: 0.625rem;
 
   /* ── USR exact palette (Phase 1.6B-2) ── */
-  --usr-primary: #105B7D;
-  --usr-primary-dark: #0B4964;
-  --usr-primary-deeper: #08384E;
-  --usr-primary-soft: #E8F2F5;
-  --usr-gold: #D99A17;
-  --usr-gold-dark: #B87900;
-  --usr-gold-soft: #FFF4DA;
-  --usr-bg: #F7F8FA;
-  --usr-card: #FFFFFF;
-  --usr-border: #DDE6EA;
+  --usr-primary: #105b7d;
+  --usr-primary-dark: #0b4964;
+  --usr-primary-deeper: #08384e;
+  --usr-primary-soft: #e8f2f5;
+  --usr-gold: #d99a17;
+  --usr-gold-dark: #b87900;
+  --usr-gold-soft: #fff4da;
+  --usr-bg: #f7f8fa;
+  --usr-card: #ffffff;
+  --usr-border: #dde6ea;
   --usr-text: #102333;
   --usr-muted: #667985;
 
@@ -80,22 +80,22 @@
   --popover-foreground: var(--usr-text);
 
   --primary: var(--usr-primary);
-  --primary-foreground: #FFFFFF;
-  --primary-glow: #1A7AA3;
+  --primary-foreground: #ffffff;
+  --primary-glow: #1a7aa3;
 
   --secondary: var(--usr-primary-soft);
   --secondary-foreground: var(--usr-primary-dark);
 
-  --muted: #EEF1F4;
+  --muted: #eef1f4;
   --muted-foreground: var(--usr-muted);
 
   --accent: var(--usr-gold);
   --accent-foreground: var(--usr-primary-deeper);
 
-  --destructive: #C53030;
-  --destructive-foreground: #FFFFFF;
-  --success: #2F855A;
-  --success-foreground: #FFFFFF;
+  --destructive: #c53030;
+  --destructive-foreground: #ffffff;
+  --success: #2f855a;
+  --success-foreground: #ffffff;
   --warning: var(--usr-gold);
   --warning-foreground: var(--usr-primary-deeper);
 
@@ -104,9 +104,9 @@
   --ring: var(--usr-primary);
 
   --sidebar: var(--usr-primary-deeper);
-  --sidebar-foreground: #F7FAFC;
+  --sidebar-foreground: #f7fafc;
   --sidebar-accent: var(--usr-primary);
-  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-accent-foreground: #ffffff;
   --sidebar-border: var(--usr-primary-dark);
 
   --gradient-hero: linear-gradient(
@@ -115,7 +115,12 @@
     var(--usr-primary-dark) 40%,
     var(--usr-primary) 100%
   );
-  --gradient-gold: linear-gradient(90deg, var(--usr-gold-dark) 0%, var(--usr-gold) 50%, var(--usr-gold-dark) 100%);
+  --gradient-gold: linear-gradient(
+    90deg,
+    var(--usr-gold-dark) 0%,
+    var(--usr-gold) 50%,
+    var(--usr-gold-dark) 100%
+  );
   --shadow-card: 0 1px 3px rgb(16 35 51 / 0.06), 0 8px 24px rgb(16 35 51 / 0.08);
   --shadow-elevated: 0 4px 16px rgb(16 35 51 / 0.1), 0 24px 48px rgb(16 35 51 / 0.12);
 }
@@ -123,13 +128,13 @@
 .dark {
   --background: oklch(0.18 0.025 245);
   --foreground: oklch(0.96 0.012 85);
-  --surface: oklch(0.22 0.030 245);
+  --surface: oklch(0.22 0.03 245);
   --surface-foreground: oklch(0.96 0.012 85);
-  --card: oklch(0.22 0.030 245);
+  --card: oklch(0.22 0.03 245);
   --card-foreground: oklch(0.96 0.012 85);
-  --popover: oklch(0.22 0.030 245);
+  --popover: oklch(0.22 0.03 245);
   --popover-foreground: oklch(0.96 0.012 85);
-  --primary: oklch(0.70 0.12 220);
+  --primary: oklch(0.7 0.12 220);
   --primary-foreground: oklch(0.18 0.025 245);
   --primary-glow: oklch(0.78 0.11 215);
   --secondary: oklch(0.28 0.04 240);
@@ -138,16 +143,16 @@
   --muted-foreground: oklch(0.72 0.02 240);
   --accent: oklch(0.78 0.13 75);
   --accent-foreground: oklch(0.22 0.04 60);
-  --destructive: oklch(0.68 0.20 25);
+  --destructive: oklch(0.68 0.2 25);
   --destructive-foreground: oklch(0.96 0.012 85);
-  --success: oklch(0.70 0.14 155);
+  --success: oklch(0.7 0.14 155);
   --success-foreground: oklch(0.18 0.025 245);
-  --warning: oklch(0.80 0.15 65);
+  --warning: oklch(0.8 0.15 65);
   --warning-foreground: oklch(0.22 0.04 60);
-  --border: oklch(0.30 0.03 240);
+  --border: oklch(0.3 0.03 240);
   --input: oklch(0.28 0.03 240);
-  --ring: oklch(0.70 0.12 220);
-  --sidebar: oklch(0.20 0.030 245);
+  --ring: oklch(0.7 0.12 220);
+  --sidebar: oklch(0.2 0.03 245);
   --sidebar-foreground: oklch(0.96 0.012 85);
   --sidebar-accent: oklch(0.28 0.04 240);
   --sidebar-accent-foreground: oklch(0.99 0.005 85);
@@ -155,8 +160,12 @@
 }
 
 @layer base {
-  * { border-color: var(--color-border); }
-  html { direction: rtl; }
+  * {
+    border-color: var(--color-border);
+  }
+  html {
+    direction: rtl;
+  }
   body {
     background-color: var(--usr-bg);
     color: var(--color-foreground);
@@ -164,7 +173,13 @@
     font-feature-settings: "kern", "liga", "ss01";
     -webkit-font-smoothing: antialiased;
   }
-  h1, h2, h3, h4 { font-family: var(--font-display); letter-spacing: -0.01em; }
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
 }
 
 @layer components {
@@ -284,7 +299,9 @@
     font-size: 1rem;
     font-weight: 700;
     box-shadow: 0 4px 14px rgb(0 0 0 / 0.2);
-    transition: background 0.15s ease, transform 0.15s ease;
+    transition:
+      background 0.15s ease,
+      transform 0.15s ease;
   }
 
   .usr-hero-cta:hover {
@@ -365,7 +382,9 @@
     background: var(--card);
     padding: 1.25rem;
     box-shadow: var(--shadow-card);
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease;
   }
 
   .usr-institutional-card:hover {
@@ -385,10 +404,56 @@
   }
 }
 
+/* ── Print center paper size / orientation (TIMETABLE-PRINT-EXPORT-CENTER-01) ── */
+.print-center-page {
+  position: relative;
+}
+
+.print-draft-watermark {
+  display: none;
+  pointer-events: none;
+}
+
 /* ── Report print layout (Phase 1.5E-B5-A) ── */
 @media print {
   @page {
     margin: 1.2cm 1.5cm;
+  }
+
+  /* Page size is set via #print-center-page-style (injected from print center UI). */
+
+  .print-center-page {
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .print-center-page:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .print-center-header,
+  .print-center-footer {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-draft-watermark {
+    display: flex !important;
+    position: fixed;
+    inset: 0;
+    align-items: center;
+    justify-content: center;
+    font-size: 4rem;
+    font-weight: 800;
+    color: rgba(0, 0, 0, 0.08);
+    transform: rotate(-28deg);
+    z-index: 0;
+  }
+
+  .print-center-page > *:not(.print-draft-watermark) {
+    position: relative;
+    z-index: 1;
   }
 
   body {
@@ -482,7 +547,8 @@
     -webkit-print-color-adjust: exact;
   }
 
-  h2, h3 {
+  h2,
+  h3 {
     page-break-after: avoid;
     break-after: avoid;
   }
