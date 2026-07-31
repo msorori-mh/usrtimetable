@@ -343,6 +343,18 @@ const NAV_GROUPS: NavGroup[] = [
         icon: <FileBarChart2 className="h-4 w-4" />,
         roles: ALL,
       },
+      {
+        to: "/portal/student",
+        label: "بوابة الطالب (أساس)",
+        icon: <GraduationCap className="h-4 w-4" />,
+        roles: ALL,
+      },
+      {
+        to: "/portal/instructor",
+        label: "بوابة المدرس (أساس)",
+        icon: <UserSquare2 className="h-4 w-4" />,
+        roles: ALL,
+      },
     ],
   },
 ];

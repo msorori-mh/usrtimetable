@@ -56,6 +56,8 @@ import { Route as AuthenticatedTimeSlotTemplatesRouteImport } from './routes/_au
 import { Route as AuthenticatedTimeSlotsRouteImport } from './routes/_authenticated/time-slots'
 import { Route as AuthenticatedUniversitiesRouteImport } from './routes/_authenticated/universities'
 import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated/users'
+import { Route as AuthenticatedPortalInstructorRouteImport } from './routes/_authenticated/portal.instructor'
+import { Route as AuthenticatedPortalStudentRouteImport } from './routes/_authenticated/portal.student'
 import { Route as AuthenticatedReportsIndexRouteImport } from './routes/_authenticated/reports.index'
 import { Route as AuthenticatedReportsConflictsRouteImport } from './routes/_authenticated/reports.conflicts'
 import { Route as AuthenticatedReportsDataReadinessRouteImport } from './routes/_authenticated/reports.data-readiness'
@@ -336,6 +338,18 @@ const AuthenticatedUsersRoute = AuthenticatedUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPortalInstructorRoute =
+  AuthenticatedPortalInstructorRouteImport.update({
+    id: '/portal/instructor',
+    path: '/portal/instructor',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedPortalStudentRoute =
+  AuthenticatedPortalStudentRouteImport.update({
+    id: '/portal/student',
+    path: '/portal/student',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedReportsIndexRoute =
   AuthenticatedReportsIndexRouteImport.update({
     id: '/',
@@ -480,6 +494,8 @@ export interface FileRoutesByFullPath {
   '/time-slots': typeof AuthenticatedTimeSlotsRoute
   '/universities': typeof AuthenticatedUniversitiesRoute
   '/users': typeof AuthenticatedUsersRoute
+  '/portal/instructor': typeof AuthenticatedPortalInstructorRoute
+  '/portal/student': typeof AuthenticatedPortalStudentRoute
   '/reports/conflicts': typeof AuthenticatedReportsConflictsRoute
   '/reports/data-readiness': typeof AuthenticatedReportsDataReadinessRoute
   '/reports/department-schedule': typeof AuthenticatedReportsDepartmentScheduleRoute
@@ -543,6 +559,8 @@ export interface FileRoutesByTo {
   '/time-slots': typeof AuthenticatedTimeSlotsRoute
   '/universities': typeof AuthenticatedUniversitiesRoute
   '/users': typeof AuthenticatedUsersRoute
+  '/portal/instructor': typeof AuthenticatedPortalInstructorRoute
+  '/portal/student': typeof AuthenticatedPortalStudentRoute
   '/reports/conflicts': typeof AuthenticatedReportsConflictsRoute
   '/reports/data-readiness': typeof AuthenticatedReportsDataReadinessRoute
   '/reports/department-schedule': typeof AuthenticatedReportsDepartmentScheduleRoute
@@ -609,6 +627,8 @@ export interface FileRoutesById {
   '/_authenticated/time-slots': typeof AuthenticatedTimeSlotsRoute
   '/_authenticated/universities': typeof AuthenticatedUniversitiesRoute
   '/_authenticated/users': typeof AuthenticatedUsersRoute
+  '/_authenticated/portal/instructor': typeof AuthenticatedPortalInstructorRoute
+  '/_authenticated/portal/student': typeof AuthenticatedPortalStudentRoute
   '/_authenticated/reports/conflicts': typeof AuthenticatedReportsConflictsRoute
   '/_authenticated/reports/data-readiness': typeof AuthenticatedReportsDataReadinessRoute
   '/_authenticated/reports/department-schedule': typeof AuthenticatedReportsDepartmentScheduleRoute
@@ -675,6 +695,8 @@ export interface FileRouteTypes {
     | '/time-slots'
     | '/universities'
     | '/users'
+    | '/portal/instructor'
+    | '/portal/student'
     | '/reports/conflicts'
     | '/reports/data-readiness'
     | '/reports/department-schedule'
@@ -738,6 +760,8 @@ export interface FileRouteTypes {
     | '/time-slots'
     | '/universities'
     | '/users'
+    | '/portal/instructor'
+    | '/portal/student'
     | '/reports/conflicts'
     | '/reports/data-readiness'
     | '/reports/department-schedule'
@@ -803,6 +827,8 @@ export interface FileRouteTypes {
     | '/_authenticated/time-slots'
     | '/_authenticated/universities'
     | '/_authenticated/users'
+    | '/_authenticated/portal/instructor'
+    | '/_authenticated/portal/student'
     | '/_authenticated/reports/conflicts'
     | '/_authenticated/reports/data-readiness'
     | '/_authenticated/reports/department-schedule'
@@ -1158,6 +1184,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedUsersRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/portal/instructor': {
+      id: '/_authenticated/portal/instructor'
+      path: '/portal/instructor'
+      fullPath: '/portal/instructor'
+      preLoaderRoute: typeof AuthenticatedPortalInstructorRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/portal/student': {
+      id: '/_authenticated/portal/student'
+      path: '/portal/student'
+      fullPath: '/portal/student'
+      preLoaderRoute: typeof AuthenticatedPortalStudentRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/reports/': {
       id: '/_authenticated/reports/'
       path: '/'
@@ -1366,6 +1406,8 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedTimeSlotsRoute: typeof AuthenticatedTimeSlotsRoute
   AuthenticatedUniversitiesRoute: typeof AuthenticatedUniversitiesRoute
   AuthenticatedUsersRoute: typeof AuthenticatedUsersRoute
+  AuthenticatedPortalInstructorRoute: typeof AuthenticatedPortalInstructorRoute
+  AuthenticatedPortalStudentRoute: typeof AuthenticatedPortalStudentRoute
   AuthenticatedTimetableVersionIdRoute: typeof AuthenticatedTimetableVersionIdRoute
   AuthenticatedTimetableVersionIdPrintRoute: typeof AuthenticatedTimetableVersionIdPrintRoute
 }
@@ -1416,6 +1458,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedTimeSlotsRoute: AuthenticatedTimeSlotsRoute,
   AuthenticatedUniversitiesRoute: AuthenticatedUniversitiesRoute,
   AuthenticatedUsersRoute: AuthenticatedUsersRoute,
+  AuthenticatedPortalInstructorRoute: AuthenticatedPortalInstructorRoute,
+  AuthenticatedPortalStudentRoute: AuthenticatedPortalStudentRoute,
   AuthenticatedTimetableVersionIdRoute: AuthenticatedTimetableVersionIdRoute,
   AuthenticatedTimetableVersionIdPrintRoute:
     AuthenticatedTimetableVersionIdPrintRoute,
