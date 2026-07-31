@@ -69,6 +69,7 @@ export const harnesses = [
   "teaching-assignments-v2-duplicate-sql-contract.harness.ts",
   "stage-03a-fail-closed-contract.harness.ts",
   "platform-product-closure.harness.ts",
+  "print-center.harness.ts",
 ];
 
 const historicalArtifacts = new Map([
