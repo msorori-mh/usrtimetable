@@ -71,6 +71,7 @@ export const harnesses = [
   "platform-product-closure.harness.ts",
   "print-center.harness.ts",
   "data-onboarding-readiness-wizard.harness.ts",
+  "data-classification.harness.ts",
 ];
 
 const historicalArtifacts = new Map([

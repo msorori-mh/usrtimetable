@@ -15,8 +15,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CheckCircle2, ExternalLink } from "lucide-react";
+import { DataClassificationBadge } from "@/components/schedule/data-classification-badge";
 import { DeliveryDemoWarningBanner } from "@/components/schedule/delivery-demo-warning-banner";
-import { isDeliveryDemoVersion } from "@/lib/schedule-versions/delivery-demo";
+import {
+  filterVersionsByClassification,
+  isDemoOrTestClassification,
+  type ClassificationListFilter,
+} from "@/lib/schedule-versions/data-classification";
 
 export const Route = createFileRoute("/_authenticated/published-schedules")({
   head: () => ({ meta: [{ title: "الجداول المنشورة" }] }),
@@ -28,6 +33,8 @@ function PublishedSchedulesPage() {
   const [fTerm, setFTerm] = useState<string>("all");
   const [fDept, setFDept] = useState<string>("all");
   const [fProg, setFProg] = useState<string>("all");
+  /** Default official: hide demo/test. Use explicit filter to show demos. */
+  const [fClass, setFClass] = useState<ClassificationListFilter>("official");
 
   const { data: terms } = useQuery({
     queryKey: ["pub-terms", active?.id],
@@ -110,7 +117,8 @@ function PublishedSchedulesPage() {
   });
 
   const filtered = useMemo(() => {
-    return (versions ?? []).filter((v) => {
+    const byClass = filterVersionsByClassification(versions ?? [], fClass);
+    return byClass.filter((v) => {
       if (fDept === "all" && fProg === "all") return true;
       const meta = sessionsByVersion?.get(v.id);
       if (!meta) return false;
@@ -118,7 +126,7 @@ function PublishedSchedulesPage() {
       if (fProg !== "all" && !meta.progIds.has(fProg)) return false;
       return true;
     });
-  }, [versions, sessionsByVersion, fDept, fProg]);
+  }, [versions, sessionsByVersion, fDept, fProg, fClass]);
 
   const termName = (id: string) => terms?.find((t) => t.id === id)?.name ?? "—";
 
@@ -138,7 +146,7 @@ function PublishedSchedulesPage() {
         <Card className="p-6 text-center text-muted-foreground">اختر كلية للبدء</Card>
       ) : (
         <>
-          <Card className="p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+          <Card className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
             <div>
               <label className="text-xs text-muted-foreground">الفصل الدراسي</label>
               <Select value={fTerm} onValueChange={setFTerm}>
@@ -193,16 +201,30 @@ function PublishedSchedulesPage() {
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <label className="text-xs text-muted-foreground">تصنيف البيانات</label>
+              <Select
+                value={fClass}
+                onValueChange={(v) => setFClass(v as ClassificationListFilter)}
+              >
+                <SelectTrigger data-testid="classification-filter">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="official">رسمي (إخفاء Demo/Test)</SelectItem>
+                  <SelectItem value="all">الكل (يشمل Demo)</SelectItem>
+                  <SelectItem value="demo">Demo فقط</SelectItem>
+                  <SelectItem value="test">Test فقط</SelectItem>
+                  <SelectItem value="operational">Operational فقط</SelectItem>
+                  <SelectItem value="demo_and_test">Demo + Test</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </Card>
 
-          {filtered.some((v) => isDeliveryDemoVersion({ name: v.name, notes: v.notes })) && (
+          {filtered.some((v) => isDemoOrTestClassification(v)) && (
             <DeliveryDemoWarningBanner
-              name={
-                filtered.find((v) => isDeliveryDemoVersion({ name: v.name, notes: v.notes }))?.name
-              }
-              notes={
-                filtered.find((v) => isDeliveryDemoVersion({ name: v.name, notes: v.notes }))?.notes
-              }
+              {...(filtered.find((v) => isDemoOrTestClassification(v)) ?? {})}
             />
           )}
 
@@ -214,9 +236,12 @@ function PublishedSchedulesPage() {
             )}
             {filtered.map((v) => (
               <Card key={v.id} className="p-4 space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <span className="font-semibold">{v.name}</span>
-                  <Badge>منشور</Badge>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <DataClassificationBadge name={v.name} notes={v.notes} />
+                    <Badge>منشور</Badge>
+                  </div>
                 </div>
                 <DeliveryDemoWarningBanner name={v.name} notes={v.notes} />
                 <div className="text-xs text-muted-foreground">

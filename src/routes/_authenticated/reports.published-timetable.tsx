@@ -26,8 +26,13 @@ import {
   fetchHydratedVersionSessions,
   type WorkspaceSessionHydratedRow,
 } from "@/lib/schedule-builder/queries";
+import { DataClassificationBadge } from "@/components/schedule/data-classification-badge";
 import { DeliveryDemoWarningBanner } from "@/components/schedule/delivery-demo-warning-banner";
-import { isDeliveryDemoVersion } from "@/lib/schedule-versions/delivery-demo";
+import {
+  filterVersionsByClassification,
+  isDemoOrTestClassification,
+  type ClassificationListFilter,
+} from "@/lib/schedule-versions/data-classification";
 
 export const Route = createFileRoute("/_authenticated/reports/published-timetable")({
   head: () => ({ meta: [{ title: "تقرير الجدول المنشور" }] }),
@@ -45,6 +50,8 @@ function Page() {
   const [dgId, setDgId] = useState("all");
   const [insId, setInsId] = useState("all");
   const [roomId, setRoomId] = useState("all");
+  /** Default official: hide demo/test from report version list. */
+  const [classFilter, setClassFilter] = useState<ClassificationListFilter>("official");
 
   const { data: terms } = useQuery({
     queryKey: ["pt-terms", active?.id],
@@ -135,16 +142,23 @@ function Page() {
     [deliveryGroups, cohortId],
   );
 
+  const classifiedVersions = useMemo(
+    () => filterVersionsByClassification(versions ?? [], classFilter),
+    [versions, classFilter],
+  );
+
   const versionIds = useMemo(() => {
-    if (versionId !== "all") return [versionId];
-    return (versions ?? []).map((v) => v.id);
-  }, [versions, versionId]);
+    if (versionId !== "all") {
+      return classifiedVersions.some((v) => v.id === versionId) ? [versionId] : [];
+    }
+    return classifiedVersions.map((v) => v.id);
+  }, [classifiedVersions, versionId]);
 
   const versionNameById = useMemo(() => {
     const map = new Map<string, string>();
-    for (const v of versions ?? []) map.set(v.id, v.name);
+    for (const v of classifiedVersions) map.set(v.id, v.name);
     return map;
-  }, [versions]);
+  }, [classifiedVersions]);
 
   const { data: sessionsBundle, isLoading } = useQuery({
     queryKey: [
@@ -233,26 +247,30 @@ function Page() {
   ];
 
   const selectedVersion =
-    versionId !== "all" ? (versions ?? []).find((v) => v.id === versionId) : null;
+    versionId !== "all" ? classifiedVersions.find((v) => v.id === versionId) : null;
   const demoBannerVersion =
-    selectedVersion ??
-    (versions ?? []).find((v) => isDeliveryDemoVersion({ name: v.name, notes: v.notes })) ??
-    null;
+    selectedVersion ?? classifiedVersions.find((v) => isDemoOrTestClassification(v)) ?? null;
 
   return (
     <ReportShell
       title="تقرير الجدول المنشور"
-      description="النسخ ذات حالة (منشور) فقط."
+      description="النسخ ذات حالة (منشور) فقط. المسار الرسمي يخفي Demo/Test افتراضيًا."
       filename="published_timetable"
       rows={rows}
       headers={headers}
       isLoading={isLoading}
       leading={
         demoBannerVersion ? (
-          <DeliveryDemoWarningBanner
-            name={demoBannerVersion.name}
-            notes={demoBannerVersion.notes}
-          />
+          <div className="space-y-2">
+            <DataClassificationBadge
+              name={demoBannerVersion.name}
+              notes={demoBannerVersion.notes}
+            />
+            <DeliveryDemoWarningBanner
+              name={demoBannerVersion.name}
+              notes={demoBannerVersion.notes}
+            />
+          </div>
         ) : null
       }
       filters={
@@ -270,12 +288,28 @@ function Page() {
             ]}
           />
           <Sel
+            label="تصنيف البيانات"
+            value={classFilter}
+            onChange={(v) => {
+              setClassFilter(v as ClassificationListFilter);
+              setVersionId("all");
+            }}
+            items={[
+              { id: "official", name: "رسمي (إخفاء Demo/Test)" },
+              { id: "all", name: "الكل (يشمل Demo)" },
+              { id: "demo", name: "Demo فقط" },
+              { id: "test", name: "Test فقط" },
+              { id: "operational", name: "Operational فقط" },
+              { id: "demo_and_test", name: "Demo + Test" },
+            ]}
+          />
+          <Sel
             label="النسخة"
             value={versionId}
             onChange={setVersionId}
             items={[
               { id: "all", name: "الكل" },
-              ...(versions ?? []).map((v) => ({ id: v.id, name: v.name })),
+              ...classifiedVersions.map((v) => ({ id: v.id, name: v.name })),
             ]}
           />
           <Sel

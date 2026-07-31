@@ -47,6 +47,12 @@ import {
   cloneVersion,
   type SVStatus,
 } from "@/lib/schedule-versions/lifecycle";
+import { DataClassificationBadge } from "@/components/schedule/data-classification-badge";
+import {
+  DeliveryDemoWarningBanner,
+  NonOperationalApprovalBanner,
+} from "@/components/schedule/delivery-demo-warning-banner";
+import { shouldBlockOperationalApprovalMessaging } from "@/lib/schedule-versions/data-classification";
 
 export const Route = createFileRoute("/_authenticated/schedule-versions")({
   head: () => ({ meta: [{ title: "نسخ الجدول الزمني" }] }),
@@ -269,6 +275,10 @@ function VersionCard({
   const qc = useQueryClient();
   const status = v.status as SVStatus;
   const actions = nextActions(status);
+  const blockOperationalMessaging = shouldBlockOperationalApprovalMessaging({
+    name: v.name,
+    notes: v.notes,
+  });
 
   const elig = useQuery({
     queryKey: ["sv-eligibility", v.id],
@@ -292,6 +302,14 @@ function VersionCard({
 
   const doTransition = useMutation({
     mutationFn: async (to: SVStatus) => {
+      if (
+        blockOperationalMessaging &&
+        (to === "approved" || to === "published")
+      ) {
+        throw new Error(
+          "نسخة Demo/Test: الاعتماد/النشر التشغيلي غير متاح عبر هذه الواجهة. المسار الرسمي للتحويل غير مفعّل بعد.",
+        );
+      }
       await transitionVersion({ collegeId, scheduleVersionId: v.id, from: status, to });
       await logAudit({
         action: `sv_transition_${to}`,
@@ -312,15 +330,19 @@ function VersionCard({
 
   return (
     <Card className="p-4 space-y-2">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <CalendarClock className="h-4 w-4 text-muted-foreground" />
-          <span className="font-semibold">{v.name}</span>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <CalendarClock className="h-4 w-4 text-muted-foreground shrink-0" />
+          <span className="font-semibold truncate">{v.name}</span>
         </div>
-        <Badge variant={STATUS_BADGE_VARIANT[status] ?? "secondary"}>
-          {STATUS_LABEL_AR[status] ?? status}
-        </Badge>
+        <div className="flex items-center gap-1 shrink-0">
+          <DataClassificationBadge name={v.name} notes={v.notes} />
+          <Badge variant={STATUS_BADGE_VARIANT[status] ?? "secondary"}>
+            {STATUS_LABEL_AR[status] ?? status}
+          </Badge>
+        </div>
       </div>
+      <DeliveryDemoWarningBanner name={v.name} notes={v.notes} />
       <div className="text-xs text-muted-foreground">الفصل: {termName}</div>
       {v.notes && <div className="text-xs">{v.notes}</div>}
       <div className="text-[10px] text-muted-foreground">
@@ -340,6 +362,7 @@ function VersionCard({
 
       {expanded && (
         <div className="border-t pt-3 space-y-3">
+          <NonOperationalApprovalBanner name={v.name} notes={v.notes} />
           {elig.isLoading ? (
             <p className="text-xs text-muted-foreground">جارٍ الفحص...</p>
           ) : elig.data ? (
@@ -368,7 +391,11 @@ function VersionCard({
                 )}
                 {actions.map((a) => {
                   const blockers = validateGate(a.to, elig.data!);
-                  const blocked = blockers.length > 0;
+                  const demoBlocksForward =
+                    blockOperationalMessaging &&
+                    (a.to === "approved" || a.to === "published") &&
+                    a.kind === "forward";
+                  const blocked = blockers.length > 0 || demoBlocksForward;
                   return (
                     <div key={a.to} className="flex flex-col gap-1">
                       <Button
@@ -381,7 +408,10 @@ function VersionCard({
                       </Button>
                       {blocked && (
                         <div className="text-[10px] text-destructive flex gap-1">
-                          <AlertTriangle className="h-3 w-3 mt-0.5" /> {blockers.join(" • ")}
+                          <AlertTriangle className="h-3 w-3 mt-0.5" />{" "}
+                          {demoBlocksForward
+                            ? "Demo/Test: الاعتماد/النشر التشغيلي معطل هنا (المسار الرسمي غير مفعّل)."
+                            : blockers.join(" • ")}
                         </div>
                       )}
                     </div>

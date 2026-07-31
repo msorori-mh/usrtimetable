@@ -6,6 +6,10 @@ import {
   DELIVERY_DEMO_WARNING_AR,
   isDeliveryDemoVersion,
 } from "../src/lib/schedule-versions/delivery-demo.ts";
+import {
+  isDemoOrTestClassification,
+  isOperationalOfficialReportEligible,
+} from "../src/lib/schedule-versions/data-classification.ts";
 import { selectContainsNestedCoursesEmbed } from "../src/lib/reports/queries/session-queries.ts";
 
 describe("delivery demo warning markers", () => {
@@ -28,6 +32,23 @@ describe("delivery demo warning markers", () => {
     assert.match(DELIVERY_DEMO_WARNING_AR, /التسليم/);
   });
 
+  it("treats marker demo as non-official for reports", () => {
+    assert.equal(
+      isOperationalOfficialReportEligible({
+        name: "نسخة التسليم التجريبية",
+        notes: DELIVERY_DEMO_MARKER,
+      }),
+      false,
+    );
+    assert.equal(
+      isDemoOrTestClassification({
+        name: "نسخة التسليم التجريبية",
+        notes: DELIVERY_DEMO_MARKER,
+      }),
+      true,
+    );
+  });
+
   it("keeps published timetable report free of nested courses embed and shows banner via leading", () => {
     const reportSrc = readFileSync(
       new URL("../src/routes/_authenticated/reports.published-timetable.tsx", import.meta.url),
@@ -41,6 +62,7 @@ describe("delivery demo warning markers", () => {
     assert.match(reportSrc, /fetchHydratedVersionSessions/);
     assert.match(reportSrc, /leading=\{/);
     assert.match(reportSrc, /DeliveryDemoWarningBanner/);
+    assert.match(reportSrc, /ClassificationListFilter/);
     assert.match(shellSrc, /leading\?: ReactNode/);
     assert.match(shellSrc, /\{leading\}/);
   });

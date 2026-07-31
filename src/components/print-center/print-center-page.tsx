@@ -26,7 +26,7 @@ import {
   SCHEDULE_BUILDER_COLLEGE_MISMATCH_AR,
   SCHEDULE_BUILDER_NO_COLLEGE_AR,
 } from "@/lib/schedule-builder/access";
-import { isDeliveryDemoVersion } from "@/lib/schedule-versions/delivery-demo";
+import { isDemoOrTestClassification } from "@/lib/schedule-versions/data-classification";
 import type { SVStatus } from "@/lib/schedule-versions/lifecycle";
 import {
   DEFAULT_PRINT_VISIBILITY,
@@ -340,7 +340,7 @@ export function PrintCenterPage(props: { versionId: string }) {
     window.history.replaceState(null, "", next);
   }, [versionId, filters, paper, orientation]);
 
-  const isDemo = isDeliveryDemoVersion({ name: version?.name, notes: version?.notes });
+  const isDemo = isDemoOrTestClassification({ name: version?.name, notes: version?.notes });
   const lastUpdate = latestSessionUpdate(sessionsBundle?.sessions ?? []) ?? version?.updated_at;
 
   const setVis = <K extends keyof PrintVisibilityOptions>(
