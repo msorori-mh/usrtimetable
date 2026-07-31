@@ -70,6 +70,7 @@ export const harnesses = [
   "stage-03a-fail-closed-contract.harness.ts",
   "platform-product-closure.harness.ts",
   "print-center.harness.ts",
+  "data-onboarding-readiness-wizard.harness.ts",
 ];
 
 const historicalArtifacts = new Map([

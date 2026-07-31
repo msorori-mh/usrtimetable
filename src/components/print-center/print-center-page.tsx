@@ -136,6 +136,28 @@ export function PrintCenterPage(props: { versionId: string }) {
     }
   }, [reportType, initialFromUrl.paper, initialFromUrl.orientation]);
 
+  // Clear leftover dimensions that do not apply to the active report type
+  // (e.g. programId from student must not shrink instructor/room reports).
+  useEffect(() => {
+    if (reportType === "instructor" || reportType === "room") {
+      setProgramId("");
+      setLevelId("");
+      setDepartmentId("");
+    }
+    if (reportType === "instructor") {
+      setRoomId("");
+    }
+    if (reportType === "room") {
+      setInstructorId("");
+    }
+    if (reportType === "level") {
+      setProgramId("");
+      setDepartmentId("");
+      setInstructorId("");
+      setRoomId("");
+    }
+  }, [reportType]);
+
   const { data: version, isLoading: versionLoading } = useQuery({
     queryKey: ["print-center-version", versionId],
     queryFn: async () => {
