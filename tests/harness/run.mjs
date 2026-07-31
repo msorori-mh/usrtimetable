@@ -72,6 +72,7 @@ export const harnesses = [
   "print-center.harness.ts",
   "data-onboarding-readiness-wizard.harness.ts",
   "schedule-quality-analytics.harness.ts",
+  "advanced-academic-reports.harness.ts",
 ];
 
 const historicalArtifacts = new Map([

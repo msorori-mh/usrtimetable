@@ -102,6 +102,12 @@ const OPERATIONAL_REPORTS: ReportCard[] = [
     desc: "درجة تفسيرية · تعارضات/فجوات/حمل/قاعات · قراءة فقط دون تشغيل المجدول.",
     icon: <FileBarChart2 className="h-5 w-5" />,
   },
+  {
+    to: "/reports/advanced-academic",
+    title: "التقارير الإدارية المتقدمة",
+    desc: "فهرس نصاب/قاعات/فجوات/منتظم-موازي · قراءة فقط دون مصدر بيانات جديد.",
+    icon: <FileBarChart2 className="h-5 w-5" />,
+  },
 ];
 
 const OFFICIAL_REPORTS: ReportCard[] = [
