@@ -302,10 +302,7 @@ function VersionCard({
 
   const doTransition = useMutation({
     mutationFn: async (to: SVStatus) => {
-      if (
-        blockOperationalMessaging &&
-        (to === "approved" || to === "published")
-      ) {
+      if (blockOperationalMessaging && (to === "approved" || to === "published")) {
         throw new Error(
           "نسخة Demo/Test: الاعتماد/النشر التشغيلي غير متاح عبر هذه الواجهة. المسار الرسمي للتحويل غير مفعّل بعد.",
         );

@@ -21,8 +21,7 @@ function assert(value: unknown, message: string): asserts value {
 const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const migrationRel = "supabase/migrations/20260731120000_source_only_data_classification.sql";
 const applyRel = "docs/PLATFORM-LAUNCH/apply-packages/DATA-CLASSIFICATION-APPLY.md";
-const expectedSha =
-  "7597BAD8DD3FA07CC83E80A07AAE835DBAA9AA9EDD0FCF8687D64FE60AD1764B";
+const expectedSha = "7597BAD8DD3FA07CC83E80A07AAE835DBAA9AA9EDD0FCF8687D64FE60AD1764B";
 
 const migrationPath = join(root, migrationRel);
 assert(existsSync(migrationPath), "migration file must exist");
@@ -59,12 +58,20 @@ assert(
   "decision gate documented",
 );
 assert(migration.includes("DEFAULT NULL"), "column default must be NULL (no Operational auto)");
-assert(!/UPDATE\s+public\.schedule_versions/i.test(migration), "no schedule_versions UPDATE backfill");
 assert(
-  migration.includes("REVOKE ALL ON FUNCTION public.enforce_data_classification_super_admin_only()"),
+  !/UPDATE\s+public\.schedule_versions/i.test(migration),
+  "no schedule_versions UPDATE backfill",
+);
+assert(
+  migration.includes(
+    "REVOKE ALL ON FUNCTION public.enforce_data_classification_super_admin_only()",
+  ),
   "revoke trigger fn from PUBLIC/anon/authenticated",
 );
-assert(migration.includes(PROTECTED_ACCEPTED_SCHEDULE_VERSION_ID), "protect version id in migration comments");
+assert(
+  migration.includes(PROTECTED_ACCEPTED_SCHEDULE_VERSION_ID),
+  "protect version id in migration comments",
+);
 assert(
   isProtectedAcceptedScheduleVersion(PROTECTED_ACCEPTED_SCHEDULE_VERSION_ID),
   "helper protects accepted version",
@@ -109,16 +116,28 @@ assert(
   "convert stub must remain disabled",
 );
 
-assert(publishedUi.includes('useState<ClassificationListFilter>("official")'), "published default official");
+assert(
+  publishedUi.includes('useState<ClassificationListFilter>("official")'),
+  "published default official",
+);
 assert(publishedUi.includes("classification-filter"), "published has classification filter");
 assert(publishedUi.includes("DataClassificationBadge"), "published shows badge");
-assert(reportUi.includes('useState<ClassificationListFilter>("official")'), "report default official");
+assert(
+  reportUi.includes('useState<ClassificationListFilter>("official")'),
+  "report default official",
+);
 assert(reportUi.includes("filterVersionsByClassification"), "report filters by classification");
 assert(versionsUi.includes("NonOperationalApprovalBanner"), "versions show non-operational banner");
 assert(versionsUi.includes("blockOperationalMessaging"), "versions disable demo approve/publish");
 assert(bannerUi.includes("non-operational-approval-banner"), "banner test id present");
-assert(badgeUi.includes("DATA") || badgeUi.includes("data-classification-badge"), "badge component present");
-assert(badgeUi.includes("TEST") || badgeUi.includes("CLASSIFICATION_LABEL_EN"), "badge labels TEST/DEMO/OPERATIONAL");
+assert(
+  badgeUi.includes("DATA") || badgeUi.includes("data-classification-badge"),
+  "badge component present",
+);
+assert(
+  badgeUi.includes("TEST") || badgeUi.includes("CLASSIFICATION_LABEL_EN"),
+  "badge labels TEST/DEMO/OPERATIONAL",
+);
 
 // Confirm migration is source-only artifact (not claimed applied in apply package).
 assert(applyPkg.includes("DO NOT APPLY"), "apply package forbids apply without approval");

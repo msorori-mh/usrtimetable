@@ -8,10 +8,7 @@ import {
 } from "@/lib/schedule-versions/data-classification";
 import { cn } from "@/lib/utils";
 
-const VARIANT: Record<
-  DataClassification,
-  "secondary" | "default" | "outline" | "destructive"
-> = {
+const VARIANT: Record<DataClassification, "secondary" | "default" | "outline" | "destructive"> = {
   test: "secondary",
   demo: "outline",
   operational: "default",

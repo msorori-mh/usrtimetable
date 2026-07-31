@@ -3,10 +3,7 @@
  * Works with optional `data_classification` (post-migration) and falls back to
  * DELIVERY_DEMO name/notes markers today (pre-migration).
  */
-import {
-  DELIVERY_DEMO_MARKER,
-  isDeliveryDemoVersion,
-} from "@/lib/schedule-versions/delivery-demo";
+import { DELIVERY_DEMO_MARKER, isDeliveryDemoVersion } from "@/lib/schedule-versions/delivery-demo";
 import { PROTECTED_ACCEPTED_SCHEDULE_VERSION_ID } from "@/lib/schedule-versions/disposable-purge";
 
 export {
@@ -64,9 +61,7 @@ export function isDataClassification(value: unknown): value is DataClassificatio
  * Resolve classification from column when present; otherwise infer demo from markers.
  * Returns null when unclassified and not marker-demo (no Operational assumption).
  */
-export function resolveDataClassification(
-  input: ClassificationSource,
-): DataClassification | null {
+export function resolveDataClassification(input: ClassificationSource): DataClassification | null {
   const raw = input.data_classification?.trim().toLowerCase() ?? "";
   if (isDataClassification(raw)) return raw;
   if (isDeliveryDemoVersion({ name: input.name, notes: input.notes })) return "demo";
@@ -111,9 +106,7 @@ export function filterVersionsByClassification<T extends ClassificationSource>(
 }
 
 /** UI-only: demo/test must not present “operational approval” messaging. */
-export function shouldBlockOperationalApprovalMessaging(
-  input: ClassificationSource,
-): boolean {
+export function shouldBlockOperationalApprovalMessaging(input: ClassificationSource): boolean {
   return isDemoOrTestClassification(input);
 }
 

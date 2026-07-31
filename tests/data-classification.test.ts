@@ -14,12 +14,9 @@ import {
 } from "../src/lib/schedule-versions/data-classification";
 import { DELIVERY_DEMO_MARKER } from "../src/lib/schedule-versions/delivery-demo";
 
-const MIGRATION_REL =
-  "supabase/migrations/20260731120000_source_only_data_classification.sql";
-const APPLY_PKG_REL =
-  "docs/PLATFORM-LAUNCH/apply-packages/DATA-CLASSIFICATION-APPLY.md";
-const EXPECTED_SHA256 =
-  "7597BAD8DD3FA07CC83E80A07AAE835DBAA9AA9EDD0FCF8687D64FE60AD1764B";
+const MIGRATION_REL = "supabase/migrations/20260731120000_source_only_data_classification.sql";
+const APPLY_PKG_REL = "docs/PLATFORM-LAUNCH/apply-packages/DATA-CLASSIFICATION-APPLY.md";
+const EXPECTED_SHA256 = "7597BAD8DD3FA07CC83E80A07AAE835DBAA9AA9EDD0FCF8687D64FE60AD1764B";
 
 const root = join(import.meta.dir, "..");
 const migrationPath = join(root, MIGRATION_REL);
@@ -110,15 +107,9 @@ describe("data classification helpers", () => {
   });
 
   test("protects accepted schedule version id constant", () => {
-    expect(PROTECTED_ACCEPTED_SCHEDULE_VERSION_ID).toBe(
-      "835e50fe-3ad2-4232-8c15-0f403c668a7f",
-    );
-    expect(isProtectedAcceptedScheduleVersion(PROTECTED_ACCEPTED_SCHEDULE_VERSION_ID)).toBe(
-      true,
-    );
-    expect(isProtectedAcceptedScheduleVersion("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")).toBe(
-      false,
-    );
+    expect(PROTECTED_ACCEPTED_SCHEDULE_VERSION_ID).toBe("835e50fe-3ad2-4232-8c15-0f403c668a7f");
+    expect(isProtectedAcceptedScheduleVersion(PROTECTED_ACCEPTED_SCHEDULE_VERSION_ID)).toBe(true);
+    expect(isProtectedAcceptedScheduleVersion("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")).toBe(false);
     expect(migration).toContain(PROTECTED_ACCEPTED_SCHEDULE_VERSION_ID);
     expect(applyPkg).toContain(PROTECTED_ACCEPTED_SCHEDULE_VERSION_ID);
   });
@@ -127,7 +118,10 @@ describe("data classification helpers", () => {
 describe("data classification migration source-only contract", () => {
   test("migration file exists with documented SHA256 and is not applied", () => {
     expect(existsSync(migrationPath)).toBe(true);
-    const sha = createHash("sha256").update(readFileSync(migrationPath)).digest("hex").toUpperCase();
+    const sha = createHash("sha256")
+      .update(readFileSync(migrationPath))
+      .digest("hex")
+      .toUpperCase();
     expect(sha).toBe(EXPECTED_SHA256);
     expect(applyPkg).toContain(EXPECTED_SHA256);
     expect(migration.startsWith("-- SOURCE-ONLY / NOT APPLIED")).toBe(true);
@@ -139,7 +133,9 @@ describe("data classification migration source-only contract", () => {
     expect(migration).toContain("'operational'");
     expect(migration).toContain("'archived'");
     expect(migration).toContain("SET search_path = public, pg_temp");
-    expect(migration).toContain("REVOKE ALL ON FUNCTION public.enforce_data_classification_super_admin_only()");
+    expect(migration).toContain(
+      "REVOKE ALL ON FUNCTION public.enforce_data_classification_super_admin_only()",
+    );
     expect(migration).toContain("FROM PUBLIC, anon, authenticated");
     expect(migration).toContain("DATA_CLASSIFICATION_SUPER_ADMIN_REQUIRED");
     expect(migration).toContain("import_runs");
