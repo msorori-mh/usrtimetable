@@ -1008,7 +1008,7 @@ function ScheduleBuilderWorkspacePage() {
                 startHour={startHour}
                 endHour={endHour}
                 onSessionClick={onSessionClick}
-                draggable={editModeActive && mayEnterEdit && !isProtectedDemoVersion(versionId)}
+                draggable={editModeActive && mayEnterEdit}
                 onDropAt={onGridDrop}
                 getDropTone={
                   editModeActive && selectedSessionId
