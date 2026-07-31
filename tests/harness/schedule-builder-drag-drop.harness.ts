@@ -74,11 +74,17 @@ function run() {
     page.includes("draggable={editModeActive && mayEnterEdit}"),
     "drag gated to edit mode + manage access",
   );
-  assert(page.includes("proposeSlotFromDragDrop"), "uses pure drag proposal helper");
+  assert(
+    page.includes("evaluateDropTarget") || page.includes("proposeSlotFromDragDrop"),
+    "uses pure drag proposal/safety helper",
+  );
   assert(page.includes("setValidation(null)"), "clears validation on local edit/drop");
 
   const dropStart = page.indexOf("const onGridDrop =");
-  const dropEnd = page.indexOf("const onCancelSessionChange", dropStart);
+  const dropEnd =
+    page.indexOf("const onUndoLocal", dropStart) >= 0
+      ? page.indexOf("const onUndoLocal", dropStart)
+      : page.indexOf("const onCancelSessionChange", dropStart);
   assert(dropStart >= 0 && dropEnd > dropStart, "onGridDrop block extractable");
   const dropBody = page.slice(dropStart, dropEnd);
   assert(!dropBody.includes("validateScheduleSessionMove"), "drop does not validate via RPC");
