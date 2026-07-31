@@ -85,7 +85,10 @@ export function toOccupancySession(session: DropPreviewSession): OccupancySessio
 }
 
 export function expectedStudentsForDrop(session: DropPreviewSession): number | null {
-  if (session.subgroup_expected_students != null && Number.isFinite(Number(session.subgroup_expected_students))) {
+  if (
+    session.subgroup_expected_students != null &&
+    Number.isFinite(Number(session.subgroup_expected_students))
+  ) {
     return Number(session.subgroup_expected_students);
   }
   if (session.enrollment_count != null && Number.isFinite(Number(session.enrollment_count))) {
@@ -116,8 +119,7 @@ export function resolveDropRoomConstraints(params: {
     params.targetRoom?.capacity != null && Number.isFinite(Number(params.targetRoom.capacity))
       ? Number(params.targetRoom.capacity)
       : null;
-  const roomTypeOk =
-    !requiredType || roomType == null ? true : roomType === requiredType;
+  const roomTypeOk = !requiredType || roomType == null ? true : roomType === requiredType;
   return {
     roomId: params.targetRoom?.id ?? null,
     roomType,

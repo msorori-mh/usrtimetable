@@ -222,7 +222,10 @@ function run() {
   const mappedAssembled = mapWorkspaceSessions(assembled);
   assert(mappedAssembled[0].room_label === "—", "orphan room maps to dash");
   assert(mappedAssembled[0].course_code === "CS101", "assembled course maps");
-  assert(mappedAssembled[0].cohort_id === "coh-1", "cohort_id preserved through mapWorkspaceSessions");
+  assert(
+    mappedAssembled[0].cohort_id === "coh-1",
+    "cohort_id preserved through mapWorkspaceSessions",
+  );
 
   // Map raw → view; partial data does not throw
   const mapped = mapWorkspaceSessions([

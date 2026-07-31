@@ -27,7 +27,10 @@ assert(builder.includes("onUndoLocal") || builder.includes("تراجع محلي"
 assert(builder.includes("getDropTone"), "grid tone wired");
 
 const workspace = read("src/lib/schedule-builder/workspace.ts");
-assert(workspace.includes("cohort_id: s.cohort_id ?? null"), "mapWorkspaceSessions preserves cohort_id");
+assert(
+  workspace.includes("cohort_id: s.cohort_id ?? null"),
+  "mapWorkspaceSessions preserves cohort_id",
+);
 
 const grid = read("src/components/timetable/timetable-grid.tsx");
 assert(grid.includes("getDropTone"), "grid accepts tone");
@@ -74,7 +77,10 @@ const wired = buildEvaluateDropTargetInput({
 assert(wired.movingSession.cohort_id === "coh-1", "wired cohort preserved");
 assert(wired.roomTypeOk === true, "compatible room type");
 assert(wired.roomCapacity === 60, "room capacity wired");
-assert(toOccupancySession({ ...wired.movingSession, cohort_id: "coh-1" }).cohort_id === "coh-1", "occupancy cohort");
+assert(
+  toOccupancySession({ ...wired.movingSession, cohort_id: "coh-1" }).cohort_id === "coh-1",
+  "occupancy cohort",
+);
 
 const cohortBlock = evaluateDropTarget(
   buildEvaluateDropTargetInput({
