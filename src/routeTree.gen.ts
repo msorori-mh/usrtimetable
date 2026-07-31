@@ -64,6 +64,7 @@ import { Route as AuthenticatedReportsInstructorScheduleRouteImport } from './ro
 import { Route as AuthenticatedReportsInstructorWorkloadRouteImport } from './routes/_authenticated/reports.instructor-workload'
 import { Route as AuthenticatedReportsProgramLevelTimetableRouteImport } from './routes/_authenticated/reports.program-level-timetable'
 import { Route as AuthenticatedReportsPublishedTimetableRouteImport } from './routes/_authenticated/reports.published-timetable'
+import { Route as AuthenticatedReportsQualityAnalyticsRouteImport } from './routes/_authenticated/reports.quality-analytics'
 import { Route as AuthenticatedReportsQualitySummaryRouteImport } from './routes/_authenticated/reports.quality-summary'
 import { Route as AuthenticatedReportsRoomTimetableRouteImport } from './routes/_authenticated/reports.room-timetable'
 import { Route as AuthenticatedReportsRoomUtilizationRouteImport } from './routes/_authenticated/reports.room-utilization'
@@ -383,6 +384,12 @@ const AuthenticatedReportsPublishedTimetableRoute =
     path: '/published-timetable',
     getParentRoute: () => AuthenticatedReportsRoute,
   } as any)
+const AuthenticatedReportsQualityAnalyticsRoute =
+  AuthenticatedReportsQualityAnalyticsRouteImport.update({
+    id: '/quality-analytics',
+    path: '/quality-analytics',
+    getParentRoute: () => AuthenticatedReportsRoute,
+  } as any)
 const AuthenticatedReportsQualitySummaryRoute =
   AuthenticatedReportsQualitySummaryRouteImport.update({
     id: '/quality-summary',
@@ -480,6 +487,7 @@ export interface FileRoutesByFullPath {
   '/reports/instructor-workload': typeof AuthenticatedReportsInstructorWorkloadRoute
   '/reports/program-level-timetable': typeof AuthenticatedReportsProgramLevelTimetableRoute
   '/reports/published-timetable': typeof AuthenticatedReportsPublishedTimetableRoute
+  '/reports/quality-analytics': typeof AuthenticatedReportsQualityAnalyticsRoute
   '/reports/quality-summary': typeof AuthenticatedReportsQualitySummaryRoute
   '/reports/room-timetable': typeof AuthenticatedReportsRoomTimetableRoute
   '/reports/room-utilization': typeof AuthenticatedReportsRoomUtilizationRoute
@@ -542,6 +550,7 @@ export interface FileRoutesByTo {
   '/reports/instructor-workload': typeof AuthenticatedReportsInstructorWorkloadRoute
   '/reports/program-level-timetable': typeof AuthenticatedReportsProgramLevelTimetableRoute
   '/reports/published-timetable': typeof AuthenticatedReportsPublishedTimetableRoute
+  '/reports/quality-analytics': typeof AuthenticatedReportsQualityAnalyticsRoute
   '/reports/quality-summary': typeof AuthenticatedReportsQualitySummaryRoute
   '/reports/room-timetable': typeof AuthenticatedReportsRoomTimetableRoute
   '/reports/room-utilization': typeof AuthenticatedReportsRoomUtilizationRoute
@@ -607,6 +616,7 @@ export interface FileRoutesById {
   '/_authenticated/reports/instructor-workload': typeof AuthenticatedReportsInstructorWorkloadRoute
   '/_authenticated/reports/program-level-timetable': typeof AuthenticatedReportsProgramLevelTimetableRoute
   '/_authenticated/reports/published-timetable': typeof AuthenticatedReportsPublishedTimetableRoute
+  '/_authenticated/reports/quality-analytics': typeof AuthenticatedReportsQualityAnalyticsRoute
   '/_authenticated/reports/quality-summary': typeof AuthenticatedReportsQualitySummaryRoute
   '/_authenticated/reports/room-timetable': typeof AuthenticatedReportsRoomTimetableRoute
   '/_authenticated/reports/room-utilization': typeof AuthenticatedReportsRoomUtilizationRoute
@@ -672,6 +682,7 @@ export interface FileRouteTypes {
     | '/reports/instructor-workload'
     | '/reports/program-level-timetable'
     | '/reports/published-timetable'
+    | '/reports/quality-analytics'
     | '/reports/quality-summary'
     | '/reports/room-timetable'
     | '/reports/room-utilization'
@@ -734,6 +745,7 @@ export interface FileRouteTypes {
     | '/reports/instructor-workload'
     | '/reports/program-level-timetable'
     | '/reports/published-timetable'
+    | '/reports/quality-analytics'
     | '/reports/quality-summary'
     | '/reports/room-timetable'
     | '/reports/room-utilization'
@@ -798,6 +810,7 @@ export interface FileRouteTypes {
     | '/_authenticated/reports/instructor-workload'
     | '/_authenticated/reports/program-level-timetable'
     | '/_authenticated/reports/published-timetable'
+    | '/_authenticated/reports/quality-analytics'
     | '/_authenticated/reports/quality-summary'
     | '/_authenticated/reports/room-timetable'
     | '/_authenticated/reports/room-utilization'
@@ -1201,6 +1214,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedReportsPublishedTimetableRouteImport
       parentRoute: typeof AuthenticatedReportsRoute
     }
+    '/_authenticated/reports/quality-analytics': {
+      id: '/_authenticated/reports/quality-analytics'
+      path: '/quality-analytics'
+      fullPath: '/reports/quality-analytics'
+      preLoaderRoute: typeof AuthenticatedReportsQualityAnalyticsRouteImport
+      parentRoute: typeof AuthenticatedReportsRoute
+    }
     '/_authenticated/reports/quality-summary': {
       id: '/_authenticated/reports/quality-summary'
       path: '/quality-summary'
@@ -1261,6 +1281,7 @@ interface AuthenticatedReportsRouteChildren {
   AuthenticatedReportsInstructorWorkloadRoute: typeof AuthenticatedReportsInstructorWorkloadRoute
   AuthenticatedReportsProgramLevelTimetableRoute: typeof AuthenticatedReportsProgramLevelTimetableRoute
   AuthenticatedReportsPublishedTimetableRoute: typeof AuthenticatedReportsPublishedTimetableRoute
+  AuthenticatedReportsQualityAnalyticsRoute: typeof AuthenticatedReportsQualityAnalyticsRoute
   AuthenticatedReportsQualitySummaryRoute: typeof AuthenticatedReportsQualitySummaryRoute
   AuthenticatedReportsRoomTimetableRoute: typeof AuthenticatedReportsRoomTimetableRoute
   AuthenticatedReportsRoomUtilizationRoute: typeof AuthenticatedReportsRoomUtilizationRoute
@@ -1283,6 +1304,8 @@ const AuthenticatedReportsRouteChildren: AuthenticatedReportsRouteChildren = {
     AuthenticatedReportsProgramLevelTimetableRoute,
   AuthenticatedReportsPublishedTimetableRoute:
     AuthenticatedReportsPublishedTimetableRoute,
+  AuthenticatedReportsQualityAnalyticsRoute:
+    AuthenticatedReportsQualityAnalyticsRoute,
   AuthenticatedReportsQualitySummaryRoute:
     AuthenticatedReportsQualitySummaryRoute,
   AuthenticatedReportsRoomTimetableRoute:

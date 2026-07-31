@@ -35,18 +35,48 @@ interface ReportCard {
 }
 
 const TIMETABLE_REPORTS: ReportCard[] = [
-  { to: "/reports/instructor-schedule", title: "جدول المحاضر الفردي", desc: "عرض Grid + جدول · نسخة واحدة · قابل للطباعة.", icon: <CalendarClock className="h-5 w-5" /> },
-  { to: "/reports/room-timetable", title: "جدول القاعة", desc: "عرض Grid + جدول · نسخة واحدة.", icon: <DoorOpen className="h-5 w-5" /> },
-  { to: "/reports/program-level-timetable", title: "جدول البرنامج/المستوى", desc: "فلاتر قسم/برنامج/مستوى/دفعة دراسية/مجموعة محاضرات ومعامل · البديل الموصى به لجدول الأقسام.", icon: <LayoutGrid className="h-5 w-5" /> },
+  {
+    to: "/reports/instructor-schedule",
+    title: "جدول المحاضر الفردي",
+    desc: "عرض Grid + جدول · نسخة واحدة · قابل للطباعة.",
+    icon: <CalendarClock className="h-5 w-5" />,
+  },
+  {
+    to: "/reports/room-timetable",
+    title: "جدول القاعة",
+    desc: "عرض Grid + جدول · نسخة واحدة.",
+    icon: <DoorOpen className="h-5 w-5" />,
+  },
+  {
+    to: "/reports/program-level-timetable",
+    title: "جدول البرنامج/المستوى",
+    desc: "فلاتر قسم/برنامج/مستوى/دفعة دراسية/مجموعة محاضرات ومعامل · البديل الموصى به لجدول الأقسام.",
+    icon: <LayoutGrid className="h-5 w-5" />,
+  },
 ];
 
 const ANALYTICS_REPORTS: ReportCard[] = [
-  { to: "/reports/instructor-workload", title: "أعباء المحاضرين", desc: "تحميل تدريسي أسبوعي · نسخة واحدة · بدون double-count.", icon: <UserSquare2 className="h-5 w-5" /> },
-  { to: "/reports/room-utilization", title: "استخدام القاعات", desc: "نسبة استغلال القاعات · نسخة واحدة.", icon: <DoorOpen className="h-5 w-5" /> },
+  {
+    to: "/reports/instructor-workload",
+    title: "أعباء المحاضرين",
+    desc: "تحميل تدريسي أسبوعي · نسخة واحدة · بدون double-count.",
+    icon: <UserSquare2 className="h-5 w-5" />,
+  },
+  {
+    to: "/reports/room-utilization",
+    title: "استخدام القاعات",
+    desc: "نسبة استغلال القاعات · نسخة واحدة.",
+    icon: <DoorOpen className="h-5 w-5" />,
+  },
 ];
 
 const OPERATIONAL_REPORTS: ReportCard[] = [
-  { to: "/reports/conflicts", title: "تعارضات الجدول", desc: "قراءة conflict_results · لا يشغّل Conflict Engine.", icon: <ShieldAlert className="h-5 w-5" /> },
+  {
+    to: "/reports/conflicts",
+    title: "تعارضات الجدول",
+    desc: "قراءة conflict_results · لا يشغّل Conflict Engine.",
+    icon: <ShieldAlert className="h-5 w-5" />,
+  },
   {
     to: "/reports/data-readiness",
     title: "تقرير جاهزية البيانات",
@@ -54,8 +84,24 @@ const OPERATIONAL_REPORTS: ReportCard[] = [
     desc: "فحوص الجاهزية · قابل للتصدير · على مستوى الكلية (تقرير التقارير).",
     icon: <ClipboardCheck className="h-5 w-5" />,
   },
-  { to: "/reports/unscheduled", title: "المحاضرات غير المجدوَلة", desc: "الناقص vs المطلوب · أسباب من آخر auto_schedule_run.", icon: <AlertTriangle className="h-5 w-5" /> },
-  { to: "/reports/quality-summary", title: "ملخص الجودة", desc: "آخر quality run · نسخة واحدة · لا يشغّل Quality Engine.", icon: <Gauge className="h-5 w-5" /> },
+  {
+    to: "/reports/unscheduled",
+    title: "المحاضرات غير المجدوَلة",
+    desc: "الناقص vs المطلوب · أسباب من آخر auto_schedule_run.",
+    icon: <AlertTriangle className="h-5 w-5" />,
+  },
+  {
+    to: "/reports/quality-summary",
+    title: "ملخص الجودة",
+    desc: "آخر quality run · نسخة واحدة · لا يشغّل Quality Engine.",
+    icon: <Gauge className="h-5 w-5" />,
+  },
+  {
+    to: "/reports/quality-analytics",
+    title: "مركز تحليل جودة الجدول",
+    desc: "درجة تفسيرية · تعارضات/فجوات/حمل/قاعات · قراءة فقط دون تشغيل المجدول.",
+    icon: <FileBarChart2 className="h-5 w-5" />,
+  },
 ];
 
 const OFFICIAL_REPORTS: ReportCard[] = [
@@ -95,7 +141,8 @@ const SECTIONS: {
   {
     id: "timetable",
     title: "Timetable Reports — تقارير الجداول الزمنية",
-    description: "جداول أسبوعية (Grid + Table) لمحاضر/قاعة/برنامج — نسخة جدول واحدة · هوية دفعة/مجموعة محاضرات ومعامل.",
+    description:
+      "جداول أسبوعية (Grid + Table) لمحاضر/قاعة/برنامج — نسخة جدول واحدة · هوية دفعة/مجموعة محاضرات ومعامل.",
     items: TIMETABLE_REPORTS,
   },
   {
@@ -120,7 +167,8 @@ const SECTIONS: {
   {
     id: "legacy",
     title: "Legacy — تقارير قديمة",
-    description: "مسارات محفوظة للتوافق — للعرض التاريخي فقط · يُفضّل البدائل الحديثة في الأقسام أعلاه.",
+    description:
+      "مسارات محفوظة للتوافق — للعرض التاريخي فقط · يُفضّل البدائل الحديثة في الأقسام أعلاه.",
     items: LEGACY_REPORTS,
     accent: "border-amber-500/30 bg-amber-500/5",
   },
@@ -135,7 +183,9 @@ function ReportGrid({ items }: { items: ReportCard[] }) {
           to={r.to}
           className="block"
           aria-label={r.linkLabel ?? r.title}
-          data-report-hub-link={r.to === "/reports/data-readiness" ? "data-readiness-report" : undefined}
+          data-report-hub-link={
+            r.to === "/reports/data-readiness" ? "data-readiness-report" : undefined
+          }
         >
           <Card className="p-4 hover:shadow-md transition-shadow cursor-pointer h-full">
             <div className="flex items-start gap-3">
@@ -149,7 +199,10 @@ function ReportGrid({ items }: { items: ReportCard[] }) {
                     </Badge>
                   )}
                   {r.badge === "legacy" && (
-                    <Badge variant="outline" className="text-[10px] gap-1 border-amber-500/50 text-amber-700">
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] gap-1 border-amber-500/50 text-amber-700"
+                    >
                       <Archive className="h-3 w-3" /> Legacy
                     </Badge>
                   )}
@@ -168,7 +221,9 @@ function ReportsHub() {
   return (
     <div className="space-y-8" dir="rtl">
       <header className="usr-page-header">
-        <span className="usr-page-header-icon"><FileBarChart2 className="h-5 w-5" /></span>
+        <span className="usr-page-header-icon">
+          <FileBarChart2 className="h-5 w-5" />
+        </span>
         <div>
           <h1 className="text-2xl font-bold">التقارير</h1>
           <p className="text-sm text-muted-foreground mt-1">
