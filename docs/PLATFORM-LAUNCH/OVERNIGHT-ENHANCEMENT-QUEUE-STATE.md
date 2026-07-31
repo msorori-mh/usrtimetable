@@ -1,8 +1,8 @@
 # Overnight Enhancement Queue State
 
-Mission: `USRTIMETABLE-OVERNIGHT-ENHANCEMENT-QUEUE-02`  
-Updated: 2026-07-31  
-Protected version: `835e50fe-3ad2-4232-8c15-0f403c668a7f`  
+Mission: `USRTIMETABLE-OVERNIGHT-ENHANCEMENT-QUEUE-02`
+Updated: 2026-07-31
+Protected version: `835e50fe-3ad2-4232-8c15-0f403c668a7f`
 Start main: `d60cfd5b554e28e6ac258c47b1824d5d6e410626` (post Phase 2; Q0.1–Q0.2 already merged)
 
 ## QUEUE 0 — Release Train resume
