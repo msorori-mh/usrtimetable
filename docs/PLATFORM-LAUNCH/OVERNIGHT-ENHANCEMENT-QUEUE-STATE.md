@@ -3,59 +3,33 @@
 Mission: `USRTIMETABLE-OVERNIGHT-ENHANCEMENT-QUEUE-02`
 Updated: 2026-07-31
 Protected version: `835e50fe-3ad2-4232-8c15-0f403c668a7f`
-Start main: `d60cfd5b554e28e6ac258c47b1824d5d6e410626` (post Phase 2; Q0.1–Q0.2 already merged)
+START_MAIN_SHA: `d60cfd5b554e28e6ac258c47b1824d5d6e410626`
+END_MAIN_SHA (deployed track): `29a86f2af02d2854202f8bf395e7cb9cc1f3ad4a`
 
-## QUEUE 0 — Release Train resume
+## QUEUE 0
+| Package | Status | PR | Merge | Deploy | Blocker |
+| --- | --- | --- | --- | --- | --- |
+| Print/Export | COMPLETE | #127 | 1b6dc48 | 41841b70… | none |
+| Onboarding/Readiness | COMPLETE | #128 | d60cfd5 | 3ebe732a… | none |
+| Demo/Operational | WAITING_MIGRATION | #129 | NOT | NOT | APPROVE_DB_MIGRATION_APPLY |
 
-### Q0.1 TIMETABLE-PRINT-EXPORT-CENTER-01
+## QUEUE 1 Quality Analytics
+COMPLETE_MERGED_PUBLISHED — PR #130 — merge 29a86f2 — deploy 44044641… — live YES
 
-| Field | Value |
-| --- | --- |
-| Status | COMPLETE_MERGED_PUBLISHED |
-| Branch | `feat/timetable-print-export-center-01` |
-| PR | https://github.com/msorori-mh/usrtimetable/pull/127 |
-| HEAD | `17223e14ea321406d8278a698ddd13530cd1e311` |
-| Tests | PASS (prior train) |
-| CI | PASS |
-| Merge | `1b6dc48cfcef3b6426b71b07e20d19a568fe6276` |
-| Deployment ID | `41841b701846c8b46ff251e6509f7c5249f076bdd6b52873ca2f72e1024e2905` |
-| Blocker | none |
-| Next | closed |
+## QUEUE 2 Version Comparison
+PR_READY_CI_GREEN — PR #131 — NOT merged (no two live versions / no production clone)
 
-### Q0.2 DATA-ONBOARDING-READINESS-WIZARD-01
+## QUEUE 3 Smart Suggestions
+PR_READY_CI_GREEN — PR #132 — NOT merged (overnight leave Ready; preview-only)
 
-| Field | Value |
-| --- | --- |
-| Status | COMPLETE_MERGED_PUBLISHED |
-| Branch | `feat/data-onboarding-readiness-wizard-01` |
-| PR | https://github.com/msorori-mh/usrtimetable/pull/128 |
-| HEAD | `57a45287d7429fab16e8115ea4cbf6d3881aedac` |
-| Tests | PASS (prior train) |
-| CI | PASS |
-| Merge | `d60cfd5b554e28e6ac258c47b1824d5d6e410626` |
-| Deployment ID | `3ebe732a1aa1ef7c9be9bab9d9352a975b21990f7fa6a88af05f65824e36cc97` |
-| Blocker | none |
-| Next | closed |
+## QUEUE 4 Drag-Drop Safety Undo
+PR_READY_CI_GREEN — PR #133 — NOT merged (human review for write-adjacent path)
 
-### Q0.3 DEMO-OPERATIONAL-DATA-SEPARATION-01
+## QUEUE 5 Advanced Reports
+PR_READY_CI_GREEN — PR #134 — NOT merged (catalog only; optional merge later)
 
-| Field | Value |
-| --- | --- |
-| Status | SOURCE_READY_WAITING_FOR_EXPLICIT_MIGRATION_APPROVAL |
-| Branch | `feat/demo-operational-data-separation-01` |
-| PR | https://github.com/msorori-mh/usrtimetable/pull/129 |
-| HEAD | `12a5c2b1d23535b1010ee5d2bd8723487fcb1554` |
-| Tests | PASS |
-| CI | PASS |
-| Merge | NOT_MERGED |
-| Deployment ID | NOT_PUBLISHED |
-| Schema change | YES |
-| Migration | `supabase/migrations/20260731120000_source_only_data_classification.sql` |
-| SHA256 | `7597BAD8DD3FA07CC83E80A07AAE835DBAA9AA9EDD0FCF8687D64FE60AD1764B` |
-| Apply package | `docs/PLATFORM-LAUNCH/apply-packages/DATA-CLASSIFICATION-APPLY.md` |
-| Blocker | Explicit `APPROVE_DB_MIGRATION_APPLY` required |
-| Next | Continue QUEUE 1 from `origin/main` without depending on unmerged Phase 3 |
+## QUEUE 6 Student/Instructor Portal
+NOT_STARTED_OR_DEFERRED — time used on Q0–Q5/Q7
 
-## QUEUE 1 — in progress
-
-See updates below as packages complete.
+## QUEUE 7 System Health Backup
+IN_PROGRESS on feat/system-health-backup-readiness-01

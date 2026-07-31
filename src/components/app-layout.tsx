@@ -343,6 +343,12 @@ const NAV_GROUPS: NavGroup[] = [
         icon: <FileBarChart2 className="h-4 w-4" />,
         roles: ALL,
       },
+      {
+        to: "/system-health",
+        label: "صحة النظام",
+        icon: <Gauge className="h-4 w-4" />,
+        roles: ALL,
+      },
     ],
   },
 ];

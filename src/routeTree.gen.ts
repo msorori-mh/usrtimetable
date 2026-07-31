@@ -50,6 +50,7 @@ import { Route as AuthenticatedSectionsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedSessionTypesRouteImport } from './routes/_authenticated/session-types'
 import { Route as AuthenticatedSharedCoursesRouteImport } from './routes/_authenticated/shared-courses'
 import { Route as AuthenticatedStudyPlansRouteImport } from './routes/_authenticated/study-plans'
+import { Route as AuthenticatedSystemHealthRouteImport } from './routes/_authenticated/system-health'
 import { Route as AuthenticatedTeachingAssignmentsRouteImport } from './routes/_authenticated/teaching-assignments'
 import { Route as AuthenticatedTermsRouteImport } from './routes/_authenticated/terms'
 import { Route as AuthenticatedTimeSlotTemplatesRouteImport } from './routes/_authenticated/time-slot-templates'
@@ -303,6 +304,12 @@ const AuthenticatedStudyPlansRoute = AuthenticatedStudyPlansRouteImport.update({
   path: '/study-plans',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSystemHealthRoute =
+  AuthenticatedSystemHealthRouteImport.update({
+    id: '/system-health',
+    path: '/system-health',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedTeachingAssignmentsRoute =
   AuthenticatedTeachingAssignmentsRouteImport.update({
     id: '/teaching-assignments',
@@ -474,6 +481,7 @@ export interface FileRoutesByFullPath {
   '/session-types': typeof AuthenticatedSessionTypesRoute
   '/shared-courses': typeof AuthenticatedSharedCoursesRoute
   '/study-plans': typeof AuthenticatedStudyPlansRoute
+  '/system-health': typeof AuthenticatedSystemHealthRoute
   '/teaching-assignments': typeof AuthenticatedTeachingAssignmentsRoute
   '/terms': typeof AuthenticatedTermsRoute
   '/time-slot-templates': typeof AuthenticatedTimeSlotTemplatesRoute
@@ -537,6 +545,7 @@ export interface FileRoutesByTo {
   '/session-types': typeof AuthenticatedSessionTypesRoute
   '/shared-courses': typeof AuthenticatedSharedCoursesRoute
   '/study-plans': typeof AuthenticatedStudyPlansRoute
+  '/system-health': typeof AuthenticatedSystemHealthRoute
   '/teaching-assignments': typeof AuthenticatedTeachingAssignmentsRoute
   '/terms': typeof AuthenticatedTermsRoute
   '/time-slot-templates': typeof AuthenticatedTimeSlotTemplatesRoute
@@ -603,6 +612,7 @@ export interface FileRoutesById {
   '/_authenticated/session-types': typeof AuthenticatedSessionTypesRoute
   '/_authenticated/shared-courses': typeof AuthenticatedSharedCoursesRoute
   '/_authenticated/study-plans': typeof AuthenticatedStudyPlansRoute
+  '/_authenticated/system-health': typeof AuthenticatedSystemHealthRoute
   '/_authenticated/teaching-assignments': typeof AuthenticatedTeachingAssignmentsRoute
   '/_authenticated/terms': typeof AuthenticatedTermsRoute
   '/_authenticated/time-slot-templates': typeof AuthenticatedTimeSlotTemplatesRoute
@@ -669,6 +679,7 @@ export interface FileRouteTypes {
     | '/session-types'
     | '/shared-courses'
     | '/study-plans'
+    | '/system-health'
     | '/teaching-assignments'
     | '/terms'
     | '/time-slot-templates'
@@ -732,6 +743,7 @@ export interface FileRouteTypes {
     | '/session-types'
     | '/shared-courses'
     | '/study-plans'
+    | '/system-health'
     | '/teaching-assignments'
     | '/terms'
     | '/time-slot-templates'
@@ -797,6 +809,7 @@ export interface FileRouteTypes {
     | '/_authenticated/session-types'
     | '/_authenticated/shared-courses'
     | '/_authenticated/study-plans'
+    | '/_authenticated/system-health'
     | '/_authenticated/teaching-assignments'
     | '/_authenticated/terms'
     | '/_authenticated/time-slot-templates'
@@ -1116,6 +1129,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedStudyPlansRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/system-health': {
+      id: '/_authenticated/system-health'
+      path: '/system-health'
+      fullPath: '/system-health'
+      preLoaderRoute: typeof AuthenticatedSystemHealthRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/teaching-assignments': {
       id: '/_authenticated/teaching-assignments'
       path: '/teaching-assignments'
@@ -1360,6 +1380,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSessionTypesRoute: typeof AuthenticatedSessionTypesRoute
   AuthenticatedSharedCoursesRoute: typeof AuthenticatedSharedCoursesRoute
   AuthenticatedStudyPlansRoute: typeof AuthenticatedStudyPlansRoute
+  AuthenticatedSystemHealthRoute: typeof AuthenticatedSystemHealthRoute
   AuthenticatedTeachingAssignmentsRoute: typeof AuthenticatedTeachingAssignmentsRoute
   AuthenticatedTermsRoute: typeof AuthenticatedTermsRoute
   AuthenticatedTimeSlotTemplatesRoute: typeof AuthenticatedTimeSlotTemplatesRoute
@@ -1410,6 +1431,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSessionTypesRoute: AuthenticatedSessionTypesRoute,
   AuthenticatedSharedCoursesRoute: AuthenticatedSharedCoursesRoute,
   AuthenticatedStudyPlansRoute: AuthenticatedStudyPlansRoute,
+  AuthenticatedSystemHealthRoute: AuthenticatedSystemHealthRoute,
   AuthenticatedTeachingAssignmentsRoute: AuthenticatedTeachingAssignmentsRoute,
   AuthenticatedTermsRoute: AuthenticatedTermsRoute,
   AuthenticatedTimeSlotTemplatesRoute: AuthenticatedTimeSlotTemplatesRoute,
