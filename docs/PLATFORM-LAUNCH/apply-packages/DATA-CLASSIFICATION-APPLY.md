@@ -1,8 +1,8 @@
-# Apply package — data classification (Lovable-managed only)
+﻿# Apply package — data classification (Lovable-managed only)
 
 **DO NOT APPLY** without explicit `APPROVE_DB_MIGRATION_APPLY`.
 
-Mission: `DEMO-OPERATIONAL-DATA-SEPARATION-01` Phase 3  
+Mission: `DEMO-OPERATIONAL-DATA-SEPARATION-01` Phase 3
 Decision gate: `PHASE_3_SOURCE_READY_WAITING_FOR_EXPLICIT_MIGRATION_APPROVAL`
 
 ## Migration
