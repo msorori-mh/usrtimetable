@@ -1,4 +1,4 @@
-﻿# Apply package — data classification (Lovable-managed only)
+# Apply package — data classification (Lovable-managed only)
 
 **DO NOT APPLY** without explicit `APPROVE_DB_MIGRATION_APPLY`.
 
@@ -8,7 +8,7 @@ Decision gate: `PHASE_3_SOURCE_READY_WAITING_FOR_EXPLICIT_MIGRATION_APPROVAL`
 ## Migration
 
 - File: `supabase/migrations/20260731120000_source_only_data_classification.sql`
-- SHA256: `30C29D423DE6995543415492BE13C3FC26F045704333817E99BCA85087B9ED87`
+- SHA256: `7597BAD8DD3FA07CC83E80A07AAE835DBAA9AA9EDD0FCF8687D64FE60AD1764B`
 - Forward-only / source-only until approved
 - Project ref (Lovable-managed): `emzytxqkxjjhsivqxdiu`
 - **Not in applied list** until remote evidence after approved apply
@@ -35,7 +35,7 @@ Decision gate: `PHASE_3_SOURCE_READY_WAITING_FOR_EXPLICIT_MIGRATION_APPROVAL`
 ## Before checks (read-only)
 
 1. Confirm migration file SHA256 matches this package:
-   `30C29D423DE6995543415492BE13C3FC26F045704333817E99BCA85087B9ED87`
+   `7597BAD8DD3FA07CC83E80A07AAE835DBAA9AA9EDD0FCF8687D64FE60AD1764B`
 2. Protected version `835e50fe-3ad2-4232-8c15-0f403c668a7f`: exists; do not UPDATE it in apply SQL.
 3. Confirm `data_classification` column is **absent** before apply (or inventory if partially present).
 4. Confirm `import_runs` still absent (skip remains valid) or plan follow-up migration if introduced.
@@ -109,3 +109,4 @@ After approved apply, clients may include `data_classification` in `schedule_ver
 - PR: Ready + CI green → **DO NOT merge** while merge depends on migration being applied (or while waiting for explicit migration approval per mission).
 - **DO NOT** Lovable publish from this mission.
 - **DO NOT** apply migration without explicit `APPROVE_DB_MIGRATION_APPLY`.
+

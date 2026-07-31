@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+﻿import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -22,7 +22,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const migrationRel = "supabase/migrations/20260731120000_source_only_data_classification.sql";
 const applyRel = "docs/PLATFORM-LAUNCH/apply-packages/DATA-CLASSIFICATION-APPLY.md";
 const expectedSha =
-  "30C29D423DE6995543415492BE13C3FC26F045704333817E99BCA85087B9ED87";
+  "7597BAD8DD3FA07CC83E80A07AAE835DBAA9AA9EDD0FCF8687D64FE60AD1764B";
 
 const migrationPath = join(root, migrationRel);
 assert(existsSync(migrationPath), "migration file must exist");

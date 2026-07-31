@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+﻿import { createHash } from "node:crypto";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "bun:test";
@@ -19,7 +19,7 @@ const MIGRATION_REL =
 const APPLY_PKG_REL =
   "docs/PLATFORM-LAUNCH/apply-packages/DATA-CLASSIFICATION-APPLY.md";
 const EXPECTED_SHA256 =
-  "30C29D423DE6995543415492BE13C3FC26F045704333817E99BCA85087B9ED87";
+  "7597BAD8DD3FA07CC83E80A07AAE835DBAA9AA9EDD0FCF8687D64FE60AD1764B";
 
 const root = join(import.meta.dir, "..");
 const migrationPath = join(root, MIGRATION_REL);
