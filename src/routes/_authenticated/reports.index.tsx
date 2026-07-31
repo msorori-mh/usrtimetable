@@ -17,6 +17,7 @@ import {
   ClipboardCheck,
   Archive,
   Stamp,
+  Sparkles,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/reports/")({
@@ -89,6 +90,12 @@ const OPERATIONAL_REPORTS: ReportCard[] = [
     title: "المحاضرات غير المجدوَلة",
     desc: "الناقص vs المطلوب · أسباب من آخر auto_schedule_run.",
     icon: <AlertTriangle className="h-5 w-5" />,
+  },
+  {
+    to: "/reports/smart-suggestions",
+    title: "اقتراحات الجدولة الذكية",
+    desc: "أسباب وبدائل تفسيرية · معاينة فقط · بلا تطبيق تلقائي.",
+    icon: <Sparkles className="h-5 w-5" />,
   },
   {
     to: "/reports/quality-summary",

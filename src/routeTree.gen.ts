@@ -69,6 +69,7 @@ import { Route as AuthenticatedReportsQualitySummaryRouteImport } from './routes
 import { Route as AuthenticatedReportsRoomTimetableRouteImport } from './routes/_authenticated/reports.room-timetable'
 import { Route as AuthenticatedReportsRoomUtilizationRouteImport } from './routes/_authenticated/reports.room-utilization'
 import { Route as AuthenticatedReportsSectionTimetableRouteImport } from './routes/_authenticated/reports.section-timetable'
+import { Route as AuthenticatedReportsSmartSuggestionsRouteImport } from './routes/_authenticated/reports.smart-suggestions'
 import { Route as AuthenticatedReportsUnscheduledRouteImport } from './routes/_authenticated/reports.unscheduled'
 import { Route as AuthenticatedTimetableVersionIdRouteImport } from './routes/_authenticated/timetable.$versionId'
 import { Route as AuthenticatedTimetableVersionIdPrintRouteImport } from './routes/_authenticated/timetable_.$versionId.print'
@@ -414,6 +415,12 @@ const AuthenticatedReportsSectionTimetableRoute =
     path: '/section-timetable',
     getParentRoute: () => AuthenticatedReportsRoute,
   } as any)
+const AuthenticatedReportsSmartSuggestionsRoute =
+  AuthenticatedReportsSmartSuggestionsRouteImport.update({
+    id: '/smart-suggestions',
+    path: '/smart-suggestions',
+    getParentRoute: () => AuthenticatedReportsRoute,
+  } as any)
 const AuthenticatedReportsUnscheduledRoute =
   AuthenticatedReportsUnscheduledRouteImport.update({
     id: '/unscheduled',
@@ -492,6 +499,7 @@ export interface FileRoutesByFullPath {
   '/reports/room-timetable': typeof AuthenticatedReportsRoomTimetableRoute
   '/reports/room-utilization': typeof AuthenticatedReportsRoomUtilizationRoute
   '/reports/section-timetable': typeof AuthenticatedReportsSectionTimetableRoute
+  '/reports/smart-suggestions': typeof AuthenticatedReportsSmartSuggestionsRoute
   '/reports/unscheduled': typeof AuthenticatedReportsUnscheduledRoute
   '/timetable/$versionId': typeof AuthenticatedTimetableVersionIdRoute
   '/reports/': typeof AuthenticatedReportsIndexRoute
@@ -555,6 +563,7 @@ export interface FileRoutesByTo {
   '/reports/room-timetable': typeof AuthenticatedReportsRoomTimetableRoute
   '/reports/room-utilization': typeof AuthenticatedReportsRoomUtilizationRoute
   '/reports/section-timetable': typeof AuthenticatedReportsSectionTimetableRoute
+  '/reports/smart-suggestions': typeof AuthenticatedReportsSmartSuggestionsRoute
   '/reports/unscheduled': typeof AuthenticatedReportsUnscheduledRoute
   '/timetable/$versionId': typeof AuthenticatedTimetableVersionIdRoute
   '/reports': typeof AuthenticatedReportsIndexRoute
@@ -621,6 +630,7 @@ export interface FileRoutesById {
   '/_authenticated/reports/room-timetable': typeof AuthenticatedReportsRoomTimetableRoute
   '/_authenticated/reports/room-utilization': typeof AuthenticatedReportsRoomUtilizationRoute
   '/_authenticated/reports/section-timetable': typeof AuthenticatedReportsSectionTimetableRoute
+  '/_authenticated/reports/smart-suggestions': typeof AuthenticatedReportsSmartSuggestionsRoute
   '/_authenticated/reports/unscheduled': typeof AuthenticatedReportsUnscheduledRoute
   '/_authenticated/timetable/$versionId': typeof AuthenticatedTimetableVersionIdRoute
   '/_authenticated/reports/': typeof AuthenticatedReportsIndexRoute
@@ -687,6 +697,7 @@ export interface FileRouteTypes {
     | '/reports/room-timetable'
     | '/reports/room-utilization'
     | '/reports/section-timetable'
+    | '/reports/smart-suggestions'
     | '/reports/unscheduled'
     | '/timetable/$versionId'
     | '/reports/'
@@ -750,6 +761,7 @@ export interface FileRouteTypes {
     | '/reports/room-timetable'
     | '/reports/room-utilization'
     | '/reports/section-timetable'
+    | '/reports/smart-suggestions'
     | '/reports/unscheduled'
     | '/timetable/$versionId'
     | '/reports'
@@ -815,6 +827,7 @@ export interface FileRouteTypes {
     | '/_authenticated/reports/room-timetable'
     | '/_authenticated/reports/room-utilization'
     | '/_authenticated/reports/section-timetable'
+    | '/_authenticated/reports/smart-suggestions'
     | '/_authenticated/reports/unscheduled'
     | '/_authenticated/timetable/$versionId'
     | '/_authenticated/reports/'
@@ -1249,6 +1262,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedReportsSectionTimetableRouteImport
       parentRoute: typeof AuthenticatedReportsRoute
     }
+    '/_authenticated/reports/smart-suggestions': {
+      id: '/_authenticated/reports/smart-suggestions'
+      path: '/smart-suggestions'
+      fullPath: '/reports/smart-suggestions'
+      preLoaderRoute: typeof AuthenticatedReportsSmartSuggestionsRouteImport
+      parentRoute: typeof AuthenticatedReportsRoute
+    }
     '/_authenticated/reports/unscheduled': {
       id: '/_authenticated/reports/unscheduled'
       path: '/unscheduled'
@@ -1286,6 +1306,7 @@ interface AuthenticatedReportsRouteChildren {
   AuthenticatedReportsRoomTimetableRoute: typeof AuthenticatedReportsRoomTimetableRoute
   AuthenticatedReportsRoomUtilizationRoute: typeof AuthenticatedReportsRoomUtilizationRoute
   AuthenticatedReportsSectionTimetableRoute: typeof AuthenticatedReportsSectionTimetableRoute
+  AuthenticatedReportsSmartSuggestionsRoute: typeof AuthenticatedReportsSmartSuggestionsRoute
   AuthenticatedReportsUnscheduledRoute: typeof AuthenticatedReportsUnscheduledRoute
   AuthenticatedReportsIndexRoute: typeof AuthenticatedReportsIndexRoute
 }
@@ -1314,6 +1335,8 @@ const AuthenticatedReportsRouteChildren: AuthenticatedReportsRouteChildren = {
     AuthenticatedReportsRoomUtilizationRoute,
   AuthenticatedReportsSectionTimetableRoute:
     AuthenticatedReportsSectionTimetableRoute,
+  AuthenticatedReportsSmartSuggestionsRoute:
+    AuthenticatedReportsSmartSuggestionsRoute,
   AuthenticatedReportsUnscheduledRoute: AuthenticatedReportsUnscheduledRoute,
   AuthenticatedReportsIndexRoute: AuthenticatedReportsIndexRoute,
 }
