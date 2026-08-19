@@ -76,6 +76,12 @@ interface RawWorkspaceSessionRow {
   instructor_id?: string | null;
   section_id?: string | null;
   cohort_id?: string | null;
+  cohort_term_headcount?: {
+    cohort_id: string;
+    scheduling_headcount: number;
+    approval_status: string;
+    updated_at: string | null;
+  } | null;
   room_id?: string | null;
   updated_at?: string | null;
   is_locked?: boolean | null;
@@ -112,6 +118,16 @@ export function mapWorkspaceSessions(raw: unknown[]): WorkspaceSessionView[] {
     const offering = s.course_offerings;
     const course = offering?.courses;
     const dept = course?.departments;
+    const approvedModernHeadcount =
+      s.cohort_id && s.cohort_term_headcount?.approval_status === "approved"
+        ? s.cohort_term_headcount
+        : null;
+    const legacyEnrollmentCount =
+      offering?.expected_students != null
+        ? Number(offering.expected_students)
+        : s.expected_students != null
+          ? Number(s.expected_students)
+          : null;
     return {
       id: s.id,
       day_of_week: s.day_of_week,
@@ -129,14 +145,17 @@ export function mapWorkspaceSessions(raw: unknown[]): WorkspaceSessionView[] {
       subgroup_code: s.section_subgroups?.subgroup_code ?? null,
       subgroup_expected_students:
         s.section_subgroups?.expected_students ?? s.expected_students ?? null,
-      enrollment_count_status: normalizeEnrollmentCountStatus(offering?.enrollment_count_status),
-      enrollment_count:
-        offering?.expected_students != null
-          ? Number(offering.expected_students)
-          : s.expected_students != null
-            ? Number(s.expected_students)
-            : null,
-      enrollment_count_updated_at: offering?.enrollment_count_updated_at ?? null,
+      enrollment_count_status: s.cohort_id
+        ? approvedModernHeadcount
+          ? "confirmed"
+          : "unverified"
+        : normalizeEnrollmentCountStatus(offering?.enrollment_count_status),
+      enrollment_count: approvedModernHeadcount
+        ? Number(approvedModernHeadcount.scheduling_headcount)
+        : legacyEnrollmentCount,
+      enrollment_count_updated_at: approvedModernHeadcount
+        ? approvedModernHeadcount.updated_at
+        : (offering?.enrollment_count_updated_at ?? null),
       course_offering_id: s.course_offering_id ?? null,
       program_name: offering?.academic_programs?.name ?? "—",
       level_name: offering?.academic_levels?.name ?? "—",

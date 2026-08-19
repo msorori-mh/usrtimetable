@@ -12,6 +12,8 @@ import { applyStudySystemFilter } from "@/lib/reports/filters";
 import type { SVStatus } from "@/lib/schedule-versions/lifecycle";
 import {
   assembleWorkspaceSessionRows,
+  attachCohortTermHeadcounts,
+  type WorkspaceCohortTermHeadcountRow,
   type WorkspaceSessionFlatRow,
   type WorkspaceSessionHydratedRow,
 } from "@/lib/schedule-builder/session-hydrate";
@@ -210,6 +212,7 @@ export async function hydrateWorkspaceSessions(
 
 export async function fetchWorkspaceSessions(params: {
   collegeId: string;
+  termId: string;
   versionId: string;
   studySystem: WorkspaceStudySystem;
 }): Promise<WorkspaceSessionHydratedRow[]> {
@@ -227,7 +230,39 @@ export async function fetchWorkspaceSessions(params: {
   const { data, error } = await q;
   if (error) throw error;
   const flat = (data ?? []) as WorkspaceSessionFlatRow[];
-  return hydrateWorkspaceSessions(flat);
+  const cohortIds = uniqueIds(flat.map((session) => session.cohort_id));
+  const [hydrated, cohortTermHeadcounts] = await Promise.all([
+    hydrateWorkspaceSessions(flat),
+    fetchWorkspaceCohortTermHeadcounts({
+      collegeId: params.collegeId,
+      termId: params.termId,
+      cohortIds,
+    }),
+  ]);
+  return attachCohortTermHeadcounts(hydrated, cohortTermHeadcounts);
+}
+
+/** College + term + cohort scoped read; RLS remains the final authorization boundary. */
+async function fetchWorkspaceCohortTermHeadcounts(params: {
+  collegeId: string;
+  termId: string;
+  cohortIds: string[];
+}): Promise<WorkspaceCohortTermHeadcountRow[]> {
+  if (params.cohortIds.length === 0) return [];
+  const out: WorkspaceCohortTermHeadcountRow[] = [];
+  const chunkSize = 100;
+  for (let i = 0; i < params.cohortIds.length; i += chunkSize) {
+    const cohortIds = params.cohortIds.slice(i, i + chunkSize);
+    const { data, error } = await supabase
+      .from("scheduling_cohort_term_headcounts")
+      .select("cohort_id, scheduling_headcount, approval_status, updated_at")
+      .eq("college_id", params.collegeId)
+      .eq("term_id", params.termId)
+      .in("cohort_id", cohortIds);
+    if (error) throw error;
+    out.push(...((data ?? []) as WorkspaceCohortTermHeadcountRow[]));
+  }
+  return out;
 }
 
 /**

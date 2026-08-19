@@ -48,6 +48,8 @@ export interface WorkspaceSessionHydratedRow {
   teaching_assignment_id?: string | null;
   section_group_id?: string | null;
   schedule_version_id?: string | null;
+  /** Authoritative modern cohort + term scheduling headcount, when the session has a cohort. */
+  cohort_term_headcount?: WorkspaceCohortTermHeadcountRow | null;
   course_offerings?: {
     program_id?: string | null;
     level_id?: string | null;
@@ -74,6 +76,13 @@ export interface WorkspaceSessionHydratedRow {
   section_subgroup_id?: string | null;
   expected_students?: number | null;
   replaced_by_split?: boolean | null;
+}
+
+export interface WorkspaceCohortTermHeadcountRow {
+  cohort_id: string;
+  scheduling_headcount: number;
+  approval_status: string;
+  updated_at: string | null;
 }
 
 export interface WorkspaceSessionLookups {
@@ -191,4 +200,19 @@ export function assembleWorkspaceSessionRows(
       rooms: room ? { code: room.code, name: room.name } : null,
     };
   });
+}
+
+/**
+ * Attach the modern cohort + term source to hydrated rows.
+ * A cohort session with no matching approved row remains explicitly unverified in the view mapper.
+ */
+export function attachCohortTermHeadcounts(
+  rows: WorkspaceSessionHydratedRow[],
+  headcounts: WorkspaceCohortTermHeadcountRow[],
+): WorkspaceSessionHydratedRow[] {
+  const byCohortId = new Map(headcounts.map((row) => [row.cohort_id, row]));
+  return rows.map((row) => ({
+    ...row,
+    cohort_term_headcount: row.cohort_id ? (byCohortId.get(row.cohort_id) ?? null) : null,
+  }));
 }
