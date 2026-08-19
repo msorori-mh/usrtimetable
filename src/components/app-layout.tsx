@@ -635,7 +635,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="usr-internal-main flex-1 px-4 py-6 sm:px-6 md:px-10 md:py-8">
+      <main className="usr-internal-main min-w-0 flex-1 px-4 py-6 sm:px-6 md:px-10 md:py-8">
         {isLoading ? (
           <div className="grid h-64 place-items-center text-muted-foreground">جارٍ التحميل...</div>
         ) : (
