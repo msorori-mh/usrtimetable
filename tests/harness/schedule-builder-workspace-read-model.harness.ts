@@ -12,7 +12,10 @@ import {
   shouldLoadWorkspaceSessions,
   shouldLoadWorkspaceVersions,
 } from "../../src/lib/schedule-builder/access";
-import { assembleWorkspaceSessionRows } from "../../src/lib/schedule-builder/session-hydrate";
+import {
+  assembleWorkspaceSessionRows,
+  attachCohortTermHeadcounts,
+} from "../../src/lib/schedule-builder/session-hydrate";
 import {
   EMPTY_WORKSPACE_FILTERS,
   buildFilterOptions,
@@ -142,6 +145,15 @@ function run() {
   assert(queriesSrc.includes('.eq("college_id"'), "queries college scoped");
   assert(queriesSrc.includes("schedule_version_id"), "sessions scoped to version");
   assert(
+    queriesSrc.includes('.from("scheduling_cohort_term_headcounts")'),
+    "workspace reads the modern cohort-term headcount source",
+  );
+  assert(queriesSrc.includes('.eq("term_id", params.termId)'), "headcounts scoped to term");
+  assert(
+    queriesSrc.includes('.in("cohort_id", cohortIds)'),
+    "headcounts scoped to session cohorts",
+  );
+  assert(
     queriesSrc.includes("WORKSPACE_SESSION_FLAT_SELECT"),
     "sessions use flat select (no PostgREST embeds)",
   );
@@ -227,6 +239,43 @@ function run() {
     "cohort_id preserved through mapWorkspaceSessions",
   );
 
+  const approvedHeadcountRows = attachCohortTermHeadcounts(assembled, [
+    {
+      cohort_id: "coh-1",
+      scheduling_headcount: 30,
+      approval_status: "approved",
+      updated_at: "2026-08-19T08:00:00Z",
+    },
+  ]);
+  const approvedHeadcountSession = mapWorkspaceSessions(approvedHeadcountRows)[0];
+  assert(
+    approvedHeadcountSession.enrollment_count_status === "confirmed",
+    "approved modern headcount is confirmed",
+  );
+  assert(
+    approvedHeadcountSession.enrollment_count === 30,
+    "approved modern scheduling count overrides the legacy count",
+  );
+  assert(
+    !toGridSessions([approvedHeadcountSession])[0].badge?.includes("عدد الطلاب غير معتمد"),
+    "approved modern headcount removes the unverified badge",
+  );
+
+  const draftHeadcountSession = mapWorkspaceSessions(
+    attachCohortTermHeadcounts(assembled, [
+      {
+        cohort_id: "coh-1",
+        scheduling_headcount: 30,
+        approval_status: "draft",
+        updated_at: "2026-08-19T08:00:00Z",
+      },
+    ]),
+  )[0];
+  assert(
+    draftHeadcountSession.enrollment_count_status === "unverified",
+    "unapproved modern headcount remains fail-closed",
+  );
+
   // Map raw → view; partial data does not throw
   const mapped = mapWorkspaceSessions([
     {
@@ -300,11 +349,27 @@ function run() {
     "versions query key",
   );
   assert(
-    page.includes('queryKey: ["schedule-builder", "sessions", collegeId, versionId, studySystem]'),
-    "sessions query key includes study system",
+    page.includes(
+      'queryKey: ["schedule-builder", "sessions", collegeId, termId, versionId, studySystem]',
+    ),
+    "sessions query key includes term and study system",
   );
   assert(page.includes("إعادة تعيين المرشحات"), "reset filters button");
   assert(page.includes("SessionDetailsSheet"), "details sheet wired");
+  assert(
+    page.includes("min-w-0 max-w-full") && page.includes("overflow-x-hidden"),
+    "builder prevents document-level horizontal overflow",
+  );
+  const gridSource = readSrc("src/components/timetable/timetable-grid.tsx");
+  assert(
+    gridSource.includes('data-testid="timetable-grid-scroll-container"') &&
+      gridSource.includes("overflow-x-auto"),
+    "wide timetable scrolls inside its own container",
+  );
+  assert(
+    gridSource.includes("minWidth: `${80 + workingDays.length * 170}px`"),
+    "grid keeps readable columns without widening the document",
+  );
   assert(
     page.includes("draggable={editModeActive && mayEnterEdit}"),
     "grid drag only in edit mode",

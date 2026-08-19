@@ -46,10 +46,11 @@ export function V2WorkItemsPanel({
   });
 
   const payload = query.data;
+  const mayShowCreateAction = canManage && !!payload?.can_manage;
   const mayCreate = canManage && !!payload?.can_manage && payload.version_status === "draft";
 
   return (
-    <Card>
+    <Card className="min-w-0">
       <CardHeader className="p-0">
         <button
           type="button"
@@ -79,7 +80,7 @@ export function V2WorkItemsPanel({
         </button>
       </CardHeader>
       {expanded ? (
-        <CardContent className="space-y-3 border-t pt-4">
+        <CardContent className="min-w-0 space-y-3 border-t pt-4">
           <div className="flex justify-end">
             <Select value={status} onValueChange={setStatus}>
               <SelectTrigger className="w-full sm:w-48" aria-label="تصفية حالات التكليفات">
@@ -132,32 +133,36 @@ export function V2WorkItemsPanel({
                   <p className="text-destructive">{blockingReasonLabelAr(item.blocking_reason)}</p>
                 ) : null}
               </div>
-              <Button
-                type="button"
-                size="sm"
-                disabled={!mayCreate || !item.can_create_session}
-                onClick={() => setSelected(item)}
-              >
-                إضافة إلى الجدول
-              </Button>
+              {mayShowCreateAction ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={!mayCreate || !item.can_create_session}
+                  onClick={() => setSelected(item)}
+                >
+                  إضافة إلى الجدول
+                </Button>
+              ) : null}
             </div>
           ))}
         </CardContent>
       ) : null}
-      <V2AddSessionDialog
-        open={!!selected}
-        onOpenChange={(open) => {
-          if (!open) setSelected(null);
-        }}
-        workItem={selected}
-        scheduleVersionId={scheduleVersionId}
-        expectedVersionUpdatedAt={payload?.version_updated_at ?? ""}
-        rooms={rooms}
-        onCreated={() => {
-          setSelected(null);
-          void queryClient.invalidateQueries({ queryKey: ["schedule-builder"] });
-        }}
-      />
+      {mayShowCreateAction ? (
+        <V2AddSessionDialog
+          open={!!selected}
+          onOpenChange={(open) => {
+            if (!open) setSelected(null);
+          }}
+          workItem={selected}
+          scheduleVersionId={scheduleVersionId}
+          expectedVersionUpdatedAt={payload?.version_updated_at ?? ""}
+          rooms={rooms}
+          onCreated={() => {
+            setSelected(null);
+            void queryClient.invalidateQueries({ queryKey: ["schedule-builder"] });
+          }}
+        />
+      ) : null}
     </Card>
   );
 }

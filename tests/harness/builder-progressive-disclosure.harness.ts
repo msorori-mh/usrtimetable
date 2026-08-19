@@ -41,8 +41,14 @@ for (const label of [
 assert.ok(workItems.includes('data-testid="builder-unscheduled-work-toggle"'));
 assert.ok(workItems.includes("aria-expanded={expanded}"));
 assert.ok(workItems.includes("const mayCreate = canManage && !!payload?.can_manage"));
+assert.ok(workItems.includes("const mayShowCreateAction = canManage && !!payload?.can_manage"));
 assert.ok(workItems.includes('payload.version_status === "draft"'));
 assert.ok(workItems.includes("disabled={!mayCreate || !item.can_create_session}"));
+assert.ok(
+  workItems.includes("{mayShowCreateAction ? (") &&
+    workItems.indexOf("{mayShowCreateAction ? (") < workItems.indexOf("إضافة إلى الجدول"),
+  "read-only users never receive the create action in the rendered tree",
+);
 
 // Editing is presented as a three-step safe flow without weakening the save gate.
 assert.ok(editSheet.includes('data-testid="session-edit-safe-steps"'));

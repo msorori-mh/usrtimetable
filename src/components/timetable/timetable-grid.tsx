@@ -119,10 +119,17 @@ export function TimetableGrid({
   };
 
   return (
-    <div className="overflow-auto border rounded-md" dir="rtl">
+    <div
+      data-testid="timetable-grid-scroll-container"
+      className="w-full max-w-full overflow-x-auto overflow-y-auto rounded-md border"
+      dir="rtl"
+    >
       <div
         className="grid"
-        style={{ gridTemplateColumns: `80px repeat(${workingDays.length}, minmax(170px, 1fr))` }}
+        style={{
+          gridTemplateColumns: `80px repeat(${workingDays.length}, minmax(170px, 1fr))`,
+          minWidth: `${80 + workingDays.length * 170}px`,
+        }}
       >
         <div className="bg-muted/40 border-b border-l p-2 text-xs font-medium sticky top-0 z-10">
           الوقت

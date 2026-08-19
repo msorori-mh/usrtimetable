@@ -234,11 +234,12 @@ function ScheduleBuilderWorkspacePage() {
   });
 
   const sessionsQuery = useQuery({
-    queryKey: ["schedule-builder", "sessions", collegeId, versionId, studySystem],
+    queryKey: ["schedule-builder", "sessions", collegeId, termId, versionId, studySystem],
     enabled: canLoadSessions,
     queryFn: () =>
       fetchWorkspaceSessions({
         collegeId: collegeId!,
+        termId: termId!,
         versionId: versionId!,
         studySystem,
       }),
@@ -279,7 +280,8 @@ function ScheduleBuilderWorkspacePage() {
     const mapped = mapWorkspaceSessions(sessionsQuery.data ?? []);
     if (!Object.keys(enrollmentOverlay).length) return mapped;
     return mapped.map((s) => {
-      const off = s.course_offering_id ? enrollmentOverlay[s.course_offering_id] : undefined;
+      const off =
+        !s.cohort_id && s.course_offering_id ? enrollmentOverlay[s.course_offering_id] : undefined;
       if (!off) return s;
       return {
         ...s,
@@ -656,7 +658,10 @@ function ScheduleBuilderWorkspacePage() {
   }
 
   return (
-    <div className="flex flex-col gap-4 p-4 md:p-6" dir="rtl">
+    <div
+      className="flex w-full min-w-0 max-w-full flex-col gap-4 overflow-x-hidden p-4 md:p-6"
+      dir="rtl"
+    >
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight">بناء الجدول</h1>
@@ -733,7 +738,7 @@ function ScheduleBuilderWorkspacePage() {
       ) : null}
 
       {/* Context bar */}
-      <Card>
+      <Card className="min-w-0">
         <CardHeader className="pb-3">
           <CardTitle className="text-base">سياق الجدول</CardTitle>
         </CardHeader>
@@ -828,7 +833,7 @@ function ScheduleBuilderWorkspacePage() {
       </Card>
 
       {/* Grid / states */}
-      <Card>
+      <Card className="min-w-0">
         <CardHeader className="pb-2">
           <CardTitle className="text-base">
             الشبكة الأسبوعية
@@ -839,7 +844,7 @@ function ScheduleBuilderWorkspacePage() {
             ) : null}
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="min-w-0 overflow-hidden">
           {!canLoadSessions ? (
             <p className="text-sm text-muted-foreground py-8 text-center">
               {!termId
