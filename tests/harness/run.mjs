@@ -71,6 +71,7 @@ export const harnesses = [
   "platform-product-closure.harness.ts",
   "print-center.harness.ts",
   "data-onboarding-readiness-wizard.harness.ts",
+  "core-workflow-simplification.harness.ts",
   "schedule-quality-analytics.harness.ts",
   "drag-drop-safety.harness.ts",
 ];

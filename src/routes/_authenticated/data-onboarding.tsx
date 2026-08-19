@@ -104,6 +104,7 @@ function DataOnboardingPage() {
     : dataUpdatedAt
       ? new Date(dataUpdatedAt)
       : null;
+  const nextStep = data?.steps.find((step) => step.status !== "complete") ?? null;
 
   return (
     <div className="mx-auto max-w-5xl space-y-6" dir="rtl">
@@ -172,17 +173,47 @@ function DataOnboardingPage() {
             ) : null}
           </Card>
 
-          <Card className="p-5">
-            <h2 className="mb-1 text-base font-semibold">خطوات التجهيز</h2>
-            <p className="mb-3 text-sm text-muted-foreground">
-              عشر خطوات مرتبة — أصلح الحواجز قبل إنشاء نسخة الجدول.
+          <Card
+            className="flex flex-col gap-4 border-primary/30 bg-primary/[0.04] p-5 sm:flex-row sm:items-center sm:justify-between"
+            data-testid="onboarding-next-action"
+          >
+            <div>
+              <p className="text-xs font-semibold text-primary">الإجراء التالي</p>
+              <h2 className="mt-1 text-lg font-bold">
+                {nextStep?.titleAr ?? "البيانات جاهزة لإنشاء الجدول"}
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {nextStep?.helpEli5Ar ?? "انتقل إلى نسخ الجدول ثم افتح مساحة البناء."}
+              </p>
+            </div>
+            <Button asChild className="shrink-0">
+              <Link
+                to={
+                  (nextStep
+                    ? nextStep.id === "create_schedule_version"
+                      ? "/schedule-versions"
+                      : nextStep.fixHref
+                    : "/schedule-versions") as "/programs"
+                }
+              >
+                {canManage ? "ابدأ الآن" : "عرض"}
+              </Link>
+            </Button>
+          </Card>
+
+          <details className="rounded-xl border border-border bg-card p-5">
+            <summary className="cursor-pointer font-semibold">
+              عرض تفاصيل خطوات التجهيز ({data.steps.length})
+            </summary>
+            <p className="mb-3 mt-2 text-sm text-muted-foreground">
+              التفاصيل متاحة عند الحاجة، بينما يبقى الإجراء التالي ظاهرًا في الأعلى.
             </p>
             <ul>
               {data.steps.map((step) => (
                 <StepRow key={step.id} step={step} canManage={canManage} />
               ))}
             </ul>
-          </Card>
+          </details>
 
           <Card className="p-5 space-y-4" data-testid="onboarding-readiness-dashboard">
             <div className="flex flex-wrap items-center justify-between gap-2">
