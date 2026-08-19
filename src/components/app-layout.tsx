@@ -439,7 +439,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   const roleLabel = user?.isSuperAdmin
-    ? "مدير المؤسسة"
+    ? "Super Admin"
     : user?.isCollegeAdmin
       ? "مدير كلّية"
       : user?.isReadOnly
