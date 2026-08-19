@@ -46,7 +46,7 @@ export const Route = createFileRoute("/_authenticated/users")({
 });
 
 const ROLE_LABELS: Record<AppRole, string> = {
-  super_admin: "مدير المؤسسة",
+  super_admin: "Super Admin",
   college_admin: "مدير كلّية",
   read_only: "مشاهد",
 };
