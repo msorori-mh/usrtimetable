@@ -73,6 +73,7 @@ export const harnesses = [
   "data-onboarding-readiness-wizard.harness.ts",
   "core-workflow-simplification.harness.ts",
   "builder-progressive-disclosure.harness.ts",
+  "simplified-builder-test-only-fixtures.harness.ts",
   "schedule-quality-analytics.harness.ts",
   "drag-drop-safety.harness.ts",
 ];
