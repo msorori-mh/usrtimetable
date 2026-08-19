@@ -1,8 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import {
-  buildInstructorCategoryMap,
-  requiresAvailability,
-} from "@/lib/instructor-category";
+import { buildInstructorCategoryMap, requiresAvailability } from "@/lib/instructor-category";
 import { evaluateCapacityAgainstRoom } from "@/lib/schedule-builder/enrollment-trust";
 import {
   CAPACITY_EXCEPTION_LIMIT,
@@ -207,10 +204,7 @@ export async function validateProposed(params: {
       .eq("college_id", collegeId)
       .eq("is_active", true),
     instructorIds.length
-      ? supabase
-          .from("instructors")
-          .select("id, instructor_type_id")
-          .in("id", instructorIds)
+      ? supabase.from("instructors").select("id, instructor_type_id").in("id", instructorIds)
       : Promise.resolve({
           data: [] as Array<{
             id: string;
