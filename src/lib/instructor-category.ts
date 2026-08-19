@@ -55,9 +55,7 @@ export function buildInstructorCategoryMap(
     instructors.map((instructor) => [
       instructor.id,
       categorizeInstructor(
-        instructor.instructor_type_id
-          ? typesById.get(instructor.instructor_type_id)
-          : null,
+        instructor.instructor_type_id ? typesById.get(instructor.instructor_type_id) : null,
       ),
     ]),
   );
