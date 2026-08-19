@@ -97,7 +97,14 @@ import {
   type SVStatus,
 } from "@/lib/schedule-versions/lifecycle";
 import { STUDY_SYSTEM_LABELS } from "@/lib/reports/filters";
-import { AlertCircle, CalendarRange, Pencil, RotateCcw } from "lucide-react";
+import {
+  AlertCircle,
+  CalendarRange,
+  ChevronDown,
+  Pencil,
+  RotateCcw,
+  SlidersHorizontal,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/schedule-builder")({
@@ -654,7 +661,7 @@ function ScheduleBuilderWorkspacePage() {
         <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight">بناء الجدول</h1>
           <p className="text-sm text-muted-foreground">
-            مساحة عمل لتعديل الجلسات محليًا ثم فحص التعارضات والحفظ الآمن عبر RPC.
+            اختر النسخة، راجع الشبكة، ثم أضف أو عدّل الجلسات مع فحص التعارضات قبل الحفظ.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -820,123 +827,6 @@ function ScheduleBuilderWorkspacePage() {
         </CardContent>
       </Card>
 
-      {/* Version cards */}
-      {canLoadVersions && versionsQuery.data && versionsQuery.data.length > 0 && (
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {versionsQuery.data.map((v) => {
-            const isSelected = v.id === versionId;
-            const isPublished = v.status === "published";
-            const sessionCount = isSelected && sessionsQuery.isSuccess ? allSessions.length : null;
-            return (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => {
-                  requestWithUnsavedGuard({ kind: "set-version", versionId: v.id });
-                }}
-                className={cn(
-                  "text-right rounded-md border p-3 transition-colors",
-                  isSelected
-                    ? "border-primary bg-primary/5 ring-1 ring-primary/30"
-                    : "hover:bg-muted/40",
-                  isPublished && "border-emerald-500/40",
-                )}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <span className="font-medium text-sm">{v.name}</span>
-                  <Badge variant={STATUS_BADGE_VARIANT[v.status as SVStatus] ?? "secondary"}>
-                    {STATUS_LABEL_AR[v.status as SVStatus] ?? v.status}
-                  </Badge>
-                </div>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  آخر تحديث: {formatUpdatedAt(v.updated_at)}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  الجلسات:{" "}
-                  {sessionCount == null
-                    ? isSelected && sessionsQuery.isLoading
-                      ? "…"
-                      : "—"
-                    : sessionCount}
-                  {isPublished ? " · منشورة" : " · مسودة/عمل"}
-                </p>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Stats */}
-      {canLoadSessions && sessionsQuery.isSuccess && (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-          <StatCard label="إجمالي الجلسات" value={stats.totalSessions} />
-          <StatCard label="نظرية / محاضرة" value={stats.lectureCount} />
-          <StatCard label="عملية" value={stats.labCount} />
-          <StatCard label="المدرسون" value={stats.instructorCount} />
-          <StatCard label="القاعات والمعامل" value={stats.roomCount} />
-        </div>
-      )}
-
-      {canLoadSessions && sessionsQuery.isSuccess && versionId ? (
-        <V2WorkItemsPanel
-          scheduleVersionId={versionId}
-          studySystem={studySystem}
-          rooms={rooms}
-          canManage={canManageRole}
-        />
-      ) : null}
-
-      {/* Filters */}
-      {canLoadSessions && sessionsQuery.isSuccess && allSessions.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-base">مرشحات العرض</CardTitle>
-            <Button type="button" variant="outline" size="sm" onClick={resetFilters}>
-              <RotateCcw className="h-3.5 w-3.5 ms-1" />
-              إعادة تعيين المرشحات
-            </Button>
-          </CardHeader>
-          <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-            <FilterSelect
-              label="المدرس"
-              value={filters.instructor}
-              onChange={(v) => setFilter("instructor", v)}
-              options={filterOptions.instructors}
-            />
-            <FilterSelect
-              label="مجموعة المحاضرة أو المعمل"
-              value={filters.section}
-              onChange={(v) => setFilter("section", v)}
-              options={filterOptions.sections}
-            />
-            <FilterSelect
-              label="القاعة"
-              value={filters.room}
-              onChange={(v) => setFilter("room", v)}
-              options={filterOptions.rooms}
-            />
-            <FilterSelect
-              label="البرنامج"
-              value={filters.program}
-              onChange={(v) => setFilter("program", v)}
-              options={filterOptions.programs}
-            />
-            <FilterSelect
-              label="المستوى"
-              value={filters.level}
-              onChange={(v) => setFilter("level", v)}
-              options={filterOptions.levels}
-            />
-            <FilterSelect
-              label="نوع الجلسة"
-              value={filters.sessionType}
-              onChange={(v) => setFilter("sessionType", v)}
-              options={filterOptions.sessionTypes}
-            />
-          </CardContent>
-        </Card>
-      )}
-
       {/* Grid / states */}
       <Card>
         <CardHeader className="pb-2">
@@ -1038,6 +928,155 @@ function ScheduleBuilderWorkspacePage() {
           )}
         </CardContent>
       </Card>
+
+      {canLoadSessions && sessionsQuery.isSuccess && versionId ? (
+        <V2WorkItemsPanel
+          scheduleVersionId={versionId}
+          studySystem={studySystem}
+          rooms={rooms}
+          canManage={canManageRole}
+        />
+      ) : null}
+
+      <details
+        data-testid="builder-advanced-view-options"
+        className="group rounded-lg border bg-card text-card-foreground shadow-sm"
+      >
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
+          <span className="flex items-center gap-2 font-medium">
+            <SlidersHorizontal className="h-4 w-4 text-muted-foreground" aria-hidden />
+            خيارات العرض والتفاصيل
+          </span>
+          <span className="flex items-center gap-2 text-xs text-muted-foreground">
+            {sessionsQuery.isSuccess ? `${stats.totalSessions} جلسة` : "إعدادات إضافية"}
+            <ChevronDown
+              className="h-4 w-4 transition-transform group-open:rotate-180"
+              aria-hidden
+            />
+          </span>
+        </summary>
+
+        <div className="space-y-4 border-t p-4">
+          {/* Version cards are a secondary shortcut; the primary selector stays above the grid. */}
+          {canLoadVersions && versionsQuery.data && versionsQuery.data.length > 0 && (
+            <section className="space-y-2" aria-labelledby="builder-version-shortcuts-title">
+              <h2 id="builder-version-shortcuts-title" className="text-sm font-medium">
+                اختصارات نسخ الجدول
+              </h2>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {versionsQuery.data.map((v) => {
+                  const isSelected = v.id === versionId;
+                  const isPublished = v.status === "published";
+                  const sessionCount =
+                    isSelected && sessionsQuery.isSuccess ? allSessions.length : null;
+                  return (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onClick={() => {
+                        requestWithUnsavedGuard({ kind: "set-version", versionId: v.id });
+                      }}
+                      className={cn(
+                        "text-right rounded-md border p-3 transition-colors",
+                        isSelected
+                          ? "border-primary bg-primary/5 ring-1 ring-primary/30"
+                          : "hover:bg-muted/40",
+                        isPublished && "border-emerald-500/40",
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="font-medium text-sm">{v.name}</span>
+                        <Badge variant={STATUS_BADGE_VARIANT[v.status as SVStatus] ?? "secondary"}>
+                          {STATUS_LABEL_AR[v.status as SVStatus] ?? v.status}
+                        </Badge>
+                      </div>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        آخر تحديث: {formatUpdatedAt(v.updated_at)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        الجلسات:{" "}
+                        {sessionCount == null
+                          ? isSelected && sessionsQuery.isLoading
+                            ? "…"
+                            : "—"
+                          : sessionCount}
+                        {isPublished ? " · منشورة" : " · مسودة/عمل"}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {canLoadSessions && sessionsQuery.isSuccess && (
+            <section className="space-y-2" aria-labelledby="builder-stats-title">
+              <h2 id="builder-stats-title" className="text-sm font-medium">
+                ملخص النسخة الحالية
+              </h2>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                <StatCard label="إجمالي الجلسات" value={stats.totalSessions} />
+                <StatCard label="نظرية / محاضرة" value={stats.lectureCount} />
+                <StatCard label="عملية" value={stats.labCount} />
+                <StatCard label="المدرسون" value={stats.instructorCount} />
+                <StatCard label="القاعات والمعامل" value={stats.roomCount} />
+              </div>
+            </section>
+          )}
+
+          {canLoadSessions && sessionsQuery.isSuccess && allSessions.length > 0 && (
+            <section className="space-y-3" aria-labelledby="builder-filters-title">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 id="builder-filters-title" className="text-sm font-medium">
+                  مرشحات العرض
+                </h2>
+                <Button type="button" variant="outline" size="sm" onClick={resetFilters}>
+                  <RotateCcw className="h-3.5 w-3.5 ms-1" />
+                  إعادة تعيين المرشحات
+                </Button>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+                <FilterSelect
+                  label="المدرس"
+                  value={filters.instructor}
+                  onChange={(v) => setFilter("instructor", v)}
+                  options={filterOptions.instructors}
+                />
+                <FilterSelect
+                  label="مجموعة المحاضرة أو المعمل"
+                  value={filters.section}
+                  onChange={(v) => setFilter("section", v)}
+                  options={filterOptions.sections}
+                />
+                <FilterSelect
+                  label="القاعة"
+                  value={filters.room}
+                  onChange={(v) => setFilter("room", v)}
+                  options={filterOptions.rooms}
+                />
+                <FilterSelect
+                  label="البرنامج"
+                  value={filters.program}
+                  onChange={(v) => setFilter("program", v)}
+                  options={filterOptions.programs}
+                />
+                <FilterSelect
+                  label="المستوى"
+                  value={filters.level}
+                  onChange={(v) => setFilter("level", v)}
+                  options={filterOptions.levels}
+                />
+                <FilterSelect
+                  label="نوع الجلسة"
+                  value={filters.sessionType}
+                  onChange={(v) => setFilter("sessionType", v)}
+                  options={filterOptions.sessionTypes}
+                />
+              </div>
+            </section>
+          )}
+        </div>
+      </details>
 
       <SessionDetailsSheet
         open={detailsOpen}

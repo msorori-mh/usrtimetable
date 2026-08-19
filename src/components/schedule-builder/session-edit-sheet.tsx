@@ -192,6 +192,7 @@ export function SessionEditSheet({
 
   const saveEnabled =
     !!sessionPending && !validateLoading && !saveLoading && canSaveAfterValidation(validation);
+  const editStep = !sessionPending ? 1 : saveEnabled ? 3 : 2;
 
   const handleApply = () => {
     if (!session) return;
@@ -225,22 +226,54 @@ export function SessionEditSheet({
             ) : null}
           </SheetTitle>
           <SheetDescription>
-            اقتراح محلي ثم فحص تعارضات وحفظ آمن عبر RPC — دون تحديث مباشر للجدول.
+            غيّر الموعد أو القاعة، ثم اتبع الخطوات الثلاث للحفظ الآمن.
           </SheetDescription>
         </SheetHeader>
 
         {session ? (
           <div className="mt-4 space-y-5">
-            <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-xs text-muted-foreground space-y-1">
-              <p>افحص التعارضات قبل الحفظ. الحفظ يمر عبر دالة آمنة فقط.</p>
-              <p>لا يُسمح بالحفظ عند وجود تعارضات مانعة أو تحذيرات أو بيانات قديمة.</p>
+            <div className="rounded-md bg-muted/50 p-3 text-sm">
+              <p className="font-medium">
+                {session.course_code} — {session.course_name}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {session.instructor_name} · {session.section_number || "بدون مجموعة"}
+              </p>
             </div>
 
-            <div>
-              <p className="text-sm font-medium mb-2">بيانات ثابتة</p>
-              <dl>
+            <div
+              data-testid="session-edit-safe-steps"
+              className="grid grid-cols-3 gap-2"
+              aria-label="خطوات حفظ التعديل"
+            >
+              {[
+                { number: 1, label: "طبّق" },
+                { number: 2, label: "افحص" },
+                { number: 3, label: "احفظ" },
+              ].map((step) => (
+                <div
+                  key={step.number}
+                  className={`rounded-md border px-2 py-2 text-center text-xs ${
+                    editStep === step.number
+                      ? "border-primary bg-primary/5 font-medium text-primary"
+                      : editStep > step.number
+                        ? "border-emerald-500/40 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400"
+                        : "text-muted-foreground"
+                  }`}
+                  aria-current={editStep === step.number ? "step" : undefined}
+                >
+                  <span className="block font-semibold">{step.number}</span>
+                  {step.label}
+                </div>
+              ))}
+            </div>
+
+            <details data-testid="session-static-details" className="rounded-md border px-3 py-2">
+              <summary className="cursor-pointer text-sm font-medium">
+                تفاصيل المقرر والجلسة (بيانات ثابتة)
+              </summary>
+              <dl className="mt-2 border-t pt-2">
                 <Row label="المقرر" value={`${session.course_code} — ${session.course_name}`} />
-                <Row label="رمز المقرر" value={session.course_code} />
                 <Row label="مجموعة المحاضرة أو المعمل" value={session.section_number} />
                 <Row label="المدرس" value={session.instructor_name} />
                 <Row label="نوع الجلسة" value={typeLabel} />
@@ -253,7 +286,7 @@ export function SessionEditSheet({
                   />
                 ) : null}
               </dl>
-            </div>
+            </details>
 
             {beforeAfter.length > 0 ? (
               <div>
@@ -407,7 +440,7 @@ export function SessionEditSheet({
 
         <SheetFooter className="mt-6 flex-col gap-2 sm:flex-col">
           <Button type="button" onClick={handleApply} disabled={!session || saveLoading}>
-            تطبيق محليًا
+            1. تطبيق محليًا
           </Button>
           <Button
             type="button"
@@ -415,7 +448,7 @@ export function SessionEditSheet({
             onClick={onValidateConflicts}
             disabled={!sessionPending || validateLoading || saveLoading}
           >
-            {validateLoading ? "جارٍ الفحص…" : "فحص التعارضات"}
+            {validateLoading ? "جارٍ الفحص…" : "2. فحص التعارضات"}
           </Button>
           <Button
             type="button"
@@ -423,7 +456,7 @@ export function SessionEditSheet({
             disabled={!saveEnabled}
             aria-disabled={!saveEnabled}
           >
-            {saveLoading ? "جارٍ الحفظ…" : "حفظ التغيير"}
+            {saveLoading ? "جارٍ الحفظ…" : "3. حفظ التغيير بأمان"}
           </Button>
           <Button
             type="button"

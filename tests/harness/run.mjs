@@ -72,6 +72,7 @@ export const harnesses = [
   "print-center.harness.ts",
   "data-onboarding-readiness-wizard.harness.ts",
   "core-workflow-simplification.harness.ts",
+  "builder-progressive-disclosure.harness.ts",
   "schedule-quality-analytics.harness.ts",
   "drag-drop-safety.harness.ts",
 ];
