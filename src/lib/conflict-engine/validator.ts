@@ -1,5 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
-import { categorizeInstructor, requiresAvailability } from "@/lib/instructor-category";
+import {
+  buildInstructorCategoryMap,
+  requiresAvailability,
+} from "@/lib/instructor-category";
 import { evaluateCapacityAgainstRoom } from "@/lib/schedule-builder/enrollment-trust";
 import {
   CAPACITY_EXCEPTION_LIMIT,
@@ -206,15 +209,12 @@ export async function validateProposed(params: {
     instructorIds.length
       ? supabase
           .from("instructors")
-          .select(
-            "id, instructor_type_id, instructor_types:instructor_type_id ( code, is_external )",
-          )
+          .select("id, instructor_type_id")
           .in("id", instructorIds)
       : Promise.resolve({
           data: [] as Array<{
             id: string;
             instructor_type_id: string | null;
-            instructor_types: { code: string | null; is_external: boolean | null } | null;
           }>,
         }),
     taIds.length
@@ -227,10 +227,30 @@ export async function validateProposed(params: {
         }),
   ]);
 
-  // Per-instructor category (permanent / external / other_college)
-  const instrCategory = new Map(
-    (instrRows ?? []).map((r: any) => [r.id, categorizeInstructor(r.instructor_types)]),
+  // Resolve instructor types explicitly. Some deployed schemas contain
+  // instructor_type_id without a PostgREST-discoverable FK, so an embedded
+  // instructor_types(...) select raises PGRST200.
+  const instructorTypeIds = Array.from(
+    new Set(
+      (instrRows ?? [])
+        .map((row) => row.instructor_type_id)
+        .filter((id): id is string => Boolean(id)),
+    ),
   );
+  const { data: instructorTypeRows, error: instructorTypeError } = instructorTypeIds.length
+    ? await supabase
+        .from("instructor_types")
+        .select("id, code, is_external")
+        .eq("college_id", collegeId)
+        .in("id", instructorTypeIds)
+    : {
+        data: [] as Array<{ id: string; code: string | null; is_external: boolean | null }>,
+        error: null,
+      };
+  if (instructorTypeError) throw instructorTypeError;
+
+  // Per-instructor category (permanent / external / other_college)
+  const instrCategory = buildInstructorCategoryMap(instrRows ?? [], instructorTypeRows ?? []);
 
   // College isolation guard
   const allRoomsOk = (rooms ?? []).every((r) => r.college_id === collegeId);
