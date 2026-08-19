@@ -16,6 +16,15 @@ export interface TypeLike {
   is_external?: boolean | null;
 }
 
+export interface InstructorTypeReference {
+  id: string;
+  instructor_type_id: string | null;
+}
+
+export interface InstructorTypeRecord extends TypeLike {
+  id: string;
+}
+
 export function categorizeInstructor(type: TypeLike | null | undefined): InstructorCategory {
   if (!type) return "permanent";
   const code = (type.code ?? "").toLowerCase();
@@ -28,6 +37,30 @@ export function categorizeInstructor(type: TypeLike | null | undefined): Instruc
 
 export function requiresAvailability(cat: InstructorCategory): boolean {
   return cat !== "permanent";
+}
+
+/**
+ * Join instructor rows to their type rows in memory.
+ *
+ * `instructors.instructor_type_id` is intentionally not assumed to be exposed
+ * as a PostgREST relationship. Keeping the join explicit avoids PGRST200 when
+ * a deployment has the column but no discoverable foreign-key relationship.
+ */
+export function buildInstructorCategoryMap(
+  instructors: readonly InstructorTypeReference[],
+  types: readonly InstructorTypeRecord[],
+): Map<string, InstructorCategory> {
+  const typesById = new Map(types.map((type) => [type.id, type]));
+  return new Map(
+    instructors.map((instructor) => [
+      instructor.id,
+      categorizeInstructor(
+        instructor.instructor_type_id
+          ? typesById.get(instructor.instructor_type_id)
+          : null,
+      ),
+    ]),
+  );
 }
 
 export const CATEGORY_LABEL_AR: Record<InstructorCategory, string> = {
