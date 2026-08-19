@@ -24,11 +24,13 @@ import {
   LayoutDashboard,
   Library,
   LogOut,
+  Menu,
   Presentation,
   School,
   Settings2,
   ShieldAlert,
   Share2,
+  SlidersHorizontal,
   UserCog,
   UserSquare2,
   Users,
@@ -347,6 +349,55 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
+const CORE_NAV_GROUPS: NavGroup[] = [
+  {
+    key: "core",
+    label: "المسار الأساسي",
+    items: [
+      {
+        to: "/dashboard",
+        label: "الرئيسية",
+        icon: <LayoutDashboard className="h-4 w-4" />,
+        roles: ALL,
+      },
+      {
+        to: "/data-onboarding",
+        label: "1. تجهيز البيانات",
+        icon: <ClipboardList className="h-4 w-4" />,
+        roles: ALL,
+      },
+      {
+        to: "/schedule-builder",
+        label: "2. بناء الجدول",
+        icon: <CalendarRange className="h-4 w-4" />,
+        roles: ALL,
+      },
+      {
+        to: "/schedule-versions",
+        label: "3. المراجعة والاعتماد",
+        icon: <ShieldAlert className="h-4 w-4" />,
+        roles: ALL,
+      },
+      {
+        to: "/published-schedules",
+        label: "4. النشر والجداول الرسمية",
+        icon: <CalendarClock className="h-4 w-4" />,
+        roles: ALL,
+      },
+      {
+        to: "/reports",
+        label: "التقارير",
+        icon: <FileBarChart2 className="h-4 w-4" />,
+        roles: ALL,
+      },
+    ],
+  },
+];
+
+function isActivePath(itemPath: string, pathname: string): boolean {
+  return itemPath === pathname || (itemPath === "/reports" && pathname.startsWith("/reports/"));
+}
+
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { data: user, isLoading } = useCurrentUser();
   const navigate = useNavigate();
@@ -354,6 +405,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = useRouterState({
     select: (state: { location: { pathname: string } }) => state.location.pathname,
   });
+  const [advancedMode, setAdvancedMode] = useState(false);
 
   const handleSignOut = async () => {
     await queryClient.cancelQueries();
@@ -365,15 +417,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   const visibleGroups = useMemo(
     () =>
-      NAV_GROUPS.map((g) => ({
-        ...g,
-        items: g.items.filter((it) => !user || user.roles.some((r) => it.roles.includes(r))),
-      })).filter((g) => g.items.length > 0),
-    [user],
+      (advancedMode ? NAV_GROUPS : CORE_NAV_GROUPS)
+        .map((g) => ({
+          ...g,
+          items: g.items.filter((it) => !user || user.roles.some((r) => it.roles.includes(r))),
+        }))
+        .filter((g) => g.items.length > 0),
+    [advancedMode, user],
   );
 
   const activeGroupKey = useMemo(() => {
-    const g = visibleGroups.find((g) => g.items.some((it) => it.to === pathname));
+    const g = visibleGroups.find((g) => g.items.some((it) => isActivePath(it.to, pathname)));
     return g?.key ?? visibleGroups[0]?.key ?? null;
   }, [visibleGroups, pathname]);
 
@@ -392,8 +446,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         ? "مشاهد"
         : "—";
 
+  const toggleNavigationMode = () => {
+    const next = !advancedMode;
+    setAdvancedMode(next);
+    setOpenKey(next ? NAV_GROUPS[0].key : CORE_NAV_GROUPS[0].key);
+  };
+
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen flex-col bg-background md:flex-row">
       <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-l border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
         <div className="usr-gold-rule shrink-0" />
         <div className="flex items-center gap-3 border-b border-sidebar-border px-5 py-4">
@@ -405,10 +465,28 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </p>
           </div>
         </div>
+        <div className="border-b border-sidebar-border px-3 py-3">
+          <button
+            type="button"
+            onClick={toggleNavigationMode}
+            className="flex w-full items-center justify-between gap-3 rounded-lg border border-sidebar-border/60 bg-white/5 px-3 py-2 text-right text-xs transition hover:bg-white/10"
+            data-testid="navigation-mode-toggle"
+          >
+            <span>
+              <span className="block font-semibold">
+                {advancedMode ? "الأدوات المتقدمة" : "المسار الأساسي"}
+              </span>
+              <span className="mt-0.5 block text-[10px] text-sidebar-foreground/60">
+                {advancedMode ? "العودة إلى الخطوات الأربع" : "إظهار الإعدادات والإدارة الكاملة"}
+              </span>
+            </span>
+            <SlidersHorizontal className="h-4 w-4 shrink-0 text-primary" />
+          </button>
+        </div>
         <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-3">
           {visibleGroups.map((group, idx) => {
             const isOpen = openKey === group.key;
-            const hasActive = group.items.some((it) => it.to === pathname);
+            const hasActive = group.items.some((it) => isActivePath(it.to, pathname));
             return (
               <div
                 key={group.key}
@@ -453,7 +531,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   <div className="min-h-0">
                     <div className="mt-1 space-y-0.5 pb-1 pr-2">
                       {group.items.map((item) => {
-                        const active = pathname === item.to;
+                        const active = isActivePath(item.to, pathname);
                         return (
                           <Link
                             key={item.to}
@@ -506,7 +584,58 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <main className="usr-internal-main flex-1 px-6 py-8 md:px-10">
+      <header className="sticky top-0 z-40 border-b border-border bg-background/95 px-4 py-3 backdrop-blur md:hidden">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <UsrBrandMark size="sm" />
+            <div className="min-w-0">
+              <p className="truncate text-xs font-bold">{USR_UNIVERSITY_NAME_AR}</p>
+              <p className="truncate text-[10px] text-muted-foreground">{USR_PLATFORM_NAME_AR}</p>
+            </div>
+          </div>
+          <details className="group relative">
+            <summary className="grid h-10 w-10 cursor-pointer list-none place-items-center rounded-lg border border-border bg-card [&::-webkit-details-marker]:hidden">
+              <Menu className="h-5 w-5" />
+              <span className="sr-only">فتح قائمة التنقل</span>
+            </summary>
+            <div className="absolute left-0 top-12 max-h-[75vh] w-[min(22rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-border bg-card p-3 shadow-xl">
+              <button
+                type="button"
+                onClick={toggleNavigationMode}
+                className="mb-3 flex w-full items-center justify-between rounded-lg bg-secondary px-3 py-2 text-sm font-medium text-primary"
+              >
+                {advancedMode ? "العودة إلى المسار الأساسي" : "عرض الأدوات المتقدمة"}
+                <SlidersHorizontal className="h-4 w-4" />
+              </button>
+              {visibleGroups.map((group) => (
+                <section key={group.key} className="border-t border-border/60 py-2 first:border-0">
+                  <p className="px-2 py-1 text-xs font-bold text-muted-foreground">{group.label}</p>
+                  <div className="space-y-1">
+                    {group.items.map((item) => {
+                      const active = isActivePath(item.to, pathname);
+                      return (
+                        <Link
+                          key={item.to}
+                          to={item.to}
+                          className={cn(
+                            "flex items-center gap-3 rounded-lg px-3 py-2 text-sm",
+                            active ? "bg-primary/10 font-semibold text-primary" : "hover:bg-muted",
+                          )}
+                        >
+                          {item.icon}
+                          {item.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
+            </div>
+          </details>
+        </div>
+      </header>
+
+      <main className="usr-internal-main flex-1 px-4 py-6 sm:px-6 md:px-10 md:py-8">
         {isLoading ? (
           <div className="grid h-64 place-items-center text-muted-foreground">جارٍ التحميل...</div>
         ) : (

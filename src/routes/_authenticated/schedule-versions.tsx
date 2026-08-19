@@ -125,7 +125,9 @@ function SchedVersionsPage() {
       setName("");
       setNotes("");
       setTermId("");
-      navigate({ to: "/timetable/$versionId", params: { versionId: id } });
+      // The V2 Schedule Builder is the primary editing surface. It selects the
+      // newest version automatically and keeps all conflict/save gates intact.
+      navigate({ to: "/schedule-builder" });
     },
     onError: (e) => toast.error((e as Error).message),
   });
@@ -136,13 +138,18 @@ function SchedVersionsPage() {
     <div className="space-y-6" dir="rtl">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-2xl font-bold">نسخ الجدول الزمني</h1>
+          <h1 className="text-2xl font-bold">مراجعة واعتماد الجدول</h1>
           <p className="text-sm text-muted-foreground">
-            إنشاء وإدارة نسخ الجدول لكل فصل دراسي، مع دورة حياة الاعتماد والنشر.
+            أنشئ النسخة، افتح مساحة البناء، ثم راجع التعارضات والجودة قبل الاعتماد والنشر.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <CollegeSwitcher />
+          <Button variant="outline" asChild>
+            <Link to="/schedule-builder">
+              <CalendarClock className="h-4 w-4 ml-1" /> فتح مساحة البناء
+            </Link>
+          </Button>
           <Button variant="outline" asChild>
             <Link to="/published-schedules">
               <CheckCircle2 className="h-4 w-4 ml-1" /> الجداول المنشورة
