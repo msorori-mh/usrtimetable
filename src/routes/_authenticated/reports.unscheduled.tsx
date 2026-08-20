@@ -202,9 +202,7 @@ function Page() {
                 <TableCell>
                   <Badge variant="destructive">{String(r.missing)}</Badge>
                 </TableCell>
-                <TableCell className="text-xs text-muted-foreground">
-                  {String(r.reason)}
-                </TableCell>
+                <TableCell className="text-xs text-muted-foreground">{String(r.reason)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
