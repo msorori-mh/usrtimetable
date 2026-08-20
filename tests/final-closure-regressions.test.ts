@@ -22,13 +22,9 @@ describe("final closure regressions", () => {
     const unscheduled = read("src/routes/_authenticated/reports.unscheduled.tsx");
 
     expect(
-      versions.includes(
-        'className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:w-auto"',
-      ),
+      versions.includes('className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:w-auto"'),
     ).toBe(true);
-    expect(versions.includes('className="min-w-0 space-y-2 overflow-hidden p-4"')).toBe(
-      true,
-    );
+    expect(versions.includes('className="min-w-0 space-y-2 overflow-hidden p-4"')).toBe(true);
     expect(unscheduled.includes('className="min-w-0 overflow-x-auto p-0"')).toBe(true);
     expect(unscheduled.includes('className="min-w-[640px]"')).toBe(true);
   });
