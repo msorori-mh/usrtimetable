@@ -90,20 +90,55 @@ function PublishedSchedulesPage() {
     enabled: !!active && (versions?.length ?? 0) > 0,
     queryFn: async () => {
       const ids = (versions ?? []).map((v) => v.id);
-      const { data } = await supabase
+      const { data: sessionRows, error: sessionError } = await supabase
         .from("schedule_sessions")
-        .select(
-          "schedule_version_id, course_offerings!inner(program_id, courses!inner(department_id))",
-        )
+        .select("schedule_version_id, course_offering_id")
         .in("schedule_version_id", ids);
+      if (sessionError) throw sessionError;
+
+      const offeringIds = Array.from(
+        new Set((sessionRows ?? []).map((row) => row.course_offering_id).filter(Boolean)),
+      );
+      const { data: offeringRows, error: offeringError } = offeringIds.length
+        ? await supabase
+            .from("course_offerings")
+            .select("id, program_id, course_id")
+            .eq("college_id", active!.id)
+            .in("id", offeringIds)
+        : { data: [], error: null };
+      if (offeringError) throw offeringError;
+
+      const courseIds = Array.from(
+        new Set((offeringRows ?? []).map((row) => row.course_id).filter(Boolean)),
+      );
+      const { data: courseRows, error: courseError } = courseIds.length
+        ? await supabase
+            .from("courses")
+            .select("id, department_id")
+            .eq("college_id", active!.id)
+            .in("id", courseIds)
+        : { data: [], error: null };
+      if (courseError) throw courseError;
+
+      const offeringsById = new Map((offeringRows ?? []).map((row) => [row.id, row]));
+      const departmentsByCourseId = new Map(
+        (courseRows ?? []).map((row) => [row.id, row.department_id]),
+      );
       const map = new Map<string, { progIds: Set<string>; deptIds: Set<string> }>();
-      for (const r of data ?? []) {
-        const m = map.get(r.schedule_version_id) ?? { progIds: new Set(), deptIds: new Set() };
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const co = r.course_offerings as any;
-        if (co?.program_id) m.progIds.add(co.program_id);
-        if (co?.courses?.department_id) m.deptIds.add(co.courses.department_id);
-        map.set(r.schedule_version_id, m);
+      for (const row of sessionRows ?? []) {
+        const meta = map.get(row.schedule_version_id) ?? {
+          progIds: new Set<string>(),
+          deptIds: new Set<string>(),
+        };
+        const offering = row.course_offering_id
+          ? offeringsById.get(row.course_offering_id)
+          : undefined;
+        if (offering?.program_id) meta.progIds.add(offering.program_id);
+        const departmentId = offering?.course_id
+          ? departmentsByCourseId.get(offering.course_id)
+          : undefined;
+        if (departmentId) meta.deptIds.add(departmentId);
+        map.set(row.schedule_version_id, meta);
       }
       return map;
     },
