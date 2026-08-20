@@ -20,6 +20,7 @@ describe("final closure regressions", () => {
   test("mobile-wide content is contained by local responsive wrappers", () => {
     const versions = read("src/routes/_authenticated/schedule-versions.tsx");
     const unscheduled = read("src/routes/_authenticated/reports.unscheduled.tsx");
+    const reportShell = read("src/components/reports/report-shell.tsx");
 
     expect(
       versions.includes('className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:w-auto"'),
@@ -27,5 +28,10 @@ describe("final closure regressions", () => {
     expect(versions.includes('className="min-w-0 space-y-2 overflow-hidden p-4"')).toBe(true);
     expect(unscheduled.includes('className="min-w-0 overflow-x-auto p-0"')).toBe(true);
     expect(unscheduled.includes('className="min-w-[640px]"')).toBe(true);
+    expect(
+      reportShell.includes(
+        'className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto"',
+      ),
+    ).toBe(true);
   });
 });
