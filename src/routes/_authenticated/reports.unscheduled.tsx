@@ -4,8 +4,21 @@ import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { ReportShell } from "@/components/reports/report-shell";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -19,33 +32,65 @@ function Page() {
   const [versionId, setVersionId] = useState("");
 
   const { data: versions } = useQuery({
-    queryKey: ["un-vers", active?.id], enabled: !!active,
-    queryFn: async () => (await supabase.from("schedule_versions").select("id, name, status, academic_term_id").eq("college_id", active!.id).order("created_at", { ascending: false })).data ?? [],
+    queryKey: ["un-vers", active?.id],
+    enabled: !!active,
+    queryFn: async () =>
+      (
+        await supabase
+          .from("schedule_versions")
+          .select("id, name, status, academic_term_id")
+          .eq("college_id", active!.id)
+          .order("created_at", { ascending: false })
+      ).data ?? [],
   });
 
-  const version = useMemo(() => (versions ?? []).find((v) => v.id === versionId), [versions, versionId]);
+  const version = useMemo(
+    () => (versions ?? []).find((v) => v.id === versionId),
+    [versions, versionId],
+  );
 
   const { data: offerings, isLoading: oLoad } = useQuery({
-    queryKey: ["un-off", active?.id, version?.academic_term_id], enabled: !!active && !!version,
+    queryKey: ["un-off", active?.id, version?.academic_term_id],
+    enabled: !!active && !!version,
     queryFn: async () => {
-      const { data } = await supabase.from("course_offerings")
-        .select(`id, plan_course_id, courses(name, code),
-          plan_courses(lectures_per_week, labs_per_week, lecture_session_duration, lab_session_duration)`)
-        .eq("college_id", active!.id).eq("term_id", version!.academic_term_id);
+      const { data } = await supabase
+        .from("course_offerings")
+        .select(
+          `id, plan_course_id, courses(name, code),
+          plan_courses(lectures_per_week, labs_per_week, lecture_session_duration, lab_session_duration)`,
+        )
+        .eq("college_id", active!.id)
+        .eq("term_id", version!.academic_term_id);
       return data ?? [];
     },
   });
 
   const { data: sessions } = useQuery({
-    queryKey: ["un-sess", active?.id, versionId], enabled: !!active && !!versionId,
-    queryFn: async () => (await supabase.from("schedule_sessions")
-      .select("course_offering_id, session_type").eq("college_id", active!.id).eq("schedule_version_id", versionId)).data ?? [],
+    queryKey: ["un-sess", active?.id, versionId],
+    enabled: !!active && !!versionId,
+    queryFn: async () =>
+      (
+        await supabase
+          .from("schedule_sessions")
+          .select("course_offering_id, session_type")
+          .eq("college_id", active!.id)
+          .eq("schedule_version_id", versionId)
+      ).data ?? [],
   });
 
   const { data: latestRun } = useQuery({
-    queryKey: ["un-run", versionId], enabled: !!versionId,
-    queryFn: async () => (await supabase.from("auto_schedule_runs")
-      .select("unplaced").eq("schedule_version_id", versionId).order("created_at", { ascending: false }).limit(1).maybeSingle()).data,
+    queryKey: ["un-run", versionId],
+    enabled: !!versionId,
+    queryFn: async () =>
+      (
+        await supabase
+          .from("auto_schedule_runs")
+          .select("unplaced")
+          .eq("schedule_version_id", versionId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      ).data,
   });
 
   const reasonsMap = useMemo(() => {
@@ -63,7 +108,8 @@ function Page() {
     const counts = new Map<string, { lec: number; lab: number }>();
     for (const s of sessions ?? []) {
       const c = counts.get(s.course_offering_id) ?? { lec: 0, lab: 0 };
-      if (s.session_type === "lab") c.lab += 1; else c.lec += 1;
+      if (s.session_type === "lab") c.lab += 1;
+      else c.lec += 1;
       counts.set(s.course_offering_id, c);
     }
     const out: Array<Record<string, unknown>> = [];
@@ -77,14 +123,24 @@ function Page() {
       const missLab = Math.max(0, reqLab - c.lab);
       if (missLec + missLab === 0) continue;
       const course = `${o.courses?.code ?? ""} ${o.courses?.name ?? ""}`;
-      if (missLec > 0) out.push({
-        course, session_type: "نظري", required: reqLec, scheduled: c.lec, missing: missLec,
-        reason: reasonsMap.get(`${o.id}|lecture`) ?? "",
-      });
-      if (missLab > 0) out.push({
-        course, session_type: "عملي", required: reqLab, scheduled: c.lab, missing: missLab,
-        reason: reasonsMap.get(`${o.id}|lab`) ?? "",
-      });
+      if (missLec > 0)
+        out.push({
+          course,
+          session_type: "نظري",
+          required: reqLec,
+          scheduled: c.lec,
+          missing: missLec,
+          reason: reasonsMap.get(`${o.id}|lecture`) ?? "",
+        });
+      if (missLab > 0)
+        out.push({
+          course,
+          session_type: "عملي",
+          required: reqLab,
+          scheduled: c.lab,
+          missing: missLab,
+          reason: reasonsMap.get(`${o.id}|lab`) ?? "",
+        });
     }
     return out;
   }, [offerings, sessions, reasonsMap]);
@@ -99,23 +155,43 @@ function Page() {
   ];
 
   return (
-    <ReportShell title="تقرير المحاضرات غير المجدوَلة" description="المحاضرات المطلوبة وفق الخطط مقابل المجدوَلة."
-      filename="unscheduled_sessions" rows={rows} headers={headers} isLoading={oLoad}
+    <ReportShell
+      title="تقرير المحاضرات غير المجدوَلة"
+      description="المحاضرات المطلوبة وفق الخطط مقابل المجدوَلة."
+      filename="unscheduled_sessions"
+      rows={rows}
+      headers={headers}
+      isLoading={oLoad}
       emptyMessage={!versionId ? "اختر نسخة جدول." : "كل المحاضرات مجدوَلة."}
       filters={
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <div>
             <label className="text-xs text-muted-foreground">نسخة الجدول</label>
             <Select value={versionId} onValueChange={setVersionId}>
-              <SelectTrigger><SelectValue placeholder="اختر نسخة" /></SelectTrigger>
-              <SelectContent>{(versions ?? []).map((v) => <SelectItem key={v.id} value={v.id}>{v.name} — {v.status}</SelectItem>)}</SelectContent>
+              <SelectTrigger>
+                <SelectValue placeholder="اختر نسخة" />
+              </SelectTrigger>
+              <SelectContent>
+                {(versions ?? []).map((v) => (
+                  <SelectItem key={v.id} value={v.id}>
+                    {v.name} — {v.status}
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
           </div>
         </div>
-      }>
+      }
+    >
       <Card className="min-w-0 overflow-x-auto p-0">
         <Table className="min-w-[640px]">
-          <TableHeader><TableRow>{headers.map((h) => <TableHead key={h.key}>{h.label}</TableHead>)}</TableRow></TableHeader>
+          <TableHeader>
+            <TableRow>
+              {headers.map((h) => (
+                <TableHead key={h.key}>{h.label}</TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
           <TableBody>
             {rows.map((r, i) => (
               <TableRow key={i}>
@@ -123,8 +199,12 @@ function Page() {
                 <TableCell>{String(r.session_type)}</TableCell>
                 <TableCell>{String(r.required)}</TableCell>
                 <TableCell>{String(r.scheduled)}</TableCell>
-                <TableCell><Badge variant="destructive">{String(r.missing)}</Badge></TableCell>
-                <TableCell className="text-xs text-muted-foreground">{String(r.reason)}</TableCell>
+                <TableCell>
+                  <Badge variant="destructive">{String(r.missing)}</Badge>
+                </TableCell>
+                <TableCell className="text-xs text-muted-foreground">
+                  {String(r.reason)}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
