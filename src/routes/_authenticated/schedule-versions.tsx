@@ -136,14 +136,14 @@ function SchedVersionsPage() {
 
   return (
     <div className="space-y-6" dir="rtl">
-      <div className="flex items-center justify-between flex-wrap gap-2">
+      <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">مراجعة واعتماد الجدول</h1>
           <p className="text-sm text-muted-foreground">
             أنشئ النسخة، افتح مساحة البناء، ثم راجع التعارضات والجودة قبل الاعتماد والنشر.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:w-auto">
           <CollegeSwitcher />
           <Button variant="outline" asChild>
             <Link to="/schedule-builder">
@@ -318,18 +318,18 @@ function VersionCard({
   });
 
   return (
-    <Card className="p-4 space-y-2">
+    <Card className="min-w-0 space-y-2 overflow-hidden p-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2">
           <CalendarClock className="h-4 w-4 text-muted-foreground" />
-          <span className="font-semibold">{v.name}</span>
+          <span className="min-w-0 break-words font-semibold">{v.name}</span>
         </div>
         <Badge variant={STATUS_BADGE_VARIANT[status] ?? "secondary"}>
           {STATUS_LABEL_AR[status] ?? status}
         </Badge>
       </div>
       <div className="text-xs text-muted-foreground">الفصل: {termName}</div>
-      {v.notes && <div className="text-xs">{v.notes}</div>}
+      {v.notes && <div className="break-words text-xs">{v.notes}</div>}
       <div className="text-[10px] text-muted-foreground">
         {new Date(v.created_at).toLocaleString("ar")}
       </div>
