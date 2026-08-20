@@ -70,22 +70,22 @@ export function ReportShell({
   const handlePrint = () => window.print();
 
   return (
-    <div className="report-print-root space-y-4" dir="rtl">
+    <div className="report-print-root min-w-0 space-y-4" dir="rtl">
       <ReportOfficialHeader reportTitle={title} filterSummary={filterSummary} {...headerMeta} />
 
-      <div className="report-no-print flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <div className="flex items-center gap-2">
+      <div className="report-no-print flex min-w-0 flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             <Button asChild variant="ghost" size="sm">
               <Link to="/reports">
                 <ArrowRight className="h-4 w-4 ml-1" /> العودة
               </Link>
             </Button>
-            <h1 className="text-2xl font-bold">{title}</h1>
+            <h1 className="min-w-0 break-words text-2xl font-bold">{title}</h1>
           </div>
           {description && <p className="text-sm text-muted-foreground mt-1">{description}</p>}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
           <CollegeSwitcher />
           <Button variant="outline" size="sm" onClick={handlePrint}>
             <Printer className="h-4 w-4 ml-1" /> طباعة
@@ -109,11 +109,11 @@ export function ReportShell({
         </div>
       </div>
 
-      {filters && <Card className="report-no-print p-4">{filters}</Card>}
+      {filters && <Card className="report-no-print min-w-0 overflow-hidden p-4">{filters}</Card>}
 
       {leading}
 
-      <div className="report-print-body">
+      <div className="report-print-body min-w-0">
         {isLoading ? (
           <Card className="p-8 text-center text-muted-foreground">جارٍ التحميل…</Card>
         ) : rows.length === 0 ? (
