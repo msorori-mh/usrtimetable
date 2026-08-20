@@ -113,8 +113,8 @@ function Page() {
           </div>
         </div>
       }>
-      <Card className="p-0 overflow-hidden">
-        <Table>
+      <Card className="min-w-0 overflow-x-auto p-0">
+        <Table className="min-w-[640px]">
           <TableHeader><TableRow>{headers.map((h) => <TableHead key={h.key}>{h.label}</TableHead>)}</TableRow></TableHeader>
           <TableBody>
             {rows.map((r, i) => (
