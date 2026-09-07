@@ -58,10 +58,7 @@ assert(
   navMissingViewer.length === 0,
   `every nav entry visible to institutional_viewer (missing in: ${navMissingViewer.join(" | ")})`,
 );
-assert(
-  layout.includes("مشاهد مؤسسي"),
-  "sidebar shows the Arabic role label «مشاهد مؤسسي»",
-);
+assert(layout.includes("مشاهد مؤسسي"), "sidebar shows the Arabic role label «مشاهد مؤسسي»");
 
 // ---------- 3) no manage-privilege expansion ----------
 const canManageHook = read("src/hooks/use-can-manage.ts");
@@ -102,7 +99,9 @@ const newPolicies = [...rlsMigration.matchAll(/CREATE POLICY\s+(\w+)[\s\S]*?FOR\
 );
 assert(newPolicies.length >= 6, "migration 2 policies were found for inspection");
 const widenedWrite = newPolicies.filter(
-  (p) => p.cmd !== "SELECT" && !(p.name === "al_insert" && /NOT is_institutional_viewer/.test(rlsMigration)),
+  (p) =>
+    p.cmd !== "SELECT" &&
+    !(p.name === "al_insert" && /NOT is_institutional_viewer/.test(rlsMigration)),
 );
 assert(
   widenedWrite.length === 0,
@@ -146,10 +145,7 @@ assert(
     ),
   "users page never calls adminListUserMeta for the viewer",
 );
-assert(
-  /\{!viewOnly && \(/.test(users),
-  "users page hides create/manage controls for the viewer",
-);
+assert(/\{!viewOnly && \(/.test(users), "users page hides create/manage controls for the viewer");
 
 const usersFn = read("src/lib/users.functions.ts");
 assert(

@@ -38,10 +38,7 @@ import {
   type TeachingImportWorkbookMode,
 } from "@/lib/excel-import/teaching-assignments-source-schema";
 import type { SourceResolutionPreview } from "@/lib/excel-import/teaching-assignments-source-resolver";
-import {
-  READ_ONLY_VIEW_BADGE_AR,
-  isInstitutionalReadOnlyViewer,
-} from "@/lib/unauthorized-access";
+import { READ_ONLY_VIEW_BADGE_AR, isInstitutionalReadOnlyViewer } from "@/lib/unauthorized-access";
 
 export const Route = createFileRoute("/_authenticated/import")({
   head: () => ({
@@ -280,7 +277,10 @@ function ImportPage() {
             <h1 className="text-2xl font-bold">استيراد البيانات من Excel</h1>
             <p className="text-sm text-muted-foreground">
               استعراض القوالب الرسمية وترتيب الاستيراد.{" "}
-              <Link to="/data-templates" className="text-primary underline-offset-4 hover:underline">
+              <Link
+                to="/data-templates"
+                className="text-primary underline-offset-4 hover:underline"
+              >
                 دليل تجهيز البيانات ←
               </Link>
             </p>
@@ -304,7 +304,6 @@ function ImportPage() {
                 </span>
               </li>
             ))}
-
           </ol>
         </Card>
       </div>
@@ -316,7 +315,6 @@ function ImportPage() {
         <p className="mt-4 text-muted-foreground">لا تملك صلاحية الاستيراد لهذه الكلّية.</p>
       </div>
     );
-
 
   const isSourceMode =
     entity === "teaching_assignments_v2" && workbookMode === "academic_source_workbook";

@@ -256,26 +256,26 @@ function UsersPage() {
           </p>
         </div>
         {!viewOnly && (
-        <div className="flex flex-wrap gap-2">
-          <CreateUserDialog
-            colleges={colleges ?? []}
-            presetRole="college_admin"
-            triggerLabel="إنشاء مدير كلّية"
-            triggerVariant="outline"
-            triggerIcon={<ShieldCheck className="ml-1 h-4 w-4" />}
-            onCreate={async (input) => {
-              await createUserFn({ data: input });
-              qc.invalidateQueries({ queryKey: ["all-users-admin"] });
-            }}
-          />
-          <CreateUserDialog
-            colleges={colleges ?? []}
-            onCreate={async (input) => {
-              await createUserFn({ data: input });
-              qc.invalidateQueries({ queryKey: ["all-users-admin"] });
-            }}
-          />
-        </div>
+          <div className="flex flex-wrap gap-2">
+            <CreateUserDialog
+              colleges={colleges ?? []}
+              presetRole="college_admin"
+              triggerLabel="إنشاء مدير كلّية"
+              triggerVariant="outline"
+              triggerIcon={<ShieldCheck className="ml-1 h-4 w-4" />}
+              onCreate={async (input) => {
+                await createUserFn({ data: input });
+                qc.invalidateQueries({ queryKey: ["all-users-admin"] });
+              }}
+            />
+            <CreateUserDialog
+              colleges={colleges ?? []}
+              onCreate={async (input) => {
+                await createUserFn({ data: input });
+                qc.invalidateQueries({ queryKey: ["all-users-admin"] });
+              }}
+            />
+          </div>
         )}
       </header>
 
@@ -388,37 +388,39 @@ function UsersPage() {
                       </p>
                     </div>
                     {viewOnly ? (
-                      <span className="text-xs text-muted-foreground">{READ_ONLY_VIEW_BADGE_AR}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {READ_ONLY_VIEW_BADGE_AR}
+                      </span>
                     ) : (
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          u.email && sendReset.mutate({ userId: u.id, email: u.email })
-                        }
-                        disabled={sendReset.isPending || !u.email}
-                      >
-                        <KeyRound className="ml-1 h-3.5 w-3.5" />
-                        إعادة تعيين كلمة المرور
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant={disabled ? "default" : "outline"}
-                        onClick={() => setEnabled.mutate({ userId: u.id, enabled: disabled })}
-                        disabled={setEnabled.isPending || u.id === me?.id}
-                      >
-                        <Power className="ml-1 h-3.5 w-3.5" />
-                        {disabled ? "تمكين" : "تعطيل"}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setExpandedUser(expanded ? null : u.id)}
-                      >
-                        {expanded ? "إغلاق" : "إدارة"}
-                      </Button>
-                    </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            u.email && sendReset.mutate({ userId: u.id, email: u.email })
+                          }
+                          disabled={sendReset.isPending || !u.email}
+                        >
+                          <KeyRound className="ml-1 h-3.5 w-3.5" />
+                          إعادة تعيين كلمة المرور
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={disabled ? "default" : "outline"}
+                          onClick={() => setEnabled.mutate({ userId: u.id, enabled: disabled })}
+                          disabled={setEnabled.isPending || u.id === me?.id}
+                        >
+                          <Power className="ml-1 h-3.5 w-3.5" />
+                          {disabled ? "تمكين" : "تعطيل"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setExpandedUser(expanded ? null : u.id)}
+                        >
+                          {expanded ? "إغلاق" : "إدارة"}
+                        </Button>
+                      </div>
                     )}
                   </div>
 
@@ -432,14 +434,21 @@ function UsersPage() {
                             const isSelf = u.id === me?.id;
                             const lockSelf = role === "super_admin" && isSelf && isOn;
                             return (
-                              <div key={role} className="rounded-md border border-border/60 bg-card/50 p-2">
+                              <div
+                                key={role}
+                                className="rounded-md border border-border/60 bg-card/50 p-2"
+                              >
                                 <label className="flex items-center gap-2 text-sm">
                                   <Checkbox
                                     checked={isOn}
                                     disabled={lockSelf || setRole.isPending}
                                     onCheckedChange={(v) => {
                                       setRole.mutate({ userId: u.id, role, on: !!v });
-                                      if (v && role === "college_admin" && u.collegeIds.length === 0) {
+                                      if (
+                                        v &&
+                                        role === "college_admin" &&
+                                        u.collegeIds.length === 0
+                                      ) {
                                         toast.info("لا تنسَ إسناد كلّية — الدور لا يُفعّل بدونها");
                                       }
                                     }}
@@ -630,7 +639,9 @@ function CreateUserDialog({
       </DialogTrigger>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{presetRole === "college_admin" ? "إنشاء مدير كلّية" : "إنشاء مستخدم"}</DialogTitle>
+          <DialogTitle>
+            {presetRole === "college_admin" ? "إنشاء مدير كلّية" : "إنشاء مستخدم"}
+          </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div>
