@@ -264,6 +264,51 @@ function ImportPage() {
         <p className="mt-4 text-muted-foreground">اختر كلّية للبدء.</p>
       </div>
     );
+  if (viewOnly)
+    return (
+      <div className="mx-auto max-w-6xl space-y-6">
+        <header className="flex flex-wrap items-center gap-3">
+          <span className="grid h-11 w-11 place-items-center rounded-lg bg-secondary text-primary">
+            <FileSpreadsheet className="h-5 w-5" />
+          </span>
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold">استيراد البيانات من Excel</h1>
+            <p className="text-sm text-muted-foreground">
+              استعراض القوالب الرسمية وترتيب الاستيراد.{" "}
+              <Link to="/data-templates" className="text-primary underline-offset-4 hover:underline">
+                دليل تجهيز البيانات ←
+              </Link>
+            </p>
+          </div>
+          <CollegeSwitcher />
+        </header>
+        <p className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
+          {READ_ONLY_VIEW_BADGE_AR}
+        </p>
+        <Card className="p-4">
+          <h2 className="mb-3 text-sm font-semibold">الترتيب الرسمي لكيانات الاستيراد</h2>
+          <ol className="grid gap-2 text-sm sm:grid-cols-2">
+            {OFFICIAL_IMPORT_ORDER.map((e, i) => {
+              const meta = ENTITIES.find((x) => x.value === e);
+              if (!meta) return null;
+              return (
+                <li key={e} className="flex gap-2 rounded-md border p-2">
+                  <span className="text-xs text-muted-foreground">{i + 1}.</span>
+                  <span>
+                    <span className="font-medium">{meta.label}</span>
+                    {meta.description ? (
+                      <span className="block text-xs text-muted-foreground">
+                        {meta.description}
+                      </span>
+                    ) : null}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+        </Card>
+      </div>
+    );
   if (!canManage)
     return (
       <div className="p-6">
@@ -271,6 +316,7 @@ function ImportPage() {
         <p className="mt-4 text-muted-foreground">لا تملك صلاحية الاستيراد لهذه الكلّية.</p>
       </div>
     );
+
 
   const isSourceMode =
     entity === "teaching_assignments_v2" && workbookMode === "academic_source_workbook";
