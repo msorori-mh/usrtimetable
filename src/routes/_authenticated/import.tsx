@@ -38,6 +38,7 @@ import {
   type TeachingImportWorkbookMode,
 } from "@/lib/excel-import/teaching-assignments-source-schema";
 import type { SourceResolutionPreview } from "@/lib/excel-import/teaching-assignments-source-resolver";
+import { READ_ONLY_VIEW_BADGE_AR, isInstitutionalReadOnlyViewer } from "@/lib/unauthorized-access";
 
 export const Route = createFileRoute("/_authenticated/import")({
   head: () => ({
@@ -70,6 +71,7 @@ function ImportPage() {
   const { active } = useActiveCollege();
   const canManage = useCanManageActiveCollege();
   const { data: user } = useCurrentUser();
+  const viewOnly = isInstitutionalReadOnlyViewer(user);
   const qc = useQueryClient();
   const [entity, setEntity] = useState<ImportEntity>("academic_terms");
   const [mode, setMode] = useState<ImportMode>("insert_only");
@@ -262,6 +264,48 @@ function ImportPage() {
       <div className="p-6">
         <CollegeSwitcher />
         <p className="mt-4 text-muted-foreground">اختر كلّية للبدء.</p>
+      </div>
+    );
+  if (viewOnly)
+    return (
+      <div className="mx-auto max-w-6xl space-y-6">
+        <header className="flex flex-wrap items-center gap-3">
+          <span className="grid h-11 w-11 place-items-center rounded-lg bg-secondary text-primary">
+            <FileSpreadsheet className="h-5 w-5" />
+          </span>
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold">استيراد البيانات من Excel</h1>
+            <p className="text-sm text-muted-foreground">
+              استعراض القوالب الرسمية وترتيب الاستيراد.{" "}
+              <Link
+                to="/data-templates"
+                className="text-primary underline-offset-4 hover:underline"
+              >
+                دليل تجهيز البيانات ←
+              </Link>
+            </p>
+          </div>
+          <CollegeSwitcher />
+        </header>
+        <p className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
+          {READ_ONLY_VIEW_BADGE_AR}
+        </p>
+        <Card className="p-4">
+          <h2 className="mb-3 text-sm font-semibold">الترتيب الرسمي لكيانات الاستيراد</h2>
+          <ol className="grid gap-2 text-sm sm:grid-cols-2">
+            {OFFICIAL_IMPORT_ORDER.map((step, i) => (
+              <li key={`${step.step}-${step.label}`} className="flex gap-2 rounded-md border p-2">
+                <span className="text-xs text-muted-foreground">{i + 1}.</span>
+                <span>
+                  <span className="font-medium">{step.label}</span>
+                  {step.notes ? (
+                    <span className="block text-xs text-muted-foreground">{step.notes}</span>
+                  ) : null}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </Card>
       </div>
     );
   if (!canManage)

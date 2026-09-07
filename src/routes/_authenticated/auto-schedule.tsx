@@ -156,6 +156,12 @@ function AutoSchedulePage() {
         <CollegeSwitcher />
       </div>
 
+      {!canManage && (
+        <Card className="border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200">
+          أنت بوضع المشاهدة. يمكنك استعراض إعدادات الجدولة ونتائج التشغيل دون تنفيذها.
+        </Card>
+      )}
+
       {!active ? (
         <Card className="p-6 text-center text-muted-foreground">اختر كلية للبدء</Card>
       ) : (
