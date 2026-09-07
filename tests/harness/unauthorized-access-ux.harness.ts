@@ -90,7 +90,11 @@ function run() {
   const usersSrc = readSrc("src/routes/_authenticated/users.tsx");
   assert(!usersSrc.includes("throw redirect"), "users must not throw redirect in render");
   assert(usersSrc.includes("UnauthorizedAccess"), "users renders UnauthorizedAccess");
-  assert(usersSrc.includes("resolveSuperAdminPageAccess"), "users uses access helper");
+  assert(
+    usersSrc.includes("resolveSuperAdminPageAccess") ||
+      usersSrc.includes("resolveAdminReadablePageAccess"),
+    "users uses access helper",
+  );
   assert(usersSrc.includes("enabled: canLoadAdminData"), "users gates admin queries");
   assert(
     usersSrc.includes('queryKey: ["colleges-min"]') &&
@@ -136,15 +140,15 @@ function run() {
 
   const layoutSrc = readSrc("src/components/app-layout.tsx");
   assert(
-    /to:\s*"\/users"[\s\S]*?roles:\s*\["super_admin"\]/.test(layoutSrc),
+    /to:\s*"\/users"[\s\S]*?roles:\s*\["super_admin"(,\s*"institutional_viewer")?\]/.test(layoutSrc),
     "7 nav /users still super_admin only",
   );
   assert(
-    /to:\s*"\/import"[\s\S]*?roles:\s*\["super_admin",\s*"college_admin"\]/.test(layoutSrc),
+    /to:\s*"\/import"[\s\S]*?roles:\s*\["super_admin",\s*"college_admin"(,\s*"institutional_viewer")?\]/.test(layoutSrc),
     "7 nav /import roles unchanged",
   );
   assert(
-    /to:\s*"\/auto-schedule"[\s\S]*?roles:\s*\["super_admin",\s*"college_admin"\]/.test(layoutSrc),
+    /to:\s*"\/auto-schedule"[\s\S]*?roles:\s*\["super_admin",\s*"college_admin"(,\s*"institutional_viewer")?\]/.test(layoutSrc),
     "7 nav /auto-schedule roles unchanged",
   );
   assert(

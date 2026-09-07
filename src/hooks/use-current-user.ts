@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-export type AppRole = "super_admin" | "college_admin" | "read_only";
+export type AppRole = "super_admin" | "college_admin" | "read_only" | "institutional_viewer";
 
 export interface CurrentUser {
   id: string;
@@ -12,6 +12,8 @@ export interface CurrentUser {
   isSuperAdmin: boolean;
   isCollegeAdmin: boolean;
   isReadOnly: boolean;
+  /** Institution-wide viewer: sees every page and college, may never write. */
+  isInstitutionalViewer: boolean;
 }
 
 async function fetchCurrentUser(): Promise<CurrentUser | null> {
@@ -35,6 +37,7 @@ async function fetchCurrentUser(): Promise<CurrentUser | null> {
     isSuperAdmin: roles.includes("super_admin"),
     isCollegeAdmin: roles.includes("college_admin"),
     isReadOnly: roles.includes("read_only"),
+    isInstitutionalViewer: roles.includes("institutional_viewer"),
   };
 }
 

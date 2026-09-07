@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-const ROLE = z.enum(["super_admin", "college_admin", "read_only"]);
+const ROLE = z.enum(["super_admin", "college_admin", "read_only", "institutional_viewer"]);
 
 async function assertInstitutionAdmin(userId: string) {
   const { data, error } = await supabaseAdmin

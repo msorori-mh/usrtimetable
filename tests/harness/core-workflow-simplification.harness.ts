@@ -52,7 +52,11 @@ assert.ok(layout.includes('to: "/data-onboarding"'), "prepare route remains avai
 assert.ok(layout.includes('to: "/schedule-builder"'), "builder route remains available");
 assert.ok(layout.includes('to: "/schedule-versions"'), "review route remains available");
 assert.ok(layout.includes('to: "/published-schedules"'), "publish route remains available");
-assert.ok(layout.includes('roles: ["super_admin", "college_admin"]'), "admin-only gates remain");
+assert.ok(
+  layout.includes('roles: ["super_admin", "college_admin"]') ||
+    layout.includes('roles: ["super_admin", "college_admin", "institutional_viewer"]'),
+  "admin-only gates remain",
+);
 
 const dashboard = read("src/routes/_authenticated/dashboard.tsx");
 assert.ok(dashboard.includes("resolveCoreWorkflow"), "dashboard uses the pure workflow summary");

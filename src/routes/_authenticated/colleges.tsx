@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { School, Pencil, Trash2 } from "lucide-react";
+import { READ_ONLY_VIEW_BADGE_AR, isInstitutionalReadOnlyViewer } from "@/lib/unauthorized-access";
 
 export const Route = createFileRoute("/_authenticated/colleges")({
   head: () => ({ meta: [{ title: "إدارة الكلّيات" }] }),
@@ -73,7 +74,9 @@ function CollegesPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (user && !user.isSuperAdmin) throw redirect({ to: "/dashboard" });
+  if (user && !user.isSuperAdmin && !user.isInstitutionalViewer) throw redirect({ to: "/dashboard" });
+  const canEdit = !!user?.isSuperAdmin;
+  const viewOnly = isInstitutionalReadOnlyViewer(user);
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -93,6 +96,13 @@ function CollegesPage() {
         </Card>
       )}
 
+      {viewOnly && (
+        <Card className="mb-6 border-border bg-muted/40 p-4 text-sm text-muted-foreground">
+          {READ_ONLY_VIEW_BADGE_AR}
+        </Card>
+      )}
+
+      {canEdit && (
       <Card className="mb-8 p-6">
         <h2 className="mb-4 font-semibold">{editingId ? "تعديل كلّية" : "إضافة كلّية"}</h2>
         <form
@@ -128,6 +138,7 @@ function CollegesPage() {
           </div>
         </form>
       </Card>
+      )}
 
       <Card className="overflow-hidden">
         <table className="w-full">
@@ -148,6 +159,7 @@ function CollegesPage() {
                 <td className="px-4 py-3 text-sm text-muted-foreground">{c.universities?.name ?? "—"}</td>
                 <td className="px-4 py-3 text-sm text-muted-foreground" dir="ltr">{c.code ?? "—"}</td>
                 <td className="px-4 py-3 text-left">
+                  {canEdit ? (
                   <div className="inline-flex gap-1">
                     <Button size="sm" variant="ghost" onClick={() => {
                       setEditingId(c.id); setName(c.name); setCode(c.code ?? ""); setUniversityId(c.university_id);
@@ -158,6 +170,9 @@ function CollegesPage() {
                       <Trash2 className="h-3.5 w-3.5 text-destructive" />
                     </Button>
                   </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  )}
                 </td>
               </tr>
             ))}

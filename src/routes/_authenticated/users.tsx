@@ -12,7 +12,9 @@ import {
 } from "@/lib/users.functions";
 import { UnauthorizedAccess } from "@/components/unauthorized-access";
 import {
-  resolveSuperAdminPageAccess,
+  resolveAdminReadablePageAccess,
+  isInstitutionalReadOnlyViewer,
+  READ_ONLY_VIEW_BADGE_AR,
   shouldLoadSuperAdminPageData,
 } from "@/lib/unauthorized-access";
 import { Button } from "@/components/ui/button";
@@ -49,18 +51,22 @@ const ROLE_LABELS: Record<AppRole, string> = {
   super_admin: "Super Admin",
   college_admin: "مدير كلّية",
   read_only: "مشاهد",
+  institutional_viewer: "مشاهد مؤسسي",
 };
 
 const ROLE_TONE: Record<AppRole, string> = {
   super_admin: "bg-primary/10 text-primary border-primary/20",
   college_admin: "bg-accent/20 text-accent-foreground border-accent/30",
   read_only: "bg-muted text-muted-foreground border-border",
+  institutional_viewer: "bg-secondary text-primary border-primary/20",
 };
 
 const ROLE_HINTS: Record<AppRole, string> = {
   super_admin: "صلاحيات كاملة على جميع الكلّيات، وإدارة المستخدمين والأدوار.",
   college_admin: "كامل صلاحيات العمليات داخل الكلّيات المُسندة له، بما فيها الاستيراد من Excel.",
   read_only: "اطّلاع فقط على بيانات الكلّيات المُسندة، بدون أي تعديل.",
+  institutional_viewer:
+    "اطّلاع مؤسسي على جميع الكلّيات والصفحات والتقارير، دون أي صلاحية إضافة أو تعديل أو حذف.",
 };
 
 type UserRow = {
@@ -76,7 +82,8 @@ type UserRow = {
 
 function UsersPage() {
   const { data: me, isLoading: meLoading } = useCurrentUser();
-  const pageAccess = resolveSuperAdminPageAccess(me, meLoading);
+  const pageAccess = resolveAdminReadablePageAccess(me, meLoading);
+  const viewOnly = isInstitutionalReadOnlyViewer(me);
   const canLoadAdminData = shouldLoadSuperAdminPageData(pageAccess);
   const qc = useQueryClient();
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
@@ -244,6 +251,7 @@ function UsersPage() {
             إنشاء الحسابات، تعيين الأدوار، إسناد الكلّيات، تعطيل/تمكين، وإعادة تعيين كلمة المرور.
           </p>
         </div>
+        {!viewOnly && (
         <div className="flex flex-wrap gap-2">
           <CreateUserDialog
             colleges={colleges ?? []}
@@ -264,6 +272,7 @@ function UsersPage() {
             }}
           />
         </div>
+        )}
       </header>
 
       <Card className="mb-4 p-4">
@@ -374,6 +383,9 @@ function UsersPage() {
                           : "لم يُسجَّل دخول بعد"}
                       </p>
                     </div>
+                    {viewOnly ? (
+                      <span className="text-xs text-muted-foreground">{READ_ONLY_VIEW_BADGE_AR}</span>
+                    ) : (
                     <div className="flex flex-wrap items-center gap-2">
                       <Button
                         size="sm"
@@ -403,6 +415,7 @@ function UsersPage() {
                         {expanded ? "إغلاق" : "إدارة"}
                       </Button>
                     </div>
+                    )}
                   </div>
 
                   {expanded && (

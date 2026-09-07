@@ -3853,6 +3853,7 @@ export type Database = {
         Returns: boolean
       }
       import_manager_actor: { Args: { p_college_id: string }; Returns: string }
+      is_institutional_viewer: { Args: { _user_id: string }; Returns: boolean }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       list_schedule_builder_v2_work_items: {
         Args: {
@@ -4041,7 +4042,11 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "super_admin" | "college_admin" | "read_only"
+      app_role:
+        | "super_admin"
+        | "college_admin"
+        | "read_only"
+        | "institutional_viewer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4169,7 +4174,12 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["super_admin", "college_admin", "read_only"],
+      app_role: [
+        "super_admin",
+        "college_admin",
+        "read_only",
+        "institutional_viewer",
+      ],
     },
   },
 } as const
