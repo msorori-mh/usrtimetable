@@ -97,15 +97,19 @@ function UsersPage() {
   const resetFn = useServerFn(adminGeneratePasswordReset);
 
   const { data: users, isLoading } = useQuery({
-    queryKey: ["all-users-admin"],
+    queryKey: ["all-users-admin", viewOnly],
     enabled: canLoadAdminData,
     queryFn: async (): Promise<UserRow[]> => {
       const [{ data: profiles }, { data: roles }, { data: ucs }, meta] = await Promise.all([
         supabase.from("profiles").select("id, full_name, email, created_at").order("created_at"),
         supabase.from("user_roles").select("user_id, role"),
         supabase.from("user_colleges").select("user_id, college_id"),
-        listMeta().catch(() => [] as Awaited<ReturnType<typeof listMeta>>),
+        // Institutional viewer never touches the admin-only Auth metadata endpoint.
+        viewOnly
+          ? Promise.resolve([] as Awaited<ReturnType<typeof listMeta>>)
+          : listMeta().catch(() => [] as Awaited<ReturnType<typeof listMeta>>),
       ]);
+
       const metaMap = new Map((meta ?? []).map((m) => [m.id, m]));
       return (profiles ?? []).map((p) => ({
         id: p.id,
