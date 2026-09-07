@@ -3,16 +3,27 @@
 -- must be submitted through the platform migration tool (it writes the real
 -- supabase/migrations file); do not hand-copy it into supabase/migrations.
 --
+-- SCOPE CORRECTION (security review): the earlier draft attached a generic
+-- BEFORE INSERT/UPDATE/DELETE trigger to every persistent table in `public`.
+-- That was broader than necessary. A live catalog audit of all 175 write
+-- policies in `public` showed every one of them is already gated by
+-- can_manage_college(...) or is_super_admin(...) — except exactly three that a
+-- plain authenticated user can satisfy on their own row:
+--     profiles.prof_insert  (INSERT, id = auth.uid())
+--     profiles.prof_update  (UPDATE, id = auth.uid())
+--     audit_logs.al_insert  (INSERT, actor_id = auth.uid())
+-- Those three are therefore the ONLY write surfaces this migration touches.
+-- No generic trigger, no DO loop, no change to any other write policy.
+--
 -- Approved decisions implemented here:
---   (1) institutional_viewer must reach ZERO writes, including audit_logs INSERT.
---       Migration 2 already denies audit_logs INSERT at the RLS policy level;
---       this file adds a trigger-level guard so SECURITY DEFINER RPCs (which
---       bypass RLS) cannot write on behalf of an institutional_viewer actor.
---       MULTI-ROLE SAFETY: the guard fires only for a user who carries
---       institutional_viewer AND carries neither super_admin nor college_admin.
---       Existing role behaviour is therefore unchanged for anyone who also
---       holds an administrative role. This predicate mirrors
---       isInstitutionalReadOnlyViewer() in src/lib/unauthorized-access.ts.
+--   (1) institutional_viewer reaches ZERO writes. Achieved by excluding the
+--       read-only actor from the three self-service write policies above.
+--       MULTI-ROLE SAFETY: the exclusion uses
+--       is_institutional_read_only_actor(), which is TRUE only for a user who
+--       carries institutional_viewer AND carries neither super_admin nor
+--       college_admin. Anyone holding an administrative role keeps their exact
+--       current behaviour. This predicate mirrors isInstitutionalReadOnlyViewer()
+--       in src/lib/unauthorized-access.ts.
 --   (2) institutional_viewer may execute ONLY RPCs proven side-effect free.
 --       Read-only allowlist (verified against the live catalog: zero
 --       INSERT/UPDATE/DELETE/TRUNCATE in the body, authorisation through
@@ -25,78 +36,66 @@
 --         - public.list_teaching_assignment_workspace(uuid, uuid, uuid, uuid, text, uuid, text, text)
 --       The last four are re-created below verbatim from their current live
 --       definitions with the SMALLEST possible change: the read gate also
---       accepts is_institutional_viewer(auth.uid()). Write-affordance flags in
---       their returned payloads ('can_manage', 'assignable') keep calling
---       can_manage_college unchanged, so the UI still shows no edit controls.
---       Every other volatile RPC is gated by can_manage_college, is_super_admin,
---       or import_manager_actor (which calls can_manage_college) and stays
---       denied. validate_schedule_session_move and begin_schedule_quality_snapshot
---       stay denied on purpose: both are preflight steps of a mutating action.
---       Postgres EXECUTE grants cannot distinguish app roles inside
---       `authenticated`, so the deny side is enforced by the guard below.
+--       accepts is_institutional_read_only_actor(auth.uid()). Write-affordance
+--       flags in their returned payloads ('can_manage', 'assignable') keep
+--       calling can_manage_college unchanged, so the UI still shows no edit
+--       controls. Every other volatile RPC is gated by can_manage_college,
+--       is_super_admin, or import_manager_actor (which calls
+--       can_manage_college) and stays denied — including
+--       validate_schedule_session_move and begin_schedule_quality_snapshot,
+--       which stay denied on purpose as preflight steps of a mutating action.
 --
 -- can_manage_college is NOT modified by this migration.
 
--- 1. Generic zero-write guard -------------------------------------------------
-CREATE OR REPLACE FUNCTION public.deny_institutional_viewer_write()
-RETURNS trigger
-LANGUAGE plpgsql
+-- 1. Read-only actor predicate (multi-role safe) ------------------------------
+CREATE OR REPLACE FUNCTION public.is_institutional_read_only_actor(_user_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
 SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $function$
-DECLARE
-  v_uid uuid := auth.uid();
-BEGIN
-  -- Service-role, migration, and background contexts have no auth.uid() and
-  -- are unaffected. Multi-role users keep their administrative behaviour.
-  IF v_uid IS NOT NULL
-     AND public.is_institutional_viewer(v_uid)
-     AND NOT public.is_super_admin(v_uid)
-     AND NOT public.has_role(v_uid, 'college_admin'::public.app_role)
-  THEN
-    RAISE EXCEPTION 'INSTITUTIONAL_VIEWER_IS_READ_ONLY: % on %.% is not permitted for this role',
-      TG_OP, TG_TABLE_SCHEMA, TG_TABLE_NAME
-      USING ERRCODE = '42501';
-  END IF;
-
-  IF TG_OP = 'DELETE' THEN
-    RETURN OLD;
-  END IF;
-  RETURN NEW;
-END;
+  SELECT _user_id IS NOT NULL
+     AND public.has_role(_user_id, 'institutional_viewer'::public.app_role)
+     AND NOT public.is_super_admin(_user_id)
+     AND NOT public.has_role(_user_id, 'college_admin'::public.app_role);
 $function$;
 
-REVOKE ALL ON FUNCTION public.deny_institutional_viewer_write() FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.deny_institutional_viewer_write() TO service_role;
+REVOKE ALL ON FUNCTION public.is_institutional_read_only_actor(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.is_institutional_read_only_actor(uuid) TO authenticated, service_role;
 
--- 2. Attach the guard to every persistent base table in the public schema -----
---    Idempotent: the trigger is dropped and recreated per table.
-DO $do$
-DECLARE
-  r record;
-BEGIN
-  FOR r IN
-    SELECT c.relname
-    FROM pg_class c
-    JOIN pg_namespace n ON n.oid = c.relnamespace
-    WHERE n.nspname = 'public'
-      AND c.relkind = 'r'
-      AND c.relpersistence = 'p'
-    ORDER BY c.relname
-  LOOP
-    EXECUTE format(
-      'DROP TRIGGER IF EXISTS trg_deny_institutional_viewer_write ON public.%I',
-      r.relname
-    );
-    EXECUTE format(
-      'CREATE TRIGGER trg_deny_institutional_viewer_write '
-      || 'BEFORE INSERT OR UPDATE OR DELETE ON public.%I '
-      || 'FOR EACH ROW EXECUTE FUNCTION public.deny_institutional_viewer_write()',
-      r.relname
-    );
-  END LOOP;
-END
-$do$;
+-- 2. The only three self-service write policies, re-created with the exclusion
+--    Existing conditions are preserved verbatim; the new term is additive.
+DROP POLICY IF EXISTS prof_insert ON public.profiles;
+CREATE POLICY prof_insert ON public.profiles
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    ((id = auth.uid()) OR public.is_super_admin(auth.uid()))
+    AND NOT public.is_institutional_read_only_actor(auth.uid())
+  );
+
+DROP POLICY IF EXISTS prof_update ON public.profiles;
+CREATE POLICY prof_update ON public.profiles
+  FOR UPDATE TO authenticated
+  USING (
+    ((id = auth.uid()) OR public.is_super_admin(auth.uid()))
+    AND NOT public.is_institutional_read_only_actor(auth.uid())
+  )
+  WITH CHECK (
+    ((id = auth.uid()) OR public.is_super_admin(auth.uid()))
+    AND NOT public.is_institutional_read_only_actor(auth.uid())
+  );
+
+DROP POLICY IF EXISTS al_insert ON public.audit_logs;
+CREATE POLICY al_insert ON public.audit_logs
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    (actor_id = auth.uid())
+    AND (NOT public.is_institutional_viewer(auth.uid()))
+    AND NOT public.is_institutional_read_only_actor(auth.uid())
+  );
+
+-- al_select and every other SELECT policy are intentionally left untouched.
 
 -- 3. Read-only RPCs: keep anon out, keep authenticated EXECUTE ----------------
 REVOKE ALL ON FUNCTION public.resolve_scheduling_headcount(uuid, uuid, uuid, uuid, uuid) FROM PUBLIC, anon;
@@ -141,7 +140,7 @@ BEGIN
   IF NOT (
     public.can_view_college(v_uid, v_instructor.college_id)
     OR public.can_manage_college(v_uid, v_instructor.college_id)
-    OR public.is_institutional_viewer(v_uid)
+    OR public.is_institutional_read_only_actor(v_uid)
   ) THEN
     RAISE EXCEPTION 'insufficient_privilege' USING ERRCODE = '42501';
   END IF;
@@ -228,7 +227,7 @@ BEGIN
   IF NOT (
     public.can_view_college(v_uid, v_dg.college_id)
     OR public.can_manage_college(v_uid, v_dg.college_id)
-    OR public.is_institutional_viewer(v_uid)
+    OR public.is_institutional_read_only_actor(v_uid)
   ) THEN
     RAISE EXCEPTION 'insufficient_privilege' USING ERRCODE = '42501';
   END IF;
@@ -302,7 +301,7 @@ BEGIN
   IF NOT (
     public.can_view_college(v_uid, v_version.college_id)
     OR public.can_manage_college(v_uid, v_version.college_id)
-    OR public.is_institutional_viewer(v_uid)
+    OR public.is_institutional_read_only_actor(v_uid)
   ) THEN
     RAISE EXCEPTION 'insufficient_privilege' USING ERRCODE = '42501';
   END IF;
@@ -469,7 +468,7 @@ BEGIN
   IF NOT (
     public.can_view_college(v_uid, p_college_id)
     OR public.can_manage_college(v_uid, p_college_id)
-    OR public.is_institutional_viewer(v_uid)
+    OR public.is_institutional_read_only_actor(v_uid)
   ) THEN
     RAISE EXCEPTION 'insufficient_privilege' USING ERRCODE = '42501';
   END IF;
@@ -610,12 +609,18 @@ REVOKE ALL ON FUNCTION public.list_teaching_assignment_workspace(uuid, uuid, uui
 GRANT EXECUTE ON FUNCTION public.list_teaching_assignment_workspace(uuid, uuid, uuid, uuid, text, uuid, text, text) TO authenticated, service_role;
 
 -- ROLLBACK ------------------------------------------------------------------
--- DO $do$ DECLARE r record; BEGIN
---   FOR r IN SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
---            WHERE n.nspname = 'public' AND c.relkind = 'r' LOOP
---     EXECUTE format('DROP TRIGGER IF EXISTS trg_deny_institutional_viewer_write ON public.%I', r.relname);
---   END LOOP;
--- END $do$;
--- DROP FUNCTION IF EXISTS public.deny_institutional_viewer_write();
--- Re-create the four read RPCs above without the
--- `OR public.is_institutional_viewer(v_uid)` term in their gate.
+-- -- a) restore the three write policies to their pre-migration definitions
+-- DROP POLICY IF EXISTS prof_insert ON public.profiles;
+-- CREATE POLICY prof_insert ON public.profiles FOR INSERT TO authenticated
+--   WITH CHECK ((id = auth.uid()) OR is_super_admin(auth.uid()));
+-- DROP POLICY IF EXISTS prof_update ON public.profiles;
+-- CREATE POLICY prof_update ON public.profiles FOR UPDATE TO authenticated
+--   USING ((id = auth.uid()) OR is_super_admin(auth.uid()))
+--   WITH CHECK ((id = auth.uid()) OR is_super_admin(auth.uid()));
+-- DROP POLICY IF EXISTS al_insert ON public.audit_logs;
+-- CREATE POLICY al_insert ON public.audit_logs FOR INSERT TO authenticated
+--   WITH CHECK ((actor_id = auth.uid()) AND (NOT is_institutional_viewer(auth.uid())));
+-- -- b) re-create the four read RPCs above without the
+-- --    `OR public.is_institutional_read_only_actor(v_uid)` term in their gate.
+-- -- c) only after (a) and (b) no longer reference it, drop the helper:
+-- DROP FUNCTION IF EXISTS public.is_institutional_read_only_actor(uuid);
