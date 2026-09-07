@@ -293,23 +293,18 @@ function ImportPage() {
         <Card className="p-4">
           <h2 className="mb-3 text-sm font-semibold">الترتيب الرسمي لكيانات الاستيراد</h2>
           <ol className="grid gap-2 text-sm sm:grid-cols-2">
-            {OFFICIAL_IMPORT_ORDER.map((e, i) => {
-              const meta = ENTITIES.find((x) => x.value === e);
-              if (!meta) return null;
-              return (
-                <li key={e} className="flex gap-2 rounded-md border p-2">
-                  <span className="text-xs text-muted-foreground">{i + 1}.</span>
-                  <span>
-                    <span className="font-medium">{meta.label}</span>
-                    {meta.description ? (
-                      <span className="block text-xs text-muted-foreground">
-                        {meta.description}
-                      </span>
-                    ) : null}
-                  </span>
-                </li>
-              );
-            })}
+            {OFFICIAL_IMPORT_ORDER.map((step, i) => (
+              <li key={`${step.step}-${step.label}`} className="flex gap-2 rounded-md border p-2">
+                <span className="text-xs text-muted-foreground">{i + 1}.</span>
+                <span>
+                  <span className="font-medium">{step.label}</span>
+                  {step.notes ? (
+                    <span className="block text-xs text-muted-foreground">{step.notes}</span>
+                  ) : null}
+                </span>
+              </li>
+            ))}
+
           </ol>
         </Card>
       </div>
