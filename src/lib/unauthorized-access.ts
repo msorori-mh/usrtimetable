@@ -42,7 +42,6 @@ export function isInstitutionalReadOnlyViewer(
   return !!me && !me.isSuperAdmin && !me.isCollegeAdmin && !!me.isInstitutionalViewer;
 }
 
-
 /**
  * Resolve access for a page that used to be super_admin-only but is now also
  * readable by the institutional viewer.
