@@ -44,7 +44,7 @@ import { UsrBrandMark } from "@/components/branding/usr-brand-mark";
 import { USR_PLATFORM_NAME_AR, USR_UNIVERSITY_NAME_AR } from "@/lib/branding/usr";
 import { cn } from "@/lib/utils";
 
-type Role = "super_admin" | "college_admin" | "read_only";
+type Role = "super_admin" | "college_admin" | "read_only" | "institutional_viewer";
 
 interface NavItem {
   to: string;
@@ -59,7 +59,7 @@ interface NavGroup {
   items: NavItem[];
 }
 
-const ALL: Role[] = ["super_admin", "college_admin", "read_only"];
+const ALL: Role[] = ["super_admin", "college_admin", "read_only", "institutional_viewer"];
 
 const NAV_GROUPS: NavGroup[] = [
   {
@@ -88,7 +88,7 @@ const NAV_GROUPS: NavGroup[] = [
         to: "/import",
         label: "استيراد البيانات من Excel",
         icon: <FileSpreadsheet className="h-4 w-4" />,
-        roles: ["super_admin", "college_admin"],
+        roles: ["super_admin", "college_admin", "institutional_viewer"],
       },
       {
         to: "/import-history",
@@ -106,7 +106,7 @@ const NAV_GROUPS: NavGroup[] = [
         to: "/data-cleanup",
         label: "تنظيف البيانات",
         icon: <Wrench className="h-4 w-4" />,
-        roles: ["super_admin", "college_admin"],
+        roles: ["super_admin", "college_admin", "institutional_viewer"],
       },
     ],
   },
@@ -118,25 +118,25 @@ const NAV_GROUPS: NavGroup[] = [
         to: "/universities",
         label: "الجامعة",
         icon: <Building2 className="h-4 w-4" />,
-        roles: ["super_admin"],
+        roles: ["super_admin", "institutional_viewer"],
       },
       {
         to: "/colleges",
         label: "الكلّيات",
         icon: <School className="h-4 w-4" />,
-        roles: ["super_admin"],
+        roles: ["super_admin", "institutional_viewer"],
       },
       {
         to: "/my-college",
         label: "كلّيتي",
         icon: <School className="h-4 w-4" />,
-        roles: ["college_admin", "read_only"],
+        roles: ["college_admin", "read_only", "institutional_viewer"],
       },
       {
         to: "/users",
         label: "المستخدمون",
         icon: <Users className="h-4 w-4" />,
-        roles: ["super_admin"],
+        roles: ["super_admin", "institutional_viewer"],
       },
     ],
   },
@@ -307,7 +307,7 @@ const NAV_GROUPS: NavGroup[] = [
         to: "/auto-schedule",
         label: "الجدولة التلقائية",
         icon: <Sparkles className="h-4 w-4" />,
-        roles: ["super_admin", "college_admin"],
+        roles: ["super_admin", "college_admin", "institutional_viewer"],
       },
       {
         to: "/schedule-versions",
@@ -440,7 +440,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   const roleLabel = user?.isSuperAdmin
     ? "Super Admin"
-    : user?.isCollegeAdmin
+    : user?.isInstitutionalViewer
+      ? "مشاهد مؤسسي"
+      : user?.isCollegeAdmin
       ? "مدير كلّية"
       : user?.isReadOnly
         ? "مشاهد"
