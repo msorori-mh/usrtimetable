@@ -31,10 +31,17 @@ export function shouldLoadSuperAdminPageData(access: SuperAdminPageAccess): bool
  * server-side by RLS / RPC checks (can_manage_college was NOT widened).
  */
 export function isInstitutionalReadOnlyViewer(
-  me: { isSuperAdmin?: boolean; isInstitutionalViewer?: boolean } | null | undefined,
+  me:
+    | { isSuperAdmin?: boolean; isCollegeAdmin?: boolean; isInstitutionalViewer?: boolean }
+    | null
+    | undefined,
 ): boolean {
-  return !!me && !me.isSuperAdmin && !!me.isInstitutionalViewer;
+  // Multi-role safety: an existing super_admin / college_admin never loses
+  // behaviour by also carrying institutional_viewer. Mirrors the SQL predicate
+  // in the zero-write trigger guard.
+  return !!me && !me.isSuperAdmin && !me.isCollegeAdmin && !!me.isInstitutionalViewer;
 }
+
 
 /**
  * Resolve access for a page that used to be super_admin-only but is now also
