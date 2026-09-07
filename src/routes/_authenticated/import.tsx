@@ -38,6 +38,10 @@ import {
   type TeachingImportWorkbookMode,
 } from "@/lib/excel-import/teaching-assignments-source-schema";
 import type { SourceResolutionPreview } from "@/lib/excel-import/teaching-assignments-source-resolver";
+import {
+  READ_ONLY_VIEW_BADGE_AR,
+  isInstitutionalReadOnlyViewer,
+} from "@/lib/unauthorized-access";
 
 export const Route = createFileRoute("/_authenticated/import")({
   head: () => ({
@@ -70,6 +74,7 @@ function ImportPage() {
   const { active } = useActiveCollege();
   const canManage = useCanManageActiveCollege();
   const { data: user } = useCurrentUser();
+  const viewOnly = isInstitutionalReadOnlyViewer(user);
   const qc = useQueryClient();
   const [entity, setEntity] = useState<ImportEntity>("academic_terms");
   const [mode, setMode] = useState<ImportMode>("insert_only");
