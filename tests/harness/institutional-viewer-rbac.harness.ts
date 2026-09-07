@@ -186,23 +186,48 @@ assert(
   "import viewer branch contains no upload/commit controls",
 );
 
-// ---------- 7) proposed migration 3: targeted zero-write + read-only RPCs ----
+// ---------- 7) proposed migration 3: minimal, targeted, zero-write ----------
 const zeroWrite = read(
   "docs/migrations-proposed/20260907013500_institutional_viewer_zero_write_enforcement.sql",
 );
 const zwExec = zeroWrite.replace(/^\s*--.*$/gm, "");
 assert(zeroWrite.includes("STATUS: NOT APPLIED"), "migration 3 is documented as not applied");
 
-// no blanket enforcement surface
+// no enforcement layer, no RPC surgery
 assert(
   !/CREATE TRIGGER/i.test(zwExec) && !/DROP TRIGGER/i.test(zwExec),
   "migration 3 creates no trigger at all",
 );
 assert(!/DO \$do\$|DO \$\$/i.test(zwExec), "migration 3 contains no DO loop over tables");
-assert(
-  !/relkind\s*=\s*'r'/.test(zwExec) && !/deny_institutional_viewer_write/.test(zwExec),
-  "the generic per-table guard is gone from the executable SQL",
-);
+{
+  const fns = [...zwExec.matchAll(/CREATE OR REPLACE FUNCTION public\.(\w+)/g)].map((m) => m[1]);
+  assert(
+    fns.length === 1 && fns[0] === "is_institutional_read_only_actor",
+    `the helper is the only function defined (saw: ${fns.join(", ") || "none"})`,
+  );
+  const granted = [...zwExec.matchAll(/GRANT EXECUTE ON FUNCTION public\.(\w+)/g)].map((m) => m[1]);
+  const revoked = [...zwExec.matchAll(/REVOKE ALL ON FUNCTION public\.(\w+)/g)].map((m) => m[1]);
+  assert(
+    granted.length === 1 &&
+      granted[0] === "is_institutional_read_only_actor" &&
+      revoked.length === 1 &&
+      revoked[0] === "is_institutional_read_only_actor",
+    "no RPC is re-granted or re-revoked; only the helper",
+  );
+  for (const rpc of [
+    "compute_instructor_standard_workload",
+    "get_delivery_group_assignment_candidates",
+    "list_schedule_builder_v2_work_items",
+    "list_teaching_assignment_workspace",
+    "resolve_scheduling_headcount",
+    "list_scheduling_headcount_revisions",
+    "validate_schedule_session_move",
+    "begin_schedule_quality_snapshot",
+    "can_manage_college",
+  ]) {
+    assert(!new RegExp(`\\b${rpc}\\b`).test(zwExec), `${rpc} is untouched by executable SQL`);
+  }
+}
 
 // multi-role safe helper
 assert(
@@ -255,103 +280,77 @@ assert(
     "no SELECT policy is dropped (al_select and all reads stay as they are)",
   );
   for (const name of ["prof_insert", "prof_update", "al_insert"]) {
-    const block = zwExec.slice(
-      zwExec.indexOf(`CREATE POLICY ${name} `),
-      zwExec.indexOf(";", zwExec.indexOf(`CREATE POLICY ${name} `)),
-    );
+    const at = zwExec.indexOf(`CREATE POLICY ${name} `);
+    const block = zwExec.slice(at, zwExec.indexOf(";", at));
     assert(
       /AND NOT public\.is_institutional_read_only_actor\(auth\.uid\(\)\)/.test(block),
       `${name} adds the read-only-actor exclusion`,
     );
     const preserved =
       name === "al_insert"
-        ? /actor_id = auth\.uid\(\)[\s\S]*NOT public\.is_institutional_viewer\(auth\.uid\(\)\)/
+        ? /\(actor_id = auth\.uid\(\)\)/
         : /\(id = auth\.uid\(\)\) OR public\.is_super_admin\(auth\.uid\(\)\)/;
-    assert(preserved.test(block), `${name} keeps its original condition verbatim`);
+    assert(preserved.test(block), `${name} keeps its original condition`);
   }
+  // multi-role regression: the blanket viewer ban must be gone from al_insert
+  const alBlock = zwExec.slice(
+    zwExec.indexOf("CREATE POLICY al_insert "),
+    zwExec.indexOf(";", zwExec.indexOf("CREATE POLICY al_insert ")),
+  );
+  assert(
+    !/NOT public\.is_institutional_viewer\(auth\.uid\(\)\)/.test(alBlock),
+    "al_insert drops migration 2's blanket viewer ban so multi-role admins keep audit writes",
+  );
 }
 
-// catalog-audit invariant recorded in the report
+// rollback restores all three and drops the helper last
+{
+  const rb = zeroWrite.slice(zeroWrite.indexOf("-- ROLLBACK"));
+  for (const frag of [
+    "CREATE POLICY prof_insert",
+    "CREATE POLICY prof_update",
+    "WITH CHECK (actor_id = auth.uid())",
+    "DROP FUNCTION IF EXISTS public.is_institutional_read_only_actor(uuid)",
+  ]) {
+    assert(rb.includes(frag), `rollback covers: ${frag}`);
+  }
+  assert(
+    rb.indexOf("DROP FUNCTION IF EXISTS public.is_institutional_read_only_actor") >
+      rb.indexOf("CREATE POLICY al_insert"),
+    "rollback drops the helper only after the policies stop referencing it",
+  );
+}
+
+// documented invariants that justify the reduced scope
 {
   const report = read("docs/INSTITUTIONAL-VIEWER-RBAC-SOURCE-ONLY-01.md");
   assert(
     /175 write polic/i.test(report) &&
-      /can_manage_college|is_super_admin/.test(report) &&
       /prof_insert[\s\S]{0,400}prof_update[\s\S]{0,400}al_insert/.test(report),
     "report records the 175-policy audit and names the only three self-service exceptions",
   );
-}
-
-assert(
-  !/CREATE OR REPLACE FUNCTION public\.can_manage_college\b/.test(zeroWrite) &&
-    !/DROP FUNCTION[^\n]*can_manage_college/.test(zeroWrite),
-  "migration 3 never redefines can_manage_college",
-);
-{
-  const granted = [...zwExec.matchAll(/GRANT EXECUTE ON FUNCTION public\.(\w+)/g)].map((m) => m[1]);
-  const allowed = [
-    "is_institutional_read_only_actor",
-    "resolve_scheduling_headcount",
-    "list_scheduling_headcount_revisions",
+  for (const fn of [
     "compute_instructor_standard_workload",
     "get_delivery_group_assignment_candidates",
     "list_schedule_builder_v2_work_items",
     "list_teaching_assignment_workspace",
-  ];
-  assert(
-    granted.length > 0 && granted.every((fn) => allowed.includes(fn)),
-    `only the helper and proven read-only RPCs are granted (saw: ${granted.join(", ") || "none"})`,
-  );
-  assert(
-    !/GRANT EXECUTE ON FUNCTION public\.\w+\([^)]*\) TO [^;]*anon/.test(zwExec) &&
-      /REVOKE ALL ON FUNCTION public\.resolve_scheduling_headcount/.test(zwExec),
-    "anon keeps no EXECUTE on the read-only RPCs",
-  );
-}
-assert(
-  rlsMigration.includes("NOT is_institutional_viewer(auth.uid())"),
-  "audit_logs INSERT stays denied for the viewer at the policy layer too",
-);
-
-// ---------- 8) the four re-created read RPCs are pure reads ----------
-{
-  const readOnlyRpcs = [
-    "compute_instructor_standard_workload",
-    "get_delivery_group_assignment_candidates",
-    "list_schedule_builder_v2_work_items",
-    "list_teaching_assignment_workspace",
-  ];
-  for (const fn of readOnlyRpcs) {
-    const at = zeroWrite.indexOf(`CREATE OR REPLACE FUNCTION public.${fn}(`);
-    assert(at > 0, `${fn} is re-created in the proposed migration`);
-    const body = zeroWrite.slice(at, zeroWrite.indexOf("$function$;", at));
-    const executable = body.replace(/^\s*--.*$/gm, "");
-    assert(
-      !/\b(INSERT\s+INTO|UPDATE\s+public\.|DELETE\s+FROM|TRUNCATE)\b/i.test(executable),
-      `${fn} body contains no INSERT/UPDATE/DELETE/TRUNCATE`,
-    );
-    assert(/\bSTABLE\b/.test(executable), `${fn} stays declared STABLE (no write path)`);
-    assert(
-      /public\.can_view_college\(v_uid, [^)]+\)\s*\n\s*OR public\.can_manage_college\([^)]+\)\s*\n\s*OR public\.is_institutional_read_only_actor\(v_uid\)/.test(
-        executable,
-      ),
-      `${fn} read gate is consistently can_view_college / can_manage_college / read-only actor`,
-    );
-    if (fn !== "compute_instructor_standard_workload") {
-      assert(
-        /'can_manage', public\.can_manage_college|'assignable',[\s\S]*can_manage_college/.test(
-          body,
-        ),
-        `${fn} keeps its write-affordance flag on can_manage_college`,
-      );
-    }
+  ]) {
+    assert(report.includes(fn), `report names the read RPC ${fn}`);
   }
+  assert(
+    /can_view_college[\s\S]{0,600}already[\s\S]{0,200}(pass|include)/i.test(report),
+    "report documents that the four read gates already pass through can_view_college",
+  );
+  assert(
+    /can_manage_college[\s\S]{0,200}('can_manage'|write-affordance)/.test(report),
+    "report documents that can_manage_college survives only as a write-affordance flag",
+  );
 }
 assert(
-  !/CREATE OR REPLACE FUNCTION public\.(validate_schedule_session_move|begin_schedule_quality_snapshot)\b/.test(
-    zeroWrite,
+  /CREATE OR REPLACE FUNCTION public\.can_view_college[\s\S]*is_institutional_viewer/.test(
+    rlsMigration,
   ),
-  "mutation-preflight RPCs are left untouched",
+  "migration 2 (applied) is what makes the viewer pass can_view_college",
 );
 
 if (failures > 0) {
