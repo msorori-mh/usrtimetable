@@ -37,6 +37,7 @@ async function fetchCurrentUser(): Promise<CurrentUser | null> {
     isSuperAdmin: roles.includes("super_admin"),
     isCollegeAdmin: roles.includes("college_admin"),
     isReadOnly: roles.includes("read_only"),
+    isInstitutionalViewer: roles.includes("institutional_viewer"),
   };
 }
 
