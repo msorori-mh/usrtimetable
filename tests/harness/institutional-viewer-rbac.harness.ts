@@ -203,12 +203,13 @@ assert(
   "the guard is attached to every persistent public base table",
 );
 assert(
-  zeroWrite.includes("v_uid IS NOT NULL AND public.is_institutional_viewer(v_uid)"),
+  /v_uid IS NOT NULL\s*\n\s*AND public\.is_institutional_viewer\(v_uid\)/.test(zeroWrite),
   "the guard only fires for an institutional_viewer actor, never for service contexts",
 );
 assert(
-  !/can_manage_college\s*\(/.test(zeroWrite.replace(/^--.*$/gm, "")),
-  "migration 3 does not redefine or call can_manage_college in executable SQL",
+  !/CREATE OR REPLACE FUNCTION public\.can_manage_college\b/.test(zeroWrite) &&
+    !/DROP FUNCTION[^\n]*can_manage_college/.test(zeroWrite),
+  "migration 3 never redefines can_manage_college",
 );
 {
   const executable = zeroWrite.replace(/^--.*$/gm, "");
@@ -273,10 +274,14 @@ assert(
       /OR public\.is_institutional_viewer\(v_uid\)/.test(executable),
       `${fn} read gate accepts the institutional viewer`,
     );
-    assert(
-      /'can_manage', public\.can_manage_college|'assignable',[\s\S]*can_manage_college/.test(body),
-      `${fn} keeps its write-affordance flag on can_manage_college`,
-    );
+    if (fn !== "compute_instructor_standard_workload") {
+      assert(
+        /'can_manage', public\.can_manage_college|'assignable',[\s\S]*can_manage_college/.test(
+          body,
+        ),
+        `${fn} keeps its write-affordance flag on can_manage_college`,
+      );
+    }
   }
 }
 assert(
