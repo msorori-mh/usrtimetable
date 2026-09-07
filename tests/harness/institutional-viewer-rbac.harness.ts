@@ -186,6 +186,55 @@ assert(
   "import viewer branch contains no upload/commit controls",
 );
 
+// ---------- 7) proposed migration 3: zero-write + read-only RPC allowlist ----------
+const zeroWrite = read(
+  "docs/migrations-proposed/20260907013500_institutional_viewer_zero_write_enforcement.sql",
+);
+assert(zeroWrite.includes("STATUS: NOT APPLIED"), "migration 3 is documented as not applied");
+assert(
+  /CREATE OR REPLACE FUNCTION public\.deny_institutional_viewer_write/.test(zeroWrite) &&
+    zeroWrite.includes("INSTITUTIONAL_VIEWER_IS_READ_ONLY") &&
+    zeroWrite.includes("42501"),
+  "migration 3 defines the zero-write trigger guard raising 42501",
+);
+assert(
+  /BEFORE INSERT OR UPDATE OR DELETE ON public\.%I/.test(zeroWrite) &&
+    zeroWrite.includes("relkind = 'r'"),
+  "the guard is attached to every persistent public base table",
+);
+assert(
+  zeroWrite.includes("v_uid IS NOT NULL AND public.is_institutional_viewer(v_uid)"),
+  "the guard only fires for an institutional_viewer actor, never for service contexts",
+);
+assert(
+  !/can_manage_college\s*\(/.test(zeroWrite.replace(/^--.*$/gm, "")),
+  "migration 3 does not redefine or call can_manage_college in executable SQL",
+);
+{
+  const executable = zeroWrite.replace(/^--.*$/gm, "");
+  const granted = [...executable.matchAll(/GRANT EXECUTE ON FUNCTION public\.(\w+)/g)].map(
+    (m) => m[1],
+  );
+  const allowed = [
+    "deny_institutional_viewer_write",
+    "resolve_scheduling_headcount",
+    "list_scheduling_headcount_revisions",
+  ];
+  assert(
+    granted.length > 0 && granted.every((fn) => allowed.includes(fn)),
+    `only proven read-only RPCs are granted (saw: ${granted.join(", ") || "none"})`,
+  );
+  assert(
+    !/GRANT EXECUTE ON FUNCTION public\.\w+\([^)]*\) TO [^;]*anon/.test(executable) &&
+      /REVOKE ALL ON FUNCTION public\.resolve_scheduling_headcount/.test(executable),
+    "anon keeps no EXECUTE on the read-only RPCs",
+  );
+}
+assert(
+  rlsMigration.includes("NOT is_institutional_viewer(auth.uid())"),
+  "audit_logs INSERT stays denied for the viewer at the policy layer too",
+);
+
 if (failures > 0) {
   console.error(`institutional-viewer-rbac.harness.ts: FAIL (${failures})`);
   process.exit(1);
