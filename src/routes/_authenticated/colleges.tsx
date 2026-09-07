@@ -73,7 +73,9 @@ function CollegesPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (user && !user.isSuperAdmin) throw redirect({ to: "/dashboard" });
+  if (user && !user.isSuperAdmin && !user.isInstitutionalViewer) throw redirect({ to: "/dashboard" });
+  const canEdit = !!user?.isSuperAdmin;
+  const viewOnly = isInstitutionalReadOnlyViewer(user);
 
   return (
     <div className="mx-auto max-w-5xl">
