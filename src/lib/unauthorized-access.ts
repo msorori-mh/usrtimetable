@@ -26,6 +26,32 @@ export function shouldLoadSuperAdminPageData(access: SuperAdminPageAccess): bool
 }
 
 /**
+ * Institution-wide read-only viewer: may OPEN every page (including super_admin-only
+ * ones) but must never see a write control. This is UX only — every write is denied
+ * server-side by RLS / RPC checks (can_manage_college was NOT widened).
+ */
+export function isInstitutionalReadOnlyViewer(
+  me: { isSuperAdmin?: boolean; isInstitutionalViewer?: boolean } | null | undefined,
+): boolean {
+  return !!me && !me.isSuperAdmin && !!me.isInstitutionalViewer;
+}
+
+/**
+ * Resolve access for a page that used to be super_admin-only but is now also
+ * readable by the institutional viewer.
+ */
+export function resolveAdminReadablePageAccess(
+  me: { isSuperAdmin: boolean; isInstitutionalViewer?: boolean } | null | undefined,
+  isLoading: boolean,
+): SuperAdminPageAccess {
+  if (isLoading || me === undefined) return "loading";
+  if (me === null || (!me.isSuperAdmin && !me.isInstitutionalViewer)) return "forbidden";
+  return "allowed";
+}
+
+export const READ_ONLY_VIEW_BADGE_AR = "عرض فقط — لا تملك صلاحية التعديل";
+
+/**
  * Root / shared error UI must not treat arbitrary runtime errors as permission denials.
  * Only explicit forbidden access states map to the unauthorized message.
  */
