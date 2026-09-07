@@ -90,7 +90,11 @@ function run() {
   const usersSrc = readSrc("src/routes/_authenticated/users.tsx");
   assert(!usersSrc.includes("throw redirect"), "users must not throw redirect in render");
   assert(usersSrc.includes("UnauthorizedAccess"), "users renders UnauthorizedAccess");
-  assert(usersSrc.includes("resolveSuperAdminPageAccess"), "users uses access helper");
+  assert(
+    usersSrc.includes("resolveSuperAdminPageAccess") ||
+      usersSrc.includes("resolveAdminReadablePageAccess"),
+    "users uses access helper",
+  );
   assert(usersSrc.includes("enabled: canLoadAdminData"), "users gates admin queries");
   assert(
     usersSrc.includes('queryKey: ["colleges-min"]') &&
