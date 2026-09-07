@@ -190,10 +190,7 @@ assert(
 const zeroWrite = read(
   "docs/migrations-proposed/20260907013500_institutional_viewer_zero_write_enforcement.sql",
 );
-assert(
-  zeroWrite.includes("STATUS: NOT APPLIED"),
-  "migration 3 is documented as not applied",
-);
+assert(zeroWrite.includes("STATUS: NOT APPLIED"), "migration 3 is documented as not applied");
 assert(
   /CREATE OR REPLACE FUNCTION public\.deny_institutional_viewer_write/.test(zeroWrite) &&
     zeroWrite.includes("INSTITUTIONAL_VIEWER_IS_READ_ONLY") &&
@@ -234,10 +231,9 @@ assert(
   );
 }
 assert(
-  migration2.includes("NOT is_institutional_viewer(auth.uid())"),
+  rlsMigration.includes("NOT is_institutional_viewer(auth.uid())"),
   "audit_logs INSERT stays denied for the viewer at the policy layer too",
 );
-
 
 if (failures > 0) {
   console.error(`institutional-viewer-rbac.harness.ts: FAIL (${failures})`);
