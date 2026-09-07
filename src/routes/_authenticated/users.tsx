@@ -605,7 +605,10 @@ function CreateUserDialog({
       toast.error("الاسم، البريد، وكلمة مرور لا تقل عن 8 أحرف مطلوبة");
       return;
     }
-    if (form.role !== "super_admin" && form.college_ids.length === 0) {
+    if (
+      (form.role === "college_admin" || form.role === "read_only") &&
+      form.college_ids.length === 0
+    ) {
       toast.error("يجب إسناد كلّية واحدة على الأقل لهذا الدور");
       return;
     }
@@ -706,7 +709,7 @@ function CreateUserDialog({
             </Select>
             <p className="mt-1 text-[11px] text-muted-foreground">{ROLE_HINTS[form.role]}</p>
           </div>
-          {form.role !== "super_admin" && (
+          {form.role !== "super_admin" && form.role !== "institutional_viewer" && (
             <div>
               <Label>
                 الكلّيات المُسندة <span className="text-destructive">*</span>
