@@ -89,7 +89,8 @@ assert(!auto.includes("runGreedyAutoSchedule"), "no Legacy greedy from route");
 // ---------- 5) read_only cannot run ----------
 assert(
   layout.includes('to: "/auto-schedule"') &&
-    layout.includes('roles: ["super_admin", "college_admin"]'),
+    (layout.includes('roles: ["super_admin", "college_admin"]') ||
+      layout.includes('roles: ["super_admin", "college_admin", "institutional_viewer"]')),
   "auto-schedule nav hidden from read_only",
 );
 assert(
