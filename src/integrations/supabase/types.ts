@@ -3948,6 +3948,7 @@ export type Database = {
         }
         Returns: Json
       }
+      purge_all_academic_operational_data: { Args: never; Returns: Json }
       purge_disposable_draft_schedule_version: {
         Args: { p_version_id: string }
         Returns: Json
