@@ -219,6 +219,10 @@ assert(
     "deny_institutional_viewer_write",
     "resolve_scheduling_headcount",
     "list_scheduling_headcount_revisions",
+    "compute_instructor_standard_workload",
+    "get_delivery_group_assignment_candidates",
+    "list_schedule_builder_v2_work_items",
+    "list_teaching_assignment_workspace",
   ];
   assert(
     granted.length > 0 && granted.every((fn) => allowed.includes(fn)),
@@ -233,6 +237,53 @@ assert(
 assert(
   rlsMigration.includes("NOT is_institutional_viewer(auth.uid())"),
   "audit_logs INSERT stays denied for the viewer at the policy layer too",
+);
+
+// ---------- 8) multi-role safety + read-only RPC bodies ----------
+assert(
+  /public\.is_institutional_viewer\(v_uid\)\s*\n\s*AND NOT public\.is_super_admin\(v_uid\)\s*\n\s*AND NOT public\.has_role\(v_uid, 'college_admin'::public\.app_role\)/.test(
+    zeroWrite,
+  ),
+  "zero-write trigger fires only for a viewer who is neither super_admin nor college_admin",
+);
+{
+  const helperSrc = read("src/lib/unauthorized-access.ts");
+  assert(
+    /!me\.isSuperAdmin && !me\.isCollegeAdmin && !!me\.isInstitutionalViewer/.test(helperSrc),
+    "isInstitutionalReadOnlyViewer mirrors the SQL multi-role predicate",
+  );
+}
+{
+  const readOnlyRpcs = [
+    "compute_instructor_standard_workload",
+    "get_delivery_group_assignment_candidates",
+    "list_schedule_builder_v2_work_items",
+    "list_teaching_assignment_workspace",
+  ];
+  for (const fn of readOnlyRpcs) {
+    const start = zeroWrite.indexOf(`CREATE OR REPLACE FUNCTION public.${fn}(`);
+    assert(start > 0, `${fn} is re-created in the proposed migration`);
+    const body = zeroWrite.slice(start, zeroWrite.indexOf("$function$;", start));
+    const executable = body.replace(/^\s*--.*$/gm, "");
+    assert(
+      !/\b(INSERT\s+INTO|UPDATE\s+public\.|DELETE\s+FROM|TRUNCATE)\b/i.test(executable),
+      `${fn} body contains no INSERT/UPDATE/DELETE/TRUNCATE`,
+    );
+    assert(
+      /OR public\.is_institutional_viewer\(v_uid\)/.test(executable),
+      `${fn} read gate accepts the institutional viewer`,
+    );
+    assert(
+      /'can_manage', public\.can_manage_college|'assignable',[\s\S]*can_manage_college/.test(body),
+      `${fn} keeps its write-affordance flag on can_manage_college`,
+    );
+  }
+}
+assert(
+  !/CREATE OR REPLACE FUNCTION public\.(validate_schedule_session_move|begin_schedule_quality_snapshot|can_manage_college)\b/.test(
+    zeroWrite,
+  ),
+  "mutation-preflight RPCs and can_manage_college are left untouched",
 );
 
 if (failures > 0) {
