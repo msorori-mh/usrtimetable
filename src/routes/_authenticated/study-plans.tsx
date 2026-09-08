@@ -23,7 +23,7 @@ export const Route = createFileRoute("/_authenticated/study-plans")({
 });
 
 interface Plan { id: string; name: string; code: string; version: string; program_id: string; effective_year: number | null; is_active: boolean; college_id: string }
-interface Program { id: string; name: string; department_id: string | null }
+interface Program { id: string; name: string; department_id: string | null; duration_years: number }
 interface Department { id: string; name: string }
 
 const ALL = "__all__";
