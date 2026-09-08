@@ -274,6 +274,46 @@ export function PlanCoursesManager({
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const updatePlanCourse = useMutation({
+    mutationFn: async () => {
+      if (!editRow) throw new Error("لا يوجد سجل للتعديل.");
+      const row = (planCourses ?? []).find((p) => p.id === editRow.id);
+      if (!row) throw new Error("السجل غير موجود.");
+      const scope = planCourseUpdateScope(ctx, row);
+      if ("ok" in scope) throw new Error(scope.messageAr);
+      const nextForm: PlanCourseForm = {
+        course_id: row.course_id,
+        level_id: editRow.level_id,
+        semester: editRow.semester,
+        is_required: editRow.is_required,
+      };
+      const check = validatePlanCourseForm({
+        ctx,
+        form: nextForm,
+        courses: courses ?? [],
+        levels: levels ?? [],
+        existing: planCourses ?? [],
+        editingId: row.id,
+      });
+      if (!check.ok) throw new Error(check.messageAr);
+      const { error } = await supabase
+        .from("plan_courses")
+        .update(buildPlanCourseUpdate(nextForm))
+        .eq("id", scope.id)
+        .eq("college_id", scope.collegeId)
+        .eq("study_plan_id", scope.studyPlanId);
+      if (error) throw error;
+      await logAudit({ action: "update", entity: "plan_courses", entityId: row.id, collegeId });
+    },
+    onSuccess: () => {
+      toast.success("تم تحديث مقرر الخطة");
+      setEditRow(null);
+      invalidate();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
   const deletePlanCourse = useMutation({
     mutationFn: async (planCourseId: string) => {
       const componentIds = (componentsByPlanCourse.get(planCourseId) ?? []).map((c) => c.id);
