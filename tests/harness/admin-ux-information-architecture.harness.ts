@@ -21,15 +21,13 @@ const cleanup = read("src/routes/_authenticated/data-cleanup.tsx");
 /* ---------------------------------------------------------------- 1. roles */
 // Role matrix must stay byte-identical in intent to the pre-phase navigation:
 // only these four roles exist, and the restricted entries keep their scope.
-const roleTuples = [...navSrc.matchAll(/roles:\s*(\[[^\]]*\]|ALL_ROLES|WRITERS)/g)].map(
-  (m) => m[1],
-);
+const roleTuples = [...navSrc.matchAll(/roles:\s*(\[[^\]]*\]|ALL)/g)].map((m) => m[1]);
 assert.ok(
   roleTuples.length > 30,
   `expected role declarations on every page, got ${roleTuples.length}`,
 );
 for (const t of roleTuples) {
-  if (t === "ALL_ROLES" || t === "WRITERS") continue;
+  if (t === "ALL") continue;
   for (const role of t.match(/"([a-z_]+)"/g) ?? []) {
     assert.ok(
       ["super_admin", "college_admin", "read_only", "institutional_viewer"].includes(
