@@ -753,13 +753,35 @@ export function PlanCoursesManager({
                               : ""}
                           </span>
                           {canManage && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => deleteComponent.mutate(c.id)}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
+                            <span className="flex shrink-0 gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                data-testid={`plan-component-edit-${c.id}`}
+                                onClick={() => {
+                                  setComponentForm({
+                                    component_type: c.component_type,
+                                    weekly_contact_hours: c.weekly_contact_hours,
+                                    required_room_type_id: c.required_room_type_id,
+                                    is_timetabled: c.is_timetabled,
+                                    counts_toward_regular_load: c.counts_toward_regular_load,
+                                    counts_toward_overtime: c.counts_toward_overtime,
+                                    compensation_mode: c.compensation_mode,
+                                    explicit_group_size: c.explicit_group_size,
+                                  });
+                                  setComponentTarget({ planCourseId: row.id, componentId: c.id });
+                                }}
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => deleteComponent.mutate(c.id)}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </span>
                           )}
                         </li>
                       ))
@@ -767,7 +789,8 @@ export function PlanCoursesManager({
                   </ul>
 
                   {canManage &&
-                    (componentTarget === row.id ? (
+                    (componentTarget?.planCourseId === row.id ? (
+
                       <div className="mt-2 grid grid-cols-1 gap-2 rounded border border-border p-2 sm:grid-cols-2">
                         <div>
                           <Label className="text-xs">نوع المكوّن</Label>
