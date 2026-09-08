@@ -12,14 +12,14 @@ E2E الإنتاجي أظهر أن `/study-plans` لا يوفر أي واجهة 
 
 ## الملفات
 
-| الملف | التغيير |
-| --- | --- |
-| `src/lib/academic-delivery/plan-course-editor.ts` | جديد — تحقق نقي وبناء الحمولات: scoping الكلية/البرنامج/الخطة، الفصل 1/2، منع التكرار، حقول المكوّنات، توليد من ساعات المقرر عبر `derivePlanCourseComponents`، ترتيب الحذف، تحقق المستوى، مفاتيح إبطال الجاهزية. |
-| `src/components/study-plans/plan-courses-manager.tsx` | جديد — لوحة `Sheet` بعنوان «إدارة مقررات الخطة»: عرض المقررات (المقرر/المستوى/الفصل/إلزامي/المكوّنات)، CRUD لـ `plan_courses` و`plan_course_components`، زر «توليد من ساعات المقرر»، إضافة مستوى سريعة عند غياب `academic_levels`. |
-| `src/routes/_authenticated/study-plans.tsx` | تركيب اللوحة لكل خطة + تحميل `duration_years` للبرنامج + صف متوافق مع الجوال. |
-| `src/lib/data-onboarding/classify.ts` | رابط «أصلح الآن» للحاجز أصبح «أصلح الآن — إدارة مقررات الخطة» نحو `/study-plans`. |
-| `tests/harness/plan-course-components-ui-e2e-fix.harness.ts` | جديد — 12 مجموعة تأكيدات. |
-| `tests/harness/run.mjs` | تسجيل الـ harness الجديد. |
+| الملف                                                        | التغيير                                                                                                                                                                                                                            |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/academic-delivery/plan-course-editor.ts`            | جديد — تحقق نقي وبناء الحمولات: scoping الكلية/البرنامج/الخطة، الفصل 1/2، منع التكرار، حقول المكوّنات، توليد من ساعات المقرر عبر `derivePlanCourseComponents`، ترتيب الحذف، تحقق المستوى، مفاتيح إبطال الجاهزية.                   |
+| `src/components/study-plans/plan-courses-manager.tsx`        | جديد — لوحة `Sheet` بعنوان «إدارة مقررات الخطة»: عرض المقررات (المقرر/المستوى/الفصل/إلزامي/المكوّنات)، CRUD لـ `plan_courses` و`plan_course_components`، زر «توليد من ساعات المقرر»، إضافة مستوى سريعة عند غياب `academic_levels`. |
+| `src/routes/_authenticated/study-plans.tsx`                  | تركيب اللوحة لكل خطة + تحميل `duration_years` للبرنامج + صف متوافق مع الجوال.                                                                                                                                                      |
+| `src/lib/data-onboarding/classify.ts`                        | رابط «أصلح الآن» للحاجز أصبح «أصلح الآن — إدارة مقررات الخطة» نحو `/study-plans`.                                                                                                                                                  |
+| `tests/harness/plan-course-components-ui-e2e-fix.harness.ts` | جديد — 12 مجموعة تأكيدات.                                                                                                                                                                                                          |
+| `tests/harness/run.mjs`                                      | تسجيل الـ harness الجديد.                                                                                                                                                                                                          |
 
 ## القرارات
 
@@ -38,14 +38,14 @@ E2E الإنتاجي أظهر أن `/study-plans` لا يوفر أي واجهة 
 
 ## البوابات
 
-| البوابة | النتيجة |
-| --- | --- |
-| prettier (الملفات المعدلة فقط) | PASS |
-| `bunx tsgo --noEmit` | PASS |
-| eslint مركز على الملفات المعدلة | PASS (0 مشاكل) |
-| `bun test` | PASS — 66/66 |
-| harness suite | PASS — 67 passed, 0 failed |
-| build | PASS (`build OK`) |
+| البوابة                         | النتيجة                    |
+| ------------------------------- | -------------------------- |
+| prettier (الملفات المعدلة فقط)  | PASS                       |
+| `bunx tsgo --noEmit`            | PASS                       |
+| eslint مركز على الملفات المعدلة | PASS (0 مشاكل)             |
+| `bun test`                      | PASS — 66/66               |
+| harness suite                   | PASS — 67 passed, 0 failed |
+| build                           | PASS (`build OK`)          |
 
 ## ثبات DB / RBAC
 
@@ -58,3 +58,46 @@ E2E الإنتاجي أظهر أن `/study-plans` لا يوفر أي واجهة 
 ## الحالة
 
 PASS.
+
+---
+
+## 01B — إكمال CRUD الحقيقي (SOURCE_ONLY_PLAN_COURSE_COMPONENTS_UI_E2E_FIX_01B)
+
+Baseline: `3319ffab244b99488c5dd21fbf969085ddc8285d` (مطابق قبل أي كتابة).
+
+### الفجوة التي عالجتها المراجعة
+
+- `plan_courses`: كان يوجد toggle لـ`is_required` فقط، دون تعديل `level_id` أو `semester`.
+- `plan_course_components`: كان يوجد add/delete فقط، دون تعديل الحقول.
+
+### ما أُضيف
+
+- `src/lib/academic-delivery/plan-course-editor.ts`
+  - `buildPlanCourseUpdate` — يعيد `level_id` و`semester` و`is_required` فقط؛ `course_id` و`study_plan_id` و`college_id` غير قابلة للتعديل بعد الإنشاء.
+  - `planCourseUpdateScope` — fail-closed: يرفض أي سجل خارج الكلية النشطة أو خارج الخطة.
+  - `buildComponentUpdate` — كل الحقول التشغيلية الثمانية، دون `college_id` أو `plan_course_id`.
+  - `componentUpdateScope` — يرفض أي مكوّن لا ينتمي إلى مقررات هذه الخطة.
+  - `validateComponentForm` — منع تكرار `component_type` داخل نفس `plan_course` (`COMPONENT_TYPE_DUPLICATE`) مع استثناء السجل الجاري تعديله.
+- `src/components/study-plans/plan-courses-manager.tsx`
+  - زر «تعديل» لكل مقرر خطة + نموذج (المستوى المقيّد ببرنامج الخطة والكلية، الفصل 1/2، إلزامي) ومحصور بـ`canManage`.
+  - زر «تعديل» لكل مكوّن يعيد استخدام نفس اللوحة بكل الحقول التشغيلية مع زر «حفظ التعديل».
+  - `plan_courses.update` مقيّد بـ`id` + `college_id` + `study_plan_id`؛ `plan_course_components.update` مقيّد بـ`id` + `college_id` + `plan_course_id`.
+  - create/read/delete/toggle والتوليد بلا تغيير سلوكي؛ RTL والجوال وinvalidation الجاهزية كما هي.
+- `tests/harness/plan-course-components-ui-e2e-fix.harness.ts` — مجموعات 13–15: حمولات التحديث، ثبات الحقول غير القابلة للتعديل، scoping fail-closed، منع التكرار، تحقق المستوى والفصل، نوع القاعة الأجنبي، ووجود أزرار/نماذج التعديل في الواجهة.
+
+### البوابات (01B)
+
+| البوابة                          | النتيجة                    |
+| -------------------------------- | -------------------------- |
+| prettier (الملفات المعدلة فقط)   | PASS                       |
+| typecheck (`bunx tsgo --noEmit`) | PASS                       |
+| lint مركز                        | PASS                       |
+| `bun test`                       | PASS — 66/66               |
+| harness suite                    | PASS — 67 passed, 0 failed |
+| build                            | PASS (build OK)            |
+
+### الثبات
+
+لا SQL، لا migrations، لا تغيير schema/RLS/RPC/auth، لا نشر، ولا كتابة بيانات إنتاجية أو TEST_ONLY بواسطة العامل.
+
+الحالة: **PASS**
