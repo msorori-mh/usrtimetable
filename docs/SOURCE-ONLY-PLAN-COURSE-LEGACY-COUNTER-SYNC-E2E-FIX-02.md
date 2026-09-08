@@ -9,14 +9,14 @@ No SQL, no migration, no schema/RLS/RBAC/auth change, no publish, no production 
 are still the scheduling source for downstream code, while the new model writes
 `plan_course_components` only. Repo consumers (read-only unless noted):
 
-| File | Role |
-| --- | --- |
-| `src/lib/reports/readiness.ts:210,294-320` | readiness metrics incl. blocker "بدون عدد محاضرات أسبوعية" |
-| `src/routes/_authenticated/data-readiness.tsx:180,260-277` | same metrics in the readiness page |
-| `src/routes/_authenticated/data-cleanup.tsx:111,323-330,841-843` | flags rows with zero counters / missing durations / room types |
-| `src/lib/auto-scheduler/greedy.ts:237-252,426-441` | expands `n` sessions × `duration` hours into sessions |
-| `src/lib/excel-import/templates.ts`, `validators.ts`, `src/lib/data-templates/catalog.ts` | import templates still carry the four columns |
-| `src/components/study-plans/plan-courses-manager.tsx` | **only writer in the app** (this fix) |
+| File                                                                                      | Role                                                           |
+| ----------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `src/lib/reports/readiness.ts:210,294-320`                                                | readiness metrics incl. blocker "بدون عدد محاضرات أسبوعية"     |
+| `src/routes/_authenticated/data-readiness.tsx:180,260-277`                                | same metrics in the readiness page                             |
+| `src/routes/_authenticated/data-cleanup.tsx:111,323-330,841-843`                          | flags rows with zero counters / missing durations / room types |
+| `src/lib/auto-scheduler/greedy.ts:237-252,426-441`                                        | expands `n` sessions × `duration` hours into sessions          |
+| `src/lib/excel-import/templates.ts`, `validators.ts`, `src/lib/data-templates/catalog.ts` | import templates still carry the four columns                  |
+| `src/components/study-plans/plan-courses-manager.tsx`                                     | **only writer in the app** (this fix)                          |
 
 Evidence of the blocker: for `TEST-E2E-C101` the UI created theory 2h + practical 2h components
 while `lectures_per_week`/`labs_per_week` stayed at their DB defaults (0), so readiness stayed at 30 %.
