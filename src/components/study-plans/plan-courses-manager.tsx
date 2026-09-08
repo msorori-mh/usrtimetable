@@ -6,7 +6,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Layers, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
+import { Layers, Pencil, Plus, RefreshCw, Sparkles, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { logAudit } from "@/lib/audit";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,10 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import {
   buildComponentInsert,
   buildComponentUpdate,
+  buildLegacyCounterUpdate,
+  countersDiffer,
+  deriveLegacyCounters,
+  LEGACY_SYNC_PARTIAL_ERROR_AR,
   buildLevelInsert,
   buildPlanCourseInsert,
   buildPlanCourseUpdate,
@@ -45,6 +49,7 @@ import {
   type ExistingPlanCourse,
   type LevelOption,
   type PlanContext,
+  type LegacyCounters,
   type PlanCourseForm,
   type RoomTypeOption,
 } from "@/lib/academic-delivery/plan-course-editor";
@@ -161,12 +166,14 @@ export function PlanCoursesManager({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("plan_courses")
-        .select("id, course_id, level_id, semester, is_required, study_plan_id, college_id")
+        .select(
+          "id, course_id, level_id, semester, is_required, study_plan_id, college_id, lectures_per_week, lecture_session_duration, labs_per_week, lab_session_duration",
+        )
         .eq("college_id", collegeId)
         .eq("study_plan_id", plan.id)
         .order("semester");
       if (error) throw error;
-      return (data ?? []) as (ExistingPlanCourse & { is_required: boolean })[];
+      return (data ?? []) as (ExistingPlanCourse & { is_required: boolean } & LegacyCounters)[];
     },
   });
 
@@ -193,6 +200,47 @@ export function PlanCoursesManager({
       qc.invalidateQueries({ queryKey: [key] });
     }
   };
+
+  /**
+   * E2E FIX 02 — keep legacy plan_courses scheduling counters in sync with the
+   * component rows. Reads the components back from the DB (post-write truth),
+   * then writes only the four legacy columns, scoped by id + college + plan.
+   */
+  const syncLegacyCounters = async (planCourseId: string) => {
+    const row = (planCourses ?? []).find((p) => p.id === planCourseId);
+    const scope = row ? planCourseUpdateScope(ctx, row) : null;
+    if (!row || !scope || "ok" in scope) {
+      throw new Error("السجل لا ينتمي إلى هذه الخطة أو الكلية النشطة.");
+    }
+    const { data, error } = await supabase
+      .from("plan_course_components")
+      .select("component_type, weekly_contact_hours, is_timetabled")
+      .eq("college_id", collegeId)
+      .eq("plan_course_id", planCourseId);
+    if (error) throw new Error(LEGACY_SYNC_PARTIAL_ERROR_AR);
+    const next = deriveLegacyCounters(data ?? [], row);
+    if (!countersDiffer(row, next)) return next;
+    const res = await supabase
+      .from("plan_courses")
+      .update(buildLegacyCounterUpdate(next))
+      .eq("id", scope.id)
+      .eq("college_id", scope.collegeId)
+      .eq("study_plan_id", scope.studyPlanId);
+    if (res.error) throw new Error(LEGACY_SYNC_PARTIAL_ERROR_AR);
+    return next;
+  };
+
+  const syncCounters = useMutation({
+    mutationFn: async (planCourseId: string) => syncLegacyCounters(planCourseId),
+    onSuccess: () => {
+      toast.success("تمت مزامنة بيانات الجدولة");
+      invalidate();
+    },
+    onError: (e: Error) => {
+      toast.error(e.message);
+      invalidate();
+    },
+  });
 
   const courseMap = useMemo(() => new Map((courses ?? []).map((c) => [c.id, c])), [courses]);
   const levelMap = useMemo(() => new Map((levels ?? []).map((l) => [l.id, l])), [levels]);
@@ -363,6 +411,7 @@ export function PlanCoursesManager({
       const { error } = await supabase.from("plan_course_components").insert(toInsert);
       if (error) throw error;
       await logAudit({ action: "create", entity: "plan_course_components", collegeId });
+      await syncLegacyCounters(planCourseId);
     },
     onSuccess: () => {
       toast.success("تم توليد المكوّنات من ساعات المقرر");
@@ -386,6 +435,7 @@ export function PlanCoursesManager({
         .insert(buildComponentInsert(ctx, planCourseId, componentForm));
       if (error) throw error;
       await logAudit({ action: "create", entity: "plan_course_components", collegeId });
+      await syncLegacyCounters(planCourseId);
     },
     onSuccess: () => {
       toast.success("تمت إضافة المكوّن");
@@ -424,6 +474,7 @@ export function PlanCoursesManager({
         entityId: args.componentId,
         collegeId,
       });
+      await syncLegacyCounters(args.planCourseId);
     },
     onSuccess: () => {
       toast.success("تم تحديث المكوّن");
@@ -435,25 +486,29 @@ export function PlanCoursesManager({
   });
 
   const deleteComponent = useMutation({
-    mutationFn: async (componentId: string) => {
+    mutationFn: async (args: { componentId: string; planCourseId: string }) => {
       const { error } = await supabase
         .from("plan_course_components")
         .delete()
-        .eq("id", componentId)
+        .eq("id", args.componentId)
         .eq("college_id", collegeId);
       if (error) throw error;
       await logAudit({
         action: "delete",
         entity: "plan_course_components",
-        entityId: componentId,
+        entityId: args.componentId,
         collegeId,
       });
+      await syncLegacyCounters(args.planCourseId);
     },
     onSuccess: () => {
       toast.success("تم حذف المكوّن");
       invalidate();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      toast.error(e.message);
+      invalidate();
+    },
   });
 
   const noLevels = (levels ?? []).length === 0;
@@ -612,6 +667,13 @@ export function PlanCoursesManager({
                         {level?.name ?? "بدون مستوى"} · الفصل {row.semester} ·{" "}
                         {row.is_required ? "إلزامي" : "اختياري"}
                       </p>
+                      <p
+                        className="text-xs text-muted-foreground"
+                        data-testid={`plan-course-counters-${row.id}`}
+                      >
+                        محاضرات/أسبوع {row.lectures_per_week} × {row.lecture_session_duration} س ·
+                        معامل/أسبوع {row.labs_per_week} × {row.lab_session_duration} س
+                      </p>
                     </div>
                     {canManage && (
                       <div className="flex flex-wrap gap-1">
@@ -640,6 +702,15 @@ export function PlanCoursesManager({
                           onClick={() => generateComponents.mutate(row.id)}
                         >
                           <Sparkles className="ms-1 h-3.5 w-3.5" /> توليد من ساعات المقرر
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          data-testid={`plan-course-sync-counters-${row.id}`}
+                          onClick={() => syncCounters.mutate(row.id)}
+                          disabled={syncCounters.isPending}
+                        >
+                          <RefreshCw className="ms-1 h-3.5 w-3.5" /> مزامنة بيانات الجدولة
                         </Button>
                         <Button
                           size="sm"
@@ -772,7 +843,12 @@ export function PlanCoursesManager({
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => deleteComponent.mutate(c.id)}
+                                onClick={() =>
+                                  deleteComponent.mutate({
+                                    componentId: c.id,
+                                    planCourseId: row.id,
+                                  })
+                                }
                               >
                                 <Trash2 className="h-3 w-3" />
                               </Button>
