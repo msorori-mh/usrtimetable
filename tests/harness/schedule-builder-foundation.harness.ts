@@ -33,7 +33,10 @@ function readSrc(rel: string) {
 function run() {
   // --- Navigation ---
   assert(SCHEDULE_BUILDER_NAV_LABEL_AR === "بناء الجدول", "nav label");
-  assert(SCHEDULE_BUILDER_NAV_TO === "/schedule-builder", "nav targets schedule-builder (no fixed version id)");
+  assert(
+    SCHEDULE_BUILDER_NAV_TO === "/schedule-builder",
+    "nav targets schedule-builder (no fixed version id)",
+  );
   const layout = readPrimaryNavigationSource(root);
   assert(layout.includes('label: "بناء الجدول"'), "layout has بناء الجدول");
   assert(
@@ -75,10 +78,7 @@ function run() {
     }) === false,
     "no load before version ready",
   );
-  assert(
-    SCHEDULE_BUILDER_COLLEGE_MISMATCH_AR.includes("الكلية النشطة"),
-    "mismatch message arabic",
-  );
+  assert(SCHEDULE_BUILDER_COLLEGE_MISMATCH_AR.includes("الكلية النشطة"), "mismatch message arabic");
 
   const page = readSrc("src/routes/_authenticated/timetable.$versionId.tsx");
   assert(page.includes("shouldLoadScheduleBuilderData"), "page uses load gate");
@@ -112,7 +112,11 @@ function run() {
   assert(dialog.includes("readOnly"), "SessionDialog has readOnly prop");
   assert(dialog.includes("canMutate"), "SessionDialog gates mutations");
   assert(dialog.includes("العرض للقراءة فقط"), "RO copy present");
-  assert(/\{canMutate && \(\s*<Button[^>]*حفظ/.test(dialog) || dialog.includes("{canMutate && (") && dialog.includes("حفظ"), "save hidden when RO");
+  assert(
+    /\{canMutate && \(\s*<Button[^>]*حفظ/.test(dialog) ||
+      (dialog.includes("{canMutate && (") && dialog.includes("حفظ")),
+    "save hidden when RO",
+  );
 
   assert(page.includes("readOnly={dialogReadOnly}"), "page passes readOnly");
   assert(page.includes("isSessionDialogReadOnly"), "page uses dialog RO helper");

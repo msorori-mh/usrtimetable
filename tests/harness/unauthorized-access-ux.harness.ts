@@ -141,15 +141,21 @@ function run() {
 
   const layoutSrc = readPrimaryNavigationSource(root);
   assert(
-    /to:\s*"\/users"[\s\S]*?roles:\s*\["super_admin"(,\s*"institutional_viewer")?\]/.test(layoutSrc),
+    /to:\s*"\/users"[\s\S]*?roles:\s*\["super_admin"(,\s*"institutional_viewer")?\]/.test(
+      layoutSrc,
+    ),
     "7 nav /users still super_admin only",
   );
   assert(
-    /to:\s*"\/import"[\s\S]*?roles:\s*\["super_admin",\s*"college_admin"(,\s*"institutional_viewer")?\]/.test(layoutSrc),
+    /to:\s*"\/import"[\s\S]*?roles:\s*\["super_admin",\s*"college_admin"(,\s*"institutional_viewer")?\]/.test(
+      layoutSrc,
+    ),
     "7 nav /import roles unchanged",
   );
   assert(
-    /to:\s*"\/auto-schedule"[\s\S]*?roles:\s*\["super_admin",\s*"college_admin"(,\s*"institutional_viewer")?\]/.test(layoutSrc),
+    /to:\s*"\/auto-schedule"[\s\S]*?roles:\s*\["super_admin",\s*"college_admin"(,\s*"institutional_viewer")?\]/.test(
+      layoutSrc,
+    ),
     "7 nav /auto-schedule roles unchanged",
   );
   assert(
