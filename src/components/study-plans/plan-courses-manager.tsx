@@ -933,10 +933,20 @@ export function PlanCoursesManager({
                           </Button>
                           <Button
                             size="sm"
-                            onClick={() => addComponent.mutate(row.id)}
-                            disabled={addComponent.isPending}
+                            onClick={() => {
+                              const editingId = componentTarget?.componentId ?? null;
+                              if (editingId) {
+                                updateComponent.mutate({
+                                  componentId: editingId,
+                                  planCourseId: row.id,
+                                });
+                              } else {
+                                addComponent.mutate(row.id);
+                              }
+                            }}
+                            disabled={addComponent.isPending || updateComponent.isPending}
                           >
-                            حفظ المكوّن
+                            {componentTarget?.componentId ? "حفظ التعديل" : "حفظ المكوّن"}
                           </Button>
                         </div>
                       </div>
@@ -947,12 +957,13 @@ export function PlanCoursesManager({
                         variant="outline"
                         onClick={() => {
                           setComponentForm(EMPTY_COMPONENT);
-                          setComponentTarget(row.id);
+                          setComponentTarget({ planCourseId: row.id, componentId: null });
                         }}
                       >
                         <Plus className="ms-1 h-3.5 w-3.5" /> إضافة مكوّن
                       </Button>
                     ))}
+
                 </Card>
               );
             })
