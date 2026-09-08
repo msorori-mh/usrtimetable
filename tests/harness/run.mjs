@@ -59,6 +59,7 @@ export const harnesses = [
   "program-department-integrity.harness.ts",
   "reports-read-model-a1-5.harness.ts",
   "plan-course-components-ui-e2e-fix.harness.ts",
+  "plan-course-legacy-counter-sync.harness.ts",
   "timetable-session-course-visibility.harness.ts",
   "timetable-editor-filters-sidebar.harness.ts",
   "plan-component-room-type-permanent-fix.harness.ts",
