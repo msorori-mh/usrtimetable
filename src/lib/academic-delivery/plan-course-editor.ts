@@ -293,5 +293,5 @@ export const PLAN_COURSE_READINESS_QUERY_KEYS = [
   "plan-course-components",
   "data-readiness",
   "data-onboarding-readiness",
-  "readiness",
+  "dashboard-core-readiness",
 ] as const;
