@@ -383,3 +383,93 @@ export const PLAN_COURSE_READINESS_QUERY_KEYS = [
   "data-onboarding-readiness",
   "dashboard-core-readiness",
 ] as const;
+
+/* ------------------------------------------------------------------ *
+ * SOURCE-ONLY E2E FIX 02 — legacy scheduling counter compatibility.
+ * plan_courses.lectures_per_week / labs_per_week (+ session durations)
+ * are still read by readiness (src/lib/reports/readiness.ts,
+ * routes/_authenticated/data-readiness.tsx), data-cleanup and the greedy
+ * auto-scheduler. Components are the source of truth; these helpers derive
+ * the legacy counters deterministically from component weekly hours.
+ * ------------------------------------------------------------------ */
+
+export type LegacyCounterComponent = {
+  component_type: string;
+  weekly_contact_hours: number | null;
+  is_timetabled?: boolean | null;
+};
+
+export type LegacyCounters = {
+  lectures_per_week: number;
+  lecture_session_duration: number;
+  labs_per_week: number;
+  lab_session_duration: number;
+};
+
+export const DEFAULT_SESSION_DURATION = 2;
+
+/** theory + tutorial map to lectures; practical maps to labs. */
+export const LECTURE_COMPONENT_TYPES = ["theory", "tutorial"] as const;
+export const LAB_COMPONENT_TYPES = ["practical"] as const;
+
+function sumHours(components: LegacyCounterComponent[], types: readonly string[]): number {
+  return components
+    .filter((c) => types.includes(c.component_type) && c.is_timetabled !== false)
+    .reduce((acc, c) => acc + (Number(c.weekly_contact_hours) || 0), 0);
+}
+
+/**
+ * Pick a session duration (hours per session) that divides the weekly hours
+ * exactly, preferring the value already stored on the row.
+ */
+export function pickSessionDuration(weeklyHours: number, currentDuration: number | null): number {
+  const cur = Number(currentDuration) || 0;
+  if (weeklyHours <= 0) return cur > 0 ? cur : DEFAULT_SESSION_DURATION;
+  for (const candidate of [cur, DEFAULT_SESSION_DURATION, 3, 1]) {
+    if (candidate > 0 && Number.isInteger(weeklyHours / candidate)) return candidate;
+  }
+  return 1;
+}
+
+/** Deterministic legacy counters derived from the component rows. */
+export function deriveLegacyCounters(
+  components: LegacyCounterComponent[],
+  current: Partial<LegacyCounters> | null | undefined,
+): LegacyCounters {
+  const lectureHours = sumHours(components, LECTURE_COMPONENT_TYPES);
+  const labHours = sumHours(components, LAB_COMPONENT_TYPES);
+  const lectureDuration = pickSessionDuration(lectureHours, current?.lecture_session_duration ?? 0);
+  const labDuration = pickSessionDuration(labHours, current?.lab_session_duration ?? 0);
+  return {
+    lectures_per_week: lectureHours > 0 ? Math.round(lectureHours / lectureDuration) : 0,
+    lecture_session_duration: lectureDuration,
+    labs_per_week: labHours > 0 ? Math.round(labHours / labDuration) : 0,
+    lab_session_duration: labDuration,
+  };
+}
+
+/** Update payload — only the four legacy scheduling columns, nothing else. */
+export function buildLegacyCounterUpdate(counters: LegacyCounters): LegacyCounters {
+  return {
+    lectures_per_week: counters.lectures_per_week,
+    lecture_session_duration: counters.lecture_session_duration,
+    labs_per_week: counters.labs_per_week,
+    lab_session_duration: counters.lab_session_duration,
+  };
+}
+
+export function countersDiffer(
+  current: Partial<LegacyCounters> | null | undefined,
+  next: LegacyCounters,
+): boolean {
+  return (
+    Number(current?.lectures_per_week ?? -1) !== next.lectures_per_week ||
+    Number(current?.lecture_session_duration ?? -1) !== next.lecture_session_duration ||
+    Number(current?.labs_per_week ?? -1) !== next.labs_per_week ||
+    Number(current?.lab_session_duration ?? -1) !== next.lab_session_duration
+  );
+}
+
+/** Explicit, actionable message when the component write succeeded but sync failed. */
+export const LEGACY_SYNC_PARTIAL_ERROR_AR =
+  "تم حفظ المكوّنات لكن فشلت مزامنة بيانات الجدولة (عدد المحاضرات/المعامل). استخدم زر «مزامنة بيانات الجدولة» لهذا المقرر لإعادة المحاولة.";
