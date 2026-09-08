@@ -161,7 +161,10 @@ assert(
   /onError: \(e: Error\) => \{\s*toast\.error\(e\.message\);\s*invalidate\(\);/.test(ui),
   "failed sync must refetch instead of claiming success",
 );
-assert(LEGACY_SYNC_PARTIAL_ERROR_AR.includes("مزامنة بيانات الجدولة"), "error names the retry action");
+assert(
+  LEGACY_SYNC_PARTIAL_ERROR_AR.includes("مزامنة بيانات الجدولة"),
+  "error names the retry action",
+);
 assert(!/supabaseAdmin|service_role/.test(ui), "no privileged client in the manager");
 
 if (failures > 0) {
