@@ -156,12 +156,51 @@ export function buildPlanCourseInsert(ctx: PlanContext, form: PlanCourseForm) {
   };
 }
 
+/**
+ * 01B — editable fields only. course_id / study_plan_id / college_id are immutable
+ * after creation and are deliberately absent from the update payload.
+ */
+export function buildPlanCourseUpdate(form: PlanCourseForm) {
+  return {
+    level_id: form.level_id,
+    semester: form.semester,
+    is_required: form.is_required,
+  };
+}
+
+export type PlanCourseUpdateScope = {
+  id: string;
+  collegeId: string;
+  studyPlanId: string;
+};
+
+/** Fail-closed scope for the plan_courses update mutation (id + college + plan). */
+export function planCourseUpdateScope(
+  ctx: PlanContext,
+  row: ExistingPlanCourse,
+): PlanCourseUpdateScope | ValidationFailure {
+  if (row.college_id !== ctx.collegeId || row.study_plan_id !== ctx.studyPlanId) {
+    return fail("PLAN_COURSE_SCOPE_MISMATCH", "السجل لا ينتمي إلى هذه الخطة أو الكلية النشطة.");
+  }
+  return { id: row.id, collegeId: ctx.collegeId, studyPlanId: ctx.studyPlanId };
+}
+
+export type ExistingComponent = {
+  id: string;
+  plan_course_id: string;
+  component_type: string;
+};
+
 export function validateComponentForm(args: {
   ctx: PlanContext;
   form: ComponentForm;
   roomTypes: RoomTypeOption[];
+  /** Components already attached to the same plan_course (duplicate type guard). */
+  siblings?: ExistingComponent[];
+  planCourseId?: string;
+  editingId?: string | null;
 }): ValidationResult {
-  const { ctx, form, roomTypes } = args;
+  const { ctx, form, roomTypes, siblings, planCourseId, editingId } = args;
   if (!(PLAN_COMPONENT_TYPES as readonly string[]).includes(form.component_type)) {
     return fail("COMPONENT_TYPE_INVALID", "نوع المكوّن غير مسموح.");
   }
@@ -188,6 +227,17 @@ export function validateComponentForm(args: {
       return fail("ROOM_TYPE_SCOPE_MISMATCH", "نوع القاعة لا ينتمي إلى الكلية النشطة.");
     }
   }
+  if (siblings && planCourseId) {
+    const dup = siblings.find(
+      (s) =>
+        s.plan_course_id === planCourseId &&
+        s.component_type === form.component_type &&
+        s.id !== editingId,
+    );
+    if (dup) {
+      return fail("COMPONENT_TYPE_DUPLICATE", "يوجد مكوّن بنفس النوع لهذا المقرر في الخطة.");
+    }
+  }
   return { ok: true };
 }
 
@@ -205,6 +255,38 @@ export function buildComponentInsert(ctx: PlanContext, planCourseId: string, for
     explicit_group_size: form.explicit_group_size ?? null,
   };
 }
+
+/** 01B — operational fields only; college_id / plan_course_id stay immutable. */
+export function buildComponentUpdate(form: ComponentForm) {
+  return {
+    component_type: form.component_type,
+    weekly_contact_hours: form.weekly_contact_hours,
+    required_room_type_id: form.required_room_type_id ?? null,
+    is_timetabled: form.is_timetabled,
+    counts_toward_regular_load: form.counts_toward_regular_load,
+    counts_toward_overtime: form.counts_toward_overtime,
+    compensation_mode: form.compensation_mode,
+    explicit_group_size: form.explicit_group_size ?? null,
+  };
+}
+
+export type ComponentUpdateScope = {
+  id: string;
+  collegeId: string;
+  planCourseId: string;
+};
+
+export function componentUpdateScope(
+  ctx: PlanContext,
+  row: { id: string; plan_course_id: string },
+  planCourseIdsInPlan: string[],
+): ComponentUpdateScope | ValidationFailure {
+  if (!planCourseIdsInPlan.includes(row.plan_course_id)) {
+    return fail("COMPONENT_SCOPE_MISMATCH", "المكوّن لا ينتمي إلى مقررات هذه الخطة.");
+  }
+  return { id: row.id, collegeId: ctx.collegeId, planCourseId: row.plan_course_id };
+}
+
 
 /**
  * Generate component rows strictly from the course's explicit hour columns.
