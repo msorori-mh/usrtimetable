@@ -62,7 +62,10 @@ for (const writerScoped of ["/import", "/data-cleanup", "/auto-schedule"]) {
     navSrc.indexOf(`to: "${writerScoped}"`),
     navSrc.indexOf(`to: "${writerScoped}"`) + 400,
   );
-  assert.ok(/roles:\s*WRITERS/.test(block), `${writerScoped} must keep writer role scope`);
+  assert.ok(
+    /roles:\s*\["super_admin", "college_admin", "institutional_viewer"\]/.test(block),
+    `${writerScoped} must keep writer role scope`,
+  );
 }
 // No RBAC/RLS/route-guard drift from this phase.
 assert.equal(
