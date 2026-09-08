@@ -622,6 +622,25 @@ export function PlanCoursesManager({
                         <Button
                           size="sm"
                           variant="ghost"
+                          data-testid={`plan-course-edit-${row.id}`}
+                          onClick={() =>
+                            setEditRow(
+                              editRow?.id === row.id
+                                ? null
+                                : {
+                                    id: row.id,
+                                    level_id: row.level_id ?? "",
+                                    semester: row.semester,
+                                    is_required: row.is_required,
+                                  },
+                            )
+                          }
+                        >
+                          <Pencil className="ms-1 h-3.5 w-3.5" /> تعديل
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
                           onClick={() => generateComponents.mutate(row.id)}
                         >
                           <Sparkles className="ms-1 h-3.5 w-3.5" /> توليد من ساعات المقرر
@@ -653,6 +672,67 @@ export function PlanCoursesManager({
                       </div>
                     )}
                   </div>
+
+                  {canManage && editRow?.id === row.id && (
+                    <div
+                      className="mt-2 grid grid-cols-1 gap-2 rounded border border-border p-2 sm:grid-cols-2"
+                      data-testid={`plan-course-edit-form-${row.id}`}
+                    >
+                      <div>
+                        <Label className="text-xs">المستوى</Label>
+                        <Select
+                          value={editRow.level_id}
+                          onValueChange={(v) => setEditRow({ ...editRow, level_id: v })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="اختر المستوى" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(levels ?? []).map((l) => (
+                              <SelectItem key={l.id} value={l.id}>
+                                {l.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs">الفصل</Label>
+                        <Select
+                          value={String(editRow.semester)}
+                          onValueChange={(v) => setEditRow({ ...editRow, semester: Number(v) })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1">الفصل الأول</SelectItem>
+                            <SelectItem value="2">الفصل الثاني</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <label className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={editRow.is_required}
+                          onCheckedChange={(v) => setEditRow({ ...editRow, is_required: !!v })}
+                        />
+                        إلزامي
+                      </label>
+                      <div className="flex gap-2 sm:justify-end">
+                        <Button variant="outline" size="sm" onClick={() => setEditRow(null)}>
+                          إلغاء
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => updatePlanCourse.mutate()}
+                          disabled={updatePlanCourse.isPending}
+                        >
+                          حفظ التعديل
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
 
                   <ul className="mt-2 divide-y divide-border/60 text-xs">
                     {rowComponents.length === 0 ? (
