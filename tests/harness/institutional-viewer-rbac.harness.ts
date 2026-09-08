@@ -43,7 +43,7 @@ assert(
 );
 
 // ---------- 2) navigation: every entry visible to the role ----------
-const layout = readPrimaryNavigationSource(root);
+const layout = readPrimaryNavigationSource(ROOT);
 assert(
   /const ALL: Role\[\] = \["super_admin", "college_admin", "read_only", "institutional_viewer"\]/.test(
     layout,

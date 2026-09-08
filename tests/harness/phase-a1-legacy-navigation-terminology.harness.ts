@@ -43,8 +43,10 @@ for (const term of [
     `missing official term: ${term}`,
   );
 }
+// Renamed in SOURCE_ONLY_ADMIN_UX_INFORMATION_ARCHITECTURE_02: the official
+// working-days label is «ساعات وفترات الدوام» (lecture times live in templates).
 assert.ok(
-  layout.includes("أيام وفترات الدوام"),
+  layout.includes("ساعات وفترات الدوام"),
   "official working-days terminology must be in navigation",
 );
 assert.ok(assignments.includes('to="/schedule-builder"'), "workflow must end at Builder V2");
