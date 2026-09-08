@@ -11,6 +11,7 @@
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { readPrimaryNavigationSource } from "./nav-source";
 
 const root = resolve(import.meta.dirname, "../..");
 const read = (path: string) => readFileSync(resolve(root, path), "utf8");
@@ -39,7 +40,7 @@ assert(route.includes("أصلح الآن"), "fix-now CTAs");
 assert(route.includes("إعادة الفحص"), "re-check button");
 assert(route.includes("onboarding-percent"), "percent complete surfaced");
 
-const layout = read("src/components/app-layout.tsx");
+const layout = readPrimaryNavigationSource(root);
 assert(layout.includes('to: "/data-onboarding"'), "sidebar links to data-onboarding");
 assert(
   layout.includes("إعداد البيانات وإنشاء الجدول"),

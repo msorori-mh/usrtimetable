@@ -6,6 +6,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+import { readPrimaryNavigationSource } from "./nav-source";
   derivePlanCourseComponents,
   electiveCourseDisplayLabel,
   filterPlanCoursesByCohortContext,
@@ -329,7 +330,7 @@ function run() {
     "legacy entities marked hidden",
   );
 
-  const nav = read("src/components/app-layout.tsx");
+  const nav = readPrimaryNavigationSource(root);
   assert(!nav.includes('to: "/course-offerings"'), "offerings hidden from nav");
 
   // Direct URL /course-offerings — no manual CRUD

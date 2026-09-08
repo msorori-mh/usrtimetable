@@ -17,6 +17,7 @@ import {
   attachCohortTermHeadcounts,
 } from "../../src/lib/schedule-builder/session-hydrate";
 import {
+import { readPrimaryNavigationSource } from "./nav-source";
   EMPTY_WORKSPACE_FILTERS,
   buildFilterOptions,
   computeWorkspaceStats,
@@ -78,7 +79,7 @@ function run() {
   // 1. College Guard still effective + nav
   assert(SCHEDULE_BUILDER_NAV_LABEL_AR === "بناء الجدول", "nav label");
   assert(SCHEDULE_BUILDER_NAV_TO === "/schedule-builder", "workspace route");
-  const layout = readSrc("src/components/app-layout.tsx");
+  const layout = readPrimaryNavigationSource(root);
   assert(layout.includes('to: "/schedule-builder"'), "layout points to workspace");
   assert(layout.includes('label: "بناء الجدول"'), "layout label");
 

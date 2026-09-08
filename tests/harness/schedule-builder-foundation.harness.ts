@@ -6,6 +6,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+import { readPrimaryNavigationSource } from "./nav-source";
   SCHEDULE_BUILDER_COLLEGE_MISMATCH_AR,
   SCHEDULE_BUILDER_DEFAULT_END_HOUR,
   SCHEDULE_BUILDER_DEFAULT_START_HOUR,
@@ -33,7 +34,7 @@ function run() {
   // --- Navigation ---
   assert(SCHEDULE_BUILDER_NAV_LABEL_AR === "بناء الجدول", "nav label");
   assert(SCHEDULE_BUILDER_NAV_TO === "/schedule-builder", "nav targets schedule-builder (no fixed version id)");
-  const layout = readSrc("src/components/app-layout.tsx");
+  const layout = readPrimaryNavigationSource(root);
   assert(layout.includes('label: "بناء الجدول"'), "layout has بناء الجدول");
   assert(
     layout.includes('label: "بناء الجدول"') && layout.includes('to: "/schedule-builder"'),

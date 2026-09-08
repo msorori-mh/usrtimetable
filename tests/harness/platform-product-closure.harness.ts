@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { readPrimaryNavigationSource } from "./nav-source";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const read = (relative: string) => readFileSync(path.join(root, relative), "utf8");
@@ -49,7 +50,7 @@ assert.ok(
   "readiness blocker is visible",
 );
 
-const layout = read("src/components/app-layout.tsx");
+const layout = readPrimaryNavigationSource(root);
 assert.match(layout, /to:\s*"\/users"[\s\S]*roles:\s*\["super_admin"(,\s*"institutional_viewer")?\]/);
 assert.match(layout, /to:\s*"\/auto-schedule"[\s\S]*roles:\s*\["super_admin",\s*"college_admin"(,\s*"institutional_viewer")?\]/);
 assert.equal(/to:\s*"\/sections"/.test(layout), false, "Legacy route hidden from navigation");

@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveCoreWorkflow } from "../../src/lib/core-workflow.ts";
+import { readPrimaryNavigationSource } from "./nav-source";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const read = (relative: string) => readFileSync(path.join(root, relative), "utf8");
@@ -45,7 +46,7 @@ const published = resolveCoreWorkflow({
 assert.equal(published.nextStage.id, "publish");
 assert.ok(published.stages.every((stage) => stage.status === "complete"));
 
-const layout = read("src/components/app-layout.tsx");
+const layout = readPrimaryNavigationSource(root);
 assert.ok(layout.includes("المسار الأساسي"), "simple navigation is the default surface");
 assert.ok(layout.includes("الأدوات المتقدمة"), "advanced tools remain discoverable");
 assert.ok(layout.includes('to: "/data-onboarding"'), "prepare route remains available");

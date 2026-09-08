@@ -9,6 +9,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+import { readPrimaryNavigationSource } from "./nav-source";
   ALL_ACTIVE_DAYS_SENTINEL,
   DEFAULT_WORKING_DAYS,
   formatBulkSuccessMessage,
@@ -274,7 +275,7 @@ function run() {
     "unavailable-only days do not force whitelist",
   );
 
-  const nav = readSrc("src/components/app-layout.tsx");
+  const nav = readPrimaryNavigationSource(root);
   assert(nav.includes('label: "عدم التوفّر"'), "nav label unavailability");
 
   // Domain separation documentation present in migration header

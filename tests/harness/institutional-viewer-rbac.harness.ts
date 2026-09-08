@@ -11,6 +11,7 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { readPrimaryNavigationSource } from "./nav-source";
 
 const ROOT = join(import.meta.dirname, "..", "..");
 const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
@@ -42,7 +43,7 @@ assert(
 );
 
 // ---------- 2) navigation: every entry visible to the role ----------
-const layout = read("src/components/app-layout.tsx");
+const layout = readPrimaryNavigationSource(root);
 assert(
   /const ALL: Role\[\] = \["super_admin", "college_admin", "read_only", "institutional_viewer"\]/.test(
     layout,

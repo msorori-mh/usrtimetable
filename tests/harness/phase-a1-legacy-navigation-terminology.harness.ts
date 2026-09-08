@@ -2,11 +2,12 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { readPrimaryNavigationSource } from "./nav-source";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const read = (rel: string) => readFileSync(path.join(root, rel), "utf8");
 
-const layout = read("src/components/app-layout.tsx");
+const layout = readPrimaryNavigationSource(root);
 const sections = read("src/routes/_authenticated/sections.tsx");
 const templates = read("src/routes/_authenticated/data-templates.tsx");
 const registry = read("src/lib/excel-import/registry.ts");

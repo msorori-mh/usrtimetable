@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveSchedulingHeadcount } from "../../src/lib/scheduling-headcount/resolve";
 import { validateHeadcountValues } from "../../src/lib/scheduling-headcount/rules";
+import { readPrimaryNavigationSource } from "./nav-source";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const read = (relative: string) => readFileSync(path.join(root, relative), "utf8");
@@ -91,7 +92,7 @@ assert.match(
   read("src/routes/_authenticated/scheduling-headcounts.tsx"),
   /أعداد الدفعات المعتمدة للجدولة/,
 );
-assert.match(read("src/components/app-layout.tsx"), /أعداد الدفعات المعتمدة للجدولة/);
+assert.match(readPrimaryNavigationSource(root), /أعداد الدفعات المعتمدة للجدولة/);
 
 console.log(
   JSON.stringify({ harness: "scheduling-headcount-foundation", status: "pass" }, null, 2),

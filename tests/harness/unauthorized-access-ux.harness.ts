@@ -6,6 +6,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+import { readPrimaryNavigationSource } from "./nav-source";
   resolveCaughtErrorDisplayKind,
   resolveSuperAdminPageAccess,
   shouldLoadSuperAdminPageData,
@@ -138,7 +139,7 @@ function run() {
     "7 published schedules stays viewable (no super_admin-only throw)",
   );
 
-  const layoutSrc = readSrc("src/components/app-layout.tsx");
+  const layoutSrc = readPrimaryNavigationSource(root);
   assert(
     /to:\s*"\/users"[\s\S]*?roles:\s*\["super_admin"(,\s*"institutional_viewer")?\]/.test(layoutSrc),
     "7 nav /users still super_admin only",
