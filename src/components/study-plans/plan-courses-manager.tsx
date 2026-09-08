@@ -6,7 +6,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Layers, Plus, Sparkles, Trash2 } from "lucide-react";
+import { Layers, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { logAudit } from "@/lib/audit";
 import { Button } from "@/components/ui/button";
@@ -24,8 +24,13 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import {
   buildComponentInsert,
+  buildComponentUpdate,
   buildLevelInsert,
   buildPlanCourseInsert,
+  buildPlanCourseUpdate,
+  componentUpdateScope,
+  planCourseUpdateScope,
+
   COMPENSATION_MODES,
   COMPENSATION_MODE_LABEL_AR,
   COMPONENT_TYPE_LABEL_AR,
@@ -96,8 +101,18 @@ export function PlanCoursesManager({
     is_required: true,
   });
   const [levelForm, setLevelForm] = useState({ name: "", level_number: 1 });
-  const [componentTarget, setComponentTarget] = useState<string | null>(null);
+  const [componentTarget, setComponentTarget] = useState<{
+    planCourseId: string;
+    componentId: string | null;
+  } | null>(null);
   const [componentForm, setComponentForm] = useState<ComponentForm>(EMPTY_COMPONENT);
+  const [editRow, setEditRow] = useState<{
+    id: string;
+    level_id: string;
+    semester: number;
+    is_required: boolean;
+  } | null>(null);
+
 
   const { data: courses } = useQuery({
     queryKey: ["plan-editor-courses", collegeId],
