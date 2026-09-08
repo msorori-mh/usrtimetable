@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const read = (rel: string) => readFileSync(path.join(root, rel), "utf8");
 
-const navSrc = read("src/lib/admin-nav.tsx");
+const navSrc = read("src/lib/admin-nav.ts");
 const layout = read("src/components/app-layout.tsx");
 const tools = read("src/routes/_authenticated/admin-tools.tsx");
 const tabs = read("src/components/ui/tabs.tsx");
