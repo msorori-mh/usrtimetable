@@ -6,7 +6,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Layers, Plus, Sparkles, Trash2 } from "lucide-react";
+import { Layers, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { logAudit } from "@/lib/audit";
 import { Button } from "@/components/ui/button";
@@ -24,8 +24,12 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import {
   buildComponentInsert,
+  buildComponentUpdate,
   buildLevelInsert,
   buildPlanCourseInsert,
+  buildPlanCourseUpdate,
+  componentUpdateScope,
+  planCourseUpdateScope,
   COMPENSATION_MODES,
   COMPENSATION_MODE_LABEL_AR,
   COMPONENT_TYPE_LABEL_AR,
@@ -96,8 +100,17 @@ export function PlanCoursesManager({
     is_required: true,
   });
   const [levelForm, setLevelForm] = useState({ name: "", level_number: 1 });
-  const [componentTarget, setComponentTarget] = useState<string | null>(null);
+  const [componentTarget, setComponentTarget] = useState<{
+    planCourseId: string;
+    componentId: string | null;
+  } | null>(null);
   const [componentForm, setComponentForm] = useState<ComponentForm>(EMPTY_COMPONENT);
+  const [editRow, setEditRow] = useState<{
+    id: string;
+    level_id: string;
+    semester: number;
+    is_required: boolean;
+  } | null>(null);
 
   const { data: courses } = useQuery({
     queryKey: ["plan-editor-courses", collegeId],
@@ -259,6 +272,45 @@ export function PlanCoursesManager({
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const updatePlanCourse = useMutation({
+    mutationFn: async () => {
+      if (!editRow) throw new Error("لا يوجد سجل للتعديل.");
+      const row = (planCourses ?? []).find((p) => p.id === editRow.id);
+      if (!row) throw new Error("السجل غير موجود.");
+      const scope = planCourseUpdateScope(ctx, row);
+      if ("ok" in scope) throw new Error(scope.messageAr);
+      const nextForm: PlanCourseForm = {
+        course_id: row.course_id,
+        level_id: editRow.level_id,
+        semester: editRow.semester,
+        is_required: editRow.is_required,
+      };
+      const check = validatePlanCourseForm({
+        ctx,
+        form: nextForm,
+        courses: courses ?? [],
+        levels: levels ?? [],
+        existing: planCourses ?? [],
+        editingId: row.id,
+      });
+      if (!check.ok) throw new Error(check.messageAr);
+      const { error } = await supabase
+        .from("plan_courses")
+        .update(buildPlanCourseUpdate(nextForm))
+        .eq("id", scope.id)
+        .eq("college_id", scope.collegeId)
+        .eq("study_plan_id", scope.studyPlanId);
+      if (error) throw error;
+      await logAudit({ action: "update", entity: "plan_courses", entityId: row.id, collegeId });
+    },
+    onSuccess: () => {
+      toast.success("تم تحديث مقرر الخطة");
+      setEditRow(null);
+      invalidate();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const deletePlanCourse = useMutation({
     mutationFn: async (planCourseId: string) => {
       const componentIds = (componentsByPlanCourse.get(planCourseId) ?? []).map((c) => c.id);
@@ -321,7 +373,13 @@ export function PlanCoursesManager({
 
   const addComponent = useMutation({
     mutationFn: async (planCourseId: string) => {
-      const check = validateComponentForm({ ctx, form: componentForm, roomTypes: roomTypes ?? [] });
+      const check = validateComponentForm({
+        ctx,
+        form: componentForm,
+        roomTypes: roomTypes ?? [],
+        siblings: components ?? [],
+        planCourseId,
+      });
       if (!check.ok) throw new Error(check.messageAr);
       const { error } = await supabase
         .from("plan_course_components")
@@ -331,6 +389,44 @@ export function PlanCoursesManager({
     },
     onSuccess: () => {
       toast.success("تمت إضافة المكوّن");
+      setComponentForm(EMPTY_COMPONENT);
+      setComponentTarget(null);
+      invalidate();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const updateComponent = useMutation({
+    mutationFn: async (args: { componentId: string; planCourseId: string }) => {
+      const row = (components ?? []).find((c) => c.id === args.componentId);
+      if (!row) throw new Error("المكوّن غير موجود.");
+      const scope = componentUpdateScope(ctx, row, planCourseIds);
+      if ("ok" in scope) throw new Error(scope.messageAr);
+      const check = validateComponentForm({
+        ctx,
+        form: componentForm,
+        roomTypes: roomTypes ?? [],
+        siblings: components ?? [],
+        planCourseId: args.planCourseId,
+        editingId: args.componentId,
+      });
+      if (!check.ok) throw new Error(check.messageAr);
+      const { error } = await supabase
+        .from("plan_course_components")
+        .update(buildComponentUpdate(componentForm))
+        .eq("id", scope.id)
+        .eq("college_id", scope.collegeId)
+        .eq("plan_course_id", scope.planCourseId);
+      if (error) throw error;
+      await logAudit({
+        action: "update",
+        entity: "plan_course_components",
+        entityId: args.componentId,
+        collegeId,
+      });
+    },
+    onSuccess: () => {
+      toast.success("تم تحديث المكوّن");
       setComponentForm(EMPTY_COMPONENT);
       setComponentTarget(null);
       invalidate();
@@ -522,6 +618,25 @@ export function PlanCoursesManager({
                         <Button
                           size="sm"
                           variant="ghost"
+                          data-testid={`plan-course-edit-${row.id}`}
+                          onClick={() =>
+                            setEditRow(
+                              editRow?.id === row.id
+                                ? null
+                                : {
+                                    id: row.id,
+                                    level_id: row.level_id ?? "",
+                                    semester: row.semester,
+                                    is_required: row.is_required,
+                                  },
+                            )
+                          }
+                        >
+                          <Pencil className="ms-1 h-3.5 w-3.5" /> تعديل
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
                           onClick={() => generateComponents.mutate(row.id)}
                         >
                           <Sparkles className="ms-1 h-3.5 w-3.5" /> توليد من ساعات المقرر
@@ -554,6 +669,66 @@ export function PlanCoursesManager({
                     )}
                   </div>
 
+                  {canManage && editRow?.id === row.id && (
+                    <div
+                      className="mt-2 grid grid-cols-1 gap-2 rounded border border-border p-2 sm:grid-cols-2"
+                      data-testid={`plan-course-edit-form-${row.id}`}
+                    >
+                      <div>
+                        <Label className="text-xs">المستوى</Label>
+                        <Select
+                          value={editRow.level_id}
+                          onValueChange={(v) => setEditRow({ ...editRow, level_id: v })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="اختر المستوى" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(levels ?? []).map((l) => (
+                              <SelectItem key={l.id} value={l.id}>
+                                {l.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs">الفصل</Label>
+                        <Select
+                          value={String(editRow.semester)}
+                          onValueChange={(v) => setEditRow({ ...editRow, semester: Number(v) })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1">الفصل الأول</SelectItem>
+                            <SelectItem value="2">الفصل الثاني</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <label className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={editRow.is_required}
+                          onCheckedChange={(v) => setEditRow({ ...editRow, is_required: !!v })}
+                        />
+                        إلزامي
+                      </label>
+                      <div className="flex gap-2 sm:justify-end">
+                        <Button variant="outline" size="sm" onClick={() => setEditRow(null)}>
+                          إلغاء
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => updatePlanCourse.mutate()}
+                          disabled={updatePlanCourse.isPending}
+                        >
+                          حفظ التعديل
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
                   <ul className="mt-2 divide-y divide-border/60 text-xs">
                     {rowComponents.length === 0 ? (
                       <li className="py-2 text-muted-foreground">لا توجد مكوّنات لهذا المقرر.</li>
@@ -573,13 +748,35 @@ export function PlanCoursesManager({
                               : ""}
                           </span>
                           {canManage && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => deleteComponent.mutate(c.id)}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
+                            <span className="flex shrink-0 gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                data-testid={`plan-component-edit-${c.id}`}
+                                onClick={() => {
+                                  setComponentForm({
+                                    component_type: c.component_type,
+                                    weekly_contact_hours: c.weekly_contact_hours,
+                                    required_room_type_id: c.required_room_type_id,
+                                    is_timetabled: c.is_timetabled,
+                                    counts_toward_regular_load: c.counts_toward_regular_load,
+                                    counts_toward_overtime: c.counts_toward_overtime,
+                                    compensation_mode: c.compensation_mode,
+                                    explicit_group_size: c.explicit_group_size,
+                                  });
+                                  setComponentTarget({ planCourseId: row.id, componentId: c.id });
+                                }}
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => deleteComponent.mutate(c.id)}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </span>
                           )}
                         </li>
                       ))
@@ -587,8 +784,15 @@ export function PlanCoursesManager({
                   </ul>
 
                   {canManage &&
-                    (componentTarget === row.id ? (
-                      <div className="mt-2 grid grid-cols-1 gap-2 rounded border border-border p-2 sm:grid-cols-2">
+                    (componentTarget?.planCourseId === row.id ? (
+                      <div
+                        className="mt-2 grid grid-cols-1 gap-2 rounded border border-border p-2 sm:grid-cols-2"
+                        data-testid={
+                          componentTarget.componentId
+                            ? `plan-component-edit-form-${componentTarget.componentId}`
+                            : `plan-component-add-form-${row.id}`
+                        }
+                      >
                         <div>
                           <Label className="text-xs">نوع المكوّن</Label>
                           <Select
@@ -723,10 +927,20 @@ export function PlanCoursesManager({
                           </Button>
                           <Button
                             size="sm"
-                            onClick={() => addComponent.mutate(row.id)}
-                            disabled={addComponent.isPending}
+                            onClick={() => {
+                              const editingId = componentTarget?.componentId ?? null;
+                              if (editingId) {
+                                updateComponent.mutate({
+                                  componentId: editingId,
+                                  planCourseId: row.id,
+                                });
+                              } else {
+                                addComponent.mutate(row.id);
+                              }
+                            }}
+                            disabled={addComponent.isPending || updateComponent.isPending}
                           >
-                            حفظ المكوّن
+                            {componentTarget?.componentId ? "حفظ التعديل" : "حفظ المكوّن"}
                           </Button>
                         </div>
                       </div>
@@ -737,7 +951,7 @@ export function PlanCoursesManager({
                         variant="outline"
                         onClick={() => {
                           setComponentForm(EMPTY_COMPONENT);
-                          setComponentTarget(row.id);
+                          setComponentTarget({ planCourseId: row.id, componentId: null });
                         }}
                       >
                         <Plus className="ms-1 h-3.5 w-3.5" /> إضافة مكوّن

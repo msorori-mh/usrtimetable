@@ -8,8 +8,12 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   buildComponentInsert,
+  buildComponentUpdate,
   buildLevelInsert,
   buildPlanCourseInsert,
+  buildPlanCourseUpdate,
+  componentUpdateScope,
+  planCourseUpdateScope,
   COMPENSATION_MODES,
   deriveComponentInsertsFromCourse,
   PLAN_COMPONENT_TYPES,
@@ -367,3 +371,192 @@ assert(
 );
 
 console.log("PLAN_COURSE_COMPONENTS_UI_E2E_FIX_01 harness: all assertions passed");
+
+// 13) 01B — real update coverage for plan_courses
+const pcUpdatePayload = buildPlanCourseUpdate({
+  course_id: "c1",
+  level_id: "l1",
+  semester: 2,
+  is_required: false,
+});
+assert(
+  Object.keys(pcUpdatePayload).sort().join(",") === "is_required,level_id,semester",
+  "plan_courses update payload must contain only level_id, semester, is_required",
+);
+for (const forbidden of ["course_id", "study_plan_id", "college_id"]) {
+  assert(!(forbidden in pcUpdatePayload), `${forbidden} must be immutable in plan_courses update`);
+}
+const rowInPlan: ExistingPlanCourse = {
+  id: "pc1",
+  course_id: "c1",
+  level_id: "l1",
+  semester: 1,
+  study_plan_id: "plan-1",
+  college_id: COLLEGE,
+};
+const okScope = planCourseUpdateScope(ctx, rowInPlan);
+assert(
+  !("ok" in okScope) &&
+    okScope.id === "pc1" &&
+    okScope.collegeId === COLLEGE &&
+    okScope.studyPlanId === "plan-1",
+  "plan course update scope must bind id + college + plan",
+);
+assert(
+  "ok" in planCourseUpdateScope(ctx, { ...rowInPlan, college_id: OTHER }),
+  "foreign-college plan course update must fail closed",
+);
+assert(
+  "ok" in planCourseUpdateScope(ctx, { ...rowInPlan, study_plan_id: "plan-2" }),
+  "foreign-plan plan course update must fail closed",
+);
+// editing itself must not trip the duplicate guard, but colliding with a sibling must
+const existingRows: ExistingPlanCourse[] = [rowInPlan, { ...rowInPlan, id: "pc2", semester: 2 }];
+assert(
+  validatePlanCourseForm({
+    ctx,
+    form: { course_id: "c1", level_id: "l1", semester: 1, is_required: false },
+    courses,
+    levels,
+    existing: existingRows,
+    editingId: "pc1",
+  }).ok,
+  "editing a row must ignore its own duplicate",
+);
+const collide = validatePlanCourseForm({
+  ctx,
+  form: { course_id: "c1", level_id: "l1", semester: 2, is_required: true },
+  courses,
+  levels,
+  existing: existingRows,
+  editingId: "pc1",
+});
+assert(
+  !collide.ok && collide.code === "PLAN_COURSE_DUPLICATE",
+  "update colliding with a sibling row must be rejected",
+);
+const badLevelUpdate = validatePlanCourseForm({
+  ctx,
+  form: { course_id: "c1", level_id: "l-other-prog", semester: 1, is_required: true },
+  courses,
+  levels,
+  existing: [],
+  editingId: "pc1",
+});
+assert(
+  !badLevelUpdate.ok && badLevelUpdate.code === "LEVEL_SCOPE_MISMATCH",
+  "update must restrict level to plan program + college",
+);
+const badSemesterUpdate = validatePlanCourseForm({
+  ctx,
+  form: { course_id: "c1", level_id: "l1", semester: 3, is_required: true },
+  courses,
+  levels,
+  existing: [],
+  editingId: "pc1",
+});
+assert(
+  !badSemesterUpdate.ok && badSemesterUpdate.code === "SEMESTER_INVALID",
+  "update semester must be 1 or 2",
+);
+
+// 14) 01B — real update coverage for plan_course_components
+const compForm: ComponentForm = {
+  component_type: "practical",
+  weekly_contact_hours: 3,
+  required_room_type_id: "rt1",
+  is_timetabled: true,
+  counts_toward_regular_load: true,
+  counts_toward_overtime: false,
+  compensation_mode: "per_group_flat",
+  explicit_group_size: 20,
+};
+const compUpdate = buildComponentUpdate(compForm);
+assert(
+  Object.keys(compUpdate).sort().join(",") ===
+    [
+      "compensation_mode",
+      "component_type",
+      "counts_toward_overtime",
+      "counts_toward_regular_load",
+      "explicit_group_size",
+      "is_timetabled",
+      "required_room_type_id",
+      "weekly_contact_hours",
+    ].join(","),
+  "component update payload must cover every operational field",
+);
+assert(
+  !("college_id" in compUpdate) && !("plan_course_id" in compUpdate),
+  "component update must not move the row across college/plan course",
+);
+const siblings = [
+  { id: "cmp1", plan_course_id: "pc1", component_type: "theory" },
+  { id: "cmp2", plan_course_id: "pc1", component_type: "practical" },
+];
+assert(
+  validateComponentForm({
+    ctx,
+    form: compForm,
+    roomTypes,
+    siblings,
+    planCourseId: "pc1",
+    editingId: "cmp2",
+  }).ok,
+  "editing a component keeping its own type must pass",
+);
+const dupType = validateComponentForm({
+  ctx,
+  form: { ...compForm, component_type: "theory" },
+  roomTypes,
+  siblings,
+  planCourseId: "pc1",
+  editingId: "cmp2",
+});
+assert(
+  !dupType.ok && dupType.code === "COMPONENT_TYPE_DUPLICATE",
+  "duplicate component type inside one plan course must be rejected",
+);
+const foreignRoom = validateComponentForm({
+  ctx,
+  form: { ...compForm, required_room_type_id: "rt-foreign" },
+  roomTypes,
+  siblings,
+  planCourseId: "pc1",
+  editingId: "cmp2",
+});
+assert(
+  !foreignRoom.ok && foreignRoom.code === "ROOM_TYPE_SCOPE_MISMATCH",
+  "component update must reject foreign room type",
+);
+const cScope = componentUpdateScope(ctx, { id: "cmp2", plan_course_id: "pc1" }, ["pc1", "pc2"]);
+assert(
+  !("ok" in cScope) &&
+    cScope.id === "cmp2" &&
+    cScope.collegeId === COLLEGE &&
+    cScope.planCourseId === "pc1",
+  "component update scope must bind id + college + plan_course",
+);
+assert(
+  "ok" in componentUpdateScope(ctx, { id: "cmp2", plan_course_id: "pc-foreign" }, ["pc1"]),
+  "component outside the plan must fail closed",
+);
+
+// 15) 01B — edit affordances present in the UI, writes still gated
+assert(ui.includes("plan-course-edit-"), "per-row edit button required");
+assert(ui.includes("plan-course-edit-form-"), "plan course edit form required");
+assert(ui.includes("plan-component-edit-"), "per-component edit button required");
+assert(ui.includes("plan-component-edit-form-"), "component edit form required");
+assert(ui.includes("buildPlanCourseUpdate"), "plan course update payload builder must be used");
+assert(ui.includes("buildComponentUpdate"), "component update payload builder must be used");
+assert(
+  ui.includes('.eq("study_plan_id", scope.studyPlanId)'),
+  "plan course update must be scoped by study_plan_id",
+);
+assert(
+  ui.includes('.eq("plan_course_id", scope.planCourseId)'),
+  "component update must be scoped by plan_course_id",
+);
+assert(ui.includes("حفظ التعديل"), "Arabic save-edit label required");
+
+console.log("PLAN_COURSE_COMPONENTS_UI_E2E_FIX_01B harness: update assertions passed");
