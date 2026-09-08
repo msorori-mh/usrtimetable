@@ -53,6 +53,7 @@ export const harnesses = [
   "scheduling-headcount-foundation.harness.ts",
   "draft-lecturer-report.harness.ts",
   "admin-routes-inventory.harness.ts",
+  "admin-ux-information-architecture.harness.ts",
   "phase-a1-legacy-navigation-terminology.harness.ts",
   "domain-contract-static.harness.ts",
   "program-department-integrity.harness.ts",

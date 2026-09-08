@@ -1,3 +1,4 @@
+import { readPrimaryNavigationSource } from "./nav-source";
 /**
  * Unauthorized access UX regression harness for /users (pure logic + source guards).
  * No DB, no network, no full-page reload.
@@ -138,17 +139,23 @@ function run() {
     "7 published schedules stays viewable (no super_admin-only throw)",
   );
 
-  const layoutSrc = readSrc("src/components/app-layout.tsx");
+  const layoutSrc = readPrimaryNavigationSource(root);
   assert(
-    /to:\s*"\/users"[\s\S]*?roles:\s*\["super_admin"(,\s*"institutional_viewer")?\]/.test(layoutSrc),
+    /to:\s*"\/users"[\s\S]*?roles:\s*\["super_admin"(,\s*"institutional_viewer")?\]/.test(
+      layoutSrc,
+    ),
     "7 nav /users still super_admin only",
   );
   assert(
-    /to:\s*"\/import"[\s\S]*?roles:\s*\["super_admin",\s*"college_admin"(,\s*"institutional_viewer")?\]/.test(layoutSrc),
+    /to:\s*"\/import"[\s\S]*?roles:\s*\["super_admin",\s*"college_admin"(,\s*"institutional_viewer")?\]/.test(
+      layoutSrc,
+    ),
     "7 nav /import roles unchanged",
   );
   assert(
-    /to:\s*"\/auto-schedule"[\s\S]*?roles:\s*\["super_admin",\s*"college_admin"(,\s*"institutional_viewer")?\]/.test(layoutSrc),
+    /to:\s*"\/auto-schedule"[\s\S]*?roles:\s*\["super_admin",\s*"college_admin"(,\s*"institutional_viewer")?\]/.test(
+      layoutSrc,
+    ),
     "7 nav /auto-schedule roles unchanged",
   );
   assert(

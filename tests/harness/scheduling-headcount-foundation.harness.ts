@@ -1,3 +1,4 @@
+import { readPrimaryNavigationSource } from "./nav-source";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -91,7 +92,7 @@ assert.match(
   read("src/routes/_authenticated/scheduling-headcounts.tsx"),
   /أعداد الدفعات المعتمدة للجدولة/,
 );
-assert.match(read("src/components/app-layout.tsx"), /أعداد الدفعات المعتمدة للجدولة/);
+assert.match(readPrimaryNavigationSource(root), /أعداد الدفعات المعتمدة للجدولة/);
 
 console.log(
   JSON.stringify({ harness: "scheduling-headcount-foundation", status: "pass" }, null, 2),

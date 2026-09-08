@@ -5,14 +5,22 @@ import { cn } from "@/lib/utils";
 
 const Tabs = TabsPrimitive.Root;
 
+/**
+ * Institutional tab bar: calm surface, clear border, horizontal scroll on
+ * mobile (never wrap / never clip), RTL-safe.
+ */
 const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
 >(({ className, ...props }, ref) => (
   <TabsPrimitive.List
     ref={ref}
+    dir="rtl"
+    data-usr-tabs-list=""
     className={cn(
-      "inline-flex h-9 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground",
+      "flex w-full max-w-full items-stretch justify-start gap-1 overflow-x-auto overflow-y-hidden whitespace-nowrap",
+      "rounded-xl border border-border bg-muted/50 p-1.5 text-muted-foreground",
+      "[scrollbar-width:thin] [-webkit-overflow-scrolling:touch]",
       className,
     )}
     {...props}
@@ -26,8 +34,17 @@ const TabsTrigger = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <TabsPrimitive.Trigger
     ref={ref}
+    data-usr-tabs-trigger=""
     className={cn(
-      "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background cursor-pointer transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow",
+      "group relative inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap",
+      "rounded-lg px-4 py-2 text-[13px] font-semibold leading-none sm:text-sm",
+      "cursor-pointer ring-offset-background transition-all",
+      "hover:bg-background/70 hover:text-foreground",
+      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+      "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
+      "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md",
+      "data-[state=active]:after:absolute data-[state=active]:after:inset-x-3 data-[state=active]:after:-bottom-0.5",
+      "data-[state=active]:after:h-0.5 data-[state=active]:after:rounded-full data-[state=active]:after:bg-[var(--usr-gold)]",
       className,
     )}
     {...props}
@@ -42,7 +59,7 @@ const TabsContent = React.forwardRef<
   <TabsPrimitive.Content
     ref={ref}
     className={cn(
-      "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+      "mt-4 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
       className,
     )}
     {...props}

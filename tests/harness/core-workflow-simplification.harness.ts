@@ -1,3 +1,4 @@
+import { readPrimaryNavigationSource } from "./nav-source";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -45,9 +46,10 @@ const published = resolveCoreWorkflow({
 assert.equal(published.nextStage.id, "publish");
 assert.ok(published.stages.every((stage) => stage.status === "complete"));
 
-const layout = read("src/components/app-layout.tsx");
-assert.ok(layout.includes("المسار الأساسي"), "simple navigation is the default surface");
-assert.ok(layout.includes("الأدوات المتقدمة"), "advanced tools remain discoverable");
+const layout = readPrimaryNavigationSource(root);
+// Mode labels renamed in SOURCE_ONLY_ADMIN_UX_INFORMATION_ARCHITECTURE_02.
+assert.ok(layout.includes("المسار التشغيلي"), "simple navigation is the default surface");
+assert.ok(layout.includes("كل الأدوات"), "advanced tools remain discoverable");
 assert.ok(layout.includes('to: "/data-onboarding"'), "prepare route remains available");
 assert.ok(layout.includes('to: "/schedule-builder"'), "builder route remains available");
 assert.ok(layout.includes('to: "/schedule-versions"'), "review route remains available");

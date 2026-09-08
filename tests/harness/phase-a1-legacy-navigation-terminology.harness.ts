@@ -1,3 +1,4 @@
+import { readPrimaryNavigationSource } from "./nav-source";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -6,7 +7,7 @@ import { fileURLToPath } from "node:url";
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const read = (rel: string) => readFileSync(path.join(root, rel), "utf8");
 
-const layout = read("src/components/app-layout.tsx");
+const layout = readPrimaryNavigationSource(root);
 const sections = read("src/routes/_authenticated/sections.tsx");
 const templates = read("src/routes/_authenticated/data-templates.tsx");
 const registry = read("src/lib/excel-import/registry.ts");
@@ -42,8 +43,10 @@ for (const term of [
     `missing official term: ${term}`,
   );
 }
+// Renamed in SOURCE_ONLY_ADMIN_UX_INFORMATION_ARCHITECTURE_02: the official
+// working-days label is «ساعات وفترات الدوام» (lecture times live in templates).
 assert.ok(
-  layout.includes("أيام وفترات الدوام"),
+  layout.includes("ساعات وفترات الدوام"),
   "official working-days terminology must be in navigation",
 );
 assert.ok(assignments.includes('to="/schedule-builder"'), "workflow must end at Builder V2");

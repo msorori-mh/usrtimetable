@@ -1,3 +1,4 @@
+import { readPrimaryNavigationSource } from "./nav-source";
 /**
  * Static inventory harness — admin routes & NAV labels.
  * Read-only; does not mutate product behavior.
@@ -13,7 +14,7 @@ function read(rel: string): string {
   return readFileSync(path.join(root, rel), "utf8");
 }
 
-const layout = read("src/components/app-layout.tsx");
+const layout = readPrimaryNavigationSource(root);
 const navToMatches = [...layout.matchAll(/to:\s*"([^"]+)"/g)].map((m) => m[1]);
 const navLabelMatches = [...layout.matchAll(/label:\s*"([^"]+)"/g)].map((m) => m[1]);
 

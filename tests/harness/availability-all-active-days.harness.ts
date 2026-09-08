@@ -1,3 +1,4 @@
+import { readPrimaryNavigationSource } from "./nav-source";
 /**
  * AVAILABILITY-ALL-ACTIVE-DAYS-BULK-ENTRY-01 (+ domain addendum)
  * Pure logic + source guards (no DB writes, no network).
@@ -274,7 +275,7 @@ function run() {
     "unavailable-only days do not force whitelist",
   );
 
-  const nav = readSrc("src/components/app-layout.tsx");
+  const nav = readPrimaryNavigationSource(root);
   assert(nav.includes('label: "عدم التوفّر"'), "nav label unavailability");
 
   // Domain separation documentation present in migration header

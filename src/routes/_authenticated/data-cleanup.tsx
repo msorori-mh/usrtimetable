@@ -11,19 +11,34 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import {
-  Wrench, AlertTriangle, Library, UserSquare2, DoorOpen, ClipboardList,
-  CheckCircle2, ShieldAlert,
+  Wrench,
+  AlertTriangle,
+  Library,
+  UserSquare2,
+  DoorOpen,
+  ClipboardList,
+  CheckCircle2,
+  ShieldAlert,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/data-cleanup")({
@@ -33,38 +48,81 @@ export const Route = createFileRoute("/_authenticated/data-cleanup")({
 
 // ---------- types ----------
 type CourseRow = {
-  id: string; code: string; name: string; course_nature: string | null;
+  id: string;
+  code: string;
+  name: string;
+  course_nature: string | null;
   department_id: string | null;
 };
 type PlanCourseRow = {
-  id: string; course_id: string; lectures_per_week: number | null; labs_per_week: number | null;
-  lecture_session_duration: number | null; lab_session_duration: number | null;
-  required_room_type_for_lecture: string | null; required_room_type_for_lab: string | null;
+  id: string;
+  course_id: string;
+  lectures_per_week: number | null;
+  labs_per_week: number | null;
+  lecture_session_duration: number | null;
+  lab_session_duration: number | null;
+  required_room_type_for_lecture: string | null;
+  required_room_type_for_lab: string | null;
 };
 type InstructorRow = {
-  id: string; full_name: string; specialization: string | null;
-  department_id: string | null; instructor_type_id: string | null;
+  id: string;
+  full_name: string;
+  specialization: string | null;
+  department_id: string | null;
+  instructor_type_id: string | null;
 };
 type RoomRow = {
-  id: string; code: string; name: string; capacity: number; room_type_id: string | null; is_active: boolean;
+  id: string;
+  code: string;
+  name: string;
+  capacity: number;
+  room_type_id: string | null;
+  is_active: boolean;
 };
 type OfferingRow = {
-  id: string; expected_students: number; study_plan_id: string | null; plan_course_id: string | null;
-  study_system: string | null; course_id: string;
+  id: string;
+  expected_students: number;
+  study_plan_id: string | null;
+  plan_course_id: string | null;
+  study_system: string | null;
+  course_id: string;
 };
 
 // ---------- data fetch ----------
 async function fetchAll(collegeId: string) {
   const eq = (q: any) => q.eq("college_id", collegeId);
   const [
-    courses, planCourses, instructors, availability, rooms, offerings, assignments, departments, instructorTypes, roomTypes,
+    courses,
+    planCourses,
+    instructors,
+    availability,
+    rooms,
+    offerings,
+    assignments,
+    departments,
+    instructorTypes,
+    roomTypes,
   ] = await Promise.all([
     eq(supabase.from("courses").select("id, code, name, course_nature, department_id")),
-    eq(supabase.from("plan_courses").select("id, course_id, lectures_per_week, labs_per_week, lecture_session_duration, lab_session_duration, required_room_type_for_lecture, required_room_type_for_lab")),
-    eq(supabase.from("instructors").select("id, full_name, specialization, department_id, instructor_type_id")),
+    eq(
+      supabase
+        .from("plan_courses")
+        .select(
+          "id, course_id, lectures_per_week, labs_per_week, lecture_session_duration, lab_session_duration, required_room_type_for_lecture, required_room_type_for_lab",
+        ),
+    ),
+    eq(
+      supabase
+        .from("instructors")
+        .select("id, full_name, specialization, department_id, instructor_type_id"),
+    ),
     eq(supabase.from("instructor_availability").select("id, instructor_id")),
     eq(supabase.from("rooms").select("id, code, name, capacity, room_type_id, is_active")),
-    eq(supabase.from("course_offerings").select("id, expected_students, study_plan_id, plan_course_id, study_system, course_id")),
+    eq(
+      supabase
+        .from("course_offerings")
+        .select("id, expected_students, study_plan_id, plan_course_id, study_system, course_id"),
+    ),
     eq(supabase.from("teaching_assignments").select("id, course_offering_id")),
     eq(supabase.from("departments").select("id, name")),
     eq(supabase.from("instructor_types").select("id, name, code")),
@@ -79,8 +137,17 @@ async function fetchAll(collegeId: string) {
     offerings: (offerings.data ?? []) as OfferingRow[],
     assignments: (assignments.data ?? []) as { id: string; course_offering_id: string }[],
     departments: (departments.data ?? []) as { id: string; name: string }[],
-    instructorTypes: (instructorTypes.data ?? []) as { id: string; name: string; code: string | null }[],
-    roomTypes: (roomTypes.data ?? []) as { id: string; name: string; code: string | null; default_capacity: number | null }[],
+    instructorTypes: (instructorTypes.data ?? []) as {
+      id: string;
+      name: string;
+      code: string | null;
+    }[],
+    roomTypes: (roomTypes.data ?? []) as {
+      id: string;
+      name: string;
+      code: string | null;
+      default_capacity: number | null;
+    }[],
   };
 }
 
@@ -102,7 +169,9 @@ function DataCleanupPage() {
     return (
       <div className="space-y-4" dir="rtl">
         <h1 className="text-2xl font-bold">تنظيف البيانات</h1>
-        <Card className="p-6"><CollegeSwitcher /></Card>
+        <Card className="p-6">
+          <CollegeSwitcher />
+        </Card>
       </div>
     );
   }
@@ -118,14 +187,18 @@ function DataCleanupPage() {
         </div>
         <div className="flex items-center gap-2">
           <CollegeSwitcher />
-          <Link to="/data-readiness" className="text-sm text-primary underline-offset-4 hover:underline">
+          <Link
+            to="/data-readiness"
+            className="text-sm text-primary underline-offset-4 hover:underline"
+          >
             ← جاهزية البيانات
           </Link>
         </div>
       </div>
 
       <p className="text-sm text-muted-foreground">
-        تشخيص مشاكل جودة البيانات الأكاديمية قبل الجدولة وإصلاحها جماعياً. لا تُجرى أي إصلاحات تلقائية — كل عملية تتطلب تأكيداً صريحاً وتُسجَّل في سجل التدقيق.
+        تشخيص مشاكل جودة البيانات الأكاديمية قبل الجدولة وإصلاحها جماعياً. لا تُجرى أي إصلاحات
+        تلقائية — كل عملية تتطلب تأكيداً صريحاً وتُسجَّل في سجل التدقيق.
       </p>
 
       {/* Dashboard */}
@@ -138,24 +211,56 @@ function DataCleanupPage() {
       )}
 
       <Tabs defaultValue="courses" dir="rtl">
-        <TabsList className="flex w-full flex-wrap justify-start gap-1">
-          <TabsTrigger value="courses"><Library className="ml-2 h-4 w-4" /> المقررات</TabsTrigger>
-          <TabsTrigger value="instructors"><UserSquare2 className="ml-2 h-4 w-4" /> المحاضرون</TabsTrigger>
-          <TabsTrigger value="rooms"><DoorOpen className="ml-2 h-4 w-4" /> القاعات</TabsTrigger>
-          <TabsTrigger value="offerings"><ClipboardList className="ml-2 h-4 w-4" /> إسناد المقررات</TabsTrigger>
+        <TabsList>
+          <TabsTrigger value="courses">
+            <Library className="ml-2 h-4 w-4" /> المقررات
+          </TabsTrigger>
+          <TabsTrigger value="instructors">
+            <UserSquare2 className="ml-2 h-4 w-4" /> المحاضرون
+          </TabsTrigger>
+          <TabsTrigger value="rooms">
+            <DoorOpen className="ml-2 h-4 w-4" /> القاعات
+          </TabsTrigger>
+          <TabsTrigger value="offerings">
+            <ClipboardList className="ml-2 h-4 w-4" /> إسناد المقررات
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="courses" className="mt-4">
-          <CoursesSection data={data} diag={diag} canManage={canManage} onChanged={invalidate} collegeId={active.id} />
+          <CoursesSection
+            data={data}
+            diag={diag}
+            canManage={canManage}
+            onChanged={invalidate}
+            collegeId={active.id}
+          />
         </TabsContent>
         <TabsContent value="instructors" className="mt-4">
-          <InstructorsSection data={data} diag={diag} canManage={canManage} onChanged={invalidate} collegeId={active.id} />
+          <InstructorsSection
+            data={data}
+            diag={diag}
+            canManage={canManage}
+            onChanged={invalidate}
+            collegeId={active.id}
+          />
         </TabsContent>
         <TabsContent value="rooms" className="mt-4">
-          <RoomsSection data={data} diag={diag} canManage={canManage} onChanged={invalidate} collegeId={active.id} />
+          <RoomsSection
+            data={data}
+            diag={diag}
+            canManage={canManage}
+            onChanged={invalidate}
+            collegeId={active.id}
+          />
         </TabsContent>
         <TabsContent value="offerings" className="mt-4">
-          <OfferingsSection data={data} diag={diag} canManage={canManage} onChanged={invalidate} collegeId={active.id} />
+          <OfferingsSection
+            data={data}
+            diag={diag}
+            canManage={canManage}
+            onChanged={invalidate}
+            collegeId={active.id}
+          />
         </TabsContent>
       </Tabs>
     </div>
@@ -164,10 +269,23 @@ function DataCleanupPage() {
 
 // ---------- diagnostics ----------
 type IssueId =
-  | "temp_codes" | "course_no_plan" | "course_missing_nature" | "course_no_pattern" | "course_no_room_req"
-  | "ins_no_spec" | "ins_no_dept" | "ins_no_type" | "ins_no_avail"
-  | "room_default_cap" | "room_no_type" | "room_dup_name" | "room_inactive"
-  | "off_zero_students" | "off_no_assignment" | "off_no_system" | "off_no_plan_course";
+  | "temp_codes"
+  | "course_no_plan"
+  | "course_missing_nature"
+  | "course_no_pattern"
+  | "course_no_room_req"
+  | "ins_no_spec"
+  | "ins_no_dept"
+  | "ins_no_type"
+  | "ins_no_avail"
+  | "room_default_cap"
+  | "room_no_type"
+  | "room_dup_name"
+  | "room_inactive"
+  | "off_zero_students"
+  | "off_no_assignment"
+  | "off_no_system"
+  | "off_no_plan_course";
 
 type Issue = {
   id: IssueId;
@@ -236,48 +354,161 @@ function computeDiagnostics(d: Awaited<ReturnType<typeof fetchAll>>): Diagnostic
   const offNoPlanCourse = d.offerings.filter((o) => !o.plan_course_id);
 
   const totals = {
-    courses: d.courses.length, planCourses: d.planCourses.length,
-    instructors: d.instructors.length, rooms: d.rooms.length, offerings: d.offerings.length,
+    courses: d.courses.length,
+    planCourses: d.planCourses.length,
+    instructors: d.instructors.length,
+    rooms: d.rooms.length,
+    offerings: d.offerings.length,
   };
 
-  const mk = (id: IssueId, label: string, rows: { id: string }[], total: number, severity: Issue["severity"], factor: number): Issue => {
+  const mk = (
+    id: IssueId,
+    label: string,
+    rows: { id: string }[],
+    total: number,
+    severity: Issue["severity"],
+    factor: number,
+  ): Issue => {
     const p = pct(rows.length, total);
     return {
-      id, label,
-      count: rows.length, total,
-      severity, impactPct: Math.round(p * factor),
+      id,
+      label,
+      count: rows.length,
+      total,
+      severity,
+      impactPct: Math.round(p * factor),
       ids: rows.map((r) => r.id),
     };
   };
 
   const issues: Record<IssueId, Issue> = {
-    temp_codes: mk("temp_codes", "مقررات برموز مؤقتة (CRS-)", tempCodes, totals.courses, "critical", 0.4),
-    course_no_plan: mk("course_no_plan", "مقررات غير مرتبطة بأي خطة دراسية", courseNoPlan, totals.courses, "medium", 0.3),
-    course_missing_nature: mk("course_missing_nature", "مقررات بدون طبيعة (course_nature)", courseNoNature, totals.courses, "low", 0.1),
-    course_no_pattern: mk("course_no_pattern", "مقررات الخطة بدون نمط محاضرات صحيح", noPattern, totals.planCourses, "critical", 0.5),
-    course_no_room_req: mk("course_no_room_req", "مقررات الخطة بدون متطلبات قاعة", noRoomReq, totals.planCourses, "medium", 0.3),
+    temp_codes: mk(
+      "temp_codes",
+      "مقررات برموز مؤقتة (CRS-)",
+      tempCodes,
+      totals.courses,
+      "critical",
+      0.4,
+    ),
+    course_no_plan: mk(
+      "course_no_plan",
+      "مقررات غير مرتبطة بأي خطة دراسية",
+      courseNoPlan,
+      totals.courses,
+      "medium",
+      0.3,
+    ),
+    course_missing_nature: mk(
+      "course_missing_nature",
+      "مقررات بدون طبيعة (course_nature)",
+      courseNoNature,
+      totals.courses,
+      "low",
+      0.1,
+    ),
+    course_no_pattern: mk(
+      "course_no_pattern",
+      "مقررات الخطة بدون نمط محاضرات صحيح",
+      noPattern,
+      totals.planCourses,
+      "critical",
+      0.5,
+    ),
+    course_no_room_req: mk(
+      "course_no_room_req",
+      "مقررات الخطة بدون متطلبات قاعة",
+      noRoomReq,
+      totals.planCourses,
+      "medium",
+      0.3,
+    ),
 
-    ins_no_spec: mk("ins_no_spec", "محاضرون بدون تخصص", insNoSpec, totals.instructors, "medium", 0.2),
-    ins_no_dept: mk("ins_no_dept", "محاضرون بدون قسم", insNoDept, totals.instructors, "critical", 0.4),
-    ins_no_type: mk("ins_no_type", "محاضرون بدون نوع", insNoType, totals.instructors, "medium", 0.2),
-    ins_no_avail: mk("ins_no_avail", "محاضرون بدون توفّر مسجّل", insNoAvail, totals.instructors, "medium", 0.3),
+    ins_no_spec: mk(
+      "ins_no_spec",
+      "محاضرون بدون تخصص",
+      insNoSpec,
+      totals.instructors,
+      "medium",
+      0.2,
+    ),
+    ins_no_dept: mk(
+      "ins_no_dept",
+      "محاضرون بدون قسم",
+      insNoDept,
+      totals.instructors,
+      "critical",
+      0.4,
+    ),
+    ins_no_type: mk(
+      "ins_no_type",
+      "محاضرون بدون نوع",
+      insNoType,
+      totals.instructors,
+      "medium",
+      0.2,
+    ),
+    ins_no_avail: mk(
+      "ins_no_avail",
+      "محاضرون بدون توفّر مسجّل",
+      insNoAvail,
+      totals.instructors,
+      "medium",
+      0.3,
+    ),
 
-    room_default_cap: mk("room_default_cap", "قاعات بسعة افتراضية (30)", roomDefaultCap, totals.rooms, "medium", 0.2),
+    room_default_cap: mk(
+      "room_default_cap",
+      "قاعات بسعة افتراضية (30)",
+      roomDefaultCap,
+      totals.rooms,
+      "medium",
+      0.2,
+    ),
     room_no_type: mk("room_no_type", "قاعات بدون نوع", roomNoType, totals.rooms, "critical", 0.4),
     room_dup_name: mk("room_dup_name", "قاعات بأسماء مكررة", roomDupName, totals.rooms, "low", 0.1),
     room_inactive: mk("room_inactive", "قاعات غير نشطة", roomInactive, totals.rooms, "low", 0.05),
 
-    off_zero_students: mk("off_zero_students", "طرح بـ expected_students = 0", offZero, totals.offerings, "critical", 0.5),
-    off_no_assignment: mk("off_no_assignment", "طرح بدون إسناد تدريسي", offNoAssign, totals.offerings, "critical", 0.5),
-    off_no_system: mk("off_no_system", "طرح بدون نظام دراسة", offNoSystem, totals.offerings, "low", 0.1),
-    off_no_plan_course: mk("off_no_plan_course", "طرح غير مرتبط بمقرر خطة", offNoPlanCourse, totals.offerings, "medium", 0.3),
+    off_zero_students: mk(
+      "off_zero_students",
+      "طرح بـ expected_students = 0",
+      offZero,
+      totals.offerings,
+      "critical",
+      0.5,
+    ),
+    off_no_assignment: mk(
+      "off_no_assignment",
+      "طرح بدون إسناد تدريسي",
+      offNoAssign,
+      totals.offerings,
+      "critical",
+      0.5,
+    ),
+    off_no_system: mk(
+      "off_no_system",
+      "طرح بدون نظام دراسة",
+      offNoSystem,
+      totals.offerings,
+      "low",
+      0.1,
+    ),
+    off_no_plan_course: mk(
+      "off_no_plan_course",
+      "طرح غير مرتبط بمقرر خطة",
+      offNoPlanCourse,
+      totals.offerings,
+      "medium",
+      0.3,
+    ),
   };
 
   // overall readiness: 100 - sum of weighted impacts (capped)
   const totalImpact = Object.values(issues).reduce((s, i) => s + i.impactPct, 0);
   const readiness = Math.max(0, 100 - Math.min(100, Math.round(totalImpact / 6)));
   const estimatedAfter = 100; // after fixing all
-  const critical = Object.values(issues).filter((i) => i.severity === "critical" && i.count > 0).length;
+  const critical = Object.values(issues).filter(
+    (i) => i.severity === "critical" && i.count > 0,
+  ).length;
   const medium = Object.values(issues).filter((i) => i.severity === "medium" && i.count > 0).length;
   return { issues, readiness, estimatedAfter, critical, medium };
 }
@@ -300,11 +531,15 @@ function DashboardCards({ diag, loading }: { diag: Diagnostics | null; loading: 
         <Progress value={diag.estimatedAfter} className="mt-2 h-2" />
       </Card>
       <Card className="p-4">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground"><ShieldAlert className="h-4 w-4" /> مشاكل حرجة</div>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <ShieldAlert className="h-4 w-4" /> مشاكل حرجة
+        </div>
         <div className="mt-1 text-3xl font-bold text-red-600">{diag.critical}</div>
       </Card>
       <Card className="p-4">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground"><AlertTriangle className="h-4 w-4" /> مشاكل متوسطة</div>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <AlertTriangle className="h-4 w-4" /> مشاكل متوسطة
+        </div>
         <div className="mt-1 text-3xl font-bold text-amber-600">{diag.medium}</div>
       </Card>
     </div>
@@ -312,12 +547,7 @@ function DashboardCards({ diag, loading }: { diag: Diagnostics | null; loading: 
 }
 
 // ---------- shared issue row ----------
-function IssueRow({
-  issue, actions,
-}: {
-  issue: Issue | undefined;
-  actions?: React.ReactNode;
-}) {
+function IssueRow({ issue, actions }: { issue: Issue | undefined; actions?: React.ReactNode }) {
   if (!issue) return null;
   const p = pct(issue.count, issue.total);
   const okay = issue.count === 0;
@@ -335,8 +565,12 @@ function IssueRow({
             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           )}
           <span className="text-sm font-medium">{issue.label}</span>
-          <Badge variant="outline" className="text-[10px]">{issue.count}/{issue.total}</Badge>
-          <Badge variant="secondary" className="text-[10px]">{p}%</Badge>
+          <Badge variant="outline" className="text-[10px]">
+            {issue.count}/{issue.total}
+          </Badge>
+          <Badge variant="secondary" className="text-[10px]">
+            {p}%
+          </Badge>
           {!okay && issue.impactPct > 0 && (
             <Badge className="bg-rose-100 text-[10px] text-rose-800 dark:bg-rose-900/40 dark:text-rose-200">
               يقلل الجاهزية ~{issue.impactPct}%
@@ -356,7 +590,14 @@ function IssueRow({
 
 // ---------- bulk dialog (generic) ----------
 function BulkDialog({
-  open, onOpenChange, title, description, ids, children, onConfirm, confirmLabel = "تنفيذ",
+  open,
+  onOpenChange,
+  title,
+  description,
+  ids,
+  children,
+  onConfirm,
+  confirmLabel = "تنفيذ",
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -371,7 +612,9 @@ function BulkDialog({
   const [busy, setBusy] = useState(false);
 
   // reset selection when opening
-  const allSelectedIds = Object.entries(selected).filter(([, v]) => v).map(([k]) => k);
+  const allSelectedIds = Object.entries(selected)
+    .filter(([, v]) => v)
+    .map(([k]) => k);
 
   const handleOpen = (v: boolean) => {
     if (v) {
@@ -391,7 +634,8 @@ function BulkDialog({
         </DialogHeader>
         <div className="space-y-3">
           <div className="rounded-md border bg-muted/30 p-2 text-xs">
-            سيتم تطبيق العملية على <strong>{allSelectedIds.length}</strong> من أصل <strong>{ids.length}</strong> عنصر.
+            سيتم تطبيق العملية على <strong>{allSelectedIds.length}</strong> من أصل{" "}
+            <strong>{ids.length}</strong> عنصر.
             {ids.length > 0 && (
               <button
                 type="button"
@@ -410,7 +654,9 @@ function BulkDialog({
           {children}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => handleOpen(false)} disabled={busy}>إلغاء</Button>
+          <Button variant="outline" onClick={() => handleOpen(false)} disabled={busy}>
+            إلغاء
+          </Button>
           <Button
             disabled={busy || allSelectedIds.length === 0}
             onClick={async () => {
@@ -433,7 +679,11 @@ function BulkDialog({
 
 // ---------- COURSES ----------
 function CoursesSection({
-  data, diag, canManage, onChanged, collegeId,
+  data,
+  diag,
+  canManage,
+  onChanged,
+  collegeId,
 }: {
   data: Awaited<ReturnType<typeof fetchAll>> | undefined;
   diag: Diagnostics | null;
@@ -456,17 +706,38 @@ function CoursesSection({
 
   return (
     <Card className="space-y-3 p-4">
-      <IssueRow issue={issues?.temp_codes} actions={canManage ? (
-        <Button size="sm" onClick={() => setDlg("temp_codes")}>تحديث جماعي للرموز</Button>
-      ) : null} />
+      <IssueRow
+        issue={issues?.temp_codes}
+        actions={
+          canManage ? (
+            <Button size="sm" onClick={() => setDlg("temp_codes")}>
+              تحديث جماعي للرموز
+            </Button>
+          ) : null
+        }
+      />
       <IssueRow issue={issues?.course_no_plan} />
-      <IssueRow issue={issues?.course_missing_nature} actions={canManage ? (
-        <Button size="sm" onClick={() => setDlg("nature")}>تعيين طبيعة المقرر</Button>
-      ) : null} />
+      <IssueRow
+        issue={issues?.course_missing_nature}
+        actions={
+          canManage ? (
+            <Button size="sm" onClick={() => setDlg("nature")}>
+              تعيين طبيعة المقرر
+            </Button>
+          ) : null
+        }
+      />
       <IssueRow issue={issues?.course_no_pattern} />
-      <IssueRow issue={issues?.course_no_room_req} actions={canManage ? (
-        <Button size="sm" onClick={() => setDlg("room_req")}>تعيين متطلبات القاعة</Button>
-      ) : null} />
+      <IssueRow
+        issue={issues?.course_no_room_req}
+        actions={
+          canManage ? (
+            <Button size="sm" onClick={() => setDlg("room_req")}>
+              تعيين متطلبات القاعة
+            </Button>
+          ) : null
+        }
+      />
 
       <BulkDialog
         open={dlg === "temp_codes"}
@@ -476,16 +747,28 @@ function CoursesSection({
         ids={tempIds}
         confirmLabel="تطبيق التحديث"
         onConfirm={async (ids) => {
-          if (!codePrefix.trim()) { toast.error("أدخل البادئة الجديدة"); return; }
+          if (!codePrefix.trim()) {
+            toast.error("أدخل البادئة الجديدة");
+            return;
+          }
           const rows = (data?.courses ?? []).filter((c) => ids.includes(c.id));
-          const updates = await Promise.all(rows.map(async (c) => {
-            const newCode = c.code.replace(/^CRS-/i, `${codePrefix.trim()}-`);
-            const { error } = await supabase.from("courses").update({ code: newCode }).eq("id", c.id);
-            return { id: c.id, error };
-          }));
+          const updates = await Promise.all(
+            rows.map(async (c) => {
+              const newCode = c.code.replace(/^CRS-/i, `${codePrefix.trim()}-`);
+              const { error } = await supabase
+                .from("courses")
+                .update({ code: newCode })
+                .eq("id", c.id);
+              return { id: c.id, error };
+            }),
+          );
           const failed = updates.filter((u) => u.error).length;
-          await logAudit({ action: "bulk_update", entity: "courses",
-            collegeId, details: { kind: "code_prefix_rename", count: ids.length, prefix: codePrefix, failed } });
+          await logAudit({
+            action: "bulk_update",
+            entity: "courses",
+            collegeId,
+            details: { kind: "code_prefix_rename", count: ids.length, prefix: codePrefix, failed },
+          });
           if (failed) toast.error(`تم التحديث مع فشل ${failed} عنصر`);
           else toast.success(`تم تحديث رموز ${ids.length} مقرر`);
           onChanged();
@@ -493,7 +776,11 @@ function CoursesSection({
       >
         <div className="space-y-2">
           <Label>البادئة الجديدة (بدون شرطة)</Label>
-          <Input value={codePrefix} onChange={(e) => setCodePrefix(e.target.value)} placeholder="مثال: CS, IT, CYS" />
+          <Input
+            value={codePrefix}
+            onChange={(e) => setCodePrefix(e.target.value)}
+            placeholder="مثال: CS, IT, CYS"
+          />
         </div>
       </BulkDialog>
 
@@ -503,10 +790,20 @@ function CoursesSection({
         title="تعيين طبيعة المقرر"
         ids={natureIds}
         onConfirm={async (ids) => {
-          const { error } = await supabase.from("courses").update({ course_nature: natureVal }).in("id", ids);
-          if (error) { toast.error(error.message); return; }
-          await logAudit({ action: "bulk_update", entity: "courses",
-            collegeId, details: { kind: "course_nature", value: natureVal, count: ids.length } });
+          const { error } = await supabase
+            .from("courses")
+            .update({ course_nature: natureVal })
+            .in("id", ids);
+          if (error) {
+            toast.error(error.message);
+            return;
+          }
+          await logAudit({
+            action: "bulk_update",
+            entity: "courses",
+            collegeId,
+            details: { kind: "course_nature", value: natureVal, count: ids.length },
+          });
           toast.success(`تم تعيين الطبيعة لـ ${ids.length} مقرر`);
           onChanged();
         }}
@@ -514,7 +811,9 @@ function CoursesSection({
         <div className="space-y-2">
           <Label>الطبيعة</Label>
           <Select value={natureVal} onValueChange={(v) => setNatureVal(v as typeof natureVal)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="department">قسم</SelectItem>
               <SelectItem value="college">كلية</SelectItem>
@@ -532,17 +831,28 @@ function CoursesSection({
         ids={roomReqIds}
         onConfirm={async (ids) => {
           const rows = (data?.planCourses ?? []).filter((p) => ids.includes(p.id));
-          let ok = 0, fail = 0;
+          let ok = 0,
+            fail = 0;
           for (const r of rows) {
-            const upd: { required_room_type_for_lecture?: string; required_room_type_for_lab?: string } = {};
-            if ((r.lectures_per_week ?? 0) > 0 && !r.required_room_type_for_lecture) upd.required_room_type_for_lecture = lectureRoom;
-            if ((r.labs_per_week ?? 0) > 0 && !r.required_room_type_for_lab) upd.required_room_type_for_lab = labRoom;
+            const upd: {
+              required_room_type_for_lecture?: string;
+              required_room_type_for_lab?: string;
+            } = {};
+            if ((r.lectures_per_week ?? 0) > 0 && !r.required_room_type_for_lecture)
+              upd.required_room_type_for_lecture = lectureRoom;
+            if ((r.labs_per_week ?? 0) > 0 && !r.required_room_type_for_lab)
+              upd.required_room_type_for_lab = labRoom;
             if (Object.keys(upd).length === 0) continue;
             const { error } = await supabase.from("plan_courses").update(upd).eq("id", r.id);
-            if (error) fail++; else ok++;
+            if (error) fail++;
+            else ok++;
           }
-          await logAudit({ action: "bulk_update", entity: "plan_courses",
-            collegeId, details: { kind: "room_requirements", lecture: lectureRoom, lab: labRoom, ok, fail } });
+          await logAudit({
+            action: "bulk_update",
+            entity: "plan_courses",
+            collegeId,
+            details: { kind: "room_requirements", lecture: lectureRoom, lab: labRoom, ok, fail },
+          });
           toast.success(`تم تحديث ${ok} مقرر خطة${fail ? ` (فشل ${fail})` : ""}`);
           onChanged();
         }}
@@ -551,7 +861,9 @@ function CoursesSection({
           <div className="space-y-2">
             <Label>قاعة المحاضرة</Label>
             <Select value={lectureRoom} onValueChange={setLectureRoom}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="lecture_hall">قاعة محاضرات</SelectItem>
                 <SelectItem value="seminar_room">قاعة ندوات</SelectItem>
@@ -561,7 +873,9 @@ function CoursesSection({
           <div className="space-y-2">
             <Label>قاعة المعمل</Label>
             <Select value={labRoom} onValueChange={setLabRoom}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="computer_lab">معمل حاسوب</SelectItem>
                 <SelectItem value="network_lab">معمل شبكات</SelectItem>
@@ -578,7 +892,11 @@ function CoursesSection({
 
 // ---------- INSTRUCTORS ----------
 function InstructorsSection({
-  data, diag, canManage, onChanged, collegeId,
+  data,
+  diag,
+  canManage,
+  onChanged,
+  collegeId,
 }: {
   data: Awaited<ReturnType<typeof fetchAll>> | undefined;
   diag: Diagnostics | null;
@@ -594,15 +912,36 @@ function InstructorsSection({
 
   return (
     <Card className="space-y-3 p-4">
-      <IssueRow issue={issues?.ins_no_spec} actions={canManage ? (
-        <Button size="sm" onClick={() => setDlg("spec")}>تعيين التخصص</Button>
-      ) : null} />
-      <IssueRow issue={issues?.ins_no_dept} actions={canManage ? (
-        <Button size="sm" onClick={() => setDlg("dept")}>تعيين القسم</Button>
-      ) : null} />
-      <IssueRow issue={issues?.ins_no_type} actions={canManage ? (
-        <Button size="sm" onClick={() => setDlg("type")}>تعيين النوع</Button>
-      ) : null} />
+      <IssueRow
+        issue={issues?.ins_no_spec}
+        actions={
+          canManage ? (
+            <Button size="sm" onClick={() => setDlg("spec")}>
+              تعيين التخصص
+            </Button>
+          ) : null
+        }
+      />
+      <IssueRow
+        issue={issues?.ins_no_dept}
+        actions={
+          canManage ? (
+            <Button size="sm" onClick={() => setDlg("dept")}>
+              تعيين القسم
+            </Button>
+          ) : null
+        }
+      />
+      <IssueRow
+        issue={issues?.ins_no_type}
+        actions={
+          canManage ? (
+            <Button size="sm" onClick={() => setDlg("type")}>
+              تعيين النوع
+            </Button>
+          ) : null
+        }
+      />
       <IssueRow issue={issues?.ins_no_avail} />
 
       <BulkDialog
@@ -611,11 +950,24 @@ function InstructorsSection({
         title="تعيين القسم للمحاضرين"
         ids={issues?.ins_no_dept.ids ?? []}
         onConfirm={async (ids) => {
-          if (!deptId) { toast.error("اختر قسماً"); return; }
-          const { error } = await supabase.from("instructors").update({ department_id: deptId }).in("id", ids);
-          if (error) { toast.error(error.message); return; }
-          await logAudit({ action: "bulk_update", entity: "instructors",
-            collegeId, details: { kind: "department", value: deptId, count: ids.length } });
+          if (!deptId) {
+            toast.error("اختر قسماً");
+            return;
+          }
+          const { error } = await supabase
+            .from("instructors")
+            .update({ department_id: deptId })
+            .in("id", ids);
+          if (error) {
+            toast.error(error.message);
+            return;
+          }
+          await logAudit({
+            action: "bulk_update",
+            entity: "instructors",
+            collegeId,
+            details: { kind: "department", value: deptId, count: ids.length },
+          });
           toast.success(`تم التحديث لـ ${ids.length} محاضر`);
           onChanged();
         }}
@@ -623,10 +975,14 @@ function InstructorsSection({
         <div className="space-y-2">
           <Label>القسم</Label>
           <Select value={deptId} onValueChange={setDeptId}>
-            <SelectTrigger><SelectValue placeholder="اختر قسماً..." /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue placeholder="اختر قسماً..." />
+            </SelectTrigger>
             <SelectContent>
               {(data?.departments ?? []).map((d) => (
-                <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                <SelectItem key={d.id} value={d.id}>
+                  {d.name}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -639,18 +995,35 @@ function InstructorsSection({
         title="تعيين التخصص للمحاضرين"
         ids={issues?.ins_no_spec.ids ?? []}
         onConfirm={async (ids) => {
-          if (!spec.trim()) { toast.error("أدخل التخصص"); return; }
-          const { error } = await supabase.from("instructors").update({ specialization: spec.trim() }).in("id", ids);
-          if (error) { toast.error(error.message); return; }
-          await logAudit({ action: "bulk_update", entity: "instructors",
-            collegeId, details: { kind: "specialization", value: spec.trim(), count: ids.length } });
+          if (!spec.trim()) {
+            toast.error("أدخل التخصص");
+            return;
+          }
+          const { error } = await supabase
+            .from("instructors")
+            .update({ specialization: spec.trim() })
+            .in("id", ids);
+          if (error) {
+            toast.error(error.message);
+            return;
+          }
+          await logAudit({
+            action: "bulk_update",
+            entity: "instructors",
+            collegeId,
+            details: { kind: "specialization", value: spec.trim(), count: ids.length },
+          });
           toast.success(`تم التحديث لـ ${ids.length} محاضر`);
           onChanged();
         }}
       >
         <div className="space-y-2">
           <Label>التخصص</Label>
-          <Input value={spec} onChange={(e) => setSpec(e.target.value)} placeholder="مثال: علوم الحاسب" />
+          <Input
+            value={spec}
+            onChange={(e) => setSpec(e.target.value)}
+            placeholder="مثال: علوم الحاسب"
+          />
         </div>
       </BulkDialog>
 
@@ -660,11 +1033,24 @@ function InstructorsSection({
         title="تعيين نوع المحاضر"
         ids={issues?.ins_no_type.ids ?? []}
         onConfirm={async (ids) => {
-          if (!typeId) { toast.error("اختر النوع"); return; }
-          const { error } = await supabase.from("instructors").update({ instructor_type_id: typeId }).in("id", ids);
-          if (error) { toast.error(error.message); return; }
-          await logAudit({ action: "bulk_update", entity: "instructors",
-            collegeId, details: { kind: "instructor_type", value: typeId, count: ids.length } });
+          if (!typeId) {
+            toast.error("اختر النوع");
+            return;
+          }
+          const { error } = await supabase
+            .from("instructors")
+            .update({ instructor_type_id: typeId })
+            .in("id", ids);
+          if (error) {
+            toast.error(error.message);
+            return;
+          }
+          await logAudit({
+            action: "bulk_update",
+            entity: "instructors",
+            collegeId,
+            details: { kind: "instructor_type", value: typeId, count: ids.length },
+          });
           toast.success(`تم التحديث لـ ${ids.length} محاضر`);
           onChanged();
         }}
@@ -672,10 +1058,15 @@ function InstructorsSection({
         <div className="space-y-2">
           <Label>النوع</Label>
           <Select value={typeId} onValueChange={setTypeId}>
-            <SelectTrigger><SelectValue placeholder="اختر النوع..." /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue placeholder="اختر النوع..." />
+            </SelectTrigger>
             <SelectContent>
               {(data?.instructorTypes ?? []).map((t) => (
-                <SelectItem key={t.id} value={t.id}>{t.name}{t.code ? ` (${t.code})` : ""}</SelectItem>
+                <SelectItem key={t.id} value={t.id}>
+                  {t.name}
+                  {t.code ? ` (${t.code})` : ""}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -687,7 +1078,11 @@ function InstructorsSection({
 
 // ---------- ROOMS ----------
 function RoomsSection({
-  data, diag, canManage, onChanged, collegeId,
+  data,
+  diag,
+  canManage,
+  onChanged,
+  collegeId,
 }: {
   data: Awaited<ReturnType<typeof fetchAll>> | undefined;
   diag: Diagnostics | null;
@@ -702,12 +1097,26 @@ function RoomsSection({
 
   return (
     <Card className="space-y-3 p-4">
-      <IssueRow issue={issues?.room_default_cap} actions={canManage ? (
-        <Button size="sm" onClick={() => setDlg("cap")}>تحديث السعة</Button>
-      ) : null} />
-      <IssueRow issue={issues?.room_no_type} actions={canManage ? (
-        <Button size="sm" onClick={() => setDlg("type")}>تعيين نوع القاعة</Button>
-      ) : null} />
+      <IssueRow
+        issue={issues?.room_default_cap}
+        actions={
+          canManage ? (
+            <Button size="sm" onClick={() => setDlg("cap")}>
+              تحديث السعة
+            </Button>
+          ) : null
+        }
+      />
+      <IssueRow
+        issue={issues?.room_no_type}
+        actions={
+          canManage ? (
+            <Button size="sm" onClick={() => setDlg("type")}>
+              تعيين نوع القاعة
+            </Button>
+          ) : null
+        }
+      />
       <IssueRow issue={issues?.room_dup_name} />
       <IssueRow issue={issues?.room_inactive} />
 
@@ -717,18 +1126,33 @@ function RoomsSection({
         title="تحديث جماعي للسعة"
         ids={issues?.room_default_cap.ids ?? []}
         onConfirm={async (ids) => {
-          if (!Number.isFinite(cap) || cap <= 0) { toast.error("سعة غير صحيحة"); return; }
+          if (!Number.isFinite(cap) || cap <= 0) {
+            toast.error("سعة غير صحيحة");
+            return;
+          }
           const { error } = await supabase.from("rooms").update({ capacity: cap }).in("id", ids);
-          if (error) { toast.error(error.message); return; }
-          await logAudit({ action: "bulk_update", entity: "rooms",
-            collegeId, details: { kind: "capacity", value: cap, count: ids.length } });
+          if (error) {
+            toast.error(error.message);
+            return;
+          }
+          await logAudit({
+            action: "bulk_update",
+            entity: "rooms",
+            collegeId,
+            details: { kind: "capacity", value: cap, count: ids.length },
+          });
           toast.success(`تم التحديث لـ ${ids.length} قاعة`);
           onChanged();
         }}
       >
         <div className="space-y-2">
           <Label>السعة الجديدة</Label>
-          <Input type="number" min={1} value={cap} onChange={(e) => setCap(Number(e.target.value))} />
+          <Input
+            type="number"
+            min={1}
+            value={cap}
+            onChange={(e) => setCap(Number(e.target.value))}
+          />
         </div>
       </BulkDialog>
 
@@ -738,17 +1162,38 @@ function RoomsSection({
         title="تعيين نوع القاعة"
         ids={issues?.room_no_type.ids ?? []}
         onConfirm={async (ids) => {
-          if (!roomTypeId) { toast.error("اختر النوع"); return; }
+          if (!roomTypeId) {
+            toast.error("اختر النوع");
+            return;
+          }
           const rt = (data?.roomTypes ?? []).find((t) => t.id === roomTypeId);
           const upd: { room_type_id: string; room_type?: string } = { room_type_id: roomTypeId };
           // also sync legacy text column if code maps to allowed enum
-          if (rt?.code && ["lecture_hall", "computer_lab", "network_lab", "cybersecurity_lab", "electronics_lab", "workshop", "seminar_room"].includes(rt.code)) {
+          if (
+            rt?.code &&
+            [
+              "lecture_hall",
+              "computer_lab",
+              "network_lab",
+              "cybersecurity_lab",
+              "electronics_lab",
+              "workshop",
+              "seminar_room",
+            ].includes(rt.code)
+          ) {
             upd.room_type = rt.code;
           }
           const { error } = await supabase.from("rooms").update(upd).in("id", ids);
-          if (error) { toast.error(error.message); return; }
-          await logAudit({ action: "bulk_update", entity: "rooms",
-            collegeId, details: { kind: "room_type", value: roomTypeId, count: ids.length } });
+          if (error) {
+            toast.error(error.message);
+            return;
+          }
+          await logAudit({
+            action: "bulk_update",
+            entity: "rooms",
+            collegeId,
+            details: { kind: "room_type", value: roomTypeId, count: ids.length },
+          });
           toast.success(`تم التحديث لـ ${ids.length} قاعة`);
           onChanged();
         }}
@@ -756,10 +1201,15 @@ function RoomsSection({
         <div className="space-y-2">
           <Label>النوع</Label>
           <Select value={roomTypeId} onValueChange={setRoomTypeId}>
-            <SelectTrigger><SelectValue placeholder="اختر النوع..." /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue placeholder="اختر النوع..." />
+            </SelectTrigger>
             <SelectContent>
               {(data?.roomTypes ?? []).map((t) => (
-                <SelectItem key={t.id} value={t.id}>{t.name}{t.code ? ` (${t.code})` : ""}</SelectItem>
+                <SelectItem key={t.id} value={t.id}>
+                  {t.name}
+                  {t.code ? ` (${t.code})` : ""}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -771,7 +1221,11 @@ function RoomsSection({
 
 // ---------- OFFERINGS ----------
 function OfferingsSection({
-  data, diag, canManage, onChanged, collegeId,
+  data,
+  diag,
+  canManage,
+  onChanged,
+  collegeId,
 }: {
   data: Awaited<ReturnType<typeof fetchAll>> | undefined;
   diag: Diagnostics | null;
@@ -786,13 +1240,27 @@ function OfferingsSection({
 
   return (
     <Card className="space-y-3 p-4">
-      <IssueRow issue={issues?.off_zero_students} actions={canManage ? (
-        <Button size="sm" onClick={() => setDlg("students")}>تحديث expected_students</Button>
-      ) : null} />
+      <IssueRow
+        issue={issues?.off_zero_students}
+        actions={
+          canManage ? (
+            <Button size="sm" onClick={() => setDlg("students")}>
+              تحديث expected_students
+            </Button>
+          ) : null
+        }
+      />
       <IssueRow issue={issues?.off_no_assignment} />
-      <IssueRow issue={issues?.off_no_system} actions={canManage ? (
-        <Button size="sm" onClick={() => setDlg("system")}>تعيين نظام الدراسة</Button>
-      ) : null} />
+      <IssueRow
+        issue={issues?.off_no_system}
+        actions={
+          canManage ? (
+            <Button size="sm" onClick={() => setDlg("system")}>
+              تعيين نظام الدراسة
+            </Button>
+          ) : null
+        }
+      />
       <IssueRow issue={issues?.off_no_plan_course} />
 
       <BulkDialog
@@ -801,18 +1269,36 @@ function OfferingsSection({
         title="تحديث جماعي للطلاب المتوقعين"
         ids={issues?.off_zero_students.ids ?? []}
         onConfirm={async (ids) => {
-          if (!Number.isFinite(students) || students <= 0) { toast.error("قيمة غير صحيحة"); return; }
-          const { error } = await supabase.from("course_offerings").update({ expected_students: students }).in("id", ids);
-          if (error) { toast.error(error.message); return; }
-          await logAudit({ action: "bulk_update", entity: "course_offerings",
-            collegeId, details: { kind: "expected_students", value: students, count: ids.length } });
+          if (!Number.isFinite(students) || students <= 0) {
+            toast.error("قيمة غير صحيحة");
+            return;
+          }
+          const { error } = await supabase
+            .from("course_offerings")
+            .update({ expected_students: students })
+            .in("id", ids);
+          if (error) {
+            toast.error(error.message);
+            return;
+          }
+          await logAudit({
+            action: "bulk_update",
+            entity: "course_offerings",
+            collegeId,
+            details: { kind: "expected_students", value: students, count: ids.length },
+          });
           toast.success(`تم التحديث لـ ${ids.length} طرح`);
           onChanged();
         }}
       >
         <div className="space-y-2">
           <Label>عدد الطلاب المتوقع</Label>
-          <Input type="number" min={1} value={students} onChange={(e) => setStudents(Number(e.target.value))} />
+          <Input
+            type="number"
+            min={1}
+            value={students}
+            onChange={(e) => setStudents(Number(e.target.value))}
+          />
         </div>
       </BulkDialog>
 
@@ -822,10 +1308,20 @@ function OfferingsSection({
         title="تعيين نظام الدراسة"
         ids={issues?.off_no_system.ids ?? []}
         onConfirm={async (ids) => {
-          const { error } = await supabase.from("course_offerings").update({ study_system: system }).in("id", ids);
-          if (error) { toast.error(error.message); return; }
-          await logAudit({ action: "bulk_update", entity: "course_offerings",
-            collegeId, details: { kind: "study_system", value: system, count: ids.length } });
+          const { error } = await supabase
+            .from("course_offerings")
+            .update({ study_system: system })
+            .in("id", ids);
+          if (error) {
+            toast.error(error.message);
+            return;
+          }
+          await logAudit({
+            action: "bulk_update",
+            entity: "course_offerings",
+            collegeId,
+            details: { kind: "study_system", value: system, count: ids.length },
+          });
           toast.success(`تم التحديث لـ ${ids.length} طرح`);
           onChanged();
         }}
@@ -833,7 +1329,9 @@ function OfferingsSection({
         <div className="space-y-2">
           <Label>النظام</Label>
           <Select value={system} onValueChange={(v) => setSystem(v as typeof system)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="regular">انتظام</SelectItem>
               <SelectItem value="parallel">موازي</SelectItem>

@@ -1,3 +1,4 @@
+import { readPrimaryNavigationSource } from "./nav-source";
 /**
  * data-onboarding-readiness-wizard.harness.ts — Phase 2 static verification.
  *
@@ -39,7 +40,7 @@ assert(route.includes("أصلح الآن"), "fix-now CTAs");
 assert(route.includes("إعادة الفحص"), "re-check button");
 assert(route.includes("onboarding-percent"), "percent complete surfaced");
 
-const layout = read("src/components/app-layout.tsx");
+const layout = readPrimaryNavigationSource(root);
 assert(layout.includes('to: "/data-onboarding"'), "sidebar links to data-onboarding");
 assert(
   layout.includes("إعداد البيانات وإنشاء الجدول"),

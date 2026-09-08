@@ -1,3 +1,4 @@
+import { readPrimaryNavigationSource } from "./nav-source";
 /**
  * INSTITUTIONAL_VIEWER_RBAC — source-only static contract harness.
  *
@@ -42,7 +43,7 @@ assert(
 );
 
 // ---------- 2) navigation: every entry visible to the role ----------
-const layout = read("src/components/app-layout.tsx");
+const layout = readPrimaryNavigationSource(ROOT);
 assert(
   /const ALL: Role\[\] = \["super_admin", "college_admin", "read_only", "institutional_viewer"\]/.test(
     layout,

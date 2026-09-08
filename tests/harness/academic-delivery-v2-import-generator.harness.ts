@@ -1,3 +1,4 @@
+import { readPrimaryNavigationSource } from "./nav-source";
 /**
  * PHASE-9.2 — Academic Delivery Model V2 import + generator contracts (source only).
  * Remediation-01: auth gate, semester filter, elective_slot_courses, read-only offerings UI.
@@ -329,7 +330,7 @@ function run() {
     "legacy entities marked hidden",
   );
 
-  const nav = read("src/components/app-layout.tsx");
+  const nav = readPrimaryNavigationSource(root);
   assert(!nav.includes('to: "/course-offerings"'), "offerings hidden from nav");
 
   // Direct URL /course-offerings — no manual CRUD

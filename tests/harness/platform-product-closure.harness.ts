@@ -1,3 +1,4 @@
+import { readPrimaryNavigationSource } from "./nav-source";
 /**
  * Product-closure static contract. It prevents New Flow terminology/Legacy,
  * unsafe PostgREST embeds, RBAC, and auto-schedule readiness regressions.
@@ -49,9 +50,15 @@ assert.ok(
   "readiness blocker is visible",
 );
 
-const layout = read("src/components/app-layout.tsx");
-assert.match(layout, /to:\s*"\/users"[\s\S]*roles:\s*\["super_admin"(,\s*"institutional_viewer")?\]/);
-assert.match(layout, /to:\s*"\/auto-schedule"[\s\S]*roles:\s*\["super_admin",\s*"college_admin"(,\s*"institutional_viewer")?\]/);
+const layout = readPrimaryNavigationSource(root);
+assert.match(
+  layout,
+  /to:\s*"\/users"[\s\S]*roles:\s*\["super_admin"(,\s*"institutional_viewer")?\]/,
+);
+assert.match(
+  layout,
+  /to:\s*"\/auto-schedule"[\s\S]*roles:\s*\["super_admin",\s*"college_admin"(,\s*"institutional_viewer")?\]/,
+);
 assert.equal(/to:\s*"\/sections"/.test(layout), false, "Legacy route hidden from navigation");
 
 const postgrestFiles = [
