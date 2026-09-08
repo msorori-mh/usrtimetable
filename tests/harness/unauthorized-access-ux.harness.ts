@@ -1,3 +1,4 @@
+import { readPrimaryNavigationSource } from "./nav-source";
 /**
  * Unauthorized access UX regression harness for /users (pure logic + source guards).
  * No DB, no network, no full-page reload.
@@ -6,7 +7,6 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-import { readPrimaryNavigationSource } from "./nav-source";
   resolveCaughtErrorDisplayKind,
   resolveSuperAdminPageAccess,
   shouldLoadSuperAdminPageData,

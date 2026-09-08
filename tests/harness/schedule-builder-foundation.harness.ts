@@ -1,3 +1,4 @@
+import { readPrimaryNavigationSource } from "./nav-source";
 /**
  * Schedule Builder foundation harness (pure logic + source guards).
  * No DB, no network, no migrations.
@@ -6,7 +7,6 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-import { readPrimaryNavigationSource } from "./nav-source";
   SCHEDULE_BUILDER_COLLEGE_MISMATCH_AR,
   SCHEDULE_BUILDER_DEFAULT_END_HOUR,
   SCHEDULE_BUILDER_DEFAULT_START_HOUR,

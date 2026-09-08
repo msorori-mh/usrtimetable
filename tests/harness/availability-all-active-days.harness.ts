@@ -1,3 +1,4 @@
+import { readPrimaryNavigationSource } from "./nav-source";
 /**
  * AVAILABILITY-ALL-ACTIVE-DAYS-BULK-ENTRY-01 (+ domain addendum)
  * Pure logic + source guards (no DB writes, no network).
@@ -9,7 +10,6 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-import { readPrimaryNavigationSource } from "./nav-source";
   ALL_ACTIVE_DAYS_SENTINEL,
   DEFAULT_WORKING_DAYS,
   formatBulkSuccessMessage,

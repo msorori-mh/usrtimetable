@@ -1,3 +1,4 @@
+import { readPrimaryNavigationSource } from "./nav-source";
 /**
  * PHASE-9.2 — Academic Delivery Model V2 import + generator contracts (source only).
  * Remediation-01: auth gate, semester filter, elective_slot_courses, read-only offerings UI.
@@ -6,7 +7,6 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-import { readPrimaryNavigationSource } from "./nav-source";
   derivePlanCourseComponents,
   electiveCourseDisplayLabel,
   filterPlanCoursesByCohortContext,

@@ -1,3 +1,4 @@
+import { readPrimaryNavigationSource } from "./nav-source";
 /**
  * data-onboarding-readiness-wizard.harness.ts — Phase 2 static verification.
  *
@@ -11,7 +12,6 @@
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { readPrimaryNavigationSource } from "./nav-source";
 
 const root = resolve(import.meta.dirname, "../..");
 const read = (path: string) => readFileSync(resolve(root, path), "utf8");

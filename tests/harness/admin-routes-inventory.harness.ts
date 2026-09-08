@@ -1,3 +1,4 @@
+import { readPrimaryNavigationSource } from "./nav-source";
 /**
  * Static inventory harness — admin routes & NAV labels.
  * Read-only; does not mutate product behavior.
@@ -6,7 +7,6 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { readPrimaryNavigationSource } from "./nav-source";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
 

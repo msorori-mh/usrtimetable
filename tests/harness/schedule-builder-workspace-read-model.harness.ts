@@ -1,3 +1,4 @@
+import { readPrimaryNavigationSource } from "./nav-source";
 /**
  * Schedule Builder workspace read-model harness (pure logic + source guards).
  * No DB, no network, no migrations, no mutations.
@@ -17,7 +18,6 @@ import {
   attachCohortTermHeadcounts,
 } from "../../src/lib/schedule-builder/session-hydrate";
 import {
-import { readPrimaryNavigationSource } from "./nav-source";
   EMPTY_WORKSPACE_FILTERS,
   buildFilterOptions,
   computeWorkspaceStats,

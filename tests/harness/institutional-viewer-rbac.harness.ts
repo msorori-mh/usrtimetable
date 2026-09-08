@@ -1,3 +1,4 @@
+import { readPrimaryNavigationSource } from "./nav-source";
 /**
  * INSTITUTIONAL_VIEWER_RBAC — source-only static contract harness.
  *
@@ -11,7 +12,6 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { readPrimaryNavigationSource } from "./nav-source";
 
 const ROOT = join(import.meta.dirname, "..", "..");
 const read = (p: string) => readFileSync(join(ROOT, p), "utf8");

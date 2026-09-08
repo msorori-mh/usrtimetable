@@ -1,10 +1,10 @@
+import { readPrimaryNavigationSource } from "./nav-source";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveSchedulingHeadcount } from "../../src/lib/scheduling-headcount/resolve";
 import { validateHeadcountValues } from "../../src/lib/scheduling-headcount/rules";
-import { readPrimaryNavigationSource } from "./nav-source";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const read = (relative: string) => readFileSync(path.join(root, relative), "utf8");
