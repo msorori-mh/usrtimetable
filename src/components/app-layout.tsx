@@ -1,401 +1,270 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  BookOpen,
-  Boxes,
-  Briefcase,
-  Building,
-  Building2,
-  CalendarClock,
-  CalendarDays,
-  CalendarRange,
   ChevronDown,
-  ClipboardList,
-  Clock,
-  DoorOpen,
-  FileSpreadsheet,
-  FileBarChart2,
-  Gauge,
-  History as HistoryIcon,
-  Sparkles,
-  GraduationCap,
-  Layers3,
-  LayoutDashboard,
-  Library,
+  LayoutGrid,
   LogOut,
   Menu,
-  Presentation,
   School,
-  Settings2,
-  ShieldAlert,
-  Share2,
+  Search,
   SlidersHorizontal,
-  UserCog,
-  UserSquare2,
-  Users,
-  UsersRound,
-  Wrench,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { useActiveCollege } from "@/hooks/use-colleges";
 import { toast } from "sonner";
 import { UsrBrandMark } from "@/components/branding/usr-brand-mark";
 import { USR_PLATFORM_NAME_AR, USR_UNIVERSITY_NAME_AR } from "@/lib/branding/usr";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Input } from "@/components/ui/input";
+import {
+  ADMIN_PAGES,
+  ADMIN_TOOLS_PAGE,
+  CORE_PATH,
+  JOURNEYS,
+  canAccess,
+  matchesQuery,
+  pagesByJourney,
+  resolveBreadcrumb,
+  type AdminPage,
+  type CoreStep,
+  type JourneyKey,
+  type Role,
+} from "@/lib/admin-nav";
 import { cn } from "@/lib/utils";
 
-type Role = "super_admin" | "college_admin" | "read_only" | "institutional_viewer";
+type NavMode = "core" | "all";
 
-interface NavItem {
-  to: string;
-  label: string;
-  icon: React.ReactNode;
-  roles: Role[];
-}
-
-interface NavGroup {
-  key: string;
-  label: string;
-  items: NavItem[];
-}
-
-const ALL: Role[] = ["super_admin", "college_admin", "read_only", "institutional_viewer"];
-
-const NAV_GROUPS: NavGroup[] = [
-  {
-    key: "start",
-    label: "البداية وتجهيز البيانات",
-    items: [
-      {
-        to: "/dashboard",
-        label: "لوحة التحكم",
-        icon: <LayoutDashboard className="h-4 w-4" />,
-        roles: ALL,
-      },
-      {
-        to: "/data-onboarding",
-        label: "إعداد البيانات وإنشاء الجدول",
-        icon: <ClipboardList className="h-4 w-4" />,
-        roles: ALL,
-      },
-      {
-        to: "/data-templates",
-        label: "دليل تجهيز البيانات",
-        icon: <FileSpreadsheet className="h-4 w-4" />,
-        roles: ALL,
-      },
-      {
-        to: "/import",
-        label: "استيراد البيانات من Excel",
-        icon: <FileSpreadsheet className="h-4 w-4" />,
-        roles: ["super_admin", "college_admin", "institutional_viewer"],
-      },
-      {
-        to: "/import-history",
-        label: "سجل الاستيراد",
-        icon: <HistoryIcon className="h-4 w-4" />,
-        roles: ALL,
-      },
-      {
-        to: "/import-templates",
-        label: "قوالب الاستيراد",
-        icon: <FileSpreadsheet className="h-4 w-4" />,
-        roles: ALL,
-      },
-      {
-        to: "/data-cleanup",
-        label: "تنظيف البيانات",
-        icon: <Wrench className="h-4 w-4" />,
-        roles: ["super_admin", "college_admin", "institutional_viewer"],
-      },
-    ],
-  },
-  {
-    key: "org",
-    label: "الهيكل المؤسسي",
-    items: [
-      {
-        to: "/universities",
-        label: "الجامعة",
-        icon: <Building2 className="h-4 w-4" />,
-        roles: ["super_admin", "institutional_viewer"],
-      },
-      {
-        to: "/colleges",
-        label: "الكلّيات",
-        icon: <School className="h-4 w-4" />,
-        roles: ["super_admin", "institutional_viewer"],
-      },
-      {
-        to: "/my-college",
-        label: "كلّيتي",
-        icon: <School className="h-4 w-4" />,
-        roles: ["college_admin", "read_only", "institutional_viewer"],
-      },
-      {
-        to: "/users",
-        label: "المستخدمون",
-        icon: <Users className="h-4 w-4" />,
-        roles: ["super_admin", "institutional_viewer"],
-      },
-    ],
-  },
-  {
-    key: "academic",
-    label: "البنية الأكاديمية",
-    items: [
-      { to: "/departments", label: "الأقسام", icon: <Building2 className="h-4 w-4" />, roles: ALL },
-      {
-        to: "/programs",
-        label: "البرامج",
-        icon: <GraduationCap className="h-4 w-4" />,
-        roles: ALL,
-      },
-      {
-        to: "/study-plans",
-        label: "الخطط الدراسية",
-        icon: <BookOpen className="h-4 w-4" />,
-        roles: ALL,
-      },
-      { to: "/courses", label: "المقررات", icon: <Library className="h-4 w-4" />, roles: ALL },
-      {
-        to: "/shared-courses",
-        label: "المقررات المشتركة",
-        icon: <Share2 className="h-4 w-4" />,
-        roles: ALL,
-      },
-      {
-        to: "/terms",
-        label: "الفصول الأكاديمية",
-        icon: <CalendarRange className="h-4 w-4" />,
-        roles: ALL,
-      },
-      {
-        to: "/academic-calendar",
-        label: "التقويم الأكاديمي",
-        icon: <CalendarDays className="h-4 w-4" />,
-        roles: ALL,
-      },
-      {
-        to: "/academic-cohorts",
-        label: "الدفعات الدراسية",
-        icon: <Layers3 className="h-4 w-4" />,
-        roles: ALL,
-      },
-    ],
-  },
-  {
-    key: "teaching",
-    label: "بيانات وموارد التدريس",
-    items: [
-      {
-        to: "/instructor-types",
-        label: "أنواع المحاضرين",
-        icon: <UserCog className="h-4 w-4" />,
-        roles: ALL,
-      },
-      {
-        to: "/instructors",
-        label: "المحاضرون",
-        icon: <UserSquare2 className="h-4 w-4" />,
-        roles: ALL,
-      },
-      { to: "/buildings", label: "المباني", icon: <Building className="h-4 w-4" />, roles: ALL },
-      {
-        to: "/room-types",
-        label: "أنواع القاعات",
-        icon: <Boxes className="h-4 w-4" />,
-        roles: ALL,
-      },
-      {
-        to: "/rooms",
-        label: "القاعات والمعامل",
-        icon: <DoorOpen className="h-4 w-4" />,
-        roles: ALL,
-      },
-      {
-        to: "/session-types",
-        label: "أنواع المحاضرات",
-        icon: <Presentation className="h-4 w-4" />,
-        roles: ALL,
-      },
-    ],
-  },
-  {
-    key: "hours",
-    label: "أوقات العمل والتوفر",
-    items: [
-      {
-        to: "/time-slots",
-        label: "أيام وفترات الدوام",
-        icon: <Clock className="h-4 w-4" />,
-        roles: ALL,
-      },
-      {
-        to: "/daily-breaks",
-        label: "الاستراحات اليومية",
-        icon: <Clock className="h-4 w-4" />,
-        roles: ALL,
-      },
-      {
-        to: "/time-slot-templates",
-        label: "قوالب أوقات المحاضرات",
-        icon: <Clock className="h-4 w-4" />,
-        roles: ALL,
-      },
-      {
-        to: "/availability",
-        label: "عدم التوفّر",
-        icon: <CalendarClock className="h-4 w-4" />,
-        roles: ALL,
-      },
-    ],
-  },
-  {
-    key: "prep",
-    label: "تجهيز الجدولة",
-    items: [
-      {
-        to: "/scheduling-headcounts",
-        label: "أعداد الدفعات المعتمدة للجدولة",
-        icon: <Users className="h-4 w-4" />,
-        roles: ALL,
-      },
-      {
-        to: "/delivery-groups",
-        label: "مجموعات المحاضرات والمعامل",
-        icon: <UsersRound className="h-4 w-4" />,
-        roles: ALL,
-      },
-      {
-        to: "/teaching-assignments",
-        label: "الإسناد التدريسي",
-        icon: <Briefcase className="h-4 w-4" />,
-        roles: ALL,
-      },
-      {
-        to: "/scheduling-settings",
-        label: "إعدادات الجدولة",
-        icon: <Settings2 className="h-4 w-4" />,
-        roles: ALL,
-      },
-      {
-        to: "/constraint-settings",
-        label: "إعدادات القيود (الجدولة)",
-        icon: <Settings2 className="h-4 w-4" />,
-        roles: ALL,
-      },
-      {
-        to: "/data-readiness",
-        label: "جاهزية البيانات",
-        icon: <Gauge className="h-4 w-4" />,
-        roles: ALL,
-      },
-    ],
-  },
-  {
-    key: "execute",
-    label: "تنفيذ الجدول والتحقق",
-    items: [
-      {
-        to: "/schedule-builder",
-        label: "بناء الجدول",
-        icon: <CalendarRange className="h-4 w-4" />,
-        roles: ALL,
-      },
-      {
-        to: "/auto-schedule",
-        label: "الجدولة التلقائية",
-        icon: <Sparkles className="h-4 w-4" />,
-        roles: ["super_admin", "college_admin", "institutional_viewer"],
-      },
-      {
-        to: "/schedule-versions",
-        label: "نسخ الجدول",
-        icon: <CalendarClock className="h-4 w-4" />,
-        roles: ALL,
-      },
-      {
-        to: "/conflict-checks",
-        label: "فحص التعارضات",
-        icon: <ShieldAlert className="h-4 w-4" />,
-        roles: ALL,
-      },
-      {
-        to: "/schedule-quality",
-        label: "جودة الجدول",
-        icon: <Gauge className="h-4 w-4" />,
-        roles: ALL,
-      },
-      {
-        to: "/published-schedules",
-        label: "الجداول المنشورة",
-        icon: <CalendarClock className="h-4 w-4" />,
-        roles: ALL,
-      },
-    ],
-  },
-  {
-    key: "reports",
-    label: "التقارير",
-    items: [
-      {
-        to: "/reports",
-        label: "التقارير",
-        icon: <FileBarChart2 className="h-4 w-4" />,
-        roles: ALL,
-      },
-    ],
-  },
-];
-
-const CORE_NAV_GROUPS: NavGroup[] = [
-  {
-    key: "core",
-    label: "المسار الأساسي",
-    items: [
-      {
-        to: "/dashboard",
-        label: "الرئيسية",
-        icon: <LayoutDashboard className="h-4 w-4" />,
-        roles: ALL,
-      },
-      {
-        to: "/data-onboarding",
-        label: "1. تجهيز البيانات",
-        icon: <ClipboardList className="h-4 w-4" />,
-        roles: ALL,
-      },
-      {
-        to: "/schedule-builder",
-        label: "2. بناء الجدول",
-        icon: <CalendarRange className="h-4 w-4" />,
-        roles: ALL,
-      },
-      {
-        to: "/schedule-versions",
-        label: "3. المراجعة والاعتماد",
-        icon: <ShieldAlert className="h-4 w-4" />,
-        roles: ALL,
-      },
-      {
-        to: "/published-schedules",
-        label: "4. النشر والجداول الرسمية",
-        icon: <CalendarClock className="h-4 w-4" />,
-        roles: ALL,
-      },
-      {
-        to: "/reports",
-        label: "التقارير",
-        icon: <FileBarChart2 className="h-4 w-4" />,
-        roles: ALL,
-      },
-    ],
-  },
-];
+const NAV_MODE_STORAGE_KEY = "usr.admin.navMode";
 
 function isActivePath(itemPath: string, pathname: string): boolean {
-  return itemPath === pathname || (itemPath === "/reports" && pathname.startsWith("/reports/"));
+  if (itemPath === pathname) return true;
+  return itemPath !== "/" && pathname.startsWith(`${itemPath}/`);
+}
+
+function readStoredMode(): NavMode {
+  try {
+    const v = window.localStorage.getItem(NAV_MODE_STORAGE_KEY);
+    return v === "all" ? "all" : "core";
+  } catch {
+    return "core";
+  }
+}
+
+/** Core operational path — six primary entries with clear step badges. */
+function CorePathNav({
+  steps,
+  pathname,
+  onNavigate,
+  tone,
+}: {
+  steps: CoreStep[];
+  pathname: string;
+  onNavigate?: () => void;
+  tone: "sidebar" | "sheet";
+}) {
+  return (
+    <div className="space-y-1">
+      {steps.map((s) => {
+        const active = isActivePath(s.to, pathname);
+        const Icon = s.icon;
+        return (
+          <Link
+            key={s.to}
+            to={s.to}
+            onClick={onNavigate}
+            data-core-nav-link={s.to}
+            className={cn(
+              "relative flex items-start gap-3 rounded-lg px-3 py-2.5 transition",
+              tone === "sidebar"
+                ? active
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
+                  : "text-sidebar-foreground/80 hover:bg-white/5 hover:text-sidebar-foreground"
+                : active
+                  ? "bg-primary/10 text-primary"
+                  : "hover:bg-muted",
+            )}
+          >
+            {active && (
+              <span className="absolute inset-y-2 right-0 w-[3px] rounded-full bg-[var(--usr-gold)]" />
+            )}
+            <span
+              className={cn(
+                "grid h-7 w-7 shrink-0 place-items-center rounded-md text-[11px] font-bold",
+                active
+                  ? "bg-primary text-primary-foreground"
+                  : tone === "sidebar"
+                    ? "bg-white/10 text-sidebar-foreground/70"
+                    : "bg-muted text-muted-foreground",
+              )}
+            >
+              {s.step ?? <Icon className="h-4 w-4" />}
+            </span>
+            <span className="min-w-0">
+              <span className={cn("block truncate text-[13px]", active && "font-bold")}>
+                {s.label}
+              </span>
+              <span
+                className={cn(
+                  "mt-0.5 block text-[10.5px] leading-snug",
+                  tone === "sidebar" ? "text-sidebar-foreground/55" : "text-muted-foreground",
+                )}
+              >
+                {s.desc}
+              </span>
+            </span>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+/** All-tools mode: instant search + collapsible logical sections. */
+function AllToolsNav({
+  pages,
+  pathname,
+  activeJourney,
+  onNavigate,
+  tone,
+}: {
+  pages: AdminPage[];
+  pathname: string;
+  activeJourney: JourneyKey | null;
+  onNavigate?: () => void;
+  tone: "sidebar" | "sheet";
+}) {
+  const [query, setQuery] = useState("");
+  const [openKeys, setOpenKeys] = useState<JourneyKey[]>(activeJourney ? [activeJourney] : []);
+
+  useEffect(() => {
+    if (activeJourney) setOpenKeys([activeJourney]);
+  }, [activeJourney]);
+
+  const filtered = useMemo(() => pages.filter((p) => matchesQuery(p, query)), [pages, query]);
+  const grouped = useMemo(() => pagesByJourney(filtered), [filtered]);
+  const searching = query.trim().length > 0;
+
+  return (
+    <div className="space-y-2">
+      <div className="relative">
+        <Search className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="ابحث عن صفحة…"
+          aria-label="بحث فوري عن صفحة"
+          data-testid="nav-page-search"
+          className={cn(
+            "h-8 pr-8 text-xs",
+            tone === "sidebar" &&
+              "border-sidebar-border/60 bg-white/5 text-sidebar-foreground placeholder:text-sidebar-foreground/40",
+          )}
+        />
+      </div>
+
+      {filtered.length === 0 && (
+        <p
+          className={cn(
+            "px-2 py-3 text-xs",
+            tone === "sidebar" ? "text-sidebar-foreground/60" : "text-muted-foreground",
+          )}
+        >
+          لا توجد صفحة مطابقة.
+        </p>
+      )}
+
+      {JOURNEYS.map((j) => {
+        const items = grouped.get(j.key) ?? [];
+        if (items.length === 0) return null;
+        const isOpen = searching || openKeys.includes(j.key);
+        const hasActive = items.some((it) => isActivePath(it.to, pathname));
+        return (
+          <div key={j.key} className="rounded-lg">
+            <button
+              type="button"
+              aria-expanded={isOpen}
+              onClick={() =>
+                setOpenKeys((keys) =>
+                  keys.includes(j.key) ? keys.filter((k) => k !== j.key) : [...keys, j.key],
+                )
+              }
+              className={cn(
+                "flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-[11px] font-bold tracking-wide transition",
+                tone === "sidebar"
+                  ? hasActive
+                    ? "text-sidebar-foreground"
+                    : "text-sidebar-foreground/55 hover:bg-white/5 hover:text-sidebar-foreground"
+                  : hasActive
+                    ? "text-primary"
+                    : "text-muted-foreground hover:bg-muted",
+              )}
+            >
+              <span className="flex min-w-0 items-center gap-2">
+                <span
+                  className={cn(
+                    "inline-block h-1.5 w-1.5 shrink-0 rounded-full",
+                    hasActive
+                      ? "bg-[var(--usr-gold)]"
+                      : tone === "sidebar"
+                        ? "bg-sidebar-foreground/25"
+                        : "bg-muted-foreground/30",
+                  )}
+                />
+                <span className="truncate">{j.label}</span>
+                <span
+                  className={cn(
+                    "rounded px-1.5 py-0.5 text-[10px] font-medium",
+                    tone === "sidebar"
+                      ? "bg-white/5 text-sidebar-foreground/60"
+                      : "bg-muted text-muted-foreground",
+                  )}
+                >
+                  {items.length}
+                </span>
+              </span>
+              <ChevronDown
+                className={cn("h-3.5 w-3.5 shrink-0 transition-transform", isOpen && "rotate-180")}
+              />
+            </button>
+            {isOpen && (
+              <div className="mt-1 space-y-0.5 pb-1">
+                {items.map((item) => {
+                  const active = isActivePath(item.to, pathname);
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.to}
+                      to={item.to}
+                      onClick={onNavigate}
+                      title={item.desc}
+                      className={cn(
+                        "relative flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] leading-none transition",
+                        tone === "sidebar"
+                          ? active
+                            ? "bg-sidebar-accent font-semibold text-sidebar-accent-foreground shadow-sm"
+                            : "text-sidebar-foreground/75 hover:bg-white/5 hover:text-sidebar-foreground"
+                          : active
+                            ? "bg-primary/10 font-semibold text-primary"
+                            : "hover:bg-muted",
+                      )}
+                    >
+                      {active && (
+                        <span className="absolute inset-y-1.5 right-0 w-0.5 rounded-full bg-[var(--usr-gold)]" />
+                      )}
+                      <Icon className="h-4 w-4 shrink-0 opacity-80" />
+                      <span className="truncate">{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
@@ -405,7 +274,22 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = useRouterState({
     select: (state: { location: { pathname: string } }) => state.location.pathname,
   });
-  const [advancedMode, setAdvancedMode] = useState(false);
+  const [mode, setMode] = useState<NavMode>("core");
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const { active: activeCollege } = useActiveCollege();
+
+  useEffect(() => {
+    setMode(readStoredMode());
+  }, []);
+
+  const setNavMode = (next: NavMode) => {
+    setMode(next);
+    try {
+      window.localStorage.setItem(NAV_MODE_STORAGE_KEY, next);
+    } catch {
+      /* storage unavailable — non-fatal, mode stays in memory */
+    }
+  };
 
   const handleSignOut = async () => {
     await queryClient.cancelQueries();
@@ -415,44 +299,84 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     navigate({ to: "/auth", replace: true });
   };
 
-  const visibleGroups = useMemo(
-    () =>
-      (advancedMode ? NAV_GROUPS : CORE_NAV_GROUPS)
-        .map((g) => ({
-          ...g,
-          items: g.items.filter((it) => !user || user.roles.some((r) => it.roles.includes(r))),
-        }))
-        .filter((g) => g.items.length > 0),
-    [advancedMode, user],
-  );
+  const roles = user?.roles as Role[] | undefined;
 
-  const activeGroupKey = useMemo(() => {
-    const g = visibleGroups.find((g) => g.items.some((it) => isActivePath(it.to, pathname)));
-    return g?.key ?? visibleGroups[0]?.key ?? null;
-  }, [visibleGroups, pathname]);
+  const coreSteps = useMemo(() => CORE_PATH.filter((s) => canAccess(s, roles)), [roles]);
+  const toolPages = useMemo(() => ADMIN_PAGES.filter((p) => canAccess(p, roles)), [roles]);
 
-  const [openKey, setOpenKey] = useState<string | null>(activeGroupKey);
-  const [lastActiveKey, setLastActiveKey] = useState<string | null>(activeGroupKey);
-  if (activeGroupKey !== lastActiveKey) {
-    setLastActiveKey(activeGroupKey);
-    setOpenKey(activeGroupKey);
-  }
+  const activeJourney = useMemo<JourneyKey | null>(() => {
+    const hit =
+      toolPages.find((p) => p.to === pathname) ??
+      toolPages.find((p) => isActivePath(p.to, pathname));
+    return hit?.journey ?? null;
+  }, [toolPages, pathname]);
+
+  const crumb = useMemo(() => resolveBreadcrumb(pathname), [pathname]);
 
   const roleLabel = user?.isSuperAdmin
     ? "Super Admin"
     : user?.isInstitutionalViewer
       ? "مشاهد مؤسسي"
       : user?.isCollegeAdmin
-      ? "مدير كلّية"
-      : user?.isReadOnly
-        ? "مشاهد"
-        : "—";
+        ? "مدير كلّية"
+        : user?.isReadOnly
+          ? "مشاهد"
+          : "—";
 
-  const toggleNavigationMode = () => {
-    const next = !advancedMode;
-    setAdvancedMode(next);
-    setOpenKey(next ? NAV_GROUPS[0].key : CORE_NAV_GROUPS[0].key);
-  };
+  const modeToggle = (
+    <button
+      type="button"
+      onClick={() => setNavMode(mode === "core" ? "all" : "core")}
+      className="flex w-full items-center justify-between gap-3 rounded-lg border border-sidebar-border/60 bg-white/5 px-3 py-2 text-right text-xs transition hover:bg-white/10"
+      data-testid="navigation-mode-toggle"
+    >
+      <span>
+        <span className="block font-semibold">
+          {mode === "all" ? "كل الأدوات" : "المسار التشغيلي"}
+        </span>
+        <span className="mt-0.5 block text-[10px] text-sidebar-foreground/60">
+          {mode === "all" ? "العودة إلى الخطوات الأربع" : "بحث وأقسام كل صفحات الإعداد"}
+        </span>
+      </span>
+      <SlidersHorizontal className="h-4 w-4 shrink-0 text-primary" />
+    </button>
+  );
+
+  const navBody = (tone: "sidebar" | "sheet", onNavigate?: () => void) =>
+    mode === "core" ? (
+      <>
+        <p
+          className={cn(
+            "px-2 pb-2 text-[11px] leading-snug",
+            tone === "sidebar" ? "text-sidebar-foreground/55" : "text-muted-foreground",
+          )}
+        >
+          المسار التشغيلي: أربع خطوات من تجهيز البيانات إلى نشر الجدول الرسمي.
+        </p>
+        <CorePathNav steps={coreSteps} pathname={pathname} onNavigate={onNavigate} tone={tone} />
+        <Link
+          to={ADMIN_TOOLS_PAGE.to}
+          onClick={onNavigate}
+          className={cn(
+            "mt-3 flex items-center gap-2 rounded-lg border px-3 py-2 text-[12px] font-semibold transition",
+            tone === "sidebar"
+              ? "border-sidebar-border/60 bg-white/5 text-sidebar-foreground hover:bg-white/10"
+              : "border-border bg-secondary text-primary hover:bg-secondary/80",
+          )}
+        >
+          <LayoutGrid className="h-4 w-4 shrink-0" />
+          {ADMIN_TOOLS_PAGE.label}
+        </Link>
+      </>
+    ) : (
+      <AllToolsNav
+        pages={toolPages}
+        pathname={pathname}
+        activeJourney={activeJourney}
+        onNavigate={onNavigate}
+        tone={tone}
+      />
+    );
 
   return (
     <div className="flex min-h-screen flex-col bg-background md:flex-row">
@@ -467,108 +391,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </p>
           </div>
         </div>
-        <div className="border-b border-sidebar-border px-3 py-3">
-          <button
-            type="button"
-            onClick={toggleNavigationMode}
-            className="flex w-full items-center justify-between gap-3 rounded-lg border border-sidebar-border/60 bg-white/5 px-3 py-2 text-right text-xs transition hover:bg-white/10"
-            data-testid="navigation-mode-toggle"
-          >
-            <span>
-              <span className="block font-semibold">
-                {advancedMode ? "الأدوات المتقدمة" : "المسار الأساسي"}
-              </span>
-              <span className="mt-0.5 block text-[10px] text-sidebar-foreground/60">
-                {advancedMode ? "العودة إلى الخطوات الأربع" : "إظهار الإعدادات والإدارة الكاملة"}
-              </span>
-            </span>
-            <SlidersHorizontal className="h-4 w-4 shrink-0 text-primary" />
-          </button>
-        </div>
-        <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-3">
-          {visibleGroups.map((group, idx) => {
-            const isOpen = openKey === group.key;
-            const hasActive = group.items.some((it) => isActivePath(it.to, pathname));
-            return (
-              <div
-                key={group.key}
-                className={cn("py-1", idx > 0 && "mt-1 border-t border-sidebar-border/40 pt-2")}
-              >
-                <button
-                  type="button"
-                  onClick={() => setOpenKey(isOpen ? null : group.key)}
-                  aria-expanded={isOpen}
-                  className={cn(
-                    "group/head flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-[11px] font-bold tracking-wider transition",
-                    hasActive
-                      ? "text-sidebar-foreground"
-                      : "text-sidebar-foreground/55 hover:bg-white/5 hover:text-sidebar-foreground",
-                  )}
-                >
-                  <span className="flex items-center gap-2">
-                    <span
-                      className={cn(
-                        "inline-block h-1.5 w-1.5 rounded-full transition",
-                        hasActive ? "bg-primary" : "bg-sidebar-foreground/25",
-                      )}
-                    />
-                    {group.label}
-                    <span className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] font-medium text-sidebar-foreground/60">
-                      {group.items.length}
-                    </span>
-                  </span>
-                  <ChevronDown
-                    className={cn(
-                      "h-3.5 w-3.5 shrink-0 transition-transform",
-                      isOpen ? "rotate-180" : "",
-                    )}
-                  />
-                </button>
-                <div
-                  className={cn(
-                    "grid overflow-hidden transition-[grid-template-rows] duration-200",
-                    isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
-                  )}
-                >
-                  <div className="min-h-0">
-                    <div className="mt-1 space-y-0.5 pb-1 pr-2">
-                      {group.items.map((item) => {
-                        const active = isActivePath(item.to, pathname);
-                        return (
-                          <Link
-                            key={item.to}
-                            to={item.to}
-                            className={cn(
-                              "relative flex items-center gap-3 rounded-md px-3 py-2 text-[13px] leading-none transition",
-                              active
-                                ? "bg-sidebar-accent font-semibold text-sidebar-accent-foreground shadow-sm"
-                                : "text-sidebar-foreground/75 hover:bg-white/5 hover:text-sidebar-foreground",
-                            )}
-                          >
-                            {active && (
-                              <span className="absolute inset-y-1.5 right-0 w-0.5 rounded-full bg-primary" />
-                            )}
-                            <span
-                              className={cn(
-                                "grid h-6 w-6 shrink-0 place-items-center rounded-md transition",
-                                active
-                                  ? "bg-primary/15 text-primary"
-                                  : "text-sidebar-foreground/60 group-hover:text-sidebar-foreground",
-                              )}
-                            >
-                              {item.icon}
-                            </span>
-                            <span className="truncate">{item.label}</span>
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </nav>
+        <div className="border-b border-sidebar-border px-3 py-3">{modeToggle}</div>
+        <nav className="flex-1 overflow-y-auto px-2 py-3">{navBody("sidebar")}</nav>
         <div className="border-t border-sidebar-border p-4">
           <div className="mb-3">
             <p className="truncate text-sm font-medium">{user?.fullName ?? user?.email ?? "—"}</p>
@@ -587,7 +411,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       <header className="sticky top-0 z-40 border-b border-border bg-background/95 px-4 py-3 backdrop-blur md:hidden">
-        <div className="flex items-center justify-between gap-3">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <UsrBrandMark size="sm" />
             <div className="min-w-0">
@@ -595,49 +419,57 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <p className="truncate text-[10px] text-muted-foreground">{USR_PLATFORM_NAME_AR}</p>
             </div>
           </div>
-          <details className="group relative">
-            <summary className="grid h-10 w-10 cursor-pointer list-none place-items-center rounded-lg border border-border bg-card [&::-webkit-details-marker]:hidden">
+          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+            <SheetTrigger
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-border bg-card"
+              aria-label="فتح قائمة التنقل"
+              data-testid="mobile-nav-trigger"
+            >
               <Menu className="h-5 w-5" />
-              <span className="sr-only">فتح قائمة التنقل</span>
-            </summary>
-            <div className="absolute left-0 top-12 max-h-[75vh] w-[min(22rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-border bg-card p-3 shadow-xl">
+            </SheetTrigger>
+            <SheetContent
+              side="right"
+              className="flex w-[min(20rem,90vw)] flex-col gap-0 overflow-y-auto p-4"
+            >
+              <SheetTitle className="mb-3 text-sm font-bold">التنقل</SheetTitle>
               <button
                 type="button"
-                onClick={toggleNavigationMode}
+                onClick={() => setNavMode(mode === "core" ? "all" : "core")}
                 className="mb-3 flex w-full items-center justify-between rounded-lg bg-secondary px-3 py-2 text-sm font-medium text-primary"
+                data-testid="mobile-navigation-mode-toggle"
               >
-                {advancedMode ? "العودة إلى المسار الأساسي" : "عرض الأدوات المتقدمة"}
+                {mode === "all" ? "العودة إلى المسار التشغيلي" : "عرض كل الأدوات"}
                 <SlidersHorizontal className="h-4 w-4" />
               </button>
-              {visibleGroups.map((group) => (
-                <section key={group.key} className="border-t border-border/60 py-2 first:border-0">
-                  <p className="px-2 py-1 text-xs font-bold text-muted-foreground">{group.label}</p>
-                  <div className="space-y-1">
-                    {group.items.map((item) => {
-                      const active = isActivePath(item.to, pathname);
-                      return (
-                        <Link
-                          key={item.to}
-                          to={item.to}
-                          className={cn(
-                            "flex items-center gap-3 rounded-lg px-3 py-2 text-sm",
-                            active ? "bg-primary/10 font-semibold text-primary" : "hover:bg-muted",
-                          )}
-                        >
-                          {item.icon}
-                          {item.label}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </section>
-              ))}
-            </div>
-          </details>
+              {navBody("sheet", () => setMobileOpen(false))}
+            </SheetContent>
+          </Sheet>
         </div>
       </header>
 
-      <main className="usr-internal-main min-w-0 flex-1 px-4 py-6 sm:px-6 md:px-10 md:py-8">
+      <main className="usr-internal-main min-w-0 flex-1 px-4 py-5 sm:px-6 md:px-10 md:py-7">
+        {(crumb || activeCollege) && (
+          <div
+            className="mb-5 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border/60 pb-3"
+            data-testid="page-context-bar"
+          >
+            <nav aria-label="مسار التنقل" className="min-w-0 text-xs text-muted-foreground">
+              {crumb ? (
+                <span className="flex min-w-0 flex-wrap items-center gap-1.5">
+                  <span>{crumb.section}</span>
+                  <span aria-hidden>←</span>
+                  <span className="truncate font-semibold text-foreground">{crumb.page}</span>
+                </span>
+              ) : null}
+            </nav>
+            {activeCollege && (
+              <span className="flex shrink-0 items-center gap-1.5 rounded-md bg-secondary px-2.5 py-1 text-[11px] font-medium text-primary">
+                <School className="h-3.5 w-3.5" />
+                <span className="max-w-[12rem] truncate">{activeCollege.name}</span>
+              </span>
+            )}
+          </div>
+        )}
         {isLoading ? (
           <div className="grid h-64 place-items-center text-muted-foreground">جارٍ التحميل...</div>
         ) : (

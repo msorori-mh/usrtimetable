@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedAcademicCalendarRouteImport } from './routes/_authenticated/academic-calendar'
 import { Route as AuthenticatedAcademicCohortsRouteImport } from './routes/_authenticated/academic-cohorts'
+import { Route as AuthenticatedAdminToolsRouteImport } from './routes/_authenticated/admin-tools'
 import { Route as AuthenticatedAutoScheduleRouteImport } from './routes/_authenticated/auto-schedule'
 import { Route as AuthenticatedAvailabilityRouteImport } from './routes/_authenticated/availability'
 import { Route as AuthenticatedBuildingsRouteImport } from './routes/_authenticated/buildings'
@@ -99,6 +100,11 @@ const AuthenticatedAcademicCohortsRoute =
     path: '/academic-cohorts',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAdminToolsRoute = AuthenticatedAdminToolsRouteImport.update({
+  id: '/admin-tools',
+  path: '/admin-tools',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedAutoScheduleRoute =
   AuthenticatedAutoScheduleRouteImport.update({
     id: '/auto-schedule',
@@ -438,6 +444,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/academic-calendar': typeof AuthenticatedAcademicCalendarRoute
   '/academic-cohorts': typeof AuthenticatedAcademicCohortsRoute
+  '/admin-tools': typeof AuthenticatedAdminToolsRoute
   '/auto-schedule': typeof AuthenticatedAutoScheduleRoute
   '/availability': typeof AuthenticatedAvailabilityRoute
   '/buildings': typeof AuthenticatedBuildingsRoute
@@ -502,6 +509,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/academic-calendar': typeof AuthenticatedAcademicCalendarRoute
   '/academic-cohorts': typeof AuthenticatedAcademicCohortsRoute
+  '/admin-tools': typeof AuthenticatedAdminToolsRoute
   '/auto-schedule': typeof AuthenticatedAutoScheduleRoute
   '/availability': typeof AuthenticatedAvailabilityRoute
   '/buildings': typeof AuthenticatedBuildingsRoute
@@ -567,6 +575,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/academic-calendar': typeof AuthenticatedAcademicCalendarRoute
   '/_authenticated/academic-cohorts': typeof AuthenticatedAcademicCohortsRoute
+  '/_authenticated/admin-tools': typeof AuthenticatedAdminToolsRoute
   '/_authenticated/auto-schedule': typeof AuthenticatedAutoScheduleRoute
   '/_authenticated/availability': typeof AuthenticatedAvailabilityRoute
   '/_authenticated/buildings': typeof AuthenticatedBuildingsRoute
@@ -633,6 +642,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/academic-calendar'
     | '/academic-cohorts'
+    | '/admin-tools'
     | '/auto-schedule'
     | '/availability'
     | '/buildings'
@@ -697,6 +707,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/academic-calendar'
     | '/academic-cohorts'
+    | '/admin-tools'
     | '/auto-schedule'
     | '/availability'
     | '/buildings'
@@ -761,6 +772,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/academic-calendar'
     | '/_authenticated/academic-cohorts'
+    | '/_authenticated/admin-tools'
     | '/_authenticated/auto-schedule'
     | '/_authenticated/availability'
     | '/_authenticated/buildings'
@@ -862,6 +874,13 @@ declare module '@tanstack/react-router' {
       path: '/academic-cohorts'
       fullPath: '/academic-cohorts'
       preLoaderRoute: typeof AuthenticatedAcademicCohortsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin-tools': {
+      id: '/_authenticated/admin-tools'
+      path: '/admin-tools'
+      fullPath: '/admin-tools'
+      preLoaderRoute: typeof AuthenticatedAdminToolsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/auto-schedule': {
@@ -1324,6 +1343,7 @@ const AuthenticatedReportsRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAcademicCalendarRoute: typeof AuthenticatedAcademicCalendarRoute
   AuthenticatedAcademicCohortsRoute: typeof AuthenticatedAcademicCohortsRoute
+  AuthenticatedAdminToolsRoute: typeof AuthenticatedAdminToolsRoute
   AuthenticatedAutoScheduleRoute: typeof AuthenticatedAutoScheduleRoute
   AuthenticatedAvailabilityRoute: typeof AuthenticatedAvailabilityRoute
   AuthenticatedBuildingsRoute: typeof AuthenticatedBuildingsRoute
@@ -1373,6 +1393,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAcademicCalendarRoute: AuthenticatedAcademicCalendarRoute,
   AuthenticatedAcademicCohortsRoute: AuthenticatedAcademicCohortsRoute,
+  AuthenticatedAdminToolsRoute: AuthenticatedAdminToolsRoute,
   AuthenticatedAutoScheduleRoute: AuthenticatedAutoScheduleRoute,
   AuthenticatedAvailabilityRoute: AuthenticatedAvailabilityRoute,
   AuthenticatedBuildingsRoute: AuthenticatedBuildingsRoute,

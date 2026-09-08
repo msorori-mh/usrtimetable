@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -17,6 +17,7 @@ import {
   ClipboardCheck,
   Archive,
   Stamp,
+  ChevronDown,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/reports/")({
@@ -164,15 +165,16 @@ const SECTIONS: {
     items: OFFICIAL_REPORTS,
     accent: "border-primary/30 bg-primary/5",
   },
-  {
-    id: "legacy",
-    title: "Legacy — تقارير قديمة",
-    description:
-      "مسارات محفوظة للتوافق — للعرض التاريخي فقط · يُفضّل البدائل الحديثة في الأقسام أعلاه.",
-    items: LEGACY_REPORTS,
-    accent: "border-amber-500/30 bg-amber-500/5",
-  },
 ];
+
+const LEGACY_SECTION = {
+  id: "legacy",
+  title: "Legacy — تقارير قديمة",
+  description:
+    "تحذير: مسارات محفوظة للتوافق — للعرض التاريخي فقط · يُفضّل البدائل الحديثة في الأقسام أعلاه.",
+  items: LEGACY_REPORTS,
+  accent: "border-amber-500/30 bg-amber-500/5",
+};
 
 function ReportGrid({ items }: { items: ReportCard[] }) {
   return (
@@ -218,6 +220,7 @@ function ReportGrid({ items }: { items: ReportCard[] }) {
 }
 
 function ReportsHub() {
+  const [legacyOpen, setLegacyOpen] = useState(false);
   return (
     <div className="space-y-8" dir="rtl">
       <header className="usr-page-header">
@@ -244,6 +247,32 @@ function ReportsHub() {
           <ReportGrid items={section.items} />
         </section>
       ))}
+
+      <section
+        className={`space-y-3 rounded-lg border p-4 ${LEGACY_SECTION.accent}`}
+        data-testid="reports-legacy-section"
+      >
+        <button
+          type="button"
+          onClick={() => setLegacyOpen((v) => !v)}
+          aria-expanded={legacyOpen}
+          className="flex w-full items-center justify-between gap-3 text-right"
+        >
+          <span className="min-w-0">
+            <span className="flex items-center gap-2 text-lg font-semibold">
+              <Archive className="h-4 w-4 shrink-0" />
+              {LEGACY_SECTION.title}
+            </span>
+            <span className="mt-0.5 block text-sm text-muted-foreground">
+              {LEGACY_SECTION.description}
+            </span>
+          </span>
+          <ChevronDown
+            className={`h-4 w-4 shrink-0 transition-transform ${legacyOpen ? "rotate-180" : ""}`}
+          />
+        </button>
+        {legacyOpen && <ReportGrid items={LEGACY_SECTION.items} />}
+      </section>
     </div>
   );
 }
