@@ -59,6 +59,9 @@ export function classifyMetricSeverity(metric: ReadinessMetric): ReadinessIssueS
 /** Map metric labels to existing fix routes (أصلح الآن). */
 export function fixHrefForMetric(metric: ReadinessMetric): { href: string; labelAr: string } {
   const label = metric.label;
+  if (label.includes("غير مرتبطة بأي خطة")) {
+    return { href: "/study-plans", labelAr: "أصلح الآن — إدارة مقررات الخطة" };
+  }
   if (label.includes("خطة") || metric.category === "study_plan") {
     return { href: "/study-plans", labelAr: "أصلح الآن — الخطط الدراسية" };
   }
