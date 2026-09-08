@@ -35,7 +35,10 @@ describe("plan_courses legacy counter sync (E2E FIX 02)", () => {
 
   it("keeps counters × duration equal to weekly hours", () => {
     for (const h of [1, 2, 3, 4, 5, 6, 8]) {
-      const c = deriveLegacyCounters([{ component_type: "theory", weekly_contact_hours: h }], current);
+      const c = deriveLegacyCounters(
+        [{ component_type: "theory", weekly_contact_hours: h }],
+        current,
+      );
       assert.equal(c.lectures_per_week * c.lecture_session_duration, h);
     }
   });
@@ -73,10 +76,7 @@ describe("plan_courses legacy counter sync (E2E FIX 02)", () => {
 
   it("detects no-ops and stale rows", () => {
     assert.equal(countersDiffer(current, current), false);
-    assert.equal(
-      countersDiffer(current, { ...current, lectures_per_week: 1 }),
-      true,
-    );
+    assert.equal(countersDiffer(current, { ...current, lectures_per_week: 1 }), true);
     assert.equal(pickSessionDuration(2, 0), DEFAULT_SESSION_DURATION);
   });
 
