@@ -202,7 +202,9 @@ export function PlanCoursesManager({
         existing: levels ?? [],
       });
       if (!check.ok) throw new Error(check.messageAr);
-      const { error } = await supabase.from("academic_levels").insert(buildLevelInsert(ctx, levelForm));
+      const { error } = await supabase
+        .from("academic_levels")
+        .insert(buildLevelInsert(ctx, levelForm));
       if (error) throw error;
       await logAudit({ action: "create", entity: "academic_levels", collegeId });
     },
@@ -278,7 +280,12 @@ export function PlanCoursesManager({
           if (error) throw error;
         }
       }
-      await logAudit({ action: "delete", entity: "plan_courses", entityId: planCourseId, collegeId });
+      await logAudit({
+        action: "delete",
+        entity: "plan_courses",
+        entityId: planCourseId,
+        collegeId,
+      });
     },
     onSuccess: () => {
       toast.success("تم الحذف");
@@ -561,7 +568,9 @@ export function PlanCoursesManager({
                             {c.required_room_type_id
                               ? ` · ${roomTypeMap.get(c.required_room_type_id)?.name_ar ?? "نوع قاعة"}`
                               : ""}
-                            {c.explicit_group_size ? ` · حجم المجموعة ${c.explicit_group_size}` : ""}
+                            {c.explicit_group_size
+                              ? ` · حجم المجموعة ${c.explicit_group_size}`
+                              : ""}
                           </span>
                           {canManage && (
                             <Button
@@ -705,7 +714,11 @@ export function PlanCoursesManager({
                           </label>
                         </div>
                         <div className="flex gap-2 sm:col-span-2 sm:justify-end">
-                          <Button variant="outline" size="sm" onClick={() => setComponentTarget(null)}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setComponentTarget(null)}
+                          >
                             إلغاء
                           </Button>
                           <Button

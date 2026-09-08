@@ -93,7 +93,10 @@ const foreignCourse = validatePlanCourseForm({
   levels,
   existing: [],
 });
-assert(!foreignCourse.ok && foreignCourse.code === "COURSE_COLLEGE_MISMATCH", "foreign course must fail closed");
+assert(
+  !foreignCourse.ok && foreignCourse.code === "COURSE_COLLEGE_MISMATCH",
+  "foreign course must fail closed",
+);
 
 // 3) Level program/college scoping
 for (const bad of ["l-other-prog", "l-other-college"]) {
@@ -169,9 +172,15 @@ const insert = buildPlanCourseInsert(ctx, {
   semester: 2,
   is_required: false,
 });
-assert(insert.college_id === COLLEGE && insert.study_plan_id === "plan-1", "context must own scope");
+assert(
+  insert.college_id === COLLEGE && insert.study_plan_id === "plan-1",
+  "context must own scope",
+);
 assert(!("program_id" in insert), "plan_courses insert must not invent columns");
-assert(buildLevelInsert(ctx, { name: " م ", level_number: 1 }).program_id === "prog-1", "level insert scoped to plan program");
+assert(
+  buildLevelInsert(ctx, { name: " م ", level_number: 1 }).program_id === "prog-1",
+  "level insert scoped to plan program",
+);
 
 // 7) Component derivation: theory 2 + practical 2 => exactly theory & practical
 const derived = deriveComponentInsertsFromCourse(ctx, "pc1", courses[0]!);
@@ -212,7 +221,10 @@ const badRoom = validateComponentForm({
   form: { ...baseComponent, required_room_type_id: "rt-foreign" },
   roomTypes,
 });
-assert(!badRoom.ok && badRoom.code === "ROOM_TYPE_SCOPE_MISMATCH", "foreign room type fails closed");
+assert(
+  !badRoom.ok && badRoom.code === "ROOM_TYPE_SCOPE_MISMATCH",
+  "foreign room type fails closed",
+);
 const badType = validateComponentForm({
   ctx,
   form: { ...baseComponent, component_type: "lecture" },
@@ -224,7 +236,10 @@ const badMode = validateComponentForm({
   form: { ...baseComponent, compensation_mode: "monthly" },
   roomTypes,
 });
-assert(!badMode.ok && badMode.code === "COMPENSATION_MODE_INVALID", "unknown compensation rejected");
+assert(
+  !badMode.ok && badMode.code === "COMPENSATION_MODE_INVALID",
+  "unknown compensation rejected",
+);
 const badHours = validateComponentForm({
   ctx,
   form: { ...baseComponent, weekly_contact_hours: 0 },
@@ -253,7 +268,14 @@ for (const field of [
 assert(PLAN_COMPONENT_TYPES.length === 5 && COMPENSATION_MODES.length === 3, "enumerations frozen");
 
 // 9) Level quick-add validation
-assert(validateLevelForm({ form: { name: "المستوى الأول", level_number: 1 }, durationYears: 4, existing: [] }).ok, "valid level passes");
+assert(
+  validateLevelForm({
+    form: { name: "المستوى الأول", level_number: 1 },
+    durationYears: 4,
+    existing: [],
+  }).ok,
+  "valid level passes",
+);
 const outOfRange = validateLevelForm({
   form: { name: "خامس", level_number: 5 },
   durationYears: 4,
@@ -271,14 +293,24 @@ const noDuration = validateLevelForm({
   durationYears: 0,
   existing: [],
 });
-assert(!noDuration.ok && noDuration.code === "PROGRAM_DURATION_UNKNOWN", "unknown duration fails closed");
+assert(
+  !noDuration.ok && noDuration.code === "PROGRAM_DURATION_UNKNOWN",
+  "unknown duration fails closed",
+);
 
 // 10) Exact delete ordering
-const steps = planCourseDeleteSteps({ collegeId: COLLEGE, planCourseId: "pc1", componentIds: ["k1", "k2"] });
+const steps = planCourseDeleteSteps({
+  collegeId: COLLEGE,
+  planCourseId: "pc1",
+  componentIds: ["k1", "k2"],
+});
 assert(steps.length === 2, "expected two delete steps");
 assert(steps[0]!.table === "plan_course_components", "components must be deleted first");
 assert(steps[1]!.table === "plan_courses", "plan course deleted last");
-assert(steps.every((s) => s.collegeId === COLLEGE), "delete steps must be college scoped");
+assert(
+  steps.every((s) => s.collegeId === COLLEGE),
+  "delete steps must be college scoped",
+);
 const noComponentSteps = planCourseDeleteSteps({
   collegeId: COLLEGE,
   planCourseId: "pc1",
@@ -311,8 +343,14 @@ assert(ui.includes("إدارة مقررات الخطة"), "manager title require
 assert(ui.includes('data-testid="plan-courses-manager"'), "manager testid required");
 assert(ui.includes("canManage &&"), "write controls must be gated by canManage");
 assert(!/service_role|supabaseAdmin|\.rpc\(/.test(ui), "no admin client or RPC bypass allowed");
-assert(ui.includes("sm:max-w-2xl") && ui.includes("overflow-y-auto"), "mobile-friendly sheet required");
-assert(ui.includes("grid-cols-1") && ui.includes("sm:grid-cols-2"), "responsive form grid required");
+assert(
+  ui.includes("sm:max-w-2xl") && ui.includes("overflow-y-auto"),
+  "mobile-friendly sheet required",
+);
+assert(
+  ui.includes("grid-cols-1") && ui.includes("sm:grid-cols-2"),
+  "responsive form grid required",
+);
 assert(ui.includes("ms-1"), "RTL-aware logical spacing required");
 assert(ui.includes("توليد من ساعات المقرر"), "derive-from-hours action required");
 assert(ui.includes('.eq("college_id", collegeId)'), "queries must be college scoped");
@@ -323,6 +361,9 @@ assert(page.includes("canManage={canManage}"), "manager must receive canManage")
 assert(page.includes("duration_years"), "program duration must be loaded for level validation");
 
 const editor = read("src/lib/academic-delivery/plan-course-editor.ts");
-assert(!/credit_hours\s*[:=]\s*/.test(editor.split("deriveComponentInsertsFromCourse")[1] ?? ""), "derivation must not use credit_hours");
+assert(
+  !/credit_hours\s*[:=]\s*/.test(editor.split("deriveComponentInsertsFromCourse")[1] ?? ""),
+  "derivation must not use credit_hours",
+);
 
 console.log("PLAN_COURSE_COMPONENTS_UI_E2E_FIX_01 harness: all assertions passed");

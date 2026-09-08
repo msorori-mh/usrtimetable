@@ -98,7 +98,11 @@ export type ValidationFailure = {
 
 export type ValidationResult = { ok: true } | ValidationFailure;
 
-const fail = (code: string, messageAr: string): ValidationFailure => ({ ok: false, code, messageAr });
+const fail = (code: string, messageAr: string): ValidationFailure => ({
+  ok: false,
+  code,
+  messageAr,
+});
 
 /** Fail-closed validation for a plan_courses row before insert/update. */
 export function validatePlanCourseForm(args: {
@@ -168,7 +172,10 @@ export function validateComponentForm(args: {
     return fail("HOURS_INVALID", "الساعات الأسبوعية يجب أن تكون رقماً غير سالب.");
   }
   if (form.is_timetabled && form.weekly_contact_hours <= 0) {
-    return fail("HOURS_REQUIRED_FOR_TIMETABLED", "المكوّن المجدول يحتاج ساعات أسبوعية أكبر من صفر.");
+    return fail(
+      "HOURS_REQUIRED_FOR_TIMETABLED",
+      "المكوّن المجدول يحتاج ساعات أسبوعية أكبر من صفر.",
+    );
   }
   if (form.explicit_group_size != null) {
     if (!Number.isInteger(form.explicit_group_size) || form.explicit_group_size <= 0) {
