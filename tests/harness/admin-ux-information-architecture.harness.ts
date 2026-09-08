@@ -41,9 +41,9 @@ for (const t of roleTuples) {
 }
 assert.ok(
   navSrc.includes(
-    'const WRITERS: Role[] = ["super_admin", "college_admin", "institutional_viewer"];',
+    'export const ALL: Role[] = ["super_admin", "college_admin", "read_only", "institutional_viewer"];',
   ),
-  "writer-scoped role tuple must stay unchanged",
+  "the four-role constant must stay unchanged",
 );
 for (const superOnly of ["/universities", "/colleges", "/users"]) {
   const block = navSrc.slice(navSrc.indexOf(`to: "${superOnly}"`));
