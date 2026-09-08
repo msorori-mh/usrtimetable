@@ -376,7 +376,13 @@ export function PlanCoursesManager({
 
   const addComponent = useMutation({
     mutationFn: async (planCourseId: string) => {
-      const check = validateComponentForm({ ctx, form: componentForm, roomTypes: roomTypes ?? [] });
+      const check = validateComponentForm({
+        ctx,
+        form: componentForm,
+        roomTypes: roomTypes ?? [],
+        siblings: components ?? [],
+        planCourseId,
+      });
       if (!check.ok) throw new Error(check.messageAr);
       const { error } = await supabase
         .from("plan_course_components")
@@ -392,6 +398,45 @@ export function PlanCoursesManager({
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const updateComponent = useMutation({
+    mutationFn: async (args: { componentId: string; planCourseId: string }) => {
+      const row = (components ?? []).find((c) => c.id === args.componentId);
+      if (!row) throw new Error("المكوّن غير موجود.");
+      const scope = componentUpdateScope(ctx, row, planCourseIds);
+      if ("ok" in scope) throw new Error(scope.messageAr);
+      const check = validateComponentForm({
+        ctx,
+        form: componentForm,
+        roomTypes: roomTypes ?? [],
+        siblings: components ?? [],
+        planCourseId: args.planCourseId,
+        editingId: args.componentId,
+      });
+      if (!check.ok) throw new Error(check.messageAr);
+      const { error } = await supabase
+        .from("plan_course_components")
+        .update(buildComponentUpdate(componentForm))
+        .eq("id", scope.id)
+        .eq("college_id", scope.collegeId)
+        .eq("plan_course_id", scope.planCourseId);
+      if (error) throw error;
+      await logAudit({
+        action: "update",
+        entity: "plan_course_components",
+        entityId: args.componentId,
+        collegeId,
+      });
+    },
+    onSuccess: () => {
+      toast.success("تم تحديث المكوّن");
+      setComponentForm(EMPTY_COMPONENT);
+      setComponentTarget(null);
+      invalidate();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
 
   const deleteComponent = useMutation({
     mutationFn: async (componentId: string) => {
