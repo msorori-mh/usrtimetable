@@ -226,17 +226,28 @@ function StudyPlansPage() {
                 const prog = progMap.get(p.program_id);
                 const deptName = prog?.department_id ? deptMap.get(prog.department_id) : null;
                 return (
-                  <li key={p.id} className="flex items-center justify-between p-4">
+                  <li key={p.id} className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="font-semibold">{p.name} {!p.is_active && <span className="text-xs text-muted-foreground">(غير سارية)</span>}</p>
                       <p className="text-xs text-muted-foreground"><span dir="ltr">{p.code}@v{p.version}</span> · {prog?.name ?? "—"}{deptName ? ` · ${deptName}` : ""} · {p.effective_year ?? "—"}</p>
                     </div>
-                    {canManage && (
-                      <div className="flex gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => startEdit(p)}><Pencil className="h-3.5 w-3.5" /></Button>
-                        <Button size="sm" variant="ghost" onClick={() => { if (confirm("حذف الخطة؟")) del.mutate(p.id); }}><Trash2 className="h-3.5 w-3.5" /></Button>
-                      </div>
-                    )}
+                    <div className="flex flex-wrap items-center gap-1">
+                      {active && (
+                        <PlanCoursesManager
+                          plan={{ id: p.id, name: p.name }}
+                          programId={p.program_id}
+                          programDurationYears={prog?.duration_years ?? 0}
+                          collegeId={active.id}
+                          canManage={canManage}
+                        />
+                      )}
+                      {canManage && (
+                        <>
+                          <Button size="sm" variant="ghost" onClick={() => startEdit(p)}><Pencil className="h-3.5 w-3.5" /></Button>
+                          <Button size="sm" variant="ghost" onClick={() => { if (confirm("حذف الخطة؟")) del.mutate(p.id); }}><Trash2 className="h-3.5 w-3.5" /></Button>
+                        </>
+                      )}
+                    </div>
                   </li>
                 );
               })}
