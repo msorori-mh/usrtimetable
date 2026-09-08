@@ -287,7 +287,6 @@ export function componentUpdateScope(
   return { id: row.id, collegeId: ctx.collegeId, planCourseId: row.plan_course_id };
 }
 
-
 /**
  * Generate component rows strictly from the course's explicit hour columns.
  * credit_hours is never used for derivation.

@@ -30,7 +30,6 @@ import {
   buildPlanCourseUpdate,
   componentUpdateScope,
   planCourseUpdateScope,
-
   COMPENSATION_MODES,
   COMPENSATION_MODE_LABEL_AR,
   COMPONENT_TYPE_LABEL_AR,
@@ -112,7 +111,6 @@ export function PlanCoursesManager({
     semester: number;
     is_required: boolean;
   } | null>(null);
-
 
   const { data: courses } = useQuery({
     queryKey: ["plan-editor-courses", collegeId],
@@ -313,7 +311,6 @@ export function PlanCoursesManager({
     onError: (e: Error) => toast.error(e.message),
   });
 
-
   const deletePlanCourse = useMutation({
     mutationFn: async (planCourseId: string) => {
       const componentIds = (componentsByPlanCourse.get(planCourseId) ?? []).map((c) => c.id);
@@ -436,7 +433,6 @@ export function PlanCoursesManager({
     },
     onError: (e: Error) => toast.error(e.message),
   });
-
 
   const deleteComponent = useMutation({
     mutationFn: async (componentId: string) => {
@@ -733,7 +729,6 @@ export function PlanCoursesManager({
                     </div>
                   )}
 
-
                   <ul className="mt-2 divide-y divide-border/60 text-xs">
                     {rowComponents.length === 0 ? (
                       <li className="py-2 text-muted-foreground">لا توجد مكوّنات لهذا المقرر.</li>
@@ -798,7 +793,6 @@ export function PlanCoursesManager({
                             : `plan-component-add-form-${row.id}`
                         }
                       >
-
                         <div>
                           <Label className="text-xs">نوع المكوّن</Label>
                           <Select
@@ -963,7 +957,6 @@ export function PlanCoursesManager({
                         <Plus className="ms-1 h-3.5 w-3.5" /> إضافة مكوّن
                       </Button>
                     ))}
-
                 </Card>
               );
             })
