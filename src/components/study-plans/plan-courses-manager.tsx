@@ -790,8 +790,15 @@ export function PlanCoursesManager({
 
                   {canManage &&
                     (componentTarget?.planCourseId === row.id ? (
+                      <div
+                        className="mt-2 grid grid-cols-1 gap-2 rounded border border-border p-2 sm:grid-cols-2"
+                        data-testid={
+                          componentTarget.componentId
+                            ? `plan-component-edit-form-${componentTarget.componentId}`
+                            : `plan-component-add-form-${row.id}`
+                        }
+                      >
 
-                      <div className="mt-2 grid grid-cols-1 gap-2 rounded border border-border p-2 sm:grid-cols-2">
                         <div>
                           <Label className="text-xs">نوع المكوّن</Label>
                           <Select
