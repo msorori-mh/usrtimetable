@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { exportRowsToXlsx } from "@/lib/admin-export/to-xlsx";
 import { BookOpen, Pencil, Trash2, Download } from "lucide-react";
+import { PlanCoursesManager } from "@/components/study-plans/plan-courses-manager";
 
 export const Route = createFileRoute("/_authenticated/study-plans")({
   head: () => ({ meta: [{ title: "الخطط الدراسية" }] }),
