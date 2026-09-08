@@ -47,7 +47,7 @@ function StudyPlansPage() {
 
   const { data: progs } = useQuery({
     queryKey: ["prog-min-dep", active?.id], enabled: !!active,
-    queryFn: async () => ((await supabase.from("academic_programs").select("id, name, department_id").eq("college_id", active!.id).order("name")).data ?? []) as Program[],
+    queryFn: async () => ((await supabase.from("academic_programs").select("id, name, department_id, duration_years").eq("college_id", active!.id).order("name")).data ?? []) as Program[],
   });
 
   const { data: rows, isLoading } = useQuery({
