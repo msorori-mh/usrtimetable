@@ -497,6 +497,72 @@
     overflow: visible !important;
   }
 
+  /*
+   * LAUNCH-CLOSURE-01 — printable timetable clipping fix.
+   * The shared <Table> primitive wraps every table in `div.overflow-auto`.
+   * On screen that scrolls; on paper it CLIPS every column past the viewport
+   * width, which silently truncated wide A3 timetable sheets. Any scroll
+   * container inside a printed sheet must release its overflow and height caps.
+   */
+  .report-print-body [class*="overflow-auto"],
+  .report-print-body [class*="overflow-x-auto"],
+  .report-print-body [class*="overflow-y-auto"],
+  .report-print-body [class*="overflow-hidden"],
+  .print-center-page [class*="overflow-auto"],
+  .print-center-page [class*="overflow-x-auto"],
+  .print-center-page [class*="overflow-hidden"] {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  /* Each sheet must start on a fresh page and never be split mid-block. */
+  .print-center-page {
+    max-width: none !important;
+    min-width: 0 !important;
+  }
+
+  /* Repeat the column headers of a sheet that spills onto a second page. */
+  .print-center-page table {
+    width: 100% !important;
+    table-layout: fixed;
+    border-collapse: collapse;
+    font-size: 9.5pt;
+  }
+
+  .print-center-page thead {
+    display: table-header-group;
+  }
+
+  .print-center-page tfoot {
+    display: table-footer-group;
+  }
+
+  .print-center-page tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .print-center-page th,
+  .print-center-page td {
+    border: 1px solid #999;
+    padding: 3px 5px;
+    /* Long Arabic course names must wrap, not overflow the printed cell. */
+    overflow-wrap: break-word;
+    word-break: break-word;
+    white-space: normal;
+  }
+
+  /* Times stay on one line and stay LTR inside the RTL sheet. */
+  .print-center-page td.whitespace-nowrap {
+    white-space: nowrap !important;
+  }
+
+  /* Identification header/footer must never be orphaned from its table. */
+  .print-center-header {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
   /* Tables */
   .report-print-body table {
     width: 100%;
