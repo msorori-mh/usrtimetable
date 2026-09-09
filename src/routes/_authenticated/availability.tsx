@@ -42,8 +42,11 @@ export const Route = createFileRoute("/_authenticated/availability")({
 });
 
 function rpcErrorMessage(e: unknown): string {
-  // LAUNCH-CLOSURE-01: PostgrestError is a plain object, not an Error instance.
-  // `String(plainObject)` used to render the literal "[object Object]".
+  // LAUNCH-CLOSURE-01: the previous shape was `e instanceof Error ? e.message : String(e)`,
+  // which (a) rendered the literal "[object Object]" for any non-Error rejection and
+  // (b) even for a real PostgrestError dropped `hint` and `details` — and PostgREST puts
+  // the actionable cause in `hint`, not `message`. `readableWriteError` keeps all three
+  // and can never produce "[object Object]".
   const msg = readableWriteError(e);
   const overlap =
     msg.match(/availability_overlap:\s*day=(\d+)/i) ??

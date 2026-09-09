@@ -81,9 +81,22 @@ Two independent defects stacked:
    failed at PostgREST with "could not find the function … in the schema cache", and no row
    was ever written.
 2. **Error rendering.** The UI mapped errors with `e instanceof Error ? e.message : String(e)`.
-   `supabase-js` rejects with a plain `PostgrestError` **object**, which is not an `Error`
-   instance, so `String(...)` produced the literal string `"[object Object]"` and destroyed
-   the diagnostic.
+   That has two defects: any non-`Error` rejection reaching it renders as the literal
+   `"[object Object]"`, and even for a genuine `PostgrestError` it prints only `message` and
+   **discards `hint` and `details`** — while PostgREST deliberately puts the actionable cause
+   in `hint`. Either way the operator saw no usable diagnostic.
+
+   **Honest correction on this point.** In the installed `@supabase/postgrest-js@2.107.0`,
+   `PostgrestError` **does** subclass `Error` (verified by reading
+   `node_modules/@supabase/postgrest-js/src/PostgrestError.ts`), so the `String(e)` branch is
+   *not* proven to be what produced the reported `[object Object]`. Identifying the exact
+   object that reached the toast requires reproducing the failure with an authenticated
+   session, which was not available (see gate 22). What **is** confirmed is defect 1 above —
+   the missing stored function — and that is the reason no record was ever saved. The error
+   normalization is therefore justified as (i) a real information fix, since `hint`/`details`
+   were being dropped, and (ii) defence in depth that makes `[object Object]` structurally
+   impossible regardless of what is thrown. It is not presented as a verified root cause of
+   the message itself.
 
 **Fix.** The RPC remains the preferred path. Only when the error is specifically a
 *missing function* (`PGRST202` / `PGRST203` / `42883`, or a "could not find the function" /
