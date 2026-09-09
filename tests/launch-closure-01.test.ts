@@ -12,7 +12,9 @@ const root = resolve(import.meta.dir, "..");
 const read = (path: string) => readFileSync(resolve(root, path), "utf8");
 
 describe("LAUNCH-CLOSURE-01 gap 1 — availability write error normalization", () => {
-  test("a PostgrestError plain object never renders as [object Object]", () => {
+  // PostgrestError subclasses Error, but printing only `.message` drops `hint`/`details`,
+  // where PostgREST puts the actionable cause. A bare object must also stay readable.
+  test("a PostgREST-shaped rejection keeps code/hint/details and never renders as [object Object]", () => {
     const postgrest = {
       message:
         "Could not find the function public.upsert_instructor_unavailability_for_active_days",
