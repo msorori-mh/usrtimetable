@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CheckCircle2, ExternalLink } from "lucide-react";
+import { CheckCircle2, ExternalLink, Printer } from "lucide-react";
 import { DeliveryDemoWarningBanner } from "@/components/schedule/delivery-demo-warning-banner";
 import { isDeliveryDemoVersion } from "@/lib/schedule-versions/delivery-demo";
 
@@ -261,11 +261,28 @@ function PublishedSchedulesPage() {
                 <div className="text-[10px] text-muted-foreground">
                   {new Date(v.updated_at).toLocaleString("ar")}
                 </div>
-                <Button variant="outline" size="sm" asChild className="w-full">
-                  <Link to="/timetable/$versionId" params={{ versionId: v.id }}>
-                    <ExternalLink className="h-4 w-4 ml-1" /> عرض (للقراءة فقط)
-                  </Link>
-                </Button>
+                <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row">
+                  <Button variant="outline" size="sm" asChild className="w-full sm:flex-1">
+                    <Link to="/timetable/$versionId" params={{ versionId: v.id }}>
+                      <ExternalLink className="h-4 w-4 ml-1" /> عرض (للقراءة فقط)
+                    </Link>
+                  </Button>
+                  {/*
+                    LAUNCH-CLOSURE-01: the published list is the distribution surface,
+                    so the printable timetable must be reachable directly from it
+                    instead of only via the schedule editor.
+                  */}
+                  <Button
+                    size="sm"
+                    asChild
+                    className="w-full sm:flex-1"
+                    data-testid="published-print-link"
+                  >
+                    <Link to="/timetable/$versionId/print" params={{ versionId: v.id }}>
+                      <Printer className="h-4 w-4 ml-1" /> طباعة وتصدير
+                    </Link>
+                  </Button>
+                </div>
               </Card>
             ))}
           </div>

@@ -34,6 +34,7 @@ import {
   upsertInstructorUnavailabilityBulk,
   upsertRoomUnavailabilityBulk,
 } from "@/lib/availability/bulk-api";
+import { readableWriteError } from "@/lib/availability/errors";
 
 export const Route = createFileRoute("/_authenticated/availability")({
   head: () => ({ meta: [{ title: "عدم التوفّر" }] }),
@@ -41,7 +42,11 @@ export const Route = createFileRoute("/_authenticated/availability")({
 });
 
 function rpcErrorMessage(e: unknown): string {
-  const msg = e instanceof Error ? e.message : String(e);
+  // LAUNCH-CLOSURE-01: the previous shape stringified any non-Error rejection, which renders
+  // as the literal "[object Object]", and for a real PostgrestError it printed only `message`
+  // and dropped `hint` and `details` — yet PostgREST puts the actionable cause in `hint`.
+  // `readableWriteError` keeps all three and can never produce "[object Object]".
+  const msg = readableWriteError(e);
   const overlap =
     msg.match(/availability_overlap:\s*day=(\d+)/i) ??
     msg.match(/unavailability_overlap:\s*day=(\d+)/i);
@@ -211,6 +216,7 @@ function InstructorUnavailability() {
       }
       const dayOfWeek = form.dayValue === ALL_ACTIVE_DAYS_SENTINEL ? null : Number(form.dayValue);
       return upsertInstructorUnavailabilityBulk({
+        collegeId: active.id,
         instructorId,
         startTime: form.start_time,
         endTime: form.end_time,
@@ -222,25 +228,43 @@ function InstructorUnavailability() {
       toast.success(formatBulkSuccessMessage(result));
       qc.invalidateQueries({ queryKey: ["iu", active?.id, instructorId] });
     },
-    onError: (e: Error) => toast.error(rpcErrorMessage(e)),
+    onError: (e: unknown) => {
+      toast.error(rpcErrorMessage(e));
+      // Never leave the list showing a stale optimistic state after a failed write.
+      qc.invalidateQueries({ queryKey: ["iu", active?.id, instructorId] });
+    },
   });
 
   const del = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("instructor_availability").delete().eq("id", id);
-      if (error) throw error;
+      if (!active) throw new Error("اختر كلّية أولاً.");
+      // Explicit college scoping (defence in depth on top of RLS) + verified row count,
+      // so a blocked delete cannot report success.
+      const { data, error } = await supabase
+        .from("instructor_availability")
+        .delete()
+        .eq("id", id)
+        .eq("college_id", active.id)
+        .select("id");
+      if (error) throw new Error(readableWriteError(error));
+      if (!data || data.length === 0) {
+        throw new Error("لم يُحذف أي سجل: تحقّق من الصلاحية أو أن السجل ما زال موجوداً.");
+      }
       await logAudit({
         action: "delete",
         entity: "instructor_unavailability",
         entityId: id,
-        collegeId: active?.id,
+        collegeId: active.id,
       });
     },
     onSuccess: () => {
       toast.success("تم الحذف");
       qc.invalidateQueries({ queryKey: ["iu", active?.id, instructorId] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: unknown) => {
+      toast.error(readableWriteError(e));
+      qc.invalidateQueries({ queryKey: ["iu", active?.id, instructorId] });
+    },
   });
 
   return (
@@ -449,7 +473,7 @@ function RoomUnavailability() {
           .insert(payload)
           .select("id")
           .single();
-        if (error) throw error;
+        if (error) throw new Error(readableWriteError(error));
         await logAudit({
           action: "create",
           entity: "room_unavailability",
@@ -463,6 +487,7 @@ function RoomUnavailability() {
       }
       const dayOfWeek = form.dayValue === ALL_ACTIVE_DAYS_SENTINEL ? null : Number(form.dayValue);
       return upsertRoomUnavailabilityBulk({
+        collegeId: active.id,
         roomId,
         startTime: form.start_time,
         endTime: form.end_time,
@@ -476,25 +501,40 @@ function RoomUnavailability() {
       toast.success(formatBulkSuccessMessage(result));
       qc.invalidateQueries({ queryKey: ["ru", active?.id, roomId] });
     },
-    onError: (e: Error) => toast.error(rpcErrorMessage(e)),
+    onError: (e: unknown) => {
+      toast.error(rpcErrorMessage(e));
+      qc.invalidateQueries({ queryKey: ["ru", active?.id, roomId] });
+    },
   });
 
   const del = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("room_unavailability").delete().eq("id", id);
-      if (error) throw error;
+      if (!active) throw new Error("اختر كلّية أولاً.");
+      const { data, error } = await supabase
+        .from("room_unavailability")
+        .delete()
+        .eq("id", id)
+        .eq("college_id", active.id)
+        .select("id");
+      if (error) throw new Error(readableWriteError(error));
+      if (!data || data.length === 0) {
+        throw new Error("لم يُحذف أي سجل: تحقّق من الصلاحية أو أن السجل ما زال موجوداً.");
+      }
       await logAudit({
         action: "delete",
         entity: "room_unavailability",
         entityId: id,
-        collegeId: active?.id,
+        collegeId: active.id,
       });
     },
     onSuccess: () => {
       toast.success("تم الحذف");
       qc.invalidateQueries({ queryKey: ["ru", active?.id, roomId] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: unknown) => {
+      toast.error(readableWriteError(e));
+      qc.invalidateQueries({ queryKey: ["ru", active?.id, roomId] });
+    },
   });
 
   return (
