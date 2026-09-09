@@ -61,9 +61,19 @@ export function normalizeWriteError(error: unknown): NormalizedWriteError {
     }
     // Last resort: never leak "[object Object]".
     try {
-      return { message: JSON.stringify(source).slice(0, 400), code: null, details: null, hint: null };
+      return {
+        message: JSON.stringify(source).slice(0, 400),
+        code: null,
+        details: null,
+        hint: null,
+      };
     } catch {
-      return { message: "تعذّر تنفيذ العملية لسبب غير معروف", code: null, details: null, hint: null };
+      return {
+        message: "تعذّر تنفيذ العملية لسبب غير معروف",
+        code: null,
+        details: null,
+        hint: null,
+      };
     }
   }
 

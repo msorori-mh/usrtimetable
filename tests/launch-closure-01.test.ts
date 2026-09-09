@@ -14,7 +14,8 @@ const read = (path: string) => readFileSync(resolve(root, path), "utf8");
 describe("LAUNCH-CLOSURE-01 gap 1 — availability write error normalization", () => {
   test("a PostgrestError plain object never renders as [object Object]", () => {
     const postgrest = {
-      message: "Could not find the function public.upsert_instructor_unavailability_for_active_days",
+      message:
+        "Could not find the function public.upsert_instructor_unavailability_for_active_days",
       code: "PGRST202",
       details: "Searched for the function in the schema cache",
       hint: null,
@@ -144,7 +145,9 @@ describe("LAUNCH-CLOSURE-01 gap 1 — write path keeps tenant scope and honest r
   test("RPC stays the primary path and the fallback runs only for a missing function", () => {
     expect(api).toContain("upsert_instructor_unavailability_for_active_days");
     expect(api).toContain("upsert_room_unavailability_for_active_days");
-    expect(api).toContain("if (!isMissingRpcError(error)) throw new Error(readableWriteError(error))");
+    expect(api).toContain(
+      "if (!isMissingRpcError(error)) throw new Error(readableWriteError(error))",
+    );
   });
 
   test("fallback reads and writes are college scoped and never privileged", () => {

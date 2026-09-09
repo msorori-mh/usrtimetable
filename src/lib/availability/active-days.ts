@@ -69,9 +69,7 @@ export function planBulkUnavailability(input: {
   // Pre-validate ALL days before any DML.
   for (const day of daysTargeted) {
     const sameDay = input.existing.filter((e) => e.day_of_week === day);
-    const exact = sameDay.some(
-      (e) => hhmm(e.start_time) === start && hhmm(e.end_time) === end,
-    );
+    const exact = sameDay.some((e) => hhmm(e.start_time) === start && hhmm(e.end_time) === end);
     if (exact) {
       daysUnchanged.push(day);
       continue;

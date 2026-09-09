@@ -143,9 +143,7 @@ async function roomUnavailabilityFallback(input: {
   if (readError) throw new Error(readableWriteError(readError));
 
   const comparable = (existing ?? [])
-    .filter(
-      (r) => r.day_of_week !== null && r.start_time !== null && r.end_time !== null,
-    )
+    .filter((r) => r.day_of_week !== null && r.start_time !== null && r.end_time !== null)
     .map((r) => ({
       day_of_week: r.day_of_week as number,
       start_time: r.start_time as string,
