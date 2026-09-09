@@ -8,6 +8,12 @@
 - **Deployment status**: **NOT DEPLOYED**. No publish, no deploy, no production data mutation,
   no migration applied, no SQL executed against the database except read-only introspection
   (`pg_policies`, `pg_constraint`, `pg_proc`) used for diagnosis.
+- **Commit at which all gates below were green**: `0703a48c755305f8a1f2f6208d3148dc1e69fbab`.
+  Note: this report and two comment-only wording corrections in
+  `src/routes/_authenticated/availability.tsx` were written **after** that commit, so the final
+  reviewable commit is its immediate successor on this branch. No behaviour changed between the
+  two; the full suite, typecheck, lint, harness and build were re-run afterwards and stayed
+  green (97 pass / 0 fail, 68 harness passed, `build OK`).
 - **Scope**: three observed, reproducible gaps. No redesign, no dependency changes, no
   auth/RBAC/RLS changes, no credential resets.
 - **Approved product outcome (user-confirmed)**: an approved, printable timetable distributed
