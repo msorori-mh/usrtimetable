@@ -185,11 +185,16 @@ RLS on every table and function — so college isolation is unchanged.
 Checked against current official Supabase documentation and changelog for anything that would
 change the assumptions above:
 
-- **PostgREST error shape / missing-function codes.** `PostgrestError` is still returned as a
-  plain object (`message`, `details`, `hint`, `code`) and is not an `Error` instance; `PGRST202`
-  remains the documented code for "could not find the function in the schema cache" and
-  `PGRST203` for an ambiguous overload. The normalization in `errors.ts` therefore targets the
-  current documented contract, and additionally falls back to message matching.
+- **PostgREST error shape / missing-function codes.** `PostgrestError` **does** subclass `Error`
+  and still exposes `message`, `details`, `hint`, `code` — confirmed both in the current upstream
+  source and in the installed `@supabase/postgrest-js@2.107.0`. Official guidance ("Handling
+  errors in supabase-js") explicitly says to read `hint` **first** and to log the whole object,
+  because logging only `message` hides the actionable fix — which is precisely the defect
+  corrected here. `PGRST202` remains the code for "could not find the function in the schema
+  cache" and `PGRST203` for an ambiguous overload; branching on `code` rather than message text
+  is the documented practice, and `errors.ts` does that with message matching only as a fallback.
+  An open upstream issue (`supabase-js#1643`) concerns the *TypeScript typing* of `error` in a
+  failed response, not runtime behaviour.
 - **Confirming affected rows on delete.** `.delete()` still returns no rows unless a
   `.select()` is chained, and rows invisible/unwritable under RLS are silently excluded rather
   than raising. Chaining `.select("id")` and checking the length remains the correct way to
