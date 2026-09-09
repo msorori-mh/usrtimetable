@@ -17,32 +17,32 @@
 
 ## 1. Gate matrix
 
-| #   | Gate                                                | Result     | Command / evidence                                                                                    |
-| --- | --------------------------------------------------- | ---------- | ----------------------------------------------------------------------------------------------------- |
-| 1   | Baseline + clean tree verified before writing       | **PASS**   | `git rev-parse HEAD` == `5201d1ef…`; `git status --porcelain` empty                                   |
-| 2   | Repository instructions read first                  | **PASS**   | `.cursorrules` read before any edit (scope, security, no-auto-deploy rules honoured)                  |
-| 3   | Gap 1 root cause identified from live state         | **PASS**   | read-only `pg_proc` query returned `[]` for `%unavailability%` — the bulk RPCs do not exist on the DB  |
-| 4   | Gap 1 persistence fixed                             | **PASS**   | RPC-first + RLS-gated direct-write fallback in `src/lib/availability/bulk-api.ts`                     |
-| 5   | Gap 1 human-readable errors, no `[object Object]`   | **PASS**   | `src/lib/availability/errors.ts` + 4 unit tests over plain PostgREST objects and degenerate values     |
-| 6   | Gap 1 failure can never render as success           | **PASS**   | delete verifies affected rows; all-or-nothing planner; `onError` refetches                             |
-| 7   | Gap 1 college isolation / RBAC / RLS preserved      | **PASS**   | every fallback read+write filtered by `college_id`; no admin client, no service role, no SECURITY DEFINER |
-| 8   | Gap 2 hydration #418 reproduced before fix          | **PASS**   | Playwright on `/dashboard`: `[pageerror] Hydration failed because the server rendered HTML didn't match the client` |
-| 9   | Gap 2 fixed without suppression or hidden errors    | **PASS**   | Playwright re-run: `FINAL URL: http://localhost:8080/auth`, `ERRORS: 0`, `HYDRATION ERRORS: 0`         |
-| 10  | Gap 3 approval → publish → print flow reachable     | **PASS**   | printable timetable now linked from `/published-schedules` as well as the editor                       |
-| 11  | Gap 3 RTL print styling / clipping / page breaks    | **PASS**   | print CSS releases scroll clipping, repeats headers, avoids row splits, wraps long Arabic names        |
-| 12  | Gap 3 essential timetable identification on paper   | **PASS**   | asserted by test over `print-sheet.tsx` (university, college, dept, program, level, system, term, version, status, export date, page x/y, watermark/endorsement) |
-| 13  | Regression coverage added for changed contracts     | **PASS**   | `tests/launch-closure-01.test.ts` — 24 tests / 92 assertions                                          |
-| 14  | Typecheck                                           | **PASS**   | `bunx tsgo --noEmit` → exit 0, no output                                                              |
-| 15  | Focused lint                                        | **PASS**   | `bunx eslint` over the 6 changed source files → clean                                                 |
-| 16  | Prettier on changed files only                      | **PASS**   | `bunx prettier --write` over the 8 changed files                                                      |
-| 17  | Full unit suite                                     | **PASS**   | `bun test` → **97 pass / 0 fail (323 assertions), 15 files**                                          |
-| 18  | Harness suite                                       | **PASS**   | `node tests/harness/run.mjs` → **68 passed, 0 failed, 0 missing historical artifacts**                |
-| 19  | Build                                               | **PASS**   | `/tmp/observability/build-errors.log` latest entry `build OK`                                          |
-| 20  | Preview reachable                                   | **PASS**   | `/dashboard` → `/auth` renders with zero console/page errors                                          |
-| 21  | No migration / SQL applied, no data mutation        | **PASS**   | no file under `supabase/migrations/` touched; no write SQL executed                                    |
-| 22  | Authenticated runtime E2E on TEST-SIMP-03           | **BLOCKED**| see §6 — no authenticated session was available; no runtime proof is fabricated                        |
-| 23  | Supabase official docs / changelog review           | **PASS**   | see §5                                                                                                |
-| 24  | Deployment                                          | **HOLD**   | explicitly out of scope for this stage; awaiting independent review                                    |
+| #   | Gate                                              | Result      | Command / evidence                                                                                                                                               |
+| --- | ------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Baseline + clean tree verified before writing     | **PASS**    | `git rev-parse HEAD` == `5201d1ef…`; `git status --porcelain` empty                                                                                              |
+| 2   | Repository instructions read first                | **PASS**    | `.cursorrules` read before any edit (scope, security, no-auto-deploy rules honoured)                                                                             |
+| 3   | Gap 1 root cause identified from live state       | **PASS**    | read-only `pg_proc` query returned `[]` for `%unavailability%` — the bulk RPCs do not exist on the DB                                                            |
+| 4   | Gap 1 persistence fixed                           | **PASS**    | RPC-first + RLS-gated direct-write fallback in `src/lib/availability/bulk-api.ts`                                                                                |
+| 5   | Gap 1 human-readable errors, no `[object Object]` | **PASS**    | `src/lib/availability/errors.ts` + 4 unit tests over plain PostgREST objects and degenerate values                                                               |
+| 6   | Gap 1 failure can never render as success         | **PASS**    | delete verifies affected rows; all-or-nothing planner; `onError` refetches                                                                                       |
+| 7   | Gap 1 college isolation / RBAC / RLS preserved    | **PASS**    | every fallback read+write filtered by `college_id`; no admin client, no service role, no SECURITY DEFINER                                                        |
+| 8   | Gap 2 hydration #418 reproduced before fix        | **PASS**    | Playwright on `/dashboard`: `[pageerror] Hydration failed because the server rendered HTML didn't match the client`                                              |
+| 9   | Gap 2 fixed without suppression or hidden errors  | **PASS**    | Playwright re-run: `FINAL URL: http://localhost:8080/auth`, `ERRORS: 0`, `HYDRATION ERRORS: 0`                                                                   |
+| 10  | Gap 3 approval → publish → print flow reachable   | **PASS**    | printable timetable now linked from `/published-schedules` as well as the editor                                                                                 |
+| 11  | Gap 3 RTL print styling / clipping / page breaks  | **PASS**    | print CSS releases scroll clipping, repeats headers, avoids row splits, wraps long Arabic names                                                                  |
+| 12  | Gap 3 essential timetable identification on paper | **PASS**    | asserted by test over `print-sheet.tsx` (university, college, dept, program, level, system, term, version, status, export date, page x/y, watermark/endorsement) |
+| 13  | Regression coverage added for changed contracts   | **PASS**    | `tests/launch-closure-01.test.ts` — 24 tests / 92 assertions                                                                                                     |
+| 14  | Typecheck                                         | **PASS**    | `bunx tsgo --noEmit` → exit 0, no output                                                                                                                         |
+| 15  | Focused lint                                      | **PASS**    | `bunx eslint` over the 6 changed source files → clean                                                                                                            |
+| 16  | Prettier on changed files only                    | **PASS**    | `bunx prettier --write` over the 8 changed files                                                                                                                 |
+| 17  | Full unit suite                                   | **PASS**    | `bun test` → **97 pass / 0 fail (323 assertions), 15 files**                                                                                                     |
+| 18  | Harness suite                                     | **PASS**    | `node tests/harness/run.mjs` → **68 passed, 0 failed, 0 missing historical artifacts**                                                                           |
+| 19  | Build                                             | **PASS**    | `/tmp/observability/build-errors.log` latest entry `build OK`                                                                                                    |
+| 20  | Preview reachable                                 | **PASS**    | `/dashboard` → `/auth` renders with zero console/page errors                                                                                                     |
+| 21  | No migration / SQL applied, no data mutation      | **PASS**    | no file under `supabase/migrations/` touched; no write SQL executed                                                                                              |
+| 22  | Authenticated runtime E2E on TEST-SIMP-03         | **BLOCKED** | see §6 — no authenticated session was available; no runtime proof is fabricated                                                                                  |
+| 23  | Supabase official docs / changelog review         | **PASS**    | see §5                                                                                                                                                           |
+| 24  | Deployment                                        | **HOLD**    | explicitly out of scope for this stage; awaiting independent review                                                                                              |
 
 **Overall: PASS for every in-scope code gate. Gate 22 is BLOCKED on an environment
 prerequisite (no authenticated session), and gate 24 is intentionally on HOLD.**
@@ -51,17 +51,17 @@ prerequisite (no authenticated session), and gate 24 is intentionally on HOLD.**
 
 ## 2. Changed files
 
-| File                                             | Change                                                                                                  |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
-| `src/lib/availability/errors.ts`                  | **new** — pure error normalization: `normalizeWriteError`, `readableWriteError`, `isMissingRpcError`      |
-| `src/lib/availability/active-days.ts`             | added pure planner `planBulkUnavailability` + `BulkUnavailabilityPlan` (validate-all-days-before-any-DML) |
-| `src/lib/availability/bulk-api.ts`                | RPC-first, then RLS-gated direct-write fallback for instructor + room unavailability; readable errors     |
-| `src/routes/_authenticated/availability.tsx`      | passes `collegeId`; readable errors; college-scoped deletes with verified row count; refetch on failure    |
-| `src/routes/_authenticated/route.tsx`             | hydration-safe client auth gate (replaces the pre-render redirect that caused React #418)                 |
-| `src/routes/_authenticated/published-schedules.tsx` | adds the «طباعة وتصدير» link to the printable timetable for each published version                     |
-| `src/styles.css`                                  | print rules: release scroll clipping, repeat table headers, avoid row/header splits, wrap long Arabic     |
-| `tests/launch-closure-01.test.ts`                 | **new** — 24 regression tests across all three gaps                                                      |
-| `docs/LAUNCH-CLOSURE-01.md`                       | **new** — this report                                                                                    |
+| File                                                | Change                                                                                                    |
+| --------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `src/lib/availability/errors.ts`                    | **new** — pure error normalization: `normalizeWriteError`, `readableWriteError`, `isMissingRpcError`      |
+| `src/lib/availability/active-days.ts`               | added pure planner `planBulkUnavailability` + `BulkUnavailabilityPlan` (validate-all-days-before-any-DML) |
+| `src/lib/availability/bulk-api.ts`                  | RPC-first, then RLS-gated direct-write fallback for instructor + room unavailability; readable errors     |
+| `src/routes/_authenticated/availability.tsx`        | passes `collegeId`; readable errors; college-scoped deletes with verified row count; refetch on failure   |
+| `src/routes/_authenticated/route.tsx`               | hydration-safe client auth gate (replaces the pre-render redirect that caused React #418)                 |
+| `src/routes/_authenticated/published-schedules.tsx` | adds the «طباعة وتصدير» link to the printable timetable for each published version                        |
+| `src/styles.css`                                    | print rules: release scroll clipping, repeat table headers, avoid row/header splits, wrap long Arabic     |
+| `tests/launch-closure-01.test.ts`                   | **new** — 24 regression tests across all three gaps                                                       |
+| `docs/LAUNCH-CLOSURE-01.md`                         | **new** — this report                                                                                     |
 
 No other file was modified. No dependency was added, removed, or upgraded.
 
@@ -89,7 +89,7 @@ Two independent defects stacked:
    **Honest correction on this point.** In the installed `@supabase/postgrest-js@2.107.0`,
    `PostgrestError` **does** subclass `Error` (verified by reading
    `node_modules/@supabase/postgrest-js/src/PostgrestError.ts`), so the `String(e)` branch is
-   *not* proven to be what produced the reported `[object Object]`. Identifying the exact
+   _not_ proven to be what produced the reported `[object Object]`. Identifying the exact
    object that reached the toast requires reproducing the failure with an authenticated
    session, which was not available (see gate 22). What **is** confirmed is defect 1 above —
    the missing stored function — and that is the reason no record was ever saved. The error
@@ -99,7 +99,7 @@ Two independent defects stacked:
    the message itself.
 
 **Fix.** The RPC remains the preferred path. Only when the error is specifically a
-*missing function* (`PGRST202` / `PGRST203` / `42883`, or a "could not find the function" /
+_missing function_ (`PGRST202` / `PGRST203` / `42883`, or a "could not find the function" /
 "schema cache" message) does the client fall back to an equivalent direct write that:
 
 - resolves target days from the same operational calendar (`scheduling_settings.working_days`,
@@ -129,7 +129,7 @@ the first client render was the fully rendered `/auth` tree while the server HTM
 a guaranteed mismatch, and React discarded the entire root tree.
 
 **Fix.** The subtree stays client-only, but the **first** client render is now `null`, which is
-byte-identical to what the server produced. The session is resolved in an effect *after*
+byte-identical to what the server produced. The session is resolved in an effect _after_
 hydration via `supabase.auth.getUser()`, and the redirect to `/auth` becomes an ordinary client
 navigation that happens outside hydration. While the session resolves, an RTL
 "جارٍ التحقق من الجلسة…" placeholder is shown.
@@ -193,7 +193,7 @@ change the assumptions above:
   corrected here. `PGRST202` remains the code for "could not find the function in the schema
   cache" and `PGRST203` for an ambiguous overload; branching on `code` rather than message text
   is the documented practice, and `errors.ts` does that with message matching only as a fallback.
-  An open upstream issue (`supabase-js#1643`) concerns the *TypeScript typing* of `error` in a
+  An open upstream issue (`supabase-js#1643`) concerns the _TypeScript typing_ of `error` in a
   failed response, not runtime behaviour.
 - **Confirming affected rows on delete.** `.delete()` still returns no rows unless a
   `.select()` is chained, and rows invisible/unwritable under RLS are silently excluded rather
