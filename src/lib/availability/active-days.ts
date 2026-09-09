@@ -33,6 +33,60 @@ export function isValidTimeRange(start: string, end: string): boolean {
   return Boolean(start && end && end > start);
 }
 
+/**
+ * LAUNCH-CLOSURE-01 — pure planner shared by the RPC path and the direct-write
+ * fallback path. Validates EVERY target day before any row is emitted, so an
+ * overlap on one day rejects the whole request (no partial application).
+ */
+export type BulkUnavailabilityPlan =
+  | { ok: true; daysToCreate: number[]; daysUnchanged: number[]; daysTargeted: number[] }
+  | { ok: false; reason: "invalid_time" }
+  | { ok: false; reason: "overlap"; conflictDay: number };
+
+export function planBulkUnavailability(input: {
+  activeDays: number[];
+  dayOfWeek: number | null;
+  startTime: string;
+  endTime: string;
+  existing: Array<{ day_of_week: number; start_time: string; end_time: string }>;
+}): BulkUnavailabilityPlan {
+  if (!isValidTimeRange(input.startTime, input.endTime)) {
+    return { ok: false, reason: "invalid_time" };
+  }
+  const hhmm = (t: string) => t.slice(0, 5);
+  const start = hhmm(input.startTime);
+  const end = hhmm(input.endTime);
+  const daysTargeted =
+    input.dayOfWeek === null
+      ? resolveWorkingDays(input.activeDays)
+      : [input.dayOfWeek].filter((d) => Number.isInteger(d) && d >= 0 && d <= 6);
+
+  if (daysTargeted.length === 0) return { ok: false, reason: "invalid_time" };
+
+  const daysToCreate: number[] = [];
+  const daysUnchanged: number[] = [];
+
+  // Pre-validate ALL days before any DML.
+  for (const day = 0 as number, _unused = 0; false; ) void day;
+  for (const day of daysTargeted) {
+    const sameDay = input.existing.filter((e) => e.day_of_week === day);
+    const exact = sameDay.some(
+      (e) => hhmm(e.start_time) === start && hhmm(e.end_time) === end,
+    );
+    if (exact) {
+      daysUnchanged.push(day);
+      continue;
+    }
+    const conflict = sameDay.find((e) =>
+      timesOverlap(hhmm(e.start_time), hhmm(e.end_time), start, end),
+    );
+    if (conflict) return { ok: false, reason: "overlap", conflictDay: day };
+    daysToCreate.push(day);
+  }
+
+  return { ok: true, daysToCreate, daysUnchanged, daysTargeted };
+}
+
 export type BulkAvailabilityResult = {
   status: string;
   days_targeted?: number[];
