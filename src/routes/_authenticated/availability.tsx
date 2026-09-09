@@ -34,6 +34,7 @@ import {
   upsertInstructorUnavailabilityBulk,
   upsertRoomUnavailabilityBulk,
 } from "@/lib/availability/bulk-api";
+import { readableWriteError } from "@/lib/availability/errors";
 
 export const Route = createFileRoute("/_authenticated/availability")({
   head: () => ({ meta: [{ title: "عدم التوفّر" }] }),
@@ -41,7 +42,9 @@ export const Route = createFileRoute("/_authenticated/availability")({
 });
 
 function rpcErrorMessage(e: unknown): string {
-  const msg = e instanceof Error ? e.message : String(e);
+  // LAUNCH-CLOSURE-01: PostgrestError is a plain object, not an Error instance.
+  // `String(plainObject)` used to render the literal "[object Object]".
+  const msg = readableWriteError(e);
   const overlap =
     msg.match(/availability_overlap:\s*day=(\d+)/i) ??
     msg.match(/unavailability_overlap:\s*day=(\d+)/i);
