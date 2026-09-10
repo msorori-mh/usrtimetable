@@ -269,14 +269,30 @@ export async function runV2AutoSchedule(params: {
     deliveryGroupId: row.delivery_group_id,
   }));
 
+  // Shared-student semantics: explicit partition membership per delivery group.
+  const expectedStudentsByGroup: Record<string, number | null | undefined> = {};
+  for (const item of workItems) {
+    if (item.delivery_group_id) expectedStudentsByGroup[item.delivery_group_id] = item.expected_students;
+  }
+  const partitions = await loadPartitionIndex({
+    cohortIds: Array.from(
+      new Set(workItems.map((item) => item.cohort_id).filter((id): id is string => !!id)),
+    ),
+    expectedStudents: expectedStudentsByGroup,
+  });
+  const sharedStudents = partitions.index ? makeSharedStudentsPredicate(partitions.index) : undefined;
+
   const unplaced: UnplacedItem[] = [];
   const warnings: string[] = [];
+  if (partitions.note) warnings.push(partitions.note);
   const byType: Record<string, { required: number; placed: number; unplaced: number }> = {};
   let placed = 0;
   let cancelled = false;
   let nonconformingSessions = 0;
+  let blockedCadenceItems = 0;
   let versionUpdatedAt = payload.version_updated_at;
   let processedItems = 0;
+
 
   for (const item of workItems) {
     if (params.signal?.aborted) {
