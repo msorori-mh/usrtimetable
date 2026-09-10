@@ -98,14 +98,15 @@ describe("required plan cadence", () => {
     expect(cadenceFamilyForComponent(null)).toBe("lecture");
   });
 
-  test("inconsistent or missing plan pattern derives blocks and reports why", () => {
+  test("inconsistent or missing plan pattern blocks instead of inventing cadence", () => {
+    // JAWF-STUDENT-PARTITIONS-02: cadence is never invented any more.
     const mismatch = requiredCadenceForComponent({
       componentType: "theory",
       assignedHours: 4,
       planCourse: { ...theory4Plan, lectures_per_week: 1, lecture_session_duration: 2 },
     });
-    expect(mismatch.durations).toEqual([2, 2]);
-    expect(mismatch.source).toBe("derived");
+    expect(mismatch.durations).toEqual([]);
+    expect(mismatch.source).toBe("blocked");
     expect(mismatch.noteAr).toContain("لا يطابق");
 
     const missing = requiredCadenceForComponent({
@@ -113,9 +114,19 @@ describe("required plan cadence", () => {
       assignedHours: 4,
       planCourse: null,
     });
-    expect(missing.durations).toEqual([2, 2]);
+    expect(missing.durations).toEqual([]);
+    expect(missing.source).toBe("blocked");
     expect(missing.noteAr).toContain("الخطة");
+
+    const zero = requiredCadenceForComponent({
+      componentType: "theory",
+      assignedHours: 0,
+      planCourse: theory4Plan,
+    });
+    expect(zero.durations).toEqual([]);
+    expect(zero.source).toBe("blocked");
   });
+
 
   test("hour splitting never produces a session longer than 4h", () => {
     expect(splitHoursIntoSessions(1)).toEqual([1]);
