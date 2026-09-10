@@ -11,14 +11,14 @@ All SQL below is proposed for root review and apply through the existing authori
 Level 1 Jawf cohort `a54be564-b9cc-4c23-8b02-504453100123` (college `7168345f-…`, program
 `dd991d15-…`, term `18dd364a-…`) = 120 students = 4 anonymous partitions of 30 (P1..P4, no PII).
 
-| group | partitions |
-| --- | --- |
-| theory G1 (every course) | P1, P2 |
-| theory G2 (every course) | P3, P4 |
-| practical G1 | P1 |
-| practical G2 | P2 |
-| practical G3 | P3 |
-| practical G4 | P4 |
+| group                    | partitions |
+| ------------------------ | ---------- |
+| theory G1 (every course) | P1, P2     |
+| theory G2 (every course) | P3, P4     |
+| practical G1             | P1         |
+| practical G2             | P2         |
+| practical G3             | P3         |
+| practical G4             | P4         |
 
 Read from the live DB: the cohort has exactly **18** active non-obsolete delivery groups
 (6 courses × theory G1/G2 = 12, plus JIS-L1-003 and JIS-L1-004 practical G1..G4 = 8 → 18 shown
@@ -53,7 +53,7 @@ minus obsolete G3/G5 rows, which are excluded).
      Returns TRUE (conflict) for: null/equal groups, unknown groups, either side unmapped,
      coverage below the group's expected students, and any partition intersection. Returns FALSE
      only for different cohorts or proven disjoint complete mappings.
-   - `_sb_v2_delivery_group_overlap` replaced: same peer query, but a peer in a *different*
+   - `_sb_v2_delivery_group_overlap` replaced: same peer query, but a peer in a _different_
      delivery group is skipped only when the helper proves the two groups share no students.
      Callers unchanged.
 2. `docs/migrations-proposed/20260910T2100_jawf_level1_partition_data_apply.sql` — scoped,
