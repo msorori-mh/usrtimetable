@@ -58,6 +58,15 @@ export function PrintSheet(props: {
         : null;
   const statusLabel = meta.versionStatus ? STATUS_LABEL_AR[meta.versionStatus] : null;
   const isDraft = meta.versionStatus === "draft";
+  const columnCount =
+    6 + (visibility.showInstructor ? 1 : 0) + (visibility.showRoom ? 1 : 0) - 0;
+  const contextSuffix = [
+    visibility.showLevel ? page.levelName || meta.levelName : null,
+    studyLabel,
+    PRINT_GROUP_CONTINUATION_AR,
+  ]
+    .filter(Boolean)
+    .join(" — ");
 
   return (
     <section className="print-center-page break-after-page">
