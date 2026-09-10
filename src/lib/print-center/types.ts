@@ -152,6 +152,3 @@ export const PRINT_DRAFT_WATERMARK_AR = "مسودة — غير معتمدة لل
 export function printGroupCounterLabelAr(groupIndex: number, groupCount: number): string {
   return `مجموعة الجدول ${groupIndex} من ${groupCount}`;
 }
-
-/** Continuation marker repeated in the header of a group's own continuation sheets. */
-export const PRINT_GROUP_CONTINUATION_AR = "تابع";

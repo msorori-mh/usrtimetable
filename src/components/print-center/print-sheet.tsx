@@ -9,6 +9,7 @@ import {
   type PrintPageGroup,
   type PrintVisibilityOptions,
   type PrintStudySystem,
+  printGroupCounterLabelAr,
 } from "@/lib/print-center";
 import { PrintQrCode } from "./print-qr-code";
 import {
@@ -58,12 +59,11 @@ export function PrintSheet(props: {
         : null;
   const statusLabel = meta.versionStatus ? STATUS_LABEL_AR[meta.versionStatus] : null;
   const isDraft = meta.versionStatus === "draft";
-  const columnCount =
-    6 + (visibility.showInstructor ? 1 : 0) + (visibility.showRoom ? 1 : 0) - 0;
+  // day, time, code, name, component, group + optional instructor / room
+  const columnCount = 6 + (visibility.showInstructor ? 1 : 0) + (visibility.showRoom ? 1 : 0);
   const contextSuffix = [
     visibility.showLevel ? page.levelName || meta.levelName : null,
     studyLabel,
-    PRINT_GROUP_CONTINUATION_AR,
   ]
     .filter(Boolean)
     .join(" — ");
@@ -160,9 +160,7 @@ export function PrintSheet(props: {
 
       <footer className="print-center-footer mt-4 border-t border-border pt-2 text-xs text-muted-foreground print:text-foreground">
         <div className="flex flex-wrap justify-between gap-2">
-          <span>
-            صفحة {meta.pageIndex} من {meta.pageCount}
-          </span>
+          <span>{printGroupCounterLabelAr(meta.pageIndex, meta.pageCount)}</span>
           {meta.lastUpdate && (
             <span>آخر تحديث: {new Date(meta.lastUpdate).toLocaleString("ar")}</span>
           )}
