@@ -195,7 +195,11 @@ export function PrintSheet(props: {
             <span>آخر تحديث: {new Date(meta.lastUpdate).toLocaleString("ar")}</span>
           )}
         </div>
-        <p className="mt-1">{PRINT_PUBLISHED_ENDORSEMENT_AR}</p>
+        <p className="mt-1">
+          {meta.versionStatus === "published"
+            ? PRINT_PUBLISHED_ENDORSEMENT_AR
+            : "نسخة للمراجعة والطباعة — ليست جدولاً منشوراً معتمداً."}
+        </p>
         {meta.isDemo && (
           <p className="mt-1 font-semibold text-amber-800 print:text-black" role="status">
             {PRINT_DEMO_FOOTER_WARNING_AR}
