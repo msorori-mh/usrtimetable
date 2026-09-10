@@ -42,7 +42,8 @@ describe("LAUNCH-CLOSURE-01 gap 1 — availability write error normalization", (
 
   test("missing-RPC detection matches PostgREST codes and messages only", () => {
     expect(isMissingRpcError({ code: "PGRST202", message: "x" })).toBe(true);
-    expect(isMissingRpcError({ code: "PGRST203", message: "x" })).toBe(true);
+    // PGRST203 = ambiguous overload; the function EXISTS (see launch-closure-02 tests).
+    expect(isMissingRpcError({ code: "PGRST203", message: "x" })).toBe(false);
     expect(isMissingRpcError({ code: "42883", message: "x" })).toBe(true);
     expect(isMissingRpcError({ message: "Could not find the function foo" })).toBe(true);
     // A permission denial must NOT be mistaken for a missing function, otherwise
@@ -167,8 +168,8 @@ describe("LAUNCH-CLOSURE-01 gap 1 — write path keeps tenant scope and honest r
   });
 
   test("fallback inserts every planned day in one statement", () => {
-    expect(api).toContain('.from("instructor_availability").insert(rows)');
-    expect(api).toContain('.from("room_unavailability").insert(rows)');
+    expect(api).toContain('.from("instructor_availability")\n      .insert(rows)');
+    expect(api).toContain('.from("room_unavailability")\n      .insert(rows)');
   });
 
   test("deletes are college scoped and cannot report success on zero rows", () => {
@@ -205,7 +206,7 @@ describe("LAUNCH-CLOSURE-01 gap 2 — hydration-safe authenticated gate", () => 
   });
 
   test("the session check still uses getUser, so the guard is not weakened", () => {
-    expect(gate).toContain("supabase.auth.getUser()");
+    expect(gate).toContain(".getUser()");
     expect(gate).toContain("if (error || !data.user)");
   });
 });

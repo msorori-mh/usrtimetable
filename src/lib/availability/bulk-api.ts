@@ -1,8 +1,14 @@
 import { supabase } from "@/integrations/supabase/client";
 import { logAudit } from "@/lib/audit";
-import type { BulkAvailabilityResult } from "./active-days";
+import type { BulkAvailabilityResult, BulkUnavailabilityPlan } from "./active-days";
 import { resolveWorkingDays, DEFAULT_WORKING_DAYS, planBulkUnavailability } from "./active-days";
-import { isMissingRpcError, readableWriteError } from "./errors";
+import {
+  AMBIGUOUS_RPC_HINT_AR,
+  isAmbiguousRpcError,
+  isMissingRpcError,
+  readableWriteError,
+} from "./errors";
+import { DAY_LABELS_AR } from "./active-days";
 
 /** Active working days from operational calendar (أيام وفترات الدوام / scheduling_settings). */
 export async function fetchCollegeWorkingDays(collegeId: string): Promise<number[]> {
@@ -24,21 +30,43 @@ function asResult(data: unknown): BulkAvailabilityResult {
 }
 
 /**
- * LAUNCH-CLOSURE-01
- * The bulk RPCs are defined in a SOURCE-ONLY migration that is NOT applied on the
- * live database, so every save failed with a PostgREST "function not found" error
- * (surfaced as "[object Object]") and nothing was persisted.
+ * LAUNCH-CLOSURE-01/02
+ * The bulk RPCs live in a SOURCE-ONLY migration that is NOT applied on the live
+ * database, so every save failed with a PostgREST "function not found" error and
+ * nothing was persisted.
  *
- * Behaviour now: prefer the RPC (atomic, server-side). If — and only if — the RPC
- * is absent from the server, fall back to an equivalent direct write that:
- *   - resolves target days from the same operational calendar,
- *   - pre-validates EVERY target day before any DML (overlap ⇒ reject all),
- *   - inserts all rows in a single statement (no partial application),
- *   - relies on the SAME authorization: RLS `can_manage_college(auth.uid(), college_id)`.
- * No service role, no SECURITY DEFINER, no weakened guard, no college crossing.
+ * Behaviour: prefer the RPC (atomic, server-side). Fall back to a direct write
+ * ONLY when the function is genuinely absent (never on an ambiguous overload,
+ * permission error, or constraint violation). The fallback reproduces the
+ * authoritative SQL semantics documented in `active-days.ts`:
+ *   - target days resolved from the same operational calendar,
+ *   - the resource is confirmed to belong to the supplied college and be active,
+ *   - EVERY target day validated before any DML (overlap ⇒ reject all),
+ *   - the room validity window (start_date/end_date) is part of the duplicate key,
+ *   - all rows inserted in a single statement,
+ *   - same authorization: RLS `can_manage_college(auth.uid(), college_id)`.
+ *
+ * Known limitation (see docs/LAUNCH-CLOSURE-02.md): a client-side transaction
+ * boundary does not exist, so two concurrent saves can both pass validation. The
+ * database has no unique/exclusion constraint on these tables today, so overlap
+ * uniqueness is NOT enforced at rest by either path.
  */
-function overlapError(dayLabelSource: number): Error {
-  return new Error(`unavailability_overlap: day=${dayLabelSource}`);
+function dayLabel(day: number): string {
+  return DAY_LABELS_AR[day] ?? String(day);
+}
+
+function planFailure(plan: Extract<BulkUnavailabilityPlan, { ok: false }>): Error {
+  if (plan.reason === "overlap") {
+    return new Error(
+      `unavailability_overlap: يوجد تعارض زمني في يوم ${dayLabel(plan.conflictDay)}؛ لم يُحفظ أي يوم.`,
+    );
+  }
+  if (plan.reason === "all_day_block") {
+    return new Error(
+      `unavailability_all_day_block: يوم ${dayLabel(plan.conflictDay)} مُغلق كاملاً مسبقاً؛ لم يُحفظ أي يوم.`,
+    );
+  }
+  return new Error("invalid_time_range: وقت النهاية يجب أن يكون بعد وقت البداية.");
 }
 
 async function resolveTargetDays(collegeId: string, dayOfWeek: number | null): Promise<number[]> {
@@ -46,8 +74,33 @@ async function resolveTargetDays(collegeId: string, dayOfWeek: number | null): P
   return fetchCollegeWorkingDays(collegeId);
 }
 
+/**
+ * Mirrors the RPC preflight: the resource must exist, belong to the SUPPLIED
+ * college, and be active. Fails closed — no write is attempted otherwise.
+ */
+async function assertResourceInCollege(
+  table: "instructors" | "rooms",
+  id: string,
+  collegeId: string,
+  label: string,
+): Promise<void> {
+  const { data, error } = await supabase
+    .from(table)
+    .select("id, college_id, is_active")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw new Error(readableWriteError(error));
+  if (!data) throw new Error(`${label} غير موجود.`);
+  if (data.college_id !== collegeId) {
+    throw new Error(`${label} لا ينتمي إلى الكلّية المحددة؛ لم يُنفَّذ أي حفظ.`);
+  }
+  if (data.is_active !== true) {
+    throw new Error(`${label} غير مُفعّل؛ لم يُنفَّذ أي حفظ.`);
+  }
+}
+
 function planToResult(
-  plan: Extract<ReturnType<typeof planBulkUnavailability>, { ok: true }>,
+  plan: Extract<BulkUnavailabilityPlan, { ok: true }>,
   collegeId: string,
   resource: string,
 ): BulkAvailabilityResult {
@@ -69,6 +122,7 @@ async function instructorUnavailabilityFallback(input: {
   notes?: string | null;
   dayOfWeek: number | null;
 }): Promise<BulkAvailabilityResult> {
+  await assertResourceInCollege("instructors", input.instructorId, input.collegeId, "المحاضر");
   const activeDays = await resolveTargetDays(input.collegeId, input.dayOfWeek);
 
   const { data: existing, error: readError } = await supabase
@@ -87,10 +141,7 @@ async function instructorUnavailabilityFallback(input: {
     endTime: input.endTime,
     existing: existing ?? [],
   });
-  if (!plan.ok) {
-    if (plan.reason === "overlap") throw overlapError(plan.conflictDay);
-    throw new Error("invalid_time_range");
-  }
+  if (!plan.ok) throw planFailure(plan);
 
   if (plan.daysToCreate.length > 0) {
     const rows = plan.daysToCreate.map((day) => ({
@@ -103,9 +154,17 @@ async function instructorUnavailabilityFallback(input: {
       is_preference: false,
       notes: input.notes ?? null,
     }));
-    // Single statement ⇒ all-or-nothing.
-    const { error: insertError } = await supabase.from("instructor_availability").insert(rows);
+    // Single statement ⇒ all-or-nothing for this batch.
+    const { data: inserted, error: insertError } = await supabase
+      .from("instructor_availability")
+      .insert(rows)
+      .select("id");
     if (insertError) throw new Error(readableWriteError(insertError));
+    if ((inserted?.length ?? 0) !== rows.length) {
+      throw new Error(
+        "تعذّر تأكيد حفظ جميع الأيام المطلوبة؛ أعد تحميل البيانات والتحقق قبل إعادة المحاولة.",
+      );
+    }
     await logAudit({
       action: "create",
       entity: "instructor_unavailability",
@@ -133,34 +192,29 @@ async function roomUnavailabilityFallback(input: {
   endDate?: string | null;
   dayOfWeek: number | null;
 }): Promise<BulkAvailabilityResult> {
+  await assertResourceInCollege("rooms", input.roomId, input.collegeId, "القاعة");
   const activeDays = await resolveTargetDays(input.collegeId, input.dayOfWeek);
 
+  // start_date/end_date are part of the duplicate key, and null weekday/time rows
+  // are whole-day closures that must not be dropped from the comparison.
   const { data: existing, error: readError } = await supabase
     .from("room_unavailability")
-    .select("day_of_week, start_time, end_time")
+    .select("day_of_week, start_time, end_time, start_date, end_date")
     .eq("college_id", input.collegeId)
     .eq("room_id", input.roomId);
   if (readError) throw new Error(readableWriteError(readError));
-
-  const comparable = (existing ?? [])
-    .filter((r) => r.day_of_week !== null && r.start_time !== null && r.end_time !== null)
-    .map((r) => ({
-      day_of_week: r.day_of_week as number,
-      start_time: r.start_time as string,
-      end_time: r.end_time as string,
-    }));
 
   const plan = planBulkUnavailability({
     activeDays,
     dayOfWeek: input.dayOfWeek,
     startTime: input.startTime,
     endTime: input.endTime,
-    existing: comparable,
+    compareDates: true,
+    startDate: input.startDate || null,
+    endDate: input.endDate || null,
+    existing: existing ?? [],
   });
-  if (!plan.ok) {
-    if (plan.reason === "overlap") throw overlapError(plan.conflictDay);
-    throw new Error("invalid_time_range");
-  }
+  if (!plan.ok) throw planFailure(plan);
 
   if (plan.daysToCreate.length > 0) {
     const rows = plan.daysToCreate.map((day) => ({
@@ -173,8 +227,16 @@ async function roomUnavailabilityFallback(input: {
       end_date: input.endDate || null,
       reason: input.reason ?? null,
     }));
-    const { error: insertError } = await supabase.from("room_unavailability").insert(rows);
+    const { data: inserted, error: insertError } = await supabase
+      .from("room_unavailability")
+      .insert(rows)
+      .select("id");
     if (insertError) throw new Error(readableWriteError(insertError));
+    if ((inserted?.length ?? 0) !== rows.length) {
+      throw new Error(
+        "تعذّر تأكيد حفظ جميع الأيام المطلوبة؛ أعد تحميل البيانات والتحقق قبل إعادة المحاولة.",
+      );
+    }
     await logAudit({
       action: "create",
       entity: "room_unavailability",
@@ -184,6 +246,8 @@ async function roomUnavailabilityFallback(input: {
         days: plan.daysToCreate,
         start_time: input.startTime,
         end_time: input.endTime,
+        start_date: input.startDate || null,
+        end_date: input.endDate || null,
         path: "direct_fallback",
       },
     });
@@ -213,6 +277,9 @@ export async function upsertInstructorUnavailabilityBulk(input: {
     } as never,
   );
   if (error) {
+    if (isAmbiguousRpcError(error)) {
+      throw new Error(`${AMBIGUOUS_RPC_HINT_AR} (${readableWriteError(error)})`);
+    }
     if (!isMissingRpcError(error)) throw new Error(readableWriteError(error));
     return instructorUnavailabilityFallback(input);
   }
@@ -243,6 +310,9 @@ export async function upsertRoomUnavailabilityBulk(input: {
     } as never,
   );
   if (error) {
+    if (isAmbiguousRpcError(error)) {
+      throw new Error(`${AMBIGUOUS_RPC_HINT_AR} (${readableWriteError(error)})`);
+    }
     if (!isMissingRpcError(error)) throw new Error(readableWriteError(error));
     return roomUnavailabilityFallback(input);
   }
