@@ -72,7 +72,7 @@ async def main():
         for paper, orientation in combos:
             url = f"{base}?paper={paper}&orientation={orientation}&fixture=long"
             await page.goto(url, wait_until="domcontentloaded")
-            await page.wait_for_selector("html[data-print-proof-ready='1']")
+            await page.wait_for_function("() => document.documentElement.dataset.printProofReady === '1'")
             await page.wait_for_selector(".print-center-page table tbody tr")
             info = await page.evaluate("() => window.__printProof")
             pdf_path = OUT / f"timetable-{paper}-{orientation}.pdf"
@@ -169,7 +169,7 @@ async def main():
 
         # ---- 2. Short fixture = the shape of the published TEST-SIMP-03 schedule
         await page.goto(f"{base}?paper=A4&orientation=portrait&fixture=short", wait_until="domcontentloaded")
-        await page.wait_for_selector("html[data-print-proof-ready='1']")
+        await page.wait_for_function("() => document.documentElement.dataset.printProofReady === '1'")
         rows_text = await page.eval_on_selector_all(
             ".print-center-page tbody tr", "els => els.map(e => e.innerText.replace(/\\s+/g, ' '))"
         )
