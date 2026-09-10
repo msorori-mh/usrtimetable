@@ -144,6 +144,7 @@ DOM_PROBE = """() => {
   const sheets = [...document.querySelectorAll('.print-center-page')];
   const overflow = [];
   const outside = [];
+  const headerDetails = [];
   for (const sheet of sheets) {
     if (sheet.scrollWidth > sheet.clientWidth + 1) {
       overflow.push('sheet ' + sheet.scrollWidth + '>' + sheet.clientWidth);
@@ -167,6 +168,19 @@ DOM_PROBE = """() => {
     for (const cell of sheet.querySelectorAll('td, th')) {
       if (cell.scrollWidth > cell.clientWidth + 1) overflow.push('cell:' + cell.textContent.slice(0, 18));
     }
+    const header = sheet.querySelector('.print-center-header');
+    const identity = sheet.querySelector('.print-header-identity-band');
+    const details = [...sheet.querySelectorAll('.print-header-field')];
+    const meta = [...sheet.querySelectorAll('.print-header-meta > span')];
+    headerDetails.push({
+      compact: header?.dataset.printHeader === 'compact',
+      identityDisplay: identity ? getComputedStyle(identity).display : null,
+      fieldCount: details.length,
+      metaCount: meta.length,
+      headerHeight: header ? Math.round(header.getBoundingClientRect().height) : 0,
+      hasTimetableTitle: sheet.querySelector('.print-header-title-block h2')?.textContent.trim() === 'الجدول الدراسي',
+      hasGroupTitle: !!sheet.querySelector('.print-center-context-row'),
+    });
   }
   const headerVisible = sheets.every((s) => {
     const h = s.querySelector('.print-center-header');
@@ -177,7 +191,7 @@ DOM_PROBE = """() => {
     .map((tr) => [...tr.children].map((th) => th.textContent.trim()));
   const rows = [...document.querySelectorAll('.print-center-page tbody tr')]
     .map((tr) => tr.innerText.replace(/\\s+/g, ' ').trim());
-  return { chrome, overflow, outside, headerVisible, columns, rows, sheets: sheets.length };
+  return { chrome, overflow, outside, headerVisible, headerDetails, columns, rows, sheets: sheets.length };
 }"""
 
 
@@ -237,6 +251,20 @@ async def main():
                 check(f"{tag}: no app chrome printed", dom["chrome"] == [], "; ".join(dom["chrome"]) or "clean")
                 check(f"{tag}: official sheet header printed", dom["headerVisible"] is True, f"{dom['sheets']} sheets")
                 check(
+                    f"{tag}: compact identity/title/details/meta header structure",
+                    dom["headerDetails"]
+                    and all(
+                        h["compact"]
+                        and h["identityDisplay"] == "grid"
+                        and h["fieldCount"] >= 4
+                        and h["metaCount"] == 3
+                        and h["hasTimetableTitle"]
+                        and h["hasGroupTitle"]
+                        for h in dom["headerDetails"]
+                    ),
+                    json.dumps(dom["headerDetails"], ensure_ascii=False),
+                )
+                check(
                     f"{tag}: QR / logo / heading / footer inside the page box",
                     dom["outside"] == [],
                     "; ".join(dom["outside"]) or "all inside",
@@ -267,6 +295,12 @@ async def main():
                     f"{tag}: QR / logo / heading / footer inside the page box at printable width",
                     paged["outside"] == [] and paged["chrome"] == [],
                     "; ".join(paged["outside"] + paged["chrome"]) or "all inside",
+                )
+                check(
+                    f"{tag}: compact header stays at or below 200px at printable width",
+                    paged["headerDetails"]
+                    and all(0 < h["headerHeight"] <= 200 for h in paged["headerDetails"]),
+                    str([h["headerHeight"] for h in paged["headerDetails"]]),
                 )
                 await page.set_viewport_size(vp)
                 await page.emulate_media(media=None)

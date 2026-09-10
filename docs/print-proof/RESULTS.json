@@ -6,27 +6,27 @@
     {
       "name": "PDF rendered A4 portrait (fixture)",
       "pass": true,
-      "detail": "306039 bytes"
+      "detail": "387769 bytes"
     },
     {
       "name": "A4 portrait: CSS @page size honoured",
       "pass": true,
-      "detail": "595x842pt, 20 pages"
+      "detail": "595x842pt, 16 pages"
     },
     {
       "name": "A4 portrait: fixture spans multiple pages",
       "pass": true,
-      "detail": "20 pages"
+      "detail": "16 pages"
     },
     {
       "name": "A4 portrait: Arabic content extractable",
       "pass": true,
-      "detail": "75211 chars of extractable text"
+      "detail": "82804 chars of extractable text"
     },
     {
       "name": "A4 portrait: table header repeats on every page that carries rows",
       "pass": true,
-      "detail": "20/20 row-bearing pages carry the header row"
+      "detail": "16/16 row-bearing pages carry the header row"
     },
     {
       "name": "A4 portrait: no blank printed pages",
@@ -36,22 +36,22 @@
     {
       "name": "A4 portrait: every physical page carries a physical page counter",
       "pass": true,
-      "detail": "20/20 pages"
+      "detail": "16/16 pages"
     },
     {
-      "name": "A4 portrait: first physical page counter is 1 of 20",
+      "name": "A4 portrait: first physical page counter is 1 of 16",
       "pass": true,
-      "detail": "(1, 20)"
+      "detail": "(1, 16)"
     },
     {
-      "name": "A4 portrait: continuation page 10 counter is 10 of 20",
+      "name": "A4 portrait: continuation page 8 counter is 8 of 16",
       "pass": true,
-      "detail": "(10, 20)"
+      "detail": "(8, 16)"
     },
     {
-      "name": "A4 portrait: final physical page counter is 20 of 20",
+      "name": "A4 portrait: final physical page counter is 16 of 16",
       "pass": true,
-      "detail": "(20, 20)"
+      "detail": "(16, 16)"
     },
     {
       "name": "A4 portrait: counters are strictly sequential with no gaps",
@@ -66,12 +66,12 @@
     {
       "name": "A4 portrait: group context repeats on continuation pages",
       "pass": true,
-      "detail": "20/20 row-bearing pages name their group (بكالوريوس تك)"
+      "detail": "16/16 row-bearing pages name their group (بكالوريوس تك)"
     },
     {
       "name": "A4 portrait: PNG page images produced",
       "pass": true,
-      "detail": "20 images"
+      "detail": "16 images"
     },
     {
       "name": "A4 portrait: no ink touching the page edge (clipping check)",
@@ -91,22 +91,22 @@
     {
       "name": "PDF rendered A4 landscape (fixture)",
       "pass": true,
-      "detail": "304015 bytes"
+      "detail": "390889 bytes"
     },
     {
       "name": "A4 landscape: CSS @page size honoured",
       "pass": true,
-      "detail": "842x595pt, 24 pages"
+      "detail": "842x595pt, 16 pages"
     },
     {
       "name": "A4 landscape: fixture spans multiple pages",
       "pass": true,
-      "detail": "24 pages"
+      "detail": "16 pages"
     },
     {
       "name": "A4 landscape: Arabic content extractable",
       "pass": true,
-      "detail": "66419 chars of extractable text"
+      "detail": "81136 chars of extractable text"
     },
     {
       "name": "A4 landscape: table header repeats on every page that carries rows",
@@ -121,22 +121,22 @@
     {
       "name": "A4 landscape: every physical page carries a physical page counter",
       "pass": true,
-      "detail": "24/24 pages"
+      "detail": "16/16 pages"
     },
     {
-      "name": "A4 landscape: first physical page counter is 1 of 24",
+      "name": "A4 landscape: first physical page counter is 1 of 16",
       "pass": true,
-      "detail": "(1, 24)"
+      "detail": "(1, 16)"
     },
     {
-      "name": "A4 landscape: continuation page 12 counter is 12 of 24",
+      "name": "A4 landscape: continuation page 8 counter is 8 of 16",
       "pass": true,
-      "detail": "(12, 24)"
+      "detail": "(8, 16)"
     },
     {
-      "name": "A4 landscape: final physical page counter is 24 of 24",
+      "name": "A4 landscape: final physical page counter is 16 of 16",
       "pass": true,
-      "detail": "(24, 24)"
+      "detail": "(16, 16)"
     },
     {
       "name": "A4 landscape: counters are strictly sequential with no gaps",
@@ -156,7 +156,7 @@
     {
       "name": "A4 landscape: PNG page images produced",
       "pass": true,
-      "detail": "24 images"
+      "detail": "16 images"
     },
     {
       "name": "A4 landscape: no ink touching the page edge (clipping check)",
@@ -171,7 +171,7 @@
     {
       "name": "PDF rendered A3 portrait (fixture)",
       "pass": true,
-      "detail": "278247 bytes"
+      "detail": "369246 bytes"
     },
     {
       "name": "A3 portrait: CSS @page size honoured",
@@ -186,7 +186,7 @@
     {
       "name": "A3 portrait: Arabic content extractable",
       "pass": true,
-      "detail": "78112 chars of extractable text"
+      "detail": "89032 chars of extractable text"
     },
     {
       "name": "A3 portrait: table header repeats on every page that carries rows",
@@ -251,27 +251,27 @@
     {
       "name": "PDF rendered A3 landscape (fixture)",
       "pass": true,
-      "detail": "299835 bytes"
+      "detail": "370373 bytes"
     },
     {
       "name": "A3 landscape: CSS @page size honoured",
       "pass": true,
-      "detail": "1191x842pt, 16 pages"
+      "detail": "1191x842pt, 8 pages"
     },
     {
       "name": "A3 landscape: fixture spans multiple pages",
       "pass": true,
-      "detail": "16 pages"
+      "detail": "8 pages"
     },
     {
       "name": "A3 landscape: Arabic content extractable",
       "pass": true,
-      "detail": "78485 chars of extractable text"
+      "detail": "96792 chars of extractable text"
     },
     {
       "name": "A3 landscape: table header repeats on every page that carries rows",
       "pass": true,
-      "detail": "16/16 row-bearing pages carry the header row"
+      "detail": "8/8 row-bearing pages carry the header row"
     },
     {
       "name": "A3 landscape: no blank printed pages",
@@ -281,22 +281,22 @@
     {
       "name": "A3 landscape: every physical page carries a physical page counter",
       "pass": true,
-      "detail": "16/16 pages"
+      "detail": "8/8 pages"
     },
     {
-      "name": "A3 landscape: first physical page counter is 1 of 16",
+      "name": "A3 landscape: first physical page counter is 1 of 8",
       "pass": true,
-      "detail": "(1, 16)"
+      "detail": "(1, 8)"
     },
     {
-      "name": "A3 landscape: continuation page 8 counter is 8 of 16",
+      "name": "A3 landscape: continuation page 4 counter is 4 of 8",
       "pass": true,
-      "detail": "(8, 16)"
+      "detail": "(4, 8)"
     },
     {
-      "name": "A3 landscape: final physical page counter is 16 of 16",
+      "name": "A3 landscape: final physical page counter is 8 of 8",
       "pass": true,
-      "detail": "(16, 16)"
+      "detail": "(8, 8)"
     },
     {
       "name": "A3 landscape: counters are strictly sequential with no gaps",
@@ -311,12 +311,12 @@
     {
       "name": "A3 landscape: group context repeats on continuation pages",
       "pass": true,
-      "detail": "16/16 row-bearing pages name their group (بكالوريوس تك)"
+      "detail": "8/8 row-bearing pages name their group (بكالوريوس تك)"
     },
     {
       "name": "A3 landscape: PNG page images produced",
       "pass": true,
-      "detail": "16 images"
+      "detail": "8 images"
     },
     {
       "name": "A3 landscape: no ink touching the page edge (clipping check)",
@@ -351,7 +351,7 @@
     {
       "name": "short fixture PDF produced",
       "pass": true,
-      "detail": "185331 bytes"
+      "detail": "269338 bytes"
     },
     {
       "name": "CSV starts with a UTF-8 BOM (Excel opens Arabic correctly)",
