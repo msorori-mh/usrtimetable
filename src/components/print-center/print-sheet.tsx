@@ -99,7 +99,7 @@ export function PrintSheet(props: {
             </div>
           </div>
           <div className="print-header-title-block">
-            <p className="print-header-kicker">الجدول الأسبوعي المعتمد</p>
+            <p className="print-header-kicker">الجدول الأسبوعي</p>
             <h2>الجدول الدراسي</h2>
           </div>
           {visibility.showQr && meta.qrUrl && (

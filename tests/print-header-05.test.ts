@@ -16,6 +16,8 @@ describe("PRINT-HEADER-05 compact print header", () => {
     expect(sheet.includes('data-print-header="compact"')).toBe(true);
     expect(sheet.includes("print-header-institution")).toBe(true);
     expect(sheet.includes("print-header-title-block")).toBe(true);
+    expect(sheet.includes(">الجدول الأسبوعي</p>")).toBe(true);
+    expect(sheet.includes("الجدول الأسبوعي المعتمد")).toBe(false);
     expect(sheet.includes("الجدول الدراسي")).toBe(true);
     expect(sheet.includes('title="رابط الطباعة"')).toBe(true);
     expect(sheet.includes("print-center-context-row")).toBe(true);
