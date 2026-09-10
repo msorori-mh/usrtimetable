@@ -22,7 +22,7 @@ if [ "$(id -u)" = "0" ] && [ -z "${AVAIL_PROOF_UNPRIV:-}" ]; then
   WORK="$(mktemp -d /tmp/availability-proof-work.XXXXXX)"
   chmod 777 "$WORK"
   export AVAIL_PROOF_UNPRIV=1 HOME="$WORK" TMPDIR="$WORK"
-  exec setpriv --reuid="$UNPRIV_UID" --regid="$UNPRIV_UID" --clear-groups "$0" "$@"
+  exec setpriv --reuid="$UNPRIV_UID" --regid="$UNPRIV_UID" --clear-groups /bin/bash "$0" "$@"
 fi
 
 ROOT="$(mktemp -d "${TMPDIR:-/tmp}/availability-proof.XXXXXX")"
