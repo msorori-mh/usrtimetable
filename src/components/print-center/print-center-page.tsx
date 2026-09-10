@@ -123,7 +123,9 @@ export function PrintCenterPage(props: { versionId: string }) {
   const [levelId, setLevelId] = useState(initialFromUrl.levelId ?? "");
   const [studySystem, setStudySystem] = useState<PrintStudySystem>(
     (initialFromUrl.studySystem as PrintStudySystem) ??
-      (initialFromUrl.reportType === "room" || initialFromUrl.reportType === "instructor" ? "all" : "regular"),
+      (initialFromUrl.reportType === "room" || initialFromUrl.reportType === "instructor"
+        ? "all"
+        : "regular"),
   );
   const [departmentId, setDepartmentId] = useState(initialFromUrl.departmentId ?? "");
   const [instructorId, setInstructorId] = useState(initialFromUrl.instructorId ?? "");
@@ -536,7 +538,7 @@ export function PrintCenterPage(props: { versionId: string }) {
                 ]}
               />
             )}
-            {(
+            {
               <Sel
                 label="النظام الدراسي"
                 value={studySystem}
@@ -549,7 +551,7 @@ export function PrintCenterPage(props: { versionId: string }) {
                     : [{ id: "all", name: STUDY_SYSTEM_LABELS.all }]),
                 ]}
               />
-            )}
+            }
             {reportType === "instructor" && (
               <Sel
                 label="المدرس"
