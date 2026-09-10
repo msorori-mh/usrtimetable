@@ -41,12 +41,14 @@ function pickString(source: Record<string, unknown>, key: string): string | null
  */
 export function normalizeWriteError(error: unknown): NormalizedWriteError {
   if (error instanceof Error) {
-    const withCode = error as Error & { code?: unknown };
+    // `PostgrestError`, `AuthError`, `FunctionsHttpError` and friends ARE Error
+    // subclasses that also carry code/details/hint. Read them off the instance.
+    const source = error as unknown as Record<string, unknown>;
     return {
       message: error.message || error.name || "خطأ غير معروف",
-      code: typeof withCode.code === "string" ? withCode.code : null,
-      details: null,
-      hint: null,
+      code: pickString(source, "code") ?? pickString(source, "status"),
+      details: pickString(source, "details"),
+      hint: pickString(source, "hint"),
     };
   }
 
