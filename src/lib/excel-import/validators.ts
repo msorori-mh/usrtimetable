@@ -3,6 +3,7 @@ import { TEMPLATES } from "./templates";
 import { resolveRoomTypeFields } from "./room-type-normalize";
 import { deliveryGroupIsolationKey, sectionIsolationKey } from "./keys";
 import { requireImportManager } from "./safety";
+import { normalizeEmploymentType } from "@/lib/instructor-metadata";
 import type { ImportEntity, ParsedRow, RowError, ValidationResult } from "./types";
 import {
   buildPlanComponentSyncPayload,
