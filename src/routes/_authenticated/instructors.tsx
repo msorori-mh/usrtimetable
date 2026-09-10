@@ -249,8 +249,9 @@ function InstructorsPage() {
                   <div>
                     <p className="font-semibold">{i.full_name} {!i.is_active && <span className="ms-2 rounded bg-muted px-2 py-0.5 text-[10px]">غير نشط</span>}</p>
                     <p className="text-xs text-muted-foreground">
-                      {i.academic_rank ?? "—"} · {i.department_id ? deptMap.get(i.department_id) ?? "—" : "بدون قسم"} · {EMP.find((e) => e.v === i.employment_type)?.l} · {i.max_weekly_hours} س/أسبوع
+                      {i.academic_rank ?? "—"} · {i.department_id ? deptMap.get(i.department_id) ?? "—" : "بدون قسم"} · {employmentTypeLabelAr(i.employment_type)} · {i.max_weekly_hours} س/أسبوع
                     </p>
+                    <p className="text-xs text-muted-foreground">فئة المحاضر: {CATEGORY_LABEL_AR[categorizeInstructor(typeMap.get(i.instructor_type_id ?? "") ?? null)]}</p>
                     {(i.email || i.phone) && <p className="text-xs text-muted-foreground" dir="ltr">{i.email ?? ""} {i.phone ? ` · ${i.phone}` : ""}</p>}
                   </div>
                   {canManage && (
