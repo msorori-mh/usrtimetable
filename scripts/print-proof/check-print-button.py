@@ -47,6 +47,12 @@ async def main():
                 "click_result": res1, "throwing": res2, "missing": res3,
                 "native_print": native, "console_errors": errs}
             await b.close()
-    print(json.dumps(out, ensure_ascii=False, indent=2))
+    text = json.dumps(out, ensure_ascii=False, indent=2)
+    # LAUNCH-CLOSURE-04: persist the evidence from the script itself so the recorded
+    # diagnosis can always be regenerated (it used to be captured by hand).
+    dest = pathlib.Path("/dev-server/docs/print-proof/PRINT-BUTTON-DIAGNOSIS.json")
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(text + "\n", encoding="utf-8")
+    print(text)
 
 asyncio.run(main())

@@ -51,9 +51,18 @@ async def main():
     if not (DIST / "index.html").exists():
         print("dist-print-proof missing — run the vite build first")
         return 1
-    if OUT.exists():
-        shutil.rmtree(OUT)
-    OUT.mkdir(parents=True)
+    # LAUNCH-CLOSURE-04: clear only THIS runner's artifacts. A blanket rmtree also wiped
+    # the print-button diagnosis and the full-shell proof results that live alongside.
+    OUT.mkdir(parents=True, exist_ok=True)
+    for stale in list(OUT.glob("page-*.png")) + list(OUT.glob("timetable-*.pdf")) + [
+        OUT / "RESULTS.json",
+        OUT / "print-proof-timetable.csv",
+        OUT / "print-proof-timetable.xlsx",
+    ]:
+        if stale.is_file():
+            stale.unlink()
+    for stale in OUT.glob("print-proof-admin-*.xlsx"):
+        stale.unlink()
     httpd = serve()
     base = f"http://127.0.0.1:{PORT}/index.html"
 

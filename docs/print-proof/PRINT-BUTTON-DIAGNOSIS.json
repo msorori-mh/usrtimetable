@@ -12,7 +12,7 @@
     "missing": "unavailable",
     "native_print": {
       "ok": true,
-      "ms": 1
+      "ms": 4
     },
     "console_errors": []
   },
