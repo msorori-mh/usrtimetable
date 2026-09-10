@@ -669,7 +669,7 @@ export const CATALOG: TemplateDef[] = [
         "أستاذ مساعد",
         "PERM",
         "CS",
-        "full_time",
+        "unknown",
         "18",
         "6",
         "true",
