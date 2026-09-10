@@ -295,28 +295,46 @@ function overlaps(a: { start: string; end: string }, b: { start: string; end: st
   return toMinutes(a.start) < toMinutes(b.end) && toMinutes(b.start) < toMinutes(a.end);
 }
 
+/** Returns true when the two delivery groups may contain the same students. */
+export type SharedStudentsPredicate = (
+  aGroupId: string | null | undefined,
+  bGroupId: string | null | undefined,
+) => boolean;
+
 /**
  * Cheap local rejection of candidates that are certainly occupied by sessions
  * we already know about. This only avoids doomed RPC round-trips; it never
  * approves a placement — the guarded RPC re-validates everything.
+ *
+ * JAWF-STUDENT-PARTITIONS-02: when both sides carry a delivery group, the
+ * student-body question is answered by `sharedStudents`, so disjoint partitions
+ * of the same cohort are no longer blocked locally. Without a predicate (or
+ * when either side has no group) the conservative cohort-wide rule applies.
  */
 export function isLocallyBlocked(
   slot: CandidateSlot,
   ctx: SlotContext,
   occupied: readonly OccupiedInterval[],
+  sharedStudents?: SharedStudentsPredicate,
 ): boolean {
   return occupied.some((o) => {
     if (Number(o.day) !== Number(slot.day)) return false;
     if (!overlaps(slot, o)) return false;
     if (o.roomId && o.roomId === ctx.roomId) return true;
     if (o.instructorId && ctx.instructorId && o.instructorId === ctx.instructorId) return true;
-    if (o.cohortId && ctx.cohortId && o.cohortId === ctx.cohortId) return true;
-    if (o.deliveryGroupId && ctx.deliveryGroupId && o.deliveryGroupId === ctx.deliveryGroupId) {
-      return true;
+    if (o.deliveryGroupId && ctx.deliveryGroupId) {
+      if (o.deliveryGroupId === ctx.deliveryGroupId) return true;
+      if (!sharedStudents) {
+        return !!(o.cohortId && ctx.cohortId && o.cohortId === ctx.cohortId);
+      }
+      if (o.cohortId && ctx.cohortId && o.cohortId !== ctx.cohortId) return false;
+      return sharedStudents(ctx.deliveryGroupId, o.deliveryGroupId);
     }
+    if (o.cohortId && ctx.cohortId && o.cohortId === ctx.cohortId) return true;
     return false;
   });
 }
+
 
 /** Arabic warning for existing sessions that do not match the plan cadence. */
 export function nonconformingWarningAr(input: {
