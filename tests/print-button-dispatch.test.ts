@@ -103,7 +103,11 @@ describe("print button wiring", () => {
   it("browser diagnosis evidence records a single dispatch per click", () => {
     const evidence = JSON.parse(read("docs/print-proof/PRINT-BUTTON-DIAGNOSIS.json")) as Record<
       string,
-      { calls_from_click?: number; click_result?: { status?: string }; throwing?: { status?: string } }
+      {
+        calls_from_click?: number;
+        click_result?: { status?: string };
+        throwing?: { status?: string };
+      }
     >;
     const headless = evidence["headless=True"];
     assert.ok(headless, "headless run recorded");

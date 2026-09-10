@@ -53,7 +53,7 @@ declare global {
       exportCsv: () => void;
       exportXlsx: () => void;
       exportAdminXlsx: () => void;
-    lastPrint?: PrintRequestResult;
+      lastPrint?: PrintRequestResult;
     };
   }
 }
