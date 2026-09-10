@@ -226,7 +226,7 @@ export function PrintCenterPage(props: { versionId: string }) {
       (
         await supabase
           .from("academic_levels")
-          .select("id, name, level_number")
+          .select("id, name, level_number, program_id")
           .eq("college_id", active!.id)
           .order("level_number")
       ).data ?? [],
@@ -336,7 +336,7 @@ export function PrintCenterPage(props: { versionId: string }) {
     qs.set("type", params.reportType);
     if (params.programId) qs.set("program", params.programId);
     if (params.levelId) qs.set("level", params.levelId);
-    if (params.studySystem && params.studySystem !== "all") qs.set("study", params.studySystem);
+    if (params.studySystem) qs.set("study", params.studySystem);
     if (params.departmentId) qs.set("dept", params.departmentId);
     if (params.instructorId) qs.set("instructor", params.instructorId);
     if (params.roomId) qs.set("room", params.roomId);
@@ -507,7 +507,10 @@ export function PrintCenterPage(props: { versionId: string }) {
               <Sel
                 label="البرنامج"
                 value={programId || "__all__"}
-                onChange={(v) => setProgramId(v === "__all__" ? "" : v)}
+                onChange={(v) => {
+                  setProgramId(v === "__all__" ? "" : v);
+                  setLevelId("");
+                }}
                 items={[
                   {
                     id: "__all__",
@@ -527,7 +530,9 @@ export function PrintCenterPage(props: { versionId: string }) {
                 onChange={(v) => setLevelId(v === "__all__" ? "" : v)}
                 items={[
                   { id: "__all__", name: "اختر المستوى" },
-                  ...(levels ?? []).map((l) => ({ id: l.id, name: l.name })),
+                  ...(levels ?? [])
+                    .filter((l) => !programId || l.program_id === programId)
+                    .map((l) => ({ id: l.id, name: l.name })),
                 ]}
               />
             )}
