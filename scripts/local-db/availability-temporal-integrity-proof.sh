@@ -59,6 +59,9 @@ export PGDATA PGHOST="$SOCK" PGDATABASE=proof PGUSER="${LOCAL_PG_SUPERUSER:-proo
 cleanup() {
   pg_ctl -D "$PGDATA" -m immediate stop >/dev/null 2>&1
   rm -rf "$ROOT"
+  # Remove the disposable HOME created for the re-exec, if any. No system state to undo.
+  [ -n "${AVAIL_PROOF_HOME:-}" ] && rm -rf "$AVAIL_PROOF_HOME"
+  return 0
 }
 trap cleanup EXIT
 
