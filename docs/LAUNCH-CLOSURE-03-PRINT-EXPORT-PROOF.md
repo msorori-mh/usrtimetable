@@ -5,26 +5,26 @@ Nothing here applies production SQL, deploys, mutates production data, or uses a
 
 ## 1. What was proved, and what it is NOT
 
-| # | Gate | Result | Evidence class |
-|---|------|--------|----------------|
-| 1 | Real `PrintSheet` renders the real Arabic RTL sheet in a real browser | PASS | fixture runtime (Chromium) |
-| 2 | `@page` size/orientation honoured for A4/A3 × portrait/landscape | PASS | fixture runtime (`pdfinfo` geometry) |
-| 3 | Long Arabic multi-page fixture (120 sessions, 8 sheets) paginates | PASS | fixture runtime |
-| 4 | Table header row repeats on every page that carries rows | PASS | fixture runtime (per-page `pdftotext`) |
-| 5 | No blank printed pages, no orphaned footer page | PASS after fix | fixture runtime |
-| 6 | No ink at the page edge (clipping) and no horizontal overflow | PASS | fixture runtime (pixel scan + DOM metrics) |
-| 7 | Arabic text is really embedded and extractable (no tofu) | PASS | fixture runtime |
-| 8 | Short fixture prints exactly the published shape: practical Sunday 08–10, theory Monday 08–10 | PASS | fixture runtime (mirrors the root observation, does not replace it) |
-| 9 | `downloadCSV` → real download event, real bytes, BOM, Arabic header, 120 rows | PASS | fixture runtime (saved file) |
-| 10 | `downloadXLSX` → real .xlsx, parses, 120 data rows, Arabic intact | PASS | fixture runtime (saved file) |
-| 11 | `exportRowsToXlsx` (admin export) → real .xlsx, parses, 120 data rows | PASS | fixture runtime (saved file) |
-| 12 | No console/page errors during the whole run | PASS | fixture runtime |
-| 13 | Source contracts for the shared page box / harness isolation | PASS | source assertions only |
-| 16 | Physical page numbering is accurate: first `1 of N`, a middle continuation `k of N`, final `N of N`, strictly sequential, on every page, with `N` equal to the real PDF page count | PASS after fix | fixture runtime (per-page `pdftotext` vs `pdfinfo` page count) |
-| 17 | The in-flow footer numbers LOGICAL schedule groups (`مجموعة الجدول X من Y`) and never claims to be a physical page number | PASS after fix | fixture runtime + source |
-| 18 | Group context repeats on continuation pages (running `thead` context row) on every row-bearing page | PASS | fixture runtime (per-page `pdftotext`) |
-| 14 | Authenticated production print + Excel download by a logged-in college admin | BLOCKED | reviewer/root only — agents have no session |
-| 15 | Durable availability migration applied in production | HOLD | awaits root review (unchanged from LAUNCH-CLOSURE-03) |
+| #   | Gate                                                                                                                                                                               | Result         | Evidence class                                                      |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | ------------------------------------------------------------------- |
+| 1   | Real `PrintSheet` renders the real Arabic RTL sheet in a real browser                                                                                                              | PASS           | fixture runtime (Chromium)                                          |
+| 2   | `@page` size/orientation honoured for A4/A3 × portrait/landscape                                                                                                                   | PASS           | fixture runtime (`pdfinfo` geometry)                                |
+| 3   | Long Arabic multi-page fixture (120 sessions, 8 sheets) paginates                                                                                                                  | PASS           | fixture runtime                                                     |
+| 4   | Table header row repeats on every page that carries rows                                                                                                                           | PASS           | fixture runtime (per-page `pdftotext`)                              |
+| 5   | No blank printed pages, no orphaned footer page                                                                                                                                    | PASS after fix | fixture runtime                                                     |
+| 6   | No ink at the page edge (clipping) and no horizontal overflow                                                                                                                      | PASS           | fixture runtime (pixel scan + DOM metrics)                          |
+| 7   | Arabic text is really embedded and extractable (no tofu)                                                                                                                           | PASS           | fixture runtime                                                     |
+| 8   | Short fixture prints exactly the published shape: practical Sunday 08–10, theory Monday 08–10                                                                                      | PASS           | fixture runtime (mirrors the root observation, does not replace it) |
+| 9   | `downloadCSV` → real download event, real bytes, BOM, Arabic header, 120 rows                                                                                                      | PASS           | fixture runtime (saved file)                                        |
+| 10  | `downloadXLSX` → real .xlsx, parses, 120 data rows, Arabic intact                                                                                                                  | PASS           | fixture runtime (saved file)                                        |
+| 11  | `exportRowsToXlsx` (admin export) → real .xlsx, parses, 120 data rows                                                                                                              | PASS           | fixture runtime (saved file)                                        |
+| 12  | No console/page errors during the whole run                                                                                                                                        | PASS           | fixture runtime                                                     |
+| 13  | Source contracts for the shared page box / harness isolation                                                                                                                       | PASS           | source assertions only                                              |
+| 16  | Physical page numbering is accurate: first `1 of N`, a middle continuation `k of N`, final `N of N`, strictly sequential, on every page, with `N` equal to the real PDF page count | PASS after fix | fixture runtime (per-page `pdftotext` vs `pdfinfo` page count)      |
+| 17  | The in-flow footer numbers LOGICAL schedule groups (`مجموعة الجدول X من Y`) and never claims to be a physical page number                                                          | PASS after fix | fixture runtime + source                                            |
+| 18  | Group context repeats on continuation pages (running `thead` context row) on every row-bearing page                                                                                | PASS           | fixture runtime (per-page `pdftotext`)                              |
+| 14  | Authenticated production print + Excel download by a logged-in college admin                                                                                                       | BLOCKED        | reviewer/root only — agents have no session                         |
+| 15  | Durable availability migration applied in production                                                                                                                               | HOLD           | awaits root review (unchanged from LAUNCH-CLOSURE-03)               |
 
 Explicitly **not** claimed: the root browser's Excel download timeout is not reproduced here and is
 not established as an application defect. Gates 1–12 are proof about **fixture** rendering through the
@@ -35,10 +35,13 @@ real components; they are not a substitute for the root-authenticated view.
 **Orphaned footer page (reproduced, then fixed).** On A3 landscape the shorter page box pushed
 `.print-center-footer` (page numbering + endorsement line) alone onto an otherwise empty printed
 page — 16 physical pages for 8 sheets, half of them footer-only. The print block already prevented
-breaking *inside* the footer but never prevented a break *before* it. Fix in `src/styles.css`:
+breaking _inside_ the footer but never prevented a break _before_ it. Fix in `src/styles.css`:
 
 ```css
-.print-center-footer { break-before: avoid; page-break-before: avoid; }
+.print-center-footer {
+  break-before: avoid;
+  page-break-before: avoid;
+}
 ```
 
 After the fix all four paper/orientation combinations report `0 blank pages` and every row-bearing
@@ -57,7 +60,11 @@ no access to physical page numbers, so:
   count:
 
 ```css
-@page { @bottom-center { content: "صفحة " counter(page) " من " counter(pages); } }
+@page {
+  @bottom-center {
+    content: "صفحة " counter(page) " من " counter(pages);
+  }
+}
 ```
 
 - the in-flow footer is reworded to `مجموعة الجدول X من Y`, so logical group numbering is visibly
