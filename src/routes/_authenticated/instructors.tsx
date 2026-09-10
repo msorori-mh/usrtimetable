@@ -137,6 +137,11 @@ function InstructorsPage() {
   const startCreate = () => { setEditing(null); setForm(emptyForm()); setOpen(true); };
 
   const deptMap = new Map((depts ?? []).map((d) => [d.id, d.name]));
+  const typeMap = new Map(
+    ((types ?? []) as Array<{ id: string; code: string | null; is_external: boolean | null }>).map(
+      (t) => [t.id, t],
+    ),
+  );
 
   return (
     <div className="mx-auto max-w-5xl">
