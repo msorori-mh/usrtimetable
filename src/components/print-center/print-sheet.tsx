@@ -111,6 +111,14 @@ export function PrintSheet(props: {
 
       <Table>
         <TableHeader>
+          {/* Repeats on every physical sheet the group spans (thead is a running header),
+              so a continuation page still identifies which schedule it belongs to. */}
+          <TableRow className="print-center-context-row">
+            <TableHead colSpan={columnCount} className="text-right font-semibold">
+              {page.title}
+              {contextSuffix ? ` — ${contextSuffix}` : ""}
+            </TableHead>
+          </TableRow>
           <TableRow>
             <TableHead>اليوم</TableHead>
             <TableHead>الوقت</TableHead>
