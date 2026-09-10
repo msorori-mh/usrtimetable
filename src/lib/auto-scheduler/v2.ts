@@ -414,8 +414,10 @@ export async function runV2AutoSchedule(params: {
                 deliveryGroupId: item.delivery_group_id,
               },
               occupied,
+              sharedStudents,
             )
           ) {
+
             continue;
           }
           const result = await createScheduleSessionFromAssignmentV2({
