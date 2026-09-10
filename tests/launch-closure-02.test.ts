@@ -12,7 +12,73 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { planBulkUnavailability, sameNullableDate } from "../src/lib/availability/active-days";
-import { isAmbiguousRpcError, isMissingRpcError } from "../src/lib/availability/errors";
+import {
+  isAmbiguousRpcError,
+  isMissingRpcError,
+  normalizeWriteError,
+  readableWriteError,
+} from "../src/lib/availability/errors";
+
+/** Mirrors supabase-js `PostgrestError`: a real Error subclass with extra fields. */
+class FakePostgrestError extends Error {
+  code: string;
+  details: string | null;
+  hint: string | null;
+  constructor(message: string, code: string, details: string | null, hint: string | null) {
+    super(message);
+    this.name = "PostgrestError";
+    this.code = code;
+    this.details = details;
+    this.hint = hint;
+  }
+}
+
+describe("normalizeWriteError keeps diagnostics on real Error subclasses", () => {
+  test("an Error subclass carrying code/details/hint does not lose them", () => {
+    const err = new FakePostgrestError(
+      "new row violates row-level security policy",
+      "42501",
+      'for table "room_unavailability"',
+      "تحقق من الكلية النشطة",
+    );
+    expect(err instanceof Error).toBe(true);
+    const n = normalizeWriteError(err);
+    expect(n.message).toBe("new row violates row-level security policy");
+    expect(n.code).toBe("42501");
+    expect(n.details).toBe('for table "room_unavailability"');
+    expect(n.hint).toBe("تحقق من الكلية النشطة");
+    const flat = readableWriteError(err);
+    expect(flat).toContain('for table "room_unavailability"');
+    expect(flat).toContain("تحقق من الكلية النشطة");
+    expect(flat).not.toContain("[object Object]");
+  });
+
+  test("an Error subclass with an ambiguous-overload hint is still classified", () => {
+    const err = new FakePostgrestError(
+      "Could not choose the best candidate function between: ...",
+      "PGRST203",
+      null,
+      "Try renaming the parameters",
+    );
+    expect(isAmbiguousRpcError(err)).toBe(true);
+    expect(isMissingRpcError(err)).toBe(false);
+    expect(normalizeWriteError(err).hint).toBe("Try renaming the parameters");
+  });
+
+  test("a plain Error without extra fields yields nulls, not crashes", () => {
+    const n = normalizeWriteError(new TypeError("fetch failed"));
+    expect(n.message).toBe("fetch failed");
+    expect(n.code).toBeNull();
+    expect(n.details).toBeNull();
+    expect(n.hint).toBeNull();
+  });
+
+  test("the module no longer claims PostgrestError is not an Error", () => {
+    const src = readFileSync(new URL("../src/lib/availability/errors.ts", import.meta.url), "utf8");
+    expect(src).not.toContain("NOT an `Error` instance");
+    expect(src).toContain("Error subclass");
+  });
+});
 
 const read = (p: string) => readFileSync(p, "utf8");
 const activeDays = [6, 0, 1, 2, 3, 4];
