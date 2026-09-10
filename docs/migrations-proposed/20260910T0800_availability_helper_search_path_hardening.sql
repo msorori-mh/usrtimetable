@@ -89,4 +89,19 @@ BEGIN
 END
 $do$;
 
+-- The exclusion constraints must still be present and untouched.
+DO $do$
+DECLARE
+  v_excl int;
+BEGIN
+  SELECT count(*) INTO v_excl
+  FROM pg_constraint
+  WHERE conname IN ('instructor_availability_no_overlap', 'room_unavailability_no_overlap');
+
+  IF v_excl <> 2 THEN
+    RAISE EXCEPTION 'expected 2 availability exclusion constraints, found %', v_excl;
+  END IF;
+END
+$do$;
+
 COMMIT;
