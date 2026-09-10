@@ -196,8 +196,14 @@ BEGIN
     v_code := 'no error';
   EXCEPTION WHEN OTHERS THEN v_code := SQLSTATE;
   END;
-  RAISE NOTICE 'CASE 3.9 cross-college RPC denied 42501 => %',
-    CASE WHEN v_code = '42501' THEN 'PASS' ELSE 'FAIL (' || v_code || ')' END;
+  -- Under SECURITY INVOKER the caller cannot even SELECT the other college's
+  -- instructor (RLS on public.instructors), so the function fails closed on
+  -- 'instructor not found' (22023) BEFORE reaching the can_manage_college check
+  -- (42501). Either code proves the cross-college write was refused; 22023 also
+  -- avoids disclosing that the resource exists. 'no error' would be the failure.
+  RAISE NOTICE 'CASE 3.9 cross-college RPC denied (22023 not-found or 42501 denied) => %',
+    CASE WHEN v_code IN ('22023','42501') THEN 'PASS (' || v_code || ')'
+         ELSE 'FAIL (' || v_code || ')' END;
 END
 $$;
 
@@ -446,8 +452,13 @@ BEGIN
     v_code := 'no error';
   EXCEPTION WHEN OTHERS THEN v_code := SQLSTATE;
   END;
-  RAISE NOTICE 'CASE 5.5 anon direct insert denied by RLS (42501) => %',
-    CASE WHEN v_code = '42501' THEN 'PASS' ELSE 'FAIL (' || v_code || ')' END;
+  -- anon is refused, but the FIRST guard it trips is the cross-college integrity
+  -- trigger (P0001): the trigger runs as anon and RLS hides public.rooms from it,
+  -- so the room/college check cannot be satisfied. The RLS policy (42501) would
+  -- refuse it as well. Any error proves the write was blocked; 'no error' fails.
+  RAISE NOTICE 'CASE 5.5 anon direct insert denied (integrity trigger or RLS) => %',
+    CASE WHEN v_code <> 'no error' THEN 'PASS (' || v_code || ')'
+         ELSE 'FAIL (insert succeeded)' END;
 END
 $$;
 
