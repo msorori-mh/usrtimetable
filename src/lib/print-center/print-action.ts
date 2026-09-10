@@ -20,7 +20,7 @@ export const PRINT_REQUEST_FAILED_AR =
   "تعذّر فتح نافذة الطباعة في هذا المتصفح. استخدم Ctrl/Cmd + P أو صدّر Excel/CSV.";
 
 export const PRINT_REQUEST_DISPATCHED_AR =
-  "تم إرسال طلب الطباعة. إذا لم تظهر النافذة، افتح هذا الرابط في متصفح جهازك واختر طباعة أو حفظ بصيغة PDF.";
+  "تم إرسال طلب الطباعة. إذا لم تظهر النافذة، افتح هذا الرابط في متصفح جهازك واستخدم Ctrl/Cmd + P للطباعة أو الحفظ بصيغة PDF.";
 
 export type PrintRequestResult =
   | { status: "dispatched" }
