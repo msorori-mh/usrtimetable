@@ -17,10 +17,17 @@ CASES="scripts/local-db/availability-cases.sql"
 unset PGHOST PGPORT PGUSER PGPASSWORD PGDATABASE PGSERVICE PGSSLMODE
 
 # PostgreSQL refuses to run as root. Re-exec once as an unprivileged uid.
+# initdb also needs a resolvable passwd entry for that uid.
 UNPRIV_UID="${LOCAL_PG_UID:-65534}"
+UNPRIV_NAME="pgproof"
 if [ "$(id -u)" = "0" ] && [ -z "${AVAIL_PROOF_UNPRIV:-}" ]; then
   WORK="$(mktemp -d /tmp/availability-proof-work.XXXXXX)"
   chmod 777 "$WORK"
+  if ! getent passwd "$UNPRIV_UID" >/dev/null 2>&1; then
+    echo "${UNPRIV_NAME}:x:${UNPRIV_UID}:${UNPRIV_UID}:availability proof:${WORK}:/bin/bash" >> /etc/passwd
+    echo "${UNPRIV_NAME}:x:${UNPRIV_UID}:" >> /etc/group
+    echo "== added temporary passwd entry ${UNPRIV_NAME} (uid ${UNPRIV_UID}) for initdb"
+  fi
   export AVAIL_PROOF_UNPRIV=1 HOME="$WORK" TMPDIR="$WORK"
   exec setpriv --reuid="$UNPRIV_UID" --regid="$UNPRIV_UID" --clear-groups /bin/bash "$0" "$@"
 fi
