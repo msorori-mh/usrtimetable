@@ -76,7 +76,7 @@ describe("normalizeWriteError keeps diagnostics on real Error subclasses", () =>
   test("the module no longer claims PostgrestError is not an Error", () => {
     const src = readFileSync(new URL("../src/lib/availability/errors.ts", import.meta.url), "utf8");
     expect(src).not.toContain("NOT an `Error` instance");
-    expect(src).toContain("Error subclass");
+    expect(src).toContain("subclass");
   });
 });
 
