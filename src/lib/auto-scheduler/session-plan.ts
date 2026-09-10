@@ -68,17 +68,20 @@ export function splitHoursIntoSessions(totalHours: number): number[] {
 }
 
 export type RequiredCadence = {
-  /** One entry per weekly session, in hours. */
+  /** One entry per weekly session, in hours. Empty when the plan cadence is unusable. */
   durations: number[];
-  source: "plan" | "derived";
-  /** Arabic note when the plan cadence could not be used as-is. */
+  source: "plan" | "blocked";
+  /** Arabic note explaining why the plan cadence could not be used. */
   noteAr: string | null;
 };
 
 /**
  * Required weekly sessions for one component, from the validated plan cadence.
- * The plan cadence is used only when count x duration matches the component's
- * assigned hours; otherwise we derive blocks and report why.
+ *
+ * JAWF-STUDENT-PARTITIONS-02: the cadence is never invented. When the plan
+ * pattern is missing, invalid, or does not match the component's assigned
+ * hours, the component is reported and blocked instead of being split by
+ * a guessed rule.
  */
 export function requiredCadenceForComponent(input: {
   componentType: string | null | undefined;
@@ -86,7 +89,13 @@ export function requiredCadenceForComponent(input: {
   planCourse: PlanCourseCadence | null | undefined;
 }): RequiredCadence {
   const assigned = Math.round((Number(input.assignedHours) || 0) * 100) / 100;
-  if (assigned <= 0) return { durations: [], source: "derived", noteAr: null };
+  if (assigned <= 0) {
+    return {
+      durations: [],
+      source: "blocked",
+      noteAr: "ساعات المكوّن غير مُعرَّفة أو صفرية — لا يمكن تحديد نمط الجلسات.",
+    };
+  }
 
   const family = cadenceFamilyForComponent(input.componentType);
   const pc = input.planCourse;
@@ -97,9 +106,10 @@ export function requiredCadenceForComponent(input: {
 
   if (!pc) {
     return {
-      durations: splitHoursIntoSessions(assigned),
-      source: "derived",
-      noteAr: "لا توجد بيانات نمط أسبوعي في الخطة الدراسية لهذا المقرر — تم استنتاج مدة الجلسات.",
+      durations: [],
+      source: "blocked",
+      noteAr:
+        "لا توجد بيانات نمط أسبوعي في الخطة الدراسية لهذا المقرر — صحّح الخطة قبل التوليد الآلي.",
     };
   }
   if (
@@ -115,14 +125,15 @@ export function requiredCadenceForComponent(input: {
     };
   }
   return {
-    durations: splitHoursIntoSessions(assigned),
-    source: "derived",
+    durations: [],
+    source: "blocked",
     noteAr:
       count > 0 || duration > 0
-        ? `نمط الخطة (${count}×${duration}) لا يطابق ساعات المكوّن (${assigned}) — تم استنتاج مدة الجلسات.`
-        : "نمط الخطة الأسبوعي غير مُعرَّف لهذا المكوّن — تم استنتاج مدة الجلسات.",
+        ? `نمط الخطة (${count}×${duration}) لا يطابق ساعات المكوّن (${assigned}) — صحّح الخطة قبل التوليد الآلي.`
+        : "نمط الخطة الأسبوعي غير مُعرَّف لهذا المكوّن — صحّح الخطة قبل التوليد الآلي.",
   };
 }
+
 
 export type ExistingSessionLite = {
   id: string;
