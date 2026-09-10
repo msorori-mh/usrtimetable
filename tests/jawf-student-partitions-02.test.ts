@@ -33,7 +33,12 @@ const rows: PartitionMembershipRow[] = [
   { delivery_group_id: "B-pr-G1", cohort_id: COHORT, partition_id: P.p1, partition_headcount: 30 },
   { delivery_group_id: "B-pr-G2", cohort_id: COHORT, partition_id: P.p2, partition_headcount: 30 },
   // another cohort
-  { delivery_group_id: "X-th-G1", cohort_id: OTHER_COHORT, partition_id: "X1", partition_headcount: 40 },
+  {
+    delivery_group_id: "X-th-G1",
+    cohort_id: OTHER_COHORT,
+    partition_id: "X1",
+    partition_headcount: 40,
+  },
 ];
 
 const expectedStudents: Record<string, number> = {
@@ -114,7 +119,12 @@ describe("shared-student semantics", () => {
     const bad = buildPartitionIndex({
       rows: [
         ...rows,
-        { delivery_group_id: "A-th-G1", cohort_id: OTHER_COHORT, partition_id: "X1", partition_headcount: 30 },
+        {
+          delivery_group_id: "A-th-G1",
+          cohort_id: OTHER_COHORT,
+          partition_id: "X1",
+          partition_headcount: 30,
+        },
       ],
       expectedStudents,
     });
@@ -218,7 +228,9 @@ describe("proposed SQL (not applied)", () => {
   test("both tables are college/cohort scoped with grants and RLS", () => {
     for (const table of ["cohort_student_partitions", "delivery_group_partition_members"]) {
       expect(schema).toContain(`CREATE TABLE IF NOT EXISTS public.${table}`);
-      expect(schema).toContain(`GRANT SELECT, INSERT, UPDATE, DELETE ON public.${table} TO authenticated`);
+      expect(schema).toContain(
+        `GRANT SELECT, INSERT, UPDATE, DELETE ON public.${table} TO authenticated`,
+      );
       expect(schema).toContain(`GRANT ALL ON public.${table} TO service_role`);
       expect(schema).toContain(`ALTER TABLE public.${table} ENABLE ROW LEVEL SECURITY`);
     }
@@ -227,7 +239,8 @@ describe("proposed SQL (not applied)", () => {
 
   test("read scope uses can_view_college and every write uses can_manage_college", () => {
     expect(schema).toContain("public.can_view_college(auth.uid(), college_id)");
-    const manageCount = schema.split("public.can_manage_college(auth.uid(), college_id)").length - 1;
+    const manageCount =
+      schema.split("public.can_manage_college(auth.uid(), college_id)").length - 1;
     expect(manageCount).toBeGreaterThanOrEqual(6);
   });
 
@@ -241,8 +254,12 @@ describe("proposed SQL (not applied)", () => {
     expect(schema).toContain("CREATE OR REPLACE FUNCTION public.delivery_groups_share_students");
     expect(schema).toContain("IF a_count = 0 OR b_count = 0 THEN RETURN true; END IF;");
     expect(schema).toContain("SET search_path TO 'public'");
-    expect(schema).toContain("REVOKE ALL ON FUNCTION public.delivery_groups_share_students(uuid, uuid) FROM PUBLIC");
-    expect(schema).toContain("GRANT EXECUTE ON FUNCTION public.delivery_groups_share_students(uuid, uuid) TO authenticated, service_role");
+    expect(schema).toContain(
+      "REVOKE ALL ON FUNCTION public.delivery_groups_share_students(uuid, uuid) FROM PUBLIC",
+    );
+    expect(schema).toContain(
+      "GRANT EXECUTE ON FUNCTION public.delivery_groups_share_students(uuid, uuid) TO authenticated, service_role",
+    );
   });
 
   test("the single server conflict helper consults the shared-student authority", () => {

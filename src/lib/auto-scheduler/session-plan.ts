@@ -134,7 +134,6 @@ export function requiredCadenceForComponent(input: {
   };
 }
 
-
 export type ExistingSessionLite = {
   id: string;
   day_of_week: number;
@@ -334,7 +333,6 @@ export function isLocallyBlocked(
     return false;
   });
 }
-
 
 /** Arabic warning for existing sessions that do not match the plan cadence. */
 export function nonconformingWarningAr(input: {

@@ -62,7 +62,11 @@ export function buildPartitionIndex(input: {
     };
     if (entry.cohortId !== row.cohort_id) {
       // Inconsistent rows for one group: drop the mapping entirely (fail closed).
-      index.set(row.delivery_group_id, { cohortId: entry.cohortId, partitionIds: [], complete: false });
+      index.set(row.delivery_group_id, {
+        cohortId: entry.cohortId,
+        partitionIds: [],
+        complete: false,
+      });
       covered.set(row.delivery_group_id, 0);
       continue;
     }

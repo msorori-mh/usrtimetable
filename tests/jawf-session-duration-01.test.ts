@@ -127,7 +127,6 @@ describe("required plan cadence", () => {
     expect(zero.source).toBe("blocked");
   });
 
-
   test("hour splitting never produces a session longer than 4h", () => {
     expect(splitHoursIntoSessions(1)).toEqual([1]);
     expect(splitHoursIntoSessions(2)).toEqual([2]);

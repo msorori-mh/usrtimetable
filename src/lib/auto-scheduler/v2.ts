@@ -43,16 +43,18 @@ async function loadPartitionIndex(input: {
 }): Promise<{ index: PartitionIndex | null; note: string | null }> {
   if (input.cohortIds.length === 0) return { index: null, note: null };
   try {
-    const { data, error } = await (supabase as unknown as {
-      from: (table: string) => {
-        select: (cols: string) => {
-          in: (
-            col: string,
-            values: string[],
-          ) => Promise<{ data: unknown[] | null; error: { message: string } | null }>;
+    const { data, error } = await (
+      supabase as unknown as {
+        from: (table: string) => {
+          select: (cols: string) => {
+            in: (
+              col: string,
+              values: string[],
+            ) => Promise<{ data: unknown[] | null; error: { message: string } | null }>;
+          };
         };
-      };
-    })
+      }
+    )
       .from("delivery_group_partition_members")
       .select(
         "delivery_group_id, cohort_id, partition_id, cohort_student_partitions(headcount, active)",
@@ -85,7 +87,6 @@ async function loadPartitionIndex(input: {
     return { index: null, note: PARTITION_FALLBACK_WARNING_AR };
   }
 }
-
 
 const pad = (value: number) => String(value).padStart(2, "0");
 const toMinutes = (value: string) => {
@@ -272,7 +273,8 @@ export async function runV2AutoSchedule(params: {
   // Shared-student semantics: explicit partition membership per delivery group.
   const expectedStudentsByGroup: Record<string, number | null | undefined> = {};
   for (const item of workItems) {
-    if (item.delivery_group_id) expectedStudentsByGroup[item.delivery_group_id] = item.expected_students;
+    if (item.delivery_group_id)
+      expectedStudentsByGroup[item.delivery_group_id] = item.expected_students;
   }
   const partitions = await loadPartitionIndex({
     cohortIds: Array.from(
@@ -280,7 +282,9 @@ export async function runV2AutoSchedule(params: {
     ),
     expectedStudents: expectedStudentsByGroup,
   });
-  const sharedStudents = partitions.index ? makeSharedStudentsPredicate(partitions.index) : undefined;
+  const sharedStudents = partitions.index
+    ? makeSharedStudentsPredicate(partitions.index)
+    : undefined;
 
   const unplaced: UnplacedItem[] = [];
   const warnings: string[] = [];
@@ -292,7 +296,6 @@ export async function runV2AutoSchedule(params: {
   let blockedCadenceItems = 0;
   let versionUpdatedAt = payload.version_updated_at;
   let processedItems = 0;
-
 
   for (const item of workItems) {
     if (params.signal?.aborted) {
@@ -341,8 +344,6 @@ export async function runV2AutoSchedule(params: {
       });
       continue;
     }
-
-
 
     const existing =
       existingByAssignment.get(`${item.teaching_assignment_id}|${item.delivery_group_id}`) ?? [];
@@ -417,7 +418,6 @@ export async function runV2AutoSchedule(params: {
               sharedStudents,
             )
           ) {
-
             continue;
           }
           const result = await createScheduleSessionFromAssignmentV2({
@@ -513,14 +513,15 @@ export async function runV2AutoSchedule(params: {
         cancelled,
         cadence_source: "plan_courses_weekly_pattern",
         cadence_invention: "disabled",
-        student_partition_semantics: partitions.index ? "explicit_partition_membership" : "cohort_wide_fallback",
+        student_partition_semantics: partitions.index
+          ? "explicit_partition_membership"
+          : "cohort_wide_fallback",
         regular_parallel_isolation: true,
         total_required_sessions: totalRequiredSessions,
         processed_work_items: processedItems,
         blocked_cadence_items: blockedCadenceItems,
         nonconforming_existing_sessions: nonconformingSessions,
         by_component_type: byType,
-
       } as never,
       unplaced: unplaced as never,
       run_by: userData.user?.id ?? null,
