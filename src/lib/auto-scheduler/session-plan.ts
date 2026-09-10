@@ -68,17 +68,20 @@ export function splitHoursIntoSessions(totalHours: number): number[] {
 }
 
 export type RequiredCadence = {
-  /** One entry per weekly session, in hours. */
+  /** One entry per weekly session, in hours. Empty when the plan cadence is unusable. */
   durations: number[];
-  source: "plan" | "derived";
-  /** Arabic note when the plan cadence could not be used as-is. */
+  source: "plan" | "blocked";
+  /** Arabic note explaining why the plan cadence could not be used. */
   noteAr: string | null;
 };
 
 /**
  * Required weekly sessions for one component, from the validated plan cadence.
- * The plan cadence is used only when count x duration matches the component's
- * assigned hours; otherwise we derive blocks and report why.
+ *
+ * JAWF-STUDENT-PARTITIONS-02: the cadence is never invented. When the plan
+ * pattern is missing, invalid, or does not match the component's assigned
+ * hours, the component is reported and blocked instead of being split by
+ * a guessed rule.
  */
 export function requiredCadenceForComponent(input: {
   componentType: string | null | undefined;
@@ -86,7 +89,13 @@ export function requiredCadenceForComponent(input: {
   planCourse: PlanCourseCadence | null | undefined;
 }): RequiredCadence {
   const assigned = Math.round((Number(input.assignedHours) || 0) * 100) / 100;
-  if (assigned <= 0) return { durations: [], source: "derived", noteAr: null };
+  if (assigned <= 0) {
+    return {
+      durations: [],
+      source: "blocked",
+      noteAr: "ساعات المكوّن غير مُعرَّفة أو صفرية — لا يمكن تحديد نمط الجلسات.",
+    };
+  }
 
   const family = cadenceFamilyForComponent(input.componentType);
   const pc = input.planCourse;
@@ -97,9 +106,10 @@ export function requiredCadenceForComponent(input: {
 
   if (!pc) {
     return {
-      durations: splitHoursIntoSessions(assigned),
-      source: "derived",
-      noteAr: "لا توجد بيانات نمط أسبوعي في الخطة الدراسية لهذا المقرر — تم استنتاج مدة الجلسات.",
+      durations: [],
+      source: "blocked",
+      noteAr:
+        "لا توجد بيانات نمط أسبوعي في الخطة الدراسية لهذا المقرر — صحّح الخطة قبل التوليد الآلي.",
     };
   }
   if (
@@ -115,12 +125,12 @@ export function requiredCadenceForComponent(input: {
     };
   }
   return {
-    durations: splitHoursIntoSessions(assigned),
-    source: "derived",
+    durations: [],
+    source: "blocked",
     noteAr:
       count > 0 || duration > 0
-        ? `نمط الخطة (${count}×${duration}) لا يطابق ساعات المكوّن (${assigned}) — تم استنتاج مدة الجلسات.`
-        : "نمط الخطة الأسبوعي غير مُعرَّف لهذا المكوّن — تم استنتاج مدة الجلسات.",
+        ? `نمط الخطة (${count}×${duration}) لا يطابق ساعات المكوّن (${assigned}) — صحّح الخطة قبل التوليد الآلي.`
+        : "نمط الخطة الأسبوعي غير مُعرَّف لهذا المكوّن — صحّح الخطة قبل التوليد الآلي.",
   };
 }
 
@@ -284,25 +294,42 @@ function overlaps(a: { start: string; end: string }, b: { start: string; end: st
   return toMinutes(a.start) < toMinutes(b.end) && toMinutes(b.start) < toMinutes(a.end);
 }
 
+/** Returns true when the two delivery groups may contain the same students. */
+export type SharedStudentsPredicate = (
+  aGroupId: string | null | undefined,
+  bGroupId: string | null | undefined,
+) => boolean;
+
 /**
  * Cheap local rejection of candidates that are certainly occupied by sessions
  * we already know about. This only avoids doomed RPC round-trips; it never
  * approves a placement — the guarded RPC re-validates everything.
+ *
+ * JAWF-STUDENT-PARTITIONS-02: when both sides carry a delivery group, the
+ * student-body question is answered by `sharedStudents`, so disjoint partitions
+ * of the same cohort are no longer blocked locally. Without a predicate (or
+ * when either side has no group) the conservative cohort-wide rule applies.
  */
 export function isLocallyBlocked(
   slot: CandidateSlot,
   ctx: SlotContext,
   occupied: readonly OccupiedInterval[],
+  sharedStudents?: SharedStudentsPredicate,
 ): boolean {
   return occupied.some((o) => {
     if (Number(o.day) !== Number(slot.day)) return false;
     if (!overlaps(slot, o)) return false;
     if (o.roomId && o.roomId === ctx.roomId) return true;
     if (o.instructorId && ctx.instructorId && o.instructorId === ctx.instructorId) return true;
-    if (o.cohortId && ctx.cohortId && o.cohortId === ctx.cohortId) return true;
-    if (o.deliveryGroupId && ctx.deliveryGroupId && o.deliveryGroupId === ctx.deliveryGroupId) {
-      return true;
+    if (o.deliveryGroupId && ctx.deliveryGroupId) {
+      if (o.deliveryGroupId === ctx.deliveryGroupId) return true;
+      if (!sharedStudents) {
+        return !!(o.cohortId && ctx.cohortId && o.cohortId === ctx.cohortId);
+      }
+      if (o.cohortId && ctx.cohortId && o.cohortId !== ctx.cohortId) return false;
+      return sharedStudents(ctx.deliveryGroupId, o.deliveryGroupId);
     }
+    if (o.cohortId && ctx.cohortId && o.cohortId === ctx.cohortId) return true;
     return false;
   });
 }

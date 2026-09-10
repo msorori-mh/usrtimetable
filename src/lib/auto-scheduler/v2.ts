@@ -19,8 +19,75 @@ import {
   type PlanCourseCadence,
   type RoomLite,
 } from "@/lib/auto-scheduler/session-plan";
+import {
+  buildPartitionIndex,
+  makeSharedStudentsPredicate,
+  type PartitionIndex,
+  type PartitionMembershipRow,
+} from "@/lib/auto-scheduler/student-partitions";
 
-const ALGORITHM_VERSION = "v2-plan-cadence-guarded-rpc";
+const ALGORITHM_VERSION = "v2-plan-cadence-partition-aware-guarded-rpc";
+
+/** Fail-closed Arabic note when the partition mapping cannot be used. */
+export const PARTITION_FALLBACK_WARNING_AR =
+  "لا يمكن قراءة خرائط شُعب الطلاب — تم الاحتفاظ بمنع التعارض على مستوى الدفعة بالكامل.";
+
+/**
+ * Load the explicit delivery-group -> student-partition mapping.
+ * Any failure (table absent, no permission, empty mapping) returns `null`, and
+ * the conservative cohort-wide conflict rule is preserved.
+ */
+async function loadPartitionIndex(input: {
+  cohortIds: string[];
+  expectedStudents: Record<string, number | null | undefined>;
+}): Promise<{ index: PartitionIndex | null; note: string | null }> {
+  if (input.cohortIds.length === 0) return { index: null, note: null };
+  try {
+    const { data, error } = await (
+      supabase as unknown as {
+        from: (table: string) => {
+          select: (cols: string) => {
+            in: (
+              col: string,
+              values: string[],
+            ) => Promise<{ data: unknown[] | null; error: { message: string } | null }>;
+          };
+        };
+      }
+    )
+      .from("delivery_group_partition_members")
+      .select(
+        "delivery_group_id, cohort_id, partition_id, cohort_student_partitions(headcount, active)",
+      )
+      .in("cohort_id", input.cohortIds);
+    if (error) return { index: null, note: PARTITION_FALLBACK_WARNING_AR };
+    const rows: PartitionMembershipRow[] = (data ?? [])
+      .map((raw): PartitionMembershipRow | null => {
+        const row = raw as {
+          delivery_group_id?: string;
+          cohort_id?: string;
+          partition_id?: string;
+          cohort_student_partitions?: { headcount?: number | null; active?: boolean | null } | null;
+        };
+        if (row.cohort_student_partitions?.active === false) return null;
+        return {
+          delivery_group_id: String(row.delivery_group_id ?? ""),
+          cohort_id: String(row.cohort_id ?? ""),
+          partition_id: String(row.partition_id ?? ""),
+          partition_headcount: row.cohort_student_partitions?.headcount ?? null,
+        };
+      })
+      .filter((row): row is PartitionMembershipRow => !!row && !!row.delivery_group_id);
+
+    if (rows.length === 0) return { index: null, note: null };
+    return {
+      index: buildPartitionIndex({ rows, expectedStudents: input.expectedStudents }),
+      note: null,
+    };
+  } catch {
+    return { index: null, note: PARTITION_FALLBACK_WARNING_AR };
+  }
+}
 
 const pad = (value: number) => String(value).padStart(2, "0");
 const toMinutes = (value: string) => {
@@ -204,12 +271,30 @@ export async function runV2AutoSchedule(params: {
     deliveryGroupId: row.delivery_group_id,
   }));
 
+  // Shared-student semantics: explicit partition membership per delivery group.
+  const expectedStudentsByGroup: Record<string, number | null | undefined> = {};
+  for (const item of workItems) {
+    if (item.delivery_group_id)
+      expectedStudentsByGroup[item.delivery_group_id] = item.expected_students;
+  }
+  const partitions = await loadPartitionIndex({
+    cohortIds: Array.from(
+      new Set(workItems.map((item) => item.cohort_id).filter((id): id is string => !!id)),
+    ),
+    expectedStudents: expectedStudentsByGroup,
+  });
+  const sharedStudents = partitions.index
+    ? makeSharedStudentsPredicate(partitions.index)
+    : undefined;
+
   const unplaced: UnplacedItem[] = [];
   const warnings: string[] = [];
+  if (partitions.note) warnings.push(partitions.note);
   const byType: Record<string, { required: number; placed: number; unplaced: number }> = {};
   let placed = 0;
   let cancelled = false;
   let nonconformingSessions = 0;
+  let blockedCadenceItems = 0;
   let versionUpdatedAt = payload.version_updated_at;
   let processedItems = 0;
 
@@ -236,6 +321,30 @@ export async function runV2AutoSchedule(params: {
     });
     const groupLabel = `${item.course_code}${item.group_code ? ` / ${item.group_code}` : ""}`;
     if (cadence.noteAr) warnings.push(`${groupLabel}: ${cadence.noteAr}`);
+    if (cadence.source === "blocked") {
+      // Never invent a cadence: report and skip this component.
+      blockedCadenceItems++;
+      byType[type].unplaced++;
+      unplaced.push({
+        course_offering_id: item.course_offering_id,
+        teaching_assignment_id: item.teaching_assignment_id,
+        instructor_id: item.instructor_id,
+        course_id: item.course_id,
+        session_type: item.session_type || item.component_type,
+        duration_minutes: 0,
+        unit_index: 1,
+        reason: `${groupLabel}: ${cadence.noteAr ?? "نمط الخطة الأسبوعي غير صالح."}`,
+      });
+      processedItems++;
+      params.onProgress?.({
+        processedItems,
+        totalItems: workItems.length,
+        placed,
+        unplaced: unplaced.length,
+        label: groupLabel,
+      });
+      continue;
+    }
 
     const existing =
       existingByAssignment.get(`${item.teaching_assignment_id}|${item.delivery_group_id}`) ?? [];
@@ -307,6 +416,7 @@ export async function runV2AutoSchedule(params: {
                 deliveryGroupId: item.delivery_group_id,
               },
               occupied,
+              sharedStudents,
             )
           ) {
             continue;
@@ -403,9 +513,14 @@ export async function runV2AutoSchedule(params: {
         mode,
         cancelled,
         cadence_source: "plan_courses_weekly_pattern",
+        cadence_invention: "disabled",
+        student_partition_semantics: partitions.index
+          ? "explicit_partition_membership"
+          : "cohort_wide_fallback",
         regular_parallel_isolation: true,
         total_required_sessions: totalRequiredSessions,
         processed_work_items: processedItems,
+        blocked_cadence_items: blockedCadenceItems,
         nonconforming_existing_sessions: nonconformingSessions,
         by_component_type: byType,
       } as never,
