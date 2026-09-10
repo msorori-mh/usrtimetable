@@ -1,32 +1,53 @@
 {
-  "total": 51,
-  "passed": 51,
-  "failed": [],
+  "total": 79,
+  "passed": 59,
+  "failed": [
+    "A4 portrait: every physical page carries a physical page counter",
+    "A4 portrait: first physical page counter is 1 of 20",
+    "A4 portrait: continuation page 10 counter is 10 of 20",
+    "A4 portrait: final physical page counter is 20 of 20",
+    "A4 portrait: counters are strictly sequential with no gaps",
+    "A4 landscape: every physical page carries a physical page counter",
+    "A4 landscape: first physical page counter is 1 of 24",
+    "A4 landscape: continuation page 12 counter is 12 of 24",
+    "A4 landscape: final physical page counter is 24 of 24",
+    "A4 landscape: counters are strictly sequential with no gaps",
+    "A3 portrait: every physical page carries a physical page counter",
+    "A3 portrait: first physical page counter is 1 of 8",
+    "A3 portrait: continuation page 4 counter is 4 of 8",
+    "A3 portrait: final physical page counter is 8 of 8",
+    "A3 portrait: counters are strictly sequential with no gaps",
+    "A3 landscape: every physical page carries a physical page counter",
+    "A3 landscape: first physical page counter is 1 of 16",
+    "A3 landscape: continuation page 8 counter is 8 of 16",
+    "A3 landscape: final physical page counter is 16 of 16",
+    "A3 landscape: counters are strictly sequential with no gaps"
+  ],
   "cases": [
     {
       "name": "PDF rendered A4 portrait (fixture)",
       "pass": true,
-      "detail": "247157 bytes"
+      "detail": "307608 bytes"
     },
     {
       "name": "A4 portrait: CSS @page size honoured",
       "pass": true,
-      "detail": "595x842pt, 16 pages"
+      "detail": "595x842pt, 20 pages"
     },
     {
       "name": "A4 portrait: fixture spans multiple pages",
       "pass": true,
-      "detail": "16 pages"
+      "detail": "20 pages"
     },
     {
       "name": "A4 portrait: Arabic content extractable",
       "pass": true,
-      "detail": "70402 chars of extractable text"
+      "detail": "73568 chars of extractable text"
     },
     {
       "name": "A4 portrait: table header repeats on every page that carries rows",
       "pass": true,
-      "detail": "16/16 row-bearing pages carry the header row"
+      "detail": "20/20 row-bearing pages carry the header row"
     },
     {
       "name": "A4 portrait: no blank printed pages",
@@ -34,9 +55,44 @@
       "detail": "0 blank pages"
     },
     {
+      "name": "A4 portrait: every physical page carries a physical page counter",
+      "pass": false,
+      "detail": "0/20 pages"
+    },
+    {
+      "name": "A4 portrait: first physical page counter is 1 of 20",
+      "pass": false,
+      "detail": "None"
+    },
+    {
+      "name": "A4 portrait: continuation page 10 counter is 10 of 20",
+      "pass": false,
+      "detail": "None"
+    },
+    {
+      "name": "A4 portrait: final physical page counter is 20 of 20",
+      "pass": false,
+      "detail": "None"
+    },
+    {
+      "name": "A4 portrait: counters are strictly sequential with no gaps",
+      "pass": false,
+      "detail": "sequential"
+    },
+    {
+      "name": "A4 portrait: in-flow footer numbers GROUPS, not physical pages",
+      "pass": true,
+      "detail": "مجموعة الجدول 1 من 8\nآخر تحديث: 9/9/2026 6:00:00 م\n\nاعتماد رسمي وفق آخر نسخة منش"
+    },
+    {
+      "name": "A4 portrait: group context repeats on continuation pages",
+      "pass": true,
+      "detail": "20/20 row-bearing pages name their group (بكالوريوس تك)"
+    },
+    {
       "name": "A4 portrait: PNG page images produced",
       "pass": true,
-      "detail": "16 images"
+      "detail": "20 images"
     },
     {
       "name": "A4 portrait: no ink touching the page edge (clipping check)",
@@ -56,22 +112,22 @@
     {
       "name": "PDF rendered A4 landscape (fixture)",
       "pass": true,
-      "detail": "250288 bytes"
+      "detail": "305316 bytes"
     },
     {
       "name": "A4 landscape: CSS @page size honoured",
       "pass": true,
-      "detail": "842x595pt, 16 pages"
+      "detail": "842x595pt, 24 pages"
     },
     {
       "name": "A4 landscape: fixture spans multiple pages",
       "pass": true,
-      "detail": "16 pages"
+      "detail": "24 pages"
     },
     {
       "name": "A4 landscape: Arabic content extractable",
       "pass": true,
-      "detail": "70420 chars of extractable text"
+      "detail": "69821 chars of extractable text"
     },
     {
       "name": "A4 landscape: table header repeats on every page that carries rows",
@@ -84,9 +140,44 @@
       "detail": "0 blank pages"
     },
     {
+      "name": "A4 landscape: every physical page carries a physical page counter",
+      "pass": false,
+      "detail": "0/24 pages"
+    },
+    {
+      "name": "A4 landscape: first physical page counter is 1 of 24",
+      "pass": false,
+      "detail": "None"
+    },
+    {
+      "name": "A4 landscape: continuation page 12 counter is 12 of 24",
+      "pass": false,
+      "detail": "None"
+    },
+    {
+      "name": "A4 landscape: final physical page counter is 24 of 24",
+      "pass": false,
+      "detail": "None"
+    },
+    {
+      "name": "A4 landscape: counters are strictly sequential with no gaps",
+      "pass": false,
+      "detail": "sequential"
+    },
+    {
+      "name": "A4 landscape: in-flow footer numbers GROUPS, not physical pages",
+      "pass": true,
+      "detail": "مجموعة الجدول 1 من 8\nآخر تحديث: 9/9/2026 6:00:00 م\n\nاعتماد رسمي وفق آخر نسخة منش"
+    },
+    {
+      "name": "A4 landscape: group context repeats on continuation pages",
+      "pass": true,
+      "detail": "16/16 row-bearing pages name their group (بكالوريوس تك)"
+    },
+    {
       "name": "A4 landscape: PNG page images produced",
       "pass": true,
-      "detail": "16 images"
+      "detail": "24 images"
     },
     {
       "name": "A4 landscape: no ink touching the page edge (clipping check)",
@@ -101,7 +192,7 @@
     {
       "name": "PDF rendered A3 portrait (fixture)",
       "pass": true,
-      "detail": "235320 bytes"
+      "detail": "278784 bytes"
     },
     {
       "name": "A3 portrait: CSS @page size honoured",
@@ -116,7 +207,7 @@
     {
       "name": "A3 portrait: Arabic content extractable",
       "pass": true,
-      "detail": "76072 chars of extractable text"
+      "detail": "80948 chars of extractable text"
     },
     {
       "name": "A3 portrait: table header repeats on every page that carries rows",
@@ -127,6 +218,41 @@
       "name": "A3 portrait: no blank printed pages",
       "pass": true,
       "detail": "0 blank pages"
+    },
+    {
+      "name": "A3 portrait: every physical page carries a physical page counter",
+      "pass": false,
+      "detail": "0/8 pages"
+    },
+    {
+      "name": "A3 portrait: first physical page counter is 1 of 8",
+      "pass": false,
+      "detail": "None"
+    },
+    {
+      "name": "A3 portrait: continuation page 4 counter is 4 of 8",
+      "pass": false,
+      "detail": "None"
+    },
+    {
+      "name": "A3 portrait: final physical page counter is 8 of 8",
+      "pass": false,
+      "detail": "None"
+    },
+    {
+      "name": "A3 portrait: counters are strictly sequential with no gaps",
+      "pass": false,
+      "detail": "sequential"
+    },
+    {
+      "name": "A3 portrait: in-flow footer numbers GROUPS, not physical pages",
+      "pass": true,
+      "detail": "مجموعة الجدول 1 من 8\nآخر تحديث: 9/9/2026 6:00:00 م\n\nاعتماد رسمي وفق آخر نسخة منش"
+    },
+    {
+      "name": "A3 portrait: group context repeats on continuation pages",
+      "pass": true,
+      "detail": "8/8 row-bearing pages name their group (بكالوريوس تك)"
     },
     {
       "name": "A3 portrait: PNG page images produced",
@@ -146,7 +272,7 @@
     {
       "name": "PDF rendered A3 landscape (fixture)",
       "pass": true,
-      "detail": "250524 bytes"
+      "detail": "300890 bytes"
     },
     {
       "name": "A3 landscape: CSS @page size honoured",
@@ -161,7 +287,7 @@
     {
       "name": "A3 landscape: Arabic content extractable",
       "pass": true,
-      "detail": "72984 chars of extractable text"
+      "detail": "80121 chars of extractable text"
     },
     {
       "name": "A3 landscape: table header repeats on every page that carries rows",
@@ -172,6 +298,41 @@
       "name": "A3 landscape: no blank printed pages",
       "pass": true,
       "detail": "0 blank pages"
+    },
+    {
+      "name": "A3 landscape: every physical page carries a physical page counter",
+      "pass": false,
+      "detail": "0/16 pages"
+    },
+    {
+      "name": "A3 landscape: first physical page counter is 1 of 16",
+      "pass": false,
+      "detail": "None"
+    },
+    {
+      "name": "A3 landscape: continuation page 8 counter is 8 of 16",
+      "pass": false,
+      "detail": "None"
+    },
+    {
+      "name": "A3 landscape: final physical page counter is 16 of 16",
+      "pass": false,
+      "detail": "None"
+    },
+    {
+      "name": "A3 landscape: counters are strictly sequential with no gaps",
+      "pass": false,
+      "detail": "sequential"
+    },
+    {
+      "name": "A3 landscape: in-flow footer numbers GROUPS, not physical pages",
+      "pass": true,
+      "detail": "مجموعة الجدول 1 من 8\nآخر تحديث: 9/9/2026 6:00:00 م\n\nاعتماد رسمي وفق آخر نسخة منش"
+    },
+    {
+      "name": "A3 landscape: group context repeats on continuation pages",
+      "pass": true,
+      "detail": "16/16 row-bearing pages name their group (بكالوريوس تك)"
     },
     {
       "name": "A3 landscape: PNG page images produced",
@@ -211,7 +372,7 @@
     {
       "name": "short fixture PDF produced",
       "pass": true,
-      "detail": "157048 bytes"
+      "detail": "185403 bytes"
     },
     {
       "name": "CSV starts with a UTF-8 BOM (Excel opens Arabic correctly)",
