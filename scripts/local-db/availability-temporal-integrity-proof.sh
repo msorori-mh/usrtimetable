@@ -89,6 +89,38 @@ psql -X -q -v ON_ERROR_STOP=1 -f "$MIGRATION" >"$ROOT/migration2.log" 2>&1 \
   && echo "   re-apply is idempotent" \
   || { echo "FAIL: migration is not idempotent"; tail -40 "$ROOT/migration2.log"; exit 1; }
 
+# LAUNCH-CLOSURE-SECURITY: optional follow-up SQL applied BEFORE the behaviour cases, so the
+# entire 40-case suite, the concurrency race, the RPCs and the rollback all exercise the
+# hardened state rather than the original one.
+if [ -n "${AVAIL_PROOF_EXTRA_SQL:-}" ]; then
+  echo "== applying extra SQL: $AVAIL_PROOF_EXTRA_SQL"
+  psql -X -q -v ON_ERROR_STOP=1 -f "$AVAIL_PROOF_EXTRA_SQL" >"$ROOT/extra.log" 2>&1 || {
+    echo "FAIL: extra SQL did not apply"; tail -40 "$ROOT/extra.log"; exit 1; }
+  psql -X -q -v ON_ERROR_STOP=1 -f "$AVAIL_PROOF_EXTRA_SQL" >"$ROOT/extra2.log" 2>&1 \
+    && echo "   extra SQL applied and is idempotent" \
+    || { echo "FAIL: extra SQL is not idempotent"; tail -40 "$ROOT/extra2.log"; exit 1; }
+
+  PINNED=$(psql -X -tAc "SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname IN ('_avail_time_span','_avail_day_span','_avail_date_span','validate_room_unavailability_window') AND p.proconfig @> ARRAY['search_path=pg_catalog']")
+  IMM=$(psql -X -tAc "SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname IN ('_avail_time_span','_avail_day_span','_avail_date_span') AND p.provolatile='i'")
+  SECDEF=$(psql -X -tAc "SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname IN ('_avail_time_span','_avail_day_span','_avail_date_span','validate_room_unavailability_window') AND p.prosecdef")
+  [ "$PINNED" = "4" ] && echo "CASE 8.1 four helpers pinned to search_path=pg_catalog => PASS" \
+    || { echo "CASE 8.1 helpers pinned => FAIL (pinned=$PINNED)"; exit 1; }
+  [ "$IMM" = "3" ] && echo "CASE 8.2 span helpers remain IMMUTABLE (index-safe) => PASS" \
+    || { echo "CASE 8.2 span helpers IMMUTABLE => FAIL (immutable=$IMM)"; exit 1; }
+  [ "$SECDEF" = "0" ] && echo "CASE 8.3 helpers remain SECURITY INVOKER => PASS" \
+    || { echo "CASE 8.3 helpers SECURITY INVOKER => FAIL (secdef=$SECDEF)"; exit 1; }
+fi
+
+if [ -n "${AVAIL_PROOF_PROBE_SQL:-}" ]; then
+  echo "== btree_gist relocation probe (disposable cluster only)"
+  psql -X -q -v ON_ERROR_STOP=1 -f "$AVAIL_PROOF_PROBE_SQL" >"$ROOT/probe.log" 2>&1 || {
+    echo "FAIL: relocation probe errored"; tail -40 "$ROOT/probe.log"; exit 1; }
+  grep -oE 'PROBE[^\\]*' "$ROOT/probe.log" | sed 's/^/     /'
+  EXTSCHEMA=$(psql -X -tAc "SELECT n.nspname FROM pg_extension e JOIN pg_namespace n ON n.oid=e.extnamespace WHERE e.extname='btree_gist'")
+  [ "$EXTSCHEMA" = "public" ] && echo "CASE 8.4 probe reverted btree_gist to public => PASS" \
+    || { echo "CASE 8.4 probe revert => FAIL (schema=$EXTSCHEMA)"; exit 1; }
+fi
+
 echo
 echo "== behaviour cases"
 psql -X -q -v ON_ERROR_STOP=1 -f "$CASES" >"$ROOT/cases.log" 2>&1
