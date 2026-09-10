@@ -248,7 +248,7 @@ describe("LAUNCH-CLOSURE-01 gap 3 — approved timetable print flow", () => {
       "حالة النسخة:",
       "رقم / اسم النسخة:",
       "تاريخ التصدير:",
-      "صفحة {meta.pageIndex} من {meta.pageCount}",
+      "printGroupCounterLabelAr(meta.pageIndex, meta.pageCount)",
     ]) {
       expect(sheet).toContain(fragment);
     }
