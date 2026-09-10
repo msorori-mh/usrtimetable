@@ -26,7 +26,7 @@ import {
   type PartitionMembershipRow,
 } from "@/lib/auto-scheduler/student-partitions";
 
-const ALGORITHM_VERSION = "v2-plan-cadence-partitions-responsive-rpc";
+const ALGORITHM_VERSION = "v2-five-day-compact-candidates-rpc";
 
 /** Fail-closed Arabic note when the partition mapping cannot be used. */
 export const PARTITION_FALLBACK_WARNING_AR =
@@ -248,6 +248,15 @@ export async function runV2AutoSchedule(params: {
   }
   const planCourseById = new Map((planCourses ?? []).map((p) => [p.id, p as PlanCourseCadence]));
 
+  const { data: attendanceCohorts, error: attendanceError } = await supabase
+    .from("academic_cohorts")
+    .select("id,program_id,level_id,study_system,term_id")
+    .eq("college_id", params.collegeId);
+  if (attendanceError || !attendanceCohorts?.length) {
+    throw new Error("تعذر قراءة مستويات الدفعات للتحقق من حد خمسة أيام.");
+  }
+  const levelByCohort = new Map(attendanceCohorts.map(c => [c.id,
+    [c.program_id,c.level_id,c.study_system,c.term_id].join("|")]));
   const sessionRows = existingSessions ?? [];
   const existingByAssignment = new Map<string, ExistingSessionLite[]>();
   for (const row of sessionRows) {
@@ -406,6 +415,15 @@ export async function runV2AutoSchedule(params: {
         }),
         usedDays,
       );
+      const levelKey = levelByCohort.get(item.cohort_id!);
+      if (!levelKey) throw new Error("لا توجد بيانات مستوى لهذه الدفعة.");
+      const levelDays = new Set(occupied.filter(x => x.cohortId && levelByCohort.get(x.cohortId) === levelKey).map(x => x.day));
+      // Prefer existing attendance days, then adjacent lessons for this delivery group.
+      const distance = (slot: CandidateSlot) => {
+        const peers = occupied.filter(x => x.day === slot.day && x.cohortId === item.cohort_id);
+        return peers.length ? Math.min(...peers.map(x => Math.min(Math.abs(toMinutes(slot.start)-toMinutes(x.end)),Math.abs(toMinutes(x.start)-toMinutes(slot.end))))) : 1440;
+      };
+      slots.sort((a,b) => Number(!levelDays.has(a.day))-Number(!levelDays.has(b.day)) || distance(a)-distance(b));
       let placedItem = false;
       let lastReason = "لا يوجد مرشح يحقق قيود مجموعة التقديم والدفعة.";
 
@@ -413,6 +431,10 @@ export async function runV2AutoSchedule(params: {
         if (params.signal?.aborted) {
           cancelled = true;
           break;
+        }
+        if (!levelDays.has(slot.day) && levelDays.size >= 5) {
+          lastReason = "حد حضور المستوى خمسة أيام أسبوعياً؛ لا يجوز إنشاء يوم سادس.";
+          continue;
         }
         const availabilityKey = `${item.instructor_id}|${slot.day}`;
         const unavailableReason = unavailableInstructorDays.get(availabilityKey);
