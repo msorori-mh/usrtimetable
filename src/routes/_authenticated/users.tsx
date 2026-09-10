@@ -259,6 +259,17 @@ function UsersPage() {
           <div className="flex flex-wrap gap-2">
             <CreateUserDialog
               colleges={colleges ?? []}
+              presetRole="institutional_viewer"
+              presetName="إدارة الشؤون الأكاديمية"
+              triggerLabel="إنشاء حساب الشؤون الأكاديمية"
+              triggerVariant="outline"
+              onCreate={async (input) => {
+                await createUserFn({ data: input });
+                qc.invalidateQueries({ queryKey: ["all-users-admin"] });
+              }}
+            />
+            <CreateUserDialog
+              colleges={colleges ?? []}
               presetRole="college_admin"
               triggerLabel="إنشاء مدير كلّية"
               triggerVariant="outline"
@@ -407,7 +418,12 @@ function UsersPage() {
                         <Button
                           size="sm"
                           variant={disabled ? "default" : "outline"}
-                          onClick={() => setEnabled.mutate({ userId: u.id, enabled: disabled })}
+                          onClick={() =>
+                            setEnabled.mutate({
+                              userId: u.id,
+                              enabled: disabled,
+                            })
+                          }
                           disabled={setEnabled.isPending || u.id === me?.id}
                         >
                           <Power className="ml-1 h-3.5 w-3.5" />
@@ -443,7 +459,11 @@ function UsersPage() {
                                     checked={isOn}
                                     disabled={lockSelf || setRole.isPending}
                                     onCheckedChange={(v) => {
-                                      setRole.mutate({ userId: u.id, role, on: !!v });
+                                      setRole.mutate({
+                                        userId: u.id,
+                                        role,
+                                        on: !!v,
+                                      });
                                       if (
                                         v &&
                                         role === "college_admin" &&
@@ -480,7 +500,11 @@ function UsersPage() {
                             collegeOptions={colleges}
                             assigned={u.collegeIds}
                             onAdd={(cid) =>
-                              toggleCollege.mutate({ userId: u.id, collegeId: cid, on: true })
+                              toggleCollege.mutate({
+                                userId: u.id,
+                                collegeId: cid,
+                                on: true,
+                              })
                             }
                           />
                         )}
@@ -569,12 +593,14 @@ function CreateUserDialog({
   colleges,
   onCreate,
   presetRole,
+  presetName = "",
   triggerLabel = "مستخدم جديد",
   triggerVariant = "default",
   triggerIcon,
 }: {
   colleges: { id: string; name: string }[];
   presetRole?: AppRole;
+  presetName?: string;
   triggerLabel?: string;
   triggerVariant?: "default" | "outline";
   triggerIcon?: ReactNode;
@@ -589,7 +615,7 @@ function CreateUserDialog({
   const initialRole: AppRole = presetRole ?? "read_only";
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
-    full_name: "",
+    full_name: presetName,
     email: "",
     password: "",
     role: initialRole,
@@ -598,7 +624,13 @@ function CreateUserDialog({
   const [busy, setBusy] = useState(false);
 
   const reset = () =>
-    setForm({ full_name: "", email: "", password: "", role: initialRole, college_ids: [] });
+    setForm({
+      full_name: presetName,
+      email: "",
+      password: "",
+      role: initialRole,
+      college_ids: [],
+    });
 
   const submit = async () => {
     if (!form.full_name.trim() || !form.email.trim() || form.password.length < 8) {
@@ -643,10 +675,20 @@ function CreateUserDialog({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>
-            {presetRole === "college_admin" ? "إنشاء مدير كلّية" : "إنشاء مستخدم"}
+            {presetRole === "institutional_viewer"
+              ? "إنشاء حساب الشؤون الأكاديمية"
+              : presetRole === "college_admin"
+                ? "إنشاء مدير كلّية"
+                : "إنشاء مستخدم"}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
+          {presetRole === "institutional_viewer" && (
+            <p className="rounded-md bg-secondary p-3 text-sm">
+              حساب للعرض والطباعة والتصدير عبر جميع الكليات، باستخدام دور المشاهد المؤسسي. لا يحتاج
+              إلى إسناد الكليات منفردة، ولا يمنح صلاحية التعديل.
+            </p>
+          )}
           <div>
             <Label>الاسم الكامل</Label>
             <Input
@@ -694,6 +736,7 @@ function CreateUserDialog({
             <Label>الدور</Label>
             <Select
               value={form.role}
+              disabled={presetRole === "institutional_viewer"}
               onValueChange={(v) => setForm({ ...form, role: v as AppRole })}
             >
               <SelectTrigger>

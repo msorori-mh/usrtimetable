@@ -73,3 +73,6 @@ jobs:
 
       - name: Static harness suite
         run: bun run test:harness
+
+      - name: Academic affairs report calculations
+        run: node --import tsx --test tests/academic-affairs.test.ts
