@@ -137,3 +137,59 @@ export function isMissingRpcError(error: unknown): boolean {
     /function\s+[^\s]*\S*\s*.*does not exist/.test(haystack)
   );
 }
+
+/**
+ * LAUNCH-CLOSURE-03 — mapping of durable database integrity failures to Arabic.
+ *
+ * Once docs/migrations-proposed/20260910T0025_availability_temporal_integrity_and_bulk_rpc.sql
+ * is applied, an overlapping window is refused BY THE DATABASE on every write path,
+ * including two concurrent transactions that both passed their own validation. Postgres
+ * reports that as:
+ *   23P01 exclusion_violation  — the exclusion constraints, and the RPC's own pre-check
+ *   23505 unique_violation     — kept for compatibility with the pre-existing RPC source,
+ *                                which raised 23505 for the same condition
+ * Neither code is a bug to retry; the user must change the time or the date window.
+ */
+const OVERLAP_CONFLICT_CODES = new Set(["23P01", "23505"]);
+
+export const OVERLAP_CONFLICT_AR =
+  "تعارض زمني: توجد فترة عدم إتاحة متقاطعة مع الفترة المطلوبة لنفس المورد؛ لم يُحفظ أي شيء. عدّل الوقت أو نطاق التاريخ ثم أعد المحاولة.";
+
+export const INVALID_TIME_RANGE_AR =
+  "نطاق وقت غير صالح: يجب تحديد وقت البداية والنهاية معاً، وأن يكون وقت النهاية بعد وقت البداية.";
+
+export const INVALID_DATE_RANGE_AR =
+  "نطاق تاريخ غير صالح: يجب ألا يكون تاريخ النهاية قبل تاريخ البداية.";
+
+export const WRITE_DENIED_AR =
+  "لا تملك صلاحية التعديل على هذه الكلّية؛ لم يُنفَّذ أي حفظ.";
+
+/** True for a durable overlap refusal, whether raised by a constraint or by the RPC. */
+export function isOverlapConflictError(error: unknown): boolean {
+  const n = normalizeWriteError(error);
+  if (n.code && OVERLAP_CONFLICT_CODES.has(n.code)) return true;
+  const haystack = `${n.message} ${n.details ?? ""} ${n.hint ?? ""}`.toLowerCase();
+  return (
+    haystack.includes("exclusion constraint") ||
+    haystack.includes("availability_overlap") ||
+    haystack.includes("unavailability_overlap")
+  );
+}
+
+/**
+ * Arabic message for an availability write failure, with the raw server text kept in
+ * parentheses so a report or a screenshot stays diagnosable. Never "[object Object]".
+ */
+export function availabilityWriteMessage(error: unknown): string {
+  const raw = readableWriteError(error);
+  if (isOverlapConflictError(error)) return `${OVERLAP_CONFLICT_AR} (${raw})`;
+
+  const n = normalizeWriteError(error);
+  const haystack = `${n.message} ${n.details ?? ""} ${n.hint ?? ""}`.toLowerCase();
+  if (haystack.includes("invalid_time_range")) return `${INVALID_TIME_RANGE_AR} (${raw})`;
+  if (haystack.includes("invalid_date_range")) return `${INVALID_DATE_RANGE_AR} (${raw})`;
+  if (n.code === "42501" || haystack.includes("college access denied")) {
+    return `${WRITE_DENIED_AR} (${raw})`;
+  }
+  return raw;
+}

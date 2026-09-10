@@ -4,6 +4,7 @@ import type { BulkAvailabilityResult, BulkUnavailabilityPlan } from "./active-da
 import { resolveWorkingDays, DEFAULT_WORKING_DAYS, planBulkUnavailability } from "./active-days";
 import {
   AMBIGUOUS_RPC_HINT_AR,
+  availabilityWriteMessage,
   isAmbiguousRpcError,
   isMissingRpcError,
   readableWriteError,
@@ -159,7 +160,7 @@ async function instructorUnavailabilityFallback(input: {
       .from("instructor_availability")
       .insert(rows)
       .select("id");
-    if (insertError) throw new Error(readableWriteError(insertError));
+    if (insertError) throw new Error(availabilityWriteMessage(insertError));
     if ((inserted?.length ?? 0) !== rows.length) {
       throw new Error(
         "تعذّر تأكيد حفظ جميع الأيام المطلوبة؛ أعد تحميل البيانات والتحقق قبل إعادة المحاولة.",
@@ -231,7 +232,7 @@ async function roomUnavailabilityFallback(input: {
       .from("room_unavailability")
       .insert(rows)
       .select("id");
-    if (insertError) throw new Error(readableWriteError(insertError));
+    if (insertError) throw new Error(availabilityWriteMessage(insertError));
     if ((inserted?.length ?? 0) !== rows.length) {
       throw new Error(
         "تعذّر تأكيد حفظ جميع الأيام المطلوبة؛ أعد تحميل البيانات والتحقق قبل إعادة المحاولة.",
@@ -280,7 +281,7 @@ export async function upsertInstructorUnavailabilityBulk(input: {
     if (isAmbiguousRpcError(error)) {
       throw new Error(`${AMBIGUOUS_RPC_HINT_AR} (${readableWriteError(error)})`);
     }
-    if (!isMissingRpcError(error)) throw new Error(readableWriteError(error));
+    if (!isMissingRpcError(error)) throw new Error(availabilityWriteMessage(error));
     return instructorUnavailabilityFallback(input);
   }
   return asResult(data);
@@ -313,7 +314,7 @@ export async function upsertRoomUnavailabilityBulk(input: {
     if (isAmbiguousRpcError(error)) {
       throw new Error(`${AMBIGUOUS_RPC_HINT_AR} (${readableWriteError(error)})`);
     }
-    if (!isMissingRpcError(error)) throw new Error(readableWriteError(error));
+    if (!isMissingRpcError(error)) throw new Error(availabilityWriteMessage(error));
     return roomUnavailabilityFallback(input);
   }
   return asResult(data);
