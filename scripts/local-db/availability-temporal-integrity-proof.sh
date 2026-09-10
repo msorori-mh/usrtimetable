@@ -72,8 +72,8 @@ echo
 echo "== behaviour cases"
 psql -X -q -v ON_ERROR_STOP=1 -f "$CASES" >"$ROOT/cases.log" 2>&1
 CASES_RC=$?
-# psql prefixes NOTICE output with "file:line: NOTICE:", so match the CASE marker itself.
-grep -oE '(###[^\n]*|CASE [0-9.]+ .*=> (PASS|FAIL.*))' "$ROOT/cases.log"
+# psql prefixes NOTICE output with "file:line: NOTICE:", so strip anything before the marker.
+grep -E '^###|CASE [0-9.]+ .*=>' "$ROOT/cases.log" | sed -E 's/^.*(CASE [0-9])/\1/'
 if [ "$CASES_RC" -ne 0 ]; then
   echo "FAIL: case run aborted"; tail -40 "$ROOT/cases.log"; exit 1
 fi
