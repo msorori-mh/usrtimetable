@@ -1,9 +1,42 @@
-# LAUNCH-CLOSURE-03 — durable server-side availability integrity (prepared, NOT applied)
+# LAUNCH-CLOSURE-03 — durable server-side availability integrity (APPLIED BY ROOT)
 
 - Baseline: `8b0797fdb20fba512cf396fb386aef81ce99c2f0` (verified HEAD, clean tree at start)
-- Stage HEAD: `db4bb418bf44dfac5b22302f8943e2e8c4b42187`
-- Production SQL applied: **NO**. Deployment: **NO**. Production data mutated: **NO**.
+- Stage HEAD at hand-off for review: `db4bb418bf44dfac5b22302f8943e2e8c4b42187`
+- Production SQL applied: **YES — by root, not by this agent** (see §1a for exact provenance).
+  The database is therefore **no longer source-only** with respect to this artifact.
+- Deployment: **NO**. Production data mutated: **NO** (row counts unchanged, 0 instructor /
+  1 room, verified by root pre- and post-apply).
 - Credentials: none created, reset, or read from history in this stage.
+- This agent has **not** re-applied and must not re-apply the SQL.
+
+## 1a. Provenance of the production application (recorded from root, agent-unverified)
+
+| Item                | Value                                                                                                                                  |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Artifact applied    | `docs/migrations-proposed/20260910T0025_availability_temporal_integrity_and_bulk_rpc.sql`, **verbatim**, as reviewed at `db4bb418`      |
+| Applied by          | Root operator                                                                                                                          |
+| Mechanism           | Configured Lovable `query_database` — **direct SQL execution**, one transaction, succeeded, no rows returned                            |
+| Migration history   | **NOT registered.** This was not a `supabase/migrations/` file and no history row was created                                            |
+| Root preflight      | read-only: instructor_rows 0, room_rows 1, invalid_room_rows 0, `btree_gist` available, 0 function/constraint name collisions; overlaps arithmetically impossible at 0/1 rows |
+| Root post-verify    | counts unchanged (0 / 1); exactly 2 exclusion constraints present; both RPCs `prosecdef=false` (SECURITY INVOKER); `anon` EXECUTE false, `authenticated` EXECUTE true; all 11 policies on `instructor_availability`, `room_unavailability`, `audit_logs` byte-identical pre/post |
+| Rollback reference  | `docs/migrations-proposed/20260910T0025_rollback.sql` (drops created objects only; deletes no data)                                      |
+
+### Recommended history reconciliation (do not blindly replay old files)
+
+The live schema now contains objects that no file in `supabase/migrations/` accounts for.
+To reconcile without risk:
+
+1. Do **not** replay the July migration files or any earlier availability migration — they
+   predate this design and would fight the new constraints/functions.
+2. Register this change as an already-applied migration: copy the applied artifact **byte for
+   byte** into a new `supabase/migrations/<timestamp>_availability_temporal_integrity_and_bulk_rpc.sql`
+   and mark it applied (`supabase migration repair --status applied <timestamp>`), so no
+   environment tries to execute it a second time.
+3. Because every statement in the artifact is guarded (`IF NOT EXISTS` / `CREATE OR REPLACE`
+   / conditional constraint creation) and proven idempotent on a disposable cluster, an
+   accidental re-execution is a no-op — but repair, not re-execution, is the supported path.
+4. Verify afterwards that `supabase migration list` shows local and remote in sync, and keep
+   the rollback file paired with the registered migration.
 
 ## 1. Artifact paths
 
