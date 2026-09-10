@@ -164,7 +164,8 @@ describe("whole-day closures are not dropped", () => {
 describe("PGRST203 is an ambiguous overload, not a missing function", () => {
   const ambiguous = {
     code: "PGRST203",
-    message: "Could not choose the best candidate function between: public.f(a => text), public.f(a => integer)",
+    message:
+      "Could not choose the best candidate function between: public.f(a => text), public.f(a => integer)",
     details: null,
     hint: null,
   };
@@ -175,9 +176,9 @@ describe("PGRST203 is an ambiguous overload, not a missing function", () => {
   });
 
   test("the message alone is enough, without the code", () => {
-    expect(
-      isAmbiguousRpcError({ message: "could not choose the best candidate function" }),
-    ).toBe(true);
+    expect(isAmbiguousRpcError({ message: "could not choose the best candidate function" })).toBe(
+      true,
+    );
   });
 
   test("a genuinely missing function is still detected", () => {
@@ -208,9 +209,9 @@ describe("schema-cache text does not broadly route errors to client writes", () 
     expect(
       isMissingRpcError({ code: "42P01", message: 'relation "public.nope" does not exist' }),
     ).toBe(false);
-    expect(
-      isMissingRpcError({ code: "42703", message: 'column "nope" does not exist' }),
-    ).toBe(false);
+    expect(isMissingRpcError({ code: "42703", message: 'column "nope" does not exist' })).toBe(
+      false,
+    );
   });
 
   test("permission and constraint failures never fall back", () => {
@@ -229,7 +230,10 @@ describe("fallback preflight and honesty (source assertions)", () => {
     expect(api).toContain('assertResourceInCollege("instructors"');
     expect(api).toContain('assertResourceInCollege("rooms"');
     // Preflight precedes the read/plan/insert sequence in both fallbacks.
-    for (const marker of ['assertResourceInCollege("instructors"', 'assertResourceInCollege("rooms"']) {
+    for (const marker of [
+      'assertResourceInCollege("instructors"',
+      'assertResourceInCollege("rooms"',
+    ]) {
       expect(api.indexOf(marker)).toBeLessThan(api.indexOf("planBulkUnavailability({"));
     }
   });
@@ -252,7 +256,12 @@ describe("fallback preflight and honesty (source assertions)", () => {
   });
 
   test("no privileged client, service role, or SECURITY DEFINER shortcut", () => {
-    for (const forbidden of ["service_role", "client.server", "supabaseAdmin", "SECURITY DEFINER"]) {
+    for (const forbidden of [
+      "service_role",
+      "client.server",
+      "supabaseAdmin",
+      "SECURITY DEFINER",
+    ]) {
       expect(api).not.toContain(forbidden);
     }
   });
