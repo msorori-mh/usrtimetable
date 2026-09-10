@@ -120,8 +120,12 @@ export const LONG_FIXTURE: PrintSessionLike[] = Array.from({ length: 120 }, (_, 
   } satisfies PrintSessionLike;
 });
 
+/**
+ * Program report: requires programId only, so every level of the fixture programme is
+ * printed and the real grouping splits the sheet into one page per level.
+ */
 export const FIXTURE_FILTERS: PrintCenterFilters = {
-  reportType: "level",
+  reportType: "program",
   collegeId: FIXTURE_COLLEGE_ID,
   programId: "fx-prog-1",
   levelId: null,
