@@ -140,6 +140,74 @@ async def main():
                 f"{empty_pages} blank pages",
             )
 
+            # ---- physical page numbering: the @page margin box counters must match the
+            # real PDF page count on the first, a continuation, and the final page.
+            phys = {}
+            for i in range(1, pages + 1):
+                t = strip_format_chars(
+                    subprocess.run(
+                        ["pdftotext", "-f", str(i), "-l", str(i), str(pdf_path), "-"],
+                        capture_output=True,
+                        text=True,
+                    ).stdout
+                )
+                m = re.search(r"صفحة\s+(\d+)\s+من\s+(\d+)", t)
+                phys[i] = (int(m.group(1)), int(m.group(2))) if m else None
+            check(
+                f"{paper} {orientation}: every physical page carries a physical page counter",
+                all(v is not None for v in phys.values()),
+                f"{sum(1 for v in phys.values() if v)}/{pages} pages",
+            )
+            check(
+                f"{paper} {orientation}: first physical page counter is 1 of {pages}",
+                phys.get(1) == (1, pages),
+                str(phys.get(1)),
+            )
+            mid = max(2, pages // 2)
+            check(
+                f"{paper} {orientation}: continuation page {mid} counter is {mid} of {pages}",
+                phys.get(mid) == (mid, pages),
+                str(phys.get(mid)),
+            )
+            check(
+                f"{paper} {orientation}: final physical page counter is {pages} of {pages}",
+                phys.get(pages) == (pages, pages),
+                str(phys.get(pages)),
+            )
+            check(
+                f"{paper} {orientation}: counters are strictly sequential with no gaps",
+                [phys[i][0] for i in range(1, pages + 1) if phys[i]] == list(range(1, pages + 1)),
+                "sequential",
+            )
+            # the in-flow footer must NOT claim physical pages using the logical group index
+            logical = strip_format_chars(
+                await page.eval_on_selector_all(
+                    ".print-center-footer", "els => els.map(e => e.innerText).join(' | ')"
+                )
+            )
+            check(
+                f"{paper} {orientation}: in-flow footer numbers GROUPS, not physical pages",
+                "مجموعة الجدول 1 من" in logical and "صفحة 1 من" not in logical,
+                logical.split("|")[0].strip()[:80],
+            )
+            # group context repeats on every row-bearing physical page
+            ctx_pages = 0
+            for i in range(1, pages + 1):
+                t = strip_format_chars(
+                    subprocess.run(
+                        ["pdftotext", "-f", str(i), "-l", str(i), "-layout", str(pdf_path), "-"],
+                        capture_output=True,
+                        text=True,
+                    ).stdout
+                )
+                if "FX-C" in t and "البرنامج" in t:
+                    ctx_pages += 1
+            check(
+                f"{paper} {orientation}: group context repeats on continuation pages",
+                ctx_pages == data_pages,
+                f"{ctx_pages}/{data_pages} row-bearing pages name their group",
+            )
+
             # rasterise for visual inspection + clipping heuristic
             prefix = OUT / f"page-{paper}-{orientation}"
             subprocess.run(
