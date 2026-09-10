@@ -90,9 +90,7 @@ export function requiredCadenceForComponent(input: {
 
   const family = cadenceFamilyForComponent(input.componentType);
   const pc = input.planCourse;
-  const count = Number(
-    (family === "lab" ? pc?.labs_per_week : pc?.lectures_per_week) ?? 0,
-  );
+  const count = Number((family === "lab" ? pc?.labs_per_week : pc?.lectures_per_week) ?? 0);
   const duration = Number(
     (family === "lab" ? pc?.lab_session_duration : pc?.lecture_session_duration) ?? 0,
   );
@@ -104,7 +102,12 @@ export function requiredCadenceForComponent(input: {
       noteAr: "لا توجد بيانات نمط أسبوعي في الخطة الدراسية لهذا المقرر — تم استنتاج مدة الجلسات.",
     };
   }
-  if (count > 0 && duration > 0 && duration <= MAX_SESSION_HOURS && near(count * duration, assigned)) {
+  if (
+    count > 0 &&
+    duration > 0 &&
+    duration <= MAX_SESSION_HOURS &&
+    near(count * duration, assigned)
+  ) {
     return {
       durations: Array.from({ length: Math.round(count) }, () => duration),
       source: "plan",
@@ -312,9 +315,7 @@ export function nonconformingWarningAr(input: {
   sessions: ExistingSessionLite[];
   requiredDurations: number[];
 }): string {
-  const durations = input.sessions
-    .map((s) => sessionHours(s.start_time, s.end_time))
-    .join("، ");
+  const durations = input.sessions.map((s) => sessionHours(s.start_time, s.end_time)).join("، ");
   const expected = input.requiredDurations.length
     ? `${input.requiredDurations.length}×${input.requiredDurations[0]}`
     : "غير مُعرَّف";
@@ -323,8 +324,7 @@ export function nonconformingWarningAr(input: {
 }
 
 /** Fail-closed stop when the schedule version changed under the run. */
-export const STALE_VERSION_ERROR =
-  "V2_AUTO_STALE_VERSION: تغيّرت نسخة الجدول أثناء التشغيل.";
+export const STALE_VERSION_ERROR = "V2_AUTO_STALE_VERSION: تغيّرت نسخة الجدول أثناء التشغيل.";
 
 export function assertVersionNotStale(result: { stale?: boolean } | null | undefined): void {
   if (result?.stale) throw new Error(STALE_VERSION_ERROR);

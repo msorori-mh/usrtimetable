@@ -4,6 +4,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import {
+  assertVersionNotStale,
   cadenceFamilyForComponent,
   filterCandidateRooms,
   isLocallyBlocked,
@@ -13,6 +14,7 @@ import {
   requiredCadenceForComponent,
   sessionHours,
   splitHoursIntoSessions,
+  STALE_VERSION_ERROR,
 } from "../src/lib/auto-scheduler/session-plan";
 
 const theory4Plan = {
@@ -244,7 +246,19 @@ describe("candidate selection", () => {
     expect(isLocallyBlocked(slot, { roomId: "lab-2", deliveryGroupId: "g1" }, occupied)).toBe(true);
     expect(isLocallyBlocked(slot, { roomId: "lab-2", cohortId: "c9" }, occupied)).toBe(false);
     expect(
-      isLocallyBlocked({ day: 2, start: "08:00:00", end: "10:00:00" }, { roomId: "lab-1" }, occupied),
+      isLocallyBlocked(
+        { day: 2, start: "08:00:00", end: "10:00:00" },
+        { roomId: "lab-1" },
+        occupied,
+      ),
     ).toBe(false);
+  });
+});
+
+describe("fail-closed stop conditions", () => {
+  test("a stale schedule version stops the run instead of writing on", () => {
+    expect(() => assertVersionNotStale({ stale: true })).toThrow(STALE_VERSION_ERROR);
+    expect(() => assertVersionNotStale({ stale: false })).not.toThrow();
+    expect(() => assertVersionNotStale(null)).not.toThrow();
   });
 });

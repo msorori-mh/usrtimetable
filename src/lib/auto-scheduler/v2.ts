@@ -237,7 +237,8 @@ export async function runV2AutoSchedule(params: {
     const groupLabel = `${item.course_code}${item.group_code ? ` / ${item.group_code}` : ""}`;
     if (cadence.noteAr) warnings.push(`${groupLabel}: ${cadence.noteAr}`);
 
-    const existing = existingByAssignment.get(`${item.teaching_assignment_id}|${item.delivery_group_id}`) ?? [];
+    const existing =
+      existingByAssignment.get(`${item.teaching_assignment_id}|${item.delivery_group_id}`) ?? [];
     const plan = planRemainingSessions({
       requiredDurations: cadence.durations,
       existing,
@@ -261,12 +262,11 @@ export async function runV2AutoSchedule(params: {
     const usedDays = [...plan.usedDays];
     const roomRequirement = {
       roomTypeId: component?.required_room_type_id ?? null,
-      roomTypeName:
-        component?.required_room_type_id
-          ? null
-          : ((item.component_type === "practical"
-              ? planCourse?.required_room_type_for_lab
-              : planCourse?.required_room_type_for_lecture) ?? null),
+      roomTypeName: component?.required_room_type_id
+        ? null
+        : ((item.component_type === "practical"
+            ? planCourse?.required_room_type_for_lab
+            : planCourse?.required_room_type_for_lecture) ?? null),
       expectedStudents: item.expected_students,
     };
     let candidateRooms = filterCandidateRooms(rooms as RoomLite[], roomRequirement);
