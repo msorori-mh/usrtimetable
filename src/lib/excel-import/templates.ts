@@ -1,6 +1,7 @@
 import type { TemplateDef } from "./types";
 import { escapeSpreadsheetCell } from "./formula-escape";
 import { IMPORT_CONTRACT_VERSION, PILOT_STUDY_SYSTEMS, TA_V2_COMPONENT_TYPES } from "./registry";
+import { EMPLOYMENT_TYPE_IMPORT_VALUES } from "../instructor-metadata";
 
 export const TEMPLATES: Record<string, TemplateDef> = {
   instructors: {
