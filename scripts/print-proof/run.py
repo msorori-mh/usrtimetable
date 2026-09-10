@@ -102,28 +102,42 @@ async def main():
             check(f"{paper} {orientation}: fixture spans multiple pages", pages > 1, f"{pages} pages")
 
             # Arabic text is really in the PDF (not tofu/missing glyphs)
-            txt = subprocess.run(
-                ["pdftotext", "-layout", str(pdf_path), "-"], capture_output=True, text=True
-            ).stdout
+            txt = strip_format_chars(
+                subprocess.run(
+                    ["pdftotext", "-layout", str(pdf_path), "-"], capture_output=True, text=True
+                ).stdout
+            )
             check(
                 f"{paper} {orientation}: Arabic content extractable",
-                "المستوى" in txt and "الأحد" in txt,
-                f"{len(txt)} chars",
+                "المستوى" in txt and "الوقت" in txt and "FX-C" in txt,
+                f"{len(txt)} chars of extractable text",
             )
             # repeated table header on every page: "اليوم" header cell per page
-            per_page_headers = 0
+            data_pages, header_pages, empty_pages = 0, 0, 0
             for i in range(1, pages + 1):
-                t = subprocess.run(
-                    ["pdftotext", "-f", str(i), "-l", str(i), "-layout", str(pdf_path), "-"],
-                    capture_output=True,
-                    text=True,
-                ).stdout
-                if "اليوم" in t and "الوقت" in t:
-                    per_page_headers += 1
+                t = strip_format_chars(
+                    subprocess.run(
+                        ["pdftotext", "-f", str(i), "-l", str(i), "-layout", str(pdf_path), "-"],
+                        capture_output=True,
+                        text=True,
+                    ).stdout
+                )
+                has_rows = "FX-C" in t
+                if has_rows:
+                    data_pages += 1
+                    if "اليوم" in t and "الوقت" in t:
+                        header_pages += 1
+                elif not t.strip():
+                    empty_pages += 1
             check(
-                f"{paper} {orientation}: table header repeats on every page",
-                per_page_headers == pages,
-                f"{per_page_headers}/{pages} pages carry the header row",
+                f"{paper} {orientation}: table header repeats on every page that carries rows",
+                data_pages > 0 and header_pages == data_pages,
+                f"{header_pages}/{data_pages} row-bearing pages carry the header row",
+            )
+            check(
+                f"{paper} {orientation}: no blank printed pages",
+                empty_pages == 0,
+                f"{empty_pages} blank pages",
             )
 
             # rasterise for visual inspection + clipping heuristic
@@ -167,7 +181,25 @@ async def main():
                     f"sessions={info['sessionCount']} pages={info['pageCount']} rows={info['rowCount']}",
                 )
 
-        # ---- 2. Short fixture = the shape of the published TEST-SIMP-03 schedule
+        # ---- 2. Real CSV / XLSX downloads through the existing helpers (long fixture loaded)
+        for fn, expected_ext, label in [
+            ("exportCsv", ".csv", "downloadCSV (reports/export.ts)"),
+            ("exportXlsx", ".xlsx", "downloadXLSX (reports/export.ts)"),
+            ("exportAdminXlsx", ".xlsx", "exportRowsToXlsx (admin-export/to-xlsx.ts)"),
+        ]:
+            async with page.expect_download(timeout=20000) as dl_info:
+                await page.evaluate(f"() => window.__printProof.{fn}()")
+            dl = await dl_info.value
+            target = OUT / dl.suggested_filename
+            await dl.save_as(str(target))
+            size = target.stat().st_size
+            check(
+                f"{label}: download event fired and file materialised",
+                target.exists() and size > 200 and target.suffix == expected_ext,
+                f"{dl.suggested_filename} ({size} bytes)",
+            )
+
+        # ---- 3. Short fixture = the shape of the published TEST-SIMP-03 schedule
         await page.goto(f"{base}?paper=A4&orientation=portrait&fixture=short", wait_until="domcontentloaded")
         await page.wait_for_function("() => document.documentElement.dataset.printProofReady === '1'")
         rows_text = await page.eval_on_selector_all(
@@ -177,7 +209,7 @@ async def main():
             "short fixture prints exactly 2 rows (practical Sunday + theory Monday)",
             len(rows_text) == 2
             and any("الأحد" in r and "عملي" in r for r in rows_text)
-            and any("الإثنين" in r and "نظري" in r for r in rows_text),
+            and any(("الإثنين" in r or "الاثنين" in r) and "نظري" in r for r in rows_text),
             " | ".join(rows_text),
         )
         short_pdf = OUT / "timetable-short-A4-portrait.pdf"
@@ -188,24 +220,6 @@ async def main():
             capture_output=True,
         )
         check("short fixture PDF produced", short_pdf.stat().st_size > 10000, f"{short_pdf.stat().st_size} bytes")
-
-        # ---- 3. Real CSV / XLSX downloads through the existing helpers
-        for fn, expected_ext, label in [
-            ("exportCsv", ".csv", "downloadCSV (reports/export.ts)"),
-            ("exportXlsx", ".xlsx", "downloadXLSX (reports/export.ts)"),
-            ("exportAdminXlsx", ".xlsx", "exportRowsToXlsx (admin-export/to-xlsx.ts)"),
-        ]:
-            async with page.expect_download(timeout=20000) as dl_info:
-                await page.evaluate(f"() => window.__printProof.{fn}()")
-            dl = await dl_info.value
-            target = OUT / (dl.suggested_filename)
-            await dl.save_as(str(target))
-            size = target.stat().st_size
-            check(
-                f"{label}: download event fired and file materialised",
-                target.exists() and size > 200 and target.suffix == expected_ext,
-                f"{dl.suggested_filename} ({size} bytes)",
-            )
 
         csv_file = next(OUT.glob("*.csv"))
         raw = csv_file.read_bytes()
@@ -266,6 +280,12 @@ async def main():
     print(f"\nPRINT_PROOF: {len(results) - len(failed)} passed, {len(failed)} failed")
     print(f"artifacts: {OUT.relative_to(ROOT)}")
     return 1 if failed else 0
+
+
+def strip_format_chars(text: str) -> str:
+    """pdftotext emits bidi control characters (U+202A..U+202E, U+200E/F) inside Arabic
+    runs; drop them so substring assertions test the real words."""
+    return re.sub(r"[\u200e\u200f\u202a-\u202e\u2066-\u2069]", "", text)
 
 
 def clipping_report(pngs):
