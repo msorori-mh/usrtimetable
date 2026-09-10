@@ -16,20 +16,38 @@ CASES="scripts/local-db/availability-cases.sql"
 
 unset PGHOST PGPORT PGUSER PGPASSWORD PGDATABASE PGSERVICE PGSSLMODE
 
-# PostgreSQL refuses to run as root. Re-exec once as an unprivileged uid.
-# initdb also needs a resolvable passwd entry for that uid.
-UNPRIV_UID="${LOCAL_PG_UID:-65534}"
-UNPRIV_NAME="pgproof"
-if [ "$(id -u)" = "0" ] && [ -z "${AVAIL_PROOF_UNPRIV:-}" ]; then
-  WORK="$(mktemp -d /tmp/availability-proof-work.XXXXXX)"
-  chmod 777 "$WORK"
-  if ! getent passwd "$UNPRIV_UID" >/dev/null 2>&1; then
-    echo "${UNPRIV_NAME}:x:${UNPRIV_UID}:${UNPRIV_UID}:availability proof:${WORK}:/bin/bash" >> /etc/passwd
-    echo "${UNPRIV_NAME}:x:${UNPRIV_UID}:" >> /etc/group
-    echo "== added temporary passwd entry ${UNPRIV_NAME} (uid ${UNPRIV_UID}) for initdb"
+# PostgreSQL refuses to run as root, and initdb needs a resolvable passwd entry for the uid
+# it runs as. This runner therefore re-execs once as an EXISTING unprivileged account and
+# NEVER modifies system state: it does not write /etc/passwd or /etc/group, and it does not
+# change the caller's HOME (HOME/TMPDIR are set only in the environment of the child process,
+# via `env`, and point at a disposable directory that is removed on exit).
+#
+# Set LOCAL_PG_UID to choose the account explicitly. If no usable unprivileged account exists,
+# the runner exits with SKIP instead of creating one.
+pick_unpriv_uid() {
+  if [ -n "${LOCAL_PG_UID:-}" ]; then
+    getent passwd "$LOCAL_PG_UID" >/dev/null 2>&1 && { echo "$LOCAL_PG_UID"; return 0; }
+    return 1
   fi
-  export AVAIL_PROOF_UNPRIV=1 HOME="$WORK" TMPDIR="$WORK"
-  exec setpriv --reuid="$UNPRIV_UID" --regid="$UNPRIV_UID" --clear-groups /bin/bash "$0" "$@"
+  getent passwd | awk -F: '$3 >= 1000 && $3 != 65534 { print $3; exit }'
+}
+
+if [ "$(id -u)" = "0" ] && [ -z "${AVAIL_PROOF_UNPRIV:-}" ]; then
+  UNPRIV_UID="$(pick_unpriv_uid || true)"
+  if [ -z "$UNPRIV_UID" ]; then
+    echo "SKIP: no existing unprivileged account to run PostgreSQL as."
+    echo "      Set LOCAL_PG_UID to an existing uid, or run this script as a non-root user."
+    echo "      (This runner deliberately does not create system accounts.)"
+    exit 2
+  fi
+  UNPRIV_HOME="$(mktemp -d "${TMPDIR:-/tmp}/availability-proof-home.XXXXXX")"
+  chmod 700 "$UNPRIV_HOME"
+  chown "$UNPRIV_UID" "$UNPRIV_HOME" 2>/dev/null || chmod 777 "$UNPRIV_HOME"
+  echo "== re-exec as existing uid $UNPRIV_UID ($(getent passwd "$UNPRIV_UID" | cut -d: -f1)); disposable HOME $UNPRIV_HOME"
+  # `env` scopes HOME/TMPDIR to the child only; the caller's environment is untouched.
+  exec setpriv --reuid="$UNPRIV_UID" --regid="$UNPRIV_UID" --clear-groups \
+    env AVAIL_PROOF_UNPRIV=1 AVAIL_PROOF_HOME="$UNPRIV_HOME" \
+    HOME="$UNPRIV_HOME" TMPDIR="$UNPRIV_HOME" /bin/bash "$0" "$@"
 fi
 
 ROOT="$(mktemp -d "${TMPDIR:-/tmp}/availability-proof.XXXXXX")"
