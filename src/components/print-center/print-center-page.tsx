@@ -478,7 +478,7 @@ export function PrintCenterPage(props: { versionId: string }) {
                 setReportType(v as PrintReportType);
                 if (v === "room" || v === "instructor") setStudySystem("all");
                 if (v === "student" && studySystem === "all") setStudySystem("regular");
-              }
+              }}
               items={(Object.keys(REPORT_TYPE_LABELS_AR) as PrintReportType[]).map((k) => ({
                 id: k,
                 name: REPORT_TYPE_LABELS_AR[k],
