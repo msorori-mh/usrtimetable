@@ -68,7 +68,7 @@ Evidence classes: **S** = source/unit assertion, **I** = authenticated integrati
 | 1 | Prettier (changed files only) | S | PASS | `bunx prettier --write` on the 6 changed files |
 | 2 | Typecheck | S | PASS | `bunx tsgo --noEmit` — no output |
 | 3 | Focused lint | S | PASS | `bunx eslint src/lib/availability src/routes/_authenticated/route.tsx` — no output |
-| 4 | Unit/behaviour tests | S | PASS | `bun test` → **120 pass / 0 fail, 379 expect() calls, 16 files** |
+| 4 | Unit/behaviour tests | S | PASS | `bun test` → **124 pass / 0 fail, 396 expect() calls, 16 files** |
 | 5 | Harness suite | S | PASS | `node tests/harness/run.mjs` → **68 passed, 0 failed** |
 | 6 | Build | S | PASS | build log entry `build OK` |
 | 7 | Date-window duplicate semantics | S | PASS | `tests/launch-closure-02.test.ts` — disjoint window is not "unchanged" |
@@ -78,23 +78,34 @@ Evidence classes: **S** = source/unit assertion, **I** = authenticated integrati
 | 11 | College-ownership preflight before write | S | PASS | same file — preflight precedes plan and insert in both fallback bodies |
 | 12 | Cross-college FK/trigger consistency | I (DB introspection) | PASS | trigger + function bodies quoted in §3 |
 | 13 | Overlap rejection under concurrency | I | **BLOCKED** | no DB constraint exists; cannot be proven and is not claimed. Requires PART B of the proposal |
-| 14 | Actual persistence by a college admin (instructor + room save) | I | **BLOCKED** | not executed in this stage |
-| 15 | Print/PDF output of an approved timetable (RTL, page breaks, no clipping) | R | **BLOCKED** | CSS rules asserted in source only; no rendered PDF captured |
-| 16 | Deployment | — | **HOLD** | intentionally not deployed |
+| 14 | Actual persistence by a college admin (instructor + room save) | I | **BLOCKED** | not executed. The reviewer's authenticated session confirmed the lecturer currently has **zero** unavailability rows, i.e. the pre-fix defect state; no write was performed by anyone, so the corrected save path is still unproven at runtime |
+| 15 | Print screen renders the approved schedule | I (reviewer, read-only) | **PASS (partial)** | schedule `5b838e0c-5cad-4822-a8bb-73d9641bbcd9`, published Sept 8, shows both sessions — practical Sunday 08:00–10:00 and theory Monday 08:00–10:00 — once program/level/system are selected. Covers "approved → publish → print reaches the screen with correct data" |
+| 16 | Rendered PDF proof (RTL, repeated headers, page breaks, no clipping) | R | **BLOCKED** | the print CSS is asserted in source only; no exported PDF was inspected |
+| 17 | `normalizeWriteError` keeps `code`/`details`/`hint` on real `Error` subclasses | S | PASS | `tests/launch-closure-02.test.ts` — `FakePostgrestError extends Error` with all three fields survives normalization and appears in the flat toast text |
+| 18 | Deployment | — | **HOLD** | intentionally not deployed |
+
+### Correction to the previous report text
+
+The `errors.ts` header previously asserted that `PostgrestError` is **not** an `Error` instance. That is wrong and has been removed. More importantly, the `instanceof Error` branch of `normalizeWriteError` **discarded `details` and `hint`** and read `code` only when it was already a string — so a genuine `PostgrestError` lost exactly the diagnostics the report claimed were preserved. Both branches now read the same field set through `pickString`, and gate 17 tests a real `Error` subclass rather than a plain object.
 
 ## 6. Changed files
 
 ```
 src/lib/availability/active-days.ts        planner: date window, whole-day closures, sameNullableDate
-src/lib/availability/errors.ts             PGRST203 reclassified; narrow missing-function detection
+src/lib/availability/errors.ts             PGRST203 reclassified; narrow missing-function detection;
+                                           Error-subclass branch now preserves code/details/hint;
+                                           inaccurate "not an Error" comment removed
 src/lib/availability/bulk-api.ts           ownership preflight, window-aware room path, ambiguity guard,
                                            insert row-count confirmation, Arabic failure messages
 src/routes/_authenticated/route.tsx        rejected-session recovery UI, sign-out revocation
 tests/launch-closure-01.test.ts            updated to the corrected PGRST203 expectation and new code shape
-tests/launch-closure-02.test.ts            new: 23 behaviour/contract tests for this stage
+tests/launch-closure-02.test.ts            new: 27 behaviour/contract tests for this stage
 docs/migrations-proposed/20260910T0000_availability_bulk_rpc_and_overlap_integrity.sql   new proposal
 docs/LAUNCH-CLOSURE-02.md                  this report
 ```
+
+No credential was reset, no password from project history was used, and no user was impersonated. The reviewer's runtime observations in gates 14–15 were read-only.
+
 
 Auth / RLS / SQL impact: **none applied.** No policy, grant, trigger, function, or row was changed. No migration was executed.
 
