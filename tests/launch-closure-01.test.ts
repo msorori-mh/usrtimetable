@@ -42,7 +42,8 @@ describe("LAUNCH-CLOSURE-01 gap 1 — availability write error normalization", (
 
   test("missing-RPC detection matches PostgREST codes and messages only", () => {
     expect(isMissingRpcError({ code: "PGRST202", message: "x" })).toBe(true);
-    expect(isMissingRpcError({ code: "PGRST203", message: "x" })).toBe(true);
+    // PGRST203 = ambiguous overload; the function EXISTS (see launch-closure-02 tests).
+    expect(isMissingRpcError({ code: "PGRST203", message: "x" })).toBe(false);
     expect(isMissingRpcError({ code: "42883", message: "x" })).toBe(true);
     expect(isMissingRpcError({ message: "Could not find the function foo" })).toBe(true);
     // A permission denial must NOT be mistaken for a missing function, otherwise
