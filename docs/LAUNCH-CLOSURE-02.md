@@ -116,5 +116,5 @@ Rollback reference: baseline `5201d1efaf7f6b2d73cca23f62f4bb23e43f7dd1` (LAUNCH-
 1. **Apply PART A of the proposal** (the two reviewed functions) so writes are atomic server-side. Until then the client fallback is the only path, and it cannot be transactional.
 2. **Apply PART B** (exclusion constraints + partial unique index + time-order check) to make overlap uniqueness durable. Blocked on the preflight overlap queries returning zero rows on production.
 3. **Map `23P01` / `23505` to the Arabic overlap message** in the client before PART B lands, otherwise users see a raw Postgres error.
-4. **Authenticated integration run** for gates 13–14 by a college admin, verifying the row actually exists after save and that a failure never shows success.
-5. **Rendered print proof** for gate 15: one approved timetable exported to PDF and inspected for RTL, repeated headers, no clipped columns, and the identification block.
+4. **Authenticated write run** for gate 14: a college admin saves one lecturer unavailability window and then re-reads it, confirming the row exists, that the date window is stored as requested, and that a failure never shows success. The lecturer in TEST-SIMP-03 has zero rows today, so this is a clean starting point.
+5. **Rendered PDF proof** for gate 16, exporting schedule `5b838e0c-5cad-4822-a8bb-73d9641bbcd9` (already published) and inspecting RTL, repeated headers, no clipped columns, and the identification block. Gate 15 already confirms the on-screen data is correct.
