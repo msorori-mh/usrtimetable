@@ -65,6 +65,13 @@ interface Instructor {
   instructor_type_id: string | null;
 }
 
+interface InstructorTypeRow {
+  id: string;
+  code: string | null;
+  name_ar: string;
+  is_external: boolean | null;
+}
+
 const RANKS = ACADEMIC_RANKS;
 
 function emptyForm() {
@@ -242,11 +249,8 @@ function InstructorsPage() {
   };
 
   const deptMap = new Map((depts ?? []).map((d) => [d.id, d.name]));
-  const typeMap = new Map(
-    ((types ?? []) as Array<{ id: string; code: string | null; is_external: boolean | null }>).map(
-      (t) => [t.id, t],
-    ),
-  );
+  const typeRows = (types ?? []) as InstructorTypeRow[];
+  const typeMap = new Map(typeRows.map((t) => [t.id, t]));
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -435,7 +439,7 @@ function InstructorsPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="_none">— غير محدد —</SelectItem>
-                        {(types ?? []).map((t: any) => (
+                        {typeRows.map((t) => (
                           <SelectItem key={t.id} value={t.id}>
                             {t.name_ar}
                           </SelectItem>
@@ -444,10 +448,8 @@ function InstructorsPage() {
                     </Select>
                   </div>
                   {(() => {
-                    const selected = (types ?? []).find(
-                      (t: any) => t.id === form.instructor_type_id,
-                    );
-                    const cat = categorizeInstructor(selected as any);
+                    const selected = typeRows.find((t) => t.id === form.instructor_type_id);
+                    const cat = categorizeInstructor(selected ?? null);
                     const isPerm = cat === "permanent";
                     const tone = isPerm
                       ? "bg-sky-500/10 text-sky-700 border-sky-500/20"
