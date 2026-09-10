@@ -11,8 +11,11 @@
 export const MISSING_RPC_HINT_AR =
   "خدمة الحفظ الجماعي غير متوفرة على الخادم حالياً؛ تم استخدام مسار الحفظ المباشر المكافئ بنفس الصلاحيات.";
 
-/** PostgREST codes returned when an RPC (stored function) does not exist. */
-const MISSING_RPC_CODES = new Set(["PGRST202", "PGRST203", "42883"]);
+/**
+ * PostgREST / Postgres codes that mean the function is genuinely NOT deployed.
+ * PGRST203 is excluded on purpose: it means an ambiguous overload (function exists).
+ */
+const MISSING_RPC_CODES = new Set(["PGRST202", "42883"]);
 
 export interface NormalizedWriteError {
   message: string;
@@ -94,16 +97,35 @@ export function readableWriteError(error: unknown): string {
 }
 
 /**
- * True when the failure means "this stored function is not deployed on the server".
- * Used to fall back to the equivalent RLS-gated direct write path.
+ * LAUNCH-CLOSURE-02 correction: PGRST203 is "could not choose the best candidate
+ * function" — an AMBIGUOUS OVERLOAD, i.e. the function DOES exist. Routing it to a
+ * client-side write path would bypass a deployed server function, so it is treated
+ * as a hard error that must be reported, never as "missing".
+ */
+export function isAmbiguousRpcError(error: unknown): boolean {
+  const n = normalizeWriteError(error);
+  if (n.code === "PGRST203") return true;
+  const haystack = `${n.message} ${n.details ?? ""} ${n.hint ?? ""}`.toLowerCase();
+  return haystack.includes("could not choose the best candidate function");
+}
+
+export const AMBIGUOUS_RPC_HINT_AR =
+  "توجد أكثر من نسخة من دالة الحفظ على الخادم (تعارض في التعريف)؛ لم يُنفَّذ أي حفظ. يلزم تصحيح تعريف الدالة على الخادم.";
+
+/**
+ * True ONLY when the failure means "this stored function is not deployed on the
+ * server". Deliberately narrow: an ambiguous overload, a permission error, a
+ * constraint violation, or any unrelated "... does not exist" / "schema cache"
+ * text must NOT be routed to the direct-write fallback.
  */
 export function isMissingRpcError(error: unknown): boolean {
+  if (isAmbiguousRpcError(error)) return false;
   const n = normalizeWriteError(error);
   if (n.code && MISSING_RPC_CODES.has(n.code)) return true;
+  if (n.code && n.code !== "PGRST202" && n.code !== "42883") return false;
   const haystack = `${n.message} ${n.details ?? ""} ${n.hint ?? ""}`.toLowerCase();
   return (
     haystack.includes("could not find the function") ||
-    haystack.includes("does not exist") ||
-    haystack.includes("schema cache")
+    /function\s+[^\s]*\S*\s*.*does not exist/.test(haystack)
   );
 }

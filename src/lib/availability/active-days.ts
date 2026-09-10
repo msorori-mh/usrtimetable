@@ -34,21 +34,54 @@ export function isValidTimeRange(start: string, end: string): boolean {
 }
 
 /**
- * LAUNCH-CLOSURE-01 — pure planner shared by the RPC path and the direct-write
- * fallback path. Validates EVERY target day before any row is emitted, so an
- * overlap on one day rejects the whole request (no partial application).
+ * LAUNCH-CLOSURE-02 — pure planner mirroring the authoritative SQL source
+ * `supabase/migrations/20260720120000_source_only_availability_all_active_days.sql`.
+ *
+ * Authoritative semantics reproduced here, per target day:
+ *   1. "unchanged" requires an EXACT row match. For rooms the exact match
+ *      includes the validity window (start_date / end_date compared with SQL
+ *      `IS NOT DISTINCT FROM`), so two disjoint date windows are NOT duplicates.
+ *   2. "overlap" is evaluated on rows with non-null times only, and — like the
+ *      SQL — ignores the date window, so an overlapping time on the same weekday
+ *      rejects the whole request instead of reporting a false "unchanged".
+ *   3. Every target day is validated BEFORE any row is emitted (all-or-nothing).
+ *
+ * Deliberate divergence, documented: rows that block the whole day (null time,
+ * or a null weekday meaning "every day") are invisible to the SQL comparison.
+ * Silently inserting a redundant window under such a closure would report a
+ * success that changes nothing meaningful, so the planner fails closed with
+ * `all_day_block` and the caller must surface it.
  */
+export type ExistingUnavailabilityWindow = {
+  day_of_week: number | null;
+  start_time: string | null;
+  end_time: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+};
+
 export type BulkUnavailabilityPlan =
   | { ok: true; daysToCreate: number[]; daysUnchanged: number[]; daysTargeted: number[] }
   | { ok: false; reason: "invalid_time" }
-  | { ok: false; reason: "overlap"; conflictDay: number };
+  | { ok: false; reason: "overlap"; conflictDay: number }
+  | { ok: false; reason: "all_day_block"; conflictDay: number };
+
+/** SQL `IS NOT DISTINCT FROM` for nullable date columns. */
+export function sameNullableDate(a: string | null | undefined, b: string | null | undefined) {
+  const norm = (v: string | null | undefined) => (v ? v.slice(0, 10) : null);
+  return norm(a) === norm(b);
+}
 
 export function planBulkUnavailability(input: {
   activeDays: number[];
   dayOfWeek: number | null;
   startTime: string;
   endTime: string;
-  existing: Array<{ day_of_week: number; start_time: string; end_time: string }>;
+  /** Room path only: part of the exact-match key, mirroring the SQL. */
+  compareDates?: boolean;
+  startDate?: string | null;
+  endDate?: string | null;
+  existing: ExistingUnavailabilityWindow[];
 }): BulkUnavailabilityPlan {
   if (!isValidTimeRange(input.startTime, input.endTime)) {
     return { ok: false, reason: "invalid_time" };
@@ -68,14 +101,33 @@ export function planBulkUnavailability(input: {
 
   // Pre-validate ALL days before any DML.
   for (const day of daysTargeted) {
-    const sameDay = input.existing.filter((e) => e.day_of_week === day);
-    const exact = sameDay.some((e) => hhmm(e.start_time) === start && hhmm(e.end_time) === end);
+    const rowsForDay = input.existing.filter((e) => e.day_of_week === day);
+    // A null weekday row applies to every day; a null time means the whole day.
+    const blocksWholeDay = input.existing.some(
+      (e) =>
+        (e.day_of_week === null || e.day_of_week === day) &&
+        (e.start_time === null || e.end_time === null),
+    );
+    if (blocksWholeDay) return { ok: false, reason: "all_day_block", conflictDay: day };
+
+    const timed = rowsForDay.filter((e) => e.start_time !== null && e.end_time !== null);
+
+    const exact = timed.some(
+      (e) =>
+        hhmm(e.start_time as string) === start &&
+        hhmm(e.end_time as string) === end &&
+        (input.compareDates !== true ||
+          (sameNullableDate(e.start_date, input.startDate) &&
+            sameNullableDate(e.end_date, input.endDate))),
+    );
     if (exact) {
       daysUnchanged.push(day);
       continue;
     }
-    const conflict = sameDay.find((e) =>
-      timesOverlap(hhmm(e.start_time), hhmm(e.end_time), start, end),
+
+    // Mirrors the SQL overlap probe: time-based, date window not considered.
+    const conflict = timed.find((e) =>
+      timesOverlap(hhmm(e.start_time as string), hhmm(e.end_time as string), start, end),
     );
     if (conflict) return { ok: false, reason: "overlap", conflictDay: day };
     daysToCreate.push(day);
