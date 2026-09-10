@@ -12,7 +12,13 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 
-import { PRINT_PAGE_STYLE_ELEMENT_ID, printPageStyleCss } from "@/lib/print-center/page-style";
+import {
+  PRINT_PAGE_STYLE_ELEMENT_ID,
+  PRINT_PHYSICAL_PAGE_PREFIX_AR,
+  PRINT_PHYSICAL_PAGE_SEPARATOR_AR,
+  printPageStyleCss,
+} from "@/lib/print-center/page-style";
+import { printGroupCounterLabelAr } from "@/lib/print-center/types";
 
 const read = (p: string) => readFileSync(p, "utf8");
 const ENTRY = read("scripts/print-proof/entry.tsx");
@@ -23,10 +29,37 @@ const STYLES = read("src/styles.css");
 
 describe("printed page box is a single source of truth", () => {
   test("printPageStyleCss emits a real @page rule per paper size and orientation", () => {
-    expect(printPageStyleCss("A4", "portrait")).toContain("@page { size: A4 portrait;");
-    expect(printPageStyleCss("A3", "landscape")).toContain("@page { size: A3 landscape;");
+    expect(printPageStyleCss("A4", "portrait")).toContain("size: A4 portrait;");
+    expect(printPageStyleCss("A3", "landscape")).toContain("size: A3 landscape;");
     expect(printPageStyleCss("A4", "portrait")).toContain("margin: 1.2cm 1.5cm");
     expect(PRINT_PAGE_STYLE_ELEMENT_ID).toBe("print-center-page-style");
+  });
+
+  test("physical page numbers come from the print engine page counters", () => {
+    const css = printPageStyleCss("A3", "landscape");
+    expect(css).toContain("@bottom-center");
+    expect(css).toContain("counter(page)");
+    expect(css).toContain("counter(pages)");
+    expect(css).toContain(PRINT_PHYSICAL_PAGE_PREFIX_AR);
+    expect(css).toContain(PRINT_PHYSICAL_PAGE_SEPARATOR_AR);
+  });
+
+  test("the in-flow footer numbers logical schedule groups, never physical pages", () => {
+    expect(printGroupCounterLabelAr(1, 8)).toBe("مجموعة الجدول 1 من 8");
+    expect(printGroupCounterLabelAr(1, 8)).not.toContain("صفحة");
+    const sheet = read("src/components/print-center/print-sheet.tsx");
+    expect(sheet).toContain("printGroupCounterLabelAr(meta.pageIndex, meta.pageCount)");
+    expect(sheet).not.toContain("صفحة {meta.pageIndex}");
+    expect(sheet).toContain("print-center-context-row");
+  });
+
+  test("the runner asserts rendered counters against the real PDF page count", () => {
+    expect(RUNNER).toContain("every physical page carries a physical page counter");
+    expect(RUNNER).toContain("first physical page counter is 1 of");
+    expect(RUNNER).toContain("final physical page counter is");
+    expect(RUNNER).toContain("counters are strictly sequential with no gaps");
+    expect(RUNNER).toContain("in-flow footer numbers GROUPS, not physical pages");
+    expect(RUNNER).toContain("group context repeats on continuation pages");
   });
 
   test("the print centre injects the shared helper instead of an inline duplicate", () => {

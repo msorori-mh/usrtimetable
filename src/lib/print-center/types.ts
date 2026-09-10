@@ -143,3 +143,12 @@ export const PRINT_PUBLISHED_ENDORSEMENT_AR =
   "اعتماد رسمي وفق آخر نسخة منشورة في المنصة — للقراءة والطباعة فقط.";
 
 export const PRINT_DRAFT_WATERMARK_AR = "مسودة — غير معتمدة للنشر";
+
+/**
+ * LOGICAL schedule-group numbering shown in the in-flow footer. It is deliberately NOT
+ * worded as "صفحة", because one group can span several physical sheets; the physical page
+ * number comes from the `@page` margin box (see print-center/page-style.ts).
+ */
+export function printGroupCounterLabelAr(groupIndex: number, groupCount: number): string {
+  return `مجموعة الجدول ${groupIndex} من ${groupCount}`;
+}
