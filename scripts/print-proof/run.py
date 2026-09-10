@@ -191,6 +191,11 @@ async def main():
                 logical.split("|")[0].strip()[:80],
             )
             # group context repeats on every row-bearing physical page
+            ctx_token = strip_format_chars(
+                await page.eval_on_selector_all(
+                    ".print-center-context-row th", "els => els[0] ? els[0].innerText : ''"
+                )
+            ).strip()[:12]
             ctx_pages = 0
             for i in range(1, pages + 1):
                 t = strip_format_chars(
@@ -200,12 +205,12 @@ async def main():
                         text=True,
                     ).stdout
                 )
-                if "FX-C" in t and "البرنامج" in t:
+                if "FX-C" in t and ctx_token and ctx_token in t:
                     ctx_pages += 1
             check(
                 f"{paper} {orientation}: group context repeats on continuation pages",
                 ctx_pages == data_pages,
-                f"{ctx_pages}/{data_pages} row-bearing pages name their group",
+                f"{ctx_pages}/{data_pages} row-bearing pages name their group ({ctx_token})",
             )
 
             # rasterise for visual inspection + clipping heuristic
