@@ -229,12 +229,23 @@ describe("fallback preflight and honesty (source assertions)", () => {
     expect(api).toContain("data.college_id !== collegeId");
     expect(api).toContain('assertResourceInCollege("instructors"');
     expect(api).toContain('assertResourceInCollege("rooms"');
-    // Preflight precedes the read/plan/insert sequence in both fallbacks.
-    for (const marker of [
-      'assertResourceInCollege("instructors"',
-      'assertResourceInCollege("rooms"',
-    ]) {
-      expect(api.indexOf(marker)).toBeLessThan(api.indexOf("planBulkUnavailability({"));
+    // Preflight precedes the read/plan/insert sequence inside EACH fallback body.
+    const bodies = [
+      api.slice(
+        api.indexOf("async function instructorUnavailabilityFallback"),
+        api.indexOf("async function roomUnavailabilityFallback"),
+      ),
+      api.slice(
+        api.indexOf("async function roomUnavailabilityFallback"),
+        api.indexOf("export async function upsertInstructorUnavailabilityBulk"),
+      ),
+    ];
+    for (const body of bodies) {
+      expect(body).toContain("assertResourceInCollege");
+      expect(body.indexOf("assertResourceInCollege")).toBeLessThan(
+        body.indexOf("planBulkUnavailability({"),
+      );
+      expect(body.indexOf("assertResourceInCollege")).toBeLessThan(body.indexOf(".insert(rows)"));
     }
   });
 
