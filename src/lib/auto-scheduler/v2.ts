@@ -12,7 +12,6 @@ import {
   orderSlotsByDistinctDay,
   planRemainingSessions,
   requiredCadenceForComponent,
-  sessionHours,
   type CandidateSlot,
   type ExistingSessionLite,
   type OccupiedInterval,
@@ -444,5 +443,3 @@ export async function runV2AutoSchedule(params: {
     skippedLockedSessions: 0,
   };
 }
-
-export { sessionHours };
