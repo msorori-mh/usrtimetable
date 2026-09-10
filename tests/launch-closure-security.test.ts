@@ -110,7 +110,9 @@ describe("security report", () => {
 
   it("records the exact applied migration version and tracked file", () => {
     expect(md).toContain("20260910075951");
-    expect(md).toContain("supabase/migrations/20260910075951_851a8f41-edfa-44c7-8054-1bde02522935.sql");
+    expect(md).toContain(
+      "supabase/migrations/20260910075951_851a8f41-edfa-44c7-8054-1bde02522935.sql",
+    );
   });
 
   it("records the pre/post row, policy and fingerprint evidence", () => {
