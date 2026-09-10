@@ -1,9 +1,15 @@
 /**
  * LAUNCH-CLOSURE-01 — human-readable error normalization for availability writes.
  *
- * Root cause addressed: supabase-js rejects with a plain `PostgrestError` object
- * (NOT an `Error` instance). Code that did `e instanceof Error ? e.message : String(e)`
- * produced the literal string "[object Object]" in the toast, hiding the real cause.
+ * Root cause addressed: availability writes surfaced "[object Object]" because the
+ * caller stringified a rejection value with `String(e)`. Rejections here can be a
+ * `PostgrestError` (an `Error` subclass carrying extra `code`/`details`/`hint`
+ * fields), a plain object thrown by other layers, or a bare string. Whichever it
+ * is, this module keeps the diagnostic fields instead of collapsing them.
+ *
+ * LAUNCH-CLOSURE-02 correction: the `instanceof Error` branch previously dropped
+ * `details` and `hint`, so a real `PostgrestError` lost exactly the fields the
+ * report claimed were preserved. Both branches now read the same field set.
  *
  * Pure module: no DB access, no network, no React.
  */
@@ -35,12 +41,14 @@ function pickString(source: Record<string, unknown>, key: string): string | null
  */
 export function normalizeWriteError(error: unknown): NormalizedWriteError {
   if (error instanceof Error) {
-    const withCode = error as Error & { code?: unknown };
+    // `PostgrestError`, `AuthError`, `FunctionsHttpError` and friends ARE Error
+    // subclasses that also carry code/details/hint. Read them off the instance.
+    const source = error as unknown as Record<string, unknown>;
     return {
       message: error.message || error.name || "خطأ غير معروف",
-      code: typeof withCode.code === "string" ? withCode.code : null,
-      details: null,
-      hint: null,
+      code: pickString(source, "code") ?? pickString(source, "status"),
+      details: pickString(source, "details"),
+      hint: pickString(source, "hint"),
     };
   }
 
