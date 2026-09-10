@@ -1,28 +1,7 @@
 {
   "total": 79,
-  "passed": 59,
-  "failed": [
-    "A4 portrait: every physical page carries a physical page counter",
-    "A4 portrait: first physical page counter is 1 of 20",
-    "A4 portrait: continuation page 10 counter is 10 of 20",
-    "A4 portrait: final physical page counter is 20 of 20",
-    "A4 portrait: counters are strictly sequential with no gaps",
-    "A4 landscape: every physical page carries a physical page counter",
-    "A4 landscape: first physical page counter is 1 of 24",
-    "A4 landscape: continuation page 12 counter is 12 of 24",
-    "A4 landscape: final physical page counter is 24 of 24",
-    "A4 landscape: counters are strictly sequential with no gaps",
-    "A3 portrait: every physical page carries a physical page counter",
-    "A3 portrait: first physical page counter is 1 of 8",
-    "A3 portrait: continuation page 4 counter is 4 of 8",
-    "A3 portrait: final physical page counter is 8 of 8",
-    "A3 portrait: counters are strictly sequential with no gaps",
-    "A3 landscape: every physical page carries a physical page counter",
-    "A3 landscape: first physical page counter is 1 of 16",
-    "A3 landscape: continuation page 8 counter is 8 of 16",
-    "A3 landscape: final physical page counter is 16 of 16",
-    "A3 landscape: counters are strictly sequential with no gaps"
-  ],
+  "passed": 79,
+  "failed": [],
   "cases": [
     {
       "name": "PDF rendered A4 portrait (fixture)",
@@ -56,27 +35,27 @@
     },
     {
       "name": "A4 portrait: every physical page carries a physical page counter",
-      "pass": false,
-      "detail": "0/20 pages"
+      "pass": true,
+      "detail": "20/20 pages"
     },
     {
       "name": "A4 portrait: first physical page counter is 1 of 20",
-      "pass": false,
-      "detail": "None"
+      "pass": true,
+      "detail": "(1, 20)"
     },
     {
       "name": "A4 portrait: continuation page 10 counter is 10 of 20",
-      "pass": false,
-      "detail": "None"
+      "pass": true,
+      "detail": "(10, 20)"
     },
     {
       "name": "A4 portrait: final physical page counter is 20 of 20",
-      "pass": false,
-      "detail": "None"
+      "pass": true,
+      "detail": "(20, 20)"
     },
     {
       "name": "A4 portrait: counters are strictly sequential with no gaps",
-      "pass": false,
+      "pass": true,
       "detail": "sequential"
     },
     {
@@ -141,27 +120,27 @@
     },
     {
       "name": "A4 landscape: every physical page carries a physical page counter",
-      "pass": false,
-      "detail": "0/24 pages"
+      "pass": true,
+      "detail": "24/24 pages"
     },
     {
       "name": "A4 landscape: first physical page counter is 1 of 24",
-      "pass": false,
-      "detail": "None"
+      "pass": true,
+      "detail": "(1, 24)"
     },
     {
       "name": "A4 landscape: continuation page 12 counter is 12 of 24",
-      "pass": false,
-      "detail": "None"
+      "pass": true,
+      "detail": "(12, 24)"
     },
     {
       "name": "A4 landscape: final physical page counter is 24 of 24",
-      "pass": false,
-      "detail": "None"
+      "pass": true,
+      "detail": "(24, 24)"
     },
     {
       "name": "A4 landscape: counters are strictly sequential with no gaps",
-      "pass": false,
+      "pass": true,
       "detail": "sequential"
     },
     {
@@ -221,27 +200,27 @@
     },
     {
       "name": "A3 portrait: every physical page carries a physical page counter",
-      "pass": false,
-      "detail": "0/8 pages"
+      "pass": true,
+      "detail": "8/8 pages"
     },
     {
       "name": "A3 portrait: first physical page counter is 1 of 8",
-      "pass": false,
-      "detail": "None"
+      "pass": true,
+      "detail": "(1, 8)"
     },
     {
       "name": "A3 portrait: continuation page 4 counter is 4 of 8",
-      "pass": false,
-      "detail": "None"
+      "pass": true,
+      "detail": "(4, 8)"
     },
     {
       "name": "A3 portrait: final physical page counter is 8 of 8",
-      "pass": false,
-      "detail": "None"
+      "pass": true,
+      "detail": "(8, 8)"
     },
     {
       "name": "A3 portrait: counters are strictly sequential with no gaps",
-      "pass": false,
+      "pass": true,
       "detail": "sequential"
     },
     {
@@ -301,27 +280,27 @@
     },
     {
       "name": "A3 landscape: every physical page carries a physical page counter",
-      "pass": false,
-      "detail": "0/16 pages"
+      "pass": true,
+      "detail": "16/16 pages"
     },
     {
       "name": "A3 landscape: first physical page counter is 1 of 16",
-      "pass": false,
-      "detail": "None"
+      "pass": true,
+      "detail": "(1, 16)"
     },
     {
       "name": "A3 landscape: continuation page 8 counter is 8 of 16",
-      "pass": false,
-      "detail": "None"
+      "pass": true,
+      "detail": "(8, 16)"
     },
     {
       "name": "A3 landscape: final physical page counter is 16 of 16",
-      "pass": false,
-      "detail": "None"
+      "pass": true,
+      "detail": "(16, 16)"
     },
     {
       "name": "A3 landscape: counters are strictly sequential with no gaps",
-      "pass": false,
+      "pass": true,
       "detail": "sequential"
     },
     {
