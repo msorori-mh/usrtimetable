@@ -129,7 +129,9 @@ function run() {
 
   const autoSrc = readSrc("src/routes/_authenticated/auto-schedule.tsx");
   assert(
-    autoSrc.includes("disabled={!canManage || !versionId || run.isPending || readinessIncomplete}"),
+    /disabled=\{!canManage \|\| !versionId \|\| run\.isPending \|\|[^}]*readinessIncomplete\}/.test(
+      autoSrc,
+    ),
     "7 auto-schedule run stays disabled without canManage or complete readiness",
   );
 
