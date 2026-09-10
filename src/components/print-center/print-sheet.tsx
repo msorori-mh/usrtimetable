@@ -61,12 +61,6 @@ export function PrintSheet(props: {
   const isDraft = meta.versionStatus === "draft";
   // day, time, code, name, component, group + optional instructor / room
   const columnCount = 6 + (visibility.showInstructor ? 1 : 0) + (visibility.showRoom ? 1 : 0);
-  const contextSuffix = [
-    visibility.showLevel ? page.levelName || meta.levelName : null,
-    studyLabel,
-  ]
-    .filter(Boolean)
-    .join(" — ");
 
   return (
     <section className="print-center-page break-after-page">
@@ -125,7 +119,6 @@ export function PrintSheet(props: {
           <TableRow className="print-center-context-row">
             <TableHead colSpan={columnCount} className="text-right font-semibold">
               {page.title}
-              {contextSuffix ? ` — ${contextSuffix}` : ""}
             </TableHead>
           </TableRow>
           <TableRow>

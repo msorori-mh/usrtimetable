@@ -6,7 +6,7 @@
     {
       "name": "PDF rendered A4 portrait (fixture)",
       "pass": true,
-      "detail": "307608 bytes"
+      "detail": "306039 bytes"
     },
     {
       "name": "A4 portrait: CSS @page size honoured",
@@ -21,7 +21,7 @@
     {
       "name": "A4 portrait: Arabic content extractable",
       "pass": true,
-      "detail": "73568 chars of extractable text"
+      "detail": "75211 chars of extractable text"
     },
     {
       "name": "A4 portrait: table header repeats on every page that carries rows",
@@ -91,7 +91,7 @@
     {
       "name": "PDF rendered A4 landscape (fixture)",
       "pass": true,
-      "detail": "305316 bytes"
+      "detail": "304015 bytes"
     },
     {
       "name": "A4 landscape: CSS @page size honoured",
@@ -106,7 +106,7 @@
     {
       "name": "A4 landscape: Arabic content extractable",
       "pass": true,
-      "detail": "69821 chars of extractable text"
+      "detail": "66419 chars of extractable text"
     },
     {
       "name": "A4 landscape: table header repeats on every page that carries rows",
@@ -171,7 +171,7 @@
     {
       "name": "PDF rendered A3 portrait (fixture)",
       "pass": true,
-      "detail": "278784 bytes"
+      "detail": "278247 bytes"
     },
     {
       "name": "A3 portrait: CSS @page size honoured",
@@ -186,7 +186,7 @@
     {
       "name": "A3 portrait: Arabic content extractable",
       "pass": true,
-      "detail": "80948 chars of extractable text"
+      "detail": "78112 chars of extractable text"
     },
     {
       "name": "A3 portrait: table header repeats on every page that carries rows",
@@ -251,7 +251,7 @@
     {
       "name": "PDF rendered A3 landscape (fixture)",
       "pass": true,
-      "detail": "300890 bytes"
+      "detail": "299835 bytes"
     },
     {
       "name": "A3 landscape: CSS @page size honoured",
@@ -266,7 +266,7 @@
     {
       "name": "A3 landscape: Arabic content extractable",
       "pass": true,
-      "detail": "80121 chars of extractable text"
+      "detail": "78485 chars of extractable text"
     },
     {
       "name": "A3 landscape: table header repeats on every page that carries rows",
@@ -351,7 +351,7 @@
     {
       "name": "short fixture PDF produced",
       "pass": true,
-      "detail": "185403 bytes"
+      "detail": "185331 bytes"
     },
     {
       "name": "CSV starts with a UTF-8 BOM (Excel opens Arabic correctly)",
