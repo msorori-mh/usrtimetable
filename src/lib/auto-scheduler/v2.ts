@@ -62,7 +62,7 @@ async function loadPartitionIndex(input: {
       .in("cohort_id", input.cohortIds);
     if (error) return { index: null, note: PARTITION_FALLBACK_WARNING_AR };
     const rows: PartitionMembershipRow[] = (data ?? [])
-      .map((raw) => {
+      .map((raw): PartitionMembershipRow | null => {
         const row = raw as {
           delivery_group_id?: string;
           cohort_id?: string;
@@ -77,7 +77,8 @@ async function loadPartitionIndex(input: {
           partition_headcount: row.cohort_student_partitions?.headcount ?? null,
         };
       })
-      .filter((row): row is PartitionMembershipRow => !!row?.delivery_group_id);
+      .filter((row): row is PartitionMembershipRow => !!row && !!row.delivery_group_id);
+
     if (rows.length === 0) return { index: null, note: null };
     return {
       index: buildPartitionIndex({ rows, expectedStudents: input.expectedStudents }),
