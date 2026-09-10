@@ -240,13 +240,13 @@ describe("LAUNCH-CLOSURE-01 gap 3 — approved timetable print flow", () => {
   test("each printed sheet still carries the identification a distributed copy needs", () => {
     for (const fragment of [
       "USR_UNIVERSITY_NAME_AR",
-      "القسم:",
-      "البرنامج:",
-      "المستوى:",
-      "النظام الدراسي:",
-      "الفصل / العام:",
-      "حالة النسخة:",
-      "رقم / اسم النسخة:",
+      'label="القسم"',
+      'label="البرنامج"',
+      'label="المستوى"',
+      'label="النظام الدراسي"',
+      'label="الفصل / العام"',
+      "الحالة:",
+      "النسخة:",
       "تاريخ التصدير:",
       "printGroupCounterLabelAr(meta.pageIndex, meta.pageCount)",
     ]) {
