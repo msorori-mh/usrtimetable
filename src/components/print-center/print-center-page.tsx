@@ -122,7 +122,8 @@ export function PrintCenterPage(props: { versionId: string }) {
   const [programId, setProgramId] = useState(initialFromUrl.programId ?? "");
   const [levelId, setLevelId] = useState(initialFromUrl.levelId ?? "");
   const [studySystem, setStudySystem] = useState<PrintStudySystem>(
-    (initialFromUrl.studySystem as PrintStudySystem) ?? "regular",
+    (initialFromUrl.studySystem as PrintStudySystem) ??
+      (initialFromUrl.reportType === "room" || initialFromUrl.reportType === "instructor" ? "all" : "regular"),
   );
   const [departmentId, setDepartmentId] = useState(initialFromUrl.departmentId ?? "");
   const [instructorId, setInstructorId] = useState(initialFromUrl.instructorId ?? "");
@@ -473,7 +474,11 @@ export function PrintCenterPage(props: { versionId: string }) {
             <Sel
               label="نوع التقرير"
               value={reportType}
-              onChange={(v) => setReportType(v as PrintReportType)}
+              onChange={(v) => {
+                setReportType(v as PrintReportType);
+                if (v === "room" || v === "instructor") setStudySystem("all");
+                if (v === "student" && studySystem === "all") setStudySystem("regular");
+              }
               items={(Object.keys(REPORT_TYPE_LABELS_AR) as PrintReportType[]).map((k) => ({
                 id: k,
                 name: REPORT_TYPE_LABELS_AR[k],
@@ -526,10 +531,7 @@ export function PrintCenterPage(props: { versionId: string }) {
                 ]}
               />
             )}
-            {(reportType === "student" ||
-              reportType === "program" ||
-              reportType === "level" ||
-              reportType === "department") && (
+            {(
               <Sel
                 label="النظام الدراسي"
                 value={studySystem}
