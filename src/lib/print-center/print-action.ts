@@ -3,7 +3,7 @@
  *
  * The print button previously called `window.print()` inline. That call is correct, but it
  * gives the user NO feedback when the host environment provides no print dialog (some
- * cloud/remote browsers and all headless Chromium builds silently no-op) or when the call
+ * cloud/remote browsers; the tested headless Chromium silently no-ops) or when the call
  * throws. This helper keeps `window.print()` as the one and only print mechanism and adds
  * an honest, testable result so the UI can show an actionable Arabic status instead of
  * appearing dead.
@@ -20,7 +20,7 @@ export const PRINT_REQUEST_FAILED_AR =
   "تعذّر فتح نافذة الطباعة في هذا المتصفح. استخدم Ctrl/Cmd + P أو صدّر Excel/CSV.";
 
 export const PRINT_REQUEST_DISPATCHED_AR =
-  "تم إرسال طلب الطباعة. إذا لم تظهر نافذة الطباعة فالمتصفح يمنعها؛ استخدم Ctrl/Cmd + P.";
+  "تم إرسال طلب الطباعة. إذا لم تظهر النافذة، افتح هذا الرابط في متصفح جهازك واختر طباعة أو حفظ بصيغة PDF.";
 
 export type PrintRequestResult =
   | { status: "dispatched" }
