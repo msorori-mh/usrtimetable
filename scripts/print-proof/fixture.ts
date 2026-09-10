@@ -10,7 +10,7 @@
  */
 import type { PrintCenterFilters, PrintSessionLike } from "@/lib/print-center";
 
-export const FIXTURE_COLLEGE_ID = "00000000-0000-4000-8000-00000000f1x7";
+export const FIXTURE_COLLEGE_ID = "00000000-0000-4000-8000-00000000f170";
 
 /** Mirrors the shape of the published TEST-SIMP-03 schedule: practical Sun, theory Mon. */
 export const SHORT_FIXTURE: PrintSessionLike[] = [
