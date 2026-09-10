@@ -1,18 +1,7 @@
 {
-  "total": 47,
-  "passed": 37,
-  "failed": [
-    "A4 portrait: Arabic content extractable",
-    "A4 landscape: Arabic content extractable",
-    "A3 portrait: Arabic content extractable",
-    "A3 landscape: Arabic content extractable",
-    "A3 landscape: table header repeats on every page",
-    "short fixture prints exactly 2 rows (practical Sunday + theory Monday)",
-    "CSV body row count matches the exported rows",
-    "CSV contains long Arabic course names intact",
-    "XLSX print-proof-admin-20260910.xlsx: parses, has a sheet and 120 data rows",
-    "XLSX print-proof-timetable.xlsx: parses, has a sheet and 120 data rows"
-  ],
+  "total": 51,
+  "passed": 51,
+  "failed": [],
   "cases": [
     {
       "name": "PDF rendered A4 portrait (fixture)",
@@ -31,13 +20,18 @@
     },
     {
       "name": "A4 portrait: Arabic content extractable",
-      "pass": false,
-      "detail": "75534 chars"
+      "pass": true,
+      "detail": "70402 chars of extractable text"
     },
     {
-      "name": "A4 portrait: table header repeats on every page",
+      "name": "A4 portrait: table header repeats on every page that carries rows",
       "pass": true,
-      "detail": "16/16 pages carry the header row"
+      "detail": "16/16 row-bearing pages carry the header row"
+    },
+    {
+      "name": "A4 portrait: no blank printed pages",
+      "pass": true,
+      "detail": "0 blank pages"
     },
     {
       "name": "A4 portrait: PNG page images produced",
@@ -76,13 +70,18 @@
     },
     {
       "name": "A4 landscape: Arabic content extractable",
-      "pass": false,
-      "detail": "75192 chars"
+      "pass": true,
+      "detail": "70420 chars of extractable text"
     },
     {
-      "name": "A4 landscape: table header repeats on every page",
+      "name": "A4 landscape: table header repeats on every page that carries rows",
       "pass": true,
-      "detail": "16/16 pages carry the header row"
+      "detail": "16/16 row-bearing pages carry the header row"
+    },
+    {
+      "name": "A4 landscape: no blank printed pages",
+      "pass": true,
+      "detail": "0 blank pages"
     },
     {
       "name": "A4 landscape: PNG page images produced",
@@ -116,13 +115,18 @@
     },
     {
       "name": "A3 portrait: Arabic content extractable",
-      "pass": false,
-      "detail": "80716 chars"
+      "pass": true,
+      "detail": "76072 chars of extractable text"
     },
     {
-      "name": "A3 portrait: table header repeats on every page",
+      "name": "A3 portrait: table header repeats on every page that carries rows",
       "pass": true,
-      "detail": "8/8 pages carry the header row"
+      "detail": "8/8 row-bearing pages carry the header row"
+    },
+    {
+      "name": "A3 portrait: no blank printed pages",
+      "pass": true,
+      "detail": "0 blank pages"
     },
     {
       "name": "A3 portrait: PNG page images produced",
@@ -142,7 +146,7 @@
     {
       "name": "PDF rendered A3 landscape (fixture)",
       "pass": true,
-      "detail": "241585 bytes"
+      "detail": "250524 bytes"
     },
     {
       "name": "A3 landscape: CSS @page size honoured",
@@ -156,13 +160,18 @@
     },
     {
       "name": "A3 landscape: Arabic content extractable",
-      "pass": false,
-      "detail": "72972 chars"
+      "pass": true,
+      "detail": "72984 chars of extractable text"
     },
     {
-      "name": "A3 landscape: table header repeats on every page",
-      "pass": false,
-      "detail": "8/16 pages carry the header row"
+      "name": "A3 landscape: table header repeats on every page that carries rows",
+      "pass": true,
+      "detail": "16/16 row-bearing pages carry the header row"
+    },
+    {
+      "name": "A3 landscape: no blank printed pages",
+      "pass": true,
+      "detail": "0 blank pages"
     },
     {
       "name": "A3 landscape: PNG page images produced",
@@ -180,29 +189,29 @@
       "detail": "clean"
     },
     {
+      "name": "downloadCSV (reports/export.ts): download event fired and file materialised",
+      "pass": true,
+      "detail": "print-proof-timetable.csv (28032 bytes)"
+    },
+    {
+      "name": "downloadXLSX (reports/export.ts): download event fired and file materialised",
+      "pass": true,
+      "detail": "print-proof-timetable.xlsx (74199 bytes)"
+    },
+    {
+      "name": "exportRowsToXlsx (admin-export/to-xlsx.ts): download event fired and file materialised",
+      "pass": true,
+      "detail": "print-proof-admin-20260910.xlsx (131517 bytes)"
+    },
+    {
       "name": "short fixture prints exactly 2 rows (practical Sunday + theory Monday)",
-      "pass": false,
+      "pass": true,
       "detail": "الأحد 08:00 - 10:00 FX-C101 مقدمة في علوم الحاسوب عملي د. عبد الرحمن الشرعبي LAB-1 مختبر الحاسوب الأول  | الاثنين 08:00 - 10:00 FX-C101 مقدمة في علوم الحاسوب نظري د. عبد الرحمن الشرعبي H-201 قاعة المحاضرات ٢٠١ "
     },
     {
       "name": "short fixture PDF produced",
       "pass": true,
       "detail": "157048 bytes"
-    },
-    {
-      "name": "downloadCSV (reports/export.ts): download event fired and file materialised",
-      "pass": true,
-      "detail": "print-proof-timetable.csv (454 bytes)"
-    },
-    {
-      "name": "downloadXLSX (reports/export.ts): download event fired and file materialised",
-      "pass": true,
-      "detail": "print-proof-timetable.xlsx (16973 bytes)"
-    },
-    {
-      "name": "exportRowsToXlsx (admin-export/to-xlsx.ts): download event fired and file materialised",
-      "pass": true,
-      "detail": "print-proof-admin-20260910.xlsx (17831 bytes)"
     },
     {
       "name": "CSV starts with a UTF-8 BOM (Excel opens Arabic correctly)",
@@ -216,33 +225,33 @@
     },
     {
       "name": "CSV body row count matches the exported rows",
-      "pass": false,
-      "detail": "2 rows"
+      "pass": true,
+      "detail": "120 rows"
     },
     {
       "name": "CSV contains long Arabic course names intact",
-      "pass": false,
+      "pass": true,
       "detail": ""
     },
     {
       "name": "XLSX print-proof-admin-20260910.xlsx: parses, has a sheet and 120 data rows",
-      "pass": false,
-      "detail": "sheet=الجدول rows=3 header=['day', 'time', 'course_code']"
+      "pass": true,
+      "detail": "sheet=الجدول rows=121 header=['day', 'time', 'course_code']"
     },
     {
       "name": "XLSX print-proof-admin-20260910.xlsx: Arabic content preserved",
       "pass": true,
-      "detail": "['الأحد', '08:00 - 10:00', 'FX-C101', 'مقدمة في علوم الحاسوب', 'عملي', 'د. عبد الرحمن الشرعبي', 'LAB-1 مختبر الحاسوب الأ"
+      "detail": "['الاثنين', '08:00 - 10:00', 'FX-C126', 'قواعد البيانات الموزّعة وتحسين الاستعلامات', 'نظري', 'د. سارة أحمد المقطري', 'L"
     },
     {
       "name": "XLSX print-proof-timetable.xlsx: parses, has a sheet and 120 data rows",
-      "pass": false,
-      "detail": "sheet=الجدول rows=3 header=['اليوم', 'الوقت', 'رمز المقرر']"
+      "pass": true,
+      "detail": "sheet=الجدول rows=121 header=['اليوم', 'الوقت', 'رمز المقرر']"
     },
     {
       "name": "XLSX print-proof-timetable.xlsx: Arabic content preserved",
       "pass": true,
-      "detail": "['الأحد', '08:00 - 10:00', 'FX-C101', 'مقدمة في علوم الحاسوب', 'عملي', 'د. عبد الرحمن الشرعبي', 'LAB-1 مختبر الحاسوب الأ"
+      "detail": "['الاثنين', '08:00 - 10:00', 'FX-C126', 'قواعد البيانات الموزّعة وتحسين الاستعلامات', 'نظري', 'د. سارة أحمد المقطري', 'L"
     },
     {
       "name": "no console or page errors during the whole run",
