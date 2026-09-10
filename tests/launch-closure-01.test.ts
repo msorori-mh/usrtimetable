@@ -149,7 +149,8 @@ describe("LAUNCH-CLOSURE-01 gap 1 — write path keeps tenant scope and honest r
     expect(api).toContain("upsert_instructor_unavailability_for_active_days");
     expect(api).toContain("upsert_room_unavailability_for_active_days");
     expect(api).toContain(
-      "if (!isMissingRpcError(error)) throw new Error(readableWriteError(error))",
+      // LAUNCH-CLOSURE-03: the same guard, now reporting through the Arabic mapper.
+      "if (!isMissingRpcError(error)) throw new Error(availabilityWriteMessage(error))",
     );
   });
 
