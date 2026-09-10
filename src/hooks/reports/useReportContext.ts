@@ -15,6 +15,7 @@ export function useReportContext(options: UseReportContextOptions = {}): ReportC
     defaultStatusMode = "specific_version",
     defaultStudySystem = "all",
     fixedStatusMode,
+    initialFilters,
   } = options;
 
   const effectiveDefaultMode = fixedStatusMode ?? defaultStatusMode;
@@ -22,15 +23,20 @@ export function useReportContext(options: UseReportContextOptions = {}): ReportC
   const { active, isLoading: collegeLoading } = useActiveCollege();
   const collegeId = active?.id ?? null;
 
-  const [termId, setTermIdState] = useState<string | null>(null);
-  const [versionId, setVersionIdState] = useState<string | null>(null);
-  const [statusMode, setStatusModeState] = useState<ReportStatusMode>(effectiveDefaultMode);
-  const [studySystem, setStudySystemState] = useState<ReportStudySystem>(defaultStudySystem);
+  const [termId, setTermIdState] = useState<string | null>(initialFilters?.termId ?? null);
+  const [versionId, setVersionIdState] = useState<string | null>(initialFilters?.versionId ?? null);
+  const [statusMode, setStatusModeState] = useState<ReportStatusMode>(
+    initialFilters?.statusMode ?? effectiveDefaultMode,
+  );
+  const [studySystem, setStudySystemState] = useState<ReportStudySystem>(
+    initialFilters?.studySystem ?? defaultStudySystem,
+  );
 
   const {
     data: terms = [],
     isLoading: termsLoading,
     error: termsError,
+    isSuccess: termsReady,
   } = useQuery({
     queryKey: ["report-terms", collegeId],
     enabled: !!collegeId,
@@ -39,6 +45,7 @@ export function useReportContext(options: UseReportContextOptions = {}): ReportC
 
   // Auto-select latest term when college or terms list changes.
   useEffect(() => {
+    if (!termsReady) return;
     if (!terms.length) {
       setTermIdState(null);
       return;
@@ -46,12 +53,13 @@ export function useReportContext(options: UseReportContextOptions = {}): ReportC
     if (!termId || !terms.some((t) => t.id === termId)) {
       setTermIdState(terms[0].id);
     }
-  }, [terms, termId]);
+  }, [terms, termId, termsReady]);
 
   const {
     data: versions = [],
     isLoading: versionsLoading,
     error: versionsError,
+    isSuccess: versionsReady,
   } = useQuery({
     queryKey: ["report-versions", collegeId, termId, fixedStatusMode ?? statusMode],
     enabled: !!collegeId && !!termId,
@@ -65,6 +73,7 @@ export function useReportContext(options: UseReportContextOptions = {}): ReportC
 
   // Reset version when term or status mode changes; keep selection if still valid.
   useEffect(() => {
+    if (!versionsReady) return;
     if (!versions.length) {
       setVersionIdState(null);
       return;
@@ -72,7 +81,7 @@ export function useReportContext(options: UseReportContextOptions = {}): ReportC
     if (!versionId || !versions.some((v) => v.id === versionId)) {
       setVersionIdState(versions[0].id);
     }
-  }, [versions, versionId]);
+  }, [versions, versionId, versionsReady]);
 
   const setTermId = useCallback((id: string | null) => {
     setTermIdState(id);
@@ -83,11 +92,14 @@ export function useReportContext(options: UseReportContextOptions = {}): ReportC
     setVersionIdState(id);
   }, []);
 
-  const setStatusMode = useCallback((mode: ReportStatusMode) => {
-    if (fixedStatusMode) return;
-    setStatusModeState(mode);
-    setVersionIdState(null);
-  }, [fixedStatusMode]);
+  const setStatusMode = useCallback(
+    (mode: ReportStatusMode) => {
+      if (fixedStatusMode) return;
+      setStatusModeState(mode);
+      setVersionIdState(null);
+    },
+    [fixedStatusMode],
+  );
 
   const setStudySystem = useCallback((system: ReportStudySystem) => {
     setStudySystemState(system);
@@ -98,10 +110,7 @@ export function useReportContext(options: UseReportContextOptions = {}): ReportC
     [versions, versionId],
   );
 
-  const selectedTerm = useMemo(
-    () => terms.find((t) => t.id === termId) ?? null,
-    [terms, termId],
-  );
+  const selectedTerm = useMemo(() => terms.find((t) => t.id === termId) ?? null, [terms, termId]);
 
   const filterSummary = useMemo(
     () =>

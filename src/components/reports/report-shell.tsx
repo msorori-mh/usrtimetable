@@ -33,6 +33,8 @@ interface Props {
   headers: { key: string; label: string }[];
   filename: string;
   children?: ReactNode;
+  /** Dedicated printable schedule; screen report remains available for inspection. */
+  printContent?: ReactNode;
   isLoading?: boolean;
   emptyMessage?: string;
 }
@@ -51,6 +53,7 @@ export function ReportShell({
   headers,
   filename,
   children,
+  printContent,
   isLoading,
   emptyMessage,
 }: Props) {
@@ -71,7 +74,9 @@ export function ReportShell({
 
   return (
     <div className="report-print-root min-w-0 space-y-4" dir="rtl">
-      <ReportOfficialHeader reportTitle={title} filterSummary={filterSummary} {...headerMeta} />
+      <div className={printContent ? "report-no-print" : undefined}>
+        <ReportOfficialHeader reportTitle={title} filterSummary={filterSummary} {...headerMeta} />
+      </div>
 
       <div className="report-no-print flex min-w-0 flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
@@ -87,7 +92,12 @@ export function ReportShell({
         </div>
         <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
           <CollegeSwitcher />
-          <Button variant="outline" size="sm" onClick={handlePrint}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handlePrint}
+            disabled={!!printContent && (!!isLoading || !rows.length)}
+          >
             <Printer className="h-4 w-4 ml-1" /> طباعة
           </Button>
           <Button
@@ -113,7 +123,7 @@ export function ReportShell({
 
       {leading}
 
-      <div className="report-print-body min-w-0">
+      <div className={printContent ? "report-no-print min-w-0" : "report-print-body min-w-0"}>
         {isLoading ? (
           <Card className="p-8 text-center text-muted-foreground">جارٍ التحميل…</Card>
         ) : rows.length === 0 ? (
@@ -124,6 +134,7 @@ export function ReportShell({
           children
         )}
       </div>
+      {printContent && <div className="hidden print:block print-center-body">{printContent}</div>}
     </div>
   );
 }
