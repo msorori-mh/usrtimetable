@@ -91,7 +91,7 @@ function InstructorsPage() {
         email: form.email.trim() || null,
         phone: form.phone.trim() || null,
         department_id: form.department_id || null,
-        employment_type: form.employment_type,
+        employment_type: form.employment_type || UNKNOWN_EMPLOYMENT_TYPE,
         max_weekly_hours: Number(form.max_weekly_hours) || 0,
         administrative_release_hours: Number(form.administrative_release_hours) || 0,
         notes: form.notes.trim() || null,
