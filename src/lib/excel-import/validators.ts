@@ -1095,7 +1095,7 @@ export function buildDbPayload(
       academic_rank: v.academic_rank ?? null,
       instructor_type_id: v._instructor_type_id ?? null,
       department_id: v._department_id ?? null,
-      employment_type: v.employment_type ?? "full_time",
+      employment_type: normalizeEmploymentType(v.employment_type),
       max_weekly_hours: v.max_weekly_hours ?? 18,
       max_hours_per_day: v.max_hours_per_day ?? null,
       administrative_release_hours: v.administrative_release_hours ?? 0,
