@@ -19,8 +19,73 @@ import {
   type PlanCourseCadence,
   type RoomLite,
 } from "@/lib/auto-scheduler/session-plan";
+import {
+  buildPartitionIndex,
+  makeSharedStudentsPredicate,
+  type PartitionIndex,
+  type PartitionMembershipRow,
+} from "@/lib/auto-scheduler/student-partitions";
 
-const ALGORITHM_VERSION = "v2-plan-cadence-guarded-rpc";
+const ALGORITHM_VERSION = "v2-plan-cadence-partition-aware-guarded-rpc";
+
+/** Fail-closed Arabic note when the partition mapping cannot be used. */
+export const PARTITION_FALLBACK_WARNING_AR =
+  "لا يمكن قراءة خرائط شُعب الطلاب — تم الاحتفاظ بمنع التعارض على مستوى الدفعة بالكامل.";
+
+/**
+ * Load the explicit delivery-group -> student-partition mapping.
+ * Any failure (table absent, no permission, empty mapping) returns `null`, and
+ * the conservative cohort-wide conflict rule is preserved.
+ */
+async function loadPartitionIndex(input: {
+  cohortIds: string[];
+  expectedStudents: Record<string, number | null | undefined>;
+}): Promise<{ index: PartitionIndex | null; note: string | null }> {
+  if (input.cohortIds.length === 0) return { index: null, note: null };
+  try {
+    const { data, error } = await (supabase as unknown as {
+      from: (table: string) => {
+        select: (cols: string) => {
+          in: (
+            col: string,
+            values: string[],
+          ) => Promise<{ data: unknown[] | null; error: { message: string } | null }>;
+        };
+      };
+    })
+      .from("delivery_group_partition_members")
+      .select(
+        "delivery_group_id, cohort_id, partition_id, cohort_student_partitions(headcount, active)",
+      )
+      .in("cohort_id", input.cohortIds);
+    if (error) return { index: null, note: PARTITION_FALLBACK_WARNING_AR };
+    const rows: PartitionMembershipRow[] = (data ?? [])
+      .map((raw) => {
+        const row = raw as {
+          delivery_group_id?: string;
+          cohort_id?: string;
+          partition_id?: string;
+          cohort_student_partitions?: { headcount?: number | null; active?: boolean | null } | null;
+        };
+        if (row.cohort_student_partitions?.active === false) return null;
+        return {
+          delivery_group_id: String(row.delivery_group_id ?? ""),
+          cohort_id: String(row.cohort_id ?? ""),
+          partition_id: String(row.partition_id ?? ""),
+          partition_headcount: row.cohort_student_partitions?.headcount ?? null,
+        };
+      })
+      .filter((row): row is PartitionMembershipRow => !!row?.delivery_group_id);
+    if (rows.length === 0) return { index: null, note: null };
+    return {
+      index: buildPartitionIndex({ rows, expectedStudents: input.expectedStudents }),
+      note: null,
+    };
+  } catch {
+    return { index: null, note: PARTITION_FALLBACK_WARNING_AR };
+  }
+}
+
 
 const pad = (value: number) => String(value).padStart(2, "0");
 const toMinutes = (value: string) => {
