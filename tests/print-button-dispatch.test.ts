@@ -36,12 +36,13 @@ describe("print request dispatch", () => {
   it("calls print with the window as receiver", () => {
     let receiver: unknown = null;
     const win = {
-      print(this: unknown) {
-        receiver = this;
+      marker: "win",
+      print(this: { marker?: string }) {
+        receiver = this?.marker;
       },
     };
     requestPrint(win);
-    assert.equal(receiver, win);
+    assert.equal(receiver, "win");
   });
 
   it("reports unavailable (not success) when print is missing", () => {
