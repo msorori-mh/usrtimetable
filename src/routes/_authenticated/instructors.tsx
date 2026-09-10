@@ -31,18 +31,12 @@ interface Instructor {
   instructor_type_id: string | null;
 }
 
-const RANKS = ["معيد", "محاضر", "أستاذ مساعد", "أستاذ مشارك", "أستاذ"];
-const EMP = [
-  { v: "full_time", l: "متفرّغ" },
-  { v: "part_time", l: "غير متفرّغ" },
-  { v: "visiting", l: "زائر" },
-  { v: "contract", l: "متعاقد" },
-];
+const RANKS = ACADEMIC_RANKS;
 
 function emptyForm() {
   return {
     full_name: "", academic_rank: "", email: "", phone: "", department_id: "",
-    employment_type: "full_time", max_weekly_hours: 18, is_active: true,
+    employment_type: UNKNOWN_EMPLOYMENT_TYPE, max_weekly_hours: 18, is_active: true,
     employee_number: "", full_name_ar: "", full_name_en: "", specialization: "",
     administrative_release_hours: 0, notes: "",
     instructor_type_id: "",
