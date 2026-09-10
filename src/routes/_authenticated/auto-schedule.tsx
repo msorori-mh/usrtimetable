@@ -206,7 +206,26 @@ function AutoSchedulePage() {
                 <Sparkles className="h-4 w-4 ml-1" />
                 {run.isPending ? "جارٍ التشغيل..." : "تشغيل الجدولة التلقائية"}
               </Button>
+              {run.isPending ? (
+                <Button
+                  variant="outline"
+                  onClick={() => abortRef.current?.abort()}
+                  data-testid="auto-schedule-cancel"
+                >
+                  إيقاف التشغيل
+                </Button>
+              ) : null}
             </div>
+            {run.isPending && progress ? (
+              <div
+                className="rounded-md border bg-muted/40 p-3 text-sm"
+                data-testid="auto-schedule-progress"
+                aria-live="polite"
+              >
+                جارٍ المعالجة {progress.processedItems} من {progress.totalItems} — تمت جدولة{" "}
+                {progress.placed} جلسة، تعذّرت {progress.unplaced} — الحالي: {progress.label}
+              </div>
+            ) : null}
             {readinessIncomplete ? (
               <div
                 className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-sm"
