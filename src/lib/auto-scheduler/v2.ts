@@ -26,7 +26,7 @@ import {
   type PartitionMembershipRow,
 } from "@/lib/auto-scheduler/student-partitions";
 
-const ALGORITHM_VERSION = "v2-plan-cadence-partition-aware-guarded-rpc";
+const ALGORITHM_VERSION = "v2-plan-cadence-partitions-responsive-rpc";
 
 /** Fail-closed Arabic note when the partition mapping cannot be used. */
 export const PARTITION_FALLBACK_WARNING_AR =
@@ -121,7 +121,8 @@ function buildSlots(input: {
       });
     }
   }
-  return slots.sort((a, b) => a.day - b.day || toMinutes(a.start) - toMinutes(b.start));
+  const unique = new Map(slots.map((slot) => [`${slot.day}|${slot.start}|${slot.end}`, slot]));
+  return [...unique.values()].sort((a, b) => a.day - b.day || toMinutes(a.start) - toMinutes(b.start));
 }
 
 export type AutoScheduleProgress = {
@@ -297,6 +298,10 @@ export async function runV2AutoSchedule(params: {
   let blockedCadenceItems = 0;
   let versionUpdatedAt = payload.version_updated_at;
   let processedItems = 0;
+  // A server-proven missing mandatory availability window is invariant across
+  // rooms/times on that instructor/day. Cache only this rejection for this run;
+  // no conflict is ignored and all writes still use the guarded RPC.
+  const unavailableInstructorDays = new Map<string, string>();
 
   for (const item of workItems) {
     if (params.signal?.aborted) {
@@ -404,8 +409,22 @@ export async function runV2AutoSchedule(params: {
       let placedItem = false;
       let lastReason = "لا يوجد مرشح يحقق قيود مجموعة التقديم والدفعة.";
 
-      for (const slot of slots) {
+      candidateSearch: for (const slot of slots) {
+        if (params.signal?.aborted) {
+          cancelled = true;
+          break;
+        }
+        const availabilityKey = `${item.instructor_id}|${slot.day}`;
+        const unavailableReason = unavailableInstructorDays.get(availabilityKey);
+        if (unavailableReason) {
+          lastReason = unavailableReason;
+          continue;
+        }
         for (const room of candidateRooms) {
+          if (params.signal?.aborted) {
+            cancelled = true;
+            break candidateSearch;
+          }
           if (
             isLocallyBlocked(
               slot,
@@ -455,10 +474,22 @@ export async function runV2AutoSchedule(params: {
             result.message_ar ||
             result.code ||
             lastReason;
+          if (
+            result.blocking_conflicts.some(
+              (conflict) => conflict.code === "instructor_availability_required",
+            )
+          ) {
+            unavailableInstructorDays.set(availabilityKey, lastReason);
+            continue candidateSearch;
+          }
         }
         if (placedItem) break;
       }
 
+      if (cancelled) {
+        warnings.push("تم إيقاف التشغيل. الجلسات المحفوظة باقية، والوحدات غير المفحوصة ليست فاشلة.");
+        break;
+      }
       if (!placedItem) {
         byType[type].unplaced++;
         unplaced.push({
@@ -557,3 +588,4 @@ export async function runV2AutoSchedule(params: {
     skippedLockedSessions: 0,
   };
 }
+
