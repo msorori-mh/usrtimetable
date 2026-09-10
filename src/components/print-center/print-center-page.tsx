@@ -41,6 +41,8 @@ import {
   latestSessionUpdate,
   levelFiltersComplete,
   parsePrintSearchParams,
+  PRINT_PAGE_STYLE_ELEMENT_ID,
+  printPageStyleCss,
   programFiltersComplete,
   studentFiltersComplete,
   type PrintCenterFilters,
@@ -309,14 +311,14 @@ export function PrintCenterPage(props: { versionId: string }) {
   // Inject @page size for A4/A3 landscape/portrait (cannot nest @page in CSS selectors).
   useEffect(() => {
     if (typeof document === "undefined") return;
-    const id = "print-center-page-style";
+    const id = PRINT_PAGE_STYLE_ELEMENT_ID;
     let el = document.getElementById(id) as HTMLStyleElement | null;
     if (!el) {
       el = document.createElement("style");
       el.id = id;
       document.head.appendChild(el);
     }
-    el.textContent = `@media print { @page { size: ${paper} ${orientation}; margin: 1.2cm 1.5cm; } }`;
+    el.textContent = printPageStyleCss(paper, orientation);
     return () => {
       el?.remove();
     };

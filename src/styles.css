@@ -438,6 +438,14 @@
     page-break-inside: avoid;
   }
 
+  /* LAUNCH-CLOSURE-03: keep the endorsement footer attached to the last rows of the
+     sheet instead of being pushed alone onto an otherwise empty printed page
+     (observed on A3 landscape, where the shorter page box orphaned the footer). */
+  .print-center-footer {
+    break-before: avoid;
+    page-break-before: avoid;
+  }
+
   .print-draft-watermark {
     display: flex !important;
     position: fixed;

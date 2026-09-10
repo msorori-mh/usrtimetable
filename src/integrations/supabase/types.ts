@@ -3423,6 +3423,19 @@ export type Database = {
       }
     }
     Functions: {
+      _avail_date_span: {
+        Args: { p_end_date: string; p_start_date: string }
+        Returns: unknown
+      }
+      _avail_day_span: { Args: { p_day_of_week: number }; Returns: unknown }
+      _avail_time_span: {
+        Args: { p_end: string; p_start: string }
+        Returns: unknown
+      }
+      _availability_active_working_days: {
+        Args: { p_college_id: string }
+        Returns: number[]
+      }
       _collect_schedule_session_move_conflicts: {
         Args: {
           p_college_id: string
@@ -3987,6 +4000,28 @@ export type Database = {
           p_assignment_id: string
           p_expected_updated_at: string
           p_notes?: string
+        }
+        Returns: Json
+      }
+      upsert_instructor_unavailability_for_active_days: {
+        Args: {
+          p_day_of_week?: number
+          p_end_time: string
+          p_instructor_id: string
+          p_notes?: string
+          p_start_time: string
+        }
+        Returns: Json
+      }
+      upsert_room_unavailability_for_active_days: {
+        Args: {
+          p_day_of_week?: number
+          p_end_date?: string
+          p_end_time: string
+          p_reason?: string
+          p_room_id: string
+          p_start_date?: string
+          p_start_time: string
         }
         Returns: Json
       }

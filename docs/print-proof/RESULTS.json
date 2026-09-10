@@ -1,0 +1,262 @@
+{
+  "total": 51,
+  "passed": 51,
+  "failed": [],
+  "cases": [
+    {
+      "name": "PDF rendered A4 portrait (fixture)",
+      "pass": true,
+      "detail": "247157 bytes"
+    },
+    {
+      "name": "A4 portrait: CSS @page size honoured",
+      "pass": true,
+      "detail": "595x842pt, 16 pages"
+    },
+    {
+      "name": "A4 portrait: fixture spans multiple pages",
+      "pass": true,
+      "detail": "16 pages"
+    },
+    {
+      "name": "A4 portrait: Arabic content extractable",
+      "pass": true,
+      "detail": "70402 chars of extractable text"
+    },
+    {
+      "name": "A4 portrait: table header repeats on every page that carries rows",
+      "pass": true,
+      "detail": "16/16 row-bearing pages carry the header row"
+    },
+    {
+      "name": "A4 portrait: no blank printed pages",
+      "pass": true,
+      "detail": "0 blank pages"
+    },
+    {
+      "name": "A4 portrait: PNG page images produced",
+      "pass": true,
+      "detail": "16 images"
+    },
+    {
+      "name": "A4 portrait: no ink touching the page edge (clipping check)",
+      "pass": true,
+      "detail": "all pages keep a clear margin"
+    },
+    {
+      "name": "A4 portrait: no horizontal overflow in cells or sheet",
+      "pass": true,
+      "detail": "clean"
+    },
+    {
+      "name": "fixture pipeline: real filter/group/export produced pages and rows",
+      "pass": true,
+      "detail": "sessions=120 pages=8 rows=120"
+    },
+    {
+      "name": "PDF rendered A4 landscape (fixture)",
+      "pass": true,
+      "detail": "250288 bytes"
+    },
+    {
+      "name": "A4 landscape: CSS @page size honoured",
+      "pass": true,
+      "detail": "842x595pt, 16 pages"
+    },
+    {
+      "name": "A4 landscape: fixture spans multiple pages",
+      "pass": true,
+      "detail": "16 pages"
+    },
+    {
+      "name": "A4 landscape: Arabic content extractable",
+      "pass": true,
+      "detail": "70420 chars of extractable text"
+    },
+    {
+      "name": "A4 landscape: table header repeats on every page that carries rows",
+      "pass": true,
+      "detail": "16/16 row-bearing pages carry the header row"
+    },
+    {
+      "name": "A4 landscape: no blank printed pages",
+      "pass": true,
+      "detail": "0 blank pages"
+    },
+    {
+      "name": "A4 landscape: PNG page images produced",
+      "pass": true,
+      "detail": "16 images"
+    },
+    {
+      "name": "A4 landscape: no ink touching the page edge (clipping check)",
+      "pass": true,
+      "detail": "all pages keep a clear margin"
+    },
+    {
+      "name": "A4 landscape: no horizontal overflow in cells or sheet",
+      "pass": true,
+      "detail": "clean"
+    },
+    {
+      "name": "PDF rendered A3 portrait (fixture)",
+      "pass": true,
+      "detail": "235320 bytes"
+    },
+    {
+      "name": "A3 portrait: CSS @page size honoured",
+      "pass": true,
+      "detail": "842x1191pt, 8 pages"
+    },
+    {
+      "name": "A3 portrait: fixture spans multiple pages",
+      "pass": true,
+      "detail": "8 pages"
+    },
+    {
+      "name": "A3 portrait: Arabic content extractable",
+      "pass": true,
+      "detail": "76072 chars of extractable text"
+    },
+    {
+      "name": "A3 portrait: table header repeats on every page that carries rows",
+      "pass": true,
+      "detail": "8/8 row-bearing pages carry the header row"
+    },
+    {
+      "name": "A3 portrait: no blank printed pages",
+      "pass": true,
+      "detail": "0 blank pages"
+    },
+    {
+      "name": "A3 portrait: PNG page images produced",
+      "pass": true,
+      "detail": "8 images"
+    },
+    {
+      "name": "A3 portrait: no ink touching the page edge (clipping check)",
+      "pass": true,
+      "detail": "all pages keep a clear margin"
+    },
+    {
+      "name": "A3 portrait: no horizontal overflow in cells or sheet",
+      "pass": true,
+      "detail": "clean"
+    },
+    {
+      "name": "PDF rendered A3 landscape (fixture)",
+      "pass": true,
+      "detail": "250524 bytes"
+    },
+    {
+      "name": "A3 landscape: CSS @page size honoured",
+      "pass": true,
+      "detail": "1191x842pt, 16 pages"
+    },
+    {
+      "name": "A3 landscape: fixture spans multiple pages",
+      "pass": true,
+      "detail": "16 pages"
+    },
+    {
+      "name": "A3 landscape: Arabic content extractable",
+      "pass": true,
+      "detail": "72984 chars of extractable text"
+    },
+    {
+      "name": "A3 landscape: table header repeats on every page that carries rows",
+      "pass": true,
+      "detail": "16/16 row-bearing pages carry the header row"
+    },
+    {
+      "name": "A3 landscape: no blank printed pages",
+      "pass": true,
+      "detail": "0 blank pages"
+    },
+    {
+      "name": "A3 landscape: PNG page images produced",
+      "pass": true,
+      "detail": "16 images"
+    },
+    {
+      "name": "A3 landscape: no ink touching the page edge (clipping check)",
+      "pass": true,
+      "detail": "all pages keep a clear margin"
+    },
+    {
+      "name": "A3 landscape: no horizontal overflow in cells or sheet",
+      "pass": true,
+      "detail": "clean"
+    },
+    {
+      "name": "downloadCSV (reports/export.ts): download event fired and file materialised",
+      "pass": true,
+      "detail": "print-proof-timetable.csv (28032 bytes)"
+    },
+    {
+      "name": "downloadXLSX (reports/export.ts): download event fired and file materialised",
+      "pass": true,
+      "detail": "print-proof-timetable.xlsx (74199 bytes)"
+    },
+    {
+      "name": "exportRowsToXlsx (admin-export/to-xlsx.ts): download event fired and file materialised",
+      "pass": true,
+      "detail": "print-proof-admin-20260910.xlsx (131517 bytes)"
+    },
+    {
+      "name": "short fixture prints exactly 2 rows (practical Sunday + theory Monday)",
+      "pass": true,
+      "detail": "الأحد 08:00 - 10:00 FX-C101 مقدمة في علوم الحاسوب عملي د. عبد الرحمن الشرعبي LAB-1 مختبر الحاسوب الأول  | الاثنين 08:00 - 10:00 FX-C101 مقدمة في علوم الحاسوب نظري د. عبد الرحمن الشرعبي H-201 قاعة المحاضرات ٢٠١ "
+    },
+    {
+      "name": "short fixture PDF produced",
+      "pass": true,
+      "detail": "157048 bytes"
+    },
+    {
+      "name": "CSV starts with a UTF-8 BOM (Excel opens Arabic correctly)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "CSV header is the real Arabic header row",
+      "pass": true,
+      "detail": "اليوم,الوقت,رمز المقرر,اسم المقرر,المكوّن,المدرس,القاعة,المجموعة"
+    },
+    {
+      "name": "CSV body row count matches the exported rows",
+      "pass": true,
+      "detail": "120 rows"
+    },
+    {
+      "name": "CSV contains long Arabic course names intact",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "XLSX print-proof-admin-20260910.xlsx: parses, has a sheet and 120 data rows",
+      "pass": true,
+      "detail": "sheet=الجدول rows=121 header=['day', 'time', 'course_code']"
+    },
+    {
+      "name": "XLSX print-proof-admin-20260910.xlsx: Arabic content preserved",
+      "pass": true,
+      "detail": "['الاثنين', '08:00 - 10:00', 'FX-C126', 'قواعد البيانات الموزّعة وتحسين الاستعلامات', 'نظري', 'د. سارة أحمد المقطري', 'L"
+    },
+    {
+      "name": "XLSX print-proof-timetable.xlsx: parses, has a sheet and 120 data rows",
+      "pass": true,
+      "detail": "sheet=الجدول rows=121 header=['اليوم', 'الوقت', 'رمز المقرر']"
+    },
+    {
+      "name": "XLSX print-proof-timetable.xlsx: Arabic content preserved",
+      "pass": true,
+      "detail": "['الاثنين', '08:00 - 10:00', 'FX-C126', 'قواعد البيانات الموزّعة وتحسين الاستعلامات', 'نظري', 'د. سارة أحمد المقطري', 'L"
+    },
+    {
+      "name": "no console or page errors during the whole run",
+      "pass": true,
+      "detail": ""
+    }
+  ]
+}
