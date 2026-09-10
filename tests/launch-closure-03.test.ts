@@ -54,6 +54,20 @@ const REJECTED = readFileSync(
 );
 const PROOF = readFileSync("scripts/local-db/availability-temporal-integrity-proof.sh", "utf8");
 
+/**
+ * Strips `--` comment text so a "this migration contains no DROP TABLE" assertion tests
+ * the executable SQL rather than the prose that documents the same promise.
+ */
+function executable(sql: string): string {
+  return sql
+    .split("\n")
+    .map((line) => line.replace(/--.*$/, ""))
+    .join("\n");
+}
+const MIGRATION_SQL = executable(MIGRATION);
+const ROLLBACK_SQL = executable(ROLLBACK);
+const PREFLIGHT_SQL = executable(PREFLIGHT);
+
 describe("A. behaviour — Arabic mapping of durable integrity failures", () => {
   test("23P01 exclusion violation maps to the Arabic overlap message", () => {
     const err = new FakePostgrestError(
@@ -125,20 +139,20 @@ describe("A. behaviour — Arabic mapping of durable integrity failures", () => 
 
 describe("B. source assertions — the prepared migration artifacts", () => {
   test("D1: no `timerange` anywhere; time spans use built-in tsrange", () => {
-    expect(MIGRATION).not.toContain("timerange(");
+    expect(MIGRATION_SQL).not.toContain("timerange(");
     expect(MIGRATION).toContain("RETURNS tsrange");
     expect(MIGRATION).toContain("'2000-01-01'::date + coalesce(p_end,   '24:00:00'::time)");
   });
 
   test("D2: the room validity window is compared with daterange overlap, not equality", () => {
     expect(MIGRATION).toContain("public._avail_date_span(start_date, end_date) WITH &&");
-    expect(MIGRATION).not.toContain("coalesce(start_date, '-infinity'::date) WITH =");
+    expect(MIGRATION_SQL).not.toContain("coalesce(start_date, '-infinity'::date) WITH =");
   });
 
   test("D3: weekday is a range so NULL weekday overlaps a single weekday, and no partial unique index is used", () => {
     expect(MIGRATION).toContain("public._avail_day_span(day_of_week) WITH &&");
     expect(MIGRATION).toContain("int4range(0, 6, '[]')");
-    expect(MIGRATION).not.toContain("CREATE UNIQUE INDEX");
+    expect(MIGRATION_SQL).not.toContain("CREATE UNIQUE INDEX");
   });
 
   test("D3: NULL times normalise to the whole day inside the constraint expression", () => {
@@ -153,10 +167,10 @@ describe("B. source assertions — the prepared migration artifacts", () => {
   });
 
   test("no SECURITY DEFINER and no service-role/RLS bypass is introduced", () => {
-    expect(MIGRATION).not.toContain("SECURITY DEFINER");
+    expect(MIGRATION_SQL).not.toContain("SECURITY DEFINER");
     expect(MIGRATION).toContain("SECURITY INVOKER");
-    expect(MIGRATION).not.toContain("BYPASSRLS");
-    expect(MIGRATION).not.toContain("service_role_key");
+    expect(MIGRATION_SQL).not.toContain("BYPASSRLS");
+    expect(MIGRATION_SQL).not.toContain("service_role_key");
   });
 
   test("least privilege: EXECUTE revoked from PUBLIC/anon, granted to authenticated only", () => {
@@ -172,10 +186,10 @@ describe("B. source assertions — the prepared migration artifacts", () => {
 
   test("college isolation and existing RLS are preserved, not rewritten", () => {
     expect(MIGRATION).toContain("can_manage_college");
-    expect(MIGRATION).not.toContain("CREATE POLICY");
-    expect(MIGRATION).not.toContain("DROP POLICY");
-    expect(MIGRATION).not.toContain("DISABLE ROW LEVEL SECURITY");
-    expect(MIGRATION).not.toMatch(
+    expect(MIGRATION_SQL).not.toContain("CREATE POLICY");
+    expect(MIGRATION_SQL).not.toContain("DROP POLICY");
+    expect(MIGRATION_SQL).not.toContain("DISABLE ROW LEVEL SECURITY");
+    expect(MIGRATION_SQL).not.toMatch(
       /GRANT [^;]*ON (TABLE )?public\.(instructor_availability|room_unavailability)/,
     );
   });
@@ -195,7 +209,7 @@ describe("B. source assertions — the prepared migration artifacts", () => {
       "DROP COLUMN",
       "DROP SCHEMA",
     ]) {
-      expect(MIGRATION).not.toContain(forbidden);
+      expect(MIGRATION_SQL).not.toContain(forbidden);
     }
   });
 
@@ -212,7 +226,7 @@ describe("B. source assertions — the prepared migration artifacts", () => {
     expect(PREFLIGHT).toContain("P4 room overlaps");
     // preflight must be read-only
     for (const forbidden of ["INSERT ", "UPDATE ", "DELETE ", "ALTER ", "CREATE ", "DROP "]) {
-      expect(PREFLIGHT.includes(forbidden)).toBe(false);
+      expect(PREFLIGHT_SQL.includes(forbidden)).toBe(false);
     }
   });
 
@@ -230,14 +244,15 @@ describe("B. source assertions — the prepared migration artifacts", () => {
       expect(ROLLBACK).toContain(obj);
     }
     for (const forbidden of ["DROP TABLE", "TRUNCATE", "DELETE FROM"]) {
-      expect(ROLLBACK).not.toContain(forbidden);
+      expect(ROLLBACK_SQL).not.toContain(forbidden);
     }
   });
 
   test("the rejected LAUNCH-CLOSURE-02 proposal is neutralised, not left runnable", () => {
     expect(REJECTED).toContain("SUPERSEDED / REJECTED IN REVIEW — DO NOT RUN");
-    expect(REJECTED).not.toContain("ALTER TABLE public.instructor_availability");
-    expect(REJECTED).not.toContain("EXCLUDE USING gist");
+    const rejectedSql = executable(REJECTED);
+    expect(rejectedSql).not.toContain("ALTER TABLE public.instructor_availability");
+    expect(rejectedSql).not.toContain("EXCLUDE USING gist");
   });
 
   test("the proof harness is isolated from the project database and tests the race", () => {
