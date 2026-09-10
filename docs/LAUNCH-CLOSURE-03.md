@@ -38,6 +38,54 @@ To reconcile without risk:
 4. Verify afterwards that `supabase migration list` shows local and remote in sync, and keep
    the rollback file paired with the registered migration.
 
+## 1b. Migration-history registration (gate 18b — DONE)
+
+Closed through the project's own already-authorized migration workflow. No separate
+connector was retried, no credentials were borrowed, no `schema_migrations` row was
+hand-inserted, and no July file was replayed.
+
+| Item                     | Value                                                                                                                                                                                                                                                                                                                                                                                           |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Registered version       | `20260910011503`                                                                                                                                                                                                                                                                                                                                                                                |
+| Canonical committed file | `supabase/migrations/20260910011503_92afea39-a76f-46d9-a7db-b95bf1b60310.sql`                                                                                                                                                                                                                                                                                                                   |
+| Source artifact          | `docs/migrations-proposed/20260910T0025_availability_temporal_integrity_and_bulk_rpc.sql` (MD5 `5f45fd6b19cc5241fef2749f3644297f`, 22,678 bytes, as reviewed at `db4bb418`)                                                                                                                                                                                                                     |
+| File equality            | `diff` against the artifact: identical except the artifact's missing trailing newline (`542c542 COMMIT;`). No statement, identifier or literal differs.                                                                                                                                                                                                                                         |
+| Method                   | The reviewed artifact was replayed **once** through the supported migration workflow. Every statement is guarded (`CREATE EXTENSION IF NOT EXISTS`, `CREATE OR REPLACE`, conditional `ADD CONSTRAINT`, `DROP TRIGGER IF EXISTS` + recreate), so the replay was a definitional no-op. This is the only registration path the workflow supports — it has no `repair --status applied` equivalent. |
+
+Pre-registration comparison (read-only, production): all seven functions
+(`_avail_time_span`, `_avail_day_span`, `_avail_date_span`,
+`_availability_active_working_days`, `validate_room_unavailability_window`,
+`upsert_instructor_unavailability_for_active_days`,
+`upsert_room_unavailability_for_active_days`) already existed with definition MD5s
+identical to a disposable-cluster application of the same artifact, both exclusion
+constraints matched by definition MD5, and `prosecdef=false` throughout. The replay could
+therefore not change behaviour.
+
+Before / after verification (read-only queries, same expressions both times):
+
+| Check                                                                               | Before                             | After                              |
+| ----------------------------------------------------------------------------------- | ---------------------------------- | ---------------------------------- |
+| `instructor_availability` rows                                                      | 0                                  | 0                                  |
+| `room_unavailability` rows                                                          | 1                                  | 1                                  |
+| Exclusion constraints                                                               | 2                                  | 2                                  |
+| RPCs with `prosecdef=true`                                                          | 0                                  | 0                                  |
+| Policy fingerprint (`instructor_availability`, `room_unavailability`, `audit_logs`) | `793552a7045d6739e206b909ebd65a54` | `793552a7045d6739e206b909ebd65a54` |
+| Latest recorded history version                                                     | `20260907161743`                   | `20260910011503`                   |
+
+Correction to §1a: this agent counts **10** policies across those three tables (the root
+note said 11). The count and fingerprint are identical before and after registration, so
+this is a counting difference in the earlier note, not a mutation. No policy was created,
+altered or dropped.
+
+Post-registration linter note (not introduced by the registration — the objects were
+already live): the advisor reports `Function Search Path Mutable` for 4 functions
+(`_avail_time_span`, `_avail_day_span`, `_avail_date_span`,
+`validate_room_unavailability_window`), `Extension in Public` for `btree_gist`, and 40
+pre-existing `SECURITY DEFINER` functions callable by signed-in users, none of which belong
+to this artifact. The three `_avail_*` helpers are `IMMUTABLE` and are used inside index
+expressions of both exclusion constraints; altering them is a schema change outside this
+bookkeeping subtask and is deferred to root as a separate reviewed proposal.
+
 ## 1. Artifact paths
 
 | Purpose                               | Path                                                                                      |
@@ -150,7 +198,7 @@ reported as conflicts. `[object Object]` remains impossible.
 | 16  | Focused lint + prettier on changed files                             | clean                                      | PASS                                                                                                                                                                  |
 | 17  | `bun run build`                                                      | succeeded (nitro/worker output generated)  | PASS                                                                                                                                                                  |
 | 18  | Production application of the migration                              | runtime (prod, performed by root)          | PASS — applied verbatim by root via direct SQL; post-verify recorded in §1a. Not agent-performed, not agent-verified                                                  |
-| 18b | Migration-history registration of the applied artifact               | repo + production history                  | PASS — registered as version `20260910011503` via the project's own supported migration workflow (idempotent replay of the identical artifact); see §1b                |
+| 18b | Migration-history registration of the applied artifact               | repo + production history                  | PASS — registered as version `20260910011503` via the project's own supported migration workflow (idempotent replay of the identical artifact); see §1b               |
 | 18c | Proof runner makes no system modifications                           | runtime (sandbox)                          | PASS — see §9                                                                                                                                                         |
 | 19  | Authenticated production save of an unavailability window, read back | runtime E2E                                | IN PROGRESS by root (authenticated RPC E2E under way at the time of writing). Still BLOCKED for this agent: no session, no credentials                                |
 | 20  | Rendered PDF proof of the printed timetable                          | rendered artifact                          | fixture-level PASS (`docs/LAUNCH-CLOSURE-03-PRINT-EXPORT-PROOF.md`, real Chromium, 79/79 incl. physical page-counter checks). Authenticated-session PDF still BLOCKED |
