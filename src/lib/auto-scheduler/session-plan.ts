@@ -321,3 +321,11 @@ export function nonconformingWarningAr(input: {
   const group = input.groupCode ? ` / ${input.groupCode}` : "";
   return `جلسات قائمة لا تطابق نمط الخطة: ${input.courseCode}${group} (${input.componentType}) — المدد الحالية: ${durations} ساعة، المتوقع: ${expected}. لم تُعدَّل ولم تُحسب كمكتملة.`;
 }
+
+/** Fail-closed stop when the schedule version changed under the run. */
+export const STALE_VERSION_ERROR =
+  "V2_AUTO_STALE_VERSION: تغيّرت نسخة الجدول أثناء التشغيل.";
+
+export function assertVersionNotStale(result: { stale?: boolean } | null | undefined): void {
+  if (result?.stale) throw new Error(STALE_VERSION_ERROR);
+}

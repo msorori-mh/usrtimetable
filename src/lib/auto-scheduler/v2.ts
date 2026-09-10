@@ -6,6 +6,7 @@ import {
 } from "@/lib/schedule-builder/v2-assignment-service";
 import type { AutoRunMode, AutoRunResult, UnplacedItem } from "@/lib/auto-scheduler/greedy";
 import {
+  assertVersionNotStale,
   filterCandidateRooms,
   isLocallyBlocked,
   nonconformingWarningAr,
@@ -320,9 +321,7 @@ export async function runV2AutoSchedule(params: {
             expectedVersionUpdatedAt: versionUpdatedAt,
             note: `auto:${ALGORITHM_VERSION}`,
           });
-          if (result.stale) {
-            throw new Error("V2_AUTO_STALE_VERSION: تغيّرت نسخة الجدول أثناء التشغيل.");
-          }
+          assertVersionNotStale(result);
           if (result.ok && result.session && result.schedule_version_updated_at) {
             versionUpdatedAt = result.schedule_version_updated_at;
             placed++;
