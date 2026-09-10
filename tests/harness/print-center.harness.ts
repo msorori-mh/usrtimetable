@@ -89,9 +89,16 @@ assert(
 );
 
 const pageStyle = read("src/components/print-center/print-center-page.tsx");
+const sharedPageStyle = read("src/lib/print-center/page-style.ts");
 assert(
   pageStyle.includes("size: ${paper} ${orientation}") ||
-    pageStyle.includes("print-center-page-style"),
+    pageStyle.includes("print-center-page-style") ||
+    // LAUNCH-CLOSURE-03: the @page rule now lives in one shared helper so the
+    // print-proof harness renders with exactly the application's page box.
+    (pageStyle.includes("printPageStyleCss(paper, orientation)") &&
+      pageStyle.includes("PRINT_PAGE_STYLE_ELEMENT_ID") &&
+      sharedPageStyle.includes("size: ${paper} ${orientation}") &&
+      sharedPageStyle.includes('PRINT_PAGE_STYLE_ELEMENT_ID = "print-center-page-style"')),
   "A4/A3 landscape/portrait injected via print stylesheet",
 );
 
