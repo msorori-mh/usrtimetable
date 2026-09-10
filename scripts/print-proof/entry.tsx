@@ -21,6 +21,8 @@ import {
   filterPrintSessions,
   groupPrintPages,
   printPageStyleCss,
+  requestPrint,
+  type PrintRequestResult,
   type PrintOrientation,
   type PrintPaperSize,
 } from "@/lib/print-center";
@@ -51,6 +53,7 @@ declare global {
       exportCsv: () => void;
       exportXlsx: () => void;
       exportAdminXlsx: () => void;
+      lastPrint?: PrintRequestResult;
     };
   }
 }
@@ -77,9 +80,22 @@ function Proof() {
     return () => el.remove();
   }, []);
 
+  const onPrintClick = () => {
+    // Exactly the shape of the application's print handler: window.print() via requestPrint.
+    window.__printProof.lastPrint = requestPrint(window);
+  };
+
   const exportAt = new Date("2026-09-10T00:00:00.000Z");
   return (
     <div dir="rtl" className="bg-background text-foreground">
+      <button
+        type="button"
+        data-testid="print-proof-print-button"
+        className="report-no-print"
+        onClick={onPrintClick}
+      >
+        طباعة
+      </button>
       {pages.map((page, i) => (
         <PrintSheet
           key={page.key}

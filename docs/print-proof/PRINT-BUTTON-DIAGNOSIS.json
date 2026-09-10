@@ -1,0 +1,22 @@
+{
+  "headless=True": {
+    "typeof_window_print": "function",
+    "calls_from_click": 1,
+    "click_result": {
+      "status": "dispatched"
+    },
+    "throwing": {
+      "status": "failed",
+      "message": "تعذّر فتح نافذة الطباعة في هذا المتصفح. استخدم Ctrl/Cmd + P أو صدّر Excel/CSV."
+    },
+    "missing": "unavailable",
+    "native_print": {
+      "ok": true,
+      "ms": 1
+    },
+    "console_errors": []
+  },
+  "headless=False": {
+    "launch_error": "BrowserType.launch: Target page, context or browser has been closed\nBrowser logs:\n\n╔════════════════════════════════════════════════════════════════════════════════════════════════╗\n║ Looks like you l"
+  }
+}
