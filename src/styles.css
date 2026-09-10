@@ -471,21 +471,84 @@
     -webkit-print-color-adjust: exact;
   }
 
-  /* Hide app chrome */
+  /* Hide app chrome.
+     LAUNCH-CLOSURE-04: the mobile AppLayout header and the page context bar
+     (breadcrumb + college badge) are NOT inside <aside>, so they used to print
+     on top of the official sheet header. They are tagged with
+     [data-app-chrome] so this rule stays narrow and screen UI is untouched. */
   aside,
+  [data-app-chrome],
   .report-no-print,
   [data-sonner-toaster] {
     display: none !important;
   }
 
-  main {
+  /* LAUNCH-CLOSURE-04: release the app-shell viewport box. The shell is a
+     flex row with min-h-screen and a flex-1 <main>; on paper that constrained
+     the sheet to the screen viewport width, which clipped the QR code on the
+     outer edge and the right edge of the heading. */
+  html,
+  body {
+    width: auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
     padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  [data-app-shell="root"] {
+    display: block !important;
+    width: auto !important;
     max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    background: white !important;
+  }
+
+  main {
+    display: block !important;
+    width: auto !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    flex: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
   }
 
   .report-print-root {
     padding: 0;
+    margin: 0 !important;
+    width: auto !important;
     max-width: none;
+    overflow: visible !important;
+  }
+
+  .print-center-body {
+    width: auto !important;
+    max-width: none !important;
+    overflow: visible !important;
+  }
+
+  /* The official sheet header must fit the page box: the identification block
+     may shrink, the QR must keep its intrinsic size and stay inside the page. */
+  .print-center-header > div {
+    min-width: 0 !important;
+  }
+
+  .print-center-header > div > div:first-child {
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+  }
+
+  .print-center-header svg,
+  .print-center-header canvas,
+  .print-center-header img {
+    max-width: 100% !important;
+    flex: 0 0 auto !important;
   }
 
   /* Screen-only page title duplicates */

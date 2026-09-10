@@ -379,7 +379,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     );
 
   return (
-    <div className="flex min-h-screen flex-col bg-background md:flex-row">
+    <div className="flex min-h-screen flex-col bg-background md:flex-row" data-app-shell="root">
       <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-l border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
         <div className="usr-gold-rule shrink-0" />
         <div className="flex items-center gap-3 border-b border-sidebar-border px-5 py-4">
@@ -410,7 +410,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <header className="sticky top-0 z-40 border-b border-border bg-background/95 px-4 py-3 backdrop-blur md:hidden">
+      <header
+        className="sticky top-0 z-40 border-b border-border bg-background/95 px-4 py-3 backdrop-blur md:hidden"
+        data-app-chrome="mobile-header"
+      >
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <UsrBrandMark size="sm" />
@@ -452,6 +455,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <div
             className="mb-5 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border/60 pb-3"
             data-testid="page-context-bar"
+            data-app-chrome="context-bar"
           >
             <nav aria-label="مسار التنقل" className="min-w-0 text-xs text-muted-foreground">
               {crumb ? (
