@@ -317,6 +317,32 @@ export async function runV2AutoSchedule(params: {
     });
     const groupLabel = `${item.course_code}${item.group_code ? ` / ${item.group_code}` : ""}`;
     if (cadence.noteAr) warnings.push(`${groupLabel}: ${cadence.noteAr}`);
+    if (cadence.source === "blocked") {
+      // Never invent a cadence: report and skip this component.
+      blockedCadenceItems++;
+      byType[type].unplaced++;
+      unplaced.push({
+        course_offering_id: item.course_offering_id,
+        teaching_assignment_id: item.teaching_assignment_id,
+        instructor_id: item.instructor_id,
+        course_id: item.course_id,
+        session_type: item.session_type || item.component_type,
+        duration_minutes: 0,
+        unit_index: 1,
+        reason: `${groupLabel}: ${cadence.noteAr ?? "نمط الخطة الأسبوعي غير صالح."}`,
+      });
+      processedItems++;
+      params.onProgress?.({
+        processedItems,
+        totalItems: workItems.length,
+        placed,
+        unplaced: unplaced.length,
+        label: groupLabel,
+      });
+      continue;
+    }
+
+
 
     const existing =
       existingByAssignment.get(`${item.teaching_assignment_id}|${item.delivery_group_id}`) ?? [];
