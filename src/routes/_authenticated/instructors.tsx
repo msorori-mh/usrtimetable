@@ -184,11 +184,12 @@ function InstructorsPage() {
                   <div><Label>الجوال</Label><Input dir="ltr" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div><Label>نوع التعاقد</Label>
-                    <Select value={form.employment_type} onValueChange={(v) => setForm({ ...form, employment_type: v })}>
+                  <div><Label>حالة التفرغ/التعاقد</Label>
+                    <Select value={form.employment_type || UNKNOWN_EMPLOYMENT_TYPE} onValueChange={(v) => setForm({ ...form, employment_type: v })}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>{EMP.map((e) => <SelectItem key={e.v} value={e.v}>{e.l}</SelectItem>)}</SelectContent>
+                      <SelectContent>{EMPLOYMENT_TYPE_OPTIONS.map((e) => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}</SelectContent>
                     </Select>
+                    <p className="mt-1 text-[11px] text-muted-foreground">اترك «غير محدد» إذا لم يتم إثبات حالة التفرغ رسمياً.</p>
                   </div>
                   <div><Label>الحد الأسبوعي للساعات</Label><Input type="number" value={form.max_weekly_hours} onChange={(e) => setForm({ ...form, max_weekly_hours: Number(e.target.value) })} /></div>
                 </div>
