@@ -1,6 +1,7 @@
 import type { TemplateDef } from "./types";
 import { escapeSpreadsheetCell } from "./formula-escape";
 import { IMPORT_CONTRACT_VERSION, PILOT_STUDY_SYSTEMS, TA_V2_COMPONENT_TYPES } from "./registry";
+import { EMPLOYMENT_TYPE_IMPORT_VALUES } from "../instructor-metadata";
 
 export const TEMPLATES: Record<string, TemplateDef> = {
   instructors: {
@@ -25,8 +26,8 @@ export const TEMPLATES: Record<string, TemplateDef> = {
       {
         key: "employment_type",
         header: "نوع_التوظيف",
-        example: "full_time",
-        enumValues: ["full_time", "part_time", "visiting"],
+        example: "unknown",
+        enumValues: [...EMPLOYMENT_TYPE_IMPORT_VALUES],
       },
       { key: "max_weekly_hours", header: "أقصى_ساعات_أسبوعية", type: "number", example: "18" },
       { key: "max_hours_per_day", header: "أقصى_ساعات_يومية", type: "number", example: "6" },
