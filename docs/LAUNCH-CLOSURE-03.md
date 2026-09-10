@@ -7,14 +7,14 @@
 
 ## 1. Artifact paths
 
-| Purpose | Path |
-| --- | --- |
-| Executable migration | `docs/migrations-proposed/20260910T0025_availability_temporal_integrity_and_bulk_rpc.sql` |
-| Preflight (read-only) | `docs/migrations-proposed/20260910T0025_preflight.sql` |
-| Rollback | `docs/migrations-proposed/20260910T0025_rollback.sql` |
-| Disposable-DB proof harness | `scripts/local-db/availability-temporal-integrity-proof.sh` |
-| Proof fixture / cases | `scripts/local-db/availability-fixture.sql`, `scripts/local-db/availability-cases.sql` |
-| Rejected LC-02 proposal (neutralised) | `docs/migrations-proposed/20260910T0000_availability_bulk_rpc_and_overlap_integrity.sql` |
+| Purpose                               | Path                                                                                      |
+| ------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Executable migration                  | `docs/migrations-proposed/20260910T0025_availability_temporal_integrity_and_bulk_rpc.sql` |
+| Preflight (read-only)                 | `docs/migrations-proposed/20260910T0025_preflight.sql`                                    |
+| Rollback                              | `docs/migrations-proposed/20260910T0025_rollback.sql`                                     |
+| Disposable-DB proof harness           | `scripts/local-db/availability-temporal-integrity-proof.sh`                               |
+| Proof fixture / cases                 | `scripts/local-db/availability-fixture.sql`, `scripts/local-db/availability-cases.sql`    |
+| Rejected LC-02 proposal (neutralised) | `docs/migrations-proposed/20260910T0000_availability_bulk_rpc_and_overlap_integrity.sql`  |
 
 The `supabase/migrations/` directory is managed by the platform migration tool and the
 Supabase CLI is not installed in this environment, so `migration new` was unavailable and
@@ -24,12 +24,12 @@ verbatim through the migration tool when root approves.
 
 ## 2. Review defects from LAUNCH-CLOSURE-02, and how each is fixed
 
-| # | Review finding | Resolution |
-| --- | --- | --- |
-| D1 | `timerange` is not a built-in Postgres type and was never defined | Removed. Time-of-day spans use built-in `tsrange` anchored on `2000-01-01`; `NULL` time normalises to `00:00–24:00` (whole day) |
-| D2 | Room equality on `start_date`/`end_date` mishandles overlapping unequal date windows | Replaced with `daterange` overlap (`_avail_date_span`, `&&`); `NULL` bounds are unbounded |
-| D3 | Whole-day / all-week closures were handled by a partial unique index that could not conflict with timed or all-week rows | Unique index removed. Weekday becomes `int4range` (`NULL` weekday = `[0,6]`), so all-week vs single-day and whole-day vs timed rows genuinely overlap inside one exclusion constraint |
-| D4 | Instructor constraint improperly covered preferred/available classes | Constraint is partial: `WHERE availability_type = 'unavailable' AND is_preference = false` |
+| #   | Review finding                                                                                                           | Resolution                                                                                                                                                                            |
+| --- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | `timerange` is not a built-in Postgres type and was never defined                                                        | Removed. Time-of-day spans use built-in `tsrange` anchored on `2000-01-01`; `NULL` time normalises to `00:00–24:00` (whole day)                                                       |
+| D2  | Room equality on `start_date`/`end_date` mishandles overlapping unequal date windows                                     | Replaced with `daterange` overlap (`_avail_date_span`, `&&`); `NULL` bounds are unbounded                                                                                             |
+| D3  | Whole-day / all-week closures were handled by a partial unique index that could not conflict with timed or all-week rows | Unique index removed. Weekday becomes `int4range` (`NULL` weekday = `[0,6]`), so all-week vs single-day and whole-day vs timed rows genuinely overlap inside one exclusion constraint |
+| D4  | Instructor constraint improperly covered preferred/available classes                                                     | Constraint is partial: `WHERE availability_type = 'unavailable' AND is_preference = false`                                                                                            |
 
 Extra hardening: `validate_room_unavailability_window` (BEFORE INSERT/UPDATE trigger) rejects
 half-specified times, inverted times, and inverted date windows on **every** write path.
@@ -50,7 +50,7 @@ RESULT: all cases PASS on the disposable database
 
 - migration applies cleanly; **second apply is idempotent**
 - `timerange` confirmed absent (the rejected proposal is literally unparseable)
-- temporal semantics: whole-day vs timed overlap, adjacency is *not* overlap, `NULL`
+- temporal semantics: whole-day vs timed overlap, adjacency is _not_ overlap, `NULL`
   weekday spans every weekday, **unequal overlapping date windows conflict (D2)**,
   disjoint date windows do not, `NULL` date bounds unbounded
 - instructor bulk save creates 6 days, rows read back (persistence), repeat is
@@ -97,29 +97,29 @@ reported as conflicts. `[object Object]` remains impossible.
 
 ## 6. Gate matrix — source assertion vs runtime vs rendered proof
 
-| # | Gate | Kind | Result |
-| --- | --- | --- | --- |
-| 1 | Baseline verified, tree clean | repo | PASS |
-| 2 | Migration syntax + executability | runtime (disposable DB) | PASS |
-| 3 | Idempotent re-apply | runtime | PASS |
-| 4 | Temporal semantics D1–D4 | runtime | PASS |
-| 5 | Duplicates / idempotency / invalid inputs | runtime | PASS |
-| 6 | Cross-college rejection | runtime | PASS (fail-closed `22023`) |
-| 7 | authenticated allowed, viewer + anon denied | runtime | PASS |
-| 8 | Two-connection overlap race rejected at rest | runtime | PASS (`23P01`) |
-| 9 | Rollback correct, no data loss | runtime | PASS |
-| 10 | Production preflight zero invalid/overlap/collision | runtime (read-only, prod) | PASS |
-| 11 | Least privilege, no SECURITY DEFINER, RLS untouched | source assertion + runtime privilege cases | PASS |
-| 12 | Arabic mapping of `23P01`/`23505` and friends | unit tests | PASS |
-| 13 | `bun test` | 147 pass / 0 fail, 480 assertions | PASS |
-| 14 | Harness `node tests/harness/run.mjs` | 68 passed / 0 failed | PASS |
-| 15 | `tsgo --noEmit` typecheck | clean | PASS |
-| 16 | Focused lint + prettier on changed files | clean | PASS |
-| 17 | `bun run build` | succeeded (nitro/worker output generated) | PASS |
-| 18 | Production application of the migration | requires root approval | HOLD (by instruction) |
-| 19 | Authenticated production save of an unavailability window, read back | runtime E2E | BLOCKED — needs the root-authenticated tester to perform it; no session or credentials are available to this agent |
-| 20 | Rendered PDF proof of the printed timetable | rendered artifact | BLOCKED — see §7 |
-| 21 | Deployment / publish | — | NOT PERFORMED |
+| #   | Gate                                                                 | Kind                                       | Result                                                                                                             |
+| --- | -------------------------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| 1   | Baseline verified, tree clean                                        | repo                                       | PASS                                                                                                               |
+| 2   | Migration syntax + executability                                     | runtime (disposable DB)                    | PASS                                                                                                               |
+| 3   | Idempotent re-apply                                                  | runtime                                    | PASS                                                                                                               |
+| 4   | Temporal semantics D1–D4                                             | runtime                                    | PASS                                                                                                               |
+| 5   | Duplicates / idempotency / invalid inputs                            | runtime                                    | PASS                                                                                                               |
+| 6   | Cross-college rejection                                              | runtime                                    | PASS (fail-closed `22023`)                                                                                         |
+| 7   | authenticated allowed, viewer + anon denied                          | runtime                                    | PASS                                                                                                               |
+| 8   | Two-connection overlap race rejected at rest                         | runtime                                    | PASS (`23P01`)                                                                                                     |
+| 9   | Rollback correct, no data loss                                       | runtime                                    | PASS                                                                                                               |
+| 10  | Production preflight zero invalid/overlap/collision                  | runtime (read-only, prod)                  | PASS                                                                                                               |
+| 11  | Least privilege, no SECURITY DEFINER, RLS untouched                  | source assertion + runtime privilege cases | PASS                                                                                                               |
+| 12  | Arabic mapping of `23P01`/`23505` and friends                        | unit tests                                 | PASS                                                                                                               |
+| 13  | `bun test`                                                           | 147 pass / 0 fail, 480 assertions          | PASS                                                                                                               |
+| 14  | Harness `node tests/harness/run.mjs`                                 | 68 passed / 0 failed                       | PASS                                                                                                               |
+| 15  | `tsgo --noEmit` typecheck                                            | clean                                      | PASS                                                                                                               |
+| 16  | Focused lint + prettier on changed files                             | clean                                      | PASS                                                                                                               |
+| 17  | `bun run build`                                                      | succeeded (nitro/worker output generated)  | PASS                                                                                                               |
+| 18  | Production application of the migration                              | requires root approval                     | HOLD (by instruction)                                                                                              |
+| 19  | Authenticated production save of an unavailability window, read back | runtime E2E                                | BLOCKED — needs the root-authenticated tester to perform it; no session or credentials are available to this agent |
+| 20  | Rendered PDF proof of the printed timetable                          | rendered artifact                          | BLOCKED — see §7                                                                                                   |
+| 21  | Deployment / publish                                                 | —                                          | NOT PERFORMED                                                                                                      |
 
 Repository-wide `eslint .` reports pre-existing prettier-rule noise across unrelated
 legacy files (unchanged by this stage); the changed files are clean.
@@ -147,5 +147,5 @@ rather than being claimed from source.
 3. Export the published timetable to PDF and attach it as the gate 20 artifact.
 4. Only then deploy; rollback reference is
    `docs/migrations-proposed/20260910T0025_rollback.sql` (restores pre-migration behaviour
-   without deleting data; the client-side validation path resumes, which does *not* prevent
+   without deleting data; the client-side validation path resumes, which does _not_ prevent
    concurrent overlaps).
