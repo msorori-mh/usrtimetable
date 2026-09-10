@@ -151,7 +151,7 @@ async def main():
                         text=True,
                     ).stdout
                 )
-                m = re.search(r"صفحة\s+(\d+)\s+من\s+(\d+)", t)
+                m = re.search(r"صفحة\s*(\d+)\s*من\s*(\d+)", t)
                 phys[i] = (int(m.group(1)), int(m.group(2))) if m else None
             check(
                 f"{paper} {orientation}: every physical page carries a physical page counter",
@@ -187,7 +187,8 @@ async def main():
             )
             check(
                 f"{paper} {orientation}: in-flow footer numbers GROUPS, not physical pages",
-                "مجموعة الجدول 1 من" in logical and "صفحة 1 من" not in logical,
+                bool(re.search(r"مجموعة الجدول\s*1\s*من", logical))
+                and not re.search(r"صفحة\s*1\s*من", logical),
                 logical.split("|")[0].strip()[:80],
             )
             # group context repeats on every row-bearing physical page
