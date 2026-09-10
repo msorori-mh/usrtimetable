@@ -34,6 +34,7 @@ const orientation = (
   q.get("orientation") === "portrait" ? "portrait" : "landscape"
 ) as PrintOrientation;
 const fixture = q.get("fixture") === "short" ? SHORT_FIXTURE : LONG_FIXTURE;
+const isLongFixture = fixture === LONG_FIXTURE;
 
 const sessions = filterPrintSessions(fixture, FIXTURE_FILTERS);
 const pages = groupPrintPages(sessions, FIXTURE_FILTERS);
@@ -66,30 +67,52 @@ function Sheets() {
       </div>
 
       <div className="report-print-body print-center-body space-y-6">
-        {pages.map((page, i) => (
-          <PrintSheet
-            key={page.key}
-            page={page}
-            meta={{
-              collegeName: "كلية تكنولوجيا المعلومات وعلوم الحاسوب (فكسچر اختباري)",
-              departmentName: page.departmentName,
-              programName: page.programName,
-              levelName: page.levelName,
-              studySystem: "all",
-              termName: "الفصل الأول ١٤٤٨هـ / 2026-2027",
-              versionName: "PRINT-PROOF-FIXTURE",
-              versionStatus: "published",
-              versionNumber: "v1",
-              exportAt,
-              lastUpdate: "2026-09-09T18:00:00.000Z",
-              qrUrl: "https://example.invalid/print-proof",
-              isDemo: false,
-              pageIndex: i + 1,
-              pageCount: pages.length,
-            }}
-            visibility={DEFAULT_PRINT_VISIBILITY}
-          />
-        ))}
+        {pages.map((page, i) => {
+          const proofPage = isLongFixture
+            ? {
+                ...page,
+                departmentName: "قسم تكنولوجيا المعلومات وعلوم الحاسوب وهندسة البرمجيات المتقدمة",
+                programName: "برنامج بكالوريوس تكنولوجيا المعلومات والأنظمة الذكية وتحليل البيانات",
+                levelName: `${page.levelName || "المستوى الأول"} — المسار الأكاديمي التطبيقي`,
+              }
+            : page;
+          return (
+            <PrintSheet
+              key={page.key}
+              page={proofPage}
+              meta={{
+                collegeName: isLongFixture
+                  ? "كلية تكنولوجيا المعلومات وعلوم الحاسوب والأنظمة الذكية التطبيقية"
+                  : "كلية تكنولوجيا المعلومات وعلوم الحاسوب (فكسچر اختباري)",
+                departmentName: isLongFixture
+                  ? "قسم تكنولوجيا المعلومات وعلوم الحاسوب وهندسة البرمجيات المتقدمة"
+                  : page.departmentName,
+                programName: isLongFixture
+                  ? "برنامج بكالوريوس تكنولوجيا المعلومات والأنظمة الذكية وتحليل البيانات"
+                  : page.programName,
+                levelName: isLongFixture
+                  ? `${page.levelName || "المستوى الأول"} — المسار الأكاديمي التطبيقي`
+                  : page.levelName,
+                studySystem: "all",
+                termName: isLongFixture
+                  ? "الفصل الدراسي الأول للعام الجامعي ١٤٤٨هـ / 2026-2027م"
+                  : "الفصل الأول ١٤٤٨هـ / 2026-2027",
+                versionName: isLongFixture
+                  ? "النسخة النهائية المعتمدة لأغراض إثبات تنسيق رأس الجدول"
+                  : "PRINT-PROOF-FIXTURE",
+                versionStatus: "published",
+                versionNumber: "v1",
+                exportAt,
+                lastUpdate: "2026-09-09T18:00:00.000Z",
+                qrUrl: "https://example.invalid/print-proof",
+                isDemo: false,
+                pageIndex: i + 1,
+                pageCount: pages.length,
+              }}
+              visibility={DEFAULT_PRINT_VISIBILITY}
+            />
+          );
+        })}
       </div>
     </div>
   );

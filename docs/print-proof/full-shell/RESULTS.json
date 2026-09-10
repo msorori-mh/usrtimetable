@@ -1,7 +1,7 @@
 {
   "harness": "LAUNCH-CLOSURE-04 full-shell print proof",
-  "total": 241,
-  "passed": 241,
+  "total": 273,
+  "passed": 273,
   "failed": [],
   "cases": [
     {
@@ -18,6 +18,11 @@
       "name": "desktop A4 portrait long: official sheet header printed",
       "pass": true,
       "detail": "8 sheets"
+    },
+    {
+      "name": "desktop A4 portrait long: compact identity/title/details/meta header structure",
+      "pass": true,
+      "detail": "[{\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}]"
     },
     {
       "name": "desktop A4 portrait long: QR / logo / heading / footer inside the page box",
@@ -40,6 +45,11 @@
       "detail": "all inside"
     },
     {
+      "name": "desktop A4 portrait long: compact header stays at or below 200px at printable width",
+      "pass": true,
+      "detail": "[192, 192, 192, 192, 192, 192, 192, 192]"
+    },
+    {
       "name": "desktop A4 portrait long: CSS @page size/orientation honoured",
       "pass": true,
       "detail": "595x842pt, 20 pages"
@@ -52,7 +62,7 @@
     {
       "name": "desktop A4 portrait long: official header content present in the PDF",
       "pass": true,
-      "detail": "71950 chars extractable"
+      "detail": "81063 chars extractable"
     },
     {
       "name": "desktop A4 portrait long: all 8 column headings present in the PDF",
@@ -90,6 +100,11 @@
       "detail": "1 sheets"
     },
     {
+      "name": "desktop A4 portrait short: compact identity/title/details/meta header structure",
+      "pass": true,
+      "detail": "[{\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 4, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}]"
+    },
+    {
       "name": "desktop A4 portrait short: QR / logo / heading / footer inside the page box",
       "pass": true,
       "detail": "all inside"
@@ -115,6 +130,11 @@
       "detail": "all inside"
     },
     {
+      "name": "desktop A4 portrait short: compact header stays at or below 200px at printable width",
+      "pass": true,
+      "detail": "[163]"
+    },
+    {
       "name": "desktop A4 portrait short: CSS @page size/orientation honoured",
       "pass": true,
       "detail": "595x842pt, 1 pages"
@@ -127,7 +147,7 @@
     {
       "name": "desktop A4 portrait short: official header content present in the PDF",
       "pass": true,
-      "detail": "2047 chars extractable"
+      "detail": "2132 chars extractable"
     },
     {
       "name": "desktop A4 portrait short: all 8 column headings present in the PDF",
@@ -170,6 +190,11 @@
       "detail": "8 sheets"
     },
     {
+      "name": "desktop A4 landscape long: compact identity/title/details/meta header structure",
+      "pass": true,
+      "detail": "[{\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}]"
+    },
+    {
       "name": "desktop A4 landscape long: QR / logo / heading / footer inside the page box",
       "pass": true,
       "detail": "all inside"
@@ -190,6 +215,11 @@
       "detail": "all inside"
     },
     {
+      "name": "desktop A4 landscape long: compact header stays at or below 200px at printable width",
+      "pass": true,
+      "detail": "[177, 177, 177, 177, 177, 177, 177, 177]"
+    },
+    {
       "name": "desktop A4 landscape long: CSS @page size/orientation honoured",
       "pass": true,
       "detail": "842x595pt, 24 pages"
@@ -202,7 +232,7 @@
     {
       "name": "desktop A4 landscape long: official header content present in the PDF",
       "pass": true,
-      "detail": "69874 chars extractable"
+      "detail": "74751 chars extractable"
     },
     {
       "name": "desktop A4 landscape long: all 8 column headings present in the PDF",
@@ -240,6 +270,11 @@
       "detail": "1 sheets"
     },
     {
+      "name": "desktop A4 landscape short: compact identity/title/details/meta header structure",
+      "pass": true,
+      "detail": "[{\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 4, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}]"
+    },
+    {
       "name": "desktop A4 landscape short: QR / logo / heading / footer inside the page box",
       "pass": true,
       "detail": "all inside"
@@ -265,6 +300,11 @@
       "detail": "all inside"
     },
     {
+      "name": "desktop A4 landscape short: compact header stays at or below 200px at printable width",
+      "pass": true,
+      "detail": "[163]"
+    },
+    {
       "name": "desktop A4 landscape short: CSS @page size/orientation honoured",
       "pass": true,
       "detail": "842x595pt, 1 pages"
@@ -277,7 +317,7 @@
     {
       "name": "desktop A4 landscape short: official header content present in the PDF",
       "pass": true,
-      "detail": "2821 chars extractable"
+      "detail": "2858 chars extractable"
     },
     {
       "name": "desktop A4 landscape short: all 8 column headings present in the PDF",
@@ -320,6 +360,11 @@
       "detail": "8 sheets"
     },
     {
+      "name": "desktop A3 portrait long: compact identity/title/details/meta header structure",
+      "pass": true,
+      "detail": "[{\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}]"
+    },
+    {
       "name": "desktop A3 portrait long: QR / logo / heading / footer inside the page box",
       "pass": true,
       "detail": "all inside"
@@ -340,6 +385,11 @@
       "detail": "all inside"
     },
     {
+      "name": "desktop A3 portrait long: compact header stays at or below 200px at printable width",
+      "pass": true,
+      "detail": "[177, 177, 177, 177, 177, 177, 177, 177]"
+    },
+    {
       "name": "desktop A3 portrait long: CSS @page size/orientation honoured",
       "pass": true,
       "detail": "842x1191pt, 8 pages"
@@ -352,7 +402,7 @@
     {
       "name": "desktop A3 portrait long: official header content present in the PDF",
       "pass": true,
-      "detail": "77202 chars extractable"
+      "detail": "90714 chars extractable"
     },
     {
       "name": "desktop A3 portrait long: all 8 column headings present in the PDF",
@@ -390,6 +440,11 @@
       "detail": "1 sheets"
     },
     {
+      "name": "desktop A3 portrait short: compact identity/title/details/meta header structure",
+      "pass": true,
+      "detail": "[{\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 4, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}]"
+    },
+    {
       "name": "desktop A3 portrait short: QR / logo / heading / footer inside the page box",
       "pass": true,
       "detail": "all inside"
@@ -415,6 +470,11 @@
       "detail": "all inside"
     },
     {
+      "name": "desktop A3 portrait short: compact header stays at or below 200px at printable width",
+      "pass": true,
+      "detail": "[163]"
+    },
+    {
       "name": "desktop A3 portrait short: CSS @page size/orientation honoured",
       "pass": true,
       "detail": "842x1191pt, 1 pages"
@@ -427,7 +487,7 @@
     {
       "name": "desktop A3 portrait short: official header content present in the PDF",
       "pass": true,
-      "detail": "2821 chars extractable"
+      "detail": "2858 chars extractable"
     },
     {
       "name": "desktop A3 portrait short: all 8 column headings present in the PDF",
@@ -470,6 +530,11 @@
       "detail": "8 sheets"
     },
     {
+      "name": "desktop A3 landscape long: compact identity/title/details/meta header structure",
+      "pass": true,
+      "detail": "[{\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}]"
+    },
+    {
       "name": "desktop A3 landscape long: QR / logo / heading / footer inside the page box",
       "pass": true,
       "detail": "all inside"
@@ -490,9 +555,14 @@
       "detail": "all inside"
     },
     {
+      "name": "desktop A3 landscape long: compact header stays at or below 200px at printable width",
+      "pass": true,
+      "detail": "[163, 163, 163, 163, 163, 163, 163, 163]"
+    },
+    {
       "name": "desktop A3 landscape long: CSS @page size/orientation honoured",
       "pass": true,
-      "detail": "1191x842pt, 16 pages"
+      "detail": "1191x842pt, 8 pages"
     },
     {
       "name": "desktop A3 landscape long: app chrome text absent from the PDF",
@@ -502,7 +572,7 @@
     {
       "name": "desktop A3 landscape long: official header content present in the PDF",
       "pass": true,
-      "detail": "76781 chars extractable"
+      "detail": "97032 chars extractable"
     },
     {
       "name": "desktop A3 landscape long: all 8 column headings present in the PDF",
@@ -512,17 +582,17 @@
     {
       "name": "desktop A3 landscape long: no blank printed pages",
       "pass": true,
-      "detail": "0 blank of 16"
+      "detail": "0 blank of 8"
     },
     {
       "name": "desktop A3 landscape long: physical counters correct and sequential",
       "pass": true,
-      "detail": "[(1, 16), (16, 16)]"
+      "detail": "[(1, 8), (8, 8)]"
     },
     {
       "name": "desktop A3 landscape long: no ink touching the page edge (clipping check)",
       "pass": true,
-      "detail": "16 pages keep a clear margin"
+      "detail": "8 pages keep a clear margin"
     },
     {
       "name": "desktop A3 landscape short: real app shell is mounted (sidebar + mobile header + context bar)",
@@ -538,6 +608,11 @@
       "name": "desktop A3 landscape short: official sheet header printed",
       "pass": true,
       "detail": "1 sheets"
+    },
+    {
+      "name": "desktop A3 landscape short: compact identity/title/details/meta header structure",
+      "pass": true,
+      "detail": "[{\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 4, \"metaCount\": 3, \"headerHeight\": 163, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}]"
     },
     {
       "name": "desktop A3 landscape short: QR / logo / heading / footer inside the page box",
@@ -565,6 +640,11 @@
       "detail": "all inside"
     },
     {
+      "name": "desktop A3 landscape short: compact header stays at or below 200px at printable width",
+      "pass": true,
+      "detail": "[163]"
+    },
+    {
       "name": "desktop A3 landscape short: CSS @page size/orientation honoured",
       "pass": true,
       "detail": "1191x842pt, 1 pages"
@@ -577,7 +657,7 @@
     {
       "name": "desktop A3 landscape short: official header content present in the PDF",
       "pass": true,
-      "detail": "3162 chars extractable"
+      "detail": "3015 chars extractable"
     },
     {
       "name": "desktop A3 landscape short: all 8 column headings present in the PDF",
@@ -620,6 +700,11 @@
       "detail": "8 sheets"
     },
     {
+      "name": "mobile A4 portrait long: compact identity/title/details/meta header structure",
+      "pass": true,
+      "detail": "[{\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 721, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 721, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 721, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 721, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 721, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 721, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 721, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 721, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}]"
+    },
+    {
       "name": "mobile A4 portrait long: QR / logo / heading / footer inside the page box",
       "pass": true,
       "detail": "all inside"
@@ -640,6 +725,11 @@
       "detail": "all inside"
     },
     {
+      "name": "mobile A4 portrait long: compact header stays at or below 200px at printable width",
+      "pass": true,
+      "detail": "[192, 192, 192, 192, 192, 192, 192, 192]"
+    },
+    {
       "name": "mobile A4 portrait long: CSS @page size/orientation honoured",
       "pass": true,
       "detail": "595x842pt, 20 pages"
@@ -652,7 +742,7 @@
     {
       "name": "mobile A4 portrait long: official header content present in the PDF",
       "pass": true,
-      "detail": "71950 chars extractable"
+      "detail": "81063 chars extractable"
     },
     {
       "name": "mobile A4 portrait long: all 8 column headings present in the PDF",
@@ -690,6 +780,11 @@
       "detail": "1 sheets"
     },
     {
+      "name": "mobile A4 portrait short: compact identity/title/details/meta header structure",
+      "pass": true,
+      "detail": "[{\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 4, \"metaCount\": 3, \"headerHeight\": 585, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}]"
+    },
+    {
       "name": "mobile A4 portrait short: QR / logo / heading / footer inside the page box",
       "pass": true,
       "detail": "all inside"
@@ -715,6 +810,11 @@
       "detail": "all inside"
     },
     {
+      "name": "mobile A4 portrait short: compact header stays at or below 200px at printable width",
+      "pass": true,
+      "detail": "[163]"
+    },
+    {
       "name": "mobile A4 portrait short: CSS @page size/orientation honoured",
       "pass": true,
       "detail": "595x842pt, 1 pages"
@@ -727,7 +827,7 @@
     {
       "name": "mobile A4 portrait short: official header content present in the PDF",
       "pass": true,
-      "detail": "2047 chars extractable"
+      "detail": "2132 chars extractable"
     },
     {
       "name": "mobile A4 portrait short: all 8 column headings present in the PDF",
@@ -770,6 +870,11 @@
       "detail": "8 sheets"
     },
     {
+      "name": "mobile A4 landscape long: compact identity/title/details/meta header structure",
+      "pass": true,
+      "detail": "[{\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 721, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 721, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 721, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 721, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 721, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 721, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 721, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 721, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}]"
+    },
+    {
       "name": "mobile A4 landscape long: QR / logo / heading / footer inside the page box",
       "pass": true,
       "detail": "all inside"
@@ -790,6 +895,11 @@
       "detail": "all inside"
     },
     {
+      "name": "mobile A4 landscape long: compact header stays at or below 200px at printable width",
+      "pass": true,
+      "detail": "[177, 177, 177, 177, 177, 177, 177, 177]"
+    },
+    {
       "name": "mobile A4 landscape long: CSS @page size/orientation honoured",
       "pass": true,
       "detail": "842x595pt, 24 pages"
@@ -802,7 +912,7 @@
     {
       "name": "mobile A4 landscape long: official header content present in the PDF",
       "pass": true,
-      "detail": "69874 chars extractable"
+      "detail": "74751 chars extractable"
     },
     {
       "name": "mobile A4 landscape long: all 8 column headings present in the PDF",
@@ -840,6 +950,11 @@
       "detail": "1 sheets"
     },
     {
+      "name": "mobile A4 landscape short: compact identity/title/details/meta header structure",
+      "pass": true,
+      "detail": "[{\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 4, \"metaCount\": 3, \"headerHeight\": 585, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}]"
+    },
+    {
       "name": "mobile A4 landscape short: QR / logo / heading / footer inside the page box",
       "pass": true,
       "detail": "all inside"
@@ -865,6 +980,11 @@
       "detail": "all inside"
     },
     {
+      "name": "mobile A4 landscape short: compact header stays at or below 200px at printable width",
+      "pass": true,
+      "detail": "[163]"
+    },
+    {
       "name": "mobile A4 landscape short: CSS @page size/orientation honoured",
       "pass": true,
       "detail": "842x595pt, 1 pages"
@@ -877,7 +997,7 @@
     {
       "name": "mobile A4 landscape short: official header content present in the PDF",
       "pass": true,
-      "detail": "2821 chars extractable"
+      "detail": "2858 chars extractable"
     },
     {
       "name": "mobile A4 landscape short: all 8 column headings present in the PDF",
@@ -920,6 +1040,11 @@
       "detail": "8 sheets"
     },
     {
+      "name": "mobile A3 portrait long: compact identity/title/details/meta header structure",
+      "pass": true,
+      "detail": "[{\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 721, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 721, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 721, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 721, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 721, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 721, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 721, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 721, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}]"
+    },
+    {
       "name": "mobile A3 portrait long: QR / logo / heading / footer inside the page box",
       "pass": true,
       "detail": "all inside"
@@ -940,6 +1065,11 @@
       "detail": "all inside"
     },
     {
+      "name": "mobile A3 portrait long: compact header stays at or below 200px at printable width",
+      "pass": true,
+      "detail": "[177, 177, 177, 177, 177, 177, 177, 177]"
+    },
+    {
       "name": "mobile A3 portrait long: CSS @page size/orientation honoured",
       "pass": true,
       "detail": "842x1191pt, 8 pages"
@@ -952,7 +1082,7 @@
     {
       "name": "mobile A3 portrait long: official header content present in the PDF",
       "pass": true,
-      "detail": "77202 chars extractable"
+      "detail": "90714 chars extractable"
     },
     {
       "name": "mobile A3 portrait long: all 8 column headings present in the PDF",
@@ -990,6 +1120,11 @@
       "detail": "1 sheets"
     },
     {
+      "name": "mobile A3 portrait short: compact identity/title/details/meta header structure",
+      "pass": true,
+      "detail": "[{\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 4, \"metaCount\": 3, \"headerHeight\": 585, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}]"
+    },
+    {
       "name": "mobile A3 portrait short: QR / logo / heading / footer inside the page box",
       "pass": true,
       "detail": "all inside"
@@ -1015,6 +1150,11 @@
       "detail": "all inside"
     },
     {
+      "name": "mobile A3 portrait short: compact header stays at or below 200px at printable width",
+      "pass": true,
+      "detail": "[163]"
+    },
+    {
       "name": "mobile A3 portrait short: CSS @page size/orientation honoured",
       "pass": true,
       "detail": "842x1191pt, 1 pages"
@@ -1027,7 +1167,7 @@
     {
       "name": "mobile A3 portrait short: official header content present in the PDF",
       "pass": true,
-      "detail": "2821 chars extractable"
+      "detail": "2858 chars extractable"
     },
     {
       "name": "mobile A3 portrait short: all 8 column headings present in the PDF",
@@ -1070,6 +1210,11 @@
       "detail": "8 sheets"
     },
     {
+      "name": "mobile A3 landscape long: compact identity/title/details/meta header structure",
+      "pass": true,
+      "detail": "[{\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 721, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 721, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 721, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 721, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 721, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 721, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 721, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}, {\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 5, \"metaCount\": 3, \"headerHeight\": 721, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}]"
+    },
+    {
       "name": "mobile A3 landscape long: QR / logo / heading / footer inside the page box",
       "pass": true,
       "detail": "all inside"
@@ -1090,9 +1235,14 @@
       "detail": "all inside"
     },
     {
+      "name": "mobile A3 landscape long: compact header stays at or below 200px at printable width",
+      "pass": true,
+      "detail": "[163, 163, 163, 163, 163, 163, 163, 163]"
+    },
+    {
       "name": "mobile A3 landscape long: CSS @page size/orientation honoured",
       "pass": true,
-      "detail": "1191x842pt, 16 pages"
+      "detail": "1191x842pt, 8 pages"
     },
     {
       "name": "mobile A3 landscape long: app chrome text absent from the PDF",
@@ -1102,7 +1252,7 @@
     {
       "name": "mobile A3 landscape long: official header content present in the PDF",
       "pass": true,
-      "detail": "76781 chars extractable"
+      "detail": "97032 chars extractable"
     },
     {
       "name": "mobile A3 landscape long: all 8 column headings present in the PDF",
@@ -1112,17 +1262,17 @@
     {
       "name": "mobile A3 landscape long: no blank printed pages",
       "pass": true,
-      "detail": "0 blank of 16"
+      "detail": "0 blank of 8"
     },
     {
       "name": "mobile A3 landscape long: physical counters correct and sequential",
       "pass": true,
-      "detail": "[(1, 16), (16, 16)]"
+      "detail": "[(1, 8), (8, 8)]"
     },
     {
       "name": "mobile A3 landscape long: no ink touching the page edge (clipping check)",
       "pass": true,
-      "detail": "16 pages keep a clear margin"
+      "detail": "8 pages keep a clear margin"
     },
     {
       "name": "mobile A3 landscape short: real app shell is mounted (sidebar + mobile header + context bar)",
@@ -1138,6 +1288,11 @@
       "name": "mobile A3 landscape short: official sheet header printed",
       "pass": true,
       "detail": "1 sheets"
+    },
+    {
+      "name": "mobile A3 landscape short: compact identity/title/details/meta header structure",
+      "pass": true,
+      "detail": "[{\"compact\": true, \"identityDisplay\": \"grid\", \"fieldCount\": 4, \"metaCount\": 3, \"headerHeight\": 585, \"hasTimetableTitle\": true, \"hasGroupTitle\": true}]"
     },
     {
       "name": "mobile A3 landscape short: QR / logo / heading / footer inside the page box",
@@ -1165,6 +1320,11 @@
       "detail": "all inside"
     },
     {
+      "name": "mobile A3 landscape short: compact header stays at or below 200px at printable width",
+      "pass": true,
+      "detail": "[163]"
+    },
+    {
       "name": "mobile A3 landscape short: CSS @page size/orientation honoured",
       "pass": true,
       "detail": "1191x842pt, 1 pages"
@@ -1177,7 +1337,7 @@
     {
       "name": "mobile A3 landscape short: official header content present in the PDF",
       "pass": true,
-      "detail": "3162 chars extractable"
+      "detail": "3015 chars extractable"
     },
     {
       "name": "mobile A3 landscape short: all 8 column headings present in the PDF",

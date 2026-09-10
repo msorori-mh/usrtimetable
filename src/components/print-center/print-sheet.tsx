@@ -44,6 +44,15 @@ function formatDateTime(d: Date): string {
   return d.toLocaleString("ar", { dateStyle: "medium", timeStyle: "short" });
 }
 
+function HeaderField(props: { label: string; value: string }) {
+  return (
+    <div className="print-header-field">
+      <span className="print-header-label">{props.label}</span>
+      <span className="print-header-value">{props.value}</span>
+    </div>
+  );
+}
+
 export function PrintSheet(props: {
   page: PrintPageGroup;
   meta: PrintSheetMeta;
@@ -70,46 +79,74 @@ export function PrintSheet(props: {
         </div>
       )}
 
-      <header className="print-center-header mb-4 border-b border-border pb-3">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
+      <header className="print-center-header mb-3" data-print-header="compact">
+        <div className="print-header-identity-band">
+          <div className="print-header-institution">
             {visibility.showUniversityLogo && (
               <img
                 src={USR_UNIVERSITY_LOGO_SRC}
                 alt={USR_UNIVERSITY_NAME_AR}
-                className="h-14 w-14 object-contain print:h-16 print:w-16"
+                className="print-header-logo"
               />
             )}
-            <div className="space-y-1 text-sm">
-              <p className="font-bold text-base">{USR_UNIVERSITY_NAME_AR}</p>
+            <div className="print-header-institution-copy">
+              <p className="print-header-university">{USR_UNIVERSITY_NAME_AR}</p>
               {visibility.showCollege && (
-                <p className="font-semibold">
+                <p className="print-header-college">
                   {meta.collegeName || REPORT_COLLEGE_NAME_FALLBACK_AR}
                 </p>
               )}
-              {visibility.showDepartment && (page.departmentName || meta.departmentName) && (
-                <p>القسم: {page.departmentName || meta.departmentName}</p>
-              )}
-              {visibility.showProgram && (page.programName || meta.programName) && (
-                <p>البرنامج: {page.programName || meta.programName}</p>
-              )}
-              {visibility.showLevel && (page.levelName || meta.levelName) && (
-                <p>المستوى: {page.levelName || meta.levelName}</p>
-              )}
-              {visibility.showStudySystem && studyLabel && <p>النظام الدراسي: {studyLabel}</p>}
-              {meta.termName && <p>الفصل / العام: {meta.termName}</p>}
-              {visibility.showVersionStatus && statusLabel && <p>حالة النسخة: {statusLabel}</p>}
-              {visibility.showVersionNumber && (meta.versionNumber || meta.versionName) && (
-                <p>رقم / اسم النسخة: {meta.versionNumber || meta.versionName}</p>
-              )}
-              {visibility.showExportDate && <p>تاريخ التصدير: {formatDateTime(meta.exportAt)}</p>}
             </div>
           </div>
+          <div className="print-header-title-block">
+            <p className="print-header-kicker">الجدول الأسبوعي المعتمد</p>
+            <h2>الجدول الدراسي</h2>
+          </div>
           {visibility.showQr && meta.qrUrl && (
-            <PrintQrCode value={meta.qrUrl} size={88} title="رابط الطباعة" />
+            <div className="print-header-verification">
+              <PrintQrCode value={meta.qrUrl} size={72} title="رابط الطباعة" />
+              <span>رابط التحقق</span>
+            </div>
           )}
         </div>
-        <h2 className="mt-3 text-lg font-bold">{page.title}</h2>
+
+        <div className="print-header-details">
+          {visibility.showDepartment && (page.departmentName || meta.departmentName) && (
+            <HeaderField label="القسم" value={page.departmentName || meta.departmentName || ""} />
+          )}
+          {visibility.showProgram && (page.programName || meta.programName) && (
+            <HeaderField label="البرنامج" value={page.programName || meta.programName || ""} />
+          )}
+          {visibility.showLevel && (page.levelName || meta.levelName) && (
+            <HeaderField label="المستوى" value={page.levelName || meta.levelName || ""} />
+          )}
+          {visibility.showStudySystem && studyLabel && (
+            <HeaderField label="النظام الدراسي" value={studyLabel} />
+          )}
+          {meta.termName && <HeaderField label="الفصل / العام" value={meta.termName} />}
+        </div>
+
+        {(visibility.showVersionStatus ||
+          visibility.showVersionNumber ||
+          visibility.showExportDate) && (
+          <div className="print-header-meta">
+            {visibility.showVersionStatus && statusLabel && (
+              <span>
+                <b>الحالة:</b> {statusLabel}
+              </span>
+            )}
+            {visibility.showVersionNumber && (meta.versionNumber || meta.versionName) && (
+              <span>
+                <b>النسخة:</b> {meta.versionNumber || meta.versionName}
+              </span>
+            )}
+            {visibility.showExportDate && (
+              <span>
+                <b>تاريخ التصدير:</b> {formatDateTime(meta.exportAt)}
+              </span>
+            )}
+          </div>
+        )}
       </header>
 
       <Table>
