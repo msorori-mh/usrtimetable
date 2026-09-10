@@ -20,6 +20,9 @@ Nothing here applies production SQL, deploys, mutates production data, or uses a
 | 11 | `exportRowsToXlsx` (admin export) → real .xlsx, parses, 120 data rows | PASS | fixture runtime (saved file) |
 | 12 | No console/page errors during the whole run | PASS | fixture runtime |
 | 13 | Source contracts for the shared page box / harness isolation | PASS | source assertions only |
+| 16 | Physical page numbering is accurate: first `1 of N`, a middle continuation `k of N`, final `N of N`, strictly sequential, on every page, with `N` equal to the real PDF page count | PASS after fix | fixture runtime (per-page `pdftotext` vs `pdfinfo` page count) |
+| 17 | The in-flow footer numbers LOGICAL schedule groups (`مجموعة الجدول X من Y`) and never claims to be a physical page number | PASS after fix | fixture runtime + source |
+| 18 | Group context repeats on continuation pages (running `thead` context row) on every row-bearing page | PASS | fixture runtime (per-page `pdftotext`) |
 | 14 | Authenticated production print + Excel download by a logged-in college admin | BLOCKED | reviewer/root only — agents have no session |
 | 15 | Durable availability migration applied in production | HOLD | awaits root review (unchanged from LAUNCH-CLOSURE-03) |
 
@@ -41,6 +44,31 @@ breaking *inside* the footer but never prevented a break *before* it. Fix in `sr
 After the fix all four paper/orientation combinations report `0 blank pages` and every row-bearing
 page carries the repeated header row.
 
+**Misleading page numbering (reproduced from the reviewer's finding, then fixed).** The A3-landscape
+long PDF is 16 physical pages, but the in-flow footer printed `صفحة 1 من 8` on physical page 2: the
+numbers were `meta.pageIndex`/`meta.pageCount`, i.e. the LOGICAL schedule-group index (one `<section>`
+per program/level/system group), and a group commonly spans several physical sheets. In-flow DOM has
+no access to physical page numbers, so:
+
+- physical numbering now comes from the print engine itself, via a `@page` margin box using the CSS
+  Paged Media `page`/`pages` counters (`docs`: CSS Paged Media Level 3 §5). Support was verified
+  empirically in the Chromium used for printing (HeadlessChrome 141) before relying on it, and the
+  runner now asserts the **rendered** counters extracted from each PDF page against `pdfinfo`'s page
+  count:
+
+```css
+@page { @bottom-center { content: "صفحة " counter(page) " من " counter(pages); } }
+```
+
+- the in-flow footer is reworded to `مجموعة الجدول X من Y`, so logical group numbering is visibly
+  distinct from physical pagination and can no longer be misread as a page number.
+- a repeated context row was added to the table `thead` (running header), so a continuation sheet
+  still names the schedule it belongs to. The duplicated level/system suffix was dropped after
+  visual inspection because `page.title` already carries it.
+
+Verified by inspecting the regenerated images, not by source assertion: `page-A3-landscape-02.png`
+shows `مجموعة الجدول 1 من 8` in the sheet footer and `صفحة 2 من 16` in the page margin.
+
 **Page-box drift risk (prevented).** The `@page` rule was inlined in the print-centre component, so
 any proof harness would have had to copy it and could silently drift. It now lives in
 `src/lib/print-center/page-style.ts` (`printPageStyleCss`, `PRINT_PAGE_STYLE_ELEMENT_ID`) and both
@@ -52,25 +80,31 @@ the application and the proof harness inject the identical rule.
 - `src/lib/print-center/index.ts` — re-export the helper.
 - `src/components/print-center/print-center-page.tsx` — inject the shared rule instead of an inline copy.
 - `src/styles.css` — footer `break-before: avoid` fix (print block only).
+- `src/lib/print-center/page-style.ts` — `@page` margin-box physical page counters
+  (`PRINT_PHYSICAL_PAGE_PREFIX_AR`, `PRINT_PHYSICAL_PAGE_SEPARATOR_AR`).
+- `src/lib/print-center/types.ts` — `printGroupCounterLabelAr` (logical group label).
+- `src/components/print-center/print-sheet.tsx` — logical group footer label + repeated
+  `.print-center-context-row` in `thead`.
+- `tests/launch-closure-01.test.ts` — identification assertion follows the new footer label.
 - `scripts/print-proof/{index.html,entry.tsx,fixture.ts,vite.config.mts}` (new) — isolated fixture app
   mounting the **real** `PrintSheet`, real `filterPrintSessions`/`groupPrintPages`/`buildExportRows`
   and the real `downloadCSV`/`downloadXLSX`/`exportRowsToXlsx`. No database, auth, router or Supabase import.
 - `scripts/print-proof/run.py` (new) — Chromium runner: PDF per paper/orientation, PNG rasterisation,
   clipping/overflow/header/blank-page checks, real download capture and CSV/XLSX parsing.
-- `tests/print-proof-harness.test.ts` (new) — 13 tests / 51 assertions guarding the contracts above.
+- `tests/print-proof-harness.test.ts` — 16 tests guarding the contracts above, including the physical/logical numbering split.
 - `tests/harness/print-center.harness.ts` — accepts the shared page-style helper as the injected rule.
 - `docs/print-proof/` — evidence artifacts (2.7 MB): 5 PDFs, sample PNG pages per combination,
-  the downloaded CSV and both XLSX files, and `RESULTS.json` (51 passed / 0 failed).
+  the downloaded CSV and both XLSX files, and `RESULTS.json` (79 passed / 0 failed).
 
 ## 4. Commands and results
 
 ```
 bunx vite build --config scripts/print-proof/vite.config.mts   → built (isolated fixture bundle)
-python3 scripts/print-proof/run.py                             → PRINT_PROOF: 51 passed, 0 failed
+python3 scripts/print-proof/run.py                             → PRINT_PROOF: 79 passed, 0 failed
 bunx prettier --write <changed files>                          → unchanged (already formatted)
 bunx tsgo --noEmit                                             → clean
 bunx eslint <changed files>                                    → 0 errors (1 react-refresh warning in the fixture entry)
-bun test                                                       → 160 pass / 0 fail, 531 assertions, 18 files
+bun test                                                       → 163 pass / 0 fail, 547 assertions, 18 files
 bun run test:harness                                           → HARNESS_SUMMARY: 68 passed, 0 failed
 bun run build                                                  → success (nitro build emitted)
 ```
