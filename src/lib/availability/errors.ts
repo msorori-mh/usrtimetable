@@ -161,8 +161,7 @@ export const INVALID_TIME_RANGE_AR =
 export const INVALID_DATE_RANGE_AR =
   "نطاق تاريخ غير صالح: يجب ألا يكون تاريخ النهاية قبل تاريخ البداية.";
 
-export const WRITE_DENIED_AR =
-  "لا تملك صلاحية التعديل على هذه الكلّية؛ لم يُنفَّذ أي حفظ.";
+export const WRITE_DENIED_AR = "لا تملك صلاحية التعديل على هذه الكلّية؛ لم يُنفَّذ أي حفظ.";
 
 /** True for a durable overlap refusal, whether raised by a constraint or by the RPC. */
 export function isOverlapConflictError(error: unknown): boolean {

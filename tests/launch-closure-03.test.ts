@@ -28,7 +28,12 @@ class FakePostgrestError extends Error {
   code: string;
   details: string | null;
   hint: string | null;
-  constructor(message: string, code: string, details: string | null = null, hint: string | null = null) {
+  constructor(
+    message: string,
+    code: string,
+    details: string | null = null,
+    hint: string | null = null,
+  ) {
     super(message);
     this.name = "PostgrestError";
     this.code = code;
@@ -76,14 +81,23 @@ describe("A. behaviour — Arabic mapping of durable integrity failures", () => 
   });
 
   test("an overlap conflict is never treated as a missing or ambiguous RPC", () => {
-    const err = new FakePostgrestError("conflicting key value violates exclusion constraint", "23P01");
+    const err = new FakePostgrestError(
+      "conflicting key value violates exclusion constraint",
+      "23P01",
+    );
     expect(isMissingRpcError(err)).toBe(false);
     expect(isAmbiguousRpcError(err)).toBe(false);
   });
 
   test("invalid time and date ranges get their own Arabic messages", () => {
-    const t = new FakePostgrestError("invalid_time_range: end_time must be after start_time", "22023");
-    const d = new FakePostgrestError("invalid_date_range: end_date must not be before start_date", "22023");
+    const t = new FakePostgrestError(
+      "invalid_time_range: end_time must be after start_time",
+      "22023",
+    );
+    const d = new FakePostgrestError(
+      "invalid_date_range: end_date must not be before start_date",
+      "22023",
+    );
     expect(availabilityWriteMessage(t).startsWith(INVALID_TIME_RANGE_AR)).toBe(true);
     expect(availabilityWriteMessage(d).startsWith(INVALID_DATE_RANGE_AR)).toBe(true);
   });
@@ -161,7 +175,9 @@ describe("B. source assertions — the prepared migration artifacts", () => {
     expect(MIGRATION).not.toContain("CREATE POLICY");
     expect(MIGRATION).not.toContain("DROP POLICY");
     expect(MIGRATION).not.toContain("DISABLE ROW LEVEL SECURITY");
-    expect(MIGRATION).not.toMatch(/GRANT [^;]*ON (TABLE )?public\.(instructor_availability|room_unavailability)/);
+    expect(MIGRATION).not.toMatch(
+      /GRANT [^;]*ON (TABLE )?public\.(instructor_availability|room_unavailability)/,
+    );
   });
 
   test("a validation trigger covers every write path on room_unavailability", () => {
@@ -172,7 +188,13 @@ describe("B. source assertions — the prepared migration artifacts", () => {
   });
 
   test("the migration destroys no data", () => {
-    for (const forbidden of ["DROP TABLE", "TRUNCATE", "DELETE FROM", "DROP COLUMN", "DROP SCHEMA"]) {
+    for (const forbidden of [
+      "DROP TABLE",
+      "TRUNCATE",
+      "DELETE FROM",
+      "DROP COLUMN",
+      "DROP SCHEMA",
+    ]) {
       expect(MIGRATION).not.toContain(forbidden);
     }
   });
