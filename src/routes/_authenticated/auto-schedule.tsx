@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { useCanManageActiveCollege } from "@/hooks/use-can-manage";
@@ -28,7 +28,7 @@ import {
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import type { AutoRunMode } from "@/lib/auto-scheduler/greedy";
-import { runV2AutoSchedule } from "@/lib/auto-scheduler/v2";
+import { runV2AutoSchedule, type AutoScheduleProgress } from "@/lib/auto-scheduler/v2";
 import { fetchCollegeReadiness } from "@/lib/reports/readiness";
 import { Sparkles, AlertCircle, CheckCircle2 } from "lucide-react";
 
@@ -44,6 +44,8 @@ function AutoSchedulePage() {
   const [versionId, setVersionId] = useState<string>("");
   const [mode, setMode] = useState<AutoRunMode>("fill_missing");
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [progress, setProgress] = useState<AutoScheduleProgress | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const { data: versions } = useQuery({
     queryKey: ["sv-for-auto", active?.id],
@@ -112,10 +114,15 @@ function AutoSchedulePage() {
           `READINESS_BLOCKED: ${freshBlockers.map((metric) => metric.label).join("؛ ")}`,
         );
       }
+      const controller = new AbortController();
+      abortRef.current = controller;
+      setProgress(null);
       const result = await runV2AutoSchedule({
         collegeId: active.id,
         scheduleVersionId: versionId,
         mode,
+        signal: controller.signal,
+        onProgress: setProgress,
       });
       await logAudit({
         action: "auto_schedule_run",
@@ -139,6 +146,10 @@ function AutoSchedulePage() {
       qc.invalidateQueries({ queryKey: ["auto-runs"] });
     },
     onError: (e) => toast.error((e as Error).message),
+    onSettled: () => {
+      abortRef.current = null;
+      setProgress(null);
+    },
   });
 
   const latest = runs?.[0];
@@ -206,7 +217,26 @@ function AutoSchedulePage() {
                 <Sparkles className="h-4 w-4 ml-1" />
                 {run.isPending ? "جارٍ التشغيل..." : "تشغيل الجدولة التلقائية"}
               </Button>
+              {run.isPending ? (
+                <Button
+                  variant="outline"
+                  onClick={() => abortRef.current?.abort()}
+                  data-testid="auto-schedule-cancel"
+                >
+                  إيقاف التشغيل
+                </Button>
+              ) : null}
             </div>
+            {run.isPending && progress ? (
+              <div
+                className="rounded-md border bg-muted/40 p-3 text-sm"
+                data-testid="auto-schedule-progress"
+                aria-live="polite"
+              >
+                جارٍ المعالجة {progress.processedItems} من {progress.totalItems} — تمت جدولة{" "}
+                {progress.placed} جلسة، تعذّرت {progress.unplaced} — الحالي: {progress.label}
+              </div>
+            ) : null}
             {readinessIncomplete ? (
               <div
                 className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-sm"
