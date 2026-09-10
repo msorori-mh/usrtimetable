@@ -138,5 +138,39 @@ export async function compact(s:Snapshot, options:{signal?:AbortSignal;maxPasses
     }
     if(!changed)break;
   }
+  // Bounded two-step lookahead: relocate one blocking lecture, then close a sixth attendance day.
+  // Intermediate moves remain conflict-free, while the complete pair must improve the objective.
+  if(current.levelsOverFive>0&&!options.signal?.aborted){
+    const ctx=context(s),deadline=Date.now()+8000;
+    const targets=sessions.filter(x=>!x.is_locked&&current.levelDays[ctx.level(x)]>5)
+      .sort((a,b)=>sessions.filter(x=>ctx.level(x)===ctx.level(a)&&x.day_of_week===a.day_of_week).length-sessions.filter(x=>ctx.level(x)===ctx.level(b)&&x.day_of_week===b.day_of_week).length);
+    rescue: for(const target of targets){
+      for(const slot of candidateCache.get(`${target.study_system}|${duration(target)}`)||[]){
+        if(slot.day===target.day_of_week)continue;
+        for(const room of s.rooms){
+          const candidate={...target,day_of_week:slot.day,start_time:slot.start,end_time:slot.end,room_id:room.id};
+          const blockers=sessions.filter(x=>x.id!==target.id&&!x.is_locked&&x.day_of_week===slot.day&&(x.instructor_id===target.instructor_id||ctx.share(x,target)||x.room_id===room.id));
+          for(const blocker of blockers){
+            if(Date.now()>deadline||options.signal?.aborted)break rescue;
+            if(!feasible(s,sessions.filter(x=>x.id!==blocker.id),candidate,target))continue;
+            for(const alt of candidateCache.get(`${blocker.study_system}|${duration(blocker)}`)||[]){
+              for(const altRoom of s.rooms){
+                const relocated={...blocker,day_of_week:alt.day,start_time:alt.start,end_time:alt.end,room_id:altRoom.id};
+                if(!feasible(s,sessions,relocated,blocker))continue;
+                const intermediate=sessions.map(x=>x.id===blocker.id?relocated:x);
+                if(!feasible(s,intermediate,candidate,target))continue;
+                const final=intermediate.map(x=>x.id===target.id?candidate:x),score=measure(s,final);
+                if(score.levelsOverFive>=current.levelsOverFive||!better(score,current))continue;
+                sessions.splice(0,sessions.length,...final);current=score;
+                for(const moved of [relocated,candidate])moves.push({id:moved.id,day_of_week:moved.day_of_week,start_time:moved.start_time,end_time:moved.end_time,room_id:moved.room_id});
+                options.onProgress?.(moves.length,current);break rescue;
+              }
+            }
+          }
+        }
+        await new Promise<void>(resolve=>setTimeout(resolve,0));
+      }
+    }
+  }
   return {before,after:current,moves,fingerprint:fingerprint(s.sessions),inputFingerprint:inputFingerprint(s),stopped:false};
 }

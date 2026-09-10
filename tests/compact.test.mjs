@@ -28,3 +28,10 @@ test('room type/capacity and daily student load remain constraints',()=>{
  s.rooms[0].capacity=20;assert.equal(feasible(s,xs,{...xs[3],day_of_week:2},xs[3]),false);
 });
 test('cancelled preview does not mutate input',async()=>{const s=snapshot([session('1',0,'08:00:00','10:00:00')]);const saved=JSON.stringify(s),controller=new AbortController();controller.abort();const p=await compact(s,{signal:controller.signal});assert.equal(p.stopped,true);assert.equal(JSON.stringify(s),saved);});
+test('two-step relocation closes a sixth day when a safe preparatory move is needed',async()=>{
+ const xs=[0,1,3,4,6].map(d=>session(`c${d}`,d,'08:00:00','10:00:00',{is_locked:true}));
+ xs.push(session('target',2,'08:00:00','10:00:00',{instructor_id:'X'}),session('blocker',3,'10:00:00','12:00:00',{instructor_id:'X',cohort_id:'q',delivery_group_id:'gq'}),session('q-fixed',3,'08:00:00','10:00:00',{cohort_id:'q',delivery_group_id:'gq',room_id:'r2',is_locked:true}));
+ const s=snapshot(xs);s.cohorts.push({id:'q',program_id:'pq',level_id:'l',study_system:'regular',term_id:'t'});s.groups.push({id:'gq',cohort_id:'q',expected_students:30});s.partitions.push({id:'q1',cohort_id:'q',headcount:30,active:true});s.members.push({delivery_group_id:'gq',cohort_id:'q',partition_id:'q1'});s.rooms.push({...s.rooms[0],id:'r2'});
+ for(const t of s.instructors)if(t.id==='X')t.instructor_type_id='external';s.types.push({id:'external',code:'from_other_college',is_external:true});s.availability=[{instructor_id:'X',day_of_week:2,start_time:'08:00:00',end_time:'12:00:00',availability_type:'available',is_preference:false},{instructor_id:'X',day_of_week:3,start_time:'10:00:00',end_time:'12:00:00',availability_type:'available',is_preference:false}];
+ const p=await compact(s);assert.equal(p.before.levelsOverFive,1);assert.equal(p.after.levelsOverFive,0);assert.ok(p.moves.length>=2);let current=s.sessions;for(const v of p.moves){let old=current.find(x=>x.id===v.id);assert.ok(feasible(s,current,{...old,...v},old));current=current.map(x=>x.id===v.id?{...x,...v}:x);}assert.equal(measure(s,current).teachingMinutes,p.before.teachingMinutes);
+});

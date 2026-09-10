@@ -30,7 +30,7 @@ export function CompactSchedulePanel({collegeId,versionId,canManage,disabled,onB
   return <Card className="p-4 space-y-3" dir="rtl">
     <h2 className="font-bold">تحسين توزيع الجدول</h2>
     <p className="text-sm text-muted-foreground">الهدف أربعة أيام حضور للمستوى، وبحد أقصى خمسة أيام، مع تقليل فراغات كل شعبة فعلية وأيام الحضور القصيرة. تُحفظ ساعات المحاضرات وإسناداتها وتُفحص التنقلات قبل حفظها.</p>
-    <p className="text-sm">هذا التحسين يعيد توزيع المحاضرات الموجودة فقط؛ المحاضرات غير المجدولة تبقى بحاجة إلى الإكمال. تحقق النتيجة الجزئية لا يعني اكتمال الجدول النهائي.</p>
+    <p className="text-sm">تُحفظ التنقلات بالتتابع؛ عند الإيقاف أو الفشل تُعرض النتيجة المحفوظة فعلياً وتلزم إعادة المعاينة. هذا التحسين يعيد توزيع المحاضرات الموجودة فقط؛ المحاضرات غير المجدولة تبقى بحاجة إلى الإكمال. تحقق النتيجة الجزئية لا يعني اكتمال الجدول النهائي.</p>
     <div className="flex flex-wrap gap-2">
       <Button disabled={!canManage||!versionId||busy||disabled} onClick={()=>void execute(false)}>معاينة تحسين التوزيع</Button>
       <Button disabled={!canManage||busy||disabled||!proposal?.moves.length||proposal.stopped} onClick={()=>void execute(true)}>تطبيق التحسين على المسودة</Button>

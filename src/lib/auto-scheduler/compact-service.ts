@@ -33,6 +33,13 @@ export async function applyCompactProposal(collegeId:string,versionId:string,pro
   let fresh=await loadCompactSnapshot(collegeId,versionId);
   if(fingerprint(fresh.sessions)!==proposal.fingerprint||inputFingerprint(fresh)!==proposal.inputFingerprint)throw new Error('تغيرت البيانات منذ المعاينة؛ أعد حساب التحسين.');
   const before=measure(fresh);let applied=0,stopped:string|null=null;
+  let simulated=fresh.sessions;
+  for(const move of proposal.moves){
+    const old=simulated.find(x=>x.id===move.id);if(!old)throw new Error('معاينة غير صالحة.');
+    const candidate={...old,...move};if(!feasible(fresh,simulated,candidate,old))throw new Error('تغيرت صلاحية أحد التنقلات؛ أعد المعاينة.');
+    simulated=simulated.map(x=>x.id===move.id?candidate:x);
+  }
+  if(!better(measure(fresh,simulated),before))throw new Error('الخطة لا تحسّن النتيجة.');
   for(const move of proposal.moves){
     if(options.signal?.aborted){stopped='أُوقف التنفيذ؛ بقيت التنقلات المحفوظة فقط.';break;}
     try{
@@ -41,8 +48,7 @@ export async function applyCompactProposal(collegeId:string,versionId:string,pro
       if(fingerprint(now.sessions)!==fingerprint(fresh.sessions)||inputFingerprint(now)!==inputFingerprint(fresh))throw new Error('تغير الجدول أو موارده أثناء التنفيذ؛ أعد المعاينة.');
       const old=now.sessions.find(s=>s.id===move.id);if(!old)throw new Error('لم تعد المحاضرة موجودة.');
       const candidate={...old,...move};
-      const next=now.sessions.map(s=>s.id===move.id?candidate:s);
-      if(!feasible(now,now.sessions,candidate,old)||!better(measure(now,next),measure(now)))throw new Error('لم يعد النقل يحسّن الجدول ضمن القيود؛ أعد المعاينة.');
+      if(!feasible(now,now.sessions,candidate,old))throw new Error('لم يعد النقل يحسّن الجدول ضمن القيود؛ أعد المعاينة.');
       const {data,error}=await supabase.rpc('move_or_reschedule_schedule_session',{
         p_session_id:move.id,p_expected_updated_at:old.updated_at,p_target_day_of_week:move.day_of_week,
         p_target_start_time:move.start_time,p_target_end_time:move.end_time,p_target_room_id:move.room_id,
