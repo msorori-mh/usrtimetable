@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Download, FileSpreadsheet, Printer } from "lucide-react";
@@ -42,7 +43,9 @@ import {
   levelFiltersComplete,
   parsePrintSearchParams,
   PRINT_PAGE_STYLE_ELEMENT_ID,
+  PRINT_REQUEST_DISPATCHED_AR,
   printPageStyleCss,
+  requestPrint,
   programFiltersComplete,
   studentFiltersComplete,
   type PrintCenterFilters,
@@ -354,6 +357,17 @@ export function PrintCenterPage(props: { versionId: string }) {
 
   const filename = `timetable_print_${versionId}_${reportType}`;
 
+  // LAUNCH-CLOSURE print diagnosis: keep window.print() as the only print mechanism,
+  // but surface an actionable Arabic status instead of a dead-looking button.
+  const handlePrintClick = () => {
+    const result = requestPrint(typeof window === "undefined" ? null : window);
+    if (result.status === "dispatched") {
+      toast.info(PRINT_REQUEST_DISPATCHED_AR);
+      return;
+    }
+    toast.error(result.message);
+  };
+
   if (!active) {
     return (
       <div className="space-y-4" dir="rtl">
@@ -418,7 +432,7 @@ export function PrintCenterPage(props: { versionId: string }) {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => window.print()}
+              onClick={handlePrintClick}
               disabled={pages.length === 0}
             >
               <Printer className="h-4 w-4 ml-1" /> طباعة
