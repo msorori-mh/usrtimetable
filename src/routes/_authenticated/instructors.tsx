@@ -16,6 +16,12 @@ import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { UserSquare2, Pencil, Trash2, Info, AlertTriangle } from "lucide-react";
 import { categorizeInstructor, INSTRUCTOR_FORM_HINT_AR, CATEGORY_LABEL_AR } from "@/lib/instructor-category";
+import {
+  ACADEMIC_RANKS,
+  EMPLOYMENT_TYPE_OPTIONS,
+  UNKNOWN_EMPLOYMENT_TYPE,
+  employmentTypeLabelAr,
+} from "@/lib/instructor-metadata";
 
 export const Route = createFileRoute("/_authenticated/instructors")({
   head: () => ({ meta: [{ title: "المحاضرون" }] }),
