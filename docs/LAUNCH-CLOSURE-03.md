@@ -152,8 +152,8 @@ reported as conflicts. `[object Object]` remains impossible.
 | 18  | Production application of the migration                              | runtime (prod, performed by root)          | PASS — applied verbatim by root via direct SQL; post-verify recorded in §1a. Not agent-performed, not agent-verified |
 | 18b | Migration-history registration of the applied artifact                | repo / CLI                                 | OPEN — direct SQL only; reconcile per §1a                                                                          |
 | 18c | Proof runner makes no system modifications                            | runtime (sandbox)                          | PASS — see §9                                                                                                      |
-| 19  | Authenticated production save of an unavailability window, read back | runtime E2E                                | BLOCKED — needs the root-authenticated tester to perform it; no session or credentials are available to this agent |
-| 20  | Rendered PDF proof of the printed timetable                          | rendered artifact                          | BLOCKED — see §7                                                                                                   |
+| 19  | Authenticated production save of an unavailability window, read back | runtime E2E                                | IN PROGRESS by root (authenticated RPC E2E under way at the time of writing). Still BLOCKED for this agent: no session, no credentials |
+| 20  | Rendered PDF proof of the printed timetable                          | rendered artifact                          | fixture-level PASS (`docs/LAUNCH-CLOSURE-03-PRINT-EXPORT-PROOF.md`, real Chromium, 51/51). Authenticated-session PDF still BLOCKED   |
 | 21  | Deployment / publish                                                 | —                                          | NOT PERFORMED                                                                                                      |
 
 Repository-wide `eslint .` reports pre-existing prettier-rule noise across unrelated
@@ -164,23 +164,54 @@ legacy files (unchanged by this stage); the changed files are clean.
 Root-provided runtime observations, recorded as **reviewer evidence, not agent-verified**:
 schedule `5b838e0c-5cad-4822-a8bb-73d9641bbcd9` in TEST-SIMP-03 was already published on
 Sept 8, and the print screen correctly renders two rows — practical Sunday 08:00–10:00 and
-theory Monday 08:00–10:00 — once program / level / system are chosen. The RTL print styling
-and page-break fixes from LAUNCH-CLOSURE-01 remain in place and are covered by source tests
-only. What is still missing is a **rendered PDF artifact** produced from that published
-schedule and visually checked for clipping, page breaks, and header identification. That
-requires an authenticated browser print-to-PDF in the root tester's session; this agent has
-no production session and must not create or reuse credentials, so gate 20 stays BLOCKED
-rather than being claimed from source.
+theory Monday 08:00–10:00 — once program / level / system are chosen.
+
+Separately, this agent produced a **fixture-level rendered proof** with a real Chromium
+browser against the actual `PrintCenterPage` / `PrintSheet` components and the real export
+helpers — no database, no login: five PDFs (A4/A3 × portrait/landscape plus the two-row short
+fixture), page PNGs, a real CSV and two real XLSX downloads, and `RESULTS.json` (51 checks, 0
+failures) under `docs/print-proof/`. It verified paper size/orientation, header repetition on
+every data page, absence of blank pages, no edge clipping or horizontal overflow, and Arabic
+text integrity inside the PDFs. One real defect was fixed there (approval footer pushed onto
+an empty page in A3 landscape).
+
+That fixture proof is explicitly **not** a substitute for a PDF exported from the root
+tester's authenticated session against the published schedule; gate 20's authenticated half
+stays BLOCKED for this agent, which has no production session and must not create or reuse
+credentials.
 
 ## 8. Remaining dependencies before launch
 
-1. Root review of the migration, then apply it through the migration tool (preflight is
-   already clean, so no data remediation step is needed).
-2. After application: one authenticated save of a lecturer unavailability window in
+1. ~~Root review and application of the migration~~ — **done** by root via direct SQL; see
+   §1a. Follow up with history reconciliation (gate 18b).
+2. Root's in-flight authenticated E2E: one save of a lecturer unavailability window in
    TEST-SIMP-03, re-read to confirm persistence, and one deliberate overlapping save to
    confirm the Arabic conflict message (gate 19).
-3. Export the published timetable to PDF and attach it as the gate 20 artifact.
+3. Export the published timetable to PDF from the authenticated session and attach it as the
+   gate 20 artifact (the fixture PDFs in `docs/print-proof/` cover layout, not the live data
+   path).
 4. Only then deploy; rollback reference is
-   `docs/migrations-proposed/20260910T0025_rollback.sql` (restores pre-migration behaviour
-   without deleting data; the client-side validation path resumes, which does _not_ prevent
+   `docs/migrations-proposed/20260910T0025_rollback.sql` (drops the created objects only,
+   deletes no data; the client-side validation path resumes, which does _not_ prevent
    concurrent overlaps).
+
+## 9. Proof-runner hardening (system-modification removal)
+
+The earlier `scripts/local-db/availability-temporal-integrity-proof.sh` re-exec path appended
+a `pgproof` line to `/etc/passwd` and `/etc/group` (PostgreSQL refuses to run as root and
+`initdb` needs a resolvable passwd entry) and exported `HOME` for the whole invocation. Both
+are now removed:
+
+- The runner selects an **existing** unprivileged account (first uid ≥ 1000, or
+  `LOCAL_PG_UID`). It never writes `/etc/passwd` or `/etc/group`.
+- If no usable account exists, it exits `2` with an explicit `SKIP:` message instead of
+  creating one.
+- `HOME`/`TMPDIR` are passed through `env` to the re-exec'd child only, pointing at a
+  `mktemp -d` directory; the caller's environment is untouched.
+- `cleanup()` removes both the disposable cluster directory and that disposable HOME on exit.
+
+Disposable-environment cleanup performed once, in the sandbox only (never production): the
+leftover `pgproof` entries from the previous run were deleted from `/etc/passwd` and
+`/etc/group`, and stale `/tmp/availability-proof-work.*` directories were removed. Re-running
+the hardened runner afterwards reproduced the full suite: **all cases PASS**, including the
+two-connection race (`23P01`, exactly one surviving row), rollback, and preflight.
