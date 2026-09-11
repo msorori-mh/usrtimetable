@@ -234,6 +234,16 @@ export function validateComponentForm(args: {
       return fail("ROOM_TYPE_SCOPE_MISMATCH", "نوع القاعة لا ينتمي إلى الكلية النشطة.");
     }
   }
+  // TUTORIAL-LECTURE-HALL-PERMANENT-RULE-01 — tutorial is lecture_hall only.
+  {
+    const tutorial = resolveTutorialRoomTypeId({
+      componentType: form.component_type,
+      requiredRoomTypeId: form.required_room_type_id,
+      roomTypes,
+      collegeId: ctx.collegeId,
+    });
+    if (!tutorial.ok) return fail(tutorial.errorCode, tutorial.message);
+  }
   if (siblings && planCourseId) {
     const dup = siblings.find(
       (s) =>
