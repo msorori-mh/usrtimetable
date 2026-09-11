@@ -84,7 +84,8 @@ export function analyzeRoomCapacities(
     mixedTypeIds,
     defaultOutOfSyncTypeIds,
     roomsOffUniform,
-    invalidCapacityRooms: rooms.filter((r) => !Number(r.capacity) || Number(r.capacity) <= 0)
+    invalidCapacityRooms: rooms
+      .filter((r) => !Number(r.capacity) || Number(r.capacity) <= 0)
       .map((r) => r.id),
     missingTypeRooms: rooms.filter((r) => !r.room_type_id && !r.room_type).map((r) => r.id),
     typesConsidered,
