@@ -23,6 +23,12 @@ export type GroupCalcInput = {
   /** Explicit component setting (tutorial/project). Never invent. */
   explicitGroupSize?: number | null;
   weeklyContactHours?: number | null;
+  /**
+   * plan_course_components.counts_toward_regular_load.
+   * true on a project component = regular weekly project (classroom rules);
+   * false/undefined keeps graduation-project supervision semantics.
+   */
+  countsTowardRegularLoad?: boolean | null;
 };
 
 export type GroupCalcOk = {
@@ -104,7 +110,9 @@ export function calculateDeliveryGroupCount(input: GroupCalcInput): GroupCalcRes
     };
   }
 
-  if (input.componentType === "project") {
+  // Regular weekly project (counts_toward_regular_load = true) uses classroom rules:
+  // room-type capacity, no explicit_group_size, and it is not workload-excluded.
+  if (input.componentType === "project" && input.countsTowardRegularLoad !== true) {
     const hours = Number(input.weeklyContactHours ?? 0);
     if (!Number.isFinite(hours) || hours <= 0) {
       return {
@@ -154,8 +162,8 @@ export function calculateDeliveryGroupCount(input: GroupCalcInput): GroupCalcRes
     };
   }
 
-  // theory: single group when within capacity; else ceil. Never invent lab default.
-  if (input.componentType === "theory") {
+  // theory (and regular weekly project): single group when within capacity; else ceil.
+  if (input.componentType === "theory" || input.componentType === "project") {
     if (students <= cap) {
       return {
         ok: true,
