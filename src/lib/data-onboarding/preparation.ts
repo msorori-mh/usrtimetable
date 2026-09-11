@@ -163,6 +163,13 @@ export function preparationStepForPath(pathname: string): PreparationStepId | un
 /** Keep internal identifiers out of the everyday preparation interface. */
 export function preparationLabel(text: string): string {
   return text
+    .replace(/نموذج التقديم V2/g, "بيانات الجدولة")
+    .replace(/الدفعات الأكاديمية/g, "الدفعات الدراسية")
+    .replace(/بدون section_id\./g, "")
+    .replace(/academic_cohorts/g, "الدفعات الدراسية")
+    .replace(/elective_slot_courses/g, "مقررات الخانات الاختيارية")
+    .replace(/delivery_groups/g, "مجموعات المحاضرات والمعامل")
+    .replace(/instructors/g, "المدرسون")
     .replace(/SCHEDULING_HEADCOUNT_MISSING/g, "عدد الطلاب المعتمد غير مكتمل")
     .replace(/\s*\(?V2\)?/g, "")
     .replace(/التدفق الجديد/g, "")

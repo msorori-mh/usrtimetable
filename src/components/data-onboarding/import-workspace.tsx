@@ -350,7 +350,7 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
                 }}
               >
                 {Array.from(new Set(availableEntities.map((e) => e.group))).map((g) => (
-                  <optgroup key={g} label={g}>
+                  <optgroup key={g} label={preparationLabel(g)}>
                     {availableEntities
                       .filter((e) => e.group === g)
                       .map((o) => (
