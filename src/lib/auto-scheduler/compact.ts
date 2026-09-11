@@ -5,6 +5,7 @@ import {
   measureAttendance,
   type AttendanceMetrics,
 } from "./attendance-objective.ts";
+import { isInstructorAvailabilityEnforced } from "../scheduling/instructor-availability-policy.ts";
 export interface Session {
   id: string;
   updated_at: string;
