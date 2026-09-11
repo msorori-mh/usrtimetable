@@ -58,6 +58,8 @@ export const harnesses = [
   "domain-contract-static.harness.ts",
   "program-department-integrity.harness.ts",
   "reports-read-model-a1-5.harness.ts",
+  "../program-timetable-filters.test.ts",
+  "../program-timetable-print.test.tsx",
   "plan-course-components-ui-e2e-fix.harness.ts",
   "plan-course-legacy-counter-sync.harness.ts",
   "timetable-session-course-visibility.harness.ts",
@@ -129,9 +131,11 @@ export function runHarnesses({
   const totals = { pass: 0, fail: 0, "missing-historical-artifact": 0 };
   for (const file of harnesses) {
     out.write(`\n=== Running ${file} ===\n`);
+    // Component regressions use the application's JSX configuration.
+    const fileTsconfig = file.startsWith("../") ? path.join(root, "tsconfig.json") : tsconfig;
     const result = spawn(
       process.execPath,
-      [tsxCli, "--tsconfig", tsconfig, path.join(__dirname, file)],
+      [tsxCli, "--tsconfig", fileTsconfig, path.join(__dirname, file)],
       {
         cwd: root,
         encoding: "utf8",
