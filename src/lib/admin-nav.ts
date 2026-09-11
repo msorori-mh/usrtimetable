@@ -53,7 +53,14 @@ export const ALL_ROLES = ALL;
 export type AdminTier = "basic" | "advanced" | "legacy";
 
 export type JourneyKey =
-  "org" | "academic" | "staff" | "hours" | "prep" | "execute" | "data" | "reports";
+  | "org"
+  | "academic"
+  | "staff"
+  | "hours"
+  | "prep"
+  | "execute"
+  | "data"
+  | "reports";
 
 export interface AdminPage {
   to: string;

@@ -80,12 +80,13 @@ test("a blocker or unknown step prevents continuation even with existing schedul
 });
 
 test("required omissions take precedence over non-blocking review notes", () => {
-  const steps = buildWizardStepResults(counts, readiness).map((s): WizardStepResult =>
-    s.id === "instructors"
-      ? { ...s, status: "warning" }
-      : s.id === "cohorts"
-        ? { ...s, status: "incomplete" }
-        : s,
+  const steps = buildWizardStepResults(counts, readiness).map(
+    (s): WizardStepResult =>
+      s.id === "instructors"
+        ? { ...s, status: "warning" }
+        : s.id === "cohorts"
+          ? { ...s, status: "incomplete" }
+          : s,
   );
   assert.equal(resolvePreparationProgress(steps).nextStepId, "cohorts");
 });
