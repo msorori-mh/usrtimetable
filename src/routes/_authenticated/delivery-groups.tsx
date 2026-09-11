@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { UsersRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveCollege } from "@/hooks/use-colleges";
@@ -36,6 +37,7 @@ function isExcluded(g: Row): boolean {
 /** Read-only college-wide delivery groups diagnostic (Phase 9.3). */
 function DeliveryGroupsPage() {
   const { active } = useActiveCollege();
+  const [showObsolete, setShowObsolete] = useState(false);
 
   const { data: rows, isLoading } = useQuery({
     queryKey: ["delivery-groups", active?.id, "all"],
