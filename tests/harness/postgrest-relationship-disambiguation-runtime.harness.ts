@@ -80,8 +80,12 @@ function run() {
 
   const dataReadiness = read("src/routes/_authenticated/data-readiness.tsx");
   assert(
-    dataReadiness.includes("fetchCollegePlanComponentRoomTypeMissing"),
-    "data-readiness uses plan-component room-type readiness scan",
+    dataReadiness.includes("fetchStudyPlanReadiness") &&
+      readinessLib.includes("fetchStudyPlanReadiness") &&
+      read("src/lib/academic-delivery/fetch-study-plan-readiness.ts").includes(
+        "fetchCollegePlanComponentRoomTypeMissing(collegeId)",
+      ),
+    "both readiness paths use the shared plan-component room-type scan",
   );
 
   const gateSrc = read("src/lib/academic-delivery/cohort-delivery-group-room-type-gate.ts");
