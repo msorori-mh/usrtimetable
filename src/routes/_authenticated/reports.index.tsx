@@ -58,6 +58,12 @@ const TIMETABLE_REPORTS: ReportCard[] = [
 
 const ANALYTICS_REPORTS: ReportCard[] = [
   {
+    to: "/reports/academic-affairs",
+    title: "تقارير الشؤون الأكاديمية",
+    desc: "الإسناد وعجز التغطية والنصاب والساعات الزائدة والنقص، بحسب الكلية والقسم والبرنامج وعضو هيئة التدريس.",
+    icon: <FileBarChart2 className="h-5 w-5" />,
+  },
+  {
     to: "/reports/instructor-workload",
     title: "أعباء المحاضرين",
     desc: "تحميل تدريسي أسبوعي · نسخة واحدة · بدون double-count.",
