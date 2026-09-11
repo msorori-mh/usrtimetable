@@ -177,4 +177,3 @@ export function preparationLabel(text: string): string {
     .replace(/\s+/g, " ")
     .trim();
 }
-

@@ -24,4 +24,3 @@ export function useGenerateCohortCurriculum() {
     onError: (error: Error) => toast.error(generationErrorMessage(error)),
   });
 }
-

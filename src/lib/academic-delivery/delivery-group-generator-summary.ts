@@ -116,4 +116,3 @@ export function parseDeliveryGroupGeneratorSummary(raw: unknown): DeliveryGroupG
     validation_errors,
   };
 }
-

@@ -308,7 +308,7 @@ BEGIN
     'result', 'success'
   );
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.generate_cohort_delivery_groups(p_cohort_id uuid)
@@ -707,7 +707,7 @@ BEGIN
     'validation_errors', v_validation_errors
   );
 END;
-$function$
+$function$;
 
 
 REVOKE ALL ON FUNCTION public.generate_cohort_curriculum(uuid) FROM PUBLIC, anon;

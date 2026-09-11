@@ -21,4 +21,3 @@ BEGIN
   IF FOUND THEN RETURN jsonb_build_object('ok', true, 'source', 'override', 'headcount_id', v_base.id, 'override_id', v_override.id, 'scheduling_headcount', v_override.scheduling_headcount, 'exam_eligible_count', coalesce(v_override.exam_eligible_count, v_base.exam_eligible_count), 'reserve_margin', coalesce(v_override.reserve_margin, v_base.reserve_margin)); END IF;
   RETURN jsonb_build_object('ok', true, 'source', 'base', 'headcount_id', v_base.id, 'scheduling_headcount', v_base.scheduling_headcount, 'exam_eligible_count', v_base.exam_eligible_count, 'reserve_margin', v_base.reserve_margin);
 END; $function$
-

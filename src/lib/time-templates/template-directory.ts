@@ -1,3 +1,4 @@
+import { ACADEMIC_STUDY_SYSTEM_LABELS } from "../study-systems";
 import { ALL_WEEK_DAYS, type StudySystem } from "./weekly-generator";
 
 export interface TimeTemplateRow {
@@ -10,8 +11,8 @@ export interface TimeTemplateRow {
   is_active: boolean;
 }
 export const TEMPLATE_SYSTEM_LABELS: Record<StudySystem, string> = {
-  regular: "مخصص للعام",
-  parallel: "مخصص للموازي",
+  regular: `${ACADEMIC_STUDY_SYSTEM_LABELS.regular} فقط`,
+  parallel: `${ACADEMIC_STUDY_SYSTEM_LABELS.parallel} فقط`,
   both: "مشترك للعام والموازي",
 };
 export type TemplateScope = "all" | StudySystem | "available_regular" | "available_parallel";

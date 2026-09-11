@@ -89,4 +89,3 @@ export function parseCohortCurriculumSummary(
     created_sessions: 0,
   };
 }
-
