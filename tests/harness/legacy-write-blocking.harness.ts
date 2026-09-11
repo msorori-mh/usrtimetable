@@ -110,11 +110,12 @@ assert(
 
 const dataTemplates = read("src/routes/_authenticated/data-templates.tsx");
 assert(
-  dataTemplates.includes('CATALOG.filter((t) => t.classification !== "LEGACY_ONLY")'),
-  "data-templates catalog keeps LEGACY_ONLY templates hidden",
+  dataTemplates.includes('to: "/data-onboarding"') &&
+    read("src/lib/data-onboarding/preparation.ts").includes("listImportUiEntities"),
+  "guide redirects to the preparation registry, which excludes legacy imports",
 );
 
-const importUi = read("src/routes/_authenticated/import.tsx");
+const importUi = read("src/components/data-onboarding/import-workspace.tsx");
 assert(
   importUi.includes("listImportUiEntities"),
   "import UI sources its entity list from listImportUiEntities (ACTIVE_NEW_FLOW only)",

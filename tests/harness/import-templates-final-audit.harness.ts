@@ -83,7 +83,7 @@ async function run() {
   assert(!uiEntities.includes("teaching_assignments"), "no V1 teaching_assignments in UI");
   assert(!uiEntities.includes("course_offerings"), "no course_offerings import in new-flow UI");
   assert(!uiEntities.includes("section_groups"), "no section_groups in UI");
-  const importUi = read("src/routes/_authenticated/import.tsx");
+  const importUi = read("src/components/data-onboarding/import-workspace.tsx");
   assert(importUi.includes("listImportUiEntities"), "import UI uses official registry");
   assert(!importUi.includes('value: "sections"'), "import UI source has no sections option");
   assert(!/student.*registration|تسجيل.*طالب/i.test(importUi), "no student-registration template");

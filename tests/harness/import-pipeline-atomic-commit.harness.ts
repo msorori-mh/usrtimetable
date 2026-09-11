@@ -18,7 +18,7 @@ const migration = read(
 const prior = read("supabase/migrations/20260718180000_import_manifest_contract.sql");
 const commit = read("src/lib/excel-import/commit.ts");
 const safety = read("src/lib/excel-import/safety.ts");
-const importUi = read("src/routes/_authenticated/import.tsx");
+const importUi = read("src/components/data-onboarding/import-workspace.tsx");
 const fixture = read("tests/fixtures/import-atomic-commit/proof.sql");
 
 // 1) authorized atomic commit surface

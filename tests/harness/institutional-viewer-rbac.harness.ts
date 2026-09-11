@@ -128,7 +128,7 @@ for (const page of [
   "src/routes/_authenticated/universities.tsx",
   "src/routes/_authenticated/colleges.tsx",
   "src/routes/_authenticated/users.tsx",
-  "src/routes/_authenticated/import.tsx",
+  "src/components/data-onboarding/import-workspace.tsx",
 ]) {
   const src = read(page);
   assert(
@@ -176,12 +176,15 @@ assert(
   cleanup.includes("{!canManage && (") && /canManage \?/.test(cleanup),
   "data-cleanup fix actions render only when canManage",
 );
-const importPage = read("src/routes/_authenticated/import.tsx");
+const importPage = read("src/components/data-onboarding/import-workspace.tsx");
 const viewerBlock = importPage.slice(
   importPage.indexOf("if (viewOnly)"),
   importPage.indexOf("if (!canManage)"),
 );
-assert(viewerBlock.length > 100, "import page has a dedicated viewer branch");
+assert(
+  viewerBlock.includes("READ_ONLY_VIEW_BADGE_AR"),
+  "import workspace has a dedicated viewer branch",
+);
 assert(
   !/type="file"|commitImport|onConfirm|Upload\s*\/>/.test(viewerBlock),
   "import viewer branch contains no upload/commit controls",

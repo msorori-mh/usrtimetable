@@ -351,9 +351,10 @@ export function buildWizardStepResults(
 }
 
 export function wizardPercentComplete(steps: WizardStepResult[]): number {
-  if (steps.length === 0) return 0;
-  const done = steps.filter((s) => s.status === "complete").length;
-  return Math.round((done * 100) / steps.length);
+  const preparation = steps.filter((s) => s.id !== "create_schedule_version");
+  if (preparation.length === 0) return 0;
+  const done = preparation.filter((s) => s.status === "complete").length;
+  return Math.round((done * 100) / preparation.length);
 }
 
 export function worstStepStatus(steps: WizardStepResult[]): WizardStepStatus {

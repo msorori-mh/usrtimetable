@@ -120,7 +120,7 @@ function run() {
   );
 
   // 7) /import, /auto-schedule, published schedules privilege posture unchanged
-  const importSrc = readSrc("src/routes/_authenticated/import.tsx");
+  const importSrc = readSrc("src/components/data-onboarding/import-workspace.tsx");
   assert(importSrc.includes("useCanManageActiveCollege"), "7 import still uses canManage gate");
   assert(
     importSrc.includes("لا تملك صلاحية الاستيراد لهذه الكلّية"),
