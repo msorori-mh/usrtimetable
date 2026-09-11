@@ -29,7 +29,7 @@ import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { AdminExportMenu } from "@/components/admin-export-menu";
 import { activeFilters, studyPlansExportDataset } from "@/lib/admin-export/datasets";
-import { BookOpen, Pencil, Trash2, Download } from "lucide-react";
+import { BookOpen, Pencil, Trash2 } from "lucide-react";
 import { PlanCoursesManager } from "@/components/study-plans/plan-courses-manager";
 
 export const Route = createFileRoute("/_authenticated/study-plans")({
