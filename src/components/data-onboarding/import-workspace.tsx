@@ -70,13 +70,23 @@ export function ImportWorkspace(props: ImportWorkspaceProps) {
 function ImportChoice(props: ImportWorkspaceProps) {
   const [headcounts, setHeadcounts] = useState(false);
   if (!props.entities.includes("academic_cohorts")) return <ImportForm {...props} />;
-  return <div className="space-y-3">
-    <div className="flex flex-wrap gap-2" aria-label="نوع استيراد الدفعات">
-      <Button variant={headcounts ? "outline" : "default"} onClick={() => setHeadcounts(false)}>الدفعات واختياراتها</Button>
-      <Button variant={headcounts ? "default" : "outline"} onClick={() => setHeadcounts(true)}>أعداد الطلاب للجدولة</Button>
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2" aria-label="نوع استيراد الدفعات">
+        <Button variant={headcounts ? "outline" : "default"} onClick={() => setHeadcounts(false)}>
+          الدفعات واختياراتها
+        </Button>
+        <Button variant={headcounts ? "default" : "outline"} onClick={() => setHeadcounts(true)}>
+          أعداد الطلاب للجدولة
+        </Button>
+      </div>
+      {headcounts ? (
+        <HeadcountImportWorkspace onCommitted={props.onCommitted} />
+      ) : (
+        <ImportForm {...props} />
+      )}
     </div>
-    {headcounts ? <HeadcountImportWorkspace onCommitted={props.onCommitted} /> : <ImportForm {...props} />}
-  </div>;
+  );
 }
 
 function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspaceProps) {

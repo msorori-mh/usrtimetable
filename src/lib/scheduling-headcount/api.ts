@@ -8,7 +8,10 @@ import type {
 import type { HeadcountImportRow, ImportCohort } from "./import";
 
 export async function getHeadcountImportContext(collegeId: string) {
-  const result = await call<{ cohorts: ImportCohort[] }>("get_scheduling_headcount_import_context", { p_college_id: collegeId });
+  const result = await call<{ cohorts: ImportCohort[] }>(
+    "get_scheduling_headcount_import_context",
+    { p_college_id: collegeId },
+  );
   if (!result.ok) throw new Error(result.message);
   return result.cohorts;
 }
@@ -17,8 +20,16 @@ export interface HeadcountImportResult {
   changed: number;
   rows: { cohort_id: string; term_id: string; expected_version: string; approval_status: string }[];
 }
-export async function commitHeadcountImport(collegeId: string, rows: HeadcountImportRow[], action: "save" | "approve") {
-  const result = await call<HeadcountImportResult>("import_scheduling_headcounts", { p_college_id: collegeId, p_rows: rows, p_action: action });
+export async function commitHeadcountImport(
+  collegeId: string,
+  rows: HeadcountImportRow[],
+  action: "save" | "approve",
+) {
+  const result = await call<HeadcountImportResult>("import_scheduling_headcounts", {
+    p_college_id: collegeId,
+    p_rows: rows,
+    p_action: action,
+  });
   if (!result.ok) throw new Error(result.message);
   return result;
 }

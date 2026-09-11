@@ -66,8 +66,8 @@ function SchedulingHeadcountsPage() {
     queryKey: ["scheduling-headcounts", active?.id],
     enabled: Boolean(active),
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("scheduling_cohort_term_headcounts")
+      const { data, error } = await supabase
+        .from("scheduling_cohort_term_headcounts" as never)
         .select("*")
         .eq("college_id", active!.id)
         .order("updated_at", { ascending: false });
