@@ -3,6 +3,7 @@ export type CohortCurriculumSummary = {
   result: "success";
   cohort_id: string;
   study_plan_id: string;
+  study_plan_code?: string;
   semester: number;
   term_type: string;
   inserted_offerings: number;
@@ -62,11 +63,15 @@ export function parseCohortCurriculumSummary(
   ) {
     throw new Error("COHORT_CURRICULUM_OPERATIONAL_SIDE_EFFECT_REPORTED");
   }
+  if (count(row.inserted_offerings, "inserted_offerings") + count(row.skipped_existing, "skipped_existing") === 0) {
+    throw new Error("COHORT_CURRICULUM_EMPTY");
+  }
   return {
     operation: "generate_cohort_curriculum",
     result: "success",
     cohort_id: row.cohort_id,
     study_plan_id: row.study_plan_id,
+    study_plan_code: typeof row.study_plan_code === "string" ? row.study_plan_code : undefined,
     semester: count(row.semester, "semester"),
     term_type: row.term_type,
     inserted_offerings: count(row.inserted_offerings, "inserted_offerings"),
@@ -84,3 +89,4 @@ export function parseCohortCurriculumSummary(
     created_sessions: 0,
   };
 }
+

@@ -1,3 +1,5 @@
+import { parseCohortCurriculumSummary, type CohortCurriculumSummary } from "./cohort-curriculum-summary";
+
 /**
  * Phase 9.3 — delivery group generator summary types + pure parser (no Supabase import).
  */
@@ -35,6 +37,7 @@ export type DeliveryGroupGeneratorValidationError = {
 
 export type DeliveryGroupGeneratorSummary = {
   status: DeliveryGroupGeneratorStatus;
+  curriculum?: CohortCurriculumSummary;
   cohorts_processed: number;
   cohort_id: string;
   college_id: string;
@@ -83,6 +86,9 @@ export function isGeneratorSuccessStatus(status: DeliveryGroupGeneratorStatus): 
 export function parseDeliveryGroupGeneratorSummary(raw: unknown): DeliveryGroupGeneratorSummary {
   const o = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   const validation_errors = asArray<DeliveryGroupGeneratorValidationError>(o.validation_errors);
+  if (o.components_processed === 0 && (o.status === "SUCCESS" || o.status === "NO_CHANGES")) {
+    throw new Error("COHORT_TIMETABLED_COMPONENTS_EMPTY");
+  }
   const groups_created = Number(o.groups_created ?? 0);
   const groups_updated = Number(o.groups_updated ?? 0);
   const groups_obsolete = Number(o.groups_obsolete ?? 0);
@@ -94,6 +100,7 @@ export function parseDeliveryGroupGeneratorSummary(raw: unknown): DeliveryGroupG
     status: typeof o.status === "string" ? o.status : null,
   });
   return {
+    curriculum: o.curriculum ? parseCohortCurriculumSummary(o.curriculum, String(o.cohort_id)) : undefined,
     status,
     cohorts_processed: Number(o.cohorts_processed ?? 0),
     cohort_id: String(o.cohort_id ?? ""),
@@ -109,3 +116,4 @@ export function parseDeliveryGroupGeneratorSummary(raw: unknown): DeliveryGroupG
     validation_errors,
   };
 }
+

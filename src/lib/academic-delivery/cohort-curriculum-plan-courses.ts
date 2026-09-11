@@ -3,6 +3,7 @@
  * Mirrors generate_cohort_curriculum selection rules for client-side pre-checks.
  */
 
+import { uniqueMatchingStudyPlan } from "./generation-messages";
 import { supabase } from "@/integrations/supabase/client";
 import {
   isElectivePlaceholderCode,
@@ -44,17 +45,24 @@ function isSummerOnlyPlanCourse(components: PlanCourseComponentRow[]): boolean {
   return !forCourse.some((c) => c.component_type !== "summer_training" && c.is_timetabled === true);
 }
 
-async function resolveStudyPlanId(collegeId: string, programId: string): Promise<string | null> {
-  const { data, error } = await supabase
-    .from("study_plans")
-    .select("id, is_active, created_at")
-    .eq("college_id", collegeId)
-    .eq("program_id", programId)
-    .order("is_active", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(1);
+async function resolveStudyPlanId(collegeId: string, programId: string, levelId: string, semester: number): Promise<string> {
+  const { data: plans, error } = await supabase.from("study_plans").select("id")
+    .eq("college_id", collegeId).eq("program_id", programId).eq("is_active", true);
   if (error) throw error;
-  return data?.[0]?.id ?? null;
+  const planIds = (plans ?? []).map((p) => p.id);
+  if (!planIds.length) throw new Error("STUDY_PLAN_MISSING_FOR_COHORT_PROGRAM");
+  const [courses, slots] = await Promise.all([
+    supabase.from("plan_courses").select("study_plan_id").eq("college_id", collegeId)
+      .in("study_plan_id", planIds).eq("level_id", levelId).eq("semester", semester),
+    supabase.from("elective_slots").select("study_plan_id, level_id").eq("college_id", collegeId)
+      .in("study_plan_id", planIds).eq("semester", semester).eq("active", true),
+  ]);
+  if (courses.error) throw courses.error;
+  if (slots.error) throw slots.error;
+  return uniqueMatchingStudyPlan([
+    ...(courses.data ?? []).map((p) => p.study_plan_id),
+    ...(slots.data ?? []).filter((p) => p.level_id === null || p.level_id === levelId).map((p) => p.study_plan_id),
+  ]);
 }
 
 async function fetchRequiredPlanCourses(
@@ -95,10 +103,13 @@ async function fetchElectivePlanCourses(
 ): Promise<CohortCurriculumPlanCourse[]> {
   const { data: selections, error: selError } = await supabase
     .from("cohort_elective_selections")
-    .select("elective_slot_id, selected_course_id")
+    .select("elective_slot_id, selected_course_id, decided_at, decided_by")
     .eq("cohort_id", cohortId)
     .eq("college_id", collegeId);
   if (selError) throw selError;
+  if ((selections ?? []).some((s) => !s.decided_at || !s.decided_by)) {
+    throw new Error("ELECTIVE_DECISION_NOT_APPROVED");
+  }
   if ((selections ?? []).length === 0) return [];
 
   const slotIds = [...new Set((selections ?? []).map((s) => s.elective_slot_id))];
@@ -146,6 +157,7 @@ async function fetchElectivePlanCourses(
     .eq("college_id", collegeId)
     .eq("study_plan_id", studyPlanId)
     .eq("semester", semester)
+    .eq("level_id", levelId)
     .in("course_id", selectedCourseIds);
   if (planError) throw planError;
 
@@ -242,7 +254,7 @@ export async function resolveCohortCurriculumPlanCourses(
     };
   }
 
-  const studyPlanId = await resolveStudyPlanId(cohort.college_id, cohort.program_id);
+  const studyPlanId = await resolveStudyPlanId(cohort.college_id, cohort.program_id, cohort.level_id, semester);
   if (!studyPlanId) {
     return {
       collegeId: cohort.college_id,
@@ -276,3 +288,4 @@ export async function resolveCohortCurriculumPlanCourses(
     planCourses,
   };
 }
+

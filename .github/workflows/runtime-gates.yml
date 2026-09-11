@@ -103,6 +103,9 @@ jobs:
       - name: Time template classification and availability filters
         run: node --import tsx --test tests/time-template-directory.test.ts
 
+      - name: Cohort generation empty-result and Arabic diagnostics
+        run: node --import tsx --test tests/cohort-generation-messages.test.ts
+
       - name: Scheduling headcount workbook import
         run: node --import tsx --test tests/headcount-import.test.ts tests/headcount-workbook.test.ts
 
@@ -155,3 +158,13 @@ jobs:
         run: |
           createdb -h 127.0.0.1 -U postgres headcount_import_test
           node --test tests/headcount-import-db.test.mjs
+
+
+      - name: Cohort plan selection and atomic group generation
+        env:
+          PGPASSWORD: postgres
+          COHORT_GENERATION_TEST_DISPOSABLE: "1"
+          COHORT_GENERATION_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/cohort_generation_test
+        run: |
+          createdb -h 127.0.0.1 -U postgres cohort_generation_test
+          node --test tests/cohort-plan-generation-db.test.mjs
