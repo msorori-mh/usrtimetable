@@ -121,6 +121,17 @@ for (const [name, value, setup = "", college = "college"] of [
 `,
   );
 check(
+  "failure in a second component rolls back an already-written first component",
+  `
+  BEGIN
+    ${sync(`jsonb_build_object('theory_hours',2,'practical_hours',2,'_plan_component_sync',jsonb_build_array(${component("theory", 2)},${component("practical", 2, "foreign")}))`)}
+    RAISE EXCEPTION 'unexpected success';
+  EXCEPTION WHEN invalid_parameter_value THEN NULL;
+  END;
+  PERFORM test_support.assert((SELECT count(*)=0 FROM plan_course_components),'partial write survived');
+`,
+);
+check(
   "legacy count-only imports retain their pattern and explicit durations are preferred",
   `
   UPDATE plan_courses SET lectures_per_week=3,lecture_session_duration=1 WHERE id=${id("pc")};
