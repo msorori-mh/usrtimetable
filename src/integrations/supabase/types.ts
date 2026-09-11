@@ -3997,6 +3997,10 @@ export type Database = {
         Args: { p_a: string; p_b: string }
         Returns: boolean
       }
+      effective_room_type_capacity: {
+        Args: { p_college_id: string; p_room_type_id: string }
+        Returns: number
+      }
       fail_import_job: {
         Args: { p_college_id: string; p_job_id: string; p_message: string }
         Returns: undefined
