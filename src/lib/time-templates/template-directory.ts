@@ -11,8 +11,8 @@ export interface TimeTemplateRow {
   is_active: boolean;
 }
 export const TEMPLATE_SYSTEM_LABELS: Record<StudySystem, string> = {
-  regular: `مخصص لـ${ACADEMIC_STUDY_SYSTEM_LABELS.regular}`,
-  parallel: `مخصص لـ${ACADEMIC_STUDY_SYSTEM_LABELS.parallel}`,
+  regular: `${ACADEMIC_STUDY_SYSTEM_LABELS.regular} فقط`,
+  parallel: `${ACADEMIC_STUDY_SYSTEM_LABELS.parallel} فقط`,
   both: "مشترك للعام والموازي",
 };
 export type TemplateScope = "all" | StudySystem | "available_regular" | "available_parallel";
