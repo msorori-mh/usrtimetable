@@ -166,7 +166,7 @@ check(
   DO $$ DECLARE t text; r bigint; foreign_rev bigint; BEGIN
     SELECT eligibility_revision INTO foreign_rev FROM schedule_versions WHERE id=test_support.id('two-version');
     FOREACH t IN ARRAY ARRAY['academic_cohorts','delivery_groups','delivery_group_partition_members',
-      'cohort_student_partitions','instructor_types','room_unavailability','scheduling_settings','plan_course_components','daily_breaks'] LOOP
+      'cohort_student_partitions','instructor_types','room_unavailability','scheduling_settings','plan_course_components','daily_breaks','academic_terms'] LOOP
       PERFORM test_support.assert(EXISTS(SELECT 1 FROM pg_trigger WHERE tgrelid=('public.'||t)::regclass
         AND tgname='trg_compaction_input_revision'),'missing trigger '||t);
     END LOOP;
@@ -239,6 +239,53 @@ check(
   `
   ${rejected("'[]'::jsonb", "INVALID_BATCH_SIZE")}
   ${rejected(`jsonb_build_array(jsonb_set(${one},'{room_id}','"bad-uuid"'))`, "INVALID_REQUEST")}
+`,
+);
+
+check(
+  "weekly room closure rejects the entire batch",
+  `
+  INSERT INTO room_unavailability(college_id,room_id,day_of_week,start_time,end_time)
+    VALUES(test_support.id('one'),test_support.id('one-room'),0,'10:00','11:00');
+  ${rejected(`jsonb_build_array(${one})`, "ROOM_CLOSED")}
+`,
+);
+check(
+  "date-bounded room closure inside the term rejects the matching weekday",
+  `
+  UPDATE academic_terms SET start_date='2026-09-01',end_date='2026-12-31' WHERE id=test_support.id('one-term');
+  INSERT INTO room_unavailability(college_id,room_id,start_date,end_date,start_time,end_time)
+    VALUES(test_support.id('one'),test_support.id('one-room'),'2026-09-06','2026-09-06','10:00','11:00');
+  ${rejected(`jsonb_build_array(${one})`, "ROOM_CLOSED")}
+`,
+);
+check(
+  "closures on a different weekday or outside the term do not reject valid moves",
+  `
+  UPDATE academic_terms SET start_date='2026-09-01',end_date='2026-12-31' WHERE id=test_support.id('one-term');
+  INSERT INTO room_unavailability(college_id,room_id,start_date,end_date,start_time,end_time) VALUES
+    (test_support.id('one'),test_support.id('one-room'),'2026-09-07','2026-09-07','10:00','11:00'),
+    (test_support.id('one'),test_support.id('one-room'),'2026-08-02','2026-08-02','10:00','11:00');
+  SELECT test_support.assert((test_support.apply(jsonb_build_array(${one}))->>'ok')::boolean,'unrelated closure blocked');
+`,
+);
+check(
+  "date-specific closures fail closed if term dates are unavailable",
+  `
+  INSERT INTO room_unavailability(college_id,room_id,start_date,end_date)
+    VALUES(test_support.id('one'),test_support.id('one-room'),'2026-09-06','2026-09-06');
+  ${rejected(`jsonb_build_array(${one})`, "ROOM_CLOSURE_REQUIRES_TERM_DATES")}
+`,
+);
+check(
+  "term date edits invalidate a prepared snapshot",
+  `
+  DO $$ DECLARE rev bigint; ts timestamptz; p jsonb:=jsonb_build_array(${one}); r jsonb; BEGIN
+    SELECT eligibility_revision,updated_at INTO rev,ts FROM schedule_versions WHERE id=test_support.id('one-version');
+    UPDATE academic_terms SET start_date='2026-09-01',end_date='2026-12-31' WHERE id=test_support.id('one-term');
+    r:=apply_schedule_compaction(test_support.id('one'),test_support.id('one-version'),test_support.id('op'),rev,ts,p);
+    PERFORM test_support.assert(r->>'code'='STALE_SNAPSHOT',r::text);
+  END $$;
 `,
 );
 

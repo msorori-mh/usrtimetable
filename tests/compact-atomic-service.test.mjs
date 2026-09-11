@@ -105,6 +105,8 @@ async function setup() {
       if (st.mode === "reject")
         return { data: { ok: false, code: "BLOCKED_CONFLICTS", applied: 0 }, error: null };
       if (st.mode === "unknown") throw new Error("transport lost");
+      if (st.mode === "busy")
+        return { data: { ok: false, code: "VERSION_BUSY", applied: 0 }, error: null };
       for (const m of args.p_moves)
         st.s.sessions = st.s.sessions.map((x) =>
           x.id === m.id ? { ...x, ...m, updated_at: "t1" } : x,
@@ -225,4 +227,33 @@ test("successful save remains confirmed if the following refresh fails", async (
   assert.equal(r.status, "saved");
   assert.equal(r.applied, 1);
   assert.equal(r.after, null);
+});
+test("explicit recovery reuses the exact original operation and payload", async () => {
+  const { st, service, p } = await setup();
+  st.mode = "unknown";
+  const previous = await service.applyCompactProposal("c", "v", p);
+  const original = structuredClone(st.calls[0].args);
+  st.mode = "saved";
+  const recovered = await service.retryCompactApplication("c", "v", previous);
+  assert.equal(recovered.status, "saved");
+  assert.deepEqual(
+    st.calls.filter((c) => c.name === "apply_schedule_compaction")[1].args,
+    original,
+  );
+});
+test("recovery meeting an in-flight lock stays unknown, not falsely rolled back", async () => {
+  const { st, service, p } = await setup();
+  st.mode = "unknown";
+  const previous = await service.applyCompactProposal("c", "v", p);
+  st.mode = "busy";
+  const recovered = await service.retryCompactApplication("c", "v", previous);
+  assert.equal(recovered.status, "unknown");
+  assert.equal(recovered.applied, null);
+});
+test("recovery cannot send an old plan into a different selected version", async () => {
+  const { st, service, p } = await setup();
+  st.mode = "unknown";
+  const previous = await service.applyCompactProposal("c", "v", p);
+  await assert.rejects(service.retryCompactApplication("c", "different", previous), /تغيرت نسخة/);
+  assert.equal(st.calls.filter((c) => c.name === "apply_schedule_compaction").length, 1);
 });

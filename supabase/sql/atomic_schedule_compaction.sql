@@ -23,7 +23,7 @@ BEGIN
   FOREACH v_table IN ARRAY ARRAY[
     'academic_cohorts', 'delivery_groups', 'delivery_group_partition_members',
     'cohort_student_partitions', 'instructor_types', 'room_unavailability',
-    'scheduling_settings', 'plan_course_components', 'daily_breaks'
+    'scheduling_settings', 'plan_course_components', 'daily_breaks', 'academic_terms'
   ] LOOP
     EXECUTE format(
       'CREATE TRIGGER trg_compaction_input_revision BEFORE INSERT OR UPDATE OR DELETE ON public.%I FOR EACH ROW EXECUTE FUNCTION public.invalidate_college_schedule_eligibility()',
@@ -73,6 +73,10 @@ DECLARE
   v_days_before jsonb;
   v_index integer := 0;
   v_count integer;
+  v_term record;
+  v_closure record;
+  v_first_date date;
+  v_last_date date;
 BEGIN
   IF v_uid IS NULL OR NOT public.can_manage_college(v_uid, p_college_id) THEN
     RETURN jsonb_build_object('ok', false, 'code', 'FORBIDDEN', 'applied', 0);
@@ -120,6 +124,8 @@ BEGIN
      OR v_version.updated_at IS DISTINCT FROM p_expected_version_updated_at THEN
     RETURN jsonb_build_object('ok', false, 'code', 'STALE_SNAPSHOT', 'applied', 0);
   END IF;
+  SELECT start_date,end_date INTO v_term FROM public.academic_terms
+  WHERE id = v_version.academic_term_id AND college_id = p_college_id;
 
   -- Lock all affected sessions and assignments in a stable order before any mutation.
   FOR v_id IN SELECT DISTINCT (m->>'id')::uuid FROM jsonb_array_elements(p_moves) m
@@ -158,6 +164,27 @@ BEGIN
       WHERE r.id = (v_move->>'room_id')::uuid AND r.college_id = p_college_id AND r.is_active) THEN
       RETURN jsonb_build_object('ok', false, 'code', 'ROOM_SCOPE_MISMATCH', 'applied', 0);
     END IF;
+    -- The legacy move collector does not inspect room_unavailability. Validate both
+    -- weekly and date-bounded closures here before the ordered transaction starts.
+    FOR v_closure IN SELECT * FROM public.room_unavailability ru
+      WHERE ru.college_id = p_college_id AND ru.room_id = (v_move->>'room_id')::uuid
+        AND (ru.day_of_week IS NULL OR ru.day_of_week = (v_move->>'day_of_week')::integer)
+        AND COALESCE(ru.start_time,'00:00'::time) < (v_move->>'end_time')::time
+        AND COALESCE(ru.end_time,'24:00'::time) > (v_move->>'start_time')::time
+    LOOP
+      IF v_closure.start_date IS NULL AND v_closure.end_date IS NULL THEN
+        RETURN jsonb_build_object('ok', false, 'code', 'ROOM_CLOSED', 'applied', 0);
+      END IF;
+      IF v_term.start_date IS NULL OR v_term.end_date IS NULL OR v_term.end_date < v_term.start_date THEN
+        RETURN jsonb_build_object('ok', false, 'code', 'ROOM_CLOSURE_REQUIRES_TERM_DATES', 'applied', 0);
+      END IF;
+      v_first_date := greatest(v_term.start_date,COALESCE(v_closure.start_date,v_term.start_date));
+      v_last_date := least(v_term.end_date,COALESCE(v_closure.end_date,v_term.end_date));
+      IF v_first_date + (((v_move->>'day_of_week')::integer - extract(dow FROM v_first_date)::integer + 7) % 7)
+         <= v_last_date THEN
+        RETURN jsonb_build_object('ok', false, 'code', 'ROOM_CLOSED', 'applied', 0);
+      END IF;
+    END LOOP;
   END LOOP;
 
   SELECT COALESCE(jsonb_object_agg(d.level_key, d.days), '{}'::jsonb) INTO v_days_before

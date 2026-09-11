@@ -7,7 +7,7 @@ import { previewCompaction } from "@/lib/auto-scheduler/compact-worker-client";
 import {
   loadCompactSnapshot,
   applyCompactProposal,
-  verifyCompactApplication,
+  retryCompactApplication,
   type Applied,
 } from "@/lib/auto-scheduler/compact-service";
 
@@ -48,7 +48,7 @@ export function CompactSchedulePanel({
     setResult(null);
     try {
       if (mode === "verify" && result) {
-        const verified = await verifyCompactApplication(collegeId, versionId, result);
+        const verified = await retryCompactApplication(collegeId, versionId, result);
         setResult(verified);
         setMessage(verified.stopped || "تأكد حفظ الخطة كاملة.");
         await qc.invalidateQueries();
@@ -165,7 +165,7 @@ export function CompactSchedulePanel({
             variant="outline"
             onClick={() => void execute("verify")}
           >
-            تحقق من نتيجة الحفظ
+            تحقق واستكمل الحفظ
           </Button>
         )}
         {busy && !saving && (
