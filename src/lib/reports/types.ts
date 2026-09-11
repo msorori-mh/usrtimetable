@@ -57,6 +57,8 @@ export interface ReportContext {
 }
 
 export interface UseReportContextOptions {
+  /** Initial values restored by a report's share/QR link. */
+  initialFilters?: Partial<ReportFilters>;
   defaultStatusMode?: ReportStatusMode;
   defaultStudySystem?: ReportStudySystem;
   /** Locks statusMode (e.g. published-only official reports). */

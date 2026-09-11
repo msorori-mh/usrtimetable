@@ -549,6 +549,54 @@ export type Database = {
           },
         ]
       }
+      cohort_student_partitions: {
+        Row: {
+          active: boolean
+          cohort_id: string
+          college_id: string
+          created_at: string
+          headcount: number
+          id: string
+          partition_code: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          cohort_id: string
+          college_id: string
+          created_at?: string
+          headcount: number
+          id?: string
+          partition_code: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          cohort_id?: string
+          college_id?: string
+          created_at?: string
+          headcount?: number
+          id?: string
+          partition_code?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_student_partitions_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "academic_cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cohort_student_partitions_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       college_constraint_settings: {
         Row: {
           college_id: string
@@ -1073,6 +1121,65 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      delivery_group_partition_members: {
+        Row: {
+          cohort_id: string
+          college_id: string
+          created_at: string
+          delivery_group_id: string
+          id: string
+          partition_id: string
+          updated_at: string
+        }
+        Insert: {
+          cohort_id: string
+          college_id: string
+          created_at?: string
+          delivery_group_id: string
+          id?: string
+          partition_id: string
+          updated_at?: string
+        }
+        Update: {
+          cohort_id?: string
+          college_id?: string
+          created_at?: string
+          delivery_group_id?: string
+          id?: string
+          partition_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_group_partition_members_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "academic_cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_group_partition_members_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_group_partition_members_delivery_group_id_fkey"
+            columns: ["delivery_group_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_group_partition_members_partition_id_fkey"
+            columns: ["partition_id"]
+            isOneToOne: false
+            referencedRelation: "cohort_student_partitions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       delivery_groups: {
         Row: {
@@ -3829,6 +3936,10 @@ export type Database = {
           p_reason?: string
         }
         Returns: Json
+      }
+      delivery_groups_share_students: {
+        Args: { p_a: string; p_b: string }
+        Returns: boolean
       }
       fail_import_job: {
         Args: { p_college_id: string; p_job_id: string; p_message: string }

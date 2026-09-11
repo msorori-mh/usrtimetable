@@ -242,10 +242,19 @@ for (const rel of [
   );
 }
 const programRoute = read("src/routes/_authenticated/reports.program-level-timetable.tsx");
+const programFilters = read("src/lib/reports/program-timetable-filters.ts");
 assert(
   programRoute.includes('.from("academic_cohorts")') &&
-    programRoute.includes('.from("delivery_groups")'),
-  "program-level filter sources are cohorts + delivery groups",
+    programRoute.includes("fetchProgramLevelTimetableSessions") &&
+    programRoute.includes("deriveProgramTimetable") &&
+    programRoute.includes("fetchCohortDeliveryGroupLabels"),
+  "program-level options derive from scoped cohorts and labeled version sessions",
+);
+assert(
+  !programRoute.includes('.from("delivery_groups")') &&
+    programFilters.includes("s.delivery_group_id") &&
+    programFilters.includes("cohortsById.has(s.cohort_id)"),
+  "program-level group options require a scheduled group in an eligible cohort",
 );
 const publishedRoute = read("src/routes/_authenticated/reports.published-timetable.tsx");
 assert(

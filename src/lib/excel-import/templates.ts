@@ -537,13 +537,23 @@ export const TEMPLATES: Record<string, TemplateDef> = {
   },
 };
 
-export async function buildTemplateWorkbook(entity: string): Promise<Blob> {
+export async function buildTemplateWorkbook(
+  entity: string,
+  dataRows?: Record<string, unknown>[],
+): Promise<Blob> {
   const XLSX = await import("xlsx");
   const tpl = TEMPLATES[entity];
   if (!tpl) throw new Error("قالب غير معروف");
   const headers = tpl.columns.map((c) => c.header);
   const example = tpl.columns.map((c) => escapeSpreadsheetCell(c.example ?? ""));
-  const ws = XLSX.utils.aoa_to_sheet([headers, example]);
+  const rows = dataRows?.map((row) =>
+    tpl.columns.map((column) =>
+      typeof row[column.key] === "number"
+        ? (row[column.key] as number)
+        : escapeSpreadsheetCell(row[column.key]),
+    ),
+  );
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...(rows ?? [example])]);
   ws["!cols"] = headers.map(() => ({ wch: 22 }));
 
   // Excel data-validation dropdowns for columns with enumValues (best-effort via SheetJS)

@@ -7,7 +7,12 @@ export interface CoreWorkflowStageDefinition {
   order: number;
   titleAr: string;
   descriptionAr: string;
-  href: "/data-onboarding" | "/schedule-builder" | "/schedule-versions" | "/published-schedules";
+  href:
+    | "/data-onboarding"
+    | "/schedule-builder"
+    | "/schedule-versions"
+    | "/published-schedules"
+    | "/reports";
 }
 
 export interface CoreWorkflowFacts {
@@ -53,9 +58,9 @@ export const CORE_WORKFLOW_STAGES: readonly CoreWorkflowStageDefinition[] = [
   {
     id: "publish",
     order: 4,
-    titleAr: "انشر وشارك",
+    titleAr: "التقارير والطباعة",
     descriptionAr: "اعرض الجداول المنشورة والتقارير الرسمية بعد الاعتماد.",
-    href: "/published-schedules",
+    href: "/reports",
   },
 ] as const;
 

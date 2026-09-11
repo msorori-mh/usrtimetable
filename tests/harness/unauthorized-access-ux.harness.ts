@@ -120,7 +120,7 @@ function run() {
   );
 
   // 7) /import, /auto-schedule, published schedules privilege posture unchanged
-  const importSrc = readSrc("src/routes/_authenticated/import.tsx");
+  const importSrc = readSrc("src/components/data-onboarding/import-workspace.tsx");
   assert(importSrc.includes("useCanManageActiveCollege"), "7 import still uses canManage gate");
   assert(
     importSrc.includes("لا تملك صلاحية الاستيراد لهذه الكلّية"),
@@ -129,7 +129,9 @@ function run() {
 
   const autoSrc = readSrc("src/routes/_authenticated/auto-schedule.tsx");
   assert(
-    autoSrc.includes("disabled={!canManage || !versionId || run.isPending || readinessIncomplete}"),
+    /disabled=\{!canManage \|\| !versionId \|\| run\.isPending \|\|[^}]*readinessIncomplete\}/.test(
+      autoSrc,
+    ),
     "7 auto-schedule run stays disabled without canManage or complete readiness",
   );
 

@@ -91,7 +91,8 @@ function AdminToolsPage() {
   const roles = me?.roles as Role[] | undefined;
 
   const visible = useMemo(
-    () => ADMIN_PAGES.filter((p) => canAccess(p, roles) && matchesQuery(p, query)),
+    () =>
+      ADMIN_PAGES.filter((p) => !p.hiddenFromMenu && canAccess(p, roles) && matchesQuery(p, query)),
     [roles, query],
   );
   const grouped = useMemo(() => pagesByJourney(visible), [visible]);

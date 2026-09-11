@@ -27,12 +27,14 @@ const noDml = (body: string, file: string, table: string) => {
 };
 
 // ---------- 1) route + nav ----------
-const route = read("src/routes/_authenticated/data-onboarding.tsx");
+const route =
+  read("src/routes/_authenticated/data-onboarding.tsx") +
+  read("src/components/data-onboarding/preparation-workspace.tsx");
 assert(
   route.includes('createFileRoute("/_authenticated/data-onboarding")'),
   "data-onboarding route registered",
 );
-assert(route.includes("إعداد البيانات وإنشاء الجدول"), "Arabic wizard title");
+assert(route.includes("تجهيز بيانات الكلية"), "Arabic wizard title");
 assert(route.includes("fetchOnboardingReadinessSnapshot"), "uses onboarding snapshot");
 assert(route.includes("useCanManageActiveCollege"), "RBAC gate for fix/run CTAs");
 assert(route.includes("onboarding-readonly-note"), "read_only view note present");
@@ -42,10 +44,7 @@ assert(route.includes("onboarding-percent"), "percent complete surfaced");
 
 const layout = readPrimaryNavigationSource(root);
 assert(layout.includes('to: "/data-onboarding"'), "sidebar links to data-onboarding");
-assert(
-  layout.includes("إعداد البيانات وإنشاء الجدول"),
-  "sidebar Arabic label for onboarding wizard",
-);
+assert(layout.includes("تجهيز بيانات الكلية"), "sidebar Arabic label for onboarding wizard");
 
 // ---------- 2) New Flow classification excludes Legacy ----------
 const classify = read("src/lib/data-onboarding/classify.ts");
@@ -71,7 +70,9 @@ noDml(route, "data-onboarding.tsx", "schedule_sessions");
 // ---------- 4) auto-schedule dual gate ----------
 const auto = read("src/routes/_authenticated/auto-schedule.tsx");
 assert(
-  auto.includes("disabled={!canManage || !versionId || run.isPending || readinessIncomplete}"),
+  /disabled=\{!canManage \|\| !versionId \|\| run\.isPending \|\|[^}]*readinessIncomplete\}/.test(
+    auto,
+  ),
   "UI gate: readiness blockers + canManage disable run",
 );
 assert(

@@ -188,11 +188,10 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
       headers={headers}
       rows={rows}
       isLoading={loading}
-      filterSummary={filterSummary}
       headerMeta={{ termName: term?.name, note: filterSummary }}
       emptyMessage={
         !termId
-          ? "أضف فصلاً دراسياً للكلية لعرض التقارير."
+          ? "لم تُسجّل فصول دراسية لهذه الكلية بعد. تظهر التقارير عند إدخال بياناتها."
           : error
             ? "تعذر إعداد التقرير؛ حدّث الصفحة للمحاولة مجدداً."
             : "لا توجد بيانات بهذه المعايير."

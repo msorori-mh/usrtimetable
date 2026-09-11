@@ -59,6 +59,12 @@ export function classifyMetricSeverity(metric: ReadinessMetric): ReadinessIssueS
 /** Map metric labels to existing fix routes (أصلح الآن). */
 export function fixHrefForMetric(metric: ReadinessMetric): { href: string; labelAr: string } {
   const label = metric.label;
+  if (label.includes("SCHEDULING_HEADCOUNT"))
+    return { href: "/scheduling-headcounts", labelAr: "اعتماد أعداد الطلاب" };
+  if (label.includes("إسناد") && !label.includes("توفر") && !label.includes("توفّر"))
+    return { href: "/teaching-assignments", labelAr: "إكمال الإسناد التدريسي" };
+  if (label.includes("بدون مجموعات") || label.includes("هوية دفعة/مجموعة"))
+    return { href: "/delivery-groups", labelAr: "مراجعة مجموعات المحاضرات والمعامل" };
   if (label.includes("غير مرتبطة بأي خطة")) {
     return { href: "/study-plans", labelAr: "أصلح الآن — إدارة مقررات الخطة" };
   }

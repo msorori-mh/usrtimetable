@@ -26,7 +26,7 @@ export function printFiltersToSearchParams(params: PrintQrParams): URLSearchPara
   sp.set("type", params.reportType);
   if (params.programId) sp.set("program", params.programId);
   if (params.levelId) sp.set("level", params.levelId);
-  if (params.studySystem && params.studySystem !== "all") sp.set("study", params.studySystem);
+  if (params.studySystem) sp.set("study", params.studySystem);
   if (params.departmentId) sp.set("dept", params.departmentId);
   if (params.instructorId) sp.set("instructor", params.instructorId);
   if (params.roomId) sp.set("room", params.roomId);

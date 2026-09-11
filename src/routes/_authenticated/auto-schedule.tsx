@@ -30,6 +30,7 @@ import { logAudit } from "@/lib/audit";
 import type { AutoRunMode } from "@/lib/auto-scheduler/greedy";
 import { runV2AutoSchedule, type AutoScheduleProgress } from "@/lib/auto-scheduler/v2";
 import { fetchCollegeReadiness } from "@/lib/reports/readiness";
+import { CompactSchedulePanel } from "@/components/compact-panel";
 import { Sparkles, AlertCircle, CheckCircle2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/auto-schedule")({
@@ -43,6 +44,7 @@ function AutoSchedulePage() {
   const qc = useQueryClient();
   const [versionId, setVersionId] = useState<string>("");
   const [mode, setMode] = useState<AutoRunMode>("fill_missing");
+  const [compactBusy, setCompactBusy] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [progress, setProgress] = useState<AutoScheduleProgress | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -99,6 +101,7 @@ function AutoSchedulePage() {
   const run = useMutation({
     mutationFn: async () => {
       // Dual gate: UI disables the button; mutation re-checks manage + readiness (fail-closed).
+      if (compactBusy) throw new Error("انتظر اكتمال تحسين التوزيع");
       if (!canManage) {
         throw new Error("UNAUTHORIZED: لا تملك صلاحية تشغيل الجدولة التلقائية لهذه الكلّية");
       }
@@ -181,7 +184,7 @@ function AutoSchedulePage() {
             <div className="flex items-end gap-3 flex-wrap">
               <div className="min-w-64">
                 <label className="text-xs text-muted-foreground">نسخة الجدول</label>
-                <Select value={versionId} onValueChange={setVersionId}>
+                <Select disabled={run.isPending || compactBusy} value={versionId} onValueChange={setVersionId}>
                   <SelectTrigger>
                     <SelectValue placeholder="اختر النسخة" />
                   </SelectTrigger>
@@ -208,7 +211,7 @@ function AutoSchedulePage() {
                 </Select>
               </div>
               <Button
-                disabled={!canManage || !versionId || run.isPending || readinessIncomplete}
+                disabled={!canManage || !versionId || run.isPending || compactBusy || readinessIncomplete}
                 onClick={() => {
                   if (mode === "fill_missing") run.mutate();
                   else setConfirmOpen(true);
@@ -281,6 +284,8 @@ function AutoSchedulePage() {
                   : "إعادة بناء كامل: يحذف جميع المحاضرات غير المقفلة (تلقائية ويدوية)، ويحافظ على المحاضرات المقفلة فقط. غير قابل للتراجع."}
             </p>
           </Card>
+
+          <CompactSchedulePanel key={`${active.id}:${versionId}`} collegeId={active.id} versionId={versionId} canManage={canManage} disabled={run.isPending} onBusy={setCompactBusy} />
 
           <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
             <AlertDialogContent dir="rtl">

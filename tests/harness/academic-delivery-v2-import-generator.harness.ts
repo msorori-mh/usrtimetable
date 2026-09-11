@@ -313,7 +313,7 @@ function run() {
   assert(templatesSrc.includes('key: "tutorial_hours"'), "full plan tutorial_hours");
   assert(templatesSrc.includes('key: "is_elective_slot"'), "full plan elective flag");
 
-  const importUi = read("src/routes/_authenticated/import.tsx");
+  const importUi = read("src/components/data-onboarding/import-workspace.tsx");
   assert(importUi.includes("listImportUiEntities"), "import UI uses official registry");
   assert(!importUi.includes('value: "course_offerings"'), "offerings hidden from import UI");
   assert(!importUi.includes('value: "teaching_assignments"'), "legacy TA hidden from import UI");

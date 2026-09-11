@@ -101,6 +101,18 @@ function fixture(): AcademicReportInput {
   };
 }
 
+test("reports support an empty academic structure before details are entered", () => {
+  const data = fixture();
+  data.instructors = [];
+  data.programs = [];
+  data.departments = [];
+  data.groups = [];
+  data.workloads = [];
+  for (const kind of ["workload", "assignments", "shortages"] as const) {
+    assert.deepEqual(buildAcademicReport(data, kind), []);
+  }
+});
+
 test("co-teaching reports each assigned share exactly once", () => {
   const rows = buildAcademicReport(fixture(), "assignments");
   assert.deepEqual(
