@@ -124,6 +124,19 @@ export function requiredCadenceForComponent(input: {
       noteAr: null,
     };
   }
+  // Several lecture-like components (e.g. theory 2h + weekly project 2h) share one
+  // plan lecture pattern. The component then consumes part of that pattern: keep the
+  // plan session duration and only take the sessions this component needs.
+  if (count > 0 && duration > 0 && duration <= MAX_SESSION_HOURS && assigned < count * duration) {
+    const sessions = assigned / duration;
+    if (near(sessions, Math.round(sessions)) && Math.round(sessions) >= 1) {
+      return {
+        durations: Array.from({ length: Math.round(sessions) }, () => duration),
+        source: "plan",
+        noteAr: null,
+      };
+    }
+  }
   return {
     durations: [],
     source: "blocked",
