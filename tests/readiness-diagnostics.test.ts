@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { computeStudyPlanReadinessMetrics } from "@/lib/academic-delivery/study-plan-readiness";
+import { studyPlanReadinessMetrics } from "@/lib/academic-delivery/study-plan-readiness";
 import {
   analyzeRoomCapacities,
   roomCapacityReadinessMetrics,
@@ -8,6 +8,8 @@ import {
 const planCourse = (over: Record<string, unknown> = {}) => ({
   id: "pc1",
   course_id: "c1",
+  level_id: "l1",
+  semester: 1,
   lectures_per_week: 2,
   labs_per_week: 1,
   lecture_session_duration: 1,
@@ -18,45 +20,51 @@ const planCourse = (over: Record<string, unknown> = {}) => ({
 const component = (over: Record<string, unknown>) => ({
   plan_course_id: "pc1",
   component_type: "theory",
-  weekly_hours: 1,
+  weekly_contact_hours: 1,
   is_timetabled: true,
   ...over,
 });
 
 describe("study plan weekly counter diagnostics", () => {
   it("treats theory + tutorial + weekly project as the lecture-hours source of truth", () => {
-    const metrics = computeStudyPlanReadinessMetrics(
+    const metrics = studyPlanReadinessMetrics(
+      [{ id: "c1" }],
       [planCourse()],
       [
-        component({ component_type: "theory", weekly_hours: 1 }),
-        component({ component_type: "project", weekly_hours: 1 }),
-        component({ component_type: "practical", weekly_hours: 2 }),
+        component({ component_type: "theory", weekly_contact_hours: 1 }),
+        component({ component_type: "project", weekly_contact_hours: 1 }),
+        component({ component_type: "practical", weekly_contact_hours: 2 }),
       ],
+      0,
     );
-    const mismatch = metrics.find((m) => m.label.includes("مزامنة"));
+    const mismatch = metrics.find((m) => m.label.includes("المحاضرات الأسبوعية"));
     expect(mismatch?.missing ?? 0).toBe(0);
   });
 
   it("still reports a real mismatch as a gap", () => {
-    const metrics = computeStudyPlanReadinessMetrics(
+    const metrics = studyPlanReadinessMetrics(
+      [{ id: "c1" }],
       [planCourse({ lectures_per_week: 5 })],
-      [component({ component_type: "theory", weekly_hours: 1 })],
+      [component({ component_type: "theory", weekly_contact_hours: 1 })],
+      0,
     );
-    const mismatch = metrics.find((m) => m.label.includes("مزامنة"));
+    const mismatch = metrics.find((m) => m.label.includes("المحاضرات الأسبوعية"));
     expect((mismatch?.missing ?? 0) > 0).toBe(true);
   });
 
   it("ignores summer training and non-timetabled components", () => {
-    const metrics = computeStudyPlanReadinessMetrics(
+    const metrics = studyPlanReadinessMetrics(
+      [{ id: "c1" }],
       [planCourse({ lectures_per_week: 2, labs_per_week: 1 })],
       [
-        component({ component_type: "theory", weekly_hours: 2 }),
-        component({ component_type: "summer_training", weekly_hours: 40 }),
-        component({ component_type: "project", weekly_hours: 8, is_timetabled: false }),
-        component({ component_type: "practical", weekly_hours: 2 }),
+        component({ component_type: "theory", weekly_contact_hours: 2 }),
+        component({ component_type: "summer_training", weekly_contact_hours: 40 }),
+        component({ component_type: "project", weekly_contact_hours: 8, is_timetabled: false }),
+        component({ component_type: "practical", weekly_contact_hours: 2 }),
       ],
+      0,
     );
-    const mismatch = metrics.find((m) => m.label.includes("مزامنة"));
+    const mismatch = metrics.find((m) => m.label.includes("المحاضرات الأسبوعية"));
     expect(mismatch?.missing ?? 0).toBe(0);
   });
 });
