@@ -30,6 +30,11 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
+      - name: Setup Node for scheduling contract tests
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
       - name: Install dependencies (frozen lockfile)
         run: bun install --frozen-lockfile
 
@@ -68,6 +73,9 @@ jobs:
       - name: TypeScript (tsc --noEmit)
         run: bunx tsc --noEmit
 
+      - name: Joint attendance and scheduling contracts
+        run: node --test tests/compact.test.mjs tests/joint-attendance.test.mjs tests/v2-joint-orchestration.test.mjs tests/compact-worker-client.test.mjs tests/compact-atomic-service.test.mjs
+
       - name: Production build (vite build)
         run: bun run build
 
@@ -76,3 +84,35 @@ jobs:
 
       - name: Academic affairs report calculations
         run: node --import tsx --test tests/academic-affairs.test.ts
+
+  atomic-compaction-db:
+    name: Atomic compaction PostgreSQL proof
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: compaction_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Verify the reviewed atomic migration
+        run: cmp supabase/sql/atomic_schedule_compaction.sql supabase/migrations/20260911130524_atomic_schedule_compaction.sql
+      - name: Atomic rollback, permissions and concurrency on disposable PostgreSQL
+        env:
+          COMPACTION_TEST_DISPOSABLE: "1"
+          COMPACTION_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/compaction_test
+        run: node --test tests/compact-atomic-db.test.mjs
