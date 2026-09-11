@@ -597,11 +597,16 @@ function AcademicCohortsWorkspace() {
                   </dl>
                   {canManage ? (
                     <div className="grid gap-2 border-t p-4">
-                      <p className="text-xs leading-6 text-muted-foreground">زر توليد المجموعات يجهّز المقررات تلقائيًا من خطة المستوى والفصل. زر المقررات متاح لتجهيزها منفصلة.</p>
+                      <p className="text-xs leading-6 text-muted-foreground">
+                        زر توليد المجموعات يجهّز المقررات تلقائيًا من خطة المستوى والفصل. زر
+                        المقررات متاح لتجهيزها منفصلة.
+                      </p>
                       <Button
                         size="sm"
                         variant="outline"
-                        disabled={generateCurriculum.isPending || generate.isPending || !selected.active}
+                        disabled={
+                          generateCurriculum.isPending || generate.isPending || !selected.active
+                        }
                         onClick={() => {
                           if (!effectiveCohortId) return;
                           generateCurriculum.mutate(effectiveCohortId, {
@@ -615,7 +620,10 @@ function AcademicCohortsWorkspace() {
                       <Button
                         size="sm"
                         disabled={
-                          generate.isPending || generateCurriculum.isPending || roomTypeBlocker.length > 0 || !selected.active
+                          generate.isPending ||
+                          generateCurriculum.isPending ||
+                          roomTypeBlocker.length > 0 ||
+                          !selected.active
                         }
                         onClick={() => setConfirmOpen(true)}
                       >
@@ -630,9 +638,21 @@ function AcademicCohortsWorkspace() {
                 </Card>
               )}
 
-              {selected && (roomTypeGateError || (generate.isError && generate.variables === effectiveCohortId) || (generateCurriculum.isError && generateCurriculum.variables === effectiveCohortId)) ? (
-                <Card className="border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive" role="alert">
-                  {generationErrorMessage(roomTypeGateError || (generate.variables === effectiveCohortId && generate.error) || (generateCurriculum.variables === effectiveCohortId && generateCurriculum.error))}
+              {selected &&
+              (roomTypeGateError ||
+                (generate.isError && generate.variables === effectiveCohortId) ||
+                (generateCurriculum.isError &&
+                  generateCurriculum.variables === effectiveCohortId)) ? (
+                <Card
+                  className="border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive"
+                  role="alert"
+                >
+                  {generationErrorMessage(
+                    roomTypeGateError ||
+                      (generate.variables === effectiveCohortId && generate.error) ||
+                      (generateCurriculum.variables === effectiveCohortId &&
+                        generateCurriculum.error),
+                  )}
                 </Card>
               ) : null}
               {selected && roomTypeBlocker.length > 0 ? (
@@ -702,8 +722,12 @@ function AcademicCohortsWorkspace() {
                                 className={`border-t ${obsolete ? "bg-muted/30 text-muted-foreground" : ""}`}
                               >
                                 <td className="px-3 py-2">
-                                  <span className="block font-medium">{g.plan_courses?.courses?.name ?? "—"}</span>
-                                  <span dir="ltr" className="text-xs text-muted-foreground">{g.plan_courses?.courses?.code}</span>
+                                  <span className="block font-medium">
+                                    {g.plan_courses?.courses?.name ?? "—"}
+                                  </span>
+                                  <span dir="ltr" className="text-xs text-muted-foreground">
+                                    {g.plan_courses?.courses?.code}
+                                  </span>
                                 </td>
                                 <td className="px-3 py-2">
                                   {COMPONENT_TYPE_LABEL_AR[
@@ -747,7 +771,12 @@ function AcademicCohortsWorkspace() {
 
               {lastCurriculumSummary?.cohortId === effectiveCohortId ? (
                 <Card className="space-y-2 p-4 text-sm" data-testid="cohort-curriculum-summary">
-                  <p className="font-medium">تم تجهيز مقررات الدفعة من الخطة: <span dir="ltr">{lastCurriculumSummary.study_plan_code ?? lastCurriculumSummary.study_plan_id}</span></p>
+                  <p className="font-medium">
+                    تم تجهيز مقررات الدفعة من الخطة:{" "}
+                    <span dir="ltr">
+                      {lastCurriculumSummary.study_plan_code ?? lastCurriculumSummary.study_plan_id}
+                    </span>
+                  </p>
                   <p className="text-muted-foreground">
                     أضيف {lastCurriculumSummary.inserted_offerings} · موجود مسبقاً{" "}
                     {lastCurriculumSummary.skipped_existing} · مقررات اختيارية معتمدة{" "}
@@ -767,7 +796,18 @@ function AcademicCohortsWorkspace() {
 
               {lastSummary?.cohortId === effectiveCohortId ? (
                 <Card className="space-y-2 p-4 text-sm" data-testid="generator-summary-panel">
-                  {lastSummary.curriculum && <p>الخطة المستخدمة: <strong dir="ltr">{lastSummary.curriculum.study_plan_code ?? lastSummary.curriculum.study_plan_id}</strong> · المقررات: {lastSummary.curriculum.inserted_offerings + lastSummary.curriculum.skipped_existing}</p>}
+                  {lastSummary.curriculum && (
+                    <p>
+                      الخطة المستخدمة:{" "}
+                      <strong dir="ltr">
+                        {lastSummary.curriculum.study_plan_code ??
+                          lastSummary.curriculum.study_plan_id}
+                      </strong>{" "}
+                      · المقررات:{" "}
+                      {lastSummary.curriculum.inserted_offerings +
+                        lastSummary.curriculum.skipped_existing}
+                    </p>
+                  )}
                   <p className="font-medium">
                     نتيجة التوليد:{" "}
                     {
@@ -816,7 +856,8 @@ function AcademicCohortsWorkspace() {
           <AlertDialogHeader>
             <AlertDialogTitle>تأكيد توليد مجموعات المحاضرات والمعامل</AlertDialogTitle>
             <AlertDialogDescription>
-              سيجهّز النظام مقررات المستوى والفصل من الخطة المطابقة، ثم يولّد أو يحدّث مجموعات {selected?.programName}، {selected?.levelName}،{" "}
+              سيجهّز النظام مقررات المستوى والفصل من الخطة المطابقة، ثم يولّد أو يحدّث مجموعات{" "}
+              {selected?.programName}، {selected?.levelName}،{" "}
               {selected ? COHORT_SYSTEM_LABELS[selected.study_system] : ""} لهذه الدفعة فقط بشكل غير
               مدمّر (بدون حذف المجموعات المرتبطة بتكليفات أو جلسات). لن يُشغَّل المولّد على دفعات
               أخرى.

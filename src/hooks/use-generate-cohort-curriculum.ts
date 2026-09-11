@@ -16,7 +16,9 @@ export function useGenerateCohortCurriculum() {
           `تم تجهيز المقررات المتاحة؛ تبقى ${summary.skipped_unselected_elective} خانة اختيارية بحاجة إلى تحديد مقرر واعتماده.`,
         );
       } else if (summary.inserted_offerings === 0) {
-        toast.message(`مقررات الدفعة جاهزة مسبقًا (${summary.skipped_existing} مقرر). يمكنك توليد المجموعات.`);
+        toast.message(
+          `مقررات الدفعة جاهزة مسبقًا (${summary.skipped_existing} مقرر). يمكنك توليد المجموعات.`,
+        );
       } else {
         toast.success(`تم توليد ${summary.inserted_offerings} من مقررات الدفعة.`);
       }

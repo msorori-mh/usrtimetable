@@ -6,8 +6,12 @@ import { fileURLToPath } from "node:url";
 
 const target = process.env.COHORT_GENERATION_TEST_DATABASE_URL;
 const url = target ? new URL(target) : null;
-if (process.env.COHORT_GENERATION_TEST_DISPOSABLE !== "1" || !url ||
-  !["localhost", "127.0.0.1"].includes(url.hostname) || url.pathname !== "/cohort_generation_test") {
+if (
+  process.env.COHORT_GENERATION_TEST_DISPOSABLE !== "1" ||
+  !url ||
+  !["localhost", "127.0.0.1"].includes(url.hostname) ||
+  url.pathname !== "/cohort_generation_test"
+) {
   throw new Error("A disposable localhost cohort_generation_test database is required");
 }
 const root = fileURLToPath(new URL("../", import.meta.url));
@@ -76,12 +80,22 @@ before(() => {
   // The actual approved-headcount resolver, rather than a test stub.
   sql(read("tests/fixtures/cohort-generation-headcount-resolver.sql"));
   sql(read("supabase/sql/cohort_level_plan_generation.sql"));
-  assert.equal(read("supabase/sql/cohort_level_plan_generation.sql"), read("supabase/migrations/20260911183000_cohort_level_plan_generation.sql"));
+  assert.equal(
+    read("supabase/sql/cohort_level_plan_generation.sql"),
+    read("supabase/migrations/20260911183000_cohort_level_plan_generation.sql"),
+  );
 });
 function check(name, setup, body, actor = "manager") {
-  test(name, () => sql(`BEGIN; ${setup} ${actor === "manager" ? manager : `SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claim.sub',md5('${actor}'),true);`} DO $$ DECLARE a jsonb; b jsonb; n int; BEGIN ${body} END $$; ROLLBACK;`));
+  test(name, () =>
+    sql(
+      `BEGIN; ${setup} ${actor === "manager" ? manager : `SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claim.sub',md5('${actor}'),true);`} DO $$ DECLARE a jsonb; b jsonb; n int; BEGIN ${body} END $$; ROLLBACK;`,
+    ),
+  );
 }
-check("one click selects junior plan, uses approved 68 not legacy 999, balances and retries", "", `
+check(
+  "one click selects junior plan, uses approved 68 not legacy 999, balances and retries",
+  "",
+  `
   a := ${generate()};
   IF a->'curriculum'->>'study_plan_code'<>'NEW' OR (a->>'groups_created')::int<>5 THEN RAISE EXCEPTION 'bad generation %',a; END IF;
   IF (SELECT array_agg(expected_students ORDER BY group_number) FROM delivery_groups WHERE component_id=${id("theory")})<>ARRAY[34,34] THEN RAISE EXCEPTION 'lecture split'; END IF;
@@ -89,68 +103,144 @@ check("one click selects junior plan, uses approved 68 not legacy 999, balances 
   b := ${generate()};
   IF b->>'status'<>'NO_CHANGES' OR (b->>'groups_unchanged')::int<>5 OR (SELECT count(*) FROM course_offerings)<>1 OR (SELECT count(*) FROM delivery_groups)<>5 THEN RAISE EXCEPTION 'non-idempotent'; END IF;
   IF (SELECT expected_students FROM academic_cohorts WHERE id=${id("regular")})<>999 THEN RAISE EXCEPTION 'source count modified'; END IF;
-`);
-check("senior plan and parallel delivery stay isolated", "", `
+`,
+);
+check(
+  "senior plan and parallel delivery stay isolated",
+  "",
+  `
   a := ${generate("senior")}; b := ${generate("parallel")};
   IF a->'curriculum'->>'study_plan_code'<>'OLD' OR b->'curriculum'->>'study_plan_code'<>'NEW' THEN RAISE EXCEPTION 'wrong plan'; END IF;
   IF (SELECT count(*) FROM delivery_groups WHERE cohort_id=${id("regular")})<>0 OR (SELECT count(*) FROM delivery_groups WHERE cohort_id=${id("parallel")})<>2 THEN RAISE EXCEPTION 'cohort leakage'; END IF;
-`);
-check("three separate cyber plans select by level despite creation order", `
+`,
+);
+check(
+  "three separate cyber plans select by level despite creation order",
+  `
   INSERT INTO study_plans VALUES(${id("level2plan")},${id("college")},${id("program")},'LEVEL2',true,'2000-01-01');
   INSERT INTO plan_courses VALUES(${id("level2pc")},${id("college")},${id("level2plan")},${id("level2")},1,${id("course")},true);
   UPDATE academic_cohorts SET level_id=${id("level2")} WHERE id=${id("regular")};
-`, `a := ${curriculum()}; IF a->>'study_plan_code'<>'LEVEL2' THEN RAISE EXCEPTION 'latest plan picked'; END IF;`);
-check("overlapping active plans are blocked without writes", `
+`,
+  `a := ${curriculum()}; IF a->>'study_plan_code'<>'LEVEL2' THEN RAISE EXCEPTION 'latest plan picked'; END IF;`,
+);
+check(
+  "overlapping active plans are blocked without writes",
+  `
   INSERT INTO plan_courses VALUES(${id("overlap")},${id("college")},${id("old")},${id("level1")},1,${id("oldcourse")},true);
-`, `BEGIN PERFORM ${generate()}; RAISE EXCEPTION 'accepted'; EXCEPTION WHEN check_violation THEN IF SQLERRM<>'STUDY_PLAN_AMBIGUOUS_FOR_COHORT_LEVEL_TERM' THEN RAISE; END IF; END;
-  IF (SELECT count(*) FROM course_offerings)<>0 OR (SELECT count(*) FROM audit_logs)<>0 THEN RAISE EXCEPTION 'partial writes'; END IF;`);
-check("missing level or semester reports a blocker instead of current", `UPDATE academic_terms SET term_type='second';`, `
-  BEGIN PERFORM ${generate()}; RAISE EXCEPTION 'accepted'; EXCEPTION WHEN check_violation THEN IF SQLERRM<>'STUDY_PLAN_MISSING_FOR_COHORT_LEVEL_TERM' THEN RAISE; END IF; END;`);
-check("inactive or missing program plan is blocked", `UPDATE study_plans SET is_active=false;`, `
-  BEGIN PERFORM ${generate()}; RAISE EXCEPTION 'accepted'; EXCEPTION WHEN check_violation THEN IF SQLERRM<>'STUDY_PLAN_MISSING_FOR_COHORT_PROGRAM' THEN RAISE; END IF; END;`);
-check("empty required curriculum does not report success", `UPDATE plan_courses SET is_required=false WHERE id=${id("pc")};`, `
-  BEGIN PERFORM ${curriculum()}; RAISE EXCEPTION 'accepted'; EXCEPTION WHEN check_violation THEN IF SQLERRM<>'COHORT_CURRICULUM_EMPTY' THEN RAISE; END IF; END;`);
-check("missing capacity rolls back curriculum and audit", `UPDATE room_types SET default_capacity=NULL WHERE id=${id("lab")};`, `
+`,
+  `BEGIN PERFORM ${generate()}; RAISE EXCEPTION 'accepted'; EXCEPTION WHEN check_violation THEN IF SQLERRM<>'STUDY_PLAN_AMBIGUOUS_FOR_COHORT_LEVEL_TERM' THEN RAISE; END IF; END;
+  IF (SELECT count(*) FROM course_offerings)<>0 OR (SELECT count(*) FROM audit_logs)<>0 THEN RAISE EXCEPTION 'partial writes'; END IF;`,
+);
+check(
+  "missing level or semester reports a blocker instead of current",
+  `UPDATE academic_terms SET term_type='second';`,
+  `
+  BEGIN PERFORM ${generate()}; RAISE EXCEPTION 'accepted'; EXCEPTION WHEN check_violation THEN IF SQLERRM<>'STUDY_PLAN_MISSING_FOR_COHORT_LEVEL_TERM' THEN RAISE; END IF; END;`,
+);
+check(
+  "inactive or missing program plan is blocked",
+  `UPDATE study_plans SET is_active=false;`,
+  `
+  BEGIN PERFORM ${generate()}; RAISE EXCEPTION 'accepted'; EXCEPTION WHEN check_violation THEN IF SQLERRM<>'STUDY_PLAN_MISSING_FOR_COHORT_PROGRAM' THEN RAISE; END IF; END;`,
+);
+check(
+  "empty required curriculum does not report success",
+  `UPDATE plan_courses SET is_required=false WHERE id=${id("pc")};`,
+  `
+  BEGIN PERFORM ${curriculum()}; RAISE EXCEPTION 'accepted'; EXCEPTION WHEN check_violation THEN IF SQLERRM<>'COHORT_CURRICULUM_EMPTY' THEN RAISE; END IF; END;`,
+);
+check(
+  "missing capacity rolls back curriculum and audit",
+  `UPDATE room_types SET default_capacity=NULL WHERE id=${id("lab")};`,
+  `
   BEGIN PERFORM ${generate()}; RAISE EXCEPTION 'accepted'; EXCEPTION WHEN check_violation THEN IF SQLERRM<>'DELIVERY_GROUP_CAPACITY_INVALID' THEN RAISE; END IF; END;
-  IF (SELECT count(*) FROM course_offerings)<>0 OR (SELECT count(*) FROM delivery_groups)<>0 OR (SELECT count(*) FROM audit_logs)<>0 THEN RAISE EXCEPTION 'partial write'; END IF;`);
-check("no timetabled components rolls back and reports explicit cause", `UPDATE plan_course_components SET is_timetabled=false;`, `
+  IF (SELECT count(*) FROM course_offerings)<>0 OR (SELECT count(*) FROM delivery_groups)<>0 OR (SELECT count(*) FROM audit_logs)<>0 THEN RAISE EXCEPTION 'partial write'; END IF;`,
+);
+check(
+  "no timetabled components rolls back and reports explicit cause",
+  `UPDATE plan_course_components SET is_timetabled=false;`,
+  `
   BEGIN PERFORM ${generate()}; RAISE EXCEPTION 'accepted'; EXCEPTION WHEN check_violation THEN IF SQLERRM<>'COHORT_TIMETABLED_COMPONENTS_EMPTY' THEN RAISE; END IF; END;
-  IF (SELECT count(*) FROM course_offerings)<>0 THEN RAISE EXCEPTION 'partial curriculum'; END IF;`);
-check("unapproved count cannot generate through direct RPC", `UPDATE scheduling_cohort_term_headcounts SET approval_status='draft';`, `
-  BEGIN PERFORM ${generate()}; RAISE EXCEPTION 'accepted'; EXCEPTION WHEN check_violation THEN IF SQLERRM<>'SCHEDULING_HEADCOUNT_MISSING' THEN RAISE; END IF; END;`);
-check("component override applies only to the target component", `INSERT INTO scheduling_headcount_overrides VALUES(${id("override")},${id("regular")},NULL,${id("practical")},true,'approved',25,NULL,NULL);`, `
-  a := ${generate()}; IF (a->>'groups_created')::int<>3 OR (SELECT sum(expected_students) FROM delivery_groups WHERE component_id=${id("practical")})<>25 OR (SELECT sum(expected_students) FROM delivery_groups WHERE component_id=${id("theory")})<>68 THEN RAISE EXCEPTION 'override leaked'; END IF;`);
-check("existing offerings from another plan are not overwritten", `INSERT INTO course_offerings(college_id,term_id,program_id,level_id,study_system,study_plan_id,is_active) VALUES(${id("college")},${id("term")},${id("program")},${id("level1")},'regular',${id("old")},true);`, `
+  IF (SELECT count(*) FROM course_offerings)<>0 THEN RAISE EXCEPTION 'partial curriculum'; END IF;`,
+);
+check(
+  "unapproved count cannot generate through direct RPC",
+  `UPDATE scheduling_cohort_term_headcounts SET approval_status='draft';`,
+  `
+  BEGIN PERFORM ${generate()}; RAISE EXCEPTION 'accepted'; EXCEPTION WHEN check_violation THEN IF SQLERRM<>'SCHEDULING_HEADCOUNT_MISSING' THEN RAISE; END IF; END;`,
+);
+check(
+  "component override applies only to the target component",
+  `INSERT INTO scheduling_headcount_overrides VALUES(${id("override")},${id("regular")},NULL,${id("practical")},true,'approved',25,NULL,NULL);`,
+  `
+  a := ${generate()}; IF (a->>'groups_created')::int<>3 OR (SELECT sum(expected_students) FROM delivery_groups WHERE component_id=${id("practical")})<>25 OR (SELECT sum(expected_students) FROM delivery_groups WHERE component_id=${id("theory")})<>68 THEN RAISE EXCEPTION 'override leaked'; END IF;`,
+);
+check(
+  "existing offerings from another plan are not overwritten",
+  `INSERT INTO course_offerings(college_id,term_id,program_id,level_id,study_system,study_plan_id,is_active) VALUES(${id("college")},${id("term")},${id("program")},${id("level1")},'regular',${id("old")},true);`,
+  `
   BEGIN PERFORM ${generate()}; RAISE EXCEPTION 'accepted'; EXCEPTION WHEN check_violation THEN IF SQLERRM<>'COHORT_EXISTING_PLAN_CONFLICT' THEN RAISE; END IF; END;
-  IF (SELECT count(*) FROM course_offerings)<>1 OR (SELECT count(*) FROM delivery_groups)<>0 THEN RAISE EXCEPTION 'existing data mutated'; END IF;`);
-check("foreign college and nonexistent cohorts have identical denial", "", `
+  IF (SELECT count(*) FROM course_offerings)<>1 OR (SELECT count(*) FROM delivery_groups)<>0 THEN RAISE EXCEPTION 'existing data mutated'; END IF;`,
+);
+check(
+  "foreign college and nonexistent cohorts have identical denial",
+  "",
+  `
   BEGIN PERFORM ${generate("foreign")}; RAISE EXCEPTION 'accepted'; EXCEPTION WHEN insufficient_privilege THEN IF SQLERRM<>'COHORT_NOT_FOUND_OR_FORBIDDEN' THEN RAISE; END IF; END;
   BEGIN PERFORM ${generate("absent")}; RAISE EXCEPTION 'accepted'; EXCEPTION WHEN insufficient_privilege THEN IF SQLERRM<>'COHORT_NOT_FOUND_OR_FORBIDDEN' THEN RAISE; END IF; END;
-  IF has_function_privilege('anon','public.generate_cohort_delivery_groups(uuid)','EXECUTE') THEN RAISE EXCEPTION 'anonymous grant'; END IF;`);
-check("view-only user cannot generate curriculum or groups", "", `
+  IF has_function_privilege('anon','public.generate_cohort_delivery_groups(uuid)','EXECUTE') THEN RAISE EXCEPTION 'anonymous grant'; END IF;`,
+);
+check(
+  "view-only user cannot generate curriculum or groups",
+  "",
+  `
   BEGIN PERFORM ${generate()}; RAISE EXCEPTION 'accepted'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
-  BEGIN PERFORM ${curriculum()}; RAISE EXCEPTION 'accepted'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;`, "viewer");
-check("draft elective decision blocks generation", `INSERT INTO cohort_elective_selections(id,college_id,cohort_id) VALUES(${id("selection")},${id("college")},${id("regular")});`, `
-  BEGIN PERFORM ${generate()}; RAISE EXCEPTION 'accepted'; EXCEPTION WHEN check_violation THEN IF SQLERRM<>'ELECTIVE_DECISION_NOT_APPROVED' THEN RAISE; END IF; END;`);
-check("linked obsolete groups remain and are flagged after a count reduction", `
+  BEGIN PERFORM ${curriculum()}; RAISE EXCEPTION 'accepted'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;`,
+  "viewer",
+);
+check(
+  "draft elective decision blocks generation",
+  `INSERT INTO cohort_elective_selections(id,college_id,cohort_id) VALUES(${id("selection")},${id("college")},${id("regular")});`,
+  `
+  BEGIN PERFORM ${generate()}; RAISE EXCEPTION 'accepted'; EXCEPTION WHEN check_violation THEN IF SQLERRM<>'ELECTIVE_DECISION_NOT_APPROVED' THEN RAISE; END IF; END;`,
+);
+check(
+  "linked obsolete groups remain and are flagged after a count reduction",
+  `
   SELECT set_config('request.jwt.claim.sub',md5('manager'),true);
   SELECT ${generate()};
   INSERT INTO teaching_assignments SELECT ${id("assignment")},id FROM delivery_groups WHERE component_id=${id("practical")} AND group_number=3;
   UPDATE scheduling_cohort_term_headcounts SET scheduling_headcount=25 WHERE cohort_id=${id("regular")};
-`, `a := ${generate()}; IF (SELECT count(*) FROM delivery_groups)<>5 OR (SELECT count(*) FROM teaching_assignments)<>1 OR (a->>'groups_obsolete')::int<>3 THEN RAISE EXCEPTION 'links lost'; END IF;`);
+`,
+  `a := ${generate()}; IF (SELECT count(*) FROM delivery_groups)<>5 OR (SELECT count(*) FROM teaching_assignments)<>1 OR (a->>'groups_obsolete')::int<>3 THEN RAISE EXCEPTION 'links lost'; END IF;`,
+);
 
 test("concurrent retries serialize without duplicate offerings or groups", async () => {
   const first = spawn("psql", args, { stdio: ["pipe", "pipe", "pipe"] });
-  let err = ""; first.stderr.on("data", (chunk) => { err += chunk; });
+  let err = "";
+  first.stderr.on("data", (chunk) => {
+    err += chunk;
+  });
   const done = new Promise((resolve) => first.on("close", resolve));
   first.stdin.end(`BEGIN; ${manager} SELECT ${generate()}; SELECT pg_sleep(1); COMMIT;`);
   let locked = false;
   for (let i = 0; i < 100; i++) {
-    if (sql("SELECT count(*) FROM pg_locks WHERE locktype='advisory' AND classid=9262 AND objid=1 AND granted") === "1") { locked = true; break; }
+    if (
+      sql(
+        "SELECT count(*) FROM pg_locks WHERE locktype='advisory' AND classid=9262 AND objid=1 AND granted",
+      ) === "1"
+    ) {
+      locked = true;
+      break;
+    }
     await new Promise((resolve) => setTimeout(resolve, 10));
   }
   assert.ok(locked, "first generation did not obtain its lock");
-  const second = spawnSync("psql", args, { input: `BEGIN; ${manager} SELECT ${generate()}; COMMIT;`, encoding: "utf8", timeout: 10000 });
+  const second = spawnSync("psql", args, {
+    input: `BEGIN; ${manager} SELECT ${generate()}; COMMIT;`,
+    encoding: "utf8",
+    timeout: 10000,
+  });
   assert.equal(await done, 0, err);
   assert.equal(second.status, 0, second.stderr);
   assert.equal(sql("SELECT count(*) FROM course_offerings"), "1");

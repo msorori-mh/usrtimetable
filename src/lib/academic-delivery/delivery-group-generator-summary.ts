@@ -1,4 +1,7 @@
-import { parseCohortCurriculumSummary, type CohortCurriculumSummary } from "./cohort-curriculum-summary";
+import {
+  parseCohortCurriculumSummary,
+  type CohortCurriculumSummary,
+} from "./cohort-curriculum-summary";
 
 /**
  * Phase 9.3 — delivery group generator summary types + pure parser (no Supabase import).
@@ -100,7 +103,9 @@ export function parseDeliveryGroupGeneratorSummary(raw: unknown): DeliveryGroupG
     status: typeof o.status === "string" ? o.status : null,
   });
   return {
-    curriculum: o.curriculum ? parseCohortCurriculumSummary(o.curriculum, String(o.cohort_id)) : undefined,
+    curriculum: o.curriculum
+      ? parseCohortCurriculumSummary(o.curriculum, String(o.cohort_id))
+      : undefined,
     status,
     cohorts_processed: Number(o.cohorts_processed ?? 0),
     cohort_id: String(o.cohort_id ?? ""),

@@ -65,7 +65,10 @@ export const PREPARATION_STEPS: PreparationStep[] = [
     title: "مجموعات المحاضرات والمعامل",
     description:
       "اختر الدفعة ثم ولّد مجموعاتها؛ يجهّز النظام مقررات المستوى والفصل تلقائيًا من الخطة المطابقة ويقسّم الطلاب حسب السعات.",
-    manualLinks: [{ href: "/academic-cohorts", label: "اختيار الدفعات وتوليد المجموعات" }, { href: "/delivery-groups", label: "عرض المجموعات المولّدة" }],
+    manualLinks: [
+      { href: "/academic-cohorts", label: "اختيار الدفعات وتوليد المجموعات" },
+      { href: "/delivery-groups", label: "عرض المجموعات المولّدة" },
+    ],
     entities: [],
   },
   {

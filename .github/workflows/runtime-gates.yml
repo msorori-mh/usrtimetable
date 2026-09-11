@@ -168,25 +168,3 @@ jobs:
         run: |
           createdb -h 127.0.0.1 -U postgres cohort_generation_test
           node --test tests/cohort-plan-generation-db.test.mjs
-
-  cohort-format-patch:
-    name: Format cohort fix files (temporary)
-    if: github.event_name == 'push' && github.ref == 'refs/heads/fix/cohort-plan-generation-20260911'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install --frozen-lockfile
-      - name: Format only reviewed cohort files
-        run: bunx prettier --write src/hooks/use-generate-cohort-curriculum.ts src/hooks/use-generate-delivery-groups.ts src/lib/academic-delivery/cohort-curriculum-plan-courses.ts src/lib/academic-delivery/cohort-curriculum-summary.ts src/lib/academic-delivery/delivery-group-generator-summary.ts src/lib/data-onboarding/preparation.ts src/routes/_authenticated/academic-cohorts.tsx src/lib/academic-delivery/generation-messages.ts tests/cohort-generation-messages.test.ts tests/cohort-plan-generation-db.test.mjs
-      - name: Return formatted source chunks
-        run: |
-          node <<'NODE'
-          const fs = require('fs');
-          for (const path of ["src/hooks/use-generate-cohort-curriculum.ts","src/hooks/use-generate-delivery-groups.ts","src/lib/academic-delivery/cohort-curriculum-plan-courses.ts","src/lib/academic-delivery/cohort-curriculum-summary.ts","src/lib/academic-delivery/delivery-group-generator-summary.ts","src/lib/data-onboarding/preparation.ts","src/routes/_authenticated/academic-cohorts.tsx","src/lib/academic-delivery/generation-messages.ts","tests/cohort-generation-messages.test.ts","tests/cohort-plan-generation-db.test.mjs"]) {
-            const s = fs.readFileSync(path, 'utf8');
-            for(let offset=0;offset<s.length;offset+=1200) console.log('COHORT_FORMAT '+JSON.stringify({path,offset,content:s.slice(offset,offset+1200)}));
-          }
-          NODE

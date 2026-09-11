@@ -63,7 +63,11 @@ export function parseCohortCurriculumSummary(
   ) {
     throw new Error("COHORT_CURRICULUM_OPERATIONAL_SIDE_EFFECT_REPORTED");
   }
-  if (count(row.inserted_offerings, "inserted_offerings") + count(row.skipped_existing, "skipped_existing") === 0) {
+  if (
+    count(row.inserted_offerings, "inserted_offerings") +
+      count(row.skipped_existing, "skipped_existing") ===
+    0
+  ) {
     throw new Error("COHORT_CURRICULUM_EMPTY");
   }
   return {
