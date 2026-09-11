@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { buildInstructorCategoryMap, requiresAvailability } from "@/lib/instructor-category";
+import { isInstructorAvailabilityEnforced } from "@/lib/scheduling/instructor-availability-policy";
 import { evaluateCapacityAgainstRoom } from "@/lib/schedule-builder/enrollment-trust";
 import {
   CAPACITY_EXCEPTION_LIMIT,
