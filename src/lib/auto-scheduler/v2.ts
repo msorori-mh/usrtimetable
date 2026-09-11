@@ -122,7 +122,9 @@ function buildSlots(input: {
     }
   }
   const unique = new Map(slots.map((slot) => [`${slot.day}|${slot.start}|${slot.end}`, slot]));
-  return [...unique.values()].sort((a, b) => a.day - b.day || toMinutes(a.start) - toMinutes(b.start));
+  return [...unique.values()].sort(
+    (a, b) => a.day - b.day || toMinutes(a.start) - toMinutes(b.start),
+  );
 }
 
 export type AutoScheduleProgress = {
@@ -255,8 +257,12 @@ export async function runV2AutoSchedule(params: {
   if (attendanceError || !attendanceCohorts?.length) {
     throw new Error("تعذر قراءة مستويات الدفعات للتحقق من حد خمسة أيام.");
   }
-  const levelByCohort = new Map(attendanceCohorts.map(c => [c.id,
-    [c.program_id,c.level_id,c.study_system,c.term_id].join("|")]));
+  const levelByCohort = new Map(
+    attendanceCohorts.map((c) => [
+      c.id,
+      [c.program_id, c.level_id, c.study_system, c.term_id].join("|"),
+    ]),
+  );
   const sessionRows = existingSessions ?? [];
   const existingByAssignment = new Map<string, ExistingSessionLite[]>();
   for (const row of sessionRows) {
@@ -417,13 +423,30 @@ export async function runV2AutoSchedule(params: {
       );
       const levelKey = levelByCohort.get(item.cohort_id!);
       if (!levelKey) throw new Error("لا توجد بيانات مستوى لهذه الدفعة.");
-      const levelDays = new Set(occupied.filter(x => x.cohortId && levelByCohort.get(x.cohortId) === levelKey).map(x => x.day));
+      const levelDays = new Set(
+        occupied
+          .filter((x) => x.cohortId && levelByCohort.get(x.cohortId) === levelKey)
+          .map((x) => x.day),
+      );
       // Prefer existing attendance days, then adjacent lessons for this delivery group.
       const distance = (slot: CandidateSlot) => {
-        const peers = occupied.filter(x => x.day === slot.day && x.cohortId === item.cohort_id);
-        return peers.length ? Math.min(...peers.map(x => Math.min(Math.abs(toMinutes(slot.start)-toMinutes(x.end)),Math.abs(toMinutes(x.start)-toMinutes(slot.end))))) : 1440;
+        const peers = occupied.filter((x) => x.day === slot.day && x.cohortId === item.cohort_id);
+        return peers.length
+          ? Math.min(
+              ...peers.map((x) =>
+                Math.min(
+                  Math.abs(toMinutes(slot.start) - toMinutes(x.end)),
+                  Math.abs(toMinutes(x.start) - toMinutes(slot.end)),
+                ),
+              ),
+            )
+          : 1440;
       };
-      slots.sort((a,b) => Number(!levelDays.has(a.day))-Number(!levelDays.has(b.day)) || distance(a)-distance(b));
+      slots.sort(
+        (a, b) =>
+          Number(!levelDays.has(a.day)) - Number(!levelDays.has(b.day)) ||
+          distance(a) - distance(b),
+      );
       let placedItem = false;
       let lastReason = "لا يوجد مرشح يحقق قيود مجموعة التقديم والدفعة.";
 
@@ -509,7 +532,9 @@ export async function runV2AutoSchedule(params: {
       }
 
       if (cancelled) {
-        warnings.push("تم إيقاف التشغيل. الجلسات المحفوظة باقية، والوحدات غير المفحوصة ليست فاشلة.");
+        warnings.push(
+          "تم إيقاف التشغيل. الجلسات المحفوظة باقية، والوحدات غير المفحوصة ليست فاشلة.",
+        );
         break;
       }
       if (!placedItem) {
