@@ -354,6 +354,39 @@ function normalize(
   return { parsed, missingHeaders, unknownHeaders, duplicateHeaders };
 }
 
+/**
+ * Pure resolver for teaching_assignments_v2: given plan_course candidates already
+ * scoped to the cohort's program + level, pick the component whose delivery group
+ * exists for this cohort. Falls back to the first candidate component so a missing
+ * group is reported as unknown_delivery_group (not unknown_component).
+ */
+export function resolveTeachingAssignmentComponent(input: {
+  candidatePlanCourseIds: string[];
+  componentType: string;
+  cohortId: string;
+  deliveryGroupCode: string | null;
+  components: Map<string, string>;
+  deliveryGroups: Map<string, string>;
+}): { componentId: string | null; deliveryGroupId: string | null } {
+  const componentIds: string[] = [];
+  for (const planCourseId of input.candidatePlanCourseIds) {
+    const compId = input.components.get(`${planCourseId}|${input.componentType}`);
+    if (compId && !componentIds.includes(compId)) componentIds.push(compId);
+  }
+  if (componentIds.length === 0) return { componentId: null, deliveryGroupId: null };
+  if (input.deliveryGroupCode) {
+    for (const compId of componentIds) {
+      const dg = input.deliveryGroups.get(
+        `${input.cohortId}|${compId}|${input.deliveryGroupCode}`,
+      );
+      if (dg) return { componentId: compId, deliveryGroupId: dg };
+    }
+  }
+  return { componentId: componentIds[0] ?? null, deliveryGroupId: null };
+}
+
+
+
 export async function validate(
   entity: ImportEntity,
   headers: string[],
