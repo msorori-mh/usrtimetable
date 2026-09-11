@@ -4181,6 +4181,10 @@ export type Database = {
         }
         Returns: Json
       }
+      tutorial_required_room_type_id: {
+        Args: { p_college: string }
+        Returns: string
+      }
       update_teaching_assignment_v2: {
         Args: {
           p_assigned_component_hours?: number

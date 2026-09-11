@@ -10,6 +10,11 @@ import {
   type ExplicitHoursInput,
 } from "./plan-course-components";
 import { normalizeToken, resolveAliasToCanonical } from "@/lib/excel-import/room-type-normalize";
+import {
+  findTutorialRoomType,
+  isLectureHallRoomTypeCode,
+  TUTORIAL_ROOM_TYPE_ERROR_AR,
+} from "@/lib/academic-delivery/tutorial-room-type";
 
 export type PlanComponentRoomTypeField =
   | "required_room_type_code_lecture"
@@ -85,7 +90,9 @@ export type PlanRoomTypeValidationError = {
     | "unknown_room_type_code"
     | "inactive_room_type"
     | "zero_capacity_room_type"
-    | "cross_college_room_type";
+    | "cross_college_room_type"
+    | "tutorial_room_type_must_be_lecture_hall"
+    | "tutorial_lecture_hall_room_type_missing";
   courseCode: string;
   componentType: ComponentType;
   fieldName: PlanComponentRoomTypeField;
@@ -135,6 +142,38 @@ export function validatePlanRowRoomTypes(input: {
     const header = STUDY_PLAN_ROOM_TYPE_FIELD_HEADERS[field];
     const rawCode = input.roomTypeCodes[field];
     const { canonical, catalog } = resolveCodeToCatalogId(rawCode, catalogByCode);
+
+    // TUTORIAL-LECTURE-HALL-PERMANENT-RULE-01 — tutorial is never a lab.
+    if (component.component_type === "tutorial") {
+      const provided = normalizeToken(rawCode) ? (canonical ?? String(rawCode)) : null;
+      if (provided && !isLectureHallRoomTypeCode(provided)) {
+        errors.push({
+          errorCode: "tutorial_room_type_must_be_lecture_hall",
+          courseCode: input.courseCode,
+          componentType: component.component_type,
+          fieldName: field,
+          header,
+          message: `المقرر ${input.courseCode}: ${TUTORIAL_ROOM_TYPE_ERROR_AR.TUTORIAL_ROOM_TYPE_MUST_BE_LECTURE_HALL}`,
+          rawValue: String(rawCode),
+        });
+        continue;
+      }
+      const lectureHall = findTutorialRoomType(input.catalog, input.collegeId);
+      if (!lectureHall) {
+        errors.push({
+          errorCode: "tutorial_lecture_hall_room_type_missing",
+          courseCode: input.courseCode,
+          componentType: component.component_type,
+          fieldName: field,
+          header,
+          message: `المقرر ${input.courseCode}: ${TUTORIAL_ROOM_TYPE_ERROR_AR.TUTORIAL_LECTURE_HALL_ROOM_TYPE_MISSING}`,
+          rawValue: rawCode == null ? undefined : String(rawCode),
+        });
+        continue;
+      }
+      resolvedIds[component.component_type] = lectureHall.id;
+      continue;
+    }
 
     if (!canonical || !rawCode || String(rawCode).trim() === "") {
       errors.push({

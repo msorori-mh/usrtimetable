@@ -41,6 +41,7 @@ import {
   PLAN_COMPONENT_TYPES,
   PLAN_COURSE_READINESS_QUERY_KEYS,
   planCourseDeleteSteps,
+  normalizeComponentFormRoomType,
   validateComponentForm,
   validateLevelForm,
   validatePlanCourseForm,
@@ -54,6 +55,10 @@ import {
   type RoomTypeOption,
 } from "@/lib/academic-delivery/plan-course-editor";
 import type { ComponentType } from "@/lib/academic-delivery/plan-course-components";
+import {
+  findTutorialRoomType,
+  tutorialRoomTypeIsLocked,
+} from "@/lib/academic-delivery/tutorial-room-type";
 import { AdminExportMenu } from "@/components/admin-export-menu";
 import { planContentsExportDataset } from "@/lib/admin-export/datasets";
 import { buildPlanContentRows } from "@/lib/admin-export/plan-content-rows";
@@ -155,7 +160,7 @@ export function PlanCoursesManager({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("room_types")
-        .select("id, name_ar, college_id, is_active")
+        .select("id, name_ar, code, college_id, is_active, default_capacity")
         .eq("college_id", collegeId)
         .order("display_order");
       if (error) throw error;
@@ -435,7 +440,13 @@ export function PlanCoursesManager({
       if (!check.ok) throw new Error(check.messageAr);
       const { error } = await supabase
         .from("plan_course_components")
-        .insert(buildComponentInsert(ctx, planCourseId, componentForm));
+        .insert(
+          buildComponentInsert(
+            ctx,
+            planCourseId,
+            normalizeComponentFormRoomType(ctx, componentForm, roomTypes ?? []),
+          ),
+        );
       if (error) throw error;
       await logAudit({ action: "create", entity: "plan_course_components", collegeId });
       await syncLegacyCounters(planCourseId);
@@ -466,7 +477,9 @@ export function PlanCoursesManager({
       if (!check.ok) throw new Error(check.messageAr);
       const { error } = await supabase
         .from("plan_course_components")
-        .update(buildComponentUpdate(componentForm))
+        .update(
+          buildComponentUpdate(normalizeComponentFormRoomType(ctx, componentForm, roomTypes ?? [])),
+        )
         .eq("id", scope.id)
         .eq("college_id", scope.collegeId)
         .eq("plan_course_id", scope.planCourseId);
@@ -909,7 +922,13 @@ export function PlanCoursesManager({
                           <Select
                             value={componentForm.component_type}
                             onValueChange={(v) =>
-                              setComponentForm({ ...componentForm, component_type: v })
+                              setComponentForm(
+                                normalizeComponentFormRoomType(
+                                  ctx,
+                                  { ...componentForm, component_type: v },
+                                  roomTypes ?? [],
+                                ),
+                              )
                             }
                           >
                             <SelectTrigger>
@@ -942,6 +961,7 @@ export function PlanCoursesManager({
                           <Label className="text-xs">نوع القاعة المطلوب</Label>
                           <Select
                             value={componentForm.required_room_type_id ?? NONE}
+                            disabled={tutorialRoomTypeIsLocked(componentForm.component_type)}
                             onValueChange={(v) =>
                               setComponentForm({
                                 ...componentForm,
@@ -949,18 +969,29 @@ export function PlanCoursesManager({
                               })
                             }
                           >
-                            <SelectTrigger>
+                            <SelectTrigger data-testid="plan-component-room-type">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value={NONE}>بدون تحديد</SelectItem>
-                              {(roomTypes ?? []).map((r) => (
+                              {(tutorialRoomTypeIsLocked(componentForm.component_type)
+                                ? ((): RoomTypeOption[] => {
+                                    const lh = findTutorialRoomType(roomTypes ?? [], collegeId);
+                                    return lh ? [lh] : [];
+                                  })()
+                                : (roomTypes ?? [])
+                              ).map((r) => (
                                 <SelectItem key={r.id} value={r.id}>
                                   {r.name_ar}
                                 </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
+                          {tutorialRoomTypeIsLocked(componentForm.component_type) ? (
+                            <p className="mt-1 text-[11px] text-muted-foreground">
+                              مكوّن التمارين يُدرَّس دائمًا في قاعة محاضرات.
+                            </p>
+                          ) : null}
                         </div>
                         <div>
                           <Label className="text-xs">طريقة الاحتساب</Label>

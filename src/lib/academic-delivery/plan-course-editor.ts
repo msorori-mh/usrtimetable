@@ -7,6 +7,10 @@ import {
   derivePlanCourseComponents,
   type ComponentType,
 } from "@/lib/academic-delivery/plan-course-components";
+import {
+  resolveTutorialRoomTypeId,
+  tutorialRoomTypeIsLocked,
+} from "@/lib/academic-delivery/tutorial-room-type";
 
 export const PLAN_COMPONENT_TYPES = [
   "theory",
@@ -61,6 +65,9 @@ export type RoomTypeOption = {
   name_ar: string;
   college_id: string;
   is_active?: boolean;
+  /** canonical code (e.g. lecture_hall / computer_lab) — required by the tutorial rule */
+  code?: string | null;
+  default_capacity?: number | null;
 };
 
 export type ExistingPlanCourse = {
@@ -227,6 +234,16 @@ export function validateComponentForm(args: {
       return fail("ROOM_TYPE_SCOPE_MISMATCH", "نوع القاعة لا ينتمي إلى الكلية النشطة.");
     }
   }
+  // TUTORIAL-LECTURE-HALL-PERMANENT-RULE-01 — tutorial is lecture_hall only.
+  {
+    const tutorial = resolveTutorialRoomTypeId({
+      componentType: form.component_type,
+      requiredRoomTypeId: form.required_room_type_id,
+      roomTypes,
+      collegeId: ctx.collegeId,
+    });
+    if (!tutorial.ok) return fail(tutorial.errorCode, tutorial.message);
+  }
   if (siblings && planCourseId) {
     const dup = siblings.find(
       (s) =>
@@ -239,6 +256,26 @@ export function validateComponentForm(args: {
     }
   }
   return { ok: true };
+}
+
+/**
+ * TUTORIAL-LECTURE-HALL-PERMANENT-RULE-01 — pin the tutorial room type before any write.
+ * Returns the form unchanged for every other component type.
+ */
+export function normalizeComponentFormRoomType(
+  ctx: PlanContext,
+  form: ComponentForm,
+  roomTypes: RoomTypeOption[],
+): ComponentForm {
+  if (!tutorialRoomTypeIsLocked(form.component_type)) return form;
+  const res = resolveTutorialRoomTypeId({
+    componentType: form.component_type,
+    requiredRoomTypeId: form.required_room_type_id,
+    roomTypes,
+    collegeId: ctx.collegeId,
+  });
+  if (!res.ok) return form;
+  return { ...form, required_room_type_id: res.requiredRoomTypeId };
 }
 
 export function buildComponentInsert(ctx: PlanContext, planCourseId: string, form: ComponentForm) {
