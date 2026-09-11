@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { UsersRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveCollege } from "@/hooks/use-colleges";
@@ -9,6 +10,10 @@ import { Button } from "@/components/ui/button";
 import { AdminExportMenu } from "@/components/admin-export-menu";
 import { deliveryGroupsExportDataset } from "@/lib/admin-export/datasets";
 import { COMPONENT_TYPE_LABEL_AR } from "@/lib/academic-delivery/plan-course-editor";
+import {
+  splitDeliveryGroupsByObsolescence,
+  visibleDeliveryGroups,
+} from "@/lib/academic-delivery/delivery-group-visibility";
 
 export const Route = createFileRoute("/_authenticated/delivery-groups")({
   head: () => ({ meta: [{ title: "مجموعات المحاضرات والمعامل" }] }),
@@ -36,6 +41,7 @@ function isExcluded(g: Row): boolean {
 /** Read-only college-wide delivery groups diagnostic (Phase 9.3). */
 function DeliveryGroupsPage() {
   const { active } = useActiveCollege();
+  const [showObsolete, setShowObsolete] = useState(false);
 
   const { data: rows, isLoading } = useQuery({
     queryKey: ["delivery-groups", active?.id, "all"],
@@ -78,6 +84,11 @@ function DeliveryGroupsPage() {
     },
   });
 
+  const allRows = rows ?? [];
+  const { operational: operationalRows, obsolete } = splitDeliveryGroupsByObsolescence(allRows);
+  const obsoleteCount = obsolete.length;
+  const visibleRows = visibleDeliveryGroups(allRows, showObsolete);
+
   return (
     <div className="mx-auto max-w-5xl">
       <header className="mb-6 flex items-center gap-3">
@@ -99,10 +110,10 @@ function DeliveryGroupsPage() {
           <AdminExportMenu
             size="sm"
             testId="delivery-groups-export"
-            disabled={!active || (rows ?? []).length === 0}
+            disabled={!active || visibleRows.length === 0}
             dataset={() =>
               deliveryGroupsExportDataset({
-                rows: (rows ?? []).map((g) => ({
+                rows: visibleRows.map((g) => ({
                   group_code: g.group_code,
                   group_number: g.group_number ?? null,
                   component_type: g.plan_course_components?.component_type ?? null,
@@ -126,6 +137,30 @@ function DeliveryGroupsPage() {
         </div>
       </div>
 
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-sm">
+        <p className="text-muted-foreground">
+          المجموعات النشطة: <span className="font-semibold">{operationalRows.length}</span>
+          {obsoleteCount > 0 ? (
+            <>
+              {" "}
+              — التاريخية/الملغاة: <span className="font-semibold">{obsoleteCount}</span>
+            </>
+          ) : null}
+        </p>
+        {obsoleteCount > 0 ? (
+          <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-primary"
+              checked={showObsolete}
+              onChange={(e) => setShowObsolete(e.target.checked)}
+              data-testid="show-obsolete-groups"
+            />
+            إظهار المجموعات التاريخية/الملغاة
+          </label>
+        ) : null}
+      </div>
+
       <Card className="mb-4 border-primary/30 bg-primary/5 p-4 text-sm">
         <p className="font-semibold">الخطوة التالية</p>
         <p className="mt-1 text-muted-foreground">
@@ -140,10 +175,11 @@ function DeliveryGroupsPage() {
         <p className="text-sm text-muted-foreground">اختر كلية.</p>
       ) : isLoading ? (
         <p className="text-sm text-muted-foreground">جاري التحميل…</p>
-      ) : (rows ?? []).length === 0 ? (
+      ) : visibleRows.length === 0 ? (
         <Card className="border-dashed p-6 text-sm text-muted-foreground">
-          لا توجد مجموعات محاضرات ومعامل بعد. استخدم صفحة الدفعات لتوليد المجموعات بعد توفر مقررات
-          الدفعة الدراسية.
+          {allRows.length > 0
+            ? "لا توجد مجموعات نشطة؛ كل المجموعات الحالية تاريخية/ملغاة. فعّل خيار الإظهار أعلاه لمراجعتها."
+            : "لا توجد مجموعات محاضرات ومعامل بعد. استخدم صفحة الدفعات لتوليد المجموعات بعد توفر مقررات الدفعة الدراسية."}
         </Card>
       ) : (
         <Card className="overflow-hidden">
@@ -160,7 +196,7 @@ function DeliveryGroupsPage() {
                 </tr>
               </thead>
               <tbody>
-                {(rows ?? []).map((g) => (
+                {visibleRows.map((g) => (
                   <tr
                     key={g.id}
                     className={`border-t ${g.is_obsolete ? "bg-muted/30 text-muted-foreground" : ""}`}
@@ -185,7 +221,15 @@ function DeliveryGroupsPage() {
                         "نشطة"
                       )}
                     </td>
-                    <td className="px-3 py-2">{assignmentRows?.has(g.id) ? "مسند" : "غير مسند"}</td>
+                    <td className="px-3 py-2">
+                      {g.is_obsolete ? (
+                        <span className="text-xs text-muted-foreground">غير قابلة للإسناد</span>
+                      ) : assignmentRows?.has(g.id) ? (
+                        "مسند"
+                      ) : (
+                        "غير مسند"
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
