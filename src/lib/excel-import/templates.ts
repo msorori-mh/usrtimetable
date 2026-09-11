@@ -2,6 +2,7 @@ import type { TemplateDef } from "./types";
 import { escapeSpreadsheetCell } from "./formula-escape";
 import { IMPORT_CONTRACT_VERSION, PILOT_STUDY_SYSTEMS, TA_V2_COMPONENT_TYPES } from "./registry";
 import { EMPLOYMENT_TYPE_IMPORT_VALUES } from "../instructor-metadata";
+import { instructorStatusLabel, parseInstructorSheet } from "./instructor-sheet";
 
 export const TEMPLATES: Record<string, TemplateDef> = {
   instructors: {
@@ -12,15 +13,18 @@ export const TEMPLATES: Record<string, TemplateDef> = {
     uniqueKeyLabel: "رقم الموظف",
     commitMode: "table",
     columns: [
+      { key: "full_name", header: "اسم المدرس", required: true, example: "أحمد محمد" },
+      { key: "specialization", header: "القسم (التخصص)", example: "علوم الحاسوب" },
+      { key: "max_weekly_hours", header: "النصاب الأسبوعي (ساعة)", type: "number", example: "12" },
+      { key: "academic_rank", header: "الرتبة الأكاديمية", example: "أستاذ مساعد" },
+      { key: "admin_tasks", header: "الصفة", example: "عضو هيئة تدريس" },
+      { key: "is_active", header: "الحالة", type: "boolean", example: "نشط" },
       { key: "employee_number", header: "رقم_الموظف", required: true, example: "EMP001" },
-      { key: "full_name", header: "الاسم_الكامل", required: true, example: "أحمد محمد" },
       { key: "full_name_ar", header: "الاسم_بالعربي", example: "أحمد محمد" },
       { key: "full_name_en", header: "الاسم_بالانجليزي", example: "Ahmed Mohamed" },
       { key: "email", header: "البريد_الالكتروني", example: "a@x.com" },
       { key: "phone", header: "الهاتف", example: "0555555555" },
-      { key: "specialization", header: "التخصص", example: "أمن المعلومات" },
       { key: "academic_degree", header: "الدرجة_العلمية", example: "دكتوراه" },
-      { key: "academic_rank", header: "الرتبة_الأكاديمية", example: "أستاذ مساعد" },
       { key: "instructor_type_code", header: "نوع_المحاضر_رمز", example: "PERM" },
       { key: "department_code", header: "رمز_القسم", example: "CS" },
       {
@@ -29,7 +33,6 @@ export const TEMPLATES: Record<string, TemplateDef> = {
         example: "unknown",
         enumValues: [...EMPLOYMENT_TYPE_IMPORT_VALUES],
       },
-      { key: "max_weekly_hours", header: "أقصى_ساعات_أسبوعية", type: "number", example: "18" },
       { key: "max_hours_per_day", header: "أقصى_ساعات_يومية", type: "number", example: "6" },
       {
         key: "administrative_release_hours",
@@ -37,10 +40,8 @@ export const TEMPLATES: Record<string, TemplateDef> = {
         type: "number",
         example: "0",
       },
-      { key: "admin_tasks", header: "المهام_الإدارية" },
       { key: "external_source", header: "الجهة_الخارجية" },
       { key: "notes", header: "ملاحظات" },
-      { key: "is_active", header: "نشط", type: "boolean", example: "true" },
     ],
   },
   rooms: {
@@ -548,9 +549,11 @@ export async function buildTemplateWorkbook(
   const example = tpl.columns.map((c) => escapeSpreadsheetCell(c.example ?? ""));
   const rows = dataRows?.map((row) =>
     tpl.columns.map((column) =>
-      typeof row[column.key] === "number"
-        ? (row[column.key] as number)
-        : escapeSpreadsheetCell(row[column.key]),
+      entity === "instructors" && column.key === "is_active"
+        ? instructorStatusLabel(row.is_active !== false, row.notes as string | null)
+        : typeof row[column.key] === "number"
+          ? (row[column.key] as number)
+          : escapeSpreadsheetCell(row[column.key]),
     ),
   );
   const ws = XLSX.utils.aoa_to_sheet([headers, ...(rows ?? [example])]);
@@ -576,6 +579,7 @@ export async function buildTemplateWorkbook(
   }
 
   const wb = XLSX.utils.book_new();
+  if (entity === "instructors") wb.Workbook = { Views: [{ RTL: true }] };
   XLSX.utils.book_append_sheet(wb, ws, tpl.sheetName);
 
   const generatedAt = new Date().toISOString();
@@ -590,7 +594,11 @@ export async function buildTemplateWorkbook(
     ["أسماء الأعمدة الإنجليزية (key) ثابتة — لا تعتمد على ترجمة العنوان العربي."],
     ["لا تضع علامة * في أسماء الأعمدة — يجب أن تطابق العناوين حرفياً."],
     ["التواريخ: YYYY-MM-DD · الأوقات: HH:MM · المنطقي: true/false"],
-    ["لا تستخدم formulas أو macros. لا تخزّن كلمات مرور أو بيانات تشغيلية حقيقية."],
+    [
+      entity === "instructors"
+        ? "أدخل بيانات المدرسين المعتمدة. لا تضع كلمات مرور أو صيغًا أو وحدات ماكرو."
+        : "لا تستخدم formulas أو macros. لا تخزّن كلمات مرور أو بيانات تشغيلية حقيقية.",
+    ],
     [""],
     ["الأعمدة:"],
     ["الحقل", "العنوان", "إلزامي", "مثال", "قيم مسموحة"],
@@ -602,6 +610,29 @@ export async function buildTemplateWorkbook(
       (c.enumValues ?? []).join(" | "),
     ]),
   ];
+  if (entity === "instructors") {
+    notes.push(
+      ["القسم (التخصص)", "القسم في كشف المدرسين هو التخصص. رمز_القسم حقل اختياري للربط التنظيمي."],
+      [
+        "النصاب الأسبوعي (ساعة)",
+        "أدخل النصاب المعتمد كما في الكشف؛ لا يُعاد تخفيضه عند الاستيراد.",
+      ],
+      ["الصفة", "تُحفظ صفة المدرس أو مهامه الإدارية كما وردت."],
+      [
+        "الحالة",
+        "نشط، غير نشط، ابتعاث، إجازة مرضية. الابتعاث والإجازة غير نشطين للجدولة ويُحفظ السبب في الملاحظات.",
+      ],
+      [
+        "رقم_الموظف",
+        "إلزامي للمدرس الجديد. عند تحديث كشف بدون أرقام، تُطابق الأسماء الفريدة مع أرقام الموظفين الحالية في الكلية. م تسلسل فقط.",
+      ],
+      [
+        "التحديث",
+        "الأعمدة غير الموجودة في الكشف تحتفظ ببياناتها الحالية. راجع المعاينة قبل التأكيد.",
+      ],
+      ["التوافق", "يمكن رفع كشف بعنوان وصفوف تمهيدية. عناوين القوالب السابقة مقبولة أيضًا."],
+    );
+  }
   if (entity === "rooms") {
     notes.push(
       [""],
@@ -681,7 +712,15 @@ export async function buildTemplateWorkbook(
 
 export async function parseExcel(
   file: File,
-): Promise<{ headers: string[]; rows: Record<string, unknown>[] }> {
+  entity?: string,
+): Promise<{
+  headers: string[];
+  rows: Record<string, unknown>[];
+  rowNumbers?: number[];
+  sheetName?: string;
+  headerRowNumber?: number;
+}> {
+  if (entity === "instructors") return parseInstructorSheet(file, TEMPLATES.instructors.columns);
   const XLSX = await import("xlsx");
   const buf = await file.arrayBuffer();
   const wb = XLSX.read(buf, { type: "array" });

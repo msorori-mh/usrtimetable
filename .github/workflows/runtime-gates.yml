@@ -85,6 +85,12 @@ jobs:
       - name: Academic affairs report calculations
         run: node --import tsx --test tests/academic-affairs.test.ts
 
+      - name: Instructor review filters and repair links
+        run: node --import tsx --test tests/instructor-review.test.ts tests/preparation-workspace.test.tsx
+
+      - name: Complete instructor workbook import
+        run: node --experimental-test-module-mocks --import tsx --test tests/instructor-sheet.test.ts tests/unified-data-preparation.test.ts
+
   atomic-compaction-db:
     name: Atomic compaction PostgreSQL proof
     runs-on: ubuntu-latest

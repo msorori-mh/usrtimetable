@@ -38,6 +38,7 @@ import {
 import type { SourceResolutionPreview } from "@/lib/excel-import/teaching-assignments-source-resolver";
 import { READ_ONLY_VIEW_BADGE_AR, isInstitutionalReadOnlyViewer } from "@/lib/unauthorized-access";
 import { preparationLabel } from "@/lib/data-onboarding/preparation";
+import { instructorStatusLabel } from "@/lib/excel-import/instructor-sheet";
 
 const ENTITIES = listImportUiEntities().map((m) => ({
   value: m.entity,
@@ -199,8 +200,8 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
         }
       }
 
-      const { headers, rows } = await parseExcel(file);
-      const result = await validate(entity, headers, rows, active.id);
+      const { headers, rows, rowNumbers, headerRowNumber } = await parseExcel(file, entity);
+      const result = await validate(entity, headers, rows, active.id, rowNumbers, headerRowNumber);
       const jobId = await createJobAndPersistErrors(
         entity,
         mode,
@@ -412,8 +413,17 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
           {entity === "instructors" && (
             <div className="rounded-lg border bg-muted/20 p-3 space-y-2">
               <p className="text-sm">
-                لتعديل النصاب والبيانات الحالية: نزّل كشف المدرسين، أكمل البيانات، ثم ارفعه هنا.
-                احتفظ بأرقام الموظفين لتحديث المدرسين أنفسهم.
+                يمكنك رفع كشف المدرسين الكامل: اسم المدرس، القسم (التخصص)، النصاب الأسبوعي، الرتبة
+                الأكاديمية، الصفة والحالة. تُقبل العناوين والصفوف التمهيدية في الكشف.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                لتحديث المدرسين الحاليين اختر «تحديث الموجود فقط». إذا لم يتضمن الكشف رقم الموظف،
+                تُطابق الأسماء الفريدة داخل الكلية الحالية؛ عمود «م» تسلسلي فقط. البيانات التي لا
+                توجد أعمدتها في الكشف تحتفظ بقيمها الحالية.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                القسم في الكشف هو التخصص. النصاب يُحفظ كما ورد دون تخفيض إضافي. حالتا الابتعاث
+                والإجازة المرضية تعنيان أن المدرس غير نشط للجدولة، ويُحفظ السبب.
               </p>
               <Button
                 type="button"
@@ -503,6 +513,73 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
               tone={preview.errors.length ? "err" : "ok"}
             />
           </div>
+
+          {entity === "instructors" && preview.valid.length > 0 && (
+            <div className="space-y-2">
+              <h3 className="font-semibold">معاينة المدرسين قبل الحفظ</h3>
+              <p className="text-sm text-muted-foreground">
+                {preview.valid.filter((row) => row.values._matched_by_name).length} مدرس تمت مطابقة
+                اسمه برقم الموظف الحالي. راجع الأرقام والتخصص والنصاب والحالة قبل التأكيد.
+              </p>
+              <div className="max-h-80 overflow-auto rounded border">
+                <table className="w-full text-right text-sm">
+                  <thead className="bg-muted">
+                    <tr>
+                      {[
+                        "صف Excel",
+                        "اسم المدرس",
+                        "رقم الموظف",
+                        "القسم (التخصص)",
+                        "النصاب",
+                        "الرتبة",
+                        "الصفة",
+                        "الحالة",
+                        "الإجراء",
+                      ].map((label) => (
+                        <th key={label} className="p-2 whitespace-nowrap">
+                          {label}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {preview.valid.map((row) => (
+                      <tr key={row.rowNumber} className="border-t">
+                        <td className="p-2">{row.rowNumber}</td>
+                        {[
+                          "full_name",
+                          "employee_number",
+                          "specialization",
+                          "max_weekly_hours",
+                          "academic_rank",
+                          "admin_tasks",
+                        ].map((key) => (
+                          <td key={key} className="p-2">
+                            {String(row.values[key] ?? "—")}
+                          </td>
+                        ))}
+                        <td className="p-2">
+                          {instructorStatusLabel(
+                            row.values.is_active !== false,
+                            row.values.notes as string | null,
+                          )}
+                        </td>
+                        <td className="p-2">
+                          {row.values._exists
+                            ? mode === "insert_only"
+                              ? "تجاهل (موجود)"
+                              : "تحديث"
+                            : mode === "update_existing"
+                              ? "تجاهل (جديد)"
+                              : "إضافة"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           {preview.sourceResolution && (
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
