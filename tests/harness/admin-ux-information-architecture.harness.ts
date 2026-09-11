@@ -180,7 +180,7 @@ assert.ok(
 assert.ok(tools.includes("legacyOpen"), "legacy section must be collapsed by default");
 assert.ok(tools.includes("useState(false)"), "legacy section default state must be closed");
 for (const j of [
-  "المؤسسة والصلاحيات",
+  "التهيئة الأولية",
   "البنية الأكاديمية",
   "الكادر والقاعات",
   "أوقات العمل والتوفر",

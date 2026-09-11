@@ -89,7 +89,7 @@ export const JOURNEYS: Journey[] = [
   {
     key: "org",
     order: "أ",
-    label: "المؤسسة والصلاحيات",
+    label: "التهيئة الأولية",
     desc: "الجامعة والكلّيات والمستخدمون وصلاحياتهم.",
   },
   {
@@ -137,7 +137,7 @@ export const JOURNEYS: Journey[] = [
 ];
 
 export const ADMIN_PAGES: AdminPage[] = [
-  // أ) المؤسسة والصلاحيات
+  // أ) التهيئة الأولية
   {
     to: "/universities",
     label: "الجامعة",
