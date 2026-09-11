@@ -298,10 +298,9 @@ export function previewWorkloadImpact(input: {
     (a) => a.deliveryGroupId !== (input.replaceDeliveryGroupId ?? input.proposed.deliveryGroupId),
   );
 
+  // Supervision-only work is what leaves the regular load, not the "project" label.
   const isProject =
-    input.proposed.componentType === "project" ||
-    input.proposed.isProjectExcluded === true ||
-    !input.proposed.countsTowardRegularLoad;
+    input.proposed.isProjectExcluded === true || !input.proposed.countsTowardRegularLoad;
 
   const afterAssignments = [
     ...kept,

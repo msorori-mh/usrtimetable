@@ -108,7 +108,9 @@ export function hoursForAssignment(a: AssignmentWorkloadInput): {
   if (a.componentType === "summer_training") {
     return { standard: 0, project: 0 };
   }
-  if (a.componentType === "project" || !a.countsTowardRegularLoad) {
+  // Only load-excluded work (graduation-project supervision) leaves the regular load.
+  // A regular weekly project component counts as ordinary teaching load.
+  if (!a.countsTowardRegularLoad) {
     const ph =
       a.coInstructorCount > 0
         ? a.assignedWeeklyHours != null
