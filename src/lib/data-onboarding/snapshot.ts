@@ -69,6 +69,7 @@ export async function fetchOnboardingReadinessSnapshot(
       .from("teaching_assignments")
       .select("id", { count: "exact", head: true })
       .eq("college_id", collegeId)
+      .or("is_active.is.null,is_active.eq.true")
       .not("delivery_group_id", "is", null),
     supabase.from("instructor_availability").select("instructor_id").eq("college_id", collegeId),
     countExact("elective_slots", collegeId),

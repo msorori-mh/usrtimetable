@@ -135,13 +135,18 @@ export function buildWizardStepResults(
     readiness.studyPlan,
     (m) => !!m.critical && m.missing > 0,
   );
+  // ROOMS-CAPACITY-DIAGNOSTICS-FIX-01 — a room whose capacity matches its type
+  // default is healthy. Only critical room findings block; uniform-capacity
+  // deviations are surfaced as a review warning.
+  const isRoomMetric = (m: ReadinessMetric) =>
+    m.label.includes("قاعات") || m.label.includes("أنواع قاعات");
   const roomCritical = metricsMissing(
     readiness.resources,
-    (m) => m.label.includes("سعة") && m.missing > 0,
+    (m) => isRoomMetric(m) && !!m.critical && m.missing > 0,
   );
-  const roomTypeMissing = metricsMissing(
+  const roomWarnings = metricsMissing(
     readiness.resources,
-    (m) => m.label.includes("بدون نوع") && m.missing > 0,
+    (m) => isRoomMetric(m) && !m.critical && m.missing > 0,
   );
   const instructorGaps = metricsMissing(
     readiness.resources,
@@ -258,15 +263,19 @@ export function buildWizardStepResults(
       const empty = counts.rooms === 0;
       const status = statusFromCounts({
         empty,
-        blockerMissing: roomCritical + roomTypeMissing,
-        warnMissing: 0,
+        blockerMissing: roomCritical,
+        warnMissing: roomWarnings,
       });
       return {
         status: empty ? "incomplete" : status,
         detailAr: detail(
           empty ? "incomplete" : status,
           `قاعات: ${counts.rooms}`,
-          empty ? "أضف القاعات وأنواعها وسعاتها." : "يوجد قاعات بسعة غير صالحة أو بدون نوع.",
+          empty
+            ? "أضف القاعات وأنواعها وسعاتها."
+            : roomCritical > 0
+              ? "يوجد قاعات بسعة غير صالحة أو بدون نوع."
+              : "راجع تفاوت السعات بين غرف النوع نفسه.",
         ),
       };
     })(),
