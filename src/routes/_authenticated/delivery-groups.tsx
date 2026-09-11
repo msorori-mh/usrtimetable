@@ -133,6 +133,30 @@ function DeliveryGroupsPage() {
         </div>
       </div>
 
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-sm">
+        <p className="text-muted-foreground">
+          المجموعات النشطة: <span className="font-semibold">{operationalRows.length}</span>
+          {obsoleteCount > 0 ? (
+            <>
+              {" "}
+              — التاريخية/الملغاة: <span className="font-semibold">{obsoleteCount}</span>
+            </>
+          ) : null}
+        </p>
+        {obsoleteCount > 0 ? (
+          <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-primary"
+              checked={showObsolete}
+              onChange={(e) => setShowObsolete(e.target.checked)}
+              data-testid="show-obsolete-groups"
+            />
+            إظهار المجموعات التاريخية/الملغاة
+          </label>
+        ) : null}
+      </div>
+
       <Card className="mb-4 border-primary/30 bg-primary/5 p-4 text-sm">
         <p className="font-semibold">الخطوة التالية</p>
         <p className="mt-1 text-muted-foreground">
@@ -147,10 +171,11 @@ function DeliveryGroupsPage() {
         <p className="text-sm text-muted-foreground">اختر كلية.</p>
       ) : isLoading ? (
         <p className="text-sm text-muted-foreground">جاري التحميل…</p>
-      ) : (rows ?? []).length === 0 ? (
+      ) : visibleRows.length === 0 ? (
         <Card className="border-dashed p-6 text-sm text-muted-foreground">
-          لا توجد مجموعات محاضرات ومعامل بعد. استخدم صفحة الدفعات لتوليد المجموعات بعد توفر مقررات
-          الدفعة الدراسية.
+          {allRows.length > 0
+            ? "لا توجد مجموعات نشطة؛ كل المجموعات الحالية تاريخية/ملغاة. فعّل خيار الإظهار أعلاه لمراجعتها."
+            : "لا توجد مجموعات محاضرات ومعامل بعد. استخدم صفحة الدفعات لتوليد المجموعات بعد توفر مقررات الدفعة الدراسية."}
         </Card>
       ) : (
         <Card className="overflow-hidden">
