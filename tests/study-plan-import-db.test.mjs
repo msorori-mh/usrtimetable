@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { normalizeCourseNature } from "../src/lib/excel-import/course-nature.ts";
 const target = process.env.PLAN_IMPORT_TEST_DATABASE_URL;
 const url = target ? new URL(target) : null;
 if (
@@ -49,7 +50,8 @@ before(() => {
   );
   sql(read("supabase/migrations/20260718180000_import_manifest_contract.sql"));
   sql(read("supabase/migrations/20260718210000_source_only_atomic_import_job_commit.sql"));
-  sql(`CREATE TABLE room_types(id uuid PRIMARY KEY,college_id uuid NOT NULL,code text,is_active boolean,default_capacity int);
+  sql(`ALTER TABLE courses ADD CONSTRAINT courses_course_nature_check CHECK (course_nature IN ('department','college','university'));
+    CREATE TABLE room_types(id uuid PRIMARY KEY,college_id uuid NOT NULL,code text,is_active boolean,default_capacity int);
     ALTER TABLE plan_course_components ADD COLUMN required_room_type_id uuid;
     ALTER TABLE plan_courses ALTER COLUMN lecture_session_duration TYPE numeric, ALTER COLUMN lab_session_duration TYPE numeric;
     CREATE SCHEMA test_support;
@@ -156,5 +158,42 @@ check(
   PERFORM test_support.assert(NOT has_function_privilege('anon','public._import_sync_plan_course_components(uuid,uuid,jsonb)','EXECUTE'),'anon execute');
   PERFORM test_support.assert(NOT has_function_privilege('authenticated','public._import_sync_plan_course_components(uuid,uuid,jsonb)','EXECUTE'),'authenticated execute');
   PERFORM test_support.assert(has_function_privilege('service_role','public._import_sync_plan_course_components(uuid,uuid,jsonb)','EXECUTE'),'service_role grant lost');
+`,
+);
+
+test("six normalized legacy rows survive atomic preview, commit and retry with the production constraint", () => {
+  const nature = normalizeCourseNature("faculty");
+  assert.equal(nature, "college");
+  sql(`BEGIN; DO $$ DECLARE job uuid; result jsonb; rows jsonb; BEGIN
+    INSERT INTO user_roles(user_id,role) VALUES(${id("actor")},'super_admin');
+    PERFORM set_config('test.uid',${id("actor")}::text,true);
+    SELECT jsonb_agg(jsonb_build_object('rowNumber',n+1,'values',${payload()} || jsonb_build_object(
+      '_program_id',${id("program")},'plan_code','TEST_ONLY_NATURE','course_code','TEST_ONLY_NATURE_'||n,
+      'course_name','Test nature course','course_nature','${nature}','level_number',3,'semester',1)))
+      INTO rows FROM generate_series(1,6) n;
+    job := public.create_import_preview_manifest(${id("college")},'study_plan_courses','upsert','TEST_ONLY.xlsx',6,rows,'[]'::jsonb);
+    result := public.commit_import_job_atomic(job,NULL);
+    PERFORM test_support.assert(result->>'status'='ok' AND (result->>'inserted')::int=6,'atomic import did not save six rows');
+    PERFORM test_support.assert((SELECT count(*)=6 FROM courses WHERE course_nature='college'),'canonical nature lost');
+    PERFORM test_support.assert((SELECT count(*)=6 FROM plan_courses WHERE course_id IS NOT NULL),'plan links missing');
+    result := public.commit_import_job_atomic(job,NULL);
+    PERFORM test_support.assert((result->>'replay')::boolean,'retry was not replay');
+    PERFORM test_support.assert((SELECT count(*)=6 FROM courses),'retry duplicated courses');
+  END $$; ROLLBACK;`);
+});
+
+check(
+  "an unnormalized later faculty row reproduces the database error and rolls back the entire import",
+  `
+  BEGIN
+    PERFORM public._import_apply_study_plan(${id("college")},'upsert',jsonb_build_array(
+      jsonb_build_object('values',${payload()} || jsonb_build_object('_program_id',${id("program")},'plan_code','TEST_ONLY_REJECT','course_code','TEST_ONLY_FIRST','course_name','First','course_nature','department')),
+      jsonb_build_object('values',${payload()} || jsonb_build_object('_program_id',${id("program")},'plan_code','TEST_ONLY_REJECT','course_code','TEST_ONLY_BAD','course_name','Second','course_nature','faculty'))
+    ));
+    RAISE EXCEPTION 'unexpected success';
+  EXCEPTION WHEN check_violation THEN NULL;
+  END;
+  PERFORM test_support.assert((SELECT count(*)=0 FROM courses),'partial courses survived');
+  PERFORM test_support.assert((SELECT count(*)=0 FROM study_plans),'partial study plan survived');
 `,
 );

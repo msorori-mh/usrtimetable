@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { TEMPLATES } from "./templates";
+import { normalizeCourseNature } from "./course-nature";
 import { resolveRoomTypeFields } from "./room-type-normalize";
 import { deliveryGroupIsolationKey, sectionIsolationKey } from "./keys";
 import { requireImportManager } from "./safety";
@@ -326,6 +327,11 @@ function normalize(
           .split(",")
           .map((x) => x.trim())
           .filter(Boolean);
+      else if (
+        col.key === "course_nature" &&
+        (entity === "study_plan_courses" || entity === "full_study_plan")
+      )
+        values[col.key] = normalizeCourseNature(s);
       else values[col.key] = s;
     }
     return { rowNumber: i + 2, raw, values };

@@ -1,4 +1,5 @@
 import type { TemplateDef } from "./types";
+import { COURSE_NATURE_VALUES } from "./course-nature";
 import { escapeSpreadsheetCell } from "./formula-escape";
 import { IMPORT_CONTRACT_VERSION, PILOT_STUDY_SYSTEMS, TA_V2_COMPONENT_TYPES } from "./registry";
 import { EMPLOYMENT_TYPE_IMPORT_VALUES } from "../instructor-metadata";
@@ -179,7 +180,7 @@ export const TEMPLATES: Record<string, TemplateDef> = {
       {
         key: "course_nature",
         header: "طبيعة_المقرر",
-        enumValues: ["department", "faculty", "university"],
+        enumValues: COURSE_NATURE_VALUES,
         example: "department",
       },
       { key: "is_shared", header: "مشترك", type: "boolean", example: "false" },
@@ -258,7 +259,7 @@ export const TEMPLATES: Record<string, TemplateDef> = {
       {
         key: "course_nature",
         header: "طبيعة_المقرر",
-        enumValues: ["department", "college", "university"],
+        enumValues: COURSE_NATURE_VALUES,
         example: "department",
       },
       { key: "is_shared", header: "مشترك", type: "boolean", example: "false" },

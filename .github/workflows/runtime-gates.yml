@@ -94,6 +94,9 @@ jobs:
       - name: Component-aware study plan readiness
         run: node --import tsx --test tests/study-plan-readiness.test.ts
 
+      - name: Study plan course nature preview and saved payload
+        run: node --experimental-test-module-mocks --import tsx --test tests/course-nature-import.test.ts
+
   atomic-compaction-db:
     name: Atomic compaction PostgreSQL proof
     runs-on: ubuntu-latest
