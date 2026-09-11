@@ -100,6 +100,9 @@ jobs:
       - name: Cohort directory filters and visible selection
         run: node --import tsx --test tests/cohort-directory.test.ts
 
+      - name: Time template classification and availability filters
+        run: node --import tsx --test tests/time-template-directory.test.ts
+
       - name: Scheduling headcount workbook import
         run: node --import tsx --test tests/headcount-import.test.ts tests/headcount-workbook.test.ts
 
