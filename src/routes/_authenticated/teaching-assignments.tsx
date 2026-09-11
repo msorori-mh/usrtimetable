@@ -19,6 +19,8 @@ import type {
   WorkspaceFilters,
 } from "@/lib/academic-delivery/teaching-assignments-v2";
 import { CollegeSwitcher } from "@/components/college-switcher";
+import { AdminExportMenu } from "@/components/admin-export-menu";
+import { activeFilters, teachingAssignmentsExportDataset } from "@/lib/admin-export/datasets";
 import { InstructorCombobox } from "@/components/teaching-assignments/instructor-combobox";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -271,9 +273,57 @@ function TeachingAssignmentsV2Page() {
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <CollegeSwitcher />
-        <Button asChild variant="outline" size="sm">
-          <Link to="/delivery-groups">مجموعات المحاضرات والمعامل</Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <AdminExportMenu
+            size="sm"
+            testId="teaching-assignments-export"
+            disabled={rows.length === 0}
+            dataset={() =>
+              teachingAssignmentsExportDataset({
+                rows,
+                collegeName: active?.name ?? null,
+                componentLabel: (v) => COMPONENT_LABELS[v ?? ""] ?? v ?? "",
+                allocationLabel: (v) => ALLOCATION_LABELS[v ?? ""] ?? v ?? "",
+                filters: activeFilters([
+                  {
+                    label: "البرنامج",
+                    value: (programs ?? []).find((p) => p.id === programId)?.name ?? "",
+                  },
+                  {
+                    label: "المستوى",
+                    value: (levels ?? []).find((l) => l.id === levelId)?.name ?? "",
+                  },
+                  { label: "الفصل", value: (terms ?? []).find((t) => t.id === termId)?.name ?? "" },
+                  {
+                    label: "نظام الدراسة",
+                    value: studySystem
+                      ? (ACADEMIC_STUDY_SYSTEM_LABELS[
+                          studySystem as keyof typeof ACADEMIC_STUDY_SYSTEM_LABELS
+                        ] ?? studySystem)
+                      : "",
+                  },
+                  {
+                    label: "الدفعة",
+                    value: (cohorts ?? []).find((c) => c.id === cohortId)?.code ?? "",
+                  },
+                  {
+                    label: "نوع المكوّن",
+                    value: componentType ? (COMPONENT_LABELS[componentType] ?? componentType) : "",
+                  },
+                  {
+                    label: "حالة الإسناد",
+                    value: assignmentStatus
+                      ? (ALLOCATION_LABELS[assignmentStatus] ?? assignmentStatus)
+                      : "",
+                  },
+                ]),
+              })
+            }
+          />
+          <Button asChild variant="outline" size="sm">
+            <Link to="/delivery-groups">مجموعات المحاضرات والمعامل</Link>
+          </Button>
+        </div>
       </div>
 
       <Card className="mb-4 border-primary/30 bg-primary/5 p-4 text-sm">

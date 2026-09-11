@@ -6,6 +6,9 @@ import { useActiveCollege } from "@/hooks/use-colleges";
 import { CollegeSwitcher } from "@/components/college-switcher";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { AdminExportMenu } from "@/components/admin-export-menu";
+import { deliveryGroupsExportDataset } from "@/lib/admin-export/datasets";
+import { COMPONENT_TYPE_LABEL_AR } from "@/lib/academic-delivery/plan-course-editor";
 
 export const Route = createFileRoute("/_authenticated/delivery-groups")({
   head: () => ({ meta: [{ title: "مجموعات المحاضرات والمعامل" }] }),
@@ -92,9 +95,35 @@ function DeliveryGroupsPage() {
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <CollegeSwitcher />
-        <Button asChild variant="outline" size="sm">
-          <Link to="/academic-cohorts">الدفعات الدراسية</Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <AdminExportMenu
+            size="sm"
+            testId="delivery-groups-export"
+            disabled={!active || (rows ?? []).length === 0}
+            dataset={() =>
+              deliveryGroupsExportDataset({
+                rows: (rows ?? []).map((g) => ({
+                  group_code: g.group_code,
+                  group_number: g.group_number ?? null,
+                  component_type: g.plan_course_components?.component_type ?? null,
+                  expected_students: g.expected_students,
+                  capacity_limit: g.capacity_limit,
+                  is_obsolete: g.is_obsolete ?? false,
+                  excluded_from_workload: isExcluded(g),
+                  assigned: assignmentRows?.has(g.id) ?? false,
+                })),
+                collegeName: active?.name ?? null,
+                componentLabel: (v) =>
+                  (v ? COMPONENT_TYPE_LABEL_AR[v as keyof typeof COMPONENT_TYPE_LABEL_AR] : "") ??
+                  v ??
+                  "",
+              })
+            }
+          />
+          <Button asChild variant="outline" size="sm">
+            <Link to="/academic-cohorts">الدفعات الدراسية</Link>
+          </Button>
+        </div>
       </div>
 
       <Card className="mb-4 border-primary/30 bg-primary/5 p-4 text-sm">

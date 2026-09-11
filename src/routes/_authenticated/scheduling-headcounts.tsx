@@ -7,6 +7,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { useCanManageActiveCollege } from "@/hooks/use-can-manage";
 import { CollegeSwitcher } from "@/components/college-switcher";
+import { AdminExportMenu } from "@/components/admin-export-menu";
+import { headcountsExportDataset } from "@/lib/admin-export/datasets";
+import { ACADEMIC_STUDY_SYSTEM_LABELS } from "@/lib/study-systems";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { HeadcountImportWorkspace } from "@/components/data-onboarding/headcount-import-workspace";
@@ -132,6 +135,24 @@ function SchedulingHeadcountsPage() {
       </header>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <CollegeSwitcher />
+        <AdminExportMenu
+          testId="headcounts-export"
+          disabled={!active || rows.length === 0}
+          dataset={() =>
+            headcountsExportDataset({
+              rows,
+              collegeName: active?.name ?? null,
+              cohortLabel: (id) => cohortName.get(id ?? "") ?? "",
+              termLabel: (id) => termName.get(id ?? "") ?? "",
+              systemLabel: (v) =>
+                (v
+                  ? ACADEMIC_STUDY_SYSTEM_LABELS[v as keyof typeof ACADEMIC_STUDY_SYSTEM_LABELS]
+                  : "") ??
+                v ??
+                "",
+            })
+          }
+        />
         {canManage && (
           <Button
             onClick={() =>

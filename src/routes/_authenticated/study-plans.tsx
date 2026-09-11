@@ -27,8 +27,9 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
-import { exportRowsToXlsx } from "@/lib/admin-export/to-xlsx";
-import { BookOpen, Pencil, Trash2, Download } from "lucide-react";
+import { AdminExportMenu } from "@/components/admin-export-menu";
+import { activeFilters, studyPlansExportDataset } from "@/lib/admin-export/datasets";
+import { BookOpen, Pencil, Trash2 } from "lucide-react";
 import { PlanCoursesManager } from "@/components/study-plans/plan-courses-manager";
 
 export const Route = createFileRoute("/_authenticated/study-plans")({
@@ -224,25 +225,28 @@ function StudyPlansPage() {
     });
   }, [rows, progMap, deptFilter, progFilter, statusFilter]);
 
-  const handleExport = () => {
-    if (filtered.length === 0) {
-      toast.info("لا توجد سجلات للتصدير");
-      return;
-    }
-    const data = filtered.map((p) => {
-      const prog = progMap.get(p.program_id);
-      return {
-        الاسم: p.name,
-        الرمز: p.code,
-        الإصدار: p.version,
-        البرنامج: prog?.name ?? "",
-        القسم: prog?.department_id ? (deptMap.get(prog.department_id) ?? "") : "",
-        "سنة السريان": p.effective_year ?? "",
-        سارية: p.is_active ? "نعم" : "لا",
-      };
+  const plansDataset = () =>
+    studyPlansExportDataset({
+      rows: filtered,
+      collegeName: active?.name ?? null,
+      programLabel: (id) => progMap.get(id ?? "")?.name ?? "",
+      programDepartmentLabel: (id) => {
+        const dep = progMap.get(id ?? "")?.department_id;
+        return dep ? (deptMap.get(dep) ?? "") : "";
+      },
+      filters: activeFilters([
+        { label: "القسم", value: deptFilter === ALL ? "" : (deptMap.get(deptFilter) ?? "") },
+        {
+          label: "البرنامج",
+          value: progFilter === ALL ? "" : (progMap.get(progFilter)?.name ?? ""),
+        },
+        {
+          label: "حالة السريان",
+          value:
+            statusFilter === ALL ? "" : statusFilter === "active" ? "سارية فقط" : "غير سارية فقط",
+        },
+      ]),
     });
-    exportRowsToXlsx("study-plans", "الخطط الدراسية", data);
-  };
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -259,9 +263,11 @@ function StudyPlansPage() {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <CollegeSwitcher />
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleExport} disabled={!rows || rows.length === 0}>
-            <Download className="ms-1 h-4 w-4" /> تصدير Excel
-          </Button>
+          <AdminExportMenu
+            testId="study-plans-export"
+            disabled={filtered.length === 0}
+            dataset={plansDataset}
+          />
           {canManage && (
             <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild>

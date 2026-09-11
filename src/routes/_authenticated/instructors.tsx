@@ -43,10 +43,13 @@ import {
 import {
   INSTRUCTOR_REVIEW_LABELS,
   instructorNeedsReview,
+  isMissingInstructorDepartment,
   isMissingInstructorSpecialization,
   parseInstructorReviewSearch,
   type InstructorReview,
 } from "@/lib/data-onboarding/instructor-review";
+import { AdminExportMenu } from "@/components/admin-export-menu";
+import { activeFilters, instructorsExportDataset } from "@/lib/admin-export/datasets";
 
 export const Route = createFileRoute("/_authenticated/instructors")({
   head: () => ({ meta: [{ title: "المحاضرون" }] }),
@@ -309,6 +312,32 @@ function InstructorDirectory() {
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <CollegeSwitcher />
+        <div className="flex flex-wrap gap-2">
+          <AdminExportMenu
+            testId="instructors-export"
+            disabled={!active || (visibleRows ?? []).length === 0}
+            dataset={() =>
+              instructorsExportDataset({
+                rows: (visibleRows ?? []).map((i) => ({
+                  ...i,
+                  needs_review:
+                    isMissingInstructorSpecialization(i) || isMissingInstructorDepartment(i),
+                })),
+                collegeName: active?.name ?? null,
+                departmentLabel: (id) => (id ? (deptMap.get(id) ?? "") : "بدون قسم"),
+                categoryLabel: (id) =>
+                  CATEGORY_LABEL_AR[categorizeInstructor(typeMap.get(id ?? "") ?? null)] ?? "",
+                employmentLabel: (v) => employmentTypeLabelAr(v ?? UNKNOWN_EMPLOYMENT_TYPE),
+                filters: activeFilters([
+                  {
+                    label: "مرشّح المراجعة",
+                    value: review ? INSTRUCTOR_REVIEW_LABELS[review] : "",
+                  },
+                ]),
+              })
+            }
+          />
+        </div>
         {canManage && (
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
