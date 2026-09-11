@@ -376,16 +376,12 @@ export function resolveTeachingAssignmentComponent(input: {
   if (componentIds.length === 0) return { componentId: null, deliveryGroupId: null };
   if (input.deliveryGroupCode) {
     for (const compId of componentIds) {
-      const dg = input.deliveryGroups.get(
-        `${input.cohortId}|${compId}|${input.deliveryGroupCode}`,
-      );
+      const dg = input.deliveryGroups.get(`${input.cohortId}|${compId}|${input.deliveryGroupCode}`);
       if (dg) return { componentId: compId, deliveryGroupId: dg };
     }
   }
   return { componentId: componentIds[0] ?? null, deliveryGroupId: null };
 }
-
-
 
 export async function validate(
   entity: ImportEntity,
