@@ -2,7 +2,8 @@
 -- Graduation-project supervision (counts_toward_regular_load = false) keeps its
 -- non-weekly semantics: explicit_group_size, workload exclusion and scheduling block.
 -- Big function bodies are patched textually from their current definition so every
--- unrelated line stays byte-identical; each patch asserts it actually applied.
+-- unrelated line stays byte-identical. Every patch is idempotent: it is skipped when
+-- the target text is already in place, and fails loudly when neither form is found.
 
 CREATE OR REPLACE FUNCTION public._import_sync_plan_course_components(p_college uuid, p_plan_course uuid, v jsonb)
 RETURNS void
@@ -228,22 +229,28 @@ DECLARE
   v_pairs text[][];
   i integer;
 BEGIN
-  -- ensure_ss_college trigger
+  -- ensure_ss_college trigger (idempotent: skip parts already present)
   v_def := pg_get_functiondef('public.ensure_ss_college()'::regprocedure);
-  v_new := replace(v_def, '  pcc_type text;', E'  pcc_type text;\n  pcc_regular boolean;');
-  v_new := replace(v_new,
-    E'SELECT pcc.component_type INTO pcc_type\n      FROM public.plan_course_components pcc WHERE pcc.id = dg_component;',
-    E'SELECT pcc.component_type, COALESCE(pcc.counts_toward_regular_load, true)\n        INTO pcc_type, pcc_regular\n      FROM public.plan_course_components pcc WHERE pcc.id = dg_component;');
+  v_new := v_def;
+  IF position('pcc_regular boolean;' in v_new) = 0 THEN
+    v_new := replace(v_new, '  pcc_type text;', E'  pcc_type text;\n  pcc_regular boolean;');
+  END IF;
+  IF position('INTO pcc_type, pcc_regular' in v_new) = 0 THEN
+    v_new := replace(v_new,
+      E'SELECT pcc.component_type INTO pcc_type\n      FROM public.plan_course_components pcc WHERE pcc.id = dg_component;',
+      E'SELECT pcc.component_type, COALESCE(pcc.counts_toward_regular_load, true)\n        INTO pcc_type, pcc_regular\n      FROM public.plan_course_components pcc WHERE pcc.id = dg_component;');
+  END IF;
   v_new := replace(v_new,
     E'IF pcc_type = ''project'' THEN',
     E'IF pcc_type = ''project'' AND COALESCE(pcc_regular, true) = false THEN');
-  IF v_new = v_def
-     OR position('pcc_regular boolean;' in v_new) = 0
+  IF position('pcc_regular boolean;' in v_new) = 0
      OR position('INTO pcc_type, pcc_regular' in v_new) = 0
      OR position(E'IF pcc_type = ''project'' THEN' in v_new) > 0 THEN
     RAISE EXCEPTION 'PATCH_FAILED: ensure_ss_college';
   END IF;
-  EXECUTE v_new;
+  IF v_new <> v_def THEN
+    EXECUTE v_new;
+  END IF;
 
   -- generate_cohort_delivery_groups
   v_def := pg_get_functiondef('public.generate_cohort_delivery_groups(uuid)'::regprocedure);
@@ -267,10 +274,11 @@ BEGIN
     ]
   ];
   FOR i IN 1..array_length(v_pairs, 1) LOOP
-    IF position(v_pairs[i][1] in v_new) = 0 THEN
+    IF position(v_pairs[i][1] in v_new) > 0 THEN
+      v_new := replace(v_new, v_pairs[i][1], v_pairs[i][2]);
+    ELSIF position(v_pairs[i][2] in v_new) = 0 THEN
       RAISE EXCEPTION 'PATCH_FAILED: generate_cohort_delivery_groups #%', i;
     END IF;
-    v_new := replace(v_new, v_pairs[i][1], v_pairs[i][2]);
   END LOOP;
   EXECUTE v_new;
 
@@ -296,10 +304,11 @@ BEGIN
     ]
   ];
   FOR i IN 1..array_length(v_pairs, 1) LOOP
-    IF position(v_pairs[i][1] in v_new) = 0 THEN
+    IF position(v_pairs[i][1] in v_new) > 0 THEN
+      v_new := replace(v_new, v_pairs[i][1], v_pairs[i][2]);
+    ELSIF position(v_pairs[i][2] in v_new) = 0 THEN
       RAISE EXCEPTION 'PATCH_FAILED: list_schedule_builder_v2_work_items #%', i;
     END IF;
-    v_new := replace(v_new, v_pairs[i][1], v_pairs[i][2]);
   END LOOP;
   EXECUTE v_new;
 
@@ -321,10 +330,11 @@ BEGIN
     ]
   ];
   FOR i IN 1..array_length(v_pairs, 1) LOOP
-    IF position(v_pairs[i][1] in v_new) = 0 THEN
+    IF position(v_pairs[i][1] in v_new) > 0 THEN
+      v_new := replace(v_new, v_pairs[i][1], v_pairs[i][2]);
+    ELSIF position(v_pairs[i][2] in v_new) = 0 THEN
       RAISE EXCEPTION 'PATCH_FAILED: preview_instructor_workload_after_assignment #%', i;
     END IF;
-    v_new := replace(v_new, v_pairs[i][1], v_pairs[i][2]);
   END LOOP;
   EXECUTE v_new;
 END

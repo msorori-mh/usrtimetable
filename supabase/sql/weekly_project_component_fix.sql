@@ -2,7 +2,8 @@
 -- Graduation-project supervision (counts_toward_regular_load = false) keeps its
 -- non-weekly semantics: explicit_group_size, workload exclusion and scheduling block.
 -- Big function bodies are patched textually from their current definition so every
--- unrelated line stays byte-identical; each patch asserts it actually applied.
+-- unrelated line stays byte-identical. Every patch is idempotent: it is skipped when
+-- the target text is already in place, and fails loudly when neither form is found.
 
 CREATE OR REPLACE FUNCTION public._import_sync_plan_course_components(p_college uuid, p_plan_course uuid, v jsonb)
 RETURNS void
@@ -228,42 +229,44 @@ DECLARE
   v_pairs text[][];
   i integer;
 BEGIN
-  -- ensure_ss_college trigger
+  -- ensure_ss_college trigger (idempotent: skip parts already present)
   v_def := pg_get_functiondef('public.ensure_ss_college()'::regprocedure);
-  v_new := replace(v_def, '  pcc_type text;', E'  pcc_type text;\n  pcc_regular boolean;');
+  v_new := v_def;
+  IF position('pcc_regular boolean;' in v_new) = 0 THEN
+    v_new := replace(v_new, '  pcc_type text;', E'  pcc_type text;\n  pcc_regular boolean;');
+  END IF;
+  IF position('INTO pcc_type, pcc_regular' in v_new) = 0 THEN
+    v_new := replace(v_new,
+      E'SELECT pcc.component_type INTO pcc_type\n      FROM public.plan_course_components pcc WHERE pcc.id = dg_component;',
+      E'SELECT pcc.component_type, COALESCE(pcc.counts_toward_regular_load, true)\n        INTO pcc_type, pcc_regular\n      FROM public.plan_course_components pcc WHERE pcc.id = dg_component;');
+  END IF;
   v_new := replace(v_new,
-    E'SELECT pcc.component_type INTO pcc_type\n      FROM public.plan_course_components pcc WHERE pcc.id = dg_component;',
-    E'SELECT pcc.component_type, COALESCE(pcc.counts_toward_regular_load, true)\n        INTO pcc_type, pcc_regular\n      FROM public.plan_course_components pcc WHERE pcc.id = dg_component;');
-  v_new := replace(v_new,
-    E'IF pcc_type = \'project\' THEN',
-    E'IF pcc_type = \'project\' AND COALESCE(pcc_regular, true) = false THEN');
-  IF v_new = v_def
-     OR position('pcc_regular boolean;' in v_new) = 0
+    E'IF pcc_type = ''project'' THEN',
+    E'IF pcc_type = ''project'' AND COALESCE(pcc_regular, true) = false THEN');
+  IF position('pcc_regular boolean;' in v_new) = 0
      OR position('INTO pcc_type, pcc_regular' in v_new) = 0
-     OR position(E'IF pcc_type = \'project\' THEN' in v_new) > 0 THEN
+     OR position(E'IF pcc_type = ''project'' THEN' in v_new) > 0 THEN
     RAISE EXCEPTION 'PATCH_FAILED: ensure_ss_college';
   END IF;
-  EXECUTE v_new;
+  IF v_new <> v_def THEN
+    EXECUTE v_new;
+  END IF;
 
   -- generate_cohort_delivery_groups
   v_def := pg_get_functiondef('public.generate_cohort_delivery_groups(uuid)'::regprocedure);
   v_new := v_def;
   v_pairs := ARRAY[
     ARRAY[
-      E'    IF r.component_type = \'project\' THEN\n      IF COALESCE(r.weekly_contact_hours, 0) <= 0 THEN\n        CONTINUE;\n      END IF;',
-      E'    IF r.component_type = \'project\'\n       AND COALESCE(r.counts_toward_regular_load, false) = false THEN\n      IF COALESCE(r.weekly_contact_hours, 0) <= 0 THEN\n        CONTINUE;\n      END IF;'
+      E'    IF r.component_type = ''project'' THEN\n      IF COALESCE(r.weekly_contact_hours, 0) <= 0 THEN\n        CONTINUE;\n      END IF;',
+      E'    IF r.component_type = ''project''\n       AND COALESCE(r.counts_toward_regular_load, false) = false THEN\n      IF COALESCE(r.weekly_contact_hours, 0) <= 0 THEN\n        CONTINUE;\n      END IF;'
     ],
     ARRAY[
-      E'    v_excluded := (r.component_type = \'project\')\n      OR (COALESCE(r.counts_toward_regular_load, true) = false);',
+      E'    v_excluded := (r.component_type = ''project'')\n      OR (COALESCE(r.counts_toward_regular_load, true) = false);',
       E'    v_excluded := (COALESCE(r.counts_toward_regular_load, true) = false);'
     ],
     ARRAY[
-      E'    IF r.component_type = \'project\' THEN\n      IF COALESCE(r.weekly_contact_hours, 0) <= 0 THEN\n        v_skipped :=',
-      E'    IF r.component_type = \'project\' AND COALESCE(r.counts_toward_regular_load, false) = false THEN\n      IF COALESCE(r.weekly_contact_hours, 0) <= 0 THEN\n        v_skipped :='
-    ],
-    ARRAY[
-      E'    ELSIF r.component_type = \'tutorial\' AND r.explicit_group_size IS NOT NULL AND r.explicit_group_size > 0 THEN',
-      E'    ELSIF r.component_type = \'tutorial\' AND r.explicit_group_size IS NOT NULL AND r.explicit_group_size > 0 THEN'
+      E'    IF r.component_type = ''project'' THEN\n      IF COALESCE(r.weekly_contact_hours, 0) <= 0 THEN\n        v_skipped :=',
+      E'    IF r.component_type = ''project'' AND COALESCE(r.counts_toward_regular_load, false) = false THEN\n      IF COALESCE(r.weekly_contact_hours, 0) <= 0 THEN\n        v_skipped :='
     ],
     ARRAY[
       E'      v_groups_obsolete := v_groups_obsolete + 1;\n\n      IF NOT COALESCE(v_row.is_obsolete, false) THEN\n        UPDATE public.delivery_groups\n        SET is_obsolete = true\n        WHERE id = v_row.id;\n      END IF;',
@@ -271,11 +274,10 @@ BEGIN
     ]
   ];
   FOR i IN 1..array_length(v_pairs, 1) LOOP
-    IF v_pairs[i][1] <> v_pairs[i][2] THEN
-      IF position(v_pairs[i][1] in v_new) = 0 THEN
-        RAISE EXCEPTION 'PATCH_FAILED: generate_cohort_delivery_groups #%', i;
-      END IF;
+    IF position(v_pairs[i][1] in v_new) > 0 THEN
       v_new := replace(v_new, v_pairs[i][1], v_pairs[i][2]);
+    ELSIF position(v_pairs[i][2] in v_new) = 0 THEN
+      RAISE EXCEPTION 'PATCH_FAILED: generate_cohort_delivery_groups #%', i;
     END IF;
   END LOOP;
   EXECUTE v_new;
@@ -285,27 +287,28 @@ BEGIN
   v_new := v_def;
   v_pairs := ARRAY[
     ARRAY[
-      E'\'is_project\', (pcc.component_type = \'project\'),',
-      E'\'is_project\', (pcc.component_type = \'project\' AND COALESCE(pcc.counts_toward_regular_load, true) = false),'
+      E'''is_project'', (pcc.component_type = ''project''),',
+      E'''is_project'', (pcc.component_type = ''project'' AND COALESCE(pcc.counts_toward_regular_load, true) = false),'
     ],
     ARRAY[
-      E'WHEN pcc.component_type = \'project\' THEN \'blocked\'',
-      E'WHEN pcc.component_type = \'project\' AND COALESCE(pcc.counts_toward_regular_load, true) = false THEN \'blocked\''
+      E'WHEN pcc.component_type = ''project'' THEN ''blocked''',
+      E'WHEN pcc.component_type = ''project'' AND COALESCE(pcc.counts_toward_regular_load, true) = false THEN ''blocked'''
     ],
     ARRAY[
-      E'WHEN pcc.component_type = \'project\' THEN \'PROJECT_NON_WEEKLY\'',
-      E'WHEN pcc.component_type = \'project\' AND COALESCE(pcc.counts_toward_regular_load, true) = false THEN \'PROJECT_NON_WEEKLY\''
+      E'WHEN pcc.component_type = ''project'' THEN ''PROJECT_NON_WEEKLY''',
+      E'WHEN pcc.component_type = ''project'' AND COALESCE(pcc.counts_toward_regular_load, true) = false THEN ''PROJECT_NON_WEEKLY'''
     ],
     ARRAY[
-      E'WHEN pcc.component_type IN (\'summer_training\', \'project\') THEN false',
-      E'WHEN pcc.component_type = \'summer_training\' THEN false\n          WHEN pcc.component_type = \'project\' AND COALESCE(pcc.counts_toward_regular_load, true) = false THEN false'
+      E'WHEN pcc.component_type IN (''summer_training'', ''project'') THEN false',
+      E'WHEN pcc.component_type = ''summer_training'' THEN false\n          WHEN pcc.component_type = ''project'' AND COALESCE(pcc.counts_toward_regular_load, true) = false THEN false'
     ]
   ];
   FOR i IN 1..array_length(v_pairs, 1) LOOP
-    IF position(v_pairs[i][1] in v_new) = 0 THEN
+    IF position(v_pairs[i][1] in v_new) > 0 THEN
+      v_new := replace(v_new, v_pairs[i][1], v_pairs[i][2]);
+    ELSIF position(v_pairs[i][2] in v_new) = 0 THEN
       RAISE EXCEPTION 'PATCH_FAILED: list_schedule_builder_v2_work_items #%', i;
     END IF;
-    v_new := replace(v_new, v_pairs[i][1], v_pairs[i][2]);
   END LOOP;
   EXECUTE v_new;
 
@@ -314,23 +317,24 @@ BEGIN
   v_new := v_def;
   v_pairs := ARRAY[
     ARRAY[
-      E'  v_is_project := v_pcc.component_type = \'project\'\n    OR COALESCE(v_dg.excluded_from_standard_workload, false)\n    OR COALESCE(v_pcc.counts_toward_regular_load, true) = false;',
+      E'  v_is_project := v_pcc.component_type = ''project''\n    OR COALESCE(v_dg.excluded_from_standard_workload, false)\n    OR COALESCE(v_pcc.counts_toward_regular_load, true) = false;',
       E'  v_is_project := COALESCE(v_dg.excluded_from_standard_workload, false)\n    OR COALESCE(v_pcc.counts_toward_regular_load, true) = false;'
     ],
     ARRAY[
-      E'        WHEN pcc.component_type = \'project\' OR COALESCE(dg.excluded_from_standard_workload, false)\n          OR COALESCE(pcc.counts_toward_regular_load, true) = false THEN 0',
+      E'        WHEN pcc.component_type = ''project'' OR COALESCE(dg.excluded_from_standard_workload, false)\n          OR COALESCE(pcc.counts_toward_regular_load, true) = false THEN 0',
       E'        WHEN COALESCE(dg.excluded_from_standard_workload, false)\n          OR COALESCE(pcc.counts_toward_regular_load, true) = false THEN 0'
     ],
     ARRAY[
-      E'        WHEN pcc.component_type = \'project\' THEN\n          CASE WHEN (',
-      E'        WHEN pcc.component_type = \'project\' AND COALESCE(pcc.counts_toward_regular_load, true) = false THEN\n          CASE WHEN ('
+      E'        WHEN pcc.component_type = ''project'' THEN\n          CASE WHEN (',
+      E'        WHEN pcc.component_type = ''project'' AND COALESCE(pcc.counts_toward_regular_load, true) = false THEN\n          CASE WHEN ('
     ]
   ];
   FOR i IN 1..array_length(v_pairs, 1) LOOP
-    IF position(v_pairs[i][1] in v_new) = 0 THEN
+    IF position(v_pairs[i][1] in v_new) > 0 THEN
+      v_new := replace(v_new, v_pairs[i][1], v_pairs[i][2]);
+    ELSIF position(v_pairs[i][2] in v_new) = 0 THEN
       RAISE EXCEPTION 'PATCH_FAILED: preview_instructor_workload_after_assignment #%', i;
     END IF;
-    v_new := replace(v_new, v_pairs[i][1], v_pairs[i][2]);
   END LOOP;
   EXECUTE v_new;
 END
