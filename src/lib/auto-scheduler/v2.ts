@@ -13,6 +13,7 @@ import {
   compareDifficulty,
 } from "@/lib/auto-scheduler/generation-ranking";
 import { assessScheduleReadiness } from "@/lib/auto-scheduler/schedule-readiness";
+import { isInstructorAvailabilityEnforced } from "@/lib/scheduling/instructor-availability-policy";
 import {
   assertVersionNotStale,
   filterCandidateRooms,
