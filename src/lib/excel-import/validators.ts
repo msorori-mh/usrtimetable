@@ -47,6 +47,9 @@ interface Lookups {
   instructors?: Map<string, string>;
   studyPlans?: Map<string, string>; // key: program_id|plan_code|version → study_plan_id
   planCourses?: Map<string, string>; // key: study_plan_id|course_id → plan_course_id
+  /** key: program_id|level_id|course_id → plan_course_ids (shared courses may appear in many plans) */
+  planCoursesByProgramLevel?: Map<string, string[]>;
+
   offerings?: Map<string, string>; // key: term_id|course_id|program_id(opt) → offering_id
   sections?: Map<string, string>; // key: course_id|term_id|section_number → section_id
   levels?: Map<string, string>; // key: program_id|level_number → level_id
