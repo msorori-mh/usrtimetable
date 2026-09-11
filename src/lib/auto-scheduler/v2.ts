@@ -593,7 +593,9 @@ export async function runV2AutoSchedule(params: {
             result.message_ar ||
             result.code ||
             lastReason;
+          // Availability-based day skipping only applies when enforcement is on.
           if (
+            isInstructorAvailabilityEnforced() &&
             result.blocking_conflicts.some(
               (conflict) => conflict.code === "instructor_availability_required",
             )
