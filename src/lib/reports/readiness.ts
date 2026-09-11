@@ -1,4 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
+import {
+  isMissingInstructorSpecialization,
+  isMissingInstructorDepartment,
+} from "@/lib/data-onboarding/instructor-review";
 
 export interface ReadinessMetric {
   label: string;
@@ -327,15 +331,13 @@ export async function fetchCollegeReadiness(collegeId: string): Promise<Readines
     {
       label: "محاضرون بدون تخصص",
       total: instructorsRows.length,
-      missing: instructorsRows.filter((i: { specialization: string | null }) => !i.specialization)
-        .length,
+      missing: instructorsRows.filter(isMissingInstructorSpecialization).length,
       category: "resources",
     },
     {
       label: "محاضرون بدون قسم",
       total: instructorsRows.length,
-      missing: instructorsRows.filter((i: { department_id: string | null }) => !i.department_id)
-        .length,
+      missing: instructorsRows.filter(isMissingInstructorDepartment).length,
       category: "resources",
     },
     {

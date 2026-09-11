@@ -1,6 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  isMissingInstructorSpecialization,
+  isMissingInstructorDepartment,
+} from "@/lib/data-onboarding/instructor-review";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { CollegeSwitcher } from "@/components/college-switcher";
 import { Card } from "@/components/ui/card";
@@ -295,12 +299,12 @@ async function fetchReadiness(collegeId: string) {
     {
       label: "محاضرون بدون تخصص",
       total: instructorsRows.length,
-      missing: instructorsRows.filter((i) => !i.specialization).length,
+      missing: instructorsRows.filter(isMissingInstructorSpecialization).length,
     },
     {
       label: "محاضرون بدون قسم",
       total: instructorsRows.length,
-      missing: instructorsRows.filter((i) => !i.department_id).length,
+      missing: instructorsRows.filter(isMissingInstructorDepartment).length,
     },
     {
       label: "قاعات بسعة افتراضية (مطابقة للنوع)",

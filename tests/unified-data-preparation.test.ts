@@ -188,7 +188,7 @@ test("current-data workbook preserves employee keys and numeric workload without
   const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets.instructors);
   assert.equal(rows.length, 1);
   assert.equal(rows[0]["رقم_الموظف"], "EMP42");
-  assert.equal(rows[0]["أقصى_ساعات_أسبوعية"], 12);
+  assert.equal(rows[0]["النصاب الأسبوعي (ساعة)"], 12);
   assert.equal(rows[0]["ساعات_إعفاء_إداري"], 0);
-  assert.equal(rows[0]["الاسم_الكامل"], "'=untrusted");
+  assert.equal(rows[0]["اسم المدرس"], "'=untrusted");
 });

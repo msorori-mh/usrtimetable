@@ -242,9 +242,15 @@ export function PreparationWorkspace({
                       </div>
                       {issue.fixHref && (
                         <Button variant="outline" size="sm" asChild>
-                          <Link to={issue.fixHref as "/programs"}>
-                            {canManage ? "أصلح الآن" : "عرض البيانات"}
-                          </Link>
+                          {issue.fixSearch ? (
+                            <Link to="/instructors" search={issue.fixSearch}>
+                              {canManage ? "أصلح الآن" : "عرض البيانات"}
+                            </Link>
+                          ) : (
+                            <Link to={issue.fixHref as "/programs"}>
+                              {canManage ? "أصلح الآن" : "عرض البيانات"}
+                            </Link>
+                          )}
                         </Button>
                       )}
                     </li>

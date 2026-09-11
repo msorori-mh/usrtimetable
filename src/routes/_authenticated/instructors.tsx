@@ -1,6 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { instructorStatusLabel } from "@/lib/excel-import/instructor-sheet";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { useCanManageActiveCollege } from "@/hooks/use-can-manage";
@@ -39,9 +40,17 @@ import {
   UNKNOWN_EMPLOYMENT_TYPE,
   employmentTypeLabelAr,
 } from "@/lib/instructor-metadata";
+import {
+  INSTRUCTOR_REVIEW_LABELS,
+  instructorNeedsReview,
+  isMissingInstructorSpecialization,
+  parseInstructorReviewSearch,
+  type InstructorReview,
+} from "@/lib/data-onboarding/instructor-review";
 
 export const Route = createFileRoute("/_authenticated/instructors")({
   head: () => ({ meta: [{ title: "المحاضرون" }] }),
+  validateSearch: parseInstructorReviewSearch,
   component: InstructorsPage,
 });
 
@@ -62,6 +71,7 @@ interface Instructor {
   specialization: string | null;
   administrative_release_hours: number;
   notes: string | null;
+  admin_tasks: string | null;
   instructor_type_id: string | null;
 }
 
@@ -90,17 +100,29 @@ function emptyForm() {
     specialization: "",
     administrative_release_hours: 0,
     notes: "",
+    admin_tasks: "",
     instructor_type_id: "",
   };
 }
 
 function InstructorsPage() {
   const { active } = useActiveCollege();
+  // A college switch must not retain an edit form belonging to the previous college.
+  return <InstructorDirectory key={active?.id ?? "no-college"} />;
+}
+
+function InstructorDirectory() {
+  const { active } = useActiveCollege();
+  const { review } = Route.useSearch();
+  const navigate = Route.useNavigate();
   const canManage = useCanManageActiveCollege();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Instructor | null>(null);
   const [form, setForm] = useState(emptyForm());
+  const [repairField, setRepairField] = useState<InstructorReview | null>(null);
+  const specializationRef = useRef<HTMLInputElement>(null);
+  const departmentRef = useRef<HTMLButtonElement>(null);
 
   const { data: depts } = useQuery({
     queryKey: ["dept-min", active?.id],
@@ -129,14 +151,19 @@ function InstructorsPage() {
       ).data ?? [],
   });
 
-  const { data: rows, isLoading } = useQuery({
+  const {
+    data: rows,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: ["instructors", active?.id],
     enabled: !!active,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("instructors")
         .select(
-          "id, college_id, department_id, full_name, academic_rank, email, phone, employment_type, max_weekly_hours, is_active, employee_number, full_name_ar, full_name_en, specialization, administrative_release_hours, notes, instructor_type_id",
+          "id, college_id, department_id, full_name, academic_rank, email, phone, employment_type, max_weekly_hours, is_active, employee_number, full_name_ar, full_name_en, specialization, administrative_release_hours, notes, admin_tasks, instructor_type_id",
         )
         .eq("college_id", active!.id)
         .order("full_name");
@@ -148,6 +175,7 @@ function InstructorsPage() {
   const save = useMutation({
     mutationFn: async () => {
       if (!active) throw new Error("اختر كلّية");
+      if (!canManage) throw new Error("صلاحيتك للقراءة فقط");
       if (!form.full_name.trim()) throw new Error("الاسم مطلوب");
       const payload = {
         full_name: form.full_name.trim(),
@@ -163,12 +191,17 @@ function InstructorsPage() {
         max_weekly_hours: Number(form.max_weekly_hours) || 0,
         administrative_release_hours: Number(form.administrative_release_hours) || 0,
         notes: form.notes.trim() || null,
+        admin_tasks: form.admin_tasks.trim() || null,
         is_active: form.is_active,
         instructor_type_id: form.instructor_type_id || null,
         college_id: active.id,
       };
       if (editing) {
-        const { error } = await supabase.from("instructors").update(payload).eq("id", editing.id);
+        const { error } = await supabase
+          .from("instructors")
+          .update(payload)
+          .eq("id", editing.id)
+          .eq("college_id", active.id);
         if (error) throw error;
         await logAudit({
           action: "update",
@@ -193,7 +226,13 @@ function InstructorsPage() {
     },
     onSuccess: () => {
       toast.success(editing ? "تم التحديث" : "تمت الإضافة");
-      qc.invalidateQueries({ queryKey: ["instructors", active?.id] });
+      for (const key of [
+        "instructors",
+        "data-onboarding-readiness",
+        "data-readiness",
+        "rep-readiness",
+      ])
+        void qc.invalidateQueries({ queryKey: [key, active?.id] });
       setOpen(false);
       setEditing(null);
     },
@@ -221,7 +260,8 @@ function InstructorsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const startEdit = (i: Instructor) => {
+  const startEdit = (i: Instructor, field: InstructorReview | null = review ?? null) => {
+    setRepairField(field);
     setEditing(i);
     setForm({
       full_name: i.full_name,
@@ -238,11 +278,13 @@ function InstructorsPage() {
       specialization: i.specialization ?? "",
       administrative_release_hours: i.administrative_release_hours ?? 0,
       notes: i.notes ?? "",
+      admin_tasks: i.admin_tasks ?? "",
       instructor_type_id: i.instructor_type_id ?? "",
     });
     setOpen(true);
   };
   const startCreate = () => {
+    setRepairField(null);
     setEditing(null);
     setForm(emptyForm());
     setOpen(true);
@@ -251,9 +293,10 @@ function InstructorsPage() {
   const deptMap = new Map((depts ?? []).map((d) => [d.id, d.name]));
   const typeRows = (types ?? []) as InstructorTypeRow[];
   const typeMap = new Map(typeRows.map((t) => [t.id, t]));
+  const visibleRows = review ? rows?.filter((i) => instructorNeedsReview(i, review)) : rows;
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-5xl" dir="rtl">
       <header className="mb-6 flex items-center gap-3">
         <span className="grid h-11 w-11 place-items-center rounded-lg bg-secondary text-primary">
           <UserSquare2 className="h-5 w-5" />
@@ -271,9 +314,19 @@ function InstructorsPage() {
             <DialogTrigger asChild>
               <Button onClick={startCreate}>محاضر جديد</Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent
+              className="max-h-[90dvh] max-w-lg overflow-y-auto"
+              onOpenAutoFocus={(event) => {
+                if (!editing || !repairField) return;
+                event.preventDefault();
+                if (repairField === "missing_specialization") specializationRef.current?.focus();
+                else departmentRef.current?.focus();
+              }}
+            >
               <DialogHeader>
-                <DialogTitle>{editing ? "تعديل محاضر" : "محاضر جديد"}</DialogTitle>
+                <DialogTitle>
+                  {editing ? `تعديل بيانات ${editing.full_name}` : "محاضر جديد"}
+                </DialogTitle>
               </DialogHeader>
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
@@ -284,12 +337,30 @@ function InstructorsPage() {
                       onChange={(e) => setForm({ ...form, employee_number: e.target.value })}
                     />
                   </div>
-                  <div>
-                    <Label>التخصص</Label>
+                  <div
+                    className={
+                      repairField === "missing_specialization"
+                        ? "rounded-md border border-amber-500 bg-amber-50/40 p-2"
+                        : undefined
+                    }
+                  >
+                    <Label htmlFor="instructor-specialization">التخصص</Label>
                     <Input
+                      id="instructor-specialization"
+                      ref={specializationRef}
+                      aria-describedby={
+                        repairField === "missing_specialization"
+                          ? "specialization-review-help"
+                          : undefined
+                      }
                       value={form.specialization}
                       onChange={(e) => setForm({ ...form, specialization: e.target.value })}
                     />
+                    {repairField === "missing_specialization" && (
+                      <p id="specialization-review-help" className="mt-2 text-xs text-amber-800">
+                        هذا هو الحقل الناقص في المراجعة. أدخل التخصص العلمي للمدرس ثم احفظ.
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div>
@@ -335,13 +406,27 @@ function InstructorsPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div>
-                    <Label>القسم</Label>
+                  <div
+                    className={
+                      repairField === "missing_department"
+                        ? "rounded-md border border-amber-500 bg-amber-50/40 p-2"
+                        : undefined
+                    }
+                  >
+                    <Label htmlFor="instructor-department">القسم</Label>
                     <Select
                       value={form.department_id}
                       onValueChange={(v) => setForm({ ...form, department_id: v })}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger
+                        id="instructor-department"
+                        ref={departmentRef}
+                        aria-describedby={
+                          repairField === "missing_department"
+                            ? "department-review-help"
+                            : undefined
+                        }
+                      >
                         <SelectValue placeholder="اختر القسم" />
                       </SelectTrigger>
                       <SelectContent>
@@ -352,6 +437,11 @@ function InstructorsPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                    {repairField === "missing_department" && (
+                      <p id="department-review-help" className="mt-2 text-xs text-amber-800">
+                        هذا هو الحقل الناقص في المراجعة. حدّد القسم الذي يتبع له المدرس ثم احفظ.
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -396,7 +486,7 @@ function InstructorsPage() {
                     </p>
                   </div>
                   <div>
-                    <Label>الحد الأسبوعي للساعات</Label>
+                    <Label>النصاب الأسبوعي (ساعة)</Label>
                     <Input
                       type="number"
                       value={form.max_weekly_hours}
@@ -424,6 +514,14 @@ function InstructorsPage() {
                       onChange={(e) => setForm({ ...form, notes: e.target.value })}
                     />
                   </div>
+                </div>
+                <div>
+                  <Label htmlFor="instructor-role">الصفة / المهام الإدارية</Label>
+                  <Input
+                    id="instructor-role"
+                    value={form.admin_tasks}
+                    onChange={(e) => setForm({ ...form, admin_tasks: e.target.value })}
+                  />
                 </div>
                 <div className="grid grid-cols-1 gap-3">
                   <div>
@@ -487,21 +585,89 @@ function InstructorsPage() {
         )}
       </div>
 
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="min-w-64">
+          <Label htmlFor="instructor-review-filter">عرض البيانات</Label>
+          <Select
+            value={review ?? "all"}
+            onValueChange={(value) =>
+              void navigate({
+                search: parseInstructorReviewSearch({ review: value }),
+                replace: true,
+              })
+            }
+          >
+            <SelectTrigger id="instructor-review-filter">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">كل المدرسين</SelectItem>
+              {Object.entries(INSTRUCTOR_REVIEW_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <Button asChild variant="outline">
+          <Link to="/data-onboarding" search={{ step: "readiness_check" }}>
+            العودة إلى المراجعة النهائية
+          </Link>
+        </Button>
+      </div>
+      {review && active && !isLoading && !isError && (
+        <Card className="mb-4 space-y-2 border-amber-500/40 p-4" role="status">
+          <p className="font-semibold">{INSTRUCTOR_REVIEW_LABELS[review]}</p>
+          <p className="text-sm">
+            السجلات التي تحتاج استكمالًا: {visibleRows?.length ?? 0} من إجمالي {rows?.length ?? 0}{" "}
+            مدرسًا في {active.name}.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {canManage
+              ? "اضغط زر الاستكمال بجانب الاسم لفتح الحقل الناقص. تتحدث القائمة ونتيجة المراجعة بعد الحفظ."
+              : "صلاحيتك للقراءة فقط. يظهر النقص بجانب كل اسم؛ يستكمل الأدمن أو مدير الكلية البيانات."}
+          </p>
+        </Card>
+      )}
       <Card className="overflow-hidden">
-        {isLoading ? (
+        {!active ? (
+          <p className="p-6 text-center text-muted-foreground">اختر كلية لعرض المدرسين.</p>
+        ) : isError ? (
+          <div className="space-y-2 p-6 text-center" role="alert">
+            <p>تعذر تحميل بيانات المدرسين. لا يمكن تأكيد اكتمال المراجعة.</p>
+            <Button variant="outline" onClick={() => void refetch()}>
+              إعادة المحاولة
+            </Button>
+          </div>
+        ) : isLoading ? (
           <p className="p-6 text-center text-muted-foreground">جارٍ التحميل...</p>
-        ) : !rows || rows.length === 0 ? (
-          <p className="p-6 text-center text-muted-foreground">لا يوجد محاضرون بعد.</p>
+        ) : !visibleRows || visibleRows.length === 0 ? (
+          <p className="p-6 text-center text-muted-foreground">
+            {review
+              ? "لا توجد سجلات ناقصة بهذا المعيار في الكلية الحالية."
+              : "لا يوجد محاضرون بعد."}
+          </p>
         ) : (
           <ul className="divide-y divide-border">
-            {rows.map((i) => (
-              <li key={i.id} className="flex items-center justify-between p-4">
-                <div>
+            {visibleRows.map((i) => (
+              <li key={i.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
+                <div className="min-w-0">
                   <p className="font-semibold">
                     {i.full_name}{" "}
                     {!i.is_active && (
-                      <span className="ms-2 rounded bg-muted px-2 py-0.5 text-[10px]">غير نشط</span>
+                      <span className="ms-2 rounded bg-muted px-2 py-0.5 text-[10px]">
+                        {instructorStatusLabel(i.is_active, i.notes)}
+                      </span>
                     )}
+                  </p>
+                  <p
+                    className={`mt-1 text-sm ${isMissingInstructorSpecialization(i) ? "font-medium text-amber-800" : "text-muted-foreground"}`}
+                  >
+                    التخصص:{" "}
+                    {isMissingInstructorSpecialization(i)
+                      ? "غير محدد — يحتاج استكمالًا"
+                      : i.specialization}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {i.academic_rank ?? "—"} ·{" "}
@@ -521,15 +687,33 @@ function InstructorsPage() {
                       {i.email ?? ""} {i.phone ? ` · ${i.phone}` : ""}
                     </p>
                   )}
+                  {i.admin_tasks && (
+                    <p className="text-xs text-muted-foreground">الصفة: {i.admin_tasks}</p>
+                  )}
                 </div>
                 {canManage && (
-                  <div className="flex gap-1">
-                    <Button size="sm" variant="ghost" onClick={() => startEdit(i)}>
+                  <div className="flex flex-wrap gap-1">
+                    {(review || isMissingInstructorSpecialization(i)) && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => startEdit(i, review ?? "missing_specialization")}
+                      >
+                        {review === "missing_department" ? "استكمال القسم" : "استكمال التخصص"}
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label={`تعديل ${i.full_name}`}
+                      onClick={() => startEdit(i)}
+                    >
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
                     <Button
                       size="sm"
                       variant="ghost"
+                      aria-label={`حذف ${i.full_name}`}
                       onClick={() => {
                         if (confirm("حذف المحاضر؟")) del.mutate(i.id);
                       }}

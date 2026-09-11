@@ -1,4 +1,5 @@
 /** Shared types for DATA-ONBOARDING-READINESS-WIZARD-01 (read-only classification). */
+import type { InstructorReviewSearch } from "./instructor-review";
 
 export type WizardStepStatus = "complete" | "incomplete" | "needs-review" | "warning" | "blocker";
 
@@ -36,6 +37,7 @@ export interface ClassifiedReadinessIssue {
   total: number;
   /** Route for أصلح الآن — null when informational only. */
   fixHref: string | null;
+  fixSearch?: InstructorReviewSearch;
   fixLabelAr: string;
 }
 

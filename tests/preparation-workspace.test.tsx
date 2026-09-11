@@ -11,6 +11,7 @@ import {
 import { PreparationWorkspace } from "../src/components/data-onboarding/preparation-workspace";
 import { PREPARATION_STEPS } from "../src/lib/data-onboarding/preparation";
 import type { OnboardingReadinessSnapshot } from "../src/lib/data-onboarding/snapshot";
+import { classifyNewFlowReadinessIssues } from "../src/lib/data-onboarding/classify";
 
 const snapshot = {
   steps: PREPARATION_STEPS.map((s) => ({
@@ -74,4 +75,22 @@ test("readiness failure blocks the schedule CTA, and the first schedule is allow
   });
   assert.ok(blocked.includes("استكمل النواقص قبل إنشاء الجدول"));
   assert.ok(!blocked.includes("الانتقال إلى إنشاء الجدول"));
+});
+
+test("final review links managers and read-only viewers to the exact missing instructor field", async () => {
+  const newFlowIssues = classifyNewFlowReadinessIssues([
+    { label: "محاضرون بدون تخصص", missing: 32, total: 32, category: "resources" },
+    { label: "محاضرون بدون قسم", missing: 2, total: 32, category: "resources" },
+  ]);
+  for (const canManage of [true, false]) {
+    const html = await render(canManage, {
+      selectedStep: "readiness_check",
+      selectedEntity: undefined,
+      snapshot: { ...snapshot, newFlowIssues },
+    });
+    assert.ok(html.includes("/instructors?review=missing_specialization"));
+    assert.ok(html.includes("/instructors?review=missing_department"));
+    assert.ok(html.includes(canManage ? "أصلح الآن" : "عرض البيانات"));
+    if (!canManage) assert.ok(!html.includes("أصلح الآن"));
+  }
 });

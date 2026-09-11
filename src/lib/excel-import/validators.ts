@@ -4,6 +4,11 @@ import { resolveRoomTypeFields } from "./room-type-normalize";
 import { deliveryGroupIsolationKey, sectionIsolationKey } from "./keys";
 import { requireImportManager } from "./safety";
 import { normalizeEmploymentType } from "@/lib/instructor-metadata";
+import {
+  instructorHeader,
+  prepareInstructorRow,
+  type ExistingInstructor,
+} from "./instructor-sheet";
 import type { ImportEntity, ParsedRow, RowError, ValidationResult } from "./types";
 import {
   buildPlanComponentSyncPayload,
@@ -22,6 +27,8 @@ function toBool(v: unknown): boolean | null {
 }
 
 interface Lookups {
+  instructorRecords?: ExistingInstructor[];
+  instructorDepartments?: { id: string; name: string }[];
   instructorTypes?: Map<string, string>;
   roomTypes?: Map<string, string>;
   roomTypeCatalog?: Array<{
@@ -73,12 +80,32 @@ async function loadLookups(entity: ImportEntity, collegeId: string): Promise<Loo
   };
 
   if (entity === "instructors") {
-    const [it, dp] = await Promise.all([
-      fetchAll("instructor_types", "id, code"),
-      fetchAll("departments", "id, code"),
+    const fetchInstructorCatalog = async (
+      table: "instructors" | "instructor_types" | "departments",
+    ) => {
+      const result: Record<string, any>[] = [];
+      for (let from = 0; ; from += 500) {
+        const { data, error } = await supabase
+          .from(table)
+          .select("*")
+          .eq("college_id", collegeId)
+          .order("id")
+          .range(from, from + 499);
+        if (error) throw error;
+        result.push(...(data ?? []));
+        if (!data || data.length < 500) break;
+      }
+      return result;
+    };
+    const [it, dp, instructors] = await Promise.all([
+      fetchInstructorCatalog("instructor_types"),
+      fetchInstructorCatalog("departments"),
+      fetchInstructorCatalog("instructors"),
     ]);
     lk.instructorTypes = new Map(it.map((r) => [r.code, r.id]));
     lk.departments = new Map(dp.map((r) => [r.code, r.id]));
+    lk.instructorDepartments = dp.map((r) => ({ id: r.id, name: r.name }));
+    lk.instructorRecords = instructors as ExistingInstructor[];
   }
   if (entity === "rooms") {
     const [rt, bd] = await Promise.all([
@@ -245,10 +272,23 @@ function normalize(
   duplicateHeaders: string[];
 } {
   const tpl = TEMPLATES[entity];
+  if (entity === "instructors") {
+    headers = headers.map((h) => instructorHeader(h, tpl.columns));
+    rows = rows.map((row) =>
+      Object.fromEntries(
+        Object.entries(row).map(([h, value]) => [instructorHeader(h, tpl.columns), value]),
+      ),
+    );
+  }
   const trimmed = headers.map((h) => h.trim()).filter(Boolean);
   const headerSet = new Set(trimmed);
   const missingHeaders = tpl.columns
-    .filter((c) => c.required && !headerSet.has(c.header))
+    .filter(
+      (c) =>
+        c.required &&
+        !(entity === "instructors" && c.key === "employee_number") &&
+        !headerSet.has(c.header),
+    )
     .map((c) => c.header);
   const knownHeaders = new Set(tpl.columns.map((c) => c.header));
   const unknownHeaders = [...headerSet].filter((h) => !knownHeaders.has(h));
@@ -298,6 +338,8 @@ export async function validate(
   headers: string[],
   rows: Record<string, unknown>[],
   collegeId: string,
+  rowNumbers?: number[],
+  headerRowNumber = 1,
 ): Promise<ValidationResult & { missingHeaders: string[]; unknownHeaders: string[] }> {
   await requireImportManager(collegeId);
   const tpl = TEMPLATES[entity];
@@ -307,6 +349,10 @@ export async function validate(
     entity,
   );
   const errors: RowError[] = [];
+  if (rowNumbers)
+    parsed.forEach((row, index) => {
+      row.rowNumber = rowNumbers[index] ?? row.rowNumber;
+    });
   const validRows: ParsedRow[] = [];
   const invalidRows: ParsedRow[] = [];
 
@@ -315,7 +361,7 @@ export async function validate(
       validRows: [],
       invalidRows: parsed,
       errors: duplicateHeaders.map((h) => ({
-        rowNumber: 1,
+        rowNumber: headerRowNumber,
         columnName: h,
         errorCode: "duplicate_header",
         message: `عنوان عمود مكرر: ${h}`,
@@ -330,7 +376,7 @@ export async function validate(
       validRows: [],
       invalidRows: parsed,
       errors: missingHeaders.map((h) => ({
-        rowNumber: 1,
+        rowNumber: headerRowNumber,
         columnName: h,
         errorCode: "missing_column",
         message: `عمود مطلوب مفقود: ${h}`,
@@ -346,7 +392,7 @@ export async function validate(
       validRows: [],
       invalidRows: parsed,
       errors: unknownHeaders.map((h) => ({
-        rowNumber: 1,
+        rowNumber: headerRowNumber,
         columnName: h,
         errorCode: "unknown_column",
         message: `عمود غير معروف في القالب الرسمي: ${h}`,
@@ -360,7 +406,11 @@ export async function validate(
 
   // Existing-key set for simple table entities
   const existingKeys = new Set<string>();
-  if (tpl.commitMode !== "custom") {
+  if (entity === "instructors") {
+    for (const row of lk.instructorRecords ?? []) {
+      if (row.employee_number) existingKeys.add(row.employee_number.trim().toLowerCase());
+    }
+  } else if (tpl.commitMode !== "custom") {
     const uniqueCol = tpl.uniqueKey;
 
     const { data: existing } = await (supabase.from(entity as never) as any)
@@ -376,7 +426,15 @@ export async function validate(
   const uniqueColHeader = tpl.columns.find((c) => c.key === tpl.uniqueKey)?.header;
 
   for (const row of parsed) {
-    const rowErrors: RowError[] = [];
+    const rowErrors: RowError[] =
+      entity === "instructors"
+        ? prepareInstructorRow(
+            row,
+            lk.instructorRecords ?? [],
+            tpl.columns,
+            lk.instructorDepartments,
+          )
+        : [];
 
     for (const c of tpl.columns) {
       if (

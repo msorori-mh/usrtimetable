@@ -7,6 +7,7 @@ import type {
   ReadinessSeverityCounts,
 } from "./types";
 import { PILOT_STUDY_SYSTEMS } from "./types";
+import { instructorReviewForMetric } from "./instructor-review";
 
 /** Labels that belong exclusively to the Legacy course-offering / V1 TA path. */
 const LEGACY_LABEL_MARKERS = [
@@ -114,6 +115,10 @@ export function classifyNewFlowReadinessIssues(
       missing: m.missing,
       total: m.total,
       fixHref: m.missing > 0 ? fix.href : null,
+      fixSearch:
+        m.missing > 0 && instructorReviewForMetric(m.label)
+          ? { review: instructorReviewForMetric(m.label) }
+          : undefined,
       fixLabelAr: fix.labelAr,
     };
   });
