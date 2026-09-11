@@ -13,8 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
-import { exportRowsToXlsx } from "@/lib/admin-export/to-xlsx";
-import { Library, Pencil, Trash2, Download } from "lucide-react";
+import { AdminExportMenu } from "@/components/admin-export-menu";
+import { activeFilters, coursesExportDataset } from "@/lib/admin-export/datasets";
+import { Library, Pencil, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/courses")({
   head: () => ({ meta: [{ title: "المقررات" }] }),
@@ -144,23 +145,28 @@ function CoursesPage() {
     });
   }, [rows, deptFilter, programCourseIds, planCourseIds]);
 
-  const handleExport = () => {
-    if (filtered.length === 0) { toast.info("لا توجد سجلات للتصدير"); return; }
-    const data = filtered.map((c) => ({
-      "الرمز": c.code,
-      "الاسم": c.name,
-      "القسم": deptMap.get(c.department_id) ?? "",
-      "الساعات المعتمدة": c.credit_hours,
-      "نظري": c.theory_hours,
-      "عملي": c.practical_hours,
-      "طبيعة المقرر": c.course_nature ?? "",
-      "مشترك": c.is_shared ? "نعم" : "لا",
-    }));
-    const parts = ["courses"];
-    if (progFilter !== ALL) parts.push(progMap.get(progFilter)?.name ?? "");
-    if (planFilter !== ALL) parts.push((plans ?? []).find((p) => p.id === planFilter)?.name ?? "");
-    exportRowsToXlsx(parts.filter(Boolean).join("-"), "المقررات", data);
-  };
+  const coursesDataset = () =>
+    coursesExportDataset({
+      rows: filtered,
+      collegeName: active?.name ?? null,
+      departmentLabel: (id) => (id ? (deptMap.get(id) ?? "") : ""),
+      fileBase: "courses",
+      filters: activeFilters([
+        {
+          label: "القسم",
+          value: deptFilter === ALL ? "" : (deptMap.get(deptFilter) ?? ""),
+        },
+        {
+          label: "البرنامج",
+          value: progFilter === ALL ? "" : (progMap.get(progFilter)?.name ?? ""),
+        },
+        {
+          label: "الخطة الدراسية",
+          value:
+            planFilter === ALL ? "" : ((plans ?? []).find((p) => p.id === planFilter)?.name ?? ""),
+        },
+      ]),
+    });
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -175,9 +181,11 @@ function CoursesPage() {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <CollegeSwitcher />
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleExport} disabled={!rows || rows.length === 0}>
-            <Download className="ms-1 h-4 w-4" /> تصدير Excel
-          </Button>
+          <AdminExportMenu
+            testId="courses-export"
+            disabled={filtered.length === 0}
+            dataset={coursesDataset}
+          />
           {canManage && (
             <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild><Button onClick={startCreate} disabled={!depts || depts.length === 0}>مقرر جديد</Button></DialogTrigger>
