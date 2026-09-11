@@ -1,3 +1,4 @@
+import { ACADEMIC_STUDY_SYSTEMS, ACADEMIC_STUDY_SYSTEM_LABELS } from "@/lib/study-systems";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -361,10 +362,11 @@ function TeachingAssignmentsV2Page() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="_all">الكل</SelectItem>
-                  <SelectItem value="regular">regular</SelectItem>
-                  <SelectItem value="parallel">parallel</SelectItem>
-                  <SelectItem value="evening">evening</SelectItem>
-                  <SelectItem value="distance">distance</SelectItem>
+                  {ACADEMIC_STUDY_SYSTEMS.map((system) => (
+                    <SelectItem key={system} value={system}>
+                      {ACADEMIC_STUDY_SYSTEM_LABELS[system]}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -443,7 +445,8 @@ function TeachingAssignmentsV2Page() {
               </p>
             ) : rows.length === 0 ? (
               <p className="p-6 text-center text-muted-foreground">
-                لا توجد مجموعات محاضرات ومعامل أسبوعية مطابقة. ولّد المجموعات من الدفعات الدراسية أولاً.
+                لا توجد مجموعات محاضرات ومعامل أسبوعية مطابقة. ولّد المجموعات من الدفعات الدراسية
+                أولاً.
               </p>
             ) : (
               <div className="overflow-x-auto">

@@ -1,3 +1,5 @@
+import { ACADEMIC_STUDY_SYSTEM_LABELS } from "../study-systems";
+
 /**
  * Academic source workbook schema for teaching assignments bulk import.
  * Dual-mode: auto-detect vs official teaching_assignments_v2 template.
@@ -54,9 +56,17 @@ export const SOURCE_STUDY_SYSTEM_OPTIONS: ReadonlyArray<{
   label: string;
   systems: readonly ("regular" | "parallel")[];
 }> = [
-  { value: "regular_only", label: "منتظم فقط", systems: ["regular"] },
-  { value: "parallel_only", label: "نفقة خاصة فقط", systems: ["parallel"] },
-  { value: "both", label: "المنتظم والنفقة الخاصة", systems: ["regular", "parallel"] },
+  {
+    value: "regular_only",
+    label: `${ACADEMIC_STUDY_SYSTEM_LABELS.regular} فقط`,
+    systems: ["regular"],
+  },
+  {
+    value: "parallel_only",
+    label: `${ACADEMIC_STUDY_SYSTEM_LABELS.parallel} فقط`,
+    systems: ["parallel"],
+  },
+  { value: "both", label: "العام والموازي (نفقة خاصة)", systems: ["regular", "parallel"] },
 ];
 
 export function expandStudySystems(scope: SourceStudySystemScope): ("regular" | "parallel")[] {

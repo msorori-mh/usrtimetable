@@ -1,9 +1,7 @@
+import { ACADEMIC_STUDY_SYSTEM_LABELS } from "../study-systems";
+
 export const COHORT_SYSTEM_LABELS: Record<string, string> = {
-  regular: "النظام العام",
-  parallel: "النفقة الخاصة",
-  evening: "مسائي",
-  distance: "عن بُعد",
-  other: "نظام آخر",
+  ...ACADEMIC_STUDY_SYSTEM_LABELS,
 };
 export const COHORT_COUNT_LABELS: Record<string, string> = {
   estimated: "تقديري",

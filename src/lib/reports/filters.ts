@@ -1,3 +1,4 @@
+import { ACADEMIC_STUDY_SYSTEM_LABELS } from "../study-systems";
 import type { SVStatus } from "@/lib/schedule-versions/lifecycle";
 import type { ReportFilters, ReportStatusMode, ReportStudySystem } from "@/lib/reports/types";
 
@@ -12,8 +13,7 @@ export const STATUS_MODE_LABELS: Record<ReportStatusMode, string> = {
 };
 
 export const STUDY_SYSTEM_LABELS: Record<ReportStudySystem, string> = {
-  regular: "النظام العام",
-  parallel: "النظام الموازي",
+  ...ACADEMIC_STUDY_SYSTEM_LABELS,
   all: "الكل",
 };
 
@@ -30,14 +30,14 @@ export function statusesForMode(mode: ReportStatusMode): SVStatus[] {
 }
 
 /** Human-readable summary of active report filters. */
-export function buildFilterSummary(filters: ReportFilters, labels?: {
-  termName?: string;
-  versionName?: string;
-}): string {
-  const parts = [
-    STATUS_MODE_LABELS[filters.statusMode],
-    STUDY_SYSTEM_LABELS[filters.studySystem],
-  ];
+export function buildFilterSummary(
+  filters: ReportFilters,
+  labels?: {
+    termName?: string;
+    versionName?: string;
+  },
+): string {
+  const parts = [STATUS_MODE_LABELS[filters.statusMode], STUDY_SYSTEM_LABELS[filters.studySystem]];
   if (labels?.termName) parts.unshift(`الفصل: ${labels.termName}`);
   if (labels?.versionName) parts.push(`النسخة: ${labels.versionName}`);
   return parts.join(" · ");
