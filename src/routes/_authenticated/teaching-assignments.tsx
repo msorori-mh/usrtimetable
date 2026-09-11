@@ -19,6 +19,8 @@ import type {
   WorkspaceFilters,
 } from "@/lib/academic-delivery/teaching-assignments-v2";
 import { CollegeSwitcher } from "@/components/college-switcher";
+import { AdminExportMenu } from "@/components/admin-export-menu";
+import { activeFilters, teachingAssignmentsExportDataset } from "@/lib/admin-export/datasets";
 import { InstructorCombobox } from "@/components/teaching-assignments/instructor-combobox";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
