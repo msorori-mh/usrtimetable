@@ -188,7 +188,9 @@ async function fetchReadiness(collegeId: string) {
         .select("id, specialization, department_id, instructor_type_id", { count: "exact" }),
     ),
     scope(
-      supabase.from("rooms").select("id, capacity, room_type_id, room_type", { count: "exact" }),
+      supabase
+        .from("rooms")
+        .select("id, capacity, room_type_id, room_type, is_active", { count: "exact" }),
     ),
     scope(supabase.from("course_offerings").select("id, expected_students", { count: "exact" })),
     scope(
@@ -201,7 +203,7 @@ async function fetchReadiness(collegeId: string) {
         .from("schedule_sessions")
         .select("id, room_id, start_time, end_time, day_of_week", { count: "exact" }),
     ),
-    scope(supabase.from("room_types").select("id, default_capacity")),
+    scope(supabase.from("room_types").select("id, default_capacity, name_ar")),
     scope(supabase.from("instructor_availability").select("instructor_id")),
   ]);
 
@@ -254,24 +256,7 @@ async function fetchReadiness(collegeId: string) {
       total: instructorsRows.length,
       missing: instructorsRows.filter(isMissingInstructorDepartment).length,
     },
-    {
-      label: "قاعات بسعة افتراضية (مطابقة للنوع)",
-      total: roomsRows.length,
-      missing: roomsRows.filter(
-        (r) => r.room_type_id && r.capacity === roomTypeMap.get(r.room_type_id),
-      ).length,
-    },
-    {
-      label: "قاعات بدون نوع قاعة",
-      total: roomsRows.length,
-      missing: roomsRows.filter((r) => !r.room_type_id && !r.room_type).length,
-    },
-    {
-      label: "قاعات بسعة ≤ 0",
-      total: roomsRows.length,
-      missing: roomsRows.filter((r) => !r.capacity || r.capacity <= 0).length,
-      critical: true,
-    },
+    ...roomCapacityReadinessMetrics(roomsRows, (roomTypes.data ?? []) as ReadinessRoomTypeRow[]),
   ];
 
   // Instructor availability — per category (Phase 1.5A)
