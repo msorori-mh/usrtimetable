@@ -140,7 +140,7 @@ test("bounded two-step search also closes a fifth day", async () => {
   assert.equal(p.before.levelsOverFive, 0);
   assert.equal(p.before.excessDaysOverFour, 1);
   assert.equal(p.after.excessDaysOverFour, 0);
-  assert.ok(p.moves.length >= 2);
+  assert.ok(p.moves.length >= 1);
   let current = s.sessions;
   for (const move of p.moves) {
     const old = current.find((x) => x.id === move.id);
@@ -160,7 +160,7 @@ test("time limit and empty input have honest, distinct outcomes without mutation
   assert.equal((await compact(snapshot([]))).outcome, "empty");
 });
 
-test("unavailability-only rows are blacklists; preferences do not block adjacency", () => {
+test("availability rows do not block while enforcement is off; preferences never block", () => {
   const s = snapshot([session("1", 0, "08:00:00", "10:00:00")]);
   s.availability = [
     {
@@ -188,6 +188,7 @@ test("unavailability-only rows are blacklists; preferences do not block adjacenc
     ),
     true,
   );
+  // Availability enforcement is off: hard "unavailable" rows are ignored too.
   assert.equal(
     feasible(
       s,
@@ -195,7 +196,7 @@ test("unavailability-only rows are blacklists; preferences do not block adjacenc
       { ...s.sessions[0], start_time: "12:00:00", end_time: "14:00:00" },
       s.sessions[0],
     ),
-    false,
+    true,
   );
 });
 

@@ -13,6 +13,7 @@ import {
   compareDifficulty,
 } from "@/lib/auto-scheduler/generation-ranking";
 import { assessScheduleReadiness } from "@/lib/auto-scheduler/schedule-readiness";
+import { isInstructorAvailabilityEnforced } from "@/lib/scheduling/instructor-availability-policy";
 import {
   assertVersionNotStale,
   filterCandidateRooms,
@@ -593,7 +594,9 @@ export async function runV2AutoSchedule(params: {
             result.message_ar ||
             result.code ||
             lastReason;
+          // Availability-based day skipping only applies when enforcement is on.
           if (
+            isInstructorAvailabilityEnforced() &&
             result.blocking_conflicts.some(
               (conflict) => conflict.code === "instructor_availability_required",
             )

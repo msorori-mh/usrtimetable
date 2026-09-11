@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { buildInstructorCategoryMap, requiresAvailability } from "@/lib/instructor-category";
+import { isInstructorAvailabilityEnforced } from "@/lib/scheduling/instructor-availability-policy";
 import { evaluateCapacityAgainstRoom } from "@/lib/schedule-builder/enrollment-trust";
 import {
   CAPACITY_EXCEPTION_LIMIT,
@@ -421,11 +422,19 @@ export async function validateProposed(params: {
       }
     }
 
-    // 5. instructor availability — per category (Phase 1.5A business rules)
+    // 5. instructor availability — only when enforcement is switched on.
+    // Default: every instructor is available on all approved teaching times,
+    // and missing/incomplete availability rows never block scheduling.
     const cat = instrCategory.get(s.instructor_id) ?? "permanent";
-    const allWindows = (instrAvail ?? []).filter((a) => a.instructor_id === s.instructor_id);
-    const hardWindows = allWindows.filter((a) => a.day_of_week === s.day_of_week);
-    if (hardWindows.length === 0) {
+    const allWindows = isInstructorAvailabilityEnforced()
+      ? (instrAvail ?? []).filter((a) => a.instructor_id === s.instructor_id)
+      : [];
+    const hardWindows = isInstructorAvailabilityEnforced()
+      ? allWindows.filter((a) => a.day_of_week === s.day_of_week)
+      : [];
+    if (!isInstructorAvailabilityEnforced()) {
+      // no availability conflict is produced in this mode
+    } else if (hardWindows.length === 0) {
       // No availability rows for this day.
       // Permanent: assume default working week → no conflict.
       // External / Other college: availability is mandatory → block.
