@@ -192,7 +192,7 @@ function DeliveryGroupsPage() {
                 </tr>
               </thead>
               <tbody>
-                {(rows ?? []).map((g) => (
+                {visibleRows.map((g) => (
                   <tr
                     key={g.id}
                     className={`border-t ${g.is_obsolete ? "bg-muted/30 text-muted-foreground" : ""}`}
