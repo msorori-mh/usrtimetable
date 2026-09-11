@@ -20,6 +20,8 @@ import { checkCohortDeliveryGroupRoomTypes } from "@/lib/academic-delivery/cohor
 import type { CohortCurriculumSummary } from "@/lib/academic-delivery/cohort-curriculum";
 import type { DeliveryGroupGeneratorSummary } from "@/lib/academic-delivery/delivery-group-generator-summary";
 import { CollegeSwitcher } from "@/components/college-switcher";
+import { AdminExportMenu } from "@/components/admin-export-menu";
+import { activeFilters, cohortsExportDataset } from "@/lib/admin-export/datasets";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -289,9 +291,58 @@ function AcademicCohortsWorkspace() {
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <CollegeSwitcher />
-        <Button asChild variant="outline" size="sm">
-          <Link to="/delivery-groups">عرض مجموعات المحاضرات والمعامل</Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <AdminExportMenu
+            size="sm"
+            testId="cohorts-export"
+            disabled={filteredCohorts.length === 0}
+            dataset={() =>
+              cohortsExportDataset({
+                rows: filteredCohorts,
+                collegeName: active?.name ?? null,
+                systemLabel: (v) => COHORT_SYSTEM_LABELS[v ?? ""] ?? v ?? "",
+                countStatusLabel: (v) => COHORT_COUNT_LABELS[v ?? ""] ?? v ?? "",
+                filters: activeFilters([
+                  { label: "البحث", value: filters.search },
+                  {
+                    label: "البرنامج",
+                    value:
+                      filters.program === "all"
+                        ? ""
+                        : ((programs ?? []).find((p) => p.id === filters.program)?.name ?? ""),
+                  },
+                  { label: "المستوى", value: filters.level === "all" ? "" : filters.level },
+                  {
+                    label: "نظام الدراسة",
+                    value:
+                      filters.system === "all"
+                        ? ""
+                        : (COHORT_SYSTEM_LABELS[filters.system] ?? filters.system),
+                  },
+                  {
+                    label: "الفصل",
+                    value:
+                      filters.term === "all"
+                        ? ""
+                        : ((terms ?? []).find((t) => t.id === filters.term)?.name ?? ""),
+                  },
+                  {
+                    label: "الحالة",
+                    value:
+                      filters.activity === "all"
+                        ? ""
+                        : filters.activity === "active"
+                          ? "نشطة فقط"
+                          : "غير نشطة فقط",
+                  },
+                ]),
+              })
+            }
+          />
+          <Button asChild variant="outline" size="sm">
+            <Link to="/delivery-groups">عرض مجموعات المحاضرات والمعامل</Link>
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/15 bg-primary/5 p-4 text-sm">
