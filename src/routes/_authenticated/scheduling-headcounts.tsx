@@ -9,6 +9,7 @@ import { useCanManageActiveCollege } from "@/hooks/use-can-manage";
 import { CollegeSwitcher } from "@/components/college-switcher";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { HeadcountImportWorkspace } from "@/components/data-onboarding/headcount-import-workspace";
 import { Label } from "@/components/ui/label";
 import {
   approveSchedulingCohortTermHeadcount,
@@ -65,8 +66,8 @@ function SchedulingHeadcountsPage() {
     queryKey: ["scheduling-headcounts", active?.id],
     enabled: Boolean(active),
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("scheduling_cohort_term_headcounts")
+      const { data, error } = await supabase
+        .from("scheduling_cohort_term_headcounts" as never)
         .select("*")
         .eq("college_id", active!.id)
         .order("updated_at", { ascending: false });
@@ -158,6 +159,7 @@ function SchedulingHeadcountsPage() {
           والمعامل. التوليد مرفوض عند غياب الاعتماد.
         </Card>
       )}
+      <HeadcountImportWorkspace />
       {!active ? (
         <p className="text-sm text-muted-foreground">اختر كلية.</p>
       ) : isLoading ? (

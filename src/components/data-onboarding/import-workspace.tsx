@@ -39,6 +39,7 @@ import type { SourceResolutionPreview } from "@/lib/excel-import/teaching-assign
 import { READ_ONLY_VIEW_BADGE_AR, isInstitutionalReadOnlyViewer } from "@/lib/unauthorized-access";
 import { preparationLabel } from "@/lib/data-onboarding/preparation";
 import { instructorStatusLabel } from "@/lib/excel-import/instructor-sheet";
+import { HeadcountImportWorkspace } from "./headcount-import-workspace";
 
 const ENTITIES = listImportUiEntities().map((m) => ({
   value: m.entity,
@@ -63,7 +64,29 @@ interface ImportWorkspaceProps {
 export function ImportWorkspace(props: ImportWorkspaceProps) {
   const { active } = useActiveCollege();
   if (!active || props.entities.length === 0) return null;
-  return <ImportForm key={`${active.id}:${props.entities.join(",")}`} {...props} />;
+  return <ImportChoice key={`${active.id}:${props.entities.join(",")}`} {...props} />;
+}
+
+function ImportChoice(props: ImportWorkspaceProps) {
+  const [headcounts, setHeadcounts] = useState(false);
+  if (!props.entities.includes("academic_cohorts")) return <ImportForm {...props} />;
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2" aria-label="نوع استيراد الدفعات">
+        <Button variant={headcounts ? "outline" : "default"} onClick={() => setHeadcounts(false)}>
+          الدفعات واختياراتها
+        </Button>
+        <Button variant={headcounts ? "default" : "outline"} onClick={() => setHeadcounts(true)}>
+          أعداد الطلاب للجدولة
+        </Button>
+      </div>
+      {headcounts ? (
+        <HeadcountImportWorkspace onCommitted={props.onCommitted} />
+      ) : (
+        <ImportForm {...props} />
+      )}
+    </div>
+  );
 }
 
 function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspaceProps) {
