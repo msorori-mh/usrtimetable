@@ -307,23 +307,30 @@ export function feasible(
     )
   )
     return false;
-  const windows = (s.availability || []).filter(
-    (a) => a.instructor_id === teacher.id && a.day_of_week === day && !a.is_preference,
-  );
-  const type = s.types.find((t) => t.id === teacher.instructor_type_id);
-  if ((type?.is_external || type?.code === "from_other_college") && !windows.length) return false;
-  const positiveWindows = windows.filter((w) => w.availability_type !== "unavailable");
-  if (
-    (positiveWindows.length &&
-      !positiveWindows.some((w) => start >= minutes(w.start_time) && end <= minutes(w.end_time))) ||
-    windows.some(
-      (w) =>
-        w.availability_type === "unavailable" &&
-        start < minutes(w.end_time) &&
-        end > minutes(w.start_time),
+  // Instructor availability is only a constraint when enforcement is on.
+  // Default: available on every approved teaching day/period; missing rows
+  // never block. Explicit instructor double-booking stays blocked below.
+  if (isInstructorAvailabilityEnforced()) {
+    const windows = (s.availability || []).filter(
+      (a) => a.instructor_id === teacher.id && a.day_of_week === day && !a.is_preference,
+    );
+    const type = s.types.find((t) => t.id === teacher.instructor_type_id);
+    if ((type?.is_external || type?.code === "from_other_college") && !windows.length) return false;
+    const positiveWindows = windows.filter((w) => w.availability_type !== "unavailable");
+    if (
+      (positiveWindows.length &&
+        !positiveWindows.some(
+          (w) => start >= minutes(w.start_time) && end <= minutes(w.end_time),
+        )) ||
+      windows.some(
+        (w) =>
+          w.availability_type === "unavailable" &&
+          start < minutes(w.end_time) &&
+          end > minutes(w.start_time),
+      )
     )
-  )
-    return false;
+      return false;
+  }
   const others = sessions.filter((x) => x.id !== candidate.id),
     sameDay = others.filter((x) => x.day_of_week === day);
   if (
