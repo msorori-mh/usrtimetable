@@ -41,7 +41,10 @@ import {
 } from "@/lib/time-templates/weekly-generator";
 
 import { TemplateDirectory } from "@/components/time-templates/template-directory";
-import { TEMPLATE_SYSTEM_LABELS as SYSTEM_LABELS, type TimeTemplateRow } from "@/lib/time-templates/template-directory";
+import {
+  TEMPLATE_SYSTEM_LABELS as SYSTEM_LABELS,
+  type TimeTemplateRow,
+} from "@/lib/time-templates/template-directory";
 
 export const Route = createFileRoute("/_authenticated/time-slot-templates")({
   head: () => ({ meta: [{ title: "قوالب أوقات المحاضرات" }] }),
@@ -129,7 +132,12 @@ function TimeSlotTemplatesWorkspace() {
     },
   });
 
-  const { data: rows, isLoading, error: rowsError, refetch: refetchRows } = useQuery({
+  const {
+    data: rows,
+    isLoading,
+    error: rowsError,
+    refetch: refetchRows,
+  } = useQuery({
     queryKey: collegeScopedQueryKey("tst", collegeId, "all-records"),
     enabled: !!collegeId,
     queryFn: async () => {
@@ -341,7 +349,8 @@ function TimeSlotTemplatesWorkspace() {
       const { error } = await supabase
         .from("time_slot_templates")
         .update({ is_active: !r.is_active })
-        .eq("id", r.id).eq("college_id", collegeId);
+        .eq("id", r.id)
+        .eq("college_id", collegeId);
       if (error) throw error;
       await logAudit({
         action: "update",
@@ -357,7 +366,11 @@ function TimeSlotTemplatesWorkspace() {
   const del = useMutation({
     mutationFn: async (id: string) => {
       if (!collegeId || !canManage) throw new Error("لا تملك صلاحية إدارة قوالب هذه الكلية");
-      const { error } = await supabase.from("time_slot_templates").delete().eq("id", id).eq("college_id", collegeId);
+      const { error } = await supabase
+        .from("time_slot_templates")
+        .delete()
+        .eq("id", id)
+        .eq("college_id", collegeId);
       if (error) throw error;
       await logAudit({
         action: "delete",
@@ -395,452 +408,503 @@ function TimeSlotTemplatesWorkspace() {
       ) : (
         <>
           <TemplateDirectory
-            rows={rows ?? []} isLoading={isLoading} error={rowsError}
-            onRetry={() => { void refetchRows(); }} canManage={canManage}
+            rows={rows ?? []}
+            isLoading={isLoading}
+            error={rowsError}
+            onRetry={() => {
+              void refetchRows();
+            }}
+            canManage={canManage}
             pending={toggleActive.isPending || del.isPending}
             onToggle={(row) => toggleActive.mutate(row)}
             onDelete={(row) => {
-              if (confirm("حذف قالب " + DAY_LABELS_AR[row.day_of_week] + " " + row.start_time.slice(0, 5) + " إلى " + row.end_time.slice(0, 5) + " (" + SYSTEM_LABELS[row.study_system] + ")؟")) del.mutate(row.id);
+              if (
+                confirm(
+                  "حذف قالب " +
+                    DAY_LABELS_AR[row.day_of_week] +
+                    " " +
+                    row.start_time.slice(0, 5) +
+                    " إلى " +
+                    row.end_time.slice(0, 5) +
+                    " (" +
+                    SYSTEM_LABELS[row.study_system] +
+                    ")؟",
+                )
+              )
+                del.mutate(row.id);
             }}
           />
-          <p className="text-xs text-muted-foreground">القوالب تخص الكلية وتُستخدم عبر فصولها الدراسية؛ إعداد قوالب الأيام لا يلزم الطلاب بالحضور في جميع هذه الأيام.</p>
-          {canManage && <Collapsible open={weeklyOpen} onOpenChange={setWeeklyOpen}>
-            <Card className="p-4">
-              <CollapsibleTrigger asChild><Button type="button" variant="outline" className="w-full justify-between">إعداد قوالب أسبوعية جديدة<ChevronDown className="h-4 w-4" /></Button></CollapsibleTrigger>
-              <p className="mt-2 text-xs text-muted-foreground">افتح الإعداد لتحديد الأيام والفترات ومعاينة القوالب قبل حفظها.</p>
-            </Card>
-            <CollapsibleContent className="mt-4 space-y-4">
-          <Card className="p-4 space-y-4">
-            <p className="text-sm font-semibold">1) تصنيف القوالب الجديدة</p>
-            <div className="grid gap-3 md:grid-cols-3">
-              <div>
-                <Label htmlFor="new-template-system">استخدام القوالب الجديدة</Label>
-                <Select value={studySystem} onValueChange={(v) => setStudySystem(v as StudySystem)}>
-                  <SelectTrigger id="new-template-system"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="regular">{SYSTEM_LABELS.regular}</SelectItem>
-                    <SelectItem value="parallel">{SYSTEM_LABELS.parallel}</SelectItem>
-                    <SelectItem value="both">{SYSTEM_LABELS.both}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div><Label>الكلية</Label><Input value={active.name} disabled /></div>
-              <div><Label>حالة القوالب الجديدة</Label><Input value="مفعّل عند الحفظ" disabled /></div>
-            </div>
-            <p className="text-xs text-muted-foreground">اختر «مشترك للعام والموازي» إذا كانت الفترات نفسها متاحة للنظامين.</p>
-          </Card>
-
+          <p className="text-xs text-muted-foreground">
+            القوالب تخص الكلية وتُستخدم عبر فصولها الدراسية؛ إعداد قوالب الأيام لا يلزم الطلاب
+            بالحضور في جميع هذه الأيام.
+          </p>
           {canManage && (
-            <>
-              <Card className="p-4 space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-semibold">2) أيام الدراسة</p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={applyGeneralToSelected}
-                  >
-                    تطبيق الإعداد على الأيام المحددة
+            <Collapsible open={weeklyOpen} onOpenChange={setWeeklyOpen}>
+              <Card className="p-4">
+                <CollapsibleTrigger asChild>
+                  <Button type="button" variant="outline" className="w-full justify-between">
+                    إعداد قوالب أسبوعية جديدة
+                    <ChevronDown className="h-4 w-4" />
                   </Button>
-                </div>
-                <div className="flex flex-wrap gap-4">
-                  {ALL_WEEK_DAYS.map((day) => (
-                    <label key={day} className="flex items-center gap-2 text-sm">
-                      <Checkbox
-                        checked={selectedDays.includes(day)}
-                        onCheckedChange={(c) => toggleDay(day, !!c)}
-                      />
-                      {DAY_LABELS_AR[day]}
-                    </label>
-                  ))}
-                </div>
-                <div className="space-y-2 border-t border-border pt-3">
-                  <p className="text-xs text-muted-foreground">تخصيص يومي (اختياري)</p>
-                  <div className="flex flex-wrap gap-2">
-                    {ALL_WEEK_DAYS.map((day) => (
-                      <Button
-                        key={day}
-                        type="button"
-                        size="sm"
-                        variant={customizingDay === day ? "default" : "outline"}
-                        onClick={() => setCustomizingDay(customizingDay === day ? null : day)}
+                </CollapsibleTrigger>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  افتح الإعداد لتحديد الأيام والفترات ومعاينة القوالب قبل حفظها.
+                </p>
+              </Card>
+              <CollapsibleContent className="mt-4 space-y-4">
+                <Card className="p-4 space-y-4">
+                  <p className="text-sm font-semibold">1) تصنيف القوالب الجديدة</p>
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <div>
+                      <Label htmlFor="new-template-system">استخدام القوالب الجديدة</Label>
+                      <Select
+                        value={studySystem}
+                        onValueChange={(v) => setStudySystem(v as StudySystem)}
                       >
-                        تخصيص {DAY_LABELS_AR[day]}
-                      </Button>
-                    ))}
+                        <SelectTrigger id="new-template-system">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="regular">{SYSTEM_LABELS.regular}</SelectItem>
+                          <SelectItem value="parallel">{SYSTEM_LABELS.parallel}</SelectItem>
+                          <SelectItem value="both">{SYSTEM_LABELS.both}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>الكلية</Label>
+                      <Input value={active.name} disabled />
+                    </div>
+                    <div>
+                      <Label>حالة القوالب الجديدة</Label>
+                      <Input value="مفعّل عند الحفظ" disabled />
+                    </div>
                   </div>
-                  {customizingDay !== null && dayOverrides[customizingDay] && (
-                    <div className="grid gap-3 rounded-md border border-border p-3 md:grid-cols-4">
-                      <label className="flex items-center gap-2 text-sm md:col-span-4">
-                        <Checkbox
-                          checked={dayOverrides[customizingDay].enabled}
-                          onCheckedChange={(c) => setDayEnabled(customizingDay, !!c)}
-                        />
-                        تفعيل {DAY_LABELS_AR[customizingDay]}
-                      </label>
-                      <div>
-                        <Label>بداية الدوام</Label>
-                        <Input
-                          dir="ltr"
-                          type="time"
-                          value={dayOverrides[customizingDay].startTime}
-                          onChange={(e) =>
-                            setDayOverrides((prev) => ({
-                              ...prev,
-                              [customizingDay]: {
-                                ...prev[customizingDay],
-                                startTime: e.target.value,
-                              },
-                            }))
-                          }
-                        />
+                  <p className="text-xs text-muted-foreground">
+                    اختر «مشترك للعام والموازي» إذا كانت الفترات نفسها متاحة للنظامين.
+                  </p>
+                </Card>
+
+                {canManage && (
+                  <>
+                    <Card className="p-4 space-y-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-sm font-semibold">2) أيام الدراسة</p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={applyGeneralToSelected}
+                        >
+                          تطبيق الإعداد على الأيام المحددة
+                        </Button>
                       </div>
-                      <div>
-                        <Label>نهاية الدوام</Label>
-                        <Input
-                          dir="ltr"
-                          type="time"
-                          value={dayOverrides[customizingDay].endTime}
-                          onChange={(e) =>
-                            setDayOverrides((prev) => ({
-                              ...prev,
-                              [customizingDay]: {
-                                ...prev[customizingDay],
-                                endTime: e.target.value,
-                              },
-                            }))
-                          }
-                        />
-                      </div>
-                      <div className="md:col-span-2 flex flex-wrap items-end gap-3">
-                        {[120, 180].map((d) => (
-                          <label key={d} className="flex items-center gap-2 text-sm">
+                      <div className="flex flex-wrap gap-4">
+                        {ALL_WEEK_DAYS.map((day) => (
+                          <label key={day} className="flex items-center gap-2 text-sm">
                             <Checkbox
-                              checked={dayOverrides[customizingDay].durations.includes(d)}
-                              onCheckedChange={(c) =>
-                                setDayOverrides((prev) => {
-                                  const cur = prev[customizingDay].durations;
-                                  const next = c
-                                    ? [...new Set([...cur, d])]
-                                    : cur.filter((x) => x !== d);
-                                  return {
-                                    ...prev,
-                                    [customizingDay]: { ...prev[customizingDay], durations: next },
-                                  };
-                                })
-                              }
+                              checked={selectedDays.includes(day)}
+                              onCheckedChange={(c) => toggleDay(day, !!c)}
                             />
-                            {d === 120 ? "ساعتان" : "ثلاث ساعات"}
+                            {DAY_LABELS_AR[day]}
                           </label>
                         ))}
                       </div>
-                      <div className="md:col-span-4">
+                      <div className="space-y-2 border-t border-border pt-3">
+                        <p className="text-xs text-muted-foreground">تخصيص يومي (اختياري)</p>
+                        <div className="flex flex-wrap gap-2">
+                          {ALL_WEEK_DAYS.map((day) => (
+                            <Button
+                              key={day}
+                              type="button"
+                              size="sm"
+                              variant={customizingDay === day ? "default" : "outline"}
+                              onClick={() => setCustomizingDay(customizingDay === day ? null : day)}
+                            >
+                              تخصيص {DAY_LABELS_AR[day]}
+                            </Button>
+                          ))}
+                        </div>
+                        {customizingDay !== null && dayOverrides[customizingDay] && (
+                          <div className="grid gap-3 rounded-md border border-border p-3 md:grid-cols-4">
+                            <label className="flex items-center gap-2 text-sm md:col-span-4">
+                              <Checkbox
+                                checked={dayOverrides[customizingDay].enabled}
+                                onCheckedChange={(c) => setDayEnabled(customizingDay, !!c)}
+                              />
+                              تفعيل {DAY_LABELS_AR[customizingDay]}
+                            </label>
+                            <div>
+                              <Label>بداية الدوام</Label>
+                              <Input
+                                dir="ltr"
+                                type="time"
+                                value={dayOverrides[customizingDay].startTime}
+                                onChange={(e) =>
+                                  setDayOverrides((prev) => ({
+                                    ...prev,
+                                    [customizingDay]: {
+                                      ...prev[customizingDay],
+                                      startTime: e.target.value,
+                                    },
+                                  }))
+                                }
+                              />
+                            </div>
+                            <div>
+                              <Label>نهاية الدوام</Label>
+                              <Input
+                                dir="ltr"
+                                type="time"
+                                value={dayOverrides[customizingDay].endTime}
+                                onChange={(e) =>
+                                  setDayOverrides((prev) => ({
+                                    ...prev,
+                                    [customizingDay]: {
+                                      ...prev[customizingDay],
+                                      endTime: e.target.value,
+                                    },
+                                  }))
+                                }
+                              />
+                            </div>
+                            <div className="md:col-span-2 flex flex-wrap items-end gap-3">
+                              {[120, 180].map((d) => (
+                                <label key={d} className="flex items-center gap-2 text-sm">
+                                  <Checkbox
+                                    checked={dayOverrides[customizingDay].durations.includes(d)}
+                                    onCheckedChange={(c) =>
+                                      setDayOverrides((prev) => {
+                                        const cur = prev[customizingDay].durations;
+                                        const next = c
+                                          ? [...new Set([...cur, d])]
+                                          : cur.filter((x) => x !== d);
+                                        return {
+                                          ...prev,
+                                          [customizingDay]: {
+                                            ...prev[customizingDay],
+                                            durations: next,
+                                          },
+                                        };
+                                      })
+                                    }
+                                  />
+                                  {d === 120 ? "ساعتان" : "ثلاث ساعات"}
+                                </label>
+                              ))}
+                            </div>
+                            <div className="md:col-span-4">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  setDayOverrides((prev) => ({
+                                    ...prev,
+                                    [customizingDay]: {
+                                      // Reset times/durations only — keep current enabled state
+                                      enabled: prev[customizingDay]?.enabled ?? false,
+                                      startTime: dayStart,
+                                      endTime: dayEnd,
+                                      durations: [...durations],
+                                      blockedWindows: [],
+                                    },
+                                  }))
+                                }
+                              >
+                                إعادة تطبيق الإعداد العام
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </Card>
+
+                    <Card className="p-4 space-y-4">
+                      <p className="text-sm font-semibold">3) ساعات التدريس</p>
+                      <div className="grid gap-3 md:grid-cols-3">
+                        <div>
+                          <Label>بداية الدوام</Label>
+                          <Input
+                            dir="ltr"
+                            type="time"
+                            value={dayStart}
+                            onChange={(e) => setDayStart(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label>نهاية الدوام</Label>
+                          <Input
+                            dir="ltr"
+                            type="time"
+                            value={dayEnd}
+                            onChange={(e) => setDayEnd(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label>دقة الشبكة (دقيقة)</Label>
+                          <Input
+                            dir="ltr"
+                            type="number"
+                            min={15}
+                            value={gridMinutes}
+                            onChange={(e) => setGridMinutes(Number(e.target.value))}
+                          />
+                        </div>
+                      </div>
+                    </Card>
+
+                    <Card className="p-4 space-y-3">
+                      <p className="text-sm font-semibold">4) مدد الجلسات</p>
+                      <div className="flex flex-wrap gap-4">
+                        <label className="flex items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={durations.includes(120)}
+                            onCheckedChange={(c) => toggleDuration(120, !!c)}
+                          />
+                          ساعتان — 120 دقيقة
+                        </label>
+                        <label className="flex items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={durations.includes(180)}
+                            onCheckedChange={(c) => toggleDuration(180, !!c)}
+                          />
+                          ثلاث ساعات — 180 دقيقة
+                        </label>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        تُحدد مدة الجلسة الفعلية من الخطة الدراسية أو إسناد المقرر. المعامل: 120
+                        دقيقة فقط (لا تُعامل كـ 180).
+                      </p>
+                    </Card>
+
+                    <Card className="p-4 space-y-3">
+                      <p className="text-sm font-semibold">5) الاستراحات اليومية</p>
+                      {!breaks || breaks.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                          لا توجد استراحات معرفة. لن تُنسخ الاستراحات إلى القوالب.
+                        </p>
+                      ) : (
+                        <ul className="space-y-1 text-sm">
+                          {breaks.map((b) => (
+                            <li key={b.id} className="rounded border border-border px-3 py-2">
+                              <span className="font-medium">{b.name}</span>{" "}
+                              <span dir="ltr" className="text-muted-foreground">
+                                {b.start_time.slice(0, 5)} → {b.end_time.slice(0, 5)}
+                              </span>
+                              {b.affects_scheduling !== false && (
+                                <span className="mr-2 text-xs text-amber-700">
+                                  · يمنع التقاطع عند التوليد
+                                </span>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </Card>
+
+                    <Card className="p-4 space-y-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="flex-1 text-sm font-semibold">6) المعاينة والحفظ</p>
                         <Button
                           type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            setDayOverrides((prev) => ({
-                              ...prev,
-                              [customizingDay]: {
-                                // Reset times/durations only — keep current enabled state
-                                enabled: prev[customizingDay]?.enabled ?? false,
-                                startTime: dayStart,
-                                endTime: dayEnd,
-                                durations: [...durations],
-                                blockedWindows: [],
-                              },
-                            }))
-                          }
+                          variant="outline"
+                          onClick={runPreview}
+                          disabled={isLoading || !!rowsError}
                         >
-                          إعادة تطبيق الإعداد العام
+                          معاينة القوالب
                         </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </Card>
-
-              <Card className="p-4 space-y-4">
-                <p className="text-sm font-semibold">3) ساعات التدريس</p>
-                <div className="grid gap-3 md:grid-cols-3">
-                  <div>
-                    <Label>بداية الدوام</Label>
-                    <Input
-                      dir="ltr"
-                      type="time"
-                      value={dayStart}
-                      onChange={(e) => setDayStart(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label>نهاية الدوام</Label>
-                    <Input
-                      dir="ltr"
-                      type="time"
-                      value={dayEnd}
-                      onChange={(e) => setDayEnd(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label>دقة الشبكة (دقيقة)</Label>
-                    <Input
-                      dir="ltr"
-                      type="number"
-                      min={15}
-                      value={gridMinutes}
-                      onChange={(e) => setGridMinutes(Number(e.target.value))}
-                    />
-                  </div>
-                </div>
-              </Card>
-
-              <Card className="p-4 space-y-3">
-                <p className="text-sm font-semibold">4) مدد الجلسات</p>
-                <div className="flex flex-wrap gap-4">
-                  <label className="flex items-center gap-2 text-sm">
-                    <Checkbox
-                      checked={durations.includes(120)}
-                      onCheckedChange={(c) => toggleDuration(120, !!c)}
-                    />
-                    ساعتان — 120 دقيقة
-                  </label>
-                  <label className="flex items-center gap-2 text-sm">
-                    <Checkbox
-                      checked={durations.includes(180)}
-                      onCheckedChange={(c) => toggleDuration(180, !!c)}
-                    />
-                    ثلاث ساعات — 180 دقيقة
-                  </label>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  تُحدد مدة الجلسة الفعلية من الخطة الدراسية أو إسناد المقرر. المعامل: 120 دقيقة فقط
-                  (لا تُعامل كـ 180).
-                </p>
-              </Card>
-
-              <Card className="p-4 space-y-3">
-                <p className="text-sm font-semibold">5) الاستراحات اليومية</p>
-                {!breaks || breaks.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    لا توجد استراحات معرفة. لن تُنسخ الاستراحات إلى القوالب.
-                  </p>
-                ) : (
-                  <ul className="space-y-1 text-sm">
-                    {breaks.map((b) => (
-                      <li key={b.id} className="rounded border border-border px-3 py-2">
-                        <span className="font-medium">{b.name}</span>{" "}
-                        <span dir="ltr" className="text-muted-foreground">
-                          {b.start_time.slice(0, 5)} → {b.end_time.slice(0, 5)}
-                        </span>
-                        {b.affects_scheduling !== false && (
-                          <span className="mr-2 text-xs text-amber-700">
-                            · يمنع التقاطع عند التوليد
-                          </span>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </Card>
-
-              <Card className="p-4 space-y-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="flex-1 text-sm font-semibold">6) المعاينة والحفظ</p>
-                  <Button type="button" variant="outline" onClick={runPreview} disabled={isLoading || !!rowsError}>
-                    معاينة القوالب
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={() => saveWeekly.mutate()}
-                    disabled={
-                      !previewMeta ||
-                      previewMeta.toInsert === 0 ||
-                      previewMeta.conflicts > 0 ||
-                      saveWeekly.isPending
-                    }
-                  >
-                    حفظ الجديد فقط ({previewMeta?.toInsert ?? 0})
-                  </Button>
-                </div>
-                {previewMeta && (
-                  <div className="grid gap-2 text-sm md:grid-cols-2">
-                    <p>الأيام المحددة: {previewMeta.selectedDays}</p>
-                    <p>قوالب الساعتين لكل يوم: {previewMeta.slots120PerDay}</p>
-                    <p>قوالب الثلاث ساعات لكل يوم: {previewMeta.slots180PerDay}</p>
-                    <p>الإجمالي: {previewMeta.total}</p>
-                    <p>
-                      قوالب جديدة: {previewMeta.toInsert} · موجودة مسبقًا: {previewMeta.duplicates}
-                    </p>
-                    <p>
-                      متعارضة: {previewMeta.conflicts} · مكررة داخل المعاينة:{" "}
-                      {previewMeta.duplicatesInGeneratedBatch}
-                    </p>
-                    <p>متجاوز بسبب استراحة: {previewMeta.skippedBreakConflicts}</p>
-                    <p className="text-xs text-muted-foreground md:col-span-2">
-                      تُراجع القوالب الموجودة قبل الحفظ، ويُضاف الجديد فقط.
-                    </p>
-                  </div>
-                )}
-                {previewMeta && previewMeta.conflictDetails.length > 0 && (
-                  <div className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-                    <p className="font-semibold">تعارضات تمنع الحفظ:</p>
-                    <ul className="mt-1 list-disc pr-5">
-                      {previewMeta.conflictDetails.slice(0, 5).map((c, i) => (
-                        <li key={i}>
-                          {DAY_LABELS_AR[c.day_of_week]} {c.start_time}–{c.end_time} (
-                          {c.slot_duration_minutes}د): {c.reason}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {preview && preview.length > 0 && (
-                  <div className="max-h-64 overflow-auto rounded border border-border">
-                    <table className="w-full text-sm">
-                      <thead className="bg-muted text-xs">
-                        <tr>
-                          <th className="p-2 text-right">اليوم</th>
-                          <th className="p-2 text-right">من</th>
-                          <th className="p-2 text-right">إلى</th>
-                          <th className="p-2 text-right">المدة</th>
-                          <th className="p-2 text-right">النظام</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {preview.slice(0, 60).map((t, i) => (
-                          <tr key={i} className="border-t border-border">
-                            <td className="p-2">{DAY_LABELS_AR[t.day_of_week]}</td>
-                            <td className="p-2" dir="ltr">
-                              {t.start_time}
-                            </td>
-                            <td className="p-2" dir="ltr">
-                              {t.end_time}
-                            </td>
-                            <td className="p-2">{t.slot_duration_minutes}</td>
-                            <td className="p-2">{SYSTEM_LABELS[t.study_system]}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    {preview.length > 60 && (
-                      <p className="p-2 text-xs text-muted-foreground">
-                        عرض أول 60 من {preview.length}
-                      </p>
-                    )}
-                  </div>
-                )}
-                <p className="text-xs text-amber-700">
-                  لا يتم استبدال القوالب الموجودة تلقائيًا. الحفظ يُدرج السجلات الجديدة فقط بعد
-                  المعاينة والتأكيد.
-                </p>
-              </Card>
-
-              <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
-                <Card className="p-4">
-                  <CollapsibleTrigger asChild>
-                    <Button variant="ghost" className="w-full justify-between">
-                      خيار متقدم: إضافة قالب مفرد
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="mt-3 space-y-3">
-                    <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
-                      <div>
-                        <Label>النظام</Label>
-                        <Select
-                          value={singleForm.study_system}
-                          onValueChange={(v) =>
-                            setSingleForm({ ...singleForm, study_system: v as StudySystem })
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="regular">{SYSTEM_LABELS.regular}</SelectItem>
-                            <SelectItem value="parallel">{SYSTEM_LABELS.parallel}</SelectItem>
-                            <SelectItem value="both">{SYSTEM_LABELS.both}</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label>اليوم</Label>
-                        <Select
-                          value={String(singleForm.day_of_week)}
-                          onValueChange={(v) =>
-                            setSingleForm({ ...singleForm, day_of_week: Number(v) })
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {ALL_WEEK_DAYS.map((d) => (
-                              <SelectItem key={d} value={String(d)}>
-                                {DAY_LABELS_AR[d]}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label>من</Label>
-                        <Input
-                          dir="ltr"
-                          type="time"
-                          value={singleForm.start_time}
-                          onChange={(e) =>
-                            setSingleForm({ ...singleForm, start_time: e.target.value })
-                          }
-                        />
-                      </div>
-                      <div>
-                        <Label>إلى</Label>
-                        <Input
-                          dir="ltr"
-                          type="time"
-                          value={singleForm.end_time}
-                          onChange={(e) =>
-                            setSingleForm({ ...singleForm, end_time: e.target.value })
-                          }
-                        />
-                      </div>
-                      <div>
-                        <Label>المدة (دقيقة)</Label>
-                        <Input
-                          dir="ltr"
-                          type="number"
-                          min={15}
-                          max={480}
-                          value={singleForm.slot_duration_minutes}
-                          onChange={(e) =>
-                            setSingleForm({
-                              ...singleForm,
-                              slot_duration_minutes: Number(e.target.value),
-                            })
-                          }
-                        />
-                      </div>
-                      <div className="flex items-end">
                         <Button
-                          className="w-full"
-                          onClick={() => addSingle.mutate()}
-                          disabled={addSingle.isPending || isLoading || !!rowsError}
+                          type="button"
+                          onClick={() => saveWeekly.mutate()}
+                          disabled={
+                            !previewMeta ||
+                            previewMeta.toInsert === 0 ||
+                            previewMeta.conflicts > 0 ||
+                            saveWeekly.isPending
+                          }
                         >
-                          إضافة
+                          حفظ الجديد فقط ({previewMeta?.toInsert ?? 0})
                         </Button>
                       </div>
-                    </div>
-                  </CollapsibleContent>
-                </Card>
-              </Collapsible>
-            </>
-          )}
+                      {previewMeta && (
+                        <div className="grid gap-2 text-sm md:grid-cols-2">
+                          <p>الأيام المحددة: {previewMeta.selectedDays}</p>
+                          <p>قوالب الساعتين لكل يوم: {previewMeta.slots120PerDay}</p>
+                          <p>قوالب الثلاث ساعات لكل يوم: {previewMeta.slots180PerDay}</p>
+                          <p>الإجمالي: {previewMeta.total}</p>
+                          <p>
+                            قوالب جديدة: {previewMeta.toInsert} · موجودة مسبقًا:{" "}
+                            {previewMeta.duplicates}
+                          </p>
+                          <p>
+                            متعارضة: {previewMeta.conflicts} · مكررة داخل المعاينة:{" "}
+                            {previewMeta.duplicatesInGeneratedBatch}
+                          </p>
+                          <p>متجاوز بسبب استراحة: {previewMeta.skippedBreakConflicts}</p>
+                          <p className="text-xs text-muted-foreground md:col-span-2">
+                            تُراجع القوالب الموجودة قبل الحفظ، ويُضاف الجديد فقط.
+                          </p>
+                        </div>
+                      )}
+                      {previewMeta && previewMeta.conflictDetails.length > 0 && (
+                        <div className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                          <p className="font-semibold">تعارضات تمنع الحفظ:</p>
+                          <ul className="mt-1 list-disc pr-5">
+                            {previewMeta.conflictDetails.slice(0, 5).map((c, i) => (
+                              <li key={i}>
+                                {DAY_LABELS_AR[c.day_of_week]} {c.start_time}–{c.end_time} (
+                                {c.slot_duration_minutes}د): {c.reason}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {preview && preview.length > 0 && (
+                        <div className="max-h-64 overflow-auto rounded border border-border">
+                          <table className="w-full text-sm">
+                            <thead className="bg-muted text-xs">
+                              <tr>
+                                <th className="p-2 text-right">اليوم</th>
+                                <th className="p-2 text-right">من</th>
+                                <th className="p-2 text-right">إلى</th>
+                                <th className="p-2 text-right">المدة</th>
+                                <th className="p-2 text-right">النظام</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {preview.slice(0, 60).map((t, i) => (
+                                <tr key={i} className="border-t border-border">
+                                  <td className="p-2">{DAY_LABELS_AR[t.day_of_week]}</td>
+                                  <td className="p-2" dir="ltr">
+                                    {t.start_time}
+                                  </td>
+                                  <td className="p-2" dir="ltr">
+                                    {t.end_time}
+                                  </td>
+                                  <td className="p-2">{t.slot_duration_minutes}</td>
+                                  <td className="p-2">{SYSTEM_LABELS[t.study_system]}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                          {preview.length > 60 && (
+                            <p className="p-2 text-xs text-muted-foreground">
+                              عرض أول 60 من {preview.length}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      <p className="text-xs text-amber-700">
+                        لا يتم استبدال القوالب الموجودة تلقائيًا. الحفظ يُدرج السجلات الجديدة فقط
+                        بعد المعاينة والتأكيد.
+                      </p>
+                    </Card>
 
-            </CollapsibleContent>
-          </Collapsible>}
+                    <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+                      <Card className="p-4">
+                        <CollapsibleTrigger asChild>
+                          <Button variant="ghost" className="w-full justify-between">
+                            خيار متقدم: إضافة قالب مفرد
+                            <ChevronDown className="h-4 w-4" />
+                          </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="mt-3 space-y-3">
+                          <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
+                            <div>
+                              <Label>النظام</Label>
+                              <Select
+                                value={singleForm.study_system}
+                                onValueChange={(v) =>
+                                  setSingleForm({ ...singleForm, study_system: v as StudySystem })
+                                }
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="regular">{SYSTEM_LABELS.regular}</SelectItem>
+                                  <SelectItem value="parallel">{SYSTEM_LABELS.parallel}</SelectItem>
+                                  <SelectItem value="both">{SYSTEM_LABELS.both}</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label>اليوم</Label>
+                              <Select
+                                value={String(singleForm.day_of_week)}
+                                onValueChange={(v) =>
+                                  setSingleForm({ ...singleForm, day_of_week: Number(v) })
+                                }
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {ALL_WEEK_DAYS.map((d) => (
+                                    <SelectItem key={d} value={String(d)}>
+                                      {DAY_LABELS_AR[d]}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label>من</Label>
+                              <Input
+                                dir="ltr"
+                                type="time"
+                                value={singleForm.start_time}
+                                onChange={(e) =>
+                                  setSingleForm({ ...singleForm, start_time: e.target.value })
+                                }
+                              />
+                            </div>
+                            <div>
+                              <Label>إلى</Label>
+                              <Input
+                                dir="ltr"
+                                type="time"
+                                value={singleForm.end_time}
+                                onChange={(e) =>
+                                  setSingleForm({ ...singleForm, end_time: e.target.value })
+                                }
+                              />
+                            </div>
+                            <div>
+                              <Label>المدة (دقيقة)</Label>
+                              <Input
+                                dir="ltr"
+                                type="number"
+                                min={15}
+                                max={480}
+                                value={singleForm.slot_duration_minutes}
+                                onChange={(e) =>
+                                  setSingleForm({
+                                    ...singleForm,
+                                    slot_duration_minutes: Number(e.target.value),
+                                  })
+                                }
+                              />
+                            </div>
+                            <div className="flex items-end">
+                              <Button
+                                className="w-full"
+                                onClick={() => addSingle.mutate()}
+                                disabled={addSingle.isPending || isLoading || !!rowsError}
+                              >
+                                إضافة
+                              </Button>
+                            </div>
+                          </div>
+                        </CollapsibleContent>
+                      </Card>
+                    </Collapsible>
+                  </>
+                )}
+              </CollapsibleContent>
+            </Collapsible>
+          )}
         </>
       )}
     </div>

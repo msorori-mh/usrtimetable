@@ -189,16 +189,27 @@ function state() {
 const params = { collegeId: "college", scheduleVersionId: "version" };
 
 for (const studySystem of ["regular", "parallel"]) {
-  test("V2 schedules " + studySystem + " using shared templates when no dedicated template exists", async () => {
-    const s = state();
-    s.snapshot.templates = s.snapshot.templates.map((template) => ({ ...template, study_system: "both" }));
-    s.items = s.items.map((entry) => ({ ...entry, study_system: studySystem }));
-    s.snapshot.cohorts = s.snapshot.cohorts.map((cohort) => ({ ...cohort, study_system: studySystem }));
-    await (await scheduler(s))(params);
-    assert.equal(s.calls.length, 1);
-    assert.equal(s.runs[0].status, "completed");
-    assert.equal(s.calls[0].startTime, "10:00:00");
-  });
+  test(
+    "V2 schedules " + studySystem + " using shared templates when no dedicated template exists",
+    async () => {
+      const s = state();
+      s.snapshot.templates = s.snapshot.templates.map((template) => ({
+        ...template,
+        study_system: "both",
+      }));
+      s.items = s.items.map((entry) => ({ ...entry, study_system: studySystem }));
+      s.snapshot.cohorts = s.snapshot.cohorts.map((cohort) => ({
+        ...cohort,
+        study_system: studySystem,
+      }));
+      await (
+        await scheduler(s)
+      )(params);
+      assert.equal(s.calls.length, 1);
+      assert.equal(s.runs[0].status, "completed");
+      assert.equal(s.calls[0].startTime, "10:00:00");
+    },
+  );
 }
 
 test("empty portal blocks generation before any write", async () => {
