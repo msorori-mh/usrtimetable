@@ -196,8 +196,20 @@ async function loadLookups(entity: ImportEntity, collegeId: string): Promise<Loo
   ) {
     const sp = await fetchAll("study_plans", "id, code, version, program_id");
     lk.studyPlans = new Map(sp.map((r) => [`${r.program_id}|${r.code}|${r.version}`, r.id]));
-    const pc = await fetchAll("plan_courses", "id, study_plan_id, course_id");
+    const pc = await fetchAll("plan_courses", "id, study_plan_id, course_id, level_id");
     lk.planCourses = new Map(pc.map((r) => [`${r.study_plan_id}|${r.course_id}`, r.id]));
+    const planProgram = new Map(sp.map((r) => [String(r.id), String(r.program_id)]));
+    const byProgramLevel = new Map<string, string[]>();
+    for (const r of pc) {
+      const programId = planProgram.get(String(r.study_plan_id));
+      if (!programId || !r.level_id) continue;
+      const key = `${programId}|${r.level_id}|${r.course_id}`;
+      const list = byProgramLevel.get(key);
+      if (list) list.push(String(r.id));
+      else byProgramLevel.set(key, [String(r.id)]);
+    }
+    lk.planCoursesByProgramLevel = byProgramLevel;
+
     const lv = await fetchAll("academic_levels", "id, program_id, level_number");
     lk.levels = new Map(lv.map((r) => [`${r.program_id}|${r.level_number}`, r.id]));
   }
