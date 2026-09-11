@@ -1,3 +1,4 @@
+import { generationErrorMessage } from "@/lib/academic-delivery/generation-messages";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -13,6 +14,8 @@ export function useGenerateDeliveryGroups() {
   return useMutation({
     mutationFn: (cohortId: string) => generateCohortDeliveryGroups(cohortId),
     onSuccess: (summary: DeliveryGroupGeneratorSummary) => {
+      void qc.invalidateQueries({ queryKey: ["course-offerings"] });
+      void qc.invalidateQueries({ queryKey: ["cohort-dg-room-type-gate"] });
       void qc.invalidateQueries({ queryKey: ["delivery-groups"] });
       void qc.invalidateQueries({ queryKey: ["academic-cohorts"] });
 
@@ -49,7 +52,7 @@ export function useGenerateDeliveryGroups() {
         );
         return;
       }
-      toast.error(e.message || "فشل توليد مجموعات التدريس");
+      toast.error(generationErrorMessage(e));
     },
   });
 }
