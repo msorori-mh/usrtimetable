@@ -96,7 +96,7 @@ export async function fetchOnboardingReadinessSnapshot(
     terms,
     planCourses: readiness.totals.planCourses,
     cohorts,
-    deliveryGroups,
+    deliveryGroups: deliveryGroups.count ?? 0,
     instructors,
     rooms,
     teachingAssignmentsV2: taV2.count ?? 0,
