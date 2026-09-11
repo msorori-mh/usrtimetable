@@ -4,6 +4,7 @@ import {
   isMissingInstructorSpecialization,
   isMissingInstructorDepartment,
 } from "@/lib/data-onboarding/instructor-review";
+import { roomCapacityReadinessMetrics } from "./room-capacity-readiness";
 
 export interface ReadinessMetric {
   label: string;
@@ -104,11 +105,17 @@ async function fetchNewFlowSignals(collegeId: string): Promise<NewFlowSignals | 
     const [cohorts, deliveryGroups, dgAssignments, sessionIdentity, approvedHeadcounts] =
       await Promise.all([
         supabase.from("academic_cohorts").select("id, active, term_id").eq("college_id", collegeId),
-        supabase.from("delivery_groups").select("id, cohort_id").eq("college_id", collegeId),
+        // DELIVERY-GROUP-COVERAGE-FIX-01: historical (obsolete) groups never count.
+        supabase
+          .from("delivery_groups")
+          .select("id, cohort_id")
+          .eq("college_id", collegeId)
+          .or("is_obsolete.is.null,is_obsolete.eq.false"),
         supabase
           .from("teaching_assignments")
           .select("delivery_group_id, instructor_id")
           .eq("college_id", collegeId)
+          .or("is_active.is.null,is_active.eq.true")
           .not("delivery_group_id", "is", null),
         supabase
           .from("schedule_sessions")
@@ -222,7 +229,7 @@ export async function fetchCollegeReadiness(collegeId: string): Promise<Readines
         .eq("college_id", collegeId),
       supabase
         .from("rooms")
-        .select("id, capacity, room_type_id, room_type", { count: "exact" })
+        .select("id, capacity, room_type_id, room_type, is_active", { count: "exact" })
         .eq("college_id", collegeId),
       supabase
         .from("course_offerings")
@@ -236,7 +243,10 @@ export async function fetchCollegeReadiness(collegeId: string): Promise<Readines
         .from("schedule_sessions")
         .select("id, room_id, start_time, end_time, day_of_week", { count: "exact" })
         .eq("college_id", collegeId),
-      supabase.from("room_types").select("id, default_capacity").eq("college_id", collegeId),
+      supabase
+        .from("room_types")
+        .select("id, default_capacity, name_ar")
+        .eq("college_id", collegeId),
     ]);
 
   const baseQueries = [
@@ -262,12 +272,6 @@ export async function fetchCollegeReadiness(collegeId: string): Promise<Readines
   const offeringsRows = offerings.data ?? [];
   const assignmentsRows = assignments.data ?? [];
   const sessionsRows = sessions.data ?? [];
-  const roomTypeMap = new Map(
-    (roomTypes.data ?? []).map((r: { id: string; default_capacity: number }) => [
-      r.id,
-      r.default_capacity,
-    ]),
-  );
 
   const offeringsWithAssignments = new Set(
     assignmentsRows.map((a: { course_offering_id: string }) => a.course_offering_id),
@@ -288,32 +292,16 @@ export async function fetchCollegeReadiness(collegeId: string): Promise<Readines
       missing: instructorsRows.filter(isMissingInstructorDepartment).length,
       category: "resources",
     },
-    {
-      label: "قاعات بسعة افتراضية (مطابقة للنوع)",
-      total: roomsRows.length,
-      missing: roomsRows.filter(
-        (r: { room_type_id: string | null; capacity: number }) =>
-          r.room_type_id && r.capacity === roomTypeMap.get(r.room_type_id),
-      ).length,
-      category: "resources",
-    },
-    {
-      label: "قاعات بدون نوع قاعة",
-      total: roomsRows.length,
-      missing: roomsRows.filter(
-        (r: { room_type_id: string | null; room_type: string | null }) =>
-          !r.room_type_id && !r.room_type,
-      ).length,
-      category: "resources",
-    },
-    {
-      label: "قاعات بسعة ≤ 0",
-      total: roomsRows.length,
-      missing: roomsRows.filter((r: { capacity: number | null }) => !r.capacity || r.capacity <= 0)
-        .length,
-      critical: true,
-      category: "resources",
-    },
+    ...roomCapacityReadinessMetrics(
+      roomsRows as {
+        id: string;
+        capacity: number | null;
+        room_type_id: string | null;
+        room_type?: string | null;
+        is_active?: boolean | null;
+      }[],
+      (roomTypes.data ?? []) as { id: string; default_capacity: number | null }[],
+    ),
   ];
 
   const scheduling: ReadinessMetric[] = [

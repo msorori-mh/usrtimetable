@@ -56,7 +56,12 @@ export async function fetchOnboardingReadinessSnapshot(
     countExact("academic_programs", collegeId),
     countExact("academic_terms", collegeId),
     countExact("academic_cohorts", collegeId),
-    countExact("delivery_groups", collegeId),
+    // DELIVERY-GROUP-COVERAGE-FIX-01: exclude historical (obsolete) groups.
+    supabase
+      .from("delivery_groups")
+      .select("id", { count: "exact", head: true })
+      .eq("college_id", collegeId)
+      .or("is_obsolete.is.null,is_obsolete.eq.false"),
     countExact("instructors", collegeId),
     countExact("rooms", collegeId),
     countExact("schedule_versions", collegeId),
@@ -64,11 +69,15 @@ export async function fetchOnboardingReadinessSnapshot(
       .from("teaching_assignments")
       .select("id", { count: "exact", head: true })
       .eq("college_id", collegeId)
+      .or("is_active.is.null,is_active.eq.true")
       .not("delivery_group_id", "is", null),
     supabase.from("instructor_availability").select("instructor_id").eq("college_id", collegeId),
     countExact("elective_slots", collegeId),
   ]);
 
+  if (deliveryGroups.error) {
+    throw new Error(`ONBOARDING_COUNT_FAILED[delivery_groups]: ${deliveryGroups.error.message}`);
+  }
   if (taV2.error) {
     throw new Error(`ONBOARDING_COUNT_FAILED[teaching_assignments]: ${taV2.error.message}`);
   }
@@ -88,7 +97,7 @@ export async function fetchOnboardingReadinessSnapshot(
     terms,
     planCourses: readiness.totals.planCourses,
     cohorts,
-    deliveryGroups,
+    deliveryGroups: deliveryGroups.count ?? 0,
     instructors,
     rooms,
     teachingAssignmentsV2: taV2.count ?? 0,

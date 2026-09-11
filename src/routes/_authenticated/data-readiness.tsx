@@ -27,6 +27,7 @@ import {
 } from "@/lib/instructor-category";
 import { PLAN_COMPONENT_ROOM_TYPE_MISSING_BLOCKER } from "@/lib/academic-delivery/plan-component-room-type-readiness";
 import { fetchStudyPlanReadiness } from "@/lib/academic-delivery/fetch-study-plan-readiness";
+import { roomCapacityReadinessMetrics } from "@/lib/reports/room-capacity-readiness";
 
 export const Route = createFileRoute("/_authenticated/data-readiness")({
   head: () => ({ meta: [{ title: "جاهزية البيانات" }] }),
@@ -58,6 +59,7 @@ type ReadinessRoomRow = {
   capacity: number | null;
   room_type_id: string | null;
   room_type: string | null;
+  is_active: boolean | null;
 };
 type ReadinessOfferingRow = { id: string; expected_students: number | null };
 type ReadinessAssignmentRow = {
@@ -88,11 +90,17 @@ async function fetchNewFlowMetrics(collegeId: string): Promise<Metric[]> {
   try {
     const [cohorts, deliveryGroups, dgAssignments, sessionIdentity] = await Promise.all([
       supabase.from("academic_cohorts").select("id, active").eq("college_id", collegeId),
-      supabase.from("delivery_groups").select("id, cohort_id").eq("college_id", collegeId),
+      // DELIVERY-GROUP-COVERAGE-FIX-01: obsolete groups are historical, not gaps.
+      supabase
+        .from("delivery_groups")
+        .select("id, cohort_id")
+        .eq("college_id", collegeId)
+        .or("is_obsolete.is.null,is_obsolete.eq.false"),
       supabase
         .from("teaching_assignments")
         .select("delivery_group_id, instructor_id")
         .eq("college_id", collegeId)
+        .or("is_active.is.null,is_active.eq.true")
         .not("delivery_group_id", "is", null),
       supabase
         .from("schedule_sessions")
@@ -188,7 +196,9 @@ async function fetchReadiness(collegeId: string) {
         .select("id, specialization, department_id, instructor_type_id", { count: "exact" }),
     ),
     scope(
-      supabase.from("rooms").select("id, capacity, room_type_id, room_type", { count: "exact" }),
+      supabase
+        .from("rooms")
+        .select("id, capacity, room_type_id, room_type, is_active", { count: "exact" }),
     ),
     scope(supabase.from("course_offerings").select("id, expected_students", { count: "exact" })),
     scope(
@@ -201,7 +211,7 @@ async function fetchReadiness(collegeId: string) {
         .from("schedule_sessions")
         .select("id, room_id, start_time, end_time, day_of_week", { count: "exact" }),
     ),
-    scope(supabase.from("room_types").select("id, default_capacity")),
+    scope(supabase.from("room_types").select("id, default_capacity, name_ar")),
     scope(supabase.from("instructor_availability").select("instructor_id")),
   ]);
 
@@ -228,9 +238,6 @@ async function fetchReadiness(collegeId: string) {
   const offeringsRows = (offerings.data ?? []) as ReadinessOfferingRow[];
   const assignmentsRows = (assignments.data ?? []) as ReadinessAssignmentRow[];
   const sessionsRows = (sessions.data ?? []) as ReadinessSessionRow[];
-  const roomTypeMap = new Map(
-    ((roomTypes.data ?? []) as ReadinessRoomTypeRow[]).map((r) => [r.id, r.default_capacity]),
-  );
   const instructorsWithAvail = new Set(
     ((availability.data ?? []) as ReadinessAvailabilityRow[]).map((a) => a.instructor_id),
   );
@@ -254,24 +261,7 @@ async function fetchReadiness(collegeId: string) {
       total: instructorsRows.length,
       missing: instructorsRows.filter(isMissingInstructorDepartment).length,
     },
-    {
-      label: "قاعات بسعة افتراضية (مطابقة للنوع)",
-      total: roomsRows.length,
-      missing: roomsRows.filter(
-        (r) => r.room_type_id && r.capacity === roomTypeMap.get(r.room_type_id),
-      ).length,
-    },
-    {
-      label: "قاعات بدون نوع قاعة",
-      total: roomsRows.length,
-      missing: roomsRows.filter((r) => !r.room_type_id && !r.room_type).length,
-    },
-    {
-      label: "قاعات بسعة ≤ 0",
-      total: roomsRows.length,
-      missing: roomsRows.filter((r) => !r.capacity || r.capacity <= 0).length,
-      critical: true,
-    },
+    ...roomCapacityReadinessMetrics(roomsRows, (roomTypes.data ?? []) as ReadinessRoomTypeRow[]),
   ];
 
   // Instructor availability — per category (Phase 1.5A)
