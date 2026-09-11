@@ -80,6 +80,11 @@ function DeliveryGroupsPage() {
     },
   });
 
+  const allRows = rows ?? [];
+  const obsoleteCount = allRows.filter((g) => g.is_obsolete === true).length;
+  const operationalRows = allRows.filter((g) => g.is_obsolete !== true);
+  const visibleRows = showObsolete ? allRows : operationalRows;
+
   return (
     <div className="mx-auto max-w-5xl">
       <header className="mb-6 flex items-center gap-3">
@@ -101,10 +106,10 @@ function DeliveryGroupsPage() {
           <AdminExportMenu
             size="sm"
             testId="delivery-groups-export"
-            disabled={!active || (rows ?? []).length === 0}
+            disabled={!active || visibleRows.length === 0}
             dataset={() =>
               deliveryGroupsExportDataset({
-                rows: (rows ?? []).map((g) => ({
+                rows: visibleRows.map((g) => ({
                   group_code: g.group_code,
                   group_number: g.group_number ?? null,
                   component_type: g.plan_course_components?.component_type ?? null,
