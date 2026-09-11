@@ -1036,17 +1036,20 @@ function runEntityValidation(
           rawValue: String(v.study_system),
         });
       }
-      // find plan_course via any study plan for program
-      let planCourseId: string | null = null;
-      for (const [k, id] of lk.planCourses ?? []) {
-        if (k.endsWith(`|${c.id}`)) {
-          planCourseId = id;
-          break;
-        }
-      }
-      const compId = planCourseId
-        ? lk.components?.get(`${planCourseId}|${v.component_type}`)
-        : null;
+      // Resolve plan_course candidates scoped to the cohort's program + level,
+      // then pick the component whose delivery_group actually exists for this cohort.
+      const candidatePlanCourseIds =
+        lk.planCoursesByProgramLevel?.get(`${cohort.program_id}|${cohort.level_id}|${c.id}`) ?? [];
+      const groupCode = String(v.delivery_group_code ?? "").trim() || null;
+      const resolved = resolveTeachingAssignmentComponent({
+        candidatePlanCourseIds,
+        componentType: String(v.component_type ?? ""),
+        cohortId: cohort.id,
+        deliveryGroupCode: groupCode,
+        components: lk.components ?? new Map(),
+        deliveryGroups: lk.deliveryGroups ?? new Map(),
+      });
+      const compId = resolved.componentId;
       need(
         !!compId,
         "نوع_المكوّن",
@@ -1059,7 +1062,8 @@ function runEntityValidation(
       const offId = lk.offerings?.get(offKey);
       if (offId) v._offering_id = offId;
       if (v.delivery_group_code && compId) {
-        const dg = lk.deliveryGroups?.get(`${cohort.id}|${compId}|${v.delivery_group_code}`);
+        const dg = resolved.deliveryGroupId;
+
         need(
           !!dg,
           "رمز_مجموعة_التقديم",
