@@ -5,7 +5,6 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   buildCollegeScopedSavePayload,
   collegeScopedQueryKey,
-  shouldResetTermFilter,
   useActiveCollege,
 } from "@/hooks/use-colleges";
 import { useCanManageActiveCollege } from "@/hooks/use-can-manage";
@@ -25,7 +24,7 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
-import { Clock, ChevronDown, Trash2 } from "lucide-react";
+import { Clock, ChevronDown } from "lucide-react";
 import {
   ALL_WEEK_DAYS,
   DAY_LABELS_AR,
@@ -41,26 +40,15 @@ import {
   type StudySystem,
 } from "@/lib/time-templates/weekly-generator";
 
+import { TemplateDirectory } from "@/components/time-templates/template-directory";
+import { TEMPLATE_SYSTEM_LABELS as SYSTEM_LABELS, type TimeTemplateRow } from "@/lib/time-templates/template-directory";
+
 export const Route = createFileRoute("/_authenticated/time-slot-templates")({
   head: () => ({ meta: [{ title: "قوالب أوقات المحاضرات" }] }),
   component: TimeSlotTemplatesPage,
 });
 
-interface TST {
-  id: string;
-  study_system: StudySystem;
-  day_of_week: number;
-  start_time: string;
-  end_time: string;
-  slot_duration_minutes: number;
-  is_active: boolean;
-}
-
-const SYSTEM_LABELS: Record<StudySystem, string> = {
-  regular: "عام",
-  parallel: "موازي",
-  both: "عام وموازي",
-};
+type TST = TimeTemplateRow;
 
 function emptyOverride(day: number): DayOverride {
   return {
@@ -74,12 +62,16 @@ function emptyOverride(day: number): DayOverride {
 
 function TimeSlotTemplatesPage() {
   const { active } = useActiveCollege();
+  return <TimeSlotTemplatesWorkspace key={active?.id ?? "no-college"} />;
+}
+
+function TimeSlotTemplatesWorkspace() {
+  const { active } = useActiveCollege();
   const canManage = useCanManageActiveCollege();
   const qc = useQueryClient();
   const collegeId = active?.id ?? null;
 
-  const [filterSystem, setFilterSystem] = useState<StudySystem | "all">("all");
-  const [termFilter, setTermFilter] = useState<string>("all");
+  const [weeklyOpen, setWeeklyOpen] = useState(false);
   const [studySystem, setStudySystem] = useState<StudySystem>("regular");
   const [dayStart, setDayStart] = useState(DEFAULT_DAY_START);
   const [dayEnd, setDayEnd] = useState(DEFAULT_DAY_END);
@@ -118,31 +110,11 @@ function TimeSlotTemplatesPage() {
     slot_duration_minutes: 120,
   });
 
-  // College switch: drop college-scoped UI state so card/queries never show prior college data.
+  // Edits invalidate the preview so saved templates match the reviewed settings.
   useEffect(() => {
-    setTermFilter("all");
     setPreview(null);
     setPreviewMeta(null);
-  }, [collegeId]);
-
-  const { data: terms } = useQuery({
-    queryKey: collegeScopedQueryKey("terms-min", collegeId),
-    enabled: !!collegeId,
-    queryFn: async () =>
-      (
-        await supabase
-          .from("academic_terms")
-          .select("id, name, is_active")
-          .eq("college_id", collegeId!)
-          .order("name")
-      ).data ?? [],
-  });
-
-  useEffect(() => {
-    if (shouldResetTermFilter(termFilter, terms)) {
-      setTermFilter("all");
-    }
-  }, [terms, termFilter]);
+  }, [collegeId, studySystem, dayStart, dayEnd, gridMinutes, durations, dayOverrides]);
 
   const { data: breaks } = useQuery({
     queryKey: collegeScopedQueryKey("daily-breaks", collegeId),
@@ -157,12 +129,11 @@ function TimeSlotTemplatesPage() {
     },
   });
 
-  const { data: rows, isLoading } = useQuery({
-    queryKey: collegeScopedQueryKey("tst", collegeId, filterSystem),
+  const { data: rows, isLoading, error: rowsError, refetch: refetchRows } = useQuery({
+    queryKey: collegeScopedQueryKey("tst", collegeId, "all-records"),
     enabled: !!collegeId,
     queryFn: async () => {
-      let q = supabase.from("time_slot_templates").select("*").eq("college_id", collegeId!);
-      if (filterSystem !== "all") q = q.eq("study_system", filterSystem);
+      const q = supabase.from("time_slot_templates").select("*").eq("college_id", collegeId!);
       const { data, error } = await q
         .order("study_system")
         .order("day_of_week")
@@ -171,16 +142,6 @@ function TimeSlotTemplatesPage() {
       return (data ?? []) as TST[];
     },
   });
-
-  const weeklyGrid = useMemo(() => {
-    const byDay: Record<number, TST[]> = {};
-    for (const d of ALL_WEEK_DAYS) byDay[d] = [];
-    for (const r of rows ?? []) {
-      if (!byDay[r.day_of_week]) byDay[r.day_of_week] = [];
-      byDay[r.day_of_week].push(r);
-    }
-    return byDay;
-  }, [rows]);
 
   const setDayEnabled = (day: number, checked: boolean) => {
     setDayOverrides((prev) => ({
@@ -221,6 +182,10 @@ function TimeSlotTemplatesPage() {
   };
 
   const runPreview = () => {
+    if (isLoading || rowsError || !rows) {
+      toast.error("انتظر اكتمال تحميل القوالب قبل المعاينة.");
+      return;
+    }
     const result = generateWeeklyTemplates({
       studySystem,
       days: selectedDays,
@@ -263,7 +228,7 @@ function TimeSlotTemplatesPage() {
 
   const saveWeekly = useMutation({
     mutationFn: async () => {
-      if (!collegeId) throw new Error("اختر كلّية");
+      if (!collegeId || !canManage) throw new Error("لا تملك صلاحية إدارة قوالب هذه الكلية");
       if (!preview || !previewMeta) throw new Error("عاين القوالب أولاً");
 
       // Re-load latest rows immediately before save (application-level idempotency).
@@ -331,7 +296,8 @@ function TimeSlotTemplatesPage() {
 
   const addSingle = useMutation({
     mutationFn: async () => {
-      if (!collegeId) throw new Error("اختر كلّية");
+      if (!collegeId || !canManage) throw new Error("لا تملك صلاحية إدارة قوالب هذه الكلية");
+      if (isLoading || rowsError || !rows) throw new Error("انتظر اكتمال تحميل القوالب أولاً");
       if (singleForm.end_time <= singleForm.start_time)
         throw new Error("يجب أن يكون وقت نهاية الدوام بعد وقت البداية.");
       if (singleForm.slot_duration_minutes < 15 || singleForm.slot_duration_minutes > 480)
@@ -371,10 +337,11 @@ function TimeSlotTemplatesPage() {
 
   const toggleActive = useMutation({
     mutationFn: async (r: TST) => {
+      if (!collegeId || !canManage) throw new Error("لا تملك صلاحية إدارة قوالب هذه الكلية");
       const { error } = await supabase
         .from("time_slot_templates")
         .update({ is_active: !r.is_active })
-        .eq("id", r.id);
+        .eq("id", r.id).eq("college_id", collegeId);
       if (error) throw error;
       await logAudit({
         action: "update",
@@ -389,7 +356,8 @@ function TimeSlotTemplatesPage() {
 
   const del = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("time_slot_templates").delete().eq("id", id);
+      if (!collegeId || !canManage) throw new Error("لا تملك صلاحية إدارة قوالب هذه الكلية");
+      const { error } = await supabase.from("time_slot_templates").delete().eq("id", id).eq("college_id", collegeId);
       if (error) throw error;
       await logAudit({
         action: "delete",
@@ -406,8 +374,8 @@ function TimeSlotTemplatesPage() {
   });
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <header className="flex items-center gap-3">
+    <div className="w-full min-w-0 space-y-6">
+      <header className="flex flex-wrap items-center gap-3">
         <span className="grid h-11 w-11 place-items-center rounded-lg bg-secondary text-primary">
           <Clock className="h-5 w-5" />
         </span>
@@ -426,31 +394,29 @@ function TimeSlotTemplatesPage() {
         </p>
       ) : (
         <>
+          <TemplateDirectory
+            rows={rows ?? []} isLoading={isLoading} error={rowsError}
+            onRetry={() => { void refetchRows(); }} canManage={canManage}
+            pending={toggleActive.isPending || del.isPending}
+            onToggle={(row) => toggleActive.mutate(row)}
+            onDelete={(row) => {
+              if (confirm("حذف قالب " + DAY_LABELS_AR[row.day_of_week] + " " + row.start_time.slice(0, 5) + " إلى " + row.end_time.slice(0, 5) + " (" + SYSTEM_LABELS[row.study_system] + ")؟")) del.mutate(row.id);
+            }}
+          />
+          <p className="text-xs text-muted-foreground">القوالب تخص الكلية وتُستخدم عبر فصولها الدراسية؛ إعداد قوالب الأيام لا يلزم الطلاب بالحضور في جميع هذه الأيام.</p>
+          {canManage && <Collapsible open={weeklyOpen} onOpenChange={setWeeklyOpen}>
+            <Card className="p-4">
+              <CollapsibleTrigger asChild><Button type="button" variant="outline" className="w-full justify-between">إعداد قوالب أسبوعية جديدة<ChevronDown className="h-4 w-4" /></Button></CollapsibleTrigger>
+              <p className="mt-2 text-xs text-muted-foreground">افتح الإعداد لتحديد الأيام والفترات ومعاينة القوالب قبل حفظها.</p>
+            </Card>
+            <CollapsibleContent className="mt-4 space-y-4">
           <Card className="p-4 space-y-4">
-            <p className="text-sm font-semibold">1) السياق</p>
-            <div className="grid gap-3 md:grid-cols-4">
+            <p className="text-sm font-semibold">1) تصنيف القوالب الجديدة</p>
+            <div className="grid gap-3 md:grid-cols-3">
               <div>
-                <Label>الفصل الأكاديمي (للتصفية/العرض)</Label>
-                <Select value={termFilter} onValueChange={setTermFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="اختياري" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">كل الفصول الأكاديمية</SelectItem>
-                    {(terms ?? []).map((t) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {t.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>نظام الدراسة</Label>
+                <Label htmlFor="new-template-system">استخدام القوالب الجديدة</Label>
                 <Select value={studySystem} onValueChange={(v) => setStudySystem(v as StudySystem)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger id="new-template-system"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="regular">{SYSTEM_LABELS.regular}</SelectItem>
                     <SelectItem value="parallel">{SYSTEM_LABELS.parallel}</SelectItem>
@@ -458,15 +424,10 @@ function TimeSlotTemplatesPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label>الكلّية</Label>
-                <Input value={active.name} disabled />
-              </div>
-              <div>
-                <Label>حالة القوالب الجديدة</Label>
-                <Input value="مفعّل عند الحفظ" disabled />
-              </div>
+              <div><Label>الكلية</Label><Input value={active.name} disabled /></div>
+              <div><Label>حالة القوالب الجديدة</Label><Input value="مفعّل عند الحفظ" disabled /></div>
             </div>
+            <p className="text-xs text-muted-foreground">اختر «مشترك للعام والموازي» إذا كانت الفترات نفسها متاحة للنظامين.</p>
           </Card>
 
           {canManage && (
@@ -687,7 +648,7 @@ function TimeSlotTemplatesPage() {
               <Card className="p-4 space-y-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="flex-1 text-sm font-semibold">6) المعاينة والحفظ</p>
-                  <Button type="button" variant="outline" onClick={runPreview}>
+                  <Button type="button" variant="outline" onClick={runPreview} disabled={isLoading || !!rowsError}>
                     معاينة القوالب
                   </Button>
                   <Button
@@ -718,8 +679,7 @@ function TimeSlotTemplatesPage() {
                     </p>
                     <p>متجاوز بسبب استراحة: {previewMeta.skippedBreakConflicts}</p>
                     <p className="text-xs text-muted-foreground md:col-span-2">
-                      الحماية من التكرار على مستوى التطبيق فقط — لا يوجد قيد uniqueness في قاعدة
-                      البيانات حاليًا.
+                      تُراجع القوالب الموجودة قبل الحفظ، ويُضاف الجديد فقط.
                     </p>
                   </div>
                 )}
@@ -867,7 +827,7 @@ function TimeSlotTemplatesPage() {
                         <Button
                           className="w-full"
                           onClick={() => addSingle.mutate()}
-                          disabled={addSingle.isPending}
+                          disabled={addSingle.isPending || isLoading || !!rowsError}
                         >
                           إضافة
                         </Button>
@@ -879,81 +839,8 @@ function TimeSlotTemplatesPage() {
             </>
           )}
 
-          <Card className="p-4 space-y-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <p className="flex-1 text-sm font-semibold">القوالب المحفوظة</p>
-              <div className="w-48">
-                <Select
-                  value={filterSystem}
-                  onValueChange={(v) => setFilterSystem(v as StudySystem | "all")}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="نظام الدراسة" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">كل الأنظمة</SelectItem>
-                    <SelectItem value="regular">{SYSTEM_LABELS.regular}</SelectItem>
-                    <SelectItem value="parallel">{SYSTEM_LABELS.parallel}</SelectItem>
-                    <SelectItem value="both">{SYSTEM_LABELS.both}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid gap-2 md:grid-cols-5">
-              {ALL_WEEK_DAYS.filter((d) => d !== 4 || (weeklyGrid[4]?.length ?? 0) > 0).map(
-                (day) => (
-                  <div key={day} className="rounded border border-border p-2">
-                    <p className="mb-1 text-xs font-semibold">{DAY_LABELS_AR[day]}</p>
-                    <p className="text-lg font-bold">{(weeklyGrid[day] ?? []).length}</p>
-                    <p className="text-[10px] text-muted-foreground">قالب</p>
-                  </div>
-                ),
-              )}
-            </div>
-
-            {isLoading ? (
-              <p className="p-4 text-center text-muted-foreground">جارٍ التحميل...</p>
-            ) : !rows || rows.length === 0 ? (
-              <p className="p-4 text-center text-muted-foreground">
-                لا توجد قوالب بعد. استخدم الإعداد الأسبوعي أعلاه.
-              </p>
-            ) : (
-              <ul className="divide-y divide-border rounded border border-border">
-                {rows.map((r) => (
-                  <li key={r.id} className="flex items-center justify-between p-3">
-                    <div>
-                      <p className="text-sm font-medium">
-                        {SYSTEM_LABELS[r.study_system]} · {DAY_LABELS_AR[r.day_of_week]}{" "}
-                        <span dir="ltr">
-                          {r.start_time.slice(0, 5)} → {r.end_time.slice(0, 5)}
-                        </span>
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        مدة: {r.slot_duration_minutes} دقيقة · {r.is_active ? "مفعّل" : "معطّل"}
-                      </p>
-                    </div>
-                    {canManage && (
-                      <div className="flex gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => toggleActive.mutate(r)}>
-                          {r.is_active ? "تعطيل" : "تفعيل"}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => {
-                            if (confirm("حذف القالب؟")) del.mutate(r.id);
-                          }}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
+            </CollapsibleContent>
+          </Collapsible>}
         </>
       )}
     </div>
