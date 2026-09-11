@@ -280,7 +280,7 @@ function AcademicCohortsWorkspace() {
         <div className="flex-1">
           <h1 className="text-2xl font-bold">الدفعات الدراسية</h1>
           <p className="text-sm text-muted-foreground">
-            ابحث عن الدفعة، راجع عدد طلابها، ثم اعرض مقرراتها ومجموعات التدريس.
+            ابحث عن الدفعة، راجع عدد طلابها، ثم اعرض مقرراتها ومجموعات المحاضرات والمعامل.
           </p>
         </div>
       </header>
