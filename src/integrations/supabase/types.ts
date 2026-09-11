@@ -2945,6 +2945,7 @@ export type Database = {
           created_at: string
           day_end_time: string
           day_start_time: string
+          enforce_instructor_availability: boolean
           id: string
           max_daily_hours_per_instructor: number
           max_daily_hours_per_section: number
@@ -2965,6 +2966,7 @@ export type Database = {
           created_at?: string
           day_end_time?: string
           day_start_time?: string
+          enforce_instructor_availability?: boolean
           id?: string
           max_daily_hours_per_instructor?: number
           max_daily_hours_per_section?: number
@@ -2985,6 +2987,7 @@ export type Database = {
           created_at?: string
           day_end_time?: string
           day_start_time?: string
+          enforce_instructor_availability?: boolean
           id?: string
           max_daily_hours_per_instructor?: number
           max_daily_hours_per_section?: number
@@ -4052,6 +4055,10 @@ export type Database = {
       import_scheduling_headcounts: {
         Args: { p_action?: string; p_college_id: string; p_rows: Json }
         Returns: Json
+      }
+      instructor_availability_enforced: {
+        Args: { p_college_id: string }
+        Returns: boolean
       }
       is_institutional_read_only_actor: {
         Args: { _user_id: string }
