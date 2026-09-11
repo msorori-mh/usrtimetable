@@ -5,6 +5,14 @@ import {
   listScheduleBuilderV2WorkItems,
 } from "@/lib/schedule-builder/v2-assignment-service";
 import type { AutoRunMode, AutoRunResult, UnplacedItem } from "@/lib/auto-scheduler/greedy";
+import { loadCompactSnapshot } from "@/lib/auto-scheduler/compact-service";
+import { measure, compactSlots, type Session } from "@/lib/auto-scheduler/compact";
+import {
+  rankGenerationCandidates,
+  generationDomainSize,
+  compareDifficulty,
+} from "@/lib/auto-scheduler/generation-ranking";
+import { assessScheduleReadiness } from "@/lib/auto-scheduler/schedule-readiness";
 import {
   assertVersionNotStale,
   filterCandidateRooms,
@@ -13,7 +21,6 @@ import {
   orderSlotsByDistinctDay,
   planRemainingSessions,
   requiredCadenceForComponent,
-  type CandidateSlot,
   type ExistingSessionLite,
   type OccupiedInterval,
   type PlanCourseCadence,
@@ -26,7 +33,7 @@ import {
   type PartitionMembershipRow,
 } from "@/lib/auto-scheduler/student-partitions";
 
-const ALGORITHM_VERSION = "v2-five-day-compact-candidates-rpc";
+const ALGORITHM_VERSION = "v2-joint-attendance-scarcity-rpc";
 
 /** Fail-closed Arabic note when the partition mapping cannot be used. */
 export const PARTITION_FALLBACK_WARNING_AR =
@@ -90,40 +97,7 @@ async function loadPartitionIndex(input: {
 }
 
 const pad = (value: number) => String(value).padStart(2, "0");
-const toMinutes = (value: string) => {
-  const [hours, minutes] = value.slice(0, 5).split(":").map(Number);
-  return hours * 60 + minutes;
-};
 const fromMinutes = (value: number) => `${pad(Math.floor(value / 60))}:${pad(value % 60)}:00`;
-
-function buildSlots(input: {
-  templates: Array<{
-    study_system: string;
-    day_of_week: number;
-    start_time: string;
-    end_time: string;
-  }>;
-  studySystem: string;
-  durationMinutes: number;
-}): CandidateSlot[] {
-  const slots: CandidateSlot[] = [];
-  const templates = input.templates.filter(
-    (template) => template.study_system === input.studySystem || template.study_system === "both",
-  );
-  for (const template of templates) {
-    const start = toMinutes(template.start_time);
-    const end = toMinutes(template.end_time);
-    for (let cursor = start; cursor + input.durationMinutes <= end; cursor += 60) {
-      slots.push({
-        day: template.day_of_week,
-        start: fromMinutes(cursor),
-        end: fromMinutes(cursor + input.durationMinutes),
-      });
-    }
-  }
-  const unique = new Map(slots.map((slot) => [`${slot.day}|${slot.start}|${slot.end}`, slot]));
-  return [...unique.values()].sort((a, b) => a.day - b.day || toMinutes(a.start) - toMinutes(b.start));
-}
 
 export type AutoScheduleProgress = {
   processedItems: number;
@@ -173,6 +147,11 @@ export async function runV2AutoSchedule(params: {
   if (!payload.ok || !payload.can_manage) {
     throw new Error("V2_WORK_ITEMS_FORBIDDEN: تعذر تحميل وحدات الجدولة المصرح بها.");
   }
+  if (!payload.rows.length) {
+    throw new Error(
+      "لا توجد إسنادات للجدولة. استكمل الخطط والدفعات والمدرسين والإسناد ثم أعد التوليد.",
+    );
+  }
 
   const [
     { data: rooms, error: roomsError },
@@ -213,11 +192,44 @@ export async function runV2AutoSchedule(params: {
       item.cohort_id &&
       (item.study_system === "regular" || item.study_system === "parallel"),
   );
+  const timedScope = payload.rows.filter(
+    (item) =>
+      item.assignment_active &&
+      item.delivery_group_active &&
+      !item.delivery_group_obsolete &&
+      !item.is_project &&
+      !item.is_summer_training,
+  );
+  const blockedWorkItems = timedScope.filter((item) => item.scheduling_status === "blocked");
+  if (!workItems.length) {
+    throw new Error(
+      blockedWorkItems.length
+        ? `توجد ${blockedWorkItems.length} إسنادات محظورة. استكمل البيانات المبيّنة في شاشة الإسناد قبل التوليد.`
+        : "لا توجد ساعات مؤهلة إضافية للجدولة. راجع اكتمال الإسنادات ونمط الجلسات في المسودة.",
+    );
+  }
+  const planningSnapshot = await loadCompactSnapshot(params.collegeId, params.scheduleVersionId);
+  const planningSessions = [...planningSnapshot.sessions];
+  const seedFor = (item: (typeof workItems)[number], length: number): Session => ({
+    id: `candidate:${item.teaching_assignment_id}:${planningSessions.length}`,
+    updated_at: "",
+    cohort_id: item.cohort_id!,
+    delivery_group_id: item.delivery_group_id!,
+    teaching_assignment_id: item.teaching_assignment_id,
+    instructor_id: item.instructor_id,
+    room_id: "",
+    day_of_week: 0,
+    start_time: "00:00:00",
+    end_time: fromMinutes(length),
+    study_system: item.study_system!,
+    expected_students: item.expected_students,
+    is_locked: false,
+  });
 
   // Plan cadence lookup: component -> plan_course -> validated weekly pattern.
   const componentIds = Array.from(
     new Set(
-      workItems
+      timedScope
         .map((item) => item.plan_course_component_id || item.component_id)
         .filter((id): id is string => !!id),
     ),
@@ -255,8 +267,12 @@ export async function runV2AutoSchedule(params: {
   if (attendanceError || !attendanceCohorts?.length) {
     throw new Error("تعذر قراءة مستويات الدفعات للتحقق من حد خمسة أيام.");
   }
-  const levelByCohort = new Map(attendanceCohorts.map(c => [c.id,
-    [c.program_id,c.level_id,c.study_system,c.term_id].join("|")]));
+  const levelByCohort = new Map(
+    attendanceCohorts.map((c) => [
+      c.id,
+      [c.program_id, c.level_id, c.study_system, c.term_id].join("|"),
+    ]),
+  );
   const sessionRows = existingSessions ?? [];
   const existingByAssignment = new Map<string, ExistingSessionLite[]>();
   for (const row of sessionRows) {
@@ -299,6 +315,10 @@ export async function runV2AutoSchedule(params: {
 
   const unplaced: UnplacedItem[] = [];
   const warnings: string[] = [];
+  for (const item of blockedWorkItems)
+    warnings.push(
+      `${item.course_code} / ${item.group_code ?? ""}: ${item.blocking_reason ?? "إسناد محظور يحتاج استكمال البيانات."}`,
+    );
   if (partitions.note) warnings.push(partitions.note);
   const byType: Record<string, { required: number; placed: number; unplaced: number }> = {};
   let placed = 0;
@@ -311,6 +331,70 @@ export async function runV2AutoSchedule(params: {
   // rooms/times on that instructor/day. Cache only this rejection for this run;
   // no conflict is ignored and all writes still use the guarded RPC.
   const unavailableInstructorDays = new Map<string, string>();
+
+  const difficulties = new Map<
+    string,
+    { candidateCount: number; durationMinutes: number; expectedStudents: number; id: string }
+  >();
+  for (const item of workItems) {
+    if (params.signal?.aborted) break;
+    const component = componentById.get(item.plan_course_component_id || item.component_id);
+    const cadence = requiredCadenceForComponent({
+      componentType: item.component_type,
+      assignedHours:
+        item.assigned_component_hours > 0
+          ? item.assigned_component_hours
+          : Number(component?.weekly_contact_hours ?? 0),
+      planCourse: component ? planCourseById.get(component.plan_course_id) : null,
+    });
+    const durationMinutes = Math.max(0, ...cadence.durations) * 60;
+    const roomIds = (rooms ?? [])
+      .filter((room) => room.capacity >= item.expected_students)
+      .map((room) => room.id);
+    const candidateCount =
+      durationMinutes > 0
+        ? generationDomainSize({
+            snapshot: planningSnapshot,
+            sessions: planningSessions,
+            session: seedFor(item, durationMinutes),
+            slots: compactSlots(
+              { ...planningSnapshot, sessions: planningSessions },
+              seedFor(item, durationMinutes),
+            ),
+            roomIds,
+          })
+        : 0;
+    difficulties.set(item.teaching_assignment_id, {
+      candidateCount,
+      durationMinutes,
+      expectedStudents: item.expected_students,
+      id: item.teaching_assignment_id,
+    });
+    params.onProgress?.({
+      processedItems: 0,
+      totalItems: workItems.length,
+      placed: 0,
+      unplaced: 0,
+      label: `فحص خيارات الجدولة: ${difficulties.size} / ${workItems.length}`,
+    });
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  }
+  workItems.sort((a, b) =>
+    compareDifficulty(
+      difficulties.get(a.teaching_assignment_id) ?? {
+        candidateCount: Infinity,
+        durationMinutes: 0,
+        expectedStudents: 0,
+        id: a.teaching_assignment_id,
+      },
+      difficulties.get(b.teaching_assignment_id) ?? {
+        candidateCount: Infinity,
+        durationMinutes: 0,
+        expectedStudents: 0,
+        id: b.teaching_assignment_id,
+      },
+    ),
+  );
 
   for (const item of workItems) {
     if (params.signal?.aborted) {
@@ -408,26 +492,36 @@ export async function runV2AutoSchedule(params: {
       }
       const durationMinutes = Math.max(30, Math.round(durationHours * 60));
       const slots = orderSlotsByDistinctDay(
-        buildSlots({
-          templates: templates ?? [],
-          studySystem: item.study_system!,
-          durationMinutes,
-        }),
+        compactSlots(
+          { ...planningSnapshot, sessions: planningSessions },
+          seedFor(item, durationMinutes),
+        ),
         usedDays,
       );
       const levelKey = levelByCohort.get(item.cohort_id!);
       if (!levelKey) throw new Error("لا توجد بيانات مستوى لهذه الدفعة.");
-      const levelDays = new Set(occupied.filter(x => x.cohortId && levelByCohort.get(x.cohortId) === levelKey).map(x => x.day));
-      // Prefer existing attendance days, then adjacent lessons for this delivery group.
-      const distance = (slot: CandidateSlot) => {
-        const peers = occupied.filter(x => x.day === slot.day && x.cohortId === item.cohort_id);
-        return peers.length ? Math.min(...peers.map(x => Math.min(Math.abs(toMinutes(slot.start)-toMinutes(x.end)),Math.abs(toMinutes(x.start)-toMinutes(slot.end))))) : 1440;
-      };
-      slots.sort((a,b) => Number(!levelDays.has(a.day))-Number(!levelDays.has(b.day)) || distance(a)-distance(b));
+      const levelDays = new Set(
+        occupied
+          .filter((x) => x.cohortId && levelByCohort.get(x.cohortId) === levelKey)
+          .map((x) => x.day),
+      );
+      const rankedCandidates = rankGenerationCandidates({
+        snapshot: planningSnapshot,
+        sessions: planningSessions,
+        session: seedFor(item, durationMinutes),
+        slots,
+        roomIds: candidateRooms.map((room) => room.id),
+        usedDays,
+      });
       let placedItem = false;
       let lastReason = "لا يوجد مرشح يحقق قيود مجموعة التقديم والدفعة.";
 
-      candidateSearch: for (const slot of slots) {
+      candidateSearch: for (const ranked of rankedCandidates) {
+        const slot = {
+          day: ranked.session.day_of_week,
+          start: ranked.session.start_time,
+          end: ranked.session.end_time,
+        };
         if (params.signal?.aborted) {
           cancelled = true;
           break;
@@ -442,7 +536,9 @@ export async function runV2AutoSchedule(params: {
           lastReason = unavailableReason;
           continue;
         }
-        for (const room of candidateRooms) {
+        for (const room of candidateRooms.filter(
+          (candidate) => candidate.id === ranked.session.room_id,
+        )) {
           if (params.signal?.aborted) {
             cancelled = true;
             break candidateSearch;
@@ -478,6 +574,7 @@ export async function runV2AutoSchedule(params: {
             placed++;
             byType[type].placed++;
             placedItem = true;
+            planningSessions.push({ ...ranked.session, ...result.session } as Session);
             usedDays.push(slot.day);
             occupied.push({
               day: slot.day,
@@ -509,7 +606,9 @@ export async function runV2AutoSchedule(params: {
       }
 
       if (cancelled) {
-        warnings.push("تم إيقاف التشغيل. الجلسات المحفوظة باقية، والوحدات غير المفحوصة ليست فاشلة.");
+        warnings.push(
+          "تم إيقاف التشغيل. الجلسات المحفوظة باقية، والوحدات غير المفحوصة ليست فاشلة.",
+        );
         break;
       }
       if (!placedItem) {
@@ -538,12 +637,61 @@ export async function runV2AutoSchedule(params: {
     if (cancelled) break;
   }
 
-  const totalRequiredSessions = Object.values(byType).reduce((sum, v) => sum + v.required, 0);
   const after = await scoreScheduleVersion({
     collegeId: params.collegeId,
     scheduleVersionId: params.scheduleVersionId,
     persist: false,
   });
+  // Authoritative readback covers the whole active scope, including already scheduled work.
+  const finalSnapshot = await loadCompactSnapshot(params.collegeId, params.scheduleVersionId);
+  const attendance = measure(finalSnapshot);
+  const requirements = timedScope.map((item) => {
+    const component = componentById.get(item.plan_course_component_id || item.component_id);
+    const cadence = requiredCadenceForComponent({
+      componentType: item.component_type,
+      assignedHours:
+        item.assigned_component_hours > 0
+          ? item.assigned_component_hours
+          : Number(component?.weekly_contact_hours ?? 0),
+      planCourse: component ? planCourseById.get(component.plan_course_id) : null,
+    });
+    return {
+      id: item.teaching_assignment_id,
+      groupId: item.delivery_group_id,
+      type: item.component_type || item.session_type || "theory",
+      requiredDurations: cadence.durations,
+      blocked: cadence.source === "blocked" || item.scheduling_status === "blocked",
+    };
+  });
+  const readiness = assessScheduleReadiness({
+    assignments: requirements,
+    sessions: finalSnapshot.sessions,
+    levelsOverFive: attendance.levelsOverFive,
+    hardConflicts: after.result.hard_conflicts_count,
+    softConflicts: after.result.soft_conflicts_count,
+    cancelled,
+  });
+  const totalRequiredSessions = readiness.requiredSessions;
+  // Per-type totals use the same complete scope as the headline count, including on cancellation.
+  for (const key of Object.keys(byType)) delete byType[key];
+  for (const requirement of requirements) {
+    const row = (byType[requirement.type] ??= { required: 0, placed: 0, unplaced: 0 });
+    const reconciled = planRemainingSessions({
+      requiredDurations: requirement.requiredDurations,
+      existing: finalSnapshot.sessions.filter(
+        (session) =>
+          session.teaching_assignment_id === requirement.id &&
+          session.delivery_group_id === requirement.groupId,
+      ),
+    });
+    row.required += requirement.requiredDurations.length;
+    row.placed += reconciled.conforming.length;
+    row.unplaced += reconciled.remaining.length;
+  }
+  if (!readiness.complete)
+    warnings.push(
+      `المسودة غير مكتملة: ${readiness.remainingSessions} جلسة متبقية، ${readiness.blockedAssignments} إسناد محظور، ${readiness.nonconformingSessions} جلسة لا تطابق النمط المطلوب.`,
+    );
   const durationMs = Math.round(performance.now() - startedAt);
   const { data: userData } = await supabase.auth.getUser();
   const { data: run, error: runError } = await supabase
@@ -552,7 +700,7 @@ export async function runV2AutoSchedule(params: {
       college_id: params.collegeId,
       schedule_version_id: params.scheduleVersionId,
       algorithm: ALGORITHM_VERSION,
-      status: unplaced.length === 0 && !cancelled ? "completed" : "partial",
+      status: readiness.complete ? "completed" : "partial",
       total_offerings: workItems.length,
       placed_sessions: placed,
       unplaced_sessions: unplaced.length,
@@ -565,6 +713,11 @@ export async function runV2AutoSchedule(params: {
         identity: "teaching_assignment+delivery_group+cohort",
         mode,
         cancelled,
+        ordering_strategy: "compatible_room_time_count_then_duration_then_headcount",
+        attendance_objective: "equal_average_student_and_instructor_gap",
+        blocked_work_items: blockedWorkItems.length,
+        attendance,
+        readiness,
         cadence_source: "plan_courses_weekly_pattern",
         cadence_invention: "disabled",
         student_partition_semantics: partitions.index
@@ -610,4 +763,3 @@ export async function runV2AutoSchedule(params: {
     skippedLockedSessions: 0,
   };
 }
-

@@ -30,6 +30,11 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
+      - name: Setup Node for scheduling contract tests
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
       - name: Install dependencies (frozen lockfile)
         run: bun install --frozen-lockfile
 
@@ -67,6 +72,9 @@ jobs:
 
       - name: TypeScript (tsc --noEmit)
         run: bunx tsc --noEmit
+
+      - name: Joint attendance and scheduling contracts
+        run: node --test tests/compact.test.mjs tests/joint-attendance.test.mjs tests/v2-joint-orchestration.test.mjs tests/compact-worker-client.test.mjs
 
       - name: Production build (vite build)
         run: bun run build
