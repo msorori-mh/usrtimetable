@@ -1,3 +1,4 @@
+import { ACADEMIC_STUDY_SYSTEM_LABELS } from "../study-systems";
 import { TEMPLATES, buildTemplateWorkbook } from "@/lib/excel-import/templates";
 // Catalog of Excel templates for the Data Templates Center.
 // Read-only metadata + Excel builders. No DB access.
@@ -97,8 +98,8 @@ const REF_STUDY_SYSTEM: TemplateRef = {
   title: "نظام الدراسة (Pilot)",
   rows: [
     ["الرمز", "الوصف"],
-    ["regular", "انتظام"],
-    ["parallel", "موازي"],
+    ["regular", ACADEMIC_STUDY_SYSTEM_LABELS.regular],
+    ["parallel", ACADEMIC_STUDY_SYSTEM_LABELS.parallel],
   ],
 };
 
@@ -106,8 +107,8 @@ const REF_STUDY_SYSTEM_LEGACY: TemplateRef = {
   title: "نظام الدراسة (Legacy — يتضمن both)",
   rows: [
     ["الرمز", "الوصف"],
-    ["regular", "انتظام"],
-    ["parallel", "موازي"],
+    ["regular", ACADEMIC_STUDY_SYSTEM_LABELS.regular],
+    ["parallel", ACADEMIC_STUDY_SYSTEM_LABELS.parallel],
     ["both", "كلاهما"],
   ],
 };
