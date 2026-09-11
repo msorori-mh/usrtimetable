@@ -434,7 +434,6 @@ export async function validateProposed(params: {
     if (!isInstructorAvailabilityEnforced()) {
       // no availability conflict is produced in this mode
     } else if (hardWindows.length === 0) {
-    if (hardWindows.length === 0) {
       // No availability rows for this day.
       // Permanent: assume default working week → no conflict.
       // External / Other college: availability is mandatory → block.
