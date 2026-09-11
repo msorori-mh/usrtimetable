@@ -3,6 +3,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { listImportUiEntities } from "../../src/lib/excel-import/registry";
+import {
+  parsePreparationSearch,
+  PREPARATION_STEPS,
+} from "../../src/lib/data-onboarding/preparation";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const read = (rel: string) => readFileSync(path.join(root, rel), "utf8");
@@ -22,10 +27,23 @@ assert.equal(
 );
 assert.ok(sections.includes("Legacy — للعرض التاريخي"), "deep route must be clearly marked Legacy");
 assert.ok(
-  templates.includes('CATALOG.filter((t) => t.classification !== "LEGACY_ONLY")'),
-  "active catalog must exclude Legacy templates",
+  templates.includes('to: "/data-onboarding"'),
+  "the former catalog must redirect to unified preparation",
+);
+assert.ok(
+  listImportUiEntities().every((entity) => entity.classification === "ACTIVE_NEW_FLOW"),
+  "active import options must exclude Legacy templates",
 );
 for (const entity of ["sections", "section_groups", "course_offerings", "teaching_assignments"]) {
+  assert.equal(
+    parsePreparationSearch({ entity }).entity,
+    undefined,
+    `${entity} rejected in deep links`,
+  );
+  assert.ok(
+    PREPARATION_STEPS.every((step) => !step.entities.some((candidate) => candidate === entity)),
+    `${entity} excluded from every preparation step`,
+  );
   assert.ok(
     registry.includes(`${entity}: {`) || registry.includes(`"${entity}"`),
     `${entity} retained in compatibility registry`,
