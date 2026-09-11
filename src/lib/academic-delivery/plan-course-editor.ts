@@ -258,6 +258,26 @@ export function validateComponentForm(args: {
   return { ok: true };
 }
 
+/**
+ * TUTORIAL-LECTURE-HALL-PERMANENT-RULE-01 — pin the tutorial room type before any write.
+ * Returns the form unchanged for every other component type.
+ */
+export function normalizeComponentFormRoomType(
+  ctx: PlanContext,
+  form: ComponentForm,
+  roomTypes: RoomTypeOption[],
+): ComponentForm {
+  if (!tutorialRoomTypeIsLocked(form.component_type)) return form;
+  const res = resolveTutorialRoomTypeId({
+    componentType: form.component_type,
+    requiredRoomTypeId: form.required_room_type_id,
+    roomTypes,
+    collegeId: ctx.collegeId,
+  });
+  if (!res.ok) return form;
+  return { ...form, required_room_type_id: res.requiredRoomTypeId };
+}
+
 export function buildComponentInsert(ctx: PlanContext, planCourseId: string, form: ComponentForm) {
   return {
     college_id: ctx.collegeId,
