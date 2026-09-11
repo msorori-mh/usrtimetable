@@ -27,6 +27,7 @@ import {
 } from "@/lib/instructor-category";
 import { PLAN_COMPONENT_ROOM_TYPE_MISSING_BLOCKER } from "@/lib/academic-delivery/plan-component-room-type-readiness";
 import { fetchStudyPlanReadiness } from "@/lib/academic-delivery/fetch-study-plan-readiness";
+import { roomCapacityReadinessMetrics } from "@/lib/reports/room-capacity-readiness";
 
 export const Route = createFileRoute("/_authenticated/data-readiness")({
   head: () => ({ meta: [{ title: "جاهزية البيانات" }] }),
@@ -58,6 +59,7 @@ type ReadinessRoomRow = {
   capacity: number | null;
   room_type_id: string | null;
   room_type: string | null;
+  is_active: boolean | null;
 };
 type ReadinessOfferingRow = { id: string; expected_students: number | null };
 type ReadinessAssignmentRow = {
@@ -88,11 +90,17 @@ async function fetchNewFlowMetrics(collegeId: string): Promise<Metric[]> {
   try {
     const [cohorts, deliveryGroups, dgAssignments, sessionIdentity] = await Promise.all([
       supabase.from("academic_cohorts").select("id, active").eq("college_id", collegeId),
-      supabase.from("delivery_groups").select("id, cohort_id").eq("college_id", collegeId),
+      // DELIVERY-GROUP-COVERAGE-FIX-01: obsolete groups are historical, not gaps.
+      supabase
+        .from("delivery_groups")
+        .select("id, cohort_id")
+        .eq("college_id", collegeId)
+        .or("is_obsolete.is.null,is_obsolete.eq.false"),
       supabase
         .from("teaching_assignments")
         .select("delivery_group_id, instructor_id")
         .eq("college_id", collegeId)
+        .or("is_active.is.null,is_active.eq.true")
         .not("delivery_group_id", "is", null),
       supabase
         .from("schedule_sessions")
@@ -230,9 +238,6 @@ async function fetchReadiness(collegeId: string) {
   const offeringsRows = (offerings.data ?? []) as ReadinessOfferingRow[];
   const assignmentsRows = (assignments.data ?? []) as ReadinessAssignmentRow[];
   const sessionsRows = (sessions.data ?? []) as ReadinessSessionRow[];
-  const roomTypeMap = new Map(
-    ((roomTypes.data ?? []) as ReadinessRoomTypeRow[]).map((r) => [r.id, r.default_capacity]),
-  );
   const instructorsWithAvail = new Set(
     ((availability.data ?? []) as ReadinessAvailabilityRow[]).map((a) => a.instructor_id),
   );
