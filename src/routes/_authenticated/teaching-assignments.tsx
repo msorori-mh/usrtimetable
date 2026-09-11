@@ -19,6 +19,7 @@ import type {
   WorkspaceFilters,
 } from "@/lib/academic-delivery/teaching-assignments-v2";
 import { CollegeSwitcher } from "@/components/college-switcher";
+import { InstructorCombobox } from "@/components/teaching-assignments/instructor-combobox";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -580,22 +581,19 @@ function TeachingAssignmentsV2Page() {
               </p>
               {!editingAssignmentId && (
                 <div>
-                  <Label>المدرس</Label>
-                  <Select value={instructorId || undefined} onValueChange={setInstructorId}>
-                    <SelectTrigger data-testid="ta-v2-instructor-select">
-                      <SelectValue placeholder="اختر مدرساً" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(candidates ?? [])
-                        .filter((c) => !c.already_assigned)
-                        .map((c) => (
-                          <SelectItem key={String(c.instructor_id)} value={String(c.instructor_id)}>
-                            {String(c.full_name ?? "")}
-                            {c.employee_number ? ` (${String(c.employee_number)})` : ""}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="ta-v2-instructor-combobox">المدرس</Label>
+                  <InstructorCombobox
+                    candidates={(candidates ?? [])
+                      .filter((c) => !c.already_assigned)
+                      .map((c) => ({
+                        instructor_id: String(c.instructor_id),
+                        full_name: c.full_name == null ? null : String(c.full_name),
+                        employee_number:
+                          c.employee_number == null ? null : String(c.employee_number),
+                      }))}
+                    value={instructorId}
+                    onChange={setInstructorId}
+                  />
                 </div>
               )}
               <div>
