@@ -43,6 +43,7 @@ import {
 import {
   INSTRUCTOR_REVIEW_LABELS,
   instructorNeedsReview,
+  isMissingInstructorDepartment,
   isMissingInstructorSpecialization,
   parseInstructorReviewSearch,
   type InstructorReview,
@@ -319,9 +320,8 @@ function InstructorDirectory() {
               instructorsExportDataset({
                 rows: (visibleRows ?? []).map((i) => ({
                   ...i,
-                  needs_review: instructorNeedsReview(i, "missing_department")
-                    ? true
-                    : isMissingInstructorSpecialization(i),
+                  needs_review:
+                    isMissingInstructorSpecialization(i) || isMissingInstructorDepartment(i),
                 })),
                 collegeName: active?.name ?? null,
                 departmentLabel: (id) => (id ? (deptMap.get(id) ?? "") : "بدون قسم"),
