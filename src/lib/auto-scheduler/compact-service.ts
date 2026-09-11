@@ -33,15 +33,18 @@ async function rows(table: string, collegeId: string, versionId?: string) {
 async function draft(collegeId: string, versionId: string) {
   const { data, error } = await supabase
     .from("schedule_versions")
-    .select("id,status")
+    .select("id,status,eligibility_revision,updated_at")
     .eq("college_id", collegeId)
     .eq("id", versionId)
     .single();
   if (error) throw error;
   if (data.status !== "draft") throw new Error("التحسين متاح لنسخة مسودة فقط.");
+  if (!Number.isSafeInteger(data.eligibility_revision) || data.eligibility_revision < 0)
+    throw new Error("تعذر التحقق من مراجعة الجدول.");
+  return { revision: String(data.eligibility_revision), versionUpdatedAt: data.updated_at };
 }
 export async function loadCompactSnapshot(collegeId: string, versionId: string): Promise<Snapshot> {
-  await draft(collegeId, versionId);
+  const version = await draft(collegeId, versionId);
   const names = {
     sessions: "schedule_sessions",
     cohorts: "academic_cohorts",
@@ -66,35 +69,93 @@ export async function loadCompactSnapshot(collegeId: string, versionId: string):
   );
   const raw = Object.fromEntries(values);
   if (raw.settings.length !== 1) throw new Error("تعذر تحديد إعدادات الجدولة.");
+  const latest = await draft(collegeId, versionId);
+  if (version.revision !== latest.revision || version.versionUpdatedAt !== latest.versionUpdatedAt)
+    throw new Error("تغير الجدول أو موارده أثناء القراءة؛ أعد المعاينة.");
   return {
     ...raw,
+    ...version,
     settings: raw.settings[0],
     sessions: (raw.sessions as Session[]).filter((s) => !s.replaced_by_split),
   } as unknown as Snapshot;
 }
 export interface Applied {
-  applied: number;
+  applied: number | null;
   total: number;
   before: Metrics;
-  after: Metrics;
+  after: Metrics | null;
   stopped: string | null;
+  status: "saved" | "rejected" | "unknown";
+  operationId: string;
 }
-/** Every move is authorized and revalidated by the existing RPC. No direct session writes. */
+interface BatchResult {
+  ok: boolean;
+  code: string;
+  applied?: number;
+  operation_id?: string;
+}
+// These RPCs are deployed before this client. Missing RPCs fail closed; no sequential fallback.
+const atomicDb = supabase as unknown as {
+  rpc(
+    name: "apply_schedule_compaction" | "get_schedule_compaction_result",
+    args: Record<string, unknown>,
+  ): Promise<{ data: BatchResult | null; error: { code?: string; message: string } | null }>;
+};
+const unknownMessage =
+  "تعذر تأكيد نتيجة الحفظ بسبب الاتصال. قد تكون الخطة حُفظت كاملة؛ تحقق من النتيجة قبل إعادة المعاينة.";
+async function readActual(collegeId: string, versionId: string, result: Applied): Promise<Applied> {
+  try {
+    return { ...result, after: measure(await loadCompactSnapshot(collegeId, versionId)) };
+  } catch {
+    return {
+      ...result,
+      after: null,
+      stopped: result.stopped || "حُفظت الخطة كاملة، لكن تعذر تحديث عرض الجدول. أعد تحميل الصفحة.",
+    };
+  }
+}
+/** Read a protected server receipt. An absent receipt does not prove that an in-flight call failed. */
+export async function verifyCompactApplication(
+  collegeId: string,
+  versionId: string,
+  previous: Applied,
+): Promise<Applied> {
+  let result = previous;
+  try {
+    const { data, error } = await atomicDb.rpc("get_schedule_compaction_result", {
+      p_college_id: collegeId,
+      p_version_id: versionId,
+      p_operation_id: previous.operationId,
+    });
+    if (
+      !error &&
+      data?.ok &&
+      data.operation_id === previous.operationId &&
+      data.applied === previous.total
+    )
+      result = { ...previous, applied: previous.total, status: "saved", stopped: null };
+  } catch {
+    // Keep the outcome unknown; never infer rollback from a transport failure.
+  }
+  return readActual(collegeId, versionId, result);
+}
+/** One authorized database transaction applies the complete ordered plan or rolls it all back. */
 export async function applyCompactProposal(
   collegeId: string,
   versionId: string,
   proposal: Proposal,
   options: { signal?: AbortSignal; onProgress?: (applied: number, total: number) => void } = {},
 ): Promise<Applied> {
-  let fresh = await loadCompactSnapshot(collegeId, versionId);
+  const fresh = await loadCompactSnapshot(collegeId, versionId);
   if (
     fingerprint(fresh.sessions) !== proposal.fingerprint ||
     inputFingerprint(fresh) !== proposal.inputFingerprint
   )
     throw new Error("تغيرت البيانات منذ المعاينة؛ أعد حساب التحسين.");
   const before = measure(fresh);
-  let applied = 0,
-    stopped: string | null = null;
+  if (!fresh.revision || !fresh.versionUpdatedAt) throw new Error("تعذر التحقق من مراجعة الجدول.");
+  if (!proposal.moves.length || proposal.moves.length > 512)
+    throw new Error("حجم خطة التحسين غير صالح.");
   let simulated = fresh.sessions;
   for (const move of proposal.moves) {
     const old = simulated.find((x) => x.id === move.id);
@@ -105,52 +166,57 @@ export async function applyCompactProposal(
     simulated = simulated.map((x) => (x.id === move.id ? candidate : x));
   }
   if (!better(measure(fresh, simulated), before)) throw new Error("الخطة لا تحسّن النتيجة.");
-  for (const move of proposal.moves) {
-    if (options.signal?.aborted) {
-      stopped = "أُوقف التنفيذ؛ بقيت التنقلات المحفوظة فقط.";
-      break;
-    }
-    try {
-      // Detect edits to any session or scheduling input, not just the moved session.
-      const now = await loadCompactSnapshot(collegeId, versionId);
-      if (
-        fingerprint(now.sessions) !== fingerprint(fresh.sessions) ||
-        inputFingerprint(now) !== inputFingerprint(fresh)
-      )
-        throw new Error("تغير الجدول أو موارده أثناء التنفيذ؛ أعد المعاينة.");
-      const old = now.sessions.find((s) => s.id === move.id);
-      if (!old) throw new Error("لم تعد المحاضرة موجودة.");
-      const candidate = { ...old, ...move };
-      if (!feasible(now, now.sessions, candidate, old))
-        throw new Error("لم يعد النقل يحسّن الجدول ضمن القيود؛ أعد المعاينة.");
-      const { data, error } = await supabase.rpc("move_or_reschedule_schedule_session", {
-        p_session_id: move.id,
-        p_expected_updated_at: old.updated_at,
-        p_target_day_of_week: move.day_of_week,
-        p_target_start_time: move.start_time,
-        p_target_end_time: move.end_time,
-        p_target_room_id: move.room_id,
-        p_change_reason: "تحسين تتابع الطلاب والمدرسين؛ الهدف 4 أيام والحد 5 أيام أسبوعياً",
-      });
-      if (error) throw error;
-      const result = data as unknown as { ok: boolean; code?: string; session?: Partial<Session> };
-      if (!result?.ok || !result.session?.updated_at)
-        throw new Error(`رفض فحص الحفظ النقل: ${result?.code || "غير معروف"}`);
-      fresh = {
-        ...now,
-        sessions: now.sessions.map((s) =>
-          s.id === move.id ? { ...candidate, ...result.session } : s,
-        ),
+  if (options.signal?.aborted) throw new Error("أُلغي التطبيق قبل إرسال الخطة؛ لم يُحفظ تغيير.");
+  const operationId = crypto.randomUUID();
+  let result: Applied = {
+    applied: null,
+    total: proposal.moves.length,
+    before,
+    after: null,
+    status: "unknown",
+    stopped: unknownMessage,
+    operationId,
+  };
+  // After dispatch, cancelling the UI cannot cancel a database transaction.
+  try {
+    const { data, error } = await atomicDb.rpc("apply_schedule_compaction", {
+      p_college_id: collegeId,
+      p_version_id: versionId,
+      p_operation_id: operationId,
+      p_expected_revision: fresh.revision,
+      p_expected_version_updated_at: fresh.versionUpdatedAt,
+      p_moves: proposal.moves.map((move) => ({
+        ...move,
+        expected_updated_at: fresh.sessions.find((s) => s.id === move.id)!.updated_at,
+      })),
+    });
+    if (error?.code === "PGRST202" || error?.code === "42883") {
+      result = {
+        ...result,
+        applied: 0,
+        status: "rejected",
+        stopped: "الحفظ الذري غير متاح بعد؛ لم تُرسل تنقلات منفردة. يلزم استكمال تحديث المنصة.",
       };
-      applied++;
-      options.onProgress?.(applied, proposal.moves.length);
-    } catch (error) {
-      stopped =
-        error instanceof Error ? error.message : "تعذر إكمال النقل؛ تحقق من الجدول وأعد المعاينة.";
-      break;
+    } else if (!error && data?.ok === false && data.applied === 0) {
+      result = {
+        ...result,
+        applied: 0,
+        status: "rejected",
+        stopped: `لم تُحفظ الخطة؛ أُلغي جميع نقلها (${data.code}). أعد المعاينة.`,
+      };
+    } else if (
+      !error &&
+      data?.ok &&
+      data.operation_id === operationId &&
+      data.applied === proposal.moves.length
+    ) {
+      result = { ...result, applied: data.applied, status: "saved", stopped: null };
+      options.onProgress?.(data.applied, proposal.moves.length);
     }
+  } catch {
+    // Resolve a possibly committed request through its receipt; never resend automatically.
   }
-  // Re-read authoritative data even after a network error (the last RPC may have committed).
-  const actual = await loadCompactSnapshot(collegeId, versionId);
-  return { applied, total: proposal.moves.length, before, after: measure(actual), stopped };
+  return result.status === "unknown"
+    ? verifyCompactApplication(collegeId, versionId, result)
+    : readActual(collegeId, versionId, result);
 }

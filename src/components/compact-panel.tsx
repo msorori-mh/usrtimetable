@@ -7,6 +7,7 @@ import { previewCompaction } from "@/lib/auto-scheduler/compact-worker-client";
 import {
   loadCompactSnapshot,
   applyCompactProposal,
+  verifyCompactApplication,
   type Applied,
 } from "@/lib/auto-scheduler/compact-service";
 
@@ -28,6 +29,7 @@ export function CompactSchedulePanel({
   const [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
   const [searchDuration, setSearchDuration] = useState(15000);
+  const [saving, setSaving] = useState(false);
   const abort = useRef<AbortController | null>(null);
   const qc = useQueryClient();
   useEffect(() => {
@@ -35,16 +37,23 @@ export function CompactSchedulePanel({
     setResult(null);
     return () => abort.current?.abort();
   }, [collegeId, versionId]);
-  const execute = async (apply: boolean) => {
+  const execute = async (mode: "preview" | "apply" | "verify") => {
     if (!canManage || !versionId || busy || disabled) return;
     const controller = new AbortController();
     abort.current = controller;
     setBusy(true);
+    setSaving(mode !== "preview");
     onBusy(true);
     setMessage("جارٍ قراءة الجدول والتحقق…");
     setResult(null);
     try {
-      if (apply && proposal) {
+      if (mode === "verify" && result) {
+        const verified = await verifyCompactApplication(collegeId, versionId, result);
+        setResult(verified);
+        setMessage(verified.stopped || "تأكد حفظ الخطة كاملة.");
+        await qc.invalidateQueries();
+      } else if (mode === "apply" && proposal) {
+        setMessage("جارٍ التحقق وحفظ الخطة كاملة…");
         const saved = await applyCompactProposal(collegeId, versionId, proposal, {
           signal: controller.signal,
           onProgress: (n, total) => setMessage(`تم حفظ ${n} من ${total} نقلاً`),
@@ -82,6 +91,7 @@ export function CompactSchedulePanel({
     } finally {
       abort.current = null;
       setBusy(false);
+      setSaving(false);
       onBusy(false);
     }
   };
@@ -120,9 +130,9 @@ export function CompactSchedulePanel({
         الفراغات أو الحل الأمثل.
       </p>
       <p className="text-sm">
-        تُحفظ التنقلات بالتتابع؛ عند الإيقاف أو الفشل تُعرض النتيجة المحفوظة فعلياً وتلزم إعادة
-        المعاينة. هذا التحسين يعيد توزيع المحاضرات الموجودة فقط؛ المحاضرات غير المجدولة تبقى بحاجة
-        إلى الإكمال. تحقق النتيجة الجزئية لا يعني اكتمال الجدول النهائي.
+        تُحفظ الخطة كاملة أو تُلغى كاملة إذا رُفض أحد تنقلاتها. بعد إرسالها، انتظر تأكيد النتيجة؛
+        انقطاع الاتصال لا يعني فشل الحفظ. هذا التحسين يعيد توزيع المحاضرات الموجودة فقط؛ المحاضرات
+        غير المجدولة تبقى بحاجة إلى الإكمال. تحقق النتيجة الجزئية لا يعني اكتمال الجدول النهائي.
       </p>
       <div className="flex flex-wrap gap-2">
         <label className="text-sm flex items-center gap-2">
@@ -138,18 +148,27 @@ export function CompactSchedulePanel({
           </select>
         </label>
         <Button
-          disabled={!canManage || !versionId || busy || disabled}
-          onClick={() => void execute(false)}
+          disabled={!canManage || !versionId || busy || disabled || result?.status === "unknown"}
+          onClick={() => void execute("preview")}
         >
           معاينة تحسين التوزيع
         </Button>
         <Button
           disabled={!canManage || busy || disabled || !proposal?.moves.length || proposal.stopped}
-          onClick={() => void execute(true)}
+          onClick={() => void execute("apply")}
         >
           تطبيق التحسين على المسودة
         </Button>
-        {busy && (
+        {result?.status === "unknown" && (
+          <Button
+            disabled={!canManage || busy || disabled}
+            variant="outline"
+            onClick={() => void execute("verify")}
+          >
+            تحقق من نتيجة الحفظ
+          </Button>
+        )}
+        {busy && !saving && (
           <Button variant="outline" onClick={() => abort.current?.abort()}>
             إيقاف التحسين
           </Button>

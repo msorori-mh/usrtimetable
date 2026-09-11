@@ -22,6 +22,8 @@ export interface Session {
   replaced_by_split?: boolean;
 }
 export interface Snapshot {
+  revision?: string;
+  versionUpdatedAt?: string;
   sessions: Session[];
   cohorts: {
     id: string;
