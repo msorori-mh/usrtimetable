@@ -61,6 +61,9 @@ export type RoomTypeOption = {
   name_ar: string;
   college_id: string;
   is_active?: boolean;
+  /** canonical code (e.g. lecture_hall / computer_lab) — required by the tutorial rule */
+  code?: string | null;
+  default_capacity?: number | null;
 };
 
 export type ExistingPlanCourse = {
