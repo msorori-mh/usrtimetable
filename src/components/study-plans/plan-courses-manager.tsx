@@ -54,6 +54,9 @@ import {
   type RoomTypeOption,
 } from "@/lib/academic-delivery/plan-course-editor";
 import type { ComponentType } from "@/lib/academic-delivery/plan-course-components";
+import { AdminExportMenu } from "@/components/admin-export-menu";
+import { planContentsExportDataset } from "@/lib/admin-export/datasets";
+import { buildPlanContentRows } from "@/lib/admin-export/plan-content-rows";
 
 interface PlanComponentRow {
   id: string;
@@ -528,6 +531,38 @@ export function PlanCoursesManager({
         <SheetHeader>
           <SheetTitle>إدارة مقررات الخطة — {plan.name}</SheetTitle>
         </SheetHeader>
+
+        <div className="mt-3 flex justify-end">
+          <AdminExportMenu
+            size="sm"
+            testId="plan-contents-export"
+            label="تصدير محتويات الخطة"
+            disabled={(planCourses ?? []).length === 0}
+            dataset={() =>
+              planContentsExportDataset({
+                planName: plan.name,
+                rows: buildPlanContentRows({
+                  planCourses: planCourses ?? [],
+                  components: components ?? [],
+                  courseLabel: (id) => {
+                    const course = courseMap.get(id);
+                    return course ? { code: course.code, name: course.name } : null;
+                  },
+                  levelLabel: (id) => (id ? (levelMap.get(id)?.name ?? null) : null),
+                  roomTypeLabel: (id) => (id ? (roomTypeMap.get(id)?.name_ar ?? null) : null),
+                }),
+                componentLabel: (v) =>
+                  (v ? COMPONENT_TYPE_LABEL_AR[v as ComponentType] : "") ?? v ?? "",
+                compensationLabel: (v) =>
+                  (v
+                    ? COMPENSATION_MODE_LABEL_AR[v as keyof typeof COMPENSATION_MODE_LABEL_AR]
+                    : "") ??
+                  v ??
+                  "",
+              })
+            }
+          />
+        </div>
 
         {noLevels && (
           <Card className="mt-4 border-amber-500/30 bg-amber-500/5 p-3 text-sm">
