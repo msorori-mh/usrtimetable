@@ -205,6 +205,19 @@ function RoomsPage() {
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <CollegeSwitcher />
+        <div className="flex flex-wrap gap-2">
+          <AdminExportMenu
+            testId="rooms-export"
+            disabled={!active || (rows ?? []).length === 0}
+            dataset={() =>
+              roomsExportDataset({
+                rows: rows ?? [],
+                collegeName: active?.name ?? null,
+                roomTypeLabel: (v) => ROOM_TYPES.find((t) => t.v === v)?.l ?? v ?? "",
+              })
+            }
+          />
+        </div>
         {canManage && (
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
