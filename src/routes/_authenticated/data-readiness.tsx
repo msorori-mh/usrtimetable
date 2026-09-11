@@ -25,11 +25,8 @@ import {
   type InstructorCategory,
   CATEGORY_LABEL_AR,
 } from "@/lib/instructor-category";
-import {
-  fetchCollegePlanComponentRoomTypeMissing,
-  PLAN_COMPONENT_ROOM_TYPE_MISSING_BLOCKER,
-  type MissingRoomTypeComponent,
-} from "@/lib/academic-delivery/plan-component-room-type-readiness";
+import { PLAN_COMPONENT_ROOM_TYPE_MISSING_BLOCKER } from "@/lib/academic-delivery/plan-component-room-type-readiness";
+import { fetchStudyPlanReadiness } from "@/lib/academic-delivery/fetch-study-plan-readiness";
 
 export const Route = createFileRoute("/_authenticated/data-readiness")({
   head: () => ({ meta: [{ title: "جاهزية البيانات" }] }),
@@ -238,61 +235,12 @@ async function fetchReadiness(collegeId: string) {
     ((availability.data ?? []) as ReadinessAvailabilityRow[]).map((a) => a.instructor_id),
   );
 
-  const linkedCourseIds = new Set(planRows.map((p) => p.course_id));
   const offeringsWithAssignments = new Set(assignmentsRows.map((a) => a.course_offering_id));
 
-  // Study Plan metrics
-  const sp: Metric[] = [
-    {
-      label: "مقررات غير مرتبطة بأي خطة دراسية",
-      total: coursesRows.length,
-      missing: coursesRows.filter((c) => !linkedCourseIds.has(c.id)).length,
-    },
-    {
-      label: "صفوف الخطة بدون مستوى",
-      total: planRows.length,
-      missing: planRows.filter((p) => !p.level_id).length,
-    },
-    {
-      label: "صفوف الخطة بدون فصل (semester)",
-      total: planRows.length,
-      missing: planRows.filter((p) => !p.semester).length,
-    },
-    {
-      label: "بدون عدد محاضرات أسبوعية",
-      total: planRows.length,
-      missing: planRows.filter((p) => !p.lectures_per_week).length,
-    },
-    {
-      label: "بدون عدد معامل أسبوعية",
-      total: planRows.length,
-      missing: planRows.filter((p) => p.labs_per_week === null || p.labs_per_week === undefined)
-        .length,
-    },
-    {
-      label: "بدون مدة محاضرة محاضرة",
-      total: planRows.length,
-      missing: planRows.filter((p) => !p.lecture_session_duration).length,
-    },
-    {
-      label: "بدون مدة محاضرة معمل",
-      total: planRows.length,
-      missing: planRows.filter((p) => (p.labs_per_week ?? 0) > 0 && !p.lab_session_duration).length,
-    },
-  ];
-
-  let planComponentRoomTypeMissing: MissingRoomTypeComponent[] = [];
-  try {
-    planComponentRoomTypeMissing = await fetchCollegePlanComponentRoomTypeMissing(collegeId);
-  } catch {
-    planComponentRoomTypeMissing = [];
-  }
-  sp.push({
-    label: `${PLAN_COMPONENT_ROOM_TYPE_MISSING_BLOCKER}: مكوّنات مجدولة بدون نوع قاعة صالح`,
-    total: Math.max(planRows.length, planComponentRoomTypeMissing.length),
-    missing: planComponentRoomTypeMissing.length,
-    critical: true,
-  });
+  // Shared with the preparation wizard and report exports.
+  if (courses.error || planCourses.error) throw courses.error || planCourses.error;
+  const { metrics: sp, missingRoomTypes: planComponentRoomTypeMissing } =
+    await fetchStudyPlanReadiness(collegeId, coursesRows, planRows);
 
   // Resource metrics
   const res: Metric[] = [
@@ -534,7 +482,7 @@ function Section({
 
 function DataReadinessPage() {
   const { active } = useActiveCollege();
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["data-readiness", active?.id],
     enabled: !!active,
     queryFn: () => fetchReadiness(active!.id),
@@ -566,6 +514,10 @@ function DataReadinessPage() {
 
       {!active ? (
         <Card className="p-6 text-center text-muted-foreground">اختر كلّية للبدء.</Card>
+      ) : error ? (
+        <Card className="p-6 text-destructive" role="alert">
+          تعذّر فحص الجاهزية. أعد المحاولة؛ لم يتم اعتماد البيانات كجاهزة.
+        </Card>
       ) : isLoading || !data ? (
         <Card className="p-6 text-center text-muted-foreground">جارٍ حساب الجاهزية…</Card>
       ) : (

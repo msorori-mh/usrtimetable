@@ -91,6 +91,9 @@ jobs:
       - name: Complete instructor workbook import
         run: node --experimental-test-module-mocks --import tsx --test tests/instructor-sheet.test.ts tests/unified-data-preparation.test.ts
 
+      - name: Component-aware study plan readiness
+        run: node --import tsx --test tests/study-plan-readiness.test.ts
+
   atomic-compaction-db:
     name: Atomic compaction PostgreSQL proof
     runs-on: ubuntu-latest
@@ -122,3 +125,12 @@ jobs:
           COMPACTION_TEST_DISPOSABLE: "1"
           COMPACTION_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/compaction_test
         run: node --test tests/compact-atomic-db.test.mjs
+
+      - name: Study plan import room references, counters and rejection on disposable PostgreSQL
+        env:
+          PGPASSWORD: postgres
+          PLAN_IMPORT_TEST_DISPOSABLE: "1"
+          PLAN_IMPORT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/plan_import_test
+        run: |
+          createdb -h 127.0.0.1 -U postgres plan_import_test
+          node --test tests/study-plan-import-db.test.mjs
