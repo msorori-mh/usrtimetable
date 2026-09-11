@@ -10,6 +10,10 @@ import { Button } from "@/components/ui/button";
 import { AdminExportMenu } from "@/components/admin-export-menu";
 import { deliveryGroupsExportDataset } from "@/lib/admin-export/datasets";
 import { COMPONENT_TYPE_LABEL_AR } from "@/lib/academic-delivery/plan-course-editor";
+import {
+  splitDeliveryGroupsByObsolescence,
+  visibleDeliveryGroups,
+} from "@/lib/academic-delivery/delivery-group-visibility";
 
 export const Route = createFileRoute("/_authenticated/delivery-groups")({
   head: () => ({ meta: [{ title: "مجموعات المحاضرات والمعامل" }] }),
@@ -81,9 +85,9 @@ function DeliveryGroupsPage() {
   });
 
   const allRows = rows ?? [];
-  const obsoleteCount = allRows.filter((g) => g.is_obsolete === true).length;
-  const operationalRows = allRows.filter((g) => g.is_obsolete !== true);
-  const visibleRows = showObsolete ? allRows : operationalRows;
+  const { operational: operationalRows, obsolete } = splitDeliveryGroupsByObsolescence(allRows);
+  const obsoleteCount = obsolete.length;
+  const visibleRows = visibleDeliveryGroups(allRows, showObsolete);
 
   return (
     <div className="mx-auto max-w-5xl">
