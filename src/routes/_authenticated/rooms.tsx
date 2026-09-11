@@ -32,6 +32,8 @@ import {
   roomDeleteBlockedToastMessage,
 } from "@/lib/rooms/room-delete-guard";
 import { DoorOpen, Pencil, Trash2 } from "lucide-react";
+import { AdminExportMenu } from "@/components/admin-export-menu";
+import { roomsExportDataset } from "@/lib/admin-export/datasets";
 
 export const Route = createFileRoute("/_authenticated/rooms")({
   head: () => ({ meta: [{ title: "القاعات والمعامل" }] }),
