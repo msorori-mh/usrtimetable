@@ -238,7 +238,17 @@ function run() {
     collegeId: COLLEGE,
     catalog,
   });
-  assert(batch.errors.length === 3, "batch collects all 3 missing components");
+  // TUTORIAL-LECTURE-HALL-PERMANENT-RULE-01: tutorial is auto-bound to lecture_hall, so only
+  // theory + practical remain reportable as missing here.
+  assert(batch.errors.length === 2, "batch collects the 2 missing non-tutorial components");
+  assert(
+    batch.errors.every((e) => e.componentType !== "tutorial"),
+    "tutorial no longer reported as missing room type",
+  );
+  assert(
+    batch.resolvedIds.tutorial === "rt-lecture",
+    "tutorial auto-resolved to the lecture_hall room type",
+  );
 
   // sync payload writes required_room_type_id
   const sync = buildPlanComponentSyncPayload({
