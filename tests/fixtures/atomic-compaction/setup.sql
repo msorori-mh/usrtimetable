@@ -68,7 +68,7 @@ INSERT INTO user_colleges(user_id,college_id) VALUES
 
 -- Install the observed production triggers before testing any mutation.
 \ir baseline-triggers.sql
-\ir ../../../supabase/sql/atomic_schedule_compaction.sql
+\ir ../../../supabase/migrations/20260911130524_atomic_schedule_compaction.sql
 
 CREATE FUNCTION test_support.move(label text, target_start time, target_day integer DEFAULT 0)
 RETURNS jsonb LANGUAGE sql STABLE AS $$

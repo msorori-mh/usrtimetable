@@ -106,38 +106,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
+      - name: Verify the reviewed atomic migration
+        run: cmp supabase/sql/atomic_schedule_compaction.sql supabase/migrations/20260911130524_atomic_schedule_compaction.sql
       - name: Atomic rollback, permissions and concurrency on disposable PostgreSQL
         env:
           COMPACTION_TEST_DISPOSABLE: "1"
           COMPACTION_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/compaction_test
         run: node --test tests/compact-atomic-db.test.mjs
-
-  prepare-atomic-migration:
-    name: Generate reviewed atomic migration artifact
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.ref || github.sha }}
-      - uses: supabase/setup-cli@v1
-        with:
-          version: 2.117.0
-      - name: Create migration with the official CLI
-        shell: bash
-        run: |
-          supabase --version
-          supabase migration new --help
-          supabase migration new atomic_schedule_compaction
-          mapfile -t migration_paths < <(rg --files supabase/migrations -g '*_atomic_schedule_compaction.sql')
-          test "${#migration_paths[@]}" -eq 1
-          migration_path="${migration_paths[0]}"
-          cp supabase/sql/atomic_schedule_compaction.sql "$migration_path"
-          echo "MIGRATION_FILE=$migration_path"
-          sha256sum "$migration_path"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: reviewed-atomic-compaction-migration
-          path: supabase/migrations/*_atomic_schedule_compaction.sql
-          if-no-files-found: error
-          retention-days: 14
