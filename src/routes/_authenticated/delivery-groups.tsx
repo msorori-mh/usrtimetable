@@ -217,7 +217,15 @@ function DeliveryGroupsPage() {
                         "نشطة"
                       )}
                     </td>
-                    <td className="px-3 py-2">{assignmentRows?.has(g.id) ? "مسند" : "غير مسند"}</td>
+                    <td className="px-3 py-2">
+                      {g.is_obsolete ? (
+                        <span className="text-xs text-muted-foreground">غير قابلة للإسناد</span>
+                      ) : assignmentRows?.has(g.id) ? (
+                        "مسند"
+                      ) : (
+                        "غير مسند"
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
