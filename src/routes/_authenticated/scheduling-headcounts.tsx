@@ -9,6 +9,7 @@ import { useCanManageActiveCollege } from "@/hooks/use-can-manage";
 import { CollegeSwitcher } from "@/components/college-switcher";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { HeadcountImportWorkspace } from "@/components/data-onboarding/headcount-import-workspace";
 import { Label } from "@/components/ui/label";
 import {
   approveSchedulingCohortTermHeadcount,
@@ -158,6 +159,7 @@ function SchedulingHeadcountsPage() {
           والمعامل. التوليد مرفوض عند غياب الاعتماد.
         </Card>
       )}
+      <HeadcountImportWorkspace />
       {!active ? (
         <p className="text-sm text-muted-foreground">اختر كلية.</p>
       ) : isLoading ? (
