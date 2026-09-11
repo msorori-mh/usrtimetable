@@ -46,6 +46,7 @@ export function InstructorCombobox({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
+          id="ta-v2-instructor-combobox"
           type="button"
           variant="outline"
           role="combobox"
