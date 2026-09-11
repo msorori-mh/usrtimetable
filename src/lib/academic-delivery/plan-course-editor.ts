@@ -7,6 +7,10 @@ import {
   derivePlanCourseComponents,
   type ComponentType,
 } from "@/lib/academic-delivery/plan-course-components";
+import {
+  resolveTutorialRoomTypeId,
+  tutorialRoomTypeIsLocked,
+} from "@/lib/academic-delivery/tutorial-room-type";
 
 export const PLAN_COMPONENT_TYPES = [
   "theory",
