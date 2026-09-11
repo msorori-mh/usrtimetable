@@ -2300,6 +2300,51 @@ export type Database = {
         }
         Relationships: []
       }
+      schedule_compaction_receipts: {
+        Row: {
+          actor_id: string
+          college_id: string
+          created_at: string
+          operation_id: string
+          request_hash: string
+          result: Json
+          schedule_version_id: string
+        }
+        Insert: {
+          actor_id: string
+          college_id: string
+          created_at?: string
+          operation_id: string
+          request_hash: string
+          result: Json
+          schedule_version_id: string
+        }
+        Update: {
+          actor_id?: string
+          college_id?: string
+          created_at?: string
+          operation_id?: string
+          request_hash?: string
+          result?: Json
+          schedule_version_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_compaction_receipts_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_compaction_receipts_schedule_version_id_fkey"
+            columns: ["schedule_version_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       schedule_quality_runs: {
         Row: {
           college_id: string
@@ -3831,6 +3876,17 @@ export type Database = {
         }
         Returns: Json
       }
+      apply_schedule_compaction: {
+        Args: {
+          p_college_id: string
+          p_expected_revision: number
+          p_expected_version_updated_at: string
+          p_moves: Json
+          p_operation_id: string
+          p_version_id: string
+        }
+        Returns: Json
+      }
       approve_capacity_split_proposal: {
         Args: {
           p_college_id: string
@@ -3969,6 +4025,18 @@ export type Database = {
         Args: { p_delivery_group_id: string }
         Returns: Json
       }
+      get_schedule_compaction_result: {
+        Args: {
+          p_college_id: string
+          p_operation_id: string
+          p_version_id: string
+        }
+        Returns: Json
+      }
+      get_scheduling_headcount_import_context: {
+        Args: { p_college_id: string }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -3977,6 +4045,10 @@ export type Database = {
         Returns: boolean
       }
       import_manager_actor: { Args: { p_college_id: string }; Returns: string }
+      import_scheduling_headcounts: {
+        Args: { p_action?: string; p_college_id: string; p_rows: Json }
+        Returns: Json
+      }
       is_institutional_read_only_actor: {
         Args: { _user_id: string }
         Returns: boolean
