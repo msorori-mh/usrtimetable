@@ -35,7 +35,10 @@ export function studyPlanReadinessMetrics(
     return {
       ...p,
       hasComponents: parts.length > 0,
-      lectureHours: hours(["theory", "tutorial"]),
+      // STUDY-PLAN-COUNTER-DIAGNOSTICS-FIX-01 — the lecture counter covers every
+      // timetabled weekly non-lab component: theory + tutorial + weekly project.
+      // summer_training and non-timetabled components are excluded by contract.
+      lectureHours: hours(["theory", "tutorial", "project"]),
       labHours: hours(["practical"]),
     };
   });
