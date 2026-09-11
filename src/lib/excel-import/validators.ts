@@ -47,6 +47,9 @@ interface Lookups {
   instructors?: Map<string, string>;
   studyPlans?: Map<string, string>; // key: program_id|plan_code|version → study_plan_id
   planCourses?: Map<string, string>; // key: study_plan_id|course_id → plan_course_id
+  /** key: program_id|level_id|course_id → plan_course_ids (shared courses may appear in many plans) */
+  planCoursesByProgramLevel?: Map<string, string[]>;
+
   offerings?: Map<string, string>; // key: term_id|course_id|program_id(opt) → offering_id
   sections?: Map<string, string>; // key: course_id|term_id|section_number → section_id
   levels?: Map<string, string>; // key: program_id|level_number → level_id
@@ -193,8 +196,20 @@ async function loadLookups(entity: ImportEntity, collegeId: string): Promise<Loo
   ) {
     const sp = await fetchAll("study_plans", "id, code, version, program_id");
     lk.studyPlans = new Map(sp.map((r) => [`${r.program_id}|${r.code}|${r.version}`, r.id]));
-    const pc = await fetchAll("plan_courses", "id, study_plan_id, course_id");
+    const pc = await fetchAll("plan_courses", "id, study_plan_id, course_id, level_id");
     lk.planCourses = new Map(pc.map((r) => [`${r.study_plan_id}|${r.course_id}`, r.id]));
+    const planProgram = new Map(sp.map((r) => [String(r.id), String(r.program_id)]));
+    const byProgramLevel = new Map<string, string[]>();
+    for (const r of pc) {
+      const programId = planProgram.get(String(r.study_plan_id));
+      if (!programId || !r.level_id) continue;
+      const key = `${programId}|${r.level_id}|${r.course_id}`;
+      const list = byProgramLevel.get(key);
+      if (list) list.push(String(r.id));
+      else byProgramLevel.set(key, [String(r.id)]);
+    }
+    lk.planCoursesByProgramLevel = byProgramLevel;
+
     const lv = await fetchAll("academic_levels", "id, program_id, level_number");
     lk.levels = new Map(lv.map((r) => [`${r.program_id}|${r.level_number}`, r.id]));
   }
@@ -337,6 +352,35 @@ function normalize(
     return { rowNumber: i + 2, raw, values };
   });
   return { parsed, missingHeaders, unknownHeaders, duplicateHeaders };
+}
+
+/**
+ * Pure resolver for teaching_assignments_v2: given plan_course candidates already
+ * scoped to the cohort's program + level, pick the component whose delivery group
+ * exists for this cohort. Falls back to the first candidate component so a missing
+ * group is reported as unknown_delivery_group (not unknown_component).
+ */
+export function resolveTeachingAssignmentComponent(input: {
+  candidatePlanCourseIds: string[];
+  componentType: string;
+  cohortId: string;
+  deliveryGroupCode: string | null;
+  components: Map<string, string>;
+  deliveryGroups: Map<string, string>;
+}): { componentId: string | null; deliveryGroupId: string | null } {
+  const componentIds: string[] = [];
+  for (const planCourseId of input.candidatePlanCourseIds) {
+    const compId = input.components.get(`${planCourseId}|${input.componentType}`);
+    if (compId && !componentIds.includes(compId)) componentIds.push(compId);
+  }
+  if (componentIds.length === 0) return { componentId: null, deliveryGroupId: null };
+  if (input.deliveryGroupCode) {
+    for (const compId of componentIds) {
+      const dg = input.deliveryGroups.get(`${input.cohortId}|${compId}|${input.deliveryGroupCode}`);
+      if (dg) return { componentId: compId, deliveryGroupId: dg };
+    }
+  }
+  return { componentId: componentIds[0] ?? null, deliveryGroupId: null };
 }
 
 export async function validate(
@@ -1036,17 +1080,20 @@ function runEntityValidation(
           rawValue: String(v.study_system),
         });
       }
-      // find plan_course via any study plan for program
-      let planCourseId: string | null = null;
-      for (const [k, id] of lk.planCourses ?? []) {
-        if (k.endsWith(`|${c.id}`)) {
-          planCourseId = id;
-          break;
-        }
-      }
-      const compId = planCourseId
-        ? lk.components?.get(`${planCourseId}|${v.component_type}`)
-        : null;
+      // Resolve plan_course candidates scoped to the cohort's program + level,
+      // then pick the component whose delivery_group actually exists for this cohort.
+      const candidatePlanCourseIds =
+        lk.planCoursesByProgramLevel?.get(`${cohort.program_id}|${cohort.level_id}|${c.id}`) ?? [];
+      const groupCode = String(v.delivery_group_code ?? "").trim() || null;
+      const resolved = resolveTeachingAssignmentComponent({
+        candidatePlanCourseIds,
+        componentType: String(v.component_type ?? ""),
+        cohortId: cohort.id,
+        deliveryGroupCode: groupCode,
+        components: lk.components ?? new Map(),
+        deliveryGroups: lk.deliveryGroups ?? new Map(),
+      });
+      const compId = resolved.componentId;
       need(
         !!compId,
         "نوع_المكوّن",
@@ -1059,7 +1106,8 @@ function runEntityValidation(
       const offId = lk.offerings?.get(offKey);
       if (offId) v._offering_id = offId;
       if (v.delivery_group_code && compId) {
-        const dg = lk.deliveryGroups?.get(`${cohort.id}|${compId}|${v.delivery_group_code}`);
+        const dg = resolved.deliveryGroupId;
+
         need(
           !!dg,
           "رمز_مجموعة_التقديم",
