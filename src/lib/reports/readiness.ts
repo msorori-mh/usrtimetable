@@ -272,12 +272,6 @@ export async function fetchCollegeReadiness(collegeId: string): Promise<Readines
   const offeringsRows = offerings.data ?? [];
   const assignmentsRows = assignments.data ?? [];
   const sessionsRows = sessions.data ?? [];
-  const roomTypeMap = new Map(
-    (roomTypes.data ?? []).map((r: { id: string; default_capacity: number }) => [
-      r.id,
-      r.default_capacity,
-    ]),
-  );
 
   const offeringsWithAssignments = new Set(
     assignmentsRows.map((a: { course_offering_id: string }) => a.course_offering_id),
