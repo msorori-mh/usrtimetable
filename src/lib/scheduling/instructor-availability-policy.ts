@@ -24,8 +24,6 @@
 /** Current default: availability constraints are NOT enforced. */
 export const ENFORCE_INSTRUCTOR_AVAILABILITY = false;
 
-export function isInstructorAvailabilityEnforced(
-  override?: boolean | null | undefined,
-): boolean {
+export function isInstructorAvailabilityEnforced(override?: boolean | null | undefined): boolean {
   return override ?? ENFORCE_INSTRUCTOR_AVAILABILITY;
 }

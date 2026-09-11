@@ -29,9 +29,7 @@ const session = (over: Partial<Session>): Session =>
 
 const snapshot = (over: Partial<Snapshot> = {}): Snapshot => ({
   sessions: [],
-  cohorts: [
-    { id: "c1", program_id: "p1", level_id: "l1", study_system: "regular", term_id: "t1" },
-  ],
+  cohorts: [{ id: "c1", program_id: "p1", level_id: "l1", study_system: "regular", term_id: "t1" }],
   groups: [{ id: "g1", cohort_id: "c1", expected_students: 30, active: true, is_obsolete: false }],
   members: [{ delivery_group_id: "g1", partition_id: "part1", cohort_id: "c1" }],
   partitions: [{ id: "part1", cohort_id: "c1", headcount: 30, active: true }],
@@ -136,8 +134,6 @@ describe("placement with no availability rows", () => {
     const candidate = session({ day_of_week: 3, start_time: "08:00:00", end_time: "10:00:00" });
     expect(feasible(s, [original, otherTeacher], candidate, original)).toBe(false);
     // outside working days is still rejected
-    expect(
-      feasible(s, [original], session({ day_of_week: 5 }), original),
-    ).toBe(false);
+    expect(feasible(s, [original], session({ day_of_week: 5 }), original)).toBe(false);
   });
 });
