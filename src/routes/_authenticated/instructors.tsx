@@ -47,6 +47,8 @@ import {
   parseInstructorReviewSearch,
   type InstructorReview,
 } from "@/lib/data-onboarding/instructor-review";
+import { AdminExportMenu } from "@/components/admin-export-menu";
+import { activeFilters, instructorsExportDataset } from "@/lib/admin-export/datasets";
 
 export const Route = createFileRoute("/_authenticated/instructors")({
   head: () => ({ meta: [{ title: "المحاضرون" }] }),
