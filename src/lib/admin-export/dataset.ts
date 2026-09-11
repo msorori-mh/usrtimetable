@@ -94,7 +94,9 @@ export function buildAdminExportTable<T>(dataset: AdminExportDataset<T>): AdminE
   assertAdminExportable(dataset);
   return {
     headers: dataset.columns.map((c) => c.label),
-    body: dataset.rows.map((row) => dataset.columns.map((c) => formatAdminExportValue(c.value(row)))),
+    body: dataset.rows.map((row) =>
+      dataset.columns.map((c) => formatAdminExportValue(c.value(row))),
+    ),
     rowCount: dataset.rows.length,
   };
 }

@@ -146,9 +146,7 @@ function SchedulingHeadcountsPage() {
               termLabel: (id) => termName.get(id ?? "") ?? "",
               systemLabel: (v) =>
                 (v
-                  ? ACADEMIC_STUDY_SYSTEM_LABELS[
-                      v as keyof typeof ACADEMIC_STUDY_SYSTEM_LABELS
-                    ]
+                  ? ACADEMIC_STUDY_SYSTEM_LABELS[v as keyof typeof ACADEMIC_STUDY_SYSTEM_LABELS]
                   : "") ??
                 v ??
                 "",

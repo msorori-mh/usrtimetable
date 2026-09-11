@@ -93,7 +93,16 @@ describe("table + filenames", () => {
       "ملاحظات",
     ]);
     expect(table.rowCount).toBe(2);
-    expect(table.body[0]).toEqual(["A-101", "قاعة 1", "قاعة محاضرات", 75, "المبنى الرئيسي", "1", "نعم", "—"]);
+    expect(table.body[0]).toEqual([
+      "A-101",
+      "قاعة 1",
+      "قاعة محاضرات",
+      75,
+      "المبنى الرئيسي",
+      "1",
+      "نعم",
+      "—",
+    ]);
     expect(table.body[1]?.[6]).toBe("لا");
   });
 
@@ -105,9 +114,9 @@ describe("table + filenames", () => {
   });
 
   test("empty and oversized datasets fail with actionable Arabic messages", () => {
-    expect(() => buildAdminExportTable(roomsExportDataset({ rows: [], roomTypeLabel: (v) => v ?? "" }))).toThrow(
-      ADMIN_EXPORT_EMPTY_AR,
-    );
+    expect(() =>
+      buildAdminExportTable(roomsExportDataset({ rows: [], roomTypeLabel: (v) => v ?? "" })),
+    ).toThrow(ADMIN_EXPORT_EMPTY_AR);
     const huge = roomsExportDataset({
       rows: new Array(ADMIN_EXPORT_ROW_LIMIT + 1).fill(rooms[0]!),
       roomTypeLabel: (v) => v ?? "",
@@ -166,10 +175,9 @@ describe("XLSX workbook", () => {
     const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets["القاعات"]!);
     expect(data).toHaveLength(2);
     expect(data[0]?.["الرمز"]).toBe("A-101");
-    const meta = XLSX.utils.sheet_to_json<string[]>(
-      wb.Sheets[ADMIN_EXPORT_CRITERIA_SHEET_AR]!,
-      { header: 1 },
-    );
+    const meta = XLSX.utils.sheet_to_json<string[]>(wb.Sheets[ADMIN_EXPORT_CRITERIA_SHEET_AR]!, {
+      header: 1,
+    });
     expect(meta.flat()).toContain("النوع");
   });
 });
@@ -299,7 +307,8 @@ describe("plan contents export", () => {
           explicit_group_size: 38,
         },
       ],
-      courseLabel: (id) => (id === "c1" ? { code: "CS111", name: "مشروع" } : { code: "CS112", name: "شبكات" }),
+      courseLabel: (id) =>
+        id === "c1" ? { code: "CS111", name: "مشروع" } : { code: "CS112", name: "شبكات" },
       levelLabel: (id) => (id ? "المستوى الأول" : null),
       roomTypeLabel: (id) => (id ? "قاعة محاضرات" : null),
     });

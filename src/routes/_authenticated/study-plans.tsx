@@ -236,7 +236,10 @@ function StudyPlansPage() {
       },
       filters: activeFilters([
         { label: "القسم", value: deptFilter === ALL ? "" : (deptMap.get(deptFilter) ?? "") },
-        { label: "البرنامج", value: progFilter === ALL ? "" : (progMap.get(progFilter)?.name ?? "") },
+        {
+          label: "البرنامج",
+          value: progFilter === ALL ? "" : (progMap.get(progFilter)?.name ?? ""),
+        },
         {
           label: "حالة السريان",
           value:

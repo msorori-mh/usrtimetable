@@ -261,7 +261,11 @@ export function studyPlansExportDataset(input: {
       { key: "code", label: "الرمز", value: (r) => r.code },
       { key: "version", label: "الإصدار", value: (r) => r.version },
       { key: "program", label: "البرنامج", value: (r) => input.programLabel(r.program_id) },
-      { key: "department", label: "القسم", value: (r) => input.programDepartmentLabel(r.program_id) },
+      {
+        key: "department",
+        label: "القسم",
+        value: (r) => input.programDepartmentLabel(r.program_id),
+      },
       { key: "effective_year", label: "سنة السريان", value: (r) => r.effective_year },
       { key: "is_active", label: "سارية", value: (r) => r.is_active },
     ],
@@ -335,7 +339,11 @@ export function planContentsExportDataset(input: {
         label: "نمط الاحتساب",
         value: (r) => (r.compensation_mode ? input.compensationLabel(r.compensation_mode) : null),
       },
-      { key: "explicit_group_size", label: "حجم المجموعة المحدد", value: (r) => r.explicit_group_size },
+      {
+        key: "explicit_group_size",
+        label: "حجم المجموعة المحدد",
+        value: (r) => r.explicit_group_size,
+      },
       { key: "lectures_per_week", label: "محاضرات/أسبوع", value: (r) => r.lectures_per_week },
       {
         key: "lecture_session_duration",
@@ -382,7 +390,11 @@ export function cohortsExportDataset(input: {
       { key: "programName", label: "البرنامج", value: (r) => r.programName },
       { key: "levelName", label: "المستوى", value: (r) => r.levelName },
       { key: "termName", label: "الفصل", value: (r) => r.termName },
-      { key: "study_system", label: "نظام الدراسة", value: (r) => input.systemLabel(r.study_system) },
+      {
+        key: "study_system",
+        label: "نظام الدراسة",
+        value: (r) => input.systemLabel(r.study_system),
+      },
       { key: "entry_year", label: "سنة القبول", value: (r) => r.entry_year },
       { key: "expected_students", label: "عدد الطلاب المتوقع", value: (r) => r.expected_students },
       {
@@ -431,7 +443,11 @@ export function headcountsExportDataset(input: {
     columns: [
       { key: "cohort", label: "الدفعة", value: (r) => input.cohortLabel(r.cohort_id) },
       { key: "term", label: "الفصل", value: (r) => input.termLabel(r.term_id) },
-      { key: "study_system", label: "نظام الدراسة", value: (r) => input.systemLabel(r.study_system) },
+      {
+        key: "study_system",
+        label: "نظام الدراسة",
+        value: (r) => input.systemLabel(r.study_system),
+      },
       { key: "registered", label: "مسجل", value: (r) => r.registered_student_count },
       { key: "eligible", label: "مؤهل", value: (r) => r.eligible_student_count },
       { key: "attendance", label: "حضور متوقع", value: (r) => r.expected_attendance_count },

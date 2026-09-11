@@ -329,7 +329,10 @@ function InstructorDirectory() {
                   CATEGORY_LABEL_AR[categorizeInstructor(typeMap.get(id ?? "") ?? null)] ?? "",
                 employmentLabel: (v) => employmentTypeLabelAr(v ?? UNKNOWN_EMPLOYMENT_TYPE),
                 filters: activeFilters([
-                  { label: "مرشّح المراجعة", value: review ? INSTRUCTOR_REVIEW_LABELS[review] : "" },
+                  {
+                    label: "مرشّح المراجعة",
+                    value: review ? INSTRUCTOR_REVIEW_LABELS[review] : "",
+                  },
                 ]),
               })
             }
