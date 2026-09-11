@@ -17,6 +17,7 @@ export interface OnboardingReadinessSnapshot {
   severityCounts: ReadinessSeverityCounts;
   blockers: ClassifiedReadinessIssue[];
   checkedAt: string;
+  hasElectives: boolean;
 }
 
 async function countExact(table: string, collegeId: string): Promise<number> {
@@ -49,6 +50,7 @@ export async function fetchOnboardingReadinessSnapshot(
     scheduleVersions,
     taV2,
     availability,
+    electiveSlots,
   ] = await Promise.all([
     countExact("departments", collegeId),
     countExact("academic_programs", collegeId),
@@ -64,6 +66,7 @@ export async function fetchOnboardingReadinessSnapshot(
       .eq("college_id", collegeId)
       .not("delivery_group_id", "is", null),
     supabase.from("instructor_availability").select("instructor_id").eq("college_id", collegeId),
+    countExact("elective_slots", collegeId),
   ]);
 
   if (taV2.error) {
@@ -108,5 +111,6 @@ export async function fetchOnboardingReadinessSnapshot(
     severityCounts,
     blockers,
     checkedAt: new Date().toISOString(),
+    hasElectives: electiveSlots > 0,
   };
 }

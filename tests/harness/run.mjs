@@ -60,6 +60,8 @@ export const harnesses = [
   "reports-read-model-a1-5.harness.ts",
   "../program-timetable-filters.test.ts",
   "../program-timetable-print.test.tsx",
+  "../unified-data-preparation.test.ts",
+  "../preparation-workspace.test.tsx",
   "plan-course-components-ui-e2e-fix.harness.ts",
   "plan-course-legacy-counter-sync.harness.ts",
   "timetable-session-course-visibility.harness.ts",

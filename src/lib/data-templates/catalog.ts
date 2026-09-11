@@ -1,3 +1,4 @@
+import { TEMPLATES, buildTemplateWorkbook } from "@/lib/excel-import/templates";
 // Catalog of Excel templates for the Data Templates Center.
 // Read-only metadata + Excel builders. No DB access.
 // Operational commit path is src/lib/excel-import (TEMPLATES + commit_import_job_atomic).
@@ -130,7 +131,7 @@ const REF_INSTRUCTOR_TYPES: TemplateRef = {
   ],
 };
 
-export const CATALOG: TemplateDef[] = [
+const CATALOG_DEFINITIONS: TemplateDef[] = [
   // ============= A. Foundational =============
   {
     id: "colleges",
@@ -1127,11 +1128,34 @@ export const CATALOG: TemplateDef[] = [
   },
 ];
 
+export function catalogImportEntity(id: string): string {
+  return id === "plan_courses" ? "study_plan_courses" : id;
+}
+
+export const CATALOG: TemplateDef[] = CATALOG_DEFINITIONS.map((entry) => {
+  const template = TEMPLATES[catalogImportEntity(entry.id)];
+  if (!template) return entry;
+  return {
+    ...entry,
+    sheetName: template.sheetName,
+    columns: template.columns.map((column) => ({
+      header: column.header,
+      required: column.required,
+      example: column.example,
+      allowed: column.enumValues?.join(" | "),
+      description: entry.columns.find((old) => old.header === column.header)?.description,
+    })),
+    sampleRows: [template.columns.map((column) => column.example ?? "")],
+  };
+});
+
 export function getTemplate(id: string): TemplateDef | undefined {
   return CATALOG.find((t) => t.id === id);
 }
 
 export async function buildCatalogTemplate(id: string): Promise<Blob> {
+  const entity = catalogImportEntity(id);
+  if (TEMPLATES[entity]) return buildTemplateWorkbook(entity);
   const tpl = getTemplate(id);
   if (!tpl) throw new Error("قالب غير معروف");
   const XLSX = await import("xlsx");

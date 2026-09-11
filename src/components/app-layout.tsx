@@ -1,3 +1,4 @@
+import { preparationStepForPath } from "@/lib/data-onboarding/preparation";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
@@ -302,7 +303,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const roles = user?.roles as Role[] | undefined;
 
   const coreSteps = useMemo(() => CORE_PATH.filter((s) => canAccess(s, roles)), [roles]);
-  const toolPages = useMemo(() => ADMIN_PAGES.filter((p) => canAccess(p, roles)), [roles]);
+  const toolPages = useMemo(
+    () => ADMIN_PAGES.filter((p) => !p.hiddenFromMenu && canAccess(p, roles)),
+    [roles],
+  );
 
   const activeJourney = useMemo<JourneyKey | null>(() => {
     const hit =
@@ -310,6 +314,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       toolPages.find((p) => isActivePath(p.to, pathname));
     return hit?.journey ?? null;
   }, [toolPages, pathname]);
+
+  const preparationStep = preparationStepForPath(pathname);
 
   const crumb = useMemo(() => resolveBreadcrumb(pathname), [pathname]);
 
@@ -351,7 +357,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             tone === "sidebar" ? "text-sidebar-foreground/55" : "text-muted-foreground",
           )}
         >
-          المسار التشغيلي: أربع خطوات من تجهيز البيانات إلى نشر الجدول الرسمي.
+          أربع خطوات: تجهيز البيانات، إنشاء الجدول، المراجعة والاعتماد، التقارير والطباعة.
         </p>
         <CorePathNav steps={coreSteps} pathname={pathname} onNavigate={onNavigate} tone={tone} />
         <Link
@@ -472,6 +478,23 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <span className="max-w-[12rem] truncate">{activeCollege.name}</span>
               </span>
             )}
+          </div>
+        )}
+        {preparationStep && (
+          <div
+            className="mb-4 rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm"
+            data-testid="preparation-return"
+          >
+            <Link
+              to="/data-onboarding"
+              search={{ step: preparationStep }}
+              className="font-semibold text-primary hover:underline"
+            >
+              العودة إلى تجهيز بيانات الكلية ←
+            </Link>
+            <span className="mt-1 block text-xs text-muted-foreground">
+              بعد حفظ تعديلاتك، عُد لمراجعة اكتمال الخطوة ومتابعة التجهيز.
+            </span>
           </div>
         )}
         {isLoading ? (

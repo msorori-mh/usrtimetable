@@ -81,8 +81,7 @@ const CORE = [
   ["/data-onboarding", "تجهيز البيانات"],
   ["/schedule-builder", "بناء الجدول"],
   ["/schedule-versions", "المراجعة والاعتماد"],
-  ["/published-schedules", "النشر والجداول الرسمية"],
-  ["/reports", "التقارير"],
+  ["/reports", "التقارير والطباعة"],
 ];
 const corePathBlock = navSrc.slice(navSrc.indexOf("export const CORE_PATH"));
 for (const [to, label] of CORE) {

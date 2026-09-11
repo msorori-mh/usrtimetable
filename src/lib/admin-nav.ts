@@ -53,14 +53,7 @@ export const ALL_ROLES = ALL;
 export type AdminTier = "basic" | "advanced" | "legacy";
 
 export type JourneyKey =
-  | "org"
-  | "academic"
-  | "staff"
-  | "hours"
-  | "prep"
-  | "execute"
-  | "data"
-  | "reports";
+  "org" | "academic" | "staff" | "hours" | "prep" | "execute" | "data" | "reports";
 
 export interface AdminPage {
   to: string;
@@ -73,6 +66,8 @@ export interface AdminPage {
   journey: JourneyKey;
   /** Extra keywords to improve instant search. */
   keywords?: string;
+  /** Compatibility entry; its destination now lives inside preparation. */
+  hiddenFromMenu?: boolean;
 }
 
 export interface Journey {
@@ -460,8 +455,8 @@ export const ADMIN_PAGES: AdminPage[] = [
   // ز) البيانات والاستيراد
   {
     to: "/data-onboarding",
-    label: "إعداد البيانات وإنشاء الجدول",
-    desc: "دليل خطوة بخطوة من البيانات إلى الجدول.",
+    label: "تجهيز بيانات الكلية",
+    desc: "خطوات التجهيز، حالة الاكتمال والقوالب والاستيراد في مكان واحد.",
     icon: ClipboardList,
     roles: ALL,
     tier: "basic",
@@ -469,6 +464,7 @@ export const ADMIN_PAGES: AdminPage[] = [
   },
   {
     to: "/data-templates",
+    hiddenFromMenu: true,
     label: "دليل تجهيز البيانات",
     desc: "تنزيل ملفات Excel الجاهزة للتعبئة.",
     icon: FileSpreadsheet,
@@ -478,6 +474,7 @@ export const ADMIN_PAGES: AdminPage[] = [
   },
   {
     to: "/import",
+    hiddenFromMenu: true,
     label: "استيراد البيانات من Excel",
     desc: "رفع الملفات المعبّأة واعتمادها.",
     icon: FileSpreadsheet,
@@ -561,7 +558,7 @@ export interface CoreStep {
   roles: Role[];
 }
 
-/** The default operational path — 6 primary entries, exactly as specified. */
+/** The default operational path — home plus four task-oriented entries. */
 export const CORE_PATH: CoreStep[] = [
   {
     to: "/dashboard",
@@ -596,17 +593,9 @@ export const CORE_PATH: CoreStep[] = [
     roles: ALL,
   },
   {
-    to: "/published-schedules",
-    step: "4",
-    label: "النشر والجداول الرسمية",
-    desc: "انشر الجدول الرسمي وأتِحه للطباعة.",
-    icon: CalendarClock,
-    roles: ALL,
-  },
-  {
     to: "/reports",
-    step: null,
-    label: "التقارير",
+    step: "4",
+    label: "التقارير والطباعة",
     desc: "تقارير الجداول والأعباء والجودة.",
     icon: FileBarChart2,
     roles: ALL,

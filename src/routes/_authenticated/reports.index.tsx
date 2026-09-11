@@ -228,7 +228,13 @@ function ReportsHub() {
           <FileBarChart2 className="h-5 w-5" />
         </span>
         <div>
-          <h1 className="text-2xl font-bold">التقارير</h1>
+          <h1 className="text-2xl font-bold">التقارير والطباعة</h1>
+          <Link
+            to="/published-schedules"
+            className="mt-2 inline-block text-sm font-semibold text-primary hover:underline"
+          >
+            الجداول الرسمية والنشر ←
+          </Link>
           <p className="text-sm text-muted-foreground mt-1">
             تقارير أكاديمية للقراءة فقط · رأس رسمي · طباعة · تصدير CSV و Excel.
           </p>
