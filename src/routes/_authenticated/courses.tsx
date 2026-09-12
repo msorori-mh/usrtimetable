@@ -286,14 +286,40 @@ function CoursesPage() {
     );
   }, [planCourses, planFilter]);
 
-  const filtered = useMemo(() => {
-    return (rows ?? []).filter((c) => {
-      if (deptFilter !== ALL && c.department_id !== deptFilter) return false;
-      if (programCourseIds && !programCourseIds.has(c.id)) return false;
-      if (planCourseIds && !planCourseIds.has(c.id)) return false;
-      return true;
-    });
-  }, [rows, deptFilter, programCourseIds, planCourseIds]);
+  const filterState = {
+    search,
+    deptFilter,
+    progFilter,
+    planFilter,
+    composition: compFilter,
+    creditHours: creditFilter,
+  };
+
+  const filtered = useMemo(
+    () => filterCourses(rows ?? [], filterState, { programCourseIds, planCourseIds }),
+    [
+      rows,
+      search,
+      deptFilter,
+      progFilter,
+      planFilter,
+      compFilter,
+      creditFilter,
+      programCourseIds,
+      planCourseIds,
+    ],
+  );
+
+  const creditOptions = useMemo(() => creditHourOptions(rows ?? []), [rows]);
+  const filtersActive = hasActiveCourseFilters(filterState);
+  const clearFilters = () => {
+    setSearch("");
+    setDeptFilter(ALL);
+    setProgFilter(ALL);
+    setPlanFilter(ALL);
+    setCompFilter(ALL);
+    setCreditFilter(ALL);
+  };
 
   const coursesDataset = () =>
     coursesExportDataset({
