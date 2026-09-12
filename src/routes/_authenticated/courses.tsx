@@ -28,7 +28,17 @@ import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { AdminExportMenu } from "@/components/admin-export-menu";
 import { activeFilters, coursesExportDataset } from "@/lib/admin-export/datasets";
-import { Library, Pencil, Trash2 } from "lucide-react";
+import { Library, Pencil, Search, Trash2 } from "lucide-react";
+import {
+  ALL_FILTER,
+  COURSE_COMPOSITION_LABELS_AR,
+  courseResultsLabelAr,
+  creditHourOptions,
+  filterCourses,
+  hasActiveCourseFilters,
+  programsForDepartment,
+  type CourseComposition,
+} from "@/lib/courses/course-filters";
 
 export const Route = createFileRoute("/_authenticated/courses")({
   head: () => ({ meta: [{ title: "المقررات" }] }),
