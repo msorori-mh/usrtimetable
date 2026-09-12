@@ -32,6 +32,8 @@ import { Library, Pencil, Search, Trash2 } from "lucide-react";
 import {
   ALL_FILTER,
   COURSE_COMPOSITION_LABELS_AR,
+  compositionFromComponents,
+  courseIdsForProgram,
   courseResultsLabelAr,
   creditHourOptions,
   filterCourses,
@@ -39,6 +41,7 @@ import {
   programsForDepartment,
   type CourseComposition,
 } from "@/lib/courses/course-filters";
+
 
 export const Route = createFileRoute("/_authenticated/courses")({
   head: () => ({ meta: [{ title: "المقررات" }] }),
