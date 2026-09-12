@@ -103,10 +103,10 @@ describe("weekly project component", () => {
     ).toEqual({ durations: [2, 2], source: "plan", noteAr: null });
   });
 
-  it("still blocks hours that do not fit the plan session duration", () => {
+  it("still blocks hours above 3 that do not fit the plan session duration", () => {
     const r = requiredCadenceForComponent({
       componentType: "project",
-      assignedHours: 3,
+      assignedHours: 5,
       planCourse: {
         lectures_per_week: 2,
         lecture_session_duration: 2,
