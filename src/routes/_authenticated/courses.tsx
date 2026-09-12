@@ -155,10 +155,23 @@ function CoursesPage() {
       ((
         await supabase
           .from("plan_courses")
-          .select("study_plan_id, course_id")
+          .select("id, study_plan_id, course_id")
           .eq("college_id", active!.id)
-      ).data ?? []) as { study_plan_id: string; course_id: string }[],
+      ).data ?? []) as { id: string; study_plan_id: string; course_id: string }[],
   });
+
+  const { data: planComponents } = useQuery({
+    queryKey: ["plan-course-components-min", active?.id],
+    enabled: !!active,
+    queryFn: async () =>
+      ((
+        await supabase
+          .from("plan_course_components")
+          .select("plan_course_id, component_type")
+          .eq("college_id", active!.id)
+      ).data ?? []) as { plan_course_id: string; component_type: string }[],
+  });
+
 
   const { data: rows, isLoading } = useQuery({
     queryKey: ["courses", active?.id],
