@@ -575,7 +575,7 @@ function CoursesPage() {
           {showPlanFilter && (
             <div>
               <Label className="text-xs">الخطة</Label>
-              <Select value={planFilter} onValueChange={setPlanFilter}>
+              <Select value={effectivePlanFilter} onValueChange={setPlanFilter}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
