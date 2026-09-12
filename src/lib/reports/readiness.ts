@@ -362,7 +362,7 @@ export async function fetchCollegeReadiness(collegeId: string): Promise<Readines
   const roomTimeCapacity = await fetchRoomTimeCapacity(
     collegeId,
     roomsRows as { id: string; room_type_id: string | null; is_active?: boolean | null }[],
-    (roomTypes.data ?? []) as { id: string; name_ar?: string | null }[],
+    (roomTypes.data ?? []) as { id: string; name_ar?: string | null; code?: string | null }[],
   );
   scheduling.push(...roomTimeCapacityReadinessMetrics(roomTimeCapacity));
 
