@@ -252,7 +252,7 @@ export async function fetchCollegeReadiness(collegeId: string): Promise<Readines
         .eq("college_id", collegeId),
       supabase
         .from("room_types")
-        .select("id, default_capacity, name_ar")
+        .select("id, default_capacity, name_ar, code")
         .eq("college_id", collegeId),
     ]);
 
@@ -383,6 +383,7 @@ export async function fetchCollegeReadiness(collegeId: string): Promise<Readines
     studyPlan,
     resources,
     scheduling,
+    roomTimeCapacity,
     scores: {
       studyPlanScore,
       resourcesScore,
