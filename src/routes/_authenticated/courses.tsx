@@ -546,6 +546,55 @@ function CoursesPage() {
               </Select>
             </div>
           )}
+          <div>
+            <Label className="text-xs">تكوين المقرر</Label>
+            <Select value={compFilter} onValueChange={setCompFilter}>
+              <SelectTrigger aria-label="تصفية بتكوين المقرر" data-testid="courses-composition">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>الكل</SelectItem>
+                {(
+                  Object.keys(COURSE_COMPOSITION_LABELS_AR) as (keyof typeof COURSE_COMPOSITION_LABELS_AR)[]
+                ).map((key) => (
+                  <SelectItem key={key} value={key}>
+                    {COURSE_COMPOSITION_LABELS_AR[key]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">الساعات المعتمدة</Label>
+            <Select value={creditFilter} onValueChange={setCreditFilter}>
+              <SelectTrigger aria-label="تصفية بالساعات المعتمدة" data-testid="courses-credit">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>الكل</SelectItem>
+                {creditOptions.map((h) => (
+                  <SelectItem key={h} value={String(h)}>
+                    {h} ساعة
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs text-muted-foreground" data-testid="courses-result-count">
+            {courseResultsLabelAr(filtered.length, (rows ?? []).length)}
+          </p>
+          {filtersActive && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={clearFilters}
+              data-testid="courses-clear-filters"
+            >
+              مسح الفلاتر
+            </Button>
+          )}
         </div>
       </Card>
 
