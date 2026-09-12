@@ -286,28 +286,21 @@ function CoursesPage() {
     );
   }, [planCourses, planFilter]);
 
-  const filterState = {
-    search,
-    deptFilter,
-    progFilter,
-    planFilter,
-    composition: compFilter,
-    creditHours: creditFilter,
-  };
-
-  const filtered = useMemo(
-    () => filterCourses(rows ?? [], filterState, { programCourseIds, planCourseIds }),
-    [
-      rows,
+  const filterState = useMemo(
+    () => ({
       search,
       deptFilter,
       progFilter,
       planFilter,
-      compFilter,
-      creditFilter,
-      programCourseIds,
-      planCourseIds,
-    ],
+      composition: compFilter,
+      creditHours: creditFilter,
+    }),
+    [search, deptFilter, progFilter, planFilter, compFilter, creditFilter],
+  );
+
+  const filtered = useMemo(
+    () => filterCourses(rows ?? [], filterState, { programCourseIds, planCourseIds }),
+    [rows, filterState, programCourseIds, planCourseIds],
   );
 
   const creditOptions = useMemo(() => creditHourOptions(rows ?? []), [rows]);
