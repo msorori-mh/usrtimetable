@@ -5,6 +5,11 @@ import {
   isMissingInstructorDepartment,
 } from "@/lib/data-onboarding/instructor-review";
 import { roomCapacityReadinessMetrics } from "./room-capacity-readiness";
+import { fetchRoomTimeCapacity } from "./fetch-room-time-capacity";
+import {
+  roomTimeCapacityReadinessMetrics,
+  type RoomTimeCapacityAnalysis,
+} from "./room-time-capacity";
 
 export interface ReadinessMetric {
   label: string;
