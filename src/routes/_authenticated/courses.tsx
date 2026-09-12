@@ -262,7 +262,7 @@ function CoursesPage() {
   const progMap = useMemo(() => new Map((progs ?? []).map((p) => [p.id, p])), [progs]);
 
   const filteredProgs = useMemo(
-    () => (progs ?? []).filter((p) => deptFilter === ALL || p.department_id === deptFilter),
+    () => programsForDepartment(progs ?? [], deptFilter),
     [progs, deptFilter],
   );
 
