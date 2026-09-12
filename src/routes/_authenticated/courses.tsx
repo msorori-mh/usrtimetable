@@ -461,9 +461,27 @@ function CoursesPage() {
         </div>
       </div>
 
-      <Card className="mb-4 p-3">
+      <Card className="mb-4 space-y-3 p-3">
+        <div>
+          <Label className="text-xs" htmlFor="courses-search">
+            البحث في المقررات
+          </Label>
+          <div className="relative">
+            <Search className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="courses-search"
+              data-testid="courses-search"
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="ابحث برمز المقرر أو الاسم"
+              aria-label="البحث في المقررات برمز المقرر أو الاسم"
+              className="pe-9"
+            />
+          </div>
+        </div>
         <div
-          className={`grid grid-cols-1 gap-3 ${showPlanFilter ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}
+          className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${showPlanFilter ? "lg:grid-cols-5" : "lg:grid-cols-4"}`}
         >
           <div>
             <Label className="text-xs">القسم</Label>
