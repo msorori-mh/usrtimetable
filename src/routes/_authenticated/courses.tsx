@@ -42,7 +42,6 @@ import {
   type CourseComposition,
 } from "@/lib/courses/course-filters";
 
-
 export const Route = createFileRoute("/_authenticated/courses")({
   head: () => ({ meta: [{ title: "المقررات" }] }),
   component: CoursesPage,
@@ -174,7 +173,6 @@ function CoursesPage() {
           .eq("college_id", active!.id)
       ).data ?? []) as { plan_course_id: string; component_type: string }[],
   });
-
 
   const { data: rows, isLoading } = useQuery({
     queryKey: ["courses", active?.id],
@@ -350,7 +348,6 @@ function CoursesPage() {
     [rows, filterState, programCourseIds, planCourseIds, compositionByCourseId],
   );
 
-
   const creditOptions = useMemo(() => creditHourOptions(rows ?? []), [rows]);
   const filtersActive = hasActiveCourseFilters(filterState);
   const clearFilters = () => {
@@ -390,7 +387,6 @@ function CoursesPage() {
             effectivePlanFilter === ALL
               ? ""
               : ((plans ?? []).find((p) => p.id === effectivePlanFilter)?.name ?? ""),
-
         },
       ]),
     });

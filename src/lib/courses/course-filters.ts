@@ -100,7 +100,11 @@ export function creditHourOptions(rows: Pick<CourseFilterRow, "credit_hours">[])
 export function compositionFromComponents(
   componentTypes: readonly string[],
 ): CourseComposition | null {
-  const types = componentTypes.map((t) => String(t ?? "").trim().toLowerCase());
+  const types = componentTypes.map((t) =>
+    String(t ?? "")
+      .trim()
+      .toLowerCase(),
+  );
   const practical = types.includes("practical");
   const theory = types.some((t) => t === "theory" || t === "tutorial" || t === "project");
   if (!practical && !theory) return null;
@@ -168,7 +172,6 @@ export function courseIdsForProgram(input: {
   }
   return out;
 }
-
 
 export function courseResultsLabelAr(shown: number, total: number): string {
   return `عرض ${shown} من ${total} مقرر`;
