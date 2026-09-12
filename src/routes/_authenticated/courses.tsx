@@ -32,6 +32,8 @@ import { Library, Pencil, Search, Trash2 } from "lucide-react";
 import {
   ALL_FILTER,
   COURSE_COMPOSITION_LABELS_AR,
+  compositionFromComponents,
+  courseIdsForProgram,
   courseResultsLabelAr,
   creditHourOptions,
   filterCourses,
@@ -155,9 +157,21 @@ function CoursesPage() {
       ((
         await supabase
           .from("plan_courses")
-          .select("study_plan_id, course_id")
+          .select("id, study_plan_id, course_id")
           .eq("college_id", active!.id)
-      ).data ?? []) as { study_plan_id: string; course_id: string }[],
+      ).data ?? []) as { id: string; study_plan_id: string; course_id: string }[],
+  });
+
+  const { data: planComponents } = useQuery({
+    queryKey: ["plan-course-components-min", active?.id],
+    enabled: !!active,
+    queryFn: async () =>
+      ((
+        await supabase
+          .from("plan_course_components")
+          .select("plan_course_id, component_type")
+          .eq("college_id", active!.id)
+      ).data ?? []) as { plan_course_id: string; component_type: string }[],
   });
 
   const { data: rows, isLoading } = useQuery({
@@ -270,37 +284,68 @@ function CoursesPage() {
     () => (progFilter === ALL ? [] : (plans ?? []).filter((pl) => pl.program_id === progFilter)),
     [plans, progFilter],
   );
-  const showPlanFilter = plansForProgram.length > 1;
+  const showPlanFilter = plansForProgram.length > 0;
+  /** A plan that no longer belongs to the selected program must not narrow results. */
+  const effectivePlanFilter =
+    planFilter !== ALL && plansForProgram.some((pl) => pl.id === planFilter) ? planFilter : ALL;
 
   const programCourseIds = useMemo(() => {
     if (progFilter === ALL) return null;
-    return new Set(
-      (coursePrograms ?? []).filter((r) => r.program_id === progFilter).map((r) => r.course_id),
-    );
-  }, [coursePrograms, progFilter]);
+    return courseIdsForProgram({
+      programId: progFilter,
+      coursePrograms: coursePrograms ?? [],
+      planCourses: planCourses ?? [],
+      plans: plans ?? [],
+    });
+  }, [coursePrograms, planCourses, plans, progFilter]);
 
   const planCourseIds = useMemo(() => {
-    if (planFilter === ALL) return null;
+    if (effectivePlanFilter === ALL) return null;
     return new Set(
-      (planCourses ?? []).filter((r) => r.study_plan_id === planFilter).map((r) => r.course_id),
+      (planCourses ?? [])
+        .filter((r) => r.study_plan_id === effectivePlanFilter)
+        .map((r) => r.course_id),
     );
-  }, [planCourses, planFilter]);
+  }, [planCourses, effectivePlanFilter]);
+
+  /** Composition inside the selected plan, from that plan's own components. */
+  const compositionByCourseId = useMemo(() => {
+    if (effectivePlanFilter === ALL) return null;
+    const planRows = (planCourses ?? []).filter((r) => r.study_plan_id === effectivePlanFilter);
+    const typesByPlanCourse = new Map<string, string[]>();
+    for (const c of planComponents ?? []) {
+      const list = typesByPlanCourse.get(c.plan_course_id);
+      if (list) list.push(c.component_type);
+      else typesByPlanCourse.set(c.plan_course_id, [c.component_type]);
+    }
+    const out = new Map<string, CourseComposition>();
+    for (const r of planRows) {
+      const composition = compositionFromComponents(typesByPlanCourse.get(r.id) ?? []);
+      if (composition) out.set(r.course_id, composition);
+    }
+    return out;
+  }, [planCourses, planComponents, effectivePlanFilter]);
 
   const filterState = useMemo(
     () => ({
       search,
       deptFilter,
       progFilter,
-      planFilter,
+      planFilter: effectivePlanFilter,
       composition: compFilter,
       creditHours: creditFilter,
     }),
-    [search, deptFilter, progFilter, planFilter, compFilter, creditFilter],
+    [search, deptFilter, progFilter, effectivePlanFilter, compFilter, creditFilter],
   );
 
   const filtered = useMemo(
-    () => filterCourses(rows ?? [], filterState, { programCourseIds, planCourseIds }),
-    [rows, filterState, programCourseIds, planCourseIds],
+    () =>
+      filterCourses(rows ?? [], filterState, {
+        programCourseIds,
+        planCourseIds,
+        compositionByCourseId,
+      }),
+    [rows, filterState, programCourseIds, planCourseIds, compositionByCourseId],
   );
 
   const creditOptions = useMemo(() => creditHourOptions(rows ?? []), [rows]);
@@ -339,7 +384,9 @@ function CoursesPage() {
         {
           label: "الخطة الدراسية",
           value:
-            planFilter === ALL ? "" : ((plans ?? []).find((p) => p.id === planFilter)?.name ?? ""),
+            effectivePlanFilter === ALL
+              ? ""
+              : ((plans ?? []).find((p) => p.id === effectivePlanFilter)?.name ?? ""),
         },
       ]),
     });
@@ -524,7 +571,7 @@ function CoursesPage() {
           {showPlanFilter && (
             <div>
               <Label className="text-xs">الخطة</Label>
-              <Select value={planFilter} onValueChange={setPlanFilter}>
+              <Select value={effectivePlanFilter} onValueChange={setPlanFilter}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

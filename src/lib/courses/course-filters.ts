@@ -93,19 +93,53 @@ export function creditHourOptions(rows: Pick<CourseFilterRow, "credit_hours">[])
   return [...new Set(rows.map((r) => Number(r.credit_hours) || 0))].sort((a, b) => a - b);
 }
 
+/**
+ * Composition derived from the plan components of a course inside one study plan.
+ * `theory`/`tutorial`/`project` count as theory-side delivery; `practical` as practical.
+ */
+export function compositionFromComponents(
+  componentTypes: readonly string[],
+): CourseComposition | null {
+  const types = componentTypes.map((t) =>
+    String(t ?? "")
+      .trim()
+      .toLowerCase(),
+  );
+  const practical = types.includes("practical");
+  const theory = types.some((t) => t === "theory" || t === "tutorial" || t === "project");
+  if (!practical && !theory) return null;
+  if (practical && theory) return "theory_practical";
+  if (practical) return "practical_only";
+  return "theory_only";
+}
+
+export interface CourseFilterLinks {
+  /** Course ids allowed by the selected program (null = no program selected). */
+  programCourseIds?: Set<string> | null;
+  /** Course ids allowed by the selected study plan (null = no plan selected). */
+  planCourseIds?: Set<string> | null;
+  /**
+   * Composition per course id inside the selected plan. Used only when a plan is
+   * selected; missing entries fall back to the course's own stored hours.
+   */
+  compositionByCourseId?: Map<string, CourseComposition> | null;
+}
+
 /** All filters combine with AND. */
 export function filterCourses<T extends CourseFilterRow>(
   rows: T[],
   state: CourseFilterState,
-  links: { programCourseIds?: Set<string> | null; planCourseIds?: Set<string> | null } = {},
+  links: CourseFilterLinks = {},
 ): T[] {
   return rows.filter((row) => {
     if (!courseMatchesSearch(row, state.search)) return false;
     if (state.deptFilter !== ALL_FILTER && row.department_id !== state.deptFilter) return false;
     if (links.programCourseIds && !links.programCourseIds.has(row.id)) return false;
     if (links.planCourseIds && !links.planCourseIds.has(row.id)) return false;
-    if (state.composition !== ALL_FILTER && courseComposition(row) !== state.composition)
-      return false;
+    if (state.composition !== ALL_FILTER) {
+      const composition = links.compositionByCourseId?.get(row.id) ?? courseComposition(row);
+      if (composition !== state.composition) return false;
+    }
     if (
       state.creditHours !== ALL_FILTER &&
       (Number(row.credit_hours) || 0) !== Number(state.creditHours)
@@ -113,6 +147,30 @@ export function filterCourses<T extends CourseFilterRow>(
       return false;
     return true;
   });
+}
+
+/**
+ * Course ids belonging to a program. Production data may have no `course_programs`
+ * rows at all, so plan membership (plan_courses → study_plans.program_id) is the
+ * authoritative fallback and both sources are unioned.
+ */
+export function courseIdsForProgram(input: {
+  programId: string;
+  coursePrograms: readonly { course_id: string; program_id: string }[];
+  planCourses: readonly { course_id: string; study_plan_id: string }[];
+  plans: readonly { id: string; program_id: string }[];
+}): Set<string> {
+  const planIds = new Set(
+    input.plans.filter((p) => p.program_id === input.programId).map((p) => p.id),
+  );
+  const out = new Set<string>();
+  for (const r of input.coursePrograms) {
+    if (r.program_id === input.programId) out.add(r.course_id);
+  }
+  for (const r of input.planCourses) {
+    if (planIds.has(r.study_plan_id)) out.add(r.course_id);
+  }
+  return out;
 }
 
 export function courseResultsLabelAr(shown: number, total: number): string {
