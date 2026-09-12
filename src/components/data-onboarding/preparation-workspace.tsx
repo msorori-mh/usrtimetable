@@ -60,7 +60,7 @@ export function PreparationWorkspace({
   const guideEntity = selectedEntity ?? entities[0];
   const template = guideEntity ? TEMPLATES[guideEntity] : undefined;
   const issues = snapshot.newFlowIssues.filter((issue) => issue.missing > 0);
-  const capacity = snapshot.readiness.roomTimeCapacity;
+  const capacity = snapshot.readiness?.roomTimeCapacity;
   const capacityMessages =
     capacity && (capacity.unavailable || capacity.insufficient.length > 0)
       ? roomTimeCapacityMessagesAr(capacity)
