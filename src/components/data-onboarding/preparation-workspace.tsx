@@ -22,6 +22,7 @@ import {
   type PreparationStepId,
 } from "@/lib/data-onboarding/preparation";
 import type { WizardStepStatus } from "@/lib/data-onboarding/types";
+import { roomTimeCapacityMessagesAr } from "@/lib/reports/room-time-capacity";
 
 const STATUS: Record<WizardStepStatus, string> = {
   complete: "مكتمل",
@@ -59,6 +60,11 @@ export function PreparationWorkspace({
   const guideEntity = selectedEntity ?? entities[0];
   const template = guideEntity ? TEMPLATES[guideEntity] : undefined;
   const issues = snapshot.newFlowIssues.filter((issue) => issue.missing > 0);
+  const capacity = snapshot.readiness.roomTimeCapacity;
+  const capacityMessages =
+    capacity && (capacity.unavailable || capacity.insufficient.length > 0)
+      ? roomTimeCapacityMessagesAr(capacity)
+      : [];
   return (
     <div className="space-y-5" data-testid="preparation-workspace">
       {!canManage && (
@@ -219,6 +225,26 @@ export function PreparationWorkspace({
             )}
           </Card>
           {canManage && selectedEntity && importer}
+          {capacityMessages.length > 0 && (
+            <Card
+              className="space-y-2 border-destructive/40 bg-destructive/5 p-5"
+              role="alert"
+              data-testid="room-time-capacity-blocker"
+            >
+              <h3 className="font-semibold text-destructive">
+                السعة الزمنية الأسبوعية للقاعات غير كافية — لا يمكن اعتبار التجهيز مكتملاً
+              </h3>
+              <ul className="space-y-1 text-sm">
+                {capacityMessages.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+              <p className="text-xs text-muted-foreground">
+                الحل: إضافة قاعات من النوع نفسه، أو تقليل الساعات المطلوبة. لم يتم تغيير ساعات
+                الدوام ولا افتراض أي قاعة غير مسجلة.
+              </p>
+            </Card>
+          )}
           {step.id === "readiness_check" && (
             <Card className="space-y-3 p-5" data-testid="onboarding-readiness-dashboard">
               <h3 className="font-semibold">ما الذي يحتاج إلى استكمال؟</h3>
