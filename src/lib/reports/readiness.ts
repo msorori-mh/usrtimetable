@@ -358,6 +358,14 @@ export async function fetchCollegeReadiness(collegeId: string): Promise<Readines
   const newFlowSignals = await fetchNewFlowSignals(collegeId);
   scheduling.push(...newFlowReadinessMetrics(newFlowSignals));
 
+  // ROOM-TIME-CAPACITY-READINESS-01 — physical weekly room-hours feasibility.
+  const roomTimeCapacity = await fetchRoomTimeCapacity(
+    collegeId,
+    roomsRows as { id: string; room_type_id: string | null; is_active?: boolean | null }[],
+    (roomTypes.data ?? []) as { id: string; name_ar?: string | null }[],
+  );
+  scheduling.push(...roomTimeCapacityReadinessMetrics(roomTimeCapacity));
+
   const studyPlanScore = score(studyPlan);
   const resourcesScore = score(resources);
   const schedulingScore = score(scheduling);
