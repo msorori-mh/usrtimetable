@@ -93,6 +93,9 @@ function CoursesPage() {
   const [deptFilter, setDeptFilter] = useState<string>(ALL);
   const [progFilter, setProgFilter] = useState<string>(ALL);
   const [planFilter, setPlanFilter] = useState<string>(ALL);
+  const [search, setSearch] = useState("");
+  const [compFilter, setCompFilter] = useState<string>(ALL);
+  const [creditFilter, setCreditFilter] = useState<string>(ALL);
 
   const { data: depts } = useQuery({
     queryKey: ["dept-min", active?.id],
