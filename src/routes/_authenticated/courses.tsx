@@ -387,7 +387,10 @@ function CoursesPage() {
         {
           label: "الخطة الدراسية",
           value:
-            planFilter === ALL ? "" : ((plans ?? []).find((p) => p.id === planFilter)?.name ?? ""),
+            effectivePlanFilter === ALL
+              ? ""
+              : ((plans ?? []).find((p) => p.id === effectivePlanFilter)?.name ?? ""),
+
         },
       ]),
     });
