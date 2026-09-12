@@ -112,6 +112,14 @@ export function requiredCadenceForComponent(input: {
         "لا توجد بيانات نمط أسبوعي في الخطة الدراسية لهذا المقرر — صحّح الخطة قبل التوليد الآلي.",
     };
   }
+  // JAWF cadence fix: for components of up to 3 weekly hours the component's own
+  // assigned hours are the source of truth — one contiguous weekly session
+  // (theory 3h → 1×3h, tutorial 2h → 1×2h, theory 2h + project 2h → 1×2h each).
+  // Legacy lectures_per_week/lecture_session_duration must never split these
+  // into 1h slices. Components above 3h keep the validated plan pattern (4h → 2×2h).
+  if (assigned <= 3 + EPS) {
+    return { durations: [assigned], source: "plan", noteAr: null };
+  }
   if (
     count > 0 &&
     duration > 0 &&
