@@ -30,6 +30,7 @@ import { logAudit } from "@/lib/audit";
 import type { AutoRunMode } from "@/lib/auto-scheduler/greedy";
 import { runV2AutoSchedule, type AutoScheduleProgress } from "@/lib/auto-scheduler/v2";
 import { fetchCollegeReadiness } from "@/lib/reports/readiness";
+import { roomTimeCapacityMessagesAr } from "@/lib/reports/room-time-capacity";
 import { CompactSchedulePanel } from "@/components/compact-panel";
 import { Sparkles, AlertCircle, CheckCircle2 } from "lucide-react";
 
@@ -79,6 +80,11 @@ function AutoSchedulePage() {
         (metric) => metric.critical && metric.missing > 0,
       )
     : [];
+  const capacityMessages =
+    readiness?.roomTimeCapacity &&
+    (readiness.roomTimeCapacity.unavailable || readiness.roomTimeCapacity.insufficient.length > 0)
+      ? roomTimeCapacityMessagesAr(readiness.roomTimeCapacity)
+      : [];
   const readinessIncomplete =
     readinessLoading || readinessError || !readiness || readinessBlockers.length > 0;
 
@@ -238,6 +244,22 @@ function AutoSchedulePage() {
               >
                 جارٍ المعالجة {progress.processedItems} من {progress.totalItems} — تمت جدولة{" "}
                 {progress.placed} جلسة، تعذّرت {progress.unplaced} — الحالي: {progress.label}
+              </div>
+            ) : null}
+            {capacityMessages.length > 0 ? (
+              <div
+                className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm"
+                role="alert"
+                data-testid="auto-schedule-room-time-capacity-blocker"
+              >
+                <p className="font-medium text-destructive">
+                  السعة الزمنية الأسبوعية للقاعات غير كافية — الجدولة مستحيلة فعليًا.
+                </p>
+                <ul className="mt-1 space-y-1 text-muted-foreground">
+                  {capacityMessages.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
               </div>
             ) : null}
             {readinessIncomplete ? (

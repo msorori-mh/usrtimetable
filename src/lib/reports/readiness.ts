@@ -5,6 +5,11 @@ import {
   isMissingInstructorDepartment,
 } from "@/lib/data-onboarding/instructor-review";
 import { roomCapacityReadinessMetrics } from "./room-capacity-readiness";
+import { fetchRoomTimeCapacity } from "./fetch-room-time-capacity";
+import {
+  roomTimeCapacityReadinessMetrics,
+  type RoomTimeCapacityAnalysis,
+} from "./room-time-capacity";
 
 export interface ReadinessMetric {
   label: string;
@@ -31,6 +36,8 @@ export interface ReadinessData {
   studyPlan: ReadinessMetric[];
   resources: ReadinessMetric[];
   scheduling: ReadinessMetric[];
+  /** ROOM-TIME-CAPACITY-READINESS-01 — weekly room-hours feasibility per room type. */
+  roomTimeCapacity: RoomTimeCapacityAnalysis;
   scores: {
     studyPlanScore: number;
     resourcesScore: number;
@@ -245,7 +252,7 @@ export async function fetchCollegeReadiness(collegeId: string): Promise<Readines
         .eq("college_id", collegeId),
       supabase
         .from("room_types")
-        .select("id, default_capacity, name_ar")
+        .select("id, default_capacity, name_ar, code")
         .eq("college_id", collegeId),
     ]);
 
@@ -351,6 +358,14 @@ export async function fetchCollegeReadiness(collegeId: string): Promise<Readines
   const newFlowSignals = await fetchNewFlowSignals(collegeId);
   scheduling.push(...newFlowReadinessMetrics(newFlowSignals));
 
+  // ROOM-TIME-CAPACITY-READINESS-01 — physical weekly room-hours feasibility.
+  const roomTimeCapacity = await fetchRoomTimeCapacity(
+    collegeId,
+    roomsRows as { id: string; room_type_id: string | null; is_active?: boolean | null }[],
+    (roomTypes.data ?? []) as { id: string; name_ar?: string | null; code?: string | null }[],
+  );
+  scheduling.push(...roomTimeCapacityReadinessMetrics(roomTimeCapacity));
+
   const studyPlanScore = score(studyPlan);
   const resourcesScore = score(resources);
   const schedulingScore = score(scheduling);
@@ -368,6 +383,7 @@ export async function fetchCollegeReadiness(collegeId: string): Promise<Readines
     studyPlan,
     resources,
     scheduling,
+    roomTimeCapacity,
     scores: {
       studyPlanScore,
       resourcesScore,
