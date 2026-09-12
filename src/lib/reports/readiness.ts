@@ -36,6 +36,8 @@ export interface ReadinessData {
   studyPlan: ReadinessMetric[];
   resources: ReadinessMetric[];
   scheduling: ReadinessMetric[];
+  /** ROOM-TIME-CAPACITY-READINESS-01 — weekly room-hours feasibility per room type. */
+  roomTimeCapacity: RoomTimeCapacityAnalysis;
   scores: {
     studyPlanScore: number;
     resourcesScore: number;
