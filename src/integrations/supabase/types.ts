@@ -4160,6 +4160,10 @@ export type Database = {
         Args: { p_version_id: string }
         Returns: Json
       }
+      rebuild_cohort_student_partitions: {
+        Args: { p_cohort_id: string }
+        Returns: Json
+      }
       resolve_compatibility_offering_set: {
         Args: { p_offerings: Json }
         Returns: Json
