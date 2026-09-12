@@ -65,12 +65,16 @@ export async function fetchRoomTimeCapacity(
     const activeTermIds = new Set((terms.data ?? []).map((t) => t.id));
     const termCohortIds = new Set(
       (cohorts.data ?? [])
-        .filter((c) => c.active !== false && (activeTermIds.size === 0 || activeTermIds.has(c.term_id)))
+        .filter(
+          (c) => c.active !== false && (activeTermIds.size === 0 || activeTermIds.has(c.term_id)),
+        )
         .map((c) => c.id),
     );
     const eligibleGroups = new Set(
       (groups.data ?? [])
-        .filter((g) => g.active !== false && g.is_obsolete !== true && termCohortIds.has(g.cohort_id))
+        .filter(
+          (g) => g.active !== false && g.is_obsolete !== true && termCohortIds.has(g.cohort_id),
+        )
         .map((g) => g.id),
     );
     const componentRoomType = new Map(
@@ -84,7 +88,10 @@ export async function fetchRoomTimeCapacity(
     );
 
     const demand: TimeCapacityDemand[] = (assignments.data ?? [])
-      .filter((a) => a.is_active !== false && a.delivery_group_id && eligibleGroups.has(a.delivery_group_id))
+      .filter(
+        (a) =>
+          a.is_active !== false && a.delivery_group_id && eligibleGroups.has(a.delivery_group_id),
+      )
       .map((a) => {
         const fromComponent = a.plan_course_component_id
           ? componentRoomType.get(a.plan_course_component_id)

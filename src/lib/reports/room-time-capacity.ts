@@ -159,14 +159,7 @@ export function analyzeRoomTimeCapacity(input: {
       rooms.reduce(
         (sum, room) =>
           sum +
-          roomUsableHours(
-            room.id,
-            availability,
-            workingDays,
-            dayStart!,
-            dayEnd!,
-            fullWindowHours,
-          ),
+          roomUsableHours(room.id, availability, workingDays, dayStart!, dayEnd!, fullWindowHours),
         0,
       ),
     );
