@@ -73,7 +73,7 @@ interface StudyPlan {
   version: string;
 }
 
-const ALL = "__all__";
+const ALL = ALL_FILTER;
 
 function CoursesPage() {
   const { active } = useActiveCollege();
