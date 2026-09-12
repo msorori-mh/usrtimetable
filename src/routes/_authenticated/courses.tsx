@@ -328,6 +328,13 @@ function CoursesPage() {
       departmentLabel: (id) => (id ? (deptMap.get(id) ?? "") : ""),
       fileBase: "courses",
       filters: activeFilters([
+        { label: "البحث", value: search.trim() },
+        {
+          label: "تكوين المقرر",
+          value:
+            compFilter === ALL ? "" : COURSE_COMPOSITION_LABELS_AR[compFilter as CourseComposition],
+        },
+        { label: "الساعات المعتمدة", value: creditFilter === ALL ? "" : creditFilter },
         {
           label: "القسم",
           value: deptFilter === ALL ? "" : (deptMap.get(deptFilter) ?? ""),
