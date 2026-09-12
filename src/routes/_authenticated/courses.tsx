@@ -555,7 +555,9 @@ function CoursesPage() {
               <SelectContent>
                 <SelectItem value={ALL}>الكل</SelectItem>
                 {(
-                  Object.keys(COURSE_COMPOSITION_LABELS_AR) as (keyof typeof COURSE_COMPOSITION_LABELS_AR)[]
+                  Object.keys(
+                    COURSE_COMPOSITION_LABELS_AR,
+                  ) as (keyof typeof COURSE_COMPOSITION_LABELS_AR)[]
                 ).map((key) => (
                   <SelectItem key={key} value={key}>
                     {COURSE_COMPOSITION_LABELS_AR[key]}
