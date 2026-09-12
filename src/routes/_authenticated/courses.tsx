@@ -28,7 +28,17 @@ import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { AdminExportMenu } from "@/components/admin-export-menu";
 import { activeFilters, coursesExportDataset } from "@/lib/admin-export/datasets";
-import { Library, Pencil, Trash2 } from "lucide-react";
+import { Library, Pencil, Search, Trash2 } from "lucide-react";
+import {
+  ALL_FILTER,
+  COURSE_COMPOSITION_LABELS_AR,
+  courseResultsLabelAr,
+  creditHourOptions,
+  filterCourses,
+  hasActiveCourseFilters,
+  programsForDepartment,
+  type CourseComposition,
+} from "@/lib/courses/course-filters";
 
 export const Route = createFileRoute("/_authenticated/courses")({
   head: () => ({ meta: [{ title: "المقررات" }] }),
@@ -63,7 +73,7 @@ interface StudyPlan {
   version: string;
 }
 
-const ALL = "__all__";
+const ALL = ALL_FILTER;
 
 function CoursesPage() {
   const { active } = useActiveCollege();
@@ -83,6 +93,9 @@ function CoursesPage() {
   const [deptFilter, setDeptFilter] = useState<string>(ALL);
   const [progFilter, setProgFilter] = useState<string>(ALL);
   const [planFilter, setPlanFilter] = useState<string>(ALL);
+  const [search, setSearch] = useState("");
+  const [compFilter, setCompFilter] = useState<string>(ALL);
+  const [creditFilter, setCreditFilter] = useState<string>(ALL);
 
   const { data: depts } = useQuery({
     queryKey: ["dept-min", active?.id],
@@ -249,7 +262,7 @@ function CoursesPage() {
   const progMap = useMemo(() => new Map((progs ?? []).map((p) => [p.id, p])), [progs]);
 
   const filteredProgs = useMemo(
-    () => (progs ?? []).filter((p) => deptFilter === ALL || p.department_id === deptFilter),
+    () => programsForDepartment(progs ?? [], deptFilter),
     [progs, deptFilter],
   );
 
@@ -273,14 +286,33 @@ function CoursesPage() {
     );
   }, [planCourses, planFilter]);
 
-  const filtered = useMemo(() => {
-    return (rows ?? []).filter((c) => {
-      if (deptFilter !== ALL && c.department_id !== deptFilter) return false;
-      if (programCourseIds && !programCourseIds.has(c.id)) return false;
-      if (planCourseIds && !planCourseIds.has(c.id)) return false;
-      return true;
-    });
-  }, [rows, deptFilter, programCourseIds, planCourseIds]);
+  const filterState = useMemo(
+    () => ({
+      search,
+      deptFilter,
+      progFilter,
+      planFilter,
+      composition: compFilter,
+      creditHours: creditFilter,
+    }),
+    [search, deptFilter, progFilter, planFilter, compFilter, creditFilter],
+  );
+
+  const filtered = useMemo(
+    () => filterCourses(rows ?? [], filterState, { programCourseIds, planCourseIds }),
+    [rows, filterState, programCourseIds, planCourseIds],
+  );
+
+  const creditOptions = useMemo(() => creditHourOptions(rows ?? []), [rows]);
+  const filtersActive = hasActiveCourseFilters(filterState);
+  const clearFilters = () => {
+    setSearch("");
+    setDeptFilter(ALL);
+    setProgFilter(ALL);
+    setPlanFilter(ALL);
+    setCompFilter(ALL);
+    setCreditFilter(ALL);
+  };
 
   const coursesDataset = () =>
     coursesExportDataset({
@@ -289,6 +321,13 @@ function CoursesPage() {
       departmentLabel: (id) => (id ? (deptMap.get(id) ?? "") : ""),
       fileBase: "courses",
       filters: activeFilters([
+        { label: "البحث", value: search.trim() },
+        {
+          label: "تكوين المقرر",
+          value:
+            compFilter === ALL ? "" : COURSE_COMPOSITION_LABELS_AR[compFilter as CourseComposition],
+        },
+        { label: "الساعات المعتمدة", value: creditFilter === ALL ? "" : creditFilter },
         {
           label: "القسم",
           value: deptFilter === ALL ? "" : (deptMap.get(deptFilter) ?? ""),
@@ -415,9 +454,27 @@ function CoursesPage() {
         </div>
       </div>
 
-      <Card className="mb-4 p-3">
+      <Card className="mb-4 space-y-3 p-3">
+        <div>
+          <Label className="text-xs" htmlFor="courses-search">
+            البحث في المقررات
+          </Label>
+          <div className="relative">
+            <Search className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="courses-search"
+              data-testid="courses-search"
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="ابحث برمز المقرر أو الاسم"
+              aria-label="البحث في المقررات برمز المقرر أو الاسم"
+              className="pe-9"
+            />
+          </div>
+        </div>
         <div
-          className={`grid grid-cols-1 gap-3 ${showPlanFilter ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}
+          className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${showPlanFilter ? "lg:grid-cols-5" : "lg:grid-cols-4"}`}
         >
           <div>
             <Label className="text-xs">القسم</Label>
@@ -481,6 +538,57 @@ function CoursesPage() {
                 </SelectContent>
               </Select>
             </div>
+          )}
+          <div>
+            <Label className="text-xs">تكوين المقرر</Label>
+            <Select value={compFilter} onValueChange={setCompFilter}>
+              <SelectTrigger aria-label="تصفية بتكوين المقرر" data-testid="courses-composition">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>الكل</SelectItem>
+                {(
+                  Object.keys(
+                    COURSE_COMPOSITION_LABELS_AR,
+                  ) as (keyof typeof COURSE_COMPOSITION_LABELS_AR)[]
+                ).map((key) => (
+                  <SelectItem key={key} value={key}>
+                    {COURSE_COMPOSITION_LABELS_AR[key]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">الساعات المعتمدة</Label>
+            <Select value={creditFilter} onValueChange={setCreditFilter}>
+              <SelectTrigger aria-label="تصفية بالساعات المعتمدة" data-testid="courses-credit">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>الكل</SelectItem>
+                {creditOptions.map((h) => (
+                  <SelectItem key={h} value={String(h)}>
+                    {h} ساعة
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs text-muted-foreground" data-testid="courses-result-count">
+            {courseResultsLabelAr(filtered.length, (rows ?? []).length)}
+          </p>
+          {filtersActive && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={clearFilters}
+              data-testid="courses-clear-filters"
+            >
+              مسح الفلاتر
+            </Button>
           )}
         </div>
       </Card>
