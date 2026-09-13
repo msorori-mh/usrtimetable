@@ -134,7 +134,7 @@ const RPC_ERROR_MESSAGES: Record<string, string> = {
   DELIVERY_GROUP_INACTIVE_SESSION_FORBIDDEN: "لا يمكن ربط جلسة بمجموعة تدريس غير نشطة",
   SUMMER_TRAINING_WEEKLY_ASSIGNMENT_FORBIDDEN: "التدريب الصيفي لا يُسند كتدريس أسبوعي",
   CO_TEACHING_HOURS_SPLIT_REQUIRED: "عند التدريس المشترك يجب تحديد ساعات كل مدرس صراحة",
-  CO_TEACHING_HOURS_OVER_ALLOCATED: "مجموع ساعات الإسناد يتجاوز ساعات المكوّن",
+  CO_TEACHING_HOURS_OVER_ALLOCATED: "مجموع ساعات الإسناد يتجاوز ساعات المحاضرة",
   ASSIGNED_HOURS_MUST_BE_POSITIVE: "ساعات الإسناد يجب أن تكون موجبة",
   DUPLICATE_ACTIVE_ASSIGNMENT: "يوجد إسناد نشط لهذا المدرس على نفس المجموعة",
   STALE_ASSIGNMENT_UPDATE: "تم تعديل الإسناد من مستخدم آخر — حدّث الصفحة وأعد المحاولة",

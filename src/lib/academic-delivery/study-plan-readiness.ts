@@ -100,14 +100,14 @@ export function studyPlanReadinessMetrics(
       labs.length,
     ),
     metric(
-      "مكوّنات مفعّلة للجدولة دون ساعات",
+      "محاضرات مفعّلة للجدولة دون ساعات",
       components.filter((c) => c.is_timetabled !== false && !(Number(c.weekly_contact_hours) > 0))
         .length,
       components.length,
       true,
     ),
     metric(
-      "PLAN_COMPONENT_ROOM_TYPE_MISSING: مكوّنات مجدولة بدون نوع قاعة صالح",
+      "PLAN_COMPONENT_ROOM_TYPE_MISSING: محاضرات مجدولة بدون نوع قاعة صالح",
       missingRoomTypes,
       components.length,
       true,

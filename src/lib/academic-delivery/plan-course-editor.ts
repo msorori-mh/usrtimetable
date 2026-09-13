@@ -209,7 +209,7 @@ export function validateComponentForm(args: {
 }): ValidationResult {
   const { ctx, form, roomTypes, siblings, planCourseId, editingId } = args;
   if (!(PLAN_COMPONENT_TYPES as readonly string[]).includes(form.component_type)) {
-    return fail("COMPONENT_TYPE_INVALID", "نوع المكوّن غير مسموح.");
+    return fail("COMPONENT_TYPE_INVALID", "نوع المحاضرة غير مسموح.");
   }
   if (!(COMPENSATION_MODES as readonly string[]).includes(form.compensation_mode)) {
     return fail("COMPENSATION_MODE_INVALID", "طريقة الاحتساب غير مسموحة.");
@@ -220,7 +220,7 @@ export function validateComponentForm(args: {
   if (form.is_timetabled && form.weekly_contact_hours <= 0) {
     return fail(
       "HOURS_REQUIRED_FOR_TIMETABLED",
-      "المكوّن المجدول يحتاج ساعات أسبوعية أكبر من صفر.",
+      "المحاضرة المجدولة تحتاج ساعات أسبوعية أكبر من صفر.",
     );
   }
   if (form.explicit_group_size != null) {
@@ -252,7 +252,7 @@ export function validateComponentForm(args: {
         s.id !== editingId,
     );
     if (dup) {
-      return fail("COMPONENT_TYPE_DUPLICATE", "يوجد مكوّن بنفس النوع لهذا المقرر في الخطة.");
+      return fail("COMPONENT_TYPE_DUPLICATE", "يوجد نوع محاضرة مماثل لهذا المقرر في الخطة.");
     }
   }
   return { ok: true };
@@ -319,7 +319,7 @@ export function componentUpdateScope(
   planCourseIdsInPlan: string[],
 ): ComponentUpdateScope | ValidationFailure {
   if (!planCourseIdsInPlan.includes(row.plan_course_id)) {
-    return fail("COMPONENT_SCOPE_MISMATCH", "المكوّن لا ينتمي إلى مقررات هذه الخطة.");
+    return fail("COMPONENT_SCOPE_MISMATCH", "المحاضرة لا تنتمي إلى مقررات هذه الخطة.");
   }
   return { id: row.id, collegeId: ctx.collegeId, planCourseId: row.plan_course_id };
 }
@@ -509,4 +509,4 @@ export function countersDiffer(
 
 /** Explicit, actionable message when the component write succeeded but sync failed. */
 export const LEGACY_SYNC_PARTIAL_ERROR_AR =
-  "تم حفظ المكوّنات لكن فشلت مزامنة بيانات الجدولة (عدد المحاضرات/المعامل). استخدم زر «مزامنة بيانات الجدولة» لهذا المقرر لإعادة المحاولة.";
+  "تم حفظ محاضرات المقرر لكن فشلت مزامنة بيانات الجدولة (عدد المحاضرات/المعامل). استخدم زر «مزامنة بيانات الجدولة» لهذا المقرر لإعادة المحاولة.";

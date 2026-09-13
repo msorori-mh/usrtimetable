@@ -415,14 +415,14 @@ export function PlanCoursesManager({
         (componentsByPlanCourse.get(planCourseId) ?? []).map((c) => c.component_type),
       );
       const toInsert = rows.filter((r) => !existing.has(r.component_type));
-      if (toInsert.length === 0) throw new Error("المكوّنات المشتقة موجودة مسبقاً.");
+      if (toInsert.length === 0) throw new Error("محاضرات المقرر المشتقة موجودة مسبقاً.");
       const { error } = await supabase.from("plan_course_components").insert(toInsert);
       if (error) throw error;
       await logAudit({ action: "create", entity: "plan_course_components", collegeId });
       await syncLegacyCounters(planCourseId);
     },
     onSuccess: () => {
-      toast.success("تم توليد المكوّنات من ساعات المقرر");
+      toast.success("تم توليد محاضرات المقرر من ساعاته");
       invalidate();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -452,7 +452,7 @@ export function PlanCoursesManager({
       await syncLegacyCounters(planCourseId);
     },
     onSuccess: () => {
-      toast.success("تمت إضافة المكوّن");
+      toast.success("تمت إضافة المحاضرة");
       setComponentForm(EMPTY_COMPONENT);
       setComponentTarget(null);
       invalidate();
@@ -463,7 +463,7 @@ export function PlanCoursesManager({
   const updateComponent = useMutation({
     mutationFn: async (args: { componentId: string; planCourseId: string }) => {
       const row = (components ?? []).find((c) => c.id === args.componentId);
-      if (!row) throw new Error("المكوّن غير موجود.");
+      if (!row) throw new Error("المحاضرة غير موجودة.");
       const scope = componentUpdateScope(ctx, row, planCourseIds);
       if ("ok" in scope) throw new Error(scope.messageAr);
       const check = validateComponentForm({
@@ -493,7 +493,7 @@ export function PlanCoursesManager({
       await syncLegacyCounters(args.planCourseId);
     },
     onSuccess: () => {
-      toast.success("تم تحديث المكوّن");
+      toast.success("تم تحديث المحاضرة");
       setComponentForm(EMPTY_COMPONENT);
       setComponentTarget(null);
       invalidate();
@@ -518,7 +518,7 @@ export function PlanCoursesManager({
       await syncLegacyCounters(args.planCourseId);
     },
     onSuccess: () => {
-      toast.success("تم حذف المكوّن");
+      toast.success("تم حذف المحاضرة");
       invalidate();
     },
     onError: (e: Error) => {
@@ -775,7 +775,7 @@ export function PlanCoursesManager({
                           onClick={() => {
                             if (
                               confirm(
-                                "سيتم حذف مكوّنات هذا المقرر ثم حذفه من الخطة. هل تريد المتابعة؟",
+                                "سيتم حذف محاضرات هذا المقرر ثم حذفه من الخطة. هل تريد المتابعة؟",
                               )
                             ) {
                               deletePlanCourse.mutate(row.id);
@@ -850,7 +850,7 @@ export function PlanCoursesManager({
 
                   <ul className="mt-2 divide-y divide-border/60 text-xs">
                     {rowComponents.length === 0 ? (
-                      <li className="py-2 text-muted-foreground">لا توجد مكوّنات لهذا المقرر.</li>
+                      <li className="py-2 text-muted-foreground">لا توجد محاضرات لهذا المقرر.</li>
                     ) : (
                       rowComponents.map((c) => (
                         <li key={c.id} className="flex items-center justify-between gap-2 py-2">
@@ -918,7 +918,7 @@ export function PlanCoursesManager({
                         }
                       >
                         <div>
-                          <Label className="text-xs">نوع المكوّن</Label>
+                          <Label className="text-xs">نوع المحاضرة</Label>
                           <Select
                             value={componentForm.component_type}
                             onValueChange={(v) =>
@@ -989,7 +989,7 @@ export function PlanCoursesManager({
                           </Select>
                           {tutorialRoomTypeIsLocked(componentForm.component_type) ? (
                             <p className="mt-1 text-[11px] text-muted-foreground">
-                              مكوّن التمارين يُدرَّس دائمًا في قاعة محاضرات.
+                              محاضرة التمارين تُدرَّس دائمًا في قاعة محاضرات.
                             </p>
                           ) : null}
                         </div>
