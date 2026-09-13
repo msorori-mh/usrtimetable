@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import fs from "node:fs";
 import {
   orderWeekDaysRtl,
   rtlDayRank,
@@ -46,14 +47,13 @@ describe("weekly grid hour window from scheduling settings", () => {
 
   it("falls back to 08–14 when settings are missing or invalid", () => {
     expect(weeklyGridWindow(null)).toMatchObject({ startHour: 8, endHour: 14, source: "fallback" });
-    expect(
-      weeklyGridWindow({ day_start_time: "14:00:00", day_end_time: "08:00:00" }).source,
-    ).toBe("fallback");
+    expect(weeklyGridWindow({ day_start_time: "14:00:00", day_end_time: "08:00:00" }).source).toBe(
+      "fallback",
+    );
   });
 });
 
 describe("report grid wiring", () => {
-  const fs = require("node:fs") as typeof import("node:fs");
   const grid = fs.readFileSync("src/components/reports/timetable-grid-report.tsx", "utf8");
   const view = fs.readFileSync("src/components/reports/report-timetable-view.tsx", "utf8");
   const printFilters = fs.readFileSync("src/lib/print-center/filters.ts", "utf8");

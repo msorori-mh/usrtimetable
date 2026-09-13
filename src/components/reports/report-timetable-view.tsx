@@ -1,5 +1,12 @@
 import { Card } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useWeeklyGridWindow } from "@/hooks/reports/useWeeklyGridWindow";
 import { TimetableGridReport } from "@/components/reports/timetable-grid-report";
 import {

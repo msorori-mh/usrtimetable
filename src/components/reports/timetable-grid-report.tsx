@@ -44,7 +44,8 @@ interface PlacedSession {
 
 function assignLanes(daySessions: TimetableReportSession[]): PlacedSession[] {
   const sorted = [...daySessions].sort(
-    (a, b) => toMins(a.start_time) - toMins(b.start_time) || toMins(a.end_time) - toMins(b.end_time),
+    (a, b) =>
+      toMins(a.start_time) - toMins(b.start_time) || toMins(a.end_time) - toMins(b.end_time),
   );
   const lanes: TimetableReportSession[][] = [];
 
@@ -126,7 +127,9 @@ export function TimetableGridReport({
 
   if (!sessions.length) {
     return (
-      <p className="text-sm text-muted-foreground text-center py-6">لا توجد محاضرات لعرضها في الشبكة.</p>
+      <p className="text-sm text-muted-foreground text-center py-6">
+        لا توجد محاضرات لعرضها في الشبكة.
+      </p>
     );
   }
 

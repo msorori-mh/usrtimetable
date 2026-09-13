@@ -1,9 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  weeklyGridWindow,
-  type WeeklyGridWindow,
-} from "@/lib/reports/weekly-grid-window";
+import { weeklyGridWindow, type WeeklyGridWindow } from "@/lib/reports/weekly-grid-window";
 
 /**
  * Reads the college's operating window (working days + day start/end) so every
