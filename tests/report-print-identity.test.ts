@@ -28,7 +28,7 @@ describe("report print identity", () => {
   test("official report header renders a real verification QR from a URL", () => {
     expect(header.includes("PrintQrCode")).toBe(true);
     expect(header.includes("qrUrl")).toBe(true);
-    expect(header.includes('title="رابط التحقق"')).toBe(true);
+    expect(header.includes('title="رابط التقرير"')).toBe(true);
   });
 
   test("header keeps university, college, title, term, version and generation data", () => {

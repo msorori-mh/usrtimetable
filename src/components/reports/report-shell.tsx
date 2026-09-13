@@ -235,7 +235,9 @@ export function ReportShell({
       <div className={printContent ? "report-no-print min-w-0" : "report-print-body min-w-0"}>
         {body}
       </div>
-      {printContent && <div className="hidden print:block print-center-body">{printContent}</div>}
+      {printContent && showSummaryBlocks && hasRows && (
+        <div className="hidden print:block print-center-body">{printContent}</div>
+      )}
     </div>
   );
 }
