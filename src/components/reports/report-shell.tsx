@@ -11,6 +11,7 @@ import {
 } from "@/components/reports/report-official-header";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { downloadCSV, downloadXLSX, type Row } from "@/lib/reports/export";
+import { printPageStyleCss } from "@/lib/print-center";
 import type { ReportContext } from "@/lib/reports/types";
 
 interface Props {
