@@ -7,6 +7,7 @@ import {
   sameSectionSubgroupConflict,
 } from "@/lib/schedule-builder/section-subgroups";
 import { sessionTypeRequiredRoomTypeConflict } from "@/lib/schedule-builder/room-type-policy";
+import { isRoomTypeCompatible } from "@/lib/scheduling/room-type-policy";
 import {
   buildApprovedExceptionIndex,
   findMatchingException,
@@ -263,6 +264,34 @@ export async function validateProposed(params: {
   const roomMap = new Map((rooms ?? []).map((r) => [r.id, r]));
   const offMap = new Map((offerings ?? []).map((o) => [o.id, o]));
   const taMap = new Map((taRows ?? []).map((ta) => [ta.id, ta]));
+
+  // Plan-course component type per assignment: the room-type policy allows the
+  // practical computer_lab → lecture_hall fallback only.
+  const componentIds = Array.from(
+    new Set(
+      (taRows ?? [])
+        .map((ta) => ta.plan_course_component_id)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  );
+  const { data: componentRows } = componentIds.length
+    ? await supabase
+        .from("plan_course_components")
+        .select("id, component_type")
+        .eq("college_id", collegeId)
+        .in("id", componentIds)
+    : { data: [] as Array<{ id: string; component_type: string | null }> };
+  const componentTypeById = new Map(
+    (componentRows ?? []).map((row) => [row.id, row.component_type ?? null]),
+  );
+  const componentTypeByAssignment = new Map(
+    (taRows ?? []).map((ta) => [
+      ta.id,
+      ta.plan_course_component_id
+        ? (componentTypeById.get(ta.plan_course_component_id) ?? null)
+        : null,
+    ]),
+  );
 
   for (const s of sessions) {
     const sid = s.id ?? null;
