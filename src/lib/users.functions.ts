@@ -56,10 +56,16 @@ export const adminCreateUser = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertInstitutionAdmin(context.userId);
 
-    // Every role except super_admin is college-scoped. `institutional_viewer`
-    // («إدارة الشؤون الأكاديمية») reads reports for its assigned colleges only,
-    // so at least one college is mandatory for it too.
-    if (requiresCollegeAssignment(data.role) && data.college_ids.length === 0) {
+    // `institutional_viewer` («إدارة الشؤون الأكاديمية») covers every college:
+    // the assignment is computed here (all current colleges) and a college
+    // created later is auto-assigned by a database trigger. Other college-scoped
+    // roles keep their explicit, manually chosen assignment.
+    let collegeIds = data.college_ids;
+    if (assignsAllColleges(data.role)) {
+      const { data: allColleges, error: colErr } = await supabaseAdmin.from("colleges").select("id");
+      if (colErr) throw new Error(colErr.message);
+      collegeIds = (allColleges ?? []).map((c) => c.id);
+    } else if (requiresCollegeAssignment(data.role) && collegeIds.length === 0) {
       throw new Error("College assignment is required for every role except Super Admin");
     }
 
@@ -84,14 +90,18 @@ export const adminCreateUser = createServerFn({ method: "POST" })
       .insert({ user_id: newId, role: data.role });
     if (roleErr) throw new Error(roleErr.message);
 
-    if (data.college_ids.length > 0) {
-      const rows = data.college_ids.map((collegeId: string) => ({
+    if (collegeIds.length > 0) {
+      const rows = collegeIds.map((collegeId: string) => ({
         user_id: newId,
         college_id: collegeId,
       }));
-      const { error: ucErr } = await supabaseAdmin.from("user_colleges").insert(rows);
+      // The role trigger may already have inserted the same rows: stay idempotent.
+      const { error: ucErr } = await supabaseAdmin
+        .from("user_colleges")
+        .upsert(rows, { onConflict: "user_id,college_id", ignoreDuplicates: true });
       if (ucErr) throw new Error(ucErr.message);
     }
+
 
     await supabaseAdmin.from("audit_logs").insert({
       actor_id: context.userId,
