@@ -5,6 +5,7 @@ import { useActiveCollege } from "@/hooks/use-colleges";
 import { CollegeSwitcher } from "@/components/college-switcher";
 import { Card } from "@/components/ui/card";
 import { ClipboardList } from "lucide-react";
+import { entityDisplayName } from "@/lib/entity-display";
 
 export const Route = createFileRoute("/_authenticated/course-offerings")({
   head: () => ({ meta: [{ title: "مقررات الفصل" }] }),
@@ -93,7 +94,7 @@ function OfferingsPage() {
   });
 
   const termMap = new Map((terms ?? []).map((t) => [t.id, t.name]));
-  const courseMap = new Map((courses ?? []).map((c) => [c.id, `${c.code} — ${c.name}`]));
+  const courseMap = new Map((courses ?? []).map((c) => [c.id, entityDisplayName(c)]));
   const progMap = new Map((programs ?? []).map((p) => [p.id, p.name]));
   const levelMap = new Map((levels ?? []).map((l) => [l.id, l.name]));
 

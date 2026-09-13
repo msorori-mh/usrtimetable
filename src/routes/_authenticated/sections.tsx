@@ -27,6 +27,7 @@ import {
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { Users, Pencil, Trash2 } from "lucide-react";
+import { entityDisplayName } from "@/lib/entity-display";
 
 export const Route = createFileRoute("/_authenticated/sections")({
   head: () => ({ meta: [{ title: "Legacy — للعرض التاريخي" }] }),
@@ -184,7 +185,7 @@ function SectionsPage() {
     setOpen(true);
   };
 
-  const courseMap = new Map((courses ?? []).map((c) => [c.id, `${c.code} — ${c.name}`]));
+  const courseMap = new Map((courses ?? []).map((c) => [c.id, entityDisplayName(c)]));
   const termMap = new Map((terms ?? []).map((t) => [t.id, t.name]));
   const ready = courses && courses.length > 0 && terms && terms.length > 0;
 
@@ -254,7 +255,7 @@ function SectionsPage() {
                     <SelectContent>
                       {(courses ?? []).map((c) => (
                         <SelectItem key={c.id} value={c.id}>
-                          {c.code} — {c.name}
+                          {entityDisplayName(c)}
                         </SelectItem>
                       ))}
                     </SelectContent>

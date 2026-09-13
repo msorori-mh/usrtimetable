@@ -62,6 +62,7 @@ import {
 import { AdminExportMenu } from "@/components/admin-export-menu";
 import { planContentsExportDataset } from "@/lib/admin-export/datasets";
 import { buildPlanContentRows } from "@/lib/admin-export/plan-content-rows";
+import { entityDisplayName } from "@/lib/entity-display";
 
 interface PlanComponentRow {
   id: string;
@@ -637,7 +638,7 @@ export function PlanCoursesManager({
                   <SelectContent>
                     {(courses ?? []).map((c) => (
                       <SelectItem key={c.id} value={c.id}>
-                        {c.code} — {c.name}
+                        {entityDisplayName(c)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -709,7 +710,7 @@ export function PlanCoursesManager({
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
                       <p className="font-semibold">
-                        {course ? `${course.code} — ${course.name}` : "مقرر غير متاح"}
+                        {course ? entityDisplayName(course, "مقرر غير متاح") : "مقرر غير متاح"}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {level?.name ?? "بدون مستوى"} · الفصل {row.semester} ·{" "}

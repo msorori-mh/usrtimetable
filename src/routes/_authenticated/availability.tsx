@@ -35,6 +35,7 @@ import {
   upsertRoomUnavailabilityBulk,
 } from "@/lib/availability/bulk-api";
 import { readableWriteError } from "@/lib/availability/errors";
+import { entityDisplayName } from "@/lib/entity-display";
 
 export const Route = createFileRoute("/_authenticated/availability")({
   head: () => ({ meta: [{ title: "عدم التوفّر" }] }),
@@ -548,7 +549,7 @@ function RoomUnavailability() {
           <SelectContent>
             {(rooms ?? []).map((r) => (
               <SelectItem key={r.id} value={r.id}>
-                {r.code} — {r.name}
+                {entityDisplayName(r)}
               </SelectItem>
             ))}
           </SelectContent>

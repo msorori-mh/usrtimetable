@@ -50,6 +50,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { entityDisplayName } from "@/lib/entity-display";
 
 export const Route = createFileRoute("/_authenticated/teaching-assignments")({
   head: () => ({ meta: [{ title: "الإسناد التدريسي" }] }),
@@ -357,7 +358,7 @@ function TeachingAssignmentsV2Page() {
                   <SelectItem value="_all">الكل</SelectItem>
                   {(programs ?? []).map((p) => (
                     <SelectItem key={p.id} value={p.id}>
-                      {p.code} — {p.name}
+                      {entityDisplayName(p)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -434,7 +435,7 @@ function TeachingAssignmentsV2Page() {
                   <SelectItem value="_all">الكل</SelectItem>
                   {(cohorts ?? []).map((c) => (
                     <SelectItem key={c.id} value={c.id}>
-                      {c.code ?? c.id.slice(0, 8)}
+                      {c.code ?? "دفعة غير مسماة"}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -523,8 +524,9 @@ function TeachingAssignmentsV2Page() {
                         className={row.is_obsolete ? "opacity-70" : ""}
                       >
                         <td className="px-3 py-2">
-                          <div className="font-medium">{row.course_code}</div>
-                          <div className="text-xs text-muted-foreground">{row.course_name}</div>
+                          <div className="font-medium">
+                            {entityDisplayName({ name: row.course_name, code: row.course_code })}
+                          </div>
                         </td>
                         <td className="px-3 py-2">
                           {COMPONENT_LABELS[row.component_type] ?? row.component_type}
@@ -624,7 +626,7 @@ function TeachingAssignmentsV2Page() {
           {selected && (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                {selected.course_code} ·{" "}
+                {entityDisplayName({ name: selected.course_name, code: selected.course_code })} ·{" "}
                 {COMPONENT_LABELS[selected.component_type] ?? selected.component_type} · مجموعة{" "}
                 {selected.group_number ?? selected.group_code} · ساعات المحاضرة{" "}
                 {selected.component_hours ?? "—"}
