@@ -173,15 +173,18 @@ function Page() {
         { label: "إجمالي الموارد", value: totals.rooms },
         { label: `الساعات المستخدمة${scopeSuffix}`, value: totals.usedHours, tone: "accent" },
         { label: "الساعات المتاحة", value: totals.availableHours },
-        { label: `الساعات الفارغة${scopeSuffix}`, value: totals.freeHours },
-        { label: `نسبة الاستغلال${scopeSuffix}`, value: `${totals.utilization}%`, tone: "accent" },
+        { label: "غير مستخدمة في النطاق", value: totals.freeHours },
+        { label: "نسبة الاستغلال", value: `${totals.utilization}%`, tone: "accent" },
       ]}
       filters={<ReportFilters context={ctx} />}
       summary={
         <Card className="p-3 text-sm" data-testid="rooms-report-totals">
           <p className="font-semibold">
-            {filtered ? "الجلسات ضمن الفلتر" : "الجلسات في النسخة"}: {totals.sessions} · صفحات
-            القاعات: {pages.length}
+            الجلسات المطابقة للفلاتر: {totals.sessions} · صفحات القاعات: {pages.length}
+          </p>
+          <p className="mt-2 text-muted-foreground">
+            الإتاحة هي ساعات فتح القاعات الكاملة. عند اختيار نظام واحد، تمثل النسبة حصته من هذه
+            الإتاحة؛ الساعات غير المستخدمة ضمن الاختيار قد تشغلها محاضرات النظام الآخر.
           </p>
           {totals.sessionsWithoutRoom > 0 && (
             <p className="mt-1 text-muted-foreground">
@@ -195,6 +198,10 @@ function Page() {
           <style>{printPageStyleCss("A3", "landscape")}</style>
           <section className="print-center-page break-after-page">
             <h2 className="mb-2 text-base font-bold">الملخص التنفيذي للقاعات والمعامل</h2>
+            <p className="mb-2 text-sm">{ctx.filterSummary}</p>
+            <p className="mb-2 text-xs">
+              الساعات غير المستخدمة محسوبة ضمن الفلاتر؛ راجع إشغال النظامين قبل إعادة التسكين.
+            </p>
             <p className="mb-3 text-sm leading-6">{analytics.insight}</p>
             <div className="mb-4 grid grid-cols-4 gap-2 text-sm">
               <div className="border p-2">
