@@ -21,17 +21,24 @@ describe("final closure regressions", () => {
     const versions = read("src/routes/_authenticated/schedule-versions.tsx");
     const unscheduled = read("src/routes/_authenticated/reports.unscheduled.tsx");
     const reportShell = read("src/components/reports/report-shell.tsx");
+    const reportSection = read("src/components/reports/report-section.tsx");
 
     expect(
       versions.includes('className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:w-auto"'),
     ).toBe(true);
     expect(versions.includes('className="min-w-0 space-y-2 overflow-hidden p-4"')).toBe(true);
-    expect(unscheduled.includes('className="min-w-0 overflow-x-auto p-0"')).toBe(true);
-    expect(unscheduled.includes('className="min-w-[640px]"')).toBe(true);
-    expect(
-      reportShell.includes(
-        'className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto"',
-      ),
-    ).toBe(true);
+    // Containment now lives in the shared report primitives: the section card clips,
+    // the data table scrolls locally, and every table keeps a min-width floor.
+    expect(unscheduled.includes('bodyClassName="p-0"')).toBe(true);
+    expect(unscheduled.includes("<ReportDataTable")).toBe(true);
+    expect(reportSection.includes('cn("min-w-0 overflow-hidden", className)')).toBe(true);
+    expect(reportSection.includes("report-data-table min-w-0 max-h-[70vh] overflow-auto")).toBe(
+      true,
+    );
+    expect(reportSection.includes('minWidthClassName = "min-w-[720px]"')).toBe(true);
+    expect(reportShell.includes("report-print-root min-w-0 space-y-4")).toBe(true);
+    expect(reportShell.includes("flex min-w-0 flex-wrap items-center justify-end gap-2")).toBe(
+      true,
+    );
   });
 });
