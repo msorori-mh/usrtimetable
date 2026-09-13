@@ -4080,6 +4080,33 @@ export type Database = {
         }
         Returns: Json
       }
+      list_schedule_version_delivery_gaps: {
+        Args: { p_college_id: string; p_schedule_version_id: string }
+        Returns: {
+          active_assignment_count: number
+          cohort_code: string
+          cohort_id: string
+          component_type: string
+          course_code: string
+          course_name: string
+          delivery_group_id: string
+          expected_students: number
+          group_code: string
+          group_number: number
+          instructor_names: string
+          level_id: string
+          level_name: string
+          level_number: number
+          missing_hours: number
+          program_code: string
+          program_id: string
+          program_name: string
+          required_hours: number
+          scheduled_hours: number
+          scheduling_state: string
+          study_system: string
+        }[]
+      }
       list_scheduling_headcount_revisions: {
         Args: { p_headcount_id: string }
         Returns: Json
