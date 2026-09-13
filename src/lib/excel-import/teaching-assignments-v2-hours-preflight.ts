@@ -220,7 +220,7 @@ export function preflightCanonicalTeachingHours(input: {
     ) {
       blockGroup(
         "COMPONENT_TOTAL_HOURS_MISMATCH",
-        `إجمالي ساعات المكوّن ${componentTotalHours} لا يطابق ساعات الخطة ${componentWeeklyHours} (${key})`,
+        `إجمالي ساعات المحاضرة ${componentTotalHours} لا يطابق ساعات الخطة ${componentWeeklyHours} (${key})`,
       );
     } else if (assignedValues.some((hours) => hours === null)) {
       blockGroup(
@@ -242,18 +242,18 @@ export function preflightCanonicalTeachingHours(input: {
       if ((assignedTotalHours ?? 0) < componentTotalHours - 0.001) {
         blockGroup(
           "CO_TEACHING_HOURS_UNDER_ALLOCATED",
-          `مجموع ساعات التدريس المشترك ${assignedTotalHours ?? 0} أقل من إجمالي المكوّن ${componentTotalHours} (${key})`,
+          `مجموع ساعات التدريس المشترك ${assignedTotalHours ?? 0} أقل من إجمالي المحاضرة ${componentTotalHours} (${key})`,
         );
       }
     } else if ((assignedTotalHours ?? 0) > componentTotalHours + 0.001) {
       blockGroup(
         "CO_TEACHING_HOURS_OVER_ALLOCATED",
-        `مجموع ساعات التدريس المشترك ${assignedTotalHours} يتجاوز إجمالي المكوّن ${componentTotalHours} (${key})`,
+        `مجموع ساعات التدريس المشترك ${assignedTotalHours} يتجاوز إجمالي المحاضرة ${componentTotalHours} (${key})`,
       );
     } else if ((assignedTotalHours ?? 0) < componentTotalHours - 0.001) {
       blockGroup(
         "CO_TEACHING_HOURS_UNDER_ALLOCATED",
-        `مجموع ساعات التدريس المشترك ${assignedTotalHours} أقل من إجمالي المكوّن ${componentTotalHours} (${key})`,
+        `مجموع ساعات التدريس المشترك ${assignedTotalHours} أقل من إجمالي المحاضرة ${componentTotalHours} (${key})`,
       );
     }
 

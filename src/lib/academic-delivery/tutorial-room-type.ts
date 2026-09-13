@@ -25,9 +25,9 @@ export type TutorialRoomTypeError =
 
 export const TUTORIAL_ROOM_TYPE_ERROR_AR: Record<TutorialRoomTypeError, string> = {
   TUTORIAL_ROOM_TYPE_MUST_BE_LECTURE_HALL:
-    "مكوّن التمارين يجب أن يكون في قاعة محاضرات ولا يمكن ربطه بمعمل.",
+    "محاضرة التمارين يجب أن تكون في قاعة محاضرات ولا يمكن ربطها بمعمل.",
   TUTORIAL_LECTURE_HALL_ROOM_TYPE_MISSING:
-    "لا يوجد نوع قاعة محاضرات نشط في هذه الكلية لربط مكوّن التمارين.",
+    "لا يوجد نوع قاعة محاضرات نشط في هذه الكلية لربط محاضرة التمارين.",
 };
 
 export function normalizeRoomTypeCode(code: string | null | undefined): string {

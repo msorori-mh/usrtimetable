@@ -48,7 +48,7 @@ export function useGenerateDeliveryGroups() {
     onError: (e: Error) => {
       if (e instanceof DeliveryGroupRoomTypeGateError && !e.gate.ok) {
         toast.error(
-          `MISSING_ROOM_TYPE_COMPONENTS: ${e.gate.components.length} مكوّن(ات) بدون نوع قاعة صالح`,
+          `MISSING_ROOM_TYPE_COMPONENTS: ${e.gate.components.length} محاضرة بدون نوع قاعة صالح`,
         );
         return;
       }

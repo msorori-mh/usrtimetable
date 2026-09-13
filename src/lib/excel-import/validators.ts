@@ -11,6 +11,7 @@ import {
   type ExistingInstructor,
 } from "./instructor-sheet";
 import type { ImportEntity, ParsedRow, RowError, ValidationResult } from "./types";
+import { canonicalizeImportShape } from "./header-aliases";
 import {
   buildPlanComponentSyncPayload,
   validatePlanRowRoomTypes,
@@ -296,6 +297,7 @@ function normalize(
       ),
     );
   }
+  ({ headers, rows } = canonicalizeImportShape(tpl.columns, headers, rows));
   const trimmed = headers.map((h) => h.trim()).filter(Boolean);
   const headerSet = new Set(trimmed);
   const missingHeaders = tpl.columns
@@ -1044,7 +1046,7 @@ function runEntityValidation(
     if (String(v.component_type) === "summer_training") {
       errs.push({
         rowNumber: row.rowNumber,
-        columnName: "نوع_المكوّن",
+        columnName: "نوع_المحاضرة",
         errorCode: "summer_training_forbidden",
         message: "التدريب الصيفي لا يُسند كتدريس أسبوعي",
         rawValue: String(v.component_type),
@@ -1055,9 +1057,9 @@ function runEntityValidation(
       const h = Number(hoursRaw);
       need(
         Number.isFinite(h) && h > 0,
-        "ساعات_المكوّن_المسندة",
+        "ساعات_المحاضرة_المسندة",
         "invalid_hours",
-        "ساعات المكوّن المسندة يجب أن تكون موجبة",
+        "ساعات المحاضرة المسندة يجب أن تكون موجبة",
         hoursRaw,
       );
       v._assigned_component_hours = h;
@@ -1096,9 +1098,9 @@ function runEntityValidation(
       const compId = resolved.componentId;
       need(
         !!compId,
-        "نوع_المكوّن",
+        "نوع_المحاضرة",
         "unknown_component",
-        `مكوّن غير موجود للمقرر: ${v.component_type}`,
+        `نوع محاضرة غير موجود للمقرر: ${v.component_type}`,
         v.component_type,
       );
       if (compId) v._component_id = compId;

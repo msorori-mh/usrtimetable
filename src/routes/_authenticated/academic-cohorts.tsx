@@ -715,7 +715,7 @@ function AcademicCohortsWorkspace() {
                     لا يمكن توليد مجموعات المحاضرات والمعامل — أنواع قاعات مفقودة أو غير صالحة
                   </p>
                   <p className="mt-1 text-muted-foreground">
-                    أكمل رموز أنواع القاعات في استيراد الخطة الدراسية للمكوّنات المجدولة أدناه، ثم
+                    أكمل رموز أنواع القاعات في استيراد الخطة الدراسية للمحاضرات المجدولة أدناه، ثم
                     أعد الاستيراد.
                   </p>
                   <ul className="mt-3 max-h-48 space-y-1 overflow-y-auto text-xs">
@@ -755,7 +755,7 @@ function AcademicCohortsWorkspace() {
                         <thead className="bg-muted/40 text-muted-foreground">
                           <tr>
                             <th className="px-3 py-2 text-right font-medium">المقرر</th>
-                            <th className="px-3 py-2 text-right font-medium">المكوّن</th>
+                            <th className="px-3 py-2 text-right font-medium">المحاضرة</th>
                             <th className="px-3 py-2 text-right font-medium">رقم المجموعة</th>
                             <th className="px-3 py-2 text-right font-medium">طلاب متوقع</th>
                             <th className="px-3 py-2 text-right font-medium">السعة</th>

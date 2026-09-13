@@ -255,7 +255,7 @@ describe("teaching assignments export", () => {
       collegeName: "كلية الحاسوب",
       componentLabel: (v) => (v === "project" ? "مشروع" : (v ?? "")),
       allocationLabel: (v) => (v === "fully_allocated" ? "مكتمل" : (v ?? "")),
-      filters: activeFilters([{ label: "نوع المكوّن", value: "مشروع" }]),
+      filters: activeFilters([{ label: "نوع المحاضرة", value: "مشروع" }]),
     });
     const table = buildAdminExportTable(dataset);
     expect(table.headers).toContain("المحاضرون");

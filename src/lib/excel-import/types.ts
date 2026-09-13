@@ -20,6 +20,8 @@ export type ImportMode = "insert_only" | "update_existing" | "upsert";
 export interface ColumnDef {
   key: string;
   header: string;
+  /** Previous user-facing headers accepted on import after a display-name change. */
+  headerAliases?: string[];
   required?: boolean;
   example?: string;
   enumValues?: string[];

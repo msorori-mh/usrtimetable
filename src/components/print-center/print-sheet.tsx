@@ -163,7 +163,7 @@ export function PrintSheet(props: {
             <TableHead>الوقت</TableHead>
             <TableHead>رمز المقرر</TableHead>
             <TableHead>اسم المقرر</TableHead>
-            <TableHead>المكوّن</TableHead>
+            <TableHead>المحاضرة</TableHead>
             {visibility.showInstructor && <TableHead>المدرس</TableHead>}
             {visibility.showRoom && <TableHead>القاعة</TableHead>}
             <TableHead>المجموعة</TableHead>

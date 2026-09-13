@@ -312,7 +312,7 @@ function run() {
   // Mode detection
   assert(
     detectTeachingImportWorkbookMode([
-      ["رمز_الدفعة", "رمز_المقرر", "نوع_المكوّن", "رمز_مجموعة_التقديم", "رقم_الموظف_للمحاضر"],
+      ["رمز_الدفعة", "رمز_المقرر", "نوع_المحاضرة", "رمز_مجموعة_التقديم", "رقم_الموظف_للمحاضر"],
     ]) === "official_template",
     "official template detected",
   );
@@ -666,7 +666,7 @@ function run() {
   assert(
     singleComponentHoursMismatch.assignments.some(
       (assignment) =>
-        assignment.outcome === "AMBIGUOUS" && assignment.message?.includes("ساعات المكوّن"),
+        assignment.outcome === "AMBIGUOUS" && assignment.message?.includes("ساعات المحاضرة"),
     ),
     "single component does not accept source hours above weekly hours",
   );

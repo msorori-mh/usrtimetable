@@ -5,6 +5,7 @@ import { ACADEMIC_STUDY_SYSTEM_LABELS } from "../study-systems";
  * Dual-mode: auto-detect vs official teaching_assignments_v2 template.
  */
 import { TEMPLATES } from "./templates";
+import { canonicalImportHeader } from "./header-aliases";
 
 /** Source workbook column headers (Arabic). */
 export const SOURCE_WORKBOOK_COLUMNS = [
@@ -79,7 +80,11 @@ const OFFICIAL_REQUIRED = TEMPLATES.teaching_assignments_v2.columns
   .map((c) => c.header);
 
 function headerSet(headers: ReadonlyArray<string>): Set<string> {
-  return new Set(headers.map((h) => h.trim()).filter(Boolean));
+  return new Set(
+    headers
+      .map((h) => canonicalImportHeader(TEMPLATES.teaching_assignments_v2.columns, h))
+      .filter(Boolean),
+  );
 }
 
 export function normalizeSourceHeader(header: string): string {

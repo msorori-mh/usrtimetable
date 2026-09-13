@@ -75,7 +75,7 @@ Per case, asserted on the produced PDF and on the print-media DOM:
   viewport and again at the true printable content width for that paper/orientation
 - no horizontal overflow of the sheet or of any cell at the printable width
 - all 8 columns in every sheet and in the PDF text (Arabic compared undiacritised, because
-  `pdftotext` drops the shadda in `المكوّن`)
+  `pdftotext` drops Arabic diacritics)
 - the short fixture prints exactly its 2 rows (practical Sunday + theory Monday)
 - CSS `@page` size/orientation honoured; physical `صفحة X من Y` counters correct and
   strictly sequential; no blank pages; no ink touching the page edge (raster clipping check)

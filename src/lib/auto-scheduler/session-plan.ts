@@ -93,7 +93,7 @@ export function requiredCadenceForComponent(input: {
     return {
       durations: [],
       source: "blocked",
-      noteAr: "ساعات المكوّن غير مُعرَّفة أو صفرية — لا يمكن تحديد نمط الجلسات.",
+      noteAr: "ساعات المحاضرة غير مُعرَّفة أو صفرية — لا يمكن تحديد نمط الجلسات.",
     };
   }
 
@@ -150,8 +150,8 @@ export function requiredCadenceForComponent(input: {
     source: "blocked",
     noteAr:
       count > 0 || duration > 0
-        ? `نمط الخطة (${count}×${duration}) لا يطابق ساعات المكوّن (${assigned}) — صحّح الخطة قبل التوليد الآلي.`
-        : "نمط الخطة الأسبوعي غير مُعرَّف لهذا المكوّن — صحّح الخطة قبل التوليد الآلي.",
+        ? `نمط الخطة (${count}×${duration}) لا يطابق ساعات المحاضرة (${assigned}) — صحّح الخطة قبل التوليد الآلي.`
+        : "نمط الخطة الأسبوعي غير مُعرَّف لهذه المحاضرة — صحّح الخطة قبل التوليد الآلي.",
   };
 }
 

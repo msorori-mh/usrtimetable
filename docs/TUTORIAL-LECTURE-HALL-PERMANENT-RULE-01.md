@@ -1,7 +1,7 @@
 # TUTORIAL-LECTURE-HALL-PERMANENT-RULE-01
 
-قاعدة دائمة على مستوى المنصة: كل مكوّن `tutorial` (تمارين) يُدرَّس في نوع قاعة
-`lecture_hall` فقط. مكونات `practical` / `project` / `theory` لم تتغير.
+قاعدة دائمة على مستوى المنصة: كل محاضرة `tutorial` (تمارين) يُدرَّس في نوع قاعة
+`lecture_hall` فقط. محاضرات `practical` / `project` / `theory` لم تتغير.
 
 ## العقد المعتمد
 
@@ -21,7 +21,7 @@
   ترجع `lecture_hall` النشط ذا السعة > 0 داخل الكلية.
 - `enforce_tutorial_lecture_hall_component` + trigger على `plan_course_components`.
 - `enforce_tutorial_lecture_hall_assignment` + trigger على `teaching_assignments`.
-- backfill idempotent للمكونات والإسنادات: بدون تغيير المعرفات أو المجموعات أو أعدادها.
+- backfill idempotent للمحاضرات والإسنادات: بدون تغيير المعرفات أو المجموعات أو أعدادها.
 
 Live postcheck: `triggers=2`, `tutorial components=39`, `tutorial+lecture_hall=39`,
 `tutorial assignments=0`.
@@ -38,8 +38,8 @@ Live postcheck: `triggers=2`, `tutorial components=39`, `tutorial+lecture_hall=3
   قبل أي insert/update.
 - `src/components/study-plans/plan-courses-manager.tsx` — عند اختيار «تمارين» يُثبَّت نوع القاعة
   على «قاعة محاضرات» ويُعطَّل الاختيار مع رسالة توضيحية.
-- المجدول (`auto-scheduler/v2.ts`) يستخدم `required_room_type_id` للمكوّن، لذلك لن يُسكن
-  tutorial إلا في غرف `lecture_hall`.
+- المجدول (`auto-scheduler/v2.ts`) يستخدم `required_room_type_id` للمحاضرة، لذلك لن يُسكن
+  محاضرة tutorial إلا في غرف `lecture_hall`.
 
 ## النتائج
 

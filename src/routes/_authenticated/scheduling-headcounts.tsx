@@ -284,10 +284,10 @@ function SchedulingHeadcountsPage() {
         </Card>
       )}
       <Card className="p-4 text-sm">
-        <h2 className="font-semibold">الاستثناءات الخاصة بالمقرر أو المكوّن</h2>
+        <h2 className="font-semibold">الاستثناءات الخاصة بالمقرر أو المحاضرة</h2>
         <p className="mt-1 text-muted-foreground">
           تُدار الاستثناءات المعتمدة عبر API الجدولة؛ لها أولوية على عدد الدفعة المعتمد عند مطابقة
-          المقرر أو المكوّن.
+          المقرر أو المحاضرة.
         </p>
       </Card>
     </div>

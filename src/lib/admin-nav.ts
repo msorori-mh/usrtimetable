@@ -198,7 +198,7 @@ export const ADMIN_PAGES: AdminPage[] = [
   {
     to: "/study-plans",
     label: "الخطط الدراسية",
-    desc: "خطط البرامج ومكوّنات مقرراتها.",
+    desc: "خطط البرامج ومحاضرات مقرراتها.",
     icon: BookOpen,
     roles: ALL,
     tier: "basic",
@@ -360,7 +360,7 @@ export const ADMIN_PAGES: AdminPage[] = [
   {
     to: "/delivery-groups",
     label: "مجموعات المحاضرات والمعامل",
-    desc: "المجموعات المولَّدة لكل مقرر ومكوّن.",
+    desc: "المجموعات المولَّدة لكل مقرر ومحاضرة.",
     icon: UsersRound,
     roles: ALL,
     tier: "basic",
