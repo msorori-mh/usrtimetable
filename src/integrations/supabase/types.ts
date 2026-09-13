@@ -4067,6 +4067,7 @@ export type Database = {
       }
       is_institutional_viewer: { Args: { _user_id: string }; Returns: boolean }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_viewer_only: { Args: { _user_id: string }; Returns: boolean }
       list_schedule_builder_v2_work_items: {
         Args: {
           p_cohort_id?: string
