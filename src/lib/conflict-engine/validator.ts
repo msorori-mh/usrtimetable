@@ -215,10 +215,15 @@ export async function validateProposed(params: {
     taIds.length
       ? supabase
           .from("teaching_assignments")
-          .select("id, required_room_type, college_id")
+          .select("id, required_room_type, college_id, plan_course_component_id")
           .in("id", taIds)
       : Promise.resolve({
-          data: [] as Array<{ id: string; required_room_type: string | null; college_id: string }>,
+          data: [] as Array<{
+            id: string;
+            required_room_type: string | null;
+            college_id: string;
+            plan_course_component_id?: string | null;
+          }>,
         }),
   ]);
 
@@ -405,7 +410,20 @@ export async function validateProposed(params: {
           },
         });
       }
-      if (room && requiredType && room.room_type !== requiredType) {
+      const componentType = s.teaching_assignment_id
+        ? (componentTypeByAssignment.get(s.teaching_assignment_id) ?? s.session_type ?? null)
+        : (s.session_type ?? null);
+      // Practical components requiring computer_lab may legitimately use a
+      // lecture_hall (same rule as is_assignment_room_compatible in the DB).
+      if (
+        room &&
+        requiredType &&
+        !isRoomTypeCompatible({
+          componentType,
+          requiredRoomType: requiredType,
+          roomType: room.room_type,
+        })
+      ) {
         conflicts.push({
           code: "room_type_mismatch",
           severity: "hard",
