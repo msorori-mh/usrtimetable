@@ -14,7 +14,7 @@ Target: at most three attendance days per program/level/study-system/term. Four 
 
 ## Evidence and limits
 
-57 focused Node tests pass, including real V2 orchestration for three, four and five days, 3–3–2/no-gap distribution, cancellation, budgets, incomplete membership, off-grid minute availability, locks, shared resources and legal buffered swaps. TypeScript and local production build pass. CI adds the new suite to the existing scheduling gate.
+58 focused Node tests pass, including real V2 orchestration for three, four and five days, 3–3–2/no-gap distribution, cancellation, budgets, incomplete membership, off-grid minute availability, locks, shared resources and legal buffered swaps. TypeScript and local production build pass. CI adds the new suite to the existing scheduling gate.
 
 The certificate is scoped to the supplied version, memberships, fixed assignments, durations, locks and current local feasibility model. Server-only constraints remain authoritative at save time: a server rejection requires a fresh plan and is never evidence for relaxation. Search is bounded (60 seconds for generation, selectable preview budget; one million candidate evaluations); large instances can remain UNKNOWN. A supported-input size guard also returns UNKNOWN, never UNSAT. Ordered saving remains bounded by the existing 512-move transaction limit.
 

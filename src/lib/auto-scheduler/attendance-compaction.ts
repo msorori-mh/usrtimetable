@@ -89,6 +89,17 @@ export async function compactAttendance(
   options: AttendanceSearchOptions = {},
 ): Promise<Proposal> {
   const before = measure(snapshot);
+  if (!snapshot.sessions.length) {
+    return {
+      before,
+      after: before,
+      moves: [],
+      fingerprint: fingerprint(snapshot.sessions),
+      inputFingerprint: inputFingerprint(snapshot),
+      stopped: !!options.signal?.aborted,
+      outcome: "empty",
+    };
+  }
   const search = await searchAttendance(snapshot, options);
   const proposal: Proposal = {
     before,

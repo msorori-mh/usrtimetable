@@ -170,3 +170,10 @@ test("unresolved compaction offers no writable proposal", async () => {
   assert.equal(p.attendanceSearch.status, "unknown");
   assert.deepEqual(p.moves, []);
 });
+
+test("an empty preview never claims a completed three-day timetable", async () => {
+  const p = await compactAttendance(workload(0));
+  assert.equal(p.outcome, "empty");
+  assert.equal(p.attendanceSearch, undefined);
+  assert.deepEqual(p.moves, []);
+});
