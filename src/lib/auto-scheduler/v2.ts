@@ -804,6 +804,100 @@ export async function runV2AutoSchedule(params: {
         );
         break;
       }
+      // JAWF-REPAIR-01: direct placement is exhausted — try a bounded repair
+      // (1-hop, then a very limited 2-hop) before recording the unit as unplaced.
+      if (!placedItem && !cancelled && mode === "fill_missing") {
+        const stats = { attempts: 0 };
+        const missingSeed = seedFor(item, durationMinutes);
+        const plan = planRepair({
+          snapshot: planningSnapshot,
+          sessions: planningSessions,
+          missing: missingSeed,
+          targetSlots: slots,
+          roomIds: roomPools.flat().map((room) => room.id),
+          budget: { maxDepth: 2, maxAttempts: 4000 },
+          stats,
+        });
+        repairAttempts += stats.attempts;
+        if (plan) {
+          const applied = await applyRepairPlan({
+            scheduleVersionId: params.scheduleVersionId,
+            teachingAssignmentId: item.teaching_assignment_id,
+            plan,
+            versionUpdatedAt,
+            note: `auto-repair:${ALGORITHM_VERSION}`,
+          });
+          versionUpdatedAt = applied.versionUpdatedAt;
+          if (applied.ok) {
+            for (const move of plan.moves) {
+              const index = planningSessions.findIndex(
+                (session) => session.id === move.sessionId,
+              );
+              if (index >= 0) {
+                planningSessions[index] = {
+                  ...planningSessions[index],
+                  day_of_week: move.to.day_of_week,
+                  start_time: move.to.start_time,
+                  end_time: move.to.end_time,
+                  room_id: move.to.room_id,
+                };
+                const moved = planningSessions[index];
+                const occupiedIndex = occupied.findIndex(
+                  (entry) =>
+                    entry.day === move.from.day_of_week &&
+                    entry.start === move.from.start_time &&
+                    entry.end === move.from.end_time &&
+                    entry.roomId === move.from.room_id,
+                );
+                if (occupiedIndex >= 0) {
+                  occupied[occupiedIndex] = {
+                    ...occupied[occupiedIndex],
+                    day: move.to.day_of_week,
+                    start: move.to.start_time,
+                    end: move.to.end_time,
+                    roomId: move.to.room_id,
+                  };
+                }
+                warnings.push(
+                  `إصلاح محدود: تم نقل جلسة قائمة (${move.from.day_of_week} ${move.from.start_time.slice(0, 5)}) إلى (${move.to.day_of_week} ${move.to.start_time.slice(0, 5)}) لإتاحة ${groupLabel}.`,
+                );
+                void moved;
+              }
+            }
+            planningSessions.push({
+              ...missingSeed,
+              id: applied.session?.id ?? missingSeed.id,
+              day_of_week: plan.placement.day_of_week,
+              start_time: plan.placement.start_time,
+              end_time: plan.placement.end_time,
+              room_id: plan.placement.room_id,
+            } as Session);
+            occupied.push({
+              day: plan.placement.day_of_week,
+              start: plan.placement.start_time,
+              end: plan.placement.end_time,
+              roomId: plan.placement.room_id,
+              instructorId: item.instructor_id,
+              cohortId: item.cohort_id,
+              deliveryGroupId: item.delivery_group_id,
+            });
+            usedDays.push(plan.placement.day_of_week);
+            placed++;
+            byType[type].placed++;
+            placedItem = true;
+            repairRelocations += plan.moves.length;
+            repairPlacedSessions++;
+            repairMaxDepthUsed = Math.max(repairMaxDepthUsed, plan.depth);
+          } else {
+            lastReason = applied.reason ?? lastReason;
+            if (applied.rolledBack) {
+              warnings.push(
+                `إصلاح محدود: فشل التطبيق وأُعيدت الجلسات المحركة إلى مواضعها الأصلية (${groupLabel}).`,
+              );
+            }
+          }
+        }
+      }
       if (!placedItem) {
         byType[type].unplaced++;
         unplaced.push({
