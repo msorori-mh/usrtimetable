@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { PrintSheet } from "@/components/print-center/print-sheet";
 import { DEFAULT_PRINT_VISIBILITY } from "@/lib/print-center/types";
 import { groupPrintPages, latestSessionUpdate, printPageStyleCss } from "@/lib/print-center";
@@ -16,8 +16,11 @@ export function ProgramTimetablePrint(props: {
   sessions: PrintSessionLike[];
   labels?: CohortDgLabels;
   qrUrl: string;
+  /** Completeness block printed with the sheets so print output stays honest. */
+  coverage?: ReactNode;
 }) {
   const { context: ctx, references, sessions, labels, qrUrl } = props;
+
   const exportedAt = useMemo(() => new Date(), []);
   const pages = useMemo(
     () =>
@@ -70,6 +73,7 @@ export function ProgramTimetablePrint(props: {
           }}
         />
       ))}
+      {props.coverage ? <div className="print-coverage-block">{props.coverage}</div> : null}
     </>
   );
 }

@@ -5,7 +5,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { ReportShell } from "@/components/reports/report-shell";
 import { ReportFilters } from "@/components/reports/report-filters";
 import { ReportTimetableView } from "@/components/reports/report-timetable-view";
+import { DeliveryGroupCoverageCard } from "@/components/reports/delivery-group-coverage-card";
+import { Card } from "@/components/ui/card";
+import {
+  buildDeliveryGroupCoverage,
+  componentTypeLabel,
+  coverageFilterOption,
+  coverageSummaryText,
+  UNSCHEDULED_BADGE_AR,
+  type CoverageSessionLike,
+} from "@/lib/reports/program-timetable-coverage";
+import { fetchCohortDeliveryGroupCatalog } from "@/lib/reports/queries/delivery-group-coverage-queries";
 import { ProgramTimetablePrint } from "@/components/reports/program-timetable-print";
+
 import {
   Select,
   SelectContent,
@@ -51,6 +63,15 @@ const EMPTY_LABELS = {
   cohorts: new Map<string, string>(),
   deliveryGroups: new Map<string, string>(),
 };
+/**
+ * Export/print headers: the timetable columns plus an explicit status column, so
+ * a CSV/Excel export always shows unscheduled delivery groups instead of
+ * implying the schedule is complete.
+ */
+const PROGRAM_TIMETABLE_EXPORT_HEADERS = [
+  ...NEW_FLOW_TIMETABLE_TABLE_HEADERS,
+  { key: "status", label: "الحالة" },
+];
 
 function Page() {
   const [initial] = useState(() =>
@@ -145,19 +166,85 @@ function ProgramLevelReport({
   });
   const references = refsQuery.data ?? EMPTY_REFERENCES;
   const labels = sessionsQuery.data?.labels ?? EMPTY_LABELS;
-  const view = deriveProgramTimetable({
+
+  const catalogQuery = useQuery({
+    queryKey: [
+      "plt-delivery-group-catalog",
+      ctx.collegeId,
+      ctx.termId,
+      references.cohorts.map((c) => c.id).join(","),
+    ],
+    enabled: !!ctx.collegeId && references.cohorts.length > 0,
+    queryFn: () =>
+      fetchCohortDeliveryGroupCatalog({
+        collegeId: ctx.collegeId!,
+        cohortIds: references.cohorts.map((c) => c.id),
+      }),
+  });
+
+  const baseView = deriveProgramTimetable({
     references,
     scope,
     selection: scopedSelection,
     sessions: sessionsQuery.data?.raw ?? [],
     deliveryGroupLabels: labels.deliveryGroups,
   });
-  const error = ctx.error ?? refsQuery.error ?? sessionsQuery.error;
+  const scopedCohortIds = new Set(baseView.scopedCohortIds);
+  const cohortLabels = new Map(baseView.cohorts.map((c) => [c.id, c.name]));
+  const coverage = buildDeliveryGroupCoverage({
+    groups: (catalogQuery.data ?? []).filter((g) => scopedCohortIds.has(g.cohortId)),
+    sessions: baseView.academicSessions as CoverageSessionLike[],
+    cohortLabels: scopedSelection.cohortId === "all" ? cohortLabels : undefined,
+  });
+  const view = deriveProgramTimetable({
+    references,
+    scope,
+    selection: scopedSelection,
+    sessions: sessionsQuery.data?.raw ?? [],
+    deliveryGroupLabels: labels.deliveryGroups,
+    selectableDeliveryGroupIds: coverage.rows.map((r) => r.id),
+  });
+  const error = ctx.error ?? refsQuery.error ?? sessionsQuery.error ?? catalogQuery.error;
   const raw = error ? [] : view.sessions;
   const sessions = mapRawSessions(raw, labels);
-  const rows = timetableSessionsToRows(sessions);
-  const totalHours = rows.reduce((sum, r) => sum + Number(r.hours ?? 0), 0);
-  const isLoading = ctx.isLoading || refsQuery.isLoading || sessionsQuery.isLoading;
+  const timetableRows: Record<string, string | number>[] = timetableSessionsToRows(sessions).map(
+    (r) => ({ ...r, status: "مجدول" }),
+  );
+
+  const selectedCoverageRow =
+    view.selected.deliveryGroupId === "all"
+      ? null
+      : (coverage.rows.find((r) => r.id === view.selected.deliveryGroupId) ?? null);
+  const unscheduledInView = selectedCoverageRow
+    ? selectedCoverageRow.scheduled
+      ? []
+      : [selectedCoverageRow]
+    : coverage.unscheduled;
+  // Exports and print stay honest: unscheduled groups are appended as rows.
+  const rows = error
+    ? []
+    : [
+        ...timetableRows,
+        ...unscheduledInView.map((g) => ({
+          department: "",
+          program: "",
+          level: "",
+          cohort: g.cohortLabel ?? "",
+          delivery_group: g.groupCode ?? (g.groupNumber ? `G${g.groupNumber}` : "—"),
+          course: [g.courseCode, g.courseName].filter(Boolean).join(" ") || "—",
+          day: UNSCHEDULED_BADGE_AR,
+          time: UNSCHEDULED_BADGE_AR,
+          session_type: componentTypeLabel(g.componentType),
+          instructor: g.instructorName ?? "",
+          room: "",
+          study_system: "",
+          hours: g.requiredHours,
+          status: UNSCHEDULED_BADGE_AR,
+        })),
+      ];
+  const totalHours = timetableRows.reduce((sum, r) => sum + Number(r.hours ?? 0), 0);
+  const isLoading =
+    ctx.isLoading || refsQuery.isLoading || sessionsQuery.isLoading || catalogQuery.isLoading;
   const change = (field: keyof ProgramReportSelection, value: string) =>
     setState({ scope, selection: changeProgramReportFilter(view.selected, field, value) });
   const search = programReportSearchParams(scope, view.selected);
@@ -168,7 +255,7 @@ function ProgramLevelReport({
     view.programs.find((p) => p.id === view.selected.programId)?.name,
     view.levels.find((l) => l.value === view.selected.levelValue)?.label,
     view.cohorts.find((c) => c.id === view.selected.cohortId)?.name,
-    view.deliveryGroups.find((g) => g.id === view.selected.deliveryGroupId)?.name,
+    selectedCoverageRow?.label,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -185,19 +272,28 @@ function ProgramLevelReport({
       items: view.levels.map((l) => ({ id: l.value, name: l.label })),
     },
     { field: "cohortId", label: "الدفعة الدراسية", items: view.cohorts },
-    { field: "deliveryGroupId", label: "مجموعة المحاضرات/المعامل", items: view.deliveryGroups },
+    {
+      field: "deliveryGroupId",
+      label: "مجموعة المحاضرات/المعامل",
+      items: coverage.rows.map(coverageFilterOption),
+    },
   ];
 
   return (
     <ReportShell
       title="تقرير جدول البرنامج/المستوى"
-      description={`المجموع: ${totalHours.toFixed(2)} ساعة/أسبوع · ${sessions.length} محاضرة.`}
+      description={`${coverageSummaryText(coverage.summary)} · ${sessions.length} محاضرة مجدولة (${totalHours.toFixed(2)} ساعة).`}
       filterSummary={[ctx.filterSummary, academicSummary].filter(Boolean).join(" · ")}
       reportContext={ctx}
       filename="program_level_timetable"
       rows={rows}
-      headers={NEW_FLOW_TIMETABLE_TABLE_HEADERS}
+      headers={PROGRAM_TIMETABLE_EXPORT_HEADERS}
       isLoading={isLoading}
+      leading={
+        isLoading || error ? null : (
+          <DeliveryGroupCoverageCard summary={coverage.summary} unscheduled={unscheduledInView} />
+        )
+      }
       emptyMessage={
         error ? "تعذّر تحميل بيانات التقرير. أعد المحاولة." : "لا توجد محاضرات بهذه المعايير."
       }
@@ -209,6 +305,14 @@ function ProgramLevelReport({
           sessions={isLoading ? [] : raw}
           labels={labels}
           qrUrl={qrUrl}
+          coverage={
+            isLoading || error ? null : (
+              <DeliveryGroupCoverageCard
+                summary={coverage.summary}
+                unscheduled={unscheduledInView}
+              />
+            )
+          }
         />
       }
       filters={
@@ -240,9 +344,27 @@ function ProgramLevelReport({
         </ReportFilters>
       }
     >
-      {sessions.length > 0 && (
+      {sessions.length > 0 ? (
         <ReportTimetableView sessions={sessions} headers={NEW_FLOW_TIMETABLE_TABLE_HEADERS} />
-      )}
+      ) : selectedCoverageRow && !selectedCoverageRow.scheduled ? (
+        <Card className="p-6 text-sm" data-testid="unscheduled-group-empty-state">
+          <p className="font-semibold">هذه المجموعة لم تُسكن في نسخة الجدول الحالية</p>
+          <p className="mt-2 text-muted-foreground">
+            {[
+              [selectedCoverageRow.courseCode, selectedCoverageRow.courseName]
+                .filter(Boolean)
+                .join(" "),
+              componentTypeLabel(selectedCoverageRow.componentType),
+              selectedCoverageRow.groupCode ?? "",
+              `الطلاب: ${selectedCoverageRow.expectedStudents ?? "—"}`,
+              `الساعات المطلوبة: ${selectedCoverageRow.requiredHours}`,
+              `المحاضر: ${selectedCoverageRow.instructorName ?? "غير مسند"}`,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+        </Card>
+      ) : null}
     </ReportShell>
   );
 }
