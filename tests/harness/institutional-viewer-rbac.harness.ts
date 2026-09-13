@@ -4,7 +4,7 @@ import { readPrimaryNavigationSource } from "./nav-source";
  *
  * Proves BY SOURCE INSPECTION (no live database is contacted):
  *  1. the role exists in the app role union and in the generated DB enum type;
- *  2. every navigation entry is visible to institutional_viewer;
+ *  2. the role is reports-only in navigation (user label: «إدارة الشؤون الأكاديمية»);
  *  3. can_manage_college / useCanManageActiveCollege were NOT widened;
  *  4. the two migrations are split (enum add, then usage) and touch SELECT only;
  *  5. admin pages render a read-only variant with no write controls for the role;
@@ -50,16 +50,23 @@ assert(
   ),
   "ALL roles constant includes institutional_viewer",
 );
-const roleLists = [...layout.matchAll(/roles:\s*(ALL|\[[^\]]*\])/g)].map((m) => m[1]);
+const roleLists = [...layout.matchAll(/roles:\s*(ALL|OPERATIONAL|\[[^\]]*\])/g)].map((m) => m[1]);
 assert(roleLists.length > 20, "navigation role lists were found for inspection");
-const navMissingViewer = roleLists.filter(
-  (r) => r !== "ALL" && !r.includes("institutional_viewer"),
+// The role is reports-only: it must appear ONLY on the two /reports entries
+// (which use ALL). Every other entry is operational and excludes it.
+const viewerVisible = roleLists.filter((r) => r === "ALL" || r.includes("institutional_viewer"));
+assert(
+  viewerVisible.length === 2 && viewerVisible.every((r) => r === "ALL"),
+  `institutional_viewer appears only on the reports entries (found: ${viewerVisible.join(" | ")})`,
 );
 assert(
-  navMissingViewer.length === 0,
-  `every nav entry visible to institutional_viewer (missing in: ${navMissingViewer.join(" | ")})`,
+  /export const OPERATIONAL: Role\[\] = \["super_admin", "college_admin", "read_only"\]/.test(layout),
+  "OPERATIONAL roles exclude institutional_viewer",
 );
-assert(layout.includes("مشاهد مؤسسي"), "sidebar shows the Arabic role label «مشاهد مؤسسي»");
+assert(
+  layout.includes("إدارة الشؤون الأكاديمية") || layout.includes("ACADEMIC_AFFAIRS_ROLE_LABEL_AR"),
+  "navigation source uses the Arabic label «إدارة الشؤون الأكاديمية»",
+);
 
 // ---------- 3) no manage-privilege expansion ----------
 const canManageHook = read("src/hooks/use-can-manage.ts");
@@ -161,8 +168,8 @@ assert(
   "user creation accepts the new role",
 );
 assert(
-  /data\.role === "college_admin" \|\| data\.role === "read_only"/.test(usersFn),
-  "college assignment is NOT required for the institutional viewer",
+  /requiresCollegeAssignment\(data\.role\) && data\.college_ids\.length === 0/.test(usersFn),
+  "college assignment IS required for the academic-affairs role (assigned colleges only)",
 );
 
 // ---------- 6) operational pages: browse-safe, execution disabled ----------
