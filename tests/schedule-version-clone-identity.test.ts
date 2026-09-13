@@ -112,7 +112,7 @@ mock.module("../src/integrations/supabase/client.ts", () => ({
       },
     },
   },
-});
+}));
 
 const { cloneVersion } = await import("../src/lib/schedule-versions/lifecycle");
 
