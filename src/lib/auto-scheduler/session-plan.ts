@@ -439,3 +439,46 @@ export const STALE_VERSION_ERROR = "V2_AUTO_STALE_VERSION: تغيّرت نسخة
 export function assertVersionNotStale(result: { stale?: boolean } | null | undefined): void {
   if (result?.stale) throw new Error(STALE_VERSION_ERROR);
 }
+
+/** Positive room availability window (room_availability row). */
+export type RoomAvailabilityWindow = {
+  room_id: string;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+};
+
+export type RoomWindowLite = {
+  id: string;
+  available_days?: number[] | null;
+  available_start_time?: string | null;
+  available_end_time?: string | null;
+};
+
+/**
+ * Local room-availability pre-check: labs open until 16:00 and halls until 14:00
+ * are expressed as room_availability windows (or the rooms.available_* columns).
+ * Rejects candidates the guarded RPC would refuse anyway; never approves alone.
+ */
+export function isRoomSlotAvailable(
+  room: RoomWindowLite,
+  slot: CandidateSlot,
+  windows: readonly RoomAvailabilityWindow[] = [],
+): boolean {
+  const day = Number(slot.day);
+  const start = toMinutes(slot.start);
+  const end = toMinutes(slot.end);
+  const roomWindows = windows.filter((w) => w.room_id === room.id);
+  if (roomWindows.length > 0) {
+    const sameDay = roomWindows.filter((w) => Number(w.day_of_week) === day);
+    if (!sameDay.length) return false;
+    return sameDay.some(
+      (w) => start >= toMinutes(w.start_time) && end <= toMinutes(w.end_time),
+    );
+  }
+  const days = room.available_days ?? null;
+  if (days && days.length > 0 && !days.map(Number).includes(day)) return false;
+  if (room.available_start_time && start < toMinutes(room.available_start_time)) return false;
+  if (room.available_end_time && end > toMinutes(room.available_end_time)) return false;
+  return true;
+}
