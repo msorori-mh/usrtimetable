@@ -103,13 +103,13 @@ function Page() {
   });
 
   const sessionsQuery = useQuery({
-    queryKey: ["rooms-report-sessions", ctx.collegeId, ctx.versionId],
+    queryKey: ["rooms-report-sessions", ctx.collegeId, ctx.versionId, ctx.studySystem],
     enabled: !!ctx.collegeId && !!ctx.versionId,
     queryFn: async () => {
       const hydrated = await fetchHydratedVersionSessions({
         collegeId: ctx.collegeId!,
         versionId: ctx.versionId!,
-        studySystem: "all",
+        studySystem: ctx.studySystem,
       });
       const sessions = hydrated as unknown as PrintSessionLike[];
       const labels = await fetchCohortDeliveryGroupLabels(ctx.collegeId!, sessions);
