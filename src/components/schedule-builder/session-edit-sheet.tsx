@@ -40,6 +40,7 @@ import {
   type SessionMoveConflict,
   type ValidateSessionMoveResult,
 } from "@/lib/schedule-builder/session-move-rpc";
+import { entityDisplayName } from "@/lib/entity-display";
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
@@ -175,8 +176,8 @@ export function SessionEditSheet({
   const roomLabel = (id: string | null) => {
     if (!id) return "—";
     const r = rooms.find((x) => x.id === id);
-    if (!r) return id;
-    return `${r.code}${r.name ? ` — ${r.name}` : ""}`;
+    if (!r) return "قاعة غير متاحة";
+    return entityDisplayName(r, "قاعة غير متاحة");
   };
 
   const beforeAfter = sessionPending
@@ -234,7 +235,7 @@ export function SessionEditSheet({
           <div className="mt-4 space-y-5">
             <div className="rounded-md bg-muted/50 p-3 text-sm">
               <p className="font-medium">
-                {session.course_code} — {session.course_name}
+                {entityDisplayName({ name: session.course_name, code: session.course_code })}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
                 {session.instructor_name} · {session.section_number || "بدون مجموعة"}
@@ -273,7 +274,10 @@ export function SessionEditSheet({
                 تفاصيل المقرر والجلسة (بيانات ثابتة)
               </summary>
               <dl className="mt-2 border-t pt-2">
-                <Row label="المقرر" value={`${session.course_code} — ${session.course_name}`} />
+                <Row
+                  label="المقرر"
+                  value={entityDisplayName({ name: session.course_name, code: session.course_code })}
+                />
                 <Row label="مجموعة المحاضرة أو المعمل" value={session.section_number} />
                 <Row label="المدرس" value={session.instructor_name} />
                 <Row label="نوع الجلسة" value={typeLabel} />
