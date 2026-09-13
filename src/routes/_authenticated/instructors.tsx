@@ -330,12 +330,11 @@ function InstructorDirectory() {
         .includes(needle);
     });
     return [...filtered].sort((a, b) => {
-      const text = (value: string | null | undefined) =>
-        (value ?? "").localeCompare(value === a.full_name ? b.full_name : "", "ar", {
+      if (sortBy === "name_desc")
+        return b.full_name.localeCompare(a.full_name, "ar", {
           numeric: true,
           sensitivity: "base",
         });
-      if (sortBy === "name_desc") return b.full_name.localeCompare(a.full_name, "ar");
       if (sortBy === "employee") return (a.employee_number ?? "").localeCompare(b.employee_number ?? "", "ar", { numeric: true });
       if (sortBy === "department") {
         const compared = (deptMap.get(a.department_id ?? "") ?? "").localeCompare(
@@ -346,8 +345,10 @@ function InstructorDirectory() {
       }
       if (sortBy === "load_desc")
         return b.max_weekly_hours - a.max_weekly_hours || a.full_name.localeCompare(b.full_name, "ar");
-      void text;
-      return a.full_name.localeCompare(b.full_name, "ar");
+      return a.full_name.localeCompare(b.full_name, "ar", {
+        numeric: true,
+        sensitivity: "base",
+      });
     });
   }, [
     reviewedRows,
