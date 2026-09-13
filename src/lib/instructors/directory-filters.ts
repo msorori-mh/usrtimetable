@@ -134,7 +134,6 @@ function isMissingSortValue(row: DirectoryInstructor, key: InstructorSortKey): b
   return false;
 }
 
-
 function compare<T extends DirectoryInstructor>(
   a: T,
   b: T,
