@@ -291,20 +291,22 @@ export function feasible(
     })
   )
     return false;
-  if (room.available_days?.length && !room.available_days.includes(day)) return false;
-  if (
-    (room.available_start_time && start < minutes(room.available_start_time)) ||
-    (room.available_end_time && end > minutes(room.available_end_time))
-  )
-    return false;
-  const roomWindows = (s.roomAvailability || []).filter(
-    (w) => w.room_id === room.id && w.day_of_week === day,
-  );
-  if (
-    roomWindows.length &&
-    !roomWindows.some((w) => start >= minutes(w.start_time) && end <= minutes(w.end_time))
-  )
-    return false;
+  // room_availability rows are authoritative when present; the denormalized
+  // rooms.available_* columns are only a fallback (they can be stale).
+  const roomRows = (s.roomAvailability || []).filter((w) => w.room_id === room.id);
+  if (roomRows.length) {
+    const sameDay = roomRows.filter((w) => w.day_of_week === day);
+    if (!sameDay.length) return false;
+    if (!sameDay.some((w) => start >= minutes(w.start_time) && end <= minutes(w.end_time)))
+      return false;
+  } else {
+    if (room.available_days?.length && !room.available_days.includes(day)) return false;
+    if (
+      (room.available_start_time && start < minutes(room.available_start_time)) ||
+      (room.available_end_time && end > minutes(room.available_end_time))
+    )
+      return false;
+  }
   // Date-specific closures are still checked by the authoritative save RPC.
   if (
     (s.roomUnavailability || []).some(
