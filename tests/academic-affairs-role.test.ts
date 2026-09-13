@@ -113,7 +113,7 @@ describe("account creation contract", () => {
   test("server-side creation resolves every current college for academic affairs", () => {
     const src = read("src/lib/users.functions.ts");
     expect(src).toContain("assignsAllColleges(data.role)");
-    expect(src).toContain('supabaseAdmin.from("colleges").select("id")');
+    expect(src).toMatch(/supabaseAdmin\s*\.from\("colleges"\)\s*\.select\("id"\)/);
     expect(src).toContain("requiresCollegeAssignment(data.role) && collegeIds.length === 0");
     expect(src).toContain('onConflict: "user_id,college_id", ignoreDuplicates: true');
   });
