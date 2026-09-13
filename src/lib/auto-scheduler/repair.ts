@@ -80,10 +80,7 @@ const samePlacement = (a: RepairPlacement, b: RepairPlacement) =>
 const durationMinutes = (session: Session) =>
   minutes(session.end_time) - minutes(session.start_time);
 
-const withPlacement = (
-  session: Session,
-  placement: RepairPlacement,
-): Session => ({
+const withPlacement = (session: Session, placement: RepairPlacement): Session => ({
   ...session,
   day_of_week: placement.day_of_week,
   start_time: placement.start_time,
@@ -106,8 +103,7 @@ export function conflictingSessions(
   return sessions.filter((other) => {
     if (other.id === candidate.id) return false;
     if (other.day_of_week !== candidate.day_of_week) return false;
-    if (!(start < minutes(other.end_time) && end > minutes(other.start_time)))
-      return false;
+    if (!(start < minutes(other.end_time) && end > minutes(other.start_time))) return false;
     return (
       other.room_id === candidate.room_id ||
       other.instructor_id === candidate.instructor_id ||
@@ -246,14 +242,8 @@ export function planRepair(input: {
   stats?: { attempts: number };
 }): RepairPlan | null {
   const budget: RepairBudget = {
-    maxAttempts: Math.max(
-      1,
-      input.budget?.maxAttempts ?? DEFAULT_REPAIR_BUDGET.maxAttempts,
-    ),
-    maxDepth: Math.max(
-      1,
-      Math.min(2, input.budget?.maxDepth ?? DEFAULT_REPAIR_BUDGET.maxDepth),
-    ),
+    maxAttempts: Math.max(1, input.budget?.maxAttempts ?? DEFAULT_REPAIR_BUDGET.maxAttempts),
+    maxDepth: Math.max(1, Math.min(2, input.budget?.maxDepth ?? DEFAULT_REPAIR_BUDGET.maxDepth)),
   };
   const state: SearchState = {
     snapshot: input.snapshot,
@@ -261,9 +251,7 @@ export function planRepair(input: {
     // The missing lecture's room pool does not describe its blockers. A lab
     // lecture may be blocked by a teacher's hall lecture (or conversely).
     // Feasibility still checks each relocated lecture's own type and capacity.
-    roomIds: input.snapshot.rooms
-      .filter((room) => room.is_active)
-      .map((room) => room.id),
+    roomIds: input.snapshot.rooms.filter((room) => room.is_active).map((room) => room.id),
     budget,
     attempts: 0,
     pinned: new Set<string>([input.missing.id]),
@@ -288,11 +276,7 @@ export function planRepair(input: {
           room_id: roomId,
         };
         const candidate = withPlacement(input.missing, placement);
-        const blockers = conflictingSessions(
-          state.snapshot,
-          sessions,
-          candidate,
-        );
+        const blockers = conflictingSessions(state.snapshot, sessions, candidate);
         if (blockers.length === 0) {
           // Not blocked by occupancy: the direct pass already rejected it for a
           // structural reason (room type, availability, load, five-day rule).
@@ -301,9 +285,7 @@ export function planRepair(input: {
         if (blockers.length > searchDepth) continue;
         if (blockers.some((blocker) => blocker.is_locked)) continue;
 
-        const rest = sessions.filter(
-          (x) => !blockers.some((blocker) => blocker.id === x.id),
-        );
+        const rest = sessions.filter((x) => !blockers.some((blocker) => blocker.id === x.id));
         state.attempts++;
         if (!state.feasible(state.snapshot, rest, candidate, input.missing)) {
           // Even with the blockers removed the slot is illegal — moving them is pointless.
@@ -316,12 +298,7 @@ export function planRepair(input: {
         let ok = true;
         for (const blocker of [...blockers].sort(byBlockerPreference)) {
           const others = current.filter((x) => x.id !== blocker.id);
-          const relocated = relocate(
-            state,
-            blocker,
-            others,
-            searchDepth - blockers.length,
-          );
+          const relocated = relocate(state, blocker, others, searchDepth - blockers.length);
           if (!relocated) {
             ok = false;
             break;
@@ -349,7 +326,6 @@ export function compareRepairPriority(
   a: { durationMinutes: number; candidateCount: number },
   b: { durationMinutes: number; candidateCount: number },
 ): number {
-  if (a.durationMinutes !== b.durationMinutes)
-    return b.durationMinutes - a.durationMinutes;
+  if (a.durationMinutes !== b.durationMinutes) return b.durationMinutes - a.durationMinutes;
   return a.candidateCount - b.candidateCount;
 }
