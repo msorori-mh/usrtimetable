@@ -8,7 +8,10 @@ import {
   REPORT_UNIVERSITY_NAME_AR,
 } from "@/lib/reports/branding";
 import { STUDY_SYSTEM_LABELS } from "@/lib/reports/filters";
-import { STATUS_LABEL_AR, type SVStatus } from "@/lib/schedule-versions/lifecycle";
+import {
+  STATUS_LABEL_AR,
+  type SVStatus,
+} from "@/lib/schedule-versions/lifecycle";
 import type { ReportStudySystem } from "@/lib/reports/types";
 
 export interface ReportOfficialHeaderMeta {
@@ -56,14 +59,18 @@ export function ReportOfficialHeader({
   verificationUrl,
 }: Props) {
   const studyLabel = studySystem ? STUDY_SYSTEM_LABELS[studySystem] : undefined;
-  const statusLabel = versionStatus ? STATUS_LABEL_AR[versionStatus] : undefined;
+  const statusLabel = versionStatus
+    ? STATUS_LABEL_AR[versionStatus]
+    : undefined;
   const resolvedVerificationUrl =
-    verificationUrl ?? (typeof window !== "undefined" ? window.location.href : "");
+    verificationUrl ??
+    (typeof window !== "undefined" ? window.location.href : "");
 
   const defaultNote = useMemo(() => {
     if (note) return note;
     if (official) return "تقرير رسمي — نسخة منشورة · للقراءة فقط.";
-    if (readOnly) return "تقرير للقراءة فقط — لا يُشغّل محركات الجدولة أو الفحص.";
+    if (readOnly)
+      return "تقرير للقراءة فقط — لا يُشغّل محركات الجدولة أو الفحص.";
     return undefined;
   }, [note, official, readOnly]);
 
@@ -108,7 +115,10 @@ export function ReportOfficialHeader({
       <div className="flex flex-wrap items-center gap-2 mb-3">
         <h2 className="text-lg font-bold">{reportTitle}</h2>
         {official && (
-          <Badge variant="default" className="print:border print:border-foreground">
+          <Badge
+            variant="default"
+            className="print:border print:border-foreground"
+          >
             رسمي / منشور
           </Badge>
         )}
@@ -153,7 +163,9 @@ export function ReportOfficialHeader({
       )}
 
       {filterSummary && (
-        <p className="mt-2 text-xs text-muted-foreground report-no-print">{filterSummary}</p>
+        <p className="mt-2 text-xs text-muted-foreground report-no-print">
+          {filterSummary}
+        </p>
       )}
     </Card>
   );
