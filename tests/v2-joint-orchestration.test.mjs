@@ -100,6 +100,7 @@ function state() {
     if (table === "rooms") return st.snapshot.rooms;
     if (table === "time_slot_templates") return st.snapshot.templates;
     if (table === "schedule_sessions") return st.snapshot.sessions;
+    // Keep this I/O contract aligned with the production V2 scheduler preflight queries.
     if (table === "room_types") return [{ id: "rt-lecture", code: "lecture_hall" }];
     if (table === "room_availability") return st.snapshot.roomAvailability;
     if (table === "academic_cohorts") return st.snapshot.cohorts;
