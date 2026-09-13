@@ -40,7 +40,10 @@ function sessions(): Map<string, ScheduleSession> {
     [S3, { id: S3, college_id: COLLEGE, schedule_version_id: VERSION_B }],
     [S4, { id: S4, college_id: COLLEGE, schedule_version_id: VERSION_B }],
     [S_OTHER_VER, { id: S_OTHER_VER, college_id: COLLEGE, schedule_version_id: VERSION_B }],
-    [S_OTHER_COLLEGE, { id: S_OTHER_COLLEGE, college_id: OTHER_COLLEGE, schedule_version_id: "other-ver" }],
+    [
+      S_OTHER_COLLEGE,
+      { id: S_OTHER_COLLEGE, college_id: OTHER_COLLEGE, schedule_version_id: "other-ver" },
+    ],
   ]);
 }
 
@@ -129,7 +132,10 @@ tests.push({
   run: () => {
     const before = row({ session_id: S1 });
     const after = row({ session_id: S3 });
-    assertThrows(() => validateSvceUpdate(before, after, versions(), sessions()), "session/schedule_version mismatch");
+    assertThrows(
+      () => validateSvceUpdate(before, after, versions(), sessions()),
+      "session/schedule_version mismatch",
+    );
   },
 });
 
@@ -139,7 +145,10 @@ tests.push({
   run: () => {
     const before = row({ session_id: S1, schedule_version_id: VERSION_A });
     const after = row({ session_id: S1, schedule_version_id: VERSION_B });
-    assertThrows(() => validateSvceUpdate(before, after, versions(), sessions()), "session/schedule_version mismatch");
+    assertThrows(
+      () => validateSvceUpdate(before, after, versions(), sessions()),
+      "session/schedule_version mismatch",
+    );
   },
 });
 
@@ -147,7 +156,11 @@ tests.push({
   id: 7,
   name: "single-session room_type with related_session_id NULL → PASS",
   run: () => {
-    validateSvceSessionVersionIntegrity(row({ session_id: S2, related_session_id: null }), versions(), sessions());
+    validateSvceSessionVersionIntegrity(
+      row({ session_id: S2, related_session_id: null }),
+      versions(),
+      sessions(),
+    );
   },
 });
 
@@ -188,7 +201,12 @@ tests.push({
   name: "cross-college session → FAIL",
   run: () => {
     assertThrows(
-      () => validateSvceSessionVersionIntegrity(row({ session_id: S_OTHER_COLLEGE }), versions(), sessions()),
+      () =>
+        validateSvceSessionVersionIntegrity(
+          row({ session_id: S_OTHER_COLLEGE }),
+          versions(),
+          sessions(),
+        ),
       "session/college mismatch",
     );
   },

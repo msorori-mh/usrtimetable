@@ -12,7 +12,10 @@ export interface CurrentUser {
   isSuperAdmin: boolean;
   isCollegeAdmin: boolean;
   isReadOnly: boolean;
-  /** Institution-wide viewer: sees every page and college, may never write. */
+  /**
+   * Academic affairs («إدارة الشؤون الأكاديمية», DB value `institutional_viewer`):
+   * reports only, restricted to the colleges assigned in user_colleges, never writes.
+   */
   isInstitutionalViewer: boolean;
 }
 

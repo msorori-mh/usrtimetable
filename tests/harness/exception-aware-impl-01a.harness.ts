@@ -16,7 +16,10 @@ import { validateGate, type EligibilityResult } from "@/lib/schedule-versions/li
 const VERSION = "482af19b-0d44-4631-b80a-753f5ead4089";
 const OTHER_VERSION = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
 
-function ex(partial: Partial<ApprovedException> & Pick<ApprovedException, "id" | "conflict_code" | "session_id">): ApprovedException {
+function ex(
+  partial: Partial<ApprovedException> &
+    Pick<ApprovedException, "id" | "conflict_code" | "session_id">,
+): ApprovedException {
   return {
     schedule_version_id: VERSION,
     related_session_id: null,
@@ -44,7 +47,12 @@ tests.push({
     const a = "11111111-1111-1111-1111-111111111111";
     const b = "22222222-2222-2222-2222-222222222222";
     const exceptions = [
-      ex({ id: "ex-1", conflict_code: "instructor_conflict", session_id: b, related_session_id: a }),
+      ex({
+        id: "ex-1",
+        conflict_code: "instructor_conflict",
+        session_id: b,
+        related_session_id: a,
+      }),
     ];
     const index = buildApprovedExceptionIndex(exceptions, VERSION);
     const match = findMatchingException(index, {
@@ -129,7 +137,9 @@ tests.push({
   run: () => {
     const a = "88888888-8888-8888-8888-888888888888";
     const b = "99999999-9999-9999-9999-999999999999";
-    const exceptions = [ex({ id: "ex-code", conflict_code: "room_conflict", session_id: a, related_session_id: b })];
+    const exceptions = [
+      ex({ id: "ex-code", conflict_code: "room_conflict", session_id: a, related_session_id: b }),
+    ];
     const index = buildApprovedExceptionIndex(exceptions, VERSION);
     const match = findMatchingException(index, {
       scheduleVersionId: VERSION,
@@ -168,9 +178,18 @@ tests.push({
     }
 
     const result = applyApprovedExceptions(conflicts, VERSION, exceptions);
-    assert(result.totalHardConflicts === 96, `totalHardConflicts expected 96 got ${result.totalHardConflicts}`);
-    assert(result.approvedHardConflicts === 86, `approvedHardConflicts expected 86 got ${result.approvedHardConflicts}`);
-    assert(result.unapprovedHardConflicts === 10, `unapprovedHardConflicts expected 10 got ${result.unapprovedHardConflicts}`);
+    assert(
+      result.totalHardConflicts === 96,
+      `totalHardConflicts expected 96 got ${result.totalHardConflicts}`,
+    );
+    assert(
+      result.approvedHardConflicts === 86,
+      `approvedHardConflicts expected 86 got ${result.approvedHardConflicts}`,
+    );
+    assert(
+      result.unapprovedHardConflicts === 10,
+      `unapprovedHardConflicts expected 10 got ${result.unapprovedHardConflicts}`,
+    );
 
     const eligibility: EligibilityResult = {
       ok: result.unapprovedHardConflicts === 0,
@@ -186,8 +205,14 @@ tests.push({
     const gateErrs = validateGate("approved", eligibility);
     assert(gateErrs.length > 0, "eligibility must FAIL for approved gate with 10 unapproved");
     assert(eligibility.unapprovedHardConflicts > 0, "unapproved must block");
-    assert(result.conflicts.filter((c) => c.approved_exception).length === 86, "approved conflicts visible");
-    assert(result.conflicts.filter((c) => !c.approved_exception).length === 10, "unapproved conflicts visible");
+    assert(
+      result.conflicts.filter((c) => c.approved_exception).length === 86,
+      "approved conflicts visible",
+    );
+    assert(
+      result.conflicts.filter((c) => !c.approved_exception).length === 10,
+      "unapproved conflicts visible",
+    );
   },
 });
 
@@ -209,12 +234,35 @@ tests.push({
     });
     assert(key !== wrong, "different pairs must have different keys");
     const index = buildApprovedExceptionIndex(
-      [ex({ id: "only-one", conflict_code: "instructor_conflict", session_id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", related_session_id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb" })],
+      [
+        ex({
+          id: "only-one",
+          conflict_code: "instructor_conflict",
+          session_id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+          related_session_id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+        }),
+      ],
       VERSION,
     );
     assert(index.size === 1, "index has exactly one entry");
-    assert(findMatchingException(index, { scheduleVersionId: VERSION, conflictCode: "instructor_conflict", sessionId: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", relatedSessionId: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb" }) !== null, "exact match");
-    assert(findMatchingException(index, { scheduleVersionId: VERSION, conflictCode: "instructor_conflict", sessionId: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", relatedSessionId: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" }) === null, "self-pair must not wildcard-match");
+    assert(
+      findMatchingException(index, {
+        scheduleVersionId: VERSION,
+        conflictCode: "instructor_conflict",
+        sessionId: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+        relatedSessionId: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+      }) !== null,
+      "exact match",
+    );
+    assert(
+      findMatchingException(index, {
+        scheduleVersionId: VERSION,
+        conflictCode: "instructor_conflict",
+        sessionId: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+        relatedSessionId: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+      }) === null,
+      "self-pair must not wildcard-match",
+    );
   },
 });
 
@@ -224,8 +272,18 @@ tests.push({
   run: () => {
     const a = "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee";
     const b = "ffffffff-ffff-ffff-ffff-ffffffffffff";
-    const k1 = exceptionMatchKey({ scheduleVersionId: VERSION, conflictCode: "room_conflict", sessionId: a, relatedSessionId: b });
-    const k2 = exceptionMatchKey({ scheduleVersionId: VERSION, conflictCode: "room_conflict", sessionId: b, relatedSessionId: a });
+    const k1 = exceptionMatchKey({
+      scheduleVersionId: VERSION,
+      conflictCode: "room_conflict",
+      sessionId: a,
+      relatedSessionId: b,
+    });
+    const k2 = exceptionMatchKey({
+      scheduleVersionId: VERSION,
+      conflictCode: "room_conflict",
+      sessionId: b,
+      relatedSessionId: a,
+    });
     assert(k1 === k2, "normalized pair keys must be equal for duplicate prevention");
   },
 });

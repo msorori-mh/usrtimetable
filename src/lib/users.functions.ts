@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { requiresCollegeAssignment } from "@/lib/academic-affairs-role";
 
 const ROLE = z.enum(["super_admin", "college_admin", "read_only", "institutional_viewer"]);
 
@@ -21,7 +22,8 @@ export const adminListUserMeta = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertInstitutionAdmin(context.userId);
-    const out: Array<{ id: string; last_sign_in_at: string | null; banned_until: string | null }> = [];
+    const out: Array<{ id: string; last_sign_in_at: string | null; banned_until: string | null }> =
+      [];
     let page = 1;
     // paginate up to 10 pages (10000 users)
     for (let i = 0; i < 10; i++) {
@@ -54,8 +56,11 @@ export const adminCreateUser = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertInstitutionAdmin(context.userId);
 
-    if ((data.role === "college_admin" || data.role === "read_only") && data.college_ids.length === 0) {
-      throw new Error("College assignment is required for College Admin and Viewer roles");
+    // Every role except super_admin is college-scoped. `institutional_viewer`
+    // («إدارة الشؤون الأكاديمية») reads reports for its assigned colleges only,
+    // so at least one college is mandatory for it too.
+    if (requiresCollegeAssignment(data.role) && data.college_ids.length === 0) {
+      throw new Error("College assignment is required for every role except Super Admin");
     }
 
     const { data: created, error: createErr } = await supabaseAdmin.auth.admin.createUser({

@@ -2,6 +2,7 @@ import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/app-layout";
+import { ReportsOnlyGate } from "@/components/reports-only-gate";
 
 /**
  * LAUNCH-CLOSURE-01 — hydration-safe client auth gate.
@@ -138,7 +139,9 @@ function AuthenticatedLayout() {
 
   return (
     <AppLayout>
-      <Outlet />
+      <ReportsOnlyGate>
+        <Outlet />
+      </ReportsOnlyGate>
     </AppLayout>
   );
 }

@@ -21,13 +21,13 @@ const cleanup = read("src/routes/_authenticated/data-cleanup.tsx");
 /* ---------------------------------------------------------------- 1. roles */
 // Role matrix must stay byte-identical in intent to the pre-phase navigation:
 // only these four roles exist, and the restricted entries keep their scope.
-const roleTuples = [...navSrc.matchAll(/roles:\s*(\[[^\]]*\]|ALL)/g)].map((m) => m[1]);
+const roleTuples = [...navSrc.matchAll(/roles:\s*(\[[^\]]*\]|ALL|OPERATIONAL)/g)].map((m) => m[1]);
 assert.ok(
   roleTuples.length > 30,
   `expected role declarations on every page, got ${roleTuples.length}`,
 );
 for (const t of roleTuples) {
-  if (t === "ALL") continue;
+  if (t === "ALL" || t === "OPERATIONAL") continue;
   for (const role of t.match(/"([a-z_]+)"/g) ?? []) {
     assert.ok(
       ["super_admin", "college_admin", "read_only", "institutional_viewer"].includes(
@@ -46,15 +46,13 @@ assert.ok(
 for (const superOnly of ["/universities", "/colleges", "/users"]) {
   const block = navSrc.slice(navSrc.indexOf(`to: "${superOnly}"`));
   assert.ok(
-    /roles:\s*\["super_admin",\s*"institutional_viewer"\]/.test(block.slice(0, 400)),
-    `${superOnly} must remain super_admin + institutional_viewer only`,
+    /roles:\s*\["super_admin"\]/.test(block.slice(0, 400)),
+    `${superOnly} must remain super_admin only (academic affairs is reports-only)`,
   );
 }
 const myCollegeBlock = navSrc.slice(navSrc.indexOf('to: "/my-college"'));
 assert.ok(
-  /roles:\s*\["college_admin",\s*"read_only",\s*"institutional_viewer"\]/.test(
-    myCollegeBlock.slice(0, 400),
-  ),
+  /roles:\s*\["college_admin",\s*"read_only"\]/.test(myCollegeBlock.slice(0, 400)),
   "/my-college role scope must be unchanged",
 );
 for (const writerScoped of ["/import", "/data-cleanup", "/auto-schedule"]) {
@@ -63,7 +61,7 @@ for (const writerScoped of ["/import", "/data-cleanup", "/auto-schedule"]) {
     navSrc.indexOf(`to: "${writerScoped}"`) + 400,
   );
   assert.ok(
-    /roles:\s*\["super_admin", "college_admin", "institutional_viewer"\]/.test(block),
+    /roles:\s*\["super_admin", "college_admin"\]/.test(block),
     `${writerScoped} must keep writer role scope`,
   );
 }

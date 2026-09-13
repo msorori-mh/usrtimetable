@@ -14,7 +14,10 @@ import { applyApprovedExceptions } from "@/lib/conflict-engine/validator";
 
 const VERSION = "482af19b-0d44-4631-b80a-753f5ead4089";
 
-function ex(partial: Partial<ApprovedException> & Pick<ApprovedException, "id" | "conflict_code" | "session_id">): ApprovedException {
+function ex(
+  partial: Partial<ApprovedException> &
+    Pick<ApprovedException, "id" | "conflict_code" | "session_id">,
+): ApprovedException {
   return {
     schedule_version_id: VERSION,
     related_session_id: null,
@@ -44,9 +47,14 @@ tests.push({
     assert(fnStart >= 0, "validateScheduleVersion must exist");
     const fnBody = src.slice(fnStart, fnStart + 3500);
     assert(fnBody.includes("loadApprovedExceptions"), "must call loadApprovedExceptions");
-    assert(fnBody.includes("applyApprovedExceptions(conflicts, scheduleVersionId, approvedExceptions)"), "must pass loaded exceptions to applyApprovedExceptions");
+    assert(
+      fnBody.includes("applyApprovedExceptions(conflicts, scheduleVersionId, approvedExceptions)"),
+      "must pass loaded exceptions to applyApprovedExceptions",
+    );
     const loadIdx = fnBody.indexOf("loadApprovedExceptions");
-    const applyIdx = fnBody.indexOf("applyApprovedExceptions(conflicts, scheduleVersionId, approvedExceptions)");
+    const applyIdx = fnBody.indexOf(
+      "applyApprovedExceptions(conflicts, scheduleVersionId, approvedExceptions)",
+    );
     assert(loadIdx >= 0 && applyIdx > loadIdx, "load must precede apply");
   },
 });
@@ -103,7 +111,10 @@ tests.push({
     const result = applyApprovedExceptions(conflicts, VERSION, exceptions);
     assert(result.totalHardConflicts === 96, `total 96 got ${result.totalHardConflicts}`);
     assert(result.approvedHardConflicts === 86, `approved 86 got ${result.approvedHardConflicts}`);
-    assert(result.unapprovedHardConflicts === 10, `unapproved 10 got ${result.unapprovedHardConflicts}`);
+    assert(
+      result.unapprovedHardConflicts === 10,
+      `unapproved 10 got ${result.unapprovedHardConflicts}`,
+    );
     assert(result.unapprovedHardConflicts > 0, "eligibility FAIL (10 unapproved blockers remain)");
   },
 });
@@ -112,9 +123,21 @@ tests.push({
   name: "revoked exception not counted as approved",
   run: () => {
     const sid = "11111111-1111-1111-1111-111111111111";
-    const revoked = ex({ id: "rev", conflict_code: "instructor_conflict", session_id: sid, status: "revoked" });
+    const revoked = ex({
+      id: "rev",
+      conflict_code: "instructor_conflict",
+      session_id: sid,
+      status: "revoked",
+    });
     const index = buildApprovedExceptionIndex([revoked], VERSION);
-    assert(findMatchingException(index, { scheduleVersionId: VERSION, conflictCode: "instructor_conflict", sessionId: sid }) === null, "revoked excluded");
+    assert(
+      findMatchingException(index, {
+        scheduleVersionId: VERSION,
+        conflictCode: "instructor_conflict",
+        sessionId: sid,
+      }) === null,
+      "revoked excluded",
+    );
   },
 });
 
@@ -122,7 +145,12 @@ tests.push({
   name: "cross-version exception not counted",
   run: () => {
     const other = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
-    const exOther = ex({ id: "x", conflict_code: "instructor_conflict", session_id: "11111111-1111-1111-1111-111111111111", schedule_version_id: other });
+    const exOther = ex({
+      id: "x",
+      conflict_code: "instructor_conflict",
+      session_id: "11111111-1111-1111-1111-111111111111",
+      schedule_version_id: other,
+    });
     const index = buildApprovedExceptionIndex([exOther], VERSION);
     assert(index.size === 0, "wrong version excluded from index");
   },
