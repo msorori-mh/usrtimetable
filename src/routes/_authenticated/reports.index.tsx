@@ -24,8 +24,21 @@ import {
   ChevronDown,
 } from "lucide-react";
 
+const HUB_TITLE = "مركز التقارير — جامعة إقليم سبأ";
+const HUB_DESCRIPTION =
+  "مركز تقارير الجداول الأكاديمية: جداول المحاضرين والقاعات والبرامج، تحليلات الأعباء والاستخدام، الجاهزية والتعارضات والجودة — قراءة فقط مع رأس رسمي وطباعة وتصدير.";
+
 export const Route = createFileRoute("/_authenticated/reports/")({
-  head: () => ({ meta: [{ title: "التقارير" }] }),
+  head: () => ({
+    meta: [
+      { title: HUB_TITLE },
+      { name: "description", content: HUB_DESCRIPTION },
+      { property: "og:title", content: HUB_TITLE },
+      { property: "og:description", content: HUB_DESCRIPTION },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: ReportsHub,
 });
 
