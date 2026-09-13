@@ -1082,7 +1082,7 @@ export function PlanCoursesManager({
                             }}
                             disabled={addComponent.isPending || updateComponent.isPending}
                           >
-                            {componentTarget?.componentId ? "حفظ التعديل" : "حفظ المكوّن"}
+                            {componentTarget?.componentId ? "حفظ التعديل" : "حفظ المحاضرة"}
                           </Button>
                         </div>
                       </div>
@@ -1096,7 +1096,7 @@ export function PlanCoursesManager({
                           setComponentTarget({ planCourseId: row.id, componentId: null });
                         }}
                       >
-                        <Plus className="ms-1 h-3.5 w-3.5" /> إضافة مكوّن
+                        <Plus className="ms-1 h-3.5 w-3.5" /> إضافة محاضرة
                       </Button>
                     ))}
                 </Card>
