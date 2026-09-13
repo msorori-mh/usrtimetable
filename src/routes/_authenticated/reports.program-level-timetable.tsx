@@ -316,9 +316,28 @@ function ProgramLevelReport({
         </ReportFilters>
       }
     >
-      {sessions.length > 0 && (
+      {sessions.length > 0 ? (
         <ReportTimetableView sessions={sessions} headers={NEW_FLOW_TIMETABLE_TABLE_HEADERS} />
-      )}
+      ) : selectedCoverageRow && !selectedCoverageRow.scheduled ? (
+        <Card className="p-6 text-sm" data-testid="unscheduled-group-empty-state">
+          <p className="font-semibold">هذه المجموعة لم تُسكن في نسخة الجدول الحالية</p>
+          <p className="mt-2 text-muted-foreground">
+            {[
+              [selectedCoverageRow.courseCode, selectedCoverageRow.courseName]
+                .filter(Boolean)
+                .join(" "),
+              componentTypeLabel(selectedCoverageRow.componentType),
+              selectedCoverageRow.groupCode ?? "",
+              `الطلاب: ${selectedCoverageRow.expectedStudents ?? "—"}`,
+              `الساعات المطلوبة: ${selectedCoverageRow.requiredHours}`,
+              `المحاضر: ${selectedCoverageRow.instructorName ?? "غير مسند"}`,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+        </Card>
+      ) : null}
+
     </ReportShell>
   );
 }
