@@ -48,15 +48,13 @@ assert.ok(
 for (const superOnly of ["/universities", "/colleges", "/users"]) {
   const block = navSrc.slice(navSrc.indexOf(`to: "${superOnly}"`));
   assert.ok(
-    /roles:\s*\["super_admin",\s*"institutional_viewer"\]/.test(block.slice(0, 400)),
-    `${superOnly} must remain super_admin + institutional_viewer only`,
+    /roles:\s*\["super_admin"\]/.test(block.slice(0, 400)),
+    `${superOnly} must remain super_admin only (academic affairs is reports-only)`,
   );
 }
 const myCollegeBlock = navSrc.slice(navSrc.indexOf('to: "/my-college"'));
 assert.ok(
-  /roles:\s*\["college_admin",\s*"read_only",\s*"institutional_viewer"\]/.test(
-    myCollegeBlock.slice(0, 400),
-  ),
+  /roles:\s*\["college_admin",\s*"read_only"\]/.test(myCollegeBlock.slice(0, 400)),
   "/my-college role scope must be unchanged",
 );
 for (const writerScoped of ["/import", "/data-cleanup", "/auto-schedule"]) {
@@ -65,7 +63,7 @@ for (const writerScoped of ["/import", "/data-cleanup", "/auto-schedule"]) {
     navSrc.indexOf(`to: "${writerScoped}"`) + 400,
   );
   assert.ok(
-    /roles:\s*\["super_admin", "college_admin", "institutional_viewer"\]/.test(block),
+    /roles:\s*\["super_admin", "college_admin"\]/.test(block),
     `${writerScoped} must keep writer role scope`,
   );
 }
