@@ -1,3 +1,5 @@
+import { ReportScopeError } from "@/lib/reports/preferences";
+import { readReportPreference, writeReportPreference } from "@/lib/reports/preferences";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useActiveCollege } from "@/hooks/use-colleges";
@@ -15,6 +17,7 @@ export function useReportContext(options: UseReportContextOptions = {}): ReportC
     defaultStatusMode = "specific_version",
     defaultStudySystem = "all",
     fixedStatusMode,
+    fixedStudySystem,
     initialFilters,
   } = options;
 
@@ -28,9 +31,11 @@ export function useReportContext(options: UseReportContextOptions = {}): ReportC
   const [statusMode, setStatusModeState] = useState<ReportStatusMode>(
     initialFilters?.statusMode ?? effectiveDefaultMode,
   );
-  const [studySystem, setStudySystemState] = useState<ReportStudySystem>(
+  const [studySystemState, setStudySystemState] = useState<ReportStudySystem>(
     initialFilters?.studySystem ?? defaultStudySystem,
   );
+
+  const studySystem = fixedStudySystem ?? studySystemState;
 
   /**
    * REPORTS-COLLEGE-SWITCH-01 — switching the active college must not leave the
@@ -42,6 +47,24 @@ export function useReportContext(options: UseReportContextOptions = {}): ReportC
     setTermIdState(null);
     setVersionIdState(null);
   }
+
+  const [restoredCollege, setRestoredCollege] = useState<string | null>(null);
+  useEffect(() => {
+    if (!collegeId || restoredCollege === collegeId) return;
+    const saved = readReportPreference(`context:${collegeId}`);
+    const params = new URLSearchParams(window.location.search);
+    if (!initialFilters) {
+      setTermIdState(params.get("termId") || saved.termId || null);
+      setVersionIdState(params.get("versionId") || saved.versionId || null);
+      const mode = params.get("statusMode") || saved.statusMode;
+      if (!fixedStatusMode && ["published_only", "working", "specific_version"].includes(mode))
+        setStatusModeState(mode as ReportStatusMode);
+      const system = params.get("studySystem") || saved.studySystem;
+      if (["all", "regular", "parallel"].includes(system))
+        setStudySystemState(system as ReportStudySystem);
+    }
+    setRestoredCollege(collegeId);
+  }, [collegeId, restoredCollege, initialFilters, fixedStatusMode]);
 
   const {
     data: terms = [],
@@ -56,7 +79,7 @@ export function useReportContext(options: UseReportContextOptions = {}): ReportC
 
   // Auto-select latest term when college or terms list changes.
   useEffect(() => {
-    if (!termsReady) return;
+    if (!termsReady || restoredCollege !== collegeId) return;
     if (!terms.length) {
       setTermIdState(null);
       return;
@@ -64,7 +87,7 @@ export function useReportContext(options: UseReportContextOptions = {}): ReportC
     if (!termId || !terms.some((t) => t.id === termId)) {
       setTermIdState(terms[0].id);
     }
-  }, [terms, termId, termsReady]);
+  }, [terms, termId, termsReady, restoredCollege, collegeId]);
 
   const {
     data: versions = [],
@@ -84,7 +107,7 @@ export function useReportContext(options: UseReportContextOptions = {}): ReportC
 
   // Reset version when term or status mode changes; keep selection if still valid.
   useEffect(() => {
-    if (!versionsReady) return;
+    if (!versionsReady || restoredCollege !== collegeId) return;
     if (!versions.length) {
       setVersionIdState(null);
       return;
@@ -92,7 +115,7 @@ export function useReportContext(options: UseReportContextOptions = {}): ReportC
     if (!versionId || !versions.some((v) => v.id === versionId)) {
       setVersionIdState(versions[0].id);
     }
-  }, [versions, versionId, versionsReady]);
+  }, [versions, versionId, versionsReady, restoredCollege, collegeId]);
 
   const setTermId = useCallback((id: string | null) => {
     setTermIdState(id);
@@ -135,8 +158,38 @@ export function useReportContext(options: UseReportContextOptions = {}): ReportC
     [termId, versionId, statusMode, studySystem, selectedTerm, selectedVersion],
   );
 
-  const error = (termsError ?? versionsError) as Error | null;
-  const isLoading = collegeLoading || termsLoading || versionsLoading;
+  useEffect(() => {
+    if (!collegeId || restoredCollege !== collegeId || !selectedTerm || !selectedVersion) return;
+    writeReportPreference(`context:${collegeId}`, {
+      termId: selectedTerm.id,
+      versionId: selectedVersion.id,
+      statusMode: fixedStatusMode ?? statusMode,
+      studySystem,
+    });
+  }, [
+    collegeId,
+    restoredCollege,
+    selectedTerm,
+    selectedVersion,
+    fixedStatusMode,
+    statusMode,
+    studySystem,
+  ]);
+
+  const linkCollege =
+    typeof window === "undefined"
+      ? null
+      : new URLSearchParams(window.location.search).get("collegeId");
+  const error = (
+    linkCollege && collegeId && linkCollege !== collegeId
+      ? new ReportScopeError("هذا الرابط يخص كلية أخرى؛ اختر الكلية المقصودة من قائمة الكليات.")
+      : (termsError ?? versionsError)
+  ) as Error | null;
+  const isLoading =
+    collegeLoading ||
+    termsLoading ||
+    versionsLoading ||
+    (!!collegeId && restoredCollege !== collegeId);
 
   return {
     collegeId,

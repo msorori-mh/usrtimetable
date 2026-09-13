@@ -162,11 +162,11 @@ test("missing policies leave all compliance metrics unknown", () => {
   const data = fixture();
   data.workloads[0].required_load_hours = null;
   const row = buildAcademicReport(data, "workload")[0];
-  assert.equal(row.required, null);
-  assert.equal(row.overload, null);
-  assert.equal(row.deficit, null);
+  assert.equal(row.required, "غير محدد");
+  assert.equal(row.overload, "غير محدد");
+  assert.equal(row.deficit, "غير محدد");
   assert.equal(row.assigned, 14);
-  assert.equal(row.status, "سياسة النصاب غير محددة");
+  assert.equal(row.status, "النصاب غير محدد");
 });
 test("project hours remain separate from standard load", () => {
   const row = buildAcademicReport(fixture(), "workload")[0];

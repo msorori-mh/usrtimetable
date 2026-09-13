@@ -1,3 +1,5 @@
+import { attendanceMetrics } from "./presentation-metrics";
+
 /**
  * Delivery-group coverage for the program/level timetable report.
  *
@@ -42,13 +44,14 @@ export interface DeliveryGroupCatalogRow {
   courseCode: string | null;
   courseName: string | null;
   expectedStudents: number | null;
-  /** Required weekly hours: teaching assignment hours, else component contact hours. */
+  /** Required weekly contact hours from the group’s curriculum component. */
   requiredHours: number;
   instructorName: string | null;
 }
 
 /** Minimal session shape needed to decide whether a group was placed. */
 export interface CoverageSessionLike {
+  day_of_week?: number;
   delivery_group_id?: string | null;
   start_time?: string | null;
   end_time?: string | null;
@@ -67,6 +70,7 @@ export interface CoverageSummary {
   totalGroups: number;
   scheduledGroups: number;
   unscheduledGroups: number;
+  partialGroups?: number;
   requiredHours: number;
   scheduledHours: number;
   unscheduledHours: number;
@@ -116,6 +120,7 @@ export function buildDeliveryGroupCoverage(input: {
   rows: DeliveryGroupCoverageRow[];
   scheduled: DeliveryGroupCoverageRow[];
   unscheduled: DeliveryGroupCoverageRow[];
+  incomplete: DeliveryGroupCoverageRow[];
   summary: CoverageSummary;
 } {
   const placed = new Map<string, { count: number; hours: number }>();
@@ -125,6 +130,20 @@ export function buildDeliveryGroupCoverage(input: {
     acc.count += 1;
     acc.hours += hours(s.start_time, s.end_time);
     placed.set(s.delivery_group_id, acc);
+  }
+
+  // Co-teachers and overlaps cannot satisfy the same group's contact hours twice.
+  for (const [id, acc] of placed) {
+    const sessions = input.sessions.filter((s) => s.delivery_group_id === id);
+    if (sessions.every((s) => s.day_of_week !== undefined && s.start_time && s.end_time)) {
+      acc.hours = attendanceMetrics(
+        sessions.map((s) => ({
+          day_of_week: s.day_of_week!,
+          start_time: s.start_time!,
+          end_time: s.end_time!,
+        })),
+      ).occupiedHours;
+    }
   }
 
   const rows: DeliveryGroupCoverageRow[] = input.groups
@@ -151,13 +170,15 @@ export function buildDeliveryGroupCoverage(input: {
     rows,
     scheduled,
     unscheduled,
+    incomplete: rows.filter((r) => r.scheduledHours + 0.01 < r.requiredHours),
     summary: {
       totalGroups: rows.length,
       scheduledGroups: scheduled.length,
       unscheduledGroups: unscheduled.length,
+      partialGroups: scheduled.filter((r) => r.scheduledHours + 0.01 < r.requiredHours).length,
       requiredHours: sum(rows, (r) => r.requiredHours),
       scheduledHours: sum(rows, (r) => r.scheduledHours),
-      unscheduledHours: sum(unscheduled, (r) => r.requiredHours),
+      unscheduledHours: sum(rows, (r) => Math.max(0, r.requiredHours - r.scheduledHours)),
     },
   };
 }
@@ -205,6 +226,8 @@ export function coverageSummaryText(s: CoverageSummary): string {
     `الساعات المجدولة ${s.scheduledHours} من ${s.requiredHours}`,
     s.unscheduledGroups > 0
       ? `غير المجدول: ${s.unscheduledGroups} مجموعة / ${s.unscheduledHours} ساعة`
-      : "لا توجد مجموعات غير مجدولة",
+      : s.unscheduledHours > 0
+        ? `تغطية جزئية: ${s.unscheduledHours} ساعة متبقية`
+        : "لا توجد مجموعات غير مجدولة",
   ].join(" · ");
 }

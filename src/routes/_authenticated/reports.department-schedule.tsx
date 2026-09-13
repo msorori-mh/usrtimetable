@@ -19,7 +19,7 @@ import { DAY_NAMES_AR, fmtTime } from "@/lib/reports/export";
 import { filterRowsBySearch } from "@/lib/reports/search";
 
 export const Route = createFileRoute("/_authenticated/reports/department-schedule")({
-  head: () => ({ meta: [{ title: "Legacy — تقرير جدول الأقسام (تاريخي)" }] }),
+  head: () => ({ meta: [{ title: "أرشيف — تقرير جدول الأقسام (تاريخي)" }] }),
   component: Page,
 });
 
@@ -39,14 +39,20 @@ function Page() {
           .select("id, name, status")
           .eq("college_id", active!.id)
           .order("created_at", { ascending: false })
+          .throwOnError()
       ).data ?? [],
   });
   const { data: depts } = useQuery({
     queryKey: ["ds-depts", active?.id],
     enabled: !!active,
     queryFn: async () =>
-      (await supabase.from("departments").select("id, name").eq("college_id", active!.id)).data ??
-      [],
+      (
+        await supabase
+          .from("departments")
+          .select("id, name")
+          .eq("college_id", active!.id)
+          .throwOnError()
+      ).data ?? [],
   });
 
   const {
@@ -70,7 +76,8 @@ function Page() {
         .eq("college_id", active!.id)
         .eq("schedule_version_id", versionId)
         .order("day_of_week")
-        .order("start_time");
+        .order("start_time")
+        .throwOnError();
       return data ?? [];
     },
   });
@@ -117,9 +124,7 @@ function Page() {
       <Card className="report-no-print flex gap-3 border-amber-500/30 bg-amber-500/5 p-4">
         <Archive className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
         <div className="min-w-0 space-y-1 text-sm">
-          <p className="font-medium text-amber-700">
-            تقرير Legacy — لم يُرحّل ويُزال بعد الإطلاق (A1.5)
-          </p>
+          <p className="font-medium text-amber-700">تقرير أرشيف — للعرض التاريخي فقط</p>
           <p className="text-xs text-muted-foreground">
             يعرض هوية <code className="text-[11px]">sections</code> القديمة — قراءة فقط ولا تعتمد
             عليه تدفقات العمل الجديدة. استخدم{" "}
@@ -134,7 +139,7 @@ function Page() {
         </div>
       </Card>
       <ReportShell
-        title="تقرير جدول الأقسام (Legacy)"
+        title="تقرير جدول الأقسام (أرشيف)"
         description="الجدول مجمّعًا حسب القسم/البرنامج/المستوى/المجموعة."
         filename="department_schedule"
         rows={rows}

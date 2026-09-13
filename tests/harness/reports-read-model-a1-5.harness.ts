@@ -71,11 +71,11 @@ assert(
 // ---------- 2) Legacy historical reports marked + retained read-only ----------
 const sectionReport = read("src/routes/_authenticated/reports.section-timetable.tsx");
 assert(
-  sectionReport.includes("تقرير Legacy — للعرض التاريخي فقط (A1.5)"),
+  sectionReport.includes("تقرير أرشيف — للعرض التاريخي فقط"),
   "section timetable carries an explicit Legacy banner",
 );
 assert(
-  sectionReport.includes('meta: [{ title: "Legacy — تقرير جدول المجموعة (تاريخي)" }]'),
+  sectionReport.includes('meta: [{ title: "أرشيف — تقرير جدول المجموعة (تاريخي)" }]'),
   "section timetable head title marked Legacy",
 );
 assert(
@@ -87,11 +87,11 @@ noDml(sectionReport, "reports.section-timetable.tsx", "sections");
 
 const deptReport = read("src/routes/_authenticated/reports.department-schedule.tsx");
 assert(
-  deptReport.includes("تقرير Legacy — لم يُرحّل ويُزال بعد الإطلاق (A1.5)"),
+  deptReport.includes("تقرير أرشيف — للعرض التاريخي فقط"),
   "department schedule carries an explicit Legacy banner",
 );
 assert(
-  deptReport.includes('meta: [{ title: "Legacy — تقرير جدول الأقسام (تاريخي)" }]'),
+  deptReport.includes('meta: [{ title: "أرشيف — تقرير جدول الأقسام (تاريخي)" }]'),
   "department schedule head title marked Legacy",
 );
 assert(
@@ -212,8 +212,8 @@ assert(
 
 const grid = read("src/components/reports/timetable-grid-report.tsx");
 assert(
-  grid.includes("sess.cohort_label") && grid.includes("sess.delivery_group_label"),
-  "weekly grid displays cohort/DG identity",
+  grid.includes("selected.cohort_label") && grid.includes("sess.delivery_group_label"),
+  "weekly grid details preserve cohort/DG identity",
 );
 
 // ---------- 5) New Flow routes: no Legacy sections, cohort/DG wired ----------
@@ -330,7 +330,7 @@ assert(
 );
 const conflictsRoute = read("src/routes/_authenticated/reports.conflicts.tsx");
 assert(
-  conflictsRoute.includes('{ key: "legacy_section", label: "Legacy section" }'),
+  conflictsRoute.includes('{ key: "legacy_section", label: "مجموعة أرشيفية" }'),
   "conflicts report labels the section column as Legacy evidence",
 );
 noDml(operational, "operational-queries.ts", "sections");

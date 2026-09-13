@@ -1,3 +1,4 @@
+import { ReportScopeError } from "@/lib/reports/preferences";
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ import type { ReportContext } from "@/lib/reports/types";
 
 interface Props {
   title: string;
+  shareParams?: Record<string, string | null | undefined>;
   description?: string;
   /** Active unified filter summary from ReportContext. */
   filterSummary?: string;
@@ -57,6 +59,7 @@ interface Props {
 
 export function ReportShell({
   title,
+  shareParams,
   description,
   filterSummary,
   reportContext,
@@ -85,6 +88,9 @@ export function ReportShell({
     return {
       ...fromCtx,
       ...headerMetaProp,
+      termName:
+        headerMetaProp?.termName ??
+        reportContext?.terms.find((t) => t.id === reportContext.termId)?.name,
       collegeName: headerMetaProp?.collegeName ?? active?.name ?? null,
       official: headerMetaProp?.official ?? official,
       readOnly: headerMetaProp?.readOnly ?? readOnly,
@@ -97,17 +103,42 @@ export function ReportShell({
    * Real verification/report URL for the header QR: the current report URL with its
    * active filters. Resolved after hydration so SSR markup stays stable.
    */
-  const [qrUrl, setQrUrl] = useState<string | null>(null);
+  const [pageUrl, setQrUrl] = useState<string | null>(null);
   useEffect(() => {
     setQrUrl(window.location.href);
   }, []);
 
+  const qrUrl = useMemo(() => {
+    if (!pageUrl) return null;
+    const url = new URL(pageUrl);
+    const params = {
+      ...(reportContext
+        ? {
+            collegeId: reportContext.collegeId,
+            termId: reportContext.termId,
+            versionId: reportContext.versionId,
+            statusMode: reportContext.statusMode,
+            studySystem: reportContext.studySystem,
+          }
+        : {}),
+      ...shareParams,
+    };
+    for (const [key, value] of Object.entries(params)) {
+      if (value) url.searchParams.set(key, value);
+      else url.searchParams.delete(key);
+    }
+    return url.toString();
+  }, [pageUrl, reportContext, shareParams]);
+
   const hasRows = rows.length > 0;
-  const exportsDisabled = !hasRows || !!isLoading || !!error;
+  const exportsDisabled = !hasRows || !!isLoading || !!error || !!notReadyMessage;
 
   /** One state machine: error → not ready → loading → empty → content. */
   const body = error ? (
-    <ReportErrorState onRetry={onRetry} />
+    <ReportErrorState
+      message={error instanceof ReportScopeError ? error.message : undefined}
+      onRetry={onRetry}
+    />
   ) : notReadyMessage ? (
     <ReportNotReadyState message={notReadyMessage} />
   ) : isLoading ? (
@@ -124,9 +155,31 @@ export function ReportShell({
     <div className="report-print-root min-w-0 space-y-4" dir="rtl">
       {/* A4 RTL portrait page box for reports that print the on-screen body.
           Dedicated printContent sheets inject their own page style. */}
-      {!printContent && <style>{printPageStyleCss("A4", "portrait")}</style>}
+      {!printContent && (
+        <style>{printPageStyleCss("A4", headers.length > 7 ? "landscape" : "portrait")}</style>
+      )}
 
-      <div className={printContent ? "report-no-print" : undefined}>
+      <header className="report-no-print flex flex-wrap items-start justify-between gap-4 border-b pb-4">
+        <div className="min-w-0">
+          <p className="mb-1 text-sm text-muted-foreground">{headerMeta.collegeName}</p>
+          <h1 className="text-2xl font-bold leading-relaxed text-primary">{title}</h1>
+          {description && (
+            <p className="mt-1 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+              {description}
+            </p>
+          )}
+        </div>
+        {headerMeta.versionStatus && (
+          <span className="rounded-full border px-3 py-1 text-sm font-medium">
+            {headerMeta.versionStatus === "published"
+              ? "منشور"
+              : headerMeta.versionStatus === "draft"
+                ? "مسودة — للمراجعة"
+                : "نسخة قيد المراجعة"}
+          </span>
+        )}
+      </header>
+      <div className={printContent ? "hidden" : "hidden print:block"}>
         <ReportOfficialHeader
           reportTitle={title}
           description={description}
@@ -151,7 +204,7 @@ export function ReportShell({
             size="sm"
             onClick={handlePrint}
             aria-label="طباعة التقرير"
-            disabled={!!printContent && (!!isLoading || !hasRows)}
+            disabled={exportsDisabled}
           >
             <Printer className="ml-1 h-4 w-4" /> طباعة
           </Button>
@@ -187,7 +240,9 @@ export function ReportShell({
       <div className={printContent ? "report-no-print min-w-0" : "report-print-body min-w-0"}>
         {body}
       </div>
-      {printContent && <div className="hidden print:block print-center-body">{printContent}</div>}
+      {printContent && showSummaryBlocks && hasRows && (
+        <div className="hidden print:block print-center-body">{printContent}</div>
+      )}
     </div>
   );
 }

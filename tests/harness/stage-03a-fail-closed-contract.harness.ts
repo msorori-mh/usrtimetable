@@ -35,14 +35,17 @@ assert.match(
   /مقاييس التدفق الجديد[\s\S]*total:\s*1,[\s\S]*missing:\s*1,[\s\S]*critical:\s*true/,
   "missing New Flow dependency must be a critical blocker, never a zero-row success",
 );
-for (const dependency of [
-  "SCHEDULING_HEADCOUNT_MISSING",
-  "بدون مجموعات",
-  "بدون إسناد تدريسي",
-  "قاعات بدون نوع قاعة",
-  "قاعات بسعة ≤ 0",
-]) {
+for (const dependency of ["SCHEDULING_HEADCOUNT_MISSING", "بدون مجموعات", "بدون إسناد تدريسي"]) {
   assert.ok(readiness.includes(dependency), `readiness dependency covered: ${dependency}`);
+}
+
+assert.ok(
+  readiness.includes("...roomCapacityReadinessMetrics("),
+  "room checks use shared resource metrics",
+);
+const roomReadiness = read("src/lib/reports/room-capacity-readiness.ts");
+for (const label of ["قاعات بدون نوع قاعة", "قاعات بسعة ≤ 0"]) {
+  assert.ok(roomReadiness.includes(label), `shared readiness dependency covered: ${label}`);
 }
 
 const route = read("src/routes/_authenticated/auto-schedule.tsx");

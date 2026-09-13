@@ -342,7 +342,20 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
         <ReportDataTable
           rows={rows}
           caption={ACADEMIC_REPORT_TITLES[kind]}
-          columns={headers.map((h) => ({ key: h.key, label: h.label }))}
+          columns={[...headers]
+            .sort((a, b) => {
+              const order =
+                kind === "workload"
+                  ? ["instructor", "required", "assigned", "overload", "deficit", "status"]
+                  : kind === "assignments"
+                    ? ["course", "group", "instructor", "assigned", "component", "program"]
+                    : ["course", "group", "shortage", "required", "assigned", "program"];
+              return (
+                (order.includes(a.key) ? order.indexOf(a.key) : 99) -
+                (order.includes(b.key) ? order.indexOf(b.key) : 99)
+              );
+            })
+            .map((h, index) => ({ key: h.key, label: h.label, secondary: index >= 6 }))}
         />
       </ReportSection>
     </ReportShell>

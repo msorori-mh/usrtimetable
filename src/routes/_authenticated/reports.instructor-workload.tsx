@@ -21,7 +21,7 @@ import { hoursBetween } from "@/lib/reports/export";
 import { QUOTA_UNDEFINED_AR, computeQuotaBalance } from "@/lib/reports/instructor-quota";
 
 export const Route = createFileRoute("/_authenticated/reports/instructor-workload")({
-  head: () => ({ meta: [{ title: "تقرير أعباء المحاضرين" }] }),
+  head: () => ({ meta: [{ title: "العبء المجدول للمحاضرين" }] }),
   component: Page,
 });
 
@@ -45,15 +45,25 @@ function WorkloadPage() {
     queryKey: ["rep-depts", active?.id],
     enabled: !!active,
     queryFn: async () =>
-      (await supabase.from("departments").select("id, name").eq("college_id", active!.id)).data ??
-      [],
+      (
+        await supabase
+          .from("departments")
+          .select("id, name")
+          .eq("college_id", active!.id)
+          .throwOnError()
+      ).data ?? [],
   });
   const { data: types } = useQuery({
     queryKey: ["rep-itypes", active?.id],
     enabled: !!active,
     queryFn: async () =>
-      (await supabase.from("instructor_types").select("id, name_ar").eq("college_id", active!.id))
-        .data ?? [],
+      (
+        await supabase
+          .from("instructor_types")
+          .select("id, name_ar")
+          .eq("college_id", active!.id)
+          .throwOnError()
+      ).data ?? [],
   });
 
   const {
@@ -72,7 +82,7 @@ function WorkloadPage() {
         .eq("college_id", active!.id);
       if (deptId !== "all") q = q.eq("department_id", deptId);
       if (typeId !== "all") q = q.eq("instructor_type_id", typeId);
-      const { data, error } = await q;
+      const { data, error } = await q.throwOnError();
       if (error) throw error;
       return data ?? [];
     },
@@ -203,7 +213,7 @@ function WorkloadPage() {
 
   return (
     <ReportShell
-      title="تقرير أعباء المحاضرين"
+      title="العبء المجدول للمحاضرين"
       description="الساعات المجدولة في نسخة واحدة، ومقارنتها بالحد الأسبوعي المسجل للمحاضر. لتقارير النصاب المعتمد استخدم تقارير الشؤون الأكاديمية."
       filename="instructor_workload"
       rows={rows}
@@ -217,8 +227,16 @@ function WorkloadPage() {
       kpis={[
         { label: "المحاضرون", value: rows.length },
         { label: "إجمالي الساعات", value: totalHours.toFixed(2), tone: "accent" },
-        { label: "زيادة نصاب", value: overloaded, tone: overloaded > 0 ? "danger" : "neutral" },
-        { label: "نقص نصاب", value: underloaded, tone: underloaded > 0 ? "warning" : "neutral" },
+        {
+          label: "يتجاوز الحد الأسبوعي",
+          value: overloaded,
+          tone: overloaded > 0 ? "danger" : "neutral",
+        },
+        {
+          label: "أقل من الحد الأسبوعي",
+          value: underloaded,
+          tone: underloaded > 0 ? "warning" : "neutral",
+        },
       ]}
       filters={
         <ReportFilters

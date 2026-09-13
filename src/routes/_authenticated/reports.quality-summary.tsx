@@ -36,6 +36,7 @@ function Page() {
           .select("id, name, status")
           .eq("college_id", active!.id)
           .order("created_at", { ascending: false })
+          .throwOnError()
       ).data ?? [],
   });
 
@@ -56,7 +57,7 @@ function Page() {
         .eq("college_id", active!.id)
         .order("created_at", { ascending: false });
       if (versionId !== "all") q = q.eq("schedule_version_id", versionId);
-      return (await q).data ?? [];
+      return (await q.throwOnError()).data ?? [];
     },
   });
 

@@ -21,6 +21,7 @@ import {
   fetchCohortDeliveryGroupLabels,
   fetchInstructorScheduleSessions,
 } from "@/lib/reports/queries/session-queries";
+import { attendanceMetrics } from "@/lib/reports/presentation-metrics";
 import { useReportContext } from "@/hooks/reports/useReportContext";
 
 export const Route = createFileRoute("/_authenticated/reports/instructor-schedule")({
@@ -36,7 +37,7 @@ function Page() {
   const [insId, setInsId] = useState("");
 
   useEffect(() => {
-    setInsId("");
+    setInsId(new URLSearchParams(window.location.search).get("instructorId") ?? "");
   }, [ctx.collegeId]);
 
   const {
@@ -51,7 +52,8 @@ function Page() {
         .from("instructors")
         .select("id, full_name")
         .eq("college_id", ctx.collegeId!)
-        .order("full_name");
+        .order("full_name")
+        .throwOnError();
       if (error) throw error;
       return data ?? [];
     },
@@ -94,10 +96,11 @@ function Page() {
 
   return (
     <ReportShell
-      title="تقرير جدول المحاضر الفردي"
+      title={instructorName ? `الجدول الأسبوعي — ${instructorName}` : "تقرير جدول المحاضر الفردي"}
       description="الجدول الأسبوعي لعضو هيئة تدريس واحد داخل نسخة جدول واحدة."
       filterSummary={ctx.filterSummary}
       reportContext={ctx}
+      shareParams={{ instructorId: insId }}
       filename="instructor_schedule"
       rows={rows}
       headers={NEW_FLOW_TIMETABLE_TABLE_HEADERS}
@@ -111,6 +114,11 @@ function Page() {
         { label: "ساعات/أسبوع", value: totalHours.toFixed(2), tone: "accent" },
         { label: "أيام الحضور", value: distinctDays },
         { label: "المقررات", value: distinctCourses },
+        {
+          label: "فراغات بين المحاضرات (ساعة)",
+          value: attendanceMetrics(sessions).gapHours,
+          hint: "ضمن أيام الحضور؛ لا تشمل ما قبل أول محاضرة أو بعد آخرها",
+        },
       ]}
       filters={
         <ReportFilters
@@ -137,6 +145,7 @@ function Page() {
     >
       {ready && sessions.length > 0 && (
         <ReportTimetableView
+          hideInstructor
           sessions={sessions}
           collegeId={ctx.collegeId}
           headers={NEW_FLOW_TIMETABLE_TABLE_HEADERS}

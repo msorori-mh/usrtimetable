@@ -41,7 +41,13 @@ function Page() {
 
   const allRows = useMemo(() => (data ? readinessMetricsToRows(data) : []), [data]);
   // Search is presentation-only: identical keys and values, fewer visible rows.
-  const rows = useMemo(() => filterRowsBySearch(allRows, search), [allRows, search]);
+  const rows = useMemo(
+    () =>
+      filterRowsBySearch(allRows, search).sort(
+        (a, b) => Number(b.status === "حرج") - Number(a.status === "حرج"),
+      ),
+    [allRows, search],
+  );
 
   const criticalCount = allRows.filter((r) => r.status === "حرج").length;
   const readyCount = allRows.filter((r) => r.status === "جاهز").length;
@@ -50,8 +56,6 @@ function Page() {
     <ReportShell
       title="تقرير جاهزية البيانات"
       description="قراءة فقط — تقييم جاهزية البيانات الأكاديمية على مستوى الكلية."
-      filterSummary={ctx.filterSummary}
-      reportContext={ctx}
       headerMeta={{
         note: "تقييم على مستوى الكلية — لا يعتمد على نسخة جدول. لا يُشغّل cleanup أو import.",
       }}
@@ -82,6 +86,7 @@ function Page() {
       filters={
         <ReportFilters
           context={ctx}
+          term={false}
           version={false}
           statusMode={false}
           studySystem={false}

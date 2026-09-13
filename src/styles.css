@@ -898,3 +898,35 @@
     break-after: avoid;
   }
 }
+
+/* Report print tables must fit the paper and retain all detail columns. */
+@media print {
+  .report-data-table table {
+    min-width: 0 !important;
+    table-layout: fixed;
+  }
+  .report-data-table th,
+  .report-data-table td {
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+    font-size: 8pt;
+  }
+  .report-timetable-grid > .grid {
+    min-width: 0 !important;
+    grid-template-columns: 40px repeat(var(--report-days, 6), minmax(0, 1fr)) !important;
+  }
+  .report-timetable-grid button {
+    padding: 3px;
+  }
+  .report-timetable-grid button div,
+  .report-timetable-grid button span {
+    font-size: 8pt !important;
+    line-height: 1.2;
+  }
+}
+
+@media print {
+  .report-print-details {
+    break-before: page;
+  }
+}

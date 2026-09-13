@@ -163,7 +163,12 @@ export function ReportFilters({
       basic={basic}
       advanced={advancedContent}
       search={search}
-      activeSummary={[...filterSummary.split(" · ").filter(Boolean), ...(extraSummary ?? [])]}
+      activeSummary={[
+        ...filterSummary
+          .split(" · ")
+          .filter((part) => !part.startsWith("الفصل:") && !part.startsWith("النسخة:")),
+        ...(extraSummary ?? []),
+      ]}
       onClear={clear}
     />
   );

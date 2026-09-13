@@ -17,11 +17,11 @@ export const Route = createFileRoute("/_authenticated/reports/conflicts")({
 });
 
 const headers = [
-  { key: "classification", label: "Classification" },
+  { key: "classification", label: "التصنيف" },
   { key: "evidence_status", label: "Evidence" },
   { key: "cohort", label: "Cohort" },
   { key: "delivery_group", label: "Delivery group" },
-  { key: "legacy_section", label: "Legacy section" },
+  { key: "legacy_section", label: "مجموعة أرشيفية" },
   { key: "resolution_detail", label: "Exception / resolution" },
   { key: "conflict_code", label: "رمز التعارض" },
   { key: "message", label: "الرسالة" },
@@ -126,8 +126,8 @@ function Page() {
             : "لا توجد تعارضات في آخر فحص (أو لا تطابق فلتر نظام الدراسة)."
       }
       kpis={[
-        { label: "إلزامي", value: hardCount, tone: hardCount > 0 ? "danger" : "neutral" },
-        { label: "مرن", value: softCount, tone: softCount > 0 ? "warning" : "neutral" },
+        { label: "موانع", value: hardCount, tone: hardCount > 0 ? "danger" : "neutral" },
+        { label: "تحذيرات", value: softCount, tone: softCount > 0 ? "warning" : "neutral" },
         { label: "إجمالي المعروض", value: rows.length },
         ...(check ? [{ label: "إجمالي آخر فحص", value: check.total_conflicts }] : []),
       ]}
@@ -137,9 +137,7 @@ function Page() {
           <div className="min-w-0 space-y-1 text-sm">
             <p className="font-medium">تقرير للقراءة فقط</p>
             <p className="text-xs text-muted-foreground">
-              يقرأ من <code className="text-[11px]">conflict_checks</code> و{" "}
-              <code className="text-[11px]">conflict_results</code> — لا يُعيد تشغيل فحص التعارضات.
-              حقل «المعالجة» placeholder حتى يتوفر في قاعدة البيانات.
+              النتائج تخص آخر فحص محفوظ. أعد الفحص من صفحة فحص التعارضات بعد تعديل الجدول.
             </p>
           </div>
         </Card>
@@ -163,14 +161,14 @@ function Page() {
         bodyClassName="p-0"
       >
         <ReportDataTable
-          minWidthClassName="min-w-[1100px]"
+          minWidthClassName="min-w-[640px]"
           rows={rows}
           rowClassName={(r) => severityMeta(severityKeyFor(r.classification)).rowClass}
           caption="تفاصيل تعارضات آخر فحص محفوظ"
           columns={[
             {
               key: "classification",
-              label: "Classification",
+              label: "التصنيف",
               render: (r) => <ConflictSeverityBadge severity={r.classification} />,
             },
             {
@@ -181,7 +179,7 @@ function Page() {
             },
             { key: "cohort", label: "Cohort", secondary: true },
             { key: "delivery_group", label: "Delivery group", secondary: true },
-            { key: "legacy_section", label: "Legacy section", secondary: true },
+            { key: "legacy_section", label: "مجموعة أرشيفية", secondary: true },
             {
               key: "resolution_detail",
               label: "Exception / resolution",

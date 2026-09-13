@@ -33,7 +33,11 @@ function Page() {
     defaultStatusMode: "specific_version",
     defaultStudySystem: "all",
   });
-  const [roomId, setRoomId] = useState("");
+  const [roomId, setRoomId] = useState(() =>
+    typeof window === "undefined"
+      ? ""
+      : (new URLSearchParams(window.location.search).get("roomId") ?? ""),
+  );
 
   const { data: rooms, error: roomsError } = useQuery({
     queryKey: ["rt-rooms", ctx.collegeId],
@@ -43,7 +47,8 @@ function Page() {
         .from("rooms")
         .select("id, code, name")
         .eq("college_id", ctx.collegeId!)
-        .order("code");
+        .order("code")
+        .throwOnError();
       if (error) throw error;
       return data ?? [];
     },
@@ -84,10 +89,11 @@ function Page() {
 
   return (
     <ReportShell
-      title="تقرير جدول القاعة"
+      title={roomLabel ? `الجدول الأسبوعي — ${roomLabel}` : "تقرير جدول القاعة"}
       description="الاستخدام الأسبوعي لقاعة أو معمل واحد داخل نسخة جدول واحدة."
       filterSummary={ctx.filterSummary}
       reportContext={ctx}
+      shareParams={{ roomId }}
       filename="room_timetable"
       rows={rows}
       headers={NEW_FLOW_TIMETABLE_TABLE_HEADERS}

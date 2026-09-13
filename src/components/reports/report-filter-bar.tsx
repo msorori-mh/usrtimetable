@@ -56,7 +56,9 @@ export function ReportFilterBar({
         </div>
       )}
 
-      <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">{basic}</div>
+      <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]">
+        {basic}
+      </div>
 
       {advanced && (
         <div className="min-w-0 border-t border-border/60 pt-3">
@@ -70,7 +72,7 @@ export function ReportFilterBar({
             data-testid="report-advanced-filters-toggle"
           >
             <SlidersHorizontal className="ml-1 h-4 w-4" />
-            فلاتر متقدمة
+            خيارات إضافية
             <ChevronDown
               className={cn("ms-1 h-4 w-4 transition-transform", open && "rotate-180")}
               aria-hidden
@@ -80,7 +82,7 @@ export function ReportFilterBar({
             id={panelId}
             hidden={!open}
             data-testid="report-advanced-filters-panel"
-            className="mt-3 grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4"
+            className="mt-3 grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]"
           >
             {advanced}
           </div>
@@ -109,9 +111,9 @@ export function ReportFilterBar({
               size="sm"
               className="ms-auto"
               onClick={onClear}
-              aria-label="مسح كل الفلاتر"
+              aria-label="إعادة ضبط الخيارات الإضافية"
             >
-              <X className="ml-1 h-4 w-4" /> مسح الفلاتر
+              <X className="ml-1 h-4 w-4" /> إعادة الضبط
             </Button>
           )}
         </div>

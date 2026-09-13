@@ -1,143 +1,109 @@
+import { readAllReportRows } from "@/lib/reports/read-all";
 import { supabase } from "@/integrations/supabase/client";
 import type { DeliveryGroupCatalogRow } from "@/lib/reports/program-timetable-coverage";
 
-/**
- * Authoritative delivery-group catalogue for a college/term: every ACTIVE and
- * NON-OBSOLETE group, regardless of whether the selected schedule version
- * placed it. Read-only; RLS scopes the rows to the caller's colleges.
- */
+/** Active groups are the coverage catalogue, including groups with no sessions. */
 export async function fetchCohortDeliveryGroupCatalog(params: {
   collegeId: string;
   cohortIds: readonly string[];
 }): Promise<DeliveryGroupCatalogRow[]> {
-  const cohortIds = [...new Set(params.cohortIds)].filter(Boolean);
-  if (!cohortIds.length) return [];
-
-  const { data: groups, error } = await supabase
-    .from("delivery_groups")
-    .select(
-      "id, cohort_id, group_code, group_number, expected_students, component_id, plan_course_id, active, is_obsolete",
-    )
-    .eq("college_id", params.collegeId)
-    .in("cohort_id", cohortIds)
-    .or("active.is.null,active.eq.true")
-    .or("is_obsolete.is.null,is_obsolete.eq.false");
-  if (error) throw error;
-
-  const rows = groups ?? [];
-  if (!rows.length) return [];
-
-  const componentIds = [...new Set(rows.map((r) => r.component_id).filter(Boolean))] as string[];
-  const planCourseIds = [...new Set(rows.map((r) => r.plan_course_id).filter(Boolean))] as string[];
-  const groupIds = rows.map((r) => r.id);
-
-  const [components, planCourses, assignments] = await Promise.all([
-    componentIds.length
-      ? supabase
-          .from("plan_course_components")
-          .select("id, component_type, weekly_contact_hours")
-          .in("id", componentIds)
-      : Promise.resolve({ data: [], error: null }),
-    planCourseIds.length
-      ? supabase.from("plan_courses").select("id, course_id").in("id", planCourseIds)
-      : Promise.resolve({ data: [], error: null }),
+  const cohortIds = new Set(params.cohortIds.filter(Boolean));
+  if (!cohortIds.size) return [];
+  const college = params.collegeId;
+  const allGroups = await readAllReportRows((from, to) =>
     supabase
-      .from("teaching_assignments")
-      .select("delivery_group_id, instructor_id, weekly_hours, assigned_component_hours, is_active")
-      .eq("college_id", params.collegeId)
-      .in("delivery_group_id", groupIds)
-      .or("is_active.is.null,is_active.eq.true"),
-  ]);
-  for (const res of [components, planCourses, assignments]) if (res.error) throw res.error;
-
-  const courseIds = [
-    ...new Set(((planCourses.data ?? []) as { course_id: string }[]).map((p) => p.course_id)),
-  ].filter(Boolean);
-  const instructorIds = [
-    ...new Set(
-      ((assignments.data ?? []) as { instructor_id: string | null }[])
-        .map((a) => a.instructor_id)
-        .filter(Boolean) as string[],
+      .from("delivery_groups")
+      .select(
+        "id, cohort_id, group_code, group_number, expected_students, component_id, plan_course_id, active, is_obsolete",
+      )
+      .eq("college_id", college)
+      .or("active.is.null,active.eq.true")
+      .or("is_obsolete.is.null,is_obsolete.eq.false")
+      .order("id")
+      .range(from, to),
+  );
+  const groups = allGroups.filter((g) => cohortIds.has(g.cohort_id));
+  if (!groups.length) return [];
+  // Fetch all pages of scoped references: a server limit must not silently drop a
+  // co-teacher or a component and change the report's demand or instructor label.
+  const [components, planCourses, assignments, courses, instructors] = await Promise.all([
+    readAllReportRows((from, to) =>
+      supabase
+        .from("plan_course_components")
+        .select("id, component_type, weekly_contact_hours")
+        .eq("college_id", college)
+        .order("id")
+        .range(from, to),
     ),
-  ];
-
-  const [courses, instructors] = await Promise.all([
-    courseIds.length
-      ? supabase.from("courses").select("id, code, name").in("id", courseIds)
-      : Promise.resolve({ data: [], error: null }),
-    instructorIds.length
-      ? supabase.from("instructors").select("id, full_name").in("id", instructorIds)
-      : Promise.resolve({ data: [], error: null }),
-  ]);
-  for (const res of [courses, instructors]) if (res.error) throw res.error;
-
-  const componentById = new Map(
-    (
-      (components.data ?? []) as {
-        id: string;
-        component_type: string | null;
-        weekly_contact_hours: number | null;
-      }[]
-    ).map((c) => [c.id, c]),
-  );
-  const courseById = new Map(
-    ((courses.data ?? []) as { id: string; code: string | null; name: string | null }[]).map(
-      (c) => [c.id, c],
+    readAllReportRows((from, to) =>
+      supabase
+        .from("plan_courses")
+        .select("id, course_id")
+        .eq("college_id", college)
+        .order("id")
+        .range(from, to),
     ),
-  );
-  const courseIdByPlanCourse = new Map(
-    ((planCourses.data ?? []) as { id: string; course_id: string }[]).map((p) => [
-      p.id,
-      p.course_id,
-    ]),
-  );
-  const instructorById = new Map(
-    ((instructors.data ?? []) as { id: string; full_name: string | null }[]).map((i) => [i.id, i]),
-  );
-  const assignmentByGroup = new Map<
-    string,
-    {
-      instructor_id: string | null;
-      weekly_hours: number | null;
-      assigned_component_hours: number | null;
-    }
-  >();
-  for (const a of (assignments.data ?? []) as {
-    delivery_group_id: string | null;
-    instructor_id: string | null;
-    weekly_hours: number | null;
-    assigned_component_hours: number | null;
-  }[]) {
-    if (a.delivery_group_id && !assignmentByGroup.has(a.delivery_group_id)) {
-      assignmentByGroup.set(a.delivery_group_id, a);
-    }
+    readAllReportRows((from, to) =>
+      supabase
+        .from("teaching_assignments")
+        .select("id, delivery_group_id, instructor_id")
+        .eq("college_id", college)
+        .or("is_active.is.null,is_active.eq.true")
+        .order("id")
+        .range(from, to),
+    ),
+    readAllReportRows((from, to) =>
+      supabase
+        .from("courses")
+        .select("id, code, name")
+        .eq("college_id", college)
+        .order("id")
+        .range(from, to),
+    ),
+    readAllReportRows((from, to) =>
+      supabase
+        .from("instructors")
+        .select("id, full_name")
+        .eq("college_id", college)
+        .order("id")
+        .range(from, to),
+    ),
+  ]);
+  const componentById = new Map(components.map((c) => [c.id, c]));
+  const planCourseById = new Map(planCourses.map((c) => [c.id, c]));
+  const courseById = new Map(courses.map((c) => [c.id, c]));
+  const instructorById = new Map(instructors.map((i) => [i.id, i.full_name]));
+  const teachersByGroup = new Map<string, Set<string>>();
+  for (const assignment of assignments) {
+    if (!assignment.delivery_group_id || !assignment.instructor_id) continue;
+    const names = teachersByGroup.get(assignment.delivery_group_id) ?? new Set<string>();
+    names.add(instructorById.get(assignment.instructor_id) ?? "محاضر غير متاح");
+    teachersByGroup.set(assignment.delivery_group_id, names);
   }
-
-  return rows.map((r): DeliveryGroupCatalogRow => {
-    const component = r.component_id ? componentById.get(r.component_id) : undefined;
-    const course = r.plan_course_id
-      ? courseById.get(courseIdByPlanCourse.get(r.plan_course_id) ?? "")
-      : undefined;
-    const assignment = assignmentByGroup.get(r.id);
-    const requiredHours = Number(
-      assignment?.assigned_component_hours ??
-        assignment?.weekly_hours ??
-        component?.weekly_contact_hours ??
-        0,
-    );
+  return groups.map((group) => {
+    const component = group.component_id ? componentById.get(group.component_id) : undefined;
+    const planCourse = group.plan_course_id ? planCourseById.get(group.plan_course_id) : undefined;
+    const course = planCourse ? courseById.get(planCourse.course_id) : undefined;
+    // Demand belongs to the component, never the first co-teacher's allocation.
+    const requiredHours = Number(component?.weekly_contact_hours);
+    if (
+      !component ||
+      component.weekly_contact_hours == null ||
+      !Number.isFinite(requiredHours) ||
+      requiredHours < 0
+    )
+      throw new Error("ساعات مكوّن مجموعة التدريس غير مكتملة؛ راجع الخطة قبل اعتماد التغطية");
     return {
-      id: r.id,
-      cohortId: r.cohort_id,
-      groupCode: r.group_code ?? null,
-      groupNumber: r.group_number ?? null,
-      componentType: component?.component_type ?? null,
+      id: group.id,
+      cohortId: group.cohort_id,
+      groupCode: group.group_code,
+      groupNumber: group.group_number,
+      componentType: component.component_type,
       courseCode: course?.code ?? null,
       courseName: course?.name ?? null,
-      expectedStudents: r.expected_students ?? null,
-      requiredHours: Number.isFinite(requiredHours) ? requiredHours : 0,
-      instructorName: assignment?.instructor_id
-        ? (instructorById.get(assignment.instructor_id)?.full_name ?? null)
-        : null,
+      expectedStudents: group.expected_students,
+      requiredHours,
+      instructorName: [...(teachersByGroup.get(group.id) ?? [])].join("، ") || null,
     };
   });
 }

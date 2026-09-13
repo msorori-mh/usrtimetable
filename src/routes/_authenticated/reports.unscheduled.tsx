@@ -1,238 +1,142 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useActiveCollege } from "@/hooks/use-colleges";
+import { useReportContext } from "@/hooks/reports/useReportContext";
 import { ReportShell } from "@/components/reports/report-shell";
-import { ReportFilterBar, ReportFilterField } from "@/components/reports/report-filter-bar";
+import { ReportFilters } from "@/components/reports/report-filters";
 import { ReportSection, ReportDataTable } from "@/components/reports/report-section";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+  buildDeliveryGroupCoverage,
+  componentTypeLabel,
+} from "@/lib/reports/program-timetable-coverage";
+import { fetchCohortDeliveryGroupCatalog } from "@/lib/reports/queries/delivery-group-coverage-queries";
 import { filterRowsBySearch } from "@/lib/reports/search";
+import { readAllReportRows } from "@/lib/reports/read-all";
 
 export const Route = createFileRoute("/_authenticated/reports/unscheduled")({
-  head: () => ({ meta: [{ title: "تقرير المحاضرات غير المجدوَلة" }] }),
+  head: () => ({ meta: [{ title: "المحاضرات غير المجدولة" }] }),
   component: Page,
 });
-
+const columns = [
+  { key: "course", label: "المقرر" },
+  { key: "cohort", label: "الدفعة" },
+  { key: "group", label: "المجموعة" },
+  { key: "required", label: "ساعات مطلوبة", numeric: true },
+  { key: "scheduled", label: "ساعات مجدولة", numeric: true },
+  { key: "missing", label: "ساعات ناقصة", numeric: true },
+  { key: "component", label: "النوع", secondary: true },
+  { key: "instructor", label: "المحاضر", secondary: true },
+  { key: "reason", label: "حالة التغطية", secondary: true },
+];
 function Page() {
-  const { active } = useActiveCollege();
-  const [versionId, setVersionId] = useState("");
+  const ctx = useReportContext({ fixedStudySystem: "all" });
   const [search, setSearch] = useState("");
-
-  const { data: versions, error: versionsError } = useQuery({
-    queryKey: ["un-vers", active?.id],
-    enabled: !!active,
-    queryFn: async () =>
-      (
-        await supabase
-          .from("schedule_versions")
-          .select("id, name, status, academic_term_id")
-          .eq("college_id", active!.id)
-          .order("created_at", { ascending: false })
-      ).data ?? [],
-  });
-
-  const version = useMemo(
-    () => (versions ?? []).find((v) => v.id === versionId),
-    [versions, versionId],
-  );
-
-  const {
-    data: offerings,
-    isLoading: oLoad,
-    error: offeringsError,
-    refetch,
-  } = useQuery({
-    queryKey: ["un-off", active?.id, version?.academic_term_id],
-    enabled: !!active && !!version,
+  const query = useQuery({
+    queryKey: ["report-unscheduled-v2", ctx.collegeId, ctx.termId, ctx.versionId],
+    enabled: !!ctx.collegeId && !!ctx.termId && !!ctx.selectedVersion,
     queryFn: async () => {
-      const { data } = await supabase
-        .from("course_offerings")
-        .select(
-          `id, plan_course_id, courses(name, code),
-          plan_courses(lectures_per_week, labs_per_week, lecture_session_duration, lab_session_duration)`,
-        )
-        .eq("college_id", active!.id)
-        .eq("term_id", version!.academic_term_id);
-      return data ?? [];
+      const collegeId = ctx.collegeId!;
+      const [cohorts, sessions] = await Promise.all([
+        readAllReportRows((from, to) =>
+          supabase
+            .from("academic_cohorts")
+            .select("id, code")
+            .eq("college_id", collegeId)
+            .eq("term_id", ctx.termId!)
+            .or("active.is.null,active.eq.true")
+            .order("id")
+            .range(from, to),
+        ),
+        readAllReportRows((from, to) =>
+          supabase
+            .from("schedule_sessions")
+            .select("id, delivery_group_id, day_of_week, start_time, end_time")
+            .eq("college_id", collegeId)
+            .eq("schedule_version_id", ctx.selectedVersion!.id)
+            .or("replaced_by_split.is.null,replaced_by_split.eq.false")
+            .order("id")
+            .range(from, to),
+        ),
+      ]);
+      const groups = await fetchCohortDeliveryGroupCatalog({
+        collegeId,
+        cohortIds: cohorts.map((c) => c.id),
+      });
+      const coverage = buildDeliveryGroupCoverage({
+        groups,
+        sessions,
+        cohortLabels: new Map(cohorts.map((c) => [c.id, c.code ?? "—"])),
+      });
+      return {
+        totalGroups: groups.length,
+        rows: coverage.rows
+          .filter((g) => g.scheduledHours + 0.01 < g.requiredHours)
+          .map((g) => ({
+            course: [g.courseCode, g.courseName].filter(Boolean).join(" — "),
+            cohort: g.cohortLabel ?? "—",
+            group: g.groupCode ?? "—",
+            component: componentTypeLabel(g.componentType),
+            required: g.requiredHours,
+            scheduled: g.scheduledHours,
+            missing: Number(Math.max(0, g.requiredHours - g.scheduledHours).toFixed(2)),
+            instructor: g.instructorName ?? "غير مسند",
+            reason: !g.instructorName
+              ? "لم يُسند محاضر"
+              : g.scheduledHours
+                ? "تغطية جزئية — راجع الجدولة"
+                : "لم تُسكن المجموعة — راجع الجدولة",
+          })),
+      };
     },
   });
-
-  const { data: sessions } = useQuery({
-    queryKey: ["un-sess", active?.id, versionId],
-    enabled: !!active && !!versionId,
-    queryFn: async () =>
-      (
-        await supabase
-          .from("schedule_sessions")
-          .select("course_offering_id, session_type")
-          .eq("college_id", active!.id)
-          .eq("schedule_version_id", versionId)
-      ).data ?? [],
-  });
-
-  const { data: latestRun } = useQuery({
-    queryKey: ["un-run", versionId],
-    enabled: !!versionId,
-    queryFn: async () =>
-      (
-        await supabase
-          .from("auto_schedule_runs")
-          .select("unplaced")
-          .eq("schedule_version_id", versionId)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle()
-      ).data,
-  });
-
-  const reasonsMap = useMemo(() => {
-    const m = new Map<string, string>();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const arr = (latestRun?.unplaced as any[]) ?? [];
-    for (const u of arr) {
-      const key = `${u.course_offering_id ?? u.offering_id ?? ""}|${u.session_type ?? ""}`;
-      if (key && !m.has(key)) m.set(key, u.reason_ar ?? u.reason ?? "");
-    }
-    return m;
-  }, [latestRun]);
-
-  const allRows = useMemo(() => {
-    const counts = new Map<string, { lec: number; lab: number }>();
-    for (const s of sessions ?? []) {
-      const c = counts.get(s.course_offering_id) ?? { lec: 0, lab: 0 };
-      if (s.session_type === "lab") c.lab += 1;
-      else c.lec += 1;
-      counts.set(s.course_offering_id, c);
-    }
-    const out: Array<Record<string, unknown>> = [];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    for (const o of (offerings ?? []) as any[]) {
-      const pc = o.plan_courses;
-      const reqLec = Number(pc?.lectures_per_week ?? 0);
-      const reqLab = Number(pc?.labs_per_week ?? 0);
-      const c = counts.get(o.id) ?? { lec: 0, lab: 0 };
-      const missLec = Math.max(0, reqLec - c.lec);
-      const missLab = Math.max(0, reqLab - c.lab);
-      if (missLec + missLab === 0) continue;
-      const course = `${o.courses?.code ?? ""} ${o.courses?.name ?? ""}`;
-      if (missLec > 0)
-        out.push({
-          course,
-          session_type: "نظري",
-          required: reqLec,
-          scheduled: c.lec,
-          missing: missLec,
-          reason: reasonsMap.get(`${o.id}|lecture`) ?? "",
-        });
-      if (missLab > 0)
-        out.push({
-          course,
-          session_type: "عملي",
-          required: reqLab,
-          scheduled: c.lab,
-          missing: missLab,
-          reason: reasonsMap.get(`${o.id}|lab`) ?? "",
-        });
-    }
-    return out;
-  }, [offerings, sessions, reasonsMap]);
-
-  // Search is presentation-only: identical keys and values, fewer visible rows.
-  const rows = useMemo(() => filterRowsBySearch(allRows, search), [allRows, search]);
-
-  const headers = [
-    { key: "course", label: "المقرر" },
-    { key: "session_type", label: "النوع" },
-    { key: "required", label: "المطلوب" },
-    { key: "scheduled", label: "المجدوَل" },
-    { key: "missing", label: "الناقص" },
-    { key: "reason", label: "السبب" },
-  ];
-
-  const totalMissing = rows.reduce((s, r) => s + Number(r.missing ?? 0), 0);
-  const totalRequired = rows.reduce((s, r) => s + Number(r.required ?? 0), 0);
-  const affectedCourses = new Set(rows.map((r) => String(r.course))).size;
-
+  const rows = filterRowsBySearch(query.data?.rows ?? [], search);
   return (
     <ReportShell
-      title="تقرير المحاضرات غير المجدوَلة"
-      description="المحاضرات المطلوبة وفق الخطط مقابل المجدوَلة فعليًا في النسخة المختارة."
-      filename="unscheduled_sessions"
+      title="المحاضرات غير المجدولة"
+      description="الساعات المتبقية لكل مجموعة تدريس نشطة في الفصل والنسخة المختارين، بما يشمل التغطية الجزئية."
+      reportContext={ctx}
       rows={rows}
-      headers={headers}
-      isLoading={oLoad}
-      error={versionsError ?? offeringsError}
-      onRetry={() => void refetch()}
-      notReadyMessage={versionId ? undefined : "اختر نسخة جدول لعرض النواقص."}
-      emptyMessage={search ? "لا نتائج مطابقة للبحث." : "كل المحاضرات مجدوَلة."}
+      headers={columns}
+      filename="unscheduled_groups"
+      isLoading={ctx.isLoading || query.isLoading}
+      error={ctx.error ?? query.error}
+      onRetry={() => void query.refetch()}
+      notReadyMessage={ctx.selectedVersion ? undefined : "اختر فصلًا ونسخة جدول لعرض النواقص."}
+      emptyMessage={
+        search
+          ? "لا نتائج مطابقة للبحث."
+          : query.data?.totalGroups
+            ? "اكتملت تغطية ساعات مجموعات التدريس النشطة."
+            : "لم تُجهز مجموعات التدريس لهذا الفصل بعد."
+      }
       kpis={[
-        { label: "بنود ناقصة", value: rows.length },
-        { label: "حصص ناقصة", value: totalMissing, tone: totalMissing > 0 ? "danger" : "neutral" },
-        { label: "حصص مطلوبة", value: totalRequired },
-        { label: "مقررات متأثرة", value: affectedCourses },
+        { label: "مجموعات ناقصة", value: rows.length },
+        {
+          label: "ساعات ناقصة",
+          value: rows.reduce((sum, r) => sum + r.missing, 0).toFixed(2),
+          tone: "warning",
+        },
+        { label: "مجموعات مفحوصة", value: query.data?.totalGroups ?? 0 },
       ]}
       filters={
-        <ReportFilterBar
-          search={{ value: search, onChange: setSearch, placeholder: "ابحث بالمقرر أو السبب…" }}
-          activeSummary={[
-            `النسخة: ${version ? `${version.name} — ${version.status}` : "غير محددة"}`,
-          ]}
+        <ReportFilters
+          context={ctx}
+          studySystem={false}
+          search={{
+            value: search,
+            onChange: setSearch,
+            placeholder: "ابحث بالمقرر أو الدفعة أو المجموعة أو المحاضر…",
+          }}
           onClear={() => setSearch("")}
-          basic={
-            <ReportFilterField label="نسخة الجدول" htmlFor="un-version">
-              <Select value={versionId} onValueChange={setVersionId}>
-                <SelectTrigger id="un-version" aria-label="نسخة الجدول">
-                  <SelectValue placeholder="اختر نسخة" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(versions ?? []).map((v) => (
-                    <SelectItem key={v.id} value={v.id}>
-                      {v.name} — {v.status}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </ReportFilterField>
-          }
         />
       }
     >
       <ReportSection
-        title="البنود الناقصة"
-        count={rows.length}
-        hint="لكل مقرر ونوع حصة: المطلوب مقابل المجدوَل وسبب عدم الجدولة من آخر تشغيل آلي."
-        bodyClassName="p-0"
+        title="نواقص التغطية"
+        hint="حالة التغطية تصف البيانات الحالية؛ أسباب تعذر التسكين التفصيلية تُراجع في صفحة الجدولة."
       >
-        <ReportDataTable
-          rows={rows}
-          caption="المحاضرات غير المجدولة"
-          columns={[
-            { key: "course", label: "المقرر" },
-            { key: "session_type", label: "النوع" },
-            { key: "required", label: "المطلوب", numeric: true },
-            { key: "scheduled", label: "المجدوَل", numeric: true },
-            {
-              key: "missing",
-              label: "الناقص",
-              numeric: true,
-              render: (r) => <Badge variant="destructive">{String(r.missing)}</Badge>,
-            },
-            {
-              key: "reason",
-              label: "السبب",
-              secondary: true,
-              className: "text-xs text-muted-foreground",
-            },
-          ]}
-        />
+        <ReportDataTable rows={rows} columns={columns} caption="الساعات غير المجدولة لكل مجموعة" />
       </ReportSection>
     </ReportShell>
   );

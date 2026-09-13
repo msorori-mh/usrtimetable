@@ -28,7 +28,7 @@ describe("report print identity", () => {
   test("official report header renders a real verification QR from a URL", () => {
     expect(header.includes("PrintQrCode")).toBe(true);
     expect(header.includes("qrUrl")).toBe(true);
-    expect(header.includes('title="رابط التحقق"')).toBe(true);
+    expect(header.includes('title="رابط التقرير"')).toBe(true);
   });
 
   test("header keeps university, college, title, term, version and generation data", () => {
@@ -48,7 +48,9 @@ describe("report print identity", () => {
 
   test("shell supplies the current report URL to the QR and an A4 RTL page box", () => {
     expect(shell.includes("window.location.href")).toBe(true);
-    expect(shell.includes('printPageStyleCss("A4", "portrait")')).toBe(true);
+    expect(
+      shell.includes('printPageStyleCss("A4", headers.length > 7 ? "landscape" : "portrait")'),
+    ).toBe(true);
     expect(shell.includes('dir="rtl"')).toBe(true);
   });
 

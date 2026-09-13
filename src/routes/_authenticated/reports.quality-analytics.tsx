@@ -54,6 +54,7 @@ function QualityAnalyticsPage() {
           .select("id, name, status")
           .eq("college_id", active!.id)
           .order("created_at", { ascending: false })
+          .throwOnError()
       ).data ?? [],
   });
 
@@ -71,7 +72,8 @@ function QualityAnalyticsPage() {
         )
         .eq("college_id", active!.id)
         .eq("schedule_version_id", effectiveVersion)
-        .order("id");
+        .order("id")
+        .throwOnError();
       if (error) throw error;
       return (data ?? []) as AnalyticsSession[];
     },
@@ -86,6 +88,7 @@ function QualityAnalyticsPage() {
           .from("rooms")
           .select("id, capacity, room_type_id, name")
           .eq("college_id", active!.id)
+          .throwOnError()
       ).data ?? [],
   });
 
@@ -100,7 +103,8 @@ function QualityAnalyticsPage() {
         .eq("schedule_version_id", effectiveVersion)
         .order("created_at", { ascending: false })
         .limit(1)
-        .maybeSingle();
+        .maybeSingle()
+        .throwOnError();
       return data;
     },
   });

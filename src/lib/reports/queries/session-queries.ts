@@ -1,3 +1,4 @@
+import { readAllReportRows } from "@/lib/reports/read-all";
 import { supabase } from "@/integrations/supabase/client";
 import { applyStudySystemFilter, assertSingleVersion } from "@/lib/reports/filters";
 import type { ReportStudySystem } from "@/lib/reports/types";
@@ -75,8 +76,7 @@ async function fetchFlatThenHydrate(params: {
   if (params.deliveryGroupId) q = q.eq("delivery_group_id", params.deliveryGroupId);
   if (params.roomId) q = q.eq("room_id", params.roomId);
 
-  const { data, error } = await q;
-  if (error) throw error;
+  const data = await readAllReportRows((from, to) => q.order("id").range(from, to));
 
   let rows = await hydrateWorkspaceSessions((data ?? []) as WorkspaceSessionFlatRow[]);
 
@@ -150,8 +150,7 @@ export async function fetchSessionsForVersion<T = Record<string, unknown>>(
   if (params.deliveryGroupId) q = q.eq("delivery_group_id", params.deliveryGroupId);
   if (params.roomId) q = q.eq("room_id", params.roomId);
 
-  const { data, error } = await q;
-  if (error) throw error;
+  const data = await readAllReportRows((from, to) => q.order("id").range(from, to));
   return (data ?? []) as T[];
 }
 
@@ -285,8 +284,7 @@ export async function fetchRoomUtilizationSessions(
 
   q = applyStudySystemFilter(q, params.studySystem);
 
-  const { data, error } = await q;
-  if (error) throw error;
+  const data = await readAllReportRows((from, to) => q.order("id").range(from, to));
   return (data ?? []) as RoomUtilizationSession[];
 }
 
