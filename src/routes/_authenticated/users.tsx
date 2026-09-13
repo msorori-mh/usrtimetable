@@ -142,6 +142,20 @@ function UsersPage() {
       if (on) {
         const { error } = await supabase.from("user_roles").insert({ user_id: userId, role });
         if (error && !error.message.includes("duplicate")) throw error;
+        // «إدارة الشؤون الأكاديمية» covers every college: assign them all here
+        // too (a database trigger is the authoritative safety net).
+        if (assignsAllColleges(role as never)) {
+          const all = (await supabase.from("colleges").select("id")).data ?? [];
+          if (all.length > 0) {
+            const { error: ucErr } = await supabase
+              .from("user_colleges")
+              .upsert(
+                all.map((c) => ({ user_id: userId, college_id: c.id })),
+                { onConflict: "user_id,college_id", ignoreDuplicates: true },
+              );
+            if (ucErr && !ucErr.message.includes("duplicate")) throw ucErr;
+          }
+        }
       } else {
         const { error } = await supabase
           .from("user_roles")
@@ -156,6 +170,7 @@ function UsersPage() {
         entityId: userId,
         details: { role, on },
       });
+
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["all-users-admin"] });
