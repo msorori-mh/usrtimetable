@@ -198,7 +198,7 @@ export function teachingAssignmentsExportDataset(input: {
       { key: "course_name", label: "اسم المقرر", value: (r) => r.course_name },
       {
         key: "component_type",
-        label: "نوع المكوّن",
+        label: "نوع المحاضرة",
         value: (r) => input.componentLabel(r.component_type),
       },
       { key: "group", label: "المجموعة", value: (r) => r.group_number ?? r.group_code },
@@ -214,7 +214,7 @@ export function teachingAssignmentsExportDataset(input: {
             .filter(Boolean)
             .join("، "),
       },
-      { key: "component_hours", label: "ساعات المكوّن", value: (r) => r.component_hours },
+      { key: "component_hours", label: "ساعات المحاضرة", value: (r) => r.component_hours },
       { key: "assigned_hours_total", label: "ساعات مسندة", value: (r) => r.assigned_hours_total },
       { key: "remaining_hours", label: "ساعات متبقية", value: (r) => r.remaining_hours },
       {
@@ -318,7 +318,7 @@ export function planContentsExportDataset(input: {
       { key: "is_required", label: "إلزامي", value: (r) => r.is_required },
       {
         key: "component_type",
-        label: "نوع المكوّن",
+        label: "نوع المحاضرة",
         value: (r) => (r.component_type ? input.componentLabel(r.component_type) : null),
       },
       { key: "weekly_contact_hours", label: "ساعات أسبوعية", value: (r) => r.weekly_contact_hours },
@@ -491,7 +491,7 @@ export function deliveryGroupsExportDataset(input: {
     columns: [
       {
         key: "component_type",
-        label: "نوع المكوّن",
+        label: "نوع المحاضرة",
         value: (r) => (r.component_type ? input.componentLabel(r.component_type) : null),
       },
       { key: "group", label: "رقم المجموعة", value: (r) => r.group_number ?? r.group_code },

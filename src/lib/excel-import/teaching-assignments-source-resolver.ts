@@ -348,7 +348,7 @@ function matchComponentsByHours(
 ): ComponentMatch {
   const assignable = components.filter(isAssignableComponent);
   if (assignable.length === 0) {
-    return { kind: "none", message: "لا توجد مكوّنات قابلة للجدولة" };
+    return { kind: "none", message: "لا توجد محاضرات قابلة للجدولة" };
   }
   if (assignable.length === 1) {
     if (
@@ -357,7 +357,7 @@ function matchComponentsByHours(
     ) {
       return {
         kind: "ambiguous",
-        message: `تعارض ساعات المصدر (${Number(totalHours)}) مع ساعات المكوّن (${Number(assignable[0].weekly_contact_hours)})`,
+        message: `تعارض ساعات المصدر (${Number(totalHours)}) مع ساعات المحاضرة (${Number(assignable[0].weekly_contact_hours)})`,
       };
     }
     return { kind: "single", componentIds: [assignable[0].id] };
@@ -365,7 +365,7 @@ function matchComponentsByHours(
   if (totalHours === null) {
     return {
       kind: "ambiguous",
-      message: "عدة مكوّنات بدون ساعات كافية للتمييز",
+      message: "عدة محاضرات بدون ساعات كافية للتمييز",
     };
   }
   const hour = Number(totalHours);
@@ -378,11 +378,11 @@ function matchComponentsByHours(
     return { kind: "expand_all", componentIds: assignable.map((c) => c.id) };
   }
   if (exact.length > 1) {
-    return { kind: "ambiguous", message: "عدة مكوّنات بنفس الساعات" };
+    return { kind: "ambiguous", message: "عدة محاضرات بنفس الساعات" };
   }
   return {
     kind: "ambiguous",
-    message: `تعارض مطابقة الساعات (${hour}) مع المكوّنات`,
+    message: `تعارض مطابقة الساعات (${hour}) مع المحاضرات`,
   };
 }
 

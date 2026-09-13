@@ -182,7 +182,7 @@ export function validatePlanRowRoomTypes(input: {
         componentType: component.component_type,
         fieldName: field,
         header,
-        message: `المقرر ${input.courseCode}: المكوّن ${component.component_type} يتطلب ${header} (ساعات أسبوعية=${component.weekly_contact_hours})`,
+        message: `المقرر ${input.courseCode}: نوع المحاضرة ${component.component_type} يتطلب ${header} (ساعات أسبوعية=${component.weekly_contact_hours})`,
         rawValue: rawCode == null ? undefined : String(rawCode),
       });
       continue;
@@ -195,7 +195,7 @@ export function validatePlanRowRoomTypes(input: {
         componentType: component.component_type,
         fieldName: field,
         header,
-        message: `المقرر ${input.courseCode}: المكوّن ${component.component_type} — ${header} غير معروف: ${rawCode}`,
+        message: `المقرر ${input.courseCode}: نوع المحاضرة ${component.component_type} — ${header} غير معروف: ${rawCode}`,
         rawValue: String(rawCode),
       });
       continue;
@@ -208,7 +208,7 @@ export function validatePlanRowRoomTypes(input: {
         componentType: component.component_type,
         fieldName: field,
         header,
-        message: `المقرر ${input.courseCode}: المكوّن ${component.component_type} — ${header} (${rawCode}) لا يتبع نفس الكلية`,
+        message: `المقرر ${input.courseCode}: نوع المحاضرة ${component.component_type} — ${header} (${rawCode}) لا يتبع نفس الكلية`,
         rawValue: String(rawCode),
       });
       continue;
@@ -221,7 +221,7 @@ export function validatePlanRowRoomTypes(input: {
         componentType: component.component_type,
         fieldName: field,
         header,
-        message: `المقرر ${input.courseCode}: المكوّن ${component.component_type} — نوع القاعة ${rawCode} غير نشط`,
+        message: `المقرر ${input.courseCode}: نوع المحاضرة ${component.component_type} — نوع القاعة ${rawCode} غير نشط`,
         rawValue: String(rawCode),
       });
       continue;
@@ -234,7 +234,7 @@ export function validatePlanRowRoomTypes(input: {
         componentType: component.component_type,
         fieldName: field,
         header,
-        message: `المقرر ${input.courseCode}: المكوّن ${component.component_type} — نوع القاعة ${rawCode} سعته الافتراضية ≤ 0`,
+        message: `المقرر ${input.courseCode}: نوع المحاضرة ${component.component_type} — نوع القاعة ${rawCode} سعته الافتراضية ≤ 0`,
         rawValue: String(rawCode),
       });
       continue;
@@ -253,7 +253,7 @@ export function validatePlanRowRoomTypes(input: {
         componentType: component.component_type,
         fieldName: field,
         header,
-        message: `المقرر ${input.courseCode}: المكوّن ${component.component_type} — ${header} (${rawCode}) حالة=${refState}`,
+        message: `المقرر ${input.courseCode}: نوع المحاضرة ${component.component_type} — ${header} (${rawCode}) حالة=${refState}`,
         rawValue: String(rawCode),
       });
       continue;
