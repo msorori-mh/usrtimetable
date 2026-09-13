@@ -70,6 +70,8 @@ export interface PrintSessionLike {
   room_id?: string | null;
   cohort_id?: string | null;
   delivery_group_id?: string | null;
+  /** Current headcount stored on this scheduled session. */
+  expected_students?: number | null;
   updated_at?: string | null;
   course_offerings?: {
     program_id?: string | null;
