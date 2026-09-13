@@ -66,15 +66,33 @@ export function ReportOfficialHeader({
 
   return (
     <Card className="report-official-header border-primary/20 bg-card p-4 border-t-[3px] border-t-[var(--usr-gold)] print:shadow-none print:border print:break-inside-avoid">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/60 pb-3 mb-3">
-        <div className="space-y-1">
-          <p className="text-sm font-semibold text-primary">{REPORT_UNIVERSITY_NAME_AR}</p>
-          <p className="text-base font-bold">{collegeName || REPORT_COLLEGE_NAME_FALLBACK_AR}</p>
+      <div className="print-header-identity-band border-b border-border/60 pb-3 mb-3">
+        <div className="print-header-institution">
+          <img
+            src={USR_UNIVERSITY_LOGO_SRC}
+            alt={REPORT_UNIVERSITY_NAME_AR}
+            className="print-header-logo"
+          />
+          <div className="print-header-institution-copy">
+            <p className="print-header-university">{REPORT_UNIVERSITY_NAME_AR}</p>
+            <p className="print-header-college">
+              {collegeName || REPORT_COLLEGE_NAME_FALLBACK_AR}
+            </p>
+          </div>
         </div>
-        <div className="text-left text-xs text-muted-foreground print:text-foreground">
-          <p>تاريخ التوليد</p>
-          <p className="font-medium">{formatGeneratedAt(generatedAt)}</p>
+        <div className="print-header-title-block">
+          <p className="print-header-kicker">تقرير رسمي</p>
+          <h2>{reportTitle}</h2>
+          <p className="text-xs text-muted-foreground print:text-foreground">
+            تاريخ التوليد: {formatGeneratedAt(generatedAt)}
+          </p>
         </div>
+        {qrUrl && (
+          <div className="print-header-verification">
+            <PrintQrCode value={qrUrl} size={72} title="رابط التحقق" />
+            <span>رابط التحقق</span>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-2 mb-3">
