@@ -53,8 +53,9 @@ describe("shared report visual system", () => {
   test("official print header keeps logo, QR and university identity", () => {
     const header = readFileSync("src/components/reports/report-official-header.tsx", "utf8");
     expect(header).toContain("PrintQrCode");
-    expect(header).toContain("usr-logo");
-    expect(header).toContain("جامعة إقليم سبأ");
+    expect(header).toContain("USR_UNIVERSITY_LOGO_SRC");
+    expect(header).toContain("REPORT_UNIVERSITY_NAME_AR");
+    expect(header).toContain("print-header-college");
   });
 
   test("KPI strip is screen-only and capped at five indicators", () => {
