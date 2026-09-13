@@ -87,8 +87,11 @@ function Page() {
   const sessions = bundle?.sessions ?? EMPTY_SESSIONS;
   const pages = useMemo(
     () =>
-      groupCurrentSchedulePages(sessions, { collegeId: ctx.collegeId ?? "", studySystem: "all" }),
-    [sessions, ctx.collegeId],
+      groupCurrentSchedulePages(sessions, {
+        collegeId: ctx.collegeId ?? "",
+        studySystem: ctx.studySystem,
+      }),
+    [sessions, ctx.collegeId, ctx.studySystem],
   );
   const rows = useMemo(() => buildExportRows(pages, bundle?.labels), [pages, bundle?.labels]);
   const printedSessions = countPagedSessions(pages);
