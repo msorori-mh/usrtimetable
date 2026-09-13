@@ -622,8 +622,16 @@ function DataReadinessPage() {
                 <CalendarCheck className="h-4 w-4" /> توفّر المحاضرين حسب الفئة
               </h2>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                {(["permanent", "external", "other_college"] as InstructorCategory[]).map((c) => {
-                  const v = data.availabilityByCategory[c];
+                {/* external + other_college share one display label; show a single merged card */}
+                {(["permanent", "external"] as InstructorCategory[]).map((c) => {
+                  const byCat = data.availabilityByCategory;
+                  const v =
+                    c === "external"
+                      ? {
+                          total: byCat.external.total + byCat.other_college.total,
+                          configured: byCat.external.configured + byCat.other_college.configured,
+                        }
+                      : byCat[c];
                   const isPerm = c === "permanent";
                   const missing = v.total - v.configured;
                   const tone = isPerm
