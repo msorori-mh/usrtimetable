@@ -33,6 +33,8 @@ import {
   type RoomRequirement,
 } from "@/lib/auto-scheduler/session-plan";
 import { PRACTICAL_ROOM_FALLBACK_NOTE_AR } from "@/lib/scheduling/room-type-policy";
+import { planRepair, type RepairMove, type RepairPlan } from "@/lib/auto-scheduler/repair";
+import { moveOrRescheduleScheduleSession } from "@/lib/schedule-builder/session-move-rpc";
 import {
   buildPartitionIndex,
   makeSharedStudentsPredicate,
@@ -105,6 +107,127 @@ async function loadPartitionIndex(input: {
 
 const pad = (value: number) => String(value).padStart(2, "0");
 const fromMinutes = (value: number) => `${pad(Math.floor(value / 60))}:${pad(value % 60)}:00`;
+
+/** Arabic change reason recorded on every repair relocation. */
+export const REPAIR_CHANGE_REASON_AR = "إعادة ترتيب محدودة لإكمال الجلسات الناقصة (إصلاح آلي)";
+
+/** Latest schedule-version stamp, so a repair move does not make the create RPC stale. */
+async function readVersionUpdatedAt(scheduleVersionId: string, fallback: string): Promise<string> {
+  const { data } = await supabase
+    .from("schedule_versions")
+    .select("updated_at")
+    .eq("id", scheduleVersionId)
+    .maybeSingle();
+  return (data?.updated_at as string | undefined) ?? fallback;
+}
+
+export type RepairApplyResult = {
+  ok: boolean;
+  versionUpdatedAt: string;
+  appliedMoves: RepairMove[];
+  session: { id?: string } | null;
+  reason: string | null;
+  rolledBack: boolean;
+};
+
+/**
+ * Fail-safe application of a repair plan: relocate the blockers through the
+ * guarded move RPC, then create the missing session through the guarded V2 RPC.
+ * Any failure rolls every relocation back to its original placement, so the
+ * draft is never left half-moved.
+ */
+export async function applyRepairPlan(input: {
+  scheduleVersionId: string;
+  teachingAssignmentId: string;
+  plan: RepairPlan;
+  versionUpdatedAt: string;
+  note: string;
+  moveSession?: typeof moveOrRescheduleScheduleSession;
+  createSession?: typeof createScheduleSessionFromAssignmentV2;
+  readVersion?: (scheduleVersionId: string, fallback: string) => Promise<string>;
+}): Promise<RepairApplyResult> {
+  const move = input.moveSession ?? moveOrRescheduleScheduleSession;
+  const create = input.createSession ?? createScheduleSessionFromAssignmentV2;
+  const readVersion = input.readVersion ?? readVersionUpdatedAt;
+  const applied: Array<{ plan: RepairMove; updatedAt: string | null }> = [];
+  let versionUpdatedAt = input.versionUpdatedAt;
+
+  const rollback = async () => {
+    for (const entry of [...applied].reverse()) {
+      await move({
+        sessionId: entry.plan.sessionId,
+        expectedUpdatedAt: entry.updatedAt,
+        original: entry.plan.to,
+        proposed: entry.plan.from,
+        changeReason: REPAIR_CHANGE_REASON_AR,
+      });
+    }
+    versionUpdatedAt = await readVersion(input.scheduleVersionId, versionUpdatedAt);
+  };
+
+  for (const planned of input.plan.moves) {
+    const result = await move({
+      sessionId: planned.sessionId,
+      expectedUpdatedAt: planned.updatedAt || null,
+      original: planned.from,
+      proposed: planned.to,
+      changeReason: REPAIR_CHANGE_REASON_AR,
+    });
+    if (!result.ok || result.stale) {
+      const reason =
+        result.blocking_conflicts[0]?.message_ar ||
+        result.message_ar ||
+        result.code ||
+        "تعذر تحريك الجلسة الحاجزة.";
+      await rollback();
+      return {
+        ok: false,
+        versionUpdatedAt,
+        appliedMoves: [],
+        session: null,
+        reason,
+        rolledBack: applied.length > 0,
+      };
+    }
+    applied.push({ plan: planned, updatedAt: result.session?.updated_at ?? null });
+  }
+
+  versionUpdatedAt = await readVersion(input.scheduleVersionId, versionUpdatedAt);
+  const created = await create({
+    scheduleVersionId: input.scheduleVersionId,
+    teachingAssignmentId: input.teachingAssignmentId,
+    dayOfWeek: input.plan.placement.day_of_week,
+    startTime: input.plan.placement.start_time,
+    endTime: input.plan.placement.end_time,
+    roomId: input.plan.placement.room_id,
+    expectedVersionUpdatedAt: versionUpdatedAt,
+    note: input.note,
+  });
+  if (!created.ok || !created.session || !created.schedule_version_updated_at) {
+    const reason =
+      created.blocking_conflicts[0]?.message_ar ||
+      created.message_ar ||
+      created.code ||
+      "تعذر إنشاء الجلسة بعد إعادة الترتيب.";
+    await rollback();
+    return {
+      ok: false,
+      versionUpdatedAt,
+      appliedMoves: [],
+      session: null,
+      reason,
+      rolledBack: applied.length > 0,
+    };
+  }
+  return {
+    ok: true,
+    versionUpdatedAt: created.schedule_version_updated_at,
+    appliedMoves: input.plan.moves,
+    session: created.session,
+    reason: null,
+    rolledBack: false,
+  };
+}
 
 export type AutoScheduleProgress = {
   processedItems: number;
@@ -366,6 +489,11 @@ export async function runV2AutoSchedule(params: {
   // rooms/times on that instructor/day. Cache only this rejection for this run;
   // no conflict is ignored and all writes still use the guarded RPC.
   const unavailableInstructorDays = new Map<string, string>();
+  // JAWF-REPAIR-01 bounded repair counters (fill_missing only).
+  let repairAttempts = 0;
+  let repairRelocations = 0;
+  let repairPlacedSessions = 0;
+  let repairMaxDepthUsed = 0;
 
   const difficulties = new Map<
     string,
@@ -528,7 +656,9 @@ export async function runV2AutoSchedule(params: {
       if (capacityOnly.length > 0) roomPools.push(capacityOnly);
     }
 
-    for (const durationHours of plan.remaining) {
+    // Hardest first: longer weekly blocks are placed before flexible short ones,
+    // so a 3h block is not starved by 2h sessions eating the large gaps.
+    for (const durationHours of [...plan.remaining].sort((a, b) => b - a)) {
       if (params.signal?.aborted) {
         cancelled = true;
         warnings.push("تم إيقاف التشغيل بطلب المستخدم. الجلسات التي أُنشئت قبل الإيقاف محفوظة.");
@@ -673,6 +803,96 @@ export async function runV2AutoSchedule(params: {
         );
         break;
       }
+      // JAWF-REPAIR-01: direct placement is exhausted — try a bounded repair
+      // (1-hop, then a very limited 2-hop) before recording the unit as unplaced.
+      if (!placedItem && !cancelled && mode === "fill_missing") {
+        const stats = { attempts: 0 };
+        const missingSeed = seedFor(item, durationMinutes);
+        const plan = planRepair({
+          snapshot: planningSnapshot,
+          sessions: planningSessions,
+          missing: missingSeed,
+          targetSlots: slots,
+          roomIds: roomPools.flat().map((room) => room.id),
+          budget: { maxDepth: 2, maxAttempts: 4000 },
+          stats,
+        });
+        repairAttempts += stats.attempts;
+        if (plan) {
+          const applied = await applyRepairPlan({
+            scheduleVersionId: params.scheduleVersionId,
+            teachingAssignmentId: item.teaching_assignment_id,
+            plan,
+            versionUpdatedAt,
+            note: `auto-repair:${ALGORITHM_VERSION}`,
+          });
+          versionUpdatedAt = applied.versionUpdatedAt;
+          if (applied.ok) {
+            for (const move of plan.moves) {
+              const index = planningSessions.findIndex((session) => session.id === move.sessionId);
+              if (index >= 0) {
+                planningSessions[index] = {
+                  ...planningSessions[index],
+                  day_of_week: move.to.day_of_week,
+                  start_time: move.to.start_time,
+                  end_time: move.to.end_time,
+                  room_id: move.to.room_id,
+                };
+                const occupiedIndex = occupied.findIndex(
+                  (entry) =>
+                    entry.day === move.from.day_of_week &&
+                    entry.start === move.from.start_time &&
+                    entry.end === move.from.end_time &&
+                    entry.roomId === move.from.room_id,
+                );
+                if (occupiedIndex >= 0) {
+                  occupied[occupiedIndex] = {
+                    ...occupied[occupiedIndex],
+                    day: move.to.day_of_week,
+                    start: move.to.start_time,
+                    end: move.to.end_time,
+                    roomId: move.to.room_id,
+                  };
+                }
+                warnings.push(
+                  `إصلاح محدود: تم نقل جلسة قائمة (${move.from.day_of_week} ${move.from.start_time.slice(0, 5)}) إلى (${move.to.day_of_week} ${move.to.start_time.slice(0, 5)}) لإتاحة ${groupLabel}.`,
+                );
+              }
+            }
+            planningSessions.push({
+              ...missingSeed,
+              id: applied.session?.id ?? missingSeed.id,
+              day_of_week: plan.placement.day_of_week,
+              start_time: plan.placement.start_time,
+              end_time: plan.placement.end_time,
+              room_id: plan.placement.room_id,
+            } as Session);
+            occupied.push({
+              day: plan.placement.day_of_week,
+              start: plan.placement.start_time,
+              end: plan.placement.end_time,
+              roomId: plan.placement.room_id,
+              instructorId: item.instructor_id,
+              cohortId: item.cohort_id,
+              deliveryGroupId: item.delivery_group_id,
+            });
+            usedDays.push(plan.placement.day_of_week);
+            placed++;
+            byType[type].placed++;
+            placedItem = true;
+            repairRelocations += plan.moves.length;
+            repairPlacedSessions++;
+            repairMaxDepthUsed = Math.max(repairMaxDepthUsed, plan.depth);
+          } else {
+            lastReason = applied.reason ?? lastReason;
+            if (applied.rolledBack) {
+              warnings.push(
+                `إصلاح محدود: فشل التطبيق وأُعيدت الجلسات المحركة إلى مواضعها الأصلية (${groupLabel}).`,
+              );
+            }
+          }
+        }
+      }
       if (!placedItem) {
         byType[type].unplaced++;
         unplaced.push({
@@ -793,6 +1013,11 @@ export async function runV2AutoSchedule(params: {
         by_component_type: byType,
         practical_room_fallbacks: practicalRoomFallbacks,
         practical_room_fallback_policy: "practical_computer_lab_may_use_lecture_hall",
+        repair_attempts: repairAttempts,
+        repair_relocations: repairRelocations,
+        repair_placed_sessions: repairPlacedSessions,
+        repair_max_depth_used: repairMaxDepthUsed,
+        repair_policy: "bounded_1_2_hop_relocation_fill_missing_only",
       } as never,
       unplaced: unplaced as never,
       run_by: userData.user?.id ?? null,
@@ -818,7 +1043,7 @@ export async function runV2AutoSchedule(params: {
     qualityScoreAfter: qualityAfter,
     improvementDelta: qualityAfter - qualityBefore,
     preservedExistingSessions: sessionRows.length,
-    relocatedSessions: 0,
+    relocatedSessions: repairRelocations,
     backtrackingAttempts: 0,
     durationMs,
     totalOfferings: workItems.length,
