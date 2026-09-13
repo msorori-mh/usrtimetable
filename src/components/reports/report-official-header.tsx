@@ -96,7 +96,6 @@ export function ReportOfficialHeader({
       </div>
 
       <div className="flex flex-wrap items-center gap-2 mb-3">
-        <h2 className="text-lg font-bold">{reportTitle}</h2>
         {official && (
           <Badge variant="default" className="print:border print:border-foreground">
             رسمي / منشور
