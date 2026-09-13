@@ -127,4 +127,15 @@ describe("wiring", () => {
     const src = read("src/routes/_authenticated/reports.room-utilization.tsx");
     assert.match(src, /publishedOnly\) q = q\.eq\("schedule_versions\.status", "published"\)/);
   });
+  it("the print reports read the selected version only (no side query)", () => {
+    for (const route of ["reports.current-timetable", "reports.rooms-report"]) {
+      const src = read(`src/routes/_authenticated/${route}.tsx`);
+      assert.match(src, /useReportContext\(/, route);
+      assert.match(src, /ctx\.versionId/, route);
+      assert.match(src, /const ready = !!ctx\.versionId;/, route);
+      // No local schedule_versions / schedule_sessions query bypassing the context.
+      assert.ok(!/from\("schedule_versions"\)/.test(src), route);
+      assert.ok(!/from\("schedule_sessions"\)/.test(src), route);
+    }
+  });
 });
