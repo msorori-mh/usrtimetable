@@ -8,11 +8,7 @@
  */
 import { describe, expect, it } from "bun:test";
 import { feasible, type Session, type Snapshot } from "@/lib/auto-scheduler/compact";
-import {
-  applyRepairPlan,
-  REPAIR_CHANGE_REASON_AR,
-  type RepairPlan,
-} from "@/lib/auto-scheduler/v2";
+import { applyRepairPlan, REPAIR_CHANGE_REASON_AR, type RepairPlan } from "@/lib/auto-scheduler/v2";
 import { compareRepairPriority, planRepair } from "@/lib/auto-scheduler/repair";
 
 const session = (over: Partial<Session>): Session =>
@@ -368,10 +364,7 @@ describe("applyRepairPlan — fail-safe application", () => {
       plan,
       versionUpdatedAt: "2026-01-01T00:00:00Z",
       note: "auto-repair",
-      moveSession: (async (pending: {
-        sessionId: string;
-        proposed: { start_time: string };
-      }) => {
+      moveSession: (async (pending: { sessionId: string; proposed: { start_time: string } }) => {
         calls.push(pending);
         return okMove();
       }) as never,
