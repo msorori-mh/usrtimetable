@@ -643,13 +643,17 @@ function CreateUserDialog({
       toast.error("الاسم، البريد، وكلمة مرور لا تقل عن 8 أحرف مطلوبة");
       return;
     }
-    if (requiresCollegeAssignment(form.role) && form.college_ids.length === 0) {
+    // «إدارة الشؤون الأكاديمية» never picks colleges by hand: every current
+    // college is sent, and the server recomputes the full list anyway.
+    const collegeIds = assignsAllColleges(form.role) ? colleges.map((c) => c.id) : form.college_ids;
+    if (requiresCollegeAssignment(form.role) && collegeIds.length === 0) {
       toast.error("يجب إسناد كلّية واحدة على الأقل لهذا الدور");
       return;
     }
     setBusy(true);
     try {
-      await onCreate(form);
+      await onCreate({ ...form, college_ids: collegeIds });
+
       toast.success("تم إنشاء المستخدم");
       setOpen(false);
       reset();
