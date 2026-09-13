@@ -497,7 +497,7 @@ export async function runV2AutoSchedule(params: {
     }
 
     const usedDays = [...plan.usedDays];
-    const roomRequirement = {
+    const roomRequirement: RoomRequirement = {
       roomTypeId: component?.required_room_type_id ?? null,
       roomTypeName: component?.required_room_type_id
         ? null
@@ -505,14 +505,24 @@ export async function runV2AutoSchedule(params: {
             ? planCourse?.required_room_type_for_lab
             : planCourse?.required_room_type_for_lecture) ?? null),
       expectedStudents: item.expected_students,
+      componentType: item.component_type,
+      roomTypeCodeById,
     };
-    let candidateRooms = filterCandidateRooms(rooms as RoomLite[], roomRequirement);
-    if (candidateRooms.length === 0) {
+    // Preferred = required room type; fallback = policy-allowed practical
+    // computer_lab → lecture_hall only. The fallback pool is tried only after
+    // every preferred candidate failed, so a lab always wins when it is valid.
+    const partitionedRooms = partitionCandidateRoomsByRank(rooms as RoomLite[], roomRequirement);
+    const roomPools: RoomLite[][] = [partitionedRooms.preferred, partitionedRooms.fallback].filter(
+      (pool) => pool.length > 0,
+    );
+    if (roomPools.length === 0) {
       // Room-type prefilter is advisory only; fall back to capacity-only candidates.
-      candidateRooms = filterCandidateRooms(rooms as RoomLite[], {
+      const capacityOnly = filterCandidateRooms(rooms as RoomLite[], {
         expectedStudents: item.expected_students,
       });
+      if (capacityOnly.length > 0) roomPools.push(capacityOnly);
     }
+
 
     for (const durationHours of plan.remaining) {
       if (params.signal?.aborted) {
