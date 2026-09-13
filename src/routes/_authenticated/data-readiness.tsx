@@ -287,15 +287,14 @@ async function fetchReadiness(collegeId: string) {
       missing: 0,
     },
     {
-      label: "محاضرون خارجيون بدون أوقات توفّر",
-      total: byCategory.external.total,
-      missing: byCategory.external.total - byCategory.external.configured,
-      critical: true,
-    },
-    {
+      // external + other_college share one display label; the internal
+      // categorization and readiness semantics are unchanged (sum-based score).
       label: "محاضرون من كلية أخرى بدون أوقات توفّر",
-      total: byCategory.other_college.total,
-      missing: byCategory.other_college.total - byCategory.other_college.configured,
+      total: byCategory.external.total + byCategory.other_college.total,
+      missing:
+        byCategory.external.total -
+        byCategory.external.configured +
+        (byCategory.other_college.total - byCategory.other_college.configured),
       critical: true,
     },
   ];
@@ -623,8 +622,16 @@ function DataReadinessPage() {
                 <CalendarCheck className="h-4 w-4" /> توفّر المحاضرين حسب الفئة
               </h2>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                {(["permanent", "external", "other_college"] as InstructorCategory[]).map((c) => {
-                  const v = data.availabilityByCategory[c];
+                {/* external + other_college share one display label; show a single merged card */}
+                {(["permanent", "external"] as InstructorCategory[]).map((c) => {
+                  const byCat = data.availabilityByCategory;
+                  const v =
+                    c === "external"
+                      ? {
+                          total: byCat.external.total + byCat.other_college.total,
+                          configured: byCat.external.configured + byCat.other_college.configured,
+                        }
+                      : byCat[c];
                   const isPerm = c === "permanent";
                   const missing = v.total - v.configured;
                   const tone = isPerm

@@ -60,13 +60,13 @@ function Page() {
     error: sessionsError,
     refetch,
   } = useQuery({
-    queryKey: ["current-timetable-print", ctx.collegeId, ctx.versionId],
+    queryKey: ["current-timetable-print", ctx.collegeId, ctx.versionId, ctx.studySystem],
     enabled: !!ctx.collegeId && !!ctx.versionId,
     queryFn: async () => {
       const hydrated = await fetchHydratedVersionSessions({
         collegeId: ctx.collegeId!,
         versionId: ctx.versionId!,
-        studySystem: "all",
+        studySystem: ctx.studySystem,
       });
       const sessions = hydrated as unknown as PrintSessionLike[];
       const labels = await fetchCohortDeliveryGroupLabels(ctx.collegeId!, sessions);
@@ -87,8 +87,11 @@ function Page() {
   const sessions = bundle?.sessions ?? EMPTY_SESSIONS;
   const pages = useMemo(
     () =>
-      groupCurrentSchedulePages(sessions, { collegeId: ctx.collegeId ?? "", studySystem: "all" }),
-    [sessions, ctx.collegeId],
+      groupCurrentSchedulePages(sessions, {
+        collegeId: ctx.collegeId ?? "",
+        studySystem: ctx.studySystem,
+      }),
+    [sessions, ctx.collegeId, ctx.studySystem],
   );
   const rows = useMemo(() => buildExportRows(pages, bundle?.labels), [pages, bundle?.labels]);
   const printedSessions = countPagedSessions(pages);
@@ -100,6 +103,9 @@ function Page() {
 
   const isLoading = ctx.isLoading || sessionsLoading;
   const ready = !!ctx.versionId;
+  const filtered = ctx.studySystem !== "all";
+  const coverageSuffix = filtered ? " (كل الأنظمة)" : "";
+  const scopeSuffix = filtered ? " (ضمن الفلتر)" : "";
 
   return (
     <ReportShell
@@ -116,20 +122,26 @@ function Page() {
       notReadyMessage={ready ? undefined : "اختر نسخة الجدول لطباعتها."}
       emptyMessage="لا توجد جلسات في هذه النسخة."
       kpis={[
-        { label: "المجموعات المجدولة", value: groupsText, tone: "accent" },
-        { label: "الساعات المجدولة", value: hoursText, tone: "accent" },
-        { label: "الجلسات", value: sessions.length },
-        { label: "صفحات الطباعة", value: pages.length },
+        { label: `المجموعات المجدولة${coverageSuffix}`, value: groupsText, tone: "accent" },
+        { label: `الساعات المجدولة${coverageSuffix}`, value: hoursText, tone: "accent" },
+        { label: `الجلسات${scopeSuffix}`, value: sessions.length },
+        { label: `صفحات الطباعة${scopeSuffix}`, value: pages.length },
       ]}
       filters={<ReportFilters context={ctx} />}
       summary={
         <Card className="p-3 text-sm" data-testid="current-timetable-coverage">
           <p className="font-semibold">
-            التغطية الحالية: المجموعات {groupsText} · الساعات {hoursText}
+            التغطية الحالية (كل الأنظمة): المجموعات {groupsText} · الساعات {hoursText}
           </p>
+          {filtered && (
+            <p className="mt-1 text-muted-foreground">
+              أرقام التغطية أعلاه محسوبة من قاعدة البيانات لكل الأنظمة، أما الجلسات والصفحات
+              المعروضة فهي ضمن فلتر «نظام الدراسة» المختار فقط.
+            </p>
+          )}
           <p className="mt-1 text-muted-foreground">
             {dropped === 0
-              ? `تُطبع جميع جلسات النسخة (${printedSessions} جلسة) بدون حذف.`
+              ? `تُطبع جميع الجلسات ضمن الفلتر الحالي (${printedSessions} جلسة) بدون حذف.`
               : `تنبيه: ${dropped} جلسة لم تُدرج في الصفحات — راجع البيانات قبل الطباعة.`}
           </p>
         </Card>
