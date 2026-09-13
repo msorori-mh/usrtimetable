@@ -39,7 +39,10 @@ export function ReportFilterBar({
   const chips = (activeSummary ?? []).filter(Boolean);
 
   return (
-    <Card className="report-no-print min-w-0 space-y-3 overflow-hidden p-4" data-testid="report-filter-bar">
+    <Card
+      className="report-no-print min-w-0 space-y-3 overflow-hidden p-4"
+      data-testid="report-filter-bar"
+    >
       {search && (
         <div className="relative min-w-0">
           <Search className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

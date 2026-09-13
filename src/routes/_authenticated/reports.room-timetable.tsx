@@ -29,7 +29,10 @@ export const Route = createFileRoute("/_authenticated/reports/room-timetable")({
 });
 
 function Page() {
-  const ctx = useReportContext({ defaultStatusMode: "specific_version", defaultStudySystem: "all" });
+  const ctx = useReportContext({
+    defaultStatusMode: "specific_version",
+    defaultStudySystem: "all",
+  });
   const [roomId, setRoomId] = useState("");
 
   const { data: rooms, error: roomsError } = useQuery({
