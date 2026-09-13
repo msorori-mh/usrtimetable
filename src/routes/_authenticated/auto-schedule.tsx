@@ -579,8 +579,8 @@ function AutoSchedulePage() {
                     <div className="border rounded-md p-3 max-h-80 overflow-y-auto bg-muted/30">
                       <p className="text-sm font-semibold mb-1">قائمة غير المجدول وأسبابها</p>
                       <p className="text-[11px] text-muted-foreground mb-2">
-                        السبب يُظهر أول قيد إلزامي منعَ وضع المحاضرة (محاضر/قاعة/قسم/فترة) بعد
-                        استنفاد كل المرشحين ومحاولات التراجع المسموح بها.
+                        السبب يوضح القيد الذي أوقف وضع المحاضرة في خطة هذا التشغيل. رفض موضع
+                        المحاضرة لا يعني ثبوت استحالة سيناريو أيام الحضور، ولا يسمح بزيادة الأيام.
                       </p>
                       <ul className="text-xs space-y-1">
                         {(
