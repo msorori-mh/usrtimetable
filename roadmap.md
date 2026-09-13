@@ -6,3 +6,9 @@
 - [ ] Routes: room-utilization, department-schedule, published-timetable, program-level-timetable, academic-affairs, quality-analytics, reports index
 - [ ] Contract tests tests/report-visual-system.test.ts
 - [ ] Prettier + ESLint + typecheck + build + report/print tests + full harness; report PASS/HOLD
+
+### دفعة النظام البصري للتقارير — مكتملة
+- primitives: KPI/فلاتر/حالات/أقسام وجداول + shell وترويسة رسمية وطباعة.
+- كل مسارات التقارير مدمجة: instructor-schedule, room-timetable, section-timetable, program-level-timetable, published-timetable, academic-affairs, quality-summary, quality-analytics, data-readiness, conflicts, unscheduled, instructor-workload, room-utilization, department-schedule, فهرس التقارير (بحث في البطاقات).
+- اختبارات العقد: tests/report-visual-system.test.ts (14 حالة) + تحديث اختبارَي الاحتواء وبوابة الدور للمكوّنات المشتركة.
+- الفحوص: typecheck و ESLint (تحذير fast-refresh واحد قديم) و build OK و git diff --check نظيف. مجموعة bun test: 523 نجاح و26 إخفاق قديم (NameTooLong/بيئة) مطابق للـbaseline.
