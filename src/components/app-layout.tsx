@@ -305,6 +305,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   };
 
   const roles = user?.roles as Role[] | undefined;
+  /** Academic affairs («إدارة الشؤون الأكاديمية»): reports centre only. */
+  const reportsOnly = isReportsOnlyRole(user);
+  const effectiveMode: NavMode = reportsOnly ? "core" : mode;
 
   const coreSteps = useMemo(() => CORE_PATH.filter((s) => canAccess(s, roles)), [roles]);
   const toolPages = useMemo(
@@ -333,7 +336,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           ? "مشاهد"
           : "—";
 
-  const modeToggle = (
+  const modeToggle = reportsOnly ? null : (
     <button
       type="button"
       onClick={() => setNavMode(mode === "core" ? "all" : "core")}
@@ -353,7 +356,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   );
 
   const navBody = (tone: "sidebar" | "sheet", onNavigate?: () => void) =>
-    mode === "core" ? (
+    effectiveMode === "core" ? (
       <>
         <p
           className={cn(
@@ -361,9 +364,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             tone === "sidebar" ? "text-sidebar-foreground/55" : "text-muted-foreground",
           )}
         >
-          أربع خطوات: تجهيز البيانات، إنشاء الجدول، المراجعة والاعتماد، التقارير والطباعة.
+          {reportsOnly
+            ? "حساب إدارة الشؤون الأكاديمية: مركز التقارير للكلّيات المُسندة لك."
+            : "أربع خطوات: تجهيز البيانات، إنشاء الجدول، المراجعة والاعتماد، التقارير والطباعة."}
         </p>
         <CorePathNav steps={coreSteps} pathname={pathname} onNavigate={onNavigate} tone={tone} />
+        {!reportsOnly && (
         <Link
           to={ADMIN_TOOLS_PAGE.to}
           onClick={onNavigate}
@@ -377,6 +383,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <LayoutGrid className="h-4 w-4 shrink-0" />
           {ADMIN_TOOLS_PAGE.label}
         </Link>
+        )}
       </>
     ) : (
       <AllToolsNav
@@ -445,15 +452,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               className="flex w-[min(20rem,90vw)] flex-col gap-0 overflow-y-auto p-4"
             >
               <SheetTitle className="mb-3 text-sm font-bold">التنقل</SheetTitle>
-              <button
-                type="button"
-                onClick={() => setNavMode(mode === "core" ? "all" : "core")}
-                className="mb-3 flex w-full items-center justify-between rounded-lg bg-secondary px-3 py-2 text-sm font-medium text-primary"
-                data-testid="mobile-navigation-mode-toggle"
-              >
-                {mode === "all" ? "العودة إلى المسار التشغيلي" : "عرض كل الأدوات"}
-                <SlidersHorizontal className="h-4 w-4" />
-              </button>
+              {!reportsOnly && (
+                <button
+                  type="button"
+                  onClick={() => setNavMode(mode === "core" ? "all" : "core")}
+                  className="mb-3 flex w-full items-center justify-between rounded-lg bg-secondary px-3 py-2 text-sm font-medium text-primary"
+                  data-testid="mobile-navigation-mode-toggle"
+                >
+                  {mode === "all" ? "العودة إلى المسار التشغيلي" : "عرض كل الأدوات"}
+                  <SlidersHorizontal className="h-4 w-4" />
+                </button>
+              )}
               {navBody("sheet", () => setMobileOpen(false))}
             </SheetContent>
           </Sheet>
