@@ -50,6 +50,14 @@ import {
 } from "@/lib/data-onboarding/instructor-review";
 import { AdminExportMenu } from "@/components/admin-export-menu";
 import { activeFilters, instructorsExportDataset } from "@/lib/admin-export/datasets";
+import {
+  DEFAULT_DIRECTORY_FILTERS,
+  INSTRUCTOR_SORT_LABEL_AR,
+  filterAndSortInstructors,
+  hasActiveDirectoryFilters,
+  type DirectoryFilters,
+  type InstructorSortKey,
+} from "@/lib/instructors/directory-filters";
 
 export const Route = createFileRoute("/_authenticated/instructors")({
   head: () => ({ meta: [{ title: "المحاضرون" }] }),
@@ -124,6 +132,12 @@ function InstructorDirectory() {
   const [editing, setEditing] = useState<Instructor | null>(null);
   const [form, setForm] = useState(emptyForm());
   const [repairField, setRepairField] = useState<InstructorReview | null>(null);
+  const [directory, setDirectory] = useState<DirectoryFilters>(DEFAULT_DIRECTORY_FILTERS);
+  const setDirectoryField = <K extends keyof DirectoryFilters>(
+    key: K,
+    value: DirectoryFilters[K],
+  ) => setDirectory((prev) => ({ ...prev, [key]: value }));
+
   const specializationRef = useRef<HTMLInputElement>(null);
   const departmentRef = useRef<HTMLButtonElement>(null);
 
@@ -296,7 +310,16 @@ function InstructorDirectory() {
   const deptMap = new Map((depts ?? []).map((d) => [d.id, d.name]));
   const typeRows = (types ?? []) as InstructorTypeRow[];
   const typeMap = new Map(typeRows.map((t) => [t.id, t]));
-  const visibleRows = review ? rows?.filter((i) => instructorNeedsReview(i, review)) : rows;
+  const reviewRows = review ? (rows ?? []).filter((i) => instructorNeedsReview(i, review)) : rows;
+  const departmentLabel = (id: string | null | undefined) =>
+    id ? (deptMap.get(id) ?? "بدون قسم") : "بدون قسم";
+  // Search, filters and sorting are presentation-only and compose together.
+  const visibleRows = reviewRows
+    ? filterAndSortInstructors(reviewRows, directory, departmentLabel)
+    : reviewRows;
+  const availableRanks = Array.from(
+    new Set((rows ?? []).map((i) => i.academic_rank ?? "").filter((r) => r !== "")),
+  ).sort((a, b) => a.localeCompare(b, "ar"));
 
   return (
     <div className="mx-auto max-w-5xl" dir="rtl">
@@ -645,6 +668,124 @@ function InstructorDirectory() {
           </Link>
         </Button>
       </div>
+
+      <Card className="mb-4 space-y-3 p-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="min-w-72 flex-1">
+            <Label htmlFor="instructor-search">بحث</Label>
+            <Input
+              id="instructor-search"
+              value={directory.search}
+              onChange={(e) => setDirectoryField("search", e.target.value)}
+              placeholder="ابحث بالاسم أو رقم الموظف أو البريد أو القسم…"
+            />
+          </div>
+          <div className="min-w-44">
+            <Label htmlFor="instructor-department-filter">القسم</Label>
+            <Select
+              value={directory.departmentId}
+              onValueChange={(v) => setDirectoryField("departmentId", v)}
+            >
+              <SelectTrigger id="instructor-department-filter">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل الأقسام</SelectItem>
+                <SelectItem value="none">بدون قسم</SelectItem>
+                {(depts ?? []).map((d) => (
+                  <SelectItem key={d.id} value={d.id}>
+                    {d.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="min-w-40">
+            <Label htmlFor="instructor-status-filter">حالة العضو</Label>
+            <Select value={directory.status} onValueChange={(v) => setDirectoryField("status", v)}>
+              <SelectTrigger id="instructor-status-filter">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">الكل</SelectItem>
+                <SelectItem value="active">نشط</SelectItem>
+                <SelectItem value="inactive">غير نشط</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="min-w-44">
+            <Label htmlFor="instructor-rank-filter">الرتبة</Label>
+            <Select value={directory.rank} onValueChange={(v) => setDirectoryField("rank", v)}>
+              <SelectTrigger id="instructor-rank-filter">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل الرتب</SelectItem>
+                {availableRanks.map((r) => (
+                  <SelectItem key={r} value={r}>
+                    {r}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="min-w-44">
+            <Label htmlFor="instructor-type-filter">نوع العضو</Label>
+            <Select value={directory.typeId} onValueChange={(v) => setDirectoryField("typeId", v)}>
+              <SelectTrigger id="instructor-type-filter">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل الأنواع</SelectItem>
+                <SelectItem value="none">بدون نوع</SelectItem>
+                {typeRows.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name_ar}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="min-w-44">
+            <Label htmlFor="instructor-sort">الفرز</Label>
+            <Select
+              value={directory.sortKey}
+              onValueChange={(v) => setDirectoryField("sortKey", v as InstructorSortKey)}
+            >
+              <SelectTrigger id="instructor-sort">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(INSTRUCTOR_SORT_LABEL_AR).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() =>
+              setDirectoryField("sortDirection", directory.sortDirection === "asc" ? "desc" : "asc")
+            }
+            aria-label="اتجاه الفرز"
+          >
+            {directory.sortDirection === "asc" ? "تصاعدي ↑" : "تنازلي ↓"}
+          </Button>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+          <p data-testid="instructors-count" className="text-muted-foreground">
+            عرض {visibleRows?.length ?? 0} من {rows?.length ?? 0}
+          </p>
+          {hasActiveDirectoryFilters(directory) && (
+            <Button variant="ghost" onClick={() => setDirectory({ ...DEFAULT_DIRECTORY_FILTERS })}>
+              مسح الفلاتر
+            </Button>
+          )}
+        </div>
+      </Card>
+
       {review && active && !isLoading && !isError && (
         <Card className="mb-4 space-y-2 border-amber-500/40 p-4" role="status">
           <p className="font-semibold">{INSTRUCTOR_REVIEW_LABELS[review]}</p>
@@ -672,11 +813,23 @@ function InstructorDirectory() {
         ) : isLoading ? (
           <p className="p-6 text-center text-muted-foreground">جارٍ التحميل...</p>
         ) : !visibleRows || visibleRows.length === 0 ? (
-          <p className="p-6 text-center text-muted-foreground">
-            {review
-              ? "لا توجد سجلات ناقصة بهذا المعيار في الكلية الحالية."
-              : "لا يوجد محاضرون بعد."}
-          </p>
+          <div className="space-y-2 p-6 text-center text-muted-foreground">
+            <p>
+              {hasActiveDirectoryFilters(directory)
+                ? "لا توجد نتائج مطابقة للبحث أو الفلاتر الحالية."
+                : review
+                  ? "لا توجد سجلات ناقصة بهذا المعيار في الكلية الحالية."
+                  : "لا يوجد محاضرون بعد."}
+            </p>
+            {hasActiveDirectoryFilters(directory) && (
+              <Button
+                variant="outline"
+                onClick={() => setDirectory({ ...DEFAULT_DIRECTORY_FILTERS })}
+              >
+                مسح الفلاتر
+              </Button>
+            )}
+          </div>
         ) : (
           <ul className="divide-y divide-border">
             {visibleRows.map((i) => (

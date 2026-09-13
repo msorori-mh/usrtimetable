@@ -1,10 +1,22 @@
 import type { TeachingAssignmentWorkspaceRow } from "../academic-delivery/teaching-assignments-v2.ts";
+import {
+  QUOTA_SOURCE_LABEL_AR,
+  QUOTA_STATUS_LABEL_AR,
+  QUOTA_UNDEFINED_AR,
+  computeQuotaBalance,
+  summarizeQuotaBalances,
+  type QuotaBalance,
+} from "./instructor-quota";
 
 export type AcademicInstructor = {
   id: string;
   full_name: string;
   academic_rank: string | null;
   department_id: string | null;
+  /** approved weekly load on the member's own card (`instructors.max_weekly_hours`) */
+  max_weekly_hours?: number | null;
+  /** administrative release hours (`instructors.administrative_release_hours`) */
+  administrative_release_hours?: number | null;
 };
 export type AcademicProgram = {
   id: string;
@@ -17,6 +29,7 @@ export type AcademicWorkload = {
   standard_assigned_hours: number;
   project_supervision_hours: number;
 };
+
 export type AcademicScope = {
   collegeId: string;
   termId: string;
@@ -139,30 +152,54 @@ export function buildAcademicReport(
     .map((i) => {
       const w = facts.get(i.id);
       if (!w) throw new Error("بيانات أعباء أعضاء هيئة التدريس غير مكتملة");
-      const required = w.required_load_hours;
       // Full college/term load survives program filtering: a partial program load is not a personal deficit.
-      const assigned = w.standard_assigned_hours;
-      const deficit = required === null ? null : round(Math.max(0, required - assigned));
-      const overload = required === null ? null : round(Math.max(0, assigned - required));
+      const balance = computeQuotaBalance({
+        policyRequiredHours: w.required_load_hours,
+        maxWeeklyHours: i.max_weekly_hours,
+        adminReleaseHours: i.administrative_release_hours,
+        assignedHours: w.standard_assigned_hours,
+      });
       return {
         instructor: i.full_name,
         department: departmentMap.get(i.department_id ?? "") ?? "غير محدد",
         rank: i.academic_rank ?? "غير محدد",
-        required,
-        assigned: round(assigned),
+        base_required: balance.baseHours ?? QUOTA_UNDEFINED_AR,
+        release: balance.releaseHours,
+        required: balance.netHours ?? QUOTA_UNDEFINED_AR,
+        assigned: balance.assignedHours,
         project: round(w.project_supervision_hours),
-        deficit,
-        overload,
-        status:
-          required === null
-            ? "سياسة النصاب غير محددة"
-            : (overload ?? 0) > 0
-              ? "ساعات زائدة"
-              : (deficit ?? 0) > 0
-                ? "نقص في النصاب"
-                : "مكتمل النصاب",
+        overload: balance.overloadHours ?? QUOTA_UNDEFINED_AR,
+        deficit: balance.deficitHours ?? QUOTA_UNDEFINED_AR,
+        quota_source: QUOTA_SOURCE_LABEL_AR[balance.source],
+        status: QUOTA_STATUS_LABEL_AR[balance.status],
       };
     });
+}
+
+/** True when the member has no approved quota, so totals and states can exclude the row. */
+export function isMissingQuotaRow(row: AcademicReportRow): boolean {
+  return row.status === QUOTA_STATUS_LABEL_AR.missing;
+}
+
+/** Recomputes truthful totals from workload rows exactly as they are displayed/exported. */
+export function summarizeWorkloadRows(rows: AcademicReportRow[]) {
+  const balances: QuotaBalance[] = rows.map((row) => ({
+    baseHours: typeof row.base_required === "number" ? row.base_required : null,
+    releaseHours: typeof row.release === "number" ? row.release : 0,
+    netHours: typeof row.required === "number" ? row.required : null,
+    source: "instructor",
+    assignedHours: typeof row.assigned === "number" ? row.assigned : 0,
+    overloadHours: typeof row.overload === "number" ? row.overload : null,
+    deficitHours: typeof row.deficit === "number" ? row.deficit : null,
+    status: isMissingQuotaRow(row)
+      ? "missing"
+      : Number(row.overload) > 0
+        ? "overload"
+        : Number(row.deficit) > 0
+          ? "deficit"
+          : "balanced",
+  }));
+  return summarizeQuotaBalances(balances);
 }
 
 export const ACADEMIC_REPORT_TITLES: Record<AcademicReportKind, string> = {
@@ -176,13 +213,17 @@ export const ACADEMIC_REPORT_HEADERS: Record<AcademicReportKind, { key: string; 
       { key: "instructor", label: "عضو هيئة التدريس" },
       { key: "department", label: "القسم التابع له" },
       { key: "rank", label: "الرتبة" },
-      { key: "required", label: "النصاب المعتمد" },
+      { key: "base_required", label: "النصاب الأساسي المعتمد" },
+      { key: "release", label: "التخفيض الإداري" },
+      { key: "required", label: "صافي النصاب المعتمد" },
       { key: "assigned", label: "المسند في الكلية والفصل" },
       { key: "project", label: "إشراف المشاريع" },
       { key: "overload", label: "ساعات زائدة" },
       { key: "deficit", label: "نقص النصاب" },
+      { key: "quota_source", label: "مصدر النصاب" },
       { key: "status", label: "الحالة" },
     ],
+
     assignments: [
       { key: "department", label: "قسم البرنامج" },
       { key: "program", label: "البرنامج" },

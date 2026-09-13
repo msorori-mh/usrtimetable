@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,7 +21,9 @@ import {
   ACADEMIC_REPORT_HEADERS,
   ACADEMIC_REPORT_TITLES,
   buildAcademicReport,
+  isMissingQuotaRow,
   parseAcademicWorkload,
+  summarizeWorkloadRows,
   type AcademicInstructor,
   type AcademicProgram,
   type AcademicReportKind,
@@ -93,7 +95,9 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
         readAll<AcademicInstructor>((from, to) =>
           supabase
             .from("instructors")
-            .select("id, full_name, academic_rank, department_id")
+            .select(
+              "id, full_name, academic_rank, department_id, max_weekly_hours, administrative_release_hours",
+            )
             .eq("college_id", collegeId)
             .order("id")
             .range(from, to),
@@ -154,15 +158,19 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
     kind === "workload" && loadStatus !== "all"
       ? allRows.filter((r) =>
           loadStatus === "missing"
-            ? r.required === null
+            ? isMissingQuotaRow(r)
             : loadStatus === "overload"
               ? Number(r.overload) > 0
               : Number(r.deficit) > 0,
         )
       : allRows;
+
   // Search only hides rows in the view; exported keys and values stay identical.
   const rows = filterRowsBySearch(statusRows, search);
+  // Totals are recomputed from the visible rows, so KPIs always match the table and the export.
+  const workloadTotals = summarizeWorkloadRows(kind === "workload" ? rows : []);
   const headers = ACADEMIC_REPORT_HEADERS[kind];
+
   const programs =
     refs?.programs.filter((p) => departmentId === "all" || p.department_id === departmentId) ?? [];
   const filterSummary = [
@@ -172,7 +180,7 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
     `البرنامج: ${refs?.programs.find((p) => p.id === programId)?.name ?? "الكل"}`,
     `عضو هيئة التدريس: ${refs?.instructors.find((i) => i.id === instructorId)?.full_name ?? "الكل"}`,
     kind === "workload"
-      ? `الحالة: ${loadStatus === "overload" ? "ساعات زائدة" : loadStatus === "deficit" ? "نقص النصاب" : loadStatus === "missing" ? "سياسة غير محددة" : "الكل"}`
+      ? `الحالة: ${loadStatus === "overload" ? "ساعات زائدة" : loadStatus === "deficit" ? "نقص النصاب" : loadStatus === "missing" ? "بلا نصاب معتمد" : "الكل"}`
       : "",
   ]
     .filter(Boolean)
@@ -200,15 +208,19 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
           ? [
               {
                 label: "ساعات زائدة",
-                value: statusRows.filter((r) => Number(r.overload) > 0).length,
+                value: workloadTotals.overloadedMembers,
               },
               {
                 label: "نقص نصاب",
-                value: statusRows.filter((r) => Number(r.deficit) > 0).length,
+                value: workloadTotals.deficitMembers,
               },
               {
-                label: "سياسة غير محددة",
-                value: statusRows.filter((r) => r.required === null).length,
+                label: "بلا نصاب معتمد",
+                value: workloadTotals.missingMembers,
+              },
+              {
+                label: "إجمالي صافي النصاب (ساعة)",
+                value: workloadTotals.netQuotaHours,
               },
             ]
           : []),
@@ -285,7 +297,7 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
                     { id: "all", name: "الكل" },
                     { id: "overload", name: "الساعات الزائدة" },
                     { id: "deficit", name: "نقص النصاب" },
-                    { id: "missing", name: "سياسة النصاب غير محددة" },
+                    { id: "missing", name: "بلا نصاب معتمد" },
                   ]}
                 />
               )}
@@ -302,10 +314,19 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
           )}
           {kind === "workload" && (
             <Card className="p-3 text-sm">
-              يُقارن النصاب بالساعات المسندة في الكلية خلال الفصل المحدد، ويظهر إشراف المشاريع
-              منفصلاً. مرشح البرنامج يحدد أعضاء هيئة التدريس المرتبطين به، مع إبقاء نصابهم وساعاتهم
-              الكلية في الفصل. عند غياب سياسة نصاب معتمدة تظهر شرطة في النصاب والزيادة والنقص؛ ولا
-              تُعامل كصفر.
+              يُحدَّد النصاب المعتمد من سياسة النصاب المقرَّرة للرتبة، وعند غيابها يُعتمد النصاب
+              المسجَّل في بطاقة عضو هيئة التدريس، ويظهر مصدره في العمود المخصص. صافي النصاب = النصاب
+              الأساسي − التخفيض الإداري، وتُقارَن به الساعات المسندة في الكلية خلال الفصل، مع إظهار
+              إشراف المشاريع منفصلاً. عند عدم وجود نصاب معتمد تظهر «غير محدد» في النصاب والزيادة
+              والنقص، ولا تُعامل كصفر ولا تدخل في المجاميع.
+              {workloadTotals.missingMembers > 0 && (
+                <span className="mt-2 block">
+                  {`${workloadTotals.missingMembers} عضواً بلا نصاب معتمد ومستبعدون من المجاميع.`}{" "}
+                  <Link to="/instructors" className="underline">
+                    تصحيح النصاب في صفحة المحاضرين
+                  </Link>
+                </span>
+              )}
             </Card>
           )}
           {kind === "shortages" && (
