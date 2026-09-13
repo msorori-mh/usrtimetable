@@ -752,6 +752,15 @@ function CreateUserDialog({
             </Select>
             <p className="mt-1 text-[11px] text-muted-foreground">{ROLE_HINTS[form.role]}</p>
           </div>
+          {assignsAllColleges(form.role) && (
+            <div className="rounded-md border border-border p-3">
+              <Label>الكلّيات المُسندة</Label>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                تُسند تلقائيًا <strong>جميع الكلّيات</strong> الحالية، وأي كلّية تُنشأ لاحقًا تُسند
+                لهذا الحساب تلقائيًا. القراءة فقط، بلا أي صلاحية تعديل.
+              </p>
+            </div>
+          )}
           {requiresCollegeAssignment(form.role) && (
             <div>
               <Label>
@@ -760,9 +769,7 @@ function CreateUserDialog({
               <p className="mb-1 text-[11px] text-muted-foreground">
                 {form.role === "college_admin"
                   ? "سيحصل على كامل صلاحيات العمليات داخل الكلّيات المحددة. الإسناد إلزامي."
-                  : form.role === "institutional_viewer"
-                    ? "سيرى تقارير هذه الكلّيات فقط، دون أي تعديل. الإسناد إلزامي."
-                    : "الإسناد إلزامي لتفعيل الدور."}
+                  : "الإسناد إلزامي لتفعيل الدور."}
               </p>
               {colleges.length === 0 ? (
                 <p className="text-xs text-muted-foreground">أنشئ كلّية أولاً.</p>
