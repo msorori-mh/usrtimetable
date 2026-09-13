@@ -51,7 +51,7 @@ function Page() {
         readAllReportRows((from, to) =>
           supabase
             .from("schedule_sessions")
-            .select("id, delivery_group_id, start_time, end_time")
+            .select("id, delivery_group_id, day_of_week, start_time, end_time")
             .eq("college_id", collegeId)
             .eq("schedule_version_id", ctx.selectedVersion!.id)
             .or("replaced_by_split.is.null,replaced_by_split.eq.false")

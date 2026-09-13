@@ -107,3 +107,30 @@ test("a placed group with missing hours remains incomplete", () => {
   assert.equal(result.summary.unscheduledHours, 1);
   assert.equal(result.incomplete.length, 1);
 });
+
+test("same-group overlap counts once while different days remain separate", () => {
+  const groups = [
+    {
+      id: "g",
+      cohortId: "c",
+      groupCode: "G1",
+      groupNumber: 1,
+      componentType: "theory",
+      courseCode: "X",
+      courseName: "Course",
+      expectedStudents: 10,
+      requiredHours: 6,
+      instructorName: "Teacher",
+    },
+  ];
+  const result = buildDeliveryGroupCoverage({
+    groups,
+    sessions: [
+      { delivery_group_id: "g", day_of_week: 0, start_time: "08:00", end_time: "10:00" },
+      { delivery_group_id: "g", day_of_week: 0, start_time: "08:00", end_time: "10:00" },
+      { delivery_group_id: "g", day_of_week: 1, start_time: "08:00", end_time: "10:00" },
+    ],
+  });
+  assert.equal(result.summary.scheduledHours, 4);
+  assert.equal(result.summary.unscheduledHours, 2);
+});

@@ -216,7 +216,7 @@ export function TimetableGridReport({
                         {sess.delivery_group_label ? ` · ${sess.delivery_group_label}` : ""}
                       </div>
                       <div className="flex gap-1 mt-0.5 flex-wrap">
-                        <span className="text-xs bg-background/70 rounded px-1">
+                        <span dir="ltr" className="text-xs bg-background/70 rounded px-1">
                           {sess.start_time.slice(0, 5)}–{sess.end_time.slice(0, 5)}
                         </span>
                         <span className="text-xs bg-background/70 rounded px-1">

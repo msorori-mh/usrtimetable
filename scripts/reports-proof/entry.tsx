@@ -91,7 +91,11 @@ function App() {
         {table ? (
           <ReportDataTable rows={rows} columns={columns} />
         ) : (
-          <ReportTimetableView sessions={sessions} hideInstructor />
+          <ReportTimetableView
+            sessions={sessions}
+            hideInstructor
+            headers={NEW_FLOW_TIMETABLE_TABLE_HEADERS}
+          />
         )}
       </ReportShell>
     </main>

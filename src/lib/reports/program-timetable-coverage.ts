@@ -1,3 +1,5 @@
+import { attendanceMetrics } from "./presentation-metrics";
+
 /**
  * Delivery-group coverage for the program/level timetable report.
  *
@@ -42,13 +44,14 @@ export interface DeliveryGroupCatalogRow {
   courseCode: string | null;
   courseName: string | null;
   expectedStudents: number | null;
-  /** Required weekly hours: teaching assignment hours, else component contact hours. */
+  /** Required weekly contact hours from the group’s curriculum component. */
   requiredHours: number;
   instructorName: string | null;
 }
 
 /** Minimal session shape needed to decide whether a group was placed. */
 export interface CoverageSessionLike {
+  day_of_week?: number;
   delivery_group_id?: string | null;
   start_time?: string | null;
   end_time?: string | null;
@@ -127,6 +130,20 @@ export function buildDeliveryGroupCoverage(input: {
     acc.count += 1;
     acc.hours += hours(s.start_time, s.end_time);
     placed.set(s.delivery_group_id, acc);
+  }
+
+  // Co-teachers and overlaps cannot satisfy the same group's contact hours twice.
+  for (const [id, acc] of placed) {
+    const sessions = input.sessions.filter((s) => s.delivery_group_id === id);
+    if (sessions.every((s) => s.day_of_week !== undefined && s.start_time && s.end_time)) {
+      acc.hours = attendanceMetrics(
+        sessions.map((s) => ({
+          day_of_week: s.day_of_week!,
+          start_time: s.start_time!,
+          end_time: s.end_time!,
+        })),
+      ).occupiedHours;
+    }
   }
 
   const rows: DeliveryGroupCoverageRow[] = input.groups
