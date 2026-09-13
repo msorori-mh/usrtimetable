@@ -17,6 +17,12 @@ import {
   READ_ONLY_VIEW_BADGE_AR,
   shouldLoadSuperAdminPageData,
 } from "@/lib/unauthorized-access";
+import {
+  ACADEMIC_AFFAIRS_CREATE_NOTE_AR,
+  ACADEMIC_AFFAIRS_ROLE_HINT_AR,
+  ACADEMIC_AFFAIRS_ROLE_LABEL_AR,
+  requiresCollegeAssignment,
+} from "@/lib/academic-affairs-role";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -51,7 +57,7 @@ const ROLE_LABELS: Record<AppRole, string> = {
   super_admin: "Super Admin",
   college_admin: "مدير كلّية",
   read_only: "مشاهد",
-  institutional_viewer: "مشاهد مؤسسي",
+  institutional_viewer: ACADEMIC_AFFAIRS_ROLE_LABEL_AR,
 };
 
 const ROLE_TONE: Record<AppRole, string> = {
@@ -65,8 +71,7 @@ const ROLE_HINTS: Record<AppRole, string> = {
   super_admin: "صلاحيات كاملة على جميع الكلّيات، وإدارة المستخدمين والأدوار.",
   college_admin: "كامل صلاحيات العمليات داخل الكلّيات المُسندة له، بما فيها الاستيراد من Excel.",
   read_only: "اطّلاع فقط على بيانات الكلّيات المُسندة، بدون أي تعديل.",
-  institutional_viewer:
-    "اطّلاع مؤسسي على جميع الكلّيات والصفحات والتقارير، دون أي صلاحية إضافة أو تعديل أو حذف.",
+  institutional_viewer: ACADEMIC_AFFAIRS_ROLE_HINT_AR,
 };
 
 type UserRow = {
@@ -637,10 +642,7 @@ function CreateUserDialog({
       toast.error("الاسم، البريد، وكلمة مرور لا تقل عن 8 أحرف مطلوبة");
       return;
     }
-    if (
-      (form.role === "college_admin" || form.role === "read_only") &&
-      form.college_ids.length === 0
-    ) {
+    if (requiresCollegeAssignment(form.role) && form.college_ids.length === 0) {
       toast.error("يجب إسناد كلّية واحدة على الأقل لهذا الدور");
       return;
     }
@@ -684,11 +686,7 @@ function CreateUserDialog({
         </DialogHeader>
         <div className="space-y-3">
           {presetRole === "institutional_viewer" && (
-            <p className="rounded-md bg-secondary p-3 text-sm">
-              حساب للاطلاع والطباعة والتصدير عبر جميع الكليات وأقسامها وبرامجها. يحدد الأدمن البريد
-              وبيانات الحساب عند إنشائه، ويمكن إدخال البيانات الأكاديمية لاحقاً. صلاحيات الحساب
-              للقراءة فقط، وتشمل الكليات التي تُضاف مستقبلاً.
-            </p>
+            <p className="rounded-md bg-secondary p-3 text-sm">{ACADEMIC_AFFAIRS_CREATE_NOTE_AR}</p>
           )}
           <div>
             <Label>الاسم الكامل</Label>
@@ -753,7 +751,7 @@ function CreateUserDialog({
             </Select>
             <p className="mt-1 text-[11px] text-muted-foreground">{ROLE_HINTS[form.role]}</p>
           </div>
-          {form.role !== "super_admin" && form.role !== "institutional_viewer" && (
+          {requiresCollegeAssignment(form.role) && (
             <div>
               <Label>
                 الكلّيات المُسندة <span className="text-destructive">*</span>
@@ -761,7 +759,9 @@ function CreateUserDialog({
               <p className="mb-1 text-[11px] text-muted-foreground">
                 {form.role === "college_admin"
                   ? "سيحصل على كامل صلاحيات العمليات داخل الكلّيات المحددة. الإسناد إلزامي."
-                  : "الإسناد إلزامي لتفعيل الدور."}
+                  : form.role === "institutional_viewer"
+                    ? "سيرى تقارير هذه الكلّيات فقط، دون أي تعديل. الإسناد إلزامي."
+                    : "الإسناد إلزامي لتفعيل الدور."}
               </p>
               {colleges.length === 0 ? (
                 <p className="text-xs text-muted-foreground">أنشئ كلّية أولاً.</p>
