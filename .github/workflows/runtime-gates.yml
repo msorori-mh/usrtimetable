@@ -73,6 +73,9 @@ jobs:
       - name: TypeScript (tsc --noEmit)
         run: bunx tsc --noEmit
 
+      - name: Bounded repair search contracts
+        run: node --test tests/repair-search.test.mjs
+
       - name: Joint attendance and scheduling contracts
         run: node --test tests/compact.test.mjs tests/joint-attendance.test.mjs tests/v2-joint-orchestration.test.mjs tests/compact-worker-client.test.mjs tests/compact-atomic-service.test.mjs
 

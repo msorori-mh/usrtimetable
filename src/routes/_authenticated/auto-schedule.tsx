@@ -58,6 +58,7 @@ function AutoSchedulePage() {
   const [mode, setMode] = useState<AutoRunMode>("fill_missing");
   const [compactBusy, setCompactBusy] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [runError, setRunError] = useState<string | null>(null);
   const [progress, setProgress] = useState<AutoScheduleProgress | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const [outcome, setOutcome] = useState<{ partial: boolean; text: string } | null>(null);
@@ -124,6 +125,7 @@ function AutoSchedulePage() {
 
   const run = useMutation({
     mutationFn: async () => {
+      setRunError(null);
       // Dual gate: UI disables the button; mutation re-checks manage + readiness (fail-closed).
       if (compactBusy) throw new Error("انتظر اكتمال تحسين التوزيع");
       if (!canManage) {
@@ -193,7 +195,12 @@ function AutoSchedulePage() {
     },
     onError: (e) => {
       setOutcome(null);
-      toast.error((e as Error).message);
+      const message =
+        e instanceof Error
+          ? e.message
+          : "تعذر تشغيل الجدولة. لم يتم تأكيد النتيجة؛ راجع النسخة قبل إعادة المحاولة.";
+      setRunError(message);
+      toast.error(message);
     },
     onSettled: () => {
       abortRef.current = null;
@@ -252,14 +259,22 @@ function AutoSchedulePage() {
               </div>
               <div className="min-w-56">
                 <label className="text-xs text-muted-foreground">وضع التشغيل</label>
-                <Select value={mode} onValueChange={(v) => setMode(v as AutoRunMode)}>
+                <Select
+                  disabled={run.isPending || compactBusy}
+                  value={mode}
+                  onValueChange={(v) => setMode(v as AutoRunMode)}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="fill_missing">إكمال الناقص فقط (آمن)</SelectItem>
-                    <SelectItem value="regenerate_auto">إعادة توليد المحاضرات التلقائية</SelectItem>
-                    <SelectItem value="full_rebuild">إعادة بناء كامل (خطر)</SelectItem>
+                    <SelectItem value="regenerate_auto" disabled>
+                      إعادة التوليد — غير متاحة في المحرك الحالي
+                    </SelectItem>
+                    <SelectItem value="full_rebuild" disabled>
+                      إعادة البناء الكامل — غير متاحة في المحرك الحالي
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -283,6 +298,20 @@ function AutoSchedulePage() {
                 </Button>
               ) : null}
             </div>
+            {runError ? (
+              <div
+                role="alert"
+                data-testid="auto-run-error"
+                className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm"
+              >
+                <p className="font-medium">تعذر إكمال تشغيل الجدولة</p>
+                <p className="mt-1 whitespace-pre-wrap">{runError}</p>
+                <p className="mt-2 text-muted-foreground">
+                  هذه نتيجة المحاولة الحالية. نتيجة آخر تشغيل أدناه تخص آخر عملية مسجلة وقد تكون
+                  أقدم.
+                </p>
+              </div>
+            ) : null}
             {run.isPending && progress ? (
               <div
                 className="rounded-md border bg-muted/40 p-3 text-sm"
