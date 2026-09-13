@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { PrintQrCode } from "@/components/print-center/print-qr-code";
+import { USR_UNIVERSITY_LOGO_SRC } from "@/lib/branding/usr";
 import {
   REPORT_COLLEGE_NAME_FALLBACK_AR,
   REPORT_UNIVERSITY_NAME_AR,
@@ -27,6 +29,8 @@ interface Props extends ReportOfficialHeaderMeta {
   /** Screen-only duplicate of filter summary (optional). */
   filterSummary?: string;
   generatedAt?: Date;
+  /** Canonical URL encoded in the printable verification QR. Defaults to the current report URL. */
+  verificationUrl?: string;
 }
 
 function formatGeneratedAt(d: Date): string {
@@ -48,9 +52,12 @@ export function ReportOfficialHeader({
   readOnly = true,
   filterSummary,
   generatedAt = new Date(),
+  verificationUrl,
 }: Props) {
   const studyLabel = studySystem ? STUDY_SYSTEM_LABELS[studySystem] : undefined;
   const statusLabel = versionStatus ? STATUS_LABEL_AR[versionStatus] : undefined;
+  const resolvedVerificationUrl =
+    verificationUrl ?? (typeof window !== "undefined" ? window.location.href : "");
 
   const defaultNote = useMemo(() => {
     if (note) return note;
@@ -62,13 +69,30 @@ export function ReportOfficialHeader({
   return (
     <Card className="report-official-header border-primary/20 bg-card p-4 border-t-[3px] border-t-[var(--usr-gold)] print:shadow-none print:border print:break-inside-avoid">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/60 pb-3 mb-3">
-        <div className="space-y-1">
-          <p className="text-sm font-semibold text-primary">{REPORT_UNIVERSITY_NAME_AR}</p>
-          <p className="text-base font-bold">{collegeName || REPORT_COLLEGE_NAME_FALLBACK_AR}</p>
+        <div className="flex items-center gap-3">
+          <img
+            src={USR_UNIVERSITY_LOGO_SRC}
+            alt={REPORT_UNIVERSITY_NAME_AR}
+            className="h-16 w-16 shrink-0 object-contain print:h-14 print:w-14"
+          />
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-primary">{REPORT_UNIVERSITY_NAME_AR}</p>
+            <p className="text-base font-bold">{collegeName || REPORT_COLLEGE_NAME_FALLBACK_AR}</p>
+          </div>
         </div>
-        <div className="text-left text-xs text-muted-foreground print:text-foreground">
-          <p>تاريخ التوليد</p>
-          <p className="font-medium">{formatGeneratedAt(generatedAt)}</p>
+        <div className="flex items-start gap-3 text-left text-xs text-muted-foreground print:text-foreground">
+          <div>
+            <p>تاريخ التوليد</p>
+            <p className="font-medium">{formatGeneratedAt(generatedAt)}</p>
+          </div>
+          {resolvedVerificationUrl && (
+            <div className="hidden items-center gap-1 print:flex">
+              <div>
+                <PrintQrCode value={resolvedVerificationUrl} size={64} title="رابط التحقق من التقرير" />
+                <p className="mt-1 text-center text-[9px]">رابط التحقق</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
