@@ -362,6 +362,8 @@ function InstructorDirectory() {
     statusFilter !== "all" ||
     typeFilter !== "all" ||
     sortBy !== "name_asc";
+  const statusFilterLabel =
+    statusFilter === "all" ? "" : statusFilter === "true" ? "نشط" : "غير نشط";
 
   return (
     <div className="mx-auto max-w-5xl" dir="rtl">
@@ -410,7 +412,7 @@ function InstructorDirectory() {
                   },
                   {
                     label: "الحالة",
-                    value: statusFilter === "all" ? "" : statusFilter === "true" ? "نشط" : "غير نشط",
+                    value: statusFilterLabel,
                   },
                   {
                     label: "فئة المحاضر",
@@ -941,7 +943,6 @@ function InstructorDirectory() {
     </div>
   );
 }
-
 
 function FilterSelect({
   label,
