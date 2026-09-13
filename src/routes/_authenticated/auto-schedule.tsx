@@ -114,7 +114,6 @@ function AutoSchedulePage() {
     },
   });
 
-  const runBlockedPlaceholder = null;
   const run = useMutation({
     mutationFn: async () => {
       // Dual gate: UI disables the button; mutation re-checks manage + readiness (fail-closed).
@@ -193,6 +192,9 @@ function AutoSchedulePage() {
       setProgress(null);
     },
   });
+
+  /** Non-role blockers; the role gate stays the leading `!canManage` on the run button. */
+  const runBlocked = !versionId || run.isPending || compactBusy || readinessIncomplete;
 
   const latest = runs?.[0];
 
