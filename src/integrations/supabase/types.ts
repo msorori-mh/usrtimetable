@@ -4074,6 +4074,7 @@ export type Database = {
         Returns: boolean
       }
       is_institutional_viewer: { Args: { _user_id: string }; Returns: boolean }
+      is_reports_only_viewer: { Args: { _user_id: string }; Returns: boolean }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       is_viewer_only: { Args: { _user_id: string }; Returns: boolean }
       list_schedule_builder_v2_work_items: {
@@ -4222,6 +4223,10 @@ export type Database = {
       schedule_version_delivery_coverage: {
         Args: { p_college_id: string; p_schedule_version_id: string }
         Returns: Json
+      }
+      schedule_version_is_published: {
+        Args: { _version_id: string }
+        Returns: boolean
       }
       schedule_version_room_type_capacity: {
         Args: { p_college_id: string; p_schedule_version_id: string }
