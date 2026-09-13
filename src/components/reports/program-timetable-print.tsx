@@ -16,8 +16,11 @@ export function ProgramTimetablePrint(props: {
   sessions: PrintSessionLike[];
   labels?: CohortDgLabels;
   qrUrl: string;
+  /** Completeness block printed with the sheets so print output stays honest. */
+  coverage?: ReactNode;
 }) {
   const { context: ctx, references, sessions, labels, qrUrl } = props;
+
   const exportedAt = useMemo(() => new Date(), []);
   const pages = useMemo(
     () =>
