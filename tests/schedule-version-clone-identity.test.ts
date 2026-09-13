@@ -59,9 +59,7 @@ function makeQuery(table: string) {
     return [];
   };
   const filtered = () =>
-    rows().filter((row) =>
-      Object.entries(filters).every(([key, value]) => row[key] === value),
-    );
+    rows().filter((row) => Object.entries(filters).every(([key, value]) => row[key] === value));
   const query: Record<string, unknown> = {
     select() {
       return query;
