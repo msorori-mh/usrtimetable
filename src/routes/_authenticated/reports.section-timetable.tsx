@@ -111,7 +111,7 @@ function Page() {
           </ReportFilters>
         }
       >
-        {ready && sessions.length > 0 && <ReportTimetableView sessions={sessions} />}
+        {ready && sessions.length > 0 && <ReportTimetableView sessions={sessions} collegeId={ctx.collegeId} />}
       </ReportShell>
     </div>
   );

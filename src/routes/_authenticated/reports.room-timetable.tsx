@@ -97,7 +97,7 @@ function Page() {
       }
     >
       {ready && sessions.length > 0 && (
-        <ReportTimetableView sessions={sessions} headers={NEW_FLOW_TIMETABLE_TABLE_HEADERS} />
+        <ReportTimetableView sessions={sessions} collegeId={ctx.collegeId} headers={NEW_FLOW_TIMETABLE_TABLE_HEADERS} />
       )}
     </ReportShell>
   );

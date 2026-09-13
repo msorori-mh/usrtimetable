@@ -1,3 +1,4 @@
+import { rtlDayRank } from "@/lib/reports/weekly-grid-window";
 import { matchesStudySystem } from "@/lib/reports/filters";
 import type { ReportStudySystem } from "@/lib/reports/types";
 import type {
@@ -158,10 +159,11 @@ export function filterPrintSessions(
   });
 }
 
-/** Stable sort: day → start → course code → id (no drop/dup; identity-preserving). */
+/** Stable sort: RTL week day (Saturday first) → start → course code → id (no drop/dup; identity-preserving). */
 export function sortPrintSessions(sessions: PrintSessionLike[]): PrintSessionLike[] {
   return [...sessions].sort((a, b) => {
-    if (a.day_of_week !== b.day_of_week) return a.day_of_week - b.day_of_week;
+    if (a.day_of_week !== b.day_of_week)
+      return rtlDayRank(a.day_of_week) - rtlDayRank(b.day_of_week);
     const at = a.start_time ?? "";
     const bt = b.start_time ?? "";
     if (at !== bt) return at.localeCompare(bt);

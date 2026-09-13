@@ -1,21 +1,18 @@
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import {
+  orderWeekDaysRtl,
+  RTL_WEEK_DAY_ORDER,
+  WEEK_DAY_LABELS_AR,
+  weeklyGridHourSlots,
+  WEEKLY_GRID_FALLBACK,
+} from "@/lib/reports/weekly-grid-window";
+import {
   courseTitle,
   sessionTypeLabel,
   studySystemLabel,
   type TimetableReportSession,
 } from "@/lib/reports/session-mappers";
-
-const DAY_LABELS: Record<number, string> = {
-  6: "السبت",
-  0: "الأحد",
-  1: "الاثنين",
-  2: "الثلاثاء",
-  3: "الأربعاء",
-  4: "الخميس",
-  5: "الجمعة",
-};
 
 const t = (s: string) => (s.length === 5 ? `${s}:00` : s);
 const toMins = (s: string) => {
@@ -47,7 +44,8 @@ interface PlacedSession {
 
 function assignLanes(daySessions: TimetableReportSession[]): PlacedSession[] {
   const sorted = [...daySessions].sort(
-    (a, b) => toMins(a.start_time) - toMins(b.start_time) || toMins(a.end_time) - toMins(b.end_time),
+    (a, b) =>
+      toMins(a.start_time) - toMins(b.start_time) || toMins(a.end_time) - toMins(b.end_time),
   );
   const lanes: TimetableReportSession[][] = [];
 
@@ -101,38 +99,23 @@ export function TimetableGridReport({
   endHour: endHourProp,
 }: TimetableGridReportProps) {
   const workingDays = useMemo(() => {
-    if (workingDaysProp?.length) return workingDaysProp;
-    const days = [...new Set(sessions.map((s) => s.day_of_week))].sort((a, b) => a - b);
-    return days.length ? days : [6, 0, 1, 2, 3, 4];
-  }, [sessions, workingDaysProp]);
+    // Configured working days win; otherwise fall back to the standard RTL week.
+    if (workingDaysProp?.length) return orderWeekDaysRtl(workingDaysProp);
+    return [...RTL_WEEK_DAY_ORDER];
+  }, [workingDaysProp]);
 
-  const { startHour, endHour } = useMemo(() => {
-    if (startHourProp != null && endHourProp != null) {
-      return { startHour: startHourProp, endHour: endHourProp };
-    }
-    if (!sessions.length) return { startHour: 8, endHour: 18 };
-    let minM = Infinity;
-    let maxM = -Infinity;
-    for (const s of sessions) {
-      minM = Math.min(minM, toMins(s.start_time));
-      maxM = Math.max(maxM, toMins(s.end_time));
-    }
-    return {
-      startHour: startHourProp ?? Math.max(7, Math.floor(minM / 60) - 1),
-      endHour: endHourProp ?? Math.min(22, Math.ceil(maxM / 60) + 1),
-    };
-  }, [sessions, startHourProp, endHourProp]);
+  const { startHour, endHour } = useMemo(
+    () => ({
+      startHour: startHourProp ?? WEEKLY_GRID_FALLBACK.startHour,
+      endHour: endHourProp ?? WEEKLY_GRID_FALLBACK.endHour,
+    }),
+    [startHourProp, endHourProp],
+  );
 
-  const slots = useMemo(() => {
-    const arr: { label: string; mins: number }[] = [];
-    for (let h = startHour; h <= endHour; h++) {
-      arr.push({ label: `${String(h).padStart(2, "0")}:00`, mins: h * 60 });
-    }
-    return arr;
-  }, [startHour, endHour]);
+  const slots = useMemo(() => weeklyGridHourSlots({ startHour, endHour }), [startHour, endHour]);
 
   const SLOT_PX = 56;
-  const totalHeight = (endHour - startHour) * SLOT_PX + SLOT_PX;
+  const totalHeight = Math.max(endHour - startHour, 1) * SLOT_PX;
 
   const placedByDay = useMemo(() => {
     const map = new Map<number, PlacedSession[]>();
@@ -144,7 +127,9 @@ export function TimetableGridReport({
 
   if (!sessions.length) {
     return (
-      <p className="text-sm text-muted-foreground text-center py-6">لا توجد محاضرات لعرضها في الشبكة.</p>
+      <p className="text-sm text-muted-foreground text-center py-6">
+        لا توجد محاضرات لعرضها في الشبكة.
+      </p>
     );
   }
 
@@ -162,7 +147,7 @@ export function TimetableGridReport({
             key={d}
             className="bg-muted/40 border-b border-l p-2 text-xs font-medium text-center sticky top-0 z-10"
           >
-            {DAY_LABELS[d] ?? DAY_LABELS[0]}
+            {WEEK_DAY_LABELS_AR[d] ?? String(d)}
           </div>
         ))}
 
