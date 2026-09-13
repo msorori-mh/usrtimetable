@@ -194,28 +194,72 @@ function Page() {
             <h2 className="mb-2 text-base font-bold">الملخص التنفيذي للقاعات والمعامل</h2>
             <p className="mb-3 text-sm leading-6">{analytics.insight}</p>
             <div className="mb-4 grid grid-cols-4 gap-2 text-sm">
-              <div className="border p-2"><b>إجمالي الموارد</b><br />{totals.rooms}</div>
-              <div className="border p-2"><b>القاعات / المعامل</b><br />{analytics.halls} / {analytics.labs}</div>
-              <div className="border p-2"><b>المستخدم / الفارغ</b><br />{totals.usedHours} / {totals.freeHours} ساعة</div>
-              <div className="border p-2"><b>الاستغلال العام</b><br />{totals.utilization}%</div>
-              <div className="border p-2"><b>متوسط القاعات</b><br />{analytics.hallAverageUtilization}%</div>
-              <div className="border p-2"><b>متوسط المعامل</b><br />{analytics.labAverageUtilization}%</div>
-              <div className="border p-2"><b>مزدحم / متوسط / منخفض</b><br />{analytics.bands.crowded} / {analytics.bands.medium} / {analytics.bands.low}</div>
-              <div className="border p-2"><b>أعلى / أقل استخدامًا</b><br />{analytics.highest?.room_name ?? "—"} / {analytics.lowest?.room_name ?? "—"}</div>
+              <div className="border p-2">
+                <b>إجمالي الموارد</b>
+                <br />
+                {totals.rooms}
+              </div>
+              <div className="border p-2">
+                <b>القاعات / المعامل</b>
+                <br />
+                {analytics.halls} / {analytics.labs}
+              </div>
+              <div className="border p-2">
+                <b>المستخدم / الفارغ</b>
+                <br />
+                {totals.usedHours} / {totals.freeHours} ساعة
+              </div>
+              <div className="border p-2">
+                <b>الاستغلال العام</b>
+                <br />
+                {totals.utilization}%
+              </div>
+              <div className="border p-2">
+                <b>متوسط القاعات</b>
+                <br />
+                {analytics.hallAverageUtilization}%
+              </div>
+              <div className="border p-2">
+                <b>متوسط المعامل</b>
+                <br />
+                {analytics.labAverageUtilization}%
+              </div>
+              <div className="border p-2">
+                <b>مزدحم / متوسط / منخفض</b>
+                <br />
+                {analytics.bands.crowded} / {analytics.bands.medium} / {analytics.bands.low}
+              </div>
+              <div className="border p-2">
+                <b>أعلى / أقل استخدامًا</b>
+                <br />
+                {analytics.highest?.room_name ?? "—"} / {analytics.lowest?.room_name ?? "—"}
+              </div>
             </div>
             {totals.overbookedHours > 0 && (
               <p className="mb-3 border border-destructive p-2 font-semibold text-destructive">
-                تجاوز الإتاحة المرصود: {totals.overbookedHours} ساعة. لم تُخفَ هذه الزيادة من الحسابات.
+                تجاوز الإتاحة المرصود: {totals.overbookedHours} ساعة. لم تُخفَ هذه الزيادة من
+                الحسابات.
               </p>
             )}
             <h3 className="mb-2 font-bold">ترتيب استغلال الوقت</h3>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs" data-testid="rooms-print-chart">
+            <div
+              className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs"
+              data-testid="rooms-print-chart"
+            >
               {[...summary]
                 .sort((a, b) => b.utilization_percent - a.utilization_percent)
                 .map((row) => (
-                  <div key={row.room_id} className="grid grid-cols-[8rem_1fr_3rem] items-center gap-2">
+                  <div
+                    key={row.room_id}
+                    className="grid grid-cols-[8rem_1fr_3rem] items-center gap-2"
+                  >
                     <span className="truncate">{row.room_name}</span>
-                    <span className="h-2 bg-muted"><span className="block h-full bg-primary" style={{ width: `${Math.min(100, row.utilization_percent)}%` }} /></span>
+                    <span className="h-2 bg-muted">
+                      <span
+                        className="block h-full bg-primary"
+                        style={{ width: `${Math.min(100, row.utilization_percent)}%` }}
+                      />
+                    </span>
                     <b>{row.utilization}</b>
                   </div>
                 ))}

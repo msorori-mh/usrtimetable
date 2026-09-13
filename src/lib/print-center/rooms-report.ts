@@ -271,7 +271,9 @@ export interface RoomsReportAnalytics {
 }
 
 function average(values: number[]): number {
-  return values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) : 0;
+  return values.length
+    ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length)
+    : 0;
 }
 
 function availabilityContains(
@@ -297,9 +299,7 @@ export function buildRoomsHeatmap(params: {
 }): RoomsHeatmapCell[] {
   const roomIds = new Set(params.summary.map((row) => row.room_id));
   const slots = [
-    ...new Set(
-      params.sessions.map((s) => `${s.start_time.slice(0, 5)}–${s.end_time.slice(0, 5)}`),
-    ),
+    ...new Set(params.sessions.map((s) => `${s.start_time.slice(0, 5)}–${s.end_time.slice(0, 5)}`)),
   ].sort();
   const workingDays = params.settings?.working_days ?? [0, 1, 2, 3, 4, 6];
   const ownByRoom = new Map<string, RoomsReportAvailability[]>();
@@ -371,20 +371,23 @@ export function buildRoomsReportAnalytics(params: {
   });
   const highest = ranked[0] ?? null;
   const lowest = ranked.at(-1) ?? null;
-  const insight = highest && lowest
-    ? `الضغط الأعلى على ${highest.room_name} باستغلال زمني ${highest.utilization}، بينما توجد سعة زمنية إضافية في ${lowest.room_name} (${lowest.free_hours} ساعة فارغة).`
-    : "لا توجد بيانات كافية لصياغة الاستنتاج التنفيذي.";
+  const insight =
+    highest && lowest
+      ? `الضغط الأعلى على ${highest.room_name} باستغلال زمني ${highest.utilization}، بينما توجد سعة زمنية إضافية في ${lowest.room_name} (${lowest.free_hours} ساعة فارغة).`
+      : "لا توجد بيانات كافية لصياغة الاستنتاج التنفيذي.";
   return {
     halls: halls.length,
     labs: labs.length,
     hallAverageUtilization: average(halls.map((row) => row.utilization_percent)),
     labAverageUtilization: average(labs.map((row) => row.utilization_percent)),
     bands: {
-      crowded: params.summary.filter((row) => utilizationBand(row.utilization_percent) === "crowded")
-        .length,
+      crowded: params.summary.filter(
+        (row) => utilizationBand(row.utilization_percent) === "crowded",
+      ).length,
       medium: params.summary.filter((row) => utilizationBand(row.utilization_percent) === "medium")
         .length,
-      low: params.summary.filter((row) => utilizationBand(row.utilization_percent) === "low").length,
+      low: params.summary.filter((row) => utilizationBand(row.utilization_percent) === "low")
+        .length,
     },
     topFive: ranked.slice(0, 5),
     bottomFive: [...ranked].reverse().slice(0, 5),
