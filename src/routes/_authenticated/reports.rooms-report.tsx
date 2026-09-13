@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { ReportShell } from "@/components/reports/report-shell";
 import { ReportFilters } from "@/components/reports/report-filters";
+import { RoomsAnalyticsDashboard } from "@/components/reports/rooms-analytics-dashboard";
 import { Card } from "@/components/ui/card";
 import {
   Table,
@@ -23,6 +24,7 @@ import {
   ROOMS_REPORT_SUMMARY_HEADERS,
   ROOMS_REPORT_TITLE_AR,
   buildRoomsReportSummary,
+  buildRoomsReportAnalytics,
   groupRoomsReportPages,
   roomsReportTotals,
 } from "@/lib/print-center/rooms-report";
@@ -78,7 +80,7 @@ function Page() {
           .eq("college_id", ctx.collegeId!),
         supabase
           .from("room_availability")
-          .select("room_id, start_time, end_time")
+          .select("room_id, day_of_week, start_time, end_time")
           .eq("college_id", ctx.collegeId!),
         supabase
           .from("scheduling_settings")
@@ -130,6 +132,16 @@ function Page() {
     [inventory.data, sessions],
   );
   const totals = useMemo(() => roomsReportTotals({ summary, sessions }), [summary, sessions]);
+  const analytics = useMemo(
+    () =>
+      buildRoomsReportAnalytics({
+        summary,
+        sessions,
+        availability: inventory.data?.availability ?? [],
+        settings: inventory.data?.settings,
+      }),
+    [summary, sessions, inventory.data],
+  );
   const pages = useMemo(
     () => groupRoomsReportPages(sessions, ctx.collegeId ?? ""),
     [sessions, ctx.collegeId],
@@ -156,9 +168,10 @@ function Page() {
       notReadyMessage={ready ? undefined : "اختر نسخة الجدول لعرض تقرير القاعات."}
       emptyMessage="لا توجد قاعات مسجلة في هذه الكلية."
       kpis={[
-        { label: "القاعات والمعامل", value: totals.rooms },
+        { label: "إجمالي الموارد", value: totals.rooms },
         { label: "الساعات المستخدمة", value: totals.usedHours, tone: "accent" },
         { label: "الساعات المتاحة", value: totals.availableHours },
+        { label: "الساعات الفارغة", value: totals.freeHours },
         { label: "نسبة الاستغلال", value: `${totals.utilization}%`, tone: "accent" },
       ]}
       filters={<ReportFilters context={ctx} />}
@@ -178,7 +191,38 @@ function Page() {
         <>
           <style>{printPageStyleCss("A3", "landscape")}</style>
           <section className="print-center-page break-after-page">
-            <h2 className="mb-2 text-base font-bold">ملخص القاعات والمعامل</h2>
+            <h2 className="mb-2 text-base font-bold">الملخص التنفيذي للقاعات والمعامل</h2>
+            <p className="mb-3 text-sm leading-6">{analytics.insight}</p>
+            <div className="mb-4 grid grid-cols-4 gap-2 text-sm">
+              <div className="border p-2"><b>إجمالي الموارد</b><br />{totals.rooms}</div>
+              <div className="border p-2"><b>القاعات / المعامل</b><br />{analytics.halls} / {analytics.labs}</div>
+              <div className="border p-2"><b>المستخدم / الفارغ</b><br />{totals.usedHours} / {totals.freeHours} ساعة</div>
+              <div className="border p-2"><b>الاستغلال العام</b><br />{totals.utilization}%</div>
+              <div className="border p-2"><b>متوسط القاعات</b><br />{analytics.hallAverageUtilization}%</div>
+              <div className="border p-2"><b>متوسط المعامل</b><br />{analytics.labAverageUtilization}%</div>
+              <div className="border p-2"><b>مزدحم / متوسط / منخفض</b><br />{analytics.bands.crowded} / {analytics.bands.medium} / {analytics.bands.low}</div>
+              <div className="border p-2"><b>أعلى / أقل استخدامًا</b><br />{analytics.highest?.room_name ?? "—"} / {analytics.lowest?.room_name ?? "—"}</div>
+            </div>
+            {totals.overbookedHours > 0 && (
+              <p className="mb-3 border border-destructive p-2 font-semibold text-destructive">
+                تجاوز الإتاحة المرصود: {totals.overbookedHours} ساعة. لم تُخفَ هذه الزيادة من الحسابات.
+              </p>
+            )}
+            <h3 className="mb-2 font-bold">ترتيب استغلال الوقت</h3>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs" data-testid="rooms-print-chart">
+              {[...summary]
+                .sort((a, b) => b.utilization_percent - a.utilization_percent)
+                .map((row) => (
+                  <div key={row.room_id} className="grid grid-cols-[8rem_1fr_3rem] items-center gap-2">
+                    <span className="truncate">{row.room_name}</span>
+                    <span className="h-2 bg-muted"><span className="block h-full bg-primary" style={{ width: `${Math.min(100, row.utilization_percent)}%` }} /></span>
+                    <b>{row.utilization}</b>
+                  </div>
+                ))}
+            </div>
+          </section>
+          <section className="print-center-page break-after-page">
+            <h2 className="mb-2 text-base font-bold">جدول ملخص القاعات والمعامل</h2>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -214,34 +258,15 @@ function Page() {
                 lastUpdate: latestSessionUpdate(sessions),
                 qrUrl,
                 isDemo: isDeliveryDemoVersion({ name: ctx.selectedVersion?.name }),
-                pageIndex: i + 2,
-                pageCount: pages.length + 1,
+                pageIndex: i + 3,
+                pageCount: pages.length + 2,
               }}
             />
           ))}
         </>
       }
     >
-      <div className="min-w-0 overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {ROOMS_REPORT_SUMMARY_HEADERS.map((h) => (
-                <TableHead key={h.key}>{h.label}</TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {summary.map((r) => (
-              <TableRow key={`${r.room_code}-${r.room_name}`}>
-                {ROOMS_REPORT_SUMMARY_HEADERS.map((h) => (
-                  <TableCell key={h.key}>{String(r[h.key])}</TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+      <RoomsAnalyticsDashboard summary={summary} analytics={analytics} />
     </ReportShell>
   );
 }
