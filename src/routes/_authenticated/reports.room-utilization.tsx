@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveCollege } from "@/hooks/use-colleges";
+import { usePublishedOnlyReports } from "@/hooks/reports/use-published-only-reports";
+import { visibleVersionStatuses } from "@/lib/reports/published-only";
 import { ReportShell } from "@/components/reports/report-shell";
 import { ReportFilterBar, ReportFilterField } from "@/components/reports/report-filter-bar";
 import { ReportSection, ReportDataTable } from "@/components/reports/report-section";
@@ -26,6 +28,7 @@ const WEEKLY_CAPACITY_HOURS = 40;
 
 function Page() {
   const { active } = useActiveCollege();
+  const publishedOnly = usePublishedOnlyReports();
   const [termId, setTermId] = useState("all");
   const [rtId, setRtId] = useState("all");
   const [bId, setBId] = useState("all");
@@ -85,7 +88,7 @@ function Page() {
     isLoading: sLoad,
     error: sessionsError,
   } = useQuery({
-    queryKey: ["ru-sess", active?.id, termId],
+    queryKey: ["ru-sess", active?.id, termId, publishedOnly],
     enabled: !!active,
     queryFn: async () => {
       let q = supabase
@@ -94,6 +97,8 @@ function Page() {
         .eq("college_id", active!.id)
         .not("room_id", "is", null);
       if (termId !== "all") q = q.eq("schedule_versions.academic_term_id", termId);
+      // Reports-only viewer: utilisation counts published schedules only.
+      if (publishedOnly) q = q.eq("schedule_versions.status", "published");
       const { data } = await q;
       return data ?? [];
     },
