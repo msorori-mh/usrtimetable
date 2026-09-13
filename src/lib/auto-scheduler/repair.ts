@@ -24,7 +24,8 @@ import {
   minutes,
   type Session,
   type Snapshot,
-} from "@/lib/auto-scheduler/compact";
+} from "./compact.ts";
+import { isRoomTypeCompatible } from "../scheduling/room-type-policy.ts";
 
 export type RepairPlacement = {
   day_of_week: number;
@@ -58,7 +59,10 @@ export type RepairBudget = {
   maxDepth: number;
 };
 
-export const DEFAULT_REPAIR_BUDGET: RepairBudget = { maxAttempts: 4000, maxDepth: 2 };
+export const DEFAULT_REPAIR_BUDGET: RepairBudget = {
+  maxAttempts: 4000,
+  maxDepth: 2,
+};
 
 const placementOf = (session: Session): RepairPlacement => ({
   day_of_week: session.day_of_week,
@@ -76,7 +80,10 @@ const samePlacement = (a: RepairPlacement, b: RepairPlacement) =>
 const durationMinutes = (session: Session) =>
   minutes(session.end_time) - minutes(session.start_time);
 
-const withPlacement = (session: Session, placement: RepairPlacement): Session => ({
+const withPlacement = (
+  session: Session,
+  placement: RepairPlacement,
+): Session => ({
   ...session,
   day_of_week: placement.day_of_week,
   start_time: placement.start_time,
@@ -99,7 +106,8 @@ export function conflictingSessions(
   return sessions.filter((other) => {
     if (other.id === candidate.id) return false;
     if (other.day_of_week !== candidate.day_of_week) return false;
-    if (!(start < minutes(other.end_time) && end > minutes(other.start_time))) return false;
+    if (!(start < minutes(other.end_time) && end > minutes(other.start_time)))
+      return false;
     return (
       other.room_id === candidate.room_id ||
       other.instructor_id === candidate.instructor_id ||
@@ -142,8 +150,25 @@ function relocate(
   if (session.is_locked || state.pinned.has(session.id)) return null;
   const current = placementOf(session);
   const slots = compactSlots({ ...state.snapshot, sessions: others }, session);
+  const assignment = state.snapshot.assignments.find(
+    (a) => a.id === session.teaching_assignment_id,
+  );
+  const component = state.snapshot.components?.find(
+    (c) => c.id === assignment?.plan_course_component_id,
+  );
+  const roomIds = state.roomIds.filter((id) => {
+    const room = state.snapshot.rooms.find((r) => r.id === id)!;
+    return (
+      room.capacity >= session.expected_students &&
+      isRoomTypeCompatible({
+        componentType: component?.component_type,
+        requiredRoomType: assignment?.required_room_type,
+        roomType: room.room_type,
+      })
+    );
+  });
   for (const slot of slots) {
-    for (const roomId of state.roomIds) {
+    for (const roomId of roomIds) {
       if (state.attempts >= state.budget.maxAttempts) return null;
       const placement: RepairPlacement = {
         day_of_week: slot.day,
@@ -154,11 +179,16 @@ function relocate(
       if (samePlacement(placement, current)) continue;
       const candidate = withPlacement(session, placement);
       state.attempts++;
-      if (state.feasible(state.snapshot, [...others, candidate], candidate, session)) {
+      if (state.feasible(state.snapshot, others, candidate, session)) {
         return {
           sessions: [...others, candidate],
           moves: [
-            { sessionId: session.id, updatedAt: session.updated_at, from: current, to: placement },
+            {
+              sessionId: session.id,
+              updatedAt: session.updated_at,
+              from: current,
+              to: placement,
+            },
           ],
         };
       }
@@ -168,17 +198,28 @@ function relocate(
       const blocker = blockers[0];
       if (blocker.is_locked || state.pinned.has(blocker.id)) continue;
       const rest = others.filter((x) => x.id !== blocker.id);
-      const inner = relocate(state, blocker, rest, depth - 1);
+      // Reserve the parent's destination while relocating its blocker;
+      // otherwise the inner search can immediately occupy that destination.
+      state.pinned.add(session.id);
+      const inner = relocate(state, blocker, [...rest, candidate], depth - 1);
+      state.pinned.delete(session.id);
       if (!inner) continue;
+      if (state.attempts >= state.budget.maxAttempts) return null;
+      const innerOthers = inner.sessions.filter((x) => x.id !== session.id);
       state.attempts++;
-      if (!state.feasible(state.snapshot, [...inner.sessions, candidate], candidate, session)) {
+      if (!state.feasible(state.snapshot, innerOthers, candidate, session)) {
         continue;
       }
       return {
-        sessions: [...inner.sessions, candidate],
+        sessions: [...innerOthers, candidate],
         moves: [
           ...inner.moves,
-          { sessionId: session.id, updatedAt: session.updated_at, from: current, to: placement },
+          {
+            sessionId: session.id,
+            updatedAt: session.updated_at,
+            from: current,
+            to: placement,
+          },
         ],
       };
     }
@@ -205,13 +246,24 @@ export function planRepair(input: {
   stats?: { attempts: number };
 }): RepairPlan | null {
   const budget: RepairBudget = {
-    maxAttempts: Math.max(1, input.budget?.maxAttempts ?? DEFAULT_REPAIR_BUDGET.maxAttempts),
-    maxDepth: Math.max(1, Math.min(2, input.budget?.maxDepth ?? DEFAULT_REPAIR_BUDGET.maxDepth)),
+    maxAttempts: Math.max(
+      1,
+      input.budget?.maxAttempts ?? DEFAULT_REPAIR_BUDGET.maxAttempts,
+    ),
+    maxDepth: Math.max(
+      1,
+      Math.min(2, input.budget?.maxDepth ?? DEFAULT_REPAIR_BUDGET.maxDepth),
+    ),
   };
   const state: SearchState = {
     snapshot: input.snapshot,
     feasible: input.feasible ?? defaultFeasible,
-    roomIds: [...input.roomIds],
+    // The missing lecture's room pool does not describe its blockers. A lab
+    // lecture may be blocked by a teacher's hall lecture (or conversely).
+    // Feasibility still checks each relocated lecture's own type and capacity.
+    roomIds: input.snapshot.rooms
+      .filter((room) => room.is_active)
+      .map((room) => room.id),
     budget,
     attempts: 0,
     pinned: new Set<string>([input.missing.id]),
@@ -222,52 +274,71 @@ export function planRepair(input: {
     return value;
   };
 
-  for (const slot of input.targetSlots) {
-    for (const roomId of state.roomIds) {
-      if (state.attempts >= budget.maxAttempts) {
-        return finish(null);
-      }
-      const placement: RepairPlacement = {
-        day_of_week: slot.day,
-        start_time: slot.start,
-        end_time: slot.end,
-        room_id: roomId,
-      };
-      const candidate = withPlacement(input.missing, placement);
-      const blockers = conflictingSessions(state.snapshot, sessions, candidate);
-      if (blockers.length === 0) {
-        // Not blocked by occupancy: the direct pass already rejected it for a
-        // structural reason (room type, availability, load, five-day rule).
-        continue;
-      }
-      if (blockers.length > budget.maxDepth) continue;
-      if (blockers.some((blocker) => blocker.is_locked)) continue;
-
-      const rest = sessions.filter((x) => !blockers.some((blocker) => blocker.id === x.id));
-      state.attempts++;
-      if (!state.feasible(state.snapshot, [...rest, candidate], candidate, input.missing)) {
-        // Even with the blockers removed the slot is illegal — moving them is pointless.
-        continue;
-      }
-
-      let current: Session[] = [...rest, candidate];
-      state.pinned = new Set<string>([input.missing.id]);
-      const moves: RepairMove[] = [];
-      let ok = true;
-      for (const blocker of [...blockers].sort(byBlockerPreference)) {
-        const others = current.filter((x) => x.id !== blocker.id);
-        const relocated = relocate(state, blocker, others, budget.maxDepth - 1);
-        if (!relocated) {
-          ok = false;
-          break;
+  // Explore one-hop repairs before spending the budget on recursive searches.
+  for (let searchDepth = 1; searchDepth <= budget.maxDepth; searchDepth++) {
+    for (const slot of input.targetSlots) {
+      for (const roomId of input.roomIds) {
+        if (state.attempts >= budget.maxAttempts) {
+          return finish(null);
         }
-        current = relocated.sessions;
-        moves.push(...relocated.moves);
-        for (const move of relocated.moves) state.pinned.add(move.sessionId);
+        const placement: RepairPlacement = {
+          day_of_week: slot.day,
+          start_time: slot.start,
+          end_time: slot.end,
+          room_id: roomId,
+        };
+        const candidate = withPlacement(input.missing, placement);
+        const blockers = conflictingSessions(
+          state.snapshot,
+          sessions,
+          candidate,
+        );
+        if (blockers.length === 0) {
+          // Not blocked by occupancy: the direct pass already rejected it for a
+          // structural reason (room type, availability, load, five-day rule).
+          continue;
+        }
+        if (blockers.length > searchDepth) continue;
+        if (blockers.some((blocker) => blocker.is_locked)) continue;
+
+        const rest = sessions.filter(
+          (x) => !blockers.some((blocker) => blocker.id === x.id),
+        );
+        state.attempts++;
+        if (!state.feasible(state.snapshot, rest, candidate, input.missing)) {
+          // Even with the blockers removed the slot is illegal — moving them is pointless.
+          continue;
+        }
+
+        let current: Session[] = [...rest, candidate];
+        state.pinned = new Set<string>([input.missing.id]);
+        const moves: RepairMove[] = [];
+        let ok = true;
+        for (const blocker of [...blockers].sort(byBlockerPreference)) {
+          const others = current.filter((x) => x.id !== blocker.id);
+          const relocated = relocate(
+            state,
+            blocker,
+            others,
+            searchDepth - blockers.length,
+          );
+          if (!relocated) {
+            ok = false;
+            break;
+          }
+          current = relocated.sessions;
+          moves.push(...relocated.moves);
+          for (const move of relocated.moves) state.pinned.add(move.sessionId);
+        }
+        if (!ok || moves.length === 0) continue;
+        if (moves.length > searchDepth) continue;
+        return finish({
+          moves,
+          placement,
+          depth: moves.length,
+          attempts: state.attempts,
+        });
       }
-      if (!ok || moves.length === 0) continue;
-      if (moves.length > budget.maxDepth) continue;
-      return finish({ moves, placement, depth: moves.length, attempts: state.attempts });
     }
   }
   return finish(null);
@@ -278,6 +349,7 @@ export function compareRepairPriority(
   a: { durationMinutes: number; candidateCount: number },
   b: { durationMinutes: number; candidateCount: number },
 ): number {
-  if (a.durationMinutes !== b.durationMinutes) return b.durationMinutes - a.durationMinutes;
+  if (a.durationMinutes !== b.durationMinutes)
+    return b.durationMinutes - a.durationMinutes;
   return a.candidateCount - b.candidateCount;
 }
