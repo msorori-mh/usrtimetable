@@ -22,7 +22,10 @@ import {
   type PreparationStepId,
 } from "@/lib/data-onboarding/preparation";
 import type { WizardStepStatus } from "@/lib/data-onboarding/types";
-import { roomTimeCapacityMessagesAr } from "@/lib/reports/room-time-capacity";
+import {
+  roomTimeCapacityMessagesAr,
+  ROOM_TIME_CAPACITY_POLICY_NOTE_AR,
+} from "@/lib/reports/room-time-capacity";
 
 const STATUS: Record<WizardStepStatus, string> = {
   complete: "مكتمل",
@@ -240,8 +243,8 @@ export function PreparationWorkspace({
                 ))}
               </ul>
               <p className="text-xs text-muted-foreground">
-                الحل: إضافة قاعات من النوع نفسه، أو تقليل الساعات المطلوبة. لم يتم تغيير ساعات
-                الدوام ولا افتراض أي قاعة غير مسجلة.
+                {ROOM_TIME_CAPACITY_POLICY_NOTE_AR} الحل: إضافة قاعات، أو تقليل الساعات المطلوبة.
+                لم يتم تغيير ساعات الدوام ولا افتراض أي قاعة غير مسجلة.
               </p>
             </Card>
           )}

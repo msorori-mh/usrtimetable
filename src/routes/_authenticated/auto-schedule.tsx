@@ -30,7 +30,10 @@ import { logAudit } from "@/lib/audit";
 import type { AutoRunMode } from "@/lib/auto-scheduler/greedy";
 import { runV2AutoSchedule, type AutoScheduleProgress } from "@/lib/auto-scheduler/v2";
 import { fetchCollegeReadiness } from "@/lib/reports/readiness";
-import { roomTimeCapacityMessagesAr } from "@/lib/reports/room-time-capacity";
+import {
+  roomTimeCapacityMessagesAr,
+  ROOM_TIME_CAPACITY_POLICY_NOTE_AR,
+} from "@/lib/reports/room-time-capacity";
 import { CompactSchedulePanel } from "@/components/compact-panel";
 import { Sparkles, AlertCircle, CheckCircle2 } from "lucide-react";
 import {
@@ -320,6 +323,9 @@ function AutoSchedulePage() {
                     <li key={line}>{line}</li>
                   ))}
                 </ul>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {ROOM_TIME_CAPACITY_POLICY_NOTE_AR}
+                </p>
               </div>
             ) : null}
             {readinessIncomplete ? (
