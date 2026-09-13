@@ -272,22 +272,81 @@ export type RoomRequirement = {
   roomTypeId?: string | null;
   roomTypeName?: string | null;
   expectedStudents?: number | null;
+  /** Plan-course component type — enables the practical lab→hall fallback policy. */
+  componentType?: string | null;
+  /** room_types.id → room_types.code, used to evaluate the policy on codes. */
+  roomTypeCodeById?: Readonly<Record<string, string | null>> | null;
 };
+
+const requirementCode = (req: RoomRequirement): string | null => {
+  if (req.roomTypeName) return String(req.roomTypeName).toLowerCase();
+  if (req.roomTypeId && req.roomTypeCodeById) {
+    const code = req.roomTypeCodeById[req.roomTypeId];
+    if (code) return String(code).toLowerCase();
+  }
+  return null;
+};
+
+const roomCode = (room: RoomLite, req: RoomRequirement): string | null => {
+  if (room.room_type) return String(room.room_type).toLowerCase();
+  if (room.room_type_id && req.roomTypeCodeById) {
+    const code = req.roomTypeCodeById[room.room_type_id];
+    if (code) return String(code).toLowerCase();
+  }
+  return null;
+};
+
+/**
+ * Local room pre-filter rank (capacity + room type policy).
+ * 0 = required type, 1 = allowed practical fallback, null = incompatible.
+ * Server validation still decides.
+ */
+export function roomCandidateRank(room: RoomLite, req: RoomRequirement): RoomTypeRank {
+  const need = Number(req.expectedStudents ?? 0);
+  if (need > 0 && Number(room.capacity ?? 0) < need) return null;
+  const requiredCode = requirementCode(req);
+  const actualCode = roomCode(room, req);
+  if (requiredCode && actualCode) {
+    return roomTypeRank({
+      componentType: req.componentType,
+      requiredRoomType: requiredCode,
+      roomType: actualCode,
+    });
+  }
+  if (req.roomTypeId) return room.room_type_id === req.roomTypeId ? 0 : null;
+  if (requiredCode) return actualCode === requiredCode ? 0 : null;
+  return 0;
+}
 
 /** Local room pre-filter (capacity + room type). Server validation still decides. */
 export function roomMatchesRequirement(room: RoomLite, req: RoomRequirement): boolean {
-  const need = Number(req.expectedStudents ?? 0);
-  if (need > 0 && Number(room.capacity ?? 0) < need) return false;
-  if (req.roomTypeId) return room.room_type_id === req.roomTypeId;
-  if (req.roomTypeName) {
-    return String(room.room_type ?? "").toLowerCase() === String(req.roomTypeName).toLowerCase();
-  }
-  return true;
+  return roomCandidateRank(room, req) !== null;
 }
 
+/** Compatible rooms, preferred room type first and policy fallbacks last. */
 export function filterCandidateRooms(rooms: RoomLite[], req: RoomRequirement): RoomLite[] {
-  return rooms.filter((room) => roomMatchesRequirement(room, req));
+  return rooms
+    .map((room, index) => ({ room, index, rank: roomCandidateRank(room, req) }))
+    .filter((entry): entry is { room: RoomLite; index: number; rank: 0 | 1 } => entry.rank !== null)
+    .sort((a, b) => a.rank - b.rank || a.index - b.index)
+    .map((entry) => entry.room);
 }
+
+/** Rooms grouped by policy rank: preferred first, fallback pool second. */
+export function partitionCandidateRoomsByRank(
+  rooms: RoomLite[],
+  req: RoomRequirement,
+): { preferred: RoomLite[]; fallback: RoomLite[] } {
+  const preferred: RoomLite[] = [];
+  const fallback: RoomLite[] = [];
+  for (const room of rooms) {
+    const rank = roomCandidateRank(room, req);
+    if (rank === 0) preferred.push(room);
+    else if (rank === 1) fallback.push(room);
+  }
+  return { preferred, fallback };
+}
+
 
 export type OccupiedInterval = {
   day: number;
