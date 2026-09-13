@@ -103,6 +103,9 @@ function Page() {
 
   const isLoading = ctx.isLoading || sessionsLoading;
   const ready = !!ctx.versionId;
+  const filtered = ctx.studySystem !== "all";
+  const coverageSuffix = filtered ? " (كل الأنظمة)" : "";
+  const scopeSuffix = filtered ? " (ضمن الفلتر)" : "";
 
   return (
     <ReportShell
