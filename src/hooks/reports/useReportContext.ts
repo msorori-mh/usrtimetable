@@ -78,50 +78,60 @@ export function useReportContext(options: UseReportContextOptions = {}): ReportC
     }
   }, [terms, termId, termsReady]);
 
+  const effectiveStatusMode = resolveReportStatusMode(fixedStatusMode ?? statusMode, publishedOnly);
+
   const {
-    data: versions = [],
+    data: fetchedVersions = [],
     isLoading: versionsLoading,
     error: versionsError,
     isSuccess: versionsReady,
   } = useQuery({
-    queryKey: ["report-versions", collegeId, termId, fixedStatusMode ?? statusMode],
+    queryKey: ["report-versions", collegeId, termId, effectiveStatusMode, publishedOnly],
     enabled: !!collegeId && !!termId,
     queryFn: () =>
       fetchScheduleVersions({
         collegeId: collegeId!,
         termId,
-        statusMode: fixedStatusMode ?? statusMode,
+        statusMode: effectiveStatusMode,
       }),
   });
 
-  // Reset version when term or status mode changes; keep selection if still valid.
+  /** Defence in depth: never expose a non-published version to the reports-only viewer. */
+  const versions = useMemo(
+    () => filterVisibleVersions(fetchedVersions, publishedOnly),
+    [fetchedVersions, publishedOnly],
+  );
+
+  /**
+   * Reset version when term or status mode changes; keep the selection only when it
+   * is still visible. A draft/review id (stored, shared or QR-restored) is rejected
+   * and replaced by the newest published version — or by nothing at all.
+   */
   useEffect(() => {
     if (!versionsReady) return;
-    if (!versions.length) {
-      setVersionIdState(null);
-      return;
-    }
-    if (!versionId || !versions.some((v) => v.id === versionId)) {
-      setVersionIdState(versions[0].id);
-    }
-  }, [versions, versionId, versionsReady]);
+    setVersionIdState((current) => sanitizeVersionSelection(current, versions, publishedOnly));
+  }, [versions, versionsReady, publishedOnly]);
 
   const setTermId = useCallback((id: string | null) => {
     setTermIdState(id);
     setVersionIdState(null);
   }, []);
 
-  const setVersionId = useCallback((id: string | null) => {
-    setVersionIdState(id);
-  }, []);
+  const setVersionId = useCallback(
+    (id: string | null) => {
+      if (publishedOnly && id && !versions.some((v) => v.id === id)) return;
+      setVersionIdState(id);
+    },
+    [publishedOnly, versions],
+  );
 
   const setStatusMode = useCallback(
     (mode: ReportStatusMode) => {
-      if (fixedStatusMode) return;
+      if (publishedOnly || fixedStatusMode) return;
       setStatusModeState(mode);
       setVersionIdState(null);
     },
-    [fixedStatusMode],
+    [fixedStatusMode, publishedOnly],
   );
 
   const setStudySystem = useCallback((system: ReportStudySystem) => {
