@@ -335,7 +335,10 @@ function run() {
   assert(opts.sessionTypes.length === 2, "filter options types");
 
   const grid = toGridSessions(sessions);
-  assert(grid[0].title.includes("CS101"), "grid title has course code");
+  assert(
+    grid[0].title.includes("مقدمة") && !grid[0].title.includes("CS101"),
+    "grid title uses human course name",
+  );
   assert(!!grid[0].badge, "grid has type/system badge");
 
   // Page source guards

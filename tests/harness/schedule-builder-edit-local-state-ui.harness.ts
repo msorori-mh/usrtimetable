@@ -328,7 +328,7 @@ function run() {
   });
   const withRoom = applyPendingToSessions([session], pendingRoom, rooms);
   assert(withRoom[0].room_id === "r2", "room applied locally");
-  assert(withRoom[0].room_label.includes("B2"), "room label derived");
+  assert(withRoom[0].room_label === "معمل", "room label uses human room name");
 
   // 18. unsaved badge on grid
   const grid = toGridSessionsWithPending([withRoom[0]], pendingRoom, "sess-1");
