@@ -14,7 +14,8 @@
 - الفحوص: typecheck و ESLint (تحذير fast-refresh واحد قديم) و build OK و git diff --check نظيف. مجموعة bun test: 523 نجاح و26 إخفاق قديم (NameTooLong/بيئة) مطابق للـbaseline.
 
 ### إخفاء شارة الكلية لحساب reports-only في `/reports`
-- [ ] تعديل `src/components/app-layout.tsx`: إخفاء `activeCollege.name` عند `reportsOnly === true` ومسار `/reports` أو `/reports/` مع الإبقاء على breadcrumb.
-- [ ] إضافة regression test يثبت أن reports-only لا يرى الشارة على `/reports` وباقي الحالات لا تتأثر.
-- [ ] تشغيل typecheck + ESLint + الاختبار المركّز.
+- [x] تعديل `src/components/app-layout.tsx`: إخفاء `activeCollege.name` عند `reportsOnly === true` ومسار `/reports` أو `/reports/` مع الإبقاء على breadcrumb.
+- [x] إضافة regression test يثبت أن reports-only لا يرى الشارة على `/reports` وباقي الحالات لا تتأثر.
+- [x] تشغيل typecheck + ESLint + الاختبار المركّز + build + git diff --check.
+
 
