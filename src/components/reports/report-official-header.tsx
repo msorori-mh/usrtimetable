@@ -65,7 +65,7 @@ export function ReportOfficialHeader({
   }, [note, official, readOnly]);
 
   return (
-    <Card className="report-official-header border-primary/20 bg-card p-4 border-t-[3px] border-t-[var(--usr-gold)] print:shadow-none print:border print:break-inside-avoid">
+    <Card className="report-official-header print-center-header border-primary/20 bg-card p-4 border-t-[3px] border-t-[var(--usr-gold)] print:shadow-none print:border print:break-inside-avoid">
       <div className="print-header-identity-band border-b border-border/60 pb-3 mb-3">
         <div className="print-header-institution">
           <img
