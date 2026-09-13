@@ -198,6 +198,8 @@ export function planRepair(input: {
   roomIds: readonly string[];
   budget?: Partial<RepairBudget>;
   feasible?: FeasibleFn;
+  /** Mutable counter: receives the feasibility evaluations consumed, found or not. */
+  stats?: { attempts: number };
 }): RepairPlan | null {
   const budget: RepairBudget = {
     maxAttempts: Math.max(1, input.budget?.maxAttempts ?? DEFAULT_REPAIR_BUDGET.maxAttempts),
@@ -211,11 +213,15 @@ export function planRepair(input: {
     attempts: 0,
   };
   const sessions = [...input.sessions];
+  const finish = <T>(value: T): T => {
+    if (input.stats) input.stats.attempts += state.attempts;
+    return value;
+  };
 
   for (const slot of input.targetSlots) {
     for (const roomId of state.roomIds) {
       if (state.attempts >= budget.maxAttempts) {
-        return null;
+        return finish(null);
       }
       const placement: RepairPlacement = {
         day_of_week: slot.day,
@@ -255,10 +261,10 @@ export function planRepair(input: {
       }
       if (!ok || moves.length === 0) continue;
       if (moves.length > budget.maxDepth) continue;
-      return { moves, placement, depth: moves.length, attempts: state.attempts };
+      return finish({ moves, placement, depth: moves.length, attempts: state.attempts });
     }
   }
-  return null;
+  return finish(null);
 }
 
 /** Hardest first: longer blocks and scarcer domains before flexible short ones. */
