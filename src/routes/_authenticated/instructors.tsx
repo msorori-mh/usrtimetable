@@ -670,6 +670,127 @@ function InstructorDirectory() {
           </Link>
         </Button>
       </div>
+
+      <Card className="mb-4 space-y-3 p-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="min-w-72 flex-1">
+            <Label htmlFor="instructor-search">بحث</Label>
+            <Input
+              id="instructor-search"
+              value={directory.search}
+              onChange={(e) => setDirectoryField("search", e.target.value)}
+              placeholder="ابحث بالاسم أو رقم الموظف أو البريد أو القسم…"
+            />
+          </div>
+          <div className="min-w-44">
+            <Label htmlFor="instructor-department-filter">القسم</Label>
+            <Select
+              value={directory.departmentId}
+              onValueChange={(v) => setDirectoryField("departmentId", v)}
+            >
+              <SelectTrigger id="instructor-department-filter">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل الأقسام</SelectItem>
+                <SelectItem value="none">بدون قسم</SelectItem>
+                {(depts ?? []).map((d) => (
+                  <SelectItem key={d.id} value={d.id}>
+                    {d.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="min-w-40">
+            <Label htmlFor="instructor-status-filter">حالة العضو</Label>
+            <Select value={directory.status} onValueChange={(v) => setDirectoryField("status", v)}>
+              <SelectTrigger id="instructor-status-filter">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">الكل</SelectItem>
+                <SelectItem value="active">نشط</SelectItem>
+                <SelectItem value="inactive">غير نشط</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="min-w-44">
+            <Label htmlFor="instructor-rank-filter">الرتبة</Label>
+            <Select value={directory.rank} onValueChange={(v) => setDirectoryField("rank", v)}>
+              <SelectTrigger id="instructor-rank-filter">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل الرتب</SelectItem>
+                {availableRanks.map((r) => (
+                  <SelectItem key={r} value={r}>
+                    {r}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="min-w-44">
+            <Label htmlFor="instructor-type-filter">نوع العضو</Label>
+            <Select value={directory.typeId} onValueChange={(v) => setDirectoryField("typeId", v)}>
+              <SelectTrigger id="instructor-type-filter">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل الأنواع</SelectItem>
+                <SelectItem value="none">بدون نوع</SelectItem>
+                {typeRows.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name_ar}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="min-w-44">
+            <Label htmlFor="instructor-sort">الفرز</Label>
+            <Select
+              value={directory.sortKey}
+              onValueChange={(v) => setDirectoryField("sortKey", v as InstructorSortKey)}
+            >
+              <SelectTrigger id="instructor-sort">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(INSTRUCTOR_SORT_LABEL_AR).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() =>
+              setDirectoryField("sortDirection", directory.sortDirection === "asc" ? "desc" : "asc")
+            }
+            aria-label="اتجاه الفرز"
+          >
+            {directory.sortDirection === "asc" ? "تصاعدي ↑" : "تنازلي ↓"}
+          </Button>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+          <p data-testid="instructors-count" className="text-muted-foreground">
+            عرض {visibleRows?.length ?? 0} من {rows?.length ?? 0}
+          </p>
+          {hasActiveDirectoryFilters(directory) && (
+            <Button
+              variant="ghost"
+              onClick={() => setDirectory({ ...DEFAULT_DIRECTORY_FILTERS })}
+            >
+              مسح الفلاتر
+            </Button>
+          )}
+        </div>
+      </Card>
+
       {review && active && !isLoading && !isError && (
         <Card className="mb-4 space-y-2 border-amber-500/40 p-4" role="status">
           <p className="font-semibold">{INSTRUCTOR_REVIEW_LABELS[review]}</p>
