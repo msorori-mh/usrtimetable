@@ -30,7 +30,6 @@ import {
   type AcademicWorkload,
 } from "@/lib/reports/academic-affairs";
 
-
 export const Route = createFileRoute("/_authenticated/reports/academic-affairs")({
   head: () => ({ meta: [{ title: "تقارير الشؤون الأكاديمية" }] }),
   component: Page,
@@ -103,7 +102,6 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
             .order("id")
             .range(from, to),
         ),
-
       ]);
       return { terms, departments, programs, instructors };
     },
@@ -225,7 +223,6 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
                 value: workloadTotals.netQuotaHours,
               },
             ]
-
           : []),
       ]}
       filters={
@@ -331,7 +328,6 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
                 </span>
               )}
             </Card>
-
           )}
           {kind === "shortages" && (
             <Card className="p-3 text-sm">

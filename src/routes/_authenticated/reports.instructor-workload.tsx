@@ -20,7 +20,6 @@ import { filterRowsBySearch } from "@/lib/reports/search";
 import { hoursBetween } from "@/lib/reports/export";
 import { QUOTA_UNDEFINED_AR, computeQuotaBalance } from "@/lib/reports/instructor-quota";
 
-
 export const Route = createFileRoute("/_authenticated/reports/instructor-workload")({
   head: () => ({ meta: [{ title: "تقرير أعباء المحاضرين" }] }),
   component: Page,
@@ -165,7 +164,6 @@ function WorkloadPage() {
         source_breakdown: srcStr,
       };
     });
-
   }, [
     instructors,
     sessions,
@@ -194,7 +192,6 @@ function WorkloadPage() {
     { key: "courses_count", label: "عدد المقررات" },
     { key: "source_breakdown", label: "تفصيل المصدر" },
   ];
-
 
   const totalHours = rows.reduce((sum, r) => sum + Number(r.scheduled_hours ?? 0), 0);
   const overloaded = rows.filter((r) => Number(r.overload) > 0).length;

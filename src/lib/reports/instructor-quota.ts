@@ -110,7 +110,8 @@ export const QUOTA_UNDEFINED_AR = "غير محدد";
 /** Totals must ignore members without an approved quota so they stay truthful. */
 export function summarizeQuotaBalances(balances: QuotaBalance[]) {
   const counted = balances.filter((b) => b.status !== "missing");
-  const sum = (pick: (b: QuotaBalance) => number) => round2(counted.reduce((s, b) => s + pick(b), 0));
+  const sum = (pick: (b: QuotaBalance) => number) =>
+    round2(counted.reduce((s, b) => s + pick(b), 0));
   return {
     countedMembers: counted.length,
     missingMembers: balances.length - counted.length,

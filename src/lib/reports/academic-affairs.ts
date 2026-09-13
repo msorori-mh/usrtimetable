@@ -202,7 +202,6 @@ export function summarizeWorkloadRows(rows: AcademicReportRow[]) {
   return summarizeQuotaBalances(balances);
 }
 
-
 export const ACADEMIC_REPORT_TITLES: Record<AcademicReportKind, string> = {
   workload: "النصاب والساعات الزائدة والنقص",
   assignments: "تقرير الإسناد التدريسي",

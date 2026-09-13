@@ -59,7 +59,6 @@ import {
   type InstructorSortKey,
 } from "@/lib/instructors/directory-filters";
 
-
 export const Route = createFileRoute("/_authenticated/instructors")({
   head: () => ({ meta: [{ title: "المحاضرون" }] }),
   validateSearch: parseInstructorReviewSearch,
@@ -321,7 +320,6 @@ function InstructorDirectory() {
   const availableRanks = Array.from(
     new Set((rows ?? []).map((i) => i.academic_rank ?? "").filter((r) => r !== "")),
   ).sort((a, b) => a.localeCompare(b, "ar"));
-
 
   return (
     <div className="mx-auto max-w-5xl" dir="rtl">
@@ -781,10 +779,7 @@ function InstructorDirectory() {
             عرض {visibleRows?.length ?? 0} من {rows?.length ?? 0}
           </p>
           {hasActiveDirectoryFilters(directory) && (
-            <Button
-              variant="ghost"
-              onClick={() => setDirectory({ ...DEFAULT_DIRECTORY_FILTERS })}
-            >
+            <Button variant="ghost" onClick={() => setDirectory({ ...DEFAULT_DIRECTORY_FILTERS })}>
               مسح الفلاتر
             </Button>
           )}
@@ -827,12 +822,14 @@ function InstructorDirectory() {
                   : "لا يوجد محاضرون بعد."}
             </p>
             {hasActiveDirectoryFilters(directory) && (
-              <Button variant="outline" onClick={() => setDirectory({ ...DEFAULT_DIRECTORY_FILTERS })}>
+              <Button
+                variant="outline"
+                onClick={() => setDirectory({ ...DEFAULT_DIRECTORY_FILTERS })}
+              >
                 مسح الفلاتر
               </Button>
             )}
           </div>
-
         ) : (
           <ul className="divide-y divide-border">
             {visibleRows.map((i) => (

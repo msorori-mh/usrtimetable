@@ -96,7 +96,10 @@ const scope = {
   instructorId: "all",
 };
 
-function workloadRows(instructors: Parameters<typeof buildAcademicReport>[0]["instructors"], workloads: Parameters<typeof buildAcademicReport>[0]["workloads"]) {
+function workloadRows(
+  instructors: Parameters<typeof buildAcademicReport>[0]["instructors"],
+  workloads: Parameters<typeof buildAcademicReport>[0]["workloads"],
+) {
   return buildAcademicReport(
     { scope, instructors, programs: [], departments: [], groups: [], workloads },
     "workload",
@@ -164,7 +167,14 @@ describe("workload report rows", () => {
     expect(totals.overloadHours).toBe(3);
     // export headers cover every computed column
     const keys = ACADEMIC_REPORT_HEADERS.workload.map((h) => h.key);
-    for (const key of ["base_required", "release", "required", "overload", "deficit", "quota_source"])
+    for (const key of [
+      "base_required",
+      "release",
+      "required",
+      "overload",
+      "deficit",
+      "quota_source",
+    ])
       expect(keys).toContain(key);
     for (const row of rows) for (const key of keys) expect(key in row).toBe(true);
   });
@@ -231,7 +241,11 @@ describe("instructor directory search, filters and sorting", () => {
   });
 
   it("combines search with filters", () => {
-    const result = filterAndSortInstructors(rows, f({ search: "احمد", status: "active" }), deptName);
+    const result = filterAndSortInstructors(
+      rows,
+      f({ search: "احمد", status: "active" }),
+      deptName,
+    );
     expect(result.map((r) => r.id)).toEqual(["1"]);
     expect(
       filterAndSortInstructors(rows, f({ rank: "أستاذ", departmentId: "none" }), deptName).map(
