@@ -62,7 +62,9 @@ export const adminCreateUser = createServerFn({ method: "POST" })
     // roles keep their explicit, manually chosen assignment.
     let collegeIds = data.college_ids;
     if (assignsAllColleges(data.role)) {
-      const { data: allColleges, error: colErr } = await supabaseAdmin.from("colleges").select("id");
+      const { data: allColleges, error: colErr } = await supabaseAdmin
+        .from("colleges")
+        .select("id");
       if (colErr) throw new Error(colErr.message);
       collegeIds = (allColleges ?? []).map((c) => c.id);
     } else if (requiresCollegeAssignment(data.role) && collegeIds.length === 0) {
@@ -101,7 +103,6 @@ export const adminCreateUser = createServerFn({ method: "POST" })
         .upsert(rows, { onConflict: "user_id,college_id", ignoreDuplicates: true });
       if (ucErr) throw new Error(ucErr.message);
     }
-
 
     await supabaseAdmin.from("audit_logs").insert({
       actor_id: context.userId,
