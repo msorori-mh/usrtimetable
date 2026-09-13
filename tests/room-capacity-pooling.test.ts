@@ -11,6 +11,8 @@ import {
 } from "@/lib/reports/room-time-capacity";
 import { filterCandidateRooms, roomMatchesRequirement } from "@/lib/auto-scheduler/session-plan";
 import { isRoomTypeCompatible } from "@/lib/scheduling/room-type-policy";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 const settings = {
   working_days: [0, 1, 2, 3, 4, 6],
@@ -47,6 +49,16 @@ describe("pooled weekly room-hours capacity", () => {
     expect(roomTimeCapacityMessagesAr(analysis)).toHaveLength(0);
     const metric = roomTimeCapacityReadinessMetrics(analysis)[0];
     expect(metric.missing).toBe(0);
+  });
+
+  test("the auto-schedule screen reports a pooled pass without rendering the blocker", () => {
+    const source = readFileSync(
+      resolve(process.cwd(), "src/routes/_authenticated/auto-schedule.tsx"),
+      "utf8",
+    );
+    expect(source).toContain('data-testid="auto-schedule-room-time-capacity-pooled-pass"');
+    expect(source).toContain("fallbackCoveredHours > 0 && capacityMessages.length === 0");
+    expect(source).toContain("لذلك لا يمنع هذا الفحص تشغيل الجدولة");
   });
 
   test("(ج) blocker stays when pooled capacity is still short", () => {

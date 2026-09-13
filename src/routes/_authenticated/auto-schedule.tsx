@@ -98,6 +98,11 @@ function AutoSchedulePage() {
     (readiness.roomTimeCapacity.unavailable || readiness.roomTimeCapacity.insufficient.length > 0)
       ? roomTimeCapacityMessagesAr(readiness.roomTimeCapacity)
       : [];
+  const fallbackCoveredHours =
+    readiness?.roomTimeCapacity?.perType.reduce(
+      (total, roomType) => total + roomType.coveredByFallbackHours,
+      0,
+    ) ?? 0;
   const readinessIncomplete =
     readinessLoading || readinessError || !readiness || readinessBlockers.length > 0;
 
@@ -325,6 +330,21 @@ function AutoSchedulePage() {
                 </ul>
                 <p className="mt-2 text-xs text-muted-foreground">
                   {ROOM_TIME_CAPACITY_POLICY_NOTE_AR}
+                </p>
+              </div>
+            ) : null}
+            {fallbackCoveredHours > 0 && capacityMessages.length === 0 ? (
+              <div
+                className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-3 text-sm"
+                role="status"
+                data-testid="auto-schedule-room-time-capacity-pooled-pass"
+              >
+                <p className="font-medium text-emerald-700">
+                  السعة الأسبوعية كافية بعد مشاركة القاعات.
+                </p>
+                <p className="mt-1 text-muted-foreground">
+                  يمكن تغطية {fallbackCoveredHours} ساعة عملية من فائض قاعات المحاضرات بعد حجز
+                  احتياج المحاضرات والتمارين، لذلك لا يمنع هذا الفحص تشغيل الجدولة.
                 </p>
               </div>
             ) : null}
