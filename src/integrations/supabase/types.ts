@@ -4060,6 +4060,7 @@ export type Database = {
         Args: { p_college_id: string }
         Returns: boolean
       }
+      is_academic_affairs_only: { Args: { _user_id: string }; Returns: boolean }
       is_institutional_read_only_actor: {
         Args: { _user_id: string }
         Returns: boolean
