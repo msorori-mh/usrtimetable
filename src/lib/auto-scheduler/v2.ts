@@ -545,107 +545,124 @@ export async function runV2AutoSchedule(params: {
           .filter((x) => x.cohortId && levelByCohort.get(x.cohortId) === levelKey)
           .map((x) => x.day),
       );
-      const rankedCandidates = rankGenerationCandidates({
-        snapshot: planningSnapshot,
-        sessions: planningSessions,
-        session: seedFor(item, durationMinutes),
-        slots,
-        roomIds: candidateRooms.map((room) => room.id),
-        usedDays,
-      });
       let placedItem = false;
       let lastReason = "لا يوجد مرشح يحقق قيود مجموعة التقديم والدفعة.";
 
-      candidateSearch: for (const ranked of rankedCandidates) {
-        const slot = {
-          day: ranked.session.day_of_week,
-          start: ranked.session.start_time,
-          end: ranked.session.end_time,
-        };
-        if (params.signal?.aborted) {
-          cancelled = true;
-          break;
-        }
-        if (!levelDays.has(slot.day) && levelDays.size >= 5) {
-          lastReason = "حد حضور المستوى خمسة أيام أسبوعياً؛ لا يجوز إنشاء يوم سادس.";
-          continue;
-        }
-        const availabilityKey = `${item.instructor_id}|${slot.day}`;
-        const unavailableReason = unavailableInstructorDays.get(availabilityKey);
-        if (unavailableReason) {
-          lastReason = unavailableReason;
-          continue;
-        }
-        for (const room of candidateRooms.filter(
-          (candidate) => candidate.id === ranked.session.room_id,
-        )) {
+      for (const pool of roomPools) {
+        if (placedItem || cancelled) break;
+        const candidateRooms = pool;
+        const rankedCandidates = rankGenerationCandidates({
+          snapshot: planningSnapshot,
+          sessions: planningSessions,
+          session: seedFor(item, durationMinutes),
+          slots,
+          roomIds: candidateRooms.map((room) => room.id),
+          usedDays,
+        });
+
+        candidateSearch: for (const ranked of rankedCandidates) {
+          const slot = {
+            day: ranked.session.day_of_week,
+            start: ranked.session.start_time,
+            end: ranked.session.end_time,
+          };
           if (params.signal?.aborted) {
             cancelled = true;
-            break candidateSearch;
+            break;
           }
-          if (
-            isLocallyBlocked(
-              slot,
-              {
+          if (!levelDays.has(slot.day) && levelDays.size >= 5) {
+            lastReason = "حد حضور المستوى خمسة أيام أسبوعياً؛ لا يجوز إنشاء يوم سادس.";
+            continue;
+          }
+          const availabilityKey = `${item.instructor_id}|${slot.day}`;
+          const unavailableReason = unavailableInstructorDays.get(availabilityKey);
+          if (unavailableReason) {
+            lastReason = unavailableReason;
+            continue;
+          }
+          for (const room of candidateRooms.filter(
+            (candidate) => candidate.id === ranked.session.room_id,
+          )) {
+            if (params.signal?.aborted) {
+              cancelled = true;
+              break candidateSearch;
+            }
+            // Room opening hours (labs to 16:00, halls to 14:00) are declared in
+            // room_availability / rooms.available_* — skip doomed candidates.
+            const roomWindow = roomById.get(room.id);
+            if (roomWindow && !isRoomSlotAvailable(roomWindow, slot, roomAvailability)) {
+              lastReason = "القاعة غير متاحة في هذا الوقت وفق ساعات عملها المعتمدة.";
+              continue;
+            }
+            if (
+              isLocallyBlocked(
+                slot,
+                {
+                  roomId: room.id,
+                  instructorId: item.instructor_id,
+                  cohortId: item.cohort_id,
+                  deliveryGroupId: item.delivery_group_id,
+                },
+                occupied,
+                sharedStudents,
+              )
+            ) {
+              continue;
+            }
+            const result = await createScheduleSessionFromAssignmentV2({
+              scheduleVersionId: params.scheduleVersionId,
+              teachingAssignmentId: item.teaching_assignment_id,
+              dayOfWeek: slot.day,
+              startTime: slot.start,
+              endTime: slot.end,
+              roomId: room.id,
+              expectedVersionUpdatedAt: versionUpdatedAt,
+              note: `auto:${ALGORITHM_VERSION}`,
+            });
+            assertVersionNotStale(result);
+            if (result.ok && result.session && result.schedule_version_updated_at) {
+              versionUpdatedAt = result.schedule_version_updated_at;
+              placed++;
+              byType[type].placed++;
+              placedItem = true;
+              if (roomCandidateRank(room, roomRequirement) === 1) {
+                practicalRoomFallbacks++;
+                warnings.push(`${groupLabel}: ${PRACTICAL_ROOM_FALLBACK_NOTE_AR}`);
+              }
+              planningSessions.push({ ...ranked.session, ...result.session } as Session);
+              usedDays.push(slot.day);
+              occupied.push({
+                day: slot.day,
+                start: slot.start,
+                end: slot.end,
                 roomId: room.id,
                 instructorId: item.instructor_id,
                 cohortId: item.cohort_id,
                 deliveryGroupId: item.delivery_group_id,
-              },
-              occupied,
-              sharedStudents,
-            )
-          ) {
-            continue;
+              });
+              break;
+            }
+            lastReason =
+              result.blocking_conflicts[0]?.message_ar ||
+              result.warnings[0]?.message_ar ||
+              result.message_ar ||
+              result.code ||
+              lastReason;
+            // Availability-based day skipping only applies when enforcement is on.
+            if (
+              isInstructorAvailabilityEnforced() &&
+              result.blocking_conflicts.some(
+                (conflict) => conflict.code === "instructor_availability_required",
+              )
+            ) {
+              unavailableInstructorDays.set(availabilityKey, lastReason);
+              continue candidateSearch;
+            }
           }
-          const result = await createScheduleSessionFromAssignmentV2({
-            scheduleVersionId: params.scheduleVersionId,
-            teachingAssignmentId: item.teaching_assignment_id,
-            dayOfWeek: slot.day,
-            startTime: slot.start,
-            endTime: slot.end,
-            roomId: room.id,
-            expectedVersionUpdatedAt: versionUpdatedAt,
-            note: `auto:${ALGORITHM_VERSION}`,
-          });
-          assertVersionNotStale(result);
-          if (result.ok && result.session && result.schedule_version_updated_at) {
-            versionUpdatedAt = result.schedule_version_updated_at;
-            placed++;
-            byType[type].placed++;
-            placedItem = true;
-            planningSessions.push({ ...ranked.session, ...result.session } as Session);
-            usedDays.push(slot.day);
-            occupied.push({
-              day: slot.day,
-              start: slot.start,
-              end: slot.end,
-              roomId: room.id,
-              instructorId: item.instructor_id,
-              cohortId: item.cohort_id,
-              deliveryGroupId: item.delivery_group_id,
-            });
-            break;
-          }
-          lastReason =
-            result.blocking_conflicts[0]?.message_ar ||
-            result.warnings[0]?.message_ar ||
-            result.message_ar ||
-            result.code ||
-            lastReason;
-          // Availability-based day skipping only applies when enforcement is on.
-          if (
-            isInstructorAvailabilityEnforced() &&
-            result.blocking_conflicts.some(
-              (conflict) => conflict.code === "instructor_availability_required",
-            )
-          ) {
-            unavailableInstructorDays.set(availabilityKey, lastReason);
-            continue candidateSearch;
-          }
+          if (placedItem) break;
         }
-        if (placedItem) break;
       }
+
 
       if (cancelled) {
         warnings.push(
