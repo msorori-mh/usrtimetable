@@ -532,7 +532,7 @@ export const ADMIN_PAGES: AdminPage[] = [
     label: "مركز التقارير",
     desc: "كل التقارير الأكاديمية والرسمية.",
     icon: FileBarChart2,
-    roles: OPERATIONAL,
+    roles: ALL,
     tier: "basic",
     journey: "reports",
   },
@@ -614,7 +614,7 @@ export const CORE_PATH: CoreStep[] = [
     label: "التقارير والطباعة",
     desc: "تقارير الجداول والأعباء والجودة.",
     icon: FileBarChart2,
-    roles: OPERATIONAL,
+    roles: ALL,
   },
 ];
 
