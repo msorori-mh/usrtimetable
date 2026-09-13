@@ -26,6 +26,7 @@ export interface RoomsReportRoom {
 export interface RoomsReportRoomType {
   id: string;
   name_ar?: string | null;
+  name_en?: string | null;
   name?: string | null;
   code?: string | null;
 }

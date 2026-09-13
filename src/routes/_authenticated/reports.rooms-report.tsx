@@ -70,7 +70,10 @@ function Page() {
           .select("id, code, name, capacity, room_type_id, is_active")
           .eq("college_id", ctx.collegeId!)
           .order("code"),
-        supabase.from("room_types").select("id, name, name_ar, code").eq("college_id", ctx.collegeId!),
+        supabase
+          .from("room_types")
+          .select("id, name_ar, name_en, code")
+          .eq("college_id", ctx.collegeId!),
         supabase
           .from("room_availability")
           .select("room_id, start_time, end_time")

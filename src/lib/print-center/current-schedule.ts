@@ -50,7 +50,9 @@ export function groupCurrentSchedulePages(
         ...page,
         key: `${pid}:${page.key}`,
         departmentName:
-          page.departmentName ?? page.sessions[0]?.course_offerings?.courses?.departments?.name,
+          page.departmentName ??
+          page.sessions[0]?.course_offerings?.courses?.departments?.name ??
+          undefined,
       });
     }
   }
