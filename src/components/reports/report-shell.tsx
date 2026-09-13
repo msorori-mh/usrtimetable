@@ -2,7 +2,6 @@ import { ReactNode, useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Download, FileSpreadsheet, Printer } from "lucide-react";
-import { CollegeSwitcher } from "@/components/college-switcher";
 import {
   ReportOfficialHeader,
   headerMetaFromContext,
@@ -148,7 +147,6 @@ export function ReportShell({
           </Link>
         </Button>
         <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
-          <CollegeSwitcher />
           <Button
             size="sm"
             onClick={handlePrint}
