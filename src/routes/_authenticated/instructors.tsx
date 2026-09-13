@@ -298,9 +298,9 @@ function InstructorDirectory() {
     setOpen(true);
   };
 
-  const deptMap = new Map((depts ?? []).map((d) => [d.id, d.name]));
+  const deptMap = useMemo(() => new Map((depts ?? []).map((d) => [d.id, d.name])), [depts]);
   const typeRows = (types ?? []) as InstructorTypeRow[];
-  const typeMap = new Map(typeRows.map((t) => [t.id, t]));
+  const typeMap = useMemo(() => new Map(typeRows.map((t) => [t.id, t])), [typeRows]);
   const reviewedRows = review ? rows?.filter((i) => instructorNeedsReview(i, review)) : rows;
   const visibleRows = useMemo(() => {
     const needle = search
@@ -335,7 +335,10 @@ function InstructorDirectory() {
           numeric: true,
           sensitivity: "base",
         });
-      if (sortBy === "employee") return (a.employee_number ?? "").localeCompare(b.employee_number ?? "", "ar", { numeric: true });
+      if (sortBy === "employee")
+        return (a.employee_number ?? "").localeCompare(b.employee_number ?? "", "ar", {
+          numeric: true,
+        });
       if (sortBy === "department") {
         const compared = (deptMap.get(a.department_id ?? "") ?? "").localeCompare(
           deptMap.get(b.department_id ?? "") ?? "",
@@ -344,21 +347,15 @@ function InstructorDirectory() {
         return compared || a.full_name.localeCompare(b.full_name, "ar");
       }
       if (sortBy === "load_desc")
-        return b.max_weekly_hours - a.max_weekly_hours || a.full_name.localeCompare(b.full_name, "ar");
+        return (
+          b.max_weekly_hours - a.max_weekly_hours || a.full_name.localeCompare(b.full_name, "ar")
+        );
       return a.full_name.localeCompare(b.full_name, "ar", {
         numeric: true,
         sensitivity: "base",
       });
     });
-  }, [
-    reviewedRows,
-    search,
-    departmentFilter,
-    statusFilter,
-    typeFilter,
-    sortBy,
-    deptMap,
-  ]);
+  }, [reviewedRows, search, departmentFilter, statusFilter, typeFilter, sortBy, deptMap]);
   const hasDirectoryFilters =
     Boolean(search) ||
     departmentFilter !== "all" ||
@@ -413,12 +410,7 @@ function InstructorDirectory() {
                   },
                   {
                     label: "الحالة",
-                    value:
-                      statusFilter === "all"
-                        ? ""
-                        : statusFilter === "true"
-                          ? "نشط"
-                          : "غير نشط",
+                    value: statusFilter === "all" ? "" : statusFilter === "true" ? "نشط" : "غير نشط",
                   },
                   {
                     label: "فئة المحاضر",
@@ -796,7 +788,9 @@ function InstructorDirectory() {
           />
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
-          <span>عرض {visibleRows.length} من {reviewedRows?.length ?? 0} محاضرًا</span>
+          <span>
+            عرض {visibleRows.length} من {reviewedRows?.length ?? 0} محاضرًا
+          </span>
           {hasDirectoryFilters && (
             <Button
               variant="outline"
