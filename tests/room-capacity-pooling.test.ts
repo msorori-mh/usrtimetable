@@ -106,7 +106,11 @@ describe("pooled weekly room-hours capacity", () => {
 describe("(ب) candidate generation shares the same policy", () => {
   const labRoom = { id: "lab-1", room_type: "computer_lab", capacity: 30 };
   const hallRoom = { id: "hall-1", room_type: "lecture_hall", capacity: 60 };
-  const practical = { requiredRoomType: "computer_lab", componentType: "practical", students: 25 };
+  const practical = {
+    roomTypeName: "computer_lab",
+    componentType: "practical",
+    expectedStudents: 25,
+  };
 
   test("practical prefers the lab and keeps the hall as fallback only", () => {
     const candidates = filterCandidateRooms([hallRoom, labRoom], practical);
@@ -118,7 +122,11 @@ describe("(ب) candidate generation shares the same policy", () => {
   });
 
   test("theory never gets a lab candidate", () => {
-    const theory = { requiredRoomType: "lecture_hall", componentType: "theory", students: 25 };
+    const theory = {
+      roomTypeName: "lecture_hall",
+      componentType: "theory",
+      expectedStudents: 25,
+    };
     expect(filterCandidateRooms([labRoom, hallRoom], theory).map((r) => r.id)).toEqual(["hall-1"]);
     expect(roomMatchesRequirement(labRoom, theory)).toBe(false);
     expect(
@@ -133,6 +141,6 @@ describe("(ب) candidate generation shares the same policy", () => {
   test("(هـ) seat capacity stays a hard constraint for the fallback hall", () => {
     const small = { id: "hall-small", room_type: "lecture_hall", capacity: 10 };
     expect(filterCandidateRooms([small], practical)).toHaveLength(0);
-    expect(roomMatchesRequirement(hallRoom, { ...practical, students: 200 })).toBe(false);
+    expect(roomMatchesRequirement(hallRoom, { ...practical, expectedStudents: 200 })).toBe(false);
   });
 });
