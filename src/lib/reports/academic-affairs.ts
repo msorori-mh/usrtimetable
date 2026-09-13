@@ -74,6 +74,8 @@ const COMPONENT_LABELS: Record<string, string> = {
 };
 const round = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
+import { entityDisplayName } from "@/lib/entity-display";
+
 export function buildAcademicReport(
   input: AcademicReportInput,
   kind: AcademicReportKind,
@@ -99,7 +101,7 @@ export function buildAcademicReport(
   const groupInfo = (g: TeachingAssignmentWorkspaceRow): AcademicReportRow => ({
     department: departmentMap.get(programMap.get(g.program_id)?.department_id ?? "") ?? "غير محدد",
     program: programMap.get(g.program_id)?.name ?? "غير محدد",
-    course: `${g.course_code} — ${g.course_name}`,
+    course: entityDisplayName({ name: g.course_name, code: g.course_code }),
     cohort: g.cohort_code ?? "—",
     group: g.group_code,
     component: COMPONENT_LABELS[g.component_type] ?? g.component_type,

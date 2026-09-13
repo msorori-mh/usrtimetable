@@ -7,6 +7,7 @@ import type {
   PrintSessionLike,
   PrintStudySystem,
 } from "./types";
+import { entityDisplayName } from "@/lib/entity-display";
 
 function pageStudyKey(sys: string | null | undefined): "regular" | "parallel" | "both" {
   const s = sys ?? "regular";
@@ -38,7 +39,7 @@ function instructorName(s: PrintSessionLike): string {
 
 function roomLabel(s: PrintSessionLike): string {
   if (!s.rooms) return "قاعة غير محددة";
-  return `${s.rooms.code ?? ""} ${s.rooms.name ?? ""}`.trim() || "قاعة غير محددة";
+  return entityDisplayName(s.rooms, "قاعة غير محددة");
 }
 
 /**

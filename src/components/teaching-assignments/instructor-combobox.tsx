@@ -15,6 +15,7 @@ import {
   instructorSearchHaystack,
   type InstructorSearchCandidate,
 } from "@/lib/teaching-assignments/instructor-search";
+import { instructorDisplayName } from "@/lib/entity-display";
 
 interface InstructorComboboxProps {
   candidates: readonly InstructorSearchCandidate[];
@@ -58,8 +59,7 @@ export function InstructorCombobox({
         >
           {selected ? (
             <span className="truncate">
-              {selected.full_name ?? ""}
-              {selected.employee_number ? ` (${selected.employee_number})` : ""}
+              {instructorDisplayName(selected)}
             </span>
           ) : (
             <span className="text-muted-foreground">اختر مدرساً</span>
@@ -103,10 +103,7 @@ export function InstructorCombobox({
                     )}
                   />
                   <span className="truncate">
-                    {c.full_name ?? ""}
-                    {c.employee_number ? (
-                      <span className="text-muted-foreground"> ({c.employee_number})</span>
-                    ) : null}
+                    {instructorDisplayName(c)}
                   </span>
                 </CommandItem>
               ))}
