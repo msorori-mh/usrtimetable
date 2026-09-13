@@ -18,6 +18,7 @@ const context: ReportContext = {
   termId: "term",
   versionId: "version",
   statusMode: "specific_version",
+  publishedOnly: false,
   studySystem: "regular",
   terms: [{ id: "term", name: "الفصل الأول 2026–2027" }],
   versions: [],
