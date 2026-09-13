@@ -55,14 +55,15 @@ export function InstructorCombobox({
           aria-label="المدرس"
           disabled={disabled}
           data-testid="ta-v2-instructor-select"
-          className="w-full justify-between font-normal"
+          dir="rtl"
+          className="w-full justify-between text-right font-normal"
         >
           {selected ? (
             <span className="truncate">{instructorDisplayName(selected)}</span>
           ) : (
             <span className="text-muted-foreground">اختر مدرساً</span>
           )}
-          <ChevronsUpDown className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+          <ChevronsUpDown className="ms-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
@@ -94,7 +95,7 @@ export function InstructorCombobox({
                 >
                   <Check
                     className={cn(
-                      "ml-2 h-4 w-4",
+                      "ms-2 h-4 w-4",
                       value === c.instructor_id ? "opacity-100" : "opacity-0",
                     )}
                   />
