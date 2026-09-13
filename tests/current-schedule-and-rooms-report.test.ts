@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   countPagedSessions,
   groupCurrentSchedulePages,
@@ -301,4 +302,23 @@ test("used hours and room detail grouping preserve every version session", () =>
     pages.reduce((sum, page) => sum + page.sessions.length, 0),
     sessions.length,
   );
+});
+
+test("rooms report exposes analytical screen and printable summary structures", () => {
+  const route = readFileSync(
+    new URL("../src/routes/_authenticated/reports.rooms-report.tsx", import.meta.url),
+    "utf8",
+  );
+  const dashboard = readFileSync(
+    new URL("../src/components/reports/rooms-analytics-dashboard.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(route, /RoomsAnalyticsDashboard/);
+  assert.match(route, /rooms-print-chart/);
+  assert.match(route, /printPageStyleCss\("A3", "landscape"\)/);
+  assert.match(route, /groupRoomsReportPages/);
+  assert.match(dashboard, /rooms-report-charts/);
+  assert.match(dashboard, /rooms-heatmap/);
+  assert.match(dashboard, /استغلال الوقت منفصل عن كفاءة استغلال السعة/);
+  assert.match(dashboard, /overflow-x-auto/);
 });
