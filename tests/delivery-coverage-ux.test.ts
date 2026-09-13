@@ -168,7 +168,8 @@ describe("UI wiring", () => {
 
   it("keeps management actions role-gated (read-only roles cannot act)", () => {
     expect(versions).toContain("disabled={!canManage || blocked || doTransition.isPending}");
-    expect(auto).toContain("!canManage || !versionId || run.isPending");
+    expect(auto).toContain("disabled={!canManage || runBlocked}");
+    expect(auto).toContain("!versionId || run.isPending");
     expect(card).not.toContain(".insert(");
     expect(card).not.toContain(".update(");
   });
