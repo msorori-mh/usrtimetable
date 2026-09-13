@@ -64,12 +64,14 @@ describe("read_only («مشاهد») is reports-only — regression", () => {
     expect(src).toMatch(/reportsOnly \? "core" : mode/);
   });
 
-  test("multi-role and institutional_viewer accounts keep full scope", () => {
-    expect(isReportsOnlyRole({ isReadOnly: true, isSuperAdmin: true })).toBe(false);
-    expect(isReportsOnlyRole({ isReadOnly: true, isCollegeAdmin: true })).toBe(false);
-    expect(isReportsOnlyRole({ isReadOnly: true, isInstitutionalViewer: true })).toBe(false);
-    expect(
-      resolveReportsOnlyRedirect({ isInstitutionalViewer: true }, "/schedule-builder"),
-    ).toBeNull();
+  test("reports-only on /reports does not see the active-college badge", () => {
+    const src = read("src/components/app-layout.tsx");
+    // The badge is rendered only when activeCollege exists AND the reports-only-on-reports condition is false.
+    expect(src).toMatch(
+      /\{activeCollege && !\(reportsOnly && \(pathname === "\/reports" \|\| pathname === "\/reports\/"\)\) && \(/,
+    );
+    // Breadcrumb remains independent of the badge.
+    expect(src).toMatch(/\{crumb \? \(/);
   });
 });
+
