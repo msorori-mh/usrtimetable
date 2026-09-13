@@ -40,12 +40,8 @@ const fixture = () => {
       },
     ],
     groups: [{ id: "g", cohort_id: "c", expected_students: 20 }],
-    members: [
-      { delivery_group_id: "g", cohort_id: "c", partition_id: "partition" },
-    ],
-    partitions: [
-      { id: "partition", cohort_id: "c", headcount: 20, active: true },
-    ],
+    members: [{ delivery_group_id: "g", cohort_id: "c", partition_id: "partition" }],
+    partitions: [{ id: "partition", cohort_id: "c", headcount: 20, active: true }],
     assignments: [
       {
         id: "lab-assignment",
@@ -131,10 +127,7 @@ test("never exceeds even the smallest search budgets", () => {
   for (const maxAttempts of [1, 2, 3, 4, 5, 10]) {
     const stats = { attempts: 0 };
     planRepair({ ...fixture(), budget: { maxAttempts, maxDepth: 2 }, stats });
-    assert.ok(
-      stats.attempts <= maxAttempts,
-      `${stats.attempts} > ${maxAttempts}`,
-    );
+    assert.ok(stats.attempts <= maxAttempts, `${stats.attempts} > ${maxAttempts}`);
   }
 });
 
@@ -168,11 +161,6 @@ test("retains legal two-hop repairs after the shallow pass", () => {
     sessions = sessions.map((s) => (s.id === old.id ? next : s));
   }
   assert.ok(
-    feasible(
-      input.snapshot,
-      sessions,
-      { ...input.missing, ...plan.placement },
-      input.missing,
-    ),
+    feasible(input.snapshot, sessions, { ...input.missing, ...plan.placement }, input.missing),
   );
 });
