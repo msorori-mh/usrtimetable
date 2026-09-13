@@ -169,7 +169,10 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
 
   // Search only hides rows in the view; exported keys and values stay identical.
   const rows = filterRowsBySearch(statusRows, search);
+  // Totals are recomputed from the visible rows, so KPIs always match the table and the export.
+  const workloadTotals = summarizeWorkloadRows(kind === "workload" ? rows : []);
   const headers = ACADEMIC_REPORT_HEADERS[kind];
+
   const programs =
     refs?.programs.filter((p) => departmentId === "all" || p.department_id === departmentId) ?? [];
   const filterSummary = [
@@ -207,17 +210,22 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
           ? [
               {
                 label: "ساعات زائدة",
-                value: statusRows.filter((r) => Number(r.overload) > 0).length,
+                value: workloadTotals.overloadedMembers,
               },
               {
                 label: "نقص نصاب",
-                value: statusRows.filter((r) => Number(r.deficit) > 0).length,
+                value: workloadTotals.deficitMembers,
               },
               {
-                label: "سياسة غير محددة",
-                value: statusRows.filter((r) => r.required === null).length,
+                label: "بلا نصاب معتمد",
+                value: workloadTotals.missingMembers,
+              },
+              {
+                label: "إجمالي صافي النصاب (ساعة)",
+                value: workloadTotals.netQuotaHours,
               },
             ]
+
           : []),
       ]}
       filters={
