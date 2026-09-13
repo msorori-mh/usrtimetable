@@ -11,16 +11,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Card } from "@/components/ui/card";
+import { ReportFilterBar, ReportFilterField } from "@/components/reports/report-filter-bar";
+import { ReportSection, ReportDataTable } from "@/components/reports/report-section";
 import { DAY_NAMES_AR, fmtTime } from "@/lib/reports/export";
+import { filterRowsBySearch } from "@/lib/reports/search";
 import { fetchCohortDeliveryGroupLabels } from "@/lib/reports/queries/session-queries";
 import {
   fetchHydratedVersionSessions,
@@ -45,6 +39,7 @@ function Page() {
   const [dgId, setDgId] = useState("all");
   const [insId, setInsId] = useState("all");
   const [roomId, setRoomId] = useState("all");
+  const [search, setSearch] = useState("");
 
   const { data: terms } = useQuery({
     queryKey: ["pt-terms", active?.id],
@@ -198,7 +193,7 @@ function Page() {
     },
   });
 
-  const rows = useMemo(() => {
+  const allRows = useMemo(() => {
     const labels = sessionsBundle?.labels;
     return (sessionsBundle?.sessions ?? []).map((s) => ({
       version: versionNameById.get(s.schedule_version_id ?? "") ?? "",
@@ -216,6 +211,9 @@ function Page() {
       room: s.rooms ? `${s.rooms.code ?? ""} ${s.rooms.name ?? ""}` : "",
     }));
   }, [sessionsBundle, versionNameById]);
+
+  // Search is presentation-only: identical keys and values, fewer visible rows.
+  const rows = useMemo(() => filterRowsBySearch(allRows, search), [allRows, search]);
 
   const headers = [
     { key: "version", label: "النسخة" },
@@ -239,14 +237,29 @@ function Page() {
     (versions ?? []).find((v) => isDeliveryDemoVersion({ name: v.name, notes: v.notes })) ??
     null;
 
+  const nameOf = (items: { id: string; name: string }[], id: string) =>
+    id === "all" ? "الكل" : (items.find((i) => i.id === id)?.name ?? "—");
+
   return (
     <ReportShell
       title="تقرير الجدول المنشور"
-      description="النسخ ذات حالة (منشور) فقط."
+      description="النسخ ذات حالة (منشور) فقط — تقرير رسمي للعرض الإداري والطباعة."
+      official
       filename="published_timetable"
       rows={rows}
       headers={headers}
       isLoading={isLoading}
+      notReadyMessage={
+        active ? undefined : "اختر كلّية لعرض الجدول المنشور."
+      }
+      emptyMessage={search ? "لا نتائج مطابقة للبحث." : "لا توجد محاضرات في نسخة منشورة بهذه المعايير."}
+      kpis={[
+        { label: "المحاضرات", value: rows.length },
+        { label: "المقررات", value: new Set(rows.map((r) => r.course)).size },
+        { label: "المحاضرون", value: new Set(rows.map((r) => r.instructor)).size },
+        { label: "القاعات", value: new Set(rows.map((r) => r.room).filter(Boolean)).size },
+        { label: "الدفعات", value: new Set(rows.map((r) => r.cohort).filter(Boolean)).size },
+      ]}
       leading={
         demoBannerVersion ? (
           <DeliveryDemoWarningBanner
@@ -256,117 +269,159 @@ function Page() {
         ) : null
       }
       filters={
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Sel
-            label="الفصل"
-            value={termId}
-            onChange={(v) => {
-              setTermId(v);
-              setVersionId("all");
-            }}
-            items={[
-              { id: "all", name: "الكل" },
-              ...(terms ?? []).map((t) => ({ id: t.id, name: t.name })),
-            ]}
-          />
-          <Sel
-            label="النسخة"
-            value={versionId}
-            onChange={setVersionId}
-            items={[
-              { id: "all", name: "الكل" },
-              ...(versions ?? []).map((v) => ({ id: v.id, name: v.name })),
-            ]}
-          />
-          <Sel
-            label="القسم"
-            value={deptId}
-            onChange={setDeptId}
-            items={[
-              { id: "all", name: "الكل" },
-              ...(depts ?? []).map((d) => ({ id: d.id, name: d.name })),
-            ]}
-          />
-          <Sel
-            label="البرنامج"
-            value={progId}
-            onChange={setProgId}
-            items={[
-              { id: "all", name: "الكل" },
-              ...(progs ?? []).map((p) => ({ id: p.id, name: p.name })),
-            ]}
-          />
-          <Sel
-            label="المستوى"
-            value={lvlId}
-            onChange={setLvlId}
-            items={[
-              { id: "all", name: "الكل" },
-              ...(levels ?? []).map((l) => ({ id: l.id, name: l.name })),
-            ]}
-          />
-          <Sel
-            label="الدفعة الدراسية"
-            value={cohortId}
-            onChange={(v) => {
-              setCohortId(v);
-              setDgId("all");
-            }}
-            items={[
-              { id: "all", name: "الكل" },
-              ...(cohorts ?? []).map((c) => ({ id: c.id, name: c.code ?? c.id })),
-            ]}
-          />
-          <Sel
-            label="مجموعة المحاضرات/المعامل"
-            value={dgId}
-            onChange={setDgId}
-            items={[
-              { id: "all", name: "الكل" },
-              ...filteredDeliveryGroups.map((d) => ({ id: d.id, name: d.group_code })),
-            ]}
-          />
-          <Sel
-            label="المحاضر"
-            value={insId}
-            onChange={setInsId}
-            items={[
-              { id: "all", name: "الكل" },
-              ...(ins ?? []).map((i) => ({ id: i.id, name: i.full_name })),
-            ]}
-          />
-          <Sel
-            label="القاعة"
-            value={roomId}
-            onChange={setRoomId}
-            items={[
-              { id: "all", name: "الكل" },
-              ...(rooms ?? []).map((r) => ({ id: r.id, name: `${r.code ?? ""} ${r.name ?? ""}` })),
-            ]}
-          />
-        </div>
+        <ReportFilterBar
+          search={{
+            value: search,
+            onChange: setSearch,
+            placeholder: "ابحث بالمقرر أو المحاضر أو القاعة…",
+          }}
+          activeSummary={[
+            `الفصل: ${nameOf((terms ?? []).map((t) => ({ id: t.id, name: t.name })), termId)}`,
+            `النسخة: ${nameOf((versions ?? []).map((v) => ({ id: v.id, name: v.name })), versionId)}`,
+            `القسم: ${nameOf((depts ?? []).map((d) => ({ id: d.id, name: d.name })), deptId)}`,
+            `البرنامج: ${nameOf((progs ?? []).map((p) => ({ id: p.id, name: p.name })), progId)}`,
+            `المستوى: ${nameOf((levels ?? []).map((l) => ({ id: l.id, name: l.name })), lvlId)}`,
+            `الدفعة: ${nameOf((cohorts ?? []).map((c) => ({ id: c.id, name: c.code ?? c.id })), cohortId)}`,
+          ]}
+          onClear={() => {
+            setTermId("all");
+            setVersionId("all");
+            setDeptId("all");
+            setProgId("all");
+            setLvlId("all");
+            setCohortId("all");
+            setDgId("all");
+            setInsId("all");
+            setRoomId("all");
+            setSearch("");
+          }}
+          basic={
+            <>
+              <Sel
+                label="الفصل"
+                value={termId}
+                onChange={(v) => {
+                  setTermId(v);
+                  setVersionId("all");
+                }}
+                items={[
+                  { id: "all", name: "الكل" },
+                  ...(terms ?? []).map((t) => ({ id: t.id, name: t.name })),
+                ]}
+              />
+              <Sel
+                label="النسخة"
+                value={versionId}
+                onChange={setVersionId}
+                items={[
+                  { id: "all", name: "الكل" },
+                  ...(versions ?? []).map((v) => ({ id: v.id, name: v.name })),
+                ]}
+              />
+              <Sel
+                label="البرنامج"
+                value={progId}
+                onChange={setProgId}
+                items={[
+                  { id: "all", name: "الكل" },
+                  ...(progs ?? []).map((p) => ({ id: p.id, name: p.name })),
+                ]}
+              />
+              <Sel
+                label="المستوى"
+                value={lvlId}
+                onChange={setLvlId}
+                items={[
+                  { id: "all", name: "الكل" },
+                  ...(levels ?? []).map((l) => ({ id: l.id, name: l.name })),
+                ]}
+              />
+            </>
+          }
+          advanced={
+            <>
+              <Sel
+                label="القسم"
+                value={deptId}
+                onChange={setDeptId}
+                items={[
+                  { id: "all", name: "الكل" },
+                  ...(depts ?? []).map((d) => ({ id: d.id, name: d.name })),
+                ]}
+              />
+              <Sel
+                label="الدفعة الدراسية"
+                value={cohortId}
+                onChange={(v) => {
+                  setCohortId(v);
+                  setDgId("all");
+                }}
+                items={[
+                  { id: "all", name: "الكل" },
+                  ...(cohorts ?? []).map((c) => ({ id: c.id, name: c.code ?? c.id })),
+                ]}
+              />
+              <Sel
+                label="مجموعة المحاضرات/المعامل"
+                value={dgId}
+                onChange={setDgId}
+                items={[
+                  { id: "all", name: "الكل" },
+                  ...filteredDeliveryGroups.map((d) => ({ id: d.id, name: d.group_code })),
+                ]}
+              />
+              <Sel
+                label="المحاضر"
+                value={insId}
+                onChange={setInsId}
+                items={[
+                  { id: "all", name: "الكل" },
+                  ...(ins ?? []).map((i) => ({ id: i.id, name: i.full_name })),
+                ]}
+              />
+              <Sel
+                label="القاعة"
+                value={roomId}
+                onChange={setRoomId}
+                items={[
+                  { id: "all", name: "الكل" },
+                  ...(rooms ?? []).map((r) => ({
+                    id: r.id,
+                    name: `${r.code ?? ""} ${r.name ?? ""}`,
+                  })),
+                ]}
+              />
+            </>
+          }
+        />
       }
     >
-      <Card className="p-0 overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {headers.map((h) => (
-                <TableHead key={h.key}>{h.label}</TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((r, i) => (
-              <TableRow key={i}>
-                {headers.map((h) => (
-                  <TableCell key={h.key}>{String(r[h.key as keyof typeof r])}</TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
+      <ReportSection
+        title="محاضرات الجدول المنشور"
+        count={rows.length}
+        hint="الأعمدة الثانوية تظهر على الشاشات الأوسع وفي الطباعة."
+        bodyClassName="p-0"
+      >
+        <ReportDataTable
+          rows={rows}
+          minWidthClassName="min-w-[1000px]"
+          caption="محاضرات النسخ المنشورة"
+          columns={[
+            { key: "version", label: "النسخة", secondary: true },
+            { key: "department", label: "القسم", secondary: true },
+            { key: "program", label: "البرنامج", secondary: true },
+            { key: "level", label: "المستوى", secondary: true },
+            { key: "cohort", label: "الدفعة الدراسية" },
+            { key: "delivery_group", label: "مجموعة المحاضرات/المعامل", secondary: true },
+            { key: "course", label: "المقرر" },
+            { key: "day", label: "اليوم" },
+            { key: "time", label: "الوقت", className: "whitespace-nowrap" },
+            { key: "session_type", label: "النوع" },
+            { key: "instructor", label: "المحاضر", secondary: true },
+            { key: "room", label: "القاعة", secondary: true },
+          ]}
+        />
+      </ReportSection>
     </ReportShell>
   );
 }
@@ -383,10 +438,9 @@ function Sel({
   items: { id: string; name: string }[];
 }) {
   return (
-    <div>
-      <label className="text-xs text-muted-foreground">{label}</label>
+    <ReportFilterField label={label}>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger>
+        <SelectTrigger aria-label={label}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -397,6 +451,6 @@ function Sel({
           ))}
         </SelectContent>
       </Select>
-    </div>
+    </ReportFilterField>
   );
 }
