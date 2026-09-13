@@ -29,6 +29,8 @@ interface Props extends ReportOfficialHeaderMeta {
   /** Screen-only duplicate of filter summary (optional). */
   filterSummary?: string;
   generatedAt?: Date;
+  /** Real verification/report URL encoded in the header QR (never decorative). */
+  qrUrl?: string | null;
 }
 
 function formatGeneratedAt(d: Date): string {
