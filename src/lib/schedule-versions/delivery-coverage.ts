@@ -28,6 +28,28 @@ export interface DeliveryCoverage {
   complete: boolean;
 }
 
+export interface DeliveryGroupStates {
+  complete: number;
+  partial: number;
+  notStarted: number;
+  overScheduled: number;
+  incomplete: number;
+}
+
+export function deliveryGroupStates(coverage: DeliveryCoverage): DeliveryGroupStates {
+  const notStarted = Math.max(0, coverage.groupsWithoutSessions);
+  const partial = Math.max(0, coverage.shortHoursGroups - notStarted);
+  const overScheduled = Math.max(0, coverage.overHoursGroups);
+  const complete = Math.max(0, coverage.exactHoursGroups);
+  return {
+    complete,
+    partial,
+    notStarted,
+    overScheduled,
+    incomplete: Math.max(0, coverage.totalGroups - complete),
+  };
+}
+
 export interface DeliveryGapRow {
   delivery_group_id: string;
   program_name: string | null;
@@ -110,8 +132,11 @@ export function coverageBlockers(
 ): string[] {
   if (!COVERAGE_GATED_STATUSES.includes(target)) return [];
   if (!coverage || coverage.complete) return [];
+  const states = deliveryGroupStates(coverage);
   const parts = [
-    `المجموعات غير المجدولة: ${coverage.groupsWithoutSessions}`,
+    `المجموعات غير المكتملة: ${states.incomplete}`,
+    `الجزئية: ${states.partial}`,
+    `غير المبدوءة: ${states.notStarted}`,
     `الساعات الناقصة: ${coverage.missingHours}`,
   ];
   if (coverage.unassignedGroups > 0) parts.push(`مجموعات بدون إسناد: ${coverage.unassignedGroups}`);
@@ -137,17 +162,19 @@ export function autoRunOutcomeMessage(params: {
 }): { partial: boolean; text: string } {
   const partial = isPartialRunOutcome({ unplaced: params.unplaced, coverage: params.coverage });
   const cov = params.coverage;
-  const covText = cov
-    ? ` — المجموعات المجدولة ${cov.groupsWithSessions}/${cov.totalGroups} — الساعات ${cov.scheduledHours}/${cov.requiredHours} — الناقص ${cov.groupsWithoutSessions} مجموعة / ${cov.missingHours} ساعة`
-    : "";
+  const states = cov ? deliveryGroupStates(cov) : null;
+  const covText =
+    cov && states
+      ? ` — التغطية: مكتملة ${states.complete}/${cov.totalGroups}، جزئية ${states.partial}، غير مبدوءة ${states.notStarted} — الساعات ${cov.scheduledHours}/${cov.requiredHours}، الناقص ${cov.missingHours} ساعة`
+      : "";
   if (!partial) {
     return {
       partial: false,
-      text: `تمت الجدولة بالكامل — وُضع ${params.placed}/${params.totalRequired}${covText}`,
+      text: `تمت الجدولة بالكامل — أضاف التشغيل ${params.placed} جلسة${covText}`,
     };
   }
   return {
     partial: true,
-    text: `تم إنشاء مسودة جزئية — وُضع ${params.placed}/${params.totalRequired}، تعذّر ${params.unplaced}${covText}. راجع «عرض النواقص».`,
+    text: `تم إنشاء مسودة جزئية — أضاف التشغيل ${params.placed} جلسة، وتعذّر ${params.unplaced}${covText}. راجع «عرض النواقص».`,
   };
 }

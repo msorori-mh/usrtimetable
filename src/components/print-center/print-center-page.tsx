@@ -28,6 +28,7 @@ import {
   SCHEDULE_BUILDER_NO_COLLEGE_AR,
 } from "@/lib/schedule-builder/access";
 import { isDeliveryDemoVersion } from "@/lib/schedule-versions/delivery-demo";
+import { fetchDeliveryCoverage } from "@/lib/schedule-versions/delivery-coverage";
 import type { SVStatus } from "@/lib/schedule-versions/lifecycle";
 import {
   DEFAULT_PRINT_VISIBILITY,
@@ -180,6 +181,16 @@ export function PrintCenterPage(props: { versionId: string }) {
   });
 
   const collegeMatches = isScheduleVersionInActiveCollege(version, active?.id);
+  const coverage = useQuery({
+    queryKey: ["print-center-delivery-coverage", active?.id, versionId],
+    enabled: !!active && collegeMatches,
+    queryFn: () =>
+      fetchDeliveryCoverage({
+        collegeId: active!.id,
+        scheduleVersionId: versionId,
+      }),
+  });
+  const outputBlocked = coverage.isLoading || coverage.isError || coverage.data?.complete !== true;
 
   const { data: term } = useQuery({
     queryKey: ["print-center-term", version?.academic_term_id, active?.id],
@@ -363,6 +374,10 @@ export function PrintCenterPage(props: { versionId: string }) {
   // LAUNCH-CLOSURE print diagnosis: keep window.print() as the only print mechanism,
   // but surface an actionable Arabic status instead of a dead-looking button.
   const handlePrintClick = () => {
+    if (outputBlocked) {
+      toast.error("لا يمكن طباعة جدول نهائي قبل استكمال جميع ساعات المجموعات.");
+      return;
+    }
     const result = requestPrint(typeof window === "undefined" ? null : window);
     if (result.status === "dispatched") {
       toast.info(PRINT_REQUEST_DISPATCHED_AR);
@@ -436,14 +451,14 @@ export function PrintCenterPage(props: { versionId: string }) {
               variant="outline"
               size="sm"
               onClick={handlePrintClick}
-              disabled={pages.length === 0}
+              disabled={pages.length === 0 || outputBlocked}
             >
               <Printer className="h-4 w-4 ml-1" /> طباعة
             </Button>
             <Button
               variant="outline"
               size="sm"
-              disabled={!exportRows.length}
+              disabled={!exportRows.length || outputBlocked}
               onClick={() =>
                 downloadCSV(
                   exportRows as unknown as Record<string, unknown>[],
@@ -457,7 +472,7 @@ export function PrintCenterPage(props: { versionId: string }) {
             <Button
               variant="outline"
               size="sm"
-              disabled={!exportRows.length}
+              disabled={!exportRows.length || outputBlocked}
               onClick={() =>
                 downloadXLSX(
                   exportRows as unknown as Record<string, unknown>[],
@@ -470,6 +485,25 @@ export function PrintCenterPage(props: { versionId: string }) {
             </Button>
           </div>
         </div>
+
+        {outputBlocked && (
+          <Card
+            className="border-destructive/40 bg-destructive/5 p-3 text-sm"
+            role="alert"
+            data-testid="print-incomplete-coverage-blocker"
+          >
+            <p className="font-semibold text-destructive">
+              الطباعة والتصدير متوقفان حتى تكتمل جميع ساعات المجموعات.
+            </p>
+            <p className="mt-1 text-muted-foreground">
+              {coverage.isLoading
+                ? "جارٍ التحقق من اكتمال النسخة…"
+                : coverage.isError
+                  ? "تعذر التحقق من اكتمال النسخة؛ أُوقف الإخراج احترازيًا."
+                  : `المكتمل ${coverage.data?.exactHoursGroups ?? 0}/${coverage.data?.totalGroups ?? 0} مجموعة، والناقص ${coverage.data?.missingHours ?? 0} ساعة. عُد إلى الجدولة وافتح «عرض النواقص».`}
+            </p>
+          </Card>
+        )}
 
         <Card className="p-4 space-y-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

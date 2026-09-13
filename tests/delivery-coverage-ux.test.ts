@@ -3,6 +3,7 @@ import fs from "node:fs";
 import {
   autoRunOutcomeMessage,
   coverageBlockers,
+  deliveryGroupStates,
   isPartialRunOutcome,
   parseDeliveryCoverage,
   COVERAGE_GATED_STATUSES,
@@ -52,6 +53,30 @@ describe("delivery coverage parsing", () => {
     expect(parseDeliveryCoverage(null).complete).toBe(false);
     expect(parseDeliveryCoverage(null).totalGroups).toBe(0);
   });
+
+  it("separates exact, partial and not-started groups", () => {
+    const states = deliveryGroupStates(
+      parseDeliveryCoverage({
+        total_groups: 354,
+        groups_with_sessions: 354,
+        groups_without_sessions: 0,
+        exact_hours_groups: 330,
+        short_hours_groups: 24,
+        over_hours_groups: 0,
+        required_hours: 778,
+        scheduled_hours: 718,
+        missing_hours: 60,
+        complete: false,
+      }),
+    );
+    expect(states).toEqual({
+      complete: 330,
+      partial: 24,
+      notStarted: 0,
+      overScheduled: 0,
+      incomplete: 24,
+    });
+  });
 });
 
 describe("transition gating", () => {
@@ -90,7 +115,7 @@ describe("auto scheduler outcome", () => {
     });
     expect(msg.partial).toBe(true);
     expect(msg.text).toContain("مسودة جزئية");
-    expect(msg.text).toContain("3/9");
+    expect(msg.text).toContain("مكتملة 3/9");
     expect(msg.text).toContain("6/20");
     expect(msg.text).toContain("عرض النواقص");
     expect(msg.text).not.toContain("تمت الجدولة بالكامل");
@@ -121,14 +146,17 @@ describe("UI wiring", () => {
   );
   const versions = fs.readFileSync("src/routes/_authenticated/schedule-versions.tsx", "utf8");
   const auto = fs.readFileSync("src/routes/_authenticated/auto-schedule.tsx", "utf8");
+  const printCenter = fs.readFileSync("src/components/print-center/print-center-page.tsx", "utf8");
 
   it("shows the completeness card with the required figures and a gaps view", () => {
     expect(card).toContain("اكتمال نسخة الجدول");
     expect(card).toContain("مكتمل 100%");
     expect(card).toContain("غير مكتمل");
     expect(card).toContain("المجموعات المسندة");
-    expect(card).toContain("المجموعات المجدولة");
-    expect(card).toContain("الساعات المجدولة");
+    expect(card).toContain("مكتملة الساعات");
+    expect(card).toContain("مجموعات جزئية");
+    expect(card).toContain("غير مبدوءة");
+    expect(card).toContain("الساعات المكتملة");
     expect(card).toContain("الساعات الناقصة");
     expect(card).toContain("عرض النواقص");
   });
@@ -148,6 +176,7 @@ describe("UI wiring", () => {
       "المجدول",
       "الناقص",
       "الحالة",
+      "تفسير النقص",
     ]) {
       expect(card).toContain(header);
     }
@@ -164,6 +193,14 @@ describe("UI wiring", () => {
     expect(auto).toContain(
       'data-testid={outcome.partial ? "auto-run-partial" : "auto-run-complete"}',
     );
+  });
+
+  it("blocks final print and export while delivery coverage is incomplete", () => {
+    expect(printCenter).toContain("print-center-delivery-coverage");
+    expect(printCenter).toContain("coverage.data?.complete !== true");
+    expect(printCenter).toContain("print-incomplete-coverage-blocker");
+    expect(printCenter).toContain("pages.length === 0 || outputBlocked");
+    expect(printCenter).toContain("!exportRows.length || outputBlocked");
   });
 
   it("keeps management actions role-gated (read-only roles cannot act)", () => {

@@ -19,6 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  deliveryGroupStates,
   fetchDeliveryCoverage,
   fetchDeliveryGaps,
   type DeliveryCoverage,
@@ -86,6 +87,7 @@ export function DeliveryCoverageCard({
   if (!coverage) return null;
 
   const complete = coverage.complete;
+  const states = deliveryGroupStates(coverage);
 
   return (
     <div
@@ -114,16 +116,17 @@ export function DeliveryCoverageCard({
           label="المجموعات المسندة"
           value={`${coverage.assignedExactlyOnce}/${coverage.totalGroups}`}
         />
+        <Row label="مكتملة الساعات" value={`${states.complete}/${coverage.totalGroups} مجموعة`} />
+        <Row label="مجموعات جزئية" value={`${states.partial} مجموعة`} />
+        <Row label="غير مبدوءة" value={`${states.notStarted} مجموعة`} />
         <Row
-          label="المجموعات المجدولة"
-          value={`${coverage.groupsWithSessions}/${coverage.totalGroups}`}
-        />
-        <Row
-          label="الساعات المجدولة"
+          label="الساعات المكتملة"
           value={`${coverage.scheduledHours}/${coverage.requiredHours}`}
         />
-        <Row label="غير المجدول" value={`${coverage.groupsWithoutSessions} مجموعة`} />
-        <Row label="الساعات الناقصة" value={`${coverage.missingHours}`} />
+        <Row label="الساعات الناقصة" value={`${coverage.missingHours} ساعة`} />
+        {states.overScheduled > 0 && (
+          <Row label="زائدة الساعات" value={`${states.overScheduled} مجموعة`} />
+        )}
         {coverage.multiAssignedGroups > 0 && (
           <Row label="إسناد مزدوج" value={`${coverage.multiAssignedGroups}`} />
         )}
@@ -209,6 +212,7 @@ function GapsDialog({
                   <TableHead>المجدول</TableHead>
                   <TableHead>الناقص</TableHead>
                   <TableHead>الحالة</TableHead>
+                  <TableHead>تفسير النقص</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -237,6 +241,9 @@ function GapsDialog({
                     <TableCell>
                       {STATE_LABEL[g.scheduling_state ?? ""] ?? g.scheduling_state ?? "—"}
                     </TableCell>
+                    <TableCell className="min-w-52 text-xs text-muted-foreground">
+                      {gapReason(g.scheduling_state, g.instructor_names)}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -246,4 +253,15 @@ function GapsDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+function gapReason(state: string | null, instructorNames: string | null): string {
+  if (state === "unassigned" || !instructorNames) return "لا يوجد إسناد تدريس معتمد للمجموعة.";
+  if (state === "unscheduled")
+    return "لم تُنشأ أي جلسة؛ راجع سبب القيد التفصيلي في نتيجة آخر تشغيل.";
+  if (state === "short_hours")
+    return "جُدول جزء من الساعات فقط؛ راجع نتيجة آخر تشغيل لمعرفة قيد الوقت أو القاعة.";
+  if (state === "multi_assigned") return "للمجموعة أكثر من إسناد نشط ويجب تصحيح الإسناد.";
+  if (state === "over_hours") return "الساعات المجدولة تتجاوز الساعات المطلوبة.";
+  return "راجع نتيجة آخر تشغيل لمعرفة القيد التفصيلي.";
 }
