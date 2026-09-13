@@ -16,6 +16,7 @@ import {
   type AdminPage,
   type Role,
 } from "@/lib/admin-nav";
+import { ACADEMIC_AFFAIRS_ROLE_LABEL_AR } from "@/lib/academic-affairs-role";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/admin-tools")({
@@ -48,7 +49,7 @@ const ROLE_LABEL: Record<Role, string> = {
   super_admin: "Super Admin",
   college_admin: "مدير كلّية",
   read_only: "مشاهد",
-  institutional_viewer: "مشاهد مؤسسي",
+  institutional_viewer: ACADEMIC_AFFAIRS_ROLE_LABEL_AR,
 };
 
 function ToolCard({ page }: { page: AdminPage }) {
