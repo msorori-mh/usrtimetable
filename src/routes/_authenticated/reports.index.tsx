@@ -42,7 +42,6 @@ export const Route = createFileRoute("/_authenticated/reports/")({
   component: ReportsHub,
 });
 
-
 interface ReportCard {
   to: string;
   title: string;
