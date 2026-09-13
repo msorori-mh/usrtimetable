@@ -486,12 +486,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 </span>
               ) : null}
             </nav>
-            {activeCollege && (
-              <span className="flex shrink-0 items-center gap-1.5 rounded-md bg-secondary px-2.5 py-1 text-[11px] font-medium text-primary">
-                <School className="h-3.5 w-3.5" />
-                <span className="max-w-[12rem] truncate">{activeCollege.name}</span>
-              </span>
-            )}
+            {activeCollege &&
+              !(reportsOnly && (pathname === "/reports" || pathname === "/reports/")) && (
+                <span className="flex shrink-0 items-center gap-1.5 rounded-md bg-secondary px-2.5 py-1 text-[11px] font-medium text-primary">
+                  <School className="h-3.5 w-3.5" />
+                  <span className="max-w-[12rem] truncate">{activeCollege.name}</span>
+                </span>
+              )}
           </div>
         )}
         {preparationStep && (

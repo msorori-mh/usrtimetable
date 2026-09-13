@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { instructorStatusLabel } from "@/lib/excel-import/instructor-sheet";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { useCanManageActiveCollege } from "@/hooks/use-can-manage";
@@ -50,6 +50,14 @@ import {
 } from "@/lib/data-onboarding/instructor-review";
 import { AdminExportMenu } from "@/components/admin-export-menu";
 import { activeFilters, instructorsExportDataset } from "@/lib/admin-export/datasets";
+import {
+  DEFAULT_DIRECTORY_FILTERS,
+  INSTRUCTOR_SORT_LABEL_AR,
+  filterAndSortInstructors,
+  hasActiveDirectoryFilters,
+  type DirectoryFilters,
+  type InstructorSortKey,
+} from "@/lib/instructors/directory-filters";
 
 export const Route = createFileRoute("/_authenticated/instructors")({
   head: () => ({ meta: [{ title: "المحاضرون" }] }),
@@ -124,11 +132,12 @@ function InstructorDirectory() {
   const [editing, setEditing] = useState<Instructor | null>(null);
   const [form, setForm] = useState(emptyForm());
   const [repairField, setRepairField] = useState<InstructorReview | null>(null);
-  const [search, setSearch] = useState("");
-  const [departmentFilter, setDepartmentFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [typeFilter, setTypeFilter] = useState("all");
-  const [sortBy, setSortBy] = useState("name_asc");
+  const [directory, setDirectory] = useState<DirectoryFilters>(DEFAULT_DIRECTORY_FILTERS);
+  const setDirectoryField = <K extends keyof DirectoryFilters>(
+    key: K,
+    value: DirectoryFilters[K],
+  ) => setDirectory((prev) => ({ ...prev, [key]: value }));
+
   const specializationRef = useRef<HTMLInputElement>(null);
   const departmentRef = useRef<HTMLButtonElement>(null);
 
@@ -298,72 +307,19 @@ function InstructorDirectory() {
     setOpen(true);
   };
 
-  const deptMap = useMemo(() => new Map((depts ?? []).map((d) => [d.id, d.name])), [depts]);
-  const typeRows = useMemo(() => (types ?? []) as InstructorTypeRow[], [types]);
-  const typeMap = useMemo(() => new Map(typeRows.map((t) => [t.id, t])), [typeRows]);
-  const reviewedRows = review ? rows?.filter((i) => instructorNeedsReview(i, review)) : rows;
-  const visibleRows = useMemo(() => {
-    const needle = search
-      .trim()
-      .toLocaleLowerCase("ar")
-      .normalize("NFKD")
-      .replace(/[\u064B-\u065F\u0670]/g, "");
-    const filtered = (reviewedRows ?? []).filter((i) => {
-      if (departmentFilter !== "all" && (i.department_id ?? "_none") !== departmentFilter)
-        return false;
-      if (statusFilter !== "all" && String(i.is_active) !== statusFilter) return false;
-      if (typeFilter !== "all" && (i.instructor_type_id ?? "_none") !== typeFilter) return false;
-      if (!needle) return true;
-      return [
-        i.full_name,
-        i.full_name_ar,
-        i.full_name_en,
-        i.employee_number,
-        i.email,
-        i.department_id ? deptMap.get(i.department_id) : "",
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLocaleLowerCase("ar")
-        .normalize("NFKD")
-        .replace(/[\u064B-\u065F\u0670]/g, "")
-        .includes(needle);
-    });
-    return [...filtered].sort((a, b) => {
-      if (sortBy === "name_desc")
-        return b.full_name.localeCompare(a.full_name, "ar", {
-          numeric: true,
-          sensitivity: "base",
-        });
-      if (sortBy === "employee")
-        return (a.employee_number ?? "").localeCompare(b.employee_number ?? "", "ar", {
-          numeric: true,
-        });
-      if (sortBy === "department") {
-        const compared = (deptMap.get(a.department_id ?? "") ?? "").localeCompare(
-          deptMap.get(b.department_id ?? "") ?? "",
-          "ar",
-        );
-        return compared || a.full_name.localeCompare(b.full_name, "ar");
-      }
-      if (sortBy === "load_desc")
-        return (
-          b.max_weekly_hours - a.max_weekly_hours || a.full_name.localeCompare(b.full_name, "ar")
-        );
-      return a.full_name.localeCompare(b.full_name, "ar", {
-        numeric: true,
-        sensitivity: "base",
-      });
-    });
-  }, [reviewedRows, search, departmentFilter, statusFilter, typeFilter, sortBy, deptMap]);
-  const hasDirectoryFilters =
-    Boolean(search) ||
-    departmentFilter !== "all" ||
-    statusFilter !== "all" ||
-    typeFilter !== "all" ||
-    sortBy !== "name_asc";
-  const statusFilterLabel =
-    statusFilter === "all" ? "" : statusFilter === "true" ? "نشط" : "غير نشط";
+  const deptMap = new Map((depts ?? []).map((d) => [d.id, d.name]));
+  const typeRows = (types ?? []) as InstructorTypeRow[];
+  const typeMap = new Map(typeRows.map((t) => [t.id, t]));
+  const reviewRows = review ? (rows ?? []).filter((i) => instructorNeedsReview(i, review)) : rows;
+  const departmentLabel = (id: string | null | undefined) =>
+    id ? (deptMap.get(id) ?? "بدون قسم") : "بدون قسم";
+  // Search, filters and sorting are presentation-only and compose together.
+  const visibleRows = reviewRows
+    ? filterAndSortInstructors(reviewRows, directory, departmentLabel)
+    : reviewRows;
+  const availableRanks = Array.from(
+    new Set((rows ?? []).map((i) => i.academic_rank ?? "").filter((r) => r !== "")),
+  ).sort((a, b) => a.localeCompare(b, "ar"));
 
   return (
     <div className="mx-auto max-w-5xl" dir="rtl">
@@ -399,29 +355,6 @@ function InstructorDirectory() {
                   {
                     label: "مرشّح المراجعة",
                     value: review ? INSTRUCTOR_REVIEW_LABELS[review] : "",
-                  },
-                  { label: "البحث", value: search },
-                  {
-                    label: "القسم",
-                    value:
-                      departmentFilter === "all"
-                        ? ""
-                        : departmentFilter === "_none"
-                          ? "بدون قسم"
-                          : (deptMap.get(departmentFilter) ?? ""),
-                  },
-                  {
-                    label: "الحالة",
-                    value: statusFilterLabel,
-                  },
-                  {
-                    label: "فئة المحاضر",
-                    value:
-                      typeFilter === "all"
-                        ? ""
-                        : typeFilter === "_none"
-                          ? "غير محدد"
-                          : (typeMap.get(typeFilter)?.name_ar ?? ""),
                   },
                 ]),
               })
@@ -735,81 +668,124 @@ function InstructorDirectory() {
           </Link>
         </Button>
       </div>
+
       <Card className="mb-4 space-y-3 p-4">
-        <div>
-          <Label htmlFor="instructor-search">البحث عن محاضر</Label>
-          <Input
-            id="instructor-search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="الاسم، رقم الموظف، البريد أو القسم…"
-          />
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <FilterSelect
-            label="القسم"
-            value={departmentFilter}
-            onChange={setDepartmentFilter}
-            items={[
-              { id: "all", name: "كل الأقسام" },
-              { id: "_none", name: "بدون قسم" },
-              ...(depts ?? []).map((d) => ({ id: d.id, name: d.name })),
-            ]}
-          />
-          <FilterSelect
-            label="الحالة"
-            value={statusFilter}
-            onChange={setStatusFilter}
-            items={[
-              { id: "all", name: "كل الحالات" },
-              { id: "true", name: "نشط" },
-              { id: "false", name: "غير نشط" },
-            ]}
-          />
-          <FilterSelect
-            label="فئة المحاضر"
-            value={typeFilter}
-            onChange={setTypeFilter}
-            items={[
-              { id: "all", name: "كل الفئات" },
-              { id: "_none", name: "غير محدد" },
-              ...typeRows.map((t) => ({ id: t.id, name: t.name_ar })),
-            ]}
-          />
-          <FilterSelect
-            label="الفرز"
-            value={sortBy}
-            onChange={setSortBy}
-            items={[
-              { id: "name_asc", name: "الاسم: أ–ي" },
-              { id: "name_desc", name: "الاسم: ي–أ" },
-              { id: "employee", name: "رقم الموظف" },
-              { id: "department", name: "القسم" },
-              { id: "load_desc", name: "النصاب: الأعلى أولًا" },
-            ]}
-          />
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
-          <span>
-            عرض {visibleRows.length} من {reviewedRows?.length ?? 0} محاضرًا
-          </span>
-          {hasDirectoryFilters && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setSearch("");
-                setDepartmentFilter("all");
-                setStatusFilter("all");
-                setTypeFilter("all");
-                setSortBy("name_asc");
-              }}
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="min-w-72 flex-1">
+            <Label htmlFor="instructor-search">بحث</Label>
+            <Input
+              id="instructor-search"
+              value={directory.search}
+              onChange={(e) => setDirectoryField("search", e.target.value)}
+              placeholder="ابحث بالاسم أو رقم الموظف أو البريد أو القسم…"
+            />
+          </div>
+          <div className="min-w-44">
+            <Label htmlFor="instructor-department-filter">القسم</Label>
+            <Select
+              value={directory.departmentId}
+              onValueChange={(v) => setDirectoryField("departmentId", v)}
             >
-              مسح البحث والفلاتر
+              <SelectTrigger id="instructor-department-filter">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل الأقسام</SelectItem>
+                <SelectItem value="none">بدون قسم</SelectItem>
+                {(depts ?? []).map((d) => (
+                  <SelectItem key={d.id} value={d.id}>
+                    {d.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="min-w-40">
+            <Label htmlFor="instructor-status-filter">حالة العضو</Label>
+            <Select value={directory.status} onValueChange={(v) => setDirectoryField("status", v)}>
+              <SelectTrigger id="instructor-status-filter">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">الكل</SelectItem>
+                <SelectItem value="active">نشط</SelectItem>
+                <SelectItem value="inactive">غير نشط</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="min-w-44">
+            <Label htmlFor="instructor-rank-filter">الرتبة</Label>
+            <Select value={directory.rank} onValueChange={(v) => setDirectoryField("rank", v)}>
+              <SelectTrigger id="instructor-rank-filter">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل الرتب</SelectItem>
+                {availableRanks.map((r) => (
+                  <SelectItem key={r} value={r}>
+                    {r}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="min-w-44">
+            <Label htmlFor="instructor-type-filter">نوع العضو</Label>
+            <Select value={directory.typeId} onValueChange={(v) => setDirectoryField("typeId", v)}>
+              <SelectTrigger id="instructor-type-filter">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل الأنواع</SelectItem>
+                <SelectItem value="none">بدون نوع</SelectItem>
+                {typeRows.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name_ar}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="min-w-44">
+            <Label htmlFor="instructor-sort">الفرز</Label>
+            <Select
+              value={directory.sortKey}
+              onValueChange={(v) => setDirectoryField("sortKey", v as InstructorSortKey)}
+            >
+              <SelectTrigger id="instructor-sort">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(INSTRUCTOR_SORT_LABEL_AR).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() =>
+              setDirectoryField("sortDirection", directory.sortDirection === "asc" ? "desc" : "asc")
+            }
+            aria-label="اتجاه الفرز"
+          >
+            {directory.sortDirection === "asc" ? "تصاعدي ↑" : "تنازلي ↓"}
+          </Button>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+          <p data-testid="instructors-count" className="text-muted-foreground">
+            عرض {visibleRows?.length ?? 0} من {rows?.length ?? 0}
+          </p>
+          {hasActiveDirectoryFilters(directory) && (
+            <Button variant="ghost" onClick={() => setDirectory({ ...DEFAULT_DIRECTORY_FILTERS })}>
+              مسح الفلاتر
             </Button>
           )}
         </div>
       </Card>
+
       {review && active && !isLoading && !isError && (
         <Card className="mb-4 space-y-2 border-amber-500/40 p-4" role="status">
           <p className="font-semibold">{INSTRUCTOR_REVIEW_LABELS[review]}</p>
@@ -836,28 +812,21 @@ function InstructorDirectory() {
           </div>
         ) : isLoading ? (
           <p className="p-6 text-center text-muted-foreground">جارٍ التحميل...</p>
-        ) : visibleRows.length === 0 ? (
+        ) : !visibleRows || visibleRows.length === 0 ? (
           <div className="space-y-2 p-6 text-center text-muted-foreground">
             <p>
-              {hasDirectoryFilters
-                ? "لا توجد نتائج مطابقة للبحث والفلاتر الحالية."
+              {hasActiveDirectoryFilters(directory)
+                ? "لا توجد نتائج مطابقة للبحث أو الفلاتر الحالية."
                 : review
                   ? "لا توجد سجلات ناقصة بهذا المعيار في الكلية الحالية."
                   : "لا يوجد محاضرون بعد."}
             </p>
-            {hasDirectoryFilters && (
+            {hasActiveDirectoryFilters(directory) && (
               <Button
                 variant="outline"
-                size="sm"
-                onClick={() => {
-                  setSearch("");
-                  setDepartmentFilter("all");
-                  setStatusFilter("all");
-                  setTypeFilter("all");
-                  setSortBy("name_asc");
-                }}
+                onClick={() => setDirectory({ ...DEFAULT_DIRECTORY_FILTERS })}
               >
-                مسح البحث والفلاتر
+                مسح الفلاتر
               </Button>
             )}
           </div>
@@ -940,36 +909,6 @@ function InstructorDirectory() {
           </ul>
         )}
       </Card>
-    </div>
-  );
-}
-
-function FilterSelect({
-  label,
-  value,
-  onChange,
-  items,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  items: { id: string; name: string }[];
-}) {
-  return (
-    <div>
-      <Label>{label}</Label>
-      <Select value={value} onValueChange={onChange}>
-        <SelectTrigger aria-label={label}>
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {items.map((item) => (
-            <SelectItem key={item.id} value={item.id}>
-              {item.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
     </div>
   );
 }
