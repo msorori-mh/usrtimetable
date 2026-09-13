@@ -52,8 +52,8 @@ for (const superOnly of ["/universities", "/colleges", "/users"]) {
 }
 const myCollegeBlock = navSrc.slice(navSrc.indexOf('to: "/my-college"'));
 assert.ok(
-  /roles:\s*\["college_admin",\s*"read_only"\]/.test(myCollegeBlock.slice(0, 400)),
-  "/my-college role scope must be unchanged",
+  /roles:\s*\["college_admin",\s*"institutional_viewer"\]/.test(myCollegeBlock.slice(0, 400)),
+  "/my-college is visible to college_admin and the institutional viewer (read_only is reports-only)",
 );
 for (const writerScoped of ["/import", "/data-cleanup", "/auto-schedule"]) {
   const block = navSrc.slice(

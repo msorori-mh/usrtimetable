@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 import { Card } from "@/components/ui/card";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import { isReportsOnlyRole } from "@/lib/academic-affairs-role";
+import { isReportsOnlyRole } from "@/lib/viewer-roles";
 import { Badge } from "@/components/ui/badge";
 import {
   UserSquare2,
@@ -229,7 +229,7 @@ function ReportGrid({ items }: { items: ReportCard[] }) {
 
 function ReportsHub() {
   const [legacyOpen, setLegacyOpen] = useState(false);
-  // Academic affairs stays inside /reports/*: the publishing area is out of scope.
+  // «مشاهد» stays inside /reports/*: the publishing area is out of scope.
   const { data: me } = useCurrentUser();
   const reportsOnly = isReportsOnlyRole(me);
   return (

@@ -193,6 +193,9 @@ function AutoSchedulePage() {
     },
   });
 
+  /** Non-role blockers; the role gate stays the leading `!canManage` on the run button. */
+  const runBlocked = !versionId || run.isPending || compactBusy || readinessIncomplete;
+
   const latest = runs?.[0];
 
   return (
@@ -253,9 +256,7 @@ function AutoSchedulePage() {
                 </Select>
               </div>
               <Button
-                disabled={
-                  !canManage || !versionId || run.isPending || compactBusy || readinessIncomplete
-                }
+                disabled={!canManage || runBlocked}
                 onClick={() => {
                   if (mode === "fill_missing") run.mutate();
                   else setConfirmOpen(true);

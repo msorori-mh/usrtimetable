@@ -4,7 +4,7 @@ import { readPrimaryNavigationSource } from "./nav-source";
  *
  * Proves BY SOURCE INSPECTION (no live database is contacted):
  *  1. the role exists in the app role union and in the generated DB enum type;
- *  2. the role is reports-only in navigation (user label: «إدارة الشؤون الأكاديمية»);
+ *  2. the role browses the whole platform read-only in navigation (user label: «مشاهد مؤسسي»);
  *  3. can_manage_college / useCanManageActiveCollege were NOT widened;
  *  4. the two migrations are split (enum add, then usage) and touch SELECT only;
  *  5. admin pages render a read-only variant with no write controls for the role;
@@ -42,7 +42,7 @@ assert(
   "generated Supabase types carry the new app_role value",
 );
 
-// ---------- 2) navigation: every entry visible to the role ----------
+// ---------- 2) navigation: full platform read, reports role excluded ----------
 const layout = readPrimaryNavigationSource(ROOT);
 assert(
   /const ALL: Role\[\] = \["super_admin", "college_admin", "read_only", "institutional_viewer"\]/.test(
@@ -52,22 +52,23 @@ assert(
 );
 const roleLists = [...layout.matchAll(/roles:\s*(ALL|OPERATIONAL|\[[^\]]*\])/g)].map((m) => m[1]);
 assert(roleLists.length > 20, "navigation role lists were found for inspection");
-// The role is reports-only: it must appear ONLY on the two /reports entries
-// (which use ALL). Every other entry is operational and excludes it.
-const viewerVisible = roleLists.filter((r) => r === "ALL" || r.includes("institutional_viewer"));
+// institutional_viewer («مشاهد مؤسسي») browses the platform read-only, so it is
+// part of OPERATIONAL. read_only («مشاهد») is reports-only: it may appear ONLY
+// on the two /reports entries (which use ALL).
 assert(
-  viewerVisible.length === 2 && viewerVisible.every((r) => r === "ALL"),
-  `institutional_viewer appears only on the reports entries (found: ${viewerVisible.join(" | ")})`,
-);
-assert(
-  /export const OPERATIONAL: Role\[\] = \["super_admin", "college_admin", "read_only"\]/.test(
+  /export const OPERATIONAL: Role\[\] = \["super_admin", "college_admin", "institutional_viewer"\]/.test(
     layout,
   ),
-  "OPERATIONAL roles exclude institutional_viewer",
+  "OPERATIONAL roles include institutional_viewer and exclude read_only",
+);
+const readOnlyVisible = roleLists.filter((r) => r === "ALL" || r.includes("read_only"));
+assert(
+  readOnlyVisible.length === 2 && readOnlyVisible.every((r) => r === "ALL"),
+  `read_only appears only on the reports entries (found: ${readOnlyVisible.join(" | ")})`,
 );
 assert(
-  layout.includes("إدارة الشؤون الأكاديمية") || layout.includes("ACADEMIC_AFFAIRS_ROLE_LABEL_AR"),
-  "navigation source uses the Arabic label «إدارة الشؤون الأكاديمية»",
+  layout.includes("مشاهد مؤسسي") || layout.includes("INSTITUTIONAL_VIEWER_ROLE_LABEL_AR"),
+  "navigation source uses the Arabic label «مشاهد مؤسسي»",
 );
 
 // ---------- 3) no manage-privilege expansion ----------
@@ -172,11 +173,11 @@ assert(
 assert(
   /assignsAllColleges\(data\.role\)/.test(usersFn) &&
     /from\("colleges"\)\s*\.select\("id"\)/.test(usersFn),
-  "academic-affairs creation auto-assigns every existing college (no manual picker)",
+  "viewer-role creation auto-assigns every existing college (no manual picker)",
 );
 assert(
   /requiresCollegeAssignment\(data\.role\) && collegeIds\.length === 0/.test(usersFn),
-  "manual college assignment is still required for college-scoped operational roles",
+  "manual college assignment is still required for college_admin",
 );
 
 // ---------- 6) operational pages: browse-safe, execution disabled ----------

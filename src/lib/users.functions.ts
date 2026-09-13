@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { assignsAllColleges, requiresCollegeAssignment } from "@/lib/academic-affairs-role";
+import { assignsAllColleges, requiresCollegeAssignment } from "@/lib/viewer-roles";
 
 const ROLE = z.enum(["super_admin", "college_admin", "read_only", "institutional_viewer"]);
 
@@ -56,10 +56,10 @@ export const adminCreateUser = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertInstitutionAdmin(context.userId);
 
-    // `institutional_viewer` («إدارة الشؤون الأكاديمية») covers every college:
-    // the assignment is computed here (all current colleges) and a college
-    // created later is auto-assigned by a database trigger. Other college-scoped
-    // roles keep their explicit, manually chosen assignment.
+    // Viewer roles («مشاهد» = read_only, «مشاهد مؤسسي» = institutional_viewer)
+    // read every college: the assignment is computed here (all current colleges)
+    // and a college created later is auto-assigned by a database trigger.
+    // college_admin keeps its explicit, manually chosen assignment.
     let collegeIds = data.college_ids;
     if (assignsAllColleges(data.role)) {
       const { data: allColleges, error: colErr } = await supabaseAdmin

@@ -18,12 +18,15 @@ import {
   shouldLoadSuperAdminPageData,
 } from "@/lib/unauthorized-access";
 import {
-  ACADEMIC_AFFAIRS_CREATE_NOTE_AR,
-  ACADEMIC_AFFAIRS_ROLE_HINT_AR,
-  ACADEMIC_AFFAIRS_ROLE_LABEL_AR,
+  INSTITUTIONAL_VIEWER_CREATE_NOTE_AR,
+  INSTITUTIONAL_VIEWER_ROLE_HINT_AR,
+  INSTITUTIONAL_VIEWER_ROLE_LABEL_AR,
+  READ_ONLY_CREATE_NOTE_AR,
+  READ_ONLY_ROLE_HINT_AR,
+  READ_ONLY_ROLE_LABEL_AR,
   assignsAllColleges,
   requiresCollegeAssignment,
-} from "@/lib/academic-affairs-role";
+} from "@/lib/viewer-roles";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -57,8 +60,8 @@ export const Route = createFileRoute("/_authenticated/users")({
 const ROLE_LABELS: Record<AppRole, string> = {
   super_admin: "Super Admin",
   college_admin: "مدير كلّية",
-  read_only: "مشاهد",
-  institutional_viewer: ACADEMIC_AFFAIRS_ROLE_LABEL_AR,
+  read_only: READ_ONLY_ROLE_LABEL_AR,
+  institutional_viewer: INSTITUTIONAL_VIEWER_ROLE_LABEL_AR,
 };
 
 const ROLE_TONE: Record<AppRole, string> = {
@@ -71,8 +74,8 @@ const ROLE_TONE: Record<AppRole, string> = {
 const ROLE_HINTS: Record<AppRole, string> = {
   super_admin: "صلاحيات كاملة على جميع الكلّيات، وإدارة المستخدمين والأدوار.",
   college_admin: "كامل صلاحيات العمليات داخل الكلّيات المُسندة له، بما فيها الاستيراد من Excel.",
-  read_only: "اطّلاع فقط على بيانات الكلّيات المُسندة، بدون أي تعديل.",
-  institutional_viewer: ACADEMIC_AFFAIRS_ROLE_HINT_AR,
+  read_only: READ_ONLY_ROLE_HINT_AR,
+  institutional_viewer: INSTITUTIONAL_VIEWER_ROLE_HINT_AR,
 };
 
 type UserRow = {
@@ -142,9 +145,15 @@ function UsersPage() {
       if (on) {
         const { error } = await supabase.from("user_roles").insert({ user_id: userId, role });
         if (error && !error.message.includes("duplicate")) throw error;
-        // «إدارة الشؤون الأكاديمية» covers every college: assign them all here
-        // too (a database trigger is the authoritative safety net).
-        if (assignsAllColleges(role as never)) {
+        // Viewer roles («مشاهد» / «مشاهد مؤسسي») read every college: assign them
+        // all here too (a database trigger is the authoritative safety net).
+        // Multi-role safety: never widen an account that carries an admin role.
+        const existingRoles = (
+          (await supabase.from("user_roles").select("role").eq("user_id", userId)).data ?? []
+        ).map((r) => r.role as AppRole);
+        const isAdminAccount =
+          existingRoles.includes("super_admin") || existingRoles.includes("college_admin");
+        if (assignsAllColleges(role as never) && !isAdminAccount) {
           const all = (await supabase.from("colleges").select("id")).data ?? [];
           if (all.length > 0) {
             const { error: ucErr } = await supabase.from("user_colleges").upsert(
@@ -278,8 +287,8 @@ function UsersPage() {
             <CreateUserDialog
               colleges={colleges ?? []}
               presetRole="institutional_viewer"
-              presetName="إدارة الشؤون الأكاديمية"
-              triggerLabel="إنشاء حساب الشؤون الأكاديمية"
+              presetName={INSTITUTIONAL_VIEWER_ROLE_LABEL_AR}
+              triggerLabel="إنشاء مشاهد مؤسسي"
               triggerVariant="outline"
               onCreate={async (input) => {
                 await createUserFn({ data: input });
@@ -695,15 +704,19 @@ function CreateUserDialog({
         <DialogHeader>
           <DialogTitle>
             {presetRole === "institutional_viewer"
-              ? "إنشاء حساب الشؤون الأكاديمية"
+              ? "إنشاء حساب مشاهد مؤسسي"
               : presetRole === "college_admin"
                 ? "إنشاء مدير كلّية"
                 : "إنشاء مستخدم"}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          {presetRole === "institutional_viewer" && (
-            <p className="rounded-md bg-secondary p-3 text-sm">{ACADEMIC_AFFAIRS_CREATE_NOTE_AR}</p>
+          {assignsAllColleges(form.role) && (
+            <p className="rounded-md bg-secondary p-3 text-sm">
+              {form.role === "institutional_viewer"
+                ? INSTITUTIONAL_VIEWER_CREATE_NOTE_AR
+                : READ_ONLY_CREATE_NOTE_AR}
+            </p>
           )}
           <div>
             <Label>الاسم الكامل</Label>

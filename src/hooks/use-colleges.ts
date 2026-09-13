@@ -18,7 +18,7 @@ export {
   shouldResetTermFilter,
   subscribeActiveCollegeId,
 } from "@/lib/active-college-store";
-import { isReportsOnlyRole, scopeCollegesForRole } from "@/lib/academic-affairs-role";
+import { isViewerOnlyRole, scopeCollegesForRole } from "@/lib/viewer-roles";
 
 export interface CollegeRef {
   id: string;
@@ -38,9 +38,9 @@ export function useAccessibleColleges() {
       if (error) throw error;
       const colleges = data ?? [];
 
-      // Academic affairs («إدارة الشؤون الأكاديمية») is NOT an institution-wide
-      // reader: its reports must stay inside the colleges assigned in
-      // user_colleges, so the accessible list is narrowed here (read scope only).
+      // Viewer roles («مشاهد» / «مشاهد مؤسسي») are not institution-wide readers
+      // by role: their reads stay inside the colleges assigned in user_colleges
+      // (a database trigger keeps that list at all colleges). Read scope only.
       const { data: userData } = await supabase.auth.getUser();
       const uid = userData.user?.id;
       // Fail closed: without an identity we cannot prove a college is assigned.
@@ -50,15 +50,16 @@ export function useAccessibleColleges() {
         supabase.from("user_colleges").select("college_id").eq("user_id", uid),
       ]);
       const roles = (rolesRes.data ?? []).map((r) => r.role as string);
-      const reportsOnly = isReportsOnlyRole({
+      const viewerOnly = isViewerOnlyRole({
         isSuperAdmin: roles.includes("super_admin"),
         isCollegeAdmin: roles.includes("college_admin"),
+        isReadOnly: roles.includes("read_only"),
         isInstitutionalViewer: roles.includes("institutional_viewer"),
       });
       return scopeCollegesForRole(
         colleges,
         (assignedRes.data ?? []).map((c) => c.college_id),
-        reportsOnly,
+        viewerOnly,
       );
     },
     staleTime: 60_000,
