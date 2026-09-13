@@ -447,6 +447,16 @@ export function PrintCenterPage(props: { versionId: string }) {
             </p>
           </div>
           <div className="flex gap-2 flex-wrap">
+            <Button variant="default" size="sm" asChild>
+              <Link to="/reports/current-timetable">
+                <Printer className="h-4 w-4 ml-1" /> طباعة الجدول الحالي
+              </Link>
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/reports/rooms-report">
+                <Printer className="h-4 w-4 ml-1" /> تقرير القاعات
+              </Link>
+            </Button>
             <Button
               variant="outline"
               size="sm"
