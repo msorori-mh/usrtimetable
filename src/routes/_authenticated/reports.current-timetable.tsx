@@ -60,13 +60,13 @@ function Page() {
     error: sessionsError,
     refetch,
   } = useQuery({
-    queryKey: ["current-timetable-print", ctx.collegeId, ctx.versionId],
+    queryKey: ["current-timetable-print", ctx.collegeId, ctx.versionId, ctx.studySystem],
     enabled: !!ctx.collegeId && !!ctx.versionId,
     queryFn: async () => {
       const hydrated = await fetchHydratedVersionSessions({
         collegeId: ctx.collegeId!,
         versionId: ctx.versionId!,
-        studySystem: "all",
+        studySystem: ctx.studySystem,
       });
       const sessions = hydrated as unknown as PrintSessionLike[];
       const labels = await fetchCohortDeliveryGroupLabels(ctx.collegeId!, sessions);
