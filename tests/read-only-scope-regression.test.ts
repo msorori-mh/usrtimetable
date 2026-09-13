@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
-import { ADMIN_PAGES, CORE_PATH, LEGACY_PAGES, canAccess, type Role } from "@/lib/admin-nav";
+import { ADMIN_PAGES, CORE_PATH, LEGACY_ADMIN_PAGES, canAccess, type Role } from "@/lib/admin-nav";
 import { isReportsOnlyRole, resolveReportsOnlyRedirect } from "@/lib/viewer-roles";
 
 const READ_ONLY: Role[] = ["read_only"];
@@ -47,7 +47,7 @@ describe("read_only («مشاهد») is reports-only — regression", () => {
     const steps = CORE_PATH.filter((s) => canAccess(s, READ_ONLY)).map((s) => s.to);
     expect(steps).toEqual(["/reports"]);
 
-    const legacy = LEGACY_PAGES.filter((p) => canAccess(p, READ_ONLY)).map((p) => p.to);
+    const legacy = LEGACY_ADMIN_PAGES.filter((p) => canAccess(p, READ_ONLY)).map((p) => p.to);
     expect(legacy.filter((to) => !to.startsWith("/reports"))).toEqual([]);
   });
 
