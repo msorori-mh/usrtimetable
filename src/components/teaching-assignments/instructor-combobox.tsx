@@ -15,6 +15,7 @@ import {
   instructorSearchHaystack,
   type InstructorSearchCandidate,
 } from "@/lib/teaching-assignments/instructor-search";
+import { instructorDisplayName } from "@/lib/entity-display";
 
 interface InstructorComboboxProps {
   candidates: readonly InstructorSearchCandidate[];
@@ -57,10 +58,7 @@ export function InstructorCombobox({
           className="w-full justify-between font-normal"
         >
           {selected ? (
-            <span className="truncate">
-              {selected.full_name ?? ""}
-              {selected.employee_number ? ` (${selected.employee_number})` : ""}
-            </span>
+            <span className="truncate">{instructorDisplayName(selected)}</span>
           ) : (
             <span className="text-muted-foreground">اختر مدرساً</span>
           )}
@@ -82,9 +80,7 @@ export function InstructorCombobox({
             }}
           />
           <CommandList>
-            <CommandEmpty data-testid="ta-v2-instructor-empty">
-              لا يوجد مدرس مطابق
-            </CommandEmpty>
+            <CommandEmpty data-testid="ta-v2-instructor-empty">لا يوجد مدرس مطابق</CommandEmpty>
             <CommandGroup>
               {candidates.map((c) => (
                 <CommandItem
@@ -102,12 +98,7 @@ export function InstructorCombobox({
                       value === c.instructor_id ? "opacity-100" : "opacity-0",
                     )}
                   />
-                  <span className="truncate">
-                    {c.full_name ?? ""}
-                    {c.employee_number ? (
-                      <span className="text-muted-foreground"> ({c.employee_number})</span>
-                    ) : null}
-                  </span>
+                  <span className="truncate">{instructorDisplayName(c)}</span>
                 </CommandItem>
               ))}
             </CommandGroup>

@@ -30,6 +30,7 @@ import {
 import { isDeliveryDemoVersion } from "@/lib/schedule-versions/delivery-demo";
 import { fetchDeliveryCoverage } from "@/lib/schedule-versions/delivery-coverage";
 import type { SVStatus } from "@/lib/schedule-versions/lifecycle";
+import { entityDisplayName } from "@/lib/entity-display";
 import {
   DEFAULT_PRINT_VISIBILITY,
   PRINT_EXPORT_HEADERS,
@@ -616,7 +617,7 @@ export function PrintCenterPage(props: { versionId: string }) {
                   { id: "__all__", name: "كل القاعات" },
                   ...(rooms ?? []).map((r) => ({
                     id: r.id,
-                    name: `${r.code ?? ""} ${r.name ?? ""}`.trim(),
+                    name: entityDisplayName(r),
                   })),
                 ]}
               />

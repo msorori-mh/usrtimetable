@@ -45,7 +45,9 @@ function MyCollegePage() {
         <Card className="border-warning/40 bg-warning/10 p-6 text-center">
           <ShieldCheck className="mx-auto mb-2 h-6 w-6 text-warning-foreground" />
           <p className="font-medium">لم يتم إسنادك إلى أي كلّية بعد</p>
-          <p className="mt-1 text-sm text-muted-foreground">تواصل مع المدير العام لإسنادك إلى كلّيتك.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            تواصل مع المدير العام لإسنادك إلى كلّيتك.
+          </p>
         </Card>
       )}
 
@@ -54,7 +56,6 @@ function MyCollegePage() {
           <Card key={c.id} className="p-6">
             <p className="text-xs text-muted-foreground">{c.universities?.name}</p>
             <h2 className="mt-1 text-xl font-bold">{c.name}</h2>
-            {c.code && <p className="mt-2 text-sm text-muted-foreground" dir="ltr">رمز الكلّية: {c.code}</p>}
             <p className="mt-4 text-xs text-muted-foreground">
               الأقسام، المواد، والجداول ستضاف في المراحل القادمة.
             </p>

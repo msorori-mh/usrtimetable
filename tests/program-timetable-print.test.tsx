@@ -96,12 +96,12 @@ test("shared lectures do not create a parallel page when printing the regular sy
   const html = render();
   assert.ok(html.includes("النظام العام"));
   assert.ok(!html.includes("النظام الموازي"));
-  assert.equal((html.match(/IS101/g) ?? []).length, 1);
+  assert.equal((html.match(/التفاضل والتكامل/g) ?? []).length, 1);
 });
 
 test("all systems retain separate branded sheets and shared lectures", () => {
   const html = render("all");
   assert.equal((html.match(/<section /g) ?? []).length, 2);
-  assert.equal((html.match(/IS101/g) ?? []).length, 2);
+  assert.equal((html.match(/التفاضل والتكامل/g) ?? []).length, 2);
   assert.equal(sessions[0].study_system, "both");
 });

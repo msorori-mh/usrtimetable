@@ -17,12 +17,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useActiveCollege } from "@/hooks/use-colleges";
+import { entityDisplayName } from "@/lib/entity-display";
 
 export function ReportsCollegeBar() {
   const { colleges, activeId, active, setActiveId, isLoading } = useActiveCollege();
-
-  const label = (c: { name: string; code?: string | null }) =>
-    c.code ? `${c.name} — ${c.code}` : c.name;
 
   return (
     <div
@@ -46,7 +44,7 @@ export function ReportsCollegeBar() {
           className="text-sm font-semibold text-foreground"
           data-testid="reports-college-single"
         >
-          {label(colleges[0])}
+          {entityDisplayName(colleges[0])}
         </span>
       ) : (
         <div className="min-w-[16rem]">
@@ -57,7 +55,7 @@ export function ReportsCollegeBar() {
             <SelectContent>
               {colleges.map((c) => (
                 <SelectItem key={c.id} value={c.id}>
-                  {label(c)}
+                  {entityDisplayName(c)}
                 </SelectItem>
               ))}
             </SelectContent>

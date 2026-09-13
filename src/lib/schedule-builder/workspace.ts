@@ -11,6 +11,7 @@ import {
   UNVERIFIED_ENROLLMENT_BADGE_AR,
   type EnrollmentCountStatus,
 } from "@/lib/schedule-builder/enrollment-trust";
+import { entityDisplayName } from "@/lib/entity-display";
 
 export interface WorkspaceFilters {
   instructor: string; // "all" | id
@@ -138,9 +139,7 @@ export function mapWorkspaceSessions(raw: unknown[]): WorkspaceSessionView[] {
       course_code: course?.code ?? "—",
       course_name: course?.name ?? "مقرر غير متاح",
       instructor_name: s.instructors?.full_name ?? "—",
-      room_label: s.rooms
-        ? `${s.rooms.code ?? ""}${s.rooms.name ? ` — ${s.rooms.name}` : ""}`
-        : "—",
+      room_label: s.rooms ? entityDisplayName(s.rooms) : "—",
       section_number: s.sections?.section_number != null ? String(s.sections.section_number) : "—",
       subgroup_code: s.section_subgroups?.subgroup_code ?? null,
       subgroup_expected_students:
@@ -205,7 +204,7 @@ export function toGridSessions(sessions: WorkspaceSessionView[]): GridSession[] 
       end_time: s.end_time,
       study_system: s.study_system,
       session_type: s.session_type,
-      title: `${s.course_code} · ش${s.section_number}`,
+      title: `${entityDisplayName({ name: s.course_name, code: s.course_code })} · ش${s.section_number}`,
       subtitle: `${s.instructor_name} · ${s.room_label} · ${start}–${end}`,
       badge: badges.join(" · "),
     };

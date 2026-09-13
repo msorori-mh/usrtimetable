@@ -19,6 +19,7 @@ import {
 } from "@/lib/schedule-builder/v2-assignment-integration";
 import { listScheduleBuilderV2WorkItems } from "@/lib/schedule-builder/v2-assignment-service";
 import { ChevronDown, ListTodo } from "lucide-react";
+import { entityDisplayName } from "@/lib/entity-display";
 
 export function V2WorkItemsPanel({
   scheduleVersionId,
@@ -116,7 +117,7 @@ export function V2WorkItemsPanel({
               <div className="min-w-0 text-sm">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium">
-                    {item.course_code} — {item.course_name}
+                    {entityDisplayName({ name: item.course_name, code: item.course_code })}
                   </span>
                   <Badge variant={item.can_create_session ? "secondary" : "destructive"}>
                     {SCHEDULING_STATUS_LABEL_AR[item.scheduling_status]}

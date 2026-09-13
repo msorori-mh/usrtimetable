@@ -75,4 +75,10 @@ describe("assignment dialog wiring", () => {
     expect(combobox).not.toContain("onValueChange={(v) => onChange");
     expect(combobox).not.toContain("إضافة مدرس");
   });
+
+  it("keeps employee numbers searchable without rendering them beside names", () => {
+    expect(combobox).toContain("instructorDisplayName(c)");
+    expect(combobox).not.toContain("c.employee_number ?");
+    expect(filterInstructorCandidates(candidates, "EMP42")).toEqual([candidates[0]]);
+  });
 });

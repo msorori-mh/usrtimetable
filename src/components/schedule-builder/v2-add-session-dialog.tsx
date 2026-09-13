@@ -31,6 +31,7 @@ import {
   type ScheduleBuilderV2WorkItem,
 } from "@/lib/schedule-builder/v2-assignment-integration";
 import { createScheduleSessionFromAssignmentV2 } from "@/lib/schedule-builder/v2-assignment-service";
+import { entityDisplayName } from "@/lib/entity-display";
 
 const DAYS = [6, 0, 1, 2, 3, 4];
 
@@ -124,7 +125,7 @@ export function V2AddSessionDialog({
           <div className="space-y-3 text-sm">
             <div className="rounded-md border p-3 space-y-1">
               <p className="font-medium">
-                {workItem.course_code} — {workItem.course_name}
+                {entityDisplayName({ name: workItem.course_name, code: workItem.course_code })}
               </p>
               <p className="text-muted-foreground">
                 {COMPONENT_TYPE_LABEL_AR[workItem.component_type] ?? workItem.component_type} ·
@@ -162,8 +163,7 @@ export function V2AddSessionDialog({
                   <SelectContent>
                     {rooms.map((r) => (
                       <SelectItem key={r.id} value={r.id}>
-                        {r.code ? `${r.code} — ` : ""}
-                        {r.name}
+                        {entityDisplayName(r)}
                       </SelectItem>
                     ))}
                   </SelectContent>

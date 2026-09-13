@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { entityDisplayName, instructorDisplayName } from "@/lib/entity-display";
 import { logAudit } from "@/lib/audit";
 import { validateProposed, type Conflict } from "@/lib/conflict-engine/validator";
 import { AlertTriangle, Trash2, Lock, Unlock } from "lucide-react";
@@ -303,7 +305,7 @@ export function SessionDialog({
               <SelectContent>
                 {(offerings ?? []).map((o: any) => (
                   <SelectItem key={o.id} value={o.id}>
-                    {o.courses?.code} — {o.courses?.name}
+                    {entityDisplayName(o.courses ?? {}, "مقرر غير متاح")}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -335,7 +337,7 @@ export function SessionDialog({
                   const ins = instructors?.find((i) => i.id === t.instructor_id);
                   return (
                     <SelectItem key={t.id} value={t.id}>
-                      {ins?.full_name ?? t.id.slice(0, 6)}
+                      {ins ? instructorDisplayName(ins) : "مدرس غير متاح"}
                     </SelectItem>
                   );
                 })}
@@ -355,7 +357,7 @@ export function SessionDialog({
               <SelectContent>
                 {(instructors ?? []).map((i: any) => (
                   <SelectItem key={i.id} value={i.id}>
-                    {i.full_name}
+                    {instructorDisplayName(i)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -377,7 +379,7 @@ export function SessionDialog({
                 <SelectItem value="none">— بدون —</SelectItem>
                 {(rooms ?? []).map((r: any) => (
                   <SelectItem key={r.id} value={r.id}>
-                    {r.code} — {r.name} (سعة {r.capacity})
+                    {entityDisplayName(r)} (سعة {r.capacity})
                   </SelectItem>
                 ))}
               </SelectContent>

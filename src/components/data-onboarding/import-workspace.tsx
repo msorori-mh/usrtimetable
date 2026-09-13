@@ -160,7 +160,7 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = `instructors-current-${active.code || active.id}.xlsx`;
+      anchor.download = "instructors-current.xlsx";
       anchor.click();
       URL.revokeObjectURL(url);
       setMode("update_existing");
@@ -828,7 +828,7 @@ function SourceSheetTermPicker({
             <option value="">— اختر الفصل —</option>
             {terms.map((t) => (
               <option key={t.id} value={t.id}>
-                {t.code} — {t.name}
+                {t.name}
                 {t.term_type ? ` (${t.term_type})` : ""}
               </option>
             ))}

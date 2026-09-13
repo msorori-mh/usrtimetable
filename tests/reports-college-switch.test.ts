@@ -51,6 +51,8 @@ describe("reports college switcher wiring", () => {
     // single college → plain label, several → a labelled Select
     expect(src).toContain("colleges.length === 1");
     expect(src).toContain("اختيار الكلية للتقارير");
+    expect(src).toContain("entityDisplayName(c)");
+    expect(src).not.toContain("${c.name} — ${c.code}");
     expect(src).not.toMatch(/تكنولوجيا المعلومات/);
   });
 

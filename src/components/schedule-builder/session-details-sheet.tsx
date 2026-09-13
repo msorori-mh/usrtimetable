@@ -37,6 +37,7 @@ import {
   type SplitApprovalTarget,
 } from "@/components/schedule-builder/split-proposal-dialog";
 import { SPLIT_APPROVED_AWAITING_SCHEDULE_AR } from "@/lib/schedule-builder/split-approval";
+import { entityDisplayName } from "@/lib/entity-display";
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
@@ -181,7 +182,7 @@ export function SessionDetailsSheet({
       ? {
           courseOfferingId: session.course_offering_id,
           collegeId,
-          courseLabel: `${session.course_code} — ${session.course_name}`,
+          courseLabel: entityDisplayName({ name: session.course_name, code: session.course_code }),
           sectionLabel: session.section_number,
           studySystemLabel: sysLabel,
           enrollmentCount,
@@ -212,8 +213,13 @@ export function SessionDetailsSheet({
               </div>
 
               <dl>
-                <Row label="المقرر" value={`${session.course_code} — ${session.course_name}`} />
-                <Row label="رمز المقرر" value={session.course_code} />
+                <Row
+                  label="المقرر"
+                  value={entityDisplayName({
+                    name: session.course_name,
+                    code: session.course_code,
+                  })}
+                />
                 <Row label="مجموعة المحاضرة أو المعمل" value={session.section_number} />
                 <Row label="البرنامج" value={session.program_name} />
                 <Row label="المستوى" value={session.level_name} />

@@ -61,6 +61,7 @@ import {
   preserveTimetableLevelFilter,
   sessionMatchesTimetableLevelFilter,
 } from "@/lib/schedule-builder/timetable-editor-filters";
+import { entityDisplayName } from "@/lib/entity-display";
 
 export const Route = createFileRoute("/_authenticated/timetable/$versionId")({
   head: () => ({ meta: [{ title: "بناء الجدول" }] }),
@@ -308,8 +309,7 @@ function TimetablePage() {
   const gridSessions: GridSession[] = useMemo(
     () =>
       (filtered ?? []).map((s: any) => {
-        const code = s.course_offerings?.courses?.code ?? "—";
-        const name = s.course_offerings?.courses?.name ?? "مقرر غير متاح";
+        const courseName = entityDisplayName(s.course_offerings?.courses ?? {}, "مقرر غير متاح");
         return {
           id: s.id,
           day_of_week: s.day_of_week,
@@ -317,8 +317,8 @@ function TimetablePage() {
           end_time: s.end_time,
           study_system: s.study_system,
           session_type: s.session_type,
-          title: `${s.is_locked ? "🔒 " : ""}${code} — ${name}`,
-          subtitle: `${s.instructors?.full_name ?? ""}${s.rooms ? ` • ${s.rooms.code}` : ""}${s.source_type === "auto_generated" ? " • تلقائي" : s.source_type === "cloned" ? " • منسوخ" : ""}`,
+          title: `${s.is_locked ? "🔒 " : ""}${courseName}`,
+          subtitle: `${s.instructors?.full_name ?? ""}${s.rooms ? ` • ${entityDisplayName(s.rooms)}` : ""}${s.source_type === "auto_generated" ? " • تلقائي" : s.source_type === "cloned" ? " • منسوخ" : ""}`,
           badge:
             s.study_system === "parallel" ? "موازي" : s.study_system === "both" ? "م/م" : "انتظام",
         };
@@ -672,7 +672,7 @@ function TimetablePage() {
                 <SelectItem value="all">الكل</SelectItem>
                 {lookups?.rooms.map((d: any) => (
                   <SelectItem key={d.id} value={d.id}>
-                    {d.code} — {d.name}
+                    {entityDisplayName(d)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -748,7 +748,10 @@ function TimetablePage() {
                                   <GripVertical className="h-3 w-3 mt-0.5 text-muted-foreground" />
                                   <div className="flex-1">
                                     <div className="font-medium">
-                                      {item.course_code} — {item.course_name}
+                                      {entityDisplayName({
+                                        name: item.course_name,
+                                        code: item.course_code,
+                                      })}
                                     </div>
                                     <div className="text-[10px] text-muted-foreground">
                                       المحاضر: {item.instructor_name}

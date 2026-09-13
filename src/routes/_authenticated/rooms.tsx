@@ -327,7 +327,7 @@ function RoomsPage() {
               <li key={r.id} className="flex items-center justify-between p-4">
                 <div>
                   <p className="font-semibold">
-                    <span dir="ltr">{r.code}</span> — {r.name}{" "}
+                    {r.name}{" "}
                     {!r.is_active && (
                       <span className="ms-2 rounded bg-muted px-2 py-0.5 text-[10px]">غير نشط</span>
                     )}

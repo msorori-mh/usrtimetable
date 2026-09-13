@@ -19,3 +19,9 @@
 - [x] تشغيل typecheck + ESLint + الاختبار المركّز + build + git diff --check.
 
 
+
+## توحيد عرض أسماء الكيانات دون الأكواد
+- [ ] إضافة helper مركزي للاسم البشري مع fallback آمن عند غياب الاسم.
+- [ ] تطبيقه على المحددات والجداول والبطاقات والتقارير والطباعة.
+- [ ] إضافة regression tests للأكواد الجامعية والمقررات والمحاضرين والتقارير/الطباعة.
+- [ ] Prettier + scoped ESLint + typecheck + focused tests + build + diff check + publish.

@@ -1,6 +1,13 @@
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { School } from "lucide-react";
+import { entityDisplayName } from "@/lib/entity-display";
 
 export function CollegeSwitcher() {
   const { colleges, activeId, setActiveId, isLoading } = useActiveCollege();
@@ -18,10 +25,14 @@ export function CollegeSwitcher() {
       </span>
       <div className="min-w-[14rem]">
         <Select value={activeId ?? undefined} onValueChange={setActiveId}>
-          <SelectTrigger><SelectValue placeholder="اختر كلّية" /></SelectTrigger>
+          <SelectTrigger>
+            <SelectValue placeholder="اختر كلّية" />
+          </SelectTrigger>
           <SelectContent>
             {colleges.map((c) => (
-              <SelectItem key={c.id} value={c.id}>{c.name}{c.code ? ` — ${c.code}` : ""}</SelectItem>
+              <SelectItem key={c.id} value={c.id}>
+                {entityDisplayName(c)}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>

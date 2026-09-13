@@ -258,6 +258,11 @@ describe("print-center filters", () => {
     const filtered = filterPrintSessions(sessions, filters);
     const pages = groupPrintPages(filtered, filters);
     const rows = buildExportRows(pages);
+    assert.equal(rows[0]?.course_name, "مقدمة");
+    assert.equal(rows[0]?.course_code, "");
+    assert.equal(rows[0]?.room, "قاعة 1");
+    assert.ok(!JSON.stringify(rows[0]).includes("CS101"));
+    assert.ok(!JSON.stringify(rows[0]).includes("A1"));
     assert.equal(filtered.length, 1);
     assert.equal(rows.length, filtered.length);
   });
