@@ -51,12 +51,13 @@ export const ALL_ROLES = ALL;
 
 /**
  * Operational roles: every page except the reports centre is operational.
- * `institutional_viewer` (shown to users as «إدارة الشؤون الأكاديمية») is a
- * reports-only role scoped to its assigned colleges, so it is deliberately
- * excluded here and appears ONLY on the reports entries.
+ * `read_only` («مشاهد») is a reports-only role, so it is deliberately excluded
+ * here and appears ONLY on the reports entries.
+ * `institutional_viewer` («مشاهد مؤسسي») browses the whole platform read-only,
+ * so it is included here; write controls stay disabled by can_manage/RLS.
  */
 // prettier-ignore
-export const OPERATIONAL: Role[] = ["super_admin", "college_admin", "read_only"];
+export const OPERATIONAL: Role[] = ["super_admin", "college_admin", "institutional_viewer"];
 
 /** basic = إعداد أساسي · advanced = إعداد متقدم · legacy = قديم/تشخيصي */
 export type AdminTier = "basic" | "advanced" | "legacy";
@@ -152,7 +153,7 @@ export const ADMIN_PAGES: AdminPage[] = [
     label: "الجامعة",
     desc: "بيانات الجامعة الأساسية.",
     icon: Building2,
-    roles: ["super_admin"],
+    roles: ["super_admin", "institutional_viewer"],
     tier: "basic",
     journey: "org",
   },
@@ -161,7 +162,7 @@ export const ADMIN_PAGES: AdminPage[] = [
     label: "الكلّيات",
     desc: "إضافة الكلّيات وتعديل بياناتها.",
     icon: School,
-    roles: ["super_admin"],
+    roles: ["super_admin", "institutional_viewer"],
     tier: "basic",
     journey: "org",
   },
@@ -170,7 +171,7 @@ export const ADMIN_PAGES: AdminPage[] = [
     label: "كلّيتي",
     desc: "الكلّيات المُسنَدة إلى حسابك.",
     icon: School,
-    roles: ["college_admin", "read_only"],
+    roles: ["college_admin", "institutional_viewer"],
     tier: "basic",
     journey: "org",
   },
@@ -179,7 +180,7 @@ export const ADMIN_PAGES: AdminPage[] = [
     label: "المستخدمون",
     desc: "إنشاء الحسابات وإسناد الأدوار والكلّيات.",
     icon: Users,
-    roles: ["super_admin"],
+    roles: ["super_admin", "institutional_viewer"],
     tier: "advanced",
     journey: "org",
     keywords: "صلاحيات أدوار حساب",
