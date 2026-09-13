@@ -243,12 +243,9 @@ test("a sixth day is never sent to the creation RPC", async () => {
   );
   s.items = [item("new", "c", "g")];
   s.snapshot.templates = s.snapshot.templates.filter((t) => t.day_of_week === 6);
-  await (
-    await scheduler(s)
-  )(params);
+  await assert.rejects((await scheduler(s))(params), /ثبت التعذر/);
   assert.equal(s.calls.length, 0);
-  assert.equal(s.runs[0].status, "partial");
-  assert.equal(s.runs[0].summary.readiness.remainingSessions, 1);
+  assert.equal(s.runs.length, 0);
 });
 test("already scheduled 4-hour block cannot hide a required 2-by-2 cadence", async () => {
   const s = state();
@@ -271,9 +268,34 @@ test("cancelled generation keeps the whole required scope visible", async () => 
   const s = state(),
     controller = new AbortController();
   controller.abort();
-  const result = await (await scheduler(s))({ ...params, signal: controller.signal });
+  await assert.rejects(
+    (await scheduler(s))({ ...params, signal: controller.signal }),
+    /لم يُحسم البحث/,
+  );
   assert.equal(s.calls.length, 0);
-  assert.equal(s.runs[0].status, "partial");
-  assert.equal(result.totalRequired, 2);
-  assert.equal(s.runs[0].summary.readiness.remainingSessions, 1);
+  assert.equal(s.runs.length, 0);
 });
+
+for (const [count, dailyHours, days] of [
+  [8, 6, 3],
+  [8, 4, 4],
+  [9, 4, 5],
+]) {
+  test(`V2 writes only the complete certified ${days}-day plan`, async () => {
+    const s = state();
+    s.snapshot.sessions = [];
+    s.items = Array.from({ length: count }, (_, i) => item(`a${i}`, "c", "g"));
+    s.snapshot.assignments = s.items.map((i) => ({
+      id: i.teaching_assignment_id,
+      required_room_type: "lecture_hall",
+      is_active: true,
+    }));
+    s.snapshot.settings.max_daily_hours_per_section = dailyHours;
+    const result = await (await scheduler(s))(params);
+    assert.equal(result.placed, count);
+    assert.equal(new Set(s.calls.map((c) => c.dayOfWeek)).size, days);
+    assert.ok(s.calls.every((c) => c.note.includes(`attendance:${days}`)));
+    assert.equal(s.runs[0].status, "completed");
+    if (days === 5) assert.ok(s.calls.every((c) => c.note.includes("prior-unsat:3,4")));
+  });
+}

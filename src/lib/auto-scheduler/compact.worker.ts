@@ -1,4 +1,5 @@
-import { compact, type Snapshot, type Proposal, type Metrics } from "./compact.ts";
+import { type Snapshot, type Proposal, type Metrics } from "./compact.ts";
+import { compactAttendance } from "./attendance-compaction.ts";
 
 export type CompactWorkerReply =
   | { type: "progress"; moves: number; metrics: Metrics }
@@ -11,9 +12,8 @@ const scope = self as unknown as {
 };
 scope.onmessage = async ({ data }) => {
   try {
-    const proposal = await compact(data.snapshot, {
+    const proposal = await compactAttendance(data.snapshot, {
       maxDurationMs: data.maxDurationMs,
-      onProgress: (moves, metrics) => scope.postMessage({ type: "progress", moves, metrics }),
     });
     scope.postMessage({ type: "result", proposal });
   } catch (error) {

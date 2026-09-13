@@ -124,13 +124,10 @@ export interface Move {
   room_id: string;
 }
 export type SearchOutcome =
-  | "local_minimum"
-  | "time_limit"
-  | "candidate_limit"
-  | "pass_limit"
-  | "cancelled"
-  | "empty";
+  "local_minimum" | "time_limit" | "candidate_limit" | "pass_limit" | "cancelled" | "empty";
 export interface Proposal {
+  attendanceSearch?: import("./attendance-search.ts").AttendanceSearchResult;
+  executionBlocked?: string;
   before: Metrics;
   after: Metrics;
   moves: Move[];
@@ -227,6 +224,8 @@ export function better(a: Metrics, b: Metrics) {
   // sacrifice either side's gaps, short days or attendance for the aggregate.
   if (a.excessDaysOverFive < b.excessDaysOverFive) return true;
   if (a.excessDaysOverFive > b.excessDaysOverFive) return false;
+  if (a.excessDaysOverThree !== b.excessDaysOverThree)
+    return a.excessDaysOverThree < b.excessDaysOverThree;
   const protectedMetrics: Array<
     keyof Pick<
       Metrics,

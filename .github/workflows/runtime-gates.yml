@@ -74,7 +74,7 @@ jobs:
         run: bunx tsc --noEmit
 
       - name: Joint attendance and scheduling contracts
-        run: node --import tsx --test tests/compact.test.mjs tests/joint-attendance.test.mjs tests/v2-joint-orchestration.test.mjs tests/compact-worker-client.test.mjs tests/compact-atomic-service.test.mjs
+        run: node --import tsx --test tests/attendance-search.test.mjs tests/compact.test.mjs tests/joint-attendance.test.mjs tests/v2-joint-orchestration.test.mjs tests/compact-worker-client.test.mjs tests/compact-atomic-service.test.mjs
 
       - name: Production build (vite build)
         run: bun run build
@@ -167,3 +167,4 @@ jobs:
         run: |
           createdb -h 127.0.0.1 -U postgres cohort_generation_test
           node --test tests/cohort-plan-generation-db.test.mjs
+
