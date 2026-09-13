@@ -74,4 +74,3 @@ describe("read_only («مشاهد») is reports-only — regression", () => {
     expect(src).toMatch(/\{crumb \? \(/);
   });
 });
-
