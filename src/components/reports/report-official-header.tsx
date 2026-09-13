@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { PrintQrCode } from "@/components/print-center/print-qr-code";
+import { USR_UNIVERSITY_LOGO_SRC } from "@/lib/branding/usr";
 import {
   REPORT_COLLEGE_NAME_FALLBACK_AR,
   REPORT_UNIVERSITY_NAME_AR,
