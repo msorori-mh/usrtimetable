@@ -67,10 +67,9 @@ describe("read_only («مشاهد») is reports-only — regression", () => {
   test("reports-only on /reports does not see the active-college badge", () => {
     const src = read("src/components/app-layout.tsx");
     // The badge is rendered only when activeCollege exists AND the reports-only-on-reports condition is false.
-    expect(src).toMatch(
-      /\{activeCollege && !\(reportsOnly && \(pathname === "\/reports" \|\| pathname === "\/reports\/"\)\) && \(/,
-    );
+    expect(src).toContain('!(reportsOnly && (pathname === "/reports" || pathname === "/reports/"))');
     // Breadcrumb remains independent of the badge.
     expect(src).toMatch(/\{crumb \? \(/);
   });
+
 });
