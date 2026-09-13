@@ -102,6 +102,20 @@ assert(
   "A4/A3 landscape/portrait injected via print stylesheet",
 );
 
+const reportHeader = read("src/components/reports/report-official-header.tsx");
+assert(
+  reportHeader.includes("USR_UNIVERSITY_LOGO_SRC"),
+  "all report print headers include the approved local university logo",
+);
+assert(
+  reportHeader.includes("PrintQrCode") && reportHeader.includes("resolvedVerificationUrl"),
+  "all report print headers include a QR for the current canonical report URL",
+);
+assert(
+  reportHeader.includes('className="hidden items-center gap-1 print:flex"'),
+  "report verification QR is included in printed output",
+);
+
 const qr = read("src/components/print-center/print-qr-code.tsx");
 assert(qr.includes('from "qrcode"') || qr.includes("from 'qrcode'"), "QR uses qrcode package");
 
