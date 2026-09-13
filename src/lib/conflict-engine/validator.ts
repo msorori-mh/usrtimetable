@@ -489,10 +489,7 @@ export async function validateProposed(params: {
         conflicts.push({
           code: "instructor_availability_required",
           severity: "hard",
-          message_ar:
-            cat === "external"
-              ? "المحاضر الخارجي يتطلب تعريف أوقات التوفر قبل الجدولة."
-              : "المحاضر من كلية أخرى يتطلب تعريف أوقات التوفر قبل الجدولة.",
+          message_ar: "المحاضر من كلية أخرى يتطلب تعريف أوقات التوفر قبل الجدولة.",
           message_en: "Instructor availability is mandatory for this category and not defined.",
           schedule_session_id: sid,
           metadata: { instructor_id: s.instructor_id, category: cat, day_of_week: s.day_of_week },
