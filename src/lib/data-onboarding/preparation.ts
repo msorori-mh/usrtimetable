@@ -82,7 +82,8 @@ export const PREPARATION_STEPS: PreparationStep[] = [
   {
     id: "constraints",
     title: "أيام التدريس وتوفر المدرسين",
-    description: "حدّد أيام وساعات التدريس، ثم أوقات توفر المدرسين، خصوصًا المدرسين الخارجيين.",
+    description:
+      "حدّد أيام وساعات التدريس، ثم أوقات توفر المدرسين، خصوصًا المحاضرين من كليات أخرى.",
     manualLinks: [
       { href: "/time-slot-templates", label: "تحديد أيام وساعات التدريس" },
       { href: "/availability", label: "تحديد توفر المدرسين" },
