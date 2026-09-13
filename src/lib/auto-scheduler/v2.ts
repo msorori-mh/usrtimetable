@@ -659,7 +659,9 @@ export async function runV2AutoSchedule(params: {
       if (capacityOnly.length > 0) roomPools.push(capacityOnly);
     }
 
-    for (const durationHours of plan.remaining) {
+    // Hardest first: longer weekly blocks are placed before flexible short ones,
+    // so a 3h block is not starved by 2h sessions eating the large gaps.
+    for (const durationHours of [...plan.remaining].sort((a, b) => b - a)) {
       if (params.signal?.aborted) {
         cancelled = true;
         warnings.push("تم إيقاف التشغيل بطلب المستخدم. الجلسات التي أُنشئت قبل الإيقاف محفوظة.");
@@ -841,7 +843,6 @@ export async function runV2AutoSchedule(params: {
                   end_time: move.to.end_time,
                   room_id: move.to.room_id,
                 };
-                const moved = planningSessions[index];
                 const occupiedIndex = occupied.findIndex(
                   (entry) =>
                     entry.day === move.from.day_of_week &&
@@ -861,7 +862,6 @@ export async function runV2AutoSchedule(params: {
                 warnings.push(
                   `إصلاح محدود: تم نقل جلسة قائمة (${move.from.day_of_week} ${move.from.start_time.slice(0, 5)}) إلى (${move.to.day_of_week} ${move.to.start_time.slice(0, 5)}) لإتاحة ${groupLabel}.`,
                 );
-                void moved;
               }
             }
             planningSessions.push({
@@ -1018,6 +1018,11 @@ export async function runV2AutoSchedule(params: {
         by_component_type: byType,
         practical_room_fallbacks: practicalRoomFallbacks,
         practical_room_fallback_policy: "practical_computer_lab_may_use_lecture_hall",
+        repair_attempts: repairAttempts,
+        repair_relocations: repairRelocations,
+        repair_placed_sessions: repairPlacedSessions,
+        repair_max_depth_used: repairMaxDepthUsed,
+        repair_policy: "bounded_1_2_hop_relocation_fill_missing_only",
       } as never,
       unplaced: unplaced as never,
       run_by: userData.user?.id ?? null,
@@ -1043,7 +1048,7 @@ export async function runV2AutoSchedule(params: {
     qualityScoreAfter: qualityAfter,
     improvementDelta: qualityAfter - qualityBefore,
     preservedExistingSessions: sessionRows.length,
-    relocatedSessions: 0,
+    relocatedSessions: repairRelocations,
     backtrackingAttempts: 0,
     durationMs,
     totalOfferings: workItems.length,
