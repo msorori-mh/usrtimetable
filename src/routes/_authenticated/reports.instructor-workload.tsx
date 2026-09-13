@@ -18,6 +18,8 @@ import { Badge } from "@/components/ui/badge";
 import { ReportSection, ReportDataTable } from "@/components/reports/report-section";
 import { filterRowsBySearch } from "@/lib/reports/search";
 import { hoursBetween } from "@/lib/reports/export";
+import { QUOTA_UNDEFINED_AR, computeQuotaBalance } from "@/lib/reports/instructor-quota";
+
 
 export const Route = createFileRoute("/_authenticated/reports/instructor-workload")({
   head: () => ({ meta: [{ title: "تقرير أعباء المحاضرين" }] }),
@@ -183,14 +185,16 @@ function WorkloadPage() {
     { key: "department", label: "القسم" },
     { key: "rank", label: "الرتبة" },
     { key: "type", label: "النوع" },
-    { key: "max_weekly_hours", label: "الحد الأسبوعي" },
-    { key: "admin_release", label: "خصم إداري" },
+    { key: "max_weekly_hours", label: "النصاب الأساسي المعتمد" },
+    { key: "admin_release", label: "التخفيض الإداري" },
+    { key: "effective_quota", label: "صافي النصاب المعتمد" },
     { key: "scheduled_hours", label: "ساعات مجدوَلة" },
     { key: "overload", label: "زيادة" },
     { key: "underload", label: "نقص" },
     { key: "courses_count", label: "عدد المقررات" },
     { key: "source_breakdown", label: "تفصيل المصدر" },
   ];
+
 
   const totalHours = rows.reduce((sum, r) => sum + Number(r.scheduled_hours ?? 0), 0);
   const overloaded = rows.filter((r) => Number(r.overload) > 0).length;
