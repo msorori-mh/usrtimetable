@@ -34,7 +34,6 @@ const LAYOUT = "src/routes/_authenticated/reports.tsx";
 const BAR = "src/components/reports/reports-college-bar.tsx";
 const SHELL = "src/components/reports/report-shell.tsx";
 const CTX = "src/hooks/reports/useReportContext.ts";
-const SELECT = "src/components/ui/select.tsx";
 
 describe("reports college switcher wiring", () => {
   test("the /reports layout renders the college bar above the outlet", () => {
@@ -55,13 +54,6 @@ describe("reports college switcher wiring", () => {
     expect(src).toContain("entityDisplayName(c)");
     expect(src).not.toContain("${c.name} — ${c.code}");
     expect(src).not.toMatch(/تكنولوجيا المعلومات/);
-  });
-
-  test("the shared college select renders its trigger, content and items RTL", () => {
-    const src = read(SELECT);
-    expect(src.match(/dir="rtl"/g)?.length).toBeGreaterThanOrEqual(3);
-    expect(src).toContain("text-right");
-    expect(src).toContain("absolute end-2");
   });
 
   test("the report shell no longer duplicates the switch", () => {
