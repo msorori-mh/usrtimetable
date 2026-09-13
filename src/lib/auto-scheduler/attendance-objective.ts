@@ -1,5 +1,10 @@
 /** Shared objective for generation and compaction. All idle time is counted. */
-export const ATTENDANCE_POLICY = Object.freeze({ targetDays: 4, maximumDays: 5, breakMinutes: 0 });
+export const ATTENDANCE_POLICY = Object.freeze({
+  targetDays: 3,
+  fallbackDays: 4,
+  maximumDays: 5,
+  breakMinutes: 0,
+});
 
 export interface AttendanceEvent {
   day: number;
@@ -14,6 +19,7 @@ export interface AttendanceMetrics {
   levelsOverFive: number;
   excessDaysOverFive: number;
   excessDaysOverFour: number;
+  excessDaysOverThree: number;
   studentGapMinutes: number;
   studentAverageGapMinutes: number;
   worstStudentGapMinutes: number;
@@ -97,6 +103,10 @@ export function measureAttendance(
       0,
     ),
     excessDaysOverFour: days.reduce(
+      (n, value) => n + Math.max(0, value - ATTENDANCE_POLICY.fallbackDays),
+      0,
+    ),
+    excessDaysOverThree: days.reduce(
       (n, value) => n + Math.max(0, value - ATTENDANCE_POLICY.targetDays),
       0,
     ),
@@ -124,6 +134,7 @@ const perPerson = (value: number, count: number) => (count ? value / count : 0);
 const vector = (m: AttendanceMetrics) => [
   m.excessDaysOverFive,
   m.excessDaysOverFour,
+  m.excessDaysOverThree,
   m.balancedGapMinutes,
   Math.max(m.worstStudentGapMinutes, m.worstInstructorGapMinutes),
   perPerson(m.shortStudentDays, m.studentCount) +

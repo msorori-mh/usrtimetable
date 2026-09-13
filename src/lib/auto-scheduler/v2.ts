@@ -1,3 +1,4 @@
+import { searchAttendance, attendanceSearchMessage } from "@/lib/auto-scheduler/attendance-search";
 import { supabase } from "@/integrations/supabase/client";
 import { scoreScheduleVersion } from "@/lib/conflict-engine/scorer";
 import {
@@ -6,7 +7,7 @@ import {
 } from "@/lib/schedule-builder/v2-assignment-service";
 import type { AutoRunMode, AutoRunResult, UnplacedItem } from "@/lib/auto-scheduler/greedy";
 import { loadCompactSnapshot } from "@/lib/auto-scheduler/compact-service";
-import { measure, compactSlots, type Session } from "@/lib/auto-scheduler/compact";
+import { measure, compactSlots, minutes, type Session } from "@/lib/auto-scheduler/compact";
 import {
   rankGenerationCandidates,
   generationDomainSize,
@@ -22,7 +23,6 @@ import {
   partitionCandidateRoomsByRank,
   roomCandidateRank,
   nonconformingWarningAr,
-  orderSlotsByDistinctDay,
   planRemainingSessions,
   requiredCadenceForComponent,
   type ExistingSessionLite,
@@ -33,7 +33,7 @@ import {
   type RoomRequirement,
 } from "@/lib/auto-scheduler/session-plan";
 import { PRACTICAL_ROOM_FALLBACK_NOTE_AR } from "@/lib/scheduling/room-type-policy";
-import { planRepair, type RepairMove, type RepairPlan } from "@/lib/auto-scheduler/repair";
+import { type RepairMove, type RepairPlan } from "@/lib/auto-scheduler/repair";
 import { moveOrRescheduleScheduleSession } from "@/lib/schedule-builder/session-move-rpc";
 import {
   buildPartitionIndex,
@@ -42,7 +42,7 @@ import {
   type PartitionMembershipRow,
 } from "@/lib/auto-scheduler/student-partitions";
 
-const ALGORITHM_VERSION = "v2-joint-attendance-scarcity-rpc";
+const ALGORITHM_VERSION = "v2-attendance-certified-3-4-5";
 
 /** Fail-closed Arabic note when the partition mapping cannot be used. */
 export const PARTITION_FALLBACK_WARNING_AR =
@@ -490,10 +490,73 @@ export async function runV2AutoSchedule(params: {
   // no conflict is ignored and all writes still use the guarded RPC.
   const unavailableInstructorDays = new Map<string, string>();
   // JAWF-REPAIR-01 bounded repair counters (fill_missing only).
-  let repairAttempts = 0;
-  let repairRelocations = 0;
-  let repairPlacedSessions = 0;
-  let repairMaxDepthUsed = 0;
+  const repairAttempts = 0;
+  const repairRelocations = 0;
+  const repairPlacedSessions = 0;
+  const repairMaxDepthUsed = 0;
+
+  // Solve the complete remaining workload before the first write. The fill-missing
+  // contract never relocates existing sessions; a solution requiring that is handed
+  // back to the explicit compaction preview, never used to justify extra days.
+  if (blockedWorkItems.length)
+    throw new Error("استكمل الإسنادات المحظورة قبل إثبات سيناريو أيام الحضور.");
+  const pendingAttendance: Session[] = [];
+  for (const item of workItems) {
+    const component = componentById.get(item.plan_course_component_id || item.component_id);
+    const cadence = requiredCadenceForComponent({
+      componentType: item.component_type,
+      assignedHours:
+        item.assigned_component_hours > 0
+          ? item.assigned_component_hours
+          : Number(component?.weekly_contact_hours ?? 0),
+      planCourse: component ? planCourseById.get(component.plan_course_id) : null,
+    });
+    if (cadence.source === "blocked")
+      throw new Error("استكمل أنماط المحاضرات قبل حساب أيام الحضور.");
+    const plan = planRemainingSessions({
+      requiredDurations: cadence.durations,
+      existing:
+        existingByAssignment.get(`${item.teaching_assignment_id}|${item.delivery_group_id}`) ?? [],
+    });
+    if (plan.nonconforming.length)
+      throw new Error("توجد محاضرات لا تطابق النمط الأسبوعي؛ صححها قبل حساب أيام الحضور.");
+    for (const hours of plan.remaining)
+      pendingAttendance.push({
+        ...seedFor(item, Math.round(hours * 60)),
+        id: `attendance-pending:${pendingAttendance.length}`,
+      });
+  }
+  params.onProgress?.({
+    processedItems: 0,
+    totalItems: workItems.length,
+    placed: 0,
+    unplaced: 0,
+    label: "اختبار ثلاثة أيام، ثم أربعة وخمسة بعد ثبوت التعذر فقط…",
+  });
+  const attendancePlan = await searchAttendance(
+    { ...planningSnapshot, sessions: [...planningSessions, ...pendingAttendance] },
+    { signal: params.signal, maxDurationMs: 60000, preferExisting: true },
+  );
+  const attendanceEvidence = attendanceSearchMessage(attendancePlan);
+  if (attendancePlan.status !== "feasible") throw new Error(attendanceEvidence);
+  warnings.push(attendanceEvidence);
+  for (const old of planningSessions) {
+    const target = attendancePlan.sessions.find((s) => s.id === old.id)!;
+    if (
+      target.day_of_week !== old.day_of_week ||
+      target.start_time !== old.start_time ||
+      target.end_time !== old.end_time ||
+      target.room_id !== old.room_id
+    )
+      throw new Error(
+        "وُجد حل ضمن " +
+          attendancePlan.days +
+          " أيام يتطلب نقل محاضرات قائمة. استخدم معاينة تحسين التوزيع ثم أعد إكمال الناقص. لم تُنشأ محاضرات ولم يُسمح بزيادة الأيام.",
+      );
+  }
+  const plannedPending = attendancePlan.sessions.filter((s) =>
+    s.id.startsWith("attendance-pending:"),
+  );
 
   const difficulties = new Map<
     string,
@@ -665,13 +728,22 @@ export async function runV2AutoSchedule(params: {
         break;
       }
       const durationMinutes = Math.max(30, Math.round(durationHours * 60));
-      const slots = orderSlotsByDistinctDay(
-        compactSlots(
-          { ...planningSnapshot, sessions: planningSessions },
-          seedFor(item, durationMinutes),
-        ),
-        usedDays,
+      const plannedIndex = plannedPending.findIndex(
+        (s) =>
+          s.teaching_assignment_id === item.teaching_assignment_id &&
+          s.delivery_group_id === item.delivery_group_id &&
+          minutes(s.end_time) - minutes(s.start_time) === durationMinutes,
       );
+      if (plannedIndex < 0) throw new Error("تغيرت وحدات الجدولة؛ أعد حساب خطة الحضور.");
+      const [plannedAttendance] = plannedPending.splice(plannedIndex, 1);
+
+      const slots = [
+        {
+          day: plannedAttendance.day_of_week,
+          start: plannedAttendance.start_time,
+          end: plannedAttendance.end_time,
+        },
+      ];
       const levelKey = levelByCohort.get(item.cohort_id!);
       if (!levelKey) throw new Error("لا توجد بيانات مستوى لهذه الدفعة.");
       const levelDays = new Set(
@@ -695,6 +767,13 @@ export async function runV2AutoSchedule(params: {
         });
 
         candidateSearch: for (const ranked of rankedCandidates) {
+          if (
+            ranked.session.day_of_week !== plannedAttendance.day_of_week ||
+            ranked.session.start_time !== plannedAttendance.start_time ||
+            ranked.session.end_time !== plannedAttendance.end_time ||
+            ranked.session.room_id !== plannedAttendance.room_id
+          )
+            continue;
           const slot = {
             day: ranked.session.day_of_week,
             start: ranked.session.start_time,
@@ -704,8 +783,8 @@ export async function runV2AutoSchedule(params: {
             cancelled = true;
             break;
           }
-          if (!levelDays.has(slot.day) && levelDays.size >= 5) {
-            lastReason = "حد حضور المستوى خمسة أيام أسبوعياً؛ لا يجوز إنشاء يوم سادس.";
+          if (!levelDays.has(slot.day) && levelDays.size >= attendancePlan.days!) {
+            lastReason = "تجاوز حد أيام الحضور المثبت لهذه الخطة؛ أعد البحث.";
             continue;
           }
           const availabilityKey = `${item.instructor_id}|${slot.day}`;
@@ -751,7 +830,10 @@ export async function runV2AutoSchedule(params: {
               endTime: slot.end,
               roomId: room.id,
               expectedVersionUpdatedAt: versionUpdatedAt,
-              note: `auto:${ALGORITHM_VERSION}`,
+              note: `auto:${ALGORITHM_VERSION}; attendance:${attendancePlan.days}; prior-unsat:${attendancePlan.attempts
+                .filter((a) => a.status === "infeasible")
+                .map((a) => a.days)
+                .join(",")}`,
             });
             assertVersionNotStale(result);
             if (result.ok && result.session && result.schedule_version_updated_at) {
@@ -803,95 +885,12 @@ export async function runV2AutoSchedule(params: {
         );
         break;
       }
-      // JAWF-REPAIR-01: direct placement is exhausted — try a bounded repair
-      // (1-hop, then a very limited 2-hop) before recording the unit as unplaced.
-      if (!placedItem && !cancelled && mode === "fill_missing") {
-        const stats = { attempts: 0 };
-        const missingSeed = seedFor(item, durationMinutes);
-        const plan = planRepair({
-          snapshot: planningSnapshot,
-          sessions: planningSessions,
-          missing: missingSeed,
-          targetSlots: slots,
-          roomIds: roomPools.flat().map((room) => room.id),
-          budget: { maxDepth: 2, maxAttempts: 4000 },
-          stats,
-        });
-        repairAttempts += stats.attempts;
-        if (plan) {
-          const applied = await applyRepairPlan({
-            scheduleVersionId: params.scheduleVersionId,
-            teachingAssignmentId: item.teaching_assignment_id,
-            plan,
-            versionUpdatedAt,
-            note: `auto-repair:${ALGORITHM_VERSION}`,
-          });
-          versionUpdatedAt = applied.versionUpdatedAt;
-          if (applied.ok) {
-            for (const move of plan.moves) {
-              const index = planningSessions.findIndex((session) => session.id === move.sessionId);
-              if (index >= 0) {
-                planningSessions[index] = {
-                  ...planningSessions[index],
-                  day_of_week: move.to.day_of_week,
-                  start_time: move.to.start_time,
-                  end_time: move.to.end_time,
-                  room_id: move.to.room_id,
-                };
-                const occupiedIndex = occupied.findIndex(
-                  (entry) =>
-                    entry.day === move.from.day_of_week &&
-                    entry.start === move.from.start_time &&
-                    entry.end === move.from.end_time &&
-                    entry.roomId === move.from.room_id,
-                );
-                if (occupiedIndex >= 0) {
-                  occupied[occupiedIndex] = {
-                    ...occupied[occupiedIndex],
-                    day: move.to.day_of_week,
-                    start: move.to.start_time,
-                    end: move.to.end_time,
-                    roomId: move.to.room_id,
-                  };
-                }
-                warnings.push(
-                  `إصلاح محدود: تم نقل جلسة قائمة (${move.from.day_of_week} ${move.from.start_time.slice(0, 5)}) إلى (${move.to.day_of_week} ${move.to.start_time.slice(0, 5)}) لإتاحة ${groupLabel}.`,
-                );
-              }
-            }
-            planningSessions.push({
-              ...missingSeed,
-              id: applied.session?.id ?? missingSeed.id,
-              day_of_week: plan.placement.day_of_week,
-              start_time: plan.placement.start_time,
-              end_time: plan.placement.end_time,
-              room_id: plan.placement.room_id,
-            } as Session);
-            occupied.push({
-              day: plan.placement.day_of_week,
-              start: plan.placement.start_time,
-              end: plan.placement.end_time,
-              roomId: plan.placement.room_id,
-              instructorId: item.instructor_id,
-              cohortId: item.cohort_id,
-              deliveryGroupId: item.delivery_group_id,
-            });
-            usedDays.push(plan.placement.day_of_week);
-            placed++;
-            byType[type].placed++;
-            placedItem = true;
-            repairRelocations += plan.moves.length;
-            repairPlacedSessions++;
-            repairMaxDepthUsed = Math.max(repairMaxDepthUsed, plan.depth);
-          } else {
-            lastReason = applied.reason ?? lastReason;
-            if (applied.rolledBack) {
-              warnings.push(
-                `إصلاح محدود: فشل التطبيق وأُعيدت الجلسات المحركة إلى مواضعها الأصلية (${groupLabel}).`,
-              );
-            }
-          }
-        }
+      // Never route a rejected certified placement into heuristic repair or a higher day cap.
+      if (!placedItem) {
+        cancelled = true;
+        warnings.push(
+          "توقف التطبيق عند رفض موضع من الخطة المثبتة؛ أعد القراءة والبحث. لم يُسمح بزيادة الأيام.",
+        );
       }
       if (!placedItem) {
         byType[type].unplaced++;
@@ -999,6 +998,11 @@ export async function runV2AutoSchedule(params: {
         attendance_objective: "equal_average_student_and_instructor_gap",
         blocked_work_items: blockedWorkItems.length,
         attendance,
+        attendance_search: {
+          days: attendancePlan.days,
+          attempts: attendancePlan.attempts,
+          scope: attendancePlan.scope,
+        },
         readiness,
         cadence_source: "plan_courses_weekly_pattern",
         cadence_invention: "disabled",
@@ -1017,7 +1021,7 @@ export async function runV2AutoSchedule(params: {
         repair_relocations: repairRelocations,
         repair_placed_sessions: repairPlacedSessions,
         repair_max_depth_used: repairMaxDepthUsed,
-        repair_policy: "bounded_1_2_hop_relocation_fill_missing_only",
+        repair_policy: "certified_plan_only_no_heuristic_fallback",
       } as never,
       unplaced: unplaced as never,
       run_by: userData.user?.id ?? null,

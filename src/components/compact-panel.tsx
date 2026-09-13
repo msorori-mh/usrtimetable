@@ -1,3 +1,4 @@
+import { attendanceSearchMessage } from "@/lib/auto-scheduler/attendance-search";
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
@@ -72,15 +73,18 @@ export function CompactSchedulePanel({
         });
         setProposal(p);
         setMessage(
-          p.outcome === "empty"
-            ? "لا توجد محاضرات مجدولة لتحسينها. استكمل بيانات الإسناد وولّد المسودة أولًا."
-            : p.outcome === "time_limit" || p.outcome === "candidate_limit"
-              ? "وصل البحث إلى حدّه المحدد. تظهر أفضل نتيجة عُثر عليها؛ يمكن توسيع البحث. لم تُحفظ تغييرات بعد."
-              : p.stopped
-                ? "توقفت المعاينة؛ لم يُحفظ أي نقل."
-                : p.moves.length
-                  ? "اكتملت المعاينة؛ لم تُحفظ تغييرات بعد."
-                  : "لم يُعثر على تحسين إضافي ضمن نطاق البحث الحالي.",
+          p.attendanceSearch
+            ? attendanceSearchMessage(p.attendanceSearch) +
+                (p.executionBlocked ? ` ${p.executionBlocked}` : " لم تُحفظ تغييرات بعد.")
+            : p.outcome === "empty"
+              ? "لا توجد محاضرات مجدولة لتحسينها. استكمل بيانات الإسناد وولّد المسودة أولًا."
+              : p.outcome === "time_limit" || p.outcome === "candidate_limit"
+                ? "وصل البحث إلى حدّه المحدد. تظهر أفضل نتيجة عُثر عليها؛ يمكن توسيع البحث. لم تُحفظ تغييرات بعد."
+                : p.stopped
+                  ? "توقفت المعاينة؛ لم يُحفظ أي نقل."
+                  : p.moves.length
+                    ? "اكتملت المعاينة؛ لم تُحفظ تغييرات بعد."
+                    : "لم يُعثر على تحسين إضافي ضمن نطاق البحث الحالي.",
         );
       }
     } catch (error) {
@@ -99,7 +103,8 @@ export function CompactSchedulePanel({
     after = result?.after || proposal?.after;
   const fields: Array<[keyof Metrics, string]> = [
     ["levelsOverFive", "مستويات تتجاوز خمسة أيام"],
-    ["excessDaysOverFour", "أيام إضافية فوق هدف أربعة أيام"],
+    ["excessDaysOverThree", "أيام إضافية فوق هدف ثلاثة أيام"],
+    ["excessDaysOverFour", "أيام إضافية فوق أربعة أيام"],
     ["studentAverageGapMinutes", "متوسط فراغ الطالب أسبوعيًا — دقيقة"],
     ["instructorAverageGapMinutes", "متوسط فراغ المدرس أسبوعيًا — دقيقة"],
     ["worstStudentGapMinutes", "أكبر فراغ أسبوعي لمجموعة طلاب — دقيقة"],
@@ -119,15 +124,10 @@ export function CompactSchedulePanel({
     <Card className="p-4 space-y-3" dir="rtl">
       <h2 className="font-bold">تحسين توزيع الجدول</h2>
       <p className="text-sm text-muted-foreground">
-        الهدف أربعة أيام حضور للمستوى، وبحد أقصى خمسة أيام، مع تقليل فراغات الطلاب والمدرسين وأيام
-        الحضور القصيرة. يسمح النظام بتتابع المحاضرات مباشرة عندما يكون إعداد الاستراحة صفرًا، وتبقى
-        ساعات المحاضرات وإسناداتها محفوظة.
-      </p>
-      <p className="text-sm text-muted-foreground">
-        يوازن التقييم متوسط الفراغ الأسبوعي للطالب والمدرس بالتساوي. لا يقبل التحسين المعتاد زيادة
-        مجاميع الفراغات أو الحضور القصير أو أيام الحضور لأي من الطرفين؛ إصلاح تجاوز خمسة أيام له
-        الأولوية. تُعرض أكبر الفراغات أيضًا. النتيجة أفضل ما عثر عليه البحث، ولا تضمن انعدام
-        الفراغات أو الحل الأمثل.
+        الهدف ثلاثة أيام حضور، ومنها توزيع ٣–٣–٢ لثماني محاضرات عندما تسمح مددها والحدود اليومية.
+        يُسمح بأربعة أيام بعد إثبات تعذر ثلاثة، وبخمسة أيام كاستثناء حرج بعد إثبات تعذر ثلاثة
+        وأربعة. انتهاء وقت البحث أو فشل حفظ التبديلات لا يبرر زيادة الأيام. تبقى الإسنادات والمدد
+        والأقفال محفوظة.
       </p>
       <p className="text-sm">
         تُحفظ الخطة كاملة أو تُلغى كاملة إذا رُفض أحد تنقلاتها. بعد إرسالها، انتظر تأكيد النتيجة؛
