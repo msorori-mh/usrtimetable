@@ -21,12 +21,15 @@ import {
   ACADEMIC_REPORT_HEADERS,
   ACADEMIC_REPORT_TITLES,
   buildAcademicReport,
+  isMissingQuotaRow,
   parseAcademicWorkload,
+  summarizeWorkloadRows,
   type AcademicInstructor,
   type AcademicProgram,
   type AcademicReportKind,
   type AcademicWorkload,
 } from "@/lib/reports/academic-affairs";
+
 
 export const Route = createFileRoute("/_authenticated/reports/academic-affairs")({
   head: () => ({ meta: [{ title: "تقارير الشؤون الأكاديمية" }] }),
