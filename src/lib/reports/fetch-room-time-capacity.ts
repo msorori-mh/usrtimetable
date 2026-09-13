@@ -48,7 +48,7 @@ export async function fetchRoomTimeCapacity(
           .not("delivery_group_id", "is", null),
         supabase
           .from("plan_course_components")
-          .select("id, required_room_type_id")
+          .select("id, required_room_type_id, component_type")
           .eq("college_id", collegeId),
       ]);
 
@@ -80,6 +80,13 @@ export async function fetchRoomTimeCapacity(
     const componentRoomType = new Map(
       (components.data ?? []).map((c) => [c.id, c.required_room_type_id] as const),
     );
+    // Component type decides whether lab demand may use the lecture-hall
+    // fallback when pooling weekly capacity (same policy as the scheduler).
+    const componentType = new Map(
+      (components.data ?? []).map(
+        (c) => [c.id, (c as { component_type?: string | null }).component_type ?? null] as const,
+      ),
+    );
     const typeByCode = new Map(
       roomTypes.map((t) => [
         String((t as { code?: string | null }).code ?? "").toLowerCase(),
@@ -102,6 +109,9 @@ export async function fetchRoomTimeCapacity(
         return {
           roomTypeId: fromComponent ?? fromCode ?? null,
           hours: Number(a.assigned_component_hours ?? a.weekly_hours ?? 0),
+          componentType: a.plan_course_component_id
+            ? (componentType.get(a.plan_course_component_id) ?? null)
+            : null,
         };
       });
 
