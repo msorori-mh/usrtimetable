@@ -414,6 +414,7 @@ function AutoSchedulePage() {
                 preserved_existing_sessions?: number;
                 deleted_auto_sessions?: number;
                 skipped_locked_sessions?: number;
+                practical_room_fallbacks?: number;
                 regenerated_sessions?: number;
                 quality_before?: number;
                 quality_after?: number;
@@ -466,6 +467,11 @@ function AutoSchedulePage() {
                       accent={(sum?.deleted_auto_sessions ?? 0) > 0 ? "warn" : undefined}
                     />
                     <Stat label="مقفلة (تم تخطيها)" value={sum?.skipped_locked_sessions ?? 0} />
+                    <Stat
+                      label="عملي في قاعة (بديل)"
+                      value={sum?.practical_room_fallbacks ?? 0}
+                      accent={(sum?.practical_room_fallbacks ?? 0) > 0 ? "warn" : undefined}
+                    />
                     <Stat label="محفوظة (قائمة)" value={sum?.preserved_existing_sessions ?? 0} />
                   </div>
 

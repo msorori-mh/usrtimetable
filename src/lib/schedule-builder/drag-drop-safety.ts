@@ -11,6 +11,7 @@ import {
   type PendingScheduleSlot,
 } from "@/lib/schedule-builder/pending-change";
 import { resolveRequiredRoomType } from "@/lib/schedule-builder/room-type-policy";
+import { isRoomTypeCompatible } from "@/lib/scheduling/room-type-policy";
 
 export type DropSafetyKind = "valid" | "forbidden";
 
@@ -51,6 +52,8 @@ export interface DropPreviewSession {
   subgroup_expected_students?: number | null;
   /** Optional TA/master required_room_type when already hydrated. */
   required_room_type?: string | null;
+  /** Optional plan-course component type when already hydrated. */
+  component_type?: string | null;
 }
 
 export interface DropPreviewRoom {
@@ -100,6 +103,8 @@ export function expectedStudentsForDrop(session: DropPreviewSession): number | n
 export function resolveDropRoomConstraints(params: {
   targetRoom: DropPreviewRoom | null | undefined;
   sessionType?: string | null;
+  /** Plan-course component type when known (enables the practical fallback). */
+  componentType?: string | null;
   requiredRoomType?: string | null;
   expectedStudents?: number | null;
 }): {
@@ -119,7 +124,16 @@ export function resolveDropRoomConstraints(params: {
     params.targetRoom?.capacity != null && Number.isFinite(Number(params.targetRoom.capacity))
       ? Number(params.targetRoom.capacity)
       : null;
-  const roomTypeOk = !requiredType || roomType == null ? true : roomType === requiredType;
+  // Mirrors the DB helper: a practical computer_lab component may use a
+  // lecture_hall, so the UI must not reject what the database accepts.
+  const roomTypeOk =
+    !requiredType || roomType == null
+      ? true
+      : isRoomTypeCompatible({
+          componentType: params.componentType ?? params.sessionType,
+          requiredRoomType: requiredType,
+          roomType,
+        });
   return {
     roomId: params.targetRoom?.id ?? null,
     roomType,
@@ -256,6 +270,7 @@ export function buildEvaluateDropTargetInput(opts: {
   const room = resolveDropRoomConstraints({
     targetRoom,
     sessionType: opts.movingSession.session_type,
+    componentType: opts.movingSession.component_type ?? opts.movingSession.session_type,
     requiredRoomType: opts.movingSession.required_room_type,
     expectedStudents,
   });

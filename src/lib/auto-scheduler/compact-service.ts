@@ -52,6 +52,7 @@ export async function loadCompactSnapshot(collegeId: string, versionId: string):
     members: "delivery_group_partition_members",
     partitions: "cohort_student_partitions",
     assignments: "teaching_assignments",
+    components: "plan_course_components",
     rooms: "rooms",
     instructors: "instructors",
     types: "instructor_types",

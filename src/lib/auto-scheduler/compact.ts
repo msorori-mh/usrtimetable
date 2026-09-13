@@ -6,6 +6,17 @@ import {
   type AttendanceMetrics,
 } from "./attendance-objective.ts";
 import { isInstructorAvailabilityEnforced } from "../scheduling/instructor-availability-policy.ts";
+import { isRoomTypeCompatible, roomTypeRank } from "../scheduling/room-type-policy.ts";
+
+/** Plan-course component type behind an assignment (drives the room fallback policy). */
+function assignmentComponentType(
+  s: Snapshot,
+  assignment: { plan_course_component_id?: string | null } | null | undefined,
+): string | null {
+  const id = assignment?.plan_course_component_id;
+  if (!id) return null;
+  return (s.components ?? []).find((c) => c.id === id)?.component_type ?? null;
+}
 export interface Session {
   id: string;
   updated_at: string;
@@ -42,7 +53,13 @@ export interface Snapshot {
   }[];
   members: { delivery_group_id: string; partition_id: string; cohort_id: string }[];
   partitions: { id: string; cohort_id: string; headcount: number; active: boolean }[];
-  assignments: { id: string; required_room_type: string; is_active: boolean }[];
+  assignments: {
+    id: string;
+    required_room_type: string;
+    is_active: boolean;
+    plan_course_component_id?: string | null;
+  }[];
+  components?: { id: string; component_type: string | null }[];
   rooms: {
     id: string;
     capacity: number;
@@ -267,7 +284,11 @@ export function feasible(
     return false;
   if (
     room.capacity < candidate.expected_students ||
-    (assignment.required_room_type && room.room_type !== assignment.required_room_type)
+    !isRoomTypeCompatible({
+      componentType: assignmentComponentType(s, assignment),
+      requiredRoomType: assignment.required_room_type,
+      roomType: room.room_type,
+    })
   )
     return false;
   if (room.available_days?.length && !room.available_days.includes(day)) return false;
@@ -463,17 +484,24 @@ export async function compact(s: Snapshot, options: CompactOptions = {}): Promis
   const roomsFor = (session: Session) => {
     const key = `${session.teaching_assignment_id}|${session.expected_students}`;
     if (!roomCache.has(key)) {
-      const type = s.assignments.find(
-        (a) => a.id === session.teaching_assignment_id,
-      )?.required_room_type;
+      const assignment = s.assignments.find((a) => a.id === session.teaching_assignment_id);
+      const componentType = assignmentComponentType(s, assignment);
       roomCache.set(
         key,
-        rooms.filter(
-          (room) =>
-            room.is_active &&
-            room.capacity >= session.expected_students &&
-            (!type || room.room_type === type),
-        ),
+        rooms
+          .filter((room) => room.is_active && room.capacity >= session.expected_students)
+          .map((room) => ({
+            room,
+            rank: roomTypeRank({
+              componentType,
+              requiredRoomType: assignment?.required_room_type,
+              roomType: room.room_type,
+            }),
+          }))
+          .filter((entry) => entry.rank !== null)
+          // Required room type first; the practical lab→hall fallback last.
+          .sort((a, b) => a.rank! - b.rank! || a.room.capacity - b.room.capacity)
+          .map((entry) => entry.room),
       );
     }
     return roomCache.get(key)!;

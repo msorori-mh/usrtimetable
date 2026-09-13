@@ -5,6 +5,7 @@ import {
   type StudySystem,
 } from "@/lib/conflict-engine/validator";
 import { scoreScheduleVersion } from "@/lib/conflict-engine/scorer";
+import { isPracticalLabFallback, roomTypeRank } from "@/lib/scheduling/room-type-policy";
 
 export interface UnplacedItem {
   course_offering_id: string;
@@ -39,6 +40,8 @@ export interface AutoRunResult {
   mode: AutoRunMode;
   deletedAutoSessions: number;
   skippedLockedSessions: number;
+  /** Practical sessions placed in a lecture hall via the allowed room fallback. */
+  practicalRoomFallbacks?: number;
 }
 
 const ALGORITHM_VERSION = "greedy-v2-difficulty-backtrack";
@@ -323,11 +326,26 @@ export async function runGreedyAutoSchedule(params: {
     return out;
   };
 
-  const roomPoolFor = (requiredType: string | null, expected: number) => {
+  const roomPoolFor = (
+    requiredType: string | null,
+    expected: number,
+    componentType?: string | null,
+  ) => {
+    // Practical components requiring computer_lab may use lecture_hall as a
+    // ranked fallback (labs first); every other type stays an exact match.
     const filtered = allRooms
-      .filter((r) => (requiredType ? r.room_type === requiredType : true))
-      .filter((r) => (expected > 0 ? r.capacity >= expected : true))
-      .sort((a, b) => a.capacity - b.capacity);
+      .map((r) => ({
+        room: r,
+        rank: roomTypeRank({
+          componentType,
+          requiredRoomType: requiredType,
+          roomType: r.room_type,
+        }),
+      }))
+      .filter((entry) => entry.rank !== null)
+      .filter((entry) => (expected > 0 ? entry.room.capacity >= expected : true))
+      .sort((a, b) => a.rank! - b.rank! || a.room.capacity - b.room.capacity)
+      .map((entry) => entry.room);
     if (requiredType) return filtered;
     return filtered.length > 0
       ? filtered
@@ -350,6 +368,15 @@ export async function runGreedyAutoSchedule(params: {
     }
     // Room type match exact
     if (unit.required_room_type && room.room_type === unit.required_room_type) score += 2;
+    // A policy fallback room must never outrank the required room type.
+    else if (
+      isPracticalLabFallback({
+        componentType: unit.session_type,
+        requiredRoomType: unit.required_room_type,
+        roomType: room.room_type,
+      })
+    )
+      score -= 3;
     // Instructor preferences
     const prefs = (prefsByInstr.get(unit.instructor_id) ?? []).filter(
       (p) => p.day_of_week === slot.day,
@@ -482,7 +509,11 @@ export async function runGreedyAutoSchedule(params: {
 
   // 9. Difficulty ordering — annotate candidate counts then sort
   for (const u of allUnits) {
-    u.candidate_room_count = roomPoolFor(u.required_room_type, u.expected_students).length;
+    u.candidate_room_count = roomPoolFor(
+      u.required_room_type,
+      u.expected_students,
+      u.session_type,
+    ).length;
     u.candidate_slot_count = buildCandidates(u.study_system, u.duration_min).length;
   }
   // Hardest first: fewer rooms, fewer slots, larger students, stricter type, longer duration
@@ -545,7 +576,11 @@ export async function runGreedyAutoSchedule(params: {
   // Build & rank candidate (slot, room) tuples for a unit
   const buildRankedCandidates = (unit: SessionUnit) => {
     const slots = buildCandidates(unit.study_system, unit.duration_min);
-    const roomPool = roomPoolFor(unit.required_room_type, unit.expected_students);
+    const roomPool = roomPoolFor(
+      unit.required_room_type,
+      unit.expected_students,
+      unit.session_type,
+    );
     const tuples: Array<{
       slot: CandidateSlot;
       room: { id: string; capacity: number; room_type: string | null };
