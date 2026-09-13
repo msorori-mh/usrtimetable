@@ -148,13 +148,13 @@ export function useReportContext(options: UseReportContextOptions = {}): ReportC
   const filterSummary = useMemo(
     () =>
       buildFilterSummary(
-        { termId, versionId, statusMode, studySystem },
+        { termId, versionId, statusMode: effectiveStatusMode, studySystem },
         {
           termName: selectedTerm?.name,
           versionName: selectedVersion?.name,
         },
       ),
-    [termId, versionId, statusMode, studySystem, selectedTerm, selectedVersion],
+    [termId, versionId, effectiveStatusMode, studySystem, selectedTerm, selectedVersion],
   );
 
   const error = (termsError ?? versionsError) as Error | null;
