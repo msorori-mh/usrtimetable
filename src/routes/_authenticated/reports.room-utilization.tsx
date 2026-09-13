@@ -143,7 +143,9 @@ function Page() {
 
   const usedHours = rows.reduce((s, r) => s + Number(r.scheduled_hours ?? 0), 0);
   const avgUtil = rows.length
-    ? Number((rows.reduce((s, r) => s + Number(r.utilization_pct ?? 0), 0) / rows.length).toFixed(1))
+    ? Number(
+        (rows.reduce((s, r) => s + Number(r.utilization_pct ?? 0), 0) / rows.length).toFixed(1),
+      )
     : 0;
   const unusedRooms = rows.filter((r) => Number(r.scheduled_hours) === 0).length;
 

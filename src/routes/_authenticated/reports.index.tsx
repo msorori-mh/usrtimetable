@@ -293,31 +293,31 @@ function ReportsHub() {
       ))}
 
       {legacyItems.length > 0 && (
-      <section
-        className={`space-y-3 rounded-lg border p-4 ${LEGACY_SECTION.accent}`}
-        data-testid="reports-legacy-section"
-      >
-        <button
-          type="button"
-          onClick={() => setLegacyOpen((v) => !v)}
-          aria-expanded={legacyOpen}
-          className="flex w-full items-center justify-between gap-3 text-right"
+        <section
+          className={`space-y-3 rounded-lg border p-4 ${LEGACY_SECTION.accent}`}
+          data-testid="reports-legacy-section"
         >
-          <span className="min-w-0">
-            <span className="flex items-center gap-2 text-lg font-semibold">
-              <Archive className="h-4 w-4 shrink-0" />
-              {LEGACY_SECTION.title}
+          <button
+            type="button"
+            onClick={() => setLegacyOpen((v) => !v)}
+            aria-expanded={legacyOpen}
+            className="flex w-full items-center justify-between gap-3 text-right"
+          >
+            <span className="min-w-0">
+              <span className="flex items-center gap-2 text-lg font-semibold">
+                <Archive className="h-4 w-4 shrink-0" />
+                {LEGACY_SECTION.title}
+              </span>
+              <span className="mt-0.5 block text-sm text-muted-foreground">
+                {LEGACY_SECTION.description}
+              </span>
             </span>
-            <span className="mt-0.5 block text-sm text-muted-foreground">
-              {LEGACY_SECTION.description}
-            </span>
-          </span>
-          <ChevronDown
-            className={`h-4 w-4 shrink-0 transition-transform ${legacyOpen ? "rotate-180" : ""}`}
-          />
-        </button>
-        {(legacyOpen || !!needle) && <ReportGrid items={legacyItems} />}
-      </section>
+            <ChevronDown
+              className={`h-4 w-4 shrink-0 transition-transform ${legacyOpen ? "rotate-180" : ""}`}
+            />
+          </button>
+          {(legacyOpen || !!needle) && <ReportGrid items={legacyItems} />}
+        </section>
       )}
     </div>
   );

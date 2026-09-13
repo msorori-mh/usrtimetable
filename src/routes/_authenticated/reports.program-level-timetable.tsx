@@ -390,7 +390,11 @@ function ProgramLevelReport({
       }
     >
       {sessions.length > 0 ? (
-        <ReportTimetableView sessions={sessions} collegeId={ctx.collegeId} headers={NEW_FLOW_TIMETABLE_TABLE_HEADERS} />
+        <ReportTimetableView
+          sessions={sessions}
+          collegeId={ctx.collegeId}
+          headers={NEW_FLOW_TIMETABLE_TABLE_HEADERS}
+        />
       ) : selectedCoverageRow && !selectedCoverageRow.scheduled ? (
         <Card className="p-6 text-sm" data-testid="unscheduled-group-empty-state">
           <p className="font-semibold">هذه المجموعة لم تُسكن في نسخة الجدول الحالية</p>

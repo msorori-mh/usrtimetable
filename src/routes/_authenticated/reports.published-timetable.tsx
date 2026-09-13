@@ -249,10 +249,10 @@ function Page() {
       rows={rows}
       headers={headers}
       isLoading={isLoading}
-      notReadyMessage={
-        active ? undefined : "اختر كلّية لعرض الجدول المنشور."
+      notReadyMessage={active ? undefined : "اختر كلّية لعرض الجدول المنشور."}
+      emptyMessage={
+        search ? "لا نتائج مطابقة للبحث." : "لا توجد محاضرات في نسخة منشورة بهذه المعايير."
       }
-      emptyMessage={search ? "لا نتائج مطابقة للبحث." : "لا توجد محاضرات في نسخة منشورة بهذه المعايير."}
       kpis={[
         { label: "المحاضرات", value: rows.length },
         { label: "المقررات", value: new Set(rows.map((r) => r.course)).size },
@@ -276,12 +276,30 @@ function Page() {
             placeholder: "ابحث بالمقرر أو المحاضر أو القاعة…",
           }}
           activeSummary={[
-            `الفصل: ${nameOf((terms ?? []).map((t) => ({ id: t.id, name: t.name })), termId)}`,
-            `النسخة: ${nameOf((versions ?? []).map((v) => ({ id: v.id, name: v.name })), versionId)}`,
-            `القسم: ${nameOf((depts ?? []).map((d) => ({ id: d.id, name: d.name })), deptId)}`,
-            `البرنامج: ${nameOf((progs ?? []).map((p) => ({ id: p.id, name: p.name })), progId)}`,
-            `المستوى: ${nameOf((levels ?? []).map((l) => ({ id: l.id, name: l.name })), lvlId)}`,
-            `الدفعة: ${nameOf((cohorts ?? []).map((c) => ({ id: c.id, name: c.code ?? c.id })), cohortId)}`,
+            `الفصل: ${nameOf(
+              (terms ?? []).map((t) => ({ id: t.id, name: t.name })),
+              termId,
+            )}`,
+            `النسخة: ${nameOf(
+              (versions ?? []).map((v) => ({ id: v.id, name: v.name })),
+              versionId,
+            )}`,
+            `القسم: ${nameOf(
+              (depts ?? []).map((d) => ({ id: d.id, name: d.name })),
+              deptId,
+            )}`,
+            `البرنامج: ${nameOf(
+              (progs ?? []).map((p) => ({ id: p.id, name: p.name })),
+              progId,
+            )}`,
+            `المستوى: ${nameOf(
+              (levels ?? []).map((l) => ({ id: l.id, name: l.name })),
+              lvlId,
+            )}`,
+            `الدفعة: ${nameOf(
+              (cohorts ?? []).map((c) => ({ id: c.id, name: c.code ?? c.id })),
+              cohortId,
+            )}`,
           ]}
           onClear={() => {
             setTermId("all");

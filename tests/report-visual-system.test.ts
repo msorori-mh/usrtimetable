@@ -43,7 +43,12 @@ describe("shared report visual system", () => {
 
   test("shell keeps the state machine order error → not ready → loading → empty", () => {
     const shell = readFileSync("src/components/reports/report-shell.tsx", "utf8");
-    const order = ["ReportErrorState", "ReportNotReadyState", "ReportLoadingState", "ReportEmptyState"];
+    const order = [
+      "ReportErrorState",
+      "ReportNotReadyState",
+      "ReportLoadingState",
+      "ReportEmptyState",
+    ];
     const positions = order.map((name) => shell.indexOf(`<${name}`));
     expect(positions.every((p) => p > 0)).toBe(true);
     expect([...positions].sort((a, b) => a - b)).toEqual(positions);
