@@ -146,10 +146,7 @@ describe("UI wiring", () => {
   );
   const versions = fs.readFileSync("src/routes/_authenticated/schedule-versions.tsx", "utf8");
   const auto = fs.readFileSync("src/routes/_authenticated/auto-schedule.tsx", "utf8");
-  const printCenter = fs.readFileSync(
-    "src/components/print-center/print-center-page.tsx",
-    "utf8",
-  );
+  const printCenter = fs.readFileSync("src/components/print-center/print-center-page.tsx", "utf8");
 
   it("shows the completeness card with the required figures and a gaps view", () => {
     expect(card).toContain("اكتمال نسخة الجدول");
