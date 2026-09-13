@@ -227,6 +227,9 @@ function ReportGrid({ items }: { items: ReportCard[] }) {
 
 function ReportsHub() {
   const [legacyOpen, setLegacyOpen] = useState(false);
+  // Academic affairs stays inside /reports/*: the publishing area is out of scope.
+  const { data: me } = useCurrentUser();
+  const reportsOnly = isReportsOnlyRole(me);
   return (
     <div className="space-y-8" dir="rtl">
       <header className="usr-page-header">
@@ -235,12 +238,14 @@ function ReportsHub() {
         </span>
         <div>
           <h1 className="text-2xl font-bold">التقارير والطباعة</h1>
-          <Link
-            to="/published-schedules"
-            className="mt-2 inline-block text-sm font-semibold text-primary hover:underline"
-          >
-            الجداول الرسمية والنشر ←
-          </Link>
+          {!reportsOnly && (
+            <Link
+              to="/published-schedules"
+              className="mt-2 inline-block text-sm font-semibold text-primary hover:underline"
+            >
+              الجداول الرسمية والنشر ←
+            </Link>
+          )}
           <p className="text-sm text-muted-foreground mt-1">
             تقارير أكاديمية للقراءة فقط · رأس رسمي · طباعة · تصدير CSV و Excel.
           </p>
