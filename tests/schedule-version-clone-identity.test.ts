@@ -102,14 +102,12 @@ function makeQuery(table: string) {
 }
 
 mock.module("../src/integrations/supabase/client.ts", () => ({
-  namedExports: {
-    supabase: {
-      auth: {
-        getUser: async () => ({ data: { user: { id: "user-1" } }, error: null }),
-      },
-      from(table: string) {
-        return makeQuery(table);
-      },
+  supabase: {
+    auth: {
+      getUser: async () => ({ data: { user: { id: "user-1" } }, error: null }),
+    },
+    from(table: string) {
+      return makeQuery(table);
     },
   },
 }));
