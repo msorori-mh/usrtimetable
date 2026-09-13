@@ -112,9 +112,7 @@ export function ReportShell({
    */
   const noPublishedVersion =
     !!reportContext?.publishedOnly && !reportContext.isLoading && !reportContext.versionId;
-  const effectiveNotReady = noPublishedVersion
-    ? NO_PUBLISHED_VERSION_MESSAGE_AR
-    : notReadyMessage;
+  const effectiveNotReady = noPublishedVersion ? NO_PUBLISHED_VERSION_MESSAGE_AR : notReadyMessage;
 
   /** One state machine: error → not ready → loading → empty → content. */
   const body = error ? (

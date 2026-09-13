@@ -15,8 +15,7 @@ import { PUBLISHED_STATUSES, SPECIFIC_VERSION_STATUSES } from "@/lib/reports/fil
 import type { ReportStatusMode } from "@/lib/reports/types";
 
 /** Shown instead of any data when the college/term has no published version yet. */
-export const NO_PUBLISHED_VERSION_MESSAGE_AR =
-  "لا توجد نسخة جدول منشورة لهذا الفصل/الكلية بعد.";
+export const NO_PUBLISHED_VERSION_MESSAGE_AR = "لا توجد نسخة جدول منشورة لهذا الفصل/الكلية بعد.";
 
 /** Context chip replacing the version-scope selector for the reports-only viewer. */
 export const PUBLISHED_ONLY_CONTEXT_LABEL_AR = "منشور فقط";
