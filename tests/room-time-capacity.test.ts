@@ -37,7 +37,7 @@ describe("room time capacity readiness", () => {
     expect(metric.label).toBe(ROOM_TIME_CAPACITY_LABEL);
     expect(metric.critical).toBe(true);
     expect(metric.missing).toBe(1);
-    expect(roomTimeCapacityMessagesAr(analysis)[0]).toContain("العجز 468 ساعة");
+    expect(roomTimeCapacityMessagesAr(analysis)[0]).toContain("العجز المتبقي 468 ساعة");
   });
 
   it("passes when capacity is sufficient", () => {
