@@ -287,15 +287,14 @@ async function fetchReadiness(collegeId: string) {
       missing: 0,
     },
     {
-      label: "محاضرون خارجيون بدون أوقات توفّر",
-      total: byCategory.external.total,
-      missing: byCategory.external.total - byCategory.external.configured,
-      critical: true,
-    },
-    {
+      // external + other_college share one display label; the internal
+      // categorization and readiness semantics are unchanged (sum-based score).
       label: "محاضرون من كلية أخرى بدون أوقات توفّر",
-      total: byCategory.other_college.total,
-      missing: byCategory.other_college.total - byCategory.other_college.configured,
+      total: byCategory.external.total + byCategory.other_college.total,
+      missing:
+        byCategory.external.total -
+        byCategory.external.configured +
+        (byCategory.other_college.total - byCategory.other_college.configured),
       critical: true,
     },
   ];
