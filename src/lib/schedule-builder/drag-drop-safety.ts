@@ -11,6 +11,7 @@ import {
   type PendingScheduleSlot,
 } from "@/lib/schedule-builder/pending-change";
 import { resolveRequiredRoomType } from "@/lib/schedule-builder/room-type-policy";
+import { isRoomTypeCompatible } from "@/lib/scheduling/room-type-policy";
 
 export type DropSafetyKind = "valid" | "forbidden";
 
