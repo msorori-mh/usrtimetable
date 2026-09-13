@@ -10,6 +10,7 @@ import {
   showUnverifiedEnrollmentBadge,
   UNVERIFIED_ENROLLMENT_BADGE_AR,
 } from "@/lib/schedule-builder/enrollment-trust";
+import { entityDisplayName } from "@/lib/entity-display";
 
 export type PendingScheduleSlot = {
   day_of_week: number;
@@ -199,7 +200,7 @@ export function applyPendingToSessions(
     const room = rooms.find((r) => r.id === pending.proposed.room_id);
     const room_label = pending.proposed.room_id
       ? room
-        ? `${room.code}${room.name ? ` — ${room.name}` : ""}`
+        ? entityDisplayName(room)
         : s.room_label
       : "—";
     return {
@@ -238,7 +239,7 @@ export function toGridSessionsWithPending(
       end_time: s.end_time,
       study_system: s.study_system,
       session_type: s.session_type,
-      title: `${isPending ? "◌ " : ""}${s.course_code} · ش${s.section_number}${
+      title: `${isPending ? "◌ " : ""}${entityDisplayName({ name: s.course_name, code: s.course_code })} · ش${s.section_number}${
         s.subgroup_code ? `/${s.subgroup_code}` : ""
       }`,
       subtitle: `${s.instructor_name} · ${s.room_label}${

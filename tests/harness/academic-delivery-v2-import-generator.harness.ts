@@ -336,9 +336,11 @@ function run() {
   // Direct URL /course-offerings — no manual CRUD
   const offeringsPage = read("src/routes/_authenticated/course-offerings.tsx");
   assert(
-    offeringsPage.includes(
-      "الطروحات الأكاديمية طبقة توافق داخلية يتم توليدها آليًا من بيانات الدفعات والخطط الدراسية.",
-    ),
+    offeringsPage
+      .replace(/\s+/g, " ")
+      .includes(
+        "الطروحات الأكاديمية طبقة توافق داخلية يتم توليدها آليًا من بيانات الدفعات والخطط الدراسية.",
+      ),
     "offerings internal-layer Arabic message",
   );
   assert(!offeringsPage.includes("طرح مقرر"), "no create button");

@@ -1,5 +1,6 @@
 import { DAY_NAMES_AR, fmtTime, hoursBetween } from "@/lib/reports/formatters";
 import type { Row } from "@/lib/reports/export";
+import { entityDisplayName } from "@/lib/entity-display";
 
 export const SESSION_TYPE_LABELS: Record<string, string> = {
   lecture: "محاضرة",
@@ -68,7 +69,7 @@ export function mapRawToTimetableSession(
     course_code: course?.code ?? "—",
     course_name: course?.name ?? "مقرر غير متاح",
     instructor_name: raw.instructors?.full_name ?? "",
-    room_label: raw.rooms ? `${raw.rooms.code ?? ""} ${raw.rooms.name ?? ""}`.trim() : "",
+    room_label: raw.rooms ? entityDisplayName(raw.rooms, "") : "",
     section_number: raw.sections?.section_number ?? "",
     cohort_label: (raw.cohort_id && labels?.cohorts.get(raw.cohort_id)) || "",
     delivery_group_label:
@@ -131,7 +132,7 @@ export function timetableSessionToRow(s: TimetableReportSession): Row {
     section: s.section_number,
     cohort: s.cohort_label,
     delivery_group: s.delivery_group_label,
-    course: `${s.course_code} ${s.course_name}`.trim(),
+    course: entityDisplayName({ name: s.course_name, code: s.course_code }),
     day: DAY_NAMES_AR[s.day_of_week] ?? "",
     time: `${fmtTime(s.start_time)} - ${fmtTime(s.end_time)}`,
     session_type: sessionTypeLabel(s.session_type),
@@ -147,6 +148,5 @@ export function timetableSessionsToRows(sessions: TimetableReportSession[]): Row
 }
 
 export function courseTitle(s: TimetableReportSession): string {
-  const code = s.course_code ? `${s.course_code} ` : "";
-  return `${code}${s.course_name}`.trim() || "—";
+  return entityDisplayName({ name: s.course_name, code: s.course_code });
 }

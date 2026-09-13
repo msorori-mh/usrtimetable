@@ -21,6 +21,7 @@ import {
 } from "@/lib/reports/session-mappers";
 import { fetchSectionTimetableSessions } from "@/lib/reports/queries/session-queries";
 import { useReportContext } from "@/hooks/reports/useReportContext";
+import { entityDisplayName } from "@/lib/entity-display";
 
 export const Route = createFileRoute("/_authenticated/reports/section-timetable")({
   head: () => ({ meta: [{ title: "أرشيف — تقرير جدول المجموعة (تاريخي)" }] }),
@@ -123,7 +124,7 @@ function Page() {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const c = (s as any).courses;
                     const label = c
-                      ? `${s.section_number} — ${c.code ?? ""} ${c.name ?? ""}`
+                      ? `${s.section_number} — ${entityDisplayName(c, "مقرر غير متاح")}`
                       : s.section_number;
                     return (
                       <SelectItem key={s.id} value={s.id}>

@@ -2,6 +2,7 @@ import { DAY_NAMES_AR, fmtTime } from "@/lib/reports/formatters";
 import { STUDY_SYSTEM_LABELS } from "@/lib/reports/filters";
 import type { ReportStudySystem } from "@/lib/reports/types";
 import type { PrintExportRow, PrintPageGroup, PrintSessionLike } from "./types";
+import { entityDisplayName } from "@/lib/entity-display";
 
 export type CohortDgLabels = {
   cohorts: Map<string, string>;
@@ -27,7 +28,7 @@ function groupLabel(s: PrintSessionLike, labels?: CohortDgLabels): string {
 
 function roomText(s: PrintSessionLike): string {
   if (!s.rooms) return "";
-  return `${s.rooms.code ?? ""} ${s.rooms.name ?? ""}`.trim();
+  return entityDisplayName(s.rooms, "");
 }
 
 function studyLabel(sys: string | null | undefined): string {
@@ -45,7 +46,7 @@ export function sessionToExportRow(
   return {
     day: DAY_NAMES_AR[s.day_of_week] ?? "",
     time: `${fmtTime(s.start_time)} - ${fmtTime(s.end_time)}`,
-    course_code: s.course_offerings?.courses?.code ?? "",
+    course_code: "",
     course_name: s.course_offerings?.courses?.name ?? "",
     component: componentLabel(s.session_type),
     instructor: s.instructors?.full_name ?? "",

@@ -521,7 +521,7 @@ function ScheduleBuilderWorkspacePage() {
     setEditLog((log) =>
       [
         ...log,
-        `سحب → يوم ${params.day} ${params.startTime} (${session.course_code ?? session.id.slice(0, 8)})`,
+        `سحب → يوم ${params.day} ${params.startTime} (${session.course_name ?? "محاضرة"})`,
       ].slice(-30),
     );
     setValidation(null);

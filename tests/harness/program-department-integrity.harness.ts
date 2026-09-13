@@ -39,8 +39,11 @@ assert.match(
   route,
   /depts \?\? \[\]\)\.some\(\(department\) => department\.id === form\.department_id\)/,
 );
-assert.match(route, /update\(payload\)\.eq\("id", editing\.id\)\.eq\("college_id", active\.id\)/);
-assert.match(route, /delete\(\)\.eq\("id", id\)\.eq\("college_id", active\.id\)/);
+assert.match(
+  route.replace(/\s+/g, ""),
+  /update\(payload\)\.eq\("id",editing\.id\)\.eq\("college_id",active\.id\)/,
+);
+assert.match(route.replace(/\s+/g, ""), /delete\(\)\.eq\("id",id\)\.eq\("college_id",active\.id\)/);
 
 console.log(
   JSON.stringify(

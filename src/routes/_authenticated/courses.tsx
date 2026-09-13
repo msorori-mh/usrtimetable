@@ -658,9 +658,7 @@ function CoursesPage() {
             {filtered.map((c) => (
               <li key={c.id} className="flex items-center justify-between p-4">
                 <div>
-                  <p className="font-semibold">
-                    <span dir="ltr">{c.code}</span> — {c.name}
-                  </p>
+                  <p className="font-semibold">{c.name}</p>
                   <p className="text-xs text-muted-foreground">
                     {deptMap.get(c.department_id) ?? "—"} · {c.credit_hours} س.م · نظري{" "}
                     {c.theory_hours} / عملي {c.practical_hours}

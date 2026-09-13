@@ -228,7 +228,6 @@ function DepartmentsPage() {
                 <div>
                   <p className="font-semibold">{d.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    <span dir="ltr">{d.code}</span> ·{" "}
                     {STUDY_SYSTEM_LABELS[d.study_system ?? "regular"]}
                   </p>
                 </div>

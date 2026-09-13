@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -1065,7 +1066,6 @@ function InstructorsSection({
               {(data?.instructorTypes ?? []).map((t) => (
                 <SelectItem key={t.id} value={t.id}>
                   {t.name}
-                  {t.code ? ` (${t.code})` : ""}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -1208,7 +1208,6 @@ function RoomsSection({
               {(data?.roomTypes ?? []).map((t) => (
                 <SelectItem key={t.id} value={t.id}>
                   {t.name}
-                  {t.code ? ` (${t.code})` : ""}
                 </SelectItem>
               ))}
             </SelectContent>

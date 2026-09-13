@@ -118,7 +118,6 @@ export interface PrintExportRow {
 export const PRINT_EXPORT_HEADERS: { key: keyof PrintExportRow; label: string }[] = [
   { key: "day", label: "اليوم" },
   { key: "time", label: "الوقت" },
-  { key: "course_code", label: "رمز المقرر" },
   { key: "course_name", label: "اسم المقرر" },
   { key: "component", label: "المحاضرة" },
   { key: "instructor", label: "المدرس" },

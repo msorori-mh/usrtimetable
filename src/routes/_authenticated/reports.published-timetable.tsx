@@ -22,6 +22,7 @@ import {
 } from "@/lib/schedule-builder/queries";
 import { DeliveryDemoWarningBanner } from "@/components/schedule/delivery-demo-warning-banner";
 import { isDeliveryDemoVersion } from "@/lib/schedule-versions/delivery-demo";
+import { entityDisplayName } from "@/lib/entity-display";
 
 export const Route = createFileRoute("/_authenticated/reports/published-timetable")({
   head: () => ({ meta: [{ title: "تقرير الجدول المنشور" }] }),
@@ -255,12 +256,12 @@ function Page() {
       cohort: (s.cohort_id && labels?.cohorts.get(s.cohort_id)) || "",
       delivery_group:
         (s.delivery_group_id && labels?.deliveryGroups.get(s.delivery_group_id)) || "",
-      course: `${s.course_offerings?.courses?.code ?? ""} ${s.course_offerings?.courses?.name ?? ""}`,
+      course: entityDisplayName(s.course_offerings?.courses ?? {}, ""),
       day: DAY_NAMES_AR[s.day_of_week] ?? "",
       time: `${fmtTime(s.start_time)} - ${fmtTime(s.end_time)}`,
       session_type: s.session_type === "lab" ? "عملي" : "نظري",
       instructor: s.instructors?.full_name ?? "",
-      room: s.rooms ? `${s.rooms.code ?? ""} ${s.rooms.name ?? ""}` : "",
+      room: s.rooms ? entityDisplayName(s.rooms, "") : "",
     }));
   }, [sessionsBundle, versionNameById]);
 
@@ -493,7 +494,7 @@ function Page() {
                   { id: "all", name: "الكل" },
                   ...(rooms ?? []).map((r) => ({
                     id: r.id,
-                    name: `${r.code ?? ""} ${r.name ?? ""}`,
+                    name: entityDisplayName(r),
                   })),
                 ]}
               />

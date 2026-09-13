@@ -68,8 +68,8 @@ export function PrintSheet(props: {
         : null;
   const statusLabel = meta.versionStatus ? STATUS_LABEL_AR[meta.versionStatus] : null;
   const isDraft = meta.versionStatus === "draft";
-  // day, time, code, name, component, group + optional instructor / room
-  const columnCount = 6 + (visibility.showInstructor ? 1 : 0) + (visibility.showRoom ? 1 : 0);
+  // day, time, course name, component, group + optional instructor / room
+  const columnCount = 5 + (visibility.showInstructor ? 1 : 0) + (visibility.showRoom ? 1 : 0);
 
   return (
     <section className="print-center-page break-after-page">
@@ -161,7 +161,6 @@ export function PrintSheet(props: {
           <TableRow>
             <TableHead>اليوم</TableHead>
             <TableHead>الوقت</TableHead>
-            <TableHead>رمز المقرر</TableHead>
             <TableHead>اسم المقرر</TableHead>
             <TableHead>المحاضرة</TableHead>
             {visibility.showInstructor && <TableHead>المدرس</TableHead>}
@@ -176,7 +175,6 @@ export function PrintSheet(props: {
               <TableRow key={s.id}>
                 <TableCell>{row.day}</TableCell>
                 <TableCell className="whitespace-nowrap">{row.time}</TableCell>
-                <TableCell>{row.course_code}</TableCell>
                 <TableCell>{row.course_name}</TableCell>
                 <TableCell>{row.component}</TableCell>
                 {visibility.showInstructor && <TableCell>{row.instructor}</TableCell>}

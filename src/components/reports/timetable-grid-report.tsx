@@ -255,7 +255,6 @@ export function TimetableGridReport({
                 المجموعة: selected.delivery_group_label || selected.section_number,
                 النوع: sessionTypeLabel(selected.session_type),
                 النظام: studySystemLabel(selected.study_system),
-                "رمز المقرر": selected.course_code,
               }).map(([label, value]) => (
                 <div key={label}>
                   <dt className="text-muted-foreground">{label}</dt>

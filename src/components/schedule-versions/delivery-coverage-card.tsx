@@ -24,6 +24,7 @@ import {
   fetchDeliveryGaps,
   type DeliveryCoverage,
 } from "@/lib/schedule-versions/delivery-coverage";
+import { entityDisplayName } from "@/lib/entity-display";
 
 const SYSTEM_LABEL: Record<string, string> = {
   regular: "عام",
@@ -225,7 +226,7 @@ function GapsDialog({
                     <TableCell>{g.level_name ?? g.level_number ?? "—"}</TableCell>
                     <TableCell>{g.cohort_code ?? "—"}</TableCell>
                     <TableCell>
-                      {g.course_code ?? "—"} {g.course_name ? `— ${g.course_name}` : ""}
+                      {entityDisplayName({ name: g.course_name, code: g.course_code })}
                     </TableCell>
                     <TableCell>
                       {COMPONENT_LABEL[g.component_type ?? ""] ?? g.component_type ?? "—"}

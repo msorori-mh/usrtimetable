@@ -22,6 +22,7 @@ import {
   fetchRoomTimetableSessions,
 } from "@/lib/reports/queries/session-queries";
 import { useReportContext } from "@/hooks/reports/useReportContext";
+import { entityDisplayName } from "@/lib/entity-display";
 
 export const Route = createFileRoute("/_authenticated/reports/room-timetable")({
   head: () => ({ meta: [{ title: "تقرير جدول القاعة" }] }),
@@ -85,7 +86,7 @@ function Page() {
   const isLoading = ctx.isLoading || sessionsLoading;
   const ready = !!ctx.versionId && !!roomId;
   const room = (rooms ?? []).find((r) => r.id === roomId);
-  const roomLabel = room ? (room.code ? `${room.code} — ${room.name}` : room.name) : undefined;
+  const roomLabel = room ? entityDisplayName(room) : undefined;
 
   return (
     <ReportShell
@@ -122,7 +123,7 @@ function Page() {
               <SelectContent>
                 {(rooms ?? []).map((r) => (
                   <SelectItem key={r.id} value={r.id}>
-                    {r.code ? `${r.code} — ${r.name}` : r.name}
+                    {entityDisplayName(r)}
                   </SelectItem>
                 ))}
               </SelectContent>
