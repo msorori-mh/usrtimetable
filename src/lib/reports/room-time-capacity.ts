@@ -81,7 +81,6 @@ export interface RoomTypeTimeCapacity {
   additionalRoomsNeeded: number;
 }
 
-
 export interface RoomTimeCapacityAnalysis {
   /** true when settings are missing/invalid — fail closed, treat as blocker */
   unavailable: boolean;
@@ -137,7 +136,15 @@ export function analyzeRoomTimeCapacity(input: {
   /** lab-required hours whose component may use the lecture-hall fallback */
   const fallbackEligibleByType = new Map<string, number>();
   const codeByTypeId = new Map(
-    input.roomTypes.map((t) => [t.id, String(t.code ?? "").trim().toLowerCase()] as const),
+    input.roomTypes.map(
+      (t) =>
+        [
+          t.id,
+          String(t.code ?? "")
+            .trim()
+            .toLowerCase(),
+        ] as const,
+    ),
   );
   let unresolvedHours = 0;
   for (const d of input.demand) {
@@ -228,7 +235,10 @@ export function analyzeRoomTimeCapacity(input: {
     if (codeByTypeId.get(lab.roomTypeId) !== COMPUTER_LAB_TYPE) continue;
     if (lab.deficitHours <= 0 || hallSurplus <= 0) continue;
     // Only the fallback-eligible share of the deficit can move to a hall.
-    const eligibleShare = Math.min(lab.deficitHours, fallbackEligibleByType.get(lab.roomTypeId) ?? 0);
+    const eligibleShare = Math.min(
+      lab.deficitHours,
+      fallbackEligibleByType.get(lab.roomTypeId) ?? 0,
+    );
     const covered = round2(Math.min(eligibleShare, hallSurplus));
     if (covered <= 0) continue;
     hallSurplus = round2(hallSurplus - covered);
@@ -244,7 +254,8 @@ export function analyzeRoomTimeCapacity(input: {
   }
 
   perType.sort(
-    (a, b) => b.effectiveDeficitHours - a.effectiveDeficitHours || b.requiredHours - a.requiredHours,
+    (a, b) =>
+      b.effectiveDeficitHours - a.effectiveDeficitHours || b.requiredHours - a.requiredHours,
   );
 
   return {
@@ -279,7 +290,6 @@ export function roomTimeCapacityMessagesAr(analysis: RoomTimeCapacityAnalysis): 
 /** Screen note explaining the pooled-capacity policy (shown with the check). */
 export const ROOM_TIME_CAPACITY_POLICY_NOTE_AR =
   "تُحسب السعة بمشاركة ذات أولوية: الجلسات العملية تستهلك المعامل أولًا، ثم يجوز تسكينها في فائض قاعات المحاضرات؛ أما المحاضرات النظرية فتبقى في قاعات المحاضرات فقط. لا يُعتبر العجز حاجزًا إلا إذا بقي بعد هذه المشاركة.";
-
 
 /** Scheduling-category metrics (critical → blocker in the wizard and generator). */
 export function roomTimeCapacityReadinessMetrics(

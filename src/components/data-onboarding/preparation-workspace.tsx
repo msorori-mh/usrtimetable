@@ -243,8 +243,8 @@ export function PreparationWorkspace({
                 ))}
               </ul>
               <p className="text-xs text-muted-foreground">
-                {ROOM_TIME_CAPACITY_POLICY_NOTE_AR} الحل: إضافة قاعات، أو تقليل الساعات المطلوبة.
-                لم يتم تغيير ساعات الدوام ولا افتراض أي قاعة غير مسجلة.
+                {ROOM_TIME_CAPACITY_POLICY_NOTE_AR} الحل: إضافة قاعات، أو تقليل الساعات المطلوبة. لم
+                يتم تغيير ساعات الدوام ولا افتراض أي قاعة غير مسجلة.
               </p>
             </Card>
           )}
