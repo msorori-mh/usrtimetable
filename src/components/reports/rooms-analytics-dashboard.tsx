@@ -45,7 +45,7 @@ type SortKey = "utilization" | "free" | "capacity" | "sessions";
 const CHART_CONFIG = {
   utilization: { label: "استغلال الوقت", color: "var(--color-primary)" },
   used: { label: "مستخدمة", color: "var(--color-primary)" },
-  free: { label: "فارغة", color: "var(--color-muted-foreground)" },
+  free: { label: "غير مستخدمة في النطاق", color: "var(--color-muted-foreground)" },
 } satisfies ChartConfig;
 
 const heatClass = (value: number) => {
@@ -184,7 +184,7 @@ export function RoomsAnalyticsDashboard({
             </PieChart>
           </ChartContainer>
           <p className="text-center text-xs text-muted-foreground">
-            {totalUsed} ساعة مستخدمة · {totalFree} ساعة فارغة
+            {totalUsed} ساعة مستخدمة · {totalFree} ساعة غير مستخدمة ضمن الفلاتر
           </p>
         </Card>
       </section>
@@ -223,7 +223,7 @@ export function RoomsAnalyticsDashboard({
           </ChartContainer>
         </Card>
         <Card className="p-4">
-          <h3 className="mb-3 font-bold">المستخدم مقابل الفارغ</h3>
+          <h3 className="mb-3 font-bold">الساعات المستخدمة وغير المستخدمة ضمن الفلاتر</h3>
           <ChartContainer config={CHART_CONFIG} className="h-[420px] w-full aspect-auto">
             <BarChart data={summary} margin={{ right: 12, left: 12 }}>
               <CartesianGrid vertical={false} />
@@ -261,12 +261,6 @@ export function RoomsAnalyticsDashboard({
               <ChartLegend content={<ChartLegendContent />} />
               <Bar dataKey="usedHours" name="used" fill="var(--color-used)" radius={3} />
               <Bar dataKey="freeHours" name="free" fill="var(--color-free)" radius={3} />
-              <Bar
-                dataKey="averageUtilization"
-                name="utilization"
-                fill="var(--color-utilization)"
-                radius={3}
-              />
             </BarChart>
           </ChartContainer>
           <p className="mt-2 text-xs text-muted-foreground">
@@ -279,7 +273,8 @@ export function RoomsAnalyticsDashboard({
       <Card className="overflow-hidden p-4" data-testid="rooms-heatmap">
         <h3 className="font-bold">كثافة الإشغال حسب اليوم والفترة</h3>
         <p className="mt-1 text-xs text-muted-foreground">
-          تعرض كل خلية عدد الموارد المشغولة من الموارد المتاحة ونسبة الإشغال.
+          تعرض كل خلية عدد الموارد المشغولة من الموارد المتاحة ضمن الفلاتر، مع احتساب تداخل
+          المحاضرات المختلفة في مدتها. الفترات الخالية تظهر أيضًا.
         </p>
         <div className="mt-4 overflow-x-auto">
           <div
