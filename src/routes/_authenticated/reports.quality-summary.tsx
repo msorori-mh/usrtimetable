@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveCollege } from "@/hooks/use-colleges";
+import { usePublishedOnlyReports } from "@/hooks/reports/use-published-only-reports";
+import { visibleVersionStatuses } from "@/lib/reports/published-only";
 import { ReportShell } from "@/components/reports/report-shell";
 import { ReportFilterBar, ReportFilterField } from "@/components/reports/report-filter-bar";
 import { ReportSection, ReportDataTable } from "@/components/reports/report-section";
@@ -23,11 +25,12 @@ export const Route = createFileRoute("/_authenticated/reports/quality-summary")(
 
 function Page() {
   const { active } = useActiveCollege();
+  const publishedOnly = usePublishedOnlyReports();
   const [versionId, setVersionId] = useState<string>("all");
   const [search, setSearch] = useState("");
 
   const { data: versions, error: versionsError } = useQuery({
-    queryKey: ["qs-vers", active?.id],
+    queryKey: ["qs-vers", active?.id, publishedOnly],
     enabled: !!active,
     queryFn: async () =>
       (
@@ -35,6 +38,8 @@ function Page() {
           .from("schedule_versions")
           .select("id, name, status")
           .eq("college_id", active!.id)
+          // Reports-only viewer: published versions only.
+          .in("status", visibleVersionStatuses(publishedOnly))
           .order("created_at", { ascending: false })
       ).data ?? [],
   });

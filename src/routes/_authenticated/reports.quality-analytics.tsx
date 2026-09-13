@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveCollege } from "@/hooks/use-colleges";
+import { usePublishedOnlyReports } from "@/hooks/reports/use-published-only-reports";
+import { visibleVersionStatuses } from "@/lib/reports/published-only";
 import { ReportShell } from "@/components/reports/report-shell";
 import {
   Select,
@@ -42,10 +44,11 @@ const SEVERITY_VARIANT: Record<
 
 function QualityAnalyticsPage() {
   const { active } = useActiveCollege();
+  const publishedOnly = usePublishedOnlyReports();
   const [versionId, setVersionId] = useState<string>("");
 
   const { data: versions } = useQuery({
-    queryKey: ["qa-versions", active?.id],
+    queryKey: ["qa-versions", active?.id, publishedOnly],
     enabled: !!active,
     queryFn: async () =>
       (
@@ -53,6 +56,8 @@ function QualityAnalyticsPage() {
           .from("schedule_versions")
           .select("id, name, status")
           .eq("college_id", active!.id)
+          // Reports-only viewer: published versions only.
+          .in("status", visibleVersionStatuses(publishedOnly))
           .order("created_at", { ascending: false })
       ).data ?? [],
   });

@@ -8,6 +8,10 @@ import {
 } from "@/components/ui/select";
 import { ReportFilterBar, ReportFilterField } from "@/components/reports/report-filter-bar";
 import { STATUS_MODE_LABELS, STUDY_SYSTEM_LABELS } from "@/lib/reports/filters";
+import {
+  PUBLISHED_ONLY_CONTEXT_HINT_AR,
+  PUBLISHED_ONLY_CONTEXT_LABEL_AR,
+} from "@/lib/reports/published-only";
 import type {
   ReportContext,
   ReportFilterVisibility,
@@ -55,6 +59,7 @@ export function ReportFilters({
     versions,
     versionId,
     statusMode: mode,
+    publishedOnly,
     studySystem: system,
     filterSummary,
     setTermId,
@@ -62,6 +67,12 @@ export function ReportFilters({
     setStatusMode,
     setStudySystem,
   } = context;
+
+  /**
+   * PUBLISHED-ONLY-REPORTS-01 — the reports-only viewer never gets the version-scope
+   * selector (draft / review / approved); the locked scope is stated instead.
+   */
+  const showStatusMode = statusMode && !publishedOnly;
 
   const clear = () => {
     setStatusMode("specific_version");
@@ -118,9 +129,20 @@ export function ReportFilters({
   );
 
   const advancedContent =
-    statusMode || studySystem || advanced ? (
+    showStatusMode || publishedOnly || studySystem || advanced ? (
       <>
-        {statusMode && (
+        {publishedOnly && (
+          <ReportFilterField label="نطاق النسخ">
+            <p
+              className="text-sm text-muted-foreground"
+              data-testid="report-filter-published-only-note"
+            >
+              {PUBLISHED_ONLY_CONTEXT_LABEL_AR} — {PUBLISHED_ONLY_CONTEXT_HINT_AR}
+            </p>
+          </ReportFilterField>
+        )}
+
+        {showStatusMode && (
           <ReportFilterField label="نطاق النسخ" htmlFor="report-filter-status-mode">
             <Select value={mode} onValueChange={(v) => setStatusMode(v as ReportStatusMode)}>
               <SelectTrigger id="report-filter-status-mode" aria-label="نطاق النسخ">

@@ -17,6 +17,7 @@ import {
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { downloadCSV, downloadXLSX, type Row } from "@/lib/reports/export";
 import { printPageStyleCss } from "@/lib/print-center";
+import { NO_PUBLISHED_VERSION_MESSAGE_AR } from "@/lib/reports/published-only";
 import type { ReportContext } from "@/lib/reports/types";
 
 interface Props {
@@ -105,11 +106,19 @@ export function ReportShell({
   const hasRows = rows.length > 0;
   const exportsDisabled = !hasRows || !!isLoading || !!error;
 
+  /**
+   * PUBLISHED-ONLY-REPORTS-01 — for the reports-only viewer a college/term without a
+   * published version shows an explicit not-ready state; never a draft fallback.
+   */
+  const noPublishedVersion =
+    !!reportContext?.publishedOnly && !reportContext.isLoading && !reportContext.versionId;
+  const effectiveNotReady = noPublishedVersion ? NO_PUBLISHED_VERSION_MESSAGE_AR : notReadyMessage;
+
   /** One state machine: error → not ready → loading → empty → content. */
   const body = error ? (
     <ReportErrorState onRetry={onRetry} />
-  ) : notReadyMessage ? (
-    <ReportNotReadyState message={notReadyMessage} />
+  ) : effectiveNotReady ? (
+    <ReportNotReadyState message={effectiveNotReady} />
   ) : isLoading ? (
     <ReportLoadingState />
   ) : !hasRows ? (
@@ -118,7 +127,7 @@ export function ReportShell({
     children
   );
 
-  const showSummaryBlocks = !error && !notReadyMessage && !isLoading;
+  const showSummaryBlocks = !error && !effectiveNotReady && !isLoading;
 
   return (
     <div className="report-print-root min-w-0 space-y-4" dir="rtl">
