@@ -22,6 +22,7 @@ import {
   Archive,
   Stamp,
   ChevronDown,
+  Printer,
 } from "lucide-react";
 
 const HUB_TITLE = "مركز التقارير — جامعة إقليم سبأ";
@@ -53,6 +54,20 @@ interface ReportCard {
 }
 
 const TIMETABLE_REPORTS: ReportCard[] = [
+  {
+    to: "/reports/current-timetable",
+    title: "طباعة الجدول الحالي",
+    desc: "النسخة الحالية كاملة · مجمعة حسب البرنامج/المستوى/النظام ومجموعات الطلاب · رأس رسمي · A3 landscape.",
+    icon: <Printer className="h-5 w-5" />,
+    badge: "official",
+  },
+  {
+    to: "/reports/rooms-report",
+    title: "تقرير القاعات",
+    desc: "ملخص كل القاعات والمعامل (النوع، السعة، الساعات المستخدمة/المتاحة، الاستغلال) ثم جدول تفصيلي لكل قاعة.",
+    icon: <DoorOpen className="h-5 w-5" />,
+    badge: "official",
+  },
   {
     to: "/reports/instructor-schedule",
     title: "جدول المحاضر الفردي",
