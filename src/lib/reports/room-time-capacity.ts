@@ -134,6 +134,11 @@ export function analyzeRoomTimeCapacity(input: {
   const dayEnd = input.settings?.day_end_time ?? null;
   const dailyHours = dayStart && dayEnd ? hoursBetween(dayStart, dayEnd) : 0;
   const requiredByType = new Map<string, number>();
+  /** lab-required hours whose component may use the lecture-hall fallback */
+  const fallbackEligibleByType = new Map<string, number>();
+  const codeByTypeId = new Map(
+    input.roomTypes.map((t) => [t.id, String(t.code ?? "").trim().toLowerCase()] as const),
+  );
   let unresolvedHours = 0;
   for (const d of input.demand) {
     const hours = Math.max(0, Number(d.hours) || 0);
@@ -143,6 +148,18 @@ export function analyzeRoomTimeCapacity(input: {
       continue;
     }
     requiredByType.set(d.roomTypeId, (requiredByType.get(d.roomTypeId) ?? 0) + hours);
+    // Fallback eligibility mirrors the scheduling policy: practical demand on a
+    // computer lab. An unknown component type on lab demand is treated as
+    // practical, matching how such assignments are generated today.
+    const eligible =
+      codeByTypeId.get(d.roomTypeId) === COMPUTER_LAB_TYPE &&
+      (d.componentType == null || isPracticalComponent(d.componentType));
+    if (eligible) {
+      fallbackEligibleByType.set(
+        d.roomTypeId,
+        (fallbackEligibleByType.get(d.roomTypeId) ?? 0) + hours,
+      );
+    }
   }
   const totalRequiredHours = round2([...requiredByType.values()].reduce((s, h) => s + h, 0));
 
@@ -194,17 +211,48 @@ export function analyzeRoomTimeCapacity(input: {
       requiredHours,
       availableHours,
       deficitHours,
+      coveredByFallbackHours: 0,
+      reservedForFallbackHours: 0,
+      effectiveDeficitHours: deficitHours,
       additionalRoomsNeeded: deficitHours > 0 ? Math.ceil(deficitHours / fullWindowHours) : 0,
     });
   }
-  perType.sort((a, b) => b.deficitHours - a.deficitHours || b.requiredHours - a.requiredHours);
+
+  // Priority pooling: practical lab demand first consumes the labs' own hours,
+  // then the surplus of lecture halls. Lecture demand never borrows a lab.
+  const halls = perType.filter((t) => codeByTypeId.get(t.roomTypeId) === LECTURE_HALL_TYPE);
+  let hallSurplus = round2(
+    halls.reduce((sum, t) => sum + Math.max(0, t.availableHours - t.requiredHours), 0),
+  );
+  for (const lab of perType) {
+    if (codeByTypeId.get(lab.roomTypeId) !== COMPUTER_LAB_TYPE) continue;
+    if (lab.deficitHours <= 0 || hallSurplus <= 0) continue;
+    // Only the fallback-eligible share of the deficit can move to a hall.
+    const eligibleShare = Math.min(lab.deficitHours, fallbackEligibleByType.get(lab.roomTypeId) ?? 0);
+    const covered = round2(Math.min(eligibleShare, hallSurplus));
+    if (covered <= 0) continue;
+    hallSurplus = round2(hallSurplus - covered);
+    lab.coveredByFallbackHours = covered;
+    lab.effectiveDeficitHours = round2(Math.max(0, lab.deficitHours - covered));
+    lab.additionalRoomsNeeded =
+      lab.effectiveDeficitHours > 0 ? Math.ceil(lab.effectiveDeficitHours / fullWindowHours) : 0;
+    for (const hall of halls) {
+      const free = round2(Math.max(0, hall.availableHours - hall.requiredHours));
+      const take = round2(Math.min(free - hall.reservedForFallbackHours, covered));
+      if (take > 0) hall.reservedForFallbackHours = round2(hall.reservedForFallbackHours + take);
+    }
+  }
+
+  perType.sort(
+    (a, b) => b.effectiveDeficitHours - a.effectiveDeficitHours || b.requiredHours - a.requiredHours,
+  );
 
   return {
     unavailable: false,
     workingDays,
     dailyHours,
     perType,
-    insufficient: perType.filter((t) => t.deficitHours > 0),
+    insufficient: perType.filter((t) => t.effectiveDeficitHours > 0),
     unresolvedHours: round2(unresolvedHours),
     totalRequiredHours,
     totalAvailableHours: round2(perType.reduce((s, t) => s + t.availableHours, 0)),
@@ -212,7 +260,7 @@ export function analyzeRoomTimeCapacity(input: {
 }
 
 export const ROOM_TIME_CAPACITY_LABEL =
-  "أنواع قاعات بسعة زمنية أسبوعية غير كافية (ROOM_TIME_CAPACITY_INSUFFICIENT)";
+  "أنواع قاعات بسعة زمنية أسبوعية غير كافية بعد مشاركة القاعات (ROOM_TIME_CAPACITY_INSUFFICIENT)";
 
 /** Human-readable blocker lines for the review / generation screens. */
 export function roomTimeCapacityMessagesAr(analysis: RoomTimeCapacityAnalysis): string[] {
@@ -221,9 +269,17 @@ export function roomTimeCapacityMessagesAr(analysis: RoomTimeCapacityAnalysis): 
     (t) =>
       `${t.roomTypeLabel}: مطلوب ${t.requiredHours} ساعة/أسبوع · متاح ${t.availableHours} ساعة ` +
       `(${t.activeRooms} قاعة × ${analysis.workingDays.length} أيام × ${round2(analysis.dailyHours)} ساعة) · ` +
-      `العجز ${t.deficitHours} ساعة · الحد الأدنى ${t.additionalRoomsNeeded} قاعة إضافية بنفس ساعات العمل`,
+      (t.coveredByFallbackHours > 0
+        ? `يُغطّى ${t.coveredByFallbackHours} ساعة من فائض قاعات المحاضرات (بديل الجلسات العملية) · `
+        : "") +
+      `العجز المتبقي ${t.effectiveDeficitHours} ساعة · الحد الأدنى ${t.additionalRoomsNeeded} قاعة إضافية بنفس ساعات العمل`,
   );
 }
+
+/** Screen note explaining the pooled-capacity policy (shown with the check). */
+export const ROOM_TIME_CAPACITY_POLICY_NOTE_AR =
+  "تُحسب السعة بمشاركة ذات أولوية: الجلسات العملية تستهلك المعامل أولًا، ثم يجوز تسكينها في فائض قاعات المحاضرات؛ أما المحاضرات النظرية فتبقى في قاعات المحاضرات فقط. لا يُعتبر العجز حاجزًا إلا إذا بقي بعد هذه المشاركة.";
+
 
 /** Scheduling-category metrics (critical → blocker in the wizard and generator). */
 export function roomTimeCapacityReadinessMetrics(
