@@ -8,6 +8,10 @@ import {
 } from "@/components/ui/select";
 import { ReportFilterBar, ReportFilterField } from "@/components/reports/report-filter-bar";
 import { STATUS_MODE_LABELS, STUDY_SYSTEM_LABELS } from "@/lib/reports/filters";
+import {
+  PUBLISHED_ONLY_CONTEXT_HINT_AR,
+  PUBLISHED_ONLY_CONTEXT_LABEL_AR,
+} from "@/lib/reports/published-only";
 import type {
   ReportContext,
   ReportFilterVisibility,
