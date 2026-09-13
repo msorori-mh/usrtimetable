@@ -63,6 +63,16 @@ const EMPTY_LABELS = {
   cohorts: new Map<string, string>(),
   deliveryGroups: new Map<string, string>(),
 };
+/**
+ * Export/print headers: the timetable columns plus an explicit status column, so
+ * a CSV/Excel export always shows unscheduled delivery groups instead of
+ * implying the schedule is complete.
+ */
+const PROGRAM_TIMETABLE_EXPORT_HEADERS = [
+  ...NEW_FLOW_TIMETABLE_TABLE_HEADERS,
+  { key: "status", label: "الحالة" },
+];
+
 
 function Page() {
   const [initial] = useState(() =>
