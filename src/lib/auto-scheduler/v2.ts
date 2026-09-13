@@ -108,6 +108,130 @@ async function loadPartitionIndex(input: {
 const pad = (value: number) => String(value).padStart(2, "0");
 const fromMinutes = (value: number) => `${pad(Math.floor(value / 60))}:${pad(value % 60)}:00`;
 
+/** Arabic change reason recorded on every repair relocation. */
+export const REPAIR_CHANGE_REASON_AR = "إعادة ترتيب محدودة لإكمال الجلسات الناقصة (إصلاح آلي)";
+
+/** Latest schedule-version stamp, so a repair move does not make the create RPC stale. */
+async function readVersionUpdatedAt(
+  scheduleVersionId: string,
+  fallback: string,
+): Promise<string> {
+  const { data } = await supabase
+    .from("schedule_versions")
+    .select("updated_at")
+    .eq("id", scheduleVersionId)
+    .maybeSingle();
+  return (data?.updated_at as string | undefined) ?? fallback;
+}
+
+export type RepairApplyResult = {
+  ok: boolean;
+  versionUpdatedAt: string;
+  appliedMoves: RepairMove[];
+  session: { id?: string } | null;
+  reason: string | null;
+  rolledBack: boolean;
+};
+
+/**
+ * Fail-safe application of a repair plan: relocate the blockers through the
+ * guarded move RPC, then create the missing session through the guarded V2 RPC.
+ * Any failure rolls every relocation back to its original placement, so the
+ * draft is never left half-moved.
+ */
+export async function applyRepairPlan(input: {
+  scheduleVersionId: string;
+  teachingAssignmentId: string;
+  plan: RepairPlan;
+  versionUpdatedAt: string;
+  note: string;
+  moveSession?: typeof moveOrRescheduleScheduleSession;
+  createSession?: typeof createScheduleSessionFromAssignmentV2;
+  readVersion?: (scheduleVersionId: string, fallback: string) => Promise<string>;
+}): Promise<RepairApplyResult> {
+  const move = input.moveSession ?? moveOrRescheduleScheduleSession;
+  const create = input.createSession ?? createScheduleSessionFromAssignmentV2;
+  const readVersion = input.readVersion ?? readVersionUpdatedAt;
+  const applied: Array<{ plan: RepairMove; updatedAt: string | null }> = [];
+  let versionUpdatedAt = input.versionUpdatedAt;
+
+  const rollback = async () => {
+    for (const entry of [...applied].reverse()) {
+      await move({
+        sessionId: entry.plan.sessionId,
+        expectedUpdatedAt: entry.updatedAt,
+        original: entry.plan.to,
+        proposed: entry.plan.from,
+        changeReason: REPAIR_CHANGE_REASON_AR,
+      });
+    }
+    versionUpdatedAt = await readVersion(input.scheduleVersionId, versionUpdatedAt);
+  };
+
+  for (const planned of input.plan.moves) {
+    const result = await move({
+      sessionId: planned.sessionId,
+      expectedUpdatedAt: planned.updatedAt || null,
+      original: planned.from,
+      proposed: planned.to,
+      changeReason: REPAIR_CHANGE_REASON_AR,
+    });
+    if (!result.ok || result.stale) {
+      const reason =
+        result.blocking_conflicts[0]?.message_ar ||
+        result.message_ar ||
+        result.code ||
+        "تعذر تحريك الجلسة الحاجزة.";
+      await rollback();
+      return {
+        ok: false,
+        versionUpdatedAt,
+        appliedMoves: [],
+        session: null,
+        reason,
+        rolledBack: applied.length > 0,
+      };
+    }
+    applied.push({ plan: planned, updatedAt: result.session?.updated_at ?? null });
+  }
+
+  versionUpdatedAt = await readVersion(input.scheduleVersionId, versionUpdatedAt);
+  const created = await create({
+    scheduleVersionId: input.scheduleVersionId,
+    teachingAssignmentId: input.teachingAssignmentId,
+    dayOfWeek: input.plan.placement.day_of_week,
+    startTime: input.plan.placement.start_time,
+    endTime: input.plan.placement.end_time,
+    roomId: input.plan.placement.room_id,
+    expectedVersionUpdatedAt: versionUpdatedAt,
+    note: input.note,
+  });
+  if (!created.ok || !created.session || !created.schedule_version_updated_at) {
+    const reason =
+      created.blocking_conflicts[0]?.message_ar ||
+      created.message_ar ||
+      created.code ||
+      "تعذر إنشاء الجلسة بعد إعادة الترتيب.";
+    await rollback();
+    return {
+      ok: false,
+      versionUpdatedAt,
+      appliedMoves: [],
+      session: null,
+      reason,
+      rolledBack: applied.length > 0,
+    };
+  }
+  return {
+    ok: true,
+    versionUpdatedAt: created.schedule_version_updated_at,
+    appliedMoves: input.plan.moves,
+    session: created.session,
+    reason: null,
+    rolledBack: false,
+  };
+}
+
 export type AutoScheduleProgress = {
   processedItems: number;
   totalItems: number;
