@@ -18,6 +18,9 @@ import {
   assertVersionNotStale,
   filterCandidateRooms,
   isLocallyBlocked,
+  isRoomSlotAvailable,
+  partitionCandidateRoomsByRank,
+  roomCandidateRank,
   nonconformingWarningAr,
   orderSlotsByDistinctDay,
   planRemainingSessions,
@@ -25,8 +28,11 @@ import {
   type ExistingSessionLite,
   type OccupiedInterval,
   type PlanCourseCadence,
+  type RoomAvailabilityWindow,
   type RoomLite,
+  type RoomRequirement,
 } from "@/lib/auto-scheduler/session-plan";
+import { PRACTICAL_ROOM_FALLBACK_NOTE_AR } from "@/lib/scheduling/room-type-policy";
 import {
   buildPartitionIndex,
   makeSharedStudentsPredicate,
@@ -788,6 +794,8 @@ export async function runV2AutoSchedule(params: {
         blocked_cadence_items: blockedCadenceItems,
         nonconforming_existing_sessions: nonconformingSessions,
         by_component_type: byType,
+        practical_room_fallbacks: practicalRoomFallbacks,
+        practical_room_fallback_policy: "practical_computer_lab_may_use_lecture_hall",
       } as never,
       unplaced: unplaced as never,
       run_by: userData.user?.id ?? null,
@@ -820,5 +828,6 @@ export async function runV2AutoSchedule(params: {
     mode,
     deletedAutoSessions: 0,
     skippedLockedSessions: 0,
+    practicalRoomFallbacks,
   };
 }
