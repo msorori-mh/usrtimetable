@@ -1065,7 +1065,6 @@ function InstructorsSection({
               {(data?.instructorTypes ?? []).map((t) => (
                 <SelectItem key={t.id} value={t.id}>
                   {t.name}
-                  {t.code ? ` (${t.code})` : ""}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -1208,7 +1207,6 @@ function RoomsSection({
               {(data?.roomTypes ?? []).map((t) => (
                 <SelectItem key={t.id} value={t.id}>
                   {t.name}
-                  {t.code ? ` (${t.code})` : ""}
                 </SelectItem>
               ))}
             </SelectContent>

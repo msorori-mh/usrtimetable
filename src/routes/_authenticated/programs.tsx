@@ -145,7 +145,7 @@ function ProgramsPage() {
                   <div>
                     <p className="font-semibold">{p.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      <span dir="ltr">{p.code}</span> · {deptMap.get(p.department_id) ?? "—"} · {DEGREES[p.degree_type] ?? p.degree_type} · {p.duration_years} سنوات
+                      {deptMap.get(p.department_id) ?? "—"} · {DEGREES[p.degree_type] ?? p.degree_type} · {p.duration_years} سنوات
                     </p>
                   </div>
                   {canManage && (

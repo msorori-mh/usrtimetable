@@ -160,7 +160,7 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = `instructors-current-${active.code || active.id}.xlsx`;
+      anchor.download = "instructors-current.xlsx";
       anchor.click();
       URL.revokeObjectURL(url);
       setMode("update_existing");

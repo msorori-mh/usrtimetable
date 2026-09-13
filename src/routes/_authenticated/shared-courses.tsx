@@ -116,7 +116,7 @@ function SharedPage() {
                   <li key={c.id} className="flex items-center justify-between gap-3 p-4">
                     <div className="min-w-0">
                       <p className="font-semibold">
-                        <span dir="ltr">{c.code}</span> · {c.name}
+                        {c.name}
                         {c.is_shared && <span className="ms-2 rounded bg-accent/20 px-2 py-0.5 text-[11px]">مشترك</span>}
                         <span className="ms-2 rounded bg-secondary px-2 py-0.5 text-[11px]">{NATURES.find((n) => n.v === c.course_nature)?.l ?? "—"}</span>
                       </p>

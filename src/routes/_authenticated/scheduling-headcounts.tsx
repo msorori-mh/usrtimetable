@@ -108,7 +108,7 @@ function SchedulingHeadcountsPage() {
 
   const termName = new Map(terms.map((term) => [term.id, term.name]));
   const cohortName = new Map(
-    cohorts.map((cohort) => [cohort.id, cohort.code ?? cohort.id.slice(0, 8)]),
+    cohorts.map((cohort) => [cohort.id, cohort.code ?? "دفعة غير مسماة"]),
   );
   const missing = cohorts.filter(
     (cohort) =>
@@ -365,7 +365,7 @@ function HeadcountForm({
       >
         {cohorts.map((cohort) => (
           <option key={cohort.id} value={cohort.id}>
-            {cohort.code ?? cohort.id}
+            {cohort.code ?? "دفعة غير مسماة"}
           </option>
         ))}
       </select>

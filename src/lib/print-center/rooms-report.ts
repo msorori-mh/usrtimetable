@@ -11,6 +11,7 @@
 import { hoursBetween } from "@/lib/reports/formatters";
 import { groupPrintPages } from "./group";
 import type { PrintPageGroup, PrintSessionLike } from "./types";
+import { entityDisplayName } from "@/lib/entity-display";
 
 export const ROOMS_REPORT_TITLE_AR = "تقرير القاعات";
 
@@ -55,7 +56,6 @@ export interface RoomsReportSummaryRow {
 }
 
 export const ROOMS_REPORT_SUMMARY_HEADERS: { key: keyof RoomsReportSummaryRow; label: string }[] = [
-  { key: "room_code", label: "الرمز" },
   { key: "room_name", label: "القاعة" },
   { key: "room_type", label: "النوع" },
   { key: "capacity", label: "السعة" },
@@ -120,7 +120,7 @@ export function buildRoomsReportSummary(params: {
       const usedHours = round2(agg.hours);
       return {
         room_code: r.code ?? "",
-        room_name: r.name ?? "",
+        room_name: entityDisplayName(r, "قاعة غير مسماة"),
         room_type: r.room_type_id ? (typeLabel.get(r.room_type_id) ?? "—") : "—",
         capacity: r.capacity ?? "—",
         used_hours: usedHours,
@@ -129,7 +129,7 @@ export function buildRoomsReportSummary(params: {
         session_count: agg.count,
       };
     })
-    .sort((a, b) => a.room_code.localeCompare(b.room_code, "ar"));
+    .sort((a, b) => a.room_name.localeCompare(b.room_name, "ar"));
 }
 
 /** One print page per room that actually holds sessions in the current version. */
