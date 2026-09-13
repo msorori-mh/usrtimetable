@@ -4,12 +4,15 @@
  * Product definition:
  *  - user-facing Arabic label: «إدارة الشؤون الأكاديمية»;
  *  - reports ONLY: the sole reachable area is /reports and /reports/*;
- *  - read scope is limited to the colleges assigned in `user_colleges`
- *    (it is NOT an institution-wide reader);
+ *  - read scope is every college, expressed as explicit `user_colleges` rows:
+ *    granting the role assigns ALL current colleges, and a college created
+ *    later is auto-assigned by a database trigger. There is no manual college
+ *    picker for this role, and reads still flow through `user_colleges`;
  *  - strictly read-only: this module never grants a write permission.
  *
  * Multi-role safety: a user who also carries `super_admin` or `college_admin`
- * keeps that role's full behaviour and is never narrowed to reports.
+ * keeps that role's full behaviour, is never narrowed to reports, and is never
+ * auto-assigned colleges (that would widen an admin's manageable colleges).
  *
  * The database enum value is intentionally unchanged.
  */
@@ -17,10 +20,10 @@
 export const ACADEMIC_AFFAIRS_ROLE_LABEL_AR = "إدارة الشؤون الأكاديمية";
 
 export const ACADEMIC_AFFAIRS_ROLE_HINT_AR =
-  "تقارير فقط للكلّيات المُسندة له، بدون أي إضافة أو تعديل أو حذف.";
+  "تقارير فقط لجميع الكلّيات، بدون أي إضافة أو تعديل أو حذف.";
 
 export const ACADEMIC_AFFAIRS_CREATE_NOTE_AR =
-  "حساب «إدارة الشؤون الأكاديمية»: يرى مركز التقارير فقط، وضمن الكلّيات المُسندة له فقط. إسناد كلّية واحدة على الأقل إلزامي، والحساب للقراءة والطباعة والتصدير دون أي تعديل.";
+  "حساب «إدارة الشؤون الأكاديمية»: يرى مركز التقارير فقط. تُسند له تلقائيًا جميع الكلّيات الحالية، وأي كلّية تُنشأ لاحقًا تُسند له تلقائيًا كذلك، والحساب للقراءة والطباعة والتصدير دون أي تعديل.";
 
 /** The only area this role may open. */
 export const REPORTS_ONLY_HOME = "/reports" as const;
