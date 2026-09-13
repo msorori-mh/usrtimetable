@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { PrintSheet } from "@/components/print-center/print-sheet";
 import { DEFAULT_PRINT_VISIBILITY } from "@/lib/print-center/types";
 import { groupPrintPages, latestSessionUpdate, printPageStyleCss } from "@/lib/print-center";
@@ -73,6 +73,7 @@ export function ProgramTimetablePrint(props: {
           }}
         />
       ))}
+      {props.coverage ? <div className="print-coverage-block">{props.coverage}</div> : null}
     </>
   );
 }
