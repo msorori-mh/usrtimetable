@@ -54,9 +54,13 @@ export const adminCreateUser = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertInstitutionAdmin(context.userId);
 
-    if ((data.role === "college_admin" || data.role === "read_only") && data.college_ids.length === 0) {
-      throw new Error("College assignment is required for College Admin and Viewer roles");
+    // Every role except super_admin is college-scoped. `institutional_viewer`
+    // («إدارة الشؤون الأكاديمية») reads reports for its assigned colleges only,
+    // so at least one college is mandatory for it too.
+    if (requiresCollegeAssignment(data.role) && data.college_ids.length === 0) {
+      throw new Error("College assignment is required for every role except Super Admin");
     }
+
 
     const { data: created, error: createErr } = await supabaseAdmin.auth.admin.createUser({
       email: data.email,
