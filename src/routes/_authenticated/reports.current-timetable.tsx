@@ -25,6 +25,8 @@ import {
   type PrintSessionLike,
 } from "@/lib/print-center";
 
+const EMPTY_SESSIONS: PrintSessionLike[] = [];
+
 const DESCRIPTION =
   "طباعة النسخة الحالية من الجدول كاملة — مجمعة حسب البرنامج/المستوى/النظام مع مجموعات الطلاب، برأس رسمي وبدون أي تعديل على الجدول.";
 
@@ -82,7 +84,7 @@ function Page() {
       }),
   });
 
-  const sessions = bundle?.sessions ?? [];
+  const sessions = bundle?.sessions ?? EMPTY_SESSIONS;
   const pages = useMemo(
     () =>
       groupCurrentSchedulePages(sessions, { collegeId: ctx.collegeId ?? "", studySystem: "all" }),

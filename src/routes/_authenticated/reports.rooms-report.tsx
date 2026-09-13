@@ -33,6 +33,8 @@ import {
   type PrintSessionLike,
 } from "@/lib/print-center";
 
+const EMPTY_SESSIONS: PrintSessionLike[] = [];
+
 const DESCRIPTION =
   "ملخص كل القاعات والمعامل (النوع، السعة، الساعات المستخدمة والمتاحة، نسبة الاستغلال، عدد الجلسات) ثم جدول تفصيلي لكل قاعة — قراءة فقط وقابل للطباعة/PDF.";
 
@@ -113,7 +115,7 @@ function Page() {
     },
   });
 
-  const sessions = sessionsQuery.data?.sessions ?? [];
+  const sessions = sessionsQuery.data?.sessions ?? EMPTY_SESSIONS;
   const summary = useMemo(
     () =>
       inventory.data
