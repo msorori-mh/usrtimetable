@@ -1,4 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import {
   orderWeekDaysRtl,
@@ -47,42 +54,28 @@ function assignLanes(daySessions: TimetableReportSession[]): PlacedSession[] {
     (a, b) =>
       toMins(a.start_time) - toMins(b.start_time) || toMins(a.end_time) - toMins(b.end_time),
   );
-  const lanes: TimetableReportSession[][] = [];
-
-  for (const sess of sorted) {
-    const start = toMins(sess.start_time);
-    const end = toMins(sess.end_time);
-    let placed = false;
-    for (let i = 0; i < lanes.length; i++) {
-      const last = lanes[i][lanes[i].length - 1];
-      if (toMins(last.end_time) <= start) {
-        lanes[i].push(sess);
-        placed = true;
-        break;
-      }
-    }
-    if (!placed) lanes.push([sess]);
+  const output: PlacedSession[] = [];
+  let cluster: PlacedSession[] = [];
+  let ends: number[] = [];
+  let clusterEnd = -1;
+  const flush = () => {
+    output.push(...cluster.map((entry) => ({ ...entry, laneCount: ends.length })));
+    cluster = [];
+    ends = [];
+    clusterEnd = -1;
+  };
+  for (const session of sorted) {
+    const start = toMins(session.start_time),
+      end = toMins(session.end_time);
+    if (start >= clusterEnd && cluster.length) flush();
+    let lane = ends.findIndex((e) => e <= start);
+    if (lane < 0) lane = ends.length;
+    ends[lane] = end;
+    cluster.push({ session, lane, laneCount: 1 });
+    clusterEnd = Math.max(clusterEnd, end);
   }
-
-  const laneOf = new Map<string, number>();
-  lanes.forEach((lane, idx) => lane.forEach((s) => laneOf.set(s.id, idx)));
-
-  // Expand lane count for overlapping groups.
-  const placed: PlacedSession[] = sorted.map((session) => {
-    const start = toMins(session.start_time);
-    const end = toMins(session.end_time);
-    const overlapping = sorted.filter(
-      (o) => toMins(o.start_time) < end && toMins(o.end_time) > start,
-    );
-    const usedLanes = new Set(overlapping.map((o) => laneOf.get(o.id) ?? 0));
-    return {
-      session,
-      lane: laneOf.get(session.id) ?? 0,
-      laneCount: Math.max(usedLanes.size, 1),
-    };
-  });
-
-  return placed;
+  flush();
+  return output;
 }
 
 export interface TimetableGridReportProps {
@@ -90,6 +83,7 @@ export interface TimetableGridReportProps {
   workingDays?: number[];
   startHour?: number;
   endHour?: number;
+  hideInstructor?: boolean;
 }
 
 export function TimetableGridReport({
@@ -97,7 +91,9 @@ export function TimetableGridReport({
   workingDays: workingDaysProp,
   startHour: startHourProp,
   endHour: endHourProp,
+  hideInstructor = false,
 }: TimetableGridReportProps) {
+  const [selected, setSelected] = useState<TimetableReportSession | null>(null);
   const workingDays = useMemo(() => {
     // Configured working days win; otherwise fall back to the standard RTL week.
     if (workingDaysProp?.length) return orderWeekDaysRtl(workingDaysProp);
@@ -134,93 +130,142 @@ export function TimetableGridReport({
   }
 
   return (
-    <div className="report-timetable-grid overflow-auto border rounded-md" dir="rtl">
-      <div
-        className="grid min-w-[640px]"
-        style={{ gridTemplateColumns: `80px repeat(${workingDays.length}, minmax(160px, 1fr))` }}
-      >
-        <div className="bg-muted/40 border-b border-l p-2 text-xs font-medium sticky top-0 z-10">
-          الوقت
-        </div>
-        {workingDays.map((d) => (
-          <div
-            key={d}
-            className="bg-muted/40 border-b border-l p-2 text-xs font-medium text-center sticky top-0 z-10"
-          >
-            {WEEK_DAY_LABELS_AR[d] ?? String(d)}
+    <>
+      <div className="report-timetable-grid overflow-auto border rounded-md" dir="rtl">
+        <div
+          className="grid min-w-[640px]"
+          style={
+            {
+              "--report-days": workingDays.length,
+              gridTemplateColumns: `80px repeat(${workingDays.length}, minmax(160px, 1fr))`,
+            } as CSSProperties
+          }
+        >
+          <div className="bg-muted/40 border-b border-l p-2 text-xs font-medium sticky top-0 z-10">
+            الوقت
           </div>
-        ))}
-
-        <div className="border-l" style={{ height: totalHeight }}>
-          {slots.map((s) => (
+          {workingDays.map((d) => (
             <div
-              key={s.mins}
-              className="text-[10px] text-muted-foreground p-1 border-b"
-              style={{ height: SLOT_PX }}
+              key={d}
+              className="bg-muted/40 border-b border-l p-2 text-xs font-medium text-center sticky top-0 z-10"
             >
-              {s.label}
+              {WEEK_DAY_LABELS_AR[d] ?? String(d)}
             </div>
           ))}
-        </div>
 
-        {workingDays.map((d) => {
-          const placed = placedByDay.get(d) ?? [];
-          return (
-            <div key={d} className="relative border-l" style={{ height: totalHeight }}>
-              {slots.map((s) => (
-                <div
-                  key={s.mins}
-                  className="border-b bg-background/50"
-                  style={{ height: SLOT_PX }}
-                />
-              ))}
-              {placed.map(({ session: sess, lane, laneCount }) => {
-                const top = ((toMins(sess.start_time) - startHour * 60) / 60) * SLOT_PX;
-                const height = ((toMins(sess.end_time) - toMins(sess.start_time)) / 60) * SLOT_PX;
-                if (top < 0 || height <= 0) return null;
-                const widthPct = 100 / laneCount;
-                const rightPct = lane * widthPct;
-                return (
+          <div className="border-l" style={{ height: totalHeight }}>
+            {slots.map((s) => (
+              <div
+                key={s.mins}
+                className="text-[10px] text-muted-foreground p-1 border-b"
+                style={{ height: SLOT_PX }}
+              >
+                {s.label}
+              </div>
+            ))}
+          </div>
+
+          {workingDays.map((d) => {
+            const placed = placedByDay.get(d) ?? [];
+            return (
+              <div key={d} className="relative border-l" style={{ height: totalHeight }}>
+                {slots.map((s) => (
                   <div
-                    key={sess.id}
-                    className={cn(
-                      "absolute rounded border text-right p-1.5 text-xs overflow-hidden",
-                      colorByType(sess.session_type),
-                    )}
-                    style={{
-                      top: top + 1,
-                      height: height - 2,
-                      width: `calc(${widthPct}% - 4px)`,
-                      right: `calc(${rightPct}% + 2px)`,
-                    }}
-                    title={courseTitle(sess)}
-                  >
-                    <div className="font-semibold truncate text-[11px]">{courseTitle(sess)}</div>
-                    <div className="text-[10px] truncate text-muted-foreground">
-                      {sessionTypeLabel(sess.session_type)}
-                      {sess.instructor_name ? ` · ${sess.instructor_name}` : ""}
-                    </div>
-                    <div className="text-[10px] truncate text-muted-foreground">
-                      {sess.room_label || "—"}
-                      {sess.section_number ? ` · ش${sess.section_number}` : ""}
-                      {sess.cohort_label ? ` · ${sess.cohort_label}` : ""}
-                      {sess.delivery_group_label ? ` · ${sess.delivery_group_label}` : ""}
-                    </div>
-                    <div className="flex gap-1 mt-0.5 flex-wrap">
-                      <span className="text-[9px] bg-background/70 rounded px-1">
-                        {sess.start_time.slice(0, 5)}–{sess.end_time.slice(0, 5)}
-                      </span>
-                      <span className="text-[9px] bg-background/70 rounded px-1">
-                        {studySystemLabel(sess.study_system)}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })}
+                    key={s.mins}
+                    className="border-b bg-background/50"
+                    style={{ height: SLOT_PX }}
+                  />
+                ))}
+                {placed.map(({ session: sess, lane, laneCount }) => {
+                  const top = ((toMins(sess.start_time) - startHour * 60) / 60) * SLOT_PX;
+                  const height = ((toMins(sess.end_time) - toMins(sess.start_time)) / 60) * SLOT_PX;
+                  if (top < 0 || height <= 0) return null;
+                  const widthPct = 100 / laneCount;
+                  const rightPct = lane * widthPct;
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => setSelected(sess)}
+                      key={sess.id}
+                      className={cn(
+                        "absolute rounded border text-right p-1.5 text-xs overflow-hidden",
+                        colorByType(sess.session_type),
+                      )}
+                      style={{
+                        top: top + 1,
+                        height: height - 2,
+                        width: `calc(${widthPct}% - 4px)`,
+                        right: `calc(${rightPct}% + 2px)`,
+                      }}
+                      aria-label={`${courseTitle(sess)}، ${sess.start_time.slice(0, 5)}، ${sess.room_label}`}
+                      title={courseTitle(sess)}
+                    >
+                      <div className="font-semibold line-clamp-2 text-sm leading-snug">
+                        {sess.course_name}
+                      </div>
+                      <div className="text-xs truncate text-foreground/80">
+                        {sessionTypeLabel(sess.session_type)}
+                        {!hideInstructor && sess.instructor_name
+                          ? ` · ${sess.instructor_name}`
+                          : ""}
+                      </div>
+                      <div className="text-xs truncate text-foreground/80">
+                        {sess.room_label || "—"}
+                        {sess.section_number ? ` · ش${sess.section_number}` : ""}
+
+                        {sess.delivery_group_label ? ` · ${sess.delivery_group_label}` : ""}
+                      </div>
+                      <div className="flex gap-1 mt-0.5 flex-wrap">
+                        <span className="text-xs bg-background/70 rounded px-1">
+                          {sess.start_time.slice(0, 5)}–{sess.end_time.slice(0, 5)}
+                        </span>
+                        <span className="text-xs bg-background/70 rounded px-1">
+                          {studySystemLabel(sess.study_system)}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
       </div>
-    </div>
+      <Dialog
+        open={!!selected}
+        onOpenChange={(open) => {
+          if (!open) setSelected(null);
+        }}
+      >
+        <DialogContent dir="rtl">
+          <DialogHeader>
+            <DialogTitle>{selected?.course_name}</DialogTitle>
+            <DialogDescription>تفاصيل المحاضرة في النسخة المختارة</DialogDescription>
+          </DialogHeader>
+          {selected && (
+            <dl className="grid grid-cols-2 gap-4 text-sm">
+              {Object.entries({
+                اليوم: WEEK_DAY_LABELS_AR[selected.day_of_week],
+                الوقت: `${selected.start_time.slice(0, 5)} – ${selected.end_time.slice(0, 5)}`,
+                القاعة: selected.room_label,
+                المحاضر: selected.instructor_name,
+                البرنامج: selected.program_name,
+                المستوى: selected.level_name,
+                الدفعة: selected.cohort_label,
+                المجموعة: selected.delivery_group_label || selected.section_number,
+                النوع: sessionTypeLabel(selected.session_type),
+                النظام: studySystemLabel(selected.study_system),
+                "رمز المقرر": selected.course_code,
+              }).map(([label, value]) => (
+                <div key={label}>
+                  <dt className="text-muted-foreground">{label}</dt>
+                  <dd className="mt-1 font-medium">{value || "—"}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

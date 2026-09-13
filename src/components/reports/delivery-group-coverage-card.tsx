@@ -20,7 +20,7 @@ export function DeliveryGroupCoverageCard({
   unscheduled: readonly DeliveryGroupCoverageRow[];
 }) {
   if (summary.totalGroups === 0) return null;
-  const complete = summary.unscheduledGroups === 0;
+  const complete = summary.unscheduledHours === 0;
   return (
     <div className="space-y-3">
       <Card className="min-w-0 p-4" data-testid="coverage-summary">
@@ -40,7 +40,8 @@ export function DeliveryGroupCoverageCard({
             <Badge variant="secondary">الجدول مكتمل لهذه المعايير</Badge>
           ) : (
             <Badge variant="destructive">
-              غير المجدول: {summary.unscheduledGroups} مجموعة / {summary.unscheduledHours} ساعة
+              غير المجدول: {summary.unscheduledGroups + (summary.partialGroups ?? 0)} مجموعة /{" "}
+              {summary.unscheduledHours} ساعة
             </Badge>
           )}
         </div>
@@ -48,7 +49,7 @@ export function DeliveryGroupCoverageCard({
 
       {unscheduled.length > 0 && (
         <Card className="min-w-0 overflow-x-auto p-4" data-testid="unscheduled-groups">
-          <h2 className="mb-2 text-sm font-semibold">مواد/مجموعات غير مجدولة</h2>
+          <h2 className="mb-2 text-sm font-semibold">مجموعات لم تكتمل تغطيتها</h2>
           <table className="w-full min-w-[640px] text-right text-xs">
             <thead className="text-muted-foreground">
               <tr>
@@ -72,9 +73,13 @@ export function DeliveryGroupCoverageCard({
                   </td>
                   <td className="p-2">{g.cohortLabel ?? "—"}</td>
                   <td className="p-2">{g.expectedStudents ?? "—"}</td>
-                  <td className="p-2">{g.requiredHours}</td>
+                  <td className="p-2">
+                    {g.requiredHours} (مجدول: {g.scheduledHours})
+                  </td>
                   <td className="p-2">{g.instructorName ?? "غير مسند"}</td>
-                  <td className="p-2 font-medium text-destructive">{UNSCHEDULED_BADGE_AR}</td>
+                  <td className="p-2 font-medium text-destructive">
+                    {g.scheduled ? "تغطية جزئية" : UNSCHEDULED_BADGE_AR}
+                  </td>
                 </tr>
               ))}
             </tbody>

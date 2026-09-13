@@ -33,7 +33,7 @@ export function ReportKpiRow({ items, className }: { items: ReportKpi[]; classNa
   return (
     <div
       className={cn(
-        "report-no-print grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5",
+        "report-no-print grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-[repeat(auto-fit,minmax(160px,1fr))]",
         className,
       )}
       data-testid="report-kpi-row"
@@ -41,7 +41,7 @@ export function ReportKpiRow({ items, className }: { items: ReportKpi[]; classNa
     >
       {visible.map((kpi) => (
         <Card key={kpi.label} className="min-w-0 p-3">
-          <p className="truncate text-xs text-muted-foreground">{kpi.label}</p>
+          <p className="text-sm text-muted-foreground">{kpi.label}</p>
           <p
             className={cn(
               "mt-1 text-2xl font-bold tabular-nums leading-tight",
@@ -50,9 +50,7 @@ export function ReportKpiRow({ items, className }: { items: ReportKpi[]; classNa
           >
             {kpi.value}
           </p>
-          {kpi.hint && (
-            <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{kpi.hint}</p>
-          )}
+          {kpi.hint && <p className="mt-0.5 text-xs text-muted-foreground">{kpi.hint}</p>}
         </Card>
       ))}
     </div>

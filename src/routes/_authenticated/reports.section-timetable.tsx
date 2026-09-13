@@ -23,7 +23,7 @@ import { fetchSectionTimetableSessions } from "@/lib/reports/queries/session-que
 import { useReportContext } from "@/hooks/reports/useReportContext";
 
 export const Route = createFileRoute("/_authenticated/reports/section-timetable")({
-  head: () => ({ meta: [{ title: "Legacy — تقرير جدول المجموعة (تاريخي)" }] }),
+  head: () => ({ meta: [{ title: "أرشيف — تقرير جدول المجموعة (تاريخي)" }] }),
   component: Page,
 });
 
@@ -43,7 +43,8 @@ function Page() {
         .select("id, section_number, course_id, courses(code, name)")
         .eq("college_id", ctx.collegeId!)
         .eq("term_id", ctx.termId!)
-        .order("section_number");
+        .order("section_number")
+        .throwOnError();
       if (error) throw error;
       return data ?? [];
     },
@@ -78,7 +79,7 @@ function Page() {
       <Card className="report-no-print flex gap-3 border-amber-500/30 bg-amber-500/5 p-4">
         <Archive className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
         <div className="min-w-0 space-y-1 text-sm">
-          <p className="font-medium text-amber-700">تقرير Legacy — للعرض التاريخي فقط (A1.5)</p>
+          <p className="font-medium text-amber-700">تقرير أرشيف — للعرض التاريخي فقط </p>
           <p className="text-xs text-muted-foreground">
             مصدره جداول <code className="text-[11px]">sections</code> المحفوظة للتوافق — قراءة فقط
             ولا تعتمد عليه تدفقات العمل الجديدة. للجداول الحديثة استخدم{" "}
@@ -93,7 +94,7 @@ function Page() {
         </div>
       </Card>
       <ReportShell
-        title="تقرير جدول المجموعة (Legacy)"
+        title="تقرير جدول المجموعة (أرشيف)"
         description="جدول مجموعة واحدة من بيانات المجموعات القديمة المحفوظة."
         filterSummary={ctx.filterSummary}
         reportContext={ctx}

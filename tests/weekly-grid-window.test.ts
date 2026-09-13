@@ -67,7 +67,8 @@ describe("report grid wiring", () => {
 
   it("the report view reads the college scheduling settings", () => {
     expect(view).toContain("useWeeklyGridWindow");
-    expect(view).toContain("workingDays={window.workingDays}");
+    expect(view).toContain("...window.workingDays");
+    expect(view).toContain("workingDays: days");
   });
 
   it("print output sorts by the same RTL week order", () => {

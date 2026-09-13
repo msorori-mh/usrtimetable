@@ -56,13 +56,13 @@ const TIMETABLE_REPORTS: ReportCard[] = [
   {
     to: "/reports/instructor-schedule",
     title: "جدول المحاضر الفردي",
-    desc: "عرض Grid + جدول · نسخة واحدة · قابل للطباعة.",
+    desc: "مواعيد المحاضر وقاعاته ومجموعاته، بعرض أسبوعي أو يومي أو قائمة.",
     icon: <CalendarClock className="h-5 w-5" />,
   },
   {
     to: "/reports/room-timetable",
     title: "جدول القاعة",
-    desc: "عرض Grid + جدول · نسخة واحدة.",
+    desc: "مواعيد إشغال القاعة أو المعمل في الأسبوع.",
     icon: <DoorOpen className="h-5 w-5" />,
   },
   {
@@ -82,8 +82,8 @@ const ANALYTICS_REPORTS: ReportCard[] = [
   },
   {
     to: "/reports/instructor-workload",
-    title: "أعباء المحاضرين",
-    desc: "تحميل تدريسي أسبوعي · نسخة واحدة · بدون double-count.",
+    title: "العبء المجدول للمحاضرين",
+    desc: "الساعات المجدولة فعليًا ومقارنتها بالحد الأسبوعي؛ يختلف عن تقرير النصاب والإسناد.",
     icon: <UserSquare2 className="h-5 w-5" />,
   },
   {
@@ -98,26 +98,26 @@ const OPERATIONAL_REPORTS: ReportCard[] = [
   {
     to: "/reports/conflicts",
     title: "تعارضات الجدول",
-    desc: "قراءة conflict_results · لا يشغّل Conflict Engine.",
+    desc: "أطراف التعارض ووقته ونتيجة آخر فحص محفوظ.",
     icon: <ShieldAlert className="h-5 w-5" />,
   },
   {
     to: "/reports/data-readiness",
     title: "تقرير جاهزية البيانات",
     linkLabel: "تقرير جاهزية البيانات — التقارير",
-    desc: "فحوص الجاهزية · قابل للتصدير · على مستوى الكلية (تقرير التقارير).",
+    desc: "ما ينقص بيانات الكلية والإجراءات اللازمة لاستكمالها.",
     icon: <ClipboardCheck className="h-5 w-5" />,
   },
   {
     to: "/reports/unscheduled",
     title: "المحاضرات غير المجدوَلة",
-    desc: "الناقص vs المطلوب · أسباب من آخر auto_schedule_run.",
+    desc: "المجموعات التي لم تُسكن أو لم تكتمل ساعاتها في النسخة المختارة.",
     icon: <AlertTriangle className="h-5 w-5" />,
   },
   {
     to: "/reports/quality-summary",
     title: "ملخص الجودة",
-    desc: "آخر quality run · نسخة واحدة · لا يشغّل Quality Engine.",
+    desc: "آخر تقييم محفوظ لكل نسخة، مع تاريخ التقييم ومؤشراته.",
     icon: <Gauge className="h-5 w-5" />,
   },
   {
@@ -132,7 +132,7 @@ const OFFICIAL_REPORTS: ReportCard[] = [
   {
     to: "/reports/published-timetable",
     title: "الجدول المنشور",
-    desc: "تقرير رسمي شامل · published_only · للعرض الإداري والطباعة.",
+    desc: "نسخة منشورة محددة للعرض الرسمي والطباعة.",
     icon: <CheckCircle2 className="h-5 w-5" />,
     badge: "official",
   },
@@ -142,14 +142,14 @@ const LEGACY_REPORTS: ReportCard[] = [
   {
     to: "/reports/section-timetable",
     title: "جدول المجموعة",
-    desc: "Legacy — للعرض التاريخي فقط (مصدره sections المحفوظة). للجداول الحديثة استخدم جدول البرنامج/المستوى.",
+    desc: "للسجلات التاريخية فقط. استخدم جدول البرنامج/المستوى للجداول الحالية.",
     icon: <Users2 className="h-5 w-5" />,
     badge: "legacy",
   },
   {
     to: "/reports/department-schedule",
     title: "جدول الأقسام",
-    desc: "Legacy — لم يُرحّل ويُزال بعد الإطلاق. استخدم جدول البرنامج/المستوى بدلاً منه.",
+    desc: "للسجلات التاريخية فقط. جدول البرنامج/المستوى هو مدخل الجداول الحالية.",
     icon: <Building2 className="h-5 w-5" />,
     badge: "legacy",
   },
@@ -164,27 +164,26 @@ const SECTIONS: {
 }[] = [
   {
     id: "timetable",
-    title: "Timetable Reports — تقارير الجداول الزمنية",
-    description:
-      "جداول أسبوعية (Grid + Table) لمحاضر/قاعة/برنامج — نسخة جدول واحدة · هوية دفعة/مجموعة محاضرات ومعامل.",
+    title: "أريد عرض جدول",
+    description: "اختر جدول المحاضر أو القاعة أو مجموعة الطلاب.",
     items: TIMETABLE_REPORTS,
   },
   {
     id: "analytics",
-    title: "Analytics Reports — تقارير تحليلية",
+    title: "أريد مراجعة الإسناد والأعباء والموارد",
     description: "مؤشرات تحميل واستغلال — للمراجعة الإدارية دون تجميع عبر نسخ متعددة.",
     items: ANALYTICS_REPORTS,
   },
   {
     id: "operational",
-    title: "Operational Reports — تقارير تشغيلية",
+    title: "أريد معرفة النواقص والمشكلات",
     description: "تعارضات، جاهزية، نواقص الجدولة، وجودة — للقراءة فقط من بيانات محفوظة.",
     items: OPERATIONAL_REPORTS,
   },
   {
     id: "official",
-    title: "Official / Published Reports — تقارير رسمية",
-    description: "تقارير منشورة للعرض الرسمي والطباعة أثناء Pilot — لا draft/review.",
+    title: "أريد التقرير المنشور",
+    description: "الجداول المنشورة المتاحة للاستخدام الرسمي.",
     items: OFFICIAL_REPORTS,
     accent: "border-primary/30 bg-primary/5",
   },
@@ -192,7 +191,7 @@ const SECTIONS: {
 
 const LEGACY_SECTION = {
   id: "legacy",
-  title: "Legacy — تقارير قديمة",
+  title: "أرشيف التقارير التاريخية",
   description:
     "تحذير: مسارات محفوظة للتوافق — للعرض التاريخي فقط · يُفضّل البدائل الحديثة في الأقسام أعلاه.",
   items: LEGACY_REPORTS,

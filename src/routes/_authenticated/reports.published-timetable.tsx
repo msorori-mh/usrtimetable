@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { ReportShell } from "@/components/reports/report-shell";
@@ -31,7 +31,7 @@ export const Route = createFileRoute("/_authenticated/reports/published-timetabl
 function Page() {
   const { active } = useActiveCollege();
   const [termId, setTermId] = useState("all");
-  const [versionId, setVersionId] = useState("all");
+  const [versionId, setVersionId] = useState("");
   const [deptId, setDeptId] = useState("all");
   const [progId, setProgId] = useState("all");
   const [lvlId, setLvlId] = useState("all");
@@ -41,14 +41,19 @@ function Page() {
   const [roomId, setRoomId] = useState("all");
   const [search, setSearch] = useState("");
 
-  const { data: terms } = useQuery({
+  const { data: terms, error: termsError } = useQuery({
     queryKey: ["pt-terms", active?.id],
     enabled: !!active,
     queryFn: async () =>
-      (await supabase.from("academic_terms").select("id, name").eq("college_id", active!.id))
-        .data ?? [],
+      (
+        await supabase
+          .from("academic_terms")
+          .select("id, name")
+          .eq("college_id", active!.id)
+          .throwOnError()
+      ).data ?? [],
   });
-  const { data: versions } = useQuery({
+  const { data: versions, error: versionsError } = useQuery({
     queryKey: ["pt-vers", active?.id, termId],
     enabled: !!active,
     queryFn: async () => {
@@ -56,46 +61,63 @@ function Page() {
         .from("schedule_versions")
         .select("id, name, notes, academic_term_id")
         .eq("college_id", active!.id)
-        .eq("status", "published");
+        .eq("status", "published")
+        .order("created_at", { ascending: false });
       if (termId !== "all") q = q.eq("academic_term_id", termId);
-      return (await q).data ?? [];
+      return (await q.throwOnError()).data ?? [];
     },
   });
-  const { data: depts } = useQuery({
+  const { data: depts, error: deptsError } = useQuery({
     queryKey: ["pt-d", active?.id],
     enabled: !!active,
     queryFn: async () =>
-      (await supabase.from("departments").select("id, name").eq("college_id", active!.id)).data ??
-      [],
+      (
+        await supabase
+          .from("departments")
+          .select("id, name")
+          .eq("college_id", active!.id)
+          .throwOnError()
+      ).data ?? [],
   });
-  const { data: progs } = useQuery({
+  const { data: progs, error: progsError } = useQuery({
     queryKey: ["pt-p", active?.id],
     enabled: !!active,
     queryFn: async () =>
-      (await supabase.from("academic_programs").select("id, name").eq("college_id", active!.id))
-        .data ?? [],
+      (
+        await supabase
+          .from("academic_programs")
+          .select("id, name, department_id")
+          .eq("college_id", active!.id)
+          .throwOnError()
+      ).data ?? [],
   });
-  const { data: levels } = useQuery({
+  const { data: levels, error: levelsError } = useQuery({
     queryKey: ["pt-l", active?.id],
     enabled: !!active,
     queryFn: async () =>
-      (await supabase.from("academic_levels").select("id, name").eq("college_id", active!.id))
-        .data ?? [],
+      (
+        await supabase
+          .from("academic_levels")
+          .select("id, name, program_id")
+          .eq("college_id", active!.id)
+          .throwOnError()
+      ).data ?? [],
   });
   // A1.5: New Flow cohort/DG filter sources replace the Legacy sections selector.
-  const { data: cohorts } = useQuery({
+  const { data: cohorts, error: cohortsError } = useQuery({
     queryKey: ["pt-c", active?.id],
     enabled: !!active,
     queryFn: async () =>
       (
         await supabase
           .from("academic_cohorts")
-          .select("id, code")
+          .select("id, code, program_id, level_id, term_id")
           .eq("college_id", active!.id)
           .order("code")
+          .throwOnError()
       ).data ?? [],
   });
-  const { data: deliveryGroups } = useQuery({
+  const { data: deliveryGroups, error: deliveryGroupsError } = useQuery({
     queryKey: ["pt-dg", active?.id],
     enabled: !!active,
     queryFn: async () =>
@@ -105,21 +127,32 @@ function Page() {
           .select("id, group_code, cohort_id")
           .eq("college_id", active!.id)
           .order("group_code")
+          .throwOnError()
       ).data ?? [],
   });
-  const { data: ins } = useQuery({
+  const { data: ins, error: insError } = useQuery({
     queryKey: ["pt-i", active?.id],
     enabled: !!active,
     queryFn: async () =>
-      (await supabase.from("instructors").select("id, full_name").eq("college_id", active!.id))
-        .data ?? [],
+      (
+        await supabase
+          .from("instructors")
+          .select("id, full_name")
+          .eq("college_id", active!.id)
+          .throwOnError()
+      ).data ?? [],
   });
-  const { data: rooms } = useQuery({
+  const { data: rooms, error: roomsError } = useQuery({
     queryKey: ["pt-r", active?.id],
     enabled: !!active,
     queryFn: async () =>
-      (await supabase.from("rooms").select("id, code, name").eq("college_id", active!.id)).data ??
-      [],
+      (
+        await supabase
+          .from("rooms")
+          .select("id, code, name")
+          .eq("college_id", active!.id)
+          .throwOnError()
+      ).data ?? [],
   });
 
   const filteredDeliveryGroups = useMemo(
@@ -130,10 +163,24 @@ function Page() {
     [deliveryGroups, cohortId],
   );
 
-  const versionIds = useMemo(() => {
-    if (versionId !== "all") return [versionId];
-    return (versions ?? []).map((v) => v.id);
+  useEffect(() => {
+    if (!versions) return;
+    if (!versions.some((v) => v.id === versionId)) setVersionId(versions[0]?.id ?? "");
   }, [versions, versionId]);
+  const versionIds = useMemo(
+    () => (versions?.some((v) => v.id === versionId) ? [versionId] : []),
+    [versions, versionId],
+  );
+  const scopedPrograms = (progs ?? []).filter(
+    (p) => deptId === "all" || p.department_id === deptId,
+  );
+  const scopedLevels = (levels ?? []).filter((l) => progId === "all" || l.program_id === progId);
+  const scopedCohorts = (cohorts ?? []).filter(
+    (c) =>
+      (termId === "all" || c.term_id === termId) &&
+      (progId === "all" || c.program_id === progId) &&
+      (lvlId === "all" || c.level_id === lvlId),
+  );
 
   const versionNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -141,7 +188,12 @@ function Page() {
     return map;
   }, [versions]);
 
-  const { data: sessionsBundle, isLoading } = useQuery({
+  const {
+    data: sessionsBundle,
+    isLoading,
+    error: sessionsError,
+    refetch,
+  } = useQuery({
     queryKey: [
       "pt-sess",
       active?.id,
@@ -243,13 +295,37 @@ function Page() {
   return (
     <ReportShell
       title="تقرير الجدول المنشور"
-      description="النسخ ذات حالة (منشور) فقط — تقرير رسمي للعرض الإداري والطباعة."
+      description="محاضرات نسخة منشورة واحدة، مع خيارات البحث والطباعة والتصدير."
       official
       filename="published_timetable"
       rows={rows}
       headers={headers}
       isLoading={isLoading}
-      notReadyMessage={active ? undefined : "اختر كلّية لعرض الجدول المنشور."}
+      error={
+        sessionsError ??
+        termsError ??
+        versionsError ??
+        deptsError ??
+        progsError ??
+        levelsError ??
+        cohortsError ??
+        deliveryGroupsError ??
+        insError ??
+        roomsError
+      }
+      onRetry={() => void refetch()}
+      headerMeta={{
+        termName: terms?.find((t) => t.id === selectedVersion?.academic_term_id)?.name,
+        versionName: selectedVersion?.name,
+        versionStatus: "published",
+      }}
+      notReadyMessage={
+        !active
+          ? "اختر كلّية لعرض الجدول المنشور."
+          : !versionIds.length
+            ? "لا توجد نسخة منشورة في النطاق المختار."
+            : undefined
+      }
       emptyMessage={
         search ? "لا نتائج مطابقة للبحث." : "لا توجد محاضرات في نسخة منشورة بهذه المعايير."
       }
@@ -303,7 +379,7 @@ function Page() {
           ]}
           onClear={() => {
             setTermId("all");
-            setVersionId("all");
+            setVersionId("");
             setDeptId("all");
             setProgId("all");
             setLvlId("all");
@@ -320,7 +396,7 @@ function Page() {
                 value={termId}
                 onChange={(v) => {
                   setTermId(v);
-                  setVersionId("all");
+                  setVersionId("");
                 }}
                 items={[
                   { id: "all", name: "الكل" },
@@ -331,27 +407,33 @@ function Page() {
                 label="النسخة"
                 value={versionId}
                 onChange={setVersionId}
-                items={[
-                  { id: "all", name: "الكل" },
-                  ...(versions ?? []).map((v) => ({ id: v.id, name: v.name })),
-                ]}
+                items={[...(versions ?? []).map((v) => ({ id: v.id, name: v.name }))]}
               />
               <Sel
                 label="البرنامج"
                 value={progId}
-                onChange={setProgId}
+                onChange={(v) => {
+                  setProgId(v);
+                  setLvlId("all");
+                  setCohortId("all");
+                  setDgId("all");
+                }}
                 items={[
                   { id: "all", name: "الكل" },
-                  ...(progs ?? []).map((p) => ({ id: p.id, name: p.name })),
+                  ...scopedPrograms.map((p) => ({ id: p.id, name: p.name })),
                 ]}
               />
               <Sel
                 label="المستوى"
                 value={lvlId}
-                onChange={setLvlId}
+                onChange={(v) => {
+                  setLvlId(v);
+                  setCohortId("all");
+                  setDgId("all");
+                }}
                 items={[
                   { id: "all", name: "الكل" },
-                  ...(levels ?? []).map((l) => ({ id: l.id, name: l.name })),
+                  ...scopedLevels.map((l) => ({ id: l.id, name: l.name })),
                 ]}
               />
             </>
@@ -361,7 +443,13 @@ function Page() {
               <Sel
                 label="القسم"
                 value={deptId}
-                onChange={setDeptId}
+                onChange={(v) => {
+                  setDeptId(v);
+                  setProgId("all");
+                  setLvlId("all");
+                  setCohortId("all");
+                  setDgId("all");
+                }}
                 items={[
                   { id: "all", name: "الكل" },
                   ...(depts ?? []).map((d) => ({ id: d.id, name: d.name })),
@@ -376,7 +464,7 @@ function Page() {
                 }}
                 items={[
                   { id: "all", name: "الكل" },
-                  ...(cohorts ?? []).map((c) => ({ id: c.id, name: c.code ?? c.id })),
+                  ...scopedCohorts.map((c) => ({ id: c.id, name: c.code ?? c.id })),
                 ]}
               />
               <Sel

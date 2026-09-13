@@ -1,3 +1,4 @@
+import { readAllReportRows } from "@/lib/reports/read-all";
 import { supabase } from "@/integrations/supabase/client";
 import type { DeliveryGroupCatalogRow } from "@/lib/reports/program-timetable-coverage";
 
@@ -13,16 +14,19 @@ export async function fetchCohortDeliveryGroupCatalog(params: {
   const cohortIds = [...new Set(params.cohortIds)].filter(Boolean);
   if (!cohortIds.length) return [];
 
-  const { data: groups, error } = await supabase
-    .from("delivery_groups")
-    .select(
-      "id, cohort_id, group_code, group_number, expected_students, component_id, plan_course_id, active, is_obsolete",
-    )
-    .eq("college_id", params.collegeId)
-    .in("cohort_id", cohortIds)
-    .or("active.is.null,active.eq.true")
-    .or("is_obsolete.is.null,is_obsolete.eq.false");
-  if (error) throw error;
+  const groups = await readAllReportRows((from, to) =>
+    supabase
+      .from("delivery_groups")
+      .select(
+        "id, cohort_id, group_code, group_number, expected_students, component_id, plan_course_id, active, is_obsolete",
+      )
+      .eq("college_id", params.collegeId)
+      .in("cohort_id", cohortIds)
+      .or("active.is.null,active.eq.true")
+      .or("is_obsolete.is.null,is_obsolete.eq.false")
+      .order("id")
+      .range(from, to),
+  );
 
   const rows = groups ?? [];
   if (!rows.length) return [];
@@ -119,12 +123,9 @@ export async function fetchCohortDeliveryGroupCatalog(params: {
       ? courseById.get(courseIdByPlanCourse.get(r.plan_course_id) ?? "")
       : undefined;
     const assignment = assignmentByGroup.get(r.id);
-    const requiredHours = Number(
-      assignment?.assigned_component_hours ??
-        assignment?.weekly_hours ??
-        component?.weekly_contact_hours ??
-        0,
-    );
+    const requiredHours = Number(component?.weekly_contact_hours);
+    if (!component || !Number.isFinite(requiredHours) || requiredHours <= 0)
+      throw new Error("ساعات مكوّن مجموعة التدريس غير مكتملة؛ راجع الخطة قبل اعتماد التغطية");
     return {
       id: r.id,
       cohortId: r.cohort_id,

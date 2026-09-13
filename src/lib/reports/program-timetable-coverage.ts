@@ -12,12 +12,7 @@
  */
 
 export type CoverageComponentType =
-  | "theory"
-  | "practical"
-  | "tutorial"
-  | "project"
-  | "summer_training"
-  | (string & {});
+  "theory" | "practical" | "tutorial" | "project" | "summer_training" | (string & {});
 
 export const COMPONENT_TYPE_LABELS_AR: Record<string, string> = {
   theory: "نظري",
@@ -67,6 +62,7 @@ export interface CoverageSummary {
   totalGroups: number;
   scheduledGroups: number;
   unscheduledGroups: number;
+  partialGroups?: number;
   requiredHours: number;
   scheduledHours: number;
   unscheduledHours: number;
@@ -116,6 +112,7 @@ export function buildDeliveryGroupCoverage(input: {
   rows: DeliveryGroupCoverageRow[];
   scheduled: DeliveryGroupCoverageRow[];
   unscheduled: DeliveryGroupCoverageRow[];
+  incomplete: DeliveryGroupCoverageRow[];
   summary: CoverageSummary;
 } {
   const placed = new Map<string, { count: number; hours: number }>();
@@ -151,13 +148,15 @@ export function buildDeliveryGroupCoverage(input: {
     rows,
     scheduled,
     unscheduled,
+    incomplete: rows.filter((r) => r.scheduledHours + 0.01 < r.requiredHours),
     summary: {
       totalGroups: rows.length,
       scheduledGroups: scheduled.length,
       unscheduledGroups: unscheduled.length,
+      partialGroups: scheduled.filter((r) => r.scheduledHours + 0.01 < r.requiredHours).length,
       requiredHours: sum(rows, (r) => r.requiredHours),
       scheduledHours: sum(rows, (r) => r.scheduledHours),
-      unscheduledHours: sum(unscheduled, (r) => r.requiredHours),
+      unscheduledHours: sum(rows, (r) => Math.max(0, r.requiredHours - r.scheduledHours)),
     },
   };
 }
@@ -205,6 +204,8 @@ export function coverageSummaryText(s: CoverageSummary): string {
     `الساعات المجدولة ${s.scheduledHours} من ${s.requiredHours}`,
     s.unscheduledGroups > 0
       ? `غير المجدول: ${s.unscheduledGroups} مجموعة / ${s.unscheduledHours} ساعة`
-      : "لا توجد مجموعات غير مجدولة",
+      : s.unscheduledHours > 0
+        ? `تغطية جزئية: ${s.unscheduledHours} ساعة متبقية`
+        : "لا توجد مجموعات غير مجدولة",
   ].join(" · ");
 }

@@ -216,10 +216,10 @@ function ProgramLevelReport({
       ? null
       : (coverage.rows.find((r) => r.id === view.selected.deliveryGroupId) ?? null);
   const unscheduledInView = selectedCoverageRow
-    ? selectedCoverageRow.scheduled
+    ? selectedCoverageRow.scheduledHours + 0.01 >= selectedCoverageRow.requiredHours
       ? []
       : [selectedCoverageRow]
-    : coverage.unscheduled;
+    : coverage.incomplete;
   // Exports and print stay honest: unscheduled groups are appended as rows.
   const rows = error
     ? []
@@ -238,8 +238,8 @@ function ProgramLevelReport({
           instructor: g.instructorName ?? "",
           room: "",
           study_system: "",
-          hours: g.requiredHours,
-          status: UNSCHEDULED_BADGE_AR,
+          hours: Math.max(0, g.requiredHours - g.scheduledHours),
+          status: g.scheduled ? "تغطية جزئية" : UNSCHEDULED_BADGE_AR,
         })),
       ];
   const totalHours = timetableRows.reduce((sum, r) => sum + Number(r.hours ?? 0), 0);
