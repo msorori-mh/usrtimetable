@@ -171,16 +171,17 @@ function Page() {
       emptyMessage="لا توجد قاعات مسجلة في هذه الكلية."
       kpis={[
         { label: "إجمالي الموارد", value: totals.rooms },
-        { label: "الساعات المستخدمة", value: totals.usedHours, tone: "accent" },
+        { label: `الساعات المستخدمة${scopeSuffix}`, value: totals.usedHours, tone: "accent" },
         { label: "الساعات المتاحة", value: totals.availableHours },
-        { label: "الساعات الفارغة", value: totals.freeHours },
-        { label: "نسبة الاستغلال", value: `${totals.utilization}%`, tone: "accent" },
+        { label: `الساعات الفارغة${scopeSuffix}`, value: totals.freeHours },
+        { label: `نسبة الاستغلال${scopeSuffix}`, value: `${totals.utilization}%`, tone: "accent" },
       ]}
       filters={<ReportFilters context={ctx} />}
       summary={
         <Card className="p-3 text-sm" data-testid="rooms-report-totals">
           <p className="font-semibold">
-            الجلسات في النسخة: {totals.sessions} · صفحات القاعات: {pages.length}
+            {filtered ? "الجلسات ضمن الفلتر" : "الجلسات في النسخة"}: {totals.sessions} · صفحات
+            القاعات: {pages.length}
           </p>
           {totals.sessionsWithoutRoom > 0 && (
             <p className="mt-1 text-muted-foreground">
