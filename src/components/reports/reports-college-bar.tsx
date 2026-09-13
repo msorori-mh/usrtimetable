@@ -42,7 +42,10 @@ export function ReportsCollegeBar() {
           لا توجد كلّيات متاحة لحسابك. تواصل مع المدير العام لإسناد كلّية.
         </span>
       ) : colleges.length === 1 ? (
-        <span className="text-sm font-semibold text-foreground" data-testid="reports-college-single">
+        <span
+          className="text-sm font-semibold text-foreground"
+          data-testid="reports-college-single"
+        >
           {label(colleges[0])}
         </span>
       ) : (
