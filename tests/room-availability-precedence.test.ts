@@ -30,7 +30,9 @@ const snapshot = (over: Partial<Snapshot> = {}): Snapshot =>
     cohorts: [
       { id: "c1", program_id: "p1", level_id: "l1", study_system: "regular", term_id: "t1" },
     ],
-    groups: [{ id: "g1", cohort_id: "c1", expected_students: 20, active: true, is_obsolete: false }],
+    groups: [
+      { id: "g1", cohort_id: "c1", expected_students: 20, active: true, is_obsolete: false },
+    ],
     members: [{ delivery_group_id: "g1", partition_id: "part1", cohort_id: "c1" }],
     partitions: [{ id: "part1", cohort_id: "c1", headcount: 20, active: true }],
     assignments: [{ id: "a1", required_room_type: "computer_lab", is_active: true }],
@@ -103,12 +105,12 @@ describe("room window precedence in feasible()", () => {
 
   it("falls back to rooms.available_* when the room has no availability rows", () => {
     const s = snapshot({ roomAvailability: [] } as Partial<Snapshot>);
-    expect(feasible(s, [original], session({ start_time: "14:00:00", end_time: "16:00:00" }), original)).toBe(
-      false,
-    );
-    expect(feasible(s, [original], session({ start_time: "08:00:00", end_time: "10:00:00" }), original)).toBe(
-      true,
-    );
+    expect(
+      feasible(s, [original], session({ start_time: "14:00:00", end_time: "16:00:00" }), original),
+    ).toBe(false);
+    expect(
+      feasible(s, [original], session({ start_time: "08:00:00", end_time: "10:00:00" }), original),
+    ).toBe(true);
   });
 
   it("keeps room overlap rejection intact inside the authoritative window", () => {
