@@ -30,7 +30,7 @@ const columns = [
   { key: "reason", label: "حالة التغطية", secondary: true },
 ];
 function Page() {
-  const ctx = useReportContext();
+  const ctx = useReportContext({ fixedStudySystem: "all" });
   const [search, setSearch] = useState("");
   const query = useQuery({
     queryKey: ["report-unscheduled-v2", ctx.collegeId, ctx.termId, ctx.versionId],

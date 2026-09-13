@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ReportSection, ReportDataTable } from "@/components/reports/report-section";
 import { useWeeklyGridWindow } from "@/hooks/reports/useWeeklyGridWindow";
@@ -33,6 +33,15 @@ export function ReportTimetableView({
   hideInstructor = false,
 }: Props) {
   const [mode, setMode] = useState<"week" | "day" | "list">("week");
+  useEffect(() => {
+    const media = globalThis.window.matchMedia("(max-width: 767px)");
+    const adapt = () => {
+      if (media.matches) setMode((value) => (value === "week" ? "day" : value));
+    };
+    adapt();
+    media.addEventListener("change", adapt);
+    return () => media.removeEventListener("change", adapt);
+  }, []);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [fullWindow, setFullWindow] = useState(false);
   const { window } = useWeeklyGridWindow(collegeId);
@@ -98,7 +107,7 @@ export function ReportTimetableView({
           </Button>
         )}
       </div>
-      <div className={mode === "week" ? "hidden md:block print:hidden" : "hidden"}>
+      <div className={mode === "week" ? "report-no-print" : "hidden"}>
         <ReportSection
           title="العرض الأسبوعي"
           hint="اختر المحاضرة لقراءة جميع تفاصيلها. الألوان تميز نوع المحاضرة."
@@ -106,15 +115,7 @@ export function ReportTimetableView({
           <TimetableGridReport {...gridProps} />
         </ReportSection>
       </div>
-      <div
-        className={
-          mode === "day"
-            ? "report-no-print"
-            : mode === "week"
-              ? "report-no-print md:hidden"
-              : "hidden"
-        }
-      >
+      <div className={mode === "day" ? "report-no-print" : "hidden"}>
         <div className="mb-3 flex flex-wrap gap-2" role="group" aria-label="أيام الجدول">
           {days.map((d) => (
             <Button
@@ -172,6 +173,10 @@ export function ReportTimetableView({
       </div>
       <div className="hidden print:block">
         <TimetableGridReport {...gridProps} />
+        <div className="report-print-details mt-4">
+          <h2 className="mb-3 text-base font-bold">تفصيل المحاضرات</h2>
+          <ReportDataTable caption="تفصيل محاضرات الجدول" columns={headers} rows={rows} />
+        </div>
       </div>
     </div>
   );

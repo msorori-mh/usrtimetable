@@ -29,7 +29,7 @@ const columns = [
   { key: "capacity", label: "السعة الطلابية", numeric: true, secondary: true },
 ];
 function Page() {
-  const ctx = useReportContext();
+  const ctx = useReportContext({ fixedStudySystem: "all" });
   const [search, setSearch] = useState("");
   const query = useQuery({
     queryKey: ["report-room-utilization-v2", ctx.collegeId, ctx.versionId],

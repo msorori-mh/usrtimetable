@@ -124,7 +124,7 @@ function Page() {
       <Card className="report-no-print flex gap-3 border-amber-500/30 bg-amber-500/5 p-4">
         <Archive className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
         <div className="min-w-0 space-y-1 text-sm">
-          <p className="font-medium text-amber-700">تقرير أرشيف — لم يُرحّل ويُزال بعد الإطلاق</p>
+          <p className="font-medium text-amber-700">تقرير أرشيف — للعرض التاريخي فقط</p>
           <p className="text-xs text-muted-foreground">
             يعرض هوية <code className="text-[11px]">sections</code> القديمة — قراءة فقط ولا تعتمد
             عليه تدفقات العمل الجديدة. استخدم{" "}

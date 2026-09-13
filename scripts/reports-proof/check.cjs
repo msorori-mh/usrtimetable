@@ -29,6 +29,10 @@ const fs = require("node:fs");
     );
     await page.getByRole("button", { name: "أسبوعي", exact: true }).click();
     await page.setViewportSize({ width: 390, height: 844 });
+    await expect(page.getByRole("button", { name: "يومي", exact: true })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     await page.screenshot({ path: `${out}/mobile.png`, fullPage: true });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
       true,
@@ -52,6 +56,8 @@ const fs = require("node:fs");
     await page.emulateMedia({ media: "screen" });
     await page.getByRole("button", { name: "تبديل مثال الاختبار" }).click();
     await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.emulateMedia({ media: "print" });
+    await expect(page.getByRole("button", { name: "طباعة", exact: true })).toBeHidden();
     await page.pdf({
       path: `${out}/timetable.pdf`,
       format: "A4",

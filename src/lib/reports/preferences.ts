@@ -2,7 +2,13 @@
 export function readReportPreference(key: string): Record<string, string> {
   if (typeof window === "undefined") return {};
   try {
-    return JSON.parse(window.sessionStorage.getItem(`reports:${key}`) ?? "{}");
+    const value: unknown = JSON.parse(window.sessionStorage.getItem(`reports:${key}`) ?? "{}");
+    if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+    return Object.fromEntries(
+      Object.entries(value).filter(
+        (entry): entry is [string, string] => typeof entry[1] === "string",
+      ),
+    );
   } catch {
     return {};
   }
@@ -15,3 +21,6 @@ export function writeReportPreference(key: string, value: Record<string, string>
     /* Storage may be disabled. */
   }
 }
+
+/** Safe, actionable scope message; raw database errors remain hidden. */
+export class ReportScopeError extends Error {}

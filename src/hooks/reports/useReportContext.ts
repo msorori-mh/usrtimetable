@@ -1,3 +1,4 @@
+import { ReportScopeError } from "@/lib/reports/preferences";
 import { readReportPreference, writeReportPreference } from "@/lib/reports/preferences";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -16,6 +17,7 @@ export function useReportContext(options: UseReportContextOptions = {}): ReportC
     defaultStatusMode = "specific_version",
     defaultStudySystem = "all",
     fixedStatusMode,
+    fixedStudySystem,
     initialFilters,
   } = options;
 
@@ -29,9 +31,11 @@ export function useReportContext(options: UseReportContextOptions = {}): ReportC
   const [statusMode, setStatusModeState] = useState<ReportStatusMode>(
     initialFilters?.statusMode ?? effectiveDefaultMode,
   );
-  const [studySystem, setStudySystemState] = useState<ReportStudySystem>(
+  const [studySystemState, setStudySystemState] = useState<ReportStudySystem>(
     initialFilters?.studySystem ?? defaultStudySystem,
   );
+
+  const studySystem = fixedStudySystem ?? studySystemState;
 
   /**
    * REPORTS-COLLEGE-SWITCH-01 — switching the active college must not leave the
@@ -172,7 +176,15 @@ export function useReportContext(options: UseReportContextOptions = {}): ReportC
     studySystem,
   ]);
 
-  const error = (termsError ?? versionsError) as Error | null;
+  const linkCollege =
+    typeof window === "undefined"
+      ? null
+      : new URLSearchParams(window.location.search).get("collegeId");
+  const error = (
+    linkCollege && collegeId && linkCollege !== collegeId
+      ? new ReportScopeError("هذا الرابط يخص كلية أخرى؛ اختر الكلية المقصودة من قائمة الكليات.")
+      : (termsError ?? versionsError)
+  ) as Error | null;
   const isLoading =
     collegeLoading ||
     termsLoading ||

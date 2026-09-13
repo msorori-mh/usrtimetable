@@ -21,7 +21,7 @@ const headers = [
   { key: "evidence_status", label: "Evidence" },
   { key: "cohort", label: "Cohort" },
   { key: "delivery_group", label: "Delivery group" },
-  { key: "legacy_section", label: "Legacy section" },
+  { key: "legacy_section", label: "مجموعة أرشيفية" },
   { key: "resolution_detail", label: "Exception / resolution" },
   { key: "conflict_code", label: "رمز التعارض" },
   { key: "message", label: "الرسالة" },
@@ -179,7 +179,7 @@ function Page() {
             },
             { key: "cohort", label: "Cohort", secondary: true },
             { key: "delivery_group", label: "Delivery group", secondary: true },
-            { key: "legacy_section", label: "Legacy section", secondary: true },
+            { key: "legacy_section", label: "مجموعة أرشيفية", secondary: true },
             {
               key: "resolution_detail",
               label: "Exception / resolution",

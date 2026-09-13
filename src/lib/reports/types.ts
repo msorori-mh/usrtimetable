@@ -63,6 +63,8 @@ export interface UseReportContextOptions {
   defaultStudySystem?: ReportStudySystem;
   /** Locks statusMode (e.g. published-only official reports). */
   fixedStatusMode?: ReportStatusMode;
+  /** Reports aggregating all systems must not inherit a narrower saved selection. */
+  fixedStudySystem?: ReportStudySystem;
 }
 
 /** Which unified filter controls a report page exposes. */

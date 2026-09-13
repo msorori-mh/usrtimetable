@@ -924,3 +924,9 @@
     line-height: 1.2;
   }
 }
+
+@media print {
+  .report-print-details {
+    break-before: page;
+  }
+}

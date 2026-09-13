@@ -1,3 +1,4 @@
+import { ReportScopeError } from "@/lib/reports/preferences";
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
@@ -113,6 +114,7 @@ export function ReportShell({
     const params = {
       ...(reportContext
         ? {
+            collegeId: reportContext.collegeId,
             termId: reportContext.termId,
             versionId: reportContext.versionId,
             statusMode: reportContext.statusMode,
@@ -133,7 +135,10 @@ export function ReportShell({
 
   /** One state machine: error → not ready → loading → empty → content. */
   const body = error ? (
-    <ReportErrorState onRetry={onRetry} />
+    <ReportErrorState
+      message={error instanceof ReportScopeError ? error.message : undefined}
+      onRetry={onRetry}
+    />
   ) : notReadyMessage ? (
     <ReportNotReadyState message={notReadyMessage} />
   ) : isLoading ? (
