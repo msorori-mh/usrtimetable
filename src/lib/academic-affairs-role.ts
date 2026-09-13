@@ -64,9 +64,21 @@ export function scopeCollegesForRole<T extends { id: string }>(
   return colleges.filter((c) => allowed.has(c.id));
 }
 
-/** College assignment is mandatory for every role except super_admin. */
-export function requiresCollegeAssignment(
-  role: "super_admin" | "college_admin" | "read_only" | "institutional_viewer",
-): boolean {
-  return role !== "super_admin";
+export type AssignableRole = "super_admin" | "college_admin" | "read_only" | "institutional_viewer";
+
+/**
+ * Academic affairs covers every college, so its assignment is computed
+ * automatically (all current colleges + future ones via database trigger)
+ * instead of being picked by hand.
+ */
+export function assignsAllColleges(role: AssignableRole): boolean {
+  return role === "institutional_viewer";
+}
+
+/**
+ * Manual college assignment is mandatory for college-scoped operational roles.
+ * super_admin is institution-wide; institutional_viewer is auto-assigned.
+ */
+export function requiresCollegeAssignment(role: AssignableRole): boolean {
+  return role !== "super_admin" && !assignsAllColleges(role);
 }
