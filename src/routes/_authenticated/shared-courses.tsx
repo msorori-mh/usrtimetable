@@ -155,7 +155,8 @@ function SharedPage() {
 
   const togglePick = (id: string) => {
     const n = new Set(picked);
-    n.has(id) ? n.delete(id) : n.add(id);
+    if (n.has(id)) n.delete(id);
+    else n.add(id);
     setPicked(n);
   };
 
