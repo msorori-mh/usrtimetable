@@ -13,14 +13,12 @@ import {
 } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ReportFilterBar, ReportFilterField } from "@/components/reports/report-filter-bar";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  ReportSection,
+  ReportDataTable,
+  ReportDisclosure,
+} from "@/components/reports/report-section";
 import {
   analyzeScheduleQuality,
   type AnalyticsSession,
@@ -156,55 +154,59 @@ function QualityAnalyticsPage() {
         rows={exportRows}
         headers={headers}
         isLoading={isLoading}
+        error={undefined}
+        emptyMessage="لا توجد جلسات في هذه النسخة لتحليلها."
+        kpis={
+          report
+            ? [
+                { label: "الدرجة", value: `${report.total_score}/100` },
+                { label: "التصنيف", value: report.classification },
+                { label: "جلسات", value: report.session_count },
+                {
+                  label: "تعارضات",
+                  value: report.hard_conflicts,
+                  tone: report.hard_conflicts > 0 ? ("danger" as const) : ("success" as const),
+                },
+                { label: "تغطية ساعات %", value: report.hours_coverage_pct },
+              ]
+            : undefined
+        }
         filters={
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs text-muted-foreground">نسخة الجدول</label>
-              <Select value={effectiveVersion || undefined} onValueChange={setVersionId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="اختر نسخة" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(versions ?? []).map((v) => (
-                    <SelectItem key={v.id} value={v.id}>
-                      {v.name} ({v.status})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="text-xs text-muted-foreground flex flex-col justify-end gap-1">
-              <Link className="underline" to="/schedule-quality">
-                تشغيل محرك الجودة (كتابة)
-              </Link>
-              <Link className="underline" to="/reports/conflicts">
-                تقرير التعارضات
-              </Link>
-            </div>
-          </div>
+          <ReportFilterBar
+            activeSummary={[
+              `النسخة: ${(versions ?? []).find((v) => v.id === effectiveVersion)?.name ?? "—"}`,
+            ]}
+            basic={
+              <>
+                <ReportFilterField label="نسخة الجدول">
+                  <Select value={effectiveVersion || undefined} onValueChange={setVersionId}>
+                    <SelectTrigger aria-label="نسخة الجدول">
+                      <SelectValue placeholder="اختر نسخة" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(versions ?? []).map((v) => (
+                        <SelectItem key={v.id} value={v.id}>
+                          {v.name} ({v.status})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </ReportFilterField>
+                <div className="report-no-print flex flex-col justify-end gap-1 text-xs text-muted-foreground">
+                  <Link className="underline" to="/schedule-quality">
+                    تشغيل محرك الجودة (كتابة)
+                  </Link>
+                  <Link className="underline" to="/reports/conflicts">
+                    تقرير التعارضات
+                  </Link>
+                </div>
+              </>
+            }
+          />
         }
       >
         {report && (
           <div className="space-y-4 print:space-y-2">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <Kpi label="الدرجة" value={`${report.total_score}/100`} />
-              <Kpi
-                label="التصنيف"
-                value={report.classification}
-                badge={SEVERITY_VARIANT[report.classification]}
-              />
-              <Kpi label="جلسات" value={String(report.session_count)} />
-              <Kpi label="تعارضات" value={String(report.hard_conflicts)} />
-              <Kpi label="غير مجدول" value={String(report.unscheduled_count)} />
-              <Kpi label="فجوات دفعات" value={String(report.cohort_gaps)} />
-              <Kpi label="فجوات محاضر" value={String(report.instructor_gaps)} />
-              <Kpi label="حمل يومي زائد" value={String(report.excessive_daily_load)} />
-              <Kpi label="متتالية طويلة" value={String(report.long_consecutive)} />
-              <Kpi label="إفراط قاعة" value={String(report.room_overuse)} />
-              <Kpi label="سعة" value={String(report.capacity_violations)} />
-              <Kpi label="تغطية ساعات %" value={String(report.hours_coverage_pct)} />
-            </div>
-
             {report.baseline_delta && (
               <Card className="p-3 text-sm">
                 مقارنة بآخر quality run مخزّن: درجة{" "}
@@ -215,48 +217,64 @@ function QualityAnalyticsPage() {
               </Card>
             )}
 
-            <Card className="p-0 overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    {headers.map((h) => (
-                      <TableHead key={h.key}>{h.label}</TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {report.findings.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={headers.length}>
-                        لا توجد ملاحظات — ACCEPTABLE ضمن العتبات المحلية.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    report.findings.map((f) => (
-                      <TableRow key={f.code}>
-                        <TableCell>
-                          <Badge variant={SEVERITY_VARIANT[f.severity]}>{f.severity}</Badge>
-                        </TableCell>
-                        <TableCell>{f.title_ar}</TableCell>
-                        <TableCell>{f.count}</TableCell>
-                        <TableCell>{f.deduction}</TableCell>
-                        <TableCell className="text-xs font-mono">{f.formula}</TableCell>
-                        <TableCell className="text-xs">{f.detail_ar}</TableCell>
-                        <TableCell className="text-xs">{f.link_hint}</TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </Card>
+            <ReportSection
+              title="ملاحظات الجودة"
+              count={report.findings.length}
+              hint="كل ملاحظة تعرض الصيغة والخصم ومصدر المعالجة."
+              bodyClassName="p-0"
+            >
+              {report.findings.length === 0 ? (
+                <p className="p-4 text-sm text-muted-foreground">
+                  لا توجد ملاحظات — ACCEPTABLE ضمن العتبات المحلية.
+                </p>
+              ) : (
+                <ReportDataTable
+                  rows={report.findings}
+                  rowKey={(f) => f.code}
+                  caption="ملاحظات جودة الجدول"
+                  columns={[
+                    {
+                      key: "severity",
+                      label: "التصنيف",
+                      render: (f) => (
+                        <Badge variant={SEVERITY_VARIANT[f.severity]}>{f.severity}</Badge>
+                      ),
+                    },
+                    { key: "title_ar", label: "المؤشر" },
+                    { key: "count", label: "العدد", numeric: true },
+                    { key: "deduction", label: "الخصم", numeric: true },
+                    {
+                      key: "formula",
+                      label: "الصيغة",
+                      secondary: true,
+                      className: "text-xs font-mono",
+                    },
+                    { key: "detail_ar", label: "التفصيل", secondary: true, className: "text-xs" },
+                    { key: "link_hint", label: "رابط", secondary: true, className: "text-xs" },
+                  ]}
+                />
+              )}
+            </ReportSection>
+
+            <ReportSection title="مؤشرات تفصيلية" bodyClassName="p-4">
+              <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+                <Metric label="غير مجدول" value={report.unscheduled_count} />
+                <Metric label="فجوات دفعات" value={report.cohort_gaps} />
+                <Metric label="فجوات محاضر" value={report.instructor_gaps} />
+                <Metric label="حمل يومي زائد" value={report.excessive_daily_load} />
+                <Metric label="متتالية طويلة" value={report.long_consecutive} />
+                <Metric label="إفراط قاعة" value={report.room_overuse} />
+                <Metric label="سعة" value={report.capacity_violations} />
+                <Metric label="تباين توازن القاعات" value={report.room_balance_variance} />
+              </div>
+            </ReportSection>
 
             <EntityTable title="جودة الدفعات" rows={report.cohort_rows} />
             <EntityTable title="جودة المحاضرين" rows={report.instructor_rows} />
             <EntityTable title="جودة القاعات" rows={report.room_rows} />
 
             <Card className="p-3 text-xs text-muted-foreground print:block">
-              ملخص طباعة مختصر · تباين توازن القاعات = {report.room_balance_variance} · توزيع
-              الأيام:{" "}
+              ملخص طباعة مختصر · توزيع الأيام:{" "}
               {Object.entries(report.day_distribution)
                 .sort(([a], [b]) => Number(a) - Number(b))
                 .map(([d, c]) => `${d}:${c}`)
@@ -269,22 +287,12 @@ function QualityAnalyticsPage() {
   );
 }
 
-function Kpi({
-  label,
-  value,
-  badge,
-}: {
-  label: string;
-  value: string;
-  badge?: "destructive" | "secondary" | "outline" | "default";
-}) {
+function Metric({ label, value }: { label: string; value: number | string }) {
   return (
-    <Card className="p-3">
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="mt-1 text-lg font-semibold">
-        {badge ? <Badge variant={badge}>{value}</Badge> : value}
-      </div>
-    </Card>
+    <div className="min-w-0 rounded-md border border-border/60 p-3">
+      <div className="truncate text-xs text-muted-foreground">{label}</div>
+      <div className="mt-1 text-base font-semibold tabular-nums">{value}</div>
+    </div>
   );
 }
 
@@ -303,30 +311,27 @@ function EntityTable({
   }[];
 }) {
   return (
-    <Card className="p-3">
-      <div className="mb-2 font-medium">{title}</div>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>الكيان</TableHead>
-            <TableHead>النظام</TableHead>
-            <TableHead>جلسات</TableHead>
-            <TableHead>ساعات</TableHead>
-            <TableHead>ملاحظات</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.slice(0, 40).map((r) => (
-            <TableRow key={r.entity_id}>
-              <TableCell>{r.label}</TableCell>
-              <TableCell>{r.study_system}</TableCell>
-              <TableCell>{r.session_count}</TableCell>
-              <TableCell>{r.hours}</TableCell>
-              <TableCell className="text-xs">{r.findings.join(", ") || "—"}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </Card>
+    <ReportSection title={title} count={rows.length} bodyClassName="p-3">
+      <ReportDisclosure label="عرض التفاصيل">
+        <ReportDataTable
+          rows={rows.slice(0, 40)}
+          rowKey={(r) => r.entity_id}
+          caption={title}
+          columns={[
+            { key: "label", label: "الكيان" },
+            { key: "study_system", label: "النظام" },
+            { key: "session_count", label: "جلسات", numeric: true },
+            { key: "hours", label: "ساعات", numeric: true },
+            {
+              key: "findings",
+              label: "ملاحظات",
+              secondary: true,
+              className: "text-xs",
+              render: (r) => r.findings.join(", ") || "—",
+            },
+          ]}
+        />
+      </ReportDisclosure>
+    </ReportSection>
   );
 }
