@@ -100,7 +100,7 @@ export function ReportOfficialHeader({
 
         <div className="print-header-title-block min-w-0">
           <p className="print-header-kicker text-[11px] text-muted-foreground print:text-foreground">
-            تقرير رسمي
+            {official ? "تقرير رسمي منشور" : "تقرير أكاديمي"}
           </p>
           <h1 className="min-w-0 break-words text-lg font-bold leading-tight sm:text-xl">
             <span className="print-header-report-title">{reportTitle}</span>
@@ -112,8 +112,8 @@ export function ReportOfficialHeader({
 
         {qrUrl ? (
           <div className="print-header-verification hidden shrink-0 flex-col items-center gap-1 text-[10px] text-muted-foreground print:flex sm:flex">
-            <PrintQrCode value={qrUrl} size={56} title="رابط التحقق" />
-            <span>رابط التحقق</span>
+            <PrintQrCode value={qrUrl} size={56} title="رابط التقرير" />
+            <span>رابط التقرير</span>
           </div>
         ) : (
           <span aria-hidden />

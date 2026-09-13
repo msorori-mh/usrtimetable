@@ -12,7 +12,12 @@
  */
 
 export type CoverageComponentType =
-  "theory" | "practical" | "tutorial" | "project" | "summer_training" | (string & {});
+  | "theory"
+  | "practical"
+  | "tutorial"
+  | "project"
+  | "summer_training"
+  | (string & {});
 
 export const COMPONENT_TYPE_LABELS_AR: Record<string, string> = {
   theory: "نظري",
