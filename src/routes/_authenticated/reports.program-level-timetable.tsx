@@ -5,7 +5,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { ReportShell } from "@/components/reports/report-shell";
 import { ReportFilters } from "@/components/reports/report-filters";
 import { ReportTimetableView } from "@/components/reports/report-timetable-view";
+import { DeliveryGroupCoverageCard } from "@/components/reports/delivery-group-coverage-card";
+import { Card } from "@/components/ui/card";
+import {
+  buildDeliveryGroupCoverage,
+  componentTypeLabel,
+  coverageFilterOption,
+  coverageSummaryText,
+  UNSCHEDULED_BADGE_AR,
+  type CoverageSessionLike,
+} from "@/lib/reports/program-timetable-coverage";
+import { fetchCohortDeliveryGroupCatalog } from "@/lib/reports/queries/delivery-group-coverage-queries";
 import { ProgramTimetablePrint } from "@/components/reports/program-timetable-print";
+
 import {
   Select,
   SelectContent,
