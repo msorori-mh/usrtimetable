@@ -52,6 +52,7 @@ export function ReportOfficialHeader({
   readOnly = true,
   filterSummary,
   generatedAt = new Date(),
+  qrUrl,
 }: Props) {
   const studyLabel = studySystem ? STUDY_SYSTEM_LABELS[studySystem] : undefined;
   const statusLabel = versionStatus ? STATUS_LABEL_AR[versionStatus] : undefined;
