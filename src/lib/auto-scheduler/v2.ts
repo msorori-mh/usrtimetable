@@ -492,6 +492,11 @@ export async function runV2AutoSchedule(params: {
   // rooms/times on that instructor/day. Cache only this rejection for this run;
   // no conflict is ignored and all writes still use the guarded RPC.
   const unavailableInstructorDays = new Map<string, string>();
+  // JAWF-REPAIR-01 bounded repair counters (fill_missing only).
+  let repairAttempts = 0;
+  let repairRelocations = 0;
+  let repairPlacedSessions = 0;
+  let repairMaxDepthUsed = 0;
 
   const difficulties = new Map<
     string,
