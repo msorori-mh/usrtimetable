@@ -107,7 +107,8 @@ function OfferingsPage() {
         <div className="flex-1">
           <h1 className="text-2xl font-bold">مقررات الفصل</h1>
           <p className="text-sm text-muted-foreground">
-            الطروحات الأكاديمية طبقة توافق داخلية يتم توليدها آليًا من بيانات الدفعات والخطط الدراسية.
+            الطروحات الأكاديمية طبقة توافق داخلية يتم توليدها آليًا من بيانات الدفعات والخطط
+            الدراسية.
           </p>
         </div>
       </header>

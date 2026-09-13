@@ -58,9 +58,7 @@ export function InstructorCombobox({
           className="w-full justify-between font-normal"
         >
           {selected ? (
-            <span className="truncate">
-              {instructorDisplayName(selected)}
-            </span>
+            <span className="truncate">{instructorDisplayName(selected)}</span>
           ) : (
             <span className="text-muted-foreground">اختر مدرساً</span>
           )}
@@ -82,9 +80,7 @@ export function InstructorCombobox({
             }}
           />
           <CommandList>
-            <CommandEmpty data-testid="ta-v2-instructor-empty">
-              لا يوجد مدرس مطابق
-            </CommandEmpty>
+            <CommandEmpty data-testid="ta-v2-instructor-empty">لا يوجد مدرس مطابق</CommandEmpty>
             <CommandGroup>
               {candidates.map((c) => (
                 <CommandItem
@@ -102,9 +98,7 @@ export function InstructorCombobox({
                       value === c.instructor_id ? "opacity-100" : "opacity-0",
                     )}
                   />
-                  <span className="truncate">
-                    {instructorDisplayName(c)}
-                  </span>
+                  <span className="truncate">{instructorDisplayName(c)}</span>
                 </CommandItem>
               ))}
             </CommandGroup>

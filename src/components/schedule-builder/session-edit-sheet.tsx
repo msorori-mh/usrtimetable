@@ -276,7 +276,10 @@ export function SessionEditSheet({
               <dl className="mt-2 border-t pt-2">
                 <Row
                   label="المقرر"
-                  value={entityDisplayName({ name: session.course_name, code: session.course_code })}
+                  value={entityDisplayName({
+                    name: session.course_name,
+                    code: session.course_code,
+                  })}
                 />
                 <Row label="مجموعة المحاضرة أو المعمل" value={session.section_number} />
                 <Row label="المدرس" value={session.instructor_name} />

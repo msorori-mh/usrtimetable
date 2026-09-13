@@ -45,7 +45,9 @@ function MyCollegePage() {
         <Card className="border-warning/40 bg-warning/10 p-6 text-center">
           <ShieldCheck className="mx-auto mb-2 h-6 w-6 text-warning-foreground" />
           <p className="font-medium">لم يتم إسنادك إلى أي كلّية بعد</p>
-          <p className="mt-1 text-sm text-muted-foreground">تواصل مع المدير العام لإسنادك إلى كلّيتك.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            تواصل مع المدير العام لإسنادك إلى كلّيتك.
+          </p>
         </Card>
       )}
 

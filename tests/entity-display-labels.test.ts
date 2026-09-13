@@ -18,9 +18,7 @@ describe("human-readable entity labels", () => {
   });
 
   test("course labels prefer the course name to its code", () => {
-    expect(entityDisplayName({ name: "مقدمة في البرمجة", code: "CS111" })).toBe(
-      "مقدمة في البرمجة",
-    );
+    expect(entityDisplayName({ name: "مقدمة في البرمجة", code: "CS111" })).toBe("مقدمة في البرمجة");
   });
 
   test("instructor labels prefer the name and omit the employee number", () => {

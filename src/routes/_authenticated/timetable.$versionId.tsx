@@ -309,10 +309,7 @@ function TimetablePage() {
   const gridSessions: GridSession[] = useMemo(
     () =>
       (filtered ?? []).map((s: any) => {
-        const courseName = entityDisplayName(
-          s.course_offerings?.courses ?? {},
-          "مقرر غير متاح",
-        );
+        const courseName = entityDisplayName(s.course_offerings?.courses ?? {}, "مقرر غير متاح");
         return {
           id: s.id,
           day_of_week: s.day_of_week,

@@ -107,9 +107,7 @@ function SchedulingHeadcountsPage() {
   });
 
   const termName = new Map(terms.map((term) => [term.id, term.name]));
-  const cohortName = new Map(
-    cohorts.map((cohort) => [cohort.id, cohort.code ?? "دفعة غير مسماة"]),
-  );
+  const cohortName = new Map(cohorts.map((cohort) => [cohort.id, cohort.code ?? "دفعة غير مسماة"]));
   const missing = cohorts.filter(
     (cohort) =>
       !rows.some(
