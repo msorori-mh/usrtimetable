@@ -214,13 +214,17 @@ export const ACADEMIC_REPORT_HEADERS: Record<AcademicReportKind, { key: string; 
       { key: "instructor", label: "عضو هيئة التدريس" },
       { key: "department", label: "القسم التابع له" },
       { key: "rank", label: "الرتبة" },
-      { key: "required", label: "النصاب المعتمد" },
+      { key: "base_required", label: "النصاب الأساسي المعتمد" },
+      { key: "release", label: "التخفيض الإداري" },
+      { key: "required", label: "صافي النصاب المعتمد" },
       { key: "assigned", label: "المسند في الكلية والفصل" },
       { key: "project", label: "إشراف المشاريع" },
       { key: "overload", label: "ساعات زائدة" },
       { key: "deficit", label: "نقص النصاب" },
+      { key: "quota_source", label: "مصدر النصاب" },
       { key: "status", label: "الحالة" },
     ],
+
     assignments: [
       { key: "department", label: "قسم البرنامج" },
       { key: "program", label: "البرنامج" },
