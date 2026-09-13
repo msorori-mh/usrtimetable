@@ -96,7 +96,6 @@ export function ReportShell({
         />
       </div>
 
-
       <div className="report-no-print flex min-w-0 flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 flex-wrap items-center gap-2">

@@ -3,10 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { PrintQrCode } from "@/components/print-center/print-qr-code";
 import { USR_UNIVERSITY_LOGO_SRC } from "@/lib/branding/usr";
-import {
-  REPORT_COLLEGE_NAME_FALLBACK_AR,
-  REPORT_UNIVERSITY_NAME_AR,
-} from "@/lib/reports/branding";
+import { REPORT_COLLEGE_NAME_FALLBACK_AR, REPORT_UNIVERSITY_NAME_AR } from "@/lib/reports/branding";
 import { STUDY_SYSTEM_LABELS } from "@/lib/reports/filters";
 import { STATUS_LABEL_AR, type SVStatus } from "@/lib/schedule-versions/lifecycle";
 import type { ReportStudySystem } from "@/lib/reports/types";
@@ -75,9 +72,7 @@ export function ReportOfficialHeader({
           />
           <div className="print-header-institution-copy">
             <p className="print-header-university">{REPORT_UNIVERSITY_NAME_AR}</p>
-            <p className="print-header-college">
-              {collegeName || REPORT_COLLEGE_NAME_FALLBACK_AR}
-            </p>
+            <p className="print-header-college">{collegeName || REPORT_COLLEGE_NAME_FALLBACK_AR}</p>
           </div>
         </div>
         <div className="print-header-title-block">
