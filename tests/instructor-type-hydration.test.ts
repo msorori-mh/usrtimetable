@@ -1,7 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { buildInstructorCategoryMap } from "../src/lib/instructor-category";
+import {
+  buildInstructorCategoryMap,
+  CATEGORY_LABEL_AR,
+  OTHER_COLLEGE_INSTRUCTOR_LABEL_AR,
+} from "../src/lib/instructor-category";
 
 const root = resolve(import.meta.dir, "..");
 
@@ -29,6 +33,12 @@ describe("instructor type hydration without PostgREST embeds", () => {
     expect(categories.get("missing-type-row")).toBe("permanent");
   });
 
+  test("unifies both non-permanent Arabic category labels", () => {
+    expect(OTHER_COLLEGE_INSTRUCTOR_LABEL_AR).toBe("محاضر من كلية أخرى");
+    expect(CATEGORY_LABEL_AR.other_college).toBe(OTHER_COLLEGE_INSTRUCTOR_LABEL_AR);
+    expect(CATEGORY_LABEL_AR.external).toBe(OTHER_COLLEGE_INSTRUCTOR_LABEL_AR);
+  });
+
   test("validator performs a flat two-query hydration and never embeds instructor_types", () => {
     const source = readFileSync(resolve(root, "src/lib/conflict-engine/validator.ts"), "utf8");
 
@@ -38,5 +48,38 @@ describe("instructor type hydration without PostgREST embeds", () => {
     expect(source.includes('.select("id, code, is_external")')).toBe(true);
     expect(source.includes("instructor_types:instructor_type_id")).toBe(false);
     expect(source.includes("buildInstructorCategoryMap")).toBe(true);
+  });
+
+  test("active UI copy no longer exposes the old external-lecturer wording", () => {
+    const files = [
+      "src/routes/_authenticated/instructor-types.tsx",
+      "src/routes/_authenticated/data-readiness.tsx",
+      "src/lib/conflict-engine/validator.ts",
+      "src/lib/data-onboarding/wizard-steps.ts",
+      "src/lib/data-onboarding/preparation.ts",
+    ];
+    const forbidden = [
+      "محاضر خارجي",
+      "محاضرون خارجيون",
+      "المحاضر الخارجي",
+      "متعاون خارجي",
+      "الخارجيين",
+      "المدرسين الخارجيين",
+    ];
+
+    for (const file of files) {
+      const source = readFileSync(resolve(root, file), "utf8");
+      for (const phrase of forbidden) expect(source.includes(phrase)).toBe(false);
+    }
+  });
+
+  test("migration normalizes legacy instructor-type rows to the unified label", () => {
+    const migration = readFileSync(
+      resolve(root, "supabase/migrations/20260914023000_unify_instructor_category_labels.sql"),
+      "utf8",
+    );
+    expect(migration.includes("محاضر من كلية أخرى")).toBe(true);
+    expect(migration.includes("from_other_college")).toBe(true);
+    expect(migration.includes("external_collaborator")).toBe(true);
   });
 });
