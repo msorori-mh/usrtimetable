@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ReportShell } from "@/components/reports/report-shell";
-import { ReportFilters } from "@/components/reports/report-filters";
+import { ReportFilters, ReportFilterField } from "@/components/reports/report-filters";
 import { ReportTimetableView } from "@/components/reports/report-timetable-view";
 import { DeliveryGroupCoverageCard } from "@/components/reports/delivery-group-coverage-card";
 import { Card } from "@/components/ui/card";
@@ -289,6 +289,30 @@ function ProgramLevelReport({
       rows={rows}
       headers={PROGRAM_TIMETABLE_EXPORT_HEADERS}
       isLoading={isLoading}
+      error={error}
+      onRetry={() => {
+        void refsQuery.refetch();
+        void sessionsQuery.refetch();
+        void catalogQuery.refetch();
+      }}
+      notReadyMessage={
+        !ctx.termId
+          ? "اختر الفصل الدراسي لعرض جدول البرنامج/المستوى."
+          : !ctx.selectedVersion
+            ? "اختر نسخة جدول لعرض المحاضرات."
+            : undefined
+      }
+      kpis={[
+        { label: "مجموعات التدريس", value: coverage.summary.totalGroups },
+        { label: "مجدولة", value: coverage.summary.scheduledGroups, tone: "success" as const },
+        {
+          label: "غير مجدولة",
+          value: coverage.summary.unscheduledGroups,
+          tone: coverage.summary.unscheduledGroups > 0 ? ("danger" as const) : ("success" as const),
+        },
+        { label: "ساعات مطلوبة", value: coverage.summary.requiredHours },
+        { label: "ساعات مجدولة", value: coverage.summary.scheduledHours },
+      ]}
       leading={
         isLoading || error ? null : (
           <DeliveryGroupCoverageCard summary={coverage.summary} unscheduled={unscheduledInView} />
@@ -316,12 +340,11 @@ function ProgramLevelReport({
         />
       }
       filters={
-        <ReportFilters context={ctx}>
-          {filters.map(({ field, label, items }) => (
-            <div key={field}>
-              <label className="text-xs text-muted-foreground" htmlFor={`plt-${field}`}>
-                {label}
-              </label>
+        <ReportFilters
+          context={ctx}
+          extraSummary={academicSummary ? academicSummary.split(" · ") : undefined}
+          advanced={filters.slice(3).map(({ field, label, items }) => (
+            <ReportFilterField key={field} label={label} htmlFor={`plt-${field}`}>
               <Select
                 value={view.selected[field]}
                 onValueChange={(value) => change(field, value)}
@@ -339,7 +362,29 @@ function ProgramLevelReport({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </ReportFilterField>
+          ))}
+        >
+          {filters.slice(0, 3).map(({ field, label, items }) => (
+            <ReportFilterField key={field} label={label} htmlFor={`plt-${field}`}>
+              <Select
+                value={view.selected[field]}
+                onValueChange={(value) => change(field, value)}
+                disabled={isLoading || !!error || !items.length}
+              >
+                <SelectTrigger id={`plt-${field}`}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">الكل</SelectItem>
+                  {items.map((item) => (
+                    <SelectItem key={item.id} value={item.id}>
+                      {item.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </ReportFilterField>
           ))}
         </ReportFilters>
       }
