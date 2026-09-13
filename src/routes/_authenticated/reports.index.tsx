@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 import { Card } from "@/components/ui/card";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import { isReportsOnlyRole } from "@/lib/academic-affairs-role";
+import { isReportsOnlyRole } from "@/lib/viewer-roles";
 import { Badge } from "@/components/ui/badge";
 import {
   UserSquare2,

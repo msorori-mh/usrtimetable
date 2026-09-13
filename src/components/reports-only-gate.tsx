@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import { resolveReportsOnlyRedirect, REPORTS_ONLY_HOME } from "@/lib/academic-affairs-role";
+import { resolveReportsOnlyRedirect, REPORTS_ONLY_HOME } from "@/lib/viewer-roles";
 
 /**
  * Route-level scope gate for the academic-affairs role (`institutional_viewer`).

@@ -18,7 +18,7 @@ export {
   shouldResetTermFilter,
   subscribeActiveCollegeId,
 } from "@/lib/active-college-store";
-import { isReportsOnlyRole, scopeCollegesForRole } from "@/lib/academic-affairs-role";
+import { isReportsOnlyRole, scopeCollegesForRole } from "@/lib/viewer-roles";
 
 export interface CollegeRef {
   id: string;

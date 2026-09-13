@@ -16,7 +16,7 @@ import {
   type AdminPage,
   type Role,
 } from "@/lib/admin-nav";
-import { ACADEMIC_AFFAIRS_ROLE_LABEL_AR } from "@/lib/academic-affairs-role";
+import { ACADEMIC_AFFAIRS_ROLE_LABEL_AR } from "@/lib/viewer-roles";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/admin-tools")({

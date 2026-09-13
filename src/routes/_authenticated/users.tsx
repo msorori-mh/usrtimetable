@@ -23,7 +23,7 @@ import {
   ACADEMIC_AFFAIRS_ROLE_LABEL_AR,
   assignsAllColleges,
   requiresCollegeAssignment,
-} from "@/lib/academic-affairs-role";
+} from "@/lib/viewer-roles";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
