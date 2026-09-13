@@ -299,7 +299,7 @@ function InstructorDirectory() {
   };
 
   const deptMap = useMemo(() => new Map((depts ?? []).map((d) => [d.id, d.name])), [depts]);
-  const typeRows = (types ?? []) as InstructorTypeRow[];
+  const typeRows = useMemo(() => (types ?? []) as InstructorTypeRow[], [types]);
   const typeMap = useMemo(() => new Map(typeRows.map((t) => [t.id, t])), [typeRows]);
   const reviewedRows = review ? rows?.filter((i) => instructorNeedsReview(i, review)) : rows;
   const visibleRows = useMemo(() => {
