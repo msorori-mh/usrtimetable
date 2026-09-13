@@ -46,6 +46,11 @@ export interface ReportContext {
   versionId: string | null;
   selectedVersion: ScheduleVersionOption | null;
   statusMode: ReportStatusMode;
+  /**
+   * PUBLISHED-ONLY-REPORTS-01 — the reports-only viewer (`read_only` alone) may
+   * only read published versions; statusMode is locked to `published_only`.
+   */
+  publishedOnly: boolean;
   studySystem: ReportStudySystem;
   isLoading: boolean;
   error: Error | null;
