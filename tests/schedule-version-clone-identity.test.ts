@@ -101,7 +101,7 @@ function makeQuery(table: string) {
   return query;
 }
 
-mock.module("../src/integrations/supabase/client.ts", {
+mock.module("../src/integrations/supabase/client.ts", () => ({
   namedExports: {
     supabase: {
       auth: {
