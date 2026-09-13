@@ -89,7 +89,6 @@ export function deriveProgramTimetable<T extends PrintSessionLike>(input: {
   deliveryGroupLabels: ReadonlyMap<string, string>;
   /** Catalogue group ids (incl. unscheduled) that stay selectable. */
   selectableDeliveryGroupIds?: readonly string[];
-
 }) {
   const { references: refs, scope } = input;
   const selected = { ...input.selection };
@@ -206,8 +205,6 @@ export function deriveProgramTimetable<T extends PrintSessionLike>(input: {
     scopedCohortIds: [...cohortsById.keys()],
   };
 }
-
-
 
 export function programReportSearchParams(
   scope: ProgramReportScope,

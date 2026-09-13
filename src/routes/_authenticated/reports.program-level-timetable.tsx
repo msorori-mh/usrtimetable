@@ -73,7 +73,6 @@ const PROGRAM_TIMETABLE_EXPORT_HEADERS = [
   { key: "status", label: "الحالة" },
 ];
 
-
 function Page() {
   const [initial] = useState(() =>
     parseProgramReportSearch(
@@ -292,16 +291,12 @@ function ProgramLevelReport({
       isLoading={isLoading}
       leading={
         isLoading || error ? null : (
-          <DeliveryGroupCoverageCard
-            summary={coverage.summary}
-            unscheduled={unscheduledInView}
-          />
+          <DeliveryGroupCoverageCard summary={coverage.summary} unscheduled={unscheduledInView} />
         )
       }
       emptyMessage={
         error ? "تعذّر تحميل بيانات التقرير. أعد المحاولة." : "لا توجد محاضرات بهذه المعايير."
       }
-
       printContent={
         <ProgramTimetablePrint
           context={ctx}
@@ -320,7 +315,6 @@ function ProgramLevelReport({
           }
         />
       }
-
       filters={
         <ReportFilters context={ctx}>
           {filters.map(({ field, label, items }) => (
@@ -371,7 +365,6 @@ function ProgramLevelReport({
           </p>
         </Card>
       ) : null}
-
     </ReportShell>
   );
 }

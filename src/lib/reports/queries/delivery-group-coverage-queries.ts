@@ -81,20 +81,26 @@ export async function fetchCohortDeliveryGroupCatalog(params: {
     ).map((c) => [c.id, c]),
   );
   const courseById = new Map(
-    ((courses.data ?? []) as { id: string; code: string | null; name: string | null }[]).map((c) => [
-      c.id,
-      c,
-    ]),
+    ((courses.data ?? []) as { id: string; code: string | null; name: string | null }[]).map(
+      (c) => [c.id, c],
+    ),
   );
   const courseIdByPlanCourse = new Map(
-    ((planCourses.data ?? []) as { id: string; course_id: string }[]).map((p) => [p.id, p.course_id]),
+    ((planCourses.data ?? []) as { id: string; course_id: string }[]).map((p) => [
+      p.id,
+      p.course_id,
+    ]),
   );
   const instructorById = new Map(
     ((instructors.data ?? []) as { id: string; full_name: string | null }[]).map((i) => [i.id, i]),
   );
   const assignmentByGroup = new Map<
     string,
-    { instructor_id: string | null; weekly_hours: number | null; assigned_component_hours: number | null }
+    {
+      instructor_id: string | null;
+      weekly_hours: number | null;
+      assigned_component_hours: number | null;
+    }
   >();
   for (const a of (assignments.data ?? []) as {
     delivery_group_id: string | null;
