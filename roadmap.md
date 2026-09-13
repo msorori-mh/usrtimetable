@@ -7,3 +7,4 @@
 - [ ] Unify Arabic academic-component terminology across user-facing UI, import/export, print, and operational docs.
 - [ ] Preserve Excel backward compatibility for legacy and new Arabic headers.
 - [ ] Add nomenclature/import contract tests and run focused tests, typecheck, ESLint, and build.
+- [ ] Complete the approved terminology plan now without waiting for further approval.
