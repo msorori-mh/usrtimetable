@@ -95,7 +95,10 @@ function run() {
       dayOverrides: defaultOverrides(days),
     });
     assert(r.selectedDays === 6, "B 6 days with Thursday");
-    assert(r.templates.some((t) => t.day_of_week === 4), "B Thursday in preview");
+    assert(
+      r.templates.some((t) => t.day_of_week === 4),
+      "B Thursday in preview",
+    );
     assert(r.total === 54, `B expected 54 got ${r.total}`);
   }
 
@@ -114,13 +117,25 @@ function run() {
   // D. Toggle Thursday on/off — no stale duplicates
   {
     let enabled = [...DEFAULT_WORKING_DAYS];
-    let r = generateWeeklyTemplates({ ...base, days: enabled, dayOverrides: defaultOverrides(enabled) });
+    let r = generateWeeklyTemplates({
+      ...base,
+      days: enabled,
+      dayOverrides: defaultOverrides(enabled),
+    });
     assert(r.selectedDays === 5, "D start 5");
     enabled = [...enabled, 4];
-    r = generateWeeklyTemplates({ ...base, days: enabled, dayOverrides: defaultOverrides(enabled) });
+    r = generateWeeklyTemplates({
+      ...base,
+      days: enabled,
+      dayOverrides: defaultOverrides(enabled),
+    });
     assert(r.selectedDays === 6, "D enable Thu");
     enabled = enabled.filter((d) => d !== 4);
-    r = generateWeeklyTemplates({ ...base, days: enabled, dayOverrides: defaultOverrides(enabled) });
+    r = generateWeeklyTemplates({
+      ...base,
+      days: enabled,
+      dayOverrides: defaultOverrides(enabled),
+    });
     assert(r.selectedDays === 5, "D disable Thu");
     const keys = r.templates.map(templateKey);
     assert(new Set(keys).size === keys.length, "D no duplicate keys");
@@ -187,9 +202,15 @@ function run() {
       "start/end validation",
     );
     const e2 = validateWeeklySetup({ ...base, days: [] });
-    assert(e2.some((m) => m.includes("يوم دراسي")), "days validation");
+    assert(
+      e2.some((m) => m.includes("يوم دراسي")),
+      "days validation",
+    );
     const e3 = validateWeeklySetup({ ...base, durations: [] });
-    assert(e3.some((m) => m.includes("مدة جلسة")), "duration validation");
+    assert(
+      e3.some((m) => m.includes("مدة جلسة")),
+      "duration validation",
+    );
   }
 
   // Classification A: no existing → all new
@@ -205,7 +226,10 @@ function run() {
   // Classification B: all existing exact
   {
     const r = generateWeeklyTemplates(base);
-    const diff = diffAgainstExisting(r.templates, r.templates.map((t) => ({ ...t, is_active: true })));
+    const diff = diffAgainstExisting(
+      r.templates,
+      r.templates.map((t) => ({ ...t, is_active: true })),
+    );
     assert(diff.toInsert.length === 0, "class B 0 new");
     assert(diff.duplicates.length === 45, "class B 45 existing");
     assert(diff.conflicts.length === 0, "class B 0 conflicts");
@@ -215,7 +239,10 @@ function run() {
   {
     const r = generateWeeklyTemplates({ ...base, days: [6], durations: [120] });
     const half = r.templates.slice(0, 2);
-    const diff = diffAgainstExisting(r.templates, half.map((t) => ({ ...t, is_active: true })));
+    const diff = diffAgainstExisting(
+      r.templates,
+      half.map((t) => ({ ...t, is_active: true })),
+    );
     assert(diff.duplicates.length === 2, "class C existing");
     assert(diff.toInsert.length === r.templates.length - 2, "class C new");
   }
@@ -274,8 +301,14 @@ function run() {
   {
     const r = generateWeeklyTemplates({ ...base, days: [6], durations: [120] });
     const existing = r.templates.slice(0, 1);
-    const diff = diffAgainstExisting(r.templates, existing.map((t) => ({ ...t, is_active: true })));
-    assert(diff.toInsert.every((t) => !existing.some((e) => templateKey(e) === templateKey(t))), "G new only");
+    const diff = diffAgainstExisting(
+      r.templates,
+      existing.map((t) => ({ ...t, is_active: true })),
+    );
+    assert(
+      diff.toInsert.every((t) => !existing.some((e) => templateKey(e) === templateKey(t))),
+      "G new only",
+    );
   }
 
   console.log("PASS weekly-time-templates.harness.ts");

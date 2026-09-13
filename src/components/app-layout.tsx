@@ -34,10 +34,7 @@ import {
   type Role,
 } from "@/lib/admin-nav";
 import { cn } from "@/lib/utils";
-import {
-  ACADEMIC_AFFAIRS_ROLE_LABEL_AR,
-  isReportsOnlyRole,
-} from "@/lib/academic-affairs-role";
+import { ACADEMIC_AFFAIRS_ROLE_LABEL_AR, isReportsOnlyRole } from "@/lib/academic-affairs-role";
 
 type NavMode = "core" | "all";
 
@@ -370,19 +367,19 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </p>
         <CorePathNav steps={coreSteps} pathname={pathname} onNavigate={onNavigate} tone={tone} />
         {!reportsOnly && (
-        <Link
-          to={ADMIN_TOOLS_PAGE.to}
-          onClick={onNavigate}
-          className={cn(
-            "mt-3 flex items-center gap-2 rounded-lg border px-3 py-2 text-[12px] font-semibold transition",
-            tone === "sidebar"
-              ? "border-sidebar-border/60 bg-white/5 text-sidebar-foreground hover:bg-white/10"
-              : "border-border bg-secondary text-primary hover:bg-secondary/80",
-          )}
-        >
-          <LayoutGrid className="h-4 w-4 shrink-0" />
-          {ADMIN_TOOLS_PAGE.label}
-        </Link>
+          <Link
+            to={ADMIN_TOOLS_PAGE.to}
+            onClick={onNavigate}
+            className={cn(
+              "mt-3 flex items-center gap-2 rounded-lg border px-3 py-2 text-[12px] font-semibold transition",
+              tone === "sidebar"
+                ? "border-sidebar-border/60 bg-white/5 text-sidebar-foreground hover:bg-white/10"
+                : "border-border bg-secondary text-primary hover:bg-secondary/80",
+            )}
+          >
+            <LayoutGrid className="h-4 w-4 shrink-0" />
+            {ADMIN_TOOLS_PAGE.label}
+          </Link>
         )}
       </>
     ) : (

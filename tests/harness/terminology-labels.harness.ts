@@ -78,7 +78,10 @@ async function run() {
         catalogRooms!.columns.some((c) => c.header === h),
         `catalog has ${h}`,
       );
-      assert(TEMPLATES.rooms.columns.some((c) => c.header === h), `import has ${h}`);
+      assert(
+        TEMPLATES.rooms.columns.some((c) => c.header === h),
+        `import has ${h}`,
+      );
     }
   }
 

@@ -60,7 +60,9 @@ assert(
   `institutional_viewer appears only on the reports entries (found: ${viewerVisible.join(" | ")})`,
 );
 assert(
-  /export const OPERATIONAL: Role\[\] = \["super_admin", "college_admin", "read_only"\]/.test(layout),
+  /export const OPERATIONAL: Role\[\] = \["super_admin", "college_admin", "read_only"\]/.test(
+    layout,
+  ),
   "OPERATIONAL roles exclude institutional_viewer",
 );
 assert(

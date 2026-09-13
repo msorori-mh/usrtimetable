@@ -24,7 +24,10 @@ assert(
   "RPC authorizes actor in tenant",
 );
 assert(migration.includes("STALE_VERSION_STATUS"), "RPC rejects stale expected status");
-assert(migration.includes("eligibility_revision bigint"), "numeric eligibility revision is persisted");
+assert(
+  migration.includes("eligibility_revision bigint"),
+  "numeric eligibility revision is persisted",
+);
 assert(
   migration.includes("begin_schedule_quality_snapshot") &&
     migration.includes("persist_schedule_quality_run"),
@@ -35,7 +38,10 @@ assert(
   migration.includes("v_quality_revision IS DISTINCT FROM v_version.eligibility_revision"),
   "transition requires exact quality revision",
 );
-assert(migration.includes("QUALITY_RUN_REQUIRED"), "upward transitions require explicit quality evidence");
+assert(
+  migration.includes("QUALITY_RUN_REQUIRED"),
+  "upward transitions require explicit quality evidence",
+);
 assert(migration.includes("QUALITY_RUN_STALE"), "stale quality evidence fails closed");
 assert(migration.includes("pg_advisory_xact_lock"), "eligibility inputs serialize with transition");
 assert(
@@ -55,8 +61,7 @@ assert(
   "direct quality-run forgery is closed",
 );
 assert(
-  migration.includes("ARRAY[v_old_id, v_new_id]") &&
-    migration.includes("ORDER BY ids.x::text"),
+  migration.includes("ARRAY[v_old_id, v_new_id]") && migration.includes("ORDER BY ids.x::text"),
   "OLD and NEW versions are invalidated under deterministic locks",
 );
 assert(

@@ -22,7 +22,8 @@ export const adminListUserMeta = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertInstitutionAdmin(context.userId);
-    const out: Array<{ id: string; last_sign_in_at: string | null; banned_until: string | null }> = [];
+    const out: Array<{ id: string; last_sign_in_at: string | null; banned_until: string | null }> =
+      [];
     let page = 1;
     // paginate up to 10 pages (10000 users)
     for (let i = 0; i < 10; i++) {
@@ -61,7 +62,6 @@ export const adminCreateUser = createServerFn({ method: "POST" })
     if (requiresCollegeAssignment(data.role) && data.college_ids.length === 0) {
       throw new Error("College assignment is required for every role except Super Admin");
     }
-
 
     const { data: created, error: createErr } = await supabaseAdmin.auth.admin.createUser({
       email: data.email,

@@ -21,9 +21,7 @@ const cleanup = read("src/routes/_authenticated/data-cleanup.tsx");
 /* ---------------------------------------------------------------- 1. roles */
 // Role matrix must stay byte-identical in intent to the pre-phase navigation:
 // only these four roles exist, and the restricted entries keep their scope.
-const roleTuples = [...navSrc.matchAll(/roles:\s*(\[[^\]]*\]|ALL|OPERATIONAL)/g)].map(
-  (m) => m[1],
-);
+const roleTuples = [...navSrc.matchAll(/roles:\s*(\[[^\]]*\]|ALL|OPERATIONAL)/g)].map((m) => m[1]);
 assert.ok(
   roleTuples.length > 30,
   `expected role declarations on every page, got ${roleTuples.length}`,
