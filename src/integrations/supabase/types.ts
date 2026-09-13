@@ -4214,6 +4214,21 @@ export type Database = {
         Args: { p_college_id: string; p_schedule_version_id: string }
         Returns: Json
       }
+      schedule_version_room_type_capacity: {
+        Args: { p_college_id: string; p_schedule_version_id: string }
+        Returns: {
+          active_rooms: number
+          balance_hours: number
+          daily_window_hours: number
+          feasible: boolean
+          required_group_hours: number
+          room_type_code: string
+          room_type_id: string
+          room_type_name: string
+          theoretical_available_hours: number
+          working_days: number
+        }[]
+      }
       transition_schedule_version: {
         Args: {
           p_college_id: string
