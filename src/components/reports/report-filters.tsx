@@ -55,6 +55,7 @@ export function ReportFilters({
     versions,
     versionId,
     statusMode: mode,
+    publishedOnly,
     studySystem: system,
     filterSummary,
     setTermId,
@@ -62,6 +63,12 @@ export function ReportFilters({
     setStatusMode,
     setStudySystem,
   } = context;
+
+  /**
+   * PUBLISHED-ONLY-REPORTS-01 — the reports-only viewer never gets the version-scope
+   * selector (draft / review / approved); the locked scope is stated instead.
+   */
+  const showStatusMode = statusMode && !publishedOnly;
 
   const clear = () => {
     setStatusMode("specific_version");
