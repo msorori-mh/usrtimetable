@@ -51,12 +51,7 @@ export function orderAttendanceMoves(snapshot: Snapshot, target: Session[]): Mov
               pending.some(
                 (next) =>
                   next.id !== old.id &&
-                  feasible(
-                    snapshot,
-                    trial,
-                    next,
-                    current.find((s) => s.id === next.id)!,
-                  ),
+                  feasible(snapshot, trial, next, current.find((s) => s.id === next.id)!),
               )
             ) {
               buffer = candidate;

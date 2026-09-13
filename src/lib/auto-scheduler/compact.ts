@@ -124,7 +124,12 @@ export interface Move {
   room_id: string;
 }
 export type SearchOutcome =
-  "local_minimum" | "time_limit" | "candidate_limit" | "pass_limit" | "cancelled" | "empty";
+  | "local_minimum"
+  | "time_limit"
+  | "candidate_limit"
+  | "pass_limit"
+  | "cancelled"
+  | "empty";
 export interface Proposal {
   attendanceSearch?: import("./attendance-search.ts").AttendanceSearchResult;
   executionBlocked?: string;
