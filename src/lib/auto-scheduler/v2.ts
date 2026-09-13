@@ -158,10 +158,14 @@ export async function runV2AutoSchedule(params: {
     { data: rooms, error: roomsError },
     { data: templates, error: templatesError },
     { data: existingSessions, error: sessionsError },
+    { data: roomTypeRows, error: roomTypesError },
+    { data: roomAvailabilityRows, error: roomAvailabilityError },
   ] = await Promise.all([
     supabase
       .from("rooms")
-      .select("id, capacity, room_type, room_type_id")
+      .select(
+        "id, capacity, room_type, room_type_id, available_days, available_start_time, available_end_time",
+      )
       .eq("college_id", params.collegeId)
       .order("capacity", { ascending: true }),
     supabase
@@ -175,8 +179,18 @@ export async function runV2AutoSchedule(params: {
         "id, day_of_week, start_time, end_time, room_id, instructor_id, cohort_id, delivery_group_id, teaching_assignment_id",
       )
       .eq("schedule_version_id", params.scheduleVersionId),
+    supabase.from("room_types").select("id, code").eq("college_id", params.collegeId),
+    supabase
+      .from("room_availability")
+      .select("room_id, day_of_week, start_time, end_time")
+      .eq("college_id", params.collegeId),
   ]);
   if (roomsError) throw new Error(`V2_AUTO_QUERY_FAILED[rooms]: ${roomsError.message}`);
+  if (roomTypesError) throw new Error(`V2_AUTO_QUERY_FAILED[room_types]: ${roomTypesError.message}`);
+  if (roomAvailabilityError) {
+    throw new Error(`V2_AUTO_QUERY_FAILED[room_availability]: ${roomAvailabilityError.message}`);
+  }
+
   if (templatesError) {
     throw new Error(`V2_AUTO_QUERY_FAILED[time_slot_templates]: ${templatesError.message}`);
   }
