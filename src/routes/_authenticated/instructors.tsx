@@ -50,6 +50,15 @@ import {
 } from "@/lib/data-onboarding/instructor-review";
 import { AdminExportMenu } from "@/components/admin-export-menu";
 import { activeFilters, instructorsExportDataset } from "@/lib/admin-export/datasets";
+import {
+  DEFAULT_DIRECTORY_FILTERS,
+  INSTRUCTOR_SORT_LABEL_AR,
+  filterAndSortInstructors,
+  hasActiveDirectoryFilters,
+  type DirectoryFilters,
+  type InstructorSortKey,
+} from "@/lib/instructors/directory-filters";
+
 
 export const Route = createFileRoute("/_authenticated/instructors")({
   head: () => ({ meta: [{ title: "المحاضرون" }] }),
