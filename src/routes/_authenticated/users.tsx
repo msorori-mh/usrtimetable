@@ -21,6 +21,7 @@ import {
   ACADEMIC_AFFAIRS_CREATE_NOTE_AR,
   ACADEMIC_AFFAIRS_ROLE_HINT_AR,
   ACADEMIC_AFFAIRS_ROLE_LABEL_AR,
+  assignsAllColleges,
   requiresCollegeAssignment,
 } from "@/lib/academic-affairs-role";
 import { Button } from "@/components/ui/button";
