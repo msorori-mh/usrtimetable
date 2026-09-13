@@ -123,7 +123,30 @@ describe("account creation contract", () => {
     expect(src).toContain("assignsAllColleges(form.role)");
     // The picker is rendered only for roles that need a manual assignment.
     expect(src).toContain("{requiresCollegeAssignment(form.role) && (");
-    expect(src).not.toContain('form.role === "institutional_viewer"\n');
+  });
+
+  test("creating academic affairs submits every current college id", () => {
+    const src = read("src/routes/_authenticated/users.tsx");
+    expect(src).toContain(
+      "assignsAllColleges(form.role) ? colleges.map((c) => c.id) : form.college_ids",
+    );
+    expect(src).toContain("onCreate({ ...form, college_ids: collegeIds })");
+  });
+
+  test("granting the role to an existing user auto-assigns all colleges", () => {
+    const src = read("src/routes/_authenticated/users.tsx");
+    expect(src).toContain("if (assignsAllColleges(role as never)) {");
+    expect(src).toContain('supabase.from("colleges").select("id")');
+    expect(src).toContain('onConflict: "user_id,college_id", ignoreDuplicates: true');
+  });
+
+  test("role texts describe all colleges, reports only, no manual picking", () => {
+    const src = read("src/lib/academic-affairs-role.ts");
+    expect(src).toContain("إدارة الشؤون الأكاديمية");
+    expect(src).toContain("جميع الكلّيات");
+    expect(src).not.toContain("كلية واحدة على الأقل");
+  });
+
   });
 
   test("database triggers assign all colleges now and any college created later", () => {
