@@ -135,11 +135,13 @@ function WorkloadPage() {
         offerings: new Set(),
         sources: {},
       };
-      const max = i.max_weekly_hours ?? 0;
+      const hasApprovedLoad =
+        typeof i.max_weekly_hours === "number" && Number.isFinite(i.max_weekly_hours);
+      const approvedLoad = hasApprovedLoad ? i.max_weekly_hours : null;
       const released = i.administrative_release_hours ?? 0;
-      const effective = Math.max(0, max - released);
-      const overload = Math.max(0, agg.hours - effective);
-      const underload = Math.max(0, effective - agg.hours);
+      const effective = approvedLoad === null ? null : Math.max(0, approvedLoad - released);
+      const overload = effective === null ? null : Math.max(0, agg.hours - effective);
+      const underload = effective === null ? null : Math.max(0, effective - agg.hours);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const dep = (i as any).departments?.name ?? "";
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -152,11 +154,12 @@ function WorkloadPage() {
         department: dep,
         rank: i.academic_rank ?? "",
         type: typ,
-        max_weekly_hours: max,
+        approved_load: approvedLoad,
         admin_release: released,
+        effective_load: effective,
         scheduled_hours: Number(agg.hours.toFixed(2)),
-        overload: Number(overload.toFixed(2)),
-        underload: Number(underload.toFixed(2)),
+        overload: overload === null ? null : Number(overload.toFixed(2)),
+        underload: underload === null ? null : Number(underload.toFixed(2)),
         courses_count: agg.offerings.size,
         source_breakdown: srcStr,
       };
@@ -180,9 +183,10 @@ function WorkloadPage() {
     { key: "department", label: "القسم" },
     { key: "rank", label: "الرتبة" },
     { key: "type", label: "النوع" },
-    { key: "max_weekly_hours", label: "الحد الأسبوعي" },
-    { key: "admin_release", label: "خصم إداري" },
-    { key: "scheduled_hours", label: "ساعات مجدوَلة" },
+    { key: "approved_load", label: "النصاب الأساسي المعتمد" },
+    { key: "admin_release", label: "التخفيض الإداري" },
+    { key: "effective_load", label: "صافي النصاب المعتمد" },
+    { key: "scheduled_hours", label: "الساعات المحتسبة" },
     { key: "overload", label: "زيادة" },
     { key: "underload", label: "نقص" },
     { key: "courses_count", label: "عدد المقررات" },
@@ -190,8 +194,9 @@ function WorkloadPage() {
   ];
 
   const totalHours = rows.reduce((sum, r) => sum + Number(r.scheduled_hours ?? 0), 0);
-  const overloaded = rows.filter((r) => Number(r.overload) > 0).length;
-  const underloaded = rows.filter((r) => Number(r.underload) > 0).length;
+  const overloaded = rows.filter((r) => r.overload !== null && Number(r.overload) > 0).length;
+  const underloaded = rows.filter((r) => r.underload !== null && Number(r.underload) > 0).length;
+  const missingApprovedLoad = rows.filter((r) => r.approved_load === null).length;
   const deptLabel =
     deptId === "all" ? "كل الأقسام" : (depts ?? []).find((d) => d.id === deptId)?.name;
   const typeLabel =
@@ -200,7 +205,7 @@ function WorkloadPage() {
   return (
     <ReportShell
       title="تقرير أعباء المحاضرين"
-      description="الساعات المجدولة في نسخة واحدة، ومقارنتها بالحد الأسبوعي المسجل للمحاضر. لتقارير النصاب المعتمد استخدم تقارير الشؤون الأكاديمية."
+      description="الساعات المحتسبة في نسخة الجدول، ومقارنتها بالنصاب الأساسي وصافي النصاب المعتمد بعد التخفيض الإداري."
       filename="instructor_workload"
       rows={rows}
       headers={headers}
@@ -215,6 +220,11 @@ function WorkloadPage() {
         { label: "إجمالي الساعات", value: totalHours.toFixed(2), tone: "accent" },
         { label: "زيادة نصاب", value: overloaded, tone: overloaded > 0 ? "danger" : "neutral" },
         { label: "نقص نصاب", value: underloaded, tone: underloaded > 0 ? "warning" : "neutral" },
+        {
+          label: "نصاب غير محدد",
+          value: missingApprovedLoad,
+          tone: missingApprovedLoad > 0 ? "warning" : "neutral",
+        },
       ]}
       filters={
         <ReportFilters
@@ -260,7 +270,11 @@ function WorkloadPage() {
       <ReportSection
         title="أعباء المحاضرين"
         count={rows.length}
-        hint="الساعات المجدولة مقابل الحد الأسبوعي بعد الخصم الإداري."
+        hint={
+          missingApprovedLoad > 0
+            ? `${missingApprovedLoad} محاضرًا بلا نصاب معتمد؛ استُبعدوا من حساب الزيادة والنقص.`
+            : "الساعات المحتسبة مقابل صافي النصاب المعتمد بعد التخفيض الإداري."
+        }
         bodyClassName="p-0"
       >
         <ReportDataTable
@@ -272,15 +286,28 @@ function WorkloadPage() {
             { key: "department", label: "القسم", secondary: true },
             { key: "rank", label: "الرتبة", secondary: true },
             { key: "type", label: "النوع", secondary: true },
-            { key: "max_weekly_hours", label: "الحد الأسبوعي", numeric: true },
-            { key: "admin_release", label: "خصم إداري", numeric: true, secondary: true },
-            { key: "scheduled_hours", label: "ساعات مجدوَلة", numeric: true },
+            {
+              key: "approved_load",
+              label: "النصاب الأساسي",
+              numeric: true,
+              render: (r) => (r.approved_load === null ? "غير محدد" : String(r.approved_load)),
+            },
+            { key: "admin_release", label: "التخفيض الإداري", numeric: true, secondary: true },
+            {
+              key: "effective_load",
+              label: "صافي النصاب",
+              numeric: true,
+              render: (r) => (r.effective_load === null ? "غير محدد" : String(r.effective_load)),
+            },
+            { key: "scheduled_hours", label: "الساعات المحتسبة", numeric: true },
             {
               key: "overload",
               label: "زيادة",
               numeric: true,
               render: (r) =>
-                Number(r.overload) > 0 ? (
+                r.overload === null ? (
+                  "غير محسوب"
+                ) : Number(r.overload) > 0 ? (
                   <Badge variant="destructive">{r.overload}</Badge>
                 ) : (
                   String(r.overload)
@@ -291,7 +318,9 @@ function WorkloadPage() {
               label: "نقص",
               numeric: true,
               render: (r) =>
-                Number(r.underload) > 0 ? (
+                r.underload === null ? (
+                  "غير محسوب"
+                ) : Number(r.underload) > 0 ? (
                   <Badge variant="secondary">{r.underload}</Badge>
                 ) : (
                   String(r.underload)
