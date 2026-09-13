@@ -121,6 +121,8 @@ type SearchState = {
   roomIds: string[];
   budget: RepairBudget;
   attempts: number;
+  /** Sessions that must never move: the missing candidate and already-planned moves. */
+  pinned: Set<string>;
 };
 
 /** Prefer shorter blockers so short 2h sessions free 3h blocks. */
@@ -137,7 +139,7 @@ function relocate(
   others: Session[],
   depth: number,
 ): { sessions: Session[]; moves: RepairMove[] } | null {
-  if (session.is_locked) return null;
+  if (session.is_locked || state.pinned.has(session.id)) return null;
   const current = placementOf(session);
   const slots = compactSlots({ ...state.snapshot, sessions: others }, session);
   for (const slot of slots) {
@@ -164,7 +166,7 @@ function relocate(
       const blockers = conflictingSessions(state.snapshot, others, candidate);
       if (blockers.length !== 1) continue;
       const blocker = blockers[0];
-      if (blocker.is_locked) continue;
+      if (blocker.is_locked || state.pinned.has(blocker.id)) continue;
       const rest = others.filter((x) => x.id !== blocker.id);
       const inner = relocate(state, blocker, rest, depth - 1);
       if (!inner) continue;
@@ -212,6 +214,7 @@ export function planRepair(input: {
     roomIds: [...input.roomIds],
     budget,
     attempts: 0,
+    pinned: new Set<string>([input.missing.id]),
   };
   const sessions = [...input.sessions];
   const finish = <T>(value: T): T => {
@@ -248,6 +251,7 @@ export function planRepair(input: {
       }
 
       let current: Session[] = [...rest, candidate];
+      state.pinned = new Set<string>([input.missing.id]);
       const moves: RepairMove[] = [];
       let ok = true;
       for (const blocker of [...blockers].sort(byBlockerPreference)) {
@@ -259,6 +263,7 @@ export function planRepair(input: {
         }
         current = relocated.sessions;
         moves.push(...relocated.moves);
+        for (const move of relocated.moves) state.pinned.add(move.sessionId);
       }
       if (!ok || moves.length === 0) continue;
       if (moves.length > budget.maxDepth) continue;
