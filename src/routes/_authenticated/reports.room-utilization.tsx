@@ -9,6 +9,7 @@ import { useReportContext } from "@/hooks/reports/useReportContext";
 import { filterRowsBySearch } from "@/lib/reports/search";
 import { roomUtilizationMetrics } from "@/lib/reports/presentation-metrics";
 import { readAllReportRows } from "@/lib/reports/read-all";
+import { entityDisplayName } from "@/lib/entity-display";
 
 export const Route = createFileRoute("/_authenticated/reports/room-utilization")({
   head: () => ({ meta: [{ title: "تقرير استخدام القاعات" }] }),
@@ -99,7 +100,7 @@ function Page() {
         });
         return {
           ...metrics,
-          room: [room.code, room.name].filter(Boolean).join(" — "),
+          room: entityDisplayName(room),
           room_type: roomTypes.find((t) => t.id === room.room_type_id)?.name_ar ?? "—",
           building: buildings.find((b) => b.id === room.building_id)?.name ?? "—",
           capacity: room.capacity,

@@ -17,6 +17,7 @@ import { Card } from "@/components/ui/card";
 import { Archive } from "lucide-react";
 import { DAY_NAMES_AR, fmtTime } from "@/lib/reports/export";
 import { filterRowsBySearch } from "@/lib/reports/search";
+import { entityDisplayName } from "@/lib/entity-display";
 
 export const Route = createFileRoute("/_authenticated/reports/department-schedule")({
   head: () => ({ meta: [{ title: "أرشيف — تقرير جدول الأقسام (تاريخي)" }] }),
@@ -91,12 +92,12 @@ function Page() {
         program: s.course_offerings?.academic_programs?.name ?? "",
         level: s.course_offerings?.academic_levels?.name ?? "",
         section: s.sections?.section_number ?? "",
-        course: `${s.course_offerings?.courses?.code ?? ""} ${s.course_offerings?.courses?.name ?? ""}`,
+        course: entityDisplayName(s.course_offerings?.courses ?? {}, ""),
         day: DAY_NAMES_AR[s.day_of_week] ?? "",
         time: `${fmtTime(s.start_time)} - ${fmtTime(s.end_time)}`,
         session_type: s.session_type === "lab" ? "عملي" : "نظري",
         instructor: s.instructors?.full_name ?? "",
-        room: s.rooms ? `${s.rooms.code ?? ""} ${s.rooms.name ?? ""}` : "",
+        room: s.rooms ? entityDisplayName(s.rooms, "") : "",
       }));
   }, [sessions, deptId]);
 

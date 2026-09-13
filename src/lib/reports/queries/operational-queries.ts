@@ -16,6 +16,7 @@ import {
   type WorkspaceSessionFlatRow,
   type WorkspaceSessionHydratedRow,
 } from "@/lib/schedule-builder/queries";
+import { entityDisplayName } from "@/lib/entity-display";
 
 export interface ConflictCheckSummary {
   id: string;
@@ -108,7 +109,7 @@ function sessionLabel(s: SessionDetail | undefined): string {
   if (!s) return "";
   const c = s.course_offerings?.courses;
   if (!c) return "مقرر غير متاح";
-  return `${c.code ?? "—"} ${c.name ?? "مقرر غير متاح"}`.trim();
+  return entityDisplayName(c, "مقرر غير متاح");
 }
 
 function sessionTime(s: SessionDetail | undefined): string {
@@ -177,7 +178,7 @@ export async function fetchConflictReportRows(params: {
         message_en: r.message_en,
         course: sessionLabel(primary) || sessionLabel(related),
         instructor: sess?.instructors?.full_name ?? "",
-        room: sess?.rooms ? `${sess.rooms.code ?? ""} ${sess.rooms.name ?? ""}`.trim() : "",
+        room: sess?.rooms ? entityDisplayName(sess.rooms, "") : "",
         cohort: sess?.cohort_id ?? "",
         delivery_group: sess?.delivery_group_id ?? "",
         legacy_section: sess?.sections?.section_number ?? "",

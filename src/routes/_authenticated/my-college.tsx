@@ -54,7 +54,6 @@ function MyCollegePage() {
           <Card key={c.id} className="p-6">
             <p className="text-xs text-muted-foreground">{c.universities?.name}</p>
             <h2 className="mt-1 text-xl font-bold">{c.name}</h2>
-            {c.code && <p className="mt-2 text-sm text-muted-foreground" dir="ltr">رمز الكلّية: {c.code}</p>}
             <p className="mt-4 text-xs text-muted-foreground">
               الأقسام، المواد، والجداول ستضاف في المراحل القادمة.
             </p>

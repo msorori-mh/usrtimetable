@@ -828,7 +828,7 @@ function SourceSheetTermPicker({
             <option value="">— اختر الفصل —</option>
             {terms.map((t) => (
               <option key={t.id} value={t.id}>
-                {t.code} — {t.name}
+                {t.name}
                 {t.term_type ? ` (${t.term_type})` : ""}
               </option>
             ))}
