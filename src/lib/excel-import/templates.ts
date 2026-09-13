@@ -482,14 +482,15 @@ export const TEMPLATES: Record<string, TemplateDef> = {
     label: "الإسناد التدريسي V2 (دفعة + مجموعة تدريس)",
     sheetName: "assignments_v2",
     uniqueKey: "_logical",
-    uniqueKeyLabel: "دفعة + مقرر + مكوّن + مجموعة + محاضر",
+    uniqueKeyLabel: "دفعة + مقرر + محاضرة + مجموعة + محاضر",
     commitMode: "custom",
     columns: [
       { key: "cohort_code", header: "رمز_الدفعة", required: true, example: "CS-L3-2024" },
       { key: "course_code", header: "رمز_المقرر", required: true, example: "CS101" },
       {
         key: "component_type",
-        header: "نوع_المكوّن",
+        header: "نوع_المحاضرة",
+        headerAliases: ["نوع_المكوّن", "نوع_المكون"],
         required: true,
         // summer_training exists in schema but is forbidden for weekly TA import
         enumValues: [...TA_V2_COMPONENT_TYPES],
@@ -504,7 +505,8 @@ export const TEMPLATES: Record<string, TemplateDef> = {
       { key: "employee_number", header: "رقم_الموظف_للمحاضر", required: true, example: "EMP001" },
       {
         key: "assigned_component_hours",
-        header: "ساعات_المكوّن_المسندة",
+        header: "ساعات_المحاضرة_المسندة",
+        headerAliases: ["ساعات_المكوّن_المسندة", "ساعات_المكون_المسندة"],
         type: "number",
         example: "3",
       },
@@ -652,7 +654,7 @@ export async function buildTemplateWorkbook(
       ["لا يوجد عمود section_id أو section_number في هذا القالب."],
       ["summer_training ممنوع في الإسناد الأسبوعي."],
       [
-        "عند التدريس المشترك: عيّن assigned_component_hours لكل محاضر صراحةً، ويجب أن يساوي مجموعها إجمالي ساعات المكوّن؛ لا يوزّع النظام الساعات تلقائيًا.",
+        "عند التدريس المشترك: عيّن assigned_component_hours لكل محاضر صراحةً، ويجب أن يساوي مجموعها إجمالي ساعات المحاضرة؛ لا يوزّع النظام الساعات تلقائيًا.",
       ],
       ["delivery_groups تُولَّد من النظام قبل الاستيراد — لا تُستورد هنا."],
     );
