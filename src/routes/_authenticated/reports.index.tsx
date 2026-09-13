@@ -4,6 +4,8 @@ import { Card } from "@/components/ui/card";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { isReportsOnlyRole } from "@/lib/viewer-roles";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { normalizeSearchText } from "@/lib/reports/search";
 import {
   UserSquare2,
   DoorOpen,
@@ -229,6 +231,16 @@ function ReportGrid({ items }: { items: ReportCard[] }) {
 
 function ReportsHub() {
   const [legacyOpen, setLegacyOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const needle = normalizeSearchText(search);
+  const match = (items: ReportCard[]) =>
+    needle
+      ? items.filter((r) => normalizeSearchText(`${r.title} ${r.desc}`).includes(needle))
+      : items;
+  const visibleSections = SECTIONS.map((s) => ({ ...s, items: match(s.items) })).filter(
+    (s) => s.items.length > 0,
+  );
+  const legacyItems = match(LEGACY_SECTION.items);
   // «مشاهد» stays inside /reports/*: the publishing area is out of scope.
   const { data: me } = useCurrentUser();
   const reportsOnly = isReportsOnlyRole(me);
@@ -254,7 +266,20 @@ function ReportsHub() {
         </div>
       </header>
 
-      {SECTIONS.map((section) => (
+      <div className="relative max-w-md">
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="ابحث عن تقرير…"
+          aria-label="ابحث عن تقرير"
+        />
+      </div>
+
+      {visibleSections.length === 0 && legacyItems.length === 0 && (
+        <p className="text-sm text-muted-foreground">لا يوجد تقرير مطابق لبحثك.</p>
+      )}
+
+      {visibleSections.map((section) => (
         <section
           key={section.id}
           className={`space-y-3 rounded-lg border p-4 ${section.accent ?? "border-border/60"}`}
@@ -267,6 +292,7 @@ function ReportsHub() {
         </section>
       ))}
 
+      {legacyItems.length > 0 && (
       <section
         className={`space-y-3 rounded-lg border p-4 ${LEGACY_SECTION.accent}`}
         data-testid="reports-legacy-section"
@@ -290,8 +316,9 @@ function ReportsHub() {
             className={`h-4 w-4 shrink-0 transition-transform ${legacyOpen ? "rotate-180" : ""}`}
           />
         </button>
-        {legacyOpen && <ReportGrid items={LEGACY_SECTION.items} />}
+        {(legacyOpen || !!needle) && <ReportGrid items={legacyItems} />}
       </section>
+      )}
     </div>
   );
 }
