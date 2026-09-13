@@ -5,7 +5,12 @@
  * full-platform read-only. Neither gains any write here.
  */
 import { describe, expect, it } from "vitest";
-import { ALL, OPERATIONAL, navItemsForRole } from "@/lib/admin-nav";
+import { ADMIN_PAGES, ALL, CORE_PATH, OPERATIONAL, canAccess } from "@/lib/admin-nav";
+
+const visiblePaths = (role: "read_only" | "institutional_viewer") =>
+  [...ADMIN_PAGES.filter((p) => canAccess(p, [role])).map((p) => p.to)].concat(
+    CORE_PATH.filter((s) => canAccess(s, [role])).map((s) => s.to),
+  );
 import {
   INSTITUTIONAL_VIEWER_ROLE_LABEL_AR,
   READ_ONLY_ROLE_LABEL_AR,
@@ -46,7 +51,7 @@ describe("read_only-only account is reports-only", () => {
   });
 
   it("sees reports entries only in the navigation", () => {
-    const paths = navItemsForRole("read_only").map((i) => i.to);
+    const paths = visiblePaths("read_only");
     expect(paths.length).toBeGreaterThan(0);
     expect(paths.every((p) => p === "/reports" || p.startsWith("/reports/"))).toBe(true);
   });
@@ -62,7 +67,7 @@ describe("institutional_viewer-only account browses the platform", () => {
   });
 
   it("sees operational pages plus reports in the navigation", () => {
-    const paths = navItemsForRole("institutional_viewer").map((i) => i.to);
+    const paths = visiblePaths("institutional_viewer");
     expect(paths).toContain("/reports");
     expect(paths.some((p) => !p.startsWith("/reports"))).toBe(true);
     expect(OPERATIONAL).toContain("institutional_viewer");
