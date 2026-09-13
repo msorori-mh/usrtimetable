@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useActiveCollege } from "@/hooks/use-colleges";
+import { usePublishedOnlyReports } from "@/hooks/reports/use-published-only-reports";
 import { buildFilterSummary } from "@/lib/reports/filters";
+import {
+  filterVisibleVersions,
+  resolveReportStatusMode,
+  sanitizeVersionSelection,
+} from "@/lib/reports/published-only";
 import { fetchAcademicTerms, fetchScheduleVersions } from "@/lib/reports/queries/version-queries";
 import type {
   ReportContext,
@@ -17,6 +23,12 @@ export function useReportContext(options: UseReportContextOptions = {}): ReportC
     fixedStatusMode,
     initialFilters,
   } = options;
+
+  /**
+   * PUBLISHED-ONLY-REPORTS-01 — a `read_only`-only account is pinned to published
+   * versions regardless of the page's default / fixed / initial status mode.
+   */
+  const publishedOnly = usePublishedOnlyReports();
 
   const effectiveDefaultMode = fixedStatusMode ?? defaultStatusMode;
 
