@@ -167,4 +167,3 @@ jobs:
         run: |
           createdb -h 127.0.0.1 -U postgres cohort_generation_test
           node --test tests/cohort-plan-generation-db.test.mjs
-

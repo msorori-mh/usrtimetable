@@ -32,6 +32,34 @@ export async function searchAttendance(
   snapshot: Snapshot,
   options: AttendanceSearchOptions = {},
 ): Promise<AttendanceSearchResult> {
+  const started = Date.now();
+  const budget = Math.max(0, options.maxDurationMs ?? 60000);
+  const quick = await runAttendanceSearch(
+    snapshot,
+    {
+      ...options,
+      onAttempt: undefined,
+      maxDurationMs: Math.min(8000, budget / 3),
+      maxEvaluations: Math.min(options.maxEvaluations ?? 1000000, 200000),
+    },
+    Math.max(1, snapshot.settings.slot_minutes || 60),
+  );
+  if (quick.status !== "unknown") {
+    quick.attempts.forEach((a) => options.onAttempt?.(a));
+    return quick;
+  }
+  return runAttendanceSearch(
+    snapshot,
+    { ...options, maxDurationMs: Math.max(0, budget - (Date.now() - started)) },
+    1,
+  );
+}
+
+async function runAttendanceSearch(
+  snapshot: Snapshot,
+  options: AttendanceSearchOptions,
+  step: number,
+): Promise<AttendanceSearchResult> {
   const attempts: AttendanceAttempt[] = [];
   const finish = (
     status: AttendanceSearchStatus,
@@ -97,7 +125,7 @@ export async function searchAttendance(
         for (
           let start = minutes(template.start_time);
           start + length(original) <= minutes(template.end_time);
-          start++
+          start += step
         ) {
           for (const room of snapshot.rooms.filter((r) => r.is_active)) {
             if (stopped()) {
@@ -132,7 +160,12 @@ export async function searchAttendance(
   for (const s of sessions)
     for (const p of ctx.students(s)) {
       const available = studentAvailableDays.get(p) ?? new Set<number>();
-      for (const candidate of domains.get(s.id)!) available.add(candidate.day_of_week);
+      // The coarse pass uses a superset bound: missing off-grid candidates must
+      // never turn its smaller domain into a false capacity proof.
+      for (const template of snapshot.templates.filter(
+        (t) => t.is_active && (t.study_system === s.study_system || t.study_system === "both"),
+      ))
+        available.add(template.day_of_week);
       studentAvailableDays.set(p, available);
     }
   const dailyLimit = (snapshot.settings.max_daily_hours_per_section || 6) * 60;
@@ -208,7 +241,8 @@ export async function searchAttendance(
       }
       return "infeasible";
     };
-    const status = await visit(0);
+    let status = await visit(0);
+    if (status === "infeasible" && step > 1) status = "unknown";
     record(
       days,
       status,

@@ -4,6 +4,7 @@ Target: at most three attendance days per program/level/study-system/term. Four 
 
 ## Implementation
 
+- A fast approved-grid pass first looks for a witness. Its grid exhaustion cannot certify infeasibility; inconclusive results fall through to minute-domain search within the remaining time. Capacity bounds use a superset of all template days, never the smaller grid domain.
 - `attendance-search.ts`: bounded exhaustive finite-domain search over every minute in active templates and compatible rooms. All unlocked sessions are movable; locks, assignments and durations are fixed. Capacity bounds or full domain exhaustion establish infeasibility. Budget exhaustion returns UNKNOWN with no writable proposal.
 - A six-hour student daily cap makes eight two-hour sessions fit as 3–3–2. Candidate ordering prefers contiguous student days and teacher adjacency across programs. This is a feasibility certificate for the day cap, not a proof that secondary gap metrics are globally optimal.
 - `attendance-compaction.ts`: converts a simultaneous witness into legal ordered moves, including a free temporary buffer for swaps where available. The existing authorized atomic RPC remains authoritative; no sequential database fallback is introduced.
