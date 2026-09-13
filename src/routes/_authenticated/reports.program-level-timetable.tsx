@@ -145,19 +145,82 @@ function ProgramLevelReport({
   });
   const references = refsQuery.data ?? EMPTY_REFERENCES;
   const labels = sessionsQuery.data?.labels ?? EMPTY_LABELS;
-  const view = deriveProgramTimetable({
+
+  const catalogQuery = useQuery({
+    queryKey: [
+      "plt-delivery-group-catalog",
+      ctx.collegeId,
+      ctx.termId,
+      references.cohorts.map((c) => c.id).join(","),
+    ],
+    enabled: !!ctx.collegeId && references.cohorts.length > 0,
+    queryFn: () =>
+      fetchCohortDeliveryGroupCatalog({
+        collegeId: ctx.collegeId!,
+        cohortIds: references.cohorts.map((c) => c.id),
+      }),
+  });
+
+  const baseView = deriveProgramTimetable({
     references,
     scope,
     selection: scopedSelection,
     sessions: sessionsQuery.data?.raw ?? [],
     deliveryGroupLabels: labels.deliveryGroups,
   });
-  const error = ctx.error ?? refsQuery.error ?? sessionsQuery.error;
+  const scopedCohortIds = new Set(baseView.scopedCohortIds);
+  const cohortLabels = new Map(baseView.cohorts.map((c) => [c.id, c.name]));
+  const coverage = buildDeliveryGroupCoverage({
+    groups: (catalogQuery.data ?? []).filter((g) => scopedCohortIds.has(g.cohortId)),
+    sessions: baseView.academicSessions as CoverageSessionLike[],
+    cohortLabels: scopedSelection.cohortId === "all" ? cohortLabels : undefined,
+  });
+  const view = deriveProgramTimetable({
+    references,
+    scope,
+    selection: scopedSelection,
+    sessions: sessionsQuery.data?.raw ?? [],
+    deliveryGroupLabels: labels.deliveryGroups,
+    selectableDeliveryGroupIds: coverage.rows.map((r) => r.id),
+  });
+  const error = ctx.error ?? refsQuery.error ?? sessionsQuery.error ?? catalogQuery.error;
   const raw = error ? [] : view.sessions;
   const sessions = mapRawSessions(raw, labels);
-  const rows = timetableSessionsToRows(sessions);
-  const totalHours = rows.reduce((sum, r) => sum + Number(r.hours ?? 0), 0);
-  const isLoading = ctx.isLoading || refsQuery.isLoading || sessionsQuery.isLoading;
+  const timetableRows = timetableSessionsToRows(sessions).map((r) => ({ ...r, status: "مجدول" }));
+  const selectedCoverageRow =
+    view.selected.deliveryGroupId === "all"
+      ? null
+      : (coverage.rows.find((r) => r.id === view.selected.deliveryGroupId) ?? null);
+  const unscheduledInView = selectedCoverageRow
+    ? selectedCoverageRow.scheduled
+      ? []
+      : [selectedCoverageRow]
+    : coverage.unscheduled;
+  // Exports and print stay honest: unscheduled groups are appended as rows.
+  const rows = error
+    ? []
+    : [
+        ...timetableRows,
+        ...unscheduledInView.map((g) => ({
+          department: "",
+          program: "",
+          level: "",
+          cohort: g.cohortLabel ?? "",
+          delivery_group: g.groupCode ?? (g.groupNumber ? `G${g.groupNumber}` : "—"),
+          course: [g.courseCode, g.courseName].filter(Boolean).join(" ") || "—",
+          day: UNSCHEDULED_BADGE_AR,
+          time: UNSCHEDULED_BADGE_AR,
+          session_type: componentTypeLabel(g.componentType),
+          instructor: g.instructorName ?? "",
+          room: "",
+          study_system: "",
+          hours: g.requiredHours,
+          status: UNSCHEDULED_BADGE_AR,
+        })),
+      ];
+  const totalHours = timetableRows.reduce((sum, r) => sum + Number(r.hours ?? 0), 0);
+  const isLoading =
+    ctx.isLoading || refsQuery.isLoading || sessionsQuery.isLoading || catalogQuery.isLoading;
   const change = (field: keyof ProgramReportSelection, value: string) =>
     setState({ scope, selection: changeProgramReportFilter(view.selected, field, value) });
   const search = programReportSearchParams(scope, view.selected);
@@ -168,7 +231,7 @@ function ProgramLevelReport({
     view.programs.find((p) => p.id === view.selected.programId)?.name,
     view.levels.find((l) => l.value === view.selected.levelValue)?.label,
     view.cohorts.find((c) => c.id === view.selected.cohortId)?.name,
-    view.deliveryGroups.find((g) => g.id === view.selected.deliveryGroupId)?.name,
+    selectedCoverageRow?.label,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -185,8 +248,13 @@ function ProgramLevelReport({
       items: view.levels.map((l) => ({ id: l.value, name: l.label })),
     },
     { field: "cohortId", label: "الدفعة الدراسية", items: view.cohorts },
-    { field: "deliveryGroupId", label: "مجموعة المحاضرات/المعامل", items: view.deliveryGroups },
+    {
+      field: "deliveryGroupId",
+      label: "مجموعة المحاضرات/المعامل",
+      items: coverage.rows.map(coverageFilterOption),
+    },
   ];
+
 
   return (
     <ReportShell
