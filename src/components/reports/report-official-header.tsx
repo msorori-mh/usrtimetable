@@ -29,7 +29,7 @@ interface Props extends ReportOfficialHeaderMeta {
   /** Screen-only duplicate of filter summary (optional). */
   filterSummary?: string;
   generatedAt?: Date;
-  /** Canonical URL encoded in the printable verification QR. Defaults to the current report URL. */
+  /** Canonical URL encoded in the printable verification QR.\n   * Defaults to the current report URL. */
   verificationUrl?: string;
 }
 
@@ -76,8 +76,8 @@ export function ReportOfficialHeader({
             className="h-16 w-16 shrink-0 object-contain print:h-14 print:w-14"
           />
           <div className="space-y-1">
-            <p className="text-sm font-semibold text-primary">{REPORT_UNIVERSITY_NAME_AR}</p>
-            <p className="text-base font-bold">{collegeName || REPORT_COLLEGE_NAME_FALLBACK_AR}</p>
+            <p className="text-sm font-semibold text-primary">\n              {REPORT_UNIVERSITY_NAME_AR}\n            </p>
+            <p className="text-base font-bold">\n              {collegeName || REPORT_COLLEGE_NAME_FALLBACK_AR}\n            </p>
           </div>
         </div>
         <div className="flex items-start gap-3 text-left text-xs text-muted-foreground print:text-foreground">
@@ -88,7 +88,7 @@ export function ReportOfficialHeader({
           {resolvedVerificationUrl && (
             <div className="hidden items-center gap-1 print:flex">
               <div>
-                <PrintQrCode value={resolvedVerificationUrl} size={64} title="رابط التحقق من التقرير" />
+                <PrintQrCode\n                  value={resolvedVerificationUrl}\n                  size={64}\n                  title="رابط التحقق من التقرير"\n                />
                 <p className="mt-1 text-center text-[9px]">رابط التحقق</p>
               </div>
             </div>
