@@ -7,7 +7,7 @@
  * PrintSheet; all other report print paths (notably /reports/instructor-schedule)
  * printed the plain screen header, which had no logo and no QR.
  */
-import { describe, expect, test } from "vitest";
+import { describe, expect, test } from "bun:test";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 
