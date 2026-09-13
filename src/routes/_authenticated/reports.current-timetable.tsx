@@ -60,13 +60,13 @@ function Page() {
     error: sessionsError,
     refetch,
   } = useQuery({
-    queryKey: ["current-timetable-print", ctx.collegeId, ctx.versionId],
+    queryKey: ["current-timetable-print", ctx.collegeId, ctx.versionId, ctx.studySystem],
     enabled: !!ctx.collegeId && !!ctx.versionId,
     queryFn: async () => {
       const hydrated = await fetchHydratedVersionSessions({
         collegeId: ctx.collegeId!,
         versionId: ctx.versionId!,
-        studySystem: "all",
+        studySystem: ctx.studySystem,
       });
       const sessions = hydrated as unknown as PrintSessionLike[];
       const labels = await fetchCohortDeliveryGroupLabels(ctx.collegeId!, sessions);
@@ -87,8 +87,11 @@ function Page() {
   const sessions = bundle?.sessions ?? EMPTY_SESSIONS;
   const pages = useMemo(
     () =>
-      groupCurrentSchedulePages(sessions, { collegeId: ctx.collegeId ?? "", studySystem: "all" }),
-    [sessions, ctx.collegeId],
+      groupCurrentSchedulePages(sessions, {
+        collegeId: ctx.collegeId ?? "",
+        studySystem: ctx.studySystem,
+      }),
+    [sessions, ctx.collegeId, ctx.studySystem],
   );
   const rows = useMemo(() => buildExportRows(pages, bundle?.labels), [pages, bundle?.labels]);
   const printedSessions = countPagedSessions(pages);
@@ -116,8 +119,8 @@ function Page() {
       notReadyMessage={ready ? undefined : "اختر نسخة الجدول لطباعتها."}
       emptyMessage="لا توجد جلسات في هذه النسخة."
       kpis={[
-        { label: "المجموعات المجدولة", value: groupsText, tone: "accent" },
-        { label: "الساعات المجدولة", value: hoursText, tone: "accent" },
+        { label: "مجموعات كامل النسخة", value: groupsText, tone: "accent" },
+        { label: "ساعات كامل النسخة", value: hoursText, tone: "accent" },
         { label: "الجلسات", value: sessions.length },
         { label: "صفحات الطباعة", value: pages.length },
       ]}
@@ -125,11 +128,11 @@ function Page() {
       summary={
         <Card className="p-3 text-sm" data-testid="current-timetable-coverage">
           <p className="font-semibold">
-            التغطية الحالية: المجموعات {groupsText} · الساعات {hoursText}
+            تغطية كامل النسخة لجميع الأنظمة: المجموعات {groupsText} · الساعات {hoursText}
           </p>
           <p className="mt-1 text-muted-foreground">
             {dropped === 0
-              ? `تُطبع جميع جلسات النسخة (${printedSessions} جلسة) بدون حذف.`
+              ? `تُطبع جميع الجلسات المطابقة للفلاتر (${printedSessions} جلسة).`
               : `تنبيه: ${dropped} جلسة لم تُدرج في الصفحات — راجع البيانات قبل الطباعة.`}
           </p>
         </Card>
