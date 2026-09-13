@@ -12,14 +12,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { ReportFilterBar, ReportFilterField } from "@/components/reports/report-filter-bar";
+import { ReportSection, ReportDataTable } from "@/components/reports/report-section";
+import { filterRowsBySearch } from "@/lib/reports/search";
 import { listTeachingAssignmentWorkspace } from "@/lib/academic-delivery/teaching-assignments-v2-service";
 import { fetchAcademicTerms } from "@/lib/reports/queries/version-queries";
 import {
@@ -72,6 +67,7 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
   const [programId, setProgramId] = useState("all");
   const [instructorId, setInstructorId] = useState("all");
   const [loadStatus, setLoadStatus] = useState("all");
+  const [search, setSearch] = useState("");
 
   const references = useQuery({
     queryKey: ["academic-affairs-references", collegeId],
@@ -154,7 +150,7 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
         }
       : null;
   const allRows = input ? buildAcademicReport(input, kind) : [];
-  const rows =
+  const statusRows =
     kind === "workload" && loadStatus !== "all"
       ? allRows.filter((r) =>
           loadStatus === "missing"
@@ -164,6 +160,8 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
               : Number(r.deficit) > 0,
         )
       : allRows;
+  // Search only hides rows in the view; exported keys and values stay identical.
+  const rows = filterRowsBySearch(statusRows, search);
   const headers = ACADEMIC_REPORT_HEADERS[kind];
   const programs =
     refs?.programs.filter((p) => departmentId === "all" || p.department_id === departmentId) ?? [];
@@ -196,68 +194,104 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
             ? "تعذر إعداد التقرير؛ حدّث الصفحة للمحاولة مجدداً."
             : "لا توجد بيانات بهذه المعايير."
       }
+      kpis={[
+        { label: "عدد السجلات", value: rows.length },
+        ...(kind === "workload"
+          ? [
+              {
+                label: "ساعات زائدة",
+                value: statusRows.filter((r) => Number(r.overload) > 0).length,
+              },
+              {
+                label: "نقص نصاب",
+                value: statusRows.filter((r) => Number(r.deficit) > 0).length,
+              },
+              {
+                label: "سياسة غير محددة",
+                value: statusRows.filter((r) => r.required === null).length,
+              },
+            ]
+          : []),
+      ]}
       filters={
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <Filter
-            label="نوع التقرير"
-            value={kind}
-            onChange={(v) => setKind(v as AcademicReportKind)}
-            items={Object.entries(ACADEMIC_REPORT_TITLES).map(([id, name]) => ({
-              id,
-              name,
-            }))}
-          />
-          <Filter
-            label="الفصل الدراسي"
-            value={termId}
-            onChange={setChosenTerm}
-            items={refs?.terms ?? []}
-          />
-          <Filter
-            label="القسم"
-            value={departmentId}
-            onChange={(v) => {
-              setDepartmentId(v);
-              setProgramId("all");
-              setInstructorId("all");
-            }}
-            items={[{ id: "all", name: "كل الأقسام" }, ...(refs?.departments ?? [])]}
-          />
-          <Filter
-            label="البرنامج"
-            value={programId}
-            onChange={(v) => {
-              setProgramId(v);
-              setInstructorId("all");
-            }}
-            items={[{ id: "all", name: "كل البرامج" }, ...programs]}
-          />
-          <Filter
-            label="عضو هيئة التدريس"
-            value={instructorId}
-            onChange={setInstructorId}
-            items={[
-              { id: "all", name: "كل أعضاء هيئة التدريس" },
-              ...(refs?.instructors.map((i) => ({
-                id: i.id,
-                name: i.full_name,
-              })) ?? []),
-            ]}
-          />
-          {kind === "workload" && (
-            <Filter
-              label="حالة النصاب"
-              value={loadStatus}
-              onChange={setLoadStatus}
-              items={[
-                { id: "all", name: "الكل" },
-                { id: "overload", name: "الساعات الزائدة" },
-                { id: "deficit", name: "نقص النصاب" },
-                { id: "missing", name: "سياسة النصاب غير محددة" },
-              ]}
-            />
-          )}
-        </div>
+        <ReportFilterBar
+          search={{ value: search, onChange: setSearch, placeholder: "ابحث في نتائج التقرير…" }}
+          activeSummary={filterSummary.split(" · ")}
+          onClear={() => {
+            setDepartmentId("all");
+            setProgramId("all");
+            setInstructorId("all");
+            setLoadStatus("all");
+            setSearch("");
+          }}
+          basic={
+            <>
+              <Filter
+                label="نوع التقرير"
+                value={kind}
+                onChange={(v) => setKind(v as AcademicReportKind)}
+                items={Object.entries(ACADEMIC_REPORT_TITLES).map(([id, name]) => ({
+                  id,
+                  name,
+                }))}
+              />
+              <Filter
+                label="الفصل الدراسي"
+                value={termId}
+                onChange={setChosenTerm}
+                items={refs?.terms ?? []}
+              />
+              <Filter
+                label="القسم"
+                value={departmentId}
+                onChange={(v) => {
+                  setDepartmentId(v);
+                  setProgramId("all");
+                  setInstructorId("all");
+                }}
+                items={[{ id: "all", name: "كل الأقسام" }, ...(refs?.departments ?? [])]}
+              />
+            </>
+          }
+          advanced={
+            <>
+              <Filter
+                label="البرنامج"
+                value={programId}
+                onChange={(v) => {
+                  setProgramId(v);
+                  setInstructorId("all");
+                }}
+                items={[{ id: "all", name: "كل البرامج" }, ...programs]}
+              />
+              <Filter
+                label="عضو هيئة التدريس"
+                value={instructorId}
+                onChange={setInstructorId}
+                items={[
+                  { id: "all", name: "كل أعضاء هيئة التدريس" },
+                  ...(refs?.instructors.map((i) => ({
+                    id: i.id,
+                    name: i.full_name,
+                  })) ?? []),
+                ]}
+              />
+              {kind === "workload" && (
+                <Filter
+                  label="حالة النصاب"
+                  value={loadStatus}
+                  onChange={setLoadStatus}
+                  items={[
+                    { id: "all", name: "الكل" },
+                    { id: "overload", name: "الساعات الزائدة" },
+                    { id: "deficit", name: "نقص النصاب" },
+                    { id: "missing", name: "سياسة النصاب غير محددة" },
+                  ]}
+                />
+              )}
+            </>
+          }
+        />
       }
       leading={
         <>
@@ -283,26 +317,13 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
         </>
       }
     >
-      <Card className="min-w-0 overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {headers.map((h) => (
-                <TableHead key={h.key}>{h.label}</TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((r, index) => (
-              <TableRow key={index}>
-                {headers.map((h) => (
-                  <TableCell key={h.key}>{r[h.key] ?? "—"}</TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
+      <ReportSection title={ACADEMIC_REPORT_TITLES[kind]} count={rows.length} bodyClassName="p-0">
+        <ReportDataTable
+          rows={rows}
+          caption={ACADEMIC_REPORT_TITLES[kind]}
+          columns={headers.map((h) => ({ key: h.key, label: h.label }))}
+        />
+      </ReportSection>
     </ReportShell>
   );
 }
@@ -319,8 +340,7 @@ function Filter({
   items: { id: string; name: string }[];
 }) {
   return (
-    <div>
-      <label className="mb-1 block text-xs text-muted-foreground">{label}</label>
+    <ReportFilterField label={label}>
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger aria-label={label}>
           <SelectValue placeholder="اختر" />
@@ -333,6 +353,6 @@ function Filter({
           ))}
         </SelectContent>
       </Select>
-    </div>
+    </ReportFilterField>
   );
 }
