@@ -32,6 +32,17 @@ export function useReportContext(options: UseReportContextOptions = {}): ReportC
     initialFilters?.studySystem ?? defaultStudySystem,
   );
 
+  /**
+   * REPORTS-COLLEGE-SWITCH-01 — switching the active college must not leave the
+   * previous college's term/version selected while the new lists load.
+   */
+  const [lastCollegeId, setLastCollegeId] = useState<string | null>(collegeId);
+  if (collegeId !== lastCollegeId) {
+    setLastCollegeId(collegeId);
+    setTermIdState(null);
+    setVersionIdState(null);
+  }
+
   const {
     data: terms = [],
     isLoading: termsLoading,
