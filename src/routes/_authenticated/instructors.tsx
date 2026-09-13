@@ -818,11 +818,21 @@ function InstructorDirectory() {
         ) : isLoading ? (
           <p className="p-6 text-center text-muted-foreground">جارٍ التحميل...</p>
         ) : !visibleRows || visibleRows.length === 0 ? (
-          <p className="p-6 text-center text-muted-foreground">
-            {review
-              ? "لا توجد سجلات ناقصة بهذا المعيار في الكلية الحالية."
-              : "لا يوجد محاضرون بعد."}
-          </p>
+          <div className="space-y-2 p-6 text-center text-muted-foreground">
+            <p>
+              {hasActiveDirectoryFilters(directory)
+                ? "لا توجد نتائج مطابقة للبحث أو الفلاتر الحالية."
+                : review
+                  ? "لا توجد سجلات ناقصة بهذا المعيار في الكلية الحالية."
+                  : "لا يوجد محاضرون بعد."}
+            </p>
+            {hasActiveDirectoryFilters(directory) && (
+              <Button variant="outline" onClick={() => setDirectory({ ...DEFAULT_DIRECTORY_FILTERS })}>
+                مسح الفلاتر
+              </Button>
+            )}
+          </div>
+
         ) : (
           <ul className="divide-y divide-border">
             {visibleRows.map((i) => (
