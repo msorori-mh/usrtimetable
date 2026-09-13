@@ -118,11 +118,22 @@ export function filterAndSortInstructors<T extends DirectoryInstructor>(
   return visible
     .map((row, index) => ({ row, index }))
     .sort((a, b) => {
+      // Rows with no value for the sort key stay last in both directions.
+      const am = isMissingSortValue(a.row, filters.sortKey);
+      const bm = isMissingSortValue(b.row, filters.sortKey);
+      if (am !== bm) return am ? 1 : -1;
       const cmp = compare(a.row, b.row, filters.sortKey, departmentName);
       return cmp !== 0 ? cmp * dir : a.index - b.index;
     })
     .map((entry) => entry.row);
 }
+
+function isMissingSortValue(row: DirectoryInstructor, key: InstructorSortKey): boolean {
+  if (key === "quota") return typeof row.max_weekly_hours !== "number";
+  if (key === "employee_number") return !(row.employee_number ?? "").trim();
+  return false;
+}
+
 
 function compare<T extends DirectoryInstructor>(
   a: T,
