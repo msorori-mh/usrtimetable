@@ -33,6 +33,14 @@ import { fetchCollegeReadiness } from "@/lib/reports/readiness";
 import { roomTimeCapacityMessagesAr } from "@/lib/reports/room-time-capacity";
 import { CompactSchedulePanel } from "@/components/compact-panel";
 import { Sparkles, AlertCircle, CheckCircle2 } from "lucide-react";
+import {
+  DeliveryCoverageCard,
+  useDeliveryCoverage,
+} from "@/components/schedule-versions/delivery-coverage-card";
+import {
+  autoRunOutcomeMessage,
+  fetchDeliveryCoverage,
+} from "@/lib/schedule-versions/delivery-coverage";
 
 export const Route = createFileRoute("/_authenticated/auto-schedule")({
   head: () => ({ meta: [{ title: "الجدولة التلقائية" }] }),
@@ -49,6 +57,8 @@ function AutoSchedulePage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [progress, setProgress] = useState<AutoScheduleProgress | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const [outcome, setOutcome] = useState<{ partial: boolean; text: string } | null>(null);
+  const coverage = useDeliveryCoverage({ collegeId: active?.id, scheduleVersionId: versionId });
 
   const { data: versions } = useQuery({
     queryKey: ["sv-for-auto", active?.id],
@@ -145,16 +155,38 @@ function AutoSchedulePage() {
           duration_ms: result.durationMs,
         },
       });
-      return result;
+      // Read-only coverage snapshot so the outcome message cannot claim success
+      // while delivery groups remain unscheduled.
+      let coverageAfter = null;
+      try {
+        coverageAfter = await fetchDeliveryCoverage({
+          collegeId: active.id,
+          scheduleVersionId: versionId,
+        });
+      } catch {
+        coverageAfter = null;
+      }
+      return { ...result, coverageAfter };
     },
     onSuccess: (r) => {
       const delta = r.improvementDelta;
-      toast.success(
-        `وُضع ${r.placed}/${r.totalRequired} — غير مجدول ${r.unplaced.length} — جودة ${r.qualityScoreBefore}→${r.qualityScoreAfter} (${delta >= 0 ? "+" : ""}${delta}) — أُعيد توطين ${r.relocatedSessions}`,
-      );
+      const message = autoRunOutcomeMessage({
+        placed: r.placed,
+        totalRequired: r.totalRequired,
+        unplaced: r.unplaced.length,
+        coverage: r.coverageAfter,
+      });
+      const quality = `جودة ${r.qualityScoreBefore}→${r.qualityScoreAfter} (${delta >= 0 ? "+" : ""}${delta}) — أُعيد توطين ${r.relocatedSessions}`;
+      setOutcome({ partial: message.partial, text: `${message.text} — ${quality}` });
+      if (message.partial) toast.warning(message.text);
+      else toast.success(`${message.text} — ${quality}`);
       qc.invalidateQueries({ queryKey: ["auto-runs"] });
+      qc.invalidateQueries({ queryKey: ["sv-delivery-coverage", active?.id, versionId] });
     },
-    onError: (e) => toast.error((e as Error).message),
+    onError: (e) => {
+      setOutcome(null);
+      toast.error((e as Error).message);
+    },
     onSettled: () => {
       abortRef.current = null;
       setProgress(null);
@@ -244,6 +276,27 @@ function AutoSchedulePage() {
               >
                 جارٍ المعالجة {progress.processedItems} من {progress.totalItems} — تمت جدولة{" "}
                 {progress.placed} جلسة، تعذّرت {progress.unplaced} — الحالي: {progress.label}
+              </div>
+            ) : null}
+            {versionId ? (
+              <DeliveryCoverageCard
+                collegeId={active.id}
+                scheduleVersionId={versionId}
+                coverage={coverage.data}
+                isLoading={coverage.isLoading}
+              />
+            ) : null}
+            {outcome ? (
+              <div
+                className={`rounded-md border p-3 text-sm ${
+                  outcome.partial
+                    ? "border-amber-400 bg-amber-50 text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100"
+                    : "border-emerald-400 bg-emerald-50 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-100"
+                }`}
+                role="status"
+                data-testid={outcome.partial ? "auto-run-partial" : "auto-run-complete"}
+              >
+                {outcome.text}
               </div>
             ) : null}
             {capacityMessages.length > 0 ? (

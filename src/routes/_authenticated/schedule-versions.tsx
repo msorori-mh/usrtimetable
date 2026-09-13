@@ -47,6 +47,11 @@ import {
   cloneVersion,
   type SVStatus,
 } from "@/lib/schedule-versions/lifecycle";
+import {
+  DeliveryCoverageCard,
+  useDeliveryCoverage,
+} from "@/components/schedule-versions/delivery-coverage-card";
+import { coverageBlockers } from "@/lib/schedule-versions/delivery-coverage";
 
 export const Route = createFileRoute("/_authenticated/schedule-versions")({
   head: () => ({ meta: [{ title: "نسخ الجدول الزمني" }] }),
@@ -283,6 +288,13 @@ function VersionCard({
     queryFn: () => evaluateEligibility({ collegeId, scheduleVersionId: v.id }),
   });
 
+  // Mirrors the DB delivery-coverage guard so blockers are visible before acting.
+  const coverage = useDeliveryCoverage({
+    collegeId,
+    scheduleVersionId: v.id,
+    enabled: expanded,
+  });
+
   const events = useQuery({
     queryKey: ["sv-events", v.id],
     enabled: expanded,
@@ -313,6 +325,7 @@ function VersionCard({
       qc.invalidateQueries({ queryKey: ["schedule_versions_list"] });
       qc.invalidateQueries({ queryKey: ["sv-eligibility", v.id] });
       qc.invalidateQueries({ queryKey: ["sv-events", v.id] });
+      qc.invalidateQueries({ queryKey: ["sv-delivery-coverage", collegeId, v.id] });
     },
     onError: (e) => toast.error((e as Error).message),
   });
@@ -360,6 +373,13 @@ function VersionCard({
                 />
                 <Stat label="جودة" value={elig.data.qualityScore ?? "—"} />
               </div>
+              <DeliveryCoverageCard
+                collegeId={collegeId}
+                scheduleVersionId={v.id}
+                coverage={coverage.data}
+                isLoading={coverage.isLoading}
+              />
+
               {elig.data.warnings.length > 0 && (
                 <div className="rounded bg-amber-50 dark:bg-amber-950/30 p-2 text-[11px] flex gap-1">
                   <AlertTriangle className="h-3 w-3 mt-0.5 text-amber-600" />
@@ -374,7 +394,10 @@ function VersionCard({
                   </p>
                 )}
                 {actions.map((a) => {
-                  const blockers = validateGate(a.to, elig.data!);
+                  const blockers = [
+                    ...validateGate(a.to, elig.data!),
+                    ...coverageBlockers(a.to, coverage.data),
+                  ];
                   const blocked = blockers.length > 0;
                   return (
                     <div key={a.to} className="flex flex-col gap-1">
