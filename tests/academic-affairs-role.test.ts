@@ -136,7 +136,13 @@ describe("user-facing wording and route enforcement", () => {
   test("the sidebar hides the navigation-mode toggle and tools gateway", () => {
     const layout = read("src/components/app-layout.tsx");
     expect(layout).toContain("const modeToggle = reportsOnly ? null : (");
-    expect(layout).toContain("{!reportsOnly && (\n        <Link");
+    const toolsIdx = layout.indexOf("to={ADMIN_TOOLS_PAGE.to}");
+    expect(toolsIdx).toBeGreaterThan(0);
+    expect(layout.slice(toolsIdx - 200, toolsIdx)).toContain("!reportsOnly");
+    const mobileIdx = layout.indexOf('data-testid="mobile-navigation-mode-toggle"');
+    expect(mobileIdx).toBeGreaterThan(0);
+    expect(layout.slice(mobileIdx - 500, mobileIdx)).toContain("!reportsOnly");
+    expect(layout).toContain('const effectiveMode: NavMode = reportsOnly ? "core" : mode;');
   });
 
   test("no write permission was widened", () => {
