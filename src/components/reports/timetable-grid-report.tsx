@@ -101,7 +101,7 @@ export function TimetableGridReport({
     // Configured working days win; otherwise fall back to the standard RTL week.
     if (workingDaysProp?.length) return orderWeekDaysRtl(workingDaysProp);
     return [...RTL_WEEK_DAY_ORDER];
-  }, [sessions, workingDaysProp]);
+  }, [workingDaysProp]);
 
   const { startHour, endHour } = useMemo(
     () => ({
