@@ -208,7 +208,10 @@ function ProgramLevelReport({
   const error = ctx.error ?? refsQuery.error ?? sessionsQuery.error ?? catalogQuery.error;
   const raw = error ? [] : view.sessions;
   const sessions = mapRawSessions(raw, labels);
-  const timetableRows = timetableSessionsToRows(sessions).map((r) => ({ ...r, status: "مجدول" }));
+  const timetableRows: Record<string, string | number>[] = timetableSessionsToRows(sessions).map(
+    (r) => ({ ...r, status: "مجدول" }),
+  );
+
   const selectedCoverageRow =
     view.selected.deliveryGroupId === "all"
       ? null
