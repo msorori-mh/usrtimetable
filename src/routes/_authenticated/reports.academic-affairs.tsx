@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -317,11 +317,21 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
           )}
           {kind === "workload" && (
             <Card className="p-3 text-sm">
-              يُقارن النصاب بالساعات المسندة في الكلية خلال الفصل المحدد، ويظهر إشراف المشاريع
-              منفصلاً. مرشح البرنامج يحدد أعضاء هيئة التدريس المرتبطين به، مع إبقاء نصابهم وساعاتهم
-              الكلية في الفصل. عند غياب سياسة نصاب معتمدة تظهر شرطة في النصاب والزيادة والنقص؛ ولا
-              تُعامل كصفر.
+              يُحدَّد النصاب المعتمد من سياسة النصاب المقرَّرة للرتبة، وعند غيابها يُعتمد النصاب
+              المسجَّل في بطاقة عضو هيئة التدريس، ويظهر مصدره في العمود المخصص. صافي النصاب = النصاب
+              الأساسي − التخفيض الإداري، وتُقارَن به الساعات المسندة في الكلية خلال الفصل، مع إظهار
+              إشراف المشاريع منفصلاً. عند عدم وجود نصاب معتمد تظهر «غير محدد» في النصاب والزيادة
+              والنقص، ولا تُعامل كصفر ولا تدخل في المجاميع.
+              {workloadTotals.missingMembers > 0 && (
+                <span className="mt-2 block">
+                  {`${workloadTotals.missingMembers} عضواً بلا نصاب معتمد ومستبعدون من المجاميع.`}{" "}
+                  <Link to="/instructors" className="underline">
+                    تصحيح النصاب في صفحة المحاضرين
+                  </Link>
+                </span>
+              )}
             </Card>
+
           )}
           {kind === "shortages" && (
             <Card className="p-3 text-sm">
