@@ -43,7 +43,8 @@ export function useAccessibleColleges() {
       // user_colleges, so the accessible list is narrowed here (read scope only).
       const { data: userData } = await supabase.auth.getUser();
       const uid = userData.user?.id;
-      if (!uid) return colleges;
+      // Fail closed: without an identity we cannot prove a college is assigned.
+      if (!uid) return [];
       const [rolesRes, assignedRes] = await Promise.all([
         supabase.from("user_roles").select("role").eq("user_id", uid),
         supabase.from("user_colleges").select("college_id").eq("user_id", uid),
