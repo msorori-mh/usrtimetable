@@ -62,7 +62,7 @@ export const WIZARD_STEPS: WizardStepDef[] = [
     order: 8,
     titleAr: "القيود والتوفر",
     helpEli5Ar:
-      "أيام العمل، قوالب الفترات، وتوفّر المحاضرين — خاصة الخارجيين. بدونها الجدول غير واقعي.",
+      "أيام العمل، قوالب الفترات، وتوفّر المحاضرين — خاصة المحاضرين من كليات أخرى. بدونها الجدول غير واقعي.",
     fixHref: "/availability",
   },
   {
@@ -311,7 +311,7 @@ export function buildWizardStepResults(
         detailAr:
           status === "complete"
             ? `محاضرون لديهم توفر: ${counts.instructorsWithAvailability}`
-            : "راجع أيام العمل وقوالب الفترات وتوفّر المحاضرين الخارجيين.",
+            : "راجع أيام العمل وقوالب الفترات وتوفّر المحاضرين من كليات أخرى.",
       };
     })(),
     readiness_check: (() => {
