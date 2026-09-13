@@ -200,6 +200,21 @@ export async function runV2AutoSchedule(params: {
   if (!rooms?.length) throw new Error("V2_AUTO_BLOCKED: لا توجد قاعات متاحة.");
   if (!templates?.length) throw new Error("V2_AUTO_BLOCKED: لا توجد قوالب زمنية نشطة.");
 
+  /** room_types.id → code, so the room-type policy can be evaluated on codes. */
+  const roomTypeCodeById: Record<string, string | null> = {};
+  for (const row of roomTypeRows ?? []) roomTypeCodeById[row.id] = row.code ?? null;
+  const roomAvailability: RoomAvailabilityWindow[] = (roomAvailabilityRows ?? []).map((row) => ({
+    room_id: String(row.room_id),
+    day_of_week: Number(row.day_of_week),
+    start_time: String(row.start_time),
+    end_time: String(row.end_time),
+  }));
+  const roomById = new Map((rooms ?? []).map((room) => [room.id, room]));
+  /** Practical sessions placed in a lecture hall through the allowed fallback. */
+  let practicalRoomFallbacks = 0;
+
+
+
   const workItems = payload.rows.filter(
     (item) =>
       item.can_create_session &&
