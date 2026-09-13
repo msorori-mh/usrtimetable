@@ -1,5 +1,5 @@
 /**
- * ROOM-TIME-CAPACITY-READINESS-01
+ * ROOM-TIME-CAPACITY-READINESS-01 (+ PRACTICAL-LAB-FALLBACK-CAPACITY-02)
  *
  * Physical weekly time capacity per room type for the active term.
  *
@@ -9,13 +9,23 @@
  *                          weekly window: working_days × (day_end − day_start),
  *                          or the room's own room_availability rows when defined
  *
- * When required > available the schedule is physically impossible: a BLOCKER,
- * never a warning. We never invent rooms and never widen the working day; the
- * only derived number is the MINIMUM extra rooms of the same type needed at the
- * current working hours.
+ * Capacity is POOLED with priority, exactly like the scheduling-time policy in
+ * `@/lib/scheduling/room-type-policy`: practical demand consumes `computer_lab`
+ * hours first and may then use the SURPLUS of `lecture_hall`. Theory/tutorial
+ * demand stays strictly inside its own room type — the reverse borrow is never
+ * allowed. Only the deficit that remains AFTER pooling is a blocker.
+ *
+ * Room capacity (seats) and time overlap remain untouched hard constraints
+ * elsewhere; this module only judges weekly room-hours feasibility. We never
+ * invent rooms and never widen the working day.
  */
 import { hoursBetween } from "./formatters";
 import type { ReadinessMetric } from "./readiness";
+import {
+  COMPUTER_LAB_TYPE,
+  LECTURE_HALL_TYPE,
+  isPracticalComponent,
+} from "@/lib/scheduling/room-type-policy";
 
 export interface TimeCapacitySettings {
   working_days: number[] | null;
@@ -33,6 +43,7 @@ export interface TimeCapacityRoomType {
   id: string;
   name_ar?: string | null;
   name?: string | null;
+  code?: string | null;
 }
 
 export interface TimeCapacityRoomAvailability {
@@ -46,6 +57,8 @@ export interface TimeCapacityRoomAvailability {
 export interface TimeCapacityDemand {
   roomTypeId: string | null;
   hours: number;
+  /** Component type — decides whether lab demand may use the hall fallback. */
+  componentType?: string | null;
 }
 
 export interface RoomTypeTimeCapacity {
@@ -56,10 +69,18 @@ export interface RoomTypeTimeCapacity {
   weeklyHoursPerRoom: number;
   requiredHours: number;
   availableHours: number;
+  /** raw deficit of this type alone, before the practical fallback pooling */
   deficitHours: number;
+  /** lab hours covered by the lecture-hall surplus under the fallback policy */
+  coveredByFallbackHours: number;
+  /** hall hours reserved for practical fallback demand of other types */
+  reservedForFallbackHours: number;
+  /** deficit that remains after pooling — the only real blocker */
+  effectiveDeficitHours: number;
   /** minimum extra rooms of this type at the CURRENT working hours */
   additionalRoomsNeeded: number;
 }
+
 
 export interface RoomTimeCapacityAnalysis {
   /** true when settings are missing/invalid — fail closed, treat as blocker */
