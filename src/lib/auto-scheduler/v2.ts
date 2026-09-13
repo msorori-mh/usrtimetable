@@ -33,6 +33,8 @@ import {
   type RoomRequirement,
 } from "@/lib/auto-scheduler/session-plan";
 import { PRACTICAL_ROOM_FALLBACK_NOTE_AR } from "@/lib/scheduling/room-type-policy";
+import { planRepair, type RepairMove, type RepairPlan } from "@/lib/auto-scheduler/repair";
+import { moveOrRescheduleScheduleSession } from "@/lib/schedule-builder/session-move-rpc";
 import {
   buildPartitionIndex,
   makeSharedStudentsPredicate,
