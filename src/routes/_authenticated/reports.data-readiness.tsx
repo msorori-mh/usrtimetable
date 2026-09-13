@@ -1,13 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { ReportShell } from "@/components/reports/report-shell";
 import { ReportFilters } from "@/components/reports/report-filters";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Card } from "@/components/ui/card";
+import { ReportSection, ReportDataTable } from "@/components/reports/report-section";
 import { Badge } from "@/components/ui/badge";
 import { fetchCollegeReadiness, readinessMetricsToRows } from "@/lib/reports/readiness";
 import { useReportContext } from "@/hooks/reports/useReportContext";
+import { filterRowsBySearch } from "@/lib/reports/search";
 
 export const Route = createFileRoute("/_authenticated/reports/data-readiness")({
   head: () => ({ meta: [{ title: "تقرير جاهزية البيانات" }] }),
@@ -27,24 +27,29 @@ const headers = [
 ];
 
 function Page() {
-  const ctx = useReportContext({ defaultStatusMode: "specific_version", defaultStudySystem: "all" });
+  const ctx = useReportContext({
+    defaultStatusMode: "specific_version",
+    defaultStudySystem: "all",
+  });
+  const [search, setSearch] = useState("");
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["rep-readiness", ctx.collegeId],
     enabled: !!ctx.collegeId,
     queryFn: () => fetchCollegeReadiness(ctx.collegeId!),
   });
 
-  const rows = useMemo(() => (data ? readinessMetricsToRows(data) : []), [data]);
+  const allRows = useMemo(() => (data ? readinessMetricsToRows(data) : []), [data]);
+  // Search is presentation-only: identical keys and values, fewer visible rows.
+  const rows = useMemo(() => filterRowsBySearch(allRows, search), [allRows, search]);
 
-  const description = data
-    ? `قراءة فقط — الجاهزية العامة: ${data.scores.overall}/100 · على مستوى الكلية (لا يعتمد على نسخة جدول).`
-    : "قراءة فقط — تقييم جاهزية البيانات الأكاديمية.";
+  const criticalCount = allRows.filter((r) => r.status === "حرج").length;
+  const readyCount = allRows.filter((r) => r.status === "جاهز").length;
 
   return (
     <ReportShell
       title="تقرير جاهزية البيانات"
-      description={description}
+      description="قراءة فقط — تقييم جاهزية البيانات الأكاديمية على مستوى الكلية."
       filterSummary={ctx.filterSummary}
       reportContext={ctx}
       headerMeta={{
@@ -54,45 +59,80 @@ function Page() {
       rows={rows}
       headers={headers}
       isLoading={ctx.isLoading || isLoading}
-      emptyMessage={!ctx.collegeId ? "اختر كلّية." : "لا توجد فحوص."}
+      error={ctx.error ?? error}
+      onRetry={() => void refetch()}
+      notReadyMessage={ctx.collegeId ? undefined : "اختر كلّية لعرض فحوص الجاهزية."}
+      emptyMessage={search ? "لا فحوص مطابقة للبحث." : "لا توجد فحوص."}
+      kpis={
+        data
+          ? [
+              { label: "الجاهزية العامة", value: `${data.scores.overall}/100`, tone: "accent" },
+              { label: "الخطط", value: `${data.scores.studyPlanScore}/100` },
+              { label: "الموارد", value: `${data.scores.resourcesScore}/100` },
+              { label: "الجدولة", value: `${data.scores.schedulingScore}/100` },
+              {
+                label: "فحوص حرجة",
+                value: criticalCount,
+                hint: `جاهز: ${readyCount}`,
+                tone: criticalCount > 0 ? "danger" : "neutral",
+              },
+            ]
+          : undefined
+      }
       filters={
-        <ReportFilters context={ctx} version={false} statusMode={false} studySystem={false} />
+        <ReportFilters
+          context={ctx}
+          version={false}
+          statusMode={false}
+          studySystem={false}
+          search={{ value: search, onChange: setSearch, placeholder: "ابحث باسم الفحص أو الفئة…" }}
+          onClear={() => setSearch("")}
+        />
       }
     >
-      {data && (
-        <div className="mb-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-          <Card className="p-3"><p className="text-muted-foreground">الخطط</p><p className="text-xl font-bold">{data.scores.studyPlanScore}/100</p></Card>
-          <Card className="p-3"><p className="text-muted-foreground">الموارد</p><p className="text-xl font-bold">{data.scores.resourcesScore}/100</p></Card>
-          <Card className="p-3"><p className="text-muted-foreground">الجدولة</p><p className="text-xl font-bold">{data.scores.schedulingScore}/100</p></Card>
-          <Card className="p-3"><p className="text-muted-foreground">العام</p><p className="text-xl font-bold">{data.scores.overall}/100</p></Card>
-        </div>
-      )}
-      <Card className="p-0 overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>{headers.map((h) => <TableHead key={h.key}>{h.label}</TableHead>)}</TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((r, i) => (
-              <TableRow key={i}>
-                <TableCell>{r.category}</TableCell>
-                <TableCell>{r.check_name}</TableCell>
-                <TableCell>
-                  <Badge variant={r.status === "جاهز" ? "secondary" : r.status === "حرج" ? "destructive" : "outline"}>
-                    {r.status}
-                  </Badge>
-                </TableCell>
-                <TableCell>{r.missing_count}</TableCell>
-                <TableCell>{r.total_count}</TableCell>
-                <TableCell>{r.pct_missing}</TableCell>
-                <TableCell>{r.severity}</TableCell>
-                <TableCell className="text-xs">{r.message}</TableCell>
-                <TableCell className="text-xs text-muted-foreground">{r.suggested_action}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
+      <ReportSection
+        title="فحوص الجاهزية"
+        count={rows.length}
+        hint="كل فحص يوضح الناقص والإجمالي والإجراء المقترح لمعالجته."
+        bodyClassName="p-0"
+      >
+        <ReportDataTable
+          columns={[
+            { key: "category", label: "الفئة" },
+            { key: "check_name", label: "الفحص" },
+            {
+              key: "status",
+              label: "الحالة",
+              render: (r) => (
+                <Badge
+                  variant={
+                    r.status === "جاهز"
+                      ? "secondary"
+                      : r.status === "حرج"
+                        ? "destructive"
+                        : "outline"
+                  }
+                >
+                  {String(r.status)}
+                </Badge>
+              ),
+            },
+            { key: "missing_count", label: "الناقص", numeric: true },
+            { key: "total_count", label: "الإجمالي", numeric: true, secondary: true },
+            { key: "pct_missing", label: "نسبة الناقص %", numeric: true, secondary: true },
+            { key: "severity", label: "الخطورة", secondary: true },
+            { key: "message", label: "الرسالة", className: "text-xs" },
+            {
+              key: "suggested_action",
+              label: "الإجراء المقترح",
+              secondary: true,
+              className: "text-xs text-muted-foreground",
+            },
+          ]}
+          rows={rows}
+          caption="فحوص جاهزية البيانات"
+        />
+      </ReportSection>
     </ReportShell>
   );
 }

@@ -3,9 +3,15 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ReportShell } from "@/components/reports/report-shell";
-import { ReportFilters } from "@/components/reports/report-filters";
+import { ReportFilters, ReportFilterField } from "@/components/reports/report-filters";
 import { ReportTimetableView } from "@/components/reports/report-timetable-view";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   mapRawSessions,
   timetableSessionsToRows,
@@ -26,20 +32,26 @@ function Page() {
   const ctx = useReportContext({ defaultStatusMode: "specific_version", defaultStudySystem: "all" });
   const [roomId, setRoomId] = useState("");
 
-  const { data: rooms } = useQuery({
+  const { data: rooms, error: roomsError } = useQuery({
     queryKey: ["rt-rooms", ctx.collegeId],
     enabled: !!ctx.collegeId,
-    queryFn: async () =>
-      (
-        await supabase
-          .from("rooms")
-          .select("id, code, name")
-          .eq("college_id", ctx.collegeId!)
-          .order("code")
-      ).data ?? [],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("rooms")
+        .select("id, code, name")
+        .eq("college_id", ctx.collegeId!)
+        .order("code");
+      if (error) throw error;
+      return data ?? [];
+    },
   });
 
-  const { data: sessionsBundle, isLoading: sessionsLoading } = useQuery({
+  const {
+    data: sessionsBundle,
+    isLoading: sessionsLoading,
+    error: sessionsError,
+    refetch,
+  } = useQuery({
     queryKey: ["rt-sess", ctx.collegeId, ctx.versionId, ctx.studySystem, roomId],
     enabled: !!ctx.collegeId && !!ctx.versionId && !!roomId,
     queryFn: async () => {
@@ -64,24 +76,38 @@ function Page() {
 
   const isLoading = ctx.isLoading || sessionsLoading;
   const ready = !!ctx.versionId && !!roomId;
+  const room = (rooms ?? []).find((r) => r.id === roomId);
+  const roomLabel = room ? (room.code ? `${room.code} — ${room.name}` : room.name) : undefined;
 
   return (
     <ReportShell
       title="تقرير جدول القاعة"
-      description={`المجموع: ${totalHours.toFixed(2)} ساعة/أسبوع.`}
+      description="الاستخدام الأسبوعي لقاعة أو معمل واحد داخل نسخة جدول واحدة."
       filterSummary={ctx.filterSummary}
       reportContext={ctx}
       filename="room_timetable"
       rows={rows}
       headers={NEW_FLOW_TIMETABLE_TABLE_HEADERS}
       isLoading={isLoading}
-      emptyMessage={!ready ? "اختر نسخة جدول وقاعة." : "لا توجد محاضرات."}
+      error={ctx.error ?? roomsError ?? sessionsError}
+      onRetry={() => void refetch()}
+      notReadyMessage={ready ? undefined : "اختر نسخة جدول وقاعة لعرض الجدول."}
+      emptyMessage="لا توجد محاضرات في هذه القاعة ضمن النسخة المحددة."
+      kpis={[
+        { label: "المحاضرات", value: rows.length },
+        { label: "ساعات/أسبوع", value: totalHours.toFixed(2), tone: "accent" },
+        { label: "أيام الاستخدام", value: new Set(rows.map((r) => String(r.day))).size },
+        { label: "المقررات", value: new Set(rows.map((r) => String(r.course))).size },
+      ]}
       filters={
-        <ReportFilters context={ctx}>
-          <div>
-            <label className="text-xs text-muted-foreground">القاعة</label>
+        <ReportFilters
+          context={ctx}
+          extraSummary={roomLabel ? [`القاعة: ${roomLabel}`] : []}
+          onClear={() => setRoomId("")}
+        >
+          <ReportFilterField label="القاعة" htmlFor="rt-room">
             <Select value={roomId} onValueChange={setRoomId}>
-              <SelectTrigger>
+              <SelectTrigger id="rt-room" aria-label="القاعة">
                 <SelectValue placeholder="اختر القاعة" />
               </SelectTrigger>
               <SelectContent>
@@ -92,12 +118,16 @@ function Page() {
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          </ReportFilterField>
         </ReportFilters>
       }
     >
       {ready && sessions.length > 0 && (
-        <ReportTimetableView sessions={sessions} collegeId={ctx.collegeId} headers={NEW_FLOW_TIMETABLE_TABLE_HEADERS} />
+        <ReportTimetableView
+          sessions={sessions}
+          collegeId={ctx.collegeId}
+          headers={NEW_FLOW_TIMETABLE_TABLE_HEADERS}
+        />
       )}
     </ReportShell>
   );

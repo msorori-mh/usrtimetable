@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { ReportShell } from "@/components/reports/report-shell";
+import { ReportFilterBar, ReportFilterField } from "@/components/reports/report-filter-bar";
+import { ReportSection, ReportDataTable } from "@/components/reports/report-section";
 import {
   Select,
   SelectContent,
@@ -11,16 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { filterRowsBySearch } from "@/lib/reports/search";
 
 export const Route = createFileRoute("/_authenticated/reports/unscheduled")({
   head: () => ({ meta: [{ title: "تقرير المحاضرات غير المجدوَلة" }] }),
@@ -30,8 +24,9 @@ export const Route = createFileRoute("/_authenticated/reports/unscheduled")({
 function Page() {
   const { active } = useActiveCollege();
   const [versionId, setVersionId] = useState("");
+  const [search, setSearch] = useState("");
 
-  const { data: versions } = useQuery({
+  const { data: versions, error: versionsError } = useQuery({
     queryKey: ["un-vers", active?.id],
     enabled: !!active,
     queryFn: async () =>
@@ -49,7 +44,12 @@ function Page() {
     [versions, versionId],
   );
 
-  const { data: offerings, isLoading: oLoad } = useQuery({
+  const {
+    data: offerings,
+    isLoading: oLoad,
+    error: offeringsError,
+    refetch,
+  } = useQuery({
     queryKey: ["un-off", active?.id, version?.academic_term_id],
     enabled: !!active && !!version,
     queryFn: async () => {
@@ -104,7 +104,7 @@ function Page() {
     return m;
   }, [latestRun]);
 
-  const rows = useMemo(() => {
+  const allRows = useMemo(() => {
     const counts = new Map<string, { lec: number; lab: number }>();
     for (const s of sessions ?? []) {
       const c = counts.get(s.course_offering_id) ?? { lec: 0, lab: 0 };
@@ -145,6 +145,9 @@ function Page() {
     return out;
   }, [offerings, sessions, reasonsMap]);
 
+  // Search is presentation-only: identical keys and values, fewer visible rows.
+  const rows = useMemo(() => filterRowsBySearch(allRows, search), [allRows, search]);
+
   const headers = [
     { key: "course", label: "المقرر" },
     { key: "session_type", label: "النوع" },
@@ -154,60 +157,83 @@ function Page() {
     { key: "reason", label: "السبب" },
   ];
 
+  const totalMissing = rows.reduce((s, r) => s + Number(r.missing ?? 0), 0);
+  const totalRequired = rows.reduce((s, r) => s + Number(r.required ?? 0), 0);
+  const affectedCourses = new Set(rows.map((r) => String(r.course))).size;
+
   return (
     <ReportShell
       title="تقرير المحاضرات غير المجدوَلة"
-      description="المحاضرات المطلوبة وفق الخطط مقابل المجدوَلة."
+      description="المحاضرات المطلوبة وفق الخطط مقابل المجدوَلة فعليًا في النسخة المختارة."
       filename="unscheduled_sessions"
       rows={rows}
       headers={headers}
       isLoading={oLoad}
-      emptyMessage={!versionId ? "اختر نسخة جدول." : "كل المحاضرات مجدوَلة."}
+      error={versionsError ?? offeringsError}
+      onRetry={() => void refetch()}
+      notReadyMessage={versionId ? undefined : "اختر نسخة جدول لعرض النواقص."}
+      emptyMessage={search ? "لا نتائج مطابقة للبحث." : "كل المحاضرات مجدوَلة."}
+      kpis={[
+        { label: "بنود ناقصة", value: rows.length },
+        { label: "حصص ناقصة", value: totalMissing, tone: totalMissing > 0 ? "danger" : "neutral" },
+        { label: "حصص مطلوبة", value: totalRequired },
+        { label: "مقررات متأثرة", value: affectedCourses },
+      ]}
       filters={
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <div>
-            <label className="text-xs text-muted-foreground">نسخة الجدول</label>
-            <Select value={versionId} onValueChange={setVersionId}>
-              <SelectTrigger>
-                <SelectValue placeholder="اختر نسخة" />
-              </SelectTrigger>
-              <SelectContent>
-                {(versions ?? []).map((v) => (
-                  <SelectItem key={v.id} value={v.id}>
-                    {v.name} — {v.status}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+        <ReportFilterBar
+          search={{ value: search, onChange: setSearch, placeholder: "ابحث بالمقرر أو السبب…" }}
+          activeSummary={[
+            `النسخة: ${version ? `${version.name} — ${version.status}` : "غير محددة"}`,
+          ]}
+          onClear={() => setSearch("")}
+          basic={
+            <ReportFilterField label="نسخة الجدول" htmlFor="un-version">
+              <Select value={versionId} onValueChange={setVersionId}>
+                <SelectTrigger id="un-version" aria-label="نسخة الجدول">
+                  <SelectValue placeholder="اختر نسخة" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(versions ?? []).map((v) => (
+                    <SelectItem key={v.id} value={v.id}>
+                      {v.name} — {v.status}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </ReportFilterField>
+          }
+        />
       }
     >
-      <Card className="min-w-0 overflow-x-auto p-0">
-        <Table className="min-w-[640px]">
-          <TableHeader>
-            <TableRow>
-              {headers.map((h) => (
-                <TableHead key={h.key}>{h.label}</TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((r, i) => (
-              <TableRow key={i}>
-                <TableCell>{String(r.course)}</TableCell>
-                <TableCell>{String(r.session_type)}</TableCell>
-                <TableCell>{String(r.required)}</TableCell>
-                <TableCell>{String(r.scheduled)}</TableCell>
-                <TableCell>
-                  <Badge variant="destructive">{String(r.missing)}</Badge>
-                </TableCell>
-                <TableCell className="text-xs text-muted-foreground">{String(r.reason)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
+      <ReportSection
+        title="البنود الناقصة"
+        count={rows.length}
+        hint="لكل مقرر ونوع حصة: المطلوب مقابل المجدوَل وسبب عدم الجدولة من آخر تشغيل آلي."
+        bodyClassName="p-0"
+      >
+        <ReportDataTable
+          rows={rows}
+          caption="المحاضرات غير المجدولة"
+          columns={[
+            { key: "course", label: "المقرر" },
+            { key: "session_type", label: "النوع" },
+            { key: "required", label: "المطلوب", numeric: true },
+            { key: "scheduled", label: "المجدوَل", numeric: true },
+            {
+              key: "missing",
+              label: "الناقص",
+              numeric: true,
+              render: (r) => <Badge variant="destructive">{String(r.missing)}</Badge>,
+            },
+            {
+              key: "reason",
+              label: "السبب",
+              secondary: true,
+              className: "text-xs text-muted-foreground",
+            },
+          ]}
+        />
+      </ReportSection>
     </ReportShell>
   );
 }

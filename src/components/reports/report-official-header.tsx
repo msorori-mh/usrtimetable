@@ -23,6 +23,8 @@ export interface ReportOfficialHeaderMeta {
 
 interface Props extends ReportOfficialHeaderMeta {
   reportTitle: string;
+  /** Short screen description shown under the title. */
+  description?: string;
   /** Screen-only duplicate of filter summary (optional). */
   filterSummary?: string;
   generatedAt?: Date;
@@ -37,8 +39,17 @@ function formatGeneratedAt(d: Date): string {
   });
 }
 
+/**
+ * One compact official header for screen and paper.
+ *
+ * Screen: a single dense identity band — university/college, report title,
+ * context chips (term · version · status · system) and the read-only note.
+ * Print: the same DOM, re-laid out by the `print-header-*` rules in styles.css
+ * so the sheet keeps the logo, the real verification QR and the full metadata.
+ */
 export function ReportOfficialHeader({
   reportTitle,
+  description,
   termName,
   versionName,
   versionStatus,
@@ -61,36 +72,55 @@ export function ReportOfficialHeader({
     return undefined;
   }, [note, official, readOnly]);
 
+  const context: { label: string; value: string }[] = [
+    ...(termName ? [{ label: "الفصل الدراسي", value: termName }] : []),
+    ...(versionName ? [{ label: "نسخة الجدول", value: versionName }] : []),
+    ...(statusLabel ? [{ label: "حالة النسخة", value: statusLabel }] : []),
+    ...(studyLabel ? [{ label: "النظام الدراسي", value: studyLabel }] : []),
+  ];
+
   return (
-    <Card className="report-official-header print-center-header border-primary/20 bg-card p-4 border-t-[3px] border-t-[var(--usr-gold)] print:shadow-none print:border print:break-inside-avoid">
-      <div className="print-header-identity-band border-b border-border/60 pb-3 mb-3">
-        <div className="print-header-institution">
+    <Card className="report-official-header print-center-header border-primary/20 border-t-[3px] border-t-[var(--usr-gold)] bg-card p-3 sm:p-4 print:border print:shadow-none print:break-inside-avoid">
+      <div className="print-header-identity-band grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b border-border/60 pb-3">
+        <div className="print-header-institution flex min-w-0 items-center gap-2">
           <img
             src={USR_UNIVERSITY_LOGO_SRC}
             alt={REPORT_UNIVERSITY_NAME_AR}
-            className="print-header-logo"
+            className="print-header-logo h-10 w-10 shrink-0 object-contain sm:h-12 sm:w-12"
           />
-          <div className="print-header-institution-copy">
-            <p className="print-header-university">{REPORT_UNIVERSITY_NAME_AR}</p>
-            <p className="print-header-college">{collegeName || REPORT_COLLEGE_NAME_FALLBACK_AR}</p>
+          <div className="print-header-institution-copy min-w-0 hidden sm:block">
+            <p className="print-header-university truncate text-xs font-semibold text-primary">
+              {REPORT_UNIVERSITY_NAME_AR}
+            </p>
+            <p className="print-header-college truncate text-xs text-muted-foreground print:text-foreground">
+              {collegeName || REPORT_COLLEGE_NAME_FALLBACK_AR}
+            </p>
           </div>
         </div>
-        <div className="print-header-title-block">
-          <p className="print-header-kicker">تقرير رسمي</p>
-          <h2>{reportTitle}</h2>
-          <p className="text-xs text-muted-foreground print:text-foreground">
+
+        <div className="print-header-title-block min-w-0">
+          <p className="print-header-kicker text-[11px] text-muted-foreground print:text-foreground">
+            تقرير رسمي
+          </p>
+          <h1 className="min-w-0 break-words text-lg font-bold leading-tight sm:text-xl">
+            <span className="print-header-report-title">{reportTitle}</span>
+          </h1>
+          <p className="text-[11px] text-muted-foreground print:text-foreground">
             تاريخ التوليد: {formatGeneratedAt(generatedAt)}
           </p>
         </div>
-        {qrUrl && (
-          <div className="print-header-verification">
-            <PrintQrCode value={qrUrl} size={72} title="رابط التحقق" />
+
+        {qrUrl ? (
+          <div className="print-header-verification hidden shrink-0 flex-col items-center gap-1 text-[10px] text-muted-foreground print:flex sm:flex">
+            <PrintQrCode value={qrUrl} size={56} title="رابط التحقق" />
             <span>رابط التحقق</span>
           </div>
+        ) : (
+          <span aria-hidden />
         )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 mb-3">
+      <div className="mt-3 flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
         {official && (
           <Badge variant="default" className="print:border print:border-foreground">
             رسمي / منشور
@@ -101,43 +131,28 @@ export function ReportOfficialHeader({
             قراءة فقط
           </Badge>
         )}
+        <dl className="print-header-details flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1.5">
+          {context.map((item) => (
+            <div key={item.label} className="print-header-field flex min-w-0 items-baseline gap-1">
+              <dt className="text-muted-foreground print:text-foreground">{item.label}:</dt>
+              <dd className="min-w-0 truncate font-medium">{item.value}</dd>
+            </div>
+          ))}
+        </dl>
       </div>
 
-      <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2 text-sm">
-        {termName && (
-          <div>
-            <dt className="text-muted-foreground text-xs">الفصل الدراسي</dt>
-            <dd className="font-medium">{termName}</dd>
-          </div>
-        )}
-        {versionName && (
-          <div>
-            <dt className="text-muted-foreground text-xs">نسخة الجدول</dt>
-            <dd className="font-medium">{versionName}</dd>
-          </div>
-        )}
-        {statusLabel && (
-          <div>
-            <dt className="text-muted-foreground text-xs">حالة النسخة</dt>
-            <dd className="font-medium">{statusLabel}</dd>
-          </div>
-        )}
-        {studyLabel && (
-          <div>
-            <dt className="text-muted-foreground text-xs">النظام الدراسي</dt>
-            <dd className="font-medium">{studyLabel}</dd>
-          </div>
-        )}
-      </dl>
+      {description && (
+        <p className="mt-2 text-xs text-muted-foreground print:text-foreground">{description}</p>
+      )}
 
       {defaultNote && (
-        <p className="mt-3 text-xs text-muted-foreground border-t border-border/40 pt-2 print:text-foreground">
+        <p className="print-header-meta mt-2 border-t border-border/40 pt-2 text-[11px] text-muted-foreground print:text-foreground">
           {defaultNote}
         </p>
       )}
 
       {filterSummary && (
-        <p className="mt-2 text-xs text-muted-foreground report-no-print">{filterSummary}</p>
+        <p className="report-no-print mt-1 text-[11px] text-muted-foreground">{filterSummary}</p>
       )}
     </Card>
   );

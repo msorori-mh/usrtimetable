@@ -13,16 +13,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ReportSection, ReportDataTable } from "@/components/reports/report-section";
+import { filterRowsBySearch } from "@/lib/reports/search";
 import { hoursBetween } from "@/lib/reports/export";
 
 export const Route = createFileRoute("/_authenticated/reports/instructor-workload")({
@@ -44,6 +38,7 @@ function WorkloadPage() {
   const context = useReportContext({ fixedStatusMode: "specific_version" });
   const [deptId, setDeptId] = useState<string>("all");
   const [typeId, setTypeId] = useState<string>("all");
+  const [search, setSearch] = useState("");
 
   const { data: depts } = useQuery({
     queryKey: ["rep-depts", active?.id],
@@ -108,7 +103,7 @@ function WorkloadPage() {
     },
   });
 
-  const rows = useMemo(() => {
+  const allRows = useMemo(() => {
     if (
       !context.selectedVersion ||
       context.error ||
@@ -177,6 +172,9 @@ function WorkloadPage() {
     sLoad,
   ]);
 
+  // Search is presentation-only: identical row keys and values, fewer visible rows.
+  const rows = useMemo(() => filterRowsBySearch(allRows, search), [allRows, search]);
+
   const headers = [
     { key: "instructor", label: "المحاضر" },
     { key: "department", label: "القسم" },
@@ -191,6 +189,13 @@ function WorkloadPage() {
     { key: "source_breakdown", label: "تفصيل المصدر" },
   ];
 
+  const totalHours = rows.reduce((sum, r) => sum + Number(r.scheduled_hours ?? 0), 0);
+  const overloaded = rows.filter((r) => Number(r.overload) > 0).length;
+  const underloaded = rows.filter((r) => Number(r.underload) > 0).length;
+  const deptLabel = deptId === "all" ? "كل الأقسام" : (depts ?? []).find((d) => d.id === deptId)?.name;
+  const typeLabel =
+    typeId === "all" ? "كل الأنواع" : (types ?? []).find((t) => t.id === typeId)?.name_ar;
+
   return (
     <ReportShell
       title="تقرير أعباء المحاضرين"
@@ -199,75 +204,106 @@ function WorkloadPage() {
       rows={rows}
       headers={headers}
       isLoading={context.isLoading || ilLoad || sLoad}
+      error={context.error ?? instructorError ?? sessionError}
       reportContext={context}
       filterSummary={context.filterSummary}
-      emptyMessage={
-        !context.selectedVersion
-          ? "اختر فصلاً ونسخة جدول لعرض الساعات."
-          : "لا توجد بيانات بهذه المعايير."
+      notReadyMessage={
+        context.selectedVersion ? undefined : "اختر فصلاً ونسخة جدول لعرض الساعات."
       }
-      leading={
-        context.error || instructorError || sessionError ? (
-          <Card role="alert" className="p-4 text-destructive">
-            تعذر تحميل بيانات التقرير؛ لا تُعتمد أرقام جزئية.
-          </Card>
-        ) : undefined
-      }
+      emptyMessage={search ? "لا محاضر مطابق للبحث." : "لا توجد بيانات بهذه المعايير."}
+      kpis={[
+        { label: "المحاضرون", value: rows.length },
+        { label: "إجمالي الساعات", value: totalHours.toFixed(2), tone: "accent" },
+        { label: "زيادة نصاب", value: overloaded, tone: overloaded > 0 ? "danger" : "neutral" },
+        { label: "نقص نصاب", value: underloaded, tone: underloaded > 0 ? "warning" : "neutral" },
+      ]}
       filters={
-        <ReportFilters context={context} statusMode={false} studySystem={false}>
-          <FilterSelect
-            label="القسم"
-            value={deptId}
-            onChange={setDeptId}
-            items={[
-              { id: "all", name: "الكل" },
-              ...(depts ?? []).map((d) => ({ id: d.id, name: d.name })),
-            ]}
-          />
-          <FilterSelect
-            label="نوع المحاضر"
-            value={typeId}
-            onChange={setTypeId}
-            items={[
-              { id: "all", name: "الكل" },
-              ...(types ?? []).map((t) => ({ id: t.id, name: t.name_ar })),
-            ]}
-          />
-        </ReportFilters>
+        <ReportFilters
+          context={context}
+          statusMode={false}
+          studySystem={false}
+          search={{ value: search, onChange: setSearch, placeholder: "ابحث باسم المحاضر أو القسم…" }}
+          extraSummary={[`القسم: ${deptLabel ?? "—"}`, `النوع: ${typeLabel ?? "—"}`]}
+          onClear={() => {
+            setDeptId("all");
+            setTypeId("all");
+            setSearch("");
+          }}
+          advanced={
+            <>
+              <FilterSelect
+                label="القسم"
+                value={deptId}
+                onChange={setDeptId}
+                items={[
+                  { id: "all", name: "الكل" },
+                  ...(depts ?? []).map((d) => ({ id: d.id, name: d.name })),
+                ]}
+              />
+              <FilterSelect
+                label="نوع المحاضر"
+                value={typeId}
+                onChange={setTypeId}
+                items={[
+                  { id: "all", name: "الكل" },
+                  ...(types ?? []).map((t) => ({ id: t.id, name: t.name_ar })),
+                ]}
+              />
+            </>
+          }
+        />
       }
     >
-      <Card className="p-0 overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {headers.map((h) => (
-                <TableHead key={h.key}>{h.label}</TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((r, i) => (
-              <TableRow key={i}>
-                <TableCell>{r.instructor}</TableCell>
-                <TableCell>{r.department}</TableCell>
-                <TableCell>{r.rank}</TableCell>
-                <TableCell>{r.type}</TableCell>
-                <TableCell>{r.max_weekly_hours}</TableCell>
-                <TableCell>{r.admin_release}</TableCell>
-                <TableCell>{r.scheduled_hours}</TableCell>
-                <TableCell>
-                  {r.overload > 0 ? <Badge variant="destructive">{r.overload}</Badge> : r.overload}
-                </TableCell>
-                <TableCell>
-                  {r.underload > 0 ? <Badge variant="secondary">{r.underload}</Badge> : r.underload}
-                </TableCell>
-                <TableCell>{r.courses_count}</TableCell>
-                <TableCell className="text-xs">{r.source_breakdown}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
+      <ReportSection
+        title="أعباء المحاضرين"
+        count={rows.length}
+        hint="الساعات المجدولة مقابل الحد الأسبوعي بعد الخصم الإداري."
+        bodyClassName="p-0"
+      >
+        <ReportDataTable
+          rows={rows}
+          minWidthClassName="min-w-[900px]"
+          caption="أعباء المحاضرين الأسبوعية"
+          columns={[
+            { key: "instructor", label: "المحاضر" },
+            { key: "department", label: "القسم", secondary: true },
+            { key: "rank", label: "الرتبة", secondary: true },
+            { key: "type", label: "النوع", secondary: true },
+            { key: "max_weekly_hours", label: "الحد الأسبوعي", numeric: true },
+            { key: "admin_release", label: "خصم إداري", numeric: true, secondary: true },
+            { key: "scheduled_hours", label: "ساعات مجدوَلة", numeric: true },
+            {
+              key: "overload",
+              label: "زيادة",
+              numeric: true,
+              render: (r) =>
+                Number(r.overload) > 0 ? (
+                  <Badge variant="destructive">{r.overload}</Badge>
+                ) : (
+                  String(r.overload)
+                ),
+            },
+            {
+              key: "underload",
+              label: "نقص",
+              numeric: true,
+              render: (r) =>
+                Number(r.underload) > 0 ? (
+                  <Badge variant="secondary">{r.underload}</Badge>
+                ) : (
+                  String(r.underload)
+                ),
+            },
+            { key: "courses_count", label: "عدد المقررات", numeric: true, secondary: true },
+            {
+              key: "source_breakdown",
+              label: "تفصيل المصدر",
+              secondary: true,
+              className: "text-xs",
+            },
+          ]}
+        />
+      </ReportSection>
     </ReportShell>
   );
 }
@@ -284,10 +320,10 @@ function FilterSelect({
   items: { id: string; name: string }[];
 }) {
   return (
-    <div>
+    <div className="min-w-0">
       <label className="text-xs text-muted-foreground">{label}</label>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger>
+        <SelectTrigger aria-label={label}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
