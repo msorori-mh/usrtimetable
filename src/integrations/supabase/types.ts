@@ -4061,6 +4061,14 @@ export type Database = {
         Returns: boolean
       }
       is_academic_affairs_only: { Args: { _user_id: string }; Returns: boolean }
+      is_assignment_room_compatible: {
+        Args: {
+          p_college_id: string
+          p_room_id: string
+          p_teaching_assignment_id: string
+        }
+        Returns: boolean
+      }
       is_institutional_read_only_actor: {
         Args: { _user_id: string }
         Returns: boolean
