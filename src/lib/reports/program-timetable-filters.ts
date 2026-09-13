@@ -207,7 +207,7 @@ export function deriveProgramTimetable<T extends PrintSessionLike>(input: {
   };
 }
 
-}
+
 
 export function programReportSearchParams(
   scope: ProgramReportScope,
