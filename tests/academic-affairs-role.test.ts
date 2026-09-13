@@ -147,8 +147,6 @@ describe("account creation contract", () => {
     expect(src).not.toContain("كلية واحدة على الأقل");
   });
 
-
-
   test("database triggers assign all colleges now and any college created later", () => {
     const sql = migrations();
     expect(sql).toMatch(

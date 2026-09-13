@@ -147,12 +147,10 @@ function UsersPage() {
         if (assignsAllColleges(role as never)) {
           const all = (await supabase.from("colleges").select("id")).data ?? [];
           if (all.length > 0) {
-            const { error: ucErr } = await supabase
-              .from("user_colleges")
-              .upsert(
-                all.map((c) => ({ user_id: userId, college_id: c.id })),
-                { onConflict: "user_id,college_id", ignoreDuplicates: true },
-              );
+            const { error: ucErr } = await supabase.from("user_colleges").upsert(
+              all.map((c) => ({ user_id: userId, college_id: c.id })),
+              { onConflict: "user_id,college_id", ignoreDuplicates: true },
+            );
             if (ucErr && !ucErr.message.includes("duplicate")) throw ucErr;
           }
         }
@@ -170,7 +168,6 @@ function UsersPage() {
         entityId: userId,
         details: { role, on },
       });
-
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["all-users-admin"] });
