@@ -1,10 +1,9 @@
 import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import {
-  REPORT_COLLEGE_NAME_FALLBACK_AR,
-  REPORT_UNIVERSITY_NAME_AR,
-} from "@/lib/reports/branding";
+import { PrintQrCode } from "@/components/print-center/print-qr-code";
+import { USR_UNIVERSITY_LOGO_SRC } from "@/lib/branding/usr";
+import { REPORT_COLLEGE_NAME_FALLBACK_AR, REPORT_UNIVERSITY_NAME_AR } from "@/lib/reports/branding";
 import { STUDY_SYSTEM_LABELS } from "@/lib/reports/filters";
 import { STATUS_LABEL_AR, type SVStatus } from "@/lib/schedule-versions/lifecycle";
 import type { ReportStudySystem } from "@/lib/reports/types";
@@ -27,6 +26,8 @@ interface Props extends ReportOfficialHeaderMeta {
   /** Screen-only duplicate of filter summary (optional). */
   filterSummary?: string;
   generatedAt?: Date;
+  /** Real verification/report URL encoded in the header QR (never decorative). */
+  qrUrl?: string | null;
 }
 
 function formatGeneratedAt(d: Date): string {
@@ -48,6 +49,7 @@ export function ReportOfficialHeader({
   readOnly = true,
   filterSummary,
   generatedAt = new Date(),
+  qrUrl,
 }: Props) {
   const studyLabel = studySystem ? STUDY_SYSTEM_LABELS[studySystem] : undefined;
   const statusLabel = versionStatus ? STATUS_LABEL_AR[versionStatus] : undefined;
@@ -60,20 +62,35 @@ export function ReportOfficialHeader({
   }, [note, official, readOnly]);
 
   return (
-    <Card className="report-official-header border-primary/20 bg-card p-4 border-t-[3px] border-t-[var(--usr-gold)] print:shadow-none print:border print:break-inside-avoid">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/60 pb-3 mb-3">
-        <div className="space-y-1">
-          <p className="text-sm font-semibold text-primary">{REPORT_UNIVERSITY_NAME_AR}</p>
-          <p className="text-base font-bold">{collegeName || REPORT_COLLEGE_NAME_FALLBACK_AR}</p>
+    <Card className="report-official-header print-center-header border-primary/20 bg-card p-4 border-t-[3px] border-t-[var(--usr-gold)] print:shadow-none print:border print:break-inside-avoid">
+      <div className="print-header-identity-band border-b border-border/60 pb-3 mb-3">
+        <div className="print-header-institution">
+          <img
+            src={USR_UNIVERSITY_LOGO_SRC}
+            alt={REPORT_UNIVERSITY_NAME_AR}
+            className="print-header-logo"
+          />
+          <div className="print-header-institution-copy">
+            <p className="print-header-university">{REPORT_UNIVERSITY_NAME_AR}</p>
+            <p className="print-header-college">{collegeName || REPORT_COLLEGE_NAME_FALLBACK_AR}</p>
+          </div>
         </div>
-        <div className="text-left text-xs text-muted-foreground print:text-foreground">
-          <p>تاريخ التوليد</p>
-          <p className="font-medium">{formatGeneratedAt(generatedAt)}</p>
+        <div className="print-header-title-block">
+          <p className="print-header-kicker">تقرير رسمي</p>
+          <h2>{reportTitle}</h2>
+          <p className="text-xs text-muted-foreground print:text-foreground">
+            تاريخ التوليد: {formatGeneratedAt(generatedAt)}
+          </p>
         </div>
+        {qrUrl && (
+          <div className="print-header-verification">
+            <PrintQrCode value={qrUrl} size={72} title="رابط التحقق" />
+            <span>رابط التحقق</span>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-2 mb-3">
-        <h2 className="text-lg font-bold">{reportTitle}</h2>
         {official && (
           <Badge variant="default" className="print:border print:border-foreground">
             رسمي / منشور

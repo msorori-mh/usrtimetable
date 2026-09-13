@@ -1,4 +1,4 @@
-import { ReactNode, useMemo } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import {
 } from "@/components/reports/report-official-header";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { downloadCSV, downloadXLSX, type Row } from "@/lib/reports/export";
+import { printPageStyleCss } from "@/lib/print-center";
 import type { ReportContext } from "@/lib/reports/types";
 
 interface Props {
@@ -72,10 +73,27 @@ export function ReportShell({
 
   const handlePrint = () => window.print();
 
+  /**
+   * Real verification/report URL for the header QR: the current report URL with its
+   * active filters. Resolved after hydration so SSR markup stays stable.
+   */
+  const [qrUrl, setQrUrl] = useState<string | null>(null);
+  useEffect(() => {
+    setQrUrl(window.location.href);
+  }, []);
+
   return (
     <div className="report-print-root min-w-0 space-y-4" dir="rtl">
+      {/* A4 RTL portrait page box for reports that print the on-screen body.
+          Dedicated printContent sheets inject their own page style. */}
+      {!printContent && <style>{printPageStyleCss("A4", "portrait")}</style>}
       <div className={printContent ? "report-no-print" : undefined}>
-        <ReportOfficialHeader reportTitle={title} filterSummary={filterSummary} {...headerMeta} />
+        <ReportOfficialHeader
+          reportTitle={title}
+          filterSummary={filterSummary}
+          qrUrl={qrUrl}
+          {...headerMeta}
+        />
       </div>
 
       <div className="report-no-print flex min-w-0 flex-wrap items-start justify-between gap-3">

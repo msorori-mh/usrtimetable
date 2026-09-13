@@ -1,0 +1,82 @@
+/**
+ * PRINT-REGRESSION — every schedule report print path must carry the official
+ * identity band: university logo, university + college name, term/system, report
+ * title, version metadata and a REAL verification QR (the report URL).
+ *
+ * Root cause covered: only /reports/program-level-timetable rendered the branded
+ * PrintSheet; all other report print paths (notably /reports/instructor-schedule)
+ * printed the plain screen header, which had no logo and no QR.
+ */
+import { describe, expect, test } from "bun:test";
+import { readFileSync, readdirSync, existsSync } from "node:fs";
+import { resolve } from "node:path";
+
+const root = resolve(import.meta.dir, "..");
+const read = (p: string) => readFileSync(resolve(root, p), "utf8");
+
+const header = read("src/components/reports/report-official-header.tsx");
+const shell = read("src/components/reports/report-shell.tsx");
+const css = read("src/styles.css");
+
+describe("report print identity", () => {
+  test("official report header renders the local university logo asset", () => {
+    expect(header.includes("USR_UNIVERSITY_LOGO_SRC")).toBe(true);
+    expect(header.includes("print-header-logo")).toBe(true);
+    expect(existsSync(resolve(root, "public/branding/usr-university-logo.png"))).toBe(true);
+  });
+
+  test("official report header renders a real verification QR from a URL", () => {
+    expect(header.includes("PrintQrCode")).toBe(true);
+    expect(header.includes("qrUrl")).toBe(true);
+    expect(header.includes('title="رابط التحقق"')).toBe(true);
+  });
+
+  test("header keeps university, college, title, term, version and generation data", () => {
+    for (const marker of [
+      "REPORT_UNIVERSITY_NAME_AR",
+      "REPORT_COLLEGE_NAME_FALLBACK_AR",
+      "reportTitle",
+      "الفصل الدراسي",
+      "نسخة الجدول",
+      "حالة النسخة",
+      "النظام الدراسي",
+      "تاريخ التوليد",
+    ]) {
+      expect(header.includes(marker)).toBe(true);
+    }
+  });
+
+  test("shell supplies the current report URL to the QR and an A4 RTL page box", () => {
+    expect(shell.includes("window.location.href")).toBe(true);
+    expect(shell.includes('printPageStyleCss("A4", "portrait")')).toBe(true);
+    expect(shell.includes('dir="rtl"')).toBe(true);
+  });
+
+  test("print CSS avoids splitting the header and table rows", () => {
+    expect(css.includes(".report-official-header")).toBe(true);
+    for (const marker of [
+      "page-break-inside: avoid",
+      "break-inside: avoid",
+      "display: table-header-group",
+    ]) {
+      expect(css.includes(marker)).toBe(true);
+    }
+  });
+
+  test("regression: single instructor schedule prints through the shared shell", () => {
+    const route = read("src/routes/_authenticated/reports.instructor-schedule.tsx");
+    expect(route.includes("ReportShell")).toBe(true);
+    expect(route.includes("window.print")).toBe(false);
+  });
+
+  test("no report route uses a bespoke print path that bypasses the shell header", () => {
+    const dir = resolve(root, "src/routes/_authenticated");
+    const routes = readdirSync(dir).filter((f) => f.startsWith("reports.") && f.endsWith(".tsx"));
+    expect(routes.length).toBeGreaterThan(5);
+    for (const file of routes) {
+      const src = read(`src/routes/_authenticated/${file}`);
+      if (file === "reports.index.tsx" || file === "reports.tsx") continue;
+      expect(src.includes("window.print()")).toBe(false);
+    }
+  });
+});
