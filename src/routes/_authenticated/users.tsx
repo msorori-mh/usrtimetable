@@ -145,9 +145,15 @@ function UsersPage() {
       if (on) {
         const { error } = await supabase.from("user_roles").insert({ user_id: userId, role });
         if (error && !error.message.includes("duplicate")) throw error;
-        // «إدارة الشؤون الأكاديمية» covers every college: assign them all here
-        // too (a database trigger is the authoritative safety net).
-        if (assignsAllColleges(role as never)) {
+        // Viewer roles («مشاهد» / «مشاهد مؤسسي») read every college: assign them
+        // all here too (a database trigger is the authoritative safety net).
+        // Multi-role safety: never widen an account that carries an admin role.
+        const existingRoles = (
+          (await supabase.from("user_roles").select("role").eq("user_id", userId)).data ?? []
+        ).map((r) => r.role as AppRole);
+        const isAdminAccount =
+          existingRoles.includes("super_admin") || existingRoles.includes("college_admin");
+        if (assignsAllColleges(role as never) && !isAdminAccount) {
           const all = (await supabase.from("colleges").select("id")).data ?? [];
           if (all.length > 0) {
             const { error: ucErr } = await supabase.from("user_colleges").upsert(
