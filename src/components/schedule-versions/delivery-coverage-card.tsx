@@ -179,7 +179,8 @@ function GapsDialog({
         <DialogHeader>
           <DialogTitle>نواقص نسخة الجدول</DialogTitle>
           <DialogDescription>
-            كل مجموعة محاضرات/معامل لم تُستكمل في هذه النسخة، مع الساعات المطلوبة والمجدولة والناقصة.
+            كل مجموعة محاضرات/معامل لم تُستكمل في هذه النسخة، مع الساعات المطلوبة والمجدولة
+            والناقصة.
           </DialogDescription>
         </DialogHeader>
         {gaps.isLoading ? (

@@ -25,7 +25,16 @@ const incompletePayload = {
   complete: false,
 };
 
-const completePayload = { ...incompletePayload, groups_with_sessions: 9, groups_without_sessions: 0, short_hours_groups: 0, exact_hours_groups: 9, scheduled_hours: 20, missing_hours: 0, complete: true };
+const completePayload = {
+  ...incompletePayload,
+  groups_with_sessions: 9,
+  groups_without_sessions: 0,
+  short_hours_groups: 0,
+  exact_hours_groups: 9,
+  scheduled_hours: 20,
+  missing_hours: 0,
+  complete: true,
+};
 
 describe("delivery coverage parsing", () => {
   it("normalizes the RPC payload", () => {
@@ -106,7 +115,10 @@ describe("auto scheduler outcome", () => {
 });
 
 describe("UI wiring", () => {
-  const card = fs.readFileSync("src/components/schedule-versions/delivery-coverage-card.tsx", "utf8");
+  const card = fs.readFileSync(
+    "src/components/schedule-versions/delivery-coverage-card.tsx",
+    "utf8",
+  );
   const versions = fs.readFileSync("src/routes/_authenticated/schedule-versions.tsx", "utf8");
   const auto = fs.readFileSync("src/routes/_authenticated/auto-schedule.tsx", "utf8");
 
@@ -149,7 +161,9 @@ describe("UI wiring", () => {
   it("the auto scheduler screen uses the partial-outcome message and coverage card", () => {
     expect(auto).toContain("autoRunOutcomeMessage");
     expect(auto).toContain("<DeliveryCoverageCard");
-    expect(auto).toContain('data-testid={outcome.partial ? "auto-run-partial" : "auto-run-complete"}');
+    expect(auto).toContain(
+      'data-testid={outcome.partial ? "auto-run-partial" : "auto-run-complete"}',
+    );
   });
 
   it("keeps management actions role-gated (read-only roles cannot act)", () => {

@@ -222,7 +222,11 @@ function AutoSchedulePage() {
             <div className="flex items-end gap-3 flex-wrap">
               <div className="min-w-64">
                 <label className="text-xs text-muted-foreground">نسخة الجدول</label>
-                <Select disabled={run.isPending || compactBusy} value={versionId} onValueChange={setVersionId}>
+                <Select
+                  disabled={run.isPending || compactBusy}
+                  value={versionId}
+                  onValueChange={setVersionId}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="اختر النسخة" />
                   </SelectTrigger>
@@ -249,7 +253,9 @@ function AutoSchedulePage() {
                 </Select>
               </div>
               <Button
-                disabled={!canManage || !versionId || run.isPending || compactBusy || readinessIncomplete}
+                disabled={
+                  !canManage || !versionId || run.isPending || compactBusy || readinessIncomplete
+                }
                 onClick={() => {
                   if (mode === "fill_missing") run.mutate();
                   else setConfirmOpen(true);
@@ -360,7 +366,14 @@ function AutoSchedulePage() {
             </p>
           </Card>
 
-          <CompactSchedulePanel key={`${active.id}:${versionId}`} collegeId={active.id} versionId={versionId} canManage={canManage} disabled={run.isPending} onBusy={setCompactBusy} />
+          <CompactSchedulePanel
+            key={`${active.id}:${versionId}`}
+            collegeId={active.id}
+            versionId={versionId}
+            canManage={canManage}
+            disabled={run.isPending}
+            onBusy={setCompactBusy}
+          />
 
           <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
             <AlertDialogContent dir="rtl">

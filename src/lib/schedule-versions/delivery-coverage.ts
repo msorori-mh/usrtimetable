@@ -115,7 +115,8 @@ export function coverageBlockers(
     `الساعات الناقصة: ${coverage.missingHours}`,
   ];
   if (coverage.unassignedGroups > 0) parts.push(`مجموعات بدون إسناد: ${coverage.unassignedGroups}`);
-  if (coverage.shortHoursGroups > 0) parts.push(`مجموعات بساعات ناقصة: ${coverage.shortHoursGroups}`);
+  if (coverage.shortHoursGroups > 0)
+    parts.push(`مجموعات بساعات ناقصة: ${coverage.shortHoursGroups}`);
   return [`تغطية النسخة غير مكتملة — ${parts.join(" • ")}. أكمل الجدول قبل هذا الإجراء.`];
 }
 
