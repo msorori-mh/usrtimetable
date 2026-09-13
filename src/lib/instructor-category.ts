@@ -61,10 +61,17 @@ export function buildInstructorCategoryMap(
   );
 }
 
+/**
+ * Unified Arabic presentation label for any lecturer whose availability is
+ * governed as coming from outside the active college. Internal category codes
+ * remain unchanged for backward compatibility and scheduling rules.
+ */
+export const OTHER_COLLEGE_INSTRUCTOR_LABEL_AR = "محاضر من كلية أخرى";
+
 export const CATEGORY_LABEL_AR: Record<InstructorCategory, string> = {
   permanent: "محاضر دائم",
-  other_college: "محاضر من كلية أخرى",
-  external: "محاضر خارجي",
+  other_college: OTHER_COLLEGE_INSTRUCTOR_LABEL_AR,
+  external: OTHER_COLLEGE_INSTRUCTOR_LABEL_AR,
 };
 
 export const INSTRUCTOR_FORM_HINT_AR: Record<InstructorCategory, string> = {
