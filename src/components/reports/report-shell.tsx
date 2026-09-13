@@ -105,11 +105,21 @@ export function ReportShell({
   const hasRows = rows.length > 0;
   const exportsDisabled = !hasRows || !!isLoading || !!error;
 
+  /**
+   * PUBLISHED-ONLY-REPORTS-01 — for the reports-only viewer a college/term without a
+   * published version shows an explicit not-ready state; never a draft fallback.
+   */
+  const noPublishedVersion =
+    !!reportContext?.publishedOnly && !reportContext.isLoading && !reportContext.versionId;
+  const effectiveNotReady = noPublishedVersion
+    ? NO_PUBLISHED_VERSION_MESSAGE_AR
+    : notReadyMessage;
+
   /** One state machine: error → not ready → loading → empty → content. */
   const body = error ? (
     <ReportErrorState onRetry={onRetry} />
-  ) : notReadyMessage ? (
-    <ReportNotReadyState message={notReadyMessage} />
+  ) : effectiveNotReady ? (
+    <ReportNotReadyState message={effectiveNotReady} />
   ) : isLoading ? (
     <ReportLoadingState />
   ) : !hasRows ? (
