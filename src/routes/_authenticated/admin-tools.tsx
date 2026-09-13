@@ -16,7 +16,7 @@ import {
   type AdminPage,
   type Role,
 } from "@/lib/admin-nav";
-import { ACADEMIC_AFFAIRS_ROLE_LABEL_AR } from "@/lib/viewer-roles";
+import { INSTITUTIONAL_VIEWER_ROLE_LABEL_AR, READ_ONLY_ROLE_LABEL_AR } from "@/lib/viewer-roles";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/admin-tools")({
@@ -48,8 +48,8 @@ const TIER_LABEL: Record<AdminPage["tier"], string> = {
 const ROLE_LABEL: Record<Role, string> = {
   super_admin: "Super Admin",
   college_admin: "مدير كلّية",
-  read_only: "مشاهد",
-  institutional_viewer: ACADEMIC_AFFAIRS_ROLE_LABEL_AR,
+  read_only: READ_ONLY_ROLE_LABEL_AR,
+  institutional_viewer: INSTITUTIONAL_VIEWER_ROLE_LABEL_AR,
 };
 
 function ToolCard({ page }: { page: AdminPage }) {

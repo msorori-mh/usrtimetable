@@ -4,15 +4,16 @@ import { useCurrentUser } from "@/hooks/use-current-user";
 import { resolveReportsOnlyRedirect, REPORTS_ONLY_HOME } from "@/lib/viewer-roles";
 
 /**
- * Route-level scope gate for the academic-affairs role (`institutional_viewer`).
+ * Route-level scope gate for the viewer role «مشاهد» (`read_only`).
  *
- * A reports-only account may open /reports and /reports/* only. Hiding the
+ * A read_only-only account may open /reports and /reports/* only. Hiding the
  * navigation is not enough: any other pathname is blocked here and replaced
  * with /reports. Fail-closed: children stay unrendered while the role is
  * unknown or while the redirect is pending.
  *
- * Other roles are untouched, including a user who carries the role together
- * with super_admin or college_admin.
+ * Other roles are untouched, including `institutional_viewer` («مشاهد مؤسسي»,
+ * full read-only platform view) and any user who also carries super_admin or
+ * college_admin.
  */
 export function ReportsOnlyGate({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
@@ -35,7 +36,7 @@ export function ReportsOnlyGate({ children }: { children: React.ReactNode }) {
   if (redirectTo) {
     return (
       <div dir="rtl" className="p-6 text-sm text-muted-foreground" data-testid="reports-only-block">
-        هذه الصفحة غير متاحة لحساب «إدارة الشؤون الأكاديمية». جارٍ التحويل إلى مركز التقارير…
+        هذه الصفحة غير متاحة لحساب «مشاهد». جارٍ التحويل إلى مركز التقارير…
       </div>
     );
   }

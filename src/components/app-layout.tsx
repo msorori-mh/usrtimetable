@@ -34,7 +34,11 @@ import {
   type Role,
 } from "@/lib/admin-nav";
 import { cn } from "@/lib/utils";
-import { ACADEMIC_AFFAIRS_ROLE_LABEL_AR, isReportsOnlyRole } from "@/lib/viewer-roles";
+import {
+  INSTITUTIONAL_VIEWER_ROLE_LABEL_AR,
+  READ_ONLY_ROLE_LABEL_AR,
+  isReportsOnlyRole,
+} from "@/lib/viewer-roles";
 
 type NavMode = "core" | "all";
 
@@ -302,7 +306,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   };
 
   const roles = user?.roles as Role[] | undefined;
-  /** Academic affairs («إدارة الشؤون الأكاديمية»): reports centre only. */
+  /** «مشاهد» (read_only only): reports centre only. */
   const reportsOnly = isReportsOnlyRole(user);
   const effectiveMode: NavMode = reportsOnly ? "core" : mode;
 
@@ -325,12 +329,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   const roleLabel = user?.isSuperAdmin
     ? "Super Admin"
-    : user?.isInstitutionalViewer
-      ? ACADEMIC_AFFAIRS_ROLE_LABEL_AR
-      : user?.isCollegeAdmin
-        ? "مدير كلّية"
+    : user?.isCollegeAdmin
+      ? "مدير كلّية"
+      : user?.isInstitutionalViewer
+        ? INSTITUTIONAL_VIEWER_ROLE_LABEL_AR
         : user?.isReadOnly
-          ? "مشاهد"
+          ? READ_ONLY_ROLE_LABEL_AR
           : "—";
 
   const modeToggle = reportsOnly ? null : (
@@ -362,7 +366,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           )}
         >
           {reportsOnly
-            ? "حساب إدارة الشؤون الأكاديمية: مركز التقارير للكلّيات المُسندة لك."
+            ? "حساب مشاهد: مركز التقارير لجميع الكلّيات، قراءة وطباعة وتصدير فقط."
             : "أربع خطوات: تجهيز البيانات، إنشاء الجدول، المراجعة والاعتماد، التقارير والطباعة."}
         </p>
         <CorePathNav steps={coreSteps} pathname={pathname} onNavigate={onNavigate} tone={tone} />

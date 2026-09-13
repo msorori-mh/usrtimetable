@@ -229,7 +229,7 @@ function ReportGrid({ items }: { items: ReportCard[] }) {
 
 function ReportsHub() {
   const [legacyOpen, setLegacyOpen] = useState(false);
-  // Academic affairs stays inside /reports/*: the publishing area is out of scope.
+  // «مشاهد» stays inside /reports/*: the publishing area is out of scope.
   const { data: me } = useCurrentUser();
   const reportsOnly = isReportsOnlyRole(me);
   return (
