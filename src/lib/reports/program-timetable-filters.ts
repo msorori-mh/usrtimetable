@@ -181,14 +181,29 @@ export function deriveProgramTimetable<T extends PrintSessionLike>(input: {
   const deliveryGroups = [...groupsById.values()].sort((a, b) =>
     a.name.localeCompare(b.name, "ar", { numeric: true }),
   );
-  selected.deliveryGroupId = keep(
-    selected.deliveryGroupId,
-    deliveryGroups.map((g) => g.id),
-  );
+  // Selectable groups include catalogue groups that the version never placed,
+  // so an unscheduled group can be inspected instead of silently vanishing.
+  selected.deliveryGroupId = keep(selected.deliveryGroupId, [
+    ...deliveryGroups.map((g) => g.id),
+    ...(input.selectableDeliveryGroupIds ?? []),
+  ]);
   const sessions = academicSessions.filter(
     (s) => selected.deliveryGroupId === "all" || s.delivery_group_id === selected.deliveryGroupId,
   );
-  return { selected, programs, levels, cohorts, deliveryGroups, sessions };
+  return {
+    selected,
+    programs,
+    levels,
+    cohorts,
+    deliveryGroups,
+    sessions,
+    /** Scope-filtered sessions BEFORE the delivery-group filter (coverage input). */
+    academicSessions,
+    /** Cohort ids currently in scope (all cohorts, or the selected one). */
+    scopedCohortIds: [...cohortsById.keys()],
+  };
+}
+
 }
 
 export function programReportSearchParams(
