@@ -135,11 +135,12 @@ function WorkloadPage() {
         offerings: new Set(),
         sources: {},
       };
-      const max = i.max_weekly_hours ?? 0;
-      const released = i.administrative_release_hours ?? 0;
-      const effective = Math.max(0, max - released);
-      const overload = Math.max(0, agg.hours - effective);
-      const underload = Math.max(0, effective - agg.hours);
+      // A missing approved load must never be read as a zero quota.
+      const balance = computeQuotaBalance({
+        maxWeeklyHours: i.max_weekly_hours,
+        adminReleaseHours: i.administrative_release_hours,
+        assignedHours: agg.hours,
+      });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const dep = (i as any).departments?.name ?? "";
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -152,15 +153,17 @@ function WorkloadPage() {
         department: dep,
         rank: i.academic_rank ?? "",
         type: typ,
-        max_weekly_hours: max,
-        admin_release: released,
-        scheduled_hours: Number(agg.hours.toFixed(2)),
-        overload: Number(overload.toFixed(2)),
-        underload: Number(underload.toFixed(2)),
+        max_weekly_hours: balance.baseHours ?? QUOTA_UNDEFINED_AR,
+        admin_release: balance.releaseHours,
+        effective_quota: balance.netHours ?? QUOTA_UNDEFINED_AR,
+        scheduled_hours: balance.assignedHours,
+        overload: balance.overloadHours ?? QUOTA_UNDEFINED_AR,
+        underload: balance.deficitHours ?? QUOTA_UNDEFINED_AR,
         courses_count: agg.offerings.size,
         source_breakdown: srcStr,
       };
     });
+
   }, [
     instructors,
     sessions,
