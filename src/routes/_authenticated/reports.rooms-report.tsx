@@ -149,6 +149,8 @@ function Page() {
 
   const isLoading = ctx.isLoading || inventory.isLoading || sessionsQuery.isLoading;
   const ready = !!ctx.versionId;
+  const filtered = ctx.studySystem !== "all";
+  const scopeSuffix = filtered ? " (ضمن الفلتر)" : "";
 
   return (
     <ReportShell
