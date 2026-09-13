@@ -12,7 +12,10 @@ import {
 } from "./workload.ts";
 
 export type AllocationStatus =
-  "unassigned" | "under_allocated" | "fully_allocated" | "over_allocated";
+  | "unassigned"
+  | "under_allocated"
+  | "fully_allocated"
+  | "over_allocated";
 
 export type AssignmentAllocationSummary = {
   delivery_group_id: string;

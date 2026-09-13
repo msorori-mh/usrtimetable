@@ -68,9 +68,6 @@ describe("Arabic academic lecture terminology contract", () => {
       detectTeachingImportWorkbookMode([[...base, "نوع_المحاضرة"]]),
       "official_template",
     );
-    assert.equal(
-      detectTeachingImportWorkbookMode([[...base, "نوع_المكوّن"]]),
-      "official_template",
-    );
+    assert.equal(detectTeachingImportWorkbookMode([[...base, "نوع_المكوّن"]]), "official_template");
   });
 });

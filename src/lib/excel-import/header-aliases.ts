@@ -18,7 +18,10 @@ export function canonicalizeImportShape(
     headers: headers.map((header) => canonicalImportHeader(columns, header)),
     rows: rows.map((row) =>
       Object.fromEntries(
-        Object.entries(row).map(([header, value]) => [canonicalImportHeader(columns, header), value]),
+        Object.entries(row).map(([header, value]) => [
+          canonicalImportHeader(columns, header),
+          value,
+        ]),
       ),
     ),
   };
