@@ -296,7 +296,17 @@ function InstructorDirectory() {
   const deptMap = new Map((depts ?? []).map((d) => [d.id, d.name]));
   const typeRows = (types ?? []) as InstructorTypeRow[];
   const typeMap = new Map(typeRows.map((t) => [t.id, t]));
-  const visibleRows = review ? rows?.filter((i) => instructorNeedsReview(i, review)) : rows;
+  const reviewRows = review ? (rows ?? []).filter((i) => instructorNeedsReview(i, review)) : rows;
+  const departmentLabel = (id: string | null | undefined) =>
+    id ? (deptMap.get(id) ?? "بدون قسم") : "بدون قسم";
+  // Search, filters and sorting are presentation-only and compose together.
+  const visibleRows = reviewRows
+    ? filterAndSortInstructors(reviewRows, directory, departmentLabel)
+    : reviewRows;
+  const availableRanks = Array.from(
+    new Set((rows ?? []).map((i) => i.academic_rank ?? "").filter((r) => r !== "")),
+  ).sort((a, b) => a.localeCompare(b, "ar"));
+
 
   return (
     <div className="mx-auto max-w-5xl" dir="rtl">
