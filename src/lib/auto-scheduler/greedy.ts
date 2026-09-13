@@ -5,6 +5,7 @@ import {
   type StudySystem,
 } from "@/lib/conflict-engine/validator";
 import { scoreScheduleVersion } from "@/lib/conflict-engine/scorer";
+import { isPracticalLabFallback, roomTypeRank } from "@/lib/scheduling/room-type-policy";
 
 export interface UnplacedItem {
   course_offering_id: string;
