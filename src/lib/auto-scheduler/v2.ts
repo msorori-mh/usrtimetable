@@ -192,7 +192,8 @@ export async function runV2AutoSchedule(params: {
       .eq("college_id", params.collegeId),
   ]);
   if (roomsError) throw new Error(`V2_AUTO_QUERY_FAILED[rooms]: ${roomsError.message}`);
-  if (roomTypesError) throw new Error(`V2_AUTO_QUERY_FAILED[room_types]: ${roomTypesError.message}`);
+  if (roomTypesError)
+    throw new Error(`V2_AUTO_QUERY_FAILED[room_types]: ${roomTypesError.message}`);
   if (roomAvailabilityError) {
     throw new Error(`V2_AUTO_QUERY_FAILED[room_availability]: ${roomAvailabilityError.message}`);
   }
@@ -218,8 +219,6 @@ export async function runV2AutoSchedule(params: {
   const roomById = new Map((rooms ?? []).map((room) => [room.id, room]));
   /** Practical sessions placed in a lecture hall through the allowed fallback. */
   let practicalRoomFallbacks = 0;
-
-
 
   const workItems = payload.rows.filter(
     (item) =>
@@ -529,7 +528,6 @@ export async function runV2AutoSchedule(params: {
       if (capacityOnly.length > 0) roomPools.push(capacityOnly);
     }
 
-
     for (const durationHours of plan.remaining) {
       if (params.signal?.aborted) {
         cancelled = true;
@@ -668,7 +666,6 @@ export async function runV2AutoSchedule(params: {
           if (placedItem) break;
         }
       }
-
 
       if (cancelled) {
         warnings.push(

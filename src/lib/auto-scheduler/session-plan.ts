@@ -14,7 +14,6 @@
 
 import { roomTypeRank, type RoomTypeRank } from "@/lib/scheduling/room-type-policy";
 
-
 /** theory + tutorial consume the lecture cadence; practical consumes the lab cadence. */
 export const LECTURE_LIKE_COMPONENTS = ["theory", "tutorial", "lecture"] as const;
 export const LAB_LIKE_COMPONENTS = ["practical", "lab"] as const;
@@ -350,7 +349,6 @@ export function partitionCandidateRoomsByRank(
   return { preferred, fallback };
 }
 
-
 export type OccupiedInterval = {
   day: number;
   start: string;
@@ -472,9 +470,7 @@ export function isRoomSlotAvailable(
   if (roomWindows.length > 0) {
     const sameDay = roomWindows.filter((w) => Number(w.day_of_week) === day);
     if (!sameDay.length) return false;
-    return sameDay.some(
-      (w) => start >= toMinutes(w.start_time) && end <= toMinutes(w.end_time),
-    );
+    return sameDay.some((w) => start >= toMinutes(w.start_time) && end <= toMinutes(w.end_time));
   }
   const days = room.available_days ?? null;
   if (days && days.length > 0 && !days.map(Number).includes(day)) return false;

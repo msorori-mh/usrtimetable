@@ -509,7 +509,11 @@ export async function runGreedyAutoSchedule(params: {
 
   // 9. Difficulty ordering — annotate candidate counts then sort
   for (const u of allUnits) {
-    u.candidate_room_count = roomPoolFor(u.required_room_type, u.expected_students, u.session_type).length;
+    u.candidate_room_count = roomPoolFor(
+      u.required_room_type,
+      u.expected_students,
+      u.session_type,
+    ).length;
     u.candidate_slot_count = buildCandidates(u.study_system, u.duration_min).length;
   }
   // Hardest first: fewer rooms, fewer slots, larger students, stricter type, longer duration
@@ -572,7 +576,11 @@ export async function runGreedyAutoSchedule(params: {
   // Build & rank candidate (slot, room) tuples for a unit
   const buildRankedCandidates = (unit: SessionUnit) => {
     const slots = buildCandidates(unit.study_system, unit.duration_min);
-    const roomPool = roomPoolFor(unit.required_room_type, unit.expected_students, unit.session_type);
+    const roomPool = roomPoolFor(
+      unit.required_room_type,
+      unit.expected_students,
+      unit.session_type,
+    );
     const tuples: Array<{
       slot: CandidateSlot;
       room: { id: string; capacity: number; room_type: string | null };

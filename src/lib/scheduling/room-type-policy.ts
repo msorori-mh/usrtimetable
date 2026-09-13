@@ -25,14 +25,7 @@ const norm = (value: string | null | undefined): string =>
     .toLowerCase();
 
 /** Practical component aliases used across imports and legacy session types. */
-const PRACTICAL_ALIASES = new Set([
-  "practical",
-  "lab",
-  "laboratory",
-  "عملي",
-  "معمل",
-  "مختبر",
-]);
+const PRACTICAL_ALIASES = new Set(["practical", "lab", "laboratory", "عملي", "معمل", "مختبر"]);
 
 export function isPracticalComponent(componentType: string | null | undefined): boolean {
   return PRACTICAL_ALIASES.has(norm(componentType));

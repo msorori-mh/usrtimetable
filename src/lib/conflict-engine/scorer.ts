@@ -29,8 +29,7 @@ const mins = (s: string) => {
   const [h, m] = t(s).split(":").map(Number);
   return h * 60 + m;
 };
-const overlap = (aS: string, aE: string, bS: string, bE: string) =>
-  t(aS) < t(bE) && t(bS) < t(aE);
+const overlap = (aS: string, aE: string, bS: string, bE: string) => t(aS) < t(bE) && t(bS) < t(aE);
 
 /**
  * Score a set of proposed sessions for a schedule version.
@@ -45,8 +44,7 @@ export async function scoreSchedule(params: {
   const { collegeId, scheduleVersionId, sessions } = params;
 
   const approvedExceptions =
-    params.approvedExceptions ??
-    (await loadApprovedExceptions({ scheduleVersionId }));
+    params.approvedExceptions ?? (await loadApprovedExceptions({ scheduleVersionId }));
 
   // 1. Hard conflicts (re-use validator; all visible, unapproved drives score gate)
   const validation = await validateProposed({
@@ -58,7 +56,10 @@ export async function scoreSchedule(params: {
   const hard = validation.conflicts;
 
   // 2. Weights (college overrides → default)
-  const { data: metrics } = await supabase.from("quality_metrics").select("*").eq("is_active", true);
+  const { data: metrics } = await supabase
+    .from("quality_metrics")
+    .select("*")
+    .eq("is_active", true);
   const { data: settings } = await supabase
     .from("college_quality_settings")
     .select("quality_metric_id, enabled, weight")
@@ -84,7 +85,9 @@ export async function scoreSchedule(params: {
   const { data: prefs } = instructorIds.length
     ? await supabase
         .from("instructor_availability")
-        .select("instructor_id, day_of_week, start_time, end_time, availability_type, is_preference")
+        .select(
+          "instructor_id, day_of_week, start_time, end_time, availability_type, is_preference",
+        )
         .in("instructor_id", instructorIds)
         .eq("is_preference", true)
     : { data: [] };
@@ -99,13 +102,18 @@ export async function scoreSchedule(params: {
       if (sPrefs.length === 0) continue;
       const wanted = sPrefs.filter((p) => p.availability_type !== "unavailable");
       const blocked = sPrefs.filter((p) => p.availability_type === "unavailable");
-      const fits = wanted.length === 0 ||
+      const fits =
+        wanted.length === 0 ||
         wanted.some((w) => t(s.start_time) >= t(w.start_time) && t(s.end_time) <= t(w.end_time));
-      const hitsBlocked = blocked.some((w) => overlap(s.start_time, s.end_time, w.start_time, w.end_time));
+      const hitsBlocked = blocked.some((w) =>
+        overlap(s.start_time, s.end_time, w.start_time, w.end_time),
+      );
       if (!fits || hitsBlocked) {
         const dedu = pdW.weight;
         soft.push({
-          code: "preferred_days", severity: "soft", score_impact: dedu,
+          code: "preferred_days",
+          severity: "soft",
+          score_impact: dedu,
           message_ar: "المحاضرة خارج تفضيلات المحاضر المرنة.",
           message_en: "Session outside instructor's preferred times.",
           metadata: { instructor_id: s.instructor_id, day_of_week: s.day_of_week },
@@ -130,7 +138,9 @@ export async function scoreSchedule(params: {
       if (avg > 0 && diff / avg > 0.25) {
         const dedu = wbW.weight;
         soft.push({
-          code: "workload_balance", severity: "soft", score_impact: dedu,
+          code: "workload_balance",
+          severity: "soft",
+          score_impact: dedu,
           message_ar: "حِمل المحاضر بعيد عن المتوسط.",
           message_en: "Instructor load deviates from average.",
           metadata: { instructor_id: iid, minutes: mn, average: Math.round(avg) },
@@ -147,7 +157,8 @@ export async function scoreSchedule(params: {
     for (const s of sessions) {
       const k = `${s.instructor_id}|${s.day_of_week}`;
       const arr = byInstrDay.get(k) ?? [];
-      arr.push(s); byInstrDay.set(k, arr);
+      arr.push(s);
+      byInstrDay.set(k, arr);
     }
     for (const [k, arr] of byInstrDay.entries()) {
       if (arr.length < 2) continue;
@@ -157,7 +168,9 @@ export async function scoreSchedule(params: {
         if (gap > 60) {
           const dedu = gpW.weight;
           soft.push({
-            code: "gap_penalty", severity: "soft", score_impact: dedu,
+            code: "gap_penalty",
+            severity: "soft",
+            score_impact: dedu,
             message_ar: `فجوة كبيرة بين جلستَي محاضر (${gap} دقيقة).`,
             message_en: `Large gap between instructor sessions (${gap} minutes).`,
             metadata: { key: k, gap_minutes: gap },
@@ -177,7 +190,9 @@ export async function scoreSchedule(params: {
     if (usedDays <= 2) {
       const dedu = dbW.weight * 2;
       soft.push({
-        code: "distribution_balance", severity: "soft", score_impact: dedu,
+        code: "distribution_balance",
+        severity: "soft",
+        score_impact: dedu,
         message_ar: "التوزيع الأسبوعي ضعيف — تركّز المحاضرات على أيام قليلة.",
         message_en: "Weak weekly distribution — sessions concentrated on few days.",
         metadata: { used_days: usedDays },
@@ -185,11 +200,14 @@ export async function scoreSchedule(params: {
       note("distribution_balance", dbW.weight, dedu);
     } else {
       const values = Array.from(perDay.values());
-      const max = Math.max(...values), min = Math.min(...values);
+      const max = Math.max(...values),
+        min = Math.min(...values);
       if (max - min >= 3) {
         const dedu = dbW.weight;
         soft.push({
-          code: "distribution_balance", severity: "soft", score_impact: dedu,
+          code: "distribution_balance",
+          severity: "soft",
+          score_impact: dedu,
           message_ar: "تفاوت كبير في توزيع المحاضرات بين الأيام.",
           message_en: "Large variance in per-day session counts.",
           metadata: { max, min },
@@ -248,15 +266,20 @@ export async function scoreScheduleVersion(params: {
   if (error) throw error;
 
   const proposed: ProposedSession[] = (sessions ?? []).map((s) => ({
-    id: s.id, schedule_version_id: s.schedule_version_id,
+    id: s.id,
+    schedule_version_id: s.schedule_version_id,
     course_offering_id: s.course_offering_id,
     teaching_assignment_id: s.teaching_assignment_id,
-    instructor_id: s.instructor_id, room_id: s.room_id,
-    section_id: s.section_id, section_group_id: s.section_group_id,
+    instructor_id: s.instructor_id,
+    room_id: s.room_id,
+    section_id: s.section_id,
+    section_group_id: s.section_group_id,
     study_system: s.study_system as ProposedSession["study_system"],
     day_of_week: s.day_of_week,
-    start_time: s.start_time, end_time: s.end_time,
-    session_type: s.session_type, expected_students: s.expected_students,
+    start_time: s.start_time,
+    end_time: s.end_time,
+    session_type: s.session_type,
+    expected_students: s.expected_students,
   }));
 
   const result = await scoreSchedule({ collegeId, scheduleVersionId, sessions: proposed });

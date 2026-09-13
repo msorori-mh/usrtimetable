@@ -107,7 +107,10 @@ describe("candidate room ranking", () => {
 
   it("still enforces capacity on a fallback hall", () => {
     expect(
-      roomCandidateRank({ id: "small-hall", capacity: 10, room_type: "lecture_hall" }, practicalReq),
+      roomCandidateRank(
+        { id: "small-hall", capacity: 10, room_type: "lecture_hall" },
+        practicalReq,
+      ),
     ).toBeNull();
   });
 
@@ -137,10 +140,18 @@ describe("room availability windows", () => {
 
   it("blocks a lecture hall after 14:00", () => {
     expect(
-      isRoomSlotAvailable({ id: "hall-1" }, { day: 0, start: "14:00:00", end: "16:00:00" }, windows),
+      isRoomSlotAvailable(
+        { id: "hall-1" },
+        { day: 0, start: "14:00:00", end: "16:00:00" },
+        windows,
+      ),
     ).toBe(false);
     expect(
-      isRoomSlotAvailable({ id: "hall-1" }, { day: 0, start: "12:00:00", end: "14:00:00" }, windows),
+      isRoomSlotAvailable(
+        { id: "hall-1" },
+        { day: 0, start: "12:00:00", end: "14:00:00" },
+        windows,
+      ),
     ).toBe(true);
   });
 
@@ -151,7 +162,9 @@ describe("room availability windows", () => {
       available_start_time: "08:00:00",
       available_end_time: "14:00:00",
     };
-    expect(isRoomSlotAvailable(room, { day: 0, start: "13:00:00", end: "14:00:00" }, [])).toBe(true);
+    expect(isRoomSlotAvailable(room, { day: 0, start: "13:00:00", end: "14:00:00" }, [])).toBe(
+      true,
+    );
     expect(isRoomSlotAvailable(room, { day: 0, start: "13:00:00", end: "15:00:00" }, [])).toBe(
       false,
     );
