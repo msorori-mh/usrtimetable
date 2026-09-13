@@ -39,6 +39,8 @@ export interface AutoRunResult {
   mode: AutoRunMode;
   deletedAutoSessions: number;
   skippedLockedSessions: number;
+  /** Practical sessions placed in a lecture hall via the allowed room fallback. */
+  practicalRoomFallbacks?: number;
 }
 
 const ALGORITHM_VERSION = "greedy-v2-difficulty-backtrack";
