@@ -125,9 +125,20 @@ export function ReportFilters({
   );
 
   const advancedContent =
-    statusMode || studySystem || advanced ? (
+    showStatusMode || publishedOnly || studySystem || advanced ? (
       <>
-        {statusMode && (
+        {publishedOnly && (
+          <ReportFilterField label="نطاق النسخ">
+            <p
+              className="text-sm text-muted-foreground"
+              data-testid="report-filter-published-only-note"
+            >
+              {PUBLISHED_ONLY_CONTEXT_LABEL_AR} — {PUBLISHED_ONLY_CONTEXT_HINT_AR}
+            </p>
+          </ReportFilterField>
+        )}
+
+        {showStatusMode && (
           <ReportFilterField label="نطاق النسخ" htmlFor="report-filter-status-mode">
             <Select value={mode} onValueChange={(v) => setStatusMode(v as ReportStatusMode)}>
               <SelectTrigger id="report-filter-status-mode" aria-label="نطاق النسخ">
