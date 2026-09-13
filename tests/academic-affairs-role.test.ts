@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import {
   ACADEMIC_AFFAIRS_ROLE_LABEL_AR,
+  assignsAllColleges,
   isReportsOnlyPath,
   isReportsOnlyRole,
   requiresCollegeAssignment,
@@ -11,6 +12,13 @@ import {
 import { ADMIN_PAGES, CORE_PATH, canAccess, type Role } from "../src/lib/admin-nav";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
+const migrations = () => {
+  const dir = new URL("../supabase/migrations/", import.meta.url);
+  return readdirSync(dir)
+    .filter((f) => f.endsWith(".sql"))
+    .map((f) => readFileSync(new URL(f, dir), "utf8"))
+    .join("\n");
+};
 const VIEWER: Role[] = ["institutional_viewer"];
 
 describe("academic affairs role identification", () => {
