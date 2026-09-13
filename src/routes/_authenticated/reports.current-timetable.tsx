@@ -84,7 +84,8 @@ function Page() {
 
   const sessions = bundle?.sessions ?? [];
   const pages = useMemo(
-    () => groupCurrentSchedulePages(sessions, { collegeId: ctx.collegeId ?? "", studySystem: "all" }),
+    () =>
+      groupCurrentSchedulePages(sessions, { collegeId: ctx.collegeId ?? "", studySystem: "all" }),
     [sessions, ctx.collegeId],
   );
   const rows = useMemo(() => buildExportRows(pages, bundle?.labels), [pages, bundle?.labels]);

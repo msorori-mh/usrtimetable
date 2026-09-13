@@ -114,5 +114,8 @@ test("rooms report summarises every active room and details used rooms", () => {
 
   const pages = groupRoomsReportPages(sessions, "college");
   assert.equal(pages.length, 2);
-  assert.equal(pages.reduce((s, p) => s + p.sessions.length, 0), sessions.length);
+  assert.equal(
+    pages.reduce((s, p) => s + p.sessions.length, 0),
+    sessions.length,
+  );
 });

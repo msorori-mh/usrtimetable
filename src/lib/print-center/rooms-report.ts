@@ -96,9 +96,7 @@ export function buildRoomsReportSummary(params: {
   settings?: RoomsReportSettings | null;
 }): RoomsReportSummaryRow[] {
   const typeLabel = new Map(
-    params.roomTypes.map(
-      (t) => [t.id, t.name_ar ?? t.name ?? t.name_en ?? t.code ?? "—"] as const,
-    ),
+    params.roomTypes.map((t) => [t.id, t.name_ar ?? t.name ?? t.name_en ?? t.code ?? "—"] as const),
   );
 
   const used = new Map<string, { hours: number; count: number }>();
