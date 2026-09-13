@@ -6,6 +6,17 @@ import {
   type AttendanceMetrics,
 } from "./attendance-objective.ts";
 import { isInstructorAvailabilityEnforced } from "../scheduling/instructor-availability-policy.ts";
+import { isRoomTypeCompatible, roomTypeRank } from "../scheduling/room-type-policy.ts";
+
+/** Plan-course component type behind an assignment (drives the room fallback policy). */
+function assignmentComponentType(
+  s: Snapshot,
+  assignment: { plan_course_component_id?: string | null } | null | undefined,
+): string | null {
+  const id = assignment?.plan_course_component_id;
+  if (!id) return null;
+  return (s.components ?? []).find((c) => c.id === id)?.component_type ?? null;
+}
 export interface Session {
   id: string;
   updated_at: string;
