@@ -182,7 +182,7 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
     `البرنامج: ${refs?.programs.find((p) => p.id === programId)?.name ?? "الكل"}`,
     `عضو هيئة التدريس: ${refs?.instructors.find((i) => i.id === instructorId)?.full_name ?? "الكل"}`,
     kind === "workload"
-      ? `الحالة: ${loadStatus === "overload" ? "ساعات زائدة" : loadStatus === "deficit" ? "نقص النصاب" : loadStatus === "missing" ? "سياسة غير محددة" : "الكل"}`
+      ? `الحالة: ${loadStatus === "overload" ? "ساعات زائدة" : loadStatus === "deficit" ? "نقص النصاب" : loadStatus === "missing" ? "بلا نصاب معتمد" : "الكل"}`
       : "",
   ]
     .filter(Boolean)
@@ -300,7 +300,7 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
                     { id: "all", name: "الكل" },
                     { id: "overload", name: "الساعات الزائدة" },
                     { id: "deficit", name: "نقص النصاب" },
-                    { id: "missing", name: "سياسة النصاب غير محددة" },
+                    { id: "missing", name: "بلا نصاب معتمد" },
                   ]}
                 />
               )}
