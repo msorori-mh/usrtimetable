@@ -1,12 +1,4 @@
-import { Card } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { ReportSection, ReportDataTable } from "@/components/reports/report-section";
 import { useWeeklyGridWindow } from "@/hooks/reports/useWeeklyGridWindow";
 import { TimetableGridReport } from "@/components/reports/timetable-grid-report";
 import {
@@ -14,6 +6,10 @@ import {
   timetableSessionsToRows,
   type TimetableReportSession,
 } from "@/lib/reports/session-mappers";
+
+/** Columns that stay hidden on phones; the grid above already shows the essentials. */
+const SECONDARY_KEYS = new Set(["department", "program", "level", "study_system"]);
+const NUMERIC_KEYS = new Set(["hours"]);
 
 interface Props {
   sessions: TimetableReportSession[];
@@ -32,36 +28,36 @@ export function ReportTimetableView({
   const { window } = useWeeklyGridWindow(collegeId);
 
   return (
-    <div className="space-y-4 report-print-body">
-      <Card className="p-4">
-        <h2 className="text-sm font-semibold mb-3">العرض الأسبوعي</h2>
+    <div className="report-print-body min-w-0 space-y-4">
+      <ReportSection
+        title="العرض الأسبوعي"
+        hint="السبت إلى الخميس وفق أيام العمل وساعات الدوام المعتمدة للكلية."
+        bodyClassName="p-4"
+      >
         <TimetableGridReport
           sessions={sessions}
           workingDays={window.workingDays}
           startHour={window.startHour}
           endHour={window.endHour}
         />
-      </Card>
-      <Card className="p-0 overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {headers.map((h) => (
-                <TableHead key={h.key}>{h.label}</TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((r, i) => (
-              <TableRow key={i}>
-                {headers.map((h) => (
-                  <TableCell key={h.key}>{String(r[h.key] ?? "")}</TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
+      </ReportSection>
+
+      <ReportSection
+        title="تفصيل المحاضرات"
+        count={rows.length}
+        hint="كل محاضرة في سطر — الأعمدة الثانوية تظهر على الشاشات الأوسع وفي الطباعة."
+      >
+        <ReportDataTable
+          caption="تفصيل محاضرات الجدول"
+          columns={headers.map((h) => ({
+            key: h.key,
+            label: h.label,
+            numeric: NUMERIC_KEYS.has(h.key),
+            secondary: SECONDARY_KEYS.has(h.key),
+          }))}
+          rows={rows}
+        />
+      </ReportSection>
     </div>
   );
 }

@@ -1,7 +1,6 @@
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { ArrowRight, Download, FileSpreadsheet, Printer } from "lucide-react";
 import { CollegeSwitcher } from "@/components/college-switcher";
 import {
@@ -9,6 +8,13 @@ import {
   headerMetaFromContext,
   type ReportOfficialHeaderMeta,
 } from "@/components/reports/report-official-header";
+import { ReportKpiRow, type ReportKpi } from "@/components/reports/report-kpis";
+import {
+  ReportEmptyState,
+  ReportErrorState,
+  ReportLoadingState,
+  ReportNotReadyState,
+} from "@/components/reports/report-states";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { downloadCSV, downloadXLSX, type Row } from "@/lib/reports/export";
 import { printPageStyleCss } from "@/lib/print-center";
@@ -28,6 +34,10 @@ interface Props {
   /** Read-only note on header (default true). */
   readOnly?: boolean;
   filters?: ReactNode;
+  /** Screen-only KPI strip (3–5 meaningful indicators). */
+  kpis?: ReportKpi[];
+  /** Summary block rendered above the detail tables. */
+  summary?: ReactNode;
   /** Always rendered above the loading/empty/body area (e.g. delivery-demo warning). */
   leading?: ReactNode;
   rows: Row[];
@@ -38,6 +48,12 @@ interface Props {
   printContent?: ReactNode;
   isLoading?: boolean;
   emptyMessage?: string;
+  /** Query failure — shows the error state instead of an empty result. */
+  error?: unknown;
+  /** Retry handler offered by the error state. */
+  onRetry?: () => void;
+  /** Required selections still missing — shows the not-ready state. */
+  notReadyMessage?: string;
 }
 
 export function ReportShell({
@@ -49,6 +65,8 @@ export function ReportShell({
   official,
   readOnly = true,
   filters,
+  kpis,
+  summary,
   leading,
   rows,
   headers,
@@ -57,6 +75,9 @@ export function ReportShell({
   printContent,
   isLoading,
   emptyMessage,
+  error,
+  onRetry,
+  notReadyMessage,
 }: Props) {
   const { active } = useActiveCollege();
 
@@ -82,75 +103,91 @@ export function ReportShell({
     setQrUrl(window.location.href);
   }, []);
 
+  const hasRows = rows.length > 0;
+  const exportsDisabled = !hasRows || !!isLoading || !!error;
+
+  /** One state machine: error → not ready → loading → empty → content. */
+  const body = error ? (
+    <ReportErrorState onRetry={onRetry} />
+  ) : notReadyMessage ? (
+    <ReportNotReadyState message={notReadyMessage} />
+  ) : isLoading ? (
+    <ReportLoadingState />
+  ) : !hasRows ? (
+    <ReportEmptyState message={emptyMessage ?? "لا توجد بيانات بهذه المعايير."} />
+  ) : (
+    children
+  );
+
+  const showSummaryBlocks = !error && !notReadyMessage && !isLoading;
+
   return (
     <div className="report-print-root min-w-0 space-y-4" dir="rtl">
       {/* A4 RTL portrait page box for reports that print the on-screen body.
           Dedicated printContent sheets inject their own page style. */}
       {!printContent && <style>{printPageStyleCss("A4", "portrait")}</style>}
+
       <div className={printContent ? "report-no-print" : undefined}>
         <ReportOfficialHeader
           reportTitle={title}
+          description={description}
           filterSummary={filterSummary}
           qrUrl={qrUrl}
           {...headerMeta}
         />
       </div>
 
-      <div className="report-no-print flex min-w-0 flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/reports">
-                <ArrowRight className="h-4 w-4 ml-1" /> العودة
-              </Link>
-            </Button>
-            <h1 className="min-w-0 break-words text-2xl font-bold">{title}</h1>
-          </div>
-          {description && <p className="text-sm text-muted-foreground mt-1">{description}</p>}
-        </div>
-        <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
+      {/* Quiet, unified action bar: print carries the visual priority. */}
+      <div
+        className="report-no-print grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:flex-wrap sm:justify-between"
+        data-testid="report-action-bar"
+      >
+        <Button asChild variant="ghost" size="sm" className="justify-self-start">
+          <Link to="/reports" aria-label="العودة إلى فهرس التقارير">
+            <ArrowRight className="ml-1 h-4 w-4" /> العودة
+          </Link>
+        </Button>
+        <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
           <CollegeSwitcher />
           <Button
-            variant="outline"
             size="sm"
             onClick={handlePrint}
-            disabled={!!printContent && (!!isLoading || !rows.length)}
+            aria-label="طباعة التقرير"
+            disabled={!!printContent && (!!isLoading || !hasRows)}
           >
-            <Printer className="h-4 w-4 ml-1" /> طباعة
+            <Printer className="ml-1 h-4 w-4" /> طباعة
           </Button>
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
-            disabled={!rows.length}
-            onClick={() => downloadCSV(rows, headers, filename)}
-          >
-            <Download className="h-4 w-4 ml-1" /> CSV
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!rows.length}
+            aria-label="تصدير Excel"
+            disabled={exportsDisabled}
             onClick={() => downloadXLSX(rows, headers, filename)}
           >
-            <FileSpreadsheet className="h-4 w-4 ml-1" /> Excel
+            <FileSpreadsheet className="ml-1 h-4 w-4" /> Excel
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label="تصدير CSV"
+            disabled={exportsDisabled}
+            onClick={() => downloadCSV(rows, headers, filename)}
+          >
+            <Download className="ml-1 h-4 w-4" /> CSV
           </Button>
         </div>
       </div>
 
-      {filters && <Card className="report-no-print min-w-0 overflow-hidden p-4">{filters}</Card>}
+      {filters}
+
+      {showSummaryBlocks && kpis && kpis.length > 0 && <ReportKpiRow items={kpis} />}
 
       {leading}
 
+      {showSummaryBlocks && summary}
+
       <div className={printContent ? "report-no-print min-w-0" : "report-print-body min-w-0"}>
-        {isLoading ? (
-          <Card className="p-8 text-center text-muted-foreground">جارٍ التحميل…</Card>
-        ) : rows.length === 0 ? (
-          <Card className="p-8 text-center text-muted-foreground">
-            {emptyMessage ?? "لا توجد بيانات بهذه المعايير."}
-          </Card>
-        ) : (
-          children
-        )}
+        {body}
       </div>
       {printContent && <div className="hidden print:block print-center-body">{printContent}</div>}
     </div>
