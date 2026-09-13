@@ -96,11 +96,14 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
         readAll<AcademicInstructor>((from, to) =>
           supabase
             .from("instructors")
-            .select("id, full_name, academic_rank, department_id")
+            .select(
+              "id, full_name, academic_rank, department_id, max_weekly_hours, administrative_release_hours",
+            )
             .eq("college_id", collegeId)
             .order("id")
             .range(from, to),
         ),
+
       ]);
       return { terms, departments, programs, instructors };
     },
@@ -157,12 +160,13 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
     kind === "workload" && loadStatus !== "all"
       ? allRows.filter((r) =>
           loadStatus === "missing"
-            ? r.required === null
+            ? isMissingQuotaRow(r)
             : loadStatus === "overload"
               ? Number(r.overload) > 0
               : Number(r.deficit) > 0,
         )
       : allRows;
+
   // Search only hides rows in the view; exported keys and values stay identical.
   const rows = filterRowsBySearch(statusRows, search);
   const headers = ACADEMIC_REPORT_HEADERS[kind];
