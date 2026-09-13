@@ -244,17 +244,17 @@
 
 - **Label:** الإسناد التدريسي V2 (دفعة + مجموعة تدريس)
 - **Sheet:** assignments_v2
-- **Natural key:** دفعة + مقرر + مكوّن + مجموعة + محاضر (`_logical`)
+- **Natural key:** دفعة + مقرر + محاضرة + مجموعة + محاضر (`_logical`)
 - **Commit:** commit_import_job_atomic
 
 | column_name | Arabic label | required/optional | data type | allowed values | normalization | reference entity | validation error code | natural-key | example | notes |
 |---|---|---|---|---|---|---|---|---|---|---|
 | cohort_code | رمز_الدفعة | required | text | — | trim | academic_cohorts.code | missing_required / unknown_* | composite | CS-L3-2024 |  |
 | course_code | رمز_المقرر | required | text | — | trim | courses.code | missing_required / unknown_* | composite | CS101 |  |
-| component_type | نوع_المكوّن | required | text | theory, practical, tutorial, project | trim | — | missing_required / unknown_* | composite | theory | summer_training forbidden at validate+RPC |
+| component_type | نوع_المحاضرة | required | text | theory, practical, tutorial, project | trim | — | missing_required / unknown_* | composite | theory | summer_training forbidden at validate+RPC |
 | delivery_group_code | رمز_مجموعة_التقديم | required | text | — | trim | delivery_groups.group_code | missing_required / unknown_* | composite | G1 |  |
 | employee_number | رقم_الموظف_للمحاضر | required | text | — | trim | instructors.employee_number | missing_required / unknown_* | composite | EMP001 |  |
-| assigned_component_hours | ساعات_المكوّن_المسندة | optional | number | — | Number | — | invalid_enum / type | composite | 3 |  |
+| assigned_component_hours | ساعات_المحاضرة_المسندة | optional | number | — | Number | — | invalid_enum / type | composite | 3 |  |
 | study_system | نظام_الدراسة | optional | text | regular, parallel | trim | — | invalid_enum / type | composite | regular |  |
 | is_active | نشط | optional | boolean | — | toBool | — | invalid_enum / type | composite | true |  |
 | expected_students | الطلاب_المتوقعون | optional | number | — | Number | — | invalid_enum / type | composite | 30 |  |

@@ -1,7 +1,7 @@
 # TUTORIAL-LECTURE-HALL-PERMANENT-RULE-01
 
-قاعدة دائمة على مستوى المنصة: كل مكوّن `tutorial` (تمارين) يُدرَّس في نوع قاعة
-`lecture_hall` فقط. مكونات `practical` / `project` / `theory` لم تتغير.
+قاعدة دائمة على مستوى المنصة: كل محاضرة `tutorial` (تمارين) يُدرَّس في نوع قاعة
+`lecture_hall` فقط. محاضرات `practical` / `project` / `theory` لم تتغير.
 
 ## العقد المعتمد
 
@@ -39,7 +39,7 @@ Live postcheck: `triggers=2`, `tutorial components=39`, `tutorial+lecture_hall=3
 - `src/components/study-plans/plan-courses-manager.tsx` — عند اختيار «تمارين» يُثبَّت نوع القاعة
   على «قاعة محاضرات» ويُعطَّل الاختيار مع رسالة توضيحية.
 - المجدول (`auto-scheduler/v2.ts`) يستخدم `required_room_type_id` للمكوّن، لذلك لن يُسكن
-  tutorial إلا في غرف `lecture_hall`.
+  محاضرة tutorial إلا في غرف `lecture_hall`.
 
 ## النتائج
 

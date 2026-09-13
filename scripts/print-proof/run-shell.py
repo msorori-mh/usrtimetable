@@ -44,7 +44,7 @@ COLUMN_LABELS = [
     "الوقت",
     "رمز المقرر",
     "اسم المقرر",
-    "المكوّن",
+    "المحاضرة",
     "المدرس",
     "القاعة",
     "المجموعة",
@@ -63,7 +63,7 @@ def strip_format_chars(text: str) -> str:
 
 
 def normalize_ar(text: str) -> str:
-    """pdftotext drops/repositions Arabic diacritics (e.g. the shadda in المكوّن),
+    """pdftotext drops/repositions Arabic diacritics (e.g. the legacy shadda in Arabic labels),
     so label assertions compare undiacritised text."""
     return re.sub(r"[\u064b-\u0652\u0670]", "", strip_format_chars(text))
 
