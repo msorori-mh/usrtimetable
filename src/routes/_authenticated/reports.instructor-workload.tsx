@@ -13,16 +13,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ReportSection, ReportDataTable } from "@/components/reports/report-section";
+import { filterRowsBySearch } from "@/lib/reports/search";
 import { hoursBetween } from "@/lib/reports/export";
 
 export const Route = createFileRoute("/_authenticated/reports/instructor-workload")({
