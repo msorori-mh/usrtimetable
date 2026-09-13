@@ -28,7 +28,10 @@ export const Route = createFileRoute("/_authenticated/reports/section-timetable"
 });
 
 function Page() {
-  const ctx = useReportContext({ defaultStatusMode: "specific_version", defaultStudySystem: "all" });
+  const ctx = useReportContext({
+    defaultStatusMode: "specific_version",
+    defaultStudySystem: "all",
+  });
   const [sectionId, setSectionId] = useState("");
 
   const { data: sections, error: sectionsError } = useQuery({

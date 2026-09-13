@@ -50,7 +50,9 @@ export function ReportKpiRow({ items, className }: { items: ReportKpi[]; classNa
           >
             {kpi.value}
           </p>
-          {kpi.hint && <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{kpi.hint}</p>}
+          {kpi.hint && (
+            <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{kpi.hint}</p>
+          )}
         </Card>
       ))}
     </div>

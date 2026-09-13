@@ -192,7 +192,8 @@ function WorkloadPage() {
   const totalHours = rows.reduce((sum, r) => sum + Number(r.scheduled_hours ?? 0), 0);
   const overloaded = rows.filter((r) => Number(r.overload) > 0).length;
   const underloaded = rows.filter((r) => Number(r.underload) > 0).length;
-  const deptLabel = deptId === "all" ? "كل الأقسام" : (depts ?? []).find((d) => d.id === deptId)?.name;
+  const deptLabel =
+    deptId === "all" ? "كل الأقسام" : (depts ?? []).find((d) => d.id === deptId)?.name;
   const typeLabel =
     typeId === "all" ? "كل الأنواع" : (types ?? []).find((t) => t.id === typeId)?.name_ar;
 
@@ -207,9 +208,7 @@ function WorkloadPage() {
       error={context.error ?? instructorError ?? sessionError}
       reportContext={context}
       filterSummary={context.filterSummary}
-      notReadyMessage={
-        context.selectedVersion ? undefined : "اختر فصلاً ونسخة جدول لعرض الساعات."
-      }
+      notReadyMessage={context.selectedVersion ? undefined : "اختر فصلاً ونسخة جدول لعرض الساعات."}
       emptyMessage={search ? "لا محاضر مطابق للبحث." : "لا توجد بيانات بهذه المعايير."}
       kpis={[
         { label: "المحاضرون", value: rows.length },
@@ -222,7 +221,11 @@ function WorkloadPage() {
           context={context}
           statusMode={false}
           studySystem={false}
-          search={{ value: search, onChange: setSearch, placeholder: "ابحث باسم المحاضر أو القسم…" }}
+          search={{
+            value: search,
+            onChange: setSearch,
+            placeholder: "ابحث باسم المحاضر أو القسم…",
+          }}
           extraSummary={[`القسم: ${deptLabel ?? "—"}`, `النوع: ${typeLabel ?? "—"}`]}
           onClear={() => {
             setDeptId("all");

@@ -59,7 +59,11 @@ function ConflictSeverityBadge({ severity }: { severity: unknown }) {
 
 /** Maps a stored classification onto the shared severity palette. */
 function severityKeyFor(classification: unknown) {
-  return classification === "hard_blocker" ? "hard" : classification === "warning" ? "soft" : "warning";
+  return classification === "hard_blocker"
+    ? "hard"
+    : classification === "warning"
+      ? "soft"
+      : "warning";
 }
 
 function Page() {
@@ -89,7 +93,10 @@ function Page() {
     () => rows.filter((r) => r.classification === "hard_blocker").length,
     [rows],
   );
-  const softCount = useMemo(() => rows.filter((r) => r.classification === "warning").length, [rows]);
+  const softCount = useMemo(
+    () => rows.filter((r) => r.classification === "warning").length,
+    [rows],
+  );
 
   return (
     <ReportShell
@@ -140,7 +147,11 @@ function Page() {
       filters={
         <ReportFilters
           context={ctx}
-          search={{ value: search, onChange: setSearch, placeholder: "ابحث بالمقرر أو المحاضر أو الرمز…" }}
+          search={{
+            value: search,
+            onChange: setSearch,
+            placeholder: "ابحث بالمقرر أو المحاضر أو الرمز…",
+          }}
           onClear={() => setSearch("")}
         />
       }

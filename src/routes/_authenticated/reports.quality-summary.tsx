@@ -120,9 +120,7 @@ function Page() {
       isLoading={isLoading}
       error={runsError ?? versionsError}
       onRetry={() => void refetch()}
-      emptyMessage={
-        search ? "لا نتائج مطابقة للبحث." : "لا توجد نتائج جودة محفوظة لهذه المعايير."
-      }
+      emptyMessage={search ? "لا نتائج مطابقة للبحث." : "لا توجد نتائج جودة محفوظة لهذه المعايير."}
       kpis={[
         { label: "نسخ مقيَّمة", value: rows.length },
         { label: "متوسط الدرجة", value: `${avgScore}/100`, tone: "accent" },
