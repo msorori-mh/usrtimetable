@@ -170,8 +170,13 @@ assert(
   "user creation accepts the new role",
 );
 assert(
-  /requiresCollegeAssignment\(data\.role\) && data\.college_ids\.length === 0/.test(usersFn),
-  "college assignment IS required for the academic-affairs role (assigned colleges only)",
+  /assignsAllColleges\(data\.role\)/.test(usersFn) &&
+    /from\("colleges"\)\s*\.select\("id"\)/.test(usersFn),
+  "academic-affairs creation auto-assigns every existing college (no manual picker)",
+);
+assert(
+  /requiresCollegeAssignment\(data\.role\) && collegeIds\.length === 0/.test(usersFn),
+  "manual college assignment is still required for college-scoped operational roles",
 );
 
 // ---------- 6) operational pages: browse-safe, execution disabled ----------

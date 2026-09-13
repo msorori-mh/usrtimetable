@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import {
   ACADEMIC_AFFAIRS_ROLE_LABEL_AR,
+  assignsAllColleges,
   isReportsOnlyPath,
   isReportsOnlyRole,
   requiresCollegeAssignment,
@@ -11,6 +12,13 @@ import {
 import { ADMIN_PAGES, CORE_PATH, canAccess, type Role } from "../src/lib/admin-nav";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
+const migrations = () => {
+  const dir = new URL("../supabase/migrations/", import.meta.url);
+  return readdirSync(dir)
+    .filter((f) => f.endsWith(".sql"))
+    .map((f) => readFileSync(new URL(f, dir), "utf8"))
+    .join("\n");
+};
 const VIEWER: Role[] = ["institutional_viewer"];
 
 describe("academic affairs role identification", () => {
@@ -90,17 +98,50 @@ describe("navigation surface", () => {
 });
 
 describe("account creation contract", () => {
-  test("college assignment is mandatory for every role except super_admin", () => {
-    expect(requiresCollegeAssignment("institutional_viewer")).toBe(true);
+  test("academic affairs is auto-assigned all colleges, not manually picked", () => {
+    expect(assignsAllColleges("institutional_viewer")).toBe(true);
+    expect(assignsAllColleges("college_admin")).toBe(false);
+    expect(assignsAllColleges("read_only")).toBe(false);
+    expect(assignsAllColleges("super_admin")).toBe(false);
+
+    expect(requiresCollegeAssignment("institutional_viewer")).toBe(false);
     expect(requiresCollegeAssignment("college_admin")).toBe(true);
     expect(requiresCollegeAssignment("read_only")).toBe(true);
     expect(requiresCollegeAssignment("super_admin")).toBe(false);
   });
 
-  test("server-side creation enforces the same rule", () => {
+  test("server-side creation resolves every current college for academic affairs", () => {
     const src = read("src/lib/users.functions.ts");
-    expect(src).toContain("requiresCollegeAssignment(data.role) && data.college_ids.length === 0");
-    expect(src).not.toContain('data.role === "college_admin" || data.role === "read_only"');
+    expect(src).toContain("assignsAllColleges(data.role)");
+    expect(src).toContain('supabaseAdmin.from("colleges").select("id")');
+    expect(src).toContain("requiresCollegeAssignment(data.role) && collegeIds.length === 0");
+    expect(src).toContain('onConflict: "user_id,college_id", ignoreDuplicates: true');
+  });
+
+  test("the users screen shows no manual college picker for academic affairs", () => {
+    const src = read("src/routes/_authenticated/users.tsx");
+    expect(src).toContain("assignsAllColleges(form.role)");
+    // The picker is rendered only for roles that need a manual assignment.
+    expect(src).toContain("{requiresCollegeAssignment(form.role) && (");
+    expect(src).not.toContain('form.role === "institutional_viewer"\n');
+  });
+
+  test("database triggers assign all colleges now and any college created later", () => {
+    const sql = migrations();
+    expect(sql).toMatch(
+      /CREATE TRIGGER trg_assign_all_colleges_to_academic_affairs\s*\nAFTER INSERT ON public\.user_roles/,
+    );
+    expect(sql).toMatch(
+      /CREATE TRIGGER trg_assign_new_college_to_academic_affairs\s*\nAFTER INSERT ON public\.colleges/,
+    );
+    // multi-role safety: an admin carrying the role is never auto-assigned.
+    expect(sql).toContain("IF NOT public.is_academic_affairs_only(NEW.user_id) THEN");
+    // backfill for accounts that already carry the role
+    expect(sql).toMatch(/INSERT INTO public\.user_colleges[\s\S]*CROSS JOIN public\.colleges/);
+    // the legacy, non-multi-role-safe duplicate is removed
+    expect(sql).toContain(
+      "DROP FUNCTION IF EXISTS public.assign_all_colleges_to_institutional_viewer()",
+    );
   });
 });
 
