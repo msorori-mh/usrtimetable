@@ -4183,6 +4183,10 @@ export type Database = {
         }
         Returns: Json
       }
+      schedule_version_delivery_coverage: {
+        Args: { p_college_id: string; p_schedule_version_id: string }
+        Returns: Json
+      }
       transition_schedule_version: {
         Args: {
           p_college_id: string
