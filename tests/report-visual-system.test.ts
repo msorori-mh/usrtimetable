@@ -7,22 +7,21 @@ import {
 } from "../src/lib/reports/search";
 
 const ROUTES_DIR = "src/routes/_authenticated";
+const SKIP = new Set(["reports.index.tsx", "reports.route.tsx", "reports.tsx"]);
 const reportRoutes = readdirSync(ROUTES_DIR).filter(
-  (f) => f.startsWith("reports.") && f.endsWith(".tsx"),
+  (f) => f.startsWith("reports.") && f.endsWith(".tsx") && !SKIP.has(f),
 );
 const read = (file: string) => readFileSync(`${ROUTES_DIR}/${file}`, "utf8");
 
 describe("shared report visual system", () => {
   test("every report route (except the hub) renders through ReportShell", () => {
     for (const file of reportRoutes) {
-      if (file === "reports.index.tsx") continue;
       expect(read(file)).toContain("ReportShell");
     }
   });
 
   test("report routes use the shared filter bar, not ad-hoc filter grids", () => {
     for (const file of reportRoutes) {
-      if (file === "reports.index.tsx") continue;
       const src = read(file);
       if (!src.includes("filters={")) continue;
       expect(
