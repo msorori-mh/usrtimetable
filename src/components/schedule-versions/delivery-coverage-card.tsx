@@ -116,10 +116,7 @@ export function DeliveryCoverageCard({
           label="المجموعات المسندة"
           value={`${coverage.assignedExactlyOnce}/${coverage.totalGroups}`}
         />
-        <Row
-          label="مكتملة الساعات"
-          value={`${states.complete}/${coverage.totalGroups} مجموعة`}
-        />
+        <Row label="مكتملة الساعات" value={`${states.complete}/${coverage.totalGroups} مجموعة`} />
         <Row label="مجموعات جزئية" value={`${states.partial} مجموعة`} />
         <Row label="غير مبدوءة" value={`${states.notStarted} مجموعة`} />
         <Row
