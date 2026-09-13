@@ -12,7 +12,7 @@
  * conflicts, capacity, room type, availability, hours and permissions.
  */
 
-import { roomTypeRank, type RoomTypeRank } from "@/lib/scheduling/room-type-policy";
+import { roomTypeRank, type RoomTypeRank } from "../scheduling/room-type-policy.ts";
 
 /** theory + tutorial consume the lecture cadence; practical consumes the lab cadence. */
 export const LECTURE_LIKE_COMPONENTS = ["theory", "tutorial", "lecture"] as const;
