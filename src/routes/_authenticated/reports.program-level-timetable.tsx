@@ -255,20 +255,28 @@ function ProgramLevelReport({
     },
   ];
 
-
   return (
     <ReportShell
       title="تقرير جدول البرنامج/المستوى"
-      description={`المجموع: ${totalHours.toFixed(2)} ساعة/أسبوع · ${sessions.length} محاضرة.`}
+      description={`${coverageSummaryText(coverage.summary)} · ${sessions.length} محاضرة مجدولة (${totalHours.toFixed(2)} ساعة).`}
       filterSummary={[ctx.filterSummary, academicSummary].filter(Boolean).join(" · ")}
       reportContext={ctx}
       filename="program_level_timetable"
       rows={rows}
-      headers={NEW_FLOW_TIMETABLE_TABLE_HEADERS}
+      headers={PROGRAM_TIMETABLE_EXPORT_HEADERS}
       isLoading={isLoading}
+      leading={
+        isLoading || error ? null : (
+          <DeliveryGroupCoverageCard
+            summary={coverage.summary}
+            unscheduled={unscheduledInView}
+          />
+        )
+      }
       emptyMessage={
         error ? "تعذّر تحميل بيانات التقرير. أعد المحاولة." : "لا توجد محاضرات بهذه المعايير."
       }
+
       printContent={
         <ProgramTimetablePrint
           context={ctx}
