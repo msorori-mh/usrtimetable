@@ -307,7 +307,7 @@ function TeachingAssignmentsV2Page() {
                     value: (cohorts ?? []).find((c) => c.id === cohortId)?.code ?? "",
                   },
                   {
-                    label: "نوع المكوّن",
+                    label: "نوع المحاضرة",
                     value: componentType ? (COMPONENT_LABELS[componentType] ?? componentType) : "",
                   },
                   {
@@ -441,7 +441,7 @@ function TeachingAssignmentsV2Page() {
               </Select>
             </div>
             <div>
-              <Label>نوع المكوّن</Label>
+              <Label>نوع المحاضرة</Label>
               <Select
                 value={componentType || "_all"}
                 onValueChange={(v) => setComponentType(v === "_all" ? "" : v)}
@@ -505,7 +505,7 @@ function TeachingAssignmentsV2Page() {
                   <thead className="bg-muted/40 text-muted-foreground">
                     <tr>
                       <th className="px-3 py-2 text-right font-medium">المقرر</th>
-                      <th className="px-3 py-2 text-right font-medium">المكوّن</th>
+                      <th className="px-3 py-2 text-right font-medium">المحاضرة</th>
                       <th className="px-3 py-2 text-right font-medium">المجموعة</th>
                       <th className="px-3 py-2 text-right font-medium">طلاب</th>
                       <th className="px-3 py-2 text-right font-medium">سعة</th>
@@ -626,7 +626,7 @@ function TeachingAssignmentsV2Page() {
               <p className="text-sm text-muted-foreground">
                 {selected.course_code} ·{" "}
                 {COMPONENT_LABELS[selected.component_type] ?? selected.component_type} · مجموعة{" "}
-                {selected.group_number ?? selected.group_code} · ساعات المكوّن{" "}
+                {selected.group_number ?? selected.group_code} · ساعات المحاضرة{" "}
                 {selected.component_hours ?? "—"}
               </p>
               {!editingAssignmentId && (
@@ -647,7 +647,7 @@ function TeachingAssignmentsV2Page() {
                 </div>
               )}
               <div>
-                <Label>ساعات المكوّن المسندة (اختياري لمدرس واحد؛ إلزامي عند المشاركة)</Label>
+                <Label>ساعات المحاضرة المسندة (اختياري لمدرس واحد؛ إلزامي عند المشاركة)</Label>
                 <Input
                   type="number"
                   step="0.5"
@@ -658,7 +658,7 @@ function TeachingAssignmentsV2Page() {
                   placeholder={
                     selected.is_co_taught || selected.assignment_count > 0
                       ? "مطلوب عند التدريس المشترك"
-                      : "اتركه فارغاً لاستخدام ساعات المكوّن"
+                      : "اتركه فارغاً لاستخدام ساعات المحاضرة"
                   }
                 />
               </div>
@@ -727,7 +727,7 @@ function TeachingAssignmentsV2Page() {
             <AlertDialogTitle>تأكيد الإسناد</AlertDialogTitle>
             <AlertDialogDescription>
               سيتم حفظ التكليف عبر RPC الآمن دون إنشاء جلسات أو تشغيل مولّد المجموعات. أي تجاوز
-              لنصاب يظهر كتحذير ولا يمنع الحفظ تلقائياً؛ تجاوز ساعات المكوّن مانع.
+              لنصاب يظهر كتحذير ولا يمنع الحفظ تلقائياً؛ تجاوز ساعات المحاضرة مانع.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

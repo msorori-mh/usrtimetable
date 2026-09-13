@@ -120,7 +120,7 @@ export const PRINT_EXPORT_HEADERS: { key: keyof PrintExportRow; label: string }[
   { key: "time", label: "الوقت" },
   { key: "course_code", label: "رمز المقرر" },
   { key: "course_name", label: "اسم المقرر" },
-  { key: "component", label: "المكوّن" },
+  { key: "component", label: "المحاضرة" },
   { key: "instructor", label: "المدرس" },
   { key: "room", label: "القاعة" },
   { key: "group", label: "المجموعة" },

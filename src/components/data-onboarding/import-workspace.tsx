@@ -679,8 +679,8 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
                       <th className="p-2 text-right">الورقة</th>
                       <th className="p-2 text-right">الصف</th>
                       <th className="p-2 text-right">النظام</th>
-                      <th className="p-2 text-right">المكوّن</th>
-                      <th className="p-2 text-right">إجمالي ساعات المكوّن</th>
+                      <th className="p-2 text-right">المحاضرة</th>
+                      <th className="p-2 text-right">إجمالي ساعات المحاضرة</th>
                       <th className="p-2 text-right">الساعات المسندة للمدرس</th>
                       <th className="p-2 text-right">عدد المدرسين المشتركين</th>
                       <th className="p-2 text-right">إجمالي الساعات الموزعة</th>

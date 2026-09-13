@@ -676,7 +676,7 @@ function DataReadinessPage() {
                 {PLAN_COMPONENT_ROOM_TYPE_MISSING_BLOCKER}
               </h2>
               <p className="mb-3 text-sm text-muted-foreground">
-                المكوّنات التالية مجدولة (ساعات &gt; 0) لكن نوع القاعة مفقود أو غير صالح.
+                المحاضرات التالية مجدولة (ساعات &gt; 0) لكن نوع القاعة مفقود أو غير صالح.
               </p>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -687,7 +687,7 @@ function DataReadinessPage() {
                       <th className="px-2 py-2 text-right font-medium">الفصل</th>
                       <th className="px-2 py-2 text-right font-medium">رمز المقرر</th>
                       <th className="px-2 py-2 text-right font-medium">اسم المقرر</th>
-                      <th className="px-2 py-2 text-right font-medium">المكوّن</th>
+                      <th className="px-2 py-2 text-right font-medium">المحاضرة</th>
                       <th className="px-2 py-2 text-right font-medium">الحالة</th>
                     </tr>
                   </thead>

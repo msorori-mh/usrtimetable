@@ -98,7 +98,7 @@ function DeliveryGroupsPage() {
         <div className="flex-1">
           <h1 className="text-2xl font-bold">مجموعات المحاضرات والمعامل</h1>
           <p className="text-sm text-muted-foreground">
-            مجموعات مكوّنات المقررات حسب الدفعة الدراسية؛ تُولّد من مقررات الدفعة ولا تستخدم
+            مجموعات محاضرات المقررات حسب الدفعة الدراسية؛ تُولّد من مقررات الدفعة ولا تستخدم
             Sections.
           </p>
         </div>
@@ -187,7 +187,7 @@ function DeliveryGroupsPage() {
             <table className="w-full text-sm">
               <thead className="bg-muted/40 text-muted-foreground">
                 <tr>
-                  <th className="px-3 py-2 text-right font-medium">نوع المكوّن</th>
+                  <th className="px-3 py-2 text-right font-medium">نوع المحاضرة</th>
                   <th className="px-3 py-2 text-right font-medium">رقم المجموعة</th>
                   <th className="px-3 py-2 text-right font-medium">طلاب متوقع</th>
                   <th className="px-3 py-2 text-right font-medium">السعة</th>
