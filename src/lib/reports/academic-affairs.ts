@@ -1,10 +1,22 @@
 import type { TeachingAssignmentWorkspaceRow } from "../academic-delivery/teaching-assignments-v2.ts";
+import {
+  QUOTA_SOURCE_LABEL_AR,
+  QUOTA_STATUS_LABEL_AR,
+  QUOTA_UNDEFINED_AR,
+  computeQuotaBalance,
+  summarizeQuotaBalances,
+  type QuotaBalance,
+} from "./instructor-quota";
 
 export type AcademicInstructor = {
   id: string;
   full_name: string;
   academic_rank: string | null;
   department_id: string | null;
+  /** approved weekly load on the member's own card (`instructors.max_weekly_hours`) */
+  max_weekly_hours?: number | null;
+  /** administrative release hours (`instructors.administrative_release_hours`) */
+  administrative_release_hours?: number | null;
 };
 export type AcademicProgram = {
   id: string;
@@ -17,6 +29,7 @@ export type AcademicWorkload = {
   standard_assigned_hours: number;
   project_supervision_hours: number;
 };
+
 export type AcademicScope = {
   collegeId: string;
   termId: string;
