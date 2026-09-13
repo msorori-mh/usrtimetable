@@ -310,8 +310,17 @@ function ProgramLevelReport({
           sessions={isLoading ? [] : raw}
           labels={labels}
           qrUrl={qrUrl}
+          coverage={
+            isLoading || error ? null : (
+              <DeliveryGroupCoverageCard
+                summary={coverage.summary}
+                unscheduled={unscheduledInView}
+              />
+            )
+          }
         />
       }
+
       filters={
         <ReportFilters context={ctx}>
           {filters.map(({ field, label, items }) => (
