@@ -283,6 +283,9 @@ export async function cloneVersion(params: {
   if (se2) throw se2;
 
   if (sessions && sessions.length > 0) {
+    // Copy every operational identity key as-is. Dropping delivery_group_id /
+    // cohort_id / plan_course_component_id makes the clone invisible to the
+    // delivery-coverage guards even though its sessions exist.
     const rows = sessions.map((s) => ({
       college_id: s.college_id,
       schedule_version_id: newV.id,
@@ -292,12 +295,19 @@ export async function cloneVersion(params: {
       room_id: s.room_id,
       section_id: s.section_id,
       section_group_id: s.section_group_id,
+      section_subgroup_id: s.section_subgroup_id,
+      cohort_id: s.cohort_id,
+      delivery_group_id: s.delivery_group_id,
+      plan_course_component_id: s.plan_course_component_id,
       study_system: s.study_system,
       day_of_week: s.day_of_week,
       start_time: s.start_time,
       end_time: s.end_time,
       session_type: s.session_type,
       expected_students: s.expected_students,
+      source_type: s.source_type,
+      is_locked: s.is_locked,
+      lock_reason: s.lock_reason,
     }));
     const { error: insE } = await supabase.from("schedule_sessions").insert(rows);
     if (insE) throw insE;
