@@ -68,6 +68,8 @@ describe("read_only («مشاهد») is reports-only — regression", () => {
     expect(isReportsOnlyRole({ isReadOnly: true, isSuperAdmin: true })).toBe(false);
     expect(isReportsOnlyRole({ isReadOnly: true, isCollegeAdmin: true })).toBe(false);
     expect(isReportsOnlyRole({ isReadOnly: true, isInstitutionalViewer: true })).toBe(false);
-    expect(resolveReportsOnlyRedirect({ isInstitutionalViewer: true }, "/schedule-builder")).toBeNull();
+    expect(
+      resolveReportsOnlyRedirect({ isInstitutionalViewer: true }, "/schedule-builder"),
+    ).toBeNull();
   });
 });
