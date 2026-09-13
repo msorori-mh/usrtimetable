@@ -15,6 +15,20 @@ import {
   resolveActiveCollege,
 } from "../src/lib/active-college-store";
 
+// The store is a browser module; give it a minimal window/localStorage.
+const store = new Map<string, string>();
+(globalThis as Record<string, unknown>).window ??= {
+  localStorage: {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => void store.set(k, v),
+  },
+  addEventListener: () => {},
+  removeEventListener: () => {},
+};
+(globalThis as Record<string, unknown>).localStorage ??= (
+  globalThis as unknown as { window: { localStorage: unknown } }
+).window.localStorage;
+
 const read = (p: string) => readFileSync(p, "utf8");
 const LAYOUT = "src/routes/_authenticated/reports.tsx";
 const BAR = "src/components/reports/reports-college-bar.tsx";
