@@ -34,6 +34,10 @@ import {
   type Role,
 } from "@/lib/admin-nav";
 import { cn } from "@/lib/utils";
+import {
+  ACADEMIC_AFFAIRS_ROLE_LABEL_AR,
+  isReportsOnlyRole,
+} from "@/lib/academic-affairs-role";
 
 type NavMode = "core" | "all";
 
@@ -322,7 +326,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const roleLabel = user?.isSuperAdmin
     ? "Super Admin"
     : user?.isInstitutionalViewer
-      ? "مشاهد مؤسسي"
+      ? ACADEMIC_AFFAIRS_ROLE_LABEL_AR
       : user?.isCollegeAdmin
         ? "مدير كلّية"
         : user?.isReadOnly
