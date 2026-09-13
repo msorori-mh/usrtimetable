@@ -56,10 +56,10 @@ export const adminCreateUser = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertInstitutionAdmin(context.userId);
 
-    // `institutional_viewer` («إدارة الشؤون الأكاديمية») covers every college:
-    // the assignment is computed here (all current colleges) and a college
-    // created later is auto-assigned by a database trigger. Other college-scoped
-    // roles keep their explicit, manually chosen assignment.
+    // Viewer roles («مشاهد» = read_only, «مشاهد مؤسسي» = institutional_viewer)
+    // read every college: the assignment is computed here (all current colleges)
+    // and a college created later is auto-assigned by a database trigger.
+    // college_admin keeps its explicit, manually chosen assignment.
     let collegeIds = data.college_ids;
     if (assignsAllColleges(data.role)) {
       const { data: allColleges, error: colErr } = await supabaseAdmin

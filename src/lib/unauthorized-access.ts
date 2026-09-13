@@ -26,11 +26,11 @@ export function shouldLoadSuperAdminPageData(access: SuperAdminPageAccess): bool
 }
 
 /**
- * Academic affairs account («إدارة الشؤون الأكاديمية», DB value `institutional_viewer`):
- * read-only, reports-only, limited to its assigned colleges. Kept here because admin
- * pages still branch on it to hide every write control; page reachability itself is
- * enforced by ReportsOnlyGate. Writes are denied server-side (can_manage_college was
- * NOT widened).
+ * Institutional viewer account («مشاهد مؤسسي», DB value `institutional_viewer`):
+ * browses the whole platform across all assigned colleges, read-only. Admin pages
+ * branch on it to hide every write control. The reports-only role («مشاهد» =
+ * `read_only`) never reaches these pages: ReportsOnlyGate sends it to /reports.
+ * Writes are denied server-side (can_manage_college was NOT widened).
  */
 export function isInstitutionalReadOnlyViewer(
   me:
