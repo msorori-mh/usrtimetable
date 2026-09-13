@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { requiresCollegeAssignment } from "@/lib/academic-affairs-role";
+import { assignsAllColleges, requiresCollegeAssignment } from "@/lib/academic-affairs-role";
 
 const ROLE = z.enum(["super_admin", "college_admin", "read_only", "institutional_viewer"]);
 
