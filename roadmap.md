@@ -1,6 +1,14 @@
-# Roadmap
+# خطة العمل
 
-- [x] Implement compact Arabic RTL print header without changing data semantics.
-- [x] Extend real full-shell proof with long metadata and header structure/clipping checks.
-- [x] Run print regressions, typecheck, tests, build, and inspect rendered PDF screenshot.
-- [x] Document PRINT-HEADER-05 evidence, changed files, candidate SHA, and proof paths.
+## 1) دور «إدارة الشؤون الأكاديمية» (institutional_viewer) — تعديل ناسخ
+- [ ] إنشاء الحساب بهذا الدور يُسند تلقائيًا **جميع** الكليات الحالية في `user_colleges` (لا اختيار يدوي).
+- [ ] تحويل مستخدم قائم إلى هذا الدور يُسند له كذلك جميع الكليات الحالية.
+- [ ] كلية تُنشأ لاحقًا تُسند تلقائيًا لكل حساب institutional_viewer-only (دون أي صلاحية كتابة).
+- [ ] الواجهة: تقارير فقط + تبديل الكلية داخل سياق التقارير. multi-role safety محفوظة.
+- [ ] تحديث الاختبارات: الإنشاء/التعيين يُنتج إسناد كل الكليات، والكلية الجديدة تُسند تلقائيًا.
+
+## 2) تراجع طباعة الجداول (/reports/instructor-schedule)
+- [ ] تحديد السبب الجذري لغياب الشعار وQR.
+- [ ] إعادة القالب المعتمد لكل مسارات طباعة الجداول.
+- [ ] A4 RTL، منع الانقسام السيئ، إخفاء ترويسة المتصفح قدر الإمكان.
+- [ ] اختبارات عقد الطباعة + regression لجدول المحاضر، ثم typecheck/ESLint/build.
