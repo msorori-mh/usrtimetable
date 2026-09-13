@@ -133,6 +133,12 @@ function InstructorDirectory() {
   const [editing, setEditing] = useState<Instructor | null>(null);
   const [form, setForm] = useState(emptyForm());
   const [repairField, setRepairField] = useState<InstructorReview | null>(null);
+  const [directory, setDirectory] = useState<DirectoryFilters>(DEFAULT_DIRECTORY_FILTERS);
+  const setDirectoryField = <K extends keyof DirectoryFilters>(
+    key: K,
+    value: DirectoryFilters[K],
+  ) => setDirectory((prev) => ({ ...prev, [key]: value }));
+
   const specializationRef = useRef<HTMLInputElement>(null);
   const departmentRef = useRef<HTMLButtonElement>(null);
 
