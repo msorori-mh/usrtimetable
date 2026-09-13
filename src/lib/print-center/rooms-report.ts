@@ -76,7 +76,7 @@ export const ROOMS_REPORT_SUMMARY_HEADERS: { key: keyof RoomsReportSummaryRow; l
   { key: "capacity", label: "السعة" },
   { key: "used_hours", label: "الساعات المستخدمة" },
   { key: "available_hours", label: "الساعات المتاحة" },
-  { key: "free_hours", label: "الساعات الفارغة" },
+  { key: "free_hours", label: "غير مستخدمة في النطاق" },
   { key: "utilization", label: "استغلال الوقت" },
   { key: "session_count", label: "عدد الجلسات" },
   { key: "average_students", label: "متوسط الطلاب" },
@@ -286,8 +286,8 @@ function availabilityContains(
     (row.day_of_week == null || row.day_of_week === day) &&
     !!row.start_time &&
     !!row.end_time &&
-    row.start_time <= start &&
-    row.end_time >= end
+    row.start_time.slice(0, 5) <= start &&
+    row.end_time.slice(0, 5) >= end
   );
 }
 
@@ -298,9 +298,21 @@ export function buildRoomsHeatmap(params: {
   settings?: RoomsReportSettings | null;
 }): RoomsHeatmapCell[] {
   const roomIds = new Set(params.summary.map((row) => row.room_id));
-  const slots = [
-    ...new Set(params.sessions.map((s) => `${s.start_time.slice(0, 5)}–${s.end_time.slice(0, 5)}`)),
+  // Partition time at every session/opening boundary. Overlapping 2h and 3h
+  // lectures must contribute to the same cells; also show unused open periods.
+  const boundaries = [
+    ...new Set(
+      [
+        ...params.sessions.flatMap((s) => [s.start_time, s.end_time]),
+        ...params.availability.flatMap((a) => [a.start_time, a.end_time]),
+        params.settings?.day_start_time,
+        params.settings?.day_end_time,
+      ]
+        .filter((t): t is string => !!t)
+        .map((t) => t.slice(0, 5)),
+    ),
   ].sort();
+  const slots = boundaries.slice(0, -1).map((start, i) => `${start}–${boundaries[i + 1]}`);
   const workingDays = params.settings?.working_days ?? [0, 1, 2, 3, 4, 6];
   const ownByRoom = new Map<string, RoomsReportAvailability[]>();
   for (const row of params.availability) {
@@ -318,7 +330,8 @@ export function buildRoomsHeatmap(params: {
               s.room_id &&
               roomIds.has(s.room_id) &&
               s.day_of_week === day &&
-              `${s.start_time.slice(0, 5)}–${s.end_time.slice(0, 5)}` === slot,
+              s.start_time.slice(0, 5) < end &&
+              s.end_time.slice(0, 5) > start,
           )
           .map((s) => s.room_id),
       ).size;
@@ -329,8 +342,8 @@ export function buildRoomsHeatmap(params: {
           workingDays.includes(day) &&
           !!params.settings?.day_start_time &&
           !!params.settings?.day_end_time &&
-          params.settings.day_start_time <= start &&
-          params.settings.day_end_time >= end
+          params.settings.day_start_time.slice(0, 5) <= start &&
+          params.settings.day_end_time.slice(0, 5) >= end
         );
       }).length;
       return {
@@ -373,7 +386,7 @@ export function buildRoomsReportAnalytics(params: {
   const lowest = ranked.at(-1) ?? null;
   const insight =
     highest && lowest
-      ? `الضغط الأعلى على ${highest.room_name} باستغلال زمني ${highest.utilization}، بينما توجد سعة زمنية إضافية في ${lowest.room_name} (${lowest.free_hours} ساعة فارغة).`
+      ? `الضغط الأعلى على ${highest.room_name} باستغلال زمني ${highest.utilization}، والأقل استخدامًا ${lowest.room_name} (${lowest.free_hours} ساعة غير مستخدمة ضمن البيانات المعروضة). راجع فترات الإتاحة وإشغال النظامين وسعة القاعة قبل نقل أي محاضرة.`
       : "لا توجد بيانات كافية لصياغة الاستنتاج التنفيذي.";
   return {
     halls: halls.length,

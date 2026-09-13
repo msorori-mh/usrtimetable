@@ -268,7 +268,7 @@ test("heatmap aggregates occupied rooms against authoritative room availability"
     ],
     settings: { working_days: [0], day_start_time: "08:00", day_end_time: "14:00" },
   });
-  assert.equal(cells.length, 1);
+  assert.equal(cells.length, 3);
   assert.deepEqual(cells[0], {
     day: 0,
     dayLabel: "الأحد",
@@ -277,6 +277,39 @@ test("heatmap aggregates occupied rooms against authoritative room availability"
     availableRooms: 2,
     utilizationPercent: 100,
   });
+});
+
+test("heatmap counts overlapping durations and empty open windows with seconds", () => {
+  const summary = buildRoomsReportSummary({
+    rooms: [{ id: "r1" }, { id: "r2" }],
+    roomTypes: [],
+    sessions: [],
+    availability: [],
+  });
+  const cells = buildRoomsHeatmap({
+    summary,
+    sessions: [
+      session({ id: "a", room_id: "r1", start_time: "08:00:00", end_time: "11:00:00" }),
+      session({ id: "b", room_id: "r2", start_time: "09:00:00", end_time: "11:00:00" }),
+    ],
+    availability: [],
+    settings: { working_days: [0], day_start_time: "08:00:00", day_end_time: "14:00:00" },
+  });
+  assert.equal(cells.find((c) => c.slot === "09:00–11:00")?.occupiedRooms, 2);
+  assert.equal(cells.find((c) => c.slot === "08:00–09:00")?.availableRooms, 2);
+  assert.equal(cells.find((c) => c.slot === "11:00–14:00")?.occupiedRooms, 0);
+});
+
+test("study-system selection reaches both report queries and their cache keys", () => {
+  for (const routeName of ["rooms-report", "current-timetable"]) {
+    const source = readFileSync(
+      new URL(`../src/routes/_authenticated/reports.${routeName}.tsx`, import.meta.url),
+      "utf8",
+    );
+    assert.match(source, /queryKey:\s*\[[^\]]*ctx\.studySystem/s);
+    assert.match(source, /studySystem: ctx\.studySystem/);
+    assert.doesNotMatch(source, /studySystem: "all"/);
+  }
 });
 
 test("used hours and room detail grouping preserve every version session", () => {
