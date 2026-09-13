@@ -154,7 +154,6 @@ function QualityAnalyticsPage() {
         rows={exportRows}
         headers={headers}
         isLoading={isLoading}
-        error={undefined}
         emptyMessage="لا توجد جلسات في هذه النسخة لتحليلها."
         kpis={
           report
