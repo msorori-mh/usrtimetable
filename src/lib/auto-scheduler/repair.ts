@@ -73,7 +73,8 @@ const samePlacement = (a: RepairPlacement, b: RepairPlacement) =>
   minutes(a.end_time) === minutes(b.end_time) &&
   a.room_id === b.room_id;
 
-const durationMinutes = (session: Session) => minutes(session.end_time) - minutes(session.start_time);
+const durationMinutes = (session: Session) =>
+  minutes(session.end_time) - minutes(session.start_time);
 
 const withPlacement = (session: Session, placement: RepairPlacement): Session => ({
   ...session,

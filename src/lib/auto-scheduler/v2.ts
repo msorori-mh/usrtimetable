@@ -112,10 +112,7 @@ const fromMinutes = (value: number) => `${pad(Math.floor(value / 60))}:${pad(val
 export const REPAIR_CHANGE_REASON_AR = "إعادة ترتيب محدودة لإكمال الجلسات الناقصة (إصلاح آلي)";
 
 /** Latest schedule-version stamp, so a repair move does not make the create RPC stale. */
-async function readVersionUpdatedAt(
-  scheduleVersionId: string,
-  fallback: string,
-): Promise<string> {
+async function readVersionUpdatedAt(scheduleVersionId: string, fallback: string): Promise<string> {
   const { data } = await supabase
     .from("schedule_versions")
     .select("updated_at")
@@ -832,9 +829,7 @@ export async function runV2AutoSchedule(params: {
           versionUpdatedAt = applied.versionUpdatedAt;
           if (applied.ok) {
             for (const move of plan.moves) {
-              const index = planningSessions.findIndex(
-                (session) => session.id === move.sessionId,
-              );
+              const index = planningSessions.findIndex((session) => session.id === move.sessionId);
               if (index >= 0) {
                 planningSessions[index] = {
                   ...planningSessions[index],
