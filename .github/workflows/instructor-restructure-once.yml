@@ -1,0 +1,76 @@
+name: instructor-restructure-once
+
+on:
+  push:
+    branches: [instructor-restructure-ready]
+    paths:
+      - .github/workflows/instructor-restructure-once.yml
+      - .github/scripts/apply-instructor-restructure.py
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: instructor-restructure-ready
+          fetch-depth: 0
+          token: ${{ github.token }}
+      - uses: oven-sh/setup-bun@v2
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Apply instructor restructure patch
+        run: python3 .github/scripts/apply-instructor-restructure.py
+      - name: Prettier
+        run: |
+          bunx prettier --write \
+            src/routes/_authenticated/instructors.tsx \
+            src/lib/instructors/effective-hours.ts \
+            src/lib/instructors/administrative-positions.ts \
+            src/lib/excel-import/types.ts \
+            src/lib/excel-import/templates.ts \
+            src/lib/excel-import/instructor-sheet.ts \
+            src/lib/excel-import/validators.ts \
+            src/lib/reports/instructor-quota.ts \
+            src/lib/admin-export/datasets.ts \
+            src/lib/excel-import/teaching-assignments-v2-hours-preflight.ts \
+            src/lib/excel-import/teaching-assignments-source-resolver.ts \
+            src/lib/excel-import/teaching-assignments-source-import.ts \
+            src/integrations/supabase/types.ts \
+            tests/instructor-hr-restructure.test.ts
+      - name: Focused tests
+        run: |
+          bun test tests/instructor-hr-restructure.test.ts tests/instructor-quota-and-directory.test.ts tests/instructor-sheet.test.ts tests/instructor-type-hydration.test.ts
+      - name: Scoped ESLint
+        run: |
+          bunx eslint \
+            src/routes/_authenticated/instructors.tsx \
+            src/lib/instructors/effective-hours.ts \
+            src/lib/instructors/administrative-positions.ts \
+            src/lib/excel-import/types.ts \
+            src/lib/excel-import/templates.ts \
+            src/lib/excel-import/instructor-sheet.ts \
+            src/lib/excel-import/validators.ts \
+            src/lib/reports/instructor-quota.ts \
+            src/lib/admin-export/datasets.ts \
+            src/lib/excel-import/teaching-assignments-v2-hours-preflight.ts \
+            src/lib/excel-import/teaching-assignments-source-resolver.ts \
+            src/lib/excel-import/teaching-assignments-source-import.ts \
+            tests/instructor-hr-restructure.test.ts
+      - name: Typecheck
+        run: bunx tsgo --noEmit
+      - name: Build
+        run: bun run build
+      - name: Diff check
+        run: git diff --check
+      - name: Commit generated implementation
+        run: |
+          git config user.name "OpenAI implementation bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add src tests supabase/migrations/20260914030000_instructor_hr_affiliation_and_effective_quota.sql
+          git commit -m "feat(instructors): restructure HR profile and effective quota"
+          git push origin HEAD:instructor-restructure-ready
