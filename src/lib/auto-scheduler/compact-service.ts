@@ -11,6 +11,8 @@ import {
   type Session,
 } from "./compact";
 
+import { validateJointPlan } from "./joint-model";
+
 type ErrorLike = { message: string };
 interface Query extends PromiseLike<{ data: unknown[] | null; error: ErrorLike | null }> {
   select(columns: string): Query;
@@ -89,6 +91,7 @@ export interface Applied {
   status: "saved" | "rejected" | "unknown";
   operationId: string;
   pendingRequest?: Record<string, unknown>;
+  rpcName?: "apply_schedule_compaction" | "apply_schedule_relayout";
 }
 interface BatchResult {
   ok: boolean;
@@ -99,7 +102,10 @@ interface BatchResult {
 // These RPCs are deployed before this client. Missing RPCs fail closed; no sequential fallback.
 const atomicDb = supabase as unknown as {
   rpc(
-    name: "apply_schedule_compaction" | "get_schedule_compaction_result",
+    name:
+      | "apply_schedule_compaction"
+      | "apply_schedule_relayout"
+      | "get_schedule_compaction_result",
     args: Record<string, unknown>,
   ): Promise<{ data: BatchResult | null; error: { code?: string; message: string } | null }>;
 };
@@ -116,7 +122,10 @@ const rejectionMessages: Record<string, string> = {
 };
 async function sendAtomic(result: Applied, retrying = false): Promise<Applied> {
   try {
-    const { data, error } = await atomicDb.rpc("apply_schedule_compaction", result.pendingRequest!);
+    const { data, error } = await atomicDb.rpc(
+      result.rpcName ?? "apply_schedule_compaction",
+      result.pendingRequest!,
+    );
     if (error?.code === "PGRST202" || error?.code === "42883")
       return {
         ...result,
@@ -220,13 +229,25 @@ export async function applyCompactProposal(
   if (!proposal.moves.length || proposal.moves.length > 512)
     throw new Error("حجم خطة التحسين غير صالح.");
   let simulated = fresh.sessions;
-  for (const move of proposal.moves) {
-    const old = simulated.find((x) => x.id === move.id);
-    if (!old) throw new Error("معاينة غير صالحة.");
-    const candidate = { ...old, ...move };
-    if (!feasible(fresh, simulated, candidate, old))
-      throw new Error("تغيرت صلاحية أحد التنقلات؛ أعد المعاينة.");
-    simulated = simulated.map((x) => (x.id === move.id ? candidate : x));
+  if (proposal.applicationMode === "simultaneous") {
+    if (new Set(proposal.moves.map((m) => m.id)).size !== proposal.moves.length)
+      throw new Error("خطة تحتوي محاضرات مكررة.");
+    const moves = new Map(proposal.moves.map((m) => [m.id, m]));
+    if (proposal.moves.some((m) => !fresh.sessions.some((s) => s.id === m.id)))
+      throw new Error("محاضرة خارج نطاق الخطة.");
+    simulated = fresh.sessions.map((s) => ({ ...s, ...moves.get(s.id) }));
+    const days = proposal.attendanceSearch?.days;
+    if (!days || !validateJointPlan(fresh, simulated, days))
+      throw new Error("تغيرت صلاحية خطة التوزيع؛ أعد المعاينة.");
+  } else {
+    for (const move of proposal.moves) {
+      const old = simulated.find((x) => x.id === move.id);
+      if (!old) throw new Error("معاينة غير صالحة.");
+      const candidate = { ...old, ...move };
+      if (!feasible(fresh, simulated, candidate, old))
+        throw new Error("تغيرت صلاحية أحد التنقلات؛ أعد المعاينة.");
+      simulated = simulated.map((x) => (x.id === move.id ? candidate : x));
+    }
   }
   if (!better(measure(fresh, simulated), before)) throw new Error("الخطة لا تحسّن النتيجة.");
   if (options.signal?.aborted) throw new Error("أُلغي التطبيق قبل إرسال الخطة؛ لم يُحفظ تغيير.");
@@ -239,12 +260,19 @@ export async function applyCompactProposal(
     status: "unknown",
     stopped: unknownMessage,
     operationId,
+    rpcName:
+      proposal.applicationMode === "simultaneous"
+        ? "apply_schedule_relayout"
+        : "apply_schedule_compaction",
     pendingRequest: {
       p_college_id: collegeId,
       p_version_id: versionId,
       p_operation_id: operationId,
       p_expected_revision: fresh.revision,
       p_expected_version_updated_at: fresh.versionUpdatedAt,
+      ...(proposal.applicationMode === "simultaneous"
+        ? { p_day_cap: proposal.attendanceSearch!.days }
+        : {}),
       p_moves: proposal.moves.map((move) => ({
         ...move,
         expected_updated_at: fresh.sessions.find((s) => s.id === move.id)!.updated_at,

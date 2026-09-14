@@ -1,3 +1,4 @@
+import { importJointPlan } from "@/lib/auto-scheduler/joint-import";
 import { attendanceSearchMessage } from "@/lib/auto-scheduler/attendance-search";
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -29,8 +30,9 @@ export function CompactSchedulePanel({
   const [result, setResult] = useState<Applied | null>(null);
   const [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
-  const [searchDuration, setSearchDuration] = useState(15000);
+  const [searchDuration, setSearchDuration] = useState(180000);
   const [extendedPolicy, setExtendedPolicy] = useState(false);
+  const [importText, setImportText] = useState("");
   const [saving, setSaving] = useState(false);
   const abort = useRef<AbortController | null>(null);
   const qc = useQueryClient();
@@ -39,12 +41,12 @@ export function CompactSchedulePanel({
     setResult(null);
     return () => abort.current?.abort();
   }, [collegeId, versionId]);
-  const execute = async (mode: "preview" | "apply" | "verify") => {
+  const execute = async (mode: "preview" | "apply" | "verify" | "import") => {
     if (!canManage || !versionId || busy || disabled) return;
     const controller = new AbortController();
     abort.current = controller;
     setBusy(true);
-    setSaving(mode !== "preview");
+    setSaving(mode === "apply" || mode === "verify");
     onBusy(true);
     setMessage("جارٍ قراءة الجدول والتحقق…");
     setResult(null);
@@ -68,11 +70,14 @@ export function CompactSchedulePanel({
         setProposal(null);
         const snapshot = await loadCompactSnapshot(collegeId, versionId);
         setExtendedPolicy(!!snapshot.settings.extended_day_policy_enabled);
-        const p = await previewCompaction(snapshot, {
-          signal: controller.signal,
-          maxDurationMs: searchDuration,
-          onProgress: (n) => setMessage(`جارٍ البحث — ${n} نقلاً محسّناً حتى الآن`),
-        });
+        const p =
+          mode === "import"
+            ? importJointPlan(snapshot, versionId, importText)
+            : await previewCompaction(snapshot, {
+                signal: controller.signal,
+                maxDurationMs: searchDuration,
+                onProgress: (n) => setMessage(`جارٍ البحث — ${n} نقلاً محسّناً حتى الآن`),
+              });
         setProposal(p);
         setMessage(
           p.attendanceSearch
@@ -159,6 +164,7 @@ export function CompactSchedulePanel({
           >
             <option value={15000}>متوازن — 15 ثانية</option>
             <option value={60000}>موسّع — دقيقة</option>
+            <option value={180000}>شامل — ثلاث دقائق</option>
           </select>
         </label>
         <Button
@@ -188,6 +194,30 @@ export function CompactSchedulePanel({
           </Button>
         )}
       </div>
+      {canManage && (
+        <details className="text-sm">
+          <summary>استيراد خطة توزيع محسوبة</summary>
+          <p>
+            تُفحص الخطة على النسخة الحالية قبل إتاحة تطبيقها، مع التحقق من عدد الأيام وقيود الطلاب
+            والقاعات والمدرسين.
+          </p>
+          <textarea
+            aria-label="خطة التوزيع المحسوبة"
+            className="w-full border rounded p-2"
+            rows={3}
+            value={importText}
+            disabled={busy}
+            onChange={(e) => setImportText(e.target.value)}
+          />
+          <Button
+            variant="outline"
+            disabled={busy || disabled || !importText || result?.status === "unknown"}
+            onClick={() => void execute("import")}
+          >
+            فحص خطة التوزيع
+          </Button>
+        </details>
+      )}
       <p role="status" aria-live="polite" className="text-sm">
         {message}
       </p>

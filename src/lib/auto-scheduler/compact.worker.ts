@@ -1,5 +1,7 @@
 import { type Snapshot, type Proposal, type Metrics } from "./compact.ts";
-import { compactAttendance } from "./attendance-compaction.ts";
+import loadHighs from "highs";
+import wasmUrl from "highs/runtime?url";
+import { searchJointAttendance } from "./joint-search.ts";
 
 export type CompactWorkerReply =
   | { type: "progress"; moves: number; metrics: Metrics }
@@ -12,9 +14,8 @@ const scope = self as unknown as {
 };
 scope.onmessage = async ({ data }) => {
   try {
-    const proposal = await compactAttendance(data.snapshot, {
-      maxDurationMs: data.maxDurationMs,
-    });
+    const highs = await loadHighs({ locateFile: () => wasmUrl });
+    const proposal = await searchJointAttendance(data.snapshot, highs, data.maxDurationMs);
     scope.postMessage({ type: "result", proposal });
   } catch (error) {
     scope.postMessage({
