@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { useCanManageActiveCollege } from "@/hooks/use-can-manage";
@@ -8,7 +8,8 @@ import { CollegeSwitcher } from "@/components/college-switcher";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
+import { useCourseProgramPlans, CourseProgramDetails } from "@/components/course-program-details";
+import { coursePrograms, programCount } from "@/lib/course-program-plans";
 import {
   Select,
   SelectContent,
@@ -33,9 +34,9 @@ export const Route = createFileRoute("/_authenticated/shared-courses")({
 });
 
 const NATURES = [
-  { v: "department", l: "قسم" },
-  { v: "college", l: "كلية (مشترك)" },
-  { v: "university", l: "جامعة (مشترك)" },
+  { v: "department", l: "متطلب برنامج" },
+  { v: "college", l: "متطلب كلية" },
+  { v: "university", l: "متطلب جامعة" },
 ];
 
 interface Course {
@@ -53,8 +54,9 @@ function SharedPage() {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<Course | null>(null);
   const [nature, setNature] = useState("department");
-  const [shared, setShared] = useState(false);
-  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [department, setDepartment] = useState("");
+  const plansQuery = useCourseProgramPlans(active?.id);
+  const selectedRows = coursePrograms(plansQuery.data ?? [], editing?.id ?? "");
 
   const { data: courses, isLoading } = useQuery({
     queryKey: ["courses-shared", active?.id],
@@ -80,63 +82,28 @@ function SharedPage() {
           .order("name")
       ).data ?? [],
   });
-  const { data: links } = useQuery({
-    queryKey: ["cd-links", active?.id],
-    enabled: !!active,
-    queryFn: async () =>
-      (
-        await supabase
-          .from("course_departments")
-          .select("course_id, department_id")
-          .eq("college_id", active!.id)
-      ).data ?? [],
-  });
-
-  const linksByCourse = useMemo(() => {
-    const m = new Map<string, string[]>();
-    (links ?? []).forEach((l) => {
-      const arr = m.get(l.course_id) ?? [];
-      arr.push(l.department_id);
-      m.set(l.course_id, arr);
-    });
-    return m;
-  }, [links]);
-  const depName = new Map((departments ?? []).map((d) => [d.id, d.name]));
-
   const start = (c: Course) => {
     setEditing(c);
     setNature(c.course_nature ?? "department");
-    setShared(c.is_shared ?? false);
-    setPicked(new Set(linksByCourse.get(c.id) ?? []));
+    setDepartment(c.department_id);
   };
 
   const save = useMutation({
     mutationFn: async () => {
-      if (!editing || !active) throw new Error("اختر مقرراً");
+      if (!editing || !active || !canManage || plansQuery.isPending || plansQuery.isError)
+        throw new Error("تعذر الحفظ قبل تحميل البرامج والتحقق من الصلاحية");
       const { error: e1 } = await supabase
         .from("courses")
-        .update({ course_nature: nature, is_shared: shared })
-        .eq("id", editing.id);
+        .update({
+          course_nature: nature,
+          department_id: department,
+          is_shared: programCount(selectedRows) > 1,
+        })
+        .eq("id", editing.id)
+        .eq("college_id", active.id)
+        .select("id")
+        .single();
       if (e1) throw e1;
-      const current = new Set(linksByCourse.get(editing.id) ?? []);
-      const toAdd = [...picked].filter((d) => !current.has(d));
-      const toRemove = [...current].filter((d) => !picked.has(d));
-      if (toAdd.length) {
-        const { error } = await supabase
-          .from("course_departments")
-          .insert(
-            toAdd.map((d) => ({ college_id: active.id, course_id: editing.id, department_id: d })),
-          );
-        if (error) throw error;
-      }
-      if (toRemove.length) {
-        const { error } = await supabase
-          .from("course_departments")
-          .delete()
-          .eq("course_id", editing.id)
-          .in("department_id", toRemove);
-        if (error) throw error;
-      }
       await logAudit({
         action: "update",
         entity: "courses.shared",
@@ -147,18 +114,11 @@ function SharedPage() {
     onSuccess: () => {
       toast.success("تم الحفظ");
       qc.invalidateQueries({ queryKey: ["courses-shared", active?.id] });
-      qc.invalidateQueries({ queryKey: ["cd-links", active?.id] });
+      qc.invalidateQueries({ queryKey: ["courses"] });
       setEditing(null);
     },
     onError: (e: Error) => toast.error(e.message),
   });
-
-  const togglePick = (id: string) => {
-    const n = new Set(picked);
-    if (n.has(id)) n.delete(id);
-    else n.add(id);
-    setPicked(n);
-  };
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -168,7 +128,9 @@ function SharedPage() {
         </span>
         <div className="flex-1">
           <h1 className="text-2xl font-bold">المقررات المشتركة</h1>
-          <p className="text-sm text-muted-foreground">حدّد طبيعة المقرر وربطه بأقسام متعددة.</p>
+          <p className="text-sm text-muted-foreground">
+            راجع طبيعة المقرر والبرامج التي تدرسه بحسب الخطط النشطة المسجلة.
+          </p>
         </div>
       </header>
       <div className="mb-4">
@@ -183,13 +145,13 @@ function SharedPage() {
         ) : (
           <ul className="divide-y divide-border">
             {courses.map((c) => {
-              const ds = linksByCourse.get(c.id) ?? [];
+              const ds = coursePrograms(plansQuery.data ?? [], c.id);
               return (
                 <li key={c.id} className="flex items-center justify-between gap-3 p-4">
                   <div className="min-w-0">
                     <p className="font-semibold">
                       {c.name}
-                      {c.is_shared && (
+                      {programCount(ds) > 1 && (
                         <span className="ms-2 rounded bg-accent/20 px-2 py-0.5 text-[11px]">
                           مشترك
                         </span>
@@ -200,8 +162,12 @@ function SharedPage() {
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {ds.length > 0
-                        ? `أقسام: ${ds.map((d) => depName.get(d) ?? "—").join("، ")}`
-                        : "غير مرتبط بأقسام إضافية"}
+                        ? `البرامج: ${[...new Set(ds.map((d) => d.study_plans?.academic_programs?.name ?? "برنامج غير متاح"))].join("، ")}`
+                        : plansQuery.isPending
+                          ? "جارٍ تحميل البرامج..."
+                          : plansQuery.isError
+                            ? "تعذر تحميل البرامج"
+                            : "لا يظهر في خطة نشطة"}
                     </p>
                   </div>
                   {canManage && (
@@ -217,7 +183,7 @@ function SharedPage() {
       </Card>
 
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>{editing?.name}</DialogTitle>
           </DialogHeader>
@@ -237,30 +203,45 @@ function SharedPage() {
                 </SelectContent>
               </Select>
             </div>
-            <label className="flex items-center gap-2 text-sm">
-              <Checkbox checked={shared} onCheckedChange={(v) => setShared(!!v)} /> مقرر مشترك
-              (يُدرَّس لأقسام متعددة)
-            </label>
             <div>
-              <Label>الأقسام المرتبطة</Label>
-              <div className="mt-2 max-h-60 space-y-1 overflow-y-auto rounded border p-2">
-                {(departments ?? []).map((d) => (
-                  <label
-                    key={d.id}
-                    className="flex items-center gap-2 rounded px-2 py-1 text-sm hover:bg-secondary/50"
-                  >
-                    <Checkbox checked={picked.has(d.id)} onCheckedChange={() => togglePick(d.id)} />
-                    {d.name}
-                  </label>
-                ))}
-              </div>
+              <Label>القسم المسؤول عن المقرر</Label>
+              <Select value={department} onValueChange={setDepartment}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(departments ?? []).map((d) => (
+                    <SelectItem key={d.id} value={d.id}>
+                      {d.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                المسؤولية الأكاديمية والإسناد، مستقلة عن البرامج التي تدرس المقرر.
+              </p>
             </div>
+            <CourseProgramDetails
+              rows={selectedRows}
+              loading={plansQuery.isPending}
+              error={plansQuery.isError}
+              retry={() => void plansQuery.refetch()}
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditing(null)}>
               إلغاء
             </Button>
-            <Button onClick={() => save.mutate()} disabled={save.isPending}>
+            <Button
+              onClick={() => save.mutate()}
+              disabled={
+                save.isPending ||
+                plansQuery.isPending ||
+                plansQuery.isError ||
+                !canManage ||
+                !department
+              }
+            >
               حفظ
             </Button>
           </DialogFooter>
