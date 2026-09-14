@@ -97,11 +97,13 @@ test("template and guide fields stay identical for every active import", () => {
     assert.ok(guide, entity);
     assert.deepEqual(
       guide.columns.map((c) => [c.header, c.required, c.allowed]),
-      TEMPLATES[entity].columns.map((c) => [c.header, c.required, c.enumValues?.join(" | ")]),
+      TEMPLATES[entity].columns
+        .filter((c) => !c.templateHidden)
+        .map((c) => [c.header, c.required, c.enumValues?.join(" | ")]),
       entity,
     );
   }
-  assert.equal(CATALOG.find((c) => c.id === "instructors")?.columns.length, 19);
+  assert.equal(CATALOG.find((c) => c.id === "instructors")?.columns.length, 16);
 });
 
 test("guide and importer produce the same workbook data and metadata contract", async () => {
@@ -188,7 +190,7 @@ test("current-data workbook preserves employee keys and numeric workload without
   const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets.instructors);
   assert.equal(rows.length, 1);
   assert.equal(rows[0]["رقم_الموظف"], "EMP42");
-  assert.equal(rows[0]["النصاب الأسبوعي (ساعة)"], 12);
-  assert.equal(rows[0]["ساعات_إعفاء_إداري"], 0);
-  assert.equal(rows[0]["اسم المدرس"], "'=untrusted");
+  assert.equal(rows[0]["النصاب_الأساسي_الأسبوعي"], 12);
+  assert.equal(rows[0]["ساعات_الإعفاء_الإداري"], 0);
+  assert.equal(rows[0]["الاسم_الافتراضي"], "'=untrusted");
 });

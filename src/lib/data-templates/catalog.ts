@@ -1136,17 +1136,18 @@ export function catalogImportEntity(id: string): string {
 export const CATALOG: TemplateDef[] = CATALOG_DEFINITIONS.map((entry) => {
   const template = TEMPLATES[catalogImportEntity(entry.id)];
   if (!template) return entry;
+  const visibleColumns = template.columns.filter((column) => !column.templateHidden);
   return {
     ...entry,
     sheetName: template.sheetName,
-    columns: template.columns.map((column) => ({
+    columns: visibleColumns.map((column) => ({
       header: column.header,
       required: column.required,
       example: column.example,
       allowed: column.enumValues?.join(" | "),
       description: entry.columns.find((old) => old.header === column.header)?.description,
     })),
-    sampleRows: [template.columns.map((column) => column.example ?? "")],
+    sampleRows: [visibleColumns.map((column) => column.example ?? "")],
   };
 });
 
