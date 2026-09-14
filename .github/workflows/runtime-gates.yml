@@ -138,14 +138,6 @@ jobs:
           node-version: "24"
       - name: Verify the reviewed atomic migration
         run: cmp supabase/sql/atomic_schedule_compaction.sql supabase/migrations/20260911130524_atomic_schedule_compaction.sql
-      - name: Partition extended-day constraints and RLS
-        env:
-          PGPASSWORD: postgres
-          EXTENDED_DAY_TEST_DISPOSABLE: "1"
-          EXTENDED_DAY_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/extended_day_test
-        run: |
-          createdb -h 127.0.0.1 -U postgres extended_day_test
-          node --test tests/extended-day-db.test.mjs
       - name: Atomic rollback, permissions and concurrency on disposable PostgreSQL
         env:
           COMPACTION_TEST_DISPOSABLE: "1"
@@ -178,3 +170,12 @@ jobs:
         run: |
           createdb -h 127.0.0.1 -U postgres cohort_generation_test
           node --test tests/cohort-plan-generation-db.test.mjs
+
+      - name: Partition extended-day constraints and RLS
+        env:
+          PGPASSWORD: postgres
+          EXTENDED_DAY_TEST_DISPOSABLE: "1"
+          EXTENDED_DAY_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/extended_day_test
+        run: |
+          createdb -h 127.0.0.1 -U postgres extended_day_test
+          node --test tests/extended-day-db.test.mjs
