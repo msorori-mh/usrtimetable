@@ -1,3 +1,4 @@
+import { effectiveInstructorWeeklyHours } from "@/lib/instructors/effective-hours";
 import type { ParsedRow, RowError } from "./types";
 
 type TeachingHoursOperation = {
@@ -13,6 +14,7 @@ type TeachingHoursOperation = {
   componentTotalHours: number;
   componentWeeklyHours: number;
   instructorMaxWeeklyHours: number | null;
+  instructorAdminReleaseHours?: number | null;
 };
 
 export type ExistingTeachingAssignmentV2Hours = {
@@ -25,6 +27,7 @@ export type ExistingTeachingAssignmentV2Hours = {
   assignedHours: number;
   componentWeeklyHours: number;
   instructorMaxWeeklyHours: number | null;
+  instructorAdminReleaseHours?: number | null;
   isActive: boolean;
 };
 
@@ -103,6 +106,9 @@ function operationFromCanonicalRow(row: ParsedRow): TeachingHoursOperation | nul
     componentTotalHours,
     componentWeeklyHours,
     instructorMaxWeeklyHours: finiteNumber(row.values._instructor_max_weekly_hours),
+    instructorAdminReleaseHours: finiteNumber(
+      row.values._instructor_administrative_release_hours,
+    ),
   };
 }
 
@@ -133,6 +139,7 @@ function countsTowardWeeklyLimit(componentType: string): boolean {
 /**
  * Audits canonical V2 operations only. Legacy assignments have no delivery group and are not
  * accepted by this contract. Existing active V2 rows may be supplied separately for a dry-run.
+ * The weekly instructor ceiling is the effective quota: base quota minus administrative release.
  */
 export function preflightCanonicalTeachingHours(input: {
   canonicalOperations: ParsedRow[];
@@ -158,6 +165,7 @@ export function preflightCanonicalTeachingHours(input: {
       | "termId"
       | "studySystem"
       | "instructorMaxWeeklyHours"
+      | "instructorAdminReleaseHours"
     >,
   ) => {
     if (
@@ -169,9 +177,11 @@ export function preflightCanonicalTeachingHours(input: {
     }
     const key = instructorKey(operation);
     instructorTotals.set(key, (instructorTotals.get(key) ?? 0) + operation.assignedHours);
-    if (operation.instructorMaxWeeklyHours !== null) {
-      instructorLimits.set(key, operation.instructorMaxWeeklyHours);
-    }
+    const effectiveLimit = effectiveInstructorWeeklyHours(
+      operation.instructorMaxWeeklyHours,
+      operation.instructorAdminReleaseHours,
+    );
+    if (effectiveLimit !== null) instructorLimits.set(key, effectiveLimit);
   };
 
   for (const existing of input.existingV2Assignments ?? []) {
@@ -277,7 +287,7 @@ export function preflightCanonicalTeachingHours(input: {
         rowNumber: 0,
         columnName: "assigned_component_hours",
         errorCode: "INSTRUCTOR_TEACHING_HOURS_OVER_LIMIT",
-        message: `ساعات المحاضر ${total} تتجاوز الحد الأسبوعي ${limit} (${key})`,
+        message: `ساعات المحاضر ${total} تتجاوز النصاب الفعلي بعد الإعفاء الإداري ${limit} (${key})`,
       });
       for (const operation of operations) {
         if (instructorKey(operation) === key) blockedNaturalKeys.add(operation.naturalKey);
