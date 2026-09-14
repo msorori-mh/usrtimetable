@@ -5,10 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 type Link = { college_id: string; course_id: string; program_id: string };
 type LinkDatabase = Omit<Database, "public"> & {
-  public: Omit<Database["public"], "Tables" | "Functions"> & {
-    Tables: Database["public"]["Tables"] & {
-      course_programs: { Row: Link; Insert: Link; Update: Partial<Link>; Relationships: [] };
-    };
+  public: Omit<Database["public"], "Functions"> & {
     Functions: Database["public"]["Functions"] & {
       save_course_programs: {
         Args: {
@@ -17,6 +14,7 @@ type LinkDatabase = Omit<Database, "public"> & {
           p_nature: string;
           p_program_ids: string[];
           p_expected_updated_at: string;
+          p_is_shared: boolean;
         };
         Returns: undefined;
       };

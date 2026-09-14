@@ -31,38 +31,44 @@ test("program selection persists, rejects cross-college and stale writes, suppor
     INSERT INTO study_plans VALUES(md5('plan')::uuid,md5('college')::uuid,md5('p1')::uuid,true);
     INSERT INTO plan_courses VALUES(md5('pc')::uuid,md5('college')::uuid,md5('course')::uuid,md5('plan')::uuid);
     GRANT SELECT ON academic_programs, courses TO authenticated; GRANT UPDATE ON courses TO authenticated;
+    CREATE TABLE public.course_programs(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), college_id uuid, course_id uuid, program_id uuid, UNIQUE(college_id,course_id,program_id));
+    ALTER TABLE course_programs ENABLE ROW LEVEL SECURITY;
+    CREATE POLICY cp_read ON course_programs FOR SELECT TO authenticated USING(can_view_college(auth.uid(),college_id));
+    CREATE POLICY cp_insert ON course_programs FOR INSERT TO authenticated WITH CHECK(can_manage_college(auth.uid(),college_id));
+    CREATE POLICY cp_delete ON course_programs FOR DELETE TO authenticated USING(can_manage_college(auth.uid(),college_id));
+    GRANT SELECT,INSERT,DELETE ON course_programs TO authenticated;
     ${migration}
     SELECT set_config('request.jwt.claim.sub',md5('manager'),true);
     SET LOCAL ROLE authenticated;
-    SELECT save_course_programs(md5('college')::uuid,md5('course')::uuid,'college',ARRAY[md5('p1')::uuid,md5('p2')::uuid], '2026-01-01');
+    SELECT save_course_programs(md5('college')::uuid,md5('course')::uuid,'college',ARRAY[md5('p1')::uuid,md5('p2')::uuid], '2026-01-01',true);
     DO $$ BEGIN
       IF (SELECT count(*) FROM course_programs)<>2 THEN RAISE EXCEPTION 'selection not saved'; END IF;
       IF NOT (SELECT is_shared FROM courses LIMIT 1) THEN RAISE EXCEPTION 'shared flag not updated'; END IF;
       BEGIN
-        PERFORM save_course_programs(md5('college')::uuid,md5('course')::uuid,'college',ARRAY[md5('p3')::uuid], (SELECT updated_at FROM courses LIMIT 1));
+        PERFORM save_course_programs(md5('college')::uuid,md5('course')::uuid,'college',ARRAY[md5('p3')::uuid], (SELECT updated_at FROM courses LIMIT 1),false);
         RAISE EXCEPTION 'cross college accepted';
       EXCEPTION WHEN raise_exception THEN IF SQLERRM='cross college accepted' THEN RAISE; END IF; END;
       IF (SELECT count(*) FROM course_programs)<>2 THEN RAISE EXCEPTION 'rejection changed links'; END IF;
       BEGIN
-        PERFORM save_course_programs(md5('college')::uuid,md5('course')::uuid,'college','{}','2026-01-01');
+        PERFORM save_course_programs(md5('college')::uuid,md5('course')::uuid,'college','{}','2026-01-01',true);
         RAISE EXCEPTION 'stale write accepted';
       EXCEPTION WHEN raise_exception THEN IF SQLERRM='stale write accepted' THEN RAISE; END IF; END;
     END $$;
     SELECT set_config('request.jwt.claim.sub',md5('reader'),true);
     DO $$ BEGIN
       BEGIN
-        PERFORM save_course_programs(md5('college')::uuid,md5('course')::uuid,'college','{}',(SELECT updated_at FROM courses LIMIT 1));
+        PERFORM save_course_programs(md5('college')::uuid,md5('course')::uuid,'college','{}',(SELECT updated_at FROM courses LIMIT 1),false);
         RAISE EXCEPTION 'reader write accepted';
       EXCEPTION WHEN raise_exception THEN IF SQLERRM='reader write accepted' THEN RAISE; END IF; END;
     END $$;
     SELECT set_config('request.jwt.claim.sub',md5('manager'),true);
-    SELECT save_course_programs(md5('college')::uuid,md5('course')::uuid,'department','{}',(SELECT updated_at FROM courses LIMIT 1));
+    SELECT save_course_programs(md5('college')::uuid,md5('course')::uuid,'department','{}',(SELECT updated_at FROM courses LIMIT 1),false);
     RESET ROLE;
     ${migration}
     DO $$ BEGIN
       IF EXISTS(SELECT 1 FROM course_programs) THEN RAISE EXCEPTION 'removed choices restored'; END IF;
       IF (SELECT is_shared FROM courses LIMIT 1) THEN RAISE EXCEPTION 'clear did not reset shared'; END IF;
-      IF has_function_privilege('anon','public.save_course_programs(uuid,uuid,text,uuid[],timestamptz)','EXECUTE') THEN RAISE EXCEPTION 'anonymous RPC granted'; END IF;
+      IF has_function_privilege('anon','public.save_course_programs(uuid,uuid,text,uuid[],timestamptz,boolean)','EXECUTE') THEN RAISE EXCEPTION 'anonymous RPC granted'; END IF;
     END $$;
     ROLLBACK;`;
   const result = spawnSync("psql", ["-X", "-q", "-v", "ON_ERROR_STOP=1", "--dbname", target], {

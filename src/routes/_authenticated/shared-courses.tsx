@@ -55,6 +55,7 @@ function SharedPage() {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<Course | null>(null);
   const [nature, setNature] = useState("department");
+  const [shared, setShared] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
   const [editingCollege, setEditingCollege] = useState<string>();
   const linksQuery = useCourseProgramLinks(active?.id);
@@ -76,6 +77,7 @@ function SharedPage() {
   const start = (c: Course) => {
     setEditing(c);
     setNature(c.course_nature ?? "department");
+    setShared(c.is_shared);
     setEditingCollege(active?.id);
     setPicked(links.filter((l) => l.course_id === c.id).map((l) => l.program_id));
   };
@@ -96,6 +98,7 @@ function SharedPage() {
         p_course_id: editing.id,
         p_nature: nature,
         p_program_ids: picked,
+        p_is_shared: shared,
         p_expected_updated_at: editing.updated_at,
       });
       if (e1) throw e1;
@@ -111,6 +114,7 @@ function SharedPage() {
       qc.invalidateQueries({ queryKey: ["courses-shared", active?.id] });
       qc.invalidateQueries({ queryKey: ["courses"] });
       qc.invalidateQueries({ queryKey: ["course-program-links", active?.id] });
+      qc.invalidateQueries({ queryKey: ["course-programs", active?.id] });
       setEditing(null);
     },
     onError: (e: Error) => toast.error(e.message),
@@ -147,7 +151,7 @@ function SharedPage() {
                   <div className="min-w-0">
                     <p className="font-semibold">
                       {c.name}
-                      {ds.length > 1 && (
+                      {c.is_shared && (
                         <span className="ms-2 rounded bg-accent/20 px-2 py-0.5 text-[11px]">
                           مشترك
                         </span>
@@ -207,8 +211,16 @@ function SharedPage() {
                 </SelectContent>
               </Select>
             </div>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={shared}
+                disabled={save.isPending}
+                onCheckedChange={(v) => setShared(v === true)}
+              />
+              مقرر مشترك (يُدرَّس لبرامج متعددة)
+            </label>
             <div>
-              <Label>البرامج التي تدرس المقرر</Label>
+              <Label>البرامج المرتبطة</Label>
               <div className="mt-2 max-h-60 space-y-1 overflow-y-auto rounded border p-2">
                 {programs.map((p) => (
                   <label
