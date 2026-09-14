@@ -24,8 +24,9 @@ export const ADMINISTRATIVE_POSITION_OPTIONS: readonly AdministrativePositionOpt
   { value: "dean", label: "عميد الكلية" },
 ];
 
-export const ADMINISTRATIVE_POSITION_CODES: readonly string[] =
-  ADMINISTRATIVE_POSITION_OPTIONS.map((o) => o.value);
+export const ADMINISTRATIVE_POSITION_CODES: readonly string[] = ADMINISTRATIVE_POSITION_OPTIONS.map(
+  (o) => o.value,
+);
 
 export const ADMINISTRATIVE_POSITION_LABEL_AR: Record<AdministrativePosition, string> =
   Object.fromEntries(ADMINISTRATIVE_POSITION_OPTIONS.map((o) => [o.value, o.label])) as Record<

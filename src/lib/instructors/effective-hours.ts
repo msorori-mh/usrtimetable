@@ -32,8 +32,7 @@ export function effectiveInstructorWeeklyHours(
   return round2(Math.max(0, base - rel));
 }
 
-export const EFFECTIVE_QUOTA_FORMULA_AR =
-  "النصاب الفعلي = النصاب الأساسي − ساعات الإعفاء الإداري";
+export const EFFECTIVE_QUOTA_FORMULA_AR = "النصاب الفعلي = النصاب الأساسي − ساعات الإعفاء الإداري";
 
 export const EFFECTIVE_QUOTA_LABEL_AR = "النصاب الفعلي";
 export const BASE_QUOTA_LABEL_AR = "النصاب الأساسي الأسبوعي";
