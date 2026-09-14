@@ -1,7 +1,9 @@
+import { extendedResourceConflict } from "./extended-resource-capacity.ts";
 import type { Highs } from "highs";
 import { buildJointModel, validateJointPlan } from "./joint-model.ts";
 import {
   searchAttendance,
+  resourceConflictResult,
   type AttendanceSearchResult,
   type AttendanceAttempt,
 } from "./attendance-search.ts";
@@ -62,6 +64,8 @@ export async function searchJointAttendance(
   highs: Highs,
   budgetMs = 180000,
 ): Promise<Proposal> {
+  const conflict = extendedResourceConflict(snapshot);
+  if (conflict) return jointProposal(snapshot, resourceConflictResult(conflict));
   const started = Date.now(),
     attempts: AttendanceAttempt[] = [];
   const finish = (

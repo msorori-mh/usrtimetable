@@ -1,3 +1,8 @@
+import {
+  extendedResourceConflict,
+  type ExtendedResourceConflict,
+} from "./extended-resource-capacity.ts";
+
 /** Complete finite-domain search. Exhaustion, never a timeout, authorizes relaxation. */
 import {
   context,
@@ -16,12 +21,13 @@ export interface AttendanceAttempt {
   evaluated: number;
 }
 export interface AttendanceSearchResult {
+  resourceConflict?: ExtendedResourceConflict;
   status: AttendanceSearchStatus;
   days: 3 | 4 | 5 | null;
   attempts: AttendanceAttempt[];
   sessions: Session[];
   /** Fixed assignments/durations/locks; all unlocked sessions and rooms are movable. */
-  scope: "all_sessions_minute_domain" | "all_sessions_joint_grid";
+  scope: "all_sessions_minute_domain" | "all_sessions_joint_grid" | "resource_capacity_bound";
 }
 export interface AttendanceSearchOptions {
   signal?: AbortSignal;
@@ -39,6 +45,8 @@ export async function searchAttendance(
   snapshot: Snapshot,
   options: AttendanceSearchOptions = {},
 ): Promise<AttendanceSearchResult> {
+  const conflict = extendedResourceConflict(snapshot);
+  if (conflict) return resourceConflictResult(conflict);
   const started = Date.now();
   const budget = Math.max(0, options.maxDurationMs ?? 60000);
   const quick = await runAttendanceSearch(
@@ -276,7 +284,29 @@ async function runAttendanceSearch(
   return finish("infeasible", null);
 }
 
+export function resourceConflictResult(
+  resourceConflict: ExtendedResourceConflict,
+): AttendanceSearchResult {
+  return {
+    status: "infeasible",
+    days: null,
+    sessions: [],
+    scope: "resource_capacity_bound",
+    resourceConflict,
+    attempts: ([3, 4, 5] as const).map((days) => ({
+      days,
+      status: "infeasible",
+      reason: "capacity",
+      evaluated: 0,
+    })),
+  };
+}
 export function attendanceSearchMessage(result: AttendanceSearchResult): string {
+  if (result.resourceConflict) {
+    const c = result.resourceConflict;
+    return `ثبت عجز السعة تحت قيد يوم تمديد واحد لكل مجموعة: المطلوب ما لا يقل عن ${c.requiredTotalLateSessions} محاضرة بعد الثانية، والمتاح حسابيًا ${c.maximumTotalLateSessions} فقط، منها حاجة إلى ${c.requiredHallLateSessions} محاضرة خاصة بالقاعات. هذه المتطلبات متعارضة مع السعة الحالية. زيادة أيام الحضور إلى أربعة أو خمسة لا تزيل هذا العجز؛ يلزم تعديل سعة القاعات أو قيد التمديد قبل إعادة التوزيع. لم تُحفظ تغييرات.`;
+  }
+
   const evidence = result.attempts
     .map(
       (a) =>
