@@ -59,6 +59,15 @@ test(
     UPDATE schedule_versions SET status='published';
     IF has_function_privilege('anon','public.schedule_extended_day_counts(uuid,uuid,uuid,jsonb)','EXECUTE') THEN RAISE EXCEPTION 'anonymous execution granted'; END IF;
   END $$;
+  DELETE FROM schedule_sessions;
+  DO $$ BEGIN
+    BEGIN
+      INSERT INTO schedule_sessions(id,college_id,schedule_version_id,cohort_id,delivery_group_id,day_of_week,end_time) SELECT ('00000000-0000-0000-0000-'||lpad((i+200)::text,12,'0'))::uuid,'00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000003','00000000-0000-0000-0000-000000000010',i,'16:00' FROM generate_series(0,1) i;
+      RAISE EXCEPTION 'two new days in one statement accepted';
+    EXCEPTION WHEN check_violation THEN NULL; END;
+    IF EXISTS(SELECT 1 FROM schedule_sessions) THEN RAISE EXCEPTION 'multirow insert was not atomic'; END IF;
+  END $$;
+  INSERT INTO schedule_sessions VALUES('00000000-0000-0000-0000-000000000220','00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000003','00000000-0000-0000-0000-000000000010',0,'16:00',false);
   GRANT USAGE ON SCHEMA public TO extended_day_test_reader;
   GRANT SELECT ON ALL TABLES IN SCHEMA public TO extended_day_test_reader;
   GRANT EXECUTE ON FUNCTION schedule_extended_day_counts(uuid,uuid,uuid,jsonb) TO extended_day_test_reader;
