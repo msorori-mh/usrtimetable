@@ -19,6 +19,7 @@ import { useActiveCollege } from "@/hooks/use-colleges";
 import { fetchRoomsInventory } from "@/lib/reports/queries/rooms-inventory";
 import { RoomsDecisionsPanel } from "@/components/reports/rooms-decisions-panel";
 import { RoomsComparison } from "@/components/reports/rooms-comparison";
+import { RoomsCategorySummary } from "@/components/reports/rooms-category-summary";
 import { fetchHydratedVersionSessions } from "@/lib/schedule-builder/queries";
 import { fetchCohortDeliveryGroupLabels } from "@/lib/reports/queries/session-queries";
 import { isDeliveryDemoVersion } from "@/lib/schedule-versions/delivery-demo";
@@ -161,6 +162,7 @@ function Page() {
           <p className="font-semibold">
             الجلسات المطابقة للفلاتر: {totals.sessions} · صفحات القاعات: {pages.length}
           </p>
+          <RoomsCategorySummary summary={summary} />
           <p className="mt-2 text-muted-foreground">
             الإتاحة هي ساعات فتح القاعات الكاملة. عند اختيار نظام واحد، تمثل النسبة حصته من هذه
             الإتاحة؛ الساعات غير المستخدمة ضمن الاختيار قد تشغلها محاضرات النظام الآخر.
@@ -182,6 +184,7 @@ function Page() {
               الساعات غير المستخدمة محسوبة ضمن الفلاتر؛ راجع إشغال النظامين قبل إعادة التسكين.
             </p>
             <p className="mb-3 text-sm leading-6">{analytics.insight}</p>
+            <RoomsCategorySummary summary={summary} />
             <div className="mb-4 grid grid-cols-4 gap-2 text-sm">
               <div className="border p-2">
                 <b>إجمالي الموارد</b>
