@@ -1,0 +1,74 @@
+name: instructor-restructure-integrate
+
+on:
+  push:
+    branches: [instructor-restructure-ready]
+    paths:
+      - .github/workflows/instructor-restructure-integrate.yml
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ github.token }}
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - name: Import verified instructor files from feature branch
+        run: |
+          git fetch origin instructor-restructure-ready
+          git checkout origin/instructor-restructure-ready -- \
+            src/integrations/supabase/types.ts \
+            src/lib/admin-export/datasets.ts \
+            src/lib/excel-import/instructor-sheet.ts \
+            src/lib/excel-import/teaching-assignments-source-import.ts \
+            src/lib/excel-import/teaching-assignments-source-resolver.ts \
+            src/lib/excel-import/teaching-assignments-v2-hours-preflight.ts \
+            src/lib/excel-import/templates.ts \
+            src/lib/excel-import/types.ts \
+            src/lib/excel-import/validators.ts \
+            src/lib/reports/instructor-quota.ts \
+            src/routes/_authenticated/instructors.tsx \
+            supabase/migrations/20260914030000_instructor_hr_affiliation_and_effective_quota.sql \
+            tests/instructor-hr-restructure.test.ts \
+            tests/instructor-sheet.test.ts
+          # helper files already exist on main from the earlier partial commit; import the verified copies too.
+          git checkout origin/instructor-restructure-ready -- \
+            src/lib/instructors/effective-hours.ts \
+            src/lib/instructors/administrative-positions.ts
+      - name: Verify no concurrent instructor-file overlap was lost
+        run: |
+          git diff --check
+          bun test tests/instructor-hr-restructure.test.ts tests/instructor-quota-and-directory.test.ts tests/instructor-type-hydration.test.ts
+          node --experimental-test-module-mocks --import tsx --test tests/instructor-sheet.test.ts
+          bunx eslint \
+            src/routes/_authenticated/instructors.tsx \
+            src/lib/instructors/effective-hours.ts \
+            src/lib/instructors/administrative-positions.ts \
+            src/lib/excel-import/types.ts \
+            src/lib/excel-import/templates.ts \
+            src/lib/excel-import/instructor-sheet.ts \
+            src/lib/excel-import/validators.ts \
+            src/lib/reports/instructor-quota.ts \
+            src/lib/admin-export/datasets.ts \
+            src/lib/excel-import/teaching-assignments-v2-hours-preflight.ts \
+            src/lib/excel-import/teaching-assignments-source-resolver.ts \
+            src/lib/excel-import/teaching-assignments-source-import.ts \
+            tests/instructor-hr-restructure.test.ts \
+            tests/instructor-sheet.test.ts
+          bunx tsc --noEmit
+          bun run build
+      - name: Commit directly on latest main lineage
+        run: |
+          git config user.name "OpenAI implementation bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add src tests supabase/migrations/20260914030000_instructor_hr_affiliation_and_effective_quota.sql
+          git commit -m "feat(instructors): restructure HR profile and effective quota"
+          git push origin HEAD:main
