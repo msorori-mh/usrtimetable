@@ -8,6 +8,22 @@ export type Database = {
   };
   public: {
     Tables: {
+      support_departments: {
+        Row: {
+          id: string;
+          college_id: string;
+          name: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          college_id: string;
+          name: string;
+          created_at?: string;
+        };
+        Update: { name?: string };
+        Relationships: [];
+      };
       academic_buildings: {
         Row: {
           address: string | null;
@@ -1793,6 +1809,7 @@ export type Database = {
           academic_rank: string | null;
           admin_tasks: string | null;
           administrative_department_id: string | null;
+          administrative_support_department_id: string | null;
           administrative_position: string | null;
           affiliation_college_id: string | null;
           affiliation_department_id: string | null;
@@ -1822,6 +1839,7 @@ export type Database = {
           academic_rank?: string | null;
           admin_tasks?: string | null;
           administrative_department_id?: string | null;
+          administrative_support_department_id?: string | null;
           administrative_position?: string | null;
           affiliation_college_id?: string | null;
           affiliation_department_id?: string | null;
@@ -1851,6 +1869,7 @@ export type Database = {
           academic_rank?: string | null;
           admin_tasks?: string | null;
           administrative_department_id?: string | null;
+          administrative_support_department_id?: string | null;
           administrative_position?: string | null;
           affiliation_college_id?: string | null;
           affiliation_department_id?: string | null;
@@ -3695,7 +3714,10 @@ export type Database = {
         Args: { p_exists: boolean; p_mode: string };
         Returns: string;
       };
-      _import_row_number: { Args: { elem: Json; idx: number }; Returns: number };
+      _import_row_number: {
+        Args: { elem: Json; idx: number };
+        Returns: number;
+      };
       _import_row_values: { Args: { elem: Json }; Returns: Json };
       _import_sync_plan_course_components: {
         Args: { p_college: string; p_plan_course: string; v: Json };
@@ -4066,7 +4088,10 @@ export type Database = {
         Args: { p_college_id: string };
         Returns: boolean;
       };
-      is_academic_affairs_only: { Args: { _user_id: string }; Returns: boolean };
+      is_academic_affairs_only: {
+        Args: { _user_id: string };
+        Returns: boolean;
+      };
       is_assignment_room_compatible: {
         Args: {
           p_college_id: string;

@@ -97,6 +97,7 @@ interface Instructor {
   affiliation_department_id: string | null;
   administrative_position: string | null;
   administrative_department_id: string | null;
+  administrative_support_department_id: string | null;
 }
 
 interface InstructorTypeRow {
@@ -130,6 +131,8 @@ function emptyForm() {
     affiliation_department_id: "",
     administrative_position: "",
     administrative_department_id: "",
+    administrative_support_department_id: "",
+    administrative_department_kind: "academic",
   };
 }
 
@@ -186,6 +189,7 @@ function InstructorDirectory() {
       ).data ?? [],
   });
 
+  const [supportName, setSupportName] = useState("");
   const affiliationCollegeId = form.affiliation_college_id || active?.id || "";
   const { data: affiliationDepts } = useQuery({
     queryKey: ["instructor-affiliation-depts", affiliationCollegeId],
@@ -201,6 +205,56 @@ function InstructorDirectory() {
     },
   });
 
+  const supportQuery = useQuery({
+    queryKey: ["support-departments", affiliationCollegeId],
+    enabled: !!affiliationCollegeId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("support_departments")
+        .select("id, name, college_id")
+        .eq("college_id", affiliationCollegeId)
+        .order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const addSupport = useMutation({
+    mutationFn: async () => {
+      if (!canManage || !affiliationCollegeId || !supportName.trim())
+        throw new Error("أدخل اسم القسم المساند");
+      const collegeId = affiliationCollegeId;
+      const { data, error } = await supabase
+        .from("support_departments")
+        .insert({ college_id: collegeId, name: supportName.trim() })
+        .select("id")
+        .single();
+      if (error) throw error;
+      await logAudit({
+        action: "create",
+        entity: "support_departments",
+        entityId: data.id,
+        collegeId,
+      });
+      return { id: data.id, collegeId };
+    },
+    onSuccess: ({ id, collegeId }) => {
+      void qc.invalidateQueries({
+        queryKey: ["support-departments", collegeId],
+      });
+      setForm((prev) =>
+        prev.affiliation_college_id === collegeId &&
+        prev.administrative_position === "department_head" &&
+        prev.administrative_department_kind === "support"
+          ? { ...prev, administrative_support_department_id: id }
+          : prev,
+      );
+      setSupportName("");
+      toast.success("تمت إضافة القسم المساند");
+    },
+    onError: (e: Error) =>
+      toast.error(e.message.includes("duplicate") ? "القسم المساند موجود بالفعل" : e.message),
+  });
+
   const {
     data: rows,
     isLoading,
@@ -213,7 +267,7 @@ function InstructorDirectory() {
       const { data, error } = await supabase
         .from("instructors")
         .select(
-          "id, college_id, department_id, full_name, academic_rank, email, phone, employment_type, max_weekly_hours, is_active, employee_number, full_name_ar, full_name_en, specialization, administrative_release_hours, notes, admin_tasks, instructor_type_id, affiliation_college_id, affiliation_department_id, administrative_position, administrative_department_id",
+          "id, college_id, department_id, full_name, academic_rank, email, phone, employment_type, max_weekly_hours, is_active, employee_number, full_name_ar, full_name_en, specialization, administrative_release_hours, notes, admin_tasks, instructor_type_id, affiliation_college_id, affiliation_department_id, administrative_position, administrative_department_id, administrative_support_department_id",
         )
         .eq("college_id", active!.id)
         .order("full_name");
@@ -246,14 +300,27 @@ function InstructorDirectory() {
       if (
         !hourlyContract &&
         requiresAdministrativeDepartment(form.administrative_position) &&
-        !form.administrative_department_id
+        !(form.administrative_department_kind === "support"
+          ? form.administrative_support_department_id
+          : form.administrative_department_id)
       )
         throw new Error("اختر القسم الذي يرأسه المحاضر");
       if (
+        form.administrative_department_kind === "academic" &&
         form.administrative_department_id &&
         !(affiliationDepts ?? []).some((d) => d.id === form.administrative_department_id)
       )
         throw new Error("قسم الرئاسة يجب أن يتبع كلية التبعية المختارة");
+
+      if (
+        !hourlyContract &&
+        requiresAdministrativeDepartment(form.administrative_position) &&
+        form.administrative_department_kind === "support" &&
+        (supportQuery.isPending ||
+          supportQuery.isError ||
+          !supportQuery.data?.some((d) => d.id === form.administrative_support_department_id))
+      )
+        throw new Error("اختر قسماً مسانداً من كلية التبعية بعد تحميل القائمة");
 
       const operationalDepartmentId =
         form.affiliation_college_id === active.id
@@ -284,8 +351,16 @@ function InstructorDirectory() {
         affiliation_department_id: form.affiliation_department_id,
         administrative_position: hourlyContract ? null : form.administrative_position || null,
         administrative_department_id:
-          !hourlyContract && requiresAdministrativeDepartment(form.administrative_position)
+          !hourlyContract &&
+          requiresAdministrativeDepartment(form.administrative_position) &&
+          form.administrative_department_kind === "academic"
             ? form.administrative_department_id || null
+            : null,
+        administrative_support_department_id:
+          !hourlyContract &&
+          requiresAdministrativeDepartment(form.administrative_position) &&
+          form.administrative_department_kind === "support"
+            ? form.administrative_support_department_id || null
             : null,
         college_id: active.id,
       };
@@ -377,6 +452,10 @@ function InstructorDirectory() {
       affiliation_department_id: i.affiliation_department_id ?? i.department_id ?? "",
       administrative_position: i.administrative_position ?? "",
       administrative_department_id: i.administrative_department_id ?? "",
+      administrative_support_department_id: i.administrative_support_department_id ?? "",
+      administrative_department_kind: i.administrative_support_department_id
+        ? "support"
+        : "academic",
     });
     setOpen(true);
   };
@@ -482,6 +561,9 @@ function InstructorDirectory() {
                         administrative_release_hours: hourly
                           ? 0
                           : form.administrative_release_hours,
+                        administrative_support_department_id: hourly
+                          ? ""
+                          : form.administrative_support_department_id,
                         administrative_position: hourly ? "" : form.administrative_position,
                         administrative_department_id: hourly
                           ? ""
@@ -548,6 +630,7 @@ function InstructorDirectory() {
                         affiliation_college_id: v,
                         affiliation_department_id: "",
                         administrative_department_id: "",
+                        administrative_support_department_id: "",
                       })
                     }
                   >
@@ -582,6 +665,7 @@ function InstructorDirectory() {
                         ...form,
                         affiliation_department_id: v,
                         administrative_department_id: "",
+                        administrative_support_department_id: "",
                       })
                     }
                     disabled={!form.affiliation_college_id}
@@ -634,7 +718,12 @@ function InstructorDirectory() {
                     type="number"
                     min={0}
                     value={form.max_weekly_hours}
-                    onChange={(e) => setForm({ ...form, max_weekly_hours: Number(e.target.value) })}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        max_weekly_hours: Number(e.target.value),
+                      })
+                    }
                   />
                 </div>
 
@@ -646,7 +735,10 @@ function InstructorDirectory() {
                       min={0}
                       value={form.administrative_release_hours}
                       onChange={(e) =>
-                        setForm({ ...form, administrative_release_hours: Number(e.target.value) })
+                        setForm({
+                          ...form,
+                          administrative_release_hours: Number(e.target.value),
+                        })
                       }
                     />
                   </div>
@@ -667,6 +759,10 @@ function InstructorDirectory() {
                         setForm({
                           ...form,
                           administrative_position: v === "_none" ? "" : v,
+                          administrative_support_department_id:
+                            v === "department_head"
+                              ? form.administrative_support_department_id
+                              : "",
                           administrative_department_id:
                             v === "department_head" ? form.administrative_department_id : "",
                         })
@@ -685,25 +781,92 @@ function InstructorDirectory() {
                       </SelectContent>
                     </Select>
                     {requiresAdministrativeDepartment(form.administrative_position) && (
-                      <div>
-                        <Label>القسم الذي يرأسه</Label>
+                      <div className="space-y-3">
+                        <Label>نوع الجهة الإدارية</Label>
                         <Select
-                          value={form.administrative_department_id || undefined}
+                          value={form.administrative_department_kind}
                           onValueChange={(v) =>
-                            setForm({ ...form, administrative_department_id: v })
+                            setForm({
+                              ...form,
+                              administrative_department_kind: v,
+                              administrative_department_id: "",
+                              administrative_support_department_id: "",
+                            })
                           }
                         >
-                          <SelectTrigger>
+                          <SelectTrigger aria-label="نوع الجهة الإدارية">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="academic">قسم أكاديمي</SelectItem>
+                            <SelectItem value="support">قسم مساند</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Label>القسم الذي يرأسه</Label>
+                        <Select
+                          value={
+                            (form.administrative_department_kind === "support"
+                              ? form.administrative_support_department_id
+                              : form.administrative_department_id) || undefined
+                          }
+                          onValueChange={(v) =>
+                            setForm({
+                              ...form,
+                              [form.administrative_department_kind === "support"
+                                ? "administrative_support_department_id"
+                                : "administrative_department_id"]: v,
+                            })
+                          }
+                        >
+                          <SelectTrigger aria-label="القسم الذي يرأسه">
                             <SelectValue placeholder="اختر القسم" />
                           </SelectTrigger>
                           <SelectContent>
-                            {(affiliationDepts ?? []).map((d) => (
+                            {(form.administrative_department_kind === "support"
+                              ? (supportQuery.data ?? [])
+                              : (affiliationDepts ?? [])
+                            ).map((d) => (
                               <SelectItem key={d.id} value={d.id}>
                                 {d.name}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
+                        {form.administrative_department_kind === "support" && (
+                          <div className="space-y-2">
+                            {supportQuery.isPending && (
+                              <p className="text-sm">جارٍ تحميل الأقسام المساندة…</p>
+                            )}
+                            {supportQuery.isError && (
+                              <Button variant="outline" onClick={() => void supportQuery.refetch()}>
+                                إعادة تحميل الأقسام المساندة
+                              </Button>
+                            )}
+                            {!supportQuery.isPending &&
+                              !supportQuery.isError &&
+                              !supportQuery.data?.length && (
+                                <p className="text-sm text-muted-foreground">
+                                  لا توجد أقسام مساندة مسجلة لهذه الكلية.
+                                </p>
+                              )}
+                            <div className="flex gap-2">
+                              <Input
+                                aria-label="اسم قسم مساند جديد"
+                                placeholder="اسم قسم مساند جديد"
+                                value={supportName}
+                                onChange={(e) => setSupportName(e.target.value)}
+                                maxLength={150}
+                              />
+                              <Button
+                                variant="outline"
+                                disabled={addSupport.isPending || !supportName.trim()}
+                                onClick={() => addSupport.mutate()}
+                              >
+                                إضافة
+                              </Button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
