@@ -194,3 +194,11 @@ jobs:
           COMPACTION_TEST_DISPOSABLE: "1"
           COMPACTION_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/compaction_test
         run: node --test tests/course-program-links-db.test.mjs
+
+
+      - name: Supporting department heads, quota preservation and permissions
+        env:
+          COMPACTION_TEST_DISPOSABLE: "1"
+          COMPACTION_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/compaction_test
+        run: node --test tests/support-departments-db.test.mjs
+
