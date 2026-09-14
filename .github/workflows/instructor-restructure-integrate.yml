@@ -39,11 +39,10 @@ jobs:
             supabase/migrations/20260914030000_instructor_hr_affiliation_and_effective_quota.sql \
             tests/instructor-hr-restructure.test.ts \
             tests/instructor-sheet.test.ts
-          # helper files already exist on main from the earlier partial commit; import the verified copies too.
           git checkout origin/instructor-restructure-ready -- \
             src/lib/instructors/effective-hours.ts \
             src/lib/instructors/administrative-positions.ts
-      - name: Verify no concurrent instructor-file overlap was lost
+      - name: Verify on latest main snapshot
         run: |
           git diff --check
           bun test tests/instructor-hr-restructure.test.ts tests/instructor-quota-and-directory.test.ts tests/instructor-type-hydration.test.ts
@@ -65,10 +64,10 @@ jobs:
             tests/instructor-sheet.test.ts
           bunx tsc --noEmit
           bun run build
-      - name: Commit directly on latest main lineage
+      - name: Publish verified integration branch
         run: |
           git config user.name "OpenAI implementation bot"
           git config user.email "actions@users.noreply.github.com"
           git add src tests supabase/migrations/20260914030000_instructor_hr_affiliation_and_effective_quota.sql
           git commit -m "feat(instructors): restructure HR profile and effective quota"
-          git push origin HEAD:main
+          git push --force origin HEAD:refs/heads/integrate/instructor-restructure-20260914
