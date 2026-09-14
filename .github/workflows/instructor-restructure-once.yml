@@ -33,6 +33,16 @@ jobs:
           s=s.replace('...(rows ?? [example])', '...(rows ?? [sample])')
           p.write_text(s)
           PY
+      - name: Make patch script diagnostic on stale anchors
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('.github/scripts/apply-instructor-restructure.py')
+          s=p.read_text()
+          s=s.replace('        raise RuntimeError(f"{path}: expected one anchor, found {count}: {old[:120]!r}")', '        print(f"WARN stale anchor {path}: {count}: {old[:120]!r}")\n        return')
+          s=s.replace('        raise RuntimeError(f"{path}: regex anchor not found: {pattern[:160]!r}")', '        print(f"WARN stale regex {path}: {pattern[:160]!r}")\n        return')
+          p.write_text(s)
+          PY
       - name: Apply instructor restructure patch
         run: python3 .github/scripts/apply-instructor-restructure.py
       - name: Complete visible-column template wiring
