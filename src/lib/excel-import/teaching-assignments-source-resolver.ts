@@ -36,6 +36,7 @@ export interface ResolverInstructor {
   full_name: string | null;
   academic_rank?: string | null;
   max_weekly_hours?: number | null;
+  administrative_release_hours?: number | null;
 }
 
 export interface ResolverProgram {
@@ -434,6 +435,7 @@ function toImportRow(
     _instructor_id: instructor.id,
     _instructor_academic_rank: instructor.academic_rank ?? null,
     _instructor_max_weekly_hours: instructor.max_weekly_hours ?? null,
+    _instructor_administrative_release_hours: instructor.administrative_release_hours ?? null,
     _term_id: cohort.term_id,
     _offering_id: null,
     _is_active: true,
