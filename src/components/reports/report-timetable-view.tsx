@@ -4,6 +4,7 @@ import { ReportSection, ReportDataTable } from "@/components/reports/report-sect
 import { useWeeklyGridWindow } from "@/hooks/reports/useWeeklyGridWindow";
 import { TimetableGridReport } from "@/components/reports/timetable-grid-report";
 import { DAY_NAMES_AR } from "@/lib/reports/formatters";
+import { orderWeekDaysRtl, rtlDayRank } from "@/lib/reports/weekly-grid-window";
 import {
   TIMETABLE_TABLE_HEADERS,
   timetableSessionsToRows,
@@ -46,12 +47,15 @@ export function ReportTimetableView({
   const [fullWindow, setFullWindow] = useState(false);
   const { window } = useWeeklyGridWindow(collegeId);
   const ordered = [...sessions].sort(
-    (a, b) => a.day_of_week - b.day_of_week || a.start_time.localeCompare(b.start_time),
+    (a, b) =>
+      rtlDayRank(a.day_of_week) - rtlDayRank(b.day_of_week) ||
+      a.start_time.localeCompare(b.start_time),
   );
   const rows = timetableSessionsToRows(ordered);
-  const days = [...new Set([...window.workingDays, ...sessions.map((s) => s.day_of_week)])].sort(
-    (a, b) => a - b,
-  );
+  const days = orderWeekDaysRtl([
+    ...window.workingDays,
+    ...sessions.map((s) => s.day_of_week),
+  ]);
   const day =
     selectedDay !== null && days.includes(selectedDay)
       ? selectedDay
