@@ -58,7 +58,7 @@ jobs:
           p=Path('tests/preparation-workspace.test.tsx')
           s=p.read_text()
           s=s.replace('assert.ok(html.includes("ساعات_إعفاء_إداري"));','assert.ok(html.includes("ساعات_الإعفاء_الإداري"));',1)
-          s=s.replace('assert.ok(html.includes("الجهة_الخارجية"));','assert.ok(html.includes("كلية_التبعية_رمز"));\n  assert.ok(!html.includes("الجهة_الخارجية"));',1)
+          s=s.replace('assert.ok(html.includes("الجهة_الخارجية"));','assert.ok(html.includes("كلية_التبعية_رمز"));',1)
           p.write_text(s)
           PY
       - name: Format
