@@ -20,6 +20,8 @@
  * produces overload/deficit, and is excluded from totals.
  */
 
+import { effectiveInstructorWeeklyHours } from "@/lib/instructors/effective-hours";
+
 export type QuotaSource = "policy" | "instructor" | "missing";
 
 export interface QuotaInput {
@@ -63,7 +65,7 @@ export function resolveInstructorQuota(input: QuotaInput): ResolvedQuota {
   return {
     baseHours: base,
     releaseHours: release,
-    netHours: base === null ? null : round2(Math.max(0, base - release)),
+    netHours: effectiveInstructorWeeklyHours(base, release),
     source,
   };
 }

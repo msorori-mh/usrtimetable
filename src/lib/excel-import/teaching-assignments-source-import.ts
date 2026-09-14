@@ -67,9 +67,10 @@ export async function loadSourceResolverContext(collegeId: string): Promise<Sour
       full_name: string | null;
       academic_rank: string | null;
       max_weekly_hours: number | null;
+      administrative_release_hours: number | null;
     }>(
       "instructors",
-      "id, employee_number, full_name_ar, full_name, academic_rank, max_weekly_hours",
+      "id, employee_number, full_name_ar, full_name, academic_rank, max_weekly_hours, administrative_release_hours",
       collegeId,
     ),
     fetchAll<{ id: string; code: string }>("academic_programs", "id, code", collegeId),

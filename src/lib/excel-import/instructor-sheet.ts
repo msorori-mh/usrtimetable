@@ -1,6 +1,11 @@
 import type { ColumnDef, ParsedRow, RowError } from "./types";
 import { normalizeArabicText, normalizeDecimalDigits } from "./arabic-normalize";
 import { ACADEMIC_RANKS, UNKNOWN_EMPLOYMENT_TYPE } from "../instructor-metadata";
+import { isHourlyContractTypeCode } from "@/lib/instructors/effective-hours";
+import {
+  normalizeAdministrativePosition,
+  requiresAdministrativeDepartment,
+} from "@/lib/instructors/administrative-positions";
 
 const headerKey = (value: unknown) =>
   normalizeArabicText(String(value ?? ""))
@@ -11,10 +16,18 @@ const headerKey = (value: unknown) =>
 const nameKey = (value: unknown) => normalizeArabicText(String(value ?? "")).toLowerCase();
 
 const ALIASES: Record<string, string[]> = {
-  full_name: ["اسم المدرس", "الاسم الكامل", "اسم المحاضر"],
+  full_name: ["اسم المدرس", "الاسم الكامل", "اسم المحاضر", "الاسم الافتراضي"],
+  full_name_ar: ["الاسم بالعربية", "الاسم الرباعي"],
   specialization: ["القسم", "القسم (التخصص)", "التخصص"],
   max_weekly_hours: ["النصاب الأسبوعي (ساعة)", "النصاب الأسبوعي", "أقصى ساعات أسبوعية"],
-  academic_rank: ["الرتبة الأكاديمية"],
+  academic_rank: ["الرتبة الأكاديمية", "الرتبة العلمية"],
+  instructor_type_code: ["نوع المحاضر رمز", "فئة المحاضر رمز"],
+  affiliation_college_code: ["كلية التبعية رمز"],
+  affiliation_department_code: ["قسم التبعية رمز"],
+  administrative_department_code: ["قسم الرئاسة رمز"],
+  employment_type: ["نوع التوظيف", "حالة التفرغ التعاقد"],
+  email: ["البريد الالكتروني", "البريد الإلكتروني"],
+  phone: ["الهاتف", "الجوال", "التلفون الواتساب"],
   admin_tasks: ["الصفة", "المهام الإدارية"],
   is_active: ["الحالة", "نشط"],
 };
@@ -22,7 +35,9 @@ const ALIASES: Record<string, string[]> = {
 export function instructorHeader(header: unknown, columns: ColumnDef[]): string {
   const key = headerKey(header);
   const column = columns.find((c) =>
-    [c.header, c.key, ...(ALIASES[c.key] ?? [])].some((h) => headerKey(h) === key),
+    [c.header, c.key, ...(c.headerAliases ?? []), ...(ALIASES[c.key] ?? [])].some(
+      (h) => headerKey(h) === key,
+    ),
   );
   return column?.header ?? String(header ?? "").trim();
 }
@@ -115,6 +130,10 @@ export interface ExistingInstructor extends Record<string, unknown> {
   employee_number: string | null;
   full_name: string;
   full_name_ar?: string | null;
+  affiliation_college_id?: string | null;
+  affiliation_department_id?: string | null;
+  administrative_position?: string | null;
+  administrative_department_id?: string | null;
 }
 
 /** Resolve identity within the selected college and retain fields omitted from a source report. */
@@ -125,6 +144,7 @@ export function prepareInstructorRow(
   departments: { id: string; name: string }[] = [],
 ): RowError[] {
   const v = row.values;
+  const hourlyContract = isHourlyContractTypeCode(String(v.instructor_type_code ?? ""));
   const errors: RowError[] = [];
   const fail = (key: string, code: string, message: string) =>
     errors.push({
@@ -156,14 +176,14 @@ export function prepareInstructorRow(
     );
   const current = matches.length === 1 ? matches[0] : undefined;
   if (!employee) {
-    if (current?.employee_number) {
+    if (!hourlyContract && current?.employee_number) {
       v.employee_number = current.employee_number;
       v._matched_by_name = true;
-    } else
+    } else if (!hourlyContract)
       fail(
         "employee_number",
         "instructor_employee_number_required",
-        "تعذر تحديد رقم موظف فريد من الكلية الحالية. أدخل رقم الموظف؛ عمود م تسلسلي فقط.",
+        "رقم الموظف مطلوب لكل الفئات عدا متعاقد بالساعات (con).",
       );
   }
   if (current) {
@@ -214,6 +234,30 @@ export function prepareInstructorRow(
     if (!Number.isFinite(number) || number < 0)
       fail(key, "invalid_instructor_hours", "الساعات يجب أن تكون رقمًا غير سالب.");
     else v[key] = number;
+  }
+  if (hourlyContract) {
+    v.administrative_release_hours = 0;
+    v.administrative_position = null;
+    v.administrative_department_code = null;
+  } else if (v.administrative_position) {
+    const normalizedPosition = normalizeAdministrativePosition(v.administrative_position);
+    if (!normalizedPosition)
+      fail(
+        "administrative_position",
+        "invalid_administrative_position",
+        "المنصب الإداري غير معروف. استخدم رئيس قسم، نائب العميد للشؤون الأكاديمية، نائب العميد لشؤون الطلاب، أو عميد الكلية.",
+      );
+    else {
+      v.administrative_position = normalizedPosition;
+      if (requiresAdministrativeDepartment(normalizedPosition) && !v.administrative_department_code)
+        fail(
+          "administrative_department_code",
+          "administrative_department_required",
+          "قسم الرئاسة مطلوب عند اختيار رئيس قسم.",
+        );
+      if (!requiresAdministrativeDepartment(normalizedPosition))
+        v.administrative_department_code = null;
+    }
   }
   if (!v._department_id && !v.department_code && v.specialization) {
     const matches = departments.filter((d) => nameKey(d.name) === nameKey(v.specialization));

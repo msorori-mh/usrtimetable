@@ -106,9 +106,7 @@ function operationFromCanonicalRow(row: ParsedRow): TeachingHoursOperation | nul
     componentTotalHours,
     componentWeeklyHours,
     instructorMaxWeeklyHours: finiteNumber(row.values._instructor_max_weekly_hours),
-    instructorAdminReleaseHours: finiteNumber(
-      row.values._instructor_administrative_release_hours,
-    ),
+    instructorAdminReleaseHours: finiteNumber(row.values._instructor_administrative_release_hours),
   };
 }
 

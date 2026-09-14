@@ -5,6 +5,11 @@ import { resolveRoomTypeFields } from "./room-type-normalize";
 import { deliveryGroupIsolationKey, sectionIsolationKey } from "./keys";
 import { requireImportManager } from "./safety";
 import { normalizeEmploymentType } from "@/lib/instructor-metadata";
+import { isHourlyContractTypeCode } from "@/lib/instructors/effective-hours";
+import {
+  normalizeAdministrativePosition,
+  requiresAdministrativeDepartment,
+} from "@/lib/instructors/administrative-positions";
 import {
   instructorHeader,
   prepareInstructorRow,
@@ -32,6 +37,10 @@ interface Lookups {
   instructorRecords?: ExistingInstructor[];
   instructorDepartments?: { id: string; name: string }[];
   instructorTypes?: Map<string, string>;
+  instructorTypeCodesById?: Map<string, string>;
+  affiliationColleges?: Map<string, { id: string; university_id: string }>;
+  affiliationDepartments?: Map<string, { id: string; college_id: string }>;
+  operationalCollegeCode?: string | null;
   roomTypes?: Map<string, string>;
   roomTypeCatalog?: Array<{
     id: string;
@@ -102,15 +111,56 @@ async function loadLookups(entity: ImportEntity, collegeId: string): Promise<Loo
       }
       return result;
     };
-    const [it, dp, instructors] = await Promise.all([
+    const [it, dp, instructors, activeCollege] = await Promise.all([
       fetchInstructorCatalog("instructor_types"),
       fetchInstructorCatalog("departments"),
       fetchInstructorCatalog("instructors"),
+      supabase.from("colleges").select("id, code, university_id").eq("id", collegeId).maybeSingle(),
     ]);
-    lk.instructorTypes = new Map(it.map((r) => [r.code, r.id]));
-    lk.departments = new Map(dp.map((r) => [r.code, r.id]));
+    if (activeCollege.error) throw activeCollege.error;
+    if (!activeCollege.data) throw new Error("تعذر تحديد الكلية التشغيلية للاستيراد");
+    const universityId = activeCollege.data.university_id;
+    const { data: collegeRows, error: collegeError } = await supabase
+      .from("colleges")
+      .select("id, code, university_id")
+      .eq("university_id", universityId);
+    if (collegeError) throw collegeError;
+    const universityCollegeIds = (collegeRows ?? []).map((c) => c.id);
+    const { data: affiliationDepartmentRows, error: affiliationDepartmentError } =
+      universityCollegeIds.length > 0
+        ? await supabase
+            .from("departments")
+            .select("id, code, college_id")
+            .in("college_id", universityCollegeIds)
+        : { data: [], error: null };
+    if (affiliationDepartmentError) throw affiliationDepartmentError;
+
+    lk.instructorTypes = new Map(
+      it.map((r) => [String(r.code).trim().toLowerCase(), String(r.id)]),
+    );
+    lk.instructorTypeCodesById = new Map(
+      it.map((r) => [String(r.id), String(r.code).trim().toLowerCase()]),
+    );
+    lk.departments = new Map(dp.map((r) => [String(r.code), String(r.id)]));
     lk.instructorDepartments = dp.map((r) => ({ id: r.id, name: r.name }));
     lk.instructorRecords = instructors as ExistingInstructor[];
+    lk.operationalCollegeCode = activeCollege.data.code ?? null;
+    lk.affiliationColleges = new Map(
+      (collegeRows ?? [])
+        .filter((c) => c.code)
+        .map((c) => [
+          String(c.code).trim().toLowerCase(),
+          { id: c.id, university_id: c.university_id },
+        ]),
+    );
+    lk.affiliationDepartments = new Map(
+      (affiliationDepartmentRows ?? [])
+        .filter((d) => d.code)
+        .map((d) => [
+          `${d.college_id}|${String(d.code).trim().toLowerCase()}`,
+          { id: d.id, college_id: d.college_id },
+        ]),
+    );
   }
   if (entity === "rooms") {
     const [rt, bd] = await Promise.all([
@@ -300,11 +350,22 @@ function normalize(
   ({ headers, rows } = canonicalizeImportShape(tpl.columns, headers, rows));
   const trimmed = headers.map((h) => h.trim()).filter(Boolean);
   const headerSet = new Set(trimmed);
+  const legacyInstructorShape = entity === "instructors" && !headerSet.has("كلية_التبعية_رمز");
   const missingHeaders = tpl.columns
     .filter(
       (c) =>
         c.required &&
         !(entity === "instructors" && c.key === "employee_number") &&
+        !(
+          legacyInstructorShape &&
+          (c.key === "instructor_type_code" ||
+            c.key === "affiliation_college_code" ||
+            c.key === "affiliation_department_code")
+        ) &&
+        !(
+          legacyInstructorShape &&
+          (c.key === "affiliation_college_code" || c.key === "affiliation_department_code")
+        ) &&
         !headerSet.has(c.header),
     )
     .map((c) => c.header);
@@ -395,6 +456,9 @@ export async function validate(
 ): Promise<ValidationResult & { missingHeaders: string[]; unknownHeaders: string[] }> {
   await requireImportManager(collegeId);
   const tpl = TEMPLATES[entity];
+  const legacyInstructorInput =
+    entity === "instructors" &&
+    !headers.some((header) => instructorHeader(header, tpl.columns) === "كلية_التبعية_رمز");
   const { parsed, missingHeaders, unknownHeaders, duplicateHeaders } = normalize(
     headers,
     rows,
@@ -489,9 +553,23 @@ export async function validate(
         : [];
 
     for (const c of tpl.columns) {
+      const legacyInstructorRequiredExempt =
+        entity === "instructors" &&
+        legacyInstructorInput &&
+        (c.key === "instructor_type_code" ||
+          c.key === "affiliation_college_code" ||
+          c.key === "affiliation_department_code");
       if (
         c.required &&
-        (row.values[c.key] === null || row.values[c.key] === undefined || row.values[c.key] === "")
+        !legacyInstructorRequiredExempt &&
+        (row.values[c.key] === null ||
+          row.values[c.key] === undefined ||
+          row.values[c.key] === "") &&
+        !(
+          entity === "instructors" &&
+          row.values.department_code &&
+          (c.key === "affiliation_college_code" || c.key === "affiliation_department_code")
+        )
       ) {
         rowErrors.push({
           rowNumber: row.rowNumber,
@@ -572,31 +650,140 @@ export async function validate(
 
     // legacy entities (instructors/rooms)
     if (entity === "instructors") {
-      const itCode = row.values.instructor_type_code as string | null;
-      if (itCode) {
-        const id = lk.instructorTypes?.get(itCode);
-        if (!id)
-          rowErrors.push({
-            rowNumber: row.rowNumber,
-            columnName: "نوع_المحاضر_رمز",
-            errorCode: "unknown_instructor_type",
-            message: `نوع محاضر غير معروف: ${itCode}`,
-            rawValue: itCode,
-          });
-        else row.values._instructor_type_id = id;
+      let rawTypeCode = String(row.values.instructor_type_code ?? "").trim();
+      let typeCode = rawTypeCode.toLowerCase();
+      if (!typeCode && row.values._instructor_type_id) {
+        typeCode = lk.instructorTypeCodesById?.get(String(row.values._instructor_type_id)) ?? "";
+        rawTypeCode = typeCode;
+        if (typeCode) row.values.instructor_type_code = typeCode;
       }
-      const dCode = row.values.department_code as string | null;
-      if (dCode) {
-        const id = lk.departments?.get(dCode);
-        if (!id)
+      const typeId = typeCode ? lk.instructorTypes?.get(typeCode) : null;
+      if (typeCode) {
+        if (!typeId)
           rowErrors.push({
             rowNumber: row.rowNumber,
-            columnName: "رمز_القسم",
-            errorCode: "unknown_department",
-            message: `قسم غير معروف: ${dCode}`,
-            rawValue: dCode,
+            columnName: "فئة_المحاضر_رمز",
+            errorCode: "unknown_instructor_type",
+            message: `نوع محاضر غير معروف: ${rawTypeCode}`,
+            rawValue: rawTypeCode,
           });
-        else row.values._department_id = id;
+        else row.values._instructor_type_id = typeId;
+      }
+      const hourlyContract = isHourlyContractTypeCode(typeCode);
+      if (!hourlyContract && !String(row.values.employee_number ?? "").trim()) {
+        rowErrors.push({
+          rowNumber: row.rowNumber,
+          columnName: "رقم_الموظف",
+          errorCode: "instructor_employee_number_required",
+          message: "رقم الموظف مطلوب لكل الفئات عدا متعاقد بالساعات (con).",
+        });
+      }
+
+      const legacyDepartmentCode = String(row.values.department_code ?? "").trim();
+      const affiliationCollegeCode = String(
+        row.values.affiliation_college_code ?? lk.operationalCollegeCode ?? "",
+      )
+        .trim()
+        .toLowerCase();
+      const affiliationCollege = affiliationCollegeCode
+        ? lk.affiliationColleges?.get(affiliationCollegeCode)
+        : null;
+      if (!affiliationCollege) {
+        rowErrors.push({
+          rowNumber: row.rowNumber,
+          columnName: "كلية_التبعية_رمز",
+          errorCode: "unknown_affiliation_college",
+          message: `كلية تبعية غير معروفة: ${row.values.affiliation_college_code ?? ""}`,
+          rawValue: String(row.values.affiliation_college_code ?? ""),
+        });
+      } else {
+        row.values._affiliation_college_id = affiliationCollege.id;
+        row.values.affiliation_college_code = affiliationCollegeCode;
+      }
+
+      const affiliationDepartmentCode = String(
+        row.values.affiliation_department_code ?? legacyDepartmentCode,
+      )
+        .trim()
+        .toLowerCase();
+      let affiliationDepartment =
+        affiliationCollege && affiliationDepartmentCode
+          ? lk.affiliationDepartments?.get(`${affiliationCollege.id}|${affiliationDepartmentCode}`)
+          : null;
+      if (!affiliationDepartment && affiliationCollege && row.values._department_id) {
+        for (const [compoundKey, candidate] of lk.affiliationDepartments ?? []) {
+          if (
+            candidate.id === String(row.values._department_id) &&
+            candidate.college_id === affiliationCollege.id
+          ) {
+            affiliationDepartment = candidate;
+            row.values.affiliation_department_code = compoundKey.slice(
+              compoundKey.indexOf("|") + 1,
+            );
+            break;
+          }
+        }
+      }
+      if (!affiliationDepartment) {
+        rowErrors.push({
+          rowNumber: row.rowNumber,
+          columnName: "قسم_التبعية_رمز",
+          errorCode: "unknown_affiliation_department",
+          message: "قسم التبعية غير معروف أو لا يتبع كلية التبعية المختارة.",
+          rawValue: String(row.values.affiliation_department_code ?? legacyDepartmentCode ?? ""),
+        });
+      } else {
+        row.values._affiliation_department_id = affiliationDepartment.id;
+        if (!row.values.affiliation_department_code)
+          row.values.affiliation_department_code = affiliationDepartmentCode;
+        // Scheduling ownership remains in the operational college. Sync its department only
+        // when the HR affiliation is the same college; otherwise preserve/null operational dept.
+        if (affiliationCollege?.id === collegeId)
+          row.values._department_id = affiliationDepartment.id;
+      }
+
+      if (legacyDepartmentCode && !row.values._department_id) {
+        const operationalDepartmentId = lk.departments?.get(legacyDepartmentCode);
+        if (operationalDepartmentId) row.values._department_id = operationalDepartmentId;
+      }
+
+      if (hourlyContract) {
+        row.values.administrative_release_hours = 0;
+        row.values.administrative_position = null;
+        row.values._administrative_department_id = null;
+      } else {
+        const rawPosition = row.values.administrative_position;
+        const normalizedPosition = rawPosition
+          ? normalizeAdministrativePosition(rawPosition)
+          : null;
+        if (rawPosition && !normalizedPosition) {
+          rowErrors.push({
+            rowNumber: row.rowNumber,
+            columnName: "المنصب_الإداري",
+            errorCode: "invalid_administrative_position",
+            message: "المنصب الإداري غير معروف.",
+            rawValue: String(rawPosition),
+          });
+        }
+        row.values.administrative_position = normalizedPosition;
+        if (requiresAdministrativeDepartment(normalizedPosition)) {
+          const adminCode = String(row.values.administrative_department_code ?? "")
+            .trim()
+            .toLowerCase();
+          const adminDepartment =
+            affiliationCollege && adminCode
+              ? lk.affiliationDepartments?.get(`${affiliationCollege.id}|${adminCode}`)
+              : null;
+          if (!adminDepartment)
+            rowErrors.push({
+              rowNumber: row.rowNumber,
+              columnName: "قسم_الرئاسة_رمز",
+              errorCode: "administrative_department_required",
+              message: "قسم الرئاسة مطلوب لرئيس القسم ويجب أن يتبع كلية التبعية.",
+              rawValue: String(row.values.administrative_department_code ?? ""),
+            });
+          else row.values._administrative_department_id = adminDepartment.id;
+        } else row.values._administrative_department_id = null;
       }
     }
     if (entity === "rooms") {

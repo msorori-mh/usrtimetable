@@ -3,7 +3,7 @@ import { instructorStatusLabel } from "@/lib/excel-import/instructor-sheet";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useActiveCollege } from "@/hooks/use-colleges";
+import { useAccessibleColleges, useActiveCollege } from "@/hooks/use-colleges";
 import { useCanManageActiveCollege } from "@/hooks/use-can-manage";
 import { CollegeSwitcher } from "@/components/college-switcher";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,15 @@ import {
   UNKNOWN_EMPLOYMENT_TYPE,
   employmentTypeLabelAr,
 } from "@/lib/instructor-metadata";
+import {
+  effectiveInstructorWeeklyHours,
+  EFFECTIVE_QUOTA_FORMULA_AR,
+  isHourlyContractTypeCode,
+} from "@/lib/instructors/effective-hours";
+import {
+  ADMINISTRATIVE_POSITION_OPTIONS,
+  requiresAdministrativeDepartment,
+} from "@/lib/instructors/administrative-positions";
 import {
   INSTRUCTOR_REVIEW_LABELS,
   instructorNeedsReview,
@@ -84,6 +93,10 @@ interface Instructor {
   notes: string | null;
   admin_tasks: string | null;
   instructor_type_id: string | null;
+  affiliation_college_id: string | null;
+  affiliation_department_id: string | null;
+  administrative_position: string | null;
+  administrative_department_id: string | null;
 }
 
 interface InstructorTypeRow {
@@ -113,6 +126,10 @@ function emptyForm() {
     notes: "",
     admin_tasks: "",
     instructor_type_id: "",
+    affiliation_college_id: "",
+    affiliation_department_id: "",
+    administrative_position: "",
+    administrative_department_id: "",
   };
 }
 
@@ -124,6 +141,7 @@ function InstructorsPage() {
 
 function InstructorDirectory() {
   const { active } = useActiveCollege();
+  const { data: accessibleColleges } = useAccessibleColleges();
   const { review } = Route.useSearch();
   const navigate = Route.useNavigate();
   const canManage = useCanManageActiveCollege();
@@ -168,6 +186,21 @@ function InstructorDirectory() {
       ).data ?? [],
   });
 
+  const affiliationCollegeId = form.affiliation_college_id || active?.id || "";
+  const { data: affiliationDepts } = useQuery({
+    queryKey: ["instructor-affiliation-depts", affiliationCollegeId],
+    enabled: !!affiliationCollegeId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("departments")
+        .select("id, name, code, college_id")
+        .eq("college_id", affiliationCollegeId)
+        .order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const {
     data: rows,
     isLoading,
@@ -180,7 +213,7 @@ function InstructorDirectory() {
       const { data, error } = await supabase
         .from("instructors")
         .select(
-          "id, college_id, department_id, full_name, academic_rank, email, phone, employment_type, max_weekly_hours, is_active, employee_number, full_name_ar, full_name_en, specialization, administrative_release_hours, notes, admin_tasks, instructor_type_id",
+          "id, college_id, department_id, full_name, academic_rank, email, phone, employment_type, max_weekly_hours, is_active, employee_number, full_name_ar, full_name_en, specialization, administrative_release_hours, notes, admin_tasks, instructor_type_id, affiliation_college_id, affiliation_department_id, administrative_position, administrative_department_id",
         )
         .eq("college_id", active!.id)
         .order("full_name");
@@ -194,23 +227,66 @@ function InstructorDirectory() {
       if (!active) throw new Error("اختر كلّية");
       if (!canManage) throw new Error("صلاحيتك للقراءة فقط");
       if (!form.full_name.trim()) throw new Error("الاسم مطلوب");
+      const selectedType = ((types ?? []) as InstructorTypeRow[]).find(
+        (t) => t.id === form.instructor_type_id,
+      );
+      const hourlyContract = isHourlyContractTypeCode(selectedType?.code);
+      if (!hourlyContract && !form.employee_number.trim())
+        throw new Error("رقم الموظف مطلوب للموظف غير المتعاقد بالساعات");
+      if (!form.affiliation_college_id) throw new Error("اختر الكلية التابع لها المحاضر");
+      if (!form.affiliation_department_id) throw new Error("اختر القسم التابع له المحاضر");
+      const affiliationDepartment = (affiliationDepts ?? []).find(
+        (d) => d.id === form.affiliation_department_id,
+      );
+      if (
+        !affiliationDepartment ||
+        affiliationDepartment.college_id !== form.affiliation_college_id
+      )
+        throw new Error("القسم المحدد لا يتبع كلية التبعية المختارة");
+      if (
+        !hourlyContract &&
+        requiresAdministrativeDepartment(form.administrative_position) &&
+        !form.administrative_department_id
+      )
+        throw new Error("اختر القسم الذي يرأسه المحاضر");
+      if (
+        form.administrative_department_id &&
+        !(affiliationDepts ?? []).some((d) => d.id === form.administrative_department_id)
+      )
+        throw new Error("قسم الرئاسة يجب أن يتبع كلية التبعية المختارة");
+
+      const operationalDepartmentId =
+        form.affiliation_college_id === active.id
+          ? form.affiliation_department_id || null
+          : (editing?.department_id ?? null);
+      const releaseHours = hourlyContract ? 0 : Number(form.administrative_release_hours) || 0;
       const payload = {
         full_name: form.full_name.trim(),
         full_name_ar: form.full_name_ar.trim() || form.full_name.trim(),
-        full_name_en: form.full_name_en.trim() || null,
-        employee_number: form.employee_number.trim() || null,
+        // Hidden legacy fields are preserved on edit rather than erased from DB.
+        full_name_en: form.full_name_en.trim() || editing?.full_name_en || null,
+        employee_number: hourlyContract
+          ? (editing?.employee_number ?? null)
+          : form.employee_number.trim() || null,
         specialization: form.specialization.trim() || null,
         academic_rank: form.academic_rank || null,
         email: form.email.trim() || null,
         phone: form.phone.trim() || null,
-        department_id: form.department_id || null,
+        department_id: operationalDepartmentId,
         employment_type: form.employment_type || UNKNOWN_EMPLOYMENT_TYPE,
         max_weekly_hours: Number(form.max_weekly_hours) || 0,
-        administrative_release_hours: Number(form.administrative_release_hours) || 0,
-        notes: form.notes.trim() || null,
-        admin_tasks: form.admin_tasks.trim() || null,
+        administrative_release_hours: releaseHours,
+        notes: editing?.notes ?? (form.notes.trim() || null),
+        admin_tasks: editing?.admin_tasks ?? (form.admin_tasks.trim() || null),
         is_active: form.is_active,
         instructor_type_id: form.instructor_type_id || null,
+        affiliation_college_id: form.affiliation_college_id,
+        affiliation_department_id: form.affiliation_department_id,
+        administrative_position: hourlyContract ? null : form.administrative_position || null,
+        administrative_department_id:
+          !hourlyContract && requiresAdministrativeDepartment(form.administrative_position)
+            ? form.administrative_department_id || null
+            : null,
         college_id: active.id,
       };
       if (editing) {
@@ -297,19 +373,30 @@ function InstructorDirectory() {
       notes: i.notes ?? "",
       admin_tasks: i.admin_tasks ?? "",
       instructor_type_id: i.instructor_type_id ?? "",
+      affiliation_college_id: i.affiliation_college_id ?? i.college_id,
+      affiliation_department_id: i.affiliation_department_id ?? i.department_id ?? "",
+      administrative_position: i.administrative_position ?? "",
+      administrative_department_id: i.administrative_department_id ?? "",
     });
     setOpen(true);
   };
   const startCreate = () => {
     setRepairField(null);
     setEditing(null);
-    setForm(emptyForm());
+    setForm({ ...emptyForm(), affiliation_college_id: active?.id ?? "" });
     setOpen(true);
   };
 
   const deptMap = new Map((depts ?? []).map((d) => [d.id, d.name]));
   const typeRows = (types ?? []) as InstructorTypeRow[];
   const typeMap = new Map(typeRows.map((t) => [t.id, t]));
+  const selectedType = typeRows.find((t) => t.id === form.instructor_type_id);
+  const hourlyContract = isHourlyContractTypeCode(selectedType?.code);
+  const effectiveQuota =
+    effectiveInstructorWeeklyHours(
+      Number(form.max_weekly_hours),
+      hourlyContract ? 0 : Number(form.administrative_release_hours),
+    ) ?? 0;
   const reviewRows = review ? (rows ?? []).filter((i) => instructorNeedsReview(i, review)) : rows;
   const departmentLabel = (id: string | null | undefined) =>
     id ? (deptMap.get(id) ?? "بدون قسم") : "بدون قسم";
@@ -380,243 +467,290 @@ function InstructorDirectory() {
                   {editing ? `تعديل بيانات ${editing.full_name}` : "محاضر جديد"}
                 </DialogTitle>
               </DialogHeader>
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
+              <div className="space-y-3" data-testid="instructor-ordered-form">
+                <div data-field-order="1-category">
+                  <Label>فئة المحاضر</Label>
+                  <Select
+                    value={form.instructor_type_id || "_none"}
+                    onValueChange={(v) => {
+                      const id = v === "_none" ? "" : v;
+                      const type = typeRows.find((t) => t.id === id);
+                      const hourly = isHourlyContractTypeCode(type?.code);
+                      setForm({
+                        ...form,
+                        instructor_type_id: id,
+                        administrative_release_hours: hourly
+                          ? 0
+                          : form.administrative_release_hours,
+                        administrative_position: hourly ? "" : form.administrative_position,
+                        administrative_department_id: hourly
+                          ? ""
+                          : form.administrative_department_id,
+                        employment_type:
+                          hourly && form.employment_type === UNKNOWN_EMPLOYMENT_TYPE
+                            ? "contract"
+                            : form.employment_type,
+                      });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="اختر الفئة" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="_none">— غير محدد —</SelectItem>
+                      {typeRows.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.name_ar}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {selectedType && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {INSTRUCTOR_FORM_HINT_AR[categorizeInstructor(selectedType)]}
+                    </p>
+                  )}
+                </div>
+
+                {!hourlyContract && (
+                  <div data-field-order="2-employee-number">
                     <Label>رقم الموظف</Label>
                     <Input
                       value={form.employee_number}
                       onChange={(e) => setForm({ ...form, employee_number: e.target.value })}
                     />
                   </div>
-                  <div
-                    className={
-                      repairField === "missing_specialization"
-                        ? "rounded-md border border-amber-500 bg-amber-50/40 p-2"
-                        : undefined
-                    }
-                  >
-                    <Label htmlFor="instructor-specialization">التخصص</Label>
-                    <Input
-                      id="instructor-specialization"
-                      ref={specializationRef}
-                      aria-describedby={
-                        repairField === "missing_specialization"
-                          ? "specialization-review-help"
-                          : undefined
-                      }
-                      value={form.specialization}
-                      onChange={(e) => setForm({ ...form, specialization: e.target.value })}
-                    />
-                    {repairField === "missing_specialization" && (
-                      <p id="specialization-review-help" className="mt-2 text-xs text-amber-800">
-                        هذا هو الحقل الناقص في المراجعة. أدخل التخصص العلمي للمدرس ثم احفظ.
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <Label>الاسم الكامل (افتراضي)</Label>
+                )}
+
+                <div data-field-order="3-default-name">
+                  <Label>الاسم الافتراضي</Label>
                   <Input
                     value={form.full_name}
                     onChange={(e) => setForm({ ...form, full_name: e.target.value })}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label>الاسم بالعربية</Label>
-                    <Input
-                      value={form.full_name_ar}
-                      onChange={(e) => setForm({ ...form, full_name_ar: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label>الاسم بالإنجليزية</Label>
-                    <Input
-                      dir="ltr"
-                      value={form.full_name_en}
-                      onChange={(e) => setForm({ ...form, full_name_en: e.target.value })}
-                    />
-                  </div>
+
+                <div data-field-order="4-full-arabic-name">
+                  <Label>الاسم الرباعي</Label>
+                  <Input
+                    value={form.full_name_ar}
+                    onChange={(e) => setForm({ ...form, full_name_ar: e.target.value })}
+                  />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label>الرتبة العلمية</Label>
-                    <Select
-                      value={form.academic_rank}
-                      onValueChange={(v) => setForm({ ...form, academic_rank: v })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="اختر الرتبة" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {RANKS.map((r) => (
-                          <SelectItem key={r} value={r}>
-                            {r}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div
-                    className={
-                      repairField === "missing_department"
-                        ? "rounded-md border border-amber-500 bg-amber-50/40 p-2"
-                        : undefined
+
+                <div data-field-order="5-affiliation-college">
+                  <Label>{hourlyContract ? "الكلية المتعاقد فيها" : "الكلية التابع لها"}</Label>
+                  <Select
+                    value={form.affiliation_college_id || undefined}
+                    onValueChange={(v) =>
+                      setForm({
+                        ...form,
+                        affiliation_college_id: v,
+                        affiliation_department_id: "",
+                        administrative_department_id: "",
+                      })
                     }
                   >
-                    <Label htmlFor="instructor-department">القسم</Label>
-                    <Select
-                      value={form.department_id}
-                      onValueChange={(v) => setForm({ ...form, department_id: v })}
-                    >
-                      <SelectTrigger
-                        id="instructor-department"
-                        ref={departmentRef}
-                        aria-describedby={
-                          repairField === "missing_department"
-                            ? "department-review-help"
-                            : undefined
-                        }
-                      >
-                        <SelectValue placeholder="اختر القسم" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(depts ?? []).map((d) => (
-                          <SelectItem key={d.id} value={d.id}>
-                            {d.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {repairField === "missing_department" && (
-                      <p id="department-review-help" className="mt-2 text-xs text-amber-800">
-                        هذا هو الحقل الناقص في المراجعة. حدّد القسم الذي يتبع له المدرس ثم احفظ.
-                      </p>
-                    )}
-                  </div>
+                    <SelectTrigger>
+                      <SelectValue placeholder="اختر الكلية" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(accessibleColleges ?? []).map((college) => (
+                        <SelectItem key={college.id} value={college.id}>
+                          {college.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label>البريد الإلكتروني</Label>
-                    <Input
-                      dir="ltr"
-                      type="email"
-                      value={form.email}
-                      onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label>الجوال</Label>
-                    <Input
-                      dir="ltr"
-                      value={form.phone}
-                      onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                    />
-                  </div>
+
+                <div
+                  data-field-order="6-affiliation-department"
+                  className={
+                    repairField === "missing_department"
+                      ? "rounded-md border border-amber-500 bg-amber-50/40 p-2"
+                      : undefined
+                  }
+                >
+                  <Label htmlFor="instructor-department">
+                    {hourlyContract ? "القسم المتعاقد فيه" : "القسم التابع له"}
+                  </Label>
+                  <Select
+                    value={form.affiliation_department_id || undefined}
+                    onValueChange={(v) =>
+                      setForm({
+                        ...form,
+                        affiliation_department_id: v,
+                        administrative_department_id: "",
+                      })
+                    }
+                    disabled={!form.affiliation_college_id}
+                  >
+                    <SelectTrigger id="instructor-department" ref={departmentRef}>
+                      <SelectValue placeholder="اختر القسم" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(affiliationDepts ?? []).map((d) => (
+                        <SelectItem key={d.id} value={d.id}>
+                          {d.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label>حالة التفرغ/التعاقد</Label>
-                    <Select
-                      value={form.employment_type || UNKNOWN_EMPLOYMENT_TYPE}
-                      onValueChange={(v) => setForm({ ...form, employment_type: v })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {EMPLOYMENT_TYPE_OPTIONS.map((e) => (
-                          <SelectItem key={e.value} value={e.value}>
-                            {e.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="mt-1 text-[11px] text-muted-foreground">
-                      اترك «غير محدد» إذا لم يتم إثبات حالة التفرغ رسمياً.
-                    </p>
-                  </div>
-                  <div>
-                    <Label>النصاب الأسبوعي (ساعة)</Label>
-                    <Input
-                      type="number"
-                      value={form.max_weekly_hours}
-                      onChange={(e) =>
-                        setForm({ ...form, max_weekly_hours: Number(e.target.value) })
-                      }
-                    />
-                  </div>
+
+                <div data-field-order="7-specialization">
+                  <Label htmlFor="instructor-specialization">التخصص</Label>
+                  <Input
+                    id="instructor-specialization"
+                    ref={specializationRef}
+                    value={form.specialization}
+                    onChange={(e) => setForm({ ...form, specialization: e.target.value })}
+                  />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
+
+                <div data-field-order="8-rank">
+                  <Label>الرتبة العلمية</Label>
+                  <Select
+                    value={form.academic_rank}
+                    onValueChange={(v) => setForm({ ...form, academic_rank: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="اختر الرتبة" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {RANKS.map((r) => (
+                        <SelectItem key={r} value={r}>
+                          {r}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div data-field-order="9-base-quota">
+                  <Label>النصاب الأساسي الأسبوعي</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={form.max_weekly_hours}
+                    onChange={(e) => setForm({ ...form, max_weekly_hours: Number(e.target.value) })}
+                  />
+                </div>
+
+                {!hourlyContract && (
+                  <div data-field-order="10-admin-release">
                     <Label>ساعات الإعفاء الإداري</Label>
                     <Input
                       type="number"
+                      min={0}
                       value={form.administrative_release_hours}
                       onChange={(e) =>
                         setForm({ ...form, administrative_release_hours: Number(e.target.value) })
                       }
                     />
                   </div>
-                  <div>
-                    <Label>ملاحظات</Label>
-                    <Input
-                      value={form.notes}
-                      onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="instructor-role">الصفة / المهام الإدارية</Label>
-                  <Input
-                    id="instructor-role"
-                    value={form.admin_tasks}
-                    onChange={(e) => setForm({ ...form, admin_tasks: e.target.value })}
-                  />
-                </div>
-                <div className="grid grid-cols-1 gap-3">
-                  <div>
-                    <Label>فئة المحاضر</Label>
+                )}
+                <p
+                  className="rounded border bg-muted/30 p-2 text-xs"
+                  data-testid="effective-weekly-quota"
+                >
+                  {EFFECTIVE_QUOTA_FORMULA_AR}: <b>{effectiveQuota} ساعة</b>
+                </p>
+
+                {!hourlyContract && (
+                  <div data-field-order="11-administrative-position" className="space-y-2">
+                    <Label>المنصب الإداري في حال توافره</Label>
                     <Select
-                      value={form.instructor_type_id || "_none"}
+                      value={form.administrative_position || "_none"}
                       onValueChange={(v) =>
-                        setForm({ ...form, instructor_type_id: v === "_none" ? "" : v })
+                        setForm({
+                          ...form,
+                          administrative_position: v === "_none" ? "" : v,
+                          administrative_department_id:
+                            v === "department_head" ? form.administrative_department_id : "",
+                        })
                       }
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="اختر الفئة" />
+                        <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="_none">— غير محدد —</SelectItem>
-                        {typeRows.map((t) => (
-                          <SelectItem key={t.id} value={t.id}>
-                            {t.name_ar}
+                        <SelectItem value="_none">— بدون منصب إداري —</SelectItem>
+                        {ADMINISTRATIVE_POSITION_OPTIONS.map((position) => (
+                          <SelectItem key={position.value} value={position.value}>
+                            {position.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                  </div>
-                  {(() => {
-                    const selected = typeRows.find((t) => t.id === form.instructor_type_id);
-                    const cat = categorizeInstructor(selected ?? null);
-                    const isPerm = cat === "permanent";
-                    const tone = isPerm
-                      ? "bg-sky-500/10 text-sky-700 border-sky-500/20"
-                      : "bg-amber-500/10 text-amber-700 border-amber-500/20";
-                    const Icon = isPerm ? Info : AlertTriangle;
-                    return (
-                      <div className={`flex items-start gap-2 rounded border p-3 text-xs ${tone}`}>
-                        <Icon className="mt-0.5 h-4 w-4 shrink-0" />
-                        <div>
-                          <p className="font-semibold">{CATEGORY_LABEL_AR[cat]}</p>
-                          <p className="mt-0.5">{INSTRUCTOR_FORM_HINT_AR[cat]}</p>
-                        </div>
+                    {requiresAdministrativeDepartment(form.administrative_position) && (
+                      <div>
+                        <Label>القسم الذي يرأسه</Label>
+                        <Select
+                          value={form.administrative_department_id || undefined}
+                          onValueChange={(v) =>
+                            setForm({ ...form, administrative_department_id: v })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="اختر القسم" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(affiliationDepts ?? []).map((d) => (
+                              <SelectItem key={d.id} value={d.id}>
+                                {d.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
-                    );
-                  })()}
+                    )}
+                  </div>
+                )}
+
+                <div data-field-order="12-employment">
+                  <Label>حالة التفرغ/التعاقد</Label>
+                  <Select
+                    value={form.employment_type || UNKNOWN_EMPLOYMENT_TYPE}
+                    onValueChange={(v) => setForm({ ...form, employment_type: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {EMPLOYMENT_TYPE_OPTIONS.map((e) => (
+                        <SelectItem key={e.value} value={e.value}>
+                          {e.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div className="flex items-center justify-between rounded border border-border p-3">
+
+                <div data-field-order="13-email">
+                  <Label>البريد الإلكتروني</Label>
+                  <Input
+                    dir="ltr"
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  />
+                </div>
+
+                <div data-field-order="14-phone">
+                  <Label>رقم التلفون/الواتساب</Label>
+                  <Input
+                    dir="ltr"
+                    value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  />
+                </div>
+
+                <div
+                  data-field-order="15-active"
+                  className="flex items-center justify-between rounded border border-border p-3"
+                >
                   <Label>نشط</Label>
                   <Switch
                     checked={form.is_active}
