@@ -64,3 +64,29 @@ test("incomplete membership cannot certify impossibility", async () => {
   assert.equal(p.attendanceSearch.attempts[0].reason, "invalid_input");
   assert.equal(p.attendanceSearch.status, "unknown");
 });
+
+test("import independently checks staleness, final constraints and lower-day proof", async () => {
+  const { importJointPlan } = await import("../src/lib/auto-scheduler/joint-import.ts");
+  const s = snapshot([session("one", 0, "08:00:00", "10:00:00")]);
+  s.revision = "1";
+  s.versionUpdatedAt = "v1";
+  const raw = {
+    versionId: "v",
+    revision: "1",
+    versionUpdatedAt: "v1",
+    days: 3,
+    moves: s.sessions.map((x) => ({ ...x, expected_updated_at: x.updated_at })),
+  };
+  assert.equal(importJointPlan(s, "v", JSON.stringify(raw)).attendanceSearch.status, "feasible");
+  assert.throws(() => importJointPlan(s, "v", JSON.stringify({ ...raw, revision: "2" })), /تغير/);
+  assert.throws(() => importJointPlan(s, "v", JSON.stringify({ ...raw, days: 4 })), /إثبات/);
+  assert.throws(
+    () =>
+      importJointPlan(
+        s,
+        "v",
+        JSON.stringify({ ...raw, moves: [{ ...raw.moves[0], end_time: "11:00:00" }] }),
+      ),
+    /قيود/,
+  );
+});
