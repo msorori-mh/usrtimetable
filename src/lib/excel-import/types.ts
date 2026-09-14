@@ -22,6 +22,8 @@ export interface ColumnDef {
   header: string;
   /** Previous user-facing headers accepted on import after a display-name change. */
   headerAliases?: string[];
+  /** Accepted by import validation but omitted from newly generated templates. */
+  templateHidden?: boolean;
   required?: boolean;
   example?: string;
   enumValues?: string[];

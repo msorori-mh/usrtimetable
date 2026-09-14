@@ -13,36 +13,118 @@ export const TEMPLATES: Record<string, TemplateDef> = {
     uniqueKey: "employee_number",
     uniqueKeyLabel: "رقم الموظف",
     commitMode: "table",
+
     columns: [
-      { key: "full_name", header: "اسم المدرس", required: true, example: "أحمد محمد" },
-      { key: "specialization", header: "القسم (التخصص)", example: "علوم الحاسوب" },
-      { key: "max_weekly_hours", header: "النصاب الأسبوعي (ساعة)", type: "number", example: "12" },
-      { key: "academic_rank", header: "الرتبة الأكاديمية", example: "أستاذ مساعد" },
-      { key: "admin_tasks", header: "الصفة", example: "عضو هيئة تدريس" },
-      { key: "is_active", header: "الحالة", type: "boolean", example: "نشط" },
-      { key: "employee_number", header: "رقم_الموظف", required: true, example: "EMP001" },
-      { key: "full_name_ar", header: "الاسم_بالعربي", example: "أحمد محمد" },
-      { key: "full_name_en", header: "الاسم_بالانجليزي", example: "Ahmed Mohamed" },
-      { key: "email", header: "البريد_الالكتروني", example: "a@x.com" },
-      { key: "phone", header: "الهاتف", example: "0555555555" },
-      { key: "academic_degree", header: "الدرجة_العلمية", example: "دكتوراه" },
-      { key: "instructor_type_code", header: "نوع_المحاضر_رمز", example: "PERM" },
-      { key: "department_code", header: "رمز_القسم", example: "CS" },
       {
-        key: "employment_type",
-        header: "نوع_التوظيف",
-        example: "unknown",
-        enumValues: [...EMPLOYMENT_TYPE_IMPORT_VALUES],
+        key: "instructor_type_code",
+        header: "فئة_المحاضر_رمز",
+        headerAliases: ["نوع_المحاضر_رمز"],
+        required: true,
+        example: "permanent",
       },
-      { key: "max_hours_per_day", header: "أقصى_ساعات_يومية", type: "number", example: "6" },
+      { key: "employee_number", header: "رقم_الموظف", example: "EMP001" },
+      {
+        key: "full_name",
+        header: "الاسم_الافتراضي",
+        headerAliases: ["اسم المدرس", "الاسم الكامل", "اسم المحاضر"],
+        required: true,
+        example: "أحمد محمد",
+      },
+      {
+        key: "full_name_ar",
+        header: "الاسم_الرباعي",
+        headerAliases: ["الاسم_بالعربي", "الاسم بالعربية"],
+        example: "أحمد محمد علي عبدالله",
+      },
+      {
+        key: "affiliation_college_code",
+        header: "كلية_التبعية_رمز",
+        required: true,
+        example: "ITCS",
+      },
+      {
+        key: "affiliation_department_code",
+        header: "قسم_التبعية_رمز",
+        required: true,
+        example: "CS",
+      },
+      {
+        key: "specialization",
+        header: "التخصص",
+        headerAliases: ["القسم", "القسم (التخصص)"],
+        example: "نظم المعلومات الحاسوبية",
+      },
+      {
+        key: "academic_rank",
+        header: "الرتبة_العلمية",
+        headerAliases: ["الرتبة الأكاديمية"],
+        example: "أستاذ مساعد",
+      },
+      {
+        key: "max_weekly_hours",
+        header: "النصاب_الأساسي_الأسبوعي",
+        headerAliases: ["النصاب الأسبوعي (ساعة)", "النصاب الأسبوعي", "أقصى ساعات أسبوعية"],
+        type: "number",
+        required: true,
+        example: "18",
+      },
       {
         key: "administrative_release_hours",
-        header: "ساعات_إعفاء_إداري",
+        header: "ساعات_الإعفاء_الإداري",
+        headerAliases: ["ساعات_إعفاء_إداري"],
         type: "number",
         example: "0",
       },
-      { key: "external_source", header: "الجهة_الخارجية" },
-      { key: "notes", header: "ملاحظات" },
+      {
+        key: "administrative_position",
+        header: "المنصب_الإداري",
+        example: "department_head",
+      },
+      {
+        key: "administrative_department_code",
+        header: "قسم_الرئاسة_رمز",
+        example: "CS",
+      },
+      {
+        key: "employment_type",
+        header: "حالة_التفرغ_التعاقد",
+        headerAliases: ["نوع_التوظيف"],
+        example: "full_time",
+        enumValues: [...EMPLOYMENT_TYPE_IMPORT_VALUES],
+      },
+      {
+        key: "email",
+        header: "البريد_الإلكتروني",
+        headerAliases: ["البريد_الالكتروني"],
+        example: "a@x.com",
+      },
+      {
+        key: "phone",
+        header: "التلفون_الواتساب",
+        headerAliases: ["الهاتف", "الجوال"],
+        example: "777000000",
+      },
+      {
+        key: "is_active",
+        header: "نشط",
+        headerAliases: ["الحالة"],
+        type: "boolean",
+        example: "true",
+      },
+
+      // Legacy compatibility: accepted on upload, never emitted by the new template.
+      { key: "department_code", header: "رمز_القسم", templateHidden: true },
+      { key: "full_name_en", header: "الاسم_بالانجليزي", templateHidden: true },
+      { key: "academic_degree", header: "الدرجة_العلمية", templateHidden: true },
+      {
+        key: "max_hours_per_day",
+        header: "أقصى_ساعات_يومية",
+        type: "number",
+        templateHidden: true,
+      },
+      { key: "admin_tasks", header: "الصفة", templateHidden: true },
+      { key: "external_source", header: "الجهة_الخارجية", templateHidden: true },
+      { key: "notes", header: "ملاحظات", templateHidden: true },
     ],
   },
   rooms: {
@@ -548,10 +630,11 @@ export async function buildTemplateWorkbook(
   const XLSX = await import("xlsx");
   const tpl = TEMPLATES[entity];
   if (!tpl) throw new Error("قالب غير معروف");
-  const headers = tpl.columns.map((c) => c.header);
-  const example = tpl.columns.map((c) => escapeSpreadsheetCell(c.example ?? ""));
+  const visibleColumns = tpl.columns.filter((c) => !c.templateHidden);
+  const headers = visibleColumns.map((c) => c.header);
+  const sample = visibleColumns.map((c) => escapeSpreadsheetCell(c.example ?? ""));
   const rows = dataRows?.map((row) =>
-    tpl.columns.map((column) =>
+    visibleColumns.map((column) =>
       entity === "instructors" && column.key === "is_active"
         ? instructorStatusLabel(row.is_active !== false, row.notes as string | null)
         : typeof row[column.key] === "number"
@@ -559,12 +642,12 @@ export async function buildTemplateWorkbook(
           : escapeSpreadsheetCell(row[column.key]),
     ),
   );
-  const ws = XLSX.utils.aoa_to_sheet([headers, ...(rows ?? [example])]);
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...(rows ?? [sample])]);
   ws["!cols"] = headers.map(() => ({ wch: 22 }));
 
   // Excel data-validation dropdowns for columns with enumValues (best-effort via SheetJS)
   const validations: Array<{ sqref: string; formula1: string }> = [];
-  tpl.columns.forEach((c, idx) => {
+  visibleColumns.forEach((c, idx) => {
     if (!c.enumValues || c.enumValues.length === 0) return;
     const col = XLSX.utils.encode_col(idx);
     validations.push({
@@ -605,7 +688,7 @@ export async function buildTemplateWorkbook(
     [""],
     ["الأعمدة:"],
     ["الحقل", "العنوان", "إلزامي", "مثال", "قيم مسموحة"],
-    ...tpl.columns.map((c) => [
+    ...visibleColumns.map((c) => [
       c.key,
       c.header,
       c.required ? "نعم" : "لا",
@@ -615,25 +698,29 @@ export async function buildTemplateWorkbook(
   ];
   if (entity === "instructors") {
     notes.push(
-      ["القسم (التخصص)", "القسم في كشف المدرسين هو التخصص. رمز_القسم حقل اختياري للربط التنظيمي."],
-      [
-        "النصاب الأسبوعي (ساعة)",
-        "أدخل النصاب المعتمد كما في الكشف؛ لا يُعاد تخفيضه عند الاستيراد.",
-      ],
-      ["الصفة", "تُحفظ صفة المدرس أو مهامه الإدارية كما وردت."],
-      [
-        "الحالة",
-        "نشط، غير نشط، ابتعاث، إجازة مرضية. الابتعاث والإجازة غير نشطين للجدولة ويُحفظ السبب في الملاحظات.",
-      ],
+      ["فئة_المحاضر_رمز", "استخدم كود الفئة المعتمد؛ فئة متعاقد بالساعات تستخدم con."],
       [
         "رقم_الموظف",
-        "إلزامي للمدرس الجديد. عند تحديث كشف بدون أرقام، تُطابق الأسماء الفريدة مع أرقام الموظفين الحالية في الكلية. م تسلسل فقط.",
+        "مطلوب لكل الفئات عدا con. للمتعاقد بالساعات يمكن تركه فارغًا؛ المطابقة بالاسم تكون آمنة وتفشل عند الالتباس.",
       ],
       [
-        "التحديث",
-        "الأعمدة غير الموجودة في الكشف تحتفظ ببياناتها الحالية. راجع المعاينة قبل التأكيد.",
+        "كلية_التبعية_رمز",
+        "اختر رمز كلية من كليات الجامعة. لا يفترض الاستيراد أنها الكلية التشغيلية الحالية.",
       ],
-      ["التوافق", "يمكن رفع كشف بعنوان وصفوف تمهيدية. عناوين القوالب السابقة مقبولة أيضًا."],
+      ["قسم_التبعية_رمز", "يجب أن يكون القسم تابعًا لكلية التبعية المختارة."],
+      [
+        "النصاب_الأساسي_الأسبوعي",
+        "القيمة الأساسية قبل الإعفاء الإداري؛ النصاب الفعلي يحسب آليًا بطرح ساعات الإعفاء.",
+      ],
+      [
+        "المنصب_الإداري",
+        "القيم: department_head / vice_dean_academic / vice_dean_student_affairs / dean، أو التسميات العربية المقابلة.",
+      ],
+      ["قسم_الرئاسة_رمز", "مطلوب فقط عند اختيار رئيس قسم، ويجب أن يتبع كلية التبعية."],
+      [
+        "التوافق",
+        "تُقبل عناوين القالب السابق الأساسية عبر aliases، وتظل الحقول القديمة المخفية قابلة للقراءة عند وجودها.",
+      ],
     );
   }
   if (entity === "rooms") {

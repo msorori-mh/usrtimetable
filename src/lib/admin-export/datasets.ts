@@ -3,6 +3,7 @@
  * Pure functions: pages pass the already-filtered rows plus label lookups.
  */
 import type { AdminExportDataset, AdminExportFilter } from "./dataset";
+import { effectiveInstructorWeeklyHours } from "@/lib/instructors/effective-hours";
 
 export type LabelLookup = (value: string | null | undefined) => string;
 
@@ -70,6 +71,7 @@ export type InstructorExportRow = {
   academic_rank: string | null;
   employment_type: string | null;
   max_weekly_hours: number | null;
+  administrative_release_hours?: number | null;
   instructor_type_id?: string | null;
   is_active: boolean;
   needs_review?: boolean;
@@ -105,7 +107,22 @@ export function instructorsExportDataset(input: {
         label: "نوع التعاقد",
         value: (r) => input.employmentLabel(r.employment_type),
       },
-      { key: "max_weekly_hours", label: "الحد الأسبوعي للساعات", value: (r) => r.max_weekly_hours },
+      {
+        key: "max_weekly_hours",
+        label: "النصاب الأساسي الأسبوعي",
+        value: (r) => r.max_weekly_hours,
+      },
+      {
+        key: "administrative_release_hours",
+        label: "ساعات الإعفاء الإداري",
+        value: (r) => r.administrative_release_hours ?? 0,
+      },
+      {
+        key: "effective_weekly_hours",
+        label: "النصاب الفعلي",
+        value: (r) =>
+          effectiveInstructorWeeklyHours(r.max_weekly_hours, r.administrative_release_hours),
+      },
       {
         key: "category",
         label: "الفئة",

@@ -51,7 +51,7 @@ async function render(canManage: boolean, overrides = {}) {
 test("read-only users see progress and guide but cannot reach embedded import actions", async () => {
   const html = await render(false);
   assert.ok(html.includes("onboarding-readonly-note"));
-  assert.ok(html.includes("ساعات_إعفاء_إداري"));
+  assert.ok(html.includes("ساعات_الإعفاء_الإداري"));
   assert.ok(!html.includes("UPLOAD_FORM_SENTINEL"));
   assert.ok(!html.includes("تجهيز ورفع ملف Excel"));
 });
@@ -59,7 +59,7 @@ test("managers see the scoped importer, current step and complete canonical fiel
   const html = await render(true);
   assert.ok(html.includes("UPLOAD_FORM_SENTINEL"));
   assert.ok(html.includes('aria-current="step"'));
-  assert.ok(html.includes("الجهة_الخارجية"));
+  assert.ok(html.includes("كلية_التبعية_رمز"));
   assert.ok(!html.includes("canonical"));
 });
 test("readiness failure blocks the schedule CTA, and the first schedule is allowed after preparation", async () => {

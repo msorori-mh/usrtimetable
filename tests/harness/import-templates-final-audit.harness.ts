@@ -164,7 +164,7 @@ async function run() {
     assert(sheets.includes("تعليمات"), `instructions sheet for ${e}`);
     assert(sheets.includes("Metadata"), `metadata sheet for ${e}`);
     const headers = await readFirstSheetHeaders(blob);
-    const expected = TEMPLATES[e].columns.map((c) => c.header);
+    const expected = TEMPLATES[e].columns.filter((c) => !c.templateHidden).map((c) => c.header);
     assert(
       JSON.stringify(headers) === JSON.stringify(expected),
       `exact header order for ${e}: got ${headers.join("|")}`,

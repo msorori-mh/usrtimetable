@@ -44,23 +44,27 @@ mock.module("../src/integrations/supabase/client.ts", {
               ? [{ role, user_id: "admin" }]
               : table === "user_colleges"
                 ? [{ id: "member", college_id: college, user_id: "admin" }]
-                : table === "instructors"
-                  ? catalog
-                  : table === "departments"
-                    ? [
-                        {
-                          id: "department-a",
-                          college_id: college,
-                          code: "CS",
-                          name: "علوم الحاسوب",
-                        },
-                      ]
-                    : [{ id: "type-a", college_id: college, code: "PERM" }];
+                : table === "colleges"
+                  ? [{ id: college, code: "ITCS", university_id: "u1" }]
+                  : table === "instructors"
+                    ? catalog
+                    : table === "departments"
+                      ? [
+                          {
+                            id: "department-a",
+                            college_id: college,
+                            code: "CS",
+                            name: "علوم الحاسوب",
+                          },
+                        ]
+                      : [{ id: "type-a", college_id: college, code: "PERM" }];
           return {
             data: data
               .filter((row) =>
-                Object.entries(filters).every(
-                  ([key, value]) => row[key as keyof typeof row] === value,
+                Object.entries(filters).every(([key, value]) =>
+                  Array.isArray(value)
+                    ? value.includes(row[key as keyof typeof row])
+                    : row[key as keyof typeof row] === value,
                 ),
               )
               .slice(from, to + 1),
@@ -78,12 +82,20 @@ mock.module("../src/integrations/supabase/client.ts", {
             filters[key] = value;
             return query;
           },
+          in(key: string, value: unknown[]) {
+            filters[key] = value;
+            return query;
+          },
           range(start: number, end: number) {
             from = start;
             to = end;
             return query;
           },
           async maybeSingle() {
+            const r = result();
+            return { ...r, data: r.data?.[0] ?? null };
+          },
+          async single() {
             const r = result();
             return { ...r, data: r.data?.[0] ?? null };
           },
@@ -174,9 +186,11 @@ test("full Arabic source sheet resolves an existing teacher, specialization and 
     assert.equal(payload[key], teacher[key as keyof typeof teacher], key);
   assert.ok(
     reads
-      .filter((r) => ["instructors", "departments", "instructor_types"].includes(r.table))
+      .filter((r) => ["instructors", "instructor_types"].includes(r.table))
       .every((r) => r.filters.college_id === college),
   );
+  assert.ok(reads.some((r) => r.table === "colleges"));
+  assert.ok(reads.some((r) => r.table === "departments"));
 });
 
 test("leave and scholarship are inactive and retain their exact reason through export and reimport", async () => {
@@ -258,20 +272,24 @@ test("legacy official headers remain supported and the new template contains the
   assert.equal(result.validRows[0].values.specialization, "علوم الحاسوب");
   const file = new File([await buildTemplateWorkbook("instructors")], "template.xlsx");
   const parsed = await parseExcel(file, "instructors");
-  assert.deepEqual(parsed.headers.slice(0, 6), [
-    "اسم المدرس",
-    "القسم (التخصص)",
-    "النصاب الأسبوعي (ساعة)",
-    "الرتبة الأكاديمية",
-    "الصفة",
-    "الحالة",
+  assert.deepEqual(parsed.headers, [
+    "فئة_المحاضر_رمز",
+    "رقم_الموظف",
+    "الاسم_الافتراضي",
+    "الاسم_الرباعي",
+    "كلية_التبعية_رمز",
+    "قسم_التبعية_رمز",
+    "التخصص",
+    "الرتبة_العلمية",
+    "النصاب_الأساسي_الأسبوعي",
+    "ساعات_الإعفاء_الإداري",
+    "المنصب_الإداري",
+    "قسم_الرئاسة_رمز",
+    "حالة_التفرغ_التعاقد",
+    "البريد_الإلكتروني",
+    "التلفون_الواتساب",
+    "نشط",
   ]);
-  assert.equal(parsed.headers.length, 19);
-  assert.ok(
-    parsed.headers.includes(
-      TEMPLATES.instructors.columns.find((c) => c.key === "employee_number")!.header,
-    ),
-  );
 });
 
 test("catalog failures and read-only roles cannot produce a successful import preview", async () => {
