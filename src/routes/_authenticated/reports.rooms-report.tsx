@@ -16,7 +16,9 @@ import {
 import { PrintSheet } from "@/components/print-center/print-sheet";
 import { useReportContext } from "@/hooks/reports/useReportContext";
 import { useActiveCollege } from "@/hooks/use-colleges";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchRoomsInventory } from "@/lib/reports/queries/rooms-inventory";
+import { RoomsDecisionsPanel } from "@/components/reports/rooms-decisions-panel";
+import { RoomsComparison } from "@/components/reports/rooms-comparison";
 import { fetchHydratedVersionSessions } from "@/lib/schedule-builder/queries";
 import { fetchCohortDeliveryGroupLabels } from "@/lib/reports/queries/session-queries";
 import { isDeliveryDemoVersion } from "@/lib/schedule-versions/delivery-demo";
@@ -67,39 +69,7 @@ function Page() {
   const inventory = useQuery({
     queryKey: ["rooms-report-inventory", ctx.collegeId],
     enabled: !!ctx.collegeId,
-    queryFn: async () => {
-      const [rooms, roomTypes, availability, settings] = await Promise.all([
-        supabase
-          .from("rooms")
-          .select("id, code, name, capacity, room_type_id, is_active")
-          .eq("college_id", ctx.collegeId!)
-          .order("code"),
-        supabase
-          .from("room_types")
-          .select("id, name_ar, name_en, code")
-          .eq("college_id", ctx.collegeId!),
-        supabase
-          .from("room_availability")
-          .select("room_id, day_of_week, start_time, end_time")
-          .eq("college_id", ctx.collegeId!),
-        supabase
-          .from("scheduling_settings")
-          .select("working_days, day_start_time, day_end_time")
-          .eq("college_id", ctx.collegeId!)
-          .maybeSingle(),
-      ]);
-      const err =
-        rooms.error || roomTypes.error || availability.error || settings.error
-          ? (rooms.error ?? roomTypes.error ?? availability.error ?? settings.error)
-          : null;
-      if (err) throw err;
-      return {
-        rooms: rooms.data ?? [],
-        roomTypes: roomTypes.data ?? [],
-        availability: availability.data ?? [],
-        settings: settings.data ?? null,
-      };
-    },
+    queryFn: () => fetchRoomsInventory(ctx.collegeId!),
   });
 
   const sessionsQuery = useQuery({
@@ -111,7 +81,9 @@ function Page() {
         versionId: ctx.versionId!,
         studySystem: ctx.studySystem,
       });
-      const sessions = hydrated as unknown as PrintSessionLike[];
+      const sessions = hydrated.filter(
+        (s) => !s.replaced_by_split,
+      ) as unknown as PrintSessionLike[];
       const labels = await fetchCohortDeliveryGroupLabels(ctx.collegeId!, sessions);
       return { sessions, labels };
     },
@@ -321,6 +293,25 @@ function Page() {
       }
     >
       <RoomsAnalyticsDashboard summary={summary} analytics={analytics} />
+      {ctx.collegeId && ctx.versionId && inventory.data && (
+        <RoomsDecisionsPanel
+          key={`${ctx.collegeId}:${ctx.versionId}`}
+          collegeId={ctx.collegeId}
+          versionId={ctx.versionId}
+          studySystem={ctx.studySystem}
+          sessions={sessions}
+          inventory={inventory.data}
+        />
+      )}
+      {ctx.collegeId && (
+        <RoomsComparison
+          key={ctx.collegeId}
+          collegeId={ctx.collegeId}
+          studySystem={ctx.studySystem}
+          currentLabel={`${active?.name ?? ""} · ${ctx.filterSummary}`}
+          totals={totals}
+        />
+      )}
     </ReportShell>
   );
 }
