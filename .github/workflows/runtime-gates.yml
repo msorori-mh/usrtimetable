@@ -188,3 +188,9 @@ jobs:
         run: |
           createdb -h 127.0.0.1 -U postgres extended_day_test
           node --test tests/extended-day-db.test.mjs
+
+      - name: Direct course program selection persistence and permissions
+        env:
+          COMPACTION_TEST_DISPOSABLE: "1"
+          COMPACTION_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/compaction_test
+        run: node --test tests/course-program-links-db.test.mjs

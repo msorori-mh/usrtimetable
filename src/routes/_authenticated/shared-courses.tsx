@@ -8,8 +8,8 @@ import { CollegeSwitcher } from "@/components/college-switcher";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { useCourseProgramPlans, CourseProgramDetails } from "@/components/course-program-details";
-import { coursePrograms, programCount } from "@/lib/course-program-plans";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useCourseProgramLinks, courseProgramClient } from "@/hooks/use-course-program-links";
 import {
   Select,
   SelectContent,
@@ -46,6 +46,7 @@ interface Course {
   department_id: string;
   course_nature: string;
   is_shared: boolean;
+  updated_at: string;
 }
 
 function SharedPage() {
@@ -54,9 +55,11 @@ function SharedPage() {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<Course | null>(null);
   const [nature, setNature] = useState("department");
-  const [department, setDepartment] = useState("");
-  const plansQuery = useCourseProgramPlans(active?.id);
-  const selectedRows = coursePrograms(plansQuery.data ?? [], editing?.id ?? "");
+  const [picked, setPicked] = useState<string[]>([]);
+  const [editingCollege, setEditingCollege] = useState<string>();
+  const linksQuery = useCourseProgramLinks(active?.id);
+  const programs = linksQuery.data?.programs ?? [];
+  const links = linksQuery.data?.links ?? [];
 
   const { data: courses, isLoading } = useQuery({
     queryKey: ["courses-shared", active?.id],
@@ -65,44 +68,36 @@ function SharedPage() {
       ((
         await supabase
           .from("courses")
-          .select("id, code, name, department_id, course_nature, is_shared")
+          .select("id, code, name, department_id, course_nature, is_shared, updated_at")
           .eq("college_id", active!.id)
           .order("code")
       ).data ?? []) as Course[],
   });
-  const { data: departments } = useQuery({
-    queryKey: ["deps-shared", active?.id],
-    enabled: !!active,
-    queryFn: async () =>
-      (
-        await supabase
-          .from("departments")
-          .select("id, name, code")
-          .eq("college_id", active!.id)
-          .order("name")
-      ).data ?? [],
-  });
   const start = (c: Course) => {
     setEditing(c);
     setNature(c.course_nature ?? "department");
-    setDepartment(c.department_id);
+    setEditingCollege(active?.id);
+    setPicked(links.filter((l) => l.course_id === c.id).map((l) => l.program_id));
   };
 
   const save = useMutation({
     mutationFn: async () => {
-      if (!editing || !active || !canManage || plansQuery.isPending || plansQuery.isError)
+      if (
+        !editing ||
+        !active ||
+        !canManage ||
+        linksQuery.isPending ||
+        linksQuery.isError ||
+        editingCollege !== active.id
+      )
         throw new Error("تعذر الحفظ قبل تحميل البرامج والتحقق من الصلاحية");
-      const { error: e1 } = await supabase
-        .from("courses")
-        .update({
-          course_nature: nature,
-          department_id: department,
-          is_shared: programCount(selectedRows) > 1,
-        })
-        .eq("id", editing.id)
-        .eq("college_id", active.id)
-        .select("id")
-        .single();
+      const { error: e1 } = await courseProgramClient.rpc("save_course_programs", {
+        p_college_id: active.id,
+        p_course_id: editing.id,
+        p_nature: nature,
+        p_program_ids: picked,
+        p_expected_updated_at: editing.updated_at,
+      });
       if (e1) throw e1;
       await logAudit({
         action: "update",
@@ -115,6 +110,7 @@ function SharedPage() {
       toast.success("تم الحفظ");
       qc.invalidateQueries({ queryKey: ["courses-shared", active?.id] });
       qc.invalidateQueries({ queryKey: ["courses"] });
+      qc.invalidateQueries({ queryKey: ["course-program-links", active?.id] });
       setEditing(null);
     },
     onError: (e: Error) => toast.error(e.message),
@@ -129,7 +125,7 @@ function SharedPage() {
         <div className="flex-1">
           <h1 className="text-2xl font-bold">المقررات المشتركة</h1>
           <p className="text-sm text-muted-foreground">
-            راجع طبيعة المقرر والبرامج التي تدرسه بحسب الخطط النشطة المسجلة.
+            حدّد طبيعة المقرر واختر البرامج التي تدرسه.
           </p>
         </div>
       </header>
@@ -145,13 +141,13 @@ function SharedPage() {
         ) : (
           <ul className="divide-y divide-border">
             {courses.map((c) => {
-              const ds = coursePrograms(plansQuery.data ?? [], c.id);
+              const ds = links.filter((l) => l.course_id === c.id);
               return (
                 <li key={c.id} className="flex items-center justify-between gap-3 p-4">
                   <div className="min-w-0">
                     <p className="font-semibold">
                       {c.name}
-                      {programCount(ds) > 1 && (
+                      {ds.length > 1 && (
                         <span className="ms-2 rounded bg-accent/20 px-2 py-0.5 text-[11px]">
                           مشترك
                         </span>
@@ -162,16 +158,21 @@ function SharedPage() {
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {ds.length > 0
-                        ? `البرامج: ${[...new Set(ds.map((d) => d.study_plans?.academic_programs?.name ?? "برنامج غير متاح"))].join("، ")}`
-                        : plansQuery.isPending
+                        ? `البرامج: ${[...new Set(ds.map((d) => programs.find((p) => p.id === d.program_id)?.name ?? "برنامج غير متاح"))].join("، ")}`
+                        : linksQuery.isPending
                           ? "جارٍ تحميل البرامج..."
-                          : plansQuery.isError
+                          : linksQuery.isError
                             ? "تعذر تحميل البرامج"
-                            : "لا يظهر في خطة نشطة"}
+                            : "لم تُحدد البرامج بعد"}
                     </p>
                   </div>
                   {canManage && (
-                    <Button size="sm" variant="outline" onClick={() => start(c)}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => start(c)}
+                      disabled={linksQuery.isPending || linksQuery.isError}
+                    >
                       تعديل
                     </Button>
                   )}
@@ -182,15 +183,18 @@ function SharedPage() {
         )}
       </Card>
 
-      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+      <Dialog
+        open={!!editing && editingCollege === active?.id}
+        onOpenChange={(o) => !o && setEditing(null)}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{editing?.name}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div>
               <Label>طبيعة المقرر</Label>
-              <Select value={nature} onValueChange={setNature}>
+              <Select disabled={save.isPending} value={nature} onValueChange={setNature}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -204,29 +208,32 @@ function SharedPage() {
               </Select>
             </div>
             <div>
-              <Label>القسم المسؤول عن المقرر</Label>
-              <Select value={department} onValueChange={setDepartment}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {(departments ?? []).map((d) => (
-                    <SelectItem key={d.id} value={d.id}>
-                      {d.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                المسؤولية الأكاديمية والإسناد، مستقلة عن البرامج التي تدرس المقرر.
-              </p>
+              <Label>البرامج التي تدرس المقرر</Label>
+              <div className="mt-2 max-h-60 space-y-1 overflow-y-auto rounded border p-2">
+                {programs.map((p) => (
+                  <label
+                    key={p.id}
+                    className="flex cursor-pointer items-center gap-2 rounded px-2 py-2 text-sm hover:bg-secondary/50"
+                  >
+                    <Checkbox
+                      disabled={save.isPending}
+                      checked={picked.includes(p.id)}
+                      onCheckedChange={(checked) =>
+                        setPicked((previous) =>
+                          checked === true
+                            ? [...new Set([...previous, p.id])]
+                            : previous.filter((id) => id !== p.id),
+                        )
+                      }
+                    />
+                    {p.name}
+                  </label>
+                ))}
+                {!programs.length && (
+                  <p className="text-sm text-muted-foreground">لا توجد برامج في هذه الكلية.</p>
+                )}
+              </div>
             </div>
-            <CourseProgramDetails
-              rows={selectedRows}
-              loading={plansQuery.isPending}
-              error={plansQuery.isError}
-              retry={() => void plansQuery.refetch()}
-            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditing(null)}>
@@ -236,10 +243,10 @@ function SharedPage() {
               onClick={() => save.mutate()}
               disabled={
                 save.isPending ||
-                plansQuery.isPending ||
-                plansQuery.isError ||
+                linksQuery.isPending ||
+                linksQuery.isError ||
                 !canManage ||
-                !department
+                editingCollege !== active?.id
               }
             >
               حفظ
