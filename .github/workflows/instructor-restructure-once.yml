@@ -6,6 +6,7 @@ on:
     paths:
       - .github/workflows/instructor-restructure-once.yml
       - .github/scripts/apply-instructor-restructure.py
+      - .github/scripts/finalize-instructor-restructure.py
 
 permissions:
   contents: write
@@ -23,7 +24,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - name: Install dependencies
         run: bun install --frozen-lockfile
-      - name: Normalize current template-builder anchor
+      - name: Normalize template anchor and tolerate stale source anchors
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -32,133 +33,23 @@ jobs:
           s=s.replace('  const example = tpl.columns.map((c) => escapeSpreadsheetCell(c.example ?? ""));\n', '  const sample = tpl.columns.map((c) => escapeSpreadsheetCell(c.example ?? ""));\n')
           s=s.replace('...(rows ?? [example])', '...(rows ?? [sample])')
           p.write_text(s)
-          PY
-      - name: Make patch script diagnostic on stale anchors
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
           p=Path('.github/scripts/apply-instructor-restructure.py')
           s=p.read_text()
           s=s.replace('        raise RuntimeError(f"{path}: expected one anchor, found {count}: {old[:120]!r}")', '        print(f"WARN stale anchor {path}: {count}: {old[:120]!r}")\n        return')
           s=s.replace('        raise RuntimeError(f"{path}: regex anchor not found: {pattern[:160]!r}")', '        print(f"WARN stale regex {path}: {pattern[:160]!r}")\n        return')
           p.write_text(s)
           PY
-      - name: Apply instructor restructure patch
+      - name: Generate instructor restructure
         run: python3 .github/scripts/apply-instructor-restructure.py
-      - name: Complete current-code compatibility patches
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-
-          # New workbook emits only the 16 requested columns.
-          p=Path('src/lib/excel-import/templates.ts')
-          s=p.read_text()
-          s=s.replace('const rows = dataRows?.map((row) =>\n    tpl.columns.map((column) =>', 'const rows = dataRows?.map((row) =>\n    visibleColumns.map((column) =>')
-          p.write_text(s)
-
-          # Workload report uses the shared net quota helper.
-          p=Path('src/lib/reports/instructor-quota.ts')
-          s=p.read_text()
-          imp='import { effectiveInstructorWeeklyHours } from "@/lib/instructors/effective-hours";\n\n'
-          if imp not in s:
-              s=s.replace('export type QuotaSource = "policy" | "instructor" | "missing";\n', imp+'export type QuotaSource = "policy" | "instructor" | "missing";\n')
-          s=re.sub(r'netHours:\s*base === null \? null : round2\(Math\.max\(0, base - release\)\),', 'netHours: effectiveInstructorWeeklyHours(base, release),', s)
-          p.write_text(s)
-
-          # Fix generated net-quota test so rows are valid canonical V2 operations.
-          p=Path('tests/instructor-hr-restructure.test.ts')
-          s=p.read_text()
-          marker='        study_system: "regular",\n        _component_total_hours: hours,\n'
-          if marker in s:
-              s=s.replace(marker, '        study_system: "regular",\n        component_type: "theory",\n        _component_weekly_hours: hours,\n        _component_total_hours: hours,\n', 1)
-          p.write_text(s)
-
-          # Backward-compatible validation: old instructor sheets may omit the new HR headers.
-          p=Path('src/lib/excel-import/validators.ts')
-          s=p.read_text()
-          s=re.sub(
-              r'  const legacyInstructorShape =\n    entity === "instructors" &&\n    headerSet\.has\("رمز_القسم"\) &&\n    !headerSet\.has\("كلية_التبعية_رمز"\);',
-              '  const legacyInstructorShape =\n    entity === "instructors" && !headerSet.has("كلية_التبعية_رمز");',
-              s,
-          )
-          s=s.replace(
-              '          (c.key === "affiliation_college_code" || c.key === "affiliation_department_code")\n',
-              '          (c.key === "instructor_type_code" ||\n            c.key === "affiliation_college_code" ||\n            c.key === "affiliation_department_code")\n',
-          )
-          # The row-level required loop gets the same legacy exemption.
-          old='''        !(\n          entity === "instructors" &&\n          row.values.department_code &&\n          (c.key === "affiliation_college_code" || c.key === "affiliation_department_code")\n        )'''
-          new='''        !(\n          entity === "instructors" &&\n          legacyInstructorShape &&\n          (c.key === "instructor_type_code" ||\n            c.key === "affiliation_college_code" ||\n            c.key === "affiliation_department_code")\n        )'''
-          s=s.replace(old,new)
-
-          # Preserve an existing instructor type when a legacy row omitted the category code.
-          s=s.replace(
-              '      const rawTypeCode = String(row.values.instructor_type_code ?? "").trim();\n      const typeCode = rawTypeCode.toLowerCase();\n      const typeId = typeCode ? lk.instructorTypes?.get(typeCode) : null;\n',
-              '      let rawTypeCode = String(row.values.instructor_type_code ?? "").trim();\n      let typeCode = rawTypeCode.toLowerCase();\n      if (!typeCode && row.values._instructor_type_id) {\n        typeCode = lk.instructorTypeCodesById?.get(String(row.values._instructor_type_id)) ?? "";\n        rawTypeCode = typeCode;\n        if (typeCode) row.values.instructor_type_code = typeCode;\n      }\n      const typeId = typeCode ? lk.instructorTypes?.get(typeCode) : null;\n',
-          )
-
-          # Canonicalize the defaulted affiliation college code for export/re-import.
-          s=s.replace(
-              '      } else {\n        row.values._affiliation_college_id = affiliationCollege.id;\n      }\n\n      const affiliationDepartmentCode',
-              '      } else {\n        row.values._affiliation_college_id = affiliationCollege.id;\n        row.values.affiliation_college_code = affiliationCollegeCode;\n      }\n\n      const affiliationDepartmentCode',
-          )
-          s=s.replace('      const affiliationDepartment =\n', '      let affiliationDepartment =\n', 1)
-          dept_marker='''          ? lk.affiliationDepartments?.get(`${affiliationCollege.id}|${affiliationDepartmentCode}`)\n          : null;\n      if (!affiliationDepartment) {'''
-          dept_insert='''          ? lk.affiliationDepartments?.get(`${affiliationCollege.id}|${affiliationDepartmentCode}`)\n          : null;\n      if (!affiliationDepartment && affiliationCollege && row.values._department_id) {\n        for (const [compoundKey, candidate] of lk.affiliationDepartments ?? []) {\n          if (\n            candidate.id === String(row.values._department_id) &&\n            candidate.college_id === affiliationCollege.id\n          ) {\n            affiliationDepartment = candidate;\n            row.values.affiliation_department_code = compoundKey.slice(compoundKey.indexOf("|") + 1);\n            break;\n          }\n        }\n      }\n      if (!affiliationDepartment) {'''
-          s=s.replace(dept_marker, dept_insert)
-          s=s.replace(
-              '        row.values._affiliation_department_id = affiliationDepartment.id;\n',
-              '        row.values._affiliation_department_id = affiliationDepartment.id;\n        if (!row.values.affiliation_department_code)\n          row.values.affiliation_department_code = affiliationDepartmentCode;\n',
-              1,
-          )
-          # Use maybeSingle for easier fail-closed mocking and zero/one row semantics.
-          s=s.replace('.eq("id", collegeId).single(),', '.eq("id", collegeId).maybeSingle(),')
-          p.write_text(s)
-
-          # Update the existing import regression harness to understand university-wide affiliation reads
-          # and the new official 16-column template while keeping its old-source tests intact.
-          p=Path('tests/instructor-sheet.test.ts')
-          s=p.read_text()
-          s=s.replace(
-              ': table === "instructors"\n                  ? catalog\n',
-              ': table === "colleges"\n                  ? [{ id: college, code: "ITCS", university_id: "u1" }]\n                  : table === "instructors"\n                    ? catalog\n',
-          )
-          s=s.replace(
-              '                  ([key, value]) => row[key as keyof typeof row] === value,\n',
-              '                  ([key, value]) =>\n                    Array.isArray(value)\n                      ? value.includes(row[key as keyof typeof row])\n                      : row[key as keyof typeof row] === value,\n',
-          )
-          s=s.replace(
-              '          eq(key: string, value: unknown) {\n            filters[key] = value;\n            return query;\n          },\n',
-              '          eq(key: string, value: unknown) {\n            filters[key] = value;\n            return query;\n          },\n          in(key: string, value: unknown[]) {\n            filters[key] = value;\n            return query;\n          },\n',
-          )
-          s=s.replace(
-              '          async maybeSingle() {\n            const r = result();\n            return { ...r, data: r.data?.[0] ?? null };\n          },\n',
-              '          async maybeSingle() {\n            const r = result();\n            return { ...r, data: r.data?.[0] ?? null };\n          },\n          async single() {\n            const r = result();\n            return { ...r, data: r.data?.[0] ?? null };\n          },\n',
-          )
-          old_template=re.compile(r'''  assert\.deepEqual\(parsed\.headers\.slice\(0, 6\), \[\n    "اسم المدرس",\n    "القسم \(التخصص\)",\n    "النصاب الأسبوعي \(ساعة\)",\n    "الرتبة الأكاديمية",\n    "الصفة",\n    "الحالة",\n  \]\);\n  assert\.equal\(parsed\.headers\.length, 19\);\n  assert\.ok\(\n    parsed\.headers\.includes\(\n      TEMPLATES\.instructors\.columns\.find\(\(c\) => c\.key === "employee_number"\)!\.header,\n    \),\n  \);''')
-          new_template='''  assert.deepEqual(parsed.headers, [\n    "فئة_المحاضر_رمز",\n    "رقم_الموظف",\n    "الاسم_الافتراضي",\n    "الاسم_الرباعي",\n    "كلية_التبعية_رمز",\n    "قسم_التبعية_رمز",\n    "التخصص",\n    "الرتبة_العلمية",\n    "النصاب_الأساسي_الأسبوعي",\n    "ساعات_الإعفاء_الإداري",\n    "المنصب_الإداري",\n    "قسم_الرئاسة_رمز",\n    "حالة_التفرغ_التعاقد",\n    "البريد_الإلكتروني",\n    "التلفون_الواتساب",\n    "نشط",\n  ]);'''
-          s=old_template.sub(new_template,s)
-          p.write_text(s)
-
-          # Generated Supabase types expose the four HR fields.
-          p=Path('src/integrations/supabase/types.ts')
-          s=p.read_text()
-          a=s.index('      instructors: {')
-          b=s.index('      plan_course_components:', a)
-          block=s[a:b]
-          if 'affiliation_college_id:' not in block:
-              block=block.replace('          admin_tasks: string | null\n', '          admin_tasks: string | null\n          administrative_department_id: string | null\n          administrative_position: string | null\n          affiliation_college_id: string | null\n          affiliation_department_id: string | null\n', 1)
-          if 'affiliation_college_id?:' not in block:
-              block=block.replace('          admin_tasks?: string | null\n', '          admin_tasks?: string | null\n          administrative_department_id?: string | null\n          administrative_position?: string | null\n          affiliation_college_id?: string | null\n          affiliation_department_id?: string | null\n')
-          s=s[:a]+block+s[b:]
-          p.write_text(s)
-          PY
-      - name: Assert effective quota preflight wiring
+      - name: Finalize compatibility and current-code patches
+        run: python3 .github/scripts/finalize-instructor-restructure.py
+      - name: Assert critical contracts
         run: |
           grep -q '_instructor_administrative_release_hours' src/lib/excel-import/teaching-assignments-v2-hours-preflight.ts
           grep -q 'operation.instructorAdminReleaseHours' src/lib/excel-import/teaching-assignments-v2-hours-preflight.ts
           grep -q 'effectiveInstructorWeeklyHours' src/lib/excel-import/teaching-assignments-v2-hours-preflight.ts
-          grep -q 'component_type: "theory"' tests/instructor-hr-restructure.test.ts
+          grep -q 'legacyInstructorRequiredExempt' src/lib/excel-import/validators.ts
+          grep -q 'data-field-order="15-active"' src/routes/_authenticated/instructors.tsx
       - name: Prettier
         run: |
           bunx prettier --write \
