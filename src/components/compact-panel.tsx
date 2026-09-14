@@ -29,7 +29,7 @@ export function CompactSchedulePanel({
   const [result, setResult] = useState<Applied | null>(null);
   const [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
-  const [searchDuration, setSearchDuration] = useState(15000);
+  const [searchDuration, setSearchDuration] = useState(180000);
   const [extendedPolicy, setExtendedPolicy] = useState(false);
   const [saving, setSaving] = useState(false);
   const abort = useRef<AbortController | null>(null);
@@ -159,6 +159,7 @@ export function CompactSchedulePanel({
           >
             <option value={15000}>متوازن — 15 ثانية</option>
             <option value={60000}>موسّع — دقيقة</option>
+            <option value={180000}>شامل — ثلاث دقائق</option>
           </select>
         </label>
         <Button

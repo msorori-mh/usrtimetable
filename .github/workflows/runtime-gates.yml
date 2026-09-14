@@ -79,6 +79,9 @@ jobs:
       - name: Production build (vite build)
         run: bun run build
 
+      - name: Joint mathematical scheduling model
+        run: node --import tsx --test tests/joint-model.test.mjs
+
       - name: Static harness suite
         run: bun run test:harness
 
@@ -143,6 +146,12 @@ jobs:
           COMPACTION_TEST_DISPOSABLE: "1"
           COMPACTION_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/compaction_test
         run: node --test tests/compact-atomic-db.test.mjs
+
+      - name: Simultaneous relayout final-state rollback and extended-day swaps
+        env:
+          COMPACTION_TEST_DISPOSABLE: "1"
+          COMPACTION_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/compaction_test
+        run: node --test tests/joint-atomic-db.test.mjs
 
       - name: Study plan import room references, counters and rejection on disposable PostgreSQL
         env:

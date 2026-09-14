@@ -137,6 +137,7 @@ export type SearchOutcome =
   | "cancelled"
   | "empty";
 export interface Proposal {
+  applicationMode?: "simultaneous";
   attendanceSearch?: import("./attendance-search.ts").AttendanceSearchResult;
   executionBlocked?: string;
   before: Metrics;

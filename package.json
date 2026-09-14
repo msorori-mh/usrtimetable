@@ -1,7 +1,10 @@
 {
   "name": "tanstack_start_ts",
   "private": true,
-  "sideEffects": ["**/*.css", "**/styles.css"],
+  "sideEffects": [
+    "**/*.css",
+    "**/styles.css"
+  ],
   "type": "module",
   "scripts": {
     "dev": "vite dev",
@@ -52,6 +55,7 @@
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
     "embla-carousel-react": "^8.6.0",
+    "highs": "1.15.3",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.575.0",
     "qrcode": "^1.5.4",

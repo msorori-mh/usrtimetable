@@ -21,7 +21,7 @@ export interface AttendanceSearchResult {
   attempts: AttendanceAttempt[];
   sessions: Session[];
   /** Fixed assignments/durations/locks; all unlocked sessions and rooms are movable. */
-  scope: "all_sessions_minute_domain";
+  scope: "all_sessions_minute_domain" | "all_sessions_joint_grid";
 }
 export interface AttendanceSearchOptions {
   signal?: AbortSignal;
@@ -283,5 +283,5 @@ export function attendanceSearchMessage(result: AttendanceSearchResult): string 
         `${a.days} أيام: ${a.status === "feasible" ? "وُجد حل" : a.status === "infeasible" ? "ثبت التعذر ضمن القيود الحالية" : "لم يُحسم البحث"}`,
     )
     .join("؛ ");
-  return `${evidence}. ${result.status === "unknown" ? "لم يُسمح بزيادة الأيام؛ وسّع البحث أو راجع القيود." : result.days === 5 ? "خمسة أيام استثناء حرج بعد إثبات تعذر ثلاثة وأربعة أيام." : ""} نطاق الإثبات: محاضرات هذه النسخة بإسناداتها ومددها وأقفالها الحالية، وجميع الأوقات بدقة الدقيقة والقاعات المتاحة.`;
+  return `${evidence}. ${result.status === "unknown" ? "لم يُسمح بزيادة الأيام؛ وسّع البحث أو راجع القيود." : result.days === 5 ? "خمسة أيام استثناء حرج بعد إثبات تعذر ثلاثة وأربعة أيام." : ""} نطاق الإثبات: محاضرات هذه النسخة بإسناداتها ومددها وأقفالها الحالية، ${result.scope === "all_sessions_minute_domain" ? "وجميع الأوقات بدقة الدقيقة والقاعات المتاحة" : "وشبكة الأوقات والقاعات المتاحة؛ تعذر الشبكة لا يثبت التعذر المطلق"}.`;
 }
