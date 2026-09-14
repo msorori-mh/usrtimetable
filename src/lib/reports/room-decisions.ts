@@ -6,8 +6,8 @@ import type {
 } from "@/lib/print-center/rooms-report";
 
 export type DecisionSession = PrintSessionLike & {
-  is_locked?: boolean;
-  replaced_by_split?: boolean;
+  is_locked?: boolean | null;
+  replaced_by_split?: boolean | null;
   teaching_assignment_id?: string | null;
 };
 export type DecisionRoom = RoomsReportRoom & { room_type?: string | null };
