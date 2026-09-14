@@ -13,7 +13,7 @@ export function useCourseProgramPlans(collegeId?: string) {
         const { data, error } = await supabase
           .from("plan_courses")
           .select(
-            "id, course_id, semester, study_plans!inner(name, program_id, is_active, academic_programs(name)), academic_levels(level_number), plan_course_components(component_type, weekly_contact_hours)",
+            "id, course_id, semester, study_plans!inner(name, program_id, is_active, academic_programs(name)), academic_levels(level_number), plan_course_components!plan_course_components_plan_course_id_fkey(component_type, weekly_contact_hours)",
           )
           .eq("college_id", collegeId!)
           .eq("study_plans.is_active", true)
