@@ -23,8 +23,27 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - name: Install dependencies
         run: bun install --frozen-lockfile
+      - name: Normalize current template-builder anchor
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('src/lib/excel-import/templates.ts')
+          s=p.read_text()
+          s=s.replace('  const example = tpl.columns.map((c) => escapeSpreadsheetCell(c.example ?? ""));\n', '  const sample = tpl.columns.map((c) => escapeSpreadsheetCell(c.example ?? ""));\n')
+          s=s.replace('...(rows ?? [example])', '...(rows ?? [sample])')
+          p.write_text(s)
+          PY
       - name: Apply instructor restructure patch
         run: python3 .github/scripts/apply-instructor-restructure.py
+      - name: Complete visible-column template wiring
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('src/lib/excel-import/templates.ts')
+          s=p.read_text()
+          s=s.replace('const rows = dataRows?.map((row) =>\n    tpl.columns.map((column) =>', 'const rows = dataRows?.map((row) =>\n    visibleColumns.map((column) =>')
+          p.write_text(s)
+          PY
       - name: Prettier
         run: |
           bunx prettier --write \
