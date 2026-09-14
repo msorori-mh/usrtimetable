@@ -74,6 +74,10 @@ function Page() {
 
   const sessionsQuery = useQuery({
     queryKey: ["rooms-report-sessions", ctx.collegeId, ctx.versionId, ctx.studySystem],
+    placeholderData: (previous, previousQuery) =>
+      previousQuery?.queryKey[1] === ctx.collegeId && previousQuery?.queryKey[2] === ctx.versionId
+        ? previous
+        : undefined,
     enabled: !!ctx.collegeId && !!ctx.versionId,
     queryFn: async () => {
       const hydrated = await fetchHydratedVersionSessions({
@@ -151,6 +155,9 @@ function Page() {
       filters={<ReportFilters context={ctx} />}
       summary={
         <Card className="p-3 text-sm" data-testid="rooms-report-totals">
+          {sessionsQuery.isPlaceholderData && (
+            <p role="status">جارٍ تحديث البيانات حسب نظام الدراسة؛ الأرقام السابقة مؤقتة.</p>
+          )}
           <p className="font-semibold">
             الجلسات المطابقة للفلاتر: {totals.sessions} · صفحات القاعات: {pages.length}
           </p>
