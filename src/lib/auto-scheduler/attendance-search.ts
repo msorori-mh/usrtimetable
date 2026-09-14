@@ -1,5 +1,12 @@
 /** Complete finite-domain search. Exhaustion, never a timeout, authorizes relaxation. */
-import { context, feasible, minutes, type Session, type Snapshot } from "./compact.ts";
+import {
+  context,
+  feasible,
+  minutes,
+  studentWeeklyCapacity,
+  type Session,
+  type Snapshot,
+} from "./compact.ts";
 
 export type AttendanceSearchStatus = "feasible" | "infeasible" | "unknown";
 export interface AttendanceAttempt {
@@ -107,6 +114,37 @@ async function runAttendanceSearch(
     record(3, "unknown", "invalid_input");
     return finish("unknown", null);
   }
+  const studentMinutes = new Map<string, number>();
+  for (const s of sessions)
+    for (const p of ctx.students(s))
+      studentMinutes.set(p, (studentMinutes.get(p) ?? 0) + length(s));
+  const studentAvailableDays = new Map<string, Set<number>>();
+  for (const s of sessions)
+    for (const p of ctx.students(s)) {
+      const available = studentAvailableDays.get(p) ?? new Set<number>();
+      // The coarse pass uses a superset bound: missing off-grid candidates must
+      // never turn its smaller domain into a false capacity proof.
+      for (const template of snapshot.templates.filter(
+        (t) => t.is_active && (t.study_system === s.study_system || t.study_system === "both"),
+      ))
+        available.add(template.day_of_week);
+      studentAvailableDays.set(p, available);
+    }
+  const eligibleDays: Array<3 | 4 | 5> = [3, 4, 5];
+  while (
+    eligibleDays.length &&
+    [...studentMinutes].some(
+      ([p, n]) =>
+        n >
+        studentWeeklyCapacity(
+          snapshot,
+          Math.min(eligibleDays[0], studentAvailableDays.get(p)!.size),
+        ),
+    )
+  ) {
+    record(eligibleDays.shift()!, "infeasible", "capacity");
+  }
+  if (!eligibleDays.length) return finish("infeasible", null);
   const domains = new Map<string, Session[]>();
   const yieldTask = async () => {
     if (evaluated % 256 === 0) await new Promise<void>((r) => setTimeout(r, 0));
@@ -129,7 +167,7 @@ async function runAttendanceSearch(
         ) {
           for (const room of snapshot.rooms.filter((r) => r.is_active)) {
             if (stopped()) {
-              record(3, "unknown", reason());
+              record(eligibleDays[0], "unknown", reason());
               return finish("unknown", null);
             }
             evaluated++;
@@ -152,23 +190,6 @@ async function runAttendanceSearch(
     }
     domains.set(original.id, candidates);
   }
-  const studentMinutes = new Map<string, number>();
-  for (const s of sessions)
-    for (const p of ctx.students(s))
-      studentMinutes.set(p, (studentMinutes.get(p) ?? 0) + length(s));
-  const studentAvailableDays = new Map<string, Set<number>>();
-  for (const s of sessions)
-    for (const p of ctx.students(s)) {
-      const available = studentAvailableDays.get(p) ?? new Set<number>();
-      // The coarse pass uses a superset bound: missing off-grid candidates must
-      // never turn its smaller domain into a false capacity proof.
-      for (const template of snapshot.templates.filter(
-        (t) => t.is_active && (t.study_system === s.study_system || t.study_system === "both"),
-      ))
-        available.add(template.day_of_week);
-      studentAvailableDays.set(p, available);
-    }
-  const dailyLimit = (snapshot.settings.max_daily_hours_per_section || 6) * 60;
   const ordered = [...sessions].sort(
     (a, b) =>
       Number(b.is_locked) - Number(a.is_locked) ||
@@ -177,14 +198,15 @@ async function runAttendanceSearch(
       length(b) - length(a) ||
       a.id.localeCompare(b.id),
   );
-  for (const days of [3, 4, 5] as const) {
+  for (const days of eligibleDays) {
     if (stopped()) {
       record(days, "unknown", reason());
       return finish("unknown", null);
     }
     if (
       [...studentMinutes].some(
-        ([p, n]) => n > dailyLimit * Math.min(days, studentAvailableDays.get(p)!.size),
+        ([p, n]) =>
+          n > studentWeeklyCapacity(snapshot, Math.min(days, studentAvailableDays.get(p)!.size)),
       )
     ) {
       record(days, "infeasible", "capacity");

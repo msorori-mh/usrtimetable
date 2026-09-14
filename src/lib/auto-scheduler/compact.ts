@@ -106,6 +106,9 @@ export interface Snapshot {
     is_active: boolean;
   }[];
   settings: {
+    extended_day_policy_enabled?: boolean;
+    standard_day_end_time?: string;
+    max_extended_days_per_partition?: number;
     working_days: number[];
     day_start_time: string;
     day_end_time: string;
@@ -115,7 +118,10 @@ export interface Snapshot {
     break_between_sessions_min: number;
   };
 }
-export type Metrics = AttendanceMetrics;
+export type Metrics = AttendanceMetrics & {
+  extendedDayViolations?: number;
+  extendedGroups?: number;
+};
 export interface Move {
   id: string;
   day_of_week: number;
@@ -212,7 +218,7 @@ export function context(s: Snapshot) {
 }
 export function measure(s: Snapshot, sessions = s.sessions): Metrics {
   const ctx = context(s);
-  return measureAttendance(
+  const base = measureAttendance(
     sessions.map((x) => ({
       day: x.day_of_week,
       start: minutes(x.start_time),
@@ -223,8 +229,45 @@ export function measure(s: Snapshot, sessions = s.sessions): Metrics {
     })),
     ctx.weight,
   );
+  if (!s.settings.extended_day_policy_enabled) return base;
+  const days = extendedDays(s, sessions);
+  const limit = s.settings.max_extended_days_per_partition ?? 1;
+  return {
+    ...base,
+    extendedGroups: days.size,
+    extendedDayViolations: [...days.values()].reduce((n, d) => n + Math.max(0, d.size - limit), 0),
+  };
+}
+/** A shared lecture consumes the extended day of every real student partition attending it. */
+export function extendedDays(s: Snapshot, sessions = s.sessions): Map<string, Set<number>> {
+  const result = new Map<string, Set<number>>();
+  const cutoff = minutes(s.settings.standard_day_end_time ?? "14:00:00");
+  for (const x of sessions) {
+    if (x.replaced_by_split || minutes(x.end_time) <= cutoff) continue;
+    for (const p of context(s).students(x)) {
+      const days = result.get(p) ?? new Set<number>();
+      days.add(x.day_of_week);
+      result.set(p, days);
+    }
+  }
+  return result;
+}
+/** Safe upper capacity bound, independent of candidate-grid resolution. */
+export function studentWeeklyCapacity(s: Snapshot, days: number): number {
+  const daily = (s.settings.max_daily_hours_per_section || 6) * 60;
+  if (!s.settings.extended_day_policy_enabled) return daily * days;
+  const start = minutes(s.settings.day_start_time);
+  const normal = Math.min(
+    daily,
+    Math.max(0, minutes(s.settings.standard_day_end_time ?? "14:00:00") - start),
+  );
+  const full = Math.min(daily, Math.max(0, minutes(s.settings.day_end_time) - start));
+  const extended = Math.min(days, s.settings.max_extended_days_per_partition ?? 1);
+  return Math.min(normal, full) * (days - extended) + full * extended;
 }
 export function better(a: Metrics, b: Metrics) {
+  if ((a.extendedDayViolations ?? 0) !== (b.extendedDayViolations ?? 0))
+    return (a.extendedDayViolations ?? 0) < (b.extendedDayViolations ?? 0);
   // A forbidden sixth day is repaired first. Ordinary improvements may not
   // sacrifice either side's gaps, short days or attendance for the aggregate.
   if (a.excessDaysOverFive < b.excessDaysOverFive) return true;
@@ -361,6 +404,17 @@ export function feasible(
   }
   const others = sessions.filter((x) => x.id !== candidate.id),
     sameDay = others.filter((x) => x.day_of_week === day);
+  if (settings.extended_day_policy_enabled) {
+    const before = extendedDays(s, sessions);
+    const after = extendedDays(s, [...others, candidate]);
+    for (const p of ctx.students(candidate)) {
+      if (
+        (after.get(p)?.size ?? 0) >
+        Math.max(settings.max_extended_days_per_partition ?? 1, before.get(p)?.size ?? 0)
+      )
+        return false;
+    }
+  }
   if (
     sameDay.some(
       (x) =>

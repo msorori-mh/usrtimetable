@@ -52,10 +52,7 @@ export function ReportTimetableView({
       a.start_time.localeCompare(b.start_time),
   );
   const rows = timetableSessionsToRows(ordered);
-  const days = orderWeekDaysRtl([
-    ...window.workingDays,
-    ...sessions.map((s) => s.day_of_week),
-  ]);
+  const days = orderWeekDaysRtl([...window.workingDays, ...sessions.map((s) => s.day_of_week)]);
   const day =
     selectedDay !== null && days.includes(selectedDay)
       ? selectedDay
