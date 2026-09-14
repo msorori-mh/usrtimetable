@@ -100,6 +100,9 @@ export interface RoomMove {
   from: DecisionRoom;
   to: DecisionRoom;
   savedSeats: number;
+  fromHours: number;
+  toHours: number;
+  movedHours: number;
 }
 /** Each recommendation is independent. Preserve time/teacher/groups; inspect BOTH systems. */
 export function suggestRoomMoves(p: {
@@ -112,6 +115,11 @@ export function suggestRoomMoves(p: {
   settings?: RoomsReportSettings | null;
 }): RoomMove[] {
   const active = p.sessions.filter((s) => !s.replaced_by_split);
+  const minutes = (v: string) => Number(v.slice(0, 2)) * 60 + Number(v.slice(3, 5));
+  const duration = (s: DecisionSession) => (minutes(s.end_time) - minutes(s.start_time)) / 60;
+  const hours = new Map<string, number>();
+  for (const s of active)
+    if (s.room_id) hours.set(s.room_id, (hours.get(s.room_id) ?? 0) + duration(s));
   const result: RoomMove[] = [];
   for (const s of active) {
     if (
@@ -132,7 +140,9 @@ export function suggestRoomMoves(p: {
         r.room_type === required &&
         typeof r.capacity === "number" &&
         r.capacity >= s.expected_students! &&
-        r.capacity < from.capacity! &&
+        (r.capacity < from.capacity! ||
+          (r.capacity === from.capacity &&
+            (hours.get(from.id) ?? 0) - (hours.get(r.id) ?? 0) > 2 * duration(s))) &&
         roomOpen(r.id, s.day_of_week, s.start_time, s.end_time, p.availability, p.settings) &&
         !roomClosed(r.id, s.day_of_week, s.start_time, s.end_time, p.closures) &&
         !active.some(
@@ -143,13 +153,21 @@ export function suggestRoomMoves(p: {
             overlaps(s, peer),
         ),
     );
-    candidates.sort((a, b) => a.capacity! - b.capacity! || a.id.localeCompare(b.id));
+    candidates.sort(
+      (a, b) =>
+        a.capacity! - b.capacity! ||
+        (hours.get(a.id) ?? 0) - (hours.get(b.id) ?? 0) ||
+        a.id.localeCompare(b.id),
+    );
     if (candidates[0])
       result.push({
         session: s,
         from,
         to: candidates[0],
         savedSeats: from.capacity - candidates[0].capacity!,
+        fromHours: hours.get(from.id) ?? 0,
+        toHours: hours.get(candidates[0].id) ?? 0,
+        movedHours: duration(s),
       });
   }
   return result

@@ -1,5 +1,21 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+
+test("equal-capacity relocation strictly reduces load imbalance", () => {
+  const p = params();
+  p.rooms = [rooms[0], { ...rooms[1], capacity: 75 }];
+  p.sessions = [
+    session,
+    { ...session, id: "s2", day_of_week: 2 },
+    { ...session, id: "s3", day_of_week: 3 },
+  ];
+  const moves = suggestRoomMoves(p);
+  assert.equal(moves.length, 1);
+  assert.equal(moves[0].savedSeats, 0);
+  assert.equal(moves[0].fromHours, 6);
+  assert.equal(moves[0].toHours, 0);
+  assert.equal(moves[0].movedHours, 2);
+});
 import {
   capacityPoints,
   suggestRoomMoves,
