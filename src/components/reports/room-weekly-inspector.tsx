@@ -2,13 +2,13 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import type { DecisionSession, RoomClosure } from "@/lib/reports/room-decisions";
 import { roomOpen, roomClosed, overlaps } from "@/lib/reports/room-decisions";
+import { orderWeekDaysRtl, WEEK_DAY_LABELS_AR } from "@/lib/reports/weekly-grid-window";
 import type {
   RoomsReportRoom,
   RoomsReportAvailability,
   RoomsReportSettings,
 } from "@/lib/print-center/rooms-report";
 
-const DAYS = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
 export function RoomWeeklyInspector(p: {
   rooms: RoomsReportRoom[];
   sessions: DecisionSession[];
@@ -34,9 +34,10 @@ export function RoomWeeklyInspector(p: {
         .map((t) => t.slice(0, 5)),
     ),
   ].sort();
-  const days = [
-    ...new Set([...(p.settings?.working_days ?? []), ...sessions.map((s) => s.day_of_week)]),
-  ].sort((a, b) => a - b);
+  const days = orderWeekDaysRtl([
+    ...(p.settings?.working_days ?? []),
+    ...sessions.map((s) => s.day_of_week),
+  ]);
   return (
     <Card className="space-y-3 p-4">
       <h2 className="font-bold">الجدول الأسبوعي للقاعة</h2>
@@ -66,7 +67,7 @@ export function RoomWeeklyInspector(p: {
               <th className="border p-2">الفترة</th>
               {days.map((d) => (
                 <th className="border p-2" key={d}>
-                  {DAYS[d]}
+                  {WEEK_DAY_LABELS_AR[d] ?? String(d)}
                 </th>
               ))}
             </tr>
