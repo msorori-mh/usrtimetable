@@ -210,7 +210,16 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
         );
         if (late.length) {
           const z = variable();
-          row([...late, [z, -maxDaily]], -INF, 0);
+          const minLateDuration = Math.min(...late.map(([i]) => duration(candidates[i].session)));
+          const maxLate = Math.min(
+            maxDaily,
+            Math.ceil(
+              (minutes(snapshot.settings.day_end_time) -
+                minutes(snapshot.settings.standard_day_end_time ?? "14:00:00")) /
+                minLateDuration,
+            ),
+          );
+          row([...late, [z, -maxLate]], -INF, 0);
           extended.set(person, [...(extended.get(person) ?? []), [z, 1]]);
         }
       }

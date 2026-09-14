@@ -98,7 +98,10 @@ async function setup() {
       st.calls.push({ name, args });
       if (name === "get_schedule_compaction_result")
         return { data: st.receipt || { ok: false, code: "UNCONFIRMED" }, error: null };
-      assert.equal(name, "apply_schedule_compaction", "never fall back to individual moves");
+      assert.ok(
+        ["apply_schedule_compaction", "apply_schedule_relayout"].includes(name),
+        "never fall back to individual moves",
+      );
       st.afterDispatch?.();
       if (st.mode === "missing")
         return { data: null, error: { code: "PGRST202", message: "missing" } };
@@ -256,4 +259,41 @@ test("recovery cannot send an old plan into a different selected version", async
   const previous = await service.applyCompactProposal("c", "v", p);
   await assert.rejects(service.retryCompactApplication("c", "different", previous), /تغيرت نسخة/);
   assert.equal(st.calls.filter((c) => c.name === "apply_schedule_compaction").length, 1);
+});
+
+test("simultaneous final plan can displace an occupied intermediate placement", async () => {
+  const { st, service, p } = await setup();
+  p.applicationMode = "simultaneous";
+  p.attendanceSearch = {
+    status: "feasible",
+    days: 3,
+    attempts: [],
+    sessions: [],
+    scope: "all_sessions_joint_grid",
+  };
+  p.moves.unshift({
+    id: "a",
+    day_of_week: 0,
+    start_time: "12:00:00",
+    end_time: "14:00:00",
+    room_id: "r",
+  });
+  const saved = await service.applyCompactProposal("c", "v", p);
+  assert.equal(saved.status, "saved");
+  assert.equal(saved.applied, 2);
+  assert.equal(st.calls[0].name, "apply_schedule_relayout");
+  assert.equal(st.calls[0].args.p_day_cap, 3);
+  assert.equal(saved.after.studentGapMinutes, 0);
+});
+test("simultaneous recovery retains its RPC and exact request", async () => {
+  const { st, service, p } = await setup();
+  p.applicationMode = "simultaneous";
+  p.attendanceSearch = { days: 3 };
+  st.mode = "unknown";
+  const previous = await service.applyCompactProposal("c", "v", p);
+  const request = structuredClone(st.calls[0]);
+  st.mode = "saved";
+  const saved = await service.retryCompactApplication("c", "v", previous);
+  assert.equal(saved.status, "saved");
+  assert.deepEqual(st.calls.filter((c) => c.name === "apply_schedule_relayout")[1], request);
 });
