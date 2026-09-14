@@ -80,7 +80,7 @@ jobs:
         run: bun run build
 
       - name: Joint mathematical scheduling model
-        run: node --import tsx --test tests/joint-model.test.mjs
+        run: node --import tsx --test tests/joint-model.test.mjs tests/extended-resource-capacity.test.mjs
 
       - name: Static harness suite
         run: bun run test:harness
