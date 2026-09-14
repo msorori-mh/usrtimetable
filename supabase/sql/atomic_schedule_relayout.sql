@@ -212,7 +212,7 @@ EXCEPTION
     -- Do not expose table names, identifiers from other tenants, or raw SQL errors.
     RETURN jsonb_build_object('ok', false, 'code', 'BATCH_FAILED', 'applied', 0);
 END;
-$function$
+$function$;
 
 REVOKE ALL ON FUNCTION public.apply_schedule_relayout(uuid,uuid,uuid,bigint,timestamptz,jsonb,integer) FROM PUBLIC,anon,authenticated,service_role;
 GRANT EXECUTE ON FUNCTION public.apply_schedule_relayout(uuid,uuid,uuid,bigint,timestamptz,jsonb,integer) TO authenticated;
