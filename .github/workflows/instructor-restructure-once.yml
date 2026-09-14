@@ -64,30 +64,7 @@ jobs:
           s=re.sub(r'netHours:\s*base === null \? null : round2\(Math\.max\(0, base - release\)\),', 'netHours: effectiveInstructorWeeklyHours(base, release),', s)
           p.write_text(s)
 
-          p=Path('src/lib/excel-import/teaching-assignments-v2-hours-preflight.ts')
-          s=p.read_text()
-          imp='import { effectiveInstructorWeeklyHours } from "@/lib/instructors/effective-hours";\n'
-          if imp not in s:
-              s=s.replace('import type { ParsedRow, RowError } from "./types";\n', 'import type { ParsedRow, RowError } from "./types";\n'+imp)
-          for typename in ['TeachingHoursOperation', 'ExistingTeachingAssignmentV2Hours']:
-              pattern=rf'(export (?:type|interface) {typename}[^{{]*\{{[\s\S]*?  instructorMaxWeeklyHours: number \| null;)(?!\n  instructorAdminReleaseHours)'
-              s=re.sub(pattern, r'\1\n  instructorAdminReleaseHours?: number | null;', s, count=1)
-          s=re.sub(
-              r'(instructorMaxWeeklyHours:\s*finiteNumber\(row\.values\._instructor_max_weekly_hours\),)(?!\s*\n\s*instructorAdminReleaseHours)',
-              r'\1\n    instructorAdminReleaseHours: finiteNumber(row.values._instructor_administrative_release_hours),',
-              s,
-              count=1,
-          )
-          if '| "instructorAdminReleaseHours"' not in s:
-              s=s.replace('      | "instructorMaxWeeklyHours"\n', '      | "instructorMaxWeeklyHours"\n      | "instructorAdminReleaseHours"\n', 1)
-          s=re.sub(
-              r'    if \(operation\.instructorMaxWeeklyHours !== null\) \{\n\s*instructorLimits\.set\(key, operation\.instructorMaxWeeklyHours\);\n\s*\}',
-              '    const effectiveLimit = effectiveInstructorWeeklyHours(\n      operation.instructorMaxWeeklyHours,\n      operation.instructorAdminReleaseHours,\n    );\n    if (effectiveLimit !== null) {\n      instructorLimits.set(key, effectiveLimit);\n    }',
-              s,
-              count=1,
-          )
-          s=s.replace('تتجاوز الحد الأسبوعي', 'تتجاوز النصاب الفعلي بعد الإعفاء الإداري')
-          p.write_text(s)
+          # The weekly preflight source is committed directly on the branch; keep it intact.
 
           p=Path('src/integrations/supabase/types.ts')
           s=p.read_text()
