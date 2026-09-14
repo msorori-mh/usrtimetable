@@ -51,22 +51,19 @@ jobs:
           from pathlib import Path
           import re
 
-          # Template builder uses the visible 16-column contract only.
           p=Path('src/lib/excel-import/templates.ts')
           s=p.read_text()
           s=s.replace('const rows = dataRows?.map((row) =>\n    tpl.columns.map((column) =>', 'const rows = dataRows?.map((row) =>\n    visibleColumns.map((column) =>')
           p.write_text(s)
 
-          # Central quota helper in workload reports.
           p=Path('src/lib/reports/instructor-quota.ts')
           s=p.read_text()
           imp='import { effectiveInstructorWeeklyHours } from "@/lib/instructors/effective-hours";\n\n'
           if imp not in s:
               s=s.replace('export type QuotaSource = "policy" | "instructor" | "missing";\n', imp+'export type QuotaSource = "policy" | "instructor" | "missing";\n')
-          s=s.replace('netHours: base === null ? null : round2(Math.max(0, base - release)),', 'netHours: effectiveInstructorWeeklyHours(base, release),')
+          s=re.sub(r'netHours:\s*base === null \? null : round2\(Math\.max\(0, base - release\)\),', 'netHours: effectiveInstructorWeeklyHours(base, release),', s)
           p.write_text(s)
 
-          # Weekly teaching-hours preflight applies base minus administrative release.
           p=Path('src/lib/excel-import/teaching-assignments-v2-hours-preflight.ts')
           s=p.read_text()
           imp='import { effectiveInstructorWeeklyHours } from "@/lib/instructors/effective-hours";\n'
@@ -75,42 +72,40 @@ jobs:
           for typename in ['TeachingHoursOperation', 'ExistingTeachingAssignmentV2Hours']:
               pattern=rf'(export (?:type|interface) {typename}[^{{]*\{{[\s\S]*?  instructorMaxWeeklyHours: number \| null;)(?!\n  instructorAdminReleaseHours)'
               s=re.sub(pattern, r'\1\n  instructorAdminReleaseHours?: number | null;', s, count=1)
-          if '_instructor_administrative_release_hours' not in s:
-              s=s.replace(
-                  '    instructorMaxWeeklyHours: finiteNumber(row.values._instructor_max_weekly_hours),\n',
-                  '    instructorMaxWeeklyHours: finiteNumber(row.values._instructor_max_weekly_hours),\n    instructorAdminReleaseHours: finiteNumber(row.values._instructor_administrative_release_hours),\n',
-              )
-          s=s.replace(
-              '      | "instructorMaxWeeklyHours"\n',
-              '      | "instructorMaxWeeklyHours"\n      | "instructorAdminReleaseHours"\n',
+          s=re.sub(
+              r'(instructorMaxWeeklyHours:\s*finiteNumber\(row\.values\._instructor_max_weekly_hours\),)(?!\s*\n\s*instructorAdminReleaseHours)',
+              r'\1\n    instructorAdminReleaseHours: finiteNumber(row.values._instructor_administrative_release_hours),',
+              s,
+              count=1,
           )
-          s=s.replace(
-              '    if (operation.instructorMaxWeeklyHours !== null) {\n      instructorLimits.set(key, operation.instructorMaxWeeklyHours);\n    }',
+          if '| "instructorAdminReleaseHours"' not in s:
+              s=s.replace('      | "instructorMaxWeeklyHours"\n', '      | "instructorMaxWeeklyHours"\n      | "instructorAdminReleaseHours"\n', 1)
+          s=re.sub(
+              r'    if \(operation\.instructorMaxWeeklyHours !== null\) \{\n\s*instructorLimits\.set\(key, operation\.instructorMaxWeeklyHours\);\n\s*\}',
               '    const effectiveLimit = effectiveInstructorWeeklyHours(\n      operation.instructorMaxWeeklyHours,\n      operation.instructorAdminReleaseHours,\n    );\n    if (effectiveLimit !== null) {\n      instructorLimits.set(key, effectiveLimit);\n    }',
+              s,
+              count=1,
           )
-          s=s.replace('الحد الأسبوعي ${limit}', 'النصاب الفعلي بعد الإعفاء الإداري ${limit}')
+          s=s.replace('تتجاوز الحد الأسبوعي', 'تتجاوز النصاب الفعلي بعد الإعفاء الإداري')
           p.write_text(s)
 
-          # Generated Supabase types must expose the four new HR fields on Row/Insert/Update.
           p=Path('src/integrations/supabase/types.ts')
           s=p.read_text()
           a=s.index('      instructors: {')
           b=s.index('      plan_course_components:', a)
           block=s[a:b]
           if 'affiliation_college_id:' not in block:
-              block=block.replace(
-                  '          admin_tasks: string | null\n',
-                  '          admin_tasks: string | null\n          administrative_department_id: string | null\n          administrative_position: string | null\n          affiliation_college_id: string | null\n          affiliation_department_id: string | null\n',
-                  1,
-              )
+              block=block.replace('          admin_tasks: string | null\n', '          admin_tasks: string | null\n          administrative_department_id: string | null\n          administrative_position: string | null\n          affiliation_college_id: string | null\n          affiliation_department_id: string | null\n', 1)
           if 'affiliation_college_id?:' not in block:
-              block=block.replace(
-                  '          admin_tasks?: string | null\n',
-                  '          admin_tasks?: string | null\n          administrative_department_id?: string | null\n          administrative_position?: string | null\n          affiliation_college_id?: string | null\n          affiliation_department_id?: string | null\n',
-              )
+              block=block.replace('          admin_tasks?: string | null\n', '          admin_tasks?: string | null\n          administrative_department_id?: string | null\n          administrative_position?: string | null\n          affiliation_college_id?: string | null\n          affiliation_department_id?: string | null\n')
           s=s[:a]+block+s[b:]
           p.write_text(s)
           PY
+      - name: Assert effective quota preflight wiring
+        run: |
+          grep -q '_instructor_administrative_release_hours' src/lib/excel-import/teaching-assignments-v2-hours-preflight.ts
+          grep -q 'operation.instructorAdminReleaseHours' src/lib/excel-import/teaching-assignments-v2-hours-preflight.ts
+          grep -q 'effectiveInstructorWeeklyHours' src/lib/excel-import/teaching-assignments-v2-hours-preflight.ts
       - name: Prettier
         run: |
           bunx prettier --write \
