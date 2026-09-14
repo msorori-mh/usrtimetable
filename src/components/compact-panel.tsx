@@ -30,6 +30,7 @@ export function CompactSchedulePanel({
   const [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
   const [searchDuration, setSearchDuration] = useState(15000);
+  const [extendedPolicy, setExtendedPolicy] = useState(false);
   const [saving, setSaving] = useState(false);
   const abort = useRef<AbortController | null>(null);
   const qc = useQueryClient();
@@ -66,6 +67,7 @@ export function CompactSchedulePanel({
       } else {
         setProposal(null);
         const snapshot = await loadCompactSnapshot(collegeId, versionId);
+        setExtendedPolicy(!!snapshot.settings.extended_day_policy_enabled);
         const p = await previewCompaction(snapshot, {
           signal: controller.signal,
           maxDurationMs: searchDuration,
@@ -102,6 +104,12 @@ export function CompactSchedulePanel({
   const before = result?.before || proposal?.before,
     after = result?.after || proposal?.after;
   const fields: Array<[keyof Metrics, string]> = [
+    ...(extendedPolicy
+      ? ([
+          ["extendedDayViolations", "أيام تمديد إضافية فوق الحد المسموح للمجموعات"],
+          ["extendedGroups", "مجموعات لها حضور بعد الثانية"],
+        ] as Array<[keyof Metrics, string]>)
+      : []),
     ["levelsOverFive", "مستويات تتجاوز خمسة أيام"],
     ["excessDaysOverThree", "أيام إضافية فوق هدف ثلاثة أيام"],
     ["excessDaysOverFour", "أيام إضافية فوق أربعة أيام"],
@@ -123,6 +131,12 @@ export function CompactSchedulePanel({
   return (
     <Card className="p-4 space-y-3" dir="rtl">
       <h2 className="font-bold">تحسين توزيع الجدول</h2>
+      {extendedPolicy && (
+        <p className="text-sm">
+          لكل مجموعة طلاب فعلية يوم واحد كحد أقصى بعد الثانية، يشمل النظري والعملي معًا. يمكن أن
+          يختلف يوم التمديد بين مجموعات المستوى نفسه.
+        </p>
+      )}
       <p className="text-sm text-muted-foreground">
         الهدف ثلاثة أيام حضور، ومنها توزيع ٣–٣–٢ لثماني محاضرات عندما تسمح مددها والحدود اليومية.
         يُسمح بأربعة أيام بعد إثبات تعذر ثلاثة، وبخمسة أيام كاستثناء حرج بعد إثبات تعذر ثلاثة

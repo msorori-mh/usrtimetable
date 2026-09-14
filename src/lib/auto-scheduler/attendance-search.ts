@@ -1,5 +1,12 @@
 /** Complete finite-domain search. Exhaustion, never a timeout, authorizes relaxation. */
-import { context, feasible, minutes, type Session, type Snapshot } from "./compact.ts";
+import {
+  context,
+  feasible,
+  minutes,
+  studentWeeklyCapacity,
+  type Session,
+  type Snapshot,
+} from "./compact.ts";
 
 export type AttendanceSearchStatus = "feasible" | "infeasible" | "unknown";
 export interface AttendanceAttempt {
@@ -168,7 +175,6 @@ async function runAttendanceSearch(
         available.add(template.day_of_week);
       studentAvailableDays.set(p, available);
     }
-  const dailyLimit = (snapshot.settings.max_daily_hours_per_section || 6) * 60;
   const ordered = [...sessions].sort(
     (a, b) =>
       Number(b.is_locked) - Number(a.is_locked) ||
@@ -184,7 +190,8 @@ async function runAttendanceSearch(
     }
     if (
       [...studentMinutes].some(
-        ([p, n]) => n > dailyLimit * Math.min(days, studentAvailableDays.get(p)!.size),
+        ([p, n]) =>
+          n > studentWeeklyCapacity(snapshot, Math.min(days, studentAvailableDays.get(p)!.size)),
       )
     ) {
       record(days, "infeasible", "capacity");
