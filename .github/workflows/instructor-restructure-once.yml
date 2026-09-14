@@ -64,7 +64,17 @@ jobs:
           s=re.sub(r'netHours:\s*base === null \? null : round2\(Math\.max\(0, base - release\)\),', 'netHours: effectiveInstructorWeeklyHours(base, release),', s)
           p.write_text(s)
 
-          # The weekly preflight source is committed directly on the branch; keep it intact.
+          # Fix the generated preflight test fixture so it is a valid canonical V2 operation.
+          p=Path('tests/instructor-hr-restructure.test.ts')
+          s=p.read_text()
+          marker='        study_system: "regular",\n        _component_total_hours: hours,\n'
+          if marker in s and 'component_type: "theory"' not in s[s.index('describe("weekly teaching-hours'):]:
+              s=s.replace(
+                  marker,
+                  '        study_system: "regular",\n        component_type: "theory",\n        _component_weekly_hours: hours,\n        _component_total_hours: hours,\n',
+                  1,
+              )
+          p.write_text(s)
 
           p=Path('src/integrations/supabase/types.ts')
           s=p.read_text()
@@ -83,6 +93,7 @@ jobs:
           grep -q '_instructor_administrative_release_hours' src/lib/excel-import/teaching-assignments-v2-hours-preflight.ts
           grep -q 'operation.instructorAdminReleaseHours' src/lib/excel-import/teaching-assignments-v2-hours-preflight.ts
           grep -q 'effectiveInstructorWeeklyHours' src/lib/excel-import/teaching-assignments-v2-hours-preflight.ts
+          grep -q 'component_type: "theory"' tests/instructor-hr-restructure.test.ts
       - name: Prettier
         run: |
           bunx prettier --write \
