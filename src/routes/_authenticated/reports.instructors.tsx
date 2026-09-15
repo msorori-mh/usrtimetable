@@ -5,9 +5,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAccessibleColleges, useActiveCollege } from "@/hooks/use-colleges";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { ReportShell } from "@/components/reports/report-shell";
+import { ReportFilterBar, ReportFilterField } from "@/components/reports/report-filter-bar";
 import { ReportDataTable, ReportSection } from "@/components/reports/report-section";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -214,6 +214,12 @@ function Report() {
     departments.isLoading ||
     supportDepartments.isLoading ||
     types.isLoading;
+  const activeFilterSummary = [
+    search.trim() ? `بحث: ${search.trim()}` : "",
+    status === "all" ? "" : `الحالة: ${status === "active" ? "نشط" : "غير نشط"}`,
+    typeId === "all" ? "" : `الفئة: ${typeMap.get(typeId) ?? "فئة محددة"}`,
+    departmentId === "all" ? "" : `القسم: ${departmentMap.get(departmentId) ?? "قسم محدد"}`,
+  ].filter(Boolean);
   const filterSummary = [
     status === "all" ? "كل الحالات" : status === "active" ? "نشط" : "غير نشط",
     typeId === "all" ? "كل الفئات" : (typeMap.get(typeId) ?? "فئة محددة"),
@@ -246,68 +252,81 @@ function Report() {
         { label: "إجمالي النصاب الفعلي", value: totalQuota, tone: "accent" },
       ]}
       filters={
-        <Card className="report-no-print grid gap-3 p-4 md:grid-cols-4">
-          <div>
-            <label className="text-xs text-muted-foreground">بحث</label>
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="الاسم، رقم الموظف، البريد…"
-            />
-          </div>
-          <div>
-            <label className="text-xs text-muted-foreground">الحالة</label>
-            <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">الكل</SelectItem>
-                <SelectItem value="active">نشط</SelectItem>
-                <SelectItem value="inactive">غير نشط</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <label className="text-xs text-muted-foreground">فئة المحاضر</label>
-            <Select value={typeId} onValueChange={setTypeId}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">الكل</SelectItem>
-                {(types.data ?? []).map((t) => (
-                  <SelectItem key={t.id} value={t.id}>
-                    {t.name_ar}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <label className="text-xs text-muted-foreground">قسم التبعية</label>
-            <Select value={departmentId} onValueChange={setDepartmentId}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">الكل</SelectItem>
-                {departmentItems.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>
-                    {d.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="space-y-2">
+          <ReportFilterBar
+            search={{
+              value: search,
+              onChange: setSearch,
+              placeholder: "الاسم، رقم الموظف، البريد…",
+            }}
+            basic={
+              <>
+                <ReportFilterField label="الحالة">
+                  <Select value={status} onValueChange={setStatus}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">الكل</SelectItem>
+                      <SelectItem value="active">نشط</SelectItem>
+                      <SelectItem value="inactive">غير نشط</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </ReportFilterField>
+                <ReportFilterField label="فئة المحاضر">
+                  <Select value={typeId} onValueChange={setTypeId}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">الكل</SelectItem>
+                      {(types.data ?? []).map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.name_ar}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </ReportFilterField>
+              </>
+            }
+            advanced={
+              <ReportFilterField label="قسم التبعية">
+                <Select value={departmentId} onValueChange={setDepartmentId}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">الكل</SelectItem>
+                    {departmentItems.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </ReportFilterField>
+            }
+            activeSummary={activeFilterSummary}
+            onClear={
+              activeFilterSummary.length
+                ? () => {
+                    setSearch("");
+                    setStatus("all");
+                    setTypeId("all");
+                    setDepartmentId("all");
+                  }
+                : undefined
+            }
+          />
           {me?.isInstitutionalViewer && (
-            <div className="md:col-span-4 flex justify-end">
+            <div className="report-no-print flex justify-end">
               <Button asChild variant="outline" size="sm">
                 <Link to="/instructors">تعديل بيانات المحاضرين</Link>
               </Button>
             </div>
           )}
-        </Card>
+        </div>
       }
       emptyMessage={
         search ? "لا توجد بيانات محاضرين مطابقة للبحث." : "لا توجد بيانات محاضرين في هذه الكلية."
