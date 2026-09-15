@@ -11,8 +11,8 @@
  * weekly load in `max_weekly_hours` (plus `administrative_release_hours`).
  *
  * Resolution order (read-only, no data is invented):
- *   1. active rank policy hours, when a policy exists   → source "policy"
- *   2. the member's own approved weekly hours            → source "instructor"
+ *   1. the member’s own approved weekly hours          → source "instructor"
+ *   2. active rank policy hours, when a policy exists  → source "policy"
  *   3. otherwise                                         → source "missing"
  *
  * Zero is a REAL approved value (source stays "policy"/"instructor"); only a
@@ -60,8 +60,8 @@ export function resolveInstructorQuota(input: QuotaInput): ResolvedQuota {
     : 0;
   const policy = isRealNumber(input.policyRequiredHours) ? round2(input.policyRequiredHours) : null;
   const own = isRealNumber(input.maxWeeklyHours) ? round2(input.maxWeeklyHours) : null;
-  const base = policy ?? own;
-  const source: QuotaSource = policy !== null ? "policy" : own !== null ? "instructor" : "missing";
+  const base = own ?? policy;
+  const source: QuotaSource = own !== null ? "instructor" : policy !== null ? "policy" : "missing";
   return {
     baseHours: base,
     releaseHours: release,
