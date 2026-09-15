@@ -35,14 +35,14 @@ export function SharedLecturesPanel({ collegeId }: { collegeId: string }) {
       qc.invalidateQueries();
       toast.success("تم تحديث المحاضرة المشتركة");
     },
-    onError: () => toast.error("تعذر تغيير الدمج. راجع السعة والإسنادات الحالية، ثم حدّث الصفحة."),
+    onError: () => toast.error("تعذر تغيير الدمج. راجع السعة واكتمال الدفعات والإسنادات وحصص الجداول الحالية، ثم حدّث الصفحة."),
   });
   return (
     <Card className="mb-4 p-4">
       <h2 className="font-semibold">المحاضرات المشتركة</h2>
       <p className="mb-3 text-sm text-muted-foreground">
-        محاضرة نظرية واحدة للعام والموازي، بإسناد واحد واحتساب حضور الدفعتين. تبقى مجموعات العملي
-        مستقلة.
+        دمج محاضرات دفعتين كاملتين ضمن النظام نفسه: عام مع عام أو موازي مع موازي، بشرط
+        تطابق المقرر والساعات وسعة القاعة. تبقى مجموعات العملي مستقلة.
       </p>
       {links.isError || candidates.isError ? (
         <p role="alert">تعذر تحميل بيانات المحاضرات المشتركة.</p>
