@@ -65,6 +65,7 @@ import { Route as AuthenticatedReportsDataReadinessRouteImport } from './routes/
 import { Route as AuthenticatedReportsDepartmentScheduleRouteImport } from './routes/_authenticated/reports.department-schedule'
 import { Route as AuthenticatedReportsInstructorScheduleRouteImport } from './routes/_authenticated/reports.instructor-schedule'
 import { Route as AuthenticatedReportsInstructorWorkloadRouteImport } from './routes/_authenticated/reports.instructor-workload'
+import { Route as AuthenticatedReportsInstructorsRouteImport } from './routes/_authenticated/reports.instructors'
 import { Route as AuthenticatedReportsProgramLevelTimetableRouteImport } from './routes/_authenticated/reports.program-level-timetable'
 import { Route as AuthenticatedReportsPublishedTimetableRouteImport } from './routes/_authenticated/reports.published-timetable'
 import { Route as AuthenticatedReportsQualityAnalyticsRouteImport } from './routes/_authenticated/reports.quality-analytics'
@@ -393,6 +394,12 @@ const AuthenticatedReportsInstructorWorkloadRoute =
     path: '/instructor-workload',
     getParentRoute: () => AuthenticatedReportsRoute,
   } as any)
+const AuthenticatedReportsInstructorsRoute =
+  AuthenticatedReportsInstructorsRouteImport.update({
+    id: '/instructors',
+    path: '/instructors',
+    getParentRoute: () => AuthenticatedReportsRoute,
+  } as any)
 const AuthenticatedReportsProgramLevelTimetableRoute =
   AuthenticatedReportsProgramLevelTimetableRouteImport.update({
     id: '/program-level-timetable',
@@ -515,6 +522,7 @@ export interface FileRoutesByFullPath {
   '/reports/department-schedule': typeof AuthenticatedReportsDepartmentScheduleRoute
   '/reports/instructor-schedule': typeof AuthenticatedReportsInstructorScheduleRoute
   '/reports/instructor-workload': typeof AuthenticatedReportsInstructorWorkloadRoute
+  '/reports/instructors': typeof AuthenticatedReportsInstructorsRoute
   '/reports/program-level-timetable': typeof AuthenticatedReportsProgramLevelTimetableRoute
   '/reports/published-timetable': typeof AuthenticatedReportsPublishedTimetableRoute
   '/reports/quality-analytics': typeof AuthenticatedReportsQualityAnalyticsRoute
@@ -582,6 +590,7 @@ export interface FileRoutesByTo {
   '/reports/department-schedule': typeof AuthenticatedReportsDepartmentScheduleRoute
   '/reports/instructor-schedule': typeof AuthenticatedReportsInstructorScheduleRoute
   '/reports/instructor-workload': typeof AuthenticatedReportsInstructorWorkloadRoute
+  '/reports/instructors': typeof AuthenticatedReportsInstructorsRoute
   '/reports/program-level-timetable': typeof AuthenticatedReportsProgramLevelTimetableRoute
   '/reports/published-timetable': typeof AuthenticatedReportsPublishedTimetableRoute
   '/reports/quality-analytics': typeof AuthenticatedReportsQualityAnalyticsRoute
@@ -652,6 +661,7 @@ export interface FileRoutesById {
   '/_authenticated/reports/department-schedule': typeof AuthenticatedReportsDepartmentScheduleRoute
   '/_authenticated/reports/instructor-schedule': typeof AuthenticatedReportsInstructorScheduleRoute
   '/_authenticated/reports/instructor-workload': typeof AuthenticatedReportsInstructorWorkloadRoute
+  '/_authenticated/reports/instructors': typeof AuthenticatedReportsInstructorsRoute
   '/_authenticated/reports/program-level-timetable': typeof AuthenticatedReportsProgramLevelTimetableRoute
   '/_authenticated/reports/published-timetable': typeof AuthenticatedReportsPublishedTimetableRoute
   '/_authenticated/reports/quality-analytics': typeof AuthenticatedReportsQualityAnalyticsRoute
@@ -722,6 +732,7 @@ export interface FileRouteTypes {
     | '/reports/department-schedule'
     | '/reports/instructor-schedule'
     | '/reports/instructor-workload'
+    | '/reports/instructors'
     | '/reports/program-level-timetable'
     | '/reports/published-timetable'
     | '/reports/quality-analytics'
@@ -789,6 +800,7 @@ export interface FileRouteTypes {
     | '/reports/department-schedule'
     | '/reports/instructor-schedule'
     | '/reports/instructor-workload'
+    | '/reports/instructors'
     | '/reports/program-level-timetable'
     | '/reports/published-timetable'
     | '/reports/quality-analytics'
@@ -858,6 +870,7 @@ export interface FileRouteTypes {
     | '/_authenticated/reports/department-schedule'
     | '/_authenticated/reports/instructor-schedule'
     | '/_authenticated/reports/instructor-workload'
+    | '/_authenticated/reports/instructors'
     | '/_authenticated/reports/program-level-timetable'
     | '/_authenticated/reports/published-timetable'
     | '/_authenticated/reports/quality-analytics'
@@ -1272,6 +1285,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedReportsInstructorWorkloadRouteImport
       parentRoute: typeof AuthenticatedReportsRoute
     }
+    '/_authenticated/reports/instructors': {
+      id: '/_authenticated/reports/instructors'
+      path: '/instructors'
+      fullPath: '/reports/instructors'
+      preLoaderRoute: typeof AuthenticatedReportsInstructorsRouteImport
+      parentRoute: typeof AuthenticatedReportsRoute
+    }
     '/_authenticated/reports/program-level-timetable': {
       id: '/_authenticated/reports/program-level-timetable'
       path: '/program-level-timetable'
@@ -1360,6 +1380,7 @@ interface AuthenticatedReportsRouteChildren {
   AuthenticatedReportsDepartmentScheduleRoute: typeof AuthenticatedReportsDepartmentScheduleRoute
   AuthenticatedReportsInstructorScheduleRoute: typeof AuthenticatedReportsInstructorScheduleRoute
   AuthenticatedReportsInstructorWorkloadRoute: typeof AuthenticatedReportsInstructorWorkloadRoute
+  AuthenticatedReportsInstructorsRoute: typeof AuthenticatedReportsInstructorsRoute
   AuthenticatedReportsProgramLevelTimetableRoute: typeof AuthenticatedReportsProgramLevelTimetableRoute
   AuthenticatedReportsPublishedTimetableRoute: typeof AuthenticatedReportsPublishedTimetableRoute
   AuthenticatedReportsQualityAnalyticsRoute: typeof AuthenticatedReportsQualityAnalyticsRoute
@@ -1386,6 +1407,7 @@ const AuthenticatedReportsRouteChildren: AuthenticatedReportsRouteChildren = {
     AuthenticatedReportsInstructorScheduleRoute,
   AuthenticatedReportsInstructorWorkloadRoute:
     AuthenticatedReportsInstructorWorkloadRoute,
+  AuthenticatedReportsInstructorsRoute: AuthenticatedReportsInstructorsRoute,
   AuthenticatedReportsProgramLevelTimetableRoute:
     AuthenticatedReportsProgramLevelTimetableRoute,
   AuthenticatedReportsPublishedTimetableRoute:

@@ -61,7 +61,7 @@ describe("read_only («مشاهد») is reports-only — regression", () => {
   test("app layout drives the reports-only nav from isReportsOnlyRole", () => {
     const src = read("src/components/app-layout.tsx");
     expect(src).toContain("isReportsOnlyRole(user)");
-    expect(src).toMatch(/reportsOnly \? "core" : mode/);
+    expect(src).toContain('reportsOnly ? "core" : academicAffairs ? "all" : mode');
   });
 
   test("reports-only on /reports does not see the active-college badge", () => {

@@ -4,7 +4,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAccessibleColleges, useActiveCollege } from "@/hooks/use-colleges";
-import { useCanManageActiveCollege } from "@/hooks/use-can-manage";
+import {
+  useCanEditInstructorsActiveCollege,
+  useCanManageActiveCollege,
+} from "@/hooks/use-can-manage";
 import { CollegeSwitcher } from "@/components/college-switcher";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -148,6 +151,7 @@ function InstructorDirectory() {
   const { review } = Route.useSearch();
   const navigate = Route.useNavigate();
   const canManage = useCanManageActiveCollege();
+  const canEdit = useCanEditInstructorsActiveCollege();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Instructor | null>(null);
@@ -279,7 +283,8 @@ function InstructorDirectory() {
   const save = useMutation({
     mutationFn: async () => {
       if (!active) throw new Error("اختر كلّية");
-      if (!canManage) throw new Error("صلاحيتك للقراءة فقط");
+      if (!canEdit) throw new Error("صلاحيتك للقراءة فقط");
+      if (!editing && !canManage) throw new Error("صلاحيتك تسمح بتعديل المحاضرين الحاليين فقط");
       if (!form.full_name.trim()) throw new Error("الاسم مطلوب");
       const selectedType = ((types ?? []) as InstructorTypeRow[]).find(
         (t) => t.id === form.instructor_type_id,
@@ -364,7 +369,32 @@ function InstructorDirectory() {
             : null,
         college_id: active.id,
       };
-      if (editing) {
+      if (editing && !canManage) {
+        const { error } = await supabase.rpc(
+          "academic_affairs_update_instructor" as never,
+          {
+            p_instructor_id: editing.id,
+            p_full_name: payload.full_name,
+            p_full_name_ar: payload.full_name_ar,
+            p_employee_number: payload.employee_number,
+            p_specialization: payload.specialization,
+            p_academic_rank: payload.academic_rank,
+            p_email: payload.email,
+            p_phone: payload.phone,
+            p_employment_type: payload.employment_type,
+            p_max_weekly_hours: payload.max_weekly_hours,
+            p_administrative_release_hours: payload.administrative_release_hours,
+            p_is_active: payload.is_active,
+            p_instructor_type_id: payload.instructor_type_id,
+            p_affiliation_college_id: payload.affiliation_college_id,
+            p_affiliation_department_id: payload.affiliation_department_id,
+            p_administrative_position: payload.administrative_position,
+            p_administrative_department_id: payload.administrative_department_id,
+            p_administrative_support_department_id: payload.administrative_support_department_id,
+          } as never,
+        );
+        if (error) throw error;
+      } else if (editing) {
         const { error } = await supabase
           .from("instructors")
           .update(payload)
@@ -527,11 +557,13 @@ function InstructorDirectory() {
             }
           />
         </div>
-        {canManage && (
+        {canEdit && (
           <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={startCreate}>محاضر جديد</Button>
-            </DialogTrigger>
+            {canManage && (
+              <DialogTrigger asChild>
+                <Button onClick={startCreate}>محاضر جديد</Button>
+              </DialogTrigger>
+            )}
             <DialogContent
               className="max-h-[90dvh] max-w-lg overflow-y-auto"
               onOpenAutoFocus={(event) => {
@@ -849,22 +881,24 @@ function InstructorDirectory() {
                                   لا توجد أقسام مساندة مسجلة لهذه الكلية.
                                 </p>
                               )}
-                            <div className="flex gap-2">
-                              <Input
-                                aria-label="اسم قسم مساند جديد"
-                                placeholder="اسم قسم مساند جديد"
-                                value={supportName}
-                                onChange={(e) => setSupportName(e.target.value)}
-                                maxLength={150}
-                              />
-                              <Button
-                                variant="outline"
-                                disabled={addSupport.isPending || !supportName.trim()}
-                                onClick={() => addSupport.mutate()}
-                              >
-                                إضافة
-                              </Button>
-                            </div>
+                            {canManage && (
+                              <div className="flex gap-2">
+                                <Input
+                                  aria-label="اسم قسم مساند جديد"
+                                  placeholder="اسم قسم مساند جديد"
+                                  value={supportName}
+                                  onChange={(e) => setSupportName(e.target.value)}
+                                  maxLength={150}
+                                />
+                                <Button
+                                  variant="outline"
+                                  disabled={addSupport.isPending || !supportName.trim()}
+                                  onClick={() => addSupport.mutate()}
+                                >
+                                  إضافة
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -959,11 +993,13 @@ function InstructorDirectory() {
             </SelectContent>
           </Select>
         </div>
-        <Button asChild variant="outline">
-          <Link to="/data-onboarding" search={{ step: "readiness_check" }}>
-            العودة إلى المراجعة النهائية
-          </Link>
-        </Button>
+        {canManage && (
+          <Button asChild variant="outline">
+            <Link to="/data-onboarding" search={{ step: "readiness_check" }}>
+              العودة إلى المراجعة النهائية
+            </Link>
+          </Button>
+        )}
       </div>
 
       <Card className="mb-4 space-y-3 p-4">
@@ -1170,7 +1206,7 @@ function InstructorDirectory() {
                     <p className="text-xs text-muted-foreground">الصفة: {i.admin_tasks}</p>
                   )}
                 </div>
-                {canManage && (
+                {canEdit && (
                   <div className="flex flex-wrap gap-1">
                     {(review || isMissingInstructorSpecialization(i)) && (
                       <Button
@@ -1189,16 +1225,18 @@ function InstructorDirectory() {
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      aria-label={`حذف ${i.full_name}`}
-                      onClick={() => {
-                        if (confirm("حذف المحاضر؟")) del.mutate(i.id);
-                      }}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                    {canManage && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        aria-label={`حذف ${i.full_name}`}
+                        onClick={() => {
+                          if (confirm("حذف المحاضر؟")) del.mutate(i.id);
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                   </div>
                 )}
               </li>

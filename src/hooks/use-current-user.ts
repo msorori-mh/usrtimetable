@@ -14,7 +14,7 @@ export interface CurrentUser {
   isReadOnly: boolean;
   /**
    * Academic affairs («إدارة الشؤون الأكاديمية», DB value `institutional_viewer`):
-   * reports only, restricted to the colleges assigned in user_colleges, never writes.
+   * reports + instructor data for assigned colleges; instructor edits use a dedicated RPC only.
    */
   isInstitutionalViewer: boolean;
 }

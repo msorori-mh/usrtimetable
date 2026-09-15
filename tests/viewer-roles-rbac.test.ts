@@ -1,28 +1,25 @@
-/**
- * RBAC contract for the two read-only roles.
- *
- * `read_only` («مشاهد») = reports only. `institutional_viewer` («مشاهد مؤسسي») =
- * full-platform read-only. Neither gains any write here.
- */
+/** RBAC contract for read_only and academic affairs (institutional_viewer). */
 import { describe, expect, it } from "vitest";
 import { ADMIN_PAGES, ALL, CORE_PATH, OPERATIONAL, canAccess } from "@/lib/admin-nav";
-
-const visiblePaths = (role: "read_only" | "institutional_viewer") =>
-  [...ADMIN_PAGES.filter((p) => canAccess(p, [role])).map((p) => p.to)].concat(
-    CORE_PATH.filter((s) => canAccess(s, [role])).map((s) => s.to),
-  );
 import {
   INSTITUTIONAL_VIEWER_ROLE_LABEL_AR,
   READ_ONLY_ROLE_LABEL_AR,
   REPORTS_ONLY_HOME,
   assignsAllColleges,
+  isAcademicAffairsRole,
   isFullPlatformViewerRole,
   isReportsOnlyRole,
   isViewerOnlyRole,
   requiresCollegeAssignment,
   resolveReportsOnlyRedirect,
+  resolveViewerScopeRedirect,
   scopeCollegesForRole,
 } from "@/lib/viewer-roles";
+
+const visiblePaths = (role: "read_only" | "institutional_viewer") =>
+  [...ADMIN_PAGES.filter((p) => canAccess(p, [role])).map((p) => p.to)].concat(
+    CORE_PATH.filter((s) => canAccess(s, [role])).map((s) => s.to),
+  );
 
 const READ_ONLY = { isReadOnly: true } as const;
 const VIEWER = { isInstitutionalViewer: true } as const;
@@ -31,9 +28,9 @@ const SUPER = { isSuperAdmin: true, isReadOnly: true } as const;
 const COLLEGE_ADMIN = { isCollegeAdmin: true, isReadOnly: true } as const;
 
 describe("labels", () => {
-  it("keeps the two viewer roles distinct", () => {
+  it("keeps the generic viewer and academic affairs distinct", () => {
     expect(READ_ONLY_ROLE_LABEL_AR).toBe("مشاهد");
-    expect(INSTITUTIONAL_VIEWER_ROLE_LABEL_AR).toBe("مشاهد مؤسسي");
+    expect(INSTITUTIONAL_VIEWER_ROLE_LABEL_AR).toBe("إدارة الشؤون الأكاديمية");
   });
 });
 
@@ -57,28 +54,32 @@ describe("read_only-only account is reports-only", () => {
   });
 });
 
-describe("institutional_viewer-only account browses the platform", () => {
-  it("is never narrowed to /reports", () => {
+describe("institutional_viewer is the academic-affairs role", () => {
+  it("allows reports + instructors and blocks operational pages", () => {
     expect(isReportsOnlyRole(VIEWER)).toBe(false);
-    expect(isFullPlatformViewerRole(VIEWER)).toBe(true);
-    for (const p of ["/dashboard", "/courses", "/schedule-builder"]) {
-      expect(resolveReportsOnlyRedirect(VIEWER, p)).toBeNull();
-    }
+    expect(isAcademicAffairsRole(VIEWER)).toBe(true);
+    expect(isFullPlatformViewerRole(VIEWER)).toBe(false);
+    expect(resolveViewerScopeRedirect(VIEWER, "/reports")).toBeNull();
+    expect(resolveViewerScopeRedirect(VIEWER, "/instructors")).toBeNull();
+    expect(resolveViewerScopeRedirect(VIEWER, "/dashboard")).toBe(REPORTS_ONLY_HOME);
   });
 
-  it("sees operational pages plus reports in the navigation", () => {
+  it("sees only instructors and reports in navigation", () => {
     const paths = visiblePaths("institutional_viewer");
+    expect(paths).toContain("/instructors");
     expect(paths).toContain("/reports");
-    expect(paths.some((p) => !p.startsWith("/reports"))).toBe(true);
-    expect(OPERATIONAL).toContain("institutional_viewer");
+    expect(paths).not.toContain("/schedule-builder");
+    expect(OPERATIONAL).not.toContain("institutional_viewer");
     expect(OPERATIONAL).not.toContain("read_only");
     expect(ALL).toContain("read_only");
+    expect(ALL).toContain("institutional_viewer");
   });
 });
 
 describe("multi-role safety", () => {
-  it("read_only + institutional_viewer is not reports-only", () => {
+  it("read_only + institutional_viewer follows academic-affairs scope", () => {
     expect(isReportsOnlyRole(BOTH)).toBe(false);
+    expect(isAcademicAffairsRole(BOTH)).toBe(true);
   });
 
   it("admins keep full behaviour and are never narrowed", () => {
@@ -109,29 +110,5 @@ describe("college assignment", () => {
     expect(requiresCollegeAssignment("college_admin")).toBe(true);
     expect(requiresCollegeAssignment("read_only")).toBe(false);
     expect(requiresCollegeAssignment("institutional_viewer")).toBe(false);
-  });
-
-  it("a newly created college is part of the viewer scope", () => {
-    const colleges = [{ id: "c1" }, { id: "c2" }, { id: "c3-new" }];
-    const assigned = colleges.map((c) => c.id); // trigger assigns the new college too
-    expect(scopeCollegesForRole(colleges, assigned, true)).toHaveLength(3);
-  });
-});
-
-describe("existing viewer account fixture (read_only only, all colleges)", () => {
-  const account = { roles: ["read_only"] as const, assignedColleges: 8, totalColleges: 8 };
-  const flags = {
-    isSuperAdmin: account.roles.includes("super_admin" as never),
-    isCollegeAdmin: account.roles.includes("college_admin" as never),
-    isReadOnly: account.roles.includes("read_only"),
-    isInstitutionalViewer: account.roles.includes("institutional_viewer" as never),
-  };
-
-  it("is reports-only and keeps every college as read scope", () => {
-    expect(isReportsOnlyRole(flags)).toBe(true);
-    expect(resolveReportsOnlyRedirect(flags, "/dashboard")).toBe(REPORTS_ONLY_HOME);
-    expect(resolveReportsOnlyRedirect(flags, "/reports")).toBeNull();
-    expect(account.assignedColleges).toBe(account.totalColleges);
-    expect(assignsAllColleges("read_only")).toBe(true);
   });
 });

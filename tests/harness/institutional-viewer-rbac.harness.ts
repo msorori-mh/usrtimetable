@@ -1,14 +1,12 @@
 import { readPrimaryNavigationSource } from "./nav-source";
 /**
- * INSTITUTIONAL_VIEWER_RBAC — source-only static contract harness.
+ * ACADEMIC_AFFAIRS_RBAC — source-only static contract harness.
  *
- * Proves BY SOURCE INSPECTION (no live database is contacted):
- *  1. the role exists in the app role union and in the generated DB enum type;
- *  2. the role browses the whole platform read-only in navigation (user label: «مشاهد مؤسسي»);
- *  3. can_manage_college / useCanManageActiveCollege were NOT widened;
- *  4. the two migrations are split (enum add, then usage) and touch SELECT only;
- *  5. admin pages render a read-only variant with no write controls for the role;
- *  6. user creation accepts the role without requiring a college.
+ * `institutional_viewer` is the dedicated «إدارة الشؤون الأكاديمية» role:
+ *  - reports + instructor directory only;
+ *  - may edit existing instructor basic data through one scoped RPC;
+ *  - may NOT create/delete instructors or obtain generic college write access;
+ *  - generic `read_only` remains reports-only.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -24,7 +22,6 @@ function assert(cond: boolean, msg: string) {
   }
 }
 
-// ---------- 1) types ----------
 const cu = read("src/hooks/use-current-user.ts");
 assert(
   /export type AppRole =[^;]*"institutional_viewer"/.test(cu),
@@ -32,348 +29,178 @@ assert(
 );
 assert(
   cu.includes('isInstitutionalViewer: roles.includes("institutional_viewer")'),
-  "isInstitutionalViewer derives from user_roles (never user_metadata)",
+  "isInstitutionalViewer derives from user_roles",
 );
-assert(!cu.includes("user_metadata"), "no user_metadata used for authorization");
+assert(!cu.includes("user_metadata"), "authorization never comes from user_metadata");
 
 const dbTypes = read("src/integrations/supabase/types.ts");
+assert(dbTypes.includes("institutional_viewer"), "Supabase generated types carry the role");
+
+const viewerRoles = read("src/lib/viewer-roles.ts");
 assert(
-  dbTypes.includes("institutional_viewer"),
-  "generated Supabase types carry the new app_role value",
+  viewerRoles.includes('INSTITUTIONAL_VIEWER_ROLE_LABEL_AR = "إدارة الشؤون الأكاديمية"'),
+  "institutional_viewer label is إدارة الشؤون الأكاديمية",
+);
+assert(viewerRoles.includes("isAcademicAffairsRole"), "academic-affairs role helper exists");
+assert(
+  viewerRoles.includes('pathname === "/instructors"'),
+  "academic affairs path scope includes instructor directory",
+);
+assert(viewerRoles.includes("resolveViewerScopeRedirect"), "viewer scope redirect is centralized");
+
+const nav = readPrimaryNavigationSource(ROOT);
+assert(
+  /export const OPERATIONAL: Role\[\] = \["super_admin", "college_admin"\]/.test(nav),
+  "institutional_viewer is excluded from operational pages",
+);
+assert(
+  /export const INSTRUCTOR_ACCESS: Role\[\] = \["super_admin", "college_admin", "institutional_viewer"\]/.test(
+    nav,
+  ),
+  "instructor access explicitly includes academic affairs",
+);
+assert(
+  /to:\s*"\/instructors"[\s\S]{0,500}roles:\s*INSTRUCTOR_ACCESS/.test(nav),
+  "instructors navigation entry uses the scoped instructor role list",
+);
+assert(
+  /to:\s*"\/reports"[\s\S]{0,500}roles:\s*ALL/.test(nav),
+  "reports navigation remains available to viewer roles",
 );
 
-// ---------- 2) navigation: full platform read, reports role excluded ----------
-const layout = readPrimaryNavigationSource(ROOT);
-assert(
-  /const ALL: Role\[\] = \["super_admin", "college_admin", "read_only", "institutional_viewer"\]/.test(
-    layout,
-  ),
-  "ALL roles constant includes institutional_viewer",
-);
-const roleLists = [...layout.matchAll(/roles:\s*(ALL|OPERATIONAL|\[[^\]]*\])/g)].map((m) => m[1]);
-assert(roleLists.length > 20, "navigation role lists were found for inspection");
-// institutional_viewer («مشاهد مؤسسي») browses the platform read-only, so it is
-// part of OPERATIONAL. read_only («مشاهد») is reports-only: it may appear ONLY
-// on the two /reports entries (which use ALL).
-assert(
-  /export const OPERATIONAL: Role\[\] = \["super_admin", "college_admin", "institutional_viewer"\]/.test(
-    layout,
-  ),
-  "OPERATIONAL roles include institutional_viewer and exclude read_only",
-);
-const readOnlyVisible = roleLists.filter((r) => r === "ALL" || r.includes("read_only"));
-assert(
-  readOnlyVisible.length === 2 && readOnlyVisible.every((r) => r === "ALL"),
-  `read_only appears only on the reports entries (found: ${readOnlyVisible.join(" | ")})`,
-);
-assert(
-  layout.includes("مشاهد مؤسسي") || layout.includes("INSTITUTIONAL_VIEWER_ROLE_LABEL_AR"),
-  "navigation source uses the Arabic label «مشاهد مؤسسي»",
-);
-
-// ---------- 3) no manage-privilege expansion ----------
 const canManageHook = read("src/hooks/use-can-manage.ts");
+const genericManage = canManageHook.slice(
+  canManageHook.indexOf("export function useCanManageActiveCollege"),
+  canManageHook.indexOf("export function useCanEditInstructorsActiveCollege"),
+);
 assert(
-  !canManageHook.includes("institutional_viewer") &&
-    !canManageHook.includes("isInstitutionalViewer"),
-  "useCanManageActiveCollege NOT widened (can_manage stays false for the viewer)",
+  !genericManage.includes("isInstitutionalViewer"),
+  "useCanManageActiveCollege is NOT widened to academic affairs",
+);
+assert(
+  /export function useCanEditInstructorsActiveCollege/.test(canManageHook) &&
+    /me\.isInstitutionalViewer\s*&&\s*me\.collegeIds\.includes\(active\.id\)/.test(canManageHook),
+  "dedicated instructor-edit capability requires academic-affairs role + assigned college",
 );
 
-// ---------- 4) migrations: split + SELECT-only ----------
-const enumMigration = read(
-  "supabase/migrations/20260907011528_5aff0fb9-b1ca-461d-9396-b3a52b763f2d.sql",
+const layout = read("src/components/app-layout.tsx");
+assert(
+  layout.includes("isAcademicAffairsRole") && layout.includes("restrictedViewer"),
+  "app layout recognizes academic affairs as a restricted viewer",
 );
 assert(
-  /ALTER TYPE public\.app_role ADD VALUE IF NOT EXISTS 'institutional_viewer'/.test(enumMigration),
-  "migration 1 only adds the enum value",
-);
-assert(
-  !/CREATE POLICY|CREATE OR REPLACE FUNCTION/i.test(enumMigration),
-  "migration 1 does not use the new enum value in the same transaction",
+  layout.includes("إدارة الشؤون الأكاديمية: التقارير وبيانات المحاضرين لجميع الكلّيات."),
+  "app layout explains the academic-affairs scope",
 );
 
-const rlsMigration = read(
-  "supabase/migrations/20260907011642_82a09c5b-0bb2-4101-8ed8-1e27db772d16.sql",
-);
+const gate = read("src/components/reports-only-gate.tsx");
 assert(
-  /CREATE OR REPLACE FUNCTION public\.can_view_college[\s\S]*is_institutional_viewer/.test(
-    rlsMigration,
-  ),
-  "migration 2 widens can_view_college only",
-);
-assert(
-  !/FUNCTION public\.can_manage_college/.test(rlsMigration),
-  "migration 2 never touches can_manage_college",
-);
-const newPolicies = [...rlsMigration.matchAll(/CREATE POLICY\s+(\w+)[\s\S]*?FOR\s+(\w+)/g)].map(
-  (m) => ({ name: m[1], cmd: m[2].toUpperCase() }),
-);
-assert(newPolicies.length >= 6, "migration 2 policies were found for inspection");
-const widenedWrite = newPolicies.filter(
-  (p) =>
-    p.cmd !== "SELECT" &&
-    !(p.name === "al_insert" && /NOT is_institutional_viewer/.test(rlsMigration)),
-);
-assert(
-  widenedWrite.length === 0,
-  `no INSERT/UPDATE/DELETE policy grants the viewer anything (offenders: ${widenedWrite
-    .map((p) => `${p.name}:${p.cmd}`)
-    .join(", ")})`,
-);
-assert(
-  /al_insert[\s\S]*NOT is_institutional_viewer\(auth\.uid\(\)\)/.test(rlsMigration),
-  "the only authenticated write policy (audit_logs insert) excludes the viewer",
+  gate.includes("resolveViewerScopeRedirect"),
+  "route gate enforces the centralized viewer scope",
 );
 
-// ---------- 5) admin pages: read-only variant, zero write controls ----------
-const helpers = read("src/lib/unauthorized-access.ts");
+const instructors = read("src/routes/_authenticated/instructors.tsx");
 assert(
-  helpers.includes("isInstitutionalReadOnlyViewer") &&
-    helpers.includes("resolveAdminReadablePageAccess") &&
-    helpers.includes("READ_ONLY_VIEW_BADGE_AR"),
-  "central access helpers exist (single guard reused by pages)",
+  instructors.includes("useCanEditInstructorsActiveCollege"),
+  "instructor page uses the dedicated edit capability",
+);
+assert(
+  instructors.includes('"academic_affairs_update_instructor"'),
+  "academic-affairs instructor edit uses the dedicated RPC",
+);
+assert(
+  instructors.includes("editing && !canManage"),
+  "dedicated RPC is used only for editing an existing row by a non-admin",
+);
+assert(
+  instructors.includes("صلاحيتك تسمح بتعديل المحاضرين الحاليين فقط"),
+  "non-admin academic affairs cannot create a new instructor",
+);
+assert(
+  /\{canManage && \([\s\S]{0,250}<DialogTrigger asChild>/.test(instructors),
+  "new-instructor trigger stays admin-only",
+);
+assert(
+  /\{canManage && \([\s\S]{0,300}aria-label=\{`حذف/.test(instructors),
+  "delete action stays admin-only",
 );
 
-for (const page of [
-  "src/routes/_authenticated/universities.tsx",
-  "src/routes/_authenticated/colleges.tsx",
-  "src/routes/_authenticated/users.tsx",
-  "src/components/data-onboarding/import-workspace.tsx",
+const migration = read(
+  "supabase/migrations/20260915034500_academic_affairs_instructor_basic_edit.sql",
+);
+assert(
+  /CREATE OR REPLACE FUNCTION public\.academic_affairs_update_instructor/.test(migration),
+  "dedicated academic-affairs update RPC exists",
+);
+assert(/SECURITY DEFINER/.test(migration), "dedicated RPC is SECURITY DEFINER");
+assert(
+  /public\.has_role\(v_actor, 'institutional_viewer'\)/.test(migration) &&
+    /public\.is_viewer_only\(v_actor\)/.test(migration) &&
+    /public\.user_in_college\(v_actor, v_current\.college_id\)/.test(migration),
+  "RPC requires academic-affairs-only actor assigned to the instructor college",
+);
+assert(
+  /INSERT INTO public\.audit_logs/.test(migration) && migration.includes("academic_affairs_update"),
+  "RPC writes an audit record",
+);
+assert(
+  !/CREATE OR REPLACE FUNCTION public\.can_manage_college/.test(migration),
+  "migration never widens can_manage_college",
+);
+assert(
+  !/INSERT INTO public\.instructors/i.test(migration) &&
+    !/DELETE FROM public\.instructors/i.test(migration),
+  "migration grants update-only behavior, not instructor create/delete",
+);
+
+const reportHub = read("src/routes/_authenticated/reports.index.tsx");
+const instructorReport = read("src/routes/_authenticated/reports.instructors.tsx");
+assert(
+  reportHub.includes("/reports/instructors") && reportHub.includes("دليل المحاضرين وبياناتهم"),
+  "reports hub links the instructor data report",
+);
+for (const label of [
+  "رقم الموظف",
+  "الاسم الافتراضي",
+  "الاسم الرباعي",
+  "كلية التبعية",
+  "قسم التبعية",
+  "التخصص",
+  "الرتبة العلمية",
+  "النصاب الأساسي",
+  "الإعفاء الإداري",
+  "النصاب الفعلي",
+  "البريد الإلكتروني",
+  "التلفون/الواتساب",
+  "الحالة",
 ]) {
-  const src = read(page);
-  assert(
-    src.includes("isInstitutionalReadOnlyViewer") && src.includes("READ_ONLY_VIEW_BADGE_AR"),
-    `${page} uses the central viewer guard and shows the read-only badge`,
-  );
-  assert(/viewOnly/.test(src), `${page} branches on viewOnly to hide write controls`);
+  assert(instructorReport.includes(label), `instructor report contains ${label}`);
 }
-
-const users = read("src/routes/_authenticated/users.tsx");
 assert(
-  /viewOnly\s*\n?\s*\?\s*Promise\.resolve/.test(users) ||
-    /viewOnly[\s\S]{0,200}Promise\.resolve\(\[\] as Awaited<ReturnType<typeof listMeta>>\)/.test(
-      users,
-    ),
-  "users page never calls adminListUserMeta for the viewer",
+  instructorReport.includes("ReportFilterBar") &&
+    instructorReport.includes("تعديل بيانات المحاضرين"),
+  "instructor report uses the shared report filters and edit handoff",
 );
-assert(/\{!viewOnly && \(/.test(users), "users page hides create/manage controls for the viewer");
 
 const usersFn = read("src/lib/users.functions.ts");
-assert(
-  usersFn.includes('eq("role", "super_admin")') &&
-    usersFn.includes("Forbidden: institution admin only"),
-  "server user-admin endpoints remain super_admin-only",
-);
 assert(
   /const ROLE = z\.enum\(\["super_admin", "college_admin", "read_only", "institutional_viewer"\]\)/.test(
     usersFn,
   ),
-  "user creation accepts the new role",
+  "user provisioning accepts institutional_viewer",
 );
 assert(
-  /assignsAllColleges\(data\.role\)/.test(usersFn) &&
-    /from\("colleges"\)\s*\.select\("id"\)/.test(usersFn),
-  "viewer-role creation auto-assigns every existing college (no manual picker)",
+  /assignsAllColleges\(data\.role\)/.test(usersFn),
+  "viewer-role provisioning auto-assigns all colleges",
 );
 assert(
-  /requiresCollegeAssignment\(data\.role\) && collegeIds\.length === 0/.test(usersFn),
-  "manual college assignment is still required for college_admin",
+  viewerRoles.includes("if (isReportsOnlyRole(me))") &&
+    viewerRoles.includes("return isReportsOnlyPath(pathname) ? null : REPORTS_ONLY_HOME"),
+  "generic read_only remains reports-only",
 );
 
-// ---------- 6) operational pages: browse-safe, execution disabled ----------
-const autoSchedule = read("src/routes/_authenticated/auto-schedule.tsx");
-assert(
-  /disabled=\{!canManage/.test(autoSchedule) && autoSchedule.includes("أنت بوضع المشاهدة"),
-  "auto-schedule run control is disabled and a viewing notice is shown",
-);
-const cleanup = read("src/routes/_authenticated/data-cleanup.tsx");
-assert(
-  cleanup.includes("{!canManage && (") && /canManage \?/.test(cleanup),
-  "data-cleanup fix actions render only when canManage",
-);
-const importPage = read("src/components/data-onboarding/import-workspace.tsx");
-const viewerBlock = importPage.slice(
-  importPage.indexOf("if (viewOnly)"),
-  importPage.indexOf("if (!canManage)"),
-);
-assert(
-  viewerBlock.includes("READ_ONLY_VIEW_BADGE_AR"),
-  "import workspace has a dedicated viewer branch",
-);
-assert(
-  !/type="file"|commitImport|onConfirm|Upload\s*\/>/.test(viewerBlock),
-  "import viewer branch contains no upload/commit controls",
-);
-
-// ---------- 7) proposed migration 3: minimal, targeted, zero-write ----------
-const zeroWrite = read(
-  "docs/migrations-proposed/20260907013500_institutional_viewer_zero_write_enforcement.sql",
-);
-const zwExec = zeroWrite.replace(/^\s*--.*$/gm, "");
-assert(zeroWrite.includes("STATUS: NOT APPLIED"), "migration 3 is documented as not applied");
-
-// no enforcement layer, no RPC surgery
-assert(
-  !/CREATE TRIGGER/i.test(zwExec) && !/DROP TRIGGER/i.test(zwExec),
-  "migration 3 creates no trigger at all",
-);
-assert(!/DO \$do\$|DO \$\$/i.test(zwExec), "migration 3 contains no DO loop over tables");
-{
-  const fns = [...zwExec.matchAll(/CREATE OR REPLACE FUNCTION public\.(\w+)/g)].map((m) => m[1]);
-  assert(
-    fns.length === 1 && fns[0] === "is_institutional_read_only_actor",
-    `the helper is the only function defined (saw: ${fns.join(", ") || "none"})`,
-  );
-  const granted = [...zwExec.matchAll(/GRANT EXECUTE ON FUNCTION public\.(\w+)/g)].map((m) => m[1]);
-  const revoked = [...zwExec.matchAll(/REVOKE ALL ON FUNCTION public\.(\w+)/g)].map((m) => m[1]);
-  assert(
-    granted.length === 1 &&
-      granted[0] === "is_institutional_read_only_actor" &&
-      revoked.length === 1 &&
-      revoked[0] === "is_institutional_read_only_actor",
-    "no RPC is re-granted or re-revoked; only the helper",
-  );
-  for (const rpc of [
-    "compute_instructor_standard_workload",
-    "get_delivery_group_assignment_candidates",
-    "list_schedule_builder_v2_work_items",
-    "list_teaching_assignment_workspace",
-    "resolve_scheduling_headcount",
-    "list_scheduling_headcount_revisions",
-    "validate_schedule_session_move",
-    "begin_schedule_quality_snapshot",
-    "can_manage_college",
-  ]) {
-    assert(!new RegExp(`\\b${rpc}\\b`).test(zwExec), `${rpc} is untouched by executable SQL`);
-  }
-}
-
-// multi-role safe helper
-assert(
-  /CREATE OR REPLACE FUNCTION public\.is_institutional_read_only_actor\(_user_id uuid\)/.test(
-    zwExec,
-  ) &&
-    /STABLE/.test(zwExec) &&
-    /SECURITY DEFINER/.test(zwExec) &&
-    /SET search_path = public, pg_temp/.test(zwExec),
-  "helper is STABLE + SECURITY DEFINER with a pinned search_path",
-);
-assert(
-  /has_role\(_user_id, 'institutional_viewer'::public\.app_role\)\s*\n\s*AND NOT public\.is_super_admin\(_user_id\)\s*\n\s*AND NOT public\.has_role\(_user_id, 'college_admin'::public\.app_role\)/.test(
-    zwExec,
-  ),
-  "helper is TRUE only for a viewer who is neither super_admin nor college_admin",
-);
-assert(
-  /REVOKE ALL ON FUNCTION public\.is_institutional_read_only_actor\(uuid\) FROM PUBLIC, anon/.test(
-    zwExec,
-  ) &&
-    /GRANT EXECUTE ON FUNCTION public\.is_institutional_read_only_actor\(uuid\) TO authenticated, service_role/.test(
-      zwExec,
-    ),
-  "helper is revoked from PUBLIC/anon and granted to authenticated + service_role",
-);
-{
-  const helperSrc = read("src/lib/unauthorized-access.ts");
-  assert(
-    /!me\.isSuperAdmin && !me\.isCollegeAdmin && !!me\.isInstitutionalViewer/.test(helperSrc),
-    "isInstitutionalReadOnlyViewer mirrors the SQL multi-role predicate",
-  );
-}
-
-// exactly three write policies touched, conditions preserved
-{
-  const touched = [...zwExec.matchAll(/CREATE POLICY\s+(\w+)\s+ON\s+public\.(\w+)/g)].map(
-    (m) => `${m[2]}.${m[1]}`,
-  );
-  assert(
-    touched.length === 3 &&
-      touched.includes("profiles.prof_insert") &&
-      touched.includes("profiles.prof_update") &&
-      touched.includes("audit_logs.al_insert"),
-    `only the three self-service write policies are re-created (saw: ${touched.join(", ")})`,
-  );
-  const dropped = [...zwExec.matchAll(/DROP POLICY IF EXISTS\s+(\w+)/g)].map((m) => m[1]);
-  assert(
-    dropped.length === 3 && !dropped.includes("al_select"),
-    "no SELECT policy is dropped (al_select and all reads stay as they are)",
-  );
-  for (const name of ["prof_insert", "prof_update", "al_insert"]) {
-    const at = zwExec.indexOf(`CREATE POLICY ${name} `);
-    const block = zwExec.slice(at, zwExec.indexOf(";", at));
-    assert(
-      /AND NOT public\.is_institutional_read_only_actor\(auth\.uid\(\)\)/.test(block),
-      `${name} adds the read-only-actor exclusion`,
-    );
-    const preserved =
-      name === "al_insert"
-        ? /\(actor_id = auth\.uid\(\)\)/
-        : /\(id = auth\.uid\(\)\) OR public\.is_super_admin\(auth\.uid\(\)\)/;
-    assert(preserved.test(block), `${name} keeps its original condition`);
-  }
-  // multi-role regression: the blanket viewer ban must be gone from al_insert
-  const alBlock = zwExec.slice(
-    zwExec.indexOf("CREATE POLICY al_insert "),
-    zwExec.indexOf(";", zwExec.indexOf("CREATE POLICY al_insert ")),
-  );
-  assert(
-    !/NOT public\.is_institutional_viewer\(auth\.uid\(\)\)/.test(alBlock),
-    "al_insert drops migration 2's blanket viewer ban so multi-role admins keep audit writes",
-  );
-}
-
-// rollback restores all three and drops the helper last
-{
-  const rb = zeroWrite.slice(zeroWrite.indexOf("-- ROLLBACK"));
-  for (const frag of [
-    "CREATE POLICY prof_insert",
-    "CREATE POLICY prof_update",
-    "WITH CHECK (actor_id = auth.uid())",
-    "DROP FUNCTION IF EXISTS public.is_institutional_read_only_actor(uuid)",
-  ]) {
-    assert(rb.includes(frag), `rollback covers: ${frag}`);
-  }
-  assert(
-    rb.indexOf("DROP FUNCTION IF EXISTS public.is_institutional_read_only_actor") >
-      rb.indexOf("CREATE POLICY al_insert"),
-    "rollback drops the helper only after the policies stop referencing it",
-  );
-}
-
-// documented invariants that justify the reduced scope
-{
-  const report = read("docs/INSTITUTIONAL-VIEWER-RBAC-SOURCE-ONLY-01.md");
-  assert(
-    /175 write polic/i.test(report) &&
-      /prof_insert[\s\S]{0,400}prof_update[\s\S]{0,400}al_insert/.test(report),
-    "report records the 175-policy audit and names the only three self-service exceptions",
-  );
-  for (const fn of [
-    "compute_instructor_standard_workload",
-    "get_delivery_group_assignment_candidates",
-    "list_schedule_builder_v2_work_items",
-    "list_teaching_assignment_workspace",
-  ]) {
-    assert(report.includes(fn), `report names the read RPC ${fn}`);
-  }
-  assert(
-    /can_view_college[\s\S]{0,600}already[\s\S]{0,200}(pass|include)/i.test(report),
-    "report documents that the four read gates already pass through can_view_college",
-  );
-  assert(
-    /can_manage_college[\s\S]{0,200}('can_manage'|write-affordance)/.test(report),
-    "report documents that can_manage_college survives only as a write-affordance flag",
-  );
-}
-assert(
-  /CREATE OR REPLACE FUNCTION public\.can_view_college[\s\S]*is_institutional_viewer/.test(
-    rlsMigration,
-  ),
-  "migration 2 (applied) is what makes the viewer pass can_view_college",
-);
-
-if (failures > 0) {
-  console.error(`institutional-viewer-rbac.harness.ts: FAIL (${failures})`);
+if (failures) {
+  console.error(`ACADEMIC_AFFAIRS_RBAC_FAIL: ${failures} assertion(s) failed`);
   process.exit(1);
 }
-console.log("institutional-viewer-rbac.harness.ts: PASS");
+console.log("ACADEMIC_AFFAIRS_RBAC_PASS");
