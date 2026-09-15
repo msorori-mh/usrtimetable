@@ -46,10 +46,7 @@ assert(
   viewerRoles.includes('pathname === "/instructors"'),
   "academic affairs path scope includes instructor directory",
 );
-assert(
-  viewerRoles.includes("resolveViewerScopeRedirect"),
-  "viewer scope redirect is centralized",
-);
+assert(viewerRoles.includes("resolveViewerScopeRedirect"), "viewer scope redirect is centralized");
 
 const nav = readPrimaryNavigationSource(ROOT);
 assert(
@@ -151,14 +148,15 @@ assert(
   "migration never widens can_manage_college",
 );
 assert(
-  !/INSERT INTO public\.instructors/i.test(migration) && !/DELETE FROM public\.instructors/i.test(migration),
+  !/INSERT INTO public\.instructors/i.test(migration) &&
+    !/DELETE FROM public\.instructors/i.test(migration),
   "migration grants update-only behavior, not instructor create/delete",
 );
 
 const reportHub = read("src/routes/_authenticated/reports.index.tsx");
 const instructorReport = read("src/routes/_authenticated/reports.instructors.tsx");
 assert(
-  reportHub.includes('/reports/instructors') && reportHub.includes("دليل المحاضرين وبياناتهم"),
+  reportHub.includes("/reports/instructors") && reportHub.includes("دليل المحاضرين وبياناتهم"),
   "reports hub links the instructor data report",
 );
 for (const label of [
@@ -179,7 +177,8 @@ for (const label of [
   assert(instructorReport.includes(label), `instructor report contains ${label}`);
 }
 assert(
-  instructorReport.includes("ReportFilterBar") && instructorReport.includes("تعديل بيانات المحاضرين"),
+  instructorReport.includes("ReportFilterBar") &&
+    instructorReport.includes("تعديل بيانات المحاضرين"),
   "instructor report uses the shared report filters and edit handoff",
 );
 
