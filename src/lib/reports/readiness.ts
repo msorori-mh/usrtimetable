@@ -114,7 +114,7 @@ async function fetchNewFlowSignals(collegeId: string): Promise<NewFlowSignals | 
         supabase.from("academic_cohorts").select("id, active, term_id").eq("college_id", collegeId),
         // DELIVERY-GROUP-COVERAGE-FIX-01: historical (obsolete) groups never count.
         supabase
-          .from("delivery_groups")
+          .from("operational_delivery_groups")
           .select("id, cohort_id")
           .eq("college_id", collegeId)
           .or("is_obsolete.is.null,is_obsolete.eq.false"),

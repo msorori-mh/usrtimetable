@@ -1,12 +1,7 @@
 /** Pure types for timetable print/export center (no React). */
 
 export type PrintReportType =
-  | "student"
-  | "department"
-  | "program"
-  | "instructor"
-  | "room"
-  | "level";
+  "student" | "department" | "program" | "instructor" | "room" | "level";
 
 export type PrintStudySystem = "regular" | "parallel" | "all";
 
@@ -69,6 +64,7 @@ export interface PrintSessionLike {
   instructor_id?: string | null;
   room_id?: string | null;
   cohort_id?: string | null;
+  shared_cohort_ids?: string[];
   delivery_group_id?: string | null;
   /** Current headcount stored on this scheduled session. */
   expected_students?: number | null;

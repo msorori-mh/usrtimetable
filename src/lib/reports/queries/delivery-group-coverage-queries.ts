@@ -1,3 +1,4 @@
+import { fetchSharedLectures } from "@/lib/academic-delivery/shared-lectures";
 import { readAllReportRows } from "@/lib/reports/read-all";
 import { supabase } from "@/integrations/supabase/client";
 import type { DeliveryGroupCatalogRow } from "@/lib/reports/program-timetable-coverage";
@@ -12,7 +13,7 @@ export async function fetchCohortDeliveryGroupCatalog(params: {
   const college = params.collegeId;
   const allGroups = await readAllReportRows((from, to) =>
     supabase
-      .from("delivery_groups")
+      .from("operational_delivery_groups")
       .select(
         "id, cohort_id, group_code, group_number, expected_students, component_id, plan_course_id, active, is_obsolete",
       )
@@ -22,7 +23,12 @@ export async function fetchCohortDeliveryGroupCatalog(params: {
       .order("id")
       .range(from, to),
   );
-  const groups = allGroups.filter((g) => cohortIds.has(g.cohort_id));
+  const shared = await fetchSharedLectures(college);
+  const groups = allGroups.filter(
+    (g) =>
+      cohortIds.has(g.cohort_id) ||
+      shared.some((l) => l.anchor_group_id === g.id && cohortIds.has(l.cohort_id)),
+  );
   if (!groups.length) return [];
   // Fetch all pages of scoped references: a server limit must not silently drop a
   // co-teacher or a component and change the report's demand or instructor label.
@@ -95,7 +101,10 @@ export async function fetchCohortDeliveryGroupCatalog(params: {
       throw new Error("ساعات مكوّن مجموعة التدريس غير مكتملة؛ راجع الخطة قبل اعتماد التغطية");
     return {
       id: group.id,
-      cohortId: group.cohort_id,
+      cohortId: cohortIds.has(group.cohort_id)
+        ? group.cohort_id
+        : shared.find((l) => l.anchor_group_id === group.id && cohortIds.has(l.cohort_id))!
+            .cohort_id,
       groupCode: group.group_code,
       groupNumber: group.group_number,
       componentType: component.component_type,

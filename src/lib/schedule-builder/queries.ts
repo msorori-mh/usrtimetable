@@ -1,3 +1,4 @@
+import { fetchSharedLectures } from "@/lib/academic-delivery/shared-lectures";
 /**
  * Read-only Schedule Builder workspace queries.
  * College-scoped; no mutations.
@@ -160,11 +161,11 @@ export async function hydrateWorkspaceSessions(
       programIds,
       "id, name",
     ),
-    fetchRowsByIds<{ id: string; name: string | null; level_number: number | null }>(
-      "academic_levels",
-      levelIds,
-      "id, name, level_number",
-    ),
+    fetchRowsByIds<{
+      id: string;
+      name: string | null;
+      level_number: number | null;
+    }>("academic_levels", levelIds, "id, name, level_number"),
     fetchRowsByIds<{ id: string; section_number: string | number | null }>(
       "sections",
       sectionIds,
@@ -197,7 +198,33 @@ export async function hydrateWorkspaceSessions(
 
   const toMap = <T extends { id: string }>(rows: T[]) => new Map(rows.map((r) => [r.id, r]));
 
-  return assembleWorkspaceSessionRows(flat, {
+  const collegeIds = [
+    ...new Set(
+      offerings
+        .map((o) => (o as { college_id?: string }).college_id)
+        .filter((v): v is string => !!v),
+    ),
+  ];
+  const sessionGroups = flat.map((s) => s.delivery_group_id).filter((v): v is string => !!v);
+  const { data: groupScopes, error: scopeError } = sessionGroups.length
+    ? await supabase.from("delivery_groups").select("college_id").in("id", sessionGroups)
+    : { data: [], error: null };
+  if (scopeError) throw scopeError;
+  for (const g of groupScopes ?? [])
+    if (!collegeIds.includes(g.college_id)) collegeIds.push(g.college_id);
+  const shared = (await Promise.all(collegeIds.map(fetchSharedLectures))).flat();
+  const enriched = flat.map((s) => ({
+    ...s,
+    shared_cohort_ids: [
+      ...new Set([
+        ...(s.cohort_id ? [s.cohort_id] : []),
+        ...shared
+          .filter((l) => s.study_system === "both" && l.anchor_group_id === s.delivery_group_id)
+          .map((l) => l.cohort_id),
+      ]),
+    ],
+  }));
+  return assembleWorkspaceSessionRows(enriched, {
     offerings: toMap(offerings),
     courses: toMap(courses),
     departments: toMap(departments),
@@ -230,15 +257,13 @@ export async function fetchWorkspaceSessions(params: {
   const { data, error } = await q;
   if (error) throw error;
   const flat = (data ?? []) as WorkspaceSessionFlatRow[];
-  const cohortIds = uniqueIds(flat.map((session) => session.cohort_id));
-  const [hydrated, cohortTermHeadcounts] = await Promise.all([
-    hydrateWorkspaceSessions(flat),
-    fetchWorkspaceCohortTermHeadcounts({
-      collegeId: params.collegeId,
-      termId: params.termId,
-      cohortIds,
-    }),
-  ]);
+  const hydrated = await hydrateWorkspaceSessions(flat);
+  const cohortIds = uniqueIds(hydrated.flatMap((s) => s.shared_cohort_ids ?? [s.cohort_id]));
+  const cohortTermHeadcounts = await fetchWorkspaceCohortTermHeadcounts({
+    collegeId: params.collegeId,
+    termId: params.termId,
+    cohortIds,
+  });
   return attachCohortTermHeadcounts(hydrated, cohortTermHeadcounts);
 }
 

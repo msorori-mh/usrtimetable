@@ -18,10 +18,12 @@ export type PartitionMembershipRow = {
   partition_id: string;
   /** Headcount of the partition; used for coverage validation. */
   partition_headcount?: number | null;
+  shared_lecture?: boolean;
 };
 
 export type GroupPartitionEntry = {
   cohortId: string;
+  cohortIds?: string[];
   partitionIds: string[];
   /** Mapped headcount covers the group's expected students. */
   complete: boolean;
@@ -48,6 +50,7 @@ export type SharedStudentsVerdict = {
  */
 export function buildPartitionIndex(input: {
   rows: readonly PartitionMembershipRow[];
+  cohortIdsByGroup?: Readonly<Record<string, string[]>>;
   expectedStudents?: Readonly<Record<string, number | null | undefined>>;
 }): PartitionIndex {
   const index: PartitionIndex = new Map();
@@ -60,7 +63,7 @@ export function buildPartitionIndex(input: {
       partitionIds: [],
       complete: false,
     };
-    if (entry.cohortId !== row.cohort_id) {
+    if (entry.cohortId !== row.cohort_id && !row.shared_lecture) {
       // Inconsistent rows for one group: drop the mapping entirely (fail closed).
       index.set(row.delivery_group_id, {
         cohortId: entry.cohortId,
@@ -70,6 +73,7 @@ export function buildPartitionIndex(input: {
       covered.set(row.delivery_group_id, 0);
       continue;
     }
+    entry.cohortIds = [...new Set([...(entry.cohortIds ?? [entry.cohortId]), row.cohort_id])];
     if (!entry.partitionIds.includes(row.partition_id)) {
       entry.partitionIds.push(row.partition_id);
       covered.set(
@@ -81,6 +85,12 @@ export function buildPartitionIndex(input: {
   }
 
   for (const [groupId, entry] of index) {
+    entry.cohortIds = [
+      ...new Set([
+        ...(entry.cohortIds ?? [entry.cohortId]),
+        ...(input.cohortIdsByGroup?.[groupId] ?? []),
+      ]),
+    ];
     if (entry.partitionIds.length === 0) continue;
     const expected = Number(input.expectedStudents?.[groupId] ?? 0);
     const mapped = covered.get(groupId) ?? 0;
@@ -109,7 +119,7 @@ export function groupsShareStudents(
   if (!a || !b || a.partitionIds.length === 0 || b.partitionIds.length === 0) {
     return { share: true, reason: "unmapped" };
   }
-  if (a.cohortId !== b.cohortId) {
+  if (!(a.cohortIds ?? [a.cohortId]).some((id) => (b.cohortIds ?? [b.cohortId]).includes(id))) {
     return { share: false, reason: "different_cohort" };
   }
   if (!a.complete || !b.complete) {

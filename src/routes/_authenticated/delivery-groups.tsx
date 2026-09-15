@@ -1,3 +1,5 @@
+import { SharedLecturesPanel } from "@/components/shared-lectures-panel";
+import { fetchSharedLectures } from "@/lib/academic-delivery/shared-lectures";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
@@ -55,7 +57,19 @@ function DeliveryGroupsPage() {
         .eq("college_id", active!.id)
         .order("group_code", { ascending: true });
       if (!full.error) {
-        return (full.data ?? []) as unknown as Row[];
+        const shared = await fetchSharedLectures(active!.id);
+        return ((full.data ?? []) as unknown as Row[])
+          .filter((g) => !shared.some((l) => l.member_group_id === g.id))
+          .map((g) => {
+            const link = shared.find((l) => l.anchor_group_id === g.id);
+            return link
+              ? {
+                  ...g,
+                  expected_students: link.total_students,
+                  group_code: `${g.group_code} — عام + موازٍ`,
+                }
+              : g;
+          });
       }
       const { data, error } = await supabase
         .from("delivery_groups")
@@ -161,6 +175,8 @@ function DeliveryGroupsPage() {
         ) : null}
       </div>
 
+      {active ? <SharedLecturesPanel collegeId={active.id} /> : null}
+
       <Card className="mb-4 border-primary/30 bg-primary/5 p-4 text-sm">
         <p className="font-semibold">الخطوة التالية</p>
         <p className="mt-1 text-muted-foreground">
@@ -208,7 +224,7 @@ function DeliveryGroupsPage() {
                       ) : null}
                     </td>
                     <td className="px-3 py-2" dir="ltr">
-                      {g.group_number ?? g.group_code}
+                      {g.group_code}
                     </td>
                     <td className="px-3 py-2">{g.expected_students}</td>
                     <td className="px-3 py-2">{g.capacity_limit ?? "—"}</td>

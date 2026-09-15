@@ -75,6 +75,9 @@ export function groupPrintPages(
         // when study system is "all"; otherwise one page.
         if (filters.studySystem && filters.studySystem !== "all") {
           push("single", s);
+        } else if (sys === "both") {
+          push("sys:regular", s);
+          push("sys:parallel", s);
         } else {
           push(`sys:${sys}`, s);
         }

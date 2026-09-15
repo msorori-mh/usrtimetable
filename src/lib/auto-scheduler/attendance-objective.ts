@@ -13,6 +13,7 @@ export interface AttendanceEvent {
   students: string[];
   instructor: string;
   level: string;
+  levels?: string[];
 }
 
 export interface AttendanceMetrics {
@@ -66,9 +67,11 @@ export function measureAttendance(
     if (!Number.isFinite(event.start) || !Number.isFinite(event.end) || event.end <= event.start) {
       throw new Error("INVALID_ATTENDANCE_INTERVAL");
     }
-    const days = levels.get(event.level) ?? new Set<number>();
-    days.add(event.day);
-    levels.set(event.level, days);
+    for (const key of event.levels ?? [event.level]) {
+      const days = levels.get(key) ?? new Set<number>();
+      days.add(event.day);
+      levels.set(key, days);
+    }
     for (const id of new Set(event.students)) add(students, id, event);
     add(instructors, event.instructor, event);
   }
@@ -91,7 +94,14 @@ export function measureAttendance(
       gap += personGap * w;
       worst = Math.max(worst, personGap);
     }
-    return { gap, worst, shortDays, attendance, count, average: count ? gap / count : 0 };
+    return {
+      gap,
+      worst,
+      shortDays,
+      attendance,
+      count,
+      average: count ? gap / count : 0,
+    };
   };
   const student = summarize(students, weight);
   const instructor = summarize(instructors, () => 1);

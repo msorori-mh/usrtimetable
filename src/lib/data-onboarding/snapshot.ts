@@ -58,7 +58,7 @@ export async function fetchOnboardingReadinessSnapshot(
     countExact("academic_cohorts", collegeId),
     // DELIVERY-GROUP-COVERAGE-FIX-01: exclude historical (obsolete) groups.
     supabase
-      .from("delivery_groups")
+      .from("operational_delivery_groups")
       .select("id", { count: "exact", head: true })
       .eq("college_id", collegeId)
       .or("is_obsolete.is.null,is_obsolete.eq.false"),

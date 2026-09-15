@@ -161,11 +161,18 @@ export function deriveProgramTimetable<T extends PrintSessionLike>(input: {
       (!s.college_id || s.college_id === scope.collegeId) &&
       matchesStudySystem(s.study_system, scope.studySystem) &&
       matchesAcademicScope(s.course_offerings?.program_id, s.course_offerings?.level_id) &&
-      (selected.cohortId === "all" || s.cohort_id === selected.cohortId),
+      (selected.cohortId === "all" ||
+        s.cohort_id === selected.cohortId ||
+        s.shared_cohort_ids?.includes(selected.cohortId)),
   );
   const groupsById = new Map<string, { id: string; name: string }>();
   for (const s of academicSessions) {
-    if (!s.delivery_group_id || !s.cohort_id || !cohortsById.has(s.cohort_id)) continue;
+    if (
+      !s.delivery_group_id ||
+      !s.cohort_id ||
+      ![s.cohort_id, ...(s.shared_cohort_ids ?? [])].some((id) => cohortsById.has(id))
+    )
+      continue;
     const course = s.course_offerings?.courses;
     groupsById.set(s.delivery_group_id, {
       id: s.delivery_group_id,

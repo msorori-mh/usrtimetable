@@ -36,7 +36,7 @@ export async function fetchRoomTimeCapacity(
           .eq("is_active", true),
         supabase.from("academic_cohorts").select("id, term_id, active").eq("college_id", collegeId),
         supabase
-          .from("delivery_groups")
+          .from("operational_delivery_groups")
           .select("id, cohort_id, active, is_obsolete")
           .eq("college_id", collegeId),
         supabase

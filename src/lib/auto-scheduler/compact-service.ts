@@ -43,15 +43,19 @@ async function draft(collegeId: string, versionId: string) {
   if (data.status !== "draft") throw new Error("التحسين متاح لنسخة مسودة فقط.");
   if (!Number.isSafeInteger(data.eligibility_revision) || data.eligibility_revision < 0)
     throw new Error("تعذر التحقق من مراجعة الجدول.");
-  return { revision: String(data.eligibility_revision), versionUpdatedAt: data.updated_at };
+  return {
+    revision: String(data.eligibility_revision),
+    versionUpdatedAt: data.updated_at,
+  };
 }
 export async function loadCompactSnapshot(collegeId: string, versionId: string): Promise<Snapshot> {
   const version = await draft(collegeId, versionId);
   const names = {
     sessions: "schedule_sessions",
     cohorts: "academic_cohorts",
-    groups: "delivery_groups",
-    members: "delivery_group_partition_members",
+    groups: "operational_delivery_groups",
+    members: "operational_group_members",
+    sharedLectures: "shared_lecture_links",
     partitions: "cohort_student_partitions",
     assignments: "teaching_assignments",
     components: "plan_course_components",
@@ -103,11 +107,12 @@ interface BatchResult {
 const atomicDb = supabase as unknown as {
   rpc(
     name:
-      | "apply_schedule_compaction"
-      | "apply_schedule_relayout"
-      | "get_schedule_compaction_result",
+      "apply_schedule_compaction" | "apply_schedule_relayout" | "get_schedule_compaction_result",
     args: Record<string, unknown>,
-  ): Promise<{ data: BatchResult | null; error: { code?: string; message: string } | null }>;
+  ): Promise<{
+    data: BatchResult | null;
+    error: { code?: string; message: string } | null;
+  }>;
 };
 const unknownMessage =
   "تعذر تأكيد نتيجة الحفظ بسبب الاتصال. قد تكون الخطة حُفظت كاملة؛ تحقق من النتيجة قبل إعادة المعاينة.";
@@ -151,7 +156,12 @@ async function sendAtomic(result: Applied, retrying = false): Promise<Applied> {
       data.operation_id === result.operationId &&
       data.applied === result.total
     )
-      return { ...result, applied: data.applied, status: "saved", stopped: null };
+      return {
+        ...result,
+        applied: data.applied,
+        status: "saved",
+        stopped: null,
+      };
   } catch {
     // Transport failure cannot establish whether PostgreSQL committed.
   }
@@ -159,7 +169,10 @@ async function sendAtomic(result: Applied, retrying = false): Promise<Applied> {
 }
 async function readActual(collegeId: string, versionId: string, result: Applied): Promise<Applied> {
   try {
-    return { ...result, after: measure(await loadCompactSnapshot(collegeId, versionId)) };
+    return {
+      ...result,
+      after: measure(await loadCompactSnapshot(collegeId, versionId)),
+    };
   } catch {
     return {
       ...result,
@@ -187,7 +200,12 @@ export async function verifyCompactApplication(
       data.operation_id === previous.operationId &&
       data.applied === previous.total
     )
-      result = { ...previous, applied: previous.total, status: "saved", stopped: null };
+      result = {
+        ...previous,
+        applied: previous.total,
+        status: "saved",
+        stopped: null,
+      };
   } catch {
     // Keep the outcome unknown; never infer rollback from a transport failure.
   }
@@ -216,7 +234,10 @@ export async function applyCompactProposal(
   collegeId: string,
   versionId: string,
   proposal: Proposal,
-  options: { signal?: AbortSignal; onProgress?: (applied: number, total: number) => void } = {},
+  options: {
+    signal?: AbortSignal;
+    onProgress?: (applied: number, total: number) => void;
+  } = {},
 ): Promise<Applied> {
   const fresh = await loadCompactSnapshot(collegeId, versionId);
   if (
