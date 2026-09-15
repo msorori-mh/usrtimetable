@@ -86,6 +86,7 @@ function TeachingAssignmentsV2Page() {
   const [cohortId, setCohortId] = useState<string>("");
   const [componentType, setComponentType] = useState<string>("");
   const [assignmentStatus, setAssignmentStatus] = useState<string>("");
+  const [instructorSearch, setInstructorSearch] = useState<string>("");
 
   const [selected, setSelected] = useState<TeachingAssignmentWorkspaceRow | null>(null);
   const [instructorId, setInstructorId] = useState("");
@@ -199,7 +200,11 @@ function TeachingAssignmentsV2Page() {
     enabled: !!selected && !!instructorId && confirmOpen === false,
   });
 
-  const rows = workspace.data?.rows ?? [];
+  const rows = useMemo(
+    () => filterRowsByInstructorName(workspace.data?.rows ?? [], instructorSearch),
+    [workspace.data?.rows, instructorSearch],
+  );
+  const instructorSearchActive = normalizeArabicName(instructorSearch) !== "";
   const readOnly = !canManage || workspace.data?.can_manage === false;
 
   const openAssign = (row: TeachingAssignmentWorkspaceRow) => {
