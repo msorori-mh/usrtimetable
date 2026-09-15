@@ -1,3 +1,4 @@
+import { fetchSharedLectures } from "@/lib/academic-delivery/shared-lectures";
 import { searchAttendance, attendanceSearchMessage } from "@/lib/auto-scheduler/attendance-search";
 import { supabase } from "@/integrations/supabase/client";
 import { scoreScheduleVersion } from "@/lib/conflict-engine/scorer";
@@ -54,11 +55,13 @@ export const PARTITION_FALLBACK_WARNING_AR =
  * the conservative cohort-wide conflict rule is preserved.
  */
 async function loadPartitionIndex(input: {
+  collegeId: string;
   cohortIds: string[];
   expectedStudents: Record<string, number | null | undefined>;
 }): Promise<{ index: PartitionIndex | null; note: string | null }> {
   if (input.cohortIds.length === 0) return { index: null, note: null };
   try {
+    const links = await fetchSharedLectures(input.collegeId);
     const { data, error } = await (
       supabase as unknown as {
         from: (table: string) => {
@@ -66,16 +69,19 @@ async function loadPartitionIndex(input: {
             in: (
               col: string,
               values: string[],
-            ) => Promise<{ data: unknown[] | null; error: { message: string } | null }>;
+            ) => Promise<{
+              data: unknown[] | null;
+              error: { message: string } | null;
+            }>;
           };
         };
       }
     )
-      .from("delivery_group_partition_members")
+      .from("operational_group_members")
       .select(
-        "delivery_group_id, cohort_id, partition_id, cohort_student_partitions(headcount, active)",
+        "delivery_group_id, cohort_id, partition_id, partition_headcount, partition_active, shared_lecture",
       )
-      .in("cohort_id", input.cohortIds);
+      .in("delivery_group_id", Object.keys(input.expectedStudents));
     if (error) return { index: null, note: PARTITION_FALLBACK_WARNING_AR };
     const rows: PartitionMembershipRow[] = (data ?? [])
       .map((raw): PartitionMembershipRow | null => {
@@ -83,21 +89,30 @@ async function loadPartitionIndex(input: {
           delivery_group_id?: string;
           cohort_id?: string;
           partition_id?: string;
-          cohort_student_partitions?: { headcount?: number | null; active?: boolean | null } | null;
+          partition_headcount?: number;
+          partition_active?: boolean;
+          shared_lecture?: boolean;
         };
-        if (row.cohort_student_partitions?.active === false) return null;
+        if (row.partition_active === false) return null;
         return {
           delivery_group_id: String(row.delivery_group_id ?? ""),
           cohort_id: String(row.cohort_id ?? ""),
           partition_id: String(row.partition_id ?? ""),
-          partition_headcount: row.cohort_student_partitions?.headcount ?? null,
+          partition_headcount: row.partition_headcount ?? null,
+          shared_lecture: row.shared_lecture,
         };
       })
       .filter((row): row is PartitionMembershipRow => !!row && !!row.delivery_group_id);
 
     if (rows.length === 0) return { index: null, note: null };
     return {
-      index: buildPartitionIndex({ rows, expectedStudents: input.expectedStudents }),
+      index: buildPartitionIndex({
+        rows,
+        cohortIdsByGroup: Object.fromEntries(
+          links.map((l) => [l.anchor_group_id, [l.anchor_cohort_id, l.cohort_id]]),
+        ),
+        expectedStudents: input.expectedStudents,
+      }),
       note: null,
     };
   } catch {
@@ -189,7 +204,10 @@ export async function applyRepairPlan(input: {
         rolledBack: applied.length > 0,
       };
     }
-    applied.push({ plan: planned, updatedAt: result.session?.updated_at ?? null });
+    applied.push({
+      plan: planned,
+      updatedAt: result.session?.updated_at ?? null,
+    });
   }
 
   versionUpdatedAt = await readVersion(input.scheduleVersionId, versionUpdatedAt);
@@ -348,7 +366,7 @@ export async function runV2AutoSchedule(params: {
       item.can_create_session &&
       item.delivery_group_id &&
       item.cohort_id &&
-      (item.study_system === "regular" || item.study_system === "parallel"),
+      ["regular", "parallel", "both"].includes(item.study_system ?? ""),
   );
   const timedScope = payload.rows.filter(
     (item) =>
@@ -462,6 +480,7 @@ export async function runV2AutoSchedule(params: {
       expectedStudentsByGroup[item.delivery_group_id] = item.expected_students;
   }
   const partitions = await loadPartitionIndex({
+    collegeId: params.collegeId,
     cohortIds: Array.from(
       new Set(workItems.map((item) => item.cohort_id).filter((id): id is string => !!id)),
     ),
@@ -534,7 +553,10 @@ export async function runV2AutoSchedule(params: {
     label: "اختبار ثلاثة أيام، ثم أربعة وخمسة بعد ثبوت التعذر فقط…",
   });
   const attendancePlan = await searchAttendance(
-    { ...planningSnapshot, sessions: [...planningSessions, ...pendingAttendance] },
+    {
+      ...planningSnapshot,
+      sessions: [...planningSessions, ...pendingAttendance],
+    },
     { signal: params.signal, maxDurationMs: 60000, preferExisting: true },
   );
   const attendanceEvidence = attendanceSearchMessage(attendancePlan);
@@ -560,7 +582,12 @@ export async function runV2AutoSchedule(params: {
 
   const difficulties = new Map<
     string,
-    { candidateCount: number; durationMinutes: number; expectedStudents: number; id: string }
+    {
+      candidateCount: number;
+      durationMinutes: number;
+      expectedStudents: number;
+      id: string;
+    }
   >();
   for (const item of workItems) {
     if (params.signal?.aborted) break;
@@ -845,7 +872,10 @@ export async function runV2AutoSchedule(params: {
                 practicalRoomFallbacks++;
                 warnings.push(`${groupLabel}: ${PRACTICAL_ROOM_FALLBACK_NOTE_AR}`);
               }
-              planningSessions.push({ ...ranked.session, ...result.session } as Session);
+              planningSessions.push({
+                ...ranked.session,
+                ...result.session,
+              } as Session);
               usedDays.push(slot.day);
               occupied.push({
                 day: slot.day,
@@ -956,7 +986,11 @@ export async function runV2AutoSchedule(params: {
   // Per-type totals use the same complete scope as the headline count, including on cancellation.
   for (const key of Object.keys(byType)) delete byType[key];
   for (const requirement of requirements) {
-    const row = (byType[requirement.type] ??= { required: 0, placed: 0, unplaced: 0 });
+    const row = (byType[requirement.type] ??= {
+      required: 0,
+      placed: 0,
+      unplaced: 0,
+    });
     const reconciled = planRemainingSessions({
       requiredDurations: requirement.requiredDurations,
       existing: finalSnapshot.sessions.filter(

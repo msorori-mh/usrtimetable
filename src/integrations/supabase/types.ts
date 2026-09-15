@@ -3635,6 +3635,25 @@ export type Database = {
       }
     }
     Views: {
+      operational_group_members: {
+        Row: {
+          id: string
+          college_id: string
+          cohort_id: string
+          delivery_group_id: string
+          partition_id: string
+          partition_headcount: number
+          partition_active: boolean
+          shared_lecture: boolean
+        }
+        Relationships: []
+      }
+
+      operational_delivery_groups: {
+        Row: Database["public"]["Tables"]["delivery_groups"]["Row"]
+        Relationships: []
+      }
+
       v_instructor_delivery_workload: {
         Row: {
           academic_rank: string | null

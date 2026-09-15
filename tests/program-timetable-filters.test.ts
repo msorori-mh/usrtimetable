@@ -271,3 +271,17 @@ describe("dependent program timetable filters", () => {
     });
   });
 });
+
+test("a shared anchor is selectable once from the parallel cohort report", () => {
+  const shared = { ...sessions[0], study_system: "both", shared_cohort_ids: ["is-r", "is-p"] };
+  const view = deriveProgramTimetable({
+    references,
+    sessions: [shared],
+    scope: { ...scope, studySystem: "parallel" },
+    selection: { ...ALL_PROGRAM_REPORT_FILTERS, cohortId: "is-p" },
+    deliveryGroupLabels,
+  });
+  assert.equal(view.sessions.length, 1);
+  assert.equal(view.sessions[0].id, shared.id);
+  assert.equal(view.deliveryGroups.length, 1);
+});

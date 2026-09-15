@@ -267,6 +267,8 @@ export async function scoreScheduleVersion(params: {
 
   const proposed: ProposedSession[] = (sessions ?? []).map((s) => ({
     id: s.id,
+    cohort_id: s.cohort_id,
+    delivery_group_id: s.delivery_group_id,
     schedule_version_id: s.schedule_version_id,
     course_offering_id: s.course_offering_id,
     teaching_assignment_id: s.teaching_assignment_id,

@@ -90,7 +90,13 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
   };
   for (const original of snapshot.sessions) {
     const slots = original.is_locked
-      ? [{ day: original.day_of_week, start: original.start_time, end: original.end_time }]
+      ? [
+          {
+            day: original.day_of_week,
+            start: original.start_time,
+            end: original.end_time,
+          },
+        ]
       : compactSlots(snapshot, original);
     const entries: Term[] = [];
     for (const slot of slots)
@@ -106,7 +112,10 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
         };
         if (!feasible(snapshot, [], candidate, { ...original, is_locked: false })) continue;
         const i = variable(sameTime(original, candidate) ? 0 : 1);
-        candidates.push({ session: { ...candidate, is_locked: original.is_locked }, pool });
+        candidates.push({
+          session: { ...candidate, is_locked: original.is_locked },
+          pool,
+        });
         entries.push([i, 1]);
         if (candidates.length > 200000) throw new Error("JOINT_MODEL_SIZE_LIMIT");
       }
@@ -151,7 +160,11 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
     const resources = [
       { key: `room:${pool}`, capacity: pools[pool].length, end: b },
       { key: `teacher:${x.instructor_id}`, capacity: 1, end: b + gap },
-      ...persons.map((p) => ({ key: `student:${p}`, capacity: 1, end: b + gap })),
+      ...persons.map((p) => ({
+        key: `student:${p}`,
+        capacity: 1,
+        end: b + gap,
+      })),
     ];
     for (const r of resources)
       for (const t of boundaries.get(day)!) {
@@ -163,10 +176,11 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
       }
     for (const p of persons) add(`student:${p}|${day}`, p, "student", day, i);
     add(`teacher:${x.instructor_id}|${day}`, x.instructor_id, "teacher", day, i);
-    const level = ctx.level(x),
-      days = levels.get(level) ?? new Map<number, Term[]>();
-    days.set(day, [...(days.get(day) ?? []), [i, 1]]);
-    levels.set(level, days);
+    for (const level of ctx.levels(x)) {
+      const days = levels.get(level) ?? new Map<number, Term[]>();
+      days.set(day, [...(days.get(day) ?? []), [i, 1]]);
+      levels.set(level, days);
+    }
   }
   for (const cell of cells.values()) row(cell.terms, -INF, cell.capacity);
   for (const days of levels.values()) {
@@ -371,10 +385,11 @@ export function validateJointPlan(
     if (before.is_locked && (!sameTime(before, x) || x.room_id !== before.room_id)) return false;
     if (!feasible(snapshot, sessions, { ...x, is_locked: false }, { ...before, is_locked: false }))
       return false;
-    const level = ctx.level(x),
-      set = days.get(level) ?? new Set<number>();
-    set.add(x.day_of_week);
-    days.set(level, set);
+    for (const level of ctx.levels(x)) {
+      const set = days.get(level) ?? new Set<number>();
+      set.add(x.day_of_week);
+      days.set(level, set);
+    }
   }
   if ([...days.values()].some((ds) => ds.size > dayCap)) return false;
   const loads = new Map<string, number>();

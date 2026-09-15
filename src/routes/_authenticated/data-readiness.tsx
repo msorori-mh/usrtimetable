@@ -92,7 +92,7 @@ async function fetchNewFlowMetrics(collegeId: string): Promise<Metric[]> {
       supabase.from("academic_cohorts").select("id, active").eq("college_id", collegeId),
       // DELIVERY-GROUP-COVERAGE-FIX-01: obsolete groups are historical, not gaps.
       supabase
-        .from("delivery_groups")
+        .from("operational_delivery_groups")
         .select("id, cohort_id")
         .eq("college_id", collegeId)
         .or("is_obsolete.is.null,is_obsolete.eq.false"),

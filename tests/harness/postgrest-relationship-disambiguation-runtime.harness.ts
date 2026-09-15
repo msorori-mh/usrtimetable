@@ -74,7 +74,7 @@ function run() {
     "readiness new-flow cohort signal uses flat select (no ambiguous embeds)",
   );
   assert(
-    /from\("delivery_groups"\)\s*\.select\("id, cohort_id"\)/.test(readinessLib),
+    /from\("operational_delivery_groups"\)\s*\.select\("id, cohort_id"\)/.test(readinessLib),
     "readiness delivery-group signal uses flat select",
   );
 

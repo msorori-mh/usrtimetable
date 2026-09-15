@@ -253,7 +253,8 @@ assert(
 assert(
   !programRoute.includes('.from("delivery_groups")') &&
     programFilters.includes("s.delivery_group_id") &&
-    programFilters.includes("cohortsById.has(s.cohort_id)"),
+    programFilters.includes("cohortsById.has(id)") &&
+    programFilters.includes("s.shared_cohort_ids"),
   "program-level group options require a scheduled group in an eligible cohort",
 );
 const publishedRoute = read("src/routes/_authenticated/reports.published-timetable.tsx");
@@ -286,7 +287,7 @@ assert(
 );
 assert(
   readiness.includes('.from("academic_cohorts")') &&
-    readiness.includes('.from("delivery_groups")') &&
+    readiness.includes('.from("operational_delivery_groups")') &&
     readiness.includes('.not("delivery_group_id", "is", null)'),
   "readiness queries cohort/DG/TA V2 sources",
 );

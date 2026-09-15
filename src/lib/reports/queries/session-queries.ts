@@ -1,3 +1,7 @@
+import {
+  fetchSharedLectures,
+  sharedGroupIdsForCohort,
+} from "@/lib/academic-delivery/shared-lectures";
 import { readAllReportRows } from "@/lib/reports/read-all";
 import { supabase } from "@/integrations/supabase/client";
 import { applyStudySystemFilter, assertSingleVersion } from "@/lib/reports/filters";
@@ -72,8 +76,20 @@ async function fetchFlatThenHydrate(params: {
 
   if (params.instructorId) q = q.eq("instructor_id", params.instructorId);
   if (params.sectionId) q = q.eq("section_id", params.sectionId);
-  if (params.cohortId) q = q.eq("cohort_id", params.cohortId);
-  if (params.deliveryGroupId) q = q.eq("delivery_group_id", params.deliveryGroupId);
+  if (params.cohortId) {
+    const anchors = sharedGroupIdsForCohort(
+      await fetchSharedLectures(params.collegeId),
+      params.cohortId,
+    );
+    q = anchors.length
+      ? q.or(`cohort_id.eq.${params.cohortId},delivery_group_id.in.(${anchors.join(",")})`)
+      : q.eq("cohort_id", params.cohortId);
+  }
+  if (params.deliveryGroupId) {
+    const links = await fetchSharedLectures(params.collegeId);
+    const anchor = links.find((l) => l.member_group_id === params.deliveryGroupId)?.anchor_group_id;
+    q = q.eq("delivery_group_id", anchor ?? params.deliveryGroupId);
+  }
   if (params.roomId) q = q.eq("room_id", params.roomId);
 
   const data = await readAllReportRows((from, to) => q.order("id").range(from, to));
@@ -146,8 +162,20 @@ export async function fetchSessionsForVersion<T = Record<string, unknown>>(
 
   if (params.instructorId) q = q.eq("instructor_id", params.instructorId);
   if (params.sectionId) q = q.eq("section_id", params.sectionId);
-  if (params.cohortId) q = q.eq("cohort_id", params.cohortId);
-  if (params.deliveryGroupId) q = q.eq("delivery_group_id", params.deliveryGroupId);
+  if (params.cohortId) {
+    const anchors = sharedGroupIdsForCohort(
+      await fetchSharedLectures(params.collegeId),
+      params.cohortId,
+    );
+    q = anchors.length
+      ? q.or(`cohort_id.eq.${params.cohortId},delivery_group_id.in.(${anchors.join(",")})`)
+      : q.eq("cohort_id", params.cohortId);
+  }
+  if (params.deliveryGroupId) {
+    const links = await fetchSharedLectures(params.collegeId);
+    const anchor = links.find((l) => l.member_group_id === params.deliveryGroupId)?.anchor_group_id;
+    q = q.eq("delivery_group_id", anchor ?? params.deliveryGroupId);
+  }
   if (params.roomId) q = q.eq("room_id", params.roomId);
 
   const data = await readAllReportRows((from, to) => q.order("id").range(from, to));

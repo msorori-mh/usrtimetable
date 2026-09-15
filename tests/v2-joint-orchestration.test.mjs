@@ -191,7 +191,7 @@ function state() {
 }
 const params = { collegeId: "college", scheduleVersionId: "version" };
 
-for (const studySystem of ["regular", "parallel"]) {
+for (const studySystem of ["regular", "parallel", "both"]) {
   test(
     "V2 schedules " + studySystem + " using shared templates when no dedicated template exists",
     async () => {

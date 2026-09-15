@@ -258,7 +258,11 @@ export function orderSlotsByDistinctDay(
 ): CandidateSlot[] {
   const used = new Set(usedDays.map(Number));
   return slots
-    .map((slot, index) => ({ slot, index, penalty: used.has(slot.day) ? 1 : 0 }))
+    .map((slot, index) => ({
+      slot,
+      index,
+      penalty: used.has(slot.day) ? 1 : 0,
+    }))
     .sort((a, b) => a.penalty - b.penalty || a.index - b.index)
     .map((entry) => entry.slot);
 }
@@ -407,7 +411,6 @@ export function isLocallyBlocked(
       if (!sharedStudents) {
         return !!(o.cohortId && ctx.cohortId && o.cohortId === ctx.cohortId);
       }
-      if (o.cohortId && ctx.cohortId && o.cohortId !== ctx.cohortId) return false;
       return sharedStudents(ctx.deliveryGroupId, o.deliveryGroupId);
     }
     if (o.cohortId && ctx.cohortId && o.cohortId === ctx.cohortId) return true;

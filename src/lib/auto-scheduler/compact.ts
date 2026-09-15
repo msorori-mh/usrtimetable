@@ -51,8 +51,18 @@ export interface Snapshot {
     active?: boolean;
     is_obsolete?: boolean;
   }[];
-  members: { delivery_group_id: string; partition_id: string; cohort_id: string }[];
-  partitions: { id: string; cohort_id: string; headcount: number; active: boolean }[];
+  sharedLectures?: { anchor_group_id: string; member_group_id: string }[];
+  members: {
+    delivery_group_id: string;
+    partition_id: string;
+    cohort_id: string;
+  }[];
+  partitions: {
+    id: string;
+    cohort_id: string;
+    headcount: number;
+    active: boolean;
+  }[];
   assignments: {
     id: string;
     required_room_type: string;
@@ -162,6 +172,7 @@ const contexts = new WeakMap<
     students: (x: Session) => string[];
     share: (a: Session, b: Session) => boolean;
     level: (x: Session) => string;
+    levels: (x: Session) => string[];
     weight: (id: string) => number;
   }
 >();
@@ -184,36 +195,61 @@ export function context(s: Snapshot) {
       !!g &&
       g.expected_students > 0 &&
       ids.length > 0 &&
-      ids.every((p) => partitions.get(p)?.cohort_id === g.cohort_id) &&
       ids.reduce((n, p) => n + (partitions.get(p)?.headcount || 0), 0) === g.expected_students
     );
   };
-  // If any scheduled group in a cohort is incomplete, measure/collide conservatively for the entire cohort.
+  const groupCohorts = (id: string, fallbackId: string) => [
+    ...new Set([
+      fallbackId,
+      ...(s.sharedLectures ?? [])
+        .filter((l) => l.anchor_group_id === id)
+        .map((l) => groups.get(l.member_group_id)?.cohort_id)
+        .filter((c): c is string => !!c),
+      ...(memberMap.get(id) || []).map((p) => partitions.get(p)!.cohort_id),
+    ]),
+  ];
+  // An incomplete shared mapping keeps both source cohorts in conservative conflict checks.
   const fallback = new Set([
-    ...s.sessions.filter((x) => !complete(x.delivery_group_id)).map((x) => x.cohort_id),
+    ...s.sessions
+      .filter((x) => !complete(x.delivery_group_id))
+      .flatMap((x) => groupCohorts(x.delivery_group_id, x.cohort_id)),
     ...s.groups
       .filter((g) => g.active !== false && !g.is_obsolete && !complete(g.id))
-      .map((g) => g.cohort_id),
+      .flatMap((g) => groupCohorts(g.id, g.cohort_id)),
   ]);
-  const students = (x: Session) =>
-    fallback.has(x.cohort_id)
-      ? [`cohort:${x.cohort_id}`]
-      : memberMap.get(x.delivery_group_id) || [`cohort:${x.cohort_id}`];
-  const share = (a: Session, b: Session) =>
-    a.cohort_id === b.cohort_id &&
-    (fallback.has(a.cohort_id) || students(a).some((p) => students(b).includes(p)));
-  const cohorts = new Map(s.cohorts.map((c) => [c.id, c]));
-  const level = (x: Session) => {
-    const c = cohorts.get(x.cohort_id);
-    return c ? `${c.program_id}|${c.level_id}|${c.study_system}|${c.term_id}` : x.cohort_id;
+  const students = (x: Session) => {
+    const scope = groupCohorts(x.delivery_group_id, x.cohort_id);
+    const keys = new Set<string>();
+    for (const cid of scope) {
+      if (fallback.has(cid) || !complete(x.delivery_group_id)) keys.add(`cohort:${cid}`);
+      else
+        for (const p of memberMap.get(x.delivery_group_id) || [])
+          if (partitions.get(p)?.cohort_id === cid) keys.add(p);
+    }
+    return [...keys];
   };
+  const share = (a: Session, b: Session) => {
+    const common = groupCohorts(a.delivery_group_id, a.cohort_id).filter((id) =>
+      groupCohorts(b.delivery_group_id, b.cohort_id).includes(id),
+    );
+    return (
+      common.some((id) => fallback.has(id)) || students(a).some((p) => students(b).includes(p))
+    );
+  };
+  const cohorts = new Map(s.cohorts.map((c) => [c.id, c]));
+  const levelFor = (id: string) => {
+    const c = cohorts.get(id);
+    return c ? `${c.program_id}|${c.level_id}|${c.study_system}|${c.term_id}` : id;
+  };
+  const level = (x: Session) => levelFor(x.cohort_id);
+  const levels = (x: Session) => groupCohorts(x.delivery_group_id, x.cohort_id).map(levelFor);
   const weight = (id: string) =>
     partitions.get(id)?.headcount ||
     Math.max(
       1,
       ...s.groups.filter((g) => `cohort:${g.cohort_id}` === id).map((g) => g.expected_students),
     );
-  const result = { students, share, level, weight };
+  const result = { students, share, level, levels, weight };
   contexts.set(s, result);
   return result;
 }
@@ -227,6 +263,7 @@ export function measure(s: Snapshot, sessions = s.sessions): Metrics {
       students: ctx.students(x),
       instructor: x.instructor_id,
       level: ctx.level(x),
+      levels: ctx.levels(x),
     })),
     ctx.weight,
   );
@@ -369,13 +406,16 @@ export function feasible(
   )
     return false;
   if (
-    !s.templates.some(
-      (t) =>
-        t.is_active &&
-        t.day_of_week === day &&
-        (t.study_system === candidate.study_system || t.study_system === "both") &&
-        start >= minutes(t.start_time) &&
-        end <= minutes(t.end_time),
+    !(candidate.study_system === "both" ? ["regular", "parallel"] : [candidate.study_system]).every(
+      (system) =>
+        s.templates.some(
+          (t) =>
+            t.is_active &&
+            t.day_of_week === day &&
+            (t.study_system === system || t.study_system === "both") &&
+            start >= minutes(t.start_time) &&
+            end <= minutes(t.end_time),
+        ),
     )
   )
     return false;
@@ -438,13 +478,16 @@ export function feasible(
     )
   )
     return false;
-  const levelKey = ctx.level(candidate),
-    days = new Set(others.filter((x) => ctx.level(x) === levelKey).map((x) => x.day_of_week));
-  days.add(day);
-  const beforeDays = new Set(
-    sessions.filter((x) => ctx.level(x) === levelKey).map((x) => x.day_of_week),
-  ).size;
-  if (days.size > Math.max(ATTENDANCE_POLICY.maximumDays, beforeDays)) return false;
+  for (const levelKey of ctx.levels(candidate)) {
+    const days = new Set(
+      others.filter((x) => ctx.levels(x).includes(levelKey)).map((x) => x.day_of_week),
+    );
+    days.add(day);
+    const beforeDays = new Set(
+      sessions.filter((x) => ctx.levels(x).includes(levelKey)).map((x) => x.day_of_week),
+    ).size;
+    if (days.size > Math.max(ATTENDANCE_POLICY.maximumDays, beforeDays)) return false;
+  }
   // Existing violations may be repaired incrementally; never enlarge them.
   const teacherMinutes =
     sameDay.filter((x) => x.instructor_id === teacher.id).reduce((a, x) => a + duration(x), 0) +
@@ -488,7 +531,11 @@ export function compactSlots(
   const length = duration(old);
   const step = Math.max(1, s.settings.slot_minutes || 60);
   for (const template of s.templates.filter(
-    (t) => t.is_active && (t.study_system === old.study_system || t.study_system === "both"),
+    (t) =>
+      t.is_active &&
+      (old.study_system === "both" ||
+        t.study_system === old.study_system ||
+        t.study_system === "both"),
   )) {
     const begin = minutes(template.start_time),
       end = minutes(template.end_time);
@@ -500,7 +547,11 @@ export function compactSlots(
     }
     for (const start of anchors) {
       if (start < begin || start + length > end) continue;
-      const slot = { day: template.day_of_week, start: time(start), end: time(start + length) };
+      const slot = {
+        day: template.day_of_week,
+        start: time(start),
+        end: time(start + length),
+      };
       slots.set(`${slot.day}|${slot.start}`, slot);
     }
   }

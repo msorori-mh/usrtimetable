@@ -21,6 +21,7 @@ export interface WorkspaceSessionFlatRow {
   expected_students?: number | null;
   /** New Flow identity (optional; preserved through hydrate). */
   cohort_id?: string | null;
+  shared_cohort_ids?: string[];
   delivery_group_id?: string | null;
   source_type?: string | null;
   teaching_assignment_id?: string | null;
@@ -43,6 +44,7 @@ export interface WorkspaceSessionHydratedRow {
   is_locked?: boolean | null;
   course_offering_id?: string;
   cohort_id?: string | null;
+  shared_cohort_ids?: string[];
   delivery_group_id?: string | null;
   source_type?: string | null;
   teaching_assignment_id?: string | null;
@@ -63,7 +65,10 @@ export interface WorkspaceSessionHydratedRow {
       departments?: { name?: string | null } | null;
     } | null;
     academic_programs?: { name?: string | null } | null;
-    academic_levels?: { name?: string | null; level_number?: number | null } | null;
+    academic_levels?: {
+      name?: string | null;
+      level_number?: number | null;
+    } | null;
   } | null;
   sections?: { section_number?: string | number | null } | null;
   section_subgroups?: {
@@ -100,7 +105,12 @@ export interface WorkspaceSessionLookups {
   >;
   courses: Map<
     string,
-    { id: string; name: string | null; code: string | null; department_id: string | null }
+    {
+      id: string;
+      name: string | null;
+      code: string | null;
+      department_id: string | null;
+    }
   >;
   departments: Map<string, { id: string; name: string | null }>;
   programs: Map<string, { id: string; name: string | null }>;
@@ -156,13 +166,19 @@ export function assembleWorkspaceSessionRows(
       section_id: s.section_id,
       section_subgroup_id: s.section_subgroup_id ?? null,
       cohort_id: s.cohort_id ?? null,
+      shared_cohort_ids: s.shared_cohort_ids,
       delivery_group_id: s.delivery_group_id ?? null,
       source_type: s.source_type ?? null,
       teaching_assignment_id: s.teaching_assignment_id ?? null,
       section_group_id: s.section_group_id ?? null,
       schedule_version_id: s.schedule_version_id ?? null,
       expected_students:
-        offering?.expected_students ?? s.expected_students ?? subgroup?.expected_students ?? null,
+        s.study_system === "both" && (s.shared_cohort_ids?.length ?? 0) > 1
+          ? (s.expected_students ?? null)
+          : (offering?.expected_students ??
+            s.expected_students ??
+            subgroup?.expected_students ??
+            null),
       replaced_by_split: s.replaced_by_split ?? false,
       room_id: s.room_id,
       updated_at: s.updated_at,
@@ -213,6 +229,19 @@ export function attachCohortTermHeadcounts(
   const byCohortId = new Map(headcounts.map((row) => [row.cohort_id, row]));
   return rows.map((row) => ({
     ...row,
-    cohort_term_headcount: row.cohort_id ? (byCohortId.get(row.cohort_id) ?? null) : null,
+    cohort_term_headcount:
+      (row.shared_cohort_ids?.length ?? 0) > 1
+        ? row.shared_cohort_ids!.every((id) => byCohortId.get(id)?.approval_status === "approved")
+          ? {
+              ...byCohortId.get(row.cohort_id!)!,
+              scheduling_headcount: row.shared_cohort_ids!.reduce(
+                (n, id) => n + Number(byCohortId.get(id)!.scheduling_headcount),
+                0,
+              ),
+            }
+          : null
+        : row.cohort_id
+          ? (byCohortId.get(row.cohort_id) ?? null)
+          : null,
   }));
 }

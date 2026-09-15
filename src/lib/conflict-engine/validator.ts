@@ -1,3 +1,5 @@
+import { fetchStudentMembershipIndex } from "@/lib/academic-delivery/student-memberships";
+import { groupsShareStudents } from "@/lib/auto-scheduler/student-partitions";
 import { supabase } from "@/integrations/supabase/client";
 import { buildInstructorCategoryMap, requiresAvailability } from "@/lib/instructor-category";
 import { isInstructorAvailabilityEnforced } from "@/lib/scheduling/instructor-availability-policy";
@@ -19,6 +21,8 @@ import {
 export type StudySystem = "regular" | "parallel" | "both";
 
 export interface ProposedSession {
+  cohort_id?: string | null;
+  delivery_group_id?: string | null;
   id?: string;
   schedule_version_id?: string | null;
   course_offering_id: string;
@@ -64,6 +68,8 @@ const within = (s: string, e: string, winS: string, winE: string) =>
   t(s) >= t(winS) && t(e) <= t(winE);
 
 interface ExistingSession {
+  cohort_id?: string | null;
+  delivery_group_id?: string | null;
   id: string;
   instructor_id: string;
   room_id: string | null;
@@ -83,7 +89,7 @@ async function fetchExistingSessions(
   let q = supabase
     .from("schedule_sessions")
     .select(
-      "id, instructor_id, room_id, section_id, section_subgroup_id, day_of_week, start_time, end_time, replaced_by_split",
+      "id, instructor_id, room_id, section_id, section_subgroup_id, day_of_week, start_time, end_time, replaced_by_split, cohort_id, delivery_group_id",
     )
     .eq("college_id", collegeId)
     .eq("schedule_version_id", versionId)
@@ -134,6 +140,10 @@ export async function validateProposed(params: {
 }): Promise<ValidationResult> {
   const { collegeId, scheduleVersionId, sessions } = params;
   const conflicts: Conflict[] = [];
+
+  const memberships = sessions.some((s) => s.delivery_group_id)
+    ? await fetchStudentMembershipIndex(collegeId)
+    : null;
 
   // Pull existing peers
   const existing = await fetchExistingSessions(collegeId, scheduleVersionId);
@@ -296,6 +306,26 @@ export async function validateProposed(params: {
   for (const s of sessions) {
     const sid = s.id ?? null;
 
+    if (s.delivery_group_id && memberships) {
+      for (const p of peers) {
+        if (
+          p.id === sid ||
+          !p.delivery_group_id ||
+          p.day_of_week !== s.day_of_week ||
+          !overlap(s.start_time, s.end_time, p.start_time, p.end_time)
+        )
+          continue;
+        if (groupsShareStudents(s.delivery_group_id, p.delivery_group_id, memberships).share)
+          conflicts.push({
+            code: "delivery_group_conflict",
+            severity: "hard",
+            message_ar: "تعارض طلاب المحاضرة مع محاضرة أو معمل آخر لإحدى الدفعات المشاركة.",
+            message_en: "Overlapping student membership.",
+            schedule_session_id: sid,
+            related_session_id: p.id,
+          });
+      }
+    }
     // 1. instructor conflict
     for (const p of peers) {
       if (sid && p.id === sid) continue;
@@ -591,6 +621,8 @@ export async function validateScheduleVersion(params: {
 
   const proposed: ProposedSession[] = (sessions ?? []).map((s) => ({
     id: s.id,
+    cohort_id: s.cohort_id,
+    delivery_group_id: s.delivery_group_id,
     schedule_version_id: s.schedule_version_id,
     course_offering_id: s.course_offering_id,
     teaching_assignment_id: s.teaching_assignment_id,
