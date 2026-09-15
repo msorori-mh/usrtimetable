@@ -96,7 +96,10 @@ export function defaultSourceCollegeId(
   candidates: readonly AssignmentCandidate[],
   deliveryGroupCollegeId: string | null,
 ): string {
-  if (deliveryGroupCollegeId && candidates.some((c) => c.home_college_id === deliveryGroupCollegeId))
+  if (
+    deliveryGroupCollegeId &&
+    candidates.some((c) => c.home_college_id === deliveryGroupCollegeId)
+  )
     return deliveryGroupCollegeId;
   return candidateCollegeOptions(candidates)[0]?.college_id ?? "";
 }

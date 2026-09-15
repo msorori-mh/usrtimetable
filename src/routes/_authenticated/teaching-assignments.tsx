@@ -63,7 +63,6 @@ import {
   parseAssignmentCandidates,
 } from "@/lib/teaching-assignments/cross-college-candidates";
 
-
 export const Route = createFileRoute("/_authenticated/teaching-assignments")({
   head: () => ({ meta: [{ title: "الإسناد التدريسي" }] }),
   component: TeachingAssignmentsV2Page,
@@ -208,7 +207,6 @@ function TeachingAssignmentsV2Page() {
     [candidates, effectiveSourceCollegeId],
   );
 
-
   const hoursNum = hours.trim() === "" ? null : Number(hours);
   const preview = useWorkloadPreview({
     instructorId: instructorId || null,
@@ -246,7 +244,6 @@ function TeachingAssignmentsV2Page() {
     setHours("");
     setEditingAssignmentId(null);
     setExpectedUpdatedAt(null);
-
   };
 
   const openEditHours = (row: TeachingAssignmentWorkspaceRow, assignmentId: string) => {

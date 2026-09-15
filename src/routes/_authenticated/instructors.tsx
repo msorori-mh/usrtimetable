@@ -198,7 +198,6 @@ function InstructorDirectory() {
     },
   });
 
-
   const [supportName, setSupportName] = useState("");
   const affiliationCollegeId = form.affiliation_college_id || active?.id || "";
   const { data: affiliationDepts } = useQuery({
@@ -628,17 +627,26 @@ function InstructorDirectory() {
                     </SelectContent>
                   </Select>
                   {typesLoading && (
-                    <p className="mt-1 text-xs text-muted-foreground" data-testid="instructor-category-loading">
+                    <p
+                      className="mt-1 text-xs text-muted-foreground"
+                      data-testid="instructor-category-loading"
+                    >
                       جارٍ تحميل فئات المحاضرين…
                     </p>
                   )}
                   {typesError && (
-                    <p className="mt-1 text-xs text-destructive" data-testid="instructor-category-error">
+                    <p
+                      className="mt-1 text-xs text-destructive"
+                      data-testid="instructor-category-error"
+                    >
                       تعذر تحميل فئات المحاضرين. حدّث الصفحة وحاول مرة أخرى.
                     </p>
                   )}
                   {!typesLoading && !typesError && typeRows.length === 0 && (
-                    <p className="mt-1 text-xs text-amber-700" data-testid="instructor-category-empty">
+                    <p
+                      className="mt-1 text-xs text-amber-700"
+                      data-testid="instructor-category-empty"
+                    >
                       لا توجد فئات محاضرين مفعّلة لهذه الكلية بعد.
                     </p>
                   )}
@@ -647,7 +655,6 @@ function InstructorDirectory() {
                       {INSTRUCTOR_FORM_HINT_AR[categorizeInstructor(selectedType)]}
                     </p>
                   )}
-
                 </div>
 
                 {!hourlyContract && (
