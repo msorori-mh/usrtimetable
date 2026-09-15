@@ -30,7 +30,9 @@ export async function fetchStudentMembershipIndex(collegeId: string) {
     cohortIdsByGroup: Object.fromEntries(
       links.map((l) => [l.anchor_group_id, [l.anchor_cohort_id, l.cohort_id]]),
     ),
-    rows: members,
+    rows: members.filter(
+      (m): m is typeof m & { delivery_group_id: string } => m.delivery_group_id != null,
+    ),
     expectedStudents: Object.fromEntries(groups.map((g) => [g.id, g.expected_students])),
   });
 }

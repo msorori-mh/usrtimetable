@@ -24,11 +24,13 @@ export async function fetchCohortDeliveryGroupCatalog(params: {
       .range(from, to),
   );
   const shared = await fetchSharedLectures(college);
-  const groups = allGroups.filter(
-    (g) =>
-      cohortIds.has(g.cohort_id) ||
-      shared.some((l) => l.anchor_group_id === g.id && cohortIds.has(l.cohort_id)),
-  );
+  const groups = allGroups
+    .filter((g): g is typeof g & { id: string } => g.id != null)
+    .filter(
+      (g) =>
+        (g.cohort_id != null && cohortIds.has(g.cohort_id)) ||
+        shared.some((l) => l.anchor_group_id === g.id && cohortIds.has(l.cohort_id)),
+    );
   if (!groups.length) return [];
   // Fetch all pages of scoped references: a server limit must not silently drop a
   // co-teacher or a component and change the report's demand or instructor label.

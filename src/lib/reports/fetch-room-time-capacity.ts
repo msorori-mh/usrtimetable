@@ -73,7 +73,11 @@ export async function fetchRoomTimeCapacity(
     const eligibleGroups = new Set(
       (groups.data ?? [])
         .filter(
-          (g) => g.active !== false && g.is_obsolete !== true && termCohortIds.has(g.cohort_id),
+          (g) =>
+            g.active !== false &&
+            g.is_obsolete !== true &&
+            g.cohort_id != null &&
+            termCohortIds.has(g.cohort_id),
         )
         .map((g) => g.id),
     );
