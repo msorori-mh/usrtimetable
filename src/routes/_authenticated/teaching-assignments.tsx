@@ -56,6 +56,13 @@ import {
   normalizeArabicName,
   summarizeInstructorAssignedHours,
 } from "@/lib/teaching-assignments/instructor-name-search";
+import {
+  candidateCollegeOptions,
+  defaultSourceCollegeId,
+  filterCandidatesByCollege,
+  parseAssignmentCandidates,
+} from "@/lib/teaching-assignments/cross-college-candidates";
+
 
 export const Route = createFileRoute("/_authenticated/teaching-assignments")({
   head: () => ({ meta: [{ title: "الإسناد التدريسي" }] }),
@@ -91,6 +98,8 @@ function TeachingAssignmentsV2Page() {
 
   const [selected, setSelected] = useState<TeachingAssignmentWorkspaceRow | null>(null);
   const [instructorId, setInstructorId] = useState("");
+  const [sourceCollegeId, setSourceCollegeId] = useState("");
+
   const [hours, setHours] = useState<string>("");
   const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(null);
   const [expectedUpdatedAt, setExpectedUpdatedAt] = useState<string | null>(null);
