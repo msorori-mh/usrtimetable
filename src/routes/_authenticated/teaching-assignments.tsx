@@ -326,6 +326,10 @@ function TeachingAssignmentsV2Page() {
                       ? (ALLOCATION_LABELS[assignmentStatus] ?? assignmentStatus)
                       : "",
                   },
+                  {
+                    label: "اسم المحاضر",
+                    value: instructorSearchActive ? instructorSearch.trim() : "",
+                  },
                 ]),
               })
             }
@@ -488,6 +492,15 @@ function TeachingAssignmentsV2Page() {
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Label>البحث باسم المحاضر</Label>
+              <Input
+                data-testid="ta-v2-instructor-search"
+                value={instructorSearch}
+                onChange={(e) => setInstructorSearch(e.target.value)}
+                placeholder="اكتب اسم المحاضر..."
+              />
+            </div>
             {readOnly && (
               <div className="flex items-end">
                 <p className="text-xs text-muted-foreground" data-testid="ta-v2-readonly-banner">
@@ -506,8 +519,9 @@ function TeachingAssignmentsV2Page() {
               </p>
             ) : rows.length === 0 ? (
               <p className="p-6 text-center text-muted-foreground">
-                لا توجد مجموعات محاضرات ومعامل أسبوعية مطابقة. ولّد المجموعات من الدفعات الدراسية
-                أولاً.
+                {instructorSearchActive
+                  ? "لا توجد إسنادات مطابقة لاسم المحاضر المدخل."
+                  : "لا توجد مجموعات محاضرات ومعامل أسبوعية مطابقة. ولّد المجموعات من الدفعات الدراسية أولاً."}
               </p>
             ) : (
               <div className="overflow-x-auto">
