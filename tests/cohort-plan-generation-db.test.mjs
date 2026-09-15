@@ -216,7 +216,6 @@ check(
   `a := ${generate()}; IF (SELECT count(*) FROM delivery_groups)<>5 OR (SELECT count(*) FROM teaching_assignments)<>1 OR (a->>'groups_obsolete')::int<>3 THEN RAISE EXCEPTION 'links lost'; END IF;`,
 );
 
-
 check(
   "approved old and new cohort plans resolve overlap and preserve generated groups on retry",
   `
@@ -254,10 +253,10 @@ test("binding foreign key rejects another college or program", () => {
   sql(`BEGIN;
     INSERT INTO study_plans VALUES(${id("othercollegeplan")},${id("foreigncollege")},${id("program")},'FOREIGN',true,now()),
       (${id("otherprogramplan")},${id("college")},${id("otherprogram")},'OTHER',true,now());
-    DO $ BEGIN
+    DO $scope$ BEGIN
       BEGIN UPDATE academic_cohorts SET study_plan_id=${id("othercollegeplan")} WHERE id=${id("regular")}; RAISE EXCEPTION 'accepted college'; EXCEPTION WHEN foreign_key_violation THEN NULL; END;
       BEGIN UPDATE academic_cohorts SET study_plan_id=${id("otherprogramplan")} WHERE id=${id("regular")}; RAISE EXCEPTION 'accepted program'; EXCEPTION WHEN foreign_key_violation THEN NULL; END;
-    END $; ROLLBACK;`);
+    END $scope$; ROLLBACK;`);
 });
 check(
   "view-only user cannot change the approved binding",

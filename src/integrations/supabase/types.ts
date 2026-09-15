@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier -- Preserve Supabase generator formatting in this generated schema file. */
 export type Json =
   | string
   | number

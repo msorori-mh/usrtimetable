@@ -38,7 +38,9 @@ export function generationErrorMessage(error: unknown): string {
 }
 
 export function uniqueMatchingStudyPlan(ids: string[], selectedPlanId?: string | null): string {
-  const candidates = [...new Set(ids)].filter((id) => selectedPlanId == null || id === selectedPlanId);
+  const candidates = [...new Set(ids)].filter(
+    (id) => selectedPlanId == null || id === selectedPlanId,
+  );
   if (candidates.length === 0) throw new Error("STUDY_PLAN_MISSING_FOR_COHORT_LEVEL_TERM");
   if (candidates.length !== 1) throw new Error("STUDY_PLAN_AMBIGUOUS_FOR_COHORT_LEVEL_TERM");
   return candidates[0];
