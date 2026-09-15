@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 import { Card } from "@/components/ui/card";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import { isReportsOnlyRole } from "@/lib/viewer-roles";
+import { isAcademicAffairsRole, isReportsOnlyRole } from "@/lib/viewer-roles";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { normalizeSearchText } from "@/lib/reports/search";
@@ -89,6 +89,13 @@ const TIMETABLE_REPORTS: ReportCard[] = [
 ];
 
 const ANALYTICS_REPORTS: ReportCard[] = [
+  {
+    to: "/reports/instructors",
+    title: "دليل المحاضرين وبياناتهم",
+    desc: "بيانات المحاضرين الأساسية، التبعية الأكاديمية، الرتبة، النصاب، الإعفاء الإداري، وسائل التواصل والحالة.",
+    icon: <UserSquare2 className="h-5 w-5" />,
+    badge: "official",
+  },
   {
     to: "/reports/academic-affairs",
     title: "تقارير الشؤون الأكاديمية",
@@ -270,7 +277,7 @@ function ReportsHub() {
   const legacyItems = match(LEGACY_SECTION.items);
   // «مشاهد» stays inside /reports/*: the publishing area is out of scope.
   const { data: me } = useCurrentUser();
-  const reportsOnly = isReportsOnlyRole(me);
+  const restrictedViewer = isReportsOnlyRole(me) || isAcademicAffairsRole(me);
   return (
     <div className="space-y-8" dir="rtl">
       <header className="usr-page-header">
@@ -279,7 +286,7 @@ function ReportsHub() {
         </span>
         <div>
           <h1 className="text-2xl font-bold">التقارير والطباعة</h1>
-          {!reportsOnly && (
+          {!restrictedViewer && (
             <Link
               to="/published-schedules"
               className="mt-2 inline-block text-sm font-semibold text-primary hover:underline"

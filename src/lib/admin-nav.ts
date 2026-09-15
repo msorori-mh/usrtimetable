@@ -57,7 +57,10 @@ export const ALL_ROLES = ALL;
  * so it is included here; write controls stay disabled by can_manage/RLS.
  */
 // prettier-ignore
-export const OPERATIONAL: Role[] = ["super_admin", "college_admin", "institutional_viewer"];
+export const OPERATIONAL: Role[] = ["super_admin", "college_admin"];
+
+// Academic affairs is deliberately limited to reports + instructor data.
+export const INSTRUCTOR_ACCESS: Role[] = ["super_admin", "college_admin", "institutional_viewer"];
 
 /** basic = إعداد أساسي · advanced = إعداد متقدم · legacy = قديم/تشخيصي */
 export type AdminTier = "basic" | "advanced" | "legacy";
@@ -267,7 +270,7 @@ export const ADMIN_PAGES: AdminPage[] = [
     label: "المحاضرون",
     desc: "بيانات أعضاء هيئة التدريس.",
     icon: UserSquare2,
-    roles: OPERATIONAL,
+    roles: INSTRUCTOR_ACCESS,
     tier: "basic",
     journey: "staff",
   },

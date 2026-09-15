@@ -37,6 +37,7 @@ import { cn } from "@/lib/utils";
 import {
   INSTITUTIONAL_VIEWER_ROLE_LABEL_AR,
   READ_ONLY_ROLE_LABEL_AR,
+  isAcademicAffairsRole,
   isReportsOnlyRole,
 } from "@/lib/viewer-roles";
 
@@ -306,9 +307,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   };
 
   const roles = user?.roles as Role[] | undefined;
-  /** «مشاهد» (read_only only): reports centre only. */
+  /** Restricted viewer scopes. */
   const reportsOnly = isReportsOnlyRole(user);
-  const effectiveMode: NavMode = reportsOnly ? "core" : mode;
+  const academicAffairs = isAcademicAffairsRole(user);
+  const restrictedViewer = reportsOnly || academicAffairs;
+  const effectiveMode: NavMode = reportsOnly ? "core" : academicAffairs ? "all" : mode;
 
   const coreSteps = useMemo(() => CORE_PATH.filter((s) => canAccess(s, roles)), [roles]);
   const toolPages = useMemo(
@@ -337,7 +340,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           ? READ_ONLY_ROLE_LABEL_AR
           : "—";
 
-  const modeToggle = reportsOnly ? null : (
+  const modeToggle = restrictedViewer ? null : (
     <button
       type="button"
       onClick={() => setNavMode(mode === "core" ? "all" : "core")}
@@ -367,10 +370,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         >
           {reportsOnly
             ? "حساب مشاهد: مركز التقارير لجميع الكلّيات، قراءة وطباعة وتصدير فقط."
-            : "أربع خطوات: تجهيز البيانات، إنشاء الجدول، المراجعة والاعتماد، التقارير والطباعة."}
+            : academicAffairs
+              ? "إدارة الشؤون الأكاديمية: التقارير وبيانات المحاضرين لجميع الكلّيات."
+              : "أربع خطوات: تجهيز البيانات، إنشاء الجدول، المراجعة والاعتماد، التقارير والطباعة."}
         </p>
         <CorePathNav steps={coreSteps} pathname={pathname} onNavigate={onNavigate} tone={tone} />
-        {!reportsOnly && (
+        {!restrictedViewer && (
           <Link
             to={ADMIN_TOOLS_PAGE.to}
             onClick={onNavigate}
@@ -453,7 +458,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               className="flex w-[min(20rem,90vw)] flex-col gap-0 overflow-y-auto p-4"
             >
               <SheetTitle className="mb-3 text-sm font-bold">التنقل</SheetTitle>
-              {!reportsOnly && (
+              {!restrictedViewer && (
                 <button
                   type="button"
                   onClick={() => setNavMode(mode === "core" ? "all" : "core")}

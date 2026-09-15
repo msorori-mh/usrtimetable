@@ -9,10 +9,10 @@
  *    trigger;
  *  - no add / edit / delete anywhere.
  *
- * `institutional_viewer` — «مشاهد مؤسسي»:
- *  - may browse the whole platform across all colleges, read-only;
- *  - is NOT reports-only and is never redirected to /reports;
- *  - holds every current and future college as read scope, same as above.
+ * `institutional_viewer` — «إدارة الشؤون الأكاديمية»:
+ *  - may open reports and the instructor directory/editor only;
+ *  - may update basic instructor fields through a dedicated RPC, but cannot create/delete instructors;
+ *  - holds every current and future college as scope, same as above.
  *
  * Multi-role safety: an account that also carries `super_admin` or
  * `college_admin` keeps that role's full behaviour, is never narrowed to
@@ -23,19 +23,19 @@
  */
 
 export const READ_ONLY_ROLE_LABEL_AR = "مشاهد";
-export const INSTITUTIONAL_VIEWER_ROLE_LABEL_AR = "مشاهد مؤسسي";
+export const INSTITUTIONAL_VIEWER_ROLE_LABEL_AR = "إدارة الشؤون الأكاديمية";
 
 export const READ_ONLY_ROLE_HINT_AR =
   "التقارير فقط لجميع الكلّيات: قراءة وطباعة وتصدير، بدون أي إضافة أو تعديل أو حذف.";
 
 export const INSTITUTIONAL_VIEWER_ROLE_HINT_AR =
-  "استعراض كامل محتويات المنصة في جميع الكلّيات للقراءة فقط، بدون أي إضافة أو تعديل أو حذف.";
+  "تقارير جميع الكلّيات مع صلاحية تعديل البيانات الأساسية للمحاضرين فقط، دون إنشاء/حذف محاضرين أو تعديل بقية بيانات المنصة.";
 
 export const READ_ONLY_CREATE_NOTE_AR =
   "حساب «مشاهد»: يرى مركز التقارير فقط. تُسند له تلقائيًا جميع الكلّيات الحالية، وأي كلّية تُنشأ لاحقًا تُسند له تلقائيًا كذلك، والحساب للقراءة والطباعة والتصدير دون أي تعديل.";
 
 export const INSTITUTIONAL_VIEWER_CREATE_NOTE_AR =
-  "حساب «مشاهد مؤسسي»: يستعرض كامل صفحات المنصة في جميع الكلّيات للقراءة فقط. تُسند له تلقائيًا جميع الكلّيات الحالية وأي كلّية تُنشأ لاحقًا، بدون أي صلاحية تعديل.";
+  "حساب «إدارة الشؤون الأكاديمية»: يرى التقارير في جميع الكلّيات، ويستطيع تعديل البيانات الأساسية للمحاضرين فقط. تُسند له تلقائيًا جميع الكلّيات الحالية وأي كلّية تُنشأ لاحقًا.";
 
 /** The only area the reports-only role may open. */
 export const REPORTS_ONLY_HOME = "/reports" as const;
@@ -60,9 +60,14 @@ export function isReportsOnlyRole(me: RoleFlags | null | undefined): boolean {
   return !hasAdminRole(me) && !me.isInstitutionalViewer && !!me.isReadOnly;
 }
 
-/** True for an `institutional_viewer` account without any admin role: full read-only platform view. */
-export function isFullPlatformViewerRole(me: RoleFlags | null | undefined): boolean {
+/** Dedicated academic-affairs account: reports + instructor data only. */
+export function isAcademicAffairsRole(me: RoleFlags | null | undefined): boolean {
   return !!me && !hasAdminRole(me) && !!me.isInstitutionalViewer;
+}
+
+/** @deprecated institutional_viewer is no longer a full-platform viewer. */
+export function isFullPlatformViewerRole(_me: RoleFlags | null | undefined): boolean {
+  return false;
 }
 
 /** True for any viewer-only account (read_only and/or institutional_viewer, no admin role). */
@@ -75,7 +80,22 @@ export function isReportsOnlyPath(pathname: string): boolean {
   return pathname === REPORTS_ONLY_HOME || pathname.startsWith(`${REPORTS_ONLY_HOME}/`);
 }
 
-/** Returns the redirect target when the reports-only role opened a forbidden path. */
+/** Academic affairs may open reports and the instructor directory/editor only. */
+export function isAcademicAffairsPath(pathname: string): boolean {
+  return isReportsOnlyPath(pathname) || pathname === "/instructors";
+}
+
+/** Returns the redirect target for restricted viewer roles. */
+export function resolveViewerScopeRedirect(
+  me: RoleFlags | null | undefined,
+  pathname: string,
+): typeof REPORTS_ONLY_HOME | null {
+  if (isReportsOnlyRole(me)) return isReportsOnlyPath(pathname) ? null : REPORTS_ONLY_HOME;
+  if (isAcademicAffairsRole(me)) return isAcademicAffairsPath(pathname) ? null : REPORTS_ONLY_HOME;
+  return null;
+}
+
+/** Backward-compatible alias for the reports-only contract. */
 export function resolveReportsOnlyRedirect(
   me: RoleFlags | null | undefined,
   pathname: string,
