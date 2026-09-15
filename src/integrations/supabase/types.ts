@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier -- Preserve Supabase generator formatting in this generated schema file. */
 export type Json =
   | string
   | number
@@ -119,6 +120,7 @@ export type Database = {
           id: string
           level_id: string
           program_id: string
+          study_plan_id: string | null
           study_system: string
           term_id: string
           updated_at: string
@@ -134,6 +136,7 @@ export type Database = {
           id?: string
           level_id: string
           program_id: string
+          study_plan_id?: string | null
           study_system: string
           term_id: string
           updated_at?: string
@@ -149,11 +152,19 @@ export type Database = {
           id?: string
           level_id?: string
           program_id?: string
+          study_plan_id?: string | null
           study_system?: string
           term_id?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "ac_study_plan_scope_fkey"
+            columns: ["study_plan_id", "college_id", "program_id"]
+            isOneToOne: false
+            referencedRelation: "study_plans"
+            referencedColumns: ["id", "college_id", "program_id"]
+          },
           {
             foreignKeyName: "ac_level_college_fkey"
             columns: ["level_id", "college_id"]

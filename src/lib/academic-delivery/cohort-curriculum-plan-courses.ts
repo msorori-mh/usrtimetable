@@ -50,6 +50,7 @@ async function resolveStudyPlanId(
   programId: string,
   levelId: string,
   semester: number,
+  selectedPlanId: string | null,
 ): Promise<string> {
   const { data: plans, error } = await supabase
     .from("study_plans")
@@ -78,12 +79,15 @@ async function resolveStudyPlanId(
   ]);
   if (courses.error) throw courses.error;
   if (slots.error) throw slots.error;
-  return uniqueMatchingStudyPlan([
-    ...(courses.data ?? []).map((p) => p.study_plan_id),
-    ...(slots.data ?? [])
-      .filter((p) => p.level_id === null || p.level_id === levelId)
-      .map((p) => p.study_plan_id),
-  ]);
+  return uniqueMatchingStudyPlan(
+    [
+      ...(courses.data ?? []).map((p) => p.study_plan_id),
+      ...(slots.data ?? [])
+        .filter((p) => p.level_id === null || p.level_id === levelId)
+        .map((p) => p.study_plan_id),
+    ],
+    selectedPlanId,
+  );
 }
 
 async function fetchRequiredPlanCourses(
@@ -251,7 +255,7 @@ export async function resolveCohortCurriculumPlanCourses(
   const { data: cohort, error: cohortError } = await supabase
     .from("academic_cohorts")
     .select(
-      "id, college_id, program_id, level_id, term_id, study_system, academic_programs!ac_program_college_fkey(name), academic_levels!ac_level_college_fkey(name), academic_terms!ac_term_college_fkey(name, term_type)",
+      "id, college_id, program_id, level_id, term_id, study_system, study_plan_id, academic_programs!ac_program_college_fkey(name), academic_levels!ac_level_college_fkey(name), academic_terms!ac_term_college_fkey(name, term_type)",
     )
     .eq("id", cohortId)
     .maybeSingle();
@@ -280,6 +284,7 @@ export async function resolveCohortCurriculumPlanCourses(
     cohort.program_id,
     cohort.level_id,
     semester,
+    cohort.study_plan_id,
   );
   if (!studyPlanId) {
     return {
