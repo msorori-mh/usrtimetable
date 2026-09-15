@@ -179,18 +179,23 @@ function InstructorDirectory() {
       ).data ?? [],
   });
 
-  const { data: types } = useQuery({
+  const {
+    data: types,
+    isLoading: typesLoading,
+    isError: typesError,
+  } = useQuery({
     queryKey: ["instructor-types", active?.id],
     enabled: !!active,
-    queryFn: async () =>
-      (
-        await supabase
-          .from("instructor_types")
-          .select("id, code, name_ar, is_external")
-          .eq("college_id", active!.id)
-          .eq("is_active", true)
-          .order("display_order")
-      ).data ?? [],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("instructor_types")
+        .select("id, code, name_ar, is_external")
+        .eq("college_id", active!.id)
+        .eq("is_active", true)
+        .order("display_order");
+      if (error) throw error;
+      return data ?? [];
+    },
   });
 
   const [supportName, setSupportName] = useState("");
@@ -607,8 +612,10 @@ function InstructorDirectory() {
                       });
                     }}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="اختر الفئة" />
+                    <SelectTrigger data-testid="instructor-category-select">
+                      <SelectValue
+                        placeholder={typesLoading ? "جارٍ تحميل الفئات…" : "اختر الفئة"}
+                      />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="_none">— غير محدد —</SelectItem>
@@ -619,6 +626,30 @@ function InstructorDirectory() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {typesLoading && (
+                    <p
+                      className="mt-1 text-xs text-muted-foreground"
+                      data-testid="instructor-category-loading"
+                    >
+                      جارٍ تحميل فئات المحاضرين…
+                    </p>
+                  )}
+                  {typesError && (
+                    <p
+                      className="mt-1 text-xs text-destructive"
+                      data-testid="instructor-category-error"
+                    >
+                      تعذر تحميل فئات المحاضرين. حدّث الصفحة وحاول مرة أخرى.
+                    </p>
+                  )}
+                  {!typesLoading && !typesError && typeRows.length === 0 && (
+                    <p
+                      className="mt-1 text-xs text-amber-700"
+                      data-testid="instructor-category-empty"
+                    >
+                      لا توجد فئات محاضرين مفعّلة لهذه الكلية بعد.
+                    </p>
+                  )}
                   {selectedType && (
                     <p className="mt-1 text-xs text-muted-foreground">
                       {INSTRUCTOR_FORM_HINT_AR[categorizeInstructor(selectedType)]}

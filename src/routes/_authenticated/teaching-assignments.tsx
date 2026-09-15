@@ -56,6 +56,12 @@ import {
   normalizeArabicName,
   summarizeInstructorAssignedHours,
 } from "@/lib/teaching-assignments/instructor-name-search";
+import {
+  candidateCollegeOptions,
+  defaultSourceCollegeId,
+  filterCandidatesByCollege,
+  parseAssignmentCandidates,
+} from "@/lib/teaching-assignments/cross-college-candidates";
 
 export const Route = createFileRoute("/_authenticated/teaching-assignments")({
   head: () => ({ meta: [{ title: "الإسناد التدريسي" }] }),
@@ -91,6 +97,8 @@ function TeachingAssignmentsV2Page() {
 
   const [selected, setSelected] = useState<TeachingAssignmentWorkspaceRow | null>(null);
   const [instructorId, setInstructorId] = useState("");
+  const [sourceCollegeId, setSourceCollegeId] = useState("");
+
   const [hours, setHours] = useState<string>("");
   const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(null);
   const [expectedUpdatedAt, setExpectedUpdatedAt] = useState<string | null>(null);
@@ -176,7 +184,7 @@ function TeachingAssignmentsV2Page() {
     },
   });
 
-  const { data: candidates } = useQuery({
+  const candidatesQuery = useQuery({
     queryKey: ["ta-v2-candidates", selected?.delivery_group_id],
     enabled: !!selected?.delivery_group_id && canManage,
     queryFn: async () => {
@@ -187,10 +195,18 @@ function TeachingAssignmentsV2Page() {
         } as never,
       );
       if (error) throw error;
-      const root = (data ?? {}) as { candidates?: Array<Record<string, unknown>> };
-      return root.candidates ?? [];
+      return parseAssignmentCandidates(data);
     },
   });
+  const candidatesData = candidatesQuery.data;
+  const candidates = useMemo(() => candidatesData ?? [], [candidatesData]);
+  const collegeOptions = useMemo(() => candidateCollegeOptions(candidates), [candidates]);
+  const effectiveSourceCollegeId =
+    sourceCollegeId || defaultSourceCollegeId(candidates, active?.id ?? null);
+  const collegeCandidates = useMemo(
+    () => filterCandidatesByCollege(candidates, effectiveSourceCollegeId),
+    [candidates, effectiveSourceCollegeId],
+  );
 
   const hoursNum = hours.trim() === "" ? null : Number(hours);
   const preview = useWorkloadPreview({
@@ -225,6 +241,7 @@ function TeachingAssignmentsV2Page() {
     }
     setSelected(row);
     setInstructorId("");
+    setSourceCollegeId("");
     setHours("");
     setEditingAssignmentId(null);
     setExpectedUpdatedAt(null);
@@ -235,6 +252,7 @@ function TeachingAssignmentsV2Page() {
     if (!a) return;
     setSelected(row);
     setInstructorId(a.instructor_id);
+    setSourceCollegeId("");
     setHours(a.assigned_component_hours == null ? "" : String(a.assigned_component_hours));
     setEditingAssignmentId(a.assignment_id);
     setExpectedUpdatedAt(a.updated_at);
@@ -686,22 +704,72 @@ function TeachingAssignmentsV2Page() {
                 {selected.component_hours ?? "—"}
               </p>
               {!editingAssignmentId && (
-                <div>
-                  <Label htmlFor="ta-v2-instructor-combobox">المدرس</Label>
-                  <InstructorCombobox
-                    candidates={(candidates ?? [])
-                      .filter((c) => !c.already_assigned)
-                      .map((c) => ({
-                        instructor_id: String(c.instructor_id),
-                        full_name: c.full_name == null ? null : String(c.full_name),
-                        employee_number:
-                          c.employee_number == null ? null : String(c.employee_number),
-                      }))}
-                    value={instructorId}
-                    onChange={setInstructorId}
-                  />
-                </div>
+                <>
+                  <div>
+                    <Label>الكلية التي ينتمي إليها المحاضر</Label>
+                    <Select
+                      value={effectiveSourceCollegeId || "_none"}
+                      onValueChange={(v) => {
+                        setSourceCollegeId(v === "_none" ? "" : v);
+                        setInstructorId("");
+                      }}
+                      disabled={candidatesQuery.isLoading || collegeOptions.length === 0}
+                    >
+                      <SelectTrigger data-testid="ta-v2-source-college-select">
+                        <SelectValue placeholder="اختر الكلية" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {collegeOptions.map((c) => (
+                          <SelectItem key={c.college_id} value={c.college_id}>
+                            {c.college_name}
+                            {c.is_home_college ? " (كلية المجموعة)" : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {effectiveSourceCollegeId &&
+                      effectiveSourceCollegeId !== (active?.id ?? "") && (
+                        <p
+                          className="mt-1 text-xs text-amber-700"
+                          data-testid="ta-v2-cross-college-note"
+                        >
+                          محاضر من كلية أخرى — يبقى سجله وهويته في كليته الأم بلا تعديل، ويُحسب
+                          نصابه وتعارضاته عبر الكليات.
+                        </p>
+                      )}
+                  </div>
+                  <div>
+                    <Label htmlFor="ta-v2-instructor-combobox">المدرس</Label>
+                    {candidatesQuery.isLoading ? (
+                      <p
+                        className="text-xs text-muted-foreground"
+                        data-testid="ta-v2-candidates-loading"
+                      >
+                        جارٍ تحميل المحاضرين…
+                      </p>
+                    ) : candidatesQuery.isError ? (
+                      <p className="text-xs text-destructive" data-testid="ta-v2-candidates-error">
+                        تعذر تحميل قائمة المحاضرين. حدّث الصفحة وحاول مرة أخرى.
+                      </p>
+                    ) : collegeCandidates.length === 0 ? (
+                      <p className="text-xs text-amber-700" data-testid="ta-v2-candidates-empty">
+                        لا يوجد محاضر متاح في هذه الكلية.
+                      </p>
+                    ) : (
+                      <InstructorCombobox
+                        candidates={collegeCandidates.map((c) => ({
+                          instructor_id: c.instructor_id,
+                          full_name: c.full_name,
+                          employee_number: c.employee_number,
+                        }))}
+                        value={instructorId}
+                        onChange={setInstructorId}
+                      />
+                    )}
+                  </div>
+                </>
               )}
+
               <div>
                 <Label>ساعات المحاضرة المسندة (اختياري لمدرس واحد؛ إلزامي عند المشاركة)</Label>
                 <Input

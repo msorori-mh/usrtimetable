@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier -- Preserve Supabase generator formatting in this generated schema file. */
 export type Json =
   | string
   | number
@@ -159,13 +158,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "ac_study_plan_scope_fkey"
-            columns: ["study_plan_id", "college_id", "program_id"]
-            isOneToOne: false
-            referencedRelation: "study_plans"
-            referencedColumns: ["id", "college_id", "program_id"]
-          },
-          {
             foreignKeyName: "ac_level_college_fkey"
             columns: ["level_id", "college_id"]
             isOneToOne: false
@@ -178,6 +170,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "academic_programs"
             referencedColumns: ["id", "college_id"]
+          },
+          {
+            foreignKeyName: "ac_study_plan_scope_fkey"
+            columns: ["study_plan_id", "college_id", "program_id"]
+            isOneToOne: false
+            referencedRelation: "study_plans"
+            referencedColumns: ["id", "college_id", "program_id"]
           },
           {
             foreignKeyName: "ac_term_college_fkey"
@@ -3288,6 +3287,49 @@ export type Database = {
         }
         Relationships: []
       }
+      shared_lecture_links: {
+        Row: {
+          anchor_group_id: string
+          college_id: string
+          created_at: string
+          member_group_id: string
+        }
+        Insert: {
+          anchor_group_id: string
+          college_id: string
+          created_at?: string
+          member_group_id: string
+        }
+        Update: {
+          anchor_group_id?: string
+          college_id?: string
+          created_at?: string
+          member_group_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_lecture_links_anchor_group_id_fkey"
+            columns: ["anchor_group_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shared_lecture_links_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shared_lecture_links_member_group_id_fkey"
+            columns: ["member_group_id"]
+            isOneToOne: true
+            referencedRelation: "delivery_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       study_plans: {
         Row: {
           code: string
@@ -3635,25 +3677,38 @@ export type Database = {
       }
     }
     Views: {
-      operational_group_members: {
+      operational_delivery_groups: {
         Row: {
-          id: string
-          college_id: string
-          cohort_id: string
-          delivery_group_id: string
-          partition_id: string
-          partition_headcount: number
-          partition_active: boolean
-          shared_lecture: boolean
+          active: boolean | null
+          capacity_limit: number | null
+          cohort_id: string | null
+          college_id: string | null
+          component_id: string | null
+          created_at: string | null
+          excluded_from_standard_workload: boolean | null
+          expected_students: number | null
+          group_code: string | null
+          group_number: number | null
+          id: string | null
+          is_obsolete: boolean | null
+          plan_course_id: string | null
+          updated_at: string | null
         }
         Relationships: []
       }
-
-      operational_delivery_groups: {
-        Row: Database["public"]["Tables"]["delivery_groups"]["Row"]
+      operational_group_members: {
+        Row: {
+          cohort_id: string | null
+          college_id: string | null
+          delivery_group_id: string | null
+          id: string | null
+          partition_active: boolean | null
+          partition_headcount: number | null
+          partition_id: string | null
+          shared_lecture: boolean | null
+        }
         Relationships: []
       }
-
       v_instructor_delivery_workload: {
         Row: {
           academic_rank: string | null
@@ -3991,6 +4046,64 @@ export type Database = {
         }
         Returns: Json
       }
+      academic_affairs_update_instructor: {
+        Args: {
+          p_academic_rank: string
+          p_administrative_department_id: string
+          p_administrative_position: string
+          p_administrative_release_hours: number
+          p_administrative_support_department_id: string
+          p_affiliation_college_id: string
+          p_affiliation_department_id: string
+          p_email: string
+          p_employee_number: string
+          p_employment_type: string
+          p_full_name: string
+          p_full_name_ar: string
+          p_instructor_id: string
+          p_instructor_type_id: string
+          p_is_active: boolean
+          p_max_weekly_hours: number
+          p_phone: string
+          p_specialization: string
+        }
+        Returns: {
+          academic_degree: string | null
+          academic_rank: string | null
+          admin_tasks: string | null
+          administrative_department_id: string | null
+          administrative_position: string | null
+          administrative_release_hours: number
+          administrative_support_department_id: string | null
+          affiliation_college_id: string | null
+          affiliation_department_id: string | null
+          college_id: string
+          created_at: string
+          department_id: string | null
+          email: string | null
+          employee_number: string | null
+          employment_type: string
+          external_source: string | null
+          full_name: string
+          full_name_ar: string | null
+          full_name_en: string | null
+          id: string
+          instructor_type_id: string | null
+          is_active: boolean
+          max_hours_per_day: number | null
+          max_weekly_hours: number
+          notes: string | null
+          phone: string | null
+          specialization: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "instructors"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       apply_schedule_compaction: {
         Args: {
           p_college_id: string
@@ -4283,6 +4396,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      merge_shared_lecture: {
+        Args: { p_anchor: string; p_member: string }
+        Returns: Json
+      }
       move_or_reschedule_schedule_session: {
         Args: {
           p_change_reason?: string
@@ -4294,6 +4411,31 @@ export type Database = {
           p_target_start_time: string
         }
         Returns: Json
+      }
+      operational_delivery_group: {
+        Args: { p_group: string }
+        Returns: {
+          active: boolean
+          capacity_limit: number | null
+          cohort_id: string
+          college_id: string
+          component_id: string
+          created_at: string
+          excluded_from_standard_workload: boolean
+          expected_students: number
+          group_code: string
+          group_number: number | null
+          id: string
+          is_obsolete: boolean
+          plan_course_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "delivery_groups"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       persist_schedule_quality_run: {
         Args: {
@@ -4343,6 +4485,10 @@ export type Database = {
           p_term_id: string
         }
         Returns: Json
+      }
+      same_system_lecture_pair: {
+        Args: { p_anchor: string; p_member: string }
+        Returns: boolean
       }
       save_course_programs: {
         Args: {
@@ -4397,6 +4543,31 @@ export type Database = {
           working_days: number
         }[]
       }
+      seed_college_instructor_types: {
+        Args: { p_college_id: string }
+        Returns: number
+      }
+      shared_lecture_candidates: { Args: { p_college: string }; Returns: Json }
+      shared_lecture_catalog: { Args: { p_college: string }; Returns: Json }
+      shared_lecture_group_ids: {
+        Args: { p_group: string }
+        Returns: {
+          group_id: string
+        }[]
+      }
+      shared_lecture_matches: {
+        Args: { p_cohort?: string; p_group: string; p_system?: string }
+        Returns: boolean
+      }
+      shared_lecture_time_allowed: {
+        Args: {
+          p_college: string
+          p_day: number
+          p_end: string
+          p_start: string
+        }
+        Returns: boolean
+      }
       transition_schedule_version: {
         Args: {
           p_college_id: string
@@ -4411,6 +4582,7 @@ export type Database = {
         Args: { p_college: string }
         Returns: string
       }
+      unmerge_shared_lecture: { Args: { p_member: string }; Returns: Json }
       update_teaching_assignment_v2: {
         Args: {
           p_assigned_component_hours?: number

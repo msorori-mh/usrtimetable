@@ -30,7 +30,19 @@ export async function fetchStudentMembershipIndex(collegeId: string) {
     cohortIdsByGroup: Object.fromEntries(
       links.map((l) => [l.anchor_group_id, [l.anchor_cohort_id, l.cohort_id]]),
     ),
-    rows: members,
+    rows: members.flatMap((m) =>
+      m.delivery_group_id && m.cohort_id && m.partition_id
+        ? [
+            {
+              delivery_group_id: m.delivery_group_id,
+              cohort_id: m.cohort_id,
+              partition_id: m.partition_id,
+              partition_headcount: m.partition_headcount,
+              shared_lecture: m.shared_lecture ?? false,
+            },
+          ]
+        : [],
+    ),
     expectedStudents: Object.fromEntries(groups.map((g) => [g.id, g.expected_students])),
   });
 }
