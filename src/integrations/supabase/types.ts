@@ -4543,6 +4543,10 @@ export type Database = {
           working_days: number
         }[]
       }
+      seed_college_instructor_types: {
+        Args: { p_college_id: string }
+        Returns: number
+      }
       shared_lecture_candidates: { Args: { p_college: string }; Returns: Json }
       shared_lecture_catalog: { Args: { p_college: string }; Returns: Json }
       shared_lecture_group_ids: {
