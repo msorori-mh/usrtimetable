@@ -176,7 +176,7 @@ function TeachingAssignmentsV2Page() {
     },
   });
 
-  const { data: candidates } = useQuery({
+  const candidatesQuery = useQuery({
     queryKey: ["ta-v2-candidates", selected?.delivery_group_id],
     enabled: !!selected?.delivery_group_id && canManage,
     queryFn: async () => {
@@ -187,10 +187,18 @@ function TeachingAssignmentsV2Page() {
         } as never,
       );
       if (error) throw error;
-      const root = (data ?? {}) as { candidates?: Array<Record<string, unknown>> };
-      return root.candidates ?? [];
+      return parseAssignmentCandidates(data);
     },
   });
+  const candidates = candidatesQuery.data ?? [];
+  const collegeOptions = useMemo(() => candidateCollegeOptions(candidates), [candidates]);
+  const effectiveSourceCollegeId =
+    sourceCollegeId || defaultSourceCollegeId(candidates, active?.id ?? null);
+  const collegeCandidates = useMemo(
+    () => filterCandidatesByCollege(candidates, effectiveSourceCollegeId),
+    [candidates, effectiveSourceCollegeId],
+  );
+
 
   const hoursNum = hours.trim() === "" ? null : Number(hours);
   const preview = useWorkloadPreview({
