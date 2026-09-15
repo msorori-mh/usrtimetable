@@ -48,6 +48,19 @@ type InstructorRow = {
   is_active: boolean;
 };
 
+const AFFILIATION_LABELS: Record<string, string> = {
+  all: "كل جهات التبعية",
+  internal: "من داخل الكلية",
+  external: "من خارج الكلية",
+  unknown: "تبعية غير محددة",
+};
+
+function instructorAffiliation(i: InstructorRow, typeCode?: string): string {
+  if (typeCode === "from_other_college") return "external";
+  if (!i.affiliation_college_id) return "unknown";
+  return i.affiliation_college_id === i.college_id ? "internal" : "external";
+}
+
 function Page() {
   const { active } = useActiveCollege();
   return active ? <Report key={active.id} /> : <Card className="p-6">اختر كلية لعرض التقرير.</Card>;
@@ -60,6 +73,7 @@ function Report() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [typeId, setTypeId] = useState("all");
+  const [affiliation, setAffiliation] = useState("all");
   const [departmentId, setDepartmentId] = useState("all");
 
   const instructors = useQuery({
@@ -110,7 +124,7 @@ function Report() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("instructor_types")
-        .select("id, name_ar")
+        .select("id, name_ar, code")
         .eq("college_id", active!.id)
         .order("display_order");
       if (error) throw error;
@@ -134,6 +148,10 @@ function Report() {
     () => new Map((types.data ?? []).map((t) => [t.id, t.name_ar])),
     [types.data],
   );
+  const typeCodeMap = useMemo(
+    () => new Map((types.data ?? []).map((t) => [t.id, t.code])),
+    [types.data],
+  );
   const positionMap = useMemo(
     () => new Map(ADMINISTRATIVE_POSITION_OPTIONS.map((p) => [p.value, p.label])),
     [],
@@ -145,7 +163,9 @@ function Report() {
         employee_number: i.employee_number ?? "—",
         instructor: i.full_name,
         full_name_ar: i.full_name_ar ?? "—",
-        affiliation_college: collegeMap.get(i.affiliation_college_id ?? i.college_id) ?? "—",
+        affiliation_college: collegeMap.get(i.affiliation_college_id ?? "") ?? "غير محدد",
+        affiliation_scope:
+          AFFILIATION_LABELS[instructorAffiliation(i, typeCodeMap.get(i.instructor_type_id ?? ""))],
         affiliation_department: departmentMap.get(i.affiliation_department_id ?? "") ?? "—",
         specialization: i.specialization ?? "—",
         academic_rank: i.academic_rank ?? "—",
@@ -167,20 +187,22 @@ function Report() {
         status: i.is_active ? "نشط" : "غير نشط",
         _status: i.is_active ? "active" : "inactive",
         _type_id: i.instructor_type_id ?? "none",
+        _affiliation: instructorAffiliation(i, typeCodeMap.get(i.instructor_type_id ?? "")),
         _department_id: i.affiliation_department_id ?? "none",
       })),
-    [instructors.data, collegeMap, departmentMap, supportMap, typeMap, positionMap],
+    [instructors.data, collegeMap, departmentMap, supportMap, typeMap, typeCodeMap, positionMap],
   );
 
   const rows = useMemo(() => {
     let value = allRows;
     if (status !== "all") value = value.filter((r) => r._status === status);
     if (typeId !== "all") value = value.filter((r) => r._type_id === typeId);
+    if (affiliation !== "all") value = value.filter((r) => r._affiliation === affiliation);
     if (departmentId !== "all") value = value.filter((r) => r._department_id === departmentId);
     return filterRowsBySearch(value, search).map(
-      ({ _status, _type_id, _department_id, ...row }) => row,
+      ({ _status, _type_id, _department_id, _affiliation, ...row }) => row,
     );
-  }, [allRows, status, typeId, departmentId, search]);
+  }, [allRows, status, typeId, departmentId, affiliation, search]);
 
   const activeCount = rows.filter((r) => r.status === "نشط").length;
   const totalQuota = rows.reduce((sum, r) => sum + Number(r.effective_quota || 0), 0);
@@ -193,6 +215,7 @@ function Report() {
     { key: "instructor", label: "الاسم الافتراضي" },
     { key: "full_name_ar", label: "الاسم الرباعي" },
     { key: "affiliation_college", label: "كلية التبعية" },
+    { key: "affiliation_scope", label: "نطاق التبعية" },
     { key: "affiliation_department", label: "قسم التبعية" },
     { key: "specialization", label: "التخصص" },
     { key: "academic_rank", label: "الرتبة العلمية" },
@@ -217,12 +240,14 @@ function Report() {
   const activeFilterSummary = [
     search.trim() ? `بحث: ${search.trim()}` : "",
     status === "all" ? "" : `الحالة: ${status === "active" ? "نشط" : "غير نشط"}`,
-    typeId === "all" ? "" : `الفئة: ${typeMap.get(typeId) ?? "فئة محددة"}`,
+    typeId === "all" ? "" : `الفئة: ${typeMap.get(typeId) ?? "غير محدد"}`,
+    affiliation === "all" ? "" : AFFILIATION_LABELS[affiliation],
     departmentId === "all" ? "" : `القسم: ${departmentMap.get(departmentId) ?? "قسم محدد"}`,
   ].filter(Boolean);
   const filterSummary = [
     status === "all" ? "كل الحالات" : status === "active" ? "نشط" : "غير نشط",
-    typeId === "all" ? "كل الفئات" : (typeMap.get(typeId) ?? "فئة محددة"),
+    typeId === "all" ? "كل الفئات" : (typeMap.get(typeId) ?? "غير محدد"),
+    AFFILIATION_LABELS[affiliation],
     departmentId === "all" ? "كل الأقسام" : (departmentMap.get(departmentId) ?? "قسم محدد"),
     search.trim() ? `بحث: ${search.trim()}` : "",
   ]
@@ -280,9 +305,24 @@ function Report() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">الكل</SelectItem>
+                      <SelectItem value="none">غير محدد</SelectItem>
                       {(types.data ?? []).map((t) => (
                         <SelectItem key={t.id} value={t.id}>
                           {t.name_ar}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </ReportFilterField>
+                <ReportFilterField label="تبعية المحاضر">
+                  <Select value={affiliation} onValueChange={setAffiliation}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(AFFILIATION_LABELS).map(([value, label]) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -314,6 +354,7 @@ function Report() {
                     setSearch("");
                     setStatus("all");
                     setTypeId("all");
+                    setAffiliation("all");
                     setDepartmentId("all");
                   }
                 : undefined
@@ -329,7 +370,9 @@ function Report() {
         </div>
       }
       emptyMessage={
-        search ? "لا توجد بيانات محاضرين مطابقة للبحث." : "لا توجد بيانات محاضرين في هذه الكلية."
+        activeFilterSummary.length
+          ? "لا توجد بيانات محاضرين مطابقة للفلاتر."
+          : "لا توجد بيانات محاضرين في هذه الكلية."
       }
     >
       <ReportSection title="بيانات المحاضرين" count={rows.length} bodyClassName="p-0">
