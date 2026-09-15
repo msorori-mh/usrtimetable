@@ -159,7 +159,10 @@ export function buildAcademicReport(
       // Full college/term load survives program filtering: a partial program load is not a personal deficit.
       const balance = computeQuotaBalance({
         // RPC returns a net quota; reconstruct fallback base to avoid a second release.
-        policyRequiredHours: w.required_load_hours == null ? null : w.required_load_hours + (i.administrative_release_hours ?? 0),
+        policyRequiredHours:
+          w.required_load_hours == null
+            ? null
+            : w.required_load_hours + (i.administrative_release_hours ?? 0),
         maxWeeklyHours: i.max_weekly_hours,
         adminReleaseHours: i.administrative_release_hours,
         assignedHours: w.standard_assigned_hours,
@@ -168,7 +171,10 @@ export function buildAcademicReport(
         instructor: i.full_name,
         department: departmentMap.get(i.department_id ?? "") ?? "غير محدد",
         rank: i.academic_rank ?? "غير محدد",
-        administrative_position: administrativePositionLabelAr(i.administrative_position) || i.administrative_position || "—",
+        administrative_position:
+          administrativePositionLabelAr(i.administrative_position) ||
+          i.administrative_position ||
+          "—",
         base_required: balance.baseHours ?? QUOTA_UNDEFINED_AR,
         release: balance.releaseHours,
         required: balance.netHours ?? QUOTA_UNDEFINED_AR,
@@ -177,7 +183,10 @@ export function buildAcademicReport(
         overload: balance.overloadHours ?? QUOTA_UNDEFINED_AR,
         deficit: balance.deficitHours ?? QUOTA_UNDEFINED_AR,
         quota_source: QUOTA_SOURCE_LABEL_AR[balance.source],
-        status: (balance.overloadHours ?? 0) > 12 ? "تجاوز الحد المسموح للساعات الزائدة" : QUOTA_STATUS_LABEL_AR[balance.status],
+        status:
+          (balance.overloadHours ?? 0) > 12
+            ? "تجاوز الحد المسموح للساعات الزائدة"
+            : QUOTA_STATUS_LABEL_AR[balance.status],
       };
     });
 }
