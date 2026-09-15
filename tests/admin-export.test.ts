@@ -333,9 +333,22 @@ describe("other admin lists produce usable columns", () => {
             academic_rank: "مدرس",
             employment_type: null,
             max_weekly_hours: 18,
+            administrative_release_hours: 6,
             instructor_type_id: null,
             is_active: true,
             needs_review: true,
+          },
+          {
+            employee_number: "1002",
+            full_name: "سالم",
+            full_name_en: null,
+            department_id: null,
+            academic_rank: null,
+            employment_type: null,
+            max_weekly_hours: null,
+            instructor_type_id: null,
+            is_active: true,
+            needs_review: false,
           },
         ],
         departmentLabel: () => "قسم الحاسوب",
@@ -350,13 +363,27 @@ describe("other admin lists produce usable columns", () => {
       "القسم",
       "الرتبة العلمية",
       "نوع التعاقد",
-      "الحد الأسبوعي للساعات",
+      "النصاب الأساسي الأسبوعي",
+      "ساعات الإعفاء الإداري",
+      "النصاب الفعلي",
       "الفئة",
       "مفعّل",
       "يحتاج مراجعة",
     ]);
+    const base = table.headers.indexOf("النصاب الأساسي الأسبوعي");
+    const release = table.headers.indexOf("ساعات الإعفاء الإداري");
+    const net = table.headers.indexOf("النصاب الفعلي");
+    // net = base − administrative release, floored at 0
+    expect(table.body[0]?.[base]).toBe(18);
+    expect(table.body[0]?.[release]).toBe(6);
+    expect(table.body[0]?.[net]).toBe(12);
+    // a missing base quota stays «—», never 0, and never invents a net value
+    expect(table.body[1]?.[base]).toBe("—");
+    expect(table.body[1]?.[release]).toBe(0);
+    expect(table.body[1]?.[net]).toBe("—");
     expect(table.body[0]).toContain("غير محدد (لم يُثبت بعد)");
     expect(table.body[0]?.at(-1)).toBe("نعم");
+
   });
 
   test("headcounts and delivery groups datasets expose the scheduling numbers", () => {
