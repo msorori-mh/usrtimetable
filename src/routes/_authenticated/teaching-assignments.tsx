@@ -54,6 +54,7 @@ import { entityDisplayName } from "@/lib/entity-display";
 import {
   filterRowsByInstructorName,
   normalizeArabicName,
+  summarizeInstructorAssignedHours,
 } from "@/lib/teaching-assignments/instructor-name-search";
 
 export const Route = createFileRoute("/_authenticated/teaching-assignments")({
@@ -205,6 +206,10 @@ function TeachingAssignmentsV2Page() {
     [workspace.data?.rows, instructorSearch],
   );
   const instructorSearchActive = normalizeArabicName(instructorSearch) !== "";
+  const instructorHoursSummary = useMemo(
+    () => summarizeInstructorAssignedHours(workspace.data?.rows ?? [], instructorSearch),
+    [workspace.data?.rows, instructorSearch],
+  );
   const readOnly = !canManage || workspace.data?.can_manage === false;
 
   const openAssign = (row: TeachingAssignmentWorkspaceRow) => {
@@ -509,6 +514,32 @@ function TeachingAssignmentsV2Page() {
               </div>
             )}
           </Card>
+
+          {instructorSearchActive && instructorHoursSummary.matchedInstructors.length > 0 && (
+            <Card
+              className="mb-4 flex flex-wrap items-center justify-between gap-4 border-primary/30 bg-primary/5 p-4"
+              data-testid="ta-v2-instructor-hours-summary"
+            >
+              <div>
+                <p className="text-xs text-muted-foreground">
+                  {instructorHoursSummary.matchedInstructors.length === 1
+                    ? "المحاضر"
+                    : "المحاضرون المطابقون"}
+                </p>
+                <p className="font-semibold">
+                  {instructorHoursSummary.matchedInstructors.length === 1
+                    ? instructorHoursSummary.matchedInstructors[0]
+                    : `${instructorHoursSummary.matchedInstructors.length} محاضرين مطابقين`}
+                </p>
+              </div>
+              <div className="text-left">
+                <p className="text-xs text-muted-foreground">إجمالي الساعات المسندة</p>
+                <p className="text-2xl font-bold tabular-nums text-primary">
+                  {instructorHoursSummary.totalHours.toLocaleString("ar-YE")} ساعة
+                </p>
+              </div>
+            </Card>
+          )}
 
           <Card className="overflow-hidden" data-testid="ta-v2-groups-table">
             {workspace.isLoading ? (

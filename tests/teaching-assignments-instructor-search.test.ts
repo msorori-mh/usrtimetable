@@ -4,6 +4,7 @@ import {
   filterRowsByInstructorName,
   instructorNameMatches,
   normalizeArabicName,
+  summarizeInstructorAssignedHours,
 } from "@/lib/teaching-assignments/instructor-name-search";
 
 const row = (id: string, names: (string | null)[]) => ({
@@ -61,6 +62,54 @@ describe("filterRowsByInstructorName", () => {
   });
 });
 
+describe("summarizeInstructorAssignedHours", () => {
+  it("sums explicit split hours and sole-instructor fallback for the searched lecturer", () => {
+    const summary = summarizeInstructorAssignedHours(
+      [
+        {
+          component_hours: 3,
+          instructors: [
+            {
+              instructor_name: "أحمد محمد",
+              assigned_component_hours: null,
+              is_active: true,
+            },
+          ],
+        },
+        {
+          component_hours: 4,
+          instructors: [
+            {
+              instructor_name: "أحمد محمد",
+              assigned_component_hours: 1.5,
+              is_active: true,
+            },
+            {
+              instructor_name: "سارة علي",
+              assigned_component_hours: 2.5,
+              is_active: true,
+            },
+          ],
+        },
+        {
+          component_hours: 2,
+          instructors: [
+            {
+              instructor_name: "أحمد محمد",
+              assigned_component_hours: 2,
+              is_active: false,
+            },
+          ],
+        },
+      ],
+      "احمد",
+    );
+
+    expect(summary.totalHours).toBe(4.5);
+    expect(summary.matchedInstructors).toEqual(["أحمد محمد"]);
+  });
+});
+
 describe("teaching-assignments page wiring", () => {
   const src = readFileSync("src/routes/_authenticated/teaching-assignments.tsx", "utf8");
 
@@ -75,6 +124,12 @@ describe("teaching-assignments page wiring", () => {
       "filterRowsByInstructorName(workspace.data?.rows ?? [], instructorSearch)",
     );
     expect(src).toContain("instructorSearchActive");
+  });
+
+  it("shows the instructor assigned-hours summary while searching", () => {
+    expect(src).toContain('data-testid="ta-v2-instructor-hours-summary"');
+    expect(src).toContain("إجمالي الساعات المسندة");
+    expect(src).toContain("summarizeInstructorAssignedHours");
   });
 
   it("shows the no-matching-instructor message and export filter", () => {
