@@ -35,7 +35,10 @@ export function SharedLecturesPanel({ collegeId }: { collegeId: string }) {
       qc.invalidateQueries();
       toast.success("تم تحديث المحاضرة المشتركة");
     },
-    onError: () => toast.error("تعذر تغيير الدمج. راجع السعة واكتمال الدفعات والإسنادات وحصص الجداول الحالية، ثم حدّث الصفحة."),
+    onError: () =>
+      toast.error(
+        "تعذر تغيير الدمج. راجع السعة واكتمال الدفعات والإسنادات وحصص الجداول الحالية، ثم حدّث الصفحة.",
+      ),
   });
   return (
     <Card className="mb-4 p-4">
