@@ -80,6 +80,7 @@ before(() => {
   // The actual approved-headcount resolver, rather than a test stub.
   sql(read("tests/fixtures/cohort-generation-headcount-resolver.sql"));
   sql(read("supabase/sql/cohort_level_plan_generation.sql"));
+  sql(read("supabase/sql/cohort_study_plan_binding.sql"));
   assert.equal(
     read("supabase/sql/cohort_level_plan_generation.sql"),
     read("supabase/migrations/20260911183000_cohort_level_plan_generation.sql"),
@@ -213,6 +214,56 @@ check(
   UPDATE scheduling_cohort_term_headcounts SET scheduling_headcount=25 WHERE cohort_id=${id("regular")};
 `,
   `a := ${generate()}; IF (SELECT count(*) FROM delivery_groups)<>5 OR (SELECT count(*) FROM teaching_assignments)<>1 OR (a->>'groups_obsolete')::int<>3 THEN RAISE EXCEPTION 'links lost'; END IF;`,
+);
+
+
+check(
+  "approved old and new cohort plans resolve overlap and preserve generated groups on retry",
+  `
+  INSERT INTO plan_courses VALUES(${id("overlap")},${id("college")},${id("new")},${id("level3")},1,${id("course")},true);
+  UPDATE academic_cohorts SET study_plan_id=${id("old")} WHERE id=${id("senior")};
+  UPDATE academic_cohorts SET study_plan_id=${id("new")} WHERE id=${id("regular")};
+  `,
+  `
+  a := ${generate("senior")}; b := ${generate()};
+  IF a->'curriculum'->>'study_plan_code'<>'OLD' OR b->'curriculum'->>'study_plan_code'<>'NEW' THEN RAISE EXCEPTION 'binding ignored'; END IF;
+  IF (SELECT sum(expected_students) FROM delivery_groups WHERE cohort_id=${id("senior")})<>58 THEN RAISE EXCEPTION 'senior count changed'; END IF;
+  IF (SELECT count(*) FROM delivery_groups)<>6 THEN RAISE EXCEPTION 'unexpected groups'; END IF;
+  a := ${generate("senior")}; b := ${generate()};
+  IF (SELECT count(*) FROM delivery_groups)<>6 OR (SELECT count(*) FROM course_offerings)<>2 THEN RAISE EXCEPTION 'retry duplicates'; END IF;
+  `,
+);
+check(
+  "bound plan without matching level cannot fall back",
+  `UPDATE academic_cohorts SET study_plan_id=${id("old")} WHERE id=${id("regular")};`,
+  `
+  BEGIN PERFORM ${generate()}; RAISE EXCEPTION 'accepted'; EXCEPTION WHEN check_violation THEN IF SQLERRM<>'STUDY_PLAN_MISSING_FOR_COHORT_LEVEL_TERM' THEN RAISE; END IF; END;
+  IF (SELECT count(*) FROM course_offerings)<>0 THEN RAISE EXCEPTION 'partial write'; END IF;
+  `,
+);
+check(
+  "inactive bound plan cannot fall back to another active matching plan",
+  `
+  UPDATE academic_cohorts SET study_plan_id=${id("new")} WHERE id=${id("regular")};
+  UPDATE study_plans SET is_active=false WHERE id=${id("new")};
+  INSERT INTO plan_courses VALUES(${id("overlap")},${id("college")},${id("old")},${id("level1")},1,${id("oldcourse")},true);
+  `,
+  `BEGIN PERFORM ${generate()}; RAISE EXCEPTION 'accepted'; EXCEPTION WHEN check_violation THEN IF SQLERRM<>'STUDY_PLAN_MISSING_FOR_COHORT_LEVEL_TERM' THEN RAISE; END IF; END;`,
+);
+test("binding foreign key rejects another college or program", () => {
+  sql(`BEGIN;
+    INSERT INTO study_plans VALUES(${id("othercollegeplan")},${id("foreigncollege")},${id("program")},'FOREIGN',true,now()),
+      (${id("otherprogramplan")},${id("college")},${id("otherprogram")},'OTHER',true,now());
+    DO $ BEGIN
+      BEGIN UPDATE academic_cohorts SET study_plan_id=${id("othercollegeplan")} WHERE id=${id("regular")}; RAISE EXCEPTION 'accepted college'; EXCEPTION WHEN foreign_key_violation THEN NULL; END;
+      BEGIN UPDATE academic_cohorts SET study_plan_id=${id("otherprogramplan")} WHERE id=${id("regular")}; RAISE EXCEPTION 'accepted program'; EXCEPTION WHEN foreign_key_violation THEN NULL; END;
+    END $; ROLLBACK;`);
+});
+check(
+  "view-only user cannot change the approved binding",
+  "",
+  `BEGIN UPDATE academic_cohorts SET study_plan_id=${id("new")} WHERE id=${id("regular")}; RAISE EXCEPTION 'accepted'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;`,
+  "viewer",
 );
 
 test("concurrent retries serialize without duplicate offerings or groups", async () => {

@@ -59,3 +59,10 @@ test("empty old server curriculum cannot masquerade as already current", () => {
     6,
   );
 });
+
+test("approved cohort plan resolves overlap without falling back to another plan", () => {
+  assert.equal(uniqueMatchingStudyPlan(["old", "new", "old"], "old"), "old");
+  assert.equal(uniqueMatchingStudyPlan(["old", "new"], "new"), "new");
+  assert.throws(() => uniqueMatchingStudyPlan(["new"], "old"), /MISSING_FOR_COHORT_LEVEL_TERM/);
+  assert.throws(() => uniqueMatchingStudyPlan(["old", "new"], null), /AMBIGUOUS_FOR_COHORT_LEVEL_TERM/);
+});
