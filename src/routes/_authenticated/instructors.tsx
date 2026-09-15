@@ -179,19 +179,25 @@ function InstructorDirectory() {
       ).data ?? [],
   });
 
-  const { data: types } = useQuery({
+  const {
+    data: types,
+    isLoading: typesLoading,
+    isError: typesError,
+  } = useQuery({
     queryKey: ["instructor-types", active?.id],
     enabled: !!active,
-    queryFn: async () =>
-      (
-        await supabase
-          .from("instructor_types")
-          .select("id, code, name_ar, is_external")
-          .eq("college_id", active!.id)
-          .eq("is_active", true)
-          .order("display_order")
-      ).data ?? [],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("instructor_types")
+        .select("id, code, name_ar, is_external")
+        .eq("college_id", active!.id)
+        .eq("is_active", true)
+        .order("display_order");
+      if (error) throw error;
+      return data ?? [];
+    },
   });
+
 
   const [supportName, setSupportName] = useState("");
   const affiliationCollegeId = form.affiliation_college_id || active?.id || "";
