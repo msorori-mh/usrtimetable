@@ -1,3 +1,4 @@
+import { administrativePositionLabelAr } from "@/lib/instructors/administrative-positions";
 import type { TeachingAssignmentWorkspaceRow } from "../academic-delivery/teaching-assignments-v2.ts";
 import {
   QUOTA_SOURCE_LABEL_AR,
@@ -12,6 +13,7 @@ export type AcademicInstructor = {
   id: string;
   full_name: string;
   academic_rank: string | null;
+  administrative_position?: string | null;
   department_id: string | null;
   /** approved weekly load on the member's own card (`instructors.max_weekly_hours`) */
   max_weekly_hours?: number | null;
@@ -156,7 +158,8 @@ export function buildAcademicReport(
       if (!w) throw new Error("بيانات أعباء أعضاء هيئة التدريس غير مكتملة");
       // Full college/term load survives program filtering: a partial program load is not a personal deficit.
       const balance = computeQuotaBalance({
-        policyRequiredHours: w.required_load_hours,
+        // RPC returns a net quota; reconstruct fallback base to avoid a second release.
+        policyRequiredHours: w.required_load_hours == null ? null : w.required_load_hours + (i.administrative_release_hours ?? 0),
         maxWeeklyHours: i.max_weekly_hours,
         adminReleaseHours: i.administrative_release_hours,
         assignedHours: w.standard_assigned_hours,
@@ -165,6 +168,7 @@ export function buildAcademicReport(
         instructor: i.full_name,
         department: departmentMap.get(i.department_id ?? "") ?? "غير محدد",
         rank: i.academic_rank ?? "غير محدد",
+        administrative_position: administrativePositionLabelAr(i.administrative_position) || i.administrative_position || "—",
         base_required: balance.baseHours ?? QUOTA_UNDEFINED_AR,
         release: balance.releaseHours,
         required: balance.netHours ?? QUOTA_UNDEFINED_AR,
@@ -173,7 +177,7 @@ export function buildAcademicReport(
         overload: balance.overloadHours ?? QUOTA_UNDEFINED_AR,
         deficit: balance.deficitHours ?? QUOTA_UNDEFINED_AR,
         quota_source: QUOTA_SOURCE_LABEL_AR[balance.source],
-        status: QUOTA_STATUS_LABEL_AR[balance.status],
+        status: (balance.overloadHours ?? 0) > 12 ? "تجاوز الحد المسموح للساعات الزائدة" : QUOTA_STATUS_LABEL_AR[balance.status],
       };
     });
 }
@@ -214,13 +218,14 @@ export const ACADEMIC_REPORT_HEADERS: Record<AcademicReportKind, { key: string; 
     workload: [
       { key: "instructor", label: "عضو هيئة التدريس" },
       { key: "department", label: "القسم التابع له" },
-      { key: "rank", label: "الرتبة" },
-      { key: "base_required", label: "النصاب الأساسي المعتمد" },
-      { key: "release", label: "التخفيض الإداري" },
-      { key: "required", label: "صافي النصاب المعتمد" },
-      { key: "assigned", label: "المسند في الكلية والفصل" },
+      { key: "rank", label: "الرتبة العلمية" },
+      { key: "administrative_position", label: "المنصب الإداري" },
+      { key: "base_required", label: "النصاب الأساسي" },
+      { key: "release", label: "الإعفاء الإداري" },
+      { key: "required", label: "النصاب الفعلي" },
+      { key: "assigned", label: "الساعات المسندة" },
       { key: "project", label: "إشراف المشاريع" },
-      { key: "overload", label: "ساعات زائدة" },
+      { key: "overload", label: "الساعات الزائدة" },
       { key: "deficit", label: "نقص النصاب" },
       { key: "quota_source", label: "مصدر النصاب" },
       { key: "status", label: "الحالة" },
