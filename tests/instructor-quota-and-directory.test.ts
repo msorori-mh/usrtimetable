@@ -20,10 +20,10 @@ import {
 } from "../src/lib/reports/academic-affairs";
 
 describe("approved quota resolution", () => {
-  it("prefers the rank policy hours when a policy exists", () => {
+  it("prefers the saved instructor quota over the rank policy", () => {
     const q = resolveInstructorQuota({ policyRequiredHours: 12, maxWeeklyHours: 18 });
-    expect(q.baseHours).toBe(12);
-    expect(q.source).toBe("policy");
+    expect(q.baseHours).toBe(18);
+    expect(q.source).toBe("instructor");
   });
 
   it("falls back to the member's own approved weekly load when no policy exists", () => {
@@ -34,9 +34,9 @@ describe("approved quota resolution", () => {
   });
 
   it("treats a numeric zero as a real approved quota, not as missing", () => {
-    const q = resolveInstructorQuota({ policyRequiredHours: 0, maxWeeklyHours: 18 });
+    const q = resolveInstructorQuota({ policyRequiredHours: 12, maxWeeklyHours: 0 });
     expect(q.baseHours).toBe(0);
-    expect(q.source).toBe("policy");
+    expect(q.source).toBe("instructor");
     expect(q.netHours).toBe(0);
   });
 
@@ -290,5 +290,35 @@ describe("instructor directory search, filters and sorting", () => {
     expect(hasActiveDirectoryFilters(DEFAULT_DIRECTORY_FILTERS)).toBe(false);
     expect(hasActiveDirectoryFilters(f({ search: "a" }))).toBe(true);
     expect(hasActiveDirectoryFilters(f({ sortKey: "quota" }))).toBe(false);
+  });
+});
+
+describe("approved workload report contract", () => {
+  function row(assigned: number) {
+    return workloadRows([{ id: "i", full_name: "Test", academic_rank: "أستاذ مساعد",
+      department_id: null, administrative_position: "department_head",
+      max_weekly_hours: 18, administrative_release_hours: 6 }],
+      [{ instructor_id: "i", required_load_hours: 12, standard_assigned_hours: assigned,
+         project_supervision_hours: 0 }])[0]!;
+  }
+  it("uses the saved base and subtracts release once even when RPC returns net hours", () => {
+    const r = row(24);
+    expect(r.base_required).toBe(18);
+    expect(r.required).toBe(12);
+    expect(r.administrative_position).toBe("رئيس قسم");
+    expect(r.overload).toBe(12);
+    expect(r.status).toBe("ساعات زائدة");
+  });
+  it("distinguishes above 12 extra hours from permitted extra hours", () => {
+    expect(row(24.5).status).toBe("تجاوز الحد المسموح للساعات الزائدة");
+    expect(row(12).overload).toBe(0);
+  });
+  it("exports every requested field without remaining allowance", () => {
+    const headers = ACADEMIC_REPORT_HEADERS.workload;
+    for (const label of ["الرتبة العلمية", "المنصب الإداري", "النصاب الأساسي",
+       "الإعفاء الإداري", "النصاب الفعلي", "الساعات المسندة", "الساعات الزائدة"]) {
+      expect(headers.some(h => h.label === label)).toBe(true);
+    }
+    expect(headers.some(h => h.label.includes("المتبقي"))).toBe(false);
   });
 });
