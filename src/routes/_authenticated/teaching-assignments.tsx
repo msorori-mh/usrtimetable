@@ -198,7 +198,8 @@ function TeachingAssignmentsV2Page() {
       return parseAssignmentCandidates(data);
     },
   });
-  const candidates = candidatesQuery.data ?? [];
+  const candidatesData = candidatesQuery.data;
+  const candidates = useMemo(() => candidatesData ?? [], [candidatesData]);
   const collegeOptions = useMemo(() => candidateCollegeOptions(candidates), [candidates]);
   const effectiveSourceCollegeId =
     sourceCollegeId || defaultSourceCollegeId(candidates, active?.id ?? null);
@@ -251,6 +252,7 @@ function TeachingAssignmentsV2Page() {
     if (!a) return;
     setSelected(row);
     setInstructorId(a.instructor_id);
+    setSourceCollegeId("");
     setHours(a.assigned_component_hours == null ? "" : String(a.assigned_component_hours));
     setEditingAssignmentId(a.assignment_id);
     setExpectedUpdatedAt(a.updated_at);
