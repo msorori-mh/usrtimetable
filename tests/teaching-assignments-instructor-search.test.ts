@@ -71,7 +71,9 @@ describe("teaching-assignments page wiring", () => {
   });
 
   it("derives visible rows from filterRowsByInstructorName", () => {
-    expect(src).toContain("filterRowsByInstructorName(workspace.data?.rows ?? [], instructorSearch)");
+    expect(src).toContain(
+      "filterRowsByInstructorName(workspace.data?.rows ?? [], instructorSearch)",
+    );
     expect(src).toContain("instructorSearchActive");
   });
 

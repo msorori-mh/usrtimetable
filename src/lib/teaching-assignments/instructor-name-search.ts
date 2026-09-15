@@ -1,6 +1,6 @@
 // بحث عربي متسامح باسم المحاضر داخل صفوف مجموعات التدريس (عرض فقط — لا يغيّر البيانات).
 
-const DIACRITICS = /[ً-ْٰـۖ-ۭ]/g;
+const DIACRITICS = /[ً-ْٰـۖ-ۭ]/g; // eslint-disable-line no-misleading-character-class
 
 export function normalizeArabicName(value: unknown): string {
   return String(value ?? "")
