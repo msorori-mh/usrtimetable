@@ -295,11 +295,27 @@ describe("instructor directory search, filters and sorting", () => {
 
 describe("approved workload report contract", () => {
   function row(assigned: number) {
-    return workloadRows([{ id: "i", full_name: "Test", academic_rank: "أستاذ مساعد",
-      department_id: null, administrative_position: "department_head",
-      max_weekly_hours: 18, administrative_release_hours: 6 }],
-      [{ instructor_id: "i", required_load_hours: 12, standard_assigned_hours: assigned,
-         project_supervision_hours: 0 }])[0]!;
+    return workloadRows(
+      [
+        {
+          id: "i",
+          full_name: "Test",
+          academic_rank: "أستاذ مساعد",
+          department_id: null,
+          administrative_position: "department_head",
+          max_weekly_hours: 18,
+          administrative_release_hours: 6,
+        },
+      ],
+      [
+        {
+          instructor_id: "i",
+          required_load_hours: 12,
+          standard_assigned_hours: assigned,
+          project_supervision_hours: 0,
+        },
+      ],
+    )[0]!;
   }
   it("uses the saved base and subtracts release once even when RPC returns net hours", () => {
     const r = row(24);
@@ -315,10 +331,17 @@ describe("approved workload report contract", () => {
   });
   it("exports every requested field without remaining allowance", () => {
     const headers = ACADEMIC_REPORT_HEADERS.workload;
-    for (const label of ["الرتبة العلمية", "المنصب الإداري", "النصاب الأساسي",
-       "الإعفاء الإداري", "النصاب الفعلي", "الساعات المسندة", "الساعات الزائدة"]) {
-      expect(headers.some(h => h.label === label)).toBe(true);
+    for (const label of [
+      "الرتبة العلمية",
+      "المنصب الإداري",
+      "النصاب الأساسي",
+      "الإعفاء الإداري",
+      "النصاب الفعلي",
+      "الساعات المسندة",
+      "الساعات الزائدة",
+    ]) {
+      expect(headers.some((h) => h.label === label)).toBe(true);
     }
-    expect(headers.some(h => h.label.includes("المتبقي"))).toBe(false);
+    expect(headers.some((h) => h.label.includes("المتبقي"))).toBe(false);
   });
 });
