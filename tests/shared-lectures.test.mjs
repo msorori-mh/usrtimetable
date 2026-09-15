@@ -105,3 +105,26 @@ test("missing parallel partition membership still blocks a shared lecture confli
   assert.equal(context(s).share(a, b), true);
   assert.equal(feasible(s, [a, b], b, b), false);
 });
+
+test("shared lecture uses overlapping dedicated regular and parallel windows", () => {
+  const a = session("shared", 0, "08:00", "10:00", { study_system: "both", expected_students: 75 });
+  const s = sharedSnapshot([a]);
+  s.templates = [
+    {
+      study_system: "regular",
+      day_of_week: 0,
+      start_time: "08:00",
+      end_time: "12:00",
+      is_active: true,
+    },
+    {
+      study_system: "parallel",
+      day_of_week: 0,
+      start_time: "08:00",
+      end_time: "10:00",
+      is_active: true,
+    },
+  ];
+  assert.equal(feasible(s, [], a, a), true);
+  assert.equal(feasible(s, [], { ...a, start_time: "10:00", end_time: "12:00" }, a), false);
+});

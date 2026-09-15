@@ -60,6 +60,14 @@ RETURNS boolean LANGUAGE sql STABLE SET search_path = '' AS $fn$
  WHERE (p_cohort IS NULL OR c.id=p_cohort) AND (p_system IS NULL OR c.study_system=p_system));
 $fn$;
 
+-- A shared lecture must fit an approved window for each participating system.
+CREATE OR REPLACE FUNCTION public.shared_lecture_time_allowed(p_college uuid,p_day integer,p_start time,p_end time)
+RETURNS boolean LANGUAGE sql STABLE SET search_path = '' AS $fn$
+ SELECT bool_and(EXISTS(SELECT 1 FROM public.time_slot_templates t WHERE t.college_id=p_college
+   AND t.is_active AND t.day_of_week=p_day AND t.study_system IN(system,'both')
+   AND t.start_time<=p_start AND t.end_time>=p_end)) FROM unnest(ARRAY['regular','parallel']) system;
+$fn$;
+
 -- Only theory in the SAME plan component, program, level and term is supported.
 -- The scope deliberately excludes cross-program equivalence and partial regrouping.
 CREATE OR REPLACE FUNCTION public.validate_shared_lecture_link()

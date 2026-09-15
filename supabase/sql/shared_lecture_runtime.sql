@@ -343,6 +343,9 @@ BEGIN
   END IF;
 
   IF EXISTS(SELECT 1 FROM public.shared_lecture_links WHERE anchor_group_id=NEW.delivery_group_id) THEN
+    IF NOT public.shared_lecture_time_allowed(NEW.college_id,NEW.day_of_week,NEW.start_time,NEW.end_time) THEN
+      RAISE EXCEPTION 'SHARED_LECTURE_TIME_WINDOW' USING ERRCODE='23514';
+    END IF;
     NEW.study_system := 'both';
     NEW.expected_students := (public.operational_delivery_group(NEW.delivery_group_id)).expected_students;
   END IF;

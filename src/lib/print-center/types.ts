@@ -1,7 +1,12 @@
 /** Pure types for timetable print/export center (no React). */
 
 export type PrintReportType =
-  "student" | "department" | "program" | "instructor" | "room" | "level";
+  | "student"
+  | "department"
+  | "program"
+  | "instructor"
+  | "room"
+  | "level";
 
 export type PrintStudySystem = "regular" | "parallel" | "all";
 

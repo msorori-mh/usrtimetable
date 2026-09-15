@@ -140,7 +140,12 @@ export interface Move {
   room_id: string;
 }
 export type SearchOutcome =
-  "local_minimum" | "time_limit" | "candidate_limit" | "pass_limit" | "cancelled" | "empty";
+  | "local_minimum"
+  | "time_limit"
+  | "candidate_limit"
+  | "pass_limit"
+  | "cancelled"
+  | "empty";
 export interface Proposal {
   applicationMode?: "simultaneous";
   attendanceSearch?: import("./attendance-search.ts").AttendanceSearchResult;
@@ -401,13 +406,16 @@ export function feasible(
   )
     return false;
   if (
-    !s.templates.some(
-      (t) =>
-        t.is_active &&
-        t.day_of_week === day &&
-        (t.study_system === candidate.study_system || t.study_system === "both") &&
-        start >= minutes(t.start_time) &&
-        end <= minutes(t.end_time),
+    !(candidate.study_system === "both" ? ["regular", "parallel"] : [candidate.study_system]).every(
+      (system) =>
+        s.templates.some(
+          (t) =>
+            t.is_active &&
+            t.day_of_week === day &&
+            (t.study_system === system || t.study_system === "both") &&
+            start >= minutes(t.start_time) &&
+            end <= minutes(t.end_time),
+        ),
     )
   )
     return false;
@@ -523,7 +531,11 @@ export function compactSlots(
   const length = duration(old);
   const step = Math.max(1, s.settings.slot_minutes || 60);
   for (const template of s.templates.filter(
-    (t) => t.is_active && (t.study_system === old.study_system || t.study_system === "both"),
+    (t) =>
+      t.is_active &&
+      (old.study_system === "both" ||
+        t.study_system === old.study_system ||
+        t.study_system === "both"),
   )) {
     const begin = minutes(template.start_time),
       end = minutes(template.end_time);

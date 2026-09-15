@@ -366,7 +366,7 @@ export async function runV2AutoSchedule(params: {
       item.can_create_session &&
       item.delivery_group_id &&
       item.cohort_id &&
-      (item.study_system === "regular" || item.study_system === "parallel"),
+      ["regular", "parallel", "both"].includes(item.study_system ?? ""),
   );
   const timedScope = payload.rows.filter(
     (item) =>
