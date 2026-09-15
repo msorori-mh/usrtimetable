@@ -96,7 +96,7 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
           supabase
             .from("instructors")
             .select(
-              "id, full_name, academic_rank, department_id, max_weekly_hours, administrative_release_hours",
+              "id, full_name, academic_rank, administrative_position, department_id, max_weekly_hours, administrative_release_hours",
             )
             .eq("college_id", collegeId)
             .order("id")
@@ -314,9 +314,8 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
           )}
           {kind === "workload" && (
             <Card className="p-3 text-sm">
-              يُحدَّد النصاب المعتمد من سياسة النصاب المقرَّرة للرتبة، وعند غيابها يُعتمد النصاب
-              المسجَّل في بطاقة عضو هيئة التدريس، ويظهر مصدره في العمود المخصص. صافي النصاب = النصاب
-              الأساسي − التخفيض الإداري، وتُقارَن به الساعات المسندة في الكلية خلال الفصل، مع إظهار
+              يُعتمد النصاب المسجَّل في بطاقة عضو هيئة التدريس، وتُستخدم سياسة الرتبة عند غيابه.
+              النصاب الفعلي = النصاب الأساسي − الإعفاء الإداري. تُسمح بساعات زائدة لا تتجاوز 12 ساعة أسبوعيًا، وتُقارَن به الساعات المسندة في الكلية خلال الفصل، مع إظهار
               إشراف المشاريع منفصلاً. عند عدم وجود نصاب معتمد تظهر «غير محدد» في النصاب والزيادة
               والنقص، ولا تُعامل كصفر ولا تدخل في المجاميع.
               {workloadTotals.missingMembers > 0 && (
@@ -346,7 +345,7 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
             .sort((a, b) => {
               const order =
                 kind === "workload"
-                  ? ["instructor", "required", "assigned", "overload", "deficit", "status"]
+                  ? ["instructor", "rank", "administrative_position", "base_required", "release", "required", "assigned", "overload", "status"]
                   : kind === "assignments"
                     ? ["course", "group", "instructor", "assigned", "component", "program"]
                     : ["course", "group", "shortage", "required", "assigned", "program"];
@@ -355,7 +354,7 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
                 (order.includes(b.key) ? order.indexOf(b.key) : 99)
               );
             })
-            .map((h, index) => ({ key: h.key, label: h.label, secondary: index >= 6 }))}
+            .map((h, index) => ({ key: h.key, label: h.label, secondary: kind === "workload" ? !["instructor", "rank", "administrative_position", "base_required", "release", "required", "assigned", "overload"].includes(h.key) : index >= 6 }))}
         />
       </ReportSection>
     </ReportShell>
