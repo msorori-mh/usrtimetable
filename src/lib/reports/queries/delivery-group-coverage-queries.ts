@@ -103,7 +103,7 @@ export async function fetchCohortDeliveryGroupCatalog(params: {
       throw new Error("ساعات مكوّن مجموعة التدريس غير مكتملة؛ راجع الخطة قبل اعتماد التغطية");
     return {
       id: group.id,
-      cohortId: cohortIds.has(group.cohort_id)
+      cohortId: group.cohort_id != null && cohortIds.has(group.cohort_id)
         ? group.cohort_id
         : shared.find((l) => l.anchor_group_id === group.id && cohortIds.has(l.cohort_id))!
             .cohort_id,
