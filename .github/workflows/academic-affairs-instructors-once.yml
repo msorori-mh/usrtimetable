@@ -27,6 +27,24 @@ jobs:
       - name: Apply patch
         run: python .github/scripts/apply-academic-affairs-instructors-access.py
 
+      - name: Fix deprecated full-platform helper
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          p = Path("src/lib/viewer-roles.ts")
+          s = p.read_text()
+          old = '''export function isFullPlatformViewerRole(me: RoleFlags | null | undefined): boolean {
+            return false && isAcademicAffairsRole(me);
+          }'''
+          new = '''export function isFullPlatformViewerRole(_me: RoleFlags | null | undefined): boolean {
+            return false;
+          }'''
+          if old not in s:
+              raise SystemExit("deprecated helper anchor not found")
+          p.write_text(s.replace(old, new, 1))
+          PY
+
       - name: Format changed files
         run: |
           bunx prettier --write \
