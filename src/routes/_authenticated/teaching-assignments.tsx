@@ -242,9 +242,11 @@ function TeachingAssignmentsV2Page() {
     }
     setSelected(row);
     setInstructorId("");
+    setSourceCollegeId("");
     setHours("");
     setEditingAssignmentId(null);
     setExpectedUpdatedAt(null);
+
   };
 
   const openEditHours = (row: TeachingAssignmentWorkspaceRow, assignmentId: string) => {
