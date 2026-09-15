@@ -130,6 +130,9 @@ export type WorkspaceFilters = {
 };
 
 const RPC_ERROR_MESSAGES: Record<string, string> = {
+  INSTRUCTOR_EXTRA_HOURS_LIMIT_EXCEEDED:
+    "الساعات الزائدة لا يجوز أن تتجاوز 12 ساعة أسبوعيًا لكل عضو",
+  INSTRUCTOR_QUOTA_REQUIRED: "يجب تحديد النصاب الأساسي للمحاضر قبل الإسناد",
   insufficient_privilege: "ليست لديك صلاحية لهذا الإجراء",
   OBSOLETE_DELIVERY_GROUP_ASSIGNMENT_FORBIDDEN: "لا يمكن الإسناد لمجموعة تدريس ملغاة (obsolete)",
   DELIVERY_GROUP_INACTIVE_ASSIGNMENT_FORBIDDEN: "لا يمكن الإسناد لمجموعة تدريس غير نشطة",
