@@ -1,0 +1,87 @@
+name: Academic affairs instructors access one-shot
+
+on:
+  push:
+    branches:
+      - feat/academic-affairs-instructors-access-20260915
+    paths:
+      - .github/workflows/academic-affairs-instructors-once.yml
+      - .github/scripts/apply-academic-affairs-instructors-access.py
+
+permissions:
+  contents: write
+
+jobs:
+  patch_and_verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Apply patch
+        run: python .github/scripts/apply-academic-affairs-instructors-access.py
+
+      - name: Format changed files
+        run: |
+          bunx prettier --write \
+            src/lib/viewer-roles.ts \
+            src/components/reports-only-gate.tsx \
+            src/lib/admin-nav.ts \
+            src/hooks/use-current-user.ts \
+            src/hooks/use-can-manage.ts \
+            src/components/app-layout.tsx \
+            src/routes/_authenticated/reports.index.tsx \
+            src/routes/_authenticated/reports.instructors.tsx \
+            src/routes/_authenticated/instructors.tsx \
+            tests/academic-affairs-instructors-access.test.ts \
+            tests/viewer-roles-rbac.test.ts \
+            tests/read-only-scope-regression.test.ts
+
+      - name: Focused tests
+        run: |
+          bunx vitest run \
+            tests/academic-affairs-instructors-access.test.ts \
+            tests/viewer-roles-rbac.test.ts
+          bun test tests/read-only-scope-regression.test.ts
+
+      - name: Lint changed application files
+        run: |
+          bunx eslint \
+            src/lib/viewer-roles.ts \
+            src/components/reports-only-gate.tsx \
+            src/lib/admin-nav.ts \
+            src/hooks/use-current-user.ts \
+            src/hooks/use-can-manage.ts \
+            src/components/app-layout.tsx \
+            src/routes/_authenticated/reports.index.tsx \
+            src/routes/_authenticated/reports.instructors.tsx \
+            src/routes/_authenticated/instructors.tsx \
+            tests/academic-affairs-instructors-access.test.ts \
+            tests/viewer-roles-rbac.test.ts \
+            tests/read-only-scope-regression.test.ts
+
+      - name: Typecheck
+        run: bunx tsc --noEmit --pretty false
+
+      - name: Build
+        run: bun run build
+
+      - name: Check diff
+        run: git diff --check
+
+      - name: Commit implementation
+        shell: bash
+        run: |
+          git config user.name "openai-automation"
+          git config user.email "openai-automation@users.noreply.github.com"
+          git rm .github/workflows/academic-affairs-instructors-once.yml
+          git rm .github/scripts/apply-academic-affairs-instructors-access.py
+          git add -A
+          git commit -m "أضف تقرير المحاضرين وتعديل الشؤون الأكاديمية"
+          git push origin HEAD:feat/academic-affairs-instructors-access-20260915
