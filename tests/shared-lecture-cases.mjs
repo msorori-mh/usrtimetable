@@ -6,6 +6,18 @@ export const member = group("parallel");
 const merge = `SELECT public.merge_shared_lecture(${anchor},${member});`;
 export const cases = [
   [
+    "cohort guard handles both trigger row shapes and blocks source count drift",
+    `
+    UPDATE academic_cohorts SET code=code WHERE id=${id("regular")};
+    ${merge}
+    UPDATE academic_cohorts SET code=code WHERE id=${id("regular")};
+    DO $$ BEGIN
+      BEGIN UPDATE academic_cohorts SET expected_students=51 WHERE id=${id("regular")}; RAISE EXCEPTION 'cohort count drift accepted'; EXCEPTION WHEN check_violation THEN IF SQLERRM<>'SHARED_LECTURE_REVIEW_REQUIRED' THEN RAISE; END IF; END;
+      BEGIN UPDATE scheduling_cohort_term_headcounts SET scheduling_headcount=51 WHERE cohort_id=${id("regular")}; RAISE EXCEPTION 'approved count drift accepted'; EXCEPTION WHEN check_violation THEN IF SQLERRM<>'SHARED_LECTURE_REVIEW_REQUIRED' THEN RAISE; END IF; END;
+    END $$;`,
+  ],
+
+  [
     "server overlap checks both directions across source cohort ids",
     `${merge}
     INSERT INTO schedule_sessions(id,college_id,schedule_version_id,course_offering_id,instructor_id,cohort_id,delivery_group_id,day_of_week,start_time,end_time,study_system)

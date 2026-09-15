@@ -145,7 +145,7 @@ CREATE OR REPLACE FUNCTION public.guard_shared_lecture_cohort()
 RETURNS trigger LANGUAGE plpgsql SET search_path = '' AS $fn$
 DECLARE cid uuid;
 BEGIN
- cid:=CASE WHEN TG_TABLE_NAME='academic_cohorts' THEN OLD.id ELSE OLD.cohort_id END;
+ cid:=(to_jsonb(OLD)->>CASE WHEN TG_TABLE_NAME='academic_cohorts' THEN 'id' ELSE 'cohort_id' END)::uuid;
  IF EXISTS(SELECT 1 FROM public.shared_lecture_links l JOIN public.delivery_groups g ON g.id IN(l.anchor_group_id,l.member_group_id) WHERE g.cohort_id=cid)
  AND (TG_OP='DELETE' OR (to_jsonb(NEW)-'updated_at'-'notes'-'source') IS DISTINCT FROM (to_jsonb(OLD)-'updated_at'-'notes'-'source'))
  THEN RAISE EXCEPTION 'SHARED_LECTURE_REVIEW_REQUIRED' USING ERRCODE='23514'; END IF;
