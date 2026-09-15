@@ -51,6 +51,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { entityDisplayName } from "@/lib/entity-display";
+import {
+  filterRowsByInstructorName,
+  normalizeArabicName,
+} from "@/lib/teaching-assignments/instructor-name-search";
 
 export const Route = createFileRoute("/_authenticated/teaching-assignments")({
   head: () => ({ meta: [{ title: "الإسناد التدريسي" }] }),
