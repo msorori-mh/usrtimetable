@@ -493,7 +493,8 @@ export async function runV2AutoSchedule(params: {
   for (const session of planningSessions) {
     if (session.delivery_group_id)
       expectedStudentsByGroup[session.delivery_group_id] =
-        snapshotGroups.get(session.delivery_group_id)?.expected_students ?? session.expected_students;
+        snapshotGroups.get(session.delivery_group_id)?.expected_students ??
+        session.expected_students;
   }
   for (const item of workItems) {
     if (item.delivery_group_id)
