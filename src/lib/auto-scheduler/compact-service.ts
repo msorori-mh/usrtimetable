@@ -14,7 +14,10 @@ import {
 import { validateJointPlan } from "./joint-model";
 
 type ErrorLike = { message: string };
-interface Query extends PromiseLike<{ data: unknown[] | null; error: ErrorLike | null }> {
+interface Query extends PromiseLike<{
+  data: unknown[] | null;
+  error: ErrorLike | null;
+}> {
   select(columns: string): Query;
   eq(column: string, value: string): Query;
   order(column: string): Query;
@@ -50,6 +53,22 @@ async function draft(collegeId: string, versionId: string) {
 }
 export async function loadCompactSnapshot(collegeId: string, versionId: string): Promise<Snapshot> {
   const version = await draft(collegeId, versionId);
+  const external = await (
+    supabase as unknown as {
+      rpc(
+        name: string,
+        args: Record<string, string>,
+      ): Promise<{
+        data: Snapshot["externalBusy"];
+        error: ErrorLike | null;
+      }>;
+    }
+  ).rpc("get_schedule_external_busy", {
+    p_college_id: collegeId,
+    p_version_id: versionId,
+  });
+  if (external.error || !Array.isArray(external.data))
+    throw new Error("تعذر فحص ارتباطات المحاضرين في الكليات الأخرى؛ أعد المحاولة.");
   const names = {
     sessions: "schedule_sessions",
     cohorts: "academic_cohorts",
@@ -82,6 +101,7 @@ export async function loadCompactSnapshot(collegeId: string, versionId: string):
   return {
     ...raw,
     ...version,
+    externalBusy: external.data ?? [],
     settings: raw.settings[0],
     sessions: (raw.sessions as Session[]).filter((s) => !s.replaced_by_split),
   } as unknown as Snapshot;

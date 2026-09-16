@@ -34,6 +34,12 @@ export interface Session {
   replaced_by_split?: boolean;
 }
 export interface Snapshot {
+  externalBusy?: {
+    instructor_id: string;
+    day_of_week: number;
+    start_time: string;
+    end_time: string;
+  }[];
   revision?: string;
   versionUpdatedAt?: string;
   sessions: Session[];
@@ -360,6 +366,16 @@ export function feasible(
   const start = minutes(candidate.start_time),
     end = minutes(candidate.end_time),
     day = candidate.day_of_week;
+  if (
+    s.externalBusy?.some(
+      (b) =>
+        b.instructor_id === candidate.instructor_id &&
+        b.day_of_week === day &&
+        minutes(b.start_time) < end &&
+        start < minutes(b.end_time),
+    )
+  )
+    return false;
   if (
     end <= start ||
     !settings.working_days.includes(day) ||
