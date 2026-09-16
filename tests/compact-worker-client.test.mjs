@@ -76,3 +76,22 @@ test("worker failure is reported and releases resources", async () => {
     globalThis.Worker = original;
   }
 });
+
+test("generation forwards its explicit purpose and duration to the worker", async () => {
+  const original = globalThis.Worker;
+  globalThis.Worker = FakeWorker;
+  try {
+    const pending = previewCompaction(snapshot([]), {
+      purpose: "generation",
+      maxDurationMs: 300000,
+    });
+    const worker = FakeWorker.instances.at(-1);
+    assert.equal(worker.input.purpose, "generation");
+    assert.equal(worker.input.maxDurationMs, 300000);
+    worker.reply({ type: "result", proposal: { moves: [] } });
+    await pending;
+    assert.equal(worker.terminated, true);
+  } finally {
+    globalThis.Worker = original;
+  }
+});

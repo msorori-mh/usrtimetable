@@ -7,6 +7,7 @@ export function previewCompaction(
   options: {
     signal?: AbortSignal;
     maxDurationMs?: number;
+    purpose?: "compaction" | "generation";
     onProgress?: (moves: number, metrics: Metrics) => void;
   } = {},
 ): Promise<Proposal> {
@@ -39,7 +40,11 @@ export function previewCompaction(
       reject(new Error("تعذر تشغيل معاينة التحسين. أعد تحميل الصفحة وحاول مجددًا."));
     };
     try {
-      worker.postMessage({ snapshot, maxDurationMs: options.maxDurationMs ?? 15000 });
+      worker.postMessage({
+        snapshot,
+        maxDurationMs: options.maxDurationMs ?? 15000,
+        purpose: options.purpose ?? "compaction",
+      });
     } catch (error) {
       cleanup();
       reject(error);
