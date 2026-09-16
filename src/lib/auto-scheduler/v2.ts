@@ -1,3 +1,8 @@
+import {
+  selectAutoScheduleScope,
+  autoScheduleRunStatus,
+  type AutoScheduleScope,
+} from "@/lib/auto-scheduler/study-system-scope";
 import { fetchSharedLectures } from "@/lib/academic-delivery/shared-lectures";
 import { searchAttendance, attendanceSearchMessage } from "@/lib/auto-scheduler/attendance-search";
 import { supabase } from "@/integrations/supabase/client";
@@ -273,10 +278,12 @@ export async function runV2AutoSchedule(params: {
   collegeId: string;
   scheduleVersionId: string;
   mode?: AutoRunMode;
+  studySystem?: AutoScheduleScope;
   onProgress?: (progress: AutoScheduleProgress) => void;
   signal?: AbortSignal;
-}): Promise<AutoRunResult> {
+}): Promise<AutoRunResult & { studySystem: AutoScheduleScope; scopeComplete: boolean }> {
   const mode = params.mode ?? "fill_missing";
+  const studySystem = params.studySystem ?? "all";
   if (mode !== "fill_missing") {
     throw new Error(
       "V2_DESTRUCTIVE_MODE_BLOCKED: إعادة التوليد والبناء الكامل تحتاج RPC ذرية خاصة بالتدفق الجديد.",
@@ -361,14 +368,15 @@ export async function runV2AutoSchedule(params: {
   /** Practical sessions placed in a lecture hall through the allowed fallback. */
   let practicalRoomFallbacks = 0;
 
-  const workItems = payload.rows.filter(
+  const scopedRows = selectAutoScheduleScope(payload.rows, studySystem);
+  const workItems = scopedRows.filter(
     (item) =>
       item.can_create_session &&
       item.delivery_group_id &&
       item.cohort_id &&
       ["regular", "parallel", "both"].includes(item.study_system ?? ""),
   );
-  const timedScope = payload.rows.filter(
+  const timedScope = scopedRows.filter(
     (item) =>
       item.assignment_active &&
       item.delivery_group_active &&
@@ -1015,7 +1023,7 @@ export async function runV2AutoSchedule(params: {
       college_id: params.collegeId,
       schedule_version_id: params.scheduleVersionId,
       algorithm: ALGORITHM_VERSION,
-      status: readiness.complete ? "completed" : "partial",
+      status: autoScheduleRunStatus(studySystem, readiness.complete),
       total_offerings: workItems.length,
       placed_sessions: placed,
       unplaced_sessions: unplaced.length,
@@ -1027,6 +1035,8 @@ export async function runV2AutoSchedule(params: {
         algorithm_version: ALGORITHM_VERSION,
         identity: "teaching_assignment+delivery_group+cohort",
         mode,
+        study_system_scope: studySystem,
+        scope_complete: readiness.complete,
         cancelled,
         ordering_strategy: "compatible_room_time_count_then_duration_then_headcount",
         attendance_objective: "equal_average_student_and_instructor_gap",
@@ -1070,6 +1080,8 @@ export async function runV2AutoSchedule(params: {
   const qualityAfter = after.result.total_score;
   return {
     runId: run.id,
+    studySystem,
+    scopeComplete: readiness.complete,
     placed,
     unplaced,
     totalRequired: totalRequiredSessions,

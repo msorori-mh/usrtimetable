@@ -1,3 +1,4 @@
+import { AUTO_SCOPE_LABELS, type AutoScheduleScope } from "@/lib/auto-scheduler/study-system-scope";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
@@ -55,13 +56,20 @@ function AutoSchedulePage() {
   const canManage = useCanManageActiveCollege();
   const qc = useQueryClient();
   const [versionId, setVersionId] = useState<string>("");
+  const [studySystem, setStudySystem] = useState<AutoScheduleScope>("regular");
   const [mode, setMode] = useState<AutoRunMode>("fill_missing");
   const [compactBusy, setCompactBusy] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [progress, setProgress] = useState<AutoScheduleProgress | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const [outcome, setOutcome] = useState<{ partial: boolean; text: string } | null>(null);
-  const coverage = useDeliveryCoverage({ collegeId: active?.id, scheduleVersionId: versionId });
+  const [outcome, setOutcome] = useState<{
+    partial: boolean;
+    text: string;
+  } | null>(null);
+  const coverage = useDeliveryCoverage({
+    collegeId: active?.id,
+    scheduleVersionId: versionId,
+  });
 
   const { data: versions } = useQuery({
     queryKey: ["sv-for-auto", active?.id],
@@ -148,6 +156,7 @@ function AutoSchedulePage() {
         collegeId: active.id,
         scheduleVersionId: versionId,
         mode,
+        studySystem,
         signal: controller.signal,
         onProgress: setProgress,
       });
@@ -157,6 +166,8 @@ function AutoSchedulePage() {
         entityId: result.runId,
         collegeId: active.id,
         details: {
+          study_system_scope: result.studySystem,
+          scope_complete: result.scopeComplete,
           placed: result.placed,
           unplaced: result.unplaced.length,
           score: result.qualityScoreAfter,
@@ -178,18 +189,29 @@ function AutoSchedulePage() {
     },
     onSuccess: (r) => {
       const delta = r.improvementDelta;
-      const message = autoRunOutcomeMessage({
-        placed: r.placed,
-        totalRequired: r.totalRequired,
-        unplaced: r.unplaced.length,
-        coverage: r.coverageAfter,
-      });
+      const message =
+        r.studySystem !== "all"
+          ? {
+              partial: !r.scopeComplete,
+              text: `${AUTO_SCOPE_LABELS[r.studySystem]}: ${r.scopeComplete ? "اكتمل تسكين النطاق المختار" : "التسكين غير مكتمل"} — لا تعني هذه النتيجة اكتمال جميع الأنظمة.`,
+            }
+          : autoRunOutcomeMessage({
+              placed: r.placed,
+              totalRequired: r.totalRequired,
+              unplaced: r.unplaced.length,
+              coverage: r.coverageAfter,
+            });
       const quality = `جودة ${r.qualityScoreBefore}→${r.qualityScoreAfter} (${delta >= 0 ? "+" : ""}${delta}) — أُعيد توطين ${r.relocatedSessions}`;
-      setOutcome({ partial: message.partial, text: `${message.text} — ${quality}` });
+      setOutcome({
+        partial: message.partial,
+        text: `${message.text} — ${quality}`,
+      });
       if (message.partial) toast.warning(message.text);
       else toast.success(`${message.text} — ${quality}`);
       qc.invalidateQueries({ queryKey: ["auto-runs"] });
-      qc.invalidateQueries({ queryKey: ["sv-delivery-coverage", active?.id, versionId] });
+      qc.invalidateQueries({
+        queryKey: ["sv-delivery-coverage", active?.id, versionId],
+      });
     },
     onError: (e) => {
       setOutcome(null);
@@ -251,6 +273,28 @@ function AutoSchedulePage() {
                 </Select>
               </div>
               <div className="min-w-56">
+                <label className="text-xs text-muted-foreground">نطاق التوليد</label>
+                <Select
+                  value={studySystem}
+                  disabled={run.isPending || compactBusy}
+                  onValueChange={(value) => {
+                    setStudySystem(value as AutoScheduleScope);
+                    setOutcome(null);
+                  }}
+                >
+                  <SelectTrigger aria-label="نطاق التوليد">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(AUTO_SCOPE_LABELS).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="min-w-56">
                 <label className="text-xs text-muted-foreground">وضع التشغيل</label>
                 <Select value={mode} onValueChange={(v) => setMode(v as AutoRunMode)}>
                   <SelectTrigger>
@@ -293,6 +337,10 @@ function AutoSchedulePage() {
                 {progress.placed} جلسة، تعذّرت {progress.unplaced} — الحالي: {progress.label}
               </div>
             ) : null}
+            <p className="text-xs text-muted-foreground">
+              النطاق: {AUTO_SCOPE_LABELS[studySystem]}. تُحفظ المحاضرات القائمة وتُفحص تعارضاتها.
+              فحوص الجاهزية وتغطية النسخة أدناه تشمل جميع الأنظمة.
+            </p>
             {versionId ? (
               <DeliveryCoverageCard
                 collegeId={active.id}
@@ -431,6 +479,8 @@ function AutoSchedulePage() {
           {latest &&
             (() => {
               const sum = latest.summary as {
+                study_system_scope?: AutoScheduleScope;
+                scope_complete?: boolean;
                 algorithm_version?: string;
                 ordering_strategy?: string;
                 mode?: AutoRunMode;
@@ -462,6 +512,16 @@ function AutoSchedulePage() {
                       <AlertCircle className="h-5 w-5 text-amber-600" />
                     )}
                     <span className="font-semibold">نتيجة آخر تشغيل</span>
+                    <Badge variant="outline">
+                      {AUTO_SCOPE_LABELS[sum?.study_system_scope ?? "all"]}
+                    </Badge>
+                    {sum?.study_system_scope && sum.study_system_scope !== "all" && (
+                      <span className="text-xs">
+                        {sum.scope_complete
+                          ? "اكتمل النطاق المختار؛ اكتمال النسخة يُراجع منفصلًا"
+                          : "النطاق المختار غير مكتمل"}
+                      </span>
+                    )}
                     <Badge variant="secondary">{latest.status}</Badge>
                     {sum?.algorithm_version && (
                       <Badge variant="outline" className="text-[10px]">

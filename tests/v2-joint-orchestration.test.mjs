@@ -89,7 +89,10 @@ function state() {
   const st = {
     snapshot: s,
     items: [
-      item("old", "c", "g", { scheduling_status: "scheduled", can_create_session: false }),
+      item("old", "c", "g", {
+        scheduling_status: "scheduled",
+        can_create_session: false,
+      }),
       item("new", "q", "gq"),
     ],
     calls: [],
@@ -151,7 +154,10 @@ function state() {
           inserted = true;
           return q;
         },
-        single: async () => ({ data: inserted ? { id: "run" } : null, error: null }),
+        single: async () => ({
+          data: inserted ? { id: "run" } : null,
+          error: null,
+        }),
         then(resolve, reject) {
           return Promise.resolve({ data: tableRows(table), error: null }).then(resolve, reject);
         },
@@ -200,7 +206,10 @@ for (const studySystem of ["regular", "parallel", "both"]) {
         ...template,
         study_system: "both",
       }));
-      s.items = s.items.map((entry) => ({ ...entry, study_system: studySystem }));
+      s.items = s.items.map((entry) => ({
+        ...entry,
+        study_system: studySystem,
+      }));
       s.snapshot.cohorts = s.snapshot.cohorts.map((cohort) => ({
         ...cohort,
         study_system: studySystem,
@@ -299,3 +308,35 @@ for (const [count, dailyHours, days] of [
     if (days === 5) assert.ok(s.calls.every((c) => c.note.includes("prior-unsat:3,4")));
   });
 }
+
+test("regular-only generation excludes parallel work before planning and preserves existing sessions", async () => {
+  const s = state();
+  const before = structuredClone(s.snapshot.sessions);
+  s.items.push(
+    item("parallel-blocked", "other", "other-group", {
+      study_system: "parallel",
+      can_create_session: false,
+      scheduling_status: "blocked",
+      blocking_reason: "parallel teacher not yet assigned",
+    }),
+  );
+  const result = await (await scheduler(s))({ ...params, studySystem: "regular" });
+  assert.deepEqual(
+    s.calls.map((call) => call.teachingAssignmentId),
+    ["new"],
+  );
+  assert.deepEqual(s.snapshot.sessions.slice(0, before.length), before);
+  assert.equal(result.totalRequired, 2);
+  assert.equal(result.studySystem, "regular");
+  assert.equal(result.scopeComplete, true);
+  assert.equal(s.runs[0].summary.study_system_scope, "regular");
+  assert.equal(s.runs[0].summary.scope_complete, true);
+  assert.equal(s.runs[0].status, "partial");
+});
+test("a mixed-system shared lecture blocks scoped generation before any session write", async () => {
+  const s = state();
+  s.items[1].study_system = "both";
+  await assert.rejects((await scheduler(s))({ ...params, studySystem: "regular" }), /مشتركة/);
+  assert.equal(s.calls.length, 0);
+  assert.equal(s.runs.length, 0);
+});
