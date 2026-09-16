@@ -1,14 +1,31 @@
+import {
+  selectAutoScheduleScope,
+  autoScheduleRunStatus,
+  type AutoScheduleScope,
+} from "@/lib/auto-scheduler/study-system-scope";
 import { fetchSharedLectures } from "@/lib/academic-delivery/shared-lectures";
-import { searchAttendance, attendanceSearchMessage } from "@/lib/auto-scheduler/attendance-search";
+import {
+  searchAttendance,
+  attendanceSearchMessage,
+} from "@/lib/auto-scheduler/attendance-search";
 import { supabase } from "@/integrations/supabase/client";
 import { scoreScheduleVersion } from "@/lib/conflict-engine/scorer";
 import {
   createScheduleSessionFromAssignmentV2,
   listScheduleBuilderV2WorkItems,
 } from "@/lib/schedule-builder/v2-assignment-service";
-import type { AutoRunMode, AutoRunResult, UnplacedItem } from "@/lib/auto-scheduler/greedy";
+import type {
+  AutoRunMode,
+  AutoRunResult,
+  UnplacedItem,
+} from "@/lib/auto-scheduler/greedy";
 import { loadCompactSnapshot } from "@/lib/auto-scheduler/compact-service";
-import { measure, compactSlots, minutes, type Session } from "@/lib/auto-scheduler/compact";
+import {
+  measure,
+  compactSlots,
+  minutes,
+  type Session,
+} from "@/lib/auto-scheduler/compact";
 import {
   rankGenerationCandidates,
   generationDomainSize,
@@ -102,14 +119,20 @@ async function loadPartitionIndex(input: {
           shared_lecture: row.shared_lecture,
         };
       })
-      .filter((row): row is PartitionMembershipRow => !!row && !!row.delivery_group_id);
+      .filter(
+        (row): row is PartitionMembershipRow =>
+          !!row && !!row.delivery_group_id,
+      );
 
     if (rows.length === 0) return { index: null, note: null };
     return {
       index: buildPartitionIndex({
         rows,
         cohortIdsByGroup: Object.fromEntries(
-          links.map((l) => [l.anchor_group_id, [l.anchor_cohort_id, l.cohort_id]]),
+          links.map((l) => [
+            l.anchor_group_id,
+            [l.anchor_cohort_id, l.cohort_id],
+          ]),
         ),
         expectedStudents: input.expectedStudents,
       }),
@@ -121,13 +144,18 @@ async function loadPartitionIndex(input: {
 }
 
 const pad = (value: number) => String(value).padStart(2, "0");
-const fromMinutes = (value: number) => `${pad(Math.floor(value / 60))}:${pad(value % 60)}:00`;
+const fromMinutes = (value: number) =>
+  `${pad(Math.floor(value / 60))}:${pad(value % 60)}:00`;
 
 /** Arabic change reason recorded on every repair relocation. */
-export const REPAIR_CHANGE_REASON_AR = "إعادة ترتيب محدودة لإكمال الجلسات الناقصة (إصلاح آلي)";
+export const REPAIR_CHANGE_REASON_AR =
+  "إعادة ترتيب محدودة لإكمال الجلسات الناقصة (إصلاح آلي)";
 
 /** Latest schedule-version stamp, so a repair move does not make the create RPC stale. */
-async function readVersionUpdatedAt(scheduleVersionId: string, fallback: string): Promise<string> {
+async function readVersionUpdatedAt(
+  scheduleVersionId: string,
+  fallback: string,
+): Promise<string> {
   const { data } = await supabase
     .from("schedule_versions")
     .select("updated_at")
@@ -159,7 +187,10 @@ export async function applyRepairPlan(input: {
   note: string;
   moveSession?: typeof moveOrRescheduleScheduleSession;
   createSession?: typeof createScheduleSessionFromAssignmentV2;
-  readVersion?: (scheduleVersionId: string, fallback: string) => Promise<string>;
+  readVersion?: (
+    scheduleVersionId: string,
+    fallback: string,
+  ) => Promise<string>;
 }): Promise<RepairApplyResult> {
   const move = input.moveSession ?? moveOrRescheduleScheduleSession;
   const create = input.createSession ?? createScheduleSessionFromAssignmentV2;
@@ -177,7 +208,10 @@ export async function applyRepairPlan(input: {
         changeReason: REPAIR_CHANGE_REASON_AR,
       });
     }
-    versionUpdatedAt = await readVersion(input.scheduleVersionId, versionUpdatedAt);
+    versionUpdatedAt = await readVersion(
+      input.scheduleVersionId,
+      versionUpdatedAt,
+    );
   };
 
   for (const planned of input.plan.moves) {
@@ -210,7 +244,10 @@ export async function applyRepairPlan(input: {
     });
   }
 
-  versionUpdatedAt = await readVersion(input.scheduleVersionId, versionUpdatedAt);
+  versionUpdatedAt = await readVersion(
+    input.scheduleVersionId,
+    versionUpdatedAt,
+  );
   const created = await create({
     scheduleVersionId: input.scheduleVersionId,
     teachingAssignmentId: input.teachingAssignmentId,
@@ -273,10 +310,14 @@ export async function runV2AutoSchedule(params: {
   collegeId: string;
   scheduleVersionId: string;
   mode?: AutoRunMode;
+  studySystem?: AutoScheduleScope;
   onProgress?: (progress: AutoScheduleProgress) => void;
   signal?: AbortSignal;
-}): Promise<AutoRunResult> {
+}): Promise<
+  AutoRunResult & { studySystem: AutoScheduleScope; scopeComplete: boolean }
+> {
   const mode = params.mode ?? "fill_missing";
+  const studySystem = params.studySystem ?? "all";
   if (mode !== "fill_missing") {
     throw new Error(
       "V2_DESTRUCTIVE_MODE_BLOCKED: إعادة التوليد والبناء الكامل تحتاج RPC ذرية خاصة بالتدفق الجديد.",
@@ -293,7 +334,9 @@ export async function runV2AutoSchedule(params: {
     scheduleVersionId: params.scheduleVersionId,
   });
   if (!payload.ok || !payload.can_manage) {
-    throw new Error("V2_WORK_ITEMS_FORBIDDEN: تعذر تحميل وحدات الجدولة المصرح بها.");
+    throw new Error(
+      "V2_WORK_ITEMS_FORBIDDEN: تعذر تحميل وحدات الجدولة المصرح بها.",
+    );
   }
   if (!payload.rows.length) {
     throw new Error(
@@ -326,32 +369,48 @@ export async function runV2AutoSchedule(params: {
         "id, day_of_week, start_time, end_time, room_id, instructor_id, cohort_id, delivery_group_id, teaching_assignment_id",
       )
       .eq("schedule_version_id", params.scheduleVersionId),
-    supabase.from("room_types").select("id, code").eq("college_id", params.collegeId),
+    supabase
+      .from("room_types")
+      .select("id, code")
+      .eq("college_id", params.collegeId),
     supabase
       .from("room_availability")
       .select("room_id, day_of_week, start_time, end_time")
       .eq("college_id", params.collegeId),
   ]);
-  if (roomsError) throw new Error(`V2_AUTO_QUERY_FAILED[rooms]: ${roomsError.message}`);
+  if (roomsError)
+    throw new Error(`V2_AUTO_QUERY_FAILED[rooms]: ${roomsError.message}`);
   if (roomTypesError)
-    throw new Error(`V2_AUTO_QUERY_FAILED[room_types]: ${roomTypesError.message}`);
+    throw new Error(
+      `V2_AUTO_QUERY_FAILED[room_types]: ${roomTypesError.message}`,
+    );
   if (roomAvailabilityError) {
-    throw new Error(`V2_AUTO_QUERY_FAILED[room_availability]: ${roomAvailabilityError.message}`);
+    throw new Error(
+      `V2_AUTO_QUERY_FAILED[room_availability]: ${roomAvailabilityError.message}`,
+    );
   }
 
   if (templatesError) {
-    throw new Error(`V2_AUTO_QUERY_FAILED[time_slot_templates]: ${templatesError.message}`);
+    throw new Error(
+      `V2_AUTO_QUERY_FAILED[time_slot_templates]: ${templatesError.message}`,
+    );
   }
   if (sessionsError) {
-    throw new Error(`V2_AUTO_QUERY_FAILED[schedule_sessions]: ${sessionsError.message}`);
+    throw new Error(
+      `V2_AUTO_QUERY_FAILED[schedule_sessions]: ${sessionsError.message}`,
+    );
   }
   if (!rooms?.length) throw new Error("V2_AUTO_BLOCKED: لا توجد قاعات متاحة.");
-  if (!templates?.length) throw new Error("V2_AUTO_BLOCKED: لا توجد قوالب زمنية نشطة.");
+  if (!templates?.length)
+    throw new Error("V2_AUTO_BLOCKED: لا توجد قوالب زمنية نشطة.");
 
   /** room_types.id → code, so the room-type policy can be evaluated on codes. */
   const roomTypeCodeById: Record<string, string | null> = {};
-  for (const row of roomTypeRows ?? []) roomTypeCodeById[row.id] = row.code ?? null;
-  const roomAvailability: RoomAvailabilityWindow[] = (roomAvailabilityRows ?? []).map((row) => ({
+  for (const row of roomTypeRows ?? [])
+    roomTypeCodeById[row.id] = row.code ?? null;
+  const roomAvailability: RoomAvailabilityWindow[] = (
+    roomAvailabilityRows ?? []
+  ).map((row) => ({
     room_id: String(row.room_id),
     day_of_week: Number(row.day_of_week),
     start_time: String(row.start_time),
@@ -361,14 +420,15 @@ export async function runV2AutoSchedule(params: {
   /** Practical sessions placed in a lecture hall through the allowed fallback. */
   let practicalRoomFallbacks = 0;
 
-  const workItems = payload.rows.filter(
+  const scopedRows = selectAutoScheduleScope(payload.rows, studySystem);
+  const workItems = scopedRows.filter(
     (item) =>
       item.can_create_session &&
       item.delivery_group_id &&
       item.cohort_id &&
       ["regular", "parallel", "both"].includes(item.study_system ?? ""),
   );
-  const timedScope = payload.rows.filter(
+  const timedScope = scopedRows.filter(
     (item) =>
       item.assignment_active &&
       item.delivery_group_active &&
@@ -376,7 +436,9 @@ export async function runV2AutoSchedule(params: {
       !item.is_project &&
       !item.is_summer_training,
   );
-  const blockedWorkItems = timedScope.filter((item) => item.scheduling_status === "blocked");
+  const blockedWorkItems = timedScope.filter(
+    (item) => item.scheduling_status === "blocked",
+  );
   if (!workItems.length) {
     throw new Error(
       blockedWorkItems.length
@@ -384,9 +446,15 @@ export async function runV2AutoSchedule(params: {
         : "لا توجد ساعات مؤهلة إضافية للجدولة. راجع اكتمال الإسنادات ونمط الجلسات في المسودة.",
     );
   }
-  const planningSnapshot = await loadCompactSnapshot(params.collegeId, params.scheduleVersionId);
+  const planningSnapshot = await loadCompactSnapshot(
+    params.collegeId,
+    params.scheduleVersionId,
+  );
   const planningSessions = [...planningSnapshot.sessions];
-  const seedFor = (item: (typeof workItems)[number], length: number): Session => ({
+  const seedFor = (
+    item: (typeof workItems)[number],
+    length: number,
+  ): Session => ({
     id: `candidate:${item.teaching_assignment_id}:${planningSessions.length}`,
     updated_at: "",
     cohort_id: item.cohort_id!,
@@ -413,11 +481,15 @@ export async function runV2AutoSchedule(params: {
   const { data: components, error: componentsError } = componentIds.length
     ? await supabase
         .from("plan_course_components")
-        .select("id, plan_course_id, component_type, weekly_contact_hours, required_room_type_id")
+        .select(
+          "id, plan_course_id, component_type, weekly_contact_hours, required_room_type_id",
+        )
         .in("id", componentIds)
     : { data: [], error: null };
   if (componentsError) {
-    throw new Error(`V2_AUTO_QUERY_FAILED[plan_course_components]: ${componentsError.message}`);
+    throw new Error(
+      `V2_AUTO_QUERY_FAILED[plan_course_components]: ${componentsError.message}`,
+    );
   }
   const componentById = new Map((components ?? []).map((c) => [c.id, c]));
   const planCourseIds = Array.from(
@@ -432,9 +504,13 @@ export async function runV2AutoSchedule(params: {
         .in("id", planCourseIds)
     : { data: [], error: null };
   if (planCoursesError) {
-    throw new Error(`V2_AUTO_QUERY_FAILED[plan_courses]: ${planCoursesError.message}`);
+    throw new Error(
+      `V2_AUTO_QUERY_FAILED[plan_courses]: ${planCoursesError.message}`,
+    );
   }
-  const planCourseById = new Map((planCourses ?? []).map((p) => [p.id, p as PlanCourseCadence]));
+  const planCourseById = new Map(
+    (planCourses ?? []).map((p) => [p.id, p as PlanCourseCadence]),
+  );
 
   const { data: attendanceCohorts, error: attendanceError } = await supabase
     .from("academic_cohorts")
@@ -482,7 +558,11 @@ export async function runV2AutoSchedule(params: {
   const partitions = await loadPartitionIndex({
     collegeId: params.collegeId,
     cohortIds: Array.from(
-      new Set(workItems.map((item) => item.cohort_id).filter((id): id is string => !!id)),
+      new Set(
+        workItems
+          .map((item) => item.cohort_id)
+          .filter((id): id is string => !!id),
+      ),
     ),
     expectedStudents: expectedStudentsByGroup,
   });
@@ -497,7 +577,10 @@ export async function runV2AutoSchedule(params: {
       `${item.course_code} / ${item.group_code ?? ""}: ${item.blocking_reason ?? "إسناد محظور يحتاج استكمال البيانات."}`,
     );
   if (partitions.note) warnings.push(partitions.note);
-  const byType: Record<string, { required: number; placed: number; unplaced: number }> = {};
+  const byType: Record<
+    string,
+    { required: number; placed: number; unplaced: number }
+  > = {};
   let placed = 0;
   let cancelled = false;
   let nonconformingSessions = 0;
@@ -521,24 +604,32 @@ export async function runV2AutoSchedule(params: {
     throw new Error("استكمل الإسنادات المحظورة قبل إثبات سيناريو أيام الحضور.");
   const pendingAttendance: Session[] = [];
   for (const item of workItems) {
-    const component = componentById.get(item.plan_course_component_id || item.component_id);
+    const component = componentById.get(
+      item.plan_course_component_id || item.component_id,
+    );
     const cadence = requiredCadenceForComponent({
       componentType: item.component_type,
       assignedHours:
         item.assigned_component_hours > 0
           ? item.assigned_component_hours
           : Number(component?.weekly_contact_hours ?? 0),
-      planCourse: component ? planCourseById.get(component.plan_course_id) : null,
+      planCourse: component
+        ? planCourseById.get(component.plan_course_id)
+        : null,
     });
     if (cadence.source === "blocked")
       throw new Error("استكمل أنماط المحاضرات قبل حساب أيام الحضور.");
     const plan = planRemainingSessions({
       requiredDurations: cadence.durations,
       existing:
-        existingByAssignment.get(`${item.teaching_assignment_id}|${item.delivery_group_id}`) ?? [],
+        existingByAssignment.get(
+          `${item.teaching_assignment_id}|${item.delivery_group_id}`,
+        ) ?? [],
     });
     if (plan.nonconforming.length)
-      throw new Error("توجد محاضرات لا تطابق النمط الأسبوعي؛ صححها قبل حساب أيام الحضور.");
+      throw new Error(
+        "توجد محاضرات لا تطابق النمط الأسبوعي؛ صححها قبل حساب أيام الحضور.",
+      );
     for (const hours of plan.remaining)
       pendingAttendance.push({
         ...seedFor(item, Math.round(hours * 60)),
@@ -591,14 +682,18 @@ export async function runV2AutoSchedule(params: {
   >();
   for (const item of workItems) {
     if (params.signal?.aborted) break;
-    const component = componentById.get(item.plan_course_component_id || item.component_id);
+    const component = componentById.get(
+      item.plan_course_component_id || item.component_id,
+    );
     const cadence = requiredCadenceForComponent({
       componentType: item.component_type,
       assignedHours:
         item.assigned_component_hours > 0
           ? item.assigned_component_hours
           : Number(component?.weekly_contact_hours ?? 0),
-      planCourse: component ? planCourseById.get(component.plan_course_id) : null,
+      planCourse: component
+        ? planCourseById.get(component.plan_course_id)
+        : null,
     });
     const durationMinutes = Math.max(0, ...cadence.durations) * 60;
     const roomIds = (rooms ?? [])
@@ -652,15 +747,21 @@ export async function runV2AutoSchedule(params: {
   for (const item of workItems) {
     if (params.signal?.aborted) {
       cancelled = true;
-      warnings.push("تم إيقاف التشغيل بطلب المستخدم. الجلسات التي أُنشئت قبل الإيقاف محفوظة.");
+      warnings.push(
+        "تم إيقاف التشغيل بطلب المستخدم. الجلسات التي أُنشئت قبل الإيقاف محفوظة.",
+      );
       break;
     }
 
     const type = item.component_type || item.session_type || "theory";
     byType[type] ??= { required: 0, placed: 0, unplaced: 0 };
 
-    const component = componentById.get(item.plan_course_component_id || item.component_id);
-    const planCourse = component ? planCourseById.get(component.plan_course_id) : null;
+    const component = componentById.get(
+      item.plan_course_component_id || item.component_id,
+    );
+    const planCourse = component
+      ? planCourseById.get(component.plan_course_id)
+      : null;
     const assignedHours =
       item.assigned_component_hours > 0
         ? item.assigned_component_hours
@@ -698,7 +799,9 @@ export async function runV2AutoSchedule(params: {
     }
 
     const existing =
-      existingByAssignment.get(`${item.teaching_assignment_id}|${item.delivery_group_id}`) ?? [];
+      existingByAssignment.get(
+        `${item.teaching_assignment_id}|${item.delivery_group_id}`,
+      ) ?? [];
     const plan = planRemainingSessions({
       requiredDurations: cadence.durations,
       existing,
@@ -734,10 +837,14 @@ export async function runV2AutoSchedule(params: {
     // Preferred = required room type; fallback = policy-allowed practical
     // computer_lab → lecture_hall only. The fallback pool is tried only after
     // every preferred candidate failed, so a lab always wins when it is valid.
-    const partitionedRooms = partitionCandidateRoomsByRank(rooms as RoomLite[], roomRequirement);
-    const roomPools: RoomLite[][] = [partitionedRooms.preferred, partitionedRooms.fallback].filter(
-      (pool) => pool.length > 0,
+    const partitionedRooms = partitionCandidateRoomsByRank(
+      rooms as RoomLite[],
+      roomRequirement,
     );
+    const roomPools: RoomLite[][] = [
+      partitionedRooms.preferred,
+      partitionedRooms.fallback,
+    ].filter((pool) => pool.length > 0);
     if (roomPools.length === 0) {
       // Room-type prefilter is advisory only; fall back to capacity-only candidates.
       const capacityOnly = filterCandidateRooms(rooms as RoomLite[], {
@@ -751,7 +858,9 @@ export async function runV2AutoSchedule(params: {
     for (const durationHours of [...plan.remaining].sort((a, b) => b - a)) {
       if (params.signal?.aborted) {
         cancelled = true;
-        warnings.push("تم إيقاف التشغيل بطلب المستخدم. الجلسات التي أُنشئت قبل الإيقاف محفوظة.");
+        warnings.push(
+          "تم إيقاف التشغيل بطلب المستخدم. الجلسات التي أُنشئت قبل الإيقاف محفوظة.",
+        );
         break;
       }
       const durationMinutes = Math.max(30, Math.round(durationHours * 60));
@@ -761,7 +870,8 @@ export async function runV2AutoSchedule(params: {
           s.delivery_group_id === item.delivery_group_id &&
           minutes(s.end_time) - minutes(s.start_time) === durationMinutes,
       );
-      if (plannedIndex < 0) throw new Error("تغيرت وحدات الجدولة؛ أعد حساب خطة الحضور.");
+      if (plannedIndex < 0)
+        throw new Error("تغيرت وحدات الجدولة؛ أعد حساب خطة الحضور.");
       const [plannedAttendance] = plannedPending.splice(plannedIndex, 1);
 
       const slots = [
@@ -775,7 +885,9 @@ export async function runV2AutoSchedule(params: {
       if (!levelKey) throw new Error("لا توجد بيانات مستوى لهذه الدفعة.");
       const levelDays = new Set(
         occupied
-          .filter((x) => x.cohortId && levelByCohort.get(x.cohortId) === levelKey)
+          .filter(
+            (x) => x.cohortId && levelByCohort.get(x.cohortId) === levelKey,
+          )
           .map((x) => x.day),
       );
       let placedItem = false;
@@ -810,12 +922,16 @@ export async function runV2AutoSchedule(params: {
             cancelled = true;
             break;
           }
-          if (!levelDays.has(slot.day) && levelDays.size >= attendancePlan.days!) {
+          if (
+            !levelDays.has(slot.day) &&
+            levelDays.size >= attendancePlan.days!
+          ) {
             lastReason = "تجاوز حد أيام الحضور المثبت لهذه الخطة؛ أعد البحث.";
             continue;
           }
           const availabilityKey = `${item.instructor_id}|${slot.day}`;
-          const unavailableReason = unavailableInstructorDays.get(availabilityKey);
+          const unavailableReason =
+            unavailableInstructorDays.get(availabilityKey);
           if (unavailableReason) {
             lastReason = unavailableReason;
             continue;
@@ -830,8 +946,12 @@ export async function runV2AutoSchedule(params: {
             // Room opening hours (labs to 16:00, halls to 14:00) are declared in
             // room_availability / rooms.available_* — skip doomed candidates.
             const roomWindow = roomById.get(room.id);
-            if (roomWindow && !isRoomSlotAvailable(roomWindow, slot, roomAvailability)) {
-              lastReason = "القاعة غير متاحة في هذا الوقت وفق ساعات عملها المعتمدة.";
+            if (
+              roomWindow &&
+              !isRoomSlotAvailable(roomWindow, slot, roomAvailability)
+            ) {
+              lastReason =
+                "القاعة غير متاحة في هذا الوقت وفق ساعات عملها المعتمدة.";
               continue;
             }
             if (
@@ -863,14 +983,20 @@ export async function runV2AutoSchedule(params: {
                 .join(",")}`,
             });
             assertVersionNotStale(result);
-            if (result.ok && result.session && result.schedule_version_updated_at) {
+            if (
+              result.ok &&
+              result.session &&
+              result.schedule_version_updated_at
+            ) {
               versionUpdatedAt = result.schedule_version_updated_at;
               placed++;
               byType[type].placed++;
               placedItem = true;
               if (roomCandidateRank(room, roomRequirement) === 1) {
                 practicalRoomFallbacks++;
-                warnings.push(`${groupLabel}: ${PRACTICAL_ROOM_FALLBACK_NOTE_AR}`);
+                warnings.push(
+                  `${groupLabel}: ${PRACTICAL_ROOM_FALLBACK_NOTE_AR}`,
+                );
               }
               planningSessions.push({
                 ...ranked.session,
@@ -898,7 +1024,8 @@ export async function runV2AutoSchedule(params: {
             if (
               isInstructorAvailabilityEnforced() &&
               result.blocking_conflicts.some(
-                (conflict) => conflict.code === "instructor_availability_required",
+                (conflict) =>
+                  conflict.code === "instructor_availability_required",
               )
             ) {
               unavailableInstructorDays.set(availabilityKey, lastReason);
@@ -954,24 +1081,32 @@ export async function runV2AutoSchedule(params: {
     persist: false,
   });
   // Authoritative readback covers the whole active scope, including already scheduled work.
-  const finalSnapshot = await loadCompactSnapshot(params.collegeId, params.scheduleVersionId);
+  const finalSnapshot = await loadCompactSnapshot(
+    params.collegeId,
+    params.scheduleVersionId,
+  );
   const attendance = measure(finalSnapshot);
   const requirements = timedScope.map((item) => {
-    const component = componentById.get(item.plan_course_component_id || item.component_id);
+    const component = componentById.get(
+      item.plan_course_component_id || item.component_id,
+    );
     const cadence = requiredCadenceForComponent({
       componentType: item.component_type,
       assignedHours:
         item.assigned_component_hours > 0
           ? item.assigned_component_hours
           : Number(component?.weekly_contact_hours ?? 0),
-      planCourse: component ? planCourseById.get(component.plan_course_id) : null,
+      planCourse: component
+        ? planCourseById.get(component.plan_course_id)
+        : null,
     });
     return {
       id: item.teaching_assignment_id,
       groupId: item.delivery_group_id,
       type: item.component_type || item.session_type || "theory",
       requiredDurations: cadence.durations,
-      blocked: cadence.source === "blocked" || item.scheduling_status === "blocked",
+      blocked:
+        cadence.source === "blocked" || item.scheduling_status === "blocked",
     };
   });
   const readiness = assessScheduleReadiness({
@@ -1015,7 +1150,7 @@ export async function runV2AutoSchedule(params: {
       college_id: params.collegeId,
       schedule_version_id: params.scheduleVersionId,
       algorithm: ALGORITHM_VERSION,
-      status: readiness.complete ? "completed" : "partial",
+      status: autoScheduleRunStatus(studySystem, readiness.complete),
       total_offerings: workItems.length,
       placed_sessions: placed,
       unplaced_sessions: unplaced.length,
@@ -1027,8 +1162,11 @@ export async function runV2AutoSchedule(params: {
         algorithm_version: ALGORITHM_VERSION,
         identity: "teaching_assignment+delivery_group+cohort",
         mode,
+        study_system_scope: studySystem,
+        scope_complete: readiness.complete,
         cancelled,
-        ordering_strategy: "compatible_room_time_count_then_duration_then_headcount",
+        ordering_strategy:
+          "compatible_room_time_count_then_duration_then_headcount",
         attendance_objective: "equal_average_student_and_instructor_gap",
         blocked_work_items: blockedWorkItems.length,
         attendance,
@@ -1050,7 +1188,8 @@ export async function runV2AutoSchedule(params: {
         nonconforming_existing_sessions: nonconformingSessions,
         by_component_type: byType,
         practical_room_fallbacks: practicalRoomFallbacks,
-        practical_room_fallback_policy: "practical_computer_lab_may_use_lecture_hall",
+        practical_room_fallback_policy:
+          "practical_computer_lab_may_use_lecture_hall",
         repair_attempts: repairAttempts,
         repair_relocations: repairRelocations,
         repair_placed_sessions: repairPlacedSessions,
@@ -1063,13 +1202,17 @@ export async function runV2AutoSchedule(params: {
     .select("id")
     .single();
   if (runError || !run) {
-    throw new Error(`V2_AUTO_RUN_RECORD_FAILED: ${runError?.message ?? "missing run row"}`);
+    throw new Error(
+      `V2_AUTO_RUN_RECORD_FAILED: ${runError?.message ?? "missing run row"}`,
+    );
   }
 
   const qualityBefore = before.result.total_score;
   const qualityAfter = after.result.total_score;
   return {
     runId: run.id,
+    studySystem,
+    scopeComplete: readiness.complete,
     placed,
     unplaced,
     totalRequired: totalRequiredSessions,

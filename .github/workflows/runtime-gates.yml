@@ -74,7 +74,7 @@ jobs:
         run: bunx tsc --noEmit
 
       - name: Joint attendance and scheduling contracts
-        run: node --import tsx --test tests/extended-day.test.mjs tests/attendance-search.test.mjs tests/compact.test.mjs tests/joint-attendance.test.mjs tests/v2-joint-orchestration.test.mjs tests/compact-worker-client.test.mjs tests/compact-atomic-service.test.mjs tests/shared-lectures.test.mjs
+        run: node --import tsx --test tests/extended-day.test.mjs tests/attendance-search.test.mjs tests/compact.test.mjs tests/joint-attendance.test.mjs tests/v2-joint-orchestration.test.mjs tests/compact-worker-client.test.mjs tests/compact-atomic-service.test.mjs tests/shared-lectures.test.mjs tests/auto-schedule-study-system-scope.test.mjs
 
       - name: Production build (vite build)
         run: bun run build
@@ -211,3 +211,4 @@ jobs:
         run: |
           createdb -h 127.0.0.1 -U postgres shared_lectures_test
           node --test tests/shared-lectures-db.test.mjs
+
