@@ -153,6 +153,13 @@ async function sendAtomic(result: Applied, retrying = false): Promise<Applied> {
       result.rpcName ?? "apply_schedule_compaction",
       result.pendingRequest!,
     );
+    if (error?.code === "23514" && error.message.includes("CROSS_COLLEGE_INSTRUCTOR_CONFLICT"))
+      return {
+        ...result,
+        applied: 0,
+        status: "rejected",
+        stopped: "لم تُحفظ الخطة: يتعارض وقت محاضر مع جدول كلية أخرى. أعد المعاينة.",
+      };
     if (error?.code === "PGRST202" || error?.code === "42883")
       return {
         ...result,

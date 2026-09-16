@@ -162,36 +162,40 @@ test("one coordination version per college and term", () => {
   );
 });
 
-test("concurrent colleges cannot both commit an overlapping shared instructor", async () => {
-  sql("UPDATE schedule_versions SET is_coordination=true;");
-  const first = spawn("psql", args, { stdio: ["pipe", "pipe", "pipe"] });
-  let output = "",
-    err = "";
-  first.stdout.on("data", (b) => {
-    output += b;
+for (const isolation of ["READ COMMITTED", "REPEATABLE READ"]) {
+  test(`concurrent colleges cannot double-book under ${isolation}`, async () => {
+    sql("UPDATE schedule_versions SET is_coordination=true;");
+    const first = spawn("psql", args, { stdio: ["pipe", "pipe", "pipe"] });
+    let output = "",
+      err = "";
+    first.stdout.on("data", (b) => {
+      output += b;
+    });
+    first.stderr.on("data", (b) => {
+      err += b;
+    });
+    const finished = new Promise((resolve) => first.on("close", resolve));
+    first.stdin.end(
+      `BEGIN; ${session("raceA", "a", "va")} SELECT 'LOCKED'; SELECT pg_sleep(2); COMMIT;`,
+    );
+    for (let n = 0; n < 100 && !output.includes("LOCKED"); n++)
+      await new Promise((r) => setTimeout(r, 20));
+    assert.match(output, /LOCKED/);
+    // Spawn asynchronously so Node can drain both connections while the DB serializes writes.
+    const second = spawn("psql", args, { stdio: ["pipe", "pipe", "pipe"] });
+    let secondError = "";
+    second.stderr.on("data", (b) => {
+      secondError += b;
+    });
+    second.stdout.resume();
+    const secondFinished = new Promise((resolve) => second.on("close", resolve));
+    second.stdin.end(
+      `BEGIN ISOLATION LEVEL ${isolation}; SELECT count(*) FROM schedule_sessions; ${session("raceB", "b", "vb")} COMMIT;`,
+    );
+    assert.equal(await finished, 0, err);
+    assert.notEqual(await secondFinished, 0);
+    assert.match(secondError, /CROSS_COLLEGE_INSTRUCTOR_CONFLICT|could not serialize access/);
+    assert.equal(sql("SELECT count(*) FROM schedule_sessions"), "1");
+    sql("DELETE FROM schedule_sessions; UPDATE schedule_versions SET is_coordination=false;");
   });
-  first.stderr.on("data", (b) => {
-    err += b;
-  });
-  const finished = new Promise((resolve) => first.on("close", resolve));
-  first.stdin.end(
-    `BEGIN; ${session("raceA", "a", "va")} SELECT 'LOCKED'; SELECT pg_sleep(2); COMMIT;`,
-  );
-  for (let n = 0; n < 100 && !output.includes("LOCKED"); n++)
-    await new Promise((r) => setTimeout(r, 20));
-  assert.match(output, /LOCKED/);
-  // Spawn asynchronously so Node can drain both connections while the DB serializes writes.
-  const second = spawn("psql", args, { stdio: ["pipe", "pipe", "pipe"] });
-  let secondError = "";
-  second.stderr.on("data", (b) => {
-    secondError += b;
-  });
-  second.stdout.resume();
-  const secondFinished = new Promise((resolve) => second.on("close", resolve));
-  second.stdin.end(`BEGIN; ${session("raceB", "b", "vb")} COMMIT;`);
-  assert.equal(await finished, 0, err);
-  assert.notEqual(await secondFinished, 0);
-  assert.match(secondError, /CROSS_COLLEGE_INSTRUCTOR_CONFLICT/);
-  assert.equal(sql("SELECT count(*) FROM schedule_sessions"), "1");
-  sql("DELETE FROM schedule_sessions; UPDATE schedule_versions SET is_coordination=false;");
-});
+}

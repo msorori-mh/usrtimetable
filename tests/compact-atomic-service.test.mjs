@@ -3,7 +3,12 @@ import assert from "node:assert/strict";
 import { build } from "esbuild";
 import { fileURLToPath } from "node:url";
 import { snapshot, session } from "./helpers/attendance-fixtures.mjs";
-import { fingerprint, inputFingerprint, measure } from "../src/lib/auto-scheduler/compact.ts";
+import {
+  feasible,
+  fingerprint,
+  inputFingerprint,
+  measure,
+} from "../src/lib/auto-scheduler/compact.ts";
 
 const bundle = await build({
   entryPoints: [
@@ -332,4 +337,16 @@ test("external busy windows invalidate a preview without changing its local revi
   ];
   await assert.rejects(service.applyCompactProposal("c", "v", p), /تغيرت البيانات/);
   assert.equal(st.calls.length, 0);
+});
+
+test("planning rejects external teacher overlap but accepts its exact end boundary", () => {
+  const original = session("a", 0, "08:00:00", "10:00:00", { instructor_id: "T" });
+  const s = snapshot([original]);
+  assert.equal(feasible(s, [], original, original), true);
+  s.externalBusy = [
+    { instructor_id: "T", day_of_week: 0, start_time: "09:00:00", end_time: "11:00:00" },
+  ];
+  assert.equal(feasible(s, [], original, original), false);
+  s.externalBusy[0].start_time = "10:00:00";
+  assert.equal(feasible(s, [], original, original), true);
 });

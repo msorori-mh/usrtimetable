@@ -74,7 +74,10 @@ BEGIN
  IF TG_TABLE_NAME='schedule_sessions' THEN
    PERFORM schedule_coordination_private.check_version(NEW.schedule_version_id);
  ELSIF TG_TABLE_NAME='schedule_versions' THEN
-   PERFORM schedule_coordination_private.check_version(NEW.id);
+   IF EXISTS(SELECT 1 FROM public.schedule_versions WHERE id=NEW.id
+     AND (status='published' OR (is_coordination AND status IN ('draft','review','approved')))) THEN
+     PERFORM schedule_coordination_private.check_version(NEW.id);
+   END IF;
  ELSE
    FOR v IN SELECT id FROM public.schedule_versions WHERE academic_term_id=NEW.id
      AND (status='published' OR (is_coordination AND status IN ('draft','review','approved'))) LOOP
