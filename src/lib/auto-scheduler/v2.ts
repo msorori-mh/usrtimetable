@@ -486,6 +486,16 @@ export async function runV2AutoSchedule(params: {
 
   // Shared-student semantics: explicit partition membership per delivery group.
   const expectedStudentsByGroup: Record<string, number | null | undefined> = {};
+  // Local overlap checks compare candidates with every occupied session, including
+  // sessions outside the requested study-system scope. Load both sides' mappings
+  // so a known, unrelated cohort is not mistaken for an unmapped shared group.
+  const snapshotGroups = new Map(planningSnapshot.groups.map((group) => [group.id, group]));
+  for (const session of planningSessions) {
+    if (session.delivery_group_id)
+      expectedStudentsByGroup[session.delivery_group_id] =
+        snapshotGroups.get(session.delivery_group_id)?.expected_students ??
+        session.expected_students;
+  }
   for (const item of workItems) {
     if (item.delivery_group_id)
       expectedStudentsByGroup[item.delivery_group_id] = item.expected_students;
@@ -493,7 +503,11 @@ export async function runV2AutoSchedule(params: {
   const partitions = await loadPartitionIndex({
     collegeId: params.collegeId,
     cohortIds: Array.from(
-      new Set(workItems.map((item) => item.cohort_id).filter((id): id is string => !!id)),
+      new Set(
+        [...workItems, ...planningSessions]
+          .map((item) => item.cohort_id)
+          .filter((id): id is string => !!id),
+      ),
     ),
     expectedStudents: expectedStudentsByGroup,
   });
