@@ -2727,6 +2727,7 @@ export type Database = {
           disposable_test: boolean
           eligibility_revision: number
           id: string
+          is_coordination: boolean
           name: string
           notes: string | null
           status: string
@@ -2740,6 +2741,7 @@ export type Database = {
           disposable_test?: boolean
           eligibility_revision?: number
           id?: string
+          is_coordination?: boolean
           name: string
           notes?: string | null
           status?: string
@@ -2753,6 +2755,7 @@ export type Database = {
           disposable_test?: boolean
           eligibility_revision?: number
           id?: string
+          is_coordination?: boolean
           name?: string
           notes?: string | null
           status?: string
@@ -4277,6 +4280,15 @@ export type Database = {
         }
         Returns: Json
       }
+      get_schedule_external_busy: {
+        Args: { p_college_id: string; p_version_id: string }
+        Returns: {
+          day_of_week: number
+          end_time: string
+          instructor_id: string
+          start_time: string
+        }[]
+      }
       get_scheduling_headcount_import_context: {
         Args: { p_college_id: string }
         Returns: Json
@@ -4546,6 +4558,10 @@ export type Database = {
       seed_college_instructor_types: {
         Args: { p_college_id: string }
         Returns: number
+      }
+      set_schedule_coordination_version: {
+        Args: { p_college_id: string; p_version_id: string }
+        Returns: undefined
       }
       shared_lecture_candidates: { Args: { p_college: string }; Returns: Json }
       shared_lecture_catalog: { Args: { p_college: string }; Returns: Json }
