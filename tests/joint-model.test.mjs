@@ -5,6 +5,24 @@ import { buildJointModel, validateJointPlan } from "../src/lib/auto-scheduler/jo
 import { searchJointAttendance } from "../src/lib/auto-scheduler/joint-search.ts";
 import { snapshot, session } from "./helpers/attendance-fixtures.mjs";
 const highs = await loadHighs();
+test("generation finds feasibility first while compaction retains quality costs", async () => {
+  const s = snapshot([session("one", 0, "08:00:00", "10:00:00")]);
+  const costs = [];
+  const observed = {
+    constants: highs.constants,
+    createModel(model) {
+      costs.push([...model.colCost]);
+      return highs.createModel(model);
+    },
+  };
+  for (const purpose of ["generation", "compaction"]) {
+    const result = await searchJointAttendance(s, observed, 10000, purpose);
+    assert.equal(result.attendanceSearch.status, "feasible");
+    assert.equal(validateJointPlan(s, result.attendanceSearch.sessions, 3), true);
+  }
+  assert.ok(costs[0].every((cost) => cost === 0));
+  assert.ok(costs[1].some((cost) => cost !== 0));
+});
 test("joint model admits a simultaneous swap with no temporary room", () => {
   const s = snapshot([
     session("one", 0, "08:00:00", "10:00:00"),
