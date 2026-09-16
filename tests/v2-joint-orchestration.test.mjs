@@ -398,8 +398,17 @@ for (const includeExistingWorkItem of [true, false]) {
     s.snapshot.cohorts.find((c) => c.id === "q").study_system = "parallel";
     s.snapshot.instructors.push({ id: "U", instructor_type_id: "permanent", max_hours_per_day: 6 });
     s.snapshot.rooms.push({ ...s.snapshot.rooms[0], id: "r2" });
-    s.snapshot.templates = [{ day_of_week: 0, start_time: "08:00:00", end_time: "10:00:00", study_system: "both", is_active: true }];
-    if (!includeExistingWorkItem) s.items = s.items.filter((i) => i.teaching_assignment_id !== "old");
+    s.snapshot.templates = [
+      {
+        day_of_week: 0,
+        start_time: "08:00:00",
+        end_time: "10:00:00",
+        study_system: "both",
+        is_active: true,
+      },
+    ];
+    if (!includeExistingWorkItem)
+      s.items = s.items.filter((i) => i.teaching_assignment_id !== "old");
     const result = await (await scheduler(s))({ ...params, studySystem: "parallel" });
     assert.equal(result.placed, 1);
     assert.equal(result.scopeComplete, true);
