@@ -91,11 +91,19 @@ function SchedVersionsPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("schedule_versions")
-        .select("id, name, status, academic_term_id, notes, created_at")
+        .select("id, name, status, academic_term_id, notes, created_at, is_coordination")
         .eq("college_id", active!.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []) as unknown as Array<{
+        id: string;
+        name: string;
+        status: string;
+        academic_term_id: string;
+        notes: string | null;
+        created_at: string;
+        is_coordination: boolean;
+      }>;
     },
   });
 
@@ -270,6 +278,7 @@ function VersionCard({
     academic_term_id: string;
     notes: string | null;
     created_at: string;
+    is_coordination?: boolean;
   };
   termName: string;
   collegeId: string;
@@ -281,6 +290,35 @@ function VersionCard({
   const qc = useQueryClient();
   const status = v.status as SVStatus;
   const actions = nextActions(status);
+  const coordination = useMutation({
+    mutationFn: async () => {
+      const { error } = await (
+        supabase as unknown as {
+          rpc(
+            name: string,
+            args: Record<string, string>,
+          ): Promise<{ error: { message: string } | null }>;
+        }
+      ).rpc("set_schedule_coordination_version", {
+        p_college_id: collegeId,
+        p_version_id: v.id,
+      });
+      if (error) {
+        if (error.message.includes("CROSS_COLLEGE_INSTRUCTOR_CONFLICT"))
+          throw new Error(
+            "يتعارض وقت محاضر مع جدول معتمد للتنسيق في كلية أخرى. عالج التعارض أولًا.",
+          );
+        if (error.message.includes("COORDINATION_TERM_DATES_REQUIRED"))
+          throw new Error("استكمل تواريخ الفصل الدراسي قبل اعتماد نسخة التنسيق.");
+        throw new Error("تعذر اختيار نسخة التنسيق؛ أعد المحاولة.");
+      }
+    },
+    onSuccess: () => {
+      toast.success("تم اختيار نسخة التنسيق لهذا الفصل");
+      qc.invalidateQueries({ queryKey: ["schedule_versions_list"] });
+    },
+    onError: (e) => toast.error(e.message),
+  });
 
   const elig = useQuery({
     queryKey: ["sv-eligibility", v.id],
@@ -311,7 +349,12 @@ function VersionCard({
 
   const doTransition = useMutation({
     mutationFn: async (to: SVStatus) => {
-      await transitionVersion({ collegeId, scheduleVersionId: v.id, from: status, to });
+      await transitionVersion({
+        collegeId,
+        scheduleVersionId: v.id,
+        from: status,
+        to,
+      });
       await logAudit({
         action: `sv_transition_${to}`,
         entity: "schedule_versions",
@@ -325,7 +368,9 @@ function VersionCard({
       qc.invalidateQueries({ queryKey: ["schedule_versions_list"] });
       qc.invalidateQueries({ queryKey: ["sv-eligibility", v.id] });
       qc.invalidateQueries({ queryKey: ["sv-events", v.id] });
-      qc.invalidateQueries({ queryKey: ["sv-delivery-coverage", collegeId, v.id] });
+      qc.invalidateQueries({
+        queryKey: ["sv-delivery-coverage", collegeId, v.id],
+      });
     },
     onError: (e) => toast.error((e as Error).message),
   });
@@ -342,6 +387,16 @@ function VersionCard({
         </Badge>
       </div>
       <div className="text-xs text-muted-foreground">الفصل: {termName}</div>
+      {["draft", "review", "approved"].includes(status) && (
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={!canManage || !!v.is_coordination || coordination.isPending}
+          onClick={() => coordination.mutate()}
+        >
+          {v.is_coordination ? "نسخة التنسيق بين الكليات" : "اختيار للتنسيق بين الكليات"}
+        </Button>
+      )}
       {v.notes && <div className="break-words text-xs">{v.notes}</div>}
       <div className="text-[10px] text-muted-foreground">
         {new Date(v.created_at).toLocaleString("ar")}
@@ -493,7 +548,10 @@ function CloneDialog({
         entity: "schedule_versions",
         entityId: id,
         collegeId,
-        details: { source: sourceId, disposable_test: canMarkDisposable && disposableTest },
+        details: {
+          source: sourceId,
+          disposable_test: canMarkDisposable && disposableTest,
+        },
       });
       return id;
     },

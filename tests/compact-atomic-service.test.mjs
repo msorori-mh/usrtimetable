@@ -3,7 +3,12 @@ import assert from "node:assert/strict";
 import { build } from "esbuild";
 import { fileURLToPath } from "node:url";
 import { snapshot, session } from "./helpers/attendance-fixtures.mjs";
-import { fingerprint, inputFingerprint, measure } from "../src/lib/auto-scheduler/compact.ts";
+import {
+  feasible,
+  fingerprint,
+  inputFingerprint,
+  measure,
+} from "../src/lib/auto-scheduler/compact.ts";
 
 const bundle = await build({
   entryPoints: [
@@ -95,9 +100,14 @@ async function setup() {
       return q;
     },
     async rpc(name, args) {
+      if (name === "get_schedule_external_busy")
+        return { data: st.s.externalBusy ?? [], error: null };
       st.calls.push({ name, args });
       if (name === "get_schedule_compaction_result")
-        return { data: st.receipt || { ok: false, code: "UNCONFIRMED" }, error: null };
+        return {
+          data: st.receipt || { ok: false, code: "UNCONFIRMED" },
+          error: null,
+        };
       assert.ok(
         ["apply_schedule_compaction", "apply_schedule_relayout"].includes(name),
         "never fall back to individual moves",
@@ -106,10 +116,16 @@ async function setup() {
       if (st.mode === "missing")
         return { data: null, error: { code: "PGRST202", message: "missing" } };
       if (st.mode === "reject")
-        return { data: { ok: false, code: "BLOCKED_CONFLICTS", applied: 0 }, error: null };
+        return {
+          data: { ok: false, code: "BLOCKED_CONFLICTS", applied: 0 },
+          error: null,
+        };
       if (st.mode === "unknown") throw new Error("transport lost");
       if (st.mode === "busy")
-        return { data: { ok: false, code: "VERSION_BUSY", applied: 0 }, error: null };
+        return {
+          data: { ok: false, code: "VERSION_BUSY", applied: 0 },
+          error: null,
+        };
       for (const m of args.p_moves)
         st.s.sessions = st.s.sessions.map((x) =>
           x.id === m.id ? { ...x, ...m, updated_at: "t1" } : x,
@@ -129,7 +145,13 @@ async function setup() {
   const fresh = await service.loadCompactSnapshot("c", "v");
   st.reads = 0;
   const moves = [
-    { id: "b", day_of_week: 0, start_time: "10:00:00", end_time: "12:00:00", room_id: "r" },
+    {
+      id: "b",
+      day_of_week: 0,
+      start_time: "10:00:00",
+      end_time: "12:00:00",
+      room_id: "r",
+    },
   ];
   const p = {
     moves,
@@ -184,7 +206,12 @@ test("absence of a receipt remains unknown and verification never resubmits", as
   const next = await service.verifyCompactApplication("c", "v", r);
   assert.equal(next.status, "unknown");
   assert.equal(st.calls.filter((c) => c.name === "apply_schedule_compaction").length, 1);
-  st.receipt = { ok: true, code: "SAVED", applied: 1, operation_id: r.operationId };
+  st.receipt = {
+    ok: true,
+    code: "SAVED",
+    applied: 1,
+    operation_id: r.operationId,
+  };
   assert.equal((await service.verifyCompactApplication("c", "v", next)).status, "saved");
 });
 test("missing atomic RPC fails closed without a sequential fallback", async () => {
@@ -296,4 +323,30 @@ test("simultaneous recovery retains its RPC and exact request", async () => {
   const saved = await service.retryCompactApplication("c", "v", previous);
   assert.equal(saved.status, "saved");
   assert.deepEqual(st.calls.filter((c) => c.name === "apply_schedule_relayout")[1], request);
+});
+
+test("external busy windows invalidate a preview without changing its local revision", async () => {
+  const { st, service, p } = await setup();
+  st.s.externalBusy = [
+    {
+      instructor_id: "T",
+      day_of_week: 0,
+      start_time: "10:00:00",
+      end_time: "12:00:00",
+    },
+  ];
+  await assert.rejects(service.applyCompactProposal("c", "v", p), /تغيرت البيانات/);
+  assert.equal(st.calls.length, 0);
+});
+
+test("planning rejects external teacher overlap but accepts its exact end boundary", () => {
+  const original = session("a", 0, "08:00:00", "10:00:00", { instructor_id: "T" });
+  const s = snapshot([original]);
+  assert.equal(feasible(s, [], original, original), true);
+  s.externalBusy = [
+    { instructor_id: "T", day_of_week: 0, start_time: "09:00:00", end_time: "11:00:00" },
+  ];
+  assert.equal(feasible(s, [], original, original), false);
+  s.externalBusy[0].start_time = "10:00:00";
+  assert.equal(feasible(s, [], original, original), true);
 });
