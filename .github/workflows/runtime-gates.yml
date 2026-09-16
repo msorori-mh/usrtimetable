@@ -211,4 +211,3 @@ jobs:
         run: |
           createdb -h 127.0.0.1 -U postgres shared_lectures_test
           node --test tests/shared-lectures-db.test.mjs
-
