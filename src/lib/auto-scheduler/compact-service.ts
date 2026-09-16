@@ -26,8 +26,9 @@ interface Query extends PromiseLike<{
 const db = supabase as unknown as { from(table: string): Query };
 async function rows(table: string, collegeId: string, versionId?: string) {
   const result: unknown[] = [];
+  const orderKey = table === "shared_lecture_links" ? "member_group_id" : "id";
   for (let offset = 0; ; offset += 500) {
-    let q = db.from(table).select("*").eq("college_id", collegeId).order("id");
+    let q = db.from(table).select("*").eq("college_id", collegeId).order(orderKey);
     if (versionId) q = q.eq("schedule_version_id", versionId);
     const { data, error } = await q.range(offset, offset + 499);
     if (error) throw new Error(error.message);

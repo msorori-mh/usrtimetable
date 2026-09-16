@@ -48,6 +48,7 @@ async function setup() {
     receipt: null,
     mode: "saved",
     reads: 0,
+    pages: [],
     duringRead: false,
     afterDispatch: null,
     failRefresh: false,
@@ -55,8 +56,10 @@ async function setup() {
   const mapping = {
     schedule_sessions: "sessions",
     academic_cohorts: "cohorts",
-    delivery_groups: "groups",
-    delivery_group_partition_members: "members",
+    operational_delivery_groups: "groups",
+    operational_group_members: "members",
+    shared_lecture_links: "sharedLectures",
+    plan_course_components: "components",
     cohort_student_partitions: "partitions",
     teaching_assignments: "assignments",
     rooms: "rooms",
@@ -73,7 +76,10 @@ async function setup() {
       const q = {
         select: () => q,
         eq: () => q,
-        order: () => q,
+        order: (column) => {
+          assert.equal(column, table === "shared_lecture_links" ? "member_group_id" : "id");
+          return q;
+        },
         async single() {
           st.reads++;
           if (st.failRefresh && st.calls.length) throw new Error("offline refresh");
@@ -88,10 +94,14 @@ async function setup() {
             error: null,
           };
         },
-        async range() {
+        async range(from, to) {
+          st.pages.push({ table, from, to });
           return {
             data: structuredClone(
-              table === "scheduling_settings" ? [st.s.settings] : st.s[mapping[table]],
+              (table === "scheduling_settings"
+                ? [st.s.settings]
+                : (st.s[mapping[table]] ?? [])
+              ).slice(from, to + 1),
             ),
             error: null,
           };
@@ -349,4 +359,23 @@ test("planning rejects external teacher overlap but accepts its exact end bounda
   assert.equal(feasible(s, [], original, original), false);
   s.externalBusy[0].start_time = "10:00:00";
   assert.equal(feasible(s, [], original, original), true);
+});
+
+test("shared lecture links load across pages using their real primary key", async () => {
+  const { st, service } = await setup();
+  st.s.sharedLectures = Array.from({ length: 501 }, (_, i) => ({
+    member_group_id: `member-${i}`,
+    anchor_group_id: "anchor",
+    college_id: "c",
+  }));
+  st.pages = [];
+  const loaded = await service.loadCompactSnapshot("c", "v");
+  assert.deepEqual(loaded.sharedLectures, st.s.sharedLectures);
+  assert.deepEqual(
+    st.pages.filter((p) => p.table === "shared_lecture_links").map((p) => [p.from, p.to]),
+    [
+      [0, 499],
+      [500, 999],
+    ],
+  );
 });
