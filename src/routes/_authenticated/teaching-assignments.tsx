@@ -62,6 +62,8 @@ import {
   filterCandidatesByCollege,
   parseAssignmentCandidates,
 } from "@/lib/teaching-assignments/cross-college-candidates";
+import { fetchSharedLectures } from "@/lib/academic-delivery/shared-lectures";
+import { assignmentRowAcademicContext } from "@/lib/teaching-assignments/assignment-row-context";
 
 export const Route = createFileRoute("/_authenticated/teaching-assignments")({
   head: () => ({ meta: [{ title: "الإسناد التدريسي" }] }),
@@ -181,6 +183,21 @@ function TeachingAssignmentsV2Page() {
       if (termId) q = q.eq("term_id", termId);
       if (studySystem) q = q.eq("study_system", studySystem);
       return (await q.order("code")).data ?? [];
+    },
+  });
+  const { data: academicContext } = useQuery({
+    queryKey: ["teaching-assignment-row-context", active?.id],
+    enabled: !!active,
+    queryFn: async () => {
+      const [cohortResult, sharedLectures] = await Promise.all([
+        supabase
+          .from("academic_cohorts")
+          .select("id, program_id, study_system")
+          .eq("college_id", active!.id),
+        fetchSharedLectures(active!.id),
+      ]);
+      if (cohortResult.error) throw cohortResult.error;
+      return { cohorts: cohortResult.data ?? [], sharedLectures };
     },
   });
 
@@ -578,6 +595,8 @@ function TeachingAssignmentsV2Page() {
                   <thead className="bg-muted/40 text-muted-foreground">
                     <tr>
                       <th className="px-3 py-2 text-right font-medium">المقرر</th>
+                      <th className="px-3 py-2 text-right font-medium">البرنامج</th>
+                      <th className="px-3 py-2 text-right font-medium">نظام الدراسة</th>
                       <th className="px-3 py-2 text-right font-medium">المحاضرة</th>
                       <th className="px-3 py-2 text-right font-medium">المجموعة</th>
                       <th className="px-3 py-2 text-right font-medium">طلاب</th>
@@ -590,7 +609,14 @@ function TeachingAssignmentsV2Page() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {rows.map((row) => (
+                    {rows.map((row) => {
+                      const context = assignmentRowAcademicContext({
+                        row,
+                        cohorts: academicContext?.cohorts ?? [],
+                        programs: programs ?? [],
+                        sharedLectures: academicContext?.sharedLectures ?? [],
+                      });
+                      return (
                       <tr
                         key={row.delivery_group_id}
                         className={row.is_obsolete ? "opacity-70" : ""}
@@ -599,6 +625,12 @@ function TeachingAssignmentsV2Page() {
                           <div className="font-medium">
                             {entityDisplayName({ name: row.course_name, code: row.course_code })}
                           </div>
+                        </td>
+                        <td className="px-3 py-2" data-testid="ta-v2-row-program">
+                          {context.programLabel}
+                        </td>
+                        <td className="px-3 py-2" data-testid="ta-v2-row-study-system">
+                          {context.studySystemLabel}
                         </td>
                         <td className="px-3 py-2">
                           {COMPONENT_LABELS[row.component_type] ?? row.component_type}
@@ -679,7 +711,8 @@ function TeachingAssignmentsV2Page() {
                           ) : null}
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

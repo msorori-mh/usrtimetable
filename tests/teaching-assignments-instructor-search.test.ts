@@ -136,4 +136,12 @@ describe("teaching-assignments page wiring", () => {
     expect(src).toContain("لا توجد إسنادات مطابقة لاسم المحاضر المدخل.");
     expect(src).toContain('label: "اسم المحاضر"');
   });
+
+  it("shows program and study system from row and shared-cohort context", () => {
+    expect(src).toContain(">البرنامج</th>");
+    expect(src).toContain(">نظام الدراسة</th>");
+    expect(src).toContain("assignmentRowAcademicContext");
+    expect(src).toContain('data-testid="ta-v2-row-program"');
+    expect(src).toContain('data-testid="ta-v2-row-study-system"');
+  });
 });
