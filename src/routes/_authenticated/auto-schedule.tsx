@@ -203,10 +203,12 @@ function AutoSchedulePage() {
               unplaced: r.unplaced.length,
               coverage: r.coverageAfter,
             });
-      const quality = `جودة ${r.qualityScoreBefore}→${r.qualityScoreAfter} (${delta >= 0 ? "+" : ""}${delta}) — أُعيد توطين ${r.relocatedSessions}`;
+      const quality = !r.scopeComplete
+        ? "الجودة النهائية غير متاحة قبل اكتمال النطاق"
+        : `جودة ${r.qualityScoreBefore}→${r.qualityScoreAfter} (${delta >= 0 ? "+" : ""}${delta}) — أُعيد توطين ${r.relocatedSessions}`;
       setOutcome({
         partial: message.partial,
-        text: `${message.text} — ${quality}`,
+        text: `${message.text} — أُضيفت ${r.placed} جلسة. ${r.unplaced[0]?.reason ?? ""} — ${quality}`,
       });
       if (message.partial) toast.warning(message.text);
       else toast.success(`${message.text} — ${quality}`);
@@ -359,12 +361,13 @@ function AutoSchedulePage() {
             ) : null}
             <p className="text-xs text-muted-foreground">
               النطاق: {AUTO_SCOPE_LABELS[studySystem]}. تُحفظ المحاضرات القائمة وتُفحص تعارضاتها.
-              فحوص الجاهزية وتغطية النسخة أدناه تشمل جميع الأنظمة.
+              إجماليات النسخة تشمل جميع الأنظمة؛ نافذة النواقص تتبع النطاق المختار.
             </p>
             {versionId ? (
               <DeliveryCoverageCard
                 collegeId={active.id}
                 scheduleVersionId={versionId}
+                studySystem={studySystem}
                 coverage={coverage.data}
                 isLoading={coverage.isLoading}
               />

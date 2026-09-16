@@ -1,3 +1,4 @@
+import { filterDeliveryGaps } from "@/lib/auto-scheduler/study-system-scope";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, CheckCircle2, ListChecks } from "lucide-react";
@@ -70,11 +71,13 @@ export function DeliveryCoverageCard({
   scheduleVersionId,
   coverage,
   isLoading,
+  studySystem = "all",
 }: {
   collegeId: string;
   scheduleVersionId: string;
   coverage: DeliveryCoverage | undefined;
   isLoading?: boolean;
+  studySystem?: string;
 }) {
   const [gapsOpen, setGapsOpen] = useState(false);
 
@@ -100,7 +103,7 @@ export function DeliveryCoverageCard({
       data-testid="delivery-coverage-card"
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[11px] font-semibold">اكتمال نسخة الجدول</span>
+        <span className="text-[11px] font-semibold">اكتمال نسخة الجدول — جميع الأنظمة</span>
         {complete ? (
           <Badge variant="default" className="gap-1">
             <CheckCircle2 className="h-3 w-3" /> مكتمل 100%
@@ -147,6 +150,7 @@ export function DeliveryCoverageCard({
         <GapsDialog
           collegeId={collegeId}
           scheduleVersionId={scheduleVersionId}
+          studySystem={studySystem}
           onClose={() => setGapsOpen(false)}
         />
       )}
@@ -167,23 +171,28 @@ function GapsDialog({
   collegeId,
   scheduleVersionId,
   onClose,
+  studySystem,
 }: {
   collegeId: string;
   scheduleVersionId: string;
   onClose: () => void;
+  studySystem: string;
 }) {
   const gaps = useQuery({
     queryKey: ["sv-delivery-gaps", collegeId, scheduleVersionId],
     queryFn: () => fetchDeliveryGaps({ collegeId, scheduleVersionId }),
   });
 
+  const visibleGaps = filterDeliveryGaps(gaps.data ?? [], studySystem);
   return (
     <Dialog open onOpenChange={(b) => !b && onClose()}>
       <DialogContent dir="rtl" className="max-w-5xl">
         <DialogHeader>
-          <DialogTitle>نواقص نسخة الجدول</DialogTitle>
+          <DialogTitle>
+            نواقص نسخة الجدول — {SYSTEM_LABEL[studySystem] ?? "جميع الأنظمة"}
+          </DialogTitle>
           <DialogDescription>
-            كل مجموعة محاضرات/معامل لم تُستكمل في هذه النسخة، مع الساعات المطلوبة والمجدولة
+            كل مجموعة محاضرات/معامل لم تُستكمل في النطاق المختار، مع الساعات المطلوبة والمجدولة
             والناقصة.
           </DialogDescription>
         </DialogHeader>
@@ -191,7 +200,7 @@ function GapsDialog({
           <p className="text-sm text-muted-foreground">جارٍ التحميل...</p>
         ) : gaps.isError ? (
           <p className="text-sm text-destructive">تعذّر تحميل النواقص.</p>
-        ) : (gaps.data ?? []).length === 0 ? (
+        ) : visibleGaps.length === 0 ? (
           <p className="text-sm text-muted-foreground" data-testid="delivery-gaps-empty">
             لا توجد نواقص — التغطية مكتملة.
           </p>
@@ -217,7 +226,7 @@ function GapsDialog({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(gaps.data ?? []).map((g) => (
+                {visibleGaps.map((g) => (
                   <TableRow key={g.delivery_group_id}>
                     <TableCell>{g.program_name ?? g.program_code ?? "—"}</TableCell>
                     <TableCell>
