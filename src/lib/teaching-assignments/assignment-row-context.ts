@@ -25,7 +25,9 @@ const STUDY_SYSTEM_LABELS: Record<string, string> = {
 };
 
 function unique(values: Array<string | null | undefined>): string[] {
-  return [...new Set(values.map((value) => value?.trim()).filter((value): value is string => !!value))];
+  return [
+    ...new Set(values.map((value) => value?.trim()).filter((value): value is string => !!value)),
+  ];
 }
 
 /** Resolves display context from the row's cohort and every linked shared-lecture cohort. */
@@ -60,7 +62,11 @@ export function assignmentRowAcademicContext(input: {
     programLabel: programNames.join("، ") || "—",
     studySystemLabel:
       systems.length > 1
-        ? unique(systems.flatMap((system) => (system === "both" ? ["عام", "موازي"] : [STUDY_SYSTEM_LABELS[system] ?? system]))).join("، ")
+        ? unique(
+            systems.flatMap((system) =>
+              system === "both" ? ["عام", "موازي"] : [STUDY_SYSTEM_LABELS[system] ?? system],
+            ),
+          ).join("، ")
         : (STUDY_SYSTEM_LABELS[systems[0] ?? ""] ?? systems[0] ?? "—"),
   };
 }

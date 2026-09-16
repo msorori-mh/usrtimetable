@@ -20,9 +20,10 @@ const programs = [
 
 describe("assignmentRowAcademicContext", () => {
   it("uses the row cohort rather than the selected filter for a regular group", () => {
-    expect(
-      assignmentRowAcademicContext({ row, cohorts, programs, sharedLectures: [] }),
-    ).toEqual({ programLabel: "تقنية المعلومات", studySystemLabel: "عام" });
+    expect(assignmentRowAcademicContext({ row, cohorts, programs, sharedLectures: [] })).toEqual({
+      programLabel: "تقنية المعلومات",
+      studySystemLabel: "عام",
+    });
   });
 
   it("shows every participating program and study system for a shared group", () => {
