@@ -16,21 +16,13 @@ describe("auto-schedule study system scope", () => {
   it("keeps a same-system shared lecture once with full headcount and excludes parallel", () => {
     const shared = row("shared", "regular");
     const rows = [shared, row("p", "parallel"), row("r", "regular")];
-    assert.deepEqual(selectAutoScheduleScope(rows, "regular"), [
-      shared,
-      rows[2],
-    ]);
-    assert.equal(
-      selectAutoScheduleScope(rows, "regular")[0].expected_students,
-      106,
-    );
+    assert.deepEqual(selectAutoScheduleScope(rows, "regular"), [shared, rows[2]]);
+    assert.equal(selectAutoScheduleScope(rows, "regular")[0].expected_students, 106);
     assert.equal(rows.length, 3);
   });
   it("supports parallel and backward-compatible all-system runs", () => {
     const rows = [row("r", "regular"), row("p", "parallel"), row("b", "both")];
-    assert.deepEqual(selectAutoScheduleScope(rows.slice(0, 2), "parallel"), [
-      rows[1],
-    ]);
+    assert.deepEqual(selectAutoScheduleScope(rows.slice(0, 2), "parallel"), [rows[1]]);
     assert.deepEqual(selectAutoScheduleScope(rows, "all"), rows);
   });
   it("refuses cross-system shared work before a single-system run", () => {
@@ -41,10 +33,7 @@ describe("auto-schedule study system scope", () => {
   it("does not let an inactive historical shared assignment block a run", () => {
     assert.equal(
       selectAutoScheduleScope(
-        [
-          { ...row("b", "both"), assignment_active: false },
-          row("r", "regular"),
-        ],
+        [{ ...row("b", "both"), assignment_active: false }, row("r", "regular")],
         "regular",
       ).length,
       1,

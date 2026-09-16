@@ -29,17 +29,12 @@ export function selectAutoScheduleScope<
         row.study_system === "both",
     )
   ) {
-    throw new Error(
-      "توجد محاضرة مشتركة بين النظامين؛ راجعها قبل توليد نظام واحد.",
-    );
+    throw new Error("توجد محاضرة مشتركة بين النظامين؛ راجعها قبل توليد نظام واحد.");
   }
   return rows.filter((row) => row.study_system === scope);
 }
 
 /** Database completion certifies the entire version, not a selected system. */
-export function autoScheduleRunStatus(
-  scope: AutoScheduleScope,
-  complete: boolean,
-) {
+export function autoScheduleRunStatus(scope: AutoScheduleScope, complete: boolean) {
   return scope === "all" && complete ? "completed" : "partial";
 }

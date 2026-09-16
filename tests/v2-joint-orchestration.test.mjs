@@ -2,16 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { build } from "esbuild";
 import { fileURLToPath } from "node:url";
-import {
-  session,
-  snapshot,
-  addCohort,
-} from "./helpers/attendance-fixtures.mjs";
+import { session, snapshot, addCohort } from "./helpers/attendance-fixtures.mjs";
 
 // Execute the real orchestration; replace only I/O boundaries. No network or database writes.
 const stubs = {
-  "@/integrations/supabase/client":
-    "export const supabase=globalThis.__jointSchedulerTest.db;",
+  "@/integrations/supabase/client": "export const supabase=globalThis.__jointSchedulerTest.db;",
   "@/lib/conflict-engine/scorer":
     "export const scoreScheduleVersion=async()=>({result:{hard_conflicts_count:0,soft_conflicts_count:0,total_score:80}});",
   "@/lib/schedule-builder/v2-assignment-service":
@@ -20,9 +15,7 @@ const stubs = {
     "export const loadCompactSnapshot=async()=>structuredClone(globalThis.__jointSchedulerTest.snapshot);",
 };
 const bundled = await build({
-  entryPoints: [
-    fileURLToPath(new URL("../src/lib/auto-scheduler/v2.ts", import.meta.url)),
-  ],
+  entryPoints: [fileURLToPath(new URL("../src/lib/auto-scheduler/v2.ts", import.meta.url))],
   bundle: true,
   write: false,
   platform: "node",
@@ -32,9 +25,7 @@ const bundled = await build({
       name: "test-io",
       setup(b) {
         b.onResolve({ filter: /.*/ }, (args) =>
-          args.path in stubs
-            ? { path: args.path, namespace: "test-io" }
-            : undefined,
+          args.path in stubs ? { path: args.path, namespace: "test-io" } : undefined,
         );
         b.onLoad({ filter: /.*/, namespace: "test-io" }, (args) => ({
           contents: stubs[args.path],
@@ -113,8 +104,7 @@ function state() {
     if (table === "time_slot_templates") return st.snapshot.templates;
     if (table === "schedule_sessions") return st.snapshot.sessions;
     // Keep this I/O contract aligned with the production V2 scheduler preflight queries.
-    if (table === "room_types")
-      return [{ id: "rt-lecture", code: "lecture_hall" }];
+    if (table === "room_types") return [{ id: "rt-lecture", code: "lecture_hall" }];
     if (table === "room_availability") return st.snapshot.roomAvailability;
     if (table === "academic_cohorts") return st.snapshot.cohorts;
     if (table === "plan_course_components")
@@ -137,9 +127,7 @@ function state() {
     if (table === "delivery_group_partition_members")
       return st.snapshot.members.map((m) => ({
         ...m,
-        cohort_student_partitions: st.snapshot.partitions.find(
-          (p) => p.id === m.partition_id,
-        ),
+        cohort_student_partitions: st.snapshot.partitions.find((p) => p.id === m.partition_id),
       }));
     throw Error(`Unexpected query: ${table}`);
   };
@@ -171,10 +159,7 @@ function state() {
           error: null,
         }),
         then(resolve, reject) {
-          return Promise.resolve({ data: tableRows(table), error: null }).then(
-            resolve,
-            reject,
-          );
+          return Promise.resolve({ data: tableRows(table), error: null }).then(resolve, reject);
         },
       };
       return q;
@@ -190,23 +175,15 @@ function state() {
         blocking_conflicts: [],
         warnings: [],
       };
-    const i = st.items.find(
-      (i) => i.teaching_assignment_id === p.teachingAssignmentId,
-    );
-    const created = session(
-      `saved:${st.calls.length}`,
-      p.dayOfWeek,
-      p.startTime,
-      p.endTime,
-      {
-        room_id: p.roomId,
-        teaching_assignment_id: i.teaching_assignment_id,
-        instructor_id: i.instructor_id,
-        cohort_id: i.cohort_id,
-        delivery_group_id: i.delivery_group_id,
-        updated_at: `t${st.calls.length}`,
-      },
-    );
+    const i = st.items.find((i) => i.teaching_assignment_id === p.teachingAssignmentId);
+    const created = session(`saved:${st.calls.length}`, p.dayOfWeek, p.startTime, p.endTime, {
+      room_id: p.roomId,
+      teaching_assignment_id: i.teaching_assignment_id,
+      instructor_id: i.instructor_id,
+      cohort_id: i.cohort_id,
+      delivery_group_id: i.delivery_group_id,
+      updated_at: `t${st.calls.length}`,
+    });
     st.snapshot.sessions.push(created);
     return {
       ok: true,
@@ -222,9 +199,7 @@ const params = { collegeId: "college", scheduleVersionId: "version" };
 
 for (const studySystem of ["regular", "parallel", "both"]) {
   test(
-    "V2 schedules " +
-      studySystem +
-      " using shared templates when no dedicated template exists",
+    "V2 schedules " + studySystem + " using shared templates when no dedicated template exists",
     async () => {
       const s = state();
       s.snapshot.templates = s.snapshot.templates.map((template) => ({
@@ -265,10 +240,7 @@ test("real V2 flow places next to the same instructor across programs and reads 
   assert.equal(s.runs[0].summary.attendance.instructorGapMinutes, 0);
   assert.equal(result.totalRequired, 2);
   assert.equal(s.runs[0].summary.readiness.requiredMinutes, 240);
-  assert.equal(
-    s.snapshot.sessions.find((x) => x.id === "old").start_time,
-    "08:00:00",
-  );
+  assert.equal(s.snapshot.sessions.find((x) => x.id === "old").start_time, "08:00:00");
 });
 test("a sixth day is never sent to the creation RPC", async () => {
   const s = state();
@@ -279,9 +251,7 @@ test("a sixth day is never sent to the creation RPC", async () => {
     }),
   );
   s.items = [item("new", "c", "g")];
-  s.snapshot.templates = s.snapshot.templates.filter(
-    (t) => t.day_of_week === 6,
-  );
+  s.snapshot.templates = s.snapshot.templates.filter((t) => t.day_of_week === 6);
   await assert.rejects((await scheduler(s))(params), /ثبت التعذر/);
   assert.equal(s.calls.length, 0);
   assert.equal(s.runs.length, 0);
@@ -335,8 +305,7 @@ for (const [count, dailyHours, days] of [
     assert.equal(new Set(s.calls.map((c) => c.dayOfWeek)).size, days);
     assert.ok(s.calls.every((c) => c.note.includes(`attendance:${days}`)));
     assert.equal(s.runs[0].status, "completed");
-    if (days === 5)
-      assert.ok(s.calls.every((c) => c.note.includes("prior-unsat:3,4")));
+    if (days === 5) assert.ok(s.calls.every((c) => c.note.includes("prior-unsat:3,4")));
   });
 }
 
@@ -351,9 +320,7 @@ test("regular-only generation excludes parallel work before planning and preserv
       blocking_reason: "parallel teacher not yet assigned",
     }),
   );
-  const result = await (
-    await scheduler(s)
-  )({ ...params, studySystem: "regular" });
+  const result = await (await scheduler(s))({ ...params, studySystem: "regular" });
   assert.deepEqual(
     s.calls.map((call) => call.teachingAssignmentId),
     ["new"],
@@ -369,10 +336,7 @@ test("regular-only generation excludes parallel work before planning and preserv
 test("a mixed-system shared lecture blocks scoped generation before any session write", async () => {
   const s = state();
   s.items[1].study_system = "both";
-  await assert.rejects(
-    (await scheduler(s))({ ...params, studySystem: "regular" }),
-    /مشتركة/,
-  );
+  await assert.rejects((await scheduler(s))({ ...params, studySystem: "regular" }), /مشتركة/);
   assert.equal(s.calls.length, 0);
   assert.equal(s.runs.length, 0);
 });

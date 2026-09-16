@@ -1,7 +1,4 @@
-import {
-  AUTO_SCOPE_LABELS,
-  type AutoScheduleScope,
-} from "@/lib/auto-scheduler/study-system-scope";
+import { AUTO_SCOPE_LABELS, type AutoScheduleScope } from "@/lib/auto-scheduler/study-system-scope";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
@@ -32,10 +29,7 @@ import {
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import type { AutoRunMode } from "@/lib/auto-scheduler/greedy";
-import {
-  runV2AutoSchedule,
-  type AutoScheduleProgress,
-} from "@/lib/auto-scheduler/v2";
+import { runV2AutoSchedule, type AutoScheduleProgress } from "@/lib/auto-scheduler/v2";
 import { fetchCollegeReadiness } from "@/lib/reports/readiness";
 import {
   roomTimeCapacityMessagesAr,
@@ -103,16 +97,13 @@ function AutoSchedulePage() {
     queryFn: () => fetchCollegeReadiness(active!.id),
   });
   const readinessBlockers = readiness
-    ? [
-        ...readiness.studyPlan,
-        ...readiness.resources,
-        ...readiness.scheduling,
-      ].filter((metric) => metric.critical && metric.missing > 0)
+    ? [...readiness.studyPlan, ...readiness.resources, ...readiness.scheduling].filter(
+        (metric) => metric.critical && metric.missing > 0,
+      )
     : [];
   const capacityMessages =
     readiness?.roomTimeCapacity &&
-    (readiness.roomTimeCapacity.unavailable ||
-      readiness.roomTimeCapacity.insufficient.length > 0)
+    (readiness.roomTimeCapacity.unavailable || readiness.roomTimeCapacity.insufficient.length > 0)
       ? roomTimeCapacityMessagesAr(readiness.roomTimeCapacity)
       : [];
   const fallbackCoveredHours =
@@ -121,10 +112,7 @@ function AutoSchedulePage() {
       0,
     ) ?? 0;
   const readinessIncomplete =
-    readinessLoading ||
-    readinessError ||
-    !readiness ||
-    readinessBlockers.length > 0;
+    readinessLoading || readinessError || !readiness || readinessBlockers.length > 0;
 
   const { data: runs } = useQuery({
     queryKey: ["auto-runs", active?.id, versionId],
@@ -147,9 +135,7 @@ function AutoSchedulePage() {
       // Dual gate: UI disables the button; mutation re-checks manage + readiness (fail-closed).
       if (compactBusy) throw new Error("انتظر اكتمال تحسين التوزيع");
       if (!canManage) {
-        throw new Error(
-          "UNAUTHORIZED: لا تملك صلاحية تشغيل الجدولة التلقائية لهذه الكلّية",
-        );
+        throw new Error("UNAUTHORIZED: لا تملك صلاحية تشغيل الجدولة التلقائية لهذه الكلّية");
       }
       if (!active || !versionId) throw new Error("اختر النسخة");
       const freshReadiness = await fetchCollegeReadiness(active.id);
@@ -238,8 +224,7 @@ function AutoSchedulePage() {
   });
 
   /** Non-role blockers; the role gate stays the leading `!canManage` on the run button. */
-  const runBlocked =
-    !versionId || run.isPending || compactBusy || readinessIncomplete;
+  const runBlocked = !versionId || run.isPending || compactBusy || readinessIncomplete;
 
   const latest = runs?.[0];
 
@@ -249,9 +234,8 @@ function AutoSchedulePage() {
         <div>
           <h1 className="text-2xl font-bold">الجدولة التلقائية</h1>
           <p className="text-sm text-muted-foreground">
-            خطة حضور متدرجة: ثلاثة أيام أولًا، ثم أربعة عند ثبوت التعذر، وخمسة
-            للحالات الحرجة فقط. تُحسب الخطة قبل إنشاء المحاضرات، مع الحفاظ على
-            المحاضرات القائمة عند إكمال الناقص.
+            خطة حضور متدرجة: ثلاثة أيام أولًا، ثم أربعة عند ثبوت التعذر، وخمسة للحالات الحرجة فقط.
+            تُحسب الخطة قبل إنشاء المحاضرات، مع الحفاظ على المحاضرات القائمة عند إكمال الناقص.
           </p>
         </div>
         <CollegeSwitcher />
@@ -259,23 +243,18 @@ function AutoSchedulePage() {
 
       {!canManage && (
         <Card className="border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200">
-          أنت بوضع المشاهدة. يمكنك استعراض إعدادات الجدولة ونتائج التشغيل دون
-          تنفيذها.
+          أنت بوضع المشاهدة. يمكنك استعراض إعدادات الجدولة ونتائج التشغيل دون تنفيذها.
         </Card>
       )}
 
       {!active ? (
-        <Card className="p-6 text-center text-muted-foreground">
-          اختر كلية للبدء
-        </Card>
+        <Card className="p-6 text-center text-muted-foreground">اختر كلية للبدء</Card>
       ) : (
         <>
           <Card className="p-4 space-y-3">
             <div className="flex items-end gap-3 flex-wrap">
               <div className="min-w-64">
-                <label className="text-xs text-muted-foreground">
-                  نسخة الجدول
-                </label>
+                <label className="text-xs text-muted-foreground">نسخة الجدول</label>
                 <Select
                   disabled={run.isPending || compactBusy}
                   value={versionId}
@@ -294,9 +273,7 @@ function AutoSchedulePage() {
                 </Select>
               </div>
               <div className="min-w-56">
-                <label className="text-xs text-muted-foreground">
-                  نطاق التوليد
-                </label>
+                <label className="text-xs text-muted-foreground">نطاق التوليد</label>
                 <Select
                   value={studySystem}
                   disabled={run.isPending || compactBusy}
@@ -318,26 +295,15 @@ function AutoSchedulePage() {
                 </Select>
               </div>
               <div className="min-w-56">
-                <label className="text-xs text-muted-foreground">
-                  وضع التشغيل
-                </label>
-                <Select
-                  value={mode}
-                  onValueChange={(v) => setMode(v as AutoRunMode)}
-                >
+                <label className="text-xs text-muted-foreground">وضع التشغيل</label>
+                <Select value={mode} onValueChange={(v) => setMode(v as AutoRunMode)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="fill_missing">
-                      إكمال الناقص فقط (آمن)
-                    </SelectItem>
-                    <SelectItem value="regenerate_auto">
-                      إعادة توليد المحاضرات التلقائية
-                    </SelectItem>
-                    <SelectItem value="full_rebuild">
-                      إعادة بناء كامل (خطر)
-                    </SelectItem>
+                    <SelectItem value="fill_missing">إكمال الناقص فقط (آمن)</SelectItem>
+                    <SelectItem value="regenerate_auto">إعادة توليد المحاضرات التلقائية</SelectItem>
+                    <SelectItem value="full_rebuild">إعادة بناء كامل (خطر)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -367,15 +333,13 @@ function AutoSchedulePage() {
                 data-testid="auto-schedule-progress"
                 aria-live="polite"
               >
-                جارٍ المعالجة {progress.processedItems} من {progress.totalItems}{" "}
-                — تمت جدولة {progress.placed} جلسة، تعذّرت {progress.unplaced} —
-                الحالي: {progress.label}
+                جارٍ المعالجة {progress.processedItems} من {progress.totalItems} — تمت جدولة{" "}
+                {progress.placed} جلسة، تعذّرت {progress.unplaced} — الحالي: {progress.label}
               </div>
             ) : null}
             <p className="text-xs text-muted-foreground">
-              النطاق: {AUTO_SCOPE_LABELS[studySystem]}. تُحفظ المحاضرات القائمة
-              وتُفحص تعارضاتها. فحوص الجاهزية وتغطية النسخة أدناه تشمل جميع
-              الأنظمة.
+              النطاق: {AUTO_SCOPE_LABELS[studySystem]}. تُحفظ المحاضرات القائمة وتُفحص تعارضاتها.
+              فحوص الجاهزية وتغطية النسخة أدناه تشمل جميع الأنظمة.
             </p>
             {versionId ? (
               <DeliveryCoverageCard
@@ -393,9 +357,7 @@ function AutoSchedulePage() {
                     : "border-emerald-400 bg-emerald-50 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-100"
                 }`}
                 role="status"
-                data-testid={
-                  outcome.partial ? "auto-run-partial" : "auto-run-complete"
-                }
+                data-testid={outcome.partial ? "auto-run-partial" : "auto-run-complete"}
               >
                 {outcome.text}
               </div>
@@ -407,8 +369,7 @@ function AutoSchedulePage() {
                 data-testid="auto-schedule-room-time-capacity-blocker"
               >
                 <p className="font-medium text-destructive">
-                  السعة الزمنية الأسبوعية للقاعات غير كافية — الجدولة مستحيلة
-                  فعليًا.
+                  السعة الزمنية الأسبوعية للقاعات غير كافية — الجدولة مستحيلة فعليًا.
                 </p>
                 <ul className="mt-1 space-y-1 text-muted-foreground">
                   {capacityMessages.map((line) => (
@@ -430,9 +391,8 @@ function AutoSchedulePage() {
                   السعة الأسبوعية كافية بعد مشاركة القاعات.
                 </p>
                 <p className="mt-1 text-muted-foreground">
-                  يمكن تغطية {fallbackCoveredHours} ساعة عملية من فائض قاعات
-                  المحاضرات بعد حجز احتياج المحاضرات والتمارين، لذلك لا يمنع هذا
-                  الفحص تشغيل الجدولة.
+                  يمكن تغطية {fallbackCoveredHours} ساعة عملية من فائض قاعات المحاضرات بعد حجز
+                  احتياج المحاضرات والتمارين، لذلك لا يمنع هذا الفحص تشغيل الجدولة.
                 </p>
               </div>
             ) : null}
@@ -494,9 +454,7 @@ function AutoSchedulePage() {
             <AlertDialogContent dir="rtl">
               <AlertDialogHeader>
                 <AlertDialogTitle>
-                  {mode === "full_rebuild"
-                    ? "تأكيد إعادة البناء الكامل"
-                    : "تأكيد إعادة التوليد"}
+                  {mode === "full_rebuild" ? "تأكيد إعادة البناء الكامل" : "تأكيد إعادة التوليد"}
                 </AlertDialogTitle>
                 <AlertDialogDescription>
                   {mode === "full_rebuild"
@@ -557,14 +515,13 @@ function AutoSchedulePage() {
                     <Badge variant="outline">
                       {AUTO_SCOPE_LABELS[sum?.study_system_scope ?? "all"]}
                     </Badge>
-                    {sum?.study_system_scope &&
-                      sum.study_system_scope !== "all" && (
-                        <span className="text-xs">
-                          {sum.scope_complete
-                            ? "اكتمل النطاق المختار؛ اكتمال النسخة يُراجع منفصلًا"
-                            : "النطاق المختار غير مكتمل"}
-                        </span>
-                      )}
+                    {sum?.study_system_scope && sum.study_system_scope !== "all" && (
+                      <span className="text-xs">
+                        {sum.scope_complete
+                          ? "اكتمل النطاق المختار؛ اكتمال النسخة يُراجع منفصلًا"
+                          : "النطاق المختار غير مكتمل"}
+                      </span>
+                    )}
                     <Badge variant="secondary">{latest.status}</Badge>
                     {sum?.algorithm_version && (
                       <Badge variant="outline" className="text-[10px]">
@@ -588,36 +545,20 @@ function AutoSchedulePage() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
                     <Stat
                       label="مولّدة"
-                      value={
-                        sum?.regenerated_sessions ?? latest.placed_sessions
-                      }
+                      value={sum?.regenerated_sessions ?? latest.placed_sessions}
                     />
                     <Stat
                       label="محذوفة تلقائية"
                       value={sum?.deleted_auto_sessions ?? 0}
-                      accent={
-                        (sum?.deleted_auto_sessions ?? 0) > 0
-                          ? "warn"
-                          : undefined
-                      }
+                      accent={(sum?.deleted_auto_sessions ?? 0) > 0 ? "warn" : undefined}
                     />
-                    <Stat
-                      label="مقفلة (تم تخطيها)"
-                      value={sum?.skipped_locked_sessions ?? 0}
-                    />
+                    <Stat label="مقفلة (تم تخطيها)" value={sum?.skipped_locked_sessions ?? 0} />
                     <Stat
                       label="عملي في قاعة (بديل)"
                       value={sum?.practical_room_fallbacks ?? 0}
-                      accent={
-                        (sum?.practical_room_fallbacks ?? 0) > 0
-                          ? "warn"
-                          : undefined
-                      }
+                      accent={(sum?.practical_room_fallbacks ?? 0) > 0 ? "warn" : undefined}
                     />
-                    <Stat
-                      label="محفوظة (قائمة)"
-                      value={sum?.preserved_existing_sessions ?? 0}
-                    />
+                    <Stat label="محفوظة (قائمة)" value={sum?.preserved_existing_sessions ?? 0} />
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
@@ -628,28 +569,20 @@ function AutoSchedulePage() {
                         latest.placed_sessions + latest.unplaced_sessions
                       }
                     />
-                    <Stat
-                      label="محاضرات موضوعة"
-                      value={latest.placed_sessions}
-                    />
+                    <Stat label="محاضرات موضوعة" value={latest.placed_sessions} />
                     <Stat
                       label="غير مجدول"
                       value={latest.unplaced_sessions}
                       accent={latest.unplaced_sessions > 0 ? "warn" : undefined}
                     />
-                    <Stat
-                      label="محفوظة (قائمة)"
-                      value={sum?.preserved_existing_sessions ?? 0}
-                    />
+                    <Stat label="محفوظة (قائمة)" value={sum?.preserved_existing_sessions ?? 0} />
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
                     <Stat label="جودة قبل" value={sum?.quality_before ?? "—"} />
                     <Stat
                       label="جودة بعد"
-                      value={
-                        sum?.quality_after ?? latest.quality_score_after ?? "—"
-                      }
+                      value={sum?.quality_after ?? latest.quality_score_after ?? "—"}
                     />
                     <Stat
                       label="تحسّن الجودة"
@@ -659,32 +592,23 @@ function AutoSchedulePage() {
                     <Stat
                       label="تعارضات إلزامية"
                       value={latest.hard_conflicts_after}
-                      accent={
-                        latest.hard_conflicts_after > 0 ? "danger" : undefined
-                      }
+                      accent={latest.hard_conflicts_after > 0 ? "danger" : undefined}
                     />
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
-                    <Stat
-                      label="مخالفات مرنة"
-                      value={latest.soft_violations_after}
-                    />
+                    <Stat label="مخالفات مرنة" value={latest.soft_violations_after} />
                     <Stat
                       label="محاولات تراجع"
                       value={`${sum?.backtracking_attempts ?? 0}/${sum?.max_backtracking_attempts ?? 0}`}
                     />
-                    <Stat
-                      label="محاضرات أُعيد توطينها"
-                      value={sum?.relocated_sessions ?? 0}
-                    />
+                    <Stat label="محاضرات أُعيد توطينها" value={sum?.relocated_sessions ?? 0} />
                     <Stat label="المدة (ms)" value={latest.duration_ms ?? 0} />
                   </div>
 
                   {sum?.ordering_strategy && (
                     <div className="text-[11px] text-muted-foreground">
-                      استراتيجية الترتيب:{" "}
-                      <span className="font-mono">{sum.ordering_strategy}</span>{" "}
+                      استراتيجية الترتيب: <span className="font-mono">{sum.ordering_strategy}</span>{" "}
                       — إجمالي العروض: {latest.total_offerings}
                     </div>
                   )}
@@ -692,11 +616,7 @@ function AutoSchedulePage() {
                   {sum?.by_session_type && (
                     <div className="flex flex-wrap gap-2">
                       {Object.entries(sum.by_session_type).map(([type, v]) => (
-                        <Badge
-                          key={type}
-                          variant="outline"
-                          className="text-[11px]"
-                        >
+                        <Badge key={type} variant="outline" className="text-[11px]">
                           {type}: {v.placed}/{v.required}{" "}
                           {v.unplaced > 0 ? `(غير مجدول ${v.unplaced})` : ""}
                         </Badge>
@@ -706,9 +626,7 @@ function AutoSchedulePage() {
 
                   {(sum?.warnings ?? []).length > 0 && (
                     <div className="border rounded-md p-2 bg-amber-50 dark:bg-amber-950/30 text-[11px] max-h-32 overflow-y-auto">
-                      <p className="font-semibold mb-1">
-                        تحذيرات ({(sum?.warnings ?? []).length})
-                      </p>
+                      <p className="font-semibold mb-1">تحذيرات ({(sum?.warnings ?? []).length})</p>
                       <ul className="space-y-0.5">
                         {(sum?.warnings ?? []).slice(0, 10).map((m, i) => (
                           <li key={i}>• {m}</li>
@@ -717,42 +635,34 @@ function AutoSchedulePage() {
                     </div>
                   )}
 
-                  {Array.isArray(latest.unplaced) &&
-                    (latest.unplaced as unknown[]).length > 0 && (
-                      <div className="border rounded-md p-3 max-h-80 overflow-y-auto bg-muted/30">
-                        <p className="text-sm font-semibold mb-1">
-                          قائمة غير المجدول وأسبابها
-                        </p>
-                        <p className="text-[11px] text-muted-foreground mb-2">
-                          السبب يوضح القيد الذي أوقف وضع المحاضرة في خطة هذا
-                          التشغيل. رفض موضع المحاضرة لا يعني ثبوت استحالة
-                          سيناريو أيام الحضور، ولا يسمح بزيادة الأيام.
-                        </p>
-                        <ul className="text-xs space-y-1">
-                          {(
-                            latest.unplaced as Array<{
-                              teaching_assignment_id: string;
-                              session_type: string;
-                              duration_minutes?: number;
-                              unit_index?: number;
-                              reason: string;
-                            }>
-                          ).map((u, i) => (
-                            <li
-                              key={i}
-                              className="flex justify-between gap-2 border-b py-1"
-                            >
-                              <span className="text-muted-foreground">
-                                {u.session_type}#{u.unit_index ?? 1} (
-                                {u.duration_minutes ?? 0}د) —{" "}
-                                {u.teaching_assignment_id?.slice(0, 8)}
-                              </span>
-                              <span className="truncate">{u.reason}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
+                  {Array.isArray(latest.unplaced) && (latest.unplaced as unknown[]).length > 0 && (
+                    <div className="border rounded-md p-3 max-h-80 overflow-y-auto bg-muted/30">
+                      <p className="text-sm font-semibold mb-1">قائمة غير المجدول وأسبابها</p>
+                      <p className="text-[11px] text-muted-foreground mb-2">
+                        السبب يوضح القيد الذي أوقف وضع المحاضرة في خطة هذا التشغيل. رفض موضع
+                        المحاضرة لا يعني ثبوت استحالة سيناريو أيام الحضور، ولا يسمح بزيادة الأيام.
+                      </p>
+                      <ul className="text-xs space-y-1">
+                        {(
+                          latest.unplaced as Array<{
+                            teaching_assignment_id: string;
+                            session_type: string;
+                            duration_minutes?: number;
+                            unit_index?: number;
+                            reason: string;
+                          }>
+                        ).map((u, i) => (
+                          <li key={i} className="flex justify-between gap-2 border-b py-1">
+                            <span className="text-muted-foreground">
+                              {u.session_type}#{u.unit_index ?? 1} ({u.duration_minutes ?? 0}د) —{" "}
+                              {u.teaching_assignment_id?.slice(0, 8)}
+                            </span>
+                            <span className="truncate">{u.reason}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </Card>
               );
             })()}
@@ -762,14 +672,11 @@ function AutoSchedulePage() {
               <p className="font-semibold mb-2 text-sm">عمليات سابقة</p>
               <div className="space-y-1 text-xs">
                 {runs.slice(1).map((r) => (
-                  <div
-                    key={r.id}
-                    className="flex justify-between border-b py-1"
-                  >
+                  <div key={r.id} className="flex justify-between border-b py-1">
                     <span>{new Date(r.created_at).toLocaleString("ar")}</span>
                     <span>
-                      وُضع {r.placed_sessions} / غير مجدول {r.unplaced_sessions}{" "}
-                      / جودة {r.quality_score_after ?? "—"}
+                      وُضع {r.placed_sessions} / غير مجدول {r.unplaced_sessions} / جودة{" "}
+                      {r.quality_score_after ?? "—"}
                     </span>
                   </div>
                 ))}
@@ -792,11 +699,7 @@ function Stat({
   accent?: "warn" | "danger";
 }) {
   const color =
-    accent === "danger"
-      ? "text-destructive"
-      : accent === "warn"
-        ? "text-amber-600"
-        : "";
+    accent === "danger" ? "text-destructive" : accent === "warn" ? "text-amber-600" : "";
   return (
     <div className="rounded-md border p-2">
       <div className={`text-xl font-bold ${color}`}>{value}</div>
