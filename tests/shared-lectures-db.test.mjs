@@ -29,6 +29,7 @@ before(() => {
     "supabase/sql/shared_lectures.sql",
     "supabase/sql/shared_lecture_runtime.sql",
     "supabase/sql/materialize_operational_group_reads.sql",
+    "supabase/sql/set_based_delivery_overlap.sql",
     "tests/fixtures/shared-lecture-seed.sql",
   ]) {
     sql(readFileSync(new URL("../" + path, import.meta.url), "utf8"));
