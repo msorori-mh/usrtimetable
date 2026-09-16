@@ -28,6 +28,7 @@ before(() => {
     "tests/fixtures/shared-lecture-runtime.sql",
     "supabase/sql/shared_lectures.sql",
     "supabase/sql/shared_lecture_runtime.sql",
+    "supabase/sql/materialize_operational_group_reads.sql",
     "tests/fixtures/shared-lecture-seed.sql",
   ]) {
     sql(readFileSync(new URL("../" + path, import.meta.url), "utf8"));
@@ -40,3 +41,28 @@ for (const [name, body] of cases) {
     ),
   );
 }
+
+test("operational snapshot calculates each source group once, preserving all fields", () => {
+  sql(`BEGIN; SET LOCAL track_functions='pl';
+    SELECT set_config('request.jwt.claim.sub',md5('manager'),true);
+    DO $$ DECLARE before_calls bigint; after_calls bigint; expected bigint; BEGIN
+      SELECT coalesce(sum(calls),0) INTO before_calls FROM pg_stat_xact_user_functions WHERE funcname='operational_delivery_group';
+      PERFORM jsonb_agg(v) FROM operational_delivery_groups v;
+      SELECT coalesce(sum(calls),0) INTO after_calls FROM pg_stat_xact_user_functions WHERE funcname='operational_delivery_group';
+      SELECT count(*) INTO expected FROM delivery_groups;
+      IF after_calls-before_calls<>expected THEN RAISE EXCEPTION 'Repeated operational group evaluation: % vs %',after_calls-before_calls,expected; END IF;
+      IF EXISTS((SELECT * FROM operational_delivery_groups EXCEPT ALL SELECT (operational_delivery_group(g.id)).* FROM delivery_groups g)
+        UNION ALL (SELECT (operational_delivery_group(g.id)).* FROM delivery_groups g EXCEPT ALL SELECT * FROM operational_delivery_groups))
+        THEN RAISE EXCEPTION 'Operational fields changed'; END IF;
+    END $$; ROLLBACK;`);
+});
+
+test("operational view keeps invoker permissions on its base table", () => {
+  sql(`BEGIN; REVOKE SELECT ON delivery_groups FROM authenticated;
+    SET LOCAL ROLE authenticated;
+    SELECT set_config('request.jwt.claim.sub',md5('viewer'),true);
+    DO $$ BEGIN
+      BEGIN PERFORM * FROM operational_delivery_groups; RAISE EXCEPTION 'View bypassed base permissions';
+      EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+    END $$; ROLLBACK;`);
+});
