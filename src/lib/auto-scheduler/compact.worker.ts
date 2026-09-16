@@ -11,7 +11,15 @@ export type CompactWorkerReply =
   | { type: "error"; message: string };
 
 const scope = self as unknown as {
-  onmessage: ((event: MessageEvent<{ snapshot: Snapshot; maxDurationMs: number }>) => void) | null;
+  onmessage:
+    | ((
+        event: MessageEvent<{
+          snapshot: Snapshot;
+          maxDurationMs: number;
+          purpose?: "compaction" | "generation";
+        }>,
+      ) => void)
+    | null;
   postMessage: (reply: CompactWorkerReply) => void;
 };
 scope.onmessage = async ({ data }) => {
@@ -25,7 +33,12 @@ scope.onmessage = async ({ data }) => {
       return;
     }
     const highs = await loadHighs({ locateFile: () => wasmUrl });
-    const proposal = await searchJointAttendance(data.snapshot, highs, data.maxDurationMs);
+    const proposal = await searchJointAttendance(
+      data.snapshot,
+      highs,
+      data.maxDurationMs,
+      data.purpose,
+    );
     scope.postMessage({ type: "result", proposal });
   } catch (error) {
     scope.postMessage({

@@ -90,3 +90,27 @@ test("import independently checks staleness, final constraints and lower-day pro
     /قيود/,
   );
 });
+
+test("generation solves a four-day plan with hard caps and retains fixed sessions", async () => {
+  const s = snapshot(
+    Array.from({ length: 8 }, (_, i) =>
+      session("pending-" + i, 0, "08:00:00", "10:00:00", { updated_at: "", is_locked: i === 0 }),
+    ),
+  );
+  s.settings.max_daily_hours_per_section = 4;
+  const p = await searchJointAttendance(s, highs, 10000, "generation");
+  assert.equal(p.attendanceSearch.status, "feasible");
+  assert.equal(p.attendanceSearch.days, 4);
+  assert.deepEqual(
+    p.attendanceSearch.attempts.map((a) => [a.days, a.status]),
+    [
+      [3, "infeasible"],
+      [4, "feasible"],
+    ],
+  );
+  assert.equal(validateJointPlan(s, p.attendanceSearch.sessions, 4), true);
+  assert.deepEqual(
+    p.attendanceSearch.sessions.find((x) => x.id === "pending-0"),
+    s.sessions[0],
+  );
+});

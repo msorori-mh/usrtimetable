@@ -4,7 +4,9 @@ import {
   type AutoScheduleScope,
 } from "@/lib/auto-scheduler/study-system-scope";
 import { fetchSharedLectures } from "@/lib/academic-delivery/shared-lectures";
-import { searchAttendance, attendanceSearchMessage } from "@/lib/auto-scheduler/attendance-search";
+import { attendanceSearchMessage } from "@/lib/auto-scheduler/attendance-search";
+import { previewCompaction } from "@/lib/auto-scheduler/compact-worker-client";
+import { validateJointPlan } from "@/lib/auto-scheduler/joint-model";
 import { supabase } from "@/integrations/supabase/client";
 import { scoreScheduleVersion } from "@/lib/conflict-engine/scorer";
 import {
@@ -279,6 +281,7 @@ export async function runV2AutoSchedule(params: {
   scheduleVersionId: string;
   mode?: AutoRunMode;
   studySystem?: AutoScheduleScope;
+  searchDurationMs?: number;
   onProgress?: (progress: AutoScheduleProgress) => void;
   signal?: AbortSignal;
 }): Promise<AutoRunResult & { studySystem: AutoScheduleScope; scopeComplete: boolean }> {
@@ -560,15 +563,28 @@ export async function runV2AutoSchedule(params: {
     unplaced: 0,
     label: "اختبار ثلاثة أيام، ثم أربعة وخمسة بعد ثبوت التعذر فقط…",
   });
-  const attendancePlan = await searchAttendance(
-    {
-      ...planningSnapshot,
-      sessions: [...planningSessions, ...pendingAttendance],
-    },
-    { signal: params.signal, maxDurationMs: 60000, preferExisting: true },
-  );
+  const generationSnapshot = {
+    ...planningSnapshot,
+    sessions: [...planningSessions.map((s) => ({ ...s, is_locked: true })), ...pendingAttendance],
+  };
+  const requestedBudget = params.searchDurationMs ?? 180000;
+  const searchBudget = Number.isFinite(requestedBudget)
+    ? Math.min(600000, Math.max(60000, requestedBudget))
+    : 180000;
+  const proposal = await previewCompaction(generationSnapshot, {
+    signal: params.signal,
+    maxDurationMs: searchBudget,
+    purpose: "generation",
+  });
+  const attendancePlan = proposal.attendanceSearch;
+  if (!attendancePlan) throw new Error("تعذر تأكيد نتيجة البحث؛ لم تُنشأ محاضرات.");
   const attendanceEvidence = attendanceSearchMessage(attendancePlan);
   if (attendancePlan.status !== "feasible") throw new Error(attendanceEvidence);
+  if (
+    !attendancePlan.days ||
+    !validateJointPlan(generationSnapshot, attendancePlan.sessions, attendancePlan.days)
+  )
+    throw new Error("خطة التوليد لا تجتاز قيود الجدول؛ لم تُنشأ محاضرات.");
   warnings.push(attendanceEvidence);
   for (const old of planningSessions) {
     const target = attendancePlan.sessions.find((s) => s.id === old.id)!;

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { build } from "esbuild";
 import { fileURLToPath } from "node:url";
 import { session, snapshot, addCohort } from "./helpers/attendance-fixtures.mjs";
+import { searchAttendance } from "../src/lib/auto-scheduler/attendance-search.ts";
 
 // Execute the real orchestration; replace only I/O boundaries. No network or database writes.
 const stubs = {
@@ -13,6 +14,8 @@ const stubs = {
     'export const listScheduleBuilderV2WorkItems=async()=>({ok:true,can_manage:true,version_updated_at:"t0",rows:globalThis.__jointSchedulerTest.items});export const createScheduleSessionFromAssignmentV2=(p)=>globalThis.__jointSchedulerTest.create(p);',
   "@/lib/auto-scheduler/compact-service":
     "export const loadCompactSnapshot=async()=>structuredClone(globalThis.__jointSchedulerTest.snapshot);",
+  "@/lib/auto-scheduler/compact-worker-client":
+    "export const previewCompaction=(snapshot,options)=>globalThis.__jointSchedulerTest.plan(snapshot,options);",
 };
 const bundled = await build({
   entryPoints: [fileURLToPath(new URL("../src/lib/auto-scheduler/v2.ts", import.meta.url))],
@@ -37,6 +40,11 @@ const bundled = await build({
 });
 let serial = 0;
 async function scheduler(state) {
+  state.plan ??= async (snapshot, options) => {
+    state.searchOptions = options;
+    state.searchSnapshot = snapshot;
+    return { attendanceSearch: await searchAttendance(snapshot, options) };
+  };
   globalThis.__jointSchedulerTest = state;
   return (
     await import(
@@ -339,4 +347,32 @@ test("a mixed-system shared lecture blocks scoped generation before any session 
   await assert.rejects((await scheduler(s))({ ...params, studySystem: "regular" }), /مشتركة/);
   assert.equal(s.calls.length, 0);
   assert.equal(s.runs.length, 0);
+});
+
+test("generation forwards its search budget and fixes existing placements", async () => {
+  const s = state();
+  await (
+    await scheduler(s)
+  )({ ...params, searchDurationMs: 300000 });
+  assert.equal(s.searchOptions.maxDurationMs, 300000);
+  assert.equal(s.searchOptions.purpose, "generation");
+  assert.equal(s.searchSnapshot.sessions.find((x) => x.id === "old").is_locked, true);
+  assert.ok(
+    s.searchSnapshot.sessions.some((x) => x.id.startsWith("attendance-pending:") && !x.is_locked),
+  );
+});
+
+test("an unresolved worker search never reaches the session writer", async () => {
+  const s = state();
+  s.plan = async () => ({
+    attendanceSearch: {
+      status: "unknown",
+      days: null,
+      sessions: [],
+      scope: "all_sessions_joint_grid",
+      attempts: [{ days: 4, status: "unknown", reason: "budget", evaluated: 1 }],
+    },
+  });
+  await assert.rejects((await scheduler(s))(params), /لم يُحسم البحث/);
+  assert.equal(s.calls.length, 0);
 });

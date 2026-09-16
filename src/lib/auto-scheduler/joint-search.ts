@@ -63,6 +63,7 @@ export async function searchJointAttendance(
   snapshot: Snapshot,
   highs: Highs,
   budgetMs = 180000,
+  purpose: "compaction" | "generation" = "compaction",
 ): Promise<Proposal> {
   const conflict = extendedResourceConflict(snapshot);
   if (conflict) return jointProposal(snapshot, resourceConflictResult(conflict));
@@ -93,7 +94,7 @@ export async function searchJointAttendance(
       attempts.push({ days, status: "unknown", reason: "budget", evaluated: 0 });
       return finish("unknown", null);
     }
-    const built = buildJointModel(snapshot, days, true),
+    const built = buildJointModel(snapshot, days, purpose !== "generation"),
       model = highs.createModel(built.model);
     try {
       model.options.set({
@@ -102,7 +103,8 @@ export async function searchJointAttendance(
         mip_rel_gap: 0.05,
         mip_heuristic_effort: 0.2,
       });
-      model.setSolution(built.startSolution);
+      // Synthetic pending sessions have no feasible original placement to seed.
+      if (purpose !== "generation") model.setSolution(built.startSolution);
       model.run();
       if (model.info.get("primal_solution_status") === highs.constants.solutionStatus.feasible) {
         let final: Session[];

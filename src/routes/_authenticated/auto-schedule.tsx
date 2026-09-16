@@ -57,6 +57,7 @@ function AutoSchedulePage() {
   const qc = useQueryClient();
   const [versionId, setVersionId] = useState<string>("");
   const [studySystem, setStudySystem] = useState<AutoScheduleScope>("regular");
+  const [searchDurationMs, setSearchDurationMs] = useState("180000");
   const [mode, setMode] = useState<AutoRunMode>("fill_missing");
   const [compactBusy, setCompactBusy] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -157,6 +158,7 @@ function AutoSchedulePage() {
         scheduleVersionId: versionId,
         mode,
         studySystem,
+        searchDurationMs: Number(searchDurationMs),
         signal: controller.signal,
         onProgress: setProgress,
       });
@@ -304,6 +306,24 @@ function AutoSchedulePage() {
                     <SelectItem value="fill_missing">إكمال الناقص فقط (آمن)</SelectItem>
                     <SelectItem value="regenerate_auto">إعادة توليد المحاضرات التلقائية</SelectItem>
                     <SelectItem value="full_rebuild">إعادة بناء كامل (خطر)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="min-w-44">
+                <label className="text-xs text-muted-foreground">مدة بحث التوليد</label>
+                <Select
+                  value={searchDurationMs}
+                  onValueChange={setSearchDurationMs}
+                  disabled={run.isPending || compactBusy}
+                >
+                  <SelectTrigger aria-label="مدة بحث التوليد">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="60000">دقيقة واحدة</SelectItem>
+                    <SelectItem value="180000">ثلاث دقائق</SelectItem>
+                    <SelectItem value="300000">خمس دقائق</SelectItem>
+                    <SelectItem value="600000">عشر دقائق</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
