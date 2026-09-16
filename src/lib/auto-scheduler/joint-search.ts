@@ -99,7 +99,7 @@ export async function searchJointAttendance(
     // A constant objective lets presolve discard soft span/idle-time machinery;
     // all attendance, availability, capacity and collision constraints remain.
     // Compaction retains its quality objective for the explicit improvement step.
-    if (purpose === "generation") built.model.colCost.fill(0);
+    if (purpose === "generation") built.model.colCost = new Float64Array(built.model.numCols);
     const model = highs.createModel(built.model);
     try {
       model.options.set({
