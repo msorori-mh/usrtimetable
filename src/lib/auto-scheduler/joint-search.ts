@@ -94,8 +94,13 @@ export async function searchJointAttendance(
       attempts.push({ days, status: "unknown", reason: "budget", evaluated: 0 });
       return finish("unknown", null);
     }
-    const built = buildJointModel(snapshot, days, purpose !== "generation"),
-      model = highs.createModel(built.model);
+    const built = buildJointModel(snapshot, days, purpose !== "generation");
+    // Generation needs a complete valid timetable before quality optimization.
+    // A constant objective lets presolve discard soft span/idle-time machinery;
+    // all attendance, availability, capacity and collision constraints remain.
+    // Compaction retains its quality objective for the explicit improvement step.
+    if (purpose === "generation") built.model.colCost.fill(0);
+    const model = highs.createModel(built.model);
     try {
       model.options.set({
         output_flag: false,
