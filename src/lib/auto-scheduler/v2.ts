@@ -914,13 +914,17 @@ export async function runV2AutoSchedule(params: {
             }
             lastReason =
               result.blocking_conflicts[0]?.message_ar ||
+              result.blocking_conflicts[0]?.code ||
               result.warnings[0]?.message_ar ||
+              result.warnings[0]?.code ||
               result.message_ar ||
               result.code ||
               lastReason;
             // Availability-based day skipping only applies when enforcement is on.
             if (
-              isInstructorAvailabilityEnforced() &&
+              isInstructorAvailabilityEnforced(
+                planningSnapshot.settings.enforce_instructor_availability,
+              ) &&
               result.blocking_conflicts.some(
                 (conflict) => conflict.code === "instructor_availability_required",
               )

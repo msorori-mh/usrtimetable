@@ -4,7 +4,11 @@
  */
 
 export type SchedulingStatus =
-  "unscheduled" | "partially_scheduled" | "scheduled" | "over_scheduled" | "blocked";
+  | "unscheduled"
+  | "partially_scheduled"
+  | "scheduled"
+  | "over_scheduled"
+  | "blocked";
 
 export type ScheduleBuilderV2WorkItem = {
   teaching_assignment_id: string;
@@ -265,7 +269,14 @@ function asConflictArray(value: unknown): ScheduleConflictPreview[] {
     return {
       code: String(r.code ?? "unknown"),
       severity: r.severity as string | undefined,
-      message_ar: r.message_ar as string | undefined,
+      message_ar:
+        (r.message_ar as string | undefined) ??
+        (
+          {
+            instructor_availability: "المحاضر غير متاح في وقت المحاضرة المقترح.",
+            instructor_availability_required: "يلزم تحديد توافر المحاضر لهذا اليوم.",
+          } as Record<string, string>
+        )[String(r.code ?? "")],
       message_en: r.message_en as string | undefined,
       related_session_id: (r.related_session_id as string | null) ?? null,
       metadata: (r.metadata as Record<string, unknown>) ?? undefined,

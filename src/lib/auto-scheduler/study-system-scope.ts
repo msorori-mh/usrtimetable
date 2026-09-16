@@ -38,3 +38,13 @@ export function selectAutoScheduleScope<
 export function autoScheduleRunStatus(scope: AutoScheduleScope, complete: boolean) {
   return scope === "all" && complete ? "completed" : "partial";
 }
+
+/** Shared groups remain visible to either affected system; never silently hide them. */
+export function filterDeliveryGaps<T extends { study_system: string | null }>(
+  rows: T[],
+  studySystem: string = "all",
+): T[] {
+  return studySystem === "all"
+    ? rows
+    : rows.filter((row) => row.study_system === studySystem || row.study_system === "both");
+}

@@ -122,6 +122,7 @@ export interface Snapshot {
     is_active: boolean;
   }[];
   settings: {
+    enforce_instructor_availability?: boolean;
     extended_day_policy_enabled?: boolean;
     standard_day_end_time?: string;
     max_extended_days_per_partition?: number;
@@ -438,7 +439,7 @@ export function feasible(
   // Instructor availability is only a constraint when enforcement is on.
   // Default: available on every approved teaching day/period; missing rows
   // never block. Explicit instructor double-booking stays blocked below.
-  if (isInstructorAvailabilityEnforced()) {
+  if (isInstructorAvailabilityEnforced(settings.enforce_instructor_availability)) {
     const windows = (s.availability || []).filter(
       (a) => a.instructor_id === teacher.id && a.day_of_week === day && !a.is_preference,
     );
@@ -446,7 +447,7 @@ export function feasible(
     if ((type?.is_external || type?.code === "from_other_college") && !windows.length) return false;
     const positiveWindows = windows.filter((w) => w.availability_type !== "unavailable");
     if (
-      (positiveWindows.length &&
+      (windows.length &&
         !positiveWindows.some(
           (w) => start >= minutes(w.start_time) && end <= minutes(w.end_time),
         )) ||

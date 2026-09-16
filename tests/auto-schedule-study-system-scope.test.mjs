@@ -1,6 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
+  filterDeliveryGaps,
   selectAutoScheduleScope,
   autoScheduleRunStatus,
 } from "../src/lib/auto-scheduler/study-system-scope.ts";
@@ -46,4 +47,11 @@ describe("auto-schedule study system scope", () => {
     assert.equal(autoScheduleRunStatus("all", false), "partial");
     assert.equal(autoScheduleRunStatus("all", true), "completed");
   });
+});
+
+it("filters the gap dialog by selected scope while retaining shared groups", () => {
+  const rows = [row("r", "regular"), row("p", "parallel"), row("s", "both")];
+  assert.deepEqual(filterDeliveryGaps(rows, "regular"), [rows[0], rows[2]]);
+  assert.deepEqual(filterDeliveryGaps(rows, "parallel"), [rows[1], rows[2]]);
+  assert.deepEqual(filterDeliveryGaps(rows, "all"), rows);
 });

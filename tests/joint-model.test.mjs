@@ -114,3 +114,20 @@ test("generation solves a four-day plan with hard caps and retains fixed session
     s.sessions[0],
   );
 });
+
+test("generation uses saved availability rather than the legacy disabled default", async () => {
+  const s = snapshot([session("fathi", 4, "08:00:00", "11:00:00")]);
+  s.settings.enforce_instructor_availability = true;
+  s.availability = s.settings.working_days.map((day) => ({
+    instructor_id: s.sessions[0].instructor_id,
+    day_of_week: day,
+    start_time: "08:00:00",
+    end_time: "14:00:00",
+    availability_type: [1, 3].includes(day) ? "available" : "unavailable",
+    is_preference: false,
+  }));
+  const result = await searchJointAttendance(s, highs, 10000, "generation");
+  assert.equal(result.attendanceSearch.status, "feasible");
+  assert.ok([1, 3].includes(result.attendanceSearch.sessions[0].day_of_week));
+  assert.equal(validateJointPlan(s, [{ ...s.sessions[0], day_of_week: 4 }], 3), false);
+});
