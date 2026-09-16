@@ -7,6 +7,8 @@ import { searchAttendance } from "../src/lib/auto-scheduler/attendance-search.ts
 
 // Execute the real orchestration; replace only I/O boundaries. No network or database writes.
 const stubs = {
+  "@/lib/schedule-builder/session-move-rpc":
+    'export const moveOrRescheduleScheduleSession=async()=>{throw new Error("Generation must preserve existing sessions");};',
   "@/integrations/supabase/client": "export const supabase=globalThis.__jointSchedulerTest.db;",
   "@/lib/conflict-engine/scorer":
     "export const scoreScheduleVersion=async()=>({result:{hard_conflicts_count:0,soft_conflicts_count:0,total_score:80}});",
@@ -132,17 +134,23 @@ function state() {
         lab_session_duration: 2,
         required_room_type_for_lecture: "lecture_hall",
       }));
-    if (table === "delivery_group_partition_members")
+    if (table === "operational_group_members")
       return st.snapshot.members.map((m) => ({
         ...m,
-        cohort_student_partitions: st.snapshot.partitions.find((p) => p.id === m.partition_id),
+        partition_headcount: st.snapshot.partitions.find((p) => p.id === m.partition_id)?.headcount,
+        partition_active: true,
       }));
     throw Error(`Unexpected query: ${table}`);
   };
   st.db = {
+    rpc: async (name) => {
+      assert.equal(name, "shared_lecture_catalog");
+      return { data: [], error: null };
+    },
     auth: { getUser: async () => ({ data: { user: { id: "test-actor" } } }) },
     from(table) {
       let inserted = false;
+      const filters = [];
       const q = {
         select() {
           return q;
@@ -150,7 +158,8 @@ function state() {
         eq() {
           return q;
         },
-        in() {
+        in(column, values) {
+          filters.push((row) => values.includes(row[column]));
           return q;
         },
         order() {
@@ -167,7 +176,10 @@ function state() {
           error: null,
         }),
         then(resolve, reject) {
-          return Promise.resolve({ data: tableRows(table), error: null }).then(resolve, reject);
+          return Promise.resolve({
+            data: tableRows(table).filter((row) => filters.every((filter) => filter(row))),
+            error: null,
+          }).then(resolve, reject);
         },
       };
       return q;
@@ -376,3 +388,23 @@ test("an unresolved worker search never reaches the session writer", async () =>
   await assert.rejects((await scheduler(s))(params), /لم يُحسم البحث/);
   assert.equal(s.calls.length, 0);
 });
+
+for (const includeExistingWorkItem of [true, false]) {
+  test(`parallel generation loads occupied regular student mappings (work item: ${includeExistingWorkItem})`, async () => {
+    const s = state();
+    const before = structuredClone(s.snapshot.sessions);
+    s.items[1].study_system = "parallel";
+    s.items[1].instructor_id = "U";
+    s.snapshot.cohorts.find((c) => c.id === "q").study_system = "parallel";
+    s.snapshot.instructors.push({ id: "U", instructor_type_id: "permanent", max_hours_per_day: 6 });
+    s.snapshot.rooms.push({ ...s.snapshot.rooms[0], id: "r2" });
+    s.snapshot.templates = [{ day_of_week: 0, start_time: "08:00:00", end_time: "10:00:00", study_system: "both", is_active: true }];
+    if (!includeExistingWorkItem) s.items = s.items.filter((i) => i.teaching_assignment_id !== "old");
+    const result = await (await scheduler(s))({ ...params, studySystem: "parallel" });
+    assert.equal(result.placed, 1);
+    assert.equal(result.scopeComplete, true);
+    assert.equal(s.calls[0].startTime, "08:00:00");
+    assert.equal(s.calls[0].roomId, "r2");
+    assert.deepEqual(s.snapshot.sessions.slice(0, before.length), before);
+  });
+}
