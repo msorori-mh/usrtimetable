@@ -520,9 +520,27 @@ export async function runV2AutoSchedule(params: {
     const hours = instructorWeeklyHours.get(instructorId) ?? 0;
     return hours <= 6 ? 1 : hours <= 10 ? 2 : hours <= 16 ? 3 : 4;
   };
-  /** Hard per-instructor day ceiling: generic cap, raised only by an explicit target. */
+  const explicitInstructorMaxima = new Map(
+    planningSnapshot.instructors.map((instructor) => [
+      instructor.id,
+      instructor.max_attendance_days_per_week ?? null,
+    ]),
+  );
+  const validExplicitMax = (instructorId: string) => {
+    const max = explicitInstructorMaxima.get(instructorId) ?? null;
+    return max != null && Number.isInteger(max) && max >= 1 && max <= 6 ? max : null;
+  };
+  /**
+   * Hard per-instructor day ceiling: generic cap, raised by an explicit target or
+   * by a max-only override. The override never becomes a target, so day
+   * compression still prefers fewer days for those instructors.
+   */
   const instructorDayCap = (instructorId: string) =>
-    instructorAttendanceDayCap(validExplicitTarget(instructorId));
+    instructorAttendanceDayCap(
+      validExplicitTarget(instructorId),
+      undefined,
+      validExplicitMax(instructorId),
+    );
   const occupied: OccupiedInterval[] = sessionRows.map((row) => ({
     day: row.day_of_week,
     start: row.start_time,

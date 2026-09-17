@@ -1865,6 +1865,7 @@ export type Database = {
           id: string
           instructor_type_id: string | null
           is_active: boolean
+          max_attendance_days_per_week: number | null
           max_hours_per_day: number | null
           max_weekly_hours: number
           notes: string | null
@@ -1896,6 +1897,7 @@ export type Database = {
           id?: string
           instructor_type_id?: string | null
           is_active?: boolean
+          max_attendance_days_per_week?: number | null
           max_hours_per_day?: number | null
           max_weekly_hours?: number
           notes?: string | null
@@ -1927,6 +1929,7 @@ export type Database = {
           id?: string
           instructor_type_id?: string | null
           is_active?: boolean
+          max_attendance_days_per_week?: number | null
           max_hours_per_day?: number | null
           max_weekly_hours?: number
           notes?: string | null
@@ -4134,6 +4137,7 @@ export type Database = {
           id: string
           instructor_type_id: string | null
           is_active: boolean
+          max_attendance_days_per_week: number | null
           max_hours_per_day: number | null
           max_weekly_hours: number
           notes: string | null
