@@ -401,6 +401,13 @@ export async function runV2AutoSchedule(params: {
   }
   const planningSnapshot = await loadCompactSnapshot(params.collegeId, params.scheduleVersionId);
   const planningSessions = [...planningSnapshot.sessions];
+  /** Authoritative required room type per assignment (same column as the RPC). */
+  const assignmentRequiredRoomType = new Map(
+    planningSnapshot.assignments.map((assignment) => [
+      assignment.id,
+      assignment.required_room_type ?? null,
+    ]),
+  );
   const seedFor = (item: (typeof workItems)[number], length: number): Session => ({
     id: `candidate:${item.teaching_assignment_id}:${planningSessions.length}`,
     updated_at: "",
