@@ -134,6 +134,23 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
     },
   });
 
+  // Programs can only resolve a department of the same college — block the upload
+  // with a clear reason until at least one department exists.
+  const { data: departmentCount } = useQuery({
+    queryKey: ["import-department-count", active?.id],
+    enabled: !!active && entity === "academic_programs",
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("departments")
+        .select("id", { count: "exact", head: true })
+        .eq("college_id", active!.id)
+        .eq("is_archived", false);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+  const programsBlocked = entity === "academic_programs" && departmentCount === 0;
+
   const downloadTemplate = async () => {
     try {
       const blob = await buildTemplateWorkbook(entity);
