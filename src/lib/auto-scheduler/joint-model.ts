@@ -145,6 +145,12 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
   // rather than treated as a post-hoc quality preference.
   const teacherDayTerms = new Map<string, Term[]>();
   const teacherDays = new Map<string, Term[]>();
+  const teacherWeeklyMinutes = new Map<string, number>();
+  for (const session of snapshot.sessions)
+    teacherWeeklyMinutes.set(
+      session.instructor_id,
+      (teacherWeeklyMinutes.get(session.instructor_id) ?? 0) + duration(session),
+    );
   const levels = new Map<string, Map<number, Term[]>>();
   const add = (
     key: string,
@@ -298,7 +304,16 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
     days.push([dayUsed, 1]);
     teacherDays.set(instructorId, days);
   }
-  for (const terms of teacherDays.values()) row(terms, -INF, 4);
+  for (const [instructorId, terms] of teacherDays) {
+    // Soft target derived from weekly load: <=6h→1 day, <=10h→2,
+    // <=16h→3, otherwise 4. Exceeding the target is allowed only when
+    // necessary and is penalized heavily; the absolute ceiling remains 4.
+    const weeklyHours = (teacherWeeklyMinutes.get(instructorId) ?? 0) / 60;
+    const targetDays = weeklyHours <= 6 ? 1 : weeklyHours <= 10 ? 2 : weeklyHours <= 16 ? 3 : 4;
+    const excessDays = variable(50000, 4);
+    row([...terms, [excessDays, -1]], -INF, targetDays);
+    row(terms, -INF, 4);
+  }
 
   for (const xs of extended.values())
     row(
