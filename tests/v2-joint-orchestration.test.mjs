@@ -53,10 +53,7 @@ async function scheduler(state) {
   globalThis.__jointSchedulerTest = state;
   // A fresh module per test: written to a temp file because the bundle is larger
   // than a data: URL specifier may be.
-  const file = join(
-    mkdtempSync(join(tmpdir(), "v2-joint-")),
-    `bundle-${serial++}.mjs`,
-  );
+  const file = join(mkdtempSync(join(tmpdir(), "v2-joint-")), `bundle-${serial++}.mjs`);
   writeFileSync(file, bundled.outputFiles[0].text);
   return (await import(pathToFileURL(file).href)).runV2AutoSchedule;
 }
@@ -528,7 +525,9 @@ test("fallback never opens a fifth student day beyond the certified plan", async
     rejected.add(key);
     return true;
   };
-  await (await scheduler(s))(params);
+  await (
+    await scheduler(s)
+  )(params);
   const studentDays = new Set(s.calls.filter((c) => c.note).map((c) => c.dayOfWeek));
   assert.ok(studentDays.size <= 4, `student days: ${[...studentDays]}`);
 });
@@ -550,7 +549,9 @@ test("fallback keeps an untargeted instructor at the generic four-day cap", asyn
     seen.add(p.teachingAssignmentId);
     return true;
   };
-  await (await scheduler(s))(params);
+  await (
+    await scheduler(s)
+  )(params);
   const days = new Set(s.snapshot.sessions.map((x) => x.day_of_week));
   assert.ok(days.size <= 4, `instructor days: ${[...days]}`);
 });
