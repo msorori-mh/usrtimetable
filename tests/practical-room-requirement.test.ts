@@ -193,3 +193,95 @@ describe("feasible() accepts the lab candidate and still enforces hard constrain
     expect(feasible(s, [], big, big)).toBe(false);
   });
 });
+
+/**
+ * Production reproduction (draft c5350abf, level-4 practical work):
+ * every lecture hall is taken for the whole teaching day while a free computer
+ * lab exists. Ranking over the stale plan room type returns zero candidates —
+ * the reported "no candidate satisfies the delivery group / cohort constraints" —
+ * while ranking over the assignment's own room type finds the legal lab slot.
+ */
+describe("candidate generation over the production shape", () => {
+  const blockedHall = (): Snapshot => {
+    const busyHall = session({
+      id: "other",
+      room_id: "hall-1",
+      instructor_id: "i2",
+      cohort_id: "c2",
+      delivery_group_id: "g2",
+      teaching_assignment_id: "a2",
+      start_time: "08:00:00",
+      end_time: "16:00:00",
+    });
+    const s = snapshot([busyHall]) as Snapshot & {
+      cohorts: unknown[];
+      groups: unknown[];
+      members: unknown[];
+      partitions: unknown[];
+      assignments: unknown[];
+      instructors: unknown[];
+    };
+    s.cohorts.push({
+      id: "c2",
+      program_id: "p2",
+      level_id: "l4",
+      study_system: "regular",
+      term_id: "t",
+    });
+    s.groups.push({ id: "g2", cohort_id: "c2", expected_students: 30 });
+    s.partitions.push({ id: "part2", cohort_id: "c2", headcount: 30, active: true });
+    s.members.push({ delivery_group_id: "g2", partition_id: "part2", cohort_id: "c2" });
+    s.assignments.push({ id: "a2", required_room_type: "lecture_hall", is_active: true });
+    s.instructors.push({ id: "i2", instructor_type_id: "permanent", max_hours_per_day: 8 });
+    return s;
+  };
+
+  const rank = (roomIds: string[]) => {
+    const s = blockedHall();
+    return rankGenerationCandidates({
+      snapshot: s,
+      sessions: [...s.sessions],
+      session: session(),
+      slots: compactSlots({ ...s, sessions: [...s.sessions] }, session()),
+      roomIds,
+    });
+  };
+
+  const poolFor = (sources: Parameters<typeof resolveRoomRequirement>[0]) => {
+    const resolved = resolveRoomRequirement(sources);
+    const pools = partitionCandidateRoomsByRank([hall, lab], {
+      roomTypeId: resolved.roomTypeId,
+      roomTypeName: resolved.roomTypeName,
+      componentType: "practical",
+      expectedStudents: 28,
+      roomTypeCodeById,
+    });
+    return [...pools.preferred, ...pools.fallback].map((r) => r.id);
+  };
+
+  it("found no candidate while the stale plan room type drove the pool", () => {
+    const staleIds = poolFor({ componentRoomTypeId: "rt-hall" });
+    expect(staleIds).toEqual(["hall-1"]);
+    expect(rank(staleIds)).toHaveLength(0);
+  });
+
+  it("finds the legal lab candidate once the assignment room type drives the pool", () => {
+    const fixedIds = poolFor({
+      assignmentRequiredRoomType: "computer_lab",
+      componentRoomTypeId: "rt-hall",
+    });
+    expect(fixedIds).toEqual(["lab-1", "hall-1"]);
+    const ranked = rank(fixedIds);
+    expect(ranked.length).toBeGreaterThan(0);
+    expect(ranked[0]!.session.room_id).toBe("lab-1");
+    expect(
+      generationDomainSize({
+        snapshot: blockedHall(),
+        sessions: blockedHall().sessions,
+        session: session(),
+        slots: compactSlots(blockedHall(), session()),
+        roomIds: fixedIds,
+      }),
+    ).toBeGreaterThan(0);
+  });
+});
