@@ -73,6 +73,8 @@ function ProgramsPage() {
           .from("departments")
           .select("id, name")
           .eq("college_id", active!.id)
+          // ACADEMIC-ARCHIVE-UI-01: pickers exclude archived records.
+          .eq("is_archived", false)
           .order("name")
       ).data ?? [],
   });
@@ -85,6 +87,8 @@ function ProgramsPage() {
         .from("academic_programs")
         .select("id, name, code, department_id, degree_type, duration_years, college_id")
         .eq("college_id", active!.id)
+        // ACADEMIC-ARCHIVE-UI-01: administration lists show active records only.
+        .eq("is_archived", false)
         .order("name");
       if (error) throw error;
       return (data ?? []) as Prog[];

@@ -20,12 +20,19 @@ export interface OnboardingReadinessSnapshot {
   hasElectives: boolean;
 }
 
-async function countExact(table: string, collegeId: string): Promise<number> {
+async function countExact(
+  table: string,
+  collegeId: string,
+  options?: { activeOnly?: boolean },
+): Promise<number> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { count, error } = await (supabase as any)
+  let query = (supabase as any)
     .from(table)
     .select("id", { count: "exact", head: true })
     .eq("college_id", collegeId);
+  // ACADEMIC-ARCHIVE-UI-01: academic-structure counters ignore archived records.
+  if (options?.activeOnly) query = query.eq("is_archived", false);
+  const { count, error } = await query;
   if (error) throw new Error(`ONBOARDING_COUNT_FAILED[${table}]: ${error.message}`);
   return count ?? 0;
 }

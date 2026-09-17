@@ -108,6 +108,8 @@ function CoursesPage() {
           .from("departments")
           .select("id, name")
           .eq("college_id", active!.id)
+          // ACADEMIC-ARCHIVE-UI-01: pickers exclude archived records.
+          .eq("is_archived", false)
           .order("name")
       ).data ?? []) as Department[],
   });
@@ -121,6 +123,8 @@ function CoursesPage() {
           .from("academic_programs")
           .select("id, name, department_id")
           .eq("college_id", active!.id)
+          // ACADEMIC-ARCHIVE-UI-01: pickers exclude archived records.
+          .eq("is_archived", false)
           .order("name")
       ).data ?? []) as Program[],
   });

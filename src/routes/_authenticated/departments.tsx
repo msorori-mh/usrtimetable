@@ -67,6 +67,8 @@ function DepartmentsPage() {
         .from("departments")
         .select("id, name, code, college_id, study_system")
         .eq("college_id", active!.id)
+        // ACADEMIC-ARCHIVE-UI-01: administration lists show active records only.
+        .eq("is_archived", false)
         .order("name");
       if (error) throw error;
       return (data ?? []) as Dept[];
