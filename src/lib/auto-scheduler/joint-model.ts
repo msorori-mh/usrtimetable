@@ -391,6 +391,7 @@ export function validateJointPlan(
   const old = new Map(snapshot.sessions.map((x) => [x.id, x]));
   const ctx = context(snapshot);
   const days = new Map<string, Set<number>>();
+  const teacherDays = new Map<string, Set<number>>();
   for (const x of sessions) {
     const before = old.get(x.id);
     if (!before) return false;
@@ -415,8 +416,13 @@ export function validateJointPlan(
       set.add(x.day_of_week);
       days.set(level, set);
     }
+    const teacherSet = teacherDays.get(x.instructor_id) ?? new Set<number>();
+    teacherSet.add(x.day_of_week);
+    teacherDays.set(x.instructor_id, teacherSet);
   }
   if ([...days.values()].some((ds) => ds.size > dayCap)) return false;
+  // Independent fail-closed check for the instructor attendance ceiling.
+  if ([...teacherDays.values()].some((ds) => ds.size > 4)) return false;
   const loads = new Map<string, number>();
   for (const x of sessions) {
     const teacher = snapshot.instructors.find((t) => t.id === x.instructor_id);
