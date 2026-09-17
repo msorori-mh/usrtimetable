@@ -64,6 +64,15 @@ import {
 } from "@/lib/teaching-assignments/cross-college-candidates";
 import { fetchSharedLectures } from "@/lib/academic-delivery/shared-lectures";
 import { assignmentRowAcademicContext } from "@/lib/teaching-assignments/assignment-row-context";
+import {
+  assignmentRowDaysLabel,
+  currentScheduleVersionId,
+  deliveryGroupDayMap,
+} from "@/lib/teaching-assignments/assignment-row-days";
+import {
+  fetchPublishedVersions,
+  fetchWorkingVersions,
+} from "@/lib/reports/queries/version-queries";
 
 export const Route = createFileRoute("/_authenticated/teaching-assignments")({
   head: () => ({ meta: [{ title: "الإسناد التدريسي" }] }),
@@ -198,6 +207,28 @@ function TeachingAssignmentsV2Page() {
       ]);
       if (cohortResult.error) throw cohortResult.error;
       return { cohorts: cohortResult.data ?? [], sharedLectures };
+    },
+  });
+
+  /** Read-only day lookup from the current schedule version's sessions. */
+  const { data: sessionDays } = useQuery({
+    queryKey: ["teaching-assignment-row-days", active?.id],
+    enabled: !!active,
+    queryFn: async () => {
+      const [published, working] = await Promise.all([
+        fetchPublishedVersions({ collegeId: active!.id }),
+        fetchWorkingVersions({ collegeId: active!.id }),
+      ]);
+      const versionId = currentScheduleVersionId(published, working);
+      if (!versionId) return new Map<string, number[]>();
+      const { data, error } = await supabase
+        .from("schedule_sessions")
+        .select("delivery_group_id, day_of_week")
+        .eq("college_id", active!.id)
+        .eq("schedule_version_id", versionId)
+        .not("delivery_group_id", "is", null);
+      if (error) throw error;
+      return deliveryGroupDayMap(data ?? []);
     },
   });
 
@@ -597,6 +628,7 @@ function TeachingAssignmentsV2Page() {
                       <th className="px-3 py-2 text-right font-medium">المقرر</th>
                       <th className="px-3 py-2 text-right font-medium">البرنامج</th>
                       <th className="px-3 py-2 text-right font-medium">نظام الدراسة</th>
+                      <th className="px-3 py-2 text-right font-medium">اليوم</th>
                       <th className="px-3 py-2 text-right font-medium">المحاضرة</th>
                       <th className="px-3 py-2 text-right font-medium">المجموعة</th>
                       <th className="px-3 py-2 text-right font-medium">طلاب</th>
@@ -631,6 +663,9 @@ function TeachingAssignmentsV2Page() {
                           </td>
                           <td className="px-3 py-2" data-testid="ta-v2-row-study-system">
                             {context.studySystemLabel}
+                          </td>
+                          <td className="px-3 py-2" data-testid="ta-v2-row-day">
+                            {assignmentRowDaysLabel(sessionDays?.get(row.delivery_group_id))}
                           </td>
                           <td className="px-3 py-2">
                             {COMPONENT_LABELS[row.component_type] ?? row.component_type}
