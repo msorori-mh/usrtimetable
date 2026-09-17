@@ -566,6 +566,36 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
             />
           </div>
 
+          {(entity === "departments" || entity === "academic_programs") && (
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              <Stat
+                label="صفوف جديدة"
+                value={
+                  mode === "update_existing"
+                    ? 0
+                    : preview.valid.filter((r) => !r.values._exists).length
+                }
+                tone="ok"
+              />
+              <Stat
+                label="صفوف ستُحدّث"
+                value={
+                  mode === "insert_only" ? 0 : preview.valid.filter((r) => r.values._exists).length
+                }
+                tone="ok"
+              />
+              <Stat
+                label="صفوف ستُترك دون تغيير"
+                value={
+                  preview.valid.filter((r) =>
+                    mode === "insert_only" ? r.values._exists : !r.values._exists,
+                  ).length * (mode === "upsert" ? 0 : 1)
+                }
+              />
+            </div>
+          )}
+
+
           {entity === "instructors" && preview.valid.length > 0 && (
             <div className="space-y-2">
               <h3 className="font-semibold">معاينة المدرسين قبل الحفظ</h3>
