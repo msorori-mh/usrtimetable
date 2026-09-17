@@ -44,6 +44,7 @@ import {
   type RoomLite,
   type RoomRequirement,
 } from "@/lib/auto-scheduler/session-plan";
+import { resolveRoomRequirement } from "@/lib/auto-scheduler/room-requirement";
 import { PRACTICAL_ROOM_FALLBACK_NOTE_AR } from "@/lib/scheduling/room-type-policy";
 import { type RepairMove, type RepairPlan } from "@/lib/auto-scheduler/repair";
 import { moveOrRescheduleScheduleSession } from "@/lib/schedule-builder/session-move-rpc";
@@ -401,6 +402,13 @@ export async function runV2AutoSchedule(params: {
   }
   const planningSnapshot = await loadCompactSnapshot(params.collegeId, params.scheduleVersionId);
   const planningSessions = [...planningSnapshot.sessions];
+  /** Authoritative required room type per assignment (same column as the RPC). */
+  const assignmentRequiredRoomType = new Map(
+    planningSnapshot.assignments.map((assignment) => [
+      assignment.id,
+      assignment.required_room_type ?? null,
+    ]),
+  );
   const seedFor = (item: (typeof workItems)[number], length: number): Session => ({
     id: `candidate:${item.teaching_assignment_id}:${planningSessions.length}`,
     updated_at: "",
@@ -830,13 +838,21 @@ export async function runV2AutoSchedule(params: {
     }
 
     const usedDays = [...plan.usedDays];
+    // The guarded RPC and `feasible()` both enforce
+    // `teaching_assignments.required_room_type`; the plan component's room type
+    // is only a fallback. Resolving it the other way round excluded every legal
+    // computer lab for practical work whose plan row still said lecture_hall.
+    const resolvedRequirement = resolveRoomRequirement({
+      assignmentRequiredRoomType: assignmentRequiredRoomType.get(item.teaching_assignment_id),
+      componentRoomTypeId: component?.required_room_type_id ?? null,
+      planCourseRoomType:
+        item.component_type === "practical"
+          ? planCourse?.required_room_type_for_lab
+          : planCourse?.required_room_type_for_lecture,
+    });
     const roomRequirement: RoomRequirement = {
-      roomTypeId: component?.required_room_type_id ?? null,
-      roomTypeName: component?.required_room_type_id
-        ? null
-        : ((item.component_type === "practical"
-            ? planCourse?.required_room_type_for_lab
-            : planCourse?.required_room_type_for_lecture) ?? null),
+      roomTypeId: resolvedRequirement.roomTypeId,
+      roomTypeName: resolvedRequirement.roomTypeName,
       expectedStudents: item.expected_students,
       componentType: item.component_type,
       roomTypeCodeById,
