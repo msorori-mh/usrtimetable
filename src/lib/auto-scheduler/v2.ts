@@ -52,6 +52,7 @@ import {
   enumerateAuthoritativeCandidates,
 } from "@/lib/auto-scheduler/authoritative-fallback";
 import { PRACTICAL_ROOM_FALLBACK_NOTE_AR } from "@/lib/scheduling/room-type-policy";
+import { studentDailyTotalMinutes } from "@/lib/scheduling/student-daily-policy";
 import { type RepairMove, type RepairPlan } from "@/lib/auto-scheduler/repair";
 import { moveOrRescheduleScheduleSession } from "@/lib/schedule-builder/session-move-rpc";
 import {

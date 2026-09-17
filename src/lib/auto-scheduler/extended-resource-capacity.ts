@@ -1,5 +1,6 @@
 import { context, minutes, type Snapshot } from "./compact.ts";
 import { isRoomTypeCompatible } from "../scheduling/room-type-policy.ts";
+import { extendedDayLimit } from "../scheduling/student-daily-policy.ts";
 
 export interface ExtendedResourceConflict {
   totalTeachingMinutes: number;
@@ -20,9 +21,13 @@ export interface ExtendedResourceConflict {
  */
 export function extendedResourceConflict(s: Snapshot): ExtendedResourceConflict | null {
   const cfg = s.settings;
+  // Works for any integer extended-day limit >= 0: a student can attend at most
+  // one late session per extended day, so `limit` late sessions in total.
+  const limit = extendedDayLimit(cfg);
   if (
     !cfg.extended_day_policy_enabled ||
-    (cfg.max_extended_days_per_partition ?? 1) !== 1 ||
+    !Number.isInteger(limit) ||
+    limit < 0 ||
     !s.sessions.length
   )
     return null;
@@ -113,7 +118,9 @@ export function extendedResourceConflict(s: Snapshot): ExtendedResourceConflict 
       for (const [hh, nn] of frontier) next.set(h + hh, Math.max(next.get(h + hh) ?? -1, n + nn));
     combined = next;
   }
-  const eligible = [...combined].filter(([h]) => h >= requiredHallLateSessions).map(([, n]) => n);
+  const eligible = [...combined]
+    .filter(([h]) => h * limit >= requiredHallLateSessions)
+    .map(([, n]) => n * limit);
   if (!eligible.length) return null;
   const maximumTotalLateSessions = Math.max(...eligible);
   if (maximumTotalLateSessions >= requiredTotalLateSessions) return null;

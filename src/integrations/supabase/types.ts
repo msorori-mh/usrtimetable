@@ -3051,6 +3051,8 @@ export type Database = {
           id: string
           max_daily_hours_per_instructor: number
           max_daily_hours_per_section: number
+          max_daily_practical_hours_per_section: number
+          max_daily_theory_hours_per_section: number
           max_extended_days_per_partition: number
           max_session_hours: number
           min_session_hours: number
@@ -3075,6 +3077,8 @@ export type Database = {
           id?: string
           max_daily_hours_per_instructor?: number
           max_daily_hours_per_section?: number
+          max_daily_practical_hours_per_section?: number
+          max_daily_theory_hours_per_section?: number
           max_extended_days_per_partition?: number
           max_session_hours?: number
           min_session_hours?: number
@@ -3099,6 +3103,8 @@ export type Database = {
           id?: string
           max_daily_hours_per_instructor?: number
           max_daily_hours_per_section?: number
+          max_daily_practical_hours_per_section?: number
+          max_daily_theory_hours_per_section?: number
           max_extended_days_per_partition?: number
           max_session_hours?: number
           min_session_hours?: number

@@ -4,9 +4,11 @@ import {
   context,
   feasible,
   minutes,
+  sessionStudentLoadKind,
   type Session,
   type Snapshot,
 } from "./compact.ts";
+import { extendedDayLimit, studentDailyPolicy } from "../scheduling/student-daily-policy.ts";
 
 type Candidate = { session: Session; pool: number };
 type Term = [number, number];
@@ -196,19 +198,41 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
   const extended = new Map<string, Term[]>();
   for (const { terms, kind, person, day } of daily.values()) {
     const student = kind === "student";
-    const cap = student
-      ? snapshot.settings.max_daily_hours_per_section || 6
-      : snapshot.instructors.find((t) => t.id === person)?.max_hours_per_day ||
-        snapshot.settings.max_daily_hours_per_instructor ||
-        6;
+    const policy = studentDailyPolicy(snapshot.settings);
+    const capMinutes = student
+      ? policy.totalMinutes
+      : (snapshot.instructors.find((t) => t.id === person)?.max_hours_per_day ||
+          snapshot.settings.max_daily_hours_per_instructor ||
+          6) * 60;
     row(
       terms.map(([i]) => [i, duration(candidates[i].session)]),
       -INF,
-      cap * 60,
+      capMinutes,
     );
+    if (student) {
+      // Theory-like / practical subset caps from the shared student daily policy.
+      const subsets: Array<
+        [import("../scheduling/student-daily-policy.ts").StudentLoadKind, number]
+      > = [
+        ["theory", policy.theoryMinutes],
+        ["practical", policy.practicalMinutes],
+      ];
+      for (const [subsetKind, subsetCap] of subsets) {
+        if (subsetCap >= capMinutes) continue;
+        const subset = terms.filter(
+          ([i]) => sessionStudentLoadKind(snapshot, candidates[i].session) === subsetKind,
+        );
+        if (!subset.length) continue;
+        row(
+          subset.map(([i]): Term => [i, duration(candidates[i].session)]),
+          -INF,
+          subsetCap,
+        );
+      }
+    }
     const maxDaily = Math.min(
       new Set(terms.map(([i]) => candidates[i].session.id)).size,
-      Math.floor((cap * 60) / Math.min(...terms.map(([i]) => duration(candidates[i].session)))),
+      Math.floor(capMinutes / Math.min(...terms.map(([i]) => duration(candidates[i].session)))),
     );
     const y = variable(student ? 300 : 30);
     row([...terms, [y, -maxDaily]], -INF, 0);
@@ -279,7 +303,7 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
     row(
       repair ? [...xs, [variable(100000000, 6), -1]] : xs,
       -INF,
-      snapshot.settings.max_extended_days_per_partition ?? 1,
+      extendedDayLimit(snapshot.settings),
     );
   if (indices.length > 10000000) throw new Error("JOINT_MODEL_SIZE_LIMIT");
   const model: ModelData = {
@@ -392,23 +416,29 @@ export function validateJointPlan(
     }
   }
   if ([...days.values()].some((ds) => ds.size > dayCap)) return false;
+  const dailyPolicy = studentDailyPolicy(snapshot.settings);
   const loads = new Map<string, number>();
   for (const x of sessions) {
     const teacher = snapshot.instructors.find((t) => t.id === x.instructor_id);
+    const kind = sessionStudentLoadKind(snapshot, x);
+    const subsetCap =
+      kind === "practical" ? dailyPolicy.practicalMinutes : dailyPolicy.theoryMinutes;
     const entities = [
       {
         key: `teacher:${x.instructor_id}`,
-        cap: teacher?.max_hours_per_day || snapshot.settings.max_daily_hours_per_instructor || 6,
+        capMinutes:
+          (teacher?.max_hours_per_day || snapshot.settings.max_daily_hours_per_instructor || 6) *
+          60,
       },
-      ...ctx.students(x).map((p) => ({
-        key: `student:${p}`,
-        cap: snapshot.settings.max_daily_hours_per_section || 6,
-      })),
+      ...ctx.students(x).flatMap((p) => [
+        { key: `student:${p}`, capMinutes: dailyPolicy.totalMinutes },
+        { key: `student:${p}|${kind}`, capMinutes: subsetCap },
+      ]),
     ];
-    for (const { key, cap } of entities) {
+    for (const { key, capMinutes } of entities) {
       const k = `${key}|${x.day_of_week}`,
         n = (loads.get(k) ?? 0) + duration(x);
-      if (n > cap * 60) return false;
+      if (n > capMinutes) return false;
       loads.set(k, n);
     }
   }
@@ -421,11 +451,7 @@ export function validateJointPlan(
           ds.add(x.day_of_week);
           late.set(p, ds);
         }
-    if (
-      [...late.values()].some(
-        (ds) => ds.size > (snapshot.settings.max_extended_days_per_partition ?? 1),
-      )
-    )
+    if ([...late.values()].some((ds) => ds.size > extendedDayLimit(snapshot.settings)))
       return false;
   }
   return true;
