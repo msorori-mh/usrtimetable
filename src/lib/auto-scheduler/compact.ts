@@ -328,12 +328,7 @@ export function better(a: Metrics, b: Metrics) {
       Metrics,
       "studentGapMinutes" | "worstStudentGapMinutes" | "shortStudentDays" | "studentAttendanceDays"
     >
-  > = [
-    "studentGapMinutes",
-    "worstStudentGapMinutes",
-    "shortStudentDays",
-    "studentAttendanceDays",
-  ];
+  > = ["studentGapMinutes", "worstStudentGapMinutes", "shortStudentDays", "studentAttendanceDays"];
   if (protectedStudentMetrics.some((key) => a[key] > b[key])) return false;
   // Explicit per-instructor day targets (e.g. department heads at five days) rank
   // above generic instructor day compression, but below the student rules and the
