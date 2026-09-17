@@ -42,6 +42,8 @@ export interface OfficialImportEntityMeta {
 
 /** Entities that appear in the operational import UI (Pilot new flow). */
 export const ACTIVE_NEW_FLOW_ENTITIES: ImportEntity[] = [
+  "departments",
+  "academic_programs",
   "academic_terms",
   "instructors",
   "rooms",
@@ -97,9 +99,23 @@ export const OFFICIAL_IMPORT_ORDER: {
 }[] = [
   {
     step: 1,
-    label: "الكليات / الأقسام / البرامج",
+    label: "الكليات",
     kind: "ui",
-    notes: "تُدار من الواجهة عند التأسيس — لا مسار commit ذري للاستيراد في Pilot.",
+    notes: "الكليات تُدار من الواجهة فقط — لا تُستورد.",
+  },
+  {
+    step: 1.1,
+    entity: "departments",
+    label: "الأقسام الأكاديمية",
+    kind: "import",
+    notes: "تُستورد أو تُدار يدويًا — مربوطة بالكلية المحددة في سياق التجهيز.",
+  },
+  {
+    step: 1.2,
+    entity: "academic_programs",
+    label: "البرامج الأكاديمية",
+    kind: "import",
+    notes: "تتطلب وجود الأقسام أولًا؛ يُحل القسم داخل نفس الكلية.",
   },
   {
     step: 2,
@@ -190,6 +206,34 @@ export const OFFICIAL_IMPORT_ORDER: {
 ];
 
 const META: Record<ImportEntity, OfficialImportEntityMeta> = {
+  departments: {
+    entity: "departments",
+    classification: "ACTIVE_NEW_FLOW",
+    showInImportUi: true,
+    label: "الأقسام الأكاديمية",
+    group: "بيانات أكاديمية",
+    description: "أقسام الكلية المحددة في سياق التجهيز. تُستورد أو تُدار يدويًا.",
+    dependsOn: ["كلية نشطة"],
+    fileStem: "departments",
+    studySystemScoped: false,
+    targetTables: ["departments"],
+    naturalKey: "code",
+    commitRpc: "commit_import_job_atomic",
+  },
+  academic_programs: {
+    entity: "academic_programs",
+    classification: "ACTIVE_NEW_FLOW",
+    showInImportUi: true,
+    label: "البرامج الأكاديمية",
+    group: "بيانات أكاديمية",
+    description: "برامج الكلية وارتباط كل برنامج بقسمه داخل نفس الكلية.",
+    dependsOn: ["الأقسام الأكاديمية"],
+    fileStem: "academic_programs",
+    studySystemScoped: false,
+    targetTables: ["academic_programs"],
+    naturalKey: "code",
+    commitRpc: "commit_import_job_atomic",
+  },
   academic_terms: {
     entity: "academic_terms",
     classification: "ACTIVE_NEW_FLOW",

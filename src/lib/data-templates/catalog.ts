@@ -156,47 +156,56 @@ const CATALOG_DEFINITIONS: TemplateDef[] = [
   },
   {
     id: "departments",
-    name: "الأقسام",
+    name: "الأقسام الأكاديمية",
     group: "foundational",
     groupLabel: GROUPS.foundational,
-    purpose: "تعريف الأقسام داخل كل كلية.",
-    classification: "UI_MANAGED_NOT_IMPORTED",
-    atomicImport: false,
+    purpose: "تعريف أقسام الكلية المحددة في سياق تجهيز البيانات.",
+    classification: "ACTIVE_NEW_FLOW",
+    atomicImport: true,
     requiredBeforeScheduling: true,
     importOrder: 2,
     sheetName: "departments",
     columns: [
-      { header: "رمز_الكلية", required: true, example: "FITCS" },
-      { header: "رمز_القسم", required: true, example: "CS" },
-      { header: "اسم_القسم", required: true, example: "علوم الحاسب" },
-      { header: "اسم_القسم_انجليزي", example: "Computer Science" },
+      { header: "الرمز", required: true, example: "CS" },
+      { header: "الاسم", required: true, example: "علوم الحاسب" },
+      { header: "رئيس_القسم", example: "د. محمد علي" },
       { header: "نشط", example: "true", allowed: "true | false" },
+      { header: "الترتيب", example: "1" },
     ],
-    sampleRows: [["FITCS", "CS", "علوم الحاسب", "Computer Science", "true"]],
-    commonErrors: ["رمز كلية غير معروف", "رمز قسم مكرر داخل نفس الكلية"],
+    commonErrors: [
+      "رمز القسم مفقود",
+      "رمز قسم مكرر داخل نفس الكلية",
+      "يوجد أكثر من قسم مطابق للاسم؛ استخدم الرمز",
+    ],
+    notes: "الاستيراد يخص الكلية المحددة فقط — لا يوجد عمود للكلية ولا يمكن الإسناد لكلية أخرى.",
   },
   {
     id: "programs",
-    name: "البرامج",
+    name: "البرامج الأكاديمية",
     group: "foundational",
     groupLabel: GROUPS.foundational,
-    purpose: "تعريف البرامج الأكاديمية.",
-    classification: "UI_MANAGED_NOT_IMPORTED",
-    atomicImport: false,
+    purpose: "تعريف البرامج الأكاديمية وربط كل برنامج بقسمه داخل نفس الكلية.",
+    classification: "ACTIVE_NEW_FLOW",
+    atomicImport: true,
     requiredBeforeScheduling: true,
     importOrder: 3,
     sheetName: "programs",
     columns: [
-      { header: "رمز_القسم", required: true, example: "CS" },
-      { header: "رمز_البرنامج", required: true, example: "CS" },
-      { header: "اسم_البرنامج", required: true, example: "بكالوريوس علوم الحاسب" },
-      { header: "نظام_الدراسة", example: "regular", allowed: "regular | parallel" },
-      { header: "عدد_المستويات", example: "8" },
+      { header: "الرمز", required: true, example: "CS-BSC" },
+      { header: "الاسم", required: true, example: "بكالوريوس علوم الحاسب" },
+      { header: "القسم", required: true, example: "CS" },
+      { header: "نوع_الدرجة", example: "bachelor" },
+      { header: "المدة_بالسنوات", example: "4" },
       { header: "نشط", example: "true" },
+      { header: "القبول_مفتوح", example: "true" },
+      { header: "الوصف", example: "برنامج بكالوريوس أربع سنوات" },
     ],
-    sampleRows: [["CS", "CS", "بكالوريوس علوم الحاسب", "regular", "8", "true"]],
-    references: [REF_STUDY_SYSTEM],
-    commonErrors: ["رمز قسم غير معروف", "قيمة نظام_الدراسة غير صحيحة"],
+    commonErrors: [
+      "القسم ABC غير موجود ضمن الكلية المحددة",
+      "رمز برنامج مكرر داخل نفس الكلية",
+      "يوجد أكثر من قسم مطابق للاسم؛ استخدم الرمز",
+    ],
+    notes: "القسم يُحل بالرمز أولًا ثم بالاسم داخل نفس الكلية. لا يُنقل برنامج قائم إلى قسم آخر.",
   },
   {
     id: "academic_levels",
@@ -1130,7 +1139,9 @@ const CATALOG_DEFINITIONS: TemplateDef[] = [
 ];
 
 export function catalogImportEntity(id: string): string {
-  return id === "plan_courses" ? "study_plan_courses" : id;
+  if (id === "plan_courses") return "study_plan_courses";
+  if (id === "programs") return "academic_programs";
+  return id;
 }
 
 export const CATALOG: TemplateDef[] = CATALOG_DEFINITIONS.map((entry) => {
@@ -1223,7 +1234,9 @@ export async function buildCatalogTemplate(id: string): Promise<Blob> {
 
 /** Official Pilot import order shown in Data Templates Center. */
 export const IMPORT_ORDER: { step: number; label: string; templateId?: string; note?: string }[] = [
-  { step: 1, label: "الكليات / الأقسام / البرامج (واجهة)", note: "UI — ليس استيرادًا ذريًا" },
+  { step: 1, label: "الكليات (واجهة)", note: "UI — ليس استيرادًا ذريًا" },
+  { step: 1.1, label: "الأقسام الأكاديمية", templateId: "departments" },
+  { step: 1.2, label: "البرامج الأكاديمية", templateId: "programs" },
   { step: 2, label: "الفصول الأكاديمية", templateId: "academic_terms" },
   { step: 3, label: "الخطة الدراسية الكاملة", templateId: "full_study_plan" },
   { step: 4, label: "ربط المقررات بالبرامج", templateId: "course_programs" },

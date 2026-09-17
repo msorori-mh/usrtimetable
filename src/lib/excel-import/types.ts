@@ -1,4 +1,6 @@
 export type ImportEntity =
+  | "departments"
+  | "academic_programs"
   | "instructors"
   | "rooms"
   | "sections"

@@ -17,6 +17,7 @@ import {
 } from "./instructor-sheet";
 import type { ImportEntity, ParsedRow, RowError, ValidationResult } from "./types";
 import { canonicalizeImportShape } from "./header-aliases";
+import { matchDepartment, matchProgram, programById } from "./academic-structure-matching";
 import {
   buildPlanComponentSyncPayload,
   validatePlanRowRoomTypes,
@@ -50,6 +51,15 @@ interface Lookups {
     default_capacity: number;
   }>;
   departments?: Map<string, string>;
+  /** Full department rows of the active college (code + name matching for founding imports). */
+  departmentRows?: Array<{ id: string; code: string | null; name: string }>;
+  /** Full program rows of the active college. */
+  programRows?: Array<{
+    id: string;
+    code: string | null;
+    name: string;
+    department_id: string | null;
+  }>;
   buildings?: Map<string, string>;
   programs?: Map<string, { id: string; department_id: string }>;
   terms?: Map<string, string>;
@@ -161,6 +171,24 @@ async function loadLookups(entity: ImportEntity, collegeId: string): Promise<Loo
           { id: d.id, college_id: d.college_id },
         ]),
     );
+  }
+  // Founding academic structure: departments/programs are scoped to the active college only.
+  if (entity === "departments" || entity === "academic_programs") {
+    const dp = await fetchAll("departments", "id, code, name");
+    lk.departmentRows = dp.map((r) => ({
+      id: String(r.id),
+      code: r.code == null ? null : String(r.code),
+      name: String(r.name ?? ""),
+    }));
+    if (entity === "academic_programs") {
+      const pg = await fetchAll("academic_programs", "id, code, name, department_id");
+      lk.programRows = pg.map((r) => ({
+        id: String(r.id),
+        code: r.code == null ? null : String(r.code),
+        name: String(r.name ?? ""),
+        department_id: r.department_id == null ? null : String(r.department_id),
+      }));
+    }
   }
   if (entity === "rooms") {
     const [rt, bd] = await Promise.all([
@@ -644,7 +672,10 @@ export async function validate(
         } else {
           seenInFile.set(k, row.rowNumber);
         }
-        row.values._exists = existingKeys.has(k);
+        // Name-fallback matches (founding academic structure) also count as existing rows.
+        row.values._exists = existingKeys.has(k) || !!row.values._name_match_id;
+      } else if (row.values._name_match_id) {
+        row.values._exists = true;
       }
     }
 
@@ -975,6 +1006,96 @@ function runEntityValidation(
         rawValue: raw == null ? undefined : String(raw),
       });
   };
+
+  if (entity === "departments") {
+    const code = String(v.code ?? "").trim();
+    if (!code) {
+      need(false, "الرمز", "department_code_required", "رمز القسم مفقود");
+    }
+    const match = matchDepartment(lk.departmentRows ?? [], { code, name: v.name });
+    if (match.status === "ambiguous") {
+      need(
+        false,
+        "الاسم",
+        "ambiguous_department_match",
+        "يوجد أكثر من قسم مطابق للاسم؛ استخدم الرمز",
+        v.name,
+      );
+    } else if (match.status === "matched") {
+      v._name_match_id = match.id;
+    }
+  }
+
+  if (entity === "academic_programs") {
+    const code = String(v.code ?? "").trim();
+    if (!code) {
+      need(false, "الرمز", "program_code_required", "رمز البرنامج مفقود");
+    }
+    const departmentInput = String(v.department_code ?? "").trim();
+    let departmentId: string | null = null;
+    if (!departmentInput) {
+      need(false, "القسم", "program_department_required", "القسم مفقود");
+    } else {
+      const dept = matchDepartment(lk.departmentRows ?? [], {
+        code: departmentInput,
+        name: departmentInput,
+      });
+      if (dept.status === "ambiguous") {
+        need(
+          false,
+          "القسم",
+          "ambiguous_department_match",
+          "يوجد أكثر من قسم مطابق للاسم؛ استخدم الرمز",
+          departmentInput,
+        );
+      } else if (dept.status === "none") {
+        need(
+          false,
+          "القسم",
+          "unknown_department_in_college",
+          `القسم ${departmentInput} غير موجود ضمن الكلية المحددة`,
+          departmentInput,
+        );
+      } else {
+        departmentId = dept.id;
+        v._department_id = dept.id;
+      }
+    }
+    const duration = v.duration_years;
+    if (duration !== null && duration !== undefined && duration !== "") {
+      const years = Number(duration);
+      need(
+        Number.isInteger(years) && years >= 1 && years <= 10,
+        "المدة_بالسنوات",
+        "invalid_duration_years",
+        "المدة بالسنوات يجب أن تكون عددًا صحيحًا بين 1 و10",
+        duration,
+      );
+    }
+    const existing = matchProgram(lk.programRows ?? [], { code, name: v.name, departmentId });
+    if (existing.status === "ambiguous") {
+      need(
+        false,
+        "الاسم",
+        "ambiguous_program_match",
+        "يوجد أكثر من برنامج مطابق للاسم؛ استخدم الرمز",
+        v.name,
+      );
+    } else if (existing.status === "matched") {
+      v._name_match_id = existing.id;
+      const current = programById(lk.programRows ?? [], existing.id);
+      if (departmentId && current?.department_id && current.department_id !== departmentId) {
+        need(
+          false,
+          "القسم",
+          "program_department_change_blocked",
+          "لا يمكن نقل برنامج قائم إلى قسم آخر عبر الاستيراد؛ عدّله من إدارة البرامج",
+          departmentInput,
+        );
+      }
+    }
+  }
+
 
   if (entity === "study_plan_courses" || entity === "full_study_plan") {
     const dCode = v.department_code as string | null;
@@ -1383,6 +1504,29 @@ export function buildDbPayload(
 ): Record<string, unknown> {
   const v = row.values;
   const base: Record<string, unknown> = { college_id: collegeId };
+  if (entity === "departments") {
+    return {
+      ...base,
+      code: v.code ?? null,
+      name: v.name,
+      head_name: v.head_name ?? null,
+      is_active: v.is_active ?? true,
+      order_index: v.order_index ?? null,
+    };
+  }
+  if (entity === "academic_programs") {
+    return {
+      ...base,
+      code: v.code ?? null,
+      name: v.name,
+      department_id: v._department_id ?? null,
+      degree_type: v.degree_type ?? "bachelor",
+      duration_years: v.duration_years ?? 4,
+      is_active: v.is_active ?? true,
+      admission_status: v.admission_status ?? true,
+      description: v.description ?? null,
+    };
+  }
   if (entity === "instructors") {
     return {
       ...base,

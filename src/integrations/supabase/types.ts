@@ -3829,6 +3829,10 @@ export type Database = {
         }
         Returns: Json
       }
+      _generate_cohort_delivery_groups_core_20260918: {
+        Args: { p_cohort_id: string }
+        Returns: Json
+      }
       _import_apply_academic_cohorts: {
         Args: { p_college: string; p_mode: string; p_rows: Json }
         Returns: Json
@@ -4170,6 +4174,20 @@ export type Database = {
         }
         Returns: Json
       }
+      apply_schedule_generation: {
+        Args: {
+          p_additions: Json
+          p_college_id: string
+          p_day_cap: number
+          p_expected_revision: number
+          p_expected_version_updated_at: string
+          p_moves: Json
+          p_note?: string
+          p_operation_id: string
+          p_version_id: string
+        }
+        Returns: Json
+      }
       apply_schedule_relayout: {
         Args: {
           p_college_id: string
@@ -4288,6 +4306,11 @@ export type Database = {
         }
         Returns: Json
       }
+      delivery_group_derivation_status: {
+        Args: { p_group: string }
+        Returns: Json
+      }
+      delivery_group_is_current: { Args: { p_group: string }; Returns: boolean }
       delivery_groups_share_students: {
         Args: { p_a: string; p_b: string }
         Returns: boolean
@@ -4532,6 +4555,10 @@ export type Database = {
         Args: { p_cohort_id: string }
         Returns: Json
       }
+      reconcile_obsolete_duplicate_assignments: {
+        Args: { p_cohort_id: string }
+        Returns: Json
+      }
       resolve_compatibility_offering_set: {
         Args: { p_offerings: Json }
         Returns: Json
@@ -4635,6 +4662,10 @@ export type Database = {
           p_start: string
         }
         Returns: boolean
+      }
+      sync_component_room_type_from_assignments: {
+        Args: { p_component_id: string }
+        Returns: Json
       }
       transition_schedule_version: {
         Args: {
