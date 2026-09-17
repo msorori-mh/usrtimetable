@@ -1034,6 +1034,14 @@ export async function runV2AutoSchedule(params: {
               ) {
                 continue;
               }
+              attemptedPlacements.add(
+                candidateAttemptKey({
+                  day: slot.day,
+                  start: slot.start,
+                  end: slot.end,
+                  roomId: room.id,
+                }),
+              );
               const result = await createScheduleSessionFromAssignmentV2({
                 scheduleVersionId: params.scheduleVersionId,
                 teachingAssignmentId: item.teaching_assignment_id,
