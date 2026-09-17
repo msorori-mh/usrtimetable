@@ -90,6 +90,8 @@ export interface Snapshot {
     instructor_type_id: string | null;
     max_hours_per_day: number | null;
     is_active?: boolean;
+    /** Explicit weekly attendance-day target (1..6); overrides generic day compression. */
+    target_attendance_days_per_week?: number | null;
   }[];
   types: { id: string; code: string; is_external: boolean }[];
   availability: {
@@ -273,6 +275,7 @@ export function measure(s: Snapshot, sessions = s.sessions): Metrics {
       levels: ctx.levels(x),
     })),
     ctx.weight,
+    (id) => s.instructors.find((t) => t.id === id)?.target_attendance_days_per_week ?? null,
   );
   if (!s.settings.extended_day_policy_enabled) return base;
   const days = extendedDays(s, sessions);
@@ -330,6 +333,7 @@ export function better(a: Metrics, b: Metrics) {
       | "shortInstructorDays"
       | "studentAttendanceDays"
       | "instructorAttendanceDays"
+      | "instructorTargetDayDeviation"
     >
   > = [
     "studentGapMinutes",
@@ -340,6 +344,7 @@ export function better(a: Metrics, b: Metrics) {
     "shortInstructorDays",
     "studentAttendanceDays",
     "instructorAttendanceDays",
+    "instructorTargetDayDeviation",
   ];
   if (protectedMetrics.some((key) => a[key] > b[key])) return false;
   return compareAttendance(a, b) < 0;

@@ -33,6 +33,8 @@ export interface AttendanceMetrics {
   shortInstructorDays: number;
   instructorAttendanceDays: number;
   instructorCount: number;
+  /** Sum of |attended days - explicit per-instructor target| over instructors that declare one. */
+  instructorTargetDayDeviation: number;
   balancedGapMinutes: number;
   sessions: number;
   teachingMinutes: number;
@@ -50,10 +52,16 @@ function idleMinutes(events: AttendanceEvent[]): number {
   return gap;
 }
 
-/** Partition weights count people once, including across theory/practical groups. */
+/**
+ * Partition weights count people once, including across theory/practical groups.
+ * `instructorTarget` returns an explicit weekly attendance-day target (1..6) for
+ * instructors such as department heads; it overrides the general instructor
+ * day-compression preference but never relaxes hard availability constraints.
+ */
 export function measureAttendance(
   events: AttendanceEvent[],
   weight: (studentId: string) => number,
+  instructorTarget: (instructorId: string) => number | null | undefined = () => null,
 ): AttendanceMetrics {
   const levels = new Map<string, Set<number>>();
   const students = new Map<string, Map<number, AttendanceEvent[]>>();
@@ -105,6 +113,14 @@ export function measureAttendance(
   };
   const student = summarize(students, weight);
   const instructor = summarize(instructors, () => 1);
+  let targetDeviation = 0;
+  for (const [id, days] of instructors) {
+    const target = instructorTarget(id);
+    if (target == null) continue;
+    if (!Number.isInteger(target) || target < 1 || target > 6)
+      throw new Error("INVALID_INSTRUCTOR_ATTENDANCE_TARGET");
+    targetDeviation += Math.abs(days.size - target);
+  }
   const days = [...levels.values()].map((value) => value.size);
   return {
     levelsOverFive: days.filter((value) => value > ATTENDANCE_POLICY.maximumDays).length,
@@ -132,6 +148,7 @@ export function measureAttendance(
     shortInstructorDays: instructor.shortDays,
     instructorAttendanceDays: instructor.attendance,
     instructorCount: instructor.count,
+    instructorTargetDayDeviation: targetDeviation,
     // Equal influence for the average student and instructor, regardless of cohort size.
     balancedGapMinutes: (student.average + instructor.average) / 2,
     sessions: events.length,
@@ -145,6 +162,9 @@ const vector = (m: AttendanceMetrics) => [
   m.excessDaysOverFive,
   m.excessDaysOverFour,
   m.excessDaysOverThree,
+  // Explicit per-instructor day targets outrank generic instructor day compression,
+  // but stay below the student day rules above.
+  m.instructorTargetDayDeviation,
   m.balancedGapMinutes,
   Math.max(m.worstStudentGapMinutes, m.worstInstructorGapMinutes),
   perPerson(m.shortStudentDays, m.studentCount) +
