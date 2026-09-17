@@ -139,6 +139,12 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
     string,
     { terms: Term[]; kind: "student" | "teacher"; person: string; day: number }
   >();
+  // Hard instructor attendance policy: every instructor may occupy at most four
+  // distinct teaching days in a week. The day indicator is linked to the
+  // sessions placed on that instructor/day, so this is enforced by the solver
+  // rather than treated as a post-hoc quality preference.
+  const teacherDayTerms = new Map<string, Term[]>();
+  const teacherDays = new Map<string, Term[]>();
   const levels = new Map<string, Map<number, Term[]>>();
   const add = (
     key: string,
@@ -176,6 +182,10 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
       }
     for (const p of persons) add(`student:${p}|${day}`, p, "student", day, i);
     add(`teacher:${x.instructor_id}|${day}`, x.instructor_id, "teacher", day, i);
+    const teacherDayKey = `${x.instructor_id}|${day}`;
+    const teacherTerms = teacherDayTerms.get(teacherDayKey) ?? [];
+    teacherTerms.push([i, 1]);
+    teacherDayTerms.set(teacherDayKey, teacherTerms);
     for (const level of ctx.levels(x)) {
       const days = levels.get(level) ?? new Map<number, Term[]>();
       days.set(day, [...(days.get(day) ?? []), [i, 1]]);
@@ -275,6 +285,21 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
       row([[start, 1], ...occupied.map(([i]): Term => [i, 1440])], -INF, points[k] + 1440);
     }
   }
+  // Link each instructor/day to a binary day-use indicator, then cap the
+  // number of active teaching days at four. Existing daily-hour limits remain
+  // enforced by the daily rows above.
+  for (const [key, terms] of teacherDayTerms) {
+    const instructorId = key.slice(0, key.lastIndexOf("|"));
+    const maxSessions = new Set(terms.map(([i]) => candidates[i].session.id)).size;
+    const dayUsed = variable(30);
+    row([...terms, [dayUsed, -maxSessions]], -INF, 0);
+    row([...terms, [dayUsed, -1]], 0, INF);
+    const days = teacherDays.get(instructorId) ?? [];
+    days.push([dayUsed, 1]);
+    teacherDays.set(instructorId, days);
+  }
+  for (const terms of teacherDays.values()) row(terms, -INF, 4);
+
   for (const xs of extended.values())
     row(
       repair ? [...xs, [variable(100000000, 6), -1]] : xs,
