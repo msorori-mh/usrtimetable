@@ -274,6 +274,15 @@ function TeachingAssignmentsV2Page() {
     () => summarizeInstructorAssignedHours(workspace.data?.rows ?? [], instructorSearch),
     [workspace.data?.rows, instructorSearch],
   );
+  const attendanceDaysSummary = useMemo(
+    () =>
+      summarizeInstructorAttendanceDays(
+        workspace.data?.rows ?? [],
+        instructorSearch,
+        sessionDays,
+      ),
+    [workspace.data?.rows, instructorSearch, sessionDays],
+  );
   const readOnly = !canManage || workspace.data?.can_manage === false;
 
   const openAssign = (row: TeachingAssignmentWorkspaceRow) => {
