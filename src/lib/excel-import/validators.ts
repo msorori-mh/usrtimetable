@@ -1507,24 +1507,19 @@ export function buildDbPayload(
   if (entity === "departments") {
     return {
       ...base,
-      code: v.code ?? null,
+      code: v.code,
       name: v.name,
-      head_name: v.head_name ?? null,
-      is_active: v.is_active ?? true,
-      order_index: v.order_index ?? null,
+      study_system: v.study_system ?? "regular",
     };
   }
   if (entity === "academic_programs") {
     return {
       ...base,
-      code: v.code ?? null,
+      code: v.code,
       name: v.name,
       department_id: v._department_id ?? null,
       degree_type: v.degree_type ?? "bachelor",
       duration_years: v.duration_years ?? 4,
-      is_active: v.is_active ?? true,
-      admission_status: v.admission_status ?? true,
-      description: v.description ?? null,
     };
   }
   if (entity === "instructors") {
