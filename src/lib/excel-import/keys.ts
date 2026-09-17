@@ -1,5 +1,7 @@
 export function normalizeImportKeyPart(value: unknown): string {
-  return String(value ?? "").trim().toLocaleLowerCase("en-US");
+  return String(value ?? "")
+    .trim()
+    .toLocaleLowerCase("en-US");
 }
 
 export function sectionIsolationKey(values: Record<string, unknown>): string {

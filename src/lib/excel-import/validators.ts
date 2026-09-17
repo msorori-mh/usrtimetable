@@ -1121,7 +1121,6 @@ function runEntityValidation(
     }
   }
 
-
   if (entity === "study_plan_courses" || entity === "full_study_plan") {
     const dCode = v.department_code as string | null;
     const pCode = v.program_code as string | null;

@@ -36,7 +36,9 @@ export function normalizeStructureName(value: unknown): string {
 }
 
 function normalizeCode(value: unknown): string {
-  return String(value ?? "").trim().toLowerCase();
+  return String(value ?? "")
+    .trim()
+    .toLowerCase();
 }
 
 function matchRows<T extends { id: string; code: string | null; name: string }>(

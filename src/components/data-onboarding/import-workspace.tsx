@@ -595,7 +595,6 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
             </div>
           )}
 
-
           {entity === "instructors" && preview.valid.length > 0 && (
             <div className="space-y-2">
               <h3 className="font-semibold">معاينة المدرسين قبل الحفظ</h3>

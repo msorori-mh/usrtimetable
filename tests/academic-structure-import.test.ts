@@ -41,7 +41,10 @@ test("a duplicate department is matched by code, then by normalized name", () =>
     status: "matched",
     id: "d-cs",
   });
-  assert.equal(normalizeStructureName("تقنيه المعلومات"), normalizeStructureName("تقنية المعلومات"));
+  assert.equal(
+    normalizeStructureName("تقنيه المعلومات"),
+    normalizeStructureName("تقنية المعلومات"),
+  );
 });
 
 test("an ambiguous department name is rejected instead of guessed", () => {
