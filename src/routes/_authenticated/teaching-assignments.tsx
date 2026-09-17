@@ -68,6 +68,7 @@ import {
   assignmentRowDaysLabel,
   currentScheduleVersionId,
   deliveryGroupDayMap,
+  summarizeInstructorAttendanceDays,
 } from "@/lib/teaching-assignments/assignment-row-days";
 import {
   fetchPublishedVersions,

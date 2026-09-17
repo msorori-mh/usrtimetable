@@ -4,6 +4,7 @@ import {
   assignmentRowDaysLabel,
   currentScheduleVersionId,
   deliveryGroupDayMap,
+  summarizeInstructorAttendanceDays,
 } from "@/lib/teaching-assignments/assignment-row-days";
 
 describe("currentScheduleVersionId", () => {
@@ -65,5 +66,46 @@ describe("teaching-assignments day column wiring", () => {
     expect(src).toContain(
       "filterRowsByInstructorName(workspace.data?.rows ?? [], instructorSearch)",
     );
+  });
+});
+
+describe("summarizeInstructorAttendanceDays", () => {
+  const days = new Map<string, number[]>([
+    ["g1", [6, 1]],
+    ["g2", [1]],
+    ["g3", [2]],
+  ]);
+  const rows = [
+    { delivery_group_id: "g1", instructors: [{ instructor_name: "أحمد محمد" }] },
+    { delivery_group_id: "g2", instructors: [{ instructor_name: "أَحمد محمد" }] },
+    { delivery_group_id: "g4", instructors: [{ instructor_name: "أحمد محمد" }] },
+    { delivery_group_id: "g3", instructors: [{ instructor_name: "سارة علي" }] },
+    {
+      delivery_group_id: "g3",
+      instructors: [{ instructor_name: "أحمد محمد", is_active: false }],
+    },
+  ];
+
+  it("counts each day once even with several lectures that day, ignoring unscheduled groups", () => {
+    const summary = summarizeInstructorAttendanceDays(rows, "احمد", days);
+    expect(summary.perInstructor).toEqual([{ name: "أحمد محمد", days: 2 }]);
+    expect(summary.totalDays).toBe(2);
+  });
+
+  it("aggregates several matched instructors and stays empty without a query", () => {
+    expect(summarizeInstructorAttendanceDays(rows, "ا", days).totalDays).toBe(3);
+    expect(summarizeInstructorAttendanceDays(rows, "", days)).toEqual({
+      totalDays: 0,
+      perInstructor: [],
+    });
+    expect(summarizeInstructorAttendanceDays(rows, "احمد", undefined).totalDays).toBe(0);
+  });
+});
+
+describe("attendance days card wiring", () => {
+  it("renders the attendance days element in the instructor summary card", () => {
+    expect(src).toContain('data-testid="ta-v2-instructor-attendance-days"');
+    expect(src).toContain(">عدد أيام الحضور</p>");
+    expect(src).toContain("summarizeInstructorAttendanceDays");
   });
 });
