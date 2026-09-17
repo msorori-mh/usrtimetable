@@ -113,6 +113,14 @@ export function measureAttendance(
   };
   const student = summarize(students, weight);
   const instructor = summarize(instructors, () => 1);
+  let targetDeviation = 0;
+  for (const [id, days] of instructors) {
+    const target = instructorTarget(id);
+    if (target == null) continue;
+    if (!Number.isInteger(target) || target < 1 || target > 6)
+      throw new Error("INVALID_INSTRUCTOR_ATTENDANCE_TARGET");
+    targetDeviation += Math.abs(days.size - target);
+  }
   const days = [...levels.values()].map((value) => value.size);
   return {
     levelsOverFive: days.filter((value) => value > ATTENDANCE_POLICY.maximumDays).length,
