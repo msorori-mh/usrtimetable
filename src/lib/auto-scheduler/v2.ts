@@ -612,6 +612,10 @@ export async function runV2AutoSchedule(params: {
   let infeasibleItems = 0;
   // Missing sessions placed by the bounded, day-cap-preserving local fallback.
   let localFallbackPlacedSessions = 0;
+  // Bounded server-authoritative fallback (local prefilters are advisory only).
+  let authoritativeFallbackAttempts = 0;
+  let authoritativeFallbackPlacedSessions = 0;
+
 
   let versionUpdatedAt = payload.version_updated_at;
   let processedItems = 0;
