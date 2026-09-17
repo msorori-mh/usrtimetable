@@ -12,17 +12,34 @@ import {
 } from "@/lib/auto-scheduler/attendance-objective";
 import { better, measure, type Metrics, type Session, type Snapshot } from "@/lib/auto-scheduler/compact";
 
-const event = (day: number, start: number, instructor = "head"): AttendanceEvent => ({
+/**
+ * Each event belongs to its own level/student, so the two layouts below are
+ * identical for students (one attendance day, no gaps) and differ only in how
+ * many days the instructor attends.
+ */
+const event = (n: number, day: number, start: number, instructor = "head"): AttendanceEvent => ({
   day,
   start,
   end: start + 120,
-  students: ["p1"],
+  students: [`p${n}`],
   instructor,
-  level: "L1",
+  level: `L${n}`,
 });
 
-const spread = [event(1, 480), event(2, 480), event(3, 480), event(4, 480), event(5, 480)];
-const packed = [event(1, 480), event(1, 600), event(2, 480), event(2, 600), event(3, 480)];
+const spread = [
+  event(1, 1, 480),
+  event(2, 2, 480),
+  event(3, 3, 480),
+  event(4, 4, 480),
+  event(5, 5, 480),
+];
+const packed = [
+  event(1, 1, 480),
+  event(2, 1, 600),
+  event(3, 2, 480),
+  event(4, 2, 600),
+  event(5, 3, 480),
+];
 
 describe("instructor weekly attendance-day target", () => {
   it("no target keeps the metric at zero", () => {
