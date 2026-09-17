@@ -45,6 +45,12 @@ import {
   type RoomRequirement,
 } from "@/lib/auto-scheduler/session-plan";
 import { resolveRoomRequirement } from "@/lib/auto-scheduler/room-requirement";
+import {
+  AUTHORITATIVE_FALLBACK_MAX_CANDIDATES,
+  AUTHORITATIVE_FALLBACK_WARNING_PREFIX_AR,
+  candidateAttemptKey,
+  enumerateAuthoritativeCandidates,
+} from "@/lib/auto-scheduler/authoritative-fallback";
 import { PRACTICAL_ROOM_FALLBACK_NOTE_AR } from "@/lib/scheduling/room-type-policy";
 import { type RepairMove, type RepairPlan } from "@/lib/auto-scheduler/repair";
 import { moveOrRescheduleScheduleSession } from "@/lib/schedule-builder/session-move-rpc";
@@ -606,6 +612,9 @@ export async function runV2AutoSchedule(params: {
   let infeasibleItems = 0;
   // Missing sessions placed by the bounded, day-cap-preserving local fallback.
   let localFallbackPlacedSessions = 0;
+  // Bounded server-authoritative fallback (local prefilters are advisory only).
+  let authoritativeFallbackAttempts = 0;
+  let authoritativeFallbackPlacedSessions = 0;
 
   let versionUpdatedAt = payload.version_updated_at;
   let processedItems = 0;
@@ -899,6 +908,9 @@ export async function runV2AutoSchedule(params: {
       );
       let placedItem = false;
       let lastReason = "لا يوجد مرشح يحقق قيود مجموعة التقديم والدفعة.";
+      // Every day/start/end/room actually sent to the guarded RPC, so the
+      // authoritative phase never repeats an attempt of the local phases.
+      const attemptedPlacements = new Set<string>();
 
       // JAWF-FALLBACK-01: the certified attendance-plan slot stays the first and
       // highest-priority option. Only when that exact position is rejected do we
@@ -1020,6 +1032,14 @@ export async function runV2AutoSchedule(params: {
               ) {
                 continue;
               }
+              attemptedPlacements.add(
+                candidateAttemptKey({
+                  day: slot.day,
+                  start: slot.start,
+                  end: slot.end,
+                  roomId: room.id,
+                }),
+              );
               const result = await createScheduleSessionFromAssignmentV2({
                 scheduleVersionId: params.scheduleVersionId,
                 teachingAssignmentId: item.teaching_assignment_id,
@@ -1093,6 +1113,137 @@ export async function runV2AutoSchedule(params: {
             }
             if (placedItem) break;
           }
+        }
+      }
+
+      // JAWF-AUTH-FALLBACK-01: local prefilters are advisory, not authority. When
+      // the planned slot and the ranked local fallback both fail — including when
+      // every candidate was dropped locally (e.g. a degraded partition mapping
+      // turns disjoint groups of one cohort into a cohort-wide clash) — enumerate
+      // only the unambiguous hard-constrained positions for THIS missing session
+      // and let the guarded RPC decide. No existing session is moved, no direct
+      // INSERT, no relaxed cap.
+      if (!placedItem && !cancelled) {
+        const instructorRow = planningSnapshot.instructors.find(
+          (row) => row.id === item.instructor_id,
+        );
+        const instructorType = planningSnapshot.types.find(
+          (row) => row.id === instructorRow?.instructor_type_id,
+        );
+        const teacherDays = scheduledInstructorDays.get(item.instructor_id) ?? new Set<number>();
+        const maxInstructorDailyMinutes =
+          (instructorRow?.max_hours_per_day ||
+            planningSnapshot.settings.max_daily_hours_per_instructor ||
+            6) * 60;
+        const maxStudentDailyMinutes =
+          (planningSnapshot.settings.max_daily_hours_per_section || 6) * 60;
+        const sharesStudents = (otherGroupId?: string | null, otherCohortId?: string | null) => {
+          if (otherGroupId && item.delivery_group_id) {
+            if (otherGroupId === item.delivery_group_id) return true;
+            if (sharedStudents) return sharedStudents(item.delivery_group_id, otherGroupId);
+          }
+          return !!(otherCohortId && item.cohort_id && otherCohortId === item.cohort_id);
+        };
+        const minutesOn = (day: number, predicate: (o: OccupiedInterval) => boolean) =>
+          occupied
+            .filter((o) => Number(o.day) === Number(day) && predicate(o))
+            .reduce((total, o) => total + (minutes(o.end) - minutes(o.start)), 0);
+
+        const candidates = enumerateAuthoritativeCandidates({
+          slots: compactSlots(
+            { ...planningSnapshot, sessions: planningSessions },
+            seedFor(item, durationMinutes),
+          ),
+          roomPools,
+          roomAvailability,
+          instructorId: item.instructor_id,
+          instructorAvailability: planningSnapshot.availability,
+          enforceInstructorAvailability: planningSnapshot.settings.enforce_instructor_availability,
+          instructorRequiresExplicitWindow:
+            !!instructorType?.is_external || instructorType?.code === "from_other_college",
+          levelDays,
+          maxLevelDays: attendancePlan.days!,
+          instructorDays: teacherDays,
+          instructorDayCap: instructorDayCap(item.instructor_id),
+          plannedDay: plannedAttendance.day_of_week,
+          durationMinutes,
+          instructorDayMinutes: (day) =>
+            minutesOn(day, (o) => o.instructorId === item.instructor_id),
+          maxInstructorDailyMinutes,
+          studentDayMinutes: (day) =>
+            minutesOn(day, (o) => sharesStudents(o.deliveryGroupId, o.cohortId)),
+          maxStudentDailyMinutes,
+          attempted: attemptedPlacements,
+          maxCandidates: AUTHORITATIVE_FALLBACK_MAX_CANDIDATES,
+        });
+
+        for (const candidate of candidates) {
+          if (params.signal?.aborted) {
+            cancelled = true;
+            break;
+          }
+          const room = roomById.get(candidate.roomId);
+          if (!room) continue;
+          const slot = { day: candidate.day, start: candidate.start, end: candidate.end };
+          const key = candidateAttemptKey(candidate);
+          if (attemptedPlacements.has(key)) continue;
+          attemptedPlacements.add(key);
+          authoritativeFallbackAttempts++;
+          const result = await createScheduleSessionFromAssignmentV2({
+            scheduleVersionId: params.scheduleVersionId,
+            teachingAssignmentId: item.teaching_assignment_id,
+            dayOfWeek: slot.day,
+            startTime: slot.start,
+            endTime: slot.end,
+            roomId: room.id,
+            expectedVersionUpdatedAt: versionUpdatedAt,
+            note: `auto:${ALGORITHM_VERSION}; attendance:${attendancePlan.days}; authoritative-fallback`,
+          });
+          assertVersionNotStale(result);
+          if (result.ok && result.session && result.schedule_version_updated_at) {
+            versionUpdatedAt = result.schedule_version_updated_at;
+            placed++;
+            byType[type].placed++;
+            placedItem = true;
+            authoritativeFallbackPlacedSessions++;
+            warnings.push(
+              `${groupLabel}: ${AUTHORITATIVE_FALLBACK_WARNING_PREFIX_AR} (اليوم ${slot.day} ${slot.start}-${slot.end}).`,
+            );
+            if (roomCandidateRank(room as RoomLite, roomRequirement) === 1) {
+              practicalRoomFallbacks++;
+              warnings.push(`${groupLabel}: ${PRACTICAL_ROOM_FALLBACK_NOTE_AR}`);
+            }
+            const seeded: Session = {
+              ...seedFor(item, durationMinutes),
+              day_of_week: slot.day,
+              start_time: slot.start,
+              end_time: slot.end,
+              room_id: room.id,
+            };
+            planningSessions.push({ ...seeded, ...result.session } as Session);
+            usedDays.push(slot.day);
+            teacherDays.add(slot.day);
+            scheduledInstructorDays.set(item.instructor_id, teacherDays);
+            occupied.push({
+              day: slot.day,
+              start: slot.start,
+              end: slot.end,
+              roomId: room.id,
+              instructorId: item.instructor_id,
+              cohortId: item.cohort_id,
+              deliveryGroupId: item.delivery_group_id,
+            });
+            break;
+          }
+          // A server rejection stays blocking and its exact reason is preserved.
+          lastReason =
+            result.blocking_conflicts[0]?.message_ar ||
+            result.blocking_conflicts[0]?.code ||
+            result.warnings[0]?.message_ar ||
+            result.warnings[0]?.code ||
+            result.message_ar ||
+            result.code ||
+            lastReason;
         }
       }
 
@@ -1253,6 +1404,10 @@ export async function runV2AutoSchedule(params: {
         continue_on_infeasible_unit: true,
         local_fallback_placed_sessions: localFallbackPlacedSessions,
         local_fallback_policy: "day_cap_preserving_local_alternative_for_missing_session_only",
+        authoritative_fallback_attempts: authoritativeFallbackAttempts,
+        authoritative_fallback_placed_sessions: authoritativeFallbackPlacedSessions,
+        authoritative_fallback_policy:
+          "server_authoritative_bounded_candidates_for_missing_session_only",
 
         nonconforming_existing_sessions: nonconformingSessions,
         by_component_type: byType,
