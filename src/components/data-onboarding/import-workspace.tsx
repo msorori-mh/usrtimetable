@@ -514,12 +514,24 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
               />
             )}
 
+          {programsBlocked && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
+              <p className="font-semibold text-destructive flex items-center gap-2">
+                <AlertCircle className="h-4 w-4" /> لا توجد أقسام في هذه الكلية
+              </p>
+              <p className="mt-1 text-muted-foreground">
+                البرنامج يجب أن يتبع قسمًا من نفس الكلية. أضف الأقسام الأكاديمية أولًا (استيراد أو
+                إدخال يدوي) ثم أعد رفع ملف البرامج.
+              </p>
+            </div>
+          )}
           <div className="flex flex-wrap gap-2">
             <Button
               onClick={() => previewMut.mutate()}
               disabled={
                 !file ||
                 detectingFile ||
+                programsBlocked ||
                 previewMut.isPending ||
                 commitMut.isPending ||
                 (isSourceMode && !allSheetTermsSelected)
