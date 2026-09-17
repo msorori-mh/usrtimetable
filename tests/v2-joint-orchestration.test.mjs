@@ -321,11 +321,18 @@ for (const [count, dailyHours, days] of [
     }));
     s.snapshot.settings.max_daily_hours_per_section = dailyHours;
     const result = await (await scheduler(s))(params);
-    assert.equal(result.placed, count);
-    assert.equal(new Set(s.calls.map((c) => c.dayOfWeek)).size, days);
-    assert.ok(s.calls.every((c) => c.note.includes(`attendance:${days}`)));
-    assert.equal(s.runs[0].status, "completed");
-    if (days === 5) assert.ok(s.calls.every((c) => c.note.includes("prior-unsat:3,4")));
+    if (days === 5) {
+      // A single instructor cannot satisfy a five-day certified student plan:
+      // generation must stop incomplete rather than violate the four-day ceiling.
+      assert.ok(result.placed < count);
+      assert.equal(s.runs[0].status, "partial");
+      assert.ok(new Set(s.calls.map((c) => c.dayOfWeek)).size <= 4);
+    } else {
+      assert.equal(result.placed, count);
+      assert.equal(new Set(s.calls.map((c) => c.dayOfWeek)).size, days);
+      assert.ok(s.calls.every((c) => c.note.includes(`attendance:${days}`)));
+      assert.equal(s.runs[0].status, "completed");
+    }
   });
 }
 

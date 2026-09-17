@@ -474,6 +474,30 @@ export async function runV2AutoSchedule(params: {
     });
     existingByAssignment.set(key, list);
   }
+  const scheduledInstructorDays = new Map<string, Set<number>>();
+  const instructorWeeklyHours = new Map<string, number>();
+  for (const row of sessionRows) {
+    const days = scheduledInstructorDays.get(row.instructor_id) ?? new Set<number>();
+    days.add(row.day_of_week);
+    scheduledInstructorDays.set(row.instructor_id, days);
+    instructorWeeklyHours.set(
+      row.instructor_id,
+      (instructorWeeklyHours.get(row.instructor_id) ?? 0) +
+        (minutes(row.end_time) - minutes(row.start_time)) / 60,
+    );
+  }
+  for (const item of workItems) {
+    if (item.assigned_component_hours > 0) {
+      instructorWeeklyHours.set(
+        item.instructor_id,
+        (instructorWeeklyHours.get(item.instructor_id) ?? 0) + item.assigned_component_hours,
+      );
+    }
+  }
+  const instructorTargetDays = (instructorId: string) => {
+    const hours = instructorWeeklyHours.get(instructorId) ?? 0;
+    return hours <= 6 ? 1 : hours <= 10 ? 2 : hours <= 16 ? 3 : 4;
+  };
   const occupied: OccupiedInterval[] = sessionRows.map((row) => ({
     day: row.day_of_week,
     start: row.start_time,
@@ -829,6 +853,11 @@ export async function runV2AutoSchedule(params: {
           slots,
           roomIds: candidateRooms.map((room) => room.id),
           usedDays,
+        }).sort((a, b) => {
+          const days = scheduledInstructorDays.get(item.instructor_id) ?? new Set<number>();
+          const target = instructorTargetDays(item.instructor_id);
+          const score = (day: number) => (days.has(day) ? 0 : days.size >= target ? 100 : 10);
+          return score(a.session.day_of_week) - score(b.session.day_of_week);
         });
 
         candidateSearch: for (const ranked of rankedCandidates) {
@@ -850,6 +879,11 @@ export async function runV2AutoSchedule(params: {
           }
           if (!levelDays.has(slot.day) && levelDays.size >= attendancePlan.days!) {
             lastReason = "تجاوز حد أيام الحضور المثبت لهذه الخطة؛ أعد البحث.";
+            continue;
+          }
+          const teacherDays = scheduledInstructorDays.get(item.instructor_id) ?? new Set<number>();
+          if (!teacherDays.has(slot.day) && teacherDays.size >= 4) {
+            lastReason = "تجاوز الحد الصلب لأيام حضور المحاضر (4 أيام).";
             continue;
           }
           const availabilityKey = `${item.instructor_id}|${slot.day}`;
@@ -915,6 +949,10 @@ export async function runV2AutoSchedule(params: {
                 ...result.session,
               } as Session);
               usedDays.push(slot.day);
+              const assignedTeacherDays =
+                scheduledInstructorDays.get(item.instructor_id) ?? new Set<number>();
+              assignedTeacherDays.add(slot.day);
+              scheduledInstructorDays.set(item.instructor_id, assignedTeacherDays);
               occupied.push({
                 day: slot.day,
                 start: slot.start,
@@ -998,6 +1036,20 @@ export async function runV2AutoSchedule(params: {
   // Authoritative readback covers the whole active scope, including already scheduled work.
   const finalSnapshot = await loadCompactSnapshot(params.collegeId, params.scheduleVersionId);
   const attendance = measure(finalSnapshot);
+  // Independent fail-closed gate: no generated/edited plan may be persisted
+  // when any instructor is scheduled on more than four distinct weekdays.
+  const instructorDays = new Map<string, Set<number>>();
+  for (const session of finalSnapshot.sessions) {
+    const days = instructorDays.get(session.instructor_id) ?? new Set<number>();
+    days.add(session.day_of_week);
+    instructorDays.set(session.instructor_id, days);
+  }
+  const instructorsOverFourDays = [...instructorDays.entries()]
+    .filter(([, days]) => days.size > 4)
+    .map(([instructorId, days]) => ({ instructorId, days: days.size }));
+  if (instructorsOverFourDays.length > 0) {
+    throw new Error("INSTRUCTOR_ATTENDANCE_DAYS_EXCEEDED");
+  }
   const requirements = timedScope.map((item) => {
     const component = componentById.get(item.plan_course_component_id || item.component_id);
     const cadence = requiredCadenceForComponent({
