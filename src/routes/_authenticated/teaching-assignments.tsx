@@ -628,6 +628,7 @@ function TeachingAssignmentsV2Page() {
                       <th className="px-3 py-2 text-right font-medium">المقرر</th>
                       <th className="px-3 py-2 text-right font-medium">البرنامج</th>
                       <th className="px-3 py-2 text-right font-medium">نظام الدراسة</th>
+                      <th className="px-3 py-2 text-right font-medium">اليوم</th>
                       <th className="px-3 py-2 text-right font-medium">المحاضرة</th>
                       <th className="px-3 py-2 text-right font-medium">المجموعة</th>
                       <th className="px-3 py-2 text-right font-medium">طلاب</th>
