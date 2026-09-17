@@ -1147,6 +1147,9 @@ export async function runV2AutoSchedule(params: {
         total_required_sessions: totalRequiredSessions,
         processed_work_items: processedItems,
         blocked_cadence_items: blockedCadenceItems,
+        infeasible_work_units: infeasibleItems,
+        continue_on_infeasible_unit: true,
+
         nonconforming_existing_sessions: nonconformingSessions,
         by_component_type: byType,
         practical_room_fallbacks: practicalRoomFallbacks,
