@@ -475,5 +475,5 @@ export async function fetchInstructorScheduleAcrossColleges(
     }),
   );
 
-  return results.flat();
+  return results.flat() as CrossCollegeInstructorScheduleRow[];
 }
