@@ -29,6 +29,8 @@ interface S {
   day_start_time: string; day_end_time: string; slot_minutes: number;
   min_session_hours: number; max_session_hours: number; allow_3h_sessions: boolean;
   max_daily_hours_per_instructor: number; max_daily_hours_per_section: number;
+  max_daily_theory_hours_per_section: number; max_daily_practical_hours_per_section: number;
+  max_extended_days_per_partition: number;
   break_between_sessions_min: number; allow_back_to_back: boolean; notes: string;
 }
 
@@ -36,7 +38,9 @@ const DEFAULTS: S = {
   week_start_day: 6, working_days: [6, 0, 1, 2, 3, 4],
   day_start_time: "08:00", day_end_time: "14:00", slot_minutes: 60,
   min_session_hours: 1, max_session_hours: 3, allow_3h_sessions: true,
-  max_daily_hours_per_instructor: 6, max_daily_hours_per_section: 6,
+  max_daily_hours_per_instructor: 8, max_daily_hours_per_section: 8,
+  max_daily_theory_hours_per_section: 6, max_daily_practical_hours_per_section: 8,
+  max_extended_days_per_partition: 2,
   break_between_sessions_min: 0, allow_back_to_back: true, notes: "",
 };
 
@@ -122,6 +126,9 @@ function SettingsPage() {
           <div className="grid grid-cols-3 gap-3">
             <div><Label>سقف ساعات المحاضر/يوم</Label><Input type="number" value={form.max_daily_hours_per_instructor} onChange={(e) => setForm({ ...form, max_daily_hours_per_instructor: Number(e.target.value) })} disabled={!canManage} /></div>
             <div><Label>سقف ساعات المجموعة/يوم</Label><Input type="number" value={form.max_daily_hours_per_section} onChange={(e) => setForm({ ...form, max_daily_hours_per_section: Number(e.target.value) })} disabled={!canManage} /></div>
+            <div><Label>سقف الساعات النظرية للمجموعة/يوم</Label><Input type="number" value={form.max_daily_theory_hours_per_section} onChange={(e) => setForm({ ...form, max_daily_theory_hours_per_section: Number(e.target.value) })} disabled={!canManage} /></div>
+            <div><Label>سقف الساعات العملية للمجموعة/يوم</Label><Input type="number" value={form.max_daily_practical_hours_per_section} onChange={(e) => setForm({ ...form, max_daily_practical_hours_per_section: Number(e.target.value) })} disabled={!canManage} /></div>
+            <div><Label>أقصى أيام تمديد للشعبة/أسبوع</Label><Input type="number" value={form.max_extended_days_per_partition} onChange={(e) => setForm({ ...form, max_extended_days_per_partition: Number(e.target.value) })} disabled={!canManage} /></div>
             <div><Label>الفاصل بين المحاضرات (دقائق)</Label><Input type="number" value={form.break_between_sessions_min} onChange={(e) => setForm({ ...form, break_between_sessions_min: Number(e.target.value) })} disabled={!canManage} /></div>
           </div>
 
