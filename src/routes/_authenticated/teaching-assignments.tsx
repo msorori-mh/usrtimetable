@@ -210,6 +210,28 @@ function TeachingAssignmentsV2Page() {
     },
   });
 
+  /** Read-only day lookup from the current schedule version's sessions. */
+  const { data: sessionDays } = useQuery({
+    queryKey: ["teaching-assignment-row-days", active?.id],
+    enabled: !!active,
+    queryFn: async () => {
+      const [published, working] = await Promise.all([
+        fetchPublishedVersions({ collegeId: active!.id }),
+        fetchWorkingVersions({ collegeId: active!.id }),
+      ]);
+      const versionId = currentScheduleVersionId(published, working);
+      if (!versionId) return new Map<string, number[]>();
+      const { data, error } = await supabase
+        .from("schedule_sessions")
+        .select("delivery_group_id, day_of_week")
+        .eq("college_id", active!.id)
+        .eq("schedule_version_id", versionId)
+        .not("delivery_group_id", "is", null);
+      if (error) throw error;
+      return deliveryGroupDayMap(data ?? []);
+    },
+  });
+
   const candidatesQuery = useQuery({
     queryKey: ["ta-v2-candidates", selected?.delivery_group_id],
     enabled: !!selected?.delivery_group_id && canManage,
