@@ -7,6 +7,16 @@ import {
 } from "./attendance-objective.ts";
 import { isInstructorAvailabilityEnforced } from "../scheduling/instructor-availability-policy.ts";
 import { isRoomTypeCompatible, roomTypeRank } from "../scheduling/room-type-policy.ts";
+import {
+  addStudentDailyLoad,
+  emptyStudentDailyLoad,
+  extendedDayLimit,
+  studentDailyPolicy,
+  studentDailyTotalMinutes,
+  studentLoadKind,
+  withinStudentDailyLoad,
+  type StudentLoadKind,
+} from "../scheduling/student-daily-policy.ts";
 
 /** Plan-course component type behind an assignment (drives the room fallback policy). */
 function assignmentComponentType(
@@ -16,6 +26,16 @@ function assignmentComponentType(
   const id = assignment?.plan_course_component_id;
   if (!id) return null;
   return (s.components ?? []).find((c) => c.id === id)?.component_type ?? null;
+}
+
+/** Theory-like vs practical load of a session, for the student daily-hours policy. */
+export function sessionStudentLoadKind(s: Snapshot, x: Session): StudentLoadKind {
+  return studentLoadKind(
+    assignmentComponentType(
+      s,
+      s.assignments.find((a) => a.id === x.teaching_assignment_id),
+    ),
+  );
 }
 export interface Session {
   id: string;
@@ -135,6 +155,8 @@ export interface Snapshot {
     slot_minutes: number;
     max_daily_hours_per_instructor: number;
     max_daily_hours_per_section: number;
+    max_daily_theory_hours_per_section?: number | null;
+    max_daily_practical_hours_per_section?: number | null;
     break_between_sessions_min: number;
   };
 }
@@ -280,7 +302,7 @@ export function measure(s: Snapshot, sessions = s.sessions): Metrics {
   );
   if (!s.settings.extended_day_policy_enabled) return base;
   const days = extendedDays(s, sessions);
-  const limit = s.settings.max_extended_days_per_partition ?? 1;
+  const limit = extendedDayLimit(s.settings);
   return {
     ...base,
     extendedGroups: days.size,
@@ -303,7 +325,7 @@ export function extendedDays(s: Snapshot, sessions = s.sessions): Map<string, Se
 }
 /** Safe upper capacity bound, independent of candidate-grid resolution. */
 export function studentWeeklyCapacity(s: Snapshot, days: number): number {
-  const daily = (s.settings.max_daily_hours_per_section || 6) * 60;
+  const daily = studentDailyTotalMinutes(s.settings);
   if (!s.settings.extended_day_policy_enabled) return daily * days;
   const start = minutes(s.settings.day_start_time);
   const normal = Math.min(
@@ -311,7 +333,7 @@ export function studentWeeklyCapacity(s: Snapshot, days: number): number {
     Math.max(0, minutes(s.settings.standard_day_end_time ?? "14:00:00") - start),
   );
   const full = Math.min(daily, Math.max(0, minutes(s.settings.day_end_time) - start));
-  const extended = Math.min(days, s.settings.max_extended_days_per_partition ?? 1);
+  const extended = Math.min(days, extendedDayLimit(s.settings));
   return Math.min(normal, full) * (days - extended) + full * extended;
 }
 export function better(a: Metrics, b: Metrics) {
@@ -478,7 +500,7 @@ export function feasible(
     for (const p of ctx.students(candidate)) {
       if (
         (after.get(p)?.size ?? 0) >
-        Math.max(settings.max_extended_days_per_partition ?? 1, before.get(p)?.size ?? 0)
+        Math.max(extendedDayLimit(settings), before.get(p)?.size ?? 0)
       )
         return false;
     }
@@ -530,14 +552,21 @@ export function feasible(
     )
   )
     return false;
+  // Student daily hours: one shared policy (total / theory-like / practical).
+  const dailyPolicy = studentDailyPolicy(settings);
+  const load = (list: Session[]) =>
+    list.reduce(
+      (acc, x) => addStudentDailyLoad(acc, sessionStudentLoadKind(s, x), duration(x)),
+      emptyStudentDailyLoad(),
+    );
   for (const p of ctx.students(candidate)) {
-    const prior = sessions
-      .filter((x) => x.day_of_week === day && ctx.students(x).includes(p))
-      .reduce((a, x) => a + duration(x), 0);
-    const next =
-      sameDay.filter((x) => ctx.students(x).includes(p)).reduce((a, x) => a + duration(x), 0) +
-      duration(candidate);
-    if (next > Math.max((settings.max_daily_hours_per_section || 6) * 60, prior)) return false;
+    const prior = load(sessions.filter((x) => x.day_of_week === day && ctx.students(x).includes(p)));
+    const next = addStudentDailyLoad(
+      load(sameDay.filter((x) => ctx.students(x).includes(p))),
+      sessionStudentLoadKind(s, candidate),
+      duration(candidate),
+    );
+    if (!withinStudentDailyLoad(next, dailyPolicy, prior)) return false;
   }
   return true;
 }
