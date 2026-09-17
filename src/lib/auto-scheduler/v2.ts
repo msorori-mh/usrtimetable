@@ -1065,14 +1065,16 @@ export async function runV2AutoSchedule(params: {
   // Authoritative readback covers the whole active scope, including already scheduled work.
   const finalSnapshot = await loadCompactSnapshot(params.collegeId, params.scheduleVersionId);
   const attendance = measure(finalSnapshot);
-  // Independent fail-closed gate: no generated/edited plan may be persisted
-  // when any instructor exceeds their effective weekly attendance-day cap: the
-  // generic cap of four days, or their explicit target when one is recorded.
-  const instructorsOverDayCap = instructorsOverAttendanceDayCap(
+  // Independent fail-closed gate: in fill_missing the run may not introduce or
+  // increase an attendance-day cap violation (generic cap of four days, or the
+  // instructor's explicit target when recorded). Historical violations already
+  // present in the planning snapshot and preserved unchanged do not fail the run.
+  const dayCapRegressions = attendanceDayCapRegressions(
+    planningSnapshot.sessions,
     finalSnapshot.sessions,
     finalSnapshot.instructors,
   );
-  if (instructorsOverDayCap.length > 0) {
+  if (dayCapRegressions.length > 0) {
     throw new Error("INSTRUCTOR_ATTENDANCE_DAYS_EXCEEDED");
   }
 
