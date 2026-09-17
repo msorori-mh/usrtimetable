@@ -445,7 +445,10 @@ export async function fetchInstructorScheduleAcrossColleges(
     .from("instructors")
     .select("id, college_id")
     .eq("university_person_id", params.instructorPersonId)
-    .in("college_id", params.colleges.map((c) => c.collegeId));
+    .in(
+      "college_id",
+      params.colleges.map((c) => c.collegeId),
+    );
 
   if (instructorError) throw instructorError;
   const byCollege = new Map(
