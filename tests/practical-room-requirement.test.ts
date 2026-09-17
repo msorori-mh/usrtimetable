@@ -114,19 +114,34 @@ const session = (over: Partial<Session> = {}): Session => ({
 const snapshot = (sessions: Session[]): Snapshot =>
   ({
     sessions,
-    cohorts: [
-      { id: "c1", program_id: "p", level_id: "l4", study_system: "regular", term_id: "t" },
-    ],
+    cohorts: [{ id: "c1", program_id: "p", level_id: "l4", study_system: "regular", term_id: "t" }],
     groups: [{ id: "g1", cohort_id: "c1", expected_students: 28 }],
     members: [{ delivery_group_id: "g1", partition_id: "part1", cohort_id: "c1" }],
     partitions: [{ id: "part1", cohort_id: "c1", headcount: 28, active: true }],
     assignments: [
-      { id: "a1", required_room_type: "computer_lab", is_active: true, plan_course_component_id: "cmp1" },
+      {
+        id: "a1",
+        required_room_type: "computer_lab",
+        is_active: true,
+        plan_course_component_id: "cmp1",
+      },
     ],
     components: [{ id: "cmp1", component_type: "practical" }],
     rooms: [
-      { ...lab, is_active: true, available_days: [1], available_start_time: "08:00:00", available_end_time: "16:00:00" },
-      { ...hall, is_active: true, available_days: [1], available_start_time: "08:00:00", available_end_time: "14:00:00" },
+      {
+        ...lab,
+        is_active: true,
+        available_days: [1],
+        available_start_time: "08:00:00",
+        available_end_time: "16:00:00",
+      },
+      {
+        ...hall,
+        is_active: true,
+        available_days: [1],
+        available_start_time: "08:00:00",
+        available_end_time: "14:00:00",
+      },
     ],
     instructors: [{ id: "i1", instructor_type_id: "permanent", max_hours_per_day: 8 }],
     types: [{ id: "permanent", code: "permanent", is_external: false }],

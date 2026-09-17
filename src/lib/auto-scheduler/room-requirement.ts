@@ -33,9 +33,7 @@ const clean = (value: string | null | undefined): string | null => {
   return text ? text : null;
 };
 
-export function resolveRoomRequirement(
-  sources: RoomRequirementSources,
-): ResolvedRoomRequirement {
+export function resolveRoomRequirement(sources: RoomRequirementSources): ResolvedRoomRequirement {
   const assignmentType = clean(sources.assignmentRequiredRoomType);
   if (assignmentType) return { roomTypeName: assignmentType, roomTypeId: null };
   const componentId = clean(sources.componentRoomTypeId);
