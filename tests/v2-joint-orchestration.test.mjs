@@ -185,8 +185,19 @@ function state() {
       return q;
     },
   };
+  st.rejectAssignments = new Set();
   st.create = async (p) => {
     st.calls.push(p);
+    if (st.rejectAssignments.has(p.teachingAssignmentId))
+      return {
+        ok: false,
+        code: "SECTION_CONFLICT",
+        stale: false,
+        blocking_conflicts: [
+          { code: "delivery_group_conflict", message_ar: "لا يوجد مرشح يحقق قيود المجموعة." },
+        ],
+        warnings: [],
+      };
     if (st.reject)
       return {
         ok: false,
@@ -195,6 +206,7 @@ function state() {
         blocking_conflicts: [],
         warnings: [],
       };
+
     const i = st.items.find((i) => i.teaching_assignment_id === p.teachingAssignmentId);
     const created = session(`saved:${st.calls.length}`, p.dayOfWeek, p.startTime, p.endTime, {
       room_id: p.roomId,
