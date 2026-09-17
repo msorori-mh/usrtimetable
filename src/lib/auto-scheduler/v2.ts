@@ -475,11 +475,29 @@ export async function runV2AutoSchedule(params: {
     existingByAssignment.set(key, list);
   }
   const instructorDays = new Map<string, Set<number>>();
+  const instructorWeeklyHours = new Map<string, number>();
   for (const row of sessionRows) {
     const days = instructorDays.get(row.instructor_id) ?? new Set<number>();
     days.add(row.day_of_week);
     instructorDays.set(row.instructor_id, days);
+    instructorWeeklyHours.set(
+      row.instructor_id,
+      (instructorWeeklyHours.get(row.instructor_id) ?? 0) +
+        (minutes(row.end_time) - minutes(row.start_time)) / 60,
+    );
   }
+  for (const item of workItems) {
+    if (item.assigned_component_hours > 0) {
+      instructorWeeklyHours.set(
+        item.instructor_id,
+        (instructorWeeklyHours.get(item.instructor_id) ?? 0) + item.assigned_component_hours,
+      );
+    }
+  }
+  const instructorTargetDays = (instructorId: string) => {
+    const hours = instructorWeeklyHours.get(instructorId) ?? 0;
+    return hours <= 6 ? 1 : hours <= 10 ? 2 : hours <= 16 ? 3 : 4;
+  };
   const occupied: OccupiedInterval[] = sessionRows.map((row) => ({
     day: row.day_of_week,
     start: row.start_time,
@@ -837,7 +855,9 @@ export async function runV2AutoSchedule(params: {
           usedDays,
         }).sort((a, b) => {
           const days = instructorDays.get(item.instructor_id) ?? new Set<number>();
-          return Number(!days.has(a.session.day_of_week)) - Number(!days.has(b.session.day_of_week));
+          const target = instructorTargetDays(item.instructor_id);
+          const score = (day: number) => (days.has(day) ? 0 : days.size >= target ? 100 : 10);
+          return score(a.session.day_of_week) - score(b.session.day_of_week);
         });
 
         candidateSearch: for (const ranked of rankedCandidates) {
