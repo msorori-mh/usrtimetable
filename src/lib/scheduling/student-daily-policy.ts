@@ -22,7 +22,6 @@
 import { isPracticalComponent } from "./room-type-policy.ts";
 
 export const STUDENT_DAILY_TOTAL_HOURS_DEFAULT = 8;
-/** UI defaults only — the resolver falls back to the total cap when unset. */
 export const STUDENT_DAILY_THEORY_HOURS_DEFAULT = 6;
 export const STUDENT_DAILY_PRACTICAL_HOURS_DEFAULT = 8;
 export const INSTRUCTOR_DAILY_HOURS_DEFAULT = 8;
@@ -48,17 +47,21 @@ const positiveHours = (value: unknown, fallback: number): number => {
 export function studentDailyPolicy(settings: StudentDailyHoursSettings = {}): StudentDailyPolicy {
   const totalMinutes =
     positiveHours(settings.max_daily_hours_per_section, STUDENT_DAILY_TOTAL_HOURS_DEFAULT) * 60;
-  // The subset caps are configuration, never a hidden constant: when a college has
-  // not configured them, the total cap is the only student daily limit.
   return {
     totalMinutes,
     theoryMinutes: Math.min(
       totalMinutes,
-      positiveHours(settings.max_daily_theory_hours_per_section, totalMinutes / 60) * 60,
+      positiveHours(
+        settings.max_daily_theory_hours_per_section,
+        STUDENT_DAILY_THEORY_HOURS_DEFAULT,
+      ) * 60,
     ),
     practicalMinutes: Math.min(
       totalMinutes,
-      positiveHours(settings.max_daily_practical_hours_per_section, totalMinutes / 60) * 60,
+      positiveHours(
+        settings.max_daily_practical_hours_per_section,
+        STUDENT_DAILY_PRACTICAL_HOURS_DEFAULT,
+      ) * 60,
     ),
   };
 }
