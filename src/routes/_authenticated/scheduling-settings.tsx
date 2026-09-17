@@ -34,7 +34,9 @@ interface S {
   week_start_day: number;
   working_days: number[];
   day_start_time: string;
+  standard_day_end_time: string;
   day_end_time: string;
+  extended_day_policy_enabled: boolean;
   slot_minutes: number;
   min_session_hours: number;
   max_session_hours: number;
@@ -53,7 +55,9 @@ const DEFAULTS: S = {
   week_start_day: 6,
   working_days: [6, 0, 1, 2, 3, 4],
   day_start_time: "08:00",
-  day_end_time: "14:00",
+  standard_day_end_time: "14:00",
+  day_end_time: "16:00",
+  extended_day_policy_enabled: true,
   slot_minutes: 60,
   min_session_hours: 1,
   max_session_hours: 3,
@@ -67,6 +71,58 @@ const DEFAULTS: S = {
   allow_back_to_back: true,
   notes: "",
 };
+
+function validateSettings(form: S) {
+  if (form.working_days.length === 0) return "اختر يوم عمل واحدًا على الأقل";
+  if (
+    !form.day_start_time ||
+    !form.standard_day_end_time ||
+    !form.day_end_time ||
+    form.day_start_time >= form.standard_day_end_time ||
+    form.standard_day_end_time > form.day_end_time
+  ) {
+    return "يجب أن تكون بداية اليوم قبل النهاية القياسية، وألا تتجاوز النهاية القياسية نهاية اليوم القصوى";
+  }
+  if (!Number.isFinite(form.slot_minutes) || form.slot_minutes <= 0)
+    return "حجم الفترة يجب أن يكون أكبر من صفر";
+  if (
+    !Number.isFinite(form.min_session_hours) ||
+    !Number.isFinite(form.max_session_hours) ||
+    form.min_session_hours <= 0 ||
+    form.max_session_hours <= 0 ||
+    form.min_session_hours > form.max_session_hours
+  ) {
+    return "تحقق من الحدين الأدنى والأقصى لمدة المحاضرة";
+  }
+  if (!Number.isFinite(form.max_daily_hours_per_instructor) || form.max_daily_hours_per_instructor <= 0)
+    return "سقف ساعات المحاضر اليومي يجب أن يكون أكبر من صفر";
+  if (!Number.isFinite(form.max_daily_hours_per_section) || form.max_daily_hours_per_section <= 0)
+    return "سقف الساعات اليومي للمجموعة التشغيلية يجب أن يكون أكبر من صفر";
+  if (
+    !Number.isFinite(form.max_daily_theory_hours_per_section) ||
+    form.max_daily_theory_hours_per_section <= 0 ||
+    form.max_daily_theory_hours_per_section > form.max_daily_hours_per_section
+  ) {
+    return "سقف الساعات النظرية يجب أن يكون أكبر من صفر وألا يتجاوز السقف اليومي الإجمالي";
+  }
+  if (
+    !Number.isFinite(form.max_daily_practical_hours_per_section) ||
+    form.max_daily_practical_hours_per_section <= 0 ||
+    form.max_daily_practical_hours_per_section > form.max_daily_hours_per_section
+  ) {
+    return "سقف الساعات العملية يجب أن يكون أكبر من صفر وألا يتجاوز السقف اليومي الإجمالي";
+  }
+  if (
+    !Number.isInteger(form.max_extended_days_per_partition) ||
+    form.max_extended_days_per_partition < 0 ||
+    form.max_extended_days_per_partition > 7
+  ) {
+    return "أقصى أيام التمديد لكل Partition يجب أن يكون عددًا صحيحًا بين 0 و7";
+  }
+  if (!Number.isFinite(form.break_between_sessions_min) || form.break_between_sessions_min < 0)
+    return "الفاصل بين المحاضرات لا يمكن أن يكون سالبًا";
+  return null;
+}
 
 function SettingsPage() {
   const { active } = useActiveCollege();
@@ -102,6 +158,8 @@ function SettingsPage() {
   const save = useMutation({
     mutationFn: async () => {
       if (!active) throw new Error("اختر كلّية");
+      const validationError = validateSettings(form);
+      if (validationError) throw new Error(validationError);
       const payload = { ...form, college_id: active.id };
       if (data?.id) {
         const { error } = await supabase
@@ -182,7 +240,7 @@ function SettingsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <div>
               <Label>بداية اليوم</Label>
               <Input
@@ -193,7 +251,16 @@ function SettingsPage() {
               />
             </div>
             <div>
-              <Label>نهاية اليوم</Label>
+              <Label>نهاية اليوم القياسية</Label>
+              <Input
+                type="time"
+                value={form.standard_day_end_time}
+                onChange={(e) => setForm({ ...form, standard_day_end_time: e.target.value })}
+                disabled={!canManage}
+              />
+            </div>
+            <div>
+              <Label>نهاية اليوم القصوى</Label>
               <Input
                 type="time"
                 value={form.day_end_time}
@@ -203,7 +270,22 @@ function SettingsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <label className="flex items-start gap-2 rounded-md border p-3 text-sm">
+            <Checkbox
+              className="mt-0.5"
+              checked={form.extended_day_policy_enabled}
+              onCheckedChange={(v) => setForm({ ...form, extended_day_policy_enabled: !!v })}
+              disabled={!canManage}
+            />
+            <span>
+              <span className="block font-medium">السماح بالتمديد بعد نهاية اليوم القياسية</span>
+              <span className="block text-xs text-muted-foreground">
+                عند التفعيل يمكن الجدولة حتى نهاية اليوم القصوى، ضمن حد أيام التمديد لكل مجموعة تشغيلية (Partition).
+              </span>
+            </span>
+          </label>
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <div>
               <Label>حجم الفترة (دقائق)</Label>
               <Input
@@ -235,11 +317,12 @@ function SettingsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <div>
               <Label>سقف ساعات المحاضر/يوم</Label>
               <Input
                 type="number"
+                min={1}
                 value={form.max_daily_hours_per_instructor}
                 onChange={(e) =>
                   setForm({ ...form, max_daily_hours_per_instructor: Number(e.target.value) })
@@ -248,9 +331,10 @@ function SettingsPage() {
               />
             </div>
             <div>
-              <Label>سقف ساعات المجموعة/يوم</Label>
+              <Label>سقف ساعات المجموعة التشغيلية (Partition)/يوم</Label>
               <Input
                 type="number"
+                min={1}
                 value={form.max_daily_hours_per_section}
                 onChange={(e) =>
                   setForm({ ...form, max_daily_hours_per_section: Number(e.target.value) })
@@ -259,9 +343,10 @@ function SettingsPage() {
               />
             </div>
             <div>
-              <Label>سقف الساعات النظرية للمجموعة/يوم</Label>
+              <Label>سقف الساعات النظرية للمجموعة التشغيلية/يوم</Label>
               <Input
                 type="number"
+                min={1}
                 value={form.max_daily_theory_hours_per_section}
                 onChange={(e) =>
                   setForm({ ...form, max_daily_theory_hours_per_section: Number(e.target.value) })
@@ -270,9 +355,10 @@ function SettingsPage() {
               />
             </div>
             <div>
-              <Label>سقف الساعات العملية للمجموعة/يوم</Label>
+              <Label>سقف الساعات العملية للمجموعة التشغيلية/يوم</Label>
               <Input
                 type="number"
+                min={1}
                 value={form.max_daily_practical_hours_per_section}
                 onChange={(e) =>
                   setForm({
@@ -284,9 +370,12 @@ function SettingsPage() {
               />
             </div>
             <div>
-              <Label>أقصى أيام تمديد للشعبة/أسبوع</Label>
+              <Label>أقصى أيام التمديد للمجموعة التشغيلية (Partition)/أسبوع</Label>
               <Input
                 type="number"
+                min={0}
+                max={7}
+                step={1}
                 value={form.max_extended_days_per_partition}
                 onChange={(e) =>
                   setForm({ ...form, max_extended_days_per_partition: Number(e.target.value) })
@@ -298,6 +387,7 @@ function SettingsPage() {
               <Label>الفاصل بين المحاضرات (دقائق)</Label>
               <Input
                 type="number"
+                min={0}
                 value={form.break_between_sessions_min}
                 onChange={(e) =>
                   setForm({ ...form, break_between_sessions_min: Number(e.target.value) })
