@@ -43,7 +43,9 @@ export function matchExistingStructureRow<T extends DepartmentLookupRow | Progra
   name: unknown,
   rows: T[],
 ): T | null {
-  const normalizedCode = String(code ?? "").trim().toLowerCase();
+  const normalizedCode = String(code ?? "")
+    .trim()
+    .toLowerCase();
   if (normalizedCode) {
     const byCode = rows.filter((row) => row.code.trim().toLowerCase() === normalizedCode);
     if (byCode.length === 1) return byCode[0];

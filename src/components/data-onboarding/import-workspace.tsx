@@ -474,7 +474,10 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
             </div>
           )}
           {programsBlocked && (
-            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm" role="alert">
+            <div
+              className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm"
+              role="alert"
+            >
               لا توجد أقسام في هذه الكلية. استورد الأقسام الأكاديمية أو أضفها يدويًا قبل البرامج.
             </div>
           )}
@@ -558,7 +561,10 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
             />
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <Stat label="صفوف جديدة" value={preview.valid.filter((r) => !r.values._exists).length} />
+            <Stat
+              label="صفوف جديدة"
+              value={preview.valid.filter((r) => !r.values._exists).length}
+            />
             <Stat label="ستُحدّث" value={preview.valid.filter((r) => r.values._exists).length} />
             <Stat label="دون تغيير" value={preview.invalid.length} />
           </div>

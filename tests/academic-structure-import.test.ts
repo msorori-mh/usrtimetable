@@ -16,12 +16,14 @@ const departments = [
 test("academic structure templates are active and use the requested Arabic headers", () => {
   assert.ok(ACTIVE_NEW_FLOW_ENTITIES.includes("departments"));
   assert.ok(ACTIVE_NEW_FLOW_ENTITIES.includes("academic_programs"));
-  assert.deepEqual(TEMPLATES.departments.columns.map((c) => c.header), [
-    "الرمز", "الاسم", "رئيس القسم", "نشط", "الترتيب",
-  ]);
-  assert.deepEqual(TEMPLATES.academic_programs.columns.map((c) => c.header), [
-    "الرمز", "الاسم", "القسم", "نوع الدرجة", "المدة بالسنوات", "نشط", "القبول مفتوح", "الوصف",
-  ]);
+  assert.deepEqual(
+    TEMPLATES.departments.columns.map((c) => c.header),
+    ["الرمز", "الاسم", "رئيس القسم", "نشط", "الترتيب"],
+  );
+  assert.deepEqual(
+    TEMPLATES.academic_programs.columns.map((c) => c.header),
+    ["الرمز", "الاسم", "القسم", "نوع الدرجة", "المدة بالسنوات", "نشط", "القبول مفتوح", "الوصف"],
+  );
 });
 
 test("department lookup prefers code and accepts normalized Arabic name", () => {
@@ -33,7 +35,8 @@ test("department lookup prefers code and accepts normalized Arabic name", () => 
 test("department lookup rejects missing and ambiguous names", () => {
   assert.equal(matchDepartment("غير موجود", departments).kind, "missing");
   assert.equal(
-    matchDepartment("علوم الحاسب", [...departments, { id: "d3", code: "CS2", name: "علوم الحاسب" }]).kind,
+    matchDepartment("علوم الحاسب", [...departments, { id: "d3", code: "CS2", name: "علوم الحاسب" }])
+      .kind,
     "ambiguous",
   );
 });

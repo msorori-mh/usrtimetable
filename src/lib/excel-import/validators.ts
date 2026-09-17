@@ -106,10 +106,7 @@ async function loadLookups(entity: ImportEntity, collegeId: string): Promise<Loo
     const departmentRows = await fetchAll("departments", "id, code, name");
     lk.departmentRows = departmentRows as DepartmentLookupRow[];
     if (entity === "academic_programs") {
-      const programRows = await fetchAll(
-        "academic_programs",
-        "id, code, name, department_id",
-      );
+      const programRows = await fetchAll("academic_programs", "id, code, name, department_id");
       lk.programRows = programRows as ProgramLookupRow[];
     }
   }
@@ -1013,11 +1010,7 @@ function runEntityValidation(
   };
 
   if (entity === "departments") {
-    const existing = matchExistingStructureRow(
-      v.code,
-      v.name,
-      lk.departmentRows ?? [],
-    );
+    const existing = matchExistingStructureRow(v.code, v.name, lk.departmentRows ?? []);
     if (existing) {
       v._exists = true;
       v._existing_id = existing.id;
