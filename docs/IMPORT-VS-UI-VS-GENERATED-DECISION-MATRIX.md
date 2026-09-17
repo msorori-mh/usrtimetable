@@ -52,8 +52,8 @@
 | Template ID | Columns? | Validator? | Commit handler? | Practical value | Show to user? | Decision |
 | --- | --- | --- | --- | --- | --- | --- |
 | colleges | Yes | No atomic | No | Doc only | Optional doc | **REMOVE from import UX** / doc badge |
-| departments | Yes | No | No | Doc only | Optional | **REMOVE from import UX** |
-| programs | Yes | No | No | Misleading | No | **REMOVE** |
+| departments | Yes | Yes | atomic (`_import_apply_academic_structure`) | High | Yes | **KEEP** |
+| programs | Yes | Yes | atomic (`_import_apply_academic_structure`) | High | Yes | **KEEP** (entity `academic_programs`) |
 | academic_levels | Yes | No | No | Covered by plan import | No | **REMOVE / MERGE into plan** |
 | academic_terms | Yes | Yes | atomic | High | Yes | **KEEP** |
 | courses | Yes | Partial via plan | No standalone atomic | Medium | Prefer plan | **MERGE into full_study_plan** |
@@ -83,13 +83,13 @@
 ### Keep / Remove / Merge summary
 
 **KEEP (operational import):**
-`academic_terms`, `full_study_plan`, `study_plan_courses` (scoped), `course_programs`, `instructors`, `rooms`, `daily_breaks`, `academic_cohorts`, `elective_slot_courses`, `cohort_elective_selections`, `teaching_assignments_v2`
+`departments`, `academic_programs`, `academic_terms`, `full_study_plan`, `study_plan_courses` (scoped), `course_programs`, `instructors`, `rooms`, `daily_breaks`, `academic_cohorts`, `elective_slot_courses`, `cohort_elective_selections`, `teaching_assignments_v2`
 
 **MERGE:**
 `courses` + `study_plans` + `plan_courses` + `academic_levels` → prefer `full_study_plan` (retain `study_plan_courses` for incremental)
 
 **REMOVE from user-facing catalog (or mark documentation-only):**
-`colleges`, `departments`, `programs`, `instructor_availability`, `room_availability`, `constraint_settings`, `quality_settings`, `existing_schedule_sessions`
+`colleges`, `instructor_availability`, `room_availability`, `constraint_settings`, `quality_settings`, `existing_schedule_sessions`
 
 **LEGACY hide (already largely hidden from `/import`):**
 `sections`, `course_offerings`, `teaching_assignments`, `section_groups`
