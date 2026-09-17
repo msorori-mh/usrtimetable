@@ -19,7 +19,10 @@
  */
 
 import { isInstructorAvailabilityEnforced } from "@/lib/scheduling/instructor-availability-policy";
-import { isRoomSlotAvailable, type RoomAvailabilityWindow } from "@/lib/auto-scheduler/session-plan";
+import {
+  isRoomSlotAvailable,
+  type RoomAvailabilityWindow,
+} from "@/lib/auto-scheduler/session-plan";
 
 export type FallbackSlot = { day: number; start: string; end: string };
 
@@ -83,7 +86,7 @@ export function isInstructorSlotAvailable(input: {
   instructorId: string;
   requiresExplicitWindow?: boolean;
 }): boolean {
-  if (!isInstructorAvailabilityEnforced(input.enforce as boolean | null | undefined)) return true;
+  if (!isInstructorAvailabilityEnforced(input.enforce)) return true;
   const start = toMinutes(input.slot.start);
   const end = toMinutes(input.slot.end);
   const windows = input.windows.filter(
@@ -150,11 +153,21 @@ export function enumerateAuthoritativeCandidates(input: {
     if (cached !== undefined) return cached;
     let allowed = true;
     if (!input.levelDays.has(day) && input.levelDays.size >= input.maxLevelDays) allowed = false;
-    if (allowed && !input.instructorDays.has(day) && input.instructorDays.size >= input.instructorDayCap)
+    if (
+      allowed &&
+      !input.instructorDays.has(day) &&
+      input.instructorDays.size >= input.instructorDayCap
+    )
       allowed = false;
-    if (allowed && input.instructorDayMinutes(day) + input.durationMinutes > input.maxInstructorDailyMinutes)
+    if (
+      allowed &&
+      input.instructorDayMinutes(day) + input.durationMinutes > input.maxInstructorDailyMinutes
+    )
       allowed = false;
-    if (allowed && input.studentDayMinutes(day) + input.durationMinutes > input.maxStudentDailyMinutes)
+    if (
+      allowed &&
+      input.studentDayMinutes(day) + input.durationMinutes > input.maxStudentDailyMinutes
+    )
       allowed = false;
     dayAllowed.set(day, allowed);
     return allowed;

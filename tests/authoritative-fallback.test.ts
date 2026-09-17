@@ -78,7 +78,13 @@ function snapshot(): Snapshot {
   return {
     sessions: [existing("s-g1-sat", 6, "08:00:00", "10:00:00", { room_id: "lab-1" })],
     cohorts: [
-      { id: COHORT, program_id: "prog-it", level_id: "level4", study_system: "regular", term_id: "t" },
+      {
+        id: COHORT,
+        program_id: "prog-it",
+        level_id: "level4",
+        study_system: "regular",
+        term_id: "t",
+      },
     ],
     groups: [
       { id: G1, cohort_id: COHORT, expected_students: 25 },
@@ -91,9 +97,7 @@ function snapshot(): Snapshot {
       { id: "ta-other", required_room_type: "computer_lab", is_active: true },
     ],
     rooms: [lab("lab-1"), lab("lab-4"), hall("hall-1")],
-    instructors: [
-      { id: INSTRUCTOR, instructor_type_id: "permanent", max_hours_per_day: 6 },
-    ],
+    instructors: [{ id: INSTRUCTOR, instructor_type_id: "permanent", max_hours_per_day: 6 }],
     types: [{ id: "permanent", code: "permanent", is_external: false }],
     availability: DAYS.map((day) => ({
       instructor_id: INSTRUCTOR,
@@ -209,9 +213,7 @@ describe("local prefilter diagnosis", () => {
     // feasible()/rankGenerationCandidates reject it: without partition rows the
     // same-cohort G1 session at that time is treated as a student clash.
     expect(ranked).toHaveLength(0);
-    expect(
-      feasible(s, s.sessions, { ...missing(), room_id: "lab-4" }, missing()),
-    ).toBe(false);
+    expect(feasible(s, s.sessions, { ...missing(), room_id: "lab-4" }, missing())).toBe(false);
     expect(
       isLocallyBlocked(
         target,

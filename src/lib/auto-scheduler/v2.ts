@@ -616,7 +616,6 @@ export async function runV2AutoSchedule(params: {
   let authoritativeFallbackAttempts = 0;
   let authoritativeFallbackPlacedSessions = 0;
 
-
   let versionUpdatedAt = payload.version_updated_at;
   let processedItems = 0;
   // A server-proven missing mandatory availability window is invariant across
@@ -913,7 +912,6 @@ export async function runV2AutoSchedule(params: {
       // authoritative phase never repeats an attempt of the local phases.
       const attemptedPlacements = new Set<string>();
 
-
       // JAWF-FALLBACK-01: the certified attendance-plan slot stays the first and
       // highest-priority option. Only when that exact position is rejected do we
       // try a bounded, day-cap-preserving local fallback for THIS missing session
@@ -1160,8 +1158,7 @@ export async function runV2AutoSchedule(params: {
           roomAvailability,
           instructorId: item.instructor_id,
           instructorAvailability: planningSnapshot.availability,
-          enforceInstructorAvailability:
-            planningSnapshot.settings.enforce_instructor_availability,
+          enforceInstructorAvailability: planningSnapshot.settings.enforce_instructor_availability,
           instructorRequiresExplicitWindow:
             !!instructorType?.is_external || instructorType?.code === "from_other_college",
           levelDays,
