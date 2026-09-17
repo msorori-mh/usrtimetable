@@ -830,13 +830,21 @@ export async function runV2AutoSchedule(params: {
     }
 
     const usedDays = [...plan.usedDays];
+    // The guarded RPC and `feasible()` both enforce
+    // `teaching_assignments.required_room_type`; the plan component's room type
+    // is only a fallback. Resolving it the other way round excluded every legal
+    // computer lab for practical work whose plan row still said lecture_hall.
+    const resolvedRequirement = resolveRoomRequirement({
+      assignmentRequiredRoomType: assignmentRequiredRoomType.get(item.teaching_assignment_id),
+      componentRoomTypeId: component?.required_room_type_id ?? null,
+      planCourseRoomType:
+        item.component_type === "practical"
+          ? planCourse?.required_room_type_for_lab
+          : planCourse?.required_room_type_for_lecture,
+    });
     const roomRequirement: RoomRequirement = {
-      roomTypeId: component?.required_room_type_id ?? null,
-      roomTypeName: component?.required_room_type_id
-        ? null
-        : ((item.component_type === "practical"
-            ? planCourse?.required_room_type_for_lab
-            : planCourse?.required_room_type_for_lecture) ?? null),
+      roomTypeId: resolvedRequirement.roomTypeId,
+      roomTypeName: resolvedRequirement.roomTypeName,
       expectedStudents: item.expected_students,
       componentType: item.component_type,
       roomTypeCodeById,
