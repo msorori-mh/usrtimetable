@@ -664,6 +664,9 @@ function TeachingAssignmentsV2Page() {
                           <td className="px-3 py-2" data-testid="ta-v2-row-study-system">
                             {context.studySystemLabel}
                           </td>
+                          <td className="px-3 py-2" data-testid="ta-v2-row-day">
+                            {assignmentRowDaysLabel(sessionDays?.get(row.delivery_group_id))}
+                          </td>
                           <td className="px-3 py-2">
                             {COMPONENT_LABELS[row.component_type] ?? row.component_type}
                           </td>
