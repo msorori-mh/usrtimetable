@@ -440,7 +440,8 @@ for (const includeExistingWorkItem of [true, false]) {
 test("one infeasible work unit does not stop the remaining work items", async () => {
   const s = state();
   s.snapshot.sessions = [];
-  s.items = [item("a0", "c", "g"), item("a1", "c", "g2"), item("a2", "c", "g3")];
+  s.items = [item("a0", "c", "g"), item("a1", "c", "g"), item("a2", "c", "g")];
+  s.snapshot.settings.max_daily_hours_per_section = 6;
   s.snapshot.assignments = s.items.map((i) => ({
     id: i.teaching_assignment_id,
     required_room_type: "lecture_hall",
