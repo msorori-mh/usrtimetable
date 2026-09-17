@@ -4,6 +4,14 @@ ALTER TABLE public.scheduling_settings
   ADD COLUMN IF NOT EXISTS standard_day_end_time time NOT NULL DEFAULT '14:00',
   ADD COLUMN IF NOT EXISTS max_extended_days_per_partition integer NOT NULL DEFAULT 2;
 
+-- ADD COLUMN IF NOT EXISTS does not repair defaults on schemas where these
+-- columns already exist, so keep the canonical source aligned with migration defaults.
+ALTER TABLE public.scheduling_settings
+  ALTER COLUMN day_end_time SET DEFAULT '16:00',
+  ALTER COLUMN extended_day_policy_enabled SET DEFAULT true,
+  ALTER COLUMN standard_day_end_time SET DEFAULT '14:00',
+  ALTER COLUMN max_extended_days_per_partition SET DEFAULT 2;
+
 CREATE OR REPLACE FUNCTION public.schedule_extended_day_counts(
   p_college uuid, p_version uuid, p_omit uuid DEFAULT NULL, p_extra jsonb DEFAULT NULL
 ) RETURNS TABLE(student_key text, days bigint)
