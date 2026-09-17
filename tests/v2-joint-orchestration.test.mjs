@@ -1,7 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { build } from "esbuild";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { session, snapshot, addCohort } from "./helpers/attendance-fixtures.mjs";
 import { searchAttendance } from "../src/lib/auto-scheduler/attendance-search.ts";
 
