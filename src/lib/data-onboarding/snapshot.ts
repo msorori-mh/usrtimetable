@@ -59,8 +59,8 @@ export async function fetchOnboardingReadinessSnapshot(
     availability,
     electiveSlots,
   ] = await Promise.all([
-    countExact("departments", collegeId),
-    countExact("academic_programs", collegeId),
+    countExact("departments", collegeId, { activeOnly: true }),
+    countExact("academic_programs", collegeId, { activeOnly: true }),
     countExact("academic_terms", collegeId),
     countExact("academic_cohorts", collegeId),
     // DELIVERY-GROUP-COVERAGE-FIX-01: exclude historical (obsolete) groups.
