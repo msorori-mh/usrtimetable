@@ -189,8 +189,8 @@ export function PreparationWorkspace({
             </div>
             {step.id === "academic_structure" && (
               <p className="text-xs text-muted-foreground">
-                تُضاف الأقسام والبرامج من أزرار الإدارة أعلاه. استيراد Excel في هذه الخطوة مخصص
-                للفصول الأكاديمية.
+                ابدأ بالأقسام الأكاديمية، ثم البرامج الأكاديمية، ثم الفصل الأكاديمي. يمكنك تنزيل
+                نموذج كل مرحلة واستيراده أو استخدام أزرار الإدارة اليدوية أعلاه.
               </p>
             )}
             {step.id === "delivery_groups" && (

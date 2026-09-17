@@ -20,7 +20,8 @@
 | Entity | Path | Rationale | UI | Import | Notes |
 | --- | --- | --- | --- | --- | --- |
 | universities / colleges | UI_ONLY | Rare, interactive | Yes | No | Catalog download → hide or doc-only |
-| departments / programs / levels | UI_ONLY | Foundational, few rows | Yes | No | Catalog UI_MANAGED |
+| departments / academic_programs | UI_AND_BULK_IMPORT | Foundational and may be bulk-loaded | Yes | ACTIVE | Same college-scoped unified importer |
+| levels | UI_ONLY | Covered by plan setup | Yes | No | Catalog UI_MANAGED |
 | academic_terms | UI_AND_BULK_IMPORT | Few UI; bulk OK for multi-college | Yes | ACTIVE | Keep |
 | courses | UI_AND_BULK_IMPORT (via plan) | Prefer plan import for founding | Yes | via full_study_plan | Standalone courses catalog download: demote |
 | study_plans + plan_courses + components + elective_slots | UI_AND_BULK_IMPORT | Large founding datasets | Partial UI | full_study_plan / study_plan_courses | Merge guidance |
@@ -50,8 +51,8 @@
 | Template ID | Columns? | Validator? | Commit handler? | Practical value | Show to user? | Decision |
 | --- | --- | --- | --- | --- | --- | --- |
 | colleges | Yes | No atomic | No | Doc only | Optional doc | **REMOVE from import UX** / doc badge |
-| departments | Yes | No | No | Doc only | Optional | **REMOVE from import UX** |
-| programs | Yes | No | No | Misleading | No | **REMOVE** |
+| departments | Yes | Yes | atomic | High | Yes | **KEEP — IMPORT_OR_UI** |
+| programs | Yes | Yes | atomic | High | Yes | **KEEP — IMPORT_OR_UI** |
 | academic_levels | Yes | No | No | Covered by plan import | No | **REMOVE / MERGE into plan** |
 | academic_terms | Yes | Yes | atomic | High | Yes | **KEEP** |
 | courses | Yes | Partial via plan | No standalone atomic | Medium | Prefer plan | **MERGE into full_study_plan** |
@@ -81,13 +82,13 @@
 ### Keep / Remove / Merge summary
 
 **KEEP (operational import):**
-`academic_terms`, `full_study_plan`, `study_plan_courses` (scoped), `course_programs`, `instructors`, `rooms`, `daily_breaks`, `academic_cohorts`, `elective_slot_courses`, `cohort_elective_selections`, `teaching_assignments_v2`
+`departments`, `academic_programs`, `academic_terms`, `full_study_plan`, `study_plan_courses` (scoped), `course_programs`, `instructors`, `rooms`, `daily_breaks`, `academic_cohorts`, `elective_slot_courses`, `cohort_elective_selections`, `teaching_assignments_v2`
 
 **MERGE:**
 `courses` + `study_plans` + `plan_courses` + `academic_levels` → prefer `full_study_plan` (retain `study_plan_courses` for incremental)
 
 **REMOVE from user-facing catalog (or mark documentation-only):**
-`colleges`, `departments`, `programs`, `instructor_availability`, `room_availability`, `constraint_settings`, `quality_settings`, `existing_schedule_sessions`
+`colleges`, `instructor_availability`, `room_availability`, `constraint_settings`, `quality_settings`, `existing_schedule_sessions`
 
 **LEGACY hide (already largely hidden from `/import`):**
 `sections`, `course_offerings`, `teaching_assignments`, `section_groups`

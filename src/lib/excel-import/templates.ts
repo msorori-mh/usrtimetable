@@ -6,6 +6,44 @@ import { EMPLOYMENT_TYPE_IMPORT_VALUES } from "../instructor-metadata";
 import { instructorStatusLabel, parseInstructorSheet } from "./instructor-sheet";
 
 export const TEMPLATES: Record<string, TemplateDef> = {
+  departments: {
+    entity: "departments",
+    label: "الأقسام الأكاديمية",
+    sheetName: "departments",
+    uniqueKey: "code",
+    uniqueKeyLabel: "رمز القسم",
+    commitMode: "table",
+    columns: [
+      { key: "code", header: "الرمز", required: true, example: "CS" },
+      { key: "name", header: "الاسم", required: true, example: "علوم الحاسب" },
+      { key: "head_name", header: "رئيس القسم", example: "د. أحمد محمد" },
+      { key: "is_active", header: "نشط", type: "boolean", example: "true" },
+      { key: "order_index", header: "الترتيب", type: "number", example: "1" },
+    ],
+  },
+  academic_programs: {
+    entity: "academic_programs",
+    label: "البرامج الأكاديمية",
+    sheetName: "academic_programs",
+    uniqueKey: "code",
+    uniqueKeyLabel: "رمز البرنامج",
+    commitMode: "table",
+    columns: [
+      { key: "code", header: "الرمز", required: true, example: "CS" },
+      { key: "name", header: "الاسم", required: true, example: "بكالوريوس علوم الحاسب" },
+      { key: "department", header: "القسم", required: true, example: "CS" },
+      {
+        key: "degree_type",
+        header: "نوع الدرجة",
+        enumValues: ["bachelor", "master", "doctorate", "diploma"],
+        example: "bachelor",
+      },
+      { key: "duration_years", header: "المدة بالسنوات", type: "number", example: "4" },
+      { key: "is_active", header: "نشط", type: "boolean", example: "true" },
+      { key: "admission_status", header: "القبول مفتوح", type: "boolean", example: "true" },
+      { key: "description", header: "الوصف", example: "برنامج بكالوريوس" },
+    ],
+  },
   instructors: {
     entity: "instructors",
     label: "المحاضرون",

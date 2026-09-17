@@ -156,12 +156,12 @@ const CATALOG_DEFINITIONS: TemplateDef[] = [
   },
   {
     id: "departments",
-    name: "الأقسام",
+    name: "الأقسام الأكاديمية",
     group: "foundational",
     groupLabel: GROUPS.foundational,
     purpose: "تعريف الأقسام داخل كل كلية.",
-    classification: "UI_MANAGED_NOT_IMPORTED",
-    atomicImport: false,
+    classification: "ACTIVE_NEW_FLOW",
+    atomicImport: true,
     requiredBeforeScheduling: true,
     importOrder: 2,
     sheetName: "departments",
@@ -177,12 +177,12 @@ const CATALOG_DEFINITIONS: TemplateDef[] = [
   },
   {
     id: "programs",
-    name: "البرامج",
+    name: "البرامج الأكاديمية",
     group: "foundational",
     groupLabel: GROUPS.foundational,
     purpose: "تعريف البرامج الأكاديمية.",
-    classification: "UI_MANAGED_NOT_IMPORTED",
-    atomicImport: false,
+    classification: "ACTIVE_NEW_FLOW",
+    atomicImport: true,
     requiredBeforeScheduling: true,
     importOrder: 3,
     sheetName: "programs",
@@ -1130,7 +1130,9 @@ const CATALOG_DEFINITIONS: TemplateDef[] = [
 ];
 
 export function catalogImportEntity(id: string): string {
-  return id === "plan_courses" ? "study_plan_courses" : id;
+  if (id === "plan_courses") return "study_plan_courses";
+  if (id === "programs") return "academic_programs";
+  return id;
 }
 
 export const CATALOG: TemplateDef[] = CATALOG_DEFINITIONS.map((entry) => {

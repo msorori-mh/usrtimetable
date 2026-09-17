@@ -332,6 +332,41 @@
 | member_section_numbers | أرقام_المجموعات | required | csv | — | trim | — | missing_required / unknown_* | composite | 1,2,3 |  |
 | notes | ملاحظات | optional | text | — | trim | — | invalid_enum / type | composite |  |  |
 
+## departments
+
+- **Label:** الأقسام الأكاديمية
+- **Classification:** IMPORT_OR_UI
+- **Commit:** commit_import_job_atomic
+- **Scope:** الكلية المحددة فقط
+
+| column_name | Arabic label | required/optional | data type |
+|---|---|---|---|
+| code | الرمز | required | text |
+| name | الاسم | required | text |
+| head_name | رئيس القسم | optional | text |
+| is_active | نشط | optional | boolean |
+| order_index | الترتيب | optional | number |
+
+## academic_programs
+
+- **Label:** البرامج الأكاديمية
+- **Classification:** IMPORT_OR_UI
+- **Commit:** commit_import_job_atomic
+- **Dependency:** قسم مطابق داخل الكلية المحددة
+
+| column_name | Arabic label | required/optional | data type |
+|---|---|---|---|
+| code | الرمز | required | text |
+| name | الاسم | required | text |
+| department | القسم | required | text |
+| degree_type | نوع الدرجة | optional | enum |
+| duration_years | المدة بالسنوات | optional | number |
+| is_active | نشط | optional | boolean |
+| admission_status | القبول مفتوح | optional | boolean |
+| description | الوصف | optional | text |
+
+> الحقول غير الموجودة في مخطط قاعدة البيانات الحالي تُقبل في القالب ولا تُحفظ حتى تُضاف رسميًا للمخطط.
+
 ## Generated / UI-managed (لا قوالب تشغيلية جديدة)
 
 | entity | classification | notes |
@@ -342,4 +377,4 @@
 | instructor_availability | UI_MANAGED_NOT_IMPORTED | /availability |
 | time_slot_templates | UI_MANAGED_NOT_IMPORTED | UI time templates |
 | faculty_workload_policies | UI_MANAGED_NOT_IMPORTED | no ImportEntity |
-| colleges / departments / programs | UI_MANAGED_NOT_IMPORTED | foundation UI |
+| colleges | UI_MANAGED_NOT_IMPORTED | foundation UI |

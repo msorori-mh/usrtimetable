@@ -22,6 +22,13 @@ import {
   validatePlanRowRoomTypes,
   type PlanComponentRoomTypeField,
 } from "@/lib/academic-delivery/plan-component-room-types";
+import {
+  matchDepartment,
+  matchExistingStructureRow,
+  normalizeStructureName,
+  type DepartmentLookupRow,
+  type ProgramLookupRow,
+} from "./academic-structure-matching";
 
 const TIME_RE = /^([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
 
@@ -34,6 +41,8 @@ function toBool(v: unknown): boolean | null {
 }
 
 interface Lookups {
+  departmentRows?: DepartmentLookupRow[];
+  programRows?: ProgramLookupRow[];
   instructorRecords?: ExistingInstructor[];
   instructorDepartments?: { id: string; name: string }[];
   instructorTypes?: Map<string, string>;
@@ -92,6 +101,15 @@ async function loadLookups(entity: ImportEntity, collegeId: string): Promise<Loo
       .eq("college_id", collegeId);
     return (data ?? []) as any[];
   };
+
+  if (entity === "departments" || entity === "academic_programs") {
+    const departmentRows = await fetchAll("departments", "id, code, name");
+    lk.departmentRows = departmentRows as DepartmentLookupRow[];
+    if (entity === "academic_programs") {
+      const programRows = await fetchAll("academic_programs", "id, code, name, department_id");
+      lk.programRows = programRows as ProgramLookupRow[];
+    }
+  }
 
   if (entity === "instructors") {
     const fetchInstructorCatalog = async (
@@ -644,7 +662,22 @@ export async function validate(
         } else {
           seenInFile.set(k, row.rowNumber);
         }
-        row.values._exists = existingKeys.has(k);
+        row.values._exists = row.values._exists === true || existingKeys.has(k);
+      }
+      if (entity === "departments" || entity === "academic_programs") {
+        const nameKey = normalizeStructureName(row.values.name);
+        if (nameKey) {
+          const fileNameKey = `name:${nameKey}`;
+          if (seenInFile.has(fileNameKey)) {
+            rowErrors.push({
+              rowNumber: row.rowNumber,
+              columnName: "الاسم",
+              errorCode: "duplicate_name_in_file",
+              message: `اسم مكرر في الملف: ${row.values.name} — مكرر مع الصف ${seenInFile.get(fileNameKey)}`,
+              rawValue: String(row.values.name),
+            });
+          } else seenInFile.set(fileNameKey, row.rowNumber);
+        }
       }
     }
 
@@ -975,6 +1008,68 @@ function runEntityValidation(
         rawValue: raw == null ? undefined : String(raw),
       });
   };
+
+  if (entity === "departments") {
+    const existing = matchExistingStructureRow(v.code, v.name, lk.departmentRows ?? []);
+    if (existing) {
+      v._exists = true;
+      v._existing_id = existing.id;
+    }
+  }
+
+  if (entity === "academic_programs") {
+    const department = matchDepartment(v.department, lk.departmentRows ?? []);
+    if (department.kind === "missing") {
+      need(
+        false,
+        "القسم",
+        "unknown_department",
+        `القسم ${String(v.department ?? "")} غير موجود ضمن الكلية المحددة`,
+        v.department,
+      );
+    } else if (department.kind === "ambiguous") {
+      need(
+        false,
+        "القسم",
+        "ambiguous_department",
+        "يوجد أكثر من قسم مطابق للاسم؛ استخدم الرمز",
+        v.department,
+      );
+    } else if (department.kind === "matched") {
+      v._department_id = department.row.id;
+    }
+
+    const duration = v.duration_years;
+    if (
+      duration !== null &&
+      duration !== undefined &&
+      duration !== "" &&
+      (!Number.isInteger(duration) || Number(duration) < 1)
+    ) {
+      need(
+        false,
+        "المدة بالسنوات",
+        "invalid_duration_years",
+        "المدة بالسنوات يجب أن تكون عددًا صحيحًا موجبًا",
+        duration,
+      );
+    }
+
+    const existing = matchExistingStructureRow(v.code, v.name, lk.programRows ?? []);
+    if (existing) {
+      v._exists = true;
+      v._existing_id = existing.id;
+      if (v._department_id && existing.department_id !== v._department_id) {
+        need(
+          false,
+          "القسم",
+          "program_department_change_forbidden",
+          "البرنامج موجود في قسم آخر؛ لن يُغيّر القسم بصمت",
+          v.department,
+        );
+      }
+    }
+  }
 
   if (entity === "study_plan_courses" || entity === "full_study_plan") {
     const dCode = v.department_code as string | null;
@@ -1383,6 +1478,25 @@ export function buildDbPayload(
 ): Record<string, unknown> {
   const v = row.values;
   const base: Record<string, unknown> = { college_id: collegeId };
+  if (entity === "departments") {
+    return {
+      ...base,
+      code: v.code,
+      name: v.name,
+      _existing_id: v._existing_id ?? null,
+    };
+  }
+  if (entity === "academic_programs") {
+    return {
+      ...base,
+      code: v.code,
+      name: v.name,
+      department_id: v._department_id,
+      degree_type: v.degree_type ?? "bachelor",
+      duration_years: v.duration_years ?? 4,
+      _existing_id: v._existing_id ?? null,
+    };
+  }
   if (entity === "instructors") {
     return {
       ...base,
