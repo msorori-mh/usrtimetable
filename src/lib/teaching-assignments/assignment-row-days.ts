@@ -1,5 +1,9 @@
 import { DAY_NAMES_AR } from "@/lib/reports/formatters";
 import type { ScheduleVersionOption } from "@/lib/reports/types";
+import {
+  instructorNameMatches,
+  normalizeArabicName,
+} from "@/lib/teaching-assignments/instructor-name-search";
 
 /** Display order: Saturday first, then Sunday → Friday (Arabic academic week). */
 const WEEK_ORDER = [6, 0, 1, 2, 3, 4, 5];

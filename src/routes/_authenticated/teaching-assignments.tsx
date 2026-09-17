@@ -604,6 +604,14 @@ function TeachingAssignmentsV2Page() {
                   {instructorHoursSummary.totalHours.toLocaleString("ar-YE")} ساعة
                 </p>
               </div>
+              <div className="text-left" data-testid="ta-v2-instructor-attendance-days">
+                <p className="text-xs text-muted-foreground">عدد أيام الحضور</p>
+                <p className="text-2xl font-bold tabular-nums text-primary">
+                  {attendanceDaysSummary.perInstructor.length > 1
+                    ? `${attendanceDaysSummary.totalDays.toLocaleString("ar-YE")} يوم (${attendanceDaysSummary.perInstructor.length} محاضرين)`
+                    : `أيام الحضور: ${attendanceDaysSummary.totalDays.toLocaleString("ar-YE")} أيام`}
+                </p>
+              </div>
             </Card>
           )}
 
