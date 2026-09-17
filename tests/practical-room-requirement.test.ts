@@ -15,6 +15,10 @@ import {
   roomCandidateRank,
   type RoomLite,
 } from "@/lib/auto-scheduler/session-plan";
+import {
+  generationDomainSize,
+  rankGenerationCandidates,
+} from "@/lib/auto-scheduler/generation-ranking";
 import { feasible, type Session, type Snapshot } from "@/lib/auto-scheduler/compact";
 
 const roomTypeCodeById = {
