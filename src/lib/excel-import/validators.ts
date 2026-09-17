@@ -1042,7 +1042,7 @@ function runEntityValidation(
         "يوجد أكثر من قسم مطابق للاسم؛ استخدم الرمز",
         v.department,
       );
-    } else {
+    } else if (department.kind === "matched") {
       v._department_id = department.row.id;
     }
 
