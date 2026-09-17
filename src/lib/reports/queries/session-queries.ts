@@ -419,7 +419,6 @@ export async function fetchCohortDeliveryGroupLabels(
   };
 }
 
-
 /**
  * Cross-college instructor schedule for institutional read-only reporting.
  * Callers must provide the published/specific version per college; versions are
