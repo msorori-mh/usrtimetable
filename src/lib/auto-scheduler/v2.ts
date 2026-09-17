@@ -909,6 +909,10 @@ export async function runV2AutoSchedule(params: {
       );
       let placedItem = false;
       let lastReason = "لا يوجد مرشح يحقق قيود مجموعة التقديم والدفعة.";
+      // Every day/start/end/room actually sent to the guarded RPC, so the
+      // authoritative phase never repeats an attempt of the local phases.
+      const attemptedPlacements = new Set<string>();
+
 
       // JAWF-FALLBACK-01: the certified attendance-plan slot stays the first and
       // highest-priority option. Only when that exact position is rejected do we
