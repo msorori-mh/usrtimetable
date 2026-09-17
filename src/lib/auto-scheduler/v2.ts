@@ -16,7 +16,10 @@ import {
 import type { AutoRunMode, AutoRunResult, UnplacedItem } from "@/lib/auto-scheduler/greedy";
 import { loadCompactSnapshot } from "@/lib/auto-scheduler/compact-service";
 import { measure, compactSlots, minutes, type Session } from "@/lib/auto-scheduler/compact";
-import { instructorsOverAttendanceDayCap } from "@/lib/auto-scheduler/attendance-objective";
+import {
+  attendanceDayCapRegressions,
+  instructorAttendanceDayCap,
+} from "@/lib/auto-scheduler/attendance-objective";
 import {
   rankGenerationCandidates,
   generationDomainSize,
@@ -495,10 +498,31 @@ export async function runV2AutoSchedule(params: {
       );
     }
   }
+  const explicitInstructorTargets = new Map(
+    planningSnapshot.instructors.map((instructor) => [
+      instructor.id,
+      instructor.target_attendance_days_per_week ?? null,
+    ]),
+  );
+  const validExplicitTarget = (instructorId: string) => {
+    const target = explicitInstructorTargets.get(instructorId) ?? null;
+    return target != null && Number.isInteger(target) && target >= 1 && target <= 6 ? target : null;
+  };
+  /**
+   * Effective attendance-day target: an explicit `target_attendance_days_per_week`
+   * (department heads at five days) wins over the hours-based compression target,
+   * yet never overrides student rules, instructor_availability, conflicts,
+   * room/capacity or daily-hour constraints.
+   */
   const instructorTargetDays = (instructorId: string) => {
+    const explicit = validExplicitTarget(instructorId);
+    if (explicit != null) return explicit;
     const hours = instructorWeeklyHours.get(instructorId) ?? 0;
     return hours <= 6 ? 1 : hours <= 10 ? 2 : hours <= 16 ? 3 : 4;
   };
+  /** Hard per-instructor day ceiling: generic cap, raised only by an explicit target. */
+  const instructorDayCap = (instructorId: string) =>
+    instructorAttendanceDayCap(validExplicitTarget(instructorId));
   const occupied: OccupiedInterval[] = sessionRows.map((row) => ({
     day: row.day_of_week,
     start: row.start_time,
@@ -886,8 +910,9 @@ export async function runV2AutoSchedule(params: {
             continue;
           }
           const teacherDays = scheduledInstructorDays.get(item.instructor_id) ?? new Set<number>();
-          if (!teacherDays.has(slot.day) && teacherDays.size >= 4) {
-            lastReason = "تجاوز الحد الصلب لأيام حضور المحاضر (4 أيام).";
+          const dayCap = instructorDayCap(item.instructor_id);
+          if (!teacherDays.has(slot.day) && teacherDays.size >= dayCap) {
+            lastReason = `تجاوز الحد الصلب لأيام حضور المحاضر (${dayCap} أيام).`;
             continue;
           }
           const availabilityKey = `${item.instructor_id}|${slot.day}`;
@@ -1040,14 +1065,16 @@ export async function runV2AutoSchedule(params: {
   // Authoritative readback covers the whole active scope, including already scheduled work.
   const finalSnapshot = await loadCompactSnapshot(params.collegeId, params.scheduleVersionId);
   const attendance = measure(finalSnapshot);
-  // Independent fail-closed gate: no generated/edited plan may be persisted
-  // when any instructor exceeds their effective weekly attendance-day cap: the
-  // generic cap of four days, or their explicit target when one is recorded.
-  const instructorsOverDayCap = instructorsOverAttendanceDayCap(
+  // Independent fail-closed gate: in fill_missing the run may not introduce or
+  // increase an attendance-day cap violation (generic cap of four days, or the
+  // instructor's explicit target when recorded). Historical violations already
+  // present in the planning snapshot and preserved unchanged do not fail the run.
+  const dayCapRegressions = attendanceDayCapRegressions(
+    planningSnapshot.sessions,
     finalSnapshot.sessions,
     finalSnapshot.instructors,
   );
-  if (instructorsOverDayCap.length > 0) {
+  if (dayCapRegressions.length > 0) {
     throw new Error("INSTRUCTOR_ATTENDANCE_DAYS_EXCEEDED");
   }
 

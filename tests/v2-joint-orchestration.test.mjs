@@ -1,7 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { build } from "esbuild";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { session, snapshot, addCohort } from "./helpers/attendance-fixtures.mjs";
 import { searchAttendance } from "../src/lib/auto-scheduler/attendance-search.ts";
 
@@ -48,11 +51,14 @@ async function scheduler(state) {
     return { attendanceSearch: await searchAttendance(snapshot, options) };
   };
   globalThis.__jointSchedulerTest = state;
-  return (
-    await import(
-      `data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text + `\n// test ${serial++}`).toString("base64")}`
-    )
-  ).runV2AutoSchedule;
+  // A fresh module per test: written to a temp file because the bundle is larger
+  // than a data: URL specifier may be.
+  const file = join(
+    mkdtempSync(join(tmpdir(), "v2-joint-")),
+    `bundle-${serial++}.mjs`,
+  );
+  writeFileSync(file, bundled.outputFiles[0].text);
+  return (await import(pathToFileURL(file).href)).runV2AutoSchedule;
 }
 function item(id, cohort, group, extra = {}) {
   return {

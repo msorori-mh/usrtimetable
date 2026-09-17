@@ -322,31 +322,35 @@ export function better(a: Metrics, b: Metrics) {
   if (a.excessDaysOverFive > b.excessDaysOverFive) return false;
   if (a.excessDaysOverThree !== b.excessDaysOverThree)
     return a.excessDaysOverThree < b.excessDaysOverThree;
-  const protectedMetrics: Array<
+  // Student-side metrics stay protected: nothing below may make them worse.
+  const protectedStudentMetrics: Array<
     keyof Pick<
       Metrics,
-      | "studentGapMinutes"
+      "studentGapMinutes" | "worstStudentGapMinutes" | "shortStudentDays" | "studentAttendanceDays"
+    >
+  > = ["studentGapMinutes", "worstStudentGapMinutes", "shortStudentDays", "studentAttendanceDays"];
+  if (protectedStudentMetrics.some((key) => a[key] > b[key])) return false;
+  // Explicit per-instructor day targets (e.g. department heads at five days) rank
+  // above generic instructor day compression, but below the student rules and the
+  // hard constraints checked in feasible(). Reaching the explicit target may
+  // therefore increase instructorAttendanceDays / shortInstructorDays.
+  if (a.instructorTargetDayDeviation !== b.instructorTargetDayDeviation)
+    return a.instructorTargetDayDeviation < b.instructorTargetDayDeviation;
+  const protectedInstructorMetrics: Array<
+    keyof Pick<
+      Metrics,
       | "instructorGapMinutes"
-      | "worstStudentGapMinutes"
       | "worstInstructorGapMinutes"
-      | "shortStudentDays"
       | "shortInstructorDays"
-      | "studentAttendanceDays"
       | "instructorAttendanceDays"
-      | "instructorTargetDayDeviation"
     >
   > = [
-    "studentGapMinutes",
     "instructorGapMinutes",
-    "worstStudentGapMinutes",
     "worstInstructorGapMinutes",
-    "shortStudentDays",
     "shortInstructorDays",
-    "studentAttendanceDays",
     "instructorAttendanceDays",
-    "instructorTargetDayDeviation",
   ];
-  if (protectedMetrics.some((key) => a[key] > b[key])) return false;
+  if (protectedInstructorMetrics.some((key) => a[key] > b[key])) return false;
   return compareAttendance(a, b) < 0;
 }
 export function feasible(
