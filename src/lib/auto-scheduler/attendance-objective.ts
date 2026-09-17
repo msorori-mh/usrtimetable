@@ -195,25 +195,49 @@ export function compareAttendance(a: AttendanceMetrics, b: AttendanceMetrics): n
  */
 export const INSTRUCTOR_GENERIC_ATTENDANCE_DAY_CAP = 4;
 
+/** Per-instructor attendance-day limits as stored on `instructors`. */
+export interface InstructorAttendanceLimits {
+  id: string;
+  /** Explicit weekly target (drives ranking and the deviation objective). */
+  target_attendance_days_per_week?: number | null;
+  /** Hard-ceiling override only: allows extending to N days without targeting N. */
+  max_attendance_days_per_week?: number | null;
+}
+
 export function instructorAttendanceDayCap(
   target: number | null | undefined,
   genericCap: number = INSTRUCTOR_GENERIC_ATTENDANCE_DAY_CAP,
+  maxOverride: number | null | undefined = null,
 ): number {
-  if (target == null) return genericCap;
-  if (!Number.isInteger(target) || target < 1 || target > 6) {
-    throw new Error("INVALID_INSTRUCTOR_ATTENDANCE_TARGET");
-  }
-  return Math.max(genericCap, target);
+  const validate = (value: number) => {
+    if (!Number.isInteger(value) || value < 1 || value > 6) {
+      throw new Error("INVALID_INSTRUCTOR_ATTENDANCE_TARGET");
+    }
+    return value;
+  };
+  // Effective hard cap = max(generic, explicit target, explicit max override).
+  // The max override raises the ceiling only; it is never a target and never
+  // enters `instructorTargetDayDeviation` or candidate ranking.
+  let cap = genericCap;
+  if (target != null) cap = Math.max(cap, validate(target));
+  if (maxOverride != null) cap = Math.max(cap, validate(maxOverride));
+  return cap;
 }
 
 /** Instructors scheduled on more distinct weekdays than their effective cap allows. */
 export function instructorsOverAttendanceDayCap(
   sessions: { instructor_id: string; day_of_week: number }[],
-  instructors: { id: string; target_attendance_days_per_week?: number | null }[],
+  instructors: InstructorAttendanceLimits[],
   genericCap: number = INSTRUCTOR_GENERIC_ATTENDANCE_DAY_CAP,
 ): { instructorId: string; days: number; cap: number }[] {
-  const targets = new Map(
-    instructors.map((i) => [i.id, i.target_attendance_days_per_week ?? null]),
+  const limits = new Map(
+    instructors.map((i) => [
+      i.id,
+      {
+        target: i.target_attendance_days_per_week ?? null,
+        max: i.max_attendance_days_per_week ?? null,
+      },
+    ]),
   );
   const byInstructor = new Map<string, Set<number>>();
   for (const session of sessions) {
@@ -223,7 +247,8 @@ export function instructorsOverAttendanceDayCap(
   }
   const over: { instructorId: string; days: number; cap: number }[] = [];
   for (const [instructorId, days] of byInstructor) {
-    const cap = instructorAttendanceDayCap(targets.get(instructorId) ?? null, genericCap);
+    const limit = limits.get(instructorId);
+    const cap = instructorAttendanceDayCap(limit?.target ?? null, genericCap, limit?.max ?? null);
     if (days.size > cap) over.push({ instructorId, days: days.size, cap });
   }
   return over;
@@ -237,7 +262,7 @@ export function instructorsOverAttendanceDayCap(
 export function attendanceDayCapRegressions(
   baselineSessions: { instructor_id: string; day_of_week: number }[],
   finalSessions: { instructor_id: string; day_of_week: number }[],
-  instructors: { id: string; target_attendance_days_per_week?: number | null }[],
+  instructors: InstructorAttendanceLimits[],
   genericCap: number = INSTRUCTOR_GENERIC_ATTENDANCE_DAY_CAP,
 ): { instructorId: string; days: number; cap: number; baselineDays: number }[] {
   const baseline = new Map(
