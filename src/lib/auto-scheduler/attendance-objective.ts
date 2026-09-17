@@ -148,6 +148,7 @@ export function measureAttendance(
     shortInstructorDays: instructor.shortDays,
     instructorAttendanceDays: instructor.attendance,
     instructorCount: instructor.count,
+    instructorTargetDayDeviation: targetDeviation,
     // Equal influence for the average student and instructor, regardless of cohort size.
     balancedGapMinutes: (student.average + instructor.average) / 2,
     sessions: events.length,
