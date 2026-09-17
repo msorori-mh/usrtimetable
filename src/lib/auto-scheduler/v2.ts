@@ -474,6 +474,12 @@ export async function runV2AutoSchedule(params: {
     });
     existingByAssignment.set(key, list);
   }
+  const instructorDays = new Map<string, Set<number>>();
+  for (const row of sessionRows) {
+    const days = instructorDays.get(row.instructor_id) ?? new Set<number>();
+    days.add(row.day_of_week);
+    instructorDays.set(row.instructor_id, days);
+  }
   const occupied: OccupiedInterval[] = sessionRows.map((row) => ({
     day: row.day_of_week,
     start: row.start_time,
@@ -829,6 +835,9 @@ export async function runV2AutoSchedule(params: {
           slots,
           roomIds: candidateRooms.map((room) => room.id),
           usedDays,
+        }).sort((a, b) => {
+          const days = instructorDays.get(item.instructor_id) ?? new Set<number>();
+          return Number(!days.has(a.session.day_of_week)) - Number(!days.has(b.session.day_of_week));
         });
 
         candidateSearch: for (const ranked of rankedCandidates) {
@@ -850,6 +859,11 @@ export async function runV2AutoSchedule(params: {
           }
           if (!levelDays.has(slot.day) && levelDays.size >= attendancePlan.days!) {
             lastReason = "تجاوز حد أيام الحضور المثبت لهذه الخطة؛ أعد البحث.";
+            continue;
+          }
+          const teacherDays = instructorDays.get(item.instructor_id) ?? new Set<number>();
+          if (!teacherDays.has(slot.day) && teacherDays.size >= 4) {
+            lastReason = "تجاوز الحد الصلب لأيام حضور المحاضر (4 أيام).";
             continue;
           }
           const availabilityKey = `${item.instructor_id}|${slot.day}`;
@@ -915,6 +929,9 @@ export async function runV2AutoSchedule(params: {
                 ...result.session,
               } as Session);
               usedDays.push(slot.day);
+              const assignedTeacherDays = instructorDays.get(item.instructor_id) ?? new Set<number>();
+              assignedTeacherDays.add(slot.day);
+              instructorDays.set(item.instructor_id, assignedTeacherDays);
               occupied.push({
                 day: slot.day,
                 start: slot.start,
