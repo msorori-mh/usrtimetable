@@ -9,7 +9,7 @@
  *
  * Source-only: no database access, no writes.
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { feasible, compactSlots, type Session, type Snapshot } from "@/lib/auto-scheduler/compact";
 import { rankGenerationCandidates } from "@/lib/auto-scheduler/generation-ranking";
 import { isLocallyBlocked, partitionCandidateRoomsByRank } from "@/lib/auto-scheduler/session-plan";
