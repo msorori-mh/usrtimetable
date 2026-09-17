@@ -103,6 +103,8 @@ describe("summarizeInstructorAttendanceDays", () => {
 });
 
 describe("attendance days card wiring", () => {
+  const src = readFileSync("src/routes/_authenticated/teaching-assignments.tsx", "utf8");
+
   it("renders the attendance days element in the instructor summary card", () => {
     expect(src).toContain('data-testid="ta-v2-instructor-attendance-days"');
     expect(src).toContain(">عدد أيام الحضور</p>");
