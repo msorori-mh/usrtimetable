@@ -1,8 +1,8 @@
--- Additive policy, disabled until the college explicitly enables it.
+-- Additive extended-day policy. New colleges default to the current scheduling policy.
 ALTER TABLE public.scheduling_settings
-  ADD COLUMN IF NOT EXISTS extended_day_policy_enabled boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS extended_day_policy_enabled boolean NOT NULL DEFAULT true,
   ADD COLUMN IF NOT EXISTS standard_day_end_time time NOT NULL DEFAULT '14:00',
-  ADD COLUMN IF NOT EXISTS max_extended_days_per_partition integer NOT NULL DEFAULT 1;
+  ADD COLUMN IF NOT EXISTS max_extended_days_per_partition integer NOT NULL DEFAULT 2;
 
 CREATE OR REPLACE FUNCTION public.schedule_extended_day_counts(
   p_college uuid, p_version uuid, p_omit uuid DEFAULT NULL, p_extra jsonb DEFAULT NULL
@@ -87,7 +87,7 @@ DO $install$
 BEGIN
   IF NOT EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid='public.scheduling_settings'::regclass AND conname='extended_day_policy_bounds') THEN
     ALTER TABLE public.scheduling_settings ADD CONSTRAINT extended_day_policy_bounds CHECK (
-      max_extended_days_per_partition BETWEEN 0 AND 1 AND
+      max_extended_days_per_partition BETWEEN 0 AND 7 AND
       (NOT extended_day_policy_enabled OR (day_start_time < standard_day_end_time AND standard_day_end_time <= day_end_time))
     );
   END IF;
