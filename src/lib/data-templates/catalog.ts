@@ -166,11 +166,14 @@ const CATALOG_DEFINITIONS: TemplateDef[] = [
     importOrder: 2,
     sheetName: "departments",
     columns: [
-      { header: "الرمز", required: true, example: "CS" },
+      { header: "الرمز", required: true, example: "CS", description: "رمز القسم داخل الكلية." },
       { header: "الاسم", required: true, example: "علوم الحاسب" },
-      { header: "رئيس_القسم", example: "د. محمد علي" },
-      { header: "نشط", example: "true", allowed: "true | false" },
-      { header: "الترتيب", example: "1" },
+      {
+        header: "نظام_الدراسة",
+        example: "regular",
+        allowed: "regular | parallel | both",
+        description: "نظام دراسة القسم. الافتراضي regular.",
+      },
     ],
     commonErrors: [
       "رمز القسم مفقود",
