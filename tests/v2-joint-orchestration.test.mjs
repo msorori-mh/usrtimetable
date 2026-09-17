@@ -185,8 +185,19 @@ function state() {
       return q;
     },
   };
+  st.rejectAssignments = new Set();
   st.create = async (p) => {
     st.calls.push(p);
+    if (st.rejectAssignments.has(p.teachingAssignmentId))
+      return {
+        ok: false,
+        code: "SECTION_CONFLICT",
+        stale: false,
+        blocking_conflicts: [
+          { code: "delivery_group_conflict", message_ar: "لا يوجد مرشح يحقق قيود المجموعة." },
+        ],
+        warnings: [],
+      };
     if (st.reject)
       return {
         ok: false,
@@ -195,6 +206,7 @@ function state() {
         blocking_conflicts: [],
         warnings: [],
       };
+
     const i = st.items.find((i) => i.teaching_assignment_id === p.teachingAssignmentId);
     const created = session(`saved:${st.calls.length}`, p.dayOfWeek, p.startTime, p.endTime, {
       room_id: p.roomId,
@@ -424,3 +436,30 @@ for (const includeExistingWorkItem of [true, false]) {
     assert.deepEqual(s.snapshot.sessions.slice(0, before.length), before);
   });
 }
+
+test("one infeasible work unit does not stop the remaining work items", async () => {
+  const s = state();
+  s.snapshot.sessions = [];
+  s.items = [item("a0", "c", "g"), item("a1", "c", "g"), item("a2", "c", "g")];
+  s.snapshot.settings.max_daily_hours_per_section = 6;
+  s.snapshot.assignments = s.items.map((i) => ({
+    id: i.teaching_assignment_id,
+    required_room_type: "lecture_hall",
+    is_active: true,
+  }));
+  // The first attempted unit is rejected by the guarded RPC on every candidate.
+  s.rejectAssignments = new Set(["a0"]);
+  const result = await (await scheduler(s))(params);
+  const placedIds = new Set(
+    s.calls.filter((c) => c.teachingAssignmentId !== "a0").map((c) => c.teachingAssignmentId),
+  );
+  assert.equal(placedIds.has("a1"), true);
+  assert.equal(placedIds.has("a2"), true);
+  assert.equal(s.runs[0].summary.cancelled, false);
+  assert.equal(s.runs[0].summary.processed_work_items, 3);
+  assert.equal(s.runs[0].summary.infeasible_work_units, 1);
+  assert.equal(s.runs[0].unplaced.length, 1);
+  assert.equal(s.runs[0].unplaced[0].teaching_assignment_id, "a0");
+  assert.equal(result.placed, 2);
+  assert.equal(s.runs[0].summary.readiness.remainingSessions, 1);
+});

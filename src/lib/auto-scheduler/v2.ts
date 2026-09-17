@@ -551,6 +551,9 @@ export async function runV2AutoSchedule(params: {
   let cancelled = false;
   let nonconformingSessions = 0;
   let blockedCadenceItems = 0;
+  // Units rejected by the guarded RPC / certified plan; recorded, never fatal.
+  let infeasibleItems = 0;
+
   let versionUpdatedAt = payload.version_updated_at;
   let processedItems = 0;
   // A server-proven missing mandatory availability window is invariant across
@@ -995,14 +998,11 @@ export async function runV2AutoSchedule(params: {
         );
         break;
       }
-      // Never route a rejected certified placement into heuristic repair or a higher day cap.
+      // A rejected certified placement is never routed into heuristic repair or a
+      // higher day cap. It is recorded as unplaced and the run continues with the
+      // remaining work items: one infeasible unit must not cancel the whole run.
       if (!placedItem) {
-        cancelled = true;
-        warnings.push(
-          "توقف التطبيق عند رفض موضع من الخطة المثبتة؛ أعد القراءة والبحث. لم يُسمح بزيادة الأيام.",
-        );
-      }
-      if (!placedItem) {
+        infeasibleItems++;
         byType[type].unplaced++;
         unplaced.push({
           course_offering_id: item.course_offering_id,
@@ -1014,6 +1014,9 @@ export async function runV2AutoSchedule(params: {
           unit_index: 1,
           reason: lastReason,
         });
+        warnings.push(
+          `${groupLabel}: تعذر التسكين وفق الخطة المثبتة (${lastReason}) — سُجّلت الوحدة كغير مسكنة والمتابعة مستمرة لبقية العناصر.`,
+        );
       }
     }
 
@@ -1143,6 +1146,9 @@ export async function runV2AutoSchedule(params: {
         total_required_sessions: totalRequiredSessions,
         processed_work_items: processedItems,
         blocked_cadence_items: blockedCadenceItems,
+        infeasible_work_units: infeasibleItems,
+        continue_on_infeasible_unit: true,
+
         nonconforming_existing_sessions: nonconformingSessions,
         by_component_type: byType,
         practical_room_fallbacks: practicalRoomFallbacks,
