@@ -551,6 +551,9 @@ export async function runV2AutoSchedule(params: {
   let cancelled = false;
   let nonconformingSessions = 0;
   let blockedCadenceItems = 0;
+  // Units rejected by the guarded RPC / certified plan; recorded, never fatal.
+  let infeasibleItems = 0;
+
   let versionUpdatedAt = payload.version_updated_at;
   let processedItems = 0;
   // A server-proven missing mandatory availability window is invariant across
