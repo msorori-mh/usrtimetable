@@ -10,7 +10,13 @@ import {
   measureAttendance,
   type AttendanceEvent,
 } from "@/lib/auto-scheduler/attendance-objective";
-import { better, measure, type Metrics, type Session, type Snapshot } from "@/lib/auto-scheduler/compact";
+import {
+  better,
+  measure,
+  type Metrics,
+  type Session,
+  type Snapshot,
+} from "@/lib/auto-scheduler/compact";
 
 /**
  * Each event belongs to its own level/student, so the two layouts below are
@@ -47,35 +53,91 @@ describe("instructor weekly attendance-day target", () => {
   });
 
   it("measures the deviation from an explicit target in both directions", () => {
-    expect(measureAttendance(spread, () => 20, () => 5).instructorTargetDayDeviation).toBe(0);
-    expect(measureAttendance(packed, () => 20, () => 5).instructorTargetDayDeviation).toBe(2);
-    expect(measureAttendance(spread, () => 20, () => 3).instructorTargetDayDeviation).toBe(2);
+    expect(
+      measureAttendance(
+        spread,
+        () => 20,
+        () => 5,
+      ).instructorTargetDayDeviation,
+    ).toBe(0);
+    expect(
+      measureAttendance(
+        packed,
+        () => 20,
+        () => 5,
+      ).instructorTargetDayDeviation,
+    ).toBe(2);
+    expect(
+      measureAttendance(
+        spread,
+        () => 20,
+        () => 3,
+      ).instructorTargetDayDeviation,
+    ).toBe(2);
   });
 
   it("rejects an out-of-range target", () => {
-    expect(() => measureAttendance(spread, () => 20, () => 0)).toThrow(
-      "INVALID_INSTRUCTOR_ATTENDANCE_TARGET",
-    );
-    expect(() => measureAttendance(spread, () => 20, () => 7)).toThrow(
-      "INVALID_INSTRUCTOR_ATTENDANCE_TARGET",
-    );
+    expect(() =>
+      measureAttendance(
+        spread,
+        () => 20,
+        () => 0,
+      ),
+    ).toThrow("INVALID_INSTRUCTOR_ATTENDANCE_TARGET");
+    expect(() =>
+      measureAttendance(
+        spread,
+        () => 20,
+        () => 7,
+      ),
+    ).toThrow("INVALID_INSTRUCTOR_ATTENDANCE_TARGET");
   });
 
   it("prefers the five-day layout for a targeted instructor", () => {
-    const five = measureAttendance(spread, () => 20, () => 5);
-    const three = measureAttendance(packed, () => 20, () => 5);
+    const five = measureAttendance(
+      spread,
+      () => 20,
+      () => 5,
+    );
+    const three = measureAttendance(
+      packed,
+      () => 20,
+      () => 5,
+    );
     expect(compareAttendance(five, three)).toBeLessThan(0);
   });
 
   it("keeps the student day rules above the instructor target", () => {
-    const a = { ...measureAttendance(spread, () => 20, () => 5), excessDaysOverFive: 1 };
-    const b = { ...measureAttendance(packed, () => 20, () => 5), excessDaysOverFive: 0 };
+    const a = {
+      ...measureAttendance(
+        spread,
+        () => 20,
+        () => 5,
+      ),
+      excessDaysOverFive: 1,
+    };
+    const b = {
+      ...measureAttendance(
+        packed,
+        () => 20,
+        () => 5,
+      ),
+      excessDaysOverFive: 0,
+    };
     expect(compareAttendance(a, b)).toBeGreaterThan(0);
   });
 
   it("never accepts a move that increases the deviation", () => {
-    const base = measureAttendance(spread, () => 20, () => 5) as Metrics;
-    const worse = measureAttendance(packed, () => 20, () => 5) as Metrics;
+    const base = measureAttendance(
+      spread,
+      () => 20,
+      () => 5,
+    ) as Metrics;
+    const worse = measureAttendance(
+      packed,
+      () => 20,
+      () => 5,
+    ) as Metrics;
     expect(better(worse, base)).toBe(false);
   });
 });
