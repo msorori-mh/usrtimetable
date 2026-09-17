@@ -90,6 +90,8 @@ export interface Snapshot {
     instructor_type_id: string | null;
     max_hours_per_day: number | null;
     is_active?: boolean;
+    /** Explicit weekly attendance-day target (1..6); overrides generic day compression. */
+    target_attendance_days_per_week?: number | null;
   }[];
   types: { id: string; code: string; is_external: boolean }[];
   availability: {
