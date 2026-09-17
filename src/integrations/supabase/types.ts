@@ -1871,6 +1871,8 @@ export type Database = {
           phone: string | null
           specialization: string | null
           target_attendance_days_per_week: number | null
+          university_instructor_no: string | null
+          university_person_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1902,6 +1904,8 @@ export type Database = {
           phone?: string | null
           specialization?: string | null
           target_attendance_days_per_week?: number | null
+          university_instructor_no?: string | null
+          university_person_id?: string | null
           updated_at?: string
         }
         Update: {
