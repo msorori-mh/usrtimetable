@@ -133,6 +133,20 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
       return data ?? [];
     },
   });
+  const { data: departmentCount = 0 } = useQuery({
+    queryKey: ["import-department-count", active?.id],
+    enabled: !!active && entity === "academic_programs",
+    queryFn: async () => {
+      if (!active) return 0;
+      const { count, error } = await supabase
+        .from("departments")
+        .select("id", { count: "exact", head: true })
+        .eq("college_id", active.id)
+        .eq("is_archived", false);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
 
   const downloadTemplate = async () => {
     try {
@@ -320,6 +334,7 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
     !isSourceMode ||
     (Object.keys(sheetTermMap).length > 0 &&
       Object.values(sheetTermMap).every((v) => String(v).trim() !== ""));
+  const programsBlocked = entity === "academic_programs" && departmentCount === 0;
 
   const tpl = TEMPLATES[entity];
   const selectedMeta = ENTITIES.find((e) => e.value === entity);
@@ -458,6 +473,11 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
               </Button>
             </div>
           )}
+          {programsBlocked && (
+            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm" role="alert">
+              لا توجد أقسام في هذه الكلية. استورد الأقسام الأكاديمية أو أضفها يدويًا قبل البرامج.
+            </div>
+          )}
           <div className="rounded-md border-2 border-dashed border-border p-6 text-center">
             <input
               id="xfile"
@@ -505,6 +525,7 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
                 detectingFile ||
                 previewMut.isPending ||
                 commitMut.isPending ||
+                programsBlocked ||
                 (isSourceMode && !allSheetTermsSelected)
               }
             >
@@ -535,6 +556,11 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
               value={preview.errors.length}
               tone={preview.errors.length ? "err" : "ok"}
             />
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <Stat label="صفوف جديدة" value={preview.valid.filter((r) => !r.values._exists).length} />
+            <Stat label="ستُحدّث" value={preview.valid.filter((r) => r.values._exists).length} />
+            <Stat label="دون تغيير" value={preview.invalid.length} />
           </div>
 
           {entity === "instructors" && preview.valid.length > 0 && (

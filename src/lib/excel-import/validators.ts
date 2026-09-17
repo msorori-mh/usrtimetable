@@ -665,7 +665,7 @@ export async function validate(
         } else {
           seenInFile.set(k, row.rowNumber);
         }
-        row.values._exists = existingKeys.has(k);
+        row.values._exists = row.values._exists === true || existingKeys.has(k);
       }
       if (entity === "departments" || entity === "academic_programs") {
         const nameKey = normalizeStructureName(row.values.name);
