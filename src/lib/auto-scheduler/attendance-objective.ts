@@ -33,6 +33,8 @@ export interface AttendanceMetrics {
   shortInstructorDays: number;
   instructorAttendanceDays: number;
   instructorCount: number;
+  /** Sum of |attended days - explicit per-instructor target| over instructors that declare one. */
+  instructorTargetDayDeviation: number;
   balancedGapMinutes: number;
   sessions: number;
   teachingMinutes: number;
