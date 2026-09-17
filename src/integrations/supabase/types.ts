@@ -3837,6 +3837,15 @@ export type Database = {
         Args: { p_college: string; p_mode: string; p_rows: Json }
         Returns: Json
       }
+      _import_apply_academic_structure: {
+        Args: {
+          p_college: string
+          p_entity: string
+          p_mode: string
+          p_rows: Json
+        }
+        Returns: Json
+      }
       _import_apply_cohort_elective_selections: {
         Args: { p_college: string; p_mode: string; p_rows: Json }
         Returns: Json
