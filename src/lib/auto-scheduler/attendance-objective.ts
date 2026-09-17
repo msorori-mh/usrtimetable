@@ -52,10 +52,16 @@ function idleMinutes(events: AttendanceEvent[]): number {
   return gap;
 }
 
-/** Partition weights count people once, including across theory/practical groups. */
+/**
+ * Partition weights count people once, including across theory/practical groups.
+ * `instructorTarget` returns an explicit weekly attendance-day target (1..6) for
+ * instructors such as department heads; it overrides the general instructor
+ * day-compression preference but never relaxes hard availability constraints.
+ */
 export function measureAttendance(
   events: AttendanceEvent[],
   weight: (studentId: string) => number,
+  instructorTarget: (instructorId: string) => number | null | undefined = () => null,
 ): AttendanceMetrics {
   const levels = new Map<string, Set<number>>();
   const students = new Map<string, Map<number, AttendanceEvent[]>>();
