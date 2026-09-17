@@ -194,6 +194,17 @@ function state() {
   st.rejectAssignments = new Set();
   st.create = async (p) => {
     st.calls.push(p);
+    // Per-slot rejection: emulates a guarded RPC refusing one exact position.
+    if (st.rejectSlot?.(p))
+      return {
+        ok: false,
+        code: "SECTION_CONFLICT",
+        stale: false,
+        blocking_conflicts: [
+          { code: "delivery_group_conflict", message_ar: "لا يوجد مرشح يحقق قيود المجموعة." },
+        ],
+        warnings: [],
+      };
     if (st.rejectAssignments.has(p.teachingAssignmentId))
       return {
         ok: false,
@@ -468,4 +479,98 @@ test("one infeasible work unit does not stop the remaining work items", async ()
   assert.equal(s.runs[0].unplaced[0].teaching_assignment_id, "a0");
   assert.equal(result.placed, 2);
   assert.equal(s.runs[0].summary.readiness.remainingSessions, 1);
+});
+
+// JAWF-FALLBACK-01 regression: a rejected planned position must not strand a
+// missing session while a legal, day-cap-preserving alternative exists.
+test("rejected planned slot falls back to a legal alternative without moving existing sessions", async () => {
+  const s = state();
+  const before = structuredClone(s.snapshot.sessions);
+  const planned = [];
+  s.rejectSlot = (p) => {
+    if (planned.length === 0) {
+      planned.push(p);
+      return true;
+    }
+    return false;
+  };
+  const result = await (await scheduler(s))(params);
+  assert.equal(result.placed, 1);
+  assert.ok(s.calls.length >= 2);
+  assert.equal(s.runs[0].summary.local_fallback_placed_sessions, 1);
+  const accepted = s.calls[s.calls.length - 1];
+  assert.notDeepEqual(
+    [accepted.dayOfWeek, accepted.startTime, accepted.roomId],
+    [planned[0].dayOfWeek, planned[0].startTime, planned[0].roomId],
+  );
+  // Existing sessions are untouched by the fallback.
+  assert.deepEqual(s.snapshot.sessions.slice(0, before.length), before);
+});
+
+test("fallback never opens a fifth student day beyond the certified plan", async () => {
+  const s = state();
+  s.snapshot.sessions = [];
+  s.items = Array.from({ length: 8 }, (_, i) => item(`a${i}`, "c", "g"));
+  s.snapshot.assignments = s.items.map((i) => ({
+    id: i.teaching_assignment_id,
+    required_room_type: "lecture_hall",
+    is_active: true,
+  }));
+  s.snapshot.settings.max_daily_hours_per_section = 4;
+  // Reject every planned position so the fallback is exercised for each unit.
+  const rejected = new Set();
+  s.rejectSlot = (p) => {
+    const key = `${p.teachingAssignmentId}`;
+    if (rejected.has(key)) return false;
+    rejected.add(key);
+    return true;
+  };
+  await (await scheduler(s))(params);
+  const studentDays = new Set(s.calls.filter((c) => c.note).map((c) => c.dayOfWeek));
+  assert.ok(studentDays.size <= 4, `student days: ${[...studentDays]}`);
+});
+
+test("fallback keeps an untargeted instructor at the generic four-day cap", async () => {
+  const s = state();
+  s.snapshot.sessions = [];
+  s.items = Array.from({ length: 8 }, (_, i) => item(`a${i}`, "c", "g"));
+  s.snapshot.assignments = s.items.map((i) => ({
+    id: i.teaching_assignment_id,
+    required_room_type: "lecture_hall",
+    is_active: true,
+  }));
+  s.snapshot.instructors = [{ id: "T", instructor_type_id: "permanent", max_hours_per_day: 6 }];
+  s.snapshot.settings.max_daily_hours_per_section = 4;
+  const seen = new Set();
+  s.rejectSlot = (p) => {
+    if (seen.has(p.teachingAssignmentId)) return false;
+    seen.add(p.teachingAssignmentId);
+    return true;
+  };
+  await (await scheduler(s))(params);
+  const days = new Set(s.snapshot.sessions.map((x) => x.day_of_week));
+  assert.ok(days.size <= 4, `instructor days: ${[...days]}`);
+});
+
+test("a targeted instructor (target=5) may use a fifth day when students allow it", async () => {
+  const s = state();
+  s.snapshot.sessions = [];
+  s.items = Array.from({ length: 9 }, (_, i) => item(`a${i}`, "c", "g"));
+  s.snapshot.assignments = s.items.map((i) => ({
+    id: i.teaching_assignment_id,
+    required_room_type: "lecture_hall",
+    is_active: true,
+  }));
+  s.snapshot.instructors = [
+    {
+      id: "T",
+      instructor_type_id: "permanent",
+      max_hours_per_day: 6,
+      target_attendance_days_per_week: 5,
+    },
+  ];
+  s.snapshot.settings.max_daily_hours_per_section = 4;
+  const result = await (await scheduler(s))(params);
+  assert.equal(result.placed, 9);
+  assert.equal(new Set(s.calls.map((c) => c.dayOfWeek)).size, 5);
 });
