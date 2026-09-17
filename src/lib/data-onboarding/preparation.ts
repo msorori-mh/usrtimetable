@@ -21,7 +21,7 @@ export const PREPARATION_STEPS: PreparationStep[] = [
       { href: "/programs", label: "إدارة البرامج" },
       { href: "/terms", label: "إدارة الفصول" },
     ],
-    entities: ["academic_terms"],
+    entities: ["departments", "academic_programs", "academic_terms"],
   },
   {
     id: "study_plans",
