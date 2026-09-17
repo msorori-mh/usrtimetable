@@ -443,7 +443,7 @@ export async function fetchInstructorScheduleAcrossColleges(
   const { data: instructorRows, error: instructorError } = await supabase
     .from("instructors")
     .select("id, college_id")
-    .eq("university_person_id", params.instructorPersonId)
+    .eq("university_person_id" as never, params.instructorPersonId)
     .in(
       "college_id",
       params.colleges.map((c) => c.collegeId),
