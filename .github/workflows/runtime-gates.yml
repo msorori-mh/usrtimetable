@@ -70,6 +70,9 @@ jobs:
             echo "No lintable files changed — scoped ESLint PASS (vacuous)."
           fi
 
+      - name: Assignment schedule pagination and attendance
+        run: bun test tests/assignment-schedule.test.ts tests/teaching-assignment-row-days.test.ts
+
       - name: TypeScript (tsc --noEmit)
         run: bunx tsc --noEmit
 
