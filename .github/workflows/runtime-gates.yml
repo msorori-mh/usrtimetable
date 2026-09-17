@@ -224,4 +224,3 @@ jobs:
           createdb -h 127.0.0.1 -U postgres coordination_test
           node --test tests/cross-college-db.test.mjs
           psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d shared_lectures_test -f supabase/sql/cross_college_coordination.sql
-
