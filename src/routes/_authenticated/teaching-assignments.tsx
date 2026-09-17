@@ -66,11 +66,9 @@ import { fetchSharedLectures } from "@/lib/academic-delivery/shared-lectures";
 import { assignmentRowAcademicContext } from "@/lib/teaching-assignments/assignment-row-context";
 import {
   assignmentRowDaysLabel,
-  currentScheduleVersionId,
-  deliveryGroupDayMap,
-  sessionsForActiveAssignments,
   summarizeInstructorAttendanceDays,
 } from "@/lib/teaching-assignments/assignment-row-days";
+import { loadAssignmentSchedule } from "@/lib/teaching-assignments/assignment-schedule";
 import {
   fetchPublishedVersions,
   fetchWorkingVersions,
@@ -212,53 +210,23 @@ function TeachingAssignmentsV2Page() {
     },
   });
 
-  /** Read-only day lookup from the current schedule version's sessions. */
-  const { data: sessionDays } = useQuery({
-    queryKey: ["teaching-assignment-row-days", active?.id],
+  /** Scope attendance to one complete version, within the selected college and term. */
+  const scheduleQuery = useQuery({
+    queryKey: ["teaching-assignment-row-days", active?.id, termId],
     enabled: !!active,
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async () => {
+      const scope = { collegeId: active!.id, termId: termId || null };
       const [published, working] = await Promise.all([
-        fetchPublishedVersions({ collegeId: active!.id }),
-        fetchWorkingVersions({ collegeId: active!.id }),
+        fetchPublishedVersions(scope),
+        fetchWorkingVersions(scope),
       ]);
-      const versionIds = [...new Set([...working, ...published].map((version) => version.id))];
-      if (versionIds.length === 0) return new Map<string, number[]>();
-
-      const { data: sessions, error: sessionsError } = await supabase
-        .from("schedule_sessions")
-        .select("schedule_version_id, delivery_group_id, day_of_week, teaching_assignment_id")
-        .eq("college_id", active!.id)
-        .in("schedule_version_id", versionIds)
-        .not("teaching_assignment_id", "is", null)
-        .not("delivery_group_id", "is", null);
-      if (sessionsError) throw sessionsError;
-
-      const assignmentIds = [
-        ...new Set((sessions ?? []).flatMap((session) => session.teaching_assignment_id ?? [])),
-      ];
-      if (assignmentIds.length === 0) return new Map<string, number[]>();
-      const { data: activeAssignments, error: assignmentsError } = await supabase
-        .from("teaching_assignments")
-        .select("id")
-        .eq("college_id", active!.id)
-        .eq("is_active", true)
-        .in("id", assignmentIds);
-      if (assignmentsError) throw assignmentsError;
-
-      const activeSessions = sessionsForActiveAssignments(
-        sessions ?? [],
-        new Set((activeAssignments ?? []).map((assignment) => assignment.id)),
-      );
-      const populatedVersionIds = new Set(
-        activeSessions.map((session) => session.schedule_version_id),
-      );
-      const versionId = currentScheduleVersionId(published, working, populatedVersionIds);
-      if (!versionId) return new Map<string, number[]>();
-      return deliveryGroupDayMap(
-        activeSessions.filter((session) => session.schedule_version_id === versionId),
-      );
+      return loadAssignmentSchedule(supabase, active!.id, [...working, ...published]);
     },
   });
+  const sessionDays = scheduleQuery.data?.days;
+  const scheduleUnavailable = scheduleQuery.isPending || scheduleQuery.isError;
 
   const candidatesQuery = useQuery({
     queryKey: ["ta-v2-candidates", selected?.delivery_group_id],
@@ -407,7 +375,10 @@ function TeachingAssignmentsV2Page() {
                     label: "المستوى",
                     value: (levels ?? []).find((l) => l.id === levelId)?.name ?? "",
                   },
-                  { label: "الفصل", value: (terms ?? []).find((t) => t.id === termId)?.name ?? "" },
+                  {
+                    label: "الفصل",
+                    value: (terms ?? []).find((t) => t.id === termId)?.name ?? "",
+                  },
                   {
                     label: "نظام الدراسة",
                     value: studySystem
@@ -614,6 +585,25 @@ function TeachingAssignmentsV2Page() {
             )}
           </Card>
 
+          <div className="mb-4 text-sm" data-testid="ta-v2-schedule-source">
+            {scheduleQuery.isPending ? (
+              <p className="text-muted-foreground">جارٍ تحميل بيانات التسكين…</p>
+            ) : scheduleQuery.isError ? (
+              <div className="flex items-center gap-2 text-destructive" role="alert">
+                <p>تعذر تحميل بيانات التسكين. لا يمكن تحديد الأيام حاليًا.</p>
+                <Button variant="outline" size="sm" onClick={() => void scheduleQuery.refetch()}>
+                  إعادة المحاولة
+                </Button>
+              </div>
+            ) : (
+              <p className="text-muted-foreground">
+                {scheduleQuery.data?.version
+                  ? `أيام التسكين من نسخة الجدول: ${scheduleQuery.data.version.name}`
+                  : "لا توجد نسخة جدول تحتوي على جلسات مرتبطة بإسنادات نشطة ضمن الفصل المحدد."}
+              </p>
+            )}
+          </div>
+
           {instructorSearchActive && instructorHoursSummary.matchedInstructors.length > 0 && (
             <Card
               className="mb-4 flex flex-wrap items-center justify-between gap-4 border-primary/30 bg-primary/5 p-4"
@@ -641,7 +631,9 @@ function TeachingAssignmentsV2Page() {
                 <p className="text-xs text-muted-foreground">عدد أيام الحضور</p>
                 <p className="text-2xl font-bold tabular-nums text-primary">
                   <span dir="ltr" data-testid="ta-v2-instructor-attendance-days-value">
-                    {attendanceDaysSummary.totalDays.toLocaleString("ar-YE")}
+                    {scheduleUnavailable
+                      ? "—"
+                      : attendanceDaysSummary.totalDays.toLocaleString("ar-YE")}
                   </span>{" "}
                   <span>{attendanceDaysSummary.totalDays === 1 ? "يوم" : "أيام"}</span>
                   {attendanceDaysSummary.perInstructor.length > 1 && (
@@ -702,7 +694,10 @@ function TeachingAssignmentsV2Page() {
                         >
                           <td className="px-3 py-2">
                             <div className="font-medium">
-                              {entityDisplayName({ name: row.course_name, code: row.course_code })}
+                              {entityDisplayName({
+                                name: row.course_name,
+                                code: row.course_code,
+                              })}
                             </div>
                           </td>
                           <td className="px-3 py-2" data-testid="ta-v2-row-program">
@@ -712,7 +707,11 @@ function TeachingAssignmentsV2Page() {
                             {context.studySystemLabel}
                           </td>
                           <td className="px-3 py-2" data-testid="ta-v2-row-day">
-                            {assignmentRowDaysLabel(sessionDays?.get(row.delivery_group_id))}
+                            {scheduleQuery.isPending
+                              ? "جارٍ التحميل…"
+                              : scheduleQuery.isError
+                                ? "تعذر التحميل"
+                                : assignmentRowDaysLabel(sessionDays?.get(row.delivery_group_id))}
                           </td>
                           <td className="px-3 py-2">
                             {COMPONENT_LABELS[row.component_type] ?? row.component_type}
@@ -813,8 +812,11 @@ function TeachingAssignmentsV2Page() {
           {selected && (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                {entityDisplayName({ name: selected.course_name, code: selected.course_code })} ·{" "}
-                {COMPONENT_LABELS[selected.component_type] ?? selected.component_type} · مجموعة{" "}
+                {entityDisplayName({
+                  name: selected.course_name,
+                  code: selected.course_code,
+                })}{" "}
+                · {COMPONENT_LABELS[selected.component_type] ?? selected.component_type} · مجموعة{" "}
                 {selected.group_number ?? selected.group_code} · ساعات المحاضرة{" "}
                 {selected.component_hours ?? "—"}
               </p>

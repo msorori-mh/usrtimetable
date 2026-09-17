@@ -94,10 +94,7 @@ describe("teaching-assignments day column wiring", () => {
   });
 
   it("derives days from the current version sessions and stays search-compatible", () => {
-    expect(src).toContain("currentScheduleVersionId");
-    expect(src).toContain("sessionsForActiveAssignments");
-    expect(src).toContain('.eq("is_active", true)');
-    expect(src).toContain("deliveryGroupDayMap");
+    expect(src).toContain("loadAssignmentSchedule");
     expect(src).toContain("assignmentRowDaysLabel(sessionDays?.get(row.delivery_group_id))");
     expect(src).toContain(
       "filterRowsByInstructorName(workspace.data?.rows ?? [], instructorSearch)",
@@ -112,9 +109,18 @@ describe("summarizeInstructorAttendanceDays", () => {
     ["g3", [2]],
   ]);
   const rows = [
-    { delivery_group_id: "g1", instructors: [{ instructor_name: "أحمد محمد" }] },
-    { delivery_group_id: "g2", instructors: [{ instructor_name: "أَحمد محمد" }] },
-    { delivery_group_id: "g4", instructors: [{ instructor_name: "أحمد محمد" }] },
+    {
+      delivery_group_id: "g1",
+      instructors: [{ instructor_name: "أحمد محمد" }],
+    },
+    {
+      delivery_group_id: "g2",
+      instructors: [{ instructor_name: "أَحمد محمد" }],
+    },
+    {
+      delivery_group_id: "g4",
+      instructors: [{ instructor_name: "أحمد محمد" }],
+    },
     { delivery_group_id: "g3", instructors: [{ instructor_name: "سارة علي" }] },
     {
       delivery_group_id: "g3",

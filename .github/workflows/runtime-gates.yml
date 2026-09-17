@@ -70,6 +70,9 @@ jobs:
             echo "No lintable files changed — scoped ESLint PASS (vacuous)."
           fi
 
+      - name: Assignment schedule pagination and attendance
+        run: bun test tests/assignment-schedule.test.ts tests/teaching-assignment-row-days.test.ts
+
       - name: TypeScript (tsc --noEmit)
         run: bunx tsc --noEmit
 
@@ -221,3 +224,4 @@ jobs:
           createdb -h 127.0.0.1 -U postgres coordination_test
           node --test tests/cross-college-db.test.mjs
           psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d shared_lectures_test -f supabase/sql/cross_college_coordination.sql
+
