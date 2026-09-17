@@ -117,26 +117,34 @@ function state() {
     if (table === "time_slot_templates") return st.snapshot.templates;
     if (table === "schedule_sessions") return st.snapshot.sessions;
     // Keep this I/O contract aligned with the production V2 scheduler preflight queries.
-    if (table === "room_types") return [{ id: "rt-lecture", code: "lecture_hall" }];
+    if (table === "room_types")
+      return [
+        { id: "rt-lecture", code: "lecture_hall" },
+        { id: "rt-lab", code: "computer_lab" },
+      ];
     if (table === "room_availability") return st.snapshot.roomAvailability;
     if (table === "academic_cohorts") return st.snapshot.cohorts;
     if (table === "plan_course_components")
       return st.items.map((i) => ({
         id: i.component_id,
         plan_course_id: `plan:${i.teaching_assignment_id}`,
-        component_type: "theory",
+        component_type: i.component_type,
         weekly_contact_hours: i.assigned_component_hours,
         required_room_type_id: null,
       }));
     if (table === "plan_courses")
-      return st.items.map((i) => ({
-        id: `plan:${i.teaching_assignment_id}`,
-        lectures_per_week: i.assigned_component_hours / 2,
-        lecture_session_duration: 2,
-        labs_per_week: 0,
-        lab_session_duration: 2,
-        required_room_type_for_lecture: "lecture_hall",
-      }));
+      return st.items.map((i) => {
+        const practical = i.component_type === "practical";
+        return {
+          id: `plan:${i.teaching_assignment_id}`,
+          lectures_per_week: practical ? 0 : i.assigned_component_hours / 2,
+          lecture_session_duration: 2,
+          labs_per_week: practical ? i.assigned_component_hours / 2 : 0,
+          lab_session_duration: 2,
+          required_room_type_for_lecture: "lecture_hall",
+          required_room_type_for_lab: "computer_lab",
+        };
+      });
     if (table === "operational_group_members")
       return st.snapshot.members.map((m) => ({
         ...m,
@@ -577,4 +585,82 @@ test("a targeted instructor (target=5) may use a fifth day when students allow i
   const result = await (await scheduler(s))(params);
   assert.equal(result.placed, 9);
   assert.equal(new Set(s.calls.map((c) => c.dayOfWeek)).size, 5);
+});
+
+// PRACTICAL-ROOM-POLICY-02: practical groups at levels 3/4 keep the computer lab
+// as first priority; a lecture hall is a fallback only, and never merges groups.
+function practicalState(level, rooms) {
+  const s = state();
+  s.snapshot.sessions = [];
+  s.snapshot.rooms = rooms;
+  s.snapshot.cohorts = s.snapshot.cohorts.map((c) => ({ ...c, level_id: level }));
+  s.items = [
+    item("p1", "c", "g", {
+      component_type: "practical",
+      session_type: "lab",
+      instructor_id: "T",
+    }),
+  ];
+  s.snapshot.assignments = [{ id: "p1", required_room_type: "computer_lab", is_active: true }];
+  s.snapshot.instructors = [{ id: "T", instructor_type_id: "permanent", max_hours_per_day: 6 }];
+  return s;
+}
+const lab = { id: "lab-1", capacity: 40, room_type: "computer_lab", is_active: true };
+const hall = { id: "hall-1", capacity: 40, room_type: "lecture_hall", is_active: true };
+
+for (const level of ["3", "4"]) {
+  test(`practical level ${level} prefers a valid computer lab over a lecture hall`, async () => {
+    const s = practicalState(level, [lab, hall]);
+    const result = await (await scheduler(s))(params);
+    assert.equal(result.placed, 1);
+    assert.equal(s.calls.at(-1).roomId, "lab-1");
+    assert.equal(result.practicalRoomFallbacks, 0);
+  });
+
+  test(`practical level ${level} accepts a lecture hall only when no lab is valid`, async () => {
+    const s = practicalState(level, [hall]);
+    const result = await (await scheduler(s))(params);
+    assert.equal(result.placed, 1);
+    assert.equal(s.calls.at(-1).roomId, "hall-1");
+    assert.equal(result.practicalRoomFallbacks, 1);
+  });
+}
+
+test("hall fallback keeps two practical groups as two independent sessions", async () => {
+  const s = practicalState("3", [hall, { ...hall, id: "hall-2" }]);
+  addCohort(s.snapshot, "c2", "g2", "p2", 30);
+  s.items.push(
+    item("p2", "c2", "g2", {
+      component_type: "practical",
+      session_type: "lab",
+      instructor_id: "T",
+      group_code: "G2",
+    }),
+  );
+  s.items[0].group_code = "G1";
+  s.snapshot.cohorts = s.snapshot.cohorts.map((c) => ({ ...c, level_id: "3" }));
+  s.snapshot.assignments = s.items.map((i) => ({
+    id: i.teaching_assignment_id,
+    required_room_type: "computer_lab",
+    is_active: true,
+  }));
+  const result = await (await scheduler(s))(params);
+  assert.equal(result.placed, 2);
+  // Distinct assignments, distinct delivery groups: no merge, no shared lecture.
+  assert.deepEqual(new Set(s.calls.map((c) => c.teachingAssignmentId)), new Set(["p1", "p2"]));
+  assert.equal(new Set(s.snapshot.sessions.map((x) => x.delivery_group_id)).size, 2);
+  assert.equal(s.snapshot.sessions.length, 2);
+});
+
+test("hall fallback never overrides capacity, and conflicts stay blocking", async () => {
+  const s = practicalState("4", [{ ...hall, capacity: 10 }]);
+  s.items[0].expected_students = 30;
+  await assert.rejects((await scheduler(s))(params), /.*/);
+  assert.equal(s.calls.length, 0);
+
+  const blocked = practicalState("4", [hall]);
+  blocked.rejectAssignments = new Set(["p1"]);
+  const result = await (await scheduler(blocked))(params);
+  assert.equal(result.placed, 0);
+  assert.equal(result.unplaced.length, 1);
 });
