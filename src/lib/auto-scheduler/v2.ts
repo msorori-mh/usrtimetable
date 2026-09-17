@@ -1216,14 +1216,14 @@ export async function runV2AutoSchedule(params: {
               practicalRoomFallbacks++;
               warnings.push(`${groupLabel}: ${PRACTICAL_ROOM_FALLBACK_NOTE_AR}`);
             }
-            planningSessions.push({
+            const seeded: Session = {
               ...seedFor(item, durationMinutes),
               day_of_week: slot.day,
               start_time: slot.start,
               end_time: slot.end,
               room_id: room.id,
-              ...result.session,
-            } as Session);
+            };
+            planningSessions.push({ ...seeded, ...result.session } as Session);
             usedDays.push(slot.day);
             teacherDays.add(slot.day);
             scheduledInstructorDays.set(item.instructor_id, teacherDays);
