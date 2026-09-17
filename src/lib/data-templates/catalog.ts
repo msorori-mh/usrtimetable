@@ -196,12 +196,14 @@ const CATALOG_DEFINITIONS: TemplateDef[] = [
     columns: [
       { header: "الرمز", required: true, example: "CS-BSC" },
       { header: "الاسم", required: true, example: "بكالوريوس علوم الحاسب" },
-      { header: "القسم", required: true, example: "CS" },
+      {
+        header: "القسم",
+        required: true,
+        example: "CS",
+        description: "رمز القسم أو اسمه داخل نفس الكلية.",
+      },
       { header: "نوع_الدرجة", example: "bachelor" },
       { header: "المدة_بالسنوات", example: "4" },
-      { header: "نشط", example: "true" },
-      { header: "القبول_مفتوح", example: "true" },
-      { header: "الوصف", example: "برنامج بكالوريوس أربع سنوات" },
     ],
     commonErrors: [
       "القسم ABC غير موجود ضمن الكلية المحددة",
