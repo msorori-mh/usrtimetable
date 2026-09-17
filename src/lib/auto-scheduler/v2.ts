@@ -495,10 +495,31 @@ export async function runV2AutoSchedule(params: {
       );
     }
   }
+  const explicitInstructorTargets = new Map(
+    planningSnapshot.instructors.map((instructor) => [
+      instructor.id,
+      instructor.target_attendance_days_per_week ?? null,
+    ]),
+  );
+  const validExplicitTarget = (instructorId: string) => {
+    const target = explicitInstructorTargets.get(instructorId) ?? null;
+    return target != null && Number.isInteger(target) && target >= 1 && target <= 6 ? target : null;
+  };
+  /**
+   * Effective attendance-day target: an explicit `target_attendance_days_per_week`
+   * (department heads at five days) wins over the hours-based compression target,
+   * yet never overrides student rules, instructor_availability, conflicts,
+   * room/capacity or daily-hour constraints.
+   */
   const instructorTargetDays = (instructorId: string) => {
+    const explicit = validExplicitTarget(instructorId);
+    if (explicit != null) return explicit;
     const hours = instructorWeeklyHours.get(instructorId) ?? 0;
     return hours <= 6 ? 1 : hours <= 10 ? 2 : hours <= 16 ? 3 : 4;
   };
+  /** Hard per-instructor day ceiling: generic cap, raised only by an explicit target. */
+  const instructorDayCap = (instructorId: string) =>
+    instructorAttendanceDayCap(validExplicitTarget(instructorId));
   const occupied: OccupiedInterval[] = sessionRows.map((row) => ({
     day: row.day_of_week,
     start: row.start_time,
