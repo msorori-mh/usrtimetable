@@ -451,9 +451,7 @@ test("one infeasible work unit does not stop the remaining work items", async ()
   s.rejectAssignments = new Set(["a0"]);
   const result = await (await scheduler(s))(params);
   const placedIds = new Set(
-    s.calls
-      .filter((c) => c.teachingAssignmentId !== "a0")
-      .map((c) => c.teachingAssignmentId),
+    s.calls.filter((c) => c.teachingAssignmentId !== "a0").map((c) => c.teachingAssignmentId),
   );
   assert.equal(placedIds.has("a1"), true);
   assert.equal(placedIds.has("a2"), true);

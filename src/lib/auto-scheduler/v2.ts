@@ -1018,7 +1018,6 @@ export async function runV2AutoSchedule(params: {
           `${groupLabel}: تعذر التسكين وفق الخطة المثبتة (${lastReason}) — سُجّلت الوحدة كغير مسكنة والمتابعة مستمرة لبقية العناصر.`,
         );
       }
-
     }
 
     processedItems++;
