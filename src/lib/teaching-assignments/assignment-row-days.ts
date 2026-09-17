@@ -1,5 +1,9 @@
 import { DAY_NAMES_AR } from "@/lib/reports/formatters";
 import type { ScheduleVersionOption } from "@/lib/reports/types";
+import {
+  instructorNameMatches,
+  normalizeArabicName,
+} from "@/lib/teaching-assignments/instructor-name-search";
 
 /** Display order: Saturday first, then Sunday → Friday (Arabic academic week). */
 const WEEK_ORDER = [6, 0, 1, 2, 3, 4, 5];
@@ -44,4 +48,54 @@ export function assignmentRowDaysLabel(days: readonly number[] | undefined): str
     .map((day) => DAY_NAMES_AR[day])
     .filter((name): name is string => !!name);
   return names.length ? names.join("، ") : UNSCHEDULED_DAY_LABEL;
+}
+
+export type InstructorAttendanceDaysSummary = {
+  /** Sum of per-instructor unique attendance days (equals the day count for a single match). */
+  totalDays: number;
+  perInstructor: { name: string; days: number }[];
+};
+
+type AttendanceDaysRow = {
+  delivery_group_id: string;
+  instructors: ReadonlyArray<{ instructor_name: string | null; is_active?: boolean }>;
+};
+
+/**
+ * عدد أيام الحضور الفعلية للمحاضر/المحاضرين المطابقين للبحث، من أيام الجلسات
+ * المسكنة في النسخة الجدولية الحالية. اليوم يُحتسب مرة واحدة مهما تعدّدت
+ * محاضرات المحاضر فيه، والمجموعات غير المسكنة لا تُحتسب.
+ */
+export function summarizeInstructorAttendanceDays(
+  rows: readonly AttendanceDaysRow[],
+  query: string,
+  sessionDays: ReadonlyMap<string, readonly number[]> | undefined,
+): InstructorAttendanceDaysSummary {
+  const q = normalizeArabicName(query);
+  if (!q) return { totalDays: 0, perInstructor: [] };
+
+  const byInstructor = new Map<string, { name: string; days: Set<number> }>();
+  for (const row of rows) {
+    const days = sessionDays?.get(row.delivery_group_id) ?? [];
+    if (days.length === 0) continue;
+    for (const instructor of row.instructors) {
+      if (instructor.is_active === false) continue;
+      if (!instructorNameMatches(instructor.instructor_name, q)) continue;
+      const displayName = String(instructor.instructor_name ?? "").trim();
+      const key = normalizeArabicName(displayName);
+      if (!key) continue;
+      const entry = byInstructor.get(key) ?? { name: displayName, days: new Set<number>() };
+      for (const day of days) entry.days.add(day);
+      byInstructor.set(key, entry);
+    }
+  }
+
+  const perInstructor = [...byInstructor.values()].map((entry) => ({
+    name: entry.name,
+    days: entry.days.size,
+  }));
+  return {
+    totalDays: perInstructor.reduce((sum, entry) => sum + entry.days, 0),
+    perInstructor,
+  };
 }

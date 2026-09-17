@@ -68,6 +68,7 @@ import {
   assignmentRowDaysLabel,
   currentScheduleVersionId,
   deliveryGroupDayMap,
+  summarizeInstructorAttendanceDays,
 } from "@/lib/teaching-assignments/assignment-row-days";
 import {
   fetchPublishedVersions,
@@ -273,6 +274,11 @@ function TeachingAssignmentsV2Page() {
   const instructorHoursSummary = useMemo(
     () => summarizeInstructorAssignedHours(workspace.data?.rows ?? [], instructorSearch),
     [workspace.data?.rows, instructorSearch],
+  );
+  const attendanceDaysSummary = useMemo(
+    () =>
+      summarizeInstructorAttendanceDays(workspace.data?.rows ?? [], instructorSearch, sessionDays),
+    [workspace.data?.rows, instructorSearch, sessionDays],
   );
   const readOnly = !canManage || workspace.data?.can_manage === false;
 
@@ -602,6 +608,14 @@ function TeachingAssignmentsV2Page() {
                 <p className="text-xs text-muted-foreground">إجمالي الساعات المسندة</p>
                 <p className="text-2xl font-bold tabular-nums text-primary">
                   {instructorHoursSummary.totalHours.toLocaleString("ar-YE")} ساعة
+                </p>
+              </div>
+              <div className="text-left" data-testid="ta-v2-instructor-attendance-days">
+                <p className="text-xs text-muted-foreground">عدد أيام الحضور</p>
+                <p className="text-2xl font-bold tabular-nums text-primary">
+                  {attendanceDaysSummary.perInstructor.length > 1
+                    ? `${attendanceDaysSummary.totalDays.toLocaleString("ar-YE")} يوم (${attendanceDaysSummary.perInstructor.length} محاضرين)`
+                    : `أيام الحضور: ${attendanceDaysSummary.totalDays.toLocaleString("ar-YE")} أيام`}
                 </p>
               </div>
             </Card>
