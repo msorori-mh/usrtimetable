@@ -32,20 +32,28 @@ test(
   INSERT INTO cohort_student_partitions(id,college_id,cohort_id,headcount) SELECT ('00000000-0000-0000-0000-'||lpad(i::text,12,'0'))::uuid,'00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000003',20 FROM generate_series(20,21) i;
   INSERT INTO delivery_group_partition_members SELECT '00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000003',g.id,p.id FROM delivery_groups g CROSS JOIN cohort_student_partitions p WHERE g.id::text LIKE '%012' OR (g.id::text LIKE '%010' AND p.id::text LIKE '%020') OR (g.id::text LIKE '%011' AND p.id::text LIKE '%021');
   ${policy}
+  DO $$ BEGIN
+    IF (SELECT max_extended_days_per_partition FROM scheduling_settings) <> 2 THEN
+      RAISE EXCEPTION 'extended-day default is not two days';
+    END IF;
+  END $$;
   UPDATE scheduling_settings SET extended_day_policy_enabled=true;
   INSERT INTO schedule_sessions(id,college_id,schedule_version_id,cohort_id,delivery_group_id,day_of_week,end_time) SELECT ('00000000-0000-0000-0000-'||lpad((i+100)::text,12,'0'))::uuid,'00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000003',('00000000-0000-0000-0000-'||lpad((i+10)::text,12,'0'))::uuid,i,'16:00' FROM generate_series(0,1) i;
   DO $$ BEGIN
     IF (SELECT count(*) FROM schedule_extended_day_counts('00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000002') WHERE days=1) <> 2 THEN RAISE EXCEPTION 'independent partition count failed'; END IF;
+  END $$;
+  INSERT INTO schedule_sessions VALUES('00000000-0000-0000-0000-000000000102','00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000003','00000000-0000-0000-0000-000000000012',2,'16:00',false);
+  DO $$ BEGIN
     BEGIN
-      INSERT INTO schedule_sessions VALUES('00000000-0000-0000-0000-000000000102','00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000003','00000000-0000-0000-0000-000000000012',2,'16:00',false);
-      RAISE EXCEPTION 'shared second day accepted';
+      INSERT INTO schedule_sessions VALUES('00000000-0000-0000-0000-000000000103','00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000003','00000000-0000-0000-0000-000000000012',3,'16:00',false);
+      RAISE EXCEPTION 'shared third day accepted';
     EXCEPTION WHEN check_violation THEN NULL; END;
     UPDATE schedule_sessions SET day_of_week=3 WHERE id='00000000-0000-0000-0000-000000000100';
     BEGIN
       INSERT INTO schedule_sessions(id,college_id,schedule_version_id,cohort_id,delivery_group_id,day_of_week,end_time) SELECT ('00000000-0000-0000-0000-'||lpad((i+110)::text,12,'0'))::uuid,'00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000003','00000000-0000-0000-0000-000000000010',i,'16:00' FROM generate_series(4,5) i;
       RAISE EXCEPTION 'multirow violation accepted';
     EXCEPTION WHEN check_violation THEN NULL; END;
-    IF (SELECT count(*) FROM schedule_sessions)<>2 THEN RAISE EXCEPTION 'failed write not rolled back'; END IF;
+    IF (SELECT count(*) FROM schedule_sessions)<>3 THEN RAISE EXCEPTION 'failed write not rolled back'; END IF;
   END $$;
   UPDATE scheduling_settings SET extended_day_policy_enabled=false;
   INSERT INTO schedule_sessions VALUES('00000000-0000-0000-0000-000000000120','00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000003','00000000-0000-0000-0000-000000000010',4,'16:00',false);
@@ -62,8 +70,8 @@ test(
   DELETE FROM schedule_sessions;
   DO $$ BEGIN
     BEGIN
-      INSERT INTO schedule_sessions(id,college_id,schedule_version_id,cohort_id,delivery_group_id,day_of_week,end_time) SELECT ('00000000-0000-0000-0000-'||lpad((i+200)::text,12,'0'))::uuid,'00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000003','00000000-0000-0000-0000-000000000010',i,'16:00' FROM generate_series(0,1) i;
-      RAISE EXCEPTION 'two new days in one statement accepted';
+      INSERT INTO schedule_sessions(id,college_id,schedule_version_id,cohort_id,delivery_group_id,day_of_week,end_time) SELECT ('00000000-0000-0000-0000-'||lpad((i+200)::text,12,'0'))::uuid,'00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000003','00000000-0000-0000-0000-000000000010',i,'16:00' FROM generate_series(0,2) i;
+      RAISE EXCEPTION 'three new days in one statement accepted';
     EXCEPTION WHEN check_violation THEN NULL; END;
     IF EXISTS(SELECT 1 FROM schedule_sessions) THEN RAISE EXCEPTION 'multirow insert was not atomic'; END IF;
   END $$;
