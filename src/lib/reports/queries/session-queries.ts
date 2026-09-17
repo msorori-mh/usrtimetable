@@ -418,3 +418,60 @@ export async function fetchCohortDeliveryGroupLabels(
     ),
   };
 }
+
+
+/**
+ * Cross-college instructor schedule for institutional read-only reporting.
+ * Callers must provide the published/specific version per college; versions are
+ * intentionally never inferred across colleges to prevent mixed-version totals.
+ */
+export interface CrossCollegeInstructorScheduleParams {
+  instructorPersonId: string;
+  colleges: Array<{ collegeId: string; versionId: string }>;
+  studySystem: ReportStudySystem;
+}
+
+export interface CrossCollegeInstructorScheduleRow extends WorkspaceSessionHydratedRow {
+  college_id: string;
+  instructor_record_id: string;
+}
+
+export async function fetchInstructorScheduleAcrossColleges(
+  params: CrossCollegeInstructorScheduleParams,
+): Promise<CrossCollegeInstructorScheduleRow[]> {
+  if (!params.instructorPersonId || params.colleges.length === 0) return [];
+
+  const { data: instructorRows, error: instructorError } = await supabase
+    .from("instructors")
+    .select("id, college_id")
+    .eq("university_person_id", params.instructorPersonId)
+    .in("college_id", params.colleges.map((c) => c.collegeId));
+
+  if (instructorError) throw instructorError;
+  const byCollege = new Map(
+    (instructorRows ?? []).map((row) => [row.college_id as string, row.id as string]),
+  );
+
+  const results = await Promise.all(
+    params.colleges.flatMap(({ collegeId, versionId }) => {
+      const instructorId = byCollege.get(collegeId);
+      if (!instructorId) return [];
+      return [
+        fetchInstructorScheduleSessions({
+          collegeId,
+          versionId,
+          instructorId,
+          studySystem: params.studySystem,
+        }).then((rows) =>
+          rows.map((row) => ({
+            ...row,
+            college_id: collegeId,
+            instructor_record_id: instructorId,
+          })),
+        ),
+      ];
+    }),
+  );
+
+  return results.flat();
+}
