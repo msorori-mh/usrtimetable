@@ -854,13 +854,6 @@ export async function runV2AutoSchedule(params: {
       if (plannedIndex < 0) throw new Error("تغيرت وحدات الجدولة؛ أعد حساب خطة الحضور.");
       const [plannedAttendance] = plannedPending.splice(plannedIndex, 1);
 
-      const slots = [
-        {
-          day: plannedAttendance.day_of_week,
-          start: plannedAttendance.start_time,
-          end: plannedAttendance.end_time,
-        },
-      ];
       const levelKey = levelByCohort.get(item.cohort_id!);
       if (!levelKey) throw new Error("لا توجد بيانات مستوى لهذه الدفعة.");
       const levelDays = new Set(
@@ -871,32 +864,72 @@ export async function runV2AutoSchedule(params: {
       let placedItem = false;
       let lastReason = "لا يوجد مرشح يحقق قيود مجموعة التقديم والدفعة.";
 
-      for (const pool of roomPools) {
+      // JAWF-FALLBACK-01: the certified attendance-plan slot stays the first and
+      // highest-priority option. Only when that exact position is rejected do we
+      // try a bounded, day-cap-preserving local fallback for THIS missing session
+      // (no existing session is moved, no hard constraint is relaxed, every write
+      // still goes through the guarded RPC).
+      for (const phase of ["planned", "fallback"] as const) {
         if (placedItem || cancelled) break;
-        const candidateRooms = pool;
-        const rankedCandidates = rankGenerationCandidates({
-          snapshot: planningSnapshot,
-          sessions: planningSessions,
-          session: seedFor(item, durationMinutes),
-          slots,
-          roomIds: candidateRooms.map((room) => room.id),
-          usedDays,
-        }).sort((a, b) => {
-          const days = scheduledInstructorDays.get(item.instructor_id) ?? new Set<number>();
-          const target = instructorTargetDays(item.instructor_id);
-          const score = (day: number) => (days.has(day) ? 0 : days.size >= target ? 100 : 10);
-          return score(a.session.day_of_week) - score(b.session.day_of_week);
-        });
+        const slots =
+          phase === "planned"
+            ? [
+                {
+                  day: plannedAttendance.day_of_week,
+                  start: plannedAttendance.start_time,
+                  end: plannedAttendance.end_time,
+                },
+              ]
+            : compactSlots(
+                { ...planningSnapshot, sessions: planningSessions },
+                seedFor(item, durationMinutes),
+              ).filter(
+                // Never widen the proven student attendance-day envelope.
+                (slot) => levelDays.has(slot.day) || levelDays.size < attendancePlan.days!,
+              );
+        if (slots.length === 0) continue;
 
-        candidateSearch: for (const ranked of rankedCandidates) {
-          if (
-            ranked.session.day_of_week !== plannedAttendance.day_of_week ||
-            ranked.session.start_time !== plannedAttendance.start_time ||
-            ranked.session.end_time !== plannedAttendance.end_time ||
-            ranked.session.room_id !== plannedAttendance.room_id
-          )
-            continue;
-          const slot = {
+        for (const pool of roomPools) {
+          if (placedItem || cancelled) break;
+          const candidateRooms = pool;
+          const rankedCandidates = rankGenerationCandidates({
+            snapshot: planningSnapshot,
+            sessions: planningSessions,
+            session: seedFor(item, durationMinutes),
+            slots,
+            roomIds: candidateRooms.map((room) => room.id),
+            usedDays,
+          }).sort((a, b) => {
+            const days = scheduledInstructorDays.get(item.instructor_id) ?? new Set<number>();
+            const target = instructorTargetDays(item.instructor_id);
+            const instructorScore = (day: number) =>
+              days.has(day) ? 0 : days.size >= target ? 100 : 10;
+            // Fallback ordering: planned day first, then the students' current
+            // days, then a new day only while inside the plan's day budget.
+            const dayScore = (day: number) =>
+              phase === "planned"
+                ? 0
+                : day === plannedAttendance.day_of_week
+                  ? 0
+                  : levelDays.has(day)
+                    ? 1
+                    : 2;
+            return (
+              dayScore(a.session.day_of_week) - dayScore(b.session.day_of_week) ||
+              instructorScore(a.session.day_of_week) - instructorScore(b.session.day_of_week)
+            );
+          });
+
+          candidateSearch: for (const ranked of rankedCandidates) {
+            if (
+              phase === "planned" &&
+              (ranked.session.day_of_week !== plannedAttendance.day_of_week ||
+                ranked.session.start_time !== plannedAttendance.start_time ||
+                ranked.session.end_time !== plannedAttendance.end_time ||
+                ranked.session.room_id !== plannedAttendance.room_id)
+            )
+              continue;
+            const slot = {
             day: ranked.session.day_of_week,
             start: ranked.session.start_time,
             end: ranked.session.end_time,
