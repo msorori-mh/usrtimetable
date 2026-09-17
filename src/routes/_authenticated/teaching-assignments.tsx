@@ -277,11 +277,7 @@ function TeachingAssignmentsV2Page() {
   );
   const attendanceDaysSummary = useMemo(
     () =>
-      summarizeInstructorAttendanceDays(
-        workspace.data?.rows ?? [],
-        instructorSearch,
-        sessionDays,
-      ),
+      summarizeInstructorAttendanceDays(workspace.data?.rows ?? [], instructorSearch, sessionDays),
     [workspace.data?.rows, instructorSearch, sessionDays],
   );
   const readOnly = !canManage || workspace.data?.can_manage === false;
