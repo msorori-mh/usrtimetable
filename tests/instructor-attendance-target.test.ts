@@ -222,9 +222,10 @@ describe("fail-closed persistence gate honours the explicit target", () => {
 
   it("flags a targeted instructor only beyond their own target", () => {
     expect(
-      instructorsOverAttendanceDayCap([...fiveDays("head"), s("head", 5)], [
-        { id: "head", target_attendance_days_per_week: 5 },
-      ]),
+      instructorsOverAttendanceDayCap(
+        [...fiveDays("head"), s("head", 5)],
+        [{ id: "head", target_attendance_days_per_week: 5 }],
+      ),
     ).toEqual([{ instructorId: "head", days: 6, cap: 5 }]);
   });
 
