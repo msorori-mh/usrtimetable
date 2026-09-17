@@ -910,8 +910,9 @@ export async function runV2AutoSchedule(params: {
             continue;
           }
           const teacherDays = scheduledInstructorDays.get(item.instructor_id) ?? new Set<number>();
-          if (!teacherDays.has(slot.day) && teacherDays.size >= 4) {
-            lastReason = "تجاوز الحد الصلب لأيام حضور المحاضر (4 أيام).";
+          const dayCap = instructorDayCap(item.instructor_id);
+          if (!teacherDays.has(slot.day) && teacherDays.size >= dayCap) {
+            lastReason = `تجاوز الحد الصلب لأيام حضور المحاضر (${dayCap} أيام).`;
             continue;
           }
           const availabilityKey = `${item.instructor_id}|${slot.day}`;
