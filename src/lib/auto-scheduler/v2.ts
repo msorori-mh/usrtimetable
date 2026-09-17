@@ -1002,6 +1002,13 @@ export async function runV2AutoSchedule(params: {
               placed++;
               byType[type].placed++;
               placedItem = true;
+              if (phase === "fallback") {
+                localFallbackPlacedSessions++;
+                warnings.push(
+                  `${groupLabel}: تعذر الموضع المخطط؛ استُخدم بديل قانوني ضمن سقف أيام الطلاب والمحاضر (day-cap-preserving fallback).`,
+                );
+              }
+
               if (roomCandidateRank(room, roomRequirement) === 1) {
                 practicalRoomFallbacks++;
                 warnings.push(`${groupLabel}: ${PRACTICAL_ROOM_FALLBACK_NOTE_AR}`);
