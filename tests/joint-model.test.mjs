@@ -5,7 +5,7 @@ import { buildJointModel, validateJointPlan } from "../src/lib/auto-scheduler/jo
 import { searchJointAttendance } from "../src/lib/auto-scheduler/joint-search.ts";
 import { snapshot, session } from "./helpers/attendance-fixtures.mjs";
 const highs = await loadHighs();
-test("generation finds feasibility first while compaction retains quality costs", async () => {
+test("generation retains attendance costs while compaction also prices idle time", async () => {
   const s = snapshot([session("one", 0, "08:00:00", "10:00:00")]);
   const costs = [];
   const observed = {
@@ -20,7 +20,8 @@ test("generation finds feasibility first while compaction retains quality costs"
     assert.equal(result.attendanceSearch.status, "feasible");
     assert.equal(validateJointPlan(s, result.attendanceSearch.sessions, 3), true);
   }
-  assert.ok(costs[0].every((cost) => cost === 0));
+  assert.ok(costs[0].some((cost) => cost > 0));
+  assert.ok(costs[0].every((cost) => cost >= 0));
   assert.ok(costs[1].some((cost) => cost !== 0));
 });
 test("joint model admits a simultaneous swap with no temporary room", () => {
@@ -103,7 +104,10 @@ test("import independently checks staleness, final constraints and lower-day pro
       importJointPlan(
         s,
         "v",
-        JSON.stringify({ ...raw, moves: [{ ...raw.moves[0], end_time: "11:00:00" }] }),
+        JSON.stringify({
+          ...raw,
+          moves: [{ ...raw.moves[0], end_time: "11:00:00" }],
+        }),
       ),
     /قيود/,
   );
@@ -112,7 +116,10 @@ test("import independently checks staleness, final constraints and lower-day pro
 test("generation solves a four-day plan with hard caps and retains fixed sessions", async () => {
   const s = snapshot(
     Array.from({ length: 8 }, (_, i) =>
-      session("pending-" + i, 0, "08:00:00", "10:00:00", { updated_at: "", is_locked: i === 0 }),
+      session("pending-" + i, 0, "08:00:00", "10:00:00", {
+        updated_at: "",
+        is_locked: i === 0,
+      }),
     ),
   );
   s.settings.max_daily_hours_per_section = 4;

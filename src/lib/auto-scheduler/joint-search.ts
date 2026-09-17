@@ -74,12 +74,23 @@ export async function searchJointAttendance(
     days: 3 | 4 | 5 | null,
     sessions: Session[] = [],
   ) =>
-    jointProposal(snapshot, { status, days, sessions, attempts, scope: "all_sessions_joint_grid" });
+    jointProposal(snapshot, {
+      status,
+      days,
+      sessions,
+      attempts,
+      scope: "all_sessions_joint_grid",
+    });
   if (!snapshot.sessions.length) return { ...finish("feasible", 3, []), outcome: "empty" };
   const ctx = context(snapshot),
     demand = new Map<string, number>();
   if (snapshot.sessions.some((s) => ctx.students(s).some((p) => p.startsWith("cohort:")))) {
-    attempts.push({ days: 3, status: "unknown", reason: "invalid_input", evaluated: 0 });
+    attempts.push({
+      days: 3,
+      status: "unknown",
+      reason: "invalid_input",
+      evaluated: 0,
+    });
     return finish("unknown", null);
   }
   for (const s of snapshot.sessions)
@@ -87,22 +98,28 @@ export async function searchJointAttendance(
       demand.set(p, (demand.get(p) ?? 0) + minutes(s.end_time) - minutes(s.start_time));
   for (const days of [3, 4, 5] as const) {
     if ([...demand.values()].some((n) => n > studentWeeklyCapacity(snapshot, days))) {
-      attempts.push({ days, status: "infeasible", reason: "capacity", evaluated: 0 });
+      attempts.push({
+        days,
+        status: "infeasible",
+        reason: "capacity",
+        evaluated: 0,
+      });
       continue;
     }
     if (Date.now() - started >= budgetMs) {
-      attempts.push({ days, status: "unknown", reason: "budget", evaluated: 0 });
+      attempts.push({
+        days,
+        status: "unknown",
+        reason: "budget",
+        evaluated: 0,
+      });
       return finish("unknown", null);
     }
     const built = buildJointModel(snapshot, days, purpose !== "generation");
     // Generation needs a complete valid timetable before quality optimization.
-    // A constant objective lets presolve discard soft span/idle-time machinery;
-    // all attendance, availability, capacity and collision constraints remain.
-    // Compaction retains its quality objective for the explicit improvement step.
+    // Keep instructor day targets while omitting span/idle-time costs in generation.
     const model = highs.createModel(
-      purpose === "generation"
-        ? { ...built.model, colCost: new Float64Array(built.model.numCols) }
-        : built.model,
+      purpose === "generation" ? { ...built.model, colCost: built.generationCost } : built.model,
     );
     try {
       model.options.set({
@@ -145,7 +162,12 @@ export async function searchJointAttendance(
         });
         return jointProposal(snapshot, exact);
       }
-      attempts.push({ days, status: "unknown", reason: "budget", evaluated: built.candidateCount });
+      attempts.push({
+        days,
+        status: "unknown",
+        reason: "budget",
+        evaluated: built.candidateCount,
+      });
       return finish("unknown", null);
     } finally {
       model.dispose();

@@ -4182,6 +4182,20 @@ export type Database = {
         }
         Returns: Json
       }
+      apply_schedule_generation: {
+        Args: {
+          p_college_id: string
+          p_version_id: string
+          p_operation_id: string
+          p_expected_revision: number
+          p_expected_version_updated_at: string
+          p_moves: Json
+          p_additions: Json
+          p_day_cap: number
+          p_note?: string | null
+        }
+        Returns: Json
+      }
       approve_capacity_split_proposal: {
         Args: {
           p_college_id: string

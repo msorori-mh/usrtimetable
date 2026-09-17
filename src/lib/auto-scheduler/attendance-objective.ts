@@ -195,6 +195,16 @@ export function compareAttendance(a: AttendanceMetrics, b: AttendanceMetrics): n
  */
 export const INSTRUCTOR_GENERIC_ATTENDANCE_DAY_CAP = 4;
 
+/** Weekly hours count each session once, never once per candidate placement. */
+export function instructorAttendanceTarget(hours: number, explicit?: number | null): number {
+  if (explicit != null) {
+    if (!Number.isInteger(explicit) || explicit < 1 || explicit > 6)
+      throw new Error("INVALID_INSTRUCTOR_ATTENDANCE_TARGET");
+    return explicit;
+  }
+  return hours <= 6 ? 1 : hours <= 10 ? 2 : hours <= 16 ? 3 : 4;
+}
+
 /** Per-instructor attendance-day limits as stored on `instructors`. */
 export interface InstructorAttendanceLimits {
   id: string;
@@ -272,6 +282,9 @@ export function attendanceDayCapRegressions(
     ]),
   );
   return instructorsOverAttendanceDayCap(finalSessions, instructors, genericCap)
-    .map((row) => ({ ...row, baselineDays: baseline.get(row.instructorId) ?? row.cap }))
+    .map((row) => ({
+      ...row,
+      baselineDays: baseline.get(row.instructorId) ?? row.cap,
+    }))
     .filter((row) => row.days > row.baselineDays);
 }
