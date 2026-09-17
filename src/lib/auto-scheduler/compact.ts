@@ -333,6 +333,7 @@ export function better(a: Metrics, b: Metrics) {
       | "shortInstructorDays"
       | "studentAttendanceDays"
       | "instructorAttendanceDays"
+      | "instructorTargetDayDeviation"
     >
   > = [
     "studentGapMinutes",
@@ -343,6 +344,7 @@ export function better(a: Metrics, b: Metrics) {
     "shortInstructorDays",
     "studentAttendanceDays",
     "instructorAttendanceDays",
+    "instructorTargetDayDeviation",
   ];
   if (protectedMetrics.some((key) => a[key] > b[key])) return false;
   return compareAttendance(a, b) < 0;
