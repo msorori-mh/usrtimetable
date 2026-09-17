@@ -567,6 +567,8 @@ export async function validate(
   }
 
   const seenInFile = new Map<string, number>();
+  // Founding structure tables are unique on (college_id, name) as well as code.
+  const seenNames = new Map<string, number>();
   const uniqueColHeader = tpl.columns.find((c) => c.key === tpl.uniqueKey)?.header;
 
   for (const row of parsed) {
@@ -641,6 +643,24 @@ export async function validate(
       mergeStudyPlanLegacyRoomTypeFields(row.values);
     }
     runEntityValidation(entity, row, lk, rowErrors, collegeId);
+
+    if (entity === "departments" || entity === "academic_programs") {
+      const nameKey = normalizeStructureName(row.values.name);
+      if (nameKey) {
+        const previous = seenNames.get(nameKey);
+        if (previous) {
+          rowErrors.push({
+            rowNumber: row.rowNumber,
+            columnName: "الاسم",
+            errorCode: "duplicate_name_in_file",
+            message: `اسم مكرر في الملف — مكرر مع الصف ${previous}`,
+            rawValue: String(row.values.name ?? ""),
+          });
+        } else {
+          seenNames.set(nameKey, row.rowNumber);
+        }
+      }
+    }
 
     // Duplicate / existence
     if (tpl.commitMode === "custom") {
