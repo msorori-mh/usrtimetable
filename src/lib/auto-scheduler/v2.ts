@@ -1041,7 +1041,6 @@ export async function runV2AutoSchedule(params: {
   const finalSnapshot = await loadCompactSnapshot(params.collegeId, params.scheduleVersionId);
   const attendance = measure(finalSnapshot);
   // Independent fail-closed gate: no generated/edited plan may be persisted
-  // when any instructor is scheduled on more than four distinct weekdays.
   // when any instructor exceeds their effective weekly attendance-day cap: the
   // generic cap of four days, or their explicit target when one is recorded.
   const instructorsOverDayCap = instructorsOverAttendanceDayCap(
