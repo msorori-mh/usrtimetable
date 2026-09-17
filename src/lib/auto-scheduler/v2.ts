@@ -578,6 +578,8 @@ export async function runV2AutoSchedule(params: {
   let blockedCadenceItems = 0;
   // Units rejected by the guarded RPC / certified plan; recorded, never fatal.
   let infeasibleItems = 0;
+  // Missing sessions placed by the bounded, day-cap-preserving local fallback.
+  let localFallbackPlacedSessions = 0;
 
   let versionUpdatedAt = payload.version_updated_at;
   let processedItems = 0;
@@ -854,13 +856,6 @@ export async function runV2AutoSchedule(params: {
       if (plannedIndex < 0) throw new Error("تغيرت وحدات الجدولة؛ أعد حساب خطة الحضور.");
       const [plannedAttendance] = plannedPending.splice(plannedIndex, 1);
 
-      const slots = [
-        {
-          day: plannedAttendance.day_of_week,
-          start: plannedAttendance.start_time,
-          end: plannedAttendance.end_time,
-        },
-      ];
       const levelKey = levelByCohort.get(item.cohort_id!);
       if (!levelKey) throw new Error("لا توجد بيانات مستوى لهذه الدفعة.");
       const levelDays = new Set(
@@ -871,150 +866,199 @@ export async function runV2AutoSchedule(params: {
       let placedItem = false;
       let lastReason = "لا يوجد مرشح يحقق قيود مجموعة التقديم والدفعة.";
 
-      for (const pool of roomPools) {
+      // JAWF-FALLBACK-01: the certified attendance-plan slot stays the first and
+      // highest-priority option. Only when that exact position is rejected do we
+      // try a bounded, day-cap-preserving local fallback for THIS missing session
+      // (no existing session is moved, no hard constraint is relaxed, every write
+      // still goes through the guarded RPC).
+      for (const phase of ["planned", "fallback"] as const) {
         if (placedItem || cancelled) break;
-        const candidateRooms = pool;
-        const rankedCandidates = rankGenerationCandidates({
-          snapshot: planningSnapshot,
-          sessions: planningSessions,
-          session: seedFor(item, durationMinutes),
-          slots,
-          roomIds: candidateRooms.map((room) => room.id),
-          usedDays,
-        }).sort((a, b) => {
-          const days = scheduledInstructorDays.get(item.instructor_id) ?? new Set<number>();
-          const target = instructorTargetDays(item.instructor_id);
-          const score = (day: number) => (days.has(day) ? 0 : days.size >= target ? 100 : 10);
-          return score(a.session.day_of_week) - score(b.session.day_of_week);
-        });
+        const slots =
+          phase === "planned"
+            ? [
+                {
+                  day: plannedAttendance.day_of_week,
+                  start: plannedAttendance.start_time,
+                  end: plannedAttendance.end_time,
+                },
+              ]
+            : compactSlots(
+                { ...planningSnapshot, sessions: planningSessions },
+                seedFor(item, durationMinutes),
+              ).filter(
+                // Never widen the proven student attendance-day envelope.
+                (slot) => levelDays.has(slot.day) || levelDays.size < attendancePlan.days!,
+              );
+        if (slots.length === 0) continue;
 
-        candidateSearch: for (const ranked of rankedCandidates) {
-          if (
-            ranked.session.day_of_week !== plannedAttendance.day_of_week ||
-            ranked.session.start_time !== plannedAttendance.start_time ||
-            ranked.session.end_time !== plannedAttendance.end_time ||
-            ranked.session.room_id !== plannedAttendance.room_id
-          )
-            continue;
-          const slot = {
-            day: ranked.session.day_of_week,
-            start: ranked.session.start_time,
-            end: ranked.session.end_time,
-          };
-          if (params.signal?.aborted) {
-            cancelled = true;
-            break;
-          }
-          if (!levelDays.has(slot.day) && levelDays.size >= attendancePlan.days!) {
-            lastReason = "تجاوز حد أيام الحضور المثبت لهذه الخطة؛ أعد البحث.";
-            continue;
-          }
-          const teacherDays = scheduledInstructorDays.get(item.instructor_id) ?? new Set<number>();
-          const dayCap = instructorDayCap(item.instructor_id);
-          if (!teacherDays.has(slot.day) && teacherDays.size >= dayCap) {
-            lastReason = `تجاوز الحد الصلب لأيام حضور المحاضر (${dayCap} أيام).`;
-            continue;
-          }
-          const availabilityKey = `${item.instructor_id}|${slot.day}`;
-          const unavailableReason = unavailableInstructorDays.get(availabilityKey);
-          if (unavailableReason) {
-            lastReason = unavailableReason;
-            continue;
-          }
-          for (const room of candidateRooms.filter(
-            (candidate) => candidate.id === ranked.session.room_id,
-          )) {
+        for (const pool of roomPools) {
+          if (placedItem || cancelled) break;
+          const candidateRooms = pool;
+          const rankedCandidates = rankGenerationCandidates({
+            snapshot: planningSnapshot,
+            sessions: planningSessions,
+            session: seedFor(item, durationMinutes),
+            slots,
+            roomIds: candidateRooms.map((room) => room.id),
+            usedDays,
+          }).sort((a, b) => {
+            const days = scheduledInstructorDays.get(item.instructor_id) ?? new Set<number>();
+            const target = instructorTargetDays(item.instructor_id);
+            const instructorScore = (day: number) =>
+              days.has(day) ? 0 : days.size >= target ? 100 : 10;
+            // Fallback ordering: planned day first, then the students' current
+            // days, then a new day only while inside the plan's day budget.
+            const dayScore = (day: number) =>
+              phase === "planned"
+                ? 0
+                : day === plannedAttendance.day_of_week
+                  ? 0
+                  : levelDays.has(day)
+                    ? 1
+                    : 2;
+            return (
+              dayScore(a.session.day_of_week) - dayScore(b.session.day_of_week) ||
+              instructorScore(a.session.day_of_week) - instructorScore(b.session.day_of_week)
+            );
+          });
+
+          candidateSearch: for (const ranked of rankedCandidates) {
+            if (
+              phase === "planned" &&
+              (ranked.session.day_of_week !== plannedAttendance.day_of_week ||
+                ranked.session.start_time !== plannedAttendance.start_time ||
+                ranked.session.end_time !== plannedAttendance.end_time ||
+                ranked.session.room_id !== plannedAttendance.room_id)
+            )
+              continue;
+            const slot = {
+              day: ranked.session.day_of_week,
+              start: ranked.session.start_time,
+              end: ranked.session.end_time,
+            };
             if (params.signal?.aborted) {
               cancelled = true;
-              break candidateSearch;
+              break;
             }
-            // Room opening hours (labs to 16:00, halls to 14:00) are declared in
-            // room_availability / rooms.available_* — skip doomed candidates.
-            const roomWindow = roomById.get(room.id);
-            if (roomWindow && !isRoomSlotAvailable(roomWindow, slot, roomAvailability)) {
-              lastReason = "القاعة غير متاحة في هذا الوقت وفق ساعات عملها المعتمدة.";
+            if (!levelDays.has(slot.day) && levelDays.size >= attendancePlan.days!) {
+              lastReason = "تجاوز حد أيام الحضور المثبت لهذه الخطة؛ أعد البحث.";
               continue;
             }
-            if (
-              isLocallyBlocked(
-                slot,
-                {
+            const teacherDays =
+              scheduledInstructorDays.get(item.instructor_id) ?? new Set<number>();
+            const dayCap = instructorDayCap(item.instructor_id);
+            if (!teacherDays.has(slot.day) && teacherDays.size >= dayCap) {
+              lastReason = `تجاوز الحد الصلب لأيام حضور المحاضر (${dayCap} أيام).`;
+              continue;
+            }
+            const availabilityKey = `${item.instructor_id}|${slot.day}`;
+            const unavailableReason = unavailableInstructorDays.get(availabilityKey);
+            if (unavailableReason) {
+              lastReason = unavailableReason;
+              continue;
+            }
+            for (const room of candidateRooms.filter(
+              (candidate) => candidate.id === ranked.session.room_id,
+            )) {
+              if (params.signal?.aborted) {
+                cancelled = true;
+                break candidateSearch;
+              }
+              // Room opening hours (labs to 16:00, halls to 14:00) are declared in
+              // room_availability / rooms.available_* — skip doomed candidates.
+              const roomWindow = roomById.get(room.id);
+              if (roomWindow && !isRoomSlotAvailable(roomWindow, slot, roomAvailability)) {
+                lastReason = "القاعة غير متاحة في هذا الوقت وفق ساعات عملها المعتمدة.";
+                continue;
+              }
+              if (
+                isLocallyBlocked(
+                  slot,
+                  {
+                    roomId: room.id,
+                    instructorId: item.instructor_id,
+                    cohortId: item.cohort_id,
+                    deliveryGroupId: item.delivery_group_id,
+                  },
+                  occupied,
+                  sharedStudents,
+                )
+              ) {
+                continue;
+              }
+              const result = await createScheduleSessionFromAssignmentV2({
+                scheduleVersionId: params.scheduleVersionId,
+                teachingAssignmentId: item.teaching_assignment_id,
+                dayOfWeek: slot.day,
+                startTime: slot.start,
+                endTime: slot.end,
+                roomId: room.id,
+                expectedVersionUpdatedAt: versionUpdatedAt,
+                note: `auto:${ALGORITHM_VERSION}; attendance:${attendancePlan.days}; prior-unsat:${attendancePlan.attempts
+                  .filter((a) => a.status === "infeasible")
+                  .map((a) => a.days)
+                  .join(",")}`,
+              });
+              assertVersionNotStale(result);
+              if (result.ok && result.session && result.schedule_version_updated_at) {
+                versionUpdatedAt = result.schedule_version_updated_at;
+                placed++;
+                byType[type].placed++;
+                placedItem = true;
+                if (phase === "fallback") {
+                  localFallbackPlacedSessions++;
+                  warnings.push(
+                    `${groupLabel}: تعذر الموضع المخطط؛ استُخدم بديل قانوني ضمن سقف أيام الطلاب والمحاضر (day-cap-preserving fallback).`,
+                  );
+                }
+
+                if (roomCandidateRank(room, roomRequirement) === 1) {
+                  practicalRoomFallbacks++;
+                  warnings.push(`${groupLabel}: ${PRACTICAL_ROOM_FALLBACK_NOTE_AR}`);
+                }
+                planningSessions.push({
+                  ...ranked.session,
+                  ...result.session,
+                } as Session);
+                usedDays.push(slot.day);
+                const assignedTeacherDays =
+                  scheduledInstructorDays.get(item.instructor_id) ?? new Set<number>();
+                assignedTeacherDays.add(slot.day);
+                scheduledInstructorDays.set(item.instructor_id, assignedTeacherDays);
+                occupied.push({
+                  day: slot.day,
+                  start: slot.start,
+                  end: slot.end,
                   roomId: room.id,
                   instructorId: item.instructor_id,
                   cohortId: item.cohort_id,
                   deliveryGroupId: item.delivery_group_id,
-                },
-                occupied,
-                sharedStudents,
-              )
-            ) {
-              continue;
-            }
-            const result = await createScheduleSessionFromAssignmentV2({
-              scheduleVersionId: params.scheduleVersionId,
-              teachingAssignmentId: item.teaching_assignment_id,
-              dayOfWeek: slot.day,
-              startTime: slot.start,
-              endTime: slot.end,
-              roomId: room.id,
-              expectedVersionUpdatedAt: versionUpdatedAt,
-              note: `auto:${ALGORITHM_VERSION}; attendance:${attendancePlan.days}; prior-unsat:${attendancePlan.attempts
-                .filter((a) => a.status === "infeasible")
-                .map((a) => a.days)
-                .join(",")}`,
-            });
-            assertVersionNotStale(result);
-            if (result.ok && result.session && result.schedule_version_updated_at) {
-              versionUpdatedAt = result.schedule_version_updated_at;
-              placed++;
-              byType[type].placed++;
-              placedItem = true;
-              if (roomCandidateRank(room, roomRequirement) === 1) {
-                practicalRoomFallbacks++;
-                warnings.push(`${groupLabel}: ${PRACTICAL_ROOM_FALLBACK_NOTE_AR}`);
+                });
+                break;
               }
-              planningSessions.push({
-                ...ranked.session,
-                ...result.session,
-              } as Session);
-              usedDays.push(slot.day);
-              const assignedTeacherDays =
-                scheduledInstructorDays.get(item.instructor_id) ?? new Set<number>();
-              assignedTeacherDays.add(slot.day);
-              scheduledInstructorDays.set(item.instructor_id, assignedTeacherDays);
-              occupied.push({
-                day: slot.day,
-                start: slot.start,
-                end: slot.end,
-                roomId: room.id,
-                instructorId: item.instructor_id,
-                cohortId: item.cohort_id,
-                deliveryGroupId: item.delivery_group_id,
-              });
-              break;
+              lastReason =
+                result.blocking_conflicts[0]?.message_ar ||
+                result.blocking_conflicts[0]?.code ||
+                result.warnings[0]?.message_ar ||
+                result.warnings[0]?.code ||
+                result.message_ar ||
+                result.code ||
+                lastReason;
+              // Availability-based day skipping only applies when enforcement is on.
+              if (
+                isInstructorAvailabilityEnforced(
+                  planningSnapshot.settings.enforce_instructor_availability,
+                ) &&
+                result.blocking_conflicts.some(
+                  (conflict) => conflict.code === "instructor_availability_required",
+                )
+              ) {
+                unavailableInstructorDays.set(availabilityKey, lastReason);
+                continue candidateSearch;
+              }
             }
-            lastReason =
-              result.blocking_conflicts[0]?.message_ar ||
-              result.blocking_conflicts[0]?.code ||
-              result.warnings[0]?.message_ar ||
-              result.warnings[0]?.code ||
-              result.message_ar ||
-              result.code ||
-              lastReason;
-            // Availability-based day skipping only applies when enforcement is on.
-            if (
-              isInstructorAvailabilityEnforced(
-                planningSnapshot.settings.enforce_instructor_availability,
-              ) &&
-              result.blocking_conflicts.some(
-                (conflict) => conflict.code === "instructor_availability_required",
-              )
-            ) {
-              unavailableInstructorDays.set(availabilityKey, lastReason);
-              continue candidateSearch;
-            }
+            if (placedItem) break;
           }
-          if (placedItem) break;
         }
       }
 
@@ -1173,6 +1217,8 @@ export async function runV2AutoSchedule(params: {
         blocked_cadence_items: blockedCadenceItems,
         infeasible_work_units: infeasibleItems,
         continue_on_infeasible_unit: true,
+        local_fallback_placed_sessions: localFallbackPlacedSessions,
+        local_fallback_policy: "day_cap_preserving_local_alternative_for_missing_session_only",
 
         nonconforming_existing_sessions: nonconformingSessions,
         by_component_type: byType,
