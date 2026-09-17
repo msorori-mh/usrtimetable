@@ -17,7 +17,8 @@ import type { AutoRunMode, AutoRunResult, UnplacedItem } from "@/lib/auto-schedu
 import { loadCompactSnapshot } from "@/lib/auto-scheduler/compact-service";
 import { measure, compactSlots, minutes, type Session } from "@/lib/auto-scheduler/compact";
 import {
-  attendanceDayCapRegressions,
+  instructorsOverAttendanceDayCap,
+  instructorAttendanceTarget,
   instructorAttendanceDayCap,
 } from "@/lib/auto-scheduler/attendance-objective";
 import {
@@ -53,8 +54,13 @@ import {
 } from "@/lib/auto-scheduler/authoritative-fallback";
 import { PRACTICAL_ROOM_FALLBACK_NOTE_AR } from "@/lib/scheduling/room-type-policy";
 import { studentDailyTotalMinutes } from "@/lib/scheduling/student-daily-policy";
-import { type RepairMove, type RepairPlan } from "@/lib/auto-scheduler/repair";
-import { moveOrRescheduleScheduleSession } from "@/lib/schedule-builder/session-move-rpc";
+import { planRepair, repairPlanKey } from "./repair";
+import {
+  applyGenerationPlan,
+  applyRepairPlan,
+  GENERATION_MAX_RELOCATIONS,
+  type GenerationRpc,
+} from "./generation-transaction";
 import {
   buildPartitionIndex,
   makeSharedStudentsPredicate,
@@ -62,7 +68,7 @@ import {
   type PartitionMembershipRow,
 } from "@/lib/auto-scheduler/student-partitions";
 
-const ALGORITHM_VERSION = "v2-attendance-certified-3-4-5";
+const ALGORITHM_VERSION = "v2-atomic-generation-repair-1";
 
 /** Fail-closed Arabic note when the partition mapping cannot be used. */
 export const PARTITION_FALLBACK_WARNING_AR =
@@ -145,126 +151,8 @@ const fromMinutes = (value: number) => `${pad(Math.floor(value / 60))}:${pad(val
 /** Arabic change reason recorded on every repair relocation. */
 export const REPAIR_CHANGE_REASON_AR = "إعادة ترتيب محدودة لإكمال الجلسات الناقصة (إصلاح آلي)";
 
-/** Latest schedule-version stamp, so a repair move does not make the create RPC stale. */
-async function readVersionUpdatedAt(scheduleVersionId: string, fallback: string): Promise<string> {
-  const { data } = await supabase
-    .from("schedule_versions")
-    .select("updated_at")
-    .eq("id", scheduleVersionId)
-    .maybeSingle();
-  return (data?.updated_at as string | undefined) ?? fallback;
-}
-
-export type RepairApplyResult = {
-  ok: boolean;
-  versionUpdatedAt: string;
-  appliedMoves: RepairMove[];
-  session: { id?: string } | null;
-  reason: string | null;
-  rolledBack: boolean;
-};
-
-/**
- * Fail-safe application of a repair plan: relocate the blockers through the
- * guarded move RPC, then create the missing session through the guarded V2 RPC.
- * Any failure rolls every relocation back to its original placement, so the
- * draft is never left half-moved.
- */
-export async function applyRepairPlan(input: {
-  scheduleVersionId: string;
-  teachingAssignmentId: string;
-  plan: RepairPlan;
-  versionUpdatedAt: string;
-  note: string;
-  moveSession?: typeof moveOrRescheduleScheduleSession;
-  createSession?: typeof createScheduleSessionFromAssignmentV2;
-  readVersion?: (scheduleVersionId: string, fallback: string) => Promise<string>;
-}): Promise<RepairApplyResult> {
-  const move = input.moveSession ?? moveOrRescheduleScheduleSession;
-  const create = input.createSession ?? createScheduleSessionFromAssignmentV2;
-  const readVersion = input.readVersion ?? readVersionUpdatedAt;
-  const applied: Array<{ plan: RepairMove; updatedAt: string | null }> = [];
-  let versionUpdatedAt = input.versionUpdatedAt;
-
-  const rollback = async () => {
-    for (const entry of [...applied].reverse()) {
-      await move({
-        sessionId: entry.plan.sessionId,
-        expectedUpdatedAt: entry.updatedAt,
-        original: entry.plan.to,
-        proposed: entry.plan.from,
-        changeReason: REPAIR_CHANGE_REASON_AR,
-      });
-    }
-    versionUpdatedAt = await readVersion(input.scheduleVersionId, versionUpdatedAt);
-  };
-
-  for (const planned of input.plan.moves) {
-    const result = await move({
-      sessionId: planned.sessionId,
-      expectedUpdatedAt: planned.updatedAt || null,
-      original: planned.from,
-      proposed: planned.to,
-      changeReason: REPAIR_CHANGE_REASON_AR,
-    });
-    if (!result.ok || result.stale) {
-      const reason =
-        result.blocking_conflicts[0]?.message_ar ||
-        result.message_ar ||
-        result.code ||
-        "تعذر تحريك الجلسة الحاجزة.";
-      await rollback();
-      return {
-        ok: false,
-        versionUpdatedAt,
-        appliedMoves: [],
-        session: null,
-        reason,
-        rolledBack: applied.length > 0,
-      };
-    }
-    applied.push({
-      plan: planned,
-      updatedAt: result.session?.updated_at ?? null,
-    });
-  }
-
-  versionUpdatedAt = await readVersion(input.scheduleVersionId, versionUpdatedAt);
-  const created = await create({
-    scheduleVersionId: input.scheduleVersionId,
-    teachingAssignmentId: input.teachingAssignmentId,
-    dayOfWeek: input.plan.placement.day_of_week,
-    startTime: input.plan.placement.start_time,
-    endTime: input.plan.placement.end_time,
-    roomId: input.plan.placement.room_id,
-    expectedVersionUpdatedAt: versionUpdatedAt,
-    note: input.note,
-  });
-  if (!created.ok || !created.session || !created.schedule_version_updated_at) {
-    const reason =
-      created.blocking_conflicts[0]?.message_ar ||
-      created.message_ar ||
-      created.code ||
-      "تعذر إنشاء الجلسة بعد إعادة الترتيب.";
-    await rollback();
-    return {
-      ok: false,
-      versionUpdatedAt,
-      appliedMoves: [],
-      session: null,
-      reason,
-      rolledBack: applied.length > 0,
-    };
-  }
-  return {
-    ok: true,
-    versionUpdatedAt: created.schedule_version_updated_at,
-    appliedMoves: input.plan.moves,
-    session: created.session,
-    reason: null,
-    rolledBack: false,
-  };
-}
+export { applyRepairPlan } from "./generation-transaction";
+export type { RepairPlan } from "./repair";
 
 export type AutoScheduleProgress = {
   processedItems: number;
@@ -286,7 +174,7 @@ export type AutoScheduleProgress = {
  * `plan_courses` counts/durations for the component family (theory/tutorial ->
  * lectures, practical -> labs), so a 4h theory component becomes 2 weekly 2h
  * sessions instead of a single 4h block. Existing sessions are reconciled
- * (resume/idempotency), never modified, and nonconforming ones are reported.
+ * (resume/idempotency); unlocked placements may move atomically within the repair budget.
  */
 export async function runV2AutoSchedule(params: {
   collegeId: string;
@@ -505,14 +393,6 @@ export async function runV2AutoSchedule(params: {
         (minutes(row.end_time) - minutes(row.start_time)) / 60,
     );
   }
-  for (const item of workItems) {
-    if (item.assigned_component_hours > 0) {
-      instructorWeeklyHours.set(
-        item.instructor_id,
-        (instructorWeeklyHours.get(item.instructor_id) ?? 0) + item.assigned_component_hours,
-      );
-    }
-  }
   const explicitInstructorTargets = new Map(
     planningSnapshot.instructors.map((instructor) => [
       instructor.id,
@@ -533,7 +413,7 @@ export async function runV2AutoSchedule(params: {
     const explicit = validExplicitTarget(instructorId);
     if (explicit != null) return explicit;
     const hours = instructorWeeklyHours.get(instructorId) ?? 0;
-    return hours <= 6 ? 1 : hours <= 10 ? 2 : hours <= 16 ? 3 : 4;
+    return instructorAttendanceTarget(hours);
   };
   const explicitInstructorMaxima = new Map(
     planningSnapshot.instructors.map((instructor) => [
@@ -624,14 +504,12 @@ export async function runV2AutoSchedule(params: {
   // no conflict is ignored and all writes still use the guarded RPC.
   const unavailableInstructorDays = new Map<string, string>();
   // JAWF-REPAIR-01 bounded repair counters (fill_missing only).
-  const repairAttempts = 0;
-  const repairRelocations = 0;
-  const repairPlacedSessions = 0;
-  const repairMaxDepthUsed = 0;
+  let repairAttempts = 0;
+  let repairRelocations = 0;
+  let repairPlacedSessions = 0;
+  let repairMaxDepthUsed = 0;
 
-  // Solve the complete remaining workload before the first write. The fill-missing
-  // contract never relocates existing sessions; a solution requiring that is handed
-  // back to the explicit compaction preview, never used to justify extra days.
+  // Solve all remaining work jointly, retaining actual locks and bounding relocations.
   if (blockedWorkItems.length)
     throw new Error("استكمل الإسنادات المحظورة قبل إثبات سيناريو أيام الحضور.");
   const pendingAttendance: Session[] = [];
@@ -660,6 +538,13 @@ export async function runV2AutoSchedule(params: {
         id: `attendance-pending:${pendingAttendance.length}`,
       });
   }
+  instructorWeeklyHours.clear();
+  for (const s of [...planningSessions, ...pendingAttendance])
+    instructorWeeklyHours.set(
+      s.instructor_id,
+      (instructorWeeklyHours.get(s.instructor_id) ?? 0) +
+        (minutes(s.end_time) - minutes(s.start_time)) / 60,
+    );
   params.onProgress?.({
     processedItems: 0,
     totalItems: workItems.length,
@@ -669,7 +554,17 @@ export async function runV2AutoSchedule(params: {
   });
   const generationSnapshot = {
     ...planningSnapshot,
-    sessions: [...planningSessions.map((s) => ({ ...s, is_locked: true })), ...pendingAttendance],
+    sessions: [
+      ...planningSessions.map((s) => ({
+        ...s,
+        is_locked: s.is_locked || (studySystem !== "all" && s.study_system !== studySystem),
+      })),
+      ...pendingAttendance,
+    ],
+    generationScope: {
+      existingIds: planningSessions.map((s) => s.id),
+      maxRelocations: GENERATION_MAX_RELOCATIONS,
+    },
   };
   const requestedBudget = params.searchDurationMs ?? 180000;
   const searchBudget = Number.isFinite(requestedBudget)
@@ -690,23 +585,165 @@ export async function runV2AutoSchedule(params: {
   )
     throw new Error("خطة التوليد لا تجتاز قيود الجدول؛ لم تُنشأ محاضرات.");
   warnings.push(attendanceEvidence);
-  for (const old of planningSessions) {
-    const target = attendancePlan.sessions.find((s) => s.id === old.id)!;
-    if (
-      target.day_of_week !== old.day_of_week ||
-      target.start_time !== old.start_time ||
-      target.end_time !== old.end_time ||
-      target.room_id !== old.room_id
-    )
-      throw new Error(
-        "وُجد حل ضمن " +
-          attendancePlan.days +
-          " أيام يتطلب نقل محاضرات قائمة. استخدم معاينة تحسين التوزيع ثم أعد إكمال الناقص. لم تُنشأ محاضرات ولم يُسمح بزيادة الأيام.",
-      );
-  }
   const plannedPending = attendancePlan.sessions.filter((s) =>
     s.id.startsWith("attendance-pending:"),
   );
+
+  const recordPracticalFallback = (s: Session) => {
+    const item = workItems.find((i) => i.teaching_assignment_id === s.teaching_assignment_id);
+    const room = (rooms ?? []).find((r) => r.id === s.room_id);
+    if (!item || !room) return;
+    const component = componentById.get(item.plan_course_component_id || item.component_id);
+    const plan = component ? planCourseById.get(component.plan_course_id) : null;
+    const requirement = resolveRoomRequirement({
+      assignmentRequiredRoomType: assignmentRequiredRoomType.get(item.teaching_assignment_id),
+      componentRoomTypeId: component?.required_room_type_id ?? null,
+      planCourseRoomType:
+        item.component_type === "practical"
+          ? plan?.required_room_type_for_lab
+          : plan?.required_room_type_for_lecture,
+    });
+    if (
+      roomCandidateRank(room as RoomLite, {
+        roomTypeId: requirement.roomTypeId,
+        roomTypeName: requirement.roomTypeName,
+        expectedStudents: item.expected_students,
+        componentType: item.component_type,
+        roomTypeCodeById,
+      }) === 1
+    ) {
+      practicalRoomFallbacks++;
+      warnings.push(`${item.course_code}: ${PRACTICAL_ROOM_FALLBACK_NOTE_AR}`);
+    }
+  };
+  // One atomic attempt applies the complete mathematical witness, including moves.
+  const rpc: GenerationRpc = (name, args) =>
+    (supabase as unknown as { rpc: GenerationRpc }).rpc(name, args);
+  const checkSave = (saved: Awaited<ReturnType<typeof applyGenerationPlan>>) => {
+    if (saved.status === "unknown")
+      throw new Error(
+        `نتيجة الحفظ غير مؤكدة؛ تحقق من العملية ${saved.operationId} قبل إعادة المحاولة.`,
+      );
+    if (
+      /STALE/.test(saved.code) ||
+      [
+        "VERSION_BUSY",
+        "PGRST202",
+        "42883",
+        "FORBIDDEN",
+        "VERSION_LOCKED",
+        "GENERATION_FAILED",
+        "INVALID_REQUEST",
+        "INVALID_BATCH_SIZE",
+        "OPERATION_ID_CONFLICT",
+        "ASSIGNMENT_SCOPE_MISMATCH",
+        "SESSION_SCOPE_MISMATCH",
+      ].includes(saved.code)
+    )
+      throw new Error(`توقف التوليد دون متابعة: ${saved.code}`);
+  };
+  const rebuildPlanningIndexes = () => {
+    existingByAssignment.clear();
+    scheduledInstructorDays.clear();
+    occupied.length = 0;
+    for (const s of planningSessions) {
+      const key = `${s.teaching_assignment_id}|${s.delivery_group_id}`;
+      existingByAssignment.set(key, [...(existingByAssignment.get(key) ?? []), s]);
+      const days = scheduledInstructorDays.get(s.instructor_id) ?? new Set<number>();
+      days.add(s.day_of_week);
+      scheduledInstructorDays.set(s.instructor_id, days);
+      occupied.push({
+        day: s.day_of_week,
+        start: s.start_time,
+        end: s.end_time,
+        roomId: s.room_id,
+        instructorId: s.instructor_id,
+        cohortId: s.cohort_id,
+        deliveryGroupId: s.delivery_group_id,
+      });
+    }
+  };
+  let jointSaved = false;
+  if (pendingAttendance.length && !params.signal?.aborted) {
+    const saved = await applyGenerationPlan({
+      collegeId: params.collegeId,
+      versionId: params.scheduleVersionId,
+      snapshot: generationSnapshot,
+      sessions: attendancePlan.sessions,
+      existingIds: planningSessions.map((s) => s.id),
+      dayCap: attendancePlan.days,
+      rpc,
+      note: `auto:${ALGORITHM_VERSION}; joint`,
+    });
+    checkSave(saved);
+    if (saved.status === "saved") {
+      const fresh = await loadCompactSnapshot(params.collegeId, params.scheduleVersionId);
+      planningSessions.splice(0, planningSessions.length, ...fresh.sessions);
+      planningSnapshot.revision = fresh.revision;
+      planningSnapshot.versionUpdatedAt = fresh.versionUpdatedAt;
+      versionUpdatedAt = fresh.versionUpdatedAt!;
+      jointSaved = true;
+      for (const s of plannedPending) recordPracticalFallback(s);
+      placed += saved.created.length;
+      repairRelocations += saved.relocated;
+      rebuildPlanningIndexes();
+    } else {
+      warnings.push(
+        `لم تُحفظ الخطة المشتركة (${saved.code})؛ ستُختبر مواضع بديلة وإعادة ترتيب محدودة.`,
+      );
+    }
+  }
+  // All alternative placements use the same validator and transactional server gate.
+  const createCandidate = async (
+    input: Parameters<typeof createScheduleSessionFromAssignmentV2>[0],
+  ) => {
+    const item = workItems.find((w) => w.teaching_assignment_id === input.teachingAssignmentId)!;
+    const candidate = {
+      ...seedFor(item, minutes(input.endTime) - minutes(input.startTime)),
+      day_of_week: input.dayOfWeek,
+      start_time: input.startTime,
+      end_time: input.endTime,
+      room_id: input.roomId,
+    };
+    const final = [...planningSessions, candidate];
+    const snapshot = { ...planningSnapshot, versionUpdatedAt, sessions: final };
+    if (!validateJointPlan(snapshot, final, attendancePlan.days!))
+      return {
+        ok: false,
+        code: "FINAL_STATE_CONFLICT",
+        session: null,
+        schedule_version_updated_at: null,
+        stale: false,
+        blocking_conflicts: [],
+        warnings: [],
+        message_ar: "الموضع يخالف قيود الخطة الكاملة.",
+      };
+    const saved = await applyGenerationPlan({
+      collegeId: params.collegeId,
+      versionId: params.scheduleVersionId,
+      snapshot,
+      sessions: final,
+      existingIds: planningSessions.map((s) => s.id),
+      dayCap: attendancePlan.days!,
+      rpc,
+      note: input.note ?? undefined,
+    });
+    checkSave(saved);
+    if (saved.status === "saved") {
+      planningSnapshot.revision = saved.revision;
+      planningSnapshot.versionUpdatedAt = saved.versionUpdatedAt;
+    }
+    return {
+      ok: saved.status === "saved",
+      code: saved.code,
+      session: saved.created[0] ?? null,
+      schedule_version_updated_at: saved.versionUpdatedAt ?? null,
+      stale: false,
+      blocking_conflicts: [] as { message_ar?: string; code?: string }[],
+      warnings: [] as { message_ar?: string; code?: string }[],
+      message_ar: saved.code,
+    };
+  };
 
   const difficulties = new Map<
     string,
@@ -717,7 +754,7 @@ export async function runV2AutoSchedule(params: {
       id: string;
     }
   >();
-  for (const item of workItems) {
+  for (const item of jointSaved ? [] : workItems) {
     if (params.signal?.aborted) break;
     const component = componentById.get(item.plan_course_component_id || item.component_id);
     const cadence = requiredCadenceForComponent({
@@ -1041,7 +1078,7 @@ export async function runV2AutoSchedule(params: {
                   roomId: room.id,
                 }),
               );
-              const result = await createScheduleSessionFromAssignmentV2({
+              const result = await createCandidate({
                 scheduleVersionId: params.scheduleVersionId,
                 teachingAssignmentId: item.teaching_assignment_id,
                 dayOfWeek: slot.day,
@@ -1185,12 +1222,16 @@ export async function runV2AutoSchedule(params: {
           }
           const room = roomById.get(candidate.roomId);
           if (!room) continue;
-          const slot = { day: candidate.day, start: candidate.start, end: candidate.end };
+          const slot = {
+            day: candidate.day,
+            start: candidate.start,
+            end: candidate.end,
+          };
           const key = candidateAttemptKey(candidate);
           if (attemptedPlacements.has(key)) continue;
           attemptedPlacements.add(key);
           authoritativeFallbackAttempts++;
-          const result = await createScheduleSessionFromAssignmentV2({
+          const result = await createCandidate({
             scheduleVersionId: params.scheduleVersionId,
             teachingAssignmentId: item.teaching_assignment_id,
             dayOfWeek: slot.day,
@@ -1248,15 +1289,93 @@ export async function runV2AutoSchedule(params: {
         }
       }
 
+      if (!placedItem && !params.signal?.aborted) {
+        const fresh = await loadCompactSnapshot(params.collegeId, params.scheduleVersionId);
+        // Concurrent edits require a new complete search, not repair against stale input.
+        if (
+          fresh.revision !== planningSnapshot.revision ||
+          fresh.versionUpdatedAt !== versionUpdatedAt
+        )
+          throw new Error("STALE_SNAPSHOT: تغيرت المسودة؛ أعد التوليد.");
+        const missing = seedFor(item, durationMinutes);
+        const repairSnapshot = {
+          ...fresh,
+          sessions: fresh.sessions.map((s) => ({
+            ...s,
+            is_locked: s.is_locked || (studySystem !== "all" && s.study_system !== studySystem),
+          })),
+        };
+        const stats = { attempts: 0 };
+        const excludedPlans = new Set<string>();
+        for (
+          let attempt = 0;
+          attempt < 8 && stats.attempts < 4000 && !placedItem && !params.signal?.aborted;
+          attempt++
+        ) {
+          const repair = planRepair({
+            snapshot: repairSnapshot,
+            sessions: repairSnapshot.sessions,
+            missing,
+            targetSlots: compactSlots(repairSnapshot, missing),
+            roomIds: roomPools.flat().map((r) => r.id),
+            dayCap: attendancePlan.days,
+            budget: { maxAttempts: 4000 - stats.attempts, maxDepth: 2 },
+            stats,
+            excludedPlans,
+          });
+          if (!repair) break;
+          if (repair) {
+            const saved = await applyRepairPlan({
+              collegeId: params.collegeId,
+              versionId: params.scheduleVersionId,
+              snapshot: repairSnapshot,
+              missing,
+              plan: repair,
+              dayCap: attendancePlan.days,
+              rpc,
+              note: `auto:${ALGORITHM_VERSION}; bounded-repair`,
+            });
+            checkSave(saved);
+            if (saved.status === "saved") {
+              const afterRepair = await loadCompactSnapshot(
+                params.collegeId,
+                params.scheduleVersionId,
+              );
+              planningSessions.splice(0, planningSessions.length, ...afterRepair.sessions);
+              planningSnapshot.revision = afterRepair.revision;
+              planningSnapshot.versionUpdatedAt = afterRepair.versionUpdatedAt;
+              versionUpdatedAt = afterRepair.versionUpdatedAt!;
+              rebuildPlanningIndexes();
+              usedDays.splice(
+                0,
+                usedDays.length,
+                ...planningSessions
+                  .filter((s) => s.teaching_assignment_id === item.teaching_assignment_id)
+                  .map((s) => s.day_of_week),
+              );
+              placed++;
+              byType[type].placed++;
+              placedItem = true;
+              repairPlacedSessions++;
+              recordPracticalFallback({ ...missing, ...repair.placement });
+              repairRelocations += saved.relocated;
+              repairMaxDepthUsed = Math.max(repairMaxDepthUsed, repair.depth);
+            } else {
+              lastReason = saved.code;
+              excludedPlans.add(repairPlanKey(repair));
+            }
+          }
+        }
+        repairAttempts += stats.attempts;
+      }
+
       if (cancelled) {
         warnings.push(
           "تم إيقاف التشغيل. الجلسات المحفوظة باقية، والوحدات غير المفحوصة ليست فاشلة.",
         );
         break;
       }
-      // A rejected certified placement is never routed into heuristic repair or a
-      // higher day cap. It is recorded as unplaced and the run continues with the
-      // remaining work items: one infeasible unit must not cancel the whole run.
+      // Exhausted direct and bounded repair alternatives remain unplaced; never relax a hard cap.
       if (!placedItem) {
         infeasibleItems++;
         byType[type].unplaced++;
@@ -1295,18 +1414,9 @@ export async function runV2AutoSchedule(params: {
   // Authoritative readback covers the whole active scope, including already scheduled work.
   const finalSnapshot = await loadCompactSnapshot(params.collegeId, params.scheduleVersionId);
   const attendance = measure(finalSnapshot);
-  // Independent fail-closed gate: in fill_missing the run may not introduce or
-  // increase an attendance-day cap violation (generic cap of four days, or the
-  // instructor's explicit target when recorded). Historical violations already
-  // present in the planning snapshot and preserved unchanged do not fail the run.
-  const dayCapRegressions = attendanceDayCapRegressions(
-    planningSnapshot.sessions,
-    finalSnapshot.sessions,
-    finalSnapshot.instructors,
-  );
-  if (dayCapRegressions.length > 0) {
+  // Independent readback verifies the same complete instructor cap enforced before commit.
+  if (instructorsOverAttendanceDayCap(finalSnapshot.sessions, finalSnapshot.instructors).length)
     throw new Error("INSTRUCTOR_ATTENDANCE_DAYS_EXCEEDED");
-  }
 
   const requirements = timedScope.map((item) => {
     const component = componentById.get(item.plan_course_component_id || item.component_id);
@@ -1418,7 +1528,7 @@ export async function runV2AutoSchedule(params: {
         repair_relocations: repairRelocations,
         repair_placed_sessions: repairPlacedSessions,
         repair_max_depth_used: repairMaxDepthUsed,
-        repair_policy: "certified_plan_only_no_heuristic_fallback",
+        repair_policy: "joint_atomic_then_bounded_unlocked_depth_2",
       } as never,
       unplaced: unplaced as never,
       run_by: userData.user?.id ?? null,
@@ -1447,7 +1557,7 @@ export async function runV2AutoSchedule(params: {
     improvementDelta: qualityAfter - qualityBefore,
     preservedExistingSessions: sessionRows.length,
     relocatedSessions: repairRelocations,
-    backtrackingAttempts: 0,
+    backtrackingAttempts: repairAttempts,
     durationMs,
     totalOfferings: workItems.length,
     mode,

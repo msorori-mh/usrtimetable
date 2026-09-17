@@ -99,6 +99,8 @@ function state() {
     { id: "new", required_room_type: "lecture_hall", is_active: true },
   ];
   addCohort(s, "q", "gq", "q1");
+  s.revision = "0";
+  s.versionUpdatedAt = "t0";
   const st = {
     snapshot: s,
     items: [
@@ -154,9 +156,54 @@ function state() {
     throw Error(`Unexpected query: ${table}`);
   };
   st.db = {
-    rpc: async (name) => {
-      assert.equal(name, "shared_lecture_catalog");
-      return { data: [], error: null };
+    rpc: async (name, request) => {
+      if (name === "shared_lecture_catalog") return { data: [], error: null };
+      assert.equal(name, "apply_schedule_generation");
+      st.transactions ??= [];
+      st.transactions.push(request);
+      if (st.rejectJoint && st.transactions.length === 1)
+        return {
+          data: { ok: false, code: "FINAL_STATE_CONFLICT" },
+          error: null,
+        };
+      if (st.transportFailure) return { data: null, error: { code: "NETWORK_ERROR" } };
+      if (st.reject) return { data: { ok: false, code: "STALE_SNAPSHOT" }, error: null };
+      const before = structuredClone(st.snapshot);
+      for (const move of request.p_moves) {
+        const row = st.snapshot.sessions.find((s) => s.id === move.id);
+        assert.equal(row.is_locked, false);
+        Object.assign(row, move);
+        delete row.expected_updated_at;
+      }
+      const created = [];
+      for (const a of request.p_additions) {
+        const result = await st.create({
+          teachingAssignmentId: a.teaching_assignment_id,
+          dayOfWeek: a.day_of_week,
+          startTime: a.start_time,
+          endTime: a.end_time,
+          roomId: a.room_id,
+          note: request.p_note,
+        });
+        if (!result.ok) {
+          st.snapshot = before;
+          return { data: { ok: false, code: result.code }, error: null };
+        }
+        created.push(result.session);
+      }
+      st.snapshot.revision = String(Number(st.snapshot.revision) + 1);
+      st.snapshot.versionUpdatedAt = `revision:${st.snapshot.revision}`;
+      return {
+        error: null,
+        data: {
+          ok: true,
+          operation_id: request.p_operation_id,
+          sessions: created,
+          relocated: request.p_moves.length,
+          revision: st.snapshot.revision,
+          schedule_version_updated_at: st.snapshot.versionUpdatedAt,
+        },
+      };
     },
     auth: { getUser: async () => ({ data: { user: { id: "test-actor" } } }) },
     from(table) {
@@ -206,7 +253,10 @@ function state() {
         code: "SECTION_CONFLICT",
         stale: false,
         blocking_conflicts: [
-          { code: "delivery_group_conflict", message_ar: "لا يوجد مرشح يحقق قيود المجموعة." },
+          {
+            code: "delivery_group_conflict",
+            message_ar: "لا يوجد مرشح يحقق قيود المجموعة.",
+          },
         ],
         warnings: [],
       };
@@ -216,7 +266,10 @@ function state() {
         code: "SECTION_CONFLICT",
         stale: false,
         blocking_conflicts: [
-          { code: "delivery_group_conflict", message_ar: "لا يوجد مرشح يحقق قيود المجموعة." },
+          {
+            code: "delivery_group_conflict",
+            message_ar: "لا يوجد مرشح يحقق قيود المجموعة.",
+          },
         ],
         warnings: [],
       };
@@ -324,7 +377,8 @@ test("stale server response stops further writes and never records completion", 
   const s = state();
   s.reject = true;
   await assert.rejects((await scheduler(s))(params), /STALE|تغيّر|تغير/);
-  assert.equal(s.calls.length, 1);
+  assert.equal(s.transactions.length, 1);
+  assert.equal(s.calls.length, 0);
   assert.equal(s.runs.length, 0);
 });
 test("cancelled generation keeps the whole required scope visible", async () => {
@@ -354,17 +408,15 @@ for (const [count, dailyHours, days] of [
       is_active: true,
     }));
     s.snapshot.settings.max_daily_hours_per_section = dailyHours;
-    const result = await (await scheduler(s))(params);
     if (days === 5) {
-      // A single instructor cannot satisfy a five-day certified student plan:
-      // generation must stop incomplete rather than violate the four-day ceiling.
-      assert.ok(result.placed < count);
-      assert.equal(s.runs[0].status, "partial");
-      assert.ok(new Set(s.calls.map((c) => c.dayOfWeek)).size <= 4);
+      await assert.rejects((await scheduler(s))(params), /ثبت التعذر|لم يُحسم/);
+      assert.equal(s.calls.length, 0);
+      assert.equal(s.runs.length, 0);
     } else {
+      const result = await (await scheduler(s))(params);
       assert.equal(result.placed, count);
       assert.equal(new Set(s.calls.map((c) => c.dayOfWeek)).size, days);
-      assert.ok(s.calls.every((c) => c.note.includes(`attendance:${days}`)));
+      assert.equal(s.transactions.length, 1);
       assert.equal(s.runs[0].status, "completed");
     }
   });
@@ -402,14 +454,14 @@ test("a mixed-system shared lecture blocks scoped generation before any session 
   assert.equal(s.runs.length, 0);
 });
 
-test("generation forwards its search budget and fixes existing placements", async () => {
+test("generation forwards its search budget and preserves actual lock state", async () => {
   const s = state();
   await (
     await scheduler(s)
   )({ ...params, searchDurationMs: 300000 });
   assert.equal(s.searchOptions.maxDurationMs, 300000);
   assert.equal(s.searchOptions.purpose, "generation");
-  assert.equal(s.searchSnapshot.sessions.find((x) => x.id === "old").is_locked, true);
+  assert.equal(s.searchSnapshot.sessions.find((x) => x.id === "old").is_locked, false);
   assert.ok(
     s.searchSnapshot.sessions.some((x) => x.id.startsWith("attendance-pending:") && !x.is_locked),
   );
@@ -437,7 +489,11 @@ for (const includeExistingWorkItem of [true, false]) {
     s.items[1].study_system = "parallel";
     s.items[1].instructor_id = "U";
     s.snapshot.cohorts.find((c) => c.id === "q").study_system = "parallel";
-    s.snapshot.instructors.push({ id: "U", instructor_type_id: "permanent", max_hours_per_day: 6 });
+    s.snapshot.instructors.push({
+      id: "U",
+      instructor_type_id: "permanent",
+      max_hours_per_day: 6,
+    });
     s.snapshot.rooms.push({ ...s.snapshot.rooms[0], id: "r2" });
     s.snapshot.templates = [
       {
@@ -593,7 +649,10 @@ function practicalState(level, rooms) {
   const s = state();
   s.snapshot.sessions = [];
   s.snapshot.rooms = rooms;
-  s.snapshot.cohorts = s.snapshot.cohorts.map((c) => ({ ...c, level_id: level }));
+  s.snapshot.cohorts = s.snapshot.cohorts.map((c) => ({
+    ...c,
+    level_id: level,
+  }));
   s.items = [
     item("p1", "c", "g", {
       component_type: "practical",
@@ -613,8 +672,18 @@ function practicalState(level, rooms) {
   s.snapshot.instructors = [{ id: "T", instructor_type_id: "permanent", max_hours_per_day: 6 }];
   return s;
 }
-const lab = { id: "lab-1", capacity: 40, room_type: "computer_lab", is_active: true };
-const hall = { id: "hall-1", capacity: 40, room_type: "lecture_hall", is_active: true };
+const lab = {
+  id: "lab-1",
+  capacity: 40,
+  room_type: "computer_lab",
+  is_active: true,
+};
+const hall = {
+  id: "hall-1",
+  capacity: 40,
+  room_type: "lecture_hall",
+  is_active: true,
+};
 
 for (const level of ["3", "4"]) {
   test(`practical level ${level} prefers a valid computer lab over a lecture hall`, async () => {
@@ -676,4 +745,53 @@ test("hall fallback never overrides capacity, and conflicts stay blocking", asyn
   const result = await (await scheduler(blocked))(params);
   assert.equal(result.placed, 0);
   assert.equal(result.unplaced.length, 1);
+});
+
+for (const fallback of [false, true]) {
+  test(`real V2 relocates earlier unlocked work (${fallback ? "bounded fallback" : "joint generation"})`, async () => {
+    const s = state();
+    s.items[1].instructor_id = "U";
+    s.snapshot.instructors.push({
+      id: "U",
+      instructor_type_id: "permanent",
+      max_hours_per_day: 6,
+    });
+    s.snapshot.settings.working_days = [0];
+    s.snapshot.settings.day_end_time = "12:00:00";
+    s.snapshot.settings.enforce_instructor_availability = true;
+    s.snapshot.availability = [
+      {
+        instructor_id: "U",
+        day_of_week: 0,
+        start_time: "08:00:00",
+        end_time: "10:00:00",
+        availability_type: "available",
+        is_preference: false,
+      },
+    ];
+    s.rejectJoint = fallback;
+    const result = await (await scheduler(s))(params);
+    assert.equal(result.placed, 1);
+    assert.equal(result.relocatedSessions, 1);
+    assert.equal(s.snapshot.sessions.find((x) => x.id === "old").start_time, "10:00:00");
+    assert.equal(
+      s.snapshot.sessions.find((x) => x.teaching_assignment_id === "new").start_time,
+      "08:00:00",
+    );
+    assert.equal(s.runs[0].status, "completed");
+    assert.equal(s.transactions.at(-1).p_moves.length, 1);
+    assert.equal(s.transactions.at(-1).p_additions.length, 1);
+    if (fallback) {
+      assert.ok(s.runs[0].summary.repair_attempts > 0);
+      assert.equal(s.runs[0].summary.repair_placed_sessions, 1);
+    }
+  });
+}
+test("unknown transaction outcome stops immediately without another write", async () => {
+  const s = state();
+  s.transportFailure = true;
+  await assert.rejects((await scheduler(s))(params), /غير مؤكدة/);
+  assert.equal(s.transactions.length, 1);
+  assert.equal(s.calls.length, 0);
+  assert.equal(s.runs.length, 0);
 });

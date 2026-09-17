@@ -3,6 +3,7 @@ import {
   ATTENDANCE_POLICY,
   compareAttendance,
   measureAttendance,
+  instructorAttendanceDayCap,
   type AttendanceMetrics,
 } from "./attendance-objective.ts";
 import { isInstructorAvailabilityEnforced } from "../scheduling/instructor-availability-policy.ts";
@@ -54,6 +55,7 @@ export interface Session {
   replaced_by_split?: boolean;
 }
 export interface Snapshot {
+  generationScope?: { existingIds: string[]; maxRelocations: number };
   externalBusy?: {
     instructor_id: string;
     day_of_week: number;
@@ -494,6 +496,19 @@ export function feasible(
   }
   const others = sessions.filter((x) => x.id !== candidate.id),
     sameDay = others.filter((x) => x.day_of_week === day);
+  const teacherDays = new Set(
+    others.filter((x) => x.instructor_id === teacher.id).map((x) => x.day_of_week),
+  );
+  teacherDays.add(day);
+  if (
+    teacherDays.size >
+    instructorAttendanceDayCap(
+      teacher.target_attendance_days_per_week,
+      undefined,
+      teacher.max_attendance_days_per_week,
+    )
+  )
+    return false;
   if (settings.extended_day_policy_enabled) {
     const before = extendedDays(s, sessions);
     const after = extendedDays(s, [...others, candidate]);

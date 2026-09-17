@@ -111,7 +111,8 @@ describe("engine source contract", () => {
 
   it("uses the explicit target for ranking and the persistence gate", () => {
     expect(source).toContain("target_attendance_days_per_week");
-    expect(source).toContain("attendanceDayCapRegressions");
+    expect(source).toContain("instructorsOverAttendanceDayCap");
+    expect(source).toContain("applyGenerationPlan");
   });
 });
 

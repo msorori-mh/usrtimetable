@@ -8,7 +8,6 @@
  */
 import { describe, expect, it } from "bun:test";
 import { feasible, type Session, type Snapshot } from "@/lib/auto-scheduler/compact";
-import { applyRepairPlan, REPAIR_CHANGE_REASON_AR, type RepairPlan } from "@/lib/auto-scheduler/v2";
 import { compareRepairPriority, planRepair } from "@/lib/auto-scheduler/repair";
 
 const session = (over: Partial<Session>): Session =>
@@ -33,12 +32,36 @@ const baseSnapshot = (over: Partial<Snapshot> = {}): Snapshot =>
   ({
     sessions: [],
     cohorts: [
-      { id: "c1", program_id: "p1", level_id: "l1", study_system: "regular", term_id: "t1" },
-      { id: "c2", program_id: "p1", level_id: "l2", study_system: "regular", term_id: "t1" },
+      {
+        id: "c1",
+        program_id: "p1",
+        level_id: "l1",
+        study_system: "regular",
+        term_id: "t1",
+      },
+      {
+        id: "c2",
+        program_id: "p1",
+        level_id: "l2",
+        study_system: "regular",
+        term_id: "t1",
+      },
     ],
     groups: [
-      { id: "g1", cohort_id: "c1", expected_students: 20, active: true, is_obsolete: false },
-      { id: "g2", cohort_id: "c2", expected_students: 20, active: true, is_obsolete: false },
+      {
+        id: "g1",
+        cohort_id: "c1",
+        expected_students: 20,
+        active: true,
+        is_obsolete: false,
+      },
+      {
+        id: "g2",
+        cohort_id: "c2",
+        expected_students: 20,
+        active: true,
+        is_obsolete: false,
+      },
     ],
     members: [
       { delivery_group_id: "g1", partition_id: "p-c1", cohort_id: "c1" },
@@ -72,7 +95,14 @@ const baseSnapshot = (over: Partial<Snapshot> = {}): Snapshot =>
         available_end_time: "16:00:00",
       },
     ],
-    instructors: [{ id: "i1", instructor_type_id: "t1", max_hours_per_day: 8, is_active: true }],
+    instructors: [
+      {
+        id: "i1",
+        instructor_type_id: "t1",
+        max_hours_per_day: 8,
+        is_active: true,
+      },
+    ],
     types: [{ id: "t1", code: "internal", is_external: false }],
     availability: [],
     roomAvailability: [],
@@ -104,7 +134,11 @@ const baseSnapshot = (over: Partial<Snapshot> = {}): Snapshot =>
     ...over,
   }) as Snapshot;
 
-const missing3h = session({ id: "repair:missing", start_time: "00:00:00", end_time: "03:00:00" });
+const missing3h = session({
+  id: "repair:missing",
+  start_time: "00:00:00",
+  end_time: "03:00:00",
+});
 const slots1h = (day: number, starts: string[]) =>
   starts.map((start) => ({
     day,
@@ -288,133 +322,8 @@ describe("planRepair — bounded 2-hop", () => {
   });
 });
 
-describe("applyRepairPlan — fail-safe application", () => {
-  const plan: RepairPlan = {
-    moves: [
-      {
-        sessionId: "b1",
-        updatedAt: "2026-01-01T00:00:00Z",
-        from: {
-          day_of_week: 1,
-          start_time: "10:00:00",
-          end_time: "12:00:00",
-          room_id: "hall1",
-        },
-        to: { day_of_week: 2, start_time: "09:00:00", end_time: "11:00:00", room_id: "hall1" },
-      },
-    ],
-    placement: {
-      day_of_week: 1,
-      start_time: "10:00:00",
-      end_time: "13:00:00",
-      room_id: "lab1",
-    },
-    depth: 1,
-    attempts: 12,
-  };
-
-  const okMove = () => ({
-    ok: true,
-    code: null,
-    stale: false,
-    message_ar: null,
-    blocking_conflicts: [],
-    warnings: [],
-    approved_exceptions: [],
-    session: { id: "b1", updated_at: "2026-01-01T01:00:00Z" },
-  });
-
-  it("creates the missing session after a successful relocation", async () => {
-    const moves: unknown[] = [];
-    const result = await applyRepairPlan({
-      scheduleVersionId: "v1",
-      teachingAssignmentId: "a1",
-      plan,
-      versionUpdatedAt: "2026-01-01T00:00:00Z",
-      note: "auto-repair",
-      moveSession: (async (pending: unknown) => {
-        moves.push(pending);
-        return okMove();
-      }) as never,
-      createSession: (async () => ({
-        ok: true,
-        code: null,
-        stale: false,
-        message_ar: null,
-        blocking_conflicts: [],
-        warnings: [],
-        session: { id: "new-session" },
-        schedule_version_updated_at: "2026-01-01T02:00:00Z",
-        scheduling_summary: null,
-      })) as never,
-      readVersion: async () => "2026-01-01T01:30:00Z",
-    });
-    expect(result.ok).toBe(true);
-    expect(result.rolledBack).toBe(false);
-    expect(result.versionUpdatedAt).toBe("2026-01-01T02:00:00Z");
-    expect(moves.length).toBe(1);
-    expect((moves[0] as { changeReason: string }).changeReason).toBe(REPAIR_CHANGE_REASON_AR);
-  });
-
-  it("rolls the relocation back when the placement fails", async () => {
-    const calls: Array<{ sessionId: string; proposed: { start_time: string } }> = [];
-    const result = await applyRepairPlan({
-      scheduleVersionId: "v1",
-      teachingAssignmentId: "a1",
-      plan,
-      versionUpdatedAt: "2026-01-01T00:00:00Z",
-      note: "auto-repair",
-      moveSession: (async (pending: { sessionId: string; proposed: { start_time: string } }) => {
-        calls.push(pending);
-        return okMove();
-      }) as never,
-      createSession: (async () => ({
-        ok: false,
-        code: "ROOM_CONFLICT",
-        stale: false,
-        message_ar: "تعارض قاعة",
-        blocking_conflicts: [],
-        warnings: [],
-        session: null,
-        schedule_version_updated_at: null,
-        scheduling_summary: null,
-      })) as never,
-      readVersion: async () => "2026-01-01T01:30:00Z",
-    });
-    expect(result.ok).toBe(false);
-    expect(result.rolledBack).toBe(true);
-    expect(result.reason).toBe("تعارض قاعة");
-    expect(calls.length).toBe(2);
-    // The rollback puts the session back exactly where it started.
-    expect(calls[1].proposed.start_time).toBe("10:00:00");
-  });
-
-  it("rolls back and reports when a relocation itself fails", async () => {
-    const result = await applyRepairPlan({
-      scheduleVersionId: "v1",
-      teachingAssignmentId: "a1",
-      plan,
-      versionUpdatedAt: "2026-01-01T00:00:00Z",
-      note: "auto-repair",
-      moveSession: (async () => ({
-        ok: false,
-        code: "INSTRUCTOR_CONFLICT",
-        stale: false,
-        message_ar: "تعارض مدرس",
-        blocking_conflicts: [],
-        warnings: [],
-        approved_exceptions: [],
-        session: null,
-      })) as never,
-      createSession: (async () => {
-        throw new Error("must not be called");
-      }) as never,
-      readVersion: async () => "2026-01-01T00:00:00Z",
-    });
-    expect(result.ok).toBe(false);
-    expect(result.reason).toBe("تعارض مدرس");
-  });
-});
+// Atomic application, rollback and unknown outcomes are covered by
+// generation-rearrangement.test.mjs and generation-atomic-db.sql.
 
 describe("hardest-first ordering", () => {
   it("puts long blocks before flexible short ones", () => {

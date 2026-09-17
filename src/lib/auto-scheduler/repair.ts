@@ -14,8 +14,8 @@
  * capacity, room availability, room-type fallback policy, study-system
  * templates, instructor daily load and the max-five-attendance-days rule are all
  * preserved. Locked sessions are never moved. No DB access and no writes: the
- * caller applies the plan through the guarded move/create RPCs and rolls back on
- * any failure.
+ * caller applies the whole plan through one guarded transaction; failure rolls
+ * back every write.
  */
 import {
   compactSlots,
@@ -24,7 +24,8 @@ import {
   minutes,
   type Session,
   type Snapshot,
-} from "@/lib/auto-scheduler/compact";
+} from "./compact.ts";
+import { validateJointPlan } from "./joint-model.ts";
 
 export type RepairPlacement = {
   day_of_week: number;
@@ -51,6 +52,17 @@ export type RepairPlan = {
   attempts: number;
 };
 
+/** Stable identity for alternatives rejected by the authoritative transaction. */
+export function repairPlanKey(plan: RepairPlan): string {
+  const tuple = (p: RepairPlacement) => [p.day_of_week, p.start_time, p.end_time, p.room_id];
+  return JSON.stringify([
+    tuple(plan.placement),
+    [...plan.moves]
+      .sort((a, b) => a.sessionId.localeCompare(b.sessionId))
+      .map((m) => [m.sessionId, tuple(m.to)]),
+  ]);
+}
+
 export type RepairBudget = {
   /** Hard cap on feasibility evaluations for one missing session. */
   maxAttempts: number;
@@ -58,7 +70,10 @@ export type RepairBudget = {
   maxDepth: number;
 };
 
-export const DEFAULT_REPAIR_BUDGET: RepairBudget = { maxAttempts: 4000, maxDepth: 2 };
+export const DEFAULT_REPAIR_BUDGET: RepairBudget = {
+  maxAttempts: 4000,
+  maxDepth: 2,
+};
 
 const placementOf = (session: Session): RepairPlacement => ({
   day_of_week: session.day_of_week,
@@ -99,11 +114,14 @@ export function conflictingSessions(
   return sessions.filter((other) => {
     if (other.id === candidate.id) return false;
     if (other.day_of_week !== candidate.day_of_week) return false;
-    if (!(start < minutes(other.end_time) && end > minutes(other.start_time))) return false;
+    const gap = Math.max(0, snapshot.settings.break_between_sessions_min || 0);
+    const overlap = start < minutes(other.end_time) && end > minutes(other.start_time);
+    const personOverlap =
+      start < minutes(other.end_time) + gap && end > minutes(other.start_time) - gap;
     return (
-      other.room_id === candidate.room_id ||
-      other.instructor_id === candidate.instructor_id ||
-      share(other, candidate)
+      (overlap && other.room_id === candidate.room_id) ||
+      (personOverlap &&
+        (other.instructor_id === candidate.instructor_id || share(other, candidate)))
     );
   });
 }
@@ -158,7 +176,12 @@ function relocate(
         return {
           sessions: [...others, candidate],
           moves: [
-            { sessionId: session.id, updatedAt: session.updated_at, from: current, to: placement },
+            {
+              sessionId: session.id,
+              updatedAt: session.updated_at,
+              from: current,
+              to: placement,
+            },
           ],
         };
       }
@@ -170,6 +193,7 @@ function relocate(
       const rest = others.filter((x) => x.id !== blocker.id);
       const inner = relocate(state, blocker, rest, depth - 1);
       if (!inner) continue;
+      if (state.attempts >= state.budget.maxAttempts) return null;
       state.attempts++;
       if (!state.feasible(state.snapshot, [...inner.sessions, candidate], candidate, session)) {
         continue;
@@ -178,7 +202,12 @@ function relocate(
         sessions: [...inner.sessions, candidate],
         moves: [
           ...inner.moves,
-          { sessionId: session.id, updatedAt: session.updated_at, from: current, to: placement },
+          {
+            sessionId: session.id,
+            updatedAt: session.updated_at,
+            from: current,
+            to: placement,
+          },
         ],
       };
     }
@@ -199,6 +228,10 @@ export function planRepair(input: {
   missing: Session;
   targetSlots: ReadonlyArray<{ day: number; start: string; end: string }>;
   roomIds: readonly string[];
+  dayCap?: number;
+  /** Rooms for blockers are independent of the missing session's room requirement. */
+  relocationRoomIds?: readonly string[];
+  excludedPlans?: ReadonlySet<string>;
   budget?: Partial<RepairBudget>;
   feasible?: FeasibleFn;
   /** Mutable counter: receives the feasibility evaluations consumed, found or not. */
@@ -211,7 +244,10 @@ export function planRepair(input: {
   const state: SearchState = {
     snapshot: input.snapshot,
     feasible: input.feasible ?? defaultFeasible,
-    roomIds: [...input.roomIds],
+    roomIds: [
+      ...(input.relocationRoomIds ??
+        input.snapshot.rooms.filter((r) => r.is_active).map((r) => r.id)),
+    ],
     budget,
     attempts: 0,
     pinned: new Set<string>([input.missing.id]),
@@ -223,7 +259,7 @@ export function planRepair(input: {
   };
 
   for (const slot of input.targetSlots) {
-    for (const roomId of state.roomIds) {
+    for (const roomId of input.roomIds) {
       if (state.attempts >= budget.maxAttempts) {
         return finish(null);
       }
@@ -267,7 +303,22 @@ export function planRepair(input: {
       }
       if (!ok || moves.length === 0) continue;
       if (moves.length > budget.maxDepth) continue;
-      return finish({ moves, placement, depth: moves.length, attempts: state.attempts });
+      if (
+        !validateJointPlan(
+          { ...input.snapshot, sessions: [...sessions, input.missing] },
+          current,
+          input.dayCap ?? 5,
+        )
+      )
+        continue;
+      const plan = {
+        moves,
+        placement,
+        depth: moves.length,
+        attempts: state.attempts,
+      };
+      if (input.excludedPlans?.has(repairPlanKey(plan))) continue;
+      return finish(plan);
     }
   }
   return finish(null);
