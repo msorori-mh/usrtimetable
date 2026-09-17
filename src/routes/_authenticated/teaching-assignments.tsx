@@ -226,9 +226,7 @@ function TeachingAssignmentsV2Page() {
 
       const { data: sessions, error: sessionsError } = await supabase
         .from("schedule_sessions")
-        .select(
-          "schedule_version_id, delivery_group_id, day_of_week, teaching_assignment_id",
-        )
+        .select("schedule_version_id, delivery_group_id, day_of_week, teaching_assignment_id")
         .eq("college_id", active!.id)
         .in("schedule_version_id", versionIds)
         .not("teaching_assignment_id", "is", null)
