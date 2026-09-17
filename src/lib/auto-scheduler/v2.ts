@@ -16,7 +16,10 @@ import {
 import type { AutoRunMode, AutoRunResult, UnplacedItem } from "@/lib/auto-scheduler/greedy";
 import { loadCompactSnapshot } from "@/lib/auto-scheduler/compact-service";
 import { measure, compactSlots, minutes, type Session } from "@/lib/auto-scheduler/compact";
-import { instructorsOverAttendanceDayCap } from "@/lib/auto-scheduler/attendance-objective";
+import {
+  attendanceDayCapRegressions,
+  instructorAttendanceDayCap,
+} from "@/lib/auto-scheduler/attendance-objective";
 import {
   rankGenerationCandidates,
   generationDomainSize,
