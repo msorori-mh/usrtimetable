@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { context, feasible, measure, studentWeeklyCapacity } from "../src/lib/auto-scheduler/compact.ts";
+import {
+  context,
+  feasible,
+  measure,
+  studentWeeklyCapacity,
+} from "../src/lib/auto-scheduler/compact.ts";
 import { searchAttendance } from "../src/lib/auto-scheduler/attendance-search.ts";
 import {
   extendedDayLimit,
@@ -92,9 +97,24 @@ function dayWith(kind) {
   const assignment = kind === "practical" ? "pr" : "th";
   const room = kind === "practical" ? "lab" : "hall";
   const existing = [
-    session("a", { start_time: "08:00:00", end_time: "10:00:00", teaching_assignment_id: assignment, room_id: room }),
-    session("b", { start_time: "10:00:00", end_time: "12:00:00", teaching_assignment_id: assignment, room_id: room }),
-    session("c", { start_time: "12:00:00", end_time: "14:00:00", teaching_assignment_id: assignment, room_id: room }),
+    session("a", {
+      start_time: "08:00:00",
+      end_time: "10:00:00",
+      teaching_assignment_id: assignment,
+      room_id: room,
+    }),
+    session("b", {
+      start_time: "10:00:00",
+      end_time: "12:00:00",
+      teaching_assignment_id: assignment,
+      room_id: room,
+    }),
+    session("c", {
+      start_time: "12:00:00",
+      end_time: "14:00:00",
+      teaching_assignment_id: assignment,
+      room_id: room,
+    }),
   ];
   return existing;
 }
@@ -181,11 +201,17 @@ test("NULL max_hours_per_day falls back to the general 8h instructor cap", () =>
       }),
     );
   const s = fixture([...eight, original]);
-  assert.equal(s.instructors.every((i) => i.max_hours_per_day === null), true);
+  assert.equal(
+    s.instructors.every((i) => i.max_hours_per_day === null),
+    true,
+  );
   const candidate = { ...original, day_of_week: 6, start_time: "16:00:00", end_time: "18:00:00" };
   assert.equal(feasible(s, s.sessions, candidate, original), false);
   // Eight hours themselves stay allowed under the general cap.
-  const s8 = fixture([...dayWith("practical").map((x) => ({ ...x, instructor_id: "i2" })), original]);
+  const s8 = fixture([
+    ...dayWith("practical").map((x) => ({ ...x, instructor_id: "i2" })),
+    original,
+  ]);
   assert.equal(feasible(s8, s8.sessions, onSaturdayAt14(original), original), true);
 });
 
@@ -262,7 +288,13 @@ test("shared lecture membership does not create a false incomplete partition map
   const s = fixture([]);
   // Two cohorts, one shared lecture group; operational expected_students is the
   // merged headcount (65 + 68), matching the merged direct membership.
-  s.cohorts.push({ id: "c2", program_id: "p2", level_id: "l", study_system: "regular", term_id: "t" });
+  s.cohorts.push({
+    id: "c2",
+    program_id: "p2",
+    level_id: "l",
+    study_system: "regular",
+    term_id: "t",
+  });
   s.groups = [
     { id: "g", cohort_id: "c", expected_students: 65 },
     { id: "g2", cohort_id: "c2", expected_students: 68 },

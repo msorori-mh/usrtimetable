@@ -45,9 +45,7 @@ const positiveHours = (value: unknown, fallback: number): number => {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 };
 
-export function studentDailyPolicy(
-  settings: StudentDailyHoursSettings = {},
-): StudentDailyPolicy {
+export function studentDailyPolicy(settings: StudentDailyHoursSettings = {}): StudentDailyPolicy {
   const totalMinutes =
     positiveHours(settings.max_daily_hours_per_section, STUDENT_DAILY_TOTAL_HOURS_DEFAULT) * 60;
   // The subset caps are configuration, never a hidden constant: when a college has

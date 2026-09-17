@@ -499,8 +499,7 @@ export function feasible(
     const after = extendedDays(s, [...others, candidate]);
     for (const p of ctx.students(candidate)) {
       if (
-        (after.get(p)?.size ?? 0) >
-        Math.max(extendedDayLimit(settings), before.get(p)?.size ?? 0)
+        (after.get(p)?.size ?? 0) > Math.max(extendedDayLimit(settings), before.get(p)?.size ?? 0)
       )
         return false;
     }
@@ -560,7 +559,9 @@ export function feasible(
       emptyStudentDailyLoad(),
     );
   for (const p of ctx.students(candidate)) {
-    const prior = load(sessions.filter((x) => x.day_of_week === day && ctx.students(x).includes(p)));
+    const prior = load(
+      sessions.filter((x) => x.day_of_week === day && ctx.students(x).includes(p)),
+    );
     const next = addStudentDailyLoad(
       load(sameDay.filter((x) => ctx.students(x).includes(p))),
       sessionStudentLoadKind(s, candidate),

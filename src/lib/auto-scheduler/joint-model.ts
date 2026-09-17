@@ -8,10 +8,7 @@ import {
   type Session,
   type Snapshot,
 } from "./compact.ts";
-import {
-  extendedDayLimit,
-  studentDailyPolicy,
-} from "../scheduling/student-daily-policy.ts";
+import { extendedDayLimit, studentDailyPolicy } from "../scheduling/student-daily-policy.ts";
 
 type Candidate = { session: Session; pool: number };
 type Term = [number, number];
@@ -214,7 +211,9 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
     );
     if (student) {
       // Theory-like / practical subset caps from the shared student daily policy.
-      const subsets: Array<[import("../scheduling/student-daily-policy.ts").StudentLoadKind, number]> = [
+      const subsets: Array<
+        [import("../scheduling/student-daily-policy.ts").StudentLoadKind, number]
+      > = [
         ["theory", policy.theoryMinutes],
         ["practical", policy.practicalMinutes],
       ];
@@ -428,7 +427,8 @@ export function validateJointPlan(
       {
         key: `teacher:${x.instructor_id}`,
         capMinutes:
-          (teacher?.max_hours_per_day || snapshot.settings.max_daily_hours_per_instructor || 6) * 60,
+          (teacher?.max_hours_per_day || snapshot.settings.max_daily_hours_per_instructor || 6) *
+          60,
       },
       ...ctx.students(x).flatMap((p) => [
         { key: `student:${p}`, capMinutes: dailyPolicy.totalMinutes },
@@ -451,11 +451,7 @@ export function validateJointPlan(
           ds.add(x.day_of_week);
           late.set(p, ds);
         }
-    if (
-      [...late.values()].some(
-        (ds) => ds.size > extendedDayLimit(snapshot.settings),
-      )
-    )
+    if ([...late.values()].some((ds) => ds.size > extendedDayLimit(snapshot.settings)))
       return false;
   }
   return true;

@@ -24,7 +24,12 @@ export function extendedResourceConflict(s: Snapshot): ExtendedResourceConflict 
   // Works for any integer extended-day limit >= 0: a student can attend at most
   // one late session per extended day, so `limit` late sessions in total.
   const limit = extendedDayLimit(cfg);
-  if (!cfg.extended_day_policy_enabled || !Number.isInteger(limit) || limit < 0 || !s.sessions.length)
+  if (
+    !cfg.extended_day_policy_enabled ||
+    !Number.isInteger(limit) ||
+    limit < 0 ||
+    !s.sessions.length
+  )
     return null;
   const extension = minutes(cfg.day_end_time) - minutes(cfg.standard_day_end_time ?? "14:00:00");
   const normal = minutes(cfg.standard_day_end_time ?? "14:00:00") - minutes(cfg.day_start_time);
