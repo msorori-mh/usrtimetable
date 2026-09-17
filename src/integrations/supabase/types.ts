@@ -1870,6 +1870,7 @@ export type Database = {
           notes: string | null
           phone: string | null
           specialization: string | null
+          target_attendance_days_per_week: number | null
           updated_at: string
         }
         Insert: {
@@ -1900,6 +1901,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           specialization?: string | null
+          target_attendance_days_per_week?: number | null
           updated_at?: string
         }
         Update: {
@@ -1930,6 +1932,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           specialization?: string | null
+          target_attendance_days_per_week?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -4136,6 +4139,7 @@ export type Database = {
           notes: string | null
           phone: string | null
           specialization: string | null
+          target_attendance_days_per_week: number | null
           updated_at: string
         }
         SetofOptions: {
