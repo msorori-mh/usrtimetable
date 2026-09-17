@@ -949,7 +949,8 @@ export async function runV2AutoSchedule(params: {
                 ...result.session,
               } as Session);
               usedDays.push(slot.day);
-              const assignedTeacherDays = instructorDays.get(item.instructor_id) ?? new Set<number>();
+              const assignedTeacherDays =
+                instructorDays.get(item.instructor_id) ?? new Set<number>();
               assignedTeacherDays.add(slot.day);
               instructorDays.set(item.instructor_id, assignedTeacherDays);
               occupied.push({
