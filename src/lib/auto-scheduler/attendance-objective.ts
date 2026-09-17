@@ -228,3 +228,25 @@ export function instructorsOverAttendanceDayCap(
   }
   return over;
 }
+
+/**
+ * New or increased attendance-day cap violations compared with a baseline.
+ * Historical violations that existed before the run and were preserved as-is must
+ * not fail a fill_missing run; only a regression may.
+ */
+export function attendanceDayCapRegressions(
+  baselineSessions: { instructor_id: string; day_of_week: number }[],
+  finalSessions: { instructor_id: string; day_of_week: number }[],
+  instructors: { id: string; target_attendance_days_per_week?: number | null }[],
+  genericCap: number = INSTRUCTOR_GENERIC_ATTENDANCE_DAY_CAP,
+): { instructorId: string; days: number; cap: number; baselineDays: number }[] {
+  const baseline = new Map(
+    instructorsOverAttendanceDayCap(baselineSessions, instructors, genericCap).map((row) => [
+      row.instructorId,
+      row.days,
+    ]),
+  );
+  return instructorsOverAttendanceDayCap(finalSessions, instructors, genericCap)
+    .map((row) => ({ ...row, baselineDays: baseline.get(row.instructorId) ?? row.cap }))
+    .filter((row) => row.days > row.baselineDays);
+}
