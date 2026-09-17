@@ -97,7 +97,7 @@ lines.push("| schedule_versions / schedule_sessions | GENERATED_NOT_IMPORTED | s
 lines.push("| instructor_availability | UI_MANAGED_NOT_IMPORTED | /availability |");
 lines.push("| time_slot_templates | UI_MANAGED_NOT_IMPORTED | UI time templates |");
 lines.push("| faculty_workload_policies | UI_MANAGED_NOT_IMPORTED | no ImportEntity |");
-lines.push("| colleges / departments / programs | UI_MANAGED_NOT_IMPORTED | foundation UI |");
+lines.push("| colleges | UI_MANAGED_NOT_IMPORTED | foundation UI (لا استيراد) |");
 
 writeFileSync("docs/IMPORT-TEMPLATES-FINAL-CONTRACT-MATRIX.md", lines.join("\n"), "utf8");
 console.log("Wrote docs/IMPORT-TEMPLATES-FINAL-CONTRACT-MATRIX.md");

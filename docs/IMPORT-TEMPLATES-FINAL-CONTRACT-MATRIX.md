@@ -21,6 +21,34 @@
 
 # ACTIVE_NEW_FLOW
 
+## departments
+
+- **Label:** الأقسام الأكاديمية
+- **Sheet:** departments
+- **Natural key:** رمز القسم (`code`)
+- **Commit:** commit_import_job_atomic
+
+| column_name | Arabic label | required/optional | data type | allowed values | normalization | reference entity | validation error code | natural-key | example | notes |
+|---|---|---|---|---|---|---|---|---|---|---|
+| code | الرمز | optional | text | — | trim | — | invalid_enum / type | yes | CS |  |
+| name | الاسم | required | text | — | trim | — | missing_required / unknown_* | no | علوم الحاسب |  |
+| study_system | نظام_الدراسة | optional | text | regular, parallel, both | trim | — | invalid_enum / type | no | regular |  |
+
+## academic_programs
+
+- **Label:** البرامج الأكاديمية
+- **Sheet:** programs
+- **Natural key:** رمز البرنامج (`code`)
+- **Commit:** commit_import_job_atomic
+
+| column_name | Arabic label | required/optional | data type | allowed values | normalization | reference entity | validation error code | natural-key | example | notes |
+|---|---|---|---|---|---|---|---|---|---|---|
+| code | الرمز | optional | text | — | trim | — | invalid_enum / type | yes | CS-BSC |  |
+| name | الاسم | required | text | — | trim | — | missing_required / unknown_* | no | بكالوريوس علوم الحاسب |  |
+| department_code | القسم | required | text | — | trim | departments.code | missing_required / unknown_* | no | CS |  |
+| degree_type | نوع_الدرجة | optional | text | bachelor, master, doctorate, diploma | trim | — | invalid_enum / type | no | bachelor |  |
+| duration_years | المدة_بالسنوات | optional | number | — | Number | — | invalid_enum / type | no | 4 |  |
+
 ## academic_terms
 
 - **Label:** الفصول الأكاديمية
@@ -48,25 +76,29 @@
 
 | column_name | Arabic label | required/optional | data type | allowed values | normalization | reference entity | validation error code | natural-key | example | notes |
 |---|---|---|---|---|---|---|---|---|---|---|
-| employee_number | رقم_الموظف | required | text | — | trim | instructors.employee_number | missing_required / unknown_* | yes | EMP001 |  |
-| full_name | الاسم_الكامل | required | text | — | trim | — | missing_required / unknown_* | no | أحمد محمد |  |
-| full_name_ar | الاسم_بالعربي | optional | text | — | trim | — | invalid_enum / type | no | أحمد محمد |  |
-| full_name_en | الاسم_بالانجليزي | optional | text | — | trim | — | invalid_enum / type | no | Ahmed Mohamed |  |
-| email | البريد_الالكتروني | optional | text | — | trim | — | invalid_enum / type | no | a@x.com |  |
-| phone | الهاتف | optional | text | — | trim | — | invalid_enum / type | no | 0555555555 |  |
-| specialization | التخصص | optional | text | — | trim | — | invalid_enum / type | no | أمن المعلومات |  |
-| academic_degree | الدرجة_العلمية | optional | text | — | trim | — | invalid_enum / type | no | دكتوراه |  |
-| academic_rank | الرتبة_الأكاديمية | optional | text | — | trim | — | invalid_enum / type | no | أستاذ مساعد |  |
-| instructor_type_code | نوع_المحاضر_رمز | optional | text | — | trim | — | invalid_enum / type | no | PERM |  |
-| department_code | رمز_القسم | optional | text | — | trim | departments.code | invalid_enum / type | no | CS |  |
-| employment_type | نوع_التوظيف | optional | text | full_time, part_time, visiting | trim | — | invalid_enum / type | no | full_time |  |
-| max_weekly_hours | أقصى_ساعات_أسبوعية | optional | number | — | Number | — | invalid_enum / type | no | 18 |  |
-| max_hours_per_day | أقصى_ساعات_يومية | optional | number | — | Number | — | invalid_enum / type | no | 6 |  |
-| administrative_release_hours | ساعات_إعفاء_إداري | optional | number | — | Number | — | invalid_enum / type | no | 0 |  |
-| admin_tasks | المهام_الإدارية | optional | text | — | trim | — | invalid_enum / type | no |  |  |
+| instructor_type_code | فئة_المحاضر_رمز | required | text | — | trim | — | missing_required / unknown_* | no | permanent |  |
+| employee_number | رقم_الموظف | optional | text | — | trim | instructors.employee_number | invalid_enum / type | yes | EMP001 |  |
+| full_name | الاسم_الافتراضي | required | text | — | trim | — | missing_required / unknown_* | no | أحمد محمد |  |
+| full_name_ar | الاسم_الرباعي | optional | text | — | trim | — | invalid_enum / type | no | أحمد محمد علي عبدالله |  |
+| affiliation_college_code | كلية_التبعية_رمز | required | text | — | trim | — | missing_required / unknown_* | no | ITCS |  |
+| affiliation_department_code | قسم_التبعية_رمز | required | text | — | trim | departments.code | missing_required / unknown_* | no | CS |  |
+| specialization | التخصص | optional | text | — | trim | — | invalid_enum / type | no | نظم المعلومات الحاسوبية |  |
+| academic_rank | الرتبة_العلمية | optional | text | — | trim | — | invalid_enum / type | no | أستاذ مساعد |  |
+| max_weekly_hours | النصاب_الأساسي_الأسبوعي | required | number | — | Number | — | missing_required / unknown_* | no | 18 |  |
+| administrative_release_hours | ساعات_الإعفاء_الإداري | optional | number | — | Number | — | invalid_enum / type | no | 0 |  |
+| administrative_position | المنصب_الإداري | optional | text | — | trim | — | invalid_enum / type | no | department_head |  |
+| administrative_department_code | قسم_الرئاسة_رمز | optional | text | — | trim | departments.code | invalid_enum / type | no | CS |  |
+| employment_type | حالة_التفرغ_التعاقد | optional | text | unknown, full_time, part_time, visiting, contract | trim | — | invalid_enum / type | no | full_time |  |
+| email | البريد_الإلكتروني | optional | text | — | trim | — | invalid_enum / type | no | a@x.com |  |
+| phone | التلفون_الواتساب | optional | text | — | trim | — | invalid_enum / type | no | 777000000 |  |
+| is_active | نشط | optional | boolean | — | toBool | — | invalid_enum / type | no | true |  |
+| department_code | رمز_القسم | optional | text | — | trim | departments.code | invalid_enum / type | no |  |  |
+| full_name_en | الاسم_بالانجليزي | optional | text | — | trim | — | invalid_enum / type | no |  |  |
+| academic_degree | الدرجة_العلمية | optional | text | — | trim | — | invalid_enum / type | no |  |  |
+| max_hours_per_day | أقصى_ساعات_يومية | optional | number | — | Number | — | invalid_enum / type | no |  |  |
+| admin_tasks | الصفة | optional | text | — | trim | — | invalid_enum / type | no |  |  |
 | external_source | الجهة_الخارجية | optional | text | — | trim | — | invalid_enum / type | no |  |  |
 | notes | ملاحظات | optional | text | — | trim | — | invalid_enum / type | no |  |  |
-| is_active | نشط | optional | boolean | — | toBool | — | invalid_enum / type | no | true |  |
 
 ## rooms
 
@@ -140,8 +172,12 @@
 | lecture_session_duration | مدة_المحاضرة | optional | number | — | Number | — | invalid_enum / type | composite | 2 |  |
 | labs_per_week | عدد_المعامل_أسبوعياً | optional | number | — | Number | — | invalid_enum / type | composite | 1 |  |
 | lab_session_duration | مدة_المعمل | optional | number | — | Number | — | invalid_enum / type | composite | 2 |  |
-| required_room_type_for_lecture | نوع_قاعة_المحاضرة | optional | text | — | trim | — | invalid_enum / type | composite | lecture_hall |  |
-| required_room_type_for_lab | نوع_قاعة_المعمل | optional | text | — | trim | — | invalid_enum / type | composite | computer_lab |  |
+| required_room_type_code_lecture | رمز_نوع_قاعة_المحاضرة | optional | text | — | trim | — | invalid_enum / type | composite | lecture_hall |  |
+| required_room_type_code_practical | رمز_نوع_قاعة_المعمل | optional | text | — | trim | — | invalid_enum / type | composite | computer_lab |  |
+| required_room_type_code_tutorial | رمز_نوع_قاعة_التمرين | optional | text | — | trim | — | invalid_enum / type | composite | lecture_hall |  |
+| required_room_type_code_project | رمز_نوع_قاعة_المشروع | optional | text | — | trim | — | invalid_enum / type | composite | seminar_room |  |
+| _legacy_required_room_type_code_lecture | نوع_قاعة_المحاضرة | optional | text | — | trim | — | invalid_enum / type | composite | lecture_hall |  |
+| _legacy_required_room_type_code_practical | نوع_قاعة_المعمل | optional | text | — | trim | — | invalid_enum / type | composite | computer_lab |  |
 
 ## study_plan_courses
 
@@ -171,15 +207,19 @@
 | elective_slot_code | رمز_الخانة_الاختيارية | optional | text | — | trim | elective_slots.slot_code | invalid_enum / type | composite |  |  |
 | is_summer_training | تدريب_صيفي | optional | boolean | — | toBool | — | invalid_enum / type | composite | false |  |
 | is_graduation_project | مشروع_تخرج | optional | boolean | — | toBool | — | invalid_enum / type | composite | false |  |
-| course_nature | طبيعة_المقرر | optional | text | department, faculty, university | trim | courses.code | invalid_enum / type | composite | department |  |
+| course_nature | طبيعة_المقرر | optional | text | department, college, university | trim | courses.code | invalid_enum / type | composite | department |  |
 | is_shared | مشترك | optional | boolean | — | toBool | — | invalid_enum / type | composite | false |  |
 | is_required | إجباري | optional | boolean | — | toBool | — | invalid_enum / type | composite | true |  |
 | lectures_per_week | عدد_المحاضرات_أسبوعياً | optional | number | — | Number | — | invalid_enum / type | composite | 1 |  |
 | lecture_session_duration | مدة_المحاضرة | optional | number | — | Number | — | invalid_enum / type | composite | 2 |  |
 | labs_per_week | عدد_المعامل_أسبوعياً | optional | number | — | Number | — | invalid_enum / type | composite | 1 |  |
 | lab_session_duration | مدة_المعمل | optional | number | — | Number | — | invalid_enum / type | composite | 2 |  |
-| required_room_type_for_lecture | نوع_قاعة_المحاضرة | optional | text | — | trim | — | invalid_enum / type | composite | lecture_hall |  |
-| required_room_type_for_lab | نوع_قاعة_المعمل | optional | text | — | trim | — | invalid_enum / type | composite | computer_lab |  |
+| required_room_type_code_lecture | رمز_نوع_قاعة_المحاضرة | optional | text | — | trim | — | invalid_enum / type | composite | lecture_hall |  |
+| required_room_type_code_practical | رمز_نوع_قاعة_المعمل | optional | text | — | trim | — | invalid_enum / type | composite | computer_lab |  |
+| required_room_type_code_tutorial | رمز_نوع_قاعة_التمرين | optional | text | — | trim | — | invalid_enum / type | composite | lecture_hall |  |
+| required_room_type_code_project | رمز_نوع_قاعة_المشروع | optional | text | — | trim | — | invalid_enum / type | composite | seminar_room |  |
+| _legacy_required_room_type_code_lecture | نوع_قاعة_المحاضرة | optional | text | — | trim | — | invalid_enum / type | composite | lecture_hall |  |
+| _legacy_required_room_type_code_practical | نوع_قاعة_المعمل | optional | text | — | trim | — | invalid_enum / type | composite | computer_lab |  |
 
 ## course_programs
 
@@ -342,4 +382,4 @@
 | instructor_availability | UI_MANAGED_NOT_IMPORTED | /availability |
 | time_slot_templates | UI_MANAGED_NOT_IMPORTED | UI time templates |
 | faculty_workload_policies | UI_MANAGED_NOT_IMPORTED | no ImportEntity |
-| colleges / departments / programs | UI_MANAGED_NOT_IMPORTED | foundation UI |
+| colleges | UI_MANAGED_NOT_IMPORTED | foundation UI (لا استيراد) |
