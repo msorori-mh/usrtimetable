@@ -16,6 +16,7 @@ import {
 import type { AutoRunMode, AutoRunResult, UnplacedItem } from "@/lib/auto-scheduler/greedy";
 import { loadCompactSnapshot } from "@/lib/auto-scheduler/compact-service";
 import { measure, compactSlots, minutes, type Session } from "@/lib/auto-scheduler/compact";
+import { instructorsOverAttendanceDayCap } from "@/lib/auto-scheduler/attendance-objective";
 import {
   rankGenerationCandidates,
   generationDomainSize,
@@ -1040,19 +1041,16 @@ export async function runV2AutoSchedule(params: {
   const finalSnapshot = await loadCompactSnapshot(params.collegeId, params.scheduleVersionId);
   const attendance = measure(finalSnapshot);
   // Independent fail-closed gate: no generated/edited plan may be persisted
-  // when any instructor is scheduled on more than four distinct weekdays.
-  const instructorDays = new Map<string, Set<number>>();
-  for (const session of finalSnapshot.sessions) {
-    const days = instructorDays.get(session.instructor_id) ?? new Set<number>();
-    days.add(session.day_of_week);
-    instructorDays.set(session.instructor_id, days);
-  }
-  const instructorsOverFourDays = [...instructorDays.entries()]
-    .filter(([, days]) => days.size > 4)
-    .map(([instructorId, days]) => ({ instructorId, days: days.size }));
-  if (instructorsOverFourDays.length > 0) {
+  // when any instructor exceeds their effective weekly attendance-day cap: the
+  // generic cap of four days, or their explicit target when one is recorded.
+  const instructorsOverDayCap = instructorsOverAttendanceDayCap(
+    finalSnapshot.sessions,
+    finalSnapshot.instructors,
+  );
+  if (instructorsOverDayCap.length > 0) {
     throw new Error("INSTRUCTOR_ATTENDANCE_DAYS_EXCEEDED");
   }
+
   const requirements = timedScope.map((item) => {
     const component = componentById.get(item.plan_course_component_id || item.component_id);
     const cadence = requiredCadenceForComponent({

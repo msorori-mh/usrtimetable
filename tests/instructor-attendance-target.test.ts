@@ -8,6 +8,8 @@ import { describe, expect, it } from "bun:test";
 import {
   compareAttendance,
   measureAttendance,
+  instructorAttendanceDayCap,
+  instructorsOverAttendanceDayCap,
   type AttendanceEvent,
 } from "@/lib/auto-scheduler/attendance-objective";
 import {
@@ -195,5 +197,48 @@ describe("snapshot wiring", () => {
       },
     } as unknown as Snapshot;
     expect(measure(snapshot).instructorTargetDayDeviation).toBe(2);
+  });
+});
+
+describe("fail-closed persistence gate honours the explicit target", () => {
+  const s = (instructor: string, day: number) => ({ instructor_id: instructor, day_of_week: day });
+  const fiveDays = (instructor: string) => [0, 1, 2, 3, 4].map((d) => s(instructor, d));
+
+  it("does not flag five days for an instructor whose target is five", () => {
+    expect(
+      instructorsOverAttendanceDayCap(fiveDays("head"), [
+        { id: "head", target_attendance_days_per_week: 5 },
+      ]),
+    ).toEqual([]);
+  });
+
+  it("still flags a regular instructor at five days", () => {
+    expect(
+      instructorsOverAttendanceDayCap(fiveDays("plain"), [
+        { id: "plain", target_attendance_days_per_week: null },
+      ]),
+    ).toEqual([{ instructorId: "plain", days: 5, cap: 4 }]);
+  });
+
+  it("flags a targeted instructor only beyond their own target", () => {
+    expect(
+      instructorsOverAttendanceDayCap(
+        [...fiveDays("head"), s("head", 5)],
+        [{ id: "head", target_attendance_days_per_week: 5 }],
+      ),
+    ).toEqual([{ instructorId: "head", days: 6, cap: 5 }]);
+  });
+
+  it("never lowers the generic cap for a target below four", () => {
+    expect(instructorAttendanceDayCap(2)).toBe(4);
+    expect(instructorAttendanceDayCap(null)).toBe(4);
+    expect(instructorAttendanceDayCap(5)).toBe(5);
+    expect(() => instructorAttendanceDayCap(7)).toThrow("INVALID_INSTRUCTOR_ATTENDANCE_TARGET");
+  });
+
+  it("keeps unknown instructors on the generic cap", () => {
+    expect(instructorsOverAttendanceDayCap(fiveDays("ghost"), [])).toEqual([
+      { instructorId: "ghost", days: 5, cap: 4 },
+    ]);
   });
 });
