@@ -601,7 +601,15 @@ function practicalState(level, rooms) {
       instructor_id: "T",
     }),
   ];
-  s.snapshot.assignments = [{ id: "p1", required_room_type: "computer_lab", is_active: true }];
+  s.snapshot.assignments = [
+    {
+      id: "p1",
+      required_room_type: "computer_lab",
+      is_active: true,
+      plan_course_component_id: "component:p1",
+    },
+  ];
+  s.snapshot.components = [{ id: "component:p1", component_type: "practical" }];
   s.snapshot.instructors = [{ id: "T", instructor_type_id: "permanent", max_hours_per_day: 6 }];
   return s;
 }
@@ -643,6 +651,11 @@ test("hall fallback keeps two practical groups as two independent sessions", asy
     id: i.teaching_assignment_id,
     required_room_type: "computer_lab",
     is_active: true,
+    plan_course_component_id: i.component_id,
+  }));
+  s.snapshot.components = s.items.map((i) => ({
+    id: i.component_id,
+    component_type: "practical",
   }));
   const result = await (await scheduler(s))(params);
   assert.equal(result.placed, 2);
