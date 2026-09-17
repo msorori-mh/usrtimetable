@@ -19,7 +19,7 @@ import {
   generationDomainSize,
   rankGenerationCandidates,
 } from "@/lib/auto-scheduler/generation-ranking";
-import { feasible, type Session, type Snapshot } from "@/lib/auto-scheduler/compact";
+import { compactSlots, feasible, type Session, type Snapshot } from "@/lib/auto-scheduler/compact";
 
 const roomTypeCodeById = {
   "rt-hall": "lecture_hall",
