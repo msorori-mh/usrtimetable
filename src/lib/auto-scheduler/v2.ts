@@ -44,6 +44,7 @@ import {
   type RoomLite,
   type RoomRequirement,
 } from "@/lib/auto-scheduler/session-plan";
+import { resolveRoomRequirement } from "@/lib/auto-scheduler/room-requirement";
 import { PRACTICAL_ROOM_FALLBACK_NOTE_AR } from "@/lib/scheduling/room-type-policy";
 import { type RepairMove, type RepairPlan } from "@/lib/auto-scheduler/repair";
 import { moveOrRescheduleScheduleSession } from "@/lib/schedule-builder/session-move-rpc";
