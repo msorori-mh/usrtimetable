@@ -20,7 +20,9 @@
 | Entity | Path | Rationale | UI | Import | Notes |
 | --- | --- | --- | --- | --- | --- |
 | universities / colleges | UI_ONLY | Rare, interactive | Yes | No | Catalog download → hide or doc-only |
-| departments / programs / levels | UI_ONLY | Foundational, few rows | Yes | No | Catalog UI_MANAGED |
+| departments | UI_AND_BULK_IMPORT | Founding rows, bulk at college setup | Yes (`/departments`) | ACTIVE (`departments`) | College-scoped; code then normalized-name matching |
+| academic_programs | UI_AND_BULK_IMPORT | Founding rows, department-bound | Yes (`/programs`) | ACTIVE (`academic_programs`) | Department resolved inside same college only; no silent re-parenting |
+| academic_levels | UI_ONLY | Foundational, few rows | Yes | No | Catalog UI_MANAGED |
 | academic_terms | UI_AND_BULK_IMPORT | Few UI; bulk OK for multi-college | Yes | ACTIVE | Keep |
 | courses | UI_AND_BULK_IMPORT (via plan) | Prefer plan import for founding | Yes | via full_study_plan | Standalone courses catalog download: demote |
 | study_plans + plan_courses + components + elective_slots | UI_AND_BULK_IMPORT | Large founding datasets | Partial UI | full_study_plan / study_plan_courses | Merge guidance |
