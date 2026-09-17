@@ -139,6 +139,18 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
     string,
     { terms: Term[]; kind: "student" | "teacher"; person: string; day: number }
   >();
+  // Hard instructor attendance policy: every instructor may occupy at most four
+  // distinct teaching days in a week. The day indicator is linked to the
+  // sessions placed on that instructor/day, so this is enforced by the solver
+  // rather than treated as a post-hoc quality preference.
+  const teacherDayTerms = new Map<string, Term[]>();
+  const teacherDays = new Map<string, Term[]>();
+  const teacherWeeklyMinutes = new Map<string, number>();
+  for (const session of snapshot.sessions)
+    teacherWeeklyMinutes.set(
+      session.instructor_id,
+      (teacherWeeklyMinutes.get(session.instructor_id) ?? 0) + duration(session),
+    );
   const levels = new Map<string, Map<number, Term[]>>();
   const add = (
     key: string,
@@ -176,6 +188,10 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
       }
     for (const p of persons) add(`student:${p}|${day}`, p, "student", day, i);
     add(`teacher:${x.instructor_id}|${day}`, x.instructor_id, "teacher", day, i);
+    const teacherDayKey = `${x.instructor_id}|${day}`;
+    const teacherTerms = teacherDayTerms.get(teacherDayKey) ?? [];
+    teacherTerms.push([i, 1]);
+    teacherDayTerms.set(teacherDayKey, teacherTerms);
     for (const level of ctx.levels(x)) {
       const days = levels.get(level) ?? new Map<number, Term[]>();
       days.set(day, [...(days.get(day) ?? []), [i, 1]]);
@@ -275,6 +291,30 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
       row([[start, 1], ...occupied.map(([i]): Term => [i, 1440])], -INF, points[k] + 1440);
     }
   }
+  // Link each instructor/day to a binary day-use indicator, then cap the
+  // number of active teaching days at four. Existing daily-hour limits remain
+  // enforced by the daily rows above.
+  for (const [key, terms] of teacherDayTerms) {
+    const instructorId = key.slice(0, key.lastIndexOf("|"));
+    const maxSessions = new Set(terms.map(([i]) => candidates[i].session.id)).size;
+    const dayUsed = variable(30);
+    row([...terms, [dayUsed, -maxSessions]], -INF, 0);
+    row([...terms, [dayUsed, -1]], 0, INF);
+    const days = teacherDays.get(instructorId) ?? [];
+    days.push([dayUsed, 1]);
+    teacherDays.set(instructorId, days);
+  }
+  for (const [instructorId, terms] of teacherDays) {
+    // Soft target derived from weekly load: <=6h→1 day, <=10h→2,
+    // <=16h→3, otherwise 4. Exceeding the target is allowed only when
+    // necessary and is penalized heavily; the absolute ceiling remains 4.
+    const weeklyHours = (teacherWeeklyMinutes.get(instructorId) ?? 0) / 60;
+    const targetDays = weeklyHours <= 6 ? 1 : weeklyHours <= 10 ? 2 : weeklyHours <= 16 ? 3 : 4;
+    const excessDays = variable(50000, 4);
+    row([...terms, [excessDays, -1]], -INF, targetDays);
+    row(terms, -INF, 4);
+  }
+
   for (const xs of extended.values())
     row(
       repair ? [...xs, [variable(100000000, 6), -1]] : xs,
@@ -366,6 +406,7 @@ export function validateJointPlan(
   const old = new Map(snapshot.sessions.map((x) => [x.id, x]));
   const ctx = context(snapshot);
   const days = new Map<string, Set<number>>();
+  const teacherDays = new Map<string, Set<number>>();
   for (const x of sessions) {
     const before = old.get(x.id);
     if (!before) return false;
@@ -390,8 +431,13 @@ export function validateJointPlan(
       set.add(x.day_of_week);
       days.set(level, set);
     }
+    const teacherSet = teacherDays.get(x.instructor_id) ?? new Set<number>();
+    teacherSet.add(x.day_of_week);
+    teacherDays.set(x.instructor_id, teacherSet);
   }
   if ([...days.values()].some((ds) => ds.size > dayCap)) return false;
+  // Independent fail-closed check for the instructor attendance ceiling.
+  if ([...teacherDays.values()].some((ds) => ds.size > 4)) return false;
   const loads = new Map<string, number>();
   for (const x of sessions) {
     const teacher = snapshot.instructors.find((t) => t.id === x.instructor_id);
