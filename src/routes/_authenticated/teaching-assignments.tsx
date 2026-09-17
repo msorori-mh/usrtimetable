@@ -68,6 +68,7 @@ import {
   assignmentRowDaysLabel,
   currentScheduleVersionId,
   deliveryGroupDayMap,
+  sessionsForActiveAssignments,
   summarizeInstructorAttendanceDays,
 } from "@/lib/teaching-assignments/assignment-row-days";
 import {
@@ -220,16 +221,42 @@ function TeachingAssignmentsV2Page() {
         fetchPublishedVersions({ collegeId: active!.id }),
         fetchWorkingVersions({ collegeId: active!.id }),
       ]);
-      const versionId = currentScheduleVersionId(published, working);
-      if (!versionId) return new Map<string, number[]>();
-      const { data, error } = await supabase
+      const versionIds = [...new Set([...working, ...published].map((version) => version.id))];
+      if (versionIds.length === 0) return new Map<string, number[]>();
+
+      const { data: sessions, error: sessionsError } = await supabase
         .from("schedule_sessions")
-        .select("delivery_group_id, day_of_week")
+        .select("schedule_version_id, delivery_group_id, day_of_week, teaching_assignment_id")
         .eq("college_id", active!.id)
-        .eq("schedule_version_id", versionId)
+        .in("schedule_version_id", versionIds)
+        .not("teaching_assignment_id", "is", null)
         .not("delivery_group_id", "is", null);
-      if (error) throw error;
-      return deliveryGroupDayMap(data ?? []);
+      if (sessionsError) throw sessionsError;
+
+      const assignmentIds = [
+        ...new Set((sessions ?? []).flatMap((session) => session.teaching_assignment_id ?? [])),
+      ];
+      if (assignmentIds.length === 0) return new Map<string, number[]>();
+      const { data: activeAssignments, error: assignmentsError } = await supabase
+        .from("teaching_assignments")
+        .select("id")
+        .eq("college_id", active!.id)
+        .eq("is_active", true)
+        .in("id", assignmentIds);
+      if (assignmentsError) throw assignmentsError;
+
+      const activeSessions = sessionsForActiveAssignments(
+        sessions ?? [],
+        new Set((activeAssignments ?? []).map((assignment) => assignment.id)),
+      );
+      const populatedVersionIds = new Set(
+        activeSessions.map((session) => session.schedule_version_id),
+      );
+      const versionId = currentScheduleVersionId(published, working, populatedVersionIds);
+      if (!versionId) return new Map<string, number[]>();
+      return deliveryGroupDayMap(
+        activeSessions.filter((session) => session.schedule_version_id === versionId),
+      );
     },
   });
 
@@ -613,9 +640,15 @@ function TeachingAssignmentsV2Page() {
               <div className="text-left" data-testid="ta-v2-instructor-attendance-days">
                 <p className="text-xs text-muted-foreground">عدد أيام الحضور</p>
                 <p className="text-2xl font-bold tabular-nums text-primary">
-                  {attendanceDaysSummary.perInstructor.length > 1
-                    ? `${attendanceDaysSummary.totalDays.toLocaleString("ar-YE")} يوم (${attendanceDaysSummary.perInstructor.length} محاضرين)`
-                    : `أيام الحضور: ${attendanceDaysSummary.totalDays.toLocaleString("ar-YE")} أيام`}
+                  <span dir="ltr" data-testid="ta-v2-instructor-attendance-days-value">
+                    {attendanceDaysSummary.totalDays.toLocaleString("ar-YE")}
+                  </span>{" "}
+                  <span>{attendanceDaysSummary.totalDays === 1 ? "يوم" : "أيام"}</span>
+                  {attendanceDaysSummary.perInstructor.length > 1 && (
+                    <span className="ms-1 text-sm font-medium text-muted-foreground">
+                      ({attendanceDaysSummary.perInstructor.length.toLocaleString("ar-YE")} محاضرين)
+                    </span>
+                  )}
                 </p>
               </div>
             </Card>

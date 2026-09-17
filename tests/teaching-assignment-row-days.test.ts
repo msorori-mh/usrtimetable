@@ -4,22 +4,56 @@ import {
   assignmentRowDaysLabel,
   currentScheduleVersionId,
   deliveryGroupDayMap,
+  sessionsForActiveAssignments,
   summarizeInstructorAttendanceDays,
 } from "@/lib/teaching-assignments/assignment-row-days";
 
 describe("currentScheduleVersionId", () => {
-  it("prefers the newest published version", () => {
+  it("skips an empty newest working version and picks the newest populated working version", () => {
     expect(
       currentScheduleVersionId(
-        [{ id: "pub-new" }, { id: "pub-old" }] as never,
-        [{ id: "draft" }] as never,
+        [{ id: "published" }] as never,
+        [{ id: "empty-new" }, { id: "populated-working" }] as never,
+        new Set(["populated-working", "published"]),
       ),
-    ).toBe("pub-new");
+    ).toBe("populated-working");
   });
 
-  it("falls back to the newest working version, then null", () => {
-    expect(currentScheduleVersionId([], [{ id: "draft" }] as never)).toBe("draft");
-    expect(currentScheduleVersionId([], [])).toBeNull();
+  it("falls back to populated published versions, then null", () => {
+    expect(
+      currentScheduleVersionId(
+        [{ id: "published" }] as never,
+        [{ id: "empty-working" }] as never,
+        new Set(["published"]),
+      ),
+    ).toBe("published");
+    expect(currentScheduleVersionId([], [], new Set())).toBeNull();
+  });
+});
+
+describe("sessionsForActiveAssignments", () => {
+  it("keeps only sessions linked to active teaching assignments", () => {
+    const sessions = [
+      {
+        schedule_version_id: "v1",
+        delivery_group_id: "g1",
+        day_of_week: 1,
+        teaching_assignment_id: "active",
+      },
+      {
+        schedule_version_id: "v1",
+        delivery_group_id: "g2",
+        day_of_week: 2,
+        teaching_assignment_id: "inactive",
+      },
+      {
+        schedule_version_id: "v1",
+        delivery_group_id: "g3",
+        day_of_week: 3,
+        teaching_assignment_id: null,
+      },
+    ];
+    expect(sessionsForActiveAssignments(sessions, new Set(["active"]))).toEqual([sessions[0]]);
   });
 });
 
@@ -61,6 +95,8 @@ describe("teaching-assignments day column wiring", () => {
 
   it("derives days from the current version sessions and stays search-compatible", () => {
     expect(src).toContain("currentScheduleVersionId");
+    expect(src).toContain("sessionsForActiveAssignments");
+    expect(src).toContain('.eq("is_active", true)');
     expect(src).toContain("deliveryGroupDayMap");
     expect(src).toContain("assignmentRowDaysLabel(sessionDays?.get(row.delivery_group_id))");
     expect(src).toContain(
@@ -107,7 +143,10 @@ describe("attendance days card wiring", () => {
 
   it("renders the attendance days element in the instructor summary card", () => {
     expect(src).toContain('data-testid="ta-v2-instructor-attendance-days"');
+    expect(src).toContain('data-testid="ta-v2-instructor-attendance-days-value"');
+    expect(src).toContain('<span dir="ltr" data-testid="ta-v2-instructor-attendance-days-value">');
     expect(src).toContain(">عدد أيام الحضور</p>");
     expect(src).toContain("summarizeInstructorAttendanceDays");
+    expect(src).not.toContain("`أيام الحضور: ${attendanceDaysSummary.totalDays");
   });
 });
