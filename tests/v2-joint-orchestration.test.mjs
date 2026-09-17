@@ -488,11 +488,14 @@ test("rejected planned slot falls back to a legal alternative without moving exi
   const before = structuredClone(s.snapshot.sessions);
   const planned = [];
   s.rejectSlot = (p) => {
-    if (planned.length === 0) {
-      planned.push(p);
-      return true;
-    }
-    return false;
+    if (planned.length === 0) planned.push(p);
+    const first = planned[0];
+    // The exact planned position stays rejected; alternatives are accepted.
+    return (
+      p.dayOfWeek === first.dayOfWeek &&
+      p.startTime === first.startTime &&
+      p.roomId === first.roomId
+    );
   };
   const result = await (await scheduler(s))(params);
   assert.equal(result.placed, 1);
