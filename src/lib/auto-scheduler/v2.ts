@@ -995,14 +995,11 @@ export async function runV2AutoSchedule(params: {
         );
         break;
       }
-      // Never route a rejected certified placement into heuristic repair or a higher day cap.
+      // A rejected certified placement is never routed into heuristic repair or a
+      // higher day cap. It is recorded as unplaced and the run continues with the
+      // remaining work items: one infeasible unit must not cancel the whole run.
       if (!placedItem) {
-        cancelled = true;
-        warnings.push(
-          "توقف التطبيق عند رفض موضع من الخطة المثبتة؛ أعد القراءة والبحث. لم يُسمح بزيادة الأيام.",
-        );
-      }
-      if (!placedItem) {
+        infeasibleItems++;
         byType[type].unplaced++;
         unplaced.push({
           course_offering_id: item.course_offering_id,
@@ -1014,7 +1011,11 @@ export async function runV2AutoSchedule(params: {
           unit_index: 1,
           reason: lastReason,
         });
+        warnings.push(
+          `${groupLabel}: تعذر التسكين وفق الخطة المثبتة (${lastReason}) — سُجّلت الوحدة كغير مسكنة والمتابعة مستمرة لبقية العناصر.`,
+        );
       }
+
     }
 
     processedItems++;
