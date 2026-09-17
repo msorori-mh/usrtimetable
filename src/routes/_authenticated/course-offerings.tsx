@@ -63,6 +63,8 @@ function OfferingsPage() {
           .from("academic_programs")
           .select("id, name")
           .eq("college_id", active!.id)
+          // ACADEMIC-ARCHIVE-UI-01: pickers exclude archived records.
+          .eq("is_archived", false)
           .order("name")
       ).data ?? [],
   });
