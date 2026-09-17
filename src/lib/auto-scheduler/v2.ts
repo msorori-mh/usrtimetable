@@ -952,7 +952,7 @@ export async function runV2AutoSchedule(params: {
               const assignedTeacherDays =
                 scheduledInstructorDays.get(item.instructor_id) ?? new Set<number>();
               assignedTeacherDays.add(slot.day);
-              instructorDays.set(item.instructor_id, assignedTeacherDays);
+              scheduledInstructorDays.set(item.instructor_id, assignedTeacherDays);
               occupied.push({
                 day: slot.day,
                 start: slot.start,
