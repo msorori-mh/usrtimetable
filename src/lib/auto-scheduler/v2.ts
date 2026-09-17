@@ -1407,6 +1407,10 @@ export async function runV2AutoSchedule(params: {
         continue_on_infeasible_unit: true,
         local_fallback_placed_sessions: localFallbackPlacedSessions,
         local_fallback_policy: "day_cap_preserving_local_alternative_for_missing_session_only",
+        authoritative_fallback_attempts: authoritativeFallbackAttempts,
+        authoritative_fallback_placed_sessions: authoritativeFallbackPlacedSessions,
+        authoritative_fallback_policy:
+          "server_authoritative_bounded_candidates_for_missing_session_only",
 
         nonconforming_existing_sessions: nonconformingSessions,
         by_component_type: byType,
