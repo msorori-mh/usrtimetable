@@ -275,6 +275,7 @@ export function measure(s: Snapshot, sessions = s.sessions): Metrics {
       levels: ctx.levels(x),
     })),
     ctx.weight,
+    (id) => s.instructors.find((t) => t.id === id)?.target_attendance_days_per_week ?? null,
   );
   if (!s.settings.extended_day_policy_enabled) return base;
   const days = extendedDays(s, sessions);
