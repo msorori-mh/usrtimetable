@@ -262,6 +262,9 @@ export type Database = {
       }
       academic_programs: {
         Row: {
+          archive_reason: string | null
+          archived_at: string | null
+          canonical_program_id: string | null
           code: string
           college_id: string
           created_at: string
@@ -269,10 +272,14 @@ export type Database = {
           department_id: string
           duration_years: number
           id: string
+          is_archived: boolean
           name: string
           updated_at: string
         }
         Insert: {
+          archive_reason?: string | null
+          archived_at?: string | null
+          canonical_program_id?: string | null
           code: string
           college_id: string
           created_at?: string
@@ -280,10 +287,14 @@ export type Database = {
           department_id: string
           duration_years?: number
           id?: string
+          is_archived?: boolean
           name: string
           updated_at?: string
         }
         Update: {
+          archive_reason?: string | null
+          archived_at?: string | null
+          canonical_program_id?: string | null
           code?: string
           college_id?: string
           created_at?: string
@@ -291,10 +302,18 @@ export type Database = {
           department_id?: string
           duration_years?: number
           id?: string
+          is_archived?: boolean
           name?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "academic_programs_canonical_program_fkey"
+            columns: ["canonical_program_id"]
+            isOneToOne: false
+            referencedRelation: "academic_programs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "academic_programs_college_id_fkey"
             columns: ["college_id"]
@@ -1294,33 +1313,52 @@ export type Database = {
       }
       departments: {
         Row: {
+          archive_reason: string | null
+          archived_at: string | null
+          canonical_department_id: string | null
           code: string
           college_id: string
           created_at: string
           id: string
+          is_archived: boolean
           name: string
           study_system: string
           updated_at: string
         }
         Insert: {
+          archive_reason?: string | null
+          archived_at?: string | null
+          canonical_department_id?: string | null
           code: string
           college_id: string
           created_at?: string
           id?: string
+          is_archived?: boolean
           name: string
           study_system?: string
           updated_at?: string
         }
         Update: {
+          archive_reason?: string | null
+          archived_at?: string | null
+          canonical_department_id?: string | null
           code?: string
           college_id?: string
           created_at?: string
           id?: string
+          is_archived?: boolean
           name?: string
           study_system?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "departments_canonical_department_fkey"
+            columns: ["canonical_department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "departments_college_id_fkey"
             columns: ["college_id"]
