@@ -17,7 +17,12 @@ import {
 } from "./instructor-sheet";
 import type { ImportEntity, ParsedRow, RowError, ValidationResult } from "./types";
 import { canonicalizeImportShape } from "./header-aliases";
-import { matchDepartment, matchProgram, programById } from "./academic-structure-matching";
+import {
+  matchDepartment,
+  matchProgram,
+  normalizeStructureName,
+  programById,
+} from "./academic-structure-matching";
 import {
   buildPlanComponentSyncPayload,
   validatePlanRowRoomTypes,
