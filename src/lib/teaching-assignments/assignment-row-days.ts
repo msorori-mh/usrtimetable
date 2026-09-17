@@ -10,17 +10,36 @@ const WEEK_ORDER = [6, 0, 1, 2, 3, 4, 5];
 
 export const UNSCHEDULED_DAY_LABEL = "غير مسكن";
 
-/**
- * Picks the version the platform treats as current for reports:
- * the newest published version when one exists, otherwise the newest
- * working (draft/review/approved) version. Inputs are already ordered
- * newest-first by fetchScheduleVersions.
- */
+/** Picks the newest populated working version, then the newest populated published version. */
 export function currentScheduleVersionId(
   published: readonly ScheduleVersionOption[],
   working: readonly ScheduleVersionOption[],
+  populatedVersionIds: ReadonlySet<string>,
 ): string | null {
-  return published[0]?.id ?? working[0]?.id ?? null;
+  return (
+    working.find((version) => populatedVersionIds.has(version.id))?.id ??
+    published.find((version) => populatedVersionIds.has(version.id))?.id ??
+    null
+  );
+}
+
+type AssignmentSessionRow = {
+  schedule_version_id: string;
+  delivery_group_id: string | null;
+  day_of_week: number | null;
+  teaching_assignment_id: string | null;
+};
+
+/** Excludes sessions detached from an active teaching assignment. */
+export function sessionsForActiveAssignments(
+  sessions: readonly AssignmentSessionRow[],
+  activeAssignmentIds: ReadonlySet<string>,
+): AssignmentSessionRow[] {
+  return sessions.filter(
+    (session) =>
+      session.teaching_assignment_id != null &&
+      activeAssignmentIds.has(session.teaching_assignment_id),
+  );
 }
 
 /** Groups session day numbers per delivery group. */
