@@ -17,7 +17,7 @@ export function normalizeStructureName(value: unknown): string {
     .replace(/[أإآٱ]/g, "ا")
     .replace(/ى/g, "ي")
     .replace(/ة/g, "ه")
-    .replace(/[ـ\u064B-\u065F\u0670]/g, "")
+    .replace(/ـ|[\u064B-\u065F]|\u0670/g, "")
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
