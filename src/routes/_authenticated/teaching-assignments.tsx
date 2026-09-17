@@ -64,6 +64,15 @@ import {
 } from "@/lib/teaching-assignments/cross-college-candidates";
 import { fetchSharedLectures } from "@/lib/academic-delivery/shared-lectures";
 import { assignmentRowAcademicContext } from "@/lib/teaching-assignments/assignment-row-context";
+import {
+  assignmentRowDaysLabel,
+  currentScheduleVersionId,
+  deliveryGroupDayMap,
+} from "@/lib/teaching-assignments/assignment-row-days";
+import {
+  fetchPublishedVersions,
+  fetchWorkingVersions,
+} from "@/lib/reports/queries/version-queries";
 
 export const Route = createFileRoute("/_authenticated/teaching-assignments")({
   head: () => ({ meta: [{ title: "الإسناد التدريسي" }] }),
