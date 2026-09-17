@@ -474,12 +474,12 @@ export async function runV2AutoSchedule(params: {
     });
     existingByAssignment.set(key, list);
   }
-  const instructorDays = new Map<string, Set<number>>();
+  const scheduledInstructorDays = new Map<string, Set<number>>();
   const instructorWeeklyHours = new Map<string, number>();
   for (const row of sessionRows) {
-    const days = instructorDays.get(row.instructor_id) ?? new Set<number>();
+    const days = scheduledInstructorDays.get(row.instructor_id) ?? new Set<number>();
     days.add(row.day_of_week);
-    instructorDays.set(row.instructor_id, days);
+    scheduledInstructorDays.set(row.instructor_id, days);
     instructorWeeklyHours.set(
       row.instructor_id,
       (instructorWeeklyHours.get(row.instructor_id) ?? 0) +
@@ -854,7 +854,7 @@ export async function runV2AutoSchedule(params: {
           roomIds: candidateRooms.map((room) => room.id),
           usedDays,
         }).sort((a, b) => {
-          const days = instructorDays.get(item.instructor_id) ?? new Set<number>();
+          const days = scheduledInstructorDays.get(item.instructor_id) ?? new Set<number>();
           const target = instructorTargetDays(item.instructor_id);
           const score = (day: number) => (days.has(day) ? 0 : days.size >= target ? 100 : 10);
           return score(a.session.day_of_week) - score(b.session.day_of_week);
@@ -881,7 +881,7 @@ export async function runV2AutoSchedule(params: {
             lastReason = "تجاوز حد أيام الحضور المثبت لهذه الخطة؛ أعد البحث.";
             continue;
           }
-          const teacherDays = instructorDays.get(item.instructor_id) ?? new Set<number>();
+          const teacherDays = scheduledInstructorDays.get(item.instructor_id) ?? new Set<number>();
           if (!teacherDays.has(slot.day) && teacherDays.size >= 4) {
             lastReason = "تجاوز الحد الصلب لأيام حضور المحاضر (4 أيام).";
             continue;
@@ -950,7 +950,7 @@ export async function runV2AutoSchedule(params: {
               } as Session);
               usedDays.push(slot.day);
               const assignedTeacherDays =
-                instructorDays.get(item.instructor_id) ?? new Set<number>();
+                scheduledInstructorDays.get(item.instructor_id) ?? new Set<number>();
               assignedTeacherDays.add(slot.day);
               instructorDays.set(item.instructor_id, assignedTeacherDays);
               occupied.push({
