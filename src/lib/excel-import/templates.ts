@@ -174,9 +174,12 @@ export const TEMPLATES: Record<string, TemplateDef> = {
     columns: [
       { key: "code", header: "الرمز", example: "CS" },
       { key: "name", header: "الاسم", required: true, example: "علوم الحاسب" },
-      { key: "head_name", header: "رئيس_القسم", example: "د. محمد علي" },
-      { key: "is_active", header: "نشط", type: "boolean", example: "true" },
-      { key: "order_index", header: "الترتيب", type: "number", example: "1" },
+      {
+        key: "study_system",
+        header: "نظام_الدراسة",
+        enumValues: ["regular", "parallel", "both"],
+        example: "regular",
+      },
     ],
   },
   academic_programs: {
@@ -193,13 +196,10 @@ export const TEMPLATES: Record<string, TemplateDef> = {
       {
         key: "degree_type",
         header: "نوع_الدرجة",
-        enumValues: ["bachelor", "master", "phd", "diploma", "higher_diploma"],
+        enumValues: ["bachelor", "master", "doctorate", "diploma"],
         example: "bachelor",
       },
       { key: "duration_years", header: "المدة_بالسنوات", type: "number", example: "4" },
-      { key: "is_active", header: "نشط", type: "boolean", example: "true" },
-      { key: "admission_status", header: "القبول_مفتوح", type: "boolean", example: "true" },
-      { key: "description", header: "الوصف", example: "برنامج بكالوريوس أربع سنوات" },
     ],
   },
   academic_terms: {
