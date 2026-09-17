@@ -77,13 +77,13 @@ export function candidateAttemptKey(input: {
  * and no `unavailable` window may overlap it.
  */
 export function isInstructorSlotAvailable(input: {
-  enforce: unknown;
+  enforce: boolean | null | undefined;
   slot: FallbackSlot;
   windows: readonly FallbackAvailabilityWindow[];
   instructorId: string;
   requiresExplicitWindow?: boolean;
 }): boolean {
-  if (!isInstructorAvailabilityEnforced(input.enforce)) return true;
+  if (!isInstructorAvailabilityEnforced(input.enforce as boolean | null | undefined)) return true;
   const start = toMinutes(input.slot.start);
   const end = toMinutes(input.slot.end);
   const windows = input.windows.filter(
@@ -126,7 +126,7 @@ export function enumerateAuthoritativeCandidates(input: {
   roomAvailability?: readonly RoomAvailabilityWindow[];
   instructorId: string;
   instructorAvailability?: readonly FallbackAvailabilityWindow[];
-  enforceInstructorAvailability?: unknown;
+  enforceInstructorAvailability?: boolean | null;
   instructorRequiresExplicitWindow?: boolean;
   levelDays: ReadonlySet<number>;
   maxLevelDays: number;
