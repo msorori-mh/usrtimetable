@@ -1054,9 +1054,11 @@ export async function runV2AutoSchedule(params: {
               continue candidateSearch;
             }
           }
-          if (placedItem) break;
+            if (placedItem) break;
+          }
         }
       }
+
 
       if (cancelled) {
         warnings.push(
