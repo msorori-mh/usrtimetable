@@ -15,13 +15,14 @@ export const PREPARATION_STEPS: PreparationStep[] = [
   {
     id: "academic_structure",
     title: "الأقسام والبرامج والفصول",
-    description: "عرّف أقسام الكلية وبرامجها، ثم أضف الفصول الأكاديمية التي ستعمل عليها.",
+    description:
+      "ابدأ بالأقسام الأكاديمية، ثم البرامج الأكاديمية التابعة لها، ثم الفصول الأكاديمية. يمكن رفع كل نوع بملف Excel أو إدارته يدويًا.",
     manualLinks: [
       { href: "/departments", label: "إدارة الأقسام" },
       { href: "/programs", label: "إدارة البرامج" },
       { href: "/terms", label: "إدارة الفصول" },
     ],
-    entities: ["academic_terms"],
+    entities: ["departments", "academic_programs", "academic_terms"],
   },
   {
     id: "study_plans",
