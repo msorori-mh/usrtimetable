@@ -325,7 +325,7 @@ for (const [count, dailyHours, days] of [
       // A single instructor cannot satisfy a five-day certified student plan:
       // generation must stop incomplete rather than violate the four-day ceiling.
       assert.ok(result.placed < count);
-      assert.equal(s.runs[0].status, "incomplete");
+      assert.equal(s.runs[0].status, "partial");
       assert.ok(new Set(s.calls.map((c) => c.dayOfWeek)).size <= 4);
     } else {
       assert.equal(result.placed, count);
