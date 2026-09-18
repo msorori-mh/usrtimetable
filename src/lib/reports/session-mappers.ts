@@ -126,6 +126,8 @@ export const NEW_FLOW_TIMETABLE_TABLE_HEADERS: { key: string; label: string }[] 
 
 export function timetableSessionToRow(s: TimetableReportSession): Row {
   return {
+    course_code: s.course_code,
+    course_name: s.course_name,
     department: s.department_name,
     program: s.program_name,
     level: s.level_name,
