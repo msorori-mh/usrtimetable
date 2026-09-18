@@ -1,4 +1,5 @@
-import { expandIntakeTimetable } from '@/lib/existing-schedules/presentation';
+import { supabase } from "@/integrations/supabase/client";
+import { expandIntakeTimetable } from "@/lib/existing-schedules/presentation";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
@@ -31,12 +32,17 @@ const EMPTY_SESSIONS: PrintSessionLike[] = [];
 const DESCRIPTION =
   "طباعة النسخة الحالية من الجدول كاملة — مجمعة حسب البرنامج/المستوى/النظام مع مجموعات الطلاب، برأس رسمي وبدون أي تعديل على الجدول.";
 
-export const Route = createFileRoute("/_authenticated/reports/current-timetable")({
+export const Route = createFileRoute(
+  "/_authenticated/reports/current-timetable",
+)({
   head: () => ({
     meta: [
       { title: `${CURRENT_SCHEDULE_TITLE_AR} — جامعة إقليم سبأ` },
       { name: "description", content: DESCRIPTION },
-      { property: "og:title", content: `${CURRENT_SCHEDULE_TITLE_AR} — جامعة إقليم سبأ` },
+      {
+        property: "og:title",
+        content: `${CURRENT_SCHEDULE_TITLE_AR} — جامعة إقليم سبأ`,
+      },
       { property: "og:description", content: DESCRIPTION },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -61,7 +67,12 @@ function Page() {
     error: sessionsError,
     refetch,
   } = useQuery({
-    queryKey: ["current-timetable-print", ctx.collegeId, ctx.versionId, ctx.studySystem],
+    queryKey: [
+      "current-timetable-print",
+      ctx.collegeId,
+      ctx.versionId,
+      ctx.studySystem,
+    ],
     enabled: !!ctx.collegeId && !!ctx.versionId,
     queryFn: async () => {
       const hydrated = await fetchHydratedVersionSessions({
@@ -69,8 +80,43 @@ function Page() {
         versionId: ctx.versionId!,
         studySystem: ctx.studySystem,
       });
-      const sessions = expandIntakeTimetable(hydrated) as unknown as PrintSessionLike[];
-      const labels = await fetchCohortDeliveryGroupLabels(ctx.collegeId!, sessions);
+      const expanded = expandIntakeTimetable(hydrated);
+      const planIds = [
+        ...new Set(
+          expanded.flatMap(
+            (r) => r.intake_memberships?.map((m) => m.study_plan_id) ?? [],
+          ),
+        ),
+      ];
+      const plans = planIds.length
+        ? await supabase
+            .from("study_plans")
+            .select("id,name")
+            .eq("college_id", ctx.collegeId!)
+            .in("id", planIds)
+        : { data: [], error: null };
+      if (plans.error) throw plans.error;
+      const sessions: PrintSessionLike[] = expanded.map((row) => {
+        const membership = row.intake_memberships?.find(
+          (m) => m.delivery_group_id === row.delivery_group_id,
+        );
+        if (!membership) return row;
+        const plan = plans.data?.find((p) => p.id === membership.study_plan_id);
+        return {
+          ...row,
+          intake_study_plan_id: membership.study_plan_id,
+          course_offerings: {
+            ...row.course_offerings,
+            academic_programs: {
+              name: plan?.name ?? row.course_offerings?.academic_programs?.name,
+            },
+          },
+        };
+      });
+      const labels = await fetchCohortDeliveryGroupLabels(
+        ctx.collegeId!,
+        sessions,
+      );
       return { sessions, labels };
     },
   });
@@ -94,7 +140,10 @@ function Page() {
       }),
     [sessions, ctx.collegeId, ctx.studySystem],
   );
-  const rows = useMemo(() => buildExportRows(pages, bundle?.labels), [pages, bundle?.labels]);
+  const rows = useMemo(
+    () => buildExportRows(pages, bundle?.labels),
+    [pages, bundle?.labels],
+  );
   const printedSessions = countPagedSessions(pages);
   const dropped = sessions.length - printedSessions;
 
@@ -116,15 +165,26 @@ function Page() {
       reportContext={ctx}
       filename="current_timetable"
       rows={rows as unknown as Record<string, unknown>[]}
-      headers={PRINT_EXPORT_HEADERS.map((h) => ({ key: h.key, label: h.label }))}
+      headers={PRINT_EXPORT_HEADERS.map((h) => ({
+        key: h.key,
+        label: h.label,
+      }))}
       isLoading={isLoading}
       error={ctx.error ?? sessionsError}
       onRetry={() => void refetch()}
       notReadyMessage={ready ? undefined : "اختر نسخة الجدول لطباعتها."}
       emptyMessage="لا توجد جلسات في هذه النسخة."
       kpis={[
-        { label: `المجموعات المجدولة${coverageSuffix}`, value: groupsText, tone: "accent" },
-        { label: `الساعات المجدولة${coverageSuffix}`, value: hoursText, tone: "accent" },
+        {
+          label: `المجموعات المجدولة${coverageSuffix}`,
+          value: groupsText,
+          tone: "accent",
+        },
+        {
+          label: `الساعات المجدولة${coverageSuffix}`,
+          value: hoursText,
+          tone: "accent",
+        },
         { label: `الجلسات${scopeSuffix}`, value: sessions.length },
         { label: `صفحات الطباعة${scopeSuffix}`, value: pages.length },
       ]}
@@ -132,12 +192,13 @@ function Page() {
       summary={
         <Card className="p-3 text-sm" data-testid="current-timetable-coverage">
           <p className="font-semibold">
-            التغطية الحالية (كل الأنظمة): المجموعات {groupsText} · الساعات {hoursText}
+            التغطية الحالية (كل الأنظمة): المجموعات {groupsText} · الساعات{" "}
+            {hoursText}
           </p>
           {filtered && (
             <p className="mt-1 text-muted-foreground">
-              أرقام التغطية أعلاه محسوبة من قاعدة البيانات لكل الأنظمة، أما الجلسات والصفحات
-              المعروضة فهي ضمن فلتر «نظام الدراسة» المختار فقط.
+              أرقام التغطية أعلاه محسوبة من قاعدة البيانات لكل الأنظمة، أما
+              الجلسات والصفحات المعروضة فهي ضمن فلتر «نظام الدراسة» المختار فقط.
             </p>
           )}
           <p className="mt-1 text-muted-foreground">
@@ -169,7 +230,9 @@ function Page() {
                 exportAt,
                 lastUpdate: latestSessionUpdate(sessions),
                 qrUrl,
-                isDemo: isDeliveryDemoVersion({ name: ctx.selectedVersion?.name }),
+                isDemo: isDeliveryDemoVersion({
+                  name: ctx.selectedVersion?.name,
+                }),
                 pageIndex: i + 1,
                 pageCount: pages.length,
               }}
@@ -182,11 +245,12 @@ function Page() {
         {pages.map((page) => (
           <section key={page.key} className="space-y-2">
             <h2 className="text-base font-semibold">{page.title}</h2>
-            <p className="text-xs text-muted-foreground">{page.sessions.length} جلسة</p>
+            <p className="text-xs text-muted-foreground">
+              {page.sessions.length} جلسة
+            </p>
           </section>
         ))}
       </div>
     </ReportShell>
   );
 }
-

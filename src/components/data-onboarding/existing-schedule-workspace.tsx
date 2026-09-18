@@ -167,7 +167,7 @@ export function ExistingScheduleWorkspace({
       (!pendingOnly ||
         !r.schedule_session_id ||
         r.pending_reasons.length > 0) &&
-      `${r.raw_course} ${r.raw_teacher} ${plans.get(r.study_plan_id ?? "")}`.includes(
+      `${r.raw_course} ${r.raw_teacher} ${r.instructor_ids.map((id) => names.get(id) ?? "").join(" ")} ${plans.get(r.study_plan_id ?? "")}`.includes(
         search,
       ),
   );

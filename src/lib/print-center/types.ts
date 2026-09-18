@@ -59,6 +59,8 @@ export interface PrintCenterFilters {
 
 /** Minimal session shape for pure filter/group/export helpers. */
 export interface PrintSessionLike {
+  /** Preserve separate existing pathways under a common academic program. */
+  intake_study_plan_id?: string;
   id: string;
   college_id?: string | null;
   day_of_week: number;
@@ -84,7 +86,10 @@ export interface PrintSessionLike {
       departments?: { name?: string | null } | null;
     } | null;
     academic_programs?: { name?: string | null } | null;
-    academic_levels?: { name?: string | null; level_number?: number | null } | null;
+    academic_levels?: {
+      name?: string | null;
+      level_number?: number | null;
+    } | null;
   } | null;
   instructors?: { full_name?: string | null } | null;
   rooms?: { code?: string | null; name?: string | null } | null;
@@ -118,7 +123,10 @@ export interface PrintExportRow {
   page?: string;
 }
 
-export const PRINT_EXPORT_HEADERS: { key: keyof PrintExportRow; label: string }[] = [
+export const PRINT_EXPORT_HEADERS: {
+  key: keyof PrintExportRow;
+  label: string;
+}[] = [
   { key: "day", label: "اليوم" },
   { key: "time", label: "الوقت" },
   { key: "course_name", label: "اسم المقرر" },
@@ -151,6 +159,9 @@ export const PRINT_DRAFT_WATERMARK_AR = "مسودة — غير معتمدة لل
  * worded as "صفحة", because one group can span several physical sheets; the physical page
  * number comes from the `@page` margin box (see print-center/page-style.ts).
  */
-export function printGroupCounterLabelAr(groupIndex: number, groupCount: number): string {
+export function printGroupCounterLabelAr(
+  groupIndex: number,
+  groupCount: number,
+): string {
   return `مجموعة الجدول ${groupIndex} من ${groupCount}`;
 }

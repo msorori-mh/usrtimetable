@@ -8,14 +8,24 @@
  * Read-only: nothing here writes scheduling data.
  */
 import { groupPrintPages } from "./group";
-import type { PrintPageGroup, PrintSessionLike, PrintStudySystem } from "./types";
+import type {
+  PrintPageGroup,
+  PrintSessionLike,
+  PrintStudySystem,
+} from "./types";
 
 export const CURRENT_SCHEDULE_TITLE_AR = "طباعة الجدول الحالي";
 
-const SYSTEM_ORDER: Record<string, number> = { regular: 0, parallel: 1, both: 2 };
+const SYSTEM_ORDER: Record<string, number> = {
+  regular: 0,
+  parallel: 1,
+  both: 2,
+};
 
 function programKey(s: PrintSessionLike): string {
-  return s.course_offerings?.program_id ?? "none";
+  return s.intake_study_plan_id
+    ? `${s.course_offerings?.program_id ?? "none"}:${s.intake_study_plan_id}`
+    : (s.course_offerings?.program_id ?? "none");
 }
 
 function levelNumber(s: PrintSessionLike): number {
@@ -62,7 +72,10 @@ export function groupCurrentSchedulePages(
     if (p !== 0) return p;
     const lv = levelNumber(a.sessions[0]!) - levelNumber(b.sessions[0]!);
     if (lv !== 0) return lv;
-    return (SYSTEM_ORDER[String(a.studySystem)] ?? 9) - (SYSTEM_ORDER[String(b.studySystem)] ?? 9);
+    return (
+      (SYSTEM_ORDER[String(a.studySystem)] ?? 9) -
+      (SYSTEM_ORDER[String(b.studySystem)] ?? 9)
+    );
   });
 }
 

@@ -106,3 +106,30 @@ assert.equal(pendingTotals.missingMembers, 0);
 assert.equal(pendingTotals.pendingSplitMembers, 1);
 assert.equal(pendingTotals.deficitHours, 0);
 console.log("PENDING_SHARED_QUOTA_TOTALS_PASS");
+
+import {
+  groupCurrentSchedulePages,
+  countPagedSessions,
+} from "../../src/lib/print-center/current-schedule";
+const pathways = ["pr", "rtv"].map((id) => ({
+  id,
+  day_of_week: 0,
+  start_time: "08:00",
+  end_time: "10:00",
+  study_system: "regular",
+  intake_study_plan_id: id,
+  course_offerings: {
+    program_id: "media",
+    level_id: "l1",
+    academic_programs: { name: id },
+    academic_levels: { name: "الأول", level_number: 1 },
+  },
+}));
+const printed = groupCurrentSchedulePages(pathways, { collegeId: "arts" });
+assert.equal(
+  printed.length,
+  2,
+  "existing media pathways require separate print pages",
+);
+assert.equal(countPagedSessions(printed), 2);
+console.log("EXISTING_PATHWAY_PRINT_PASS");
