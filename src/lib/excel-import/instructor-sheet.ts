@@ -108,6 +108,7 @@ export async function parseInstructorSheet(
 }
 
 const STATUS_NOTE = "الحالة الوظيفية: ";
+const LEGACY_STATUS_NOTE = "الحالة في الكشف: ";
 const INSTRUCTOR_INACTIVE_STATUS_REASONS = [
   "ابتعاث",
   "إجازة مرضية",
@@ -117,10 +118,14 @@ const INSTRUCTOR_INACTIVE_STATUS_REASONS = [
 ] as const;
 
 export function instructorStatusLabel(isActive: boolean, notes: string | null | undefined): string {
-  const status = notes
-    ?.split("\n")
-    .find((line) => line.startsWith(STATUS_NOTE))
-    ?.slice(STATUS_NOTE.length);
+  const lines = notes?.split("\n") ?? [];
+  const canonical = lines.find((line) => line.startsWith(STATUS_NOTE))?.slice(STATUS_NOTE.length);
+  const legacy = lines
+    .find((line) => line.includes(LEGACY_STATUS_NOTE))
+    ?.split(LEGACY_STATUS_NOTE)[1]
+    ?.split("—")[0]
+    ?.trim();
+  const status = canonical?.trim() || legacy;
   if (!isActive && status && INSTRUCTOR_INACTIVE_STATUS_REASONS.some((reason) => reason === status))
     return status;
   return isActive ? "نشط" : "غير نشط";
