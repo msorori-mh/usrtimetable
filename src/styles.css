@@ -909,7 +909,9 @@
   .report-data-table th,
   .report-data-table td {
     white-space: normal !important;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
+    word-break: normal;
+    hyphens: none;
     font-size: 8pt;
   }
   .report-timetable-grid > .grid {
