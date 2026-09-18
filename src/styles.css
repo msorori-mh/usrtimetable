@@ -1172,6 +1172,8 @@
     padding: 1mm 1.5mm !important;
   }
   .print-center-page--readable .print-center-footer {
+    margin-top: 1mm;
+    padding-top: 1mm;
     font-size: 9pt;
     background: white;
   }

@@ -40,4 +40,3 @@ for path in sorted(Path("repeated-header-proof").glob("*.pdf")):
     results.append({"file": path.name, "pages": len(doc), "rows": len(all_rows), "every_page_has_identity": True})
 Path("repeated-header-proof/results.json").write_text(json.dumps(results, indent=2))
 print(json.dumps(results, indent=2))
-

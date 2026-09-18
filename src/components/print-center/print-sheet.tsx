@@ -79,6 +79,27 @@ export function PrintSheet(props: {
   // day, time, course name, component, group + optional instructor / room
   const columnCount = 5 + (visibility.showInstructor ? 1 : 0) + (visibility.showRoom ? 1 : 0);
 
+  const endorsement = (
+    <footer className="print-center-footer mt-4 border-t border-border pt-2 text-xs text-muted-foreground print:text-foreground">
+      <div className="flex flex-wrap justify-between gap-2">
+        <span>{printGroupCounterLabelAr(meta.pageIndex, meta.pageCount)}</span>
+        {meta.lastUpdate && (
+          <span>آخر تحديث: {new Date(meta.lastUpdate).toLocaleString("ar")}</span>
+        )}
+      </div>
+      <p className="mt-1">
+        {meta.versionStatus === "published"
+          ? PRINT_PUBLISHED_ENDORSEMENT_AR
+          : "نسخة للمراجعة والطباعة — ليست جدولاً منشوراً معتمداً."}
+      </p>
+      {meta.isDemo && (
+        <p className="mt-1 font-semibold text-amber-800 print:text-black" role="status">
+          {PRINT_DEMO_FOOTER_WARNING_AR}
+        </p>
+      )}
+    </footer>
+  );
+
   return (
     <section
       className={`print-center-page break-after-page${readable ? " print-center-page--readable" : ""}`}
@@ -167,6 +188,7 @@ export function PrintSheet(props: {
                   )}
                 </div>
               )}
+              {readable && endorsement}
             </header>
           </div>
         }
@@ -244,24 +266,7 @@ export function PrintSheet(props: {
           </TableBody>
         </Table>
 
-        <footer className="print-center-footer mt-4 border-t border-border pt-2 text-xs text-muted-foreground print:text-foreground">
-          <div className="flex flex-wrap justify-between gap-2">
-            <span>{printGroupCounterLabelAr(meta.pageIndex, meta.pageCount)}</span>
-            {meta.lastUpdate && (
-              <span>آخر تحديث: {new Date(meta.lastUpdate).toLocaleString("ar")}</span>
-            )}
-          </div>
-          <p className="mt-1">
-            {meta.versionStatus === "published"
-              ? PRINT_PUBLISHED_ENDORSEMENT_AR
-              : "نسخة للمراجعة والطباعة — ليست جدولاً منشوراً معتمداً."}
-          </p>
-          {meta.isDemo && (
-            <p className="mt-1 font-semibold text-amber-800 print:text-black" role="status">
-              {PRINT_DEMO_FOOTER_WARNING_AR}
-            </p>
-          )}
-        </footer>
+        {!readable && endorsement}
       </RepeatingPrintHeader>
     </section>
   );
