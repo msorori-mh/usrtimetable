@@ -58,6 +58,8 @@ export interface ReportColumn<T> {
   numeric?: boolean;
   /** Hidden below `md` so small screens keep the primary columns readable. */
   secondary?: boolean;
+  /** Disable interactive sorting for presentation-only columns such as row numbers. */
+  sortable?: boolean;
   className?: string;
   render?: (row: T, index: number) => ReactNode;
 }
@@ -74,6 +76,7 @@ export function ReportDataTable<T>({
   rowClassName,
   minWidthClassName = "min-w-[640px]",
   caption,
+  primaryColumnLimit = 6,
 }: {
   columns: ReportColumn<T>[];
   rows: T[];
@@ -81,6 +84,8 @@ export function ReportDataTable<T>({
   rowClassName?: (row: T, index: number) => string | undefined;
   minWidthClassName?: string;
   caption?: string;
+  /** Number of non-secondary columns kept visible on screen before progressive disclosure. */
+  primaryColumnLimit?: number;
 }) {
   const [sort, setSort] = useState<{ key: string; descending: boolean } | null>(null);
   const [page, setPage] = useState(0);
@@ -113,7 +118,7 @@ export function ReportDataTable<T>({
   }, [rows, sort]);
   const pages = Math.max(1, Math.ceil(rows.length / pageSize));
   const currentPage = Math.min(page, pages - 1);
-  const primary = columns.filter((c) => !c.secondary).slice(0, 6);
+  const primary = columns.filter((c) => !c.secondary).slice(0, primaryColumnLimit);
   const visible = showAll ? columns : primary;
   const details = columns.filter((c) => !visible.includes(c));
   const cell = (c: ReportColumn<T>, row: T, index: number) =>
@@ -141,8 +146,8 @@ export function ReportDataTable<T>({
                   c.className,
                 )}
               >
-                {print ? (
-                  c.label
+                {print || c.sortable === false ? (
+                  <span className="font-semibold">{c.label}</span>
                 ) : (
                   <button
                     type="button"
