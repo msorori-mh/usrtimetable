@@ -133,7 +133,7 @@ BEGIN
   ), versions AS (
     SELECT DISTINCT ON (v.college_id) v.id,v.college_id,v.name,v.updated_at
     FROM public.schedule_versions v JOIN colleges c ON c.id=v.college_id AND c.term_id=v.academic_term_id
-    WHERE v.status='published' AND NOT v.disposable_test 
+    WHERE v.status='published' AND NOT v.disposable_test
     ORDER BY v.college_id,v.created_at DESC,v.id
   ), sessions AS (
     SELECT s.*,coalesce(p.component_type,s.session_type) AS component,
