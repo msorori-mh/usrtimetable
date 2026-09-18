@@ -23,8 +23,14 @@ BEGIN
   -- An explicit year in the term name may fill missing metadata for reporting
   -- only. It is flagged, never written back, and ambiguous matches are withheld.
   WITH terms AS (
-    SELECT *, coalesce(nullif(btrim(academic_year), ''), substring(name from '[0-9]{4}-[0-9]{4}')) AS year_key
-    FROM public.academic_terms
+    SELECT t.*,
+      coalesce(nullif(btrim(t.academic_year), ''), substring(t.name from '[0-9]{4}-[0-9]{4}')) AS year_key
+    FROM public.academic_terms t
+    JOIN public.colleges cl ON cl.id=t.college_id
+    WHERE NOT (
+      upper(btrim(coalesce(cl.code,''))) LIKE 'TEST%'
+      OR cl.name ILIKE '%اختبار تبسيط الجداول%'
+    )
   )
   SELECT coalesce(jsonb_agg(x ORDER BY x->>'year' DESC, x->>'type'), '[]'::jsonb)
   INTO v_periods FROM (
@@ -33,11 +39,17 @@ BEGIN
   ) q;
 
   IF v_year IS NULL AND v_type IS NULL THEN
-    SELECT coalesce(nullif(btrim(academic_year), ''), substring(name from '[0-9]{4}-[0-9]{4}')), term_type
-    INTO v_year,v_type FROM public.academic_terms
-    WHERE coalesce(nullif(btrim(academic_year), ''), substring(name from '[0-9]{4}-[0-9]{4}')) IS NOT NULL
-      AND term_type IS NOT NULL
-    ORDER BY (start_date <= current_date) DESC NULLS LAST, start_date DESC NULLS LAST, id LIMIT 1;
+    SELECT coalesce(nullif(btrim(t.academic_year), ''), substring(t.name from '[0-9]{4}-[0-9]{4}')), t.term_type
+    INTO v_year,v_type
+    FROM public.academic_terms t
+    JOIN public.colleges cl ON cl.id=t.college_id
+    WHERE coalesce(nullif(btrim(t.academic_year), ''), substring(t.name from '[0-9]{4}-[0-9]{4}')) IS NOT NULL
+      AND t.term_type IS NOT NULL
+      AND NOT (
+        upper(btrim(coalesce(cl.code,''))) LIKE 'TEST%'
+        OR cl.name ILIKE '%اختبار تبسيط الجداول%'
+      )
+    ORDER BY (t.start_date <= current_date) DESC NULLS LAST,t.start_date DESC NULLS LAST,t.id LIMIT 1;
   ELSIF v_year IS NULL OR v_type IS NULL THEN
     RAISE EXCEPTION 'ACADEMIC_PERIOD_REQUIRED';
   END IF;
@@ -46,10 +58,15 @@ BEGIN
   ) THEN RAISE EXCEPTION 'ACADEMIC_PERIOD_NOT_FOUND'; END IF;
 
   WITH matches AS (
-    SELECT t.*, count(*) OVER (PARTITION BY college_id) AS matches
+    SELECT t.*,count(*) OVER (PARTITION BY t.college_id) AS matches
     FROM public.academic_terms t
-    WHERE coalesce(nullif(btrim(academic_year), ''), substring(name from '[0-9]{4}-[0-9]{4}'))=v_year
-      AND term_type=v_type
+    JOIN public.colleges source_college ON source_college.id=t.college_id
+    WHERE coalesce(nullif(btrim(t.academic_year), ''), substring(t.name from '[0-9]{4}-[0-9]{4}'))=v_year
+      AND t.term_type=v_type
+      AND NOT (
+        upper(btrim(coalesce(source_college.code,''))) LIKE 'TEST%'
+        OR source_college.name ILIKE '%اختبار تبسيط الجداول%'
+      )
   )
   SELECT jsonb_agg(jsonb_build_object(
     'id',cl.id,'name',cl.name,
@@ -58,7 +75,12 @@ BEGIN
       WHEN EXISTS(SELECT 1 FROM matches a WHERE a.college_id=cl.id) THEN 'ambiguous' ELSE 'missing' END,
     'year_inferred',m.academic_year IS NULL OR btrim(m.academic_year)=''
   ) ORDER BY cl.name) INTO v_colleges
-  FROM public.colleges cl LEFT JOIN matches m ON m.college_id=cl.id AND m.matches=1;
+  FROM public.colleges cl
+  LEFT JOIN matches m ON m.college_id=cl.id AND m.matches=1
+  WHERE NOT (
+    upper(btrim(coalesce(cl.code,''))) LIKE 'TEST%'
+    OR cl.name ILIKE '%اختبار تبسيط الجداول%'
+  );
 
   FOR v_college IN SELECT * FROM jsonb_to_recordset(coalesce(v_colleges,'[]')) AS x(id uuid,term_id uuid) LOOP
     IF v_college.term_id IS NOT NULL THEN
