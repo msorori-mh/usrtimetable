@@ -20,6 +20,17 @@
  * The database enum values are intentionally unchanged.
  */
 
+export const LEADERSHIP_ROLE_LABEL_AR = "الإدارة العليا للجامعة";
+export const LEADERSHIP_ROLE_HINT_AR =
+  "لوحة ملخصات لجميع الكليات وتقاريرها الداخلية، للقراءة والطباعة والتصدير فقط.";
+export const LEADERSHIP_HOME = "/reports/leadership" as const;
+export function canViewLeadership(me: RoleFlags | null | undefined): boolean {
+  return !!me && (!!me.isSuperAdmin || !!me.isUniversityLeadership);
+}
+export function isLeadershipOnlyRole(me: RoleFlags | null | undefined): boolean {
+  return !!me && !hasAdminRole(me) && !me.isInstitutionalViewer && !!me.isUniversityLeadership;
+}
+
 export const READ_ONLY_ROLE_LABEL_AR = "مشاهد";
 export const INSTITUTIONAL_VIEWER_ROLE_LABEL_AR = "إدارة الشؤون الأكاديمية";
 
@@ -43,6 +54,7 @@ export interface RoleFlags {
   isCollegeAdmin?: boolean;
   isReadOnly?: boolean;
   isInstitutionalViewer?: boolean;
+  isUniversityLeadership?: boolean;
 }
 
 function hasAdminRole(me: RoleFlags): boolean {
@@ -55,7 +67,9 @@ function hasAdminRole(me: RoleFlags): boolean {
  */
 export function isReportsOnlyRole(me: RoleFlags | null | undefined): boolean {
   if (!me) return false;
-  return !hasAdminRole(me) && !me.isInstitutionalViewer && !!me.isReadOnly;
+  return (
+    !hasAdminRole(me) && !me.isInstitutionalViewer && !me.isUniversityLeadership && !!me.isReadOnly
+  );
 }
 
 /** Dedicated academic-affairs account: reports + instructor data only. */
@@ -70,7 +84,11 @@ export function isFullPlatformViewerRole(_me: RoleFlags | null | undefined): boo
 
 /** True for any viewer-only account (read_only and/or institutional_viewer, no admin role). */
 export function isViewerOnlyRole(me: RoleFlags | null | undefined): boolean {
-  return !!me && !hasAdminRole(me) && (!!me.isReadOnly || !!me.isInstitutionalViewer);
+  return (
+    !!me &&
+    !hasAdminRole(me) &&
+    (!!me.isReadOnly || !!me.isInstitutionalViewer || !!me.isUniversityLeadership)
+  );
 }
 
 /** /reports and /reports/* only — nothing else is inside the allowed area. */
@@ -87,7 +105,8 @@ export function isAcademicAffairsPath(pathname: string): boolean {
 export function resolveViewerScopeRedirect(
   me: RoleFlags | null | undefined,
   pathname: string,
-): typeof REPORTS_ONLY_HOME | null {
+): typeof REPORTS_ONLY_HOME | typeof LEADERSHIP_HOME | null {
+  if (isLeadershipOnlyRole(me)) return isReportsOnlyPath(pathname) ? null : LEADERSHIP_HOME;
   if (isReportsOnlyRole(me)) return isReportsOnlyPath(pathname) ? null : REPORTS_ONLY_HOME;
   if (isAcademicAffairsRole(me)) return isAcademicAffairsPath(pathname) ? null : REPORTS_ONLY_HOME;
   return null;
@@ -113,7 +132,12 @@ export function scopeCollegesForRole<T extends { id: string }>(
   return colleges.filter((c) => allowed.has(c.id));
 }
 
-export type AssignableRole = "super_admin" | "college_admin" | "read_only" | "institutional_viewer";
+export type AssignableRole =
+  | "super_admin"
+  | "college_admin"
+  | "read_only"
+  | "institutional_viewer"
+  | "university_leadership";
 
 /**
  * Academic affairs covers every college, so its assignment is computed

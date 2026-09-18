@@ -38,6 +38,8 @@ import {
   INSTITUTIONAL_VIEWER_ROLE_LABEL_AR,
   READ_ONLY_ROLE_LABEL_AR,
   isAcademicAffairsRole,
+  isLeadershipOnlyRole,
+  LEADERSHIP_ROLE_LABEL_AR,
   isReportsOnlyRole,
 } from "@/lib/viewer-roles";
 
@@ -310,8 +312,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   /** Restricted viewer scopes. */
   const reportsOnly = isReportsOnlyRole(user);
   const academicAffairs = isAcademicAffairsRole(user);
-  const restrictedViewer = reportsOnly || academicAffairs;
-  const effectiveMode: NavMode = reportsOnly ? "core" : academicAffairs ? "all" : mode;
+  const leadership = isLeadershipOnlyRole(user);
+  const restrictedViewer = reportsOnly || academicAffairs || leadership;
+  const effectiveMode: NavMode =
+    reportsOnly || leadership ? "core" : academicAffairs ? "all" : mode;
 
   const coreSteps = useMemo(() => CORE_PATH.filter((s) => canAccess(s, roles)), [roles]);
   const toolPages = useMemo(
@@ -336,9 +340,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       ? "مدير كلّية"
       : user?.isInstitutionalViewer
         ? INSTITUTIONAL_VIEWER_ROLE_LABEL_AR
-        : user?.isReadOnly
-          ? READ_ONLY_ROLE_LABEL_AR
-          : "—";
+        : user?.isUniversityLeadership
+          ? LEADERSHIP_ROLE_LABEL_AR
+          : user?.isReadOnly
+            ? READ_ONLY_ROLE_LABEL_AR
+            : "—";
 
   const modeToggle = restrictedViewer ? null : (
     <button
@@ -368,11 +374,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             tone === "sidebar" ? "text-sidebar-foreground/55" : "text-muted-foreground",
           )}
         >
-          {reportsOnly
-            ? "حساب مشاهد: تقارير الكلّيات المُسندة لك فقط، قراءة وطباعة وتصدير."
-            : academicAffairs
-              ? "إدارة الشؤون الأكاديمية: التقارير وبيانات المحاضرين لجميع الكلّيات."
-              : "أربع خطوات: تجهيز البيانات، إنشاء الجدول، المراجعة والاعتماد، التقارير والطباعة."}
+          {leadership
+            ? "الإدارة العليا: ملخص الجامعة وتقارير الكليات، للقراءة فقط."
+            : reportsOnly
+              ? "حساب مشاهد: تقارير الكلّيات المُسندة لك فقط، قراءة وطباعة وتصدير."
+              : academicAffairs
+                ? "إدارة الشؤون الأكاديمية: التقارير وبيانات المحاضرين لجميع الكلّيات."
+                : "أربع خطوات: تجهيز البيانات، إنشاء الجدول، المراجعة والاعتماد، التقارير والطباعة."}
         </p>
         <CorePathNav steps={coreSteps} pathname={pathname} onNavigate={onNavigate} tone={tone} />
         {!restrictedViewer && (
@@ -418,7 +426,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <nav className="flex-1 overflow-y-auto px-2 py-3">{navBody("sidebar")}</nav>
         <div className="border-t border-sidebar-border p-4">
           <div className="mb-3">
-            <p className="whitespace-normal break-words text-sm font-medium leading-snug">{user?.fullName ?? user?.email ?? "—"}</p>
+            <p className="whitespace-normal break-words text-sm font-medium leading-snug">
+              {user?.fullName ?? user?.email ?? "—"}
+            </p>
             <p className="mt-1 inline-block rounded bg-white/10 px-2 py-0.5 text-[11px]">
               {roleLabel}
             </p>
@@ -492,6 +502,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               ) : null}
             </nav>
             {activeCollege &&
+              pathname !== "/reports/leadership" &&
               !(reportsOnly && (pathname === "/reports" || pathname === "/reports/")) && (
                 <span className="flex shrink-0 items-center gap-1.5 rounded-md bg-secondary px-2.5 py-1 text-[11px] font-medium text-primary">
                   <School className="h-3.5 w-3.5" />

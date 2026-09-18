@@ -2,7 +2,12 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 import { Card } from "@/components/ui/card";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import { isAcademicAffairsRole, isReportsOnlyRole } from "@/lib/viewer-roles";
+import {
+  canViewLeadership,
+  isLeadershipOnlyRole,
+  isAcademicAffairsRole,
+  isReportsOnlyRole,
+} from "@/lib/viewer-roles";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { normalizeSearchText } from "@/lib/reports/search";
@@ -293,7 +298,8 @@ function ReportsHub() {
   const legacyItems = match(LEGACY_SECTION.items);
   // «مشاهد» stays inside /reports/*: the publishing area is out of scope.
   const { data: me } = useCurrentUser();
-  const restrictedViewer = isReportsOnlyRole(me) || isAcademicAffairsRole(me);
+  const restrictedViewer =
+    isReportsOnlyRole(me) || isAcademicAffairsRole(me) || isLeadershipOnlyRole(me);
   return (
     <div className="space-y-8" dir="rtl">
       <section
@@ -308,6 +314,17 @@ function ReportsHub() {
           من هنا تبدأ قراءة الصورة الأكاديمية: اختر الكلية، ثم التقرير الذي يجيب عن سؤالك.
         </p>
       </section>
+      {canViewLeadership(me) && (
+        <Link
+          to="/reports/leadership"
+          className="block rounded-xl border-2 border-primary/30 bg-primary/5 p-5 text-primary"
+        >
+          <span className="text-lg font-bold">لوحة الإدارة العليا للجامعة</span>
+          <p className="mt-2 text-sm">
+            الإسناد والنصاب والزيادة والعجز والقاعات والساعات التدريسية لجميع الكليات في صفحة واحدة.
+          </p>
+        </Link>
+      )}
       <header className="usr-page-header">
         <span className="usr-page-header-icon">
           <FileBarChart2 className="h-5 w-5" />

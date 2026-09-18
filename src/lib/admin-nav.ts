@@ -41,10 +41,15 @@ import {
   Grid2x2,
 } from "lucide-react";
 
-export type Role = "super_admin" | "college_admin" | "read_only" | "institutional_viewer";
+export type Role =
+  | "super_admin"
+  | "college_admin"
+  | "read_only"
+  | "institutional_viewer"
+  | "university_leadership";
 
 // prettier-ignore
-export const ALL: Role[] = ["super_admin", "college_admin", "read_only", "institutional_viewer"];
+export const ALL: Role[] = ["super_admin", "college_admin", "read_only", "institutional_viewer", "university_leadership"];
 
 /** Alias kept for readability at call sites. */
 export const ALL_ROLES = ALL;
@@ -532,6 +537,15 @@ export const ADMIN_PAGES: AdminPage[] = [
 
   // ح) التقارير
   {
+    to: "/reports/leadership",
+    label: "لوحة الإدارة العليا",
+    desc: "ملخص الجامعة ومقارنة الكليات.",
+    icon: LayoutDashboard,
+    roles: ["super_admin", "university_leadership"],
+    tier: "basic",
+    journey: "reports",
+  },
+  {
     to: "/reports",
     label: "مركز التقارير",
     desc: "كل التقارير الأكاديمية والرسمية.",
@@ -580,6 +594,14 @@ export interface CoreStep {
 
 /** The default operational path — home plus four task-oriented entries. */
 export const CORE_PATH: CoreStep[] = [
+  {
+    to: "/reports/leadership",
+    step: null,
+    label: "لوحة الإدارة العليا",
+    desc: "ملخص جميع الكليات في صفحة واحدة.",
+    icon: LayoutDashboard,
+    roles: ["university_leadership"],
+  },
   {
     to: "/dashboard",
     step: null,

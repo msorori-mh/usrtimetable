@@ -60,6 +60,7 @@ import { Route as AuthenticatedUniversitiesRouteImport } from './routes/_authent
 import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated/users'
 import { Route as AuthenticatedReportsIndexRouteImport } from './routes/_authenticated/reports.index'
 import { Route as AuthenticatedReportsAcademicAffairsRouteImport } from './routes/_authenticated/reports.academic-affairs'
+import { Route as AuthenticatedReportsLeadershipRouteImport } from './routes/_authenticated/reports.leadership'
 import { Route as AuthenticatedReportsConflictsRouteImport } from './routes/_authenticated/reports.conflicts'
 import { Route as AuthenticatedReportsCurrentTimetableRouteImport } from './routes/_authenticated/reports.current-timetable'
 import { Route as AuthenticatedReportsDataReadinessRouteImport } from './routes/_authenticated/reports.data-readiness'
@@ -364,6 +365,12 @@ const AuthenticatedReportsAcademicAffairsRoute =
     path: '/academic-affairs',
     getParentRoute: () => AuthenticatedReportsRoute,
   } as any)
+const AuthenticatedReportsLeadershipRoute =
+  AuthenticatedReportsLeadershipRouteImport.update({
+    id: '/leadership',
+    path: '/leadership',
+    getParentRoute: () => AuthenticatedReportsRoute,
+  } as any)
 const AuthenticatedReportsConflictsRoute =
   AuthenticatedReportsConflictsRouteImport.update({
     id: '/conflicts',
@@ -523,6 +530,7 @@ export interface FileRoutesByFullPath {
   '/universities': typeof AuthenticatedUniversitiesRoute
   '/users': typeof AuthenticatedUsersRoute
   '/reports/academic-affairs': typeof AuthenticatedReportsAcademicAffairsRoute
+  '/reports/leadership': typeof AuthenticatedReportsLeadershipRoute
   '/reports/conflicts': typeof AuthenticatedReportsConflictsRoute
   '/reports/current-timetable': typeof AuthenticatedReportsCurrentTimetableRoute
   '/reports/data-readiness': typeof AuthenticatedReportsDataReadinessRoute
@@ -592,6 +600,7 @@ export interface FileRoutesByTo {
   '/universities': typeof AuthenticatedUniversitiesRoute
   '/users': typeof AuthenticatedUsersRoute
   '/reports/academic-affairs': typeof AuthenticatedReportsAcademicAffairsRoute
+  '/reports/leadership': typeof AuthenticatedReportsLeadershipRoute
   '/reports/conflicts': typeof AuthenticatedReportsConflictsRoute
   '/reports/current-timetable': typeof AuthenticatedReportsCurrentTimetableRoute
   '/reports/data-readiness': typeof AuthenticatedReportsDataReadinessRoute
@@ -664,6 +673,7 @@ export interface FileRoutesById {
   '/_authenticated/universities': typeof AuthenticatedUniversitiesRoute
   '/_authenticated/users': typeof AuthenticatedUsersRoute
   '/_authenticated/reports/academic-affairs': typeof AuthenticatedReportsAcademicAffairsRoute
+  '/_authenticated/reports/leadership': typeof AuthenticatedReportsLeadershipRoute
   '/_authenticated/reports/conflicts': typeof AuthenticatedReportsConflictsRoute
   '/_authenticated/reports/current-timetable': typeof AuthenticatedReportsCurrentTimetableRoute
   '/_authenticated/reports/data-readiness': typeof AuthenticatedReportsDataReadinessRoute
@@ -736,6 +746,7 @@ export interface FileRouteTypes {
     | '/universities'
     | '/users'
     | '/reports/academic-affairs'
+    | '/reports/leadership'
     | '/reports/conflicts'
     | '/reports/current-timetable'
     | '/reports/data-readiness'
@@ -805,6 +816,7 @@ export interface FileRouteTypes {
     | '/universities'
     | '/users'
     | '/reports/academic-affairs'
+    | '/reports/leadership'
     | '/reports/conflicts'
     | '/reports/current-timetable'
     | '/reports/data-readiness'
@@ -876,6 +888,7 @@ export interface FileRouteTypes {
     | '/_authenticated/universities'
     | '/_authenticated/users'
     | '/_authenticated/reports/academic-affairs'
+    | '/_authenticated/reports/leadership'
     | '/_authenticated/reports/conflicts'
     | '/_authenticated/reports/current-timetable'
     | '/_authenticated/reports/data-readiness'
@@ -1263,6 +1276,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedReportsAcademicAffairsRouteImport
       parentRoute: typeof AuthenticatedReportsRoute
     }
+    '/_authenticated/reports/leadership': {
+      id: '/_authenticated/reports/leadership'
+      path: '/leadership'
+      fullPath: '/reports/leadership'
+      preLoaderRoute: typeof AuthenticatedReportsLeadershipRouteImport
+      parentRoute: typeof AuthenticatedReportsRoute
+    }
     '/_authenticated/reports/conflicts': {
       id: '/_authenticated/reports/conflicts'
       path: '/conflicts'
@@ -1394,6 +1414,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedReportsRouteChildren {
   AuthenticatedReportsAcademicAffairsRoute: typeof AuthenticatedReportsAcademicAffairsRoute
+  AuthenticatedReportsLeadershipRoute: typeof AuthenticatedReportsLeadershipRoute
   AuthenticatedReportsConflictsRoute: typeof AuthenticatedReportsConflictsRoute
   AuthenticatedReportsCurrentTimetableRoute: typeof AuthenticatedReportsCurrentTimetableRoute
   AuthenticatedReportsDataReadinessRoute: typeof AuthenticatedReportsDataReadinessRoute
@@ -1416,6 +1437,8 @@ interface AuthenticatedReportsRouteChildren {
 const AuthenticatedReportsRouteChildren: AuthenticatedReportsRouteChildren = {
   AuthenticatedReportsAcademicAffairsRoute:
     AuthenticatedReportsAcademicAffairsRoute,
+  AuthenticatedReportsLeadershipRoute:
+    AuthenticatedReportsLeadershipRoute,
   AuthenticatedReportsConflictsRoute: AuthenticatedReportsConflictsRoute,
   AuthenticatedReportsCurrentTimetableRoute:
     AuthenticatedReportsCurrentTimetableRoute,

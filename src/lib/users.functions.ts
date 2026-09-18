@@ -4,7 +4,13 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { assignsAllColleges, requiresCollegeAssignment } from "@/lib/viewer-roles";
 
-const ROLE = z.enum(["super_admin", "college_admin", "read_only", "institutional_viewer"]);
+const ROLE = z.enum([
+  "super_admin",
+  "college_admin",
+  "read_only",
+  "institutional_viewer",
+  "university_leadership",
+]);
 
 async function assertInstitutionAdmin(userId: string) {
   const { data, error } = await supabaseAdmin
@@ -58,7 +64,7 @@ export const adminCreateUser = createServerFn({ method: "POST" })
 
     // Only academic affairs receives all colleges. Report viewers retain the
     // explicit selection, including when the auth trigger grants read_only.
-    let collegeIds = [...new Set(data.college_ids)];
+    let collegeIds = data.role === "university_leadership" ? [] : [...new Set(data.college_ids)];
     if (assignsAllColleges(data.role)) {
       const { data: allColleges, error: colErr } = await supabaseAdmin
         .from("colleges")
@@ -96,7 +102,7 @@ export const adminCreateUser = createServerFn({ method: "POST" })
     await supabaseAdmin.from("user_roles").delete().eq("user_id", newId);
     const { error: roleErr } = await supabaseAdmin
       .from("user_roles")
-      .insert({ user_id: newId, role: data.role });
+      .insert({ user_id: newId, role: data.role as never });
     if (roleErr) throw new Error(roleErr.message);
 
     if (collegeIds.length > 0) {
