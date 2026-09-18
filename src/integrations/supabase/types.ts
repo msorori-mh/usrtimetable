@@ -4029,14 +4029,6 @@ export type Database = {
       }
     }
     Functions: {
-      get_instructor_university_numbers: {
-        Args: { p_instructor_ids: string[] }
-        Returns: { instructor_id: string; identity_id: string; university_number: string }[]
-      }
-      link_verified_faculty_identity: {
-        Args: { p_instructor_id: string; p_university_number: string }
-        Returns: undefined
-      }
       _avail_date_span: {
         Args: { p_end_date: string; p_start_date: string }
         Returns: unknown

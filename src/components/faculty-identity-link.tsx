@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { supabase } from "@/integrations/supabase/client";
-import { withUniversityNumbers } from "@/lib/instructors/university-number";
+import { facultyClient, withUniversityNumbers } from "@/lib/instructors/university-number";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -46,7 +46,7 @@ export function FacultyIdentityLink({
   const link = useMutation({
     mutationFn: async () => {
       if (!confirmed || !target) throw new Error("اختر السجل وأكد التحقق من هوية المحاضر");
-      const { error } = await supabase.rpc("link_verified_faculty_identity", {
+      const { error } = await facultyClient.rpc("link_verified_faculty_identity", {
         p_instructor_id: instructorId,
         p_university_number: target,
       });
