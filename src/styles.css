@@ -932,6 +932,31 @@
   .report-print-details {
     break-before: page;
   }
+
+  /* Instructor individual schedule: physical print order is explicit.
+     Keep the page sequence LTR at the container level so RTL text direction
+     can never reverse page boxes; restore RTL inside each page. */
+  .instructor-print-sequence {
+    display: block !important;
+    direction: ltr;
+  }
+
+  .instructor-print-page {
+    display: block;
+    direction: rtl;
+    width: 100%;
+  }
+
+  .instructor-print-page--first {
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .instructor-print-page--second,
+  .instructor-print-page--only {
+    break-before: auto;
+    page-break-before: auto;
+  }
 }
 
 /* The institutional header belongs to the paginated table, not to the first page. */
