@@ -35,8 +35,14 @@ import {
 
 export const Route = createFileRoute("/_authenticated/reports/academic-affairs")({
   head: () => ({ meta: [{ title: "تقارير الشؤون الأكاديمية" }] }),
-  validateSearch: (search: Record<string, unknown>): { report?: AcademicReportKind } => ({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { report?: AcademicReportKind; termId?: string } => ({
     report: parseAcademicReportKind(search.report),
+    termId:
+      typeof search.termId === "string" && /^[0-9a-f-]{36}$/i.test(search.termId)
+        ? search.termId
+        : undefined,
   }),
   component: Page,
 });
@@ -73,11 +79,11 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
   const navigate = Route.useNavigate();
   const setKind = (value: AcademicReportKind) => {
     setLoadStatus("all");
-    void navigate({ search: { report: value } });
+    void navigate({ search: { report: value, termId: chosenTerm || undefined } });
   };
   const workloadReport = isWorkloadReport(kind);
   const separateBalance = kind === "overload" || kind === "deficit";
-  const [chosenTerm, setChosenTerm] = useState("");
+  const [chosenTerm, setChosenTerm] = useState(Route.useSearch().termId ?? "");
   const [departmentId, setDepartmentId] = useState("all");
   const [programId, setProgramId] = useState("all");
   const [instructorId, setInstructorId] = useState("all");

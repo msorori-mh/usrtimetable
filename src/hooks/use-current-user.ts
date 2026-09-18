@@ -1,7 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-export type AppRole = "super_admin" | "college_admin" | "read_only" | "institutional_viewer";
+export type AppRole =
+  | "super_admin"
+  | "college_admin"
+  | "read_only"
+  | "institutional_viewer"
+  | "university_leadership";
 
 export interface CurrentUser {
   id: string;
@@ -17,6 +22,7 @@ export interface CurrentUser {
    * reports + instructor data for assigned colleges; instructor edits use a dedicated RPC only.
    */
   isInstitutionalViewer: boolean;
+  isUniversityLeadership?: boolean;
 }
 
 async function fetchCurrentUser(): Promise<CurrentUser | null> {
@@ -37,6 +43,7 @@ async function fetchCurrentUser(): Promise<CurrentUser | null> {
     fullName: profileRes.data?.full_name ?? null,
     roles,
     collegeIds: (collegesRes.data ?? []).map((c) => c.college_id),
+    isUniversityLeadership: roles.includes("university_leadership"),
     isSuperAdmin: roles.includes("super_admin"),
     isCollegeAdmin: roles.includes("college_admin"),
     isReadOnly: roles.includes("read_only"),

@@ -18,6 +18,8 @@ import {
   shouldLoadSuperAdminPageData,
 } from "@/lib/unauthorized-access";
 import {
+  LEADERSHIP_ROLE_LABEL_AR,
+  LEADERSHIP_ROLE_HINT_AR,
   INSTITUTIONAL_VIEWER_CREATE_NOTE_AR,
   INSTITUTIONAL_VIEWER_ROLE_HINT_AR,
   INSTITUTIONAL_VIEWER_ROLE_LABEL_AR,
@@ -58,6 +60,7 @@ export const Route = createFileRoute("/_authenticated/users")({
 });
 
 const ROLE_LABELS: Record<AppRole, string> = {
+  university_leadership: LEADERSHIP_ROLE_LABEL_AR,
   super_admin: "Super Admin",
   college_admin: "مدير كلّية",
   read_only: READ_ONLY_ROLE_LABEL_AR,
@@ -65,6 +68,7 @@ const ROLE_LABELS: Record<AppRole, string> = {
 };
 
 const ROLE_TONE: Record<AppRole, string> = {
+  university_leadership: "bg-primary/10 text-primary border-primary/30",
   super_admin: "bg-primary/10 text-primary border-primary/20",
   college_admin: "bg-accent/20 text-accent-foreground border-accent/30",
   read_only: "bg-muted text-muted-foreground border-border",
@@ -72,6 +76,7 @@ const ROLE_TONE: Record<AppRole, string> = {
 };
 
 const ROLE_HINTS: Record<AppRole, string> = {
+  university_leadership: LEADERSHIP_ROLE_HINT_AR,
   super_admin: "صلاحيات كاملة على جميع الكلّيات، وإدارة المستخدمين والأدوار.",
   college_admin: "كامل صلاحيات العمليات داخل الكلّيات المُسندة له، بما فيها الاستيراد من Excel.",
   read_only: READ_ONLY_ROLE_HINT_AR,
@@ -143,7 +148,9 @@ function UsersPage() {
   const setRole = useMutation({
     mutationFn: async ({ userId, role, on }: { userId: string; role: AppRole; on: boolean }) => {
       if (on) {
-        const { error } = await supabase.from("user_roles").insert({ user_id: userId, role });
+        const { error } = await supabase
+          .from("user_roles")
+          .insert({ user_id: userId, role: role as never });
         if (error && !error.message.includes("duplicate")) throw error;
         // Academic affairs reads every college: assign them
         // all here too (a database trigger is the authoritative safety net).
@@ -168,7 +175,7 @@ function UsersPage() {
           .from("user_roles")
           .delete()
           .eq("user_id", userId)
-          .eq("role", role);
+          .eq("role", role as never);
         if (error) throw error;
       }
       await logAudit({
@@ -289,6 +296,16 @@ function UsersPage() {
               presetRole="institutional_viewer"
               presetName={INSTITUTIONAL_VIEWER_ROLE_LABEL_AR}
               triggerLabel="إنشاء مشاهد مؤسسي"
+              triggerVariant="outline"
+              onCreate={async (input) => {
+                await createUserFn({ data: input });
+                qc.invalidateQueries({ queryKey: ["all-users-admin"] });
+              }}
+            />
+            <CreateUserDialog
+              colleges={colleges ?? []}
+              presetRole="university_leadership"
+              triggerLabel="إنشاء حساب للإدارة العليا"
               triggerVariant="outline"
               onCreate={async (input) => {
                 await createUserFn({ data: input });
@@ -518,6 +535,12 @@ function UsersPage() {
 
                       <div>
                         <p className="mb-3 text-sm font-semibold">الكلّيات المُسندة</p>
+                        {u.roles.includes("university_leadership") && (
+                          <p className="mb-2 text-sm text-primary">
+                            الإدارة العليا تقرأ تقارير جميع الكليات تلقائيًا. الإسنادات التالية تخص
+                            الأدوار الأخرى فقط.
+                          </p>
+                        )}
                         {!colleges || colleges.length === 0 ? (
                           <p className="text-xs text-muted-foreground">
                             لا توجد كلّيات بعد. أنشئ كلّية أولاً.
@@ -666,7 +689,12 @@ function CreateUserDialog({
     }
     // «إدارة الشؤون الأكاديمية» never picks colleges by hand: every current
     // college is sent, and the server recomputes the full list anyway.
-    const collegeIds = assignsAllColleges(form.role) ? colleges.map((c) => c.id) : form.college_ids;
+    const collegeIds =
+      form.role === "university_leadership"
+        ? []
+        : assignsAllColleges(form.role)
+          ? colleges.map((c) => c.id)
+          : form.college_ids;
     if (requiresCollegeAssignment(form.role) && collegeIds.length === 0) {
       toast.error("يجب إسناد كلّية واحدة على الأقل لهذا الدور");
       return;
@@ -716,6 +744,12 @@ function CreateUserDialog({
               {form.role === "institutional_viewer"
                 ? INSTITUTIONAL_VIEWER_CREATE_NOTE_AR
                 : READ_ONLY_CREATE_NOTE_AR}
+            </p>
+          )}
+          {form.role === "university_leadership" && (
+            <p className="rounded-md bg-primary/10 p-3 text-sm">
+              {LEADERSHIP_ROLE_HINT_AR} يشمل الكليات الحالية وأي كلية تُضاف لاحقًا، دون إسناد
+              صلاحيات إدارة الكليات.
             </p>
           )}
           <div>

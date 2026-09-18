@@ -184,10 +184,8 @@ assert(
 
 const usersFn = read("src/lib/users.functions.ts");
 assert(
-  /const ROLE = z\.enum\(\["super_admin", "college_admin", "read_only", "institutional_viewer"\]\)/.test(
-    usersFn,
-  ),
-  "user provisioning accepts institutional_viewer",
+  /const ROLE = z\.enum\(\[[\s\S]*?"institutional_viewer"[\s\S]*?\]\)/.test(usersFn),
+  "user provisioning accepts institutional_viewer alongside other roles",
 );
 assert(
   /assignsAllColleges\(data\.role\)/.test(usersFn),

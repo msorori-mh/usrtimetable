@@ -50,6 +50,9 @@ export function useAccessibleColleges() {
         supabase.from("user_colleges").select("college_id").eq("user_id", uid),
       ]);
       const roles = (rolesRes.data ?? []).map((r) => r.role as string);
+      if (rolesRes.error || assignedRes.error) throw rolesRes.error ?? assignedRes.error;
+      // Leadership reads all colleges through RLS, without granting admin membership.
+      if (roles.includes("university_leadership")) return colleges;
       const viewerOnly = isViewerOnlyRole({
         isSuperAdmin: roles.includes("super_admin"),
         isCollegeAdmin: roles.includes("college_admin"),
