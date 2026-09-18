@@ -161,4 +161,3 @@ export const adminGeneratePasswordReset = createServerFn({ method: "POST" })
     });
     return { action_link: link.properties?.action_link ?? null };
   });
-

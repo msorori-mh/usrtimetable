@@ -112,4 +112,3 @@ describe("college assignment", () => {
     expect(requiresCollegeAssignment("institutional_viewer")).toBe(false);
   });
 });
-

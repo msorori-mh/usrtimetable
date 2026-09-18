@@ -10,7 +10,7 @@
  * `institutional_viewer` — «إدارة الشؤون الأكاديمية»:
  *  - may open reports and the instructor directory/editor only;
  *  - may update basic instructor fields through a dedicated RPC, but cannot create/delete instructors;
- *  - holds every current and future college as scope, same as above.
+ *  - holds every current and future college as explicitly auto-assigned scope.
  *
  * Multi-role safety: an account that also carries `super_admin` or
  * `college_admin` keeps that role's full behaviour, is never narrowed to
@@ -131,4 +131,3 @@ export function assignsAllColleges(role: AssignableRole): boolean {
 export function requiresCollegeAssignment(role: AssignableRole): boolean {
   return role === "college_admin" || role === "read_only";
 }
-
