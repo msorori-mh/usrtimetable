@@ -221,7 +221,13 @@ test("full Arabic source sheet resolves an existing teacher, specialization and 
 });
 
 test("leave and scholarship are inactive and retain their exact reason through export and reimport", async () => {
-  for (const status of ["إجازة مرضية", "ابتعاث"]) {
+  for (const status of [
+    "إجازة مرضية",
+    "إجازة بدون راتب",
+    "إجازة اعتيادية",
+    "ابتعاث",
+    "تفرغ علمي",
+  ]) {
     const { result } = await check(sourceFile({ 0: status }));
     assert.deepEqual(result.errors, []);
     const row = result.validRows[0];
