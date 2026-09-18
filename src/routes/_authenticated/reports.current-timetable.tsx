@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { expandIntakeTimetable } from "@/lib/existing-schedules/presentation";
+import { fetchStudentPrintMemberships } from "@/lib/print-center/student-memberships-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
@@ -126,9 +126,14 @@ function Page() {
       const hydrated = await fetchHydratedVersionSessions({
         collegeId: ctx.collegeId!,
         versionId: ctx.versionId!,
-        studySystem: ctx.studySystem,
+        studySystem: "all",
       });
-      const expanded = expandIntakeTimetable(hydrated);
+      const expanded = (await fetchStudentPrintMemberships(hydrated, ctx.collegeId!)).filter(
+        (row) =>
+          ctx.studySystem === "all" ||
+          row.study_system === "both" ||
+          row.study_system === ctx.studySystem,
+      );
       const planIds = [
         ...new Set(
           expanded.flatMap((r) => r.intake_memberships?.map((m) => m.study_plan_id) ?? []),
@@ -144,7 +149,7 @@ function Page() {
       if (plans.error) throw plans.error;
       const sessions: PrintSessionLike[] = expanded.map((row) => {
         const membership = row.intake_memberships?.find(
-          (m) => m.delivery_group_id === row.delivery_group_id,
+          (m) => m.delivery_group_id === row.delivery_group_id && m.cohort_id === row.cohort_id,
         );
         if (!membership) return row;
         const plan = plans.data?.find((p) => p.id === membership.study_plan_id);
