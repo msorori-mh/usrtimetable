@@ -71,7 +71,9 @@ export const adminCreateUser = createServerFn({ method: "POST" })
 
     if (collegeIds.length > 0) {
       const { data: selected, error } = await supabaseAdmin
-        .from("colleges").select("id").in("id", collegeIds);
+        .from("colleges")
+        .select("id")
+        .in("id", collegeIds);
       if (error) throw new Error(error.message);
       if (selected?.length !== collegeIds.length) throw new Error("Invalid college assignment");
     }
