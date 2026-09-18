@@ -1,3 +1,8 @@
+import { RepeatingPrintHeader } from "@/components/reports/repeating-print-header";
+import {
+  ReportOfficialHeader,
+  headerMetaFromContext,
+} from "@/components/reports/report-official-header";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
@@ -178,105 +183,129 @@ function Page() {
         <>
           <style>{printPageStyleCss("A3", "landscape")}</style>
           <section className="print-center-page break-after-page">
-            <h2 className="mb-2 text-base font-bold">الملخص التنفيذي للقاعات والمعامل</h2>
-            <p className="mb-2 text-sm">{ctx.filterSummary}</p>
-            <p className="mb-2 text-xs">
-              الساعات غير المستخدمة محسوبة ضمن الفلاتر؛ راجع إشغال النظامين قبل إعادة التسكين.
-            </p>
-            <p className="mb-3 text-sm leading-6">{analytics.insight}</p>
-            <RoomsCategorySummary summary={summary} />
-            <div className="mb-4 grid grid-cols-4 gap-2 text-sm">
-              <div className="border p-2">
-                <b>إجمالي الموارد</b>
-                <br />
-                {totals.rooms}
-              </div>
-              <div className="border p-2">
-                <b>القاعات / المعامل</b>
-                <br />
-                {analytics.halls} / {analytics.labs}
-              </div>
-              <div className="border p-2">
-                <b>المستخدم / الفارغ</b>
-                <br />
-                {totals.usedHours} / {totals.freeHours} ساعة
-              </div>
-              <div className="border p-2">
-                <b>الاستغلال العام</b>
-                <br />
-                {totals.utilization}%
-              </div>
-              <div className="border p-2">
-                <b>متوسط القاعات</b>
-                <br />
-                {analytics.hallAverageUtilization}%
-              </div>
-              <div className="border p-2">
-                <b>متوسط المعامل</b>
-                <br />
-                {analytics.labAverageUtilization}%
-              </div>
-              <div className="border p-2">
-                <b>مزدحم / متوسط / منخفض</b>
-                <br />
-                {analytics.bands.crowded} / {analytics.bands.medium} / {analytics.bands.low}
-              </div>
-              <div className="border p-2">
-                <b>أعلى / أقل استخدامًا</b>
-                <br />
-                {analytics.highest?.room_name ?? "—"} / {analytics.lowest?.room_name ?? "—"}
-              </div>
-            </div>
-            {totals.overbookedHours > 0 && (
-              <p className="mb-3 border border-destructive p-2 font-semibold text-destructive">
-                تجاوز الإتاحة المرصود: {totals.overbookedHours} ساعة. لم تُخفَ هذه الزيادة من
-                الحسابات.
-              </p>
-            )}
-            <h3 className="mb-2 font-bold">ترتيب استغلال الوقت</h3>
-            <div
-              className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs"
-              data-testid="rooms-print-chart"
+            <RepeatingPrintHeader
+              header={
+                <ReportOfficialHeader
+                  reportTitle="الملخص التنفيذي للقاعات والمعامل"
+                  collegeName={active?.name}
+                  {...headerMetaFromContext(ctx)}
+                  generatedAt={exportAt}
+                  qrUrl={qrUrl}
+                />
+              }
             >
-              {[...summary]
-                .sort((a, b) => b.utilization_percent - a.utilization_percent)
-                .map((row) => (
-                  <div
-                    key={row.room_id}
-                    className="grid grid-cols-[8rem_1fr_3rem] items-center gap-2"
-                  >
-                    <span className="truncate">{row.room_name}</span>
-                    <span className="h-2 bg-muted">
-                      <span
-                        className="block h-full bg-primary"
-                        style={{ width: `${Math.min(100, row.utilization_percent)}%` }}
-                      />
-                    </span>
-                    <b>{row.utilization}</b>
-                  </div>
-                ))}
-            </div>
+              <h2 className="mb-2 text-base font-bold">الملخص التنفيذي للقاعات والمعامل</h2>
+              <p className="mb-2 text-sm">{ctx.filterSummary}</p>
+              <p className="mb-2 text-xs">
+                الساعات غير المستخدمة محسوبة ضمن الفلاتر؛ راجع إشغال النظامين قبل إعادة التسكين.
+              </p>
+              <p className="mb-3 text-sm leading-6">{analytics.insight}</p>
+              <RoomsCategorySummary summary={summary} />
+              <div className="mb-4 grid grid-cols-4 gap-2 text-sm">
+                <div className="border p-2">
+                  <b>إجمالي الموارد</b>
+                  <br />
+                  {totals.rooms}
+                </div>
+                <div className="border p-2">
+                  <b>القاعات / المعامل</b>
+                  <br />
+                  {analytics.halls} / {analytics.labs}
+                </div>
+                <div className="border p-2">
+                  <b>المستخدم / الفارغ</b>
+                  <br />
+                  {totals.usedHours} / {totals.freeHours} ساعة
+                </div>
+                <div className="border p-2">
+                  <b>الاستغلال العام</b>
+                  <br />
+                  {totals.utilization}%
+                </div>
+                <div className="border p-2">
+                  <b>متوسط القاعات</b>
+                  <br />
+                  {analytics.hallAverageUtilization}%
+                </div>
+                <div className="border p-2">
+                  <b>متوسط المعامل</b>
+                  <br />
+                  {analytics.labAverageUtilization}%
+                </div>
+                <div className="border p-2">
+                  <b>مزدحم / متوسط / منخفض</b>
+                  <br />
+                  {analytics.bands.crowded} / {analytics.bands.medium} / {analytics.bands.low}
+                </div>
+                <div className="border p-2">
+                  <b>أعلى / أقل استخدامًا</b>
+                  <br />
+                  {analytics.highest?.room_name ?? "—"} / {analytics.lowest?.room_name ?? "—"}
+                </div>
+              </div>
+              {totals.overbookedHours > 0 && (
+                <p className="mb-3 border border-destructive p-2 font-semibold text-destructive">
+                  تجاوز الإتاحة المرصود: {totals.overbookedHours} ساعة. لم تُخفَ هذه الزيادة من
+                  الحسابات.
+                </p>
+              )}
+              <h3 className="mb-2 font-bold">ترتيب استغلال الوقت</h3>
+              <div
+                className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs"
+                data-testid="rooms-print-chart"
+              >
+                {[...summary]
+                  .sort((a, b) => b.utilization_percent - a.utilization_percent)
+                  .map((row) => (
+                    <div
+                      key={row.room_id}
+                      className="grid grid-cols-[8rem_1fr_3rem] items-center gap-2"
+                    >
+                      <span className="truncate">{row.room_name}</span>
+                      <span className="h-2 bg-muted">
+                        <span
+                          className="block h-full bg-primary"
+                          style={{ width: `${Math.min(100, row.utilization_percent)}%` }}
+                        />
+                      </span>
+                      <b>{row.utilization}</b>
+                    </div>
+                  ))}
+              </div>
+            </RepeatingPrintHeader>
           </section>
           <section className="print-center-page break-after-page">
-            <h2 className="mb-2 text-base font-bold">جدول ملخص القاعات والمعامل</h2>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  {ROOMS_REPORT_SUMMARY_HEADERS.map((h) => (
-                    <TableHead key={h.key}>{h.label}</TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {summary.map((r) => (
-                  <TableRow key={`${r.room_code}-${r.room_name}`}>
+            <RepeatingPrintHeader
+              header={
+                <ReportOfficialHeader
+                  reportTitle="جدول ملخص القاعات والمعامل"
+                  collegeName={active?.name}
+                  {...headerMetaFromContext(ctx)}
+                  generatedAt={exportAt}
+                  qrUrl={qrUrl}
+                />
+              }
+            >
+              <h2 className="mb-2 text-base font-bold">جدول ملخص القاعات والمعامل</h2>
+              <Table>
+                <TableHeader>
+                  <TableRow>
                     {ROOMS_REPORT_SUMMARY_HEADERS.map((h) => (
-                      <TableCell key={h.key}>{String(r[h.key])}</TableCell>
+                      <TableHead key={h.key}>{h.label}</TableHead>
                     ))}
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {summary.map((r) => (
+                    <TableRow key={`${r.room_code}-${r.room_name}`}>
+                      {ROOMS_REPORT_SUMMARY_HEADERS.map((h) => (
+                        <TableCell key={h.key}>{String(r[h.key])}</TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </RepeatingPrintHeader>
           </section>
           {pages.map((page, i) => (
             <PrintSheet

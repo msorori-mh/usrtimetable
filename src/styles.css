@@ -930,3 +930,64 @@
     break-before: page;
   }
 }
+
+/* The institutional header belongs to the paginated table, not to the first page. */
+@media screen {
+  .report-page-frame,
+  .report-page-content,
+  .report-page-content > tr,
+  .report-page-content > tr > td {
+    display: block;
+    width: 100%;
+  }
+
+  .report-page-header {
+    display: none;
+  }
+}
+
+@media print {
+  table.report-page-frame {
+    width: 100% !important;
+    table-layout: fixed;
+    border-collapse: collapse;
+  }
+
+  .report-page-frame > .report-page-header {
+    display: table-header-group !important;
+    break-inside: avoid;
+  }
+
+  .report-page-frame > .report-page-content {
+    display: table-row-group !important;
+  }
+
+  .report-page-frame > .report-page-content > tr,
+  .report-page-frame > .report-page-content > tr > td {
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
+
+  .report-page-frame > thead > tr > td,
+  .report-page-frame > tbody > tr > td,
+  .print-center-page .print-sheet-identity-row > th {
+    border: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    white-space: normal;
+    text-align: start;
+    font-weight: normal;
+  }
+
+  .report-page-header .report-official-header {
+    margin: 0 0 3mm;
+  }
+
+  .print-center-page > div > table > thead {
+    break-inside: avoid;
+  }
+
+  .print-sheet-identity-row .print-center-header {
+    margin: 0 0 3mm;
+  }
+}
