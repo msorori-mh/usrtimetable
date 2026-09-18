@@ -93,7 +93,9 @@ function InstructorAffiliationCell({ row }: { row: InstructorDirectoryDisplayRow
   return (
     <div className="min-w-[155px] space-y-0.5 leading-5">
       <div className="font-semibold">{instructorText(row.affiliation_scope)}</div>
-      <div className="text-[11px] text-muted-foreground">{instructorText(row.affiliation_college)}</div>
+      <div className="text-[11px] text-muted-foreground">
+        {instructorText(row.affiliation_college)}
+      </div>
       <div className="text-[10px] text-muted-foreground">
         {instructorText(row.affiliation_department)}
       </div>
@@ -329,9 +331,13 @@ function Report() {
 
   const activeCount = rows.filter((r) => r.status === "نشط").length;
   const totalQuota = rows.reduce((sum, r) => sum + Number(r.effective_quota || 0), 0);
-  const externalCount = rows.filter((r) => r.affiliation_scope === AFFILIATION_LABELS.external).length;
+  const externalCount = rows.filter(
+    (r) => r.affiliation_scope === AFFILIATION_LABELS.external,
+  ).length;
   const missingAffiliation = rows.filter(
-    (r) => r.affiliation_scope === AFFILIATION_LABELS.unknown || r.affiliation_college === "غير محدد",
+    (r) =>
+      r.affiliation_scope === AFFILIATION_LABELS.unknown ||
+      r.affiliation_college === "غير محدد",
   ).length;
   const departmentItems = (departments.data ?? []).filter((d) =>
     (instructors.data ?? []).some((i) => i.affiliation_department_id === d.id),
@@ -515,9 +521,7 @@ function Report() {
           caption="دليل المحاضرين وبياناتهم"
           minWidthClassName="min-w-[820px]"
           primaryColumnLimit={6}
-          columns={
-            compactInstructorDirectoryColumns() as ReportColumn<(typeof rows)[number]>
-          }
+          columns={compactInstructorDirectoryColumns() as ReportColumn<(typeof rows)[number]>[]}
         />
       </ReportSection>
     </ReportShell>
