@@ -174,3 +174,11 @@ export function orderedLeadershipCounts(
         a.localeCompare(b, "ar"),
     );
 }
+
+export function sortLeadershipColleges(rows: LeadershipCollege[]): LeadershipCollege[] {
+  return [...rows].sort((a, b) => {
+    const priority = (name: string) =>
+      name.includes("تكنولوجيا المعلومات وعلوم الحاسوب") ? 0 : 1;
+    return priority(a.college) - priority(b.college) || a.college.localeCompare(b.college, "ar");
+  });
+}
