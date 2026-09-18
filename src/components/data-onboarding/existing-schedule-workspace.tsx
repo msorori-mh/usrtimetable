@@ -144,7 +144,7 @@ export function ExistingScheduleWorkspace({
   const visible = rows.filter(
     (r) =>
       (!pendingOnly || !r.schedule_session_id || r.pending_reasons.length > 0) &&
-      `${r.raw_course} ${r.raw_teacher} ${r.instructor_ids.map((id) => names.get(id) ?? "").join(" ")} ${plans.get(r.study_plan_id ?? "")}`.includes(
+      `${r.raw_course} ${r.raw_teacher} ${r.instructor_ids.map((id) => names.get(id) ?? "").join(" ")} ${plans.get(r.study_plan_id ?? "") ?? "البرنامج بانتظار الربط"}`.includes(
         search,
       ),
   );
@@ -214,7 +214,7 @@ export function ExistingScheduleWorkspace({
           {[
             ["سجلات المصدر", rows.length],
             ["الجلسات الفعلية", sessions],
-            ["بانتظار موعد", pending],
+            ["بانتظار الاستكمال", pending],
             ["بانتظار قاعة", missingRooms],
           ].map(([label, value]) => (
             <div key={label} className="rounded-lg border p-3">
@@ -304,12 +304,12 @@ export function ExistingScheduleWorkspace({
                 {visible.map((r) => (
                   <tr key={r.id} className="border-b align-top">
                     <td className="p-3">
-                      {plans.get(r.study_plan_id ?? "")}
+                      {plans.get(r.study_plan_id ?? "") ?? "البرنامج بانتظار الربط"}
                       <br />
                       المستوى {r.level_number ?? "بانتظار التحديد"}
                     </td>
                     <td className="p-3">
-                      {r.raw_course}
+                      {r.raw_course || "خانة مصدر غير مكتملة"}
                       <details className="mt-1 text-xs text-muted-foreground">
                         <summary>المصدر</summary>
                         {r.source_file}
