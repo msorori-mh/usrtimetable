@@ -108,12 +108,21 @@ export async function parseInstructorSheet(
 }
 
 const STATUS_NOTE = "الحالة الوظيفية: ";
+const INSTRUCTOR_INACTIVE_STATUS_REASONS = [
+  "ابتعاث",
+  "إجازة مرضية",
+  "إجازة بدون راتب",
+  "إجازة اعتيادية",
+  "تفرغ علمي",
+] as const;
+
 export function instructorStatusLabel(isActive: boolean, notes: string | null | undefined): string {
   const status = notes
     ?.split("\n")
     .find((line) => line.startsWith(STATUS_NOTE))
     ?.slice(STATUS_NOTE.length);
-  if (!isActive && status && ["ابتعاث", "إجازة مرضية"].includes(status)) return status;
+  if (!isActive && status && INSTRUCTOR_INACTIVE_STATUS_REASONS.includes(status as never))
+    return status;
   return isActive ? "نشط" : "غير نشط";
 }
 
@@ -121,8 +130,10 @@ export function parseInstructorStatus(value: unknown): { active: boolean; reason
   const key = headerKey(value).toLowerCase();
   if (["نشط", "true", "1", "yes", "نعم", "y"].includes(key)) return { active: true };
   if (["غير نشط", "false", "0", "no", "لا", "n"].includes(key)) return { active: false };
-  if (key === headerKey("ابتعاث")) return { active: false, reason: "ابتعاث" };
-  if (key === headerKey("إجازة مرضية")) return { active: false, reason: "إجازة مرضية" };
+  const reason = INSTRUCTOR_INACTIVE_STATUS_REASONS.find(
+    (status) => key === headerKey(status),
+  );
+  if (reason) return { active: false, reason };
   return null;
 }
 
@@ -248,7 +259,7 @@ export function prepareInstructorRow(
       fail(
         "is_active",
         "invalid_instructor_status",
-        "الحالة مطلوبة: نشط، غير نشط، ابتعاث، أو إجازة مرضية.",
+        "الحالة مطلوبة: نشط، غير نشط، ابتعاث، إجازة، أو تفرغ علمي.",
       );
     else {
       v.is_active = status.active;
