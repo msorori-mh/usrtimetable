@@ -41,7 +41,13 @@ export function expandStudentPrintMemberships(
         const groupId = base.delivery_group_id;
         const participants = groupId ? cohortsByGroup.get(groupId) : undefined;
         if (!participants?.size) {
-          copies.set(`${base.cohort_id ?? ""}:${groupId ?? ""}`, base);
+          const key = `${base.cohort_id ?? ""}:${groupId ?? ""}`;
+          const scope = base.cohort_id ? scopeMap.get(base.cohort_id) : undefined;
+          copies.set(key, row.intake_memberships?.length ? {
+            ...base,
+            id: `${row.id}:${key}`,
+            study_system: scope?.study_system ?? base.study_system,
+          } : base);
           continue;
         }
         for (const cohortId of participants) {
