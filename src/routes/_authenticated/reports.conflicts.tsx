@@ -21,8 +21,8 @@ export const Route = createFileRoute("/_authenticated/reports/conflicts")({
 });
 
 const headers = [
-  { key: "classification", label: "التصنيف" },
-  { key: "evidence_status", label: "حالة الدليل" },
+  { key: "classification_label", label: "التصنيف" },
+  { key: "evidence_label", label: "حالة الدليل" },
   { key: "cohort", label: "الدفعة" },
   { key: "delivery_group", label: "مجموعة التدريس" },
   { key: "legacy_section", label: "مجموعة أرشيفية" },
@@ -42,8 +42,11 @@ const SEVERITY_META: Record<
   { label: string; variant: "destructive" | "secondary" | "outline"; rowClass: string }
 > = {
   hard: { label: "إلزامي", variant: "destructive", rowClass: "bg-destructive/5" },
+  hard_blocker: { label: "مانع إلزامي", variant: "destructive", rowClass: "bg-destructive/5" },
   soft: { label: "مرن", variant: "secondary", rowClass: "bg-amber-500/5" },
-  warning: { label: "تحذير", variant: "outline", rowClass: "bg-muted/40" },
+  warning: { label: "تحذير", variant: "secondary", rowClass: "bg-amber-500/5" },
+  approved_exception: { label: "استثناء معتمد", variant: "outline", rowClass: "bg-primary/5" },
+  unknown: { label: "دليل غير مكتمل", variant: "outline", rowClass: "bg-muted/40" },
 };
 
 function severityMeta(raw: unknown) {
@@ -122,7 +125,7 @@ function ConflictEvidenceCell({ row }: { row: ConflictDisplayRow }) {
     <div className="min-w-[165px] space-y-0.5 leading-5">
       <div className="font-medium">{conflictText(row.day_time)}</div>
       <div className="text-[11px] text-muted-foreground">
-        الدليل: {conflictText(row.evidence_status)}
+        الدليل: {conflictText(row.evidence_label ?? row.evidence_status)}
       </div>
       {row.resolution_detail && row.resolution_detail !== "—" && (
         <div className="text-[10px] text-muted-foreground">
