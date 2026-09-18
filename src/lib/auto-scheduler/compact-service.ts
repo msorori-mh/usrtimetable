@@ -1,3 +1,4 @@
+import { qualityBetter, qualityPlanValid } from "./quality-search";
 import { supabase } from "@/integrations/supabase/client";
 import {
   better,
@@ -269,6 +270,8 @@ export async function applyCompactProposal(
     onProgress?: (applied: number, total: number) => void;
   } = {},
 ): Promise<Applied> {
+  if (proposal.qualitySearch && proposal.applicationMode !== "simultaneous")
+    throw new Error("خطة التحسين تتطلب حفظًا متزامنًا كاملاً.");
   const fresh = await loadCompactSnapshot(collegeId, versionId);
   if (
     fingerprint(fresh.sessions) !== proposal.fingerprint ||
@@ -287,8 +290,13 @@ export async function applyCompactProposal(
     if (proposal.moves.some((m) => !fresh.sessions.some((s) => s.id === m.id)))
       throw new Error("محاضرة خارج نطاق الخطة.");
     simulated = fresh.sessions.map((s) => ({ ...s, ...moves.get(s.id) }));
-    const days = proposal.attendanceSearch?.days;
-    if (!days || !validateJointPlan(fresh, simulated, days))
+    const days = proposal.qualitySearch?.dayCap ?? proposal.attendanceSearch?.days;
+    if (
+      !days ||
+      (proposal.qualitySearch
+        ? !qualityPlanValid(fresh, simulated, days)
+        : !validateJointPlan(fresh, simulated, days))
+    )
       throw new Error("تغيرت صلاحية خطة التوزيع؛ أعد المعاينة.");
   } else {
     for (const move of proposal.moves) {
@@ -300,7 +308,12 @@ export async function applyCompactProposal(
       simulated = simulated.map((x) => (x.id === move.id ? candidate : x));
     }
   }
-  if (!better(measure(fresh, simulated), before)) throw new Error("الخطة لا تحسّن النتيجة.");
+  if (
+    !(proposal.qualitySearch
+      ? qualityBetter(measure(fresh, simulated), before)
+      : better(measure(fresh, simulated), before))
+  )
+    throw new Error("الخطة لا تحسّن النتيجة.");
   if (options.signal?.aborted) throw new Error("أُلغي التطبيق قبل إرسال الخطة؛ لم يُحفظ تغيير.");
   const operationId = crypto.randomUUID();
   let result: Applied = {
@@ -322,7 +335,7 @@ export async function applyCompactProposal(
       p_expected_revision: fresh.revision,
       p_expected_version_updated_at: fresh.versionUpdatedAt,
       ...(proposal.applicationMode === "simultaneous"
-        ? { p_day_cap: proposal.attendanceSearch!.days }
+        ? { p_day_cap: proposal.qualitySearch?.dayCap ?? proposal.attendanceSearch!.days }
         : {}),
       p_moves: proposal.moves.map((move) => ({
         ...move,

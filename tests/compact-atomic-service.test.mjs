@@ -35,6 +35,34 @@ const bundle = await build({
 });
 const source = `data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`;
 let serial = 0;
+
+test("quality proposals use atomic relayout with the existing day ceiling", async () => {
+  const { st, service, p } = await setup();
+  p.applicationMode = "simultaneous";
+  p.qualitySearch = { dayCap: 4 };
+  const result = await service.applyCompactProposal("c", "v", p);
+  assert.equal(result.status, "saved");
+  assert.equal(st.calls[0].name, "apply_schedule_relayout");
+  assert.equal(st.calls[0].args.p_day_cap, 4);
+  assert.equal(result.after.instructorGapMinutes, 0);
+});
+
+test("quality save independently rejects raising attendance days", async () => {
+  const { st, service, p } = await setup();
+  p.applicationMode = "simultaneous";
+  p.qualitySearch = { dayCap: 4 };
+  p.moves[0].day_of_week = 1;
+  await assert.rejects(service.applyCompactProposal("c", "v", p), /صلاحية/);
+  assert.equal(st.calls.length, 0);
+});
+
+test("quality marker cannot select sequential persistence", async () => {
+  const { st, service, p } = await setup();
+  p.qualitySearch = { dayCap: 4 };
+  await assert.rejects(service.applyCompactProposal("c", "v", p), /متزامن/);
+  assert.equal(st.calls.length, 0);
+});
+
 async function setup() {
   const s = snapshot([
     session("a", 0, "08:00:00", "10:00:00", { instructor_id: "T" }),

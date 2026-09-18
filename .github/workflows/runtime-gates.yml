@@ -82,6 +82,9 @@ jobs:
       - name: Production build (vite build)
         run: bun run build
 
+      - name: Continuous distribution quality and atomic application
+        run: node --test tests/quality-search.test.mjs
+
       - name: Joint mathematical scheduling model
         run: node --import tsx --test tests/joint-model.test.mjs tests/extended-resource-capacity.test.mjs tests/course-program-plans.test.mjs
 

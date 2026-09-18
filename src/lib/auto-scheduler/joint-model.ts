@@ -132,6 +132,7 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
             requiredRoomType: required?.required_room_type,
             roomType: pools[pool][0].room_type,
           }) ?? 0;
+        cost[i] += fallback * 10000;
         generationWeights.set(
           i,
           fallback * 100 +
@@ -226,7 +227,7 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
     }
     row(changed, -INF, snapshot.generationScope.maxRelocations);
   }
-  for (const days of levels.values()) {
+  for (const [level, days] of levels) {
     const enabled: Term[] = [];
     for (const terms of days.values()) {
       const y = variable();
@@ -234,10 +235,15 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
       const max = new Set(terms.map(([i]) => candidates[i].session.id)).size;
       row([...terms, [y, -max]], -INF, 0);
     }
-    row(repair ? [...enabled, [variable(100000000, 6), -1]] : enabled, -INF, dayCap);
+    row(
+      repair ? [...enabled, [variable(100000000, 6), -1]] : enabled,
+      -INF,
+      Math.min(dayCap, snapshot.qualityScope?.levelDays[level] ?? dayCap),
+    );
   }
   const extended = new Map<string, Term[]>();
   const instructorDays = new Map<string, Term[]>();
+  const studentDays = new Map<string, Term[]>();
   // Generation omits costly span optimization but retains attendance preferences.
   for (const { terms, kind, person, day } of daily.values()) {
     const student = kind === "student";
@@ -278,15 +284,17 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
       Math.floor(capMinutes / Math.min(...terms.map(([i]) => duration(candidates[i].session)))),
     );
     const y = variable(student ? 300 : 30);
+    if (student) studentDays.set(person, [...(studentDays.get(person) ?? []), [y, 1]]);
     if (!student) {
       instructorDays.set(person, [...(instructorDays.get(person) ?? []), [y, 1]]);
       generationWeights.set(y, 30);
     }
     row([...terms, [y, -maxDaily]], -INF, 0);
     row([...terms, [y, -1]], 0, INF);
+    const singleLecture = variable(student ? 2000 : 3000);
+    row([...terms, [y, -2], [singleLecture, 1]], 0, INF);
+    if (!student) generationWeights.set(singleLecture, 3000);
     if (student) {
-      const short = variable(2000);
-      row([...terms, [y, -2], [short, 1]], 0, INF);
       if (snapshot.settings.extended_day_policy_enabled) {
         const late = terms.filter(
           ([i]) =>
@@ -353,7 +361,7 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
       undefined,
       instructor.max_attendance_days_per_week,
     );
-    row(enabled, -INF, cap); // Hard even in repair mode.
+    row(enabled, -INF, Math.min(cap, snapshot.qualityScope?.instructorDays[id] ?? cap)); // Hard even in repair mode.
     const hours = snapshot.sessions
       .filter((s) => s.instructor_id === id)
       .reduce((sum, s) => sum + duration(s) / 60, 0);
@@ -366,6 +374,10 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
       generationWeights.set(shortfall, 3000);
       row([...enabled, [shortfall, 1]], target, INF);
     }
+  }
+  if (snapshot.qualityScope) {
+    for (const [person, enabled] of studentDays)
+      row(enabled, -INF, snapshot.qualityScope.studentDays[person] ?? dayCap);
   }
   for (const xs of extended.values())
     row(
