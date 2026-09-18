@@ -19,8 +19,7 @@ const availability = read("src/routes/_authenticated/availability.tsx");
 const cleanup = read("src/routes/_authenticated/data-cleanup.tsx");
 
 /* ---------------------------------------------------------------- 1. roles */
-// Role matrix must stay byte-identical in intent to the pre-phase navigation:
-// only these four roles exist, and the restricted entries keep their scope.
+// Leadership extends report access; restricted operational entries keep their scope.
 const roleTuples = [...navSrc.matchAll(/roles:\s*(\[[^\]]*\]|ALL|OPERATIONAL)/g)].map((m) => m[1]);
 assert.ok(
   roleTuples.length > 30,
@@ -30,18 +29,33 @@ for (const t of roleTuples) {
   if (t === "ALL" || t === "OPERATIONAL") continue;
   for (const role of t.match(/"([a-z_]+)"/g) ?? []) {
     assert.ok(
-      ["super_admin", "college_admin", "read_only", "institutional_viewer"].includes(
-        role.replace(/"/g, ""),
-      ),
+      [
+        "super_admin",
+        "college_admin",
+        "read_only",
+        "institutional_viewer",
+        "university_leadership",
+      ].includes(role.replace(/"/g, "")),
       `unknown role in nav catalog: ${role}`,
     );
   }
 }
-assert.ok(
-  navSrc.includes(
-    'export const ALL: Role[] = ["super_admin", "college_admin", "read_only", "institutional_viewer"];',
-  ),
-  "the four-role constant must stay unchanged",
+assert.deepEqual(
+  [
+    ...(navSrc.match(/export const ALL: Role\[\] = \[([\s\S]*?)\];/)?.[1] ?? "").matchAll(
+      /"([a-z_]+)"/g,
+    ),
+  ]
+    .map((m) => m[1])
+    .sort(),
+  [
+    "super_admin",
+    "college_admin",
+    "read_only",
+    "institutional_viewer",
+    "university_leadership",
+  ].sort(),
+  "report navigation includes all five roles",
 );
 for (const superOnly of ["/universities", "/colleges", "/users"]) {
   const block = navSrc.slice(navSrc.indexOf(`to: "${superOnly}"`));
