@@ -17,6 +17,7 @@ import {
   type WorkspaceSessionHydratedRow,
 } from "@/lib/schedule-builder/queries";
 import { entityDisplayName } from "@/lib/entity-display";
+import { fetchCohortDeliveryGroupLabels } from "@/lib/reports/queries/session-queries";
 
 export interface ConflictCheckSummary {
   id: string;
@@ -144,6 +145,10 @@ export async function fetchConflictReportRows(params: {
     Array.from(ids),
     params.studySystem,
   );
+  const labels = await fetchCohortDeliveryGroupLabels(
+    params.collegeId,
+    Array.from(sessionMap.values()),
+  );
 
   const rows = results
     .filter((r) => {
@@ -179,21 +184,46 @@ export async function fetchConflictReportRows(params: {
         course: sessionLabel(primary) || sessionLabel(related),
         instructor: sess?.instructors?.full_name ?? "",
         room: sess?.rooms ? entityDisplayName(sess.rooms, "") : "",
-        cohort: sess?.cohort_id ?? "",
-        delivery_group: sess?.delivery_group_id ?? "",
+        cohort: sess?.cohort_id ? (labels.cohorts.get(sess.cohort_id) ?? "دفعة غير مسماة") : "—",
+        delivery_group: sess?.delivery_group_id
+          ? (labels.deliveryGroups.get(sess.delivery_group_id) ?? "مجموعة غير مسماة")
+          : "—",
         legacy_section: sess?.sections?.section_number ?? "",
         day_time: overlapText || sessionTime(primary) || sessionTime(related),
-        study_system: sess?.study_system ?? "",
-        check_status: check.status,
+        study_system:
+          sess?.study_system === "regular"
+            ? "عام"
+            : sess?.study_system === "parallel"
+              ? "موازي"
+              : sess?.study_system === "both"
+                ? "مشترك"
+                : (sess?.study_system ?? "—"),
+        check_status:
+          check.status === "completed" || check.status === "complete"
+            ? "مكتمل"
+            : check.status === "running"
+              ? "قيد الفحص"
+              : check.status === "failed"
+                ? "فشل الفحص"
+                : check.status,
         classification: classified.classification,
+        classification_label:
+          classified.classification === "hard_blocker"
+            ? "مانع إلزامي"
+            : classified.classification === "warning"
+              ? "تحذير"
+              : classified.classification === "approved_exception"
+                ? "استثناء معتمد"
+                : "دليل غير مكتمل",
         evidence_status: classified.evidenceStatus,
+        evidence_label: classified.evidenceStatus === "verified" ? "متحقق" : "غير مكتمل",
         schedule_version_id: versionId,
         primary_session_id: r.schedule_session_id ?? "",
         related_session_id: r.related_session_id ?? "",
         resolution_detail: approvedException
-          ? `${approvedException.approval_type}: ${approvedException.reason}`
+          ? `استثناء معتمد: ${approvedException.reason}`
           : classified.classification === "unknown"
-            ? "readiness/unknown — session version/day/overlap evidence is incomplete"
+            ? "الأدلة غير مكتملة؛ أعد فحص التعارضات بعد التحقق من بيانات الجلسة."
             : "—",
         resolution: "—",
       };

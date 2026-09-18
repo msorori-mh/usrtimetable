@@ -16,6 +16,8 @@ const { execFileSync } = require("node:child_process");
         ["A4", "landscape", 1440],
         ["A3", "landscape", 1440],
       ]) {
+        // The current-timetable route explicitly uses A4 portrait; other modes retain all paper sizes.
+        if (mode === "readable" && orientation !== "portrait") continue;
         await page.setViewportSize({ width, height: 900 });
         await page.goto(
           `http://127.0.0.1:4173/repeated-header.html?mode=${mode}${paper === "default" ? "" : `&paper=${paper}&orientation=${orientation}`}`,

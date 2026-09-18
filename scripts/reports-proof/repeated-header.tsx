@@ -132,6 +132,7 @@ createRoot(document.getElementById("root")!).render(
         }
         page={{
           key: "proof",
+          departmentName: mode === "readable" ? "قسم الأمن السيبراني" : undefined,
           title:
             mode === "readable"
               ? "COLUMN_KEY الأمن السيبراني – المستوى 3 – الموازي (نفقة خاصة)"

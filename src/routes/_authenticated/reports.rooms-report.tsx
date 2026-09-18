@@ -310,46 +310,77 @@ function Page() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    {ROOMS_REPORT_SUMMARY_HEADERS.map((h) => (
-                      <TableHead
-                        key={h.key}
-                        className={
-                          ![
-                            "room_code",
-                            "room_name",
-                            "room_type",
-                            "peak_day",
-                            "peak_slot",
-                          ].includes(h.key)
-                            ? "report-numeric-cell"
-                            : undefined
-                        }
-                      >
-                        {h.label}
-                      </TableHead>
-                    ))}
+                    <TableHead>المورد</TableHead>
+                    <TableHead>استخدام الوقت</TableHead>
+                    <TableHead>استغلال السعة</TableHead>
+                    <TableHead>الجلسات</TableHead>
+                    <TableHead>الذروة</TableHead>
+                    <TableHead>مؤشر القرار</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {summary.map((r) => (
-                    <TableRow key={`${r.room_code}-${r.room_name}`}>
-                      {ROOMS_REPORT_SUMMARY_HEADERS.map((h) => (
-                        <TableCell
-                          key={h.key}
-                          className={
-                            typeof r[h.key] === "number" || h.key === "utilization"
-                              ? "report-numeric-cell"
-                              : undefined
-                          }
-                        >
-                          {r.available_hours <= 0 &&
-                          ["available_hours", "free_hours", "utilization"].includes(h.key)
-                            ? "—"
-                            : String(r[h.key])}
+                  {summary.map((r) => {
+                    const decision =
+                      r.overbooked_hours > 0
+                        ? `تجاوز الإتاحة ${r.overbooked_hours} س`
+                        : r.utilization_percent >= 90
+                          ? "ضغط مرتفع"
+                          : r.utilization_percent >= 80
+                            ? "استخدام مرتفع"
+                            : r.utilization_percent <= 50
+                              ? "فرصة لإعادة التوزيع"
+                              : "استخدام متوازن";
+                    const capacityNote =
+                      r.utilization_percent >= 80 && r.capacity_efficiency_percent < 60
+                        ? " · راجع ملاءمة السعة"
+                        : "";
+                    return (
+                      <TableRow key={`${r.room_code}-${r.room_name}`}>
+                        <TableCell>
+                          <div className="font-semibold">{r.room_name}</div>
+                          <div className="text-[8pt]">
+                            {r.room_code || "—"} · {r.room_type} · السعة {r.capacity}
+                          </div>
                         </TableCell>
-                      ))}
-                    </TableRow>
-                  ))}
+                        <TableCell>
+                          <div>
+                            مستخدم <b>{r.used_hours} س</b> / متاح{" "}
+                            <b>{r.available_hours > 0 ? `${r.available_hours} س` : "—"}</b>
+                          </div>
+                          <div className="text-[8pt]">
+                            غير مستخدم {r.available_hours > 0 ? `${r.free_hours} س` : "—"} ·
+                            الاستغلال <b>{r.utilization}</b>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            متوسط الطلاب <b>{r.average_students}</b> / {r.capacity}
+                          </div>
+                          <div className="text-[8pt]">
+                            كفاءة المقاعد {r.capacity_efficiency_percent}% · الأعلى {r.max_students}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            الإجمالي <b>{r.session_count}</b>
+                          </div>
+                          <div className="text-[8pt]">
+                            نظري {r.theory_sessions} · عملي/أخرى {r.applied_sessions}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div>{r.peak_day}</div>
+                          <div className="text-[8pt]">{r.peak_slot}</div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-semibold">
+                            {decision}
+                            {capacityNote}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </RepeatingPrintHeader>
