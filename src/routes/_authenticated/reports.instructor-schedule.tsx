@@ -259,7 +259,6 @@ function Page() {
         <div className="space-y-4">
           <ReportTimetableView
             hideInstructor
-            printDetailOnly
             compactDetails
             sessions={sessions}
             collegeId={ctx.collegeId}
@@ -267,7 +266,7 @@ function Page() {
           />
           {isHourlyContract ? (
             <section
-              className="break-inside-avoid rounded-lg border bg-muted/20 p-4"
+              className="report-no-print break-inside-avoid rounded-lg border bg-muted/20 p-4"
               aria-label="إجمالي الساعات التدريسية للمحاضر المتعاقد"
             >
               <h2 className="text-base font-bold text-primary">إجمالي الساعات التدريسية</h2>
@@ -280,7 +279,7 @@ function Page() {
             </section>
           ) : (
             <section
-              className="break-inside-avoid rounded-lg border bg-muted/20 p-4"
+              className="report-no-print break-inside-avoid rounded-lg border bg-muted/20 p-4"
               aria-label="ملخص العبء التدريسي للمحاضر"
             >
               <h2 className="text-base font-bold text-primary">ملخص العبء التدريسي</h2>
