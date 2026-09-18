@@ -22,7 +22,11 @@ import {
   fetchCohortDeliveryGroupLabels,
   fetchInstructorScheduleSessions,
 } from "@/lib/reports/queries/session-queries";
-import { attendanceMetrics } from "@/lib/reports/presentation-metrics";
+import {
+  computeQuotaBalance,
+  QUOTA_STATUS_LABEL_AR,
+  QUOTA_UNDEFINED_AR,
+} from "@/lib/reports/instructor-quota";
 import { useReportContext } from "@/hooks/reports/useReportContext";
 
 export const Route = createFileRoute("/_authenticated/reports/instructor-schedule")({
@@ -64,7 +68,7 @@ function Page() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("instructors")
-        .select("id, full_name")
+        .select("id, full_name, max_weekly_hours, administrative_release_hours")
         .eq("college_id", ctx.collegeId!)
         .order("full_name")
         .throwOnError();
@@ -104,8 +108,26 @@ function Page() {
   const ready = !!ctx.versionId && !!insId;
   const queryError = ctx.error ?? instructorsError ?? sessionsError;
 
-  const instructorName = (instructors ?? []).find((i) => i.id === insId)?.full_name;
-  const universityNumber = (instructors ?? []).find((i) => i.id === insId)?.university_number;
+  const selectedInstructor = (instructors ?? []).find((i) => i.id === insId);
+  const instructorName = selectedInstructor?.full_name;
+  const universityNumber = selectedInstructor?.university_number;
+  const workloadBalance = computeQuotaBalance({
+    maxWeeklyHours: selectedInstructor?.max_weekly_hours,
+    adminReleaseHours: selectedInstructor?.administrative_release_hours,
+    assignedHours: totalHours,
+  });
+  const actualQuotaLabel =
+    workloadBalance.netHours === null ? QUOTA_UNDEFINED_AR : workloadBalance.netHours.toFixed(2);
+  const workloadStatusLabel = QUOTA_STATUS_LABEL_AR[workloadBalance.status];
+  const workloadDifferenceLabel =
+    workloadBalance.status === "overload"
+      ? `ساعات زائدة: ${(workloadBalance.overloadHours ?? 0).toFixed(2)}`
+      : workloadBalance.status === "deficit"
+        ? `المتبقي من النصاب: ${(workloadBalance.deficitHours ?? 0).toFixed(2)}`
+        : workloadBalance.status === "balanced"
+          ? "لا يوجد فرق بين النصاب والساعات التدريسية"
+          : "لا يمكن حساب الفرق قبل تحديد النصاب";
+
   const filteredInstructors = useMemo(() => {
     const query = normalizeInstructorSearch(instructorSearch);
     if (!query) return instructors ?? [];
@@ -133,14 +155,23 @@ function Page() {
       emptyMessage="لا توجد محاضرات مسندة لهذا المحاضر في النسخة المحددة."
       kpis={[
         { label: "المحاضرات", value: rows.length },
-        { label: "ساعات/أسبوع", value: totalHours.toFixed(2), tone: "accent" },
+        {
+          label: "الساعات التدريسية",
+          value: totalHours.toFixed(2),
+          tone: "accent",
+          hint: "إجمالي الساعات الأسبوعية المجدولة في النسخة المحددة",
+        },
+        {
+          label: "النصاب الفعلي",
+          value: actualQuotaLabel,
+          tone: workloadBalance.status === "overload" ? "warning" : "success",
+          hint:
+            workloadBalance.netHours === null
+              ? "النصاب غير محدد في بطاقة المحاضر أو سياسة النصاب"
+              : `الأساسي ${workloadBalance.baseHours?.toFixed(2) ?? "0.00"} − الإعفاء الإداري ${workloadBalance.releaseHours.toFixed(2)}`,
+        },
         { label: "أيام الحضور", value: distinctDays },
         { label: "المقررات", value: distinctCourses },
-        {
-          label: "فراغات بين المحاضرات (ساعة)",
-          value: attendanceMetrics(sessions).gapHours,
-          hint: "ضمن أيام الحضور؛ لا تشمل ما قبل أول محاضرة أو بعد آخرها",
-        },
       ]}
       filters={
         <ReportFilters
@@ -185,14 +216,56 @@ function Page() {
       }
     >
       {ready && sessions.length > 0 && (
-        <ReportTimetableView
-          hideInstructor
-          printDetailOnly
-          compactDetails
-          sessions={sessions}
-          collegeId={ctx.collegeId}
-          headers={NEW_FLOW_TIMETABLE_TABLE_HEADERS}
-        />
+        <div className="space-y-4">
+          <ReportTimetableView
+            hideInstructor
+            printDetailOnly
+            compactDetails
+            sessions={sessions}
+            collegeId={ctx.collegeId}
+            headers={NEW_FLOW_TIMETABLE_TABLE_HEADERS}
+          />
+          <section
+            className="break-inside-avoid rounded-lg border bg-muted/20 p-4"
+            aria-label="ملخص العبء التدريسي للمحاضر"
+          >
+            <h2 className="text-base font-bold text-primary">ملخص العبء التدريسي</h2>
+            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="rounded-md border bg-background p-3">
+                <p className="text-xs text-muted-foreground">النصاب الأساسي</p>
+                <p className="mt-1 text-lg font-bold tabular-nums">
+                  {workloadBalance.baseHours === null
+                    ? QUOTA_UNDEFINED_AR
+                    : workloadBalance.baseHours.toFixed(2)}
+                </p>
+              </div>
+              <div className="rounded-md border bg-background p-3">
+                <p className="text-xs text-muted-foreground">الإعفاء الإداري</p>
+                <p className="mt-1 text-lg font-bold tabular-nums">
+                  {workloadBalance.releaseHours.toFixed(2)}
+                </p>
+              </div>
+              <div className="rounded-md border bg-background p-3">
+                <p className="text-xs text-muted-foreground">النصاب الفعلي</p>
+                <p className="mt-1 text-lg font-bold tabular-nums text-primary">
+                  {actualQuotaLabel}
+                </p>
+              </div>
+              <div className="rounded-md border bg-background p-3">
+                <p className="text-xs text-muted-foreground">الساعات التدريسية</p>
+                <p className="mt-1 text-lg font-bold tabular-nums text-primary">
+                  {totalHours.toFixed(2)}
+                </p>
+              </div>
+            </div>
+            <div className="mt-3 rounded-md border bg-background px-3 py-2 text-sm">
+              <span className="font-semibold">حالة النصاب: </span>
+              <span>{workloadStatusLabel}</span>
+              <span className="mx-2 text-muted-foreground">—</span>
+              <span>{workloadDifferenceLabel}</span>
+            </div>
+          </section>
+        </div>
       )}
     </ReportShell>
   );
