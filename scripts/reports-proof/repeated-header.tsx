@@ -55,6 +55,8 @@ const table = (
 const sheetSessions = rows.map((row, i) => ({
   ...SHORT_FIXTURE[0],
   id: row.id,
+  start_time: ["08:00:00", "12:00:00", "14:00:00", "08:30:00"][i % 4],
+  end_time: ["10:00:00", "14:00:00", "16:00:00", "10:00:00"][i % 4],
   day_of_week: i % 6,
   course_offerings: {
     ...SHORT_FIXTURE[0].course_offerings!,
