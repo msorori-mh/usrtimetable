@@ -87,7 +87,17 @@ test("report printing uses existing university identity, QR container and all ac
   ])
     assert.ok(html.includes(text), text);
   assert.equal((html.match(/<section /g) ?? []).length, 1);
-  assert.equal((html.match(/<table/g) ?? []).length, 1);
+  // One presentation table repeats the official identity; one nested table holds sessions.
+  assert.equal((html.match(/<table\b[^>]*role="presentation"/g) ?? []).length, 1);
+  assert.equal((html.match(/<table\b/g) ?? []).length, 2);
+  assert.equal((html.match(/<thead class="report-page-header"/g) ?? []).length, 1);
+  assert.equal((html.match(/<tbody class="report-page-content"/g) ?? []).length, 1);
+  const runningHeader =
+    html.match(/<thead class="report-page-header">([\s\S]*?)<\/thead>/)?.[1] ?? "";
+  assert.ok(runningHeader.includes("جامعة إقليم سبأ"));
+  assert.ok(runningHeader.includes("/branding/usr-university-logo.png"));
+  assert.ok(runningHeader.includes("رابط التحقق"));
+  assert.ok(!runningHeader.includes("التفاضل والتكامل"));
   assert.ok(!html.includes("قسم آخر مالك المقرر"));
   assert.ok(!html.includes("report-timetable-grid"));
 });
@@ -103,5 +113,6 @@ test("all systems retain separate branded sheets and shared lectures", () => {
   const html = render("all");
   assert.equal((html.match(/<section /g) ?? []).length, 2);
   assert.equal((html.match(/التفاضل والتكامل/g) ?? []).length, 2);
+  assert.equal((html.match(/<table\b[^>]*role="presentation"/g) ?? []).length, 2);
   assert.equal(sessions[0].study_system, "both");
 });
