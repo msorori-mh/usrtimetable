@@ -207,7 +207,16 @@ export async function fetchConflictReportRows(params: {
                 ? "فشل الفحص"
                 : check.status,
         classification: classified.classification,
+        classification_label:
+          classified.classification === "hard_blocker"
+            ? "مانع إلزامي"
+            : classified.classification === "warning"
+              ? "تحذير"
+              : classified.classification === "approved_exception"
+                ? "استثناء معتمد"
+                : "دليل غير مكتمل",
         evidence_status: classified.evidenceStatus,
+        evidence_label: classified.evidenceStatus === "verified" ? "متحقق" : "غير مكتمل",
         schedule_version_id: versionId,
         primary_session_id: r.schedule_session_id ?? "",
         related_session_id: r.related_session_id ?? "",
