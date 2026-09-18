@@ -84,6 +84,7 @@ export interface TimetableGridReportProps {
   startHour?: number;
   endHour?: number;
   hideInstructor?: boolean;
+  compactPrint?: boolean;
 }
 
 export function TimetableGridReport({
@@ -92,6 +93,7 @@ export function TimetableGridReport({
   startHour: startHourProp,
   endHour: endHourProp,
   hideInstructor = false,
+  compactPrint = false,
 }: TimetableGridReportProps) {
   const [selected, setSelected] = useState<TimetableReportSession | null>(null);
   const workingDays = useMemo(() => {
@@ -129,8 +131,14 @@ export function TimetableGridReport({
     );
   }
 
+  const colleges = [...new Set(sessions.map((s) => s.college_name).filter(Boolean))];
   return (
     <>
+      {compactPrint && colleges.length > 0 && (
+        <p className="mb-2 text-sm" aria-label="دليل الكليات في الجدول الأسبوعي">
+          {colleges.map((college, i) => `ك${i + 1}: ${college}`).join(" · ")}
+        </p>
+      )}
       <div className="report-timetable-grid overflow-auto border rounded-md" dir="rtl">
         <div
           className="grid min-w-[640px]"
@@ -217,7 +225,11 @@ export function TimetableGridReport({
                       </div>
                       <div className="schedule-card-location mt-0.5 line-clamp-2 text-[11px] leading-snug text-foreground/80">
                         {sess.college_name && (
-                          <div className="font-semibold">{sess.college_name}</div>
+                          <div className="font-semibold">
+                            {compactPrint
+                              ? `ك${colleges.indexOf(sess.college_name) + 1}`
+                              : sess.college_name}
+                          </div>
                         )}
                         {sess.room_label || "—"}
                         {sess.section_number ? ` · ش${sess.section_number}` : ""}

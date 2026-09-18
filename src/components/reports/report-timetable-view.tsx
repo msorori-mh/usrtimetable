@@ -227,7 +227,7 @@ export function ReportTimetableView({
       data-print-section="weekly"
     >
       <h2 className="mb-3 text-base font-bold">الجدول الأسبوعي</h2>
-      <TimetableGridReport {...gridProps} />
+      <TimetableGridReport {...gridProps} compactPrint={compactDetails} />
     </section>
   );
   return (

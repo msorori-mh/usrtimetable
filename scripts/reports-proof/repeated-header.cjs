@@ -118,7 +118,9 @@ const { execFileSync } = require("node:child_process");
             throw Error(`Weekly cards clip their contents: ${JSON.stringify(cards)}`);
         }
         if (["university", "individual"].includes(mode)) {
-          await page.locator(".report-print-root").evaluate(node => { node.style.removeProperty("width"); });
+          await page.locator(".report-print-root").evaluate((node) => {
+            node.style.removeProperty("width");
+          });
           await page.setViewportSize({ width, height: 900 });
         }
         console.log(
