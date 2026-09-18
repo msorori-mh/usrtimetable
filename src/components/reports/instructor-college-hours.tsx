@@ -3,9 +3,11 @@ import type { summarizeUniversitySchedule } from "@/lib/reports/university-instr
 export function InstructorCollegeHours({
   summary,
   hourlyContract = false,
+  universityScope = true,
 }: {
   summary: ReturnType<typeof summarizeUniversitySchedule>;
   hourlyContract?: boolean;
+  universityScope?: boolean;
 }) {
   const number = (n: number | null) => (n === null ? "غير محدد" : n.toFixed(2));
   return (
@@ -33,7 +35,9 @@ export function InstructorCollegeHours({
           ))}
           <tr className="border-t font-bold">
             <td className="p-2" colSpan={2}>
-              إجمالي الجامعة — الكليات المشمولة
+              {universityScope
+                ? "إجمالي الجامعة — الكليات المشمولة"
+                : "إجمالي ساعات الكلية الحالية"}
             </td>
             <td className="p-2 tabular-nums">{number(summary.totalHours)}</td>
           </tr>
@@ -66,16 +70,19 @@ export function InstructorCollegeHours({
             <td className="p-2">
               {hourlyContract
                 ? "لا ينطبق — تعاقد بالساعات"
-                : summary.pending
-                  ? "بانتظار توزيع التدريس المشترك"
-                  : number(summary.balance.overloadHours)}
+                : !universityScope
+                  ? "يُحدد في تقرير الأدمن الموحّد"
+                  : summary.pending
+                    ? "بانتظار توزيع التدريس المشترك"
+                    : number(summary.balance.overloadHours)}
             </td>
           </tr>
         </tbody>
       </table>
       <p className="mt-2 text-xs">
-        يشمل جميع أنظمة الدراسة في نسخ الكليات المبينة أعلاه والمتاحة لصلاحيات المستخدم. يُحتسب
-        النصاب مرة واحدة للمحاضر.
+        {universityScope
+          ? "يشمل جميع أنظمة الدراسة في نسخ الكليات المبينة أعلاه. يُحتسب النصاب مرة واحدة للمحاضر."
+          : "هذا الملخص خاص بالكلية الحالية؛ الإجمالي الجامعي والساعات الزائدة متاحان للأدمن في التقرير الموحّد."}
       </p>
       {!hourlyContract && summary.balance.netHours === null && (
         <p className="mt-1 text-xs">الساعات الزائدة بانتظار استكمال بيانات النصاب المعتمد.</p>

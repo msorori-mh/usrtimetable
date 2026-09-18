@@ -45,9 +45,12 @@ assert(
     universityQueries.includes("readAllReportRows"),
   "context, lecturer, and session query failures are not reported as empty data",
 );
+const loadingExpression = route.match(/const isLoading\s*=([\s\S]*?);/)?.[1] ?? "";
 assert(
-  route.includes("ctx.isLoading || directory.isLoading || schedule.isLoading"),
-  "lecturer list loading participates in the report loading state",
+  ["ctx", "directory", "schedule", "currentUser", "teachingColleges"].every((source) =>
+    loadingExpression.includes(`${source}.isLoading`),
+  ),
+  "context, lecturer, role and teaching-scope loading participate in the report loading state",
 );
 assert(
   !route.includes('.from("schedule_sessions")'),

@@ -24,6 +24,30 @@ export interface CollegeScheduleScope {
   options: UniversityVersion[];
 }
 
+export function canViewInstructorAcrossColleges(roles: readonly string[]) {
+  return roles.includes("super_admin");
+}
+
+/** Explicit fixture marker used by production test data. */
+export function isTestScheduleLabel(name: string) {
+  return /TEST_ONLY/i.test(name);
+}
+
+/** Keep the issuing college; other colleges require actual teaching evidence. */
+export function instructorTeachingScopes(
+  scopes: CollegeScheduleScope[],
+  anchorCollegeId: string,
+  teachingCollegeIds: string[],
+  canViewAcrossColleges = false,
+) {
+  const ids = new Set(teachingCollegeIds);
+  return scopes.filter(
+    (scope) =>
+      !isTestScheduleLabel(scope.collegeName) &&
+      (scope.collegeId === anchorCollegeId || (canViewAcrossColleges && ids.has(scope.collegeId))),
+  );
+}
+
 /** Dated semesters only: never combine different academic years by display name. */
 export function overlappingTerms(a: UniversityTerm, b: UniversityTerm) {
   if (a.id === b.id) return true;
@@ -53,23 +77,30 @@ export function resolveCollegeScheduleScopes(input: {
     throw new Error("أكمل تاريخ بداية ونهاية الفصل لربط جداول الكليات دون خلط الفصول.");
   const termIds = new Set(input.terms.filter((t) => overlappingTerms(term, t)).map((t) => t.id));
   const rank = (v: UniversityVersion) => (v.status === "published" ? 0 : v.is_coordination ? 1 : 2);
-  return input.colleges.flatMap((college) => {
-    const options = input.versions
-      .filter(
-        (v) =>
-          v.college_id === college.id && termIds.has(v.academic_term_id) && v.status !== "archived",
-      )
-      .sort(
-        (a, b) =>
-          rank(a) - rank(b) || b.created_at.localeCompare(a.created_at) || a.id.localeCompare(b.id),
-      );
-    if (!options.length) return [];
-    const selected = college.id === anchor.college_id ? anchor.id : input.selections[college.id];
-    const version = selected ? options.find((v) => v.id === selected) : options[0];
-    if (!version)
-      throw new Error(`نسخة ${college.name} لم تعد متاحة ضمن الفصل المختار؛ أعد اختيارها.`);
-    return [{ collegeId: college.id, collegeName: college.name, version, options }];
-  });
+  return input.colleges
+    .filter((college) => !isTestScheduleLabel(college.name))
+    .flatMap((college) => {
+      const options = input.versions
+        .filter(
+          (v) =>
+            v.college_id === college.id &&
+            termIds.has(v.academic_term_id) &&
+            v.status !== "archived" &&
+            !isTestScheduleLabel(v.name),
+        )
+        .sort(
+          (a, b) =>
+            rank(a) - rank(b) ||
+            b.created_at.localeCompare(a.created_at) ||
+            a.id.localeCompare(b.id),
+        );
+      if (!options.length) return [];
+      const selected = college.id === anchor.college_id ? anchor.id : input.selections[college.id];
+      const version = selected ? options.find((v) => v.id === selected) : options[0];
+      if (!version)
+        throw new Error(`نسخة ${college.name} لم تعد متاحة ضمن الفصل المختار؛ أعد اختيارها.`);
+      return [{ collegeId: college.id, collegeName: college.name, version, options }];
+    });
 }
 
 /** Canonical record ID or verified university number, never fuzzy name matching. */

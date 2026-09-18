@@ -18,15 +18,19 @@ import {
 import { QUOTA_UNDEFINED_AR } from "@/lib/reports/instructor-quota";
 import {
   fetchUniversityScheduleDirectory,
+  fetchInstructorTeachingCollegeIds,
   fetchUniversityInstructorSchedule,
 } from "@/lib/reports/queries/university-instructor-schedule";
 import {
   resolveCollegeScheduleScopes,
+  instructorTeachingScopes,
+  isTestScheduleLabel,
   summarizeUniversitySchedule,
 } from "@/lib/reports/university-instructor-schedule";
 import { InstructorCollegeHours } from "@/components/reports/instructor-college-hours";
 import { STATUS_LABEL_AR, type SVStatus } from "@/lib/schedule-versions/lifecycle";
 import { isHourlyContractTypeCode } from "@/lib/instructors/effective-hours";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { useReportContext } from "@/hooks/reports/useReportContext";
 
 export const Route = createFileRoute("/_authenticated/reports/instructor-schedule")({
@@ -47,6 +51,7 @@ function normalizeInstructorSearch(value: string) {
 }
 
 function Page() {
+  const currentUser = useCurrentUser();
   const ctx = useReportContext({
     defaultStatusMode: "specific_version",
     defaultStudySystem: "all",
@@ -71,16 +76,32 @@ function Page() {
   }, [ctx.collegeId]);
 
   const directory = useQuery({
-    queryKey: ["university-instructor-directory", ctx.collegeId],
-    enabled: !!ctx.collegeId,
-    queryFn: fetchUniversityScheduleDirectory,
+    queryKey: [
+      "university-instructor-directory",
+      ctx.collegeId,
+      currentUser.data?.id,
+      currentUser.data?.isSuperAdmin,
+    ],
+    enabled: !!ctx.collegeId && !!currentUser.data,
+    queryFn: () => fetchUniversityScheduleDirectory(ctx.collegeId!),
   });
+  const canViewAcrossColleges =
+    currentUser.data?.isSuperAdmin === true && directory.data?.canViewAcrossColleges === true;
   const instructors = useMemo(
     () =>
       directory.data?.instructors
+        .filter((instructor) => {
+          const anchor = directory.data.colleges.find((c) => c.id === ctx.collegeId);
+          const college = directory.data.colleges.find((c) => c.id === instructor.college_id);
+          return (
+            !!anchor?.university_id &&
+            college?.university_id === anchor.university_id &&
+            !isTestScheduleLabel(college.name)
+          );
+        })
         .slice()
         .sort((a, b) => a.full_name.localeCompare(b.full_name, "ar")),
-    [directory.data],
+    [directory.data, ctx.collegeId],
   );
   const selectedInstructor = instructors?.find((i) => i.id === insId);
   const instructorName = selectedInstructor?.full_name;
@@ -97,7 +118,9 @@ function Page() {
       return {
         scopes: resolveCollegeScheduleScopes({
           ...directory.data,
-          colleges: directory.data.colleges.filter((c) => c.university_id === universityId),
+          colleges: directory.data.colleges.filter(
+            (c) => !!universityId && c.university_id === universityId,
+          ),
           anchorVersionId: ctx.versionId,
           selections: versionSelections,
         }),
@@ -107,20 +130,67 @@ function Page() {
       return { scopes: [], error };
     }
   }, [directory.data, ctx.collegeId, ctx.versionId, versionSelections]);
-  const schedule = useQuery({
+  const teachingColleges = useQuery({
     queryKey: [
-      "university-instructor-schedule",
+      "instructor-teaching-colleges",
+      currentUser.data?.id,
+      canViewAcrossColleges,
       ctx.collegeId,
       insId,
-      selection.scopes.map((s) => s.version.id).join(","),
+      selection.scopes.flatMap((s) => s.options.map((v) => v.id)).join(","),
       instructors?.map((i) => `${i.id}:${i.university_number}`).join(","),
     ],
-    enabled: !!selectedInstructor && selection.scopes.length > 0 && !selection.error,
+    enabled:
+      canViewAcrossColleges &&
+      !!selectedInstructor &&
+      selection.scopes.length > 0 &&
+      !selection.error,
     queryFn: () =>
-      fetchUniversityInstructorSchedule({
+      fetchInstructorTeachingCollegeIds({
         selected: selectedInstructor!,
         records: instructors!,
         scopes: selection.scopes,
+      }),
+  });
+  const reportScopes = useMemo(
+    () =>
+      selectedInstructor
+        ? instructorTeachingScopes(
+            selection.scopes,
+            ctx.collegeId ?? "",
+            teachingColleges.data ?? [],
+            canViewAcrossColleges,
+          )
+        : [],
+    [
+      selectedInstructor,
+      selection.scopes,
+      ctx.collegeId,
+      teachingColleges.data,
+      canViewAcrossColleges,
+    ],
+  );
+  const schedule = useQuery({
+    queryKey: [
+      "university-instructor-schedule",
+      currentUser.data?.id,
+      canViewAcrossColleges,
+      ctx.collegeId,
+      insId,
+      reportScopes.map((s) => s.version.id).join(","),
+      instructors?.map((i) => `${i.id}:${i.university_number}`).join(","),
+    ],
+    enabled:
+      !!selectedInstructor &&
+      reportScopes.length > 0 &&
+      !selection.error &&
+      (!canViewAcrossColleges || teachingColleges.isSuccess),
+    queryFn: () =>
+      fetchUniversityInstructorSchedule({
+        anchorCollegeId: ctx.collegeId!,
+        selected: selectedInstructor!,
+        records: instructors!,
+        scopes: reportScopes,
       }),
   });
   const summary = useMemo(
@@ -144,17 +214,32 @@ function Page() {
   const workloadBalance = summary.balance;
   const actualQuotaLabel =
     workloadBalance.netHours === null ? QUOTA_UNDEFINED_AR : workloadBalance.netHours.toFixed(2);
-  const isLoading = ctx.isLoading || directory.isLoading || schedule.isLoading;
+  const isLoading =
+    currentUser.isLoading ||
+    ctx.isLoading ||
+    directory.isLoading ||
+    teachingColleges.isLoading ||
+    schedule.isLoading;
   const ready = !!ctx.versionId && !!selectedInstructor;
-  const queryError = ctx.error ?? directory.error ?? selection.error ?? schedule.error;
+  const queryError =
+    currentUser.error ??
+    ctx.error ??
+    directory.error ??
+    selection.error ??
+    teachingColleges.error ??
+    schedule.error;
   const refetch = async () => {
     await directory.refetch();
+    if (canViewAcrossColleges) await teachingColleges.refetch();
     await schedule.refetch();
   };
   const exportHeaders = [{ key: "college", label: "الكلية" }, ...NEW_FLOW_TIMETABLE_TABLE_HEADERS];
-  const versionShare = Object.fromEntries(
-    selection.scopes.map((s) => [`collegeVersion_${s.collegeId}`, s.version.id]),
-  );
+  const versionShare = {
+    ...Object.fromEntries(
+      Object.keys(versionSelections).map((id) => [`collegeVersion_${id}`, null]),
+    ),
+    ...Object.fromEntries(reportScopes.map((s) => [`collegeVersion_${s.collegeId}`, s.version.id])),
+  };
 
   const filteredInstructors = useMemo(() => {
     const query = normalizeInstructorSearch(instructorSearch);
@@ -169,15 +254,19 @@ function Page() {
   return (
     <ReportShell
       title={instructorName ? `جدول المحاضر — ${instructorName}` : "تقرير جدول المحاضر الفردي"}
-      description={`الجدول الفردي الموحد عبر الكليات، بجميع أنظمة الدراسة ونسخة واحدة لكل كلية. ${universityNumber ? `الرقم الجامعي: ${universityNumber}` : ""}`}
+      description={`${canViewAcrossColleges ? "الجدول الفردي الموحد عبر الكليات المرتبطة بالمحاضر — للأدمن فقط." : "جدول المحاضر داخل الكلية الحالية فقط، بجميع أنظمة الدراسة."} ${universityNumber ? `الرقم الجامعي: ${universityNumber}` : ""}`}
       filterSummary={ctx.filterSummary}
       reportContext={ctx}
       shareParams={{ instructorId: insId, ...versionShare }}
       headerMeta={{
-        collegeName: "الجدول الموحد عبر الكليات",
-        versionName: "نسخ الكليات الموضحة في الملخص",
+        collegeName: canViewAcrossColleges ? "الجدول الموحد عبر الكليات — للأدمن" : undefined,
+        versionName: canViewAcrossColleges
+          ? "نسخ الكليات الموضحة في الملخص"
+          : ctx.selectedVersion?.name,
         versionStatus: null,
-        note: "جميع أنظمة الدراسة — ضمن الكليات المتاحة لصلاحيات المستخدم.",
+        note: canViewAcrossColleges
+          ? "جميع أنظمة الدراسة — الكليات المرتبطة بالمحاضر."
+          : "يشمل مواد وساعات المحاضر داخل هذه الكلية فقط.",
       }}
       filename="instructor_schedule"
       rows={rows}
@@ -206,7 +295,9 @@ function Page() {
                 label: "الساعات التدريسية",
                 value: totalHours.toFixed(2),
                 tone: "accent",
-                hint: "إجمالي الساعات الأسبوعية في جميع نسخ الكليات المشمولة",
+                hint: canViewAcrossColleges
+                  ? "إجمالي الساعات الأسبوعية في الكليات المرتبطة بالمحاضر"
+                  : "إجمالي الساعات الأسبوعية داخل الكلية الحالية",
               },
               {
                 label: "النصاب الفعلي",
@@ -264,7 +355,16 @@ function Page() {
               </SelectContent>
             </Select>
           </ReportFilterField>
-          {selection.scopes
+          {canViewAcrossColleges && reportScopes.some((s) => s.collegeId !== ctx.collegeId) && (
+            <div className="col-span-full border-t pt-3">
+              <p className="font-medium">تدريس المحاضر في الكليات الأخرى</p>
+              <p className="text-xs text-muted-foreground">
+                تظهر فقط الكليات التي للمحاضر محاضرات فيها خلال الفترة الدراسية. يضم الجدول وملخص
+                الساعات الكلية الحالية وهذه الكليات.
+              </p>
+            </div>
+          )}
+          {reportScopes
             .filter((s) => s.collegeId !== ctx.collegeId)
             .map((scope) => (
               <ReportFilterField
@@ -291,10 +391,13 @@ function Page() {
                 </Select>
               </ReportFilterField>
             ))}
-          <p className="text-xs text-muted-foreground">
-            تُختار أحدث نسخة منشورة لكل كلية في الفترة الدراسية، ثم نسخة التنسيق أو أحدث مسودة عند
-            عدم وجود منشور. يمكنك تغييرها أعلاه. يشمل التقرير الكليات المتاحة لصلاحياتك.
-          </p>
+          {canViewAcrossColleges && (
+            <p className="text-xs text-muted-foreground">
+              تُختار أحدث نسخة منشورة لكل كلية في الفترة الدراسية، ثم نسخة التنسيق أو أحدث مسودة عند
+              عدم وجود منشور. يمكنك تغييرها أعلاه. تظهر خيارات الكليات المرتبطة بتدريس المحاضر فقط،
+              ضمن صلاحياتك.
+            </p>
+          )}
         </ReportFilters>
       }
     >
@@ -303,7 +406,11 @@ function Page() {
           <ReportTimetableView
             hideInstructor
             printSummary={
-              <InstructorCollegeHours summary={summary} hourlyContract={isHourlyContract} />
+              <InstructorCollegeHours
+                summary={summary}
+                hourlyContract={isHourlyContract}
+                universityScope={canViewAcrossColleges}
+              />
             }
             compactDetails
             sessions={sessions}
@@ -311,7 +418,11 @@ function Page() {
             headers={exportHeaders}
           />
           <div className="report-no-print">
-            <InstructorCollegeHours summary={summary} hourlyContract={isHourlyContract} />
+            <InstructorCollegeHours
+              summary={summary}
+              hourlyContract={isHourlyContract}
+              universityScope={canViewAcrossColleges}
+            />
           </div>
         </div>
       )}

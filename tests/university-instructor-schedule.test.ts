@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import {
   facultyRecordIds,
+  canViewInstructorAcrossColleges,
+  instructorTeachingScopes,
   overlappingTerms,
   resolveCollegeScheduleScopes,
   summarizeUniversitySchedule,
@@ -132,4 +134,72 @@ describe("university instructor schedule", () => {
     expect(() => summarizeUniversitySchedule([session("a", "c1", "bad", "12:00")], {})).toThrow();
     expect(() => summarizeUniversitySchedule([session("a", "c1", "12:00", "08:00")], {})).toThrow();
   });
+});
+
+describe("instructor college scope isolation", () => {
+  const input = {
+    colleges: [
+      { id: "c1", name: "Computing" },
+      { id: "c2", name: "Business" },
+      { id: "c3", name: "Arts" },
+      { id: "test", name: "TEST_ONLY E2E" },
+    ],
+    terms: [term("t1", "c1"), term("t2", "c2"), term("t3", "c3"), term("tt", "test")],
+    versions: [
+      version("v1", "c1", "t1"),
+      version("v2", "c2", "t2"),
+      version("v3", "c3", "t3"),
+      version("vt", "test", "tt"),
+      version("TEST_ONLY newest", "c2", "t2", "published", "2026-09-20"),
+    ],
+    anchorVersionId: "v1",
+    selections: {},
+  };
+  test("excludes fixture colleges and fixture versions before selection", () => {
+    const scopes = resolveCollegeScheduleScopes(input);
+    expect(scopes.map((s) => s.collegeId)).toEqual(["c1", "c2", "c3"]);
+    expect(scopes[1].options.map((v) => v.id)).toEqual(["v2"]);
+  });
+  test("retains issuing college and only evidenced teaching colleges", () => {
+    const scopes = resolveCollegeScheduleScopes(input);
+    expect(instructorTeachingScopes(scopes, "c1", ["c2"], true).map((s) => s.collegeId)).toEqual([
+      "c1",
+      "c2",
+    ]);
+    expect(instructorTeachingScopes(scopes, "c1", []).map((s) => s.collegeId)).toEqual(["c1"]);
+    expect(instructorTeachingScopes(scopes, "c1", ["c3"], true).map((s) => s.collegeId)).toEqual([
+      "c1",
+      "c3",
+    ]);
+  });
+});
+
+test("only super admin can include other colleges, even with multiple memberships", () => {
+  for (const roles of [
+    [],
+    ["college_admin"],
+    ["institutional_viewer"],
+    ["university_leadership"],
+    ["read_only"],
+  ]) {
+    expect(canViewInstructorAcrossColleges(roles)).toBe(false);
+    const scopes = [
+      {
+        collegeId: "c1",
+        collegeName: "Computing",
+        version: version("v1", "c1", "t1"),
+        options: [],
+      },
+      { collegeId: "c2", collegeName: "Business", version: version("v2", "c2", "t2"), options: [] },
+    ];
+    expect(
+      instructorTeachingScopes(
+        scopes,
+        "c1",
+        ["c1", "c2"],
+        canViewInstructorAcrossColleges(roles),
+      ).map((s) => s.collegeId),
+    ).toEqual(["c1"]);
+  }
+  expect(canViewInstructorAcrossColleges(["super_admin"])).toBe(true);
 });
