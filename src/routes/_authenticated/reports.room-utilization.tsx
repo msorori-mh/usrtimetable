@@ -88,8 +88,7 @@ function RoomAnomalyCell({ row }: { row: RoomUtilizationDisplayRow }) {
   const overlap = Number(row.overlap_hours);
   const outside = Number(row.outside_hours);
   const clean =
-    (!Number.isFinite(overlap) || overlap <= 0) &&
-    (!Number.isFinite(outside) || outside <= 0);
+    (!Number.isFinite(overlap) || overlap <= 0) && (!Number.isFinite(outside) || outside <= 0);
   return (
     <div className="min-w-[150px] space-y-0.5 leading-5">
       {clean ? (
@@ -284,7 +283,11 @@ function Page() {
         hint="الاستخدام = الزمن المشغول داخل الإتاحة ÷ الزمن المتاح. لا تُحتسب الفترة المتداخلة مرتين."
       >
         <ReportDataTable
-          columns={compactRoomUtilizationColumns() as ReportColumn<(typeof rows)[number]>[]}
+          columns={
+            compactRoomUtilizationColumns() as unknown as ReportColumn<
+              (typeof rows)[number]
+            >[]
+          }
           rows={rows}
           primaryColumnLimit={5}
           minWidthClassName="min-w-[700px]"
