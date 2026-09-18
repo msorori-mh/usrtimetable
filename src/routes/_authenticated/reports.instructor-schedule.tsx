@@ -18,10 +18,13 @@ import {
 import { QUOTA_UNDEFINED_AR } from "@/lib/reports/instructor-quota";
 import {
   fetchUniversityScheduleDirectory,
+  fetchInstructorTeachingCollegeIds,
   fetchUniversityInstructorSchedule,
 } from "@/lib/reports/queries/university-instructor-schedule";
 import {
   resolveCollegeScheduleScopes,
+  instructorTeachingScopes,
+  isTestScheduleLabel,
   summarizeUniversitySchedule,
 } from "@/lib/reports/university-instructor-schedule";
 import { InstructorCollegeHours } from "@/components/reports/instructor-college-hours";
@@ -78,9 +81,18 @@ function Page() {
   const instructors = useMemo(
     () =>
       directory.data?.instructors
+        .filter((instructor) => {
+          const anchor = directory.data.colleges.find((c) => c.id === ctx.collegeId);
+          const college = directory.data.colleges.find((c) => c.id === instructor.college_id);
+          return (
+            !!anchor?.university_id &&
+            college?.university_id === anchor.university_id &&
+            !isTestScheduleLabel(college.name)
+          );
+        })
         .slice()
         .sort((a, b) => a.full_name.localeCompare(b.full_name, "ar")),
-    [directory.data],
+    [directory.data, ctx.collegeId],
   );
   const selectedInstructor = instructors?.find((i) => i.id === insId);
   const instructorName = selectedInstructor?.full_name;
@@ -97,7 +109,9 @@ function Page() {
       return {
         scopes: resolveCollegeScheduleScopes({
           ...directory.data,
-          colleges: directory.data.colleges.filter((c) => c.university_id === universityId),
+          colleges: directory.data.colleges.filter(
+            (c) => !!universityId && c.university_id === universityId,
+          ),
           anchorVersionId: ctx.versionId,
           selections: versionSelections,
         }),
@@ -107,20 +121,43 @@ function Page() {
       return { scopes: [], error };
     }
   }, [directory.data, ctx.collegeId, ctx.versionId, versionSelections]);
+  const teachingColleges = useQuery({
+    queryKey: [
+      "instructor-teaching-colleges",
+      ctx.collegeId,
+      insId,
+      selection.scopes.flatMap((s) => s.options.map((v) => v.id)).join(","),
+      instructors?.map((i) => `${i.id}:${i.university_number}`).join(","),
+    ],
+    enabled: !!selectedInstructor && selection.scopes.length > 0 && !selection.error,
+    queryFn: () =>
+      fetchInstructorTeachingCollegeIds({
+        selected: selectedInstructor!,
+        records: instructors!,
+        scopes: selection.scopes,
+      }),
+  });
+  const reportScopes = useMemo(
+    () =>
+      selectedInstructor && teachingColleges.data
+        ? instructorTeachingScopes(selection.scopes, ctx.collegeId ?? "", teachingColleges.data)
+        : [],
+    [selectedInstructor, selection.scopes, ctx.collegeId, teachingColleges.data],
+  );
   const schedule = useQuery({
     queryKey: [
       "university-instructor-schedule",
       ctx.collegeId,
       insId,
-      selection.scopes.map((s) => s.version.id).join(","),
+      reportScopes.map((s) => s.version.id).join(","),
       instructors?.map((i) => `${i.id}:${i.university_number}`).join(","),
     ],
-    enabled: !!selectedInstructor && selection.scopes.length > 0 && !selection.error,
+    enabled: !!selectedInstructor && reportScopes.length > 0 && !selection.error,
     queryFn: () =>
       fetchUniversityInstructorSchedule({
         selected: selectedInstructor!,
         records: instructors!,
-        scopes: selection.scopes,
+        scopes: reportScopes,
       }),
   });
   const summary = useMemo(
@@ -144,16 +181,19 @@ function Page() {
   const workloadBalance = summary.balance;
   const actualQuotaLabel =
     workloadBalance.netHours === null ? QUOTA_UNDEFINED_AR : workloadBalance.netHours.toFixed(2);
-  const isLoading = ctx.isLoading || directory.isLoading || schedule.isLoading;
+  const isLoading =
+    ctx.isLoading || directory.isLoading || teachingColleges.isLoading || schedule.isLoading;
   const ready = !!ctx.versionId && !!selectedInstructor;
-  const queryError = ctx.error ?? directory.error ?? selection.error ?? schedule.error;
+  const queryError =
+    ctx.error ?? directory.error ?? selection.error ?? teachingColleges.error ?? schedule.error;
   const refetch = async () => {
     await directory.refetch();
+    await teachingColleges.refetch();
     await schedule.refetch();
   };
   const exportHeaders = [{ key: "college", label: "الكلية" }, ...NEW_FLOW_TIMETABLE_TABLE_HEADERS];
   const versionShare = Object.fromEntries(
-    selection.scopes.map((s) => [`collegeVersion_${s.collegeId}`, s.version.id]),
+    reportScopes.map((s) => [`collegeVersion_${s.collegeId}`, s.version.id]),
   );
 
   const filteredInstructors = useMemo(() => {
@@ -264,7 +304,16 @@ function Page() {
               </SelectContent>
             </Select>
           </ReportFilterField>
-          {selection.scopes
+          {reportScopes.some((s) => s.collegeId !== ctx.collegeId) && (
+            <div className="col-span-full border-t pt-3">
+              <p className="font-medium">تدريس المحاضر في الكليات الأخرى</p>
+              <p className="text-xs text-muted-foreground">
+                تظهر فقط الكليات التي للمحاضر محاضرات فيها خلال الفترة الدراسية. يضم الجدول وملخص
+                الساعات الكلية الحالية وهذه الكليات.
+              </p>
+            </div>
+          )}
+          {reportScopes
             .filter((s) => s.collegeId !== ctx.collegeId)
             .map((scope) => (
               <ReportFilterField
@@ -293,7 +342,8 @@ function Page() {
             ))}
           <p className="text-xs text-muted-foreground">
             تُختار أحدث نسخة منشورة لكل كلية في الفترة الدراسية، ثم نسخة التنسيق أو أحدث مسودة عند
-            عدم وجود منشور. يمكنك تغييرها أعلاه. يشمل التقرير الكليات المتاحة لصلاحياتك.
+            عدم وجود منشور. يمكنك تغييرها أعلاه. تظهر خيارات الكليات المرتبطة بتدريس المحاضر فقط،
+            ضمن صلاحياتك.
           </p>
         </ReportFilters>
       }

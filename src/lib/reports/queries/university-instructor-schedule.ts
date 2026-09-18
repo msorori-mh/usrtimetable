@@ -93,3 +93,52 @@ export async function fetchUniversityInstructorSchedule(input: {
   summarizeUniversitySchedule(sessions, {}); // Reject invalid times in the query error state.
   return sessions;
 }
+
+/** Discover teaching in candidate versions, including imported co-teaching.
+ * Checking all options keeps the selector usable when a chosen version is empty.
+ * Every read remains college-scoped and subject to RLS.
+ */
+export async function fetchInstructorTeachingCollegeIds(input: {
+  selected: { id: string; university_number: string | null };
+  records: { id: string; university_number: string | null }[];
+  scopes: CollegeScheduleScope[];
+}): Promise<string[]> {
+  const ids = facultyRecordIds(input.selected, input.records);
+  const matches = await Promise.all(
+    input.scopes.map(async (scope) => {
+      const versions = scope.options.map((v) => v.id);
+      const participation = await readAllReportRows((from, to) =>
+        supabase
+          .from("existing_schedule_source_rows")
+          .select("schedule_session_id")
+          .eq("college_id", scope.collegeId)
+          .in("schedule_version_id", versions)
+          .overlaps("instructor_ids", ids)
+          .not("schedule_session_id", "is", null)
+          .order("id")
+          .range(from, to),
+      );
+      const sessionIds = [...new Set(participation.map((p) => p.schedule_session_id!))];
+      // Chunk imported IDs to keep PostgREST query URLs bounded.
+      const chunks: string[][] = [];
+      for (let i = 0; i < sessionIds.length; i += 100) chunks.push(sessionIds.slice(i, i + 100));
+      if (!chunks.length) chunks.push([]);
+      for (const chunk of chunks) {
+        let query = supabase
+          .from("schedule_sessions")
+          .select("id")
+          .eq("college_id", scope.collegeId)
+          .in("schedule_version_id", versions)
+          .or("replaced_by_split.is.null,replaced_by_split.eq.false");
+        query = chunk.length
+          ? query.or(`instructor_id.in.(${ids.join(",")}),id.in.(${chunk.join(",")})`)
+          : query.in("instructor_id", ids);
+        const { data, error } = await query.limit(1);
+        if (error) throw error;
+        if (data?.length) return scope.collegeId;
+      }
+      return null;
+    }),
+  );
+  return matches.filter((id): id is string => id !== null);
+}
