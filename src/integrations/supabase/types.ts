@@ -4653,6 +4653,10 @@ export type Database = {
       is_reports_only_viewer: { Args: { _user_id: string }; Returns: boolean }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       is_viewer_only: { Args: { _user_id: string }; Returns: boolean }
+      link_intake_shared_group: {
+        Args: { p_anchor: string; p_college: string; p_member: string }
+        Returns: boolean
+      }
       list_schedule_builder_v2_work_items: {
         Args: {
           p_cohort_id?: string
