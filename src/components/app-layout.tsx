@@ -418,7 +418,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <nav className="flex-1 overflow-y-auto px-2 py-3">{navBody("sidebar")}</nav>
         <div className="border-t border-sidebar-border p-4">
           <div className="mb-3">
-            <p className="truncate text-sm font-medium">{user?.fullName ?? user?.email ?? "—"}</p>
+            <p className="whitespace-normal break-words text-sm font-medium leading-snug">{user?.fullName ?? user?.email ?? "—"}</p>
             <p className="mt-1 inline-block rounded bg-white/10 px-2 py-0.5 text-[11px]">
               {roleLabel}
             </p>
