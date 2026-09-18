@@ -11,7 +11,7 @@ export interface CourseFilterRow {
   /** Optional English name — only used when the row actually carries one. */
   name_en?: string | null;
   department_id: string;
-  credit_hours: number;
+  credit_hours: number | null;
   theory_hours: number;
   practical_hours: number;
 }
@@ -90,7 +90,7 @@ export function programsForDepartment<T extends { department_id: string | null }
 
 /** Distinct credit-hour values present in the data, ascending. */
 export function creditHourOptions(rows: Pick<CourseFilterRow, "credit_hours">[]): number[] {
-  return [...new Set(rows.map((r) => Number(r.credit_hours) || 0))].sort((a, b) => a - b);
+  return [...new Set(rows.filter((r) => r.credit_hours != null).map((r) => Number(r.credit_hours)))].sort((a, b) => a - b);
 }
 
 /**
@@ -142,7 +142,7 @@ export function filterCourses<T extends CourseFilterRow>(
     }
     if (
       state.creditHours !== ALL_FILTER &&
-      (Number(row.credit_hours) || 0) !== Number(state.creditHours)
+      (row.credit_hours == null || Number(row.credit_hours) !== Number(state.creditHours))
     )
       return false;
     return true;

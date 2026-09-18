@@ -52,7 +52,7 @@ interface Course {
   name: string;
   code: string;
   department_id: string;
-  credit_hours: number;
+  credit_hours: number | null;
   theory_hours: number;
   practical_hours: number;
   college_id: string;
@@ -87,7 +87,7 @@ function CoursesPage() {
     name: "",
     code: "",
     department_id: "",
-    credit_hours: 3,
+    credit_hours: 3 as number | null,
     theory_hours: 3,
     practical_hours: 0,
   });
@@ -269,7 +269,7 @@ function CoursesPage() {
       name: "",
       code: "",
       department_id: "",
-      credit_hours: 3,
+      credit_hours: 3 as number | null,
       theory_hours: 3,
       practical_hours: 0,
     });
@@ -467,8 +467,8 @@ function CoursesPage() {
                       <Input
                         type="number"
                         step="0.5"
-                        value={form.credit_hours}
-                        onChange={(e) => setForm({ ...form, credit_hours: Number(e.target.value) })}
+                        value={form.credit_hours ?? ""}
+                        onChange={(e) => setForm({ ...form, credit_hours: e.target.value === "" ? null : Number(e.target.value) })}
                       />
                     </div>
                     <div>
@@ -664,7 +664,7 @@ function CoursesPage() {
                 <div>
                   <p className="font-semibold">{c.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {deptMap.get(c.department_id) ?? "—"} · {c.credit_hours} س.م · نظري{" "}
+                    {deptMap.get(c.department_id) ?? "—"} · {c.credit_hours ?? "غير محددة"} س.م · نظري{" "}
                     {c.theory_hours} / عملي {c.practical_hours}
                   </p>
                 </div>

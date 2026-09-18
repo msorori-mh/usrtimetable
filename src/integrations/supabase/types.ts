@@ -1067,7 +1067,7 @@ export type Database = {
           college_id: string
           course_nature: string
           created_at: string
-          credit_hours: number
+          credit_hours: number | null
           department_id: string
           id: string
           is_shared: boolean
@@ -1081,7 +1081,7 @@ export type Database = {
           college_id: string
           course_nature?: string
           created_at?: string
-          credit_hours?: number
+          credit_hours?: number | null
           department_id: string
           id?: string
           is_shared?: boolean
@@ -1095,7 +1095,7 @@ export type Database = {
           college_id?: string
           course_nature?: string
           created_at?: string
-          credit_hours?: number
+          credit_hours?: number | null
           department_id?: string
           id?: string
           is_shared?: boolean
@@ -2215,7 +2215,7 @@ export type Database = {
           is_active: boolean
           max_attendance_days_per_week: number | null
           max_hours_per_day: number | null
-          max_weekly_hours: number
+          max_weekly_hours: number | null
           notes: string | null
           phone: string | null
           specialization: string | null
@@ -2247,7 +2247,7 @@ export type Database = {
           is_active?: boolean
           max_attendance_days_per_week?: number | null
           max_hours_per_day?: number | null
-          max_weekly_hours?: number
+          max_weekly_hours?: number | null
           notes?: string | null
           phone?: string | null
           specialization?: string | null
@@ -2279,7 +2279,7 @@ export type Database = {
           is_active?: boolean
           max_attendance_days_per_week?: number | null
           max_hours_per_day?: number | null
-          max_weekly_hours?: number
+          max_weekly_hours?: number | null
           notes?: string | null
           phone?: string | null
           specialization?: string | null
@@ -4477,7 +4477,7 @@ export type Database = {
           p_instructor_id: string
           p_instructor_type_id: string
           p_is_active: boolean
-          p_max_weekly_hours: number
+          p_max_weekly_hours: number | null
           p_phone: string
           p_specialization: string
         }
@@ -4506,7 +4506,7 @@ export type Database = {
           is_active: boolean
           max_attendance_days_per_week: number | null
           max_hours_per_day: number | null
-          max_weekly_hours: number
+          max_weekly_hours: number | null
           notes: string | null
           phone: string | null
           specialization: string | null
@@ -4611,6 +4611,10 @@ export type Database = {
       }
       commit_teaching_assignments_v2_import: {
         Args: { p_mode?: string; p_rows: Json }
+        Returns: Json
+      }
+      complete_existing_intake_row: {
+        Args: { p_source: string; p_day: number; p_start: string; p_end: string; p_room: string; p_instructor?: string; p_allocations?: Json }
         Returns: Json
       }
       complete_existing_schedule_source: {

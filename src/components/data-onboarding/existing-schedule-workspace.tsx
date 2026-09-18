@@ -27,6 +27,8 @@ export function ExistingScheduleWorkspace({
   const [search, setSearch] = useState("");
   const [pendingOnly, setPendingOnly] = useState(false);
   const [editing, setEditing] = useState<Source | null>(null);
+  const [day, setDay] = useState("");
+  const [instructor, setInstructor] = useState("");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [room, setRoom] = useState("");
@@ -149,6 +151,8 @@ export function ExistingScheduleWorkspace({
   const versionId = rows.find((r) => r.schedule_version_id)?.schedule_version_id;
   function edit(r: Source) {
     setEditing(r);
+    setDay(r.day_of_week == null ? "" : String(r.day_of_week));
+    setInstructor("");
     setStart(r.start_time?.slice(0, 5) ?? "");
     setEnd(r.end_time?.slice(0, 5) ?? "");
     setRoom(r.room_id ?? "");
@@ -167,13 +171,14 @@ export function ExistingScheduleWorkspace({
       // المعاملات نصوصًا إلزامية، لذا التحويل على حدود الاستدعاء فقط.
       const args = {
         p_source: editing.id,
-        p_day: editing.day_of_week ?? 6,
+        p_day: day === "" ? null : Number(day),
+        p_instructor: instructor || null,
         p_start: start || null,
         p_end: end || null,
         p_room: room || null,
         p_allocations: Object.keys(split).length ? split : null,
-      } as unknown as Database["public"]["Functions"]["complete_existing_schedule_source"]["Args"];
-      const { error } = await supabase.rpc("complete_existing_schedule_source", args);
+      } as unknown as Database["public"]["Functions"]["complete_existing_intake_row"]["Args"];
+      const { error } = await supabase.rpc("complete_existing_intake_row", args);
       if (error) throw error;
       await cache.invalidateQueries();
       setEditing(null);
@@ -301,7 +306,7 @@ export function ExistingScheduleWorkspace({
                     <td className="p-3">
                       {plans.get(r.study_plan_id ?? "")}
                       <br />
-                      المستوى {r.level_number}
+                      المستوى {r.level_number ?? "بانتظار التحديد"}
                     </td>
                     <td className="p-3">
                       {r.raw_course}
@@ -317,7 +322,7 @@ export function ExistingScheduleWorkspace({
                         r.raw_teacher}
                     </td>
                     <td className="whitespace-nowrap p-3">
-                      {DAYS[r.day_of_week ?? 6]}
+                      {r.day_of_week == null ? "اليوم بانتظار التحديد" : DAYS[r.day_of_week]}
                       <br />
                       {r.start_time && r.end_time
                         ? `${r.start_time.slice(0, 5)} – ${r.end_time.slice(0, 5)}`
@@ -331,6 +336,7 @@ export function ExistingScheduleWorkspace({
                     </td>
                     <td className="p-3">
                       {r.shared_member && <p>محاضرة مشتركة</p>}
+                      {r.notes && <details className="text-sm"><summary>ملاحظات المصدر</summary><p>{r.notes}</p></details>}
                       {r.pending_reasons.length ? (
                         r.pending_reasons.map((reason) => (
                           <p key={reason} className="text-amber-700">
@@ -371,7 +377,19 @@ export function ExistingScheduleWorkspace({
           <DialogHeader>
             <DialogTitle>استكمال {editing?.raw_course}</DialogTitle>
           </DialogHeader>
-          <p>{DAYS[editing?.day_of_week ?? 6]} — تُحفظ المواعيد الحالية كما هي.</p>
+          <label>اليوم
+            <select aria-label="اليوم" value={day} disabled={!!editing?.schedule_session_id} onChange={(e) => setDay(e.target.value)} className="w-full rounded-md border bg-background p-2">
+              <option value="">بانتظار التحديد</option>
+              {DAYS.map((name, index) => <option key={index} value={index}>{name}</option>)}
+            </select>
+          </label>
+          {!editing?.instructor_ids.length && <label>المدرس
+            <select aria-label="المدرس" value={instructor} onChange={(e) => setInstructor(e.target.value)} className="w-full rounded-md border bg-background p-2">
+              <option value="">بانتظار التحديد</option>
+              {bundle.data?.instructors.map((i) => <option key={i.id} value={i.id}>{i.full_name}</option>)}
+            </select>
+          </label>}
+          {(!editing?.plan_course_id || !editing?.component_id) && <p>يلزم استكمال بيانات المقرر والخطة أولًا. حُفظت بيانات المصدر في الملاحظات.</p>}
           <div className="grid grid-cols-2 gap-3">
             <label>
               البداية
@@ -428,7 +446,7 @@ export function ExistingScheduleWorkspace({
               ))}
             </fieldset>
           )}
-          <Button disabled={saving} onClick={() => void save()}>
+          <Button disabled={saving || day === "" || !editing?.plan_course_id || !editing?.component_id} onClick={() => void save()}>
             {saving ? "جارٍ الحفظ…" : "حفظ الاستكمال"}
           </Button>
         </DialogContent>
