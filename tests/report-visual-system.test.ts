@@ -34,7 +34,8 @@ describe("shared report visual system", () => {
 
   test("report routes never issue write operations", () => {
     for (const file of reportRoutes) {
-      const src = read(file);
+      // Removing a URL filter is not a database write. Keep all other mutation checks.
+      const src = read(file).replace(/\burl\.searchParams\.delete\([^)]*\)/g, "");
       for (const dml of [".insert(", ".update(", ".upsert(", ".delete("]) {
         expect(src.includes(dml)).toBe(false);
       }
