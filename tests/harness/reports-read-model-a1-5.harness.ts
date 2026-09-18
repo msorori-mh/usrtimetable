@@ -228,7 +228,23 @@ for (const rel of newFlowRoutes) {
   assert(!body.includes('.from("sections")'), `${rel} queries no Legacy sections table`);
   assert(!body.includes("sections("), `${rel} embeds no Legacy sections projection`);
   assert(!body.includes("section_id"), `${rel} references no section_id`);
-  assert(body.includes("fetchCohortDeliveryGroupLabels"), `${rel} resolves cohort/DG labels`);
+  const labelSource = rel.endsWith("reports.instructor-schedule.tsx")
+    ? read("src/lib/reports/queries/university-instructor-schedule.ts")
+    : body;
+  if (rel.endsWith("reports.instructor-schedule.tsx")) {
+    assert(
+      body.includes("fetchUniversityInstructorSchedule"),
+      "instructor route uses university label resolver",
+    );
+    assert(
+      labelSource.includes("fetchCohortDeliveryGroupLabels(scope.collegeId, raw)"),
+      "cross-college labels remain scoped to each session college",
+    );
+  }
+  assert(
+    labelSource.includes("fetchCohortDeliveryGroupLabels"),
+    `${rel} resolves cohort/DG labels`,
+  );
 }
 for (const rel of [
   "src/routes/_authenticated/reports.instructor-schedule.tsx",

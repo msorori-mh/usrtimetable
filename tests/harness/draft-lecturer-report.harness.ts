@@ -12,31 +12,41 @@ const route = readFileSync(
   join(root, "src/routes/_authenticated/reports.instructor-schedule.tsx"),
   "utf8",
 );
+const universityQueries = readFileSync(
+  join(root, "src/lib/reports/queries/university-instructor-schedule.ts"),
+  "utf8",
+);
 const queries = readFileSync(join(root, "src/lib/reports/queries/session-queries.ts"), "utf8");
 
 assert(SPECIFIC_VERSION_STATUSES.includes("draft"), "draft schedule versions remain reportable");
 assert(route.includes("useReportContext"), "lecturer report resolves the selected draft version");
 assert(
-  route.includes("fetchInstructorScheduleSessions"),
+  route.includes("fetchUniversityInstructorSchedule") &&
+    universityQueries.includes("fetchInstructorScheduleSessions") &&
+    universityQueries.includes("versionId: scope.version.id") &&
+    universityQueries.includes("collegeId: scope.collegeId"),
   "lecturer report uses the shared version-scoped read model",
 );
 assert(route.includes("ctx.versionId"), "selected version identity is part of the report query");
-assert(route.includes("ctx.studySystem"), "study-system filtering is preserved");
+assert(
+  route.includes('fixedStudySystem: "all"') && universityQueries.includes('studySystem: "all"'),
+  "university totals explicitly include every study system",
+);
 assert(
   route.includes('setInsId("")') && route.includes("[ctx.collegeId]"),
   "lecturer selection resets when the active college changes",
 );
 assert(
-  route.includes("instructorsError") &&
-    route.includes("if (error) throw error") &&
-    route.includes("sessionsError") &&
+  route.includes("directory.error") &&
+    route.includes("schedule.error") &&
+    route.includes("selection.error") &&
     route.includes("ctx.error") &&
-    route.includes("queryError"),
+    route.includes("queryError") &&
+    universityQueries.includes("readAllReportRows"),
   "context, lecturer, and session query failures are not reported as empty data",
 );
 assert(
-  route.includes("instructorsLoading") &&
-    route.includes("ctx.isLoading || instructorsLoading || sessionsLoading"),
+  route.includes("ctx.isLoading || directory.isLoading || schedule.isLoading"),
   "lecturer list loading participates in the report loading state",
 );
 assert(

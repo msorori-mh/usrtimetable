@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import {
   ReportSection,
@@ -25,6 +25,7 @@ const SECONDARY_KEYS = new Set([
   "cohort",
 ]);
 interface Props {
+  printSummary?: ReactNode;
   sessions: TimetableReportSession[];
   collegeId?: string | null;
   headers?: { key: string; label: string }[];
@@ -65,6 +66,9 @@ function CourseDetailCell({ row }: { row: TimetableDetailRow }) {
 function AcademicDetailCell({ row }: { row: TimetableDetailRow }) {
   return (
     <div className="min-w-[170px] space-y-0.5 leading-5">
+      {detailText(row.college) !== "—" && (
+        <div className="font-semibold text-primary">{detailText(row.college)}</div>
+      )}
       <div className="font-semibold">{detailText(row.program)}</div>
       <div className="text-[11px] text-muted-foreground">{detailText(row.level)}</div>
       {detailText(row.department) !== "—" && (
@@ -134,6 +138,7 @@ function compactInstructorDetailColumns(): ReportColumn<TimetableDetailRow>[] {
 
 export function ReportTimetableView({
   sessions,
+  printSummary,
   collegeId,
   headers = TIMETABLE_TABLE_HEADERS,
   hideInstructor = false,
@@ -158,7 +163,10 @@ export function ReportTimetableView({
       rtlDayRank(a.day_of_week) - rtlDayRank(b.day_of_week) ||
       a.start_time.localeCompare(b.start_time),
   );
-  const rows = timetableSessionsToRows(ordered);
+  const rows = timetableSessionsToRows(ordered).map((row, i) => ({
+    ...row,
+    college: (ordered[i] as TimetableReportSession & { college_name?: string }).college_name,
+  }));
   const days = orderWeekDaysRtl([...window.workingDays, ...sessions.map((s) => s.day_of_week)]);
   const day =
     selectedDay !== null && days.includes(selectedDay)
@@ -272,7 +280,9 @@ export function ReportTimetableView({
             caption="تفصيل محاضرات الجدول"
             columns={
               compactDetails
-                ? (compactInstructorDetailColumns() as unknown as ReportColumn<(typeof rows)[number]>[])
+                ? (compactInstructorDetailColumns() as unknown as ReportColumn<
+                    (typeof rows)[number]
+                  >[])
                 : headers.map((h) => ({
                     ...h,
                     numeric: ["hours", "time", "start_time", "end_time"].includes(h.key),
@@ -289,13 +299,14 @@ export function ReportTimetableView({
         {!printDetailOnly && (
           <section className="instructor-print-page instructor-print-page--first">
             <TimetableGridReport {...gridProps} />
+            {printSummary && <div className="mt-3">{printSummary}</div>}
           </section>
         )}
         <section
           className={
             printDetailOnly
-              ? "instructor-print-page instructor-print-page--only"
-              : "instructor-print-page instructor-print-page--second"
+              ? "instructor-print-page instructor-print-page--only print:[&_td_div]:min-w-0 print:[&_td_bdi]:whitespace-normal"
+              : "instructor-print-page instructor-print-page--second print:[&_td_div]:min-w-0 print:[&_td_bdi]:whitespace-normal"
           }
         >
           <h2 className="mb-3 text-base font-bold">تفصيل المحاضرات</h2>
@@ -303,7 +314,9 @@ export function ReportTimetableView({
             caption="تفصيل محاضرات الجدول"
             columns={
               compactDetails
-                ? (compactInstructorDetailColumns() as unknown as ReportColumn<(typeof rows)[number]>[])
+                ? (compactInstructorDetailColumns() as unknown as ReportColumn<
+                    (typeof rows)[number]
+                  >[])
                 : headers.map((h) => ({
                     ...h,
                     numeric: ["hours", "time", "start_time", "end_time"].includes(h.key),
@@ -313,6 +326,7 @@ export function ReportTimetableView({
             primaryColumnLimit={6}
             minWidthClassName={compactDetails ? "min-w-[760px]" : undefined}
           />
+          {printDetailOnly && printSummary}
         </section>
       </div>
     </div>

@@ -1,8 +1,6 @@
-import { withUniversityNumbers } from "@/lib/instructors/university-number";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { ReportShell } from "@/components/reports/report-shell";
 import { ReportFilters, ReportFilterField } from "@/components/reports/report-filters";
 import { ReportTimetableView } from "@/components/reports/report-timetable-view";
@@ -14,19 +12,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  mapRawSessions,
   timetableSessionsToRows,
   NEW_FLOW_TIMETABLE_TABLE_HEADERS,
 } from "@/lib/reports/session-mappers";
+import { QUOTA_UNDEFINED_AR } from "@/lib/reports/instructor-quota";
 import {
-  fetchCohortDeliveryGroupLabels,
-  fetchInstructorScheduleSessions,
-} from "@/lib/reports/queries/session-queries";
+  fetchUniversityScheduleDirectory,
+  fetchUniversityInstructorSchedule,
+} from "@/lib/reports/queries/university-instructor-schedule";
 import {
-  computeQuotaBalance,
-  QUOTA_STATUS_LABEL_AR,
-  QUOTA_UNDEFINED_AR,
-} from "@/lib/reports/instructor-quota";
+  resolveCollegeScheduleScopes,
+  summarizeUniversitySchedule,
+} from "@/lib/reports/university-instructor-schedule";
+import { InstructorCollegeHours } from "@/components/reports/instructor-college-hours";
+import { STATUS_LABEL_AR, type SVStatus } from "@/lib/schedule-versions/lifecycle";
 import { isHourlyContractTypeCode } from "@/lib/instructors/effective-hours";
 import { useReportContext } from "@/hooks/reports/useReportContext";
 
@@ -51,108 +50,111 @@ function Page() {
   const ctx = useReportContext({
     defaultStatusMode: "specific_version",
     defaultStudySystem: "all",
+    fixedStudySystem: "all",
   });
   const [insId, setInsId] = useState("");
   const [instructorSearch, setInstructorSearch] = useState("");
+  const [versionSelections, setVersionSelections] = useState<Record<string, string>>({});
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setVersionSelections(
+      Object.fromEntries(
+        [...params]
+          .filter(([key]) => key.startsWith("collegeVersion_"))
+          .map(([key, value]) => [key.slice(15), value]),
+      ),
+    );
+  }, [ctx.collegeId, ctx.versionId]);
 
   useEffect(() => {
     setInsId(new URLSearchParams(window.location.search).get("instructorId") ?? "");
   }, [ctx.collegeId]);
 
-  const {
-    data: instructors,
-    isLoading: instructorsLoading,
-    error: instructorsError,
-  } = useQuery({
-    queryKey: ["is-ins", ctx.collegeId],
+  const directory = useQuery({
+    queryKey: ["university-instructor-directory", ctx.collegeId],
     enabled: !!ctx.collegeId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("instructors")
-        .select(
-          "id, full_name, max_weekly_hours, administrative_release_hours, instructor_type_id, employment_type",
-        )
-        .eq("college_id", ctx.collegeId!)
-        .order("full_name")
-        .throwOnError();
-      if (error) throw error;
-
-      const { data: instructorTypes, error: instructorTypesError } = await supabase
-        .from("instructor_types")
-        .select("id, code")
-        .eq("college_id", ctx.collegeId!)
-        .throwOnError();
-      if (instructorTypesError) throw instructorTypesError;
-
-      const typeCodeById = new Map(
-        (instructorTypes ?? []).map((type) => [type.id, type.code]),
-      );
-
-      return withUniversityNumbers(
-        (data ?? []).map((instructor) => ({
-          ...instructor,
-          instructor_type_code: instructor.instructor_type_id
-            ? typeCodeById.get(instructor.instructor_type_id) ?? null
-            : null,
-        })),
-      );
-    },
+    queryFn: fetchUniversityScheduleDirectory,
   });
-
-  const {
-    data: sessionsBundle,
-    isLoading: sessionsLoading,
-    error: sessionsError,
-    refetch,
-  } = useQuery({
-    queryKey: ["is-sess", ctx.collegeId, ctx.versionId, ctx.studySystem, insId],
-    enabled: !!ctx.collegeId && !!ctx.versionId && !!insId,
-    queryFn: async () => {
-      const raw = await fetchInstructorScheduleSessions({
-        collegeId: ctx.collegeId!,
-        versionId: ctx.versionId,
-        instructorId: insId,
-        studySystem: ctx.studySystem,
-      });
-      // A1.5: resolve New Flow cohort/DG labels for display + export.
-      const labels = await fetchCohortDeliveryGroupLabels(ctx.collegeId!, raw);
-      return { raw, labels };
-    },
-  });
-
-  const sessions = useMemo(
-    () => mapRawSessions(sessionsBundle?.raw ?? [], sessionsBundle?.labels),
-    [sessionsBundle],
+  const instructors = useMemo(
+    () =>
+      directory.data?.instructors
+        .slice()
+        .sort((a, b) => a.full_name.localeCompare(b.full_name, "ar")),
+    [directory.data],
   );
-  const rows = useMemo(() => timetableSessionsToRows(sessions), [sessions]);
-  const totalHours = rows.reduce((sum, r) => sum + Number(r.hours ?? 0), 0);
-  const isLoading = ctx.isLoading || instructorsLoading || sessionsLoading;
-  const ready = !!ctx.versionId && !!insId;
-  const queryError = ctx.error ?? instructorsError ?? sessionsError;
-
-  const selectedInstructor = (instructors ?? []).find((i) => i.id === insId);
+  const selectedInstructor = instructors?.find((i) => i.id === insId);
   const instructorName = selectedInstructor?.full_name;
   const universityNumber = selectedInstructor?.university_number;
   const isHourlyContract =
     isHourlyContractTypeCode(selectedInstructor?.instructor_type_code) ||
     selectedInstructor?.employment_type === "contract";
-
-  const workloadBalance = computeQuotaBalance({
-    maxWeeklyHours: isHourlyContract ? null : selectedInstructor?.max_weekly_hours,
-    adminReleaseHours: isHourlyContract ? 0 : selectedInstructor?.administrative_release_hours,
-    assignedHours: totalHours,
+  const selection = useMemo(() => {
+    if (!directory.data || !ctx.versionId) return { scopes: [], error: null };
+    try {
+      const universityId = directory.data.colleges.find(
+        (c) => c.id === ctx.collegeId,
+      )?.university_id;
+      return {
+        scopes: resolveCollegeScheduleScopes({
+          ...directory.data,
+          colleges: directory.data.colleges.filter((c) => c.university_id === universityId),
+          anchorVersionId: ctx.versionId,
+          selections: versionSelections,
+        }),
+        error: null,
+      };
+    } catch (error) {
+      return { scopes: [], error };
+    }
+  }, [directory.data, ctx.collegeId, ctx.versionId, versionSelections]);
+  const schedule = useQuery({
+    queryKey: [
+      "university-instructor-schedule",
+      ctx.collegeId,
+      insId,
+      selection.scopes.map((s) => s.version.id).join(","),
+      instructors?.map((i) => `${i.id}:${i.university_number}`).join(","),
+    ],
+    enabled: !!selectedInstructor && selection.scopes.length > 0 && !selection.error,
+    queryFn: () =>
+      fetchUniversityInstructorSchedule({
+        selected: selectedInstructor!,
+        records: instructors!,
+        scopes: selection.scopes,
+      }),
   });
+  const summary = useMemo(
+    () =>
+      summarizeUniversitySchedule(schedule.data ?? [], {
+        maxWeeklyHours: isHourlyContract ? null : selectedInstructor?.max_weekly_hours,
+        adminReleaseHours: isHourlyContract ? 0 : selectedInstructor?.administrative_release_hours,
+      }),
+    [schedule.data, isHourlyContract, selectedInstructor],
+  );
+  const sessions = summary.sessions;
+  const rows = useMemo(
+    () =>
+      timetableSessionsToRows(sessions).map((row, i) => ({
+        ...row,
+        college: sessions[i].college_name,
+      })),
+    [sessions],
+  );
+  const totalHours = summary.totalHours;
+  const workloadBalance = summary.balance;
   const actualQuotaLabel =
     workloadBalance.netHours === null ? QUOTA_UNDEFINED_AR : workloadBalance.netHours.toFixed(2);
-  const workloadStatusLabel = QUOTA_STATUS_LABEL_AR[workloadBalance.status];
-  const workloadDifferenceLabel =
-    workloadBalance.status === "overload"
-      ? `ساعات زائدة: ${(workloadBalance.overloadHours ?? 0).toFixed(2)}`
-      : workloadBalance.status === "deficit"
-        ? `المتبقي من النصاب: ${(workloadBalance.deficitHours ?? 0).toFixed(2)}`
-        : workloadBalance.status === "balanced"
-          ? "لا يوجد فرق بين النصاب والساعات التدريسية"
-          : "لا يمكن حساب الفرق قبل تحديد النصاب";
+  const isLoading = ctx.isLoading || directory.isLoading || schedule.isLoading;
+  const ready = !!ctx.versionId && !!selectedInstructor;
+  const queryError = ctx.error ?? directory.error ?? selection.error ?? schedule.error;
+  const refetch = async () => {
+    await directory.refetch();
+    await schedule.refetch();
+  };
+  const exportHeaders = [{ key: "college", label: "الكلية" }, ...NEW_FLOW_TIMETABLE_TABLE_HEADERS];
+  const versionShare = Object.fromEntries(
+    selection.scopes.map((s) => [`collegeVersion_${s.collegeId}`, s.version.id]),
+  );
 
   const filteredInstructors = useMemo(() => {
     const query = normalizeInstructorSearch(instructorSearch);
@@ -161,19 +163,25 @@ function Page() {
       normalizeInstructorSearch(instructor.full_name).includes(query),
     );
   }, [instructorSearch, instructors]);
-  const distinctDays = new Set(rows.map((r) => String(r.day))).size;
-  const distinctCourses = new Set(rows.map((r) => String(r.course))).size;
+  const distinctDays = new Set(sessions.map((s) => s.day_of_week)).size;
+  const distinctCourses = new Set(sessions.map((s) => `${s.course_code}:${s.course_name}`)).size;
 
   return (
     <ReportShell
       title={instructorName ? `جدول المحاضر — ${instructorName}` : "تقرير جدول المحاضر الفردي"}
-      description={`الجدول الأسبوعي لعضو هيئة تدريس واحد داخل نسخة جدول واحدة. ${universityNumber ? `الرقم الجامعي: ${universityNumber}` : ""}`}
+      description={`الجدول الفردي الموحد عبر الكليات، بجميع أنظمة الدراسة ونسخة واحدة لكل كلية. ${universityNumber ? `الرقم الجامعي: ${universityNumber}` : ""}`}
       filterSummary={ctx.filterSummary}
       reportContext={ctx}
-      shareParams={{ instructorId: insId }}
+      shareParams={{ instructorId: insId, ...versionShare }}
+      headerMeta={{
+        collegeName: "الجدول الموحد عبر الكليات",
+        versionName: "نسخ الكليات الموضحة في الملخص",
+        versionStatus: null,
+        note: "جميع أنظمة الدراسة — ضمن الكليات المتاحة لصلاحيات المستخدم.",
+      }}
       filename="instructor_schedule"
       rows={rows}
-      headers={NEW_FLOW_TIMETABLE_TABLE_HEADERS}
+      headers={exportHeaders}
       isLoading={isLoading}
       error={queryError}
       onRetry={() => void refetch()}
@@ -198,7 +206,7 @@ function Page() {
                 label: "الساعات التدريسية",
                 value: totalHours.toFixed(2),
                 tone: "accent",
-                hint: "إجمالي الساعات الأسبوعية المجدولة في النسخة المحددة",
+                hint: "إجمالي الساعات الأسبوعية في جميع نسخ الكليات المشمولة",
               },
               {
                 label: "النصاب الفعلي",
@@ -216,10 +224,12 @@ function Page() {
       filters={
         <ReportFilters
           context={ctx}
+          studySystem={false}
           extraSummary={instructorName ? [`المحاضر: ${instructorName}`] : []}
           onClear={() => {
             setInsId("");
             setInstructorSearch("");
+            setVersionSelections({});
           }}
         >
           <ReportFilterField label="المحاضر" htmlFor="is-instructor">
@@ -246,12 +256,45 @@ function Page() {
               <SelectContent>
                 {filteredInstructors.map((i) => (
                   <SelectItem key={i.id} value={i.id}>
-                    {i.full_name} {i.university_number ? `— ${i.university_number}` : ""}
+                    {i.full_name} {i.university_number ? `— ${i.university_number}` : ""} —{" "}
+                    {directory.data?.colleges.find((c) => c.id === i.college_id)?.name ??
+                      "كلية المحاضر"}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </ReportFilterField>
+          {selection.scopes
+            .filter((s) => s.collegeId !== ctx.collegeId)
+            .map((scope) => (
+              <ReportFilterField
+                key={scope.collegeId}
+                label={`نسخة ${scope.collegeName}`}
+                htmlFor={`version-${scope.collegeId}`}
+              >
+                <Select
+                  value={scope.version.id}
+                  onValueChange={(value) =>
+                    setVersionSelections((old) => ({ ...old, [scope.collegeId]: value }))
+                  }
+                >
+                  <SelectTrigger id={`version-${scope.collegeId}`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {scope.options.map((v) => (
+                      <SelectItem key={v.id} value={v.id}>
+                        {v.name} — {STATUS_LABEL_AR[v.status as SVStatus]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </ReportFilterField>
+            ))}
+          <p className="text-xs text-muted-foreground">
+            تُختار أحدث نسخة منشورة لكل كلية في الفترة الدراسية، ثم نسخة التنسيق أو أحدث مسودة عند
+            عدم وجود منشور. يمكنك تغييرها أعلاه. يشمل التقرير الكليات المتاحة لصلاحياتك.
+          </p>
         </ReportFilters>
       }
     >
@@ -259,66 +302,17 @@ function Page() {
         <div className="space-y-4">
           <ReportTimetableView
             hideInstructor
+            printSummary={
+              <InstructorCollegeHours summary={summary} hourlyContract={isHourlyContract} />
+            }
             compactDetails
             sessions={sessions}
             collegeId={ctx.collegeId}
-            headers={NEW_FLOW_TIMETABLE_TABLE_HEADERS}
+            headers={exportHeaders}
           />
-          {isHourlyContract ? (
-            <section
-              className="report-no-print break-inside-avoid rounded-lg border bg-muted/20 p-4"
-              aria-label="إجمالي الساعات التدريسية للمحاضر المتعاقد"
-            >
-              <h2 className="text-base font-bold text-primary">إجمالي الساعات التدريسية</h2>
-              <div className="mt-3 rounded-md border bg-background p-4">
-                <p className="text-xs text-muted-foreground">الساعات التدريسية الأسبوعية</p>
-                <p className="mt-1 text-2xl font-bold tabular-nums text-primary">
-                  {totalHours.toFixed(2)}
-                </p>
-              </div>
-            </section>
-          ) : (
-            <section
-              className="report-no-print break-inside-avoid rounded-lg border bg-muted/20 p-4"
-              aria-label="ملخص العبء التدريسي للمحاضر"
-            >
-              <h2 className="text-base font-bold text-primary">ملخص العبء التدريسي</h2>
-              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <div className="rounded-md border bg-background p-3">
-                  <p className="text-xs text-muted-foreground">النصاب الأساسي</p>
-                  <p className="mt-1 text-lg font-bold tabular-nums">
-                    {workloadBalance.baseHours === null
-                      ? QUOTA_UNDEFINED_AR
-                      : workloadBalance.baseHours.toFixed(2)}
-                  </p>
-                </div>
-                <div className="rounded-md border bg-background p-3">
-                  <p className="text-xs text-muted-foreground">الإعفاء الإداري</p>
-                  <p className="mt-1 text-lg font-bold tabular-nums">
-                    {workloadBalance.releaseHours.toFixed(2)}
-                  </p>
-                </div>
-                <div className="rounded-md border bg-background p-3">
-                  <p className="text-xs text-muted-foreground">النصاب الفعلي</p>
-                  <p className="mt-1 text-lg font-bold tabular-nums text-primary">
-                    {actualQuotaLabel}
-                  </p>
-                </div>
-                <div className="rounded-md border bg-background p-3">
-                  <p className="text-xs text-muted-foreground">الساعات التدريسية</p>
-                  <p className="mt-1 text-lg font-bold tabular-nums text-primary">
-                    {totalHours.toFixed(2)}
-                  </p>
-                </div>
-              </div>
-              <div className="mt-3 rounded-md border bg-background px-3 py-2 text-sm">
-                <span className="font-semibold">حالة النصاب: </span>
-                <span>{workloadStatusLabel}</span>
-                <span className="mx-2 text-muted-foreground">—</span>
-                <span>{workloadDifferenceLabel}</span>
-              </div>
-            </section>
-          )}
+          <div className="report-no-print">
+            <InstructorCollegeHours summary={summary} hourlyContract={isHourlyContract} />
+          </div>
         </div>
       )}
     </ReportShell>
