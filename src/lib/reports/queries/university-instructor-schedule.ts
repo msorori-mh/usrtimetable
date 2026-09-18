@@ -5,43 +5,55 @@ import { mapRawSessions } from "@/lib/reports/session-mappers";
 import { fetchCohortDeliveryGroupLabels, fetchInstructorScheduleSessions } from "./session-queries";
 import {
   facultyRecordIds,
+  canViewInstructorAcrossColleges,
   summarizeUniversitySchedule,
   type CollegeScheduleScope,
   type UniversityInstructorSession,
 } from "../university-instructor-schedule";
 
-export async function fetchUniversityScheduleDirectory() {
-  // All reads remain subject to RLS. A partial response is labelled as accessible scope.
+async function reportCanViewAcrossColleges() {
+  const { data, error } = await supabase.auth.getUser();
+  if (error) throw error;
+  if (!data.user) throw new Error("يجب تسجيل الدخول لعرض التقرير.");
+  const roles = await supabase.from("user_roles").select("role").eq("user_id", data.user.id);
+  if (roles.error) throw roles.error;
+  return canViewInstructorAcrossColleges((roles.data ?? []).map((r) => r.role));
+}
+
+export async function fetchUniversityScheduleDirectory(collegeId: string) {
+  if (!collegeId) throw new Error("اختر الكلية أولًا.");
+  const canViewAcrossColleges = await reportCanViewAcrossColleges();
+  // Non-admin reads are narrowed before execution, not merely hidden in the UI.
   const [records, types, colleges, terms, versions] = await Promise.all([
-    readAllReportRows((from, to) =>
-      supabase
+    readAllReportRows((from, to) => {
+      let q = supabase
         .from("instructors")
         .select(
           "id, college_id, full_name, max_weekly_hours, administrative_release_hours, instructor_type_id, employment_type",
-        )
-        .order("id")
-        .range(from, to),
-    ),
+        );
+      if (!canViewAcrossColleges) q = q.eq("college_id", collegeId);
+      return q.order("id").range(from, to);
+    }),
     readAllReportRows((from, to) =>
       supabase.from("instructor_types").select("id, code").order("id").range(from, to),
     ),
-    readAllReportRows((from, to) =>
-      supabase.from("colleges").select("id, name, university_id").order("id").range(from, to),
-    ),
-    readAllReportRows((from, to) =>
-      supabase
-        .from("academic_terms")
-        .select("id, college_id, name, start_date, end_date")
-        .order("id")
-        .range(from, to),
-    ),
-    readAllReportRows((from, to) =>
-      supabase
+    readAllReportRows((from, to) => {
+      let q = supabase.from("colleges").select("id, name, university_id");
+      if (!canViewAcrossColleges) q = q.eq("id", collegeId);
+      return q.order("id").range(from, to);
+    }),
+    readAllReportRows((from, to) => {
+      let q = supabase.from("academic_terms").select("id, college_id, name, start_date, end_date");
+      if (!canViewAcrossColleges) q = q.eq("college_id", collegeId);
+      return q.order("id").range(from, to);
+    }),
+    readAllReportRows((from, to) => {
+      let q = supabase
         .from("schedule_versions")
-        .select("id, college_id, academic_term_id, name, status, created_at, is_coordination")
-        .order("id")
-        .range(from, to),
-    ),
+        .select("id, college_id, academic_term_id, name, status, created_at, is_coordination");
+      if (!canViewAcrossColleges) q = q.eq("college_id", collegeId);
+      return q.order("id").range(from, to);
+    }),
   ]);
   const instructors = await withUniversityNumbers(
     records.map((r) => ({
@@ -49,17 +61,20 @@ export async function fetchUniversityScheduleDirectory() {
       instructor_type_code: types.find((t) => t.id === r.instructor_type_id)?.code ?? null,
     })),
   );
-  return { instructors, colleges, terms, versions };
+  return { instructors, colleges, terms, versions, canViewAcrossColleges };
 }
 
 export async function fetchUniversityInstructorSchedule(input: {
+  anchorCollegeId: string;
   selected: { id: string; university_number: string | null };
   records: { id: string; university_number: string | null }[];
   scopes: CollegeScheduleScope[];
 }): Promise<UniversityInstructorSession[]> {
   const ids = facultyRecordIds(input.selected, input.records);
+  const across = await reportCanViewAcrossColleges();
+  const scopes = input.scopes.filter((s) => across || s.collegeId === input.anchorCollegeId);
   const bundles = await Promise.all(
-    input.scopes.map(async (scope) => {
+    scopes.map(async (scope) => {
       const sets = await Promise.all(
         ids.map((instructorId) =>
           fetchInstructorScheduleSessions({
@@ -103,6 +118,7 @@ export async function fetchInstructorTeachingCollegeIds(input: {
   records: { id: string; university_number: string | null }[];
   scopes: CollegeScheduleScope[];
 }): Promise<string[]> {
+  if (!(await reportCanViewAcrossColleges())) return [];
   const ids = facultyRecordIds(input.selected, input.records);
   const matches = await Promise.all(
     input.scopes.map(async (scope) => {

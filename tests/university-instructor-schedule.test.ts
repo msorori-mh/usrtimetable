@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   facultyRecordIds,
+  canViewInstructorAcrossColleges,
   instructorTeachingScopes,
   overlappingTerms,
   resolveCollegeScheduleScopes,
@@ -161,14 +162,44 @@ describe("instructor college scope isolation", () => {
   });
   test("retains issuing college and only evidenced teaching colleges", () => {
     const scopes = resolveCollegeScheduleScopes(input);
-    expect(instructorTeachingScopes(scopes, "c1", ["c2"]).map((s) => s.collegeId)).toEqual([
+    expect(instructorTeachingScopes(scopes, "c1", ["c2"], true).map((s) => s.collegeId)).toEqual([
       "c1",
       "c2",
     ]);
     expect(instructorTeachingScopes(scopes, "c1", []).map((s) => s.collegeId)).toEqual(["c1"]);
-    expect(instructorTeachingScopes(scopes, "c1", ["c3"]).map((s) => s.collegeId)).toEqual([
+    expect(instructorTeachingScopes(scopes, "c1", ["c3"], true).map((s) => s.collegeId)).toEqual([
       "c1",
       "c3",
     ]);
   });
+});
+
+test("only super admin can include other colleges, even with multiple memberships", () => {
+  for (const roles of [
+    [],
+    ["college_admin"],
+    ["institutional_viewer"],
+    ["university_leadership"],
+    ["read_only"],
+  ]) {
+    expect(canViewInstructorAcrossColleges(roles)).toBe(false);
+    const scopes = [
+      {
+        collegeId: "c1",
+        collegeName: "Computing",
+        version: version("v1", "c1", "t1"),
+        options: [],
+      },
+      { collegeId: "c2", collegeName: "Business", version: version("v2", "c2", "t2"), options: [] },
+    ];
+    expect(
+      instructorTeachingScopes(
+        scopes,
+        "c1",
+        ["c1", "c2"],
+        canViewInstructorAcrossColleges(roles),
+      ).map((s) => s.collegeId),
+    ).toEqual(["c1"]);
+  }
+  expect(canViewInstructorAcrossColleges(["super_admin"])).toBe(true);
 });

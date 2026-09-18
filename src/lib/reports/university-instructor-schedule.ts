@@ -24,6 +24,10 @@ export interface CollegeScheduleScope {
   options: UniversityVersion[];
 }
 
+export function canViewInstructorAcrossColleges(roles: readonly string[]) {
+  return roles.includes("super_admin");
+}
+
 /** Explicit fixture marker used by production test data. */
 export function isTestScheduleLabel(name: string) {
   return /TEST_ONLY/i.test(name);
@@ -34,12 +38,13 @@ export function instructorTeachingScopes(
   scopes: CollegeScheduleScope[],
   anchorCollegeId: string,
   teachingCollegeIds: string[],
+  canViewAcrossColleges = false,
 ) {
   const ids = new Set(teachingCollegeIds);
   return scopes.filter(
     (scope) =>
       !isTestScheduleLabel(scope.collegeName) &&
-      (scope.collegeId === anchorCollegeId || ids.has(scope.collegeId)),
+      (scope.collegeId === anchorCollegeId || (canViewAcrossColleges && ids.has(scope.collegeId))),
   );
 }
 
