@@ -23,4 +23,3 @@ BEGIN
 END $test$;
 
 ROLLBACK;
-
