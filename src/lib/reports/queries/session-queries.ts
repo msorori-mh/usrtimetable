@@ -1,10 +1,14 @@
+import { expandIntakeTimetable } from "@/lib/existing-schedules/presentation";
 import {
   fetchSharedLectures,
   sharedGroupIdsForCohort,
 } from "@/lib/academic-delivery/shared-lectures";
 import { readAllReportRows } from "@/lib/reports/read-all";
 import { supabase } from "@/integrations/supabase/client";
-import { applyStudySystemFilter, assertSingleVersion } from "@/lib/reports/filters";
+import {
+  applyStudySystemFilter,
+  assertSingleVersion,
+} from "@/lib/reports/filters";
 import type { ReportStudySystem } from "@/lib/reports/types";
 import {
   hydrateWorkspaceSessions,
@@ -47,7 +51,9 @@ export const INSTRUCTOR_SCHEDULE_SESSION_SELECT = TIMETABLE_SESSION_SELECT;
 
 /** True when a select string would trigger the known PGRST200 courses nest. */
 export function selectContainsNestedCoursesEmbed(select: string): boolean {
-  return /course_offerings\s*\([^)]*courses\s*\(/i.test(select.replace(/\s+/g, " "));
+  return /course_offerings\s*\([^)]*courses\s*\(/i.test(
+    select.replace(/\s+/g, " "),
+  );
 }
 
 async function fetchFlatThenHydrate(params: {
@@ -74,7 +80,22 @@ async function fetchFlatThenHydrate(params: {
 
   q = applyStudySystemFilter(q, params.studySystem);
 
-  if (params.instructorId) q = q.eq("instructor_id", params.instructorId);
+  if (params.instructorId) {
+    const { data: participation, error } = await supabase
+      .from("existing_schedule_source_rows")
+      .select("schedule_session_id")
+      .eq("college_id", params.collegeId)
+      .eq("schedule_version_id", params.versionId!)
+      .contains("instructor_ids", [params.instructorId])
+      .not("schedule_session_id", "is", null);
+    if (error) throw error;
+    const ids = [
+      ...new Set((participation ?? []).map((p) => p.schedule_session_id!)),
+    ];
+    q = ids.length
+      ? q.or(`instructor_id.eq.${params.instructorId},id.in.(${ids.join(",")})`)
+      : q.eq("instructor_id", params.instructorId);
+  }
   if (params.sectionId) q = q.eq("section_id", params.sectionId);
   if (params.cohortId) {
     const anchors = sharedGroupIdsForCohort(
@@ -82,25 +103,41 @@ async function fetchFlatThenHydrate(params: {
       params.cohortId,
     );
     q = anchors.length
-      ? q.or(`cohort_id.eq.${params.cohortId},delivery_group_id.in.(${anchors.join(",")})`)
+      ? q.or(
+          `cohort_id.eq.${params.cohortId},delivery_group_id.in.(${anchors.join(",")})`,
+        )
       : q.eq("cohort_id", params.cohortId);
   }
   if (params.deliveryGroupId) {
     const links = await fetchSharedLectures(params.collegeId);
-    const anchor = links.find((l) => l.member_group_id === params.deliveryGroupId)?.anchor_group_id;
+    const anchor = links.find(
+      (l) => l.member_group_id === params.deliveryGroupId,
+    )?.anchor_group_id;
     q = q.eq("delivery_group_id", anchor ?? params.deliveryGroupId);
   }
   if (params.roomId) q = q.eq("room_id", params.roomId);
 
-  const data = await readAllReportRows((from, to) => q.order("id").range(from, to));
+  const data = await readAllReportRows((from, to) =>
+    q.order("id").range(from, to),
+  );
 
-  let rows = await hydrateWorkspaceSessions((data ?? []) as WorkspaceSessionFlatRow[]);
+  let rows = await hydrateWorkspaceSessions(
+    (data ?? []) as WorkspaceSessionFlatRow[],
+  );
 
   if (params.programId) {
-    rows = rows.filter((s) => s.course_offerings?.program_id === params.programId);
+    rows = rows.filter(
+      (s) =>
+        s.course_offerings?.program_id === params.programId ||
+        s.intake_memberships?.some((m) => m.program_id === params.programId),
+    );
   }
   if (params.levelId) {
-    rows = rows.filter((s) => s.course_offerings?.level_id === params.levelId);
+    rows = rows.filter(
+      (s) =>
+        s.course_offerings?.level_id === params.levelId ||
+        s.intake_memberships?.some((m) => m.level_id === params.levelId),
+    );
   }
   return rows;
 }
@@ -127,9 +164,12 @@ export async function fetchSessionsForVersion<T = Record<string, unknown>>(
 ): Promise<T[]> {
   assertSingleVersion(params.versionId);
 
-  const select = params.select ?? "id, day_of_week, start_time, end_time, study_system";
+  const select =
+    params.select ?? "id, day_of_week, start_time, end_time, study_system";
   if (selectContainsNestedCoursesEmbed(select)) {
-    throw new Error("PGRST200_GUARD: nested course_offerings(...courses(...)) is forbidden");
+    throw new Error(
+      "PGRST200_GUARD: nested course_offerings(...courses(...)) is forbidden",
+    );
   }
 
   const isTimetableFlat =
@@ -160,7 +200,22 @@ export async function fetchSessionsForVersion<T = Record<string, unknown>>(
 
   q = applyStudySystemFilter(q, params.studySystem);
 
-  if (params.instructorId) q = q.eq("instructor_id", params.instructorId);
+  if (params.instructorId) {
+    const { data: participation, error } = await supabase
+      .from("existing_schedule_source_rows")
+      .select("schedule_session_id")
+      .eq("college_id", params.collegeId)
+      .eq("schedule_version_id", params.versionId!)
+      .contains("instructor_ids", [params.instructorId])
+      .not("schedule_session_id", "is", null);
+    if (error) throw error;
+    const ids = [
+      ...new Set((participation ?? []).map((p) => p.schedule_session_id!)),
+    ];
+    q = ids.length
+      ? q.or(`instructor_id.eq.${params.instructorId},id.in.(${ids.join(",")})`)
+      : q.eq("instructor_id", params.instructorId);
+  }
   if (params.sectionId) q = q.eq("section_id", params.sectionId);
   if (params.cohortId) {
     const anchors = sharedGroupIdsForCohort(
@@ -168,17 +223,23 @@ export async function fetchSessionsForVersion<T = Record<string, unknown>>(
       params.cohortId,
     );
     q = anchors.length
-      ? q.or(`cohort_id.eq.${params.cohortId},delivery_group_id.in.(${anchors.join(",")})`)
+      ? q.or(
+          `cohort_id.eq.${params.cohortId},delivery_group_id.in.(${anchors.join(",")})`,
+        )
       : q.eq("cohort_id", params.cohortId);
   }
   if (params.deliveryGroupId) {
     const links = await fetchSharedLectures(params.collegeId);
-    const anchor = links.find((l) => l.member_group_id === params.deliveryGroupId)?.anchor_group_id;
+    const anchor = links.find(
+      (l) => l.member_group_id === params.deliveryGroupId,
+    )?.anchor_group_id;
     q = q.eq("delivery_group_id", anchor ?? params.deliveryGroupId);
   }
   if (params.roomId) q = q.eq("room_id", params.roomId);
 
-  const data = await readAllReportRows((from, to) => q.order("id").range(from, to));
+  const data = await readAllReportRows((from, to) =>
+    q.order("id").range(from, to),
+  );
   return (data ?? []) as T[];
 }
 
@@ -258,9 +319,15 @@ export async function fetchProgramLevelTimetableSessions(
   });
 
   if (params.departmentId) {
-    rows = rows.filter((s) => s.course_offerings?.courses?.department_id === params.departmentId);
+    rows = rows.filter(
+      (s) =>
+        s.course_offerings?.courses?.department_id === params.departmentId ||
+        s.intake_memberships?.some(
+          (m) => m.department_id === params.departmentId,
+        ),
+    );
   }
-  return rows;
+  return expandIntakeTimetable(rows, params);
 }
 
 /** Analytics: all sessions for one version — instructor workload (single version only). */
@@ -312,7 +379,9 @@ export async function fetchRoomUtilizationSessions(
 
   q = applyStudySystemFilter(q, params.studySystem);
 
-  const data = await readAllReportRows((from, to) => q.order("id").range(from, to));
+  const data = await readAllReportRows((from, to) =>
+    q.order("id").range(from, to),
+  );
   return (data ?? []) as RoomUtilizationSession[];
 }
 
@@ -353,9 +422,15 @@ export async function fetchPublishedTimetableSessions(params: {
   });
 
   if (params.departmentId) {
-    rows = rows.filter((s) => s.course_offerings?.courses?.department_id === params.departmentId);
+    rows = rows.filter(
+      (s) =>
+        s.course_offerings?.courses?.department_id === params.departmentId ||
+        s.intake_memberships?.some(
+          (m) => m.department_id === params.departmentId,
+        ),
+    );
   }
-  return rows;
+  return expandIntakeTimetable(rows, params);
 }
 
 /** Resolved New Flow identity labels for timetable report rows. */
@@ -377,12 +452,16 @@ export async function fetchCohortDeliveryGroupLabels(
 ): Promise<CohortDeliveryGroupLabels> {
   const cohortIds = [
     ...new Set(
-      rawSessions.map((s) => s?.cohort_id as string | null).filter((v): v is string => !!v),
+      rawSessions
+        .map((s) => s?.cohort_id as string | null)
+        .filter((v): v is string => !!v),
     ),
   ];
   const deliveryGroupIds = [
     ...new Set(
-      rawSessions.map((s) => s?.delivery_group_id as string | null).filter((v): v is string => !!v),
+      rawSessions
+        .map((s) => s?.delivery_group_id as string | null)
+        .filter((v): v is string => !!v),
     ),
   ];
 
@@ -408,13 +487,15 @@ export async function fetchCohortDeliveryGroupLabels(
 
   return {
     cohorts: new Map(
-      ((cohortsRes.data ?? []) as { id: string; code: string }[]).map((c) => [c.id, c.code]),
+      ((cohortsRes.data ?? []) as { id: string; code: string }[]).map((c) => [
+        c.id,
+        c.code,
+      ]),
     ),
     deliveryGroups: new Map(
-      ((deliveryGroupsRes.data ?? []) as { id: string; group_code: string }[]).map((d) => [
-        d.id,
-        d.group_code,
-      ]),
+      (
+        (deliveryGroupsRes.data ?? []) as { id: string; group_code: string }[]
+      ).map((d) => [d.id, d.group_code]),
     ),
   };
 }
@@ -451,7 +532,10 @@ export async function fetchInstructorScheduleAcrossColleges(
 
   if (instructorError) throw instructorError;
   const byCollege = new Map(
-    (instructorRows ?? []).map((row) => [row.college_id as string, row.id as string]),
+    (instructorRows ?? []).map((row) => [
+      row.college_id as string,
+      row.id as string,
+    ]),
   );
 
   const results = await Promise.all(

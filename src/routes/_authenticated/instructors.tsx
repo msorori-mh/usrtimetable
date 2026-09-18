@@ -148,7 +148,7 @@ function InstructorsPage() {
 function InstructorDirectory() {
   const { active } = useActiveCollege();
   const { data: accessibleColleges } = useAccessibleColleges();
-  const { review } = Route.useSearch();
+  const { review } = parseInstructorReviewSearch(Route.useSearch());
   const navigate = Route.useNavigate();
   const canManage = useCanManageActiveCollege();
   const canEdit = useCanEditInstructorsActiveCollege();
@@ -1278,3 +1278,4 @@ function InstructorDirectory() {
     </div>
   );
 }
+

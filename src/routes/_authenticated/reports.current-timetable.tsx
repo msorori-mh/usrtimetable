@@ -1,3 +1,4 @@
+import { expandIntakeTimetable } from '@/lib/existing-schedules/presentation';
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
@@ -68,7 +69,7 @@ function Page() {
         versionId: ctx.versionId!,
         studySystem: ctx.studySystem,
       });
-      const sessions = hydrated as unknown as PrintSessionLike[];
+      const sessions = expandIntakeTimetable(hydrated) as unknown as PrintSessionLike[];
       const labels = await fetchCohortDeliveryGroupLabels(ctx.collegeId!, sessions);
       return { sessions, labels };
     },
@@ -188,3 +189,4 @@ function Page() {
     </ReportShell>
   );
 }
+

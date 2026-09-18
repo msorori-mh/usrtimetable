@@ -1,7 +1,10 @@
 import { fetchStudentMembershipIndex } from "@/lib/academic-delivery/student-memberships";
 import { groupsShareStudents } from "@/lib/auto-scheduler/student-partitions";
 import { supabase } from "@/integrations/supabase/client";
-import { buildInstructorCategoryMap, requiresAvailability } from "@/lib/instructor-category";
+import {
+  buildInstructorCategoryMap,
+  requiresAvailability,
+} from "@/lib/instructor-category";
 import { isInstructorAvailabilityEnforced } from "@/lib/scheduling/instructor-availability-policy";
 import { evaluateCapacityAgainstRoom } from "@/lib/schedule-builder/enrollment-trust";
 import {
@@ -37,7 +40,7 @@ export interface ProposedSession {
   start_time: string; // HH:MM or HH:MM:SS
   end_time: string;
   session_type?: string;
-  expected_students?: number;
+  expected_students?: number | null;
   enrollment_count_status?: string | null;
   replaced_by_split?: boolean;
 }
@@ -63,7 +66,8 @@ export interface ValidationResult {
 }
 
 const t = (s: string) => (s.length === 5 ? `${s}:00` : s);
-const overlap = (aS: string, aE: string, bS: string, bE: string) => t(aS) < t(bE) && t(bS) < t(aE);
+const overlap = (aS: string, aE: string, bS: string, bE: string) =>
+  t(aS) < t(bE) && t(bS) < t(aE);
 const within = (s: string, e: string, winS: string, winE: string) =>
   t(s) >= t(winS) && t(e) <= t(winE);
 
@@ -109,7 +113,10 @@ export function applyApprovedExceptions(
   scheduleVersionId: string,
   approvedExceptions?: ApprovedException[],
 ): ValidationResult {
-  const index = buildApprovedExceptionIndex(approvedExceptions ?? [], scheduleVersionId);
+  const index = buildApprovedExceptionIndex(
+    approvedExceptions ?? [],
+    scheduleVersionId,
+  );
   const enriched = conflicts.map((c) => {
     const match = findMatchingException(index, {
       scheduleVersionId,
@@ -118,7 +125,12 @@ export function applyApprovedExceptions(
       relatedSessionId: c.related_session_id,
     });
     if (!match) {
-      return { ...c, approved_exception: false, exception_id: null, exception_reason: null };
+      return {
+        ...c,
+        approved_exception: false,
+        exception_id: null,
+        exception_reason: null,
+      };
     }
     return {
       ...c,
@@ -140,6 +152,11 @@ export async function validateProposed(params: {
 }): Promise<ValidationResult> {
   const { collegeId, scheduleVersionId, sessions } = params;
   const conflicts: Conflict[] = [];
+  const { data: intakeMode, error: intakeError } = await supabase.rpc(
+    "existing_schedule_intake_version",
+    { p_version: scheduleVersionId },
+  );
+  if (intakeError) throw intakeError;
 
   const memberships = sessions.some((s) => s.delivery_group_id)
     ? await fetchStudentMembershipIndex(collegeId)
@@ -147,14 +164,24 @@ export async function validateProposed(params: {
 
   // Pull existing peers
   const existing = await fetchExistingSessions(collegeId, scheduleVersionId);
-  const peers = existing.filter((e) => !(params.excludeExistingSessionIds ?? []).includes(e.id));
+  const peers = existing.filter(
+    (e) => !(params.excludeExistingSessionIds ?? []).includes(e.id),
+  );
 
   // Pull rooms + room availability
-  const roomIds = Array.from(new Set(sessions.map((s) => s.room_id).filter(Boolean) as string[]));
-  const instructorIds = Array.from(new Set(sessions.map((s) => s.instructor_id)));
-  const offeringIds = Array.from(new Set(sessions.map((s) => s.course_offering_id)));
+  const roomIds = Array.from(
+    new Set(sessions.map((s) => s.room_id).filter(Boolean) as string[]),
+  );
+  const instructorIds = Array.from(
+    new Set(sessions.map((s) => s.instructor_id)),
+  );
+  const offeringIds = Array.from(
+    new Set(sessions.map((s) => s.course_offering_id)),
+  );
   const taIds = Array.from(
-    new Set(sessions.map((s) => s.teaching_assignment_id).filter(Boolean) as string[]),
+    new Set(
+      sessions.map((s) => s.teaching_assignment_id).filter(Boolean) as string[],
+    ),
   );
 
   const [
@@ -167,7 +194,10 @@ export async function validateProposed(params: {
     { data: taRows },
   ] = await Promise.all([
     roomIds.length
-      ? supabase.from("rooms").select("id, capacity, college_id, room_type").in("id", roomIds)
+      ? supabase
+          .from("rooms")
+          .select("id, capacity, college_id, room_type")
+          .in("id", roomIds)
       : Promise.resolve({
           data: [] as Array<{
             id: string;
@@ -212,11 +242,16 @@ export async function validateProposed(params: {
         }),
     supabase
       .from("time_slot_templates")
-      .select("study_system, day_of_week, start_time, end_time, is_active, college_id")
+      .select(
+        "study_system, day_of_week, start_time, end_time, is_active, college_id",
+      )
       .eq("college_id", collegeId)
       .eq("is_active", true),
     instructorIds.length
-      ? supabase.from("instructors").select("id, instructor_type_id").in("id", instructorIds)
+      ? supabase
+          .from("instructors")
+          .select("id, instructor_type_id")
+          .in("id", instructorIds)
       : Promise.resolve({
           data: [] as Array<{
             id: string;
@@ -226,7 +261,9 @@ export async function validateProposed(params: {
     taIds.length
       ? supabase
           .from("teaching_assignments")
-          .select("id, required_room_type, college_id, plan_course_component_id")
+          .select(
+            "id, required_room_type, college_id, plan_course_component_id",
+          )
           .in("id", taIds)
       : Promise.resolve({
           data: [] as Array<{
@@ -248,20 +285,28 @@ export async function validateProposed(params: {
         .filter((id): id is string => Boolean(id)),
     ),
   );
-  const { data: instructorTypeRows, error: instructorTypeError } = instructorTypeIds.length
-    ? await supabase
-        .from("instructor_types")
-        .select("id, code, is_external")
-        .eq("college_id", collegeId)
-        .in("id", instructorTypeIds)
-    : {
-        data: [] as Array<{ id: string; code: string | null; is_external: boolean | null }>,
-        error: null,
-      };
+  const { data: instructorTypeRows, error: instructorTypeError } =
+    instructorTypeIds.length
+      ? await supabase
+          .from("instructor_types")
+          .select("id, code, is_external")
+          .eq("college_id", collegeId)
+          .in("id", instructorTypeIds)
+      : {
+          data: [] as Array<{
+            id: string;
+            code: string | null;
+            is_external: boolean | null;
+          }>,
+          error: null,
+        };
   if (instructorTypeError) throw instructorTypeError;
 
   // Per-instructor category (permanent / external / other_college)
-  const instrCategory = buildInstructorCategoryMap(instrRows ?? [], instructorTypeRows ?? []);
+  const instrCategory = buildInstructorCategoryMap(
+    instrRows ?? [],
+    instructorTypeRows ?? [],
+  );
 
   // College isolation guard
   const allRoomsOk = (rooms ?? []).every((r) => r.college_id === collegeId);
@@ -315,11 +360,18 @@ export async function validateProposed(params: {
           !overlap(s.start_time, s.end_time, p.start_time, p.end_time)
         )
           continue;
-        if (groupsShareStudents(s.delivery_group_id, p.delivery_group_id, memberships).share)
+        if (
+          groupsShareStudents(
+            s.delivery_group_id,
+            p.delivery_group_id,
+            memberships,
+          ).share
+        )
           conflicts.push({
             code: "delivery_group_conflict",
             severity: "hard",
-            message_ar: "تعارض طلاب المحاضرة مع محاضرة أو معمل آخر لإحدى الدفعات المشاركة.",
+            message_ar:
+              "تعارض طلاب المحاضرة مع محاضرة أو معمل آخر لإحدى الدفعات المشاركة.",
             message_en: "Overlapping student membership.",
             schedule_session_id: sid,
             related_session_id: p.id,
@@ -337,11 +389,16 @@ export async function validateProposed(params: {
         conflicts.push({
           code: "instructor_conflict",
           severity: "hard",
-          message_ar: "تعارض المحاضر: نفس المحاضر لديه محاضرة أخرى في نفس الوقت.",
-          message_en: "Instructor conflict: same instructor has another overlapping session.",
+          message_ar:
+            "تعارض المحاضر: نفس المحاضر لديه محاضرة أخرى في نفس الوقت.",
+          message_en:
+            "Instructor conflict: same instructor has another overlapping session.",
           schedule_session_id: sid,
           related_session_id: p.id,
-          metadata: { instructor_id: s.instructor_id, day_of_week: s.day_of_week },
+          metadata: {
+            instructor_id: s.instructor_id,
+            day_of_week: s.day_of_week,
+          },
         });
       }
     }
@@ -376,15 +433,23 @@ export async function validateProposed(params: {
           p.day_of_week === s.day_of_week &&
           overlap(s.start_time, s.end_time, p.start_time, p.end_time) &&
           sameSectionSubgroupConflict(
-            { section_id: s.section_id, section_subgroup_id: s.section_subgroup_id ?? null },
-            { section_id: p.section_id, section_subgroup_id: p.section_subgroup_id ?? null },
+            {
+              section_id: s.section_id,
+              section_subgroup_id: s.section_subgroup_id ?? null,
+            },
+            {
+              section_id: p.section_id,
+              section_subgroup_id: p.section_subgroup_id ?? null,
+            },
           )
         ) {
           conflicts.push({
             code: "section_conflict",
             severity: "hard",
-            message_ar: "تعارض المجموعة: نفس المجموعة لديها محاضرة أخرى في نفس الوقت.",
-            message_en: "Section conflict: same section has another overlapping session.",
+            message_ar:
+              "تعارض المجموعة: نفس المجموعة لديها محاضرة أخرى في نفس الوقت.",
+            message_en:
+              "Section conflict: same section has another overlapping session.",
             schedule_session_id: sid,
             related_session_id: p.id,
             metadata: {
@@ -408,8 +473,10 @@ export async function validateProposed(params: {
         | undefined;
       const expected = s.expected_students ?? offering?.expected_students ?? 0;
       const enrollStatus =
-        s.enrollment_count_status ?? offering?.enrollment_count_status ?? "unverified";
-      if (room) {
+        s.enrollment_count_status ??
+        offering?.enrollment_count_status ??
+        "unverified";
+      if (room && !intakeMode) {
         const cap = evaluateCapacityAgainstRoom({
           enrollmentCount: expected,
           enrollmentStatus: enrollStatus,
@@ -470,7 +537,9 @@ export async function validateProposed(params: {
         });
       }
       const componentType = s.teaching_assignment_id
-        ? (componentTypeByAssignment.get(s.teaching_assignment_id) ?? s.session_type ?? null)
+        ? (componentTypeByAssignment.get(s.teaching_assignment_id) ??
+          s.session_type ??
+          null)
         : (s.session_type ?? null);
       // Practical components requiring computer_lab may legitimately use a
       // lecture_hall (same rule as is_assignment_room_compatible in the DB).
@@ -519,10 +588,16 @@ export async function validateProposed(params: {
         conflicts.push({
           code: "instructor_availability_required",
           severity: "hard",
-          message_ar: "المحاضر من كلية أخرى يتطلب تعريف أوقات التوفر قبل الجدولة.",
-          message_en: "Instructor availability is mandatory for this category and not defined.",
+          message_ar:
+            "المحاضر من كلية أخرى يتطلب تعريف أوقات التوفر قبل الجدولة.",
+          message_en:
+            "Instructor availability is mandatory for this category and not defined.",
           schedule_session_id: sid,
-          metadata: { instructor_id: s.instructor_id, category: cat, day_of_week: s.day_of_week },
+          metadata: {
+            instructor_id: s.instructor_id,
+            category: cat,
+            day_of_week: s.day_of_week,
+          },
         });
       }
     } else {
@@ -534,10 +609,14 @@ export async function validateProposed(params: {
           w.availability_type === "unavailable" &&
           overlap(s.start_time, s.end_time, w.start_time, w.end_time),
       );
-      const positiveWindows = hardWindows.filter((w) => w.availability_type !== "unavailable");
+      const positiveWindows = hardWindows.filter(
+        (w) => w.availability_type !== "unavailable",
+      );
       const fits =
         positiveWindows.length === 0 ||
-        positiveWindows.some((w) => within(s.start_time, s.end_time, w.start_time, w.end_time));
+        positiveWindows.some((w) =>
+          within(s.start_time, s.end_time, w.start_time, w.end_time),
+        );
       if (blocked || !fits) {
         conflicts.push({
           code: "instructor_availability",
@@ -549,7 +628,11 @@ export async function validateProposed(params: {
             ? "Session overlaps instructor hard unavailability."
             : "Session outside instructor's hard availability window.",
           schedule_session_id: sid,
-          metadata: { instructor_id: s.instructor_id, day_of_week: s.day_of_week, category: cat },
+          metadata: {
+            instructor_id: s.instructor_id,
+            day_of_week: s.day_of_week,
+            category: cat,
+          },
         });
       }
     }
@@ -561,7 +644,9 @@ export async function validateProposed(params: {
       );
       if (
         windows.length > 0 &&
-        !windows.some((w) => within(s.start_time, s.end_time, w.start_time, w.end_time))
+        !windows.some((w) =>
+          within(s.start_time, s.end_time, w.start_time, w.end_time),
+        )
       ) {
         conflicts.push({
           code: "room_availability",
@@ -584,20 +669,28 @@ export async function validateProposed(params: {
     );
     if (
       sysTemplates.length > 0 &&
-      !sysTemplates.some((w) => within(s.start_time, s.end_time, w.start_time, w.end_time))
+      !sysTemplates.some((w) =>
+        within(s.start_time, s.end_time, w.start_time, w.end_time),
+      )
     ) {
       conflicts.push({
         code: "study_system_time_template",
         severity: "hard",
-        message_ar: "المحاضرة خارج قوالب أوقات المحاضرات المسموحة لنظام الدراسة.",
-        message_en: "Session outside allowed time-slot templates for the study system.",
+        message_ar:
+          "المحاضرة خارج قوالب أوقات المحاضرات المسموحة لنظام الدراسة.",
+        message_en:
+          "Session outside allowed time-slot templates for the study system.",
         schedule_session_id: sid,
         metadata: { study_system: s.study_system, day_of_week: s.day_of_week },
       });
     }
   }
 
-  return applyApprovedExceptions(conflicts, scheduleVersionId, params.approvedExceptions);
+  return applyApprovedExceptions(
+    conflicts,
+    scheduleVersionId,
+    params.approvedExceptions,
+  );
 }
 
 /**
@@ -649,8 +742,15 @@ export async function validateScheduleVersion(params: {
     });
     conflicts.push(...sub.conflicts);
   }
-  const approvedExceptions = await loadApprovedExceptions({ scheduleVersionId, collegeId });
-  const result = applyApprovedExceptions(conflicts, scheduleVersionId, approvedExceptions);
+  const approvedExceptions = await loadApprovedExceptions({
+    scheduleVersionId,
+    collegeId,
+  });
+  const result = applyApprovedExceptions(
+    conflicts,
+    scheduleVersionId,
+    approvedExceptions,
+  );
 
   if (!persist) return { checkId: null, result };
 

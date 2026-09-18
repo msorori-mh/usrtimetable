@@ -1,3 +1,4 @@
+import { attachIntakePresentation } from '../existing-schedules/report-data';
 import { fetchSharedLectures } from "@/lib/academic-delivery/shared-lectures";
 /**
  * Read-only Schedule Builder workspace queries.
@@ -224,7 +225,7 @@ export async function hydrateWorkspaceSessions(
       ]),
     ],
   }));
-  return assembleWorkspaceSessionRows(enriched, {
+  return attachIntakePresentation(assembleWorkspaceSessionRows(enriched, {
     offerings: toMap(offerings),
     courses: toMap(courses),
     departments: toMap(departments),
@@ -234,7 +235,7 @@ export async function hydrateWorkspaceSessions(
     subgroups: toMap(subgroups),
     instructors: toMap(instructors),
     rooms: toMap(rooms),
-  });
+  }));
 }
 
 export async function fetchWorkspaceSessions(params: {
@@ -373,3 +374,4 @@ export async function fetchWorkspaceTimeTemplates(
   if (error) throw error;
   return (data ?? []) as WorkspaceTimeTemplate[];
 }
+

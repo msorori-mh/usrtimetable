@@ -12,6 +12,7 @@ const tsxCli = path.join(root, "node_modules", "tsx", "dist", "cli.mjs");
 export const HARNESS_TIMEOUT_MS = 120_000;
 
 export const harnesses = [
+  "existing-schedule-intake.harness.ts",
   "exception-aware-impl-01a.harness.ts",
   "f001-session-version-integrity.harness.ts",
   "f002-validate-schedule-version.harness.ts",
@@ -126,8 +127,12 @@ export function runHarnesses({
   out = process.stdout,
 } = {}) {
   if (!fileExists(tsxCli)) {
-    out.write(`HARNESS_RUNNER_ERROR: local tsx runtime is missing at ${tsxCli}\n`);
-    out.write("Install the locked dependencies before running the harness suite.\n");
+    out.write(
+      `HARNESS_RUNNER_ERROR: local tsx runtime is missing at ${tsxCli}\n`,
+    );
+    out.write(
+      "Install the locked dependencies before running the harness suite.\n",
+    );
     return 2;
   }
 
@@ -135,7 +140,9 @@ export function runHarnesses({
   for (const file of harnesses) {
     out.write(`\n=== Running ${file} ===\n`);
     // Component regressions use the application's JSX configuration.
-    const fileTsconfig = file.startsWith("../") ? path.join(root, "tsconfig.json") : tsconfig;
+    const fileTsconfig = file.startsWith("../")
+      ? path.join(root, "tsconfig.json")
+      : tsconfig;
     const result = spawn(
       process.execPath,
       [tsxCli, "--tsconfig", fileTsconfig, path.join(__dirname, file)],
@@ -170,6 +177,9 @@ export function runHarnesses({
   return totals.fail === 0 ? 0 : 1;
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (
+  process.argv[1] &&
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
   process.exitCode = runHarnesses();
 }

@@ -15,12 +15,24 @@ import {
 } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ReportSection, ReportDataTable } from "@/components/reports/report-section";
+import {
+  ReportSection,
+  ReportDataTable,
+} from "@/components/reports/report-section";
 import { filterRowsBySearch } from "@/lib/reports/search";
 import { hoursBetween } from "@/lib/reports/export";
-import { QUOTA_UNDEFINED_AR, computeQuotaBalance } from "@/lib/reports/instructor-quota";
+import {
+  PENDING_QUOTA_AR,
+  PENDING_SPLIT_AR,
+} from "@/lib/existing-schedules/presentation";
+import {
+  QUOTA_UNDEFINED_AR,
+  computeQuotaBalance,
+} from "@/lib/reports/instructor-quota";
 
-export const Route = createFileRoute("/_authenticated/reports/instructor-workload")({
+export const Route = createFileRoute(
+  "/_authenticated/reports/instructor-workload",
+)({
   head: () => ({ meta: [{ title: "العبء المجدول للمحاضرين" }] }),
   component: Page,
 });
@@ -99,7 +111,9 @@ function WorkloadPage() {
       const query = () =>
         supabase
           .from("schedule_sessions")
-          .select("instructor_id, start_time, end_time, course_offering_id, source_type")
+          .select(
+            "id, instructor_id, delivery_group_id, start_time, end_time, course_offering_id, source_type",
+          )
           .eq("college_id", active!.id)
           .eq("schedule_version_id", context.versionId!)
           .eq("replaced_by_split", false)
@@ -109,8 +123,52 @@ function WorkloadPage() {
         const { data, error } = await query().range(from, from + 499);
         if (error) throw error;
         rows.push(...(data ?? []));
-        if ((data ?? []).length < 500) return rows;
+        if ((data ?? []).length < 500) break;
       }
+      const { data: sources, error } = await supabase
+        .from("existing_schedule_source_rows")
+        .select("schedule_session_id,instructor_ids,shared_member")
+        .eq("schedule_version_id", context.versionId!)
+        .eq("shared_member", false);
+      if (error) throw error;
+      const shared = (sources ?? []).filter((s) => s.instructor_ids.length > 1);
+      const groupIds = rows
+        .filter((r) => shared.some((s) => s.schedule_session_id === r.id))
+        .map((r) => r.delivery_group_id)
+        .filter((id): id is string => !!id);
+      const allocations = groupIds.length
+        ? await supabase
+            .from("teaching_assignments")
+            .select("delivery_group_id,instructor_id,assigned_component_hours")
+            .in("delivery_group_id", groupIds)
+            .eq("is_active", true)
+        : { data: [], error: null };
+      if (allocations.error) throw allocations.error;
+      return rows.flatMap((row) => {
+        const source = shared.find((s) => s.schedule_session_id === row.id);
+        if (!source)
+          return [
+            {
+              ...row,
+              split_pending: false,
+              credited_hours: null as number | null,
+            },
+          ];
+        return source.instructor_ids.map((id) => {
+          const allocated =
+            allocations.data?.find(
+              (a) =>
+                a.delivery_group_id === row.delivery_group_id &&
+                a.instructor_id === id,
+            )?.assigned_component_hours ?? null;
+          return {
+            ...row,
+            instructor_id: id,
+            split_pending: allocated === null,
+            credited_hours: allocated,
+          };
+        });
+      });
     },
   });
 
@@ -126,15 +184,27 @@ function WorkloadPage() {
       return [];
     const byIns = new Map<
       string,
-      { hours: number; offerings: Set<string>; sources: Record<string, number> }
+      {
+        hours: number;
+        credited: number;
+        pending: boolean;
+        offerings: Set<string>;
+        sources: Record<string, number>;
+      }
     >();
     for (const s of sessions ?? []) {
       const m = byIns.get(s.instructor_id) ?? {
         hours: 0,
+        credited: 0,
+        pending: false,
         offerings: new Set(),
         sources: {},
       };
       m.hours += hoursBetween(s.start_time as string, s.end_time as string);
+      m.credited +=
+        s.credited_hours ??
+        hoursBetween(s.start_time as string, s.end_time as string);
+      m.pending ||= s.split_pending;
       m.offerings.add(s.course_offering_id as string);
       const st = (s.source_type as string) ?? "manual";
       m.sources[st] = (m.sources[st] ?? 0) + 1;
@@ -143,6 +213,8 @@ function WorkloadPage() {
     return (instructors ?? []).map((i) => {
       const agg = byIns.get(i.id) ?? {
         hours: 0,
+        credited: 0,
+        pending: false,
         offerings: new Set(),
         sources: {},
       };
@@ -150,7 +222,7 @@ function WorkloadPage() {
       const balance = computeQuotaBalance({
         maxWeeklyHours: i.max_weekly_hours,
         adminReleaseHours: i.administrative_release_hours,
-        assignedHours: agg.hours,
+        assignedHours: agg.credited,
       });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const dep = (i as any).departments?.name ?? "";
@@ -167,9 +239,19 @@ function WorkloadPage() {
         max_weekly_hours: balance.baseHours ?? QUOTA_UNDEFINED_AR,
         admin_release: balance.releaseHours,
         effective_quota: balance.netHours ?? QUOTA_UNDEFINED_AR,
-        scheduled_hours: balance.assignedHours,
-        overload: balance.overloadHours ?? QUOTA_UNDEFINED_AR,
-        underload: balance.deficitHours ?? QUOTA_UNDEFINED_AR,
+        scheduled_hours: agg.hours,
+        status:
+          balance.netHours === null
+            ? PENDING_QUOTA_AR
+            : agg.pending
+              ? PENDING_SPLIT_AR
+              : "مكتمل",
+        overload: agg.pending
+          ? QUOTA_UNDEFINED_AR
+          : (balance.overloadHours ?? QUOTA_UNDEFINED_AR),
+        underload: agg.pending
+          ? QUOTA_UNDEFINED_AR
+          : (balance.deficitHours ?? QUOTA_UNDEFINED_AR),
         courses_count: agg.offerings.size,
         source_breakdown: srcStr,
       };
@@ -186,7 +268,10 @@ function WorkloadPage() {
   ]);
 
   // Search is presentation-only: identical row keys and values, fewer visible rows.
-  const rows = useMemo(() => filterRowsBySearch(allRows, search), [allRows, search]);
+  const rows = useMemo(
+    () => filterRowsBySearch(allRows, search),
+    [allRows, search],
+  );
 
   const headers = [
     { key: "instructor", label: "المحاضر" },
@@ -201,15 +286,23 @@ function WorkloadPage() {
     { key: "underload", label: "نقص" },
     { key: "courses_count", label: "عدد المقررات" },
     { key: "source_breakdown", label: "تفصيل المصدر" },
+    { key: "status", label: "الحالة" },
   ];
 
-  const totalHours = rows.reduce((sum, r) => sum + Number(r.scheduled_hours ?? 0), 0);
+  const totalHours = rows.reduce(
+    (sum, r) => sum + Number(r.scheduled_hours ?? 0),
+    0,
+  );
   const overloaded = rows.filter((r) => Number(r.overload) > 0).length;
   const underloaded = rows.filter((r) => Number(r.underload) > 0).length;
   const deptLabel =
-    deptId === "all" ? "كل الأقسام" : (depts ?? []).find((d) => d.id === deptId)?.name;
+    deptId === "all"
+      ? "كل الأقسام"
+      : (depts ?? []).find((d) => d.id === deptId)?.name;
   const typeLabel =
-    typeId === "all" ? "كل الأنواع" : (types ?? []).find((t) => t.id === typeId)?.name_ar;
+    typeId === "all"
+      ? "كل الأنواع"
+      : (types ?? []).find((t) => t.id === typeId)?.name_ar;
 
   return (
     <ReportShell
@@ -222,11 +315,21 @@ function WorkloadPage() {
       error={context.error ?? instructorError ?? sessionError}
       reportContext={context}
       filterSummary={context.filterSummary}
-      notReadyMessage={context.selectedVersion ? undefined : "اختر فصلاً ونسخة جدول لعرض الساعات."}
-      emptyMessage={search ? "لا محاضر مطابق للبحث." : "لا توجد بيانات بهذه المعايير."}
+      notReadyMessage={
+        context.selectedVersion
+          ? undefined
+          : "اختر فصلاً ونسخة جدول لعرض الساعات."
+      }
+      emptyMessage={
+        search ? "لا محاضر مطابق للبحث." : "لا توجد بيانات بهذه المعايير."
+      }
       kpis={[
         { label: "المحاضرون", value: rows.length },
-        { label: "إجمالي الساعات", value: totalHours.toFixed(2), tone: "accent" },
+        {
+          label: "إجمالي الساعات",
+          value: totalHours.toFixed(2),
+          tone: "accent",
+        },
         {
           label: "يتجاوز الحد الأسبوعي",
           value: overloaded,
@@ -248,7 +351,10 @@ function WorkloadPage() {
             onChange: setSearch,
             placeholder: "ابحث باسم المحاضر أو القسم…",
           }}
-          extraSummary={[`القسم: ${deptLabel ?? "—"}`, `النوع: ${typeLabel ?? "—"}`]}
+          extraSummary={[
+            `القسم: ${deptLabel ?? "—"}`,
+            `النوع: ${typeLabel ?? "—"}`,
+          ]}
           onClear={() => {
             setDeptId("all");
             setTypeId("all");
@@ -291,11 +397,17 @@ function WorkloadPage() {
           caption="أعباء المحاضرين الأسبوعية"
           columns={[
             { key: "instructor", label: "المحاضر" },
+            { key: "status", label: "الحالة" },
             { key: "department", label: "القسم", secondary: true },
             { key: "rank", label: "الرتبة", secondary: true },
             { key: "type", label: "النوع", secondary: true },
             { key: "max_weekly_hours", label: "الحد الأسبوعي", numeric: true },
-            { key: "admin_release", label: "خصم إداري", numeric: true, secondary: true },
+            {
+              key: "admin_release",
+              label: "خصم إداري",
+              numeric: true,
+              secondary: true,
+            },
             { key: "scheduled_hours", label: "ساعات مجدوَلة", numeric: true },
             {
               key: "overload",
@@ -319,7 +431,12 @@ function WorkloadPage() {
                   String(r.underload)
                 ),
             },
-            { key: "courses_count", label: "عدد المقررات", numeric: true, secondary: true },
+            {
+              key: "courses_count",
+              label: "عدد المقررات",
+              numeric: true,
+              secondary: true,
+            },
             {
               key: "source_breakdown",
               label: "تفصيل المصدر",

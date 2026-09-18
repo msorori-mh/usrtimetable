@@ -109,13 +109,14 @@ export type Database = {
       }
       academic_cohorts: {
         Row: {
+          existing_schedule: boolean
           active: boolean
           code: string | null
           college_id: string
           count_status: string
           created_at: string
-          entry_year: number
-          expected_students: number
+          entry_year: number | null
+          expected_students: number | null
           id: string
           level_id: string
           program_id: string
@@ -125,13 +126,14 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          existing_schedule?: boolean
           active?: boolean
           code?: string | null
           college_id: string
           count_status?: string
           created_at?: string
-          entry_year: number
-          expected_students?: number
+          entry_year: number | null
+          expected_students?: number | null
           id?: string
           level_id: string
           program_id: string
@@ -141,13 +143,14 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          existing_schedule?: boolean
           active?: boolean
           code?: string | null
           college_id?: string
           count_status?: string
           created_at?: string
-          entry_year?: number
-          expected_students?: number
+          entry_year?: number | null
+          expected_students?: number | null
           id?: string
           level_id?: string
           program_id?: string
@@ -959,12 +962,13 @@ export type Database = {
       }
       course_offerings: {
         Row: {
+          existing_schedule: boolean
           college_id: string
           course_id: string
           created_at: string
           enrollment_count_status: string
           enrollment_count_updated_at: string | null
-          expected_students: number
+          expected_students: number | null
           id: string
           is_active: boolean
           level_id: string | null
@@ -979,12 +983,13 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          existing_schedule?: boolean
           college_id: string
           course_id: string
           created_at?: string
           enrollment_count_status?: string
           enrollment_count_updated_at?: string | null
-          expected_students?: number
+          expected_students?: number | null
           id?: string
           is_active?: boolean
           level_id?: string | null
@@ -999,12 +1004,13 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          existing_schedule?: boolean
           college_id?: string
           course_id?: string
           created_at?: string
           enrollment_count_status?: string
           enrollment_count_updated_at?: string | null
-          expected_students?: number
+          expected_students?: number | null
           id?: string
           is_active?: boolean
           level_id?: string | null
@@ -1219,7 +1225,7 @@ export type Database = {
           component_id: string
           created_at: string
           excluded_from_standard_workload: boolean
-          expected_students: number
+          expected_students: number | null
           group_code: string
           group_number: number | null
           id: string
@@ -1235,7 +1241,7 @@ export type Database = {
           component_id: string
           created_at?: string
           excluded_from_standard_workload?: boolean
-          expected_students?: number
+          expected_students?: number | null
           group_code: string
           group_number?: number | null
           id?: string
@@ -1251,7 +1257,7 @@ export type Database = {
           component_id?: string
           created_at?: string
           excluded_from_standard_workload?: boolean
-          expected_students?: number
+          expected_students?: number | null
           group_code?: string
           group_number?: number | null
           id?: string
@@ -2726,7 +2732,7 @@ export type Database = {
           day_of_week: number
           delivery_group_id: string | null
           end_time: string
-          expected_students: number
+          expected_students: number | null
           id: string
           instructor_id: string
           is_locked: boolean
@@ -2755,7 +2761,7 @@ export type Database = {
           day_of_week: number
           delivery_group_id?: string | null
           end_time: string
-          expected_students?: number
+          expected_students?: number | null
           id?: string
           instructor_id: string
           is_locked?: boolean
@@ -2784,7 +2790,7 @@ export type Database = {
           day_of_week?: number
           delivery_group_id?: string | null
           end_time?: string
-          expected_students?: number
+          expected_students?: number | null
           id?: string
           instructor_id?: string
           is_locked?: boolean
@@ -3705,7 +3711,7 @@ export type Database = {
           course_offering_id: string
           created_at: string
           delivery_group_id: string | null
-          expected_students: number
+          expected_students: number | null
           id: string
           instructor_id: string
           is_active: boolean
@@ -3725,7 +3731,7 @@ export type Database = {
           course_offering_id: string
           created_at?: string
           delivery_group_id?: string | null
-          expected_students?: number
+          expected_students?: number | null
           id?: string
           instructor_id: string
           is_active?: boolean
@@ -3745,7 +3751,7 @@ export type Database = {
           course_offering_id?: string
           created_at?: string
           delivery_group_id?: string | null
-          expected_students?: number
+          expected_students?: number | null
           id?: string
           instructor_id?: string
           is_active?: boolean
@@ -4029,6 +4035,11 @@ export type Database = {
       }
     }
     Functions: {
+      complete_existing_schedule_source: {
+        Args: { p_source: string; p_day: number; p_start: string | null; p_end: string | null; p_room: string | null; p_allocations?: Json | null }
+        Returns: Json
+      }
+
       _avail_date_span: {
         Args: { p_end_date: string; p_start_date: string }
         Returns: unknown
@@ -5167,3 +5178,4 @@ export const Constants = {
     },
   },
 } as const
+

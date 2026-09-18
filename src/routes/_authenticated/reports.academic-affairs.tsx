@@ -321,7 +321,7 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
               كصفر ولا تدخل في المجاميع.
               {workloadTotals.missingMembers > 0 && (
                 <span className="mt-2 block">
-                  {`${workloadTotals.missingMembers} عضواً بلا نصاب معتمد ومستبعدون من المجاميع.`}{" "}
+                  {`${workloadTotals.missingMembers} عضواً بانتظار استكمال النصاب أو توزيع التدريس المشترك؛ استُبعدوا من مجاميع الزيادة والنقص.`}{" "}
                   <Link to="/instructors" className="underline">
                     تصحيح النصاب في صفحة المحاضرين
                   </Link>
@@ -416,3 +416,4 @@ function Filter({
     </ReportFilterField>
   );
 }
+

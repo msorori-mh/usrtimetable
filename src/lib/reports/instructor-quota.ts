@@ -97,7 +97,7 @@ export const QUOTA_STATUS_LABEL_AR: Record<QuotaBalance["status"], string> = {
   overload: "ساعات زائدة",
   deficit: "نقص في النصاب",
   balanced: "مكتمل النصاب",
-  missing: "النصاب غير محدد",
+  missing: "الساعات الزائدة بانتظار استكمال بيانات النصاب",
 };
 
 export const QUOTA_SOURCE_LABEL_AR: Record<QuotaSource, string> = {
@@ -125,3 +125,4 @@ export function summarizeQuotaBalances(balances: QuotaBalance[]) {
     deficitMembers: counted.filter((b) => (b.deficitHours ?? 0) > 0).length,
   };
 }
+

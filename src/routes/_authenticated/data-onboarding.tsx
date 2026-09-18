@@ -1,5 +1,6 @@
+import { ExistingScheduleWorkspace } from "@/components/data-onboarding/existing-schedule-workspace";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
 import { useActiveCollege } from "@/hooks/use-colleges";
@@ -27,6 +28,7 @@ export const Route = createFileRoute("/_authenticated/data-onboarding")({
 function DataOnboardingPage() {
   const { active } = useActiveCollege();
   const canManage = useCanManageActiveCollege();
+  const [existingMode, setExistingMode] = useState(false);
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const { data, isLoading, isFetching, isError, refetch } = useQuery({
@@ -37,21 +39,34 @@ function DataOnboardingPage() {
   });
   const step =
     search.step ??
-    (data ? resolvePreparationProgress(data.steps).nextStepId : "academic_structure");
+    (data
+      ? resolvePreparationProgress(data.steps).nextStepId
+      : "academic_structure");
   // Pin the inspected step so a successful import keeps its result visible while readiness refreshes.
   useEffect(() => {
-    if (data && !search.step) void navigate({ search: { ...search, step }, replace: true });
+    if (data && !search.step)
+      void navigate({ search: { ...search, step }, replace: true });
   }, [data, search, step, navigate]);
-  const onSelect = (next: PreparationStepId, entity?: ImportEntity, help?: boolean) => {
+  const onSelect = (
+    next: PreparationStepId,
+    entity?: ImportEntity,
+    help?: boolean,
+  ) => {
     void navigate({
-      search: { step: next, ...(entity ? { entity } : {}), ...(help ? { help: true } : {}) },
+      search: {
+        step: next,
+        ...(entity ? { entity } : {}),
+        ...(help ? { help: true } : {}),
+      },
       replace: true,
     });
   };
   const entities = preparationEntities(step, data?.hasElectives ?? false);
   // A supported optional import remains reachable through old bookmarked import links.
   const allowedEntities =
-    search.entity && !entities.includes(search.entity) ? [search.entity] : entities;
+    search.entity && !entities.includes(search.entity)
+      ? [search.entity]
+      : entities;
   const orderedEntities = search.entity
     ? [search.entity, ...allowedEntities.filter((e) => e !== search.entity)]
     : allowedEntities;
@@ -66,7 +81,15 @@ function DataOnboardingPage() {
         </div>
         <CollegeSwitcher />
       </header>
-      {!active ? (
+      {active && (
+        <ExistingScheduleWorkspace
+          key={active.id}
+          collegeId={active.id}
+          canManage={canManage}
+          onModeChange={setExistingMode}
+        />
+      )}
+      {existingMode ? null : !active ? (
         <Card className="p-6 text-center text-muted-foreground">
           اختر الكلية لعرض خطوات تجهيز بياناتها.
         </Card>
@@ -76,7 +99,10 @@ function DataOnboardingPage() {
         </Card>
       ) : isError ? (
         <Card className="space-y-3 p-5" role="alert">
-          <p>تعذر تحديث حالة البيانات. أعد المحاولة للتأكد من النواقص قبل المتابعة.</p>
+          <p>
+            تعذر تحديث حالة البيانات. أعد المحاولة للتأكد من النواقص قبل
+            المتابعة.
+          </p>
           <Button onClick={() => void refetch()} disabled={isFetching}>
             إعادة المحاولة
           </Button>
@@ -98,7 +124,10 @@ function DataOnboardingPage() {
                 onClick={() => void refetch()}
                 disabled={isFetching}
               >
-                <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} /> إعادة الفحص
+                <RefreshCw
+                  className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`}
+                />{" "}
+                إعادة الفحص
               </Button>
             </div>
           </div>

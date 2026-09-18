@@ -1,3 +1,4 @@
+import type { IntakeMembership } from '../existing-schedules/presentation';
 /**
  * Pure client-side hydration for Schedule Builder sessions.
  * No React / Supabase — safe for harnesses.
@@ -31,6 +32,9 @@ export interface WorkspaceSessionFlatRow {
 
 /** Nested shape expected by mapWorkspaceSessions (assembled client-side). */
 export interface WorkspaceSessionHydratedRow {
+  intake_memberships?: IntakeMembership[];
+  intake_instructor_ids?: string[];
+  intake_pending_reasons?: string[];
   id: string;
   day_of_week: number;
   start_time: string;
@@ -245,3 +249,4 @@ export function attachCohortTermHeadcounts(
           : null,
   }));
 }
+
