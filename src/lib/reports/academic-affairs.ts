@@ -178,18 +178,24 @@ export function buildAcademicReport(
     });
 
   if (kind === "shortages")
-    return selectedGroups
-      .filter((g) => g.remaining_hours > 0)
-      .map((g) => ({
-        ...groupInfo(g),
-        assigned: round(g.assigned_hours_total),
-        shortage: round(g.remaining_hours),
-        instructors:
-          g.instructors
-            .filter((i) => i.is_active)
-            .map((i) => i.instructor_name)
-            .join("، ") || "لم يُسند",
-      }));
+    return selectedGroups.flatMap((g) => {
+      const active = g.instructors.filter((i) => i.is_active);
+      const pendingSharedHours =
+        active.length > 1 && active.some((i) => i.assigned_component_hours === null)
+          ? round(g.component_hours ?? 0)
+          : 0;
+      if (g.remaining_hours <= 0 && pendingSharedHours <= 0) return [];
+      return [
+        {
+          ...groupInfo(g),
+          assigned: pendingSharedHours > 0 ? null : round(g.assigned_hours_total),
+          shared_hours_pending: pendingSharedHours,
+          shortage: pendingSharedHours > 0 ? null : round(g.remaining_hours),
+          instructors: active.map((i) => i.instructor_name).join("، ") || "لم يُسند",
+          note: pendingSharedHours > 0 ? PENDING_SPLIT_AR : "",
+        },
+      ];
+    });
 
   const relatedInstructorIds = new Set(
     groups.flatMap((g) => g.instructors.filter((i) => i.is_active).map((i) => i.instructor_id)),
@@ -379,5 +385,6 @@ export const ACADEMIC_REPORT_HEADERS: Record<AcademicReportKind, { key: string; 
       { key: "shared_hours_pending", label: "ساعات مشتركة بانتظار التوزيع" },
       { key: "shortage", label: "عجز الإسناد" },
       { key: "instructors", label: "أعضاء هيئة التدريس" },
+      { key: "note", label: "ملاحظة" },
     ],
   };
