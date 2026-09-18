@@ -1203,3 +1203,125 @@
     background: white;
   }
 }
+
+/* Individual instructor paper: details first, weekly overview on a fresh page. */
+@media print {
+  main:has(.instructor-print-readable),
+  .report-print-root:has(.instructor-print-readable),
+  .report-page-content:has(.instructor-print-readable) > tr > td,
+  .instructor-print-readable {
+    background: white !important;
+  }
+  .instructor-print-readable .report-data-table th,
+  .instructor-print-readable .report-data-table td {
+    font-size: 10pt;
+    line-height: 1.35;
+    padding: 1.2mm 1.2mm;
+    vertical-align: middle;
+    text-align: right;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+  .instructor-print-readable .report-data-table th {
+    text-align: center;
+    font-weight: 700;
+  }
+  .instructor-print-readable .instructor-detail-cell {
+    min-width: 0;
+    line-height: 1.35;
+  }
+  .instructor-print-readable .instructor-detail-cell div,
+  .instructor-print-readable .instructor-detail-cell span {
+    font-size: 10pt;
+    line-height: 1.35;
+    color: #172b3a;
+  }
+  .instructor-print-readable .instructor-detail-cell .font-semibold {
+    font-weight: 700;
+  }
+  .instructor-print-readable .instructor-detail-code {
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+  .instructor-print-readable .instructor-detail-time {
+    text-align: center;
+  }
+  .instructor-print-readable .instructor-detail-time bdi {
+    display: inline-block;
+    white-space: nowrap;
+    font-size: 9pt;
+  }
+  .instructor-print-readable [data-testid="instructor-college-hours"] {
+    padding: 2mm;
+    font-size: 10pt;
+  }
+  .instructor-print-readable [data-testid="instructor-college-hours"] th,
+  .instructor-print-readable [data-testid="instructor-college-hours"] td {
+    font-size: 10pt;
+    padding: 1mm 1.5mm;
+  }
+  .instructor-print-readable [data-testid="instructor-college-hours"] p {
+    font-size: 9pt;
+  }
+  .instructor-print-readable .report-timetable-grid > .grid {
+    --report-slot-height: min(96px, calc(190mm / var(--report-hours)));
+    break-inside: avoid;
+    background: white;
+  }
+  .instructor-print-readable .report-timetable-grid button {
+    padding: 1mm;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 0.5mm;
+    color: #172b3a;
+  }
+  .instructor-print-readable .report-timetable-grid button div,
+  .instructor-print-readable .report-timetable-grid button span,
+  .instructor-print-readable .report-timetable-grid button bdi {
+    font-size: 9pt !important;
+    line-height: 1.4;
+  }
+  .instructor-print-readable .report-timetable-grid button .schedule-card-title {
+    font-size: 10pt !important;
+    font-weight: 700;
+  }
+  .instructor-print-readable .report-timetable-grid .schedule-card-location {
+    display: block;
+    -webkit-line-clamp: unset;
+  }
+  .instructor-print-readable .report-timetable-grid .schedule-card-location bdi {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .instructor-print-readable .report-timetable-grid > .grid > div {
+    position: relative;
+  }
+}
+
+@media print {
+  .instructor-print-readable .report-timetable-grid button > div {
+    flex-shrink: 0;
+  }
+  .instructor-print-readable .report-timetable-grid button .schedule-card-title {
+    display: block;
+    -webkit-line-clamp: unset;
+    overflow: visible;
+  }
+  .instructor-print-readable [data-testid="instructor-college-hours"] th,
+  .instructor-print-readable [data-testid="instructor-college-hours"] td {
+    font-size: 9.5pt;
+    line-height: 1.2;
+    padding: 0.7mm 1.5mm;
+  }
+  .instructor-print-readable [data-testid="instructor-college-hours"] h2 {
+    font-size: 11pt;
+    margin-bottom: 1mm;
+    line-height: 1.3;
+  }
+  .instructor-print-readable [data-testid="instructor-college-hours"] p {
+    font-size: 8.5pt;
+    line-height: 1.3;
+    margin-top: 1mm;
+  }
+}

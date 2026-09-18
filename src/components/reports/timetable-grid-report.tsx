@@ -84,6 +84,7 @@ export interface TimetableGridReportProps {
   startHour?: number;
   endHour?: number;
   hideInstructor?: boolean;
+  compactPrint?: boolean;
 }
 
 export function TimetableGridReport({
@@ -92,6 +93,7 @@ export function TimetableGridReport({
   startHour: startHourProp,
   endHour: endHourProp,
   hideInstructor = false,
+  compactPrint = false,
 }: TimetableGridReportProps) {
   const [selected, setSelected] = useState<TimetableReportSession | null>(null);
   const workingDays = useMemo(() => {
@@ -110,8 +112,8 @@ export function TimetableGridReport({
 
   const slots = useMemo(() => weeklyGridHourSlots({ startHour, endHour }), [startHour, endHour]);
 
-  const SLOT_PX = 56;
-  const totalHeight = Math.max(endHour - startHour, 1) * SLOT_PX;
+  const slotHeight = "var(--report-slot-height, 56px)";
+  const totalHeight = `calc(${Math.max(endHour - startHour, 1)} * ${slotHeight})`;
 
   const placedByDay = useMemo(() => {
     const map = new Map<number, PlacedSession[]>();
@@ -129,14 +131,21 @@ export function TimetableGridReport({
     );
   }
 
+  const colleges = [...new Set(sessions.map((s) => s.college_name).filter(Boolean))];
   return (
     <>
+      {compactPrint && colleges.length > 0 && (
+        <p className="mb-2 text-sm" aria-label="دليل الكليات في الجدول الأسبوعي">
+          {colleges.map((college, i) => `ك${i + 1}: ${college}`).join(" · ")}
+        </p>
+      )}
       <div className="report-timetable-grid overflow-auto border rounded-md" dir="rtl">
         <div
           className="grid min-w-[640px]"
           style={
             {
               "--report-days": workingDays.length,
+              "--report-hours": Math.max(endHour - startHour, 1),
               gridTemplateColumns: `80px repeat(${workingDays.length}, minmax(160px, 1fr))`,
             } as CSSProperties
           }
@@ -158,7 +167,7 @@ export function TimetableGridReport({
               <div
                 key={s.mins}
                 className="text-[10px] text-muted-foreground p-1 border-b"
-                style={{ height: SLOT_PX }}
+                style={{ height: slotHeight }}
               >
                 {s.label}
               </div>
@@ -173,12 +182,12 @@ export function TimetableGridReport({
                   <div
                     key={s.mins}
                     className="border-b bg-background/50"
-                    style={{ height: SLOT_PX }}
+                    style={{ height: slotHeight }}
                   />
                 ))}
                 {placed.map(({ session: sess, lane, laneCount }) => {
-                  const top = ((toMins(sess.start_time) - startHour * 60) / 60) * SLOT_PX;
-                  const height = ((toMins(sess.end_time) - toMins(sess.start_time)) / 60) * SLOT_PX;
+                  const top = (toMins(sess.start_time) - startHour * 60) / 60;
+                  const height = (toMins(sess.end_time) - toMins(sess.start_time)) / 60;
                   if (top < 0 || height <= 0) return null;
                   const widthPct = 100 / laneCount;
                   const rightPct = lane * widthPct;
@@ -192,15 +201,15 @@ export function TimetableGridReport({
                         colorByType(sess.session_type),
                       )}
                       style={{
-                        top: top + 1,
-                        height: height - 2,
+                        top: `calc(${top} * ${slotHeight} + 1px)`,
+                        height: `calc(${height} * ${slotHeight} - 2px)`,
                         width: `calc(${widthPct}% - 4px)`,
                         right: `calc(${rightPct}% + 2px)`,
                       }}
                       aria-label={`${courseTitle(sess)}، ${sess.start_time.slice(0, 5)}، ${sess.room_label}`}
                       title={courseTitle(sess)}
                     >
-                      <div className="line-clamp-2 text-[13px] font-bold leading-tight">
+                      <div className="schedule-card-title line-clamp-2 text-[13px] font-bold leading-tight">
                         {sess.course_name}
                       </div>
                       <div className="mt-0.5 flex flex-wrap items-center gap-1">
@@ -214,9 +223,13 @@ export function TimetableGridReport({
                           {sess.start_time.slice(0, 5)}–{sess.end_time.slice(0, 5)}
                         </bdi>
                       </div>
-                      <div className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-foreground/80">
+                      <div className="schedule-card-location mt-0.5 line-clamp-2 text-[11px] leading-snug text-foreground/80">
                         {sess.college_name && (
-                          <div className="font-semibold">{sess.college_name}</div>
+                          <div className="font-semibold">
+                            {compactPrint
+                              ? `ك${colleges.indexOf(sess.college_name) + 1}`
+                              : sess.college_name}
+                          </div>
                         )}
                         {sess.room_label || "—"}
                         {sess.section_number ? ` · ش${sess.section_number}` : ""}

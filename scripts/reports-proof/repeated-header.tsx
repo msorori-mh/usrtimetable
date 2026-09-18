@@ -81,9 +81,31 @@ const instructorSessions: TimetableReportSession[] = rows.slice(0, 18).map((row,
   department_name: "الحاسوب",
 }));
 
+const individualSessions = instructorSessions.slice(0, 2).map((s, i) => ({
+  ...s,
+  day_of_week: 6,
+  start_time: i === 0 ? "08:00" : "14:00",
+  end_time: i === 0 ? "10:00" : "16:00",
+  course_name: `مهارات الحاسوب ${s.id}`,
+  session_type: "lab",
+  study_system: "parallel",
+  college_name: "كلية تكنولوجيا المعلومات وعلوم الحاسوب",
+  department_name: "قسم نظم المعلومات الحاسوبية",
+  cohort_label: "CS-P-L1-2026",
+  delivery_group_label: i === 0 ? "G2" : "G1",
+  room_label: i === 0 ? "قاعة 9" : "معمل حاسوب 3",
+}));
+const collegeSessions =
+  mode === "individual"
+    ? individualSessions
+    : instructorSessions.slice(0, 6).map((s, i) => ({
+        ...s,
+        college_name: i < 3 ? "كلية الحاسوب" : "كلية العلوم الإدارية",
+      }));
+
 createRoot(document.getElementById("root")!).render(
   <main dir="rtl">
-    {mode === "university" ? (
+    {mode === "university" || mode === "individual" ? (
       <ReportShell
         title="COLUMN_KEY جدول المحاضر الموحد"
         headerMeta={headerMeta}
@@ -92,15 +114,12 @@ createRoot(document.getElementById("root")!).render(
         filename="university-proof"
       >
         <ReportTimetableView
-          sessions={instructorSessions.slice(0, 6).map((s, i) => ({
-            ...s,
-            college_name: i < 3 ? "كلية الحاسوب" : "كلية العلوم الإدارية",
-          }))}
+          sessions={collegeSessions}
           hideInstructor
           printSummary={
             <InstructorCollegeHours
               summary={summarizeUniversitySchedule(
-                instructorSessions.slice(0, 6).map((s, i) => ({
+                collegeSessions.map((s, i) => ({
                   ...s,
                   college_id: i < 3 ? "c1" : "c2",
                   college_name: i < 3 ? "كلية الحاسوب" : "كلية العلوم الإدارية",
@@ -175,7 +194,9 @@ createRoot(document.getElementById("root")!).render(
                   ...s,
                   cohort_id: "cohort-proof",
                   delivery_group_id: "group-proof",
-                  instructors: { full_name: "د. محمد عبدالرحمن محاضر الاختبار" },
+                  instructors: {
+                    full_name: "د. محمد عبدالرحمن محاضر الاختبار",
+                  },
                   course_offerings: {
                     ...s.course_offerings,
                     courses: {

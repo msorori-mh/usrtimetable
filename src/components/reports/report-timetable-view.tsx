@@ -51,7 +51,7 @@ function LtrToken({ children }: { children: string }) {
 
 function CourseDetailCell({ row }: { row: TimetableDetailRow }) {
   return (
-    <div className="min-w-[150px] space-y-0.5 leading-5">
+    <div className="instructor-detail-cell min-w-[150px] space-y-0.5 leading-5">
       <div className="font-semibold">{detailText(row.course_name ?? row.course)}</div>
       {detailText(row.course_code) !== "—" && (
         <div className="text-[10px] text-muted-foreground">
@@ -65,7 +65,7 @@ function CourseDetailCell({ row }: { row: TimetableDetailRow }) {
 
 function AcademicDetailCell({ row }: { row: TimetableDetailRow }) {
   return (
-    <div className="min-w-[170px] space-y-0.5 leading-5">
+    <div className="instructor-detail-cell min-w-[170px] space-y-0.5 leading-5">
       {detailText(row.college) !== "—" && (
         <div className="font-semibold text-primary">{detailText(row.college)}</div>
       )}
@@ -80,14 +80,18 @@ function AcademicDetailCell({ row }: { row: TimetableDetailRow }) {
 
 function CohortGroupDetailCell({ row }: { row: TimetableDetailRow }) {
   return (
-    <div className="min-w-[140px] space-y-1 leading-5">
+    <div className="instructor-detail-cell min-w-[140px] space-y-1 leading-5">
       <div>
         <span className="text-[10px] text-muted-foreground">الدفعة </span>
-        <LtrToken>{detailText(row.cohort)}</LtrToken>
+        <bdi dir="auto" className="instructor-detail-code">
+          {detailText(row.cohort)}
+        </bdi>
       </div>
       <div className="font-semibold">
         <span className="text-[10px] font-normal text-muted-foreground">المجموعة </span>
-        <LtrToken>{detailText(row.delivery_group)}</LtrToken>
+        <bdi dir="auto" className="instructor-detail-code">
+          {detailText(row.delivery_group)}
+        </bdi>
       </div>
     </div>
   );
@@ -95,7 +99,7 @@ function CohortGroupDetailCell({ row }: { row: TimetableDetailRow }) {
 
 function DayTimeDetailCell({ row }: { row: TimetableDetailRow }) {
   return (
-    <div className="min-w-[135px] space-y-0.5 leading-5">
+    <div className="instructor-detail-cell instructor-detail-time min-w-[135px] space-y-0.5 leading-5">
       <div className="font-semibold">{detailText(row.day)}</div>
       <div className="text-[11px]">
         <LtrToken>{detailText(row.time)}</LtrToken>
@@ -116,13 +120,13 @@ function compactInstructorDetailColumns(): ReportColumn<TimetableDetailRow>[] {
     {
       key: "program",
       label: "البرنامج والمستوى",
-      className: "w-[23%]",
+      className: "w-[24%]",
       render: (row) => <AcademicDetailCell row={row} />,
     },
     {
       key: "cohort",
       label: "الدفعة والمجموعة",
-      className: "w-[19%]",
+      className: "w-[18%]",
       render: (row) => <CohortGroupDetailCell row={row} />,
     },
     {
@@ -131,8 +135,8 @@ function compactInstructorDetailColumns(): ReportColumn<TimetableDetailRow>[] {
       className: "w-[17%]",
       render: (row) => <DayTimeDetailCell row={row} />,
     },
-    { key: "room", label: "القاعة", className: "w-[12%]" },
-    { key: "study_system", label: "النظام", className: "w-[9%]" },
+    { key: "room", label: "القاعة", className: "w-[11%]" },
+    { key: "study_system", label: "النظام", className: "w-[8%]" },
   ];
 }
 
@@ -186,6 +190,46 @@ export function ReportTimetableView({
     startHour: fullWindow ? Math.min(window.startHour, occupiedStart) : occupiedStart,
     endHour: fullWindow ? Math.max(window.endHour, occupiedEnd) : occupiedEnd,
   };
+  const detailPage = (
+    <section
+      className={`instructor-print-page instructor-print-detail ${
+        printDetailOnly
+          ? "instructor-print-page--only"
+          : compactDetails
+            ? "instructor-print-page--first"
+            : "instructor-print-page--second"
+      }`}
+      data-print-section="details"
+    >
+      <h2 className="mb-3 text-base font-bold">تفصيل المحاضرات</h2>
+      <ReportDataTable
+        caption="تفصيل محاضرات الجدول"
+        columns={
+          compactDetails
+            ? (compactInstructorDetailColumns() as unknown as ReportColumn<(typeof rows)[number]>[])
+            : headers.map((h) => ({
+                ...h,
+                numeric: ["hours", "time", "start_time", "end_time"].includes(h.key),
+              }))
+        }
+        rows={rows}
+        primaryColumnLimit={6}
+        minWidthClassName={compactDetails ? "min-w-[760px]" : undefined}
+      />
+      {printSummary && <div className="mt-3">{printSummary}</div>}
+    </section>
+  );
+  const weeklyPage = !printDetailOnly && (
+    <section
+      className={`instructor-print-page instructor-print-weekly ${
+        compactDetails ? "instructor-print-page--second" : "instructor-print-page--first"
+      }`}
+      data-print-section="weekly"
+    >
+      <h2 className="mb-3 text-base font-bold">الجدول الأسبوعي</h2>
+      <TimetableGridReport {...gridProps} compactPrint={compactDetails} />
+    </section>
+  );
   return (
     <div className="report-print-body min-w-0 space-y-4">
       <div className="report-no-print flex flex-wrap items-center justify-between gap-3">
@@ -295,39 +339,20 @@ export function ReportTimetableView({
           />
         </ReportSection>
       </div>
-      <div className="instructor-print-sequence hidden print:block">
-        {!printDetailOnly && (
-          <section className="instructor-print-page instructor-print-page--first">
-            <TimetableGridReport {...gridProps} />
-            {printSummary && <div className="mt-3">{printSummary}</div>}
-          </section>
+      <div
+        className={`instructor-print-sequence hidden print:block ${compactDetails ? "instructor-print-readable" : ""}`}
+      >
+        {compactDetails ? (
+          <>
+            {detailPage}
+            {weeklyPage}
+          </>
+        ) : (
+          <>
+            {weeklyPage}
+            {detailPage}
+          </>
         )}
-        <section
-          className={
-            printDetailOnly
-              ? "instructor-print-page instructor-print-page--only print:[&_td_div]:min-w-0 print:[&_td_bdi]:whitespace-normal"
-              : "instructor-print-page instructor-print-page--second print:[&_td_div]:min-w-0 print:[&_td_bdi]:whitespace-normal"
-          }
-        >
-          <h2 className="mb-3 text-base font-bold">تفصيل المحاضرات</h2>
-          <ReportDataTable
-            caption="تفصيل محاضرات الجدول"
-            columns={
-              compactDetails
-                ? (compactInstructorDetailColumns() as unknown as ReportColumn<
-                    (typeof rows)[number]
-                  >[])
-                : headers.map((h) => ({
-                    ...h,
-                    numeric: ["hours", "time", "start_time", "end_time"].includes(h.key),
-                  }))
-            }
-            rows={rows}
-            primaryColumnLimit={6}
-            minWidthClassName={compactDetails ? "min-w-[760px]" : undefined}
-          />
-          {printDetailOnly && printSummary}
-        </section>
       </div>
     </div>
   );

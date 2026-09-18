@@ -8,6 +8,10 @@ results = []
 for path in sorted(Path("repeated-header-proof").glob("*.pdf")):
     doc = fitz.open(path)
     assert len(doc) >= (1 if path.name.startswith("university") else 2), f"{path}: fixture did not paginate"
+    if path.name.startswith(("university", "individual")):
+        assert len(doc) == 2, f"{path}: compact instructor report must use two pages"
+        assert "DETAIL_PROOF" in doc[0].get_text() and "WEEK_PROOF" not in doc[0].get_text(), f"{path}: details must be page one"
+        assert "WEEK_PROOF" in doc[1].get_text() and "DETAIL_PROOF" not in doc[1].get_text(), f"{path}: weekly must be page two"
     all_rows = []
     for number, page in enumerate(doc, 1):
         if "portrait" in path.name:
@@ -42,6 +46,9 @@ for path in sorted(Path("repeated-header-proof").glob("*.pdf")):
         assert "COMPUTING_V1" in full_text and "BUSINESS_V1" in full_text
         assert "12.00" in full_text and "8.00" in full_text and "4.00" in full_text
         doc[-1].get_pixmap(matrix=fitz.Matrix(1,1)).save(path.with_name(f"{path.stem}-page-{len(doc)}.png"))
+    elif path.name.startswith("individual"):
+        assert sorted(set(all_rows)) == ["ROW000", "ROW001"]
+        assert "COMPUTING_V1" in doc[0].get_text(), f"{path}: hours summary must follow details"
     elif path.name.startswith("instructor"):
         assert sorted(set(all_rows)) == [f"ROW{i:03}" for i in range(18)], f"{path}: missing individual schedule rows"
     else:

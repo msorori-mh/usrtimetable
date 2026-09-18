@@ -66,7 +66,7 @@ describe("report print identity", () => {
     }
   });
 
-  test("regression: single instructor schedule prints weekly page then detail page", () => {
+  test("regression: single instructor schedule prints detail page then weekly page", () => {
     const route = read("src/routes/_authenticated/reports.instructor-schedule.tsx");
     const view = read("src/components/reports/report-timetable-view.tsx");
     expect(route.includes("ReportShell")).toBe(true);
@@ -75,9 +75,9 @@ describe("report print identity", () => {
     expect(route.includes("compactDetails")).toBe(true);
     expect(view.includes("instructor-print-page--first")).toBe(true);
     expect(view.includes("instructor-print-page--second")).toBe(true);
-    expect(view.indexOf("instructor-print-page--first")).toBeLessThan(
-      view.indexOf("instructor-print-page--second"),
-    );
+    expect(view).toMatch(/<>\s*\{detailPage\}\s*\{weeklyPage\}\s*<\/>/);
+    expect(view.includes('data-print-section="details"')).toBe(true);
+    expect(view.includes('data-print-section="weekly"')).toBe(true);
     expect(view.includes("compactInstructorDetailColumns")).toBe(true);
   });
 
