@@ -121,7 +121,7 @@ export function instructorStatusLabel(isActive: boolean, notes: string | null | 
     ?.split("\n")
     .find((line) => line.startsWith(STATUS_NOTE))
     ?.slice(STATUS_NOTE.length);
-  if (!isActive && status && INSTRUCTOR_INACTIVE_STATUS_REASONS.includes(status as never))
+  if (!isActive && status && INSTRUCTOR_INACTIVE_STATUS_REASONS.some((reason) => reason === status))
     return status;
   return isActive ? "نشط" : "غير نشط";
 }
