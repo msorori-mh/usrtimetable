@@ -84,7 +84,8 @@ export async function fetchUniversityInstructorSchedule(input: {
         college_id: scope.collegeId,
         college_name: scope.collegeName,
         version_name: scope.version.name,
-        workload_pending: (raw[i].intake_instructor_ids?.length ?? 0) > 1,
+        workload_pending:
+          Array.isArray(raw[i].intake_instructor_ids) && raw[i].intake_instructor_ids.length > 1,
       }));
     }),
   );

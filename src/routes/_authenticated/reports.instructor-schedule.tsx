@@ -163,8 +163,8 @@ function Page() {
       normalizeInstructorSearch(instructor.full_name).includes(query),
     );
   }, [instructorSearch, instructors]);
-  const distinctDays = new Set(rows.map((r) => String(r.day))).size;
-  const distinctCourses = new Set(rows.map((r) => String(r.course))).size;
+  const distinctDays = new Set(sessions.map((s) => s.day_of_week)).size;
+  const distinctCourses = new Set(sessions.map((s) => `${s.course_code}:${s.course_name}`)).size;
 
   return (
     <ReportShell
