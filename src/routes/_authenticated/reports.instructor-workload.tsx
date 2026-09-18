@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { FacultyUniversityReport } from "@/components/reports/faculty-university-report";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -39,10 +40,31 @@ export const Route = createFileRoute(
 
 function Page() {
   const { active } = useActiveCollege();
-  return active ? (
-    <WorkloadPage key={active.id} />
-  ) : (
-    <Card className="p-6">اختر كلية لعرض التقرير.</Card>
+  const [university, setUniversity] = useState(false);
+  return (
+    <>
+      <div className="mb-4 flex gap-3 print:hidden">
+        <button
+          className="rounded border px-4 py-2"
+          onClick={() => setUniversity(false)}
+        >
+          عبء الكلية
+        </button>
+        <button
+          className="rounded border px-4 py-2"
+          onClick={() => setUniversity(true)}
+        >
+          النصاب والجدول عبر الكليات
+        </button>
+      </div>
+      {university ? (
+        <FacultyUniversityReport />
+      ) : active ? (
+        <WorkloadPage key={active.id} />
+      ) : (
+        <Card className="p-6">اختر كلية لعرض التقرير.</Card>
+      )}
+    </>
   );
 }
 
