@@ -59,8 +59,15 @@ export function PrintSheet(props: {
   meta: PrintSheetMeta;
   visibility: PrintVisibilityOptions;
   labels?: CohortDgLabels;
+  /** Larger A4 portrait layout for current student schedules. */
+  readable?: boolean;
 }) {
-  const { page, meta, visibility, labels } = props;
+  const { page, meta, visibility, labels, readable = false } = props;
+  const cohortId = page.sessions[0]?.cohort_id;
+  const commonCohort =
+    readable && cohortId && page.sessions.every((s) => s.cohort_id === cohortId)
+      ? labels?.cohorts.get(cohortId)
+      : undefined;
   const studyLabel =
     meta.studySystem && meta.studySystem !== "all"
       ? (STUDY_SYSTEM_LABELS[meta.studySystem as PrintStudySystem] ?? String(meta.studySystem))
@@ -72,8 +79,31 @@ export function PrintSheet(props: {
   // day, time, course name, component, group + optional instructor / room
   const columnCount = 5 + (visibility.showInstructor ? 1 : 0) + (visibility.showRoom ? 1 : 0);
 
+  const endorsement = (
+    <footer className="print-center-footer mt-4 border-t border-border pt-2 text-xs text-muted-foreground print:text-foreground">
+      <div className="flex flex-wrap justify-between gap-2">
+        <span>{printGroupCounterLabelAr(meta.pageIndex, meta.pageCount)}</span>
+        {meta.lastUpdate && (
+          <span>آخر تحديث: {new Date(meta.lastUpdate).toLocaleString("ar")}</span>
+        )}
+      </div>
+      <p className="mt-1">
+        {meta.versionStatus === "published"
+          ? PRINT_PUBLISHED_ENDORSEMENT_AR
+          : "نسخة للمراجعة والطباعة — ليست جدولاً منشوراً معتمداً."}
+      </p>
+      {meta.isDemo && (
+        <p className="mt-1 font-semibold text-amber-800 print:text-black" role="status">
+          {PRINT_DEMO_FOOTER_WARNING_AR}
+        </p>
+      )}
+    </footer>
+  );
+
   return (
-    <section className="print-center-page break-after-page">
+    <section
+      className={`print-center-page break-after-page${readable ? " print-center-page--readable" : ""}`}
+    >
       {isDraft && (
         <div className="print-draft-watermark" aria-hidden>
           {PRINT_DRAFT_WATERMARK_AR}
@@ -104,7 +134,7 @@ export function PrintSheet(props: {
                 </div>
                 <div className="print-header-title-block">
                   <p className="print-header-kicker">الجدول الأسبوعي</p>
-                  <h2>الجدول الدراسي</h2>
+                  <h2>{readable ? page.title : "الجدول الدراسي"}</h2>
                 </div>
                 {visibility.showQr && meta.qrUrl && (
                   <div className="print-header-verification">
@@ -121,19 +151,20 @@ export function PrintSheet(props: {
                     value={page.departmentName || meta.departmentName || ""}
                   />
                 )}
-                {visibility.showProgram && (page.programName || meta.programName) && (
+                {!readable && visibility.showProgram && (page.programName || meta.programName) && (
                   <HeaderField
                     label="البرنامج"
                     value={page.programName || meta.programName || ""}
                   />
                 )}
-                {visibility.showLevel && (page.levelName || meta.levelName) && (
+                {!readable && visibility.showLevel && (page.levelName || meta.levelName) && (
                   <HeaderField label="المستوى" value={page.levelName || meta.levelName || ""} />
                 )}
-                {visibility.showStudySystem && studyLabel && (
+                {!readable && visibility.showStudySystem && studyLabel && (
                   <HeaderField label="النظام الدراسي" value={studyLabel} />
                 )}
                 {meta.termName && <HeaderField label="الفصل / العام" value={meta.termName} />}
+                {commonCohort && <HeaderField label="الدفعة" value={commonCohort} />}
               </div>
 
               {(visibility.showVersionStatus ||
@@ -157,19 +188,33 @@ export function PrintSheet(props: {
                   )}
                 </div>
               )}
+              {readable && endorsement}
             </header>
           </div>
         }
       >
-        <Table>
+        <Table className={readable ? "readable-schedule-table" : undefined}>
+          {readable && (
+            <colgroup>
+              <col style={{ width: "10%" }} />
+              <col style={{ width: "13%" }} />
+              <col style={{ width: "24%" }} />
+              {visibility.showInstructor && <col style={{ width: "20%" }} />}
+              {visibility.showRoom && <col style={{ width: "13%" }} />}
+              <col style={{ width: "8%" }} />
+              <col style={{ width: "12%" }} />
+            </colgroup>
+          )}
           <TableHeader>
             {/* Repeats on every physical sheet the group spans (thead is a running header),
               so a continuation page still identifies which schedule it belongs to. */}
-            <TableRow className="print-center-context-row">
-              <TableHead colSpan={columnCount} className="text-right font-semibold">
-                {page.title}
-              </TableHead>
-            </TableRow>
+            {!readable && (
+              <TableRow className="print-center-context-row">
+                <TableHead colSpan={columnCount} className="text-right font-semibold">
+                  {page.title}
+                </TableHead>
+              </TableRow>
+            )}
             <TableRow>
               <TableHead>اليوم</TableHead>
               <TableHead>الزمن</TableHead>
@@ -183,6 +228,12 @@ export function PrintSheet(props: {
           <TableBody>
             {page.sessions.map((s, index) => {
               const row = sessionToExportRow(s, labels, page.title);
+              const group = commonCohort
+                ? s.delivery_group_id
+                  ? (labels?.deliveryGroups.get(s.delivery_group_id) ?? s.delivery_group_id)
+                  : ""
+                : row.group;
+              const groupText = readable ? group.replace(/^G(\d+)$/i, "مجموعة $1") : group;
               return (
                 <TableRow
                   key={s.id}
@@ -192,37 +243,30 @@ export function PrintSheet(props: {
                       : undefined
                   }
                 >
-                  <TableCell>{row.day}</TableCell>
-                  <TableCell className="whitespace-nowrap">{row.time}</TableCell>
+                  <TableCell className="schedule-day">{row.day}</TableCell>
+                  <TableCell className={readable ? "schedule-time" : "whitespace-nowrap"}>
+                    {readable ? (
+                      <>
+                        <bdi>{row.time.split(" - ")[0]}</bdi>
+                        <span>إلى</span>
+                        <bdi>{row.time.split(" - ")[1]}</bdi>
+                      </>
+                    ) : (
+                      row.time
+                    )}
+                  </TableCell>
                   <TableCell>{row.course_name}</TableCell>
                   {visibility.showInstructor && <TableCell>{row.instructor}</TableCell>}
                   {visibility.showRoom && <TableCell>{row.room}</TableCell>}
                   <TableCell>{row.component}</TableCell>
-                  <TableCell>{row.group}</TableCell>
+                  <TableCell>{groupText}</TableCell>
                 </TableRow>
               );
             })}
           </TableBody>
         </Table>
 
-        <footer className="print-center-footer mt-4 border-t border-border pt-2 text-xs text-muted-foreground print:text-foreground">
-          <div className="flex flex-wrap justify-between gap-2">
-            <span>{printGroupCounterLabelAr(meta.pageIndex, meta.pageCount)}</span>
-            {meta.lastUpdate && (
-              <span>آخر تحديث: {new Date(meta.lastUpdate).toLocaleString("ar")}</span>
-            )}
-          </div>
-          <p className="mt-1">
-            {meta.versionStatus === "published"
-              ? PRINT_PUBLISHED_ENDORSEMENT_AR
-              : "نسخة للمراجعة والطباعة — ليست جدولاً منشوراً معتمداً."}
-          </p>
-          {meta.isDemo && (
-            <p className="mt-1 font-semibold text-amber-800 print:text-black" role="status">
-              {PRINT_DEMO_FOOTER_WARNING_AR}
-            </p>
-          )}
-        </footer>
+        {!readable && endorsement}
       </RepeatingPrintHeader>
     </section>
   );

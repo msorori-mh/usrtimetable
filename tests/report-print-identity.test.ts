@@ -49,7 +49,8 @@ describe("report print identity", () => {
 
   test("shell supplies the current report URL to the QR and an A4 RTL page box", () => {
     expect(shell.includes("window.location.href")).toBe(true);
-    expect(shell.includes("printPageStyleCss()")).toBe(true);
+    expect(shell.includes('printPageStyleCss("A4", printOrientation)')).toBe(true);
+    expect(shell.includes('printOrientation = "portrait"')).toBe(true);
     expect(printPageStyleCss()).toContain("size: A4 portrait;");
     expect(shell.includes('dir="rtl"')).toBe(true);
   });

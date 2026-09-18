@@ -1104,3 +1104,77 @@
     break-inside: auto;
   }
 }
+
+/* Current student schedules: readable at actual A4 size, without scaling rows. */
+@media print {
+  main:has(.print-center-page--readable),
+  .report-print-root:has(.print-center-page--readable),
+  .print-center-page--readable,
+  .print-center-page--readable .report-page-content > tr > td {
+    background: white !important;
+  }
+  .print-center-page--readable .readable-schedule-table {
+    font-size: 11pt;
+    line-height: 1.5;
+  }
+  .print-center-page--readable .readable-schedule-table th,
+  .print-center-page--readable .readable-schedule-table td {
+    padding: 1.6mm 1.2mm;
+    vertical-align: middle;
+    word-break: normal;
+    overflow-wrap: anywhere;
+  }
+  .print-center-page--readable .readable-schedule-table th {
+    height: auto;
+    font-size: 11pt;
+  }
+  .print-center-page--readable .schedule-day {
+    text-align: center;
+    font-weight: 700;
+  }
+  .print-center-page--readable .schedule-time {
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .print-center-page--readable .schedule-time bdi {
+    display: block;
+    white-space: nowrap;
+  }
+  .print-center-page--readable .schedule-time span {
+    display: block;
+    font-size: 8pt;
+    line-height: 1;
+  }
+  .print-center-page--readable .print-header-identity-band {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) 16mm !important;
+    gap: 2mm !important;
+    padding: 2mm !important;
+  }
+  .print-center-page--readable .print-header-title-block h2 {
+    font-size: 15pt;
+    line-height: 1.4;
+  }
+  .print-center-page--readable .print-header-university {
+    font-size: 12pt;
+  }
+  .print-center-page--readable .print-header-college {
+    font-size: 10pt;
+  }
+  .print-center-page--readable .print-header-details {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .print-center-page--readable .print-header-field {
+    font-size: 9.5pt !important;
+    padding: 1mm 1.5mm !important;
+  }
+  .print-center-page--readable .print-header-meta {
+    font-size: 9pt !important;
+    padding: 1mm 1.5mm !important;
+  }
+  .print-center-page--readable .print-center-footer {
+    margin-top: 1mm;
+    padding-top: 1mm;
+    font-size: 9pt;
+    background: white;
+  }
+}

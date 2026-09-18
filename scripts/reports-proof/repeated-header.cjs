@@ -9,24 +9,26 @@ const { execFileSync } = require("node:child_process");
   try {
     const page = await browser.newPage();
     page.on("pageerror", (e) => errors.push(e.message));
-    for (const mode of ["report", "summary", "sheet", "instructor", "student"]) {
+    for (const mode of ["report", "summary", "sheet", "readable", "instructor", "student"]) {
       for (const [paper, orientation, width] of [
         ["default", "portrait", 1440],
         ["A4", "portrait", 390],
         ["A4", "landscape", 1440],
         ["A3", "landscape", 1440],
       ]) {
+        // The current-timetable route explicitly uses A4 portrait; other modes retain all paper sizes.
+        if (mode === "readable" && orientation !== "portrait") continue;
         await page.setViewportSize({ width, height: 900 });
         await page.goto(
           `http://127.0.0.1:4173/repeated-header.html?mode=${mode}${paper === "default" ? "" : `&paper=${paper}&orientation=${orientation}`}`,
         );
         await page
           .getByText(mode === "instructor" ? "ROW017" : "ROW139", {
-            exact: true,
+            exact: mode !== "readable",
           })
           .first()
           .waitFor({ state: "attached" });
-        if (mode === "student" || mode === "sheet") {
+        if (mode === "student" || mode === "sheet" || mode === "readable") {
           const labels = await page
             .locator("thead tr")
             .evaluateAll((rows) =>
@@ -46,6 +48,15 @@ const { execFileSync } = require("node:child_process");
           [...document.images].every((image) => image.complete && image.naturalWidth > 0),
         );
         await page.emulateMedia({ media: "print" });
+        if (mode === "readable") {
+          const fontSize = await page
+            .locator(".readable-schedule-table tbody td")
+            .first()
+            .evaluate((cell) => parseFloat(getComputedStyle(cell).fontSize));
+          if (fontSize < 14.6) throw Error("Schedule text must be at least 11pt");
+          if ((await page.getByText("CYB-L3-2024", { exact: true }).count()) !== 1)
+            throw Error("Shared cohort must occur once in the repeating header, not per data row");
+        }
         console.log(
           JSON.stringify({
             mode,
