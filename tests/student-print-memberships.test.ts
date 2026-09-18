@@ -121,5 +121,7 @@ describe("merged student timetable print membership", () => {
     expect(expandStudentPrintMemberships([imported], members, scopes)).toHaveLength(2);
     const withoutPartitions = expandStudentPrintMemberships([imported], [], scopes);
     expect(withoutPartitions.map((r) => r.cohort_id)).toEqual(["ai", "is"]);
+    expect(new Set(withoutPartitions.map((r) => r.id)).size).toBe(2);
+    expect(withoutPartitions.map((r) => r.study_system)).toEqual(["regular", "parallel"]);
   });
 });
