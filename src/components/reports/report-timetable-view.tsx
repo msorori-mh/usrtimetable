@@ -305,8 +305,8 @@ export function ReportTimetableView({
         <section
           className={
             printDetailOnly
-              ? "instructor-print-page instructor-print-page--only"
-              : "instructor-print-page instructor-print-page--second"
+              ? "instructor-print-page instructor-print-page--only print:[&_td_div]:min-w-0 print:[&_td_bdi]:whitespace-normal"
+              : "instructor-print-page instructor-print-page--second print:[&_td_div]:min-w-0 print:[&_td_bdi]:whitespace-normal"
           }
         >
           <h2 className="mb-3 text-base font-bold">تفصيل المحاضرات</h2>
