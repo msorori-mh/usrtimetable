@@ -8,6 +8,7 @@
  * printed the plain screen header, which had no logo and no QR.
  */
 import { describe, expect, test } from "bun:test";
+import { printPageStyleCss } from "../src/lib/print-center/page-style";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -48,9 +49,8 @@ describe("report print identity", () => {
 
   test("shell supplies the current report URL to the QR and an A4 RTL page box", () => {
     expect(shell.includes("window.location.href")).toBe(true);
-    expect(
-      shell.includes('printPageStyleCss("A4", headers.length > 7 ? "landscape" : "portrait")'),
-    ).toBe(true);
+    expect(shell.includes("printPageStyleCss()")).toBe(true);
+    expect(printPageStyleCss()).toContain("size: A4 portrait;");
     expect(shell.includes('dir="rtl"')).toBe(true);
   });
 
