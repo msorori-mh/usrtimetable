@@ -73,7 +73,6 @@ function severityKeyFor(classification: unknown) {
       : "warning";
 }
 
-
 type ConflictDisplayRow = Record<string, unknown>;
 
 const conflictText = (value: unknown) =>
@@ -86,9 +85,7 @@ function ConflictContextCell({ row }: { row: ConflictDisplayRow }) {
       <div className="text-[11px] text-muted-foreground">
         {conflictText(row.cohort)} · {conflictText(row.delivery_group)}
       </div>
-      <div className="text-[10px] text-muted-foreground">
-        {conflictText(row.study_system)}
-      </div>
+      <div className="text-[10px] text-muted-foreground">{conflictText(row.study_system)}</div>
     </div>
   );
 }
@@ -97,10 +94,8 @@ function ConflictResourceCell({ row }: { row: ConflictDisplayRow }) {
   return (
     <div className="min-w-[140px] space-y-0.5 leading-5">
       <div>{conflictText(row.instructor)}</div>
-      <div className="text-[11px] text-muted-foreground">
-        القاعة: {conflictText(row.room)}
-      </div>
-      {row.legacy_section && row.legacy_section !== "—" && (
+      <div className="text-[11px] text-muted-foreground">القاعة: {conflictText(row.room)}</div>
+      {conflictText(row.legacy_section) !== "—" && (
         <div className="text-[10px] text-muted-foreground">
           مجموعة أرشيفية: {conflictText(row.legacy_section)}
         </div>
@@ -127,7 +122,7 @@ function ConflictEvidenceCell({ row }: { row: ConflictDisplayRow }) {
       <div className="text-[11px] text-muted-foreground">
         الدليل: {conflictText(row.evidence_label ?? row.evidence_status)}
       </div>
-      {row.resolution_detail && row.resolution_detail !== "—" && (
+      {conflictText(row.resolution_detail) !== "—" && (
         <div className="text-[10px] text-muted-foreground">
           {conflictText(row.resolution_detail)}
         </div>
@@ -271,7 +266,7 @@ function Page() {
           rows={rows}
           rowClassName={(r) => severityMeta(severityKeyFor(r.classification)).rowClass}
           caption="تفاصيل تعارضات آخر فحص محفوظ"
-          columns={compactConflictColumns() as ReportColumn<(typeof rows)[number]>}
+          columns={compactConflictColumns() as ReportColumn<(typeof rows)[number]>[]}
           primaryColumnLimit={6}
         />
       </ReportSection>
