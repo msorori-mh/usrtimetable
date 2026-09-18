@@ -17,6 +17,7 @@ const { execFileSync } = require("node:child_process");
       "instructor",
       "student",
       "university",
+      "individual",
     ]) {
       for (const [paper, orientation, width] of [
         ["default", "portrait", 1440],
@@ -25,14 +26,21 @@ const { execFileSync } = require("node:child_process");
         ["A3", "landscape", 1440],
       ]) {
         // The current-timetable route explicitly uses A4 portrait; other modes retain all paper sizes.
-        if ((mode === "readable" || mode === "university") && orientation !== "portrait") continue;
+        if (["readable", "university", "individual"].includes(mode) && orientation !== "portrait")
+          continue;
         await page.setViewportSize({ width, height: 900 });
         await page.goto(
           `http://127.0.0.1:4173/repeated-header.html?mode=${mode}${paper === "default" ? "" : `&paper=${paper}&orientation=${orientation}`}`,
         );
         await page
           .getByText(
-            mode === "university" ? "ROW005" : mode === "instructor" ? "ROW017" : "ROW139",
+            mode === "individual"
+              ? "ROW001"
+              : mode === "university"
+                ? "ROW005"
+                : mode === "instructor"
+                  ? "ROW017"
+                  : "ROW139",
             {
               exact: mode !== "readable",
             },
@@ -67,6 +75,42 @@ const { execFileSync } = require("node:child_process");
           if (fontSize < 14.6) throw Error("Schedule text must be at least 11pt");
           if ((await page.getByText("CYB-L3-2024", { exact: true }).count()) !== 1)
             throw Error("Shared cohort must occur once in the repeating header, not per data row");
+        }
+        if (["university", "individual"].includes(mode)) {
+          const sections = page.locator(".instructor-print-readable > section");
+          const order = await sections.evaluateAll((nodes) =>
+            nodes.map((n) => n.dataset.printSection),
+          );
+          if (JSON.stringify(order) !== JSON.stringify(["details", "weekly"]))
+            throw Error("Instructor must print details before weekly overview");
+          await sections.evaluateAll((nodes) =>
+            nodes.forEach((n) => {
+              n.querySelector("h2").append(
+                ` ${n.dataset.printSection === "details" ? "DETAIL_PROOF" : "WEEK_PROOF"}`,
+              );
+            }),
+          );
+          const problems = await page
+            .locator(".instructor-print-readable .report-data-table td")
+            .evaluateAll((cells) =>
+              cells
+                .filter(
+                  (cell) =>
+                    cell.getBoundingClientRect().width > 0 &&
+                    (cell.scrollWidth > cell.clientWidth + 2 ||
+                      parseFloat(getComputedStyle(cell).fontSize) < 13.3),
+                )
+                .map((cell) => cell.textContent),
+            );
+          if (problems.length)
+            throw Error(`Unreadable or overflowing instructor cells: ${JSON.stringify(problems)}`);
+          const cards = await page
+            .locator(".instructor-print-readable .report-timetable-grid button")
+            .evaluateAll((nodes) =>
+              nodes.filter((n) => n.scrollHeight > n.clientHeight + 2).map((n) => n.textContent),
+            );
+          if (cards.length)
+            throw Error(`Weekly cards clip their contents: ${JSON.stringify(cards)}`);
         }
         console.log(
           JSON.stringify({
