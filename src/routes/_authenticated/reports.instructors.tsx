@@ -7,7 +7,11 @@ import { useAccessibleColleges, useActiveCollege } from "@/hooks/use-colleges";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { ReportShell } from "@/components/reports/report-shell";
 import { ReportFilterBar, ReportFilterField } from "@/components/reports/report-filter-bar";
-import { ReportDataTable, ReportSection } from "@/components/reports/report-section";
+import {
+  ReportDataTable,
+  ReportSection,
+  type ReportColumn,
+} from "@/components/reports/report-section";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -61,6 +65,122 @@ function instructorAffiliation(i: InstructorRow, typeCode?: string): string {
   if (typeCode === "from_other_college") return "external";
   if (!i.affiliation_college_id) return "unknown";
   return i.affiliation_college_id === i.college_id ? "internal" : "external";
+}
+
+
+type InstructorDirectoryDisplayRow = Record<string, string | number>;
+
+const instructorText = (value: unknown) =>
+  value === null || value === undefined || value === "" ? "—" : String(value);
+
+function InstructorIdentityCell({ row }: { row: InstructorDirectoryDisplayRow }) {
+  const arabicName =
+    row.full_name_ar && row.full_name_ar !== "—" && row.full_name_ar !== row.instructor
+      ? String(row.full_name_ar)
+      : "";
+  return (
+    <div className="min-w-[180px] space-y-0.5 leading-5">
+      <div className="font-semibold">{instructorText(row.instructor)}</div>
+      {arabicName && <div className="text-[11px] text-muted-foreground">{arabicName}</div>}
+      <div className="text-[10px] tabular-nums text-muted-foreground">
+        جامعي: {instructorText(row.university_number)} · موظف: {instructorText(row.employee_number)}
+      </div>
+    </div>
+  );
+}
+
+function InstructorAffiliationCell({ row }: { row: InstructorDirectoryDisplayRow }) {
+  return (
+    <div className="min-w-[155px] space-y-0.5 leading-5">
+      <div className="font-semibold">{instructorText(row.affiliation_scope)}</div>
+      <div className="text-[11px] text-muted-foreground">{instructorText(row.affiliation_college)}</div>
+      <div className="text-[10px] text-muted-foreground">
+        {instructorText(row.affiliation_department)}
+      </div>
+    </div>
+  );
+}
+
+function InstructorAcademicCell({ row }: { row: InstructorDirectoryDisplayRow }) {
+  return (
+    <div className="min-w-[160px] space-y-0.5 leading-5">
+      <div className="font-semibold">{instructorText(row.academic_rank)}</div>
+      <div className="text-[11px] text-muted-foreground">{instructorText(row.specialization)}</div>
+      <div className="text-[10px] text-muted-foreground">
+        {instructorText(row.instructor_type)} · {instructorText(row.employment_type)}
+      </div>
+    </div>
+  );
+}
+
+function InstructorQuotaCell({ row }: { row: InstructorDirectoryDisplayRow }) {
+  return (
+    <div className="min-w-[155px] space-y-0.5 leading-5">
+      <div className="flex justify-between gap-3">
+        <span className="text-[11px] text-muted-foreground">الأساسي</span>
+        <span className="tabular-nums">{instructorText(row.base_quota)} س</span>
+      </div>
+      <div className="flex justify-between gap-3">
+        <span className="text-[11px] text-muted-foreground">الإعفاء</span>
+        <span className="tabular-nums">{instructorText(row.admin_release)} س</span>
+      </div>
+      <div className="flex justify-between gap-3 font-semibold">
+        <span>الصافي</span>
+        <span className="tabular-nums">{instructorText(row.effective_quota)} س</span>
+      </div>
+      {row.administrative_position !== "—" && (
+        <div className="pt-0.5 text-[10px] text-muted-foreground">
+          {instructorText(row.administrative_position)}
+          {row.administrative_unit !== "—" ? ` · ${instructorText(row.administrative_unit)}` : ""}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function InstructorContactCell({ row }: { row: InstructorDirectoryDisplayRow }) {
+  return (
+    <div className="min-w-[170px] space-y-0.5 leading-5">
+      <div className="font-semibold">{instructorText(row.status)}</div>
+      <div className="text-[11px] text-muted-foreground">{instructorText(row.phone)}</div>
+      <div className="break-all text-[10px] text-muted-foreground">{instructorText(row.email)}</div>
+    </div>
+  );
+}
+
+function compactInstructorDirectoryColumns(): ReportColumn<InstructorDirectoryDisplayRow>[] {
+  return [
+    {
+      key: "instructor",
+      label: "المحاضر والهوية",
+      className: "w-[25%]",
+      render: (row) => <InstructorIdentityCell row={row} />,
+    },
+    {
+      key: "affiliation_scope",
+      label: "التبعية",
+      className: "w-[19%]",
+      render: (row) => <InstructorAffiliationCell row={row} />,
+    },
+    {
+      key: "academic_rank",
+      label: "البيانات الأكاديمية",
+      className: "w-[20%]",
+      render: (row) => <InstructorAcademicCell row={row} />,
+    },
+    {
+      key: "effective_quota",
+      label: "النصاب والإدارة",
+      className: "w-[19%]",
+      render: (row) => <InstructorQuotaCell row={row} />,
+    },
+    {
+      key: "status",
+      label: "التواصل والحالة",
+      className: "w-[17%]",
+      render: (row) => <InstructorContactCell row={row} />,
+    },
+  ];
 }
 
 function Page() {
@@ -209,6 +329,10 @@ function Report() {
 
   const activeCount = rows.filter((r) => r.status === "نشط").length;
   const totalQuota = rows.reduce((sum, r) => sum + Number(r.effective_quota || 0), 0);
+  const externalCount = rows.filter((r) => r.affiliation_scope === AFFILIATION_LABELS.external).length;
+  const missingAffiliation = rows.filter(
+    (r) => r.affiliation_scope === AFFILIATION_LABELS.unknown || r.affiliation_college === "غير محدد",
+  ).length;
   const departmentItems = (departments.data ?? []).filter((d) =>
     (instructors.data ?? []).some((i) => i.affiliation_department_id === d.id),
   );
@@ -263,6 +387,7 @@ function Report() {
       title="دليل المحاضرين وبياناتهم"
       description="كشف إداري ببيانات المحاضرين الأساسية والتبعية والنصاب ووسائل التواصل والحالة."
       filename="instructors_directory"
+      printOrientation="landscape"
       rows={rows}
       headers={headers}
       isLoading={isLoading}
@@ -277,7 +402,12 @@ function Report() {
       kpis={[
         { label: "المحاضرون", value: rows.length },
         { label: "النشطون", value: activeCount, tone: "accent" },
-        { label: "غير النشطين", value: rows.length - activeCount },
+        { label: "من خارج الكلية", value: externalCount },
+        {
+          label: "تبعية غير مكتملة",
+          value: missingAffiliation,
+          tone: missingAffiliation > 0 ? "warning" : "neutral",
+        },
         { label: "إجمالي النصاب الفعلي", value: totalQuota, tone: "accent" },
       ]}
       filters={
@@ -383,13 +513,11 @@ function Report() {
         <ReportDataTable
           rows={rows}
           caption="دليل المحاضرين وبياناتهم"
-          minWidthClassName="min-w-[1500px]"
-          columns={headers.map((h) => ({
-            key: h.key,
-            label: h.label,
-            numeric: ["base_quota", "admin_release", "effective_quota"].includes(h.key),
-            secondary: ["email", "phone", "administrative_unit"].includes(h.key),
-          }))}
+          minWidthClassName="min-w-[820px]"
+          primaryColumnLimit={6}
+          columns={
+            compactInstructorDirectoryColumns() as ReportColumn<(typeof rows)[number]>
+          }
         />
       </ReportSection>
     </ReportShell>
