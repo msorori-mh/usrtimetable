@@ -1,0 +1,32 @@
+name: report-verification
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "supabase/migrations/20260918130000_public_report_verification.sql"
+      - "tests/report-verification*"
+      - "scripts/reports-proof/verification*"
+      - ".github/workflows/report-verification.yml"
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: bun install --frozen-lockfile
+      - run: |
+          npm install --prefix "$RUNNER_TEMP/verification" --no-package-lock @electric-sql/pglite@0.3.14 @playwright/test@1.63.0
+          node "$RUNNER_TEMP/verification/node_modules/@playwright/test/cli.js" install --with-deps chromium
+      - name: Public metadata permissions and QR allowlist
+        run: VERIFY_DB_MODULE="$RUNNER_TEMP/verification/node_modules/@electric-sql/pglite/dist/index.js" node --import tsx --test tests/report-verification.test.ts tests/report-verification-database.test.mjs
+      - name: Public verification UI and actual QR component
+        run: |
+          bunx vite --config scripts/reports-proof/verification.config.mts > "$RUNNER_TEMP/verification.log" 2>&1 &
+          for i in {1..60}; do curl -fsS http://127.0.0.1:4173/verification.html >/dev/null && break; sleep 1; done
+          REPORT_QA_MODULES="$RUNNER_TEMP/verification/node_modules" node scripts/reports-proof/verification.cjs

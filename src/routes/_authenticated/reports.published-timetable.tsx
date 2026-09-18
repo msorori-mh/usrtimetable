@@ -320,6 +320,7 @@ function Page() {
       description="محاضرات نسخة منشورة واحدة، مع خيارات البحث والطباعة والتصدير."
       official
       filename="published_timetable"
+      shareParams={{ versionId }}
       rows={rows}
       headers={headers}
       isLoading={isLoading}
