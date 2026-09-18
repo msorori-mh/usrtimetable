@@ -12,8 +12,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ReportFilterBar, ReportFilterField } from "@/components/reports/report-filter-bar";
-import { ReportSection, ReportDataTable } from "@/components/reports/report-section";
+import {
+  ReportFilterBar,
+  ReportFilterField,
+} from "@/components/reports/report-filter-bar";
+import {
+  ReportSection,
+  ReportDataTable,
+} from "@/components/reports/report-section";
 import { filterRowsBySearch } from "@/lib/reports/search";
 import { listTeachingAssignmentWorkspace } from "@/lib/academic-delivery/teaching-assignments-v2-service";
 import { fetchAcademicTerms } from "@/lib/reports/queries/version-queries";
@@ -30,7 +36,9 @@ import {
   type AcademicWorkload,
 } from "@/lib/reports/academic-affairs";
 
-export const Route = createFileRoute("/_authenticated/reports/academic-affairs")({
+export const Route = createFileRoute(
+  "/_authenticated/reports/academic-affairs",
+)({
   head: () => ({ meta: [{ title: "تقارير الشؤون الأكاديمية" }] }),
   component: Page,
 });
@@ -57,12 +65,25 @@ async function readAll<T>(
 function Page() {
   const { active, isLoading } = useActiveCollege();
   if (isLoading) return <Card className="p-6">جارٍ تحميل الكليات…</Card>;
-  if (!active) return <Card className="p-6">لا توجد كلية متاحة لهذا الحساب.</Card>;
+  if (!active)
+    return <Card className="p-6">لا توجد كلية متاحة لهذا الحساب.</Card>;
   // Remount resets every dependent filter immediately when switching colleges.
-  return <AcademicReports key={active.id} collegeId={active.id} collegeName={active.name} />;
+  return (
+    <AcademicReports
+      key={active.id}
+      collegeId={active.id}
+      collegeName={active.name}
+    />
+  );
 }
 
-function AcademicReports({ collegeId, collegeName }: { collegeId: string; collegeName: string }) {
+function AcademicReports({
+  collegeId,
+  collegeName,
+}: {
+  collegeId: string;
+  collegeName: string;
+}) {
   const [kind, setKind] = useState<AcademicReportKind>("workload");
   const [chosenTerm, setChosenTerm] = useState("");
   const [departmentId, setDepartmentId] = useState("all");
@@ -112,7 +133,13 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
     : (refs?.terms[0]?.id ?? "");
   const term = refs?.terms.find((t) => t.id === termId);
   const report = useQuery({
-    queryKey: ["academic-affairs-data", collegeId, termId, kind === "workload", refs?.instructors],
+    queryKey: [
+      "academic-affairs-data",
+      collegeId,
+      termId,
+      kind === "workload",
+      refs?.instructors,
+    ],
     enabled: !!refs && !!termId,
     queryFn: async () => {
       const workspace = await listTeachingAssignmentWorkspace({
@@ -128,10 +155,13 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
           workloads.push(
             ...(await Promise.all(
               instructors.slice(offset, offset + 6).map(async (i) => {
-                const { data, error } = await supabase.rpc("compute_instructor_standard_workload", {
-                  p_instructor_id: i.id,
-                  p_term_id: termId,
-                });
+                const { data, error } = await supabase.rpc(
+                  "compute_instructor_standard_workload",
+                  {
+                    p_instructor_id: i.id,
+                    p_term_id: termId,
+                  },
+                );
                 if (error) throw new Error(error.message);
                 return parseAcademicWorkload(data, i.id);
               }),
@@ -172,7 +202,9 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
   const headers = ACADEMIC_REPORT_HEADERS[kind];
 
   const programs =
-    refs?.programs.filter((p) => departmentId === "all" || p.department_id === departmentId) ?? [];
+    refs?.programs.filter(
+      (p) => departmentId === "all" || p.department_id === departmentId,
+    ) ?? [];
   const filterSummary = [
     `الكلية: ${collegeName}`,
     `الفصل: ${term?.name ?? "غير محدد"}`,
@@ -219,6 +251,10 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
                 value: workloadTotals.missingMembers,
               },
               {
+                label: "بانتظار توزيع الساعات",
+                value: workloadTotals.pendingSplitMembers,
+              },
+              {
                 label: "إجمالي صافي النصاب (ساعة)",
                 value: workloadTotals.netQuotaHours,
               },
@@ -227,7 +263,11 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
       ]}
       filters={
         <ReportFilterBar
-          search={{ value: search, onChange: setSearch, placeholder: "ابحث في نتائج التقرير…" }}
+          search={{
+            value: search,
+            onChange: setSearch,
+            placeholder: "ابحث في نتائج التقرير…",
+          }}
           activeSummary={filterSummary.split(" · ")}
           onClear={() => {
             setDepartmentId("all");
@@ -242,10 +282,12 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
                 label="نوع التقرير"
                 value={kind}
                 onChange={(v) => setKind(v as AcademicReportKind)}
-                items={Object.entries(ACADEMIC_REPORT_TITLES).map(([id, name]) => ({
-                  id,
-                  name,
-                }))}
+                items={Object.entries(ACADEMIC_REPORT_TITLES).map(
+                  ([id, name]) => ({
+                    id,
+                    name,
+                  }),
+                )}
               />
               <Filter
                 label="الفصل الدراسي"
@@ -261,7 +303,10 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
                   setProgramId("all");
                   setInstructorId("all");
                 }}
-                items={[{ id: "all", name: "كل الأقسام" }, ...(refs?.departments ?? [])]}
+                items={[
+                  { id: "all", name: "كل الأقسام" },
+                  ...(refs?.departments ?? []),
+                ]}
               />
             </>
           }
@@ -308,20 +353,24 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
       leading={
         <>
           {error && (
-            <Card role="alert" className="border-destructive p-4 text-destructive">
+            <Card
+              role="alert"
+              className="border-destructive p-4 text-destructive"
+            >
               تعذر تحميل بيانات التقرير. لا تُعتمد أرقام جزئية.
             </Card>
           )}
           {kind === "workload" && (
             <Card className="p-3 text-sm">
-              يُعتمد النصاب المسجَّل في بطاقة عضو هيئة التدريس، وتُستخدم سياسة الرتبة عند غيابه.
-              النصاب الفعلي = النصاب الأساسي − الإعفاء الإداري. تُسمح بساعات زائدة لا تتجاوز 12 ساعة
-              أسبوعيًا، وتُقارَن به الساعات المسندة في الكلية خلال الفصل، مع إظهار إشراف المشاريع
-              منفصلاً. عند عدم وجود نصاب معتمد تظهر «غير محدد» في النصاب والزيادة والنقص، ولا تُعامل
-              كصفر ولا تدخل في المجاميع.
-              {workloadTotals.missingMembers > 0 && (
+              يُعتمد النصاب المسجَّل في بطاقة عضو هيئة التدريس، وتُستخدم سياسة
+              الرتبة عند غيابه. النصاب الفعلي = النصاب الأساسي − الإعفاء
+              الإداري. تُسمح بساعات زائدة لا تتجاوز 12 ساعة أسبوعيًا، وتُقارَن
+              به الساعات المسندة في الكلية خلال الفصل، مع إظهار إشراف المشاريع
+              منفصلاً. عند عدم وجود نصاب معتمد تظهر «غير محدد» في النصاب
+              والزيادة والنقص، ولا تُعامل كصفر ولا تدخل في المجاميع.
+              {workloadTotals.incompleteMembers > 0 && (
                 <span className="mt-2 block">
-                  {`${workloadTotals.missingMembers} عضواً بانتظار استكمال النصاب أو توزيع التدريس المشترك؛ استُبعدوا من مجاميع الزيادة والنقص.`}{" "}
+                  {`${workloadTotals.incompleteMembers} عضواً بانتظار استكمال النصاب أو توزيع التدريس المشترك؛ استُبعدوا من مجاميع الزيادة والنقص.`}{" "}
                   <Link to="/instructors" className="underline">
                     تصحيح النصاب في صفحة المحاضرين
                   </Link>
@@ -331,14 +380,18 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
           )}
           {kind === "shortages" && (
             <Card className="p-3 text-sm">
-              عجز الإسناد هو ساعات مجموعات التدريس النشطة التي لم تُستكمل تغطيتها؛ وهو مستقل عن نقص
-              نصاب عضو هيئة التدريس.
+              عجز الإسناد هو ساعات مجموعات التدريس النشطة التي لم تُستكمل
+              تغطيتها؛ وهو مستقل عن نقص نصاب عضو هيئة التدريس.
             </Card>
           )}
         </>
       }
     >
-      <ReportSection title={ACADEMIC_REPORT_TITLES[kind]} count={rows.length} bodyClassName="p-0">
+      <ReportSection
+        title={ACADEMIC_REPORT_TITLES[kind]}
+        count={rows.length}
+        bodyClassName="p-0"
+      >
         <ReportDataTable
           rows={rows}
           caption={ACADEMIC_REPORT_TITLES[kind]}
@@ -358,8 +411,22 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
                       "status",
                     ]
                   : kind === "assignments"
-                    ? ["course", "group", "instructor", "assigned", "component", "program"]
-                    : ["course", "group", "shortage", "required", "assigned", "program"];
+                    ? [
+                        "course",
+                        "group",
+                        "instructor",
+                        "assigned",
+                        "component",
+                        "program",
+                      ]
+                    : [
+                        "course",
+                        "group",
+                        "shortage",
+                        "required",
+                        "assigned",
+                        "program",
+                      ];
               return (
                 (order.includes(a.key) ? order.indexOf(a.key) : 99) -
                 (order.includes(b.key) ? order.indexOf(b.key) : 99)
@@ -416,4 +483,3 @@ function Filter({
     </ReportFilterField>
   );
 }
-

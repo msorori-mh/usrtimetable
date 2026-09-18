@@ -83,3 +83,26 @@ assert.equal(
   "approved zero is not missing",
 );
 console.log("EXISTING_SCHEDULE_INTAKE_PASS");
+
+import { summarizeWorkloadRows } from "../../src/lib/reports/academic-affairs";
+import { PENDING_SPLIT_AR } from "../../src/lib/existing-schedules/presentation";
+const pendingTotals = summarizeWorkloadRows([
+  {
+    base_required: 18,
+    release: 0,
+    required: 18,
+    assigned: 0,
+    overload: "غير محدد",
+    deficit: "غير محدد",
+    status: PENDING_SPLIT_AR,
+  },
+]);
+assert.equal(
+  pendingTotals.netQuotaHours,
+  18,
+  "known quota survives pending co-teaching allocation",
+);
+assert.equal(pendingTotals.missingMembers, 0);
+assert.equal(pendingTotals.pendingSplitMembers, 1);
+assert.equal(pendingTotals.deficitHours, 0);
+console.log("PENDING_SHARED_QUOTA_TOTALS_PASS");

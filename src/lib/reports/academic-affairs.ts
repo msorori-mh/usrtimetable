@@ -224,21 +224,21 @@ export function buildAcademicReport(
           ? QUOTA_UNDEFINED_AR
           : (balance.deficitHours ?? QUOTA_UNDEFINED_AR),
         quota_source: QUOTA_SOURCE_LABEL_AR[balance.source],
-        status: pendingSharedHours
-          ? PENDING_SPLIT_AR
-          : (balance.overloadHours ?? 0) > 12
-            ? "تجاوز الحد المسموح للساعات الزائدة"
-            : QUOTA_STATUS_LABEL_AR[balance.status],
+        status:
+          balance.status === "missing"
+            ? QUOTA_STATUS_LABEL_AR.missing
+            : pendingSharedHours
+              ? PENDING_SPLIT_AR
+              : (balance.overloadHours ?? 0) > 12
+                ? "تجاوز الحد المسموح للساعات الزائدة"
+                : QUOTA_STATUS_LABEL_AR[balance.status],
       };
     });
 }
 
 /** True when the member has no approved quota, so totals and states can exclude the row. */
 export function isMissingQuotaRow(row: AcademicReportRow): boolean {
-  return (
-    row.status === QUOTA_STATUS_LABEL_AR.missing ||
-    row.status === PENDING_SPLIT_AR
-  );
+  return row.status === QUOTA_STATUS_LABEL_AR.missing;
 }
 
 /** Recomputes truthful totals from workload rows exactly as they are displayed/exported. */
@@ -259,7 +259,15 @@ export function summarizeWorkloadRows(rows: AcademicReportRow[]) {
           ? "deficit"
           : "balanced",
   }));
-  return summarizeQuotaBalances(balances);
+  const totals = summarizeQuotaBalances(balances);
+  const pendingSplitMembers = rows.filter(
+    (row) => row.status === PENDING_SPLIT_AR,
+  ).length;
+  return {
+    ...totals,
+    pendingSplitMembers,
+    incompleteMembers: totals.missingMembers + pendingSplitMembers,
+  };
 }
 
 export const ACADEMIC_REPORT_TITLES: Record<AcademicReportKind, string> = {
