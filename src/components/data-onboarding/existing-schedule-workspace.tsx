@@ -199,7 +199,7 @@ export function ExistingScheduleWorkspace({
         p_end: end || null,
         p_room: room || null,
         p_allocations: Object.keys(split).length ? split : null,
-      } as unknown as Parameters<typeof supabase.rpc>[1];
+      } as unknown as Database["public"]["Functions"]["complete_existing_schedule_source"]["Args"];
       const { error } = await supabase.rpc(
         "complete_existing_schedule_source",
         args,
