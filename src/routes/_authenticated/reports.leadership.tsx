@@ -36,7 +36,7 @@ import {
 } from "@/lib/reports/leadership";
 
 export const Route = createFileRoute("/_authenticated/reports/leadership")({
-  head: () => ({ meta: [{ title: "لوحة الإدارة العليا للجامعة" }] }),
+  head: () => ({ meta: [{ title: "المؤشرات التنفيذية للجامعة" }] }),
   component: Page,
 });
 
@@ -191,7 +191,9 @@ function LeadershipDashboard() {
     },
   });
   const data = query.data;
-  const colleges = !query.error && !query.isFetching ? (data?.colleges ?? []) : [];
+  const colleges = (!query.error && !query.isFetching ? (data?.colleges ?? []) : []).filter(
+    (college) => college.college_id !== "7e570000-0000-4000-8000-000000000001",
+  );
   const ready = colleges.filter((c) => c.term_state === "ready").length;
   const published = colleges.filter((c) => !!c.version_id).length;
   const rows: LeadershipRow[] = colleges.map((c) => ({
@@ -276,7 +278,7 @@ function LeadershipDashboard() {
   ];
   return (
     <ReportShell
-      title="لوحة الإدارة العليا للجامعة"
+      title="المؤشرات التنفيذية للجامعة"
       filename={`university_leadership_${data?.year ?? ""}_${data?.term_type ?? ""}`}
       rows={rows}
       headers={exportHeaders}
@@ -343,11 +345,7 @@ function LeadershipDashboard() {
       ]}
       summary={
         <Card className="border-primary/20 bg-primary/5 px-4 py-3" data-testid="leadership-scope">
-          <div className="grid gap-2 text-center sm:grid-cols-4">
-            <div>
-              <div className="text-[11px] text-muted-foreground">الفترة</div>
-              <div className="font-semibold">{periodLabel}</div>
-            </div>
+          <div className="grid gap-2 text-center sm:grid-cols-3">
             <div>
               <div className="text-[11px] text-muted-foreground">الكليات</div>
               <div className="font-semibold tabular-nums">{colleges.length}</div>
