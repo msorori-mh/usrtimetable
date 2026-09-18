@@ -192,7 +192,7 @@ function Page() {
       filters={<ReportFilters context={ctx} />}
       printContent={
         <>
-          <style>{printPageStyleCss("A3", "landscape")}</style>
+          <style>{printPageStyleCss()}</style>
           <section className="print-center-page break-after-page">
             <RepeatingPrintHeader
               header={

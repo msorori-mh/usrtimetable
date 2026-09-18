@@ -132,19 +132,13 @@ export function PrintCenterPage(props: { versionId: string }) {
   const [departmentId, setDepartmentId] = useState(initialFromUrl.departmentId ?? "");
   const [instructorId, setInstructorId] = useState(initialFromUrl.instructorId ?? "");
   const [roomId, setRoomId] = useState(initialFromUrl.roomId ?? "");
-  const [paper, setPaper] = useState<PrintPaperSize>(initialFromUrl.paper ?? "A3");
+  const [paper, setPaper] = useState<PrintPaperSize>(initialFromUrl.paper ?? "A4");
   const [orientation, setOrientation] = useState<PrintOrientation>(
-    initialFromUrl.orientation ?? "landscape",
+    initialFromUrl.orientation ?? "portrait",
   );
   const [visibility, setVisibility] = useState<PrintVisibilityOptions>(DEFAULT_PRINT_VISIBILITY);
 
-  // Student default: A3 landscape (already set). Sync paper defaults when switching report type.
-  useEffect(() => {
-    if (reportType === "student") {
-      setPaper((p) => (initialFromUrl.paper ? p : "A3"));
-      setOrientation((o) => (initialFromUrl.orientation ? o : "landscape"));
-    }
-  }, [reportType, initialFromUrl.paper, initialFromUrl.orientation]);
+  // Keep an explicit paper/orientation choice when changing report type.
 
   // Clear leftover dimensions that do not apply to the active report type
   // (e.g. programId from student must not shrink instructor/room reports).
@@ -360,7 +354,10 @@ export function PrintCenterPage(props: { versionId: string }) {
     window.history.replaceState(null, "", next);
   }, [versionId, filters, paper, orientation]);
 
-  const isDemo = isDeliveryDemoVersion({ name: version?.name, notes: version?.notes });
+  const isDemo = isDeliveryDemoVersion({
+    name: version?.name,
+    notes: version?.notes,
+  });
   const lastUpdate = latestSessionUpdate(sessionsBundle?.sessions ?? []) ?? version?.updated_at;
 
   const setVis = <K extends keyof PrintVisibilityOptions>(
@@ -473,7 +470,10 @@ export function PrintCenterPage(props: { versionId: string }) {
               onClick={() =>
                 downloadCSV(
                   exportRows as unknown as Record<string, unknown>[],
-                  PRINT_EXPORT_HEADERS.map((h) => ({ key: h.key, label: h.label })),
+                  PRINT_EXPORT_HEADERS.map((h) => ({
+                    key: h.key,
+                    label: h.label,
+                  })),
                   filename,
                 )
               }
@@ -487,7 +487,10 @@ export function PrintCenterPage(props: { versionId: string }) {
               onClick={() =>
                 downloadXLSX(
                   exportRows as unknown as Record<string, unknown>[],
-                  PRINT_EXPORT_HEADERS.map((h) => ({ key: h.key, label: h.label })),
+                  PRINT_EXPORT_HEADERS.map((h) => ({
+                    key: h.key,
+                    label: h.label,
+                  })),
                   filename,
                 )
               }
@@ -542,7 +545,10 @@ export function PrintCenterPage(props: { versionId: string }) {
                   if (v !== "__all__") setProgramId("");
                 }}
                 items={[
-                  { id: "__all__", name: reportType === "department" ? "اختر القسم" : "الكل" },
+                  {
+                    id: "__all__",
+                    name: reportType === "department" ? "اختر القسم" : "الكل",
+                  },
                   ...(depts ?? []).map((d) => ({ id: d.id, name: d.name })),
                 ]}
               />
@@ -604,7 +610,10 @@ export function PrintCenterPage(props: { versionId: string }) {
                 onChange={(v) => setInstructorId(v === "__all__" ? "" : v)}
                 items={[
                   { id: "__all__", name: "كل المدرسين" },
-                  ...(instructors ?? []).map((i) => ({ id: i.id, name: i.full_name })),
+                  ...(instructors ?? []).map((i) => ({
+                    id: i.id,
+                    name: i.full_name,
+                  })),
                 ]}
               />
             )}

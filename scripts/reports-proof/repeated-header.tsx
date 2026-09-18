@@ -121,6 +121,8 @@ createRoot(document.getElementById("root")!).render(
         {table}
       </ReportShell>
     )}
-    <style>{printPageStyleCss(paper, orientation)}</style>
+    <style>
+      {params.has("paper") ? printPageStyleCss(paper, orientation) : printPageStyleCss()}
+    </style>
   </main>,
 );

@@ -57,7 +57,7 @@ const TIMETABLE_REPORTS: ReportCard[] = [
   {
     to: "/reports/current-timetable",
     title: "طباعة الجدول الحالي",
-    desc: "النسخة الحالية كاملة · مجمعة حسب البرنامج/المستوى/النظام ومجموعات الطلاب · رأس رسمي · A3 landscape.",
+    desc: "النسخة الحالية كاملة · مجمعة حسب البرنامج/المستوى/النظام ومجموعات الطلاب · رأس رسمي · A4 عمودي.",
     icon: <Printer className="h-5 w-5" />,
     badge: "official",
   },

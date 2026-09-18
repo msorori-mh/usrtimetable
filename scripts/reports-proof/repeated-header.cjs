@@ -11,16 +11,19 @@ const { execFileSync } = require("node:child_process");
     page.on("pageerror", (e) => errors.push(e.message));
     for (const mode of ["report", "summary", "sheet", "instructor"]) {
       for (const [paper, orientation, width] of [
+        ["default", "portrait", 1440],
         ["A4", "portrait", 390],
         ["A4", "landscape", 1440],
         ["A3", "landscape", 1440],
       ]) {
         await page.setViewportSize({ width, height: 900 });
         await page.goto(
-          `http://127.0.0.1:4173/repeated-header.html?mode=${mode}&paper=${paper}&orientation=${orientation}`,
+          `http://127.0.0.1:4173/repeated-header.html?mode=${mode}${paper === "default" ? "" : `&paper=${paper}&orientation=${orientation}`}`,
         );
         await page
-          .getByText(mode === "instructor" ? "ROW017" : "ROW139", { exact: true })
+          .getByText(mode === "instructor" ? "ROW017" : "ROW139", {
+            exact: true,
+          })
           .first()
           .waitFor({ state: "attached" });
         await page.evaluate(() => document.fonts.ready);

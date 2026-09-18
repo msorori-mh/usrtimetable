@@ -24,7 +24,10 @@ export const PRINT_PAGE_STYLE_ELEMENT_ID = "print-center-page-style";
 export const PRINT_PHYSICAL_PAGE_PREFIX_AR = "صفحة";
 export const PRINT_PHYSICAL_PAGE_SEPARATOR_AR = "من";
 
-export function printPageStyleCss(paper: PrintPaperSize, orientation: PrintOrientation): string {
+export function printPageStyleCss(
+  paper: PrintPaperSize = "A4",
+  orientation: PrintOrientation = "portrait",
+): string {
   return `@media print {
   @page {
     size: ${paper} ${orientation};
