@@ -83,7 +83,7 @@ jobs:
         run: bun run build
 
       - name: Continuous distribution quality and atomic application
-        run: node --test tests/quality-search.test.mjs
+        run: node --test tests/quality-search.test.mjs tests/instructor-daily-sessions.test.mjs
 
       - name: Joint mathematical scheduling model
         run: node --import tsx --test tests/joint-model.test.mjs tests/extended-resource-capacity.test.mjs tests/course-program-plans.test.mjs
@@ -194,6 +194,13 @@ jobs:
         run: |
           createdb -h 127.0.0.1 -U postgres extended_day_test
           node --test tests/extended-day-db.test.mjs
+
+      - name: Three instructor sessions daily and atomic final-state guard
+        env:
+          PGPASSWORD: postgres
+        run: |
+          createdb -h 127.0.0.1 -U postgres instructor_daily_session_test
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d instructor_daily_session_test -f tests/instructor-daily-session-cap.sql
 
       - name: Direct course program selection persistence and permissions
         env:

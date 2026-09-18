@@ -54,7 +54,12 @@ export type RepairPlan = {
 
 /** Stable identity for alternatives rejected by the authoritative transaction. */
 export function repairPlanKey(plan: RepairPlan): string {
-  const tuple = (p: RepairPlacement) => [p.day_of_week, p.start_time, p.end_time, p.room_id];
+  const tuple = (p: RepairPlacement) => [
+    p.day_of_week,
+    p.start_time,
+    p.end_time,
+    p.room_id,
+  ];
   return JSON.stringify([
     tuple(plan.placement),
     [...plan.moves]
@@ -91,7 +96,10 @@ const samePlacement = (a: RepairPlacement, b: RepairPlacement) =>
 const durationMinutes = (session: Session) =>
   minutes(session.end_time) - minutes(session.start_time);
 
-const withPlacement = (session: Session, placement: RepairPlacement): Session => ({
+const withPlacement = (
+  session: Session,
+  placement: RepairPlacement,
+): Session => ({
   ...session,
   day_of_week: placement.day_of_week,
   start_time: placement.start_time,
@@ -111,17 +119,29 @@ export function conflictingSessions(
   const share = context(snapshot).share;
   const start = minutes(candidate.start_time);
   const end = minutes(candidate.end_time);
+  const dailyCountBlocked =
+    sessions.filter(
+      (x) =>
+        x.id !== candidate.id &&
+        x.instructor_id === candidate.instructor_id &&
+        x.day_of_week === candidate.day_of_week &&
+        !x.replaced_by_split,
+    ).length >= 3;
   return sessions.filter((other) => {
     if (other.id === candidate.id) return false;
     if (other.day_of_week !== candidate.day_of_week) return false;
     const gap = Math.max(0, snapshot.settings.break_between_sessions_min || 0);
-    const overlap = start < minutes(other.end_time) && end > minutes(other.start_time);
+    const overlap =
+      start < minutes(other.end_time) && end > minutes(other.start_time);
     const personOverlap =
-      start < minutes(other.end_time) + gap && end > minutes(other.start_time) - gap;
+      start < minutes(other.end_time) + gap &&
+      end > minutes(other.start_time) - gap;
     return (
+      (dailyCountBlocked && other.instructor_id === candidate.instructor_id) ||
       (overlap && other.room_id === candidate.room_id) ||
       (personOverlap &&
-        (other.instructor_id === candidate.instructor_id || share(other, candidate)))
+        (other.instructor_id === candidate.instructor_id ||
+          share(other, candidate)))
     );
   });
 }
@@ -172,7 +192,14 @@ function relocate(
       if (samePlacement(placement, current)) continue;
       const candidate = withPlacement(session, placement);
       state.attempts++;
-      if (state.feasible(state.snapshot, [...others, candidate], candidate, session)) {
+      if (
+        state.feasible(
+          state.snapshot,
+          [...others, candidate],
+          candidate,
+          session,
+        )
+      ) {
         return {
           sessions: [...others, candidate],
           moves: [
@@ -195,7 +222,14 @@ function relocate(
       if (!inner) continue;
       if (state.attempts >= state.budget.maxAttempts) return null;
       state.attempts++;
-      if (!state.feasible(state.snapshot, [...inner.sessions, candidate], candidate, session)) {
+      if (
+        !state.feasible(
+          state.snapshot,
+          [...inner.sessions, candidate],
+          candidate,
+          session,
+        )
+      ) {
         continue;
       }
       return {
@@ -238,8 +272,14 @@ export function planRepair(input: {
   stats?: { attempts: number };
 }): RepairPlan | null {
   const budget: RepairBudget = {
-    maxAttempts: Math.max(1, input.budget?.maxAttempts ?? DEFAULT_REPAIR_BUDGET.maxAttempts),
-    maxDepth: Math.max(1, Math.min(2, input.budget?.maxDepth ?? DEFAULT_REPAIR_BUDGET.maxDepth)),
+    maxAttempts: Math.max(
+      1,
+      input.budget?.maxAttempts ?? DEFAULT_REPAIR_BUDGET.maxAttempts,
+    ),
+    maxDepth: Math.max(
+      1,
+      Math.min(2, input.budget?.maxDepth ?? DEFAULT_REPAIR_BUDGET.maxDepth),
+    ),
   };
   const state: SearchState = {
     snapshot: input.snapshot,
@@ -279,9 +319,18 @@ export function planRepair(input: {
       if (blockers.length > budget.maxDepth) continue;
       if (blockers.some((blocker) => blocker.is_locked)) continue;
 
-      const rest = sessions.filter((x) => !blockers.some((blocker) => blocker.id === x.id));
+      const rest = sessions.filter(
+        (x) => !blockers.some((blocker) => blocker.id === x.id),
+      );
       state.attempts++;
-      if (!state.feasible(state.snapshot, [...rest, candidate], candidate, input.missing)) {
+      if (
+        !state.feasible(
+          state.snapshot,
+          [...rest, candidate],
+          candidate,
+          input.missing,
+        )
+      ) {
         // Even with the blockers removed the slot is illegal — moving them is pointless.
         continue;
       }
@@ -329,6 +378,7 @@ export function compareRepairPriority(
   a: { durationMinutes: number; candidateCount: number },
   b: { durationMinutes: number; candidateCount: number },
 ): number {
-  if (a.durationMinutes !== b.durationMinutes) return b.durationMinutes - a.durationMinutes;
+  if (a.durationMinutes !== b.durationMinutes)
+    return b.durationMinutes - a.durationMinutes;
   return a.candidateCount - b.candidateCount;
 }

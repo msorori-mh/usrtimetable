@@ -55,19 +55,31 @@ export function CompactSchedulePanel({
     setResult(null);
     try {
       if (mode === "verify" && result) {
-        const verified = await retryCompactApplication(collegeId, versionId, result);
+        const verified = await retryCompactApplication(
+          collegeId,
+          versionId,
+          result,
+        );
         setResult(verified);
         setMessage(verified.stopped || "تأكد حفظ الخطة كاملة.");
         await qc.invalidateQueries();
       } else if (mode === "apply" && proposal) {
         setMessage("جارٍ التحقق وحفظ الخطة كاملة…");
-        const saved = await applyCompactProposal(collegeId, versionId, proposal, {
-          signal: controller.signal,
-          onProgress: (n, total) => setMessage(`تم حفظ ${n} من ${total} نقلاً`),
-        });
+        const saved = await applyCompactProposal(
+          collegeId,
+          versionId,
+          proposal,
+          {
+            signal: controller.signal,
+            onProgress: (n, total) =>
+              setMessage(`تم حفظ ${n} من ${total} نقلاً`),
+          },
+        );
         setResult(saved);
         setProposal(null);
-        setMessage(saved.stopped || "اكتمل حفظ التنقلات المقترحة والتحقق من النتيجة.");
+        setMessage(
+          saved.stopped || "اكتمل حفظ التنقلات المقترحة والتحقق من النتيجة.",
+        );
         await qc.invalidateQueries();
       } else {
         setProposal(null);
@@ -80,7 +92,8 @@ export function CompactSchedulePanel({
             : await previewCompaction(snapshot, {
                 signal: controller.signal,
                 maxDurationMs: searchDuration,
-                onProgress: (n) => setMessage(`جارٍ البحث — ${n} نقلاً محسّناً حتى الآن`),
+                onProgress: (n) =>
+                  setMessage(`جارٍ البحث — ${n} نقلاً محسّناً حتى الآن`),
               });
         setProposal(p);
         setMessage(
@@ -88,7 +101,9 @@ export function CompactSchedulePanel({
             ? qualitySearchMessage(p)
             : p.attendanceSearch
               ? attendanceSearchMessage(p.attendanceSearch) +
-                (p.executionBlocked ? ` ${p.executionBlocked}` : " لم تُحفظ تغييرات بعد.")
+                (p.executionBlocked
+                  ? ` ${p.executionBlocked}`
+                  : " لم تُحفظ تغييرات بعد.")
               : p.outcome === "empty"
                 ? "لا توجد محاضرات مجدولة لتحسينها. استكمل بيانات الإسناد وولّد المسودة أولًا."
                 : p.outcome === "time_limit" || p.outcome === "candidate_limit"
@@ -102,7 +117,9 @@ export function CompactSchedulePanel({
       }
     } catch (error) {
       setMessage(
-        error instanceof Error ? error.message : "تعذر التحقق. أعد المعاينة قبل المتابعة.",
+        error instanceof Error
+          ? error.message
+          : "تعذر التحقق. أعد المعاينة قبل المتابعة.",
       );
       setProposal(null);
     } finally {
@@ -117,12 +134,18 @@ export function CompactSchedulePanel({
   const fields: Array<[keyof Metrics, string]> = [
     ...(extendedPolicy
       ? ([
-          ["extendedDayViolations", "أيام تمديد إضافية فوق الحد المسموح للمجموعات"],
+          [
+            "extendedDayViolations",
+            "أيام تمديد إضافية فوق الحد المسموح للمجموعات",
+          ],
           ["extendedGroups", "مجموعات لها حضور بعد الثانية"],
         ] as Array<[keyof Metrics, string]>)
       : []),
     ["practicalHallSessions", "جلسات عملية في قاعات بدل المعامل"],
-    ["instructorExcessTargetDays", "أيام حضور المدرسين الزائدة عن أهداف ساعاتهم"],
+    [
+      "instructorExcessTargetDays",
+      "أيام حضور المدرسين الزائدة عن أهداف ساعاتهم",
+    ],
     ["instructorSingleLectureDays", "أيام حضور المدرسين لمحاضرة واحدة"],
     ["levelsOverFive", "مستويات تتجاوز خمسة أيام"],
     ["excessDaysOverThree", "أيام إضافية فوق هدف ثلاثة أيام"],
@@ -141,26 +164,32 @@ export function CompactSchedulePanel({
     ["teachingMinutes", "دقائق التدريس"],
   ];
   const display = (value: Metrics[keyof Metrics]) =>
-    typeof value === "number" ? Number(value.toFixed(1)).toLocaleString("ar") : String(value);
+    typeof value === "number"
+      ? Number(value.toFixed(1)).toLocaleString("ar")
+      : String(value);
   return (
     <Card className="p-4 space-y-3" dir="rtl">
       <h2 className="font-bold">تحسين توزيع الجدول</h2>
       {extendedPolicy && (
         <p className="text-sm">
-          الحد المحفوظ لأيام التمديد بعد الثانية لكل مجموعة طلاب: {extendedDays}. يشمل النظري
-          والعملي معًا. يمكن أن يختلف يوم التمديد بين مجموعات المستوى نفسه.
+          الحد المحفوظ لأيام التمديد بعد الثانية لكل مجموعة طلاب: {extendedDays}
+          . يشمل النظري والعملي معًا. يمكن أن يختلف يوم التمديد بين مجموعات
+          المستوى نفسه.
         </p>
       )}
       <p className="text-sm text-muted-foreground">
-        يستمر البحث في تقليل الفراغات وتجميع محاضرات المدرس وتفضيل المعامل للعملي، دون زيادة عدد
-        أيام حضور أي مدرس أو مجموعة طلاب عن الجدول الحالي. أهداف المدرس حسب الساعات: حتى 6 ساعات
-        يوم، حتى 10 يومان، حتى 16 ثلاثة أيام، وما فوقها أربعة؛ مع مراعاة القيود المحفوظة. تُفحص
-        التنقلات والتبادلات معًا، وتبقى الإسنادات والمدد والأقفال محفوظة.
+        الحد الأقصى ثلاث محاضرات للمحاضر في اليوم، شاملًا العام والموازي وبصرف
+        النظر عن مدة المحاضرة. يستمر البحث في تقليل الفراغات وتجميع محاضرات
+        المدرس وتفضيل المعامل للعملي، دون زيادة عدد أيام حضور أي مدرس أو مجموعة
+        طلاب عن الجدول الحالي. أهداف المدرس حسب الساعات: حتى 6 ساعات يوم، حتى 10
+        يومان، حتى 16 ثلاثة أيام، وما فوقها أربعة؛ مع مراعاة القيود المحفوظة.
+        تُفحص التنقلات والتبادلات معًا، وتبقى الإسنادات والمدد والأقفال محفوظة.
       </p>
       <p className="text-sm">
-        تُحفظ الخطة كاملة أو تُلغى كاملة إذا رُفض أحد تنقلاتها. بعد إرسالها، انتظر تأكيد النتيجة؛
-        انقطاع الاتصال لا يعني فشل الحفظ. هذا التحسين يعيد توزيع المحاضرات الموجودة فقط؛ المحاضرات
-        غير المجدولة تبقى بحاجة إلى الإكمال. تحقق النتيجة الجزئية لا يعني اكتمال الجدول النهائي.
+        تُحفظ الخطة كاملة أو تُلغى كاملة إذا رُفض أحد تنقلاتها. بعد إرسالها،
+        انتظر تأكيد النتيجة؛ انقطاع الاتصال لا يعني فشل الحفظ. هذا التحسين يعيد
+        توزيع المحاضرات الموجودة فقط؛ المحاضرات غير المجدولة تبقى بحاجة إلى
+        الإكمال. تحقق النتيجة الجزئية لا يعني اكتمال الجدول النهائي.
       </p>
       <div className="flex flex-wrap gap-2">
         <label className="text-sm flex items-center gap-2">
@@ -177,13 +206,25 @@ export function CompactSchedulePanel({
           </select>
         </label>
         <Button
-          disabled={!canManage || !versionId || busy || disabled || result?.status === "unknown"}
+          disabled={
+            !canManage ||
+            !versionId ||
+            busy ||
+            disabled ||
+            result?.status === "unknown"
+          }
           onClick={() => void execute("preview")}
         >
           معاينة تحسين التوزيع
         </Button>
         <Button
-          disabled={!canManage || busy || disabled || !proposal?.moves.length || proposal.stopped}
+          disabled={
+            !canManage ||
+            busy ||
+            disabled ||
+            !proposal?.moves.length ||
+            proposal.stopped
+          }
           onClick={() => void execute("apply")}
         >
           تطبيق التحسين على المسودة
@@ -207,8 +248,8 @@ export function CompactSchedulePanel({
         <details className="text-sm">
           <summary>استيراد خطة توزيع محسوبة</summary>
           <p>
-            تُفحص الخطة على النسخة الحالية قبل إتاحة تطبيقها، مع التحقق من عدد الأيام وقيود الطلاب
-            والقاعات والمدرسين.
+            تُفحص الخطة على النسخة الحالية قبل إتاحة تطبيقها، مع التحقق من عدد
+            الأيام وقيود الطلاب والقاعات والمدرسين.
           </p>
           <textarea
             aria-label="خطة التوزيع المحسوبة"
@@ -220,7 +261,9 @@ export function CompactSchedulePanel({
           />
           <Button
             variant="outline"
-            disabled={busy || disabled || !importText || result?.status === "unknown"}
+            disabled={
+              busy || disabled || !importText || result?.status === "unknown"
+            }
             onClick={() => void execute("import")}
           >
             فحص خطة التوزيع
@@ -251,18 +294,21 @@ export function CompactSchedulePanel({
             </tbody>
           </table>
           <p className="text-xs text-muted-foreground">
-            تُحسب الفراغات بين أول محاضرة وآخرها دون خصم استراحة، لكل شعبة فعلية ولكل مدرس. المجاميع
-            الطلابية موزونة بعدد الطلاب.
+            تُحسب الفراغات بين أول محاضرة وآخرها دون خصم استراحة، لكل شعبة فعلية
+            ولكل مدرس. المجاميع الطلابية موزونة بعدد الطلاب.
           </p>
         </div>
       )}
       {after && after.levelsOverFive > 0 && (
         <p role="alert" className="text-amber-700">
-          لم يتحقق حد خمسة أيام بعد في {after.levelsOverFive} مستوى. النتيجة تحسين جزئي وليست جاهزة
-          للاعتماد النهائي؛ يلزم حل القيود المتبقية وإعادة التحسين.
+          لم يتحقق حد خمسة أيام بعد في {after.levelsOverFive} مستوى. النتيجة
+          تحسين جزئي وليست جاهزة للاعتماد النهائي؛ يلزم حل القيود المتبقية
+          وإعادة التحسين.
         </p>
       )}
-      {proposal && <p className="text-xs">التنقلات المقترحة: {proposal.moves.length}.</p>}
+      {proposal && (
+        <p className="text-xs">التنقلات المقترحة: {proposal.moves.length}.</p>
+      )}
     </Card>
   );
 }

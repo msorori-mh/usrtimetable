@@ -1,5 +1,9 @@
 import type { ModelData } from "highs";
 import {
+  MAX_INSTRUCTOR_SESSIONS_PER_DAY,
+  instructorDailySessionViolations,
+} from "./instructor-daily-sessions.ts";
+import {
   compactSlots,
   context,
   feasible,
@@ -8,7 +12,10 @@ import {
   type Session,
   type Snapshot,
 } from "./compact.ts";
-import { extendedDayLimit, studentDailyPolicy } from "../scheduling/student-daily-policy.ts";
+import {
+  extendedDayLimit,
+  studentDailyPolicy,
+} from "../scheduling/student-daily-policy.ts";
 import { roomTypeRank } from "../scheduling/room-type-policy.ts";
 import {
   instructorAttendanceDayCap,
@@ -21,14 +28,19 @@ type Term = [number, number];
 const INF = 1e30;
 const duration = (s: Session) => minutes(s.end_time) - minutes(s.start_time);
 const sameTime = (a: Session, b: Session) =>
-  a.day_of_week === b.day_of_week && a.start_time === b.start_time && a.end_time === b.end_time;
+  a.day_of_week === b.day_of_week &&
+  a.start_time === b.start_time &&
+  a.end_time === b.end_time;
 
 /** Equivalent rooms are interchangeable interval resources; locked rooms remain separate. */
 function roomPools(snapshot: Snapshot) {
-  const locked = new Set(snapshot.sessions.filter((s) => s.is_locked).map((s) => s.room_id));
+  const locked = new Set(
+    snapshot.sessions.filter((s) => s.is_locked).map((s) => s.room_id),
+  );
   if (snapshot.generationScope) {
     const existing = new Set(snapshot.generationScope.existingIds);
-    for (const s of snapshot.sessions) if (existing.has(s.id)) locked.add(s.room_id);
+    for (const s of snapshot.sessions)
+      if (existing.has(s.id)) locked.add(s.room_id);
   }
   const groups = new Map<string, Snapshot["rooms"]>();
   for (const r of snapshot.rooms.filter((r) => r.is_active)) {
@@ -39,7 +51,13 @@ function roomPools(snapshot: Snapshot) {
     const closures = (snapshot.roomUnavailability ?? [])
       .filter((x) => x.room_id === r.id)
       .map((x) =>
-        JSON.stringify([x.day_of_week, x.start_time, x.end_time, x.start_date, x.end_date]),
+        JSON.stringify([
+          x.day_of_week,
+          x.start_time,
+          x.end_time,
+          x.start_date,
+          x.end_date,
+        ]),
       )
       .sort();
     const key = JSON.stringify([
@@ -59,15 +77,24 @@ function roomPools(snapshot: Snapshot) {
 
 /** Build a complete simultaneous placement model on the approved candidate grid.
  * Grid infeasibility is NOT a proof that another attendance day is necessary. */
-export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = false) {
+export function buildJointModel(
+  snapshot: Snapshot,
+  dayCap: 3 | 4 | 5,
+  repair = false,
+) {
   const ctx = context(snapshot);
   if (
     !snapshot.sessions.length ||
     snapshot.sessions.length > 4096 ||
-    new Set(snapshot.sessions.map((s) => s.id)).size !== snapshot.sessions.length
+    new Set(snapshot.sessions.map((s) => s.id)).size !==
+      snapshot.sessions.length
   )
     throw new Error("INVALID_JOINT_SCOPE");
-  if (snapshot.sessions.some((s) => ctx.students(s).some((p) => p.startsWith("cohort:"))))
+  if (
+    snapshot.sessions.some((s) =>
+      ctx.students(s).some((p) => p.startsWith("cohort:")),
+    )
+  )
     throw new Error("INCOMPLETE_STUDENT_PARTITIONS");
   const pools = roomPools(snapshot);
   const candidates: Candidate[] = [];
@@ -114,7 +141,11 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
     const entries: Term[] = [];
     for (const slot of slots)
       for (let pool = 0; pool < pools.length; pool++) {
-        if (original.is_locked && !pools[pool].some((r) => r.id === original.room_id)) continue;
+        if (
+          original.is_locked &&
+          !pools[pool].some((r) => r.id === original.room_id)
+        )
+          continue;
         const candidate = {
           ...original,
           is_locked: false,
@@ -123,9 +154,14 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
           start_time: slot.start,
           end_time: slot.end,
         };
-        if (!feasible(snapshot, [], candidate, { ...original, is_locked: false })) continue;
+        if (
+          !feasible(snapshot, [], candidate, { ...original, is_locked: false })
+        )
+          continue;
         const i = variable(sameTime(original, candidate) ? 0 : 1);
-        const required = snapshot.assignments.find((a) => a.id === original.teaching_assignment_id);
+        const required = snapshot.assignments.find(
+          (a) => a.id === original.teaching_assignment_id,
+        );
         const fallback =
           roomTypeRank({
             componentType: sessionStudentLoadKind(snapshot, original),
@@ -136,7 +172,8 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
         generationWeights.set(
           i,
           fallback * 100 +
-            (sameTime(original, candidate) && pools[pool].some((r) => r.id === original.room_id)
+            (sameTime(original, candidate) &&
+            pools[pool].some((r) => r.id === original.room_id)
               ? 0
               : 1),
         );
@@ -145,7 +182,8 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
           pool,
         });
         entries.push([i, 1]);
-        if (candidates.length > 200000) throw new Error("JOINT_MODEL_SIZE_LIMIT");
+        if (candidates.length > 200000)
+          throw new Error("JOINT_MODEL_SIZE_LIMIT");
       }
     if (!entries.length) throw new Error("JOINT_GRID_HAS_NO_PLACEMENT");
     row(entries, 1, 1);
@@ -154,7 +192,11 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
   const boundaries = new Map<number, number[]>();
   for (const { session: x } of candidates) {
     const xs = boundaries.get(x.day_of_week) ?? [];
-    xs.push(minutes(x.start_time), minutes(x.end_time), minutes(x.end_time) + gap);
+    xs.push(
+      minutes(x.start_time),
+      minutes(x.end_time),
+      minutes(x.end_time) + gap,
+    );
     boundaries.set(x.day_of_week, xs);
   }
   for (const [day, xs] of boundaries)
@@ -203,7 +245,13 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
         cells.set(key, cell);
       }
     for (const p of persons) add(`student:${p}|${day}`, p, "student", day, i);
-    add(`teacher:${x.instructor_id}|${day}`, x.instructor_id, "teacher", day, i);
+    add(
+      `teacher:${x.instructor_id}|${day}`,
+      x.instructor_id,
+      "teacher",
+      day,
+      i,
+    );
     for (const level of ctx.levels(x)) {
       const days = levels.get(level) ?? new Map<number, Term[]>();
       days.set(day, [...(days.get(day) ?? []), [i, 1]]);
@@ -247,6 +295,7 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
   // Generation omits costly span optimization but retains attendance preferences.
   for (const { terms, kind, person, day } of daily.values()) {
     const student = kind === "student";
+    if (!student) row(terms, -INF, MAX_INSTRUCTOR_SESSIONS_PER_DAY);
     const policy = studentDailyPolicy(snapshot.settings);
     const capMinutes = student
       ? policy.totalMinutes
@@ -261,7 +310,10 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
     if (student) {
       // Theory-like / practical subset caps from the shared student daily policy.
       const subsets: Array<
-        [import("../scheduling/student-daily-policy.ts").StudentLoadKind, number]
+        [
+          import("../scheduling/student-daily-policy.ts").StudentLoadKind,
+          number,
+        ]
       > = [
         ["theory", policy.theoryMinutes],
         ["practical", policy.practicalMinutes],
@@ -269,7 +321,9 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
       for (const [subsetKind, subsetCap] of subsets) {
         if (subsetCap >= capMinutes) continue;
         const subset = terms.filter(
-          ([i]) => sessionStudentLoadKind(snapshot, candidates[i].session) === subsetKind,
+          ([i]) =>
+            sessionStudentLoadKind(snapshot, candidates[i].session) ===
+            subsetKind,
         );
         if (!subset.length) continue;
         row(
@@ -281,12 +335,19 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
     }
     const maxDaily = Math.min(
       new Set(terms.map(([i]) => candidates[i].session.id)).size,
-      Math.floor(capMinutes / Math.min(...terms.map(([i]) => duration(candidates[i].session)))),
+      Math.floor(
+        capMinutes /
+          Math.min(...terms.map(([i]) => duration(candidates[i].session))),
+      ),
     );
     const y = variable(student ? 300 : 30);
-    if (student) studentDays.set(person, [...(studentDays.get(person) ?? []), [y, 1]]);
+    if (student)
+      studentDays.set(person, [...(studentDays.get(person) ?? []), [y, 1]]);
     if (!student) {
-      instructorDays.set(person, [...(instructorDays.get(person) ?? []), [y, 1]]);
+      instructorDays.set(person, [
+        ...(instructorDays.get(person) ?? []),
+        [y, 1],
+      ]);
       generationWeights.set(y, 30);
     }
     row([...terms, [y, -maxDaily]], -INF, 0);
@@ -303,12 +364,16 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
         );
         if (late.length) {
           const z = variable();
-          const minLateDuration = Math.min(...late.map(([i]) => duration(candidates[i].session)));
+          const minLateDuration = Math.min(
+            ...late.map(([i]) => duration(candidates[i].session)),
+          );
           const maxLate = Math.min(
             maxDaily,
             Math.ceil(
               (minutes(snapshot.settings.day_end_time) -
-                minutes(snapshot.settings.standard_day_end_time ?? "14:00:00")) /
+                minutes(
+                  snapshot.settings.standard_day_end_time ?? "14:00:00",
+                )) /
                 minLateDuration,
             ),
           );
@@ -338,7 +403,11 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
       0,
     );
     row(
-      [[end, 1], [start, -1], ...terms.map(([i]): Term => [i, -duration(candidates[i].session)])],
+      [
+        [end, 1],
+        [start, -1],
+        ...terms.map(([i]): Term => [i, -duration(candidates[i].session)]),
+      ],
       0,
       INF,
     );
@@ -350,8 +419,16 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
           minutes(candidates[i].session.end_time) > points[k],
       );
       if (!occupied.length) continue;
-      row([[end, 1], ...occupied.map(([i]): Term => [i, -points[k + 1]])], 0, INF);
-      row([[start, 1], ...occupied.map(([i]): Term => [i, 1440])], -INF, points[k] + 1440);
+      row(
+        [[end, 1], ...occupied.map(([i]): Term => [i, -points[k + 1]])],
+        0,
+        INF,
+      );
+      row(
+        [[start, 1], ...occupied.map(([i]): Term => [i, 1440])],
+        -INF,
+        points[k] + 1440,
+      );
     }
   }
   for (const [id, enabled] of instructorDays) {
@@ -361,11 +438,18 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
       undefined,
       instructor.max_attendance_days_per_week,
     );
-    row(enabled, -INF, Math.min(cap, snapshot.qualityScope?.instructorDays[id] ?? cap)); // Hard even in repair mode.
+    row(
+      enabled,
+      -INF,
+      Math.min(cap, snapshot.qualityScope?.instructorDays[id] ?? cap),
+    ); // Hard even in repair mode.
     const hours = snapshot.sessions
       .filter((s) => s.instructor_id === id)
       .reduce((sum, s) => sum + duration(s) / 60, 0);
-    const target = instructorAttendanceTarget(hours, instructor.target_attendance_days_per_week);
+    const target = instructorAttendanceTarget(
+      hours,
+      instructor.target_attendance_days_per_week,
+    );
     const excess = variable(3000, 6);
     generationWeights.set(excess, 3000);
     row([...enabled, [excess, -1]], -INF, target);
@@ -421,8 +505,14 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
     )) {
       const old = original.get(x.id)!;
       const room = [...pools[pool]]
-        .sort((a, b) => Number(b.id === old.room_id) - Number(a.id === old.room_id))
-        .find((r) => (occupied.get(`${r.id}|${x.day_of_week}`) ?? 0) <= minutes(x.start_time));
+        .sort(
+          (a, b) => Number(b.id === old.room_id) - Number(a.id === old.room_id),
+        )
+        .find(
+          (r) =>
+            (occupied.get(`${r.id}|${x.day_of_week}`) ?? 0) <=
+            minutes(x.start_time),
+        );
       if (!room) throw new Error("JOINT_ROOM_ALLOCATION_FAILED");
       occupied.set(`${room.id}|${x.day_of_week}`, minutes(x.end_time));
       result.push({
@@ -433,12 +523,15 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
         room_id: room.id,
       });
     }
-    if (!validateJointPlan(snapshot, result, dayCap)) throw new Error("JOINT_WITNESS_REJECTED");
+    if (!validateJointPlan(snapshot, result, dayCap))
+      throw new Error("JOINT_WITNESS_REJECTED");
     return result;
   };
   return {
     model,
-    generationCost: Float64Array.from(cost.map((_, i) => generationWeights.get(i) ?? 0)),
+    generationCost: Float64Array.from(
+      cost.map((_, i) => generationWeights.get(i) ?? 0),
+    ),
     decode,
     candidateCount: candidates.length,
     candidates,
@@ -448,7 +541,8 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
       values: Float64Array.from(
         candidates.map((c) => {
           const old = snapshot.sessions.find((x) => x.id === c.session.id)!;
-          return sameTime(old, c.session) && pools[c.pool].some((r) => r.id === old.room_id)
+          return sameTime(old, c.session) &&
+            pools[c.pool].some((r) => r.id === old.room_id)
             ? 1
             : 0;
         }),
@@ -469,14 +563,20 @@ export function validateJointPlan(
   )
     return false;
   const old = new Map(snapshot.sessions.map((x) => [x.id, x]));
-  if (instructorsOverAttendanceDayCap(sessions, snapshot.instructors).length) return false;
+  if (instructorsOverAttendanceDayCap(sessions, snapshot.instructors).length)
+    return false;
+  if (instructorDailySessionViolations(sessions).length) return false;
   const ctx = context(snapshot);
   const days = new Map<string, Set<number>>();
   if (snapshot.generationScope) {
     const existing = new Set(snapshot.generationScope.existingIds);
     const moved = sessions.filter((s) => {
       const before = old.get(s.id);
-      return before && existing.has(s.id) && (!sameTime(before, s) || before.room_id !== s.room_id);
+      return (
+        before &&
+        existing.has(s.id) &&
+        (!sameTime(before, s) || before.room_id !== s.room_id)
+      );
     }).length;
     if (moved > snapshot.generationScope.maxRelocations) return false;
   }
@@ -496,8 +596,19 @@ export function validateJointPlan(
       duration(x) !== duration(before)
     )
       return false;
-    if (before.is_locked && (!sameTime(before, x) || x.room_id !== before.room_id)) return false;
-    if (!feasible(snapshot, sessions, { ...x, is_locked: false }, { ...before, is_locked: false }))
+    if (
+      before.is_locked &&
+      (!sameTime(before, x) || x.room_id !== before.room_id)
+    )
+      return false;
+    if (
+      !feasible(
+        snapshot,
+        sessions,
+        { ...x, is_locked: false },
+        { ...before, is_locked: false },
+      )
+    )
       return false;
     for (const level of ctx.levels(x)) {
       const set = days.get(level) ?? new Set<number>();
@@ -512,13 +623,16 @@ export function validateJointPlan(
     const teacher = snapshot.instructors.find((t) => t.id === x.instructor_id);
     const kind = sessionStudentLoadKind(snapshot, x);
     const subsetCap =
-      kind === "practical" ? dailyPolicy.practicalMinutes : dailyPolicy.theoryMinutes;
+      kind === "practical"
+        ? dailyPolicy.practicalMinutes
+        : dailyPolicy.theoryMinutes;
     const entities = [
       {
         key: `teacher:${x.instructor_id}`,
         capMinutes:
-          (teacher?.max_hours_per_day || snapshot.settings.max_daily_hours_per_instructor || 6) *
-          60,
+          (teacher?.max_hours_per_day ||
+            snapshot.settings.max_daily_hours_per_instructor ||
+            6) * 60,
       },
       ...ctx.students(x).flatMap((p) => [
         { key: `student:${p}`, capMinutes: dailyPolicy.totalMinutes },
@@ -535,13 +649,20 @@ export function validateJointPlan(
   if (snapshot.settings.extended_day_policy_enabled) {
     const late = new Map<string, Set<number>>();
     for (const x of sessions)
-      if (minutes(x.end_time) > minutes(snapshot.settings.standard_day_end_time ?? "14:00:00"))
+      if (
+        minutes(x.end_time) >
+        minutes(snapshot.settings.standard_day_end_time ?? "14:00:00")
+      )
         for (const p of ctx.students(x)) {
           const ds = late.get(p) ?? new Set<number>();
           ds.add(x.day_of_week);
           late.set(p, ds);
         }
-    if ([...late.values()].some((ds) => ds.size > extendedDayLimit(snapshot.settings)))
+    if (
+      [...late.values()].some(
+        (ds) => ds.size > extendedDayLimit(snapshot.settings),
+      )
+    )
       return false;
   }
   return true;
