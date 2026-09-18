@@ -15,8 +15,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { ReportSection, ReportDataTable } from "@/components/reports/report-section";
+import {
+  ReportSection,
+  ReportDataTable,
+  type ReportColumn,
+} from "@/components/reports/report-section";
 import { filterRowsBySearch } from "@/lib/reports/search";
 import { hoursBetween } from "@/lib/reports/export";
 import { PENDING_QUOTA_AR, PENDING_SPLIT_AR } from "@/lib/existing-schedules/presentation";
@@ -49,6 +52,114 @@ function Page() {
       )}
     </>
   );
+}
+
+
+type InstructorWorkloadDisplayRow = Record<string, string | number>;
+
+const workloadText = (value: unknown) =>
+  value === null || value === undefined || value === "" ? "—" : String(value);
+
+function WorkloadInstructorCell({ row }: { row: InstructorWorkloadDisplayRow }) {
+  return (
+    <div className="min-w-[180px] space-y-0.5 leading-5">
+      <div className="font-semibold">{workloadText(row.instructor)}</div>
+      {row.employee_number && row.employee_number !== "—" && (
+        <div className="text-[10px] tabular-nums text-muted-foreground">
+          رقم الموظف: {workloadText(row.employee_number)}
+        </div>
+      )}
+      <div className="text-[11px] text-muted-foreground">
+        {[row.rank, row.department, row.type].filter(Boolean).map(workloadText).join(" · ")}
+      </div>
+    </div>
+  );
+}
+
+function WorkloadQuotaCell({ row }: { row: InstructorWorkloadDisplayRow }) {
+  return (
+    <div className="min-w-[140px] space-y-0.5 leading-5">
+      <div className="flex justify-between gap-3">
+        <span className="text-[11px] text-muted-foreground">الأساسي</span>
+        <span className="tabular-nums">{workloadText(row.max_weekly_hours)}</span>
+      </div>
+      <div className="flex justify-between gap-3">
+        <span className="text-[11px] text-muted-foreground">الإعفاء</span>
+        <span className="tabular-nums">{workloadText(row.admin_release)}</span>
+      </div>
+      <div className="flex justify-between gap-3 font-semibold">
+        <span>الصافي</span>
+        <span className="tabular-nums">{workloadText(row.effective_quota)}</span>
+      </div>
+    </div>
+  );
+}
+
+function ScheduledLoadCell({ row }: { row: InstructorWorkloadDisplayRow }) {
+  return (
+    <div className="min-w-[135px] space-y-0.5 leading-5">
+      <div className="flex justify-between gap-3 font-semibold">
+        <span>المجدول</span>
+        <span className="tabular-nums">{workloadText(row.scheduled_hours)} س</span>
+      </div>
+      <div className="text-[11px] text-muted-foreground">
+        {workloadText(row.courses_count)} مقرر/مقررات
+      </div>
+      {row.source_breakdown && (
+        <div className="text-[10px] text-muted-foreground">
+          المصدر: {workloadText(row.source_breakdown)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WorkloadBalanceCell({ row }: { row: InstructorWorkloadDisplayRow }) {
+  const overload = Number(row.overload);
+  const underload = Number(row.underload);
+  const unknown = !Number.isFinite(overload) && !Number.isFinite(underload);
+  const label = unknown
+    ? workloadText(row.status)
+    : overload > 0
+      ? `زيادة ${overload} س`
+      : underload > 0
+        ? `نقص ${underload} س`
+        : "ضمن النصاب";
+  return (
+    <div className="min-w-[155px] space-y-1 leading-5">
+      <div className="font-semibold">{label}</div>
+      <div className="text-[11px] text-muted-foreground">{workloadText(row.status)}</div>
+    </div>
+  );
+}
+
+function compactInstructorWorkloadColumns(): ReportColumn<InstructorWorkloadDisplayRow>[] {
+  return [
+    {
+      key: "instructor",
+      label: "المحاضر",
+      className: "w-[30%]",
+      render: (row) => <WorkloadInstructorCell row={row} />,
+    },
+    {
+      key: "effective_quota",
+      label: "النصاب الأسبوعي",
+      className: "w-[22%]",
+      render: (row) => <WorkloadQuotaCell row={row} />,
+    },
+    {
+      key: "scheduled_hours",
+      label: "العبء المجدول",
+      className: "w-[22%]",
+      render: (row) => <ScheduledLoadCell row={row} />,
+    },
+    {
+      key: "status",
+      label: "الرصيد والحالة",
+      className: "w-[26%]",
+      render: (row) => <WorkloadBalanceCell row={row} />,
+    },
+  ];
 }
 
 function WorkloadPage() {
@@ -94,7 +205,7 @@ function WorkloadPage() {
       let q = supabase
         .from("instructors")
         .select(
-          "id, full_name, academic_rank, max_weekly_hours, administrative_release_hours, department_id, instructor_type_id, departments(name), instructor_types(name_ar)",
+          "id, full_name, employee_number, academic_rank, max_weekly_hours, administrative_release_hours, department_id, instructor_type_id, departments(name), instructor_types(name_ar)",
         )
         .eq("college_id", active!.id);
       if (deptId !== "all") q = q.eq("department_id", deptId);
@@ -234,6 +345,7 @@ function WorkloadPage() {
         .join(" | ");
       return {
         instructor: i.full_name,
+        employee_number: i.employee_number ?? "—",
         department: dep,
         rank: i.academic_rank ?? "",
         type: typ,
@@ -265,6 +377,7 @@ function WorkloadPage() {
 
   const headers = [
     { key: "instructor", label: "المحاضر" },
+    { key: "employee_number", label: "الرقم الوظيفي" },
     { key: "department", label: "القسم" },
     { key: "rank", label: "الرتبة" },
     { key: "type", label: "النوع" },
@@ -282,6 +395,9 @@ function WorkloadPage() {
   const totalHours = rows.reduce((sum, r) => sum + Number(r.scheduled_hours ?? 0), 0);
   const overloaded = rows.filter((r) => Number(r.overload) > 0).length;
   const underloaded = rows.filter((r) => Number(r.underload) > 0).length;
+  const pending = rows.filter(
+    (r) => r.status === PENDING_QUOTA_AR || r.status === PENDING_SPLIT_AR,
+  ).length;
   const deptLabel =
     deptId === "all" ? "كل الأقسام" : (depts ?? []).find((d) => d.id === deptId)?.name;
   const typeLabel =
@@ -292,6 +408,7 @@ function WorkloadPage() {
       title="العبء المجدول للمحاضرين"
       description="الساعات المجدولة في نسخة واحدة، ومقارنتها بالحد الأسبوعي المسجل للمحاضر. لتقارير النصاب المعتمد استخدم تقارير الشؤون الأكاديمية."
       filename="instructor_workload"
+      printOrientation="landscape"
       rows={rows}
       headers={headers}
       isLoading={context.isLoading || ilLoad || sLoad}
@@ -316,6 +433,11 @@ function WorkloadPage() {
           label: "أقل من الحد الأسبوعي",
           value: underloaded,
           tone: underloaded > 0 ? "warning" : "neutral",
+        },
+        {
+          label: "بيانات معلقة",
+          value: pending,
+          tone: pending > 0 ? "warning" : "neutral",
         },
       ]}
       filters={
@@ -367,57 +489,12 @@ function WorkloadPage() {
       >
         <ReportDataTable
           rows={rows}
-          minWidthClassName="min-w-[900px]"
+          minWidthClassName="min-w-[720px]"
+          primaryColumnLimit={5}
           caption="أعباء المحاضرين الأسبوعية"
-          columns={[
-            { key: "instructor", label: "المحاضر" },
-            { key: "status", label: "الحالة" },
-            { key: "department", label: "القسم", secondary: true },
-            { key: "rank", label: "الرتبة", secondary: true },
-            { key: "type", label: "النوع", secondary: true },
-            { key: "max_weekly_hours", label: "الحد الأسبوعي", numeric: true },
-            {
-              key: "admin_release",
-              label: "خصم إداري",
-              numeric: true,
-              secondary: true,
-            },
-            { key: "scheduled_hours", label: "ساعات مجدوَلة", numeric: true },
-            {
-              key: "overload",
-              label: "زيادة",
-              numeric: true,
-              render: (r) =>
-                Number(r.overload) > 0 ? (
-                  <Badge variant="destructive">{r.overload}</Badge>
-                ) : (
-                  String(r.overload)
-                ),
-            },
-            {
-              key: "underload",
-              label: "نقص",
-              numeric: true,
-              render: (r) =>
-                Number(r.underload) > 0 ? (
-                  <Badge variant="secondary">{r.underload}</Badge>
-                ) : (
-                  String(r.underload)
-                ),
-            },
-            {
-              key: "courses_count",
-              label: "عدد المقررات",
-              numeric: true,
-              secondary: true,
-            },
-            {
-              key: "source_breakdown",
-              label: "تفصيل المصدر",
-              secondary: true,
-              className: "text-xs",
-            },
-          ]}
+          columns={
+            compactInstructorWorkloadColumns() as ReportColumn<(typeof rows)[number]>
+          }
         />
       </ReportSection>
     </ReportShell>
