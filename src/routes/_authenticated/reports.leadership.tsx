@@ -229,7 +229,7 @@ function LeadershipDashboard() {
   const data = query.data;
   const colleges = sortLeadershipColleges(
     (!query.error && !query.isFetching ? (data?.colleges ?? []) : []).filter(
-      (college) => college.college_id !== "7e570000-0000-4000-8000-000000000001",
+      (college) => !college.college.includes("اختبار تبسيط الجداول"),
     ),
   );
   const ready = colleges.filter((c) => c.term_state === "ready").length;
