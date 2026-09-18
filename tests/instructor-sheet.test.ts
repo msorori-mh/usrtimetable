@@ -245,6 +245,20 @@ test("leave and scholarship are inactive and retain their exact reason through e
   }
 });
 
+test("historical source status notes remain visible to reports", () => {
+  assert.equal(
+    instructorStatusLabel(
+      false,
+      "الحالة في الكشف: إجازة مرضية — النصاب الأسبوعي كما ورد في الكشف",
+    ),
+    "إجازة مرضية",
+  );
+  assert.equal(
+    instructorStatusLabel(false, "الحالة في الكشف: ابتعاث — النصاب الأسبوعي كما ورد في الكشف"),
+    "ابتعاث",
+  );
+});
+
 test("invalid status and load identify the real Excel row and teacher instead of silently defaulting", async () => {
   const { result } = await check(sourceFile({ 0: "حالة مجهولة", 3: "غير معروف" }));
   assert.equal(result.validRows.length, 0);
