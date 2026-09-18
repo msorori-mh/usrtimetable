@@ -309,7 +309,15 @@ test("study-system selection reaches both report queries and their cache keys", 
     );
     assert.match(source, /queryKey:\s*\[[^\]]*ctx\.studySystem/s);
     assert.match(source, /studySystem: ctx\.studySystem/);
-    assert.doesNotMatch(source, /studySystem: "all"/);
+    if (routeName === "rooms-report") {
+      assert.doesNotMatch(source, /studySystem: "all"/);
+    } else {
+      // Student reports must resolve member systems before applying the filter:
+      // a merged anchor can belong to a different system than its participants.
+      assert.match(source, /fetchStudentPrintMemberships\(hydrated, ctx\.collegeId!\)\)\.filter/);
+      assert.match(source, /row\.study_system === ctx\.studySystem/);
+      assert.match(source, /row\.study_system === "both"/);
+    }
   }
 });
 
