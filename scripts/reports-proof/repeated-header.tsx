@@ -119,9 +119,37 @@ createRoot(document.getElementById("root")!).render(
       >
         <ReportTimetableView sessions={instructorSessions} />
       </ReportShell>
-    ) : mode === "sheet" ? (
+    ) : mode === "sheet" || mode === "readable" ? (
       <PrintSheet
-        page={{ key: "proof", title: "COLUMN_KEY", sessions: sheetSessions }}
+        readable={mode === "readable"}
+        labels={
+          mode === "readable"
+            ? {
+                cohorts: new Map([["cohort-proof", "CYB-L3-2024"]]),
+                deliveryGroups: new Map([["group-proof", "G2"]]),
+              }
+            : undefined
+        }
+        page={{
+          key: "proof",
+          title: "COLUMN_KEY",
+          sessions:
+            mode === "readable"
+              ? sheetSessions.map((s) => ({
+                  ...s,
+                  cohort_id: "cohort-proof",
+                  delivery_group_id: "group-proof",
+                  instructors: { full_name: "د. محمد عبدالرحمن محاضر الاختبار" },
+                  course_offerings: {
+                    ...s.course_offerings,
+                    courses: {
+                      ...s.course_offerings.courses,
+                      name: `${s.id} الذكاء الاصطناعي للأمن السيبراني`,
+                    },
+                  },
+                }))
+              : sheetSessions,
+        }}
         visibility={DEFAULT_PRINT_VISIBILITY}
         meta={{
           ...headerMeta,
