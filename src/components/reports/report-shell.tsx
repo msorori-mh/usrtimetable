@@ -160,7 +160,7 @@ export function ReportShell({
       {/* A4 RTL portrait page box for reports that print the on-screen body.
           Dedicated printContent sheets inject their own page style. */}
       {!printContent && (
-        <style>{printPageStyleCss("A4", headers.length > 7 ? "landscape" : "portrait")}</style>
+        <style>{printPageStyleCss()}</style>
       )}
 
       <header className="report-no-print flex flex-wrap items-start justify-between gap-4 border-b pb-4">
