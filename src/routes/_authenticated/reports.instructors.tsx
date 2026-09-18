@@ -1,3 +1,4 @@
+import { withUniversityNumbers } from "@/lib/instructors/university-number";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -32,6 +33,7 @@ type InstructorRow = {
   full_name: string;
   full_name_ar: string | null;
   employee_number: string | null;
+  university_number?: string | null;
   affiliation_college_id: string | null;
   affiliation_department_id: string | null;
   specialization: string | null;
@@ -88,7 +90,7 @@ function Report() {
         .eq("college_id", active!.id)
         .order("full_name");
       if (error) throw error;
-      return (data ?? []) as InstructorRow[];
+      return withUniversityNumbers((data ?? []) as InstructorRow[]);
     },
   });
 
@@ -160,6 +162,7 @@ function Report() {
   const allRows = useMemo(
     () =>
       (instructors.data ?? []).map((i) => ({
+        university_number: i.university_number ?? "—",
         employee_number: i.employee_number ?? "—",
         instructor: i.full_name,
         full_name_ar: i.full_name_ar ?? "—",
@@ -211,6 +214,7 @@ function Report() {
   );
 
   const headers = [
+    { key: "university_number", label: "الرقم الجامعي الموحّد" },
     { key: "employee_number", label: "رقم الموظف" },
     { key: "instructor", label: "الاسم الافتراضي" },
     { key: "full_name_ar", label: "الاسم الرباعي" },
@@ -282,7 +286,7 @@ function Report() {
             search={{
               value: search,
               onChange: setSearch,
-              placeholder: "الاسم، رقم الموظف، البريد…",
+              placeholder: "الاسم، الرقم الجامعي، رقم الموظف، البريد…",
             }}
             basic={
               <>

@@ -1,3 +1,5 @@
+import { FacultyIdentityLink } from "@/components/faculty-identity-link";
+import { withUniversityNumbers } from "@/lib/instructors/university-number";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { instructorStatusLabel } from "@/lib/excel-import/instructor-sheet";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -89,6 +91,7 @@ interface Instructor {
   max_weekly_hours: number;
   is_active: boolean;
   employee_number: string | null;
+  university_number?: string | null;
   full_name_ar: string | null;
   full_name_en: string | null;
   specialization: string | null;
@@ -281,7 +284,7 @@ function InstructorDirectory() {
         .eq("college_id", active!.id)
         .order("full_name");
       if (error) throw error;
-      return (data ?? []) as Instructor[];
+      return withUniversityNumbers((data ?? []) as Instructor[]);
     },
   });
 
@@ -1041,7 +1044,7 @@ function InstructorDirectory() {
               id="instructor-search"
               value={directory.search}
               onChange={(e) => setDirectoryField("search", e.target.value)}
-              placeholder="ابحث بالاسم أو رقم الموظف أو البريد أو القسم…"
+              placeholder="ابحث بالاسم أو الرقم الجامعي أو رقم الموظف أو البريد أو القسم…"
             />
           </div>
           <div className="min-w-44">
@@ -1207,6 +1210,10 @@ function InstructorDirectory() {
                       </span>
                     )}
                   </p>
+                  <p className="text-xs text-muted-foreground">
+                    الرقم الجامعي: <span dir="ltr">{i.university_number ?? "—"}</span>
+                  </p>
+                  <FacultyIdentityLink instructorId={i.id} name={i.full_name} />
                   <p
                     className={`mt-1 text-sm ${isMissingInstructorSpecialization(i) ? "font-medium text-amber-800" : "text-muted-foreground"}`}
                   >

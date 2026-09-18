@@ -29,6 +29,7 @@ export const harnesses = [
   "unauthorized-access-ux.harness.ts",
   "institutional-viewer-rbac.harness.ts",
   "scoped-viewer-colleges.harness.ts",
+  "faculty-number-matching.harness.ts",
 
   "schedule-builder-foundation.harness.ts",
   "schedule-builder-workspace-read-model.harness.ts",

@@ -105,7 +105,19 @@ mock.module("../src/integrations/supabase/client.ts", {
         };
         return query;
       },
-      rpc() {
+      rpc(name: string, args: { p_instructor_ids?: string[] }) {
+        if (name === "get_instructor_university_numbers") {
+          return Promise.resolve({
+            data: catalog
+              .filter((row) => args.p_instructor_ids?.includes(String(row.id)))
+              .map((row) => ({
+                instructor_id: row.id,
+                identity_id: "identity-1",
+                university_number: "USABA-ITCS-000042",
+              })),
+            error: null,
+          });
+        }
         throw new Error("validation must not write");
       },
     },
@@ -303,4 +315,14 @@ test("catalog failures and read-only roles cannot produce a successful import pr
     failure = false;
     role = "college_admin";
   }
+});
+
+test("university number resolves the existing employee and unknown numbers cannot create a duplicate", async () => {
+  const valid = await check(sourceFile({ 7: "USABA-ITCS-000042" }, ["الرقم الجامعي الموحّد"]));
+  assert.deepEqual(valid.result.errors, []);
+  assert.equal(valid.result.validRows[0].values.employee_number, "EMP42");
+  const invalid = await check(sourceFile({ 7: "USABA-ITCS-999999" }, ["الرقم الجامعي الموحّد"]));
+  assert.ok(
+    invalid.result.errors.some((error) => error.errorCode === "university_identity_not_unique"),
+  );
 });

@@ -1,3 +1,4 @@
+import { withUniversityNumbers } from "@/lib/instructors/university-number";
 import { supabase } from "@/integrations/supabase/client";
 import { TEMPLATES } from "./templates";
 import { normalizeCourseNature } from "./course-nature";
@@ -158,7 +159,9 @@ async function loadLookups(entity: ImportEntity, collegeId: string): Promise<Loo
     );
     lk.departments = new Map(dp.map((r) => [String(r.code), String(r.id)]));
     lk.instructorDepartments = dp.map((r) => ({ id: r.id, name: r.name }));
-    lk.instructorRecords = instructors as ExistingInstructor[];
+    lk.instructorRecords = await withUniversityNumbers(
+      instructors as (ExistingInstructor & { id: string })[],
+    );
     lk.operationalCollegeCode = activeCollege.data.code ?? null;
     lk.affiliationColleges = new Map(
       (collegeRows ?? [])
