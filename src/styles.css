@@ -587,6 +587,7 @@
 /* ── Report print layout (Phase 1.5E-B5-A) ── */
 @media print {
   @page {
+    size: A4 portrait;
     margin: 1.2cm 1.5cm;
   }
 

@@ -52,7 +52,7 @@ export function ProgramTimetablePrint(props: {
   );
   return (
     <>
-      <style>{printPageStyleCss("A3", "landscape")}</style>
+      <style>{printPageStyleCss()}</style>
       {pages.map((page, i) => (
         <PrintSheet
           key={page.key}

@@ -1,5 +1,7 @@
 /* Synthetic fixtures only. Verify the physical PDFs, not only the DOM. */
-const { chromium } = require(`${process.env.REPORT_QA_MODULES}/@playwright/test`);
+const { chromium } = require(
+  `${process.env.REPORT_QA_MODULES}/@playwright/test`,
+);
 const fs = require("node:fs");
 const { execFileSync } = require("node:child_process");
 (async () => {
@@ -11,21 +13,26 @@ const { execFileSync } = require("node:child_process");
     page.on("pageerror", (e) => errors.push(e.message));
     for (const mode of ["report", "summary", "sheet", "instructor"]) {
       for (const [paper, orientation, width] of [
+        ["default", "portrait", 1440],
         ["A4", "portrait", 390],
         ["A4", "landscape", 1440],
         ["A3", "landscape", 1440],
       ]) {
         await page.setViewportSize({ width, height: 900 });
         await page.goto(
-          `http://127.0.0.1:4173/repeated-header.html?mode=${mode}&paper=${paper}&orientation=${orientation}`,
+          `http://127.0.0.1:4173/repeated-header.html?mode=${mode}${paper === "default" ? "" : `&paper=${paper}&orientation=${orientation}`}`,
         );
         await page
-          .getByText(mode === "instructor" ? "ROW017" : "ROW139", { exact: true })
+          .getByText(mode === "instructor" ? "ROW017" : "ROW139", {
+            exact: true,
+          })
           .first()
           .waitFor({ state: "attached" });
         await page.evaluate(() => document.fonts.ready);
         await page.waitForFunction(() =>
-          [...document.images].every((image) => image.complete && image.naturalWidth > 0),
+          [...document.images].every(
+            (image) => image.complete && image.naturalWidth > 0,
+          ),
         );
         await page.emulateMedia({ media: "print" });
         console.log(
@@ -50,9 +57,13 @@ const { execFileSync } = require("node:child_process");
       }
     }
     if (errors.length) throw Error(JSON.stringify(errors));
-    execFileSync("python", ["scripts/reports-proof/verify-repeated-header.py"], {
-      stdio: "inherit",
-    });
+    execFileSync(
+      "python",
+      ["scripts/reports-proof/verify-repeated-header.py"],
+      {
+        stdio: "inherit",
+      },
+    );
   } finally {
     await browser.close();
   }
