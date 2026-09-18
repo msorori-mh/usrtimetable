@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import loadHighs from "highs";
 import { build } from "esbuild";
 import { fileURLToPath } from "node:url";
+import { buildJointModel } from "../src/lib/auto-scheduler/joint-model.ts";
+import { context } from "../src/lib/auto-scheduler/compact.ts";
 import { snapshot, session, addCohort } from "./helpers/attendance-fixtures.mjs";
 import {
   improveDistribution,
@@ -10,6 +12,33 @@ import {
   qualitySearchMessage,
 } from "../src/lib/auto-scheduler/quality-search.ts";
 const highs = await loadHighs();
+
+test("neighborhood model itself enforces each person's existing attendance-day ceiling", () => {
+  for (const kind of ["instructorDays", "studentDays", "levelDays"]) {
+    const s = snapshot(
+      [0, 1].map((day, i) =>
+        session(`fixed${i}`, day, "08:00:00", "10:00:00", { is_locked: true, instructor_id: "t" }),
+      ),
+    );
+    const level = context(s).level(s.sessions[0]);
+    s.qualityScope = {
+      instructorDays: { t: 2 },
+      studentDays: { p1: 2 },
+      levelDays: { [level]: 2 },
+    };
+    s.qualityScope[kind][kind === "instructorDays" ? "t" : kind === "studentDays" ? "p1" : level] =
+      1;
+    const built = buildJointModel(s, 4);
+    const model = highs.createModel(built.model);
+    try {
+      model.options.set({ output_flag: false, time_limit: 1 });
+      model.run();
+      assert.equal(model.getModelStatus(), highs.constants.modelStatus.infeasible, kind);
+    } finally {
+      model.dispose();
+    }
+  }
+});
 const run = (s) => improveDistribution(s, highs, { maxDurationMs: 1500 });
 const final = (s, p) => s.sessions.map((x) => ({ ...x, ...p.moves.find((m) => m.id === x.id) }));
 

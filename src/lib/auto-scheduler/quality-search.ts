@@ -179,6 +179,21 @@ export async function improveDistribution(
     return finish("invalid_baseline");
   if (sessions.every((s) => s.is_locked)) return finish("all_locked");
   const ctx = context(snapshot);
+  const counts = (keys: (s: Session) => string[]) => {
+    const map = new Map<string, Set<number>>();
+    for (const s of snapshot.sessions)
+      for (const key of keys(s)) {
+        const days = map.get(key) ?? new Set<number>();
+        days.add(s.day_of_week);
+        map.set(key, days);
+      }
+    return Object.fromEntries([...map].map(([key, days]) => [key, days.size]));
+  };
+  const qualityScope = {
+    studentDays: counts((s) => ctx.students(s)),
+    instructorDays: counts((s) => [s.instructor_id]),
+    levelDays: counts((s) => ctx.levels(s)),
+  };
   const slots = new Map(snapshot.sessions.map((s) => [s.id, compactSlots(snapshot, s)]));
   const roomRank = (s: Session, r: Snapshot["rooms"][number]) =>
     roomTypeRank({
@@ -359,6 +374,7 @@ export async function improveDistribution(
     const free = new Set([...own, ...neighbors].map((s) => s.id));
     const neighborhood = {
       ...snapshot,
+      qualityScope,
       sessions: sessions.map((s) => ({ ...s, is_locked: s.is_locked || !free.has(s.id) })),
     };
     let model: ReturnType<Highs["createModel"]> | undefined;

@@ -56,6 +56,11 @@ export interface Session {
   replaced_by_split?: boolean;
 }
 export interface Snapshot {
+  qualityScope?: {
+    studentDays: Record<string, number>;
+    instructorDays: Record<string, number>;
+    levelDays: Record<string, number>;
+  };
   generationScope?: { existingIds: string[]; maxRelocations: number };
   externalBusy?: {
     instructor_id: string;
