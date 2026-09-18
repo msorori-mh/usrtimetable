@@ -1,3 +1,5 @@
+import { qualitySearchMessage } from "@/lib/auto-scheduler/quality-search";
+import { extendedDayLimit } from "@/lib/scheduling/student-daily-policy";
 import { importJointPlan } from "@/lib/auto-scheduler/joint-import";
 import { attendanceSearchMessage } from "@/lib/auto-scheduler/attendance-search";
 import { useEffect, useRef, useState } from "react";
@@ -32,6 +34,7 @@ export function CompactSchedulePanel({
     [message, setMessage] = useState("");
   const [searchDuration, setSearchDuration] = useState(180000);
   const [extendedPolicy, setExtendedPolicy] = useState(false);
+  const [extendedDays, setExtendedDays] = useState(1);
   const [importText, setImportText] = useState("");
   const [saving, setSaving] = useState(false);
   const abort = useRef<AbortController | null>(null);
@@ -70,6 +73,7 @@ export function CompactSchedulePanel({
         setProposal(null);
         const snapshot = await loadCompactSnapshot(collegeId, versionId);
         setExtendedPolicy(!!snapshot.settings.extended_day_policy_enabled);
+        setExtendedDays(extendedDayLimit(snapshot.settings));
         const p =
           mode === "import"
             ? importJointPlan(snapshot, versionId, importText)
@@ -80,18 +84,20 @@ export function CompactSchedulePanel({
               });
         setProposal(p);
         setMessage(
-          p.attendanceSearch
-            ? attendanceSearchMessage(p.attendanceSearch) +
+          p.qualitySearch
+            ? qualitySearchMessage(p)
+            : p.attendanceSearch
+              ? attendanceSearchMessage(p.attendanceSearch) +
                 (p.executionBlocked ? ` ${p.executionBlocked}` : " لم تُحفظ تغييرات بعد.")
-            : p.outcome === "empty"
-              ? "لا توجد محاضرات مجدولة لتحسينها. استكمل بيانات الإسناد وولّد المسودة أولًا."
-              : p.outcome === "time_limit" || p.outcome === "candidate_limit"
-                ? "وصل البحث إلى حدّه المحدد. تظهر أفضل نتيجة عُثر عليها؛ يمكن توسيع البحث. لم تُحفظ تغييرات بعد."
-                : p.stopped
-                  ? "توقفت المعاينة؛ لم يُحفظ أي نقل."
-                  : p.moves.length
-                    ? "اكتملت المعاينة؛ لم تُحفظ تغييرات بعد."
-                    : "لم يُعثر على تحسين إضافي ضمن نطاق البحث الحالي.",
+              : p.outcome === "empty"
+                ? "لا توجد محاضرات مجدولة لتحسينها. استكمل بيانات الإسناد وولّد المسودة أولًا."
+                : p.outcome === "time_limit" || p.outcome === "candidate_limit"
+                  ? "وصل البحث إلى حدّه المحدد. تظهر أفضل نتيجة عُثر عليها؛ يمكن توسيع البحث. لم تُحفظ تغييرات بعد."
+                  : p.stopped
+                    ? "توقفت المعاينة؛ لم يُحفظ أي نقل."
+                    : p.moves.length
+                      ? "اكتملت المعاينة؛ لم تُحفظ تغييرات بعد."
+                      : "لم يُعثر على تحسين إضافي ضمن نطاق البحث الحالي.",
         );
       }
     } catch (error) {
@@ -115,6 +121,9 @@ export function CompactSchedulePanel({
           ["extendedGroups", "مجموعات لها حضور بعد الثانية"],
         ] as Array<[keyof Metrics, string]>)
       : []),
+    ["practicalHallSessions", "جلسات عملية في قاعات بدل المعامل"],
+    ["instructorExcessTargetDays", "أيام حضور المدرسين الزائدة عن أهداف ساعاتهم"],
+    ["instructorSingleLectureDays", "أيام حضور المدرسين لمحاضرة واحدة"],
     ["levelsOverFive", "مستويات تتجاوز خمسة أيام"],
     ["excessDaysOverThree", "أيام إضافية فوق هدف ثلاثة أيام"],
     ["excessDaysOverFour", "أيام إضافية فوق أربعة أيام"],
@@ -138,15 +147,15 @@ export function CompactSchedulePanel({
       <h2 className="font-bold">تحسين توزيع الجدول</h2>
       {extendedPolicy && (
         <p className="text-sm">
-          لكل مجموعة طلاب فعلية يوم واحد كحد أقصى بعد الثانية، يشمل النظري والعملي معًا. يمكن أن
-          يختلف يوم التمديد بين مجموعات المستوى نفسه.
+          الحد المحفوظ لأيام التمديد بعد الثانية لكل مجموعة طلاب: {extendedDays}. يشمل النظري
+          والعملي معًا. يمكن أن يختلف يوم التمديد بين مجموعات المستوى نفسه.
         </p>
       )}
       <p className="text-sm text-muted-foreground">
-        الهدف ثلاثة أيام حضور، ومنها توزيع ٣–٣–٢ لثماني محاضرات عندما تسمح مددها والحدود اليومية.
-        يُسمح بأربعة أيام بعد إثبات تعذر ثلاثة، وبخمسة أيام كاستثناء حرج بعد إثبات تعذر ثلاثة
-        وأربعة. انتهاء وقت البحث أو فشل حفظ التبديلات لا يبرر زيادة الأيام. تبقى الإسنادات والمدد
-        والأقفال محفوظة.
+        يستمر البحث في تقليل الفراغات وتجميع محاضرات المدرس وتفضيل المعامل للعملي، دون زيادة عدد
+        أيام حضور أي مدرس أو مجموعة طلاب عن الجدول الحالي. أهداف المدرس حسب الساعات: حتى 6 ساعات
+        يوم، حتى 10 يومان، حتى 16 ثلاثة أيام، وما فوقها أربعة؛ مع مراعاة القيود المحفوظة. تُفحص
+        التنقلات والتبادلات معًا، وتبقى الإسنادات والمدد والأقفال محفوظة.
       </p>
       <p className="text-sm">
         تُحفظ الخطة كاملة أو تُلغى كاملة إذا رُفض أحد تنقلاتها. بعد إرسالها، انتظر تأكيد النتيجة؛

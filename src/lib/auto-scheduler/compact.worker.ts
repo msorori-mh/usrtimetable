@@ -1,3 +1,4 @@
+import { improveDistribution } from "./quality-search.ts";
 import { type Snapshot, type Proposal, type Metrics } from "./compact.ts";
 import loadHighs from "highs";
 import wasmUrl from "highs/runtime?url";
@@ -24,6 +25,15 @@ const scope = self as unknown as {
 };
 scope.onmessage = async ({ data }) => {
   try {
+    if (data.purpose !== "generation") {
+      const highs = await loadHighs({ locateFile: () => wasmUrl });
+      const proposal = await improveDistribution(data.snapshot, highs, {
+        maxDurationMs: data.maxDurationMs,
+        onProgress: (moves, metrics) => scope.postMessage({ type: "progress", moves, metrics }),
+      });
+      scope.postMessage({ type: "result", proposal });
+      return;
+    }
     const conflict = extendedResourceConflict(data.snapshot);
     if (conflict) {
       scope.postMessage({

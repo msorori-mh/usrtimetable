@@ -4,6 +4,7 @@ import {
   compareAttendance,
   measureAttendance,
   instructorAttendanceDayCap,
+  instructorAttendanceTarget,
   type AttendanceMetrics,
 } from "./attendance-objective.ts";
 import { isInstructorAvailabilityEnforced } from "../scheduling/instructor-availability-policy.ts";
@@ -165,6 +166,9 @@ export interface Snapshot {
 export type Metrics = AttendanceMetrics & {
   extendedDayViolations?: number;
   extendedGroups?: number;
+  instructorExcessTargetDays?: number;
+  instructorSingleLectureDays?: number;
+  practicalHallSessions?: number;
 };
 export interface Move {
   id: string;
@@ -181,6 +185,7 @@ export type SearchOutcome =
   | "cancelled"
   | "empty";
 export interface Proposal {
+  qualitySearch?: import("./quality-search.ts").QualitySearchReport;
   applicationMode?: "simultaneous";
   attendanceSearch?: import("./attendance-search.ts").AttendanceSearchResult;
   executionBlocked?: string;
@@ -289,7 +294,7 @@ export function context(s: Snapshot) {
 }
 export function measure(s: Snapshot, sessions = s.sessions): Metrics {
   const ctx = context(s);
-  const base = measureAttendance(
+  const attendance = measureAttendance(
     sessions.map((x) => ({
       day: x.day_of_week,
       start: minutes(x.start_time),
@@ -302,6 +307,38 @@ export function measure(s: Snapshot, sessions = s.sessions): Metrics {
     ctx.weight,
     (id) => s.instructors.find((t) => t.id === id)?.target_attendance_days_per_week ?? null,
   );
+  const teacherDays = new Map<string, Map<number, number>>();
+  const teacherMinutes = new Map<string, number>();
+  for (const x of sessions) {
+    const days = teacherDays.get(x.instructor_id) ?? new Map<number, number>();
+    days.set(x.day_of_week, (days.get(x.day_of_week) ?? 0) + 1);
+    teacherDays.set(x.instructor_id, days);
+    teacherMinutes.set(x.instructor_id, (teacherMinutes.get(x.instructor_id) ?? 0) + duration(x));
+  }
+  const base: Metrics = {
+    ...attendance,
+    instructorExcessTargetDays: [...teacherDays].reduce((sum, [id, days]) => {
+      const target = instructorAttendanceTarget(
+        (teacherMinutes.get(id) ?? 0) / 60,
+        s.instructors.find((t) => t.id === id)?.target_attendance_days_per_week,
+      );
+      return sum + Math.max(0, days.size - target);
+    }, 0),
+    instructorSingleLectureDays: [...teacherDays.values()].reduce(
+      (sum, days) => sum + [...days.values()].filter((count) => count === 1).length,
+      0,
+    ),
+    practicalHallSessions: sessions.filter((x) => {
+      const assignment = s.assignments.find((a) => a.id === x.teaching_assignment_id);
+      return (
+        roomTypeRank({
+          componentType: assignmentComponentType(s, assignment),
+          requiredRoomType: assignment?.required_room_type,
+          roomType: s.rooms.find((r) => r.id === x.room_id)?.room_type,
+        }) === 1
+      );
+    }).length,
+  };
   if (!s.settings.extended_day_policy_enabled) return base;
   const days = extendedDays(s, sessions);
   const limit = extendedDayLimit(s.settings);

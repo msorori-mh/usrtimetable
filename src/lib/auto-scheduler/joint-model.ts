@@ -132,6 +132,7 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
             requiredRoomType: required?.required_room_type,
             roomType: pools[pool][0].room_type,
           }) ?? 0;
+        cost[i] += fallback * 10000;
         generationWeights.set(
           i,
           fallback * 100 +
@@ -284,9 +285,10 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
     }
     row([...terms, [y, -maxDaily]], -INF, 0);
     row([...terms, [y, -1]], 0, INF);
+    const singleLecture = variable(student ? 2000 : 3000);
+    row([...terms, [y, -2], [singleLecture, 1]], 0, INF);
+    if (!student) generationWeights.set(singleLecture, 3000);
     if (student) {
-      const short = variable(2000);
-      row([...terms, [y, -2], [short, 1]], 0, INF);
       if (snapshot.settings.extended_day_policy_enabled) {
         const late = terms.filter(
           ([i]) =>
