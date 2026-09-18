@@ -25,11 +25,7 @@ const s = (
 });
 test("shared source membership never duplicates the same physical session", () => {
   const a = s("a", "arts", "08:00", "10:00");
-  const result = summarizeFacultySessions([
-    a,
-    a,
-    s("b", "it", "10:00", "12:00", "lab"),
-  ]);
+  const result = summarizeFacultySessions([a, a, s("b", "it", "10:00", "12:00", "lab")]);
   assert.equal(result.sessions.length, 2);
   assert.equal(result.total, 4);
   assert.equal(result.theory, 2);

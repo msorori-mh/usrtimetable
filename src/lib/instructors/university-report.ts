@@ -48,8 +48,7 @@ export type FacultyReport = {
   }[];
   sessions: FacultySession[];
 };
-const minutes = (s: string) =>
-  Number(s.slice(0, 2)) * 60 + Number(s.slice(3, 5));
+const minutes = (s: string) => Number(s.slice(0, 2)) * 60 + Number(s.slice(3, 5));
 /** IDs, never names, deduplicate shared teaching; overlap never reduces credited load. */
 export function summarizeFacultySessions(rows: FacultySession[]) {
   const sessions = [...new Map(rows.map((s) => [s.id, s])).values()];
@@ -63,11 +62,7 @@ export function summarizeFacultySessions(rows: FacultySession[]) {
     else theory += hours;
     for (let j = i + 1; j < sessions.length; j++) {
       const b = sessions[j];
-      if (
-        a.day === b.day &&
-        minutes(a.start) < minutes(b.end) &&
-        minutes(b.start) < minutes(a.end)
-      )
+      if (a.day === b.day && minutes(a.start) < minutes(b.end) && minutes(b.start) < minutes(a.end))
         conflicts.push([a, b]);
     }
   }

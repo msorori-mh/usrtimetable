@@ -3,10 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { withUniversityNumbers } from "@/lib/instructors/university-number";
-import {
-  summarizeFacultySessions,
-  type FacultyReport,
-} from "@/lib/instructors/university-report";
+import { summarizeFacultySessions, type FacultyReport } from "@/lib/instructors/university-report";
 import { FacultyIdentityLink } from "@/components/faculty-identity-link";
 import { Button } from "@/components/ui/button";
 
@@ -29,15 +26,7 @@ type Api = {
   };
 };
 const api = supabase as unknown as SupabaseClient<Api>;
-const days = [
-  "الأحد",
-  "الاثنين",
-  "الثلاثاء",
-  "الأربعاء",
-  "الخميس",
-  "الجمعة",
-  "السبت",
-];
+const days = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
 const cell = "border p-2 text-right";
 export function FacultyUniversityReport() {
   const [instructor, setInstructor] = useState("");
@@ -61,9 +50,7 @@ export function FacultyUniversityReport() {
       const [numbered, colleges, terms] = await Promise.all([
         withUniversityNumbers(rows),
         supabase.from("colleges").select("id,name"),
-        supabase
-          .from("academic_terms")
-          .select("id,name,academic_year,term_type,college_id"),
+        supabase.from("academic_terms").select("id,name,academic_year,term_type,college_id"),
       ]);
       if (colleges.error) throw colleges.error;
       if (terms.error) throw terms.error;
@@ -96,19 +83,14 @@ export function FacultyUniversityReport() {
     setVersions({});
   };
   const scheduleColleges = [
-    ...new Map(
-      (data?.versions ?? []).map((v) => [v.college_id, v.college]),
-    ).entries(),
+    ...new Map((data?.versions ?? []).map((v) => [v.college_id, v.college])).entries(),
   ];
   return (
     <section dir="rtl" className="space-y-4 rounded-lg border bg-card p-4">
-      <h1 className="text-xl font-bold">
-        النصاب والجدول الجامعي الموحّد للمحاضر
-      </h1>
+      <h1 className="text-xl font-bold">النصاب والجدول الجامعي الموحّد للمحاضر</h1>
       <p>
-        يجمع السجلات المرتبطة بهوية جامعية معتمدة فقط. النصاب يُحتسب مرة واحدة،
-        والساعات حسب قواعد الإسناد الحالية. اختر نسخة واحدة لكل كلية لعرض
-        الجدول.
+        يجمع السجلات المرتبطة بهوية جامعية معتمدة فقط. النصاب يُحتسب مرة واحدة، والساعات حسب قواعد
+        الإسناد الحالية. اختر نسخة واحدة لكل كلية لعرض الجدول.
       </p>
       <div className="grid gap-3 md:grid-cols-3 print:hidden">
         <label>
@@ -137,10 +119,7 @@ export function FacultyUniversityReport() {
               .map((i) => (
                 <option key={i.id} value={i.id}>
                   {i.full_name} — {i.university_number} —{" "}
-                  {
-                    choices.data?.colleges.find((c) => c.id === i.college_id)
-                      ?.name
-                  }
+                  {choices.data?.colleges.find((c) => c.id === i.college_id)?.name}
                 </option>
               ))}
           </select>
@@ -170,35 +149,26 @@ export function FacultyUniversityReport() {
       {choices.isLoading && <p>جارٍ تحميل دليل المحاضرين…</p>}
       {(choices.error || report.error) && (
         <p role="alert" className="text-destructive">
-          تعذر عرض التقرير: {(choices.error ?? report.error)?.message}. يتطلب
-          التجميع صلاحية الاطلاع على جميع الكليات المرتبطة وبيانات العام والفصل.
+          تعذر عرض التقرير: {(choices.error ?? report.error)?.message}. يتطلب التجميع صلاحية الاطلاع
+          على جميع الكليات المرتبطة وبيانات العام والفصل.
         </p>
       )}
       {report.isFetching && <p>جارٍ تحديث التقرير…</p>}
       {data && !report.isFetching && !report.error && (
         <>
           <h2 className="text-lg font-bold">
-            {chosen?.full_name} — {data.university_number} —{" "}
-            {data.academic_year}
+            {chosen?.full_name} — {data.university_number} — {data.academic_year}
           </h2>
           <p>
-            السجلات المرتبطة:{" "}
-            {data.members
-              .map((m) => m.name + " (" + m.college + ")")
-              .join("، ")}
+            السجلات المرتبطة: {data.members.map((m) => m.name + " (" + m.college + ")").join("، ")}
           </p>
           <div className="print:hidden">
-            {chosen && (
-              <FacultyIdentityLink
-                instructorId={instructor}
-                name={chosen.full_name}
-              />
-            )}
+            {chosen && <FacultyIdentityLink instructorId={instructor} name={chosen.full_name} />}
           </div>
           {data.members.length === 1 && (
             <p>
-              لا توجد سجلات أخرى مرتبطة بهذه الهوية حاليًا؛ لا تُضاف سجلات
-              الأسماء المتشابهة تلقائيًا.
+              لا توجد سجلات أخرى مرتبطة بهذه الهوية حاليًا؛ لا تُضاف سجلات الأسماء المتشابهة
+              تلقائيًا.
             </p>
           )}
           {data.quota_status !== "ok" && (
@@ -210,8 +180,8 @@ export function FacultyUniversityReport() {
           )}
           {data.allocation_pending && (
             <p role="status">
-              إجمالي الإسناد غير نهائي: توجد حصص مشتركة أو إسنادات تحتاج
-              استكمالًا أو مراجعة. حساب الزيادة والعجز معلّق.
+              إجمالي الإسناد غير نهائي: توجد حصص مشتركة أو إسنادات تحتاج استكمالًا أو مراجعة. حساب
+              الزيادة والعجز معلّق.
             </p>
           )}
           <div className="overflow-x-auto">
@@ -279,17 +249,14 @@ export function FacultyUniversityReport() {
                   aria-label={"نسخة جدول " + name}
                   className="w-full rounded border p-2"
                   value={versions[id] ?? ""}
-                  onChange={(e) =>
-                    setVersions({ ...versions, [id]: e.target.value })
-                  }
+                  onChange={(e) => setVersions({ ...versions, [id]: e.target.value })}
                 >
                   <option value="">لم تُحدد نسخة لهذه الكلية</option>
                   {data.versions
                     .filter((v) => v.college_id === id)
                     .map((v) => (
                       <option key={v.id} value={v.id}>
-                        {v.name} —{" "}
-                        {v.status === "published" ? "منشورة" : "مسودة"}
+                        {v.name} — {v.status === "published" ? "منشورة" : "مسودة"}
                         {v.is_coordination ? " — تنسيق" : ""}
                       </option>
                     ))}
@@ -308,17 +275,17 @@ export function FacultyUniversityReport() {
             <p>الجدول جزئي حتى اختيار نسخة لكل كلية.</p>
           )}
           <p>
-            الساعات الزمنية في النسخ المحددة: نظري {summary.theory}، عملي{" "}
-            {summary.practical}، الإجمالي {summary.total}. قد تختلف عن ساعات
-            الإسناد المحتسبة، خصوصًا عند التدريس المشترك.
+            الساعات الزمنية في النسخ المحددة: نظري {summary.theory}، عملي {summary.practical}،
+            الإجمالي {summary.total}. قد تختلف عن ساعات الإسناد المحتسبة، خصوصًا عند التدريس
+            المشترك.
           </p>
           {summary.conflicts.length > 0 && (
             <div role="alert" className="text-destructive">
               تعارضات زمنية تحتاج المراجعة: {summary.conflicts.length}
               {summary.conflicts.map(([a, b]) => (
                 <p key={a.id + b.id}>
-                  {a.course} ({a.college}) مع {b.course} ({b.college}) —{" "}
-                  {days[a.day]} {a.start.slice(0, 5)} / {b.start.slice(0, 5)}
+                  {a.course} ({a.college}) مع {b.course} ({b.college}) — {days[a.day]}{" "}
+                  {a.start.slice(0, 5)} / {b.start.slice(0, 5)}
                 </p>
               ))}
             </div>
@@ -327,15 +294,7 @@ export function FacultyUniversityReport() {
             <table className="w-full border-collapse">
               <thead>
                 <tr>
-                  {[
-                    "اليوم",
-                    "الوقت",
-                    "الكلية",
-                    "المقرر",
-                    "النوع",
-                    "النظام",
-                    "القاعة",
-                  ].map((s) => (
+                  {["اليوم", "الوقت", "الكلية", "المقرر", "النوع", "النظام", "القاعة"].map((s) => (
                     <th key={s} className={cell}>
                       {s}
                     </th>

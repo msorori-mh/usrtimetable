@@ -16,24 +16,13 @@ import {
 } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  ReportSection,
-  ReportDataTable,
-} from "@/components/reports/report-section";
+import { ReportSection, ReportDataTable } from "@/components/reports/report-section";
 import { filterRowsBySearch } from "@/lib/reports/search";
 import { hoursBetween } from "@/lib/reports/export";
-import {
-  PENDING_QUOTA_AR,
-  PENDING_SPLIT_AR,
-} from "@/lib/existing-schedules/presentation";
-import {
-  QUOTA_UNDEFINED_AR,
-  computeQuotaBalance,
-} from "@/lib/reports/instructor-quota";
+import { PENDING_QUOTA_AR, PENDING_SPLIT_AR } from "@/lib/existing-schedules/presentation";
+import { QUOTA_UNDEFINED_AR, computeQuotaBalance } from "@/lib/reports/instructor-quota";
 
-export const Route = createFileRoute(
-  "/_authenticated/reports/instructor-workload",
-)({
+export const Route = createFileRoute("/_authenticated/reports/instructor-workload")({
   head: () => ({ meta: [{ title: "العبء المجدول للمحاضرين" }] }),
   component: Page,
 });
@@ -44,16 +33,10 @@ function Page() {
   return (
     <>
       <div className="mb-4 flex gap-3 print:hidden">
-        <button
-          className="rounded border px-4 py-2"
-          onClick={() => setUniversity(false)}
-        >
+        <button className="rounded border px-4 py-2" onClick={() => setUniversity(false)}>
           عبء الكلية
         </button>
-        <button
-          className="rounded border px-4 py-2"
-          onClick={() => setUniversity(true)}
-        >
+        <button className="rounded border px-4 py-2" onClick={() => setUniversity(true)}>
           النصاب والجدول عبر الكليات
         </button>
       </div>
@@ -179,9 +162,7 @@ function WorkloadPage() {
         return source.instructor_ids.map((id) => {
           const allocated =
             allocations.data?.find(
-              (a) =>
-                a.delivery_group_id === row.delivery_group_id &&
-                a.instructor_id === id,
+              (a) => a.delivery_group_id === row.delivery_group_id && a.instructor_id === id,
             )?.assigned_component_hours ?? null;
           return {
             ...row,
@@ -223,9 +204,7 @@ function WorkloadPage() {
         sources: {},
       };
       m.hours += hoursBetween(s.start_time as string, s.end_time as string);
-      m.credited +=
-        s.credited_hours ??
-        hoursBetween(s.start_time as string, s.end_time as string);
+      m.credited += s.credited_hours ?? hoursBetween(s.start_time as string, s.end_time as string);
       m.pending ||= s.split_pending;
       m.offerings.add(s.course_offering_id as string);
       const st = (s.source_type as string) ?? "manual";
@@ -263,17 +242,9 @@ function WorkloadPage() {
         effective_quota: balance.netHours ?? QUOTA_UNDEFINED_AR,
         scheduled_hours: agg.hours,
         status:
-          balance.netHours === null
-            ? PENDING_QUOTA_AR
-            : agg.pending
-              ? PENDING_SPLIT_AR
-              : "مكتمل",
-        overload: agg.pending
-          ? QUOTA_UNDEFINED_AR
-          : (balance.overloadHours ?? QUOTA_UNDEFINED_AR),
-        underload: agg.pending
-          ? QUOTA_UNDEFINED_AR
-          : (balance.deficitHours ?? QUOTA_UNDEFINED_AR),
+          balance.netHours === null ? PENDING_QUOTA_AR : agg.pending ? PENDING_SPLIT_AR : "مكتمل",
+        overload: agg.pending ? QUOTA_UNDEFINED_AR : (balance.overloadHours ?? QUOTA_UNDEFINED_AR),
+        underload: agg.pending ? QUOTA_UNDEFINED_AR : (balance.deficitHours ?? QUOTA_UNDEFINED_AR),
         courses_count: agg.offerings.size,
         source_breakdown: srcStr,
       };
@@ -290,10 +261,7 @@ function WorkloadPage() {
   ]);
 
   // Search is presentation-only: identical row keys and values, fewer visible rows.
-  const rows = useMemo(
-    () => filterRowsBySearch(allRows, search),
-    [allRows, search],
-  );
+  const rows = useMemo(() => filterRowsBySearch(allRows, search), [allRows, search]);
 
   const headers = [
     { key: "instructor", label: "المحاضر" },
@@ -311,20 +279,13 @@ function WorkloadPage() {
     { key: "status", label: "الحالة" },
   ];
 
-  const totalHours = rows.reduce(
-    (sum, r) => sum + Number(r.scheduled_hours ?? 0),
-    0,
-  );
+  const totalHours = rows.reduce((sum, r) => sum + Number(r.scheduled_hours ?? 0), 0);
   const overloaded = rows.filter((r) => Number(r.overload) > 0).length;
   const underloaded = rows.filter((r) => Number(r.underload) > 0).length;
   const deptLabel =
-    deptId === "all"
-      ? "كل الأقسام"
-      : (depts ?? []).find((d) => d.id === deptId)?.name;
+    deptId === "all" ? "كل الأقسام" : (depts ?? []).find((d) => d.id === deptId)?.name;
   const typeLabel =
-    typeId === "all"
-      ? "كل الأنواع"
-      : (types ?? []).find((t) => t.id === typeId)?.name_ar;
+    typeId === "all" ? "كل الأنواع" : (types ?? []).find((t) => t.id === typeId)?.name_ar;
 
   return (
     <ReportShell
@@ -337,14 +298,8 @@ function WorkloadPage() {
       error={context.error ?? instructorError ?? sessionError}
       reportContext={context}
       filterSummary={context.filterSummary}
-      notReadyMessage={
-        context.selectedVersion
-          ? undefined
-          : "اختر فصلاً ونسخة جدول لعرض الساعات."
-      }
-      emptyMessage={
-        search ? "لا محاضر مطابق للبحث." : "لا توجد بيانات بهذه المعايير."
-      }
+      notReadyMessage={context.selectedVersion ? undefined : "اختر فصلاً ونسخة جدول لعرض الساعات."}
+      emptyMessage={search ? "لا محاضر مطابق للبحث." : "لا توجد بيانات بهذه المعايير."}
       kpis={[
         { label: "المحاضرون", value: rows.length },
         {
@@ -373,10 +328,7 @@ function WorkloadPage() {
             onChange: setSearch,
             placeholder: "ابحث باسم المحاضر أو القسم…",
           }}
-          extraSummary={[
-            `القسم: ${deptLabel ?? "—"}`,
-            `النوع: ${typeLabel ?? "—"}`,
-          ]}
+          extraSummary={[`القسم: ${deptLabel ?? "—"}`, `النوع: ${typeLabel ?? "—"}`]}
           onClear={() => {
             setDeptId("all");
             setTypeId("all");

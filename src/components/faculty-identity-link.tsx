@@ -2,10 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  facultyClient,
-  withUniversityNumbers,
-} from "@/lib/instructors/university-number";
+import { facultyClient, withUniversityNumbers } from "@/lib/instructors/university-number";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -50,9 +47,7 @@ export function FacultyIdentityLink({
         rows.push(...(data ?? []));
         if (!data || data.length < 500) break;
       }
-      const { data: colleges, error } = await supabase
-        .from("colleges")
-        .select("id,name");
+      const { data: colleges, error } = await supabase.from("colleges").select("id,name");
       if (error) throw error;
       return withUniversityNumbers(
         rows
@@ -68,14 +63,11 @@ export function FacultyIdentityLink({
     mutationFn: async () => {
       if (!confirmed || !target || evidence.trim().length < 12)
         throw new Error("اختر السجل وسجل دليل التحقق من هوية المحاضر");
-      const { error } = await facultyClient.rpc(
-        "link_faculty_identity_with_evidence",
-        {
-          p_instructor_id: instructorId,
-          p_university_number: target,
-          p_evidence: evidence.trim(),
-        },
-      );
+      const { error } = await facultyClient.rpc("link_faculty_identity_with_evidence", {
+        p_instructor_id: instructorId,
+        p_university_number: target,
+        p_evidence: evidence.trim(),
+      });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -91,9 +83,7 @@ export function FacultyIdentityLink({
       setConfirmed(false);
       setTarget("");
       setEvidence("");
-      toast.success(
-        "تم توحيد الهوية الجامعية مع الحفاظ على الإسنادات والجداول",
-      );
+      toast.success("تم توحيد الهوية الجامعية مع الحفاظ على الإسنادات والجداول");
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -110,8 +100,8 @@ export function FacultyIdentityLink({
           <DialogTitle>ربط سجل {name} بنفس المحاضر</DialogTitle>
         </DialogHeader>
         <p className="text-sm">
-          اختر السجل المعتمد لنفس الشخص. سيُستخدم رقمه الجامعي للسجلات المرتبطة،
-          مع الاحتفاظ بالأرقام السابقة والإسنادات والجداول.
+          اختر السجل المعتمد لنفس الشخص. سيُستخدم رقمه الجامعي للسجلات المرتبطة، مع الاحتفاظ
+          بالأرقام السابقة والإسنادات والجداول.
         </p>
         <label>
           السجل المعتمد
@@ -129,16 +119,13 @@ export function FacultyIdentityLink({
               .filter((row) => row.university_number)
               .map((row) => (
                 <option key={row.id} value={row.university_number!}>
-                  {row.full_name} — {row.university_number} —{" "}
-                  {row.colleges?.name} — {row.specialization ?? "تخصص غير محدد"}{" "}
-                  — {row.employee_number}
+                  {row.full_name} — {row.university_number} — {row.colleges?.name} —{" "}
+                  {row.specialization ?? "تخصص غير محدد"} — {row.employee_number}
                 </option>
               ))}
           </select>
         </label>
-        {candidates.error && (
-          <p role="alert">تعذر تحميل السجلات. أعد فتح النافذة للمحاولة.</p>
-        )}
+        {candidates.error && <p role="alert">تعذر تحميل السجلات. أعد فتح النافذة للمحاولة.</p>}
         <label>
           دليل التحقق من الهوية
           <textarea
