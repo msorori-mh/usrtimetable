@@ -24,7 +24,7 @@ jobs:
           node-version: "24"
       - run: bun install --frozen-lockfile
       - run: node --import tsx --test tests/rooms-executive.test.ts
-      - run: bun test tests/university-instructor-schedule.test.ts
+      - run: bun test tests/university-instructor-schedule.test.ts tests/student-print-memberships.test.ts
       - run: |
           npm install --prefix "$RUNNER_TEMP/report-qa" --no-package-lock @playwright/test@1.63.0
           node "$RUNNER_TEMP/report-qa/node_modules/@playwright/test/cli.js" install --with-deps chromium
