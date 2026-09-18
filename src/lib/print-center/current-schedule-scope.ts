@@ -11,10 +11,7 @@ export function filterCurrentScheduleScope(
   return sessions.filter((session) => {
     const id = session.course_offerings?.program_id;
     if (programId !== "all" && id !== programId) return false;
-    if (
-      departmentId !== "all" &&
-      (!id || byId.get(id)?.department_id !== departmentId)
-    )
+    if (departmentId !== "all" && (!id || byId.get(id)?.department_id !== departmentId))
       return false;
     return true;
   });
