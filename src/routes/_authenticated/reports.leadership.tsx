@@ -231,27 +231,27 @@ function LeadershipDashboard() {
   return (
     <ReportShell
       title="لوحة الإدارة العليا للجامعة"
-      description={`مرحبًا${me?.fullName ? `، ${me.fullName}` : " بك"}. ملخص الجامعة ومقارنة الكليات في صفحة واحدة.`}
       filename={`university_leadership_${data?.year ?? ""}_${data?.term_type ?? ""}`}
       rows={rows}
       headers={exportHeaders}
       isLoading={query.isFetching}
       error={query.error}
       onRetry={() => void query.refetch()}
+      printOrientation="landscape"
+      filterSummary={periodLabel}
       headerMeta={{
         collegeName: "جميع كليات الجامعة",
         termName: periodLabel,
-        note: "الساعات أسبوعية · الإسناد الحالي · ساعات الجدول من أحدث نسخة منشورة لكل كلية",
       }}
       filters={
-        <div className="report-no-print flex flex-wrap items-end gap-3 rounded-xl border bg-card p-4">
-          <ReportFilterField label="الفترة الأكاديمية للمقارنة" htmlFor="leadership-period">
+        <div className="report-no-print flex flex-wrap items-end gap-3">
+          <ReportFilterField label="الفترة الأكاديمية" htmlFor="leadership-period">
             <Select
               value={selectedValue}
               onValueChange={(value) => setPeriod(JSON.parse(value))}
               disabled={query.isFetching}
             >
-              <SelectTrigger id="leadership-period" aria-label="الفترة الأكاديمية للمقارنة">
+              <SelectTrigger id="leadership-period" aria-label="الفترة الأكاديمية">
                 <SelectValue placeholder="اختر الفترة" />
               </SelectTrigger>
               <SelectContent>
@@ -263,120 +263,80 @@ function LeadershipDashboard() {
               </SelectContent>
             </Select>
           </ReportFilterField>
-          <Button
-            variant="outline"
-            onClick={() => void query.refetch()}
-            disabled={query.isFetching}
-          >
-            تحديث المؤشرات
+          <Button variant="outline" onClick={() => void query.refetch()} disabled={query.isFetching}>
+            تحديث
           </Button>
-          {data && (
-            <p className="text-xs text-muted-foreground">
-              وقت القراءة:{" "}
-              {new Date(data.generated_at).toLocaleString("ar-YE", { timeZone: "Asia/Aden" })}
-            </p>
-          )}
         </div>
       }
       kpis={[
-        { label: "كليات الجامعة", value: colleges.length },
-        { label: "النصاب المتاح المعتمد (ساعة)", value: sumLeadership(colleges, "net_quota") },
-        { label: "الساعات الزائدة", value: sumLeadership(colleges, "overload") },
-        { label: "نقص النصاب", value: sumLeadership(colleges, "deficit") },
-        { label: "عجز تغطية الإسناد", value: sumLeadership(colleges, "uncovered_hours") },
+        { label: "أعضاء هيئة التدريس", value: totalFaculty },
+        {
+          label: "تغطية الإسناد",
+          value: universityCoverage === null ? "—" : String(universityCoverage) + "%",
+          tone: "accent",
+        },
+        {
+          label: "الساعات الزائدة",
+          value: sumLeadership(colleges, "overload"),
+          tone: sumLeadership(colleges, "overload") > 0 ? "warning" : "neutral",
+        },
+        {
+          label: "نقص النصاب",
+          value: sumLeadership(colleges, "deficit"),
+          tone: sumLeadership(colleges, "deficit") > 0 ? "warning" : "neutral",
+        },
+        {
+          label: "الجداول المنشورة",
+          value: String(published) + "/" + String(colleges.length),
+          tone: published === colleges.length ? "success" : "warning",
+        },
       ]}
       summary={
-        <div className="space-y-3">
-          <Card
-            className="border-primary/20 bg-primary/5 p-4 text-sm leading-7"
-            data-testid="leadership-scope"
-          >
-            الفترة: {periodLabel} · كليات لها فصل محدد: {ready}/{colleges.length} · كليات لها جدول
-            منشور: {published}/{colleges.length}.
-            <p>
-              المجاميع تشمل البيانات القابلة للحساب فقط. علامة «—» تعني أن البيان غير متاح؛ لا تعني
-              صفرًا.
-            </p>
-            <p>
-              النصاب المتاح هو صافي النصاب بعد الإعفاء الإداري. نقص النصاب هو رصيد غير مستكمل لدى
-              المحاضرين، أما عجز الإسناد فهو ساعات مقررات لم تُغطَّ.
-            </p>
-            <p>
-              يُحسب عضو هيئة التدريس مرة واحدة وفق الرقم الجامعي الموحّد، وتُنسب أعباؤه إلى كلية
-              إصدار رقمه مع جمع إسناداته عبر كليات الفترة المختارة. تُستبعد الحالات المتعارضة أو غير
-              المكتملة من الزيادة والنقص.
-            </p>
-          </Card>
-          <div className="report-no-print grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {colleges.map((c) => (
-              <Card key={c.college_id} className="p-4">
-                <h2 className="font-bold text-primary">{c.college}</h2>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {c.departments} أقسام · {c.programs} برامج · {c.faculty_count} عضو هيئة تدريس
-                </p>
-                <div className="my-3 flex items-center justify-between text-sm">
-                  <span>تغطية الإسناد</span>
-                  <b>{coveragePercent(c) === null ? "غير محسوبة" : `${coveragePercent(c)}%`}</b>
-                </div>
-                <div
-                  className="h-2 overflow-hidden rounded-full bg-muted"
-                  role="img"
-                  aria-label={`تغطية الإسناد: ${coveragePercent(c) ?? "غير محسوبة"}`}
-                >
-                  <div
-                    className="h-full bg-primary"
-                    style={{ width: `${coveragePercent(c) ?? 0}%` }}
-                  />
-                </div>
-                <p className="mt-3 text-xs leading-6 text-muted-foreground">
-                  {leadershipNotice(c)}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Button size="sm" variant="outline" asChild>
-                    <Link to="/reports" onClick={() => setActiveCollegeId(c.college_id)}>
-                      تقارير الكلية
-                    </Link>
-                  </Button>
-                  {c.term_id && (
-                    <Button size="sm" variant="outline" asChild>
-                      <Link
-                        to="/reports/academic-affairs"
-                        search={{ report: "workload", termId: c.term_id }}
-                        onClick={() => setActiveCollegeId(c.college_id)}
-                      >
-                        النصاب والإسناد
-                      </Link>
-                    </Button>
-                  )}
-                </div>
-              </Card>
-            ))}
+        <Card
+          className="border-primary/20 bg-primary/5 px-4 py-3"
+          data-testid="leadership-scope"
+        >
+          <div className="grid gap-2 text-center sm:grid-cols-4">
+            <div>
+              <div className="text-[11px] text-muted-foreground">الفترة</div>
+              <div className="font-semibold">{periodLabel}</div>
+            </div>
+            <div>
+              <div className="text-[11px] text-muted-foreground">الكليات</div>
+              <div className="font-semibold tabular-nums">{colleges.length}</div>
+            </div>
+            <div>
+              <div className="text-[11px] text-muted-foreground">بيانات أكاديمية جاهزة</div>
+              <div className="font-semibold tabular-nums">
+                {ready}/{colleges.length}
+              </div>
+            </div>
+            <div>
+              <div className="text-[11px] text-muted-foreground">تحتاج متابعة</div>
+              <div className="font-semibold tabular-nums">{attentionCount}</div>
+            </div>
           </div>
-        </div>
+        </Card>
       }
     >
       <div className="space-y-5">
-        {table("مقارنة النصاب والساعات الزائدة والنقص", LEADERSHIP_WORKLOAD_HEADERS)}
-        {table("تغطية الإسناد التدريسي", LEADERSHIP_ASSIGNMENT_HEADERS)}
-        {table("الساعات التدريسية في الجداول المنشورة", LEADERSHIP_TEACHING_HEADERS)}
-        {table("القاعات والمعامل المتاحة والمستخدمة", LEADERSHIP_ROOM_HEADERS)}
-        <ReportSection title="مصادر الأرقام وحالة البيانات" bodyClassName="p-0">
+        <ReportSection title="مقارنة الكليات" count={rows.length} bodyClassName="p-0">
           <ReportDataTable
             rows={rows}
-            columns={[
-              { key: "college", label: "الكلية" },
-              { key: "term", label: "الفصل" },
-              { key: "version", label: "أحدث جدول منشور" },
-              { key: "notice", label: "ملاحظات" },
-            ]}
+            caption="المؤشرات التنفيذية للكليات"
+            rowKey={(row) => row.college_id}
+            rowClassName={(row) =>
+              Number(row.uncovered_hours ?? 0) > 0
+                ? "bg-destructive/5"
+                : hasLeadershipIssue(row)
+                  ? "bg-amber-500/5"
+                  : ""
+            }
+            primaryColumnLimit={8}
+            minWidthClassName="min-w-[980px]"
+            columns={executiveColumns}
           />
         </ReportSection>
-        <p className="text-xs leading-6 text-muted-foreground">
-          الإسناد يعكس مجموعات التدريس النشطة الحالية؛ لا تُحتسب المجموعات القديمة أو الملغاة. ساعات
-          النظري والعملي تعكس جلسات نسخة منشورة واحدة لكل كلية، دون جمع المسودات أو تكرار النسخ.
-          القاعات والمعامل والمقاعد تشمل الموارد النشطة، وقد توجد أنواع أخرى ضمن إجمالي الموارد.
-          الربط بالرقم الجامعي يمنع ازدواج الأعضاء المرتبطين به؛ السجلات غير المرتبطة تبقى مستقلة.
-        </p>
       </div>
     </ReportShell>
   );
