@@ -98,7 +98,9 @@ function ReadinessCell({ row }: { row: LeadershipRow }) {
     <div className="min-w-[145px] space-y-0.5 leading-5">
       <div className="font-semibold">{row.version_id ? "جاهز · منشور" : "جاهز · غير منشور"}</div>
       {issues.slice(0, 2).map((issue) => (
-        <div key={issue} className="text-[10px] text-muted-foreground">{issue}</div>
+        <div key={issue} className="text-[10px] text-muted-foreground">
+          {issue}
+        </div>
       ))}
     </div>
   );
@@ -126,8 +128,14 @@ function AssignmentCoverageCell({ row }: { row: LeadershipRow }) {
 function WorkloadCell({ row }: { row: LeadershipRow }) {
   return (
     <div className="min-w-[130px] space-y-0.5 leading-5">
-      <div><span className="text-[10px] text-muted-foreground">النصاب </span><b className="tabular-nums">{leadershipText(row.net_quota)} س</b></div>
-      <div><span className="text-[10px] text-muted-foreground">المسند </span><span className="tabular-nums">{leadershipText(row.faculty_assigned_hours)} س</span></div>
+      <div>
+        <span className="text-[10px] text-muted-foreground">النصاب </span>
+        <b className="tabular-nums">{leadershipText(row.net_quota)} س</b>
+      </div>
+      <div>
+        <span className="text-[10px] text-muted-foreground">المسند </span>
+        <span className="tabular-nums">{leadershipText(row.faculty_assigned_hours)} س</span>
+      </div>
     </div>
   );
 }
@@ -135,8 +143,14 @@ function WorkloadCell({ row }: { row: LeadershipRow }) {
 function BalanceCell({ row }: { row: LeadershipRow }) {
   return (
     <div className="min-w-[115px] space-y-0.5 leading-5">
-      <div><span className="text-[10px] text-muted-foreground">زائد </span><b className="tabular-nums">{leadershipText(row.overload)} س</b></div>
-      <div><span className="text-[10px] text-muted-foreground">نقص </span><b className="tabular-nums">{leadershipText(row.deficit)} س</b></div>
+      <div>
+        <span className="text-[10px] text-muted-foreground">زائد </span>
+        <b className="tabular-nums">{leadershipText(row.overload)} س</b>
+      </div>
+      <div>
+        <span className="text-[10px] text-muted-foreground">نقص </span>
+        <b className="tabular-nums">{leadershipText(row.deficit)} س</b>
+      </div>
     </div>
   );
 }
@@ -210,12 +224,42 @@ function LeadershipDashboard() {
     : "لم تُحدد فترة أكاديمية";
   const selectedValue = data?.year ? JSON.stringify({ year: data.year, type: data.term_type }) : "";
   const executiveColumns: ReportColumn<LeadershipRow>[] = [
-    { key: "college", label: "الكلية", className: "w-[25%]", render: (row) => <CollegeExecutiveCell row={row} /> },
-    { key: "term_state", label: "الجاهزية", className: "w-[16%]", render: (row) => <ReadinessCell row={row} /> },
-    { key: "coverage", label: "تغطية الإسناد", className: "w-[14%]", render: (row) => <AssignmentCoverageCell row={row} /> },
-    { key: "net_quota", label: "النصاب", className: "w-[13%]", render: (row) => <WorkloadCell row={row} /> },
-    { key: "overload", label: "الزيادة / النقص", className: "w-[12%]", render: (row) => <BalanceCell row={row} /> },
-    { key: "version", label: "الجدول والموارد", className: "w-[17%]", render: (row) => <PublishedResourcesCell row={row} /> },
+    {
+      key: "college",
+      label: "الكلية",
+      className: "w-[25%]",
+      render: (row) => <CollegeExecutiveCell row={row} />,
+    },
+    {
+      key: "term_state",
+      label: "الجاهزية",
+      className: "w-[16%]",
+      render: (row) => <ReadinessCell row={row} />,
+    },
+    {
+      key: "coverage",
+      label: "تغطية الإسناد",
+      className: "w-[14%]",
+      render: (row) => <AssignmentCoverageCell row={row} />,
+    },
+    {
+      key: "net_quota",
+      label: "النصاب",
+      className: "w-[13%]",
+      render: (row) => <WorkloadCell row={row} />,
+    },
+    {
+      key: "overload",
+      label: "الزيادة / النقص",
+      className: "w-[12%]",
+      render: (row) => <BalanceCell row={row} />,
+    },
+    {
+      key: "version",
+      label: "الجدول والموارد",
+      className: "w-[17%]",
+      render: (row) => <PublishedResourcesCell row={row} />,
+    },
     {
       key: "college_id",
       label: "التفاصيل",
@@ -223,7 +267,9 @@ function LeadershipDashboard() {
       className: "w-[8%]",
       render: (row) => (
         <Button size="sm" variant="outline" asChild className="report-no-print">
-          <Link to="/reports" onClick={() => setActiveCollegeId(row.college_id)}>عرض</Link>
+          <Link to="/reports" onClick={() => setActiveCollegeId(row.college_id)}>
+            عرض
+          </Link>
         </Button>
       ),
     },
@@ -263,7 +309,11 @@ function LeadershipDashboard() {
               </SelectContent>
             </Select>
           </ReportFilterField>
-          <Button variant="outline" onClick={() => void query.refetch()} disabled={query.isFetching}>
+          <Button
+            variant="outline"
+            onClick={() => void query.refetch()}
+            disabled={query.isFetching}
+          >
             تحديث
           </Button>
         </div>
@@ -292,10 +342,7 @@ function LeadershipDashboard() {
         },
       ]}
       summary={
-        <Card
-          className="border-primary/20 bg-primary/5 px-4 py-3"
-          data-testid="leadership-scope"
-        >
+        <Card className="border-primary/20 bg-primary/5 px-4 py-3" data-testid="leadership-scope">
           <div className="grid gap-2 text-center sm:grid-cols-4">
             <div>
               <div className="text-[11px] text-muted-foreground">الفترة</div>
