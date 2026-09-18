@@ -320,9 +320,10 @@ function Page() {
       }
       printContent={
         <>
-          <style>{printPageStyleCss("A3", "landscape")}</style>
+          <style>{printPageStyleCss("A4", "portrait")}</style>
           {pages.map((page, i) => (
             <PrintSheet
+              readable
               key={page.key}
               page={page}
               labels={bundle?.labels}
