@@ -15,11 +15,12 @@ for path in sorted(Path("repeated-header-proof").glob("*.pdf")):
         assert "COLUMN_KEY" in text, f"{path}:{number}: missing column/group header"
         assert page.get_images(), f"{path}:{number}: missing university logo"
         header_rects = page.search_for("PRINT_HEADER_PROOF_2026")
-        row_rects = [r for match in re.findall(r"ROW\d{3}", text) for r in page.search_for(match)]
+        row_ids = ["ROW" + re.sub(r"\s", "", match) for match in re.findall(r"ROW\s*(\d(?:\s*\d){2})", text)]
+        row_rects = [fitz.Rect(word[:4]) for word in page.get_text("words") if word[4].startswith("ROW")]
         assert row_rects, f"{path}:{number}: orphan header/footer page"
         assert min(r.y0 for r in row_rects) > max(r.y1 for r in header_rects), f"{path}:{number}: header overlap"
         assert all(0 <= r.x0 < r.x1 <= page.rect.width and 0 <= r.y0 < r.y1 <= page.rect.height for r in row_rects), f"{path}:{number}: clipped content"
-        all_rows.extend(re.findall(r"ROW\d{3}", text))
+        all_rows.extend(row_ids)
         if number in (1, 2, len(doc)):
             page.get_pixmap(matrix=fitz.Matrix(1, 1)).save(path.with_name(f"{path.stem}-page-{number}.png"))
     if path.name.startswith("instructor"):
