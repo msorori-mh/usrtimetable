@@ -124,12 +124,31 @@ test("co-teaching reports each assigned share exactly once", () => {
     [2, 2],
   );
 });
+test("assignment report carries operational context for compact tables and exports", () => {
+  const row = buildAcademicReport(fixture(), "assignments")[0];
+  assert.equal(row.study_system, "عام");
+  assert.equal(row.students, 30);
+  assert.equal(row.capacity, 40);
+  assert.equal(row.allocation_status, "مغطى بالكامل");
+  assert.equal(row.employee_number, "—");
+});
 test("an unspecified shared allocation stays unknown instead of copying the component", () => {
   const data = fixture();
   data.groups[0].instructors[0].assigned_component_hours = null;
   const row = buildAcademicReport(data, "assignments")[0];
   assert.equal(row.assigned, null);
   assert.match(String(row.note), /غير محددة/);
+});
+test("shortage report does not fabricate a numeric deficit while shared teaching is unresolved", () => {
+  const data = fixture();
+  data.groups[0].instructors[0].assigned_component_hours = null;
+  data.groups[0].assigned_hours_total = 2;
+  data.groups[0].remaining_hours = 2;
+  const row = buildAcademicReport(data, "shortages")[0];
+  assert.equal(row.assigned, null);
+  assert.equal(row.shortage, null);
+  assert.equal(row.shared_hours_pending, 4);
+  assert.match(String(row.note), /بانتظار|توزيع/);
 });
 test("sole instructor falls back to component contact hours", () => {
   const data = fixture();
