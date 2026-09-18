@@ -9,7 +9,7 @@ const { execFileSync } = require("node:child_process");
   try {
     const page = await browser.newPage();
     page.on("pageerror", (e) => errors.push(e.message));
-    for (const mode of ["report", "summary", "sheet", "instructor"]) {
+    for (const mode of ["report", "summary", "sheet", "instructor", "student"]) {
       for (const [paper, orientation, width] of [
         ["default", "portrait", 1440],
         ["A4", "portrait", 390],
@@ -26,6 +26,21 @@ const { execFileSync } = require("node:child_process");
           })
           .first()
           .waitFor({ state: "attached" });
+        if (mode === "student" || mode === "sheet") {
+          const labels = await page
+            .locator("thead tr")
+            .evaluateAll((rows) =>
+              rows.map((row) => [...row.querySelectorAll("th")].map((cell) => cell.textContent)),
+            );
+          if (
+            !labels.some(
+              (row) =>
+                JSON.stringify(row.slice(0, 5)) ===
+                JSON.stringify(["اليوم", "الزمن", "المقرر", "اسم المحاضر", "القاعة"]),
+            )
+          )
+            throw Error("Student column order is incorrect");
+        }
         await page.evaluate(() => document.fonts.ready);
         await page.waitForFunction(() =>
           [...document.images].every((image) => image.complete && image.naturalWidth > 0),

@@ -1093,3 +1093,12 @@
     height: 13mm !important;
   }
 }
+
+@media print {
+  .student-schedule-group + .student-schedule-group {
+    break-before: page;
+  }
+  .student-schedule-group {
+    break-inside: auto;
+  }
+}

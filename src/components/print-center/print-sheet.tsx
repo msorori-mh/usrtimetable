@@ -172,11 +172,11 @@ export function PrintSheet(props: {
             </TableRow>
             <TableRow>
               <TableHead>اليوم</TableHead>
-              <TableHead>الوقت</TableHead>
-              <TableHead>اسم المقرر</TableHead>
-              <TableHead>المحاضرة</TableHead>
-              {visibility.showInstructor && <TableHead>المدرس</TableHead>}
+              <TableHead>الزمن</TableHead>
+              <TableHead>المقرر</TableHead>
+              {visibility.showInstructor && <TableHead>اسم المحاضر</TableHead>}
               {visibility.showRoom && <TableHead>القاعة</TableHead>}
+              <TableHead>النوع</TableHead>
               <TableHead>المجموعة</TableHead>
             </TableRow>
           </TableHeader>
@@ -195,9 +195,9 @@ export function PrintSheet(props: {
                   <TableCell>{row.day}</TableCell>
                   <TableCell className="whitespace-nowrap">{row.time}</TableCell>
                   <TableCell>{row.course_name}</TableCell>
-                  <TableCell>{row.component}</TableCell>
                   {visibility.showInstructor && <TableCell>{row.instructor}</TableCell>}
                   {visibility.showRoom && <TableCell>{row.room}</TableCell>}
+                  <TableCell>{row.component}</TableCell>
                   <TableCell>{row.group}</TableCell>
                 </TableRow>
               );

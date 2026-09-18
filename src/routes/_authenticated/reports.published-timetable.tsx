@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ReportFilterBar, ReportFilterField } from "@/components/reports/report-filter-bar";
-import { ReportSection, ReportDataTable } from "@/components/reports/report-section";
+import { StudentScheduleTables } from "@/components/reports/student-schedule-tables";
 import { DAY_NAMES_AR, fmtTime } from "@/lib/reports/export";
 import { filterRowsBySearch } from "@/lib/reports/search";
 import { fetchCohortDeliveryGroupLabels } from "@/lib/reports/queries/session-queries";
@@ -249,8 +249,29 @@ function Page() {
   const allRows = useMemo(() => {
     const labels = sessionsBundle?.labels;
     return (sessionsBundle?.sessions ?? []).map((s) => ({
+      id: s.id,
+      scope_key: JSON.stringify([
+        s.schedule_version_id,
+        s.course_offerings?.program_id,
+        s.course_offerings?.level_id,
+        s.cohort_id,
+        s.study_system,
+      ]),
+      day_order: s.day_of_week,
+      study_system:
+        s.study_system === "parallel"
+          ? "موازي"
+          : s.study_system === "both"
+            ? "مشترك (عام وموازي)"
+            : "عام",
       version: versionNameById.get(s.schedule_version_id ?? "") ?? "",
-      department: s.course_offerings?.courses?.departments?.name ?? "",
+      department:
+        depts?.find(
+          (d) =>
+            d.id === progs?.find((p) => p.id === s.course_offerings?.program_id)?.department_id,
+        )?.name ??
+        s.course_offerings?.courses?.departments?.name ??
+        "",
       program: s.course_offerings?.academic_programs?.name ?? "",
       level: s.course_offerings?.academic_levels?.name ?? "",
       cohort: (s.cohort_id && labels?.cohorts.get(s.cohort_id)) || "",
@@ -263,7 +284,7 @@ function Page() {
       instructor: s.instructors?.full_name ?? "",
       room: s.rooms ? entityDisplayName(s.rooms, "") : "",
     }));
-  }, [sessionsBundle, versionNameById]);
+  }, [sessionsBundle, versionNameById, depts, progs]);
 
   // Search is presentation-only: identical keys and values, fewer visible rows.
   const rows = useMemo(() => filterRowsBySearch(allRows, search), [allRows, search]);
@@ -503,32 +524,7 @@ function Page() {
         />
       }
     >
-      <ReportSection
-        title="محاضرات الجدول المنشور"
-        count={rows.length}
-        hint="الأعمدة الثانوية تظهر على الشاشات الأوسع وفي الطباعة."
-        bodyClassName="p-0"
-      >
-        <ReportDataTable
-          rows={rows}
-          minWidthClassName="min-w-[1000px]"
-          caption="محاضرات النسخ المنشورة"
-          columns={[
-            { key: "version", label: "النسخة", secondary: true },
-            { key: "department", label: "القسم", secondary: true },
-            { key: "program", label: "البرنامج", secondary: true },
-            { key: "level", label: "المستوى", secondary: true },
-            { key: "cohort", label: "الدفعة الدراسية" },
-            { key: "delivery_group", label: "مجموعة المحاضرات/المعامل", secondary: true },
-            { key: "course", label: "المقرر" },
-            { key: "day", label: "اليوم" },
-            { key: "time", label: "الوقت", className: "whitespace-nowrap" },
-            { key: "session_type", label: "النوع" },
-            { key: "instructor", label: "المحاضر", secondary: true },
-            { key: "room", label: "القاعة", secondary: true },
-          ]}
-        />
-      </ReportSection>
+      <StudentScheduleTables rows={rows} />
     </ReportShell>
   );
 }
