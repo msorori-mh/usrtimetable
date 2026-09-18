@@ -1,9 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-const { PGlite } = await import(
-  process.env.CLONE_DB_MODULE || "@electric-sql/pglite"
-);
+const { PGlite } = await import(process.env.CLONE_DB_MODULE || "@electric-sql/pglite");
 const id = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 test("atomic clone: identities, stale links, source preservation, rollback and authorization", async () => {
   const db = new PGlite();
@@ -39,12 +37,8 @@ test("atomic clone: identities, stale links, source preservation, rollback and a
     ),
   );
   const clone = () =>
-    db.query(
-      `select clone_schedule_version_current('${id(2)}','${id(3)}','${id(4)}','new') r`,
-    );
-  await db.query("select set_config('request.jwt.claim.sub',$1,false)", [
-    id(1),
-  ]);
+    db.query(`select clone_schedule_version_current('${id(2)}','${id(3)}','${id(4)}','new') r`);
+  await db.query("select set_config('request.jwt.claim.sub',$1,false)", [id(1)]);
   await db.exec("set role authenticated");
   const r = (await clone()).rows[0].r;
   assert.equal(r.source_sessions, 3);
@@ -56,10 +50,7 @@ test("atomic clone: identities, stale links, source preservation, rollback and a
   ]);
   await db.exec("reset role");
   const rows = (
-    await db.query(
-      "select * from schedule_sessions where schedule_version_id=$1",
-      [r.version_id],
-    )
+    await db.query("select * from schedule_sessions where schedule_version_id=$1", [r.version_id])
   ).rows;
   assert.equal(rows[0].delivery_group_id, id(8));
   assert.equal(rows[0].cohort_id, id(9));
@@ -69,29 +60,22 @@ test("atomic clone: identities, stale links, source preservation, rollback and a
   assert.equal(rows[0].lock_reason, "manual");
   assert.equal(
     (
-      await db.query(
-        "select count(*)::int n from schedule_sessions where schedule_version_id=$1",
-        [id(3)],
-      )
+      await db.query("select count(*)::int n from schedule_sessions where schedule_version_id=$1", [
+        id(3),
+      ])
     ).rows[0].n,
     3,
   );
   assert.equal(
-    (
-      await db.query("select status from schedule_versions where id=$1", [
-        id(3),
-      ])
-    ).rows[0].status,
+    (await db.query("select status from schedule_versions where id=$1", [id(3)])).rows[0].status,
     "published",
   );
   assert.equal(
-    (await db.query("select metadata from schedule_version_events")).rows[0]
-      .metadata.sessions_skipped,
+    (await db.query("select metadata from schedule_version_events")).rows[0].metadata
+      .sessions_skipped,
     2,
   );
-  const baseline = (
-    await db.query("select count(*)::int n from schedule_versions")
-  ).rows[0].n;
+  const baseline = (await db.query("select count(*)::int n from schedule_versions")).rows[0].n;
   await db.exec(
     `CREATE FUNCTION reject_clone_session() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'GUARD_STAYS_ACTIVE'; END $$; CREATE TRIGGER clone_guard BEFORE INSERT ON schedule_sessions FOR EACH ROW EXECUTE FUNCTION reject_clone_session(); SET ROLE authenticated;`,
   );
@@ -115,9 +99,7 @@ test("atomic clone: identities, stale links, source preservation, rollback and a
     ),
     /DISPOSABLE_CLONE_SUPER_ADMIN_REQUIRED/,
   );
-  await db.query("select set_config('request.jwt.claim.sub',$1,false)", [
-    id(99),
-  ]);
+  await db.query("select set_config('request.jwt.claim.sub',$1,false)", [id(99)]);
   await assert.rejects(clone(), /CLONE_NOT_AUTHORIZED/);
   await db.exec("reset role;set role anon");
   await assert.rejects(clone(), /permission denied/);

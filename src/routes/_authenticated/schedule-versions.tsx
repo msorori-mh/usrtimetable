@@ -69,9 +69,7 @@ function SchedVersionsPage() {
   const [termId, setTermId] = useState<string>("");
   const [notes, setNotes] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [cloneFor, setCloneFor] = useState<{ id: string; name: string } | null>(
-    null,
-  );
+  const [cloneFor, setCloneFor] = useState<{ id: string; name: string } | null>(null);
 
   const { data: terms } = useQuery({
     queryKey: ["terms-for-sv", active?.id],
@@ -93,9 +91,7 @@ function SchedVersionsPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("schedule_versions")
-        .select(
-          "id, name, status, academic_term_id, notes, created_at, is_coordination",
-        )
+        .select("id, name, status, academic_term_id, notes, created_at, is_coordination")
         .eq("college_id", active!.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -113,8 +109,7 @@ function SchedVersionsPage() {
 
   const create = useMutation({
     mutationFn: async () => {
-      if (!active || !termId || !name.trim())
-        throw new Error("الرجاء استكمال البيانات");
+      if (!active || !termId || !name.trim()) throw new Error("الرجاء استكمال البيانات");
       const { data, error } = await supabase
         .from("schedule_versions")
         .insert({
@@ -158,8 +153,7 @@ function SchedVersionsPage() {
         <div>
           <h1 className="text-2xl font-bold">مراجعة واعتماد الجدول</h1>
           <p className="text-sm text-muted-foreground">
-            أنشئ النسخة، افتح مساحة البناء، ثم راجع التعارضات والجودة قبل
-            الاعتماد والنشر.
+            أنشئ النسخة، افتح مساحة البناء، ثم راجع التعارضات والجودة قبل الاعتماد والنشر.
           </p>
         </div>
         <div className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:w-auto">
@@ -194,8 +188,7 @@ function SchedVersionsPage() {
                     <SelectContent>
                       {(terms ?? []).map((t) => (
                         <SelectItem key={t.id} value={t.id}>
-                          {t.name}{" "}
-                          {t.academic_year ? `— ${t.academic_year}` : ""}
+                          {t.name} {t.academic_year ? `— ${t.academic_year}` : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -211,20 +204,14 @@ function SchedVersionsPage() {
                 </div>
                 <div>
                   <Label>ملاحظات</Label>
-                  <Input
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                  />
+                  <Input value={notes} onChange={(e) => setNotes(e.target.value)} />
                 </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setOpen(false)}>
                   إلغاء
                 </Button>
-                <Button
-                  onClick={() => create.mutate()}
-                  disabled={create.isPending}
-                >
+                <Button onClick={() => create.mutate()} disabled={create.isPending}>
                   إنشاء
                 </Button>
               </DialogFooter>
@@ -234,9 +221,7 @@ function SchedVersionsPage() {
       </div>
 
       {!active ? (
-        <Card className="p-6 text-center text-muted-foreground">
-          اختر كلية للبدء
-        </Card>
+        <Card className="p-6 text-center text-muted-foreground">اختر كلية للبدء</Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {(versions ?? []).map((v) => (
@@ -324,9 +309,7 @@ function VersionCard({
             "يتعارض وقت محاضر مع جدول معتمد للتنسيق في كلية أخرى. عالج التعارض أولًا.",
           );
         if (error.message.includes("COORDINATION_TERM_DATES_REQUIRED"))
-          throw new Error(
-            "استكمل تواريخ الفصل الدراسي قبل اعتماد نسخة التنسيق.",
-          );
+          throw new Error("استكمل تواريخ الفصل الدراسي قبل اعتماد نسخة التنسيق.");
         throw new Error("تعذر اختيار نسخة التنسيق؛ أعد المحاولة.");
       }
     },
@@ -411,9 +394,7 @@ function VersionCard({
           disabled={!canManage || !!v.is_coordination || coordination.isPending}
           onClick={() => coordination.mutate()}
         >
-          {v.is_coordination
-            ? "نسخة التنسيق بين الكليات"
-            : "اختيار للتنسيق بين الكليات"}
+          {v.is_coordination ? "نسخة التنسيق بين الكليات" : "اختيار للتنسيق بين الكليات"}
         </Button>
       )}
       {v.notes && <div className="break-words text-xs">{v.notes}</div>}
@@ -478,17 +459,14 @@ function VersionCard({
                       <Button
                         size="sm"
                         variant={a.kind === "rollback" ? "outline" : "default"}
-                        disabled={
-                          !canManage || blocked || doTransition.isPending
-                        }
+                        disabled={!canManage || blocked || doTransition.isPending}
                         onClick={() => doTransition.mutate(a.to)}
                       >
                         {a.label}
                       </Button>
                       {blocked && (
                         <div className="text-[10px] text-destructive flex gap-1">
-                          <AlertTriangle className="h-3 w-3 mt-0.5" />{" "}
-                          {blockers.join(" • ")}
+                          <AlertTriangle className="h-3 w-3 mt-0.5" /> {blockers.join(" • ")}
                         </div>
                       )}
                     </div>
@@ -515,10 +493,7 @@ function VersionCard({
               </div>
               <ul className="space-y-0.5 max-h-32 overflow-y-auto text-[10px]">
                 {events.data.map((e) => (
-                  <li
-                    key={e.id}
-                    className="flex justify-between border-b py-0.5 gap-2"
-                  >
+                  <li key={e.id} className="flex justify-between border-b py-0.5 gap-2">
                     <span>
                       {eventLabel(e.event_type)}{" "}
                       {e.from_status && `(${e.from_status}→${e.to_status})`}
@@ -587,9 +562,7 @@ function CloneDialog({
           { duration: 15000 },
         );
       } else {
-        toast.success(
-          `تم الاستنساخ: ${result.sessions_copied} محاضرة. راجع النواقص قبل الاعتماد.`,
-        );
+        toast.success(`تم الاستنساخ: ${result.sessions_copied} محاضرة. راجع النواقص قبل الاعتماد.`);
       }
       onCloned();
     },
@@ -631,17 +604,15 @@ function CloneDialog({
                 onChange={(e) => setDisposableTest(e.target.checked)}
               />
               <span>
-                وسم كـ disposable_test (قابل للحذف الآمن لاحقًا عبر مسار الـ
-                purge الرسمي فقط). النسخ العادية تبقى غير قابلة للحذف عبر هذا
-                المسار.
+                وسم كـ disposable_test (قابل للحذف الآمن لاحقًا عبر مسار الـ purge الرسمي فقط).
+                النسخ العادية تبقى غير قابلة للحذف عبر هذا المسار.
               </span>
             </label>
           )}
           <p className="text-[11px] text-muted-foreground">
-            يُنسخ: بيانات النسخة والمحاضرات ذات الإسنادات النشطة المطابقة فقط.
-            تُستبعد المحاضرات الملغاة أو التي تغير محاضرها، وتبقى بدائلها بحاجة
-            إلى تسكين. لا يُنسخ: فحوصات التعارض، نتائج الجودة، عمليات الجدولة
-            التلقائية.
+            يُنسخ: بيانات النسخة والمحاضرات ذات الإسنادات النشطة المطابقة فقط. تُستبعد المحاضرات
+            الملغاة أو التي تغير محاضرها، وتبقى بدائلها بحاجة إلى تسكين. لا يُنسخ: فحوصات التعارض،
+            نتائج الجودة، عمليات الجدولة التلقائية.
           </p>
         </div>
         <DialogFooter>
@@ -666,12 +637,7 @@ function Stat({
   value: number | string;
   accent?: "ok" | "danger";
 }) {
-  const c =
-    accent === "danger"
-      ? "text-destructive"
-      : accent === "ok"
-        ? "text-emerald-600"
-        : "";
+  const c = accent === "danger" ? "text-destructive" : accent === "ok" ? "text-emerald-600" : "";
   return (
     <div className="rounded border p-1.5">
       <div className={`text-base font-bold ${c}`}>{value}</div>

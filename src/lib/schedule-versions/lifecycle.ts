@@ -1,8 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import {
-  validateProposed,
-  type ProposedSession,
-} from "@/lib/conflict-engine/validator";
+import { validateProposed, type ProposedSession } from "@/lib/conflict-engine/validator";
 import { loadApprovedExceptions } from "@/lib/conflict-engine/exceptions";
 import {
   type DisposablePurgeResult,
@@ -15,12 +12,7 @@ export {
   type DisposablePurgeResult,
 } from "@/lib/schedule-versions/disposable-purge";
 
-export type SVStatus =
-  | "draft"
-  | "review"
-  | "approved"
-  | "published"
-  | "archived";
+export type SVStatus = "draft" | "review" | "approved" | "published" | "archived";
 
 export const STATUS_LABEL_AR: Record<SVStatus, string> = {
   draft: "مسودة",
@@ -166,9 +158,7 @@ export async function evaluateEligibility(params: {
     .maybeSingle();
 
   if (qrow && qrow.soft_conflicts_count > 0) {
-    warnings.push(
-      `يوجد ${qrow.soft_conflicts_count} مخالفة مرنة (مسموح بها لكن يُنصح بمراجعتها).`,
-    );
+    warnings.push(`يوجد ${qrow.soft_conflicts_count} مخالفة مرنة (مسموح بها لكن يُنصح بمراجعتها).`);
   }
 
   return {
@@ -208,8 +198,7 @@ export function validateGate(target: SVStatus, e: EligibilityResult): string[] {
         `يوجد ${e.unapprovedHardConflicts} تعارض إلزامي غير معتمد — يجب أن يكون صفراً (${e.totalHardConflicts} إجمالي، ${e.approvedHardConflicts} معتمد).`,
       );
     }
-    if (e.qualityScore === null)
-      errs.push("يجب وجود نتيجة جودة — شغّل تقييم الجودة أولاً.");
+    if (e.qualityScore === null) errs.push("يجب وجود نتيجة جودة — شغّل تقييم الجودة أولاً.");
   }
   return errs;
 }
@@ -223,8 +212,7 @@ export async function transitionVersion(params: {
   notes?: string;
 }): Promise<void> {
   const { collegeId, scheduleVersionId, from, to, notes } = params;
-  if (!canTransition(from, to))
-    throw new Error(`Invalid transition: ${from} -> ${to}`);
+  if (!canTransition(from, to)) throw new Error(`Invalid transition: ${from} -> ${to}`);
 
   const { error } = await supabase.rpc("transition_schedule_version", {
     p_college_id: collegeId,
@@ -249,11 +237,8 @@ export type CloneVersionResult = {
   }>;
 };
 
-export async function cloneVersion(
-  params: CloneVersionParams,
-): Promise<string> {
-  return (await cloneVersionWithSummary({ ...params, requireComplete: true }))
-    .version_id;
+export async function cloneVersion(params: CloneVersionParams): Promise<string> {
+  return (await cloneVersionWithSummary({ ...params, requireComplete: true })).version_id;
 }
 
 export type CloneVersionParams = {
@@ -294,8 +279,7 @@ export async function cloneVersionWithSummary(
         "تغيرت الإسنادات أثناء الاستنساخ. حدّث الصفحة وأعد المحاولة؛ لم تُحفظ مسودة جزئية.",
     };
     throw new Error(
-      messages[error.message] ??
-        `تعذر الاستنساخ؛ لم تُحفظ مسودة جزئية. ${error.message}`,
+      messages[error.message] ?? `تعذر الاستنساخ؛ لم تُحفظ مسودة جزئية. ${error.message}`,
     );
   }
   return data as unknown as CloneVersionResult;
