@@ -3,16 +3,14 @@
  *
  * `read_only` — «مشاهد»:
  *  - reports ONLY: the sole reachable area is /reports and /reports/*;
- *  - may read, print and export the reports of EVERY college, expressed as
- *    explicit `user_colleges` rows: granting the role assigns all current
- *    colleges and a college created later is auto-assigned by a database
- *    trigger;
+ *  - may read, print and export reports only for explicitly selected
+ *    `user_colleges` rows; neither role grants nor new colleges widen scope;
  *  - no add / edit / delete anywhere.
  *
  * `institutional_viewer` — «إدارة الشؤون الأكاديمية»:
  *  - may open reports and the instructor directory/editor only;
  *  - may update basic instructor fields through a dedicated RPC, but cannot create/delete instructors;
- *  - holds every current and future college as scope, same as above.
+ *  - holds every current and future college as explicitly auto-assigned scope.
  *
  * Multi-role safety: an account that also carries `super_admin` or
  * `college_admin` keeps that role's full behaviour, is never narrowed to
@@ -26,13 +24,13 @@ export const READ_ONLY_ROLE_LABEL_AR = "مشاهد";
 export const INSTITUTIONAL_VIEWER_ROLE_LABEL_AR = "إدارة الشؤون الأكاديمية";
 
 export const READ_ONLY_ROLE_HINT_AR =
-  "التقارير فقط لجميع الكلّيات: قراءة وطباعة وتصدير، بدون أي إضافة أو تعديل أو حذف.";
+  "تقارير الكلّيات المُسندة فقط: قراءة وطباعة وتصدير، بدون أي إضافة أو تعديل أو حذف.";
 
 export const INSTITUTIONAL_VIEWER_ROLE_HINT_AR =
   "تقارير جميع الكلّيات مع صلاحية تعديل البيانات الأساسية للمحاضرين فقط، دون إنشاء/حذف محاضرين أو تعديل بقية بيانات المنصة.";
 
 export const READ_ONLY_CREATE_NOTE_AR =
-  "حساب «مشاهد»: يرى مركز التقارير فقط. تُسند له تلقائيًا جميع الكلّيات الحالية، وأي كلّية تُنشأ لاحقًا تُسند له تلقائيًا كذلك، والحساب للقراءة والطباعة والتصدير دون أي تعديل.";
+  "حساب «مشاهد»: يرى تقارير الكلّيات التي تختارها فقط، للقراءة والطباعة والتصدير دون أي تعديل. لا تُضاف الكلّيات الجديدة تلقائيًا.";
 
 export const INSTITUTIONAL_VIEWER_CREATE_NOTE_AR =
   "حساب «إدارة الشؤون الأكاديمية»: يرى التقارير في جميع الكلّيات، ويستطيع تعديل البيانات الأساسية للمحاضرين فقط. تُسند له تلقائيًا جميع الكلّيات الحالية وأي كلّية تُنشأ لاحقًا.";
@@ -118,19 +116,18 @@ export function scopeCollegesForRole<T extends { id: string }>(
 export type AssignableRole = "super_admin" | "college_admin" | "read_only" | "institutional_viewer";
 
 /**
- * Viewer roles cover every college, so their assignment is computed
+ * Academic affairs covers every college, so its assignment is computed
  * automatically (all current colleges + future ones via database trigger)
  * instead of being picked by hand.
  */
 export function assignsAllColleges(role: AssignableRole): boolean {
-  return role === "read_only" || role === "institutional_viewer";
+  return role === "institutional_viewer";
 }
 
 /**
- * Manual college assignment is mandatory only for the college-scoped
- * operational role. super_admin is institution-wide; viewer roles are
- * auto-assigned every college.
+ * Manual college assignment is mandatory for college admins and report viewers.
+ * Academic affairs remains institution-wide.
  */
 export function requiresCollegeAssignment(role: AssignableRole): boolean {
-  return role === "college_admin";
+  return role === "college_admin" || role === "read_only";
 }

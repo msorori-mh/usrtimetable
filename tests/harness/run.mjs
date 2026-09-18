@@ -27,6 +27,7 @@ export const harnesses = [
   "time-templates-college-context-sync.harness.ts",
   "unauthorized-access-ux.harness.ts",
   "institutional-viewer-rbac.harness.ts",
+  "scoped-viewer-colleges.harness.ts",
 
   "schedule-builder-foundation.harness.ts",
   "schedule-builder-workspace-read-model.harness.ts",
