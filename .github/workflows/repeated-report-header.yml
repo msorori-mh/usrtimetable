@@ -1,0 +1,39 @@
+name: repeated-report-header
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/components/reports/**"
+      - "src/components/print-center/**"
+      - "src/routes/_authenticated/reports.rooms-report.tsx"
+      - "src/styles.css"
+      - "scripts/reports-proof/**"
+      - ".github/workflows/repeated-report-header.yml"
+permissions:
+  contents: read
+jobs:
+  physical-pages:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: bun install --frozen-lockfile
+      - run: node --import tsx --test tests/rooms-executive.test.ts
+      - run: |
+          npm install --prefix "$RUNNER_TEMP/report-qa" --no-package-lock @playwright/test@1.63.0
+          node "$RUNNER_TEMP/report-qa/node_modules/@playwright/test/cli.js" install --with-deps chromium
+          pip install pymupdf
+      - name: Verify repeated headers on every physical page
+        run: |
+          bunx vite --config scripts/reports-proof/vite.config.mts > "$RUNNER_TEMP/report-preview.log" 2>&1 &
+          for i in {1..60}; do curl -fsS http://127.0.0.1:4173/repeated-header.html >/dev/null && break; sleep 1; done
+          REPORT_QA_MODULES="$RUNNER_TEMP/report-qa/node_modules" node scripts/reports-proof/repeated-header.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: repeated-header-proof
+          path: repeated-header-proof

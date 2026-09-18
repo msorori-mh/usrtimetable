@@ -1,3 +1,4 @@
+import { RepeatingPrintHeader } from "@/components/reports/repeating-print-header";
 import { ReportScopeError } from "@/lib/reports/preferences";
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
@@ -97,7 +98,10 @@ export function ReportShell({
     };
   }, [reportContext, headerMetaProp, active?.name, official, readOnly]);
 
-  const handlePrint = () => window.print();
+  const handlePrint = async () => {
+    await document.fonts.ready;
+    window.print();
+  };
 
   /**
    * Real verification/report URL for the header QR: the current report URL with its
@@ -179,16 +183,6 @@ export function ReportShell({
           </span>
         )}
       </header>
-      <div className={printContent ? "hidden" : "hidden print:block"}>
-        <ReportOfficialHeader
-          reportTitle={title}
-          description={description}
-          filterSummary={filterSummary}
-          qrUrl={qrUrl}
-          {...headerMeta}
-        />
-      </div>
-
       {/* Quiet, unified action bar: print carries the visual priority. */}
       <div
         className="report-no-print grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:flex-wrap sm:justify-between"
@@ -233,13 +227,31 @@ export function ReportShell({
 
       {showSummaryBlocks && kpis && kpis.length > 0 && <ReportKpiRow items={kpis} />}
 
-      {leading}
-
-      {showSummaryBlocks && summary}
-
-      <div className={printContent ? "report-no-print min-w-0" : "report-print-body min-w-0"}>
-        {body}
-      </div>
+      {printContent ? (
+        <div className="report-no-print space-y-4">
+          {leading}
+          {showSummaryBlocks && summary}
+          <div className="min-w-0">{body}</div>
+        </div>
+      ) : (
+        <RepeatingPrintHeader
+          header={
+            <div className="hidden print:block">
+              <ReportOfficialHeader
+                reportTitle={title}
+                description={description}
+                filterSummary={filterSummary}
+                qrUrl={qrUrl}
+                {...headerMeta}
+              />
+            </div>
+          }
+        >
+          {leading}
+          {showSummaryBlocks && summary}
+          <div className="report-print-body min-w-0">{body}</div>
+        </RepeatingPrintHeader>
+      )}
       {printContent && showSummaryBlocks && hasRows && (
         <div className="hidden print:block print-center-body">{printContent}</div>
       )}

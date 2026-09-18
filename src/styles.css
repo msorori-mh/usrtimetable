@@ -930,3 +930,165 @@
     break-before: page;
   }
 }
+
+/* The institutional header belongs to the paginated table, not to the first page. */
+@media screen {
+  .report-page-frame,
+  .report-page-content,
+  .report-page-content > tr,
+  .report-page-content > tr > td {
+    display: block;
+    width: 100%;
+  }
+
+  .report-page-header {
+    display: none;
+  }
+}
+
+@media print {
+  table.report-page-frame {
+    width: 100% !important;
+    table-layout: fixed;
+    border-collapse: collapse;
+  }
+
+  .report-page-frame > .report-page-header {
+    display: table-header-group !important;
+    break-inside: avoid;
+  }
+
+  .report-page-frame > .report-page-content {
+    display: table-row-group !important;
+  }
+
+  .report-page-frame > .report-page-content > tr,
+  .report-page-frame > .report-page-content > tr > td {
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
+
+  .report-page-frame > thead > tr > td,
+  .report-page-frame > tbody > tr > td,
+  .print-center-page .print-sheet-identity-row > th {
+    border: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    white-space: normal;
+    text-align: start;
+    font-weight: normal;
+  }
+
+  .report-page-header .report-official-header {
+    margin: 0 0 3mm;
+  }
+
+  .print-center-page > div > table > thead {
+    break-inside: avoid;
+  }
+
+  .print-sheet-identity-row .print-center-header {
+    margin: 0 0 3mm;
+  }
+}
+
+@media print {
+  /* Keep running identity compact even on the shorter A4 landscape page box. */
+  .report-official-header {
+    padding: 2mm !important;
+  }
+  .report-official-header .print-header-description,
+  .report-official-header .print-header-meta,
+  .report-official-header .print-header-kicker {
+    display: none !important;
+  }
+  .report-official-header > div:nth-child(2) {
+    margin-top: 1mm !important;
+    gap: 1mm !important;
+  }
+  .report-official-header .print-header-identity-band {
+    padding: 1mm !important;
+  }
+  .report-official-header .print-header-details {
+    gap: 0 !important;
+    width: 100%;
+  }
+  .report-official-header .print-header-field {
+    gap: 1mm;
+    padding: 0.5mm 1mm !important;
+  }
+}
+
+/* Paper typography and numeric rhythm shared by individual and student schedules. */
+@media print {
+  .report-print-root,
+  .print-center-body,
+  .print-center-page {
+    font-family: "Cairo", "Tajawal", "Noto Sans Arabic", Arial, sans-serif;
+    color: #172b3a;
+    line-height: 1.55;
+  }
+  .report-data-table th,
+  .report-data-table td {
+    font-size: 9pt;
+    line-height: 1.5;
+    vertical-align: middle;
+  }
+  .report-print-body th,
+  .print-center-page th {
+    color: #123f54;
+    background: #e8f2f5 !important;
+    font-weight: 700;
+  }
+  .report-print-body tbody tr:nth-child(even) > td,
+  .print-center-page tbody tr:nth-child(even) > td {
+    background: #f5f8fa;
+  }
+  .report-numeric-cell,
+  .report-print-body .tabular-nums,
+  .print-center-page td.whitespace-nowrap {
+    text-align: center !important;
+    font-variant-numeric: tabular-nums;
+  }
+  .print-sheet-identity-row .print-header-kicker {
+    display: none;
+  }
+  .print-sheet-identity-row .print-header-identity-band {
+    padding: 1mm 2mm !important;
+  }
+  .print-sheet-identity-row .print-header-logo {
+    width: 9mm !important;
+    height: 9mm !important;
+  }
+  .print-sheet-identity-row .print-header-verification svg {
+    width: 13mm !important;
+    height: 13mm !important;
+  }
+  .print-sheet-identity-row .print-header-field {
+    padding: 0.5mm 1mm !important;
+  }
+  .print-sheet-identity-row .print-header-meta {
+    padding: 0.5mm 1mm !important;
+    line-height: 1.25;
+  }
+}
+
+@media print {
+  .report-print-body thead th,
+  .print-center-page thead th:not([colspan]) {
+    text-align: center;
+  }
+}
+
+@media print {
+  .print-center-page tr[data-day-start="true"] > td {
+    border-top: 2px solid #7295a5;
+  }
+}
+
+@media print {
+  .print-sheet-identity-row .print-header-verification > div {
+    width: 13mm !important;
+    height: 13mm !important;
+  }
+}

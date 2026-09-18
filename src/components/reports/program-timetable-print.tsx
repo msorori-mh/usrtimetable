@@ -1,3 +1,8 @@
+import { RepeatingPrintHeader } from "@/components/reports/repeating-print-header";
+import {
+  ReportOfficialHeader,
+  headerMetaFromContext,
+} from "@/components/reports/report-official-header";
 import { useMemo, type ReactNode } from "react";
 import { PrintSheet } from "@/components/print-center/print-sheet";
 import { DEFAULT_PRINT_VISIBILITY } from "@/lib/print-center/types";
@@ -73,7 +78,21 @@ export function ProgramTimetablePrint(props: {
           }}
         />
       ))}
-      {props.coverage ? <div className="print-coverage-block">{props.coverage}</div> : null}
+      {props.coverage ? (
+        <RepeatingPrintHeader
+          header={
+            <ReportOfficialHeader
+              reportTitle="اكتمال تغطية الجدول"
+              collegeName={props.collegeName}
+              {...headerMetaFromContext(ctx)}
+              generatedAt={exportedAt}
+              qrUrl={qrUrl}
+            />
+          }
+        >
+          <div className="print-coverage-block">{props.coverage}</div>
+        </RepeatingPrintHeader>
+      ) : null}
     </>
   );
 }

@@ -165,7 +165,7 @@ export function ReportTimetableView({
             caption="تفصيل محاضرات الجدول"
             columns={headers.map((h) => ({
               ...h,
-              numeric: h.key === "hours",
+              numeric: ["hours", "time", "start_time", "end_time"].includes(h.key),
               secondary: SECONDARY_KEYS.has(h.key),
             }))}
             rows={rows}
@@ -176,7 +176,14 @@ export function ReportTimetableView({
         <TimetableGridReport {...gridProps} />
         <div className="report-print-details mt-4">
           <h2 className="mb-3 text-base font-bold">تفصيل المحاضرات</h2>
-          <ReportDataTable caption="تفصيل محاضرات الجدول" columns={headers} rows={rows} />
+          <ReportDataTable
+            caption="تفصيل محاضرات الجدول"
+            columns={headers.map((h) => ({
+              ...h,
+              numeric: ["hours", "time", "start_time", "end_time"].includes(h.key),
+            }))}
+            rows={rows}
+          />
         </div>
       </div>
     </div>

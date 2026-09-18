@@ -54,7 +54,7 @@ export function ReportSection({
 export interface ReportColumn<T> {
   key: string;
   label: string;
-  /** Right-aligned tabular numbers. */
+  /** Centered tabular numbers. */
   numeric?: boolean;
   /** Hidden below `md` so small screens keep the primary columns readable. */
   secondary?: boolean;
@@ -86,6 +86,16 @@ export function ReportDataTable<T>({
   const [page, setPage] = useState(0);
   const [showAll, setShowAll] = useState(false);
   const [expanded, setExpanded] = useState<T | null>(null);
+  const numericKeys = new Set(
+    columns
+      .filter(
+        (column) =>
+          column.numeric ||
+          (rows.length > 0 &&
+            rows.every((row) => typeof (row as Record<string, unknown>)[column.key] === "number")),
+      )
+      .map((column) => column.key),
+  );
   const pageSize = 25;
   const sorted = useMemo(() => {
     const indexed = rows.map((row, index) => ({ row, index }));
@@ -125,14 +135,21 @@ export function ReportDataTable<T>({
                 aria-sort={
                   sort?.key === c.key ? (sort.descending ? "descending" : "ascending") : undefined
                 }
-                className={cn("whitespace-nowrap", c.numeric && "tabular-nums", c.className)}
+                className={cn(
+                  "whitespace-nowrap",
+                  numericKeys.has(c.key) && "report-numeric-cell tabular-nums text-center",
+                  c.className,
+                )}
               >
                 {print ? (
                   c.label
                 ) : (
                   <button
                     type="button"
-                    className="py-3 text-start font-semibold hover:text-primary"
+                    className={cn(
+                      "py-3 font-semibold hover:text-primary",
+                      numericKeys.has(c.key) ? "text-center" : "text-start",
+                    )}
                     onClick={() => {
                       setSort({ key: c.key, descending: sort?.key === c.key && !sort.descending });
                       setPage(0);
@@ -158,7 +175,11 @@ export function ReportDataTable<T>({
               {cols.map((c) => (
                 <TableCell
                   key={c.key}
-                  className={cn("py-3 align-top text-sm", c.numeric && "tabular-nums", c.className)}
+                  className={cn(
+                    "py-3 align-top text-sm",
+                    numericKeys.has(c.key) && "report-numeric-cell tabular-nums text-center",
+                    c.className,
+                  )}
                 >
                   {cell(c, row, index)}
                 </TableCell>

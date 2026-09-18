@@ -24,14 +24,17 @@ export function ReportsCollegeBar() {
 
   return (
     <div
-      className="report-no-print flex min-w-0 flex-wrap items-center gap-3 rounded-lg border border-border bg-card/60 px-3 py-2"
+      className="report-no-print flex min-w-0 flex-wrap items-center gap-4 rounded-2xl border-2 border-primary/30 bg-gradient-to-l from-primary/10 to-card p-4 shadow-sm sm:p-5"
       dir="rtl"
       data-testid="reports-college-bar"
     >
-      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-secondary text-primary">
-        <School className="h-4 w-4" />
+      <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
+        <School className="h-6 w-6" />
       </span>
-      <span className="text-sm font-medium text-muted-foreground">الكلية</span>
+      <div className="min-w-0">
+        <p className="text-base font-bold text-primary">اختر الكلية لاستعراض تقاريرها</p>
+        <p className="mt-1 text-xs text-muted-foreground">جميع النتائج أدناه تتبع هذا الاختيار</p>
+      </div>
 
       {isLoading ? (
         <span className="text-sm text-muted-foreground">جارٍ تحميل الكلّيات...</span>
@@ -47,9 +50,12 @@ export function ReportsCollegeBar() {
           {entityDisplayName(colleges[0])}
         </span>
       ) : (
-        <div className="min-w-[16rem]">
+        <div className="w-full min-w-0 sm:w-auto sm:min-w-[20rem] sm:flex-1">
           <Select value={activeId ?? undefined} onValueChange={setActiveId}>
-            <SelectTrigger aria-label="اختيار الكلية للتقارير">
+            <SelectTrigger
+              aria-label="اختيار الكلية للتقارير"
+              className="h-auto min-h-12 w-full bg-background py-3 text-start text-base font-semibold [&>span]:whitespace-normal"
+            >
               <SelectValue placeholder="اختر كلّية" />
             </SelectTrigger>
             <SelectContent>
