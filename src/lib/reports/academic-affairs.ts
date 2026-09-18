@@ -14,6 +14,7 @@ export type AcademicInstructor = {
   id: string;
   full_name: string;
   academic_rank: string | null;
+  employee_number?: string | null;
   administrative_position?: string | null;
   department_id: string | null;
   /** approved weekly load on the member's own card (`instructors.max_weekly_hours`) */
@@ -105,6 +106,17 @@ const COMPONENT_LABELS: Record<string, string> = {
   clinical: "سريري",
   field_training: "تدريب ميداني",
 };
+const STUDY_SYSTEM_LABELS: Record<string, string> = {
+  regular: "عام",
+  parallel: "موازي",
+  both: "مشترك",
+};
+const ALLOCATION_STATUS_LABELS: Record<string, string> = {
+  unassigned: "غير مسند",
+  under_allocated: "تغطية جزئية",
+  fully_allocated: "مغطى بالكامل",
+  over_allocated: "تجاوز في الإسناد",
+};
 const round = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
 import { entityDisplayName } from "@/lib/entity-display";
@@ -141,6 +153,10 @@ export function buildAcademicReport(
     cohort: g.cohort_code ?? "—",
     group: g.group_code,
     component: COMPONENT_LABELS[g.component_type] ?? g.component_type,
+    study_system: STUDY_SYSTEM_LABELS[g.study_system] ?? g.study_system,
+    students: g.expected_students,
+    capacity: g.capacity_limit,
+    allocation_status: ALLOCATION_STATUS_LABELS[g.allocation_status] ?? g.allocation_status,
     required: g.component_hours,
   });
 
@@ -152,6 +168,7 @@ export function buildAcademicReport(
         .map((i) => ({
           ...groupInfo(g),
           instructor: i.instructor_name ?? "غير محدد",
+          employee_number: i.employee_number ?? "—",
           assigned: i.assigned_component_hours ?? (active.length === 1 ? g.component_hours : null),
           note:
             i.assigned_component_hours === null && active.length > 1
@@ -216,6 +233,7 @@ export function buildAcademicReport(
       });
       return {
         instructor: i.full_name,
+        employee_number: i.employee_number ?? "—",
         department: departmentMap.get(i.department_id ?? "") ?? "غير محدد",
         rank: i.academic_rank ?? "غير محدد",
         administrative_position:
@@ -290,6 +308,7 @@ export const ACADEMIC_REPORT_HEADERS: Record<AcademicReportKind, { key: string; 
   {
     overload: [
       { key: "instructor", label: "عضو هيئة التدريس" },
+      { key: "employee_number", label: "الرقم الوظيفي" },
       { key: "department", label: "القسم" },
       { key: "required", label: "صافي النصاب" },
       { key: "assigned", label: "الساعات المسندة" },
@@ -301,6 +320,7 @@ export const ACADEMIC_REPORT_HEADERS: Record<AcademicReportKind, { key: string; 
     ],
     deficit: [
       { key: "instructor", label: "عضو هيئة التدريس" },
+      { key: "employee_number", label: "الرقم الوظيفي" },
       { key: "department", label: "القسم" },
       { key: "required", label: "صافي النصاب" },
       { key: "assigned", label: "الساعات المسندة" },
@@ -311,6 +331,7 @@ export const ACADEMIC_REPORT_HEADERS: Record<AcademicReportKind, { key: string; 
     ],
     workload: [
       { key: "instructor", label: "عضو هيئة التدريس" },
+      { key: "employee_number", label: "الرقم الوظيفي" },
       { key: "department", label: "القسم التابع له" },
       { key: "rank", label: "الرتبة العلمية" },
       { key: "administrative_position", label: "المنصب الإداري" },
@@ -331,9 +352,13 @@ export const ACADEMIC_REPORT_HEADERS: Record<AcademicReportKind, { key: string; 
       { key: "program", label: "البرنامج" },
       { key: "course", label: "المقرر" },
       { key: "cohort", label: "الدفعة" },
+      { key: "study_system", label: "النظام" },
+      { key: "students", label: "عدد الطلاب" },
+      { key: "capacity", label: "سعة المجموعة" },
       { key: "group", label: "المجموعة" },
       { key: "component", label: "المحاضرة" },
       { key: "instructor", label: "عضو هيئة التدريس" },
+      { key: "employee_number", label: "الرقم الوظيفي" },
       { key: "required", label: "ساعات المحاضرة" },
       { key: "assigned", label: "ساعات العضو" },
       { key: "note", label: "ملاحظة" },
@@ -343,8 +368,12 @@ export const ACADEMIC_REPORT_HEADERS: Record<AcademicReportKind, { key: string; 
       { key: "program", label: "البرنامج" },
       { key: "course", label: "المقرر" },
       { key: "cohort", label: "الدفعة" },
+      { key: "study_system", label: "النظام" },
+      { key: "students", label: "عدد الطلاب" },
+      { key: "capacity", label: "سعة المجموعة" },
       { key: "group", label: "المجموعة" },
       { key: "component", label: "المحاضرة" },
+      { key: "allocation_status", label: "حالة التغطية" },
       { key: "required", label: "الساعات المطلوبة" },
       { key: "assigned", label: "الساعات المسندة" },
       { key: "shared_hours_pending", label: "ساعات مشتركة بانتظار التوزيع" },
