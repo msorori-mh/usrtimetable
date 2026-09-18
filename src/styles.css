@@ -1079,3 +1079,16 @@
     text-align: center;
   }
 }
+
+@media print {
+  .print-center-page tr[data-day-start="true"] > td {
+    border-top: 2px solid #7295a5;
+  }
+}
+
+@media print {
+  .print-sheet-identity-row .print-header-verification > div {
+    width: 13mm !important;
+    height: 13mm !important;
+  }
+}

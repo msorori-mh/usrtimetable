@@ -9,7 +9,7 @@ const { execFileSync } = require("node:child_process");
   try {
     const page = await browser.newPage();
     page.on("pageerror", (e) => errors.push(e.message));
-    for (const mode of ["report", "summary", "sheet"]) {
+    for (const mode of ["report", "summary", "sheet", "instructor"]) {
       for (const [paper, orientation, width] of [
         ["A4", "portrait", 390],
         ["A4", "landscape", 1440],
@@ -19,12 +19,30 @@ const { execFileSync } = require("node:child_process");
         await page.goto(
           `http://127.0.0.1:4173/repeated-header.html?mode=${mode}&paper=${paper}&orientation=${orientation}`,
         );
-        await page.getByText("ROW139", { exact: true }).waitFor();
+        await page
+          .getByText(mode === "instructor" ? "ROW017" : "ROW139", { exact: true })
+          .first()
+          .waitFor();
         await page.evaluate(() => document.fonts.ready);
         await page.waitForFunction(() =>
           [...document.images].every((image) => image.complete && image.naturalWidth > 0),
         );
         await page.emulateMedia({ media: "print" });
+        console.log(
+          JSON.stringify({
+            mode,
+            paper,
+            orientation,
+            headers: await page
+              .locator("thead")
+              .evaluateAll((nodes) =>
+                nodes.map((node) => ({
+                  height: node.getBoundingClientRect().height,
+                  breakInside: getComputedStyle(node).breakInside,
+                })),
+              ),
+          }),
+        );
         await page.pdf({
           path: `repeated-header-proof/${mode}-${paper}-${orientation}.pdf`,
           preferCSSPageSize: true,

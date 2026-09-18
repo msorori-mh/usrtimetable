@@ -3,6 +3,8 @@ import "../../src/styles.css";
 import { ReportShell } from "@/components/reports/report-shell";
 import { ReportOfficialHeader } from "@/components/reports/report-official-header";
 import { RepeatingPrintHeader } from "@/components/reports/repeating-print-header";
+import { ReportTimetableView } from "@/components/reports/report-timetable-view";
+import type { TimetableReportSession } from "@/lib/reports/session-mappers";
 import { PrintSheet } from "@/components/print-center/print-sheet";
 import { DEFAULT_PRINT_VISIBILITY, printPageStyleCss } from "@/lib/print-center";
 import { SHORT_FIXTURE } from "../print-proof/fixture";
@@ -57,9 +59,38 @@ const sheetSessions = rows.map((row, i) => ({
   },
 }));
 
+const instructorSessions: TimetableReportSession[] = rows.slice(0, 18).map((row, i) => ({
+  id: row.id,
+  day_of_week: i % 6,
+  start_time: String(8 + Math.floor(i / 6) * 2).padStart(2, "0") + ":00",
+  end_time: String(10 + Math.floor(i / 6) * 2).padStart(2, "0") + ":00",
+  session_type: "lecture",
+  study_system: "regular",
+  course_code: row.id,
+  course_name: row.id,
+  instructor_name: "محاضر الاختبار",
+  room_label: "قاعة الاختبار",
+  section_number: "",
+  cohort_label: "دفعة الاختبار",
+  delivery_group_label: "المجموعة الأولى",
+  program_name: "علوم الحاسوب",
+  level_name: "المستوى الأول",
+  department_name: "الحاسوب",
+}));
+
 createRoot(document.getElementById("root")!).render(
   <main dir="rtl">
-    {mode === "sheet" ? (
+    {mode === "instructor" ? (
+      <ReportShell
+        title="COLUMN_KEY"
+        headerMeta={headerMeta}
+        rows={rows.slice(0, 18)}
+        headers={[{ key: "id", label: "المحاضرة" }]}
+        filename="instructor-proof"
+      >
+        <ReportTimetableView sessions={instructorSessions} />
+      </ReportShell>
+    ) : mode === "sheet" ? (
       <PrintSheet
         page={{ key: "proof", title: "COLUMN_KEY", sessions: sheetSessions }}
         visibility={DEFAULT_PRINT_VISIBILITY}

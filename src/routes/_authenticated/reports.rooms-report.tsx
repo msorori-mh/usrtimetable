@@ -190,32 +190,6 @@ function Page() {
         },
       ]}
       filters={<ReportFilters context={ctx} />}
-      summary={
-        view === "overview" ? (
-          <div className="space-y-3">
-            <RoomsExecutiveSummary result={executive} />
-            <Card className="p-3 text-sm" data-testid="rooms-report-totals">
-              {sessionsQuery.isPlaceholderData && (
-                <p role="status">جارٍ تحديث البيانات حسب نظام الدراسة؛ الأرقام السابقة مؤقتة.</p>
-              )}
-              <p className="font-semibold">
-                الجلسات المطابقة للفلاتر: {totals.sessions} · صفحات القاعات: {pages.length}
-              </p>
-              <RoomsCategorySummary summary={summary} />
-              <p className="mt-2 text-muted-foreground">
-                الإتاحة هي ساعات فتح القاعات الكاملة. عند اختيار نظام واحد، تمثل النسبة حصته من هذه
-                الإتاحة؛ الساعات غير المستخدمة ضمن الاختيار قد تشغلها محاضرات النظام الآخر.
-              </p>
-              {totals.sessionsWithoutRoom > 0 && (
-                <p className="mt-1 text-muted-foreground">
-                  جلسات بدون قاعة محددة: {totals.sessionsWithoutRoom} — تظهر في صفحة «قاعة غير
-                  محددة».
-                </p>
-              )}
-            </Card>
-          </div>
-        ) : undefined
-      }
       printContent={
         <>
           <style>{printPageStyleCss("A3", "landscape")}</style>
@@ -412,9 +386,28 @@ function Page() {
           <TabsTrigger value="comparison">المقارنات</TabsTrigger>
         </TabsList>
         <TabsContent value="overview">
-          <p className="rounded-lg border bg-card p-4 text-sm leading-7">
-            ابدأ بالخلاصة أعلاه، ثم اختر التحليل لقراءة التفاصيل أو إشغال القاعات لفحص مورد محدد.
-          </p>
+          <div className="space-y-3">
+            <RoomsExecutiveSummary result={executive} />
+            <Card className="p-3 text-sm" data-testid="rooms-report-totals">
+              {sessionsQuery.isPlaceholderData && (
+                <p role="status">جارٍ تحديث البيانات حسب نظام الدراسة؛ الأرقام السابقة مؤقتة.</p>
+              )}
+              <p className="font-semibold">
+                الجلسات المطابقة للفلاتر: {totals.sessions} · صفحات القاعات: {pages.length}
+              </p>
+              <RoomsCategorySummary summary={summary} />
+              <p className="mt-2 text-muted-foreground">
+                الإتاحة هي ساعات فتح القاعات الكاملة. عند اختيار نظام واحد، تمثل النسبة حصته من هذه
+                الإتاحة؛ الساعات غير المستخدمة ضمن الاختيار قد تشغلها محاضرات النظام الآخر.
+              </p>
+              {totals.sessionsWithoutRoom > 0 && (
+                <p className="mt-1 text-muted-foreground">
+                  جلسات بدون قاعة محددة: {totals.sessionsWithoutRoom} — تظهر في صفحة «قاعة غير
+                  محددة».
+                </p>
+              )}
+            </Card>
+          </div>
         </TabsContent>
         <TabsContent value="analytics">
           {executive.complete ? (

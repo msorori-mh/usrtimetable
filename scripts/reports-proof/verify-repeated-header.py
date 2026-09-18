@@ -22,7 +22,10 @@ for path in sorted(Path("repeated-header-proof").glob("*.pdf")):
         all_rows.extend(re.findall(r"ROW\d{3}", text))
         if number in (1, 2, len(doc)):
             page.get_pixmap(matrix=fitz.Matrix(1, 1)).save(path.with_name(f"{path.stem}-page-{number}.png"))
-    assert sorted(all_rows) == [f"ROW{i:03}" for i in range(140)], f"{path}: missing or duplicate rows"
+    if path.name.startswith("instructor"):
+        assert sorted(set(all_rows)) == [f"ROW{i:03}" for i in range(18)], f"{path}: missing individual schedule rows"
+    else:
+        assert sorted(all_rows) == [f"ROW{i:03}" for i in range(140)], f"{path}: missing or duplicate rows"
     results.append({"file": path.name, "pages": len(doc), "rows": len(all_rows), "every_page_has_identity": True})
 Path("repeated-header-proof/results.json").write_text(json.dumps(results, indent=2))
 print(json.dumps(results, indent=2))
