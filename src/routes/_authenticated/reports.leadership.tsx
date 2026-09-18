@@ -37,6 +37,7 @@ import {
   LEADERSHIP_EMPLOYMENT_LABELS,
   orderedLeadershipCounts,
   sumLeadershipCounts,
+  sortLeadershipColleges,
   type LeadershipCollege,
 } from "@/lib/reports/leadership";
 
@@ -226,13 +227,11 @@ function LeadershipDashboard() {
     },
   });
   const data = query.data;
-  const colleges = (!query.error && !query.isFetching ? (data?.colleges ?? []) : [])
-    .filter((college) => college.college_id !== "7e570000-0000-4000-8000-000000000001")
-    .sort((a, b) => {
-      const priority = (name: string) =>
-        name.includes("تكنولوجيا المعلومات وعلوم الحاسوب") ? 0 : 1;
-      return priority(a.college) - priority(b.college) || a.college.localeCompare(b.college, "ar");
-    });
+  const colleges = sortLeadershipColleges(
+    (!query.error && !query.isFetching ? (data?.colleges ?? []) : []).filter(
+      (college) => college.college_id !== "7e570000-0000-4000-8000-000000000001",
+    ),
+  );
   const ready = colleges.filter((c) => c.term_state === "ready").length;
   const published = colleges.filter((c) => !!c.version_id).length;
   const rows: LeadershipRow[] = colleges.map((c) => ({
