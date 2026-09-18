@@ -162,6 +162,14 @@ function compactInstructorWorkloadColumns(): ReportColumn<InstructorWorkloadDisp
   ];
 }
 
+const WORKLOAD_SOURCE_LABELS: Record<string, string> = {
+  manual: "يدوي",
+  auto: "تلقائي",
+  imported: "مستورد",
+  existing_schedule: "جدول سابق",
+  split: "تدريس مشترك",
+};
+
 function WorkloadPage() {
   const { active } = useActiveCollege();
   const context = useReportContext({ fixedStatusMode: "specific_version" });
@@ -341,8 +349,8 @@ function WorkloadPage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const typ = (i as any).instructor_types?.name_ar ?? "";
       const srcStr = Object.entries(agg.sources)
-        .map(([k, v]) => `${k}:${v}`)
-        .join(" | ");
+        .map(([k, v]) => `${WORKLOAD_SOURCE_LABELS[k] ?? k}: ${v}`)
+        .join(" · ");
       return {
         instructor: i.full_name,
         employee_number: i.employee_number ?? "—",
