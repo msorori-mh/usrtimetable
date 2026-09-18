@@ -8,7 +8,11 @@ import { canViewLeadership } from "@/lib/viewer-roles";
 import { UnauthorizedAccess } from "@/components/unauthorized-access";
 import { ReportFilterField } from "@/components/reports/report-filters";
 import { ReportShell } from "@/components/reports/report-shell";
-import { ReportSection, ReportDataTable } from "@/components/reports/report-section";
+import {
+  ReportSection,
+  ReportDataTable,
+  type ReportColumn,
+} from "@/components/reports/report-section";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,6 +32,7 @@ import {
   LEADERSHIP_ASSIGNMENT_HEADERS,
   LEADERSHIP_TEACHING_HEADERS,
   LEADERSHIP_ROOM_HEADERS,
+  type LeadershipCollege,
 } from "@/lib/reports/leadership";
 
 export const Route = createFileRoute("/_authenticated/reports/leadership")({
@@ -42,6 +47,114 @@ function Page() {
   return <LeadershipDashboard />;
 }
 
+type LeadershipRow = LeadershipCollege & {
+  coverage: string;
+  notice: string;
+};
+
+const leadershipText = (value: unknown) =>
+  value === null || value === undefined || value === "" ? "—" : String(value);
+
+function hasLeadershipIssue(row: LeadershipCollege) {
+  return (
+    row.term_state !== "ready" ||
+    !row.version_id ||
+    Number(row.incomplete_faculty ?? 0) > 0 ||
+    Number(row.uncovered_hours ?? 0) > 0 ||
+    Number(row.pending_groups ?? 0) > 0 ||
+    Number(row.overallocated_groups ?? 0) > 0
+  );
+}
+
+function CollegeExecutiveCell({ row }: { row: LeadershipRow }) {
+  return (
+    <div className="min-w-[210px] space-y-1 leading-5">
+      <div className="font-bold text-primary">{row.college}</div>
+      <div className="text-[11px] text-muted-foreground">
+        {leadershipText(row.departments)} قسم · {leadershipText(row.programs)} برنامج ·{" "}
+        {leadershipText(row.faculty_count)} عضو هيئة تدريس
+      </div>
+    </div>
+  );
+}
+
+function ReadinessCell({ row }: { row: LeadershipRow }) {
+  if (row.term_state !== "ready") {
+    return (
+      <div className="min-w-[145px] font-semibold text-[color:var(--usr-gold-dark)]">
+        {row.term_state === "ambiguous" ? "الفصل يحتاج اعتماد" : "الفصل غير محدد"}
+      </div>
+    );
+  }
+  const issues: string[] = [];
+  if (!row.version_id) issues.push("لا يوجد جدول منشور");
+  if (Number(row.incomplete_faculty ?? 0) > 0)
+    issues.push("نصاب غير مكتمل: " + leadershipText(row.incomplete_faculty));
+  if (Number(row.pending_groups ?? 0) > 0)
+    issues.push("تدريس مشترك: " + leadershipText(row.pending_groups));
+  if (Number(row.overallocated_groups ?? 0) > 0)
+    issues.push("تجاوز إسناد: " + leadershipText(row.overallocated_groups));
+  return (
+    <div className="min-w-[145px] space-y-0.5 leading-5">
+      <div className="font-semibold">{row.version_id ? "جاهز · منشور" : "جاهز · غير منشور"}</div>
+      {issues.slice(0, 2).map((issue) => (
+        <div key={issue} className="text-[10px] text-muted-foreground">{issue}</div>
+      ))}
+    </div>
+  );
+}
+
+function AssignmentCoverageCell({ row }: { row: LeadershipRow }) {
+  const coverage = coveragePercent(row);
+  if (coverage === null)
+    return <div className="min-w-[125px] text-muted-foreground">غير محسوبة</div>;
+  return (
+    <div className="min-w-[125px] space-y-0.5 leading-5">
+      <div className="text-lg font-bold tabular-nums">{coverage}%</div>
+      <div className="text-[10px] text-muted-foreground">
+        {leadershipText(row.covered_hours)} / {leadershipText(row.required_hours)} ساعة
+      </div>
+      {Number(row.uncovered_hours ?? 0) > 0 && (
+        <div className="text-[10px] font-semibold text-destructive">
+          عجز {leadershipText(row.uncovered_hours)} ساعة
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WorkloadCell({ row }: { row: LeadershipRow }) {
+  return (
+    <div className="min-w-[130px] space-y-0.5 leading-5">
+      <div><span className="text-[10px] text-muted-foreground">النصاب </span><b className="tabular-nums">{leadershipText(row.net_quota)} س</b></div>
+      <div><span className="text-[10px] text-muted-foreground">المسند </span><span className="tabular-nums">{leadershipText(row.faculty_assigned_hours)} س</span></div>
+    </div>
+  );
+}
+
+function BalanceCell({ row }: { row: LeadershipRow }) {
+  return (
+    <div className="min-w-[115px] space-y-0.5 leading-5">
+      <div><span className="text-[10px] text-muted-foreground">زائد </span><b className="tabular-nums">{leadershipText(row.overload)} س</b></div>
+      <div><span className="text-[10px] text-muted-foreground">نقص </span><b className="tabular-nums">{leadershipText(row.deficit)} س</b></div>
+    </div>
+  );
+}
+
+function PublishedResourcesCell({ row }: { row: LeadershipRow }) {
+  const publishedLabel = row.version_id
+    ? leadershipText(row.teaching_hours) + " س · " + leadershipText(row.sessions_count) + " محاضرة"
+    : "لا يوجد جدول منشور";
+  return (
+    <div className="min-w-[155px] space-y-0.5 leading-5">
+      <div className="font-semibold">{publishedLabel}</div>
+      <div className="text-[10px] text-muted-foreground">
+        {leadershipText(row.halls)} قاعة · {leadershipText(row.labs)} معمل ·{" "}
+        {leadershipText(row.seats)} مقعد
+      </div>
+    </div>
+  );
+}
 function LeadershipDashboard() {
   const { data: me } = useCurrentUser();
   const [period, setPeriod] = useState<{ year: string; type: string } | null>(null);
@@ -67,11 +180,17 @@ function LeadershipDashboard() {
   const colleges = !query.error && !query.isFetching ? (data?.colleges ?? []) : [];
   const ready = colleges.filter((c) => c.term_state === "ready").length;
   const published = colleges.filter((c) => !!c.version_id).length;
-  const rows = colleges.map((c) => ({
+  const rows: LeadershipRow[] = colleges.map((c) => ({
     ...c,
-    coverage: coveragePercent(c) === null ? "غير محسوبة" : `${coveragePercent(c)}%`,
+    coverage: coveragePercent(c) === null ? "غير محسوبة" : String(coveragePercent(c)) + "%",
     notice: leadershipNotice(c),
   }));
+  const totalFaculty = sumLeadership(colleges, "faculty_count");
+  const totalRequired = sumLeadership(colleges, "required_hours");
+  const totalCovered = sumLeadership(colleges, "covered_hours");
+  const universityCoverage =
+    totalRequired > 0 ? Math.round((1000 * totalCovered) / totalRequired) / 10 : null;
+  const attentionCount = colleges.filter(hasLeadershipIssue).length;
   const exportHeaders = [
     ...new Map(
       [
@@ -90,16 +209,25 @@ function LeadershipDashboard() {
     ? `${data.year} · ${termTypeLabel(data.term_type ?? "")}`
     : "لم تُحدد فترة أكاديمية";
   const selectedValue = data?.year ? JSON.stringify({ year: data.year, type: data.term_type }) : "";
-  const table = (title: string, headers: { key: string; label: string }[]) => (
-    <ReportSection title={title} count={rows.length} bodyClassName="p-0">
-      <ReportDataTable
-        rows={rows}
-        caption={title}
-        rowKey={(r) => r.college_id}
-        columns={headers.map((h) => ({ ...h, numeric: !["college", "coverage"].includes(h.key) }))}
-      />
-    </ReportSection>
-  );
+  const executiveColumns: ReportColumn<LeadershipRow>[] = [
+    { key: "college", label: "الكلية", className: "w-[25%]", render: (row) => <CollegeExecutiveCell row={row} /> },
+    { key: "term_state", label: "الجاهزية", className: "w-[16%]", render: (row) => <ReadinessCell row={row} /> },
+    { key: "coverage", label: "تغطية الإسناد", className: "w-[14%]", render: (row) => <AssignmentCoverageCell row={row} /> },
+    { key: "net_quota", label: "النصاب", className: "w-[13%]", render: (row) => <WorkloadCell row={row} /> },
+    { key: "overload", label: "الزيادة / النقص", className: "w-[12%]", render: (row) => <BalanceCell row={row} /> },
+    { key: "version", label: "الجدول والموارد", className: "w-[17%]", render: (row) => <PublishedResourcesCell row={row} /> },
+    {
+      key: "college_id",
+      label: "التفاصيل",
+      sortable: false,
+      className: "w-[8%]",
+      render: (row) => (
+        <Button size="sm" variant="outline" asChild className="report-no-print">
+          <Link to="/reports" onClick={() => setActiveCollegeId(row.college_id)}>عرض</Link>
+        </Button>
+      ),
+    },
+  ];
   return (
     <ReportShell
       title="لوحة الإدارة العليا للجامعة"
