@@ -291,9 +291,7 @@ function Page() {
       >
         <ReportDataTable
           rows={rows}
-          columns={
-            compactUnscheduledColumns() as unknown as ReportColumn<(typeof rows)[number]>[]
-          }
+          columns={compactUnscheduledColumns() as unknown as ReportColumn<(typeof rows)[number]>[]}
           primaryColumnLimit={6}
           minWidthClassName="min-w-[760px]"
           caption="الساعات غير المجدولة لكل مجموعة"
