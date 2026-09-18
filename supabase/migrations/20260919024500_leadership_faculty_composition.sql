@@ -102,6 +102,12 @@ BEGIN
       nullif(btrim(CASE
         WHEN position('الحالة الوظيفية: ' in coalesce(i.notes,''))>0
           THEN split_part(split_part(i.notes,'الحالة الوظيفية: ',2),E'\n',1)
+        WHEN position('الحالة في الكشف: ' in coalesce(i.notes,''))>0
+          THEN split_part(
+            split_part(split_part(i.notes,'الحالة في الكشف: ',2),E'\n',1),
+            '—',
+            1
+          )
         ELSE ''
       END),'') AS status_reason,
       i.updated_at
