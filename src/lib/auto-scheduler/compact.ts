@@ -9,10 +9,7 @@ import {
   type AttendanceMetrics,
 } from "./attendance-objective.ts";
 import { isInstructorAvailabilityEnforced } from "../scheduling/instructor-availability-policy.ts";
-import {
-  isRoomTypeCompatible,
-  roomTypeRank,
-} from "../scheduling/room-type-policy.ts";
+import { isRoomTypeCompatible, roomTypeRank } from "../scheduling/room-type-policy.ts";
 import {
   addStudentDailyLoad,
   emptyStudentDailyLoad,
@@ -35,10 +32,7 @@ function assignmentComponentType(
 }
 
 /** Theory-like vs practical load of a session, for the student daily-hours policy. */
-export function sessionStudentLoadKind(
-  s: Snapshot,
-  x: Session,
-): StudentLoadKind {
+export function sessionStudentLoadKind(s: Snapshot, x: Session): StudentLoadKind {
   return studentLoadKind(
     assignmentComponentType(
       s,
@@ -210,15 +204,13 @@ export interface Proposal {
   outcome?: SearchOutcome;
   evaluatedCandidates?: number;
 }
-export const minutes = (t: string) =>
-  Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+export const minutes = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
 const time = (n: number) =>
   `${String(Math.floor(n / 60)).padStart(2, "0")}:${String(n % 60).padStart(2, "0")}:00`;
 const duration = (s: Session) => minutes(s.end_time) - minutes(s.start_time);
 export const fingerprint = (sessions: Session[]) =>
   JSON.stringify([...sessions].sort((a, b) => a.id.localeCompare(b.id)));
-export const inputFingerprint = (s: Snapshot) =>
-  JSON.stringify({ ...s, sessions: [] });
+export const inputFingerprint = (s: Snapshot) => JSON.stringify({ ...s, sessions: [] });
 const contexts = new WeakMap<
   Snapshot,
   {
@@ -232,17 +224,12 @@ const contexts = new WeakMap<
 export function context(s: Snapshot) {
   const cached = contexts.get(s);
   if (cached) return cached;
-  const partitions = new Map(
-    s.partitions.filter((p) => p.active).map((p) => [p.id, p]),
-  );
+  const partitions = new Map(s.partitions.filter((p) => p.active).map((p) => [p.id, p]));
   const memberMap = new Map<string, string[]>();
   for (const m of s.members) {
     if (partitions.get(m.partition_id)?.cohort_id !== m.cohort_id) continue;
     memberMap.set(m.delivery_group_id, [
-      ...new Set([
-        ...(memberMap.get(m.delivery_group_id) || []),
-        m.partition_id,
-      ]),
+      ...new Set([...(memberMap.get(m.delivery_group_id) || []), m.partition_id]),
     ]);
   }
   const groups = new Map(s.groups.map((g) => [g.id, g]));
@@ -253,8 +240,7 @@ export function context(s: Snapshot) {
       !!g &&
       g.expected_students > 0 &&
       ids.length > 0 &&
-      ids.reduce((n, p) => n + (partitions.get(p)?.headcount || 0), 0) ===
-        g.expected_students
+      ids.reduce((n, p) => n + (partitions.get(p)?.headcount || 0), 0) === g.expected_students
     );
   };
   const groupCohorts = (id: string, fallbackId: string) => [
@@ -280,8 +266,7 @@ export function context(s: Snapshot) {
     const scope = groupCohorts(x.delivery_group_id, x.cohort_id);
     const keys = new Set<string>();
     for (const cid of scope) {
-      if (fallback.has(cid) || !complete(x.delivery_group_id))
-        keys.add(`cohort:${cid}`);
+      if (fallback.has(cid) || !complete(x.delivery_group_id)) keys.add(`cohort:${cid}`);
       else
         for (const p of memberMap.get(x.delivery_group_id) || [])
           if (partitions.get(p)?.cohort_id === cid) keys.add(p);
@@ -293,27 +278,21 @@ export function context(s: Snapshot) {
       groupCohorts(b.delivery_group_id, b.cohort_id).includes(id),
     );
     return (
-      common.some((id) => fallback.has(id)) ||
-      students(a).some((p) => students(b).includes(p))
+      common.some((id) => fallback.has(id)) || students(a).some((p) => students(b).includes(p))
     );
   };
   const cohorts = new Map(s.cohorts.map((c) => [c.id, c]));
   const levelFor = (id: string) => {
     const c = cohorts.get(id);
-    return c
-      ? `${c.program_id}|${c.level_id}|${c.study_system}|${c.term_id}`
-      : id;
+    return c ? `${c.program_id}|${c.level_id}|${c.study_system}|${c.term_id}` : id;
   };
   const level = (x: Session) => levelFor(x.cohort_id);
-  const levels = (x: Session) =>
-    groupCohorts(x.delivery_group_id, x.cohort_id).map(levelFor);
+  const levels = (x: Session) => groupCohorts(x.delivery_group_id, x.cohort_id).map(levelFor);
   const weight = (id: string) =>
     partitions.get(id)?.headcount ||
     Math.max(
       1,
-      ...s.groups
-        .filter((g) => `cohort:${g.cohort_id}` === id)
-        .map((g) => g.expected_students),
+      ...s.groups.filter((g) => `cohort:${g.cohort_id}` === id).map((g) => g.expected_students),
     );
   const result = { students, share, level, levels, weight };
   contexts.set(s, result);
@@ -332,9 +311,7 @@ export function measure(s: Snapshot, sessions = s.sessions): Metrics {
       levels: ctx.levels(x),
     })),
     ctx.weight,
-    (id) =>
-      s.instructors.find((t) => t.id === id)?.target_attendance_days_per_week ??
-      null,
+    (id) => s.instructors.find((t) => t.id === id)?.target_attendance_days_per_week ?? null,
   );
   const teacherDays = new Map<string, Map<number, number>>();
   const teacherMinutes = new Map<string, number>();
@@ -342,10 +319,7 @@ export function measure(s: Snapshot, sessions = s.sessions): Metrics {
     const days = teacherDays.get(x.instructor_id) ?? new Map<number, number>();
     days.set(x.day_of_week, (days.get(x.day_of_week) ?? 0) + 1);
     teacherDays.set(x.instructor_id, days);
-    teacherMinutes.set(
-      x.instructor_id,
-      (teacherMinutes.get(x.instructor_id) ?? 0) + duration(x),
-    );
+    teacherMinutes.set(x.instructor_id, (teacherMinutes.get(x.instructor_id) ?? 0) + duration(x));
   }
   const base: Metrics = {
     ...attendance,
@@ -357,14 +331,11 @@ export function measure(s: Snapshot, sessions = s.sessions): Metrics {
       return sum + Math.max(0, days.size - target);
     }, 0),
     instructorSingleLectureDays: [...teacherDays.values()].reduce(
-      (sum, days) =>
-        sum + [...days.values()].filter((count) => count === 1).length,
+      (sum, days) => sum + [...days.values()].filter((count) => count === 1).length,
       0,
     ),
     practicalHallSessions: sessions.filter((x) => {
-      const assignment = s.assignments.find(
-        (a) => a.id === x.teaching_assignment_id,
-      );
+      const assignment = s.assignments.find((a) => a.id === x.teaching_assignment_id);
       return (
         roomTypeRank({
           componentType: assignmentComponentType(s, assignment),
@@ -380,17 +351,11 @@ export function measure(s: Snapshot, sessions = s.sessions): Metrics {
   return {
     ...base,
     extendedGroups: days.size,
-    extendedDayViolations: [...days.values()].reduce(
-      (n, d) => n + Math.max(0, d.size - limit),
-      0,
-    ),
+    extendedDayViolations: [...days.values()].reduce((n, d) => n + Math.max(0, d.size - limit), 0),
   };
 }
 /** A shared lecture consumes the extended day of every real student partition attending it. */
-export function extendedDays(
-  s: Snapshot,
-  sessions = s.sessions,
-): Map<string, Set<number>> {
+export function extendedDays(s: Snapshot, sessions = s.sessions): Map<string, Set<number>> {
   const result = new Map<string, Set<number>>();
   const cutoff = minutes(s.settings.standard_day_end_time ?? "14:00:00");
   for (const x of sessions) {
@@ -410,15 +375,9 @@ export function studentWeeklyCapacity(s: Snapshot, days: number): number {
   const start = minutes(s.settings.day_start_time);
   const normal = Math.min(
     daily,
-    Math.max(
-      0,
-      minutes(s.settings.standard_day_end_time ?? "14:00:00") - start,
-    ),
+    Math.max(0, minutes(s.settings.standard_day_end_time ?? "14:00:00") - start),
   );
-  const full = Math.min(
-    daily,
-    Math.max(0, minutes(s.settings.day_end_time) - start),
-  );
+  const full = Math.min(daily, Math.max(0, minutes(s.settings.day_end_time) - start));
   const extended = Math.min(days, extendedDayLimit(s.settings));
   return Math.min(normal, full) * (days - extended) + full * extended;
 }
@@ -435,17 +394,9 @@ export function better(a: Metrics, b: Metrics) {
   const protectedStudentMetrics: Array<
     keyof Pick<
       Metrics,
-      | "studentGapMinutes"
-      | "worstStudentGapMinutes"
-      | "shortStudentDays"
-      | "studentAttendanceDays"
+      "studentGapMinutes" | "worstStudentGapMinutes" | "shortStudentDays" | "studentAttendanceDays"
     >
-  > = [
-    "studentGapMinutes",
-    "worstStudentGapMinutes",
-    "shortStudentDays",
-    "studentAttendanceDays",
-  ];
+  > = ["studentGapMinutes", "worstStudentGapMinutes", "shortStudentDays", "studentAttendanceDays"];
   if (protectedStudentMetrics.some((key) => a[key] > b[key])) return false;
   // Explicit per-instructor day targets (e.g. department heads at five days) rank
   // above generic instructor day compression, but below the student rules and the
@@ -478,9 +429,7 @@ export function feasible(
 ): boolean {
   const ctx = context(s),
     settings = s.settings,
-    assignment = s.assignments.find(
-      (a) => a.id === candidate.teaching_assignment_id,
-    );
+    assignment = s.assignments.find((a) => a.id === candidate.teaching_assignment_id);
   const room = s.rooms.find((r) => r.id === candidate.room_id),
     teacher = s.instructors.find((t) => t.id === candidate.instructor_id);
   if (
@@ -523,24 +472,16 @@ export function feasible(
     return false;
   // room_availability rows are authoritative when present; the denormalized
   // rooms.available_* columns are only a fallback (they can be stale).
-  const roomRows = (s.roomAvailability || []).filter(
-    (w) => w.room_id === room.id,
-  );
+  const roomRows = (s.roomAvailability || []).filter((w) => w.room_id === room.id);
   if (roomRows.length) {
     const sameDay = roomRows.filter((w) => w.day_of_week === day);
     if (!sameDay.length) return false;
-    if (
-      !sameDay.some(
-        (w) => start >= minutes(w.start_time) && end <= minutes(w.end_time),
-      )
-    )
+    if (!sameDay.some((w) => start >= minutes(w.start_time) && end <= minutes(w.end_time)))
       return false;
   } else {
-    if (room.available_days?.length && !room.available_days.includes(day))
-      return false;
+    if (room.available_days?.length && !room.available_days.includes(day)) return false;
     if (
-      (room.available_start_time &&
-        start < minutes(room.available_start_time)) ||
+      (room.available_start_time && start < minutes(room.available_start_time)) ||
       (room.available_end_time && end > minutes(room.available_end_time))
     )
       return false;
@@ -559,43 +500,29 @@ export function feasible(
   )
     return false;
   if (
-    !(
-      candidate.study_system === "both"
-        ? ["regular", "parallel"]
-        : [candidate.study_system]
-    ).every((system) =>
-      s.templates.some(
-        (t) =>
-          t.is_active &&
-          t.day_of_week === day &&
-          (t.study_system === system || t.study_system === "both") &&
-          start >= minutes(t.start_time) &&
-          end <= minutes(t.end_time),
-      ),
+    !(candidate.study_system === "both" ? ["regular", "parallel"] : [candidate.study_system]).every(
+      (system) =>
+        s.templates.some(
+          (t) =>
+            t.is_active &&
+            t.day_of_week === day &&
+            (t.study_system === system || t.study_system === "both") &&
+            start >= minutes(t.start_time) &&
+            end <= minutes(t.end_time),
+        ),
     )
   )
     return false;
   // Instructor availability is only a constraint when enforcement is on.
   // Default: available on every approved teaching day/period; missing rows
   // never block. Explicit instructor double-booking stays blocked below.
-  if (
-    isInstructorAvailabilityEnforced(settings.enforce_instructor_availability)
-  ) {
+  if (isInstructorAvailabilityEnforced(settings.enforce_instructor_availability)) {
     const windows = (s.availability || []).filter(
-      (a) =>
-        a.instructor_id === teacher.id &&
-        a.day_of_week === day &&
-        !a.is_preference,
+      (a) => a.instructor_id === teacher.id && a.day_of_week === day && !a.is_preference,
     );
     const type = s.types.find((t) => t.id === teacher.instructor_type_id);
-    if (
-      (type?.is_external || type?.code === "from_other_college") &&
-      !windows.length
-    )
-      return false;
-    const positiveWindows = windows.filter(
-      (w) => w.availability_type !== "unavailable",
-    );
+    if ((type?.is_external || type?.code === "from_other_college") && !windows.length) return false;
+    const positiveWindows = windows.filter((w) => w.availability_type !== "unavailable");
     if (
       (windows.length &&
         !positiveWindows.some(
@@ -613,15 +540,12 @@ export function feasible(
   const others = sessions.filter((x) => x.id !== candidate.id),
     sameDay = others.filter((x) => x.day_of_week === day);
   if (
-    sameDay.filter(
-      (x) => x.instructor_id === teacher.id && !x.replaced_by_split,
-    ).length >= MAX_INSTRUCTOR_SESSIONS_PER_DAY
+    sameDay.filter((x) => x.instructor_id === teacher.id && !x.replaced_by_split).length >=
+    MAX_INSTRUCTOR_SESSIONS_PER_DAY
   )
     return false;
   const teacherDays = new Set(
-    others
-      .filter((x) => x.instructor_id === teacher.id)
-      .map((x) => x.day_of_week),
+    others.filter((x) => x.instructor_id === teacher.id).map((x) => x.day_of_week),
   );
   teacherDays.add(day);
   if (
@@ -638,8 +562,7 @@ export function feasible(
     const after = extendedDays(s, [...others, candidate]);
     for (const p of ctx.students(candidate)) {
       if (
-        (after.get(p)?.size ?? 0) >
-        Math.max(extendedDayLimit(settings), before.get(p)?.size ?? 0)
+        (after.get(p)?.size ?? 0) > Math.max(extendedDayLimit(settings), before.get(p)?.size ?? 0)
       )
         return false;
     }
@@ -668,33 +591,25 @@ export function feasible(
     return false;
   for (const levelKey of ctx.levels(candidate)) {
     const days = new Set(
-      others
-        .filter((x) => ctx.levels(x).includes(levelKey))
-        .map((x) => x.day_of_week),
+      others.filter((x) => ctx.levels(x).includes(levelKey)).map((x) => x.day_of_week),
     );
     days.add(day);
     const beforeDays = new Set(
-      sessions
-        .filter((x) => ctx.levels(x).includes(levelKey))
-        .map((x) => x.day_of_week),
+      sessions.filter((x) => ctx.levels(x).includes(levelKey)).map((x) => x.day_of_week),
     ).size;
-    if (days.size > Math.max(ATTENDANCE_POLICY.maximumDays, beforeDays))
-      return false;
+    if (days.size > Math.max(ATTENDANCE_POLICY.maximumDays, beforeDays)) return false;
   }
   // Existing violations may be repaired incrementally; never enlarge them.
   const teacherMinutes =
-    sameDay
-      .filter((x) => x.instructor_id === teacher.id)
-      .reduce((a, x) => a + duration(x), 0) + duration(candidate);
+    sameDay.filter((x) => x.instructor_id === teacher.id).reduce((a, x) => a + duration(x), 0) +
+    duration(candidate);
   const priorTeacher = sessions
     .filter((x) => x.day_of_week === day && x.instructor_id === teacher.id)
     .reduce((a, x) => a + duration(x), 0);
   if (
     teacherMinutes >
     Math.max(
-      (teacher.max_hours_per_day ||
-        settings.max_daily_hours_per_instructor ||
-        6) * 60,
+      (teacher.max_hours_per_day || settings.max_daily_hours_per_instructor || 6) * 60,
       priorTeacher,
     )
   )
@@ -703,15 +618,12 @@ export function feasible(
   const dailyPolicy = studentDailyPolicy(settings);
   const load = (list: Session[]) =>
     list.reduce(
-      (acc, x) =>
-        addStudentDailyLoad(acc, sessionStudentLoadKind(s, x), duration(x)),
+      (acc, x) => addStudentDailyLoad(acc, sessionStudentLoadKind(s, x), duration(x)),
       emptyStudentDailyLoad(),
     );
   for (const p of ctx.students(candidate)) {
     const prior = load(
-      sessions.filter(
-        (x) => x.day_of_week === day && ctx.students(x).includes(p),
-      ),
+      sessions.filter((x) => x.day_of_week === day && ctx.students(x).includes(p)),
     );
     const next = addStudentDailyLoad(
       load(sameDay.filter((x) => ctx.students(x).includes(p))),
@@ -748,11 +660,8 @@ export function compactSlots(
     const begin = minutes(template.start_time),
       end = minutes(template.end_time);
     const anchors = new Set<number>([begin, end - length]);
-    for (let start = begin; start + length <= end; start += step)
-      anchors.add(start);
-    for (const session of s.sessions.filter(
-      (x) => x.day_of_week === template.day_of_week,
-    )) {
+    for (let start = begin; start + length <= end; start += step) anchors.add(start);
+    for (const session of s.sessions.filter((x) => x.day_of_week === template.day_of_week)) {
       anchors.add(minutes(session.end_time));
       anchors.add(minutes(session.start_time) - length);
     }
@@ -766,18 +675,11 @@ export function compactSlots(
       slots.set(`${slot.day}|${slot.start}`, slot);
     }
   }
-  return [...slots.values()].sort(
-    (a, b) => a.day - b.day || a.start.localeCompare(b.start),
-  );
+  return [...slots.values()].sort((a, b) => a.day - b.day || a.start.localeCompare(b.start));
 }
 
-export async function compact(
-  s: Snapshot,
-  options: CompactOptions = {},
-): Promise<Proposal> {
-  const sessions = s.sessions
-    .map((x) => ({ ...x }))
-    .sort((a, b) => a.id.localeCompare(b.id));
+export async function compact(s: Snapshot, options: CompactOptions = {}): Promise<Proposal> {
+  const sessions = s.sessions.map((x) => ({ ...x })).sort((a, b) => a.id.localeCompare(b.id));
   const before = measure(s),
     moves: Move[] = [];
   let current = before,
@@ -809,24 +711,17 @@ export async function compact(
           : null;
   if (options.signal?.aborted) return finished("cancelled");
   if (!sessions.length) return finished("empty");
-  const rooms = [...s.rooms].sort(
-    (a, b) => a.capacity - b.capacity || a.id.localeCompare(b.id),
-  );
+  const rooms = [...s.rooms].sort((a, b) => a.capacity - b.capacity || a.id.localeCompare(b.id));
   const roomCache = new Map<string, typeof rooms>();
   const roomsFor = (session: Session) => {
     const key = `${session.teaching_assignment_id}|${session.expected_students}`;
     if (!roomCache.has(key)) {
-      const assignment = s.assignments.find(
-        (a) => a.id === session.teaching_assignment_id,
-      );
+      const assignment = s.assignments.find((a) => a.id === session.teaching_assignment_id);
       const componentType = assignmentComponentType(s, assignment);
       roomCache.set(
         key,
         rooms
-          .filter(
-            (room) =>
-              room.is_active && room.capacity >= session.expected_students,
-          )
+          .filter((room) => room.is_active && room.capacity >= session.expected_students)
           .map((room) => ({
             room,
             rank: roomTypeRank({
@@ -837,9 +732,7 @@ export async function compact(
           }))
           .filter((entry) => entry.rank !== null)
           // Required room type first; the practical lab→hall fallback last.
-          .sort(
-            (a, b) => a.rank! - b.rank! || a.room.capacity - b.room.capacity,
-          )
+          .sort((a, b) => a.rank! - b.rank! || a.room.capacity - b.room.capacity)
           .map((entry) => entry.room),
       );
     }
@@ -874,8 +767,7 @@ export async function compact(
       let best: Session | null = null,
         bestScore = current;
       candidateSearch: for (const slot of slotsFor(old)) {
-        if (slot.day === old.day_of_week && slot.start === old.start_time)
-          continue;
+        if (slot.day === old.day_of_week && slot.start === old.start_time) continue;
         for (const room of roomsFor(old)) {
           if (stopReason()) break candidateSearch;
           evaluated++;
@@ -890,10 +782,7 @@ export async function compact(
           const trial = [...sessions];
           trial[i] = candidate;
           const score = measure(s, trial);
-          if (
-            better(score, current) &&
-            compareAttendance(score, bestScore) < 0
-          ) {
+          if (better(score, current) && compareAttendance(score, bestScore) < 0) {
             best = candidate;
             bestScore = score;
           }
@@ -916,8 +805,8 @@ export async function compact(
       .filter((x) => !x.is_locked)
       .sort(
         (a, b) =>
-          (current.levelDays[ctx.level(b)] ?? 0) -
-            (current.levelDays[ctx.level(a)] ?? 0) || a.id.localeCompare(b.id),
+          (current.levelDays[ctx.level(b)] ?? 0) - (current.levelDays[ctx.level(a)] ?? 0) ||
+          a.id.localeCompare(b.id),
       );
     pairSearch: for (const target of targets) {
       for (const slot of slotsFor(target)) {
@@ -972,13 +861,9 @@ export async function compact(
                 room_id: altRoom.id,
               };
               if (!feasible(s, sessions, relocated, blocker)) continue;
-              const intermediate = sessions.map((x) =>
-                x.id === blocker.id ? relocated : x,
-              );
+              const intermediate = sessions.map((x) => (x.id === blocker.id ? relocated : x));
               if (!feasible(s, intermediate, candidate, target)) continue;
-              const final = intermediate.map((x) =>
-                  x.id === target.id ? candidate : x,
-                ),
+              const final = intermediate.map((x) => (x.id === target.id ? candidate : x)),
                 score = measure(s, final);
               if (!better(score, current)) continue;
               sessions.splice(0, sessions.length, ...final);

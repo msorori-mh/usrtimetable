@@ -29,11 +29,7 @@ async function rows(table: string, collegeId: string, versionId?: string) {
   const result: unknown[] = [];
   const orderKey = table === "shared_lecture_links" ? "member_group_id" : "id";
   for (let offset = 0; ; offset += 500) {
-    let q = db
-      .from(table)
-      .select("*")
-      .eq("college_id", collegeId)
-      .order(orderKey);
+    let q = db.from(table).select("*").eq("college_id", collegeId).order(orderKey);
     if (versionId) q = q.eq("schedule_version_id", versionId);
     const { data, error } = await q.range(offset, offset + 499);
     if (error) throw new Error(error.message);
@@ -50,20 +46,14 @@ async function draft(collegeId: string, versionId: string) {
     .single();
   if (error) throw error;
   if (data.status !== "draft") throw new Error("التحسين متاح لنسخة مسودة فقط.");
-  if (
-    !Number.isSafeInteger(data.eligibility_revision) ||
-    data.eligibility_revision < 0
-  )
+  if (!Number.isSafeInteger(data.eligibility_revision) || data.eligibility_revision < 0)
     throw new Error("تعذر التحقق من مراجعة الجدول.");
   return {
     revision: String(data.eligibility_revision),
     versionUpdatedAt: data.updated_at,
   };
 }
-export async function loadCompactSnapshot(
-  collegeId: string,
-  versionId: string,
-): Promise<Snapshot> {
+export async function loadCompactSnapshot(collegeId: string, versionId: string): Promise<Snapshot> {
   const version = await draft(collegeId, versionId);
   const external = await (
     supabase as unknown as {
@@ -80,9 +70,7 @@ export async function loadCompactSnapshot(
     p_version_id: versionId,
   });
   if (external.error || !Array.isArray(external.data))
-    throw new Error(
-      "تعذر فحص ارتباطات المحاضرين في الكليات الأخرى؛ أعد المحاولة.",
-    );
+    throw new Error("تعذر فحص ارتباطات المحاضرين في الكليات الأخرى؛ أعد المحاولة.");
   const names = {
     sessions: "schedule_sessions",
     cohorts: "academic_cohorts",
@@ -104,23 +92,13 @@ export async function loadCompactSnapshot(
   const values = await Promise.all(
     Object.entries(names).map(
       async ([key, table]) =>
-        [
-          key,
-          await rows(
-            table,
-            collegeId,
-            key === "sessions" ? versionId : undefined,
-          ),
-        ] as const,
+        [key, await rows(table, collegeId, key === "sessions" ? versionId : undefined)] as const,
     ),
   );
   const raw = Object.fromEntries(values);
   if (raw.settings.length !== 1) throw new Error("تعذر تحديد إعدادات الجدولة.");
   const latest = await draft(collegeId, versionId);
-  if (
-    version.revision !== latest.revision ||
-    version.versionUpdatedAt !== latest.versionUpdatedAt
-  )
+  if (version.revision !== latest.revision || version.versionUpdatedAt !== latest.versionUpdatedAt)
     throw new Error("تغير الجدول أو موارده أثناء القراءة؛ أعد المعاينة.");
   return {
     ...raw,
@@ -168,8 +146,7 @@ const rejectionMessages: Record<string, string> = {
   VERSION_BUSY: "يجري تعديل الجدول الآن؛ أعد المحاولة بعد انتهائه.",
   VERSION_LOCKED: "نسخة الجدول لم تعد مسودة قابلة للتعديل.",
   ROOM_CLOSED: "تتعارض الخطة مع إغلاق إحدى القاعات.",
-  ROOM_CLOSURE_REQUIRES_TERM_DATES:
-    "استكمل تاريخ بداية الفصل ونهايته للتحقق من إغلاقات القاعات.",
+  ROOM_CLOSURE_REQUIRES_TERM_DATES: "استكمل تاريخ بداية الفصل ونهايته للتحقق من إغلاقات القاعات.",
   ATTENDANCE_DAY_LIMIT: "تزيد الخطة عدد أيام حضور المستوى عن الحد المسموح.",
 };
 async function sendAtomic(result: Applied, retrying = false): Promise<Applied> {
@@ -178,10 +155,7 @@ async function sendAtomic(result: Applied, retrying = false): Promise<Applied> {
       result.rpcName ?? "apply_schedule_compaction",
       result.pendingRequest!,
     );
-    if (
-      error?.code === "23514" &&
-      error.message.includes("INSTRUCTOR_DAILY_SESSION_LIMIT")
-    )
+    if (error?.code === "23514" && error.message.includes("INSTRUCTOR_DAILY_SESSION_LIMIT"))
       return {
         ...result,
         applied: 0,
@@ -189,16 +163,12 @@ async function sendAtomic(result: Applied, retrying = false): Promise<Applied> {
         stopped:
           "لم تُحفظ الخطة: الحد الأقصى ثلاث محاضرات للمحاضر في اليوم، شاملًا العام والموازي. أعد توزيع الجلسات ثم أعد المعاينة.",
       };
-    if (
-      error?.code === "23514" &&
-      error.message.includes("CROSS_COLLEGE_INSTRUCTOR_CONFLICT")
-    )
+    if (error?.code === "23514" && error.message.includes("CROSS_COLLEGE_INSTRUCTOR_CONFLICT"))
       return {
         ...result,
         applied: 0,
         status: "rejected",
-        stopped:
-          "لم تُحفظ الخطة: يتعارض وقت محاضر مع جدول كلية أخرى. أعد المعاينة.",
+        stopped: "لم تُحفظ الخطة: يتعارض وقت محاضر مع جدول كلية أخرى. أعد المعاينة.",
       };
     if (error?.code === "PGRST202" || error?.code === "42883")
       return {
@@ -236,11 +206,7 @@ async function sendAtomic(result: Applied, retrying = false): Promise<Applied> {
   }
   return result;
 }
-async function readActual(
-  collegeId: string,
-  versionId: string,
-  result: Applied,
-): Promise<Applied> {
+async function readActual(collegeId: string, versionId: string, result: Applied): Promise<Applied> {
   try {
     return {
       ...result,
@@ -250,9 +216,7 @@ async function readActual(
     return {
       ...result,
       after: null,
-      stopped:
-        result.stopped ||
-        "حُفظت الخطة كاملة، لكن تعذر تحديث عرض الجدول. أعد تحميل الصفحة.",
+      stopped: result.stopped || "حُفظت الخطة كاملة، لكن تعذر تحديث عرض الجدول. أعد تحميل الصفحة.",
     };
   }
 }
@@ -264,14 +228,11 @@ export async function verifyCompactApplication(
 ): Promise<Applied> {
   let result = previous;
   try {
-    const { data, error } = await atomicDb.rpc(
-      "get_schedule_compaction_result",
-      {
-        p_college_id: collegeId,
-        p_version_id: versionId,
-        p_operation_id: previous.operationId,
-      },
-    );
+    const { data, error } = await atomicDb.rpc("get_schedule_compaction_result", {
+      p_college_id: collegeId,
+      p_version_id: versionId,
+      p_operation_id: previous.operationId,
+    });
     if (
       !error &&
       data?.ok &&
@@ -326,8 +287,7 @@ export async function applyCompactProposal(
   )
     throw new Error("تغيرت البيانات منذ المعاينة؛ أعد حساب التحسين.");
   const before = measure(fresh);
-  if (!fresh.revision || !fresh.versionUpdatedAt)
-    throw new Error("تعذر التحقق من مراجعة الجدول.");
+  if (!fresh.revision || !fresh.versionUpdatedAt) throw new Error("تعذر التحقق من مراجعة الجدول.");
   if (!proposal.moves.length || proposal.moves.length > 512)
     throw new Error("حجم خطة التحسين غير صالح.");
   let simulated = fresh.sessions;
@@ -338,8 +298,7 @@ export async function applyCompactProposal(
     if (proposal.moves.some((m) => !fresh.sessions.some((s) => s.id === m.id)))
       throw new Error("محاضرة خارج نطاق الخطة.");
     simulated = fresh.sessions.map((s) => ({ ...s, ...moves.get(s.id) }));
-    const days =
-      proposal.qualitySearch?.dayCap ?? proposal.attendanceSearch?.days;
+    const days = proposal.qualitySearch?.dayCap ?? proposal.attendanceSearch?.days;
     if (
       !days ||
       (proposal.qualitySearch
@@ -363,8 +322,7 @@ export async function applyCompactProposal(
       : better(measure(fresh, simulated), before))
   )
     throw new Error("الخطة لا تحسّن النتيجة.");
-  if (options.signal?.aborted)
-    throw new Error("أُلغي التطبيق قبل إرسال الخطة؛ لم يُحفظ تغيير.");
+  if (options.signal?.aborted) throw new Error("أُلغي التطبيق قبل إرسال الخطة؛ لم يُحفظ تغيير.");
   const operationId = crypto.randomUUID();
   let result: Applied = {
     applied: null,
@@ -386,21 +344,18 @@ export async function applyCompactProposal(
       p_expected_version_updated_at: fresh.versionUpdatedAt,
       ...(proposal.applicationMode === "simultaneous"
         ? {
-            p_day_cap:
-              proposal.qualitySearch?.dayCap ?? proposal.attendanceSearch!.days,
+            p_day_cap: proposal.qualitySearch?.dayCap ?? proposal.attendanceSearch!.days,
           }
         : {}),
       p_moves: proposal.moves.map((move) => ({
         ...move,
-        expected_updated_at: fresh.sessions.find((s) => s.id === move.id)!
-          .updated_at,
+        expected_updated_at: fresh.sessions.find((s) => s.id === move.id)!.updated_at,
       })),
     },
   };
   // After dispatch, cancelling the UI cannot cancel a database transaction.
   result = await sendAtomic(result);
-  if (result.status === "saved")
-    options.onProgress?.(result.total, result.total);
+  if (result.status === "saved") options.onProgress?.(result.total, result.total);
   return result.status === "unknown"
     ? verifyCompactApplication(collegeId, versionId, result)
     : readActual(collegeId, versionId, result);
