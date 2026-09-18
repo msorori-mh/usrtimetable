@@ -1,3 +1,5 @@
+import { InstructorCollegeHours } from "@/components/reports/instructor-college-hours";
+import { summarizeUniversitySchedule } from "@/lib/reports/university-instructor-schedule";
 import { createRoot } from "react-dom/client";
 import "../../src/styles.css";
 import { ReportShell } from "@/components/reports/report-shell";
@@ -81,7 +83,40 @@ const instructorSessions: TimetableReportSession[] = rows.slice(0, 18).map((row,
 
 createRoot(document.getElementById("root")!).render(
   <main dir="rtl">
-    {mode === "student" ? (
+    {mode === "university" ? (
+      <ReportShell
+        title="COLUMN_KEY جدول المحاضر الموحد"
+        headerMeta={headerMeta}
+        rows={rows.slice(0, 6)}
+        headers={[{ key: "id", label: "المحاضرة" }]}
+        filename="university-proof"
+      >
+        <ReportTimetableView
+          sessions={instructorSessions
+            .slice(0, 6)
+            .map((s, i) => ({
+              ...s,
+              college_name: i < 3 ? "كلية الحاسوب" : "كلية العلوم الإدارية",
+            }))}
+          hideInstructor
+          printDetailOnly
+          compactDetails
+        />
+        <InstructorCollegeHours
+          summary={summarizeUniversitySchedule(
+            instructorSessions
+              .slice(0, 6)
+              .map((s, i) => ({
+                ...s,
+                college_id: i < 3 ? "c1" : "c2",
+                college_name: i < 3 ? "كلية الحاسوب" : "كلية العلوم الإدارية",
+                version_name: i < 3 ? "COMPUTING_V1" : "BUSINESS_V1",
+              })),
+            { maxWeeklyHours: 10, adminReleaseHours: 2 },
+          )}
+        />
+      </ReportShell>
+    ) : mode === "student" ? (
       <ReportShell
         title="جدول الطلاب المنشور"
         headerMeta={headerMeta}

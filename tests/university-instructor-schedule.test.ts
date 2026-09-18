@@ -1,0 +1,135 @@
+import { describe, expect, test } from "bun:test";
+import {
+  facultyRecordIds,
+  overlappingTerms,
+  resolveCollegeScheduleScopes,
+  summarizeUniversitySchedule,
+  type UniversityInstructorSession,
+  type UniversityTerm,
+  type UniversityVersion,
+} from "../src/lib/reports/university-instructor-schedule";
+
+const term = (
+  id: string,
+  college_id: string,
+  start_date = "2026-09-01",
+  end_date = "2026-12-31",
+): UniversityTerm => ({ id, college_id, start_date, end_date, name: "الفصل الأول" });
+const version = (
+  id: string,
+  college_id: string,
+  academic_term_id: string,
+  status = "published",
+  created_at = "2026-09-01",
+): UniversityVersion => ({
+  id,
+  college_id,
+  academic_term_id,
+  status,
+  created_at,
+  name: id,
+  is_coordination: false,
+});
+const session = (
+  id: string,
+  college_id: string,
+  start_time = "08:00",
+  end_time = "10:00",
+): UniversityInstructorSession => ({
+  id,
+  college_id,
+  college_name: college_id,
+  version_name: "V1",
+  day_of_week: 6,
+  start_time,
+  end_time,
+  session_type: "lecture",
+  study_system: "regular",
+  course_code: id,
+  course_name: id,
+  instructor_name: "Test",
+  room_label: "R1",
+  section_number: "",
+  cohort_label: "",
+  delivery_group_label: "",
+  program_name: "",
+  level_name: "",
+  department_name: "",
+});
+
+describe("university instructor schedule", () => {
+  test("uses canonical IDs and verified numbers; never joins by same name", () => {
+    const records = [
+      { id: "home", university_number: "U1" },
+      { id: "alias", university_number: "U1" },
+      { id: "other", university_number: "U2" },
+    ];
+    expect(facultyRecordIds(records[0], records)).toEqual(["home", "alias"]);
+    expect(facultyRecordIds({ id: "home", university_number: null }, records)).toEqual(["home"]);
+  });
+  test("same term name in a previous academic year cannot enter the report", () => {
+    expect(overlappingTerms(term("a", "c1"), term("b", "c2", "2025-09-01", "2025-12-31"))).toBe(
+      false,
+    );
+    expect(overlappingTerms(term("a", "c1"), term("b", "c2"))).toBe(true);
+  });
+  const input = {
+    colleges: [
+      { id: "c1", name: "Computing" },
+      { id: "c2", name: "Business" },
+    ],
+    terms: [term("t1", "c1"), term("t2", "c2"), term("old", "c2", "2025-09-01", "2025-12-31")],
+    versions: [
+      version("chosen", "c1", "t1", "draft"),
+      version("published", "c2", "t2"),
+      version("draft", "c2", "t2", "draft", "2026-09-02"),
+      version("old", "c2", "old", "published", "2026-09-03"),
+    ],
+    anchorVersionId: "chosen",
+    selections: {},
+  };
+  test("chooses one version per college and preserves selected working version", () => {
+    expect(resolveCollegeScheduleScopes(input).map((s) => s.version.id)).toEqual([
+      "chosen",
+      "published",
+    ]);
+    expect(
+      resolveCollegeScheduleScopes({ ...input, selections: { c2: "draft" } }).map(
+        (s) => s.version.id,
+      ),
+    ).toEqual(["chosen", "draft"]);
+  });
+  test("rejects stale or cross-period version selection instead of hiding hours", () => {
+    expect(() => resolveCollegeScheduleScopes({ ...input, selections: { c2: "old" } })).toThrow();
+    expect(() =>
+      resolveCollegeScheduleScopes({
+        ...input,
+        terms: input.terms.map((t) => ({ ...t, start_date: null })),
+      }),
+    ).toThrow();
+  });
+  test("adds both colleges and all study systems without duplicating physical sessions", () => {
+    const a = session("a", "c1"),
+      b = { ...session("b", "c2", "10:00", "13:30"), study_system: "parallel" };
+    const s = summarizeUniversitySchedule([a, a, b], { maxWeeklyHours: 6, adminReleaseHours: 2 });
+    expect(s.colleges.map((c) => c.hours)).toEqual([2, 3.5]);
+    expect(s.totalHours).toBe(5.5);
+    expect(s.balance.netHours).toBe(4);
+    expect(s.balance.overloadHours).toBe(1.5);
+    expect(s.sessions).toHaveLength(2);
+  });
+  test("does not invent a zero quota or overload", () => {
+    expect(summarizeUniversitySchedule([session("a", "c1")], {}).balance.overloadHours).toBeNull();
+    expect(
+      summarizeUniversitySchedule([session("a", "c1")], { maxWeeklyHours: 0 }).balance
+        .overloadHours,
+    ).toBe(2);
+  });
+  test("marks co-teaching incomplete and rejects malformed times", () => {
+    expect(
+      summarizeUniversitySchedule([{ ...session("a", "c1"), workload_pending: true }], {}).pending,
+    ).toBe(true);
+    expect(() => summarizeUniversitySchedule([session("a", "c1", "bad", "12:00")], {})).toThrow();
+    expect(() => summarizeUniversitySchedule([session("a", "c1", "12:00", "08:00")], {})).toThrow();
+  });
+});

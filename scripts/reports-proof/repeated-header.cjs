@@ -9,7 +9,15 @@ const { execFileSync } = require("node:child_process");
   try {
     const page = await browser.newPage();
     page.on("pageerror", (e) => errors.push(e.message));
-    for (const mode of ["report", "summary", "sheet", "readable", "instructor", "student"]) {
+    for (const mode of [
+      "report",
+      "summary",
+      "sheet",
+      "readable",
+      "instructor",
+      "student",
+      "university",
+    ]) {
       for (const [paper, orientation, width] of [
         ["default", "portrait", 1440],
         ["A4", "portrait", 390],
@@ -17,15 +25,18 @@ const { execFileSync } = require("node:child_process");
         ["A3", "landscape", 1440],
       ]) {
         // The current-timetable route explicitly uses A4 portrait; other modes retain all paper sizes.
-        if (mode === "readable" && orientation !== "portrait") continue;
+        if ((mode === "readable" || mode === "university") && orientation !== "portrait") continue;
         await page.setViewportSize({ width, height: 900 });
         await page.goto(
           `http://127.0.0.1:4173/repeated-header.html?mode=${mode}${paper === "default" ? "" : `&paper=${paper}&orientation=${orientation}`}`,
         );
         await page
-          .getByText(mode === "instructor" ? "ROW017" : "ROW139", {
-            exact: mode !== "readable",
-          })
+          .getByText(
+            mode === "university" ? "ROW005" : mode === "instructor" ? "ROW017" : "ROW139",
+            {
+              exact: mode !== "readable",
+            },
+          )
           .first()
           .waitFor({ state: "attached" });
         if (mode === "student" || mode === "sheet" || mode === "readable") {

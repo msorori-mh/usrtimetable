@@ -65,6 +65,9 @@ function CourseDetailCell({ row }: { row: TimetableDetailRow }) {
 function AcademicDetailCell({ row }: { row: TimetableDetailRow }) {
   return (
     <div className="min-w-[170px] space-y-0.5 leading-5">
+      {detailText(row.college) !== "—" && (
+        <div className="font-semibold text-primary">{detailText(row.college)}</div>
+      )}
       <div className="font-semibold">{detailText(row.program)}</div>
       <div className="text-[11px] text-muted-foreground">{detailText(row.level)}</div>
       {detailText(row.department) !== "—" && (
@@ -158,7 +161,10 @@ export function ReportTimetableView({
       rtlDayRank(a.day_of_week) - rtlDayRank(b.day_of_week) ||
       a.start_time.localeCompare(b.start_time),
   );
-  const rows = timetableSessionsToRows(ordered);
+  const rows = timetableSessionsToRows(ordered).map((row, i) => ({
+    ...row,
+    college: (ordered[i] as TimetableReportSession & { college_name?: string }).college_name,
+  }));
   const days = orderWeekDaysRtl([...window.workingDays, ...sessions.map((s) => s.day_of_week)]);
   const day =
     selectedDay !== null && days.includes(selectedDay)
@@ -272,7 +278,9 @@ export function ReportTimetableView({
             caption="تفصيل محاضرات الجدول"
             columns={
               compactDetails
-                ? (compactInstructorDetailColumns() as unknown as ReportColumn<(typeof rows)[number]>[])
+                ? (compactInstructorDetailColumns() as unknown as ReportColumn<
+                    (typeof rows)[number]
+                  >[])
                 : headers.map((h) => ({
                     ...h,
                     numeric: ["hours", "time", "start_time", "end_time"].includes(h.key),
@@ -293,7 +301,9 @@ export function ReportTimetableView({
             caption="تفصيل محاضرات الجدول"
             columns={
               compactDetails
-                ? (compactInstructorDetailColumns() as unknown as ReportColumn<(typeof rows)[number]>[])
+                ? (compactInstructorDetailColumns() as unknown as ReportColumn<
+                    (typeof rows)[number]
+                  >[])
                 : headers.map((h) => ({
                     ...h,
                     numeric: ["hours", "time", "start_time", "end_time"].includes(h.key),
