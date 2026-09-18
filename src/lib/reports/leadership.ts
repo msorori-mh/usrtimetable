@@ -11,6 +11,10 @@ export const leadershipCollegeSchema = z.object({
   departments: amount,
   programs: amount,
   faculty_count: amount,
+  faculty_directory_count: amount.optional().default(0),
+  rank_counts: z.record(z.string(), z.number().finite().nonnegative()).optional().default({}),
+  availability_counts: z.record(z.string(), z.number().finite().nonnegative()).optional().default({}),
+  employment_counts: z.record(z.string(), z.number().finite().nonnegative()).optional().default({}),
   incomplete_faculty: amount,
   net_quota: amount,
   faculty_assigned_hours: amount,
@@ -116,3 +120,65 @@ export const LEADERSHIP_ROOM_HEADERS = [
   { key: "seats", label: "المقاعد المتاحة" },
   { key: "used_rooms", label: "موارد مستخدمة في المنشور" },
 ];
+
+export const LEADERSHIP_RANK_ORDER = [
+  "أستاذ دكتور",
+  "أستاذ",
+  "أستاذ مشارك",
+  "أستاذ مساعد",
+  "محاضر",
+  "مدرس",
+  "معيد",
+  "غير محدد",
+] as const;
+
+export const LEADERSHIP_AVAILABILITY_ORDER = [
+  "متاح",
+  "تفرغ علمي",
+  "إجازة مرضية",
+  "ابتعاث",
+  "غير متاح",
+] as const;
+
+export const LEADERSHIP_EMPLOYMENT_LABELS: Record<string, string> = {
+  full_time: "متفرغ",
+  part_time: "غير متفرغ",
+  visiting: "زائر",
+  contract: "متعاقد",
+  unknown: "غير محدد",
+};
+
+export function sumLeadershipCounts(
+  rows: LeadershipCollege[],
+  key: "rank_counts" | "availability_counts" | "employment_counts",
+): Record<string, number> {
+  const totals: Record<string, number> = {};
+  for (const row of rows) {
+    for (const [label, value] of Object.entries(row[key] ?? {})) {
+      totals[label] = (totals[label] ?? 0) + Number(value ?? 0);
+    }
+  }
+  return totals;
+}
+
+export function orderedLeadershipCounts(
+  counts: Record<string, number>,
+  preferred: readonly string[],
+): Array<[string, number]> {
+  const order = new Map(preferred.map((label, index) => [label, index]));
+  return Object.entries(counts)
+    .filter(([, value]) => value > 0)
+    .sort(
+      ([a], [b]) =>
+        (order.get(a) ?? preferred.length) - (order.get(b) ?? preferred.length) ||
+        a.localeCompare(b, "ar"),
+    );
+}
+
+export function sortLeadershipColleges(rows: LeadershipCollege[]): LeadershipCollege[] {
+  return [...rows].sort((a, b) => {
+    const priority = (name: string) =>
+      name.includes("تكنولوجيا المعلومات وعلوم الحاسوب") ? 0 : 1;
+    return priority(a.college) - priority(b.college) || a.college.localeCompare(b.college, "ar");
+  });
+}

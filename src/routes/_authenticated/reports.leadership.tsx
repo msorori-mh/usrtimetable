@@ -32,6 +32,12 @@ import {
   LEADERSHIP_ASSIGNMENT_HEADERS,
   LEADERSHIP_TEACHING_HEADERS,
   LEADERSHIP_ROOM_HEADERS,
+  LEADERSHIP_RANK_ORDER,
+  LEADERSHIP_AVAILABILITY_ORDER,
+  LEADERSHIP_EMPLOYMENT_LABELS,
+  orderedLeadershipCounts,
+  sumLeadershipCounts,
+  sortLeadershipColleges,
   type LeadershipCollege,
 } from "@/lib/reports/leadership";
 
@@ -66,13 +72,43 @@ function hasLeadershipIssue(row: LeadershipCollege) {
   );
 }
 
+function CountSummaryCard({
+  title,
+  entries,
+}: {
+  title: string;
+  entries: Array<[string, number]>;
+}) {
+  return (
+    <Card className="p-3">
+      <div className="mb-2 text-sm font-bold text-primary">{title}</div>
+      <div className="grid gap-x-4 gap-y-1 sm:grid-cols-2">
+        {entries.length ? (
+          entries.map(([label, value]) => (
+            <div key={label} className="flex items-center justify-between gap-3 text-sm">
+              <span className="text-muted-foreground">{label}</span>
+              <b className="tabular-nums">{value}</b>
+            </div>
+          ))
+        ) : (
+          <div className="text-sm text-muted-foreground">—</div>
+        )}
+      </div>
+    </Card>
+  );
+}
+
 function CollegeExecutiveCell({ row }: { row: LeadershipRow }) {
   return (
     <div className="min-w-[210px] space-y-1 leading-5">
       <div className="font-bold text-primary">{row.college}</div>
       <div className="text-[11px] text-muted-foreground">
         {leadershipText(row.departments)} قسم · {leadershipText(row.programs)} برنامج ·{" "}
-        {leadershipText(row.faculty_count)} عضو هيئة تدريس
+        {leadershipText(
+          Number(row.faculty_directory_count ?? 0) > 0
+            ? row.faculty_directory_count
+            : row.faculty_count,
+        )} عضو هيئة تدريس
       </div>
     </div>
   );
@@ -191,8 +227,10 @@ function LeadershipDashboard() {
     },
   });
   const data = query.data;
-  const colleges = (!query.error && !query.isFetching ? (data?.colleges ?? []) : []).filter(
-    (college) => college.college_id !== "7e570000-0000-4000-8000-000000000001",
+  const colleges = sortLeadershipColleges(
+    (!query.error && !query.isFetching ? (data?.colleges ?? []) : []).filter(
+      (college) => college.college_id !== "7e570000-0000-4000-8000-000000000001",
+    ),
   );
   const ready = colleges.filter((c) => c.term_state === "ready").length;
   const published = colleges.filter((c) => !!c.version_id).length;
@@ -201,7 +239,21 @@ function LeadershipDashboard() {
     coverage: coveragePercent(c) === null ? "غير محسوبة" : String(coveragePercent(c)) + "%",
     notice: leadershipNotice(c),
   }));
-  const totalFaculty = sumLeadership(colleges, "faculty_count");
+  const directoryFaculty = sumLeadership(colleges, "faculty_directory_count");
+  const totalFaculty =
+    directoryFaculty > 0 ? directoryFaculty : sumLeadership(colleges, "faculty_count");
+  const rankCounts = orderedLeadershipCounts(
+    sumLeadershipCounts(colleges, "rank_counts"),
+    LEADERSHIP_RANK_ORDER,
+  );
+  const availabilityCounts = orderedLeadershipCounts(
+    sumLeadershipCounts(colleges, "availability_counts"),
+    LEADERSHIP_AVAILABILITY_ORDER,
+  );
+  const employmentCounts = orderedLeadershipCounts(
+    sumLeadershipCounts(colleges, "employment_counts"),
+    ["full_time", "part_time", "contract", "visiting", "unknown"],
+  ).map(([key, value]) => [LEADERSHIP_EMPLOYMENT_LABELS[key] ?? key, value] as [string, number]);
   const totalRequired = sumLeadership(colleges, "required_hours");
   const totalCovered = sumLeadership(colleges, "covered_hours");
   const universityCoverage =
@@ -214,6 +266,7 @@ function LeadershipDashboard() {
         ...LEADERSHIP_ASSIGNMENT_HEADERS,
         ...LEADERSHIP_TEACHING_HEADERS,
         ...LEADERSHIP_ROOM_HEADERS,
+        { key: "faculty_directory_count", label: "إجمالي أعضاء هيئة التدريس" },
         { key: "term", label: "الفصل" },
         { key: "version", label: "مصدر الجدول المنشور" },
         { key: "version_updated_at", label: "آخر تعديل للنسخة" },
@@ -344,24 +397,34 @@ function LeadershipDashboard() {
         },
       ]}
       summary={
-        <Card className="border-primary/20 bg-primary/5 px-4 py-3" data-testid="leadership-scope">
-          <div className="grid gap-2 text-center sm:grid-cols-3">
-            <div>
-              <div className="text-[11px] text-muted-foreground">الكليات</div>
-              <div className="font-semibold tabular-nums">{colleges.length}</div>
-            </div>
-            <div>
-              <div className="text-[11px] text-muted-foreground">بيانات أكاديمية جاهزة</div>
-              <div className="font-semibold tabular-nums">
-                {ready}/{colleges.length}
+        <div className="space-y-3">
+          <Card
+            className="border-primary/20 bg-primary/5 px-4 py-3"
+            data-testid="leadership-scope"
+          >
+            <div className="grid gap-2 text-center sm:grid-cols-3">
+              <div>
+                <div className="text-[11px] text-muted-foreground">الكليات</div>
+                <div className="font-semibold tabular-nums">{colleges.length}</div>
+              </div>
+              <div>
+                <div className="text-[11px] text-muted-foreground">بيانات أكاديمية جاهزة</div>
+                <div className="font-semibold tabular-nums">
+                  {ready}/{colleges.length}
+                </div>
+              </div>
+              <div>
+                <div className="text-[11px] text-muted-foreground">تحتاج متابعة</div>
+                <div className="font-semibold tabular-nums">{attentionCount}</div>
               </div>
             </div>
-            <div>
-              <div className="text-[11px] text-muted-foreground">تحتاج متابعة</div>
-              <div className="font-semibold tabular-nums">{attentionCount}</div>
-            </div>
+          </Card>
+          <div className="grid gap-3 lg:grid-cols-3">
+            <CountSummaryCard title="الرتب العلمية" entries={rankCounts} />
+            <CountSummaryCard title="الحالة والتوافر" entries={availabilityCounts} />
+            <CountSummaryCard title="التفرغ / التعاقد" entries={employmentCounts} />
           </div>
-        </Card>
+        </div>
       }
     >
       <div className="space-y-5">

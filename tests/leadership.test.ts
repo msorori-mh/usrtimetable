@@ -12,6 +12,9 @@ import {
   leadershipNotice,
   coveragePercent,
   sumLeadership,
+  orderedLeadershipCounts,
+  sumLeadershipCounts,
+  sortLeadershipColleges,
   type LeadershipCollege,
 } from "../src/lib/reports/leadership";
 
@@ -50,4 +53,44 @@ test("unknown denominators remain unknown and partial data is explicit", () => {
 test("invalid RPC payload cannot become a plausible zero report", () => {
   for (const value of [null, {}, { year: "2026", colleges: [] }, { colleges: [{ net_quota: -1 }] }])
     assert.equal(leadershipOverviewSchema.safeParse(value).success, false);
+});
+
+test("leadership faculty composition sums count maps and preserves executive order", () => {
+  const rows = [
+    {
+      college_id: "00000000-0000-4000-8000-000000000001",
+      college: "كلية العلوم الإدارية والمالية",
+      rank_counts: { "أستاذ مساعد": 2, "أستاذ": 1 },
+      availability_counts: { متاح: 2, "إجازة مرضية": 1 },
+      employment_counts: { full_time: 2, contract: 1 },
+    },
+    {
+      college_id: "00000000-0000-4000-8000-000000000002",
+      college: "كلية تكنولوجيا المعلومات وعلوم الحاسوب",
+      rank_counts: { "أستاذ مساعد": 3 },
+      availability_counts: { متاح: 2, "تفرغ علمي": 1 },
+      employment_counts: { full_time: 3 },
+    },
+  ] as unknown as LeadershipCollege[];
+
+  assert.equal(sortLeadershipColleges(rows)[0].college, "كلية تكنولوجيا المعلومات وعلوم الحاسوب");
+  assert.deepEqual(sumLeadershipCounts(rows, "rank_counts"), {
+    "أستاذ مساعد": 5,
+    أستاذ: 1,
+  });
+  assert.deepEqual(sumLeadershipCounts(rows, "availability_counts"), {
+    متاح: 4,
+    "إجازة مرضية": 1,
+    "تفرغ علمي": 1,
+  });
+  assert.deepEqual(
+    orderedLeadershipCounts(
+      { "أستاذ مساعد": 5, أستاذ: 1 },
+      ["أستاذ", "أستاذ مساعد"],
+    ),
+    [
+      ["أستاذ", 1],
+      ["أستاذ مساعد", 5],
+    ],
+  );
 });
