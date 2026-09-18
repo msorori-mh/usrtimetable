@@ -6,21 +6,16 @@ import { RepeatingPrintHeader } from "@/components/reports/repeating-print-heade
 import { ReportTimetableView } from "@/components/reports/report-timetable-view";
 import type { TimetableReportSession } from "@/lib/reports/session-mappers";
 import { PrintSheet } from "@/components/print-center/print-sheet";
-import {
-  DEFAULT_PRINT_VISIBILITY,
-  printPageStyleCss,
-} from "@/lib/print-center";
+import { DEFAULT_PRINT_VISIBILITY, printPageStyleCss } from "@/lib/print-center";
 import { SHORT_FIXTURE } from "../print-proof/fixture";
 
 const params = new URLSearchParams(location.search);
 const mode = params.get("mode");
 const paper = params.get("paper") === "A3" ? "A3" : "A4";
-const orientation =
-  params.get("orientation") === "landscape" ? "landscape" : "portrait";
+const orientation = params.get("orientation") === "landscape" ? "landscape" : "portrait";
 const rows = Array.from({ length: 140 }, (_, i) => ({
   id: `ROW${String(i).padStart(3, "0")}`,
-  description:
-    "محاضرة اختبار لقياس وضوح بيانات التقرير وتكرار الترويسة الرسمية",
+  description: "محاضرة اختبار لقياس وضوح بيانات التقرير وتكرار الترويسة الرسمية",
 }));
 const headerMeta = {
   collegeName: "كلية تكنولوجيا المعلومات وعلوم الحاسوب",
@@ -64,26 +59,24 @@ const sheetSessions = rows.map((row, i) => ({
   },
 }));
 
-const instructorSessions: TimetableReportSession[] = rows
-  .slice(0, 18)
-  .map((row, i) => ({
-    id: row.id,
-    day_of_week: i % 6,
-    start_time: String(8 + Math.floor(i / 6) * 2).padStart(2, "0") + ":00",
-    end_time: String(10 + Math.floor(i / 6) * 2).padStart(2, "0") + ":00",
-    session_type: "lecture",
-    study_system: "regular",
-    course_code: row.id,
-    course_name: row.id,
-    instructor_name: "محاضر الاختبار",
-    room_label: "قاعة الاختبار",
-    section_number: "",
-    cohort_label: "دفعة الاختبار",
-    delivery_group_label: "المجموعة الأولى",
-    program_name: "علوم الحاسوب",
-    level_name: "المستوى الأول",
-    department_name: "الحاسوب",
-  }));
+const instructorSessions: TimetableReportSession[] = rows.slice(0, 18).map((row, i) => ({
+  id: row.id,
+  day_of_week: i % 6,
+  start_time: String(8 + Math.floor(i / 6) * 2).padStart(2, "0") + ":00",
+  end_time: String(10 + Math.floor(i / 6) * 2).padStart(2, "0") + ":00",
+  session_type: "lecture",
+  study_system: "regular",
+  course_code: row.id,
+  course_name: row.id,
+  instructor_name: "محاضر الاختبار",
+  room_label: "قاعة الاختبار",
+  section_number: "",
+  cohort_label: "دفعة الاختبار",
+  delivery_group_label: "المجموعة الأولى",
+  program_name: "علوم الحاسوب",
+  level_name: "المستوى الأول",
+  department_name: "الحاسوب",
+}));
 
 createRoot(document.getElementById("root")!).render(
   <main dir="rtl">
@@ -129,9 +122,7 @@ createRoot(document.getElementById("root")!).render(
       </ReportShell>
     )}
     <style>
-      {params.has("paper")
-        ? printPageStyleCss(paper, orientation)
-        : printPageStyleCss()}
+      {params.has("paper") ? printPageStyleCss(paper, orientation) : printPageStyleCss()}
     </style>
   </main>,
 );

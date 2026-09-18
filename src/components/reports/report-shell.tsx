@@ -135,8 +135,7 @@ export function ReportShell({
   }, [pageUrl, reportContext, shareParams]);
 
   const hasRows = rows.length > 0;
-  const exportsDisabled =
-    !hasRows || !!isLoading || !!error || !!notReadyMessage;
+  const exportsDisabled = !hasRows || !!isLoading || !!error || !!notReadyMessage;
 
   /** One state machine: error → not ready → loading → empty → content. */
   const body = error ? (
@@ -149,9 +148,7 @@ export function ReportShell({
   ) : isLoading ? (
     <ReportLoadingState />
   ) : !hasRows ? (
-    <ReportEmptyState
-      message={emptyMessage ?? "لا توجد بيانات بهذه المعايير."}
-    />
+    <ReportEmptyState message={emptyMessage ?? "لا توجد بيانات بهذه المعايير."} />
   ) : (
     children
   );
@@ -166,12 +163,8 @@ export function ReportShell({
 
       <header className="report-no-print flex flex-wrap items-start justify-between gap-4 border-b pb-4">
         <div className="min-w-0">
-          <p className="mb-1 text-sm text-muted-foreground">
-            {headerMeta.collegeName}
-          </p>
-          <h1 className="text-2xl font-bold leading-relaxed text-primary">
-            {title}
-          </h1>
+          <p className="mb-1 text-sm text-muted-foreground">{headerMeta.collegeName}</p>
+          <h1 className="text-2xl font-bold leading-relaxed text-primary">{title}</h1>
           {description && (
             <p className="mt-1 max-w-3xl text-sm leading-relaxed text-muted-foreground">
               {description}
@@ -193,12 +186,7 @@ export function ReportShell({
         className="report-no-print grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:flex-wrap sm:justify-between"
         data-testid="report-action-bar"
       >
-        <Button
-          asChild
-          variant="ghost"
-          size="sm"
-          className="justify-self-start"
-        >
+        <Button asChild variant="ghost" size="sm" className="justify-self-start">
           <Link to="/reports" aria-label="العودة إلى فهرس التقارير">
             <ArrowRight className="ml-1 h-4 w-4" /> العودة
           </Link>
@@ -235,9 +223,7 @@ export function ReportShell({
 
       {filters}
 
-      {showSummaryBlocks && kpis && kpis.length > 0 && (
-        <ReportKpiRow items={kpis} />
-      )}
+      {showSummaryBlocks && kpis && kpis.length > 0 && <ReportKpiRow items={kpis} />}
 
       {printContent ? (
         <div className="report-no-print space-y-4">
@@ -265,9 +251,7 @@ export function ReportShell({
         </RepeatingPrintHeader>
       )}
       {printContent && showSummaryBlocks && hasRows && (
-        <div className="hidden print:block print-center-body">
-          {printContent}
-        </div>
+        <div className="hidden print:block print-center-body">{printContent}</div>
       )}
     </div>
   );

@@ -125,27 +125,18 @@ export function PrintCenterPage(props: { versionId: string }) {
   const [levelId, setLevelId] = useState(initialFromUrl.levelId ?? "");
   const [studySystem, setStudySystem] = useState<PrintStudySystem>(
     (initialFromUrl.studySystem as PrintStudySystem) ??
-      (initialFromUrl.reportType === "room" ||
-      initialFromUrl.reportType === "instructor"
+      (initialFromUrl.reportType === "room" || initialFromUrl.reportType === "instructor"
         ? "all"
         : "regular"),
   );
-  const [departmentId, setDepartmentId] = useState(
-    initialFromUrl.departmentId ?? "",
-  );
-  const [instructorId, setInstructorId] = useState(
-    initialFromUrl.instructorId ?? "",
-  );
+  const [departmentId, setDepartmentId] = useState(initialFromUrl.departmentId ?? "");
+  const [instructorId, setInstructorId] = useState(initialFromUrl.instructorId ?? "");
   const [roomId, setRoomId] = useState(initialFromUrl.roomId ?? "");
-  const [paper, setPaper] = useState<PrintPaperSize>(
-    initialFromUrl.paper ?? "A4",
-  );
+  const [paper, setPaper] = useState<PrintPaperSize>(initialFromUrl.paper ?? "A4");
   const [orientation, setOrientation] = useState<PrintOrientation>(
     initialFromUrl.orientation ?? "portrait",
   );
-  const [visibility, setVisibility] = useState<PrintVisibilityOptions>(
-    DEFAULT_PRINT_VISIBILITY,
-  );
+  const [visibility, setVisibility] = useState<PrintVisibilityOptions>(DEFAULT_PRINT_VISIBILITY);
 
   // Keep an explicit paper/orientation choice when changing report type.
 
@@ -176,9 +167,7 @@ export function PrintCenterPage(props: { versionId: string }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("schedule_versions")
-        .select(
-          "id, name, status, college_id, academic_term_id, notes, updated_at",
-        )
+        .select("id, name, status, college_id, academic_term_id, notes, updated_at")
         .eq("id", versionId)
         .single();
       if (error) throw error;
@@ -196,8 +185,7 @@ export function PrintCenterPage(props: { versionId: string }) {
         scheduleVersionId: versionId,
       }),
   });
-  const outputBlocked =
-    coverage.isLoading || coverage.isError || coverage.data?.complete !== true;
+  const outputBlocked = coverage.isLoading || coverage.isError || coverage.data?.complete !== true;
 
   const { data: term } = useQuery({
     queryKey: ["print-center-term", version?.academic_term_id, active?.id],
@@ -287,16 +275,7 @@ export function PrintCenterPage(props: { versionId: string }) {
       instructorId: instructorId || null,
       roomId: roomId || null,
     }),
-    [
-      reportType,
-      active?.id,
-      programId,
-      levelId,
-      studySystem,
-      departmentId,
-      instructorId,
-      roomId,
-    ],
+    [reportType, active?.id, programId, levelId, studySystem, departmentId, instructorId, roomId],
   );
 
   const studentReady = studentFiltersComplete(filters);
@@ -338,10 +317,7 @@ export function PrintCenterPage(props: { versionId: string }) {
 
   const qrUrl = useMemo(() => {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
-    return buildPrintQrUrl(
-      origin,
-      filtersToQrParams(versionId, filters, paper, orientation),
-    );
+    return buildPrintQrUrl(origin, filtersToQrParams(versionId, filters, paper, orientation));
   }, [versionId, filters, paper, orientation]);
 
   // Inject @page size for A4/A3 landscape/portrait (cannot nest @page in CSS selectors).
@@ -382,8 +358,7 @@ export function PrintCenterPage(props: { versionId: string }) {
     name: version?.name,
     notes: version?.notes,
   });
-  const lastUpdate =
-    latestSessionUpdate(sessionsBundle?.sessions ?? []) ?? version?.updated_at;
+  const lastUpdate = latestSessionUpdate(sessionsBundle?.sessions ?? []) ?? version?.updated_at;
 
   const setVis = <K extends keyof PrintVisibilityOptions>(
     key: K,
@@ -552,12 +527,9 @@ export function PrintCenterPage(props: { versionId: string }) {
               onChange={(v) => {
                 setReportType(v as PrintReportType);
                 if (v === "room" || v === "instructor") setStudySystem("all");
-                if (v === "student" && studySystem === "all")
-                  setStudySystem("regular");
+                if (v === "student" && studySystem === "all") setStudySystem("regular");
               }}
-              items={(
-                Object.keys(REPORT_TYPE_LABELS_AR) as PrintReportType[]
-              ).map((k) => ({
+              items={(Object.keys(REPORT_TYPE_LABELS_AR) as PrintReportType[]).map((k) => ({
                 id: k,
                 name: REPORT_TYPE_LABELS_AR[k],
               }))}
@@ -681,15 +653,12 @@ export function PrintCenterPage(props: { versionId: string }) {
 
           {reportType === "student" && !studentReady && (
             <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md p-2">
-              جدول الطلاب يتطلب اختيار البرنامج والمستوى والنظام الدراسي (انتظام
-              أو موازي).
+              جدول الطلاب يتطلب اختيار البرنامج والمستوى والنظام الدراسي (انتظام أو موازي).
             </p>
           )}
 
           {reportType === "department" && !departmentId && (
-            <p className="text-sm text-muted-foreground">
-              اختر قسمًا لعرض برامجه في صفحات منفصلة.
-            </p>
+            <p className="text-sm text-muted-foreground">اختر قسمًا لعرض برامجه في صفحات منفصلة.</p>
           )}
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-1 border-t pt-3">
@@ -733,11 +702,7 @@ export function PrintCenterPage(props: { versionId: string }) {
               checked={visibility.showRoom}
               onChange={(v) => setVis("showRoom", v)}
             />
-            <Toggle
-              label="QR"
-              checked={visibility.showQr}
-              onChange={(v) => setVis("showQr", v)}
-            />
+            <Toggle label="QR" checked={visibility.showQr} onChange={(v) => setVis("showQr", v)} />
             <Toggle
               label="تاريخ التصدير"
               checked={visibility.showExportDate}
@@ -780,13 +745,9 @@ export function PrintCenterPage(props: { versionId: string }) {
                   page.departmentName ??
                   null,
                 programName:
-                  (progs ?? []).find((p) => p.id === programId)?.name ??
-                  page.programName ??
-                  null,
+                  (progs ?? []).find((p) => p.id === programId)?.name ?? page.programName ?? null,
                 levelName:
-                  (levels ?? []).find((l) => l.id === levelId)?.name ??
-                  page.levelName ??
-                  null,
+                  (levels ?? []).find((l) => l.id === levelId)?.name ?? page.levelName ?? null,
                 studySystem: page.studySystem ?? studySystem,
                 termName: term?.name ?? null,
                 versionName: version.name,
