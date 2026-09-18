@@ -22,7 +22,7 @@ const { execFileSync } = require("node:child_process");
         await page
           .getByText(mode === "instructor" ? "ROW017" : "ROW139", { exact: true })
           .first()
-          .waitFor();
+          .waitFor({ state: "attached" });
         await page.evaluate(() => document.fonts.ready);
         await page.waitForFunction(() =>
           [...document.images].every((image) => image.complete && image.naturalWidth > 0),
@@ -33,14 +33,12 @@ const { execFileSync } = require("node:child_process");
             mode,
             paper,
             orientation,
-            headers: await page
-              .locator("thead")
-              .evaluateAll((nodes) =>
-                nodes.map((node) => ({
-                  height: node.getBoundingClientRect().height,
-                  breakInside: getComputedStyle(node).breakInside,
-                })),
-              ),
+            headers: await page.locator("thead").evaluateAll((nodes) =>
+              nodes.map((node) => ({
+                height: node.getBoundingClientRect().height,
+                breakInside: getComputedStyle(node).breakInside,
+              })),
+            ),
           }),
         );
         await page.pdf({
