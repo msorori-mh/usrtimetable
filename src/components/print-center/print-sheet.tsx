@@ -45,6 +45,14 @@ function formatDateTime(d: Date): string {
   return d.toLocaleString("ar", { dateStyle: "medium", timeStyle: "short" });
 }
 
+/** Paper clock: omit zero minutes and use the 12-hour clock without AM/PM suffixes. */
+function compactClock(value: string): string {
+  const match = /^(\d{1,2}):(\d{2})/.exec(value);
+  if (!match) return value;
+  const hour = Number(match[1]);
+  return String(hour % 12 || 12) + (match[2] === "00" ? "" : ":" + match[2]);
+}
+
 function HeaderField(props: { label: string; value: string }) {
   return (
     <div className="print-header-field">
@@ -245,15 +253,9 @@ export function PrintSheet(props: {
                 >
                   <TableCell className="schedule-day">{row.day}</TableCell>
                   <TableCell className={readable ? "schedule-time" : "whitespace-nowrap"}>
-                    {readable ? (
-                      <>
-                        <bdi>{row.time.split(" - ")[0]}</bdi>
-                        <span>إلى</span>
-                        <bdi>{row.time.split(" - ")[1]}</bdi>
-                      </>
-                    ) : (
-                      row.time
-                    )}
+                    <bdi dir="ltr" className="whitespace-nowrap">
+                      {compactClock(s.start_time)}-{compactClock(s.end_time)}
+                    </bdi>
                   </TableCell>
                   <TableCell>{row.course_name}</TableCell>
                   {visibility.showInstructor && <TableCell>{row.instructor}</TableCell>}

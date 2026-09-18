@@ -67,6 +67,13 @@ const { execFileSync } = require("node:child_process");
           [...document.images].every((image) => image.complete && image.naturalWidth > 0),
         );
         await page.emulateMedia({ media: "print" });
+        if (mode === "sheet" || mode === "readable") {
+          const times = await page.locator(".print-center-page tbody .schedule-time bdi, .print-center-page tbody td.whitespace-nowrap bdi")
+            .allTextContents();
+          for (const expected of ["8-10", "12-2", "2-4", "8:30-10"]) {
+            if (!times.some(time => time.trim() === expected)) throw Error("Missing compact 12-hour time: " + expected);
+          }
+        }
         if (mode === "readable") {
           const fontSize = await page
             .locator(".readable-schedule-table tbody td")
