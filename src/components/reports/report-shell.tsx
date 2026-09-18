@@ -20,6 +20,7 @@ import { useActiveCollege } from "@/hooks/use-colleges";
 import { downloadCSV, downloadXLSX, type Row } from "@/lib/reports/export";
 import { printPageStyleCss } from "@/lib/print-center";
 import type { ReportContext } from "@/lib/reports/types";
+import type { PrintOrientation } from "@/lib/print-center/types";
 
 interface Props {
   title: string;
@@ -48,6 +49,8 @@ interface Props {
   children?: ReactNode;
   /** Dedicated printable schedule; screen report remains available for inspection. */
   printContent?: ReactNode;
+  /** Page orientation for ordinary report-body printing. */
+  printOrientation?: PrintOrientation;
   isLoading?: boolean;
   emptyMessage?: string;
   /** Query failure — shows the error state instead of an empty result. */
@@ -76,6 +79,7 @@ export function ReportShell({
   filename,
   children,
   printContent,
+  printOrientation = "portrait",
   isLoading,
   emptyMessage,
   error,
@@ -159,7 +163,7 @@ export function ReportShell({
     <div className="report-print-root min-w-0 space-y-4" dir="rtl">
       {/* A4 RTL portrait page box for reports that print the on-screen body.
           Dedicated printContent sheets inject their own page style. */}
-      {!printContent && <style>{printPageStyleCss()}</style>}
+      {!printContent && <style>{printPageStyleCss("A4", printOrientation)}</style>}
 
       <header className="report-no-print flex flex-wrap items-start justify-between gap-4 border-b pb-4">
         <div className="min-w-0">
