@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ReportSection, ReportDataTable } from "@/components/reports/report-section";
+import {
+  ReportSection,
+  ReportDataTable,
+  type ReportColumn,
+} from "@/components/reports/report-section";
 import { useWeeklyGridWindow } from "@/hooks/reports/useWeeklyGridWindow";
 import { TimetableGridReport } from "@/components/reports/timetable-grid-report";
 import { DAY_NAMES_AR } from "@/lib/reports/formatters";
@@ -25,6 +29,108 @@ interface Props {
   collegeId?: string | null;
   headers?: { key: string; label: string }[];
   hideInstructor?: boolean;
+  /** Print only the compact detailed table and omit the weekly grid. */
+  printDetailOnly?: boolean;
+  /** Use the compact six-column detail layout on screen and in print. */
+  compactDetails?: boolean;
+}
+
+
+type TimetableDetailRow = ReturnType<typeof timetableSessionsToRows>[number];
+
+const detailText = (value: unknown) =>
+  value === null || value === undefined || value === "" ? "—" : String(value);
+
+function LtrToken({ children }: { children: string }) {
+  return (
+    <bdi dir="ltr" className="whitespace-nowrap tabular-nums">
+      {children}
+    </bdi>
+  );
+}
+
+function CourseDetailCell({ row }: { row: TimetableDetailRow }) {
+  return (
+    <div className="min-w-[150px] space-y-0.5 leading-5">
+      <div className="font-semibold">{detailText(row.course_name ?? row.course)}</div>
+      {row.course_code && row.course_code !== "—" && (
+        <div className="text-[10px] text-muted-foreground">
+          <LtrToken>{detailText(row.course_code)}</LtrToken>
+        </div>
+      )}
+      <div className="text-[11px] text-muted-foreground">{detailText(row.session_type)}</div>
+    </div>
+  );
+}
+
+function AcademicDetailCell({ row }: { row: TimetableDetailRow }) {
+  return (
+    <div className="min-w-[170px] space-y-0.5 leading-5">
+      <div className="font-semibold">{detailText(row.program)}</div>
+      <div className="text-[11px] text-muted-foreground">{detailText(row.level)}</div>
+      {row.department && (
+        <div className="text-[10px] text-muted-foreground">{detailText(row.department)}</div>
+      )}
+    </div>
+  );
+}
+
+function CohortGroupDetailCell({ row }: { row: TimetableDetailRow }) {
+  return (
+    <div className="min-w-[140px] space-y-1 leading-5">
+      <div>
+        <span className="text-[10px] text-muted-foreground">الدفعة </span>
+        <LtrToken>{detailText(row.cohort)}</LtrToken>
+      </div>
+      <div className="font-semibold">
+        <span className="text-[10px] font-normal text-muted-foreground">المجموعة </span>
+        <LtrToken>{detailText(row.delivery_group)}</LtrToken>
+      </div>
+    </div>
+  );
+}
+
+function DayTimeDetailCell({ row }: { row: TimetableDetailRow }) {
+  return (
+    <div className="min-w-[135px] space-y-0.5 leading-5">
+      <div className="font-semibold">{detailText(row.day)}</div>
+      <div className="text-[11px]">
+        <LtrToken>{detailText(row.time)}</LtrToken>
+      </div>
+      <div className="text-[10px] text-muted-foreground">{detailText(row.hours)} ساعة</div>
+    </div>
+  );
+}
+
+function compactInstructorDetailColumns(): ReportColumn<TimetableDetailRow>[] {
+  return [
+    {
+      key: "course",
+      label: "المقرر",
+      className: "w-[22%]",
+      render: (row) => <CourseDetailCell row={row} />,
+    },
+    {
+      key: "program",
+      label: "البرنامج والمستوى",
+      className: "w-[23%]",
+      render: (row) => <AcademicDetailCell row={row} />,
+    },
+    {
+      key: "cohort",
+      label: "الدفعة والمجموعة",
+      className: "w-[19%]",
+      render: (row) => <CohortGroupDetailCell row={row} />,
+    },
+    {
+      key: "day",
+      label: "اليوم والوقت",
+      className: "w-[17%]",
+      render: (row) => <DayTimeDetailCell row={row} />,
+    },
+    { key: "room", label: "القاعة", className: "w-[12%]" },
+    { key: "study_system", label: "النظام", className: "w-[9%]" },
+  ];
 }
 
 export function ReportTimetableView({
@@ -32,6 +138,8 @@ export function ReportTimetableView({
   collegeId,
   headers = TIMETABLE_TABLE_HEADERS,
   hideInstructor = false,
+  printDetailOnly = false,
+  compactDetails = false,
 }: Props) {
   const [mode, setMode] = useState<"week" | "day" | "list">("week");
   useEffect(() => {
@@ -163,26 +271,42 @@ export function ReportTimetableView({
         <ReportSection title="تفصيل المحاضرات" count={rows.length}>
           <ReportDataTable
             caption="تفصيل محاضرات الجدول"
-            columns={headers.map((h) => ({
-              ...h,
-              numeric: ["hours", "time", "start_time", "end_time"].includes(h.key),
-              secondary: SECONDARY_KEYS.has(h.key),
-            }))}
+            columns={
+              compactDetails
+                ? (compactInstructorDetailColumns() as unknown as ReportColumn<
+                    (typeof rows)[number]
+                  >[])
+                : headers.map((h) => ({
+                    ...h,
+                    numeric: ["hours", "time", "start_time", "end_time"].includes(h.key),
+                    secondary: SECONDARY_KEYS.has(h.key),
+                  }))
+            }
             rows={rows}
+            primaryColumnLimit={compactDetails ? 6 : 6}
+            minWidthClassName={compactDetails ? "min-w-[760px]" : undefined}
           />
         </ReportSection>
       </div>
       <div className="hidden print:block">
-        <TimetableGridReport {...gridProps} />
-        <div className="report-print-details mt-4">
+        {!printDetailOnly && <TimetableGridReport {...gridProps} />}
+        <div className={printDetailOnly ? "" : "report-print-details mt-4"}>
           <h2 className="mb-3 text-base font-bold">تفصيل المحاضرات</h2>
           <ReportDataTable
             caption="تفصيل محاضرات الجدول"
-            columns={headers.map((h) => ({
-              ...h,
-              numeric: ["hours", "time", "start_time", "end_time"].includes(h.key),
-            }))}
+            columns={
+              compactDetails
+                ? (compactInstructorDetailColumns() as unknown as ReportColumn<
+                    (typeof rows)[number]
+                  >[])
+                : headers.map((h) => ({
+                    ...h,
+                    numeric: ["hours", "time", "start_time", "end_time"].includes(h.key),
+                  }))
+            }
             rows={rows}
+            primaryColumnLimit={compactDetails ? 6 : 6}
+            minWidthClassName={compactDetails ? "min-w-[760px]" : undefined}
           />
         </div>
       </div>
