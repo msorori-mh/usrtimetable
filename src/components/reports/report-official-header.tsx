@@ -142,7 +142,9 @@ export function ReportOfficialHeader({
       </div>
 
       {description && (
-        <p className="mt-2 text-xs text-muted-foreground print:text-foreground">{description}</p>
+        <p className="print-header-description mt-2 text-xs text-muted-foreground print:text-foreground">
+          {description}
+        </p>
       )}
 
       {defaultNote && (

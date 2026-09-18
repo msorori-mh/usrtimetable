@@ -991,3 +991,30 @@
     margin: 0 0 3mm;
   }
 }
+
+@media print {
+  /* Keep running identity compact even on the shorter A4 landscape page box. */
+  .report-official-header {
+    padding: 2mm !important;
+  }
+  .report-official-header .print-header-description,
+  .report-official-header .print-header-meta,
+  .report-official-header .print-header-kicker {
+    display: none !important;
+  }
+  .report-official-header > div:nth-child(2) {
+    margin-top: 1mm !important;
+    gap: 1mm !important;
+  }
+  .report-official-header .print-header-identity-band {
+    padding: 1mm !important;
+  }
+  .report-official-header .print-header-details {
+    gap: 0 !important;
+    width: 100%;
+  }
+  .report-official-header .print-header-field {
+    gap: 1mm;
+    padding: 0.5mm 1mm !important;
+  }
+}
