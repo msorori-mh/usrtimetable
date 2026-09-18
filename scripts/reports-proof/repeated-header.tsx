@@ -5,6 +5,7 @@ import { ReportOfficialHeader } from "@/components/reports/report-official-heade
 import { RepeatingPrintHeader } from "@/components/reports/repeating-print-header";
 import { ReportTimetableView } from "@/components/reports/report-timetable-view";
 import type { TimetableReportSession } from "@/lib/reports/session-mappers";
+import { StudentScheduleTables } from "@/components/reports/student-schedule-tables";
 import { PrintSheet } from "@/components/print-center/print-sheet";
 import { DEFAULT_PRINT_VISIBILITY, printPageStyleCss } from "@/lib/print-center";
 import { SHORT_FIXTURE } from "../print-proof/fixture";
@@ -80,7 +81,35 @@ const instructorSessions: TimetableReportSession[] = rows.slice(0, 18).map((row,
 
 createRoot(document.getElementById("root")!).render(
   <main dir="rtl">
-    {mode === "instructor" ? (
+    {mode === "student" ? (
+      <ReportShell
+        title="جدول الطلاب المنشور"
+        headerMeta={headerMeta}
+        rows={rows}
+        headers={[{ key: "id", label: "المقرر" }]}
+        filename="student-proof"
+      >
+        <StudentScheduleTables
+          rows={rows.map((row, i) => ({
+            id: row.id,
+            scope_key: String(Math.floor(i / 70)),
+            department: "قسم الحاسوب",
+            program: "COLUMN_KEY",
+            level: i < 70 ? "المستوى الأول" : "المستوى الثاني",
+            cohort: "دفعة الاختبار",
+            study_system: "عام",
+            day_order: i % 6,
+            day: "السبت",
+            time: "08:00 - 10:00",
+            course: row.id,
+            instructor: "أ. محاضر الاختبار",
+            room: "قاعة 1",
+            session_type: "نظري",
+            delivery_group: "G1",
+          }))}
+        />
+      </ReportShell>
+    ) : mode === "instructor" ? (
       <ReportShell
         title="COLUMN_KEY"
         headerMeta={headerMeta}
