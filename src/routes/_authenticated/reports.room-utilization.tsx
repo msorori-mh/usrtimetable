@@ -284,9 +284,7 @@ function Page() {
       >
         <ReportDataTable
           columns={
-            compactRoomUtilizationColumns() as unknown as ReportColumn<
-              (typeof rows)[number]
-            >[]
+            compactRoomUtilizationColumns() as unknown as ReportColumn<(typeof rows)[number]>[]
           }
           rows={rows}
           primaryColumnLimit={5}
