@@ -200,26 +200,41 @@ export function TimetableGridReport({
                       aria-label={`${courseTitle(sess)}، ${sess.start_time.slice(0, 5)}، ${sess.room_label}`}
                       title={courseTitle(sess)}
                     >
-                      <div className="font-semibold line-clamp-2 text-sm leading-snug">
+                      <div className="line-clamp-2 text-[13px] font-bold leading-tight">
                         {sess.course_name}
                       </div>
-                      <div className="text-xs truncate text-foreground/80">
-                        {sessionTypeLabel(sess.session_type)}
-                        {!hideInstructor && sess.instructor_name
-                          ? ` · ${sess.instructor_name}`
-                          : ""}
+                      <div className="mt-0.5 flex flex-wrap items-center gap-1">
+                        <span className="rounded bg-background/70 px-1 text-[10px] font-medium">
+                          {sessionTypeLabel(sess.session_type)}
+                        </span>
+                        <bdi
+                          dir="ltr"
+                          className="whitespace-nowrap rounded bg-background/70 px-1 text-[10px] font-semibold tabular-nums"
+                        >
+                          {sess.start_time.slice(0, 5)}–{sess.end_time.slice(0, 5)}
+                        </bdi>
                       </div>
-                      <div className="text-xs truncate text-foreground/80">
+                      <div className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-foreground/80">
                         {sess.room_label || "—"}
                         {sess.section_number ? ` · ش${sess.section_number}` : ""}
-
-                        {sess.delivery_group_label ? ` · ${sess.delivery_group_label}` : ""}
+                        {sess.delivery_group_label ? (
+                          <>
+                            {" · "}
+                            <bdi dir="ltr" className="whitespace-nowrap">
+                              {sess.delivery_group_label}
+                            </bdi>
+                          </>
+                        ) : (
+                          ""
+                        )}
                       </div>
-                      <div className="flex gap-1 mt-0.5 flex-wrap">
-                        <span dir="ltr" className="text-xs bg-background/70 rounded px-1">
-                          {sess.start_time.slice(0, 5)}–{sess.end_time.slice(0, 5)}
-                        </span>
-                        <span className="text-xs bg-background/70 rounded px-1">
+                      <div className="mt-0.5 flex flex-wrap gap-1">
+                        {!hideInstructor && sess.instructor_name && (
+                          <span className="line-clamp-1 text-[10px] text-foreground/80">
+                            {sess.instructor_name}
+                          </span>
+                        )}
+                        <span className="rounded bg-background/70 px-1 text-[10px]">
                           {studySystemLabel(sess.study_system)}
                         </span>
                       </div>
