@@ -4623,6 +4623,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      import_existing_schedule_intake: {
+        Args: { p_base_year: number; p_version: string }
+        Returns: Json
+      }
       import_manager_actor: { Args: { p_college_id: string }; Returns: string }
       import_scheduling_headcounts: {
         Args: { p_action?: string; p_college_id: string; p_rows: Json }
