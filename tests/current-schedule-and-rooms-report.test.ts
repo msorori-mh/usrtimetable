@@ -1,4 +1,5 @@
 import { test } from "node:test";
+import { printPageStyleCss } from "../src/lib/print-center/page-style";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
@@ -348,7 +349,8 @@ test("rooms report exposes analytical screen and printable summary structures", 
   );
   assert.match(route, /RoomsAnalyticsDashboard/);
   assert.match(route, /rooms-print-chart/);
-  assert.match(route, /printPageStyleCss\("A3", "landscape"\)/);
+  assert.match(route, /printPageStyleCss\(\)/);
+  assert.match(printPageStyleCss(), /size: A4 portrait;/);
   assert.match(route, /groupRoomsReportPages/);
   assert.match(dashboard, /rooms-report-charts/);
   assert.match(dashboard, /rooms-heatmap/);
