@@ -12,6 +12,9 @@ test("leadership: real PostgreSQL read scope, mixed-role safety and truthful uni
   await db.exec(
     await sql("../supabase/migrations/20260918160100_university_leadership_overview.sql"),
   );
+  await db.exec(
+    await sql("../supabase/migrations/20260918160200_leadership_published_coordination.sql"),
+  );
   for (const [n, name] of [
     [1, "كلية أ"],
     [2, "كلية ب"],
@@ -26,7 +29,7 @@ test("leadership: real PostgreSQL read scope, mixed-role safety and truthful uni
     insert into faculty_identities values('${id(41)}','${id(1)}');
     insert into faculty_identity_links values('${id(41)}','${id(31)}'),('${id(41)}','${id(32)}');
     insert into rooms values('${id(51)}','${id(1)}',null,'lecture_hall',75,true),('${id(52)}','${id(2)}',null,'computer_lab',39,true);
-    insert into schedule_versions values('${id(61)}','${id(1)}','${id(11)}','قديم','published',false,false,'2026-09-01','2026-09-01'),('${id(62)}','${id(1)}','${id(11)}','معتمد','published',false,false,'2026-09-02','2026-09-02'),('${id(63)}','${id(1)}','${id(11)}','مسودة','draft',false,false,'2026-09-03','2026-09-03');
+    insert into schedule_versions values('${id(61)}','${id(1)}','${id(11)}','قديم','published',false,false,'2026-09-01','2026-09-01'),('${id(62)}','${id(1)}','${id(11)}','معتمد','published',false,true,'2026-09-02','2026-09-02'),('${id(63)}','${id(1)}','${id(11)}','مسودة','draft',false,false,'2026-09-03','2026-09-03');
     insert into schedule_sessions values('${id(71)}','${id(1)}','${id(61)}','${id(21)}','theory','08:00','14:00',false,'${id(51)}'),('${id(72)}','${id(1)}','${id(62)}','${id(21)}','theory','08:00','11:00',false,'${id(51)}'),('${id(73)}','${id(1)}','${id(62)}','${id(22)}','practical','11:00','13:00',false,'${id(51)}'),('${id(74)}','${id(1)}','${id(63)}','${id(21)}','theory','08:00','14:00',false,'${id(51)}');`);
   const group = (college, n, who, hours, extra = {}) => ({
     delivery_group_id: id(n),
@@ -76,7 +79,11 @@ test("leadership: real PostgreSQL read scope, mixed-role safety and truthful uni
   assert.equal(b.incomplete_faculty, 1);
   assert.equal(a.required_hours, 6, "obsolete and inactive groups excluded");
   assert.equal(b.assigned_hours, 9);
-  assert.equal(a.teaching_hours, 5, "one published version, no draft/old version duplicates");
+  assert.equal(
+    a.teaching_hours,
+    5,
+    "published coordination is included once, no draft/old version duplicates",
+  );
   assert.equal(a.theory_hours, 3);
   assert.equal(a.practical_hours, 2);
   assert.equal(b.teaching_hours, null);
