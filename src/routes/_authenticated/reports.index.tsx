@@ -45,6 +45,7 @@ export const Route = createFileRoute("/_authenticated/reports/")({
 
 interface ReportCard {
   to: string;
+  search?: { report: "overload" | "deficit" };
   title: string;
   desc: string;
   icon: ReactNode;
@@ -101,6 +102,20 @@ const ANALYTICS_REPORTS: ReportCard[] = [
     title: "تقارير الشؤون الأكاديمية",
     desc: "الإسناد وعجز التغطية والنصاب والساعات الزائدة والنقص، بحسب الكلية والقسم والبرنامج وعضو هيئة التدريس.",
     icon: <FileBarChart2 className="h-5 w-5" />,
+  },
+  {
+    to: "/reports/academic-affairs",
+    search: { report: "overload" },
+    title: "تقرير الساعات الزائدة",
+    desc: "كشف مستقل بأعضاء هيئة التدريس الذين تجاوزوا صافي النصاب، مع مجموع الساعات الزائدة والطباعة والتصدير.",
+    icon: <FileBarChart2 className="h-5 w-5" />,
+  },
+  {
+    to: "/reports/academic-affairs",
+    search: { report: "deficit" },
+    title: "تقرير عجز النصاب",
+    desc: "كشف مستقل بنقص نصاب أعضاء هيئة التدريس والساعات المتاحة لاستكماله، مع الطباعة والتصدير.",
+    icon: <UserSquare2 className="h-5 w-5" />,
   },
   {
     to: "/reports/instructor-workload",
@@ -225,8 +240,9 @@ function ReportGrid({ items }: { items: ReportCard[] }) {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {items.map((r) => (
         <Link
-          key={r.to}
+          key={`${r.to}:${r.search?.report ?? "all"}`}
           to={r.to}
+          search={r.search}
           className="block"
           aria-label={r.linkLabel ?? r.title}
           data-report-hub-link={

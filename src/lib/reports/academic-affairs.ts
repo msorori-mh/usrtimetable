@@ -40,7 +40,37 @@ export type AcademicScope = {
   programId: string;
   instructorId: string;
 };
-export type AcademicReportKind = "workload" | "assignments" | "shortages";
+export type AcademicReportKind = "workload" | "overload" | "deficit" | "assignments" | "shortages";
+
+export function parseAcademicReportKind(value: unknown): AcademicReportKind {
+  return value === "overload" ||
+    value === "deficit" ||
+    value === "assignments" ||
+    value === "shortages"
+    ? value
+    : "workload";
+}
+
+export function isWorkloadReport(kind: AcademicReportKind): boolean {
+  return kind === "workload" || kind === "overload" || kind === "deficit";
+}
+
+/** Unknown quota/shared allocations never become an overload or a personal deficit. */
+export function selectWorkloadReportRows(
+  rows: AcademicReportRow[],
+  kind: AcademicReportKind,
+): AcademicReportRow[] {
+  if (kind !== "overload" && kind !== "deficit") return rows;
+  return rows
+    .filter(
+      (row) => typeof row[kind] === "number" && Number.isFinite(row[kind]) && Number(row[kind]) > 0,
+    )
+    .sort(
+      (a, b) =>
+        Number(b[kind]) - Number(a[kind]) ||
+        String(a.instructor).localeCompare(String(b.instructor), "ar"),
+    );
+}
 export type AcademicReportRow = Record<string, string | number | null>;
 export type AcademicReportInput = {
   scope: AcademicScope;
@@ -52,20 +82,13 @@ export type AcademicReportInput = {
 };
 
 /** Invalid or failed RPC payloads must never become plausible zero-hour reports. */
-export function parseAcademicWorkload(
-  value: unknown,
-  instructorId: string,
-): AcademicWorkload {
-  if (!value || typeof value !== "object")
-    throw new Error("تعذر قراءة النصاب المعتمد");
+export function parseAcademicWorkload(value: unknown, instructorId: string): AcademicWorkload {
+  if (!value || typeof value !== "object") throw new Error("تعذر قراءة النصاب المعتمد");
   const row = value as Record<string, unknown>;
-  const validNumber = (n: unknown) =>
-    typeof n === "number" && Number.isFinite(n) && n >= 0;
+  const validNumber = (n: unknown) => typeof n === "number" && Number.isFinite(n) && n >= 0;
   if (
     row.instructor_id !== instructorId ||
-    !(
-      row.required_load_hours === null || validNumber(row.required_load_hours)
-    ) ||
+    !(row.required_load_hours === null || validNumber(row.required_load_hours)) ||
     !validNumber(row.standard_assigned_hours) ||
     !validNumber(row.project_supervision_hours)
   )
@@ -90,6 +113,9 @@ export function buildAcademicReport(
   input: AcademicReportInput,
   kind: AcademicReportKind,
 ): AcademicReportRow[] {
+  if (kind === "overload" || kind === "deficit") {
+    return selectWorkloadReportRows(buildAcademicReport(input, "workload"), kind);
+  }
   const { scope, instructors, programs, departments, workloads } = input;
   const programMap = new Map(programs.map((p) => [p.id, p]));
   const departmentMap = new Map(departments.map((d) => [d.id, d.name]));
@@ -106,14 +132,10 @@ export function buildAcademicReport(
   const selectedGroups = groups.filter(
     (g) =>
       scope.instructorId === "all" ||
-      g.instructors.some(
-        (i) => i.is_active && i.instructor_id === scope.instructorId,
-      ),
+      g.instructors.some((i) => i.is_active && i.instructor_id === scope.instructorId),
   );
   const groupInfo = (g: TeachingAssignmentWorkspaceRow): AcademicReportRow => ({
-    department:
-      departmentMap.get(programMap.get(g.program_id)?.department_id ?? "") ??
-      "غير محدد",
+    department: departmentMap.get(programMap.get(g.program_id)?.department_id ?? "") ?? "غير محدد",
     program: programMap.get(g.program_id)?.name ?? "غير محدد",
     course: entityDisplayName({ name: g.course_name, code: g.course_code }),
     cohort: g.cohort_code ?? "—",
@@ -126,17 +148,11 @@ export function buildAcademicReport(
     return selectedGroups.flatMap((g) => {
       const active = g.instructors.filter((i) => i.is_active);
       return active
-        .filter(
-          (i) =>
-            scope.instructorId === "all" ||
-            i.instructor_id === scope.instructorId,
-        )
+        .filter((i) => scope.instructorId === "all" || i.instructor_id === scope.instructorId)
         .map((i) => ({
           ...groupInfo(g),
           instructor: i.instructor_name ?? "غير محدد",
-          assigned:
-            i.assigned_component_hours ??
-            (active.length === 1 ? g.component_hours : null),
+          assigned: i.assigned_component_hours ?? (active.length === 1 ? g.component_hours : null),
           note:
             i.assigned_component_hours === null && active.length > 1
               ? "ساعات التدريس المشترك غير محددة"
@@ -159,9 +175,7 @@ export function buildAcademicReport(
       }));
 
   const relatedInstructorIds = new Set(
-    groups.flatMap((g) =>
-      g.instructors.filter((i) => i.is_active).map((i) => i.instructor_id),
-    ),
+    groups.flatMap((g) => g.instructors.filter((i) => i.is_active).map((i) => i.instructor_id)),
   );
   const facts = new Map(workloads.map((w) => [w.instructor_id, w]));
   return instructors
@@ -183,10 +197,7 @@ export function buildAcademicReport(
             !g.is_obsolete &&
             g.instructors.filter((a) => a.is_active).length > 1 &&
             g.instructors.some(
-              (a) =>
-                a.is_active &&
-                a.instructor_id === i.id &&
-                a.assigned_component_hours === null,
+              (a) => a.is_active && a.instructor_id === i.id && a.assigned_component_hours === null,
             ),
         )
         .reduce((sum, g) => sum + (g.component_hours ?? 0), 0);
@@ -260,9 +271,7 @@ export function summarizeWorkloadRows(rows: AcademicReportRow[]) {
           : "balanced",
   }));
   const totals = summarizeQuotaBalances(balances);
-  const pendingSplitMembers = rows.filter(
-    (row) => row.status === PENDING_SPLIT_AR,
-  ).length;
+  const pendingSplitMembers = rows.filter((row) => row.status === PENDING_SPLIT_AR).length;
   return {
     ...totals,
     pendingSplitMembers,
@@ -272,53 +281,74 @@ export function summarizeWorkloadRows(rows: AcademicReportRow[]) {
 
 export const ACADEMIC_REPORT_TITLES: Record<AcademicReportKind, string> = {
   workload: "النصاب والساعات الزائدة والنقص",
+  overload: "تقرير الساعات الزائدة",
+  deficit: "تقرير عجز النصاب",
   assignments: "تقرير الإسناد التدريسي",
   shortages: "عجز الإسناد التدريسي",
 };
-export const ACADEMIC_REPORT_HEADERS: Record<
-  AcademicReportKind,
-  { key: string; label: string }[]
-> = {
-  workload: [
-    { key: "instructor", label: "عضو هيئة التدريس" },
-    { key: "department", label: "القسم التابع له" },
-    { key: "rank", label: "الرتبة العلمية" },
-    { key: "administrative_position", label: "المنصب الإداري" },
-    { key: "base_required", label: "النصاب الأساسي" },
-    { key: "release", label: "الإعفاء الإداري" },
-    { key: "required", label: "النصاب الفعلي" },
-    { key: "assigned", label: "الساعات المسندة" },
-    { key: "shared_hours_pending", label: "ساعات مشتركة بانتظار التوزيع" },
-    { key: "project", label: "إشراف المشاريع" },
-    { key: "overload", label: "الساعات الزائدة" },
-    { key: "deficit", label: "نقص النصاب" },
-    { key: "quota_source", label: "مصدر النصاب" },
-    { key: "status", label: "الحالة" },
-  ],
+export const ACADEMIC_REPORT_HEADERS: Record<AcademicReportKind, { key: string; label: string }[]> =
+  {
+    overload: [
+      { key: "instructor", label: "عضو هيئة التدريس" },
+      { key: "department", label: "القسم" },
+      { key: "required", label: "صافي النصاب" },
+      { key: "assigned", label: "الساعات المسندة" },
+      { key: "overload", label: "الساعات الزائدة" },
+      { key: "rank", label: "الرتبة العلمية" },
+      { key: "base_required", label: "النصاب الأساسي" },
+      { key: "release", label: "الإعفاء الإداري" },
+      { key: "status", label: "الحالة" },
+    ],
+    deficit: [
+      { key: "instructor", label: "عضو هيئة التدريس" },
+      { key: "department", label: "القسم" },
+      { key: "required", label: "صافي النصاب" },
+      { key: "assigned", label: "الساعات المسندة" },
+      { key: "deficit", label: "ساعات العجز" },
+      { key: "rank", label: "الرتبة العلمية" },
+      { key: "base_required", label: "النصاب الأساسي" },
+      { key: "release", label: "الإعفاء الإداري" },
+    ],
+    workload: [
+      { key: "instructor", label: "عضو هيئة التدريس" },
+      { key: "department", label: "القسم التابع له" },
+      { key: "rank", label: "الرتبة العلمية" },
+      { key: "administrative_position", label: "المنصب الإداري" },
+      { key: "base_required", label: "النصاب الأساسي" },
+      { key: "release", label: "الإعفاء الإداري" },
+      { key: "required", label: "النصاب الفعلي" },
+      { key: "assigned", label: "الساعات المسندة" },
+      { key: "shared_hours_pending", label: "ساعات مشتركة بانتظار التوزيع" },
+      { key: "project", label: "إشراف المشاريع" },
+      { key: "overload", label: "الساعات الزائدة" },
+      { key: "deficit", label: "نقص النصاب" },
+      { key: "quota_source", label: "مصدر النصاب" },
+      { key: "status", label: "الحالة" },
+    ],
 
-  assignments: [
-    { key: "department", label: "قسم البرنامج" },
-    { key: "program", label: "البرنامج" },
-    { key: "course", label: "المقرر" },
-    { key: "cohort", label: "الدفعة" },
-    { key: "group", label: "المجموعة" },
-    { key: "component", label: "المحاضرة" },
-    { key: "instructor", label: "عضو هيئة التدريس" },
-    { key: "required", label: "ساعات المحاضرة" },
-    { key: "assigned", label: "ساعات العضو" },
-    { key: "note", label: "ملاحظة" },
-  ],
-  shortages: [
-    { key: "department", label: "قسم البرنامج" },
-    { key: "program", label: "البرنامج" },
-    { key: "course", label: "المقرر" },
-    { key: "cohort", label: "الدفعة" },
-    { key: "group", label: "المجموعة" },
-    { key: "component", label: "المحاضرة" },
-    { key: "required", label: "الساعات المطلوبة" },
-    { key: "assigned", label: "الساعات المسندة" },
-    { key: "shared_hours_pending", label: "ساعات مشتركة بانتظار التوزيع" },
-    { key: "shortage", label: "عجز الإسناد" },
-    { key: "instructors", label: "أعضاء هيئة التدريس" },
-  ],
-};
+    assignments: [
+      { key: "department", label: "قسم البرنامج" },
+      { key: "program", label: "البرنامج" },
+      { key: "course", label: "المقرر" },
+      { key: "cohort", label: "الدفعة" },
+      { key: "group", label: "المجموعة" },
+      { key: "component", label: "المحاضرة" },
+      { key: "instructor", label: "عضو هيئة التدريس" },
+      { key: "required", label: "ساعات المحاضرة" },
+      { key: "assigned", label: "ساعات العضو" },
+      { key: "note", label: "ملاحظة" },
+    ],
+    shortages: [
+      { key: "department", label: "قسم البرنامج" },
+      { key: "program", label: "البرنامج" },
+      { key: "course", label: "المقرر" },
+      { key: "cohort", label: "الدفعة" },
+      { key: "group", label: "المجموعة" },
+      { key: "component", label: "المحاضرة" },
+      { key: "required", label: "الساعات المطلوبة" },
+      { key: "assigned", label: "الساعات المسندة" },
+      { key: "shared_hours_pending", label: "ساعات مشتركة بانتظار التوزيع" },
+      { key: "shortage", label: "عجز الإسناد" },
+      { key: "instructors", label: "أعضاء هيئة التدريس" },
+    ],
+  };
