@@ -1,3 +1,4 @@
+import { withUniversityNumbers } from "@/lib/instructors/university-number";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
@@ -55,7 +56,7 @@ function Page() {
         .order("full_name")
         .throwOnError();
       if (error) throw error;
-      return data ?? [];
+      return withUniversityNumbers(data ?? []);
     },
   });
 
@@ -91,13 +92,14 @@ function Page() {
   const queryError = ctx.error ?? instructorsError ?? sessionsError;
 
   const instructorName = (instructors ?? []).find((i) => i.id === insId)?.full_name;
+  const universityNumber = (instructors ?? []).find((i) => i.id === insId)?.university_number;
   const distinctDays = new Set(rows.map((r) => String(r.day))).size;
   const distinctCourses = new Set(rows.map((r) => String(r.course))).size;
 
   return (
     <ReportShell
       title={instructorName ? `الجدول الأسبوعي — ${instructorName}` : "تقرير جدول المحاضر الفردي"}
-      description="الجدول الأسبوعي لعضو هيئة تدريس واحد داخل نسخة جدول واحدة."
+      description={`الجدول الأسبوعي لعضو هيئة تدريس واحد داخل نسخة جدول واحدة. ${universityNumber ? `الرقم الجامعي: ${universityNumber}` : ""}`}
       filterSummary={ctx.filterSummary}
       reportContext={ctx}
       shareParams={{ instructorId: insId }}
@@ -134,7 +136,7 @@ function Page() {
               <SelectContent>
                 {(instructors ?? []).map((i) => (
                   <SelectItem key={i.id} value={i.id}>
-                    {i.full_name}
+                    {i.full_name} {i.university_number ? `— ${i.university_number}` : ""}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -128,6 +128,7 @@ export function parseInstructorStatus(value: unknown): { active: boolean; reason
 
 export interface ExistingInstructor extends Record<string, unknown> {
   employee_number: string | null;
+  university_number?: string | null;
   full_name: string;
   full_name_ar?: string | null;
   affiliation_college_id?: string | null;
@@ -153,6 +154,40 @@ export function prepareInstructorRow(
       errorCode: code,
       message: `${String(v.full_name ?? "مدرس بدون اسم")}: ${message}`,
     });
+  const universityNumber = String(v.university_number ?? "")
+    .trim()
+    .toUpperCase();
+  if (universityNumber) {
+    const numbered = existing.filter((i) => i.university_number === universityNumber);
+    if (numbered.length !== 1) {
+      fail(
+        "university_number",
+        "university_identity_not_unique",
+        "الرقم الجامعي غير موجود أو مرتبط بأكثر من سجل داخل الكلية. راجع السجل قبل الاستيراد.",
+      );
+    } else {
+      const identified = numbered[0];
+      if (
+        v.employee_number &&
+        String(v.employee_number).trim().toLowerCase() !==
+          identified.employee_number?.trim().toLowerCase()
+      ) {
+        fail(
+          "university_number",
+          "university_employee_mismatch",
+          "الرقم الجامعي ورقم الموظف يشيران إلى سجلين مختلفين.",
+        );
+      }
+      if (!identified.employee_number && nameKey(v.full_name) !== nameKey(identified.full_name)) {
+        fail(
+          "university_number",
+          "university_name_mismatch",
+          "احتفظ بالاسم الحالي للسجل الذي لا يملك رقم موظف لمنع إنشاء سجل مكرر.",
+        );
+      }
+      v.employee_number = identified.employee_number;
+    }
+  }
   const employee = String(v.employee_number ?? "")
     .trim()
     .toLowerCase();

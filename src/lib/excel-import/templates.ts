@@ -22,6 +22,12 @@ export const TEMPLATES: Record<string, TemplateDef> = {
         required: true,
         example: "permanent",
       },
+      {
+        key: "university_number",
+        header: "الرقم_الجامعي_الموحد",
+        headerAliases: ["الرقم الجامعي الموحّد", "الرقم الجامعي"],
+        example: "",
+      },
       { key: "employee_number", header: "رقم_الموظف", example: "EMP001" },
       {
         key: "full_name",

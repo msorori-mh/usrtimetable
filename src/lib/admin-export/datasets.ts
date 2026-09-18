@@ -65,6 +65,7 @@ export function roomsExportDataset(input: {
 
 export type InstructorExportRow = {
   employee_number: string | null;
+  university_number?: string | null;
   full_name: string;
   full_name_en?: string | null;
   department_id: string | null;
@@ -93,6 +94,11 @@ export function instructorsExportDataset(input: {
     filters: input.filters ?? [],
     rows: input.rows,
     columns: [
+      {
+        key: "university_number",
+        label: "الرقم الجامعي الموحّد",
+        value: (r) => r.university_number,
+      },
       { key: "employee_number", label: "الرقم الوظيفي", value: (r) => r.employee_number },
       { key: "full_name", label: "الاسم", value: (r) => r.full_name },
       { key: "full_name_en", label: "الاسم بالإنجليزية", value: (r) => r.full_name_en ?? null },

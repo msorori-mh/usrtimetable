@@ -14,6 +14,7 @@ export interface DirectoryInstructor {
   full_name_ar?: string | null;
   full_name_en?: string | null;
   employee_number?: string | null;
+  university_number?: string | null;
   email?: string | null;
   department_id?: string | null;
   academic_rank?: string | null;
@@ -72,6 +73,7 @@ export function instructorSearchHaystack(
     row.full_name_ar,
     row.full_name_en,
     row.employee_number,
+    row.university_number,
     row.email,
     departmentName,
   ]
