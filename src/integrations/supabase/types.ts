@@ -1512,6 +1512,237 @@ export type Database = {
           },
         ]
       }
+      existing_schedule_intake: {
+        Row: {
+          college_id: string
+          created_at: string
+          created_by: string | null
+          enabled: boolean
+          id: string
+          notes: string | null
+          term_id: string
+          updated_at: string
+        }
+        Insert: {
+          college_id: string
+          created_at?: string
+          created_by?: string | null
+          enabled?: boolean
+          id?: string
+          notes?: string | null
+          term_id: string
+          updated_at?: string
+        }
+        Update: {
+          college_id?: string
+          created_at?: string
+          created_by?: string | null
+          enabled?: boolean
+          id?: string
+          notes?: string | null
+          term_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "existing_schedule_intake_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "existing_schedule_intake_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "academic_terms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      existing_schedule_source_rows: {
+        Row: {
+          cohort_id: string | null
+          college_id: string
+          component_id: string | null
+          created_at: string
+          day_of_week: number | null
+          delivery_group_id: string | null
+          end_time: string | null
+          id: string
+          instructor_ids: string[]
+          level_number: number | null
+          notes: string | null
+          pending_reasons: string[]
+          plan_course_id: string | null
+          raw_course: string | null
+          raw_day: string | null
+          raw_room: string | null
+          raw_teacher: string | null
+          raw_time: string | null
+          room_id: string | null
+          schedule_session_id: string | null
+          schedule_version_id: string | null
+          shared_key: string | null
+          shared_member: boolean
+          source_cell: string
+          source_file: string
+          source_id: string
+          start_time: string | null
+          status: string
+          study_plan_id: string | null
+          teaching_assignment_id: string | null
+          term_id: string
+          updated_at: string
+        }
+        Insert: {
+          cohort_id?: string | null
+          college_id: string
+          component_id?: string | null
+          created_at?: string
+          day_of_week?: number | null
+          delivery_group_id?: string | null
+          end_time?: string | null
+          id?: string
+          instructor_ids?: string[]
+          level_number?: number | null
+          notes?: string | null
+          pending_reasons?: string[]
+          plan_course_id?: string | null
+          raw_course?: string | null
+          raw_day?: string | null
+          raw_room?: string | null
+          raw_teacher?: string | null
+          raw_time?: string | null
+          room_id?: string | null
+          schedule_session_id?: string | null
+          schedule_version_id?: string | null
+          shared_key?: string | null
+          shared_member?: boolean
+          source_cell: string
+          source_file: string
+          source_id: string
+          start_time?: string | null
+          status?: string
+          study_plan_id?: string | null
+          teaching_assignment_id?: string | null
+          term_id: string
+          updated_at?: string
+        }
+        Update: {
+          cohort_id?: string | null
+          college_id?: string
+          component_id?: string | null
+          created_at?: string
+          day_of_week?: number | null
+          delivery_group_id?: string | null
+          end_time?: string | null
+          id?: string
+          instructor_ids?: string[]
+          level_number?: number | null
+          notes?: string | null
+          pending_reasons?: string[]
+          plan_course_id?: string | null
+          raw_course?: string | null
+          raw_day?: string | null
+          raw_room?: string | null
+          raw_teacher?: string | null
+          raw_time?: string | null
+          room_id?: string | null
+          schedule_session_id?: string | null
+          schedule_version_id?: string | null
+          shared_key?: string | null
+          shared_member?: boolean
+          source_cell?: string
+          source_file?: string
+          source_id?: string
+          start_time?: string | null
+          status?: string
+          study_plan_id?: string | null
+          teaching_assignment_id?: string | null
+          term_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "existing_schedule_source_rows_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "academic_cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "existing_schedule_source_rows_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "existing_schedule_source_rows_component_id_fkey"
+            columns: ["component_id"]
+            isOneToOne: false
+            referencedRelation: "plan_course_components"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "existing_schedule_source_rows_delivery_group_id_fkey"
+            columns: ["delivery_group_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "existing_schedule_source_rows_plan_course_id_fkey"
+            columns: ["plan_course_id"]
+            isOneToOne: false
+            referencedRelation: "plan_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "existing_schedule_source_rows_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "existing_schedule_source_rows_schedule_session_id_fkey"
+            columns: ["schedule_session_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "existing_schedule_source_rows_schedule_version_id_fkey"
+            columns: ["schedule_version_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "existing_schedule_source_rows_study_plan_id_fkey"
+            columns: ["study_plan_id"]
+            isOneToOne: false
+            referencedRelation: "study_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "existing_schedule_source_rows_teaching_assignment_id_fkey"
+            columns: ["teaching_assignment_id"]
+            isOneToOne: false
+            referencedRelation: "teaching_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "existing_schedule_source_rows_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "academic_terms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       faculty_workload_policies: {
         Row: {
           active: boolean
@@ -4328,6 +4559,14 @@ export type Database = {
         Args: { p_college_id: string; p_room_type_id: string }
         Returns: number
       }
+      existing_schedule_intake_enabled: {
+        Args: { p_college: string; p_term: string }
+        Returns: boolean
+      }
+      existing_schedule_intake_version: {
+        Args: { p_version: string }
+        Returns: boolean
+      }
       fail_import_job: {
         Args: { p_college_id: string; p_job_id: string; p_message: string }
         Returns: undefined
@@ -4384,6 +4623,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      import_existing_schedule_intake: {
+        Args: { p_base_year: number; p_version: string }
+        Returns: Json
+      }
       import_manager_actor: { Args: { p_college_id: string }; Returns: string }
       import_scheduling_headcounts: {
         Args: { p_action?: string; p_college_id: string; p_rows: Json }
@@ -4410,6 +4653,10 @@ export type Database = {
       is_reports_only_viewer: { Args: { _user_id: string }; Returns: boolean }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       is_viewer_only: { Args: { _user_id: string }; Returns: boolean }
+      link_intake_shared_group: {
+        Args: { p_anchor: string; p_college: string; p_member: string }
+        Returns: boolean
+      }
       list_schedule_builder_v2_work_items: {
         Args: {
           p_cohort_id?: string
