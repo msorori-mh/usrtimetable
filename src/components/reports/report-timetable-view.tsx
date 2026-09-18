@@ -35,7 +35,6 @@ interface Props {
   compactDetails?: boolean;
 }
 
-
 type TimetableDetailRow = ReturnType<typeof timetableSessionsToRows>[number];
 
 const detailText = (value: unknown) =>
@@ -53,7 +52,7 @@ function CourseDetailCell({ row }: { row: TimetableDetailRow }) {
   return (
     <div className="min-w-[150px] space-y-0.5 leading-5">
       <div className="font-semibold">{detailText(row.course_name ?? row.course)}</div>
-      {row.course_code && row.course_code !== "—" && (
+      {detailText(row.course_code) !== "—" && (
         <div className="text-[10px] text-muted-foreground">
           <LtrToken>{detailText(row.course_code)}</LtrToken>
         </div>
@@ -68,7 +67,7 @@ function AcademicDetailCell({ row }: { row: TimetableDetailRow }) {
     <div className="min-w-[170px] space-y-0.5 leading-5">
       <div className="font-semibold">{detailText(row.program)}</div>
       <div className="text-[11px] text-muted-foreground">{detailText(row.level)}</div>
-      {row.department && (
+      {detailText(row.department) !== "—" && (
         <div className="text-[10px] text-muted-foreground">{detailText(row.department)}</div>
       )}
     </div>
@@ -273,9 +272,7 @@ export function ReportTimetableView({
             caption="تفصيل محاضرات الجدول"
             columns={
               compactDetails
-                ? (compactInstructorDetailColumns() as unknown as ReportColumn<
-                    (typeof rows)[number]
-                  >[])
+                ? (compactInstructorDetailColumns() as unknown as ReportColumn<(typeof rows)[number]>[])
                 : headers.map((h) => ({
                     ...h,
                     numeric: ["hours", "time", "start_time", "end_time"].includes(h.key),
@@ -283,7 +280,7 @@ export function ReportTimetableView({
                   }))
             }
             rows={rows}
-            primaryColumnLimit={compactDetails ? 6 : 6}
+            primaryColumnLimit={6}
             minWidthClassName={compactDetails ? "min-w-[760px]" : undefined}
           />
         </ReportSection>
@@ -296,16 +293,14 @@ export function ReportTimetableView({
             caption="تفصيل محاضرات الجدول"
             columns={
               compactDetails
-                ? (compactInstructorDetailColumns() as unknown as ReportColumn<
-                    (typeof rows)[number]
-                  >[])
+                ? (compactInstructorDetailColumns() as unknown as ReportColumn<(typeof rows)[number]>[])
                 : headers.map((h) => ({
                     ...h,
                     numeric: ["hours", "time", "start_time", "end_time"].includes(h.key),
                   }))
             }
             rows={rows}
-            primaryColumnLimit={compactDetails ? 6 : 6}
+            primaryColumnLimit={6}
             minWidthClassName={compactDetails ? "min-w-[760px]" : undefined}
           />
         </div>
