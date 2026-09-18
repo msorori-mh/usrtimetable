@@ -18,6 +18,7 @@ export const SESSION_STUDY_SYSTEM_LABELS: Record<string, string> = {
 
 /** Normalized session shape for timetable reports. */
 export interface TimetableReportSession {
+  college_name?: string;
   id: string;
   day_of_week: number;
   start_time: string;

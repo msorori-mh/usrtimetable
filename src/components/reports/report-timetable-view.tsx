@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import {
   ReportSection,
@@ -25,6 +25,7 @@ const SECONDARY_KEYS = new Set([
   "cohort",
 ]);
 interface Props {
+  printSummary?: ReactNode;
   sessions: TimetableReportSession[];
   collegeId?: string | null;
   headers?: { key: string; label: string }[];
@@ -137,6 +138,7 @@ function compactInstructorDetailColumns(): ReportColumn<TimetableDetailRow>[] {
 
 export function ReportTimetableView({
   sessions,
+  printSummary,
   collegeId,
   headers = TIMETABLE_TABLE_HEADERS,
   hideInstructor = false,
@@ -293,9 +295,20 @@ export function ReportTimetableView({
           />
         </ReportSection>
       </div>
-      <div className="hidden print:block">
-        {!printDetailOnly && <TimetableGridReport {...gridProps} />}
-        <div className={printDetailOnly ? "" : "report-print-details mt-4"}>
+      <div className="instructor-print-sequence hidden print:block">
+        {!printDetailOnly && (
+          <section className="instructor-print-page instructor-print-page--first">
+            <TimetableGridReport {...gridProps} />
+            {printSummary && <div className="mt-3">{printSummary}</div>}
+          </section>
+        )}
+        <section
+          className={
+            printDetailOnly
+              ? "instructor-print-page instructor-print-page--only"
+              : "instructor-print-page instructor-print-page--second"
+          }
+        >
           <h2 className="mb-3 text-base font-bold">تفصيل المحاضرات</h2>
           <ReportDataTable
             caption="تفصيل محاضرات الجدول"
@@ -313,7 +326,8 @@ export function ReportTimetableView({
             primaryColumnLimit={6}
             minWidthClassName={compactDetails ? "min-w-[760px]" : undefined}
           />
-        </div>
+          {printDetailOnly && printSummary}
+        </section>
       </div>
     </div>
   );

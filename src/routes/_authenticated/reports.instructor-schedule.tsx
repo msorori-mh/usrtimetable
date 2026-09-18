@@ -302,13 +302,17 @@ function Page() {
         <div className="space-y-4">
           <ReportTimetableView
             hideInstructor
-            printDetailOnly
+            printSummary={
+              <InstructorCollegeHours summary={summary} hourlyContract={isHourlyContract} />
+            }
             compactDetails
             sessions={sessions}
             collegeId={ctx.collegeId}
             headers={exportHeaders}
           />
-          <InstructorCollegeHours summary={summary} hourlyContract={isHourlyContract} />
+          <div className="report-no-print">
+            <InstructorCollegeHours summary={summary} hourlyContract={isHourlyContract} />
+          </div>
         </div>
       )}
     </ReportShell>

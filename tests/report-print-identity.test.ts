@@ -66,14 +66,18 @@ describe("report print identity", () => {
     }
   });
 
-  test("regression: single instructor schedule prints only the compact detail table", () => {
+  test("regression: single instructor schedule prints weekly page then detail page", () => {
     const route = read("src/routes/_authenticated/reports.instructor-schedule.tsx");
     const view = read("src/components/reports/report-timetable-view.tsx");
     expect(route.includes("ReportShell")).toBe(true);
     expect(route.includes("window.print")).toBe(false);
-    expect(route.includes("printDetailOnly")).toBe(true);
+    expect(route.includes("printDetailOnly")).toBe(false);
     expect(route.includes("compactDetails")).toBe(true);
-    expect(view.includes("!printDetailOnly && <TimetableGridReport")).toBe(true);
+    expect(view.includes("instructor-print-page--first")).toBe(true);
+    expect(view.includes("instructor-print-page--second")).toBe(true);
+    expect(view.indexOf("instructor-print-page--first")).toBeLessThan(
+      view.indexOf("instructor-print-page--second"),
+    );
     expect(view.includes("compactInstructorDetailColumns")).toBe(true);
   });
 

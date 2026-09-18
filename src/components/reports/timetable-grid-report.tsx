@@ -215,6 +215,9 @@ export function TimetableGridReport({
                         </bdi>
                       </div>
                       <div className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-foreground/80">
+                        {sess.college_name && (
+                          <div className="font-semibold">{sess.college_name}</div>
+                        )}
                         {sess.room_label || "—"}
                         {sess.section_number ? ` · ش${sess.section_number}` : ""}
                         {sess.delivery_group_label ? (
@@ -262,6 +265,7 @@ export function TimetableGridReport({
               {Object.entries({
                 اليوم: WEEK_DAY_LABELS_AR[selected.day_of_week],
                 الوقت: `${selected.start_time.slice(0, 5)} – ${selected.end_time.slice(0, 5)}`,
+                ...(selected.college_name ? { الكلية: selected.college_name } : {}),
                 القاعة: selected.room_label,
                 المحاضر: selected.instructor_name,
                 البرنامج: selected.program_name,

@@ -92,28 +92,25 @@ createRoot(document.getElementById("root")!).render(
         filename="university-proof"
       >
         <ReportTimetableView
-          sessions={instructorSessions
-            .slice(0, 6)
-            .map((s, i) => ({
-              ...s,
-              college_name: i < 3 ? "كلية الحاسوب" : "كلية العلوم الإدارية",
-            }))}
+          sessions={instructorSessions.slice(0, 6).map((s, i) => ({
+            ...s,
+            college_name: i < 3 ? "كلية الحاسوب" : "كلية العلوم الإدارية",
+          }))}
           hideInstructor
-          printDetailOnly
+          printSummary={
+            <InstructorCollegeHours
+              summary={summarizeUniversitySchedule(
+                instructorSessions.slice(0, 6).map((s, i) => ({
+                  ...s,
+                  college_id: i < 3 ? "c1" : "c2",
+                  college_name: i < 3 ? "كلية الحاسوب" : "كلية العلوم الإدارية",
+                  version_name: i < 3 ? "COMPUTING_V1" : "BUSINESS_V1",
+                })),
+                { maxWeeklyHours: 10, adminReleaseHours: 2 },
+              )}
+            />
+          }
           compactDetails
-        />
-        <InstructorCollegeHours
-          summary={summarizeUniversitySchedule(
-            instructorSessions
-              .slice(0, 6)
-              .map((s, i) => ({
-                ...s,
-                college_id: i < 3 ? "c1" : "c2",
-                college_name: i < 3 ? "كلية الحاسوب" : "كلية العلوم الإدارية",
-                version_name: i < 3 ? "COMPUTING_V1" : "BUSINESS_V1",
-              })),
-            { maxWeeklyHours: 10, adminReleaseHours: 2 },
-          )}
         />
       </ReportShell>
     ) : mode === "student" ? (
