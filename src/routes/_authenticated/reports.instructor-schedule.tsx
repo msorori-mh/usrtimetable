@@ -30,12 +30,25 @@ export const Route = createFileRoute("/_authenticated/reports/instructor-schedul
   component: Page,
 });
 
+function normalizeInstructorSearch(value: string) {
+  return value
+    .trim()
+    .toLocaleLowerCase("ar")
+    .normalize("NFKD")
+    .replace(/[\u064B-\u065F\u0670]/g, "")
+    .replace(/[أإآٱ]/g, "ا")
+    .replace(/ى/g, "ي")
+    .replace(/ة/g, "ه")
+    .replace(/\s+/g, " ");
+}
+
 function Page() {
   const ctx = useReportContext({
     defaultStatusMode: "specific_version",
     defaultStudySystem: "all",
   });
   const [insId, setInsId] = useState("");
+  const [instructorSearch, setInstructorSearch] = useState("");
 
   useEffect(() => {
     setInsId(new URLSearchParams(window.location.search).get("instructorId") ?? "");
@@ -93,6 +106,13 @@ function Page() {
 
   const instructorName = (instructors ?? []).find((i) => i.id === insId)?.full_name;
   const universityNumber = (instructors ?? []).find((i) => i.id === insId)?.university_number;
+  const filteredInstructors = useMemo(() => {
+    const query = normalizeInstructorSearch(instructorSearch);
+    if (!query) return instructors ?? [];
+    return (instructors ?? []).filter((instructor) =>
+      normalizeInstructorSearch(instructor.full_name).includes(query),
+    );
+  }, [instructorSearch, instructors]);
   const distinctDays = new Set(rows.map((r) => String(r.day))).size;
   const distinctCourses = new Set(rows.map((r) => String(r.course))).size;
 
@@ -126,15 +146,34 @@ function Page() {
         <ReportFilters
           context={ctx}
           extraSummary={instructorName ? [`المحاضر: ${instructorName}`] : []}
-          onClear={() => setInsId("")}
+          onClear={() => {
+            setInsId("");
+            setInstructorSearch("");
+          }}
         >
           <ReportFilterField label="المحاضر" htmlFor="is-instructor">
+            <div className="space-y-2">
+              <input
+                type="search"
+                value={instructorSearch}
+                onChange={(event) => setInstructorSearch(event.target.value)}
+                placeholder="ابحث بكتابة أول الاسم أو جزء منه"
+                aria-label="البحث عن المحاضر بالاسم"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                autoComplete="off"
+              />
+              {instructorSearch.trim() && (
+                <p className="text-xs text-muted-foreground">
+                  {filteredInstructors.length} نتيجة مطابقة
+                </p>
+              )}
+            </div>
             <Select value={insId} onValueChange={setInsId}>
               <SelectTrigger id="is-instructor" aria-label="المحاضر">
                 <SelectValue placeholder="اختر المحاضر" />
               </SelectTrigger>
               <SelectContent>
-                {(instructors ?? []).map((i) => (
+                {filteredInstructors.map((i) => (
                   <SelectItem key={i.id} value={i.id}>
                     {i.full_name} {i.university_number ? `— ${i.university_number}` : ""}
                   </SelectItem>

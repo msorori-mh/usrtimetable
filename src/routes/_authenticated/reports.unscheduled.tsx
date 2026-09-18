@@ -88,9 +88,7 @@ function UnscheduledContextCell({ row }: { row: UnscheduledDisplayRow }) {
       <div className="text-[11px] text-muted-foreground">
         {unscheduledText(row.group)} · {unscheduledText(row.component)}
       </div>
-      <div className="text-[10px] text-muted-foreground">
-        {unscheduledText(row.students)} طالب
-      </div>
+      <div className="text-[10px] text-muted-foreground">{unscheduledText(row.students)} طالب</div>
     </div>
   );
 }
@@ -285,11 +283,15 @@ function Page() {
     >
       <ReportSection
         title="نواقص التغطية"
-        hint={query.data?.lastRunAt ? `آخر أسباب الجدولة من تشغيل: ${new Date(query.data.lastRunAt).toLocaleString("ar")}` : "لا يوجد تشغيل تلقائي محفوظ لهذه النسخة؛ يعرض التقرير حالة التغطية الحالية."}
+        hint={
+          query.data?.lastRunAt
+            ? `آخر أسباب الجدولة من تشغيل: ${new Date(query.data.lastRunAt).toLocaleString("ar")}`
+            : "لا يوجد تشغيل تلقائي محفوظ لهذه النسخة؛ يعرض التقرير حالة التغطية الحالية."
+        }
       >
         <ReportDataTable
           rows={rows}
-          columns={compactUnscheduledColumns() as ReportColumn<(typeof rows)[number]>}
+          columns={compactUnscheduledColumns() as ReportColumn<(typeof rows)[number]>[]}
           primaryColumnLimit={6}
           minWidthClassName="min-w-[760px]"
           caption="الساعات غير المجدولة لكل مجموعة"
