@@ -27,6 +27,7 @@ import {
   QUOTA_STATUS_LABEL_AR,
   QUOTA_UNDEFINED_AR,
 } from "@/lib/reports/instructor-quota";
+import { isHourlyContractTypeCode } from "@/lib/instructors/effective-hours";
 import { useReportContext } from "@/hooks/reports/useReportContext";
 
 export const Route = createFileRoute("/_authenticated/reports/instructor-schedule")({
@@ -68,12 +69,33 @@ function Page() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("instructors")
-        .select("id, full_name, max_weekly_hours, administrative_release_hours")
+        .select(
+          "id, full_name, max_weekly_hours, administrative_release_hours, instructor_type_id, employment_type",
+        )
         .eq("college_id", ctx.collegeId!)
         .order("full_name")
         .throwOnError();
       if (error) throw error;
-      return withUniversityNumbers(data ?? []);
+
+      const { data: instructorTypes, error: instructorTypesError } = await supabase
+        .from("instructor_types")
+        .select("id, code")
+        .eq("college_id", ctx.collegeId!)
+        .throwOnError();
+      if (instructorTypesError) throw instructorTypesError;
+
+      const typeCodeById = new Map(
+        (instructorTypes ?? []).map((type) => [type.id, type.code]),
+      );
+
+      return withUniversityNumbers(
+        (data ?? []).map((instructor) => ({
+          ...instructor,
+          instructor_type_code: instructor.instructor_type_id
+            ? typeCodeById.get(instructor.instructor_type_id) ?? null
+            : null,
+        })),
+      );
     },
   });
 
@@ -111,9 +133,13 @@ function Page() {
   const selectedInstructor = (instructors ?? []).find((i) => i.id === insId);
   const instructorName = selectedInstructor?.full_name;
   const universityNumber = selectedInstructor?.university_number;
+  const isHourlyContract =
+    isHourlyContractTypeCode(selectedInstructor?.instructor_type_code) ||
+    selectedInstructor?.employment_type === "contract";
+
   const workloadBalance = computeQuotaBalance({
-    maxWeeklyHours: selectedInstructor?.max_weekly_hours,
-    adminReleaseHours: selectedInstructor?.administrative_release_hours,
+    maxWeeklyHours: isHourlyContract ? null : selectedInstructor?.max_weekly_hours,
+    adminReleaseHours: isHourlyContract ? 0 : selectedInstructor?.administrative_release_hours,
     assignedHours: totalHours,
   });
   const actualQuotaLabel =
@@ -153,26 +179,40 @@ function Page() {
       onRetry={() => void refetch()}
       notReadyMessage={ready ? undefined : "اختر نسخة جدول ومحاضرًا لعرض الجدول."}
       emptyMessage="لا توجد محاضرات مسندة لهذا المحاضر في النسخة المحددة."
-      kpis={[
-        { label: "المحاضرات", value: rows.length },
-        {
-          label: "الساعات التدريسية",
-          value: totalHours.toFixed(2),
-          tone: "accent",
-          hint: "إجمالي الساعات الأسبوعية المجدولة في النسخة المحددة",
-        },
-        {
-          label: "النصاب الفعلي",
-          value: actualQuotaLabel,
-          tone: workloadBalance.status === "overload" ? "warning" : "success",
-          hint:
-            workloadBalance.netHours === null
-              ? "النصاب غير محدد في بطاقة المحاضر أو سياسة النصاب"
-              : `الأساسي ${workloadBalance.baseHours?.toFixed(2) ?? "0.00"} − الإعفاء الإداري ${workloadBalance.releaseHours.toFixed(2)}`,
-        },
-        { label: "أيام الحضور", value: distinctDays },
-        { label: "المقررات", value: distinctCourses },
-      ]}
+      kpis={
+        isHourlyContract
+          ? [
+              { label: "المحاضرات", value: rows.length },
+              {
+                label: "الساعات التدريسية",
+                value: totalHours.toFixed(2),
+                tone: "accent",
+                hint: "إجمالي الساعات الأسبوعية المجدولة للمحاضر المتعاقد",
+              },
+              { label: "أيام الحضور", value: distinctDays },
+              { label: "المقررات", value: distinctCourses },
+            ]
+          : [
+              { label: "المحاضرات", value: rows.length },
+              {
+                label: "الساعات التدريسية",
+                value: totalHours.toFixed(2),
+                tone: "accent",
+                hint: "إجمالي الساعات الأسبوعية المجدولة في النسخة المحددة",
+              },
+              {
+                label: "النصاب الفعلي",
+                value: actualQuotaLabel,
+                tone: workloadBalance.status === "overload" ? "warning" : "success",
+                hint:
+                  workloadBalance.netHours === null
+                    ? "النصاب غير محدد في بطاقة المحاضر أو سياسة النصاب"
+                    : `الأساسي ${workloadBalance.baseHours?.toFixed(2) ?? "0.00"} − الإعفاء الإداري ${workloadBalance.releaseHours.toFixed(2)}`,
+              },
+              { label: "أيام الحضور", value: distinctDays },
+              { label: "المقررات", value: distinctCourses },
+            ]
+      }
       filters={
         <ReportFilters
           context={ctx}
@@ -225,46 +265,61 @@ function Page() {
             collegeId={ctx.collegeId}
             headers={NEW_FLOW_TIMETABLE_TABLE_HEADERS}
           />
-          <section
-            className="break-inside-avoid rounded-lg border bg-muted/20 p-4"
-            aria-label="ملخص العبء التدريسي للمحاضر"
-          >
-            <h2 className="text-base font-bold text-primary">ملخص العبء التدريسي</h2>
-            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div className="rounded-md border bg-background p-3">
-                <p className="text-xs text-muted-foreground">النصاب الأساسي</p>
-                <p className="mt-1 text-lg font-bold tabular-nums">
-                  {workloadBalance.baseHours === null
-                    ? QUOTA_UNDEFINED_AR
-                    : workloadBalance.baseHours.toFixed(2)}
-                </p>
-              </div>
-              <div className="rounded-md border bg-background p-3">
-                <p className="text-xs text-muted-foreground">الإعفاء الإداري</p>
-                <p className="mt-1 text-lg font-bold tabular-nums">
-                  {workloadBalance.releaseHours.toFixed(2)}
-                </p>
-              </div>
-              <div className="rounded-md border bg-background p-3">
-                <p className="text-xs text-muted-foreground">النصاب الفعلي</p>
-                <p className="mt-1 text-lg font-bold tabular-nums text-primary">
-                  {actualQuotaLabel}
-                </p>
-              </div>
-              <div className="rounded-md border bg-background p-3">
-                <p className="text-xs text-muted-foreground">الساعات التدريسية</p>
-                <p className="mt-1 text-lg font-bold tabular-nums text-primary">
+          {isHourlyContract ? (
+            <section
+              className="break-inside-avoid rounded-lg border bg-muted/20 p-4"
+              aria-label="إجمالي الساعات التدريسية للمحاضر المتعاقد"
+            >
+              <h2 className="text-base font-bold text-primary">إجمالي الساعات التدريسية</h2>
+              <div className="mt-3 rounded-md border bg-background p-4">
+                <p className="text-xs text-muted-foreground">الساعات التدريسية الأسبوعية</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-primary">
                   {totalHours.toFixed(2)}
                 </p>
               </div>
-            </div>
-            <div className="mt-3 rounded-md border bg-background px-3 py-2 text-sm">
-              <span className="font-semibold">حالة النصاب: </span>
-              <span>{workloadStatusLabel}</span>
-              <span className="mx-2 text-muted-foreground">—</span>
-              <span>{workloadDifferenceLabel}</span>
-            </div>
-          </section>
+            </section>
+          ) : (
+            <section
+              className="break-inside-avoid rounded-lg border bg-muted/20 p-4"
+              aria-label="ملخص العبء التدريسي للمحاضر"
+            >
+              <h2 className="text-base font-bold text-primary">ملخص العبء التدريسي</h2>
+              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="rounded-md border bg-background p-3">
+                  <p className="text-xs text-muted-foreground">النصاب الأساسي</p>
+                  <p className="mt-1 text-lg font-bold tabular-nums">
+                    {workloadBalance.baseHours === null
+                      ? QUOTA_UNDEFINED_AR
+                      : workloadBalance.baseHours.toFixed(2)}
+                  </p>
+                </div>
+                <div className="rounded-md border bg-background p-3">
+                  <p className="text-xs text-muted-foreground">الإعفاء الإداري</p>
+                  <p className="mt-1 text-lg font-bold tabular-nums">
+                    {workloadBalance.releaseHours.toFixed(2)}
+                  </p>
+                </div>
+                <div className="rounded-md border bg-background p-3">
+                  <p className="text-xs text-muted-foreground">النصاب الفعلي</p>
+                  <p className="mt-1 text-lg font-bold tabular-nums text-primary">
+                    {actualQuotaLabel}
+                  </p>
+                </div>
+                <div className="rounded-md border bg-background p-3">
+                  <p className="text-xs text-muted-foreground">الساعات التدريسية</p>
+                  <p className="mt-1 text-lg font-bold tabular-nums text-primary">
+                    {totalHours.toFixed(2)}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-3 rounded-md border bg-background px-3 py-2 text-sm">
+                <span className="font-semibold">حالة النصاب: </span>
+                <span>{workloadStatusLabel}</span>
+                <span className="mx-2 text-muted-foreground">—</span>
+                <span>{workloadDifferenceLabel}</span>
+              </div>
+            </section>
+          )}
         </div>
       )}
     </ReportShell>
