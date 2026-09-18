@@ -4,7 +4,11 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ReportShell } from "@/components/reports/report-shell";
 import { ReportFilters } from "@/components/reports/report-filters";
-import { ReportSection, ReportDataTable } from "@/components/reports/report-section";
+import {
+  ReportSection,
+  ReportDataTable,
+  type ReportColumn,
+} from "@/components/reports/report-section";
 import { useReportContext } from "@/hooks/reports/useReportContext";
 import { filterRowsBySearch } from "@/lib/reports/search";
 import { roomUtilizationMetrics } from "@/lib/reports/presentation-metrics";
@@ -29,6 +33,108 @@ const columns = [
   { key: "room_type", label: "نوع القاعة", secondary: true },
   { key: "capacity", label: "السعة الطلابية", numeric: true, secondary: true },
 ];
+
+type RoomUtilizationDisplayRow = Record<string, string | number>;
+
+const roomUtilText = (value: unknown) =>
+  value === null || value === undefined || value === "" ? "—" : String(value);
+
+function RoomIdentityCell({ row }: { row: RoomUtilizationDisplayRow }) {
+  return (
+    <div className="min-w-[175px] space-y-0.5 leading-5">
+      <div className="font-semibold">{roomUtilText(row.room)}</div>
+      <div className="text-[11px] text-muted-foreground">
+        {roomUtilText(row.room_type)} · السعة {roomUtilText(row.capacity)}
+      </div>
+      {row.building !== "—" && (
+        <div className="text-[10px] text-muted-foreground">{roomUtilText(row.building)}</div>
+      )}
+    </div>
+  );
+}
+
+function RoomTimeCell({ row }: { row: RoomUtilizationDisplayRow }) {
+  return (
+    <div className="min-w-[150px] space-y-0.5 leading-5">
+      <div className="flex justify-between gap-3">
+        <span className="text-[11px] text-muted-foreground">متاح</span>
+        <span className="tabular-nums">{roomUtilText(row.available_hours)} س</span>
+      </div>
+      <div className="flex justify-between gap-3 font-semibold">
+        <span>مشغول فعليًا</span>
+        <span className="tabular-nums">{roomUtilText(row.occupied_hours)} س</span>
+      </div>
+      <div className="flex justify-between gap-3">
+        <span className="text-[11px] text-muted-foreground">غير مستخدم</span>
+        <span className="tabular-nums">{roomUtilText(row.idle_hours)} س</span>
+      </div>
+    </div>
+  );
+}
+
+function RoomUtilizationCell({ row }: { row: RoomUtilizationDisplayRow }) {
+  return (
+    <div className="min-w-[135px] space-y-1 leading-5">
+      <div className="text-xl font-bold tabular-nums">{roomUtilText(row.utilization_pct)}%</div>
+      <div className="text-[11px] text-muted-foreground">{roomUtilText(row.status)}</div>
+      <div className="text-[10px] text-muted-foreground">
+        مجدول خام: {roomUtilText(row.scheduled_hours)} س
+      </div>
+    </div>
+  );
+}
+
+function RoomAnomalyCell({ row }: { row: RoomUtilizationDisplayRow }) {
+  const overlap = Number(row.overlap_hours);
+  const outside = Number(row.outside_hours);
+  const clean = (!Number.isFinite(overlap) || overlap <= 0) && (!Number.isFinite(outside) || outside <= 0);
+  return (
+    <div className="min-w-[150px] space-y-0.5 leading-5">
+      {clean ? (
+        <div className="font-semibold">لا توجد مخالفات زمنية</div>
+      ) : (
+        <>
+          {overlap > 0 && (
+            <div className="font-semibold">تداخل جلسات: {roomUtilText(row.overlap_hours)} س</div>
+          )}
+          {outside > 0 && (
+            <div className="font-semibold">خارج الإتاحة: {roomUtilText(row.outside_hours)} س</div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function compactRoomUtilizationColumns(): ReportColumn<RoomUtilizationDisplayRow>[] {
+  return [
+    {
+      key: "room",
+      label: "القاعة / المعمل",
+      className: "w-[30%]",
+      render: (row) => <RoomIdentityCell row={row} />,
+    },
+    {
+      key: "occupied_hours",
+      label: "استخدام الوقت",
+      className: "w-[25%]",
+      render: (row) => <RoomTimeCell row={row} />,
+    },
+    {
+      key: "utilization_pct",
+      label: "نسبة الاستغلال",
+      className: "w-[20%]",
+      render: (row) => <RoomUtilizationCell row={row} />,
+    },
+    {
+      key: "overlap_hours",
+      label: "ملاحظات التشغيل",
+      className: "w-[25%]",
+      render: (row) => <RoomAnomalyCell row={row} />,
+    },
+  ];
+}
+
 function Page() {
   const ctx = useReportContext({ fixedStudySystem: "all" });
   const [search, setSearch] = useState("");
@@ -120,12 +226,18 @@ function Page() {
   const rows = filterRowsBySearch(query.data ?? [], search);
   const totalAvailable = rows.reduce((sum, r) => sum + r.available_hours, 0);
   const totalUsed = rows.reduce((sum, r) => sum + r.occupied_hours, 0);
+  const totalIdle = rows.reduce((sum, r) => sum + r.idle_hours, 0);
+  const anomalyHours = rows.reduce(
+    (sum, r) => sum + Number(r.overlap_hours || 0) + Number(r.outside_hours || 0),
+    0,
+  );
   return (
     <ReportShell
       title="تقرير استخدام القاعات"
       description="استخدام القاعات في نسخة واحدة بحسب الدوام والإتاحة الفعلية. ساعات التداخل وخارج الإتاحة معروضة منفصلة."
       reportContext={ctx}
       filename="room_utilization"
+      printOrientation="landscape"
       rows={rows}
       headers={columns}
       isLoading={ctx.isLoading || query.isLoading}
@@ -142,9 +254,15 @@ function Page() {
           value: totalAvailable
             ? `${((totalUsed / totalAvailable) * 100).toFixed(1)}%`
             : "غير قابل للحساب",
+          tone: "accent",
+        },
+        { label: "ساعات غير مستخدمة", value: totalIdle.toFixed(1) },
+        {
+          label: "ساعات مخالفة",
+          value: anomalyHours.toFixed(1),
+          tone: anomalyHours > 0 ? "danger" : "neutral",
         },
         { label: "تحتاج مراجعة", value: rows.filter((r) => r.status === "يحتاج مراجعة").length },
-        { label: "غير مستخدمة", value: rows.filter((r) => r.status === "غير مستخدمة").length },
       ]}
       filters={
         <ReportFilters
@@ -164,8 +282,12 @@ function Page() {
         hint="الاستخدام = الزمن المشغول داخل الإتاحة ÷ الزمن المتاح. لا تُحتسب الفترة المتداخلة مرتين."
       >
         <ReportDataTable
-          columns={columns}
+          columns={
+            compactRoomUtilizationColumns() as ReportColumn<(typeof rows)[number]>
+          }
           rows={rows}
+          primaryColumnLimit={5}
+          minWidthClassName="min-w-[700px]"
           caption="ساعات استخدام القاعات ونسب الاستغلال"
         />
       </ReportSection>
