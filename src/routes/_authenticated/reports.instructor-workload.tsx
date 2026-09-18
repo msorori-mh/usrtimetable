@@ -500,9 +500,7 @@ function WorkloadPage() {
           primaryColumnLimit={5}
           caption="أعباء المحاضرين الأسبوعية"
           columns={
-            compactInstructorWorkloadColumns() as unknown as ReportColumn<
-              (typeof rows)[number]
-            >[]
+            compactInstructorWorkloadColumns() as unknown as ReportColumn<(typeof rows)[number]>[]
           }
         />
       </ReportSection>
