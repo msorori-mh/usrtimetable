@@ -39,7 +39,7 @@ export function expandStudentPrintMemberships(
       const copies = new Map<string, WorkspaceSessionHydratedRow>();
       for (const base of expandIntakeTimetable([row])) {
         const groupId = base.delivery_group_id;
-        const participants = groupId && cohortsByGroup.get(groupId);
+        const participants = groupId ? cohortsByGroup.get(groupId) : undefined;
         if (!participants?.size) {
           copies.set(`${base.cohort_id ?? ""}:${groupId ?? ""}`, base);
           continue;
