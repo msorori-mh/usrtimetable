@@ -66,10 +66,15 @@ describe("report print identity", () => {
     }
   });
 
-  test("regression: single instructor schedule prints through the shared shell", () => {
+  test("regression: single instructor schedule prints only the compact detail table", () => {
     const route = read("src/routes/_authenticated/reports.instructor-schedule.tsx");
+    const view = read("src/components/reports/report-timetable-view.tsx");
     expect(route.includes("ReportShell")).toBe(true);
     expect(route.includes("window.print")).toBe(false);
+    expect(route.includes("printDetailOnly")).toBe(true);
+    expect(route.includes("compactDetails")).toBe(true);
+    expect(view.includes("!printDetailOnly && <TimetableGridReport")).toBe(true);
+    expect(view.includes("compactInstructorDetailColumns")).toBe(true);
   });
 
   test("no report route uses a bespoke print path that bypasses the shell header", () => {
