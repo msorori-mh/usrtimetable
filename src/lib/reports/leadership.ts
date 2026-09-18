@@ -165,14 +165,14 @@ export function orderedLeadershipCounts(
   counts: Record<string, number>,
   preferred: readonly string[],
 ): Array<[string, number]> {
-  const order = new Map(preferred.map((label, index) => [label, index]));
-  return Object.entries(counts)
-    .filter(([, value]) => value > 0)
-    .sort(
-      ([a], [b]) =>
-        (order.get(a) ?? preferred.length) - (order.get(b) ?? preferred.length) ||
-        a.localeCompare(b, "ar"),
-    );
+  const preferredSet = new Set(preferred);
+  const extras = Object.entries(counts)
+    .filter(([label, value]) => !preferredSet.has(label) && value > 0)
+    .sort(([a], [b]) => a.localeCompare(b, "ar"));
+  return [
+    ...preferred.map((label) => [label, counts[label] ?? 0] as [string, number]),
+    ...extras,
+  ];
 }
 
 export function sortLeadershipColleges(rows: LeadershipCollege[]): LeadershipCollege[] {
