@@ -231,6 +231,7 @@ function AssignmentHoursCell({ row }: { row: AcademicReportRow }) {
 function CoverageCell({ row }: { row: AcademicReportRow }) {
   const required = numericValue(row.required);
   const assigned = numericValue(row.assigned);
+  const pending = numericValue(row.shared_hours_pending);
   const coverage =
     required !== null && required > 0 && assigned !== null
       ? Math.round((assigned / required) * 100)
@@ -238,12 +239,21 @@ function CoverageCell({ row }: { row: AcademicReportRow }) {
   return (
     <div className="min-w-[125px] space-y-0.5">
       <DataLine label="المطلوب" value={hourText(row.required)} />
-      <DataLine label="المسند" value={hourText(row.assigned)} />
-      <DataLine label="العجز" value={hourText(row.shortage)} strong />
-      {coverage !== null && (
-        <div className="pt-0.5 text-[10px] text-muted-foreground">
-          نسبة التغطية: {coverage}%
-        </div>
+      {pending !== null && pending > 0 ? (
+        <>
+          <DataLine label="مشترك غير موزع" value={hourText(pending)} strong />
+          <div className="pt-0.5 text-[10px] font-medium">بانتظار توزيع ساعات التدريس المشترك</div>
+        </>
+      ) : (
+        <>
+          <DataLine label="المسند" value={hourText(row.assigned)} />
+          <DataLine label="العجز" value={hourText(row.shortage)} strong />
+          {coverage !== null && (
+            <div className="pt-0.5 text-[10px] text-muted-foreground">
+              نسبة التغطية: {coverage}%
+            </div>
+          )}
+        </>
       )}
       {row.allocation_status && (
         <div className="text-[10px] text-muted-foreground">{valueText(row.allocation_status)}</div>
@@ -354,7 +364,17 @@ function academicTableColumns(kind: AcademicReportKind): ReportColumn<AcademicRe
       className: "w-[18%]",
       render: (row) => <CoverageCell row={row} />,
     },
-    { key: "instructors", label: "المكلفون حاليًا", className: "w-[20%]" },
+    {
+      key: "instructors",
+      label: "المكلفون حاليًا",
+      className: "w-[20%]",
+      render: (row) => (
+        <div className="leading-5">
+          <div>{valueText(row.instructors)}</div>
+          {row.note && <div className="mt-1 text-[10px] text-muted-foreground">{valueText(row.note)}</div>}
+        </div>
+      ),
+    },
   ];
 }
 
