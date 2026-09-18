@@ -190,16 +190,19 @@ export function ExistingScheduleWorkspace({
           .filter(([, value]) => value !== "")
           .map(([id, value]) => [id, Number(value)]),
       );
+      // الدالة في قاعدة البيانات تقبل NULL، لكن الأنواع المولّدة تلقائيًا تعتبر
+      // المعاملات نصوصًا إلزامية، لذا التحويل على حدود الاستدعاء فقط.
+      const args = {
+        p_source: editing.id,
+        p_day: editing.day_of_week ?? 6,
+        p_start: start || null,
+        p_end: end || null,
+        p_room: room || null,
+        p_allocations: Object.keys(split).length ? split : null,
+      } as unknown as Parameters<typeof supabase.rpc>[1];
       const { error } = await supabase.rpc(
         "complete_existing_schedule_source",
-        {
-          p_source: editing.id,
-          p_day: editing.day_of_week ?? 6,
-          p_start: start || null,
-          p_end: end || null,
-          p_room: room || null,
-          p_allocations: Object.keys(split).length ? split : null,
-        },
+        args,
       );
       if (error) throw error;
       await cache.invalidateQueries();
