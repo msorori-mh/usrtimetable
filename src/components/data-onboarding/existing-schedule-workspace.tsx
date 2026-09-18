@@ -2,28 +2,15 @@ import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import type { Tables } from "@/integrations/supabase/types";
+import type { Database, Tables } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 type Source = Tables<"existing_schedule_source_rows">;
-const DAYS = [
-  "الأحد",
-  "الإثنين",
-  "الثلاثاء",
-  "الأربعاء",
-  "الخميس",
-  "الجمعة",
-  "السبت",
-];
+const DAYS = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
 const IT = "7168345f-cf9d-4789-b2ad-547abb687dc8";
 
 export function ExistingScheduleWorkspace({
@@ -92,14 +79,8 @@ export function ExistingScheduleWorkspace({
           .select("id,name,code")
           .eq("college_id", collegeId)
           .eq("is_active", true),
-        supabase
-          .from("instructors")
-          .select("id,full_name")
-          .eq("college_id", collegeId),
-        supabase
-          .from("study_plans")
-          .select("id,name")
-          .eq("college_id", collegeId),
+        supabase.from("instructors").select("id,full_name").eq("college_id", collegeId),
+        supabase.from("study_plans").select("id,name").eq("college_id", collegeId),
       ]);
       for (const r of responses) if (r.error) throw r.error;
       return {
@@ -131,8 +112,8 @@ export function ExistingScheduleWorkspace({
       <Card className="space-y-3 p-5">
         <h2 className="font-semibold">نقل الجداول المعمول بها</h2>
         <p className="text-sm text-muted-foreground">
-          للفصل الأول 2026–2027: حفظ الجداول الحالية كما هي، مع استكمال الأعداد
-          والقاعات والنواقص لاحقًا.
+          للفصل الأول 2026–2027: حفظ الجداول الحالية كما هي، مع استكمال الأعداد والقاعات والنواقص
+          لاحقًا.
         </p>
         {canManage && (
           <Button
@@ -153,27 +134,19 @@ export function ExistingScheduleWorkspace({
       </Card>
     );
   const rows = bundle.data?.rows ?? [];
-  const names = new Map(
-    (bundle.data?.instructors ?? []).map((i) => [i.id, i.full_name]),
-  );
+  const names = new Map((bundle.data?.instructors ?? []).map((i) => [i.id, i.full_name]));
   const plans = new Map((bundle.data?.plans ?? []).map((p) => [p.id, p.name]));
-  const sessions = new Set(
-    rows.map((r) => r.schedule_session_id).filter(Boolean),
-  ).size;
+  const sessions = new Set(rows.map((r) => r.schedule_session_id).filter(Boolean)).size;
   const pending = rows.filter((r) => !r.schedule_session_id).length;
   const missingRooms = rows.filter((r) => !r.room_id).length;
   const visible = rows.filter(
     (r) =>
-      (!pendingOnly ||
-        !r.schedule_session_id ||
-        r.pending_reasons.length > 0) &&
+      (!pendingOnly || !r.schedule_session_id || r.pending_reasons.length > 0) &&
       `${r.raw_course} ${r.raw_teacher} ${r.instructor_ids.map((id) => names.get(id) ?? "").join(" ")} ${plans.get(r.study_plan_id ?? "")}`.includes(
         search,
       ),
   );
-  const versionId = rows.find(
-    (r) => r.schedule_version_id,
-  )?.schedule_version_id;
+  const versionId = rows.find((r) => r.schedule_version_id)?.schedule_version_id;
   function edit(r: Source) {
     setEditing(r);
     setStart(r.start_time?.slice(0, 5) ?? "");
@@ -190,17 +163,17 @@ export function ExistingScheduleWorkspace({
           .filter(([, value]) => value !== "")
           .map(([id, value]) => [id, Number(value)]),
       );
-      const { error } = await supabase.rpc(
-        "complete_existing_schedule_source",
-        {
-          p_source: editing.id,
-          p_day: editing.day_of_week ?? 6,
-          p_start: start || null,
-          p_end: end || null,
-          p_room: room || null,
-          p_allocations: Object.keys(split).length ? split : null,
-        },
-      );
+      // الدالة في قاعدة البيانات تقبل NULL، لكن الأنواع المولّدة تلقائيًا تعتبر
+      // المعاملات نصوصًا إلزامية، لذا التحويل على حدود الاستدعاء فقط.
+      const args = {
+        p_source: editing.id,
+        p_day: editing.day_of_week ?? 6,
+        p_start: start || null,
+        p_end: end || null,
+        p_room: room || null,
+        p_allocations: Object.keys(split).length ? split : null,
+      } as unknown as Database["public"]["Functions"]["complete_existing_schedule_source"]["Args"];
+      const { error } = await supabase.rpc("complete_existing_schedule_source", args);
       if (error) throw error;
       await cache.invalidateQueries();
       setEditing(null);
@@ -214,12 +187,10 @@ export function ExistingScheduleWorkspace({
   return (
     <section className="space-y-4" aria-label="الجداول القائمة">
       <Card className="space-y-3 p-5">
-        <h2 className="text-xl font-semibold">
-          الجداول القائمة — الفصل الأول 2026–2027
-        </h2>
+        <h2 className="text-xl font-semibold">الجداول القائمة — الفصل الأول 2026–2027</h2>
         <p className="text-sm text-muted-foreground">
-          تُحفظ مواعيد الكلية وتقسيماتها كما هي. الأعداد والسعات وسنة دخول
-          الدفعة غير المحددة تبقى بانتظار الاستكمال، دون توليد أو تقسيم تلقائي.
+          تُحفظ مواعيد الكلية وتقسيماتها كما هي. الأعداد والسعات وسنة دخول الدفعة غير المحددة تبقى
+          بانتظار الاستكمال، دون توليد أو تقسيم تلقائي.
         </p>
         {(terms.data?.length ?? 0) > 1 && (
           <select
@@ -248,8 +219,8 @@ export function ExistingScheduleWorkspace({
           ))}
         </div>
         <p className="text-sm">
-          المحاضرات المشتركة: {rows.filter((r) => r.shared_member).length}{" "}
-          ارتباطات إضافية بجلسات محفوظة مرة واحدة. النواقص لا تُحذف من الجدول.
+          المحاضرات المشتركة: {rows.filter((r) => r.shared_member).length} ارتباطات إضافية بجلسات
+          محفوظة مرة واحدة. النواقص لا تُحذف من الجدول.
         </p>
         <div className="flex flex-wrap gap-3">
           {versionId && (
@@ -260,16 +231,12 @@ export function ExistingScheduleWorkspace({
             </Button>
           )}
           <Button variant="outline" asChild>
-            <a
-              href={`/reports/current-timetable?termId=${termId}&versionId=${versionId ?? ""}`}
-            >
+            <a href={`/reports/current-timetable?termId=${termId}&versionId=${versionId ?? ""}`}>
               الجدول العام والطباعة
             </a>
           </Button>
           <Button variant="outline" asChild>
-            <a
-              href={`/reports/instructor-schedule?termId=${termId}&versionId=${versionId ?? ""}`}
-            >
+            <a href={`/reports/instructor-schedule?termId=${termId}&versionId=${versionId ?? ""}`}>
               الجداول الفردية
             </a>
           </Button>
@@ -346,9 +313,8 @@ export function ExistingScheduleWorkspace({
                       </details>
                     </td>
                     <td className="p-3">
-                      {r.instructor_ids
-                        .map((id) => names.get(id) ?? r.raw_teacher)
-                        .join(" + ") || r.raw_teacher}
+                      {r.instructor_ids.map((id) => names.get(id) ?? r.raw_teacher).join(" + ") ||
+                        r.raw_teacher}
                     </td>
                     <td className="whitespace-nowrap p-3">
                       {DAYS[r.day_of_week ?? 6]}
@@ -358,8 +324,7 @@ export function ExistingScheduleWorkspace({
                         : "بانتظار تحديد الوقت"}
                     </td>
                     <td className="p-3">
-                      {bundle.data?.rooms.find((room) => room.id === r.room_id)
-                        ?.name ??
+                      {bundle.data?.rooms.find((room) => room.id === r.room_id)?.name ??
                         (r.raw_room === "احتياج"
                           ? "بانتظار تحديد القاعة"
                           : r.raw_room || "غير محددة")}
@@ -377,17 +342,11 @@ export function ExistingScheduleWorkspace({
                       )}
                     </td>
                     <td className="p-3">
-                      {canManage &&
-                        (r.pending_reasons.length > 0 ||
-                          !r.schedule_session_id) && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => edit(r)}
-                          >
-                            استكمال
-                          </Button>
-                        )}
+                      {canManage && (r.pending_reasons.length > 0 || !r.schedule_session_id) && (
+                        <Button size="sm" variant="outline" onClick={() => edit(r)}>
+                          استكمال
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -395,8 +354,8 @@ export function ExistingScheduleWorkspace({
             </table>
             {!rows.length && (
               <p className="p-5">
-                لم تُدخل جداول لهذا الفصل بعد. يمكن نقل ملفات الكلية مع إبقاء
-                البيانات الناقصة للاستكمال.
+                لم تُدخل جداول لهذا الفصل بعد. يمكن نقل ملفات الكلية مع إبقاء البيانات الناقصة
+                للاستكمال.
               </p>
             )}
           </div>
@@ -412,9 +371,7 @@ export function ExistingScheduleWorkspace({
           <DialogHeader>
             <DialogTitle>استكمال {editing?.raw_course}</DialogTitle>
           </DialogHeader>
-          <p>
-            {DAYS[editing?.day_of_week ?? 6]} — تُحفظ المواعيد الحالية كما هي.
-          </p>
+          <p>{DAYS[editing?.day_of_week ?? 6]} — تُحفظ المواعيد الحالية كما هي.</p>
           <div className="grid grid-cols-2 gap-3">
             <label>
               البداية
@@ -465,9 +422,7 @@ export function ExistingScheduleWorkspace({
                     min="0.25"
                     step="0.25"
                     value={allocations[id] ?? ""}
-                    onChange={(e) =>
-                      setAllocations({ ...allocations, [id]: e.target.value })
-                    }
+                    onChange={(e) => setAllocations({ ...allocations, [id]: e.target.value })}
                   />
                 </label>
               ))}

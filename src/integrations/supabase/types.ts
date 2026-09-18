@@ -109,13 +109,13 @@ export type Database = {
       }
       academic_cohorts: {
         Row: {
-          existing_schedule: boolean
           active: boolean
           code: string | null
           college_id: string
           count_status: string
           created_at: string
           entry_year: number | null
+          existing_schedule: boolean
           expected_students: number | null
           id: string
           level_id: string
@@ -126,13 +126,13 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          existing_schedule?: boolean
           active?: boolean
           code?: string | null
           college_id: string
           count_status?: string
           created_at?: string
-          entry_year: number | null
+          entry_year?: number | null
+          existing_schedule?: boolean
           expected_students?: number | null
           id?: string
           level_id: string
@@ -143,13 +143,13 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          existing_schedule?: boolean
           active?: boolean
           code?: string | null
           college_id?: string
           count_status?: string
           created_at?: string
           entry_year?: number | null
+          existing_schedule?: boolean
           expected_students?: number | null
           id?: string
           level_id?: string
@@ -962,12 +962,12 @@ export type Database = {
       }
       course_offerings: {
         Row: {
-          existing_schedule: boolean
           college_id: string
           course_id: string
           created_at: string
           enrollment_count_status: string
           enrollment_count_updated_at: string | null
+          existing_schedule: boolean
           expected_students: number | null
           id: string
           is_active: boolean
@@ -983,12 +983,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          existing_schedule?: boolean
           college_id: string
           course_id: string
           created_at?: string
           enrollment_count_status?: string
           enrollment_count_updated_at?: string | null
+          existing_schedule?: boolean
           expected_students?: number | null
           id?: string
           is_active?: boolean
@@ -1004,12 +1004,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          existing_schedule?: boolean
           college_id?: string
           course_id?: string
           created_at?: string
           enrollment_count_status?: string
           enrollment_count_updated_at?: string | null
+          existing_schedule?: boolean
           expected_students?: number | null
           id?: string
           is_active?: boolean
@@ -1745,6 +1745,117 @@ export type Database = {
             columns: ["term_id"]
             isOneToOne: false
             referencedRelation: "academic_terms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      faculty_identities: {
+        Row: {
+          created_at: string
+          id: string
+          issuing_college_id: string
+          serial: number
+          university_id: string
+          university_number: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          issuing_college_id: string
+          serial?: number
+          university_id: string
+          university_number: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          issuing_college_id?: string
+          serial?: number
+          university_id?: string
+          university_number?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "faculty_identities_issuing_college_id_fkey"
+            columns: ["issuing_college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "faculty_identities_university_id_fkey"
+            columns: ["university_id"]
+            isOneToOne: false
+            referencedRelation: "universities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      faculty_identity_aliases: {
+        Row: {
+          identity_id: string
+          linked_at: string
+          linked_by: string
+          old_identity_id: string
+        }
+        Insert: {
+          identity_id: string
+          linked_at?: string
+          linked_by: string
+          old_identity_id: string
+        }
+        Update: {
+          identity_id?: string
+          linked_at?: string
+          linked_by?: string
+          old_identity_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "faculty_identity_aliases_identity_id_fkey"
+            columns: ["identity_id"]
+            isOneToOne: false
+            referencedRelation: "faculty_identities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "faculty_identity_aliases_old_identity_id_fkey"
+            columns: ["old_identity_id"]
+            isOneToOne: true
+            referencedRelation: "faculty_identities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      faculty_identity_links: {
+        Row: {
+          identity_id: string
+          instructor_id: string
+          linked_at: string
+        }
+        Insert: {
+          identity_id: string
+          instructor_id: string
+          linked_at?: string
+        }
+        Update: {
+          identity_id?: string
+          instructor_id?: string
+          linked_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "faculty_identity_links_identity_id_fkey"
+            columns: ["identity_id"]
+            isOneToOne: false
+            referencedRelation: "faculty_identities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "faculty_identity_links_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: true
+            referencedRelation: "instructors"
             referencedColumns: ["id"]
           },
         ]
@@ -4035,11 +4146,6 @@ export type Database = {
       }
     }
     Functions: {
-      complete_existing_schedule_source: {
-        Args: { p_source: string; p_day: number; p_start: string | null; p_end: string | null; p_room: string | null; p_allocations?: Json | null }
-        Returns: Json
-      }
-
       _avail_date_span: {
         Args: { p_end_date: string; p_start_date: string }
         Returns: unknown
@@ -4507,6 +4613,17 @@ export type Database = {
         Args: { p_mode?: string; p_rows: Json }
         Returns: Json
       }
+      complete_existing_schedule_source: {
+        Args: {
+          p_allocations?: Json
+          p_day: number
+          p_end: string
+          p_room: string
+          p_source: string
+          p_start: string
+        }
+        Returns: Json
+      }
       compute_delivery_group_allocation: {
         Args: { p_delivery_group_id: string }
         Returns: Json
@@ -4606,6 +4723,14 @@ export type Database = {
         Args: { p_delivery_group_id: string }
         Returns: Json
       }
+      get_instructor_university_numbers: {
+        Args: { p_instructor_ids: string[] }
+        Returns: {
+          identity_id: string
+          instructor_id: string
+          university_number: string
+        }[]
+      }
       get_schedule_compaction_result: {
         Args: {
           p_college_id: string
@@ -4635,7 +4760,7 @@ export type Database = {
         Returns: boolean
       }
       import_existing_schedule_intake: {
-        Args: { p_base_year: number; p_version: string }
+        Args: { p_base_year?: number; p_version: string }
         Returns: Json
       }
       import_manager_actor: { Args: { p_college_id: string }; Returns: string }
@@ -4667,6 +4792,10 @@ export type Database = {
       link_intake_shared_group: {
         Args: { p_anchor: string; p_college: string; p_member: string }
         Returns: boolean
+      }
+      link_verified_faculty_identity: {
+        Args: { p_instructor_id: string; p_university_number: string }
+        Returns: undefined
       }
       list_schedule_builder_v2_work_items: {
         Args: {
@@ -4735,7 +4864,7 @@ export type Database = {
           component_id: string
           created_at: string
           excluded_from_standard_workload: boolean
-          expected_students: number
+          expected_students: number | null
           group_code: string
           group_number: number | null
           id: string
@@ -4776,7 +4905,7 @@ export type Database = {
           component_id: string
           created_at: string
           excluded_from_standard_workload: boolean
-          expected_students: number
+          expected_students: number | null
           group_code: string
           group_number: number | null
           id: string
@@ -4825,6 +4954,10 @@ export type Database = {
       reconcile_obsolete_duplicate_assignments: {
         Args: { p_cohort_id: string }
         Returns: Json
+      }
+      register_instructor_faculty_identity: {
+        Args: { p_instructor_id: string }
+        Returns: undefined
       }
       resolve_compatibility_offering_set: {
         Args: { p_offerings: Json }
@@ -5178,4 +5311,3 @@ export const Constants = {
     },
   },
 } as const
-
