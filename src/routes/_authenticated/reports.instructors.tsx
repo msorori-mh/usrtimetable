@@ -333,9 +333,12 @@ function Report() {
   const externalCount = rows.filter(
     (r) => r.affiliation_scope === AFFILIATION_LABELS.external,
   ).length;
-  const missingAffiliation = rows.filter(
-    (r) => r.affiliation_scope === AFFILIATION_LABELS.unknown || r.affiliation_college === "غير محدد",
-  ).length;
+  const missingAffiliation = rows.filter((r) => {
+    return (
+      r.affiliation_scope === AFFILIATION_LABELS.unknown ||
+      r.affiliation_college === "غير محدد"
+    );
+  }).length;
   const departmentItems = (departments.data ?? []).filter((d) =>
     (instructors.data ?? []).some((i) => i.affiliation_department_id === d.id),
   );
@@ -519,9 +522,7 @@ function Report() {
           minWidthClassName="min-w-[820px]"
           primaryColumnLimit={6}
           columns={
-            compactInstructorDirectoryColumns() as unknown as ReportColumn<
-              (typeof rows)[number]
-            >[]
+            compactInstructorDirectoryColumns() as unknown as ReportColumn<(typeof rows)[number]>[]
           }
         />
       </ReportSection>
