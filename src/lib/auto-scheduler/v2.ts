@@ -1216,6 +1216,13 @@ export async function runV2AutoSchedule(params: {
         });
 
         for (const candidate of candidates) {
+          if (
+            occupied.filter(
+              (o) =>
+                Number(o.day) === Number(candidate.day) && o.instructorId === item.instructor_id,
+            ).length >= 3
+          )
+            continue;
           if (params.signal?.aborted) {
             cancelled = true;
             break;

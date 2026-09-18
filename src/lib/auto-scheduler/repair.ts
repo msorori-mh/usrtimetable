@@ -111,6 +111,14 @@ export function conflictingSessions(
   const share = context(snapshot).share;
   const start = minutes(candidate.start_time);
   const end = minutes(candidate.end_time);
+  const dailyCountBlocked =
+    sessions.filter(
+      (x) =>
+        x.id !== candidate.id &&
+        x.instructor_id === candidate.instructor_id &&
+        x.day_of_week === candidate.day_of_week &&
+        !x.replaced_by_split,
+    ).length >= 3;
   return sessions.filter((other) => {
     if (other.id === candidate.id) return false;
     if (other.day_of_week !== candidate.day_of_week) return false;
@@ -119,6 +127,7 @@ export function conflictingSessions(
     const personOverlap =
       start < minutes(other.end_time) + gap && end > minutes(other.start_time) - gap;
     return (
+      (dailyCountBlocked && other.instructor_id === candidate.instructor_id) ||
       (overlap && other.room_id === candidate.room_id) ||
       (personOverlap &&
         (other.instructor_id === candidate.instructor_id || share(other, candidate)))

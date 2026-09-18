@@ -1,4 +1,5 @@
 /** Pure, bounded timetable compaction. No database writes. */
+import { MAX_INSTRUCTOR_SESSIONS_PER_DAY } from "./instructor-daily-sessions.ts";
 import {
   ATTENDANCE_POLICY,
   compareAttendance,
@@ -538,6 +539,11 @@ export function feasible(
   }
   const others = sessions.filter((x) => x.id !== candidate.id),
     sameDay = others.filter((x) => x.day_of_week === day);
+  if (
+    sameDay.filter((x) => x.instructor_id === teacher.id && !x.replaced_by_split).length >=
+    MAX_INSTRUCTOR_SESSIONS_PER_DAY
+  )
+    return false;
   const teacherDays = new Set(
     others.filter((x) => x.instructor_id === teacher.id).map((x) => x.day_of_week),
   );

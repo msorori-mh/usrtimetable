@@ -155,6 +155,14 @@ async function sendAtomic(result: Applied, retrying = false): Promise<Applied> {
       result.rpcName ?? "apply_schedule_compaction",
       result.pendingRequest!,
     );
+    if (error?.code === "23514" && error.message.includes("INSTRUCTOR_DAILY_SESSION_LIMIT"))
+      return {
+        ...result,
+        applied: 0,
+        status: "rejected",
+        stopped:
+          "لم تُحفظ الخطة: الحد الأقصى ثلاث محاضرات للمحاضر في اليوم، شاملًا العام والموازي. أعد توزيع الجلسات ثم أعد المعاينة.",
+      };
     if (error?.code === "23514" && error.message.includes("CROSS_COLLEGE_INSTRUCTOR_CONFLICT"))
       return {
         ...result,
@@ -335,7 +343,9 @@ export async function applyCompactProposal(
       p_expected_revision: fresh.revision,
       p_expected_version_updated_at: fresh.versionUpdatedAt,
       ...(proposal.applicationMode === "simultaneous"
-        ? { p_day_cap: proposal.qualitySearch?.dayCap ?? proposal.attendanceSearch!.days }
+        ? {
+            p_day_cap: proposal.qualitySearch?.dayCap ?? proposal.attendanceSearch!.days,
+          }
         : {}),
       p_moves: proposal.moves.map((move) => ({
         ...move,

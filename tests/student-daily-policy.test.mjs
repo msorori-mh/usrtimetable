@@ -207,9 +207,16 @@ test("NULL max_hours_per_day falls back to the general 8h instructor cap", () =>
   );
   const candidate = { ...original, day_of_week: 6, start_time: "16:00:00", end_time: "18:00:00" };
   assert.equal(feasible(s, s.sessions, candidate, original), false);
-  // Eight hours themselves stay allowed under the general cap.
+  // Eight hours remain allowed as 3+3+2, within the independent three-meeting cap.
   const s8 = fixture([
-    ...dayWith("practical").map((x) => ({ ...x, instructor_id: "i2" })),
+    ...dayWith("practical")
+      .slice(0, 2)
+      .map((x, i) => ({
+        ...x,
+        instructor_id: "i2",
+        start_time: i === 0 ? "08:00:00" : "11:00:00",
+        end_time: i === 0 ? "11:00:00" : "14:00:00",
+      })),
     original,
   ]);
   assert.equal(feasible(s8, s8.sessions, onSaturdayAt14(original), original), true);

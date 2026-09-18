@@ -1,5 +1,9 @@
 import type { ModelData } from "highs";
 import {
+  MAX_INSTRUCTOR_SESSIONS_PER_DAY,
+  instructorDailySessionViolations,
+} from "./instructor-daily-sessions.ts";
+import {
   compactSlots,
   context,
   feasible,
@@ -247,6 +251,7 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
   // Generation omits costly span optimization but retains attendance preferences.
   for (const { terms, kind, person, day } of daily.values()) {
     const student = kind === "student";
+    if (!student) row(terms, -INF, MAX_INSTRUCTOR_SESSIONS_PER_DAY);
     const policy = studentDailyPolicy(snapshot.settings);
     const capMinutes = student
       ? policy.totalMinutes
@@ -470,6 +475,7 @@ export function validateJointPlan(
     return false;
   const old = new Map(snapshot.sessions.map((x) => [x.id, x]));
   if (instructorsOverAttendanceDayCap(sessions, snapshot.instructors).length) return false;
+  if (instructorDailySessionViolations(sessions).length) return false;
   const ctx = context(snapshot);
   const days = new Map<string, Set<number>>();
   if (snapshot.generationScope) {
