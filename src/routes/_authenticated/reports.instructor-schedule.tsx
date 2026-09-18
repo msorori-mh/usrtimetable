@@ -118,7 +118,7 @@ function Page() {
 
   return (
     <ReportShell
-      title={instructorName ? `الجدول الأسبوعي — ${instructorName}` : "تقرير جدول المحاضر الفردي"}
+      title={instructorName ? `جدول المحاضر — ${instructorName}` : "تقرير جدول المحاضر الفردي"}
       description={`الجدول الأسبوعي لعضو هيئة تدريس واحد داخل نسخة جدول واحدة. ${universityNumber ? `الرقم الجامعي: ${universityNumber}` : ""}`}
       filterSummary={ctx.filterSummary}
       reportContext={ctx}
@@ -187,6 +187,8 @@ function Page() {
       {ready && sessions.length > 0 && (
         <ReportTimetableView
           hideInstructor
+          printDetailOnly
+          compactDetails
           sessions={sessions}
           collegeId={ctx.collegeId}
           headers={NEW_FLOW_TIMETABLE_TABLE_HEADERS}
