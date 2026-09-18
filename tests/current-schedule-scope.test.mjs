@@ -25,56 +25,35 @@ const sessions = [
 ];
 const ids = (rows) => rows.map((r) => r.id);
 test("all preserves every session, including missing program metadata", () => {
-  assert.deepEqual(
-    filterCurrentScheduleScope(sessions, [], "all", "all"),
-    sessions,
-  );
+  assert.deepEqual(filterCurrentScheduleScope(sessions, [], "all", "all"), sessions);
 });
 test("department includes every member program and its general-requirement courses", () => {
-  assert.deepEqual(
-    ids(filterCurrentScheduleScope(sessions, programs, "computing", "all")),
-    ["a", "b"],
-  );
+  assert.deepEqual(ids(filterCurrentScheduleScope(sessions, programs, "computing", "all")), [
+    "a",
+    "b",
+  ]);
 });
 test("program works independently of department selection", () => {
-  assert.deepEqual(
-    ids(filterCurrentScheduleScope(sessions, programs, "all", "it")),
-    ["b"],
-  );
+  assert.deepEqual(ids(filterCurrentScheduleScope(sessions, programs, "all", "it")), ["b"]);
 });
 test("department and program intersect; contradictory selections fail closed", () => {
-  assert.deepEqual(
-    ids(filterCurrentScheduleScope(sessions, programs, "computing", "cs")),
-    ["a"],
-  );
-  assert.deepEqual(
-    filterCurrentScheduleScope(sessions, programs, "arts", "cs"),
-    [],
-  );
+  assert.deepEqual(ids(filterCurrentScheduleScope(sessions, programs, "computing", "cs")), ["a"]);
+  assert.deepEqual(filterCurrentScheduleScope(sessions, programs, "arts", "cs"), []);
 });
 test("unknown or empty department does not broaden to the entire college", () => {
-  assert.deepEqual(
-    filterCurrentScheduleScope(sessions, programs, "missing", "all"),
-    [],
-  );
-  assert.deepEqual(
-    filterCurrentScheduleScope(sessions, [], "computing", "all"),
-    [],
-  );
+  assert.deepEqual(filterCurrentScheduleScope(sessions, programs, "missing", "all"), []);
+  assert.deepEqual(filterCurrentScheduleScope(sessions, [], "computing", "all"), []);
 });
 test("shared lecture presentation copies remain available to each selected program", () => {
   const shared = [
     { ...session("shared:cs", "cs"), study_system: "both" },
     { ...session("shared:it", "it"), study_system: "both" },
   ];
-  assert.deepEqual(
-    ids(filterCurrentScheduleScope(shared, programs, "computing", "all")),
-    ["shared:cs", "shared:it"],
-  );
-  assert.deepEqual(
-    ids(filterCurrentScheduleScope(shared, programs, "all", "it")),
-    ["shared:it"],
-  );
+  assert.deepEqual(ids(filterCurrentScheduleScope(shared, programs, "computing", "all")), [
+    "shared:cs",
+    "shared:it",
+  ]);
+  assert.deepEqual(ids(filterCurrentScheduleScope(shared, programs, "all", "it")), ["shared:it"]);
 });
 test("different study-plan pathways under one program are retained without mutations", () => {
   const rows = [
@@ -82,9 +61,9 @@ test("different study-plan pathways under one program are retained without mutat
     { ...session("path-b", "cs"), intake_study_plan_id: "plan-b" },
   ];
   const before = structuredClone(rows);
-  assert.deepEqual(
-    ids(filterCurrentScheduleScope(rows, programs, "all", "cs")),
-    ["path-a", "path-b"],
-  );
+  assert.deepEqual(ids(filterCurrentScheduleScope(rows, programs, "all", "cs")), [
+    "path-a",
+    "path-b",
+  ]);
   assert.deepEqual(rows, before);
 });
