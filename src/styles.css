@@ -1215,8 +1215,8 @@
   .instructor-print-readable .report-data-table th,
   .instructor-print-readable .report-data-table td {
     font-size: 10pt;
-    line-height: 1.5;
-    padding: 1.8mm 1.2mm;
+    line-height: 1.35;
+    padding: 1.2mm 1.2mm;
     vertical-align: middle;
     text-align: right;
     overflow-wrap: normal;
@@ -1228,12 +1228,12 @@
   }
   .instructor-print-readable .instructor-detail-cell {
     min-width: 0;
-    line-height: 1.5;
+    line-height: 1.35;
   }
   .instructor-print-readable .instructor-detail-cell div,
   .instructor-print-readable .instructor-detail-cell span {
     font-size: 10pt;
-    line-height: 1.5;
+    line-height: 1.35;
     color: #172b3a;
   }
   .instructor-print-readable .instructor-detail-cell .font-semibold {
@@ -1264,7 +1264,7 @@
     font-size: 9pt;
   }
   .instructor-print-readable .report-timetable-grid > .grid {
-    --report-slot-height: min(82px, calc(190mm / var(--report-hours)));
+    --report-slot-height: min(96px, calc(190mm / var(--report-hours)));
     break-inside: avoid;
     background: white;
   }

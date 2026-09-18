@@ -77,6 +77,11 @@ const { execFileSync } = require("node:child_process");
             throw Error("Shared cohort must occur once in the repeating header, not per data row");
         }
         if (["university", "individual"].includes(mode)) {
+          // Print layout uses the A4 content box, even when initiated from a phone.
+          await page.setViewportSize({ width: 794, height: 1123 });
+          await page.locator(".report-print-root").evaluate((node) => {
+            node.style.width = "180mm";
+          });
           const sections = page.locator(".instructor-print-readable > section");
           const order = await sections.evaluateAll((nodes) =>
             nodes.map((n) => n.dataset.printSection),
@@ -111,6 +116,10 @@ const { execFileSync } = require("node:child_process");
             );
           if (cards.length)
             throw Error(`Weekly cards clip their contents: ${JSON.stringify(cards)}`);
+        }
+        if (["university", "individual"].includes(mode)) {
+          await page.locator(".report-print-root").evaluate(node => { node.style.removeProperty("width"); });
+          await page.setViewportSize({ width, height: 900 });
         }
         console.log(
           JSON.stringify({
