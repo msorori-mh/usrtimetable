@@ -44,7 +44,7 @@ import {
   evaluateEligibility,
   validateGate,
   transitionVersion,
-  cloneVersion,
+  cloneVersionWithSummary,
   type SVStatus,
 } from "@/lib/schedule-versions/lifecycle";
 import {
@@ -536,7 +536,7 @@ function CloneDialog({
   const m = useMutation({
     mutationFn: async () => {
       if (!tid || !nm.trim()) throw new Error("الرجاء إدخال الفصل والاسم");
-      const id = await cloneVersion({
+      const result = await cloneVersionWithSummary({
         collegeId,
         sourceVersionId: sourceId,
         targetTermId: tid,
@@ -546,17 +546,24 @@ function CloneDialog({
       await logAudit({
         action: "sv_clone",
         entity: "schedule_versions",
-        entityId: id,
+        entityId: result.version_id,
         collegeId,
         details: {
           source: sourceId,
           disposable_test: canMarkDisposable && disposableTest,
         },
       });
-      return id;
+      return result;
     },
-    onSuccess: () => {
-      toast.success("تم الاستنساخ");
+    onSuccess: (result) => {
+      if (result.sessions_skipped > 0) {
+        toast.warning(
+          `تم إنشاء المسودة ونسخ ${result.sessions_copied} محاضرة. استُبعدت ${result.sessions_skipped} محاضرة تغيرت إسناداتها أو لم تعد صالحة؛ راجع النواقص وأكمل التسكين.`,
+          { duration: 15000 },
+        );
+      } else {
+        toast.success(`تم الاستنساخ: ${result.sessions_copied} محاضرة. راجع النواقص قبل الاعتماد.`);
+      }
       onCloned();
     },
     onError: (e) => toast.error((e as Error).message),
@@ -603,8 +610,9 @@ function CloneDialog({
             </label>
           )}
           <p className="text-[11px] text-muted-foreground">
-            يُنسخ: بيانات النسخة + محاضرات الجدول. لا يُنسخ: فحوصات التعارض، نتائج الجودة، عمليات
-            الجدولة التلقائية.
+            يُنسخ: بيانات النسخة والمحاضرات ذات الإسنادات النشطة المطابقة فقط. تُستبعد المحاضرات
+            الملغاة أو التي تغير محاضرها، وتبقى بدائلها بحاجة إلى تسكين. لا يُنسخ: فحوصات التعارض،
+            نتائج الجودة، عمليات الجدولة التلقائية.
           </p>
         </div>
         <DialogFooter>

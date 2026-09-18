@@ -1,0 +1,25 @@
+name: clone-current
+on:
+  pull_request:
+    paths:
+      - 'src/lib/schedule-versions/**'
+      - 'src/routes/_authenticated/schedule-versions.tsx'
+      - 'tests/*clone*'
+      - 'supabase/migrations/*atomic_current_assignment_clone*'
+      - '.github/workflows/clone-current.yml'
+permissions:
+  contents: read
+jobs:
+  clone:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: bun install --frozen-lockfile
+      - run: bun test tests/schedule-version-clone-identity.test.ts
+      - run: npm install --prefix "$RUNNER_TEMP/clone-db" --no-package-lock @electric-sql/pglite@0.3.14
+      - run: CLONE_DB_MODULE="$RUNNER_TEMP/clone-db/node_modules/@electric-sql/pglite/dist/index.js" node --test tests/clone-current-db.test.mjs

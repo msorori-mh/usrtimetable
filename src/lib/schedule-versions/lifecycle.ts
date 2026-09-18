@@ -2,7 +2,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { validateProposed, type ProposedSession } from "@/lib/conflict-engine/validator";
 import { loadApprovedExceptions } from "@/lib/conflict-engine/exceptions";
 import {
-  canMarkDisposableTestClone,
   type DisposablePurgeResult,
   PURGE_RPC_NAME,
 } from "@/lib/schedule-versions/disposable-purge";
@@ -10,7 +9,6 @@ import {
 export {
   PROTECTED_ACCEPTED_SCHEDULE_VERSION_ID,
   assertDisposablePurgeEligibility,
-  canMarkDisposableTestClone,
   type DisposablePurgeResult,
 } from "@/lib/schedule-versions/disposable-purge";
 
@@ -129,7 +127,9 @@ export async function evaluateEligibility(params: {
   let approvedHard = 0;
   let unapprovedHard = 0;
   if (sessions.length > 0) {
-    const approvedExceptions = await loadApprovedExceptions({ scheduleVersionId });
+    const approvedExceptions = await loadApprovedExceptions({
+      scheduleVersionId,
+    });
     const validation = await validateProposed({
       collegeId,
       scheduleVersionId,
@@ -225,7 +225,23 @@ export async function transitionVersion(params: {
 }
 
 /** Clone version: copies metadata + sessions only. */
-export async function cloneVersion(params: {
+export type CloneVersionResult = {
+  version_id: string;
+  source_sessions: number;
+  sessions_copied: number;
+  sessions_skipped: number;
+  skipped_sessions: Array<{
+    session_id: string;
+    reason: string;
+    was_locked: boolean;
+  }>;
+};
+
+export async function cloneVersion(params: CloneVersionParams): Promise<string> {
+  return (await cloneVersionWithSummary({ ...params, requireComplete: true })).version_id;
+}
+
+export type CloneVersionParams = {
   collegeId: string;
   sourceVersionId: string;
   targetTermId: string;
@@ -233,103 +249,40 @@ export async function cloneVersion(params: {
   notes?: string;
   /** When true, marks the clone as disposable_test (super_admin only). Default false. */
   disposableTest?: boolean;
-}): Promise<string> {
-  const { collegeId, sourceVersionId, targetTermId, newName, notes, disposableTest } = params;
+  requireComplete?: boolean;
+};
 
-  const markDisposable = disposableTest === true;
-  if (markDisposable) {
-    const { data: userRes } = await supabase.auth.getUser();
-    const uid = userRes.user?.id;
-    if (!uid) throw new Error("AUTHENTICATION_REQUIRED");
-    const { data: roles, error: rolesErr } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", uid);
-    if (rolesErr) throw rolesErr;
-    const isSuperAdmin = (roles ?? []).some((r) => r.role === "super_admin");
-    if (!canMarkDisposableTestClone(isSuperAdmin)) {
-      throw new Error("DISPOSABLE_CLONE_SUPER_ADMIN_REQUIRED");
-    }
+export async function cloneVersionWithSummary(
+  params: CloneVersionParams,
+): Promise<CloneVersionResult> {
+  const { data, error } = await supabase.rpc(
+    "clone_schedule_version_current" as never,
+    {
+      p_college_id: params.collegeId,
+      p_source_version_id: params.sourceVersionId,
+      p_target_term_id: params.targetTermId,
+      p_name: params.newName,
+      p_notes: params.notes ?? null,
+      p_disposable_test: params.disposableTest === true,
+      p_require_complete: params.requireComplete === true,
+    } as never,
+  );
+  if (error) {
+    const messages: Record<string, string> = {
+      CLONE_SOURCE_HAS_STALE_SESSIONS:
+        "لا يمكن إنشاء نسخة احتياطية كاملة قبل مطابقة الإسنادات المتغيرة. استخدم استنساخ المسودة للمراجعة.",
+      CLONE_TERM_REMAP_REQUIRED:
+        "استنساخ المحاضرات متاح داخل الفصل نفسه. الفصل الآخر يحتاج مطابقة إسناداته أولًا.",
+      CLONE_NOT_AUTHORIZED: "ليس لديك صلاحية استنساخ جدول هذه الكلية.",
+      CLONE_SOURCE_NOT_FOUND: "لم تُعثر على النسخة الأصلية في الكلية المختارة.",
+      INACTIVE_ASSIGNMENT_SESSION_FORBIDDEN:
+        "تغيرت الإسنادات أثناء الاستنساخ. حدّث الصفحة وأعد المحاولة؛ لم تُحفظ مسودة جزئية.",
+    };
+    throw new Error(
+      messages[error.message] ?? `تعذر الاستنساخ؛ لم تُحفظ مسودة جزئية. ${error.message}`,
+    );
   }
-
-  const { data: src, error: se } = await supabase
-    .from("schedule_versions")
-    .select("*")
-    .eq("id", sourceVersionId)
-    .single();
-  if (se) throw se;
-
-  const insertPayload = {
-    college_id: collegeId,
-    academic_term_id: targetTermId,
-    name: newName,
-    status: "draft",
-    notes: notes ?? src.notes ?? null,
-    disposable_test: markDisposable,
-  };
-  const { data: newV, error: ie } = await supabase
-    .from("schedule_versions")
-    // disposable_test is source-only until migration apply; cast keeps client typed against current generated schema.
-    .insert(insertPayload as never)
-    .select("id")
-    .single();
-  if (ie) throw ie;
-
-  const { data: sessions, error: se2 } = await supabase
-    .from("schedule_sessions")
-    .select("*")
-    .eq("schedule_version_id", sourceVersionId)
-    .eq("college_id", collegeId);
-  if (se2) throw se2;
-
-  if (sessions && sessions.length > 0) {
-    // Copy every operational identity key as-is. Dropping delivery_group_id /
-    // cohort_id / plan_course_component_id makes the clone invisible to the
-    // delivery-coverage guards even though its sessions exist.
-    const rows = sessions.map((s) => ({
-      college_id: s.college_id,
-      schedule_version_id: newV.id,
-      course_offering_id: s.course_offering_id,
-      teaching_assignment_id: s.teaching_assignment_id,
-      instructor_id: s.instructor_id,
-      room_id: s.room_id,
-      section_id: s.section_id,
-      section_group_id: s.section_group_id,
-      section_subgroup_id: s.section_subgroup_id,
-      cohort_id: s.cohort_id,
-      delivery_group_id: s.delivery_group_id,
-      plan_course_component_id: s.plan_course_component_id,
-      study_system: s.study_system,
-      day_of_week: s.day_of_week,
-      start_time: s.start_time,
-      end_time: s.end_time,
-      session_type: s.session_type,
-      expected_students: s.expected_students,
-      source_type: s.source_type,
-      is_locked: s.is_locked,
-      lock_reason: s.lock_reason,
-    }));
-    const { error: insE } = await supabase.from("schedule_sessions").insert(rows);
-    if (insE) throw insE;
-  }
-
-  const { data: userRes } = await supabase.auth.getUser();
-  await supabase.from("schedule_version_events").insert({
-    college_id: collegeId,
-    schedule_version_id: newV.id,
-    event_type: "cloned",
-    from_status: null,
-    to_status: "draft",
-    performed_by: userRes.user?.id ?? null,
-    notes: `Cloned from ${sourceVersionId}`,
-    metadata: {
-      source_version_id: sourceVersionId,
-      sessions_copied: sessions?.length ?? 0,
-      disposable_test: markDisposable,
-    },
-  });
-
-  return newV.id;
+  return data as unknown as CloneVersionResult;
 }
 
 /** Atomic super_admin-only purge of an explicitly marked disposable draft version. */

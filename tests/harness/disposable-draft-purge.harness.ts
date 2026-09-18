@@ -9,6 +9,10 @@ function assert(value: unknown, message: string): asserts value {
 const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const migrationPath = "supabase/migrations/20260730120000_source_only_disposable_draft_purge.sql";
 const migration = readFileSync(join(root, migrationPath), "utf8");
+const cloneMigration = readFileSync(
+  join(root, "supabase/migrations/20260918180000_atomic_current_assignment_clone.sql"),
+  "utf8",
+);
 const lifecycle = readFileSync(join(root, "src/lib/schedule-versions/lifecycle.ts"), "utf8");
 const purgeHelper = readFileSync(
   join(root, "src/lib/schedule-versions/disposable-purge.ts"),
@@ -86,11 +90,12 @@ assert(
 
 assert(lifecycle.includes("disposableTest"), "clone path accepts disposableTest flag");
 assert(
-  lifecycle.includes("DISPOSABLE_CLONE_SUPER_ADMIN_REQUIRED"),
+  cloneMigration.includes("DISPOSABLE_CLONE_SUPER_ADMIN_REQUIRED") &&
+    cloneMigration.includes("NOT public.is_super_admin(v_actor)"),
   "clone refuses disposable marker for non-super_admin",
 );
 assert(
-  lifecycle.includes("disposable_test: markDisposable"),
+  lifecycle.includes("p_disposable_test: params.disposableTest === true"),
   "clone writes disposable_test only when explicitly requested",
 );
 assert(
@@ -108,7 +113,8 @@ assert(
   "UI exposes disposable marker only via canMarkDisposable path",
 );
 assert(
-  !lifecycle.includes("disposable_test: true") || lifecycle.includes("markDisposable"),
+  cloneMigration.includes("p_disposable_test boolean DEFAULT false") &&
+    lifecycle.includes("p_disposable_test: params.disposableTest === true"),
   "default clones are not auto-marked disposable",
 );
 
