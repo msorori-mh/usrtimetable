@@ -24,6 +24,12 @@ for path in sorted(Path("repeated-header-proof").glob("*.pdf")):
         assert row_rects, f"{path}:{number}: orphan header/footer page"
         assert min(r.y0 for r in row_rects) > max(r.y1 for r in header_rects), f"{path}:{number}: header overlap"
         assert all(0 <= r.x0 < r.x1 <= page.rect.width and 0 <= r.y0 < r.y1 <= page.rect.height for r in row_rects), f"{path}:{number}: clipped content"
+        if path.name.startswith("readable"):
+            spans = [s for b in page.get_text("dict")["blocks"] if "lines" in b
+                     for line in b["lines"] for s in line["spans"]]
+            row_spans = [s for s in spans if "ROW" in s["text"]]
+            assert row_spans and all(s["size"] >= 10.9 for s in row_spans), f"{path}:{number}: body text too small"
+            assert "CYB-L3-2024" in text, f"{path}:{number}: missing common cohort"
         all_rows.extend(row_ids)
         if number in (1, 2, len(doc)):
             page.get_pixmap(matrix=fitz.Matrix(1, 1)).save(path.with_name(f"{path.stem}-page-{number}.png"))
@@ -34,3 +40,4 @@ for path in sorted(Path("repeated-header-proof").glob("*.pdf")):
     results.append({"file": path.name, "pages": len(doc), "rows": len(all_rows), "every_page_has_identity": True})
 Path("repeated-header-proof/results.json").write_text(json.dumps(results, indent=2))
 print(json.dumps(results, indent=2))
+
