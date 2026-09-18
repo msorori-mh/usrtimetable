@@ -10,12 +10,13 @@ export function RoomsCategorySummary({ summary }: { summary: RoomsReportSummaryR
       {(["hall", "lab"] as const).map((category) => {
         const rows = summary.filter((row) => row.room_category === category);
         const totals = roomsReportTotals({ summary: rows, sessions: [] });
+        const complete = rows.length > 0 && rows.every((row) => row.available_hours > 0);
         const metrics = [
           ["العدد", totals.rooms],
           ["الساعات المستخدمة", totals.usedHours],
-          ["الساعات المتاحة", totals.availableHours],
-          ["غير مستخدمة في النطاق", totals.freeHours],
-          ["نسبة الاستغلال", totals.availableHours > 0 ? `${totals.utilization}%` : "—"],
+          ["الساعات المتاحة", complete ? totals.availableHours : "—"],
+          ["غير مستخدمة في النطاق", complete ? totals.freeHours : "—"],
+          ["نسبة الاستغلال", complete ? `${totals.utilization}%` : "—"],
           ["عدد المحاضرات", rows.reduce((sum, row) => sum + row.session_count, 0)],
         ];
         return (
@@ -31,7 +32,7 @@ export function RoomsCategorySummary({ summary }: { summary: RoomsReportSummaryR
                 </div>
               ))}
             </dl>
-            {totals.overbookedHours > 0 && (
+            {complete && totals.overbookedHours > 0 && (
               <p className="mt-3 text-xs text-destructive">
                 تجاوز الإتاحة: {totals.overbookedHours} ساعة
               </p>

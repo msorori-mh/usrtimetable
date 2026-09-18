@@ -1,3 +1,6 @@
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RoomsExecutiveSummary } from "@/components/reports/rooms-executive-summary";
+import { roomsExecutiveSummary } from "@/lib/reports/rooms-executive";
 import { RepeatingPrintHeader } from "@/components/reports/repeating-print-header";
 import {
   ReportOfficialHeader,
@@ -69,8 +72,23 @@ function Page() {
   });
   const { active } = useActiveCollege();
   const exportAt = useMemo(() => new Date(), []);
-  const [qrUrl, setQrUrl] = useState("");
-  useEffect(() => setQrUrl(window.location.href), []);
+  const [pageUrl, setPageUrl] = useState("");
+  useEffect(() => setPageUrl(window.location.href), []);
+  const qrUrl = useMemo(() => {
+    if (!pageUrl) return "";
+    const url = new URL(pageUrl);
+    for (const [key, value] of Object.entries({
+      collegeId: ctx.collegeId,
+      termId: ctx.termId,
+      versionId: ctx.versionId,
+      statusMode: ctx.statusMode,
+      studySystem: ctx.studySystem,
+    })) {
+      if (value) url.searchParams.set(key, value);
+      else url.searchParams.delete(key);
+    }
+    return url.toString();
+  }, [pageUrl, ctx.collegeId, ctx.termId, ctx.versionId, ctx.statusMode, ctx.studySystem]);
 
   const inventory = useQuery({
     queryKey: ["rooms-report-inventory", ctx.collegeId],
@@ -129,6 +147,9 @@ function Page() {
     [sessions, ctx.collegeId],
   );
 
+  const executive = useMemo(() => roomsExecutiveSummary(summary, sessions), [summary, sessions]);
+  const [view, setView] = useState("overview");
+
   const isLoading = ctx.isLoading || inventory.isLoading || sessionsQuery.isLoading;
   const ready = !!ctx.versionId;
   const filtered = ctx.studySystem !== "all";
@@ -154,30 +175,46 @@ function Page() {
       kpis={[
         { label: "إجمالي الموارد", value: totals.rooms },
         { label: `الساعات المستخدمة${scopeSuffix}`, value: totals.usedHours, tone: "accent" },
-        { label: "الساعات المتاحة", value: totals.availableHours },
-        { label: "غير مستخدمة في النطاق", value: totals.freeHours },
-        { label: "نسبة الاستغلال", value: `${totals.utilization}%`, tone: "accent" },
+        {
+          label: "الساعات المتاحة",
+          value: executive.complete ? totals.availableHours : "غير مكتملة",
+        },
+        {
+          label: "غير مستخدمة في النطاق",
+          value: executive.complete ? totals.freeHours : "غير محسوبة",
+        },
+        {
+          label: "نسبة الاستغلال",
+          value: executive.utilization === null ? "غير قابل للحساب" : `${executive.utilization}%`,
+          tone: "accent",
+        },
       ]}
       filters={<ReportFilters context={ctx} />}
       summary={
-        <Card className="p-3 text-sm" data-testid="rooms-report-totals">
-          {sessionsQuery.isPlaceholderData && (
-            <p role="status">جارٍ تحديث البيانات حسب نظام الدراسة؛ الأرقام السابقة مؤقتة.</p>
-          )}
-          <p className="font-semibold">
-            الجلسات المطابقة للفلاتر: {totals.sessions} · صفحات القاعات: {pages.length}
-          </p>
-          <RoomsCategorySummary summary={summary} />
-          <p className="mt-2 text-muted-foreground">
-            الإتاحة هي ساعات فتح القاعات الكاملة. عند اختيار نظام واحد، تمثل النسبة حصته من هذه
-            الإتاحة؛ الساعات غير المستخدمة ضمن الاختيار قد تشغلها محاضرات النظام الآخر.
-          </p>
-          {totals.sessionsWithoutRoom > 0 && (
-            <p className="mt-1 text-muted-foreground">
-              جلسات بدون قاعة محددة: {totals.sessionsWithoutRoom} — تظهر في صفحة «قاعة غير محددة».
-            </p>
-          )}
-        </Card>
+        view === "overview" ? (
+          <div className="space-y-3">
+            <RoomsExecutiveSummary result={executive} />
+            <Card className="p-3 text-sm" data-testid="rooms-report-totals">
+              {sessionsQuery.isPlaceholderData && (
+                <p role="status">جارٍ تحديث البيانات حسب نظام الدراسة؛ الأرقام السابقة مؤقتة.</p>
+              )}
+              <p className="font-semibold">
+                الجلسات المطابقة للفلاتر: {totals.sessions} · صفحات القاعات: {pages.length}
+              </p>
+              <RoomsCategorySummary summary={summary} />
+              <p className="mt-2 text-muted-foreground">
+                الإتاحة هي ساعات فتح القاعات الكاملة. عند اختيار نظام واحد، تمثل النسبة حصته من هذه
+                الإتاحة؛ الساعات غير المستخدمة ضمن الاختيار قد تشغلها محاضرات النظام الآخر.
+              </p>
+              {totals.sessionsWithoutRoom > 0 && (
+                <p className="mt-1 text-muted-foreground">
+                  جلسات بدون قاعة محددة: {totals.sessionsWithoutRoom} — تظهر في صفحة «قاعة غير
+                  محددة».
+                </p>
+              )}
+            </Card>
+          </div>
+        ) : undefined
       }
       printContent={
         <>
@@ -199,7 +236,7 @@ function Page() {
               <p className="mb-2 text-xs">
                 الساعات غير المستخدمة محسوبة ضمن الفلاتر؛ راجع إشغال النظامين قبل إعادة التسكين.
               </p>
-              <p className="mb-3 text-sm leading-6">{analytics.insight}</p>
+              <RoomsExecutiveSummary result={executive} />
               <RoomsCategorySummary summary={summary} />
               <div className="mb-4 grid grid-cols-4 gap-2 text-sm">
                 <div className="border p-2">
@@ -215,35 +252,43 @@ function Page() {
                 <div className="border p-2">
                   <b>المستخدم / الفارغ</b>
                   <br />
-                  {totals.usedHours} / {totals.freeHours} ساعة
+                  {totals.usedHours} / {executive.complete ? totals.freeHours : "—"} ساعة
                 </div>
                 <div className="border p-2">
                   <b>الاستغلال العام</b>
                   <br />
-                  {totals.utilization}%
+                  {executive.utilization === null ? "—" : `${executive.utilization}%`}
                 </div>
                 <div className="border p-2">
                   <b>متوسط القاعات</b>
                   <br />
-                  {analytics.hallAverageUtilization}%
+                  {executive.complete && analytics.halls > 0
+                    ? `${analytics.hallAverageUtilization}%`
+                    : "—"}
                 </div>
                 <div className="border p-2">
                   <b>متوسط المعامل</b>
                   <br />
-                  {analytics.labAverageUtilization}%
+                  {executive.complete && analytics.labs > 0
+                    ? `${analytics.labAverageUtilization}%`
+                    : "—"}
                 </div>
                 <div className="border p-2">
                   <b>مزدحم / متوسط / منخفض</b>
                   <br />
-                  {analytics.bands.crowded} / {analytics.bands.medium} / {analytics.bands.low}
+                  {executive.complete
+                    ? `${analytics.bands.crowded} / ${analytics.bands.medium} / ${analytics.bands.low}`
+                    : "غير قابل للتصنيف"}
                 </div>
                 <div className="border p-2">
                   <b>أعلى / أقل استخدامًا</b>
                   <br />
-                  {analytics.highest?.room_name ?? "—"} / {analytics.lowest?.room_name ?? "—"}
+                  {executive.complete
+                    ? `${analytics.highest?.room_name ?? "—"} / ${analytics.lowest?.room_name ?? "—"}`
+                    : "—"}
                 </div>
               </div>
-              {totals.overbookedHours > 0 && (
+              {executive.complete && totals.overbookedHours > 0 && (
                 <p className="mb-3 border border-destructive p-2 font-semibold text-destructive">
                   تجاوز الإتاحة المرصود: {totals.overbookedHours} ساعة. لم تُخفَ هذه الزيادة من
                   الحسابات.
@@ -255,6 +300,7 @@ function Page() {
                 data-testid="rooms-print-chart"
               >
                 {[...summary]
+                  .filter((row) => row.available_hours > 0)
                   .sort((a, b) => b.utilization_percent - a.utilization_percent)
                   .map((row) => (
                     <div
@@ -291,7 +337,22 @@ function Page() {
                 <TableHeader>
                   <TableRow>
                     {ROOMS_REPORT_SUMMARY_HEADERS.map((h) => (
-                      <TableHead key={h.key}>{h.label}</TableHead>
+                      <TableHead
+                        key={h.key}
+                        className={
+                          ![
+                            "room_code",
+                            "room_name",
+                            "room_type",
+                            "peak_day",
+                            "peak_slot",
+                          ].includes(h.key)
+                            ? "report-numeric-cell"
+                            : undefined
+                        }
+                      >
+                        {h.label}
+                      </TableHead>
                     ))}
                   </TableRow>
                 </TableHeader>
@@ -299,7 +360,19 @@ function Page() {
                   {summary.map((r) => (
                     <TableRow key={`${r.room_code}-${r.room_name}`}>
                       {ROOMS_REPORT_SUMMARY_HEADERS.map((h) => (
-                        <TableCell key={h.key}>{String(r[h.key])}</TableCell>
+                        <TableCell
+                          key={h.key}
+                          className={
+                            typeof r[h.key] === "number" || h.key === "utilization"
+                              ? "report-numeric-cell"
+                              : undefined
+                          }
+                        >
+                          {r.available_hours <= 0 &&
+                          ["available_hours", "free_hours", "utilization"].includes(h.key)
+                            ? "—"
+                            : String(r[h.key])}
+                        </TableCell>
                       ))}
                     </TableRow>
                   ))}
@@ -331,26 +404,52 @@ function Page() {
         </>
       }
     >
-      <RoomsAnalyticsDashboard summary={summary} analytics={analytics} />
-      {ctx.collegeId && ctx.versionId && inventory.data && (
-        <RoomsDecisionsPanel
-          key={`${ctx.collegeId}:${ctx.versionId}`}
-          collegeId={ctx.collegeId}
-          versionId={ctx.versionId}
-          studySystem={ctx.studySystem}
-          sessions={sessions}
-          inventory={inventory.data}
-        />
-      )}
-      {ctx.collegeId && (
-        <RoomsComparison
-          key={ctx.collegeId}
-          collegeId={ctx.collegeId}
-          studySystem={ctx.studySystem}
-          currentLabel={`${active?.name ?? ""} · ${ctx.filterSummary}`}
-          totals={totals}
-        />
-      )}
+      <Tabs value={view} onValueChange={setView} className="report-no-print">
+        <TabsList className="h-auto flex-wrap justify-start gap-1">
+          <TabsTrigger value="overview">الخلاصة</TabsTrigger>
+          <TabsTrigger value="analytics">التحليل والتفاصيل</TabsTrigger>
+          <TabsTrigger value="operations">إشغال القاعات وفرص التحسين</TabsTrigger>
+          <TabsTrigger value="comparison">المقارنات</TabsTrigger>
+        </TabsList>
+        <TabsContent value="overview">
+          <p className="rounded-lg border bg-card p-4 text-sm leading-7">
+            ابدأ بالخلاصة أعلاه، ثم اختر التحليل لقراءة التفاصيل أو إشغال القاعات لفحص مورد محدد.
+          </p>
+        </TabsContent>
+        <TabsContent value="analytics">
+          {executive.complete ? (
+            <RoomsAnalyticsDashboard summary={summary} analytics={analytics} />
+          ) : (
+            <Card className="p-5 text-sm leading-7">
+              لا يمكن ترتيب كفاءة الاستخدام قبل استكمال بيانات الإتاحة. الساعات المسجلة موضحة في
+              الخلاصة، ويمكن مراجعة محاضرات كل قاعة في تبويب الإشغال.
+            </Card>
+          )}
+        </TabsContent>
+        <TabsContent value="operations">
+          {ctx.collegeId && ctx.versionId && inventory.data && (
+            <RoomsDecisionsPanel
+              key={`${ctx.collegeId}:${ctx.versionId}`}
+              collegeId={ctx.collegeId}
+              versionId={ctx.versionId}
+              studySystem={ctx.studySystem}
+              sessions={sessions}
+              inventory={inventory.data}
+            />
+          )}
+        </TabsContent>
+        <TabsContent value="comparison">
+          {ctx.collegeId && (
+            <RoomsComparison
+              key={ctx.collegeId}
+              collegeId={ctx.collegeId}
+              studySystem={ctx.studySystem}
+              currentLabel={`${active?.name ?? ""} · ${ctx.filterSummary}`}
+              totals={totals}
+            />
+          )}
+        </TabsContent>
+      </Tabs>
     </ReportShell>
   );
 }

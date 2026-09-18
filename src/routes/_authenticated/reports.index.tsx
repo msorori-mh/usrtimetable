@@ -280,6 +280,18 @@ function ReportsHub() {
   const restrictedViewer = isReportsOnlyRole(me) || isAcademicAffairsRole(me);
   return (
     <div className="space-y-8" dir="rtl">
+      <section
+        className="rounded-2xl border border-primary/20 bg-primary/5 p-5 sm:p-6"
+        aria-label="الترحيب بالمستخدم"
+      >
+        <p className="text-sm font-semibold text-primary">مركز التقارير</p>
+        <h2 className="mt-2 text-xl font-bold sm:text-2xl">
+          {me?.fullName?.trim() ? `مرحبًا، ${me.fullName.trim()}` : "مرحبًا بك"}
+        </h2>
+        <p className="mt-2 text-sm leading-7 text-muted-foreground">
+          من هنا تبدأ قراءة الصورة الأكاديمية: اختر الكلية، ثم التقرير الذي يجيب عن سؤالك.
+        </p>
+      </section>
       <header className="usr-page-header">
         <span className="usr-page-header-icon">
           <FileBarChart2 className="h-5 w-5" />

@@ -98,7 +98,10 @@ export function ReportShell({
     };
   }, [reportContext, headerMetaProp, active?.name, official, readOnly]);
 
-  const handlePrint = () => window.print();
+  const handlePrint = async () => {
+    await document.fonts.ready;
+    window.print();
+  };
 
   /**
    * Real verification/report URL for the header QR: the current report URL with its
