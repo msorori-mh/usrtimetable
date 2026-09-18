@@ -500,9 +500,7 @@ function WorkloadPage() {
           minWidthClassName="min-w-[720px]"
           primaryColumnLimit={5}
           caption="أعباء المحاضرين الأسبوعية"
-          columns={
-            compactInstructorWorkloadColumns() as ReportColumn<(typeof rows)[number]>
-          }
+          columns={compactInstructorWorkloadColumns() as ReportColumn<(typeof rows)[number]>[]}
         />
       </ReportSection>
     </ReportShell>
