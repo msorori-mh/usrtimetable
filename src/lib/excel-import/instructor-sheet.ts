@@ -129,6 +129,7 @@ export function parseInstructorStatus(value: unknown): { active: boolean; reason
 export interface ExistingInstructor extends Record<string, unknown> {
   employee_number: string | null;
   university_number?: string | null;
+  university_number_aliases?: string[];
   full_name: string;
   full_name_ar?: string | null;
   affiliation_college_id?: string | null;
@@ -158,7 +159,11 @@ export function prepareInstructorRow(
     .trim()
     .toUpperCase();
   if (universityNumber) {
-    const numbered = existing.filter((i) => i.university_number === universityNumber);
+    const numbered = existing.filter(
+      (i) =>
+        i.university_number === universityNumber ||
+        i.university_number_aliases?.includes(universityNumber),
+    );
     if (numbered.length !== 1) {
       fail(
         "university_number",
@@ -214,11 +219,16 @@ export function prepareInstructorRow(
     if (!hourlyContract && current?.employee_number) {
       v.employee_number = current.employee_number;
       v._matched_by_name = true;
-    } else if (!hourlyContract)
+    } else if (
+      !current &&
+      !["permanent", "annual_contract", "con"].includes(
+        String(v.instructor_type_code ?? "").toLowerCase(),
+      )
+    )
       fail(
-        "employee_number",
-        "instructor_employee_number_required",
-        "رقم الموظف مطلوب لكل الفئات عدا متعاقد بالساعات (con).",
+        "instructor_type_code",
+        "instructor_employment_category_required",
+        "حدّد فئة الموظف الجديد لإصدار الرقم تلقائياً: permanent أو annual_contract أو con.",
       );
   }
   if (current) {

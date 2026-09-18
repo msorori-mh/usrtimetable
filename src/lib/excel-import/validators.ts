@@ -729,14 +729,6 @@ export async function validate(
         else row.values._instructor_type_id = typeId;
       }
       const hourlyContract = isHourlyContractTypeCode(typeCode);
-      if (!hourlyContract && !String(row.values.employee_number ?? "").trim()) {
-        rowErrors.push({
-          rowNumber: row.rowNumber,
-          columnName: "رقم_الموظف",
-          errorCode: "instructor_employee_number_required",
-          message: "رقم الموظف مطلوب لكل الفئات عدا متعاقد بالساعات (con).",
-        });
-      }
 
       const legacyDepartmentCode = String(row.values.department_code ?? "").trim();
       const affiliationCollegeCode = String(

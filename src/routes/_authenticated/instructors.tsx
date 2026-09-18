@@ -298,8 +298,11 @@ function InstructorDirectory() {
         (t) => t.id === form.instructor_type_id,
       );
       const hourlyContract = isHourlyContractTypeCode(selectedType?.code);
-      if (!hourlyContract && !form.employee_number.trim())
-        throw new Error("رقم الموظف مطلوب للموظف غير المتعاقد بالساعات");
+      if (
+        !editing &&
+        !["permanent", "annual_contract", "con"].includes(selectedType?.code?.toLowerCase() ?? "")
+      )
+        throw new Error("اختر مثبت أو متعاقد سنوي أو متعاقد بالساعات لإصدار الرقم تلقائياً");
       if (!form.affiliation_college_id) throw new Error("اختر الكلية التابع لها المحاضر");
       if (!form.affiliation_department_id) throw new Error("اختر القسم التابع له المحاضر");
       const affiliationDepartment = (affiliationDepts ?? []).find(
@@ -439,6 +442,8 @@ function InstructorDirectory() {
         "rep-readiness",
       ])
         void qc.invalidateQueries({ queryKey: [key, active?.id] });
+      void qc.invalidateQueries({ queryKey: ["faculty-university-report"] });
+      void qc.invalidateQueries({ queryKey: ["report-instructor-directory"] });
       setOpen(false);
       setEditing(null);
     },
@@ -587,8 +592,35 @@ function InstructorDirectory() {
                 </DialogTitle>
               </DialogHeader>
               <div className="space-y-3" data-testid="instructor-ordered-form">
-                <div data-field-order="1-category">
-                  <Label>فئة المحاضر</Label>
+                <div data-field-order="1-affiliation-college">
+                  <Label>{hourlyContract ? "الكلية المتعاقد فيها" : "الكلية التابع لها"}</Label>
+                  <Select
+                    value={form.affiliation_college_id || undefined}
+                    onValueChange={(v) =>
+                      setForm({
+                        ...form,
+                        affiliation_college_id: v,
+                        affiliation_department_id: "",
+                        administrative_department_id: "",
+                        administrative_support_department_id: "",
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="اختر الكلية" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(accessibleColleges ?? []).map((college) => (
+                        <SelectItem key={college.id} value={college.id}>
+                          {college.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div data-field-order="2-category">
+                  <Label>الحالة الوظيفية</Label>
                   <Select
                     value={form.instructor_type_id || "_none"}
                     onValueChange={(v) => {
@@ -609,9 +641,11 @@ function InstructorDirectory() {
                           ? ""
                           : form.administrative_department_id,
                         employment_type:
-                          hourly && form.employment_type === UNKNOWN_EMPLOYMENT_TYPE
+                          type?.code === "con" || type?.code === "annual_contract"
                             ? "contract"
-                            : form.employment_type,
+                            : type?.code === "permanent"
+                              ? "full_time"
+                              : form.employment_type,
                       });
                     }}
                   >
@@ -621,12 +655,20 @@ function InstructorDirectory() {
                       />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="_none">— غير محدد —</SelectItem>
-                      {typeRows.map((t) => (
-                        <SelectItem key={t.id} value={t.id}>
-                          {t.name_ar}
-                        </SelectItem>
-                      ))}
+                      {editing && <SelectItem value="_none">— غير محدد —</SelectItem>}
+                      {typeRows
+                        .filter(
+                          (t) =>
+                            editing ||
+                            ["permanent", "annual_contract", "con"].includes(
+                              t.code?.toLowerCase() ?? "",
+                            ),
+                        )
+                        .map((t) => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.code === "annual_contract" ? "متعاقد سنوي" : t.name_ar}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                   {typesLoading && (
@@ -660,9 +702,31 @@ function InstructorDirectory() {
                   )}
                 </div>
 
+                <div
+                  className="rounded-md border bg-muted/30 p-3"
+                  data-testid="automatic-faculty-number"
+                >
+                  <Label>الرقم الجامعي — تلقائي</Label>
+                  <p className="mt-1 text-sm" dir="ltr">
+                    {editing?.university_number ??
+                      (selectedType?.code === "permanent"
+                        ? "USABA-P-…"
+                        : selectedType?.code === "annual_contract"
+                          ? "USABA-C-…"
+                          : selectedType?.code === "con"
+                            ? "USABA-H-…"
+                            : "—")}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    يُصدر الرقم عند الحفظ بعد اختيار الكلية والحالة الوظيفية. عند تغيير الفئة يُحفظ
+                    الرقم السابق مع بقاء هوية المحاضر وإسناداته. إذا كان المحاضر مسجلاً في كلية
+                    أخرى، تُربط سجلاته بعد التحقق من هويته.
+                  </p>
+                </div>
+
                 {!hourlyContract && (
                   <div data-field-order="2-employee-number">
-                    <Label>رقم الموظف</Label>
+                    <Label>رقم الموارد البشرية (اختياري)</Label>
                     <Input
                       value={form.employee_number}
                       onChange={(e) => setForm({ ...form, employee_number: e.target.value })}
@@ -684,33 +748,6 @@ function InstructorDirectory() {
                     value={form.full_name_ar}
                     onChange={(e) => setForm({ ...form, full_name_ar: e.target.value })}
                   />
-                </div>
-
-                <div data-field-order="5-affiliation-college">
-                  <Label>{hourlyContract ? "الكلية المتعاقد فيها" : "الكلية التابع لها"}</Label>
-                  <Select
-                    value={form.affiliation_college_id || undefined}
-                    onValueChange={(v) =>
-                      setForm({
-                        ...form,
-                        affiliation_college_id: v,
-                        affiliation_department_id: "",
-                        administrative_department_id: "",
-                        administrative_support_department_id: "",
-                      })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="اختر الكلية" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(accessibleColleges ?? []).map((college) => (
-                        <SelectItem key={college.id} value={college.id}>
-                          {college.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                 </div>
 
                 <div
@@ -1105,11 +1142,17 @@ function InstructorDirectory() {
               <SelectContent>
                 <SelectItem value="all">كل الأنواع</SelectItem>
                 <SelectItem value="none">بدون نوع</SelectItem>
-                {typeRows.map((t) => (
-                  <SelectItem key={t.id} value={t.id}>
-                    {t.name_ar}
-                  </SelectItem>
-                ))}
+                {typeRows
+                  .filter(
+                    (t) =>
+                      editing ||
+                      ["permanent", "annual_contract", "con"].includes(t.code?.toLowerCase() ?? ""),
+                  )
+                  .map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.code === "annual_contract" ? "متعاقد سنوي" : t.name_ar}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>
@@ -1285,4 +1328,3 @@ function InstructorDirectory() {
     </div>
   );
 }
-

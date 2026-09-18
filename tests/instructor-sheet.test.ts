@@ -57,7 +57,14 @@ mock.module("../src/integrations/supabase/client.ts", {
                             name: "علوم الحاسوب",
                           },
                         ]
-                      : [{ id: "type-a", college_id: college, code: "PERM" }];
+                      : [
+                          { id: "type-a", college_id: college, code: "PERM" },
+                          ...["permanent", "annual_contract", "con"].map((code) => ({
+                            id: `type-${code}`,
+                            college_id: college,
+                            code,
+                          })),
+                        ];
           return {
             data: data
               .filter((row) =>
@@ -106,6 +113,14 @@ mock.module("../src/integrations/supabase/client.ts", {
         return query;
       },
       rpc(name: string, args: { p_instructor_ids?: string[] }) {
+        if (name === "get_instructor_number_aliases") {
+          return Promise.resolve({
+            data: catalog
+              .filter((row) => args.p_instructor_ids?.includes(String(row.id)))
+              .map((row) => ({ instructor_id: row.id, university_number: "USABA-H-000001" })),
+            error: null,
+          });
+        }
         if (name === "get_instructor_university_numbers") {
           return Promise.resolve({
             data: catalog
@@ -241,7 +256,7 @@ test("missing, ambiguous and conflicting identities cannot create duplicate teac
     catalog = [];
     let result = (await check()).result;
     assert.equal(result.validRows.length, 0);
-    assert.ok(result.errors.some((e) => e.errorCode === "instructor_employee_number_required"));
+    assert.ok(result.errors.some((e) => e.errorCode === "instructor_employment_category_required"));
     catalog = [teacher, { ...teacher, id: "teacher-2", employee_number: "EMP43" }];
     result = (await check()).result;
     assert.ok(result.errors.some((e) => e.errorCode === "ambiguous_instructor"));
@@ -325,4 +340,36 @@ test("university number resolves the existing employee and unknown numbers canno
   assert.ok(
     invalid.result.errors.some((error) => error.errorCode === "university_identity_not_unique"),
   );
+});
+
+test("previous contract code resolves the same instructor after promotion", async () => {
+  const { result } = await check(sourceFile({ 7: "USABA-H-000001" }, ["الرقم الجامعي الموحّد"]));
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.validRows[0].values.employee_number, "EMP42");
+});
+
+test("an existing automatically numbered permanent instructor can be reimported without an HR number", async () => {
+  try {
+    catalog = [{ ...teacher, employee_number: null }];
+    const { result } = await check(
+      sourceFile({ 7: "USABA-ITCS-000042" }, ["الرقم الجامعي الموحّد"]),
+    );
+    assert.deepEqual(result.errors, []);
+    assert.equal(result.validRows.length, 1);
+  } finally {
+    catalog = [teacher];
+  }
+});
+
+test("new explicit permanent and contract categories do not require a manual employee number", async () => {
+  try {
+    catalog = [];
+    for (const category of ["permanent", "annual_contract", "con"]) {
+      const { result } = await check(sourceFile({ 7: category }, ["فئة_المحاضر_رمز"]));
+      assert.deepEqual(result.errors, [], category);
+      assert.equal(result.validRows.length, 1);
+    }
+  } finally {
+    catalog = [teacher];
+  }
 });
