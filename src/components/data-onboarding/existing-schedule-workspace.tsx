@@ -195,9 +195,9 @@ export function ExistingScheduleWorkspace({
         {
           p_source: editing.id,
           p_day: editing.day_of_week ?? 6,
-          p_start: (start || null) as string,
-          p_end: (end || null) as string,
-          p_room: (room || null) as string,
+          p_start: start || null,
+          p_end: end || null,
+          p_room: room || null,
           p_allocations: Object.keys(split).length ? split : null,
         },
       );
