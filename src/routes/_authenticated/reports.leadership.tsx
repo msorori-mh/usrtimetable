@@ -6,6 +6,7 @@ import { useCurrentUser } from "@/hooks/use-current-user";
 import { setActiveCollegeId } from "@/hooks/use-colleges";
 import { canViewLeadership } from "@/lib/viewer-roles";
 import { UnauthorizedAccess } from "@/components/unauthorized-access";
+import { ReportFilterField } from "@/components/reports/report-filters";
 import { ReportShell } from "@/components/reports/report-shell";
 import { ReportSection, ReportDataTable } from "@/components/reports/report-section";
 import { Card } from "@/components/ui/card";
@@ -116,14 +117,13 @@ function LeadershipDashboard() {
       }}
       filters={
         <div className="report-no-print flex flex-wrap items-end gap-3 rounded-xl border bg-card p-4">
-          <div className="min-w-64">
-            <p className="mb-2 text-sm font-semibold">الفترة الأكاديمية للمقارنة</p>
+          <ReportFilterField label="الفترة الأكاديمية للمقارنة" htmlFor="leadership-period">
             <Select
               value={selectedValue}
               onValueChange={(value) => setPeriod(JSON.parse(value))}
               disabled={query.isFetching}
             >
-              <SelectTrigger aria-label="الفترة الأكاديمية للمقارنة">
+              <SelectTrigger id="leadership-period" aria-label="الفترة الأكاديمية للمقارنة">
                 <SelectValue placeholder="اختر الفترة" />
               </SelectTrigger>
               <SelectContent>
@@ -134,7 +134,7 @@ function LeadershipDashboard() {
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          </ReportFilterField>
           <Button
             variant="outline"
             onClick={() => void query.refetch()}
