@@ -4,10 +4,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { ReportShell } from "@/components/reports/report-shell";
-import {
-  ReportFilterField,
-  ReportFilters,
-} from "@/components/reports/report-filters";
+import { ReportFilterField, ReportFilters } from "@/components/reports/report-filters";
 import { Card } from "@/components/ui/card";
 import { PrintSheet } from "@/components/print-center/print-sheet";
 import { useReportContext } from "@/hooks/reports/useReportContext";
@@ -44,9 +41,7 @@ const EMPTY_SESSIONS: PrintSessionLike[] = [];
 const DESCRIPTION =
   "طباعة الجدول كاملًا أو حسب القسم والبرنامج — مجمعة حسب البرنامج/المستوى/النظام مع مجموعات الطلاب، برأس رسمي وبدون أي تعديل على الجدول.";
 
-export const Route = createFileRoute(
-  "/_authenticated/reports/current-timetable",
-)({
+export const Route = createFileRoute("/_authenticated/reports/current-timetable")({
   head: () => ({
     meta: [
       { title: `${CURRENT_SCHEDULE_TITLE_AR} — جامعة إقليم سبأ` },
@@ -109,17 +104,11 @@ function Page() {
   const availablePrograms = (catalog?.programs ?? []).filter(
     (p) => departmentId === "all" || p.department_id === departmentId,
   );
-  const selectedDepartment = catalog?.departments.find(
-    (d) => d.id === departmentId,
-  );
+  const selectedDepartment = catalog?.departments.find((d) => d.id === departmentId);
   const selectedProgram = availablePrograms.find((p) => p.id === programId);
   const extraSummary = [
-    ...(departmentId !== "all"
-      ? [`القسم: ${selectedDepartment?.name ?? departmentId}`]
-      : []),
-    ...(programId !== "all"
-      ? [`البرنامج: ${selectedProgram?.name ?? programId}`]
-      : []),
+    ...(departmentId !== "all" ? [`القسم: ${selectedDepartment?.name ?? departmentId}`] : []),
+    ...(programId !== "all" ? [`البرنامج: ${selectedProgram?.name ?? programId}`] : []),
   ];
   const exportAt = useMemo(() => new Date(), []);
   const [qrUrl, setQrUrl] = useState("");
@@ -131,12 +120,7 @@ function Page() {
     error: sessionsError,
     refetch,
   } = useQuery({
-    queryKey: [
-      "current-timetable-print",
-      ctx.collegeId,
-      ctx.versionId,
-      ctx.studySystem,
-    ],
+    queryKey: ["current-timetable-print", ctx.collegeId, ctx.versionId, ctx.studySystem],
     enabled: !!ctx.collegeId && !!ctx.versionId,
     queryFn: async () => {
       const hydrated = await fetchHydratedVersionSessions({
@@ -147,9 +131,7 @@ function Page() {
       const expanded = expandIntakeTimetable(hydrated);
       const planIds = [
         ...new Set(
-          expanded.flatMap(
-            (r) => r.intake_memberships?.map((m) => m.study_plan_id) ?? [],
-          ),
+          expanded.flatMap((r) => r.intake_memberships?.map((m) => m.study_plan_id) ?? []),
         ),
       ];
       const plans = planIds.length
@@ -177,10 +159,7 @@ function Page() {
           },
         };
       });
-      const labels = await fetchCohortDeliveryGroupLabels(
-        ctx.collegeId!,
-        sessions,
-      );
+      const labels = await fetchCohortDeliveryGroupLabels(ctx.collegeId!, sessions);
       return { sessions, labels };
     },
   });
@@ -216,17 +195,12 @@ function Page() {
         );
         return {
           ...page,
-          departmentName: catalog?.departments.find(
-            (d) => d.id === program?.department_id,
-          )?.name,
+          departmentName: catalog?.departments.find((d) => d.id === program?.department_id)?.name,
         };
       }),
     [sessions, ctx.collegeId, ctx.studySystem, catalog],
   );
-  const rows = useMemo(
-    () => buildExportRows(pages, bundle?.labels),
-    [pages, bundle?.labels],
-  );
+  const rows = useMemo(() => buildExportRows(pages, bundle?.labels), [pages, bundle?.labels]);
   const printedSessions = countPagedSessions(pages);
   const dropped = sessions.length - printedSessions;
 
@@ -236,8 +210,7 @@ function Page() {
 
   const isLoading = ctx.isLoading || sessionsLoading || catalogLoading;
   const ready = !!ctx.versionId;
-  const filtered =
-    ctx.studySystem !== "all" || departmentId !== "all" || programId !== "all";
+  const filtered = ctx.studySystem !== "all" || departmentId !== "all" || programId !== "all";
   const coverageSuffix = filtered ? " (الكلية كاملة)" : "";
   const scopeSuffix = filtered ? " (ضمن الفلتر)" : "";
 
@@ -330,14 +303,12 @@ function Page() {
       summary={
         <Card className="p-3 text-sm" data-testid="current-timetable-coverage">
           <p className="font-semibold">
-            التغطية الحالية (الكلية كاملة، كل الأنظمة): المجموعات {groupsText} ·
-            الساعات {hoursText}
+            التغطية الحالية (الكلية كاملة، كل الأنظمة): المجموعات {groupsText} · الساعات {hoursText}
           </p>
           {filtered && (
             <p className="mt-1 text-muted-foreground">
-              أرقام التغطية أعلاه تخص الكلية كاملة بجميع الأنظمة؛ أما الجلسات
-              والصفحات والطباعة والتصدير فتتبع القسم والبرنامج ونظام الدراسة
-              المختارة.
+              أرقام التغطية أعلاه تخص الكلية كاملة بجميع الأنظمة؛ أما الجلسات والصفحات والطباعة
+              والتصدير فتتبع القسم والبرنامج ونظام الدراسة المختارة.
             </p>
           )}
           <p className="mt-1 text-muted-foreground">
@@ -384,9 +355,7 @@ function Page() {
         {pages.map((page) => (
           <section key={page.key} className="space-y-2">
             <h2 className="text-base font-semibold">{page.title}</h2>
-            <p className="text-xs text-muted-foreground">
-              {page.sessions.length} جلسة
-            </p>
+            <p className="text-xs text-muted-foreground">{page.sessions.length} جلسة</p>
           </section>
         ))}
       </div>
