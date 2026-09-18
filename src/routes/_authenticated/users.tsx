@@ -145,7 +145,7 @@ function UsersPage() {
       if (on) {
         const { error } = await supabase.from("user_roles").insert({ user_id: userId, role });
         if (error && !error.message.includes("duplicate")) throw error;
-        // Viewer roles («مشاهد» / «مشاهد مؤسسي») read every college: assign them
+        // Academic affairs reads every college: assign them
         // all here too (a database trigger is the authoritative safety net).
         // Multi-role safety: never widen an account that carries an admin role.
         const existingRoles = (
@@ -711,7 +711,7 @@ function CreateUserDialog({
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          {assignsAllColleges(form.role) && (
+          {(form.role === "read_only" || assignsAllColleges(form.role)) && (
             <p className="rounded-md bg-secondary p-3 text-sm">
               {form.role === "institutional_viewer"
                 ? INSTITUTIONAL_VIEWER_CREATE_NOTE_AR
@@ -798,7 +798,7 @@ function CreateUserDialog({
               <p className="mb-1 text-[11px] text-muted-foreground">
                 {form.role === "college_admin"
                   ? "سيحصل على كامل صلاحيات العمليات داخل الكلّيات المحددة. الإسناد إلزامي."
-                  : "الإسناد إلزامي لتفعيل الدور."}
+                  : "اختر الكلّيات المسموح بعرض تقاريرها فقط. الإسناد إلزامي."}
               </p>
               {colleges.length === 0 ? (
                 <p className="text-xs text-muted-foreground">أنشئ كلّية أولاً.</p>
@@ -840,3 +840,4 @@ function CreateUserDialog({
     </Dialog>
   );
 }
+

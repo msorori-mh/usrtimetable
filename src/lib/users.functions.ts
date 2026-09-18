@@ -56,11 +56,9 @@ export const adminCreateUser = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertInstitutionAdmin(context.userId);
 
-    // Viewer roles («مشاهد» = read_only, «مشاهد مؤسسي» = institutional_viewer)
-    // read every college: the assignment is computed here (all current colleges)
-    // and a college created later is auto-assigned by a database trigger.
-    // college_admin keeps its explicit, manually chosen assignment.
-    let collegeIds = data.college_ids;
+    // Only academic affairs receives all colleges. Report viewers retain the
+    // explicit selection, including when the auth trigger grants read_only.
+    let collegeIds = [...new Set(data.college_ids)];
     if (assignsAllColleges(data.role)) {
       const { data: allColleges, error: colErr } = await supabaseAdmin
         .from("colleges")
@@ -69,6 +67,13 @@ export const adminCreateUser = createServerFn({ method: "POST" })
       collegeIds = (allColleges ?? []).map((c) => c.id);
     } else if (requiresCollegeAssignment(data.role) && collegeIds.length === 0) {
       throw new Error("College assignment is required for every role except Super Admin");
+    }
+
+    if (collegeIds.length > 0) {
+      const { data: selected, error } = await supabaseAdmin
+        .from("colleges").select("id").in("id", collegeIds);
+      if (error) throw new Error(error.message);
+      if (selected?.length !== collegeIds.length) throw new Error("Invalid college assignment");
     }
 
     const { data: created, error: createErr } = await supabaseAdmin.auth.admin.createUser({
@@ -109,7 +114,7 @@ export const adminCreateUser = createServerFn({ method: "POST" })
       action: "user_created",
       entity: "profiles",
       entity_id: newId,
-      details: { email: data.email, role: data.role, college_ids: data.college_ids } as never,
+      details: { email: data.email, role: data.role, college_ids: collegeIds } as never,
     });
 
     return { id: newId };
@@ -156,3 +161,4 @@ export const adminGeneratePasswordReset = createServerFn({ method: "POST" })
     });
     return { action_link: link.properties?.action_link ?? null };
   });
+

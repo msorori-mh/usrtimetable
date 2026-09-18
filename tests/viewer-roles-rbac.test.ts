@@ -99,16 +99,17 @@ describe("multi-role safety", () => {
 });
 
 describe("college assignment", () => {
-  it("auto-assigns all colleges to both viewer roles only", () => {
-    expect(assignsAllColleges("read_only")).toBe(true);
+  it("auto-assigns all colleges to academic affairs only", () => {
+    expect(assignsAllColleges("read_only")).toBe(false);
     expect(assignsAllColleges("institutional_viewer")).toBe(true);
     expect(assignsAllColleges("college_admin")).toBe(false);
     expect(assignsAllColleges("super_admin")).toBe(false);
   });
 
-  it("requires a manual picker for college_admin only", () => {
+  it("requires a manual picker for college admins and report viewers", () => {
     expect(requiresCollegeAssignment("college_admin")).toBe(true);
-    expect(requiresCollegeAssignment("read_only")).toBe(false);
+    expect(requiresCollegeAssignment("read_only")).toBe(true);
     expect(requiresCollegeAssignment("institutional_viewer")).toBe(false);
   });
 });
+
