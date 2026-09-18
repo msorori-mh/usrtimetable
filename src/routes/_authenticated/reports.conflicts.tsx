@@ -266,7 +266,9 @@ function Page() {
           rows={rows}
           rowClassName={(r) => severityMeta(severityKeyFor(r.classification)).rowClass}
           caption="تفاصيل تعارضات آخر فحص محفوظ"
-          columns={compactConflictColumns() as ReportColumn<(typeof rows)[number]>[]}
+          columns={
+            compactConflictColumns() as unknown as ReportColumn<(typeof rows)[number]>[]
+          }
           primaryColumnLimit={6}
         />
       </ReportSection>
