@@ -23,6 +23,7 @@ export function FacultyIdentityLink({
   const { data: me } = useCurrentUser();
   const [open, setOpen] = useState(false);
   const [target, setTarget] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [evidence, setEvidence] = useState("");
   const qc = useQueryClient();
@@ -59,6 +60,26 @@ export function FacultyIdentityLink({
       );
     },
   });
+
+  const candidateRows = (candidates.data ?? []).filter((row) => row.university_number);
+  const normalizedSearch = searchQuery.trim().toLocaleLowerCase("ar");
+  const filteredCandidates =
+    normalizedSearch.length === 0
+      ? candidateRows
+      : candidateRows.filter((row) =>
+          [
+            row.full_name,
+            row.university_number,
+            row.employee_number,
+            row.colleges?.name,
+            row.specialization,
+          ]
+            .filter(Boolean)
+            .some((value) =>
+              String(value).toLocaleLowerCase("ar").includes(normalizedSearch),
+            ),
+        );
+
   const link = useMutation({
     mutationFn: async () => {
       if (!confirmed || !target || evidence.trim().length < 12)
@@ -82,14 +103,25 @@ export function FacultyIdentityLink({
       setOpen(false);
       setConfirmed(false);
       setTarget("");
+      setSearchQuery("");
       setEvidence("");
       toast.success("تم توحيد الهوية الجامعية مع الحفاظ على الإسنادات والجداول");
     },
     onError: (error: Error) => toast.error(error.message),
   });
+
   if (!me?.isSuperAdmin) return null;
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) {
+          setSearchQuery("");
+        }
+      }}
+    >
       <DialogTrigger asChild>
         <Button size="sm" variant="outline">
           ربط الهوية الجامعية
@@ -103,6 +135,23 @@ export function FacultyIdentityLink({
           اختر السجل المعتمد لنفس الشخص. سيُستخدم رقمه الجامعي للسجلات المرتبطة، مع الاحتفاظ
           بالأرقام السابقة والإسنادات والجداول.
         </p>
+        <label className="space-y-1">
+          <span>بحث عن المحاضر</span>
+          <input
+            type="search"
+            aria-label="البحث في سجلات المحاضرين"
+            className="w-full rounded border p-2"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="اكتب جزءًا من الاسم أو الرقم الجامعي أو رقم الموظف"
+            autoComplete="off"
+          />
+          {normalizedSearch && (
+            <span className="block text-xs text-muted-foreground">
+              {filteredCandidates.length} نتيجة مطابقة
+            </span>
+          )}
+        </label>
         <label>
           السجل المعتمد
           <select
@@ -114,15 +163,19 @@ export function FacultyIdentityLink({
               setConfirmed(false);
             }}
           >
-            <option value="">اختر المحاضر ورقمه الجامعي</option>
-            {(candidates.data ?? [])
-              .filter((row) => row.university_number)
-              .map((row) => (
-                <option key={row.id} value={row.university_number!}>
-                  {row.full_name} — {row.university_number} — {row.colleges?.name} —{" "}
-                  {row.specialization ?? "تخصص غير محدد"} — {row.employee_number}
-                </option>
-              ))}
+            <option value="">
+              {candidates.isLoading
+                ? "جارٍ تحميل المحاضرين..."
+                : filteredCandidates.length === 0 && normalizedSearch
+                  ? "لا توجد نتائج مطابقة"
+                  : "اختر المحاضر ورقمه الجامعي"}
+            </option>
+            {filteredCandidates.map((row) => (
+              <option key={row.id} value={row.university_number!}>
+                {row.full_name} — {row.university_number} — {row.colleges?.name} —{" "}
+                {row.specialization ?? "تخصص غير محدد"} — {row.employee_number}
+              </option>
+            ))}
           </select>
         </label>
         {candidates.error && <p role="alert">تعذر تحميل السجلات. أعد فتح النافذة للمحاولة.</p>}
