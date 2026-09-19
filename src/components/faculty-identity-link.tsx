@@ -79,6 +79,25 @@ export function FacultyIdentityLink({
               String(value).toLocaleLowerCase("ar").includes(normalizedSearch),
             ),
         );
+  const evidenceLength = evidence.trim().length;
+  const evidenceReady = evidenceLength >= 12;
+
+  const submitLink = () => {
+    if (!target) {
+      toast.error("اختر السجل المعتمد أولًا.");
+      return;
+    }
+    if (!confirmed) {
+      toast.error("أكد أن السجلين يعودان لنفس الشخص.");
+      return;
+    }
+    if (!evidenceReady) {
+      toast.error(`أدخل دليل تحقق واضحًا من 12 حرفًا على الأقل. الحالي: ${evidenceLength}/12`);
+      return;
+    }
+    link.mutate();
+  };
+
 
   const link = useMutation({
     mutationFn: async () => {
@@ -119,6 +138,9 @@ export function FacultyIdentityLink({
         setOpen(nextOpen);
         if (!nextOpen) {
           setSearchQuery("");
+          setTarget("");
+          setConfirmed(false);
+          setEvidence("");
         }
       }}
     >
@@ -179,14 +201,26 @@ export function FacultyIdentityLink({
           </select>
         </label>
         {candidates.error && <p role="alert">تعذر تحميل السجلات. أعد فتح النافذة للمحاولة.</p>}
-        <label>
-          دليل التحقق من الهوية
+        <label className="space-y-1">
+          <span>
+            دليل التحقق من الهوية <span className="text-destructive">*</span>
+          </span>
           <textarea
+            required
+            minLength={12}
+            aria-describedby="faculty-identity-evidence-help"
+            aria-invalid={evidenceLength > 0 && !evidenceReady}
             className="w-full rounded border p-2"
             value={evidence}
             onChange={(e) => setEvidence(e.target.value)}
-            placeholder="مرجع كشف رسمي، رقم وظيفي موثّق، أو تأكيد صاحب السجل. تشابه الاسم وحده لا يكفي."
+            placeholder="مثال: مطابق للرقم الوظيفي 12345 في كشف شؤون الموظفين."
           />
+          <span
+            id="faculty-identity-evidence-help"
+            className={`block text-xs ${evidenceLength > 0 && !evidenceReady ? "text-destructive" : "text-muted-foreground"}`}
+          >
+            إلزامي — اكتب مرجع التحقق في 12 حرفًا على الأقل. {evidenceLength}/12
+          </span>
         </label>
         <label className="flex gap-2">
           <input
@@ -197,16 +231,10 @@ export function FacultyIdentityLink({
           تحققت أن السجلين لنفس الشخص، وليس مجرد تشابه أسماء.
         </label>
         <Button
-          disabled={
-            !target ||
-            !confirmed ||
-            evidence.trim().length < 12 ||
-            link.isPending ||
-            candidates.isLoading
-          }
-          onClick={() => link.mutate()}
+          disabled={link.isPending || candidates.isLoading}
+          onClick={submitLink}
         >
-          تأكيد ربط الهوية
+          {link.isPending ? "جارٍ ربط الهوية..." : "تأكيد ربط الهوية"}
         </Button>
       </DialogContent>
     </Dialog>
