@@ -196,8 +196,8 @@ function Page() {
   const summary = useMemo(
     () =>
       summarizeUniversitySchedule(schedule.data ?? [], {
-        maxWeeklyHours: isHourlyContract ? null : selectedInstructor?.max_weekly_hours,
-        adminReleaseHours: isHourlyContract ? 0 : selectedInstructor?.administrative_release_hours,
+        maxWeeklyHours: isHourlyContract ? null : selectedInstructor?.authoritative_quota,
+        adminReleaseHours: 0,
       }),
     [schedule.data, isHourlyContract, selectedInstructor],
   );
@@ -306,7 +306,7 @@ function Page() {
                 hint:
                   workloadBalance.netHours === null
                     ? "النصاب غير محدد في بطاقة المحاضر أو سياسة النصاب"
-                    : `الأساسي ${workloadBalance.baseHours?.toFixed(2) ?? "0.00"} − الإعفاء الإداري ${workloadBalance.releaseHours.toFixed(2)}`,
+                    : "النصاب المعتمد من الكلية الأصلية بعد الإعفاء الإداري",
               },
               { label: "أيام الحضور", value: distinctDays },
               { label: "المقررات", value: distinctCourses },
