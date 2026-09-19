@@ -53,6 +53,11 @@ function compactClock(value: string): string {
   return String(hour % 12 || 12) + (match[2] === "00" ? "" : ":" + match[2]);
 }
 
+/** The room column supplies context; retain the lab discipline and number. */
+function compactRoomLabel(value: string): string {
+  return value.replace(/^معمل\s+(?:ال)?حاسوب\s+/u, "حاسوب ");
+}
+
 function HeaderField(props: { label: string; value: string }) {
   return (
     <div className="print-header-field">
@@ -205,12 +210,12 @@ export function PrintSheet(props: {
           {readable && (
             <colgroup>
               <col style={{ width: "10%" }} />
-              <col style={{ width: "13%" }} />
+              <col style={{ width: "10%" }} />
               <col style={{ width: "24%" }} />
               {visibility.showInstructor && <col style={{ width: "20%" }} />}
-              {visibility.showRoom && <col style={{ width: "13%" }} />}
-              <col style={{ width: "8%" }} />
-              <col style={{ width: "12%" }} />
+              {visibility.showRoom && <col style={{ width: "18%" }} />}
+              <col style={{ width: "7%" }} />
+              <col style={{ width: "11%" }} />
             </colgroup>
           )}
           <TableHeader>
@@ -259,7 +264,13 @@ export function PrintSheet(props: {
                   </TableCell>
                   <TableCell>{row.course_name}</TableCell>
                   {visibility.showInstructor && <TableCell>{row.instructor}</TableCell>}
-                  {visibility.showRoom && <TableCell>{row.room}</TableCell>}
+                  {visibility.showRoom && (
+                    <TableCell className={readable ? "schedule-room" : undefined}>
+                      <span title={row.room} aria-label={row.room}>
+                        {readable ? compactRoomLabel(row.room) : row.room}
+                      </span>
+                    </TableCell>
+                  )}
                   <TableCell>{row.component}</TableCell>
                   <TableCell>{groupText}</TableCell>
                 </TableRow>

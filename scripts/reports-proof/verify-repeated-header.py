@@ -7,11 +7,13 @@ import fitz
 results = []
 for path in sorted(Path("repeated-header-proof").glob("*.pdf")):
     doc = fitz.open(path)
-    assert len(doc) >= (1 if path.name.startswith("university") else 2), f"{path}: fixture did not paginate"
+    assert len(doc) >= (1 if path.name.startswith(("university", "room-fit")) else 2), f"{path}: fixture did not paginate"
     if path.name.startswith(("university", "individual")):
         assert len(doc) == 2, f"{path}: compact instructor report must use two pages"
         assert "DETAIL_PROOF" in doc[0].get_text() and "WEEK_PROOF" not in doc[0].get_text(), f"{path}: details must be page one"
         assert "WEEK_PROOF" in doc[1].get_text() and "DETAIL_PROOF" not in doc[1].get_text(), f"{path}: weekly must be page two"
+    if path.name.startswith("room-fit"):
+        assert len(doc) == 1, f"{path}: 14-row lab schedule must fit one A4 page"
     all_rows = []
     for number, page in enumerate(doc, 1):
         if "portrait" in path.name:
@@ -49,6 +51,8 @@ for path in sorted(Path("repeated-header-proof").glob("*.pdf")):
     elif path.name.startswith("individual"):
         assert sorted(set(all_rows)) == ["ROW000", "ROW001"]
         assert "COMPUTING_V1" in doc[0].get_text(), f"{path}: hours summary must follow details"
+    elif path.name.startswith("room-fit"):
+        assert sorted(all_rows) == [f"ROW{i:03}" for i in range(14)], f"{path}: missing compact schedule rows"
     elif path.name.startswith("instructor"):
         assert sorted(set(all_rows)) == [f"ROW{i:03}" for i in range(18)], f"{path}: missing individual schedule rows"
     else:
@@ -56,3 +60,4 @@ for path in sorted(Path("repeated-header-proof").glob("*.pdf")):
     results.append({"file": path.name, "pages": len(doc), "rows": len(all_rows), "every_page_has_identity": True})
 Path("repeated-header-proof/results.json").write_text(json.dumps(results, indent=2))
 print(json.dumps(results, indent=2))
+

@@ -1157,6 +1157,15 @@
     text-align: center;
     font-weight: 700;
   }
+  .print-center-page--readable .readable-schedule-table td.schedule-room {
+    font-size: 10.5pt;
+    white-space: nowrap;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+  .print-center-page--readable .schedule-room span {
+    white-space: nowrap;
+  }
   .print-center-page--readable .schedule-time {
     text-align: center;
     font-variant-numeric: tabular-nums;
