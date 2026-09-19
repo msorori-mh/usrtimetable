@@ -125,4 +125,3 @@ export function summarizeQuotaBalances(balances: QuotaBalance[]) {
     deficitMembers: counted.filter((b) => (b.deficitHours ?? 0) > 0).length,
   };
 }
-
