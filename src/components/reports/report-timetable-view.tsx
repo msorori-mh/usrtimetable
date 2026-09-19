@@ -122,7 +122,7 @@ function LevelDetailCell({ row }: { row: TimetableDetailRow }) {
 
 function GroupDetailCell({ row }: { row: TimetableDetailRow }) {
   return (
-    <div className="instructor-detail-cell flex min-h-8 min-w-[80px] items-center justify-center text-center leading-5">
+    <div className="instructor-detail-cell instructor-detail-group flex min-h-8 min-w-[80px] items-center justify-center text-center leading-5">
       <bdi dir="auto" className="instructor-detail-code font-semibold">
         {detailText(row.delivery_group)}
       </bdi>
