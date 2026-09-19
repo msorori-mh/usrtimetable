@@ -49,6 +49,8 @@ export type CollegeScheduleInstructor = {
   home_college_name: string | null;
   instructor_type_code: string | null;
   employment_type: string;
+  recorded_quota: number | null;
+  recorded_release: number | null;
   authoritative_quota: number | null;
 };
 
