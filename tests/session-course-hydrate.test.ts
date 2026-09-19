@@ -120,6 +120,7 @@ describe("timetable session course visibility (PGRST200)", () => {
     expect(hydrated.length).toBe(54);
     expect(new Set(hydrated.map((s) => s.id)).size).toBe(54);
     expect(hydrated[7]?.course_offerings?.courses).toBeNull();
+    expect(hydrated[0]?.course_offerings?.course_id).toBe("course-0");
     expect(hydrated[0]?.course_offerings?.courses?.code).toBe("C000");
 
     const mappedMissing = mapRawToTimetableSession(hydrated[7]);
