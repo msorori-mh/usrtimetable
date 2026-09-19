@@ -257,7 +257,7 @@ test("missing quotas and unresolved shared allocations stay out of both separate
   assert.deepEqual(buildAcademicReport(data, "deficit"), []);
 });
 
-test("balanced members are excluded; explicit zero quotas are real and release applies once", () => {
+test("balanced members are excluded; explicit zero quotas are real and administrative quota applies once", () => {
   const data = fixture();
   data.instructors[0] = {
     ...data.instructors[0],
@@ -265,6 +265,7 @@ test("balanced members are excluded; explicit zero quotas are real and release a
     administrative_release_hours: 4,
   };
   data.instructors[1] = { ...data.instructors[1], max_weekly_hours: 0 };
+  data.workloads[0].standard_assigned_hours = 4;
   data.workloads[1].standard_assigned_hours = 3;
   const rows = buildAcademicReport(data, "overload");
   assert.equal(rows.length, 1);
