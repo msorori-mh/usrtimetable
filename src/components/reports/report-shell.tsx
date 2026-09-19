@@ -109,7 +109,11 @@ export function ReportShell({
     await document.fonts.ready;
 
     const originalTitle = document.title;
-    const pdfTitle = (printFilename ?? title ?? filename).trim() || originalTitle;
+    const pdfTitle =
+      (printFilename ?? title ?? filename)
+        .replace(/[\\/:*?"<>|]+/g, " - ")
+        .replace(/\s+/g, " ")
+        .trim() || originalTitle;
     let restored = false;
     const restoreTitle = () => {
       if (restored) return;
