@@ -39,7 +39,7 @@ import { filterCurrentScheduleScope } from "@/lib/print-center/current-schedule-
 const EMPTY_SESSIONS: PrintSessionLike[] = [];
 
 const DESCRIPTION =
-  "طباعة الجدول كاملًا أو حسب القسم والبرنامج والمستوى — مجمعة حسب البرنامج/المستوى/النظام مع مجموعات الطلاب، برأس رسمي وبدون أي تعديل على الجدول.";
+  "طباعة الجدول كاملًا أو حسب القسم والبرنامج والمستوى أو مادة واحدة عبر جميع أقسام الكلية — مجمعة حسب البرنامج/المستوى/النظام مع مجموعات الطلاب، برأس رسمي وبدون أي تعديل على الجدول.";
 
 export const Route = createFileRoute("/_authenticated/reports/current-timetable")({
   head: () => ({
@@ -67,12 +67,14 @@ function Page() {
   const [departmentId, setDepartmentId] = useState("all");
   const [programId, setProgramId] = useState("all");
   const [levelId, setLevelId] = useState("all");
+  const [courseId, setCourseId] = useState("all");
   const [scopeCollege, setScopeCollege] = useState(ctx.collegeId);
   if (scopeCollege !== ctx.collegeId) {
     setScopeCollege(ctx.collegeId);
     setDepartmentId("all");
     setProgramId("all");
     setLevelId("all");
+    setCourseId("all");
   }
   const {
     data: catalog,
@@ -83,7 +85,7 @@ function Page() {
     queryKey: ["current-timetable-scope", ctx.collegeId],
     enabled: !!ctx.collegeId,
     queryFn: async () => {
-      const [departments, programs, levels] = await Promise.all([
+      const [departments, programs, levels, courses] = await Promise.all([
         supabase
           .from("departments")
           .select("id,name")
@@ -100,14 +102,22 @@ function Page() {
           .eq("college_id", ctx.collegeId!)
           .order("level_number")
           .order("name"),
+        supabase
+          .from("courses")
+          .select("id,name,code")
+          .eq("college_id", ctx.collegeId!)
+          .order("name")
+          .order("code"),
       ]);
       if (departments.error) throw departments.error;
       if (programs.error) throw programs.error;
       if (levels.error) throw levels.error;
+      if (courses.error) throw courses.error;
       return {
         departments: departments.data ?? [],
         programs: programs.data ?? [],
         levels: levels.data ?? [],
+        courses: courses.data ?? [],
       };
     },
   });
@@ -120,10 +130,14 @@ function Page() {
   const selectedDepartment = catalog?.departments.find((d) => d.id === departmentId);
   const selectedProgram = availablePrograms.find((p) => p.id === programId);
   const selectedLevel = availableLevels.find((level) => level.id === levelId);
+  const selectedCourse = catalog?.courses.find((course) => course.id === courseId);
   const extraSummary = [
     ...(departmentId !== "all" ? [`القسم: ${selectedDepartment?.name ?? departmentId}`] : []),
     ...(programId !== "all" ? [`البرنامج: ${selectedProgram?.name ?? programId}`] : []),
     ...(levelId !== "all" ? [`المستوى: ${selectedLevel?.name ?? levelId}`] : []),
+    ...(courseId !== "all"
+      ? [`المادة: ${selectedCourse?.code ? `${selectedCourse.code} — ` : ""}${selectedCourse?.name ?? courseId}`]
+      : []),
   ];
   const exportAt = useMemo(() => new Date(), []);
   const [qrUrl, setQrUrl] = useState("");
@@ -202,8 +216,9 @@ function Page() {
         departmentId,
         programId,
         levelId,
+        courseId,
       ),
-    [bundle?.sessions, catalog?.programs, departmentId, programId, levelId],
+    [bundle?.sessions, catalog?.programs, departmentId, programId, levelId, courseId],
   );
   const pages = useMemo(
     () =>
@@ -216,10 +231,14 @@ function Page() {
         );
         return {
           ...page,
+          title:
+            courseId !== "all" && selectedCourse
+              ? `${selectedCourse.name} — ${page.title}`
+              : page.title,
           departmentName: catalog?.departments.find((d) => d.id === program?.department_id)?.name,
         };
       }),
-    [sessions, ctx.collegeId, ctx.studySystem, catalog],
+    [sessions, ctx.collegeId, ctx.studySystem, catalog, courseId, selectedCourse],
   );
   const rows = useMemo(() => buildExportRows(pages, bundle?.labels), [pages, bundle?.labels]);
   const printedSessions = countPagedSessions(pages);
@@ -232,7 +251,11 @@ function Page() {
   const isLoading = ctx.isLoading || sessionsLoading || catalogLoading;
   const ready = !!ctx.versionId;
   const filtered =
-    ctx.studySystem !== "all" || departmentId !== "all" || programId !== "all" || levelId !== "all";
+    ctx.studySystem !== "all" ||
+    departmentId !== "all" ||
+    programId !== "all" ||
+    levelId !== "all" ||
+    courseId !== "all";
   const coverageSuffix = filtered ? " (الكلية كاملة)" : "";
   const scopeSuffix = filtered ? " (ضمن الفلتر)" : "";
 
@@ -255,7 +278,7 @@ function Page() {
         void refetchCatalog();
       }}
       notReadyMessage={ready ? undefined : "اختر نسخة الجدول لطباعتها."}
-      emptyMessage="لا توجد جلسات تطابق القسم والبرنامج والمستوى ونظام الدراسة المحدد في هذه النسخة."
+      emptyMessage="لا توجد جلسات تطابق المادة أو القسم أو البرنامج أو المستوى أو نظام الدراسة المحدد في هذه النسخة."
       kpis={[
         {
           label: `المجموعات المجدولة${coverageSuffix}`,
@@ -278,6 +301,7 @@ function Page() {
             setDepartmentId("all");
             setProgramId("all");
             setLevelId("all");
+            setCourseId("all");
           }}
         >
           <ReportFilterField label="القسم" htmlFor="current-print-department">
@@ -288,6 +312,7 @@ function Page() {
                 setDepartmentId(value);
                 setProgramId("all");
                 setLevelId("all");
+                setCourseId("all");
               }}
             >
               <SelectTrigger id="current-print-department" aria-label="القسم">
@@ -309,6 +334,7 @@ function Page() {
               onValueChange={(value) => {
                 setProgramId(value);
                 setLevelId("all");
+                setCourseId("all");
               }}
               disabled={catalogLoading || !!catalogError}
             >
@@ -328,7 +354,10 @@ function Page() {
           <ReportFilterField label="المستوى" htmlFor="current-print-level">
             <Select
               value={levelId}
-              onValueChange={setLevelId}
+              onValueChange={(value) => {
+                setLevelId(value);
+                setCourseId("all");
+              }}
               disabled={catalogLoading || !!catalogError || programId === "all"}
             >
               <SelectTrigger id="current-print-level" aria-label="المستوى">
@@ -346,6 +375,32 @@ function Page() {
               </SelectContent>
             </Select>
           </ReportFilterField>
+          <ReportFilterField label="المادة — جميع أقسام الكلية" htmlFor="current-print-course">
+            <Select
+              value={courseId}
+              onValueChange={(value) => {
+                setCourseId(value);
+                if (value !== "all") {
+                  setDepartmentId("all");
+                  setProgramId("all");
+                  setLevelId("all");
+                }
+              }}
+              disabled={catalogLoading || !!catalogError}
+            >
+              <SelectTrigger id="current-print-course" aria-label="المادة">
+                <SelectValue placeholder="اختر المادة" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">جميع المواد</SelectItem>
+                {(catalog?.courses ?? []).map((course) => (
+                  <SelectItem key={course.id} value={course.id}>
+                    {course.code ? `${course.code} — ${course.name}` : course.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </ReportFilterField>
         </ReportFilters>
       }
       summary={
@@ -356,7 +411,8 @@ function Page() {
           {filtered && (
             <p className="mt-1 text-muted-foreground">
               أرقام التغطية أعلاه تخص الكلية كاملة بجميع الأنظمة؛ أما الجلسات والصفحات والطباعة
-              والتصدير فتتبع القسم والبرنامج والمستوى ونظام الدراسة المختارة.
+              والتصدير فتتبع المادة أو القسم والبرنامج والمستوى ونظام الدراسة المختارة. عند اختيار
+              مادة، يعرض التقرير جميع ظهورها في برامج وأقسام الكلية ضمن نظام الدراسة المحدد.
             </p>
           )}
           <p className="mt-1 text-muted-foreground">
