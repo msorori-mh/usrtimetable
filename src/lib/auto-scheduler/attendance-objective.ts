@@ -165,6 +165,11 @@ const vector = (m: AttendanceMetrics) => [
   // Explicit per-instructor day targets outrank generic instructor day compression,
   // but stay below the student day rules above.
   m.instructorTargetDayDeviation,
+  (m as AttendanceMetrics & { instructorExcessTargetDays?: number }).instructorExcessTargetDays ??
+    0,
+  (m as AttendanceMetrics & { instructorSingleLectureDays?: number }).instructorSingleLectureDays ??
+    0,
+  m.instructorAttendanceDays,
   m.balancedGapMinutes,
   Math.max(m.worstStudentGapMinutes, m.worstInstructorGapMinutes),
   perPerson(m.shortStudentDays, m.studentCount) +

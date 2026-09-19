@@ -412,7 +412,10 @@ export function better(a: Metrics, b: Metrics) {
   if (a.instructorAttendanceDays !== b.instructorAttendanceDays)
     return a.instructorAttendanceDays < b.instructorAttendanceDays;
   const protectedInstructorMetrics: Array<
-    keyof Pick<Metrics, "instructorGapMinutes" | "worstInstructorGapMinutes" | "shortInstructorDays">
+    keyof Pick<
+      Metrics,
+      "instructorGapMinutes" | "worstInstructorGapMinutes" | "shortInstructorDays"
+    >
   > = ["instructorGapMinutes", "worstInstructorGapMinutes", "shortInstructorDays"];
   if (protectedInstructorMetrics.some((key) => a[key] > b[key])) return false;
   return compareAttendance(a, b) < 0;
@@ -423,20 +426,24 @@ export function feasible(
   candidate: Session,
   original: Session,
 ): boolean {
+  return placementIssue(s, sessions, candidate, original) === null;
+}
+export function placementIssue(
+  s: Snapshot,
+  sessions: Session[],
+  candidate: Session,
+  original: Session,
+): string | null {
   const ctx = context(s),
     settings = s.settings,
     assignment = s.assignments.find((a) => a.id === candidate.teaching_assignment_id);
   const room = s.rooms.find((r) => r.id === candidate.room_id),
     teacher = s.instructors.find((t) => t.id === candidate.instructor_id);
-  if (
-    !assignment?.is_active ||
-    !room?.is_active ||
-    !teacher ||
-    teacher.is_active === false ||
-    candidate.is_locked ||
-    duration(candidate) !== duration(original)
-  )
-    return false;
+  if (!assignment?.is_active) return "inactive_assignment";
+  if (!room?.is_active) return "inactive_room";
+  if (!teacher || teacher.is_active === false) return "inactive_instructor";
+  if (candidate.is_locked) return "locked_session";
+  if (duration(candidate) !== duration(original)) return "changed_duration";
   const start = minutes(candidate.start_time),
     end = minutes(candidate.end_time),
     day = candidate.day_of_week;
@@ -449,14 +456,14 @@ export function feasible(
         start < minutes(b.end_time),
     )
   )
-    return false;
+    return "external_instructor_conflict";
   if (
     end <= start ||
     !settings.working_days.includes(day) ||
     start < minutes(settings.day_start_time) ||
     end > minutes(settings.day_end_time)
   )
-    return false;
+    return "working_window";
   if (
     room.capacity < candidate.expected_students ||
     !isRoomTypeCompatible({
@@ -465,22 +472,22 @@ export function feasible(
       roomType: room.room_type,
     })
   )
-    return false;
+    return "room_capacity_or_type";
   // room_availability rows are authoritative when present; the denormalized
   // rooms.available_* columns are only a fallback (they can be stale).
   const roomRows = (s.roomAvailability || []).filter((w) => w.room_id === room.id);
   if (roomRows.length) {
     const sameDay = roomRows.filter((w) => w.day_of_week === day);
-    if (!sameDay.length) return false;
+    if (!sameDay.length) return "room_closed_day";
     if (!sameDay.some((w) => start >= minutes(w.start_time) && end <= minutes(w.end_time)))
-      return false;
+      return "room_window";
   } else {
-    if (room.available_days?.length && !room.available_days.includes(day)) return false;
+    if (room.available_days?.length && !room.available_days.includes(day)) return "room_closed_day";
     if (
       (room.available_start_time && start < minutes(room.available_start_time)) ||
       (room.available_end_time && end > minutes(room.available_end_time))
     )
-      return false;
+      return "room_window";
   }
   // Date-specific closures are still checked by the authoritative save RPC.
   if (
@@ -494,7 +501,7 @@ export function feasible(
         end > (w.start_time ? minutes(w.start_time) : 0),
     )
   )
-    return false;
+    return "room_closure";
   if (
     !(candidate.study_system === "both" ? ["regular", "parallel"] : [candidate.study_system]).every(
       (system) =>
@@ -508,7 +515,7 @@ export function feasible(
         ),
     )
   )
-    return false;
+    return "system_template";
   // Instructor availability is only a constraint when enforcement is on.
   // Default: available on every approved teaching day/period; missing rows
   // never block. Explicit instructor double-booking stays blocked below.
@@ -517,7 +524,8 @@ export function feasible(
       (a) => a.instructor_id === teacher.id && a.day_of_week === day && !a.is_preference,
     );
     const type = s.types.find((t) => t.id === teacher.instructor_type_id);
-    if ((type?.is_external || type?.code === "from_other_college") && !windows.length) return false;
+    if ((type?.is_external || type?.code === "from_other_college") && !windows.length)
+      return "instructor_availability";
     const positiveWindows = windows.filter((w) => w.availability_type !== "unavailable");
     if (
       (windows.length &&
@@ -531,7 +539,7 @@ export function feasible(
           end > minutes(w.start_time),
       )
     )
-      return false;
+      return "instructor_availability";
   }
   const others = sessions.filter((x) => x.id !== candidate.id),
     sameDay = others.filter((x) => x.day_of_week === day);
@@ -539,7 +547,7 @@ export function feasible(
     sameDay.filter((x) => x.instructor_id === teacher.id && !x.replaced_by_split).length >=
     MAX_INSTRUCTOR_SESSIONS_PER_DAY
   )
-    return false;
+    return "instructor_daily_sessions";
   const teacherDays = new Set(
     others.filter((x) => x.instructor_id === teacher.id).map((x) => x.day_of_week),
   );
@@ -552,7 +560,7 @@ export function feasible(
       teacher.max_attendance_days_per_week,
     )
   )
-    return false;
+    return "instructor_day_cap";
   if (settings.extended_day_policy_enabled) {
     const before = extendedDays(s, sessions);
     const after = extendedDays(s, [...others, candidate]);
@@ -560,7 +568,7 @@ export function feasible(
       if (
         (after.get(p)?.size ?? 0) > Math.max(extendedDayLimit(settings), before.get(p)?.size ?? 0)
       )
-        return false;
+        return "extended_day_cap";
     }
   }
   if (
@@ -573,7 +581,7 @@ export function feasible(
           ctx.share(x, candidate)),
     )
   )
-    return false;
+    return "resource_overlap";
   const requiredGap = Math.max(0, settings.break_between_sessions_min || 0);
   if (
     requiredGap &&
@@ -584,7 +592,7 @@ export function feasible(
         end > minutes(x.start_time) - requiredGap,
     )
   )
-    return false;
+    return "required_break";
   for (const levelKey of ctx.levels(candidate)) {
     const days = new Set(
       others.filter((x) => ctx.levels(x).includes(levelKey)).map((x) => x.day_of_week),
@@ -593,7 +601,7 @@ export function feasible(
     const beforeDays = new Set(
       sessions.filter((x) => ctx.levels(x).includes(levelKey)).map((x) => x.day_of_week),
     ).size;
-    if (days.size > Math.max(ATTENDANCE_POLICY.maximumDays, beforeDays)) return false;
+    if (days.size > Math.max(ATTENDANCE_POLICY.maximumDays, beforeDays)) return "student_day_cap";
   }
   // Existing violations may be repaired incrementally; never enlarge them.
   const teacherMinutes =
@@ -609,7 +617,7 @@ export function feasible(
       priorTeacher,
     )
   )
-    return false;
+    return "instructor_daily_hours";
   // Student daily hours: one shared policy (total / theory-like / practical).
   const dailyPolicy = studentDailyPolicy(settings);
   const load = (list: Session[]) =>
@@ -626,9 +634,9 @@ export function feasible(
       sessionStudentLoadKind(s, candidate),
       duration(candidate),
     );
-    if (!withinStudentDailyLoad(next, dailyPolicy, prior)) return false;
+    if (!withinStudentDailyLoad(next, dailyPolicy, prior)) return "student_daily_hours";
   }
-  return true;
+  return null;
 }
 export interface CompactOptions {
   signal?: AbortSignal;

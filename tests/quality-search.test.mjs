@@ -249,3 +249,43 @@ test("actual preview worker invokes continuous quality search and emits progress
     delete globalThis.__qualityHighs;
   }
 });
+
+test("invalid assignment diagnostics identify the blocked session without deleting or replacing it", async () => {
+  const s = snapshot([session("blocked", 0, "08:00:00", "10:00:00")]);
+  s.assignments[0].is_active = false;
+  const original = JSON.stringify(s);
+  const p = await run(s);
+  assert.equal(p.qualitySearch.reason, "invalid_baseline");
+  assert.equal(p.qualitySearch.issues[0].code, "inactive_assignment");
+  assert.equal(p.qualitySearch.issues[0].sessionId, "blocked");
+  assert.deepEqual(p.moves, []);
+  assert.equal(JSON.stringify(s), original);
+});
+
+test("portfolio preserves its incumbent and session identities under an evaluation limit", async () => {
+  const s = snapshot(
+    [0, 1, 2].map((d, i) =>
+      session(`portfolio${i}`, d, "08:00:00", "10:00:00", { instructor_id: "T" }),
+    ),
+  );
+  const p = await improveDistribution(s, highs, { maxDurationMs: 3000, maxEvaluations: 180 });
+  assert.ok(p.qualitySearch.evaluated <= 180);
+  assert.ok(p.after.instructorAttendanceDays <= p.before.instructorAttendanceDays);
+  assert.ok(qualityPlanValid(s, final(s, p), 3));
+  assert.equal(p.after.teachingMinutes, p.before.teachingMinutes);
+  assert.equal(p.after.sessions, p.before.sessions);
+});
+
+test("repairs a stored instructor-day violation without relaxing the cap", async () => {
+  const s = snapshot(
+    [0, 1, 2].map((d, i) =>
+      session(`repair${i}`, d, "08:00:00", "10:00:00", { instructor_id: "T" }),
+    ),
+  );
+  s.instructors.find((t) => t.id === "T").max_attendance_days_per_week = 2;
+  const p = await run(s);
+  assert.notEqual(p.qualitySearch.reason, "invalid_baseline");
+  assert.ok(p.after.instructorAttendanceDays <= 2);
+  assert.ok(qualityPlanValid(s, final(s, p), 3));
+  assert.equal(s.instructors.find((t) => t.id === "T").max_attendance_days_per_week, 2);
+});

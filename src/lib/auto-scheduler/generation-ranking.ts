@@ -40,7 +40,6 @@ export function rankGenerationCandidates(input: {
   const { snapshot, sessions, session } = input;
   const candidates: RankedCandidate[] = [];
   for (const slot of input.slots) {
-    let metrics: Metrics | null = null;
     for (const roomId of input.roomIds) {
       const candidate = {
         ...session,
@@ -50,15 +49,19 @@ export function rankGenerationCandidates(input: {
         room_id: roomId,
       };
       if (!feasible(snapshot, sessions, candidate, session)) continue;
-      metrics ??= measure(snapshot, [...sessions, candidate]);
+      const metrics = measure(snapshot, [
+        ...sessions.filter((s) => s.id !== candidate.id),
+        candidate,
+      ]);
       candidates.push({ session: candidate, metrics });
     }
   }
   const used = new Set(input.usedDays ?? []);
   return candidates.sort(
     (a, b) =>
+      (a.metrics.practicalHallSessions ?? 0) - (b.metrics.practicalHallSessions ?? 0) ||
       compareAttendance(a.metrics, b.metrics) ||
-      Number(used.has(a.session.day_of_week)) - Number(used.has(b.session.day_of_week)) ||
+      Number(used.has(b.session.day_of_week)) - Number(used.has(a.session.day_of_week)) ||
       a.session.day_of_week - b.session.day_of_week ||
       a.session.start_time.localeCompare(b.session.start_time) ||
       input.roomIds.indexOf(a.session.room_id) - input.roomIds.indexOf(b.session.room_id),

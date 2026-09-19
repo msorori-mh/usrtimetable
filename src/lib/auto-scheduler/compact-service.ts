@@ -360,3 +360,83 @@ export async function applyCompactProposal(
     ? verifyCompactApplication(collegeId, versionId, result)
     : readActual(collegeId, versionId, result);
 }
+
+export interface CompactRestorePoint {
+  before: Snapshot;
+  saved: Snapshot;
+}
+/** Only the exact post-application snapshot may be restored; intervening edits invalidate it. */
+export async function restoreCompactApplication(
+  collegeId: string,
+  versionId: string,
+  point: CompactRestorePoint,
+): Promise<Applied> {
+  const fresh = await loadCompactSnapshot(collegeId, versionId);
+  if (
+    fingerprint(fresh.sessions) !== fingerprint(point.saved.sessions) ||
+    inputFingerprint(fresh) !== inputFingerprint(point.saved)
+  )
+    throw new Error("تغير الجدول أو موارده بعد التحسين؛ تعذر التراجع الآمن.");
+  const original = new Map(point.before.sessions.map((s) => [s.id, s]));
+  if (original.size !== fresh.sessions.length || fresh.sessions.some((s) => !original.has(s.id)))
+    throw new Error("تغيرت محاضرات الجدول؛ تعذر التراجع الآمن.");
+  const restored = fresh.sessions.map((s) => {
+    const old = original.get(s.id)!;
+    return {
+      ...s,
+      day_of_week: old.day_of_week,
+      start_time: old.start_time,
+      end_time: old.end_time,
+      room_id: old.room_id,
+    };
+  });
+  const cap = Math.max(
+    3,
+    Math.min(5, Math.max(0, ...Object.values(measure(point.before).levelDays))),
+  ) as 3 | 4 | 5;
+  if (!validateJointPlan(fresh, restored, cap))
+    throw new Error("الجدول السابق لم يعد يحقق القيود الحالية؛ تعذر التراجع.");
+  const moves = restored
+    .filter((s) => {
+      const old = fresh.sessions.find((x) => x.id === s.id)!;
+      return (
+        s.day_of_week !== old.day_of_week ||
+        s.start_time !== old.start_time ||
+        s.end_time !== old.end_time ||
+        s.room_id !== old.room_id
+      );
+    })
+    .map(({ id, day_of_week, start_time, end_time, room_id, updated_at }) => ({
+      id,
+      day_of_week,
+      start_time,
+      end_time,
+      room_id,
+      expected_updated_at: updated_at,
+    }));
+  if (!moves.length || moves.length > 512) throw new Error("لا توجد خطة تراجع صالحة.");
+  const operationId = crypto.randomUUID();
+  const pending: Applied = {
+    applied: null,
+    total: moves.length,
+    before: measure(fresh),
+    after: null,
+    status: "unknown",
+    stopped: unknownMessage,
+    operationId,
+    rpcName: "apply_schedule_relayout",
+    pendingRequest: {
+      p_college_id: collegeId,
+      p_version_id: versionId,
+      p_operation_id: operationId,
+      p_expected_revision: fresh.revision,
+      p_expected_version_updated_at: fresh.versionUpdatedAt,
+      p_day_cap: cap,
+      p_moves: moves,
+    },
+  };
+  const result = await sendAtomic(pending);
+  return result.status === "unknown"
+    ? verifyCompactApplication(collegeId, versionId, result)
+    : readActual(collegeId, versionId, result);
+}
