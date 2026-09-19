@@ -186,6 +186,8 @@ describe("print-center filters", () => {
       programId: "prog-1",
       studySystem: "all",
     });
+    assert.equal(pages.every((page) => page.levelName === "الأول"), true);
+    assert.equal(pages.every((page) => !page.title.includes("المستوى")), true);
     const keys = pages.map((p) => p.key).sort();
     assert.ok(keys.some((k) => k.includes("sys:regular")));
     assert.ok(keys.some((k) => k.includes("sys:parallel")));
@@ -261,6 +263,7 @@ describe("print-center filters", () => {
     assert.equal(rows[0]?.course_name, "مقدمة");
     assert.equal(rows[0]?.course_code, "");
     assert.equal(rows[0]?.room, "قاعة 1");
+    assert.equal(rows[0]?.level, "الأول");
     assert.ok(!JSON.stringify(rows[0]).includes("CS101"));
     assert.ok(!JSON.stringify(rows[0]).includes("A1"));
     assert.equal(filtered.length, 1);
