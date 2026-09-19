@@ -1,3 +1,4 @@
+import { compactAcademicLevelLabel } from "@/lib/reports/formatters";
 import {
   Table,
   TableBody,
@@ -44,7 +45,7 @@ export function StudentScheduleTables({ rows }: { rows: StudentScheduleRow[] }) 
           <section
             key={key}
             className="student-schedule-group rounded-lg border bg-card"
-            aria-label={`${context.program} — ${context.level}`}
+            aria-label={`${context.program} — ${compactAcademicLevelLabel(context.level)}`}
           >
             <Table>
               <TableHeader>
@@ -53,7 +54,7 @@ export function StudentScheduleTables({ rows }: { rows: StudentScheduleRow[] }) 
                     <div className="flex flex-wrap gap-x-4 gap-y-1 font-semibold">
                       <span>القسم: {context.department || "غير محدد"}</span>
                       <span>البرنامج: {context.program || "غير محدد"}</span>
-                      <span>المستوى: {context.level || "غير محدد"}</span>
+                      <span>المستوى: {compactAcademicLevelLabel(context.level) || "غير محدد"}</span>
                       {context.cohort && <span>الدفعة: {context.cohort}</span>}
                       {context.study_system && <span>النظام: {context.study_system}</span>}
                     </div>
