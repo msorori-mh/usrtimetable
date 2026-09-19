@@ -59,23 +59,34 @@ export function qualityPlanValid(snapshot: Snapshot, sessions: Session[], dayCap
 
 /** Prefer labs, hour-based day targets and fewer one-lecture days, while protecting idle time. */
 export function qualityBetter(a: Metrics, b: Metrics): boolean {
-  const protectedKeys: (keyof Metrics)[] = [
+  const studentAndHardKeys: (keyof Metrics)[] = [
     "studentGapMinutes",
     "worstStudentGapMinutes",
     "studentAttendanceDays",
     "shortStudentDays",
-    "instructorGapMinutes",
-    "worstInstructorGapMinutes",
-    "instructorAttendanceDays",
-    "instructorTargetDayDeviation",
-    "instructorExcessTargetDays",
-    "instructorSingleLectureDays",
     "practicalHallSessions",
     "excessDaysOverThree",
     "extendedDayViolations",
   ];
-  if (protectedKeys.some((k) => Number(a[k] ?? 0) > Number(b[k] ?? 0))) return false;
-  return protectedKeys.some((k) => Number(a[k] ?? 0) < Number(b[k] ?? 0));
+  if (studentAndHardKeys.some((k) => Number(a[k] ?? 0) > Number(b[k] ?? 0))) return false;
+  if (a.instructorTargetDayDeviation !== b.instructorTargetDayDeviation)
+    return a.instructorTargetDayDeviation < b.instructorTargetDayDeviation;
+  if ((a.instructorExcessTargetDays ?? 0) !== (b.instructorExcessTargetDays ?? 0))
+    return (a.instructorExcessTargetDays ?? 0) < (b.instructorExcessTargetDays ?? 0);
+  if ((a.instructorSingleLectureDays ?? 0) !== (b.instructorSingleLectureDays ?? 0))
+    return (a.instructorSingleLectureDays ?? 0) < (b.instructorSingleLectureDays ?? 0);
+  if (a.instructorAttendanceDays !== b.instructorAttendanceDays)
+    return a.instructorAttendanceDays < b.instructorAttendanceDays;
+  const instructorPolish: (keyof Metrics)[] = [
+    "instructorGapMinutes",
+    "worstInstructorGapMinutes",
+    "shortInstructorDays",
+  ];
+  if (instructorPolish.some((k) => Number(a[k] ?? 0) > Number(b[k] ?? 0))) return false;
+  return (
+    studentAndHardKeys.some((k) => Number(a[k] ?? 0) < Number(b[k] ?? 0)) ||
+    instructorPolish.some((k) => Number(a[k] ?? 0) < Number(b[k] ?? 0))
+  );
 }
 
 export function qualitySearchMessage(p: Proposal): string {
