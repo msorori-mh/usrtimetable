@@ -122,7 +122,7 @@ function LevelDetailCell({ row }: { row: TimetableDetailRow }) {
 
 function GroupDetailCell({ row }: { row: TimetableDetailRow }) {
   return (
-    <div className="instructor-detail-cell min-w-[90px] leading-5">
+    <div className="instructor-detail-cell flex min-h-8 min-w-[80px] items-center justify-center text-center leading-5">
       <bdi dir="auto" className="instructor-detail-code font-semibold">
         {detailText(row.delivery_group)}
       </bdi>
@@ -132,12 +132,19 @@ function GroupDetailCell({ row }: { row: TimetableDetailRow }) {
 
 function DayTimeDetailCell({ row }: { row: TimetableDetailRow }) {
   return (
-    <div className="instructor-detail-cell instructor-detail-time min-w-[135px] space-y-0.5 leading-5">
+    <div className="instructor-detail-cell instructor-detail-time min-w-[130px] space-y-0.5 leading-5">
       <div className="font-semibold">{detailText(row.day)}</div>
       <div className="text-[11px]">
         <LtrToken>{detailText(row.time)}</LtrToken>
       </div>
-      <div className="text-[10px] text-muted-foreground">{detailText(row.hours)} ساعة</div>
+    </div>
+  );
+}
+
+function RoomDetailCell({ row }: { row: TimetableDetailRow }) {
+  return (
+    <div className="instructor-detail-cell instructor-detail-room min-w-[120px] whitespace-nowrap text-center">
+      {detailText(row.room)}
     </div>
   );
 }
@@ -147,29 +154,34 @@ function compactInstructorDetailColumns(): ReportColumn<TimetableDetailRow>[] {
     {
       key: "course",
       label: "المقرر",
-      className: "w-[30%]",
+      className: "w-[28%]",
       render: (row) => <CourseDetailCell row={row} />,
     },
     {
       key: "level",
       label: "المستوى",
-      className: "w-[12%]",
+      className: "w-[10%]",
       render: (row) => <LevelDetailCell row={row} />,
     },
     {
       key: "delivery_group",
       label: "المجموعة",
-      className: "w-[16%]",
+      className: "w-[13%] text-center align-middle",
       render: (row) => <GroupDetailCell row={row} />,
     },
     {
       key: "day",
       label: "اليوم والوقت",
-      className: "w-[22%]",
+      className: "w-[20%]",
       render: (row) => <DayTimeDetailCell row={row} />,
     },
-    { key: "room", label: "القاعة", className: "w-[12%]" },
-    { key: "study_system", label: "النظام", className: "w-[8%]" },
+    {
+      key: "room",
+      label: "القاعة",
+      className: "w-[21%] text-center align-middle",
+      render: (row) => <RoomDetailCell row={row} />,
+    },
+    { key: "study_system", label: "النظام", className: "w-[8%] text-center align-middle" },
   ];
 }
 
