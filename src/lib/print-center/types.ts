@@ -77,6 +77,7 @@ export interface PrintSessionLike {
   expected_students?: number | null;
   updated_at?: string | null;
   course_offerings?: {
+    course_id?: string | null;
     program_id?: string | null;
     level_id?: string | null;
     courses?: {
