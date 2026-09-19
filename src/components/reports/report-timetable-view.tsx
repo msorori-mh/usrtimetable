@@ -63,17 +63,55 @@ function CourseDetailCell({ row }: { row: TimetableDetailRow }) {
   );
 }
 
-function AcademicDetailCell({ row }: { row: TimetableDetailRow }) {
+function uniqueAcademicValues(values: Array<string | null | undefined>): string[] {
+  return [...new Set(values.map((value) => value?.trim()).filter((value): value is string => !!value))];
+}
+
+function AcademicContextStrip({ sessions }: { sessions: TimetableReportSession[] }) {
+  const fields = [
+    {
+      label: "الكلية",
+      pluralLabel: "الكليات",
+      values: uniqueAcademicValues(sessions.map((session) => session.college_name)),
+    },
+    {
+      label: "القسم",
+      pluralLabel: "الأقسام",
+      values: uniqueAcademicValues(sessions.map((session) => session.department_name)),
+    },
+    {
+      label: "البرنامج",
+      pluralLabel: "البرامج",
+      values: uniqueAcademicValues(sessions.map((session) => session.program_name)),
+    },
+  ].filter((field) => field.values.length > 0);
+
+  if (!fields.length) return null;
+
   return (
-    <div className="instructor-detail-cell min-w-[170px] space-y-0.5 leading-5">
-      {detailText(row.college) !== "—" && (
-        <div className="font-semibold text-primary">{detailText(row.college)}</div>
-      )}
-      <div className="font-semibold">{detailText(row.program)}</div>
-      <div className="text-[11px] text-muted-foreground">{detailText(row.level)}</div>
-      {detailText(row.department) !== "—" && (
-        <div className="text-[10px] text-muted-foreground">{detailText(row.department)}</div>
-      )}
+    <div
+      className="instructor-academic-context mb-3 grid gap-2 rounded-md border bg-muted/30 p-2 md:grid-cols-3"
+      data-testid="instructor-academic-context"
+      aria-label="البيانات الأكاديمية للمحاضر"
+    >
+      {fields.map((field) => (
+        <div key={field.label} className="instructor-academic-context-item min-w-0">
+          <span className="instructor-academic-context-label text-[10px] text-muted-foreground">
+            {field.values.length > 1 ? field.pluralLabel : field.label}
+          </span>
+          <div className="instructor-academic-context-value font-semibold">
+            {field.values.join("، ")}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function LevelDetailCell({ row }: { row: TimetableDetailRow }) {
+  return (
+    <div className="instructor-detail-cell min-w-[85px] leading-5">
+      <div className="font-semibold">{detailText(row.level)}</div>
     </div>
   );
 }
@@ -114,28 +152,28 @@ function compactInstructorDetailColumns(): ReportColumn<TimetableDetailRow>[] {
     {
       key: "course",
       label: "المقرر",
-      className: "w-[22%]",
+      className: "w-[26%]",
       render: (row) => <CourseDetailCell row={row} />,
     },
     {
-      key: "program",
-      label: "البرنامج والمستوى",
-      className: "w-[24%]",
-      render: (row) => <AcademicDetailCell row={row} />,
+      key: "level",
+      label: "المستوى",
+      className: "w-[11%]",
+      render: (row) => <LevelDetailCell row={row} />,
     },
     {
       key: "cohort",
       label: "الدفعة والمجموعة",
-      className: "w-[18%]",
+      className: "w-[22%]",
       render: (row) => <CohortGroupDetailCell row={row} />,
     },
     {
       key: "day",
       label: "اليوم والوقت",
-      className: "w-[17%]",
+      className: "w-[20%]",
       render: (row) => <DayTimeDetailCell row={row} />,
     },
-    { key: "room", label: "القاعة", className: "w-[11%]" },
+    { key: "room", label: "القاعة", className: "w-[13%]" },
     { key: "study_system", label: "النظام", className: "w-[8%]" },
   ];
 }
@@ -202,6 +240,7 @@ export function ReportTimetableView({
       data-print-section="details"
     >
       <h2 className="mb-3 text-base font-bold">تفصيل المحاضرات</h2>
+      {compactDetails && <AcademicContextStrip sessions={ordered} />}
       <ReportDataTable
         caption="تفصيل محاضرات الجدول"
         columns={
@@ -320,6 +359,7 @@ export function ReportTimetableView({
       </div>
       <div className={mode === "list" ? "report-no-print" : "hidden"}>
         <ReportSection title="تفصيل المحاضرات" count={rows.length}>
+          {compactDetails && <AcademicContextStrip sessions={ordered} />}
           <ReportDataTable
             caption="تفصيل محاضرات الجدول"
             columns={
