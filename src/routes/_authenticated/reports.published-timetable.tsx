@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select";
 import { ReportFilterBar, ReportFilterField } from "@/components/reports/report-filter-bar";
 import { StudentScheduleTables } from "@/components/reports/student-schedule-tables";
-import { DAY_NAMES_AR, fmtTime } from "@/lib/reports/export";
+import { DAY_NAMES_AR, compactAcademicLevelLabel, fmtTime } from "@/lib/reports/export";
 import { filterRowsBySearch } from "@/lib/reports/search";
 import { fetchCohortDeliveryGroupLabels } from "@/lib/reports/queries/session-queries";
 import {
@@ -273,7 +273,7 @@ function Page() {
         s.course_offerings?.courses?.departments?.name ??
         "",
       program: s.course_offerings?.academic_programs?.name ?? "",
-      level: s.course_offerings?.academic_levels?.name ?? "",
+      level: compactAcademicLevelLabel(s.course_offerings?.academic_levels?.name),
       cohort: (s.cohort_id && labels?.cohorts.get(s.cohort_id)) || "",
       delivery_group:
         (s.delivery_group_id && labels?.deliveryGroups.get(s.delivery_group_id)) || "",
@@ -392,7 +392,7 @@ function Page() {
               progId,
             )}`,
             `المستوى: ${nameOf(
-              (levels ?? []).map((l) => ({ id: l.id, name: l.name })),
+              (levels ?? []).map((l) => ({ id: l.id, name: compactAcademicLevelLabel(l.name) })),
               lvlId,
             )}`,
             `الدفعة: ${nameOf(
@@ -456,7 +456,7 @@ function Page() {
                 }}
                 items={[
                   { id: "all", name: "الكل" },
-                  ...scopedLevels.map((l) => ({ id: l.id, name: l.name })),
+                  ...scopedLevels.map((l) => ({ id: l.id, name: compactAcademicLevelLabel(l.name) })),
                 ]}
               />
             </>
