@@ -32,8 +32,20 @@ export function ReportsCollegeBar() {
         <School className="h-6 w-6" />
       </span>
       <div className="min-w-0">
-        <p className="text-base font-bold text-primary">اختر الكلية لاستعراض تقاريرها</p>
-        <p className="mt-1 text-xs text-muted-foreground">جميع النتائج أدناه تتبع هذا الاختيار</p>
+        <p className="whitespace-normal break-words text-lg font-bold leading-relaxed text-primary sm:text-xl">
+          {isLoading
+            ? "تقارير الكلية"
+            : colleges.length === 1
+              ? entityDisplayName(colleges[0])
+              : colleges.length > 1
+                ? "اختر الكلية لاستعراض تقاريرها"
+                : "تقارير الكليات"}
+        </p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {colleges.length > 1
+            ? "جميع النتائج أدناه تتبع الكلية المختارة"
+            : "الجداول والتقارير الخاصة بكليتك"}
+        </p>
       </div>
 
       {isLoading ? (
@@ -42,14 +54,7 @@ export function ReportsCollegeBar() {
         <span className="text-sm text-muted-foreground">
           لا توجد كلّيات متاحة لحسابك. تواصل مع المدير العام لإسناد كلّية.
         </span>
-      ) : colleges.length === 1 ? (
-        <span
-          className="text-sm font-semibold text-foreground"
-          data-testid="reports-college-single"
-        >
-          {entityDisplayName(colleges[0])}
-        </span>
-      ) : (
+      ) : colleges.length > 1 ? (
         <div className="w-full min-w-0 sm:w-auto sm:min-w-[20rem] sm:flex-1">
           <Select value={activeId ?? undefined} onValueChange={setActiveId}>
             <SelectTrigger
@@ -67,7 +72,7 @@ export function ReportsCollegeBar() {
             </SelectContent>
           </Select>
         </div>
-      )}
+      ) : null}
 
       {colleges.length > 1 && (
         <span className="text-xs text-muted-foreground">
