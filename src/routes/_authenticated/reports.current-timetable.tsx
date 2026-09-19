@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ReportShell } from "@/components/reports/report-shell";
 import { ReportFilterField, ReportFilters } from "@/components/reports/report-filters";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { PrintSheet } from "@/components/print-center/print-sheet";
 import { useReportContext } from "@/hooks/reports/useReportContext";
 import { useActiveCollege } from "@/hooks/use-colleges";
@@ -35,6 +36,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { filterCurrentScheduleScope } from "@/lib/print-center/current-schedule-scope";
+import { normalizedMatchKey } from "@/lib/excel-import/arabic-normalize";
 
 const EMPTY_SESSIONS: PrintSessionLike[] = [];
 
@@ -68,6 +70,7 @@ function Page() {
   const [programId, setProgramId] = useState("all");
   const [levelId, setLevelId] = useState("all");
   const [courseId, setCourseId] = useState("all");
+  const [courseSearch, setCourseSearch] = useState("");
   const [scopeCollege, setScopeCollege] = useState(ctx.collegeId);
   if (scopeCollege !== ctx.collegeId) {
     setScopeCollege(ctx.collegeId);
@@ -75,6 +78,7 @@ function Page() {
     setProgramId("all");
     setLevelId("all");
     setCourseId("all");
+    setCourseSearch("");
   }
   const {
     data: catalog,
@@ -82,10 +86,10 @@ function Page() {
     error: catalogError,
     refetch: refetchCatalog,
   } = useQuery({
-    queryKey: ["current-timetable-scope", ctx.collegeId],
-    enabled: !!ctx.collegeId,
+    queryKey: ["current-timetable-scope", ctx.collegeId, ctx.termId],
+    enabled: !!ctx.collegeId && !!ctx.termId,
     queryFn: async () => {
-      const [departments, programs, levels, courses] = await Promise.all([
+      const [departments, programs, levels, offerings] = await Promise.all([
         supabase
           .from("departments")
           .select("id,name")
@@ -103,16 +107,29 @@ function Page() {
           .order("level_number")
           .order("name"),
         supabase
-          .from("courses")
-          .select("id,name,code")
+          .from("course_offerings")
+          .select("course_id")
           .eq("college_id", ctx.collegeId!)
-          .order("name")
-          .order("code"),
+          .eq("term_id", ctx.termId!)
+          .eq("is_active", true),
       ]);
       if (departments.error) throw departments.error;
       if (programs.error) throw programs.error;
       if (levels.error) throw levels.error;
+      if (offerings.error) throw offerings.error;
+
+      const courseIds = [...new Set((offerings.data ?? []).map((row) => row.course_id))];
+      const courses = courseIds.length
+        ? await supabase
+            .from("courses")
+            .select("id,name,code")
+            .eq("college_id", ctx.collegeId!)
+            .in("id", courseIds)
+            .order("name")
+            .order("code")
+        : { data: [], error: null };
       if (courses.error) throw courses.error;
+
       return {
         departments: departments.data ?? [],
         programs: programs.data ?? [],
@@ -127,6 +144,13 @@ function Page() {
   const availableLevels = (catalog?.levels ?? []).filter(
     (level) => programId !== "all" && level.program_id === programId,
   );
+  const normalizedCourseSearch = normalizedMatchKey(courseSearch);
+  const availableCourses = (catalog?.courses ?? []).filter((course) => {
+    if (!normalizedCourseSearch) return true;
+    return normalizedMatchKey(`${course.code ?? ""} ${course.name ?? ""}`).includes(
+      normalizedCourseSearch,
+    );
+  });
   const selectedDepartment = catalog?.departments.find((d) => d.id === departmentId);
   const selectedProgram = availablePrograms.find((p) => p.id === programId);
   const selectedLevel = availableLevels.find((level) => level.id === levelId);
@@ -304,6 +328,7 @@ function Page() {
             setProgramId("all");
             setLevelId("all");
             setCourseId("all");
+            setCourseSearch("");
           }}
         >
           <ReportFilterField label="القسم" htmlFor="current-print-department">
@@ -315,6 +340,7 @@ function Page() {
                 setProgramId("all");
                 setLevelId("all");
                 setCourseId("all");
+                setCourseSearch("");
               }}
             >
               <SelectTrigger id="current-print-department" aria-label="القسم">
@@ -337,6 +363,7 @@ function Page() {
                 setProgramId(value);
                 setLevelId("all");
                 setCourseId("all");
+                setCourseSearch("");
               }}
               disabled={catalogLoading || !!catalogError}
             >
@@ -359,6 +386,7 @@ function Page() {
               onValueChange={(value) => {
                 setLevelId(value);
                 setCourseId("all");
+                setCourseSearch("");
               }}
               disabled={catalogLoading || !!catalogError || programId === "all"}
             >
@@ -377,31 +405,52 @@ function Page() {
               </SelectContent>
             </Select>
           </ReportFilterField>
-          <ReportFilterField label="المادة — جميع أقسام الكلية" htmlFor="current-print-course">
-            <Select
-              value={courseId}
-              onValueChange={(value) => {
-                setCourseId(value);
-                if (value !== "all") {
-                  setDepartmentId("all");
-                  setProgramId("all");
-                  setLevelId("all");
-                }
-              }}
-              disabled={catalogLoading || !!catalogError}
-            >
-              <SelectTrigger id="current-print-course" aria-label="المادة">
-                <SelectValue placeholder="اختر المادة" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">جميع المواد</SelectItem>
-                {(catalog?.courses ?? []).map((course) => (
-                  <SelectItem key={course.id} value={course.id}>
-                    {course.code ? `${course.code} — ${course.name}` : course.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <ReportFilterField
+            label="المادة — جميع أقسام الكلية"
+            htmlFor="current-print-course-search"
+          >
+            <div className="space-y-2">
+              <Input
+                id="current-print-course-search"
+                value={courseSearch}
+                onChange={(event) => {
+                  setCourseSearch(event.target.value);
+                  setCourseId("all");
+                }}
+                placeholder="اكتب اسم المادة أو رمزها..."
+                aria-label="البحث عن المادة"
+                disabled={catalogLoading || !!catalogError}
+              />
+              <Select
+                value={courseId}
+                onValueChange={(value) => {
+                  setCourseId(value);
+                  if (value !== "all") {
+                    setDepartmentId("all");
+                    setProgramId("all");
+                    setLevelId("all");
+                  }
+                }}
+                disabled={catalogLoading || !!catalogError}
+              >
+                <SelectTrigger id="current-print-course" aria-label="المادة">
+                  <SelectValue placeholder="اختر المادة" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">جميع مواد الفصل المحدد</SelectItem>
+                  {availableCourses.map((course) => (
+                    <SelectItem key={course.id} value={course.id}>
+                      {course.code ? `${course.code} — ${course.name}` : course.name}
+                    </SelectItem>
+                  ))}
+                  {availableCourses.length === 0 && (
+                    <div className="px-2 py-2 text-xs text-muted-foreground">
+                      لا توجد مادة مطابقة ضمن الفصل المحدد.
+                    </div>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
           </ReportFilterField>
         </ReportFilters>
       }
@@ -414,7 +463,8 @@ function Page() {
             <p className="mt-1 text-muted-foreground">
               أرقام التغطية أعلاه تخص الكلية كاملة بجميع الأنظمة؛ أما الجلسات والصفحات والطباعة
               والتصدير فتتبع المادة أو القسم والبرنامج والمستوى ونظام الدراسة المختارة. عند اختيار
-              مادة، يعرض التقرير جميع ظهورها في برامج وأقسام الكلية ضمن نظام الدراسة المحدد.
+              مادة، يعرض التقرير جميع ظهورها في برامج وأقسام الكلية ضمن الفصل ونظام الدراسة
+              المحددين. قائمة المواد نفسها تقتصر على مقررات الفصل المختار.
             </p>
           )}
           <p className="mt-1 text-muted-foreground">
