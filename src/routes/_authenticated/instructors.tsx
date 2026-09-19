@@ -1,8 +1,7 @@
-import { facultyWorkflow } from "@/lib/instructors/faculty-workflow";
+import { facultyWorkflow, type FacultyRosterRecord } from "@/lib/instructors/faculty-workflow";
 import { FacultyHomeReview } from "@/components/faculty-workflow";
 import { InstructorHomeAffiliation } from "@/components/instructor-home-affiliation";
 import { FacultyIdentityLink } from "@/components/faculty-identity-link";
-import { withUniversityNumbers } from "@/lib/instructors/university-number";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { instructorStatusLabel } from "@/lib/excel-import/instructor-sheet";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -82,32 +81,7 @@ export const Route = createFileRoute("/_authenticated/instructors")({
   component: InstructorsPage,
 });
 
-interface Instructor {
-  id: string;
-  college_id: string;
-  department_id: string | null;
-  full_name: string;
-  academic_rank: string | null;
-  email: string | null;
-  phone: string | null;
-  employment_type: string;
-  max_weekly_hours: number;
-  is_active: boolean;
-  employee_number: string | null;
-  university_number?: string | null;
-  full_name_ar: string | null;
-  full_name_en: string | null;
-  specialization: string | null;
-  administrative_release_hours: number;
-  notes: string | null;
-  admin_tasks: string | null;
-  instructor_type_id: string | null;
-  affiliation_college_id: string | null;
-  affiliation_department_id: string | null;
-  administrative_position: string | null;
-  administrative_department_id: string | null;
-  administrative_support_department_id: string | null;
-}
+type Instructor = FacultyRosterRecord;
 
 interface InstructorTypeRow {
   id: string;
@@ -159,6 +133,7 @@ function InstructorDirectory() {
   const canManage = useCanManageActiveCollege();
   const canEdit = useCanEditInstructorsActiveCollege();
   const qc = useQueryClient();
+  const [scope, setScope] = useState<"home" | "visiting" | "pending">("home");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Instructor | null>(null);
   const [form, setForm] = useState(emptyForm());
@@ -293,40 +268,22 @@ function InstructorDirectory() {
     isError,
     refetch,
   } = useQuery({
-    queryKey: ["instructors", active?.id],
+    queryKey: ["instructors", active?.id, "home-roster", scope],
     enabled: !!active,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("instructors")
-        .select(
-          "id, college_id, department_id, full_name, academic_rank, email, phone, employment_type, max_weekly_hours, is_active, employee_number, full_name_ar, full_name_en, specialization, administrative_release_hours, notes, admin_tasks, instructor_type_id, affiliation_college_id, affiliation_department_id, administrative_position, administrative_department_id, administrative_support_department_id",
-        )
-        .eq("college_id", active!.id)
-        .order("full_name");
-      if (error) throw error;
-      return withUniversityNumbers((data ?? []) as Instructor[]);
-    },
-  });
-
-  const facultyHomes = useQuery({
-    queryKey: ["faculty-home-profiles", active?.id],
-    enabled: !!active,
-    queryFn: async () => {
-      const { data, error } = await facultyWorkflow.rpc("get_faculty_home_profiles", {
+      const { data, error } = await facultyWorkflow.rpc("get_college_faculty_roster", {
         p_college_id: active!.id,
+        p_scope: scope,
       });
       if (error) throw error;
       return data ?? [];
     },
   });
-  const homeByNumber = new Map(
-    (facultyHomes.data ?? []).map((home) => [home.university_number, home]),
-  );
 
   const save = useMutation({
     mutationFn: async () => {
       if (!active) throw new Error("اختر كلّية");
-      if (!canEdit) throw new Error("صلاحيتك للقراءة فقط");
+      if (!canEdit || (editing && !editing.can_edit)) throw new Error("صلاحيتك للقراءة فقط");
       if (!editing && form.affiliation_college_id && form.affiliation_college_id !== active?.id)
         throw new Error("أضف المحاضر في كليته الأصلية، ثم اطلب تكليفه من صفحة الإسناد التدريسي");
       if (!editing && !canManage) throw new Error("صلاحيتك تسمح بتعديل المحاضرين الحاليين فقط");
@@ -417,44 +374,30 @@ function InstructorDirectory() {
             : null,
         college_id: active.id,
       };
-      if (editing && !canManage) {
-        const { error } = await supabase.rpc(
-          "academic_affairs_update_instructor" as never,
-          {
-            p_instructor_id: editing.id,
-            p_full_name: payload.full_name,
-            p_full_name_ar: payload.full_name_ar,
-            p_employee_number: payload.employee_number,
-            p_specialization: payload.specialization,
-            p_academic_rank: payload.academic_rank,
-            p_email: payload.email,
-            p_phone: payload.phone,
-            p_employment_type: payload.employment_type,
-            p_max_weekly_hours: payload.max_weekly_hours,
-            p_administrative_release_hours: payload.administrative_release_hours,
-            p_is_active: payload.is_active,
-            p_instructor_type_id: payload.instructor_type_id,
-            p_affiliation_college_id: payload.affiliation_college_id,
-            p_affiliation_department_id: payload.affiliation_department_id,
-            p_administrative_position: payload.administrative_position,
-            p_administrative_department_id: payload.administrative_department_id,
-            p_administrative_support_department_id: payload.administrative_support_department_id,
-          } as never,
-        );
-        if (error) throw error;
-      } else if (editing) {
-        const { error } = await supabase
-          .from("instructors")
-          .update(payload)
-          .eq("id", editing.id)
-          .eq("college_id", active.id);
-        if (error) throw error;
-        await logAudit({
-          action: "update",
-          entity: "instructors",
-          entityId: editing.id,
-          collegeId: active.id,
+      if (editing) {
+        const { error } = await facultyWorkflow.rpc("update_home_college_instructor", {
+          p_college_id: active.id,
+          p_expected_updated_at: editing.updated_at,
+          p_instructor_id: editing.id,
+          p_full_name: payload.full_name,
+          p_full_name_ar: payload.full_name_ar,
+          p_employee_number: payload.employee_number,
+          p_specialization: payload.specialization,
+          p_academic_rank: payload.academic_rank,
+          p_email: payload.email,
+          p_phone: payload.phone,
+          p_employment_type: payload.employment_type,
+          p_max_weekly_hours: payload.max_weekly_hours,
+          p_administrative_release_hours: payload.administrative_release_hours,
+          p_is_active: payload.is_active,
+          p_instructor_type_id: payload.instructor_type_id,
+          p_affiliation_college_id: payload.affiliation_college_id,
+          p_affiliation_department_id: payload.affiliation_department_id,
+          p_administrative_position: payload.administrative_position,
+          p_administrative_department_id: payload.administrative_department_id,
+          p_administrative_support_department_id: payload.administrative_support_department_id,
         });
+        if (error) throw error;
       } else {
         const { data, error } = await supabase
           .from("instructors")
@@ -478,7 +421,7 @@ function InstructorDirectory() {
         "data-readiness",
         "rep-readiness",
       ])
-        void qc.invalidateQueries({ queryKey: [key, active?.id] });
+        void qc.invalidateQueries({ queryKey: [key] });
       void qc.invalidateQueries({ queryKey: ["faculty-university-report"] });
       void qc.invalidateQueries({ queryKey: ["report-instructor-directory"] });
       void qc.invalidateQueries({ queryKey: ["faculty-home-profiles"] });
@@ -493,6 +436,8 @@ function InstructorDirectory() {
 
   const del = useMutation({
     mutationFn: async (id: string) => {
+      if (!(rows ?? []).some((row) => row.id === id && row.can_delete))
+        throw new Error("الحذف من الكلية الأصلية فقط");
       const { error } = await supabase.from("instructors").delete().eq("id", id);
       if (error) throw error;
       await logAudit({
@@ -511,6 +456,7 @@ function InstructorDirectory() {
   });
 
   const startEdit = (i: Instructor, field: InstructorReview | null = review ?? null) => {
+    if (!i.can_edit) return;
     setRepairField(field);
     setEditing(i);
     setForm({
@@ -549,9 +495,41 @@ function InstructorDirectory() {
   };
 
   const deptMap = new Map((depts ?? []).map((d) => [d.id, d.name]));
+  for (const row of rows ?? []) {
+    if (row.department_id && row.home_department)
+      deptMap.set(row.department_id, row.home_department);
+  }
   const typeRows = (types ?? []) as InstructorTypeRow[];
   const typeMap = new Map(typeRows.map((t) => [t.id, t]));
-  const selectedType = typeRows.find((t) => t.id === form.instructor_type_id);
+  for (const row of rows ?? []) {
+    if (row.instructor_type_id && !typeMap.has(row.instructor_type_id)) {
+      typeMap.set(row.instructor_type_id, {
+        id: row.instructor_type_id,
+        code: row.instructor_type_code,
+        name_ar: row.type_name ?? "حالة وظيفية بحاجة إلى مراجعة",
+        is_external: null,
+      });
+    }
+  }
+  const selectedType = typeMap.get(form.instructor_type_id);
+  const scopeLabel =
+    scope === "home"
+      ? "أعضاء الكلية"
+      : scope === "visiting"
+        ? "مكلّفون من كليات أخرى"
+        : "تبعية تحتاج مراجعة";
+  const rowCategoryLabel = (row: Instructor) => {
+    if (!row.home_college_id) return "تبعية تحتاج مراجعة";
+    if (row.home_college_id !== active?.id) return "محاضر من كلية أخرى";
+    return (
+      (
+        { permanent: "مثبت", annual_contract: "متعاقد سنوي", con: "متعاقد بالساعات" } as Record<
+          string,
+          string
+        >
+      )[row.instructor_type_code ?? ""] ?? "حالة وظيفية بحاجة إلى مراجعة"
+    );
+  };
   const hourlyContract = isHourlyContractTypeCode(selectedType?.code);
   const effectiveQuota =
     effectiveInstructorWeeklyHours(
@@ -582,6 +560,33 @@ function InstructorDirectory() {
       </header>
       {active && <FacultyHomeReview collegeId={active.id} />}
 
+      <div className="mb-4 space-y-2">
+        <label className="flex flex-wrap items-center gap-3">
+          <span>قائمة المحاضرين</span>
+          <select
+            aria-label="قائمة المحاضرين"
+            className="rounded border bg-background p-2"
+            value={scope}
+            onChange={(event) => {
+              setScope(event.target.value as typeof scope);
+              setDirectory({ ...DEFAULT_DIRECTORY_FILTERS });
+              setOpen(false);
+              setEditing(null);
+            }}
+          >
+            <option value="home">أعضاء الكلية</option>
+            <option value="visiting">مكلّفون من كليات أخرى</option>
+            <option value="pending">تبعية تحتاج مراجعة</option>
+          </select>
+        </label>
+        <p className="text-sm text-muted-foreground">
+          {scope === "home"
+            ? "هذه القائمة لأعضاء الكلية الأصلية فقط."
+            : scope === "visiting"
+              ? "محاضرون لهم إسناد أو جدول في الكلية الحالية. تُعدّل بياناتهم من كليتهم الأصلية."
+              : "سجلات سابقة لم تُحسم كليتها الأصلية. يستكمل الأدمن تبعيتها من تسوية السجلات أعلاه."}
+        </p>
+      </div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <CollegeSwitcher />
         <div className="flex flex-wrap gap-2">
@@ -592,6 +597,8 @@ function InstructorDirectory() {
               instructorsExportDataset({
                 rows: (visibleRows ?? []).map((i) => ({
                   ...i,
+                  home_college_name: i.home_college_name ?? "تحتاج مراجعة",
+                  category_label: rowCategoryLabel(i),
                   needs_review:
                     isMissingInstructorSpecialization(i) || isMissingInstructorDepartment(i),
                 })),
@@ -601,6 +608,7 @@ function InstructorDirectory() {
                   CATEGORY_LABEL_AR[categorizeInstructor(typeMap.get(id ?? "") ?? null)] ?? "",
                 employmentLabel: (v) => employmentTypeLabelAr(v ?? UNKNOWN_EMPLOYMENT_TYPE),
                 filters: activeFilters([
+                  { label: "القائمة", value: scopeLabel },
                   {
                     label: "مرشّح المراجعة",
                     value: review ? INSTRUCTOR_REVIEW_LABELS[review] : "",
@@ -635,6 +643,7 @@ function InstructorDirectory() {
                 <div data-field-order="1-affiliation-college">
                   <Label>{hourlyContract ? "الكلية المتعاقد فيها" : "الكلية التابع لها"}</Label>
                   <Select
+                    disabled
                     value={form.affiliation_college_id || undefined}
                     onValueChange={(v) =>
                       setForm({
@@ -695,11 +704,20 @@ function InstructorDirectory() {
                       />
                     </SelectTrigger>
                     <SelectContent>
-                      {editing && <SelectItem value="_none">— غير محدد —</SelectItem>}
+                      {editing && !form.instructor_type_id && (
+                        <SelectItem value="_none">— غير محدد —</SelectItem>
+                      )}
+                      {editing &&
+                        form.instructor_type_id &&
+                        !typeRows.some((t) => t.id === form.instructor_type_id) && (
+                          <SelectItem value={form.instructor_type_id}>
+                            {editing.type_name ?? "الحالة المسجلة"}
+                          </SelectItem>
+                        )}
                       {typeRows
                         .filter(
                           (t) =>
-                            editing ||
+                            t.id === editing?.instructor_type_id ||
                             ["permanent", "annual_contract", "con"].includes(
                               t.code?.toLowerCase() ?? "",
                             ),
@@ -1156,7 +1174,7 @@ function InstructorDirectory() {
               <SelectContent>
                 <SelectItem value="all">كل الأقسام</SelectItem>
                 <SelectItem value="none">بدون قسم</SelectItem>
-                {(depts ?? []).map((d) => (
+                {Array.from(deptMap, ([id, name]) => ({ id, name })).map((d) => (
                   <SelectItem key={d.id} value={d.id}>
                     {d.name}
                   </SelectItem>
@@ -1202,17 +1220,11 @@ function InstructorDirectory() {
               <SelectContent>
                 <SelectItem value="all">كل الأنواع</SelectItem>
                 <SelectItem value="none">بدون نوع</SelectItem>
-                {typeRows
-                  .filter(
-                    (t) =>
-                      editing ||
-                      ["permanent", "annual_contract", "con"].includes(t.code?.toLowerCase() ?? ""),
-                  )
-                  .map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.code === "annual_contract" ? "متعاقد سنوي" : t.name_ar}
-                    </SelectItem>
-                  ))}
+                {Array.from(typeMap.values()).map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.code === "annual_contract" ? "متعاقد سنوي" : t.name_ar}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -1330,15 +1342,13 @@ function InstructorDirectory() {
                     {i.max_weekly_hours} س/أسبوع
                   </p>
                   <InstructorHomeAffiliation
-                    home={homeByNumber.get(i.university_number ?? "")}
+                    home={{
+                      home_college_id: i.home_college_id,
+                      home_college: i.home_college_name,
+                      home_department: i.home_department,
+                    }}
                     currentCollegeId={active.id}
-                    defaultCategoryLabel={
-                      CATEGORY_LABEL_AR[
-                        categorizeInstructor(typeMap.get(i.instructor_type_id ?? "") ?? null)
-                      ]
-                    }
-                    isLoading={facultyHomes.isLoading}
-                    isError={facultyHomes.isError}
+                    defaultCategoryLabel={rowCategoryLabel(i)}
                   />
                   {(i.email || i.phone) && (
                     <p className="text-xs text-muted-foreground" dir="ltr">
@@ -1349,7 +1359,7 @@ function InstructorDirectory() {
                     <p className="text-xs text-muted-foreground">الصفة: {i.admin_tasks}</p>
                   )}
                 </div>
-                {canEdit && (
+                {canEdit && i.can_edit && (
                   <div className="flex flex-wrap gap-1">
                     {(review || isMissingInstructorSpecialization(i)) && (
                       <Button
@@ -1368,7 +1378,7 @@ function InstructorDirectory() {
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
-                    {canManage && (
+                    {canManage && i.can_delete && (
                       <Button
                         size="sm"
                         variant="ghost"
