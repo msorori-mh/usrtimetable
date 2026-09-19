@@ -1236,41 +1236,43 @@
     font-weight: 700;
   }
   .instructor-print-readable .instructor-academic-context {
-    display: grid !important;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0 !important;
-    margin-bottom: 2mm !important;
-    padding: 0 !important;
-    overflow: hidden;
-    border: 1px solid #b8c7cf;
-    border-radius: 0;
-    background: #f5f8fa !important;
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.7mm 2.2mm !important;
+    margin-bottom: 1.5mm !important;
+    padding: 1mm 0.8mm !important;
+    border: 0;
+    border-top: 1px solid #c7d3d9;
+    border-bottom: 1px solid #c7d3d9;
+    background: transparent !important;
     break-inside: avoid;
     page-break-inside: avoid;
   }
   .instructor-print-readable .instructor-academic-context-item {
+    display: inline-flex !important;
     min-width: 0;
-    padding: 1.2mm 2mm;
-  }
-  .instructor-print-readable
-    .instructor-academic-context-item
-    + .instructor-academic-context-item {
-    border-inline-start: 1px solid #b8c7cf;
+    align-items: baseline;
+    gap: 0.8mm;
+    padding: 0;
   }
   .instructor-print-readable .instructor-academic-context-label {
-    display: block;
-    margin-bottom: 0.3mm;
-    color: #5f6f78 !important;
+    color: #65747c !important;
     font-size: 8pt !important;
     line-height: 1.2;
+    white-space: nowrap;
   }
   .instructor-print-readable .instructor-academic-context-value {
     color: #123f54 !important;
-    font-size: 9.5pt !important;
+    font-size: 8.8pt !important;
     font-weight: 700;
-    line-height: 1.35;
+    line-height: 1.3;
     word-break: normal;
     overflow-wrap: break-word;
+  }
+  .instructor-print-readable .instructor-academic-context-separator {
+    color: #9aa8af !important;
+    font-size: 8pt !important;
   }
   .instructor-print-readable .instructor-detail-cell {
     min-width: 0;
