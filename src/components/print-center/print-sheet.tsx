@@ -213,9 +213,9 @@ export function PrintSheet(props: {
               <col style={{ width: "10%" }} />
               <col style={{ width: "24%" }} />
               {visibility.showInstructor && <col style={{ width: "20%" }} />}
-              {visibility.showRoom && <col style={{ width: "18%" }} />}
+              {visibility.showRoom && <col style={{ width: "17%" }} />}
               <col style={{ width: "7%" }} />
-              <col style={{ width: "11%" }} />
+              <col style={{ width: "12%" }} />
             </colgroup>
           )}
           <TableHeader>

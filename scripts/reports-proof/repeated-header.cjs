@@ -39,7 +39,7 @@ const { execFileSync } = require("node:child_process");
         await page
           .getByText(
             mode === "room-fit"
-              ? "ROW013"
+              ? "ROW017"
               : mode === "individual"
                 ? "ROW001"
                 : mode === "university"

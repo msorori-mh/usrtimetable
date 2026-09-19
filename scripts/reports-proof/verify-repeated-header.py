@@ -13,7 +13,7 @@ for path in sorted(Path("repeated-header-proof").glob("*.pdf")):
         assert "DETAIL_PROOF" in doc[0].get_text() and "WEEK_PROOF" not in doc[0].get_text(), f"{path}: details must be page one"
         assert "WEEK_PROOF" in doc[1].get_text() and "DETAIL_PROOF" not in doc[1].get_text(), f"{path}: weekly must be page two"
     if path.name.startswith("room-fit"):
-        assert len(doc) == 1, f"{path}: 14-row lab schedule must fit one A4 page"
+        assert len(doc) == 1, f"{path}: 18-row lab schedule must fit one A4 page"
     all_rows = []
     for number, page in enumerate(doc, 1):
         if "portrait" in path.name:
@@ -52,7 +52,7 @@ for path in sorted(Path("repeated-header-proof").glob("*.pdf")):
         assert sorted(set(all_rows)) == ["ROW000", "ROW001"]
         assert "COMPUTING_V1" in doc[0].get_text(), f"{path}: hours summary must follow details"
     elif path.name.startswith("room-fit"):
-        assert sorted(all_rows) == [f"ROW{i:03}" for i in range(14)], f"{path}: missing compact schedule rows"
+        assert sorted(all_rows) == [f"ROW{i:03}" for i in range(18)], f"{path}: missing compact schedule rows"
     elif path.name.startswith("instructor"):
         assert sorted(set(all_rows)) == [f"ROW{i:03}" for i in range(18)], f"{path}: missing individual schedule rows"
     else:

@@ -17,7 +17,7 @@ const mode = params.get("mode");
 const readable = mode === "readable" || mode === "room-fit";
 const paper = params.get("paper") === "A3" ? "A3" : "A4";
 const orientation = params.get("orientation") === "landscape" ? "landscape" : "portrait";
-const rows = Array.from({ length: mode === "room-fit" ? 14 : 140 }, (_, i) => ({
+const rows = Array.from({ length: mode === "room-fit" ? 18 : 140 }, (_, i) => ({
   id: `ROW${String(i).padStart(3, "0")}`,
   description: "محاضرة اختبار لقياس وضوح بيانات التقرير وتكرار الترويسة الرسمية",
 }));
@@ -202,13 +202,17 @@ createRoot(document.getElementById("root")!).render(
                 cohort_id: "cohort-proof",
                 delivery_group_id: "group-proof",
                 instructors: {
-                  full_name: "د. محمد عبدالرحمن محاضر الاختبار",
+                  full_name:
+                    mode === "room-fit" ? "د. محاضر الاختبار" : "د. محمد عبدالرحمن محاضر الاختبار",
                 },
                 course_offerings: {
                   ...s.course_offerings,
                   courses: {
                     ...s.course_offerings.courses,
-                    name: `${s.id} الذكاء الاصطناعي للأمن السيبراني`,
+                    name:
+                      mode === "room-fit"
+                        ? `${s.id} ${["أساسيات الويب", "قواعد البيانات", "الذكاء الاصطناعي للأمن السيبراني"][Number(s.id.slice(3)) % 3]}`
+                        : `${s.id} الذكاء الاصطناعي للأمن السيبراني`,
                   },
                 },
               }))
