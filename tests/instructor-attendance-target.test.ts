@@ -229,10 +229,15 @@ describe("fail-closed persistence gate honours the explicit target", () => {
     ).toEqual([{ instructorId: "head", days: 6, cap: 5 }]);
   });
 
-  it("never lowers the generic cap for a target below four", () => {
+  it("keeps a low target as an objective unless an explicit maximum tightens the hard cap", () => {
     expect(instructorAttendanceDayCap(2)).toBe(4);
+    expect(instructorAttendanceDayCap(2, undefined, 2)).toBe(2);
+    expect(instructorAttendanceDayCap(null, undefined, 2)).toBe(2);
     expect(instructorAttendanceDayCap(null)).toBe(4);
     expect(instructorAttendanceDayCap(5)).toBe(5);
+    expect(() => instructorAttendanceDayCap(5, undefined, 2)).toThrow(
+      "INSTRUCTOR_ATTENDANCE_TARGET_EXCEEDS_MAX",
+    );
     expect(() => instructorAttendanceDayCap(7)).toThrow("INVALID_INSTRUCTOR_ATTENDANCE_TARGET");
   });
 
