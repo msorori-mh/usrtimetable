@@ -64,10 +64,10 @@ describe("instructor HR form contract", () => {
 });
 
 describe("effective weekly quota", () => {
-  test("subtracts administrative release and clamps at zero", () => {
-    expect(effectiveInstructorWeeklyHours(18, 4)).toBe(14);
+  test("uses the administrative quota directly when present and caps it at the base", () => {
+    expect(effectiveInstructorWeeklyHours(18, 4)).toBe(4);
     expect(effectiveInstructorWeeklyHours(18, 0)).toBe(18);
-    expect(effectiveInstructorWeeklyHours(10, 20)).toBe(0);
+    expect(effectiveInstructorWeeklyHours(10, 20)).toBe(10);
   });
   test("recognizes the production hourly-contract category", () => {
     expect(isHourlyContractTypeCode("con")).toBe(true);
@@ -143,7 +143,7 @@ describe("official instructor import template", () => {
 });
 
 describe("weekly teaching-hours preflight uses net quota", () => {
-  test("base 18 - release 4 rejects a weekly total of 15", () => {
+  test("administrative quota 4 rejects a weekly total of 15", () => {
     const mk = (rowNumber: number, dg: string, component: string, hours: number) => ({
       rowNumber,
       raw: {},
