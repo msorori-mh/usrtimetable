@@ -1,4 +1,4 @@
-import { DAY_NAMES_AR, fmtTime } from "@/lib/reports/formatters";
+import { DAY_NAMES_AR, compactAcademicLevelLabel, fmtTime } from "@/lib/reports/formatters";
 import { STUDY_SYSTEM_LABELS } from "@/lib/reports/filters";
 import type { ReportStudySystem } from "@/lib/reports/types";
 import type { PrintExportRow, PrintPageGroup, PrintSessionLike } from "./types";
@@ -53,7 +53,7 @@ export function sessionToExportRow(
     room: roomText(s),
     group: groupLabel(s, labels),
     program: s.course_offerings?.academic_programs?.name ?? "",
-    level: s.course_offerings?.academic_levels?.name ?? "",
+    level: compactAcademicLevelLabel(s.course_offerings?.academic_levels?.name),
     study_system: studyLabel(s.study_system),
     department: s.course_offerings?.courses?.departments?.name ?? "",
     page: pageTitle,
