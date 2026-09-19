@@ -47,13 +47,23 @@ describe("approved quota resolution", () => {
     expect(q.source).toBe("missing");
   });
 
-  it("subtracts the administrative release to get the net quota", () => {
+  it("uses the administrative quota as the net quota when present", () => {
     const b = computeQuotaBalance({ maxWeeklyHours: 18, adminReleaseHours: 6, assignedHours: 12 });
     expect(b.releaseHours).toBe(6);
-    expect(b.netHours).toBe(12);
-    expect(b.overloadHours).toBe(0);
+    expect(b.netHours).toBe(6);
+    expect(b.overloadHours).toBe(6);
     expect(b.deficitHours).toBe(0);
-    expect(b.status).toBe("balanced");
+    expect(b.status).toBe("overload");
+  });
+
+  it("keeps base 12, administrative quota 3, and computes 7 extra hours from 10 assigned", () => {
+    const b = computeQuotaBalance({ maxWeeklyHours: 12, adminReleaseHours: 3, assignedHours: 10 });
+    expect(b.baseHours).toBe(12);
+    expect(b.releaseHours).toBe(3);
+    expect(b.netHours).toBe(3);
+    expect(b.overloadHours).toBe(7);
+    expect(b.deficitHours).toBe(0);
+    expect(b.status).toBe("overload");
   });
 
   it("computes overload and deficit against the net quota", () => {
@@ -144,9 +154,9 @@ describe("workload report rows", () => {
     const [row] = workloadRows(instructors, workloads);
     expect(row.base_required).toBe(18);
     expect(row.release).toBe(6);
-    expect(row.required).toBe(12);
+    expect(row.required).toBe(6);
     expect(row.assigned).toBe(15);
-    expect(row.overload).toBe(3);
+    expect(row.overload).toBe(9);
     expect(row.deficit).toBe(0);
     expect(row.quota_source).toBe("بطاقة عضو هيئة التدريس");
   });
@@ -163,8 +173,8 @@ describe("workload report rows", () => {
     const rows = workloadRows(instructors, workloads);
     const totals = summarizeWorkloadRows(rows);
     expect(totals.missingMembers).toBe(1);
-    expect(totals.netQuotaHours).toBe(12);
-    expect(totals.overloadHours).toBe(3);
+    expect(totals.netQuotaHours).toBe(6);
+    expect(totals.overloadHours).toBe(9);
     // export headers cover every computed column
     const keys = ACADEMIC_REPORT_HEADERS.workload.map((h) => h.key);
     for (const key of [
@@ -317,17 +327,17 @@ describe("approved workload report contract", () => {
       ],
     )[0]!;
   }
-  it("uses the saved base and subtracts release once even when RPC returns net hours", () => {
-    const r = row(24);
+  it("uses the saved base and the administrative quota once even when RPC returns net hours", () => {
+    const r = row(18);
     expect(r.base_required).toBe(18);
-    expect(r.required).toBe(12);
+    expect(r.required).toBe(6);
     expect(r.administrative_position).toBe("رئيس قسم");
     expect(r.overload).toBe(12);
     expect(r.status).toBe("ساعات زائدة");
   });
   it("distinguishes above 12 extra hours from permitted extra hours", () => {
-    expect(row(24.5).status).toBe("تجاوز الحد المسموح للساعات الزائدة");
-    expect(row(12).overload).toBe(0);
+    expect(row(18.5).status).toBe("تجاوز الحد المسموح للساعات الزائدة");
+    expect(row(6).overload).toBe(0);
   });
   it("exports every requested field without remaining allowance", () => {
     const headers = ACADEMIC_REPORT_HEADERS.workload;

@@ -2,11 +2,11 @@
  * EFFECTIVE-QUOTA-01 — single source of truth for «النصاب الفعلي».
  *
  * `instructors.max_weekly_hours` is the BASE approved weekly load («النصاب الأساسي»)
- * and is never rewritten. `instructors.administrative_release_hours` is the
- * administrative release. Every screen, report, export and import guard that
- * expresses the applied weekly limit must use the net value computed here.
+ * and is never rewritten. `instructors.administrative_release_hours` stores the
+ * approved teaching quota after administrative exemption when it is greater than
+ * zero. A zero value means there is no administrative reduction.
  *
- *   effective = max(0, base - release)
+ *   effective = adminQuota > 0 ? min(base, adminQuota) : base
  */
 
 const isRealNumber = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n);
@@ -28,11 +28,13 @@ export function effectiveInstructorWeeklyHours(
   release: number | null | undefined,
 ): number | null {
   if (!isRealNumber(base)) return null;
-  const rel = isRealNumber(release) ? Math.max(0, release) : 0;
-  return round2(Math.max(0, base - rel));
+  const adminQuota = isRealNumber(release) ? Math.max(0, release) : 0;
+  const normalizedBase = Math.max(0, base);
+  return round2(adminQuota > 0 ? Math.min(normalizedBase, adminQuota) : normalizedBase);
 }
 
-export const EFFECTIVE_QUOTA_FORMULA_AR = "النصاب الفعلي = النصاب الأساسي − ساعات الإعفاء الإداري";
+export const EFFECTIVE_QUOTA_FORMULA_AR =
+  "عند وجود إعفاء إداري، تمثل قيمته النصاب التدريسي الفعلي بعد الإعفاء";
 
 export const EFFECTIVE_QUOTA_LABEL_AR = "النصاب الفعلي";
 export const BASE_QUOTA_LABEL_AR = "النصاب الأساسي الأسبوعي";

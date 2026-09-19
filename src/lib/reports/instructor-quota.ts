@@ -29,16 +29,16 @@ export interface QuotaInput {
   policyRequiredHours?: number | null;
   /** the member's own approved weekly load (`instructors.max_weekly_hours`) */
   maxWeeklyHours?: number | null;
-  /** administrative release (`instructors.administrative_release_hours`) */
+  /** approved teaching quota after administrative exemption; 0 means no reduction (`instructors.administrative_release_hours`) */
   adminReleaseHours?: number | null;
 }
 
 export interface ResolvedQuota {
   /** approved base quota before the administrative release; null when undefined */
   baseHours: number | null;
-  /** administrative release actually applied (0 when absent) */
+  /** administrative quota value recorded on the member card (0 when absent) */
   releaseHours: number;
-  /** net approved quota = base − release, floored at 0; null when undefined */
+  /** effective approved quota: administrative quota when >0, otherwise the base quota */
   netHours: number | null;
   source: QuotaSource;
 }
@@ -125,4 +125,3 @@ export function summarizeQuotaBalances(balances: QuotaBalance[]) {
     deficitMembers: counted.filter((b) => (b.deficitHours ?? 0) > 0).length,
   };
 }
-

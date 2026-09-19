@@ -79,7 +79,6 @@ function Page() {
   return <AcademicReports key={active.id} collegeId={active.id} collegeName={active.name} />;
 }
 
-
 const valueText = (value: string | number | null | undefined) =>
   value === null || value === undefined || value === "" ? "—" : String(value);
 
@@ -101,7 +100,9 @@ function DataLine({
   return (
     <div className="flex items-baseline justify-between gap-3 leading-5">
       <span className="text-[11px] text-muted-foreground">{label}</span>
-      <span className={strong ? "font-semibold tabular-nums" : "tabular-nums"}>{valueText(value)}</span>
+      <span className={strong ? "font-semibold tabular-nums" : "tabular-nums"}>
+        {valueText(value)}
+      </span>
     </div>
   );
 }
@@ -157,9 +158,7 @@ function AssignedLoadCell({ row }: { row: AcademicReportRow }) {
         <DataLine label="إشراف مشاريع" value={hourText(row.project)} />
       )}
       {ratio !== null && (
-        <div className="pt-0.5 text-[10px] text-muted-foreground">
-          تحقيق النصاب: {ratio}%
-        </div>
+        <div className="pt-0.5 text-[10px] text-muted-foreground">تحقيق النصاب: {ratio}%</div>
       )}
     </div>
   );
@@ -295,7 +294,12 @@ function academicTableColumns(kind: AcademicReportKind): ReportColumn<AcademicRe
       },
       {
         key: kind === "deficit" ? "deficit" : kind === "overload" ? "overload" : "status",
-        label: kind === "overload" ? "الساعات الزائدة والحالة" : kind === "deficit" ? "العجز والحالة" : "الرصيد والحالة",
+        label:
+          kind === "overload"
+            ? "الساعات الزائدة والحالة"
+            : kind === "deficit"
+              ? "العجز والحالة"
+              : "الرصيد والحالة",
         className: "w-[25%]",
         render: (row) => <BalanceCell row={row} kind={kind} />,
       },
@@ -371,7 +375,9 @@ function academicTableColumns(kind: AcademicReportKind): ReportColumn<AcademicRe
       render: (row) => (
         <div className="leading-5">
           <div>{valueText(row.instructors)}</div>
-          {row.note && <div className="mt-1 text-[10px] text-muted-foreground">{valueText(row.note)}</div>}
+          {row.note && (
+            <div className="mt-1 text-[10px] text-muted-foreground">{valueText(row.note)}</div>
+          )}
         </div>
       ),
     },
@@ -679,11 +685,11 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
           )}
           {workloadReport && (
             <Card className="p-3 text-sm">
-              يُعتمد النصاب المسجَّل في بطاقة عضو هيئة التدريس، وتُستخدم سياسة الرتبة عند غيابه.
-              النصاب الفعلي = النصاب الأساسي − الإعفاء الإداري. تُسمح بساعات زائدة لا تتجاوز 12 ساعة
-              أسبوعيًا، وتُقارَن به الساعات المسندة في الكلية خلال الفصل، مع إظهار إشراف المشاريع
-              منفصلاً. عند عدم وجود نصاب معتمد تظهر «غير محدد» في النصاب والزيادة والنقص، ولا تُعامل
-              كصفر ولا تدخل في المجاميع.
+              يُعتمد النصاب المسجَّل في بطاقة عضو هيئة التدريس، وتُستخدم سياسة الرتبة عند غيابه. عند
+              وجود إعفاء إداري، تمثل قيمته النصاب التدريسي الفعلي بعد الإعفاء. تُسمح بساعات زائدة لا
+              تتجاوز 12 ساعة أسبوعيًا، وتُقارَن به الساعات المسندة في الكلية خلال الفصل، مع إظهار
+              إشراف المشاريع منفصلاً. عند عدم وجود نصاب معتمد تظهر «غير محدد» في النصاب والزيادة
+              والنقص، ولا تُعامل كصفر ولا تدخل في المجاميع.
               {incompleteMembers > 0 && (
                 <span className="mt-2 block">
                   {`${incompleteMembers} عضواً بانتظار استكمال النصاب أو توزيع التدريس المشترك؛ استُبعدوا من مجاميع الزيادة والنقص.`}{" "}
