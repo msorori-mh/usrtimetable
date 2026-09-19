@@ -29,16 +29,16 @@ export interface QuotaInput {
   policyRequiredHours?: number | null;
   /** the member's own approved weekly load (`instructors.max_weekly_hours`) */
   maxWeeklyHours?: number | null;
-  /** approved teaching quota after administrative exemption; 0 means no reduction (`instructors.administrative_release_hours`) */
+  /** administrative release hours (`instructors.administrative_release_hours`) */
   adminReleaseHours?: number | null;
 }
 
 export interface ResolvedQuota {
   /** approved base quota before the administrative release; null when undefined */
   baseHours: number | null;
-  /** administrative quota value recorded on the member card (0 when absent) */
+  /** administrative release actually applied (0 when absent) */
   releaseHours: number;
-  /** effective approved quota: administrative quota when >0, otherwise the base quota */
+  /** net approved quota = base − release, floored at 0; null when undefined */
   netHours: number | null;
   source: QuotaSource;
 }
