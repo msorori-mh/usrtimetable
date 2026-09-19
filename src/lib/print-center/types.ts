@@ -160,9 +160,6 @@ export const PRINT_DRAFT_WATERMARK_AR = "مسودة — غير معتمدة لل
  * worded as "صفحة", because one group can span several physical sheets; the physical page
  * number comes from the `@page` margin box (see print-center/page-style.ts).
  */
-export function printGroupCounterLabelAr(
-  groupIndex: number,
-  groupCount: number,
-): string {
+export function printGroupCounterLabelAr(groupIndex: number, groupCount: number): string {
   return `مجموعة الجدول ${groupIndex} من ${groupCount}`;
 }
