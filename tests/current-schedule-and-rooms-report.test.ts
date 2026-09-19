@@ -301,6 +301,20 @@ test("heatmap counts overlapping durations and empty open windows with seconds",
   assert.equal(cells.find((c) => c.slot === "11:00–14:00")?.occupiedRooms, 0);
 });
 
+test("current timetable print exposes a program-dependent level filter", () => {
+  const route = readFileSync(
+    new URL("../src/routes/_authenticated/reports.current-timetable.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(route, /from\("academic_levels"\)/);
+  assert.match(route, /select\("id,name,level_number,program_id"\)/);
+  assert.match(route, /label="المستوى"/);
+  assert.match(route, /current-print-level/);
+  assert.match(route, /programId === "all"/);
+  assert.match(route, /filterCurrentScheduleScope\([\s\S]*levelId/);
+  assert.match(route, /setLevelId\("all"\)/);
+});
+
 test("study-system selection reaches both report queries and their cache keys", () => {
   for (const routeName of ["rooms-report", "current-timetable"]) {
     const source = readFileSync(
