@@ -1,3 +1,5 @@
+import { useActiveCollege } from "@/hooks/use-colleges";
+import { collegeSupportsParallel } from "@/lib/study-systems";
 import { ReactNode } from "react";
 import {
   Select,
@@ -49,6 +51,8 @@ export function ReportFilters({
   extraSummary,
   onClear,
 }: ReportFiltersProps) {
+  const { active } = useActiveCollege();
+  const supportsParallel = collegeSupportsParallel(active);
   const {
     terms,
     termId,
@@ -144,7 +148,7 @@ export function ReportFilters({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {(Object.keys(STUDY_SYSTEM_LABELS) as ReportStudySystem[]).map((key) => (
+                {(Object.keys(STUDY_SYSTEM_LABELS) as ReportStudySystem[]).filter((key) => supportsParallel || key !== "parallel").map((key) => (
                   <SelectItem key={key} value={key}>
                     {STUDY_SYSTEM_LABELS[key]}
                   </SelectItem>
