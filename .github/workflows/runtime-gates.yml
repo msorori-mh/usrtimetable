@@ -70,6 +70,9 @@ jobs:
             echo "No lintable files changed — scoped ESLint PASS (vacuous)."
           fi
 
+      - name: Independent college scope across browser tabs
+        run: node --test tests/active-college-store.test.mjs
+
       - name: Assignment schedule pagination and attendance
         run: bun test tests/assignment-schedule.test.ts tests/teaching-assignment-row-days.test.ts
 
