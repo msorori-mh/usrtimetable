@@ -7,6 +7,7 @@ export function filterCurrentScheduleScope(
   departmentId: string,
   programId: string,
   levelId = "all",
+  courseId = "all",
 ): PrintSessionLike[] {
   const byId = new Map(programs.map((p) => [p.id, p]));
   return sessions.filter((session) => {
@@ -15,6 +16,7 @@ export function filterCurrentScheduleScope(
     if (departmentId !== "all" && (!id || byId.get(id)?.department_id !== departmentId))
       return false;
     if (levelId !== "all" && session.course_offerings?.level_id !== levelId) return false;
+    if (courseId !== "all" && session.course_offerings?.course_id !== courseId) return false;
     return true;
   });
 }
