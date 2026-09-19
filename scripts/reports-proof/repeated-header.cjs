@@ -14,6 +14,7 @@ const { execFileSync } = require("node:child_process");
       "summary",
       "sheet",
       "readable",
+      "room-fit",
       "instructor",
       "student",
       "university",
@@ -26,7 +27,10 @@ const { execFileSync } = require("node:child_process");
         ["A3", "landscape", 1440],
       ]) {
         // The current-timetable route explicitly uses A4 portrait; other modes retain all paper sizes.
-        if (["readable", "university", "individual"].includes(mode) && orientation !== "portrait")
+        if (
+          ["readable", "room-fit", "university", "individual"].includes(mode) &&
+          orientation !== "portrait"
+        )
           continue;
         await page.setViewportSize({ width, height: 900 });
         await page.goto(
@@ -34,20 +38,22 @@ const { execFileSync } = require("node:child_process");
         );
         await page
           .getByText(
-            mode === "individual"
-              ? "ROW001"
-              : mode === "university"
-                ? "ROW005"
-                : mode === "instructor"
-                  ? "ROW017"
-                  : "ROW139",
+            mode === "room-fit"
+              ? "ROW017"
+              : mode === "individual"
+                ? "ROW001"
+                : mode === "university"
+                  ? "ROW005"
+                  : mode === "instructor"
+                    ? "ROW017"
+                    : "ROW139",
             {
-              exact: mode !== "readable",
+              exact: !["readable", "room-fit"].includes(mode),
             },
           )
           .first()
           .waitFor({ state: "attached" });
-        if (mode === "student" || mode === "sheet" || mode === "readable") {
+        if (mode === "student" || mode === "sheet" || ["readable", "room-fit"].includes(mode)) {
           const labels = await page
             .locator("thead tr")
             .evaluateAll((rows) =>
@@ -67,14 +73,50 @@ const { execFileSync } = require("node:child_process");
           [...document.images].every((image) => image.complete && image.naturalWidth > 0),
         );
         await page.emulateMedia({ media: "print" });
-        if (mode === "sheet" || mode === "readable") {
-          const times = await page.locator(".print-center-page tbody .schedule-time bdi, .print-center-page tbody td.whitespace-nowrap bdi")
+        if (mode === "sheet" || ["readable", "room-fit"].includes(mode)) {
+          const times = await page
+            .locator(
+              ".print-center-page tbody .schedule-time bdi, .print-center-page tbody td.whitespace-nowrap bdi",
+            )
             .allTextContents();
           for (const expected of ["8-10", "12-2", "2-4", "8:30-10"]) {
-            if (!times.some(time => time.trim() === expected)) throw Error("Missing compact 12-hour time: " + expected);
+            if (!times.some((time) => time.trim() === expected))
+              throw Error("Missing compact 12-hour time: " + expected);
           }
         }
-        if (mode === "readable") {
+        if (["readable", "room-fit"].includes(mode)) {
+          // Measure at the real A4 content width, independent of phone viewport.
+          await page.locator(".print-center-page").evaluate((node) => {
+            node.style.width = "180mm";
+          });
+          const roomProblems = await page.locator(".schedule-room").evaluateAll((cells) =>
+            cells
+              .filter((cell) => {
+                const span = cell.querySelector("span");
+                const range = document.createRange();
+                range.selectNodeContents(span);
+                return (
+                  new Set([...range.getClientRects()].map((rect) => Math.round(rect.top))).size !==
+                    1 ||
+                  cell.scrollWidth > cell.clientWidth + 1 ||
+                  span.getBoundingClientRect().width >
+                    cell.clientWidth -
+                      parseFloat(getComputedStyle(cell).paddingLeft) -
+                      parseFloat(getComputedStyle(cell).paddingRight) +
+                      1
+                );
+              })
+              .map((cell) => cell.textContent),
+          );
+          if (roomProblems.length)
+            throw Error(
+              "Room labels must fit one line without clipping: " + JSON.stringify(roomProblems),
+            );
+          if (!(await page.getByText("حاسوب 12", { exact: true }).count()))
+            throw Error("Lab number lost in compact label");
+          await page.locator(".print-center-page").evaluate((node) => {
+            node.style.removeProperty("width");
+          });
           const fontSize = await page
             .locator(".readable-schedule-table tbody td")
             .first()

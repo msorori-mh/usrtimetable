@@ -1140,11 +1140,11 @@
   }
   .print-center-page--readable .readable-schedule-table {
     font-size: 11pt;
-    line-height: 1.5;
+    line-height: 1.3;
   }
   .print-center-page--readable .readable-schedule-table th,
   .print-center-page--readable .readable-schedule-table td {
-    padding: 1.6mm 1.2mm;
+    padding: 1.2mm 0.9mm;
     vertical-align: middle;
     word-break: normal;
     overflow-wrap: anywhere;
@@ -1156,6 +1156,15 @@
   .print-center-page--readable .schedule-day {
     text-align: center;
     font-weight: 700;
+  }
+  .print-center-page--readable .readable-schedule-table td.schedule-room {
+    font-size: 10.5pt;
+    white-space: nowrap;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+  .print-center-page--readable .schedule-room span {
+    white-space: nowrap;
   }
   .print-center-page--readable .schedule-time {
     text-align: center;

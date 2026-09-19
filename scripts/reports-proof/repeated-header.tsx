@@ -14,9 +14,10 @@ import { SHORT_FIXTURE } from "../print-proof/fixture";
 
 const params = new URLSearchParams(location.search);
 const mode = params.get("mode");
+const readable = mode === "readable" || mode === "room-fit";
 const paper = params.get("paper") === "A3" ? "A3" : "A4";
 const orientation = params.get("orientation") === "landscape" ? "landscape" : "portrait";
-const rows = Array.from({ length: 140 }, (_, i) => ({
+const rows = Array.from({ length: mode === "room-fit" ? 18 : 140 }, (_, i) => ({
   id: `ROW${String(i).padStart(3, "0")}`,
   description: "محاضرة اختبار لقياس وضوح بيانات التقرير وتكرار الترويسة الرسمية",
 }));
@@ -172,11 +173,11 @@ createRoot(document.getElementById("root")!).render(
       >
         <ReportTimetableView sessions={instructorSessions} />
       </ReportShell>
-    ) : mode === "sheet" || mode === "readable" ? (
+    ) : mode === "sheet" || readable ? (
       <PrintSheet
-        readable={mode === "readable"}
+        readable={readable}
         labels={
-          mode === "readable"
+          readable
             ? {
                 cohorts: new Map([["cohort-proof", "CYB-L3-2024"]]),
                 deliveryGroups: new Map([["group-proof", "G2"]]),
@@ -185,29 +186,37 @@ createRoot(document.getElementById("root")!).render(
         }
         page={{
           key: "proof",
-          departmentName: mode === "readable" ? "قسم الأمن السيبراني" : undefined,
-          title:
-            mode === "readable"
-              ? "COLUMN_KEY الأمن السيبراني – المستوى 3 – الموازي (نفقة خاصة)"
-              : "COLUMN_KEY",
-          sessions:
-            mode === "readable"
-              ? sheetSessions.map((s) => ({
-                  ...s,
-                  cohort_id: "cohort-proof",
-                  delivery_group_id: "group-proof",
-                  instructors: {
-                    full_name: "د. محمد عبدالرحمن محاضر الاختبار",
+          departmentName: readable ? "قسم الأمن السيبراني" : undefined,
+          title: readable
+            ? "COLUMN_KEY الأمن السيبراني – المستوى 3 – الموازي (نفقة خاصة)"
+            : "COLUMN_KEY",
+          sessions: readable
+            ? sheetSessions.map((s) => ({
+                ...s,
+                rooms: {
+                  ...s.rooms,
+                  name: ["معمل حاسوب 2", "معمل حاسوب 12", "القاعة الكبرى", "قاعة 11"][
+                    Number(s.id.slice(3)) % 4
+                  ],
+                },
+                cohort_id: "cohort-proof",
+                delivery_group_id: "group-proof",
+                instructors: {
+                  full_name:
+                    mode === "room-fit" ? "د. محاضر الاختبار" : "د. محمد عبدالرحمن محاضر الاختبار",
+                },
+                course_offerings: {
+                  ...s.course_offerings,
+                  courses: {
+                    ...s.course_offerings.courses,
+                    name:
+                      mode === "room-fit"
+                        ? `${s.id} ${["أساسيات الويب", "قواعد البيانات", "الذكاء الاصطناعي للأمن السيبراني"][Number(s.id.slice(3)) % 3]}`
+                        : `${s.id} الذكاء الاصطناعي للأمن السيبراني`,
                   },
-                  course_offerings: {
-                    ...s.course_offerings,
-                    courses: {
-                      ...s.course_offerings.courses,
-                      name: `${s.id} الذكاء الاصطناعي للأمن السيبراني`,
-                    },
-                  },
-                }))
-              : sheetSessions,
+                },
+              }))
+            : sheetSessions,
         }}
         visibility={DEFAULT_PRINT_VISIBILITY}
         meta={{
