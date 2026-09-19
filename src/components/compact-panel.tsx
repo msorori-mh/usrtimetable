@@ -350,7 +350,7 @@ export function CompactSchedulePanel({
           <p className="font-bold">مخالفات تمنع التحسين — يلزم تصحيحها دون حذف محاضرات:</p>
           <ul>
             {proposal.qualitySearch.issues.map((issue) => (
-              <li key={issue.sessionId}>
+              <li key={`${issue.sessionId}:${issue.code}`}>
                 {names[issue.instructorId] ?? issue.instructorId}: {issue.message}{" "}
                 <span className="text-xs">({issue.sessionId})</span>
               </li>
