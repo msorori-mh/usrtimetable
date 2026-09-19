@@ -80,7 +80,7 @@ test("report printing uses existing university identity, QR container and all ac
     "كلية تكنولوجيا المعلومات وعلوم الحاسوب",
     "قسم نظم المعلومات",
     "نظم المعلومات الحاسوبية",
-    "المستوى الأول",
+    "الأول",
     "الفصل الأول 2026–2027",
     "مسودة الطباعة",
     "التفاضل والتكامل",
@@ -99,6 +99,7 @@ test("report printing uses existing university identity, QR container and all ac
   assert.ok(runningHeader.includes("رابط التحقق"));
   assert.ok(!runningHeader.includes("التفاضل والتكامل"));
   assert.ok(!html.includes("قسم آخر مالك المقرر"));
+  assert.ok(!html.includes("المستوى الأول"));
   assert.ok(!html.includes("report-timetable-grid"));
 });
 

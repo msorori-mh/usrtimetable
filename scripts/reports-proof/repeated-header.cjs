@@ -41,7 +41,7 @@ const { execFileSync } = require("node:child_process");
             mode === "room-fit"
               ? "ROW017"
               : mode === "individual"
-                ? "ROW001"
+                ? "مهارات الحاسوب ROW001"
                 : mode === "university"
                   ? "ROW005"
                   : mode === "instructor"
