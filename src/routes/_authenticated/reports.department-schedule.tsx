@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Archive } from "lucide-react";
-import { DAY_NAMES_AR, fmtTime } from "@/lib/reports/export";
+import { DAY_NAMES_AR, compactAcademicLevelLabel, fmtTime } from "@/lib/reports/export";
 import { filterRowsBySearch } from "@/lib/reports/search";
 import { entityDisplayName } from "@/lib/entity-display";
 
@@ -90,7 +90,7 @@ function Page() {
       .map((s) => ({
         department: s.course_offerings?.courses?.departments?.name ?? "",
         program: s.course_offerings?.academic_programs?.name ?? "",
-        level: s.course_offerings?.academic_levels?.name ?? "",
+        level: compactAcademicLevelLabel(s.course_offerings?.academic_levels?.name),
         section: s.sections?.section_number ?? "",
         course: entityDisplayName(s.course_offerings?.courses ?? {}, ""),
         day: DAY_NAMES_AR[s.day_of_week] ?? "",
