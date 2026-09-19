@@ -136,7 +136,9 @@ function Page() {
     ...(programId !== "all" ? [`البرنامج: ${selectedProgram?.name ?? programId}`] : []),
     ...(levelId !== "all" ? [`المستوى: ${selectedLevel?.name ?? levelId}`] : []),
     ...(courseId !== "all"
-      ? [`المادة: ${selectedCourse?.code ? `${selectedCourse.code} — ` : ""}${selectedCourse?.name ?? courseId}`]
+      ? [
+          `المادة: ${selectedCourse?.code ? `${selectedCourse.code} — ` : ""}${selectedCourse?.name ?? courseId}`,
+        ]
       : []),
   ];
   const exportAt = useMemo(() => new Date(), []);
