@@ -134,9 +134,7 @@ export function parseInstructorStatus(value: unknown): { active: boolean; reason
   const key = headerKey(value).toLowerCase();
   if (["نشط", "true", "1", "yes", "نعم", "y"].includes(key)) return { active: true };
   if (["غير نشط", "false", "0", "no", "لا", "n"].includes(key)) return { active: false };
-  const reason = INSTRUCTOR_INACTIVE_STATUS_REASONS.find(
-    (status) => key === headerKey(status),
-  );
+  const reason = INSTRUCTOR_INACTIVE_STATUS_REASONS.find((status) => key === headerKey(status));
   if (reason) return { active: false, reason };
   return null;
 }
