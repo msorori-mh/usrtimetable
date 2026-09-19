@@ -107,6 +107,7 @@ export function FacultyIdentityLink({
       });
       void qc.invalidateQueries({ queryKey: ["faculty-university-report"] });
       void qc.invalidateQueries({ queryKey: ["faculty-university-choices"] });
+      void qc.invalidateQueries({ queryKey: ["faculty-home-profiles"] });
       setOpen(false);
       setConfirmed(false);
       setTarget("");
