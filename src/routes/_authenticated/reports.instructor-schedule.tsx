@@ -269,6 +269,7 @@ function Page() {
           : "يشمل مواد وساعات المحاضر داخل هذه الكلية فقط.",
       }}
       filename="instructor_schedule"
+      printFilename={instructorName ? `${instructorName} - الجدول الفردي` : "الجدول الفردي"}
       rows={rows}
       headers={exportHeaders}
       isLoading={isLoading}
