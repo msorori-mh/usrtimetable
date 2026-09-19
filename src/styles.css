@@ -1235,6 +1235,43 @@
     text-align: center;
     font-weight: 700;
   }
+  .instructor-print-readable .instructor-academic-context {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0 !important;
+    margin-bottom: 2mm !important;
+    padding: 0 !important;
+    overflow: hidden;
+    border: 1px solid #b8c7cf;
+    border-radius: 0;
+    background: #f5f8fa !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .instructor-print-readable .instructor-academic-context-item {
+    min-width: 0;
+    padding: 1.2mm 2mm;
+  }
+  .instructor-print-readable
+    .instructor-academic-context-item
+    + .instructor-academic-context-item {
+    border-inline-start: 1px solid #b8c7cf;
+  }
+  .instructor-print-readable .instructor-academic-context-label {
+    display: block;
+    margin-bottom: 0.3mm;
+    color: #5f6f78 !important;
+    font-size: 8pt !important;
+    line-height: 1.2;
+  }
+  .instructor-print-readable .instructor-academic-context-value {
+    color: #123f54 !important;
+    font-size: 9.5pt !important;
+    font-weight: 700;
+    line-height: 1.35;
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
   .instructor-print-readable .instructor-detail-cell {
     min-width: 0;
     line-height: 1.35;
