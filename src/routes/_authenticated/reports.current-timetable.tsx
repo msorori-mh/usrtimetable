@@ -39,7 +39,7 @@ import { filterCurrentScheduleScope } from "@/lib/print-center/current-schedule-
 const EMPTY_SESSIONS: PrintSessionLike[] = [];
 
 const DESCRIPTION =
-  "طباعة الجدول كاملًا أو حسب القسم والبرنامج — مجمعة حسب البرنامج/المستوى/النظام مع مجموعات الطلاب، برأس رسمي وبدون أي تعديل على الجدول.";
+  "طباعة الجدول كاملًا أو حسب القسم والبرنامج والمستوى — مجمعة حسب البرنامج/المستوى/النظام مع مجموعات الطلاب، برأس رسمي وبدون أي تعديل على الجدول.";
 
 export const Route = createFileRoute("/_authenticated/reports/current-timetable")({
   head: () => ({
@@ -66,11 +66,13 @@ function Page() {
   const { active } = useActiveCollege();
   const [departmentId, setDepartmentId] = useState("all");
   const [programId, setProgramId] = useState("all");
+  const [levelId, setLevelId] = useState("all");
   const [scopeCollege, setScopeCollege] = useState(ctx.collegeId);
   if (scopeCollege !== ctx.collegeId) {
     setScopeCollege(ctx.collegeId);
     setDepartmentId("all");
     setProgramId("all");
+    setLevelId("all");
   }
   const {
     data: catalog,
@@ -81,7 +83,7 @@ function Page() {
     queryKey: ["current-timetable-scope", ctx.collegeId],
     enabled: !!ctx.collegeId,
     queryFn: async () => {
-      const [departments, programs] = await Promise.all([
+      const [departments, programs, levels] = await Promise.all([
         supabase
           .from("departments")
           .select("id,name")
@@ -92,23 +94,36 @@ function Page() {
           .select("id,name,department_id")
           .eq("college_id", ctx.collegeId!)
           .order("name"),
+        supabase
+          .from("academic_levels")
+          .select("id,name,level_number,program_id")
+          .eq("college_id", ctx.collegeId!)
+          .order("level_number")
+          .order("name"),
       ]);
       if (departments.error) throw departments.error;
       if (programs.error) throw programs.error;
+      if (levels.error) throw levels.error;
       return {
         departments: departments.data ?? [],
         programs: programs.data ?? [],
+        levels: levels.data ?? [],
       };
     },
   });
   const availablePrograms = (catalog?.programs ?? []).filter(
     (p) => departmentId === "all" || p.department_id === departmentId,
   );
+  const availableLevels = (catalog?.levels ?? []).filter(
+    (level) => programId !== "all" && level.program_id === programId,
+  );
   const selectedDepartment = catalog?.departments.find((d) => d.id === departmentId);
   const selectedProgram = availablePrograms.find((p) => p.id === programId);
+  const selectedLevel = availableLevels.find((level) => level.id === levelId);
   const extraSummary = [
     ...(departmentId !== "all" ? [`القسم: ${selectedDepartment?.name ?? departmentId}`] : []),
     ...(programId !== "all" ? [`البرنامج: ${selectedProgram?.name ?? programId}`] : []),
+    ...(levelId !== "all" ? [`المستوى: ${selectedLevel?.name ?? levelId}`] : []),
   ];
   const exportAt = useMemo(() => new Date(), []);
   const [qrUrl, setQrUrl] = useState("");
@@ -186,8 +201,9 @@ function Page() {
         catalog?.programs ?? [],
         departmentId,
         programId,
+        levelId,
       ),
-    [bundle?.sessions, catalog?.programs, departmentId, programId],
+    [bundle?.sessions, catalog?.programs, departmentId, programId, levelId],
   );
   const pages = useMemo(
     () =>
@@ -215,7 +231,11 @@ function Page() {
 
   const isLoading = ctx.isLoading || sessionsLoading || catalogLoading;
   const ready = !!ctx.versionId;
-  const filtered = ctx.studySystem !== "all" || departmentId !== "all" || programId !== "all";
+  const filtered =
+    ctx.studySystem !== "all" ||
+    departmentId !== "all" ||
+    programId !== "all" ||
+    levelId !== "all";
   const coverageSuffix = filtered ? " (الكلية كاملة)" : "";
   const scopeSuffix = filtered ? " (ضمن الفلتر)" : "";
 
@@ -238,7 +258,7 @@ function Page() {
         void refetchCatalog();
       }}
       notReadyMessage={ready ? undefined : "اختر نسخة الجدول لطباعتها."}
-      emptyMessage="لا توجد جلسات تطابق القسم والبرنامج ونظام الدراسة المحدد في هذه النسخة."
+      emptyMessage="لا توجد جلسات تطابق القسم والبرنامج والمستوى ونظام الدراسة المحدد في هذه النسخة."
       kpis={[
         {
           label: `المجموعات المجدولة${coverageSuffix}`,
@@ -260,6 +280,7 @@ function Page() {
           onClear={() => {
             setDepartmentId("all");
             setProgramId("all");
+            setLevelId("all");
           }}
         >
           <ReportFilterField label="القسم" htmlFor="current-print-department">
@@ -269,6 +290,7 @@ function Page() {
               onValueChange={(value) => {
                 setDepartmentId(value);
                 setProgramId("all");
+                setLevelId("all");
               }}
             >
               <SelectTrigger id="current-print-department" aria-label="القسم">
@@ -287,7 +309,10 @@ function Page() {
           <ReportFilterField label="البرنامج" htmlFor="current-print-program">
             <Select
               value={programId}
-              onValueChange={setProgramId}
+              onValueChange={(value) => {
+                setProgramId(value);
+                setLevelId("all");
+              }}
               disabled={catalogLoading || !!catalogError}
             >
               <SelectTrigger id="current-print-program" aria-label="البرنامج">
@@ -303,6 +328,27 @@ function Page() {
               </SelectContent>
             </Select>
           </ReportFilterField>
+          <ReportFilterField label="المستوى" htmlFor="current-print-level">
+            <Select
+              value={levelId}
+              onValueChange={setLevelId}
+              disabled={catalogLoading || !!catalogError || programId === "all"}
+            >
+              <SelectTrigger id="current-print-level" aria-label="المستوى">
+                <SelectValue
+                  placeholder={programId === "all" ? "اختر البرنامج أولًا" : "اختر المستوى"}
+                />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">جميع مستويات البرنامج</SelectItem>
+                {availableLevels.map((level) => (
+                  <SelectItem key={level.id} value={level.id}>
+                    {level.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </ReportFilterField>
         </ReportFilters>
       }
       summary={
@@ -313,7 +359,7 @@ function Page() {
           {filtered && (
             <p className="mt-1 text-muted-foreground">
               أرقام التغطية أعلاه تخص الكلية كاملة بجميع الأنظمة؛ أما الجلسات والصفحات والطباعة
-              والتصدير فتتبع القسم والبرنامج ونظام الدراسة المختارة.
+              والتصدير فتتبع القسم والبرنامج والمستوى ونظام الدراسة المختارة.
             </p>
           )}
           <p className="mt-1 text-muted-foreground">
