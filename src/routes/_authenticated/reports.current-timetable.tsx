@@ -72,11 +72,17 @@ function Page() {
   const [courseId, setCourseId] = useState("all");
   const [courseSearch, setCourseSearch] = useState("");
   const [scopeCollege, setScopeCollege] = useState(ctx.collegeId);
+  const [scopeTerm, setScopeTerm] = useState(ctx.termId);
   if (scopeCollege !== ctx.collegeId) {
     setScopeCollege(ctx.collegeId);
+    setScopeTerm(ctx.termId);
     setDepartmentId("all");
     setProgramId("all");
     setLevelId("all");
+    setCourseId("all");
+    setCourseSearch("");
+  } else if (scopeTerm !== ctx.termId) {
+    setScopeTerm(ctx.termId);
     setCourseId("all");
     setCourseSearch("");
   }
