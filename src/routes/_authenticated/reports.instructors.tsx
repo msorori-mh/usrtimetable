@@ -218,35 +218,47 @@ function Report() {
         { p_college_id: active!.id },
       );
       if (homeError) throw homeError;
-      return (homes ?? []).map((h): InstructorRow => {
-        const local = (data ?? []).find((i) => h.members.some((m) => m.id === i.id));
-        return {
-          id: h.identity_id,
-          full_name: h.name,
-          full_name_ar: h.name,
-          employee_number: null,
-          affiliation_department_id: null,
-          instructor_type_id: null,
-          max_weekly_hours: null,
-          administrative_release_hours: null,
-          administrative_position: null,
-          administrative_department_id: null,
-          administrative_support_department_id: null,
-          email: null,
-          phone: null,
-          ...local,
-          college_id: active!.id,
-          university_number: h.university_number,
-          affiliation_college_id: h.home_college_id,
-          resolved_home_name: h.home_college,
-          resolved_home_department: h.home_department,
-          approved_quota: h.quota,
-          is_active: h.is_active,
-          academic_rank: h.academic_rank,
-          specialization: h.specialization,
-          employment_type: h.employment_type,
-        };
-      });
+      const { data: nativeRecords, error: nativeError } = await facultyWorkflow.rpc(
+        "get_college_faculty_roster",
+        { p_college_id: active!.id, p_scope: "home" },
+      );
+      if (nativeError) throw nativeError;
+      const nativeByNumber = new Map(
+        (nativeRecords ?? []).map((record) => [record.university_number, record]),
+      );
+      return (homes ?? [])
+        .filter((h) => h.home_college_id !== active!.id || nativeByNumber.has(h.university_number))
+        .map((h): InstructorRow => {
+          const local =
+            nativeByNumber.get(h.university_number) ??
+            (data ?? []).find((i) => h.members.some((m) => m.id === i.id));
+          return {
+            id: h.identity_id,
+            full_name: h.name,
+            full_name_ar: h.name,
+            employee_number: null,
+            affiliation_department_id: null,
+            instructor_type_id: null,
+            max_weekly_hours: null,
+            administrative_release_hours: null,
+            administrative_position: null,
+            administrative_department_id: null,
+            administrative_support_department_id: null,
+            email: null,
+            phone: null,
+            ...local,
+            college_id: active!.id,
+            university_number: h.university_number,
+            affiliation_college_id: h.home_college_id,
+            resolved_home_name: h.home_college,
+            resolved_home_department: h.home_department,
+            approved_quota: h.quota,
+            is_active: h.is_active,
+            academic_rank: h.academic_rank,
+            specialization: h.specialization,
+            employment_type: h.employment_type,
+          };
+        });
     },
   });
 
