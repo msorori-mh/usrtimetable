@@ -105,12 +105,13 @@ assert(
   "instructor page uses the dedicated edit capability",
 );
 assert(
-  instructors.includes('"academic_affairs_update_instructor"'),
+  instructors.includes('"update_home_college_instructor"'),
   "academic-affairs instructor edit uses the dedicated RPC",
 );
 assert(
-  instructors.includes("editing && !canManage"),
-  "dedicated RPC is used only for editing an existing row by a non-admin",
+  instructors.includes("canEdit && i.can_edit") &&
+    instructors.includes("p_expected_updated_at: editing.updated_at"),
+  "home-authorized existing-row edits use timestamp checks",
 );
 assert(
   instructors.includes("صلاحيتك تسمح بتعديل المحاضرين الحاليين فقط"),
@@ -121,26 +122,25 @@ assert(
   "new-instructor trigger stays admin-only",
 );
 assert(
-  /\{canManage && \([\s\S]{0,300}aria-label=\{`حذف/.test(instructors),
+  /\{canManage && i\.can_delete && \([\s\S]{0,300}aria-label=\{`حذف/.test(instructors),
   "delete action stays admin-only",
 );
 
-const migration = read(
-  "supabase/migrations/20260915034500_academic_affairs_instructor_basic_edit.sql",
-);
+const migration = read("supabase/migrations/20260919140000_home_college_faculty_roster.sql");
 assert(
-  /CREATE OR REPLACE FUNCTION public\.academic_affairs_update_instructor/.test(migration),
+  /CREATE OR REPLACE FUNCTION public\.update_home_college_instructor/.test(migration),
   "dedicated academic-affairs update RPC exists",
 );
 assert(/SECURITY DEFINER/.test(migration), "dedicated RPC is SECURITY DEFINER");
 assert(
-  /public\.has_role\(v_actor, 'institutional_viewer'\)/.test(migration) &&
+  /public\.has_role\(v_actor,'institutional_viewer'\)/.test(migration) &&
     /public\.is_viewer_only\(v_actor\)/.test(migration) &&
-    /public\.user_in_college\(v_actor, v_current\.college_id\)/.test(migration),
+    /public\.user_in_college\(v_actor,p_college_id\)/.test(migration),
   "RPC requires academic-affairs-only actor assigned to the instructor college",
 );
 assert(
-  /INSERT INTO public\.audit_logs/.test(migration) && migration.includes("academic_affairs_update"),
+  /INSERT INTO public\.audit_logs/.test(migration) &&
+    migration.includes("home_college_instructor_updated"),
   "RPC writes an audit record",
 );
 assert(
