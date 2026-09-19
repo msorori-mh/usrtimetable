@@ -1,5 +1,5 @@
 /**
- * Shared active-college id store — single source of truth across hook instances.
+ * Tab-local active-college store — shared across hook instances, isolated from other tabs.
  * Pure module (no React / Supabase) so harnesses can import it safely.
  */
 
@@ -14,15 +14,38 @@ export interface CollegeRefLike {
 
 type Listener = () => void;
 const listeners = new Set<Listener>();
+let activeId: string | null | undefined;
 
 function hasWindow(): boolean {
   return typeof window !== "undefined";
 }
 
-/** Read the shared active college id (single source of truth). */
+/** Seed a tab once from its session, then the last choice used by a new tab.
+ * Never let another tab's storage event replace the scope of a running operation. */
 export function getActiveCollegeId(): string | null {
   if (!hasWindow()) return null;
-  return localStorage.getItem(ACTIVE_COLLEGE_STORAGE_KEY);
+  if (activeId !== undefined) return activeId;
+  activeId = null;
+  try {
+    activeId = window.sessionStorage.getItem(ACTIVE_COLLEGE_STORAGE_KEY);
+  } catch {
+    /* Memory still isolates the tab when storage is unavailable. */
+  }
+  if (activeId === null) {
+    try {
+      activeId = window.localStorage.getItem(ACTIVE_COLLEGE_STORAGE_KEY);
+    } catch {
+      /* A first-time tab can select its college through the normal UI. */
+    }
+  }
+  if (activeId !== null) {
+    try {
+      window.sessionStorage.setItem(ACTIVE_COLLEGE_STORAGE_KEY, activeId);
+    } catch {
+      /* Keep the initialized in-memory scope. */
+    }
+  }
+  return activeId;
 }
 
 /**
@@ -31,24 +54,24 @@ export function getActiveCollegeId(): string | null {
  */
 export function setActiveCollegeId(id: string): void {
   if (!hasWindow()) return;
-  localStorage.setItem(ACTIVE_COLLEGE_STORAGE_KEY, id);
+  activeId = id;
+  try {
+    window.sessionStorage.setItem(ACTIVE_COLLEGE_STORAGE_KEY, id);
+  } catch {
+    /* Same-tab subscribers must still receive the new scope. */
+  }
+  try {
+    window.localStorage.setItem(ACTIVE_COLLEGE_STORAGE_KEY, id);
+  } catch {
+    /* Remembering a default for new tabs is optional. */
+  }
   listeners.forEach((listener) => listener());
 }
 
 export function subscribeActiveCollegeId(listener: Listener): () => void {
   listeners.add(listener);
-  const onStorage = (e: StorageEvent) => {
-    if (e.key === ACTIVE_COLLEGE_STORAGE_KEY) listener();
-  };
-  const canUseStorageEvents = hasWindow() && typeof window.addEventListener === "function";
-  if (canUseStorageEvents) {
-    window.addEventListener("storage", onStorage);
-  }
   return () => {
     listeners.delete(listener);
-    if (canUseStorageEvents) {
-      window.removeEventListener("storage", onStorage);
-    }
   };
 }
 
