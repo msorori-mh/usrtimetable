@@ -7,6 +7,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { compactAcademicLevelLabel } from "@/lib/reports/formatters";
 import {
   orderWeekDaysRtl,
   RTL_WEEK_DAY_ORDER,
@@ -282,7 +283,7 @@ export function TimetableGridReport({
                 القاعة: selected.room_label,
                 المحاضر: selected.instructor_name,
                 البرنامج: selected.program_name,
-                المستوى: selected.level_name,
+                المستوى: compactAcademicLevelLabel(selected.level_name),
                 الدفعة: selected.cohort_label,
                 المجموعة: selected.delivery_group_label || selected.section_number,
                 النوع: sessionTypeLabel(selected.session_type),
