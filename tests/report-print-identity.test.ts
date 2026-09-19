@@ -90,6 +90,9 @@ describe("report print identity", () => {
     expect(view.includes("instructor-detail-room")).toBe(true);
     expect(view.includes("instructor-detail-group")).toBe(true);
     expect(view.includes('className: "w-[21%] text-center align-middle"')).toBe(true);
+    expect(view.includes("compactLevelLabel")).toBe(true);
+    expect(view.includes('\"1\": \"الأول\"')).toBe(true);
+    expect(view.includes('replace(/^المستوى\\s*/u, \"\")')).toBe(true);
   });
 
   test("no report route uses a bespoke print path that bypasses the shell header", () => {
