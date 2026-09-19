@@ -1,6 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
 import { readAllReportRows } from "@/lib/reports/read-all";
-import { withUniversityNumbers } from "@/lib/instructors/university-number";
 import { facultyWorkflow } from "@/lib/instructors/faculty-workflow";
 import { mapRawSessions } from "@/lib/reports/session-mappers";
 import { fetchCohortDeliveryGroupLabels, fetchInstructorScheduleSessions } from "./session-queries";
@@ -24,20 +23,9 @@ async function reportCanViewAcrossColleges() {
 export async function fetchUniversityScheduleDirectory(collegeId: string) {
   if (!collegeId) throw new Error("اختر الكلية أولًا.");
   const canViewAcrossColleges = await reportCanViewAcrossColleges();
-  // Non-admin reads are narrowed before execution, not merely hidden in the UI.
-  const [records, types, colleges, terms, versions] = await Promise.all([
-    readAllReportRows((from, to) => {
-      let q = supabase
-        .from("instructors")
-        .select(
-          "id, college_id, full_name, max_weekly_hours, administrative_release_hours, instructor_type_id, employment_type",
-        );
-      if (!canViewAcrossColleges) q = q.eq("college_id", collegeId);
-      return q.order("id").range(from, to);
-    }),
-    readAllReportRows((from, to) =>
-      supabase.from("instructor_types").select("id, code").order("id").range(from, to),
-    ),
+  // The picker is always college-scoped; admin report expansion is separate.
+  const [roster, colleges, terms, versions] = await Promise.all([
+    facultyWorkflow.rpc("get_college_instructor_schedule_directory", { p_college_id: collegeId }),
     readAllReportRows((from, to) => {
       let q = supabase.from("colleges").select("id, name, university_id");
       if (!canViewAcrossColleges) q = q.eq("id", collegeId);
@@ -56,22 +44,15 @@ export async function fetchUniversityScheduleDirectory(collegeId: string) {
       return q.order("id").range(from, to);
     }),
   ]);
-  const { data: homes, error: homeError } = await facultyWorkflow.rpc("get_faculty_home_profiles", {
-    p_college_id: canViewAcrossColleges ? null : collegeId,
-  });
-  if (homeError) throw homeError;
-  const numbered = await withUniversityNumbers(
-    records.map((r) => ({
-      ...r,
-      instructor_type_code: types.find((t) => t.id === r.instructor_type_id)?.code ?? null,
-    })),
-  );
-  const homeByNumber = new Map((homes ?? []).map((h) => [h.university_number, h]));
-  const instructors = numbered.map((i) => ({
-    ...i,
-    authoritative_quota: homeByNumber.get(i.university_number ?? "")?.quota ?? null,
-  }));
-  return { instructors, colleges, terms, versions, canViewAcrossColleges };
+  if (roster.error) throw roster.error;
+  return {
+    collegeId,
+    instructors: roster.data ?? [],
+    colleges,
+    terms,
+    versions,
+    canViewAcrossColleges,
+  };
 }
 
 export async function fetchUniversityInstructorSchedule(input: {

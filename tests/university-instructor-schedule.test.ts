@@ -69,6 +69,18 @@ describe("university instructor schedule", () => {
     expect(facultyRecordIds(records[0], records)).toEqual(["home", "alias"]);
     expect(facultyRecordIds({ id: "home", university_number: null }, records)).toEqual(["home"]);
   });
+  test("scoped picker retains verified aliases without loading unrelated faculty", () => {
+    const selected = {
+      id: "canonical",
+      university_number: "U1",
+      record_ids: ["legacy-in-itcs", "canonical", "legacy-in-arts"],
+    };
+    expect(facultyRecordIds(selected, [selected])).toEqual([
+      "canonical",
+      "legacy-in-itcs",
+      "legacy-in-arts",
+    ]);
+  });
   test("same term name in a previous academic year cannot enter the report", () => {
     expect(overlappingTerms(term("a", "c1"), term("b", "c2", "2025-09-01", "2025-12-31"))).toBe(
       false,

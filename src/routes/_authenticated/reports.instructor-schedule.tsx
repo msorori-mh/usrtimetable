@@ -24,7 +24,6 @@ import {
 import {
   resolveCollegeScheduleScopes,
   instructorTeachingScopes,
-  isTestScheduleLabel,
   summarizeUniversitySchedule,
 } from "@/lib/reports/university-instructor-schedule";
 import { InstructorCollegeHours } from "@/components/reports/instructor-college-hours";
@@ -77,7 +76,7 @@ function Page() {
 
   const directory = useQuery({
     queryKey: [
-      "university-instructor-directory",
+      "college-instructor-schedule-directory",
       ctx.collegeId,
       currentUser.data?.id,
       currentUser.data?.isSuperAdmin,
@@ -86,31 +85,27 @@ function Page() {
     queryFn: () => fetchUniversityScheduleDirectory(ctx.collegeId!),
   });
   const canViewAcrossColleges =
-    currentUser.data?.isSuperAdmin === true && directory.data?.canViewAcrossColleges === true;
+    currentUser.data?.isSuperAdmin === true &&
+    directory.data?.collegeId === ctx.collegeId &&
+    directory.data?.canViewAcrossColleges === true;
   const instructors = useMemo(
     () =>
-      directory.data?.instructors
-        .filter((instructor) => {
-          const anchor = directory.data.colleges.find((c) => c.id === ctx.collegeId);
-          const college = directory.data.colleges.find((c) => c.id === instructor.college_id);
-          return (
-            !!anchor?.university_id &&
-            college?.university_id === anchor.university_id &&
-            !isTestScheduleLabel(college.name)
-          );
-        })
+      (directory.data?.collegeId === ctx.collegeId ? directory.data.instructors : [])
         .slice()
         .sort((a, b) => a.full_name.localeCompare(b.full_name, "ar")),
     [directory.data, ctx.collegeId],
   );
-  const selectedInstructor = instructors?.find((i) => i.id === insId);
+  const selectedInstructor = instructors?.find(
+    (i) => i.id === insId || i.record_ids.includes(insId),
+  );
   const instructorName = selectedInstructor?.full_name;
   const universityNumber = selectedInstructor?.university_number;
   const isHourlyContract =
     isHourlyContractTypeCode(selectedInstructor?.instructor_type_code) ||
     selectedInstructor?.employment_type === "contract";
   const selection = useMemo(() => {
-    if (!directory.data || !ctx.versionId) return { scopes: [], error: null };
+    if (!directory.data || directory.data.collegeId !== ctx.collegeId || !ctx.versionId)
+      return { scopes: [], error: null };
     try {
       const universityId = directory.data.colleges.find(
         (c) => c.id === ctx.collegeId,
@@ -341,7 +336,7 @@ function Page() {
                 </p>
               )}
             </div>
-            <Select value={insId} onValueChange={setInsId}>
+            <Select value={selectedInstructor?.id ?? ""} onValueChange={setInsId}>
               <SelectTrigger id="is-instructor" aria-label="المحاضر">
                 <SelectValue placeholder="اختر المحاضر" />
               </SelectTrigger>
@@ -349,8 +344,7 @@ function Page() {
                 {filteredInstructors.map((i) => (
                   <SelectItem key={i.id} value={i.id}>
                     {i.full_name} {i.university_number ? `— ${i.university_number}` : ""} —{" "}
-                    {directory.data?.colleges.find((c) => c.id === i.college_id)?.name ??
-                      "كلية المحاضر"}
+                    {i.home_college_name ?? "التبعية الأصلية تحتاج مراجعة"}
                   </SelectItem>
                 ))}
               </SelectContent>
