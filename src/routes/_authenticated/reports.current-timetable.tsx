@@ -232,10 +232,7 @@ function Page() {
   const isLoading = ctx.isLoading || sessionsLoading || catalogLoading;
   const ready = !!ctx.versionId;
   const filtered =
-    ctx.studySystem !== "all" ||
-    departmentId !== "all" ||
-    programId !== "all" ||
-    levelId !== "all";
+    ctx.studySystem !== "all" || departmentId !== "all" || programId !== "all" || levelId !== "all";
   const coverageSuffix = filtered ? " (الكلية كاملة)" : "";
   const scopeSuffix = filtered ? " (ضمن الفلتر)" : "";
 
