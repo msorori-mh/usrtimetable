@@ -405,10 +405,10 @@ describe("other admin lists produce usable columns", () => {
     const base = table.headers.indexOf("النصاب الأساسي الأسبوعي");
     const release = table.headers.indexOf("ساعات الإعفاء الإداري");
     const net = table.headers.indexOf("النصاب الفعلي");
-    // net = base − administrative release, floored at 0
+    // when present, the administrative value is the effective teaching quota
     expect(table.body[0]?.[base]).toBe(18);
     expect(table.body[0]?.[release]).toBe(6);
-    expect(table.body[0]?.[net]).toBe(12);
+    expect(table.body[0]?.[net]).toBe(6);
     // a missing base quota stays «—», never 0, and never invents a net value
     expect(table.body[1]?.[base]).toBe("—");
     expect(table.body[1]?.[release]).toBe(0);
