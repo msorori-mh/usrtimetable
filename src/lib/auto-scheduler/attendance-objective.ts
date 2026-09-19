@@ -210,7 +210,7 @@ export interface InstructorAttendanceLimits {
   id: string;
   /** Explicit weekly target (drives ranking and the deviation objective). */
   target_attendance_days_per_week?: number | null;
-  /** Hard-ceiling override only: allows extending to N days without targeting N. */
+  /** Explicit hard ceiling (1..6); may tighten or extend the generic ceiling without becoming a target. */
   max_attendance_days_per_week?: number | null;
 }
 
@@ -225,13 +225,16 @@ export function instructorAttendanceDayCap(
     }
     return value;
   };
-  // Effective hard cap = max(generic, explicit target, explicit max override).
-  // The max override raises the ceiling only; it is never a target and never
-  // enters `instructorTargetDayDeviation` or candidate ranking.
-  let cap = genericCap;
-  if (target != null) cap = Math.max(cap, validate(target));
-  if (maxOverride != null) cap = Math.max(cap, validate(maxOverride));
-  return cap;
+  const validatedTarget = target == null ? null : validate(target);
+  const validatedMax = maxOverride == null ? null : validate(maxOverride);
+  if (validatedTarget != null && validatedMax != null && validatedTarget > validatedMax) {
+    throw new Error("INSTRUCTOR_ATTENDANCE_TARGET_EXCEEDS_MAX");
+  }
+  // An explicit maximum is the instructor's real hard ceiling and may tighten
+  // the generic four-day limit. Without an explicit maximum, an explicit target
+  // can only raise the generic ceiling (e.g. a department head targeting 5 days).
+  if (validatedMax != null) return validatedMax;
+  return validatedTarget == null ? genericCap : Math.max(genericCap, validatedTarget);
 }
 
 /** Instructors scheduled on more distinct weekdays than their effective cap allows. */
