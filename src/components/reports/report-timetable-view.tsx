@@ -112,10 +112,42 @@ function AcademicContextStrip({ sessions }: { sessions: TimetableReportSession[]
   );
 }
 
+function compactLevelLabel(value: unknown): string {
+  const raw = detailText(value).trim();
+  if (raw === "—") return raw;
+
+  const withoutPrefix = raw.replace(/^المستوى\s*/u, "").trim();
+  const normalizedDigits = withoutPrefix
+    .replace(/١/g, "1")
+    .replace(/٢/g, "2")
+    .replace(/٣/g, "3")
+    .replace(/٤/g, "4")
+    .replace(/٥/g, "5")
+    .replace(/٦/g, "6");
+
+  const labels: Record<string, string> = {
+    "1": "الأول",
+    "اول": "الأول",
+    "الأول": "الأول",
+    "2": "الثاني",
+    "الثاني": "الثاني",
+    "3": "الثالث",
+    "الثالث": "الثالث",
+    "4": "الرابع",
+    "الرابع": "الرابع",
+    "5": "الخامس",
+    "الخامس": "الخامس",
+    "6": "السادس",
+    "السادس": "السادس",
+  };
+
+  return labels[normalizedDigits] ?? withoutPrefix;
+}
+
 function LevelDetailCell({ row }: { row: TimetableDetailRow }) {
   return (
     <div className="instructor-detail-cell min-w-[85px] leading-5">
-      <div className="font-semibold">{detailText(row.level)}</div>
+      <div className="font-semibold">{compactLevelLabel(row.level)}</div>
     </div>
   );
 }
