@@ -1,4 +1,5 @@
 import { STUDY_SYSTEM_LABELS } from "@/lib/reports/filters";
+import { compactAcademicLevelLabel } from "@/lib/reports/formatters";
 import type { ReportStudySystem } from "@/lib/reports/types";
 import { sortPrintSessions } from "./filters";
 import type {
@@ -26,7 +27,7 @@ function programName(s: PrintSessionLike): string {
 }
 
 function levelName(s: PrintSessionLike): string {
-  return s.course_offerings?.academic_levels?.name ?? "مستوى غير محدد";
+  return compactAcademicLevelLabel(s.course_offerings?.academic_levels?.name) || "غير محدد";
 }
 
 function departmentName(s: PrintSessionLike): string {
