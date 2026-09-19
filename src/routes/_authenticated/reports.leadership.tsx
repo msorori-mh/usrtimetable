@@ -103,7 +103,11 @@ function CollegeExecutiveCell({ row }: { row: LeadershipRow }) {
             ? row.faculty_directory_count
             : row.faculty_count,
         )}{" "}
-        عضو هيئة تدريس
+        عضو يتبع الكلية
+      </div>
+      <div className="text-[11px] text-muted-foreground">
+        المساهمون في التدريس: {leadershipText(row.teaching_contributors)} · منهم من كليات أخرى:{" "}
+        {leadershipText(row.external_contributors)}
       </div>
     </div>
   );
@@ -261,7 +265,12 @@ function LeadershipDashboard() {
         ...LEADERSHIP_ASSIGNMENT_HEADERS,
         ...LEADERSHIP_TEACHING_HEADERS,
         ...LEADERSHIP_ROOM_HEADERS,
-        { key: "faculty_directory_count", label: "إجمالي أعضاء هيئة التدريس" },
+        {
+          key: "faculty_directory_count",
+          label: "أعضاء الكلية حسب التبعية الأصلية",
+        },
+        { key: "teaching_contributors", label: "إجمالي المساهمين في التدريس" },
+        { key: "external_contributors", label: "منهم من كليات أخرى" },
         { key: "term", label: "الفصل" },
         { key: "version", label: "مصدر الجدول المنشور" },
         { key: "version_updated_at", label: "آخر تعديل للنسخة" },
@@ -369,7 +378,8 @@ function LeadershipDashboard() {
         </div>
       }
       kpis={[
-        { label: "أعضاء هيئة التدريس", value: totalFaculty },
+        { label: "محاضرو الجامعة دون تكرار", value: data?.unique_faculty ?? totalFaculty },
+        { label: "تبعية تحتاج مراجعة", value: data?.unresolved_faculty ?? 0 },
         {
           label: "تغطية الإسناد",
           value: universityCoverage === null ? "—" : String(universityCoverage) + "%",

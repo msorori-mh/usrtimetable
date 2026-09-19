@@ -1,4 +1,4 @@
-import { withUniversityNumbers } from "@/lib/instructors/university-number";
+import { facultyWorkflow } from "@/lib/instructors/faculty-workflow";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -21,7 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { effectiveInstructorWeeklyHours } from "@/lib/instructors/effective-hours";
 import { ADMINISTRATIVE_POSITION_OPTIONS } from "@/lib/instructors/administrative-positions";
 import { employmentTypeLabelAr } from "@/lib/instructor-metadata";
 import { filterRowsBySearch } from "@/lib/reports/search";
@@ -38,13 +37,16 @@ type InstructorRow = {
   full_name_ar: string | null;
   employee_number: string | null;
   university_number?: string | null;
+  approved_quota?: number | null;
+  resolved_home_name?: string | null;
+  resolved_home_department?: string | null;
   affiliation_college_id: string | null;
   affiliation_department_id: string | null;
   specialization: string | null;
   academic_rank: string | null;
   instructor_type_id: string | null;
-  max_weekly_hours: number;
-  administrative_release_hours: number;
+  max_weekly_hours: number | null;
+  administrative_release_hours: number | null;
   administrative_position: string | null;
   administrative_department_id: string | null;
   administrative_support_department_id: string | null;
@@ -62,7 +64,7 @@ const AFFILIATION_LABELS: Record<string, string> = {
 };
 
 function instructorAffiliation(i: InstructorRow, typeCode?: string): string {
-  if (typeCode === "from_other_college") return "external";
+  if (typeCode === "from_other_college" && !i.affiliation_college_id) return "unknown";
   if (!i.affiliation_college_id) return "unknown";
   return i.affiliation_college_id === i.college_id ? "internal" : "external";
 }
@@ -211,7 +213,40 @@ function Report() {
         .eq("college_id", active!.id)
         .order("full_name");
       if (error) throw error;
-      return withUniversityNumbers((data ?? []) as InstructorRow[]);
+      const { data: homes, error: homeError } = await facultyWorkflow.rpc(
+        "get_faculty_home_profiles",
+        { p_college_id: active!.id },
+      );
+      if (homeError) throw homeError;
+      return (homes ?? []).map((h): InstructorRow => {
+        const local = (data ?? []).find((i) => h.members.some((m) => m.id === i.id));
+        return {
+          id: h.identity_id,
+          full_name: h.name,
+          full_name_ar: h.name,
+          employee_number: null,
+          affiliation_department_id: null,
+          instructor_type_id: null,
+          max_weekly_hours: null,
+          administrative_release_hours: null,
+          administrative_position: null,
+          administrative_department_id: null,
+          administrative_support_department_id: null,
+          email: null,
+          phone: null,
+          ...local,
+          college_id: active!.id,
+          university_number: h.university_number,
+          affiliation_college_id: h.home_college_id,
+          resolved_home_name: h.home_college,
+          resolved_home_department: h.home_department,
+          approved_quota: h.quota,
+          is_active: h.is_active,
+          academic_rank: h.academic_rank,
+          specialization: h.specialization,
+          employment_type: h.employment_type,
+        };
+      });
     },
   });
 
@@ -287,17 +322,18 @@ function Report() {
         employee_number: i.employee_number ?? "—",
         instructor: i.full_name,
         full_name_ar: i.full_name_ar ?? "—",
-        affiliation_college: collegeMap.get(i.affiliation_college_id ?? "") ?? "غير محدد",
+        affiliation_college:
+          i.resolved_home_name ?? collegeMap.get(i.affiliation_college_id ?? "") ?? "غير محدد",
         affiliation_scope:
           AFFILIATION_LABELS[instructorAffiliation(i, typeCodeMap.get(i.instructor_type_id ?? ""))],
-        affiliation_department: departmentMap.get(i.affiliation_department_id ?? "") ?? "—",
+        affiliation_department:
+          i.resolved_home_department ?? departmentMap.get(i.affiliation_department_id ?? "") ?? "—",
         specialization: i.specialization ?? "—",
         academic_rank: i.academic_rank ?? "—",
         instructor_type: typeMap.get(i.instructor_type_id ?? "") ?? "—",
-        base_quota: i.max_weekly_hours,
-        admin_release: i.administrative_release_hours,
-        effective_quota:
-          effectiveInstructorWeeklyHours(i.max_weekly_hours, i.administrative_release_hours) ?? 0,
+        base_quota: i.max_weekly_hours ?? "—",
+        admin_release: i.administrative_release_hours ?? "—",
+        effective_quota: i.approved_quota ?? "بانتظار الاعتماد",
         administrative_position: i.administrative_position
           ? (positionMap.get(i.administrative_position as never) ?? i.administrative_position)
           : "—",
@@ -329,14 +365,20 @@ function Report() {
   }, [allRows, status, typeId, departmentId, affiliation, search]);
 
   const activeCount = rows.filter((r) => r.status === "نشط").length;
-  const totalQuota = rows.reduce((sum, r) => sum + Number(r.effective_quota || 0), 0);
+  const totalQuota = rows.reduce(
+    (sum, r) =>
+      sum +
+      (typeof r.effective_quota === "number" && r.affiliation_scope === AFFILIATION_LABELS.internal
+        ? r.effective_quota
+        : 0),
+    0,
+  );
   const externalCount = rows.filter(
     (r) => r.affiliation_scope === AFFILIATION_LABELS.external,
   ).length;
   const missingAffiliation = rows.filter((r) => {
     return (
-      r.affiliation_scope === AFFILIATION_LABELS.unknown ||
-      r.affiliation_college === "غير محدد"
+      r.affiliation_scope === AFFILIATION_LABELS.unknown || r.affiliation_college === "غير محدد"
     );
   }).length;
   const departmentItems = (departments.data ?? []).filter((d) =>
@@ -354,9 +396,9 @@ function Report() {
     { key: "specialization", label: "التخصص" },
     { key: "academic_rank", label: "الرتبة العلمية" },
     { key: "instructor_type", label: "فئة المحاضر" },
-    { key: "base_quota", label: "النصاب الأساسي" },
+    { key: "base_quota", label: "النصاب المسجل" },
     { key: "admin_release", label: "الإعفاء الإداري" },
-    { key: "effective_quota", label: "النصاب الفعلي" },
+    { key: "effective_quota", label: "النصاب المعتمد من الأصلية" },
     { key: "administrative_position", label: "المنصب الإداري" },
     { key: "administrative_unit", label: "الجهة الإدارية" },
     { key: "employment_type", label: "حالة التفرغ/التعاقد" },
@@ -406,7 +448,11 @@ function Report() {
       }}
       filterSummary={filterSummary}
       kpis={[
-        { label: "المحاضرون", value: rows.length },
+        { label: "السجلات المعروضة", value: rows.length },
+        {
+          label: "التابعون للكلية",
+          value: rows.filter((r) => r.affiliation_scope === AFFILIATION_LABELS.internal).length,
+        },
         { label: "النشطون", value: activeCount, tone: "accent" },
         { label: "من خارج الكلية", value: externalCount },
         {
@@ -414,7 +460,7 @@ function Report() {
           value: missingAffiliation,
           tone: missingAffiliation > 0 ? "warning" : "neutral",
         },
-        { label: "إجمالي النصاب الفعلي", value: totalQuota, tone: "accent" },
+        { label: "نصاب أعضاء الكلية المعتمد", value: totalQuota, tone: "accent" },
       ]}
       filters={
         <div className="space-y-2">

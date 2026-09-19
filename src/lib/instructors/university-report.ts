@@ -8,6 +8,8 @@ export type FacultySession = {
   end: string;
   course: string | null;
   room: string | null;
+  group_name?: string | null;
+  program?: string | null;
   type: string;
   study_system: string;
 };
@@ -47,6 +49,14 @@ export type FacultyReport = {
     is_coordination: boolean;
   }[];
   sessions: FacultySession[];
+  selected_version_ids?: string[];
+  unscheduled?: {
+    id: string;
+    college: string;
+    course: string;
+    group_name: string | null;
+    hours: number | null;
+  }[];
 };
 const minutes = (s: string) => Number(s.slice(0, 2)) * 60 + Number(s.slice(3, 5));
 /** IDs, never names, deduplicate shared teaching; overlap never reduces credited load. */

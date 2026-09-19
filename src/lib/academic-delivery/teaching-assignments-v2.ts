@@ -130,6 +130,12 @@ export type WorkspaceFilters = {
 };
 
 const RPC_ERROR_MESSAGES: Record<string, string> = {
+  FACULTY_HOME_REVIEW_REQUIRED: "يجب تثبيت الكلية الأصلية للمحاضر من شاشة تسوية التبعية أولًا",
+  FACULTY_REQUEST_ALREADY_PENDING: "يوجد طلب تكليف معلق لهذا المحاضر والمجموعة",
+  REQUEST_ALREADY_DECIDED: "تمت معالجة الطلب مسبقًا؛ حدّث القائمة",
+  REQUEST_CONTEXT_CHANGED: "تغيرت بيانات التكليف؛ ألغِ الطلب وأنشئ طلبًا محدثًا",
+  REQUEST_FACULTY_CHANGED: "تغيرت بيانات المحاضر أو تبعيته؛ ألغِ الطلب وأنشئ طلبًا محدثًا",
+  FACULTY_ALLOCATION_REVIEW_REQUIRED: "يجب استكمال توزيع ساعات المحاضر قبل إضافة تكليف جديد",
   INSTRUCTOR_EXTRA_HOURS_LIMIT_EXCEEDED:
     "الساعات الزائدة لا يجوز أن تتجاوز 12 ساعة أسبوعيًا لكل عضو",
   INSTRUCTOR_QUOTA_REQUIRED: "يجب تحديد النصاب الأساسي للمحاضر قبل الإسناد",

@@ -64,11 +64,22 @@ export function useCreateTeachingAssignmentV2(filters: WorkspaceFilters | null) 
         toast.error("فشل الإسناد");
         return;
       }
-      toast.success(result.action === "reactivated" ? "أُعيد تفعيل الإسناد" : "تم إنشاء الإسناد");
+      toast.success(
+        result.action === "requested"
+          ? "أُرسل طلب التكليف إلى الكلية الأصلية"
+          : result.action === "reactivated"
+            ? "أُعيد تفعيل الإسناد"
+            : "تم إنشاء الإسناد",
+      );
       if (filters) {
-        void qc.invalidateQueries({ queryKey: teachingAssignmentWorkspaceKey(filters) });
+        void qc.invalidateQueries({
+          queryKey: teachingAssignmentWorkspaceKey(filters),
+        });
       }
-      void qc.invalidateQueries({ queryKey: ["teaching-assignment-workload-preview"] });
+      void qc.invalidateQueries({
+        queryKey: ["teaching-assignment-workload-preview"],
+      });
+      void qc.invalidateQueries({ queryKey: ["faculty-teaching-requests"] });
     },
     onError: mutationErrorToast,
   });
@@ -83,11 +94,20 @@ export function useUpdateTeachingAssignmentV2(filters: WorkspaceFilters | null) 
         toast.error("فشل تحديث الإسناد");
         return;
       }
-      toast.success("تم تحديث ساعات الإسناد");
+      toast.success(
+        result.action === "requested"
+          ? "أُرسل طلب تعديل التكليف إلى الكلية الأصلية"
+          : "تم تحديث ساعات الإسناد",
+      );
       if (filters) {
-        void qc.invalidateQueries({ queryKey: teachingAssignmentWorkspaceKey(filters) });
+        void qc.invalidateQueries({
+          queryKey: teachingAssignmentWorkspaceKey(filters),
+        });
       }
-      void qc.invalidateQueries({ queryKey: ["teaching-assignment-workload-preview"] });
+      void qc.invalidateQueries({
+        queryKey: ["teaching-assignment-workload-preview"],
+      });
+      void qc.invalidateQueries({ queryKey: ["faculty-teaching-requests"] });
     },
     onError: mutationErrorToast,
   });
@@ -104,9 +124,14 @@ export function useDeactivateTeachingAssignmentV2(filters: WorkspaceFilters | nu
       }
       toast.success("تم تعطيل الإسناد (محفوظ للتاريخ)");
       if (filters) {
-        void qc.invalidateQueries({ queryKey: teachingAssignmentWorkspaceKey(filters) });
+        void qc.invalidateQueries({
+          queryKey: teachingAssignmentWorkspaceKey(filters),
+        });
       }
-      void qc.invalidateQueries({ queryKey: ["teaching-assignment-workload-preview"] });
+      void qc.invalidateQueries({
+        queryKey: ["teaching-assignment-workload-preview"],
+      });
+      void qc.invalidateQueries({ queryKey: ["faculty-teaching-requests"] });
     },
     onError: mutationErrorToast,
   });

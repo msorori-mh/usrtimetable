@@ -1,3 +1,4 @@
+import { FacultyTeachingRequests } from "@/components/faculty-workflow";
 import { ACADEMIC_STUDY_SYSTEMS, ACADEMIC_STUDY_SYSTEM_LABELS } from "@/lib/study-systems";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
@@ -352,6 +353,7 @@ function TeachingAssignmentsV2Page() {
           </p>
         </div>
       </header>
+      {active && canManage && <FacultyTeachingRequests collegeId={active.id} />}
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <CollegeSwitcher />
@@ -857,6 +859,12 @@ function TeachingAssignmentsV2Page() {
                   </div>
                   <div>
                     <Label htmlFor="ta-v2-instructor-combobox">المدرس</Label>
+                    {sourceCollegeId && sourceCollegeId !== active?.id && (
+                      <p className="text-sm text-muted-foreground">
+                        الحفظ يرسل طلب تكليف للكلية الأصلية؛ الأدمن يعتمد مباشرة. لا تُحتسب الساعات
+                        قبل الاعتماد.
+                      </p>
+                    )}
                     {candidatesQuery.isLoading ? (
                       <p
                         className="text-xs text-muted-foreground"
