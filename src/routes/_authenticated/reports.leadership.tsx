@@ -72,13 +72,7 @@ function hasLeadershipIssue(row: LeadershipCollege) {
   );
 }
 
-function CountSummaryCard({
-  title,
-  entries,
-}: {
-  title: string;
-  entries: Array<[string, number]>;
-}) {
+function CountSummaryCard({ title, entries }: { title: string; entries: Array<[string, number]> }) {
   return (
     <Card className="p-3">
       <div className="mb-2 text-sm font-bold text-primary">{title}</div>
@@ -108,7 +102,8 @@ function CollegeExecutiveCell({ row }: { row: LeadershipRow }) {
           Number(row.faculty_directory_count ?? 0) > 0
             ? row.faculty_directory_count
             : row.faculty_count,
-        )} عضو هيئة تدريس
+        )}{" "}
+        عضو هيئة تدريس
       </div>
     </div>
   );
@@ -398,10 +393,7 @@ function LeadershipDashboard() {
       ]}
       summary={
         <div className="space-y-3">
-          <Card
-            className="border-primary/20 bg-primary/5 px-4 py-3"
-            data-testid="leadership-scope"
-          >
+          <Card className="border-primary/20 bg-primary/5 px-4 py-3" data-testid="leadership-scope">
             <div className="grid gap-2 text-center sm:grid-cols-3">
               <div>
                 <div className="text-[11px] text-muted-foreground">الكليات</div>
