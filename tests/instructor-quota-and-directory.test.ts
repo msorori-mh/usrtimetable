@@ -56,6 +56,16 @@ describe("approved quota resolution", () => {
     expect(b.status).toBe("overload");
   });
 
+  it("keeps base 12, administrative quota 3, and computes 7 extra hours from 10 assigned", () => {
+    const b = computeQuotaBalance({ maxWeeklyHours: 12, adminReleaseHours: 3, assignedHours: 10 });
+    expect(b.baseHours).toBe(12);
+    expect(b.releaseHours).toBe(3);
+    expect(b.netHours).toBe(3);
+    expect(b.overloadHours).toBe(7);
+    expect(b.deficitHours).toBe(0);
+    expect(b.status).toBe("overload");
+  });
+
   it("computes overload and deficit against the net quota", () => {
     const over = computeQuotaBalance({ maxWeeklyHours: 12, assignedHours: 18 });
     expect(over.overloadHours).toBe(6);
