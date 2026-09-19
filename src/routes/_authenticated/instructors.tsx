@@ -1,5 +1,6 @@
 import { facultyWorkflow } from "@/lib/instructors/faculty-workflow";
 import { FacultyHomeReview } from "@/components/faculty-workflow";
+import { InstructorHomeAffiliation } from "@/components/instructor-home-affiliation";
 import { FacultyIdentityLink } from "@/components/faculty-identity-link";
 import { withUniversityNumbers } from "@/lib/instructors/university-number";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -307,6 +308,21 @@ function InstructorDirectory() {
     },
   });
 
+  const facultyHomes = useQuery({
+    queryKey: ["faculty-home-profiles", active?.id],
+    enabled: !!active,
+    queryFn: async () => {
+      const { data, error } = await facultyWorkflow.rpc("get_faculty_home_profiles", {
+        p_college_id: active!.id,
+      });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const homeByNumber = new Map(
+    (facultyHomes.data ?? []).map((home) => [home.university_number, home]),
+  );
+
   const save = useMutation({
     mutationFn: async () => {
       if (!active) throw new Error("اختر كلّية");
@@ -465,6 +481,7 @@ function InstructorDirectory() {
         void qc.invalidateQueries({ queryKey: [key, active?.id] });
       void qc.invalidateQueries({ queryKey: ["faculty-university-report"] });
       void qc.invalidateQueries({ queryKey: ["report-instructor-directory"] });
+      void qc.invalidateQueries({ queryKey: ["faculty-home-profiles"] });
       setOpen(false);
       setEditing(null);
     },
@@ -488,6 +505,7 @@ function InstructorDirectory() {
     onSuccess: () => {
       toast.success("تم الحذف");
       qc.invalidateQueries({ queryKey: ["instructors", active?.id] });
+      void qc.invalidateQueries({ queryKey: ["faculty-home-profiles"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -1308,18 +1326,20 @@ function InstructorDirectory() {
                       : i.specialization}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {i.academic_rank ?? "—"} ·{" "}
-                    {i.department_id ? (deptMap.get(i.department_id) ?? "—") : "بدون قسم"} ·{" "}
-                    {employmentTypeLabelAr(i.employment_type)} · {i.max_weekly_hours} س/أسبوع
+                    {i.academic_rank ?? "—"} · {employmentTypeLabelAr(i.employment_type)} ·{" "}
+                    {i.max_weekly_hours} س/أسبوع
                   </p>
-                  <p className="text-xs text-muted-foreground">
-                    فئة المحاضر:{" "}
-                    {
+                  <InstructorHomeAffiliation
+                    home={homeByNumber.get(i.university_number ?? "")}
+                    currentCollegeId={active.id}
+                    defaultCategoryLabel={
                       CATEGORY_LABEL_AR[
                         categorizeInstructor(typeMap.get(i.instructor_type_id ?? "") ?? null)
                       ]
                     }
-                  </p>
+                    isLoading={facultyHomes.isLoading}
+                    isError={facultyHomes.isError}
+                  />
                   {(i.email || i.phone) && (
                     <p className="text-xs text-muted-foreground" dir="ltr">
                       {i.email ?? ""} {i.phone ? ` · ${i.phone}` : ""}
