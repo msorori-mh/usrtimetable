@@ -49,16 +49,20 @@ function LtrToken({ children }: { children: string }) {
   );
 }
 
+function compactSessionTypeLabel(value: unknown): string {
+  const type = detailText(value);
+  if (type === "محاضرة") return "نظري";
+  if (type === "عملي") return "عملي";
+  return type;
+}
+
 function CourseDetailCell({ row }: { row: TimetableDetailRow }) {
   return (
     <div className="instructor-detail-cell min-w-[150px] space-y-0.5 leading-5">
       <div className="font-semibold">{detailText(row.course_name ?? row.course)}</div>
-      {detailText(row.course_code) !== "—" && (
-        <div className="text-[10px] text-muted-foreground">
-          <LtrToken>{detailText(row.course_code)}</LtrToken>
-        </div>
-      )}
-      <div className="text-[11px] text-muted-foreground">{detailText(row.session_type)}</div>
+      <div className="text-[11px] text-muted-foreground">
+        {compactSessionTypeLabel(row.session_type)}
+      </div>
     </div>
   );
 }
@@ -116,21 +120,12 @@ function LevelDetailCell({ row }: { row: TimetableDetailRow }) {
   );
 }
 
-function CohortGroupDetailCell({ row }: { row: TimetableDetailRow }) {
+function GroupDetailCell({ row }: { row: TimetableDetailRow }) {
   return (
-    <div className="instructor-detail-cell min-w-[140px] space-y-1 leading-5">
-      <div>
-        <span className="text-[10px] text-muted-foreground">الدفعة </span>
-        <bdi dir="auto" className="instructor-detail-code">
-          {detailText(row.cohort)}
-        </bdi>
-      </div>
-      <div className="font-semibold">
-        <span className="text-[10px] font-normal text-muted-foreground">المجموعة </span>
-        <bdi dir="auto" className="instructor-detail-code">
-          {detailText(row.delivery_group)}
-        </bdi>
-      </div>
+    <div className="instructor-detail-cell min-w-[90px] leading-5">
+      <bdi dir="auto" className="instructor-detail-code font-semibold">
+        {detailText(row.delivery_group)}
+      </bdi>
     </div>
   );
 }
@@ -152,28 +147,28 @@ function compactInstructorDetailColumns(): ReportColumn<TimetableDetailRow>[] {
     {
       key: "course",
       label: "المقرر",
-      className: "w-[26%]",
+      className: "w-[30%]",
       render: (row) => <CourseDetailCell row={row} />,
     },
     {
       key: "level",
       label: "المستوى",
-      className: "w-[11%]",
+      className: "w-[12%]",
       render: (row) => <LevelDetailCell row={row} />,
     },
     {
-      key: "cohort",
-      label: "الدفعة والمجموعة",
-      className: "w-[22%]",
-      render: (row) => <CohortGroupDetailCell row={row} />,
+      key: "delivery_group",
+      label: "المجموعة",
+      className: "w-[16%]",
+      render: (row) => <GroupDetailCell row={row} />,
     },
     {
       key: "day",
       label: "اليوم والوقت",
-      className: "w-[20%]",
+      className: "w-[22%]",
       render: (row) => <DayTimeDetailCell row={row} />,
     },
-    { key: "room", label: "القاعة", className: "w-[13%]" },
+    { key: "room", label: "القاعة", className: "w-[12%]" },
     { key: "study_system", label: "النظام", className: "w-[8%]" },
   ];
 }
