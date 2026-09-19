@@ -21,6 +21,7 @@ import { PrintSheet } from "@/components/print-center/print-sheet";
 import { fetchCohortDeliveryGroupLabels } from "@/lib/reports/queries/session-queries";
 import { downloadCSV, downloadXLSX } from "@/lib/reports/export";
 import { STUDY_SYSTEM_LABELS } from "@/lib/reports/filters";
+import { compactAcademicLevelLabel } from "@/lib/reports/formatters";
 import { fetchHydratedVersionSessions } from "@/lib/schedule-builder/queries";
 import {
   isScheduleVersionInActiveCollege,
@@ -585,7 +586,7 @@ export function PrintCenterPage(props: { versionId: string }) {
                   { id: "__all__", name: "اختر المستوى" },
                   ...(levels ?? [])
                     .filter((l) => !programId || l.program_id === programId)
-                    .map((l) => ({ id: l.id, name: l.name })),
+                    .map((l) => ({ id: l.id, name: compactAcademicLevelLabel(l.name) })),
                 ]}
               />
             )}
