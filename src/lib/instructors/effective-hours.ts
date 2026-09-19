@@ -33,7 +33,8 @@ export function effectiveInstructorWeeklyHours(
   return round2(adminQuota > 0 ? Math.min(normalizedBase, adminQuota) : normalizedBase);
 }
 
-export const EFFECTIVE_QUOTA_FORMULA_AR = "عند وجود إعفاء إداري، تمثل قيمته النصاب التدريسي الفعلي بعد الإعفاء";
+export const EFFECTIVE_QUOTA_FORMULA_AR =
+  "عند وجود إعفاء إداري، تمثل قيمته النصاب التدريسي الفعلي بعد الإعفاء";
 
 export const EFFECTIVE_QUOTA_LABEL_AR = "النصاب الفعلي";
 export const BASE_QUOTA_LABEL_AR = "النصاب الأساسي الأسبوعي";
