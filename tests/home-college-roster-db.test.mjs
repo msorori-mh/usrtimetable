@@ -6,6 +6,114 @@ const id = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const read = (p) => readFile(new URL(p, import.meta.url), "utf8");
 const migrationPath = "../supabase/migrations/20260919140000_home_college_faculty_roster.sql";
 
+test("explicit pending home overrides legacy affiliation without moving teaching data and can be resolved", async () => {
+  const f = await fixture();
+  try {
+    await f.actor(2);
+    await assert.rejects(
+      f.rpc("reconcile_faculty_home", [
+        id(1001),
+        null,
+        id(101),
+        false,
+        "Missing from authoritative faculty roster",
+        null,
+      ]),
+      /insufficient_privilege/,
+    );
+    await f.actor(1);
+    await assert.rejects(
+      f.rpc("reconcile_faculty_home", [
+        id(1001),
+        null,
+        id(101),
+        true,
+        "Missing from authoritative faculty roster",
+        null,
+      ]),
+      /FACULTY_HOME_REQUIRED_FOR_QUOTA/,
+    );
+    await f.rpc("reconcile_faculty_home", [
+      id(1001),
+      null,
+      id(101),
+      false,
+      "Missing from authoritative faculty roster",
+      null,
+    ]);
+    assert.equal(
+      (await f.roster()).some((r) => r.id === id(101)),
+      false,
+    );
+    assert.equal(
+      (await f.roster(10, "pending")).some((r) => r.id === id(101)),
+      true,
+    );
+    await f.db.exec("RESET ROLE");
+    assert.equal(
+      (await f.db.query("SELECT affiliation_college_id FROM instructors WHERE id=$1", [id(101)]))
+        .rows[0].affiliation_college_id,
+      id(10),
+    );
+    assert.equal(
+      (await f.db.query("SELECT instructor_id FROM schedule_sessions WHERE id=$1", [id(301)]))
+        .rows[0].instructor_id,
+      id(101),
+    );
+    const at = (
+      await f.db.query(
+        "SELECT updated_at::text AS at FROM faculty_home_decisions WHERE identity_id=$1",
+        [id(1001)],
+      )
+    ).rows[0].at;
+    await f.actor(1);
+    await assert.rejects(
+      f.rpc("reconcile_faculty_home", [
+        id(1001),
+        id(10),
+        id(101),
+        false,
+        "Confirmed faculty home from roster",
+        null,
+      ]),
+      /STALE_FACULTY_DECISION/,
+    );
+    await f.rpc("reconcile_faculty_home", [
+      id(1001),
+      id(10),
+      id(101),
+      false,
+      "Confirmed faculty home from roster",
+      at,
+    ]);
+    assert.equal(
+      (await f.roster()).some((r) => r.id === id(101)),
+      true,
+    );
+  } finally {
+    await f.db.close();
+  }
+});
+
+test("inactive members may have unknown quota but activation retains quota validation", async () => {
+  const f = await fixture();
+  try {
+    await f.db
+      .exec(`ALTER TABLE academic_terms ADD COLUMN IF NOT EXISTS academic_year text, ADD COLUMN IF NOT EXISTS term_type text;
+      CREATE TRIGGER test_unknown_quota BEFORE INSERT OR UPDATE ON instructors FOR EACH ROW EXECUTE FUNCTION guard_intake_unknown_catalog_values();`);
+    await f.db.query(
+      "INSERT INTO instructors(id,college_id,full_name,max_weekly_hours,is_active) VALUES($1,$2,'Inactive faculty on scholarship',NULL,false)",
+      [id(950), id(10)],
+    );
+    await assert.rejects(
+      f.db.query("UPDATE instructors SET is_active=true WHERE id=$1", [id(950)]),
+      /UNKNOWN_CATALOG_VALUES_REQUIRE_EXISTING_SCHEDULE_INTAKE/,
+    );
+  } finally {
+    await f.db.close();
+  }
+});
+
 test("new registrations receive P/C/H numbers exactly once and reject duplicate employee identifiers", async () => {
   const f = await fixture();
   try {
@@ -128,6 +236,9 @@ async function fixture() {
     await read("../supabase/migrations/20260919120000_college_instructor_schedule_directory.sql"),
   );
   await db.exec(await read(migrationPath));
+  await db.exec(
+    await read("../supabase/migrations/20260919160000_explicit_faculty_home_review.sql"),
+  );
   const actor = async (n) => {
     await db.exec("RESET ROLE");
     await db.query("SELECT set_config('request.jwt.claim.sub',$1,false)", [n ? id(n) : ""]);
