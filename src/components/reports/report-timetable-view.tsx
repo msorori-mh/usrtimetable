@@ -94,18 +94,29 @@ function AcademicContextStrip({ sessions }: { sessions: TimetableReportSession[]
 
   return (
     <div
-      className="instructor-academic-context mb-3 grid gap-2 rounded-md border bg-muted/30 p-2 md:grid-cols-3"
+      className="instructor-academic-context mb-2 flex flex-wrap items-baseline gap-x-2 gap-y-1 border-y bg-muted/15 px-1 py-1.5 text-sm"
       data-testid="instructor-academic-context"
       aria-label="البيانات الأكاديمية للمحاضر"
     >
-      {fields.map((field) => (
-        <div key={field.label} className="instructor-academic-context-item min-w-0">
-          <span className="instructor-academic-context-label text-[10px] text-muted-foreground">
-            {field.values.length > 1 ? field.pluralLabel : field.label}
+      {fields.map((field, index) => (
+        <div
+          key={field.label}
+          className="instructor-academic-context-item inline-flex min-w-0 items-baseline gap-1"
+        >
+          {index > 0 && (
+            <span
+              className="instructor-academic-context-separator text-muted-foreground"
+              aria-hidden="true"
+            >
+              •
+            </span>
+          )}
+          <span className="instructor-academic-context-label text-[11px] text-muted-foreground">
+            {field.values.length > 1 ? field.pluralLabel : field.label}:
           </span>
-          <div className="instructor-academic-context-value font-semibold">
+          <span className="instructor-academic-context-value font-semibold">
             {field.values.join("، ")}
-          </div>
+          </span>
         </div>
       ))}
     </div>
