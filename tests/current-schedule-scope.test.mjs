@@ -7,13 +7,14 @@ const programs = [
   { id: "it", department_id: "computing" },
   { id: "ar", department_id: "arts" },
 ];
-const session = (id, program, courseDepartment = "general") => ({
+const session = (id, program, courseDepartment = "general", level = "l1") => ({
   id,
   day_of_week: 0,
   start_time: "08:00",
   end_time: "10:00",
   course_offerings: {
     program_id: program,
+    level_id: level,
     courses: { department_id: courseDepartment },
   },
 });
@@ -35,6 +36,11 @@ test("department includes every member program and its general-requirement cours
 });
 test("program works independently of department selection", () => {
   assert.deepEqual(ids(filterCurrentScheduleScope(sessions, programs, "all", "it")), ["b"]);
+});
+test("level narrows one selected program without leaking other levels", () => {
+  const rows = [session("cs-l1", "cs", "general", "l1"), session("cs-l2", "cs", "general", "l2")];
+  assert.deepEqual(ids(filterCurrentScheduleScope(rows, programs, "all", "cs", "l2")), ["cs-l2"]);
+  assert.deepEqual(filterCurrentScheduleScope(rows, programs, "all", "it", "l2"), []);
 });
 test("department and program intersect; contradictory selections fail closed", () => {
   assert.deepEqual(ids(filterCurrentScheduleScope(sessions, programs, "computing", "cs")), ["a"]);
