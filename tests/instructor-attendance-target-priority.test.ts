@@ -119,8 +119,8 @@ describe("engine source contract", () => {
 /**
  * INSTRUCTOR-ATTENDANCE-MAX-01 — cap-only override.
  *
- * `max_attendance_days_per_week` raises the hard ceiling without becoming a
- * target: day compression still prefers fewer days for that instructor.
+ * `max_attendance_days_per_week` is the explicit hard ceiling and may tighten
+ * or extend the generic four-day ceiling without becoming a target.
  */
 describe("max-only attendance-day override", () => {
   it("target=5 + max=null: cap is 5 and the target deviation drives planning", () => {
@@ -149,6 +149,22 @@ describe("max-only attendance-day override", () => {
         [{ id: "ext", max_attendance_days_per_week: 5 }],
       ),
     ).toHaveLength(0);
+  });
+
+  it("target=2 + max=2: cap is tightened to two days", () => {
+    expect(instructorAttendanceDayCap(2, undefined, 2)).toBe(2);
+    expect(
+      instructorsOverAttendanceDayCap(
+        [0, 1, 2].map((d) => ({ instructor_id: "compact", day_of_week: d })),
+        [
+          {
+            id: "compact",
+            target_attendance_days_per_week: 2,
+            max_attendance_days_per_week: 2,
+          },
+        ],
+      ),
+    ).toEqual([{ instructorId: "compact", days: 3, cap: 2 }]);
   });
 
   it("target=null + max=null: cap stays at the generic four days", () => {
