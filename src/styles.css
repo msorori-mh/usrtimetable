@@ -1289,6 +1289,20 @@
     overflow-wrap: anywhere;
     white-space: normal;
   }
+  .instructor-print-readable .instructor-detail-group,
+  .instructor-print-readable .instructor-detail-room {
+    text-align: center !important;
+  }
+  .instructor-print-readable td:has(.instructor-detail-group),
+  .instructor-print-readable td:has(.instructor-detail-room) {
+    vertical-align: middle !important;
+    text-align: center !important;
+  }
+  .instructor-print-readable .instructor-detail-room {
+    white-space: nowrap !important;
+    word-break: keep-all !important;
+    overflow-wrap: normal !important;
+  }
   .instructor-print-readable .instructor-detail-time {
     text-align: center;
   }
