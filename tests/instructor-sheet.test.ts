@@ -247,10 +247,7 @@ test("leave and scholarship are inactive and retain their exact reason through e
 
 test("historical source status notes remain visible to reports", () => {
   assert.equal(
-    instructorStatusLabel(
-      false,
-      "الحالة في الكشف: إجازة مرضية — النصاب الأسبوعي كما ورد في الكشف",
-    ),
+    instructorStatusLabel(false, "الحالة في الكشف: إجازة مرضية — النصاب الأسبوعي كما ورد في الكشف"),
     "إجازة مرضية",
   );
   assert.equal(
