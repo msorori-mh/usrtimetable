@@ -188,14 +188,16 @@ function Page() {
         scopes: reportScopes,
       }),
   });
-  const summary = useMemo(
-    () =>
-      summarizeUniversitySchedule(schedule.data ?? [], {
-        maxWeeklyHours: isHourlyContract ? null : selectedInstructor?.authoritative_quota,
-        adminReleaseHours: 0,
-      }),
-    [schedule.data, isHourlyContract, selectedInstructor],
-  );
+  const summary = useMemo(() => {
+    const baseQuota = isHourlyContract
+      ? null
+      : (selectedInstructor?.recorded_quota ?? selectedInstructor?.authoritative_quota ?? null);
+    const release = isHourlyContract ? 0 : (selectedInstructor?.recorded_release ?? 0);
+    return summarizeUniversitySchedule(schedule.data ?? [], {
+      maxWeeklyHours: baseQuota,
+      adminReleaseHours: release,
+    });
+  }, [schedule.data, isHourlyContract, selectedInstructor]);
   const sessions = summary.sessions;
   const rows = useMemo(
     () =>
