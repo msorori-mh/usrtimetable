@@ -429,3 +429,30 @@ test("rollback refuses intervening edits before sending any mutation", async () 
   await assert.rejects(service.restoreCompactApplication("c", "v", { before, saved }), /تغير/);
   assert.equal(st.calls.length, count);
 });
+
+test("atomic quality save accepts an equal-metric hard repair but rejects a pointless move", async () => {
+  for (const conflict of [false, true]) {
+    const { st, service, p } = await setup();
+    st.s.sessions = [session("a", 0, "08:00:00", "10:00:00", { instructor_id: "T" })];
+    st.s.externalBusy = conflict
+      ? [{ instructor_id: "T", day_of_week: 0, start_time: "08:00:00", end_time: "10:00:00" }]
+      : [];
+    const fresh = await service.loadCompactSnapshot("c", "v");
+    p.fingerprint = fingerprint(fresh.sessions);
+    p.inputFingerprint = inputFingerprint(fresh);
+    p.before = measure(fresh);
+    p.applicationMode = "simultaneous";
+    p.qualitySearch = { dayCap: 3 };
+    p.moves = [
+      { id: "a", day_of_week: 0, start_time: "10:00:00", end_time: "12:00:00", room_id: "r" },
+    ];
+    if (conflict) {
+      const r = await service.applyCompactProposal("c", "v", p);
+      assert.equal(r.status, "saved");
+      assert.equal(r.applied, 1);
+    } else {
+      await assert.rejects(service.applyCompactProposal("c", "v", p), /لا تحسّن/);
+      assert.equal(st.calls.length, 0);
+    }
+  }
+});

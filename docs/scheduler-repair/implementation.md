@@ -31,3 +31,18 @@ The algorithm can repair attendance-cap violations when academic assignments are
 - 32 V2 generation orchestration tests passed.
 - Existing worker, compaction and joint-model tests passed (52-test combined run before the final additions).
 - Existing database RPCs and authorization/triggers were retained; no schema migration or database guard bypass was introduced.
+
+## Resume after assignment restoration — 2026-09-19
+
+The five existing teaching assignment IDs were restored through the authenticated home-review/assignment workflow. A fresh database snapshot of draft revision 336 contains 275 sessions and zero inactive assignment references. No replacement assignment IDs were introduced.
+
+The resumed preview also detects a cross-college conflict. Quality repair now handles external busy conflicts and instructor day-cap violations together. It first moves affected instructors, then expands to their student peers if needed, while preserving original locks and external college placements. Per-student weekly span ceilings are enforced inside the MIP alongside existing day ceilings. A hard-conflict repair with unchanged quality metrics is accepted by both preview and the independent atomic-save check; an equal-metric move on an already valid baseline is still rejected.
+
+Continuous-minute instructor capacity diagnostics now explain inconsistent availability/day-cap settings before solving. Overlapping windows are unioned, unavailable/external-busy periods are excluded, and daily-hour ceilings are applied. This optimistic bound ignores student/room constraints and lecture packing; therefore a deficit is an actual necessary-capacity failure, not a solver-timeout claim.
+
+**Operational application remains HOLD:** one instructor has three 3-hour sessions (9 hours), hard availability limited to 11:00–14:00 on Saturday/Sunday/Thursday, and a maximum of two attendance days (at most 6 hours). All-scope model exploration also returned infeasible. The system must not invent wider availability or raise the saved day cap. User clarification is needed on this specific input contradiction before applying a complete draft improvement.
+
+Verification: 54 targeted quality, joint-model and atomic-service tests; TypeScript and targeted lint. The production build and CI are checked before merge/deployment. Draft and published timetable session hashes were independently re-read and remain unchanged:
+
+- Draft `d10b9f55-b99a-4abd-83a7-343182ef5c09`: `0f28390b8469e7b184b866faf562836f`.
+- Published `30f8a76d-1cb9-4944-a5d7-483dcaea7692`: `a6aed8c45ef69efc00a670b02a885dcc`.
