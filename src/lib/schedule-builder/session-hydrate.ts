@@ -57,6 +57,7 @@ export interface WorkspaceSessionHydratedRow {
   /** Authoritative modern cohort + term scheduling headcount, when the session has a cohort. */
   cohort_term_headcount?: WorkspaceCohortTermHeadcountRow | null;
   course_offerings?: {
+    course_id?: string | null;
     program_id?: string | null;
     level_id?: string | null;
     expected_students?: number | null;
@@ -190,6 +191,7 @@ export function assembleWorkspaceSessionRows(
       course_offering_id: s.course_offering_id,
       course_offerings: offering
         ? {
+            course_id: offering.course_id,
             program_id: offering.program_id,
             level_id: offering.level_id,
             expected_students: offering.expected_students ?? null,
