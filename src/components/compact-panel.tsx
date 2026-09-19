@@ -71,6 +71,8 @@ export function CompactSchedulePanel({
       if (mode === "restore" && restorePoint) {
         const restored = await restoreCompactApplication(collegeId, versionId, restorePoint);
         setResult(restored);
+        setImpact([]);
+        setMoveDetails([]);
         setMessage(
           restored.stopped || "تم التراجع عن التحسين واستعادة مواعيد وقاعات الجدول السابق.",
         );
@@ -115,6 +117,8 @@ export function CompactSchedulePanel({
         await qc.invalidateQueries();
       } else {
         setProposal(null);
+        setImpact([]);
+        setMoveDetails([]);
         const snapshot = await loadCompactSnapshot(collegeId, versionId);
         source.current = snapshot;
         setRestorePoint(null);
