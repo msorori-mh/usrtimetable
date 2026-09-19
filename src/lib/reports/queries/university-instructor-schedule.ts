@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { readAllReportRows } from "@/lib/reports/read-all";
 import { withUniversityNumbers } from "@/lib/instructors/university-number";
+import { facultyWorkflow } from "@/lib/instructors/faculty-workflow";
 import { mapRawSessions } from "@/lib/reports/session-mappers";
 import { fetchCohortDeliveryGroupLabels, fetchInstructorScheduleSessions } from "./session-queries";
 import {
@@ -55,12 +56,21 @@ export async function fetchUniversityScheduleDirectory(collegeId: string) {
       return q.order("id").range(from, to);
     }),
   ]);
-  const instructors = await withUniversityNumbers(
+  const { data: homes, error: homeError } = await facultyWorkflow.rpc("get_faculty_home_profiles", {
+    p_college_id: canViewAcrossColleges ? null : collegeId,
+  });
+  if (homeError) throw homeError;
+  const numbered = await withUniversityNumbers(
     records.map((r) => ({
       ...r,
       instructor_type_code: types.find((t) => t.id === r.instructor_type_id)?.code ?? null,
     })),
   );
+  const homeByNumber = new Map((homes ?? []).map((h) => [h.university_number, h]));
+  const instructors = numbered.map((i) => ({
+    ...i,
+    authoritative_quota: homeByNumber.get(i.university_number ?? "")?.quota ?? null,
+  }));
   return { instructors, colleges, terms, versions, canViewAcrossColleges };
 }
 
