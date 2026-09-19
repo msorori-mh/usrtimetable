@@ -1,3 +1,4 @@
+import { collegeSupportsParallel } from "@/lib/study-systems";
 import { ReportScopeError } from "@/lib/reports/preferences";
 import { readReportPreference, writeReportPreference } from "@/lib/reports/preferences";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -35,7 +36,7 @@ export function useReportContext(options: UseReportContextOptions = {}): ReportC
     initialFilters?.studySystem ?? defaultStudySystem,
   );
 
-  const studySystem = fixedStudySystem ?? studySystemState;
+  const studySystem = fixedStudySystem ?? (collegeSupportsParallel(active) ? studySystemState : "regular");
 
   /**
    * REPORTS-COLLEGE-SWITCH-01 — switching the active college must not leave the
