@@ -195,35 +195,15 @@ function Page() {
           row.study_system === "both" ||
           row.study_system === ctx.studySystem,
       );
-      const planIds = [
-        ...new Set(
-          expanded.flatMap((r) => r.intake_memberships?.map((m) => m.study_plan_id) ?? []),
-        ),
-      ];
-      const plans = planIds.length
-        ? await supabase
-            .from("study_plans")
-            .select("id,name")
-            .eq("college_id", ctx.collegeId!)
-            .in("id", planIds)
-        : { data: [], error: null };
-      if (plans.error) throw plans.error;
+      // Keep the student's program label resolved by fetchStudentPrintMemberships.
+      // The plan ID still separates tracks; its administrative name is not a report title.
       const sessions: PrintSessionLike[] = expanded.map((row) => {
         const membership = row.intake_memberships?.find(
           (m) => m.delivery_group_id === row.delivery_group_id && m.cohort_id === row.cohort_id,
         );
-        if (!membership) return row;
-        const plan = plans.data?.find((p) => p.id === membership.study_plan_id);
-        return {
-          ...row,
-          intake_study_plan_id: membership.study_plan_id,
-          course_offerings: {
-            ...row.course_offerings,
-            academic_programs: {
-              name: plan?.name ?? row.course_offerings?.academic_programs?.name,
-            },
-          },
-        };
+        return membership
+          ? { ...row, intake_study_plan_id: membership.study_plan_id }
+          : row;
       });
       const labels = await fetchCohortDeliveryGroupLabels(ctx.collegeId!, sessions);
       return { sessions, labels };
