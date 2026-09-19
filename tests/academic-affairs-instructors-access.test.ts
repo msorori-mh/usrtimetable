@@ -43,8 +43,8 @@ describe("instructor edit wiring", () => {
 
   it("uses a dedicated RPC for non-admin academic-affairs edits", () => {
     expect(src).toContain("useCanEditInstructorsActiveCollege");
-    expect(src).toContain('"academic_affairs_update_instructor"');
-    expect(src).toContain("editing && !canManage");
+    expect(src).toContain('"update_home_college_instructor"');
+    expect(src).toContain("canEdit && i.can_edit");
   });
 
   it("keeps create/delete admin-only", () => {

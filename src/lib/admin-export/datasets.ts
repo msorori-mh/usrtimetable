@@ -64,6 +64,8 @@ export function roomsExportDataset(input: {
 /* ---------------------------- instructors -------------------------------- */
 
 export type InstructorExportRow = {
+  home_college_name?: string | null;
+  category_label?: string;
   employee_number: string | null;
   university_number?: string | null;
   full_name: string;
@@ -99,6 +101,15 @@ export function instructorsExportDataset(input: {
         label: "الرقم الجامعي الموحّد",
         value: (r) => r.university_number,
       },
+      ...(input.rows.some((r) => r.home_college_name !== undefined)
+        ? [
+            {
+              key: "home_college",
+              label: "الكلية الأصلية",
+              value: (r: InstructorExportRow) => r.home_college_name,
+            },
+          ]
+        : []),
       { key: "employee_number", label: "الرقم الوظيفي", value: (r) => r.employee_number },
       { key: "full_name", label: "الاسم", value: (r) => r.full_name },
       { key: "full_name_en", label: "الاسم بالإنجليزية", value: (r) => r.full_name_en ?? null },
@@ -132,7 +143,7 @@ export function instructorsExportDataset(input: {
       {
         key: "category",
         label: "الفئة",
-        value: (r) => input.categoryLabel(r.instructor_type_id ?? null),
+        value: (r) => r.category_label ?? input.categoryLabel(r.instructor_type_id ?? null),
       },
       { key: "is_active", label: "مفعّل", value: (r) => r.is_active },
       { key: "needs_review", label: "يحتاج مراجعة", value: (r) => r.needs_review ?? false },

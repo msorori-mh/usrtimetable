@@ -21,11 +21,11 @@ describe("instructor HR form contract", () => {
   test("form exposes the requested order and hourly-contract conditionals", () => {
     const src = source("src/routes/_authenticated/instructors.tsx");
     const tokens = [
-      'data-field-order="1-category"',
+      'data-field-order="1-affiliation-college"',
+      'data-field-order="2-category"',
       'data-field-order="2-employee-number"',
       'data-field-order="3-default-name"',
       'data-field-order="4-full-arabic-name"',
-      'data-field-order="5-affiliation-college"',
       'data-field-order="6-affiliation-department"',
       'data-field-order="7-specialization"',
       'data-field-order="8-rank"',
@@ -107,7 +107,7 @@ describe("official instructor import template", () => {
     expect(instructorHeader("رمز_القسم", TEMPLATES.instructors.columns)).toBe("رمز_القسم");
   });
 
-  test("hourly contractor may omit employee number; normal employee may not", () => {
+  test("employee number is optional for both hourly and permanent university registration", () => {
     const conRow = {
       rowNumber: 2,
       raw: {},
@@ -119,11 +119,7 @@ describe("official instructor import template", () => {
       raw: {},
       values: { full_name: "موظف واحد", instructor_type_code: "permanent", max_weekly_hours: 18 },
     };
-    expect(
-      prepareInstructorRow(permanent, [], TEMPLATES.instructors.columns).some(
-        (e) => e.errorCode === "instructor_employee_number_required",
-      ),
-    ).toBe(true);
+    expect(prepareInstructorRow(permanent, [], TEMPLATES.instructors.columns)).toEqual([]);
   });
 
   test("department head requires a headed department", () => {

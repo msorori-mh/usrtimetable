@@ -3,6 +3,37 @@
  * filter fidelity, and "all matching rows, not just the current page".
  */
 import { describe, expect, test } from "bun:test";
+
+test("faculty exports retain home affiliation and the displayed college relationship", () => {
+  const table = buildAdminExportTable(
+    instructorsExportDataset({
+      rows: [
+        {
+          full_name: "أحمد",
+          university_number: "USABA-ITCS-000033",
+          employee_number: null,
+          home_college_name: "كلية الجوف",
+          category_label: "محاضر من كلية أخرى",
+          department_id: "jawf-is",
+          academic_rank: "معيد",
+          employment_type: "full_time",
+          max_weekly_hours: 18,
+          is_active: true,
+        },
+      ],
+      collegeName: "كلية الحاسوب",
+      departmentLabel: () => "قسم نظم المعلومات",
+      categoryLabel: () => "old category",
+      employmentLabel: () => "متفرغ",
+      filters: [{ label: "القائمة", value: "مكلّفون من كليات أخرى" }],
+    }),
+  );
+  expect(table.rowCount).toBe(1);
+  expect(table.body[0]?.[table.headers.indexOf("الكلية الأصلية")]).toBe("كلية الجوف");
+  expect(table.body[0]?.[table.headers.indexOf("القسم")]).toBe("قسم نظم المعلومات");
+  expect(table.body[0]?.[table.headers.indexOf("الفئة")]).toBe("محاضر من كلية أخرى");
+  expect(table.body[0]).toContain("USABA-ITCS-000033");
+});
 import * as XLSX from "xlsx";
 import {
   ADMIN_EXPORT_CRITERIA_SHEET_AR,
@@ -357,6 +388,7 @@ describe("other admin lists produce usable columns", () => {
       }),
     );
     expect(table.headers).toEqual([
+      "الرقم الجامعي الموحّد",
       "الرقم الوظيفي",
       "الاسم",
       "الاسم بالإنجليزية",
@@ -383,7 +415,6 @@ describe("other admin lists produce usable columns", () => {
     expect(table.body[1]?.[net]).toBe("—");
     expect(table.body[0]).toContain("غير محدد (لم يُثبت بعد)");
     expect(table.body[0]?.at(-1)).toBe("نعم");
-
   });
 
   test("headcounts and delivery groups datasets expose the scheduling numbers", () => {

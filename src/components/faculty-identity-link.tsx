@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import { supabase } from "@/integrations/supabase/client";
-import { facultyClient, withUniversityNumbers } from "@/lib/instructors/university-number";
+import { facultyWorkflow } from "@/lib/instructors/faculty-workflow";
+import { facultyClient } from "@/lib/instructors/university-number";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -26,56 +26,20 @@ export function FacultyIdentityLink({
   const [searchQuery, setSearchQuery] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const qc = useQueryClient();
+  const normalizedSearch = searchQuery.trim();
   const candidates = useQuery({
-    queryKey: ["faculty-identity-link-candidates", instructorId],
-    enabled: open && !!me?.isSuperAdmin,
+    queryKey: ["faculty-identity-link-candidates", instructorId, normalizedSearch],
+    enabled: open && !!me?.isSuperAdmin && normalizedSearch.length >= 2,
     queryFn: async () => {
-      const rows: {
-        id: string;
-        full_name: string;
-        college_id: string;
-        specialization: string | null;
-        employee_number: string | null;
-      }[] = [];
-      for (let offset = 0; ; offset += 500) {
-        const { data, error } = await supabase
-          .from("instructors")
-          .select("id, full_name, college_id, specialization, employee_number")
-          .order("id")
-          .range(offset, offset + 499);
-        if (error) throw error;
-        rows.push(...(data ?? []));
-        if (!data || data.length < 500) break;
-      }
-      const { data: colleges, error } = await supabase.from("colleges").select("id,name");
+      const { data, error } = await facultyWorkflow.rpc("search_faculty_identity_candidates", {
+        p_instructor_id: instructorId,
+        p_search: normalizedSearch,
+      });
       if (error) throw error;
-      return withUniversityNumbers(
-        rows
-          .filter((row) => row.id !== instructorId)
-          .map((row) => ({
-            ...row,
-            colleges: colleges?.find((c) => c.id === row.college_id),
-          })),
-      );
+      return data ?? [];
     },
   });
-
-  const candidateRows = (candidates.data ?? []).filter((row) => row.university_number);
-  const normalizedSearch = searchQuery.trim().toLocaleLowerCase("ar");
-  const filteredCandidates =
-    normalizedSearch.length === 0
-      ? candidateRows
-      : candidateRows.filter((row) =>
-          [
-            row.full_name,
-            row.university_number,
-            row.employee_number,
-            row.colleges?.name,
-            row.specialization,
-          ]
-            .filter(Boolean)
-            .some((value) => String(value).toLocaleLowerCase("ar").includes(normalizedSearch)),
-        );
+  const filteredCandidates = normalizedSearch.length >= 2 ? (candidates.data ?? []) : [];
 
   const submitLink = () => {
     if (!target) {
@@ -91,7 +55,12 @@ export function FacultyIdentityLink({
 
   const link = useMutation({
     mutationFn: async () => {
-      if (!confirmed || !target) throw new Error("اختر السجل وأكد أن السجلين يعودان لنفس الشخص.");
+      if (
+        !confirmed ||
+        !target ||
+        !filteredCandidates.some((row) => row.university_number === target)
+      )
+        throw new Error("اختر السجل وأكد أن السجلين يعودان لنفس الشخص.");
       const { error } = await facultyClient.rpc("link_verified_faculty_identity", {
         p_instructor_id: instructorId,
         p_university_number: target,
@@ -151,7 +120,11 @@ export function FacultyIdentityLink({
             aria-label="البحث في سجلات المحاضرين"
             className="w-full rounded border p-2"
             value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
+            onChange={(event) => {
+              setSearchQuery(event.target.value);
+              setTarget("");
+              setConfirmed(false);
+            }}
             placeholder="اكتب جزءًا من الاسم أو الرقم الجامعي أو رقم الموظف"
             autoComplete="off"
           />
@@ -173,16 +146,19 @@ export function FacultyIdentityLink({
             }}
           >
             <option value="">
-              {candidates.isLoading
-                ? "جارٍ تحميل المحاضرين..."
-                : filteredCandidates.length === 0 && normalizedSearch
-                  ? "لا توجد نتائج مطابقة"
-                  : "اختر المحاضر ورقمه الجامعي"}
+              {normalizedSearch.length < 2
+                ? "اكتب حرفين على الأقل للبحث في الجامعة"
+                : candidates.isLoading
+                  ? "جارٍ تحميل المحاضرين..."
+                  : filteredCandidates.length === 0 && normalizedSearch
+                    ? "لا توجد نتائج مطابقة"
+                    : "اختر المحاضر ورقمه الجامعي"}
             </option>
             {filteredCandidates.map((row) => (
               <option key={row.id} value={row.university_number!}>
-                {row.full_name} — {row.university_number} — {row.colleges?.name} —{" "}
-                {row.specialization ?? "تخصص غير محدد"} — {row.employee_number}
+                {row.full_name} — {row.university_number} —{" "}
+                {row.home_college ?? "تبعية تحتاج مراجعة"} — {row.specialization ?? "تخصص غير محدد"}{" "}
+                — {row.employee_number}
               </option>
             ))}
           </select>
@@ -196,7 +172,10 @@ export function FacultyIdentityLink({
           />
           تحققت أن السجلين لنفس الشخص، وليس مجرد تشابه أسماء.
         </label>
-        <Button disabled={link.isPending || candidates.isLoading} onClick={submitLink}>
+        <Button
+          disabled={link.isPending || candidates.isLoading || !target || !confirmed}
+          onClick={submitLink}
+        >
           {link.isPending ? "جارٍ ربط الهوية..." : "تأكيد ربط الهوية"}
         </Button>
       </DialogContent>
