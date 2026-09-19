@@ -248,6 +248,7 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
   const extended = new Map<string, Term[]>();
   const instructorDays = new Map<string, Term[]>();
   const studentDays = new Map<string, Term[]>();
+  const studentSpans = new Map<string, Term[]>();
   // Generation omits costly span optimization but retains attendance preferences.
   for (const { terms, kind, person, day } of daily.values()) {
     const student = kind === "student";
@@ -326,6 +327,8 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
     const weight = student ? 1 : 0.5,
       start = variable(-weight, 1440, 0),
       end = variable(weight, 1440, 0);
+    if (student)
+      studentSpans.set(person, [...(studentSpans.get(person) ?? []), [end, 1], [start, -1]]);
     row(
       [
         [start, 1],
@@ -383,6 +386,10 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
   if (snapshot.qualityScope) {
     for (const [person, enabled] of studentDays)
       row(enabled, -INF, snapshot.qualityScope.studentDays[person] ?? dayCap);
+    for (const [person, terms] of studentSpans) {
+      const ceiling = snapshot.qualityScope.studentSpanMinutes?.[person];
+      if (ceiling !== undefined) row(terms, -INF, ceiling);
+    }
   }
   for (const xs of extended.values())
     row(

@@ -1,4 +1,4 @@
-import { qualityBetter, qualityPlanValid } from "./quality-search";
+import { qualityBetter, qualityPlanValid, qualityRepairNonWorsening } from "./quality-search";
 import { supabase } from "@/integrations/supabase/client";
 import {
   better,
@@ -318,7 +318,9 @@ export async function applyCompactProposal(
   }
   if (
     !(proposal.qualitySearch
-      ? qualityBetter(measure(fresh, simulated), before)
+      ? qualityBetter(measure(fresh, simulated), before) ||
+        (!qualityPlanValid(fresh, fresh.sessions, proposal.qualitySearch.dayCap) &&
+          qualityRepairNonWorsening(measure(fresh, simulated), before))
       : better(measure(fresh, simulated), before))
   )
     throw new Error("الخطة لا تحسّن النتيجة.");

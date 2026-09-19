@@ -5,6 +5,7 @@ import { build } from "esbuild";
 import { fileURLToPath } from "node:url";
 import { buildJointModel } from "../src/lib/auto-scheduler/joint-model.ts";
 import { context } from "../src/lib/auto-scheduler/compact.ts";
+import { instructorCapacityIssues } from "../src/lib/auto-scheduler/quality-diagnostics.ts";
 import { snapshot, session, addCohort } from "./helpers/attendance-fixtures.mjs";
 import {
   improveDistribution,
@@ -288,4 +289,102 @@ test("repairs a stored instructor-day violation without relaxing the cap", async
   assert.ok(p.after.instructorAttendanceDays <= 2);
   assert.ok(qualityPlanValid(s, final(s, p), 3));
   assert.equal(s.instructors.find((t) => t.id === "T").max_attendance_days_per_week, 2);
+});
+
+test("cross-college conflict is repaired even when quality metrics are unchanged", async () => {
+  const s = snapshot([session("external", 0, "08:00:00", "10:00:00")]);
+  s.externalBusy = [
+    { instructor_id: "external", day_of_week: 0, start_time: "08:00:00", end_time: "10:00:00" },
+  ];
+  const original = structuredClone(s);
+  const p = await run(s);
+  assert.ok(p.moves.length);
+  assert.ok(qualityPlanValid(s, final(s, p), 3));
+  assert.equal(p.after.instructorGapMinutes, p.before.instructorGapMinutes);
+  assert.equal(p.after.studentAttendanceDays, p.before.studentAttendanceDays);
+  assert.deepEqual(s, original, "external college data and source snapshot remain unchanged");
+});
+
+test("repair expands to a student peer when the conflicting instructor cannot move alone", async () => {
+  const s = snapshot([
+    session("external", 0, "08:00:00", "10:00:00"),
+    session("peer", 0, "10:00:00", "12:00:00"),
+  ]);
+  s.settings.working_days = [0];
+  s.settings.day_end_time = "12:00:00";
+  s.externalBusy = [
+    { instructor_id: "external", day_of_week: 0, start_time: "08:00:00", end_time: "10:00:00" },
+  ];
+  const p = await run(s);
+  assert.equal(p.moves.length, 2);
+  assert.ok(p.qualitySearch.solverAttempts >= 2);
+  assert.ok(qualityPlanValid(s, final(s, p), 3));
+  assert.equal(p.after.studentGapMinutes, 0);
+});
+
+test("continuous availability capacity explains nine hours that cannot fit a two-day six-hour window", async () => {
+  const s = snapshot(
+    [0, 4, 6].map((d, i) =>
+      session(`capacity${i}`, d, "11:00:00", "14:00:00", { instructor_id: "T" }),
+    ),
+  );
+  s.settings.enforce_instructor_availability = true;
+  s.instructors[0].max_attendance_days_per_week = 2;
+  s.availability = [0, 1, 2, 3, 4, 6].map((day) => ({
+    instructor_id: "T",
+    day_of_week: day,
+    start_time: "11:00:00",
+    end_time: "14:00:00",
+    availability_type: [0, 4, 6].includes(day) ? "available" : "unavailable",
+    is_preference: false,
+  }));
+  const p = await run(s);
+  const issue = p.qualitySearch.issues.find((x) => x.code === "instructor_capacity_deficit");
+  assert.match(issue.message, /9 ساعات/);
+  assert.match(issue.message, /6 ساعات/);
+  assert.equal(p.qualitySearch.solverAttempts, 0);
+  assert.equal(p.moves.length, 0);
+});
+
+test("student span ceiling is enforced inside the solver, not merely rejected after decoding", () => {
+  const s = snapshot([
+    session("fixed-a", 0, "08:00:00", "10:00:00", { is_locked: true }),
+    session("fixed-b", 0, "12:00:00", "14:00:00", { is_locked: true }),
+  ]);
+  s.qualityScope = {
+    instructorDays: {},
+    levelDays: {},
+    studentDays: { p1: 1 },
+    studentSpanMinutes: { p1: 240 },
+  };
+  const built = buildJointModel(s, 3),
+    model = highs.createModel(built.model);
+  try {
+    model.options.set({ output_flag: false, time_limit: 1 });
+    model.run();
+    assert.equal(model.getModelStatus(), highs.constants.modelStatus.infeasible);
+  } finally {
+    model.dispose();
+  }
+});
+
+test("capacity bound unions overlapping windows and respects disabled availability enforcement", () => {
+  const s = snapshot([
+    session("a", 0, "08:00:00", "11:00:00"),
+    session("b", 1, "08:00:00", "11:00:00", { instructor_id: "a" }),
+  ]);
+  s.instructors.find((t) => t.id === "a").max_attendance_days_per_week = 1;
+  s.settings.working_days = [0];
+  s.settings.enforce_instructor_availability = true;
+  s.availability = [0, 1].map(() => ({
+    instructor_id: "a",
+    day_of_week: 0,
+    start_time: "08:00:00",
+    end_time: "11:00:00",
+    availability_type: "available",
+    is_preference: false,
+  }));
+  assert.equal(instructorCapacityIssues(s).length, 1, "overlapping windows are not added twice");
+  s.settings.enforce_instructor_availability = false;
+  assert.deepEqual(instructorCapacityIssues(s), []);
 });

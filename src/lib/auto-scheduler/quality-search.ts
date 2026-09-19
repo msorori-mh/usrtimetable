@@ -65,6 +65,49 @@ export function qualityPlanValid(snapshot: Snapshot, sessions: Session[], dayCap
   return [...days(sessions)].every(([key, value]) => value.size <= (before.get(key)?.size ?? 0));
 }
 
+/** A corrected hard conflict is useful even when all quality metrics stay equal. */
+export function qualityRepairNonWorsening(after: Metrics, before: Metrics): boolean {
+  return Object.entries(before).every(
+    ([key, value]) => typeof value !== "number" || Number(after[key as keyof Metrics]) <= value,
+  );
+}
+
+function baselineQualityScope(snapshot: Snapshot): NonNullable<Snapshot["qualityScope"]> {
+  const ctx = context(snapshot);
+  const counts = (keys: (s: Session) => string[]) => {
+    const map = new Map<string, Set<number>>();
+    for (const s of snapshot.sessions)
+      for (const key of keys(s)) {
+        const days = map.get(key) ?? new Set<number>();
+        days.add(s.day_of_week);
+        map.set(key, days);
+      }
+    return Object.fromEntries([...map].map(([key, days]) => [key, days.size]));
+  };
+  const spans = new Map<string, Map<number, [number, number]>>();
+  for (const s of snapshot.sessions)
+    for (const person of ctx.students(s)) {
+      const days = spans.get(person) ?? new Map<number, [number, number]>();
+      const old = days.get(s.day_of_week) ?? [1440, 0];
+      days.set(s.day_of_week, [
+        Math.min(old[0], minutes(s.start_time)),
+        Math.max(old[1], minutes(s.end_time)),
+      ]);
+      spans.set(person, days);
+    }
+  return {
+    studentDays: counts((s) => ctx.students(s)),
+    instructorDays: counts((s) => [s.instructor_id]),
+    levelDays: counts((s) => ctx.levels(s)),
+    studentSpanMinutes: Object.fromEntries(
+      [...spans].map(([person, days]) => [
+        person,
+        [...days.values()].reduce((sum, [a, b]) => sum + b - a, 0),
+      ]),
+    ),
+  };
+}
+
 /** Prefer labs, hour-based day targets and fewer one-lecture days, while protecting idle time. */
 export function qualityBetter(a: Metrics, b: Metrics): boolean {
   const studentAndHardKeys: (keyof Metrics)[] = [
@@ -261,49 +304,69 @@ export async function improveDistribution(
   if (!sessions.length) return finish("empty");
   if (!qualityPlanValid(snapshot, sessions, cap)) {
     const issues = diagnoseQuality(snapshot);
-    // Repair attendance violations together; incomplete/stale academic data is never guessed.
-    if (!issues.length || issues.some((x) => x.code !== "instructor_day_cap"))
+    // Repair placement conflicts together; incomplete/stale academic data is never guessed.
+    if (
+      !issues.length ||
+      issues.some((x) => !["instructor_day_cap", "external_instructor_conflict"].includes(x.code))
+    )
       return finish("invalid_baseline");
     if (stop()) return finish(stop()!);
     const affected = new Set(issues.map((x) => x.instructorId));
-    const repairSnapshot = {
-      ...snapshot,
-      sessions: sessions.map((s) => ({
-        ...s,
-        is_locked: s.is_locked || !affected.has(s.instructor_id),
-      })),
-    };
-    let repairModel: ReturnType<Highs["createModel"]> | undefined;
-    try {
-      const built = buildJointModel(repairSnapshot, cap);
-      repairModel = highs.createModel(built.model);
-      solverAttempts++;
-      repairModel.options.set({
-        output_flag: false,
-        time_limit: Math.max(0, Math.min(5, (deadline - Date.now()) / 1000)),
-      });
-      repairModel.run();
-      if (
-        repairModel.info.get("primal_solution_status") === highs.constants.solutionStatus.feasible
-      ) {
-        const candidate = built.decode(repairModel.getSolution().colValue).map((s) => ({
+    const ctx = context(snapshot);
+    const peers = new Set(
+      sessions.filter((s) => affected.has(s.instructor_id)).flatMap((s) => ctx.students(s)),
+    );
+    // Expand only when moving the affected instructors alone cannot repair the draft.
+    for (const expand of [false, true]) {
+      if (stop()) break;
+      const repairSnapshot = {
+        ...snapshot,
+        qualityScope: baselineQualityScope(snapshot),
+        sessions: sessions.map((s) => ({
           ...s,
-          is_locked: snapshot.sessions.find((x) => x.id === s.id)!.is_locked,
-        }));
+          is_locked:
+            s.is_locked ||
+            !(
+              affected.has(s.instructor_id) ||
+              (expand && ctx.students(s).some((p) => peers.has(p)))
+            ),
+        })),
+      };
+      let repairModel: ReturnType<Highs["createModel"]> | undefined;
+      try {
+        const built = buildJointModel(repairSnapshot, cap);
+        if (stop()) break;
+        repairModel = highs.createModel(built.model);
+        solverAttempts++;
+        repairModel.options.set({
+          output_flag: false,
+          time_limit: Math.max(0, Math.min(expand ? 15 : 5, (deadline - Date.now()) / 1000)),
+        });
+        repairModel.run();
         if (
-          qualityPlanValid(snapshot, candidate, cap) &&
-          qualityBetter(measure(snapshot, candidate), score)
+          repairModel.info.get("primal_solution_status") === highs.constants.solutionStatus.feasible
         ) {
-          sessions = candidate;
-          score = measure(snapshot, sessions);
-          accepted++;
-          options.onProgress?.(moves().length, score);
+          const candidate = built.decode(repairModel.getSolution().colValue).map((s) => ({
+            ...s,
+            is_locked: snapshot.sessions.find((x) => x.id === s.id)!.is_locked,
+          }));
+          const next = measure(snapshot, candidate);
+          if (
+            qualityPlanValid(snapshot, candidate, cap) &&
+            (qualityBetter(next, score) || qualityRepairNonWorsening(next, score))
+          ) {
+            sessions = candidate;
+            score = next;
+            accepted++;
+            options.onProgress?.(moves().length, score);
+            break;
+          }
         }
+      } catch {
+        solverFailures++;
+      } finally {
+        repairModel?.dispose();
       }
-    } catch {
-      solverFailures++;
-    } finally {
-      repairModel?.dispose();
     }
     if (!qualityPlanValid(snapshot, sessions, cap)) return finish("invalid_baseline");
   }
@@ -317,21 +380,7 @@ export async function improveDistribution(
     return finish("invalid_baseline");
   if (sessions.every((s) => s.is_locked)) return finish("all_locked");
   const ctx = context(snapshot);
-  const counts = (keys: (s: Session) => string[]) => {
-    const map = new Map<string, Set<number>>();
-    for (const s of snapshot.sessions)
-      for (const key of keys(s)) {
-        const days = map.get(key) ?? new Set<number>();
-        days.add(s.day_of_week);
-        map.set(key, days);
-      }
-    return Object.fromEntries([...map].map(([key, days]) => [key, days.size]));
-  };
-  const qualityScope = {
-    studentDays: counts((s) => ctx.students(s)),
-    instructorDays: counts((s) => [s.instructor_id]),
-    levelDays: counts((s) => ctx.levels(s)),
-  };
+  const qualityScope = baselineQualityScope(snapshot);
   const slots = new Map(snapshot.sessions.map((s) => [s.id, compactSlots(snapshot, s)]));
   const roomRank = (s: Session, r: Snapshot["rooms"][number]) =>
     roomTypeRank({

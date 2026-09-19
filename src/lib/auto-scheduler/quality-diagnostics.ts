@@ -1,4 +1,6 @@
 import { context, minutes, placementIssue, type Snapshot, type Session } from "./compact.ts";
+import { instructorAttendanceDayCap } from "./attendance-objective.ts";
+import { isInstructorAvailabilityEnforced } from "../scheduling/instructor-availability-policy.ts";
 
 export const placementLabels: Record<string, string> = {
   inactive_assignment: "الإسناد غير نشط أو غير موجود؛ يلزم تصحيح الإسناد قبل التحسين",
@@ -30,24 +32,102 @@ export interface QualityIssue {
   code: string;
   message: string;
 }
+/** Optimistic continuous-minute capacity: ignores rooms, students and packing, so a
+ * deficit proves inconsistent inputs, never merely exhaustion of the search grid. */
+export function instructorCapacityIssues(snapshot: Snapshot): QualityIssue[] {
+  const issues: QualityIssue[] = [];
+  for (const id of new Set(snapshot.sessions.map((s) => s.instructor_id))) {
+    const teacher = snapshot.instructors.find((t) => t.id === id);
+    if (!teacher) continue;
+    const lectures = snapshot.sessions.filter((s) => s.instructor_id === id);
+    const required = lectures.reduce((n, s) => n + minutes(s.end_time) - minutes(s.start_time), 0);
+    const cap = instructorAttendanceDayCap(
+      teacher.target_attendance_days_per_week,
+      undefined,
+      teacher.max_attendance_days_per_week,
+    );
+    const type = snapshot.types.find((t) => t.id === teacher.instructor_type_id);
+    const daily = [...new Set(snapshot.settings.working_days)].map((day) => {
+      const windows = snapshot.availability.filter(
+        (w) => w.instructor_id === id && w.day_of_week === day && !w.is_preference,
+      );
+      const positive = windows.filter((w) => w.availability_type !== "unavailable");
+      let available = 0;
+      for (
+        let minute = minutes(snapshot.settings.day_start_time);
+        minute < minutes(snapshot.settings.day_end_time);
+        minute++
+      ) {
+        if (isInstructorAvailabilityEnforced(snapshot.settings.enforce_instructor_availability)) {
+          if ((type?.is_external || type?.code === "from_other_college") && !windows.length)
+            continue;
+          if (
+            windows.length &&
+            !positive.some((w) => minute >= minutes(w.start_time) && minute < minutes(w.end_time))
+          )
+            continue;
+          if (
+            windows.some(
+              (w) =>
+                w.availability_type === "unavailable" &&
+                minute >= minutes(w.start_time) &&
+                minute < minutes(w.end_time),
+            )
+          )
+            continue;
+        }
+        if (
+          snapshot.externalBusy?.some(
+            (w) =>
+              w.instructor_id === id &&
+              w.day_of_week === day &&
+              minute >= minutes(w.start_time) &&
+              minute < minutes(w.end_time),
+          )
+        )
+          continue;
+        available++;
+      }
+      return Math.min(
+        available,
+        (teacher.max_hours_per_day ?? snapshot.settings.max_daily_hours_per_instructor ?? 6) * 60,
+      );
+    });
+    const capacity = daily
+      .sort((a, b) => b - a)
+      .slice(0, cap)
+      .reduce((a, b) => a + b, 0);
+    if (required > capacity)
+      issues.push({
+        sessionId: lectures[0].id,
+        instructorId: id,
+        code: "instructor_capacity_deficit",
+        message: `المطلوب ${required / 60} ساعات، والمتاح بحد أقصى ${capacity / 60} ساعات ضمن حد الحضور (${cap} أيام)؛ يلزم تصحيح الإتاحة أو حد الأيام قبل الجدولة`,
+      });
+  }
+  return issues;
+}
 export function diagnoseQuality(snapshot: Snapshot): QualityIssue[] {
-  return snapshot.sessions.flatMap((session) => {
-    const code = context(snapshot)
-      .students(session)
-      .some((p) => p.startsWith("cohort:"))
-      ? "incomplete_partition"
-      : placementIssue(snapshot, snapshot.sessions, { ...session, is_locked: false }, session);
-    return code
-      ? [
-          {
-            sessionId: session.id,
-            instructorId: session.instructor_id,
-            code,
-            message: placementLabels[code] ?? code,
-          },
-        ]
-      : [];
-  });
+  return [
+    ...instructorCapacityIssues(snapshot),
+    ...snapshot.sessions.flatMap((session) => {
+      const code = context(snapshot)
+        .students(session)
+        .some((p) => p.startsWith("cohort:"))
+        ? "incomplete_partition"
+        : placementIssue(snapshot, snapshot.sessions, { ...session, is_locked: false }, session);
+      return code
+        ? [
+            {
+              sessionId: session.id,
+              instructorId: session.instructor_id,
+              code,
+              message: placementLabels[code] ?? code,
+            },
+          ]
+        : [];
+    }),
+  ];
 }
 export interface PersonImpact {
   id: string;

@@ -61,6 +61,7 @@ export interface Snapshot {
     studentDays: Record<string, number>;
     instructorDays: Record<string, number>;
     levelDays: Record<string, number>;
+    studentSpanMinutes?: Record<string, number>;
   };
   generationScope?: { existingIds: string[]; maxRelocations: number };
   externalBusy?: {
