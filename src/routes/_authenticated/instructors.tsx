@@ -1,3 +1,5 @@
+import { facultyWorkflow } from "@/lib/instructors/faculty-workflow";
+import { FacultyHomeReview } from "@/components/faculty-workflow";
 import { FacultyIdentityLink } from "@/components/faculty-identity-link";
 import { withUniversityNumbers } from "@/lib/instructors/university-number";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -203,6 +205,23 @@ function InstructorDirectory() {
 
   const [supportName, setSupportName] = useState("");
   const affiliationCollegeId = form.affiliation_college_id || active?.id || "";
+  const registrationMatches = useQuery({
+    queryKey: ["faculty-registration-matches", active?.id, form.full_name, form.employee_number],
+    enabled:
+      !!active &&
+      canManage &&
+      !editing &&
+      (form.full_name.trim().length >= 3 || !!form.employee_number.trim()),
+    queryFn: async () => {
+      const { data, error } = await facultyWorkflow.rpc("find_faculty_for_registration", {
+        p_college_id: active!.id,
+        p_name: form.full_name,
+        p_employee_number: form.employee_number || null,
+      });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
   const { data: affiliationDepts } = useQuery({
     queryKey: ["instructor-affiliation-depts", affiliationCollegeId],
     enabled: !!affiliationCollegeId,
@@ -292,6 +311,8 @@ function InstructorDirectory() {
     mutationFn: async () => {
       if (!active) throw new Error("اختر كلّية");
       if (!canEdit) throw new Error("صلاحيتك للقراءة فقط");
+      if (!editing && form.affiliation_college_id && form.affiliation_college_id !== active?.id)
+        throw new Error("أضف المحاضر في كليته الأصلية، ثم اطلب تكليفه من صفحة الإسناد التدريسي");
       if (!editing && !canManage) throw new Error("صلاحيتك تسمح بتعديل المحاضرين الحاليين فقط");
       if (!form.full_name.trim()) throw new Error("الاسم مطلوب");
       const selectedType = ((types ?? []) as InstructorTypeRow[]).find(
@@ -541,6 +562,7 @@ function InstructorDirectory() {
           <p className="text-sm text-muted-foreground">قائمة أعضاء هيئة التدريس في الكلّية.</p>
         </div>
       </header>
+      {active && <FacultyHomeReview collegeId={active.id} />}
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <CollegeSwitcher />
@@ -743,6 +765,26 @@ function InstructorDirectory() {
                 </div>
 
                 <div data-field-order="4-full-arabic-name">
+                  {!editing && (registrationMatches.data?.length ?? 0) > 0 && (
+                    <div role="status" className="mb-3 rounded border p-3 text-sm">
+                      <b>سجلات موجودة تحتاج المراجعة قبل الإضافة</b>
+                      {registrationMatches.data?.map((m) => (
+                        <p key={m.university_number}>
+                          {m.name} — {m.university_number} —{" "}
+                          {m.home_college ?? "تبعية تحتاج مراجعة"}
+                        </p>
+                      ))}
+                      <p>
+                        إن كان المحاضر مسجلًا، استخدمه من صفحة الإسناد. تشابه الأسماء لا يدمج
+                        الهويات تلقائيًا.
+                      </p>
+                    </div>
+                  )}
+                  {registrationMatches.error && (
+                    <p role="alert">
+                      تعذر فحص السجلات الموجودة: {registrationMatches.error.message}
+                    </p>
+                  )}
                   <Label>الاسم الرباعي</Label>
                   <Input
                     value={form.full_name_ar}

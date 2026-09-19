@@ -11,6 +11,8 @@ export const leadershipCollegeSchema = z.object({
   departments: amount,
   programs: amount,
   faculty_count: amount,
+  teaching_contributors: amount.optional().default(0),
+  external_contributors: amount.optional().default(0),
   faculty_directory_count: amount.optional().default(0),
   rank_counts: z.record(z.string(), z.number().finite().nonnegative()).optional().default({}),
   availability_counts: z
@@ -50,16 +52,19 @@ export const leadershipOverviewSchema = z.object({
   year: z.string().nullable(),
   term_type: z.string().nullable(),
   generated_at: z.string(),
+  unique_faculty: amount.optional(),
+  unresolved_faculty: amount.optional(),
   periods: z.array(z.object({ year: z.string(), type: z.string() })),
   colleges: z.array(leadershipCollegeSchema),
 });
 export type LeadershipCollege = z.infer<typeof leadershipCollegeSchema>;
 export const termTypeLabel = (value: string) =>
   (
-    ({ first: "الفصل الأول", second: "الفصل الثاني", summer: "الفصل الصيفي" }) as Record<
-      string,
-      string
-    >
+    ({
+      first: "الفصل الأول",
+      second: "الفصل الثاني",
+      summer: "الفصل الصيفي",
+    }) as Record<string, string>
   )[value] ?? value;
 export function sumLeadership(rows: LeadershipCollege[], key: keyof LeadershipCollege): number {
   return (

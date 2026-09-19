@@ -76,6 +76,7 @@ export function FacultyUniversityReport() {
   });
   const data = report.data;
   const summary = summarizeFacultySessions(data?.sessions ?? []);
+  const selectedVersionIds = data?.selected_version_ids ?? Object.values(versions);
   const chosen = choices.data?.instructors.find((i) => i.id === instructor);
   const changeInstructor = (id: string) => {
     setInstructor(id);
@@ -90,7 +91,7 @@ export function FacultyUniversityReport() {
       <h1 className="text-xl font-bold">النصاب والجدول الجامعي الموحّد للمحاضر</h1>
       <p>
         يجمع السجلات المرتبطة بهوية جامعية معتمدة فقط. النصاب يُحتسب مرة واحدة، والساعات حسب قواعد
-        الإسناد الحالية. اختر نسخة واحدة لكل كلية لعرض الجدول.
+        الإسناد الحالية. تُعرض النسخة المنشورة لكل كلية تلقائيًا، أو نسخة التنسيق عند غيابها.
       </p>
       <div className="grid gap-3 md:grid-cols-3 print:hidden">
         <label>
@@ -240,6 +241,32 @@ export function FacultyUniversityReport() {
               </tbody>
             </table>
           </div>
+          {(data.unscheduled?.length ?? 0) > 0 && (
+            <section className="rounded border p-3">
+              <h2 className="font-bold">إسنادات بانتظار التسكين في النسخ المعروضة</h2>
+              <table className="w-full">
+                <thead>
+                  <tr>
+                    {["الكلية", "المقرر", "المجموعة", "الساعات"].map((t) => (
+                      <th className={cell} key={t}>
+                        {t}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.unscheduled?.map((a) => (
+                    <tr key={a.id}>
+                      <td className={cell}>{a.college}</td>
+                      <td className={cell}>{a.course}</td>
+                      <td className={cell}>{a.group_name ?? "—"}</td>
+                      <td className={cell}>{a.hours ?? "غير محددة"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          )}
           <h2 className="font-bold">الجدول الموحّد</h2>
           <div className="grid gap-3 md:grid-cols-2 print:hidden">
             {scheduleColleges.map(([id, name]) => (
@@ -248,10 +275,27 @@ export function FacultyUniversityReport() {
                 <select
                   aria-label={"نسخة جدول " + name}
                   className="w-full rounded border p-2"
-                  value={versions[id] ?? ""}
-                  onChange={(e) => setVersions({ ...versions, [id]: e.target.value })}
+                  value={
+                    versions[id] ??
+                    data.selected_version_ids?.find((v) =>
+                      data.versions.some((s) => s.id === v && s.college_id === id),
+                    ) ??
+                    ""
+                  }
+                  onChange={(e) =>
+                    setVersions({
+                      ...Object.fromEntries(
+                        data.versions
+                          .filter((v) => selectedVersionIds.includes(v.id))
+                          .map((v) => [v.college_id, v.id]),
+                      ),
+                      [id]: e.target.value,
+                    })
+                  }
                 >
-                  <option value="">لم تُحدد نسخة لهذه الكلية</option>
+                  <option value="" disabled>
+                    لم تتوفر نسخة معتمدة لهذه الكلية
+                  </option>
                   {data.versions
                     .filter((v) => v.college_id === id)
                     .map((v) => (
@@ -267,13 +311,14 @@ export function FacultyUniversityReport() {
           <p>
             النسخ المحددة:{" "}
             {data.versions
-              .filter((v) => Object.values(versions).includes(v.id))
+              .filter((v) => selectedVersionIds.includes(v.id))
               .map((v) => v.college + ": " + v.name)
               .join("؛ ") || "لم تُحدد نسخ بعد"}
           </p>
-          {scheduleColleges.some(([id]) => !versions[id]) && (
-            <p>الجدول جزئي حتى اختيار نسخة لكل كلية.</p>
-          )}
+          {scheduleColleges.some(
+            ([id]) =>
+              !data.versions.some((v) => v.college_id === id && selectedVersionIds.includes(v.id)),
+          ) && <p>الجدول جزئي حتى اختيار نسخة لكل كلية.</p>}
           <p>
             الساعات الزمنية في النسخ المحددة: نظري {summary.theory}، عملي {summary.practical}،
             الإجمالي {summary.total}. قد تختلف عن ساعات الإسناد المحتسبة، خصوصًا عند التدريس
@@ -294,7 +339,16 @@ export function FacultyUniversityReport() {
             <table className="w-full border-collapse">
               <thead>
                 <tr>
-                  {["اليوم", "الوقت", "الكلية", "المقرر", "النوع", "النظام", "القاعة"].map((s) => (
+                  {[
+                    "اليوم",
+                    "الوقت",
+                    "الكلية",
+                    "المقرر",
+                    "البرنامج / المجموعة",
+                    "النوع",
+                    "النظام",
+                    "القاعة",
+                  ].map((s) => (
                     <th key={s} className={cell}>
                       {s}
                     </th>
@@ -309,6 +363,7 @@ export function FacultyUniversityReport() {
                       s.start.slice(0, 5) + "–" + s.end.slice(0, 5),
                       s.college,
                       s.course,
+                      [s.program, s.group_name].filter(Boolean).join(" / ") || "—",
                       s.type === "lab" ? "عملي" : "نظري",
                       s.study_system === "parallel" ? "موازي" : "عام",
                       s.room ?? "غير محددة",
