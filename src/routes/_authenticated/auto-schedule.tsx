@@ -1,3 +1,4 @@
+import { collegeSupportsParallel } from "@/lib/study-systems";
 import { AUTO_SCOPE_LABELS, type AutoScheduleScope } from "@/lib/auto-scheduler/study-system-scope";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -56,7 +57,10 @@ function AutoSchedulePage() {
   const canManage = useCanManageActiveCollege();
   const qc = useQueryClient();
   const [versionId, setVersionId] = useState<string>("");
-  const [studySystem, setStudySystem] = useState<AutoScheduleScope>("regular");
+  const [studySystemChoice, setStudySystem] = useState<AutoScheduleScope>("regular");
+  const supportsParallel = collegeSupportsParallel(active);
+  // Full-version scope is retained for completeness checks in regular-only colleges.
+  const studySystem: AutoScheduleScope = supportsParallel ? studySystemChoice : "all";
   const [searchDurationMs, setSearchDurationMs] = useState("180000");
   const [mode, setMode] = useState<AutoRunMode>("fill_missing");
   const [compactBusy, setCompactBusy] = useState(false);
@@ -290,9 +294,9 @@ function AutoSchedulePage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(AUTO_SCOPE_LABELS).map(([value, label]) => (
+                    {Object.entries(AUTO_SCOPE_LABELS).filter(([value]) => supportsParallel || value === "all").map(([value, label]) => (
                       <SelectItem key={value} value={value}>
-                        {label}
+                        {supportsParallel ? label : "النظام العام فقط"}
                       </SelectItem>
                     ))}
                   </SelectContent>
