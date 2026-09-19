@@ -1,4 +1,4 @@
-import { DAY_NAMES_AR, fmtTime, hoursBetween } from "@/lib/reports/formatters";
+import { DAY_NAMES_AR, compactAcademicLevelLabel, fmtTime, hoursBetween } from "@/lib/reports/formatters";
 import type { Row } from "@/lib/reports/export";
 import { entityDisplayName } from "@/lib/entity-display";
 
@@ -131,7 +131,7 @@ export function timetableSessionToRow(s: TimetableReportSession): Row {
     course_name: s.course_name,
     department: s.department_name,
     program: s.program_name,
-    level: s.level_name,
+    level: compactAcademicLevelLabel(s.level_name),
     section: s.section_number,
     cohort: s.cohort_label,
     delivery_group: s.delivery_group_label,
