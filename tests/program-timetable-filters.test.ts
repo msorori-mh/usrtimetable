@@ -129,6 +129,10 @@ describe("dependent program timetable filters", () => {
       ["1", "2", "4"],
     );
     assert.deepEqual(
+      derive().levels.map((l) => l.label),
+      ["الأول", "الثاني", "الرابع"],
+    );
+    assert.deepEqual(
       derive({ programId: "is" }).levels.map((l) => l.value),
       ["1", "2"],
     );
