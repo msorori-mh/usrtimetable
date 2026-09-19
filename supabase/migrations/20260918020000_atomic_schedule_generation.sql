@@ -97,14 +97,18 @@ BEGIN
     v_created := v_created || jsonb_build_array(v_result->'session');
   END LOOP;
   -- Independent final-state gates run before the transaction can commit.
-  -- Same policy as instructorAttendanceDayCap: explicit exceptions, otherwise four.
+  -- An explicit max_attendance_days_per_week is the real hard ceiling and may
+  -- tighten the generic four-day limit. A target alone may only raise it.
   IF EXISTS(SELECT 1 FROM public.schedule_sessions s
     JOIN public.instructors i ON i.id=s.instructor_id AND i.college_id=p_college_id
     WHERE s.college_id=p_college_id AND s.schedule_version_id=p_version_id
       AND NOT coalesce(s.replaced_by_split,false)
     GROUP BY i.id,i.target_attendance_days_per_week,i.max_attendance_days_per_week
-    HAVING count(DISTINCT s.day_of_week)>greatest(4,
-      coalesce(i.target_attendance_days_per_week,4),coalesce(i.max_attendance_days_per_week,4))) THEN
+    HAVING count(DISTINCT s.day_of_week)>
+      CASE
+        WHEN i.max_attendance_days_per_week IS NOT NULL THEN i.max_attendance_days_per_week
+        ELSE greatest(4,coalesce(i.target_attendance_days_per_week,4))
+      END) THEN
     v_result:=jsonb_build_object('code','INSTRUCTOR_ATTENDANCE_DAYS_EXCEEDED');
     RAISE EXCEPTION 'GENERATION_REJECTED' USING ERRCODE='P7502';
   END IF;
