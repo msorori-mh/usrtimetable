@@ -404,20 +404,16 @@ export function better(a: Metrics, b: Metrics) {
   // therefore increase instructorAttendanceDays / shortInstructorDays.
   if (a.instructorTargetDayDeviation !== b.instructorTargetDayDeviation)
     return a.instructorTargetDayDeviation < b.instructorTargetDayDeviation;
+  // Consolidation rule: after student-side protection and explicit targets,
+  // eliminate days where an instructor attends for only one lecture before
+  // polishing instructor gaps. The goal is grouping attendance, never spreading it.
+  if ((a.instructorSingleLectureDays ?? 0) !== (b.instructorSingleLectureDays ?? 0))
+    return (a.instructorSingleLectureDays ?? 0) < (b.instructorSingleLectureDays ?? 0);
+  if (a.instructorAttendanceDays !== b.instructorAttendanceDays)
+    return a.instructorAttendanceDays < b.instructorAttendanceDays;
   const protectedInstructorMetrics: Array<
-    keyof Pick<
-      Metrics,
-      | "instructorGapMinutes"
-      | "worstInstructorGapMinutes"
-      | "shortInstructorDays"
-      | "instructorAttendanceDays"
-    >
-  > = [
-    "instructorGapMinutes",
-    "worstInstructorGapMinutes",
-    "shortInstructorDays",
-    "instructorAttendanceDays",
-  ];
+    keyof Pick<Metrics, "instructorGapMinutes" | "worstInstructorGapMinutes" | "shortInstructorDays">
+  > = ["instructorGapMinutes", "worstInstructorGapMinutes", "shortInstructorDays"];
   if (protectedInstructorMetrics.some((key) => a[key] > b[key])) return false;
   return compareAttendance(a, b) < 0;
 }
