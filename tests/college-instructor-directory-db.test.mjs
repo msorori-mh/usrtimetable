@@ -49,7 +49,7 @@ async function fixture() {
     await db.query("INSERT INTO instructors VALUES($1,$2)", [id(n), id(rowCollege)]);
     await db.query("INSERT INTO faculty_identity_links VALUES($1,$2)", [id(n + 1000), id(n)]);
     await db.query(
-      "INSERT INTO faculty_private.home_profiles VALUES($1,$2,$3,$4,$5,$6,$7,'permanent','full_time',12,3,9,true)",
+      "INSERT INTO faculty_private.home_profiles VALUES($1,$2,$3,$4,$5,$6,$7,'permanent','full_time',12,3,3,true)",
       [
         id(n + 1000),
         id(n),
@@ -99,7 +99,7 @@ test("admin, college manager and reader receive the same scoped roster, never un
       assert.equal(rows.find((r) => r.id === id(102)).home_college_name, "Arts");
       assert.equal(rows.find((r) => r.id === id(101)).recorded_quota, 12);
       assert.equal(rows.find((r) => r.id === id(101)).recorded_release, 3);
-      assert.equal(rows.find((r) => r.id === id(101)).authoritative_quota, 9);
+      assert.equal(rows.find((r) => r.id === id(101)).authoritative_quota, 3);
       const homeAlias = rows.find((r) => r.id === id(106));
       assert.equal(homeAlias.home_college_name, "ITCS");
       assert.deepEqual(homeAlias.record_ids.sort(), [id(106), id(107)].sort());
