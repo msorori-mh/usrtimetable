@@ -198,7 +198,7 @@ function Report() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [typeId, setTypeId] = useState("all");
-  const [affiliation, setAffiliation] = useState("all");
+  const [affiliation, setAffiliation] = useState("internal");
   const [departmentId, setDepartmentId] = useState("all");
 
   const instructors = useQuery({
@@ -417,7 +417,7 @@ function Report() {
     search.trim() ? `بحث: ${search.trim()}` : "",
     status === "all" ? "" : `الحالة: ${status === "active" ? "نشط" : "غير نشط"}`,
     typeId === "all" ? "" : `الفئة: ${typeMap.get(typeId) ?? "غير محدد"}`,
-    affiliation === "all" ? "" : AFFILIATION_LABELS[affiliation],
+    affiliation === "internal" ? "" : AFFILIATION_LABELS[affiliation],
     departmentId === "all" ? "" : `القسم: ${departmentMap.get(departmentId) ?? "قسم محدد"}`,
   ].filter(Boolean);
   const filterSummary = [
@@ -433,7 +433,7 @@ function Report() {
   return (
     <ReportShell
       title="دليل المحاضرين وبياناتهم"
-      description="كشف إداري ببيانات المحاضرين الأساسية والتبعية والنصاب ووسائل التواصل والحالة."
+      description="يعرض أعضاء الكلية الأصليين افتراضيًا. لعرض المحاضرين من كليات أخرى أو السجلات غير المحسومة، اختر نطاق التبعية من الفلتر."
       filename="instructors_directory"
       printOrientation="landscape"
       rows={rows}
@@ -540,7 +540,7 @@ function Report() {
                     setSearch("");
                     setStatus("all");
                     setTypeId("all");
-                    setAffiliation("all");
+                    setAffiliation("internal");
                     setDepartmentId("all");
                   }
                 : undefined
