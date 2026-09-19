@@ -1,4 +1,5 @@
 import { matchesStudySystem, STUDY_SYSTEM_LABELS } from "./filters";
+import { compactAcademicLevelLabel } from "./formatters";
 import { sessionTypeLabel } from "./session-mappers";
 import type { ReportFilters, ReportStudySystem } from "./types";
 import type { PrintSessionLike } from "@/lib/print-center/types";
@@ -120,7 +121,10 @@ export function deriveProgramTimetable<T extends PrintSessionLike>(input: {
     programs,
     departmentId: selected.departmentId,
     programId: selected.programId,
-  });
+  }).map((level) => ({
+    ...level,
+    label: compactAcademicLevelLabel(level.label),
+  }));
   selected.levelValue = keep(
     selected.levelValue,
     levels.map((l) => l.value),
@@ -150,7 +154,7 @@ export function deriveProgramTimetable<T extends PrintSessionLike>(input: {
       ...c,
       name: [
         programsById.get(c.program_id)?.name,
-        `المستوى ${levelsById.get(c.level_id)?.level_number ?? "—"}`,
+        compactAcademicLevelLabel(levelsById.get(c.level_id)?.name ?? levelsById.get(c.level_id)?.level_number),
         STUDY_SYSTEM_LABELS[c.study_system as ReportStudySystem] ??
           c.study_system,
         c.entry_year === null
