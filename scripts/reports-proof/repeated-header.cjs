@@ -96,7 +96,8 @@ const { execFileSync } = require("node:child_process");
                 const range = document.createRange();
                 range.selectNodeContents(span);
                 return (
-                  range.getClientRects().length !== 1 ||
+                  new Set([...range.getClientRects()].map((rect) => Math.round(rect.top))).size !==
+                    1 ||
                   cell.scrollWidth > cell.clientWidth + 1 ||
                   span.getBoundingClientRect().width >
                     cell.clientWidth -
