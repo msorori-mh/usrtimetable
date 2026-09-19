@@ -59,6 +59,7 @@ export function groupCurrentSchedulePages(
       pages.push({
         ...page,
         key: `${pid}:${page.key}`,
+        title: `جدول ${page.title}`,
         departmentName:
           page.departmentName ??
           page.sessions[0]?.course_offerings?.courses?.departments?.name ??
