@@ -1,6 +1,20 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
+export type CollegeScheduleInstructor = {
+  id: string;
+  identity_id: string;
+  record_ids: string[];
+  university_number: string;
+  full_name: string;
+  college_id: string;
+  home_college_id: string | null;
+  home_college_name: string | null;
+  instructor_type_code: string | null;
+  employment_type: string;
+  authoritative_quota: number | null;
+};
+
 export type FacultyHome = {
   identity_id: string;
   university_number: string;
@@ -52,6 +66,10 @@ type Api = {
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
     Functions: {
+      get_college_instructor_schedule_directory: {
+        Args: { p_college_id: string };
+        Returns: CollegeScheduleInstructor[];
+      };
       find_faculty_for_registration: {
         Args: { p_college_id: string; p_name: string; p_employee_number: string | null };
         Returns: { university_number: string; name: string; home_college: string | null }[];

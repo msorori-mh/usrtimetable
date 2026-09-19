@@ -1,0 +1,26 @@
+name: College instructor directory
+
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/20260919120000_college_instructor_schedule_directory.sql"
+      - "tests/college-instructor-directory-db.test.mjs"
+      - ".github/workflows/college-instructor-directory.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  scope:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install isolated database test dependency
+        run: npm install --prefix /tmp/faculty-test --no-package-lock --ignore-scripts @electric-sql/pglite@0.5.8
+      - name: Verify college scope and role boundaries
+        env:
+          FACULTY_DB_MODULE: /tmp/faculty-test/node_modules/@electric-sql/pglite/dist/index.js
+        run: node --test tests/college-instructor-directory-db.test.mjs

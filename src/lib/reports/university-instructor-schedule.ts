@@ -104,13 +104,13 @@ export function resolveCollegeScheduleScopes(input: {
 }
 
 /** Canonical record ID or verified university number, never fuzzy name matching. */
-export function facultyRecordIds<T extends { id: string; university_number: string | null }>(
-  selected: T,
-  records: T[],
-) {
+export function facultyRecordIds<
+  T extends { id: string; university_number: string | null; record_ids?: readonly string[] },
+>(selected: T, records: T[]) {
   return [
     ...new Set([
       selected.id,
+      ...(selected.record_ids ?? []),
       ...records
         .filter(
           (r) => selected.university_number && r.university_number === selected.university_number,
