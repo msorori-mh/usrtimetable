@@ -1,4 +1,4 @@
-import type { IntakeMembership } from '../existing-schedules/presentation';
+import type { IntakeMembership } from "../existing-schedules/presentation";
 /**
  * Pure client-side hydration for Schedule Builder sessions.
  * No React / Supabase — safe for harnesses.
@@ -251,4 +251,3 @@ export function attachCohortTermHeadcounts(
           : null,
   }));
 }
-
