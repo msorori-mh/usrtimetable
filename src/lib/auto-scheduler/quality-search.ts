@@ -1,3 +1,4 @@
+import { diagnoseQuality, qualityImpact, type QualityIssue } from "./quality-diagnostics.ts";
 import type { Highs } from "highs";
 import {
   compactSlots,
@@ -32,11 +33,18 @@ export interface QualitySearchReport {
   solverAttempts: number;
   solverFailures: number;
   elapsedMs: number;
+  issues?: QualityIssue[];
 }
 
 /** Hard ceilings and no extra attendance days for any individual student or instructor. */
 export function qualityPlanValid(snapshot: Snapshot, sessions: Session[], dayCap: 3 | 4 | 5) {
   if (![3, 4, 5].includes(dayCap) || !validateJointPlan(snapshot, sessions, dayCap)) return false;
+  if (
+    qualityImpact(snapshot, sessions).some(
+      (p) => p.kind === "student" && p.after.gapMinutes > p.before.gapMinutes,
+    )
+  )
+    return false;
   const ctx = context(snapshot);
   const days = (list: Session[]) => {
     const result = new Map<string, Set<number>>();
@@ -114,10 +122,81 @@ export async function improveDistribution(
   options: {
     maxDurationMs?: number;
     maxEvaluations?: number;
+    /** Internal deterministic neighborhood ordering for portfolio search. */
+    scenario?: number;
     signal?: AbortSignal;
     onProgress?: (moves: number, metrics: Metrics) => void;
   } = {},
 ): Promise<Proposal> {
+  if (options.scenario === undefined) {
+    const started = Date.now();
+    const budget = Math.max(0, Math.min(options.maxDurationMs ?? 180000, 180000));
+    const limit = options.maxEvaluations ?? 250000;
+    let current = snapshot;
+    let best: Proposal | undefined;
+    let evaluated = 0,
+      accepted = 0,
+      solverAttempts = 0,
+      solverFailures = 0;
+    for (let scenario = 0; scenario < 3; scenario++) {
+      const remaining = Math.max(0, budget - (Date.now() - started));
+      if (best && (remaining === 0 || evaluated >= limit || options.signal?.aborted)) break;
+      const next = await improveDistribution(current, highs, {
+        ...options,
+        scenario,
+        maxDurationMs: remaining / (3 - scenario),
+        maxEvaluations: Math.max(0, Math.floor((limit - evaluated) / (3 - scenario))),
+      });
+      evaluated += next.qualitySearch!.evaluated;
+      accepted += next.qualitySearch!.accepted;
+      solverAttempts += next.qualitySearch!.solverAttempts;
+      solverFailures += next.qualitySearch!.solverFailures;
+      const moves = new Map(next.moves.map((m) => [m.id, m]));
+      const sessions = current.sessions.map((s) => ({ ...s, ...moves.get(s.id) }));
+      // Each new scenario starts from the best incumbent, never discards earlier gains.
+      current = { ...current, sessions };
+      best = {
+        ...next,
+        before: measure(snapshot),
+        fingerprint: fingerprint(snapshot.sessions),
+        inputFingerprint: inputFingerprint(snapshot),
+        moves: sessions
+          .filter((s) => {
+            const old = snapshot.sessions.find((x) => x.id === s.id)!;
+            return (
+              s.day_of_week !== old.day_of_week ||
+              s.start_time !== old.start_time ||
+              s.end_time !== old.end_time ||
+              s.room_id !== old.room_id
+            );
+          })
+          .map(({ id, day_of_week, start_time, end_time, room_id }) => ({
+            id,
+            day_of_week,
+            start_time,
+            end_time,
+            room_id,
+          })),
+        qualitySearch: {
+          ...next.qualitySearch!,
+          evaluated,
+          accepted,
+          solverAttempts,
+          solverFailures,
+          elapsedMs: Date.now() - started,
+        },
+      };
+      if (
+        ["invalid_baseline", "all_locked", "empty", "cancelled"].includes(
+          next.qualitySearch!.reason,
+        )
+      )
+        break;
+    }
+    if (best!.moves.length && best!.qualitySearch!.reason === "neighborhood_exhausted")
+      best!.qualitySearch!.reason = "improved";
+    return best!;
+  }
   const started = Date.now();
   const budget = Math.max(0, Math.min(options.maxDurationMs ?? 180000, 180000));
   const deadline = started + budget;
@@ -168,6 +247,7 @@ export async function improveDistribution(
       solverAttempts,
       solverFailures,
       elapsedMs: Date.now() - started,
+      ...(reason === "invalid_baseline" ? { issues: diagnoseQuality(snapshot) } : {}),
     },
   });
   const stop = (): QualitySearchReport["reason"] | null =>
@@ -179,13 +259,60 @@ export async function improveDistribution(
           ? "candidate_limit"
           : null;
   if (!sessions.length) return finish("empty");
+  if (!qualityPlanValid(snapshot, sessions, cap)) {
+    const issues = diagnoseQuality(snapshot);
+    // Repair attendance violations together; incomplete/stale academic data is never guessed.
+    if (!issues.length || issues.some((x) => x.code !== "instructor_day_cap"))
+      return finish("invalid_baseline");
+    if (stop()) return finish(stop()!);
+    const affected = new Set(issues.map((x) => x.instructorId));
+    const repairSnapshot = {
+      ...snapshot,
+      sessions: sessions.map((s) => ({
+        ...s,
+        is_locked: s.is_locked || !affected.has(s.instructor_id),
+      })),
+    };
+    let repairModel: ReturnType<Highs["createModel"]> | undefined;
+    try {
+      const built = buildJointModel(repairSnapshot, cap);
+      repairModel = highs.createModel(built.model);
+      solverAttempts++;
+      repairModel.options.set({
+        output_flag: false,
+        time_limit: Math.max(0, Math.min(5, (deadline - Date.now()) / 1000)),
+      });
+      repairModel.run();
+      if (
+        repairModel.info.get("primal_solution_status") === highs.constants.solutionStatus.feasible
+      ) {
+        const candidate = built.decode(repairModel.getSolution().colValue).map((s) => ({
+          ...s,
+          is_locked: snapshot.sessions.find((x) => x.id === s.id)!.is_locked,
+        }));
+        if (
+          qualityPlanValid(snapshot, candidate, cap) &&
+          qualityBetter(measure(snapshot, candidate), score)
+        ) {
+          sessions = candidate;
+          score = measure(snapshot, sessions);
+          accepted++;
+          options.onProgress?.(moves().length, score);
+        }
+      }
+    } catch {
+      solverFailures++;
+    } finally {
+      repairModel?.dispose();
+    }
+    if (!qualityPlanValid(snapshot, sessions, cap)) return finish("invalid_baseline");
+  }
   if (
     snapshot.sessions.some((s) =>
       context(snapshot)
         .students(s)
         .some((p) => p.startsWith("cohort:")),
-    ) ||
-    !qualityPlanValid(snapshot, sessions, cap)
+    )
   )
     return finish("invalid_baseline");
   if (sessions.every((s) => s.is_locked)) return finish("all_locked");
@@ -285,12 +412,16 @@ export async function improveDistribution(
   const localLimit = Math.floor(limit * 0.4);
   const pairLimit = Math.floor(limit * 0.8);
   const pairDeadline = started + budget * 0.7;
-  // First-improvement passes leave budget for simultaneous and multi-session exchanges.
+  // Compare every feasible placement in the budget before committing a lecture move.
   localSearch: for (let pass = 0; pass < 12 && Date.now() < localDeadline; pass++) {
     let changed = false;
     for (const entry of [...sessions]
       .filter((s) => !s.is_locked)
-      .sort((a, b) => rank(b) - rank(a))) {
+      .sort(
+        (a, b) =>
+          rank(b) - rank(a) ||
+          (options.scenario === 1 ? b.id.localeCompare(a.id) : a.id.localeCompare(b.id)),
+      )) {
       const old = sessions.find((s) => s.id === entry.id)!;
       const peers = sessions.filter(
         (s) => s.instructor_id === old.instructor_id && s.id !== old.id,
@@ -298,14 +429,19 @@ export async function improveDistribution(
       const ordered = [...(slots.get(old.id) ?? [])].sort(
         (a, b) =>
           Number(!peers.some((s) => s.day_of_week === a.day)) -
-          Number(!peers.some((s) => s.day_of_week === b.day)),
+            Number(!peers.some((s) => s.day_of_week === b.day)) ||
+          (options.scenario === 2
+            ? b.day - a.day || b.start.localeCompare(a.start)
+            : a.day - b.day || a.start.localeCompare(b.start)),
       );
+      let bestTrial: Session[] | null = null;
+      let bestScore = score;
       candidate: for (const slot of ordered) {
-        if (stop()) return finish(stop()!);
-        if (Date.now() >= localDeadline || evaluated >= localLimit) break localSearch;
+        if (stop()) break candidate;
+        if (Date.now() >= localDeadline || evaluated >= localLimit) break candidate;
         for (const room of rooms(old)) {
-          if (stop()) return finish(stop()!);
-          if (Date.now() >= localDeadline || evaluated >= localLimit) break localSearch;
+          if (stop()) break candidate;
+          if (Date.now() >= localDeadline || evaluated >= localLimit) break candidate;
           evaluated++;
           const candidate = {
             ...old,
@@ -314,12 +450,17 @@ export async function improveDistribution(
             end_time: slot.end,
             room_id: room.id,
           };
-          if (feasible(snapshot, sessions, candidate, old) && accept(replace(candidate))) {
-            changed = true;
-            break candidate;
+          if (!feasible(snapshot, sessions, candidate, old)) continue;
+          const trial = replace(candidate);
+          const metrics = measure(snapshot, trial);
+          if (qualityBetter(metrics, bestScore) && qualityPlanValid(snapshot, trial, cap)) {
+            bestTrial = trial;
+            bestScore = metrics;
           }
         }
       }
+      if (bestTrial && accept(bestTrial)) changed = true;
+      if (Date.now() >= localDeadline || evaluated >= localLimit) break localSearch;
       await new Promise<void>((resolve) => setTimeout(resolve, 0));
     }
     if (!changed) break;
@@ -327,7 +468,11 @@ export async function improveDistribution(
   // True simultaneous exchanges: neither lecture needs a temporary empty room.
   pairSearch: for (const entry of [...sessions]
     .filter((s) => !s.is_locked)
-    .sort((a, b) => rank(b) - rank(a))) {
+    .sort(
+      (a, b) =>
+        rank(b) - rank(a) ||
+        (options.scenario === 1 ? b.id.localeCompare(a.id) : a.id.localeCompare(b.id)),
+    )) {
     const a = sessions.find((s) => s.id === entry.id)!;
     for (const b of [...sessions]) {
       if (Date.now() >= pairDeadline || evaluated >= pairLimit) break pairSearch;
@@ -367,7 +512,11 @@ export async function improveDistribution(
     ...new Set(
       [...sessions]
         .filter((s) => !s.is_locked)
-        .sort((a, b) => rank(b) - rank(a))
+        .sort(
+          (a, b) =>
+            rank(b) - rank(a) ||
+            (options.scenario === 1 ? b.id.localeCompare(a.id) : a.id.localeCompare(b.id)),
+        )
         .map((s) => s.instructor_id),
     ),
   ];
@@ -380,6 +529,11 @@ export async function improveDistribution(
           !s.is_locked &&
           s.instructor_id !== teacher &&
           own.some((x) => ctx.share(x, s) || x.room_id === s.room_id),
+      )
+      .sort(
+        (a, b) =>
+          rank(b) - rank(a) ||
+          (options.scenario === 1 ? b.id.localeCompare(a.id) : a.id.localeCompare(b.id)),
       )
       .slice(0, Math.max(0, 12 - own.length));
     const free = new Set([...own, ...neighbors].map((s) => s.id));

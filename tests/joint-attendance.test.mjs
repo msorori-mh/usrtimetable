@@ -304,3 +304,21 @@ test("readiness checks cadence of already-scheduled work and never accepts an em
   ])
     assert.equal(assessScheduleReadiness({ ...full, ...change }).complete, false);
 });
+
+test("room-specific generation quality prefers the lab even when the hall is enumerated first", () => {
+  const s = snapshot([session("p", 0, "08:00:00", "10:00:00")]);
+  s.assignments[0].required_room_type = "computer_lab";
+  s.assignments[0].plan_course_component_id = "pc";
+  s.components = [{ id: "pc", component_type: "practical" }];
+  s.rooms.push({ ...s.rooms[0], id: "lab", room_type: "computer_lab" });
+  const ranked = rankGenerationCandidates({
+    snapshot: s,
+    sessions: [],
+    session: s.sessions[0],
+    slots: [{ day: 0, start: "08:00:00", end: "10:00:00" }],
+    roomIds: [s.rooms[0].id, "lab"],
+  });
+  assert.equal(ranked[0].session.room_id, "lab");
+  assert.equal(ranked[0].metrics.practicalHallSessions, 0);
+  assert.equal(ranked[1].metrics.practicalHallSessions, 1);
+});

@@ -407,3 +407,25 @@ test("shared lecture links load across pages using their real primary key", asyn
     ],
   );
 });
+
+test("rollback restores the exact original placements through one validated atomic request", async () => {
+  const { st, service, p } = await setup();
+  const before = await service.loadCompactSnapshot("c", "v");
+  await service.applyCompactProposal("c", "v", p);
+  const saved = await service.loadCompactSnapshot("c", "v");
+  const result = await service.restoreCompactApplication("c", "v", { before, saved });
+  assert.equal(result.status, "saved");
+  assert.equal(st.calls.at(-1).name, "apply_schedule_relayout");
+  assert.equal(result.after.instructorGapMinutes, before.sessions.length === 2 ? 120 : -1);
+});
+
+test("rollback refuses intervening edits before sending any mutation", async () => {
+  const { st, service, p } = await setup();
+  const before = await service.loadCompactSnapshot("c", "v");
+  await service.applyCompactProposal("c", "v", p);
+  const saved = structuredClone(await service.loadCompactSnapshot("c", "v"));
+  const count = st.calls.length;
+  st.s.revision = String(Number(st.s.revision) + 1);
+  await assert.rejects(service.restoreCompactApplication("c", "v", { before, saved }), /تغير/);
+  assert.equal(st.calls.length, count);
+});
