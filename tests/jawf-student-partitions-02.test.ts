@@ -290,3 +290,48 @@ describe("proposed SQL (not applied)", () => {
     expect(checks).toContain("delivery_groups_share_students(a.id, b.id)");
   });
 });
+
+describe("imported timetable cohort identity without invented partitions", () => {
+  const imported = buildPartitionIndex({
+    rows: [],
+    cohortIdsByGroup: {
+      a: ["english"],
+      b: ["arabic"],
+      c: ["english"],
+      shared: ["english", "arabic", "media"],
+    },
+  });
+
+  test("different known cohorts do not conflict without headcounts", () => {
+    expect(groupsShareStudents("a", "b", imported)).toEqual({
+      share: false,
+      reason: "different_cohort",
+    });
+    expect(imported.get("a")?.complete).toBe(false);
+    expect(imported.get("a")?.partitionIds).toEqual([]);
+  });
+
+  test("same cohort still fails closed without student membership", () => {
+    expect(groupsShareStudents("a", "c", imported)).toEqual({ share: true, reason: "unmapped" });
+  });
+
+  test("shared lectures retain every participating cohort", () => {
+    expect(groupsShareStudents("shared", "a", imported).share).toBe(true);
+    expect(groupsShareStudents("shared", "b", imported).share).toBe(true);
+  });
+
+  test("unknown group identities stay blocked", () => {
+    expect(groupsShareStudents("missing", "b", imported).share).toBe(true);
+  });
+
+  test("contradictory membership stays blocked even for a third cohort", () => {
+    const bad = buildPartitionIndex({
+      rows: [
+        { delivery_group_id: "a", cohort_id: "one", partition_id: "p1", partition_headcount: 10 },
+        { delivery_group_id: "a", cohort_id: "two", partition_id: "p2", partition_headcount: 10 },
+      ],
+      cohortIdsByGroup: { b: ["three"] },
+    });
+    expect(groupsShareStudents("a", "b", bad).share).toBe(true);
+  });
+});

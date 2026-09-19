@@ -27,6 +27,8 @@ export type GroupPartitionEntry = {
   partitionIds: string[];
   /** Mapped headcount covers the group's expected students. */
   complete: boolean;
+  /** Contradictory membership evidence must never permit an overlap. */
+  invalid?: boolean;
 };
 
 export type PartitionIndex = Map<string, GroupPartitionEntry>;
@@ -69,6 +71,7 @@ export function buildPartitionIndex(input: {
         cohortId: entry.cohortId,
         partitionIds: [],
         complete: false,
+        invalid: true,
       });
       covered.set(row.delivery_group_id, 0);
       continue;
@@ -82,6 +85,20 @@ export function buildPartitionIndex(input: {
       );
     }
     index.set(row.delivery_group_id, entry);
+  }
+
+  // Cohort identity is known even when an imported timetable has no headcounts
+  // or student partitions. Preserve it without inventing partition membership.
+  for (const [groupId, cohortIds] of Object.entries(input.cohortIdsByGroup ?? {})) {
+    const ids = [...new Set(cohortIds.filter(Boolean))];
+    if (!index.has(groupId) && ids.length > 0) {
+      index.set(groupId, {
+        cohortId: ids[0],
+        cohortIds: ids,
+        partitionIds: [],
+        complete: false,
+      });
+    }
   }
 
   for (const [groupId, entry] of index) {
@@ -116,11 +133,14 @@ export function groupsShareStudents(
   }
   const a = aGroupId ? index?.get(aGroupId) : undefined;
   const b = bGroupId ? index?.get(bGroupId) : undefined;
-  if (!a || !b || a.partitionIds.length === 0 || b.partitionIds.length === 0) {
+  if (!a || !b || a.invalid || b.invalid) {
     return { share: true, reason: "unmapped" };
   }
   if (!(a.cohortIds ?? [a.cohortId]).some((id) => (b.cohortIds ?? [b.cohortId]).includes(id))) {
     return { share: false, reason: "different_cohort" };
+  }
+  if (a.partitionIds.length === 0 || b.partitionIds.length === 0) {
+    return { share: true, reason: "unmapped" };
   }
   if (!a.complete || !b.complete) {
     return { share: true, reason: "incomplete_coverage" };

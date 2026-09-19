@@ -9,7 +9,7 @@ export async function fetchStudentMembershipIndex(collegeId: string) {
     readAllReportRows((from, to) =>
       supabase
         .from("operational_delivery_groups")
-        .select("id, expected_students")
+        .select("id, cohort_id, expected_students")
         .eq("college_id", collegeId)
         .order("id")
         .range(from, to),
@@ -26,10 +26,20 @@ export async function fetchStudentMembershipIndex(collegeId: string) {
     ),
     fetchSharedLectures(collegeId),
   ]);
+  const cohortIdsByGroup: Record<string, string[]> = Object.fromEntries(
+    groups.map((g) => [g.id, [g.cohort_id]]),
+  );
+  for (const link of links) {
+    cohortIdsByGroup[link.anchor_group_id] = [
+      ...new Set([
+        ...(cohortIdsByGroup[link.anchor_group_id] ?? []),
+        link.anchor_cohort_id,
+        link.cohort_id,
+      ]),
+    ];
+  }
   return buildPartitionIndex({
-    cohortIdsByGroup: Object.fromEntries(
-      links.map((l) => [l.anchor_group_id, [l.anchor_cohort_id, l.cohort_id]]),
-    ),
+    cohortIdsByGroup,
     rows: members.flatMap((m) =>
       m.delivery_group_id && m.cohort_id && m.partition_id
         ? [
