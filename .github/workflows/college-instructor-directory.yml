@@ -28,4 +28,3 @@ jobs:
         env:
           FACULTY_DB_MODULE: /tmp/faculty-test/node_modules/@electric-sql/pglite/dist/index.js
         run: node --test tests/college-instructor-directory-db.test.mjs tests/home-college-roster-db.test.mjs
-

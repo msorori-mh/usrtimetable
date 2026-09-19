@@ -303,7 +303,7 @@ BEGIN
  RETURN NEW;
 END $function$;
 
- 
+
 
 -- University-wide lookup is explicit, searched, bounded, and administrator-only.
 CREATE FUNCTION public.search_faculty_identity_candidates(p_instructor_id uuid,p_search text)
@@ -339,4 +339,3 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.search_faculty_identity_candidates(uuid,text) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.search_faculty_identity_candidates(uuid,text) TO authenticated;
-

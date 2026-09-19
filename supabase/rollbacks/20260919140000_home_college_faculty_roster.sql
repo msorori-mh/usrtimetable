@@ -43,4 +43,3 @@ DROP FUNCTION public.update_home_college_instructor(uuid,timestamptz,uuid,text,t
 DROP FUNCTION public.get_college_faculty_roster(uuid,text);
 DROP FUNCTION public.search_faculty_identity_candidates(uuid,text);
 COMMIT;
-
