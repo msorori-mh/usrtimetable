@@ -12,9 +12,18 @@ export const leadershipCollegeSchema = z.object({
   programs: amount,
   faculty_count: amount,
   faculty_directory_count: amount.optional().default(0),
-  rank_counts: z.record(z.string(), z.number().finite().nonnegative()).optional().default({}),
-  availability_counts: z.record(z.string(), z.number().finite().nonnegative()).optional().default({}),
-  employment_counts: z.record(z.string(), z.number().finite().nonnegative()).optional().default({}),
+  rank_counts: z
+    .record(z.string(), z.number().finite().nonnegative())
+    .optional()
+    .default({}),
+  availability_counts: z
+    .record(z.string(), z.number().finite().nonnegative())
+    .optional()
+    .default({}),
+  employment_counts: z
+    .record(z.string(), z.number().finite().nonnegative())
+    .optional()
+    .default({}),
   incomplete_faculty: amount,
   net_quota: amount,
   faculty_assigned_hours: amount,
@@ -171,16 +180,13 @@ export function orderedLeadershipCounts(
   const extras = Object.entries(counts)
     .filter(([label, value]) => !preferredSet.has(label) && value > 0)
     .sort(([a], [b]) => a.localeCompare(b, "ar"));
-  return [
-    ...preferred.map((label) => [label, counts[label] ?? 0] as [string, number]),
-    ...extras,
-  ];
+  return [...preferred.map((label) => [label, counts[label] ?? 0] as [string, number]), ...extras];
 }
 
 export function sortLeadershipColleges(rows: LeadershipCollege[]): LeadershipCollege[] {
   return [...rows].sort((a, b) => {
     const priority = (name: string) =>
-      name.includes("تكنولوجيا المعلومات وعلوم الحاسوب") ? 0 : 1;
+      (name.includes("تكنولوجيا المعلومات وعلوم الحاسوب") ? 0 : 1);
     return priority(a.college) - priority(b.college) || a.college.localeCompare(b.college, "ar");
   });
 }
