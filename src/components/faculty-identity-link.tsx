@@ -25,7 +25,6 @@ export function FacultyIdentityLink({
   const [target, setTarget] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [confirmed, setConfirmed] = useState(false);
-  const [evidence, setEvidence] = useState("");
   const qc = useQueryClient();
   const candidates = useQuery({
     queryKey: ["faculty-identity-link-candidates", instructorId],
@@ -75,12 +74,8 @@ export function FacultyIdentityLink({
             row.specialization,
           ]
             .filter(Boolean)
-            .some((value) =>
-              String(value).toLocaleLowerCase("ar").includes(normalizedSearch),
-            ),
+            .some((value) => String(value).toLocaleLowerCase("ar").includes(normalizedSearch)),
         );
-  const evidenceLength = evidence.trim().length;
-  const evidenceReady = evidenceLength >= 12;
 
   const submitLink = () => {
     if (!target) {
@@ -91,22 +86,15 @@ export function FacultyIdentityLink({
       toast.error("أكد أن السجلين يعودان لنفس الشخص.");
       return;
     }
-    if (!evidenceReady) {
-      toast.error(`أدخل دليل تحقق واضحًا من 12 حرفًا على الأقل. الحالي: ${evidenceLength}/12`);
-      return;
-    }
     link.mutate();
   };
 
-
   const link = useMutation({
     mutationFn: async () => {
-      if (!confirmed || !target || evidence.trim().length < 12)
-        throw new Error("اختر السجل وسجل دليل التحقق من هوية المحاضر");
-      const { error } = await facultyClient.rpc("link_faculty_identity_with_evidence", {
+      if (!confirmed || !target) throw new Error("اختر السجل وأكد أن السجلين يعودان لنفس الشخص.");
+      const { error } = await facultyClient.rpc("link_verified_faculty_identity", {
         p_instructor_id: instructorId,
         p_university_number: target,
-        p_evidence: evidence.trim(),
       });
       if (error) throw error;
     },
@@ -123,7 +111,6 @@ export function FacultyIdentityLink({
       setConfirmed(false);
       setTarget("");
       setSearchQuery("");
-      setEvidence("");
       toast.success("تم توحيد الهوية الجامعية مع الحفاظ على الإسنادات والجداول");
     },
     onError: (error: Error) => toast.error(error.message),
@@ -140,7 +127,6 @@ export function FacultyIdentityLink({
           setSearchQuery("");
           setTarget("");
           setConfirmed(false);
-          setEvidence("");
         }
       }}
     >
@@ -201,27 +187,6 @@ export function FacultyIdentityLink({
           </select>
         </label>
         {candidates.error && <p role="alert">تعذر تحميل السجلات. أعد فتح النافذة للمحاولة.</p>}
-        <label className="space-y-1">
-          <span>
-            دليل التحقق من الهوية <span className="text-destructive">*</span>
-          </span>
-          <textarea
-            required
-            minLength={12}
-            aria-describedby="faculty-identity-evidence-help"
-            aria-invalid={evidenceLength > 0 && !evidenceReady}
-            className="w-full rounded border p-2"
-            value={evidence}
-            onChange={(e) => setEvidence(e.target.value)}
-            placeholder="مثال: مطابق للرقم الوظيفي 12345 في كشف شؤون الموظفين."
-          />
-          <span
-            id="faculty-identity-evidence-help"
-            className={`block text-xs ${evidenceLength > 0 && !evidenceReady ? "text-destructive" : "text-muted-foreground"}`}
-          >
-            إلزامي — اكتب مرجع التحقق في 12 حرفًا على الأقل. {evidenceLength}/12
-          </span>
-        </label>
         <label className="flex gap-2">
           <input
             type="checkbox"
@@ -230,10 +195,7 @@ export function FacultyIdentityLink({
           />
           تحققت أن السجلين لنفس الشخص، وليس مجرد تشابه أسماء.
         </label>
-        <Button
-          disabled={link.isPending || candidates.isLoading}
-          onClick={submitLink}
-        >
+        <Button disabled={link.isPending || candidates.isLoading} onClick={submitLink}>
           {link.isPending ? "جارٍ ربط الهوية..." : "تأكيد ربط الهوية"}
         </Button>
       </DialogContent>
