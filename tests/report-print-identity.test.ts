@@ -79,6 +79,9 @@ describe("report print identity", () => {
     expect(view.includes('data-print-section="details"')).toBe(true);
     expect(view.includes('data-print-section="weekly"')).toBe(true);
     expect(view.includes("compactInstructorDetailColumns")).toBe(true);
+    expect(view.includes('data-testid="instructor-academic-context"')).toBe(true);
+    expect(view.includes('label: "المستوى"')).toBe(true);
+    expect(view.includes('label: "البرنامج والمستوى"')).toBe(false);
   });
 
   test("no report route uses a bespoke print path that bypasses the shell header", () => {
