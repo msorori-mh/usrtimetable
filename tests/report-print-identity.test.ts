@@ -90,6 +90,8 @@ describe("report print identity", () => {
     expect(view.includes('data-print-section="weekly"')).toBe(true);
     expect(view.includes("compactInstructorDetailColumns")).toBe(true);
     expect(view.includes('data-testid="instructor-academic-context"')).toBe(true);
+    expect(view.includes("instructor-academic-context-separator")).toBe(true);
+    expect(view.includes("md:grid-cols-3")).toBe(false);
     expect(view.includes('label: "المستوى"')).toBe(true);
     expect(view.includes('label: "البرنامج والمستوى"')).toBe(false);
     expect(view.includes('label: "المجموعة"')).toBe(true);
