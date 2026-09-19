@@ -19,6 +19,7 @@ BEGIN
   'full_name', h.full_name, 'college_id', i.college_id,
   'home_college_id', h.home_college_id, 'home_college_name', h.home_college_name,
   'instructor_type_code', h.type_code, 'employment_type', h.employment_type,
+  'recorded_quota', h.recorded_quota, 'recorded_release', h.recorded_release,
   'authoritative_quota', h.quota
  ) ORDER BY h.full_name, h.identity_id), '[]'::jsonb) INTO v_result
  FROM faculty_private.home_profiles h
