@@ -38,4 +38,4 @@ function triggerDownload(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-export { DAY_NAMES_AR, fmtTime, hoursBetween } from "@/lib/reports/formatters";
+export { DAY_NAMES_AR, compactAcademicLevelLabel, fmtTime, hoursBetween } from "@/lib/reports/formatters";
