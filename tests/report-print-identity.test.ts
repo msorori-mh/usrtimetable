@@ -55,6 +55,16 @@ describe("report print identity", () => {
     expect(shell.includes('dir="rtl"')).toBe(true);
   });
 
+  test("Save as PDF uses a human-readable report filename and restores the page title", () => {
+    const route = read("src/routes/_authenticated/reports.instructor-schedule.tsx");
+    expect(shell.includes("printFilename")).toBe(true);
+    expect(shell.includes("document.title = pdfTitle")).toBe(true);
+    expect(shell.includes("afterprint")).toBe(true);
+    expect(shell.includes("document.title = originalTitle")).toBe(true);
+    expect(route.includes("الجدول الفردي")).toBe(true);
+    expect(route.includes("printFilename={instructorName")).toBe(true);
+  });
+
   test("print CSS avoids splitting the header and table rows", () => {
     expect(css.includes(".report-official-header")).toBe(true);
     for (const marker of [
