@@ -486,6 +486,26 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </header>
 
       <main className="usr-internal-main min-w-0 flex-1 px-4 py-5 sm:px-6 md:px-10 md:py-7">
+        {user && (
+          <div
+            className="report-no-print mb-5 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 sm:px-5"
+            data-app-chrome="welcome"
+            data-testid="account-welcome"
+            dir="rtl"
+          >
+            <p className="whitespace-normal break-words text-sm leading-relaxed text-foreground sm:text-base">
+              {user.fullName?.trim() ? `مرحبًا، ${user.fullName.trim()}` : "مرحبًا بك"}
+            </p>
+            {!user.isSuperAdmin && activeCollege && (
+              <p
+                className="mt-1 whitespace-normal break-words text-lg font-bold leading-relaxed text-primary sm:text-xl"
+                data-testid="account-college-name"
+              >
+                {activeCollege.name}
+              </p>
+            )}
+          </div>
+        )}
         {(crumb || activeCollege) && (
           <div
             className="mb-5 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border/60 pb-3"
