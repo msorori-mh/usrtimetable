@@ -186,8 +186,14 @@ describe("print-center filters", () => {
       programId: "prog-1",
       studySystem: "all",
     });
-    assert.equal(pages.every((page) => page.levelName === "الأول"), true);
-    assert.equal(pages.every((page) => !page.title.includes("المستوى")), true);
+    assert.equal(
+      pages.every((page) => page.levelName === "الأول"),
+      true,
+    );
+    assert.equal(
+      pages.every((page) => !page.title.includes("المستوى")),
+      true,
+    );
     const keys = pages.map((p) => p.key).sort();
     assert.ok(keys.some((k) => k.includes("sys:regular")));
     assert.ok(keys.some((k) => k.includes("sys:parallel")));
