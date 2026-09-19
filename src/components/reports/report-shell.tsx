@@ -46,6 +46,8 @@ interface Props {
   rows: Row[];
   headers: { key: string; label: string }[];
   filename: string;
+  /** Human-readable default filename used by browser Save as PDF. */
+  printFilename?: string;
   children?: ReactNode;
   /** Dedicated printable schedule; screen report remains available for inspection. */
   printContent?: ReactNode;
@@ -77,6 +79,7 @@ export function ReportShell({
   rows,
   headers,
   filename,
+  printFilename,
   children,
   printContent,
   printOrientation = "portrait",
@@ -104,7 +107,26 @@ export function ReportShell({
 
   const handlePrint = async () => {
     await document.fonts.ready;
+
+    const originalTitle = document.title;
+    const pdfTitle = (printFilename ?? title ?? filename).trim() || originalTitle;
+    let restored = false;
+    const restoreTitle = () => {
+      if (restored) return;
+      restored = true;
+      document.title = originalTitle;
+      window.removeEventListener("afterprint", restoreTitle);
+    };
+
+    document.title = pdfTitle;
+    window.addEventListener("afterprint", restoreTitle, { once: true });
+
+    // Let the browser observe the temporary document title before opening print preview.
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     window.print();
+
+    // Fallback for browsers that do not dispatch afterprint reliably.
+    window.setTimeout(restoreTitle, 1000);
   };
 
   /**
