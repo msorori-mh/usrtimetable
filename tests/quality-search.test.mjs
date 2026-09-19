@@ -8,6 +8,7 @@ import { context } from "../src/lib/auto-scheduler/compact.ts";
 import { snapshot, session, addCohort } from "./helpers/attendance-fixtures.mjs";
 import {
   improveDistribution,
+  qualityBetter,
   qualityPlanValid,
   qualitySearchMessage,
 } from "../src/lib/auto-scheduler/quality-search.ts";
@@ -41,6 +42,38 @@ test("neighborhood model itself enforces each person's existing attendance-day c
 });
 const run = (s) => improveDistribution(s, highs, { maxDurationMs: 1500 });
 const final = (s, p) => s.sessions.map((x) => ({ ...x, ...p.moves.find((m) => m.id === x.id) }));
+
+test("quality ranking prefers removing a one-lecture instructor day before instructor-gap polish", () => {
+  const base = {
+    studentGapMinutes: 0,
+    worstStudentGapMinutes: 0,
+    studentAttendanceDays: 3,
+    shortStudentDays: 0,
+    instructorGapMinutes: 0,
+    worstInstructorGapMinutes: 0,
+    instructorAttendanceDays: 3,
+    instructorTargetDayDeviation: 0,
+    instructorExcessTargetDays: 1,
+    instructorSingleLectureDays: 2,
+    practicalHallSessions: 0,
+    excessDaysOverThree: 0,
+    extendedDayViolations: 0,
+  };
+  const consolidated = {
+    ...base,
+    instructorGapMinutes: 60,
+    worstInstructorGapMinutes: 60,
+    instructorAttendanceDays: 2,
+    instructorExcessTargetDays: 0,
+    instructorSingleLectureDays: 0,
+  };
+  assert.equal(qualityBetter(consolidated, base), true);
+  assert.equal(
+    qualityBetter({ ...consolidated, studentGapMinutes: 1 }, base),
+    false,
+    "student-side quality remains protected",
+  );
+});
 
 test("three two-hour lectures on separate days consolidate to one day", async () => {
   const s = snapshot(
