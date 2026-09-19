@@ -315,17 +315,23 @@ test("current timetable print exposes a program-dependent level filter", () => {
   assert.match(route, /setLevelId\("all"\)/);
 });
 
-test("current timetable print exposes a college-wide course filter", () => {
+test("current timetable course filter is term-scoped and searchable", () => {
   const route = readFileSync(
     new URL("../src/routes/_authenticated/reports.current-timetable.tsx", import.meta.url),
     "utf8",
   );
+  assert.match(route, /queryKey:\s*\["current-timetable-scope",\s*ctx\.collegeId,\s*ctx\.termId\]/);
+  assert.match(route, /from\("course_offerings"\)/);
+  assert.match(route, /eq\("term_id", ctx\.termId!\)/);
+  assert.match(route, /eq\("is_active", true\)/);
   assert.match(route, /from\("courses"\)/);
-  assert.match(route, /select\("id,name,code"\)/);
+  assert.match(route, /\.in\("id", courseIds\)/);
   assert.match(route, /label="المادة — جميع أقسام الكلية"/);
-  assert.match(route, /current-print-course/);
-  assert.match(route, /setDepartmentId\("all"\)/);
-  assert.match(route, /setProgramId\("all"\)/);
+  assert.match(route, /current-print-course-search/);
+  assert.match(route, /اكتب اسم المادة أو رمزها/);
+  assert.match(route, /normalizedMatchKey\(courseSearch\)/);
+  assert.match(route, /جميع مواد الفصل المحدد/);
+  assert.match(route, /setScopeTerm\(ctx\.termId\)/);
   assert.match(route, /filterCurrentScheduleScope\([\s\S]*courseId/);
   assert.match(route, /selectedCourse\.name/);
 });
