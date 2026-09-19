@@ -148,7 +148,7 @@ export function ReportFilters({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {(Object.keys(STUDY_SYSTEM_LABELS) as ReportStudySystem[]).filter((key) => supportsParallel || key !== "parallel").map((key) => (
+                {(Object.keys(STUDY_SYSTEM_LABELS) as ReportStudySystem[]).filter((key) => supportsParallel || key === system).map((key) => (
                   <SelectItem key={key} value={key}>
                     {STUDY_SYSTEM_LABELS[key]}
                   </SelectItem>
