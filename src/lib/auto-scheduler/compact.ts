@@ -371,7 +371,12 @@ export function extendedDays(s: Snapshot, sessions = s.sessions): Map<string, Se
 }
 /** Safe upper capacity bound, independent of candidate-grid resolution. */
 export function studentWeeklyCapacity(s: Snapshot, days: number): number {
-  const daily = studentDailyTotalMinutes(s.settings);
+  // A student cannot attend longer than the college's actual teaching window.
+  // This is an upper capacity bound, not a change to daily-load policy.
+  const daily = Math.min(
+    studentDailyTotalMinutes(s.settings),
+    Math.max(0, minutes(s.settings.day_end_time) - minutes(s.settings.day_start_time)),
+  );
   if (!s.settings.extended_day_policy_enabled) return daily * days;
   const start = minutes(s.settings.day_start_time);
   const normal = Math.min(
