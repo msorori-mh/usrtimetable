@@ -74,6 +74,7 @@ const within = (s: string, e: string, winS: string, winE: string) =>
 
 interface ExistingSession {
   cohort_id?: string | null;
+  course_offering_id?: string | null;
   delivery_group_id?: string | null;
   id: string;
   instructor_id: string;
@@ -94,7 +95,7 @@ async function fetchExistingSessions(
   let q = supabase
     .from("schedule_sessions")
     .select(
-      "id, instructor_id, room_id, section_id, section_subgroup_id, day_of_week, start_time, end_time, replaced_by_split, cohort_id, delivery_group_id",
+      "id, instructor_id, room_id, section_id, section_subgroup_id, day_of_week, start_time, end_time, replaced_by_split, cohort_id, delivery_group_id, course_offering_id",
     )
     .eq("college_id", collegeId)
     .eq("schedule_version_id", versionId)
