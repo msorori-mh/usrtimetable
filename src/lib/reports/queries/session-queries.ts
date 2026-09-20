@@ -1,3 +1,4 @@
+import { wholeCohortGroupLabels } from "@/lib/reports/whole-cohort-group-labels";
 import { expandIntakeTimetable } from "@/lib/existing-schedules/presentation";
 import {
   fetchSharedLectures,
@@ -5,10 +6,7 @@ import {
 } from "@/lib/academic-delivery/shared-lectures";
 import { readAllReportRows } from "@/lib/reports/read-all";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  applyStudySystemFilter,
-  assertSingleVersion,
-} from "@/lib/reports/filters";
+import { applyStudySystemFilter, assertSingleVersion } from "@/lib/reports/filters";
 import type { ReportStudySystem } from "@/lib/reports/types";
 import {
   hydrateWorkspaceSessions,
@@ -51,9 +49,7 @@ export const INSTRUCTOR_SCHEDULE_SESSION_SELECT = TIMETABLE_SESSION_SELECT;
 
 /** True when a select string would trigger the known PGRST200 courses nest. */
 export function selectContainsNestedCoursesEmbed(select: string): boolean {
-  return /course_offerings\s*\([^)]*courses\s*\(/i.test(
-    select.replace(/\s+/g, " "),
-  );
+  return /course_offerings\s*\([^)]*courses\s*\(/i.test(select.replace(/\s+/g, " "));
 }
 
 async function fetchFlatThenHydrate(params: {
@@ -89,9 +85,7 @@ async function fetchFlatThenHydrate(params: {
       .contains("instructor_ids", [params.instructorId])
       .not("schedule_session_id", "is", null);
     if (error) throw error;
-    const ids = [
-      ...new Set((participation ?? []).map((p) => p.schedule_session_id!)),
-    ];
+    const ids = [...new Set((participation ?? []).map((p) => p.schedule_session_id!))];
     q = ids.length
       ? q.or(`instructor_id.eq.${params.instructorId},id.in.(${ids.join(",")})`)
       : q.eq("instructor_id", params.instructorId);
@@ -103,27 +97,19 @@ async function fetchFlatThenHydrate(params: {
       params.cohortId,
     );
     q = anchors.length
-      ? q.or(
-          `cohort_id.eq.${params.cohortId},delivery_group_id.in.(${anchors.join(",")})`,
-        )
+      ? q.or(`cohort_id.eq.${params.cohortId},delivery_group_id.in.(${anchors.join(",")})`)
       : q.eq("cohort_id", params.cohortId);
   }
   if (params.deliveryGroupId) {
     const links = await fetchSharedLectures(params.collegeId);
-    const anchor = links.find(
-      (l) => l.member_group_id === params.deliveryGroupId,
-    )?.anchor_group_id;
+    const anchor = links.find((l) => l.member_group_id === params.deliveryGroupId)?.anchor_group_id;
     q = q.eq("delivery_group_id", anchor ?? params.deliveryGroupId);
   }
   if (params.roomId) q = q.eq("room_id", params.roomId);
 
-  const data = await readAllReportRows((from, to) =>
-    q.order("id").range(from, to),
-  );
+  const data = await readAllReportRows((from, to) => q.order("id").range(from, to));
 
-  let rows = await hydrateWorkspaceSessions(
-    (data ?? []) as WorkspaceSessionFlatRow[],
-  );
+  let rows = await hydrateWorkspaceSessions((data ?? []) as WorkspaceSessionFlatRow[]);
 
   if (params.programId) {
     rows = rows.filter(
@@ -164,12 +150,9 @@ export async function fetchSessionsForVersion<T = Record<string, unknown>>(
 ): Promise<T[]> {
   assertSingleVersion(params.versionId);
 
-  const select =
-    params.select ?? "id, day_of_week, start_time, end_time, study_system";
+  const select = params.select ?? "id, day_of_week, start_time, end_time, study_system";
   if (selectContainsNestedCoursesEmbed(select)) {
-    throw new Error(
-      "PGRST200_GUARD: nested course_offerings(...courses(...)) is forbidden",
-    );
+    throw new Error("PGRST200_GUARD: nested course_offerings(...courses(...)) is forbidden");
   }
 
   const isTimetableFlat =
@@ -209,9 +192,7 @@ export async function fetchSessionsForVersion<T = Record<string, unknown>>(
       .contains("instructor_ids", [params.instructorId])
       .not("schedule_session_id", "is", null);
     if (error) throw error;
-    const ids = [
-      ...new Set((participation ?? []).map((p) => p.schedule_session_id!)),
-    ];
+    const ids = [...new Set((participation ?? []).map((p) => p.schedule_session_id!))];
     q = ids.length
       ? q.or(`instructor_id.eq.${params.instructorId},id.in.(${ids.join(",")})`)
       : q.eq("instructor_id", params.instructorId);
@@ -223,23 +204,17 @@ export async function fetchSessionsForVersion<T = Record<string, unknown>>(
       params.cohortId,
     );
     q = anchors.length
-      ? q.or(
-          `cohort_id.eq.${params.cohortId},delivery_group_id.in.(${anchors.join(",")})`,
-        )
+      ? q.or(`cohort_id.eq.${params.cohortId},delivery_group_id.in.(${anchors.join(",")})`)
       : q.eq("cohort_id", params.cohortId);
   }
   if (params.deliveryGroupId) {
     const links = await fetchSharedLectures(params.collegeId);
-    const anchor = links.find(
-      (l) => l.member_group_id === params.deliveryGroupId,
-    )?.anchor_group_id;
+    const anchor = links.find((l) => l.member_group_id === params.deliveryGroupId)?.anchor_group_id;
     q = q.eq("delivery_group_id", anchor ?? params.deliveryGroupId);
   }
   if (params.roomId) q = q.eq("room_id", params.roomId);
 
-  const data = await readAllReportRows((from, to) =>
-    q.order("id").range(from, to),
-  );
+  const data = await readAllReportRows((from, to) => q.order("id").range(from, to));
   return (data ?? []) as T[];
 }
 
@@ -322,9 +297,7 @@ export async function fetchProgramLevelTimetableSessions(
     rows = rows.filter(
       (s) =>
         s.course_offerings?.courses?.department_id === params.departmentId ||
-        s.intake_memberships?.some(
-          (m) => m.department_id === params.departmentId,
-        ),
+        s.intake_memberships?.some((m) => m.department_id === params.departmentId),
     );
   }
   return expandIntakeTimetable(rows, params);
@@ -379,9 +352,7 @@ export async function fetchRoomUtilizationSessions(
 
   q = applyStudySystemFilter(q, params.studySystem);
 
-  const data = await readAllReportRows((from, to) =>
-    q.order("id").range(from, to),
-  );
+  const data = await readAllReportRows((from, to) => q.order("id").range(from, to));
   return (data ?? []) as RoomUtilizationSession[];
 }
 
@@ -425,9 +396,7 @@ export async function fetchPublishedTimetableSessions(params: {
     rows = rows.filter(
       (s) =>
         s.course_offerings?.courses?.department_id === params.departmentId ||
-        s.intake_memberships?.some(
-          (m) => m.department_id === params.departmentId,
-        ),
+        s.intake_memberships?.some((m) => m.department_id === params.departmentId),
     );
   }
   return expandIntakeTimetable(rows, params);
@@ -452,16 +421,12 @@ export async function fetchCohortDeliveryGroupLabels(
 ): Promise<CohortDeliveryGroupLabels> {
   const cohortIds = [
     ...new Set(
-      rawSessions
-        .map((s) => s?.cohort_id as string | null)
-        .filter((v): v is string => !!v),
+      rawSessions.map((s) => s?.cohort_id as string | null).filter((v): v is string => !!v),
     ),
   ];
   const deliveryGroupIds = [
     ...new Set(
-      rawSessions
-        .map((s) => s?.delivery_group_id as string | null)
-        .filter((v): v is string => !!v),
+      rawSessions.map((s) => s?.delivery_group_id as string | null).filter((v): v is string => !!v),
     ),
   ];
 
@@ -469,14 +434,16 @@ export async function fetchCohortDeliveryGroupLabels(
     cohortIds.length
       ? supabase
           .from("academic_cohorts")
-          .select("id, code")
+          .select("id, code, expected_students")
           .eq("college_id", collegeId)
           .in("id", cohortIds)
       : Promise.resolve({ data: [], error: null }),
     deliveryGroupIds.length
       ? supabase
           .from("delivery_groups")
-          .select("id, group_code")
+          .select(
+            "id, cohort_id, plan_course_id, component_id, group_code, active, is_obsolete, expected_students",
+          )
           .eq("college_id", collegeId)
           .in("id", deliveryGroupIds)
       : Promise.resolve({ data: [], error: null }),
@@ -485,17 +452,39 @@ export async function fetchCohortDeliveryGroupLabels(
   if (cohortsRes.error) throw cohortsRes.error;
   if (deliveryGroupsRes.error) throw deliveryGroupsRes.error;
 
+  // Query every sibling, including unscheduled groups and other instructors.
+  // Group cohorts come from their records, not only the filtered session rows.
+  const groupCohorts = [...new Set((deliveryGroupsRes.data ?? []).map((g) => g.cohort_id))];
+  const siblings = [];
+  for (let i = 0; i < groupCohorts.length; i += 100) {
+    siblings.push(
+      ...(await readAllReportRows((from, to) =>
+        supabase
+          .from("delivery_groups")
+          .select(
+            "id, cohort_id, plan_course_id, component_id, group_code, active, is_obsolete, expected_students",
+          )
+          .eq("college_id", collegeId)
+          .in("cohort_id", groupCohorts.slice(i, i + 100))
+          .order("id")
+          .range(from, to),
+      )),
+    );
+  }
+  const displayLabels = wholeCohortGroupLabels(
+    siblings,
+    new Map((cohortsRes.data ?? []).map((c) => [c.id, c.expected_students])),
+  );
+
   return {
     cohorts: new Map(
-      ((cohortsRes.data ?? []) as { id: string; code: string }[]).map((c) => [
-        c.id,
-        c.code,
-      ]),
+      ((cohortsRes.data ?? []) as { id: string; code: string }[]).map((c) => [c.id, c.code]),
     ),
     deliveryGroups: new Map(
-      (
-        (deliveryGroupsRes.data ?? []) as { id: string; group_code: string }[]
-      ).map((d) => [d.id, d.group_code]),
+      ((deliveryGroupsRes.data ?? []) as { id: string; group_code: string }[]).map((d) => [
+        d.id,
+        displayLabels.get(d.id) ?? d.group_code,
+      ]),
     ),
   };
 }
@@ -532,10 +521,7 @@ export async function fetchInstructorScheduleAcrossColleges(
 
   if (instructorError) throw instructorError;
   const byCollege = new Map(
-    (instructorRows ?? []).map((row) => [
-      row.college_id as string,
-      row.id as string,
-    ]),
+    (instructorRows ?? []).map((row) => [row.college_id as string, row.id as string]),
   );
 
   const results = await Promise.all(
