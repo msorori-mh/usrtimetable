@@ -1,0 +1,1392 @@
+{
+  "decision": "PASS",
+  "sourceVersion": {
+    "academic_term_id": "019af13c-fd67-4fea-81c8-d81ef95e9a5c",
+    "college_id": "f30ff526-3918-4395-b8a0-dff1873534bf",
+    "created_at": "2026-09-18T21:16:54.064604+00:00",
+    "created_by": null,
+    "disposable_test": false,
+    "eligibility_revision": 685,
+    "id": "c49a3694-3ade-5b2e-bbb2-6b5cafbbff50",
+    "instructor_attendance_overrides": {},
+    "is_coordination": false,
+    "name": "مسودة الجداول القائمة — العلوم الإدارية والمالية 2026–2027",
+    "notes": "مصادر المستخدم: المحاسبة والمصارف والإدارة العامة والتسويق. الصفوف الظاهرة فقط، حفظ المخفية للمراجعة. المجموعات الأصلية دون تقسيم. بيانات القاعات 80 مؤقتاً. لا يمثل اعتماداً نهائياً ولا إثبات خلو من التعارضات. الفصل من 2026-09-06 إلى 2026-12-26 شاملاً، 16 أسبوعاً بتوجيه المستخدم. بحث التخرج نشاط مجموعات من 3–4 طلاب بإشراف المشرف لكل مجموعة، دون محاضر موحد.",
+    "status": "published",
+    "updated_at": "2026-09-20T01:30:55.326305+00:00"
+  },
+  "targetVersion": {
+    "academic_term_id": "019af13c-fd67-4fea-81c8-d81ef95e9a5c",
+    "college_id": "f30ff526-3918-4395-b8a0-dff1873534bf",
+    "created_at": "2026-09-20T02:27:30.947207+00:00",
+    "created_by": null,
+    "disposable_test": false,
+    "eligibility_revision": 112,
+    "id": "f7348192-b851-4ac1-90aa-1b85d13dfc48",
+    "instructor_attendance_overrides": {},
+    "is_coordination": false,
+    "name": "مسودة تحسين القاعات — مقارنة بالمنشور — 20 سبتمبر 2026",
+    "notes": "TEST_ONLY ROOM-STUDY-20260920 — تجربة توزيع القاعات فقط، لا تنشر. المصدر c49a3694-3ade-5b2e-bbb2-6b5cafbbff50. الأوقات والإسنادات ثابتة. أعداد الطلاب غير متاحة والسعات مؤقتة؛ خمس جلسات دون قاعة محفوظة كما في الأصل.",
+    "status": "draft",
+    "updated_at": "2026-09-20T02:27:30.947207+00:00"
+  },
+  "sourceHash": "7e0b7e291e3668c8e30c4ee7fe009878",
+  "targetHash": "ad3e1d1dcfda388e503b8edda8ef1909",
+  "identityDifferences": 0,
+  "roomMoves": 38,
+  "before": {
+    "sessions": 112,
+    "hours": 303,
+    "assignedHours": 288,
+    "unassignedSessions": 5,
+    "usedRooms": 16,
+    "usedRoomDays": 58,
+    "fullFreeRoomDays": 50,
+    "blocks2": 66,
+    "blocks3": 63,
+    "longFreeHours": 340,
+    "roomConflicts": 0,
+    "perRoom": [
+      {
+        "id": "131ef9b3-4de3-5a95-b7b0-8910e8fa33fd",
+        "name": "المعمل",
+        "hours": 6,
+        "fullDays": 4,
+        "blocks2": 6,
+        "blocks3": 6,
+        "longHours": 30,
+        "free": [
+          {
+            "day": 6,
+            "start": 480,
+            "end": 660,
+            "minutes": 180
+          },
+          {
+            "day": 0,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 1,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 2,
+            "start": 660,
+            "end": 840,
+            "minutes": 180
+          },
+          {
+            "day": 3,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 4,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          }
+        ]
+      },
+      {
+        "id": "4dd587b1-99eb-5116-bc6e-76310f8610c9",
+        "name": "ش7",
+        "hours": 34,
+        "fullDays": 0,
+        "blocks2": 0,
+        "blocks3": 0,
+        "longHours": 0,
+        "free": [
+          {
+            "day": 1,
+            "start": 600,
+            "end": 660,
+            "minutes": 60
+          },
+          {
+            "day": 3,
+            "start": 780,
+            "end": 840,
+            "minutes": 60
+          }
+        ]
+      },
+      {
+        "id": "4e19eef6-6a23-55d5-bfde-1a4af775fbd0",
+        "name": "القردعي",
+        "hours": 12,
+        "fullDays": 4,
+        "blocks2": 4,
+        "blocks3": 4,
+        "longHours": 24,
+        "free": [
+          {
+            "day": 0,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 1,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 2,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 3,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          }
+        ]
+      },
+      {
+        "id": "65ffaaf7-f381-48c8-b8ff-684cc2b472bb",
+        "name": "ش8",
+        "hours": 0,
+        "fullDays": 6,
+        "blocks2": 6,
+        "blocks3": 6,
+        "longHours": 36,
+        "free": [
+          {
+            "day": 6,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 0,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 1,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 2,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 3,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 4,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          }
+        ]
+      },
+      {
+        "id": "68537c97-065f-5b8d-82c3-ac1d052322d3",
+        "name": "ش1",
+        "hours": 15,
+        "fullDays": 3,
+        "blocks2": 4,
+        "blocks3": 4,
+        "longHours": 21,
+        "free": [
+          {
+            "day": 6,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 1,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 3,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 4,
+            "start": 660,
+            "end": 840,
+            "minutes": 180
+          }
+        ]
+      },
+      {
+        "id": "75b44f88-1650-5641-b69d-37a42e15e88d",
+        "name": "ش10",
+        "hours": 14,
+        "fullDays": 3,
+        "blocks2": 5,
+        "blocks3": 3,
+        "longHours": 18,
+        "free": [
+          {
+            "day": 6,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 0,
+            "start": 480,
+            "end": 600,
+            "minutes": 120
+          },
+          {
+            "day": 0,
+            "start": 720,
+            "end": 840,
+            "minutes": 120
+          },
+          {
+            "day": 1,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 3,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          }
+        ]
+      },
+      {
+        "id": "858b8e24-8952-5ca2-bb0d-93acf8044ceb",
+        "name": "ش11",
+        "hours": 29,
+        "fullDays": 0,
+        "blocks2": 1,
+        "blocks3": 1,
+        "longHours": 3,
+        "free": [
+          {
+            "day": 6,
+            "start": 600,
+            "end": 660,
+            "minutes": 60
+          },
+          {
+            "day": 0,
+            "start": 780,
+            "end": 840,
+            "minutes": 60
+          },
+          {
+            "day": 1,
+            "start": 600,
+            "end": 660,
+            "minutes": 60
+          },
+          {
+            "day": 3,
+            "start": 780,
+            "end": 840,
+            "minutes": 60
+          },
+          {
+            "day": 4,
+            "start": 660,
+            "end": 840,
+            "minutes": 180
+          }
+        ]
+      },
+      {
+        "id": "8b02b75f-2c2f-5fdd-84b2-44171ce786e5",
+        "name": "ش4",
+        "hours": 26,
+        "fullDays": 0,
+        "blocks2": 3,
+        "blocks3": 3,
+        "longHours": 9,
+        "free": [
+          {
+            "day": 6,
+            "start": 780,
+            "end": 840,
+            "minutes": 60
+          },
+          {
+            "day": 2,
+            "start": 480,
+            "end": 660,
+            "minutes": 180
+          },
+          {
+            "day": 3,
+            "start": 660,
+            "end": 840,
+            "minutes": 180
+          },
+          {
+            "day": 4,
+            "start": 660,
+            "end": 840,
+            "minutes": 180
+          }
+        ]
+      },
+      {
+        "id": "a729ec85-1744-55ff-a323-b9ba48e4be2a",
+        "name": "ش 3",
+        "hours": 29,
+        "fullDays": 1,
+        "blocks2": 1,
+        "blocks3": 1,
+        "longHours": 6,
+        "free": [
+          {
+            "day": 0,
+            "start": 660,
+            "end": 720,
+            "minutes": 60
+          },
+          {
+            "day": 4,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          }
+        ]
+      },
+      {
+        "id": "b3d4ec0e-902d-5f92-bf4f-cc5309aa0419",
+        "name": "ق5",
+        "hours": 9,
+        "fullDays": 4,
+        "blocks2": 5,
+        "blocks3": 5,
+        "longHours": 27,
+        "free": [
+          {
+            "day": 6,
+            "start": 660,
+            "end": 840,
+            "minutes": 180
+          },
+          {
+            "day": 1,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 2,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 3,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 4,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          }
+        ]
+      },
+      {
+        "id": "b830a337-e1fb-5442-850b-8286505e1194",
+        "name": "ش2",
+        "hours": 24,
+        "fullDays": 2,
+        "blocks2": 2,
+        "blocks3": 2,
+        "longHours": 12,
+        "free": [
+          {
+            "day": 1,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 3,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          }
+        ]
+      },
+      {
+        "id": "bfbb3adc-015c-5a3c-a233-412f43bd2756",
+        "name": "ش5",
+        "hours": 11,
+        "fullDays": 4,
+        "blocks2": 4,
+        "blocks3": 4,
+        "longHours": 24,
+        "free": [
+          {
+            "day": 6,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 0,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 1,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 2,
+            "start": 780,
+            "end": 840,
+            "minutes": 60
+          },
+          {
+            "day": 3,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          }
+        ]
+      },
+      {
+        "id": "c832223a-dd38-5c3b-8124-f25aa759c847",
+        "name": "ق23",
+        "hours": 0,
+        "fullDays": 6,
+        "blocks2": 6,
+        "blocks3": 6,
+        "longHours": 36,
+        "free": [
+          {
+            "day": 6,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 0,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 1,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 2,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 3,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 4,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          }
+        ]
+      },
+      {
+        "id": "ced77a12-99e3-5486-a9ae-1617ebac1506",
+        "name": "ق37 المبنى السعودي",
+        "hours": 9,
+        "fullDays": 4,
+        "blocks2": 5,
+        "blocks3": 4,
+        "longHours": 24,
+        "free": [
+          {
+            "day": 6,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 0,
+            "start": 480,
+            "end": 540,
+            "minutes": 60
+          },
+          {
+            "day": 1,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 2,
+            "start": 720,
+            "end": 840,
+            "minutes": 120
+          },
+          {
+            "day": 3,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 4,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          }
+        ]
+      },
+      {
+        "id": "d88f58af-22c0-5291-b75b-c30e7a974e06",
+        "name": "ق36",
+        "hours": 14,
+        "fullDays": 3,
+        "blocks2": 4,
+        "blocks3": 4,
+        "longHours": 21,
+        "free": [
+          {
+            "day": 6,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 0,
+            "start": 600,
+            "end": 660,
+            "minutes": 60
+          },
+          {
+            "day": 1,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 3,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 4,
+            "start": 480,
+            "end": 660,
+            "minutes": 180
+          }
+        ]
+      },
+      {
+        "id": "dab91dc9-fc51-5fbc-9977-95beb981acd7",
+        "name": "ش6",
+        "hours": 11,
+        "fullDays": 3,
+        "blocks2": 5,
+        "blocks3": 5,
+        "longHours": 25,
+        "free": [
+          {
+            "day": 6,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 0,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 1,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 2,
+            "start": 600,
+            "end": 840,
+            "minutes": 240
+          },
+          {
+            "day": 3,
+            "start": 480,
+            "end": 660,
+            "minutes": 180
+          }
+        ]
+      },
+      {
+        "id": "f3706abd-b9ed-5e44-b51d-7301a8000cc5",
+        "name": "ش9",
+        "hours": 30,
+        "fullDays": 0,
+        "blocks2": 1,
+        "blocks3": 1,
+        "longHours": 3,
+        "free": [
+          {
+            "day": 6,
+            "start": 780,
+            "end": 840,
+            "minutes": 60
+          },
+          {
+            "day": 0,
+            "start": 660,
+            "end": 840,
+            "minutes": 180
+          },
+          {
+            "day": 1,
+            "start": 780,
+            "end": 840,
+            "minutes": 60
+          },
+          {
+            "day": 3,
+            "start": 480,
+            "end": 540,
+            "minutes": 60
+          }
+        ]
+      },
+      {
+        "id": "f58467dc-cb55-5993-90fc-2c0ea5cb72c9",
+        "name": "ش12",
+        "hours": 15,
+        "fullDays": 3,
+        "blocks2": 4,
+        "blocks3": 4,
+        "longHours": 21,
+        "free": [
+          {
+            "day": 6,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 1,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 3,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 4,
+            "start": 660,
+            "end": 840,
+            "minutes": 180
+          }
+        ]
+      }
+    ]
+  },
+  "after": {
+    "sessions": 112,
+    "hours": 303,
+    "assignedHours": 288,
+    "unassignedSessions": 5,
+    "usedRooms": 13,
+    "usedRoomDays": 54,
+    "fullFreeRoomDays": 54,
+    "blocks2": 62,
+    "blocks3": 60,
+    "longFreeHours": 343,
+    "roomConflicts": 0,
+    "perRoom": [
+      {
+        "id": "131ef9b3-4de3-5a95-b7b0-8910e8fa33fd",
+        "name": "المعمل",
+        "hours": 6,
+        "fullDays": 4,
+        "blocks2": 6,
+        "blocks3": 6,
+        "longHours": 30,
+        "free": [
+          {
+            "day": 6,
+            "start": 480,
+            "end": 660,
+            "minutes": 180
+          },
+          {
+            "day": 0,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 1,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 2,
+            "start": 660,
+            "end": 840,
+            "minutes": 180
+          },
+          {
+            "day": 3,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 4,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          }
+        ]
+      },
+      {
+        "id": "4dd587b1-99eb-5116-bc6e-76310f8610c9",
+        "name": "ش7",
+        "hours": 34,
+        "fullDays": 0,
+        "blocks2": 0,
+        "blocks3": 0,
+        "longHours": 0,
+        "free": [
+          {
+            "day": 1,
+            "start": 600,
+            "end": 660,
+            "minutes": 60
+          },
+          {
+            "day": 3,
+            "start": 780,
+            "end": 840,
+            "minutes": 60
+          }
+        ]
+      },
+      {
+        "id": "4e19eef6-6a23-55d5-bfde-1a4af775fbd0",
+        "name": "القردعي",
+        "hours": 13,
+        "fullDays": 3,
+        "blocks2": 4,
+        "blocks3": 4,
+        "longHours": 21,
+        "free": [
+          {
+            "day": 6,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 0,
+            "start": 480,
+            "end": 540,
+            "minutes": 60
+          },
+          {
+            "day": 0,
+            "start": 660,
+            "end": 840,
+            "minutes": 180
+          },
+          {
+            "day": 1,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 2,
+            "start": 600,
+            "end": 660,
+            "minutes": 60
+          },
+          {
+            "day": 3,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          }
+        ]
+      },
+      {
+        "id": "65ffaaf7-f381-48c8-b8ff-684cc2b472bb",
+        "name": "ش8",
+        "hours": 0,
+        "fullDays": 6,
+        "blocks2": 6,
+        "blocks3": 6,
+        "longHours": 36,
+        "free": [
+          {
+            "day": 6,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 0,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 1,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 2,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 3,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 4,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          }
+        ]
+      },
+      {
+        "id": "68537c97-065f-5b8d-82c3-ac1d052322d3",
+        "name": "ش1",
+        "hours": 20,
+        "fullDays": 2,
+        "blocks2": 3,
+        "blocks3": 3,
+        "longHours": 15,
+        "free": [
+          {
+            "day": 6,
+            "start": 780,
+            "end": 840,
+            "minutes": 60
+          },
+          {
+            "day": 1,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 3,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 4,
+            "start": 660,
+            "end": 840,
+            "minutes": 180
+          }
+        ]
+      },
+      {
+        "id": "75b44f88-1650-5641-b69d-37a42e15e88d",
+        "name": "ش10",
+        "hours": 17,
+        "fullDays": 3,
+        "blocks2": 3,
+        "blocks3": 3,
+        "longHours": 18,
+        "free": [
+          {
+            "day": 6,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 0,
+            "start": 780,
+            "end": 840,
+            "minutes": 60
+          },
+          {
+            "day": 1,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 3,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          }
+        ]
+      },
+      {
+        "id": "858b8e24-8952-5ca2-bb0d-93acf8044ceb",
+        "name": "ش11",
+        "hours": 35,
+        "fullDays": 0,
+        "blocks2": 0,
+        "blocks3": 0,
+        "longHours": 0,
+        "free": [
+          {
+            "day": 1,
+            "start": 600,
+            "end": 660,
+            "minutes": 60
+          }
+        ]
+      },
+      {
+        "id": "8b02b75f-2c2f-5fdd-84b2-44171ce786e5",
+        "name": "ش4",
+        "hours": 31,
+        "fullDays": 0,
+        "blocks2": 1,
+        "blocks3": 0,
+        "longHours": 0,
+        "free": [
+          {
+            "day": 6,
+            "start": 780,
+            "end": 840,
+            "minutes": 60
+          },
+          {
+            "day": 2,
+            "start": 720,
+            "end": 840,
+            "minutes": 120
+          },
+          {
+            "day": 3,
+            "start": 780,
+            "end": 840,
+            "minutes": 60
+          },
+          {
+            "day": 4,
+            "start": 660,
+            "end": 720,
+            "minutes": 60
+          }
+        ]
+      },
+      {
+        "id": "a729ec85-1744-55ff-a323-b9ba48e4be2a",
+        "name": "ش 3",
+        "hours": 36,
+        "fullDays": 0,
+        "blocks2": 0,
+        "blocks3": 0,
+        "longHours": 0,
+        "free": []
+      },
+      {
+        "id": "b3d4ec0e-902d-5f92-bf4f-cc5309aa0419",
+        "name": "ق5",
+        "hours": 0,
+        "fullDays": 6,
+        "blocks2": 6,
+        "blocks3": 6,
+        "longHours": 36,
+        "free": [
+          {
+            "day": 6,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 0,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 1,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 2,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 3,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 4,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          }
+        ]
+      },
+      {
+        "id": "b830a337-e1fb-5442-850b-8286505e1194",
+        "name": "ش2",
+        "hours": 24,
+        "fullDays": 2,
+        "blocks2": 2,
+        "blocks3": 2,
+        "longHours": 12,
+        "free": [
+          {
+            "day": 1,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 3,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          }
+        ]
+      },
+      {
+        "id": "bfbb3adc-015c-5a3c-a233-412f43bd2756",
+        "name": "ش5",
+        "hours": 5,
+        "fullDays": 5,
+        "blocks2": 5,
+        "blocks3": 5,
+        "longHours": 30,
+        "free": [
+          {
+            "day": 6,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 0,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 1,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 2,
+            "start": 780,
+            "end": 840,
+            "minutes": 60
+          },
+          {
+            "day": 3,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 4,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          }
+        ]
+      },
+      {
+        "id": "c832223a-dd38-5c3b-8124-f25aa759c847",
+        "name": "ق23",
+        "hours": 0,
+        "fullDays": 6,
+        "blocks2": 6,
+        "blocks3": 6,
+        "longHours": 36,
+        "free": [
+          {
+            "day": 6,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 0,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 1,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 2,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 3,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 4,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          }
+        ]
+      },
+      {
+        "id": "ced77a12-99e3-5486-a9ae-1617ebac1506",
+        "name": "ق37 المبنى السعودي",
+        "hours": 0,
+        "fullDays": 6,
+        "blocks2": 6,
+        "blocks3": 6,
+        "longHours": 36,
+        "free": [
+          {
+            "day": 6,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 0,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 1,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 2,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 3,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 4,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          }
+        ]
+      },
+      {
+        "id": "d88f58af-22c0-5291-b75b-c30e7a974e06",
+        "name": "ق36",
+        "hours": 16,
+        "fullDays": 3,
+        "blocks2": 4,
+        "blocks3": 3,
+        "longHours": 18,
+        "free": [
+          {
+            "day": 6,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 1,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 3,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 4,
+            "start": 720,
+            "end": 840,
+            "minutes": 120
+          }
+        ]
+      },
+      {
+        "id": "dab91dc9-fc51-5fbc-9977-95beb981acd7",
+        "name": "ش6",
+        "hours": 0,
+        "fullDays": 6,
+        "blocks2": 6,
+        "blocks3": 6,
+        "longHours": 36,
+        "free": [
+          {
+            "day": 6,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 0,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 1,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 2,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 3,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 4,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          }
+        ]
+      },
+      {
+        "id": "f3706abd-b9ed-5e44-b51d-7301a8000cc5",
+        "name": "ش9",
+        "hours": 34,
+        "fullDays": 0,
+        "blocks2": 0,
+        "blocks3": 0,
+        "longHours": 0,
+        "free": [
+          {
+            "day": 1,
+            "start": 780,
+            "end": 840,
+            "minutes": 60
+          },
+          {
+            "day": 3,
+            "start": 480,
+            "end": 540,
+            "minutes": 60
+          }
+        ]
+      },
+      {
+        "id": "f58467dc-cb55-5993-90fc-2c0ea5cb72c9",
+        "name": "ش12",
+        "hours": 17,
+        "fullDays": 2,
+        "blocks2": 4,
+        "blocks3": 4,
+        "longHours": 19,
+        "free": [
+          {
+            "day": 6,
+            "start": 600,
+            "end": 840,
+            "minutes": 240
+          },
+          {
+            "day": 1,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 3,
+            "start": 480,
+            "end": 840,
+            "minutes": 360
+          },
+          {
+            "day": 4,
+            "start": 660,
+            "end": 840,
+            "minutes": 180
+          }
+        ]
+      }
+    ]
+  }
+}
