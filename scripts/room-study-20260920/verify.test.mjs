@@ -1,0 +1,14 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {execFileSync} from 'node:child_process';
+import {readFileSync} from 'node:fs';
+const p=JSON.parse(execFileSync(process.execPath,[new URL('./optimize.mjs',import.meta.url).pathname],{encoding:'utf8'}));
+const {baseline:b}=JSON.parse(readFileSync(new URL('./input.json',import.meta.url)));
+test('exactly 112 sessions, 303 teaching hours, and 288 assigned room-hours',()=>{assert.equal(p.sessions.length,112);assert.equal(p.after.hours,303);assert.equal(p.after.assignedHours,288)});
+test('all non-room fields preserved for every source session',()=>{for(const s of b.sessions){const t=p.sessions.find(t=>t.id===s.id);assert.deepEqual({...t,room_id:s.room_id},s)}});
+test('five unassigned sessions remain visible, not silently dropped or assigned',()=>{assert.deepEqual(p.sessions.filter(s=>s.room_id===null).map(s=>s.id).sort(),b.sessions.filter(s=>s.room_id===null).map(s=>s.id).sort());assert.equal(p.after.unassignedSessions,5)});
+test('no new room conflicts',()=>{for(const a of p.sessions)for(const d of p.sessions){if(a.id>=d.id||!a.room_id||a.room_id!==d.room_id||a.day_of_week!==d.day_of_week)continue;assert(a.end_time<=d.start_time||d.end_time<=a.start_time)}});
+test('38 room moves with equal room type and non-decreasing recorded capacity',()=>{assert.equal(p.moves.length,38);for(const m of p.moves){const a=b.rooms.find(r=>r.id===m.from_room_id),d=b.rooms.find(r=>r.id===m.to_room_id);assert.equal(a.room_type_id,d.room_type_id);assert(d.capacity>=a.capacity)}});
+test('free hours are conserved, not manufactured',()=>{assert.equal(18*6*6-p.before.assignedHours,360);assert.equal(18*6*6-p.after.assignedHours,360)});
+test('three fully freed rooms and four additional free room-days',()=>{assert.equal(p.before.usedRooms-p.after.usedRooms,3);assert.equal(p.after.fullFreeRoomDays-p.before.fullFreeRoomDays,4);assert.equal(p.after.usedRoomDays,54)});
+test('each room-day partitions the fixed six-hour study window',()=>{for(const result of [p.before,p.after])for(const room of result.perRoom){assert.equal(room.hours+room.free.reduce((n,g)=>n+g.minutes/60,0),36)}});
