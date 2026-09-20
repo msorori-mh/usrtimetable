@@ -32,7 +32,7 @@ export interface DeliveryGroupWaiverScope {
 
 const normalizeTermName = (value: string) =>
   value
-    .replace(/[\u0640\u064B-\u065F\u0670]/g, "")
+    .replace(/\u0640|[\u064B-\u065F]|\u0670/g, "")
     .replace(/\s+/g, " ")
     .replace(/[–—]/g, "-")
     .trim();
