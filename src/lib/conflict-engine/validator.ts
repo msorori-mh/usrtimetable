@@ -360,6 +360,9 @@ export async function validateProposed(params: {
           !overlap(s.start_time, s.end_time, p.start_time, p.end_time)
         )
           continue;
+        // One actual lecture serving several merged groups is a single
+        // delivery: membership overlap inside it is not a clash.
+        if (isSameDeliveryEntry(s, p)) continue;
         if (
           groupsShareStudents(
             s.delivery_group_id,
