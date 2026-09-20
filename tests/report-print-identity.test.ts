@@ -101,7 +101,7 @@ describe("report print identity", () => {
     expect(view.includes("detailText(row.hours)")).toBe(false);
     expect(view.includes("instructor-detail-room")).toBe(true);
     expect(view.includes("instructor-detail-group")).toBe(true);
-    expect(view.includes('className: "w-[21%] text-center align-middle"')).toBe(true);
+    expect(view.includes('className: "w-[15%] text-center align-middle"')).toBe(true);
     expect(view.includes("compactAcademicLevelLabel")).toBe(true);
   });
 

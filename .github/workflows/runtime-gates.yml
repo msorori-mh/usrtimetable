@@ -70,6 +70,9 @@ jobs:
             echo "No lintable files changed — scoped ESLint PASS (vacuous)."
           fi
 
+      - name: Canonical academic ownership in instructor reports
+        run: node --import tsx --test tests/instructor-academic-owner.test.mjs
+
       - name: Independent college scope across browser tabs
         run: node --test tests/active-college-store.test.mjs
 

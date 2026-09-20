@@ -62,13 +62,19 @@ function CourseDetailCell({ row }: { row: TimetableDetailRow }) {
       <div className="font-semibold">{detailText(row.course_name ?? row.course)}</div>
       <div className="text-[11px] text-muted-foreground">
         {compactSessionTypeLabel(row.session_type)}
+        {!!row.college && <span> · {detailText(row.college)}</span>}
       </div>
+      {!!row.program && (
+        <div className="text-[11px] text-muted-foreground">{detailText(row.program)}</div>
+      )}
     </div>
   );
 }
 
 function uniqueAcademicValues(values: Array<string | null | undefined>): string[] {
-  return [...new Set(values.map((value) => value?.trim()).filter((value): value is string => !!value))];
+  return [
+    ...new Set(values.map((value) => value?.trim()).filter((value): value is string => !!value)),
+  ];
 }
 
 function AcademicContextStrip({ sessions }: { sessions: TimetableReportSession[] }) {
@@ -165,31 +171,31 @@ function compactInstructorDetailColumns(): ReportColumn<TimetableDetailRow>[] {
     {
       key: "course",
       label: "المقرر",
-      className: "w-[28%]",
+      className: "w-[40%]",
       render: (row) => <CourseDetailCell row={row} />,
     },
     {
       key: "level",
       label: "المستوى",
-      className: "w-[10%]",
+      className: "w-[7%]",
       render: (row) => <LevelDetailCell row={row} />,
     },
     {
       key: "delivery_group",
       label: "المجموعة",
-      className: "w-[13%] text-center align-middle",
+      className: "w-[12%] text-center align-middle",
       render: (row) => <GroupDetailCell row={row} />,
     },
     {
       key: "day",
       label: "اليوم والوقت",
-      className: "w-[20%]",
+      className: "w-[18%]",
       render: (row) => <DayTimeDetailCell row={row} />,
     },
     {
       key: "room",
       label: "القاعة",
-      className: "w-[21%] text-center align-middle",
+      className: "w-[15%] text-center align-middle",
       render: (row) => <RoomDetailCell row={row} />,
     },
     { key: "study_system", label: "النظام", className: "w-[8%] text-center align-middle" },
@@ -359,7 +365,12 @@ export function ReportTimetableView({
                   {s.room_label || "القاعة غير محددة"} · {sessionTypeLabel(s.session_type)}
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {[s.program_name, compactAcademicLevelLabel(s.level_name), s.cohort_label, s.delivery_group_label]
+                  {[
+                    s.program_name,
+                    compactAcademicLevelLabel(s.level_name),
+                    s.cohort_label,
+                    s.delivery_group_label,
+                  ]
                     .filter(Boolean)
                     .join(" · ")}
                 </p>
