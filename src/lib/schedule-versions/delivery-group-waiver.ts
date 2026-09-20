@@ -88,3 +88,38 @@ export function applyDeliveryGroupWaiver<T extends WaivableConflict>(
   });
   return { conflicts: next, waivedCount, active: true };
 }
+
+
+export interface WaiverQualityConflict extends WaivableConflict {
+  approved_exception?: boolean;
+}
+
+export interface DeliveryGroupWaiverQualityOutcome<T extends WaiverQualityConflict>
+  extends DeliveryGroupWaiverOutcome<T> {
+  totalHardConflicts: number;
+  approvedHardConflicts: number;
+  unapprovedHardConflicts: number;
+}
+
+/**
+ * Apply the scoped waiver and recalculate the exact counts persisted by the
+ * quality scorer. This keeps the database publication gate aligned with the UI
+ * without weakening any non-waived hard conflict.
+ */
+export function summarizeDeliveryGroupWaiverForQuality<T extends WaiverQualityConflict>(
+  conflicts: T[],
+  scope: DeliveryGroupWaiverScope,
+): DeliveryGroupWaiverQualityOutcome<T> {
+  const waiver = applyDeliveryGroupWaiver(conflicts, scope);
+  const hard = waiver.conflicts.filter((conflict) => conflict.severity === "hard");
+  const approvedHardConflicts = hard.filter(
+    (conflict) => conflict.approved_exception === true,
+  ).length;
+
+  return {
+    ...waiver,
+    totalHardConflicts: hard.length,
+    approvedHardConflicts,
+    unapprovedHardConflicts: hard.length - approvedHardConflicts,
+  };
+}
