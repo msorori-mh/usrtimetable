@@ -1749,6 +1749,58 @@ export type Database = {
           },
         ]
       }
+      faculty_home_decisions: {
+        Row: {
+          decided_by: string
+          evidence: string
+          home_college_id: string | null
+          identity_id: string
+          quota_confirmed: boolean
+          source_instructor_id: string
+          updated_at: string
+        }
+        Insert: {
+          decided_by: string
+          evidence: string
+          home_college_id?: string | null
+          identity_id: string
+          quota_confirmed?: boolean
+          source_instructor_id: string
+          updated_at?: string
+        }
+        Update: {
+          decided_by?: string
+          evidence?: string
+          home_college_id?: string | null
+          identity_id?: string
+          quota_confirmed?: boolean
+          source_instructor_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "faculty_home_decisions_home_college_id_fkey"
+            columns: ["home_college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "faculty_home_decisions_identity_id_fkey"
+            columns: ["identity_id"]
+            isOneToOne: true
+            referencedRelation: "faculty_identities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "faculty_home_decisions_source_instructor_id_fkey"
+            columns: ["source_instructor_id"]
+            isOneToOne: false
+            referencedRelation: "instructors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       faculty_identities: {
         Row: {
           created_at: string
@@ -1856,6 +1908,148 @@ export type Database = {
             columns: ["instructor_id"]
             isOneToOne: true
             referencedRelation: "instructors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      faculty_number_history: {
+        Row: {
+          identity_id: string
+          replaced_at: string
+          replaced_by: string | null
+          university_number: string
+        }
+        Insert: {
+          identity_id: string
+          replaced_at?: string
+          replaced_by?: string | null
+          university_number: string
+        }
+        Update: {
+          identity_id?: string
+          replaced_at?: string
+          replaced_by?: string | null
+          university_number?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "faculty_number_history_identity_id_fkey"
+            columns: ["identity_id"]
+            isOneToOne: false
+            referencedRelation: "faculty_identities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      faculty_teaching_requests: {
+        Row: {
+          assigned_hours: number
+          assignment_id: string | null
+          college_id: string
+          component_hours: number
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          delivery_group_id: string
+          expected_assignment_updated_at: string | null
+          home_college_id: string
+          id: string
+          identity_id: string
+          instructor_id: string
+          notes: string | null
+          requested_by: string
+          status: string
+          term_id: string
+        }
+        Insert: {
+          assigned_hours: number
+          assignment_id?: string | null
+          college_id: string
+          component_hours: number
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          delivery_group_id: string
+          expected_assignment_updated_at?: string | null
+          home_college_id: string
+          id?: string
+          identity_id: string
+          instructor_id: string
+          notes?: string | null
+          requested_by: string
+          status?: string
+          term_id: string
+        }
+        Update: {
+          assigned_hours?: number
+          assignment_id?: string | null
+          college_id?: string
+          component_hours?: number
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          delivery_group_id?: string
+          expected_assignment_updated_at?: string | null
+          home_college_id?: string
+          id?: string
+          identity_id?: string
+          instructor_id?: string
+          notes?: string | null
+          requested_by?: string
+          status?: string
+          term_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "faculty_teaching_requests_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "teaching_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "faculty_teaching_requests_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "faculty_teaching_requests_delivery_group_id_fkey"
+            columns: ["delivery_group_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "faculty_teaching_requests_home_college_id_fkey"
+            columns: ["home_college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "faculty_teaching_requests_identity_id_fkey"
+            columns: ["identity_id"]
+            isOneToOne: false
+            referencedRelation: "faculty_identities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "faculty_teaching_requests_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "instructors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "faculty_teaching_requests_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "academic_terms"
             referencedColumns: ["id"]
           },
         ]
@@ -2543,6 +2737,41 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      report_verification_receipts: {
+        Row: {
+          id: string
+          issued_at: string
+          report_kind: string
+          source_revision: number
+          source_updated_at: string
+          version_id: string
+        }
+        Insert: {
+          id?: string
+          issued_at?: string
+          report_kind: string
+          source_revision: number
+          source_updated_at: string
+          version_id: string
+        }
+        Update: {
+          id?: string
+          issued_at?: string
+          report_kind?: string
+          source_revision?: number
+          source_updated_at?: string
+          version_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_verification_receipts_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_versions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       room_availability: {
         Row: {
@@ -4477,7 +4706,7 @@ export type Database = {
           p_instructor_id: string
           p_instructor_type_id: string
           p_is_active: boolean
-          p_max_weekly_hours: number | null
+          p_max_weekly_hours: number
           p_phone: string
           p_specialization: string
         }
@@ -4605,6 +4834,18 @@ export type Database = {
         }
         Returns: Json
       }
+      clone_schedule_version_current: {
+        Args: {
+          p_college_id: string
+          p_disposable_test?: boolean
+          p_name: string
+          p_notes?: string
+          p_require_complete?: boolean
+          p_source_version_id: string
+          p_target_term_id: string
+        }
+        Returns: Json
+      }
       commit_import_job_atomic: {
         Args: { p_expected_updated_at?: string; p_job_id: string }
         Returns: Json
@@ -4614,7 +4855,15 @@ export type Database = {
         Returns: Json
       }
       complete_existing_intake_row: {
-        Args: { p_source: string; p_day: number; p_start: string; p_end: string; p_room: string; p_instructor?: string; p_allocations?: Json }
+        Args: {
+          p_allocations?: Json
+          p_day: number
+          p_end: string
+          p_instructor?: string
+          p_room: string
+          p_source: string
+          p_start: string
+        }
         Returns: Json
       }
       complete_existing_schedule_source: {
@@ -4678,6 +4927,10 @@ export type Database = {
         }
         Returns: Json
       }
+      decide_faculty_teaching_request: {
+        Args: { p_decision: string; p_note?: string; p_request_id: string }
+        Returns: Json
+      }
       delivery_group_derivation_status: {
         Args: { p_group: string }
         Returns: Json
@@ -4686,6 +4939,10 @@ export type Database = {
       delivery_groups_share_students: {
         Args: { p_a: string; p_b: string }
         Returns: boolean
+      }
+      effective_instructor_weekly_quota: {
+        Args: { p_admin_quota: number; p_base: number }
+        Returns: number
       }
       effective_room_type_capacity: {
         Args: { p_college_id: string; p_room_type_id: string }
@@ -4715,6 +4972,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      find_faculty_for_registration: {
+        Args: {
+          p_college_id: string
+          p_employee_number?: string
+          p_name: string
+        }
+        Returns: Json
+      }
       generate_cohort_curriculum: {
         Args: { p_cohort_id: string }
         Returns: Json
@@ -4723,9 +4988,36 @@ export type Database = {
         Args: { p_cohort_id: string }
         Returns: Json
       }
+      get_college_faculty_roster: {
+        Args: { p_college_id: string; p_scope?: string }
+        Returns: Json
+      }
+      get_college_instructor_schedule_directory: {
+        Args: { p_college_id: string }
+        Returns: Json
+      }
       get_delivery_group_assignment_candidates: {
         Args: { p_delivery_group_id: string }
         Returns: Json
+      }
+      get_faculty_home_profiles: {
+        Args: { p_college_id?: string }
+        Returns: Json
+      }
+      get_faculty_university_report: {
+        Args: {
+          p_instructor_id: string
+          p_term_id: string
+          p_version_ids?: string[]
+        }
+        Returns: Json
+      }
+      get_instructor_number_aliases: {
+        Args: { p_instructor_ids: string[] }
+        Returns: {
+          instructor_id: string
+          university_number: string
+        }[]
       }
       get_instructor_university_numbers: {
         Args: { p_instructor_ids: string[] }
@@ -4793,6 +5085,22 @@ export type Database = {
       is_reports_only_viewer: { Args: { _user_id: string }; Returns: boolean }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       is_viewer_only: { Args: { _user_id: string }; Returns: boolean }
+      issue_report_verification: {
+        Args: { p_report_kind: string; p_version_id: string }
+        Returns: string
+      }
+      leadership_overview: {
+        Args: { p_academic_year?: string; p_term_type?: string }
+        Returns: Json
+      }
+      link_faculty_identity_with_evidence: {
+        Args: {
+          p_evidence: string
+          p_instructor_id: string
+          p_university_number: string
+        }
+        Returns: undefined
+      }
       link_intake_shared_group: {
         Args: { p_anchor: string; p_college: string; p_member: string }
         Returns: boolean
@@ -4800,6 +5108,10 @@ export type Database = {
       link_verified_faculty_identity: {
         Args: { p_instructor_id: string; p_university_number: string }
         Returns: undefined
+      }
+      list_faculty_teaching_requests: {
+        Args: { p_college_id: string }
+        Returns: Json
       }
       list_schedule_builder_v2_work_items: {
         Args: {
@@ -4955,6 +5267,17 @@ export type Database = {
         Args: { p_cohort_id: string }
         Returns: Json
       }
+      reconcile_faculty_home: {
+        Args: {
+          p_evidence: string
+          p_expected_decision_at?: string
+          p_home_college_id: string
+          p_identity_id: string
+          p_quota_confirmed: boolean
+          p_source_instructor_id: string
+        }
+        Returns: undefined
+      }
       reconcile_obsolete_duplicate_assignments: {
         Args: { p_cohort_id: string }
         Returns: Json
@@ -4970,6 +5293,10 @@ export type Database = {
       resolve_offering_for_delivery_group: {
         Args: { p_delivery_group_id: string }
         Returns: string
+      }
+      resolve_report_verification: {
+        Args: { p_receipt_id: string }
+        Returns: Json
       }
       resolve_scheduling_headcount: {
         Args: {
@@ -5038,6 +5365,10 @@ export type Database = {
           working_days: number
         }[]
       }
+      search_faculty_identity_candidates: {
+        Args: { p_instructor_id: string; p_search: string }
+        Returns: Json
+      }
       seed_college_instructor_types: {
         Args: { p_college_id: string }
         Returns: number
@@ -5086,6 +5417,68 @@ export type Database = {
         Returns: string
       }
       unmerge_shared_lecture: { Args: { p_member: string }; Returns: Json }
+      update_home_college_instructor: {
+        Args: {
+          p_academic_rank: string
+          p_administrative_department_id: string
+          p_administrative_position: string
+          p_administrative_release_hours: number
+          p_administrative_support_department_id: string
+          p_affiliation_college_id: string
+          p_affiliation_department_id: string
+          p_college_id: string
+          p_email: string
+          p_employee_number: string
+          p_employment_type: string
+          p_expected_updated_at: string
+          p_full_name: string
+          p_full_name_ar: string
+          p_instructor_id: string
+          p_instructor_type_id: string
+          p_is_active: boolean
+          p_max_weekly_hours: number
+          p_phone: string
+          p_specialization: string
+        }
+        Returns: {
+          academic_degree: string | null
+          academic_rank: string | null
+          admin_tasks: string | null
+          administrative_department_id: string | null
+          administrative_position: string | null
+          administrative_release_hours: number
+          administrative_support_department_id: string | null
+          affiliation_college_id: string | null
+          affiliation_department_id: string | null
+          college_id: string
+          created_at: string
+          department_id: string | null
+          email: string | null
+          employee_number: string | null
+          employment_type: string
+          external_source: string | null
+          full_name: string
+          full_name_ar: string | null
+          full_name_en: string | null
+          id: string
+          instructor_type_id: string | null
+          is_active: boolean
+          max_attendance_days_per_week: number | null
+          max_hours_per_day: number | null
+          max_weekly_hours: number | null
+          notes: string | null
+          phone: string | null
+          specialization: string | null
+          target_attendance_days_per_week: number | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "instructors"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       update_teaching_assignment_v2: {
         Args: {
           p_assigned_component_hours?: number
@@ -5179,6 +5572,7 @@ export type Database = {
         | "college_admin"
         | "read_only"
         | "institutional_viewer"
+        | "university_leadership"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -5311,6 +5705,7 @@ export const Constants = {
         "college_admin",
         "read_only",
         "institutional_viewer",
+        "university_leadership",
       ],
     },
   },
