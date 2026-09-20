@@ -37,10 +37,7 @@ const sameTime = (a: DeliveryEntryRef, b: DeliveryEntryRef) => {
  * lecture serving merged groups), so membership overlap between them must not
  * be reported as a hard conflict.
  */
-export function isSameDeliveryEntry(
-  a: DeliveryEntryRef,
-  b: DeliveryEntryRef,
-): boolean {
+export function isSameDeliveryEntry(a: DeliveryEntryRef, b: DeliveryEntryRef): boolean {
   if (a.id && b.id && a.id === b.id) return true;
   if (!sameTime(a, b)) return false;
   // Same physical delivery requires an identical instructor and room.
