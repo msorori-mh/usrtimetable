@@ -1,4 +1,5 @@
-import { context, minutes, studentWeeklyCapacity, type Snapshot, type Session } from "./compact.ts";
+import { context, minutes, studentWeeklyCapacity, fingerprint, inputFingerprint, measure, type Snapshot, type Session, type Proposal } from "./compact.ts";
+import { qualityBetter, qualityPlanValid } from "./quality-search.ts";
 import { jointProposal } from "./joint-search.ts";
 import type { AttendanceAttempt } from "./attendance-search.ts";
 /** Import only placements; identity, hours, assignments and proof come from the fresh snapshot. */
@@ -43,6 +44,31 @@ export function importJointPlan(snapshot: Snapshot, versionId: string, text: str
       end_time: m.end_time as string,
     };
   });
+  if (raw.purpose === "quality") {
+    // Distribution improvement preserves each person's existing attendance envelope.
+    // It does not claim that fewer days were proven impossible.
+    const before = measure(snapshot), after = measure(snapshot, final);
+    const cap = Math.max(3, Math.min(5, Math.max(0, ...Object.values(before.levelDays)))) as 3 | 4 | 5;
+    if (raw.days !== cap || !qualityPlanValid(snapshot, final, cap))
+      throw new Error("خطة التحسين تخالف القيود أو تزيد أيام الحضور أو فراغات الطلاب.");
+    if (!qualityBetter(after, before))
+      throw new Error("لم تحقق الخطة تحسنًا مع الحفاظ على مؤشرات الطلاب والمحاضرين.");
+    const changed = final.filter((s) => {
+      const old = snapshot.sessions.find((x) => x.id === s.id)!;
+      return s.day_of_week !== old.day_of_week || s.start_time !== old.start_time ||
+        s.end_time !== old.end_time || s.room_id !== old.room_id;
+    }).map(({ id, day_of_week, start_time, end_time, room_id }) =>
+      ({ id, day_of_week, start_time, end_time, room_id }));
+    const proposal: Proposal = {
+      before, after, moves: changed, fingerprint: fingerprint(snapshot.sessions),
+      inputFingerprint: inputFingerprint(snapshot), stopped: false, applicationMode: "simultaneous",
+      qualitySearch: {
+        dayCap: cap, reason: "improved", evaluated: final.length, accepted: changed.length,
+        solverAttempts: 0, solverFailures: 0, elapsedMs: 0,
+      },
+    };
+    return proposal;
+  }
   const ctx = context(snapshot),
     demand = new Map<string, number>(),
     attempts: AttendanceAttempt[] = [];
