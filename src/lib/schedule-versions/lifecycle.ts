@@ -1,6 +1,15 @@
 import { supabase } from "@/integrations/supabase/client";
 import { validateProposed, type ProposedSession } from "@/lib/conflict-engine/validator";
-import { loadApprovedExceptions } from "@/lib/conflict-engine/exceptions";
+import {
+  loadApprovedExceptions,
+  summarizeConflictExceptions,
+} from "@/lib/conflict-engine/exceptions";
+import { logAudit } from "@/lib/audit";
+import {
+  applyDeliveryGroupWaiver,
+  DELIVERY_GROUP_WAIVER_NOTICE_AR,
+  type DeliveryGroupWaiverScope,
+} from "@/lib/schedule-versions/delivery-group-waiver";
 import {
   type DisposablePurgeResult,
   PURGE_RPC_NAME,
