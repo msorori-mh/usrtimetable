@@ -6,6 +6,7 @@ import {
   DELIVERY_GROUP_WAIVER_TERM_NAME,
   DELIVERY_GROUP_WAIVER_VERSION_ID,
   isDeliveryGroupWaiverScope,
+  summarizeDeliveryGroupWaiverForQuality,
 } from "@/lib/schedule-versions/delivery-group-waiver";
 
 const scope = {
@@ -78,5 +79,63 @@ describe("delivery group waiver application", () => {
     expect(out.active).toBe(false);
     expect(out.waivedCount).toBe(0);
     expect(out.conflicts.every((c) => c.severity === "hard")).toBe(true);
+  });
+});
+
+describe("delivery group waiver quality summary", () => {
+  it("removes only waived delivery-group blockers from persisted counts", () => {
+    const out = summarizeDeliveryGroupWaiverForQuality(
+      [
+        {
+          code: "delivery_group_conflict",
+          severity: "hard" as const,
+          approved_exception: false,
+        },
+        {
+          code: "instructor_conflict",
+          severity: "hard" as const,
+          approved_exception: false,
+        },
+        {
+          code: "room_conflict",
+          severity: "hard" as const,
+          approved_exception: true,
+        },
+      ],
+      scope,
+    );
+
+    expect(out.active).toBe(true);
+    expect(out.waivedCount).toBe(1);
+    expect(out.totalHardConflicts).toBe(2);
+    expect(out.approvedHardConflicts).toBe(1);
+    expect(out.unapprovedHardConflicts).toBe(1);
+  });
+
+  it("persists zero hard blockers when all current-scope conflicts are waivable", () => {
+    const out = summarizeDeliveryGroupWaiverForQuality(
+      Array.from({ length: 38 }, () => ({
+        code: "delivery_group_conflict",
+        severity: "hard" as const,
+        approved_exception: false,
+      })),
+      scope,
+    );
+
+    expect(out.waivedCount).toBe(38);
+    expect(out.totalHardConflicts).toBe(0);
+    expect(out.unapprovedHardConflicts).toBe(0);
+  });
+
+  it("fails closed outside the authorized scope", () => {
+    const out = summarizeDeliveryGroupWaiverForQuality(conflicts(), {
+      ...scope,
+      termName: "الفصل الثاني 2026-2027",
+    });
+
+    expect(out.active).toBe(false);
+    expect(out.waivedCount).toBe(0);
+    expect(out.totalHardConflicts).toBe(3);
+    expect(out.unapprovedHardConflicts).toBe(3);
   });
 });
