@@ -136,9 +136,34 @@ export async function evaluateEligibility(params: {
       sessions: proposed,
       approvedExceptions,
     });
-    totalHard = validation.totalHardConflicts;
-    approvedHard = validation.approvedHardConflicts;
-    unapprovedHard = validation.unapprovedHardConflicts;
+    const waiver = applyDeliveryGroupWaiver(
+      validation.conflicts,
+      await resolveDeliveryGroupWaiverScope({ collegeId, scheduleVersionId }),
+    );
+    if (waiver.active && waiver.waivedCount > 0) {
+      const summary = summarizeConflictExceptions(waiver.conflicts);
+      totalHard = summary.totalHardConflicts;
+      approvedHard = summary.approvedHardConflicts;
+      unapprovedHard = summary.unapprovedHardConflicts;
+      warnings.push(
+        `${DELIVERY_GROUP_WAIVER_NOTICE_AR} (عدد النتائج المُستثناة: ${waiver.waivedCount})`,
+      );
+      void logAudit({
+        action: "delivery_group_conflict_waiver_applied",
+        entity: "schedule_versions",
+        entityId: scheduleVersionId,
+        collegeId,
+        details: {
+          waived_count: waiver.waivedCount,
+          scope: "current_term_only",
+          conflict_code: "delivery_group_conflict",
+        },
+      });
+    } else {
+      totalHard = validation.totalHardConflicts;
+      approvedHard = validation.approvedHardConflicts;
+      unapprovedHard = validation.unapprovedHardConflicts;
+    }
   }
 
   if (unapprovedHard > 0) {
