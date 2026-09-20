@@ -62,8 +62,8 @@ function CourseDetailCell({ row }: { row: TimetableDetailRow }) {
       <div className="font-semibold">{detailText(row.course_name ?? row.course)}</div>
       <div className="text-[11px] text-muted-foreground">
         {compactSessionTypeLabel(row.session_type)}
+        {!!row.college && <span> · {detailText(row.college)}</span>}
       </div>
-      {!!row.college && <div className="text-[11px] font-medium">{detailText(row.college)}</div>}
       {!!row.program && (
         <div className="text-[11px] text-muted-foreground">{detailText(row.program)}</div>
       )}
@@ -171,31 +171,31 @@ function compactInstructorDetailColumns(): ReportColumn<TimetableDetailRow>[] {
     {
       key: "course",
       label: "المقرر",
-      className: "w-[28%]",
+      className: "w-[40%]",
       render: (row) => <CourseDetailCell row={row} />,
     },
     {
       key: "level",
       label: "المستوى",
-      className: "w-[10%]",
+      className: "w-[7%]",
       render: (row) => <LevelDetailCell row={row} />,
     },
     {
       key: "delivery_group",
       label: "المجموعة",
-      className: "w-[13%] text-center align-middle",
+      className: "w-[12%] text-center align-middle",
       render: (row) => <GroupDetailCell row={row} />,
     },
     {
       key: "day",
       label: "اليوم والوقت",
-      className: "w-[20%]",
+      className: "w-[18%]",
       render: (row) => <DayTimeDetailCell row={row} />,
     },
     {
       key: "room",
       label: "القاعة",
-      className: "w-[21%] text-center align-middle",
+      className: "w-[15%] text-center align-middle",
       render: (row) => <RoomDetailCell row={row} />,
     },
     { key: "study_system", label: "النظام", className: "w-[8%] text-center align-middle" },
