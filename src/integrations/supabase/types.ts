@@ -3348,6 +3348,7 @@ export type Database = {
           disposable_test: boolean
           eligibility_revision: number
           id: string
+          instructor_attendance_overrides: Json
           is_coordination: boolean
           name: string
           notes: string | null
@@ -3362,6 +3363,7 @@ export type Database = {
           disposable_test?: boolean
           eligibility_revision?: number
           id?: string
+          instructor_attendance_overrides?: Json
           is_coordination?: boolean
           name: string
           notes?: string | null
@@ -3376,6 +3378,7 @@ export type Database = {
           disposable_test?: boolean
           eligibility_revision?: number
           id?: string
+          instructor_attendance_overrides?: Json
           is_coordination?: boolean
           name?: string
           notes?: string | null
@@ -5544,6 +5547,10 @@ export type Database = {
       }
       user_in_college: {
         Args: { _college_id: string; _user_id: string }
+        Returns: boolean
+      }
+      valid_schedule_instructor_limits: {
+        Args: { p_limits: Json }
         Returns: boolean
       }
       validate_assignment_allocation_locked: {
