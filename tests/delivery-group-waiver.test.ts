@@ -82,7 +82,6 @@ describe("delivery group waiver application", () => {
   });
 });
 
-
 describe("delivery group waiver quality summary", () => {
   it("removes only waived delivery-group blockers from persisted counts", () => {
     const out = summarizeDeliveryGroupWaiverForQuality(
