@@ -1208,6 +1208,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "delivery_group_partition_members_delivery_group_id_fkey"
+            columns: ["delivery_group_id"]
+            isOneToOne: false
+            referencedRelation: "operational_delivery_groups"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "delivery_group_partition_members_partition_id_fkey"
             columns: ["partition_id"]
             isOneToOne: false
@@ -1699,6 +1706,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "existing_schedule_source_rows_delivery_group_id_fkey"
+            columns: ["delivery_group_id"]
+            isOneToOne: false
+            referencedRelation: "operational_delivery_groups"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "existing_schedule_source_rows_plan_course_id_fkey"
             columns: ["plan_course_id"]
             isOneToOne: false
@@ -2022,6 +2036,13 @@ export type Database = {
             columns: ["delivery_group_id"]
             isOneToOne: false
             referencedRelation: "delivery_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "faculty_teaching_requests_delivery_group_id_fkey"
+            columns: ["delivery_group_id"]
+            isOneToOne: false
+            referencedRelation: "operational_delivery_groups"
             referencedColumns: ["id"]
           },
           {
@@ -3173,6 +3194,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "schedule_sessions_delivery_group_id_fkey"
+            columns: ["delivery_group_id"]
+            isOneToOne: false
+            referencedRelation: "operational_delivery_groups"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "schedule_sessions_plan_course_component_id_fkey"
             columns: ["plan_course_component_id"]
             isOneToOne: false
@@ -3212,6 +3240,13 @@ export type Database = {
             columns: ["delivery_group_id", "college_id"]
             isOneToOne: false
             referencedRelation: "delivery_groups"
+            referencedColumns: ["id", "college_id"]
+          },
+          {
+            foreignKeyName: "ss_delivery_group_college_fkey"
+            columns: ["delivery_group_id", "college_id"]
+            isOneToOne: false
+            referencedRelation: "operational_delivery_groups"
             referencedColumns: ["id", "college_id"]
           },
         ]
@@ -3948,6 +3983,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "shared_lecture_links_anchor_group_id_fkey"
+            columns: ["anchor_group_id"]
+            isOneToOne: false
+            referencedRelation: "operational_delivery_groups"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "shared_lecture_links_college_id_fkey"
             columns: ["college_id"]
             isOneToOne: false
@@ -3959,6 +4001,13 @@ export type Database = {
             columns: ["member_group_id"]
             isOneToOne: true
             referencedRelation: "delivery_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shared_lecture_links_member_group_id_fkey"
+            columns: ["member_group_id"]
+            isOneToOne: true
+            referencedRelation: "operational_delivery_groups"
             referencedColumns: ["id"]
           },
         ]
@@ -4130,6 +4179,13 @@ export type Database = {
             referencedColumns: ["id", "college_id"]
           },
           {
+            foreignKeyName: "ta_delivery_group_college_fkey"
+            columns: ["delivery_group_id", "college_id"]
+            isOneToOne: false
+            referencedRelation: "operational_delivery_groups"
+            referencedColumns: ["id", "college_id"]
+          },
+          {
             foreignKeyName: "teaching_assignments_cohort_id_fkey"
             columns: ["cohort_id"]
             isOneToOne: false
@@ -4148,6 +4204,13 @@ export type Database = {
             columns: ["delivery_group_id"]
             isOneToOne: false
             referencedRelation: "delivery_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teaching_assignments_delivery_group_id_fkey"
+            columns: ["delivery_group_id"]
+            isOneToOne: false
+            referencedRelation: "operational_delivery_groups"
             referencedColumns: ["id"]
           },
           {
@@ -4327,7 +4390,57 @@ export type Database = {
           plan_course_id: string | null
           updated_at: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "delivery_groups_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "academic_cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_groups_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_groups_component_id_fkey"
+            columns: ["component_id"]
+            isOneToOne: false
+            referencedRelation: "plan_course_components"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_groups_plan_course_id_fkey"
+            columns: ["plan_course_id"]
+            isOneToOne: false
+            referencedRelation: "plan_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dg_cohort_college_fkey"
+            columns: ["cohort_id", "college_id"]
+            isOneToOne: false
+            referencedRelation: "academic_cohorts"
+            referencedColumns: ["id", "college_id"]
+          },
+          {
+            foreignKeyName: "dg_component_college_fkey"
+            columns: ["component_id", "college_id"]
+            isOneToOne: false
+            referencedRelation: "plan_course_components"
+            referencedColumns: ["id", "college_id"]
+          },
+          {
+            foreignKeyName: "dg_plan_course_college_fkey"
+            columns: ["plan_course_id", "college_id"]
+            isOneToOne: false
+            referencedRelation: "plan_courses"
+            referencedColumns: ["id", "college_id"]
+          },
+        ]
       }
       operational_group_members: {
         Row: {
