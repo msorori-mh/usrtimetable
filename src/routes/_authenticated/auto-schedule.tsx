@@ -57,7 +57,7 @@ function AutoSchedulePage() {
   const canManage = useCanManageActiveCollege();
   const qc = useQueryClient();
   const [versionId, setVersionId] = useState<string>("");
-  const [studySystemChoice, setStudySystem] = useState<AutoScheduleScope>("regular");
+  const [studySystemChoice, setStudySystem] = useState<AutoScheduleScope>("all");
   const supportsParallel = collegeSupportsParallel(active);
   // Full-version scope is retained for completeness checks in regular-only colleges.
   const studySystem: AutoScheduleScope = supportsParallel ? studySystemChoice : "all";
