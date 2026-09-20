@@ -61,7 +61,6 @@ interface WaivableConflict {
   code: string;
   severity: "hard" | "soft";
   metadata?: Record<string, unknown>;
-  [key: string]: unknown;
 }
 
 export interface DeliveryGroupWaiverOutcome<T extends WaivableConflict> {
