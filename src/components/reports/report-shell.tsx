@@ -189,7 +189,14 @@ export function ReportShell({
     <div className="report-print-root min-w-0 space-y-4" dir="rtl">
       {/* A4 RTL portrait page box for reports that print the on-screen body.
           Dedicated printContent sheets inject their own page style. */}
-      {!printContent && <style>{printPageStyleCss("A4", printOrientation)}</style>}
+      {!printContent && (
+        <style>
+          {printPageStyleCss(
+            "A4",
+            printOrientation ?? (headers.length > 7 ? "landscape" : "portrait"),
+          )}
+        </style>
+      )}
 
       <header className="report-no-print flex flex-wrap items-start justify-between gap-4 border-b pb-4">
         <div className="min-w-0">
