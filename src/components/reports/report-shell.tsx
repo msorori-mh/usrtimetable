@@ -82,7 +82,7 @@ export function ReportShell({
   printFilename,
   children,
   printContent,
-  printOrientation = "portrait",
+  printOrientation,
   isLoading,
   emptyMessage,
   error,
