@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { assignsAllColleges, requiresCollegeAssignment } from "@/lib/viewer-roles";
+import { requiresInitialPassword } from "@/lib/password-policy";
 
 const ROLE = z.enum([
   "super_admin",
@@ -89,6 +90,10 @@ export const adminCreateUser = createServerFn({ method: "POST" })
       password: data.password,
       email_confirm: true,
       user_metadata: { full_name: data.full_name },
+      app_metadata: {
+        provisioning_role: data.role,
+        must_change_password: requiresInitialPassword(data.role),
+      },
     });
     if (createErr || !created.user) throw new Error(createErr?.message ?? "Failed to create user");
     const newId = created.user.id;

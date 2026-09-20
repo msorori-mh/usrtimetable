@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/app-layout";
 import { ReportsOnlyGate } from "@/components/reports-only-gate";
+import { MandatoryPasswordChange } from "@/components/mandatory-password-change";
 
 /**
  * LAUNCH-CLOSURE-01 — hydration-safe client auth gate.
@@ -34,6 +35,7 @@ function AuthenticatedLayout() {
   /** False during the hydration render so client output matches the empty SSR shell. */
   const [hydrated, setHydrated] = useState(false);
   const [allowed, setAllowed] = useState(false);
+  const [passwordRequired, setPasswordRequired] = useState(false);
   /** Set when the session request itself failed (offline / server unreachable). */
   const [checkFailed, setCheckFailed] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -51,13 +53,17 @@ function AuthenticatedLayout() {
     let cancelled = false;
     supabase.auth
       .getUser()
-      .then(({ data, error }) => {
+      .then(async ({ data, error }) => {
         if (cancelled) return;
         if (error || !data.user) {
           setAllowed(false);
           void navigate({ to: "/auth", replace: true });
           return;
         }
+        const requirement = await supabase.rpc("password_change_required" as never);
+        if (requirement.error) throw new Error("تعذر التحقق من متطلبات كلمة المرور.");
+        if (cancelled) return;
+        setPasswordRequired(requirement.data === true);
         setCheckFailed(null);
         setAllowed(true);
       })
@@ -134,6 +140,17 @@ function AuthenticatedLayout() {
       >
         <p className="text-sm text-muted-foreground">جارٍ التحقق من الجلسة…</p>
       </div>
+    );
+  }
+
+  if (passwordRequired) {
+    return (
+      <MandatoryPasswordChange
+        onComplete={() => {
+          setAllowed(false);
+          setAttempt((n) => n + 1);
+        }}
+      />
     );
   }
 

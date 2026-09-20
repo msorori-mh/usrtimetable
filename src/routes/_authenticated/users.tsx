@@ -715,8 +715,8 @@ function CreateUserDialog({
 
   const generatePassword = () => {
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%";
-    let s = "";
-    for (let i = 0; i < 14; i++) s += chars[Math.floor(Math.random() * chars.length)];
+    const random = crypto.getRandomValues(new Uint32Array(18));
+    const s = "A7!" + Array.from(random, (value) => chars[value % chars.length]).join("");
     setForm((f) => ({ ...f, password: s }));
   };
 
@@ -793,7 +793,11 @@ function CreateUserDialog({
                 </Button>
               )}
             </div>
-            <p className="mt-1 text-[11px] text-muted-foreground">8 أحرف على الأقل.</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {form.role === "super_admin"
+                ? "8 أحرف على الأقل."
+                : "كلمة مؤقتة؛ سيُلزم المستخدم بتعيين كلمة خاصة به عند أول دخول، من ٨ أحرف على الأقل تشمل حروفًا ومعها أرقام أو رموز."}
+            </p>
           </div>
           <div>
             <Label>الدور</Label>

@@ -131,6 +131,6 @@ function AuthPage() {
 
 function translateAuthError(msg: string): string {
   if (msg.includes("Invalid login")) return "بيانات الدخول غير صحيحة أو الحساب غير مخوّل";
-  if (msg.includes("Password should")) return "كلمة المرور قصيرة (٦ أحرف على الأقل)";
+  if (msg.includes("Password should")) return "كلمة المرور لا تستوفي متطلبات الحساب.";
   return msg;
 }
