@@ -89,13 +89,13 @@ export function applyDeliveryGroupWaiver<T extends WaivableConflict>(
   return { conflicts: next, waivedCount, active: true };
 }
 
-
 export interface WaiverQualityConflict extends WaivableConflict {
   approved_exception?: boolean;
 }
 
-export interface DeliveryGroupWaiverQualityOutcome<T extends WaiverQualityConflict>
-  extends DeliveryGroupWaiverOutcome<T> {
+export interface DeliveryGroupWaiverQualityOutcome<
+  T extends WaiverQualityConflict,
+> extends DeliveryGroupWaiverOutcome<T> {
   totalHardConflicts: number;
   approvedHardConflicts: number;
   unapprovedHardConflicts: number;
