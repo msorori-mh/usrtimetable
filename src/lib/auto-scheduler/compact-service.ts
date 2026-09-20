@@ -1,3 +1,4 @@
+import { applyVersionInstructorLimits } from "./version-instructor-limits";
 import { qualityBetter, qualityPlanValid, qualityRepairNonWorsening } from "./quality-search";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -21,6 +22,7 @@ interface Query extends PromiseLike<{
 }> {
   select(columns: string): Query;
   eq(column: string, value: string): Query;
+  in(column: string, values: string[]): Query;
   order(column: string): Query;
   range(from: number, to: number): Query;
 }
@@ -38,17 +40,23 @@ async function rows(table: string, collegeId: string, versionId?: string) {
   }
 }
 async function draft(collegeId: string, versionId: string) {
-  const { data, error } = await supabase
+  const { data: records, error } = await db
     .from("schedule_versions")
-    .select("id,status,eligibility_revision,updated_at")
+    .select("id,status,eligibility_revision,updated_at,instructor_attendance_overrides")
     .eq("college_id", collegeId)
     .eq("id", versionId)
-    .single();
+    .range(0, 0);
   if (error) throw error;
+  const data = records?.[0] as {
+    status: string; eligibility_revision: number; updated_at: string;
+    instructor_attendance_overrides?: Record<string, number>;
+  } | undefined;
+  if (!data) throw new Error("تعذر تحديد نسخة الجدول.");
   if (data.status !== "draft") throw new Error("التحسين متاح لنسخة مسودة فقط.");
   if (!Number.isSafeInteger(data.eligibility_revision) || data.eligibility_revision < 0)
     throw new Error("تعذر التحقق من مراجعة الجدول.");
   return {
+    instructorOverrides: data.instructor_attendance_overrides ?? {},
     revision: String(data.eligibility_revision),
     versionUpdatedAt: data.updated_at,
   };
@@ -96,6 +104,40 @@ export async function loadCompactSnapshot(collegeId: string, versionId: string):
     ),
   );
   const raw = Object.fromEntries(values);
+  // Include only external instructors referenced by this college's active assignments.
+  // The ordinary table reader retains RLS; unrelated university instructors are never loaded.
+  const assignedIds = new Set(
+    (raw.assignments as Array<{ instructor_id: string; is_active: boolean }>)
+      .filter((a) => a.is_active).map((a) => a.instructor_id),
+  );
+  const knownIds = new Set((raw.instructors as Array<{ id: string }>).map((i) => i.id));
+  const missingIds = [...assignedIds].filter((id) => !knownIds.has(id));
+  for (let offset = 0; offset < missingIds.length; offset += 200) {
+    const batch = missingIds.slice(offset, offset + 200);
+    const extra = await db.from("instructors").select("*").in("id", batch).order("id").range(0, 199);
+    if (extra.error || extra.data?.length !== batch.length)
+      throw new Error("تعذر تحميل المحاضرين المرتبطين بإسنادات الكلية.");
+    raw.instructors.push(...extra.data);
+    const windows = await db.from("instructor_availability").select("*")
+      .in("instructor_id", batch).order("id").range(0, 999);
+    if (windows.error) throw new Error(windows.error.message);
+    const existingWindows = new Set((raw.availability as Array<{ id: string }>).map((w) => w.id));
+    raw.availability.push(...(windows.data ?? []).filter(
+      (w) => !existingWindows.has((w as { id: string }).id),
+    ));
+    const knownTypes = new Set((raw.types as Array<{ id: string }>).map((t) => t.id));
+    const typeIds = [...new Set((extra.data as Array<{ instructor_type_id: string | null }>)
+      .map((i) => i.instructor_type_id).filter((id): id is string => !!id && !knownTypes.has(id)))];
+    if (typeIds.length) {
+      const types = await db.from("instructor_types").select("*").in("id", typeIds).order("id").range(0, 199);
+      if (types.error || types.data?.length !== typeIds.length)
+        throw new Error("تعذر التحقق من أنواع المحاضرين المرتبطين بالكلية.");
+      raw.types.push(...types.data);
+    }
+  }
+  raw.instructors = applyVersionInstructorLimits(
+    raw.instructors as Snapshot["instructors"], version.instructorOverrides,
+  );
   if (raw.settings.length !== 1) throw new Error("تعذر تحديد إعدادات الجدولة.");
   const latest = await draft(collegeId, versionId);
   if (version.revision !== latest.revision || version.versionUpdatedAt !== latest.versionUpdatedAt)
