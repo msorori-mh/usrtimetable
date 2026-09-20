@@ -13,6 +13,7 @@ import {
 } from "@/lib/schedule-builder/section-subgroups";
 import { sessionTypeRequiredRoomTypeConflict } from "@/lib/schedule-builder/room-type-policy";
 import { isRoomTypeCompatible } from "@/lib/scheduling/room-type-policy";
+import { isSameDeliveryEntry } from "@/lib/scheduling/merged-delivery";
 import {
   buildApprovedExceptionIndex,
   findMatchingException,
