@@ -63,12 +63,18 @@ function CourseDetailCell({ row }: { row: TimetableDetailRow }) {
       <div className="text-[11px] text-muted-foreground">
         {compactSessionTypeLabel(row.session_type)}
       </div>
+      {!!row.college && <div className="text-[11px] font-medium">{detailText(row.college)}</div>}
+      {!!row.program && (
+        <div className="text-[11px] text-muted-foreground">{detailText(row.program)}</div>
+      )}
     </div>
   );
 }
 
 function uniqueAcademicValues(values: Array<string | null | undefined>): string[] {
-  return [...new Set(values.map((value) => value?.trim()).filter((value): value is string => !!value))];
+  return [
+    ...new Set(values.map((value) => value?.trim()).filter((value): value is string => !!value)),
+  ];
 }
 
 function AcademicContextStrip({ sessions }: { sessions: TimetableReportSession[] }) {
@@ -359,7 +365,12 @@ export function ReportTimetableView({
                   {s.room_label || "القاعة غير محددة"} · {sessionTypeLabel(s.session_type)}
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {[s.program_name, compactAcademicLevelLabel(s.level_name), s.cohort_label, s.delivery_group_label]
+                  {[
+                    s.program_name,
+                    compactAcademicLevelLabel(s.level_name),
+                    s.cohort_label,
+                    s.delivery_group_label,
+                  ]
                     .filter(Boolean)
                     .join(" · ")}
                 </p>

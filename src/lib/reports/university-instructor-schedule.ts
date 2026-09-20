@@ -124,6 +124,8 @@ export interface UniversityInstructorSession extends TimetableReportSession {
   college_id: string;
   college_name: string;
   version_name: string;
+  source_college_id?: string;
+  source_college_name?: string;
   workload_pending?: boolean;
 }
 
@@ -132,7 +134,9 @@ export function summarizeUniversitySchedule(
   sessions: UniversityInstructorSession[],
   quota: QuotaInput,
 ) {
-  const unique = [...new Map(sessions.map((s) => [`${s.college_id}:${s.id}`, s])).values()];
+  const unique = [
+    ...new Map(sessions.map((s) => [`${s.source_college_id ?? s.college_id}:${s.id}`, s])).values(),
+  ];
   const byCollege = new Map<
     string,
     { collegeId: string; collegeName: string; versionName: string; hours: number }
