@@ -1,6 +1,15 @@
 import { supabase } from "@/integrations/supabase/client";
 import { validateProposed, type ProposedSession } from "@/lib/conflict-engine/validator";
-import { loadApprovedExceptions } from "@/lib/conflict-engine/exceptions";
+import {
+  loadApprovedExceptions,
+  summarizeConflictExceptions,
+} from "@/lib/conflict-engine/exceptions";
+import { logAudit } from "@/lib/audit";
+import {
+  applyDeliveryGroupWaiver,
+  DELIVERY_GROUP_WAIVER_NOTICE_AR,
+  type DeliveryGroupWaiverScope,
+} from "@/lib/schedule-versions/delivery-group-waiver";
 import {
   type DisposablePurgeResult,
   PURGE_RPC_NAME,
@@ -89,6 +98,36 @@ export interface EligibilityResult {
   sessionsCount: number;
 }
 
+/**
+ * Read the real college/term identity of a version so the temporary
+ * delivery-group waiver can only ever match its single authorized scope.
+ * Fail-closed: any read problem returns an empty (non-matching) scope.
+ */
+async function resolveDeliveryGroupWaiverScope(params: {
+  collegeId: string;
+  scheduleVersionId: string;
+}): Promise<DeliveryGroupWaiverScope> {
+  const { data: version } = await supabase
+    .from("schedule_versions")
+    .select("id, college_id, academic_term_id")
+    .eq("id", params.scheduleVersionId)
+    .maybeSingle();
+  if (!version || version.college_id !== params.collegeId) return {};
+  if (!version.academic_term_id) return {};
+  const { data: term } = await supabase
+    .from("academic_terms")
+    .select("id, name, college_id")
+    .eq("id", version.academic_term_id)
+    .maybeSingle();
+  if (!term || term.college_id !== version.college_id) return {};
+  return {
+    collegeId: version.college_id,
+    scheduleVersionId: version.id,
+    termId: term.id,
+    termName: term.name,
+  };
+}
+
 /** Read sessions + run hard validation + load latest quality. */
 export async function evaluateEligibility(params: {
   collegeId: string;
@@ -136,9 +175,34 @@ export async function evaluateEligibility(params: {
       sessions: proposed,
       approvedExceptions,
     });
-    totalHard = validation.totalHardConflicts;
-    approvedHard = validation.approvedHardConflicts;
-    unapprovedHard = validation.unapprovedHardConflicts;
+    const waiver = applyDeliveryGroupWaiver(
+      validation.conflicts,
+      await resolveDeliveryGroupWaiverScope({ collegeId, scheduleVersionId }),
+    );
+    if (waiver.active && waiver.waivedCount > 0) {
+      const summary = summarizeConflictExceptions(waiver.conflicts);
+      totalHard = summary.totalHardConflicts;
+      approvedHard = summary.approvedHardConflicts;
+      unapprovedHard = summary.unapprovedHardConflicts;
+      warnings.push(
+        `${DELIVERY_GROUP_WAIVER_NOTICE_AR} (عدد النتائج المُستثناة: ${waiver.waivedCount})`,
+      );
+      void logAudit({
+        action: "delivery_group_conflict_waiver_applied",
+        entity: "schedule_versions",
+        entityId: scheduleVersionId,
+        collegeId,
+        details: {
+          waived_count: waiver.waivedCount,
+          scope: "current_term_only",
+          conflict_code: "delivery_group_conflict",
+        },
+      });
+    } else {
+      totalHard = validation.totalHardConflicts;
+      approvedHard = validation.approvedHardConflicts;
+      unapprovedHard = validation.unapprovedHardConflicts;
+    }
   }
 
   if (unapprovedHard > 0) {
