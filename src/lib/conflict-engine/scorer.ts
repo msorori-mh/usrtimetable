@@ -1,6 +1,10 @@
 import { supabase } from "@/integrations/supabase/client";
 import { validateProposed, type Conflict, type ProposedSession } from "./validator";
 import { loadApprovedExceptions } from "./exceptions";
+import {
+  summarizeDeliveryGroupWaiverForQuality,
+  type DeliveryGroupWaiverScope,
+} from "@/lib/schedule-versions/delivery-group-waiver";
 
 export interface SoftViolation {
   code: string;
@@ -30,6 +34,34 @@ const mins = (s: string) => {
   return h * 60 + m;
 };
 const overlap = (aS: string, aE: string, bS: string, bE: string) => t(aS) < t(bE) && t(bS) < t(aE);
+
+async function resolveDeliveryGroupWaiverScopeForQuality(params: {
+  collegeId: string;
+  scheduleVersionId: string;
+}): Promise<DeliveryGroupWaiverScope> {
+  const { data: version } = await supabase
+    .from("schedule_versions")
+    .select("id, college_id, academic_term_id")
+    .eq("id", params.scheduleVersionId)
+    .eq("college_id", params.collegeId)
+    .maybeSingle();
+  if (!version?.academic_term_id) return {};
+
+  const { data: term } = await supabase
+    .from("academic_terms")
+    .select("id, name, college_id")
+    .eq("id", version.academic_term_id)
+    .eq("college_id", version.college_id)
+    .maybeSingle();
+  if (!term) return {};
+
+  return {
+    collegeId: version.college_id,
+    scheduleVersionId: version.id,
+    termId: term.id,
+    termName: term.name,
+  };
+}
 
 /**
  * Score a set of proposed sessions for a schedule version.
@@ -285,6 +317,22 @@ export async function scoreScheduleVersion(params: {
   }));
 
   const result = await scoreSchedule({ collegeId, scheduleVersionId, sessions: proposed });
+  const waiver = summarizeDeliveryGroupWaiverForQuality(
+    result.hard_conflicts,
+    await resolveDeliveryGroupWaiverScopeForQuality({ collegeId, scheduleVersionId }),
+  );
+  if (waiver.active && waiver.waivedCount > 0) {
+    result.hard_conflicts = waiver.conflicts;
+    result.hard_conflicts_count = waiver.unapprovedHardConflicts;
+    result.total_hard_conflicts_count = waiver.totalHardConflicts;
+    result.approved_hard_conflicts_count = waiver.approvedHardConflicts;
+    result.soft_conflicts_count += waiver.waivedCount;
+    result.metrics_breakdown.delivery_group_waiver = {
+      weight: 0,
+      deduction: 0,
+      count: waiver.waivedCount,
+    };
+  }
 
   if (!persist) return { runId: null, result };
 
