@@ -12,6 +12,7 @@ import {
   type RequiredWorkItem,
   type RoomMeta,
 } from "./types";
+import { isSameDeliveryEntry } from "@/lib/scheduling/merged-delivery";
 
 const normalizeTime = (s: string) => (s.length === 5 ? `${s}:00` : s);
 
@@ -96,6 +97,9 @@ export function analyzeScheduleQuality(input: {
       const sameInstructor = a.instructor_id && a.instructor_id === b.instructor_id;
       const sameRoom = a.room_id && a.room_id === b.room_id;
       const sameCohort = a.cohort_id && a.cohort_id === b.cohort_id;
+      // One actual lecture recorded once per merged group is a single delivery;
+      // it must never conflict with itself.
+      if (isSameDeliveryEntry(a, b)) continue;
       if (sameInstructor || sameRoom || sameCohort) {
         hardPairs.push(`${a.id}|${b.id}`);
       }

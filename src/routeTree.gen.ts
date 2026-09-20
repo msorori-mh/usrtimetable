@@ -60,7 +60,6 @@ import { Route as AuthenticatedUniversitiesRouteImport } from './routes/_authent
 import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated/users'
 import { Route as AuthenticatedReportsIndexRouteImport } from './routes/_authenticated/reports.index'
 import { Route as AuthenticatedReportsAcademicAffairsRouteImport } from './routes/_authenticated/reports.academic-affairs'
-import { Route as AuthenticatedReportsLeadershipRouteImport } from './routes/_authenticated/reports.leadership'
 import { Route as AuthenticatedReportsConflictsRouteImport } from './routes/_authenticated/reports.conflicts'
 import { Route as AuthenticatedReportsCurrentTimetableRouteImport } from './routes/_authenticated/reports.current-timetable'
 import { Route as AuthenticatedReportsDataReadinessRouteImport } from './routes/_authenticated/reports.data-readiness'
@@ -68,6 +67,7 @@ import { Route as AuthenticatedReportsDepartmentScheduleRouteImport } from './ro
 import { Route as AuthenticatedReportsInstructorScheduleRouteImport } from './routes/_authenticated/reports.instructor-schedule'
 import { Route as AuthenticatedReportsInstructorWorkloadRouteImport } from './routes/_authenticated/reports.instructor-workload'
 import { Route as AuthenticatedReportsInstructorsRouteImport } from './routes/_authenticated/reports.instructors'
+import { Route as AuthenticatedReportsLeadershipRouteImport } from './routes/_authenticated/reports.leadership'
 import { Route as AuthenticatedReportsProgramLevelTimetableRouteImport } from './routes/_authenticated/reports.program-level-timetable'
 import { Route as AuthenticatedReportsPublishedTimetableRouteImport } from './routes/_authenticated/reports.published-timetable'
 import { Route as AuthenticatedReportsQualityAnalyticsRouteImport } from './routes/_authenticated/reports.quality-analytics'
@@ -89,14 +89,14 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
-const VerifyReportRoute = VerifyReportRouteImport.update({
-  id: '/verify-report',
-  path: '/verify-report',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VerifyReportRoute = VerifyReportRouteImport.update({
+  id: '/verify-report',
+  path: '/verify-report',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAcademicCalendarRoute =
@@ -365,12 +365,6 @@ const AuthenticatedReportsAcademicAffairsRoute =
     path: '/academic-affairs',
     getParentRoute: () => AuthenticatedReportsRoute,
   } as any)
-const AuthenticatedReportsLeadershipRoute =
-  AuthenticatedReportsLeadershipRouteImport.update({
-    id: '/leadership',
-    path: '/leadership',
-    getParentRoute: () => AuthenticatedReportsRoute,
-  } as any)
 const AuthenticatedReportsConflictsRoute =
   AuthenticatedReportsConflictsRouteImport.update({
     id: '/conflicts',
@@ -411,6 +405,12 @@ const AuthenticatedReportsInstructorsRoute =
   AuthenticatedReportsInstructorsRouteImport.update({
     id: '/instructors',
     path: '/instructors',
+    getParentRoute: () => AuthenticatedReportsRoute,
+  } as any)
+const AuthenticatedReportsLeadershipRoute =
+  AuthenticatedReportsLeadershipRouteImport.update({
+    id: '/leadership',
+    path: '/leadership',
     getParentRoute: () => AuthenticatedReportsRoute,
   } as any)
 const AuthenticatedReportsProgramLevelTimetableRoute =
@@ -482,8 +482,8 @@ const AuthenticatedTimetableVersionIdPrintRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/verify-report': typeof VerifyReportRoute
   '/auth': typeof AuthRoute
+  '/verify-report': typeof VerifyReportRoute
   '/academic-calendar': typeof AuthenticatedAcademicCalendarRoute
   '/academic-cohorts': typeof AuthenticatedAcademicCohortsRoute
   '/admin-tools': typeof AuthenticatedAdminToolsRoute
@@ -530,7 +530,6 @@ export interface FileRoutesByFullPath {
   '/universities': typeof AuthenticatedUniversitiesRoute
   '/users': typeof AuthenticatedUsersRoute
   '/reports/academic-affairs': typeof AuthenticatedReportsAcademicAffairsRoute
-  '/reports/leadership': typeof AuthenticatedReportsLeadershipRoute
   '/reports/conflicts': typeof AuthenticatedReportsConflictsRoute
   '/reports/current-timetable': typeof AuthenticatedReportsCurrentTimetableRoute
   '/reports/data-readiness': typeof AuthenticatedReportsDataReadinessRoute
@@ -538,6 +537,7 @@ export interface FileRoutesByFullPath {
   '/reports/instructor-schedule': typeof AuthenticatedReportsInstructorScheduleRoute
   '/reports/instructor-workload': typeof AuthenticatedReportsInstructorWorkloadRoute
   '/reports/instructors': typeof AuthenticatedReportsInstructorsRoute
+  '/reports/leadership': typeof AuthenticatedReportsLeadershipRoute
   '/reports/program-level-timetable': typeof AuthenticatedReportsProgramLevelTimetableRoute
   '/reports/published-timetable': typeof AuthenticatedReportsPublishedTimetableRoute
   '/reports/quality-analytics': typeof AuthenticatedReportsQualityAnalyticsRoute
@@ -553,8 +553,8 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/verify-report': typeof VerifyReportRoute
   '/auth': typeof AuthRoute
+  '/verify-report': typeof VerifyReportRoute
   '/academic-calendar': typeof AuthenticatedAcademicCalendarRoute
   '/academic-cohorts': typeof AuthenticatedAcademicCohortsRoute
   '/admin-tools': typeof AuthenticatedAdminToolsRoute
@@ -600,7 +600,6 @@ export interface FileRoutesByTo {
   '/universities': typeof AuthenticatedUniversitiesRoute
   '/users': typeof AuthenticatedUsersRoute
   '/reports/academic-affairs': typeof AuthenticatedReportsAcademicAffairsRoute
-  '/reports/leadership': typeof AuthenticatedReportsLeadershipRoute
   '/reports/conflicts': typeof AuthenticatedReportsConflictsRoute
   '/reports/current-timetable': typeof AuthenticatedReportsCurrentTimetableRoute
   '/reports/data-readiness': typeof AuthenticatedReportsDataReadinessRoute
@@ -608,6 +607,7 @@ export interface FileRoutesByTo {
   '/reports/instructor-schedule': typeof AuthenticatedReportsInstructorScheduleRoute
   '/reports/instructor-workload': typeof AuthenticatedReportsInstructorWorkloadRoute
   '/reports/instructors': typeof AuthenticatedReportsInstructorsRoute
+  '/reports/leadership': typeof AuthenticatedReportsLeadershipRoute
   '/reports/program-level-timetable': typeof AuthenticatedReportsProgramLevelTimetableRoute
   '/reports/published-timetable': typeof AuthenticatedReportsPublishedTimetableRoute
   '/reports/quality-analytics': typeof AuthenticatedReportsQualityAnalyticsRoute
@@ -625,8 +625,8 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
-  '/verify-report': typeof VerifyReportRoute
   '/auth': typeof AuthRoute
+  '/verify-report': typeof VerifyReportRoute
   '/_authenticated/academic-calendar': typeof AuthenticatedAcademicCalendarRoute
   '/_authenticated/academic-cohorts': typeof AuthenticatedAcademicCohortsRoute
   '/_authenticated/admin-tools': typeof AuthenticatedAdminToolsRoute
@@ -673,7 +673,6 @@ export interface FileRoutesById {
   '/_authenticated/universities': typeof AuthenticatedUniversitiesRoute
   '/_authenticated/users': typeof AuthenticatedUsersRoute
   '/_authenticated/reports/academic-affairs': typeof AuthenticatedReportsAcademicAffairsRoute
-  '/_authenticated/reports/leadership': typeof AuthenticatedReportsLeadershipRoute
   '/_authenticated/reports/conflicts': typeof AuthenticatedReportsConflictsRoute
   '/_authenticated/reports/current-timetable': typeof AuthenticatedReportsCurrentTimetableRoute
   '/_authenticated/reports/data-readiness': typeof AuthenticatedReportsDataReadinessRoute
@@ -681,6 +680,7 @@ export interface FileRoutesById {
   '/_authenticated/reports/instructor-schedule': typeof AuthenticatedReportsInstructorScheduleRoute
   '/_authenticated/reports/instructor-workload': typeof AuthenticatedReportsInstructorWorkloadRoute
   '/_authenticated/reports/instructors': typeof AuthenticatedReportsInstructorsRoute
+  '/_authenticated/reports/leadership': typeof AuthenticatedReportsLeadershipRoute
   '/_authenticated/reports/program-level-timetable': typeof AuthenticatedReportsProgramLevelTimetableRoute
   '/_authenticated/reports/published-timetable': typeof AuthenticatedReportsPublishedTimetableRoute
   '/_authenticated/reports/quality-analytics': typeof AuthenticatedReportsQualityAnalyticsRoute
@@ -698,8 +698,8 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/verify-report'
     | '/auth'
+    | '/verify-report'
     | '/academic-calendar'
     | '/academic-cohorts'
     | '/admin-tools'
@@ -746,7 +746,6 @@ export interface FileRouteTypes {
     | '/universities'
     | '/users'
     | '/reports/academic-affairs'
-    | '/reports/leadership'
     | '/reports/conflicts'
     | '/reports/current-timetable'
     | '/reports/data-readiness'
@@ -754,6 +753,7 @@ export interface FileRouteTypes {
     | '/reports/instructor-schedule'
     | '/reports/instructor-workload'
     | '/reports/instructors'
+    | '/reports/leadership'
     | '/reports/program-level-timetable'
     | '/reports/published-timetable'
     | '/reports/quality-analytics'
@@ -769,8 +769,8 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/verify-report'
     | '/auth'
+    | '/verify-report'
     | '/academic-calendar'
     | '/academic-cohorts'
     | '/admin-tools'
@@ -816,7 +816,6 @@ export interface FileRouteTypes {
     | '/universities'
     | '/users'
     | '/reports/academic-affairs'
-    | '/reports/leadership'
     | '/reports/conflicts'
     | '/reports/current-timetable'
     | '/reports/data-readiness'
@@ -824,6 +823,7 @@ export interface FileRouteTypes {
     | '/reports/instructor-schedule'
     | '/reports/instructor-workload'
     | '/reports/instructors'
+    | '/reports/leadership'
     | '/reports/program-level-timetable'
     | '/reports/published-timetable'
     | '/reports/quality-analytics'
@@ -840,8 +840,8 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
-    | '/verify-report'
     | '/auth'
+    | '/verify-report'
     | '/_authenticated/academic-calendar'
     | '/_authenticated/academic-cohorts'
     | '/_authenticated/admin-tools'
@@ -888,7 +888,6 @@ export interface FileRouteTypes {
     | '/_authenticated/universities'
     | '/_authenticated/users'
     | '/_authenticated/reports/academic-affairs'
-    | '/_authenticated/reports/leadership'
     | '/_authenticated/reports/conflicts'
     | '/_authenticated/reports/current-timetable'
     | '/_authenticated/reports/data-readiness'
@@ -896,6 +895,7 @@ export interface FileRouteTypes {
     | '/_authenticated/reports/instructor-schedule'
     | '/_authenticated/reports/instructor-workload'
     | '/_authenticated/reports/instructors'
+    | '/_authenticated/reports/leadership'
     | '/_authenticated/reports/program-level-timetable'
     | '/_authenticated/reports/published-timetable'
     | '/_authenticated/reports/quality-analytics'
@@ -913,8 +913,8 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
-  VerifyReportRoute: typeof VerifyReportRoute
   AuthRoute: typeof AuthRoute
+  VerifyReportRoute: typeof VerifyReportRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -933,18 +933,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/verify-report': {
-      id: '/verify-report'
-      path: '/verify-report'
-      fullPath: '/verify-report'
-      preLoaderRoute: typeof VerifyReportRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/auth': {
       id: '/auth'
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/verify-report': {
+      id: '/verify-report'
+      path: '/verify-report'
+      fullPath: '/verify-report'
+      preLoaderRoute: typeof VerifyReportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/academic-calendar': {
@@ -1276,13 +1276,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedReportsAcademicAffairsRouteImport
       parentRoute: typeof AuthenticatedReportsRoute
     }
-    '/_authenticated/reports/leadership': {
-      id: '/_authenticated/reports/leadership'
-      path: '/leadership'
-      fullPath: '/reports/leadership'
-      preLoaderRoute: typeof AuthenticatedReportsLeadershipRouteImport
-      parentRoute: typeof AuthenticatedReportsRoute
-    }
     '/_authenticated/reports/conflicts': {
       id: '/_authenticated/reports/conflicts'
       path: '/conflicts'
@@ -1330,6 +1323,13 @@ declare module '@tanstack/react-router' {
       path: '/instructors'
       fullPath: '/reports/instructors'
       preLoaderRoute: typeof AuthenticatedReportsInstructorsRouteImport
+      parentRoute: typeof AuthenticatedReportsRoute
+    }
+    '/_authenticated/reports/leadership': {
+      id: '/_authenticated/reports/leadership'
+      path: '/leadership'
+      fullPath: '/reports/leadership'
+      preLoaderRoute: typeof AuthenticatedReportsLeadershipRouteImport
       parentRoute: typeof AuthenticatedReportsRoute
     }
     '/_authenticated/reports/program-level-timetable': {
@@ -1414,7 +1414,6 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedReportsRouteChildren {
   AuthenticatedReportsAcademicAffairsRoute: typeof AuthenticatedReportsAcademicAffairsRoute
-  AuthenticatedReportsLeadershipRoute: typeof AuthenticatedReportsLeadershipRoute
   AuthenticatedReportsConflictsRoute: typeof AuthenticatedReportsConflictsRoute
   AuthenticatedReportsCurrentTimetableRoute: typeof AuthenticatedReportsCurrentTimetableRoute
   AuthenticatedReportsDataReadinessRoute: typeof AuthenticatedReportsDataReadinessRoute
@@ -1422,6 +1421,7 @@ interface AuthenticatedReportsRouteChildren {
   AuthenticatedReportsInstructorScheduleRoute: typeof AuthenticatedReportsInstructorScheduleRoute
   AuthenticatedReportsInstructorWorkloadRoute: typeof AuthenticatedReportsInstructorWorkloadRoute
   AuthenticatedReportsInstructorsRoute: typeof AuthenticatedReportsInstructorsRoute
+  AuthenticatedReportsLeadershipRoute: typeof AuthenticatedReportsLeadershipRoute
   AuthenticatedReportsProgramLevelTimetableRoute: typeof AuthenticatedReportsProgramLevelTimetableRoute
   AuthenticatedReportsPublishedTimetableRoute: typeof AuthenticatedReportsPublishedTimetableRoute
   AuthenticatedReportsQualityAnalyticsRoute: typeof AuthenticatedReportsQualityAnalyticsRoute
@@ -1437,8 +1437,6 @@ interface AuthenticatedReportsRouteChildren {
 const AuthenticatedReportsRouteChildren: AuthenticatedReportsRouteChildren = {
   AuthenticatedReportsAcademicAffairsRoute:
     AuthenticatedReportsAcademicAffairsRoute,
-  AuthenticatedReportsLeadershipRoute:
-    AuthenticatedReportsLeadershipRoute,
   AuthenticatedReportsConflictsRoute: AuthenticatedReportsConflictsRoute,
   AuthenticatedReportsCurrentTimetableRoute:
     AuthenticatedReportsCurrentTimetableRoute,
@@ -1451,6 +1449,7 @@ const AuthenticatedReportsRouteChildren: AuthenticatedReportsRouteChildren = {
   AuthenticatedReportsInstructorWorkloadRoute:
     AuthenticatedReportsInstructorWorkloadRoute,
   AuthenticatedReportsInstructorsRoute: AuthenticatedReportsInstructorsRoute,
+  AuthenticatedReportsLeadershipRoute: AuthenticatedReportsLeadershipRoute,
   AuthenticatedReportsProgramLevelTimetableRoute:
     AuthenticatedReportsProgramLevelTimetableRoute,
   AuthenticatedReportsPublishedTimetableRoute:
@@ -1581,8 +1580,8 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
-  VerifyReportRoute: VerifyReportRoute,
   AuthRoute: AuthRoute,
+  VerifyReportRoute: VerifyReportRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

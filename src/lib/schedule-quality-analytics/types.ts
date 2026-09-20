@@ -13,6 +13,7 @@ export interface AnalyticsSession {
   room_id: string | null;
   cohort_id?: string | null;
   delivery_group_id?: string | null;
+  course_offering_id?: string | null;
   study_system: StudySystem | null;
   day_of_week: number;
   start_time: string;
