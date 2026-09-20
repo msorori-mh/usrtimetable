@@ -1,3 +1,4 @@
+import { wholeCohortGroupLabels } from "@/lib/reports/whole-cohort-group-labels";
 import { expandIntakeTimetable } from "@/lib/existing-schedules/presentation";
 import {
   fetchSharedLectures,
@@ -469,14 +470,14 @@ export async function fetchCohortDeliveryGroupLabels(
     cohortIds.length
       ? supabase
           .from("academic_cohorts")
-          .select("id, code")
+          .select("id, code, expected_students")
           .eq("college_id", collegeId)
           .in("id", cohortIds)
       : Promise.resolve({ data: [], error: null }),
     deliveryGroupIds.length
       ? supabase
           .from("delivery_groups")
-          .select("id, group_code")
+          .select("id, cohort_id, plan_course_id, component_id, group_code, active, is_obsolete, expected_students")
           .eq("college_id", collegeId)
           .in("id", deliveryGroupIds)
       : Promise.resolve({ data: [], error: null }),
@@ -484,6 +485,23 @@ export async function fetchCohortDeliveryGroupLabels(
 
   if (cohortsRes.error) throw cohortsRes.error;
   if (deliveryGroupsRes.error) throw deliveryGroupsRes.error;
+
+  // Query every sibling, including unscheduled groups and other instructors.
+  // Group cohorts come from their records, not only the filtered session rows.
+  const groupCohorts = [...new Set((deliveryGroupsRes.data ?? []).map((g) => g.cohort_id))];
+  const siblings = [];
+  for (let i = 0; i < groupCohorts.length; i += 100) {
+    siblings.push(...await readAllReportRows((from, to) => supabase
+      .from("delivery_groups")
+      .select("id, cohort_id, plan_course_id, component_id, group_code, active, is_obsolete, expected_students")
+      .eq("college_id", collegeId)
+      .in("cohort_id", groupCohorts.slice(i, i + 100))
+      .order("id")
+      .range(from, to)));
+  }
+  const displayLabels = wholeCohortGroupLabels(siblings, new Map(
+    (cohortsRes.data ?? []).map((c) => [c.id, c.expected_students]),
+  ));
 
   return {
     cohorts: new Map(
@@ -495,7 +513,7 @@ export async function fetchCohortDeliveryGroupLabels(
     deliveryGroups: new Map(
       (
         (deliveryGroupsRes.data ?? []) as { id: string; group_code: string }[]
-      ).map((d) => [d.id, d.group_code]),
+      ).map((d) => [d.id, displayLabels.get(d.id) ?? d.group_code]),
     ),
   };
 }
