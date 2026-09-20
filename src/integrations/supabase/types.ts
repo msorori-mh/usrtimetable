@@ -4948,6 +4948,7 @@ export type Database = {
         Args: { p_college_id: string; p_room_type_id: string }
         Returns: number
       }
+      enforce_initial_password_change: { Args: never; Returns: undefined }
       existing_schedule_intake_enabled: {
         Args: { p_college: string; p_term: string }
         Returns: boolean
@@ -5236,6 +5237,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      password_change_required: { Args: never; Returns: boolean }
       persist_schedule_quality_run: {
         Args: {
           p_college_id: string
