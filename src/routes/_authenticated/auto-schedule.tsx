@@ -65,6 +65,7 @@ function AutoSchedulePage() {
   const [mode, setMode] = useState<AutoRunMode>("fill_missing");
   const [compactBusy, setCompactBusy] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [runError, setRunError] = useState<string | null>(null);
   const [progress, setProgress] = useState<AutoScheduleProgress | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const [outcome, setOutcome] = useState<{
@@ -138,6 +139,7 @@ function AutoSchedulePage() {
   const run = useMutation({
     mutationFn: async () => {
       // Dual gate: UI disables the button; mutation re-checks manage + readiness (fail-closed).
+      setRunError(null);
       if (compactBusy) throw new Error("انتظر اكتمال تحسين التوزيع");
       if (!canManage) {
         throw new Error("UNAUTHORIZED: لا تملك صلاحية تشغيل الجدولة التلقائية لهذه الكلّية");
@@ -223,6 +225,7 @@ function AutoSchedulePage() {
     },
     onError: (e) => {
       setOutcome(null);
+      setRunError((e as Error).message);
       toast.error((e as Error).message);
     },
     onSettled: () => {
@@ -375,6 +378,11 @@ function AutoSchedulePage() {
                 coverage={coverage.data}
                 isLoading={coverage.isLoading}
               />
+            ) : null}
+            {runError ? (
+              <div role="alert" data-testid="auto-run-error" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+                تعذر إكمال الجدولة: {runError}
+              </div>
             ) : null}
             {outcome ? (
               <div
