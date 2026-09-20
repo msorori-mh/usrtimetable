@@ -98,6 +98,36 @@ export interface EligibilityResult {
   sessionsCount: number;
 }
 
+/**
+ * Read the real college/term identity of a version so the temporary
+ * delivery-group waiver can only ever match its single authorized scope.
+ * Fail-closed: any read problem returns an empty (non-matching) scope.
+ */
+async function resolveDeliveryGroupWaiverScope(params: {
+  collegeId: string;
+  scheduleVersionId: string;
+}): Promise<DeliveryGroupWaiverScope> {
+  const { data: version } = await supabase
+    .from("schedule_versions")
+    .select("id, college_id, academic_term_id")
+    .eq("id", params.scheduleVersionId)
+    .maybeSingle();
+  if (!version || version.college_id !== params.collegeId) return {};
+  if (!version.academic_term_id) return {};
+  const { data: term } = await supabase
+    .from("academic_terms")
+    .select("id, name, college_id")
+    .eq("id", version.academic_term_id)
+    .maybeSingle();
+  if (!term || term.college_id !== version.college_id) return {};
+  return {
+    collegeId: version.college_id,
+    scheduleVersionId: version.id,
+    termId: term.id,
+    termName: term.name,
+  };
+}
+
 /** Read sessions + run hard validation + load latest quality. */
 export async function evaluateEligibility(params: {
   collegeId: string;
