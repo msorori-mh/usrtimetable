@@ -13,13 +13,10 @@
  * Pure module: no DB access, no writes.
  */
 
-export const DELIVERY_GROUP_WAIVER_COLLEGE_ID =
-  "f30ff526-3918-4395-b8a0-dff1873534bf";
-export const DELIVERY_GROUP_WAIVER_TERM_ID =
-  "019af13c-fd67-4fea-81c8-d81ef95e9a5c";
+export const DELIVERY_GROUP_WAIVER_COLLEGE_ID = "f30ff526-3918-4395-b8a0-dff1873534bf";
+export const DELIVERY_GROUP_WAIVER_TERM_ID = "019af13c-fd67-4fea-81c8-d81ef95e9a5c";
 export const DELIVERY_GROUP_WAIVER_TERM_NAME = "الفصل الأول 2026-2027";
-export const DELIVERY_GROUP_WAIVER_VERSION_ID =
-  "c49a3694-3ade-5b2e-bbb2-6b5cafbbff50";
+export const DELIVERY_GROUP_WAIVER_VERSION_ID = "c49a3694-3ade-5b2e-bbb2-6b5cafbbff50";
 
 export const WAIVED_CONFLICT_CODE = "delivery_group_conflict";
 
@@ -41,18 +38,13 @@ const normalizeTermName = (value: string) =>
     .trim();
 
 /** True only when all three scope conditions match exactly. */
-export function isDeliveryGroupWaiverScope(
-  scope: DeliveryGroupWaiverScope,
-): boolean {
+export function isDeliveryGroupWaiverScope(scope: DeliveryGroupWaiverScope): boolean {
   if (!scope.collegeId || !scope.scheduleVersionId) return false;
   if (!scope.termId || !scope.termName) return false;
   if (scope.collegeId !== DELIVERY_GROUP_WAIVER_COLLEGE_ID) return false;
   if (scope.scheduleVersionId !== DELIVERY_GROUP_WAIVER_VERSION_ID) return false;
   if (scope.termId !== DELIVERY_GROUP_WAIVER_TERM_ID) return false;
-  if (
-    normalizeTermName(scope.termName) !==
-    normalizeTermName(DELIVERY_GROUP_WAIVER_TERM_NAME)
-  )
+  if (normalizeTermName(scope.termName) !== normalizeTermName(DELIVERY_GROUP_WAIVER_TERM_NAME))
     return false;
   return true;
 }
