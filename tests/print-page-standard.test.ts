@@ -19,7 +19,7 @@ function filesUnder(path: string): string[] {
   });
 }
 
-const printSources = PRINT_ROOTS.flatMap(filesUnder).filter((path) => {
+const printSources = [...PRINT_ROOTS.flatMap(filesUnder), "src/styles.css"].filter((path) => {
   if (!/\.(css|ts|tsx|js|mjs)$/.test(path)) return false;
   return /print|@page|PDF/i.test(readFileSync(path, "utf8"));
 });
