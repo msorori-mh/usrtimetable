@@ -19,10 +19,7 @@ test("audit writes are server-derived and direct authenticated mutation is close
   assert.match(hardening, /AUDIT_BLOCKED_SESSION_NOT_READY/);
   assert.match(hardening, /AUDIT_COLLEGE_NOT_PERMITTED/);
   assert.match(hardening, /DROP POLICY IF EXISTS al_insert ON public\.audit_logs/);
-  assert.match(
-    hardening,
-    /REVOKE INSERT, UPDATE, DELETE ON public\.audit_logs FROM authenticated/,
-  );
+  assert.match(hardening, /REVOKE INSERT, UPDATE, DELETE ON public\.audit_logs FROM authenticated/);
   assert.match(
     hardening,
     /GRANT EXECUTE ON FUNCTION public\.record_audit_log\([\s\S]*?\) TO authenticated/,
