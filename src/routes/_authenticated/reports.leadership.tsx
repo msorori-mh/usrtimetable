@@ -213,16 +213,10 @@ function FacultyBreakdownPanel({
 }) {
   const total = entries.reduce((sum, [, value]) => sum + value, 0);
   return (
-    <section
-      className="rounded-lg border bg-muted/35 p-3"
-      aria-label={title}
-      data-testid={testId}
-    >
+    <section className="rounded-lg border bg-muted/35 p-3" aria-label={title} data-testid={testId}>
       <div className="mb-3 flex items-center justify-between gap-3 border-b pb-2">
         <h3 className="font-semibold text-foreground">{title}</h3>
-        <span className="text-xs text-muted-foreground">
-          المجموع {total.toLocaleString("ar")}
-        </span>
+        <span className="text-xs text-muted-foreground">المجموع {total.toLocaleString("ar")}</span>
       </div>
       <CountList entries={entries} />
     </section>
@@ -322,6 +316,7 @@ function RoomCell({ row }: { row: LeadershipRow }) {
 
 function LeadershipDashboard() {
   const { data: me } = useCurrentUser();
+  const collegeDean = !!me?.isCollegeDean && !me.isSuperAdmin && !me.isUniversityLeadership;
   const [period, setPeriod] = useState<{ year: string; type: string } | null>(null);
   const [drilldown, setDrilldown] = useState<LeadershipDrilldownTarget | null>(null);
   const query = useQuery({
@@ -523,8 +518,8 @@ function LeadershipDashboard() {
   return (
     <>
       <ReportShell
-        title="المؤشرات التنفيذية للجامعة"
-        description={`آخر تحديث: ${generatedAt} · النطاق: النسخ المنشورة فقط. أعداد الطلاب والسعة لا تدخل أي نسبة ما لم تكن مكتملة.`}
+        title={collegeDean ? "المؤشرات التنفيذية للكلية" : "المؤشرات التنفيذية للجامعة"}
+        description={`آخر تحديث: ${generatedAt} · النطاق: ${collegeDean ? "الكلية المُسندة والنسخ المنشورة فقط" : "النسخ المنشورة فقط"}. أعداد الطلاب والسعة لا تدخل أي نسبة ما لم تكن مكتملة.`}
         filename={`university_leadership_${data?.year ?? ""}_${data?.term_type ?? ""}`}
         rows={rows}
         headers={exportHeaders}
@@ -533,7 +528,9 @@ function LeadershipDashboard() {
         onRetry={() => void query.refetch()}
         filterSummary={periodLabel}
         headerMeta={{
-          collegeName: "جميع كليات الجامعة",
+          collegeName: collegeDean
+            ? (colleges[0]?.college ?? "الكلية المُسندة")
+            : "جميع كليات الجامعة",
           termName: periodLabel,
           note: "قراءة فقط · النسخ المنشورة فقط · القيم غير المكتملة مميزة صراحة",
         }}
@@ -966,10 +963,14 @@ function LeadershipDashboard() {
             </ReportSection>
           </div>
           <ReportSection
-            title="مقارنة الكليات"
+            title={collegeDean ? "مؤشرات الكلية" : "مقارنة الكليات"}
             testId="leadership-colleges-comparison"
             count={rows.length}
-            hint="تكنولوجيا المعلومات وعلوم الحاسوب أولًا، ثم بقية الكليات. افتح التفاصيل لبقية المؤشرات وأسباب المتابعة."
+            hint={
+              collegeDean
+                ? "تظهر بيانات الكلية المُسندة لهذا الحساب فقط. افتح التفاصيل لبقية المؤشرات وأسباب المتابعة."
+                : "تكنولوجيا المعلومات وعلوم الحاسوب أولًا، ثم بقية الكليات. افتح التفاصيل لبقية المؤشرات وأسباب المتابعة."
+            }
             bodyClassName="p-0"
           >
             <ReportDataTable

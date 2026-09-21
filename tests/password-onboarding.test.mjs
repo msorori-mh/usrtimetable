@@ -23,6 +23,7 @@ test("password policy requires eight characters, letters and numbers or symbols"
     "read_only",
     "institutional_viewer",
     "university_leadership",
+    "college_dean",
   ])
     assert.equal(requiresInitialPassword(role), true);
 });

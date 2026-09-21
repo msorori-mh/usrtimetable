@@ -6,7 +6,8 @@ export type AppRole =
   | "college_admin"
   | "read_only"
   | "institutional_viewer"
-  | "university_leadership";
+  | "university_leadership"
+  | "college_dean";
 
 export interface CurrentUser {
   id: string;
@@ -23,6 +24,7 @@ export interface CurrentUser {
    */
   isInstitutionalViewer: boolean;
   isUniversityLeadership?: boolean;
+  isCollegeDean: boolean;
 }
 
 async function fetchCurrentUser(): Promise<CurrentUser | null> {
@@ -44,6 +46,7 @@ async function fetchCurrentUser(): Promise<CurrentUser | null> {
     roles,
     collegeIds: (collegesRes.data ?? []).map((c) => c.college_id),
     isUniversityLeadership: roles.includes("university_leadership"),
+    isCollegeDean: roles.includes("college_dean"),
     isSuperAdmin: roles.includes("super_admin"),
     isCollegeAdmin: roles.includes("college_admin"),
     isReadOnly: roles.includes("read_only"),

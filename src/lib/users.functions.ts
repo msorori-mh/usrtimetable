@@ -1,7 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { assignsAllColleges, requiresCollegeAssignment } from "@/lib/viewer-roles";
+import {
+  assignsAllColleges,
+  requiresCollegeAssignment,
+  requiresExactlyOneCollege,
+} from "@/lib/viewer-roles";
 import { requiresInitialPassword } from "@/lib/password-policy";
 
 /**
@@ -37,6 +41,7 @@ const ROLE = z.enum([
   "read_only",
   "institutional_viewer",
   "university_leadership",
+  "college_dean",
 ]);
 
 async function assertInstitutionAdmin(userId: string) {
@@ -104,6 +109,9 @@ export const adminCreateUser = createServerFn({ method: "POST" })
       collegeIds = (allColleges ?? []).map((c) => c.id);
     } else if (requiresCollegeAssignment(data.role) && collegeIds.length === 0) {
       throw new Error("College assignment is required for every role except Super Admin");
+    }
+    if (requiresExactlyOneCollege(data.role) && collegeIds.length !== 1) {
+      throw new Error("College dean must be assigned to exactly one college");
     }
 
     if (collegeIds.length > 0) {
