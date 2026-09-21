@@ -496,12 +496,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <p className="whitespace-normal break-words text-sm leading-relaxed text-foreground sm:text-base">
               {user.fullName?.trim() ? `مرحبًا، ${user.fullName.trim()}` : "مرحبًا بك"}
             </p>
-            {!user.isSuperAdmin && activeCollege && (
+            {!user.isSuperAdmin && (leadership || activeCollege) && (
               <p
                 className="mt-1 whitespace-normal break-words text-lg font-bold leading-relaxed text-primary sm:text-xl"
-                data-testid="account-college-name"
+                data-testid={leadership ? "account-university-scope" : "account-college-name"}
               >
-                {activeCollege.name}
+                {leadership
+                  ? `${USR_UNIVERSITY_NAME_AR} — ${LEADERSHIP_ROLE_LABEL_AR}`
+                  : activeCollege?.name}
               </p>
             )}
           </div>
