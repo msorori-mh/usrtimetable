@@ -3596,7 +3596,7 @@ export type Database = {
       scheduling_headcount_revisions: {
         Row: {
           changed_at: string
-          changed_by: string
+          changed_by: string | null
           college_id: string
           headcount_id: string
           id: string
@@ -3607,7 +3607,7 @@ export type Database = {
         }
         Insert: {
           changed_at?: string
-          changed_by: string
+          changed_by?: string | null
           college_id: string
           headcount_id: string
           id?: string
@@ -3618,7 +3618,7 @@ export type Database = {
         }
         Update: {
           changed_at?: string
-          changed_by?: string
+          changed_by?: string | null
           college_id?: string
           headcount_id?: string
           id?: string
