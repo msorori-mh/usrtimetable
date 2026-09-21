@@ -59,7 +59,7 @@ export function groupCurrentSchedulePages(
       pages.push({
         ...page,
         key: `${pid}:${page.key}`,
-        title: `جدول ${page.title}`,
+        title: `جدول ${page.programName ?? "برنامج غير محدد"} — ${/^المستوى(?:\s|$)/u.test(page.levelName ?? "") ? page.levelName : `المستوى ${page.levelName || "غير محدد"}`}`,
         departmentName:
           page.departmentName ??
           page.sessions[0]?.course_offerings?.courses?.departments?.name ??
