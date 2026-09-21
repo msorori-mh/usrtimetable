@@ -75,6 +75,7 @@ test("server rejects admin, weak/reused passwords and wrong temporary credential
     app_metadata: { must_change_password: true, provider: "email" },
   };
   globalThis.__pwAdmin = {
+    rpc: async () => ({ data: true, error: null }),
     from(table) {
       if (table === "user_roles")
         return { select: () => ({ eq: async () => ({ data: [{ role }], error: null }) }) };
@@ -105,7 +106,16 @@ test("server rejects admin, weak/reused passwords and wrong temporary credential
     },
   };
   const input = {
-    context: { userId: "user-1" },
+    context: {
+      userId: "user-1",
+      supabase: {
+        auth: { getUser: async () => ({ data: { user: { id: "user-1" } }, error: null }) },
+        rpc: async () => ({
+          data: { session_valid: true, password_required: true, mfa_required: false },
+          error: null,
+        }),
+      },
+    },
     data: { currentPassword: "Temporary123!", newPassword: "Personal123!" },
   };
   role = "super_admin";

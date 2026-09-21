@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { assertLiveSecuritySession, enforceSecurityLimit } from "@/lib/security-guard.server";
 import { PASSWORD_POLICY_AR, validPersonalPassword } from "@/lib/password-policy";
 
 /** Authenticated only; never accepts a target user ID from the browser. */
@@ -15,6 +16,8 @@ export const completeInitialPasswordChange = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data, context }) => {
+    await assertLiveSecuritySession(context.supabase, context.userId, true);
+    await enforceSecurityLimit(context.userId, "password_change");
     const { data: roles, error: roleError } = await supabaseAdmin
       .from("user_roles")
       .select("role")
