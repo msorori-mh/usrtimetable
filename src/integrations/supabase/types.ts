@@ -3910,6 +3910,72 @@ export type Database = {
           },
         ]
       }
+      security_events: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          details: Json
+          event: string
+          id: number
+          severity: string
+          target_id: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          details?: Json
+          event: string
+          id?: never
+          severity: string
+          target_id?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          details?: Json
+          event?: string
+          id?: never
+          severity?: string
+          target_id?: string | null
+        }
+        Relationships: []
+      }
+      security_rate_buckets: {
+        Row: {
+          action: string
+          actor_id: string
+          attempts: number
+          window_start: string
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          attempts: number
+          window_start: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          attempts?: number
+          window_start?: string
+        }
+        Relationships: []
+      }
+      security_settings: {
+        Row: {
+          id: boolean
+          require_admin_mfa: boolean
+        }
+        Insert: {
+          id?: boolean
+          require_admin_mfa?: boolean
+        }
+        Update: {
+          id?: boolean
+          require_admin_mfa?: boolean
+        }
+        Relationships: []
+      }
       session_types: {
         Row: {
           code: string
@@ -5001,6 +5067,10 @@ export type Database = {
         Args: { p_instructor_id: string; p_term_id?: string }
         Returns: Json
       }
+      consume_security_limit: {
+        Args: { p_action: string; p_actor: string }
+        Returns: boolean
+      }
       create_import_preview_manifest: {
         Args: {
           p_college_id: string
@@ -5487,6 +5557,10 @@ export type Database = {
         Args: { p_instructor_id: string; p_search: string }
         Returns: Json
       }
+      security_access_status: { Args: never; Returns: Json }
+      security_dashboard: { Args: never; Returns: Json }
+      security_mfa_required: { Args: never; Returns: boolean }
+      security_session_valid: { Args: never; Returns: boolean }
       seed_college_instructor_types: {
         Args: { p_college_id: string }
         Returns: number
