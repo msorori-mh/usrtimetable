@@ -33,6 +33,8 @@ import {
   filterCohortDirectory,
   cohortLevelOptions,
   cohortDirectoryPage,
+  formatCohortCount,
+  formatCohortEntryYear,
   visibleCohortSelection,
   type CohortFilters,
   type CohortListRow,
@@ -73,7 +75,7 @@ type DeliveryGroupRow = {
   component_id: string;
   group_code: string;
   group_number?: number | null;
-  expected_students: number;
+  expected_students: number | null;
   capacity_limit: number | null;
   excluded_from_standard_workload?: boolean;
   is_obsolete?: boolean;
