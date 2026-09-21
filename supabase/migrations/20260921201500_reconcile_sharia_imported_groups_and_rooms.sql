@@ -106,9 +106,53 @@ BEGIN
      )
      AND pcc.required_room_type_id IS DISTINCT FROM v_room_type;
 
+  -- Preserve the imported delivery-group partitions. A room may hold 60 students,
+  -- while each delivery group can deliberately be 30 (two groups) or 15 (four groups).
+  IF EXISTS (
+    WITH derived_sizes AS (
+      SELECT g.component_id,
+        ceil(h.scheduling_headcount::numeric /
+          count(*) OVER (PARTITION BY g.cohort_id,g.component_id))::integer AS group_size
+      FROM public.delivery_groups g
+      JOIN public.academic_cohorts c ON c.id=g.cohort_id
+      JOIN public.scheduling_cohort_term_headcounts h
+        ON h.cohort_id=c.id AND h.term_id=c.term_id
+       AND h.approval_status='approved'
+      WHERE g.college_id=v_college AND c.term_id=v_term
+        AND c.study_system='regular' AND c.existing_schedule
+        AND g.active AND NOT g.is_obsolete
+    )
+    SELECT 1 FROM derived_sizes
+    GROUP BY component_id
+    HAVING count(DISTINCT group_size)<>1 OR min(group_size)<=0
+  ) THEN
+    RAISE EXCEPTION 'SHARIA_COMPONENT_GROUP_SIZE_CONFLICT';
+  END IF;
+
+  WITH derived_sizes AS (
+    SELECT DISTINCT g.component_id,
+      ceil(h.scheduling_headcount::numeric /
+        count(*) OVER (PARTITION BY g.cohort_id,g.component_id))::integer AS group_size
+    FROM public.delivery_groups g
+    JOIN public.academic_cohorts c ON c.id=g.cohort_id
+    JOIN public.scheduling_cohort_term_headcounts h
+      ON h.cohort_id=c.id AND h.term_id=c.term_id
+     AND h.approval_status='approved'
+    WHERE g.college_id=v_college AND c.term_id=v_term
+      AND c.study_system='regular' AND c.existing_schedule
+      AND g.active AND NOT g.is_obsolete
+  )
+  UPDATE public.plan_course_components pcc
+     SET explicit_group_size=d.group_size
+    FROM derived_sizes d
+   WHERE pcc.id=d.component_id AND pcc.college_id=v_college
+     AND pcc.explicit_group_size IS DISTINCT FROM d.group_size;
+
   WITH estimates AS (
     SELECT g.id,h.scheduling_headcount n,
       count(*) OVER(PARTITION BY g.cohort_id,g.component_id)::integer k,
+      ceil(h.scheduling_headcount::numeric /
+        count(*) OVER(PARTITION BY g.cohort_id,g.component_id))::integer cap,
       row_number() OVER(
         PARTITION BY g.cohort_id,g.component_id
         ORDER BY g.group_number,g.id
@@ -124,13 +168,13 @@ BEGIN
   )
   UPDATE public.delivery_groups g
      SET expected_students=e.n/e.k+CASE WHEN e.rn<=e.n%e.k THEN 1 ELSE 0 END,
-         capacity_limit=60,
+         capacity_limit=e.cap,
          group_number=e.rn
     FROM estimates e
    WHERE g.id=e.id
      AND (g.expected_students IS DISTINCT FROM
             (e.n/e.k+CASE WHEN e.rn<=e.n%e.k THEN 1 ELSE 0 END)
-       OR g.capacity_limit IS DISTINCT FROM 60
+       OR g.capacity_limit IS DISTINCT FROM e.cap
        OR g.group_number IS DISTINCT FROM e.rn);
 
   SELECT count(*) INTO v_groups
