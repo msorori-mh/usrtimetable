@@ -446,13 +446,18 @@ function LeadershipDashboard() {
         <div className="space-y-4">
           <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-label="حالة الجامعة">
             <MetricCard
-              label="أعضاء هيئة التدريس"
+              label={LEADERSHIP_METRICS.faculty_count.label}
+              definition={LEADERSHIP_METRICS.faculty_count.definition}
               value={uniqueFaculty === null ? "غير محسوب" : uniqueFaculty.toLocaleString("ar")}
               icon={<Users className="h-4 w-4" />}
+              onOpen={() => openMetric("faculty_count", uniqueFaculty)}
               detail={
                 <>
                   <span>
-                    المتاح: {availableFaculty.toLocaleString("ar")}
+                    المتاح:{" "}
+                    <MetricLink onOpen={() => openMetric("available_faculty", availableFaculty)}>
+                      {availableFaculty.toLocaleString("ar")}
+                    </MetricLink>
                     {availablePercent === null ? "" : ` (${availablePercent}%)`}
                   </span>
                   <ReportDisclosure label="الحالة والرتب">
@@ -471,22 +476,32 @@ function LeadershipDashboard() {
               }
             />
             <MetricCard
-              label="تغطية الإسناد"
-              value={universityCoverage === null ? "غير محسوب" : `${universityCoverage}%`}
+              label={LEADERSHIP_METRICS.assignment_coverage.label}
+              definition={LEADERSHIP_METRICS.assignment_coverage.definition}
+              value={
+                assignmentCoverage === null ? "غير محسوب" : `${assignmentCoverage}%`
+              }
               icon={<CalendarCheck className="h-4 w-4" />}
               tone={Number(uncovered.value ?? 0) > 0 ? "critical" : "normal"}
+              onOpen={() => openMetric("assignment_coverage", covered.value)}
               detail={
                 <>
-                  المسند: {hours(covered.value)} · ساعات التدريس غير المسندة:{" "}
-                  {hours(uncovered.value)}
+                  الساعات التدريسية المسندة للمقررات: {hours(covered.value)} · غير المسندة:{" "}
+                  <MetricLink onOpen={() => openMetric("uncovered_hours", uncovered.value)}>
+                    {hours(uncovered.value)}
+                  </MetricLink>
                   {!required.complete && (
-                    <div>البيانات غير مكتملة في {required.total - required.known} كلية.</div>
+                    <div>
+                      لا تُعرض نسبة: البيانات غير مكتملة في {required.total - required.known} كلية.
+                    </div>
                   )}
                 </>
               }
             />
             <MetricCard
               label="حالة الجداول"
+              definition={LEADERSHIP_METRICS.published_versions.definition}
+              onOpen={() => openMetric("published_versions", published)}
               value={`${published.toLocaleString("ar")} من ${colleges.length.toLocaleString("ar")}`}
               icon={<Clock3 className="h-4 w-4" />}
               tone={published < colleges.length ? "warning" : "normal"}
