@@ -78,8 +78,8 @@ export function LeadershipMetricDrilldown({
     queryKey: [
       "leadership-metric-details",
       definition?.source,
-      period.year,
-      period.type,
+      period?.year ?? null,
+      period?.type ?? null,
       target?.collegeId ?? null,
     ],
     staleTime: 60_000,
@@ -92,8 +92,8 @@ export function LeadershipMetricDrilldown({
       };
       const { data, error } = await client.rpc("leadership_metric_details", {
         p_metric: definition!.source,
-        p_academic_year: period.year,
-        p_term_type: period.type,
+        p_academic_year: period?.year ?? null,
+        p_term_type: period?.type ?? null,
         p_college_id: target?.collegeId ?? null,
       });
       if (error) throw new Error("تعذر تحميل تفاصيل المؤشر. أعد المحاولة.");
@@ -117,7 +117,7 @@ export function LeadershipMetricDrilldown({
   const check = reconcileMetric(target?.cardValue ?? null, detailTotal);
   const hoursKey = definition ? detailHoursKey(definition.source) : "";
   const visibleHours = sumDetailColumn(visible, hoursKey);
-  const filename = `leadership_${definition?.id ?? "metric"}_${period.year ?? ""}`;
+  const filename = `leadership_${definition?.id ?? "metric"}_${period?.year ?? ""}`;
 
   return (
     <Sheet
