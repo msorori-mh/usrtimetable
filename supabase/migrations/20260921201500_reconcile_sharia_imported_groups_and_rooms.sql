@@ -19,13 +19,13 @@ DECLARE
 BEGIN
   PERFORM pg_catalog.pg_advisory_xact_lock(9262, 3);
 
-  SELECT term_id INTO STRICT v_term
+  SELECT academic_term_id INTO STRICT v_term
   FROM public.schedule_versions
   WHERE id=v_published AND college_id=v_college AND status='published';
 
   IF NOT EXISTS (
     SELECT 1 FROM public.schedule_versions
-    WHERE id=v_draft AND college_id=v_college AND term_id=v_term AND status='draft'
+    WHERE id=v_draft AND college_id=v_college AND academic_term_id=v_term AND status='draft'
   ) THEN
     RAISE EXCEPTION 'SHARIA_ROOM_OPTIMIZATION_DRAFT_REQUIRED';
   END IF;
