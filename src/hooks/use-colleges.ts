@@ -58,6 +58,7 @@ export function useAccessibleColleges() {
         isCollegeAdmin: roles.includes("college_admin"),
         isReadOnly: roles.includes("read_only"),
         isInstitutionalViewer: roles.includes("institutional_viewer"),
+        isCollegeDean: roles.includes("college_dean"),
       });
       return scopeCollegesForRole(
         colleges,
