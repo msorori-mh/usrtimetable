@@ -525,9 +525,11 @@ function LeadershipDashboard() {
               }
             />
             <MetricCard
-              label="النصاب الأسبوعي"
+              label={LEADERSHIP_METRICS.required_after_release.label}
+              definition={LEADERSHIP_METRICS.required_after_release.definition}
               value={hours(netQuota.value)}
               icon={<Users className="h-4 w-4" />}
+              onOpen={() => openMetric("required_after_release", netQuota.value)}
               detail={
                 <dl className="space-y-1">
                   <div className="flex justify-between">
@@ -543,28 +545,42 @@ function LeadershipDashboard() {
                     <dd>{hours(netQuota.value)}</dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt>المسند للمحاضرين</dt>
-                    <dd>{hours(assigned.value)}</dd>
+                    <dt>{LEADERSHIP_METRICS.faculty_assigned_hours.label}</dt>
+                    <dd>
+                      <MetricLink
+                        onOpen={() => openMetric("faculty_assigned_hours", assigned.value)}
+                      >
+                        {hours(assigned.value)}
+                      </MetricLink>
+                    </dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt>المجدول في النسخ المنشورة</dt>
-                    <dd>{hours(scheduled.value)}</dd>
+                    <dt>{LEADERSHIP_METRICS.scheduled_hours.label}</dt>
+                    <dd>
+                      <MetricLink onOpen={() => openMetric("scheduled_hours", scheduled.value)}>
+                        {hours(scheduled.value)}
+                      </MetricLink>
+                    </dd>
                   </div>
                 </dl>
               }
             />
             <MetricCard
-              label="الساعات الزائدة"
+              label={LEADERSHIP_METRICS.overload_hours.label}
+              definition={LEADERSHIP_METRICS.overload_hours.definition}
               value={hours(overload.value)}
               icon={<AlertTriangle className="h-4 w-4" />}
               tone={Number(overload.value ?? 0) > 0 ? "warning" : "normal"}
+              onOpen={() => openMetric("overload_hours", overload.value)}
               detail="مجموع تجاوز المحاضرين لمطلوبهم بعد الإعفاء؛ لا يشمل ساعات التدريس غير المسندة."
             />
             <MetricCard
-              label="ساعات نقص أنصبة المحاضرين"
+              label={LEADERSHIP_METRICS.quota_deficit_hours.label}
+              definition={LEADERSHIP_METRICS.quota_deficit_hours.definition}
               value={hours(deficit.value)}
               icon={<AlertTriangle className="h-4 w-4" />}
               tone={Number(deficit.value ?? 0) > 0 ? "warning" : "normal"}
+              onOpen={() => openMetric("quota_deficit_hours", deficit.value)}
               detail="الفرق بين المطلوب بعد الإعفاء والمسند لكل محاضر؛ مقياس مستقل عن ساعات التدريس غير المسندة."
             />
           </section>
