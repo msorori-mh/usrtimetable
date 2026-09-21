@@ -194,7 +194,7 @@ test("عقد بطاقات الملخص الثلاث تسبق عقدة مقارن
   assert.ok(publishing < comparison);
   assert.ok(page.includes('dir="rtl"'));
   assert.ok(page.includes('className="grid gap-4 xl:grid-cols-3"'));
-  assert.ok(!page.slice(summaryStart, comparison).includes("order-"));
+  assert.ok(!/className=[^\n>]*\border-(?:first|last|none|\d+)/.test(page.slice(summaryStart, comparison)));
   assert.equal(page.match(/testId="leadership-instructors-section"/g)?.length, 1);
   assert.equal(page.match(/testId="leadership-rooms-section"/g)?.length, 1);
   assert.equal(page.match(/testId="leadership-publishing-section"/g)?.length, 1);
