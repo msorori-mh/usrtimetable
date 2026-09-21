@@ -213,16 +213,10 @@ function FacultyBreakdownPanel({
 }) {
   const total = entries.reduce((sum, [, value]) => sum + value, 0);
   return (
-    <section
-      className="rounded-lg border bg-muted/35 p-3"
-      aria-label={title}
-      data-testid={testId}
-    >
+    <section className="rounded-lg border bg-muted/35 p-3" aria-label={title} data-testid={testId}>
       <div className="mb-3 flex items-center justify-between gap-3 border-b pb-2">
         <h3 className="font-semibold text-foreground">{title}</h3>
-        <span className="text-xs text-muted-foreground">
-          المجموع {total.toLocaleString("ar")}
-        </span>
+        <span className="text-xs text-muted-foreground">المجموع {total.toLocaleString("ar")}</span>
       </div>
       <CountList entries={entries} />
     </section>
@@ -534,7 +528,9 @@ function LeadershipDashboard() {
         onRetry={() => void query.refetch()}
         filterSummary={periodLabel}
         headerMeta={{
-          collegeName: collegeDean ? (colleges[0]?.college ?? "الكلية المُسندة") : "جميع كليات الجامعة",
+          collegeName: collegeDean
+            ? (colleges[0]?.college ?? "الكلية المُسندة")
+            : "جميع كليات الجامعة",
           termName: periodLabel,
           note: "قراءة فقط · النسخ المنشورة فقط · القيم غير المكتملة مميزة صراحة",
         }}
