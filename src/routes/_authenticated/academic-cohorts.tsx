@@ -33,6 +33,8 @@ import {
   filterCohortDirectory,
   cohortLevelOptions,
   cohortDirectoryPage,
+  formatCohortCount,
+  formatCohortEntryYear,
   visibleCohortSelection,
   type CohortFilters,
   type CohortListRow,
@@ -58,8 +60,8 @@ type CohortRow = {
   id: string;
   code: string | null;
   study_system: string;
-  entry_year: number;
-  expected_students: number;
+  entry_year: number | null;
+  expected_students: number | null;
   count_status: string;
   program_id: string;
   level_id: string;
@@ -73,7 +75,7 @@ type DeliveryGroupRow = {
   component_id: string;
   group_code: string;
   group_number?: number | null;
-  expected_students: number;
+  expected_students: number | null;
   capacity_limit: number | null;
   excluded_from_standard_workload?: boolean;
   is_obsolete?: boolean;
@@ -376,7 +378,7 @@ function AcademicCohortsWorkspace() {
                 { label: "الدفعات في النتائج", value: filteredCohorts.length },
                 {
                   label: "أعداد الطلاب في النتائج",
-                  value: filteredCohorts.reduce((sum, c) => sum + c.expected_students, 0),
+                  value: filteredCohorts.reduce((sum, c) => sum + (c.expected_students ?? 0), 0),
                 },
                 {
                   label: "البرامج في النتائج",
@@ -517,7 +519,7 @@ function AcademicCohortsWorkspace() {
                       type="button"
                       aria-pressed={c.id === effectiveCohortId}
                       aria-controls="cohort-details"
-                      aria-label={`عرض دفعة ${c.programName}، ${c.levelName}، ${COHORT_SYSTEM_LABELS[c.study_system] ?? c.study_system}، ${c.termName}، دخول ${c.entry_year}`}
+                      aria-label={`عرض دفعة ${c.programName}، ${c.levelName}، ${COHORT_SYSTEM_LABELS[c.study_system] ?? c.study_system}، ${c.termName}، دخول ${formatCohortEntryYear(c.entry_year)}`}
                       className={`grid w-full grid-cols-[minmax(0,1fr)_80px] gap-3 border-s-4 px-4 py-4 text-start transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:grid-cols-[minmax(0,1fr)_95px_75px_60px] sm:items-center ${c.id === effectiveCohortId ? "border-s-primary bg-primary/5" : "border-s-transparent hover:bg-muted/40"}`}
                       onClick={() => selectCohort(c.id)}
                     >
@@ -525,7 +527,7 @@ function AcademicCohortsWorkspace() {
                         <p className="font-semibold leading-relaxed">{c.programName}</p>
                         <p className="text-sm">
                           {c.levelName}{" "}
-                          <span className="text-muted-foreground">· دخول {c.entry_year}</span>
+                          <span className="text-muted-foreground">· دخول {formatCohortEntryYear(c.entry_year)}</span>
                         </p>
                         <p className="text-xs leading-relaxed text-muted-foreground">
                           {c.termName}
@@ -547,7 +549,7 @@ function AcademicCohortsWorkspace() {
                       </span>
                       <span className="col-start-2 row-start-1 row-span-2 sm:col-auto sm:row-auto sm:row-span-1">
                         <span className="text-lg font-bold tabular-nums">
-                          {c.expected_students.toLocaleString("ar")}
+                          {formatCohortCount(c.expected_students)}
                         </span>
                         <span className="ms-1 text-xs sm:hidden">طالب</span>
                         <span className="block text-xs text-muted-foreground">
@@ -628,7 +630,7 @@ function AcademicCohortsWorkspace() {
                       <dt className="text-muted-foreground">عدد الطلاب المسجل</dt>
                       <dd className="mt-1 flex items-center gap-2 text-2xl font-bold text-primary">
                         <Users className="h-5 w-5" />
-                        {selected.expected_students.toLocaleString("ar")}
+                        {formatCohortCount(selected.expected_students)}
                       </dd>
                     </div>
                     <div>
@@ -639,7 +641,7 @@ function AcademicCohortsWorkspace() {
                     </div>
                     <div>
                       <dt className="text-muted-foreground">سنة الدخول</dt>
-                      <dd className="mt-1 font-medium">{selected.entry_year}</dd>
+                      <dd className="mt-1 font-medium">{formatCohortEntryYear(selected.entry_year)}</dd>
                     </div>
                     <div className="min-w-0">
                       <dt className="text-muted-foreground">رمز الدفعة</dt>
@@ -796,7 +798,7 @@ function AcademicCohortsWorkspace() {
                                 <td className="px-3 py-2" dir="ltr">
                                   {g.group_number ?? g.group_code}
                                 </td>
-                                <td className="px-3 py-2">{g.expected_students}</td>
+                                <td className="px-3 py-2">{g.expected_students ?? "—"}</td>
                                 <td className="px-3 py-2">{g.capacity_limit ?? "—"}</td>
                                 <td className="px-3 py-2">
                                   {obsolete ? (

@@ -15,8 +15,8 @@ export type CohortListRow = {
   level_id: string;
   term_id: string;
   study_system: string;
-  entry_year: number;
-  expected_students: number;
+  entry_year: number | null;
+  expected_students: number | null;
   count_status: string;
   active: boolean;
   programName: string;
@@ -83,10 +83,20 @@ export function filterCohortDirectory(
           a.study_system === "regular" ? "0" : a.study_system,
           b.study_system === "regular" ? "0" : b.study_system,
         ) ||
-        b.entry_year - a.entry_year ||
+        (b.entry_year ?? -Infinity) - (a.entry_year ?? -Infinity) ||
         collator.compare(a.termName, b.termName) ||
         a.id.localeCompare(b.id),
     );
+}
+/** Arabic display for a nullable count: existing numbers keep their exact formatting. */
+export function formatCohortCount(value: number | null | undefined): string {
+  if (value == null) return "بانتظار الاستكمال";
+  return value.toLocaleString("ar");
+}
+/** Arabic display for a nullable entry year. */
+export function formatCohortEntryYear(value: number | null | undefined): string {
+  if (value == null) return "بانتظار الاستكمال";
+  return String(value);
 }
 /** Level numbers are offered only for cohorts in the selected program. */
 export function cohortLevelOptions(rows: CohortListRow[], program: string): number[] {

@@ -398,8 +398,8 @@ export type CohortExportRow = {
   levelName: string;
   termName: string;
   study_system: string;
-  entry_year: number;
-  expected_students: number;
+  entry_year: number | null;
+  expected_students: number | null;
   count_status: string;
   active: boolean;
 };
@@ -429,8 +429,8 @@ export function cohortsExportDataset(input: {
         label: "نظام الدراسة",
         value: (r) => input.systemLabel(r.study_system),
       },
-      { key: "entry_year", label: "سنة القبول", value: (r) => r.entry_year },
-      { key: "expected_students", label: "عدد الطلاب المتوقع", value: (r) => r.expected_students },
+      { key: "entry_year", label: "سنة القبول", value: (r) => r.entry_year ?? "بانتظار الاستكمال" },
+      { key: "expected_students", label: "عدد الطلاب المتوقع", value: (r) => r.expected_students ?? "بانتظار الاستكمال" },
       {
         key: "count_status",
         label: "حالة العدد",
