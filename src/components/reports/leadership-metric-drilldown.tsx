@@ -66,7 +66,7 @@ export function LeadershipMetricDrilldown({
   onClose,
 }: {
   target: LeadershipDrilldownTarget | null;
-  period: { year: string | null; type: string | null };
+  period: { year: string | null; type: string | null } | null;
   onClose: () => void;
 }) {
   const [search, setSearch] = useState("");
