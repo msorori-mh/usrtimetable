@@ -378,19 +378,14 @@ function LeadershipDashboard() {
   const scheduled = aggregateLeadership(colleges, "teaching_hours");
   const theory = aggregateLeadership(colleges, "theory_hours");
   const practical = aggregateLeadership(colleges, "practical_hours");
-  const classifiedHours =
-    theory.value === null || practical.value === null ? null : theory.value + practical.value;
-  const unclassifiedHours =
-    scheduled.value === null || classifiedHours === null
-      ? null
-      : Math.max(0, Math.round((scheduled.value - classifiedHours) * 100) / 100);
+  const unclassified = aggregateLeadership(colleges, "other_hours");
+  const sessions = aggregateLeadership(colleges, "sessions_count");
   const averageSessionsPerPublishedCollege =
     sessions.value === null || published === 0
       ? null
       : Math.round((sessions.value / published) * 10) / 10;
   const overload = aggregateLeadership(colleges, "overload");
   const deficit = aggregateLeadership(colleges, "deficit");
-  const sessions = aggregateLeadership(colleges, "sessions_count");
   const rooms = aggregateLeadership(colleges, "room_count");
   const usedRooms = aggregateLeadership(colleges, "used_rooms");
   // التغطية تُقاس على الساعات التدريسية المطلوبة فقط، ولا تُعرض نسبة إذا كان
@@ -834,8 +829,8 @@ function LeadershipDashboard() {
                 value={hours(practical.value)}
                 icon={<FlaskConical className="h-4 w-4" />}
                 detail={
-                  unclassifiedHours !== null && unclassifiedHours > 0
-                    ? `ساعات غير مصنفة: ${hours(unclassifiedHours)}`
+                  unclassified.value !== null && unclassified.value > 0
+                    ? `ساعات غير مصنفة: ${hours(unclassified.value)}`
                     : "لا توجد ساعات غير مصنفة ضمن المصدر المكتمل."
                 }
               />
