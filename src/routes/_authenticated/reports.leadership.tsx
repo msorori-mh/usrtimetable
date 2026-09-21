@@ -511,8 +511,14 @@ function LeadershipDashboard() {
         <div className="space-y-4">
           <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-label="حالة الجامعة">
             <MetricCard
-              label="أعضاء هيئة التدريس"
-              value={uniqueFaculty === null ? "غير محسوب" : uniqueFaculty.toLocaleString("ar")}
+              label={LEADERSHIP_METRICS.faculty_count.label}
+              definition={LEADERSHIP_METRICS.faculty_count.definition}
+              onOpen={() => openMetric("faculty_count")}
+              value={
+                uniqueFaculty === null
+                  ? LEADERSHIP_UNCALCULATED
+                  : uniqueFaculty.toLocaleString("ar")
+              }
               icon={<Users className="h-4 w-4" />}
               detail={
                 <>
