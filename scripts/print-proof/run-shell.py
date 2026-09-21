@@ -8,7 +8,7 @@ printed over the official sheet header, and the viewport-sized flex shell clippe
 code and the right edge of the heading.
 
 This runner loads `shell.html` — the REAL `AppLayout` wrapping the REAL `PrintSheet` with
-the REAL print stylesheet — and, for A4/A3 x portrait/landscape x desktop/mobile starting
+the REAL print stylesheet — and, for mandatory A4 portrait x desktop/mobile starting
 viewport x long/short fixture, asserts on the produced PDF and the print-media DOM:
 
   * no app chrome is printed (mobile header, sidebar, context bar/college badge, toaster)
@@ -73,13 +73,11 @@ def normalize_ar(text: str) -> str:
 # viewport lays the table out at 390px even under print emulation, which reports
 # overflow that the real paged output does not have.
 MM_PER_IN = 25.4
-PAPER_MM = {"A4": (210.0, 297.0), "A3": (297.0, 420.0)}
+PAPER_MM = {"A4": (210.0, 297.0)}
 
 
 def content_px(paper: str, orientation: str) -> int:
     w_mm, h_mm = PAPER_MM[paper]
-    if orientation == "landscape":
-        w_mm, h_mm = h_mm, w_mm
     return int(round((w_mm - 2 * 15.0) / MM_PER_IN * 96))
 
 
@@ -208,7 +206,7 @@ async def main():
     base = f"http://127.0.0.1:{PORT}/shell.html"
 
     viewports = [("desktop", {"width": 1280, "height": 1800}), ("mobile", {"width": 390, "height": 844})]
-    combos = [("A4", "portrait"), ("A4", "landscape"), ("A3", "portrait"), ("A3", "landscape")]
+    combos = [("A4", "portrait")]
     cases = [(p, o, f) for p, o in combos for f in ("long", "short")]
 
     async with async_playwright() as p:
@@ -319,7 +317,7 @@ async def main():
                 w, h = float(dims.group(1)), float(dims.group(2))
                 check(
                     f"{tag}: CSS @page size/orientation honoured",
-                    (w > h) == (orientation == "landscape"),
+                    w < h and abs(w - 595.28) < 2 and abs(h - 841.89) < 2,
                     f"{w:.0f}x{h:.0f}pt, {pages} pages",
                 )
 

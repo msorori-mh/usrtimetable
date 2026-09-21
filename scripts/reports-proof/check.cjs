@@ -50,7 +50,7 @@ const fs = require("node:fs");
     await page.pdf({
       path: `${out}/table.pdf`,
       format: "A4",
-      landscape: true,
+      landscape: false,
       printBackground: true,
     });
     await page.emulateMedia({ media: "screen" });
@@ -61,7 +61,7 @@ const fs = require("node:fs");
     await page.pdf({
       path: `${out}/timetable.pdf`,
       format: "A4",
-      landscape: true,
+      landscape: false,
       printBackground: true,
     });
     expect(errors).toEqual([]);

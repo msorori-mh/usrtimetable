@@ -398,7 +398,7 @@ test("rooms report exposes analytical screen and printable summary structures", 
   assert.match(route, /RoomsAnalyticsDashboard/);
   assert.match(route, /rooms-print-chart/);
   assert.match(route, /printPageStyleCss\(\)/);
-  assert.match(printPageStyleCss(), /size: A4 portrait;/);
+  assert.match(printPageStyleCss(), /size: A4 portrait !important;/);
   assert.match(route, /groupRoomsReportPages/);
   assert.match(dashboard, /rooms-report-charts/);
   assert.match(dashboard, /rooms-heatmap/);

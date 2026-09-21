@@ -7,7 +7,7 @@
  * 3) Read-only data path (fetchHydratedVersionSessions + cohort labels)
  * 4) Export helpers reuse downloadCSV/downloadXLSX
  * 5) Demo warning + draft watermark constants
- * 6) Print CSS for A4/A3 landscape/portrait
+ * 6) Print CSS for mandatory A4 portrait
  * 7) No schedule_sessions writes from print-center surfaces
  */
 import { readFileSync } from "node:fs";
@@ -91,15 +91,12 @@ assert(
 const pageStyle = read("src/components/print-center/print-center-page.tsx");
 const sharedPageStyle = read("src/lib/print-center/page-style.ts");
 assert(
-  pageStyle.includes("size: ${paper} ${orientation}") ||
-    pageStyle.includes("print-center-page-style") ||
-    // LAUNCH-CLOSURE-03: the @page rule now lives in one shared helper so the
-    // print-proof harness renders with exactly the application's page box.
-    (pageStyle.includes("printPageStyleCss(paper, orientation)") &&
+    pageStyle.includes("printPageStyleCss()") &&
       pageStyle.includes("PRINT_PAGE_STYLE_ELEMENT_ID") &&
-      sharedPageStyle.includes("size: ${paper} ${orientation}") &&
-      sharedPageStyle.includes('PRINT_PAGE_STYLE_ELEMENT_ID = "print-center-page-style"')),
-  "A4/A3 landscape/portrait injected via print stylesheet",
+      sharedPageStyle.includes("size: A4 portrait !important") &&
+      !sharedPageStyle.includes("landscape") &&
+      sharedPageStyle.includes('PRINT_PAGE_STYLE_ELEMENT_ID = "print-center-page-style"'),
+  "mandatory A4 portrait injected via print stylesheet",
 );
 
 const qr = read("src/components/print-center/print-qr-code.tsx");

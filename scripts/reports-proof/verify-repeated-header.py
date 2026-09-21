@@ -16,10 +16,8 @@ for path in sorted(Path("repeated-header-proof").glob("*.pdf")):
         assert len(doc) == 1, f"{path}: 18-row lab schedule must fit one A4 page"
     all_rows = []
     for number, page in enumerate(doc, 1):
-        if "portrait" in path.name:
-            assert page.rect.height > page.rect.width, f"{path}:{number}: expected portrait"
-        if "default" in path.name:
-            assert abs(page.rect.width - 595.28) < 2 and abs(page.rect.height - 841.89) < 2, f"{path}:{number}: default must be A4 portrait"
+        assert page.rect.height > page.rect.width, f"{path}:{number}: expected portrait"
+        assert abs(page.rect.width - 595.28) < 2 and abs(page.rect.height - 841.89) < 2, f"{path}:{number}: must be A4 portrait"
         text = page.get_text()
         assert "PRINT_HEADER_PROOF_2026" in text, f"{path}:{number}: missing version header"
         assert "COLUMN_KEY" in text, f"{path}:{number}: missing column/group header"

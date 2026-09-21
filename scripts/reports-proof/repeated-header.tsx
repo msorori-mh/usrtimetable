@@ -15,8 +15,6 @@ import { SHORT_FIXTURE } from "../print-proof/fixture";
 const params = new URLSearchParams(location.search);
 const mode = params.get("mode");
 const readable = mode === "readable" || mode === "room-fit";
-const paper = params.get("paper") === "A3" ? "A3" : "A4";
-const orientation = params.get("orientation") === "landscape" ? "landscape" : "portrait";
 const rows = Array.from({ length: mode === "room-fit" ? 18 : 140 }, (_, i) => ({
   id: `ROW${String(i).padStart(3, "0")}`,
   description: "محاضرة اختبار لقياس وضوح بيانات التقرير وتكرار الترويسة الرسمية",
@@ -247,7 +245,7 @@ createRoot(document.getElementById("root")!).render(
       </ReportShell>
     )}
     <style>
-      {params.has("paper") ? printPageStyleCss(paper, orientation) : printPageStyleCss()}
+      {printPageStyleCss()}
     </style>
   </main>,
 );

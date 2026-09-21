@@ -381,7 +381,6 @@ function LeadershipDashboard() {
       isLoading={query.isFetching}
       error={query.error}
       onRetry={() => void query.refetch()}
-      printOrientation="landscape"
       filterSummary={periodLabel}
       headerMeta={{
         collegeName: "جميع كليات الجامعة",

@@ -50,10 +50,10 @@ describe("report print identity", () => {
   test("shell supplies the current report URL to the QR and an A4 RTL page box", () => {
     expect(shell.includes("window.location.href")).toBe(true);
     expect(shell.includes("printPageStyleCss(")).toBe(true);
-    expect(shell.includes('"A4"')).toBe(true);
-    expect(shell.includes("printOrientation ??")).toBe(true);
-    expect(shell.includes('headers.length > 7 ? "landscape" : "portrait"')).toBe(true);
-    expect(printPageStyleCss()).toContain("size: A4 portrait;");
+    expect(printPageStyleCss()).toContain("size: A4 portrait !important;");
+    expect(shell.includes("printOrientation")).toBe(false);
+    expect(shell.includes("headers.length > 7")).toBe(false);
+    expect(printPageStyleCss()).not.toContain("landscape");
     expect(shell.includes('dir="rtl"')).toBe(true);
   });
 
@@ -65,6 +65,7 @@ describe("report print identity", () => {
     expect(shell.includes("document.title = originalTitle")).toBe(true);
     expect(route.includes("الجدول الفردي")).toBe(true);
     expect(route.includes("printFilename={instructorName")).toBe(true);
+    expect(route.includes("printOrientation")).toBe(false);
   });
 
   test("print CSS avoids splitting the header and table rows", () => {

@@ -452,7 +452,6 @@ function Report() {
         collegeName: active?.name,
         note: `نطاق الكشف: ${filterSummary} · عدد المحاضرين المعروضين: ${rows.length}`,
       }}
-      printOrientation="landscape"
       rows={rows}
       headers={headers}
       isLoading={isLoading}

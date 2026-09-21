@@ -415,7 +415,6 @@ function WorkloadPage() {
       title="العبء المجدول للمحاضرين"
       description="الساعات المجدولة في نسخة واحدة، ومقارنتها بالحد الأسبوعي المسجل للمحاضر. لتقارير النصاب المعتمد استخدم تقارير الشؤون الأكاديمية."
       filename="instructor_workload"
-      printOrientation="landscape"
       rows={rows}
       headers={headers}
       isLoading={context.isLoading || ilLoad || sLoad}

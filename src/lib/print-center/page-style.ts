@@ -6,9 +6,9 @@
  * component) so the print-proof harness renders with EXACTLY the same page box the
  * application uses, and cannot drift from it.
  */
-import type { PrintOrientation, PrintPaperSize } from "./types";
-
 export const PRINT_PAGE_STYLE_ELEMENT_ID = "print-center-page-style";
+export const PRINT_PAPER_SIZE = "A4" as const;
+export const PRINT_ORIENTATION = "portrait" as const;
 
 /**
  * Physical page numbering.
@@ -24,14 +24,11 @@ export const PRINT_PAGE_STYLE_ELEMENT_ID = "print-center-page-style";
 export const PRINT_PHYSICAL_PAGE_PREFIX_AR = "صفحة";
 export const PRINT_PHYSICAL_PAGE_SEPARATOR_AR = "من";
 
-export function printPageStyleCss(
-  paper: PrintPaperSize = "A4",
-  orientation: PrintOrientation = "portrait",
-): string {
+export function printPageStyleCss(): string {
   return `@media print {
   @page {
-    size: ${paper} ${orientation};
-    margin: 1.2cm 1.5cm;
+    size: A4 portrait !important;
+    margin: 12mm 15mm !important;
     @bottom-center {
       content: "${PRINT_PHYSICAL_PAGE_PREFIX_AR} " counter(page) " ${PRINT_PHYSICAL_PAGE_SEPARATOR_AR} " counter(pages);
       direction: rtl;

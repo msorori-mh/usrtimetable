@@ -20,21 +20,10 @@ const { execFileSync } = require("node:child_process");
       "university",
       "individual",
     ]) {
-      for (const [paper, orientation, width] of [
-        ["default", "portrait", 1440],
-        ["A4", "portrait", 390],
-        ["A4", "landscape", 1440],
-        ["A3", "landscape", 1440],
-      ]) {
-        // The current-timetable route explicitly uses A4 portrait; other modes retain all paper sizes.
-        if (
-          ["readable", "room-fit", "university", "individual"].includes(mode) &&
-          orientation !== "portrait"
-        )
-          continue;
+      for (const [paper, orientation, width] of [["A4", "portrait", 390]]) {
         await page.setViewportSize({ width, height: 900 });
         await page.goto(
-          `http://127.0.0.1:4173/repeated-header.html?mode=${mode}${paper === "default" ? "" : `&paper=${paper}&orientation=${orientation}`}`,
+          `http://127.0.0.1:4173/repeated-header.html?mode=${mode}`,
         );
         await page
           .getByText(

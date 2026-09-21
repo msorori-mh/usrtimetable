@@ -7,8 +7,7 @@
  * `downloadXLSX` and `exportRowsToXlsx` helpers on `window` so a headless browser can
  * trigger genuine downloads and the bytes can be inspected.
  *
- * The paper size / orientation / fixture are chosen from the URL query so one build
- * covers A4 and A3 in both orientations.
+ * The fixture is chosen from the URL query; every print uses mandatory A4 portrait.
  */
 import { StrictMode, useEffect } from "react";
 import { createRoot } from "react-dom/client";
@@ -23,8 +22,6 @@ import {
   printPageStyleCss,
   requestPrint,
   type PrintRequestResult,
-  type PrintOrientation,
-  type PrintPaperSize,
 } from "@/lib/print-center";
 import { downloadCSV, downloadXLSX } from "@/lib/reports/export";
 import { exportRowsToXlsx } from "@/lib/admin-export/to-xlsx";
@@ -32,10 +29,6 @@ import { FIXTURE_FILTERS, LONG_FIXTURE, SHORT_FIXTURE } from "./fixture";
 import "@/styles.css";
 
 const q = new URLSearchParams(window.location.search);
-const paper = (q.get("paper") === "A3" ? "A3" : "A4") as PrintPaperSize;
-const orientation = (
-  q.get("orientation") === "portrait" ? "portrait" : "landscape"
-) as PrintOrientation;
 const fixture = q.get("fixture") === "short" ? SHORT_FIXTURE : LONG_FIXTURE;
 
 const sessions = filterPrintSessions(fixture, FIXTURE_FILTERS);
@@ -48,8 +41,8 @@ declare global {
       sessionCount: number;
       pageCount: number;
       rowCount: number;
-      paper: PrintPaperSize;
-      orientation: PrintOrientation;
+      paper: "A4";
+      orientation: "portrait";
       exportCsv: () => void;
       exportXlsx: () => void;
       exportAdminXlsx: () => void;
@@ -62,8 +55,8 @@ window.__printProof = {
   sessionCount: sessions.length,
   pageCount: pages.length,
   rowCount: rows.length,
-  paper,
-  orientation,
+  paper: "A4",
+  orientation: "portrait",
   exportCsv: () => downloadCSV(rows, PRINT_EXPORT_HEADERS, "print-proof-timetable"),
   exportXlsx: () => downloadXLSX(rows, PRINT_EXPORT_HEADERS, "print-proof-timetable", "الجدول"),
   exportAdminXlsx: () => exportRowsToXlsx("print-proof-admin", "الجدول", rows),
@@ -74,7 +67,7 @@ function Proof() {
   useEffect(() => {
     const el = document.createElement("style");
     el.id = PRINT_PAGE_STYLE_ELEMENT_ID;
-    el.textContent = printPageStyleCss(paper, orientation);
+    el.textContent = printPageStyleCss();
     document.head.appendChild(el);
     document.documentElement.dataset.printProofReady = "1";
     return () => el.remove();

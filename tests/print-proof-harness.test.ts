@@ -28,15 +28,16 @@ const PAGE = read("src/components/print-center/print-center-page.tsx");
 const STYLES = read("src/styles.css");
 
 describe("printed page box is a single source of truth", () => {
-  test("printPageStyleCss emits a real @page rule per paper size and orientation", () => {
-    expect(printPageStyleCss("A4", "portrait")).toContain("size: A4 portrait;");
-    expect(printPageStyleCss("A3", "landscape")).toContain("size: A3 landscape;");
-    expect(printPageStyleCss("A4", "portrait")).toContain("margin: 1.2cm 1.5cm");
+  test("printPageStyleCss emits the mandatory A4 portrait page box", () => {
+    expect(printPageStyleCss()).toContain("size: A4 portrait !important;");
+    expect(printPageStyleCss()).toContain("margin: 12mm 15mm !important;");
+    expect(printPageStyleCss()).not.toContain("landscape");
+    expect(printPageStyleCss()).not.toContain("A3");
     expect(PRINT_PAGE_STYLE_ELEMENT_ID).toBe("print-center-page-style");
   });
 
   test("physical page numbers come from the print engine page counters", () => {
-    const css = printPageStyleCss("A3", "landscape");
+    const css = printPageStyleCss();
     expect(css).toContain("@bottom-center");
     expect(css).toContain("counter(page)");
     expect(css).toContain("counter(pages)");
@@ -63,7 +64,7 @@ describe("printed page box is a single source of truth", () => {
   });
 
   test("the print centre injects the shared helper instead of an inline duplicate", () => {
-    expect(PAGE).toContain("printPageStyleCss(paper, orientation)");
+    expect(PAGE).toContain("printPageStyleCss()");
     expect(PAGE).toContain("PRINT_PAGE_STYLE_ELEMENT_ID");
     expect(PAGE).not.toContain("@page { size: ${paper}");
   });
@@ -74,7 +75,7 @@ describe("printed page box is a single source of truth", () => {
   });
 });
 
-describe("footer orphaning fix (observed on A3 landscape)", () => {
+describe("footer orphaning fix", () => {
   test("the endorsement footer is told not to start a new printed page", () => {
     const printBlock = STYLES.slice(STYLES.indexOf("@media print"));
     expect(printBlock).toContain("break-before: avoid");
@@ -128,15 +129,10 @@ describe("the fixture is isolated from production", () => {
 });
 
 describe("the runner proves the gates it claims", () => {
-  test("it covers A4/A3 x portrait/landscape with CSS page size honoured", () => {
-    for (const combo of [
-      '("A4", "portrait")',
-      '("A4", "landscape")',
-      '("A3", "portrait")',
-      '("A3", "landscape")',
-    ]) {
-      expect(RUNNER).toContain(combo);
-    }
+  test("it covers mandatory A4 portrait with CSS page size honoured", () => {
+    expect(RUNNER).toContain('combos = [("A4", "portrait")]');
+    expect(RUNNER).not.toContain('("A4", "landscape")');
+    expect(RUNNER).not.toContain('("A3",');
     expect(RUNNER).toContain("prefer_css_page_size=True");
     expect(RUNNER).toContain("print_background=True");
   });
