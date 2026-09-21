@@ -16,6 +16,8 @@ DECLARE
   v_rooms integer;
   v_headcounts integer;
   v_groups integer;
+  v_cohort uuid;
+  v_partition_bad integer;
 BEGIN
   PERFORM pg_catalog.pg_advisory_xact_lock(9262, 3);
 
@@ -198,6 +200,104 @@ BEGIN
         OR NOT public.delivery_group_is_current(g.id))
   ) THEN
     RAISE EXCEPTION 'SHARIA_GROUP_RECONCILIATION_FAILED';
+  END IF;
+
+  -- Apply the same student-partition completion used for Arts. Preserve any
+  -- already-complete mapping and stop on partial historical data.
+  FOR v_cohort IN
+    SELECT id FROM public.academic_cohorts
+    WHERE college_id=v_college AND term_id=v_term
+      AND study_system='regular' AND existing_schedule AND active
+  LOOP
+    IF EXISTS (
+      SELECT 1 FROM public.cohort_student_partitions WHERE cohort_id=v_cohort
+      UNION ALL
+      SELECT 1 FROM public.delivery_group_partition_members WHERE cohort_id=v_cohort
+    ) THEN
+      SELECT count(*) INTO v_partition_bad
+      FROM public.delivery_groups d
+      WHERE d.cohort_id=v_cohort AND d.active AND NOT coalesce(d.is_obsolete,false)
+        AND d.expected_students IS DISTINCT FROM (
+          SELECT sum(p.headcount)
+          FROM public.delivery_group_partition_members m
+          JOIN public.cohort_student_partitions p
+            ON p.id=m.partition_id AND p.active
+          WHERE m.delivery_group_id=d.id
+            AND m.cohort_id=v_cohort AND p.cohort_id=v_cohort
+        );
+      IF v_partition_bad>0 THEN
+        RAISE EXCEPTION 'SHARIA_EXISTING_PARTITION_REVIEW_REQUIRED cohort=% bad=%',
+          v_cohort,v_partition_bad;
+      END IF;
+      CONTINUE;
+    END IF;
+
+    WITH grp AS (
+      SELECT component_id,group_number,expected_students,
+        sum(expected_students) OVER(
+          PARTITION BY component_id ORDER BY group_number
+          ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        ) end_idx
+      FROM public.delivery_groups
+      WHERE cohort_id=v_cohort AND active
+        AND NOT coalesce(is_obsolete,false) AND expected_students>0
+    ), bounds AS (
+      SELECT 0::bigint b UNION SELECT DISTINCT end_idx FROM grp
+    ), ord AS (
+      SELECT b,lag(b) OVER(ORDER BY b) prev_b,
+        row_number() OVER(ORDER BY b) rn FROM bounds
+    )
+    INSERT INTO public.cohort_student_partitions(
+      college_id,cohort_id,partition_code,headcount,active
+    )
+    SELECT v_college,v_cohort,'S'||lpad((rn-1)::text,3,'0'),
+      (b-prev_b)::int,true
+    FROM ord WHERE prev_b IS NOT NULL AND b>prev_b;
+
+    WITH grp AS (
+      SELECT id delivery_group_id,
+        sum(expected_students) OVER(
+          PARTITION BY component_id ORDER BY group_number
+          ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        )-expected_students+1 start_idx,
+        sum(expected_students) OVER(
+          PARTITION BY component_id ORDER BY group_number
+          ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        ) end_idx
+      FROM public.delivery_groups
+      WHERE cohort_id=v_cohort AND active
+        AND NOT coalesce(is_obsolete,false) AND expected_students>0
+    ), parts AS (
+      SELECT id,
+        sum(headcount) OVER(ORDER BY partition_code)-headcount+1 start_idx,
+        sum(headcount) OVER(ORDER BY partition_code) end_idx
+      FROM public.cohort_student_partitions
+      WHERE cohort_id=v_cohort AND active
+    )
+    INSERT INTO public.delivery_group_partition_members(
+      college_id,cohort_id,delivery_group_id,partition_id
+    )
+    SELECT v_college,v_cohort,g.delivery_group_id,p.id
+    FROM grp g
+    JOIN parts p ON p.start_idx>=g.start_idx AND p.end_idx<=g.end_idx;
+  END LOOP;
+
+  SELECT count(*) INTO v_partition_bad
+  FROM public.delivery_groups d
+  JOIN public.academic_cohorts c ON c.id=d.cohort_id
+  WHERE c.college_id=v_college AND c.term_id=v_term
+    AND c.study_system='regular' AND c.existing_schedule
+    AND d.active AND NOT coalesce(d.is_obsolete,false)
+    AND d.expected_students IS DISTINCT FROM (
+      SELECT sum(p.headcount)
+      FROM public.delivery_group_partition_members m
+      JOIN public.cohort_student_partitions p
+        ON p.id=m.partition_id AND p.active
+      WHERE m.delivery_group_id=d.id
+        AND m.cohort_id=d.cohort_id AND p.cohort_id=d.cohort_id
+    );
+  IF v_partition_bad>0 THEN
+    RAISE EXCEPTION 'SHARIA_PARTITION_COVERAGE_MISMATCH %',v_partition_bad;
   END IF;
 
   IF EXISTS (
