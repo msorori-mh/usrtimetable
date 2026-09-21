@@ -46,10 +46,11 @@ export type Role =
   | "college_admin"
   | "read_only"
   | "institutional_viewer"
-  | "university_leadership";
+  | "university_leadership"
+  | "college_dean";
 
 // prettier-ignore
-export const ALL: Role[] = ["super_admin", "college_admin", "read_only", "institutional_viewer", "university_leadership"];
+export const ALL: Role[] = ["super_admin", "college_admin", "read_only", "institutional_viewer", "university_leadership", "college_dean"];
 
 /** Alias kept for readability at call sites. */
 export const ALL_ROLES = ALL;
@@ -551,7 +552,7 @@ export const ADMIN_PAGES: AdminPage[] = [
     label: "لوحة الإدارة العليا",
     desc: "ملخص الجامعة ومقارنة الكليات.",
     icon: LayoutDashboard,
-    roles: ["super_admin", "university_leadership"],
+    roles: ["super_admin", "university_leadership", "college_dean"],
     tier: "basic",
     journey: "reports",
   },
