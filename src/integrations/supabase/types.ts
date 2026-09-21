@@ -5276,6 +5276,15 @@ export type Database = {
         Args: { p_report_kind: string; p_version_id: string }
         Returns: string
       }
+      leadership_metric_details: {
+        Args: {
+          p_academic_year?: string
+          p_college_id?: string
+          p_metric: string
+          p_term_type?: string
+        }
+        Returns: Json
+      }
       leadership_overview: {
         Args: { p_academic_year?: string; p_term_type?: string }
         Returns: Json
