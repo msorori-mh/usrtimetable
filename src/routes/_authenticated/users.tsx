@@ -20,6 +20,8 @@ import {
 import {
   LEADERSHIP_ROLE_LABEL_AR,
   LEADERSHIP_ROLE_HINT_AR,
+  COLLEGE_DEAN_ROLE_LABEL_AR,
+  COLLEGE_DEAN_ROLE_HINT_AR,
   INSTITUTIONAL_VIEWER_CREATE_NOTE_AR,
   INSTITUTIONAL_VIEWER_ROLE_HINT_AR,
   INSTITUTIONAL_VIEWER_ROLE_LABEL_AR,
@@ -28,6 +30,7 @@ import {
   READ_ONLY_ROLE_LABEL_AR,
   assignsAllColleges,
   requiresCollegeAssignment,
+  requiresExactlyOneCollege,
 } from "@/lib/viewer-roles";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -70,6 +73,7 @@ export const Route = createFileRoute("/_authenticated/users")({
 
 const ROLE_LABELS: Record<AppRole, string> = {
   university_leadership: LEADERSHIP_ROLE_LABEL_AR,
+  college_dean: COLLEGE_DEAN_ROLE_LABEL_AR,
   super_admin: "Super Admin",
   college_admin: "مدير كلّية",
   read_only: READ_ONLY_ROLE_LABEL_AR,
@@ -78,6 +82,7 @@ const ROLE_LABELS: Record<AppRole, string> = {
 
 const ROLE_TONE: Record<AppRole, string> = {
   university_leadership: "bg-primary/10 text-primary border-primary/30",
+  college_dean: "bg-emerald-500/10 text-emerald-800 border-emerald-500/30",
   super_admin: "bg-primary/10 text-primary border-primary/20",
   college_admin: "bg-accent/20 text-accent-foreground border-accent/30",
   read_only: "bg-muted text-muted-foreground border-border",
@@ -86,6 +91,7 @@ const ROLE_TONE: Record<AppRole, string> = {
 
 const ROLE_HINTS: Record<AppRole, string> = {
   university_leadership: LEADERSHIP_ROLE_HINT_AR,
+  college_dean: COLLEGE_DEAN_ROLE_HINT_AR,
   super_admin: "صلاحيات كاملة على جميع الكلّيات، وإدارة المستخدمين والأدوار.",
   college_admin: "كامل صلاحيات العمليات داخل الكلّيات المُسندة له، بما فيها الاستيراد من Excel.",
   read_only: READ_ONLY_ROLE_HINT_AR,
@@ -825,6 +831,10 @@ function CreateUserDialog({
       toast.error("يجب إسناد كلّية واحدة على الأقل لهذا الدور");
       return;
     }
+    if (requiresExactlyOneCollege(form.role) && collegeIds.length !== 1) {
+      toast.error("يجب إسناد كلية واحدة فقط لعميد الكلية");
+      return;
+    }
     setBusy(true);
     try {
       await onCreate({ ...form, college_ids: collegeIds });
@@ -865,11 +875,15 @@ function CreateUserDialog({
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          {(form.role === "read_only" || assignsAllColleges(form.role)) && (
+          {(form.role === "read_only" ||
+            form.role === "college_dean" ||
+            assignsAllColleges(form.role)) && (
             <p className="rounded-md bg-secondary p-3 text-sm">
               {form.role === "institutional_viewer"
                 ? INSTITUTIONAL_VIEWER_CREATE_NOTE_AR
-                : READ_ONLY_CREATE_NOTE_AR}
+                : form.role === "college_dean"
+                  ? COLLEGE_DEAN_ROLE_HINT_AR
+                  : READ_ONLY_CREATE_NOTE_AR}
             </p>
           )}
           {form.role === "university_leadership" && (
@@ -962,7 +976,9 @@ function CreateUserDialog({
               <p className="mb-1 text-[11px] text-muted-foreground">
                 {form.role === "college_admin"
                   ? "سيحصل على كامل صلاحيات العمليات داخل الكلّيات المحددة. الإسناد إلزامي."
-                  : "اختر الكلّيات المسموح بعرض تقاريرها فقط. الإسناد إلزامي."}
+                  : form.role === "college_dean"
+                    ? "اختر كلية واحدة فقط؛ ستُعرض لوحة القيادة وبيانات هذه الكلية دون غيرها."
+                    : "اختر الكلّيات المسموح بعرض تقاريرها فقط. الإسناد إلزامي."}
               </p>
               {colleges.length === 0 ? (
                 <p className="text-xs text-muted-foreground">أنشئ كلّية أولاً.</p>
@@ -978,7 +994,9 @@ function CreateUserDialog({
                             setForm((f) => ({
                               ...f,
                               college_ids: v
-                                ? [...f.college_ids, c.id]
+                                ? f.role === "college_dean"
+                                  ? [c.id]
+                                  : [...f.college_ids, c.id]
                                 : f.college_ids.filter((id) => id !== c.id),
                             }))
                           }
