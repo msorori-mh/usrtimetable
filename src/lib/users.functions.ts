@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { assignsAllColleges, requiresCollegeAssignment } from "@/lib/viewer-roles";
+import { assertLiveSecuritySession, enforceSecurityLimit } from "@/lib/security-guard.server";
 import { requiresInitialPassword } from "@/lib/password-policy";
 
 const ROLE = z.enum([
@@ -28,7 +29,9 @@ async function assertInstitutionAdmin(userId: string) {
 export const adminListUserMeta = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    await assertLiveSecuritySession(context.supabase, context.userId);
     await assertInstitutionAdmin(context.userId);
+    await enforceSecurityLimit(context.userId, "user_admin");
     const out: Array<{ id: string; last_sign_in_at: string | null; banned_until: string | null }> =
       [];
     let page = 1;
@@ -61,7 +64,9 @@ export const adminCreateUser = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data, context }) => {
+    await assertLiveSecuritySession(context.supabase, context.userId);
     await assertInstitutionAdmin(context.userId);
+    await enforceSecurityLimit(context.userId, "user_admin");
 
     // Only academic affairs receives all colleges. Report viewers retain the
     // explicit selection, including when the auth trigger grants read_only.
@@ -137,7 +142,9 @@ export const adminSetUserEnabled = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ user_id: z.string().uuid(), enabled: z.boolean() }))
   .handler(async ({ data, context }) => {
+    await assertLiveSecuritySession(context.supabase, context.userId);
     await assertInstitutionAdmin(context.userId);
+    await enforceSecurityLimit(context.userId, "user_admin");
     if (data.user_id === context.userId && !data.enabled) {
       throw new Error("You cannot disable your own account");
     }
@@ -159,7 +166,12 @@ export const adminGeneratePasswordReset = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ user_id: z.string().uuid(), email: z.string().email() }))
   .handler(async ({ data, context }) => {
+    await assertLiveSecuritySession(context.supabase, context.userId);
     await assertInstitutionAdmin(context.userId);
+    await enforceSecurityLimit(context.userId, "user_admin");
+    const account = await supabaseAdmin.auth.admin.getUserById(data.user_id);
+    if (account.error || account.data.user?.email?.toLowerCase() !== data.email.toLowerCase())
+      throw new Error("الحساب والبريد غير متطابقين.");
     const { data: link, error } = await supabaseAdmin.auth.admin.generateLink({
       type: "recovery",
       email: data.email,

@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/app-layout";
 import { ReportsOnlyGate } from "@/components/reports-only-gate";
+import { AccountSecurityPanel } from "@/components/account-security-panel";
+import { SecurityGate } from "@/components/security-gate";
 import { MandatoryPasswordChange } from "@/components/mandatory-password-change";
 
 /**
@@ -155,10 +157,13 @@ function AuthenticatedLayout() {
   }
 
   return (
-    <AppLayout>
-      <ReportsOnlyGate>
-        <Outlet />
-      </ReportsOnlyGate>
-    </AppLayout>
+    <SecurityGate>
+      <AccountSecurityPanel />
+      <AppLayout>
+        <ReportsOnlyGate>
+          <Outlet />
+        </ReportsOnlyGate>
+      </AppLayout>
+    </SecurityGate>
   );
 }
