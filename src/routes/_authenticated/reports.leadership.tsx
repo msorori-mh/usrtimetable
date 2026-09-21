@@ -452,16 +452,32 @@ function LeadershipDashboard() {
       sortable: false,
       secondary: true,
       render: (row) => (
-        <Button size="sm" variant="outline" asChild className="report-no-print">
-          <Link to="/reports" onClick={() => setActiveCollegeId(row.college_id)}>
-            فتح التقارير
-          </Link>
-        </Button>
+        <div className="report-no-print flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" onClick={() => openMetric("faculty_count", row)}>
+            محاضرو الكلية
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => openMetric("required_course_hours", row)}
+          >
+            سجلات التدريس
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => openMetric("sessions_count", row)}>
+            جداول الكلية
+          </Button>
+          <Button size="sm" variant="outline" asChild>
+            <Link to="/reports" onClick={() => setActiveCollegeId(row.college_id)}>
+              فتح التقارير
+            </Link>
+          </Button>
+        </div>
       ),
     },
   ];
 
   return (
+    <>
     <ReportShell
       title="المؤشرات التنفيذية للجامعة"
       description={`آخر تحديث: ${generatedAt} · النطاق: النسخ المنشورة فقط. أعداد الطلاب والسعة لا تدخل أي نسبة ما لم تكن مكتملة.`}
