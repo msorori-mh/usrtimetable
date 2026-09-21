@@ -6,6 +6,7 @@ import {
   resolveViewerScopeRedirect,
   assignsAllColleges,
   requiresCollegeAssignment,
+  requiresExactlyOneCollege,
 } from "../src/lib/viewer-roles";
 import {
   leadershipOverviewSchema,
@@ -31,6 +32,11 @@ test("leadership has its own landing page and cannot reach operational/user-mana
   assert.equal(resolveViewerScopeRedirect(me, "/reports/academic-affairs"), null);
   assert.equal(canViewLeadership({ isReadOnly: true }), false);
   assert.equal(canViewLeadership({ isCollegeAdmin: true }), false);
+  assert.equal(canViewLeadership({ isCollegeDean: true }), true);
+  assert.equal(
+    resolveViewerScopeRedirect({ isCollegeDean: true }, "/users"),
+    "/reports/leadership",
+  );
   assert.equal(resolveViewerScopeRedirect({ isSuperAdmin: true, ...me }, "/users"), null);
 });
 
@@ -60,6 +66,9 @@ test("leadership never creates college-admin memberships", () => {
   assert.equal(assignsAllColleges("university_leadership"), false);
   assert.equal(requiresCollegeAssignment("university_leadership"), false);
   assert.equal(requiresCollegeAssignment("read_only"), true);
+  assert.equal(requiresCollegeAssignment("college_dean"), true);
+  assert.equal(requiresExactlyOneCollege("college_dean"), true);
+  assert.equal(requiresExactlyOneCollege("read_only"), false);
 });
 test("unknown denominators remain unknown and partial data is explicit", () => {
   const row = {
