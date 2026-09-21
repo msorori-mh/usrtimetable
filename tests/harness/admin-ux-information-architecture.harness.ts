@@ -54,6 +54,7 @@ assert.deepEqual(
     "read_only",
     "institutional_viewer",
     "university_leadership",
+    "college_dean",
   ].sort(),
   "report navigation includes all five roles",
 );
