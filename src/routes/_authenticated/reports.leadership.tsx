@@ -542,36 +542,82 @@ function LeadershipDashboard() {
               }
             />
             <MetricCard
-              label="تغطية الإسناد"
-              value={universityCoverage === null ? "غير محسوب" : `${universityCoverage}%`}
+              label="تغطية الإسناد التدريسي"
+              definition="المسند من الساعات التدريسية المطلوبة ÷ إجمالي الساعات التدريسية المطلوبة. ساعات النصاب لا تدخل المقام."
+              onOpen={() => openMetric("covered_course_hours")}
+              value={
+                universityCoverage === null ? LEADERSHIP_UNCALCULATED : `${universityCoverage}%`
+              }
               icon={<CalendarCheck className="h-4 w-4" />}
               tone={Number(uncovered.value ?? 0) > 0 ? "critical" : "normal"}
               detail={
-                <>
-                  المسند: {hours(covered.value)} · ساعات التدريس غير المسندة:{" "}
-                  {hours(uncovered.value)}
+                <dl className="space-y-1">
+                  <div className="flex justify-between gap-2">
+                    <dt>{LEADERSHIP_METRICS.covered_course_hours.label}</dt>
+                    <dd>
+                      <MetricLink
+                        metric="covered_course_hours"
+                        value={hours(covered.value)}
+                        onOpen={openMetric}
+                      />
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <dt>{LEADERSHIP_METRICS.required_course_hours.label}</dt>
+                    <dd>
+                      <MetricLink
+                        metric="required_course_hours"
+                        value={hours(required.value)}
+                        onOpen={openMetric}
+                      />
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <dt>{LEADERSHIP_METRICS.uncovered_course_hours.label}</dt>
+                    <dd>
+                      <MetricLink
+                        metric="uncovered_course_hours"
+                        value={hours(uncovered.value)}
+                        onOpen={openMetric}
+                      />
+                    </dd>
+                  </div>
                   {!required.complete && (
-                    <div>البيانات غير مكتملة في {required.total - required.known} كلية.</div>
+                    <div className="pt-1">
+                      لا تُعرض نسبة: مصادر غير مكتملة في {required.total - required.known} كلية.
+                    </div>
                   )}
-                </>
+                </dl>
               }
             />
             <MetricCard
               label="حالة الجداول"
+              definition={LEADERSHIP_METRICS.published_colleges.definition}
+              onOpen={() => openMetric("published_colleges")}
               value={`${published.toLocaleString("ar")} من ${colleges.length.toLocaleString("ar")}`}
               icon={<Clock3 className="h-4 w-4" />}
               tone={published < colleges.length ? "warning" : "normal"}
               detail={
                 <dl className="space-y-1">
-                  <div className="flex justify-between">
-                    <dt>اكتمال الإسناد</dt>
-                    <dd>{universityCoverage === null ? "غير محسوب" : `${universityCoverage}%`}</dd>
+                  <div className="flex justify-between gap-2">
+                    <dt>تغطية الإسناد التدريسي</dt>
+                    <dd>
+                      {universityCoverage === null
+                        ? LEADERSHIP_UNCALCULATED
+                        : `${universityCoverage}%`}
+                    </dd>
                   </div>
-                  <div className="flex justify-between">
-                    <dt>اكتمال التسكين</dt>
-                    <dd>غير محسوب من الملخص</dd>
+                  <div className="flex justify-between gap-2">
+                    <dt>{LEADERSHIP_METRICS.sessions_count.label}</dt>
+                    <dd>
+                      <MetricLink
+                        metric="sessions_count"
+                        value={text(sessions.value)}
+                        onOpen={openMetric}
+                      />
+                    </dd>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between gap-2">
                     <dt>النشر</dt>
                     <dd>
                       {published} / {colleges.length} كلية
@@ -581,47 +627,63 @@ function LeadershipDashboard() {
               }
             />
             <MetricCard
-              label="النصاب الأسبوعي"
+              label={LEADERSHIP_METRICS.net_quota.label}
+              definition={LEADERSHIP_METRICS.net_quota.definition}
+              onOpen={() => openMetric("net_quota")}
               value={hours(netQuota.value)}
               icon={<Users className="h-4 w-4" />}
               detail={
                 <dl className="space-y-1">
-                  <div className="flex justify-between">
-                    <dt>الأساسي</dt>
-                    <dd>غير متاح في الملخص</dd>
+                  <div className="flex justify-between gap-2">
+                    <dt>الأساسي والإعفاء لكل محاضر</dt>
+                    <dd>
+                      <MetricLink metric="net_quota" value="في التفاصيل" onOpen={openMetric} />
+                    </dd>
                   </div>
-                  <div className="flex justify-between">
-                    <dt>الإعفاء</dt>
-                    <dd>غير متاح في الملخص</dd>
+                  <div className="flex justify-between gap-2">
+                    <dt>{LEADERSHIP_METRICS.faculty_assigned_hours.label}</dt>
+                    <dd>
+                      <MetricLink
+                        metric="faculty_assigned_hours"
+                        value={hours(assigned.value)}
+                        onOpen={openMetric}
+                      />
+                    </dd>
                   </div>
-                  <div className="flex justify-between">
-                    <dt>المطلوب بعد الإعفاء</dt>
-                    <dd>{hours(netQuota.value)}</dd>
+                  <div className="flex justify-between gap-2">
+                    <dt>{LEADERSHIP_METRICS.scheduled_hours.label}</dt>
+                    <dd>
+                      <MetricLink
+                        metric="scheduled_hours"
+                        value={hours(scheduled.value)}
+                        onOpen={openMetric}
+                      />
+                    </dd>
                   </div>
-                  <div className="flex justify-between">
-                    <dt>المسند للمحاضرين</dt>
-                    <dd>{hours(assigned.value)}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt>المجدول في النسخ المنشورة</dt>
-                    <dd>{hours(scheduled.value)}</dd>
+                  <div className="pt-1">
+                    «المسند ضمن الأنصبة» يقيس نصاب المحاضر، و«المسند للمقررات» يقيس ساعات المكوّن؛
+                    لا يُدمجان.
                   </div>
                 </dl>
               }
             />
             <MetricCard
-              label="الساعات الزائدة"
+              label={LEADERSHIP_METRICS.overload.label}
+              definition={LEADERSHIP_METRICS.overload.definition}
+              onOpen={() => openMetric("overload")}
               value={hours(overload.value)}
               icon={<AlertTriangle className="h-4 w-4" />}
               tone={Number(overload.value ?? 0) > 0 ? "warning" : "normal"}
-              detail="مجموع تجاوز المحاضرين لمطلوبهم بعد الإعفاء؛ لا يشمل ساعات التدريس غير المسندة."
+              detail="افتح الرقم لعرض المحاضرين المكوّنين له بمعادلة كل صف."
             />
             <MetricCard
-              label="ساعات نقص أنصبة المحاضرين"
+              label={LEADERSHIP_METRICS.deficit.label}
+              definition={LEADERSHIP_METRICS.deficit.definition}
+              onOpen={() => openMetric("deficit")}
               value={hours(deficit.value)}
               icon={<AlertTriangle className="h-4 w-4" />}
               tone={Number(deficit.value ?? 0) > 0 ? "warning" : "normal"}
-              detail="الفرق بين المطلوب بعد الإعفاء والمسند لكل محاضر؛ مقياس مستقل عن ساعات التدريس غير المسندة."
+              detail="مستقل عن ساعات التدريس غير المسندة؛ لا يتداخل معها."
             />
           </section>
           <Card className="px-4 py-3" data-testid="leadership-scope">
