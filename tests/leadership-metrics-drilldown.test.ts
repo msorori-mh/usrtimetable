@@ -177,7 +177,7 @@ test("صفحة الإدارة العليا تفتح كل مؤشر رئيسي إ�
   }
   assert.ok(page.includes("<LeadershipMetricDrilldown"), "نافذة التفاصيل غير مركبة");
   assert.ok(page.includes("assignmentCoveragePercent("), "التغطية لا تستخدم التعريف المركزي");
-  assert.ok(page.includes("openMetric(\"faculty_count\", row)"), "صف الكلية لا يفتح تفاصيله");
+  assert.ok(page.includes('openMetric("faculty_count", row)'), "صف الكلية لا يفتح تفاصيله");
   assert.ok(!page.includes("فرص التحسين"), "لا توصيات ذكية في هذه المرحلة");
 });
 
@@ -194,7 +194,9 @@ test("عقد بطاقات الملخص الثلاث تسبق عقدة مقارن
   assert.ok(publishing < comparison);
   assert.ok(page.includes('dir="rtl"'));
   assert.ok(page.includes('className="grid gap-4 xl:grid-cols-3"'));
-  assert.ok(!/className=[^\n>]*\border-(?:first|last|none|\d+)/.test(page.slice(summaryStart, comparison)));
+  assert.ok(
+    !/className=[^\n>]*\border-(?:first|last|none|\d+)/.test(page.slice(summaryStart, comparison)),
+  );
   assert.equal(page.match(/testId="leadership-instructors-section"/g)?.length, 1);
   assert.equal(page.match(/testId="leadership-rooms-section"/g)?.length, 1);
   assert.equal(page.match(/testId="leadership-publishing-section"/g)?.length, 1);
@@ -203,7 +205,10 @@ test("عقد بطاقات الملخص الثلاث تسبق عقدة مقارن
 test("نافذة التفاصيل قراءة فقط وتستدعي دالة القراءة المعتمدة", () => {
   assert.ok(sheet.includes("leadership_metric_details"));
   assert.ok(sheet.includes("reconcileMetric("));
-  assert.ok(sheet.includes(LEADERSHIP_NEEDS_REVIEW.slice(0, 4)) || sheet.includes("LEADERSHIP_NEEDS_REVIEW"));
+  assert.ok(
+    sheet.includes(LEADERSHIP_NEEDS_REVIEW.slice(0, 4)) ||
+      sheet.includes("LEADERSHIP_NEEDS_REVIEW"),
+  );
   assert.ok(sheet.includes("LEADERSHIP_UNCALCULATED"));
   assert.ok(sheet.includes("downloadCSV(") && sheet.includes("downloadXLSX("));
   assert.ok(sheet.includes("onOpenChange"), "يجب إمكان إغلاق النافذة");
