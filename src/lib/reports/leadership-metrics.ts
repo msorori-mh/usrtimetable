@@ -1,93 +1,220 @@
-/**
- * Single source of truth for the university leadership metrics.
- *
- * Every card, college row, drill-down table and export on /reports/leadership
- * must read its label, definition and formula from this module. Nothing here
- * writes data; the constituent records come from the read-only RPC
- * `leadership_metric_details`.
- *
- * Deliberate separations that must never be merged:
- *  - «الساعات التدريسية المسندة للمقررات» counts component/group hours that
- *    carry an approved assignment (teaching-side measure).
- *  - «الساعات المسندة ضمن أنصبة المحاضرين» counts the same assignments
- *    projected onto each instructor's weekly quota, excluding components that
- *    do not count toward the regular load (quota-side measure).
- *  - «نقص الأنصبة» never overlaps «ساعات التدريس غير المسندة»: the first is a
- *    per-instructor quota gap, the second is unassigned teaching demand.
- */
 import { z } from "zod";
 
-export type LeadershipMetricSource = "faculty" | "teaching" | "schedules";
+/**
+ * Single source of truth for the university leadership metrics: the label, the
+ * plain-Arabic definition, which read-only detail source proves it, and which
+ * detail column must add up to the card value.
+ *
+ * Nothing here writes data. `leadership_metric_details` is a read-only RPC
+ * guarded by the same role check as the leadership dashboard.
+ */
+export type LeadershipDetailSource = "faculty" | "teaching" | "schedules";
 
-export const LEADERSHIP_UNCALCULATED = "غير محسوب";
-export const LEADERSHIP_NEEDS_REVIEW = "يحتاج مراجعة";
+export type LeadershipMetricKey =
+  | "faculty_count"
+  | "available_faculty"
+  | "assignment_coverage"
+  | "uncovered_hours"
+  | "required_after_release"
+  | "faculty_assigned_hours"
+  | "scheduled_hours"
+  | "overload_hours"
+  | "quota_deficit_hours"
+  | "published_sessions"
+  | "published_versions";
 
-/* ------------------------------------------------------------------ formulas */
+export type LeadershipMetricDefinition = {
+  key: LeadershipMetricKey;
+  label: string;
+  definition: string;
+  source: LeadershipDetailSource;
+  /** Detail column whose sum must equal the displayed card value. */
+  detailColumn: string | null;
+  /** When true the card value is a record count, not a column sum. */
+  countsRecords?: boolean;
+  unit: "hours" | "people" | "records";
+};
 
-/** المطلوب بعد الإعفاء لكل محاضر = max(الأساسي − الإعفاء، 0). */
+const metric = (definition: LeadershipMetricDefinition) => definition;
+
+export const LEADERSHIP_METRICS: Record<LeadershipMetricKey, LeadershipMetricDefinition> = {
+  faculty_count: metric({
+    key: "faculty_count",
+    label: "أعضاء هيئة التدريس",
+    definition:
+      "عدد الهويات الجامعية الفريدة؛ المحاضر الذي يدرّس في أكثر من كلية يُحتسب مرة واحدة.",
+    source: "faculty",
+    detailColumn: null,
+    countsRecords: true,
+    unit: "people",
+  }),
+  available_faculty: metric({
+    key: "available_faculty",
+    label: "المحاضرون المتاحون",
+    definition: "الهويات التي حالتها «متاح» في بيانات المحاضرين الحالية.",
+    source: "faculty",
+    detailColumn: null,
+    countsRecords: true,
+    unit: "people",
+  }),
+  assignment_coverage: metric({
+    key: "assignment_coverage",
+    label: "تغطية إسناد الساعات التدريسية للمقررات",
+    definition:
+      "الساعات التدريسية المغطاة بإسناد ÷ الساعات التدريسية المطلوبة لمجموعات التدريس. لا تُعرض نسبة إذا كان المقام صفرًا أو كانت بيانات إحدى الكليات ناقصة.",
+    source: "teaching",
+    detailColumn: "covered_hours",
+    unit: "hours",
+  }),
+  uncovered_hours: metric({
+    key: "uncovered_hours",
+    label: "ساعات التدريس غير المسندة",
+    definition: "ساعات مجموعات التدريس التي لا يقابلها إسناد محاضر. مستقلة عن نقص أنصبة المحاضرين.",
+    source: "teaching",
+    detailColumn: "uncovered_hours",
+    unit: "hours",
+  }),
+  required_after_release: metric({
+    key: "required_after_release",
+    label: "المطلوب بعد الإعفاء",
+    definition: "النصاب الأساسي ناقص ساعات الإعفاء لكل محاضر، مجموعًا على الهويات الفريدة.",
+    source: "faculty",
+    detailColumn: "required_hours",
+    unit: "hours",
+  }),
+  faculty_assigned_hours: metric({
+    key: "faculty_assigned_hours",
+    label: "الساعات المسندة ضمن أنصبة المحاضرين",
+    definition:
+      "ساعات الإسناد المحسوبة داخل نصاب المحاضر. تختلف عن الساعات التدريسية المسندة للمقررات.",
+    source: "faculty",
+    detailColumn: "assigned_hours",
+    unit: "hours",
+  }),
+  scheduled_hours: metric({
+    key: "scheduled_hours",
+    label: "المجدول في النسخ المنشورة",
+    definition: "ساعات الجلسات في النسخ المنشورة فقط؛ لا تُحسب من الإسنادات ولا من المسودات.",
+    source: "schedules",
+    detailColumn: "teaching_hours",
+    unit: "hours",
+  }),
+  overload_hours: metric({
+    key: "overload_hours",
+    label: "الساعات الزائدة",
+    definition:
+      "مجموع ما يتجاوز به المحاضرون مطلوبهم بعد الإعفاء؛ لا يشمل ساعات التدريس غير المسندة.",
+    source: "faculty",
+    detailColumn: "overload_hours",
+    unit: "hours",
+  }),
+  quota_deficit_hours: metric({
+    key: "quota_deficit_hours",
+    label: "ساعات نقص أنصبة المحاضرين",
+    definition:
+      "الفرق بين المطلوب بعد الإعفاء والمسند لكل محاضر. مقياس مستقل تمامًا عن ساعات التدريس غير المسندة.",
+    source: "faculty",
+    detailColumn: "deficit_hours",
+    unit: "hours",
+  }),
+  published_sessions: metric({
+    key: "published_sessions",
+    label: "المحاضرات المنشورة",
+    definition: "عدد جلسات النسخ المنشورة؛ الجلسة المشتركة بين كليتين تُحتسب مرة واحدة.",
+    source: "schedules",
+    detailColumn: "sessions_count",
+    unit: "records",
+  }),
+  published_versions: metric({
+    key: "published_versions",
+    label: "حالة الجداول",
+    definition: "عدد الكليات التي لديها نسخة منشورة معتمدة لهذه الفترة.",
+    source: "schedules",
+    detailColumn: null,
+    countsRecords: true,
+    unit: "records",
+  }),
+};
+
+export const leadershipDetailSchema = z.object({
+  ok: z.boolean().optional().default(true),
+  metric: z.string(),
+  year: z.string().nullable().optional(),
+  term_type: z.string().nullable().optional(),
+  college_id: z.string().nullable().optional(),
+  generated_at: z.string().optional(),
+  rows: z.array(z.record(z.string(), z.unknown())).default([]),
+  totals: z.record(z.string(), z.unknown()).default({}),
+});
+export type LeadershipDetailPayload = z.infer<typeof leadershipDetailSchema>;
+export type LeadershipDetailRow = Record<string, unknown>;
+
+const round2 = (value: number) => Math.round(value * 100) / 100;
+const num = (value: unknown): number | null =>
+  typeof value === "number" && Number.isFinite(value) ? value : null;
+
+/** المطلوب بعد الإعفاء = النصاب الأساسي - ساعات الإعفاء (لا يقل عن صفر). */
 export function requiredAfterRelease(
   baseQuota: number | null | undefined,
   releaseHours: number | null | undefined,
 ): number | null {
   if (baseQuota === null || baseQuota === undefined) return null;
-  return Math.max(baseQuota - (releaseHours ?? 0), 0);
+  return round2(Math.max(0, baseQuota - (releaseHours ?? 0)));
 }
 
-/** نقص نصاب المحاضر = max(المطلوب بعد الإعفاء − المسند للمحاضر، 0). */
+/** نقص النصاب = المطلوب بعد الإعفاء - المسند ضمن النصاب. لا علاقة له بالساعات غير المسندة. */
 export function quotaDeficit(
   required: number | null | undefined,
   assigned: number | null | undefined,
 ): number | null {
   if (required === null || required === undefined) return null;
-  return Math.max(required - (assigned ?? 0), 0);
+  return round2(Math.max(0, required - (assigned ?? 0)));
 }
 
-/** الساعات الزائدة = max(المسند للمحاضر − المطلوب بعد الإعفاء، 0). */
+/** الساعات الزائدة = المسند ضمن النصاب - المطلوب بعد الإعفاء. */
 export function quotaOverload(
   required: number | null | undefined,
   assigned: number | null | undefined,
 ): number | null {
-  if (required === null || required === undefined) return null;
-  return Math.max((assigned ?? 0) - required, 0);
+  if (required === null || required === undefined || assigned === null || assigned === undefined)
+    return null;
+  return round2(Math.max(0, assigned - required));
 }
 
 /**
- * تغطية الإسناد = الساعات التدريسية المسندة / إجمالي الساعات التدريسية المطلوبة.
- * ساعات النصاب لا تدخل المقام، ولا تُعرض نسبة إذا كان المقام أو كليات المصدر
- * غير مكتملة.
+ * تغطية إسناد الساعات التدريسية للمقررات. تُعاد null عند نقص المصدر بدل عرض 0 أو 100%.
  */
 export function assignmentCoveragePercent(input: {
-  coveredCourseHours: number | null | undefined;
-  requiredCourseHours: number | null | undefined;
-  sourceComplete: boolean;
+  required: number | null | undefined;
+  covered: number | null | undefined;
+  incompleteColleges?: number;
 }): number | null {
-  const { coveredCourseHours, requiredCourseHours, sourceComplete } = input;
-  if (!sourceComplete) return null;
-  if (
-    coveredCourseHours === null ||
-    coveredCourseHours === undefined ||
-    requiredCourseHours === null ||
-    requiredCourseHours === undefined ||
-    requiredCourseHours <= 0
-  )
-    return null;
-  return Math.round((coveredCourseHours / requiredCourseHours) * 1000) / 10;
+  const required = num(input.required);
+  const covered = num(input.covered);
+  if (required === null || covered === null) return null;
+  if (required <= 0) return null;
+  if ((input.incompleteColleges ?? 0) > 0) return null;
+  return Math.round((covered / required) * 1000) / 10;
 }
 
-/** المحاضر يُحتسب مرة واحدة بهويته الجامعية عبر جميع الكليات. */
-export function uniqueFacultyCount(rows: Array<{ id?: unknown }>): number {
-  return new Set(rows.map((row) => String(row.id ?? ""))).size;
+/** عدد المحاضرين = الهويات الفريدة، حتى لو ظهر المحاضر في أكثر من كلية. */
+export function uniqueFacultyCount(rows: LeadershipDetailRow[], key = "identity_id"): number {
+  const seen = new Set<string>();
+  for (const row of rows) {
+    const id = row[key];
+    if (typeof id === "string" && id !== "") seen.add(id);
+  }
+  return seen.size;
 }
 
-/** الجلسة المشتركة تُحتسب مرة واحدة، والمجدول من النسخ المنشورة فقط. */
-export function dedupePublishedSessions<T extends { id?: unknown; published?: unknown }>(
-  rows: T[],
-): T[] {
+/** حصر الجلسات في النسخ المنشورة ومنع تكرار الجلسة المشتركة. */
+export function dedupePublishedSessions<T extends LeadershipDetailRow>(rows: T[]): T[] {
   const seen = new Set<string>();
   const out: T[] = [];
   for (const row of rows) {
-    if (row.published === false) continue;
-    const key = String(row.id ?? "");
+    if (row["published"] === false) continue;
+    const id = row["session_id"] ?? row["version"] ?? row["college"];
+    const key = typeof id === "string" || typeof id === "number" ? String(id) : JSON.stringify(row);
     if (seen.has(key)) continue;
     seen.add(key);
     out.push(row);
@@ -95,266 +222,86 @@ export function dedupePublishedSessions<T extends { id?: unknown; published?: un
   return out;
 }
 
-/* ------------------------------------------------- card / detail consistency */
-
-export type ReconcileStatus = "ok" | "needs_review" | "unknown";
+export type LeadershipReconciliation =
+  | { status: "ok"; card: number; detail: number }
+  | {
+      status: "needs_review";
+      card: number | null;
+      detail: number | null;
+      difference: number | null;
+    };
 
 /**
- * إجمالي التفاصيل يجب أن يساوي رقم البطاقة. عند الاختلاف نعرض «يحتاج مراجعة»
- * مع مقدار الفرق بدل رقم مضلل.
+ * تحقق اتساق: مجموع التفاصيل يجب أن يساوي رقم البطاقة، وإلا «يحتاج مراجعة».
  */
 export function reconcileMetric(
-  cardValue: number | null | undefined,
-  detailTotal: number | null | undefined,
+  card: number | null | undefined,
+  detail: number | null | undefined,
   tolerance = 0.01,
-): { status: ReconcileStatus; difference: number | null } {
-  if (
-    cardValue === null ||
-    cardValue === undefined ||
-    detailTotal === null ||
-    detailTotal === undefined
-  )
-    return { status: "unknown", difference: null };
-  const difference = Math.round((detailTotal - cardValue) * 100) / 100;
-  return { status: Math.abs(difference) <= tolerance ? "ok" : "needs_review", difference };
+): LeadershipReconciliation {
+  const cardValue = num(card);
+  const detailValue = num(detail);
+  if (cardValue === null || detailValue === null)
+    return {
+      status: "needs_review",
+      card: cardValue,
+      detail: detailValue,
+      difference: null,
+    };
+  const difference = round2(detailValue - cardValue);
+  if (Math.abs(difference) <= tolerance)
+    return { status: "ok", card: cardValue, detail: detailValue };
+  return { status: "needs_review", card: cardValue, detail: detailValue, difference };
 }
 
-/* ------------------------------------------------------------ metric registry */
-
-export interface LeadershipMetricDefinition {
-  id: string;
-  label: string;
-  /** تعريف قصير يظهر بجانب الرقم. */
-  definition: string;
-  source: LeadershipMetricSource;
-  /** مفتاح الإجمالي في مخرجات دالة التفاصيل. */
-  totalKey: string;
-  unit?: "ساعة" | "محاضرة" | "محاضر" | "كلية";
+export function sumDetailColumn(rows: LeadershipDetailRow[], column: string | null): number | null {
+  if (!column) return rows.length;
+  const values = rows
+    .map((row) => num(row[column]))
+    .filter((value): value is number => value !== null);
+  if (values.length === 0) return rows.length === 0 ? 0 : null;
+  return round2(values.reduce((total, value) => total + value, 0));
 }
 
-export const LEADERSHIP_METRICS = {
-  faculty_count: {
-    id: "faculty_count",
-    label: "أعضاء هيئة التدريس",
-    definition: "عدد الهويات الجامعية الفريدة، لا مجموع صفوف الكليات.",
-    source: "faculty",
-    totalKey: "unique_faculty",
-    unit: "محاضر",
-  },
-  net_quota: {
-    id: "net_quota",
-    label: "المطلوب بعد الإعفاء",
-    definition: "لكل محاضر: أقصى(النصاب الأساسي − الإعفاء الإداري، 0) ثم يُجمع.",
-    source: "faculty",
-    totalKey: "net_quota",
-    unit: "ساعة",
-  },
-  faculty_assigned_hours: {
-    id: "faculty_assigned_hours",
-    label: "الساعات المسندة ضمن أنصبة المحاضرين",
-    definition:
-      "الإسنادات المعتمدة محمولة على نصاب كل محاضر بهويته الجامعية عبر جميع الكليات دون تكرار، بعد استثناء ما لا يُحتسب في النصاب النظامي.",
-    source: "faculty",
-    totalKey: "assigned_hours",
-    unit: "ساعة",
-  },
-  deficit: {
-    id: "deficit",
-    label: "نقص أنصبة المحاضرين",
-    definition:
-      "مجموع أقصى(المطلوب بعد الإعفاء − المسند للمحاضر، 0)؛ مقياس مستقل تمامًا عن ساعات التدريس غير المسندة.",
-    source: "faculty",
-    totalKey: "deficit_hours",
-    unit: "ساعة",
-  },
-  overload: {
-    id: "overload",
-    label: "الساعات الزائدة",
-    definition: "مجموع أقصى(المسند للمحاضر − المطلوب بعد الإعفاء، 0).",
-    source: "faculty",
-    totalKey: "overload_hours",
-    unit: "ساعة",
-  },
-  required_course_hours: {
-    id: "required_course_hours",
-    label: "إجمالي الساعات التدريسية المطلوبة",
-    definition: "ساعات مكونات ومجموعات التدريس الفعّالة المطلوبة تدريسها في الفصل.",
-    source: "teaching",
-    totalKey: "required_hours",
-    unit: "ساعة",
-  },
-  covered_course_hours: {
-    id: "covered_course_hours",
-    label: "الساعات التدريسية المسندة للمقررات",
-    definition:
-      "ساعات المكونات التي يوجد لها إسناد معتمد؛ تُقاس على المقرر/المجموعة وليست ساعات نصاب.",
-    source: "teaching",
-    totalKey: "covered_hours",
-    unit: "ساعة",
-  },
-  uncovered_course_hours: {
-    id: "uncovered_course_hours",
-    label: "ساعات التدريس غير المسندة",
-    definition:
-      "ساعات مكونات التدريس المطلوبة التي لا يوجد لها إسناد معتمد؛ لا تتداخل مع نقص الأنصبة.",
-    source: "teaching",
-    totalKey: "uncovered_hours",
-    unit: "ساعة",
-  },
-  scheduled_hours: {
-    id: "scheduled_hours",
-    label: "الساعات المجدولة في النسخ المنشورة",
-    definition: "جلسات النسخ المنشورة فقط، والجلسة المشتركة تُحتسب مرة واحدة.",
-    source: "schedules",
-    totalKey: "teaching_hours",
-    unit: "ساعة",
-  },
-  sessions_count: {
-    id: "sessions_count",
-    label: "المحاضرات المنشورة",
-    definition: "عدد جلسات النسخ المنشورة فقط دون تكرار.",
-    source: "schedules",
-    totalKey: "sessions_count",
-    unit: "محاضرة",
-  },
-  published_colleges: {
-    id: "published_colleges",
-    label: "الكليات المنشورة",
-    definition: "الكليات التي لها نسخة منشورة معتمدة لهذا الفصل.",
-    source: "schedules",
-    totalKey: "published",
-    unit: "كلية",
-  },
-} as const satisfies Record<string, LeadershipMetricDefinition>;
-
-export type LeadershipMetricKey = keyof typeof LEADERSHIP_METRICS;
-
-/* ------------------------------------------------------------ detail payload */
-
-const detailValue = z.union([z.string(), z.number(), z.boolean(), z.null()]);
-
-export const leadershipDetailsSchema = z.object({
-  ok: z.literal(true),
-  metric: z.enum(["faculty", "teaching", "schedules"]),
-  year: z.string().nullable(),
-  term_type: z.string().nullable(),
-  college_id: z.string().uuid().nullable(),
-  generated_at: z.string(),
-  rows: z.array(z.record(z.string(), detailValue)),
-  totals: z.record(z.string(), z.union([z.number(), z.null()])),
-});
-
-export type LeadershipDetails = z.infer<typeof leadershipDetailsSchema>;
-export type LeadershipDetailRow = LeadershipDetails["rows"][number];
-
-export interface LeadershipDetailColumn {
-  key: string;
-  label: string;
-  numeric?: boolean;
+export function detailCollegeOptions(rows: LeadershipDetailRow[]): string[] {
+  return [
+    ...new Set(
+      rows
+        .map((row) => row["college"])
+        .filter((value): value is string => typeof value === "string" && value !== ""),
+    ),
+  ].sort((a, b) => a.localeCompare(b, "ar"));
 }
 
-const HOURS_SUM_KEYS: Record<LeadershipMetricSource, string> = {
-  faculty: "assigned_hours",
-  teaching: "required_hours",
-  schedules: "teaching_hours",
-};
-
-export function detailHoursKey(source: LeadershipMetricSource): string {
-  return HOURS_SUM_KEYS[source];
+export function detailDepartmentOptions(rows: LeadershipDetailRow[]): string[] {
+  return [
+    ...new Set(
+      rows
+        .map((row) => row["department"])
+        .filter((value): value is string => typeof value === "string" && value !== ""),
+    ),
+  ].sort((a, b) => a.localeCompare(b, "ar"));
 }
 
-export const LEADERSHIP_DETAIL_COLUMNS: Record<
-  LeadershipMetricSource,
-  LeadershipDetailColumn[]
-> = {
-  faculty: [
-    { key: "name", label: "المحاضر" },
-    { key: "university_number", label: "الرقم الجامعي" },
-    { key: "college", label: "الكلية الأصلية" },
-    { key: "status", label: "الحالة" },
-    { key: "rank", label: "الرتبة" },
-    { key: "base_quota", label: "الأساسي", numeric: true },
-    { key: "release_hours", label: "الإعفاء", numeric: true },
-    { key: "required_hours", label: "المطلوب بعد الإعفاء", numeric: true },
-    { key: "assigned_hours", label: "المسند عبر الكليات", numeric: true },
-    { key: "scheduled_hours", label: "المجدول في المنشور", numeric: true },
-    { key: "deficit_hours", label: "النقص", numeric: true },
-    { key: "overload_hours", label: "الزيادة", numeric: true },
-    { key: "teaching_colleges", label: "يدرّس في" },
-    { key: "incomplete_reason", label: "سبب عدم الاحتساب" },
-  ],
-  teaching: [
-    { key: "college", label: "الكلية" },
-    { key: "department", label: "القسم" },
-    { key: "program", label: "البرنامج" },
-    { key: "study_system", label: "النظام" },
-    { key: "cohort", label: "الدفعة" },
-    { key: "course_code", label: "رمز المقرر" },
-    { key: "course", label: "المقرر" },
-    { key: "component_type", label: "المكوّن" },
-    { key: "group_code", label: "المجموعة" },
-    { key: "required_hours", label: "الساعات المطلوبة", numeric: true },
-    { key: "covered_hours", label: "المسند للمقرر", numeric: true },
-    { key: "uncovered_hours", label: "غير المسند", numeric: true },
-    { key: "assignment_status", label: "حالة الإسناد" },
-    { key: "instructors", label: "المحاضرون" },
-  ],
-  schedules: [
-    { key: "college", label: "الكلية" },
-    { key: "term", label: "الفصل" },
-    { key: "version", label: "النسخة المنشورة" },
-    { key: "sessions_count", label: "المحاضرات", numeric: true },
-    { key: "teaching_hours", label: "الساعات", numeric: true },
-    { key: "theory_hours", label: "نظري", numeric: true },
-    { key: "practical_hours", label: "عملي", numeric: true },
-    { key: "unplaced_sessions", label: "غير مسكّنة", numeric: true },
-    { key: "used_rooms", label: "قاعات مستخدمة", numeric: true },
-  ],
-};
-
-export const LEADERSHIP_ASSIGNMENT_STATUS_LABELS: Record<string, string> = {
-  unassigned: "غير مسند",
-  under_allocated: "إسناد ناقص",
-  over_allocated: "إسناد زائد",
-  fully_allocated: "مسند بالكامل",
-};
-
-/** بحث نصي عربي بسيط داخل صفوف التفاصيل. */
 export function filterDetailRows(
   rows: LeadershipDetailRow[],
-  options: { search?: string; collegeId?: string | null },
+  filters: { search?: string; college?: string; department?: string },
 ): LeadershipDetailRow[] {
-  const needle = (options.search ?? "").trim().toLowerCase();
+  const search = (filters.search ?? "").trim().toLowerCase();
   return rows.filter((row) => {
-    if (options.collegeId && String(row.college_id ?? "") !== options.collegeId) return false;
-    if (!needle) return true;
-    return Object.values(row).some((value) =>
-      value === null || value === undefined
-        ? false
-        : String(value).toLowerCase().includes(needle),
+    if (filters.college && filters.college !== "all" && row["college"] !== filters.college)
+      return false;
+    if (
+      filters.department &&
+      filters.department !== "all" &&
+      row["department"] !== filters.department
+    )
+      return false;
+    if (!search) return true;
+    return Object.values(row).some(
+      (value) =>
+        (typeof value === "string" || typeof value === "number") &&
+        String(value).toLowerCase().includes(search),
     );
   });
-}
-
-export function sumDetailColumn(rows: LeadershipDetailRow[], key: string): number {
-  return (
-    Math.round(
-      rows.reduce((total, row) => total + (typeof row[key] === "number" ? Number(row[key]) : 0), 0) *
-        100,
-    ) / 100
-  );
-}
-
-export function detailCollegeOptions(
-  rows: LeadershipDetailRow[],
-): Array<{ id: string; name: string }> {
-  const map = new Map<string, string>();
-  for (const row of rows) {
-    const id = row.college_id ? String(row.college_id) : "";
-    if (!id) continue;
-    map.set(id, String(row.college ?? LEADERSHIP_UNCALCULATED));
-  }
-  return [...map.entries()]
-    .map(([id, name]) => ({ id, name }))
-    .sort((a, b) => a.name.localeCompare(b.name, "ar"));
 }
