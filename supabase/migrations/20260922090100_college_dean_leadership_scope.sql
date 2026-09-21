@@ -112,7 +112,8 @@ BEGIN
   WHERE NOT (
     upper(btrim(coalesce(cl.code,''))) LIKE 'TEST%'
     OR cl.name ILIKE '%اختبار تبسيط الجداول%'
-  );
+  )
+    AND (v_scope_college IS NULL OR cl.id=v_scope_college);
 
   FOR v_college IN SELECT * FROM jsonb_to_recordset(coalesce(v_colleges,'[]')) AS x(id uuid,term_id uuid) LOOP
     IF v_college.term_id IS NOT NULL THEN
