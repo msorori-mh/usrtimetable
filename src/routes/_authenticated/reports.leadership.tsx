@@ -344,8 +344,6 @@ function LeadershipDashboard() {
     covered: covered.value,
     incompleteColleges: required.total - required.known,
   });
-  const universityCoverage =
-    required.complete && covered.complete ? leadershipPercent(covered.value, required.value) : null;
   const periodLabel = data?.year
     ? `${data.year} · ${termTypeLabel(data.term_type ?? "")}`
     : "لم تُحدد فترة أكاديمية";
