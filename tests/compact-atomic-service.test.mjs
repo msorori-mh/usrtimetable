@@ -128,13 +128,15 @@ async function setup() {
             if (st.failRefresh && st.calls.length) throw new Error("offline refresh");
             if (st.duringRead && st.reads === 2) st.s.revision = "8";
             return {
-              data: [{
-                id: "v",
-                status: "draft",
-                eligibility_revision: Number(st.s.revision),
-                updated_at: st.s.versionUpdatedAt,
-                instructor_attendance_overrides: {},
-              }],
+              data: [
+                {
+                  id: "v",
+                  status: "draft",
+                  eligibility_revision: Number(st.s.revision),
+                  updated_at: st.s.versionUpdatedAt,
+                  instructor_attendance_overrides: {},
+                },
+              ],
               error: null,
             };
           }
