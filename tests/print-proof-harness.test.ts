@@ -62,7 +62,7 @@ describe("printed page box is a single source of truth", () => {
   });
 
   test("the print centre injects the shared helper instead of an inline duplicate", () => {
-    expect(PAGE).toContain("printPageStyleCss(paper, orientation)");
+    expect(PAGE).toContain("printPageStyleCss()");
     expect(PAGE).toContain("PRINT_PAGE_STYLE_ELEMENT_ID");
     expect(PAGE).not.toContain("@page { size: ${paper}");
   });
