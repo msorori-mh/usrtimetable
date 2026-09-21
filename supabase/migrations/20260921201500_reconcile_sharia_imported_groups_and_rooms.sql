@@ -61,7 +61,7 @@ BEGIN
 
   SELECT id INTO STRICT v_room_type
   FROM public.room_types
-  WHERE college_id=v_college AND code='lecture_hall' AND is_active;
+  WHERE college_id=v_college AND code='LECTURE' AND is_active;
 
   UPDATE public.room_types
      SET default_capacity=60
