@@ -106,36 +106,73 @@ function MetricCard({
   detail,
   icon,
   tone = "normal",
+  definition,
+  onOpen,
 }: {
   label: string;
   value: ReactNode;
   detail: ReactNode;
   icon: ReactNode;
   tone?: "normal" | "warning" | "critical";
+  definition?: string;
+  onOpen?: () => void;
 }) {
+  const valueClass =
+    tone === "critical"
+      ? "mt-1 text-xl font-bold text-destructive"
+      : tone === "warning"
+        ? "mt-1 text-xl font-bold text-[color:var(--usr-gold-dark)]"
+        : "mt-1 text-xl font-bold text-foreground";
   return (
     <Card className="min-w-0 p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-medium text-muted-foreground">{label}</p>
-          <div
-            className={
-              tone === "critical"
-                ? "mt-1 text-xl font-bold text-destructive"
-                : tone === "warning"
-                  ? "mt-1 text-xl font-bold text-[color:var(--usr-gold-dark)]"
-                  : "mt-1 text-xl font-bold text-foreground"
-            }
-          >
-            {value}
-          </div>
+          {onOpen ? (
+            <button
+              type="button"
+              onClick={onOpen}
+              className={`${valueClass} cursor-pointer text-start underline decoration-dotted underline-offset-4`}
+              aria-label={`فتح سجلات ${label}`}
+            >
+              {value}
+            </button>
+          ) : (
+            <div className={valueClass}>{value}</div>
+          )}
         </div>
         <span className="rounded border bg-muted p-2 text-muted-foreground" aria-hidden>
           {icon}
         </span>
       </div>
+      {definition && (
+        <p className="mt-2 text-[11px] leading-5 text-muted-foreground">{definition}</p>
+      )}
       <div className="mt-3 border-t pt-2 text-xs leading-6 text-muted-foreground">{detail}</div>
     </Card>
+  );
+}
+
+/** رقم فرعي قابل للفتح إلى سجلاته مع تعريفه المركزي. */
+function MetricLink({
+  metric,
+  value,
+  onOpen,
+}: {
+  metric: LeadershipMetricKey;
+  value: ReactNode;
+  onOpen: (metric: LeadershipMetricKey) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(metric)}
+      title={LEADERSHIP_METRICS[metric].definition}
+      className="cursor-pointer underline decoration-dotted underline-offset-4"
+      aria-label={`فتح سجلات ${LEADERSHIP_METRICS[metric].label}`}
+    >
+      {value}
+    </button>
   );
 }
 
