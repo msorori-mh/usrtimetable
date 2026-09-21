@@ -1,7 +1,4 @@
-import type {
-  PrintCenterFilters,
-  PrintReportType,
-} from "./types";
+import type { PrintCenterFilters, PrintReportType } from "./types";
 
 export interface PrintQrParams {
   versionId: string;
@@ -42,10 +39,7 @@ export function buildPrintQrUrl(originOrBase: string, params: PrintQrParams): st
   return qs ? `${base}${path}?${qs}` : `${base}${path}`;
 }
 
-export function filtersToQrParams(
-  versionId: string,
-  filters: PrintCenterFilters,
-): PrintQrParams {
+export function filtersToQrParams(versionId: string, filters: PrintCenterFilters): PrintQrParams {
   return {
     versionId,
     reportType: filters.reportType,
