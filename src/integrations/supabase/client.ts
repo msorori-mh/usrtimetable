@@ -5,7 +5,7 @@ import { brokeredPreviewStorage } from "./previewAuthStorage";
 
 // These two values identify the public Supabase API endpoint. The publishable key
 // is intentionally browser-visible and remains protected by RLS. Server secrets
-// such as SUPABASE_SERVICE_ROLE_KEY must never be added here.
+// must never be added here.
 const PUBLIC_SUPABASE_URL = "https://emzytxqkxjjhsivqxdiu.supabase.co";
 const PUBLIC_SUPABASE_PUBLISHABLE_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVtenl0eHFreGpqaHNpdnF4ZGl1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MDEyOTYsImV4cCI6MjA5NjE3NzI5Nn0.aQFwWUa61Jeuj3758n4WFKpbLWQiVryIQLIdhaH5P7A";
