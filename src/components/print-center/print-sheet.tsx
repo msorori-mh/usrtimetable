@@ -58,6 +58,20 @@ function compactRoomLabel(value: string): string {
   return value.replace(/^معمل\s+(?:ال)?حاسوب\s+/u, "حاسوب ");
 }
 
+
+/** Short student-facing label; never infer a group number from an import code. */
+function compactPrintGroupLabel(value: string): string {
+  const label = value.trim();
+  if (/^(?:all|الكل|جميع المجموعات)$/iu.test(label)) return "جميع المجموعات";
+  const gender = /(?:^|[\s—–-])(طالبات|طلاب)(?=$|[\s—–-])/u.exec(label)?.[1];
+  const numbered = /(?:مجموعة|المجموعة)\s*([0-9٠-٩۰-۹]+)(?=$|[\s—–-])/u.exec(label)
+    ?? /^G\s*([0-9٠-٩۰-۹]+)$/iu.exec(label);
+  if (numbered) return [gender, `مجموعة ${numbered[1]}`].filter(Boolean).join(" — ");
+  // Imported labels such as "قائم — BA20" keep their distinguishing code.
+  return label.replace(/^(?:(طلاب|طالبات)\s*[—–-]\s*)?قائم\s*[—–-]\s*/u,
+    (_match, audience) => audience ? `${audience} — ` : "");
+}
+
 function HeaderField(props: { label: string; value: string }) {
   return (
     <div className="print-header-field">
@@ -241,12 +255,14 @@ export function PrintSheet(props: {
           <TableBody>
             {page.sessions.map((s, index) => {
               const row = sessionToExportRow(s, labels, page.title);
-              const group = commonCohort
-                ? s.delivery_group_id
-                  ? (labels?.deliveryGroups.get(s.delivery_group_id) ?? s.delivery_group_id)
-                  : ""
-                : row.group;
-              const groupText = readable ? group.replace(/^G(\d+)$/i, "مجموعة $1") : group;
+              const deliveryGroup = s.delivery_group_id
+                ? (labels?.deliveryGroups.get(s.delivery_group_id) ?? s.delivery_group_id)
+                : "";
+              const cohort = !commonCohort && s.cohort_id
+                ? (labels?.cohorts.get(s.cohort_id) ?? s.cohort_id)
+                : "";
+              const groupText = [cohort, compactPrintGroupLabel(deliveryGroup)]
+                .filter(Boolean).join(" / ");
               return (
                 <TableRow
                   key={s.id}
