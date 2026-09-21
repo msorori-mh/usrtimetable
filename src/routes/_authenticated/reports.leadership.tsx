@@ -340,8 +340,33 @@ function LeadershipDashboard() {
   const sessions = aggregateLeadership(colleges, "sessions_count");
   const rooms = aggregateLeadership(colleges, "room_count");
   const usedRooms = aggregateLeadership(colleges, "used_rooms");
-  const universityCoverage =
-    required.complete && covered.complete ? leadershipPercent(covered.value, required.value) : null;
+  // التغطية تُقاس على الساعات التدريسية المطلوبة فقط، ولا تُعرض نسبة إذا كان
+  // المقام أو كليات المصدر غير مكتملة.
+  const universityCoverage = assignmentCoveragePercent({
+    coveredCourseHours: covered.value,
+    requiredCourseHours: required.value,
+    sourceComplete: required.complete && covered.complete,
+  });
+  const cardValues: Record<LeadershipMetricKey, number | null> = {
+    faculty_count: uniqueFaculty,
+    net_quota: netQuota.value,
+    faculty_assigned_hours: assigned.value,
+    deficit: deficit.value,
+    overload: overload.value,
+    required_course_hours: required.value,
+    covered_course_hours: covered.value,
+    uncovered_course_hours: uncovered.value,
+    scheduled_hours: scheduled.value,
+    sessions_count: sessions.value,
+    published_colleges: published,
+  };
+  const openMetric = (metric: LeadershipMetricKey, scope?: LeadershipCollege) =>
+    setDrilldown({
+      metric,
+      cardValue: scope ? null : cardValues[metric],
+      collegeId: scope?.college_id ?? null,
+      collegeName: scope?.college ?? null,
+    });
   const periodLabel = data?.year
     ? `${data.year} · ${termTypeLabel(data.term_type ?? "")}`
     : "لم تُحدد فترة أكاديمية";
