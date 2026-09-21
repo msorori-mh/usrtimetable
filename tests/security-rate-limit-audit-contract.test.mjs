@@ -101,3 +101,23 @@ test("server handlers consume limits before privileged auth mutations", () => {
     assert.match(source, /if \((?:error|limitError) \|\| (?:data|allowed) !== true\)/);
   }
 });
+
+test("super-admin security event visibility is read-only, bounded and fail-closed", () => {
+  const route = readFileSync("src/routes/_authenticated/users.tsx", "utf8");
+  assert.match(route, /const canViewSecurityEvents = me\?\.isSuperAdmin === true/);
+  assert.match(route, /enabled: canViewSecurityEvents/);
+  assert.match(route, /refetchInterval: 60_000/);
+  assert.match(
+    route,
+    /\.from\("security_events"\)[\s\S]*?\.select\("id, actor_id, event, severity, details, target_id, created_at"\)[\s\S]*?\.limit\(50\)/,
+  );
+  const query = route.slice(
+    route.indexOf('queryKey: ["security-events-recent"]'),
+    route.indexOf("const securityEvents24h"),
+  );
+  assert.doesNotMatch(query, /\.insert\(|\.update\(|\.delete\(|\.upsert\(/);
+  assert.match(route, /token\|secret\|password\|api\[_-\]\?key\|jwt\|authorization\|cookie\/i/);
+  assert.match(route, /SENSITIVE_DETAIL_KEY\.test\(key\) \? "•••"/);
+  assert.match(route, /لم يتم افتراض أن الحالة آمنة/);
+  assert.match(route, /data-testid="security-events-panel"/);
+});
