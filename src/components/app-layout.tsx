@@ -493,36 +493,23 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             data-testid="account-welcome"
             dir="rtl"
           >
-            {leadership ? (
-              <div className="space-y-1">
-                <p className="text-sm leading-relaxed text-muted-foreground">مرحبًا بك</p>
-                {user.fullName?.trim() && (
-                  <p
-                    className="whitespace-normal break-words text-2xl font-bold leading-relaxed text-primary sm:text-3xl"
-                    data-testid="leadership-user-name"
-                  >
-                    {user.fullName.trim()}
-                  </p>
-                )}
-              </div>
-            ) : (
-              <p className="whitespace-normal break-words text-sm leading-relaxed text-foreground sm:text-base">
-                {user.fullName?.trim() ? `مرحبًا، ${user.fullName.trim()}` : "مرحبًا بك"}
-              </p>
-            )}
-            {!user.isSuperAdmin && (leadership || activeCollege) && (
+            <p
+              className={cn(
+                "whitespace-normal break-words leading-relaxed",
+                leadership
+                  ? "text-lg font-bold text-primary sm:text-xl"
+                  : "text-sm text-foreground sm:text-base",
+              )}
+              data-testid={leadership ? "leadership-user-name" : "account-greeting"}
+            >
+              {user.fullName?.trim() ? `مرحبًا، ${user.fullName.trim()}` : "مرحبًا بك"}
+            </p>
+            {!user.isSuperAdmin && !leadership && activeCollege && (
               <p
-                className={cn(
-                  "mt-1 whitespace-normal break-words leading-relaxed",
-                  leadership
-                    ? "text-sm font-medium text-muted-foreground sm:text-base"
-                    : "text-lg font-bold text-primary sm:text-xl",
-                )}
-                data-testid={leadership ? "account-university-scope" : "account-college-name"}
+                className="mt-1 whitespace-normal break-words text-lg font-bold leading-relaxed text-primary sm:text-xl"
+                data-testid="account-college-name"
               >
-                {leadership
-                  ? `${USR_UNIVERSITY_NAME_AR} — ${LEADERSHIP_ROLE_LABEL_AR}`
-                  : activeCollege?.name}
+                {activeCollege.name}
               </p>
             )}
           </div>
