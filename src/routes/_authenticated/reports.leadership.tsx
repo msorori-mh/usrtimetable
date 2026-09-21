@@ -736,28 +736,6 @@ function LeadershipDashboard() {
       }
     >
       <div className="space-y-5">
-        <ReportSection
-          title="مقارنة الكليات"
-          count={rows.length}
-          hint="تكنولوجيا المعلومات وعلوم الحاسوب أولًا، ثم بقية الكليات. افتح التفاصيل لبقية المؤشرات وأسباب المتابعة."
-          bodyClassName="p-0"
-        >
-          <ReportDataTable
-            rows={rows}
-            caption="المؤشرات التنفيذية للكليات"
-            rowKey={(row) => row.college_id}
-            rowClassName={(row) =>
-              Number(row.uncovered_hours ?? 0) > 0
-                ? "bg-destructive/5"
-                : hasIssue(row)
-                  ? "bg-muted/40"
-                  : ""
-            }
-            primaryColumnLimit={5}
-            minWidthClassName="min-w-[1000px]"
-            columns={columns}
-          />
-        </ReportSection>
         <div className="grid gap-4 xl:grid-cols-3">
           <ReportSection
             title="المحاضرون والأنصبة"
@@ -877,6 +855,28 @@ function LeadershipDashboard() {
             </div>
           </ReportSection>
         </div>
+        <ReportSection
+          title="مقارنة الكليات"
+          count={rows.length}
+          hint="تكنولوجيا المعلومات وعلوم الحاسوب أولًا، ثم بقية الكليات. افتح التفاصيل لبقية المؤشرات وأسباب المتابعة."
+          bodyClassName="p-0"
+        >
+          <ReportDataTable
+            rows={rows}
+            caption="المؤشرات التنفيذية للكليات"
+            rowKey={(row) => row.college_id}
+            rowClassName={(row) =>
+              Number(row.uncovered_hours ?? 0) > 0
+                ? "bg-destructive/5"
+                : hasIssue(row)
+                  ? "bg-muted/40"
+                  : ""
+            }
+            primaryColumnLimit={5}
+            minWidthClassName="min-w-[1000px]"
+            columns={columns}
+          />
+        </ReportSection>
       </div>
     </ReportShell>
     <LeadershipMetricDrilldown
