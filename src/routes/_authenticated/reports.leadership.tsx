@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, Building2, CalendarCheck, Clock3, RefreshCw, Users } from "lucide-react";
+import { AlertTriangle, CalendarCheck, Clock3, RefreshCw, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { setActiveCollegeId } from "@/hooks/use-colleges";
