@@ -35,6 +35,7 @@ for (const t of roleTuples) {
         "read_only",
         "institutional_viewer",
         "university_leadership",
+        "college_dean",
       ].includes(role.replace(/"/g, "")),
       `unknown role in nav catalog: ${role}`,
     );
@@ -56,7 +57,7 @@ assert.deepEqual(
     "university_leadership",
     "college_dean",
   ].sort(),
-  "report navigation includes all five roles",
+  "report navigation includes all six roles",
 );
 for (const superOnly of ["/universities", "/colleges", "/users"]) {
   const block = navSrc.slice(navSrc.indexOf(`to: "${superOnly}"`));
