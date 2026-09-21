@@ -58,6 +58,9 @@ export const leadershipOverviewSchema = z.object({
   colleges: z.array(leadershipCollegeSchema),
 });
 export type LeadershipCollege = z.infer<typeof leadershipCollegeSchema>;
+export type LeadershipAmountKey = {
+  [K in keyof LeadershipCollege]: LeadershipCollege[K] extends number | null ? K : never;
+}[keyof LeadershipCollege];
 export const termTypeLabel = (value: string) =>
   (
     ({
@@ -75,6 +78,40 @@ export function sumLeadership(rows: LeadershipCollege[], key: keyof LeadershipCo
       ) * 100,
     ) / 100
   );
+}
+
+/**
+ * Aggregate with an explicit completeness signal. Unlike `sumLeadership`, this
+ * never turns an entirely unknown university measure into a plausible zero.
+ */
+export function aggregateLeadership(
+  rows: LeadershipCollege[],
+  key: LeadershipAmountKey,
+): { value: number | null; known: number; total: number; complete: boolean } {
+  const values = rows.map((row) => row[key]).filter((value): value is number => typeof value === "number");
+  return {
+    value:
+      values.length === 0
+        ? null
+        : Math.round(values.reduce((total, value) => total + value, 0) * 100) / 100,
+    known: values.length,
+    total: rows.length,
+    complete: rows.length > 0 && values.length === rows.length,
+  };
+}
+
+export function formatLeadershipAmount(value: number | null | undefined, unit = ""): string {
+  if (value === null || value === undefined) return "غير محسوب";
+  return `${value.toLocaleString("ar")} ${unit}`.trim();
+}
+
+export function leadershipPercent(
+  numerator: number | null | undefined,
+  denominator: number | null | undefined,
+): number | null {
+  if (numerator === null || numerator === undefined || denominator === null || denominator === undefined || denominator <= 0)
+    return null;
+  return Math.round((numerator / denominator) * 1000) / 10;
 }
 export function coveragePercent(row: LeadershipCollege): number | null {
   if (row.required_hours === null || row.covered_hours === null || row.required_hours <= 0)

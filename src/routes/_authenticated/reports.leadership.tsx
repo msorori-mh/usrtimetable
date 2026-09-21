@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { AlertTriangle, Building2, CalendarCheck, Clock3, RefreshCw, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { setActiveCollegeId } from "@/hooks/use-colleges";
@@ -11,38 +12,45 @@ import { ReportShell } from "@/components/reports/report-shell";
 import {
   ReportSection,
   ReportDataTable,
+  ReportDisclosure,
   type ReportColumn,
 } from "@/components/reports/report-section";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  leadershipOverviewSchema,
-  sumLeadership,
+  aggregateLeadership,
   coveragePercent,
+  formatLeadershipAmount,
   leadershipNotice,
+  leadershipOverviewSchema,
+  leadershipPercent,
+  orderedLeadershipCounts,
+  sortLeadershipColleges,
+  sumLeadershipCounts,
   termTypeLabel,
-  LEADERSHIP_WORKLOAD_HEADERS,
   LEADERSHIP_ASSIGNMENT_HEADERS,
-  LEADERSHIP_TEACHING_HEADERS,
-  LEADERSHIP_ROOM_HEADERS,
-  LEADERSHIP_RANK_ORDER,
   LEADERSHIP_AVAILABILITY_ORDER,
   LEADERSHIP_EMPLOYMENT_LABELS,
-  orderedLeadershipCounts,
-  sumLeadershipCounts,
-  sortLeadershipColleges,
+  LEADERSHIP_RANK_ORDER,
+  LEADERSHIP_ROOM_HEADERS,
+  LEADERSHIP_TEACHING_HEADERS,
+  LEADERSHIP_WORKLOAD_HEADERS,
   type LeadershipCollege,
 } from "@/lib/reports/leadership";
 
 export const Route = createFileRoute("/_authenticated/reports/leadership")({
-  head: () => ({ meta: [{ title: "المؤشرات التنفيذية للجامعة" }] }),
+  head: () => ({
+    meta: [
+      { title: "المؤشرات التنفيذية للجامعة | منصة إدارة الجداول الجامعية" },
+      { name: "description", content: "لوحة قراءة تنفيذية لمؤشرات الكليات والجداول المنشورة والأنصبة والقاعات." },
+      { property: "og:title", content: "المؤشرات التنفيذية للجامعة" },
+      { property: "og:description", content: "مؤشرات الكليات والجداول المنشورة والأنصبة والقاعات." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: Page,
 });
 
@@ -53,157 +61,88 @@ function Page() {
   return <LeadershipDashboard />;
 }
 
-type LeadershipRow = LeadershipCollege & {
-  coverage: string;
-  notice: string;
-};
+type LeadershipRow = LeadershipCollege & { coverage: string; notice: string; publication: string };
 
-const leadershipText = (value: unknown) =>
-  value === null || value === undefined || value === "" ? "—" : String(value);
+const text = (value: unknown) =>
+  value === null || value === undefined || value === "" ? "غير محسوب" : String(value);
+const hours = (value: number | null | undefined) => formatLeadershipAmount(value, "ساعة");
 
-function hasLeadershipIssue(row: LeadershipCollege) {
-  return (
-    row.term_state !== "ready" ||
-    !row.version_id ||
-    Number(row.incomplete_faculty ?? 0) > 0 ||
-    Number(row.uncovered_hours ?? 0) > 0 ||
-    Number(row.pending_groups ?? 0) > 0 ||
-    Number(row.overallocated_groups ?? 0) > 0
-  );
+function hasIssue(row: LeadershipCollege) {
+  return row.term_state !== "ready" || !row.version_id || Number(row.incomplete_faculty ?? 0) > 0 ||
+    Number(row.uncovered_hours ?? 0) > 0 || Number(row.pending_groups ?? 0) > 0 ||
+    Number(row.overallocated_groups ?? 0) > 0;
 }
 
-function CountSummaryCard({ title, entries }: { title: string; entries: Array<[string, number]> }) {
+function MetricCard({ label, value, detail, icon, tone = "normal" }: {
+  label: string; value: ReactNode; detail: ReactNode; icon: ReactNode; tone?: "normal" | "warning" | "critical";
+}) {
   return (
-    <Card className="p-3">
-      <div className="mb-2 text-sm font-bold text-primary">{title}</div>
-      <div className="grid gap-x-4 gap-y-1 sm:grid-cols-2">
-        {entries.length ? (
-          entries.map(([label, value]) => (
-            <div key={label} className="flex items-center justify-between gap-3 text-sm">
-              <span className="text-muted-foreground">{label}</span>
-              <b className="tabular-nums">{value}</b>
-            </div>
-          ))
-        ) : (
-          <div className="text-sm text-muted-foreground">—</div>
-        )}
+    <Card className="min-w-0 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-muted-foreground">{label}</p>
+          <div className={tone === "critical" ? "mt-1 text-xl font-bold text-destructive" : tone === "warning" ? "mt-1 text-xl font-bold text-[color:var(--usr-gold-dark)]" : "mt-1 text-xl font-bold text-foreground"}>{value}</div>
+        </div>
+        <span className="rounded border bg-muted p-2 text-muted-foreground" aria-hidden>{icon}</span>
       </div>
+      <div className="mt-3 border-t pt-2 text-xs leading-6 text-muted-foreground">{detail}</div>
     </Card>
   );
 }
 
-function CollegeExecutiveCell({ row }: { row: LeadershipRow }) {
-  return (
-    <div className="min-w-[210px] space-y-1 leading-5">
-      <div className="font-bold text-primary">{row.college}</div>
-      <div className="text-[11px] text-muted-foreground">
-        {leadershipText(row.departments)} قسم · {leadershipText(row.programs)} برنامج ·{" "}
-        {leadershipText(
-          Number(row.faculty_directory_count ?? 0) > 0
-            ? row.faculty_directory_count
-            : row.faculty_count,
-        )}{" "}
-        عضو يتبع الكلية
-      </div>
-      <div className="text-[11px] text-muted-foreground">
-        المساهمون في التدريس: {leadershipText(row.teaching_contributors)} · منهم من كليات أخرى:{" "}
-        {leadershipText(row.external_contributors)}
-      </div>
-    </div>
-  );
+function CountList({ entries }: { entries: Array<[string, number]> }) {
+  return <dl className="grid gap-x-5 gap-y-1 sm:grid-cols-2">
+    {entries.map(([label, value]) => <div key={label} className="flex justify-between gap-3 text-sm"><dt className="text-muted-foreground">{label}</dt><dd className="font-semibold tabular-nums">{value.toLocaleString("ar")}</dd></div>)}
+  </dl>;
 }
 
-function ReadinessCell({ row }: { row: LeadershipRow }) {
-  if (row.term_state !== "ready") {
-    return (
-      <div className="min-w-[145px] font-semibold text-[color:var(--usr-gold-dark)]">
-        {row.term_state === "ambiguous" ? "الفصل يحتاج اعتماد" : "الفصل غير محدد"}
-      </div>
-    );
-  }
-  const issues: string[] = [];
-  if (!row.version_id) issues.push("لا يوجد جدول منشور");
-  if (Number(row.incomplete_faculty ?? 0) > 0)
-    issues.push("نصاب غير مكتمل: " + leadershipText(row.incomplete_faculty));
-  if (Number(row.pending_groups ?? 0) > 0)
-    issues.push("تدريس مشترك: " + leadershipText(row.pending_groups));
-  if (Number(row.overallocated_groups ?? 0) > 0)
-    issues.push("تجاوز إسناد: " + leadershipText(row.overallocated_groups));
-  return (
-    <div className="min-w-[145px] space-y-0.5 leading-5">
-      <div className="font-semibold">{row.version_id ? "جاهز · منشور" : "جاهز · غير منشور"}</div>
-      {issues.slice(0, 2).map((issue) => (
-        <div key={issue} className="text-[10px] text-muted-foreground">
-          {issue}
-        </div>
-      ))}
-    </div>
-  );
+function StatusBadge({ row }: { row: LeadershipCollege }) {
+  if (row.term_state !== "ready") return <Badge variant="outline">الفترة غير مكتملة</Badge>;
+  return row.version_id ? <Badge variant="default">منشور</Badge> : <Badge variant="secondary">غير منشور</Badge>;
 }
 
-function AssignmentCoverageCell({ row }: { row: LeadershipRow }) {
-  const coverage = coveragePercent(row);
-  if (coverage === null)
-    return <div className="min-w-[125px] text-muted-foreground">غير محسوبة</div>;
-  return (
-    <div className="min-w-[125px] space-y-0.5 leading-5">
-      <div className="text-lg font-bold tabular-nums">{coverage}%</div>
-      <div className="text-[10px] text-muted-foreground">
-        {leadershipText(row.covered_hours)} / {leadershipText(row.required_hours)} ساعة
-      </div>
-      {Number(row.uncovered_hours ?? 0) > 0 && (
-        <div className="text-[10px] font-semibold text-destructive">
-          عجز {leadershipText(row.uncovered_hours)} ساعة
-        </div>
-      )}
-    </div>
-  );
+function CollegeCell({ row }: { row: LeadershipRow }) {
+  return <div className="min-w-[210px] space-y-1">
+    <div className="font-bold text-primary">{row.college}</div>
+    <div className="text-xs text-muted-foreground">{text(row.departments)} قسم · {text(row.programs)} برنامج</div>
+    <div className="text-xs text-muted-foreground">{text(row.teaching_contributors)} مساهمًا في التدريس · {text(row.external_contributors)} من خارج الكلية</div>
+  </div>;
 }
 
-function WorkloadCell({ row }: { row: LeadershipRow }) {
-  return (
-    <div className="min-w-[130px] space-y-0.5 leading-5">
-      <div>
-        <span className="text-[10px] text-muted-foreground">النصاب </span>
-        <b className="tabular-nums">{leadershipText(row.net_quota)} س</b>
-      </div>
-      <div>
-        <span className="text-[10px] text-muted-foreground">المسند </span>
-        <span className="tabular-nums">{leadershipText(row.faculty_assigned_hours)} س</span>
-      </div>
-    </div>
-  );
+function CoverageCell({ row }: { row: LeadershipRow }) {
+  const percent = coveragePercent(row);
+  return <div className="min-w-[135px] space-y-1">
+    <b className="text-lg tabular-nums">{percent === null ? "غير محسوب" : `${percent}%`}</b>
+    <div className="text-xs text-muted-foreground">المسند {hours(row.covered_hours)}</div>
+    <div className="text-xs text-muted-foreground">غير المسند {hours(row.uncovered_hours)}</div>
+  </div>;
+}
+
+function QuotaCell({ row }: { row: LeadershipRow }) {
+  return <dl className="min-w-[165px] space-y-1 text-xs">
+    <div className="flex justify-between gap-3"><dt className="text-muted-foreground">الأساسي</dt><dd>غير متاح في الملخص</dd></div>
+    <div className="flex justify-between gap-3"><dt className="text-muted-foreground">الإعفاء</dt><dd>غير متاح في الملخص</dd></div>
+    <div className="flex justify-between gap-3 font-semibold"><dt>المطلوب بعد الإعفاء</dt><dd>{hours(row.net_quota)}</dd></div>
+    <div className="flex justify-between gap-3"><dt className="text-muted-foreground">المسند للمحاضرين</dt><dd>{hours(row.faculty_assigned_hours)}</dd></div>
+  </dl>;
 }
 
 function BalanceCell({ row }: { row: LeadershipRow }) {
-  return (
-    <div className="min-w-[115px] space-y-0.5 leading-5">
-      <div>
-        <span className="text-[10px] text-muted-foreground">زائد </span>
-        <b className="tabular-nums">{leadershipText(row.overload)} س</b>
-      </div>
-      <div>
-        <span className="text-[10px] text-muted-foreground">نقص </span>
-        <b className="tabular-nums">{leadershipText(row.deficit)} س</b>
-      </div>
-    </div>
-  );
+  return <dl className="min-w-[145px] space-y-1 text-xs">
+    <div className="flex justify-between gap-3"><dt>الساعات الزائدة</dt><dd className="font-semibold tabular-nums">{hours(row.overload)}</dd></div>
+    <div className="flex justify-between gap-3"><dt>نقص الأنصبة</dt><dd className="font-semibold tabular-nums">{hours(row.deficit)}</dd></div>
+    <div className="flex justify-between gap-3 text-muted-foreground"><dt>بيانات نصاب ناقصة</dt><dd>{text(row.incomplete_faculty)}</dd></div>
+  </dl>;
 }
 
-function PublishedResourcesCell({ row }: { row: LeadershipRow }) {
-  const publishedLabel = row.version_id
-    ? leadershipText(row.teaching_hours) + " س · " + leadershipText(row.sessions_count) + " محاضرة"
-    : "لا يوجد جدول منشور";
-  return (
-    <div className="min-w-[155px] space-y-0.5 leading-5">
-      <div className="font-semibold">{publishedLabel}</div>
-      <div className="text-[10px] text-muted-foreground">
-        {leadershipText(row.halls)} قاعة · {leadershipText(row.labs)} معمل ·{" "}
-        {leadershipText(row.seats)} مقعد
-      </div>
-    </div>
-  );
+function RoomCell({ row }: { row: LeadershipRow }) {
+  return <div className="min-w-[150px] space-y-1 text-xs">
+    <div><b>{text(row.used_rooms)}</b> مستخدمة من <b>{text(row.room_count)}</b></div>
+    <div className="text-muted-foreground">{text(row.halls)} قاعة · {text(row.labs)} معمل</div>
+    <div className="text-muted-foreground">الاستغلال الزمني: غير محسوب</div>
+  </div>;
 }
+
 function LeadershipDashboard() {
   const { data: me } = useCurrentUser();
   const [period, setPeriod] = useState<{ year: string; type: string } | null>(null);
@@ -211,243 +150,85 @@ function LeadershipDashboard() {
     queryKey: ["university-leadership", me?.id, period],
     staleTime: 60_000,
     queryFn: async () => {
-      const client = supabase as unknown as {
-        rpc: (
-          fn: string,
-          args: Record<string, unknown>,
-        ) => Promise<{ data: unknown; error: { message: string } | null }>;
-      };
-      const { data, error } = await client.rpc("leadership_overview", {
-        p_academic_year: period?.year ?? null,
-        p_term_type: period?.type ?? null,
-      });
+      const client = supabase as unknown as { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }> };
+      const { data, error } = await client.rpc("leadership_overview", { p_academic_year: period?.year ?? null, p_term_type: period?.type ?? null });
       if (error) throw new Error("تعذر تحميل ملخص الجامعة. أعد المحاولة.");
       return leadershipOverviewSchema.parse(data);
     },
   });
   const data = query.data;
-  const colleges = sortLeadershipColleges(
-    (!query.error && !query.isFetching ? (data?.colleges ?? []) : []).filter(
-      (college) => !college.college.includes("اختبار تبسيط الجداول"),
-    ),
-  );
-  const ready = colleges.filter((c) => c.term_state === "ready").length;
-  const published = colleges.filter((c) => !!c.version_id).length;
-  const rows: LeadershipRow[] = colleges.map((c) => ({
-    ...c,
-    coverage: coveragePercent(c) === null ? "غير محسوبة" : String(coveragePercent(c)) + "%",
-    notice: leadershipNotice(c),
-  }));
-  const directoryFaculty = sumLeadership(colleges, "faculty_directory_count");
-  const totalFaculty =
-    directoryFaculty > 0 ? directoryFaculty : sumLeadership(colleges, "faculty_count");
-  const rankCounts = orderedLeadershipCounts(
-    sumLeadershipCounts(colleges, "rank_counts"),
-    LEADERSHIP_RANK_ORDER,
-  );
-  const availabilityCounts = orderedLeadershipCounts(
-    sumLeadershipCounts(colleges, "availability_counts"),
-    LEADERSHIP_AVAILABILITY_ORDER,
-  );
-  const employmentCounts = orderedLeadershipCounts(
-    sumLeadershipCounts(colleges, "employment_counts"),
-    ["full_time", "part_time", "contract", "visiting", "unknown"],
-  ).map(([key, value]) => [LEADERSHIP_EMPLOYMENT_LABELS[key] ?? key, value] as [string, number]);
-  const totalRequired = sumLeadership(colleges, "required_hours");
-  const totalCovered = sumLeadership(colleges, "covered_hours");
-  const universityCoverage =
-    totalRequired > 0 ? Math.round((1000 * totalCovered) / totalRequired) / 10 : null;
-  const attentionCount = colleges.filter(hasLeadershipIssue).length;
-  const exportHeaders = [
-    ...new Map(
-      [
-        ...LEADERSHIP_WORKLOAD_HEADERS,
-        ...LEADERSHIP_ASSIGNMENT_HEADERS,
-        ...LEADERSHIP_TEACHING_HEADERS,
-        ...LEADERSHIP_ROOM_HEADERS,
-        {
-          key: "faculty_directory_count",
-          label: "أعضاء الكلية حسب التبعية الأصلية",
-        },
-        { key: "teaching_contributors", label: "إجمالي المساهمين في التدريس" },
-        { key: "external_contributors", label: "منهم من كليات أخرى" },
-        { key: "term", label: "الفصل" },
-        { key: "version", label: "مصدر الجدول المنشور" },
-        { key: "version_updated_at", label: "آخر تعديل للنسخة" },
-        { key: "notice", label: "ملاحظات اكتمال البيانات" },
-      ].map((h) => [h.key, h]),
-    ).values(),
-  ];
-  const periodLabel = data?.year
-    ? `${data.year} · ${termTypeLabel(data.term_type ?? "")}`
-    : "لم تُحدد فترة أكاديمية";
+  const colleges = sortLeadershipColleges((!query.error && !query.isFetching ? data?.colleges ?? [] : []).filter((college) => !college.college.includes("اختبار تبسيط الجداول")));
+  const rows: LeadershipRow[] = colleges.map((college) => ({ ...college, coverage: coveragePercent(college) === null ? "غير محسوب" : `${coveragePercent(college)}%`, publication: college.version_id ? "منشور" : "غير منشور", notice: leadershipNotice(college) }));
+  const ready = colleges.filter((college) => college.term_state === "ready").length;
+  const published = colleges.filter((college) => !!college.version_id).length;
+  const attention = colleges.filter(hasIssue).length;
+  const counts = sumLeadershipCounts(colleges, "availability_counts");
+  const availableFaculty = counts["متاح"] ?? 0;
+  const uniqueFaculty = data?.unique_faculty ?? null;
+  const availablePercent = leadershipPercent(availableFaculty, uniqueFaculty);
+  const rankCounts = orderedLeadershipCounts(sumLeadershipCounts(colleges, "rank_counts"), LEADERSHIP_RANK_ORDER);
+  const availabilityCounts = orderedLeadershipCounts(counts, LEADERSHIP_AVAILABILITY_ORDER);
+  const employmentCounts = orderedLeadershipCounts(sumLeadershipCounts(colleges, "employment_counts"), ["full_time", "part_time", "contract", "visiting", "unknown"]).map(([key, value]) => [LEADERSHIP_EMPLOYMENT_LABELS[key] ?? key, value] as [string, number]);
+  const required = aggregateLeadership(colleges, "required_hours");
+  const covered = aggregateLeadership(colleges, "covered_hours");
+  const uncovered = aggregateLeadership(colleges, "uncovered_hours");
+  const netQuota = aggregateLeadership(colleges, "net_quota");
+  const assigned = aggregateLeadership(colleges, "faculty_assigned_hours");
+  const scheduled = aggregateLeadership(colleges, "teaching_hours");
+  const overload = aggregateLeadership(colleges, "overload");
+  const deficit = aggregateLeadership(colleges, "deficit");
+  const sessions = aggregateLeadership(colleges, "sessions_count");
+  const rooms = aggregateLeadership(colleges, "room_count");
+  const usedRooms = aggregateLeadership(colleges, "used_rooms");
+  const universityCoverage = required.complete && covered.complete ? leadershipPercent(covered.value, required.value) : null;
+  const periodLabel = data?.year ? `${data.year} · ${termTypeLabel(data.term_type ?? "")}` : "لم تُحدد فترة أكاديمية";
+  const generatedAt = data?.generated_at ? new Date(data.generated_at).toLocaleString("ar") : "غير متاح";
   const selectedValue = data?.year ? JSON.stringify({ year: data.year, type: data.term_type }) : "";
-  const executiveColumns: ReportColumn<LeadershipRow>[] = [
-    {
-      key: "college",
-      label: "الكلية",
-      className: "w-[25%]",
-      render: (row) => <CollegeExecutiveCell row={row} />,
-    },
-    {
-      key: "term_state",
-      label: "الجاهزية",
-      className: "w-[16%]",
-      render: (row) => <ReadinessCell row={row} />,
-    },
-    {
-      key: "coverage",
-      label: "تغطية الإسناد",
-      className: "w-[14%]",
-      render: (row) => <AssignmentCoverageCell row={row} />,
-    },
-    {
-      key: "net_quota",
-      label: "النصاب",
-      className: "w-[13%]",
-      render: (row) => <WorkloadCell row={row} />,
-    },
-    {
-      key: "overload",
-      label: "الزيادة / النقص",
-      className: "w-[12%]",
-      render: (row) => <BalanceCell row={row} />,
-    },
-    {
-      key: "version",
-      label: "الجدول والموارد",
-      className: "w-[17%]",
-      render: (row) => <PublishedResourcesCell row={row} />,
-    },
-    {
-      key: "college_id",
-      label: "التفاصيل",
-      sortable: false,
-      className: "w-[8%]",
-      render: (row) => (
-        <Button size="sm" variant="outline" asChild className="report-no-print">
-          <Link to="/reports" onClick={() => setActiveCollegeId(row.college_id)}>
-            عرض
-          </Link>
-        </Button>
-      ),
-    },
+  const exportHeaders = [...new Map([...LEADERSHIP_WORKLOAD_HEADERS, ...LEADERSHIP_ASSIGNMENT_HEADERS, ...LEADERSHIP_TEACHING_HEADERS, ...LEADERSHIP_ROOM_HEADERS, { key: "publication", label: "حالة النشر" }, { key: "version", label: "النسخة المنشورة" }, { key: "notice", label: "أسباب المتابعة" }].map((header) => [header.key, header])).values()];
+  const columns: ReportColumn<LeadershipRow>[] = [
+    { key: "college", label: "الكلية", className: "w-[22%]", render: (row) => <CollegeCell row={row} /> },
+    { key: "publication", label: "النشر", render: (row) => <StatusBadge row={row} /> },
+    { key: "coverage", label: "اكتمال الإسناد", render: (row) => <CoverageCell row={row} /> },
+    { key: "net_quota", label: "النصاب والمسند", render: (row) => <QuotaCell row={row} /> },
+    { key: "deficit", label: "الزيادة / نقص الأنصبة", render: (row) => <BalanceCell row={row} /> },
+    { key: "teaching_hours", label: "المجدول في المنشور", secondary: true, render: (row) => <div>{hours(row.teaching_hours)}<div className="text-xs text-muted-foreground">{text(row.sessions_count)} محاضرة</div></div> },
+    { key: "theory_hours", label: "نظري / عملي", secondary: true, render: (row) => <div>{hours(row.theory_hours)} نظري<div className="text-xs text-muted-foreground">{hours(row.practical_hours)} عملي</div></div> },
+    { key: "room_count", label: "القاعات والمعامل", secondary: true, render: (row) => <RoomCell row={row} /> },
+    { key: "faculty_count", label: "المحاضرون", numeric: true, secondary: true },
+    { key: "notice", label: "أسباب المتابعة", secondary: true },
+    { key: "college_id", label: "تقارير الكلية", sortable: false, secondary: true, render: (row) => <Button size="sm" variant="outline" asChild className="report-no-print"><Link to="/reports" onClick={() => setActiveCollegeId(row.college_id)}>فتح التقارير</Link></Button> },
   ];
-  return (
-    <ReportShell
-      title="المؤشرات التنفيذية للجامعة"
-      filename={`university_leadership_${data?.year ?? ""}_${data?.term_type ?? ""}`}
-      rows={rows}
-      headers={exportHeaders}
-      isLoading={query.isFetching}
-      error={query.error}
-      onRetry={() => void query.refetch()}
-      printOrientation="landscape"
-      filterSummary={periodLabel}
-      headerMeta={{
-        collegeName: "جميع كليات الجامعة",
-        termName: periodLabel,
-      }}
-      filters={
-        <div className="report-no-print flex flex-wrap items-end gap-3">
-          <ReportFilterField label="الفترة الأكاديمية" htmlFor="leadership-period">
-            <Select
-              value={selectedValue}
-              onValueChange={(value) => setPeriod(JSON.parse(value))}
-              disabled={query.isFetching}
-            >
-              <SelectTrigger id="leadership-period" aria-label="الفترة الأكاديمية">
-                <SelectValue placeholder="اختر الفترة" />
-              </SelectTrigger>
-              <SelectContent>
-                {data?.periods.map((p) => (
-                  <SelectItem key={`${p.year}:${p.type}`} value={JSON.stringify(p)}>
-                    {p.year} · {termTypeLabel(p.type)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </ReportFilterField>
-          <Button
-            variant="outline"
-            onClick={() => void query.refetch()}
-            disabled={query.isFetching}
-          >
-            تحديث
-          </Button>
-        </div>
-      }
-      kpis={[
-        { label: "محاضرو الجامعة دون تكرار", value: data?.unique_faculty ?? totalFaculty },
-        { label: "تبعية تحتاج مراجعة", value: data?.unresolved_faculty ?? 0 },
-        {
-          label: "تغطية الإسناد",
-          value: universityCoverage === null ? "—" : String(universityCoverage) + "%",
-          tone: "accent",
-        },
-        {
-          label: "الساعات الزائدة",
-          value: sumLeadership(colleges, "overload"),
-          tone: sumLeadership(colleges, "overload") > 0 ? "warning" : "neutral",
-        },
-        {
-          label: "نقص النصاب",
-          value: sumLeadership(colleges, "deficit"),
-          tone: sumLeadership(colleges, "deficit") > 0 ? "warning" : "neutral",
-        },
-        {
-          label: "الجداول المنشورة",
-          value: String(published) + "/" + String(colleges.length),
-          tone: published === colleges.length ? "success" : "warning",
-        },
-      ]}
-      summary={
-        <div className="space-y-3">
-          <Card className="border-primary/20 bg-primary/5 px-4 py-3" data-testid="leadership-scope">
-            <div className="grid gap-2 text-center sm:grid-cols-3">
-              <div>
-                <div className="text-[11px] text-muted-foreground">الكليات</div>
-                <div className="font-semibold tabular-nums">{colleges.length}</div>
-              </div>
-              <div>
-                <div className="text-[11px] text-muted-foreground">بيانات أكاديمية جاهزة</div>
-                <div className="font-semibold tabular-nums">
-                  {ready}/{colleges.length}
-                </div>
-              </div>
-              <div>
-                <div className="text-[11px] text-muted-foreground">تحتاج متابعة</div>
-                <div className="font-semibold tabular-nums">{attentionCount}</div>
-              </div>
-            </div>
-          </Card>
-          <div className="grid gap-3 lg:grid-cols-3">
-            <CountSummaryCard title="الرتب العلمية" entries={rankCounts} />
-            <CountSummaryCard title="الحالة والتوافر" entries={availabilityCounts} />
-            <CountSummaryCard title="التفرغ / التعاقد" entries={employmentCounts} />
-          </div>
-        </div>
-      }
-    >
-      <div className="space-y-5">
-        <ReportSection title="مقارنة الكليات" count={rows.length} bodyClassName="p-0">
-          <ReportDataTable
-            rows={rows}
-            caption="المؤشرات التنفيذية للكليات"
-            rowKey={(row) => row.college_id}
-            rowClassName={(row) =>
-              Number(row.uncovered_hours ?? 0) > 0
-                ? "bg-destructive/5"
-                : hasLeadershipIssue(row)
-                  ? "bg-amber-500/5"
-                  : ""
-            }
-            primaryColumnLimit={8}
-            minWidthClassName="min-w-[980px]"
-            columns={executiveColumns}
-          />
-        </ReportSection>
+
+  return <ReportShell
+    title="المؤشرات التنفيذية للجامعة"
+    description={`آخر تحديث: ${generatedAt} · النطاق: النسخ المنشورة فقط. أعداد الطلاب والسعة لا تدخل أي نسبة ما لم تكن مكتملة.`}
+    filename={`university_leadership_${data?.year ?? ""}_${data?.term_type ?? ""}`}
+    rows={rows} headers={exportHeaders} isLoading={query.isFetching} error={query.error}
+    onRetry={() => void query.refetch()} printOrientation="landscape" filterSummary={periodLabel}
+    headerMeta={{ collegeName: "جميع كليات الجامعة", termName: periodLabel, note: "قراءة فقط · النسخ المنشورة فقط · القيم غير المكتملة مميزة صراحة" }}
+    filters={<div className="report-no-print flex flex-wrap items-end justify-between gap-3 border-b pb-3">
+      <ReportFilterField label="الفترة الأكاديمية" htmlFor="leadership-period"><Select value={selectedValue} onValueChange={(value) => setPeriod(JSON.parse(value))} disabled={query.isFetching}><SelectTrigger id="leadership-period" aria-label="الفترة الأكاديمية"><SelectValue placeholder="اختر الفترة" /></SelectTrigger><SelectContent>{data?.periods.map((item) => <SelectItem key={`${item.year}:${item.type}`} value={JSON.stringify(item)}>{item.year} · {termTypeLabel(item.type)}</SelectItem>)}</SelectContent></Select></ReportFilterField>
+      <Button variant="outline" onClick={() => void query.refetch()} disabled={query.isFetching}><RefreshCw className="ml-1 h-4 w-4" />تحديث</Button>
+    </div>}
+    summary={<div className="space-y-4">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-label="حالة الجامعة">
+        <MetricCard label="أعضاء هيئة التدريس" value={uniqueFaculty === null ? "غير محسوب" : uniqueFaculty.toLocaleString("ar")} icon={<Users className="h-4 w-4" />} detail={<><span>المتاح: {availableFaculty.toLocaleString("ar")}{availablePercent === null ? "" : ` (${availablePercent}%)`}</span><ReportDisclosure label="الحالة والرتب"><div className="grid gap-4 pt-2 md:grid-cols-2"><div><h3 className="mb-2 font-semibold text-foreground">الحالة</h3><CountList entries={availabilityCounts} /></div><div><h3 className="mb-2 font-semibold text-foreground">الرتب</h3><CountList entries={rankCounts} /></div></div></ReportDisclosure></>} />
+        <MetricCard label="تغطية الإسناد" value={universityCoverage === null ? "غير محسوب" : `${universityCoverage}%`} icon={<CalendarCheck className="h-4 w-4" />} tone={Number(uncovered.value ?? 0) > 0 ? "critical" : "normal"} detail={<>المسند: {hours(covered.value)} · ساعات التدريس غير المسندة: {hours(uncovered.value)}{!required.complete && <div>البيانات غير مكتملة في {required.total - required.known} كلية.</div>}</>} />
+        <MetricCard label="حالة الجداول" value={`${published.toLocaleString("ar")} من ${colleges.length.toLocaleString("ar")}`} icon={<Clock3 className="h-4 w-4" />} tone={published < colleges.length ? "warning" : "normal"} detail={<dl className="space-y-1"><div className="flex justify-between"><dt>اكتمال الإسناد</dt><dd>{universityCoverage === null ? "غير محسوب" : `${universityCoverage}%`}</dd></div><div className="flex justify-between"><dt>اكتمال التسكين</dt><dd>غير محسوب من الملخص</dd></div><div className="flex justify-between"><dt>النشر</dt><dd>{published} / {colleges.length} كلية</dd></div></dl>} />
+        <MetricCard label="النصاب الأسبوعي" value={hours(netQuota.value)} icon={<Users className="h-4 w-4" />} detail={<dl className="space-y-1"><div className="flex justify-between"><dt>الأساسي</dt><dd>غير متاح في الملخص</dd></div><div className="flex justify-between"><dt>الإعفاء</dt><dd>غير متاح في الملخص</dd></div><div className="flex justify-between"><dt>المطلوب بعد الإعفاء</dt><dd>{hours(netQuota.value)}</dd></div><div className="flex justify-between"><dt>المسند للمحاضرين</dt><dd>{hours(assigned.value)}</dd></div><div className="flex justify-between"><dt>المجدول في النسخ المنشورة</dt><dd>{hours(scheduled.value)}</dd></div></dl>} />
+        <MetricCard label="الساعات الزائدة" value={hours(overload.value)} icon={<AlertTriangle className="h-4 w-4" />} tone={Number(overload.value ?? 0) > 0 ? "warning" : "normal"} detail="مجموع تجاوز المحاضرين لمطلوبهم بعد الإعفاء؛ لا يشمل ساعات التدريس غير المسندة." />
+        <MetricCard label="ساعات نقص أنصبة المحاضرين" value={hours(deficit.value)} icon={<AlertTriangle className="h-4 w-4" />} tone={Number(deficit.value ?? 0) > 0 ? "warning" : "normal"} detail="الفرق بين المطلوب بعد الإعفاء والمسند لكل محاضر؛ مقياس مستقل عن ساعات التدريس غير المسندة." />
+      </section>
+      <Card className="px-4 py-3" data-testid="leadership-scope"><div className="grid gap-3 text-center sm:grid-cols-4"><div><div className="text-xs text-muted-foreground">الكليات</div><b>{colleges.length}</b></div><div><div className="text-xs text-muted-foreground">تعريف الفترة جاهز</div><b>{ready} من {colleges.length}</b></div><div><div className="text-xs text-muted-foreground">جداول منشورة</div><b>{published} من {colleges.length}</b></div><div><div className="text-xs text-muted-foreground">تحتاج متابعة</div><b>{attention}</b></div></div>{Number(data?.unresolved_faculty ?? 0) > 0 && <p className="mt-3 border-t pt-2 text-xs text-muted-foreground">تبعية تحتاج مراجعة: {data?.unresolved_faculty} محاضرًا لم تُحسم كليتهم الأصلية؛ لا يدخلون في نسبة مستقلة.</p>}</Card>
+    </div>}
+  >
+    <div className="space-y-5">
+      <ReportSection title="مقارنة الكليات" count={rows.length} hint="تكنولوجيا المعلومات وعلوم الحاسوب أولًا، ثم بقية الكليات. افتح التفاصيل لبقية المؤشرات وأسباب المتابعة." bodyClassName="p-0"><ReportDataTable rows={rows} caption="المؤشرات التنفيذية للكليات" rowKey={(row) => row.college_id} rowClassName={(row) => Number(row.uncovered_hours ?? 0) > 0 ? "bg-destructive/5" : hasIssue(row) ? "bg-muted/40" : ""} primaryColumnLimit={5} minWidthClassName="min-w-[1000px]" columns={columns} /></ReportSection>
+      <div className="grid gap-4 xl:grid-cols-3">
+        <ReportSection title="المحاضرون والأنصبة" hint="المحاضر يُحتسب مرة واحدة بهويته الجامعية، وتُجمع مساهماته عبر الكليات."><div className="space-y-3 p-4 text-sm"><dl className="space-y-2"><div className="flex justify-between"><dt>المطلوب بعد الإعفاء</dt><dd>{hours(netQuota.value)}</dd></div><div className="flex justify-between"><dt>المسند</dt><dd>{hours(assigned.value)}</dd></div><div className="flex justify-between"><dt>المجدول في المنشور</dt><dd>{hours(scheduled.value)}</dd></div><div className="flex justify-between"><dt>نقص الأنصبة</dt><dd>{hours(deficit.value)}</dd></div><div className="flex justify-between"><dt>الزيادة</dt><dd>{hours(overload.value)}</dd></div></dl><ReportDisclosure label="التفرغ والتعاقد"><CountList entries={employmentCounts} /></ReportDisclosure><Button variant="outline" size="sm" asChild className="report-no-print"><Link to="/reports/instructor-workload">تفاصيل المحاضرين</Link></Button></div></ReportSection>
+        <ReportSection title="القاعات والمعامل" hint="الاستخدام أدناه يعني ظهور المورد في نسخة منشورة، وليس نسبة استغلال زمني."><div className="space-y-3 p-4 text-sm"><dl className="space-y-2"><div className="flex justify-between"><dt>إجمالي الموارد</dt><dd>{text(rooms.value)}</dd></div><div className="flex justify-between"><dt>مستخدمة في المنشور</dt><dd>{text(usedRooms.value)}</dd></div><div className="flex justify-between"><dt>ساعات الإشغال / المتاح</dt><dd>غير محسوب</dd></div><div className="flex justify-between"><dt>القاعات الخالية والفجوات المتصلة</dt><dd>غير محسوب</dd></div><div className="flex justify-between"><dt>ملاءمة السعة والتجهيز</dt><dd>غير محسوب</dd></div></dl><p className="border-t pt-2 text-xs text-muted-foreground">لا تُعد أي قاعة متاحة هنا؛ مصدر الملخص لا يفحص حجوزاتها الزمنية عبر جميع الكليات.</p><ReportDisclosure label="تفاصيل الكليات"><div className="space-y-2">{rows.map((row) => <div key={row.college_id} className="flex justify-between gap-3 border-b py-2"><span>{row.college}</span><span>{text(row.used_rooms)} / {text(row.room_count)}</span></div>)}</div></ReportDisclosure></div></ReportSection>
+        <ReportSection title="حالة البيانات والنشر" hint="تعرض القياسات التي يمكن إثباتها من المصدر الحالي فقط."><div className="space-y-3 p-4 text-sm"><dl className="space-y-2"><div className="flex justify-between"><dt>المحاضرات المنشورة</dt><dd>{text(sessions.value)}</dd></div><div className="flex justify-between"><dt>الساعات المنشورة</dt><dd>{hours(scheduled.value)}</dd></div><div className="flex justify-between"><dt>ساعات التدريس غير المسندة</dt><dd>{hours(uncovered.value)}</dd></div><div className="flex justify-between"><dt>كليات تحتاج متابعة</dt><dd>{attention}</dd></div></dl><ReportDisclosure label="أسباب المتابعة حسب الكلية"><div className="space-y-2">{rows.map((row) => <div key={row.college_id} className="border-b py-2"><div className="flex items-center justify-between gap-3"><b>{row.college}</b><StatusBadge row={row} /></div><p className="mt-1 text-xs text-muted-foreground">{row.notice}</p></div>)}</div></ReportDisclosure></div></ReportSection>
       </div>
-    </ReportShell>
-  );
+    </div>
+  </ReportShell>;
 }
