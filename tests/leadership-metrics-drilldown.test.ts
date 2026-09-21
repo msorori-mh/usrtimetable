@@ -30,7 +30,7 @@ describe("تعريفات مركزية للمؤشرات", () => {
   });
 
   it("يميّز الساعات المسندة للمقررات عن المسندة ضمن الأنصبة", () => {
-    expect(LEADERSHIP_METRICS.assignment_coverage.label).toContain("المقررات");
+    expect(LEADERSHIP_METRICS.assignment_coverage.label).toContain("مقررات");
     expect(LEADERSHIP_METRICS.faculty_assigned_hours.label).toContain("أنصبة");
   });
 
