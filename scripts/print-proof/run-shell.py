@@ -9,7 +9,7 @@ code and the right edge of the heading. This runner verifies the platform-wide A
 portrait page box at desktop and mobile starting viewports.
 
 This runner loads `shell.html` — the REAL `AppLayout` wrapping the REAL `PrintSheet` with
-the REAL print stylesheet — and, for A4/A3 x portrait/landscape x desktop/mobile starting
+the REAL print stylesheet — and, for A4 portrait x desktop/mobile starting
 viewport x long/short fixture, asserts on the produced PDF and the print-media DOM:
 
   * no app chrome is printed (mobile header, sidebar, context bar/college badge, toaster)

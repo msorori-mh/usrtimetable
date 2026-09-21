@@ -8,6 +8,8 @@ const PRINT_ROOTS = [
   "src/components/print-center",
   "src/components/reports",
   "src/routes/_authenticated",
+  "scripts/print-proof",
+  "scripts/reports-proof",
 ];
 
 function filesUnder(path: string): string[] {
@@ -29,10 +31,10 @@ describe("platform print page standard", () => {
     expect(css).toContain("margin: 1.2cm 1.5cm;");
   });
 
-  test("no application print source can request landscape or A3", () => {
+  test("no print source can request a non-standard page", () => {
     const violations = printSources.filter((path) => {
       const source = readFileSync(path, "utf8");
-      return /\blandscape\b|\bA3\b|printOrientation/.test(source);
+      return /\blandscape\b|\bA3\b|printOrientation|PrintOrientation|PrintPaperSize/.test(source);
     });
     expect(violations).toEqual([]);
   });
