@@ -447,7 +447,6 @@ function Report() {
       title="دليل المحاضرين وبياناتهم"
       description="يعرض أعضاء الكلية الأصليين افتراضيًا. لعرض المحاضرين من كليات أخرى أو السجلات غير المحسومة، اختر نطاق التبعية من الفلتر."
       filename="instructors_directory"
-      printOrientation="landscape"
       rows={rows}
       headers={headers}
       isLoading={isLoading}

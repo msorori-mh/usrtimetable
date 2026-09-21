@@ -10,9 +10,6 @@ export type PrintReportType =
 
 export type PrintStudySystem = "regular" | "parallel" | "all";
 
-export type PrintPaperSize = "A4" | "A3";
-export type PrintOrientation = "landscape" | "portrait";
-
 export interface PrintVisibilityOptions {
   showUniversityLogo: boolean;
   showCollege: boolean;

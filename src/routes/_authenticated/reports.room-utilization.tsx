@@ -238,7 +238,6 @@ function Page() {
       description="استخدام القاعات في نسخة واحدة بحسب الدوام والإتاحة الفعلية. ساعات التداخل وخارج الإتاحة معروضة منفصلة."
       reportContext={ctx}
       filename="room_utilization"
-      printOrientation="landscape"
       rows={rows}
       headers={columns}
       isLoading={ctx.isLoading || query.isLoading}

@@ -490,7 +490,7 @@ function Page() {
       }
       printContent={
         <>
-          <style>{printPageStyleCss("A4", "portrait")}</style>
+          <style>{printPageStyleCss()}</style>
           {pages.map((page, i) => (
             <PrintSheet
               readable

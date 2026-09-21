@@ -1,7 +1,5 @@
 import type {
   PrintCenterFilters,
-  PrintOrientation,
-  PrintPaperSize,
   PrintReportType,
 } from "./types";
 
@@ -16,8 +14,6 @@ export interface PrintQrParams {
   roomId?: string | null;
   cohortId?: string | null;
   deliveryGroupId?: string | null;
-  paper?: PrintPaperSize | null;
-  orientation?: PrintOrientation | null;
 }
 
 /** Serialize print-center filters into URL search params (stable key order). */
@@ -32,8 +28,6 @@ export function printFiltersToSearchParams(params: PrintQrParams): URLSearchPara
   if (params.roomId) sp.set("room", params.roomId);
   if (params.cohortId) sp.set("cohort", params.cohortId);
   if (params.deliveryGroupId) sp.set("dg", params.deliveryGroupId);
-  if (params.paper) sp.set("paper", params.paper);
-  if (params.orientation) sp.set("orient", params.orientation);
   return sp;
 }
 
@@ -51,8 +45,6 @@ export function buildPrintQrUrl(originOrBase: string, params: PrintQrParams): st
 export function filtersToQrParams(
   versionId: string,
   filters: PrintCenterFilters,
-  paper?: PrintPaperSize,
-  orientation?: PrintOrientation,
 ): PrintQrParams {
   return {
     versionId,
@@ -65,18 +57,11 @@ export function filtersToQrParams(
     roomId: filters.roomId,
     cohortId: filters.cohortId,
     deliveryGroupId: filters.deliveryGroupId,
-    paper,
-    orientation,
   };
 }
 
-export function parsePrintSearchParams(search: URLSearchParams): Partial<PrintCenterFilters> & {
-  paper?: PrintPaperSize;
-  orientation?: PrintOrientation;
-} {
+export function parsePrintSearchParams(search: URLSearchParams): Partial<PrintCenterFilters> {
   const type = search.get("type") as PrintReportType | null;
-  const paper = search.get("paper") as PrintPaperSize | null;
-  const orient = search.get("orient") as PrintOrientation | null;
   return {
     reportType:
       type && ["student", "department", "program", "instructor", "room", "level"].includes(type)
@@ -90,7 +75,5 @@ export function parsePrintSearchParams(search: URLSearchParams): Partial<PrintCe
     roomId: search.get("room"),
     cohortId: search.get("cohort"),
     deliveryGroupId: search.get("dg"),
-    paper: paper === "A4" || paper === "A3" ? paper : undefined,
-    orientation: orient === "landscape" || orient === "portrait" ? orient : undefined,
   };
 }

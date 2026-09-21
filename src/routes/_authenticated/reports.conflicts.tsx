@@ -212,7 +212,6 @@ function Page() {
         note: "قراءة فقط — لا يُشغّل Conflict Engine من هذا التقرير. شغّل الفحص من صفحة فحص التعارضات.",
       }}
       filename="conflict_report"
-      printOrientation="landscape"
       rows={rows}
       headers={headers}
       isLoading={ctx.isLoading || isLoading}
