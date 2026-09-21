@@ -283,6 +283,7 @@ function RoomCell({ row }: { row: LeadershipRow }) {
 function LeadershipDashboard() {
   const { data: me } = useCurrentUser();
   const [period, setPeriod] = useState<{ year: string; type: string } | null>(null);
+  const [drilldown, setDrilldown] = useState<LeadershipDrilldownTarget | null>(null);
   const query = useQuery({
     queryKey: ["university-leadership", me?.id, period],
     staleTime: 60_000,
