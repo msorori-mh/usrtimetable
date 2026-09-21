@@ -40,14 +40,18 @@ BEGIN
   IF public.has_role(v_actor, 'college_dean'::public.app_role)
      AND NOT public.is_super_admin(v_actor)
      AND NOT public.has_role(v_actor, 'university_leadership'::public.app_role) THEN
-    SELECT min(uc.college_id), count(*)
-      INTO v_scope_college, v_scope_count
+    SELECT count(*)
+      INTO v_scope_count
     FROM public.user_colleges uc
     WHERE uc.user_id = v_actor;
     IF v_scope_count <> 1 THEN
       RAISE EXCEPTION 'COLLEGE_DEAN_REQUIRES_EXACTLY_ONE_COLLEGE'
         USING ERRCODE='42501';
     END IF;
+    SELECT uc.college_id
+      INTO STRICT v_scope_college
+    FROM public.user_colleges uc
+    WHERE uc.user_id = v_actor;
   END IF;
 
   -- An explicit year in the term name may fill missing metadata for reporting
@@ -346,14 +350,18 @@ BEGIN
   IF public.has_role(v_actor, 'college_dean'::public.app_role)
      AND NOT public.is_super_admin(v_actor)
      AND NOT public.has_role(v_actor, 'university_leadership'::public.app_role) THEN
-    SELECT min(uc.college_id), count(*)
-      INTO v_scope_college, v_scope_count
+    SELECT count(*)
+      INTO v_scope_count
     FROM public.user_colleges uc
     WHERE uc.user_id = v_actor;
     IF v_scope_count <> 1 THEN
       RAISE EXCEPTION 'COLLEGE_DEAN_REQUIRES_EXACTLY_ONE_COLLEGE'
         USING ERRCODE='42501';
     END IF;
+    SELECT uc.college_id
+      INTO STRICT v_scope_college
+    FROM public.user_colleges uc
+    WHERE uc.user_id = v_actor;
     IF p_college_id IS NOT NULL AND p_college_id <> v_scope_college THEN
       RAISE EXCEPTION 'COLLEGE_SCOPE_VIOLATION' USING ERRCODE='42501';
     END IF;
