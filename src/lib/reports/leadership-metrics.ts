@@ -41,7 +41,8 @@ export const LEADERSHIP_METRICS: Record<LeadershipMetricKey, LeadershipMetricDef
   faculty_count: metric({
     key: "faculty_count",
     label: "أعضاء هيئة التدريس",
-    definition: "عدد الهويات الجامعية الفريدة؛ المحاضر الذي يدرّس في أكثر من كلية يُحتسب مرة واحدة.",
+    definition:
+      "عدد الهويات الجامعية الفريدة؛ المحاضر الذي يدرّس في أكثر من كلية يُحتسب مرة واحدة.",
     source: "faculty",
     detailColumn: null,
     countsRecords: true,
@@ -101,7 +102,8 @@ export const LEADERSHIP_METRICS: Record<LeadershipMetricKey, LeadershipMetricDef
   overload_hours: metric({
     key: "overload_hours",
     label: "الساعات الزائدة",
-    definition: "مجموع ما يتجاوز به المحاضرون مطلوبهم بعد الإعفاء؛ لا يشمل ساعات التدريس غير المسندة.",
+    definition:
+      "مجموع ما يتجاوز به المحاضرون مطلوبهم بعد الإعفاء؛ لا يشمل ساعات التدريس غير المسندة.",
     source: "faculty",
     detailColumn: "overload_hours",
     unit: "hours",
@@ -222,7 +224,12 @@ export function dedupePublishedSessions<T extends LeadershipDetailRow>(rows: T[]
 
 export type LeadershipReconciliation =
   | { status: "ok"; card: number; detail: number }
-  | { status: "needs_review"; card: number | null; detail: number | null; difference: number | null };
+  | {
+      status: "needs_review";
+      card: number | null;
+      detail: number | null;
+      difference: number | null;
+    };
 
 /**
  * تحقق اتساق: مجموع التفاصيل يجب أن يساوي رقم البطاقة، وإلا «يحتاج مراجعة».
@@ -249,7 +256,9 @@ export function reconcileMetric(
 
 export function sumDetailColumn(rows: LeadershipDetailRow[], column: string | null): number | null {
   if (!column) return rows.length;
-  const values = rows.map((row) => num(row[column])).filter((value): value is number => value !== null);
+  const values = rows
+    .map((row) => num(row[column]))
+    .filter((value): value is number => value !== null);
   if (values.length === 0) return rows.length === 0 ? 0 : null;
   return round2(values.reduce((total, value) => total + value, 0));
 }

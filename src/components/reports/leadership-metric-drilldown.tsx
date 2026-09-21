@@ -142,7 +142,8 @@ export function LeadershipMetricDrilldown({
 
   const columns = useMemo(() => {
     const keys = new Set<string>();
-    for (const row of allRows) for (const key of Object.keys(row)) if (!HIDDEN.has(key)) keys.add(key);
+    for (const row of allRows)
+      for (const key of Object.keys(row)) if (!HIDDEN.has(key)) keys.add(key);
     return [...keys].map((key) => ({ key, label: LABELS[key] ?? key }));
   }, [allRows]);
 
