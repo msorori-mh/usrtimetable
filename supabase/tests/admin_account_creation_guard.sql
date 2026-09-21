@@ -3,7 +3,7 @@ BEGIN;
 DO $test$
 DECLARE uid uuid; role_name text; rejected boolean;
 BEGIN
- FOREACH role_name IN ARRAY ARRAY['super_admin','college_admin','read_only','institutional_viewer','university_leadership'] LOOP
+ FOREACH role_name IN ARRAY ARRAY['super_admin','college_admin','read_only','institutional_viewer','university_leadership','college_dean'] LOOP
   uid:=gen_random_uuid();
   INSERT INTO auth.users(id,email,raw_app_meta_data,raw_user_meta_data)
   VALUES(uid,'rollback-'||uid||'@example.invalid','{"provider":"email"}','{"full_name":"Rollback diagnostic"}');
