@@ -45,6 +45,16 @@ import {
   LEADERSHIP_WORKLOAD_HEADERS,
   type LeadershipCollege,
 } from "@/lib/reports/leadership";
+import {
+  LEADERSHIP_METRICS,
+  LEADERSHIP_UNCALCULATED,
+  assignmentCoveragePercent,
+  type LeadershipMetricKey,
+} from "@/lib/reports/leadership-metrics";
+import {
+  LeadershipMetricDrilldown,
+  type LeadershipDrilldownTarget,
+} from "@/components/reports/leadership-metric-drilldown";
 
 export const Route = createFileRoute("/_authenticated/reports/leadership")({
   head: () => ({
