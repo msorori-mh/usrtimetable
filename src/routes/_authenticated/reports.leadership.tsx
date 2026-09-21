@@ -879,5 +879,11 @@ function LeadershipDashboard() {
         </div>
       </div>
     </ReportShell>
+    <LeadershipMetricDrilldown
+      target={drilldown}
+      period={period ?? (data ? { year: data.year, type: data.term_type } : null)}
+      onClose={() => setDrilldown(null)}
+    />
+    </>
   );
 }
