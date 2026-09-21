@@ -3,10 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const auth = readFileSync("src/routes/auth.tsx", "utf8");
-const accountSecurity = readFileSync(
-  "src/routes/_authenticated/account-security.tsx",
-  "utf8",
-);
+const accountSecurity = readFileSync("src/routes/_authenticated/account-security.tsx", "utf8");
 const adminNav = readFileSync("src/lib/admin-nav.ts", "utf8");
 
 test("public authentication exposes sign-in only and gates verified TOTP at aal2", () => {
