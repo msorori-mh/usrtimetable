@@ -52,7 +52,16 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
-import { Users, Plus, KeyRound, Power, Copy, ShieldCheck, AlertTriangle } from "lucide-react";
+import {
+  Users,
+  Plus,
+  KeyRound,
+  Power,
+  Copy,
+  ShieldCheck,
+  ShieldAlert,
+  AlertTriangle,
+} from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/users")({
   head: () => ({ meta: [{ title: "إدارة المستخدمين" }] }),
@@ -81,6 +90,33 @@ const ROLE_HINTS: Record<AppRole, string> = {
   college_admin: "كامل صلاحيات العمليات داخل الكلّيات المُسندة له، بما فيها الاستيراد من Excel.",
   read_only: READ_ONLY_ROLE_HINT_AR,
   institutional_viewer: INSTITUTIONAL_VIEWER_ROLE_HINT_AR,
+};
+
+type SecurityEventRow = {
+  id: number;
+  actor_id: string | null;
+  event: string;
+  severity: string;
+  details: unknown;
+  target_id: string | null;
+  created_at: string;
+};
+
+const SENSITIVE_DETAIL_KEY = /token|secret|password|api[_-]?key|jwt|authorization|cookie/i;
+
+export function redactSecurityDetails(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(redactSecurityDetails);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.entries(value).map(([key, nested]) => [
+      key,
+      SENSITIVE_DETAIL_KEY.test(key) ? "•••" : redactSecurityDetails(nested),
+    ]),
+  );
+}
+
+const SECURITY_EVENT_LABELS: Record<string, string> = {
+  rate_limit_exceeded: "تجاوز حد العمليات الحساسة",
 };
 
 type UserRow = {
@@ -144,6 +180,31 @@ function UsersPage() {
     queryFn: async () =>
       (await supabase.from("colleges").select("id, name").order("name")).data ?? [],
   });
+
+  const canViewSecurityEvents = me?.isSuperAdmin === true;
+  const {
+    data: securityEvents,
+    isLoading: securityEventsLoading,
+    error: securityEventsError,
+  } = useQuery({
+    queryKey: ["security-events-recent"],
+    enabled: canViewSecurityEvents,
+    refetchInterval: 60_000,
+    queryFn: async (): Promise<SecurityEventRow[]> => {
+      const { data, error } = await supabase
+        .from("security_events")
+        .select("id, actor_id, event, severity, details, target_id, created_at")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return (data ?? []) as SecurityEventRow[];
+    },
+  });
+
+  const securityEvents24h = useMemo(() => {
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    return (securityEvents ?? []).filter((event) => new Date(event.created_at).getTime() >= cutoff);
+  }, [securityEvents]);
 
   const setRole = useMutation({
     mutationFn: async ({ userId, role, on }: { userId: string; role: AppRole; on: boolean }) => {
@@ -333,6 +394,71 @@ function UsersPage() {
           </div>
         )}
       </header>
+
+      {canViewSecurityEvents && (
+        <Card className="mb-4 border-amber-500/30 p-4" data-testid="security-events-panel">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="h-5 w-5 text-amber-600" />
+              <div>
+                <h2 className="font-semibold">التنبيهات الأمنية</h2>
+                <p className="text-xs text-muted-foreground">
+                  قراءة فقط — أحدث 50 حدثًا، مع تحديث تلقائي كل دقيقة.
+                </p>
+              </div>
+            </div>
+            <Badge
+              variant="outline"
+              className={
+                securityEvents24h.length > 0
+                  ? "border-amber-500/40 bg-amber-500/10 text-amber-700"
+                  : "border-emerald-500/40 bg-emerald-500/10 text-emerald-700"
+              }
+            >
+              آخر 24 ساعة: {securityEvents24h.length}
+            </Badge>
+          </div>
+
+          {securityEventsLoading ? (
+            <p className="text-sm text-muted-foreground">جارٍ تحميل الأحداث الأمنية...</p>
+          ) : securityEventsError ? (
+            <p className="text-sm text-destructive" role="alert">
+              تعذر قراءة سجل التنبيهات الأمنية. لم يتم افتراض أن الحالة آمنة.
+            </p>
+          ) : (securityEvents ?? []).length === 0 ? (
+            <p className="text-sm text-muted-foreground">لا توجد أحداث أمنية مسجلة.</p>
+          ) : (
+            <div className="max-h-80 space-y-2 overflow-y-auto">
+              {(securityEvents ?? []).map((event) => (
+                <details key={event.id} className="rounded-md border border-border p-3">
+                  <summary className="cursor-pointer text-sm">
+                    <span className="font-medium">
+                      {SECURITY_EVENT_LABELS[event.event] ?? event.event}
+                    </span>
+                    <span className="mx-2 text-muted-foreground">·</span>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(event.created_at).toLocaleString("ar")}
+                    </span>
+                    <Badge variant="outline" className="mr-2">
+                      {event.severity}
+                    </Badge>
+                  </summary>
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    <p dir="ltr">actor: {event.actor_id ?? "system"}</p>
+                    {event.target_id && <p dir="ltr">target: {event.target_id}</p>}
+                    <pre
+                      className="mt-2 overflow-x-auto rounded bg-muted p-2 text-[11px]"
+                      dir="ltr"
+                    >
+                      {JSON.stringify(redactSecurityDetails(event.details), null, 2)}
+                    </pre>
+                  </div>
+                </details>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
 
       <Card className="mb-4 p-4">
         <div className="grid gap-3 md:grid-cols-3">
