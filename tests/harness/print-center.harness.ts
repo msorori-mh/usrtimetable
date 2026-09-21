@@ -7,7 +7,7 @@
  * 3) Read-only data path (fetchHydratedVersionSessions + cohort labels)
  * 4) Export helpers reuse downloadCSV/downloadXLSX
  * 5) Demo warning + draft watermark constants
- * 6) Print CSS for A4/A3 landscape/portrait
+ * 6) Platform-wide A4 portrait print CSS
  * 7) No schedule_sessions writes from print-center surfaces
  */
 import { readFileSync } from "node:fs";
@@ -78,10 +78,7 @@ assert(filters.includes("filterPrintSessions"), "filterPrintSessions exported");
 
 const styles = read("src/styles.css");
 assert(styles.includes("print-center-page"), "print center page break CSS");
-assert(
-  styles.includes("print-orient-landscape") === false || styles.includes("print-center-page"),
-  "print center styles present",
-);
+assert(!styles.includes("print-orient-landscape"), "no landscape print override");
 assert(styles.includes("print-draft-watermark"), "draft watermark CSS");
 assert(
   styles.includes("break-after: page") || styles.includes("page-break-after"),
@@ -91,15 +88,14 @@ assert(
 const pageStyle = read("src/components/print-center/print-center-page.tsx");
 const sharedPageStyle = read("src/lib/print-center/page-style.ts");
 assert(
-  pageStyle.includes("size: ${paper} ${orientation}") ||
-    pageStyle.includes("print-center-page-style") ||
+  pageStyle.includes("print-center-page-style") ||
     // LAUNCH-CLOSURE-03: the @page rule now lives in one shared helper so the
     // print-proof harness renders with exactly the application's page box.
-    (pageStyle.includes("printPageStyleCss(paper, orientation)") &&
+    (pageStyle.includes("printPageStyleCss()") &&
       pageStyle.includes("PRINT_PAGE_STYLE_ELEMENT_ID") &&
-      sharedPageStyle.includes("size: ${paper} ${orientation}") &&
+      sharedPageStyle.includes("size: ${PRINT_PAPER_SIZE} ${PRINT_ORIENTATION}") &&
       sharedPageStyle.includes('PRINT_PAGE_STYLE_ELEMENT_ID = "print-center-page-style"')),
-  "A4/A3 landscape/portrait injected via print stylesheet",
+  "A4 portrait injected via the shared print stylesheet",
 );
 
 const qr = read("src/components/print-center/print-qr-code.tsx");

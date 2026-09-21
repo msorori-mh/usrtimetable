@@ -5,7 +5,8 @@ LAUNCH-CLOSURE-04 FULL-SHELL print proof runner.
 The LAUNCH-CLOSURE-03 runner mounted `PrintSheet` on its own, so it could not see the
 defects a real print exposed: the mobile AppLayout header / brand mark / college badge
 printed over the official sheet header, and the viewport-sized flex shell clipped the QR
-code and the right edge of the heading.
+code and the right edge of the heading. This runner verifies the platform-wide A4
+portrait page box at desktop and mobile starting viewports.
 
 This runner loads `shell.html` — the REAL `AppLayout` wrapping the REAL `PrintSheet` with
 the REAL print stylesheet — and, for A4/A3 x portrait/landscape x desktop/mobile starting
@@ -68,18 +69,16 @@ def normalize_ar(text: str) -> str:
     return re.sub(r"[\u064b-\u0652\u0670]", "", strip_format_chars(text))
 
 
-# Printable content width in CSS px for each paper/orientation, given the @page
+# Printable content width in CSS px for A4 portrait, given the @page
 # margin of 1.2cm x 1.5cm. The DOM must be measured at this width: a 390px mobile
 # viewport lays the table out at 390px even under print emulation, which reports
 # overflow that the real paged output does not have.
 MM_PER_IN = 25.4
-PAPER_MM = {"A4": (210.0, 297.0), "A3": (297.0, 420.0)}
+PAPER_MM = {"A4": (210.0, 297.0)}
 
 
 def content_px(paper: str, orientation: str) -> int:
     w_mm, h_mm = PAPER_MM[paper]
-    if orientation == "landscape":
-        w_mm, h_mm = h_mm, w_mm
     return int(round((w_mm - 2 * 15.0) / MM_PER_IN * 96))
 
 
@@ -208,7 +207,7 @@ async def main():
     base = f"http://127.0.0.1:{PORT}/shell.html"
 
     viewports = [("desktop", {"width": 1280, "height": 1800}), ("mobile", {"width": 390, "height": 844})]
-    combos = [("A4", "portrait"), ("A4", "landscape"), ("A3", "portrait"), ("A3", "landscape")]
+    combos = [("A4", "portrait")]
     cases = [(p, o, f) for p, o in combos for f in ("long", "short")]
 
     async with async_playwright() as p:
@@ -319,7 +318,7 @@ async def main():
                 w, h = float(dims.group(1)), float(dims.group(2))
                 check(
                     f"{tag}: CSS @page size/orientation honoured",
-                    (w > h) == (orientation == "landscape"),
+                    w < h,
                     f"{w:.0f}x{h:.0f}pt, {pages} pages",
                 )
 

@@ -5,7 +5,7 @@ LAUNCH-CLOSURE-03 print/export proof runner.
 Serves the isolated fixture build (dist-print-proof) over http, then uses the
 pre-installed Playwright Chromium to:
   1. render the REAL PrintSheet with the REAL print stylesheet,
-  2. print to PDF in A4/A3 x portrait/landscape with `print_background` and CSS page size,
+  2. print to PDF in the platform-wide A4 portrait format,
   3. rasterise every PDF page to PNG and check for clipping / repeated table headers,
   4. trigger the REAL downloadCSV / downloadXLSX / exportRowsToXlsx helpers and capture
      the actual downloaded bytes.
@@ -77,7 +77,7 @@ async def main():
         page.on("pageerror", lambda e: console_errors.append(str(e)))
 
         # ---- 1. PDF rendering across paper sizes and orientations (long Arabic fixture)
-        combos = [("A4", "portrait"), ("A4", "landscape"), ("A3", "portrait"), ("A3", "landscape")]
+        combos = [("A4", "portrait")]
         for paper, orientation in combos:
             url = f"{base}?paper={paper}&orientation={orientation}&fixture=long"
             await page.goto(url, wait_until="domcontentloaded")
