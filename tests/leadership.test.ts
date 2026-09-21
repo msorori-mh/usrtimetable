@@ -86,7 +86,7 @@ test("leadership faculty composition sums count maps and preserves executive ord
     {
       college_id: "00000000-0000-4000-8000-000000000001",
       college: "كلية العلوم الإدارية والمالية",
-      rank_counts: { "أستاذ مساعد": 2, "أستاذ": 1 },
+      rank_counts: { "أستاذ مساعد": 2, أستاذ: 1 },
       availability_counts: { متاح: 2, "إجازة مرضية": 1 },
       employment_counts: { full_time: 2, contract: 1 },
     },
@@ -110,10 +110,7 @@ test("leadership faculty composition sums count maps and preserves executive ord
     "تفرغ علمي": 1,
   });
   assert.deepEqual(
-    orderedLeadershipCounts(
-      { "أستاذ مساعد": 5, أستاذ: 1 },
-      ["أستاذ", "أستاذ مساعد"],
-    ),
+    orderedLeadershipCounts({ "أستاذ مساعد": 5, أستاذ: 1 }, ["أستاذ", "أستاذ مساعد"]),
     [
       ["أستاذ", 1],
       ["أستاذ مساعد", 5],

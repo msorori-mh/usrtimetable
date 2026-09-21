@@ -88,7 +88,9 @@ export function aggregateLeadership(
   rows: LeadershipCollege[],
   key: LeadershipAmountKey,
 ): { value: number | null; known: number; total: number; complete: boolean } {
-  const values = rows.map((row) => row[key]).filter((value): value is number => typeof value === "number");
+  const values = rows
+    .map((row) => row[key])
+    .filter((value): value is number => typeof value === "number");
   return {
     value:
       values.length === 0
@@ -109,7 +111,13 @@ export function leadershipPercent(
   numerator: number | null | undefined,
   denominator: number | null | undefined,
 ): number | null {
-  if (numerator === null || numerator === undefined || denominator === null || denominator === undefined || denominator <= 0)
+  if (
+    numerator === null ||
+    numerator === undefined ||
+    denominator === null ||
+    denominator === undefined ||
+    denominator <= 0
+  )
     return null;
   return Math.round((numerator / denominator) * 1000) / 10;
 }
