@@ -21,6 +21,7 @@ export function ReportSection({
   children,
   className,
   bodyClassName,
+  testId,
 }: {
   title: string;
   count?: number;
@@ -29,9 +30,10 @@ export function ReportSection({
   children: ReactNode;
   className?: string;
   bodyClassName?: string;
+  testId?: string;
 }) {
   return (
-    <Card className={cn("min-w-0 overflow-hidden", className)}>
+    <Card className={cn("min-w-0 overflow-hidden", className)} data-testid={testId}>
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 border-b border-border/60 px-4 py-3 sm:flex sm:flex-wrap sm:justify-between">
         <div className="min-w-0">
           <h2 className="flex min-w-0 flex-wrap items-center gap-2 text-sm font-semibold">
