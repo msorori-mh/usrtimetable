@@ -169,14 +169,16 @@ export function PrintSheet(props: {
                 <p
                   data-testid="print-draft-notice"
                   style={{
-                    margin: "2mm 0",
-                    padding: "1.5mm 3mm",
-                    border: "1px solid #64748b",
+                    margin: "3mm 0",
+                    padding: "3mm 4mm",
+                    border: "2px solid #a16207",
                     borderRadius: "2mm",
-                    color: "#334155",
-                    backgroundColor: "#f8fafc",
-                    fontSize: "9pt",
-                    fontWeight: 700,
+                    color: "#422006",
+                    backgroundColor: "#fde047",
+                    WebkitPrintColorAdjust: "exact",
+                    printColorAdjust: "exact",
+                    fontSize: "14pt",
+                    fontWeight: 900,
                     lineHeight: 1.5,
                     textAlign: "center",
                     breakInside: "avoid",
