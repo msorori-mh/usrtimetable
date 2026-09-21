@@ -342,15 +342,20 @@ test("study-system selection reaches both report queries and their cache keys", 
       new URL(`../src/routes/_authenticated/reports.${routeName}.tsx`, import.meta.url),
       "utf8",
     );
-    assert.match(source, /queryKey:\s*\[[^\]]*ctx\.studySystem/s);
-    assert.match(source, /studySystem: ctx\.studySystem/);
+    const studySystem = routeName === "rooms-report" ? "ctx.studySystem" : "effectiveStudySystem";
+    assert.match(
+      source,
+      new RegExp(`queryKey:\\s*\\[[^\\]]*${studySystem.replace(".", "\\.")}`, "s"),
+    );
+    assert.match(source, new RegExp(`studySystem: ${studySystem.replace(".", "\\.")}`));
     if (routeName === "rooms-report") {
       assert.doesNotMatch(source, /studySystem: "all"/);
     } else {
+      assert.match(source, /printScope === "college" \? "all" : ctx\.studySystem/);
       // Student reports must resolve member systems before applying the filter:
       // a merged anchor can belong to a different system than its participants.
       assert.match(source, /fetchStudentPrintMemberships\(hydrated, ctx\.collegeId!\)\)\.filter/);
-      assert.match(source, /row\.study_system === ctx\.studySystem/);
+      assert.match(source, /row\.study_system === effectiveStudySystem/);
       assert.match(source, /row\.study_system === "both"/);
     }
   }

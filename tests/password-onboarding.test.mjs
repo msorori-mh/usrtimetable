@@ -75,6 +75,10 @@ test("server rejects admin, weak/reused passwords and wrong temporary credential
     app_metadata: { must_change_password: true, provider: "email" },
   };
   globalThis.__pwAdmin = {
+    async rpc(name) {
+      assert.equal(name, "consume_security_limit");
+      return { data: true, error: null };
+    },
     from(table) {
       if (table === "user_roles")
         return { select: () => ({ eq: async () => ({ data: [{ role }], error: null }) }) };
