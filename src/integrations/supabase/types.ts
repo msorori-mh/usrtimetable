@@ -5922,6 +5922,7 @@ export const Constants = {
         "read_only",
         "institutional_viewer",
         "university_leadership",
+        "college_dean",
       ],
     },
   },
