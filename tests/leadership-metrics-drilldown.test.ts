@@ -181,6 +181,18 @@ test("صفحة الإدارة العليا تفتح كل مؤشر رئيسي إ�
   assert.ok(!page.includes("فرص التحسين"), "لا توصيات ذكية في هذه المرحلة");
 });
 
+test("بطاقات الملخص الثلاث تسبق مقارنة الكليات بترتيب RTL المتفق عليه", () => {
+  const instructors = page.indexOf('title="المحاضرون والأنصبة"');
+  const rooms = page.indexOf('title="القاعات والمعامل"');
+  const publishing = page.indexOf('title="حالة البيانات والنشر"');
+  const comparison = page.indexOf('title="مقارنة الكليات"');
+
+  assert.ok(instructors >= 0 && instructors < rooms);
+  assert.ok(rooms < publishing);
+  assert.ok(publishing < comparison);
+  assert.ok(page.includes('className="grid gap-4 xl:grid-cols-3"'));
+});
+
 test("نافذة التفاصيل قراءة فقط وتستدعي دالة القراءة المعتمدة", () => {
   assert.ok(sheet.includes("leadership_metric_details"));
   assert.ok(sheet.includes("reconcileMetric("));
