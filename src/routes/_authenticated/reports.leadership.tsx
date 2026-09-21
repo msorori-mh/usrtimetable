@@ -96,36 +96,61 @@ function MetricCard({
   detail,
   icon,
   tone = "normal",
+  definition,
+  onOpen,
 }: {
   label: string;
   value: ReactNode;
   detail: ReactNode;
   icon: ReactNode;
   tone?: "normal" | "warning" | "critical";
+  definition?: string;
+  onOpen?: () => void;
 }) {
+  const valueClass =
+    tone === "critical"
+      ? "mt-1 text-xl font-bold text-destructive"
+      : tone === "warning"
+        ? "mt-1 text-xl font-bold text-[color:var(--usr-gold-dark)]"
+        : "mt-1 text-xl font-bold text-foreground";
   return (
     <Card className="min-w-0 p-4">
-      <div className="flex items-start justify-between gap-3">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
         <div className="min-w-0">
           <p className="text-xs font-medium text-muted-foreground">{label}</p>
-          <div
-            className={
-              tone === "critical"
-                ? "mt-1 text-xl font-bold text-destructive"
-                : tone === "warning"
-                  ? "mt-1 text-xl font-bold text-[color:var(--usr-gold-dark)]"
-                  : "mt-1 text-xl font-bold text-foreground"
-            }
-          >
-            {value}
-          </div>
+          {onOpen ? (
+            <button
+              type="button"
+              onClick={onOpen}
+              className={`${valueClass} text-right underline decoration-dotted underline-offset-4 hover:opacity-80`}
+            >
+              {value}
+            </button>
+          ) : (
+            <div className={valueClass}>{value}</div>
+          )}
         </div>
-        <span className="rounded border bg-muted p-2 text-muted-foreground" aria-hidden>
+        <span className="shrink-0 rounded border bg-muted p-2 text-muted-foreground" aria-hidden>
           {icon}
         </span>
       </div>
+      {definition && (
+        <p className="mt-2 text-[11px] leading-5 text-muted-foreground">{definition}</p>
+      )}
       <div className="mt-3 border-t pt-2 text-xs leading-6 text-muted-foreground">{detail}</div>
     </Card>
+  );
+}
+
+function MetricLink({ onOpen, children }: { onOpen: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="underline decoration-dotted underline-offset-4 hover:opacity-80"
+    >
+      {children}
+    </button>
   );
 }
 
