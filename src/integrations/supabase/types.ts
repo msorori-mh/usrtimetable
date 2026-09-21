@@ -5264,6 +5264,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_college_dean: { Args: { _user_id: string }; Returns: boolean }
       is_institutional_read_only_actor: {
         Args: { _user_id: string }
         Returns: boolean
