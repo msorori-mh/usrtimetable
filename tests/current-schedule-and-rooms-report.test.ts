@@ -343,7 +343,10 @@ test("study-system selection reaches both report queries and their cache keys", 
       "utf8",
     );
     const studySystem = routeName === "rooms-report" ? "ctx.studySystem" : "effectiveStudySystem";
-    assert.match(source, new RegExp(`queryKey:\\s*\\[[^\\]]*${studySystem.replace(".", "\\.")}`, "s"));
+    assert.match(
+      source,
+      new RegExp(`queryKey:\\s*\\[[^\\]]*${studySystem.replace(".", "\\.")}`, "s"),
+    );
     assert.match(source, new RegExp(`studySystem: ${studySystem.replace(".", "\\.")}`));
     if (routeName === "rooms-report") {
       assert.doesNotMatch(source, /studySystem: "all"/);
