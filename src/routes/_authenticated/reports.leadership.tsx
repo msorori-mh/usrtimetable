@@ -736,9 +736,14 @@ function LeadershipDashboard() {
       }
     >
       <div className="space-y-5">
-        <div className="grid gap-4 xl:grid-cols-3">
+        <div
+          className="grid gap-4 xl:grid-cols-3"
+          dir="rtl"
+          data-testid="leadership-summary-sections"
+        >
           <ReportSection
             title="المحاضرون والأنصبة"
+            testId="leadership-instructors-section"
             hint="المحاضر يُحتسب مرة واحدة بهويته الجامعية، وتُجمع مساهماته عبر الكليات."
           >
             <div className="space-y-3 p-4 text-sm">
@@ -774,6 +779,7 @@ function LeadershipDashboard() {
           </ReportSection>
           <ReportSection
             title="القاعات والمعامل"
+            testId="leadership-rooms-section"
             hint="الاستخدام أدناه يعني ظهور المورد في نسخة منشورة، وليس نسبة استغلال زمني."
           >
             <div className="space-y-3 p-4 text-sm">
@@ -818,6 +824,7 @@ function LeadershipDashboard() {
           </ReportSection>
           <ReportSection
             title="حالة البيانات والنشر"
+            testId="leadership-publishing-section"
             hint="تعرض القياسات التي يمكن إثباتها من المصدر الحالي فقط."
           >
             <div className="space-y-3 p-4 text-sm">
@@ -857,6 +864,7 @@ function LeadershipDashboard() {
         </div>
         <ReportSection
           title="مقارنة الكليات"
+          testId="leadership-colleges-comparison"
           count={rows.length}
           hint="تكنولوجيا المعلومات وعلوم الحاسوب أولًا، ثم بقية الكليات. افتح التفاصيل لبقية المؤشرات وأسباب المتابعة."
           bodyClassName="p-0"

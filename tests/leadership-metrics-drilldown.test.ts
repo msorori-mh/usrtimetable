@@ -181,16 +181,23 @@ test("صفحة الإدارة العليا تفتح كل مؤشر رئيسي إ�
   assert.ok(!page.includes("فرص التحسين"), "لا توصيات ذكية في هذه المرحلة");
 });
 
-test("بطاقات الملخص الثلاث تسبق مقارنة الكليات بترتيب RTL المتفق عليه", () => {
-  const instructors = page.indexOf('title="المحاضرون والأنصبة"');
-  const rooms = page.indexOf('title="القاعات والمعامل"');
-  const publishing = page.indexOf('title="حالة البيانات والنشر"');
-  const comparison = page.indexOf('title="مقارنة الكليات"');
+test("عقد بطاقات الملخص الثلاث تسبق عقدة مقارنة الكليات بترتيب RTL نفسه", () => {
+  const summaryStart = page.indexOf('data-testid="leadership-summary-sections"');
+  const instructors = page.indexOf('testId="leadership-instructors-section"');
+  const rooms = page.indexOf('testId="leadership-rooms-section"');
+  const publishing = page.indexOf('testId="leadership-publishing-section"');
+  const comparison = page.indexOf('testId="leadership-colleges-comparison"');
 
-  assert.ok(instructors >= 0 && instructors < rooms);
+  assert.ok(summaryStart >= 0 && summaryStart < instructors);
+  assert.ok(instructors < rooms);
   assert.ok(rooms < publishing);
   assert.ok(publishing < comparison);
+  assert.ok(page.includes('dir="rtl"'));
   assert.ok(page.includes('className="grid gap-4 xl:grid-cols-3"'));
+  assert.ok(!page.slice(summaryStart, comparison).includes("order-"));
+  assert.equal(page.match(/testId="leadership-instructors-section"/g)?.length, 1);
+  assert.equal(page.match(/testId="leadership-rooms-section"/g)?.length, 1);
+  assert.equal(page.match(/testId="leadership-publishing-section"/g)?.length, 1);
 });
 
 test("نافذة التفاصيل قراءة فقط وتستدعي دالة القراءة المعتمدة", () => {
