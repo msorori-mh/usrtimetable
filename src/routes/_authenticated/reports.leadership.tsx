@@ -45,6 +45,15 @@ import {
   LEADERSHIP_WORKLOAD_HEADERS,
   type LeadershipCollege,
 } from "@/lib/reports/leadership";
+import {
+  LEADERSHIP_METRICS,
+  assignmentCoveragePercent,
+  type LeadershipMetricKey,
+} from "@/lib/reports/leadership-metrics";
+import {
+  LeadershipMetricDrilldown,
+  type LeadershipDrilldownRequest,
+} from "@/components/reports/leadership-metric-drilldown";
 
 export const Route = createFileRoute("/_authenticated/reports/leadership")({
   head: () => ({
@@ -261,6 +270,18 @@ function RoomCell({ row }: { row: LeadershipRow }) {
 function LeadershipDashboard() {
   const { data: me } = useCurrentUser();
   const [period, setPeriod] = useState<{ year: string; type: string } | null>(null);
+  const [drilldown, setDrilldown] = useState<LeadershipDrilldownRequest | null>(null);
+  const openMetric = (
+    metric: LeadershipMetricKey,
+    cardValue: number | null,
+    scope?: { collegeId: string; collegeName: string },
+  ) =>
+    setDrilldown({
+      metric,
+      cardValue,
+      collegeId: scope?.collegeId ?? null,
+      collegeName: scope?.collegeName ?? null,
+    });
   const query = useQuery({
     queryKey: ["university-leadership", me?.id, period],
     staleTime: 60_000,
@@ -318,6 +339,11 @@ function LeadershipDashboard() {
   const sessions = aggregateLeadership(colleges, "sessions_count");
   const rooms = aggregateLeadership(colleges, "room_count");
   const usedRooms = aggregateLeadership(colleges, "used_rooms");
+  const assignmentCoverage = assignmentCoveragePercent({
+    required: required.value,
+    covered: covered.value,
+    incompleteColleges: required.total - required.known,
+  });
   const universityCoverage =
     required.complete && covered.complete ? leadershipPercent(covered.value, required.value) : null;
   const periodLabel = data?.year
@@ -509,7 +535,7 @@ function LeadershipDashboard() {
                 <dl className="space-y-1">
                   <div className="flex justify-between">
                     <dt>اكتمال الإسناد</dt>
-                    <dd>{universityCoverage === null ? "غير محسوب" : `${universityCoverage}%`}</dd>
+                    <dd>{assignmentCoverage === null ? "غير محسوب" : `${assignmentCoverage}%`}</dd>
                   </div>
                   <div className="flex justify-between">
                     <dt>اكتمال التسكين</dt>
