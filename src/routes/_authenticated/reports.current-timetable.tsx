@@ -66,6 +66,8 @@ function Page() {
     defaultStudySystem: "all",
   });
   const { active } = useActiveCollege();
+  const [printScope, setPrintScope] = useState<"college" | "custom">("college");
+  const effectiveStudySystem = printScope === "college" ? "all" : ctx.studySystem;
   const [departmentId, setDepartmentId] = useState("all");
   const [programId, setProgramId] = useState("all");
   const [levelId, setLevelId] = useState("all");
@@ -161,7 +163,7 @@ function Page() {
   const selectedProgram = availablePrograms.find((p) => p.id === programId);
   const selectedLevel = availableLevels.find((level) => level.id === levelId);
   const selectedCourse = catalog?.courses.find((course) => course.id === courseId);
-  const extraSummary = [
+  const extraSummary = printScope === "college" ? ["نطاق الطباعة: الكلية كاملة — جميع البرامج والمستويات"] : [
     ...(departmentId !== "all" ? [`القسم: ${selectedDepartment?.name ?? departmentId}`] : []),
     ...(programId !== "all" ? [`البرنامج: ${selectedProgram?.name ?? programId}`] : []),
     ...(levelId !== "all" ? [`المستوى: ${selectedLevel?.name ?? levelId}`] : []),
@@ -181,7 +183,7 @@ function Page() {
     error: sessionsError,
     refetch,
   } = useQuery({
-    queryKey: ["current-timetable-print", ctx.collegeId, ctx.versionId, ctx.studySystem],
+    queryKey: ["current-timetable-print", ctx.collegeId, ctx.versionId, effectiveStudySystem],
     enabled: !!ctx.collegeId && !!ctx.versionId,
     queryFn: async () => {
       const hydrated = await fetchHydratedVersionSessions({
@@ -191,9 +193,9 @@ function Page() {
       });
       const expanded = (await fetchStudentPrintMemberships(hydrated, ctx.collegeId!)).filter(
         (row) =>
-          ctx.studySystem === "all" ||
+          effectiveStudySystem === "all" ||
           row.study_system === "both" ||
-          row.study_system === ctx.studySystem,
+          row.study_system === effectiveStudySystem,
       );
       // Keep the student's program label resolved by fetchStudentPrintMemberships.
       // The plan ID still separates tracks; its administrative name is not a report title.
@@ -222,7 +224,7 @@ function Page() {
 
   const sessions = useMemo(
     () =>
-      filterCurrentScheduleScope(
+      printScope === "college" ? (bundle?.sessions ?? EMPTY_SESSIONS) : filterCurrentScheduleScope(
         bundle?.sessions ?? EMPTY_SESSIONS,
         catalog?.programs ?? [],
         departmentId,
@@ -230,13 +232,13 @@ function Page() {
         levelId,
         courseId,
       ),
-    [bundle?.sessions, catalog?.programs, departmentId, programId, levelId, courseId],
+    [bundle?.sessions, catalog?.programs, printScope, departmentId, programId, levelId, courseId],
   );
   const pages = useMemo(
     () =>
       groupCurrentSchedulePages(sessions, {
         collegeId: ctx.collegeId ?? "",
-        studySystem: ctx.studySystem,
+        studySystem: effectiveStudySystem,
       }).map((page) => {
         const program = catalog?.programs.find(
           (p) => p.id === page.sessions[0]?.course_offerings?.program_id,
@@ -244,13 +246,13 @@ function Page() {
         return {
           ...page,
           title:
-            courseId !== "all" && selectedCourse
+            printScope === "custom" && courseId !== "all" && selectedCourse
               ? `${selectedCourse.name} — ${page.title}`
               : page.title,
           departmentName: catalog?.departments.find((d) => d.id === program?.department_id)?.name,
         };
       }),
-    [sessions, ctx.collegeId, ctx.studySystem, catalog, courseId, selectedCourse],
+    [sessions, ctx.collegeId, effectiveStudySystem, printScope, catalog, courseId, selectedCourse],
   );
   const rows = useMemo(() => buildExportRows(pages, bundle?.labels), [pages, bundle?.labels]);
   const printedSessions = countPagedSessions(pages);
@@ -262,12 +264,17 @@ function Page() {
 
   const isLoading = ctx.isLoading || sessionsLoading || catalogLoading;
   const ready = !!ctx.versionId;
-  const filtered =
+  const filtered = printScope === "custom" && (
     ctx.studySystem !== "all" ||
     departmentId !== "all" ||
     programId !== "all" ||
     levelId !== "all" ||
-    courseId !== "all";
+    courseId !== "all");
+  const printContext = {
+    ...ctx,
+    studySystem: effectiveStudySystem,
+    filterSummary: printScope === "college" ? "الكلية كاملة — جميع الأنظمة" : ctx.filterSummary,
+  };
   const coverageSuffix = filtered ? " (الكلية كاملة)" : "";
   const scopeSuffix = filtered ? " (ضمن الفلتر)" : "";
 
@@ -275,8 +282,8 @@ function Page() {
     <ReportShell
       title={CURRENT_SCHEDULE_TITLE_AR}
       description={DESCRIPTION}
-      filterSummary={[ctx.filterSummary, ...extraSummary].join(" · ")}
-      reportContext={ctx}
+      filterSummary={[printContext.filterSummary, ...extraSummary].join(" · ")}
+      reportContext={printContext}
       filename="current_timetable"
       rows={rows as unknown as Record<string, unknown>[]}
       headers={PRINT_EXPORT_HEADERS.map((h) => ({
@@ -307,9 +314,11 @@ function Page() {
       ]}
       filters={
         <ReportFilters
-          context={ctx}
+          context={printContext}
+          studySystem={printScope === "custom"}
           extraSummary={extraSummary}
           onClear={() => {
+            setPrintScope("college");
             setDepartmentId("all");
             setProgramId("all");
             setLevelId("all");
@@ -317,6 +326,18 @@ function Page() {
             setCourseSearch("");
           }}
         >
+          <ReportFilterField label="نطاق الطباعة" htmlFor="current-print-scope">
+            <Select value={printScope} onValueChange={(value) => setPrintScope(value as "college" | "custom")}>
+              <SelectTrigger id="current-print-scope" aria-label="نطاق الطباعة">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="college">الكلية كاملة — جميع البرامج والمستويات</SelectItem>
+                <SelectItem value="custom">طباعة مخصصة — قسم أو برنامج أو مستوى أو مادة</SelectItem>
+              </SelectContent>
+            </Select>
+          </ReportFilterField>
+          {printScope === "custom" && <>
           <ReportFilterField label="القسم" htmlFor="current-print-department">
             <Select
               value={departmentId}
@@ -438,10 +459,17 @@ function Page() {
               </Select>
             </div>
           </ReportFilterField>
+          </>}
         </ReportFilters>
       }
       summary={
         <Card className="p-3 text-sm" data-testid="current-timetable-coverage">
+          {printScope === "college" && (
+            <p className="mb-2 font-semibold text-primary">
+              جاهز لطباعة جدول الكلية كاملًا من النسخة المختارة: {pages.length} صفحة تشمل جميع
+              البرامج والمستويات والأنظمة. اضغط «طباعة» للطباعة دفعة واحدة أو الحفظ في ملف PDF واحد.
+            </p>
+          )}
           <p className="font-semibold">
             التغطية الحالية (الكلية كاملة، كل الأنظمة): المجموعات {groupsText} · الساعات {hoursText}
           </p>
