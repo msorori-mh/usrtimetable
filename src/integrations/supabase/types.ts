@@ -5264,6 +5264,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_college_dean: { Args: { _user_id: string }; Returns: boolean }
       is_institutional_read_only_actor: {
         Args: { _user_id: string }
         Returns: boolean
@@ -5788,6 +5789,7 @@ export type Database = {
         | "read_only"
         | "institutional_viewer"
         | "university_leadership"
+        | "college_dean"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -5921,6 +5923,7 @@ export const Constants = {
         "read_only",
         "institutional_viewer",
         "university_leadership",
+        "college_dean",
       ],
     },
   },
