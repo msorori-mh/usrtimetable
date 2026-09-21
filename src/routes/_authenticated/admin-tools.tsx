@@ -18,6 +18,7 @@ import {
 } from "@/lib/admin-nav";
 import {
   LEADERSHIP_ROLE_LABEL_AR,
+  COLLEGE_DEAN_ROLE_LABEL_AR,
   INSTITUTIONAL_VIEWER_ROLE_LABEL_AR,
   READ_ONLY_ROLE_LABEL_AR,
 } from "@/lib/viewer-roles";
@@ -51,6 +52,7 @@ const TIER_LABEL: Record<AdminPage["tier"], string> = {
 
 const ROLE_LABEL: Record<Role, string> = {
   university_leadership: LEADERSHIP_ROLE_LABEL_AR,
+  college_dean: COLLEGE_DEAN_ROLE_LABEL_AR,
   super_admin: "Super Admin",
   college_admin: "مدير كلّية",
   read_only: READ_ONLY_ROLE_LABEL_AR,
