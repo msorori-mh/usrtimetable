@@ -5788,7 +5788,6 @@ export type Database = {
         | "read_only"
         | "institutional_viewer"
         | "university_leadership"
-        | "college_dean"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -5922,7 +5921,6 @@ export const Constants = {
         "read_only",
         "institutional_viewer",
         "university_leadership",
-        "college_dean",
       ],
     },
   },
