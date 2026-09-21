@@ -5,7 +5,7 @@ LAUNCH-CLOSURE-03 print/export proof runner.
 Serves the isolated fixture build (dist-print-proof) over http, then uses the
 pre-installed Playwright Chromium to:
   1. render the REAL PrintSheet with the REAL print stylesheet,
-  2. print to PDF in A4/A3 x portrait/landscape with `print_background` and CSS page size,
+  2. print to PDF in the platform-wide A4 portrait format,
   3. rasterise every PDF page to PNG and check for clipping / repeated table headers,
   4. trigger the REAL downloadCSV / downloadXLSX / exportRowsToXlsx helpers and capture
      the actual downloaded bytes.
@@ -76,8 +76,8 @@ async def main():
         page.on("console", lambda m: console_errors.append(m.text) if m.type == "error" else None)
         page.on("pageerror", lambda e: console_errors.append(str(e)))
 
-        # ---- 1. PDF rendering across paper sizes and orientations (long Arabic fixture)
-        combos = [("A4", "portrait"), ("A4", "landscape"), ("A3", "portrait"), ("A3", "landscape")]
+        # ---- 1. PDF rendering in the platform-wide A4 portrait format
+        combos = [("A4", "portrait")]
         for paper, orientation in combos:
             url = f"{base}?paper={paper}&orientation={orientation}&fixture=long"
             await page.goto(url, wait_until="domcontentloaded")
@@ -101,11 +101,9 @@ async def main():
             pages = int(re.search(r"Pages:\s+(\d+)", out).group(1))
             dims = re.search(r"Page size:\s+([\d.]+) x ([\d.]+)", out)
             w, h = float(dims.group(1)), float(dims.group(2))
-            landscape = w > h
-            expected_landscape = orientation == "landscape"
             check(
                 f"{paper} {orientation}: CSS @page size honoured",
-                landscape == expected_landscape,
+                w < h,
                 f"{w:.0f}x{h:.0f}pt, {pages} pages",
             )
             check(f"{paper} {orientation}: fixture spans multiple pages", pages > 1, f"{pages} pages")

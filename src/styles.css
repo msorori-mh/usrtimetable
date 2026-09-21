@@ -591,7 +591,7 @@
     margin: 1.2cm 1.5cm;
   }
 
-  /* Page size is set via #print-center-page-style (injected from print center UI). */
+  /* The same A4 portrait page size is also injected for isolated print surfaces. */
 
   .print-center-page {
     break-after: page;
@@ -609,9 +609,7 @@
     page-break-inside: avoid;
   }
 
-  /* LAUNCH-CLOSURE-03: keep the endorsement footer attached to the last rows of the
-     sheet instead of being pushed alone onto an otherwise empty printed page
-     (observed on A3 landscape, where the shorter page box orphaned the footer). */
+  /* Keep the endorsement footer attached to the last rows of the sheet. */
   .print-center-footer {
     break-before: avoid;
     page-break-before: avoid;
@@ -781,7 +779,7 @@
    * LAUNCH-CLOSURE-01 — printable timetable clipping fix.
    * The shared <Table> primitive wraps every table in `div.overflow-auto`.
    * On screen that scrolls; on paper it CLIPS every column past the viewport
-   * width, which silently truncated wide A3 timetable sheets. Any scroll
+   * width, which silently truncated wide timetable sheets. Any scroll
    * container inside a printed sheet must release its overflow and height caps.
    */
   .report-print-body [class*="overflow-auto"],
@@ -1021,7 +1019,7 @@
 }
 
 @media print {
-  /* Keep running identity compact even on the shorter A4 landscape page box. */
+  /* Keep running identity compact within the A4 portrait page box. */
   .report-official-header {
     padding: 2mm !important;
   }

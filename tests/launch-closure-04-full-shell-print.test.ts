@@ -72,15 +72,11 @@ describe("LAUNCH-CLOSURE-04 full-shell proof harness", () => {
     expect(vite.includes("shell.html")).toBe(true);
   });
 
-  test("runner covers both viewports, both papers, both orientations and both fixtures", () => {
+  test("runner covers both viewports and fixtures on A4 portrait", () => {
     const runner = read("scripts/print-proof/run-shell.py");
     expect(runner.includes('("desktop"')).toBe(true);
     expect(runner.includes('("mobile"')).toBe(true);
-    expect(
-      runner.includes(
-        '("A4", "portrait"), ("A4", "landscape"), ("A3", "portrait"), ("A3", "landscape")',
-      ),
-    ).toBe(true);
+    expect(runner.includes('combos = [("A4", "portrait")]')).toBe(true);
     expect(runner.includes('for f in ("long", "short")')).toBe(true);
     expect(runner.includes("no app chrome printed")).toBe(true);
     expect(runner.includes("official sheet header printed")).toBe(true);
@@ -104,7 +100,7 @@ describe("LAUNCH-CLOSURE-04 full-shell proof harness", () => {
     const names = res.cases.map((c) => c.name).join("\n");
     for (const needle of [
       "mobile A4 portrait short: no app chrome printed",
-      "desktop A3 landscape long: no ink touching the page edge (clipping check)",
+      "desktop A4 portrait long: no ink touching the page edge (clipping check)",
       "mobile A4 portrait short: all 8 columns present in every sheet",
       "mobile A4 portrait short: exactly the 2 fixture rows (practical Sunday + theory Monday)",
     ]) {

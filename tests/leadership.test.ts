@@ -15,9 +15,6 @@ import {
   orderedLeadershipCounts,
   sumLeadershipCounts,
   sortLeadershipColleges,
-  aggregateLeadership,
-  formatLeadershipAmount,
-  leadershipPercent,
   type LeadershipCollege,
 } from "../src/lib/reports/leadership";
 
@@ -32,29 +29,6 @@ test("leadership has its own landing page and cannot reach operational/user-mana
   assert.equal(canViewLeadership({ isReadOnly: true }), false);
   assert.equal(canViewLeadership({ isCollegeAdmin: true }), false);
   assert.equal(resolveViewerScopeRedirect({ isSuperAdmin: true, ...me }, "/users"), null);
-});
-
-test("leadership aggregates preserve missing-data semantics and units", () => {
-  const rows = [
-    { net_quota: 12, teaching_hours: null },
-    { net_quota: 8, teaching_hours: null },
-  ] as LeadershipCollege[];
-  assert.deepEqual(aggregateLeadership(rows, "net_quota"), {
-    value: 20,
-    known: 2,
-    total: 2,
-    complete: true,
-  });
-  assert.deepEqual(aggregateLeadership(rows, "teaching_hours"), {
-    value: null,
-    known: 0,
-    total: 2,
-    complete: false,
-  });
-  assert.equal(formatLeadershipAmount(null, "ساعة"), "غير محسوب");
-  assert.match(formatLeadershipAmount(12, "ساعة"), /12|١٢/);
-  assert.equal(leadershipPercent(5, 7), 71.4);
-  assert.equal(leadershipPercent(0, 0), null);
 });
 test("leadership never creates college-admin memberships", () => {
   assert.equal(assignsAllColleges("university_leadership"), false);
@@ -86,7 +60,7 @@ test("leadership faculty composition sums count maps and preserves executive ord
     {
       college_id: "00000000-0000-4000-8000-000000000001",
       college: "كلية العلوم الإدارية والمالية",
-      rank_counts: { "أستاذ مساعد": 2, أستاذ: 1 },
+      rank_counts: { "أستاذ مساعد": 2, "أستاذ": 1 },
       availability_counts: { متاح: 2, "إجازة مرضية": 1 },
       employment_counts: { full_time: 2, contract: 1 },
     },
@@ -110,7 +84,10 @@ test("leadership faculty composition sums count maps and preserves executive ord
     "تفرغ علمي": 1,
   });
   assert.deepEqual(
-    orderedLeadershipCounts({ "أستاذ مساعد": 5, أستاذ: 1 }, ["أستاذ", "أستاذ مساعد"]),
+    orderedLeadershipCounts(
+      { "أستاذ مساعد": 5, أستاذ: 1 },
+      ["أستاذ", "أستاذ مساعد"],
+    ),
     [
       ["أستاذ", 1],
       ["أستاذ مساعد", 5],

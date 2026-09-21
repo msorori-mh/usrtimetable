@@ -22,17 +22,11 @@ import {
   filterPrintSessions,
   groupPrintPages,
   printPageStyleCss,
-  type PrintOrientation,
-  type PrintPaperSize,
 } from "@/lib/print-center";
 import { FIXTURE_FILTERS, LONG_FIXTURE, SHORT_FIXTURE } from "./fixture";
 import "@/styles.css";
 
 const q = new URLSearchParams(window.location.search);
-const paper = (q.get("paper") === "A3" ? "A3" : "A4") as PrintPaperSize;
-const orientation = (
-  q.get("orientation") === "portrait" ? "portrait" : "landscape"
-) as PrintOrientation;
 const fixture = q.get("fixture") === "short" ? SHORT_FIXTURE : LONG_FIXTURE;
 const isLongFixture = fixture === LONG_FIXTURE;
 
@@ -47,7 +41,7 @@ function Sheets() {
   useEffect(() => {
     const el = document.createElement("style");
     el.id = PRINT_PAGE_STYLE_ELEMENT_ID;
-    el.textContent = printPageStyleCss(paper, orientation);
+    el.textContent = printPageStyleCss();
     document.head.appendChild(el);
     document.documentElement.dataset.printProofReady = "1";
     return () => el.remove();
@@ -56,10 +50,10 @@ function Sheets() {
   const exportAt = new Date("2026-09-10T00:00:00.000Z");
   return (
     <div
-      className={`print-center-root report-print-root space-y-4 print-paper-${paper.toLowerCase()} print-orient-${orientation}`}
+      className="print-center-root report-print-root space-y-4"
       dir="rtl"
-      data-paper={paper}
-      data-orientation={orientation}
+      data-paper="A4"
+      data-orientation="portrait"
     >
       {/* Same screen-only header block shape the print centre renders. */}
       <div className="report-no-print space-y-4">

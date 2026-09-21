@@ -247,7 +247,6 @@ function Page() {
       rows={rows}
       headers={columns}
       filename="unscheduled_groups"
-      printOrientation="landscape"
       isLoading={ctx.isLoading || query.isLoading}
       error={ctx.error ?? query.error}
       onRetry={() => void query.refetch()}

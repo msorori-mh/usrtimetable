@@ -52,8 +52,6 @@ import {
   programFiltersComplete,
   studentFiltersComplete,
   type PrintCenterFilters,
-  type PrintOrientation,
-  type PrintPaperSize,
   type PrintReportType,
   type PrintSessionLike,
   type PrintStudySystem,
@@ -133,13 +131,7 @@ export function PrintCenterPage(props: { versionId: string }) {
   const [departmentId, setDepartmentId] = useState(initialFromUrl.departmentId ?? "");
   const [instructorId, setInstructorId] = useState(initialFromUrl.instructorId ?? "");
   const [roomId, setRoomId] = useState(initialFromUrl.roomId ?? "");
-  const [paper, setPaper] = useState<PrintPaperSize>(initialFromUrl.paper ?? "A4");
-  const [orientation, setOrientation] = useState<PrintOrientation>(
-    initialFromUrl.orientation ?? "portrait",
-  );
   const [visibility, setVisibility] = useState<PrintVisibilityOptions>(DEFAULT_PRINT_VISIBILITY);
-
-  // Keep an explicit paper/orientation choice when changing report type.
 
   // Clear leftover dimensions that do not apply to the active report type
   // (e.g. programId from student must not shrink instructor/room reports).
@@ -318,10 +310,10 @@ export function PrintCenterPage(props: { versionId: string }) {
 
   const qrUrl = useMemo(() => {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
-    return buildPrintQrUrl(origin, filtersToQrParams(versionId, filters, paper, orientation));
-  }, [versionId, filters, paper, orientation]);
+    return buildPrintQrUrl(origin, filtersToQrParams(versionId, filters));
+  }, [versionId, filters]);
 
-  // Inject @page size for A4/A3 landscape/portrait (cannot nest @page in CSS selectors).
+  // Inject the platform-wide A4 portrait page box (cannot nest @page in CSS selectors).
   useEffect(() => {
     if (typeof document === "undefined") return;
     const id = PRINT_PAGE_STYLE_ELEMENT_ID;
@@ -331,16 +323,16 @@ export function PrintCenterPage(props: { versionId: string }) {
       el.id = id;
       document.head.appendChild(el);
     }
-    el.textContent = printPageStyleCss(paper, orientation);
+    el.textContent = printPageStyleCss();
     return () => {
       el?.remove();
     };
-  }, [paper, orientation]);
+  }, []);
 
   // Keep URL in sync for shareable/QR links (no navigation).
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const params = filtersToQrParams(versionId, filters, paper, orientation);
+    const params = filtersToQrParams(versionId, filters);
     const qs = new URLSearchParams();
     qs.set("type", params.reportType);
     if (params.programId) qs.set("program", params.programId);
@@ -349,11 +341,9 @@ export function PrintCenterPage(props: { versionId: string }) {
     if (params.departmentId) qs.set("dept", params.departmentId);
     if (params.instructorId) qs.set("instructor", params.instructorId);
     if (params.roomId) qs.set("room", params.roomId);
-    if (params.paper) qs.set("paper", params.paper);
-    if (params.orientation) qs.set("orient", params.orientation);
     const next = `${window.location.pathname}?${qs.toString()}`;
     window.history.replaceState(null, "", next);
-  }, [versionId, filters, paper, orientation]);
+  }, [versionId, filters]);
 
   const isDemo = isDeliveryDemoVersion({
     name: version?.name,
@@ -425,10 +415,10 @@ export function PrintCenterPage(props: { versionId: string }) {
 
   return (
     <div
-      className={`print-center-root report-print-root space-y-4 print-paper-${paper.toLowerCase()} print-orient-${orientation}`}
+      className="print-center-root report-print-root space-y-4"
       dir="rtl"
-      data-paper={paper}
-      data-orientation={orientation}
+      data-paper="A4"
+      data-orientation="portrait"
     >
       <div className="report-no-print space-y-4">
         <DeliveryDemoWarningBanner name={version.name} notes={version.notes} />
@@ -632,24 +622,6 @@ export function PrintCenterPage(props: { versionId: string }) {
                 ]}
               />
             )}
-            <Sel
-              label="حجم الورق"
-              value={paper}
-              onChange={(v) => setPaper(v as PrintPaperSize)}
-              items={[
-                { id: "A3", name: "A3" },
-                { id: "A4", name: "A4" },
-              ]}
-            />
-            <Sel
-              label="الاتجاه"
-              value={orientation}
-              onChange={(v) => setOrientation(v as PrintOrientation)}
-              items={[
-                { id: "landscape", name: "أفقي" },
-                { id: "portrait", name: "عمودي" },
-              ]}
-            />
           </div>
 
           {reportType === "student" && !studentReady && (

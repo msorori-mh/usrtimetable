@@ -525,7 +525,6 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
       title={ACADEMIC_REPORT_TITLES[kind]}
       description="تقارير الشؤون الأكاديمية بحسب الكلية والقسم والبرنامج وعضو هيئة التدريس."
       filename={`academic_affairs_${kind}_${collegeName}_${term?.name ?? ""}`}
-      printOrientation="landscape"
       headers={headers}
       rows={rows}
       isLoading={loading}

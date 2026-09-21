@@ -447,12 +447,6 @@ function Report() {
       title="دليل المحاضرين وبياناتهم"
       description="يعرض أعضاء الكلية الأصليين افتراضيًا. لعرض المحاضرين من كليات أخرى أو السجلات غير المحسومة، اختر نطاق التبعية من الفلتر."
       filename="instructors_directory"
-      printFilename={`بيانات المحاضرين — ${active?.name ?? "الكلية"}`}
-      headerMeta={{
-        collegeName: active?.name,
-        note: `نطاق الكشف: ${filterSummary} · عدد المحاضرين المعروضين: ${rows.length}`,
-      }}
-      printOrientation="landscape"
       rows={rows}
       headers={headers}
       isLoading={isLoading}

@@ -35,7 +35,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
-import { UserSquare2, Pencil, Trash2, Info, AlertTriangle, Printer } from "lucide-react";
+import { UserSquare2, Pencil, Trash2, Info, AlertTriangle } from "lucide-react";
 import {
   categorizeInstructor,
   INSTRUCTOR_FORM_HINT_AR,
@@ -590,14 +590,6 @@ function InstructorDirectory() {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <CollegeSwitcher />
         <div className="flex flex-wrap gap-2">
-          {canManage && active && (
-            <Button asChild variant="outline">
-              <Link to="/reports/instructors" aria-label="فتح كشف بيانات محاضري الكلية للطباعة">
-                <Printer className="ml-2 h-4 w-4" />
-                طباعة بيانات محاضري الكلية
-              </Link>
-            </Button>
-          )}
           <AdminExportMenu
             testId="instructors-export"
             disabled={!active || (visibleRows ?? []).length === 0}
