@@ -493,12 +493,31 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             data-testid="account-welcome"
             dir="rtl"
           >
-            <p className="whitespace-normal break-words text-sm leading-relaxed text-foreground sm:text-base">
-              {user.fullName?.trim() ? `مرحبًا، ${user.fullName.trim()}` : "مرحبًا بك"}
-            </p>
+            {leadership ? (
+              <div className="space-y-1">
+                <p className="text-sm leading-relaxed text-muted-foreground">مرحبًا بك</p>
+                {user.fullName?.trim() && (
+                  <p
+                    className="whitespace-normal break-words text-2xl font-bold leading-relaxed text-primary sm:text-3xl"
+                    data-testid="leadership-user-name"
+                  >
+                    {user.fullName.trim()}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="whitespace-normal break-words text-sm leading-relaxed text-foreground sm:text-base">
+                {user.fullName?.trim() ? `مرحبًا، ${user.fullName.trim()}` : "مرحبًا بك"}
+              </p>
+            )}
             {!user.isSuperAdmin && (leadership || activeCollege) && (
               <p
-                className="mt-1 whitespace-normal break-words text-lg font-bold leading-relaxed text-primary sm:text-xl"
+                className={cn(
+                  "mt-1 whitespace-normal break-words leading-relaxed",
+                  leadership
+                    ? "text-sm font-medium text-muted-foreground sm:text-base"
+                    : "text-lg font-bold text-primary sm:text-xl",
+                )}
                 data-testid={leadership ? "account-university-scope" : "account-college-name"}
               >
                 {leadership
