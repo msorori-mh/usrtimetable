@@ -361,10 +361,27 @@ function LeadershipDashboard() {
     sessions_count: sessions.value,
     published_colleges: published,
   };
+  const collegeValue = (
+    metric: LeadershipMetricKey,
+    college: LeadershipCollege,
+  ): number | null => {
+    const map: Partial<Record<LeadershipMetricKey, number | null>> = {
+      net_quota: college.net_quota,
+      faculty_assigned_hours: college.faculty_assigned_hours,
+      deficit: college.deficit,
+      overload: college.overload,
+      required_course_hours: college.required_hours,
+      covered_course_hours: college.covered_hours,
+      uncovered_course_hours: college.uncovered_hours,
+      scheduled_hours: college.teaching_hours,
+      sessions_count: college.sessions_count,
+    };
+    return map[metric] ?? null;
+  };
   const openMetric = (metric: LeadershipMetricKey, scope?: LeadershipCollege) =>
     setDrilldown({
       metric,
-      cardValue: scope ? null : cardValues[metric],
+      cardValue: scope ? collegeValue(metric, scope) : cardValues[metric],
       collegeId: scope?.college_id ?? null,
       collegeName: scope?.college ?? null,
     });
