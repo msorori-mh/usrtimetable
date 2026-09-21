@@ -21,14 +21,22 @@
  */
 
 export const LEADERSHIP_ROLE_LABEL_AR = "الإدارة العليا للجامعة";
+export const COLLEGE_DEAN_ROLE_LABEL_AR = "عميد الكلية";
+export const COLLEGE_DEAN_ROLE_HINT_AR =
+  "لوحة تنفيذية للكلية المُسندة فقط، للقراءة والطباعة والتصدير دون أي صلاحية تعديل.";
 export const LEADERSHIP_ROLE_HINT_AR =
   "لوحة ملخصات لجميع الكليات وتقاريرها الداخلية، للقراءة والطباعة والتصدير فقط.";
 export const LEADERSHIP_HOME = "/reports/leadership" as const;
 export function canViewLeadership(me: RoleFlags | null | undefined): boolean {
-  return !!me && (!!me.isSuperAdmin || !!me.isUniversityLeadership);
+  return !!me && (!!me.isSuperAdmin || !!me.isUniversityLeadership || !!me.isCollegeDean);
 }
 export function isLeadershipOnlyRole(me: RoleFlags | null | undefined): boolean {
-  return !!me && !hasAdminRole(me) && !me.isInstitutionalViewer && !!me.isUniversityLeadership;
+  return (
+    !!me &&
+    !hasAdminRole(me) &&
+    !me.isInstitutionalViewer &&
+    (!!me.isUniversityLeadership || !!me.isCollegeDean)
+  );
 }
 
 export const READ_ONLY_ROLE_LABEL_AR = "مشاهد";
@@ -55,6 +63,7 @@ export interface RoleFlags {
   isReadOnly?: boolean;
   isInstitutionalViewer?: boolean;
   isUniversityLeadership?: boolean;
+  isCollegeDean?: boolean;
 }
 
 function hasAdminRole(me: RoleFlags): boolean {
@@ -68,7 +77,11 @@ function hasAdminRole(me: RoleFlags): boolean {
 export function isReportsOnlyRole(me: RoleFlags | null | undefined): boolean {
   if (!me) return false;
   return (
-    !hasAdminRole(me) && !me.isInstitutionalViewer && !me.isUniversityLeadership && !!me.isReadOnly
+    !hasAdminRole(me) &&
+    !me.isInstitutionalViewer &&
+    !me.isUniversityLeadership &&
+    !me.isCollegeDean &&
+    !!me.isReadOnly
   );
 }
 
@@ -87,7 +100,10 @@ export function isViewerOnlyRole(me: RoleFlags | null | undefined): boolean {
   return (
     !!me &&
     !hasAdminRole(me) &&
-    (!!me.isReadOnly || !!me.isInstitutionalViewer || !!me.isUniversityLeadership)
+    (!!me.isReadOnly ||
+      !!me.isInstitutionalViewer ||
+      !!me.isUniversityLeadership ||
+      !!me.isCollegeDean)
   );
 }
 
@@ -137,7 +153,8 @@ export type AssignableRole =
   | "college_admin"
   | "read_only"
   | "institutional_viewer"
-  | "university_leadership";
+  | "university_leadership"
+  | "college_dean";
 
 /**
  * Academic affairs covers every college, so its assignment is computed
@@ -153,5 +170,10 @@ export function assignsAllColleges(role: AssignableRole): boolean {
  * Academic affairs remains institution-wide.
  */
 export function requiresCollegeAssignment(role: AssignableRole): boolean {
-  return role === "college_admin" || role === "read_only";
+  return role === "college_admin" || role === "read_only" || role === "college_dean";
+}
+
+/** College deans are deliberately single-college executive viewers. */
+export function requiresExactlyOneCollege(role: AssignableRole): boolean {
+  return role === "college_dean";
 }
