@@ -104,6 +104,7 @@ async function setup() {
       const q = {
         select: () => q,
         eq: () => q,
+        in: () => q,
         order: (column) => {
           assert.equal(column, table === "shared_lecture_links" ? "member_group_id" : "id");
           return q;
