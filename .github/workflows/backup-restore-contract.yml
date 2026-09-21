@@ -1,0 +1,26 @@
+name: backup-restore-contract
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    name: backup-restore-contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Shell syntax
+        run: bash -n scripts/local-db/backup-restore-drill.sh
+      - name: Fail-closed restore contract
+        run: node --test tests/backup-restore-contract.test.mjs
