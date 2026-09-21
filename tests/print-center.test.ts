@@ -302,15 +302,13 @@ describe("print-center filters", () => {
       programId: "prog-1",
       levelId: "lvl-1",
       studySystem: "regular",
-      paper: "A3",
-      orientation: "landscape",
     });
     assert.match(url, /\/timetable\/ver-54\/print/);
     assert.match(url, /type=student/);
     assert.match(url, /program=prog-1/);
     assert.match(url, /level=lvl-1/);
     assert.match(url, /study=regular/);
-    assert.match(url, /paper=A3/);
-    assert.match(url, /orient=landscape/);
+    assert.doesNotMatch(url, /paper=/);
+    assert.doesNotMatch(url, /orient=/);
   });
 });
