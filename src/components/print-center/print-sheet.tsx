@@ -131,12 +131,6 @@ export function PrintSheet(props: {
     <section
       className={`print-center-page break-after-page${readable ? " print-center-page--readable" : ""}`}
     >
-      {isDraft && (
-        <div className="print-draft-watermark" aria-hidden>
-          {PRINT_DRAFT_WATERMARK_AR}
-        </div>
-      )}
-
       <RepeatingPrintHeader
         header={
           <div className="print-sheet-identity-row">
@@ -170,6 +164,27 @@ export function PrintSheet(props: {
                   </div>
                 )}
               </div>
+
+              {isDraft && (
+                <p
+                  data-testid="print-draft-notice"
+                  style={{
+                    margin: "2mm 0",
+                    padding: "1.5mm 3mm",
+                    border: "1px solid #64748b",
+                    borderRadius: "2mm",
+                    color: "#334155",
+                    backgroundColor: "#f8fafc",
+                    fontSize: "9pt",
+                    fontWeight: 700,
+                    lineHeight: 1.5,
+                    textAlign: "center",
+                    breakInside: "avoid",
+                  }}
+                >
+                  {PRINT_DRAFT_WATERMARK_AR} — للمراجعة فقط
+                </p>
+              )}
 
               <div className="print-header-details">
                 {visibility.showDepartment && (page.departmentName || meta.departmentName) && (
