@@ -266,6 +266,9 @@ function Page() {
           : "يشمل مواد وساعات المحاضر داخل هذه الكلية فقط.",
       }}
       filename="instructor_schedule"
+      printOrientation={
+        ctx.collegeId === "f30ff526-3918-4395-b8a0-dff1873534bf" ? "portrait" : undefined
+      }
       printFilename={instructorName ? `${instructorName} - الجدول الفردي` : "الجدول الفردي"}
       rows={rows}
       headers={exportHeaders}
