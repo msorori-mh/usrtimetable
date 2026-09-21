@@ -93,7 +93,9 @@ function AccountSecurityPage() {
     if (!pending) return;
     setBusy(true);
     try {
-      const { data: ch, error: chErr } = await supabase.auth.mfa.challenge({ factorId: pending.id });
+      const { data: ch, error: chErr } = await supabase.auth.mfa.challenge({
+        factorId: pending.id,
+      });
       if (chErr) throw chErr;
       const { error: vErr } = await supabase.auth.mfa.verify({
         factorId: pending.id,
@@ -211,7 +213,10 @@ function AccountSecurityPage() {
                 />
               </div>
               <div className="flex gap-2">
-                <Button disabled={busy || code.trim().length < 6} onClick={() => void confirmEnroll()}>
+                <Button
+                  disabled={busy || code.trim().length < 6}
+                  onClick={() => void confirmEnroll()}
+                >
                   تأكيد التنشيط
                 </Button>
                 <Button variant="ghost" disabled={busy} onClick={() => void remove(pending.id)}>
@@ -220,7 +225,11 @@ function AccountSecurityPage() {
               </div>
             </div>
           ) : (
-            <Button disabled={busy} onClick={() => void startEnroll()} data-testid="account-security-enroll">
+            <Button
+              disabled={busy}
+              onClick={() => void startEnroll()}
+              data-testid="account-security-enroll"
+            >
               بدء التسجيل بتطبيق مصادقة
             </Button>
           )}

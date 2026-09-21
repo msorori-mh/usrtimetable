@@ -155,36 +155,36 @@ function AuthPage() {
                 </Button>
               </form>
             ) : (
-            <form onSubmit={handle} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">البريد الإلكتروني</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@university.edu"
-                  dir="ltr"
-                  autoComplete="username"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">كلمة المرور</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  dir="ltr"
-                  autoComplete="current-password"
-                />
-              </div>
-              <Button type="submit" className="w-full rounded-lg" size="lg" disabled={loading}>
-                {loading ? "جارٍ التحقق..." : "تسجيل الدخول"}
-              </Button>
-            </form>
+              <form onSubmit={handle} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">البريد الإلكتروني</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="name@university.edu"
+                    dir="ltr"
+                    autoComplete="username"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">كلمة المرور</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    dir="ltr"
+                    autoComplete="current-password"
+                  />
+                </div>
+                <Button type="submit" className="w-full rounded-lg" size="lg" disabled={loading}>
+                  {loading ? "جارٍ التحقق..." : "تسجيل الدخول"}
+                </Button>
+              </form>
             )}
           </div>
         </div>
