@@ -202,6 +202,33 @@ test("عقد بطاقات الملخص الثلاث تسبق عقدة مقارن
   assert.equal(page.match(/testId="leadership-publishing-section"/g)?.length, 1);
 });
 
+test("الحمل الأسبوعي ظاهر قبل الملخص والمقارنة بتعريف متوسط صريح", () => {
+  const weekly = page.indexOf('testId="leadership-weekly-teaching"');
+  const summaries = page.indexOf('data-testid="leadership-summary-sections"');
+  const comparison = page.indexOf('testId="leadership-colleges-comparison"');
+
+  assert.ok(weekly >= 0 && weekly < summaries && summaries < comparison);
+  assert.ok(page.includes('label="المحاضرات أسبوعيًا"'));
+  assert.ok(page.includes('label="الساعات الأسبوعية"'));
+  assert.ok(page.includes('label="الساعات النظرية أسبوعيًا"'));
+  assert.ok(page.includes('label="الساعات العملية أسبوعيًا"'));
+  assert.ok(page.includes("averageSessionsPerPublishedCollege"));
+  assert.ok(page.includes("المتوسط لكل كلية منشورة"));
+  assert.ok(page.includes('aggregateLeadership(colleges, "other_hours")'));
+});
+
+test("تفاصيل حالة أعضاء هيئة التدريس والرتب منفصلة بصريًا ودلاليًا", () => {
+  const availability = page.indexOf('testId="faculty-availability-panel"');
+  const ranks = page.indexOf('testId="faculty-ranks-panel"');
+
+  assert.ok(page.includes('data-testid="faculty-breakdown-groups"'));
+  assert.ok(availability >= 0 && ranks > availability);
+  assert.ok(page.includes('title="الحالة الوظيفية"'));
+  assert.ok(page.includes('title="الرتب الأكاديمية"'));
+  assert.ok(page.includes("grid-cols-[minmax(0,1fr)_auto]"));
+  assert.ok(page.includes("lg:grid-cols-2"));
+});
+
 test("نافذة التفاصيل قراءة فقط وتستدعي دالة القراءة المعتمدة", () => {
   assert.ok(sheet.includes("leadership_metric_details"));
   assert.ok(sheet.includes("reconcileMetric("));

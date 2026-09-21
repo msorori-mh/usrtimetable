@@ -1,7 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, CalendarCheck, Clock3, RefreshCw, Users } from "lucide-react";
+import {
+  AlertTriangle,
+  BookOpen,
+  CalendarCheck,
+  Clock3,
+  FlaskConical,
+  RefreshCw,
+  Users,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { setActiveCollegeId } from "@/hooks/use-colleges";
@@ -178,14 +186,46 @@ function MetricLink({
 
 function CountList({ entries }: { entries: Array<[string, number]> }) {
   return (
-    <dl className="grid gap-x-5 gap-y-1 sm:grid-cols-2">
+    <dl className="space-y-1.5">
       {entries.map(([label, value]) => (
-        <div key={label} className="flex justify-between gap-3 text-sm">
-          <dt className="text-muted-foreground">{label}</dt>
-          <dd className="font-semibold tabular-nums">{value.toLocaleString("ar")}</dd>
+        <div
+          key={label}
+          className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-md bg-background px-3 py-2 text-sm"
+        >
+          <dt className="min-w-0 text-foreground">{label}</dt>
+          <dd className="min-w-10 rounded bg-muted px-2 py-0.5 text-center font-bold tabular-nums">
+            {value.toLocaleString("ar")}
+          </dd>
         </div>
       ))}
     </dl>
+  );
+}
+
+function FacultyBreakdownPanel({
+  title,
+  entries,
+  testId,
+}: {
+  title: string;
+  entries: Array<[string, number]>;
+  testId: string;
+}) {
+  const total = entries.reduce((sum, [, value]) => sum + value, 0);
+  return (
+    <section
+      className="rounded-lg border bg-muted/35 p-3"
+      aria-label={title}
+      data-testid={testId}
+    >
+      <div className="mb-3 flex items-center justify-between gap-3 border-b pb-2">
+        <h3 className="font-semibold text-foreground">{title}</h3>
+        <span className="text-xs text-muted-foreground">
+          المجموع {total.toLocaleString("ar")}
+        </span>
+      </div>
+      <CountList entries={entries} />
+    </section>
   );
 }
 
@@ -336,9 +376,16 @@ function LeadershipDashboard() {
   const netQuota = aggregateLeadership(colleges, "net_quota");
   const assigned = aggregateLeadership(colleges, "faculty_assigned_hours");
   const scheduled = aggregateLeadership(colleges, "teaching_hours");
+  const theory = aggregateLeadership(colleges, "theory_hours");
+  const practical = aggregateLeadership(colleges, "practical_hours");
+  const unclassified = aggregateLeadership(colleges, "other_hours");
+  const sessions = aggregateLeadership(colleges, "sessions_count");
+  const averageSessionsPerPublishedCollege =
+    sessions.value === null || published === 0
+      ? null
+      : Math.round((sessions.value / published) * 10) / 10;
   const overload = aggregateLeadership(colleges, "overload");
   const deficit = aggregateLeadership(colleges, "deficit");
-  const sessions = aggregateLeadership(colleges, "sessions_count");
   const rooms = aggregateLeadership(colleges, "room_count");
   const usedRooms = aggregateLeadership(colleges, "used_rooms");
   // التغطية تُقاس على الساعات التدريسية المطلوبة فقط، ولا تُعرض نسبة إذا كان
@@ -539,16 +586,21 @@ function LeadershipDashboard() {
                       المتاح: {availableFaculty.toLocaleString("ar")}
                       {availablePercent === null ? "" : ` (${availablePercent}%)`}
                     </span>
-                    <ReportDisclosure label="الحالة والرتب">
-                      <div className="grid gap-4 pt-2 md:grid-cols-2">
-                        <div>
-                          <h3 className="mb-2 font-semibold text-foreground">الحالة</h3>
-                          <CountList entries={availabilityCounts} />
-                        </div>
-                        <div>
-                          <h3 className="mb-2 font-semibold text-foreground">الرتب</h3>
-                          <CountList entries={rankCounts} />
-                        </div>
+                    <ReportDisclosure label="الحالة الوظيفية والرتب الأكاديمية">
+                      <div
+                        className="grid gap-4 pt-3 lg:grid-cols-2"
+                        data-testid="faculty-breakdown-groups"
+                      >
+                        <FacultyBreakdownPanel
+                          title="الحالة الوظيفية"
+                          entries={availabilityCounts}
+                          testId="faculty-availability-panel"
+                        />
+                        <FacultyBreakdownPanel
+                          title="الرتب الأكاديمية"
+                          entries={rankCounts}
+                          testId="faculty-ranks-panel"
+                        />
                       </div>
                     </ReportDisclosure>
                   </>
@@ -733,6 +785,57 @@ function LeadershipDashboard() {
         }
       >
         <div className="space-y-5">
+          <ReportSection
+            title="الحمل التدريسي الأسبوعي"
+            testId="leadership-weekly-teaching"
+            hint="من النسخ المنشورة فقط؛ المحاضرة جلسة أسبوعية مجدولة، ومتوسطها محسوب لكل كلية لديها نسخة منشورة."
+          >
+            <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4">
+              <MetricCard
+                label="المحاضرات أسبوعيًا"
+                definition="عدد الجلسات الأسبوعية في النسخ المنشورة."
+                onOpen={() => openMetric("sessions_count")}
+                value={text(sessions.value)}
+                icon={<BookOpen className="h-4 w-4" />}
+                detail={
+                  <>
+                    المتوسط لكل كلية منشورة:{" "}
+                    <b className="text-foreground">
+                      {averageSessionsPerPublishedCollege === null
+                        ? LEADERSHIP_UNCALCULATED
+                        : averageSessionsPerPublishedCollege.toLocaleString("ar")}
+                    </b>
+                  </>
+                }
+              />
+              <MetricCard
+                label="الساعات الأسبوعية"
+                definition="إجمالي مدة الجلسات الأسبوعية في النسخ المنشورة."
+                onOpen={() => openMetric("scheduled_hours")}
+                value={hours(scheduled.value)}
+                icon={<Clock3 className="h-4 w-4" />}
+                detail="تشمل النظري والعملي والساعات غير المصنفة إن وجدت."
+              />
+              <MetricCard
+                label="الساعات النظرية أسبوعيًا"
+                definition="مجموع ساعات المكونات المصنفة نظريًا في النسخ المنشورة."
+                value={hours(theory.value)}
+                icon={<BookOpen className="h-4 w-4" />}
+                detail="التصنيف مأخوذ من نوع مكوّن المقرر."
+              />
+              <MetricCard
+                label="الساعات العملية أسبوعيًا"
+                definition="مجموع ساعات العملي والمعامل والسريري والتدريب الميداني."
+                value={hours(practical.value)}
+                icon={<FlaskConical className="h-4 w-4" />}
+                detail={
+                  unclassified.value !== null && unclassified.value > 0
+                    ? `ساعات غير مصنفة: ${hours(unclassified.value)}`
+                    : "لا توجد ساعات غير مصنفة ضمن المصدر المكتمل."
+                }
+              />
+            </div>
+          </ReportSection>
           <div
             className="grid gap-4 xl:grid-cols-3"
             dir="rtl"
