@@ -2,8 +2,13 @@ import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { PASSWORD_POLICY_AR, validPersonalPassword } from "@/lib/password-policy";
+
+/** Loaded inside handlers only: the server-only module must not enter client chunks. */
+async function admin() {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  return supabaseAdmin;
+}
 
 /** Authenticated only; never accepts a target user ID from the browser. */
 export const completeInitialPasswordChange = createServerFn({ method: "POST" })
@@ -15,6 +20,15 @@ export const completeInitialPasswordChange = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data, context }) => {
+    const supabaseAdmin = await admin();
+    // Fail-closed throttle: brute-force attempts on the temporary credential are
+    // capped per actor without ever locking the account out globally.
+    const { data: allowed, error: limitError } = await supabaseAdmin.rpc("consume_security_limit", {
+      p_actor: context.userId,
+      p_action: "password_change",
+    });
+    if (limitError || allowed !== true)
+      throw new Error("تم تجاوز عدد المحاولات المسموح مؤقتًا. أعد المحاولة بعد قليل.");
     const { data: roles, error: roleError } = await supabaseAdmin
       .from("user_roles")
       .select("role")

@@ -23,6 +23,10 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  // Second factor step: only rendered when the signed-in account has a verified
+  // TOTP factor and the fresh session is still aal1.
+  const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
+  const [otp, setOtp] = useState("");
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -30,15 +34,55 @@ function AuthPage() {
     });
   }, [navigate]);
 
+  /** Returns the factor id when a second factor is still required. */
+  const pendingSecondFactor = async (): Promise<string | null> => {
+    const { data: level } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (!level || level.nextLevel !== "aal2" || level.currentLevel === "aal2") return null;
+    const { data: list } = await supabase.auth.mfa.listFactors();
+    return list?.totp?.find((f) => f.status === "verified")?.id ?? null;
+  };
+
   const handle = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
+      const factorId = await pendingSecondFactor();
+      if (factorId) {
+        setMfaFactorId(factorId);
+        setOtp("");
+        toast.info("أدخل رمز التحقق من تطبيق المصادقة");
+        return;
+      }
       toast.success("مرحباً بك");
       const { data } = await supabase.auth.getUser();
       if (data.user) navigate({ to: "/dashboard", replace: true });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "حدث خطأ";
+      toast.error(translateAuthError(msg));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mfaFactorId) return;
+    setLoading(true);
+    try {
+      const { data: ch, error: chErr } = await supabase.auth.mfa.challenge({
+        factorId: mfaFactorId,
+      });
+      if (chErr) throw chErr;
+      const { error: vErr } = await supabase.auth.mfa.verify({
+        factorId: mfaFactorId,
+        challengeId: ch.id,
+        code: otp.trim(),
+      });
+      if (vErr) throw vErr;
+      toast.success("مرحباً بك");
+      navigate({ to: "/dashboard", replace: true });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "حدث خطأ";
       toast.error(translateAuthError(msg));
@@ -92,6 +136,25 @@ function AuthPage() {
 
             <div className="usr-access-notice mb-6 text-right">{USR_AUTH_NOTICE_AR}</div>
 
+            {mfaFactorId ? (
+              <form onSubmit={handleOtp} className="space-y-4" data-testid="auth-mfa-step">
+                <div className="space-y-2">
+                  <Label htmlFor="otp">رمز التحقق من تطبيق المصادقة</Label>
+                  <Input
+                    id="otp"
+                    required
+                    dir="ltr"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value)}
+                  />
+                </div>
+                <Button type="submit" className="w-full rounded-lg" size="lg" disabled={loading}>
+                  {loading ? "جارٍ التحقق..." : "تأكيد الرمز"}
+                </Button>
+              </form>
+            ) : (
             <form onSubmit={handle} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">البريد الإلكتروني</Label>
@@ -122,6 +185,7 @@ function AuthPage() {
                 {loading ? "جارٍ التحقق..." : "تسجيل الدخول"}
               </Button>
             </form>
+            )}
           </div>
         </div>
       </div>
