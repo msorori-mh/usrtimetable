@@ -193,6 +193,16 @@ export const ADMIN_PAGES: AdminPage[] = [
     journey: "org",
     keywords: "صلاحيات أدوار حساب",
   },
+  {
+    to: "/account-security",
+    label: "أمان الحساب",
+    desc: "تنشيط التحقق بخطوتين لحسابك الإداري.",
+    icon: ShieldAlert,
+    roles: ["super_admin", "college_admin"],
+    tier: "advanced",
+    journey: "org",
+    keywords: "MFA TOTP تحقق بخطوتين مصادقة",
+  },
 
   // ب) البنية الأكاديمية
   {

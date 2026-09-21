@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as VerifyReportRouteImport } from './routes/verify-report'
 import { Route as AuthenticatedAcademicCalendarRouteImport } from './routes/_authenticated/academic-calendar'
 import { Route as AuthenticatedAcademicCohortsRouteImport } from './routes/_authenticated/academic-cohorts'
+import { Route as AuthenticatedAccountSecurityRouteImport } from './routes/_authenticated/account-security'
 import { Route as AuthenticatedAdminToolsRouteImport } from './routes/_authenticated/admin-tools'
 import { Route as AuthenticatedAutoScheduleRouteImport } from './routes/_authenticated/auto-schedule'
 import { Route as AuthenticatedAvailabilityRouteImport } from './routes/_authenticated/availability'
@@ -109,6 +110,12 @@ const AuthenticatedAcademicCohortsRoute =
   AuthenticatedAcademicCohortsRouteImport.update({
     id: '/academic-cohorts',
     path: '/academic-cohorts',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAccountSecurityRoute =
+  AuthenticatedAccountSecurityRouteImport.update({
+    id: '/account-security',
+    path: '/account-security',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedAdminToolsRoute = AuthenticatedAdminToolsRouteImport.update({
@@ -486,6 +493,7 @@ export interface FileRoutesByFullPath {
   '/verify-report': typeof VerifyReportRoute
   '/academic-calendar': typeof AuthenticatedAcademicCalendarRoute
   '/academic-cohorts': typeof AuthenticatedAcademicCohortsRoute
+  '/account-security': typeof AuthenticatedAccountSecurityRoute
   '/admin-tools': typeof AuthenticatedAdminToolsRoute
   '/auto-schedule': typeof AuthenticatedAutoScheduleRoute
   '/availability': typeof AuthenticatedAvailabilityRoute
@@ -557,6 +565,7 @@ export interface FileRoutesByTo {
   '/verify-report': typeof VerifyReportRoute
   '/academic-calendar': typeof AuthenticatedAcademicCalendarRoute
   '/academic-cohorts': typeof AuthenticatedAcademicCohortsRoute
+  '/account-security': typeof AuthenticatedAccountSecurityRoute
   '/admin-tools': typeof AuthenticatedAdminToolsRoute
   '/auto-schedule': typeof AuthenticatedAutoScheduleRoute
   '/availability': typeof AuthenticatedAvailabilityRoute
@@ -629,6 +638,7 @@ export interface FileRoutesById {
   '/verify-report': typeof VerifyReportRoute
   '/_authenticated/academic-calendar': typeof AuthenticatedAcademicCalendarRoute
   '/_authenticated/academic-cohorts': typeof AuthenticatedAcademicCohortsRoute
+  '/_authenticated/account-security': typeof AuthenticatedAccountSecurityRoute
   '/_authenticated/admin-tools': typeof AuthenticatedAdminToolsRoute
   '/_authenticated/auto-schedule': typeof AuthenticatedAutoScheduleRoute
   '/_authenticated/availability': typeof AuthenticatedAvailabilityRoute
@@ -702,6 +712,7 @@ export interface FileRouteTypes {
     | '/verify-report'
     | '/academic-calendar'
     | '/academic-cohorts'
+    | '/account-security'
     | '/admin-tools'
     | '/auto-schedule'
     | '/availability'
@@ -773,6 +784,7 @@ export interface FileRouteTypes {
     | '/verify-report'
     | '/academic-calendar'
     | '/academic-cohorts'
+    | '/account-security'
     | '/admin-tools'
     | '/auto-schedule'
     | '/availability'
@@ -844,6 +856,7 @@ export interface FileRouteTypes {
     | '/verify-report'
     | '/_authenticated/academic-calendar'
     | '/_authenticated/academic-cohorts'
+    | '/_authenticated/account-security'
     | '/_authenticated/admin-tools'
     | '/_authenticated/auto-schedule'
     | '/_authenticated/availability'
@@ -959,6 +972,13 @@ declare module '@tanstack/react-router' {
       path: '/academic-cohorts'
       fullPath: '/academic-cohorts'
       preLoaderRoute: typeof AuthenticatedAcademicCohortsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/account-security': {
+      id: '/_authenticated/account-security'
+      path: '/account-security'
+      fullPath: '/account-security'
+      preLoaderRoute: typeof AuthenticatedAccountSecurityRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/admin-tools': {
@@ -1475,6 +1495,7 @@ const AuthenticatedReportsRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAcademicCalendarRoute: typeof AuthenticatedAcademicCalendarRoute
   AuthenticatedAcademicCohortsRoute: typeof AuthenticatedAcademicCohortsRoute
+  AuthenticatedAccountSecurityRoute: typeof AuthenticatedAccountSecurityRoute
   AuthenticatedAdminToolsRoute: typeof AuthenticatedAdminToolsRoute
   AuthenticatedAutoScheduleRoute: typeof AuthenticatedAutoScheduleRoute
   AuthenticatedAvailabilityRoute: typeof AuthenticatedAvailabilityRoute
@@ -1525,6 +1546,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAcademicCalendarRoute: AuthenticatedAcademicCalendarRoute,
   AuthenticatedAcademicCohortsRoute: AuthenticatedAcademicCohortsRoute,
+  AuthenticatedAccountSecurityRoute: AuthenticatedAccountSecurityRoute,
   AuthenticatedAdminToolsRoute: AuthenticatedAdminToolsRoute,
   AuthenticatedAutoScheduleRoute: AuthenticatedAutoScheduleRoute,
   AuthenticatedAvailabilityRoute: AuthenticatedAvailabilityRoute,

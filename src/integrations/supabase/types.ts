@@ -5470,6 +5470,16 @@ export type Database = {
         Args: { p_cohort_id: string }
         Returns: Json
       }
+      record_audit_log: {
+        Args: {
+          p_action: string
+          p_college_id?: string
+          p_details?: Json
+          p_entity: string
+          p_entity_id?: string
+        }
+        Returns: string
+      }
       register_instructor_faculty_identity: {
         Args: { p_instructor_id: string }
         Returns: undefined

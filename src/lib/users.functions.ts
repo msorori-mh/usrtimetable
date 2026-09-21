@@ -1,9 +1,35 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { assignsAllColleges, requiresCollegeAssignment } from "@/lib/viewer-roles";
 import { requiresInitialPassword } from "@/lib/password-policy";
+
+/**
+ * SECURITY-HARDENING-01: the service-role client is loaded inside handlers so
+ * the server-only module never enters a client-reachable import chain.
+ */
+async function admin() {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  return supabaseAdmin;
+}
+
+/**
+ * Fail-closed per-actor throttle for sensitive administrative operations.
+ * A failure to evaluate the limit denies the operation.
+ */
+async function assertRateLimit(
+  actorId: string,
+  action: "user_create" | "user_admin" | "password_reset_admin" | "role_change",
+): Promise<void> {
+  const supabaseAdmin = await admin();
+  const { data, error } = await supabaseAdmin.rpc("consume_security_limit", {
+    p_actor: actorId,
+    p_action: action,
+  });
+  if (error || data !== true) {
+    throw new Error("تم تجاوز الحد المسموح لهذه العملية مؤقتًا. أعد المحاولة بعد قليل.");
+  }
+}
 
 const ROLE = z.enum([
   "super_admin",
@@ -14,6 +40,7 @@ const ROLE = z.enum([
 ]);
 
 async function assertInstitutionAdmin(userId: string) {
+  const supabaseAdmin = await admin();
   const { data, error } = await supabaseAdmin
     .from("user_roles")
     .select("role")
@@ -29,6 +56,7 @@ export const adminListUserMeta = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertInstitutionAdmin(context.userId);
+    const supabaseAdmin = await admin();
     const out: Array<{ id: string; last_sign_in_at: string | null; banned_until: string | null }> =
       [];
     let page = 1;
@@ -62,6 +90,8 @@ export const adminCreateUser = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertInstitutionAdmin(context.userId);
+    await assertRateLimit(context.userId, "user_create");
+    const supabaseAdmin = await admin();
 
     // Only academic affairs receives all colleges. Report viewers retain the
     // explicit selection, including when the auth trigger grants read_only.
@@ -89,7 +119,9 @@ export const adminCreateUser = createServerFn({ method: "POST" })
       email: data.email,
       password: data.password,
       email_confirm: true,
-      user_metadata: { full_name: data.full_name },
+      // The admin-only guard trigger runs during the auth.users INSERT, before
+      // Auth applies app_metadata, so the provisioning tag is carried in both.
+      user_metadata: { full_name: data.full_name, provisioning_role: data.role },
       app_metadata: {
         provisioning_role: data.role,
         must_change_password: requiresInitialPassword(data.role),
@@ -138,6 +170,8 @@ export const adminSetUserEnabled = createServerFn({ method: "POST" })
   .inputValidator(z.object({ user_id: z.string().uuid(), enabled: z.boolean() }))
   .handler(async ({ data, context }) => {
     await assertInstitutionAdmin(context.userId);
+    await assertRateLimit(context.userId, "user_admin");
+    const supabaseAdmin = await admin();
     if (data.user_id === context.userId && !data.enabled) {
       throw new Error("You cannot disable your own account");
     }
@@ -160,6 +194,8 @@ export const adminGeneratePasswordReset = createServerFn({ method: "POST" })
   .inputValidator(z.object({ user_id: z.string().uuid(), email: z.string().email() }))
   .handler(async ({ data, context }) => {
     await assertInstitutionAdmin(context.userId);
+    await assertRateLimit(context.userId, "password_reset_admin");
+    const supabaseAdmin = await admin();
     const { data: link, error } = await supabaseAdmin.auth.admin.generateLink({
       type: "recovery",
       email: data.email,
