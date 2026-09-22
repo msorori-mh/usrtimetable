@@ -611,7 +611,7 @@ export const CORE_PATH: CoreStep[] = [
     label: "لوحة الإدارة العليا",
     desc: "ملخص جميع الكليات في صفحة واحدة.",
     icon: LayoutDashboard,
-    roles: ["university_leadership"],
+    roles: ["university_leadership", "college_dean"],
   },
   {
     to: "/dashboard",
