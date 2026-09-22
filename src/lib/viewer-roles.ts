@@ -62,9 +62,11 @@ export function buildAccountGreeting(input: {
   fullName?: string | null;
   collegeName?: string | null;
   isCollegeDeanOnly: boolean;
+  isUniversityLeadershipOnly?: boolean;
 }): string {
   const name = input.fullName?.trim();
   const base = name ? `مرحبًا، ${name}` : "مرحبًا بك";
+  if (input.isUniversityLeadershipOnly) return `${base} — رئيس الجامعة`;
   const college = input.collegeName?.trim();
   if (!input.isCollegeDeanOnly || !college) return base;
   return `${base} — عميد كلية ${college}`;

@@ -79,15 +79,45 @@ describe("college dean greeting", () => {
     expect(
       buildAccountGreeting({ fullName: "د. أحمد", collegeName: null, isCollegeDeanOnly: true }),
     ).toBe("مرحبًا، د. أحمد");
-    expect(
-      buildAccountGreeting({ fullName: null, collegeName: "", isCollegeDeanOnly: true }),
-    ).toBe("مرحبًا بك");
+    expect(buildAccountGreeting({ fullName: null, collegeName: "", isCollegeDeanOnly: true })).toBe(
+      "مرحبًا بك",
+    );
   });
 
   it("leaves other roles' greeting untouched", () => {
     expect(
       buildAccountGreeting({ fullName: "المدير", collegeName: "الآداب", isCollegeDeanOnly: false }),
     ).toBe("مرحبًا، المدير");
+  });
+});
+
+describe("university president greeting", () => {
+  it("names the president using the same executive welcome line", () => {
+    expect(
+      buildAccountGreeting({
+        fullName: " أ.د. رئيس الجامعة ",
+        collegeName: null,
+        isCollegeDeanOnly: false,
+        isUniversityLeadershipOnly: true,
+      }),
+    ).toBe("مرحبًا، أ.د. رئيس الجامعة — رئيس الجامعة");
+  });
+
+  it("keeps the title when the account name is unavailable", () => {
+    expect(
+      buildAccountGreeting({
+        fullName: null,
+        collegeName: null,
+        isCollegeDeanOnly: false,
+        isUniversityLeadershipOnly: true,
+      }),
+    ).toBe("مرحبًا بك — رئيس الجامعة");
+  });
+
+  it("wires the university-only flag from the trusted role state", () => {
+    const layout = readFileSync("src/components/app-layout.tsx", "utf8");
+    expect(layout).toMatch(/universityLeadershipOnly/);
+    expect(layout).toMatch(/isUniversityLeadershipOnly: universityLeadershipOnly/);
   });
 });
 
