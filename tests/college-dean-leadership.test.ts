@@ -32,5 +32,5 @@ test("admin creation requires one college and dashboard labels its restricted sc
   assert.match(users, /يجب إسناد كلية واحدة فقط لعميد الكلية/);
   assert.match(users, /f\.role === "college_dean"[\s\S]*\[c\.id\]/);
   assert.match(page, /collegeDean \? "المؤشرات التنفيذية للكلية"/);
-  assert.match(page, /الكلية المُسندة والنسخ المنشورة فقط/);
+  assert.match(page, /بيانات الكلية المُسندة فقط/);
 });

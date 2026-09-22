@@ -181,40 +181,16 @@ test("صفحة الإدارة العليا تفتح كل مؤشر رئيسي إ�
   assert.ok(!page.includes("فرص التحسين"), "لا توصيات ذكية في هذه المرحلة");
 });
 
-test("عقد بطاقات الملخص الثلاث تسبق عقدة مقارنة الكليات بترتيب RTL نفسه", () => {
-  const summaryStart = page.indexOf('data-testid="leadership-summary-sections"');
-  const instructors = page.indexOf('testId="leadership-instructors-section"');
-  const rooms = page.indexOf('testId="leadership-rooms-section"');
-  const publishing = page.indexOf('testId="leadership-publishing-section"');
-  const comparison = page.indexOf('testId="leadership-colleges-comparison"');
-
-  assert.ok(summaryStart >= 0 && summaryStart < instructors);
-  assert.ok(instructors < rooms);
-  assert.ok(rooms < publishing);
-  assert.ok(publishing < comparison);
-  assert.ok(page.includes('dir="rtl"'));
-  assert.ok(page.includes('className="grid gap-4 xl:grid-cols-3"'));
-  assert.ok(
-    !/className=[^\n>]*\border-(?:first|last|none|\d+)/.test(page.slice(summaryStart, comparison)),
-  );
-  assert.equal(page.match(/testId="leadership-instructors-section"/g)?.length, 1);
-  assert.equal(page.match(/testId="leadership-rooms-section"/g)?.length, 1);
-  assert.equal(page.match(/testId="leadership-publishing-section"/g)?.length, 1);
-});
-
-test("الحمل الأسبوعي ظاهر قبل الملخص والمقارنة بتعريف متوسط صريح", () => {
-  const weekly = page.indexOf('testId="leadership-weekly-teaching"');
-  const summaries = page.indexOf('data-testid="leadership-summary-sections"');
-  const comparison = page.indexOf('testId="leadership-colleges-comparison"');
-
-  assert.ok(weekly >= 0 && weekly < summaries && summaries < comparison);
-  assert.ok(page.includes('label="المحاضرات أسبوعيًا"'));
-  assert.ok(page.includes('label="الساعات الأسبوعية"'));
-  assert.ok(page.includes('label="الساعات النظرية أسبوعيًا"'));
-  assert.ok(page.includes('label="الساعات العملية أسبوعيًا"'));
+test("التقارير المطولة تظهر في تفاصيل ذات تبويبات وتبقى المقارنة مختصرة", () => {
+  assert.ok(page.includes("<LeadershipDecisionSummary"));
+  assert.match(page, /<Sheet\s+open=\{!!detail\}/);
+  for (const tab of ["teaching", "faculty", "rooms", "quality"]) {
+    assert.ok(page.includes(`value="${tab}"`));
+  }
+  assert.ok(page.includes('testId="leadership-weekly-teaching"'));
   assert.ok(page.includes("averageSessionsPerPublishedCollege"));
   assert.ok(page.includes("المتوسط لكل كلية منشورة"));
-  assert.ok(page.includes('aggregateLeadership(colleges, "other_hours")'));
+  assert.ok(page.includes('total("other_hours")'));
 });
 
 test("تفاصيل حالة أعضاء هيئة التدريس والرتب منفصلة بصريًا ودلاليًا", () => {

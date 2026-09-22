@@ -9,6 +9,8 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Download, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { leadershipViewerKey, LEADERSHIP_QUERY_POLICY } from "@/lib/reports/leadership-decisions";
 import {
   Sheet,
   SheetContent,
@@ -69,20 +71,22 @@ export function LeadershipMetricDrilldown({
   period: { year: string | null; type: string | null } | null;
   onClose: () => void;
 }) {
+  const { data: me } = useCurrentUser();
   const [search, setSearch] = useState("");
   const [college, setCollege] = useState(ALL_COLLEGES);
   const definition = target ? LEADERSHIP_METRICS[target.metric] : null;
 
   const query = useQuery({
-    enabled: !!definition,
+    enabled: !!definition && !!me,
     queryKey: [
       "leadership-metric-details",
+      me ? leadershipViewerKey(me) : null,
       definition?.source,
       period?.year ?? null,
       period?.type ?? null,
       target?.collegeId ?? null,
     ],
-    staleTime: 60_000,
+    ...LEADERSHIP_QUERY_POLICY,
     queryFn: async () => {
       const client = supabase as unknown as {
         rpc: (
@@ -252,9 +256,7 @@ export function LeadershipMetricDrilldown({
                     {columns.map((column) => (
                       <td
                         key={column.key}
-                        className={
-                          column.numeric ? "p-2 tabular-nums" : "p-2 whitespace-pre-wrap"
-                        }
+                        className={column.numeric ? "p-2 tabular-nums" : "p-2 whitespace-pre-wrap"}
                       >
                         {cellText(row[column.key], column.key)}
                       </td>

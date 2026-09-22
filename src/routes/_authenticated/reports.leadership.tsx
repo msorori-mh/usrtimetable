@@ -1,15 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import {
-  AlertTriangle,
-  BookOpen,
-  CalendarCheck,
-  Clock3,
-  FlaskConical,
-  RefreshCw,
-  Users,
-} from "lucide-react";
+import { BookOpen, Clock3, FlaskConical, RefreshCw, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { setActiveCollegeId } from "@/hooks/use-colleges";
@@ -17,12 +9,7 @@ import { canViewLeadership } from "@/lib/viewer-roles";
 import { UnauthorizedAccess } from "@/components/unauthorized-access";
 import { ReportFilterField } from "@/components/reports/report-filters";
 import { ReportShell } from "@/components/reports/report-shell";
-import {
-  ReportSection,
-  ReportDataTable,
-  ReportDisclosure,
-  type ReportColumn,
-} from "@/components/reports/report-section";
+import { ReportSection, ReportDisclosure } from "@/components/reports/report-section";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,14 +21,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
   aggregateLeadership,
   coveragePercent,
   formatLeadershipAmount,
   leadershipNotice,
   leadershipOverviewSchema,
-  leadershipPercent,
   orderedLeadershipCounts,
-  sortLeadershipColleges,
   sumLeadershipCounts,
   termTypeLabel,
   LEADERSHIP_ASSIGNMENT_HEADERS,
@@ -55,7 +48,6 @@ import {
 } from "@/lib/reports/leadership";
 import {
   LEADERSHIP_METRICS,
-  LEADERSHIP_UNCALCULATED,
   assignmentCoveragePercent,
   type LeadershipMetricKey,
 } from "@/lib/reports/leadership-metrics";
@@ -64,6 +56,13 @@ import {
   type LeadershipDrilldownTarget,
 } from "@/components/reports/leadership-metric-drilldown";
 import { LeadershipRoomCapacitySummary } from "@/components/reports/leadership-room-capacity-summary";
+import { LeadershipDecisionSummary } from "@/components/reports/leadership-decision-summary";
+import {
+  leadershipPriorities,
+  leadershipViewerKey,
+  LEADERSHIP_QUERY_POLICY,
+  type LeadershipDetailTab,
+} from "@/lib/reports/leadership-decisions";
 import { fetchLeadershipRoomCapacity } from "@/lib/reports/fetch-leadership-room-capacity";
 
 export const Route = createFileRoute("/_authenticated/reports/leadership")({
@@ -72,13 +71,9 @@ export const Route = createFileRoute("/_authenticated/reports/leadership")({
       { title: "المؤشرات التنفيذية للجامعة | منصة إدارة الجداول الجامعية" },
       {
         name: "description",
-        content: "لوحة قراءة تنفيذية لمؤشرات الكليات والجداول المنشورة والأنصبة والقاعات.",
+        content: "ملخص الجامعة وأولويات المتابعة ومقارنة الكليات، مع التفاصيل عند الطلب.",
       },
       { property: "og:title", content: "المؤشرات التنفيذية للجامعة" },
-      {
-        property: "og:description",
-        content: "مؤشرات الكليات والجداول المنشورة والأنصبة والقاعات.",
-      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -89,27 +84,14 @@ export const Route = createFileRoute("/_authenticated/reports/leadership")({
 function Page() {
   const { data: me, isLoading } = useCurrentUser();
   if (isLoading) return <Card className="p-6">جارٍ التحقق من الصلاحيات…</Card>;
-  if (!canViewLeadership(me)) return <UnauthorizedAccess />;
-  return <LeadershipDashboard />;
+  if (!me || !canViewLeadership(me)) return <UnauthorizedAccess />;
+  const viewerKey = leadershipViewerKey(me);
+  return <LeadershipDashboard key={viewerKey} viewerKey={viewerKey} />;
 }
-
-type LeadershipRow = LeadershipCollege & { coverage: string; notice: string; publication: string };
-
 const text = (value: unknown) =>
   value === null || value === undefined || value === "" ? "غير محسوب" : String(value);
 const hours = (value: number | null | undefined) => formatLeadershipAmount(value, "ساعة");
-
-function hasIssue(row: LeadershipCollege) {
-  return (
-    row.term_state !== "ready" ||
-    !row.version_id ||
-    Number(row.incomplete_faculty ?? 0) > 0 ||
-    Number(row.uncovered_hours ?? 0) > 0 ||
-    Number(row.pending_groups ?? 0) > 0 ||
-    Number(row.overallocated_groups ?? 0) > 0
-  );
-}
-
+const ALL_COLLEGES = "all";
 function MetricCard({
   label,
   value,
@@ -156,7 +138,10 @@ function MetricCard({
         </span>
       </div>
       {definition && (
-        <p className="mt-2 text-[11px] leading-5 text-muted-foreground">{definition}</p>
+        <details className="mt-2 text-xs text-muted-foreground">
+          <summary className="cursor-pointer">كيف حُسب؟</summary>
+          <p className="mt-2 leading-6">{definition}</p>
+        </details>
       )}
       <div className="mt-3 border-t pt-2 text-xs leading-6 text-muted-foreground">{detail}</div>
     </Card>
@@ -276,98 +261,18 @@ function StatusBadge({ row }: { row: LeadershipCollege }) {
   );
 }
 
-function CollegeCell({ row }: { row: LeadershipRow }) {
-  return (
-    <div className="min-w-[210px] space-y-1">
-      <div className="font-bold text-primary">{row.college}</div>
-      <div className="text-xs text-muted-foreground">
-        {text(row.departments)} قسم · {text(row.programs)} برنامج
-      </div>
-      <div className="text-xs text-muted-foreground">
-        {text(row.teaching_contributors)} مساهمًا في التدريس · {text(row.external_contributors)} من
-        خارج الكلية
-      </div>
-    </div>
-  );
-}
-
-function CoverageCell({ row }: { row: LeadershipRow }) {
-  const percent = coveragePercent(row);
-  return (
-    <div className="min-w-[135px] space-y-1">
-      <b className="text-lg tabular-nums">{percent === null ? "غير محسوب" : `${percent}%`}</b>
-      <div className="text-xs text-muted-foreground">المسند {hours(row.covered_hours)}</div>
-      <div className="text-xs text-muted-foreground">غير المسند {hours(row.uncovered_hours)}</div>
-    </div>
-  );
-}
-
-function QuotaCell({ row }: { row: LeadershipRow }) {
-  return (
-    <dl className="min-w-[165px] space-y-1 text-xs">
-      <div className="flex justify-between gap-3">
-        <dt className="text-muted-foreground">الأساسي</dt>
-        <dd>غير متاح في الملخص</dd>
-      </div>
-      <div className="flex justify-between gap-3">
-        <dt className="text-muted-foreground">الإعفاء</dt>
-        <dd>غير متاح في الملخص</dd>
-      </div>
-      <div className="flex justify-between gap-3 font-semibold">
-        <dt>المطلوب بعد الإعفاء</dt>
-        <dd>{hours(row.net_quota)}</dd>
-      </div>
-      <div className="flex justify-between gap-3">
-        <dt className="text-muted-foreground">المسند للمحاضرين</dt>
-        <dd>{hours(row.faculty_assigned_hours)}</dd>
-      </div>
-    </dl>
-  );
-}
-
-function BalanceCell({ row }: { row: LeadershipRow }) {
-  return (
-    <dl className="min-w-[145px] space-y-1 text-xs">
-      <div className="flex justify-between gap-3">
-        <dt>الساعات الزائدة</dt>
-        <dd className="font-semibold tabular-nums">{hours(row.overload)}</dd>
-      </div>
-      <div className="flex justify-between gap-3">
-        <dt>نقص الأنصبة</dt>
-        <dd className="font-semibold tabular-nums">{hours(row.deficit)}</dd>
-      </div>
-      <div className="flex justify-between gap-3 text-muted-foreground">
-        <dt>بيانات نصاب ناقصة</dt>
-        <dd>{text(row.incomplete_faculty)}</dd>
-      </div>
-    </dl>
-  );
-}
-
-function RoomCell({ row, showCapacity }: { row: LeadershipRow; showCapacity: boolean }) {
-  return (
-    <div className="min-w-[150px] space-y-1 text-xs">
-      <div>
-        <b>{text(row.used_rooms)}</b> مستخدمة من <b>{text(row.room_count)}</b>
-      </div>
-      <div className="text-muted-foreground">
-        {text(row.halls)} قاعة · {text(row.labs)} معمل
-      </div>
-      <div className="text-muted-foreground">
-        {showCapacity ? "ساعات الإتاحة في ملخص القاعات أعلاه" : "الاستغلال الزمني: غير محسوب"}
-      </div>
-    </div>
-  );
-}
-
-function LeadershipDashboard() {
+function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
   const { data: me } = useCurrentUser();
   const collegeDean = !!me?.isCollegeDean && !me.isSuperAdmin && !me.isUniversityLeadership;
   const [period, setPeriod] = useState<{ year: string; type: string } | null>(null);
   const [drilldown, setDrilldown] = useState<LeadershipDrilldownTarget | null>(null);
+  const [detail, setDetail] = useState<{
+    tab: LeadershipDetailTab;
+    collegeId: string | null;
+  } | null>(null);
   const query = useQuery({
-    queryKey: ["university-leadership", me?.id, period],
-    staleTime: 60_000,
+    queryKey: ["university-leadership", viewerKey, period],
+    ...LEADERSHIP_QUERY_POLICY,
     queryFn: async () => {
       const client = supabase as unknown as {
         rpc: (
@@ -384,64 +289,69 @@ function LeadershipDashboard() {
     },
   });
   const data = query.data;
-  const colleges = sortLeadershipColleges(
-    (!query.error && !query.isFetching ? (data?.colleges ?? []) : []).filter(
-      (college) => !college.college.includes("اختبار تبسيط الجداول"),
-    ),
+  // Same-scope background updates retain the last successful snapshot and its timestamp.
+  // Period/identity changes use a different query key and never reuse placeholder data.
+  const colleges = (data?.colleges ?? []).filter(
+    (college) => !college.college.includes("اختبار تبسيط الجداول"),
   );
-  const rows: LeadershipRow[] = colleges.map((college) => ({
-    ...college,
-    coverage: coveragePercent(college) === null ? "غير محسوب" : `${coveragePercent(college)}%`,
-    publication: college.version_id ? "منشور" : "غير منشور",
-    notice: leadershipNotice(college),
-  }));
   const roomCapacityQuery = useQuery({
-    queryKey: ["leadership-room-capacity", me?.id, data?.year, data?.term_type, data?.generated_at],
-    enabled: !collegeDean && colleges.length > 0 && !query.isFetching && !query.error,
-    staleTime: 60_000,
+    queryKey: [
+      "leadership-room-capacity",
+      viewerKey,
+      data?.year,
+      data?.term_type,
+      data?.generated_at,
+    ],
+    enabled: !collegeDean && colleges.length > 0,
+    ...LEADERSHIP_QUERY_POLICY,
     queryFn: () => fetchLeadershipRoomCapacity(colleges),
   });
-  const ready = colleges.filter((college) => college.term_state === "ready").length;
-  const published = colleges.filter((college) => !!college.version_id).length;
-  const attention = colleges.filter(hasIssue).length;
-  const counts = sumLeadershipCounts(colleges, "availability_counts");
-  const availableFaculty = counts["متاح"] ?? 0;
-  const uniqueFaculty = data?.unique_faculty ?? null;
-  const availablePercent = leadershipPercent(availableFaculty, uniqueFaculty);
-  const rankCounts = orderedLeadershipCounts(
-    sumLeadershipCounts(colleges, "rank_counts"),
-    LEADERSHIP_RANK_ORDER,
-  );
-  const availabilityCounts = orderedLeadershipCounts(counts, LEADERSHIP_AVAILABILITY_ORDER);
-  const employmentCounts = orderedLeadershipCounts(
-    sumLeadershipCounts(colleges, "employment_counts"),
-    ["full_time", "part_time", "contract", "visiting", "unknown"],
-  ).map(([key, value]) => [LEADERSHIP_EMPLOYMENT_LABELS[key] ?? key, value] as [string, number]);
-  const required = aggregateLeadership(colleges, "required_hours");
-  const covered = aggregateLeadership(colleges, "covered_hours");
-  const uncovered = aggregateLeadership(colleges, "uncovered_hours");
-  const netQuota = aggregateLeadership(colleges, "net_quota");
-  const assigned = aggregateLeadership(colleges, "faculty_assigned_hours");
-  const scheduled = aggregateLeadership(colleges, "teaching_hours");
-  const theory = aggregateLeadership(colleges, "theory_hours");
-  const practical = aggregateLeadership(colleges, "practical_hours");
-  const unclassified = aggregateLeadership(colleges, "other_hours");
-  const sessions = aggregateLeadership(colleges, "sessions_count");
+  const capacityState = collegeDean
+    ? "restricted"
+    : roomCapacityQuery.isError
+      ? "error"
+      : roomCapacityQuery.isPending
+        ? "loading"
+        : "ready";
+  const capacity = capacityState === "ready" ? (roomCapacityQuery.data ?? []) : [];
+  const selectedCollege = colleges.find((college) => college.college_id === detail?.collegeId);
+  const scoped = detail?.collegeId
+    ? colleges.filter((college) => college.college_id === detail.collegeId)
+    : colleges;
+  const selectedCapacity = detail?.collegeId
+    ? capacity.filter((college) => college.id === detail.collegeId)
+    : capacity;
+  const total = (key: Parameters<typeof aggregateLeadership>[1]) =>
+    aggregateLeadership(scoped, key);
+  const required = total("required_hours"),
+    covered = total("covered_hours"),
+    uncovered = total("uncovered_hours");
+  const netQuota = total("net_quota"),
+    assigned = total("faculty_assigned_hours"),
+    scheduled = total("teaching_hours");
+  const theory = total("theory_hours"),
+    practical = total("practical_hours"),
+    unclassified = total("other_hours");
+  const sessions = total("sessions_count"),
+    overload = total("overload"),
+    deficit = total("deficit");
+  const published = scoped.filter((college) => !!college.version_id).length;
   const averageSessionsPerPublishedCollege =
     sessions.value === null || published === 0
       ? null
       : Math.round((sessions.value / published) * 10) / 10;
-  const overload = aggregateLeadership(colleges, "overload");
-  const deficit = aggregateLeadership(colleges, "deficit");
-  const rooms = aggregateLeadership(colleges, "room_count");
-  const usedRooms = aggregateLeadership(colleges, "used_rooms");
-  // التغطية تُقاس على الساعات التدريسية المطلوبة فقط، ولا تُعرض نسبة إذا كان
-  // المقام أو كليات المصدر غير مكتملة.
+  const sourceComplete =
+    required.complete &&
+    covered.complete &&
+    scoped.every((college) => college.term_state === "ready" && !!college.groups_count);
   const universityCoverage = assignmentCoveragePercent({
     coveredCourseHours: covered.value,
     requiredCourseHours: required.value,
-    sourceComplete: required.complete && covered.complete,
+    sourceComplete,
   });
+  const uniqueFaculty = selectedCollege
+    ? selectedCollege.faculty_directory_count
+    : (data?.unique_faculty ?? null);
   const cardValues: Record<LeadershipMetricKey, number | null> = {
     faculty_count: uniqueFaculty,
     net_quota: netQuota.value,
@@ -455,27 +365,51 @@ function LeadershipDashboard() {
     sessions_count: sessions.value,
     published_colleges: published,
   };
-  const collegeValue = (metric: LeadershipMetricKey, college: LeadershipCollege): number | null => {
-    const map: Partial<Record<LeadershipMetricKey, number | null>> = {
-      net_quota: college.net_quota,
-      faculty_assigned_hours: college.faculty_assigned_hours,
-      deficit: college.deficit,
-      overload: college.overload,
-      required_course_hours: college.required_hours,
-      covered_course_hours: college.covered_hours,
-      uncovered_course_hours: college.uncovered_hours,
-      scheduled_hours: college.teaching_hours,
-      sessions_count: college.sessions_count,
-    };
-    return map[metric] ?? null;
-  };
-  const openMetric = (metric: LeadershipMetricKey, scope?: LeadershipCollege) =>
+  const openMetric = (metric: LeadershipMetricKey, scope?: LeadershipCollege) => {
+    const row = scope ?? selectedCollege;
+    const keys = {
+      net_quota: "net_quota",
+      faculty_assigned_hours: "faculty_assigned_hours",
+      deficit: "deficit",
+      overload: "overload",
+      required_course_hours: "required_hours",
+      covered_course_hours: "covered_hours",
+      uncovered_course_hours: "uncovered_hours",
+      scheduled_hours: "teaching_hours",
+      sessions_count: "sessions_count",
+      faculty_count: "faculty_directory_count",
+    } as const;
+    const scopedValue =
+      row && metric !== "published_colleges"
+        ? row[keys[metric]]
+        : row
+          ? row.version_id
+            ? 1
+            : 0
+          : null;
     setDrilldown({
       metric,
-      cardValue: scope ? collegeValue(metric, scope) : cardValues[metric],
-      collegeId: scope?.college_id ?? null,
-      collegeName: scope?.college ?? null,
+      cardValue: row ? scopedValue : cardValues[metric],
+      collegeId: row?.college_id ?? null,
+      collegeName: row?.college ?? null,
     });
+  };
+  const openDetail = (tab: LeadershipDetailTab, collegeId?: string) => {
+    if (collegeId && !colleges.some((college) => college.college_id === collegeId)) return;
+    setDetail({ tab, collegeId: collegeId ?? null });
+  };
+  const rankCounts = orderedLeadershipCounts(
+    sumLeadershipCounts(scoped, "rank_counts"),
+    LEADERSHIP_RANK_ORDER,
+  );
+  const availabilityCounts = orderedLeadershipCounts(
+    sumLeadershipCounts(scoped, "availability_counts"),
+    LEADERSHIP_AVAILABILITY_ORDER,
+  );
+  const employmentCounts = orderedLeadershipCounts(
+    sumLeadershipCounts(scoped, "employment_counts"),
+    ["full_time", "part_time", "contract", "visiting", "unknown"],
+  ).map(([key, value]) => [LEADERSHIP_EMPLOYMENT_LABELS[key] ?? key, value] as [string, number]);
   const periodLabel = data?.year
     ? `${data.year} · ${termTypeLabel(data.term_type ?? "")}`
     : "لم تُحدد فترة أكاديمية";
@@ -483,6 +417,16 @@ function LeadershipDashboard() {
     ? new Date(data.generated_at).toLocaleString("ar")
     : "غير متاح";
   const selectedValue = data?.year ? JSON.stringify({ year: data.year, type: data.term_type }) : "";
+  const rows = colleges.map((college) => ({
+    ...college,
+    coverage: coveragePercent(college) === null ? "غير محسوب" : `${coveragePercent(college)}%`,
+    publication: college.version_id ? "منشور" : "غير منشور",
+    notice: leadershipNotice(college),
+    room_available_hours:
+      capacity.find((item) => item.id === college.college_id)?.availableHours ?? null,
+    room_balance_hours:
+      capacity.find((item) => item.id === college.college_id)?.balanceHours ?? null,
+  }));
   const exportHeaders = [
     ...new Map(
       [
@@ -493,90 +437,23 @@ function LeadershipDashboard() {
         { key: "publication", label: "حالة النشر" },
         { key: "version", label: "النسخة المنشورة" },
         { key: "notice", label: "أسباب المتابعة" },
+        { key: "room_available_hours", label: "ساعات القاعات المتاحة" },
+        { key: "room_balance_hours", label: "فائض أو عجز ساعات القاعات" },
       ].map((header) => [header.key, header]),
     ).values(),
   ];
-  const columns: ReportColumn<LeadershipRow>[] = [
-    {
-      key: "college",
-      label: "الكلية",
-      className: "w-[22%]",
-      render: (row) => <CollegeCell row={row} />,
-    },
-    { key: "publication", label: "النشر", render: (row) => <StatusBadge row={row} /> },
-    { key: "coverage", label: "اكتمال الإسناد", render: (row) => <CoverageCell row={row} /> },
-    { key: "net_quota", label: "النصاب والمسند", render: (row) => <QuotaCell row={row} /> },
-    { key: "deficit", label: "الزيادة / نقص الأنصبة", render: (row) => <BalanceCell row={row} /> },
-    {
-      key: "teaching_hours",
-      label: "المجدول في المنشور",
-      secondary: true,
-      render: (row) => (
-        <div>
-          {hours(row.teaching_hours)}
-          <div className="text-xs text-muted-foreground">{text(row.sessions_count)} محاضرة</div>
-        </div>
-      ),
-    },
-    {
-      key: "theory_hours",
-      label: "نظري / عملي",
-      secondary: true,
-      render: (row) => (
-        <div>
-          {hours(row.theory_hours)} نظري
-          <div className="text-xs text-muted-foreground">{hours(row.practical_hours)} عملي</div>
-        </div>
-      ),
-    },
-    {
-      key: "room_count",
-      label: "القاعات والمعامل",
-      secondary: true,
-      render: (row) => <RoomCell row={row} showCapacity={!collegeDean} />,
-    },
-    { key: "faculty_count", label: "المحاضرون", numeric: true, secondary: true },
-    { key: "notice", label: "أسباب المتابعة", secondary: true },
-    {
-      key: "college_id",
-      label: "تقارير الكلية",
-      sortable: false,
-      secondary: true,
-      render: (row) => (
-        <div className="report-no-print flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" onClick={() => openMetric("faculty_count", row)}>
-            محاضرو الكلية
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => openMetric("required_course_hours", row)}
-          >
-            سجلات التدريس
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => openMetric("sessions_count", row)}>
-            جداول الكلية
-          </Button>
-          <Button size="sm" variant="outline" asChild>
-            <Link to="/reports" onClick={() => setActiveCollegeId(row.college_id)}>
-              فتح التقارير
-            </Link>
-          </Button>
-        </div>
-      ),
-    },
-  ];
+  const scopeQuality = leadershipPriorities(scoped, selectedCapacity);
 
   return (
     <>
       <ReportShell
         title={collegeDean ? "المؤشرات التنفيذية للكلية" : "المؤشرات التنفيذية للجامعة"}
-        description={`آخر تحديث: ${generatedAt} · النطاق: ${collegeDean ? "الكلية المُسندة والنسخ المنشورة فقط" : "النسخ المنشورة فقط"}. أعداد الطلاب والسعة لا تدخل أي نسبة ما لم تكن مكتملة.`}
+        description={`آخر قراءة ناجحة: ${generatedAt} · ${collegeDean ? "بيانات الكلية المُسندة فقط" : "ملخص جميع الكليات"}`}
         filename={`university_leadership_${data?.year ?? ""}_${data?.term_type ?? ""}`}
         rows={rows}
         headers={exportHeaders}
-        isLoading={query.isFetching}
-        error={query.error}
+        isLoading={query.isPending}
+        error={!data ? query.error : null}
         onRetry={() => void query.refetch()}
         filterSummary={periodLabel}
         headerMeta={{
@@ -584,14 +461,30 @@ function LeadershipDashboard() {
             ? (colleges[0]?.college ?? "الكلية المُسندة")
             : "جميع كليات الجامعة",
           termName: periodLabel,
-          note: "قراءة فقط · النسخ المنشورة فقط · القيم غير المكتملة مميزة صراحة",
+          note: "الإسناد من بيانات التدريس · الجداول من النسخ المنشورة · اكتمال كل مؤشر موضح",
         }}
+        leading={
+          data && (query.isFetching || query.isError) ? (
+            <p
+              role={query.isError ? "alert" : "status"}
+              className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950"
+            >
+              {query.isError
+                ? "تعذر التحديث؛ المعروض آخر قراءة ناجحة في الوقت المبين أعلاه. أعد المحاولة بزر تحديث."
+                : "جارٍ تحديث البيانات؛ تبقى آخر قراءة ناجحة معروضة حتى اكتمال التحديث."}
+            </p>
+          ) : null
+        }
         filters={
           <div className="report-no-print flex flex-wrap items-end justify-between gap-3 border-b pb-3">
             <ReportFilterField label="الفترة الأكاديمية" htmlFor="leadership-period">
               <Select
                 value={selectedValue}
-                onValueChange={(value) => setPeriod(JSON.parse(value))}
+                onValueChange={(value) => {
+                  setDrilldown(null);
+                  setDetail(null);
+                  setPeriod(JSON.parse(value));
+                }}
                 disabled={query.isFetching}
               >
                 <SelectTrigger id="leadership-period" aria-label="الفترة الأكاديمية">
@@ -611,452 +504,347 @@ function LeadershipDashboard() {
               onClick={() => void query.refetch()}
               disabled={query.isFetching}
             >
-              <RefreshCw className="ml-1 h-4 w-4" />
-              تحديث
+              <RefreshCw className={`ml-1 h-4 w-4 ${query.isFetching ? "animate-spin" : ""}`} />
+              {query.isFetching ? "جارٍ التحديث" : "تحديث"}
             </Button>
           </div>
         }
-        summary={
-          <div className="space-y-4">
-            <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-label="حالة الجامعة">
-              <MetricCard
-                label={LEADERSHIP_METRICS.faculty_count.label}
-                definition={LEADERSHIP_METRICS.faculty_count.definition}
-                onOpen={() => openMetric("faculty_count")}
-                value={
-                  uniqueFaculty === null
-                    ? LEADERSHIP_UNCALCULATED
-                    : uniqueFaculty.toLocaleString("ar")
-                }
-                icon={<Users className="h-4 w-4" />}
-                detail={
-                  <>
-                    <span>
-                      المتاح: {availableFaculty.toLocaleString("ar")}
-                      {availablePercent === null ? "" : ` (${availablePercent}%)`}
-                    </span>
-                    <ReportDisclosure label="الحالة الوظيفية والرتب الأكاديمية">
-                      <div
-                        className="grid gap-4 pt-3 lg:grid-cols-2"
-                        data-testid="faculty-breakdown-groups"
-                      >
-                        <FacultyBreakdownPanel
-                          title="الحالة الوظيفية"
-                          entries={availabilityCounts}
-                          testId="faculty-availability-panel"
-                          tone="availability"
-                        />
-                        <FacultyBreakdownPanel
-                          title="الرتب الأكاديمية"
-                          entries={rankCounts}
-                          testId="faculty-ranks-panel"
-                          tone="rank"
-                        />
-                      </div>
-                    </ReportDisclosure>
-                  </>
-                }
-              />
-              <MetricCard
-                label="تغطية الإسناد التدريسي"
-                definition="المسند من الساعات التدريسية المطلوبة ÷ إجمالي الساعات التدريسية المطلوبة. ساعات النصاب لا تدخل المقام."
-                onOpen={() => openMetric("covered_course_hours")}
-                value={
-                  universityCoverage === null ? LEADERSHIP_UNCALCULATED : `${universityCoverage}%`
-                }
-                icon={<CalendarCheck className="h-4 w-4" />}
-                tone={Number(uncovered.value ?? 0) > 0 ? "critical" : "normal"}
-                detail={
-                  <dl className="space-y-1">
-                    <div className="flex justify-between gap-2">
-                      <dt>{LEADERSHIP_METRICS.covered_course_hours.label}</dt>
-                      <dd>
-                        <MetricLink
-                          metric="covered_course_hours"
-                          value={hours(covered.value)}
-                          onOpen={openMetric}
-                        />
-                      </dd>
-                    </div>
-                    <div className="flex justify-between gap-2">
-                      <dt>{LEADERSHIP_METRICS.required_course_hours.label}</dt>
-                      <dd>
-                        <MetricLink
-                          metric="required_course_hours"
-                          value={hours(required.value)}
-                          onOpen={openMetric}
-                        />
-                      </dd>
-                    </div>
-                    <div className="flex justify-between gap-2">
-                      <dt>{LEADERSHIP_METRICS.uncovered_course_hours.label}</dt>
-                      <dd>
-                        <MetricLink
-                          metric="uncovered_course_hours"
-                          value={hours(uncovered.value)}
-                          onOpen={openMetric}
-                        />
-                      </dd>
-                    </div>
-                    {!required.complete && (
-                      <div className="pt-1">
-                        لا تُعرض نسبة: مصادر غير مكتملة في {required.total - required.known} كلية.
-                      </div>
-                    )}
-                  </dl>
-                }
-              />
-              <MetricCard
-                label="حالة الجداول"
-                definition={LEADERSHIP_METRICS.published_colleges.definition}
-                onOpen={() => openMetric("published_colleges")}
-                value={`${published.toLocaleString("ar")} من ${colleges.length.toLocaleString("ar")}`}
-                icon={<Clock3 className="h-4 w-4" />}
-                tone={published < colleges.length ? "warning" : "normal"}
-                detail={
-                  <dl className="space-y-1">
-                    <div className="flex justify-between gap-2">
-                      <dt>تغطية الإسناد التدريسي</dt>
-                      <dd>
-                        {universityCoverage === null
-                          ? LEADERSHIP_UNCALCULATED
-                          : `${universityCoverage}%`}
-                      </dd>
-                    </div>
-                    <div className="flex justify-between gap-2">
-                      <dt>{LEADERSHIP_METRICS.sessions_count.label}</dt>
-                      <dd>
-                        <MetricLink
-                          metric="sessions_count"
-                          value={text(sessions.value)}
-                          onOpen={openMetric}
-                        />
-                      </dd>
-                    </div>
-                    <div className="flex justify-between gap-2">
-                      <dt>النشر</dt>
-                      <dd>
-                        {published} / {colleges.length} كلية
-                      </dd>
-                    </div>
-                  </dl>
-                }
-              />
-              <MetricCard
-                label={LEADERSHIP_METRICS.net_quota.label}
-                definition={LEADERSHIP_METRICS.net_quota.definition}
-                onOpen={() => openMetric("net_quota")}
-                value={hours(netQuota.value)}
-                icon={<Users className="h-4 w-4" />}
-                detail={
-                  <dl className="space-y-1">
-                    <div className="flex justify-between gap-2">
-                      <dt>الأساسي والإعفاء لكل محاضر</dt>
-                      <dd>
-                        <MetricLink metric="net_quota" value="في التفاصيل" onOpen={openMetric} />
-                      </dd>
-                    </div>
-                    <div className="flex justify-between gap-2">
-                      <dt>{LEADERSHIP_METRICS.faculty_assigned_hours.label}</dt>
-                      <dd>
-                        <MetricLink
-                          metric="faculty_assigned_hours"
-                          value={hours(assigned.value)}
-                          onOpen={openMetric}
-                        />
-                      </dd>
-                    </div>
-                    <div className="flex justify-between gap-2">
-                      <dt>{LEADERSHIP_METRICS.scheduled_hours.label}</dt>
-                      <dd>
-                        <MetricLink
-                          metric="scheduled_hours"
-                          value={hours(scheduled.value)}
-                          onOpen={openMetric}
-                        />
-                      </dd>
-                    </div>
-                    <div className="pt-1">
-                      «المسند ضمن الأنصبة» يقيس نصاب المحاضر، و«المسند للمقررات» يقيس ساعات المكوّن؛
-                      لا يُدمجان.
-                    </div>
-                  </dl>
-                }
-              />
-              <MetricCard
-                label={LEADERSHIP_METRICS.overload.label}
-                definition={LEADERSHIP_METRICS.overload.definition}
-                onOpen={() => openMetric("overload")}
-                value={hours(overload.value)}
-                icon={<AlertTriangle className="h-4 w-4" />}
-                tone={Number(overload.value ?? 0) > 0 ? "warning" : "normal"}
-                detail="افتح الرقم لعرض المحاضرين المكوّنين له بمعادلة كل صف."
-              />
-              <MetricCard
-                label={LEADERSHIP_METRICS.deficit.label}
-                definition={LEADERSHIP_METRICS.deficit.definition}
-                onOpen={() => openMetric("deficit")}
-                value={hours(deficit.value)}
-                icon={<AlertTriangle className="h-4 w-4" />}
-                tone={Number(deficit.value ?? 0) > 0 ? "warning" : "normal"}
-                detail="مستقل عن ساعات التدريس غير المسندة؛ لا يتداخل معها."
-              />
-            </section>
-            <Card className="px-4 py-3" data-testid="leadership-scope">
-              <div className="grid gap-3 text-center sm:grid-cols-4">
-                <div>
-                  <div className="text-xs text-muted-foreground">الكليات</div>
-                  <b>{colleges.length}</b>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground">تعريف الفترة جاهز</div>
-                  <b>
-                    {ready} من {colleges.length}
-                  </b>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground">جداول منشورة</div>
-                  <b>
-                    {published} من {colleges.length}
-                  </b>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground">تحتاج متابعة</div>
-                  <b>{attention}</b>
-                </div>
-              </div>
-              {Number(data?.unresolved_faculty ?? 0) > 0 && (
-                <p className="mt-3 border-t pt-2 text-xs text-muted-foreground">
-                  تبعية تحتاج مراجعة: {data?.unresolved_faculty} محاضرًا لم تُحسم كليتهم الأصلية؛ لا
-                  يدخلون في نسبة مستقلة.
+      >
+        <LeadershipDecisionSummary
+          colleges={colleges}
+          uniqueFaculty={data?.unique_faculty ?? null}
+          capacity={capacity}
+          capacityState={capacityState}
+          onOpen={openDetail}
+        />
+      </ReportShell>
+
+      <Sheet
+        open={!!detail}
+        onOpenChange={(open) => {
+          if (!open) setDetail(null);
+        }}
+      >
+        <SheetContent
+          side="left"
+          className="flex w-full flex-col gap-3 overflow-y-auto sm:max-w-[min(1100px,95vw)]"
+          data-testid="leadership-detail-panel"
+          dir="rtl"
+        >
+          <SheetHeader className="ps-8 text-start">
+            <SheetTitle>
+              {selectedCollege?.college ?? (collegeDean ? "تفاصيل الكلية" : "تفاصيل الجامعة")}
+            </SheetTitle>
+            <SheetDescription>
+              {periodLabel} · آخر قراءة ناجحة: {generatedAt}
+            </SheetDescription>
+          </SheetHeader>
+          {detail && (
+            <>
+              {query.isError && (
+                <p role="alert" className="rounded border border-amber-200 p-3 text-sm">
+                  تعذر تحديث الملخص؛ هذه آخر قراءة ناجحة.
                 </p>
               )}
-            </Card>
-          </div>
-        }
-      >
-        <div className="space-y-5">
-          {!collegeDean && colleges.length > 0 && (
-            <LeadershipRoomCapacitySummary
-              rows={roomCapacityQuery.data ?? []}
-              loading={
-                query.isFetching || roomCapacityQuery.isPending || roomCapacityQuery.isFetching
-              }
-              error={roomCapacityQuery.isError}
-              onRetry={() => void roomCapacityQuery.refetch()}
-            />
-          )}
-          <ReportSection
-            title="الحمل التدريسي الأسبوعي"
-            testId="leadership-weekly-teaching"
-            hint="من النسخ المنشورة فقط؛ المحاضرة جلسة أسبوعية مجدولة، ومتوسطها محسوب لكل كلية لديها نسخة منشورة."
-          >
-            <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4">
-              <MetricCard
-                label="المحاضرات أسبوعيًا"
-                definition="عدد الجلسات الأسبوعية في النسخ المنشورة."
-                onOpen={() => openMetric("sessions_count")}
-                value={text(sessions.value)}
-                icon={<BookOpen className="h-4 w-4" />}
-                detail={
-                  <>
-                    المتوسط لكل كلية منشورة:{" "}
-                    <b className="text-foreground">
-                      {averageSessionsPerPublishedCollege === null
-                        ? LEADERSHIP_UNCALCULATED
-                        : averageSessionsPerPublishedCollege.toLocaleString("ar")}
-                    </b>
-                  </>
-                }
-              />
-              <MetricCard
-                label="الساعات الأسبوعية"
-                definition="إجمالي مدة الجلسات الأسبوعية في النسخ المنشورة."
-                onOpen={() => openMetric("scheduled_hours")}
-                value={hours(scheduled.value)}
-                icon={<Clock3 className="h-4 w-4" />}
-                detail="تشمل النظري والعملي والساعات غير المصنفة إن وجدت."
-              />
-              <MetricCard
-                label="الساعات النظرية أسبوعيًا"
-                definition="مجموع ساعات المكونات المصنفة نظريًا في النسخ المنشورة."
-                value={hours(theory.value)}
-                icon={<BookOpen className="h-4 w-4" />}
-                detail="التصنيف مأخوذ من نوع مكوّن المقرر."
-              />
-              <MetricCard
-                label="الساعات العملية أسبوعيًا"
-                definition="مجموع ساعات العملي والمعامل والسريري والتدريب الميداني."
-                value={hours(practical.value)}
-                icon={<FlaskConical className="h-4 w-4" />}
-                detail={
-                  unclassified.value !== null && unclassified.value > 0
-                    ? `ساعات غير مصنفة: ${hours(unclassified.value)}`
-                    : "لا توجد ساعات غير مصنفة ضمن المصدر المكتمل."
-                }
-              />
-            </div>
-          </ReportSection>
-          <div
-            className="grid gap-4 xl:grid-cols-3"
-            dir="rtl"
-            data-testid="leadership-summary-sections"
-          >
-            <ReportSection
-              title="المحاضرون والأنصبة"
-              testId="leadership-instructors-section"
-              hint="المحاضر يُحتسب مرة واحدة بهويته الجامعية، وتُجمع مساهماته عبر الكليات."
-            >
-              <div className="space-y-3 p-4 text-sm">
-                <dl className="space-y-2">
-                  <div className="flex justify-between">
-                    <dt>المطلوب بعد الإعفاء</dt>
-                    <dd>{hours(netQuota.value)}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt>المسند</dt>
-                    <dd>{hours(assigned.value)}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt>المجدول في المنشور</dt>
-                    <dd>{hours(scheduled.value)}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt>نقص الأنصبة</dt>
-                    <dd>{hours(deficit.value)}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt>الزيادة</dt>
-                    <dd>{hours(overload.value)}</dd>
-                  </div>
-                </dl>
-                <ReportDisclosure label="التفرغ والتعاقد">
-                  <CountList entries={employmentCounts} tone="rank" />
-                </ReportDisclosure>
-                <Button variant="outline" size="sm" asChild className="report-no-print">
-                  <Link to="/reports/instructor-workload">تفاصيل المحاضرين</Link>
-                </Button>
-              </div>
-            </ReportSection>
-            <ReportSection
-              title="القاعات والمعامل"
-              testId="leadership-rooms-section"
-              hint="الاستخدام أدناه يعني ظهور المورد في نسخة منشورة، وليس نسبة استغلال زمني."
-            >
-              <div className="space-y-3 p-4 text-sm">
-                <dl className="space-y-2">
-                  <div className="flex justify-between">
-                    <dt>إجمالي الموارد</dt>
-                    <dd>{text(rooms.value)}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt>مستخدمة في المنشور</dt>
-                    <dd>{text(usedRooms.value)}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt>ساعات الإشغال / المتاح</dt>
-                    <dd>{collegeDean ? "غير محسوب" : "في ملخص ساعات القاعات"}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt>القاعات الخالية في المنشور</dt>
-                    <dd>{collegeDean ? "غير محسوب" : "في تفاصيل كل كلية أعلاه"}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt>ملاءمة السعة والتجهيز</dt>
-                    <dd>غير محسوب</dd>
-                  </div>
-                </dl>
-                <p className="border-t pt-2 text-xs text-muted-foreground">
-                  مكافئات الفائض تقارن الساعات. تحديد قاعة يمكن الاستغناء عنها يتطلب مراجعة نوعها
-                  وسعتها وتوزيع المحاضرات.
-                </p>
-                <ReportDisclosure label="تفاصيل الكليات">
-                  <div className="space-y-2">
-                    {rows.map((row) => (
-                      <div
-                        key={row.college_id}
-                        className="flex justify-between gap-3 border-b py-2"
-                      >
-                        <span>{row.college}</span>
-                        <span>
-                          {text(row.used_rooms)} / {text(row.room_count)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </ReportDisclosure>
-              </div>
-            </ReportSection>
-            <ReportSection
-              title="حالة البيانات والنشر"
-              testId="leadership-publishing-section"
-              hint="تعرض القياسات التي يمكن إثباتها من المصدر الحالي فقط."
-            >
-              <div className="space-y-3 p-4 text-sm">
-                <dl className="space-y-2">
-                  <div className="flex justify-between">
-                    <dt>المحاضرات المنشورة</dt>
-                    <dd>{text(sessions.value)}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt>الساعات المنشورة</dt>
-                    <dd>{hours(scheduled.value)}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt>ساعات التدريس غير المسندة</dt>
-                    <dd>{hours(uncovered.value)}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt>كليات تحتاج متابعة</dt>
-                    <dd>{attention}</dd>
-                  </div>
-                </dl>
-                <ReportDisclosure label="أسباب المتابعة حسب الكلية">
-                  <div className="space-y-2">
-                    {rows.map((row) => (
-                      <div key={row.college_id} className="border-b py-2">
-                        <div className="flex items-center justify-between gap-3">
-                          <b>{row.college}</b>
+              <Select
+                value={detail.collegeId ?? ALL_COLLEGES}
+                onValueChange={(collegeId) => {
+                  if (
+                    collegeId === ALL_COLLEGES ||
+                    colleges.some((college) => college.college_id === collegeId)
+                  )
+                    setDetail({
+                      ...detail,
+                      collegeId: collegeId === ALL_COLLEGES ? null : collegeId,
+                    });
+                }}
+              >
+                <SelectTrigger aria-label="نطاق التفاصيل">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_COLLEGES}>
+                    {collegeDean ? "الكلية المُسندة" : "جميع الكليات"}
+                  </SelectItem>
+                  {colleges.map((college) => (
+                    <SelectItem key={college.college_id} value={college.college_id}>
+                      {college.college}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Tabs
+                value={detail.tab}
+                onValueChange={(tab) => setDetail({ ...detail, tab: tab as LeadershipDetailTab })}
+                dir="rtl"
+                className="min-w-0"
+              >
+                <TabsList aria-label="تفاصيل المؤشرات">
+                  <TabsTrigger value="teaching">التدريس والجداول</TabsTrigger>
+                  <TabsTrigger value="faculty">المحاضرون والأنصبة</TabsTrigger>
+                  <TabsTrigger value="rooms">القاعات</TabsTrigger>
+                  <TabsTrigger value="quality">جودة البيانات</TabsTrigger>
+                </TabsList>
+                <TabsContent value="teaching" className="space-y-4">
+                  <ReportSection
+                    title="الإسناد التدريسي"
+                    testId="leadership-assignment-section"
+                    hint="الإسناد من مجموعات التدريس؛ نشر الجدول لا يؤكد وحده اجتياز الفحص."
+                  >
+                    <div className="space-y-3 p-4">
+                      <p className="text-sm font-semibold">
+                        تغطية الإسناد:{" "}
+                        {universityCoverage === null ? "غير محسوب" : `${universityCoverage}%`}
+                        {!sourceComplete && " · بيانات غير مكتملة"}
+                      </p>
+                      <dl className="grid gap-3 sm:grid-cols-3">
+                        {(
+                          [
+                            "required_course_hours",
+                            "covered_course_hours",
+                            "uncovered_course_hours",
+                          ] as const
+                        ).map((metric) => (
+                          <div className="rounded border p-3" key={metric}>
+                            <dt className="text-xs text-muted-foreground">
+                              {LEADERSHIP_METRICS[metric].label}
+                            </dt>
+                            <dd className="mt-2 text-lg font-bold">
+                              <MetricLink
+                                metric={metric}
+                                value={hours(cardValues[metric])}
+                                onOpen={openMetric}
+                              />
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                      {!sourceComplete && (
+                        <p className="text-xs text-amber-800 dark:text-amber-200">
+                          هذه الساعات تخص السجلات المتاحة؛ اكتمال الحساب موضح في جودة البيانات.
+                        </p>
+                      )}
+                    </div>
+                  </ReportSection>
+                  <ReportSection
+                    title="الحمل التدريسي الأسبوعي"
+                    testId="leadership-weekly-teaching"
+                    hint="الساعات والمحاضرات أدناه من النسخ المنشورة فقط."
+                  >
+                    <div className="grid gap-3 p-4 sm:grid-cols-2">
+                      <MetricCard
+                        label="المحاضرات أسبوعيًا"
+                        value={text(sessions.value)}
+                        icon={<BookOpen className="h-4 w-4" />}
+                        onOpen={() => openMetric("sessions_count")}
+                        detail={
+                          <>المتوسط لكل كلية منشورة: {text(averageSessionsPerPublishedCollege)}</>
+                        }
+                      />
+                      <MetricCard
+                        label="الساعات الأسبوعية"
+                        value={hours(scheduled.value)}
+                        icon={<Clock3 className="h-4 w-4" />}
+                        onOpen={() => openMetric("scheduled_hours")}
+                        detail={`المصدر متاح في ${scheduled.known} من ${scheduled.total} كليات`}
+                      />
+                      <MetricCard
+                        label="الساعات النظرية أسبوعيًا"
+                        value={hours(theory.value)}
+                        icon={<BookOpen className="h-4 w-4" />}
+                        detail="مكونات مصنفة نظريًا"
+                      />
+                      <MetricCard
+                        label="الساعات العملية أسبوعيًا"
+                        value={hours(practical.value)}
+                        icon={<FlaskConical className="h-4 w-4" />}
+                        detail={`ساعات مكونات أخرى: ${hours(unclassified.value)}`}
+                      />
+                    </div>
+                  </ReportSection>
+                  <ReportSection
+                    title="حالة النشر"
+                    testId="leadership-publishing-section"
+                    hint="المؤشرات تصف النسخ المنشورة المختارة لهذا الفصل."
+                  >
+                    <div className="space-y-3 p-4">
+                      <Button variant="outline" onClick={() => openMetric("published_colleges")}>
+                        سجلات النشر: {published} من {scoped.length}
+                      </Button>
+                      {scoped.map((row) => (
+                        <div
+                          key={row.college_id}
+                          className="flex flex-wrap items-center justify-between gap-3 border-t pt-3"
+                        >
+                          <div>
+                            <b className="text-sm">{row.college}</b>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {row.version ?? "لا توجد نسخة منشورة"}
+                            </p>
+                          </div>
                           <StatusBadge row={row} />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openMetric("sessions_count", row)}
+                          >
+                            جلسات الكلية
+                          </Button>
                         </div>
-                        <p className="mt-1 text-xs text-muted-foreground">{row.notice}</p>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+                  </ReportSection>
+                </TabsContent>
+                <TabsContent value="faculty" className="space-y-4">
+                  <ReportSection
+                    title="المحاضرون والأنصبة"
+                    testId="leadership-instructors-section"
+                    hint="النقص في الأنصبة مستقل عن ساعات التدريس غير المسندة."
+                  >
+                    <div className="grid gap-3 p-4 sm:grid-cols-2">
+                      {(
+                        [
+                          "faculty_count",
+                          "net_quota",
+                          "faculty_assigned_hours",
+                          "overload",
+                          "deficit",
+                        ] as const
+                      ).map((metric) => (
+                        <MetricCard
+                          key={metric}
+                          label={LEADERSHIP_METRICS[metric].label}
+                          value={
+                            metric === "faculty_count"
+                              ? text(uniqueFaculty)
+                              : hours(cardValues[metric])
+                          }
+                          icon={<Users className="h-4 w-4" />}
+                          onOpen={() => openMetric(metric)}
+                          definition={LEADERSHIP_METRICS[metric].definition}
+                          detail={
+                            metric === "faculty_count"
+                              ? "الهويات الجامعية ضمن نطاق العرض"
+                              : `${text(total("incomplete_faculty").value)} نصابًا غير مكتمل · قد تتغير النتائج بعد الاستكمال`
+                          }
+                        />
+                      ))}
+                    </div>
+                  </ReportSection>
+                  <div className="grid gap-4 lg:grid-cols-2" data-testid="faculty-breakdown-groups">
+                    <FacultyBreakdownPanel
+                      title="الحالة الوظيفية"
+                      entries={availabilityCounts}
+                      testId="faculty-availability-panel"
+                      tone="availability"
+                    />
+                    <FacultyBreakdownPanel
+                      title="الرتب الأكاديمية"
+                      entries={rankCounts}
+                      testId="faculty-ranks-panel"
+                      tone="rank"
+                    />
                   </div>
-                </ReportDisclosure>
-              </div>
-            </ReportSection>
-          </div>
-          <ReportSection
-            title={collegeDean ? "مؤشرات الكلية" : "مقارنة الكليات"}
-            testId="leadership-colleges-comparison"
-            count={rows.length}
-            hint={
-              collegeDean
-                ? "تظهر بيانات الكلية المُسندة لهذا الحساب فقط. افتح التفاصيل لبقية المؤشرات وأسباب المتابعة."
-                : "تكنولوجيا المعلومات وعلوم الحاسوب أولًا، ثم بقية الكليات. افتح التفاصيل لبقية المؤشرات وأسباب المتابعة."
-            }
-            bodyClassName="p-0"
-          >
-            <ReportDataTable
-              rows={rows}
-              caption="المؤشرات التنفيذية للكليات"
-              rowKey={(row) => row.college_id}
-              rowClassName={(row) =>
-                Number(row.uncovered_hours ?? 0) > 0
-                  ? "bg-destructive/5"
-                  : hasIssue(row)
-                    ? "bg-muted/40"
-                    : ""
-              }
-              primaryColumnLimit={5}
-              minWidthClassName="min-w-[1000px]"
-              columns={columns}
-            />
-          </ReportSection>
-        </div>
-      </ReportShell>
+                  <ReportDisclosure label="التفرغ والتعاقد">
+                    <CountList entries={employmentCounts} tone="rank" />
+                  </ReportDisclosure>
+                  {scoped.map((row) => (
+                    <Button
+                      key={row.college_id}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openMetric("faculty_count", row)}
+                    >
+                      محاضرو {row.college}
+                    </Button>
+                  ))}
+                </TabsContent>
+                <TabsContent value="rooms">
+                  <div data-testid="leadership-rooms-section">
+                    {!collegeDean ? (
+                      <LeadershipRoomCapacitySummary
+                        rows={selectedCapacity}
+                        summaryLabel={selectedCollege ? "ملخص الكلية" : "ملخص الجامعة"}
+                        loading={roomCapacityQuery.isPending}
+                        error={roomCapacityQuery.isError}
+                        onRetry={() => void roomCapacityQuery.refetch()}
+                      />
+                    ) : (
+                      <div className="space-y-3 rounded border p-4">
+                        <p>ساعات إتاحة القاعات غير محسوبة في هذا النطاق.</p>
+                        {scoped.map((row) => (
+                          <p key={row.college_id}>
+                            {row.college}: {text(row.room_count)} قاعة ومعمل، منها{" "}
+                            {text(row.used_rooms)} مستخدمة في المنشور.
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+                <TabsContent
+                  value="quality"
+                  className="space-y-3"
+                  data-testid="leadership-quality-section"
+                >
+                  <p className="rounded-lg bg-muted/40 p-3 text-sm">
+                    الملاحظات التالية تحدد ما يحتاج مراجعة؛ لا تمثل حكمًا شاملًا على جاهزية الكلية.
+                  </p>
+                  {!selectedCollege && Number(data?.unresolved_faculty ?? 0) > 0 && (
+                    <p className="rounded border border-amber-200 p-3 text-sm">
+                      تبعية تحتاج مراجعة: {data?.unresolved_faculty} محاضرًا لم تُحسم كليتهم
+                      الأصلية.
+                    </p>
+                  )}
+                  {scoped.map((row) => (
+                    <article key={row.college_id} className="space-y-2 rounded-lg border p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <h3 className="font-bold">{row.college}</h3>
+                        <StatusBadge row={row} />
+                      </div>
+                      <p className="text-sm">{leadershipNotice(row)}</p>
+                      <p className="text-sm">
+                        إتاحة القاعات:{" "}
+                        {capacity.find((item) => item.id === row.college_id)?.issues.join(" · ") ||
+                          (capacityState === "ready" ? "مكتملة الحساب" : "غير محسوبة")}
+                      </p>
+                      {scopeQuality.find((item) => item.collegeId === row.college_id) && (
+                        <p className="text-xs text-muted-foreground">
+                          الجهة المعنية:{" "}
+                          {scopeQuality.find((item) => item.collegeId === row.college_id)?.team}
+                        </p>
+                      )}
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openMetric("required_course_hours", row)}
+                        >
+                          سجلات التدريس
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openMetric("faculty_count", row)}
+                        >
+                          سجلات المحاضرين
+                        </Button>
+                        <Button size="sm" variant="outline" asChild>
+                          <Link to="/reports" onClick={() => setActiveCollegeId(row.college_id)}>
+                            تقارير الكلية
+                          </Link>
+                        </Button>
+                      </div>
+                    </article>
+                  ))}
+                </TabsContent>
+              </Tabs>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
       <LeadershipMetricDrilldown
+        key={`${viewerKey}:${data?.year}:${data?.term_type}:${drilldown?.collegeId ?? "all"}:${drilldown?.metric ?? "none"}`}
         target={drilldown}
         period={period ?? (data ? { year: data.year, type: data.term_type } : null)}
         onClose={() => setDrilldown(null)}
