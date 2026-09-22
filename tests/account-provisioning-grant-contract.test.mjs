@@ -19,13 +19,13 @@ test("grant is bound to normalized email, role and creator", () => {
   assert.match(users, /const normalizedEmail = data\.email\.trim\(\)\.toLowerCase\(\)/);
   assert.match(
     users,
-    /p_email: normalizedEmail, p_role: data\.role, p_created_by: context\.userId/,
+    /p_email: normalizedEmail, p_role: provisioningRole, p_created_by: context\.userId/,
   );
   assert.match(users, /email: normalizedEmail,/);
 });
 
 test("nonce and role reach the guard through both metadata channels", () => {
-  assert.match(users, /provisioning_role: data\.role,\s*provisioning_nonce: grant\.nonce,/);
+  assert.match(users, /provisioning_role: provisioningRole,\s*provisioning_nonce: grant\.nonce,/);
   assert.match(users, /must_change_password: requiresInitialPassword\(data\.role\)/);
 });
 
