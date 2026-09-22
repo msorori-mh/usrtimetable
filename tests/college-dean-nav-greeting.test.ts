@@ -118,6 +118,9 @@ describe("university president greeting", () => {
     const layout = readFileSync("src/components/app-layout.tsx", "utf8");
     expect(layout).toMatch(/universityLeadershipOnly/);
     expect(layout).toMatch(/isUniversityLeadershipOnly: universityLeadershipOnly/);
+    expect(layout).toMatch(/university-president/);
+    expect(layout).toMatch(/text-xl font-extrabold/);
+    expect(layout).toMatch(/border-r-\[var\(--usr-gold\)\]/);
   });
 });
 
