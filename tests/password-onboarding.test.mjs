@@ -5,17 +5,31 @@ import { resolve } from "node:path";
 import { build } from "esbuild";
 import { validPersonalPassword, requiresInitialPassword } from "../src/lib/password-policy.ts";
 
-test("password policy requires eight characters, letters and numbers or symbols", () => {
+test("password policy accepts eight or more characters without composition requirements", () => {
   for (const value of [
+    "",
+    "abcdefg",
+    "1234567",
     "abc123!",
-    "abcdefgh",
-    "12345678",
-    "!!!!!!!!",
-    "abcd    ",
-    "A".repeat(72) + "1",
+    "أ".repeat(7),
+    "A".repeat(73),
+    "أ".repeat(37),
   ])
     assert.equal(validPersonalPassword(value), false, value);
-  for (const value of ["abcdefg1", "abcdefg!", "كلمةمرور8", "Strong pass!"])
+  for (const value of [
+    "abcdefgh",
+    "ABCDEFGH",
+    "12345678",
+    "abcd1234",
+    "ابجدهوزح",
+    "١٢٣٤٥٦٧٨",
+    "abcdefg1",
+    "abcdefg!",
+    "كلمةمرور8",
+    "Strong pass!",
+    "A".repeat(72),
+    "أ".repeat(36),
+  ])
     assert.equal(validPersonalPassword(value), true, value);
   assert.equal(requiresInitialPassword("super_admin"), false);
   for (const role of [
@@ -64,7 +78,8 @@ const { completeInitialPasswordChange: change } = await import(
   "data:text/javascript;base64," + Buffer.from(bundled.outputFiles[0].text).toString("base64")
 );
 
-test("server rejects admin, weak/reused passwords and wrong temporary credential; clears flag only after success", async () => {
+test("server accepts simple passwords and keeps first-login identity and completion safeguards", async () => {
+  const savedPasswords = [];
   let role = "read_only",
     verified = true,
     fail = false,
@@ -82,7 +97,11 @@ test("server rejects admin, weak/reused passwords and wrong temporary credential
     },
     from(table) {
       if (table === "user_roles")
-        return { select: () => ({ eq: async () => ({ data: [{ role }], error: null }) }) };
+        return {
+          select: () => ({
+            eq: async () => ({ data: [{ role }], error: null }),
+          }),
+        };
       return { insert: async () => ({ error: null }) };
     },
     auth: {
@@ -92,6 +111,7 @@ test("server rejects admin, weak/reused passwords and wrong temporary credential
           assert.equal(id, "user-1");
           if (fail) return { error: { message: "injected" } };
           updated++;
+          savedPasswords.push(input.password);
           user = { ...user, app_metadata: input.app_metadata };
           return { error: null };
         },
@@ -117,11 +137,13 @@ test("server rejects admin, weak/reused passwords and wrong temporary credential
   await assert.rejects(() => change(input), /الأدمن/);
   assert.equal(updated, 0);
   role = "read_only";
-  await assert.rejects(() =>
-    change({ ...input, data: { ...input.data, newPassword: "abcdefgh" } }),
-  );
+  await assert.rejects(() => change({ ...input, data: { ...input.data, newPassword: "abcdefg" } }));
   await assert.rejects(
-    () => change({ ...input, data: { ...input.data, newPassword: input.data.currentPassword } }),
+    () =>
+      change({
+        ...input,
+        data: { ...input.data, newPassword: input.data.currentPassword },
+      }),
     /مختلفة/,
   );
   verified = false;
@@ -138,6 +160,15 @@ test("server rejects admin, weak/reused passwords and wrong temporary credential
   assert.equal(user.app_metadata.provider, "email");
   assert.equal(signedOut, 2);
   await assert.rejects(() => change(input), /لا يوجد/);
+  const simplePasswords = ["abcdefgh", "12345678", "abcd1234", "ابجدهوزح", "١٢٣٤٥٦٧٨"];
+  for (const newPassword of simplePasswords) {
+    user.app_metadata.must_change_password = true;
+    assert.deepEqual(await change({ ...input, data: { ...input.data, newPassword } }), {
+      ok: true,
+    });
+    assert.equal(user.app_metadata.must_change_password, false);
+  }
+  assert.deepEqual(savedPasswords, [input.data.newPassword, ...simplePasswords]);
   delete globalThis.__pwAdmin;
   delete globalThis.__pwVerifier;
 });
