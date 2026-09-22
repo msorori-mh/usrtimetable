@@ -5,7 +5,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { completeInitialPasswordChange } from "@/lib/password-change.functions";
 import { PASSWORD_POLICY_AR, validPersonalPassword } from "@/lib/password-policy";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 
