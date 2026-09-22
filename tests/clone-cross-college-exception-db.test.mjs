@@ -30,7 +30,25 @@ async function makeDb(exceptionState) {
  -- external published schedule of another college (never modified)
  CREATE TABLE external_busy(instructor_id uuid,day_of_week int,start_time time,end_time time);
  INSERT INTO external_busy VALUES('${id(5)}',6,'08:00','11:00');
- CREATE FUNCTION guard_cross_college() RETURNS trigger LANGUAGE plpgsql AS $$
+ INSERT INTO schedule_versions VALUES('${id(3)}','${id(2)}','${id(4)}','archived source','archived',null,null,false);
+ INSERT INTO instructors VALUES('${id(5)}',true);
+ INSERT INTO plan_course_components VALUES('${id(7)}','theory',true);
+ INSERT INTO delivery_groups VALUES('${id(8)}','${id(7)}','${id(9)}',true,false);
+ INSERT INTO teaching_assignments VALUES('${id(10)}',true,'${id(5)}','${id(11)}','${id(8)}');
+ INSERT INTO schedule_sessions(id,college_id,schedule_version_id,course_offering_id,teaching_assignment_id,instructor_id,room_id,cohort_id,delivery_group_id,plan_course_component_id,day_of_week,start_time,end_time)
+ VALUES('${id(20)}','${id(2)}','${id(3)}','${id(11)}','${id(10)}','${id(5)}','${id(30)}','${id(9)}','${id(8)}','${id(7)}',6,'10:00','12:00');
+ `);
+  if (exceptionState) {
+    const meta =
+      exceptionState === "expired"
+        ? `jsonb_build_object('expires_at',(now()-interval '1 day')::text)`
+        : `'{}'::jsonb`;
+    const status = exceptionState === "revoked" ? "revoked" : "approved";
+    await db.exec(`
+ INSERT INTO schedule_version_conflict_exceptions(college_id,schedule_version_id,conflict_code,session_id,approval_type,reason,source,status,approved_by,approved_at,metadata)
+ VALUES('${id(2)}','${id(3)}','instructor_conflict','${id(20)}','cross_college_instructor','مطابقة حرفية للمصدر','user_authorized_version_scoped_exception','${status}','${id(1)}',now(),${meta});`);
+  }
+  await db.exec(` CREATE FUNCTION guard_cross_college() RETURNS trigger LANGUAGE plpgsql AS $$
  BEGIN
    IF EXISTS(SELECT 1 FROM schedule_sessions s JOIN external_busy b
        ON b.instructor_id=s.instructor_id AND b.day_of_week=s.day_of_week
@@ -45,25 +63,7 @@ async function makeDb(exceptionState) {
  END $$;
  CREATE CONSTRAINT TRIGGER guard_sessions AFTER INSERT ON schedule_sessions
    DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION guard_cross_college();
- INSERT INTO schedule_versions VALUES('${id(3)}','${id(2)}','${id(4)}','archived source','archived',null,null,false);
- INSERT INTO instructors VALUES('${id(5)}',true);
- INSERT INTO plan_course_components VALUES('${id(7)}','theory',true);
- INSERT INTO delivery_groups VALUES('${id(8)}','${id(7)}','${id(9)}',true,false);
- INSERT INTO teaching_assignments VALUES('${id(10)}',true,'${id(5)}','${id(11)}','${id(8)}');
- SET CONSTRAINTS ALL IMMEDIATE;
- INSERT INTO schedule_sessions(id,college_id,schedule_version_id,course_offering_id,teaching_assignment_id,instructor_id,room_id,cohort_id,delivery_group_id,plan_course_component_id,day_of_week,start_time,end_time)
- VALUES('${id(20)}','${id(2)}','${id(3)}','${id(11)}','${id(10)}','${id(5)}','${id(30)}','${id(9)}','${id(8)}','${id(7)}',6,'10:00','12:00');
- `);
-  if (exceptionState) {
-    const meta =
-      exceptionState === "expired"
-        ? `jsonb_build_object('expires_at',(now()-interval '1 day')::text)`
-        : `'{}'::jsonb`;
-    const status = exceptionState === "revoked" ? "revoked" : "approved";
-    await db.exec(`
- INSERT INTO schedule_version_conflict_exceptions(college_id,schedule_version_id,conflict_code,session_id,approval_type,reason,source,status,approved_by,approved_at,metadata)
- VALUES('${id(2)}','${id(3)}','instructor_conflict','${id(20)}','cross_college_instructor','مطابقة حرفية للمصدر','user_authorized_version_scoped_exception','${status}','${id(1)}',now(),${meta});`);
-  }
+`);
   await db.exec(CLONE_SQL);
   await db.query("select set_config('request.jwt.claim.sub',$1,false)", [id(1)]);
   return db;
