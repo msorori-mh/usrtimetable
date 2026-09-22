@@ -113,6 +113,46 @@ export function sessionMatchesTimetableLevelFilter(input: {
   return (row?.level_number ?? null) === wanted;
 }
 
+/** Match all academic filters against one participant, never across different cohorts. */
+export function sessionMatchesTimetableAcademicFilters(input: {
+  session: {
+    intake_memberships?: Array<{
+      department_id: string | null;
+      program_id: string | null;
+      level_id: string | null;
+    }>;
+    course_offerings?: {
+      program_id?: string | null;
+      level_id?: string | null;
+      courses?: { department_id?: string | null } | null;
+    } | null;
+  };
+  departmentId: string;
+  programId: string;
+  levelValue: string;
+  levels: TimetableLevelRow[];
+}): boolean {
+  const offering = input.session.course_offerings;
+  // Imported memberships include the anchor and are authoritative for each cohort.
+  // Sessions without intake metadata retain the existing offering-based behavior.
+  const participants = input.session.intake_memberships?.length
+    ? input.session.intake_memberships
+    : [{
+        department_id: offering?.courses?.department_id,
+        program_id: offering?.program_id,
+        level_id: offering?.level_id,
+      }];
+  return participants.some((participant) =>
+    (input.departmentId === "all" || participant.department_id === input.departmentId) &&
+    (input.programId === "all" || participant.program_id === input.programId) &&
+    sessionMatchesTimetableLevelFilter({
+      filterValue: input.levelValue,
+      levelId: participant.level_id,
+      levels: input.levels,
+    }),
+  );
+}
+
 export function isNewFlowWorkItemUnscheduled(item: {
   remaining_schedule_hours: number;
   scheduling_status: string;

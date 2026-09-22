@@ -62,7 +62,7 @@ import {
   filterUnscheduledNewFlowWorkItems,
   groupTimetableSidebarItems,
   preserveTimetableLevelFilter,
-  sessionMatchesTimetableLevelFilter,
+  sessionMatchesTimetableAcademicFilters,
 } from "@/lib/schedule-builder/timetable-editor-filters";
 import { entityDisplayName } from "@/lib/entity-display";
 
@@ -321,25 +321,11 @@ function TimetablePage() {
   const filtered = useMemo(() => {
     return (sessions ?? []).filter((s: any) => {
       if (
-        fDept !== "all" &&
-        s.course_offerings?.courses?.department_id !== fDept &&
-        !s.intake_memberships?.some(
-          (m: { department_id: string }) => m.department_id === fDept,
-        )
-      )
-        return false;
-      if (
-        fProg !== "all" &&
-        s.course_offerings?.program_id !== fProg &&
-        !s.intake_memberships?.some(
-          (m: { program_id: string }) => m.program_id === fProg,
-        )
-      )
-        return false;
-      if (
-        !sessionMatchesTimetableLevelFilter({
-          filterValue: fLevel,
-          levelId: s.course_offerings?.level_id ?? null,
+        !sessionMatchesTimetableAcademicFilters({
+          session: s,
+          departmentId: fDept,
+          programId: fProg,
+          levelValue: fLevel,
           levels: lookups?.levels ?? [],
         })
       ) {
