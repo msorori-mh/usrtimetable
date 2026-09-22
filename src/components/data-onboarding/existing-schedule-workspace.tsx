@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,16 +11,13 @@ import { toast } from "sonner";
 
 type Source = Tables<"existing_schedule_source_rows">;
 const DAYS = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
-const IT = "7168345f-cf9d-4789-b2ad-547abb687dc8";
 
 export function ExistingScheduleWorkspace({
   collegeId,
   canManage,
-  onModeChange,
 }: {
   collegeId: string;
   canManage: boolean;
-  onModeChange: (active: boolean) => void;
 }) {
   const cache = useQueryClient();
   const [termChoice, setTermChoice] = useState("");
@@ -36,7 +33,6 @@ export function ExistingScheduleWorkspace({
   const [saving, setSaving] = useState(false);
   const terms = useQuery({
     queryKey: ["existing-terms", collegeId],
-    enabled: collegeId !== IT,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("academic_terms")
@@ -51,7 +47,7 @@ export function ExistingScheduleWorkspace({
   const termId = termChoice || terms.data?.[0]?.id;
   const mode = useQuery({
     queryKey: ["existing-mode", collegeId, termId],
-    enabled: !!termId && collegeId !== IT,
+    enabled: !!termId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("existing_schedule_intake")
@@ -63,8 +59,7 @@ export function ExistingScheduleWorkspace({
       return !!data?.enabled;
     },
   });
-  const enabled = collegeId !== IT && !!mode.data;
-  useEffect(() => onModeChange(enabled), [enabled, onModeChange]);
+  const enabled = !!termId && !!mode.data;
   const bundle = useQuery({
     queryKey: ["existing-source", collegeId, termId],
     enabled,
@@ -93,7 +88,6 @@ export function ExistingScheduleWorkspace({
       };
     },
   });
-  if (collegeId === IT || !termId) return null;
   const error = terms.error || mode.error || bundle.error;
   if (error)
     return (
@@ -101,12 +95,29 @@ export function ExistingScheduleWorkspace({
         تعذر تحميل الجداول القائمة: {error.message}
         <Button
           onClick={() => {
-            void mode.refetch();
-            void bundle.refetch();
+            void terms.refetch();
+            if (termId) void mode.refetch();
+            if (enabled) void bundle.refetch();
           }}
         >
           إعادة المحاولة
         </Button>
+      </Card>
+    );
+  if (terms.isLoading || (!!termId && mode.isLoading))
+    return (
+      <Card className="p-5" role="status">
+        جارٍ تحميل الجداول القائمة…
+      </Card>
+    );
+  if (!termId)
+    return (
+      <Card className="space-y-3 p-5">
+        <h2 className="font-semibold">الجداول القائمة</h2>
+        <p className="text-sm text-muted-foreground">
+          لا يوجد فصل أول للعام 2026–2027 لهذه الكلية. يمكنك متابعة تجهيز بياناتها من تبويب تجهيز
+          البيانات.
+        </p>
       </Card>
     );
   if (!enabled)
@@ -336,7 +347,12 @@ export function ExistingScheduleWorkspace({
                     </td>
                     <td className="p-3">
                       {r.shared_member && <p>محاضرة مشتركة</p>}
-                      {r.notes && <details className="text-sm"><summary>ملاحظات المصدر</summary><p>{r.notes}</p></details>}
+                      {r.notes && (
+                        <details className="text-sm">
+                          <summary>ملاحظات المصدر</summary>
+                          <p>{r.notes}</p>
+                        </details>
+                      )}
                       {r.pending_reasons.length ? (
                         r.pending_reasons.map((reason) => (
                           <p key={reason} className="text-amber-700">
@@ -377,19 +393,44 @@ export function ExistingScheduleWorkspace({
           <DialogHeader>
             <DialogTitle>استكمال {editing?.raw_course}</DialogTitle>
           </DialogHeader>
-          <label>اليوم
-            <select aria-label="اليوم" value={day} disabled={!!editing?.schedule_session_id} onChange={(e) => setDay(e.target.value)} className="w-full rounded-md border bg-background p-2">
+          <label>
+            اليوم
+            <select
+              aria-label="اليوم"
+              value={day}
+              disabled={!!editing?.schedule_session_id}
+              onChange={(e) => setDay(e.target.value)}
+              className="w-full rounded-md border bg-background p-2"
+            >
               <option value="">بانتظار التحديد</option>
-              {DAYS.map((name, index) => <option key={index} value={index}>{name}</option>)}
+              {DAYS.map((name, index) => (
+                <option key={index} value={index}>
+                  {name}
+                </option>
+              ))}
             </select>
           </label>
-          {!editing?.instructor_ids.length && <label>المدرس
-            <select aria-label="المدرس" value={instructor} onChange={(e) => setInstructor(e.target.value)} className="w-full rounded-md border bg-background p-2">
-              <option value="">بانتظار التحديد</option>
-              {bundle.data?.instructors.map((i) => <option key={i.id} value={i.id}>{i.full_name}</option>)}
-            </select>
-          </label>}
-          {(!editing?.plan_course_id || !editing?.component_id) && <p>يلزم استكمال بيانات المقرر والخطة أولًا. حُفظت بيانات المصدر في الملاحظات.</p>}
+          {!editing?.instructor_ids.length && (
+            <label>
+              المدرس
+              <select
+                aria-label="المدرس"
+                value={instructor}
+                onChange={(e) => setInstructor(e.target.value)}
+                className="w-full rounded-md border bg-background p-2"
+              >
+                <option value="">بانتظار التحديد</option>
+                {bundle.data?.instructors.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.full_name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {(!editing?.plan_course_id || !editing?.component_id) && (
+            <p>يلزم استكمال بيانات المقرر والخطة أولًا. حُفظت بيانات المصدر في الملاحظات.</p>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <label>
               البداية
@@ -446,7 +487,10 @@ export function ExistingScheduleWorkspace({
               ))}
             </fieldset>
           )}
-          <Button disabled={saving || day === "" || !editing?.plan_course_id || !editing?.component_id} onClick={() => void save()}>
+          <Button
+            disabled={saving || day === "" || !editing?.plan_course_id || !editing?.component_id}
+            onClick={() => void save()}
+          >
             {saving ? "جارٍ الحفظ…" : "حفظ الاستكمال"}
           </Button>
         </DialogContent>

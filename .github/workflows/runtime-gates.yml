@@ -106,6 +106,9 @@ jobs:
       - name: Instructor review filters and repair links
         run: node --import tsx --test tests/instructor-review.test.ts tests/preparation-workspace.test.tsx
 
+      - name: Unified data preparation across colleges
+        run: node --experimental-test-module-mocks --import tsx --test tests/data-onboarding-colleges.test.tsx
+
       - name: Complete instructor workbook import
         run: node --experimental-test-module-mocks --import tsx --test tests/instructor-sheet.test.ts tests/unified-data-preparation.test.ts
 
