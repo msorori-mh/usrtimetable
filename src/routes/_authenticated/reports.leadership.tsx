@@ -911,7 +911,7 @@ function LeadershipDashboard() {
                   </div>
                 </dl>
                 <ReportDisclosure label="التفرغ والتعاقد">
-                  <CountList entries={employmentCounts} />
+                  <CountList entries={employmentCounts} tone="rank" />
                 </ReportDisclosure>
                 <Button variant="outline" size="sm" asChild className="report-no-print">
                   <Link to="/reports/instructor-workload">تفاصيل المحاضرين</Link>
