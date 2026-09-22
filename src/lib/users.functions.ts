@@ -128,9 +128,17 @@ export const adminCreateUser = createServerFn({ method: "POST" })
     // Issue a 60s single-use grant bound to normalized email + role + creator;
     // the guard consumes it atomically at COMMIT and fails closed without it.
     const normalizedEmail = data.email.trim().toLowerCase();
+    // PROVISIONING-GRANT-02: the provisioning guard accepts only the five
+    // canonical account-creation roles. The college dean is provisioned as a
+    // college_admin account, then receives its real role below; no other value
+    // is ever forwarded to the guard (fail-closed).
+    const provisioningRole = PROVISIONING_ROLE_BY_ROLE[data.role];
+    if (!provisioningRole) {
+      throw new Error("Role is not allowed for account provisioning");
+    }
     const { data: grantRows, error: grantErr } = await supabaseAdmin.rpc(
       "issue_account_provisioning_grant",
-      { p_email: normalizedEmail, p_role: data.role, p_created_by: context.userId },
+      { p_email: normalizedEmail, p_role: provisioningRole, p_created_by: context.userId },
     );
     const grant = (grantRows as unknown as Array<{ grant_id: string; nonce: string }> | null)?.[0];
     if (grantErr || !grant) {
