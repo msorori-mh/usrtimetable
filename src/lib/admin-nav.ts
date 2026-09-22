@@ -611,7 +611,7 @@ export const CORE_PATH: CoreStep[] = [
     label: "لوحة الإدارة العليا",
     desc: "ملخص جميع الكليات في صفحة واحدة.",
     icon: LayoutDashboard,
-    roles: ["university_leadership"],
+    roles: ["university_leadership", "college_dean"],
   },
   {
     to: "/dashboard",
@@ -660,6 +660,29 @@ export const ADMIN_TOOLS_PAGE = {
   label: "مركز الأدوات الإدارية",
   desc: "كل صفحات الإعداد مرتبة حسب رحلة العمل، مع بحث فوري.",
 };
+
+/** Executive dashboard label for a college dean (single assigned college scope). */
+export const COLLEGE_DEAN_LEADERSHIP_LABEL_AR = "المؤشرات التنفيذية للكلية";
+export const COLLEGE_DEAN_LEADERSHIP_DESC_AR = "مؤشرات الكلية المُسندة، للقراءة والطباعة فقط.";
+
+/**
+ * Presentation only: a college dean sees the same executive dashboard route
+ * under a college-scoped label. Access itself is enforced server-side by
+ * `leadership_overview` / `leadership_metric_details` (single assigned college).
+ */
+export function coreStepLabel(
+  step: CoreStep,
+  roles: Role[] | undefined,
+): { label: string; desc: string } {
+  const deanOnly =
+    !!roles?.includes("college_dean") &&
+    !roles.includes("super_admin") &&
+    !roles.includes("university_leadership");
+  if (deanOnly && step.to === "/reports/leadership") {
+    return { label: COLLEGE_DEAN_LEADERSHIP_LABEL_AR, desc: COLLEGE_DEAN_LEADERSHIP_DESC_AR };
+  }
+  return { label: step.label, desc: step.desc };
+}
 
 export function canAccess(page: { roles: Role[] }, roles: Role[] | undefined): boolean {
   if (!roles) return true;
