@@ -6,6 +6,7 @@ import { completeInitialPasswordChange } from "@/lib/password-change.functions";
 import { PASSWORD_POLICY_AR, validPersonalPassword } from "@/lib/password-policy";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 
 export function MandatoryPasswordChange({ onComplete }: { onComplete: () => void }) {
@@ -57,9 +58,8 @@ export function MandatoryPasswordChange({ onComplete }: { onComplete: () => void
         </p>
         <div className="space-y-2">
           <Label htmlFor="temporary-password">كلمة المرور المؤقتة</Label>
-          <Input
+          <PasswordInput
             id="temporary-password"
-            type="password"
             dir="ltr"
             autoComplete="current-password"
             required
@@ -70,9 +70,8 @@ export function MandatoryPasswordChange({ onComplete }: { onComplete: () => void
         </div>
         <div className="space-y-2">
           <Label htmlFor="personal-password">كلمة المرور الجديدة</Label>
-          <Input
+          <PasswordInput
             id="personal-password"
-            type="password"
             dir="ltr"
             autoComplete="new-password"
             required
@@ -84,9 +83,8 @@ export function MandatoryPasswordChange({ onComplete }: { onComplete: () => void
         </div>
         <div className="space-y-2">
           <Label htmlFor="confirm-password">تأكيد كلمة المرور الجديدة</Label>
-          <Input
+          <PasswordInput
             id="confirm-password"
-            type="password"
             dir="ltr"
             autoComplete="new-password"
             required
