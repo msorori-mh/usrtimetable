@@ -25,6 +25,7 @@ import {
   CORE_PATH,
   JOURNEYS,
   canAccess,
+  coreStepLabel,
   matchesQuery,
   pagesByJourney,
   resolveBreadcrumb,
@@ -35,8 +36,10 @@ import {
 } from "@/lib/admin-nav";
 import { cn } from "@/lib/utils";
 import {
+  COLLEGE_DEAN_ROLE_LABEL_AR,
   INSTITUTIONAL_VIEWER_ROLE_LABEL_AR,
   READ_ONLY_ROLE_LABEL_AR,
+  buildAccountGreeting,
   isAcademicAffairsRole,
   isLeadershipOnlyRole,
   LEADERSHIP_ROLE_LABEL_AR,
@@ -67,17 +70,20 @@ function CorePathNav({
   pathname,
   onNavigate,
   tone,
+  roles,
 }: {
   steps: CoreStep[];
   pathname: string;
   onNavigate?: () => void;
   tone: "sidebar" | "sheet";
+  roles: Role[] | undefined;
 }) {
   return (
     <div className="space-y-1">
       {steps.map((s) => {
         const active = isActivePath(s.to, pathname);
         const Icon = s.icon;
+        const { label, desc } = coreStepLabel(s, roles);
         return (
           <Link
             key={s.to}
@@ -112,7 +118,7 @@ function CorePathNav({
             </span>
             <span className="min-w-0">
               <span className={cn("block truncate text-[13px]", active && "font-bold")}>
-                {s.label}
+                {label}
               </span>
               <span
                 className={cn(
@@ -120,7 +126,7 @@ function CorePathNav({
                   tone === "sidebar" ? "text-sidebar-foreground/55" : "text-muted-foreground",
                 )}
               >
-                {s.desc}
+                {desc}
               </span>
             </span>
           </Link>
@@ -313,6 +319,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const reportsOnly = isReportsOnlyRole(user);
   const academicAffairs = isAcademicAffairsRole(user);
   const leadership = isLeadershipOnlyRole(user);
+  /** Dean-only accounts: college-scoped executive view; never widened. */
+  const collegeDeanOnly =
+    !!user?.isCollegeDean && !user.isSuperAdmin && !user.isUniversityLeadership;
   const restrictedViewer = reportsOnly || academicAffairs || leadership;
   const effectiveMode: NavMode =
     reportsOnly || leadership ? "core" : academicAffairs ? "all" : mode;
@@ -382,7 +391,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 ? "إدارة الشؤون الأكاديمية: التقارير وبيانات المحاضرين لجميع الكلّيات."
                 : "أربع خطوات: تجهيز البيانات، إنشاء الجدول، المراجعة والاعتماد، التقارير والطباعة."}
         </p>
-        <CorePathNav steps={coreSteps} pathname={pathname} onNavigate={onNavigate} tone={tone} />
+        <CorePathNav
+          steps={coreSteps}
+          pathname={pathname}
+          onNavigate={onNavigate}
+          tone={tone}
+          roles={roles}
+        />
         {!restrictedViewer && (
           <Link
             to={ADMIN_TOOLS_PAGE.to}
@@ -502,7 +517,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               )}
               data-testid={leadership ? "leadership-user-name" : "account-greeting"}
             >
-              {user.fullName?.trim() ? `مرحبًا، ${user.fullName.trim()}` : "مرحبًا بك"}
+              {buildAccountGreeting({
+                fullName: user.fullName,
+                collegeName: activeCollege?.name ?? null,
+                isCollegeDeanOnly: collegeDeanOnly,
+              })}
             </p>
             {!user.isSuperAdmin && !leadership && activeCollege && (
               <p
