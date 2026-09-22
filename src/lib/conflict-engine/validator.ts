@@ -145,6 +145,25 @@ export function applyApprovedExceptions(
   return { conflicts: enriched, ...summary };
 }
 
+/**
+ * Collapse repeated findings for the same rule and the same (unordered) session
+ * pair. A batch pass reports A↔B from both sides; only one row is meaningful.
+ */
+export function dedupeConflicts(conflicts: Conflict[]): Conflict[] {
+  const seen = new Set<string>();
+  const out: Conflict[] = [];
+  for (const c of conflicts) {
+    const a = c.schedule_session_id ?? "";
+    const b = c.related_session_id ?? "";
+    const pair = b && a > b ? `${b}|${a}` : `${a}|${b}`;
+    const key = `${c.code}|${pair}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(c);
+  }
+  return out;
+}
+
 export async function validateProposed(params: {
   collegeId: string;
   scheduleVersionId: string;
@@ -736,21 +755,20 @@ export async function validateScheduleVersion(params: {
     expected_students: s.expected_students,
   }));
 
-  // Exclude each session's own peers so it's not compared with itself
-  const conflicts: Conflict[] = [];
-  for (const p of proposed) {
-    const sub = await validateProposed({
-      collegeId,
-      scheduleVersionId,
-      sessions: [p],
-      excludeExistingSessionIds: p.id ? [p.id] : [],
-    });
-    conflicts.push(...sub.conflicts);
-  }
   const approvedExceptions = await loadApprovedExceptions({
     scheduleVersionId,
     collegeId,
   });
+  // Single batch pass: shared version/group/room/availability data is read once
+  // for the whole version instead of once per session. Every rule still runs
+  // per session against all peers (self-comparison is skipped inside the loop).
+  const batch = await validateProposed({
+    collegeId,
+    scheduleVersionId,
+    sessions: proposed,
+    approvedExceptions,
+  });
+  const conflicts = dedupeConflicts(batch.conflicts);
   const result = applyApprovedExceptions(
     conflicts,
     scheduleVersionId,
