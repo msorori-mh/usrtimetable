@@ -145,6 +145,25 @@ export function applyApprovedExceptions(
   return { conflicts: enriched, ...summary };
 }
 
+/**
+ * Collapse repeated findings for the same rule and the same (unordered) session
+ * pair. A batch pass reports A↔B from both sides; only one row is meaningful.
+ */
+export function dedupeConflicts(conflicts: Conflict[]): Conflict[] {
+  const seen = new Set<string>();
+  const out: Conflict[] = [];
+  for (const c of conflicts) {
+    const a = c.schedule_session_id ?? "";
+    const b = c.related_session_id ?? "";
+    const pair = b && a > b ? `${b}|${a}` : `${a}|${b}`;
+    const key = `${c.code}|${pair}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(c);
+  }
+  return out;
+}
+
 export async function validateProposed(params: {
   collegeId: string;
   scheduleVersionId: string;
