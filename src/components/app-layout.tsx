@@ -514,17 +514,27 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <main className="usr-internal-main min-w-0 flex-1 px-4 py-5 sm:px-6 md:px-10 md:py-7">
         {user && (
           <div
-            className="report-no-print mb-5 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 sm:px-5"
+            className={cn(
+              "report-no-print mb-5 rounded-xl border px-4 py-3 sm:px-5",
+              universityLeadershipOnly
+                ? "border-primary/40 border-r-4 border-r-[var(--usr-gold)] bg-primary/10 shadow-sm ring-1 ring-primary/10 sm:px-6 sm:py-4"
+                : "border-primary/20 bg-primary/5",
+            )}
             data-app-chrome="welcome"
             data-testid="account-welcome"
+            data-welcome-variant={
+              universityLeadershipOnly ? "university-president" : "standard"
+            }
             dir="rtl"
           >
             <p
               className={cn(
                 "whitespace-normal break-words leading-relaxed",
-                leadership || academicAffairs
-                  ? "text-lg font-bold text-primary sm:text-xl"
-                  : "text-sm text-foreground sm:text-base",
+                universityLeadershipOnly
+                  ? "text-xl font-extrabold leading-relaxed text-primary sm:text-2xl"
+                  : leadership || academicAffairs
+                    ? "text-lg font-bold text-primary sm:text-xl"
+                    : "text-sm text-foreground sm:text-base",
               )}
               data-testid={leadership ? "leadership-user-name" : "account-greeting"}
             >
