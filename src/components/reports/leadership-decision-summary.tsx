@@ -37,11 +37,11 @@ const roomReuseOpportunity = (room: LeadershipCapacityCollege | undefined) => {
   const opportunities: string[] = [];
 
   if (rooms === 1) opportunities.push("قاعة أسبوعية كاملة");
-  else if (rooms === 2) opportunities.push("قاعتان أسبوعيتان كاملتان");
+  else if (rooms === 2) opportunities.push("قاعتين أسبوعيتين كاملتين");
   else if (rooms > 2) opportunities.push(`${rooms} قاعات أسبوعية كاملة`);
 
   if (remainingDays === 1) opportunities.push("يوم قاعة");
-  else if (remainingDays === 2) opportunities.push("يومان قاعة");
+  else if (remainingDays === 2) opportunities.push("يومين قاعة");
   else if (remainingDays > 2) opportunities.push(`${remainingDays} أيام قاعة`);
 
   if (remainingHours === 1) opportunities.push("ساعة واحدة");
