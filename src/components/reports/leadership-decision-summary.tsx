@@ -19,6 +19,37 @@ const amount = (value: number | null | undefined) => formatLeadershipAmount(valu
 const hours = (value: number | null | undefined) => formatLeadershipAmount(value, "ساعة");
 const actionClass = "leadership-action";
 
+const roomReuseOpportunity = (room: LeadershipCapacityCollege | undefined) => {
+  if (
+    room?.balanceHours === null ||
+    room?.balanceHours === undefined ||
+    room.surplusHours === null ||
+    room.surplusHours === undefined ||
+    !room.equivalents
+  )
+    return "غير محسوب";
+  if (room.surplusHours <= 0) return "لا توجد سعة فائضة";
+
+  const rooms = room.equivalents.fullRooms;
+  const remainingDays = Math.floor((room.equivalents.hoursAfterRooms + 1e-9) / 6);
+  const remainingHours =
+    Math.round((room.equivalents.hoursAfterRooms - remainingDays * 6) * 100) / 100;
+  const opportunities: string[] = [];
+
+  if (rooms === 1) opportunities.push("قاعة أسبوعية كاملة");
+  else if (rooms === 2) opportunities.push("قاعتان أسبوعيتان كاملتان");
+  else if (rooms > 2) opportunities.push(`${rooms} قاعات أسبوعية كاملة`);
+
+  if (remainingDays === 1) opportunities.push("يوم قاعة");
+  else if (remainingDays === 2) opportunities.push("يومان قاعة");
+  else if (remainingDays > 2) opportunities.push(`${remainingDays} أيام قاعة`);
+
+  if (remainingHours === 1) opportunities.push("ساعة واحدة");
+  else if (remainingHours > 0) opportunities.push(`${amount(remainingHours)} ساعات`);
+
+  return `يعادل ${opportunities.join(" + ")}`;
+};
+
 export interface LeadershipDecisionSummaryProps {
   colleges: LeadershipCollege[];
   uniqueFaculty: number | null;
@@ -204,6 +235,7 @@ export function LeadershipDecisionSummary({
                   "الإسناد التدريسي",
                   "الأنصبة",
                   "ساعات القاعات",
+                  "فرصة إعادة الاستخدام",
                   "التفاصيل",
                 ].map((label) => (
                   <th scope="col" key={label}>
@@ -219,6 +251,7 @@ export function LeadershipDecisionSummary({
                 const percent = teachingKnown.some((item) => item.college_id === college.college_id)
                   ? coveragePercent(college)
                   : null;
+                const reuseOpportunity = roomReuseOpportunity(room);
                 return (
                   <tr key={college.college_id} className="leadership-college-row">
                     <th scope="row" className="leadership-college-name">
@@ -282,6 +315,15 @@ export function LeadershipDecisionSummary({
                         </span>
                       )}
                     </td>
+                    <td className="leadership-reuse-cell">
+                      <span className="leadership-mobile-label">فرصة إعادة الاستخدام</span>
+                      <strong>{reuseOpportunity}</strong>
+                      {room?.surplusHours !== null &&
+                        room?.surplusHours !== undefined &&
+                        room.surplusHours > 0 && (
+                          <span className="leadership-cell-note">مكافئ زمني قابل لإعادة التوزيع</span>
+                        )}
+                    </td>
                     <td className="leadership-college-action">
                       <button
                         type="button"
@@ -299,8 +341,8 @@ export function LeadershipDecisionSummary({
           </table>
         </div>
         <p className="leadership-footnote">
-          النقص في الأنصبة مستقل عن التدريس غير المسند. فائض القاعات مكافئ زمني؛ تظهر تفاصيل الإتاحة
-          والملاءمة عند فتح الكلية.
+          النقص في الأنصبة مستقل عن التدريس غير المسند. فرص إعادة الاستخدام مكافئات زمنية؛ لا تعني
+          توافر قاعة بعينها قبل مراجعة توزيع الأيام والفترات وملاءمة القاعة.
         </p>
       </section>
     </div>
