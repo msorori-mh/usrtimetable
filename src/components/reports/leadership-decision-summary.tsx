@@ -1,3 +1,4 @@
+import { ArrowLeft, BookOpenCheck, CalendarDays, DoorOpen, Users } from "lucide-react";
 import {
   aggregateLeadership,
   coveragePercent,
@@ -16,8 +17,7 @@ import {
 
 const amount = (value: number | null | undefined) => formatLeadershipAmount(value);
 const hours = (value: number | null | undefined) => formatLeadershipAmount(value, "ساعة");
-const actionClass =
-  "rounded-lg border px-3 py-2 text-xs font-semibold text-primary hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+const actionClass = "leadership-action";
 
 export interface LeadershipDecisionSummaryProps {
   colleges: LeadershipCollege[];
@@ -63,7 +63,8 @@ export function LeadershipDecisionSummary({
       detail: "كليات لديها جدول منشور",
       note: "الجاهزية تتطلب مراجعة الفحص",
       action: "عرض حالة الجداول",
-      style: "border-sky-200 bg-sky-50/60 dark:border-sky-900 dark:bg-sky-950/20",
+      tone: "schedules",
+      icon: CalendarDays,
     },
     {
       tab: "teaching" as const,
@@ -72,7 +73,8 @@ export function LeadershipDecisionSummary({
       detail: "تدريس غير مسند في البيانات المحسوبة",
       note: `المصدر: ${teachingKnown.length} من ${colleges.length} كليات${teachingKnown.length < colleges.length ? " · جزئي" : ""}`,
       action: "مراجعة تغطية التدريس",
-      style: "border-amber-200 bg-amber-50/60 dark:border-amber-900 dark:bg-amber-950/20",
+      tone: "teaching",
+      icon: BookOpenCheck,
     },
     {
       tab: "faculty" as const,
@@ -81,7 +83,8 @@ export function LeadershipDecisionSummary({
       detail: `${amount(availableFaculty)} متاح بحسب الحالة الوظيفية`,
       note: `${amount(incompleteQuota.value)} نصابًا يحتاج استكمالًا${incompleteQuota.complete ? "" : " · حصر جزئي"}`,
       action: "عرض المحاضرين والأنصبة",
-      style: "border-indigo-200 bg-indigo-50/60 dark:border-indigo-900 dark:bg-indigo-950/20",
+      tone: "faculty",
+      icon: Users,
     },
     {
       tab: "rooms" as const,
@@ -102,104 +105,98 @@ export function LeadershipDecisionSummary({
               ? "راجع بيانات قاعات الكلية"
               : "تُراجع إتاحة القاعات والاحتياج",
       action: "أين يوجد الفائض أو العجز؟",
-      style: "border-emerald-200 bg-emerald-50/60 dark:border-emerald-900 dark:bg-emerald-950/20",
+      tone: "rooms",
+      icon: DoorOpen,
     },
   ];
   return (
-    <div className="space-y-4" dir="rtl" data-testid="leadership-decision-summary">
-      <section
-        aria-label="نظرة الجامعة السريعة"
-        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
-      >
+    <div className="leadership-overview" dir="rtl" data-testid="leadership-decision-summary">
+      <section aria-label="نظرة الجامعة السريعة" className="leadership-cards">
         {cards.map((card) => (
           <article
             key={card.label}
-            className={`flex min-w-0 flex-col rounded-xl border p-4 ${card.style}`}
+            className={`leadership-card leadership-card--${card.tone}`}
             data-testid="leadership-decision-card"
           >
-            <h2 className="text-sm font-semibold">{card.label}</h2>
-            <p className="mt-2 text-2xl font-bold tabular-nums">{card.value}</p>
-            <p className="mt-1 text-xs leading-5">{card.detail}</p>
-            <p className="mb-3 mt-1 text-xs leading-5 text-muted-foreground">{card.note}</p>
+            <div className="leadership-card-heading">
+              <h2>{card.label}</h2>
+              <card.icon aria-hidden="true" className="leadership-card-icon" />
+            </div>
+            <p className="leadership-card-value">{card.value}</p>
+            <p className="leadership-card-detail">{card.detail}</p>
+            <p className="leadership-card-note">{card.note}</p>
             <button
               type="button"
-              className={`${actionClass} report-no-print mt-auto bg-background/70`}
+              className="leadership-card-action report-no-print"
               onClick={() => onOpen(card.tab)}
             >
               {card.action}
+              <ArrowLeft aria-hidden="true" size={16} />
             </button>
           </article>
         ))}
       </section>
 
       <section
-        className="rounded-xl border bg-card"
+        className="leadership-section leadership-priorities"
         aria-labelledby="leadership-priorities-title"
         data-testid="leadership-priorities"
       >
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3">
-          <h2 id="leadership-priorities-title" className="text-sm font-bold">
-            أولويات المتابعة
-          </h2>
-          <span className="text-xs text-muted-foreground">
+        <div className="leadership-section-heading">
+          <h2 id="leadership-priorities-title">أولويات المتابعة</h2>
+          <span className="leadership-section-note">
             {priorities.length
               ? `أبرز ${Math.min(3, priorities.length)} من ${priorities.length} كليات تحتاج مراجعة`
               : "لا توجد ملاحظات ضمن المؤشرات المحسوبة"}
           </span>
         </div>
         {priorities.length > 0 ? (
-          <ol className="divide-y px-4">
+          <ol className="leadership-priority-list">
             {priorities.slice(0, 3).map((item, index) => (
-              <li key={item.collegeId} className="flex flex-wrap items-center gap-3 py-3">
-                <span
-                  aria-hidden
-                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-100 text-sm font-bold text-amber-900"
-                >
-                  {index + 1}
-                </span>
-                <div className="min-w-0 flex-1 basis-64">
-                  <p className="text-sm font-semibold">
-                    {item.title}{" "}
-                    <span className="font-normal text-muted-foreground">· {item.collegeName}</span>
-                  </p>
-                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                    {item.impact} الجهة المعنية: {item.team}.
-                  </p>
+              <li key={item.collegeId} className="leadership-priority">
+                <div className="leadership-priority-title">
+                  <span aria-hidden className="leadership-priority-number">
+                    {index + 1}
+                  </span>
+                  <h3>{item.title}</h3>
                 </div>
+                <p className="leadership-priority-college">{item.collegeName}</p>
+                <p className="leadership-priority-impact">{item.impact}</p>
+                <p className="leadership-priority-team">الجهة المعنية: {item.team}.</p>
                 <button
                   type="button"
-                  className={`${actionClass} report-no-print`}
+                  className={`${actionClass} leadership-priority-action report-no-print`}
                   onClick={() => onOpen(item.tab, item.collegeId)}
                   aria-label={`عرض السبب: ${item.collegeName}`}
                 >
                   عرض السبب
+                  <ArrowLeft aria-hidden="true" size={16} />
                 </button>
               </li>
             ))}
           </ol>
         ) : (
-          <p className="p-4 text-sm text-muted-foreground">
+          <p className="leadership-empty-note">
             راجع اكتمال البيانات ونتائج الفحص قبل الحكم على الجاهزية.
           </p>
         )}
       </section>
 
       <section
-        className="overflow-hidden rounded-xl border bg-card"
+        className="leadership-section leadership-comparison"
         aria-labelledby="leadership-comparison-title"
         data-testid="leadership-colleges-comparison"
       >
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3">
-          <h2 id="leadership-comparison-title" className="text-sm font-bold">
-            الكليات في نظرة واحدة{" "}
-            <span className="font-normal text-muted-foreground">· {colleges.length}</span>
+        <div className="leadership-section-heading">
+          <h2 id="leadership-comparison-title">
+            الكليات في نظرة واحدة <span className="leadership-count">· {colleges.length}</span>
           </h2>
-          <span className="text-xs text-muted-foreground">مرتبة بحسب أولوية المتابعة</span>
+          <span className="leadership-section-note">مرتبة بحسب أولوية المتابعة</span>
         </div>
         <div className="overflow-x-auto">
-          <table className="block w-full text-right text-xs sm:table">
+          <table className="leadership-table">
             <caption className="sr-only">المقارنة المختصرة للكليات</caption>
-            <thead className="hidden bg-muted/40 sm:table-header-group">
+            <thead>
               <tr>
                 {[
                   "الكلية وأهم ملاحظة",
@@ -209,13 +206,13 @@ export function LeadershipDecisionSummary({
                   "ساعات القاعات",
                   "التفاصيل",
                 ].map((label) => (
-                  <th scope="col" key={label} className="p-3 font-semibold">
+                  <th scope="col" key={label}>
                     {label}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="block divide-y sm:table-row-group">
+            <tbody>
               {ordered.map((college) => {
                 const priority = priorities.find((item) => item.collegeId === college.college_id);
                 const room = capacityRows.find((item) => item.id === college.college_id);
@@ -223,26 +220,23 @@ export function LeadershipDecisionSummary({
                   ? coveragePercent(college)
                   : null;
                 return (
-                  <tr
-                    key={college.college_id}
-                    className="grid grid-cols-2 gap-x-2 p-2 align-top sm:table-row sm:p-0"
-                  >
-                    <th scope="row" className="col-span-2 p-2 text-start sm:max-w-64 sm:p-3">
+                  <tr key={college.college_id} className="leadership-college-row">
+                    <th scope="row" className="leadership-college-name">
                       <button
                         type="button"
-                        className="text-start font-bold text-primary underline decoration-dotted underline-offset-4"
+                        className="leadership-college-link"
                         onClick={() => onOpen("quality", college.college_id)}
                       >
                         {college.college}
                       </button>
-                      <span className="mt-1 block font-normal leading-5 text-muted-foreground">
+                      <span className="leadership-cell-note">
                         {priority?.title ?? "لا توجد ملاحظة ضمن البيانات المحسوبة"}
                       </span>
                     </th>
-                    <td className="p-2 sm:p-3">
-                      <span className="mb-1 block text-muted-foreground sm:hidden">النشر</span>
+                    <td>
+                      <span className="leadership-mobile-label">النشر</span>
                       <span
-                        className={`inline-block rounded-md px-2 py-1 ${college.version_id ? "bg-sky-50 text-sky-900 dark:bg-sky-950 dark:text-sky-100" : "bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-100"}`}
+                        className={`leadership-status leadership-status--${college.term_state !== "ready" ? "unknown" : college.version_id ? "published" : "pending"}`}
                       >
                         {college.term_state !== "ready"
                           ? "الفترة ناقصة"
@@ -251,41 +245,44 @@ export function LeadershipDecisionSummary({
                             : "غير منشور"}
                       </span>
                     </td>
-                    <td className="p-2 tabular-nums sm:p-3">
-                      <span className="mb-1 block text-muted-foreground sm:hidden">الإسناد</span>
-                      {percent === null ? "غير محسوب" : `${percent}%`}
-                      <span className="mt-1 block text-muted-foreground">
+                    <td>
+                      <span className="leadership-mobile-label">الإسناد</span>
+                      <strong>{percent === null ? "غير محسوب" : `${percent}%`}</strong>
+                      {percent !== null && (
+                        <span className="leadership-coverage-track" aria-hidden="true">
+                          <span
+                            style={{
+                              width: `${Math.min(100, Math.max(0, percent))}%`,
+                            }}
+                          />
+                        </span>
+                      )}
+                      <span className="leadership-cell-note">
                         غير المسند: {hours(college.uncovered_hours)}
                       </span>
                     </td>
-                    <td className="p-2 tabular-nums sm:p-3">
-                      <span className="mb-1 block text-muted-foreground sm:hidden">الأنصبة</span>
+                    <td>
+                      <span className="leadership-mobile-label">الأنصبة</span>
                       زيادة {hours(college.overload)}
                       <span className="mt-1 block">نقص {hours(college.deficit)}</span>
                       {(college.incomplete_faculty ?? 0) > 0 && (
-                        <span className="mt-1 block text-amber-800 dark:text-amber-200">
-                          بيانات جزئية
-                        </span>
+                        <span className="leadership-quota-note">بيانات جزئية</span>
                       )}
                     </td>
-                    <td className="p-2 tabular-nums sm:p-3">
-                      <span className="mb-1 block text-muted-foreground sm:hidden">القاعات</span>
+                    <td>
+                      <span className="leadership-mobile-label">القاعات</span>
                       {room?.balanceHours === null || room?.balanceHours === undefined ? (
                         "غير محسوب"
                       ) : (
                         <span
-                          className={
-                            room.balanceHours < 0
-                              ? "text-rose-800 dark:text-rose-200"
-                              : "text-emerald-800 dark:text-emerald-200"
-                          }
+                          className={`leadership-status leadership-status--${room.balanceHours < 0 ? "deficit" : "surplus"}`}
                         >
                           {room.balanceHours < 0 ? "عجز" : "فائض"}{" "}
                           {hours(Math.abs(room.balanceHours))}
                         </span>
                       )}
                     </td>
-                    <td className="col-span-2 p-2 sm:p-3">
+                    <td className="leadership-college-action">
                       <button
                         type="button"
                         className={`${actionClass} report-no-print`}
@@ -301,7 +298,7 @@ export function LeadershipDecisionSummary({
             </tbody>
           </table>
         </div>
-        <p className="border-t px-4 py-2 text-xs leading-5 text-muted-foreground">
+        <p className="leadership-footnote">
           النقص في الأنصبة مستقل عن التدريس غير المسند. فائض القاعات مكافئ زمني؛ تظهر تفاصيل الإتاحة
           والملاءمة عند فتح الكلية.
         </p>
