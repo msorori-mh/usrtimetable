@@ -19,7 +19,7 @@ export const PasswordInput = React.forwardRef<
         {...props}
         ref={ref}
         type={visible ? "text" : "password"}
-        className={cn("pe-10", className)}
+        className={cn("pr-10", className)}
       />
       <button
         type="button"
@@ -29,7 +29,7 @@ export const PasswordInput = React.forwardRef<
         aria-pressed={visible}
         title={visible ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
         data-testid="toggle-password-visibility"
-        className="absolute inset-y-0 end-0 grid w-10 place-items-center text-muted-foreground transition hover:text-foreground disabled:opacity-50"
+        className="absolute inset-y-0 right-0 grid w-10 place-items-center text-muted-foreground transition hover:text-foreground disabled:opacity-50"
       >
         {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
       </button>
