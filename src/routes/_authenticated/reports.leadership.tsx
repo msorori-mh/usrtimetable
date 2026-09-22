@@ -184,16 +184,47 @@ function MetricLink({
   );
 }
 
-function CountList({ entries }: { entries: Array<[string, number]> }) {
+type FacultyBreakdownTone = "availability" | "rank";
+
+const FACULTY_BREAKDOWN_STYLES: Record<
+  FacultyBreakdownTone,
+  { panel: string; heading: string; item: string; value: string; total: string }
+> = {
+  availability: {
+    panel: "border-emerald-200 bg-emerald-50/70 dark:border-emerald-900 dark:bg-emerald-950/25",
+    heading: "border-emerald-200/80 dark:border-emerald-900",
+    item: "border-emerald-100 bg-white/90 dark:border-emerald-900/70 dark:bg-background/75",
+    value: "bg-emerald-600 text-white shadow-sm dark:bg-emerald-500 dark:text-emerald-950",
+    total: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-100",
+  },
+  rank: {
+    panel: "border-indigo-200 bg-indigo-50/70 dark:border-indigo-900 dark:bg-indigo-950/25",
+    heading: "border-indigo-200/80 dark:border-indigo-900",
+    item: "border-indigo-100 bg-white/90 dark:border-indigo-900/70 dark:bg-background/75",
+    value: "bg-indigo-600 text-white shadow-sm dark:bg-indigo-500 dark:text-indigo-950",
+    total: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-100",
+  },
+};
+
+function CountList({
+  entries,
+  tone,
+}: {
+  entries: Array<[string, number]>;
+  tone: FacultyBreakdownTone;
+}) {
+  const styles = FACULTY_BREAKDOWN_STYLES[tone];
   return (
-    <dl className="space-y-1.5">
+    <dl className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
       {entries.map(([label, value]) => (
         <div
           key={label}
-          className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-md bg-background px-3 py-2 text-sm"
+          className={`grid min-h-12 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border px-3 py-2 ${styles.item}`}
         >
-          <dt className="min-w-0 text-foreground">{label}</dt>
-          <dd className="min-w-10 rounded bg-muted px-2 py-0.5 text-center font-bold tabular-nums">
+          <dt className="min-w-0 text-sm font-medium leading-5 text-foreground">{label}</dt>
+          <dd
+            className={`min-w-12 rounded-md px-2.5 py-1 text-center text-base font-extrabold tabular-nums ${styles.value}`}
+          >
             {value.toLocaleString("ar")}
           </dd>
         </div>
@@ -206,19 +237,30 @@ function FacultyBreakdownPanel({
   title,
   entries,
   testId,
+  tone,
 }: {
   title: string;
   entries: Array<[string, number]>;
   testId: string;
+  tone: FacultyBreakdownTone;
 }) {
   const total = entries.reduce((sum, [, value]) => sum + value, 0);
+  const styles = FACULTY_BREAKDOWN_STYLES[tone];
   return (
-    <section className="rounded-lg border bg-muted/35 p-3" aria-label={title} data-testid={testId}>
-      <div className="mb-3 flex items-center justify-between gap-3 border-b pb-2">
-        <h3 className="font-semibold text-foreground">{title}</h3>
-        <span className="text-xs text-muted-foreground">المجموع {total.toLocaleString("ar")}</span>
+    <section
+      className={`rounded-xl border p-3.5 shadow-sm ${styles.panel}`}
+      aria-label={title}
+      data-testid={testId}
+    >
+      <div
+        className={`mb-3 flex items-center justify-between gap-3 border-b pb-2.5 ${styles.heading}`}
+      >
+        <h3 className="text-sm font-bold text-foreground">{title}</h3>
+        <span className={`rounded-full px-2.5 py-1 text-xs font-bold tabular-nums ${styles.total}`}>
+          المجموع {total.toLocaleString("ar")}
+        </span>
       </div>
-      <CountList entries={entries} />
+      <CountList entries={entries} tone={tone} />
     </section>
   );
 }
@@ -592,11 +634,13 @@ function LeadershipDashboard() {
                           title="الحالة الوظيفية"
                           entries={availabilityCounts}
                           testId="faculty-availability-panel"
+                          tone="availability"
                         />
                         <FacultyBreakdownPanel
                           title="الرتب الأكاديمية"
                           entries={rankCounts}
                           testId="faculty-ranks-panel"
+                          tone="rank"
                         />
                       </div>
                     </ReportDisclosure>
@@ -867,7 +911,7 @@ function LeadershipDashboard() {
                   </div>
                 </dl>
                 <ReportDisclosure label="التفرغ والتعاقد">
-                  <CountList entries={employmentCounts} />
+                  <CountList entries={employmentCounts} tone="rank" />
                 </ReportDisclosure>
                 <Button variant="outline" size="sm" asChild className="report-no-print">
                   <Link to="/reports/instructor-workload">تفاصيل المحاضرين</Link>
