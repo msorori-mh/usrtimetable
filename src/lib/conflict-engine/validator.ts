@@ -736,21 +736,20 @@ export async function validateScheduleVersion(params: {
     expected_students: s.expected_students,
   }));
 
-  // Exclude each session's own peers so it's not compared with itself
-  const conflicts: Conflict[] = [];
-  for (const p of proposed) {
-    const sub = await validateProposed({
-      collegeId,
-      scheduleVersionId,
-      sessions: [p],
-      excludeExistingSessionIds: p.id ? [p.id] : [],
-    });
-    conflicts.push(...sub.conflicts);
-  }
   const approvedExceptions = await loadApprovedExceptions({
     scheduleVersionId,
     collegeId,
   });
+  // Single batch pass: shared version/group/room/availability data is read once
+  // for the whole version instead of once per session. Every rule still runs
+  // per session against all peers (self-comparison is skipped inside the loop).
+  const batch = await validateProposed({
+    collegeId,
+    scheduleVersionId,
+    sessions: proposed,
+    approvedExceptions,
+  });
+  const conflicts = dedupeConflicts(batch.conflicts);
   const result = applyApprovedExceptions(
     conflicts,
     scheduleVersionId,
