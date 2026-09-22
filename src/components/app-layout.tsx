@@ -323,6 +323,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   /** Dean-only accounts: college-scoped executive view; never widened. */
   const collegeDeanOnly =
     !!user?.isCollegeDean && !user.isSuperAdmin && !user.isUniversityLeadership;
+  const universityLeadershipOnly =
+    leadership && !!user?.isUniversityLeadership && !user.isCollegeDean;
   const restrictedViewer = reportsOnly || academicAffairs || leadership;
   const effectiveMode: NavMode = restrictedViewer ? "core" : mode;
 
@@ -530,6 +532,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 fullName: user.fullName,
                 collegeName: activeCollege?.name ?? null,
                 isCollegeDeanOnly: collegeDeanOnly,
+                isUniversityLeadershipOnly: universityLeadershipOnly,
               })}
             </p>
             {!user.isSuperAdmin &&
