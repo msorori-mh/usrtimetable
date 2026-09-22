@@ -5,6 +5,7 @@ import {
   INSTITUTIONAL_VIEWER_ROLE_LABEL_AR,
   READ_ONLY_ROLE_LABEL_AR,
   REPORTS_ONLY_HOME,
+  LEADERSHIP_HOME,
   assignsAllColleges,
   isAcademicAffairsRole,
   isFullPlatformViewerRole,
@@ -61,7 +62,7 @@ describe("institutional_viewer is the academic-affairs role", () => {
     expect(isFullPlatformViewerRole(VIEWER)).toBe(false);
     expect(resolveViewerScopeRedirect(VIEWER, "/reports")).toBeNull();
     expect(resolveViewerScopeRedirect(VIEWER, "/instructors")).toBeNull();
-    expect(resolveViewerScopeRedirect(VIEWER, "/dashboard")).toBe(REPORTS_ONLY_HOME);
+    expect(resolveViewerScopeRedirect(VIEWER, "/dashboard")).toBe(LEADERSHIP_HOME);
   });
 
   it("sees only instructors and reports in navigation", () => {

@@ -31,6 +31,6 @@ test("admin creation requires one college and dashboard labels its restricted sc
   assert.match(server, /collegeIds\.length !== 1/);
   assert.match(users, /يجب إسناد كلية واحدة فقط لعميد الكلية/);
   assert.match(users, /f\.role === "college_dean"[\s\S]*\[c\.id\]/);
-  assert.match(page, /collegeDean \? "المؤشرات التنفيذية للكلية"/);
+  assert.match(page, /title=\{executiveDashboardTitle\(me\)\}/);
   assert.match(page, /بيانات الكلية المُسندة فقط/);
 });

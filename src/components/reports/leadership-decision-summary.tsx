@@ -51,6 +51,7 @@ const roomReuseOpportunity = (room: LeadershipCapacityCollege | undefined) => {
 };
 
 export interface LeadershipDecisionSummaryProps {
+  scope?: "university" | "college";
   colleges: LeadershipCollege[];
   uniqueFaculty: number | null;
   capacity: LeadershipCapacityCollege[];
@@ -60,6 +61,7 @@ export interface LeadershipDecisionSummaryProps {
 
 /** The default screen contains no detailed records, formulas, or hidden mounted report panels. */
 export function LeadershipDecisionSummary({
+  scope = "university",
   colleges,
   uniqueFaculty,
   capacity,
@@ -91,7 +93,7 @@ export function LeadershipDecisionSummary({
       tab: "teaching" as const,
       label: "الجداول",
       value: `${published} من ${colleges.length}`,
-      detail: "كليات لديها جدول منشور",
+      detail: scope === "college" ? "حالة نشر جدول الكلية" : "كليات لديها جدول منشور",
       note: "الجاهزية تتطلب مراجعة الفحص",
       action: "عرض حالة الجداول",
       tone: "schedules",
@@ -126,7 +128,10 @@ export function LeadershipDecisionSummary({
           : capacityState === "loading"
             ? "جارٍ الحساب…"
             : "غير محسوب",
-      detail: "فائض أسبوعي في الكليات ذات الفائض",
+      detail:
+        scope === "college"
+          ? "فائض ساعات قاعات الكلية أسبوعيًا"
+          : "فائض أسبوعي في الكليات ذات الفائض",
       note:
         capacityState === "ready"
           ? `${roomTotals.knownColleges} من ${colleges.length} كليات · العجز ${hours(roomTotals.deficitHours)}`
@@ -142,7 +147,10 @@ export function LeadershipDecisionSummary({
   ];
   return (
     <div className="leadership-overview" dir="rtl" data-testid="leadership-decision-summary">
-      <section aria-label="نظرة الجامعة السريعة" className="leadership-cards">
+      <section
+        aria-label={scope === "college" ? "نظرة الكلية السريعة" : "نظرة الجامعة السريعة"}
+        className="leadership-cards"
+      >
         {cards.map((card) => (
           <article
             key={card.label}
@@ -177,7 +185,9 @@ export function LeadershipDecisionSummary({
           <h2 id="leadership-priorities-title">أولويات المتابعة</h2>
           <span className="leadership-section-note">
             {priorities.length
-              ? `أبرز ${Math.min(3, priorities.length)} من ${priorities.length} كليات تحتاج مراجعة`
+              ? scope === "college"
+                ? "أبرز ما يحتاج متابعة في الكلية"
+                : `أبرز ${Math.min(3, priorities.length)} من ${priorities.length} كليات تحتاج مراجعة`
               : "لا توجد ملاحظات ضمن المؤشرات المحسوبة"}
           </span>
         </div>
@@ -220,13 +230,18 @@ export function LeadershipDecisionSummary({
       >
         <div className="leadership-section-heading">
           <h2 id="leadership-comparison-title">
-            الكليات في نظرة واحدة <span className="leadership-count">· {colleges.length}</span>
+            {scope === "college" ? "الكلية في نظرة واحدة" : "الكليات في نظرة واحدة"}{" "}
+            <span className="leadership-count">· {colleges.length}</span>
           </h2>
-          <span className="leadership-section-note">مرتبة بحسب أولوية المتابعة</span>
+          <span className="leadership-section-note">
+            {scope === "college" ? "مؤشرات الكلية المُسندة" : "مرتبة بحسب أولوية المتابعة"}
+          </span>
         </div>
         <div className="overflow-x-auto">
           <table className="leadership-table">
-            <caption className="sr-only">المقارنة المختصرة للكليات</caption>
+            <caption className="sr-only">
+              {scope === "college" ? "الملخص التنفيذي للكلية" : "المقارنة المختصرة للكليات"}
+            </caption>
             <thead>
               <tr>
                 {[

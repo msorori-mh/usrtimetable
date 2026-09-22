@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import {
   canViewLeadership,
+  executiveDashboardTitle,
   isLeadershipOnlyRole,
   isAcademicAffairsRole,
   isReportsOnlyRole,
@@ -372,7 +373,7 @@ function ReportsHub() {
           to="/reports/leadership"
           className="block rounded-xl border-2 border-primary/30 bg-primary/5 p-5 text-primary"
         >
-          <span className="text-lg font-bold">لوحة الإدارة العليا للجامعة</span>
+          <span className="text-lg font-bold">{executiveDashboardTitle(me)}</span>
           <p className="mt-2 text-sm">
             الإسناد والنصاب والزيادة والعجز والقاعات والساعات التدريسية لجميع الكليات في صفحة واحدة.
           </p>

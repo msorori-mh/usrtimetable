@@ -28,7 +28,20 @@ export const LEADERSHIP_ROLE_HINT_AR =
   "لوحة ملخصات لجميع الكليات وتقاريرها الداخلية، للقراءة والطباعة والتصدير فقط.";
 export const LEADERSHIP_HOME = "/reports/leadership" as const;
 export function canViewLeadership(me: RoleFlags | null | undefined): boolean {
-  return !!me && (!!me.isSuperAdmin || !!me.isUniversityLeadership || !!me.isCollegeDean);
+  return (
+    !!me &&
+    (!!me.isSuperAdmin ||
+      !!me.isUniversityLeadership ||
+      !!me.isCollegeDean ||
+      !!me.isInstitutionalViewer)
+  );
+}
+/** Presentation only; the RPC remains responsible for the authorized data scope. */
+export function executiveDashboardTitle(me: RoleFlags | null | undefined): string {
+  if (me?.isSuperAdmin || me?.isUniversityLeadership) return "المؤشرات التنفيذية للجامعة";
+  if (me?.isCollegeDean) return "المؤشرات التنفيذية للكلية";
+  if (me?.isInstitutionalViewer) return "المؤشرات التنفيذية للشؤون الأكاديمية";
+  return "المؤشرات التنفيذية";
 }
 export function isLeadershipOnlyRole(me: RoleFlags | null | undefined): boolean {
   return (
@@ -142,7 +155,7 @@ export function resolveViewerScopeRedirect(
 ): typeof REPORTS_ONLY_HOME | typeof LEADERSHIP_HOME | null {
   if (isLeadershipOnlyRole(me)) return isReportsOnlyPath(pathname) ? null : LEADERSHIP_HOME;
   if (isReportsOnlyRole(me)) return isReportsOnlyPath(pathname) ? null : REPORTS_ONLY_HOME;
-  if (isAcademicAffairsRole(me)) return isAcademicAffairsPath(pathname) ? null : REPORTS_ONLY_HOME;
+  if (isAcademicAffairsRole(me)) return isAcademicAffairsPath(pathname) ? null : LEADERSHIP_HOME;
   return null;
 }
 

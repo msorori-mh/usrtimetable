@@ -552,7 +552,7 @@ export const ADMIN_PAGES: AdminPage[] = [
     label: "لوحة الإدارة العليا",
     desc: "ملخص الجامعة ومقارنة الكليات.",
     icon: LayoutDashboard,
-    roles: ["super_admin", "university_leadership", "college_dean"],
+    roles: ["super_admin", "university_leadership", "college_dean", "institutional_viewer"],
     tier: "basic",
     journey: "reports",
   },
@@ -611,7 +611,15 @@ export const CORE_PATH: CoreStep[] = [
     label: "لوحة الإدارة العليا",
     desc: "ملخص جميع الكليات في صفحة واحدة.",
     icon: LayoutDashboard,
-    roles: ["university_leadership", "college_dean"],
+    roles: ["university_leadership", "college_dean", "institutional_viewer"],
+  },
+  {
+    to: "/instructors",
+    step: null,
+    label: "بيانات أعضاء هيئة التدريس",
+    desc: "مراجعة وتحديث البيانات الأساسية للمحاضرين.",
+    icon: UserSquare2,
+    roles: ["institutional_viewer"],
   },
   {
     to: "/dashboard",
@@ -680,6 +688,17 @@ export function coreStepLabel(
     !roles.includes("university_leadership");
   if (deanOnly && step.to === "/reports/leadership") {
     return { label: COLLEGE_DEAN_LEADERSHIP_LABEL_AR, desc: COLLEGE_DEAN_LEADERSHIP_DESC_AR };
+  }
+  if (
+    step.to === "/reports/leadership" &&
+    roles?.includes("institutional_viewer") &&
+    !roles.includes("super_admin") &&
+    !roles.includes("university_leadership")
+  ) {
+    return {
+      label: "المؤشرات التنفيذية للشؤون الأكاديمية",
+      desc: "ملخص الكليات وأولويات المتابعة.",
+    };
   }
   return { label: step.label, desc: step.desc };
 }
