@@ -136,33 +136,56 @@ for (const departmentId of ["all", "dept-arabic", "dept-islamic", "unrelated"]) 
     for (const levelValue of ["all", "1", "3", "2", "invalid"]) {
       const expected =
         (["all", "dept-arabic"].includes(departmentId) &&
-          ["all", "arabic"].includes(programId) && ["all", "3"].includes(levelValue)) ||
+          ["all", "arabic"].includes(programId) &&
+          ["all", "3"].includes(levelValue)) ||
         (["all", "dept-islamic"].includes(departmentId) &&
-          ["all", "islamic"].includes(programId) && ["all", "1"].includes(levelValue));
+          ["all", "islamic"].includes(programId) &&
+          ["all", "1"].includes(levelValue));
       const matches = [sharedSession].filter((session) =>
         sessionMatchesTimetableAcademicFilters({
-          session, departmentId, programId, levelValue, levels: sharedLevels,
+          session,
+          departmentId,
+          programId,
+          levelValue,
+          levels: sharedLevels,
         }),
       );
-      assert(matches.length === Number(expected),
-        `shared lecture appears once only for its participating cohort: ${departmentId}/${programId}/${levelValue}`);
+      assert(
+        matches.length === Number(expected),
+        `shared lecture appears once only for its participating cohort: ${departmentId}/${programId}/${levelValue}`,
+      );
       sharedFilterCases++;
     }
   }
 }
 for (const intake_memberships of [undefined, []]) {
   for (const levelValue of ["all", "1", "3"]) {
-    assert(sessionMatchesTimetableAcademicFilters({
-      session: { course_offerings: sharedSession.course_offerings, intake_memberships },
-      departmentId: "dept-islamic", programId: "islamic", levelValue, levels: sharedLevels,
-    }) === (levelValue !== "3"), "non-imported session keeps offering-based filtering");
+    assert(
+      sessionMatchesTimetableAcademicFilters({
+        session: { course_offerings: sharedSession.course_offerings, intake_memberships },
+        departmentId: "dept-islamic",
+        programId: "islamic",
+        levelValue,
+        levels: sharedLevels,
+      }) ===
+        (levelValue !== "3"),
+      "non-imported session keeps offering-based filtering",
+    );
     sharedFilterCases++;
   }
 }
-assert(!sessionMatchesTimetableAcademicFilters({
-  session: { intake_memberships: [{ department_id: "dept-arabic", program_id: "arabic", level_id: null }] },
-  departmentId: "dept-arabic", programId: "all", levelValue: "3", levels: sharedLevels,
-}), "missing participant level cannot match a specific level");
+assert(
+  !sessionMatchesTimetableAcademicFilters({
+    session: {
+      intake_memberships: [{ department_id: "dept-arabic", program_id: "arabic", level_id: null }],
+    },
+    departmentId: "dept-arabic",
+    programId: "all",
+    levelValue: "3",
+    levels: sharedLevels,
+  }),
+  "missing participant level cannot match a specific level",
+);
 sharedFilterCases++;
 console.log(`Shared lecture academic filter regressions: ${sharedFilterCases} passed`);
 
@@ -319,6 +342,9 @@ assert(page.includes("listScheduleBuilderV2WorkItems"), "page loads New Flow wor
 assert(page.includes("filterUnscheduledNewFlowWorkItems"), "page filters New Flow unscheduled");
 assert(page.includes("level_number"), "levels query includes level_number");
 assert(page.includes("preserveTimetableLevelFilter"), "preserves level filter on rebuild");
-assert(page.includes("sessionMatchesTimetableAcademicFilters({"), "page filters each shared participant as one academic context");
+assert(
+  page.includes("sessionMatchesTimetableAcademicFilters({"),
+  "page filters each shared participant as one academic context",
+);
 
 console.log("timetable-editor-filters-sidebar.harness.ts: PASS");

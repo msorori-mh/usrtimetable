@@ -137,19 +137,22 @@ export function sessionMatchesTimetableAcademicFilters(input: {
   // Sessions without intake metadata retain the existing offering-based behavior.
   const participants = input.session.intake_memberships?.length
     ? input.session.intake_memberships
-    : [{
-        department_id: offering?.courses?.department_id,
-        program_id: offering?.program_id,
-        level_id: offering?.level_id,
-      }];
-  return participants.some((participant) =>
-    (input.departmentId === "all" || participant.department_id === input.departmentId) &&
-    (input.programId === "all" || participant.program_id === input.programId) &&
-    sessionMatchesTimetableLevelFilter({
-      filterValue: input.levelValue,
-      levelId: participant.level_id,
-      levels: input.levels,
-    }),
+    : [
+        {
+          department_id: offering?.courses?.department_id,
+          program_id: offering?.program_id,
+          level_id: offering?.level_id,
+        },
+      ];
+  return participants.some(
+    (participant) =>
+      (input.departmentId === "all" || participant.department_id === input.departmentId) &&
+      (input.programId === "all" || participant.program_id === input.programId) &&
+      sessionMatchesTimetableLevelFilter({
+        filterValue: input.levelValue,
+        levelId: participant.level_id,
+        levels: input.levels,
+      }),
   );
 }
 
