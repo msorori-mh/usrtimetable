@@ -79,9 +79,9 @@ describe("college dean greeting", () => {
     expect(
       buildAccountGreeting({ fullName: "د. أحمد", collegeName: null, isCollegeDeanOnly: true }),
     ).toBe("مرحبًا، د. أحمد");
-    expect(
-      buildAccountGreeting({ fullName: null, collegeName: "", isCollegeDeanOnly: true }),
-    ).toBe("مرحبًا بك");
+    expect(buildAccountGreeting({ fullName: null, collegeName: "", isCollegeDeanOnly: true })).toBe(
+      "مرحبًا بك",
+    );
   });
 
   it("leaves other roles' greeting untouched", () => {
