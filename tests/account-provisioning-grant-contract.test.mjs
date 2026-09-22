@@ -54,5 +54,8 @@ test("rollback restores the previous guard and drops the grant mechanism", () =>
 
 test("the allowed role list is unchanged and college_dean is not introduced", () => {
   assert.match(users, /const ROLE = z\.enum\(\[/);
-  assert.match(rollback, /'super_admin','college_admin','read_only','institutional_viewer','university_leadership'/);
+  assert.match(
+    rollback,
+    /'super_admin','college_admin','read_only','institutional_viewer','university_leadership'/,
+  );
 });
