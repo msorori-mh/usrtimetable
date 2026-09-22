@@ -39,6 +39,24 @@ export function isLeadershipOnlyRole(me: RoleFlags | null | undefined): boolean 
   );
 }
 
+/**
+ * Greeting line for a college-dean-only account.
+ * The college name MUST come from the trusted `user_colleges` → `colleges` read
+ * (RLS scoped), never from user metadata. Missing assignment fails safe: the
+ * greeting degrades to the name only and never names another college.
+ */
+export function buildAccountGreeting(input: {
+  fullName?: string | null;
+  collegeName?: string | null;
+  isCollegeDeanOnly: boolean;
+}): string {
+  const name = input.fullName?.trim();
+  const base = name ? `مرحبًا، ${name}` : "مرحبًا بك";
+  const college = input.collegeName?.trim();
+  if (!input.isCollegeDeanOnly || !college) return base;
+  return `${base} — عميد كلية ${college}`;
+}
+
 export const READ_ONLY_ROLE_LABEL_AR = "مشاهد";
 export const INSTITUTIONAL_VIEWER_ROLE_LABEL_AR = "إدارة الشؤون الأكاديمية";
 
