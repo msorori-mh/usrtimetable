@@ -321,7 +321,9 @@ export function LeadershipDecisionSummary({
                       {room?.surplusHours !== null &&
                         room?.surplusHours !== undefined &&
                         room.surplusHours > 0 && (
-                          <span className="leadership-cell-note">مكافئ زمني قابل لإعادة التوزيع</span>
+                          <span className="leadership-cell-note">
+                            مكافئ زمني قابل لإعادة التوزيع
+                          </span>
                         )}
                     </td>
                     <td className="leadership-college-action">
