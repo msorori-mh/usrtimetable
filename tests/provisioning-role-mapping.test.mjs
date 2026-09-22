@@ -22,14 +22,8 @@ test("college_dean is provisioned as college_admin at the trusted boundary", () 
 });
 
 test("the grant is issued with the mapped provisioning role, never the raw UI role", () => {
-  assert.match(
-    fns,
-    /issue_account_provisioning_grant"[\s\S]{0,160}p_role:\s*provisioningRole/,
-  );
-  assert.doesNotMatch(
-    fns,
-    /issue_account_provisioning_grant"[\s\S]{0,160}p_role:\s*data\.role/,
-  );
+  assert.match(fns, /issue_account_provisioning_grant"[\s\S]{0,160}p_role:\s*provisioningRole/);
+  assert.doesNotMatch(fns, /issue_account_provisioning_grant"[\s\S]{0,160}p_role:\s*data\.role/);
 });
 
 test("auth metadata carries the mapped provisioning role only", () => {
@@ -52,9 +46,6 @@ test("unmapped / illegal roles are rejected fail-closed before any account is cr
 });
 
 test("the single-college rule for the dean is untouched", () => {
-  assert.match(
-    fns,
-    /requiresExactlyOneCollege\(data\.role\) && collegeIds\.length !== 1/,
-  );
+  assert.match(fns, /requiresExactlyOneCollege\(data\.role\) && collegeIds\.length !== 1/);
   assert.match(fns, /user_roles"\)\s*\n?\s*\.insert\(\{ user_id: newId, role: data\.role/);
 });
