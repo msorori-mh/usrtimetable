@@ -40,10 +40,7 @@ import {
 } from "@/components/timetable/timetable-grid";
 import { SessionDialog } from "@/components/timetable/session-dialog";
 import { DeliveryDemoWarningBanner } from "@/components/schedule/delivery-demo-warning-banner";
-import {
-  scoreScheduleVersion,
-  type QualityResult,
-} from "@/lib/conflict-engine/scorer";
+import { scoreScheduleVersion, type QualityResult } from "@/lib/conflict-engine/scorer";
 import { validateProposed } from "@/lib/conflict-engine/validator";
 import { logAudit } from "@/lib/audit";
 import { toast } from "sonner";
@@ -62,7 +59,7 @@ import {
   filterUnscheduledNewFlowWorkItems,
   groupTimetableSidebarItems,
   preserveTimetableLevelFilter,
-  sessionMatchesTimetableLevelFilter,
+  sessionMatchesTimetableAcademicFilters,
 } from "@/lib/schedule-builder/timetable-editor-filters";
 import { entityDisplayName } from "@/lib/entity-display";
 
@@ -100,9 +97,7 @@ function TimetablePage() {
   const [fInstr, setFInstr] = useState<string>("all");
   const [fRoom, setFRoom] = useState<string>("all");
   const [fStudy, setFStudy] = useState<string>("all");
-  const [gridStudy, setGridStudy] = useState<"regular" | "parallel" | "both">(
-    "regular",
-  );
+  const [gridStudy, setGridStudy] = useState<"regular" | "parallel" | "both">("regular");
 
   const {
     data: version,
@@ -163,10 +158,7 @@ function TimetablePage() {
         settings,
         roomTypes,
       ] = await Promise.all([
-        supabase
-          .from("departments")
-          .select("id, name")
-          .eq("college_id", active!.id),
+        supabase.from("departments").select("id, name").eq("college_id", active!.id),
         supabase
           .from("academic_programs")
           .select("id, name, department_id")
@@ -175,20 +167,12 @@ function TimetablePage() {
           .from("academic_levels")
           .select("id, name, program_id, level_number")
           .eq("college_id", active!.id),
-        supabase
-          .from("instructors")
-          .select("id, full_name")
-          .eq("college_id", active!.id),
-        supabase
-          .from("rooms")
-          .select("id, code, name, room_type_id")
-          .eq("college_id", active!.id),
+        supabase.from("instructors").select("id, full_name").eq("college_id", active!.id),
+        supabase.from("rooms").select("id, code, name, room_type_id").eq("college_id", active!.id),
         // Flat offerings only — no nested courses() embed (PGRST200).
         supabase
           .from("course_offerings")
-          .select(
-            "id, course_id, program_id, level_id, expected_students, plan_course_id",
-          )
+          .select("id, course_id, program_id, level_id, expected_students, plan_course_id")
           .eq("college_id", active!.id)
           .eq("term_id", version?.academic_term_id ?? ""),
         supabase
@@ -200,30 +184,18 @@ function TimetablePage() {
           .select("*")
           .eq("college_id", active!.id)
           .eq("is_active", true),
-        supabase
-          .from("scheduling_settings")
-          .select("*")
-          .eq("college_id", active!.id)
-          .maybeSingle(),
-        supabase
-          .from("room_types")
-          .select("id, name_ar")
-          .eq("college_id", active!.id),
+        supabase.from("scheduling_settings").select("*").eq("college_id", active!.id).maybeSingle(),
+        supabase.from("room_types").select("id, name_ar").eq("college_id", active!.id),
       ]);
 
       const offeringsFlat = offeringsRes.data ?? [];
       const courseIds = [
         ...new Set(
-          offeringsFlat
-            .map((o) => o.course_id as string | null)
-            .filter((id): id is string => !!id),
+          offeringsFlat.map((o) => o.course_id as string | null).filter((id): id is string => !!id),
         ),
       ];
       const { data: courseRows } = courseIds.length
-        ? await supabase
-            .from("courses")
-            .select("id, code, name, department_id")
-            .in("id", courseIds)
+        ? await supabase.from("courses").select("id, code, name, department_id").in("id", courseIds)
         : {
             data: [] as Array<{
               id: string;
@@ -265,8 +237,7 @@ function TimetablePage() {
   const { data: workItemsPayload } = useQuery({
     queryKey: ["timetable-v2-work-items", versionId, active?.id],
     enabled: canLoadData,
-    queryFn: async () =>
-      listScheduleBuilderV2WorkItems({ scheduleVersionId: versionId }),
+    queryFn: async () => listScheduleBuilderV2WorkItems({ scheduleVersionId: versionId }),
   });
 
   const workingDays = lookups?.settings?.working_days ?? [6, 0, 1, 2, 3, 4];
@@ -281,10 +252,7 @@ function TimetablePage() {
 
   const availability: AvailabilityWindow[] | undefined = useMemo(() => {
     const tpl = (lookups?.templates ?? []).filter(
-      (t: any) =>
-        t.study_system === gridStudy ||
-        t.study_system === "both" ||
-        gridStudy === "both",
+      (t: any) => t.study_system === gridStudy || t.study_system === "both" || gridStudy === "both",
     );
     if (tpl.length > 0) {
       return tpl.map((t: any) => ({
@@ -321,25 +289,11 @@ function TimetablePage() {
   const filtered = useMemo(() => {
     return (sessions ?? []).filter((s: any) => {
       if (
-        fDept !== "all" &&
-        s.course_offerings?.courses?.department_id !== fDept &&
-        !s.intake_memberships?.some(
-          (m: { department_id: string }) => m.department_id === fDept,
-        )
-      )
-        return false;
-      if (
-        fProg !== "all" &&
-        s.course_offerings?.program_id !== fProg &&
-        !s.intake_memberships?.some(
-          (m: { program_id: string }) => m.program_id === fProg,
-        )
-      )
-        return false;
-      if (
-        !sessionMatchesTimetableLevelFilter({
-          filterValue: fLevel,
-          levelId: s.course_offerings?.level_id ?? null,
+        !sessionMatchesTimetableAcademicFilters({
+          session: s,
+          departmentId: fDept,
+          programId: fProg,
+          levelValue: fLevel,
           levels: lookups?.levels ?? [],
         })
       ) {
@@ -360,10 +314,7 @@ function TimetablePage() {
   const gridSessions: GridSession[] = useMemo(
     () =>
       (filtered ?? []).map((s: any) => {
-        const courseName = entityDisplayName(
-          s.course_offerings?.courses ?? {},
-          "مقرر غير متاح",
-        );
+        const courseName = entityDisplayName(s.course_offerings?.courses ?? {}, "مقرر غير متاح");
         return {
           id: s.id,
           day_of_week: s.day_of_week,
@@ -374,11 +325,7 @@ function TimetablePage() {
           title: `${s.is_locked ? "🔒 " : ""}${courseName}`,
           subtitle: `${s.instructors?.full_name ?? ""}${s.rooms ? ` • ${entityDisplayName(s.rooms)}` : ""}${s.source_type === "auto_generated" ? " • تلقائي" : s.source_type === "cloned" ? " • منسوخ" : ""}`,
           badge:
-            s.study_system === "parallel"
-              ? "موازي"
-              : s.study_system === "both"
-                ? "م/م"
-                : "انتظام",
+            s.study_system === "parallel" ? "موازي" : s.study_system === "both" ? "م/م" : "انتظام",
         };
       }),
     [filtered],
@@ -413,10 +360,7 @@ function TimetablePage() {
     ],
   );
 
-  const grouped = useMemo(
-    () => groupTimetableSidebarItems(unscheduled),
-    [unscheduled],
-  );
+  const grouped = useMemo(() => groupTimetableSidebarItems(unscheduled), [unscheduled]);
 
   const runQuality = async () => {
     if (!active || !canLoadData) return;
@@ -435,11 +379,7 @@ function TimetablePage() {
     }
   };
 
-  const handleDrop = async (params: {
-    day: number;
-    startTime: string;
-    payload: DropPayload;
-  }) => {
+  const handleDrop = async (params: { day: number; startTime: string; payload: DropPayload }) => {
     if (!active || !canManage || !canLoadData) return;
     const { day, startTime, payload } = params;
     if (payload.kind === "unscheduled") {
@@ -580,8 +520,7 @@ function TimetablePage() {
     );
   }
 
-  const isLocked =
-    version.status === "published" || version.status === "archived";
+  const isLocked = version.status === "published" || version.status === "archived";
 
   return (
     <div className="space-y-4" dir="rtl">
@@ -600,10 +539,7 @@ function TimetablePage() {
         <div className="flex gap-2 items-end">
           <div>
             <Label className="text-xs">عرض شبكة</Label>
-            <Select
-              value={gridStudy}
-              onValueChange={(v) => setGridStudy(v as any)}
-            >
+            <Select value={gridStudy} onValueChange={(v) => setGridStudy(v as any)}>
               <SelectTrigger className="w-32">
                 <SelectValue />
               </SelectTrigger>
@@ -620,8 +556,7 @@ function TimetablePage() {
             </Link>
           </Button>
           <Button variant="outline" onClick={runQuality} disabled={scoring}>
-            <Gauge className="h-4 w-4 ml-1" />{" "}
-            {scoring ? "..." : "احتساب الجودة"}
+            <Gauge className="h-4 w-4 ml-1" /> {scoring ? "..." : "احتساب الجودة"}
           </Button>
           <Button
             disabled={!canManage}
@@ -638,11 +573,8 @@ function TimetablePage() {
 
       {isLocked && (
         <div className="rounded-md border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30 p-3 text-sm">
-          🔒 هذه النسخة{" "}
-          <strong>
-            {version.status === "published" ? "منشورة" : "مؤرشفة"}
-          </strong>{" "}
-          — العرض للقراءة فقط. لا يمكن إضافة أو تعديل أو حذف المحاضرات.
+          🔒 هذه النسخة <strong>{version.status === "published" ? "منشورة" : "مؤرشفة"}</strong> —
+          العرض للقراءة فقط. لا يمكن إضافة أو تعديل أو حذف المحاضرات.
         </div>
       )}
 
@@ -658,17 +590,13 @@ function TimetablePage() {
             <div className="text-xs text-destructive flex items-center gap-1">
               <AlertTriangle className="h-3 w-3" /> تعارضات إلزامية
             </div>
-            <div className="text-3xl font-bold">
-              {quality.hard_conflicts_count}
-            </div>
+            <div className="text-3xl font-bold">{quality.hard_conflicts_count}</div>
           </Card>
           <Card className="p-3">
             <div className="text-xs text-amber-600 flex items-center gap-1">
               <Activity className="h-3 w-3" /> مخالفات مرنة
             </div>
-            <div className="text-3xl font-bold">
-              {quality.soft_conflicts_count}
-            </div>
+            <div className="text-3xl font-bold">{quality.soft_conflicts_count}</div>
           </Card>
         </div>
       )}
@@ -790,9 +718,7 @@ function TimetablePage() {
           />
         </div>
         <Card className="p-3 max-h-[700px] overflow-auto">
-          <div className="font-semibold mb-2 text-sm">
-            عناصر غير مجدولة ({unscheduled.length})
-          </div>
+          <div className="font-semibold mb-2 text-sm">عناصر غير مجدولة ({unscheduled.length})</div>
           <Accordion type="multiple" className="w-full">
             {Array.from(grouped.entries()).map(([dept, progMap]) => (
               <AccordionItem key={dept} value={dept}>
@@ -805,9 +731,7 @@ function TimetablePage() {
                       </div>
                       {Array.from(lvlMap.entries()).map(([lvl, items]) => (
                         <div key={lvl} className="pr-2">
-                          <div className="text-[10px] text-muted-foreground">
-                            {lvl}
-                          </div>
+                          <div className="text-[10px] text-muted-foreground">{lvl}</div>
                           <div className="space-y-1">
                             {items.map((item) => (
                               <div
@@ -838,8 +762,7 @@ function TimetablePage() {
                                       المحاضر: {item.instructor_name}
                                     </div>
                                     <div className="text-[10px] text-muted-foreground">
-                                      الطلاب المتوقعون:{" "}
-                                      {item.expected_students ?? 0}
+                                      الطلاب المتوقعون: {item.expected_students ?? 0}
                                     </div>
                                   </div>
                                 </div>

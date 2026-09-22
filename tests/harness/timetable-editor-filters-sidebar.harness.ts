@@ -13,6 +13,7 @@ import {
   isNewFlowWorkItemUnscheduled,
   preserveTimetableLevelFilter,
   resolveDepartmentLabel,
+  sessionMatchesTimetableAcademicFilters,
   sessionMatchesTimetableLevelFilter,
 } from "../../src/lib/schedule-builder/timetable-editor-filters.ts";
 
@@ -110,6 +111,83 @@ assert(
   }),
   "session rejects other level_number",
 );
+
+// --- Shared Arts lecture: Arabic level 3 + Islamic Studies level 1 ---
+const sharedLevels = [
+  { id: "ar-1", name: "الأول", program_id: "arabic", level_number: 1 },
+  { id: "ar-3", name: "الثالث", program_id: "arabic", level_number: 3 },
+  { id: "is-1", name: "الأول", program_id: "islamic", level_number: 1 },
+  { id: "is-3", name: "الثالث", program_id: "islamic", level_number: 3 },
+];
+const sharedSession = {
+  course_offerings: {
+    program_id: "islamic",
+    level_id: "is-1",
+    courses: { department_id: "dept-islamic" },
+  },
+  intake_memberships: [
+    { department_id: "dept-islamic", program_id: "islamic", level_id: "is-1" },
+    { department_id: "dept-arabic", program_id: "arabic", level_id: "ar-3" },
+  ],
+};
+let sharedFilterCases = 0;
+for (const departmentId of ["all", "dept-arabic", "dept-islamic", "unrelated"]) {
+  for (const programId of ["all", "arabic", "islamic", "unrelated"]) {
+    for (const levelValue of ["all", "1", "3", "2", "invalid"]) {
+      const expected =
+        (["all", "dept-arabic"].includes(departmentId) &&
+          ["all", "arabic"].includes(programId) &&
+          ["all", "3"].includes(levelValue)) ||
+        (["all", "dept-islamic"].includes(departmentId) &&
+          ["all", "islamic"].includes(programId) &&
+          ["all", "1"].includes(levelValue));
+      const matches = [sharedSession].filter((session) =>
+        sessionMatchesTimetableAcademicFilters({
+          session,
+          departmentId,
+          programId,
+          levelValue,
+          levels: sharedLevels,
+        }),
+      );
+      assert(
+        matches.length === Number(expected),
+        `shared lecture appears once only for its participating cohort: ${departmentId}/${programId}/${levelValue}`,
+      );
+      sharedFilterCases++;
+    }
+  }
+}
+for (const intake_memberships of [undefined, []]) {
+  for (const levelValue of ["all", "1", "3"]) {
+    assert(
+      sessionMatchesTimetableAcademicFilters({
+        session: { course_offerings: sharedSession.course_offerings, intake_memberships },
+        departmentId: "dept-islamic",
+        programId: "islamic",
+        levelValue,
+        levels: sharedLevels,
+      }) ===
+        (levelValue !== "3"),
+      "non-imported session keeps offering-based filtering",
+    );
+    sharedFilterCases++;
+  }
+}
+assert(
+  !sessionMatchesTimetableAcademicFilters({
+    session: {
+      intake_memberships: [{ department_id: "dept-arabic", program_id: "arabic", level_id: null }],
+    },
+    departmentId: "dept-arabic",
+    programId: "all",
+    levelValue: "3",
+    levels: sharedLevels,
+  }),
+  "missing participant level cannot match a specific level",
+);
+sharedFilterCases++;
+console.log(`Shared lecture academic filter regressions: ${sharedFilterCases} passed`);
 
 // --- Unscheduled New Flow only ---
 function wi(
@@ -264,5 +342,9 @@ assert(page.includes("listScheduleBuilderV2WorkItems"), "page loads New Flow wor
 assert(page.includes("filterUnscheduledNewFlowWorkItems"), "page filters New Flow unscheduled");
 assert(page.includes("level_number"), "levels query includes level_number");
 assert(page.includes("preserveTimetableLevelFilter"), "preserves level filter on rebuild");
+assert(
+  page.includes("sessionMatchesTimetableAcademicFilters({"),
+  "page filters each shared participant as one academic context",
+);
 
 console.log("timetable-editor-filters-sidebar.harness.ts: PASS");
