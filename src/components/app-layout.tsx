@@ -522,9 +522,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             )}
             data-app-chrome="welcome"
             data-testid="account-welcome"
-            data-welcome-variant={
-              universityLeadershipOnly ? "university-president" : "standard"
-            }
+            data-welcome-variant={universityLeadershipOnly ? "university-president" : "standard"}
             dir="rtl"
           >
             <p
