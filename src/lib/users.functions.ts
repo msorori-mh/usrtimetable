@@ -132,9 +132,7 @@ export const adminCreateUser = createServerFn({ method: "POST" })
       "issue_account_provisioning_grant",
       { p_email: normalizedEmail, p_role: data.role, p_created_by: context.userId },
     );
-    const grant = (
-      grantRows as unknown as Array<{ grant_id: string; nonce: string }> | null
-    )?.[0];
+    const grant = (grantRows as unknown as Array<{ grant_id: string; nonce: string }> | null)?.[0];
     if (grantErr || !grant) {
       throw new Error(grantErr?.message ?? "Failed to authorize account provisioning");
     }
