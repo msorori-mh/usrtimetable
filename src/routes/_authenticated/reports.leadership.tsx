@@ -252,7 +252,9 @@ function FacultyBreakdownPanel({
       aria-label={title}
       data-testid={testId}
     >
-      <div\n        className={`mb-3 flex items-center justify-between gap-3 border-b pb-2.5 ${styles.heading}`}\n      >
+      <div
+        className={`mb-3 flex items-center justify-between gap-3 border-b pb-2.5 ${styles.heading}`}
+      >
         <h3 className="text-sm font-bold text-foreground">{title}</h3>
         <span className={`rounded-full px-2.5 py-1 text-xs font-bold tabular-nums ${styles.total}`}>
           المجموع {total.toLocaleString("ar")}
