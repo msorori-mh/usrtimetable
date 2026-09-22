@@ -227,6 +227,30 @@ test("room surplus and deficit stay separate in the compact summary", () => {
   assert.match(output, /العجز 4 ساعة/);
 });
 
+test("room reuse opportunity turns surplus into quick executive equivalents", () => {
+  const ids = ["hours", "days", "room", "mixed", "zero", "deficit", "unknown"];
+  const output = html({
+    colleges: ids.map((id) => college(id)),
+    capacity: [
+      room("hours", 5),
+      room("days", 16),
+      room("room", 36),
+      room("mixed", 70),
+      room("zero", 0),
+      room("deficit", -4),
+      room("unknown", null),
+    ],
+  });
+  assert.match(output, /فرصة إعادة الاستخدام/);
+  assert.match(output, /يعادل 5 ساعات/);
+  assert.match(output, /يعادل يومين قاعة \+ 4 ساعات/);
+  assert.match(output, /يعادل قاعة أسبوعية كاملة/);
+  assert.match(output, /يعادل قاعة أسبوعية كاملة \+ 5 أيام قاعة \+ 4 ساعات/);
+  assert.match(output, /لا توجد سعة فائضة/);
+  assert.match(output, /غير محسوب/);
+  assert.match(output, /لا تعني\s+توافر قاعة بعينها/);
+});
+
 test("single-college input does not expose other colleges and uses unique faculty count", () => {
   const output = html({
     colleges: [college("scoped", { faculty_count: 100 })],
