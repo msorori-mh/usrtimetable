@@ -1,12 +1,8 @@
-export const PASSWORD_POLICY_AR = "٨ أحرف على الأقل، وتحتوي على حروف ومعها أرقام أو رموز.";
+export const PASSWORD_POLICY_AR =
+  "٨ أحرف على الأقل؛ يمكن أن تكون حروفًا فقط أو أرقامًا فقط أو خليطًا، دون اشتراط رموز خاصة.";
 
 export function validPersonalPassword(value: string): boolean {
-  return (
-    Array.from(value).length >= 8 &&
-    new TextEncoder().encode(value).length <= 72 &&
-    /\p{L}/u.test(value) &&
-    /[\p{N}\p{P}\p{S}]/u.test(value)
-  );
+  return Array.from(value).length >= 8 && new TextEncoder().encode(value).length <= 72;
 }
 
 export function requiresInitialPassword(role: string): boolean {
