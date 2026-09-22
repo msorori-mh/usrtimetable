@@ -199,7 +199,6 @@ const LEGACY_REPORTS: ReportCard[] = [
   },
 ];
 
-
 /** One entry per task; detailed reports retain their routes and permissions. */
 const STUDENT_REPORTS: ReportCard = {
   to: "/reports/current-timetable",
@@ -266,74 +265,91 @@ const LEGACY_SECTION = {
   accent: "border-amber-500/30 bg-amber-500/5",
 };
 
-function ReportGrid({ items, expandMatches = false }: { items: ReportCard[]; expandMatches?: boolean }) {
+function ReportGrid({
+  items,
+  expandMatches = false,
+}: {
+  items: ReportCard[];
+  expandMatches?: boolean;
+}) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {items.map((r) => r.reports ? (
-        <Card key={r.to} className="h-full">
-          <details key={expandMatches ? "search" : "browse"} open={expandMatches || undefined} className="group">
-            <summary className="flex cursor-pointer list-none items-start gap-3 rounded-lg p-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
-              <span className="rounded-md bg-primary/10 p-2 text-primary">{r.icon}</span>
-              <span className="min-w-0 flex-1">
-                <span className="block font-semibold">{r.title}</span>
-                <span className="mt-1 block text-xs text-muted-foreground">{r.desc}</span>
-                <span className="mt-2 block text-xs text-primary">عرض التقارير ({r.reports.length})</span>
-              </span>
-              <ChevronDown aria-hidden className="mt-2 h-4 w-4 shrink-0 transition-transform group-open:rotate-180" />
-            </summary>
-            <nav aria-label={r.title} className="space-y-1 border-t p-2">
-              {r.reports.map((report) => (
-                <Link
-                  key={`${report.to}:${report.search?.report ?? "all"}`}
-                  to={report.to}
-                  search={report.search}
-                  aria-label={report.linkLabel ?? report.title}
-                  className="block rounded-md p-3 hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
-                >
-                  <span className="block text-sm font-semibold text-primary">{report.title}</span>
-                  <span className="mt-1 block text-xs text-muted-foreground">{report.desc}</span>
-                </Link>
-              ))}
-            </nav>
-          </details>
-        </Card>
-      ) : (
-        <Link
-          key={`${r.to}:${r.search?.report ?? "all"}`}
-          to={r.to}
-          search={r.search}
-          className="block"
-          aria-label={r.linkLabel ?? r.title}
-          data-report-hub-link={
-            r.to === "/reports/data-readiness" ? "data-readiness-report" : undefined
-          }
-        >
-          <Card className="p-4 hover:shadow-md transition-shadow cursor-pointer h-full">
-            <div className="flex items-start gap-3">
-              <div className="rounded-md bg-primary/10 text-primary p-2">{r.icon}</div>
-              <div className="flex-1 min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-semibold">{r.title}</span>
-                  {r.badge === "official" && (
-                    <Badge variant="default" className="text-[10px] gap-1">
-                      <Stamp className="h-3 w-3" /> رسمي
-                    </Badge>
-                  )}
-                  {r.badge === "legacy" && (
-                    <Badge
-                      variant="outline"
-                      className="text-[10px] gap-1 border-amber-500/50 text-amber-700"
-                    >
-                      <Archive className="h-3 w-3" /> Legacy
-                    </Badge>
-                  )}
-                </div>
-                <div className="text-xs text-muted-foreground mt-1">{r.desc}</div>
-              </div>
-            </div>
+      {items.map((r) =>
+        r.reports ? (
+          <Card key={r.to} className="h-full">
+            <details
+              key={expandMatches ? "search" : "browse"}
+              open={expandMatches || undefined}
+              className="group"
+            >
+              <summary className="flex cursor-pointer list-none items-start gap-3 rounded-lg p-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
+                <span className="rounded-md bg-primary/10 p-2 text-primary">{r.icon}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-semibold">{r.title}</span>
+                  <span className="mt-1 block text-xs text-muted-foreground">{r.desc}</span>
+                  <span className="mt-2 block text-xs text-primary">
+                    عرض التقارير ({r.reports.length})
+                  </span>
+                </span>
+                <ChevronDown
+                  aria-hidden
+                  className="mt-2 h-4 w-4 shrink-0 transition-transform group-open:rotate-180"
+                />
+              </summary>
+              <nav aria-label={r.title} className="space-y-1 border-t p-2">
+                {r.reports.map((report) => (
+                  <Link
+                    key={`${report.to}:${report.search?.report ?? "all"}`}
+                    to={report.to}
+                    search={report.search}
+                    aria-label={report.linkLabel ?? report.title}
+                    className="block rounded-md p-3 hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                  >
+                    <span className="block text-sm font-semibold text-primary">{report.title}</span>
+                    <span className="mt-1 block text-xs text-muted-foreground">{report.desc}</span>
+                  </Link>
+                ))}
+              </nav>
+            </details>
           </Card>
-        </Link>
-      ))}
+        ) : (
+          <Link
+            key={`${r.to}:${r.search?.report ?? "all"}`}
+            to={r.to}
+            search={r.search}
+            className="block"
+            aria-label={r.linkLabel ?? r.title}
+            data-report-hub-link={
+              r.to === "/reports/data-readiness" ? "data-readiness-report" : undefined
+            }
+          >
+            <Card className="p-4 hover:shadow-md transition-shadow cursor-pointer h-full">
+              <div className="flex items-start gap-3">
+                <div className="rounded-md bg-primary/10 text-primary p-2">{r.icon}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-semibold">{r.title}</span>
+                    {r.badge === "official" && (
+                      <Badge variant="default" className="text-[10px] gap-1">
+                        <Stamp className="h-3 w-3" /> رسمي
+                      </Badge>
+                    )}
+                    {r.badge === "legacy" && (
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] gap-1 border-amber-500/50 text-amber-700"
+                      >
+                        <Archive className="h-3 w-3" /> Legacy
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">{r.desc}</div>
+                </div>
+              </div>
+            </Card>
+          </Link>
+        ),
+      )}
     </div>
   );
 }
@@ -344,7 +360,15 @@ function ReportsHub() {
   const needle = normalizeSearchText(search);
   const match = (items: ReportCard[]) =>
     needle
-      ? items.filter((r) => normalizeSearchText([r.title, r.desc, ...(r.reports ?? []).flatMap((report) => [report.title, report.desc])].join(" ")).includes(needle))
+      ? items.filter((r) =>
+          normalizeSearchText(
+            [
+              r.title,
+              r.desc,
+              ...(r.reports ?? []).flatMap((report) => [report.title, report.desc]),
+            ].join(" "),
+          ).includes(needle),
+        )
       : items;
   const visibleSections = SECTIONS.map((s) => ({ ...s, items: match(s.items) })).filter(
     (s) => s.items.length > 0,
