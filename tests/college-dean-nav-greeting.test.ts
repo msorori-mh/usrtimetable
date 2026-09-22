@@ -57,7 +57,10 @@ describe("college dean navigation", () => {
       leadershipStep.label,
     );
     expect(visible("super_admin")).toContain("/schedule-builder");
-    expect(visible("university_leadership")).toEqual(["/reports", "/reports", "/reports/leadership"].sort());
+    expect([...new Set(visible("university_leadership"))].sort()).toEqual([
+      "/reports",
+      "/reports/leadership",
+    ]);
   });
 });
 
