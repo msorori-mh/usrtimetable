@@ -123,20 +123,50 @@ export const adminCreateUser = createServerFn({ method: "POST" })
       if (selected?.length !== collegeIds.length) throw new Error("Invalid college assignment");
     }
 
+    // PROVISIONING-GRANT-01: the deferred admin-only guard cannot rely on Auth
+    // metadata, which is not yet visible in the first auth.users transaction.
+    // Issue a 60s single-use grant bound to normalized email + role + creator;
+    // the guard consumes it atomically at COMMIT and fails closed without it.
+    const normalizedEmail = data.email.trim().toLowerCase();
+    const { data: grantRows, error: grantErr } = await supabaseAdmin.rpc(
+      "issue_account_provisioning_grant",
+      { p_email: normalizedEmail, p_role: data.role, p_created_by: context.userId },
+    );
+    const grant = (grantRows as unknown as Array<{ grant_id: string; nonce: string }> | null)?.[0];
+    if (grantErr || !grant) {
+      throw new Error(grantErr?.message ?? "Failed to authorize account provisioning");
+    }
+
     const { data: created, error: createErr } = await supabaseAdmin.auth.admin.createUser({
-      email: data.email,
+      email: normalizedEmail,
       password: data.password,
       email_confirm: true,
-      // The admin-only guard trigger runs during the auth.users INSERT, before
-      // Auth applies app_metadata, so the provisioning tag is carried in both.
-      user_metadata: { full_name: data.full_name, provisioning_role: data.role },
+      user_metadata: {
+        full_name: data.full_name,
+        provisioning_role: data.role,
+        provisioning_nonce: grant.nonce,
+      },
       app_metadata: {
         provisioning_role: data.role,
+        provisioning_nonce: grant.nonce,
         must_change_password: requiresInitialPassword(data.role),
       },
     });
-    if (createErr || !created.user) throw new Error(createErr?.message ?? "Failed to create user");
+    if (createErr || !created.user) {
+      // Never leave an unconsumed grant behind when creation fails.
+      await supabaseAdmin.rpc("revoke_account_provisioning_grant", { p_grant_id: grant.grant_id });
+      await supabaseAdmin.from("audit_logs").insert({
+        actor_id: context.userId,
+        action: "user_create_failed",
+        entity: "profiles",
+        entity_id: null,
+        details: { email: normalizedEmail, role: data.role, grant_revoked: true } as never,
+      });
+      throw new Error(createErr?.message ?? "Failed to create user");
+    }
     const newId = created.user.id;
+    // Consumed grants are terminal; drop the row so nothing can linger.
+    await supabaseAdmin.rpc("revoke_account_provisioning_grant", { p_grant_id: grant.grant_id });
 
     // The handle_new_user trigger has already created a profile + a default role assignment.
     // Sync the profile name + replace role(s) with the requested one.

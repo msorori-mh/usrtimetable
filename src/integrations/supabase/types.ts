@@ -5273,6 +5273,14 @@ export type Database = {
       is_reports_only_viewer: { Args: { _user_id: string }; Returns: boolean }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       is_viewer_only: { Args: { _user_id: string }; Returns: boolean }
+      issue_account_provisioning_grant: {
+        Args: { p_created_by: string; p_email: string; p_role: string }
+        Returns: {
+          expires_at: string
+          grant_id: string
+          nonce: string
+        }[]
+      }
       issue_report_verification: {
         Args: { p_report_kind: string; p_version_id: string }
         Returns: string
@@ -5515,6 +5523,10 @@ export type Database = {
           p_term_id: string
         }
         Returns: Json
+      }
+      revoke_account_provisioning_grant: {
+        Args: { p_grant_id: string }
+        Returns: boolean
       }
       same_system_lecture_pair: {
         Args: { p_anchor: string; p_member: string }
