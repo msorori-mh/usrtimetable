@@ -44,6 +44,21 @@ const ROLE = z.enum([
   "college_dean",
 ]);
 
+/**
+ * PROVISIONING-GRANT-02: trusted-boundary mapping from a UI role to the role
+ * accepted by issue_account_provisioning_grant / enforce_admin_account_creation.
+ * The allowed database role list is NOT widened; "college_dean" is provisioned
+ * as "college_admin" and the dean role is assigned after the account exists.
+ */
+export const PROVISIONING_ROLE_BY_ROLE: Record<z.infer<typeof ROLE>, string> = {
+  super_admin: "super_admin",
+  college_admin: "college_admin",
+  read_only: "read_only",
+  institutional_viewer: "institutional_viewer",
+  university_leadership: "university_leadership",
+  college_dean: "college_admin",
+};
+
 async function assertInstitutionAdmin(userId: string) {
   const supabaseAdmin = await admin();
   const { data, error } = await supabaseAdmin
@@ -151,11 +166,11 @@ export const adminCreateUser = createServerFn({ method: "POST" })
       email_confirm: true,
       user_metadata: {
         full_name: data.full_name,
-        provisioning_role: data.role,
+        provisioning_role: provisioningRole,
         provisioning_nonce: grant.nonce,
       },
       app_metadata: {
-        provisioning_role: data.role,
+        provisioning_role: provisioningRole,
         provisioning_nonce: grant.nonce,
         must_change_password: requiresInitialPassword(data.role),
       },
