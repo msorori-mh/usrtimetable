@@ -47,11 +47,13 @@ export function LeadershipRoomCapacitySummary({
   loading,
   error,
   onRetry,
+  summaryLabel = "ملخص الجامعة",
 }: {
   rows: LeadershipCapacityCollege[];
   loading: boolean;
   error: boolean;
   onRetry: () => void;
+  summaryLabel?: string;
 }) {
   const totals = aggregateLeadershipRoomCapacity(rows);
   return (
@@ -84,7 +86,7 @@ export function LeadershipRoomCapacitySummary({
       ) : (
         <div className="space-y-4 p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="font-semibold">ملخص الجامعة</h3>
+            <h3 className="font-semibold">{summaryLabel}</h3>
             <span className="text-xs text-muted-foreground">
               {totals.complete
                 ? "جميع الكليات مكتملة الحساب"

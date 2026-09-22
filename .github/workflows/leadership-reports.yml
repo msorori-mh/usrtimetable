@@ -20,7 +20,7 @@ jobs:
           node-version: '24'
       - run: bun install --frozen-lockfile
       - name: Roles and truthful presentation
-        run: node --import tsx --test tests/leadership.test.ts tests/academic-affairs.test.ts tests/leadership-room-capacity.test.ts
+        run: node --import tsx --test tests/leadership.test.ts tests/academic-affairs.test.ts tests/leadership-room-capacity.test.ts tests/leadership-decisions.test.tsx tests/leadership-metrics-drilldown.test.ts
       - name: PostgreSQL test dependency
         run: npm install --prefix "$RUNNER_TEMP/leadership-db" --no-package-lock @electric-sql/pglite@0.3.14
       - name: Read scope, write denial, mixed roles and university aggregates
