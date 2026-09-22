@@ -64,6 +64,7 @@ import {
   type LeadershipDetailTab,
 } from "@/lib/reports/leadership-decisions";
 import { fetchLeadershipRoomCapacity } from "@/lib/reports/fetch-leadership-room-capacity";
+import "@/components/reports/leadership-dashboard.css";
 
 export const Route = createFileRoute("/_authenticated/reports/leadership")({
   head: () => ({
@@ -445,7 +446,7 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
   const scopeQuality = leadershipPriorities(scoped, selectedCapacity);
 
   return (
-    <>
+    <div className="leadership-dashboard">
       <ReportShell
         title={collegeDean ? "المؤشرات التنفيذية للكلية" : "المؤشرات التنفيذية للجامعة"}
         description={`آخر قراءة ناجحة: ${generatedAt} · ${collegeDean ? "بيانات الكلية المُسندة فقط" : "ملخص جميع الكليات"}`}
@@ -476,7 +477,7 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
           ) : null
         }
         filters={
-          <div className="report-no-print flex flex-wrap items-end justify-between gap-3 border-b pb-3">
+          <div className="leadership-filters report-no-print flex flex-wrap items-end justify-between gap-3">
             <ReportFilterField label="الفترة الأكاديمية" htmlFor="leadership-period">
               <Select
                 value={selectedValue}
@@ -527,11 +528,11 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
       >
         <SheetContent
           side="left"
-          className="flex w-full flex-col gap-3 overflow-y-auto sm:max-w-[min(1100px,95vw)]"
+          className="leadership-details flex w-full flex-col gap-3 overflow-y-auto sm:max-w-[min(1100px,95vw)]"
           data-testid="leadership-detail-panel"
           dir="rtl"
         >
-          <SheetHeader className="ps-8 text-start">
+          <SheetHeader className="leadership-detail-heading ps-8 text-start">
             <SheetTitle>
               {selectedCollege?.college ?? (collegeDean ? "تفاصيل الكلية" : "تفاصيل الجامعة")}
             </SheetTitle>
@@ -579,7 +580,7 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
                 dir="rtl"
                 className="min-w-0"
               >
-                <TabsList aria-label="تفاصيل المؤشرات">
+                <TabsList className="leadership-detail-tabs" aria-label="تفاصيل المؤشرات">
                   <TabsTrigger value="teaching">التدريس والجداول</TabsTrigger>
                   <TabsTrigger value="faculty">المحاضرون والأنصبة</TabsTrigger>
                   <TabsTrigger value="rooms">القاعات</TabsTrigger>
@@ -849,6 +850,6 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
         period={period ?? (data ? { year: data.year, type: data.term_type } : null)}
         onClose={() => setDrilldown(null)}
       />
-    </>
+    </div>
   );
 }
