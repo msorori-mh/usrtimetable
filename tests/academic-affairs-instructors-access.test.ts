@@ -15,8 +15,8 @@ describe("academic affairs route scope", () => {
     expect(resolveViewerScopeRedirect(ACADEMIC, "/reports")).toBeNull();
     expect(resolveViewerScopeRedirect(ACADEMIC, "/reports/instructors")).toBeNull();
     expect(resolveViewerScopeRedirect(ACADEMIC, "/instructors")).toBeNull();
-    expect(resolveViewerScopeRedirect(ACADEMIC, "/dashboard")).toBe("/reports");
-    expect(resolveViewerScopeRedirect(ACADEMIC, "/users")).toBe("/reports");
+    expect(resolveViewerScopeRedirect(ACADEMIC, "/dashboard")).toBe("/reports/leadership");
+    expect(resolveViewerScopeRedirect(ACADEMIC, "/users")).toBe("/reports/leadership");
   });
 
   it("navigation exposes only instructors and reports", () => {

@@ -5,7 +5,7 @@ import { BookOpen, Clock3, FlaskConical, RefreshCw, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { setActiveCollegeId } from "@/hooks/use-colleges";
-import { canViewLeadership } from "@/lib/viewer-roles";
+import { canViewLeadership, executiveDashboardTitle } from "@/lib/viewer-roles";
 import { UnauthorizedAccess } from "@/components/unauthorized-access";
 import { ReportFilterField } from "@/components/reports/report-filters";
 import { ReportShell } from "@/components/reports/report-shell";
@@ -285,7 +285,7 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
         p_academic_year: period?.year ?? null,
         p_term_type: period?.type ?? null,
       });
-      if (error) throw new Error("تعذر تحميل ملخص الجامعة. أعد المحاولة.");
+      if (error) throw new Error("تعذر تحميل المؤشرات التنفيذية. أعد المحاولة.");
       return leadershipOverviewSchema.parse(data);
     },
   });
@@ -397,7 +397,10 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
   };
   const openDetail = (tab: LeadershipDetailTab, collegeId?: string) => {
     if (collegeId && !colleges.some((college) => college.college_id === collegeId)) return;
-    setDetail({ tab, collegeId: collegeId ?? null });
+    setDetail({
+      tab,
+      collegeId: collegeId ?? (collegeDean ? (colleges[0]?.college_id ?? null) : null),
+    });
   };
   const rankCounts = orderedLeadershipCounts(
     sumLeadershipCounts(scoped, "rank_counts"),
@@ -448,7 +451,7 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
   return (
     <div className="leadership-dashboard">
       <ReportShell
-        title={collegeDean ? "المؤشرات التنفيذية للكلية" : "المؤشرات التنفيذية للجامعة"}
+        title={executiveDashboardTitle(me)}
         description={`آخر قراءة ناجحة: ${generatedAt} · ${collegeDean ? "بيانات الكلية المُسندة فقط" : "ملخص جميع الكليات"}`}
         filename={`university_leadership_${data?.year ?? ""}_${data?.term_type ?? ""}`}
         rows={rows}
@@ -512,6 +515,7 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
         }
       >
         <LeadershipDecisionSummary
+          scope={collegeDean ? "college" : "university"}
           colleges={colleges}
           uniqueFaculty={data?.unique_faculty ?? null}
           capacity={capacity}

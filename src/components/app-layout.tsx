@@ -40,6 +40,7 @@ import {
   INSTITUTIONAL_VIEWER_ROLE_LABEL_AR,
   READ_ONLY_ROLE_LABEL_AR,
   buildAccountGreeting,
+  executiveDashboardTitle,
   isAcademicAffairsRole,
   isLeadershipOnlyRole,
   LEADERSHIP_ROLE_LABEL_AR,
@@ -323,8 +324,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const collegeDeanOnly =
     !!user?.isCollegeDean && !user.isSuperAdmin && !user.isUniversityLeadership;
   const restrictedViewer = reportsOnly || academicAffairs || leadership;
-  const effectiveMode: NavMode =
-    reportsOnly || leadership ? "core" : academicAffairs ? "all" : mode;
+  const effectiveMode: NavMode = restrictedViewer ? "core" : mode;
 
   const coreSteps = useMemo(() => CORE_PATH.filter((s) => canAccess(s, roles)), [roles]);
   const toolPages = useMemo(
@@ -341,7 +341,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   const preparationStep = preparationStepForPath(pathname);
 
-  const crumb = useMemo(() => resolveBreadcrumb(pathname), [pathname]);
+  const crumb = useMemo(() => {
+    if (pathname === "/reports/leadership") {
+      return { section: "المؤشرات التنفيذية", page: executiveDashboardTitle(user), to: pathname };
+    }
+    return resolveBreadcrumb(pathname);
+  }, [pathname, user]);
 
   const roleLabel = user?.isSuperAdmin
     ? "Super Admin"
@@ -351,9 +356,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         ? INSTITUTIONAL_VIEWER_ROLE_LABEL_AR
         : user?.isUniversityLeadership
           ? LEADERSHIP_ROLE_LABEL_AR
-          : user?.isReadOnly
-            ? READ_ONLY_ROLE_LABEL_AR
-            : "—";
+          : user?.isCollegeDean
+            ? COLLEGE_DEAN_ROLE_LABEL_AR
+            : user?.isReadOnly
+              ? READ_ONLY_ROLE_LABEL_AR
+              : "—";
 
   const modeToggle = restrictedViewer ? null : (
     <button
@@ -383,13 +390,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             tone === "sidebar" ? "text-sidebar-foreground/55" : "text-muted-foreground",
           )}
         >
-          {leadership
-            ? "الإدارة العليا: ملخص الجامعة وتقارير الكليات، للقراءة فقط."
-            : reportsOnly
-              ? "حساب مشاهد: تقارير الكلّيات المُسندة لك فقط، قراءة وطباعة وتصدير."
-              : academicAffairs
-                ? "إدارة الشؤون الأكاديمية: التقارير وبيانات المحاضرين لجميع الكلّيات."
-                : "أربع خطوات: تجهيز البيانات، إنشاء الجدول، المراجعة والاعتماد، التقارير والطباعة."}
+          {collegeDeanOnly
+            ? "عمادة الكلية: المؤشرات التنفيذية وتقارير الكلية المُسندة، للقراءة فقط."
+            : leadership
+              ? "الإدارة العليا: ملخص الجامعة وتقارير الكليات، للقراءة فقط."
+              : reportsOnly
+                ? "حساب مشاهد: تقارير الكلّيات المُسندة لك فقط، قراءة وطباعة وتصدير."
+                : academicAffairs
+                  ? "إدارة الشؤون الأكاديمية: التقارير وبيانات المحاضرين لجميع الكلّيات."
+                  : "أربع خطوات: تجهيز البيانات، إنشاء الجدول، المراجعة والاعتماد، التقارير والطباعة."}
         </p>
         <CorePathNav
           steps={coreSteps}
@@ -511,7 +520,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <p
               className={cn(
                 "whitespace-normal break-words leading-relaxed",
-                leadership
+                leadership || academicAffairs
                   ? "text-lg font-bold text-primary sm:text-xl"
                   : "text-sm text-foreground sm:text-base",
               )}
@@ -523,14 +532,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 isCollegeDeanOnly: collegeDeanOnly,
               })}
             </p>
-            {!user.isSuperAdmin && !leadership && activeCollege && (
-              <p
-                className="mt-1 whitespace-normal break-words text-lg font-bold leading-relaxed text-primary sm:text-xl"
-                data-testid="account-college-name"
-              >
-                {activeCollege.name}
-              </p>
-            )}
+            {!user.isSuperAdmin &&
+              !leadership &&
+              pathname !== "/reports/leadership" &&
+              activeCollege && (
+                <p
+                  className="mt-1 whitespace-normal break-words text-lg font-bold leading-relaxed text-primary sm:text-xl"
+                  data-testid="account-college-name"
+                >
+                  {activeCollege.name}
+                </p>
+              )}
           </div>
         )}
         {(crumb || activeCollege) && (
