@@ -63,6 +63,8 @@ import {
   LeadershipMetricDrilldown,
   type LeadershipDrilldownTarget,
 } from "@/components/reports/leadership-metric-drilldown";
+import { LeadershipRoomCapacitySummary } from "@/components/reports/leadership-room-capacity-summary";
+import { fetchLeadershipRoomCapacity } from "@/lib/reports/fetch-leadership-room-capacity";
 
 export const Route = createFileRoute("/_authenticated/reports/leadership")({
   head: () => ({
@@ -342,7 +344,7 @@ function BalanceCell({ row }: { row: LeadershipRow }) {
   );
 }
 
-function RoomCell({ row }: { row: LeadershipRow }) {
+function RoomCell({ row, showCapacity }: { row: LeadershipRow; showCapacity: boolean }) {
   return (
     <div className="min-w-[150px] space-y-1 text-xs">
       <div>
@@ -351,7 +353,9 @@ function RoomCell({ row }: { row: LeadershipRow }) {
       <div className="text-muted-foreground">
         {text(row.halls)} قاعة · {text(row.labs)} معمل
       </div>
-      <div className="text-muted-foreground">الاستغلال الزمني: غير محسوب</div>
+      <div className="text-muted-foreground">
+        {showCapacity ? "ساعات الإتاحة في ملخص القاعات أعلاه" : "الاستغلال الزمني: غير محسوب"}
+      </div>
     </div>
   );
 }
@@ -391,6 +395,12 @@ function LeadershipDashboard() {
     publication: college.version_id ? "منشور" : "غير منشور",
     notice: leadershipNotice(college),
   }));
+  const roomCapacityQuery = useQuery({
+    queryKey: ["leadership-room-capacity", me?.id, data?.year, data?.term_type, data?.generated_at],
+    enabled: !collegeDean && colleges.length > 0 && !query.isFetching && !query.error,
+    staleTime: 60_000,
+    queryFn: () => fetchLeadershipRoomCapacity(colleges),
+  });
   const ready = colleges.filter((college) => college.term_state === "ready").length;
   const published = colleges.filter((college) => !!college.version_id).length;
   const attention = colleges.filter(hasIssue).length;
@@ -523,7 +533,7 @@ function LeadershipDashboard() {
       key: "room_count",
       label: "القاعات والمعامل",
       secondary: true,
-      render: (row) => <RoomCell row={row} />,
+      render: (row) => <RoomCell row={row} showCapacity={!collegeDean} />,
     },
     { key: "faculty_count", label: "المحاضرون", numeric: true, secondary: true },
     { key: "notice", label: "أسباب المتابعة", secondary: true },
@@ -826,6 +836,16 @@ function LeadershipDashboard() {
         }
       >
         <div className="space-y-5">
+          {!collegeDean && colleges.length > 0 && (
+            <LeadershipRoomCapacitySummary
+              rows={roomCapacityQuery.data ?? []}
+              loading={
+                query.isFetching || roomCapacityQuery.isPending || roomCapacityQuery.isFetching
+              }
+              error={roomCapacityQuery.isError}
+              onRetry={() => void roomCapacityQuery.refetch()}
+            />
+          )}
           <ReportSection
             title="الحمل التدريسي الأسبوعي"
             testId="leadership-weekly-teaching"
@@ -935,11 +955,11 @@ function LeadershipDashboard() {
                   </div>
                   <div className="flex justify-between">
                     <dt>ساعات الإشغال / المتاح</dt>
-                    <dd>غير محسوب</dd>
+                    <dd>{collegeDean ? "غير محسوب" : "في ملخص ساعات القاعات"}</dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt>القاعات الخالية والفجوات المتصلة</dt>
-                    <dd>غير محسوب</dd>
+                    <dt>القاعات الخالية في المنشور</dt>
+                    <dd>{collegeDean ? "غير محسوب" : "في تفاصيل كل كلية أعلاه"}</dd>
                   </div>
                   <div className="flex justify-between">
                     <dt>ملاءمة السعة والتجهيز</dt>
@@ -947,7 +967,8 @@ function LeadershipDashboard() {
                   </div>
                 </dl>
                 <p className="border-t pt-2 text-xs text-muted-foreground">
-                  لا تُعد أي قاعة متاحة هنا؛ مصدر الملخص لا يفحص حجوزاتها الزمنية عبر جميع الكليات.
+                  مكافئات الفائض تقارن الساعات. تحديد قاعة يمكن الاستغناء عنها يتطلب مراجعة نوعها
+                  وسعتها وتوزيع المحاضرات.
                 </p>
                 <ReportDisclosure label="تفاصيل الكليات">
                   <div className="space-y-2">
