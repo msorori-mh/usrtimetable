@@ -112,8 +112,8 @@ function DataOnboardingPage() {
                     onClick={() => void refetch()}
                     disabled={isFetching}
                   >
-                    <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} /> إعادة
-                    الفحص
+                    <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+                    <span>إعادة الفحص</span>
                   </Button>
                 </div>
               </div>
