@@ -5,21 +5,50 @@ import { checkAuthenticatedSession, SessionCheckError } from "../src/lib/auth/ch
 const identity = { data: { user: { id: "synthetic-user" } }, error: null };
 const services = (password = false) => ({
   getUser: async () => identity,
-  passwordRequirement: async () => ({ data: password, error: null, status: 200 }),
+  accessStatus: async () => ({
+    data: { session_valid: true, password_required: password, mfa_required: false },
+    error: null,
+    status: 200,
+  }),
 });
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 
-test("access requires a remote identity and an explicit boolean password result", async () => {
+test("MFA remains required for a valid aal1 session and revoked sessions stay signed out", async () => {
+  for (const valid of [true, false]) {
+    const result = await checkAuthenticatedSession(
+      {
+        ...services(),
+        accessStatus: async () => ({
+          data: {
+            session_valid: valid,
+            password_required: false,
+            mfa_required: true,
+          },
+          error: null,
+        }),
+      },
+      new AbortController().signal,
+    );
+    assert.deepEqual(
+      result,
+      valid
+        ? { kind: "ready", passwordRequired: false, mfaRequired: true }
+        : { kind: "signed-out" },
+    );
+  }
+});
+
+test("access requires a remote identity and an complete boolean access status", async () => {
   for (const password of [true, false]) {
     assert.deepEqual(
       await checkAuthenticatedSession(services(password), new AbortController().signal),
-      { kind: "ready", passwordRequired: password },
+      { kind: "ready", passwordRequired: password, mfaRequired: false },
     );
   }
   for (const value of [null, undefined, "false", 0, {}]) {
     await assert.rejects(
       checkAuthenticatedSession(
-        { ...services(), passwordRequirement: async () => ({ data: value, error: null }) },
+        { ...services(), accessStatus: async () => ({ data: value, error: null }) },
         new AbortController().signal,
       ),
       /INVALID_RESPONSE/,
@@ -37,7 +66,7 @@ test("missing or expired identities never request the password RPC", async () =>
       await checkAuthenticatedSession(
         {
           getUser: async () => result,
-          passwordRequirement: () => assert.fail("Unexpected password RPC"),
+          accessStatus: () => assert.fail("Unexpected password RPC"),
         },
         new AbortController().signal,
       ),
@@ -72,7 +101,7 @@ test("RPC failures retain only safe diagnostic codes and deny access", async () 
     checkAuthenticatedSession(
       {
         ...services(),
-        passwordRequirement: async () => ({
+        accessStatus: async () => ({
           data: false,
           status: 500,
           error: { code: "54001", message: "PRIVATE", details: "PRIVATE" },
@@ -97,7 +126,7 @@ test("stalled identity times out; a late response cannot proceed to the RPC", as
         new Promise((resolve) => {
           resolveIdentity = resolve;
         }),
-      passwordRequirement: () => assert.fail("Late identity must not proceed"),
+      accessStatus: () => assert.fail("Late identity must not proceed"),
     },
     new AbortController().signal,
     100,
@@ -117,7 +146,7 @@ test("stalled password check times out and aborts its request", async (t) => {
   const pending = checkAuthenticatedSession(
     {
       ...services(),
-      passwordRequirement: (signal) => {
+      accessStatus: (signal) => {
         requestSignal = signal;
         return new Promise((resolve) => {
           resolveRequirement = resolve;
@@ -127,7 +156,7 @@ test("stalled password check times out and aborts its request", async (t) => {
     new AbortController().signal,
     100,
   );
-  const rejected = assert.rejects(pending, /متطلبات كلمة المرور.*TIMEOUT/);
+  const rejected = assert.rejects(pending, /متطلبات الدخول.*TIMEOUT/);
   await tick();
   t.mock.timers.tick(100);
   await rejected;
@@ -142,7 +171,7 @@ test("sign-out or unmount cancels an in-flight password check", async () => {
   const pending = checkAuthenticatedSession(
     {
       ...services(),
-      passwordRequirement: (signal) => {
+      accessStatus: (signal) => {
         requestSignal = signal;
         return new Promise(() => {});
       },
@@ -175,5 +204,6 @@ test("a rejected service call is sanitized and a subsequent retry can succeed", 
   assert.deepEqual(await checkAuthenticatedSession(services(), new AbortController().signal), {
     kind: "ready",
     passwordRequired: false,
+    mfaRequired: false,
   });
 });

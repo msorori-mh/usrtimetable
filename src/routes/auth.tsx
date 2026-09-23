@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,11 +13,35 @@ import {
   USR_UNIVERSITY_NAME_AR,
 } from "@/lib/branding/usr";
 import { toast } from "sonner";
+import { checkCurrentSession } from "@/lib/auth/session-service";
+import { boundedSessionRequest, SessionCheckError } from "@/lib/auth/check-session";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({ meta: [{ title: `تسجيل الدخول — ${USR_PLATFORM_NAME_AR}` }] }),
   component: AuthPage,
 });
+
+/** Fail closed when the MFA service is unavailable or its factor response is incomplete. */
+async function pendingSecondFactor(signal: AbortSignal): Promise<string | null> {
+  const { data: level, error: levelError } = await boundedSessionRequest(
+    () => supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
+    "التحقق بخطوتين",
+    signal,
+  );
+  if (levelError || !level)
+    throw new SessionCheckError("تعذّر التحقق من المصادقة بخطوتين. أعد المحاولة.");
+  if (level.currentLevel === "aal2" || level.nextLevel !== "aal2") return null;
+  const { data: list, error: listError } = await boundedSessionRequest(
+    () => supabase.auth.mfa.listFactors(),
+    "تحميل وسيلة التحقق بخطوتين",
+    signal,
+  );
+  if (listError || !list)
+    throw new SessionCheckError("تعذّر تحميل وسيلة التحقق بخطوتين. أعد المحاولة.");
+  const factor = list.totp?.find((f) => f.status === "verified");
+  if (!factor) throw new SessionCheckError("وسيلة التحقق بخطوتين غير متاحة. تواصل مع المشرف.");
+  return factor.id;
+}
 
 function AuthPage() {
   const navigate = useNavigate();
@@ -29,19 +53,42 @@ function AuthPage() {
   const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
   const [otp, setOtp] = useState("");
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user) navigate({ to: "/dashboard", replace: true });
-    });
-  }, [navigate]);
+  const finishSignIn = useCallback(
+    async (signal: AbortSignal) => {
+      const result = await checkCurrentSession(signal);
+      if (signal.aborted || result.kind === "signed-out") return;
+      if (result.mfaRequired) {
+        const factorId = await pendingSecondFactor(signal);
+        if (signal.aborted) return;
+        if (!factorId)
+          throw new SessionCheckError("يلزم إعداد التحقق بخطوتين للحساب؛ تواصل مع المشرف.");
+        setMfaFactorId(factorId);
+        setOtp("");
+        return;
+      }
+      void navigate({ to: "/dashboard", replace: true });
+    },
+    [navigate],
+  );
 
-  /** Returns the factor id when a second factor is still required. */
-  const pendingSecondFactor = async (): Promise<string | null> => {
-    const { data: level } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    if (!level || level.nextLevel !== "aal2" || level.currentLevel === "aal2") return null;
-    const { data: list } = await supabase.auth.mfa.listFactors();
-    return list?.totp?.find((f) => f.status === "verified")?.id ?? null;
-  };
+  // A saved aal1 session must resume MFA, not silently enter an empty dashboard.
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    void finishSignIn(controller.signal)
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted)
+          toast.error(
+            error instanceof SessionCheckError
+              ? error.message
+              : "تعذّر التحقق من الجلسة. أعد المحاولة.",
+          );
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [finishSignIn]);
 
   const handle = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,16 +96,7 @@ function AuthPage() {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      const factorId = await pendingSecondFactor();
-      if (factorId) {
-        setMfaFactorId(factorId);
-        setOtp("");
-        toast.info("أدخل رمز التحقق من تطبيق المصادقة");
-        return;
-      }
-      toast.success("مرحباً بك");
-      const { data } = await supabase.auth.getUser();
-      if (data.user) navigate({ to: "/dashboard", replace: true });
+      await finishSignIn(new AbortController().signal);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "حدث خطأ";
       toast.error(translateAuthError(msg));

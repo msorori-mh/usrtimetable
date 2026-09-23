@@ -83,7 +83,7 @@ jobs:
         run: bunx tsc --noEmit
 
       - name: Bounded fail-closed session checks
-        run: node --test tests/session-check.test.mjs tests/auth-refresh.test.mjs
+        run: node --test tests/session-check.test.mjs tests/auth-refresh.test.mjs tests/auth-resume.cjs
 
       - name: Large timetable report query batching
         run: node --test tests/report-query-batching.cjs

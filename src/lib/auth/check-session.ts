@@ -1,7 +1,7 @@
 type ServiceError = { code?: string; status?: number; name?: string };
 type SessionServices = {
   getUser: () => PromiseLike<{ data: { user: unknown | null }; error: ServiceError | null }>;
-  passwordRequirement: (signal: AbortSignal) => PromiseLike<{
+  accessStatus: (signal: AbortSignal) => PromiseLike<{
     data: unknown;
     error: ServiceError | null;
     status?: number;
@@ -20,11 +20,11 @@ function serviceFailure(label: string, error?: ServiceError | null, status?: num
   return new SessionCheckError(`${label}${reference ? ` (${reference})` : ""}`);
 }
 
-async function bounded<T>(
+export async function boundedSessionRequest<T>(
   operation: (signal: AbortSignal) => PromiseLike<T>,
   label: string,
   signal: AbortSignal,
-  timeoutMs: number,
+  timeoutMs = 20_000,
 ): Promise<T> {
   const request = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -63,29 +63,43 @@ export async function checkAuthenticatedSession(
   services: SessionServices,
   signal: AbortSignal,
   timeoutMs = 20_000,
-): Promise<{ kind: "signed-out" } | { kind: "ready"; passwordRequired: boolean }> {
-  const user = await bounded(services.getUser, "التحقق من الهوية", signal, timeoutMs);
+): Promise<
+  { kind: "signed-out" } | { kind: "ready"; passwordRequired: boolean; mfaRequired: boolean }
+> {
+  const user = await boundedSessionRequest(services.getUser, "التحقق من الهوية", signal, timeoutMs);
   if (user.error) {
     if (user.error.status === 401 || user.error.name === "AuthSessionMissingError")
       return { kind: "signed-out" };
     throw serviceFailure("تعذّر التحقق من الهوية.", user.error);
   }
   if (!user.data.user) return { kind: "signed-out" };
-  const requirement = await bounded(
-    services.passwordRequirement,
-    "التحقق من متطلبات كلمة المرور",
+  const requirement = await boundedSessionRequest(
+    services.accessStatus,
+    "التحقق من متطلبات الدخول",
     signal,
     timeoutMs,
   );
-  if (requirement.error)
-    throw serviceFailure(
-      "تعذّر التحقق من متطلبات كلمة المرور.",
-      requirement.error,
-      requirement.status,
-    );
-  if (typeof requirement.data !== "boolean")
-    throw new SessionCheckError(
-      "استجابة التحقق من متطلبات كلمة المرور غير صالحة. (INVALID_RESPONSE)",
-    );
-  return { kind: "ready", passwordRequired: requirement.data };
+  if (requirement.error) {
+    if (requirement.status === 401 || requirement.error.code === "PT401")
+      return { kind: "signed-out" };
+    throw serviceFailure("تعذّر التحقق من متطلبات الدخول.", requirement.error, requirement.status);
+  }
+  const access = requirement.data;
+  if (
+    !access ||
+    typeof access !== "object" ||
+    !("session_valid" in access) ||
+    typeof access.session_valid !== "boolean" ||
+    !("password_required" in access) ||
+    typeof access.password_required !== "boolean" ||
+    !("mfa_required" in access) ||
+    typeof access.mfa_required !== "boolean"
+  )
+    throw new SessionCheckError("استجابة التحقق من متطلبات الدخول غير صالحة. (INVALID_RESPONSE)");
+  if (!access.session_valid) return { kind: "signed-out" };
+  return {
+    kind: "ready",
+    passwordRequired: access.password_required,
+    mfaRequired: access.mfa_required,
+  };
 }

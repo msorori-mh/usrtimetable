@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/app-layout";
 import { ReportsOnlyGate } from "@/components/reports-only-gate";
 import { MandatoryPasswordChange } from "@/components/mandatory-password-change";
-import { checkAuthenticatedSession, SessionCheckError } from "@/lib/auth/check-session";
+import { SessionCheckError } from "@/lib/auth/check-session";
+import { checkCurrentSession } from "@/lib/auth/session-service";
 
 /**
  * LAUNCH-CLOSURE-01 — hydration-safe client auth gate.
@@ -59,17 +60,10 @@ function AuthenticatedLayout() {
         void navigate({ to: "/auth", replace: true });
       }
     });
-    void checkAuthenticatedSession(
-      {
-        getUser: () => supabase.auth.getUser(),
-        passwordRequirement: (signal) =>
-          supabase.rpc("password_change_required").abortSignal(signal),
-      },
-      controller.signal,
-    )
+    void checkCurrentSession(controller.signal)
       .then((result) => {
         if (cancelled) return;
-        if (result.kind === "signed-out") {
+        if (result.kind === "signed-out" || result.mfaRequired) {
           void navigate({ to: "/auth", replace: true });
           return;
         }
