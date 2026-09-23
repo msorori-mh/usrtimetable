@@ -82,6 +82,9 @@ jobs:
       - name: TypeScript (tsc --noEmit)
         run: bunx tsc --noEmit
 
+      - name: Large timetable report query batching
+        run: node --test tests/report-query-batching.cjs
+
       - name: Joint attendance and scheduling contracts
         run: node --import tsx --test tests/extended-day.test.mjs tests/attendance-search.test.mjs tests/compact.test.mjs tests/joint-attendance.test.mjs tests/v2-joint-orchestration.test.mjs tests/compact-worker-client.test.mjs tests/compact-atomic-service.test.mjs tests/shared-lectures.test.mjs tests/auto-schedule-study-system-scope.test.mjs
 

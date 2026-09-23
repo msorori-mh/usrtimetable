@@ -107,7 +107,8 @@ async function fetchRowsByIds<T extends { id: string }>(
     | "sections"
     | "section_subgroups"
     | "instructors"
-    | "rooms",
+    | "rooms"
+    | "delivery_groups",
   ids: string[],
   select: string,
 ): Promise<T[]> {
@@ -207,12 +208,13 @@ export async function hydrateWorkspaceSessions(
         .filter((v): v is string => !!v),
     ),
   ];
-  const sessionGroups = flat.map((s) => s.delivery_group_id).filter((v): v is string => !!v);
-  const { data: groupScopes, error: scopeError } = sessionGroups.length
-    ? await supabase.from("delivery_groups").select("college_id").in("id", sessionGroups)
-    : { data: [], error: null };
-  if (scopeError) throw scopeError;
-  for (const g of groupScopes ?? [])
+  const sessionGroups = uniqueIds(flat.map((s) => s.delivery_group_id));
+  const groupScopes = await fetchRowsByIds<{ id: string; college_id: string }>(
+    "delivery_groups",
+    sessionGroups,
+    "id,college_id",
+  );
+  for (const g of groupScopes)
     if (!collegeIds.includes(g.college_id)) collegeIds.push(g.college_id);
   const shared = (await Promise.all(collegeIds.map(fetchSharedLectures))).flat();
   const enriched = flat.map((s) => ({

@@ -408,6 +408,21 @@ export interface CohortDeliveryGroupLabels {
   deliveryGroups: Map<string, string>;
 }
 
+/** Bound URL length as well as response size; retain tenant scope in every batch. */
+async function fetchLabelRowsByIds<T>(
+  ids: string[],
+  read: (ids: string[]) => PromiseLike<{ data: T[] | null; error: unknown }>,
+): Promise<T[]> {
+  const rows: T[] = [];
+  for (let i = 0; i < ids.length; i += 100) {
+    const result = await read(ids.slice(i, i + 100));
+    if (result.error) throw result.error;
+    if (!result.data) throw new Error("تعذر قراءة مسميات الجدول كاملة");
+    rows.push(...result.data);
+  }
+  return rows;
+}
+
 /**
  * Resolve cohort/delivery-group display labels for raw timetable sessions.
  * Two batched, tenant-scoped SELECTs keyed by the session FK ids — no
@@ -430,31 +445,28 @@ export async function fetchCohortDeliveryGroupLabels(
     ),
   ];
 
-  const [cohortsRes, deliveryGroupsRes] = await Promise.all([
-    cohortIds.length
-      ? supabase
-          .from("academic_cohorts")
-          .select("id, code, expected_students")
-          .eq("college_id", collegeId)
-          .in("id", cohortIds)
-      : Promise.resolve({ data: [], error: null }),
-    deliveryGroupIds.length
-      ? supabase
-          .from("delivery_groups")
-          .select(
-            "id, cohort_id, plan_course_id, component_id, group_code, active, is_obsolete, expected_students",
-          )
-          .eq("college_id", collegeId)
-          .in("id", deliveryGroupIds)
-      : Promise.resolve({ data: [], error: null }),
+  const [cohortRows, deliveryGroupRows] = await Promise.all([
+    fetchLabelRowsByIds(cohortIds, (ids) =>
+      supabase
+        .from("academic_cohorts")
+        .select("id, code, expected_students")
+        .eq("college_id", collegeId)
+        .in("id", ids),
+    ),
+    fetchLabelRowsByIds(deliveryGroupIds, (ids) =>
+      supabase
+        .from("delivery_groups")
+        .select(
+          "id, cohort_id, plan_course_id, component_id, group_code, active, is_obsolete, expected_students",
+        )
+        .eq("college_id", collegeId)
+        .in("id", ids),
+    ),
   ]);
-
-  if (cohortsRes.error) throw cohortsRes.error;
-  if (deliveryGroupsRes.error) throw deliveryGroupsRes.error;
 
   // Query every sibling, including unscheduled groups and other instructors.
   // Group cohorts come from their records, not only the filtered session rows.
-  const groupCohorts = [...new Set((deliveryGroupsRes.data ?? []).map((g) => g.cohort_id))];
+  const groupCohorts = [...new Set(deliveryGroupRows.map((g) => g.cohort_id))];
   const siblings = [];
   for (let i = 0; i < groupCohorts.length; i += 100) {
     siblings.push(
@@ -473,15 +485,13 @@ export async function fetchCohortDeliveryGroupLabels(
   }
   const displayLabels = wholeCohortGroupLabels(
     siblings,
-    new Map((cohortsRes.data ?? []).map((c) => [c.id, c.expected_students])),
+    new Map(cohortRows.map((c) => [c.id, c.expected_students])),
   );
 
   return {
-    cohorts: new Map(
-      ((cohortsRes.data ?? []) as { id: string; code: string }[]).map((c) => [c.id, c.code]),
-    ),
+    cohorts: new Map((cohortRows as { id: string; code: string }[]).map((c) => [c.id, c.code])),
     deliveryGroups: new Map(
-      ((deliveryGroupsRes.data ?? []) as { id: string; group_code: string }[]).map((d) => [
+      (deliveryGroupRows as { id: string; group_code: string }[]).map((d) => [
         d.id,
         displayLabels.get(d.id) ?? d.group_code,
       ]),
