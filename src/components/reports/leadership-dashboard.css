@@ -88,6 +88,142 @@
   gap: 1.25rem;
 }
 
+/* Staffing readiness shares the executive palette and remains visible in print. */
+.staffing-entry {
+  margin-block-end: 1rem;
+  border-inline-start: 4px solid #4c437e;
+}
+.staffing-entry-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  padding: 1rem;
+}
+.staffing-entry-body p {
+  flex: 1 1 22rem;
+  font-size: 0.875rem;
+  line-height: 1.8;
+  color: var(--leadership-muted);
+}
+.staffing-development-status {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+  border: 1px solid var(--leadership-line);
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.65rem;
+  color: var(--leadership-ink);
+  font-size: 0.875rem;
+  font-weight: 800;
+}
+.staffing-notice {
+  border: 1px solid var(--leadership-line);
+  border-inline-start: 4px solid #b9790f;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  background: var(--leadership-soft);
+}
+.staffing-notice h2 {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+.staffing-notice p,
+.staffing-note {
+  margin-block-start: 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.85;
+  color: var(--leadership-muted);
+}
+.staffing-matrix {
+  min-width: 880px;
+}
+.staffing-matrix tbody th,
+.staffing-matrix td {
+  vertical-align: top;
+  min-width: 130px;
+}
+.staffing-row-status {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--leadership-muted);
+  font-weight: 600;
+  margin-block-start: 0.4rem;
+}
+.staffing-observation p {
+  margin-block-start: 0.45rem;
+  color: var(--leadership-muted);
+}
+.staffing-observation-label {
+  font-weight: 800;
+}
+.staffing-observation--incomplete .staffing-observation-label {
+  text-decoration: underline dotted;
+  text-underline-offset: 0.3rem;
+}
+.staffing-evidence-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.staffing-evidence-list li {
+  min-width: 0;
+  padding: 1rem;
+  border-block-end: 1px solid var(--leadership-line);
+}
+.staffing-evidence-list h3,
+.staffing-result h3 {
+  font-size: 0.875rem;
+  font-weight: 800;
+}
+.staffing-evidence-list p,
+.staffing-result p {
+  font-size: 0.8125rem;
+  line-height: 1.8;
+  margin-block-start: 0.4rem;
+  color: var(--leadership-muted);
+}
+.staffing-evidence-owner {
+  font-weight: 600;
+}
+.staffing-results {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+.staffing-result {
+  border: 1px solid var(--leadership-line);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  background: var(--leadership-soft);
+}
+.staffing-result strong {
+  display: block;
+  margin-block-start: 0.5rem;
+  font-size: 1rem;
+}
+.staffing-entry button:focus-visible {
+  outline: 3px solid #d99a17;
+  outline-offset: 3px;
+}
+@media (max-width: 640px) {
+  .staffing-evidence-list,
+  .staffing-results {
+    grid-template-columns: 1fr;
+  }
+}
+@media print {
+  .staffing-entry {
+    break-inside: avoid;
+  }
+  .staffing-matrix {
+    min-width: 0;
+  }
+}
+
 .leadership-cards {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -447,7 +583,7 @@
 }
 .leadership-details .leadership-detail-tabs {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   width: 100%;
   height: auto;
   padding: 0.35rem;

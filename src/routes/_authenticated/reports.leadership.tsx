@@ -58,6 +58,11 @@ import {
 import { LeadershipRoomCapacitySummary } from "@/components/reports/leadership-room-capacity-summary";
 import { LeadershipDecisionSummary } from "@/components/reports/leadership-decision-summary";
 import {
+  AcademicStaffingEntry,
+  AcademicStaffingPanel,
+} from "@/components/reports/academic-staffing-panel";
+import { STAFFING_EXPORT_HEADERS, staffingReadinessExport } from "@/lib/reports/academic-staffing";
+import {
   leadershipPriorities,
   leadershipViewerKey,
   LEADERSHIP_QUERY_POLICY,
@@ -455,6 +460,7 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
   const selectedValue = data?.year ? JSON.stringify({ year: data.year, type: data.term_type }) : "";
   const rows = colleges.map((college) => ({
     ...college,
+    ...staffingReadinessExport(college),
     coverage: coveragePercent(college) === null ? "غير محسوب" : `${coveragePercent(college)}%`,
     publication: college.version_id ? "منشور" : "غير منشور",
     notice: leadershipNotice(college),
@@ -470,6 +476,7 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
         ...LEADERSHIP_ASSIGNMENT_HEADERS,
         ...LEADERSHIP_TEACHING_HEADERS,
         ...LEADERSHIP_ROOM_HEADERS,
+        ...STAFFING_EXPORT_HEADERS,
         { key: "publication", label: "حالة النشر" },
         { key: "version", label: "النسخة المنشورة" },
         { key: "notice", label: "أسباب المتابعة" },
@@ -497,19 +504,22 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
             ? (colleges[0]?.college ?? "الكلية المُسندة")
             : "جميع كليات الجامعة",
           termName: periodLabel,
-          note: "الإسناد من بيانات التدريس · الجداول من النسخ المنشورة · اكتمال كل مؤشر موضح",
+          note: "الإسناد من بيانات التدريس · الجداول من النسخ المنشورة · الاحتياج الأكاديمي: جاري التطوير",
         }}
         leading={
-          data && (query.isFetching || query.isError) ? (
-            <p
-              role={query.isError ? "alert" : "status"}
-              className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950"
-            >
-              {query.isError
-                ? "تعذر التحديث؛ المعروض آخر قراءة ناجحة في الوقت المبين أعلاه. أعد المحاولة بزر تحديث."
-                : "جارٍ تحديث البيانات؛ تبقى آخر قراءة ناجحة معروضة حتى اكتمال التحديث."}
-            </p>
-          ) : null
+          <>
+            <AcademicStaffingEntry onOpen={() => openDetail("staffing")} />
+            {data && (query.isFetching || query.isError) ? (
+              <p
+                role={query.isError ? "alert" : "status"}
+                className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950"
+              >
+                {query.isError
+                  ? "تعذر التحديث؛ المعروض آخر قراءة ناجحة في الوقت المبين أعلاه. أعد المحاولة بزر تحديث."
+                  : "جارٍ تحديث البيانات؛ تبقى آخر قراءة ناجحة معروضة حتى اكتمال التحديث."}
+              </p>
+            ) : null}
+          </>
         }
         filters={
           <div className="leadership-filters report-no-print flex flex-wrap items-end justify-between gap-3">
@@ -621,7 +631,11 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
                   <TabsTrigger value="faculty">المحاضرون والأنصبة</TabsTrigger>
                   <TabsTrigger value="rooms">القاعات</TabsTrigger>
                   <TabsTrigger value="quality">جودة البيانات</TabsTrigger>
+                  <TabsTrigger value="staffing">الاحتياج الأكاديمي</TabsTrigger>
                 </TabsList>
+                <TabsContent value="staffing" className="space-y-4">
+                  <AcademicStaffingPanel colleges={scoped} stale={query.isError} />
+                </TabsContent>
                 <TabsContent value="teaching" className="space-y-4">
                   <ReportSection
                     title="الإسناد التدريسي"

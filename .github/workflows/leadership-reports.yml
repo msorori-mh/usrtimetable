@@ -4,6 +4,7 @@ on:
     paths:
       - "src/**"
       - "tests/leadership*"
+      - "tests/academic-staffing*"
       - "tests/executive-dashboard*"
       - "supabase/migrations/*academic_affairs_executive_dashboard*"
       - "supabase/migrations/*university_leadership*"
@@ -27,6 +28,8 @@ jobs:
         run: npm install --prefix "$RUNNER_TEMP/leadership-db" --no-package-lock @electric-sql/pglite@0.3.14
       - name: Shared executive presentation and role scope
         run: node --import tsx --test tests/executive-dashboard-roles.test.tsx
+      - name: Academic staffing readiness and development gate
+        run: node --import tsx --test tests/academic-staffing.test.tsx
       - name: Academic affairs and dean executive access boundaries
         run: LEADERSHIP_DB_MODULE="$RUNNER_TEMP/leadership-db/node_modules/@electric-sql/pglite/dist/index.js" node --test tests/executive-dashboard-access-db.test.mjs
       - name: Read scope, write denial, mixed roles and university aggregates
