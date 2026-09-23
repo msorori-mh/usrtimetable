@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ADMINISTRATIVE_POSITION_OPTIONS } from "@/lib/instructors/administrative-positions";
-import { employmentTypeLabelAr } from "@/lib/instructor-metadata";
+import { availabilityStatusLabelAr } from "@/lib/instructor-metadata";
 import { filterRowsBySearch } from "@/lib/reports/search";
 
 export const Route = createFileRoute("/_authenticated/reports/instructors")({
@@ -51,6 +51,7 @@ type InstructorRow = {
   administrative_department_id: string | null;
   administrative_support_department_id: string | null;
   employment_type: string;
+  availability_status?: string | null;
   email: string | null;
   phone: string | null;
   is_active: boolean;
@@ -110,7 +111,7 @@ function InstructorAcademicCell({ row }: { row: InstructorDirectoryDisplayRow })
       <div className="font-semibold">{instructorText(row.academic_rank)}</div>
       <div className="text-[11px] text-muted-foreground">{instructorText(row.specialization)}</div>
       <div className="text-[10px] text-muted-foreground">
-        {instructorText(row.instructor_type)} · {instructorText(row.employment_type)}
+        {instructorText(row.instructor_type)} · الحالة: {instructorText(row.availability_status)}
       </div>
     </div>
   );
@@ -208,7 +209,7 @@ function Report() {
       const { data, error } = await supabase
         .from("instructors")
         .select(
-          "id, college_id, full_name, full_name_ar, employee_number, affiliation_college_id, affiliation_department_id, specialization, academic_rank, instructor_type_id, max_weekly_hours, administrative_release_hours, administrative_position, administrative_department_id, administrative_support_department_id, employment_type, email, phone, is_active",
+          "id, college_id, full_name, full_name_ar, employee_number, affiliation_college_id, affiliation_department_id, specialization, academic_rank, instructor_type_id, max_weekly_hours, administrative_release_hours, administrative_position, administrative_department_id, administrative_support_department_id, employment_type, availability_status, email, phone, is_active",
         )
         .eq("college_id", active!.id)
         .order("full_name");
@@ -353,7 +354,7 @@ function Report() {
           departmentMap.get(i.administrative_department_id ?? "") ??
           supportMap.get(i.administrative_support_department_id ?? "") ??
           "—",
-        employment_type: employmentTypeLabelAr(i.employment_type),
+        availability_status: availabilityStatusLabelAr(i.availability_status),
         email: i.email ?? "—",
         phone: i.phone ?? "—",
         status: i.is_active ? "نشط" : "غير نشط",
@@ -413,10 +414,10 @@ function Report() {
     { key: "effective_quota", label: "النصاب الفعلي المعتمد من الأصلية" },
     { key: "administrative_position", label: "المنصب الإداري" },
     { key: "administrative_unit", label: "الجهة الإدارية" },
-    { key: "employment_type", label: "حالة التفرغ/التعاقد" },
+    { key: "availability_status", label: "الحالة" },
     { key: "email", label: "البريد الإلكتروني" },
     { key: "phone", label: "التلفون/الواتساب" },
-    { key: "status", label: "الحالة" },
+    { key: "status", label: "النشاط" },
   ];
 
   const error = instructors.error ?? departments.error ?? supportDepartments.error ?? types.error;

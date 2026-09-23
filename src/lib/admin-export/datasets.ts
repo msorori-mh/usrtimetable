@@ -72,7 +72,8 @@ export type InstructorExportRow = {
   full_name_en?: string | null;
   department_id: string | null;
   academic_rank: string | null;
-  employment_type: string | null;
+  employment_type?: string | null;
+  availability_status?: string | null;
   max_weekly_hours: number | null;
   administrative_release_hours?: number | null;
   instructor_type_id?: string | null;
@@ -85,7 +86,8 @@ export function instructorsExportDataset(input: {
   collegeName?: string | null;
   departmentLabel: LabelLookup;
   categoryLabel: LabelLookup;
-  employmentLabel: LabelLookup;
+  /** Current lecturer status (availability_status). employment_type is never exported as status. */
+  availabilityLabel: LabelLookup;
   filters?: AdminExportFilter[];
 }): AdminExportDataset<InstructorExportRow> {
   return {
@@ -120,9 +122,9 @@ export function instructorsExportDataset(input: {
       },
       { key: "academic_rank", label: "الرتبة العلمية", value: (r) => r.academic_rank },
       {
-        key: "employment_type",
-        label: "نوع التعاقد",
-        value: (r) => input.employmentLabel(r.employment_type),
+        key: "availability_status",
+        label: "الحالة",
+        value: (r) => input.availabilityLabel(r.availability_status ?? null),
       },
       {
         key: "max_weekly_hours",
