@@ -121,6 +121,8 @@ export function SessionDialog({
         .from("instructors")
         .select("id, full_name")
         .eq("college_id", collegeId)
+        // Only available instructors are offered for new scheduling.
+        .eq("availability_status", "available")
         .limit(500);
       return data ?? [];
     },

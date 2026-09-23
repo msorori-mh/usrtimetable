@@ -43,7 +43,6 @@ import {
 } from "@/lib/instructor-category";
 import {
   ACADEMIC_RANKS,
-  EMPLOYMENT_TYPE_OPTIONS,
   UNKNOWN_EMPLOYMENT_TYPE,
   employmentTypeLabelAr,
   INSTRUCTOR_AVAILABILITY_OPTIONS,

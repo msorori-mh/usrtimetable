@@ -68,7 +68,8 @@ describe("STAFF-METADATA-01 instructor metadata truthfulness", () => {
   test("instructors page uses shared maps, unknown default and new labels", () => {
     const src = readFileSync(resolve(root, "src/routes/_authenticated/instructors.tsx"), "utf8");
     expect(src.includes("employment_type: UNKNOWN_EMPLOYMENT_TYPE")).toBe(true);
-    expect(src.includes("حالة التفرغ/التعاقد")).toBe(true);
+    expect(src.includes("حالة التفرغ/التعاقد")).toBe(false);
+    expect(src.includes("<Label>الحالة</Label>")).toBe(true);
     expect(src.includes("employmentTypeLabelAr")).toBe(true);
     expect(src.includes("فئة المحاضر:")).toBe(true);
     expect(src.includes('employment_type: "full_time"')).toBe(false);
