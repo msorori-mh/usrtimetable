@@ -44,7 +44,10 @@ describe("faculty home reconcile form", () => {
   });
 
   it("success closes the dialog and refreshes the list; button uses blocked state", () => {
-    const onSuccess = ui.slice(ui.indexOf("onSuccess: () => {"), ui.indexOf("onError: (e: Error) => {"));
+    const onSuccess = ui.slice(
+      ui.indexOf("onSuccess: () => {"),
+      ui.indexOf("onError: (e: Error) => {"),
+    );
     expect(onSuccess).toMatch(/setEdit\(null\)/);
     expect(onSuccess).toMatch(/invalidateQueries/);
     expect(ui).toMatch(/disabled=\{blocked !== null\}/);
