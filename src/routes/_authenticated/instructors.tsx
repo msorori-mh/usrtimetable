@@ -46,6 +46,9 @@ import {
   EMPLOYMENT_TYPE_OPTIONS,
   UNKNOWN_EMPLOYMENT_TYPE,
   employmentTypeLabelAr,
+  INSTRUCTOR_AVAILABILITY_OPTIONS,
+  DEFAULT_AVAILABILITY_STATUS,
+  availabilityStatusLabelAr,
 } from "@/lib/instructor-metadata";
 import {
   effectiveInstructorWeeklyHours,
@@ -100,6 +103,7 @@ function emptyForm() {
     phone: "",
     department_id: "",
     employment_type: UNKNOWN_EMPLOYMENT_TYPE,
+    availability_status: DEFAULT_AVAILABILITY_STATUS as string,
     max_weekly_hours: 18,
     is_active: true,
     employee_number: "",
@@ -350,7 +354,9 @@ function InstructorDirectory() {
         email: form.email.trim() || null,
         phone: form.phone.trim() || null,
         department_id: operationalDepartmentId,
+        // Hidden: preserved on edit, safe legacy default on create.
         employment_type: form.employment_type || UNKNOWN_EMPLOYMENT_TYPE,
+        availability_status: form.availability_status || DEFAULT_AVAILABILITY_STATUS,
         max_weekly_hours: Number(form.max_weekly_hours) || 0,
         administrative_release_hours: releaseHours,
         notes: editing?.notes ?? (form.notes.trim() || null),
@@ -396,6 +402,7 @@ function InstructorDirectory() {
           p_administrative_position: payload.administrative_position,
           p_administrative_department_id: payload.administrative_department_id,
           p_administrative_support_department_id: payload.administrative_support_department_id,
+          p_availability_status: payload.availability_status,
         });
         if (error) throw error;
       } else {
@@ -466,6 +473,7 @@ function InstructorDirectory() {
       phone: i.phone ?? "",
       department_id: i.department_id ?? "",
       employment_type: i.employment_type,
+      availability_status: i.availability_status ?? DEFAULT_AVAILABILITY_STATUS,
       max_weekly_hours: i.max_weekly_hours,
       is_active: i.is_active,
       employee_number: i.employee_number ?? "",
@@ -1063,19 +1071,19 @@ function InstructorDirectory() {
                   </div>
                 )}
 
-                <div data-field-order="12-employment">
-                  <Label>حالة التفرغ/التعاقد</Label>
+                <div data-field-order="12-availability-status">
+                  <Label>الحالة</Label>
                   <Select
-                    value={form.employment_type || UNKNOWN_EMPLOYMENT_TYPE}
-                    onValueChange={(v) => setForm({ ...form, employment_type: v })}
+                    value={form.availability_status || DEFAULT_AVAILABILITY_STATUS}
+                    onValueChange={(v) => setForm({ ...form, availability_status: v })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger data-testid="instructor-availability-select">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {EMPLOYMENT_TYPE_OPTIONS.map((e) => (
-                        <SelectItem key={e.value} value={e.value}>
-                          {e.label}
+                      {INSTRUCTOR_AVAILABILITY_OPTIONS.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>
+                          {o.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1332,6 +1340,9 @@ function InstructorDirectory() {
                         {instructorStatusLabel(i.is_active, i.notes)}
                       </span>
                     )}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    الحالة: {availabilityStatusLabelAr(i.availability_status)}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     الرقم الجامعي: <span dir="ltr">{i.university_number ?? "—"}</span>
