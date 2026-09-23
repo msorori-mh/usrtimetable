@@ -27,8 +27,9 @@ export interface CurrentUser {
   isCollegeDean: boolean;
 }
 
-async function fetchCurrentUser(): Promise<CurrentUser | null> {
-  const { data: userData } = await supabase.auth.getUser();
+export async function fetchCurrentUser(): Promise<CurrentUser | null> {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError) throw userError;
   if (!userData.user) return null;
   const uid = userData.user.id;
 
@@ -37,6 +38,9 @@ async function fetchCurrentUser(): Promise<CurrentUser | null> {
     supabase.from("user_roles").select("role").eq("user_id", uid),
     supabase.from("user_colleges").select("college_id").eq("user_id", uid),
   ]);
+
+  if (profileRes.error || rolesRes.error || collegesRes.error)
+    throw new Error("تعذر تحميل صلاحيات الحساب والكليات المتاحة. أعد المحاولة.");
 
   const roles = (rolesRes.data ?? []).map((r) => r.role as AppRole);
   return {

@@ -41,7 +41,8 @@ export function useAccessibleColleges() {
       // Viewer roles («مشاهد» / «مشاهد مؤسسي») are not institution-wide readers
       // by role: their reads stay inside the colleges assigned in user_colleges
       // (a database trigger keeps that list at all colleges). Read scope only.
-      const { data: userData } = await supabase.auth.getUser();
+      const { data: userData, error: identityError } = await supabase.auth.getUser();
+      if (identityError) throw identityError;
       const uid = userData.user?.id;
       // Fail closed: without an identity we cannot prove a college is assigned.
       if (!uid) return [];
@@ -71,7 +72,7 @@ export function useAccessibleColleges() {
 }
 
 export function useActiveCollege() {
-  const { data: colleges, isLoading } = useAccessibleColleges();
+  const { data: colleges, isLoading, isFetching, error, refetch } = useAccessibleColleges();
   const activeId = useSyncExternalStore(subscribeActiveCollegeId, getActiveCollegeId, () => null);
 
   useEffect(() => {
@@ -87,5 +88,8 @@ export function useActiveCollege() {
     active: resolveActiveCollege(colleges ?? [], activeId),
     setActiveId: setActiveCollegeId,
     isLoading,
+    isFetching,
+    error,
+    refetch,
   };
 }

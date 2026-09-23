@@ -11,6 +11,9 @@ export const getRouter = () => {
         retry: 1,
         retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 4000),
         staleTime: 30_000,
+        // Re-focusing many open college tabs must not reload every heavy report.
+        // Navigation and explicit refresh/mutation invalidation still revalidate.
+        refetchOnWindowFocus: false,
       },
     },
   });

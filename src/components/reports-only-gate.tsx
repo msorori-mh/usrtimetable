@@ -17,13 +17,29 @@ import { resolveViewerScopeRedirect, REPORTS_ONLY_HOME } from "@/lib/viewer-role
  */
 export function ReportsOnlyGate({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
-  const { data: me, isLoading } = useCurrentUser();
+  const { data: me, isLoading, isFetching, error, refetch } = useCurrentUser();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const redirectTo = isLoading ? null : resolveViewerScopeRedirect(me, pathname);
+  const redirectTo = isLoading || error ? null : resolveViewerScopeRedirect(me, pathname);
 
   useEffect(() => {
     if (redirectTo) void navigate({ to: redirectTo, replace: true });
   }, [redirectTo, navigate]);
+
+  if (error) {
+    return (
+      <div dir="rtl" role="alert" className="space-y-3 p-6 text-sm" data-testid="role-scope-error">
+        <p>تعذر تحميل صلاحيات الحساب. لم تُعرض بيانات التقارير حتى يكتمل التحقق.</p>
+        <button
+          type="button"
+          className="rounded-md border px-4 py-2"
+          disabled={isFetching}
+          onClick={() => void refetch()}
+        >
+          إعادة التحقق من الصلاحيات
+        </button>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
