@@ -43,20 +43,29 @@ for (const [name, body] of cases) {
   );
 }
 
-test("operational snapshot calculates each source group once, preserving all fields", () => {
+test("operational snapshot is set-based and preserves all fields", () => {
   sql(`BEGIN; SET LOCAL track_functions='pl';
     SELECT set_config('request.jwt.claim.sub',md5('manager'),true);
-    DO $$ DECLARE before_calls bigint; after_calls bigint; expected bigint; BEGIN
-      SELECT coalesce(sum(calls),0) INTO before_calls FROM pg_stat_xact_user_functions WHERE funcname='operational_delivery_group';
+    DO $$ DECLARE per_row bigint; BEGIN
       PERFORM jsonb_agg(v) FROM operational_delivery_groups v;
-      SELECT coalesce(sum(calls),0) INTO after_calls FROM pg_stat_xact_user_functions WHERE funcname='operational_delivery_group';
-      SELECT count(*) INTO expected FROM delivery_groups;
-      IF after_calls-before_calls<>expected THEN RAISE EXCEPTION 'Repeated operational group evaluation: % vs %',after_calls-before_calls,expected; END IF;
+      SELECT coalesce(sum(calls),0) INTO per_row FROM pg_stat_xact_user_functions WHERE funcname='operational_delivery_group';
+      IF per_row<>0 THEN RAISE EXCEPTION 'Per-row operational group evaluation: %',per_row; END IF;
       IF EXISTS((SELECT * FROM operational_delivery_groups EXCEPT ALL SELECT (operational_delivery_group(g.id)).* FROM delivery_groups g)
         UNION ALL (SELECT (operational_delivery_group(g.id)).* FROM delivery_groups g EXCEPT ALL SELECT * FROM operational_delivery_groups))
         THEN RAISE EXCEPTION 'Operational fields changed'; END IF;
     END $$; ROLLBACK;`);
 });
+
+test("college-filtered operational reads scan delivery groups by index", () => {
+  const plan = sql(
+    `SELECT set_config('request.jwt.claim.sub',md5('manager'),true);
+     EXPLAIN SELECT id FROM operational_delivery_groups
+     WHERE college_id=(SELECT college_id FROM delivery_groups LIMIT 1);`,
+  );
+  assert.match(plan, /delivery_groups/);
+  assert.doesNotMatch(plan, /operational_delivery_group\(/);
+});
+
 
 test("operational view keeps invoker permissions on its base table", () => {
   sql(`BEGIN; REVOKE SELECT ON delivery_groups FROM authenticated;

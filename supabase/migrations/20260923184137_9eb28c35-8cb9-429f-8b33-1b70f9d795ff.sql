@@ -1,8 +1,5 @@
--- Expanding a composite-returning plpgsql function in a view runs it per source
--- row and blocks filter pushdown, so every read scanned all delivery groups and
--- hit the statement timeout. Express the same operational rules set-based so
--- college_id/active/is_obsolete filters reach public.delivery_groups directly.
--- Keep caller RLS (security_invoker), the column order and all existing grants.
+-- Set-based equivalent of per-row public.operational_delivery_group(): lets
+-- college_id / active / is_obsolete filters push down to delivery_groups.
 CREATE OR REPLACE VIEW public.operational_delivery_groups
 WITH (security_invoker=true) AS
 SELECT
@@ -22,9 +19,7 @@ SELECT
     WHEN EXISTS (SELECT 1 FROM public.shared_lecture_links l WHERE l.anchor_group_id = g.id)
       THEN (SELECT sum(d.expected_students)::integer
               FROM public.delivery_groups d
-              WHERE d.id = g.id
-                 OR d.id IN (SELECT l.member_group_id FROM public.shared_lecture_links l
-                              WHERE l.anchor_group_id = g.id))
+              JOIN public.shared_lecture_group_ids(g.id) m ON m.group_id = d.id)
     ELSE g.expected_students
   END AS expected_students,
   g.capacity_limit,
@@ -44,3 +39,8 @@ FROM public.delivery_groups g;
 
 REVOKE ALL ON public.operational_delivery_groups FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.operational_delivery_groups TO authenticated;
+GRANT SELECT ON public.operational_delivery_groups TO service_role;
+
+CREATE INDEX IF NOT EXISTS idx_ie_job_row ON public.import_errors (job_id, row_number);
+
+NOTIFY pgrst, 'reload schema';

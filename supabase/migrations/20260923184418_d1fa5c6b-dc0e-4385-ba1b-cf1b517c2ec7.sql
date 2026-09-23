@@ -1,8 +1,3 @@
--- Expanding a composite-returning plpgsql function in a view runs it per source
--- row and blocks filter pushdown, so every read scanned all delivery groups and
--- hit the statement timeout. Express the same operational rules set-based so
--- college_id/active/is_obsolete filters reach public.delivery_groups directly.
--- Keep caller RLS (security_invoker), the column order and all existing grants.
 CREATE OR REPLACE VIEW public.operational_delivery_groups
 WITH (security_invoker=true) AS
 SELECT
@@ -44,3 +39,6 @@ FROM public.delivery_groups g;
 
 REVOKE ALL ON public.operational_delivery_groups FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.operational_delivery_groups TO authenticated;
+GRANT SELECT ON public.operational_delivery_groups TO service_role;
+
+NOTIFY pgrst, 'reload schema';
