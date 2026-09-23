@@ -282,4 +282,8 @@ test("route preserves same-scope content during refresh, closes details on perio
   assert.doesNotMatch(source, /placeholderData|keepPreviousData/);
   assert.match(source, /تعذر التحديث/);
   assert.match(source, /queryKey: \["university-leadership", viewerKey, period\]/);
+  assert.match(source, /LEADERSHIP_OVERVIEW_TIMEOUT_MS = 15_000/);
+  assert.match(source, /\.abortSignal\(controller\.signal\)/);
+  assert.match(source, /retry: false/);
+  assert.match(source, /استغرق تحميل مؤشرات الجامعة وقتًا أطول من المتوقع/);
 });
