@@ -228,4 +228,3 @@ CREATE TRIGGER zz_prevent_active_assignment_instructor_delete
 BEFORE DELETE ON public.instructors
 FOR EACH ROW
 EXECUTE FUNCTION public.prevent_active_assignment_instructor_delete();
-
