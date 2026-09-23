@@ -413,7 +413,7 @@ describe("other admin lists produce usable columns", () => {
     expect(table.body[1]?.[base]).toBe("—");
     expect(table.body[1]?.[release]).toBe(0);
     expect(table.body[1]?.[net]).toBe("—");
-    expect(table.body[0]).toContain("غير محدد (لم يُثبت بعد)");
+    expect(table.body[0]).toContain("متوفر");
     expect(table.body[0]?.at(-1)).toBe("نعم");
   });
 

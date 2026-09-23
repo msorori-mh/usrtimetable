@@ -10,7 +10,7 @@ describe("lecturer status display uses availability_status only", () => {
   it("instructor card never renders employmentTypeLabelAr", () => {
     expect(page).not.toMatch(/employmentTypeLabelAr/);
     expect(page).toMatch(/الحالة: \{availabilityStatusLabelAr\(i\.availability_status\)\}/);
-    expect(page).toMatch(/\{i\.academic_rank \?\? "—"\} ·\{" "\}/);
+    expect(page).toMatch(/\{i\.academic_rank \?\? "—"\} · \{i\.max_weekly_hours\} س\/أسبوع/);
   });
 
   it("maps statuses to Arabic labels", () => {
