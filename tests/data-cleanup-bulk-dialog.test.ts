@@ -17,7 +17,9 @@ const items = [
 describe("data-cleanup BulkDialog", () => {
   it("selects every item when the controlled dialog opens", () => {
     expect(selectedIds(items, selectAll(items))).toEqual(["a", "b"]);
-    expect(src).toMatch(/useEffect\(\(\) => \{\s*if \(open\) setSelected\(selectAll\(items\)\);\s*else setBusy\(false\);/);
+    expect(src).toMatch(
+      /useEffect\(\(\) => \{\s*if \(open\) setSelected\(selectAll\(items\)\);\s*else setBusy\(false\);/,
+    );
     expect(src).not.toMatch(/handleOpen/);
   });
 
@@ -33,32 +35,61 @@ describe("data-cleanup BulkDialog", () => {
 
   it("keeps the dialog open when validation fails, returns false, or throws", async () => {
     const errs: string[] = [];
-    expect(await runBulkConfirm(() => false, ["a"], (m) => errs.push(m))).toBe(false);
-    expect(await runBulkConfirm(async () => { throw new Error("x"); }, ["a"], (m) => errs.push(m))).toBe(false);
+    expect(
+      await runBulkConfirm(
+        () => false,
+        ["a"],
+        (m) => errs.push(m),
+      ),
+    ).toBe(false);
+    expect(
+      await runBulkConfirm(
+        async () => {
+          throw new Error("x");
+        },
+        ["a"],
+        (m) => errs.push(m),
+      ),
+    ).toBe(false);
     expect(errs[0]).toMatch(/تعذّر تنفيذ العملية/);
-    expect(await runBulkConfirm(() => true, ["a"], () => {})).toBe(true);
+    expect(
+      await runBulkConfirm(
+        () => true,
+        ["a"],
+        () => {},
+      ),
+    ).toBe(true);
     expect(src).toMatch(/if \(ok\) onOpenChange\(false\)/);
     expect(src).not.toMatch(/\n\s*return;\n/);
   });
 
   it("uses name_ar (not name) for instructor_types and room_types", () => {
     expect(src).toMatch(/from\("instructor_types"\)\.select\("id, name_ar, code, is_active"\)/);
-    expect(src).toMatch(/from\("room_types"\)\.select\("id, name_ar, code, default_capacity, is_active"\)/);
+    expect(src).toMatch(
+      /from\("room_types"\)\.select\("id, name_ar, code, default_capacity, is_active"\)/,
+    );
     expect(src).not.toMatch(/\{t\.name\}/);
   });
 
   it("surfaces query errors instead of empty lists", () => {
     expect(firstQueryError([{ label: "القاعات", error: null }])).toBeNull();
-    expect(firstQueryError([{ label: "القاعات", error: { message: "denied" } }])).toMatch(/القاعات.*denied/);
+    expect(firstQueryError([{ label: "القاعات", error: { message: "denied" } }])).toMatch(
+      /القاعات.*denied/,
+    );
     expect(src).toMatch(/if \(loadError\) throw new Error\(loadError\)/);
     expect(shortRef("12345678-aaaa")).toBe("مرجع 12345678");
   });
 
   it("every BulkDialog passes meaningful items (no bare ids)", () => {
-    const dialogs = src.split("<BulkDialog").slice(2).map((d) => d.slice(0, 400));
+    const dialogs = src
+      .split("<BulkDialog")
+      .slice(1)
+      .map((d) => d.slice(0, 400));
     expect(dialogs.length).toBe(10);
     for (const d of dialogs) {
-      expect(d).toMatch(/items=\{(tempItems|natureItems|roomReqItems|insItems\(|roomItems\(|offItems\()/);
+      expect(d).toMatch(
+        /items=\{(tempItems|natureItems|roomReqItems|insItems\(|roomItems\(|offItems\()/,
+      );
       expect(d).not.toMatch(/\bids=/);
     }
   });
