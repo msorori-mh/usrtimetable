@@ -10,8 +10,23 @@ import { School } from "lucide-react";
 import { entityDisplayName } from "@/lib/entity-display";
 
 export function CollegeSwitcher() {
-  const { colleges, activeId, setActiveId, isLoading } = useActiveCollege();
+  const { colleges, activeId, setActiveId, isLoading, isFetching, error, refetch } =
+    useActiveCollege();
   if (isLoading) return <div className="text-sm text-muted-foreground">جارٍ تحميل الكلّيات...</div>;
+  if (error)
+    return (
+      <div role="alert" className="rounded-md border border-destructive/30 p-4 text-sm">
+        <p>تعذر تحميل الكليات المتاحة. أعد المحاولة للتحقق من نطاق حسابك.</p>
+        <button
+          type="button"
+          className="mt-2 underline"
+          disabled={isFetching}
+          onClick={() => void refetch()}
+        >
+          إعادة تحميل الكليات
+        </button>
+      </div>
+    );
   if (colleges.length === 0)
     return (
       <div className="rounded-md border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
