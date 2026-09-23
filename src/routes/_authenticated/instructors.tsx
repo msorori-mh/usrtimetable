@@ -1355,8 +1355,7 @@ function InstructorDirectory() {
                       : i.specialization}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {i.academic_rank ?? "—"} ·{" "}
-                    {i.max_weekly_hours} س/أسبوع
+                    {i.academic_rank ?? "—"} · {i.max_weekly_hours} س/أسبوع
                   </p>
                   <InstructorHomeAffiliation
                     home={{

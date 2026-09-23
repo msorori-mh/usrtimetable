@@ -432,7 +432,11 @@ export function cohortsExportDataset(input: {
         value: (r) => input.systemLabel(r.study_system),
       },
       { key: "entry_year", label: "سنة القبول", value: (r) => r.entry_year ?? "بانتظار الاستكمال" },
-      { key: "expected_students", label: "عدد الطلاب المتوقع", value: (r) => r.expected_students ?? "بانتظار الاستكمال" },
+      {
+        key: "expected_students",
+        label: "عدد الطلاب المتوقع",
+        value: (r) => r.expected_students ?? "بانتظار الاستكمال",
+      },
       {
         key: "count_status",
         label: "حالة العدد",
