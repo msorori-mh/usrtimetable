@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const vm = require("node:vm");
 const ts = require("typescript");
 
-async function mount({ mfaRequired, levelError = null }) {
+async function mount({ mfaRequired, levelError = null, needsFactor = mfaRequired }) {
   const navigations = [],
     updates = [],
     errors = [],
@@ -17,7 +17,7 @@ async function mount({ mfaRequired, levelError = null }) {
       getUser: async () => ({ data: { user: { id: "synthetic-user" } }, error: null }),
       mfa: {
         getAuthenticatorAssuranceLevel: async () => ({
-          data: { currentLevel: "aal1", nextLevel: "aal2" },
+          data: { currentLevel: needsFactor ? "aal1" : "aal2", nextLevel: "aal2" },
           error: levelError,
         }),
         listFactors: async () => ({
@@ -88,4 +88,10 @@ test("fully verified restored session navigates normally", async () => {
   const result = await mount({ mfaRequired: false });
   assert.equal(result.navigations.length, 1);
   assert.equal(result.navigations[0].to, "/dashboard");
+});
+
+test("voluntarily enrolled MFA is still requested even without an admin policy", async () => {
+  const result = await mount({ mfaRequired: false, needsFactor: true });
+  assert.equal(result.navigations.length, 0);
+  assert.ok(result.updates.includes("synthetic-factor"));
 });

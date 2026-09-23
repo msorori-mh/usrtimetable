@@ -57,15 +57,15 @@ function AuthPage() {
     async (signal: AbortSignal) => {
       const result = await checkCurrentSession(signal);
       if (signal.aborted || result.kind === "signed-out") return;
-      if (result.mfaRequired) {
-        const factorId = await pendingSecondFactor(signal);
-        if (signal.aborted) return;
-        if (!factorId)
-          throw new SessionCheckError("يلزم إعداد التحقق بخطوتين للحساب؛ تواصل مع المشرف.");
+      const factorId = await pendingSecondFactor(signal);
+      if (signal.aborted) return;
+      if (factorId) {
         setMfaFactorId(factorId);
         setOtp("");
         return;
       }
+      if (result.mfaRequired)
+        throw new SessionCheckError("يلزم إعداد التحقق بخطوتين للحساب؛ تواصل مع المشرف.");
       void navigate({ to: "/dashboard", replace: true });
     },
     [navigate],
