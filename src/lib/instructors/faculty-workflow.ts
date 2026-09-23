@@ -12,6 +12,7 @@ export interface FacultyRosterRecord {
   employment_type: string;
   max_weekly_hours: number;
   is_active: boolean;
+  availability_status: string;
   employee_number: string | null;
   university_number: string;
   full_name_ar: string | null;
@@ -142,6 +143,7 @@ type Api = {
           p_administrative_position: string | null;
           p_administrative_department_id: string | null;
           p_administrative_support_department_id: string | null;
+          p_availability_status: string;
         };
         Returns: unknown;
       };
