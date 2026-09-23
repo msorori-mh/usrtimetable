@@ -5,6 +5,66 @@ const { PGlite } = await import(process.env.FACULTY_DB_MODULE || "@electric-sql/
 const id = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const read = (p) => readFile(new URL(p, import.meta.url), "utf8");
 
+test("contractor: no quota, preserved hours, approval, allocation and published sessions", async (t) => {
+  const { db, actor, rpc, ins } = await fixture();
+  t.after(() => db.close());
+  await db.exec(await read("../supabase/migrations/20260923100000_permanent_faculty_quota_only.sql"));
+  await ins("instructor_types", { id: id(7002), college_id: id(20), code: "from_other_college" });
+  await db.query("update instructors set employment_type='contract', instructor_type_id=$1, max_weekly_hours=null where id=$2", [id(7002), id(103)]);
+  await actor(1);
+  await rpc("reconcile_faculty_home", [id(203), id(30), id(103), false, "contractor home, quota does not apply", null]);
+  const before = (await db.query("select jsonb_agg(s order by id) value from schedule_sessions s")).rows;
+  let preview = await rpc("preview_instructor_workload_after_assignment", [id(103), id(362), 3, null]);
+  assert.equal(preview.quota_applicable, false);
+  assert.equal(preview.required_load_hours, null);
+  assert.equal(preview.policy_missing, false);
+  assert.equal(preview.status_after, "not_applicable");
+  assert.equal(preview.projected_standard_assigned_hours, 3);
+  assert.equal(preview.deficit_after, null);
+  assert.equal(preview.overload_after, null);
+  await actor(3);
+  const pending = await rpc("create_teaching_assignment_v2", [id(362), id(103), 3, null]);
+  assert.equal(pending.action, "requested", "contractor still needs home approval");
+  await assert.rejects(rpc("decide_faculty_teaching_request", [pending.request_id, "approved", "self approval"]), /insufficient_privilege/);
+  await actor(4);
+  const approved = await rpc("decide_faculty_teaching_request", [pending.request_id, "approved", "home approves contract teaching"]);
+  assert.equal(approved.action, "created");
+  await actor(1);
+  const load = await rpc("compute_instructor_standard_workload", [id(103), id(301)]);
+  assert.equal(load.quota_applicable, false);
+  assert.equal(load.standard_assigned_hours, 3);
+  assert.equal(load.required_load_hours, null);
+  assert.equal(load.deficit_hours, null);
+  assert.equal(load.overload_hours, null);
+  const report = await rpc("get_faculty_university_report", [id(103), id(301), []]);
+  assert.equal(report.quota_status, "not_applicable");
+  assert.equal(report.quota, null);
+  await assert.rejects(db.query("update teaching_assignments set assigned_component_hours=2 where id=$1", [approved.assignment_id]), /اعتماد التكليف/);
+  assert.deepEqual((await db.query("select jsonb_agg(s order by id) value from schedule_sessions s")).rows, before);
+  // A local contractor with a legacy numeric quota can exceed quota+12, but
+  // malformed legacy allocations remain blocked before quota exemption.
+  await ins("instructor_types", { id: id(7003), college_id: id(10), code: "con" });
+  await db.query("update instructors set instructor_type_id=$1,employment_type='contract',max_weekly_hours=0 where id=$2", [id(7003),id(104)]);
+  await db.exec("reset role");
+  await db.query("update plan_course_components set weekly_contact_hours=15 where id=$1", [id(351)]);
+  await db.query("update teaching_assignments set is_active=false where id=$1", [id(401)]);
+  await actor(1);
+  const contract = await rpc("create_teaching_assignment_v2", [id(361),id(104),15,null]);
+  assert.equal(contract.action,"created");
+  assert.equal((await rpc("compute_instructor_standard_workload",[id(104),id(301)])).standard_assigned_hours,15);
+  await assert.rejects(db.query("insert into teaching_assignments(college_id,instructor_id,course_offering_id,weekly_hours,is_active) values($1,$2,$3,1,true)",[id(10),id(104),id(341)]), /FACULTY_ALLOCATION_REVIEW_REQUIRED/);
+  await db.exec("reset role");
+  const classification = async (type, employment) => (await db.query("select faculty_private.quota_applicability($1,$2) value",[type,employment])).rows[0].value;
+  assert.equal(await classification("permanent","full_time"),true);
+  assert.equal(await classification("appointed","part_time"),true);
+  assert.equal(await classification("permanent","contract"),null,"conflicting records cannot bypass quota validation");
+  assert.equal(await classification(null,"unknown"),null);
+  assert.equal(await classification("from_other_college","full_time"),null);
+  assert.equal(await classification("annual_contract","contract"),false);
+  await db.exec("select set_config('request.jwt.claim.sub','',false); set role anon");
+  await assert.rejects(rpc("preview_instructor_workload_after_assignment",[id(103),id(362),3,null]), /permission denied|insufficient_privilege/);
+});
+
 async function fixture() {
   const db = new PGlite();
   await db.exec(await read("./faculty-workflow-fixture.sql"));
@@ -33,6 +93,7 @@ async function fixture() {
     await ins("user_roles", { user_id: id(n), role });
     if (college) await ins("user_colleges", { user_id: id(n), college_id: id(college) });
   }
+  await ins("instructor_types", { id: id(7001), college_id: id(10), code: "permanent" });
   for (const [n, c, home, quota] of [
     [101, 10, 10, 12],
     [102, 20, 10, 18],
@@ -51,6 +112,7 @@ async function fixture() {
       is_active: true,
       academic_rank: "a",
       employment_type: "full_time",
+      instructor_type_id: id(7001),
     });
   }
   for (const [identity, issuing] of [
@@ -158,6 +220,7 @@ async function fixture() {
     "20260919102000_faculty_reports_and_candidates.sql",
     "20260919103000_leadership_home_attribution.sql",
     "20260919104000_faculty_identity_conflicts.sql",
+    "20260923100000_permanent_faculty_quota_only.sql",
   ])
     await db.exec(await read("../supabase/migrations/" + migration));
   await db.exec(
