@@ -25,10 +25,26 @@ const columns = [
   { key: "available_hours", label: "ساعات متاحة", numeric: true },
   { key: "occupied_hours", label: "ساعات مشغولة", numeric: true },
   { key: "idle_hours", label: "ساعات متاحة غير مستخدمة", numeric: true },
+  { key: "idle_pct", label: "الوقت غير المستخدم %", numeric: true },
   { key: "status", label: "الحالة" },
-  { key: "scheduled_hours", label: "مجموع ساعات المحاضرات", numeric: true, secondary: true },
-  { key: "overlap_hours", label: "ساعات تداخل", numeric: true, secondary: true },
-  { key: "outside_hours", label: "ساعات خارج الإتاحة", numeric: true, secondary: true },
+  {
+    key: "scheduled_hours",
+    label: "مجموع ساعات المحاضرات",
+    numeric: true,
+    secondary: true,
+  },
+  {
+    key: "overlap_hours",
+    label: "ساعات تداخل",
+    numeric: true,
+    secondary: true,
+  },
+  {
+    key: "outside_hours",
+    label: "ساعات خارج الإتاحة",
+    numeric: true,
+    secondary: true,
+  },
   { key: "building", label: "المبنى", secondary: true },
   { key: "room_type", label: "نوع القاعة", secondary: true },
   { key: "capacity", label: "السعة الطلابية", numeric: true, secondary: true },
@@ -41,7 +57,7 @@ const roomUtilText = (value: unknown) =>
 
 function RoomIdentityCell({ row }: { row: RoomUtilizationDisplayRow }) {
   return (
-    <div className="min-w-[175px] space-y-0.5 leading-5">
+    <div className="min-w-[175px] space-y-0.5 leading-5 print:min-w-0">
       <div className="font-semibold">{roomUtilText(row.room)}</div>
       <div className="text-[11px] text-muted-foreground">
         {roomUtilText(row.room_type)} · السعة {roomUtilText(row.capacity)}
@@ -55,7 +71,7 @@ function RoomIdentityCell({ row }: { row: RoomUtilizationDisplayRow }) {
 
 function RoomTimeCell({ row }: { row: RoomUtilizationDisplayRow }) {
   return (
-    <div className="min-w-[150px] space-y-0.5 leading-5">
+    <div className="min-w-[150px] space-y-0.5 leading-5 print:min-w-0">
       <div className="flex justify-between gap-3">
         <span className="text-[11px] text-muted-foreground">متاح</span>
         <span className="tabular-nums">{roomUtilText(row.available_hours)} س</span>
@@ -74,11 +90,28 @@ function RoomTimeCell({ row }: { row: RoomUtilizationDisplayRow }) {
 
 function RoomUtilizationCell({ row }: { row: RoomUtilizationDisplayRow }) {
   return (
-    <div className="min-w-[135px] space-y-1 leading-5">
+    <div className="min-w-[135px] space-y-1 leading-5 print:min-w-0">
       <div className="text-xl font-bold tabular-nums">{roomUtilText(row.utilization_pct)}%</div>
       <div className="text-[11px] text-muted-foreground">{roomUtilText(row.status)}</div>
       <div className="text-[10px] text-muted-foreground">
         مجدول خام: {roomUtilText(row.scheduled_hours)} س
+      </div>
+    </div>
+  );
+}
+
+function RoomIdleTimeCell({ row }: { row: RoomUtilizationDisplayRow }) {
+  return (
+    <div className="min-w-[120px] space-y-1 leading-5 print:min-w-0">
+      <div className="text-xl font-bold tabular-nums">{roomUtilText(row.idle_hours)} س</div>
+      <div className="text-[11px] text-muted-foreground">
+        {typeof row.idle_pct === "number" ? (
+          <>
+            <span className="font-semibold tabular-nums">{row.idle_pct}%</span> من الوقت المتاح
+          </>
+        ) : (
+          roomUtilText(row.idle_pct)
+        )}
       </div>
     </div>
   );
@@ -90,7 +123,7 @@ function RoomAnomalyCell({ row }: { row: RoomUtilizationDisplayRow }) {
   const clean =
     (!Number.isFinite(overlap) || overlap <= 0) && (!Number.isFinite(outside) || outside <= 0);
   return (
-    <div className="min-w-[150px] space-y-0.5 leading-5">
+    <div className="min-w-[150px] space-y-0.5 leading-5 print:min-w-0">
       {clean ? (
         <div className="font-semibold">لا توجد مخالفات زمنية</div>
       ) : (
@@ -112,25 +145,32 @@ function compactRoomUtilizationColumns(): ReportColumn<RoomUtilizationDisplayRow
     {
       key: "room",
       label: "القاعة / المعمل",
-      className: "w-[30%]",
+      className: "w-[25%]",
       render: (row) => <RoomIdentityCell row={row} />,
     },
     {
       key: "occupied_hours",
       label: "استخدام الوقت",
-      className: "w-[25%]",
+      className: "w-[22%]",
       render: (row) => <RoomTimeCell row={row} />,
     },
     {
       key: "utilization_pct",
       label: "نسبة الاستغلال",
-      className: "w-[20%]",
+      className: "w-[16%]",
       render: (row) => <RoomUtilizationCell row={row} />,
+    },
+    {
+      key: "idle_hours",
+      label: "الوقت غير المستخدم",
+      numeric: true,
+      className: "w-[17%]",
+      render: (row) => <RoomIdleTimeCell row={row} />,
     },
     {
       key: "overlap_hours",
       label: "ملاحظات التشغيل",
-      className: "w-[25%]",
+      className: "w-[20%]",
       render: (row) => <RoomAnomalyCell row={row} />,
     },
   ];
@@ -212,6 +252,7 @@ function Page() {
           building: buildings.find((b) => b.id === room.building_id)?.name ?? "—",
           capacity: room.capacity,
           utilization_pct: metrics.utilization_pct ?? "غير قابل للحساب",
+          idle_pct: metrics.idle_pct ?? "غير قابل للحساب",
           status:
             metrics.outside_hours > 0 || metrics.overlap_hours > 0
               ? "يحتاج مراجعة"
@@ -262,7 +303,10 @@ function Page() {
           value: anomalyHours.toFixed(1),
           tone: anomalyHours > 0 ? "danger" : "neutral",
         },
-        { label: "تحتاج مراجعة", value: rows.filter((r) => r.status === "يحتاج مراجعة").length },
+        {
+          label: "تحتاج مراجعة",
+          value: rows.filter((r) => r.status === "يحتاج مراجعة").length,
+        },
       ]}
       filters={
         <ReportFilters
@@ -287,7 +331,7 @@ function Page() {
           }
           rows={rows}
           primaryColumnLimit={5}
-          minWidthClassName="min-w-[700px]"
+          minWidthClassName="min-w-[800px]"
           caption="ساعات استخدام القاعات ونسب الاستغلال"
         />
       </ReportSection>

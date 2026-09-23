@@ -116,6 +116,7 @@ export function roomUtilizationMetrics(input: {
     scheduled_hours: round(scheduled / 60),
     occupied_hours: round(used / 60),
     idle_hours: round((available - used) / 60),
+    idle_pct: available > 0 ? round(((available - used) / available) * 100) : null,
     utilization_pct: available > 0 ? round((used / available) * 100) : null,
     outside_hours: round((occupied - used) / 60),
     overlap_hours: round((scheduled - occupied) / 60),
