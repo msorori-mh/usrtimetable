@@ -4456,6 +4456,38 @@ export type Database = {
           plan_course_id: string | null
           updated_at: string | null
         }
+        Insert: {
+          active?: never
+          capacity_limit?: number | null
+          cohort_id?: string | null
+          college_id?: string | null
+          component_id?: string | null
+          created_at?: string | null
+          excluded_from_standard_workload?: boolean | null
+          expected_students?: never
+          group_code?: never
+          group_number?: number | null
+          id?: string | null
+          is_obsolete?: never
+          plan_course_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          active?: never
+          capacity_limit?: number | null
+          cohort_id?: string | null
+          college_id?: string | null
+          component_id?: string | null
+          created_at?: string | null
+          excluded_from_standard_workload?: boolean | null
+          expected_students?: never
+          group_code?: never
+          group_number?: number | null
+          id?: string | null
+          is_obsolete?: never
+          plan_course_id?: string | null
+          updated_at?: string | null
+        }
         Relationships: [
           {
             foreignKeyName: "delivery_groups_cohort_id_fkey"
