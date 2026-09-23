@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import {
   ReportSection,
@@ -9,6 +9,7 @@ import { useWeeklyGridWindow } from "@/hooks/reports/useWeeklyGridWindow";
 import { TimetableGridReport } from "@/components/reports/timetable-grid-report";
 import { DAY_NAMES_AR, compactAcademicLevelLabel } from "@/lib/reports/formatters";
 import { orderWeekDaysRtl, rtlDayRank } from "@/lib/reports/weekly-grid-window";
+import { compactProgramLabel } from "@/lib/reports/program-abbreviations";
 import {
   TIMETABLE_TABLE_HEADERS,
   timetableSessionsToRows,
@@ -62,11 +63,15 @@ function CourseDetailCell({ row }: { row: TimetableDetailRow }) {
       <div className="font-semibold">{detailText(row.course_name ?? row.course)}</div>
       <div className="text-[11px] text-muted-foreground">
         {compactSessionTypeLabel(row.session_type)}
-        {!!row.college && <span> · {detailText(row.college)}</span>}
+        {!!row.program && (
+          <>
+            {" · "}
+            <bdi dir="auto" title={detailText(row.program)}>
+              {compactProgramLabel(detailText(row.program))}
+            </bdi>
+          </>
+        )}
       </div>
-      {!!row.program && (
-        <div className="text-[11px] text-muted-foreground">{detailText(row.program)}</div>
-      )}
     </div>
   );
 }
@@ -121,7 +126,20 @@ function AcademicContextStrip({ sessions }: { sessions: TimetableReportSession[]
             {field.values.length > 1 ? field.pluralLabel : field.label}:
           </span>
           <span className="instructor-academic-context-value font-semibold">
-            {field.values.join("، ")}
+            {field.values.map((value, valueIndex) => (
+              <Fragment key={value}>
+                {valueIndex > 0 && "، "}
+                {field.label === "البرنامج" && compactProgramLabel(value) !== value && (
+                  <>
+                    <bdi dir="ltr" className="whitespace-nowrap">
+                      {compactProgramLabel(value)}
+                    </bdi>
+                    {" = "}
+                  </>
+                )}
+                {value}
+              </Fragment>
+            ))}
           </span>
         </div>
       ))}
