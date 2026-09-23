@@ -299,7 +299,7 @@ function ScheduleBuilderWorkspacePage() {
     [allSessions, pending, rooms],
   );
 
-  const filterOptions = useMemo(() => buildFilterOptions(displaySessions), [displaySessions]);
+  const filterOptions = useMemo(() => buildFilterOptions(displaySessions, filters.program), [displaySessions, filters.program]);
 
   const filteredSessions = useMemo(
     () => filterWorkspaceSessions(displaySessions, filters),
@@ -642,7 +642,7 @@ function ScheduleBuilderWorkspacePage() {
   const resetFilters = () => setFilters(EMPTY_WORKSPACE_FILTERS);
 
   const setFilter = <K extends keyof WorkspaceFilters>(key: K, value: WorkspaceFilters[K]) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
+    setFilters((prev) => ({ ...prev, [key]: value, ...(key === "program" ? { level: "all" } : {}) }));
   };
 
   if (!collegeId) {
@@ -828,6 +828,28 @@ function ScheduleBuilderWorkspacePage() {
                 <SelectItem value="parallel">{STUDY_SYSTEM_LABELS.parallel}</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="min-w-0">
+        <CardContent className="grid gap-4 pt-6 sm:grid-cols-2 lg:grid-cols-3">
+                <FilterSelect
+                  label="البرنامج"
+                  value={filters.program}
+                  onChange={(v) => setFilter("program", v)}
+                  options={filterOptions.programs}
+                />
+                <FilterSelect
+                  label="المستوى"
+                  value={filters.level}
+                  onChange={(v) => setFilter("level", v)}
+                  options={filterOptions.levels}
+                />
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <p>عرض {filteredSessions.length} من {displaySessions.length} جلسة.</p>
+            <p>في وضع التعديل، اضغط على الجلسة لتعديلها ثم افحص التعارضات واحفظ.</p>
+            <Button type="button" variant="outline" size="sm" onClick={resetFilters}>إظهار جميع الجلسات</Button>
           </div>
         </CardContent>
       </Card>
@@ -1060,18 +1082,6 @@ function ScheduleBuilderWorkspacePage() {
                   options={filterOptions.rooms}
                 />
                 <FilterSelect
-                  label="البرنامج"
-                  value={filters.program}
-                  onChange={(v) => setFilter("program", v)}
-                  options={filterOptions.programs}
-                />
-                <FilterSelect
-                  label="المستوى"
-                  value={filters.level}
-                  onChange={(v) => setFilter("level", v)}
-                  options={filterOptions.levels}
-                />
-                <FilterSelect
                   label="نوع الجلسة"
                   value={filters.sessionType}
                   onChange={(v) => setFilter("sessionType", v)}
@@ -1228,3 +1238,4 @@ function ErrorInline({ message }: { message: string }) {
     </p>
   );
 }
+
