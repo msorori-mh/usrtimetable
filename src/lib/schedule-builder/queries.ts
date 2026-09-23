@@ -1,4 +1,4 @@
-import { attachIntakePresentation } from '../existing-schedules/report-data';
+import { attachIntakePresentation } from "../existing-schedules/report-data";
 import { fetchSharedLectures } from "@/lib/academic-delivery/shared-lectures";
 /**
  * Read-only Schedule Builder workspace queries.
@@ -98,6 +98,7 @@ function uniqueIds(ids: Array<string | null | undefined>): string[] {
 
 async function fetchRowsByIds<T extends { id: string }>(
   table:
+    | "academic_cohorts"
     | "course_offerings"
     | "courses"
     | "departments"
@@ -219,13 +220,49 @@ export async function hydrateWorkspaceSessions(
     shared_cohort_ids: [
       ...new Set([
         ...(s.cohort_id ? [s.cohort_id] : []),
-        ...shared
-          .filter((l) => s.study_system === "both" && l.anchor_group_id === s.delivery_group_id)
-          .map((l) => l.cohort_id),
+        ...shared.filter((l) => l.anchor_group_id === s.delivery_group_id).map((l) => l.cohort_id),
       ]),
     ],
   }));
-  return attachIntakePresentation(assembleWorkspaceSessionRows(enriched, {
+  const cohorts = await fetchRowsByIds<{ id: string; program_id: string; level_id: string | null }>(
+    "academic_cohorts",
+    uniqueIds(enriched.flatMap((s) => s.shared_cohort_ids)),
+    "id,program_id,level_id",
+  );
+  const [memberPrograms, memberLevels] = await Promise.all([
+    fetchRowsByIds<{ id: string; name: string | null }>(
+      "academic_programs",
+      uniqueIds(cohorts.map((c) => c.program_id)),
+      "id,name",
+    ),
+    fetchRowsByIds<{ id: string; name: string | null }>(
+      "academic_levels",
+      uniqueIds(cohorts.map((c) => c.level_id)),
+      "id,name",
+    ),
+  ]);
+  const cohortMap = toMap(cohorts),
+    memberProgramMap = toMap(memberPrograms),
+    memberLevelMap = toMap(memberLevels);
+  const academicScopes = new Map(
+    enriched.map((s) => [
+      s.id,
+      s.shared_cohort_ids.flatMap((id) => {
+        const c = cohortMap.get(id);
+        return c
+          ? [
+              {
+                program_id: c.program_id,
+                level_id: c.level_id,
+                program_name: memberProgramMap.get(c.program_id)?.name ?? "—",
+                level_name: memberLevelMap.get(c.level_id ?? "")?.name ?? "—",
+              },
+            ]
+          : [];
+      }),
+    ]),
+  );
+  const hydrated = assembleWorkspaceSessionRows(enriched, {
     offerings: toMap(offerings),
     courses: toMap(courses),
     departments: toMap(departments),
@@ -235,7 +272,10 @@ export async function hydrateWorkspaceSessions(
     subgroups: toMap(subgroups),
     instructors: toMap(instructors),
     rooms: toMap(rooms),
-  }));
+  });
+  return attachIntakePresentation(
+    hydrated.map((s) => ({ ...s, academic_memberships: academicScopes.get(s.id) ?? [] })),
+  );
 }
 
 export async function fetchWorkspaceSessions(params: {
@@ -374,4 +414,3 @@ export async function fetchWorkspaceTimeTemplates(
   if (error) throw error;
   return (data ?? []) as WorkspaceTimeTemplate[];
 }
-
