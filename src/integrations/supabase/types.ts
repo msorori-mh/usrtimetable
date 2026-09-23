@@ -2415,6 +2415,7 @@ export type Database = {
           administrative_support_department_id: string | null
           affiliation_college_id: string | null
           affiliation_department_id: string | null
+          availability_status: string
           college_id: string
           created_at: string
           department_id: string | null
@@ -2447,6 +2448,7 @@ export type Database = {
           administrative_support_department_id?: string | null
           affiliation_college_id?: string | null
           affiliation_department_id?: string | null
+          availability_status?: string
           college_id: string
           created_at?: string
           department_id?: string | null
@@ -2479,6 +2481,7 @@ export type Database = {
           administrative_support_department_id?: string | null
           affiliation_college_id?: string | null
           affiliation_department_id?: string | null
+          availability_status?: string
           college_id?: string
           created_at?: string
           department_id?: string | null
@@ -4903,66 +4906,130 @@ export type Database = {
         }
         Returns: Json
       }
-      academic_affairs_update_instructor: {
-        Args: {
-          p_academic_rank: string
-          p_administrative_department_id: string
-          p_administrative_position: string
-          p_administrative_release_hours: number
-          p_administrative_support_department_id: string
-          p_affiliation_college_id: string
-          p_affiliation_department_id: string
-          p_email: string
-          p_employee_number: string
-          p_employment_type: string
-          p_full_name: string
-          p_full_name_ar: string
-          p_instructor_id: string
-          p_instructor_type_id: string
-          p_is_active: boolean
-          p_max_weekly_hours: number
-          p_phone: string
-          p_specialization: string
-        }
-        Returns: {
-          academic_degree: string | null
-          academic_rank: string | null
-          admin_tasks: string | null
-          administrative_department_id: string | null
-          administrative_position: string | null
-          administrative_release_hours: number
-          administrative_support_department_id: string | null
-          affiliation_college_id: string | null
-          affiliation_department_id: string | null
-          college_id: string
-          created_at: string
-          department_id: string | null
-          email: string | null
-          employee_number: string | null
-          employment_type: string
-          external_source: string | null
-          full_name: string
-          full_name_ar: string | null
-          full_name_en: string | null
-          id: string
-          instructor_type_id: string | null
-          is_active: boolean
-          max_attendance_days_per_week: number | null
-          max_hours_per_day: number | null
-          max_weekly_hours: number | null
-          notes: string | null
-          phone: string | null
-          specialization: string | null
-          target_attendance_days_per_week: number | null
-          updated_at: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "instructors"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
+      academic_affairs_update_instructor:
+        | {
+            Args: {
+              p_academic_rank: string
+              p_administrative_department_id: string
+              p_administrative_position: string
+              p_administrative_release_hours: number
+              p_administrative_support_department_id: string
+              p_affiliation_college_id: string
+              p_affiliation_department_id: string
+              p_email: string
+              p_employee_number: string
+              p_employment_type: string
+              p_full_name: string
+              p_full_name_ar: string
+              p_instructor_id: string
+              p_instructor_type_id: string
+              p_is_active: boolean
+              p_max_weekly_hours: number
+              p_phone: string
+              p_specialization: string
+            }
+            Returns: {
+              academic_degree: string | null
+              academic_rank: string | null
+              admin_tasks: string | null
+              administrative_department_id: string | null
+              administrative_position: string | null
+              administrative_release_hours: number
+              administrative_support_department_id: string | null
+              affiliation_college_id: string | null
+              affiliation_department_id: string | null
+              availability_status: string
+              college_id: string
+              created_at: string
+              department_id: string | null
+              email: string | null
+              employee_number: string | null
+              employment_type: string
+              external_source: string | null
+              full_name: string
+              full_name_ar: string | null
+              full_name_en: string | null
+              id: string
+              instructor_type_id: string | null
+              is_active: boolean
+              max_attendance_days_per_week: number | null
+              max_hours_per_day: number | null
+              max_weekly_hours: number | null
+              notes: string | null
+              phone: string | null
+              specialization: string | null
+              target_attendance_days_per_week: number | null
+              updated_at: string
+            }
+            SetofOptions: {
+              from: "*"
+              to: "instructors"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: {
+              p_academic_rank: string
+              p_administrative_department_id: string
+              p_administrative_position: string
+              p_administrative_release_hours: number
+              p_administrative_support_department_id: string
+              p_affiliation_college_id: string
+              p_affiliation_department_id: string
+              p_availability_status: string
+              p_email: string
+              p_employee_number: string
+              p_employment_type: string
+              p_full_name: string
+              p_full_name_ar: string
+              p_instructor_id: string
+              p_instructor_type_id: string
+              p_is_active: boolean
+              p_max_weekly_hours: number
+              p_phone: string
+              p_specialization: string
+            }
+            Returns: {
+              academic_degree: string | null
+              academic_rank: string | null
+              admin_tasks: string | null
+              administrative_department_id: string | null
+              administrative_position: string | null
+              administrative_release_hours: number
+              administrative_support_department_id: string | null
+              affiliation_college_id: string | null
+              affiliation_department_id: string | null
+              availability_status: string
+              college_id: string
+              created_at: string
+              department_id: string | null
+              email: string | null
+              employee_number: string | null
+              employment_type: string
+              external_source: string | null
+              full_name: string
+              full_name_ar: string | null
+              full_name_en: string | null
+              id: string
+              instructor_type_id: string | null
+              is_active: boolean
+              max_attendance_days_per_week: number | null
+              max_hours_per_day: number | null
+              max_weekly_hours: number | null
+              notes: string | null
+              phone: string | null
+              specialization: string | null
+              target_attendance_days_per_week: number | null
+              updated_at: string
+            }
+            SetofOptions: {
+              from: "*"
+              to: "instructors"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
       apply_schedule_compaction: {
         Args: {
           p_college_id: string
@@ -5286,6 +5353,10 @@ export type Database = {
       instructor_availability_enforced: {
         Args: { p_college_id: string }
         Returns: boolean
+      }
+      instructor_availability_label_ar: {
+        Args: { p_status: string }
+        Returns: string
       }
       is_academic_affairs_only: { Args: { _user_id: string }; Returns: boolean }
       is_assignment_room_compatible: {
@@ -5673,68 +5744,134 @@ export type Database = {
         Returns: string
       }
       unmerge_shared_lecture: { Args: { p_member: string }; Returns: Json }
-      update_home_college_instructor: {
-        Args: {
-          p_academic_rank: string
-          p_administrative_department_id: string
-          p_administrative_position: string
-          p_administrative_release_hours: number
-          p_administrative_support_department_id: string
-          p_affiliation_college_id: string
-          p_affiliation_department_id: string
-          p_college_id: string
-          p_email: string
-          p_employee_number: string
-          p_employment_type: string
-          p_expected_updated_at: string
-          p_full_name: string
-          p_full_name_ar: string
-          p_instructor_id: string
-          p_instructor_type_id: string
-          p_is_active: boolean
-          p_max_weekly_hours: number
-          p_phone: string
-          p_specialization: string
-        }
-        Returns: {
-          academic_degree: string | null
-          academic_rank: string | null
-          admin_tasks: string | null
-          administrative_department_id: string | null
-          administrative_position: string | null
-          administrative_release_hours: number
-          administrative_support_department_id: string | null
-          affiliation_college_id: string | null
-          affiliation_department_id: string | null
-          college_id: string
-          created_at: string
-          department_id: string | null
-          email: string | null
-          employee_number: string | null
-          employment_type: string
-          external_source: string | null
-          full_name: string
-          full_name_ar: string | null
-          full_name_en: string | null
-          id: string
-          instructor_type_id: string | null
-          is_active: boolean
-          max_attendance_days_per_week: number | null
-          max_hours_per_day: number | null
-          max_weekly_hours: number | null
-          notes: string | null
-          phone: string | null
-          specialization: string | null
-          target_attendance_days_per_week: number | null
-          updated_at: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "instructors"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
+      update_home_college_instructor:
+        | {
+            Args: {
+              p_academic_rank: string
+              p_administrative_department_id: string
+              p_administrative_position: string
+              p_administrative_release_hours: number
+              p_administrative_support_department_id: string
+              p_affiliation_college_id: string
+              p_affiliation_department_id: string
+              p_college_id: string
+              p_email: string
+              p_employee_number: string
+              p_employment_type: string
+              p_expected_updated_at: string
+              p_full_name: string
+              p_full_name_ar: string
+              p_instructor_id: string
+              p_instructor_type_id: string
+              p_is_active: boolean
+              p_max_weekly_hours: number
+              p_phone: string
+              p_specialization: string
+            }
+            Returns: {
+              academic_degree: string | null
+              academic_rank: string | null
+              admin_tasks: string | null
+              administrative_department_id: string | null
+              administrative_position: string | null
+              administrative_release_hours: number
+              administrative_support_department_id: string | null
+              affiliation_college_id: string | null
+              affiliation_department_id: string | null
+              availability_status: string
+              college_id: string
+              created_at: string
+              department_id: string | null
+              email: string | null
+              employee_number: string | null
+              employment_type: string
+              external_source: string | null
+              full_name: string
+              full_name_ar: string | null
+              full_name_en: string | null
+              id: string
+              instructor_type_id: string | null
+              is_active: boolean
+              max_attendance_days_per_week: number | null
+              max_hours_per_day: number | null
+              max_weekly_hours: number | null
+              notes: string | null
+              phone: string | null
+              specialization: string | null
+              target_attendance_days_per_week: number | null
+              updated_at: string
+            }
+            SetofOptions: {
+              from: "*"
+              to: "instructors"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: {
+              p_academic_rank: string
+              p_administrative_department_id: string
+              p_administrative_position: string
+              p_administrative_release_hours: number
+              p_administrative_support_department_id: string
+              p_affiliation_college_id: string
+              p_affiliation_department_id: string
+              p_availability_status: string
+              p_college_id: string
+              p_email: string
+              p_employee_number: string
+              p_employment_type: string
+              p_expected_updated_at: string
+              p_full_name: string
+              p_full_name_ar: string
+              p_instructor_id: string
+              p_instructor_type_id: string
+              p_is_active: boolean
+              p_max_weekly_hours: number
+              p_phone: string
+              p_specialization: string
+            }
+            Returns: {
+              academic_degree: string | null
+              academic_rank: string | null
+              admin_tasks: string | null
+              administrative_department_id: string | null
+              administrative_position: string | null
+              administrative_release_hours: number
+              administrative_support_department_id: string | null
+              affiliation_college_id: string | null
+              affiliation_department_id: string | null
+              availability_status: string
+              college_id: string
+              created_at: string
+              department_id: string | null
+              email: string | null
+              employee_number: string | null
+              employment_type: string
+              external_source: string | null
+              full_name: string
+              full_name_ar: string | null
+              full_name_en: string | null
+              id: string
+              instructor_type_id: string | null
+              is_active: boolean
+              max_attendance_days_per_week: number | null
+              max_hours_per_day: number | null
+              max_weekly_hours: number | null
+              notes: string | null
+              phone: string | null
+              specialization: string | null
+              target_attendance_days_per_week: number | null
+              updated_at: string
+            }
+            SetofOptions: {
+              from: "*"
+              to: "instructors"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
       update_teaching_assignment_v2: {
         Args: {
           p_assigned_component_hours?: number
