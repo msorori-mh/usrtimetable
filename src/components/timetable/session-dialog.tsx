@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { availabilityStatusLabelAr, canReceiveNewWork } from "@/lib/instructor-metadata";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -119,10 +120,8 @@ export function SessionDialog({
     queryFn: async () => {
       const { data } = await supabase
         .from("instructors")
-        .select("id, full_name")
+        .select("id, full_name, availability_status")
         .eq("college_id", collegeId)
-        // Only available instructors are offered for new scheduling.
-        .eq("availability_status", "available")
         .limit(500);
       return data ?? [];
     },
@@ -357,11 +356,16 @@ export function SessionDialog({
                 <SelectValue placeholder="اختر المحاضر" />
               </SelectTrigger>
               <SelectContent>
-                {(instructors ?? []).map((i: any) => (
-                  <SelectItem key={i.id} value={i.id}>
-                    {instructorDisplayName(i)}
-                  </SelectItem>
-                ))}
+                {(instructors ?? [])
+                  // New scheduling: only available instructors; the current value stays visible.
+                  .filter((i: any) => canReceiveNewWork(i.availability_status) || i.id === form.instructor_id)
+                  .map((i: any) => (
+                    <SelectItem key={i.id} value={i.id}>
+                      {instructorDisplayName(i)}
+                      {!canReceiveNewWork(i.availability_status) &&
+                        ` — ${availabilityStatusLabelAr(i.availability_status)}`}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>
