@@ -55,3 +55,38 @@ export const ACADEMIC_RANKS: readonly string[] = [
   "أستاذ",
   "أستاذ دكتور",
 ];
+
+/**
+ * INSTRUCTOR-AVAILABILITY-01 — "الحالة": independent of employment_type and
+ * is_active. Canonical values are enforced by a database CHECK constraint.
+ */
+export const INSTRUCTOR_AVAILABILITY_OPTIONS = [
+  { value: "available", label: "متوفر" },
+  { value: "unavailable", label: "غير متوفر" },
+  { value: "sick_leave", label: "إجازة مرضية" },
+  { value: "sabbatical", label: "تفرغ علمي" },
+  { value: "external_scholarship", label: "إبتعاث خارجي" },
+  { value: "internal_scholarship", label: "إبتعاث داخلي" },
+] as const;
+
+export type InstructorAvailabilityStatus = (typeof INSTRUCTOR_AVAILABILITY_OPTIONS)[number]["value"];
+
+export const DEFAULT_AVAILABILITY_STATUS: InstructorAvailabilityStatus = "available";
+
+export function isInstructorAvailabilityStatus(v: unknown): v is InstructorAvailabilityStatus {
+  return INSTRUCTOR_AVAILABILITY_OPTIONS.some((o) => o.value === v);
+}
+
+export function availabilityStatusLabelAr(value: string | null | undefined): string {
+  return INSTRUCTOR_AVAILABILITY_OPTIONS.find((o) => o.value === value)?.label ?? "غير معروفة";
+}
+
+/** Only "available" instructors may receive new assignments or new sessions. */
+export function canReceiveNewWork(value: string | null | undefined): boolean {
+  return value === "available";
+}
+
+/** Arabic rejection message naming the instructor's status. */
+export function newWorkBlockedMessage(value: string | null | undefined): string {
+  return `لا يمكن إسناد أو جدولة هذا المحاضر لأن حالته: ${availabilityStatusLabelAr(value)}`;
+}
