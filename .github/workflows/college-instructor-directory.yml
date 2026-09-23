@@ -9,6 +9,10 @@ on:
       - "supabase/rollbacks/20260919140000_home_college_faculty_roster.sql"
       - "tests/home-college-roster-db.test.mjs"
       - "tests/faculty-workflow-fixture.sql"
+      - "src/components/faculty-identity-link.tsx"
+      - "src/components/faculty-college-transfer.tsx"
+      - "src/lib/instructors/college-correction.ts"
+      - "tests/faculty-college-transfer.cjs"
       - ".github/workflows/college-instructor-directory.yml"
 
 permissions:
@@ -19,9 +23,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - run: bun install --frozen-lockfile
+      - name: College correction review, confirmation and failure states
+        run: node --test tests/faculty-college-transfer.cjs
+      - name: Existing identity linking and reconciliation UI
+        run: bun test tests/faculty-identity-link-ui.test.ts tests/faculty-home-reconcile-form.test.ts
       - name: Install isolated database test dependency
         run: npm install --prefix /tmp/faculty-test --no-package-lock --ignore-scripts @electric-sql/pglite@0.5.8
       - name: Verify college scope and role boundaries
