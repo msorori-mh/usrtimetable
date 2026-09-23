@@ -64,7 +64,25 @@ import {
   type LeadershipDetailTab,
 } from "@/lib/reports/leadership-decisions";
 import { fetchLeadershipRoomCapacity } from "@/lib/reports/fetch-leadership-room-capacity";
+import { ReportScopeError } from "@/lib/reports/preferences";
 import "@/components/reports/leadership-dashboard.css";
+
+const LEADERSHIP_OVERVIEW_TIMEOUT_MS = 15_000;
+
+type LeadershipRpcResult = {
+  data: unknown;
+  error: { message: string } | null;
+};
+
+interface LeadershipRpcRequest extends PromiseLike<LeadershipRpcResult> {
+  abortSignal(signal: AbortSignal): LeadershipRpcRequest;
+}
+
+class LeadershipOverviewTimeoutError extends ReportScopeError {
+  constructor() {
+    super("استغرق تحميل مؤشرات الجامعة وقتًا أطول من المتوقع. أعد المحاولة.");
+  }
+}
 
 export const Route = createFileRoute("/_authenticated/reports/leadership")({
   head: () => ({
@@ -274,19 +292,33 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
   const query = useQuery({
     queryKey: ["university-leadership", viewerKey, period],
     ...LEADERSHIP_QUERY_POLICY,
+    retry: false,
     queryFn: async () => {
       const client = supabase as unknown as {
-        rpc: (
-          fn: string,
-          args: Record<string, unknown>,
-        ) => Promise<{ data: unknown; error: { message: string } | null }>;
+        rpc: (fn: string, args: Record<string, unknown>) => LeadershipRpcRequest;
       };
-      const { data, error } = await client.rpc("leadership_overview", {
-        p_academic_year: period?.year ?? null,
-        p_term_type: period?.type ?? null,
-      });
-      if (error) throw new Error("تعذر تحميل المؤشرات التنفيذية. أعد المحاولة.");
-      return leadershipOverviewSchema.parse(data);
+      const controller = new AbortController();
+      const timeout = globalThis.setTimeout(
+        () => controller.abort(),
+        LEADERSHIP_OVERVIEW_TIMEOUT_MS,
+      );
+      try {
+        const { data, error } = await client
+          .rpc("leadership_overview", {
+            p_academic_year: period?.year ?? null,
+            p_term_type: period?.type ?? null,
+          })
+          .abortSignal(controller.signal);
+        if (controller.signal.aborted) throw new LeadershipOverviewTimeoutError();
+        if (error) throw new ReportScopeError("تعذر تحميل المؤشرات التنفيذية. أعد المحاولة.");
+        return leadershipOverviewSchema.parse(data);
+      } catch (error) {
+        if (controller.signal.aborted) throw new LeadershipOverviewTimeoutError();
+        if (error instanceof ReportScopeError) throw error;
+        throw new ReportScopeError("تعذر تحميل المؤشرات التنفيذية. أعد المحاولة.");
+      } finally {
+        globalThis.clearTimeout(timeout);
+      }
     },
   });
   const data = query.data;
