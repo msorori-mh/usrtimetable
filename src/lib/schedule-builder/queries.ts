@@ -390,5 +390,3 @@ export async function fetchWorkspaceTimeTemplates(
   if (error) throw error;
   return (data ?? []) as WorkspaceTimeTemplate[];
 }
-
-

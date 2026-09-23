@@ -295,4 +295,3 @@ export function sessionMatchesWorkspaceStudySystem(
 ): boolean {
   return matchesStudySystem(sessionStudySystem, filter);
 }
-
