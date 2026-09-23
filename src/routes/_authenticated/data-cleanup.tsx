@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { useCanManageActiveCollege } from "@/hooks/use-can-manage";
@@ -31,6 +31,14 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
+import {
+  type BulkItem,
+  firstQueryError,
+  runBulkConfirm,
+  selectAll,
+  selectedIds,
+  shortRef,
+} from "@/lib/data-cleanup-bulk";
 import {
   Wrench,
   AlertTriangle,
@@ -126,9 +134,25 @@ async function fetchAll(collegeId: string) {
     ),
     eq(supabase.from("teaching_assignments").select("id, course_offering_id")),
     eq(supabase.from("departments").select("id, name")),
-    eq(supabase.from("instructor_types").select("id, name, code")),
-    eq(supabase.from("room_types").select("id, name, code, default_capacity")),
+    eq(supabase.from("instructor_types").select("id, name_ar, code, is_active")),
+    eq(supabase.from("room_types").select("id, name_ar, code, default_capacity, is_active")),
   ]);
+  const loadError = firstQueryError([
+    { label: "المقررات", error: courses.error },
+    { label: "مقررات الخطة", error: planCourses.error },
+    { label: "المحاضرون", error: instructors.error },
+    { label: "التوفّر", error: availability.error },
+    { label: "القاعات", error: rooms.error },
+    { label: "الطروحات", error: offerings.error },
+    { label: "الإسنادات", error: assignments.error },
+    { label: "الأقسام", error: departments.error },
+    { label: "أنواع المحاضرين", error: instructorTypes.error },
+    { label: "أنواع القاعات", error: roomTypes.error },
+  ]);
+  if (loadError) throw new Error(loadError);
+  type TypeRow = { id: string; name_ar: string; code: string | null; is_active: boolean | null };
+  const activeOnly = <T extends { is_active: boolean | null }>(rows: T[]) =>
+    rows.filter((r) => r.is_active !== false);
   return {
     courses: (courses.data ?? []) as CourseRow[],
     planCourses: (planCourses.data ?? []) as PlanCourseRow[],
@@ -138,17 +162,10 @@ async function fetchAll(collegeId: string) {
     offerings: (offerings.data ?? []) as OfferingRow[],
     assignments: (assignments.data ?? []) as { id: string; course_offering_id: string }[],
     departments: (departments.data ?? []) as { id: string; name: string }[],
-    instructorTypes: (instructorTypes.data ?? []) as {
-      id: string;
-      name: string;
-      code: string | null;
-    }[],
-    roomTypes: (roomTypes.data ?? []) as {
-      id: string;
-      name: string;
-      code: string | null;
-      default_capacity: number | null;
-    }[],
+    instructorTypes: activeOnly((instructorTypes.data ?? []) as TypeRow[]),
+    roomTypes: activeOnly(
+      (roomTypes.data ?? []) as (TypeRow & { default_capacity: number | null })[],
+    ),
   };
 }
 
@@ -158,7 +175,11 @@ function DataCleanupPage() {
   const canManage = useCanManageActiveCollege();
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const {
+    data,
+    isLoading,
+    error: loadError,
+  } = useQuery({
     queryKey: ["data-cleanup", active?.id],
     queryFn: () => fetchAll(active!.id),
     enabled: !!active?.id,
@@ -202,8 +223,15 @@ function DataCleanupPage() {
         تلقائية — كل عملية تتطلب تأكيداً صريحاً وتُسجَّل في سجل التدقيق.
       </p>
 
+      {loadError && (
+        <Card role="alert" className="border-destructive p-4 text-sm text-destructive">
+          فشل تحميل بيانات التنظيف؛ لا تُعرض نتائج قد تكون مضللة.{" "}
+          {loadError instanceof Error ? loadError.message : String(loadError)}
+        </Card>
+      )}
+
       {/* Dashboard */}
-      <DashboardCards diag={diag} loading={isLoading} />
+      {!loadError && <DashboardCards diag={diag} loading={isLoading} />}
 
       {!canManage && (
         <Card className="border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200">
@@ -589,13 +617,139 @@ function IssueRow({ issue, actions }: { issue: Issue | undefined; actions?: Reac
   );
 }
 
+// ---------- bulk item builders ----------
+type CleanupData = Awaited<ReturnType<typeof fetchAll>>;
+const joinDetails = (parts: (string | null | undefined | false)[]) =>
+  parts.filter(Boolean).join(" · ");
+const NATURE_AR: Record<string, string> = {
+  department: "قسم",
+  college: "كلية",
+  university: "جامعة",
+};
+const SYSTEM_AR: Record<string, string> = { regular: "انتظام", parallel: "موازي", both: "كلاهما" };
+
+function lookups(d: CleanupData | undefined) {
+  return {
+    course: new Map((d?.courses ?? []).map((c) => [c.id, c])),
+    dept: new Map((d?.departments ?? []).map((x) => [x.id, x.name])),
+    insType: new Map((d?.instructorTypes ?? []).map((x) => [x.id, x.name_ar])),
+    roomType: new Map((d?.roomTypes ?? []).map((x) => [x.id, x.name_ar])),
+  };
+}
+const courseTitle = (c: CourseRow | undefined, id: string) =>
+  c ? joinDetails([c.code, c.name]) || shortRef(id) : shortRef(id);
+
+function courseItems(
+  d: CleanupData | undefined,
+  ids: string[] | undefined,
+  reason: string,
+): BulkItem[] {
+  const L = lookups(d);
+  return (ids ?? []).map((id) => {
+    const c = L.course.get(id);
+    return {
+      id,
+      title: courseTitle(c, id),
+      details: joinDetails([
+        `الطبيعة: ${c?.course_nature ? (NATURE_AR[c.course_nature] ?? c.course_nature) : "غير محددة"}`,
+        `القسم: ${(c?.department_id && L.dept.get(c.department_id)) || "غير محدد"}`,
+        `السبب: ${reason}`,
+      ]),
+    };
+  });
+}
+
+function planCourseItems(d: CleanupData | undefined, ids: string[] | undefined): BulkItem[] {
+  const L = lookups(d);
+  const pcs = new Map((d?.planCourses ?? []).map((p) => [p.id, p]));
+  return (ids ?? []).map((id) => {
+    const p = pcs.get(id);
+    return {
+      id,
+      title: p ? courseTitle(L.course.get(p.course_id), id) : shortRef(id),
+      details: joinDetails([
+        `محاضرات/أسبوع: ${p?.lectures_per_week ?? 0}، معامل/أسبوع: ${p?.labs_per_week ?? 0}`,
+        `قاعة المحاضرة: ${p?.required_room_type_for_lecture || "غير محددة"}`,
+        `قاعة المعمل: ${p?.required_room_type_for_lab || "غير محددة"}`,
+        "السبب: متطلبات القاعة ناقصة",
+      ]),
+    };
+  });
+}
+
+function instructorItems(
+  d: CleanupData | undefined,
+  ids: string[] | undefined,
+  reason: string,
+): BulkItem[] {
+  const L = lookups(d);
+  const ins = new Map((d?.instructors ?? []).map((i) => [i.id, i]));
+  return (ids ?? []).map((id) => {
+    const i = ins.get(id);
+    return {
+      id,
+      title: i?.full_name?.trim() || shortRef(id),
+      details: joinDetails([
+        `القسم: ${(i?.department_id && L.dept.get(i.department_id)) || "غير محدد"}`,
+        `التخصص: ${i?.specialization?.trim() || "غير محدد"}`,
+        `النوع: ${(i?.instructor_type_id && L.insType.get(i.instructor_type_id)) || "غير محدد"}`,
+        `السبب: ${reason}`,
+      ]),
+    };
+  });
+}
+
+function roomBulkItems(
+  d: CleanupData | undefined,
+  ids: string[] | undefined,
+  reason: string,
+): BulkItem[] {
+  const L = lookups(d);
+  const rooms = new Map((d?.rooms ?? []).map((r) => [r.id, r]));
+  return (ids ?? []).map((id) => {
+    const r = rooms.get(id);
+    return {
+      id,
+      title: r ? joinDetails([r.code, r.name]) || shortRef(id) : shortRef(id),
+      details: joinDetails([
+        `السعة: ${r?.capacity ?? "—"}`,
+        `النوع: ${(r?.room_type_id && L.roomType.get(r.room_type_id)) || "غير محدد"}`,
+        r ? (r.is_active ? "نشطة" : "غير نشطة") : null,
+        `السبب: ${reason}`,
+      ]),
+    };
+  });
+}
+
+function offeringItems(
+  d: CleanupData | undefined,
+  ids: string[] | undefined,
+  reason: string,
+): BulkItem[] {
+  const L = lookups(d);
+  const offs = new Map((d?.offerings ?? []).map((o) => [o.id, o]));
+  return (ids ?? []).map((id) => {
+    const o = offs.get(id);
+    return {
+      id,
+      title: o ? courseTitle(L.course.get(o.course_id), id) : shortRef(id),
+      details: joinDetails([
+        `الطلاب المتوقعون: ${o?.expected_students ?? "—"}`,
+        `النظام: ${o?.study_system ? (SYSTEM_AR[o.study_system] ?? o.study_system) : "غير محدد"}`,
+        o?.plan_course_id ? "مرتبط بمقرر خطة" : "غير مرتبط بمقرر خطة",
+        `السبب: ${reason}`,
+      ]),
+    };
+  });
+}
+
 // ---------- bulk dialog (generic) ----------
 function BulkDialog({
   open,
   onOpenChange,
   title,
   description,
-  ids,
+  items,
   children,
   onConfirm,
   confirmLabel = "تنفيذ",
@@ -604,70 +758,85 @@ function BulkDialog({
   onOpenChange: (v: boolean) => void;
   title: string;
   description?: string;
-  ids: string[];
+  items: BulkItem[];
   children?: React.ReactNode;
-  onConfirm: (selected: string[]) => Promise<void> | void;
+  /** Return true only on full success; anything else keeps the dialog open. */
+  onConfirm: (selected: string[]) => Promise<boolean> | boolean;
   confirmLabel?: string;
 }) {
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState(false);
+  const itemsKey = items.map((i) => i.id).join(",");
 
-  // reset selection when opening
-  const allSelectedIds = Object.entries(selected)
-    .filter(([, v]) => v)
-    .map(([k]) => k);
+  // Controlled open: initialise on prop change, not via onOpenChange.
+  useEffect(() => {
+    if (open) setSelected(selectAll(items));
+    else setBusy(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, itemsKey]);
 
-  const handleOpen = (v: boolean) => {
-    if (v) {
-      const next: Record<string, boolean> = {};
-      ids.forEach((id) => (next[id] = true));
-      setSelected(next);
-    }
-    onOpenChange(v);
-  };
+  const chosen = selectedIds(items, selected);
+  const allSelected = items.length > 0 && chosen.length === items.length;
 
   return (
-    <Dialog open={open} onOpenChange={handleOpen}>
-      <DialogContent dir="rtl" className="max-w-lg">
+    <Dialog open={open} onOpenChange={(v) => !busy && onOpenChange(v)}>
+      <DialogContent dir="rtl" className="flex max-h-[90vh] max-w-lg flex-col">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
-        <div className="space-y-3">
+        <div className="flex min-h-0 flex-1 flex-col gap-3">
           <div className="rounded-md border bg-muted/30 p-2 text-xs">
-            سيتم تطبيق العملية على <strong>{allSelectedIds.length}</strong> من أصل{" "}
-            <strong>{ids.length}</strong> عنصر.
-            {ids.length > 0 && (
+            سيتم تطبيق العملية على <strong>{chosen.length}</strong> من أصل{" "}
+            <strong>{items.length}</strong> عنصر.
+            {items.length > 0 && (
               <button
                 type="button"
                 className="mr-2 text-primary underline-offset-2 hover:underline"
-                onClick={() => {
-                  const allSelected = ids.every((id) => selected[id]);
-                  const next: Record<string, boolean> = {};
-                  ids.forEach((id) => (next[id] = !allSelected));
-                  setSelected(next);
-                }}
+                onClick={() => setSelected(allSelected ? {} : selectAll(items))}
               >
-                {ids.every((id) => selected[id]) ? "إلغاء التحديد" : "تحديد الكل"}
+                {allSelected ? "إلغاء التحديد" : "تحديد الكل"}
               </button>
             )}
           </div>
+          <ul
+            className="max-h-60 min-h-0 overflow-y-auto rounded-md border divide-y"
+            aria-label="العناصر المحددة للإصلاح"
+          >
+            {items.map((it) => (
+              <li key={it.id}>
+                <label className="flex cursor-pointer items-start gap-2 p-2 text-sm">
+                  <Checkbox
+                    className="mt-0.5"
+                    checked={!!selected[it.id]}
+                    onCheckedChange={(v) => setSelected((s) => ({ ...s, [it.id]: v === true }))}
+                    aria-label={it.title}
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block break-words font-medium">{it.title}</span>
+                    {it.details && (
+                      <span className="block break-words text-[11px] text-muted-foreground">
+                        {it.details}
+                      </span>
+                    )}
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
           {children}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => handleOpen(false)} disabled={busy}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
             إلغاء
           </Button>
           <Button
-            disabled={busy || allSelectedIds.length === 0}
+            disabled={busy || chosen.length === 0}
             onClick={async () => {
-              try {
-                setBusy(true);
-                await onConfirm(allSelectedIds);
-                handleOpen(false);
-              } finally {
-                setBusy(false);
-              }
+              setBusy(true);
+              const ok = await runBulkConfirm(onConfirm, chosen, (m) => toast.error(m));
+              setBusy(false);
+              if (ok) onOpenChange(false);
             }}
           >
             {busy ? "جارٍ التنفيذ..." : confirmLabel}
@@ -701,9 +870,18 @@ function CoursesSection({
   const [lectureRoom, setLectureRoom] = useState("lecture_hall");
   const [labRoom, setLabRoom] = useState("computer_lab");
 
-  const tempIds = issues?.temp_codes.ids ?? [];
-  const natureIds = issues?.course_missing_nature.ids ?? [];
-  const roomReqIds = issues?.course_no_room_req.ids ?? [];
+  const tempItems = useMemo(
+    () => courseItems(data, issues?.temp_codes.ids, "رمز مؤقت CRS-"),
+    [data, issues],
+  );
+  const natureItems = useMemo(
+    () => courseItems(data, issues?.course_missing_nature.ids, "طبيعة المقرر غير محددة"),
+    [data, issues],
+  );
+  const roomReqItems = useMemo(
+    () => planCourseItems(data, issues?.course_no_room_req.ids),
+    [data, issues],
+  );
 
   return (
     <Card className="space-y-3 p-4">
@@ -745,12 +923,12 @@ function CoursesSection({
         onOpenChange={(v) => !v && setDlg(null)}
         title="تحديث جماعي للرموز المؤقتة (CRS-)"
         description="سيُستبدل بادئة CRS- بالبادئة الجديدة مع الحفاظ على الجزء الرقمي."
-        ids={tempIds}
+        items={tempItems}
         confirmLabel="تطبيق التحديث"
         onConfirm={async (ids) => {
           if (!codePrefix.trim()) {
             toast.error("أدخل البادئة الجديدة");
-            return;
+            return false;
           }
           const rows = (data?.courses ?? []).filter((c) => ids.includes(c.id));
           const updates = await Promise.all(
@@ -770,9 +948,13 @@ function CoursesSection({
             collegeId,
             details: { kind: "code_prefix_rename", count: ids.length, prefix: codePrefix, failed },
           });
-          if (failed) toast.error(`تم التحديث مع فشل ${failed} عنصر`);
-          else toast.success(`تم تحديث رموز ${ids.length} مقرر`);
           onChanged();
+          if (failed) {
+            toast.error(`تم التحديث مع فشل ${failed} عنصر؛ راجع العناصر المتبقية`);
+            return false;
+          }
+          toast.success(`تم تحديث رموز ${ids.length} مقرر`);
+          return true;
         }}
       >
         <div className="space-y-2">
@@ -789,7 +971,7 @@ function CoursesSection({
         open={dlg === "nature"}
         onOpenChange={(v) => !v && setDlg(null)}
         title="تعيين طبيعة المقرر"
-        ids={natureIds}
+        items={natureItems}
         onConfirm={async (ids) => {
           const { error } = await supabase
             .from("courses")
@@ -797,7 +979,7 @@ function CoursesSection({
             .in("id", ids);
           if (error) {
             toast.error(error.message);
-            return;
+            return false;
           }
           await logAudit({
             action: "bulk_update",
@@ -807,6 +989,7 @@ function CoursesSection({
           });
           toast.success(`تم تعيين الطبيعة لـ ${ids.length} مقرر`);
           onChanged();
+          return true;
         }}
       >
         <div className="space-y-2">
@@ -829,7 +1012,7 @@ function CoursesSection({
         onOpenChange={(v) => !v && setDlg(null)}
         title="تعيين متطلبات نوع القاعة (لمقررات الخطة)"
         description="يُطبَّق فقط حيث القيمة فارغة، ووفقاً لوجود محاضرات/معامل."
-        ids={roomReqIds}
+        items={roomReqItems}
         onConfirm={async (ids) => {
           const rows = (data?.planCourses ?? []).filter((p) => ids.includes(p.id));
           let ok = 0,
@@ -854,8 +1037,13 @@ function CoursesSection({
             collegeId,
             details: { kind: "room_requirements", lecture: lectureRoom, lab: labRoom, ok, fail },
           });
-          toast.success(`تم تحديث ${ok} مقرر خطة${fail ? ` (فشل ${fail})` : ""}`);
           onChanged();
+          if (fail) {
+            toast.error(`تم تحديث ${ok} مقرر خطة وفشل ${fail}؛ راجع العناصر المتبقية`);
+            return false;
+          }
+          toast.success(`تم تحديث ${ok} مقرر خطة`);
+          return true;
         }}
       >
         <div className="grid grid-cols-2 gap-3">
@@ -910,6 +1098,8 @@ function InstructorsSection({
   const [deptId, setDeptId] = useState<string>("");
   const [spec, setSpec] = useState("");
   const [typeId, setTypeId] = useState<string>("");
+  const insItems = (ids: string[] | undefined, reason: string) =>
+    instructorItems(data, ids, reason);
 
   return (
     <Card className="space-y-3 p-4">
@@ -949,11 +1139,11 @@ function InstructorsSection({
         open={dlg === "dept"}
         onOpenChange={(v) => !v && setDlg(null)}
         title="تعيين القسم للمحاضرين"
-        ids={issues?.ins_no_dept.ids ?? []}
+        items={insItems(issues?.ins_no_dept.ids, "بدون قسم")}
         onConfirm={async (ids) => {
           if (!deptId) {
             toast.error("اختر قسماً");
-            return;
+            return false;
           }
           const { error } = await supabase
             .from("instructors")
@@ -961,7 +1151,7 @@ function InstructorsSection({
             .in("id", ids);
           if (error) {
             toast.error(error.message);
-            return;
+            return false;
           }
           await logAudit({
             action: "bulk_update",
@@ -971,6 +1161,7 @@ function InstructorsSection({
           });
           toast.success(`تم التحديث لـ ${ids.length} محاضر`);
           onChanged();
+          return true;
         }}
       >
         <div className="space-y-2">
@@ -994,11 +1185,11 @@ function InstructorsSection({
         open={dlg === "spec"}
         onOpenChange={(v) => !v && setDlg(null)}
         title="تعيين التخصص للمحاضرين"
-        ids={issues?.ins_no_spec.ids ?? []}
+        items={insItems(issues?.ins_no_spec.ids, "بدون تخصص")}
         onConfirm={async (ids) => {
           if (!spec.trim()) {
             toast.error("أدخل التخصص");
-            return;
+            return false;
           }
           const { error } = await supabase
             .from("instructors")
@@ -1006,7 +1197,7 @@ function InstructorsSection({
             .in("id", ids);
           if (error) {
             toast.error(error.message);
-            return;
+            return false;
           }
           await logAudit({
             action: "bulk_update",
@@ -1016,6 +1207,7 @@ function InstructorsSection({
           });
           toast.success(`تم التحديث لـ ${ids.length} محاضر`);
           onChanged();
+          return true;
         }}
       >
         <div className="space-y-2">
@@ -1032,11 +1224,11 @@ function InstructorsSection({
         open={dlg === "type"}
         onOpenChange={(v) => !v && setDlg(null)}
         title="تعيين نوع المحاضر"
-        ids={issues?.ins_no_type.ids ?? []}
+        items={insItems(issues?.ins_no_type.ids, "بدون نوع")}
         onConfirm={async (ids) => {
           if (!typeId) {
             toast.error("اختر النوع");
-            return;
+            return false;
           }
           const { error } = await supabase
             .from("instructors")
@@ -1044,7 +1236,7 @@ function InstructorsSection({
             .in("id", ids);
           if (error) {
             toast.error(error.message);
-            return;
+            return false;
           }
           await logAudit({
             action: "bulk_update",
@@ -1054,6 +1246,7 @@ function InstructorsSection({
           });
           toast.success(`تم التحديث لـ ${ids.length} محاضر`);
           onChanged();
+          return true;
         }}
       >
         <div className="space-y-2">
@@ -1065,7 +1258,7 @@ function InstructorsSection({
             <SelectContent>
               {(data?.instructorTypes ?? []).map((t) => (
                 <SelectItem key={t.id} value={t.id}>
-                  {t.name}
+                  {t.name_ar}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -1094,6 +1287,7 @@ function RoomsSection({
   const [dlg, setDlg] = useState<null | "cap" | "type">(null);
   const [cap, setCap] = useState<number>(40);
   const [roomTypeId, setRoomTypeId] = useState<string>("");
+  const roomItems = (ids: string[] | undefined, reason: string) => roomBulkItems(data, ids, reason);
 
   return (
     <Card className="space-y-3 p-4">
@@ -1124,16 +1318,16 @@ function RoomsSection({
         open={dlg === "cap"}
         onOpenChange={(v) => !v && setDlg(null)}
         title="تحديث جماعي للسعة"
-        ids={issues?.room_default_cap.ids ?? []}
+        items={roomItems(issues?.room_default_cap.ids, "سعة افتراضية 30")}
         onConfirm={async (ids) => {
           if (!Number.isFinite(cap) || cap <= 0) {
             toast.error("سعة غير صحيحة");
-            return;
+            return false;
           }
           const { error } = await supabase.from("rooms").update({ capacity: cap }).in("id", ids);
           if (error) {
             toast.error(error.message);
-            return;
+            return false;
           }
           await logAudit({
             action: "bulk_update",
@@ -1143,6 +1337,7 @@ function RoomsSection({
           });
           toast.success(`تم التحديث لـ ${ids.length} قاعة`);
           onChanged();
+          return true;
         }}
       >
         <div className="space-y-2">
@@ -1160,11 +1355,11 @@ function RoomsSection({
         open={dlg === "type"}
         onOpenChange={(v) => !v && setDlg(null)}
         title="تعيين نوع القاعة"
-        ids={issues?.room_no_type.ids ?? []}
+        items={roomItems(issues?.room_no_type.ids, "بدون نوع")}
         onConfirm={async (ids) => {
           if (!roomTypeId) {
             toast.error("اختر النوع");
-            return;
+            return false;
           }
           const rt = (data?.roomTypes ?? []).find((t) => t.id === roomTypeId);
           const upd: { room_type_id: string; room_type?: string } = { room_type_id: roomTypeId };
@@ -1186,7 +1381,7 @@ function RoomsSection({
           const { error } = await supabase.from("rooms").update(upd).in("id", ids);
           if (error) {
             toast.error(error.message);
-            return;
+            return false;
           }
           await logAudit({
             action: "bulk_update",
@@ -1196,6 +1391,7 @@ function RoomsSection({
           });
           toast.success(`تم التحديث لـ ${ids.length} قاعة`);
           onChanged();
+          return true;
         }}
       >
         <div className="space-y-2">
@@ -1207,7 +1403,7 @@ function RoomsSection({
             <SelectContent>
               {(data?.roomTypes ?? []).map((t) => (
                 <SelectItem key={t.id} value={t.id}>
-                  {t.name}
+                  {t.name_ar}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -1236,6 +1432,7 @@ function OfferingsSection({
   const [dlg, setDlg] = useState<null | "students" | "system">(null);
   const [students, setStudents] = useState<number>(30);
   const [system, setSystem] = useState<"regular" | "parallel" | "both">("regular");
+  const offItems = (ids: string[] | undefined, reason: string) => offeringItems(data, ids, reason);
 
   return (
     <Card className="space-y-3 p-4">
@@ -1266,11 +1463,11 @@ function OfferingsSection({
         open={dlg === "students"}
         onOpenChange={(v) => !v && setDlg(null)}
         title="تحديث جماعي للطلاب المتوقعين"
-        ids={issues?.off_zero_students.ids ?? []}
+        items={offItems(issues?.off_zero_students.ids, "عدد الطلاب 0")}
         onConfirm={async (ids) => {
           if (!Number.isFinite(students) || students <= 0) {
             toast.error("قيمة غير صحيحة");
-            return;
+            return false;
           }
           const { error } = await supabase
             .from("course_offerings")
@@ -1278,7 +1475,7 @@ function OfferingsSection({
             .in("id", ids);
           if (error) {
             toast.error(error.message);
-            return;
+            return false;
           }
           await logAudit({
             action: "bulk_update",
@@ -1288,6 +1485,7 @@ function OfferingsSection({
           });
           toast.success(`تم التحديث لـ ${ids.length} طرح`);
           onChanged();
+          return true;
         }}
       >
         <div className="space-y-2">
@@ -1305,7 +1503,7 @@ function OfferingsSection({
         open={dlg === "system"}
         onOpenChange={(v) => !v && setDlg(null)}
         title="تعيين نظام الدراسة"
-        ids={issues?.off_no_system.ids ?? []}
+        items={offItems(issues?.off_no_system.ids, "بدون نظام دراسة")}
         onConfirm={async (ids) => {
           const { error } = await supabase
             .from("course_offerings")
@@ -1313,7 +1511,7 @@ function OfferingsSection({
             .in("id", ids);
           if (error) {
             toast.error(error.message);
-            return;
+            return false;
           }
           await logAudit({
             action: "bulk_update",
@@ -1323,6 +1521,7 @@ function OfferingsSection({
           });
           toast.success(`تم التحديث لـ ${ids.length} طرح`);
           onChanged();
+          return true;
         }}
       >
         <div className="space-y-2">
@@ -1342,6 +1541,3 @@ function OfferingsSection({
     </Card>
   );
 }
-
-// suppress unused-import lint warning
-void Checkbox;
