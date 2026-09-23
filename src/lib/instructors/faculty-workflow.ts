@@ -194,3 +194,42 @@ export const requestStatusLabel = {
   rejected: "مرفوض",
   cancelled: "ملغى",
 };
+
+/** Server rule (reconcile_faculty_home): btrim(evidence) must be ≥ 10 characters. */
+export const RECONCILE_EVIDENCE_MIN = 10;
+
+/** Arabic reason the reconcile button is disabled, or null when submission is allowed. */
+export function reconcileBlockReason(input: {
+  canReconcile: boolean;
+  busy: boolean;
+  home: string;
+  source: string;
+  sourceIds: readonly string[];
+  evidence: string;
+}): string | null {
+  if (!input.canReconcile) return "لا توجد صلاحية لتسوية التبعية (مدير النظام فقط).";
+  if (input.busy) return "جارٍ حفظ التسوية…";
+  if (!input.home.trim()) return "اختر الكلية الأصلية.";
+  if (!input.source.trim() || !input.sourceIds.includes(input.source))
+    return "اختر مصدر بيانات المحاضر والنصاب.";
+  const len = input.evidence.trim().length;
+  if (len < RECONCILE_EVIDENCE_MIN)
+    return `أدخل مرجع تحقق واضحًا لا يقل عن ${RECONCILE_EVIDENCE_MIN} أحرف (الحالي ${len}).`;
+  return null;
+}
+
+const RECONCILE_ERRORS: Record<string, string> = {
+  insufficient_privilege: "لا توجد صلاحية لتسوية التبعية.",
+  FACULTY_IDENTITY_NOT_FOUND: "هوية المحاضر غير موجودة.",
+  STALE_FACULTY_DECISION: "تغيّرت بيانات التسوية منذ فتح النافذة؛ أعد تحميل الصفحة ثم حاول مجددًا.",
+  FACULTY_EVIDENCE_REQUIRED: `مرجع التحقق مطلوب ولا يقل عن ${RECONCILE_EVIDENCE_MIN} أحرف.`,
+  FACULTY_HOME_OR_SOURCE_INVALID: "الكلية الأصلية أو سجل المصدر لا يتبع هذه الهوية.",
+  FACULTY_HOME_REQUIRED_FOR_QUOTA: "اعتماد النصاب يتطلب تحديد الكلية الأصلية.",
+  FACULTY_QUOTA_REQUIRED: "لا يمكن تأكيد النصاب لأن سجل المصدر بلا نصاب مسجّل.",
+};
+
+export function reconcileErrorMessage(message: string | null | undefined): string {
+  const m = message ?? "";
+  const key = Object.keys(RECONCILE_ERRORS).find((k) => m.includes(k));
+  return key ? RECONCILE_ERRORS[key] : `تعذّر حفظ التسوية: ${m || "خطأ غير معروف"}`;
+}

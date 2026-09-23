@@ -7,6 +7,8 @@ import { mapAssignmentRpcError } from "@/lib/academic-delivery/teaching-assignme
 import {
   facultyWorkflow,
   facultyStatusLabel,
+  reconcileBlockReason,
+  reconcileErrorMessage,
   requestStatusLabel,
   type FacultyHome,
 } from "@/lib/instructors/faculty-workflow";
@@ -24,6 +26,7 @@ export function FacultyHomeReview({ collegeId }: { collegeId: string }) {
   const [source, setSource] = useState("");
   const [evidence, setEvidence] = useState("");
   const [quota, setQuota] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const list = useQuery({
     queryKey: ["faculty-home-profiles", collegeId],
     queryFn: async () => {
@@ -42,17 +45,22 @@ export function FacultyHomeReview({ collegeId }: { collegeId: string }) {
         p_home_college_id: home,
         p_source_instructor_id: source,
         p_quota_confirmed: quota,
-        p_evidence: evidence,
+        p_evidence: evidence.trim(),
         p_expected_decision_at: edit.decision_at,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("تمت تسوية التبعية ومصدر النصاب");
+      setSaveError(null);
       setEdit(null);
       void qc.invalidateQueries();
     },
-    onError: (e: Error) => toast.error(mapAssignmentRpcError(e.message).message),
+    onError: (e: Error) => {
+      const msg = reconcileErrorMessage(e.message);
+      setSaveError(msg);
+      toast.error(msg);
+    },
   });
   const rows = list.data ?? [];
   return (
@@ -117,6 +125,7 @@ export function FacultyHomeReview({ collegeId }: { collegeId: string }) {
                             setSource(r.source_instructor_id ?? "");
                             setQuota(false);
                             setEvidence("");
+                            setSaveError(null);
                           }}
                         >
                           تسوية
@@ -135,7 +144,7 @@ export function FacultyHomeReview({ collegeId }: { collegeId: string }) {
           if (!open && !save.isPending) setEdit(null);
         }}
       >
-        <DialogContent dir="rtl">
+        <DialogContent dir="rtl" className="max-h-[90vh] overflow-y-auto">
           <DialogTitle>تسوية تبعية {edit?.name}</DialogTitle>
           <DialogDescription>
             حدد الكلية الأصلية والسجل المعتمد لبيانات المحاضر. يحتفظ النظام بالإسنادات والمواعيد
@@ -188,12 +197,40 @@ export function FacultyHomeReview({ collegeId }: { collegeId: string }) {
               placeholder="مصدر تأكيد التبعية والنصاب"
             />
           </label>
-          <Button
-            disabled={save.isPending || !home || !source || evidence.trim().length < 10}
-            onClick={() => save.mutate()}
-          >
-            {save.isPending ? "جارٍ الحفظ…" : "اعتماد التسوية"}
-          </Button>
+          {(() => {
+            const blocked = reconcileBlockReason({
+              canReconcile: !!me?.isSuperAdmin,
+              busy: save.isPending,
+              home,
+              source,
+              sourceIds: edit?.members.map((m) => m.id) ?? [],
+              evidence,
+            });
+            return (
+              <>
+                <Button
+                  disabled={blocked !== null}
+                  onClick={() => {
+                    if (blocked !== null || save.isPending) return;
+                    setSaveError(null);
+                    save.mutate();
+                  }}
+                >
+                  {save.isPending ? "جارٍ الحفظ…" : "اعتماد التسوية"}
+                </Button>
+                {blocked && !save.isPending && (
+                  <p className="text-sm text-muted-foreground" aria-live="polite">
+                    {blocked}
+                  </p>
+                )}
+                {saveError && (
+                  <p role="alert" className="text-sm text-destructive">
+                    {saveError}
+                  </p>
+                )}
+              </>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </section>
