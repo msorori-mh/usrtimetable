@@ -68,7 +68,10 @@ export function qualityPlanValid(snapshot: Snapshot, sessions: Session[], dayCap
 /** A corrected hard conflict is useful even when all quality metrics stay equal. */
 export function qualityRepairNonWorsening(after: Metrics, before: Metrics): boolean {
   return Object.entries(before).every(
-    ([key, value]) => typeof value !== "number" || Number(after[key as keyof Metrics]) <= value,
+    ([key, value]) =>
+      key === "cohortCourseDayMismatch" ||
+      typeof value !== "number" ||
+      Number(after[key as keyof Metrics]) <= value,
   );
 }
 
@@ -136,7 +139,8 @@ export function qualityBetter(a: Metrics, b: Metrics): boolean {
   if (instructorPolish.some((k) => Number(a[k] ?? 0) > Number(b[k] ?? 0))) return false;
   return (
     studentAndHardKeys.some((k) => Number(a[k] ?? 0) < Number(b[k] ?? 0)) ||
-    instructorPolish.some((k) => Number(a[k] ?? 0) < Number(b[k] ?? 0))
+    instructorPolish.some((k) => Number(a[k] ?? 0) < Number(b[k] ?? 0)) ||
+    (a.cohortCourseDayMismatch ?? 0) < (b.cohortCourseDayMismatch ?? 0)
   );
 }
 

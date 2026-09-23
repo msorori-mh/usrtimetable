@@ -1,4 +1,5 @@
 /** Pure, bounded timetable compaction. No database writes. */
+import { cohortCourseDayMismatch } from "./cohort-course-days.ts";
 import { MAX_INSTRUCTOR_SESSIONS_PER_DAY } from "./instructor-daily-sessions.ts";
 import {
   ATTENDANCE_POLICY,
@@ -171,6 +172,7 @@ export interface Snapshot {
   };
 }
 export type Metrics = AttendanceMetrics & {
+  cohortCourseDayMismatch?: number;
   extendedDayViolations?: number;
   extendedGroups?: number;
   instructorExcessTargetDays?: number;
@@ -324,6 +326,7 @@ export function measure(s: Snapshot, sessions = s.sessions): Metrics {
   }
   const base: Metrics = {
     ...attendance,
+    cohortCourseDayMismatch: cohortCourseDayMismatch(s, sessions),
     instructorExcessTargetDays: [...teacherDays].reduce((sum, [id, days]) => {
       const target = instructorAttendanceTarget(
         (teacherMinutes.get(id) ?? 0) / 60,
@@ -424,7 +427,11 @@ export function better(a: Metrics, b: Metrics) {
     >
   > = ["instructorGapMinutes", "worstInstructorGapMinutes", "shortInstructorDays"];
   if (protectedInstructorMetrics.some((key) => a[key] > b[key])) return false;
-  return compareAttendance(a, b) < 0;
+  const attendance = compareAttendance(a, b);
+  return (
+    attendance < 0 ||
+    (attendance === 0 && (a.cohortCourseDayMismatch ?? 0) < (b.cohortCourseDayMismatch ?? 0))
+  );
 }
 export function feasible(
   s: Snapshot,

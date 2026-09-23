@@ -1,4 +1,5 @@
 import type { ModelData } from "highs";
+import { cohortCourseGroups } from "./cohort-course-days.ts";
 import {
   MAX_INSTRUCTOR_SESSIONS_PER_DAY,
   instructorDailySessionViolations,
@@ -74,6 +75,11 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
   if (snapshot.sessions.some((s) => ctx.students(s).some((p) => p.startsWith("cohort:"))))
     throw new Error("INCOMPLETE_STUDENT_PARTITIONS");
   const pools = roomPools(snapshot);
+  const peerBuckets = cohortCourseGroups(snapshot);
+  // Total peer-day cost is below half a minute of instructor idle time.
+  // Relocation is the final tie-breaker, below a single peer-day improvement.
+  const peerWeight = 0.25 / Math.max(1, 7 * peerBuckets.reduce((n, peers) => n + peers.size, 0));
+  const moveWeight = peerBuckets.length ? peerWeight / (2 * snapshot.sessions.length) : 1;
   const candidates: Candidate[] = [];
   const generationWeights = new Map<number, number>();
   const cost: number[] = [],
@@ -128,7 +134,7 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
           end_time: slot.end,
         };
         if (!feasible(snapshot, [], candidate, { ...original, is_locked: false })) continue;
-        const i = variable(sameTime(original, candidate) ? 0 : 1);
+        const i = variable(sameTime(original, candidate) ? 0 : moveWeight);
         const required = snapshot.assignments.find((a) => a.id === original.teaching_assignment_id);
         const fallback =
           roomTypeRank({
@@ -142,7 +148,7 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
           fallback * 100 +
             (sameTime(original, candidate) && pools[pool].some((r) => r.id === original.room_id)
               ? 0
-              : 1),
+              : moveWeight),
         );
         candidates.push({
           session: { ...candidate, is_locked: original.is_locked },
@@ -153,6 +159,37 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
       }
     if (!entries.length) throw new Error("JOINT_GRID_HAS_NO_PLACEMENT");
     row(entries, 1, 1);
+  }
+  // Presence variables only measure alignment; they never require common days.
+  const placements = new Map<string, Map<number, Term[]>>();
+  candidates.forEach(({ session }, i) => {
+    const days = placements.get(session.id) ?? new Map<number, Term[]>();
+    days.set(session.day_of_week, [...(days.get(session.day_of_week) ?? []), [i, 1]]);
+    placements.set(session.id, days);
+  });
+  for (const peers of peerBuckets) {
+    const byDay = new Map<number, number[]>();
+    for (const sessions of peers.values()) {
+      const days = new Map<number, Term[]>();
+      for (const session of sessions)
+        for (const [day, terms] of placements.get(session.id) ?? [])
+          days.set(day, [...(days.get(day) ?? []), ...terms]);
+      for (const [day, terms] of days) {
+        const present = variable();
+        row([...terms, [present, -sessions.length]], -INF, 0);
+        row([...terms, [present, -1]], 0, INF);
+        byDay.set(day, [...(byDay.get(day) ?? []), present]);
+      }
+    }
+    for (const enabled of byDay.values()) {
+      const any = variable();
+      const terms: Term[] = enabled.map((i) => [i, 1]);
+      row([...terms, [any, -enabled.length]], -INF, 0);
+      row([...terms, [any, -1]], 0, INF);
+      const missing = variable(peerWeight, peers.size);
+      generationWeights.set(missing, peerWeight);
+      row([[missing, 1], ...terms, [any, -peers.size]], 0, 0);
+    }
   }
   const gap = Math.max(0, snapshot.settings.break_between_sessions_min || 0);
   const boundaries = new Map<number, number[]>();
