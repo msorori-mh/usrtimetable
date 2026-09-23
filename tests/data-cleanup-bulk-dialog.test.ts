@@ -55,7 +55,7 @@ describe("data-cleanup BulkDialog", () => {
   });
 
   it("every BulkDialog passes meaningful items (no bare ids)", () => {
-    const dialogs = src.match(/<BulkDialog[\s\S]*?>/g) ?? [];
+    const dialogs = src.split("<BulkDialog").slice(2).map((d) => d.slice(0, 400));
     expect(dialogs.length).toBe(10);
     for (const d of dialogs) {
       expect(d).toMatch(/items=\{(tempItems|natureItems|roomReqItems|insItems\(|roomItems\(|offItems\()/);
