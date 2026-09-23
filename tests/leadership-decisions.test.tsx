@@ -288,7 +288,6 @@ test("route preserves same-scope content during refresh, closes details on perio
   assert.match(source, /استغرق تحميل مؤشرات الجامعة وقتًا أطول من المتوقع/);
 });
 
-
 test("leadership workspace uses one set-based assignment rollup without changing its public contract", () => {
   const migration = readFileSync(
     "supabase/migrations/20260923010000_optimize_leadership_workspace.sql",
