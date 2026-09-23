@@ -44,7 +44,6 @@ import {
 import {
   ACADEMIC_RANKS,
   UNKNOWN_EMPLOYMENT_TYPE,
-  employmentTypeLabelAr,
   INSTRUCTOR_AVAILABILITY_OPTIONS,
   DEFAULT_AVAILABILITY_STATUS,
   availabilityStatusLabelAr,
@@ -621,7 +620,7 @@ function InstructorDirectory() {
                 departmentLabel: (id) => (id ? (deptMap.get(id) ?? "") : "بدون قسم"),
                 categoryLabel: (id) =>
                   CATEGORY_LABEL_AR[categorizeInstructor(typeMap.get(id ?? "") ?? null)] ?? "",
-                employmentLabel: (v) => employmentTypeLabelAr(v ?? UNKNOWN_EMPLOYMENT_TYPE),
+                availabilityLabel: (v) => availabilityStatusLabelAr(v),
                 filters: activeFilters([
                   { label: "القائمة", value: scopeLabel },
                   {
@@ -1356,8 +1355,7 @@ function InstructorDirectory() {
                       : i.specialization}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {i.academic_rank ?? "—"} · {employmentTypeLabelAr(i.employment_type)} ·{" "}
-                    {i.max_weekly_hours} س/أسبوع
+                    {i.academic_rank ?? "—"} · {i.max_weekly_hours} س/أسبوع
                   </p>
                   <InstructorHomeAffiliation
                     home={{

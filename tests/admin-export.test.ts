@@ -24,7 +24,7 @@ test("faculty exports retain home affiliation and the displayed college relation
       collegeName: "كلية الحاسوب",
       departmentLabel: () => "قسم نظم المعلومات",
       categoryLabel: () => "old category",
-      employmentLabel: () => "متفرغ",
+      availabilityLabel: () => "متوفر",
       filters: [{ label: "القائمة", value: "مكلّفون من كليات أخرى" }],
     }),
   );
@@ -384,7 +384,7 @@ describe("other admin lists produce usable columns", () => {
         ],
         departmentLabel: () => "قسم الحاسوب",
         categoryLabel: () => "محاضر دائم",
-        employmentLabel: () => "غير محدد (لم يُثبت بعد)",
+        availabilityLabel: () => "متوفر",
       }),
     );
     expect(table.headers).toEqual([
@@ -394,7 +394,7 @@ describe("other admin lists produce usable columns", () => {
       "الاسم بالإنجليزية",
       "القسم",
       "الرتبة العلمية",
-      "نوع التعاقد",
+      "الحالة",
       "النصاب الأساسي الأسبوعي",
       "ساعات الإعفاء الإداري",
       "النصاب الفعلي",
@@ -413,7 +413,7 @@ describe("other admin lists produce usable columns", () => {
     expect(table.body[1]?.[base]).toBe("—");
     expect(table.body[1]?.[release]).toBe(0);
     expect(table.body[1]?.[net]).toBe("—");
-    expect(table.body[0]).toContain("غير محدد (لم يُثبت بعد)");
+    expect(table.body[0]).toContain("متوفر");
     expect(table.body[0]?.at(-1)).toBe("نعم");
   });
 
