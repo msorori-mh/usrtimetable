@@ -1,7 +1,7 @@
 import type { LeadershipCollege } from "./leadership";
 import type { LeadershipCapacityCollege } from "./leadership-room-capacity";
 
-export type LeadershipDetailTab = "teaching" | "faculty" | "rooms" | "quality";
+export type LeadershipDetailTab = "teaching" | "faculty" | "rooms" | "quality" | "staffing";
 export interface LeadershipPriority {
   collegeId: string;
   collegeName: string;
