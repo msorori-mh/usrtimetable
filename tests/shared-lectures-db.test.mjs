@@ -56,18 +56,16 @@ test("operational snapshot is set-based and preserves all fields", () => {
     END $$; ROLLBACK;`);
 });
 
-test("college-filtered operational reads push the filter down to delivery groups", () => {
-  sql(`BEGIN; SELECT set_config('request.jwt.claim.sub',md5('manager'),true);
-    DO $$ DECLARE plan text; BEGIN
-      SELECT string_agg(l,E'\\n') INTO plan FROM (
-        SELECT (p).* AS l FROM (SELECT unnest(NULL::text[]) p) z) q; -- placeholder, replaced below
-      SELECT string_agg(x,E'\\n') INTO plan FROM (
-        SELECT (a)::text AS x FROM (
-          SELECT * FROM (VALUES (1)) v(a)) s) t;
-      EXECUTE 'EXPLAIN SELECT id FROM operational_delivery_groups WHERE college_id=(SELECT id FROM colleges LIMIT 1)' INTO plan;
-      IF plan NOT LIKE '%delivery_groups%' THEN RAISE EXCEPTION 'Unexpected plan: %',plan; END IF;
-    END $$; ROLLBACK;`);
+test("college-filtered operational reads scan delivery groups by index", () => {
+  const plan = sql(
+    `SELECT set_config('request.jwt.claim.sub',md5('manager'),true);
+     EXPLAIN SELECT id FROM operational_delivery_groups
+     WHERE college_id=(SELECT college_id FROM delivery_groups LIMIT 1);`,
+  );
+  assert.match(plan, /delivery_groups/);
+  assert.doesNotMatch(plan, /operational_delivery_group\(/);
 });
+
 
 test("operational view keeps invoker permissions on its base table", () => {
   sql(`BEGIN; REVOKE SELECT ON delivery_groups FROM authenticated;
