@@ -14,6 +14,7 @@ import "../styles.css";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { createAuthRefreshCoordinator } from "@/lib/auth/refresh-on-auth-change";
 
 function NotFoundComponent() {
   return (
@@ -107,12 +108,20 @@ function AuthListener() {
   const router = useRouter();
   const queryClient = useQueryClient();
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
-      router.invalidate();
-      if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
+    const refresh = createAuthRefreshCoordinator({
+      clear: () => queryClient.clear(),
+      refresh: () => {
+        void router.invalidate();
+        void queryClient.invalidateQueries();
+      },
     });
-    return () => subscription.unsubscribe();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      refresh.handle(event, session?.user.id ?? null);
+    });
+    return () => {
+      refresh.dispose();
+      subscription.unsubscribe();
+    };
   }, [router, queryClient]);
   return null;
 }
@@ -127,4 +136,5 @@ function RootComponent() {
     </QueryClientProvider>
   );
 }
+
 

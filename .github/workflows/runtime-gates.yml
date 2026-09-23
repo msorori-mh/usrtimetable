@@ -82,6 +82,9 @@ jobs:
       - name: TypeScript (tsc --noEmit)
         run: bunx tsc --noEmit
 
+      - name: Bounded fail-closed session checks
+        run: node --test tests/session-check.test.mjs tests/auth-refresh.test.mjs
+
       - name: Large timetable report query batching
         run: node --test tests/report-query-batching.cjs
 
@@ -253,3 +256,4 @@ jobs:
         run: |
           createdb -h 127.0.0.1 -U postgres faculty_numbering_test
           psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d faculty_numbering_test -f tests/faculty-numbering-db.sql
+
