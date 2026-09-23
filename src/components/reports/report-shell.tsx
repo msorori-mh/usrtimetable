@@ -19,6 +19,7 @@ import {
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { downloadCSV, downloadXLSX, type Row } from "@/lib/reports/export";
 import { printPageStyleCss } from "@/lib/print-center";
+import { toast } from "sonner";
 import type { ReportContext } from "@/lib/reports/types";
 
 interface Props {
@@ -86,6 +87,7 @@ export function ReportShell({
   notReadyMessage,
 }: Props) {
   const { active } = useActiveCollege();
+  const [printSnapshot, setPrintSnapshot] = useState<ReactNode>(null);
 
   const headerMeta = useMemo((): ReportOfficialHeaderMeta => {
     const fromCtx = reportContext ? headerMetaFromContext(reportContext) : {};
@@ -102,7 +104,36 @@ export function ReportShell({
   }, [reportContext, headerMetaProp, active?.name, official, readOnly]);
 
   const handlePrint = async () => {
-    await document.fonts.ready;
+    if (exportsDisabled) return;
+    // Keep the complete authorized render stable while focus/refetch events run.
+    setPrintSnapshot(
+      printContent ?? (
+        <RepeatingPrintHeader
+          header={
+            <ReportOfficialHeader
+              reportTitle={title}
+              description={description}
+              filterSummary={filterSummary}
+              qrUrl={qrUrl}
+              {...headerMeta}
+            />
+          }
+        >
+          {leading}
+          {summary}
+          <div className="report-print-body min-w-0">{children}</div>
+        </RepeatingPrintHeader>
+      ),
+    );
+    // A slow web-font host must not prevent printing with the fallback font.
+    let fontTimer: ReturnType<typeof setTimeout> | undefined;
+    await Promise.race([
+      document.fonts.ready.catch(() => undefined),
+      new Promise<void>((resolve) => {
+        fontTimer = setTimeout(resolve, 2000);
+      }),
+    ]);
+    clearTimeout(fontTimer);
 
     const originalTitle = document.title;
     const pdfTitle =
@@ -115,6 +146,7 @@ export function ReportShell({
       if (restored) return;
       restored = true;
       document.title = originalTitle;
+      setPrintSnapshot(null);
       window.removeEventListener("afterprint", restoreTitle);
     };
 
@@ -123,10 +155,14 @@ export function ReportShell({
 
     // Let the browser observe the temporary document title before opening print preview.
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-    window.print();
-
-    // Fallback for browsers that do not dispatch afterprint reliably.
-    window.setTimeout(restoreTitle, 1000);
+    try {
+      window.print();
+    } catch {
+      restoreTitle();
+      toast.error("تعذّر فتح نافذة الطباعة. أعد المحاولة.");
+    }
+    // Do not discard the printable snapshot on a timer: some browsers return
+    // from print() while their preview is still open. afterprint owns cleanup.
   };
 
   /**
@@ -185,9 +221,7 @@ export function ReportShell({
     <div className="report-print-root min-w-0 space-y-4" dir="rtl">
       {/* A4 RTL portrait page box for reports that print the on-screen body.
           Dedicated printContent sheets inject their own page style. */}
-      {!printContent && (
-        <style>{printPageStyleCss()}</style>
-      )}
+      {!printContent && <style>{printPageStyleCss()}</style>}
 
       <header className="report-no-print flex flex-wrap items-start justify-between gap-4 border-b pb-4">
         <div className="min-w-0">
@@ -260,26 +294,34 @@ export function ReportShell({
           <div className="min-w-0">{body}</div>
         </div>
       ) : (
-        <RepeatingPrintHeader
-          header={
-            <div className="hidden print:block">
-              <ReportOfficialHeader
-                reportTitle={title}
-                description={description}
-                filterSummary={filterSummary}
-                qrUrl={qrUrl}
-                {...headerMeta}
-              />
-            </div>
-          }
-        >
-          {leading}
-          {showSummaryBlocks && summary}
-          <div className="report-print-body min-w-0">{body}</div>
-        </RepeatingPrintHeader>
+        <div className={printSnapshot ? "report-no-print" : undefined}>
+          <RepeatingPrintHeader
+            header={
+              <div className="hidden print:block">
+                <ReportOfficialHeader
+                  reportTitle={title}
+                  description={description}
+                  filterSummary={filterSummary}
+                  qrUrl={qrUrl}
+                  {...headerMeta}
+                />
+              </div>
+            }
+          >
+            {leading}
+            {showSummaryBlocks && summary}
+            <div className="report-print-body min-w-0">{body}</div>
+          </RepeatingPrintHeader>
+        </div>
       )}
-      {printContent && showSummaryBlocks && hasRows && (
-        <div className="hidden print:block print-center-body">{printContent}</div>
+      {printSnapshot ? (
+        <div className="hidden print:block print-center-body" data-testid="report-print-snapshot">
+          {printSnapshot}
+        </div>
+      ) : (
+        printContent &&
+        showSummaryBlocks &&
+        hasRows && <div className="hidden print:block print-center-body">{printContent}</div>
       )}
     </div>
   );
