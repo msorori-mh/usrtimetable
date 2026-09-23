@@ -287,3 +287,14 @@ test("route preserves same-scope content during refresh, closes details on perio
   assert.match(source, /retry: false/);
   assert.match(source, /استغرق تحميل مؤشرات الجامعة وقتًا أطول من المتوقع/);
 });
+
+test("leadership workspace uses one set-based assignment rollup without changing its public contract", () => {
+  const migration = readFileSync(
+    "supabase/migrations/20260923010000_optimize_leadership_workspace.sql",
+    "utf8",
+  );
+  assert.match(migration, /assignment_rollup AS MATERIALIZED/);
+  assert.match(migration, /CREATE OR REPLACE FUNCTION public\.list_teaching_assignment_workspace/);
+  assert.doesNotMatch(migration, /compute_delivery_group_allocation/);
+  assert.match(migration, /GRANT EXECUTE ON FUNCTION public\.list_teaching_assignment_workspace/);
+});
