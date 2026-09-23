@@ -59,6 +59,6 @@
 
 ## حالة المحاضر (availability_status)
 
-- [ ] عمود instructors.availability_status + backfill من is_active + CHECK.
-- [ ] تحديث RPCs (roster/update/academic_affairs) وحارس DB يمنع إسنادًا/جلسة جديدة لغير المتوفر.
-- [ ] حقل «الحالة» في النموذج بدل التفرغ/التعاقد، خريطة مركزية، عرض في الدليل، واختبارات.
+- [x] عمود instructors.availability_status + backfill من is_active + CHECK.
+- [x] تحديث RPCs (roster/update/academic_affairs) وحارس DB يمنع إسنادًا/جلسة جديدة لغير المتوفر.
+- [x] حقل «الحالة» في النموذج بدل التفرغ/التعاقد، خريطة مركزية، عرض في الدليل، واختبارات.
