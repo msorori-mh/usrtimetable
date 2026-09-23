@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/app-layout";
 import { ReportsOnlyGate } from "@/components/reports-only-gate";
 import { MandatoryPasswordChange } from "@/components/mandatory-password-change";
+import { SessionCheckError } from "@/lib/auth/check-session";
+import { checkCurrentSession } from "@/lib/auth/session-service";
 
 /**
  * LAUNCH-CLOSURE-01 — hydration-safe client auth gate.
@@ -44,52 +46,44 @@ function AuthenticatedLayout() {
     setHydrated(true);
   }, []);
 
-  // LAUNCH-CLOSURE-02: a REJECTED getUser() promise (network failure, aborted
-  // request) previously produced an unhandled rejection and an endless
-  // "verifying session" screen. A transport failure is not proof of a missing
-  // session, so it must not silently redirect either: it yields an explicit,
-  // recoverable state with a retry, while access stays denied (fail-closed).
+  // A stalled service must produce a retryable failure, never cached access.
   useEffect(() => {
     let cancelled = false;
-    supabase.auth
-      .getUser()
-      .then(async ({ data, error }) => {
+    const controller = new AbortController();
+    setAllowed(false);
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT" || !session) {
+        cancelled = true;
+        controller.abort();
+        setAllowed(false);
+        setCheckFailed(null);
+        void navigate({ to: "/auth", replace: true });
+      }
+    });
+    void checkCurrentSession(controller.signal)
+      .then((result) => {
         if (cancelled) return;
-        if (error || !data.user) {
-          setAllowed(false);
+        if (result.kind === "signed-out" || result.mfaRequired) {
           void navigate({ to: "/auth", replace: true });
           return;
         }
-        const requirement = await supabase.rpc("password_change_required" as never);
-        if (requirement.error) throw new Error("تعذر التحقق من متطلبات كلمة المرور.");
-        if (cancelled) return;
-        setPasswordRequired(requirement.data === true);
+        setPasswordRequired(result.passwordRequired);
         setCheckFailed(null);
         setAllowed(true);
       })
       .catch((e: unknown) => {
         if (cancelled) return;
         setAllowed(false);
-        setCheckFailed(e instanceof Error ? e.message : "تعذّر الوصول إلى خدمة الجلسات");
+        setCheckFailed(
+          e instanceof SessionCheckError ? e.message : "تعذّر الوصول إلى خدمة الجلسات",
+        );
       });
     return () => {
       cancelled = true;
+      controller.abort();
+      data.subscription.unsubscribe();
     };
   }, [navigate, attempt]);
-
-  // Sign-out or token invalidation in this tab (or another one) must revoke the
-  // allowed state immediately and send the user back to sign-in. The guard is
-  // only tightened here; nothing is granted based on an auth event.
-  useEffect(() => {
-    const { data } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_OUT" || !session) {
-        setAllowed(false);
-        setCheckFailed(null);
-        void navigate({ to: "/auth", replace: true });
-      }
-    });
-    return () => data.subscription.unsubscribe();
-  }, [navigate]);
 
   // Hydration render: must produce exactly what the server produced (nothing).
   if (!hydrated) return null;

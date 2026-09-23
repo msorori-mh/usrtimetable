@@ -14,6 +14,7 @@ import "../styles.css";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { createAuthRefreshCoordinator } from "@/lib/auth/refresh-on-auth-change";
 
 function NotFoundComponent() {
   return (
@@ -51,12 +52,18 @@ function ErrorComponent({ error, reset }: { error: unknown; reset: () => void })
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
-            onClick={() => { router.invalidate(); reset(); }}
+            onClick={() => {
+              router.invalidate();
+              reset();
+            }}
             className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
             إعادة المحاولة
           </button>
-          <a href="/" className="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent">
+          <a
+            href="/"
+            className="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent"
+          >
             الرئيسية
           </a>
         </div>
@@ -71,7 +78,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "منصة إدارة الجداول الجامعية — جامعة إقليم سبأ" },
-      { name: "description", content: "منصة إدارة الجداول الجامعية — جامعة إقليم سبأ — كلية تكنولوجيا المعلومات وعلوم الحاسوب." },
+      {
+        name: "description",
+        content:
+          "منصة إدارة الجداول الجامعية — جامعة إقليم سبأ — كلية تكنولوجيا المعلومات وعلوم الحاسوب.",
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -107,12 +118,22 @@ function AuthListener() {
   const router = useRouter();
   const queryClient = useQueryClient();
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
-      router.invalidate();
-      if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
+    const refresh = createAuthRefreshCoordinator({
+      clear: () => queryClient.clear(),
+      refresh: () => {
+        void router.invalidate();
+        void queryClient.invalidateQueries();
+      },
     });
-    return () => subscription.unsubscribe();
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      refresh.handle(event, session?.user.id ?? null);
+    });
+    return () => {
+      refresh.dispose();
+      subscription.unsubscribe();
+    };
   }, [router, queryClient]);
   return null;
 }
@@ -127,4 +148,3 @@ function RootComponent() {
     </QueryClientProvider>
   );
 }
-
