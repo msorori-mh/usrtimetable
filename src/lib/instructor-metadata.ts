@@ -69,7 +69,8 @@ export const INSTRUCTOR_AVAILABILITY_OPTIONS = [
   { value: "internal_scholarship", label: "إبتعاث داخلي" },
 ] as const;
 
-export type InstructorAvailabilityStatus = (typeof INSTRUCTOR_AVAILABILITY_OPTIONS)[number]["value"];
+export type InstructorAvailabilityStatus =
+  (typeof INSTRUCTOR_AVAILABILITY_OPTIONS)[number]["value"];
 
 export const DEFAULT_AVAILABILITY_STATUS: InstructorAvailabilityStatus = "available";
 

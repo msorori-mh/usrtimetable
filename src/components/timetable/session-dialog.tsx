@@ -358,7 +358,10 @@ export function SessionDialog({
               <SelectContent>
                 {(instructors ?? [])
                   // New scheduling: only available instructors; the current value stays visible.
-                  .filter((i: any) => canReceiveNewWork(i.availability_status) || i.id === form.instructor_id)
+                  .filter(
+                    (i: any) =>
+                      canReceiveNewWork(i.availability_status) || i.id === form.instructor_id,
+                  )
                   .map((i: any) => (
                     <SelectItem key={i.id} value={i.id}>
                       {instructorDisplayName(i)}

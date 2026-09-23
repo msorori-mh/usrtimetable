@@ -40,7 +40,14 @@ describe("instructor availability status (الحالة)", () => {
 
   test("only available may receive new work; message names the status", () => {
     expect(canReceiveNewWork("available")).toBe(true);
-    for (const v of ["unavailable", "sick_leave", "sabbatical", "external_scholarship", "internal_scholarship", null])
+    for (const v of [
+      "unavailable",
+      "sick_leave",
+      "sabbatical",
+      "external_scholarship",
+      "internal_scholarship",
+      null,
+    ])
       expect(canReceiveNewWork(v)).toBe(false);
     expect(newWorkBlockedMessage("sick_leave")).toContain("إجازة مرضية");
     expect(availabilityStatusLabelAr("sabbatical")).toBe("تفرغ علمي");
@@ -53,7 +60,9 @@ describe("instructor availability status (الحالة)", () => {
     expect(src).not.toContain("حالة التفرغ/التعاقد");
     expect(src).toContain("INSTRUCTOR_AVAILABILITY_OPTIONS.map");
     expect(src).toContain("p_availability_status: payload.availability_status");
-    expect(src).toContain("availability_status: i.availability_status ?? DEFAULT_AVAILABILITY_STATUS");
+    expect(src).toContain(
+      "availability_status: i.availability_status ?? DEFAULT_AVAILABILITY_STATUS",
+    );
     // employment_type is preserved from the record on edit, never cleared.
     expect(src).toContain("employment_type: i.employment_type,");
     expect(src).toContain("employment_type: form.employment_type || UNKNOWN_EMPLOYMENT_TYPE");
@@ -71,9 +80,15 @@ describe("instructor availability status (الحالة)", () => {
   });
 
   test("DB guard blocks only new work; existing rows are untouched", () => {
-    expect(migrations).toContain("BEFORE INSERT OR UPDATE OF instructor_id ON public.teaching_assignments");
-    expect(migrations).toContain("BEFORE INSERT OR UPDATE OF instructor_id ON public.schedule_sessions");
-    expect(migrations).toContain("NEW.instructor_id IS NOT DISTINCT FROM OLD.instructor_id THEN RETURN NEW");
+    expect(migrations).toContain(
+      "BEFORE INSERT OR UPDATE OF instructor_id ON public.teaching_assignments",
+    );
+    expect(migrations).toContain(
+      "BEFORE INSERT OR UPDATE OF instructor_id ON public.schedule_sessions",
+    );
+    expect(migrations).toContain(
+      "NEW.instructor_id IS NOT DISTINCT FROM OLD.instructor_id THEN RETURN NEW",
+    );
     expect(migrations).toContain("i.availability_status = ''available''");
   });
 });
