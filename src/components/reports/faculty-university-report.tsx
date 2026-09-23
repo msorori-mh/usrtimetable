@@ -164,7 +164,13 @@ export function FacultyUniversityReport() {
             السجلات المرتبطة: {data.members.map((m) => m.name + " (" + m.college + ")").join("، ")}
           </p>
           <div className="print:hidden">
-            {chosen && <FacultyIdentityLink instructorId={instructor} name={chosen.full_name} />}
+            {chosen && (
+              <FacultyIdentityLink
+                instructorId={instructor}
+                collegeId={chosen.college_id}
+                name={chosen.full_name}
+              />
+            )}
           </div>
           {data.members.length === 1 && (
             <p>

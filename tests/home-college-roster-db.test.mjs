@@ -6,6 +6,144 @@ const id = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const read = (p) => readFile(new URL(p, import.meta.url), "utf8");
 const migrationPath = "../supabase/migrations/20260919140000_home_college_faculty_roster.sql";
 
+test("college correction moves linked identity between home rosters, keeps teaching data and rejects unauthorized, foreign and stale requests", async () => {
+  const f = await fixture();
+  try {
+    await f.db.query(
+      `INSERT INTO schedule_sessions(id,college_id,schedule_version_id,instructor_id,day_of_week,start_time,end_time)
+      VALUES($1,$2,$3,$4,2,'10:00','12:00')`,
+      [id(302), id(10), id(300), id(106)],
+    );
+    const unchanged = async () => {
+      await f.db.exec("RESET ROLE");
+      const result = {};
+      for (const table of [
+        "faculty_identities",
+        "faculty_identity_links",
+        "faculty_number_history",
+        "teaching_assignments",
+        "schedule_sessions",
+        "schedule_versions",
+        "delivery_groups",
+        "existing_schedule_source_rows",
+      ])
+        result[table] = (
+          await f.db.query(
+            `SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY to_jsonb(t)::text),'[]') AS rows FROM ${table} t`,
+          )
+        ).rows;
+      result.instructors = (
+        await f.db.query(
+          `SELECT jsonb_agg(to_jsonb(i)-'affiliation_college_id'-'affiliation_department_id' ORDER BY id) AS rows FROM instructors i`,
+        )
+      ).rows;
+      return result;
+    };
+    const before = await unchanged();
+    await f.actor(1);
+    const original = (await f.rpc("get_faculty_home_profiles", [id(10)])).find(
+      (h) => h.identity_id === id(1002),
+    );
+    const args = [
+      id(1002),
+      id(10),
+      id(102),
+      true,
+      "Corrected home college after registration error",
+      original.decision_at,
+    ];
+    for (const actor of [null, 2, 3, 4, 5, 6]) {
+      await f.actor(actor);
+      await assert.rejects(f.rpc("reconcile_faculty_home", args), /insufficient_privilege/);
+    }
+    await f.actor(1);
+    await assert.rejects(
+      f.rpc(
+        "reconcile_faculty_home",
+        args.map((v, i) => (i === 1 ? id(30) : v)),
+      ),
+      /FACULTY_HOME_OR_SOURCE_INVALID/,
+    );
+    await assert.rejects(
+      f.rpc(
+        "reconcile_faculty_home",
+        args.map((v, i) => (i === 2 ? id(101) : v)),
+      ),
+      /FACULTY_HOME_OR_SOURCE_INVALID/,
+    );
+    await assert.rejects(
+      f.rpc(
+        "reconcile_faculty_home",
+        args.map((v, i) => (i === 4 ? "short" : v)),
+      ),
+      /FACULTY_EVIDENCE_REQUIRED/,
+    );
+    await f.rpc("reconcile_faculty_home", args);
+    assert.equal((await f.roster(10)).filter((r) => r.identity_id === id(1002)).length, 1);
+    assert.equal(
+      (await f.roster(20)).some((r) => r.identity_id === id(1002)),
+      false,
+    );
+    const corrected = (await f.roster(10)).find((r) => r.identity_id === id(1002));
+    assert.equal(corrected.university_number, original.university_number);
+    assert.equal(corrected.authoritative_quota, 18);
+    assert.equal(
+      corrected.affiliation_department_id,
+      null,
+      "old college department cannot follow the transfer",
+    );
+    const after = await unchanged();
+    assert.deepEqual(
+      after,
+      before,
+      "no instructor IDs, hours, rank, activity, contacts or operational teaching records change",
+    );
+    assert.deepEqual(
+      (
+        await f.db.query(
+          "SELECT DISTINCT affiliation_college_id,affiliation_department_id FROM instructors WHERE id IN ($1,$2)",
+          [id(102), id(106)],
+        )
+      ).rows,
+      [{ affiliation_college_id: id(10), affiliation_department_id: null }],
+    );
+    const audit = (
+      await f.db.query(
+        "SELECT actor_id,college_id,details FROM audit_logs WHERE action='faculty_home_reconciled' AND entity_id=$1",
+        [id(1002)],
+      )
+    ).rows;
+    assert.equal(audit.length, 1);
+    assert.equal(audit[0].actor_id, id(1));
+    assert.equal(audit[0].college_id, id(10));
+    assert.equal(audit[0].details.before.home_college_id, id(20));
+    await f.actor(1);
+    await assert.rejects(f.rpc("reconcile_faculty_home", args), /STALE_FACULTY_DECISION/);
+    const current = (await f.rpc("get_faculty_home_profiles", [id(10)])).find(
+      (h) => h.identity_id === id(1002),
+    );
+    await f.rpc("reconcile_faculty_home", [
+      id(1002),
+      id(20),
+      id(102),
+      false,
+      "Correct college with quota pending verification",
+      current.decision_at,
+    ]);
+    assert.equal(
+      (await f.roster(20)).find((r) => r.identity_id === id(1002)).authoritative_quota,
+      null,
+    );
+    assert.deepEqual(
+      await unchanged(),
+      before,
+      "unconfirmed quota retains raw hours and every teaching record",
+    );
+  } finally {
+    await f.db.close();
+  }
+});
+
 test("explicit pending home overrides legacy affiliation without moving teaching data and can be resolved", async () => {
   const f = await fixture();
   try {

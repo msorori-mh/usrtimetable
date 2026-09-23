@@ -1345,7 +1345,11 @@ function InstructorDirectory() {
                   <p className="text-xs text-muted-foreground">
                     الرقم الجامعي: <span dir="ltr">{i.university_number ?? "—"}</span>
                   </p>
-                  <FacultyIdentityLink instructorId={i.id} name={i.full_name} />
+                  <FacultyIdentityLink
+                    instructorId={i.id}
+                    collegeId={i.college_id}
+                    name={i.full_name}
+                  />
                   <p
                     className={`mt-1 text-sm ${isMissingInstructorSpecialization(i) ? "font-medium text-amber-800" : "text-muted-foreground"}`}
                   >
