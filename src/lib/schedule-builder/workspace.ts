@@ -140,7 +140,9 @@ export function mapWorkspaceSessions(raw: unknown[]): WorkspaceSessionView[] {
           ? Number(s.expected_students)
           : null;
     return {
-      academic_memberships: s.intake_memberships?.length ? s.intake_memberships : s.academic_memberships,
+      academic_memberships: s.intake_memberships?.length
+        ? s.intake_memberships
+        : s.academic_memberships,
       id: s.id,
       day_of_week: s.day_of_week,
       start_time: String(s.start_time),
@@ -191,10 +193,14 @@ export function filterWorkspaceSessions(
     if (filters.instructor !== "all" && s.instructor_id !== filters.instructor) return false;
     if (filters.section !== "all" && s.section_id !== filters.section) return false;
     if (filters.room !== "all" && s.room_id !== filters.room) return false;
-    if (!workspaceAcademicMembers(s).some((m) =>
-      (filters.program === "all" || m.program_id === filters.program) &&
-      (filters.level === "all" || m.level_id === filters.level)
-    )) return false;
+    if (
+      !workspaceAcademicMembers(s).some(
+        (m) =>
+          (filters.program === "all" || m.program_id === filters.program) &&
+          (filters.level === "all" || m.level_id === filters.level),
+      )
+    )
+      return false;
     if (filters.sessionType !== "all" && s.session_type !== filters.sessionType) return false;
     return true;
   });
@@ -270,7 +276,8 @@ export function buildFilterOptions(sessions: WorkspaceSessionView[], program = "
     if (s.room_id) rooms.set(s.room_id, s.room_label);
     for (const m of workspaceAcademicMembers(s)) {
       if (m.program_id) programs.set(m.program_id, m.program_name);
-      if (m.level_id && (program === "all" || m.program_id === program)) levels.set(m.level_id, m.level_name);
+      if (m.level_id && (program === "all" || m.program_id === program))
+        levels.set(m.level_id, m.level_name);
     }
     types.add(s.session_type);
   }
