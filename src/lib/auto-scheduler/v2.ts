@@ -202,7 +202,10 @@ export async function runV2AutoSchedule(params: {
   const payload = await listScheduleBuilderV2WorkItems({
     scheduleVersionId: params.scheduleVersionId,
   });
-  if (!payload.ok || !payload.can_manage) {
+  // The read model already enforces can_view_college, while every write below
+  // is re-authorized by a guarded RPC (create/apply generation). Do not reject
+  // Super Admin sessions because the advisory can_manage projection is stale.
+  if (!payload.ok) {
     throw new Error("V2_WORK_ITEMS_FORBIDDEN: تعذر تحميل وحدات الجدولة المصرح بها.");
   }
   if (!payload.rows.length) {
