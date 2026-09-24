@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { Settings2 } from "lucide-react";
+import { assertValidSchedulingPolicy } from "@/lib/scheduling/policy";
 
 export const Route = createFileRoute("/_authenticated/scheduling-settings")({
   head: () => ({ meta: [{ title: "إعدادات الجدولة" }] }),
@@ -102,6 +103,7 @@ function SettingsPage() {
   const save = useMutation({
     mutationFn: async () => {
       if (!active) throw new Error("اختر كلّية");
+      assertValidSchedulingPolicy(form);
       const payload = { ...form, college_id: active.id };
       if (data?.id) {
         const { error } = await supabase
