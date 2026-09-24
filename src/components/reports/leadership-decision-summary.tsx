@@ -19,35 +19,10 @@ const amount = (value: number | null | undefined) => formatLeadershipAmount(valu
 const hours = (value: number | null | undefined) => formatLeadershipAmount(value, "ساعة");
 const actionClass = "leadership-action";
 
-const roomReuseOpportunity = (room: LeadershipCapacityCollege | undefined) => {
-  if (
-    room?.balanceHours === null ||
-    room?.balanceHours === undefined ||
-    room.surplusHours === null ||
-    room.surplusHours === undefined ||
-    !room.equivalents
-  )
+const roomsWithoutPublishedSessions = (room: LeadershipCapacityCollege | undefined) => {
+  if (room?.emptyPublishedRooms === null || room?.emptyPublishedRooms === undefined)
     return "غير محسوب";
-  if (room.surplusHours <= 0) return "لا توجد سعة فائضة";
-
-  const rooms = room.equivalents.fullRooms;
-  const remainingDays = Math.floor((room.equivalents.hoursAfterRooms + 1e-9) / 6);
-  const remainingHours =
-    Math.round((room.equivalents.hoursAfterRooms - remainingDays * 6) * 100) / 100;
-  const opportunities: string[] = [];
-
-  if (rooms === 1) opportunities.push("قاعة أسبوعية كاملة");
-  else if (rooms === 2) opportunities.push("قاعتين أسبوعيتين كاملتين");
-  else if (rooms > 2) opportunities.push(`${rooms} قاعات أسبوعية كاملة`);
-
-  if (remainingDays === 1) opportunities.push("يوم قاعة");
-  else if (remainingDays === 2) opportunities.push("يومين قاعة");
-  else if (remainingDays > 2) opportunities.push(`${remainingDays} أيام قاعة`);
-
-  if (remainingHours === 1) opportunities.push("ساعة واحدة");
-  else if (remainingHours > 0) opportunities.push(`${amount(remainingHours)} ساعات`);
-
-  return `يعادل ${opportunities.join(" + ")}`;
+  return `${amount(room.emptyPublishedRooms)} قاعة بلا جلسات منشورة`;
 };
 
 export interface LeadershipDecisionSummaryProps {
@@ -130,8 +105,8 @@ export function LeadershipDecisionSummary({
             : "غير محسوب",
       detail:
         scope === "college"
-          ? "فائض ساعات قاعات الكلية أسبوعيًا"
-          : "فائض أسبوعي في الكليات ذات الفائض",
+          ? "فرق ساعات السعة الحسابي للكلية أسبوعيًا"
+          : "فرق ساعات السعة الحسابي في الكليات ذات الفائض",
       note:
         capacityState === "ready"
           ? `${roomTotals.knownColleges} من ${colleges.length} كليات · العجز ${hours(roomTotals.deficitHours)}`
@@ -250,7 +225,7 @@ export function LeadershipDecisionSummary({
                   "الإسناد التدريسي",
                   "الأنصبة",
                   "ساعات القاعات",
-                  "فرصة إعادة الاستخدام",
+                  "قاعات بلا جلسات منشورة",
                   "التفاصيل",
                 ].map((label) => (
                   <th scope="col" key={label}>
@@ -266,7 +241,7 @@ export function LeadershipDecisionSummary({
                 const percent = teachingKnown.some((item) => item.college_id === college.college_id)
                   ? coveragePercent(college)
                   : null;
-                const reuseOpportunity = roomReuseOpportunity(room);
+                const emptyRooms = roomsWithoutPublishedSessions(room);
                 return (
                   <tr key={college.college_id} className="leadership-college-row">
                     <th scope="row" className="leadership-college-name">
@@ -325,21 +300,14 @@ export function LeadershipDecisionSummary({
                         <span
                           className={`leadership-status leadership-status--${room.balanceHours < 0 ? "deficit" : "surplus"}`}
                         >
-                          {room.balanceHours < 0 ? "عجز" : "فائض"}{" "}
+                          {room.balanceHours < 0 ? "عجز ساعات السعة" : "فرق سعة حسابي"}{" "}
                           {hours(Math.abs(room.balanceHours))}
                         </span>
                       )}
                     </td>
                     <td className="leadership-reuse-cell">
-                      <span className="leadership-mobile-label">فرصة إعادة الاستخدام</span>
-                      <strong>{reuseOpportunity}</strong>
-                      {room?.surplusHours !== null &&
-                        room?.surplusHours !== undefined &&
-                        room.surplusHours > 0 && (
-                          <span className="leadership-cell-note">
-                            مكافئ زمني قابل لإعادة التوزيع
-                          </span>
-                        )}
+                      <span className="leadership-mobile-label">قاعات بلا جلسات منشورة</span>
+                      <strong>{emptyRooms}</strong>
                     </td>
                     <td className="leadership-college-action">
                       <button
@@ -358,8 +326,8 @@ export function LeadershipDecisionSummary({
           </table>
         </div>
         <p className="leadership-footnote">
-          النقص في الأنصبة مستقل عن التدريس غير المسند. فرص إعادة الاستخدام مكافئات زمنية؛ لا تعني
-          توافر قاعة بعينها قبل مراجعة توزيع الأيام والفترات وملاءمة القاعة.
+          النقص في الأنصبة مستقل عن التدريس غير المسند. فرق ساعات السعة حسابي ولا يحدد قاعات
+          يمكن إخلاؤها؛ تُقرأ القاعات بلا جلسات من النسخة المنشورة وتُراجع إتاحتها وملاءمتها.
         </p>
       </section>
     </div>
