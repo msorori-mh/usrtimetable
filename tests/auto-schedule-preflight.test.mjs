@@ -6,18 +6,28 @@ import {
 } from "../src/lib/auto-scheduler/preflight.ts";
 
 const instructors = [
-  { id: "available", full_name: "محاضر متوفر", availability_status: "available" },
+  {
+    id: "available",
+    full_name: "محاضر متوفر",
+    availability_status: "available",
+  },
   {
     id: "external",
     full_name: "عبدالوهاب عفيف",
     availability_status: "external_scholarship",
   },
-  { id: "sick", full_name: "محاضر في إجازة", availability_status: "sick_leave" },
+  {
+    id: "sick",
+    full_name: "محاضر في إجازة",
+    availability_status: "sick_leave",
+  },
 ];
 
 test("checks only instructors who need new sessions", () => {
   assert.deepEqual(
-    unavailableInstructorBlockers(instructors, [{ instructor_id: "available" }]),
+    unavailableInstructorBlockers(instructors, [
+      { instructor_id: "available" },
+    ]),
     [],
   );
 });
