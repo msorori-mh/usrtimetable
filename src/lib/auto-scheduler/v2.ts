@@ -16,6 +16,7 @@ import {
 import type { AutoRunMode, AutoRunResult, UnplacedItem } from "@/lib/auto-scheduler/greedy";
 import { loadCompactSnapshot } from "@/lib/auto-scheduler/compact-service";
 import { measure, compactSlots, minutes, type Session } from "@/lib/auto-scheduler/compact";
+import { assertInstructorsAvailableForNewScheduling } from "@/lib/auto-scheduler/preflight";
 import {
   instructorsOverAttendanceDayCap,
   instructorAttendanceTarget,
@@ -296,6 +297,7 @@ export async function runV2AutoSchedule(params: {
     );
   }
   const planningSnapshot = await loadCompactSnapshot(params.collegeId, params.scheduleVersionId);
+  assertInstructorsAvailableForNewScheduling(planningSnapshot.instructors, workItems);
   const planningSessions = [...planningSnapshot.sessions];
   /** Authoritative required room type per assignment (same column as the RPC). */
   const assignmentRequiredRoomType = new Map(
