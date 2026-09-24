@@ -159,5 +159,4 @@ describe("timetable editor filters", () => {
 
     expect(items.map((item) => item.teaching_assignment_id)).toEqual(["active-ta"]);
   });
-
 });
