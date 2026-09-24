@@ -252,12 +252,9 @@ function ProgramLevelReport({
       ? null
       : (coverage.rows.find((r) => r.id === view.selected.deliveryGroupId) ??
         null);
-  const selectedNonWeeklyProject =
-    selectedCoverageRow?.componentType === "project" &&
-    selectedCoverageRow.countsTowardRegularLoad === false;
   const unscheduledInView = selectedCoverageRow
-    ? selectedNonWeeklyProject ||
-      selectedCoverageRow.scheduledHours + 0.01 >= selectedCoverageRow.requiredHours
+    ? selectedCoverageRow.scheduledHours + 0.01 >=
+      selectedCoverageRow.requiredHours
       ? []
       : [selectedCoverageRow]
     : coverage.incomplete;
@@ -477,9 +474,7 @@ function ProgramLevelReport({
           data-testid="unscheduled-group-empty-state"
         >
           <p className="font-semibold">
-            {selectedNonWeeklyProject
-              ? "مشروع التخرج خارج الجدول الأسبوعي ولا يحتاج إسناد محاضر"
-              : "هذه المجموعة لم تُسكن في نسخة الجدول الحالية"}
+            هذه المجموعة لم تُسكن في نسخة الجدول الحالية
           </p>
           <p className="mt-2 text-muted-foreground">
             {[
