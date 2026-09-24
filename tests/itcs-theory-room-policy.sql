@@ -19,6 +19,8 @@ $fn$;
 -- The other conflict helpers are provided by the full application schema.
 SET check_function_bodies = off;
 \ir ../supabase/migrations/20260924090000_itcs_theory_to_14.sql
+-- Replaying the migration must leave the live constraint and policy intact.
+\ir ../supabase/migrations/20260924090000_itcs_theory_to_14.sql
 SET check_function_bodies = on;
 
 INSERT INTO public.colleges VALUES
