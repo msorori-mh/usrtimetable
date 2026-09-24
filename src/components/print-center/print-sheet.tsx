@@ -275,11 +275,9 @@ export function PrintSheet(props: {
               const deliveryGroup = s.delivery_group_id
                 ? (labels?.deliveryGroups.get(s.delivery_group_id) ?? s.delivery_group_id)
                 : "";
-              const cohort = !commonCohort && s.cohort_id
-                ? (labels?.cohorts.get(s.cohort_id) ?? s.cohort_id)
-                : "";
-              const groupText = [cohort, compactPrintGroupLabel(deliveryGroup)]
-                .filter(Boolean).join(" / ");
+              // The report header already carries cohort, level, and study-system context.
+              // Keep the final column limited to the actual delivery group.
+              const groupText = compactPrintGroupLabel(deliveryGroup);
               return (
                 <TableRow
                   key={s.id}
