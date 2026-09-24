@@ -236,24 +236,35 @@ test("room surplus and deficit stay separate in the compact summary", () => {
   assert.match(output, /العجز 4 ساعة/);
 });
 
-test("room reuse reports time only and never fabricates disposable full rooms", () => {
-  const ids = ["hours", "room", "zero", "deficit", "unknown"];
+test("room reuse shows room-week, room-day, and hour time equivalents without claiming disposal", () => {
+  const ids = ["hours", "room", "mixed", "zero", "deficit", "unknown"];
   const output = html({
     colleges: ids.map((id) => college(id)),
     capacity: [
       room("hours", 5),
       room("room", 36),
+      room("mixed", 66),
       room("zero", 0),
       room("deficit", -4),
       room("unknown", null),
     ],
   });
-  assert.match(output, /5 ساعة غير مستخدمة أسبوعيًا/);
-  assert.match(output, /36 ساعة غير مستخدمة أسبوعيًا/);
+  assert.match(
+    output,
+    /5 ساعة غير مستخدمة أسبوعيًا · تعادل زمنيًا 0 قاعة أسبوعية، و0 يوم قاعة، و5 ساعة/,
+  );
+  assert.match(
+    output,
+    /36 ساعة غير مستخدمة أسبوعيًا · تعادل زمنيًا 1 قاعة أسبوعية، و0 يوم قاعة، و0 ساعة/,
+  );
+  assert.match(
+    output,
+    /66 ساعة غير مستخدمة أسبوعيًا · تعادل زمنيًا 1 قاعة أسبوعية، و5 يوم قاعة، و0 ساعة/,
+  );
   assert.match(output, /تُراجع حسب اليوم ونوع القاعة والسعة/);
   assert.match(output, /لا توجد سعة زمنية فائضة/);
   assert.match(output, /غير محسوب/);
-  assert.doesNotMatch(output, /يعادل قاعة|قاعات أسبوعية كاملة/);
+  assert.doesNotMatch(output, /قابلة للاستغناء|قاعات أسبوعية كاملة/);
 });
 
 test("single-college input does not expose other colleges and uses unique faculty count", () => {
