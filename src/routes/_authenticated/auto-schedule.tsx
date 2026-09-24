@@ -225,8 +225,12 @@ function AutoSchedulePage() {
     },
     onError: (e) => {
       setOutcome(null);
-      setRunError((e as Error).message);
-      toast.error((e as Error).message);
+      const message =
+        e instanceof Error && e.message
+          ? e.message
+          : "تعذر تشغيل الجدولة. لم يتم تأكيد أي نتيجة جديدة؛ راجع المسودة قبل إعادة المحاولة.";
+      setRunError(message);
+      toast.error(message);
     },
     onSettled: () => {
       abortRef.current = null;
@@ -307,14 +311,22 @@ function AutoSchedulePage() {
               </div>
               <div className="min-w-56">
                 <label className="text-xs text-muted-foreground">وضع التشغيل</label>
-                <Select value={mode} onValueChange={(v) => setMode(v as AutoRunMode)}>
+                <Select
+                  disabled={run.isPending || compactBusy}
+                  value={mode}
+                  onValueChange={(v) => setMode(v as AutoRunMode)}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="fill_missing">إكمال الناقص فقط (آمن)</SelectItem>
-                    <SelectItem value="regenerate_auto">إعادة توليد المحاضرات التلقائية</SelectItem>
-                    <SelectItem value="full_rebuild">إعادة بناء كامل (خطر)</SelectItem>
+                    <SelectItem value="regenerate_auto" disabled>
+                      إعادة التوليد — قيد التطوير وغير متاحة حاليًا
+                    </SelectItem>
+                    <SelectItem value="full_rebuild" disabled>
+                      إعادة البناء الكامل — قيد التطوير وغير متاحة حاليًا
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
