@@ -5,14 +5,19 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { session, snapshot, addCohort } from "./helpers/attendance-fixtures.mjs";
+import {
+  session,
+  snapshot,
+  addCohort,
+} from "./helpers/attendance-fixtures.mjs";
 import { searchAttendance } from "../src/lib/auto-scheduler/attendance-search.ts";
 
 // Execute the real orchestration; replace only I/O boundaries. No network or database writes.
 const stubs = {
   "@/lib/schedule-builder/session-move-rpc":
     'export const moveOrRescheduleScheduleSession=async()=>{throw new Error("Generation must preserve existing sessions");};',
-  "@/integrations/supabase/client": "export const supabase=globalThis.__jointSchedulerTest.db;",
+  "@/integrations/supabase/client":
+    "export const supabase=globalThis.__jointSchedulerTest.db;",
   "@/lib/conflict-engine/scorer":
     "export const scoreScheduleVersion=async()=>({result:{hard_conflicts_count:0,soft_conflicts_count:0,total_score:80}});",
   "@/lib/schedule-builder/v2-assignment-service":
@@ -23,7 +28,9 @@ const stubs = {
     "export const previewCompaction=(snapshot,options)=>globalThis.__jointSchedulerTest.plan(snapshot,options);",
 };
 const bundled = await build({
-  entryPoints: [fileURLToPath(new URL("../src/lib/auto-scheduler/v2.ts", import.meta.url))],
+  entryPoints: [
+    fileURLToPath(new URL("../src/lib/auto-scheduler/v2.ts", import.meta.url)),
+  ],
   bundle: true,
   write: false,
   platform: "node",
@@ -33,7 +40,9 @@ const bundled = await build({
       name: "test-io",
       setup(b) {
         b.onResolve({ filter: /.*/ }, (args) =>
-          args.path in stubs ? { path: args.path, namespace: "test-io" } : undefined,
+          args.path in stubs
+            ? { path: args.path, namespace: "test-io" }
+            : undefined,
         );
         b.onLoad({ filter: /.*/, namespace: "test-io" }, (args) => ({
           contents: stubs[args.path],
@@ -53,7 +62,10 @@ async function scheduler(state) {
   globalThis.__jointSchedulerTest = state;
   // A fresh module per test: written to a temp file because the bundle is larger
   // than a data: URL specifier may be.
-  const file = join(mkdtempSync(join(tmpdir(), "v2-joint-")), `bundle-${serial++}.mjs`);
+  const file = join(
+    mkdtempSync(join(tmpdir(), "v2-joint-")),
+    `bundle-${serial++}.mjs`,
+  );
   writeFileSync(file, bundled.outputFiles[0].text);
   return (await import(pathToFileURL(file).href)).runV2AutoSchedule;
 }
@@ -150,7 +162,9 @@ function state() {
     if (table === "operational_group_members")
       return st.snapshot.members.map((m) => ({
         ...m,
-        partition_headcount: st.snapshot.partitions.find((p) => p.id === m.partition_id)?.headcount,
+        partition_headcount: st.snapshot.partitions.find(
+          (p) => p.id === m.partition_id,
+        )?.headcount,
         partition_active: true,
       }));
     throw Error(`Unexpected query: ${table}`);
@@ -166,8 +180,10 @@ function state() {
           data: { ok: false, code: "FINAL_STATE_CONFLICT" },
           error: null,
         };
-      if (st.transportFailure) return { data: null, error: { code: "NETWORK_ERROR" } };
-      if (st.reject) return { data: { ok: false, code: "STALE_SNAPSHOT" }, error: null };
+      if (st.transportFailure)
+        return { data: null, error: { code: "NETWORK_ERROR" } };
+      if (st.reject)
+        return { data: { ok: false, code: "STALE_SNAPSHOT" }, error: null };
       const before = structuredClone(st.snapshot);
       for (const move of request.p_moves) {
         const row = st.snapshot.sessions.find((s) => s.id === move.id);
@@ -235,7 +251,9 @@ function state() {
         }),
         then(resolve, reject) {
           return Promise.resolve({
-            data: tableRows(table).filter((row) => filters.every((filter) => filter(row))),
+            data: tableRows(table).filter((row) =>
+              filters.every((filter) => filter(row)),
+            ),
             error: null,
           }).then(resolve, reject);
         },
@@ -282,15 +300,23 @@ function state() {
         warnings: [],
       };
 
-    const i = st.items.find((i) => i.teaching_assignment_id === p.teachingAssignmentId);
-    const created = session(`saved:${st.calls.length}`, p.dayOfWeek, p.startTime, p.endTime, {
-      room_id: p.roomId,
-      teaching_assignment_id: i.teaching_assignment_id,
-      instructor_id: i.instructor_id,
-      cohort_id: i.cohort_id,
-      delivery_group_id: i.delivery_group_id,
-      updated_at: `t${st.calls.length}`,
-    });
+    const i = st.items.find(
+      (i) => i.teaching_assignment_id === p.teachingAssignmentId,
+    );
+    const created = session(
+      `saved:${st.calls.length}`,
+      p.dayOfWeek,
+      p.startTime,
+      p.endTime,
+      {
+        room_id: p.roomId,
+        teaching_assignment_id: i.teaching_assignment_id,
+        instructor_id: i.instructor_id,
+        cohort_id: i.cohort_id,
+        delivery_group_id: i.delivery_group_id,
+        updated_at: `t${st.calls.length}`,
+      },
+    );
     st.snapshot.sessions.push(created);
     return {
       ok: true,
@@ -306,7 +332,9 @@ const params = { collegeId: "college", scheduleVersionId: "version" };
 
 for (const studySystem of ["regular", "parallel", "both"]) {
   test(
-    "V2 schedules " + studySystem + " using shared templates when no dedicated template exists",
+    "V2 schedules " +
+      studySystem +
+      " using shared templates when no dedicated template exists",
     async () => {
       const s = state();
       s.snapshot.templates = s.snapshot.templates.map((template) => ({
@@ -347,7 +375,10 @@ test("real V2 flow places next to the same instructor across programs and reads 
   assert.equal(s.runs[0].summary.attendance.instructorGapMinutes, 0);
   assert.equal(result.totalRequired, 2);
   assert.equal(s.runs[0].summary.readiness.requiredMinutes, 240);
-  assert.equal(s.snapshot.sessions.find((x) => x.id === "old").start_time, "08:00:00");
+  assert.equal(
+    s.snapshot.sessions.find((x) => x.id === "old").start_time,
+    "08:00:00",
+  );
 });
 test("a sixth day is never sent to the creation RPC", async () => {
   const s = state();
@@ -358,7 +389,9 @@ test("a sixth day is never sent to the creation RPC", async () => {
     }),
   );
   s.items = [item("new", "c", "g")];
-  s.snapshot.templates = s.snapshot.templates.filter((t) => t.day_of_week === 6);
+  s.snapshot.templates = s.snapshot.templates.filter(
+    (t) => t.day_of_week === 6,
+  );
   await assert.rejects((await scheduler(s))(params), /ثبت التعذر/);
   assert.equal(s.calls.length, 0);
   assert.equal(s.runs.length, 0);
@@ -433,7 +466,9 @@ test("regular-only generation excludes parallel work before planning and preserv
       blocking_reason: "parallel teacher not yet assigned",
     }),
   );
-  const result = await (await scheduler(s))({ ...params, studySystem: "regular" });
+  const result = await (
+    await scheduler(s)
+  )({ ...params, studySystem: "regular" });
   assert.deepEqual(
     s.calls.map((call) => call.teachingAssignmentId),
     ["new"],
@@ -449,7 +484,10 @@ test("regular-only generation excludes parallel work before planning and preserv
 test("a mixed-system shared lecture blocks scoped generation before any session write", async () => {
   const s = state();
   s.items[1].study_system = "both";
-  await assert.rejects((await scheduler(s))({ ...params, studySystem: "regular" }), /مشتركة/);
+  await assert.rejects(
+    (await scheduler(s))({ ...params, studySystem: "regular" }),
+    /مشتركة/,
+  );
   assert.equal(s.calls.length, 0);
   assert.equal(s.runs.length, 0);
 });
@@ -461,9 +499,14 @@ test("generation forwards its search budget and preserves actual lock state", as
   )({ ...params, searchDurationMs: 300000 });
   assert.equal(s.searchOptions.maxDurationMs, 300000);
   assert.equal(s.searchOptions.purpose, "generation");
-  assert.equal(s.searchSnapshot.sessions.find((x) => x.id === "old").is_locked, false);
+  assert.equal(
+    s.searchSnapshot.sessions.find((x) => x.id === "old").is_locked,
+    false,
+  );
   assert.ok(
-    s.searchSnapshot.sessions.some((x) => x.id.startsWith("attendance-pending:") && !x.is_locked),
+    s.searchSnapshot.sessions.some(
+      (x) => x.id.startsWith("attendance-pending:") && !x.is_locked,
+    ),
   );
 });
 
@@ -475,7 +518,9 @@ test("an unresolved worker search never reaches the session writer", async () =>
       days: null,
       sessions: [],
       scope: "all_sessions_joint_grid",
-      attempts: [{ days: 4, status: "unknown", reason: "budget", evaluated: 1 }],
+      attempts: [
+        { days: 4, status: "unknown", reason: "budget", evaluated: 1 },
+      ],
     },
   });
   await assert.rejects((await scheduler(s))(params), /لم يُحسم البحث/);
@@ -493,6 +538,7 @@ for (const includeExistingWorkItem of [true, false]) {
       id: "U",
       instructor_type_id: "permanent",
       max_hours_per_day: 6,
+      availability_status: "available",
     });
     s.snapshot.rooms.push({ ...s.snapshot.rooms[0], id: "r2" });
     s.snapshot.templates = [
@@ -506,7 +552,9 @@ for (const includeExistingWorkItem of [true, false]) {
     ];
     if (!includeExistingWorkItem)
       s.items = s.items.filter((i) => i.teaching_assignment_id !== "old");
-    const result = await (await scheduler(s))({ ...params, studySystem: "parallel" });
+    const result = await (
+      await scheduler(s)
+    )({ ...params, studySystem: "parallel" });
     assert.equal(result.placed, 1);
     assert.equal(result.scopeComplete, true);
     assert.equal(s.calls[0].startTime, "08:00:00");
@@ -529,7 +577,9 @@ test("one infeasible work unit does not stop the remaining work items", async ()
   s.rejectAssignments = new Set(["a0"]);
   const result = await (await scheduler(s))(params);
   const placedIds = new Set(
-    s.calls.filter((c) => c.teachingAssignmentId !== "a0").map((c) => c.teachingAssignmentId),
+    s.calls
+      .filter((c) => c.teachingAssignmentId !== "a0")
+      .map((c) => c.teachingAssignmentId),
   );
   assert.equal(placedIds.has("a1"), true);
   assert.equal(placedIds.has("a2"), true);
@@ -592,7 +642,9 @@ test("fallback never opens a fifth student day beyond the certified plan", async
   await (
     await scheduler(s)
   )(params);
-  const studentDays = new Set(s.calls.filter((c) => c.note).map((c) => c.dayOfWeek));
+  const studentDays = new Set(
+    s.calls.filter((c) => c.note).map((c) => c.dayOfWeek),
+  );
   assert.ok(studentDays.size <= 4, `student days: ${[...studentDays]}`);
 });
 
@@ -605,7 +657,14 @@ test("fallback keeps an untargeted instructor at the generic four-day cap", asyn
     required_room_type: "lecture_hall",
     is_active: true,
   }));
-  s.snapshot.instructors = [{ id: "T", instructor_type_id: "permanent", max_hours_per_day: 6 }];
+  s.snapshot.instructors = [
+    {
+      id: "T",
+      instructor_type_id: "permanent",
+      max_hours_per_day: 6,
+      availability_status: "available",
+    },
+  ];
   s.snapshot.settings.max_daily_hours_per_section = 4;
   const seen = new Set();
   s.rejectSlot = (p) => {
@@ -634,6 +693,7 @@ test("a targeted instructor (target=5) may use a fifth day when students allow i
       id: "T",
       instructor_type_id: "permanent",
       max_hours_per_day: 6,
+      availability_status: "available",
       target_attendance_days_per_week: 5,
     },
   ];
@@ -669,7 +729,14 @@ function practicalState(level, rooms) {
     },
   ];
   s.snapshot.components = [{ id: "component:p1", component_type: "practical" }];
-  s.snapshot.instructors = [{ id: "T", instructor_type_id: "permanent", max_hours_per_day: 6 }];
+  s.snapshot.instructors = [
+    {
+      id: "T",
+      instructor_type_id: "permanent",
+      max_hours_per_day: 6,
+      availability_status: "available",
+    },
+  ];
   return s;
 }
 const lab = {
@@ -729,8 +796,14 @@ test("hall fallback keeps two practical groups as two independent sessions", asy
   const result = await (await scheduler(s))(params);
   assert.equal(result.placed, 2);
   // Distinct assignments, distinct delivery groups: no merge, no shared lecture.
-  assert.deepEqual(new Set(s.calls.map((c) => c.teachingAssignmentId)), new Set(["p1", "p2"]));
-  assert.equal(new Set(s.snapshot.sessions.map((x) => x.delivery_group_id)).size, 2);
+  assert.deepEqual(
+    new Set(s.calls.map((c) => c.teachingAssignmentId)),
+    new Set(["p1", "p2"]),
+  );
+  assert.equal(
+    new Set(s.snapshot.sessions.map((x) => x.delivery_group_id)).size,
+    2,
+  );
   assert.equal(s.snapshot.sessions.length, 2);
 });
 
@@ -755,6 +828,7 @@ for (const fallback of [false, true]) {
       id: "U",
       instructor_type_id: "permanent",
       max_hours_per_day: 6,
+      availability_status: "available",
     });
     s.snapshot.settings.working_days = [0];
     s.snapshot.settings.day_end_time = "12:00:00";
@@ -773,9 +847,13 @@ for (const fallback of [false, true]) {
     const result = await (await scheduler(s))(params);
     assert.equal(result.placed, 1);
     assert.equal(result.relocatedSessions, 1);
-    assert.equal(s.snapshot.sessions.find((x) => x.id === "old").start_time, "10:00:00");
     assert.equal(
-      s.snapshot.sessions.find((x) => x.teaching_assignment_id === "new").start_time,
+      s.snapshot.sessions.find((x) => x.id === "old").start_time,
+      "10:00:00",
+    );
+    assert.equal(
+      s.snapshot.sessions.find((x) => x.teaching_assignment_id === "new")
+        .start_time,
       "08:00:00",
     );
     assert.equal(s.runs[0].status, "completed");
