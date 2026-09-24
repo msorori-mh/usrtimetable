@@ -227,28 +227,24 @@ test("room surplus and deficit stay separate in the compact summary", () => {
   assert.match(output, /العجز 4 ساعة/);
 });
 
-test("room reuse opportunity turns surplus into quick executive equivalents", () => {
-  const ids = ["hours", "days", "room", "mixed", "zero", "deficit", "unknown"];
+test("executive comparison shows observed empty rooms, not surplus-hour room equivalents", () => {
+  const published = { ...room("published", 233), emptyPublishedRooms: 0 };
+  const vacant = { ...room("vacant", 36), emptyPublishedRooms: 1 };
+  const unpublished = room("unpublished", null);
   const output = html({
-    colleges: ids.map((id) => college(id)),
-    capacity: [
-      room("hours", 5),
-      room("days", 16),
-      room("room", 36),
-      room("mixed", 70),
-      room("zero", 0),
-      room("deficit", -4),
-      room("unknown", null),
+    colleges: [
+      college("published"),
+      college("vacant"),
+      college("unpublished", { version_id: null }),
     ],
+    capacity: [published, vacant, unpublished],
   });
-  assert.match(output, /فرصة إعادة الاستخدام/);
-  assert.match(output, /يعادل 5 ساعات/);
-  assert.match(output, /يعادل يومين قاعة \+ 4 ساعات/);
-  assert.match(output, /يعادل قاعة أسبوعية كاملة/);
-  assert.match(output, /يعادل قاعة أسبوعية كاملة \+ 5 أيام قاعة \+ 4 ساعات/);
-  assert.match(output, /لا توجد سعة فائضة/);
+  assert.match(output, /قاعات بلا جلسات منشورة/);
+  assert.match(output, /233 ساعة/);
+  assert.match(output, /0 قاعة بلا جلسات منشورة/);
+  assert.match(output, /1 قاعة بلا جلسات منشورة/);
   assert.match(output, /غير محسوب/);
-  assert.match(output, /لا تعني\s+توافر قاعة بعينها/);
+  assert.doesNotMatch(output, /6 قاعات أسبوعية|فرصة إعادة الاستخدام/);
 });
 
 test("single-college input does not expose other colleges and uses unique faculty count", () => {

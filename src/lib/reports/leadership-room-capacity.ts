@@ -205,11 +205,14 @@ export function buildLeadershipRoomCapacity(
         : null;
     if (requiredHours === null) issues.push("الفصل أو الساعات التدريسية المطلوبة غير محسومة");
     const demandComplete =
+      !!college.version_id &&
       requiredHours !== null &&
       known(college.groups_count) &&
       college.groups_count > 0 &&
       (!known(college.teaching_hours) || requiredHours + 0.01 >= college.teaching_hours);
-    if (requiredHours !== null && !demandComplete)
+    if (!college.version_id)
+      issues.push("لا توجد نسخة منشورة؛ لا يمكن إثبات الساعات غير المستخدمة أو فائض القاعات");
+    else if (requiredHours !== null && !demandComplete)
       issues.push("يجب استكمال مجموعات التدريس ومطابقة المطلوب مع المنشور قبل احتساب الفائض");
     const balanceHours =
       availableHours !== null && demandComplete ? round(availableHours - requiredHours!) : null;
