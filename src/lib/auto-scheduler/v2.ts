@@ -163,6 +163,31 @@ export type AutoScheduleProgress = {
   label: string;
 };
 
+export type V2FeasibilityPreview = {
+  canRun: true;
+  studySystem: AutoScheduleScope;
+  eligibleAssignments: number;
+  pendingSessions: number;
+  existingSessions: number;
+  attendanceDays: number;
+  attendanceEvidence: string;
+  relocationBudget: number;
+  warnings: string[];
+};
+
+type V2AutoScheduleParams = {
+  collegeId: string;
+  scheduleVersionId: string;
+  mode?: AutoRunMode;
+  studySystem?: AutoScheduleScope;
+  searchDurationMs?: number;
+  onProgress?: (progress: AutoScheduleProgress) => void;
+  signal?: AbortSignal;
+};
+
+type V2AutoScheduleRunParams = V2AutoScheduleParams & { previewOnly?: false };
+type V2AutoSchedulePreviewParams = V2AutoScheduleParams & { previewOnly: true };
+
 /**
  * New Flow auto-scheduler.
  *
@@ -177,15 +202,17 @@ export type AutoScheduleProgress = {
  * sessions instead of a single 4h block. Existing sessions are reconciled
  * (resume/idempotency); unlocked placements may move atomically within the repair budget.
  */
-export async function runV2AutoSchedule(params: {
-  collegeId: string;
-  scheduleVersionId: string;
-  mode?: AutoRunMode;
-  studySystem?: AutoScheduleScope;
-  searchDurationMs?: number;
-  onProgress?: (progress: AutoScheduleProgress) => void;
-  signal?: AbortSignal;
-}): Promise<AutoRunResult & { studySystem: AutoScheduleScope; scopeComplete: boolean }> {
+export function runV2AutoSchedule(
+  params: V2AutoSchedulePreviewParams,
+): Promise<V2FeasibilityPreview>;
+export function runV2AutoSchedule(
+  params: V2AutoScheduleRunParams,
+): Promise<AutoRunResult & { studySystem: AutoScheduleScope; scopeComplete: boolean }>;
+export async function runV2AutoSchedule(
+  params: V2AutoScheduleRunParams | V2AutoSchedulePreviewParams,
+): Promise<
+  V2FeasibilityPreview | (AutoRunResult & { studySystem: AutoScheduleScope; scopeComplete: boolean })
+> {
   const mode = params.mode ?? "fill_missing";
   const studySystem = params.studySystem ?? "all";
   if (mode !== "fill_missing") {
@@ -590,6 +617,24 @@ export async function runV2AutoSchedule(params: {
   const plannedPending = attendancePlan.sessions.filter((s) =>
     s.id.startsWith("attendance-pending:"),
   );
+
+  // Institutional preflight boundary: everything above this point is read-only.
+  // A preview must return before the first guarded generation RPC and before the
+  // auto_schedule_runs audit insert. Execution deliberately recomputes this plan
+  // so a stale preview can never authorize writes against changed data.
+  if (params.previewOnly) {
+    return {
+      canRun: true,
+      studySystem,
+      eligibleAssignments: workItems.length,
+      pendingSessions: plannedPending.length,
+      existingSessions: planningSessions.length,
+      attendanceDays: attendancePlan.days,
+      attendanceEvidence,
+      relocationBudget: GENERATION_MAX_RELOCATIONS,
+      warnings: [...warnings],
+    };
+  }
 
   const recordPracticalFallback = (s: Session) => {
     const item = workItems.find((i) => i.teaching_assignment_id === s.teaching_assignment_id);
