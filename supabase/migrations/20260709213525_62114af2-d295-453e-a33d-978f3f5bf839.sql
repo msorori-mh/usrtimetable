@@ -1,1 +1,0 @@
-GRANT INSERT ON public.schedule_version_conflict_exceptions TO sandbox_exec;

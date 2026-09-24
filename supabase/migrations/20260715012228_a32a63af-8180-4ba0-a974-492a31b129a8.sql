@@ -1,1 +1,0 @@
-DROP TABLE IF EXISTS public._phase6_b64_stage;

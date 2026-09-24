@@ -1,6 +1,0 @@
-id,area,action,owner,phase,priority,notes
-A1,F002,Fix validateScheduleVersion to load and pass approved exceptions to validateProposed and applyApprovedExceptions,engineering,post VERIFY,HIGH,Blocks reliance on conflict-checks UI numbers
-A2,blockers,Remediate 8 room_type_mismatch by assigning matching room_type per teaching_assignment.required_room_type,scheduling,post VERIFY,HIGH,See remaining-blockers.csv rows 1-8 and 10
-A3,blockers,Remediate 1 study_system_time_template (CY-L1-007 Thu 13:00-16:00) by aligning to active template,scheduling,post VERIFY,HIGH,See remaining-blockers.csv row 9
-A4,types,Confirm generated types remain in sync after any further schema evolution,engineering,REGEN-PREP-01,LOW,Currently CURRENT
-A5,security,No High/Critical findings introduced by this phase,security,ongoing,INFO,
