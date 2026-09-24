@@ -16,16 +16,29 @@ export const session = (id, day, start, end, extra = {}) => ({
 });
 export const snapshot = (sessions) => ({
   sessions,
-  cohorts: [{ id: "c", program_id: "p", level_id: "l", study_system: "regular", term_id: "t" }],
+  cohorts: [
+    {
+      id: "c",
+      program_id: "p",
+      level_id: "l",
+      study_system: "regular",
+      term_id: "t",
+    },
+  ],
   groups: [{ id: "g", cohort_id: "c", expected_students: 30 }],
   members: [{ delivery_group_id: "g", partition_id: "p1", cohort_id: "c" }],
   partitions: [{ id: "p1", cohort_id: "c", headcount: 30, active: true }],
-  assignments: [{ id: "a", required_room_type: "lecture_hall", is_active: true }],
-  rooms: [{ id: "r", capacity: 60, room_type: "lecture_hall", is_active: true }],
+  assignments: [
+    { id: "a", required_room_type: "lecture_hall", is_active: true },
+  ],
+  rooms: [
+    { id: "r", capacity: 60, room_type: "lecture_hall", is_active: true },
+  ],
   instructors: [...new Set(sessions.map((s) => s.instructor_id))].map((id) => ({
     id,
     instructor_type_id: "permanent",
     max_hours_per_day: 6,
+    availability_status: "available",
   })),
   types: [{ id: "permanent", code: "permanent", is_external: false }],
   availability: [],
@@ -58,5 +71,9 @@ export function addCohort(s, id, group, partition, headcount = 30) {
   });
   s.groups.push({ id: group, cohort_id: id, expected_students: headcount });
   s.partitions.push({ id: partition, cohort_id: id, headcount, active: true });
-  s.members.push({ delivery_group_id: group, cohort_id: id, partition_id: partition });
+  s.members.push({
+    delivery_group_id: group,
+    cohort_id: id,
+    partition_id: partition,
+  });
 }
