@@ -24,5 +24,5 @@ test("the UI guard remains aligned with the engine fail-closed guard", () => {
 
 test("the incremental save and resume policy is explicit before execution", () => {
   assert.match(routeSource, /التشغيل تراكمي وآمن للاستئناف/);
-  assert.match(routeSource, /زر الإيقاف يمنع الخطوات\s+التالية ولا يتراجع/);
+  assert.match(routeSource, /زر\s+الإيقاف يمنع الخطوات\s+التالية ولا يتراجع/);
 });
