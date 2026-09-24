@@ -1,265 +1,229 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useActiveCollege } from "@/hooks/use-colleges";
-import { useCanManageActiveCollege } from "@/hooks/use-can-manage";
+import { useEffect, useState } from "react";
+import { Sliders } from "lucide-react";
+import { toast } from "sonner";
+
 import { CollegeSwitcher } from "@/components/college-switcher";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
+import { useActiveCollege } from "@/hooks/use-colleges";
+import { useCanManageActiveCollege } from "@/hooks/use-can-manage";
+import { supabase } from "@/integrations/supabase/client";
 import { logAudit } from "@/lib/audit";
-import { useState, useEffect } from "react";
-import { Sliders } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/constraint-settings")({
-  head: () => ({ meta: [{ title: "إعدادات القيود (الجدولة)" }] }),
+  head: () => ({ meta: [{ title: "سياسة القيود وجودة الجدول" }] }),
   component: ConstraintSettingsPage,
 });
 
-interface CType {
+interface HardConstraint {
   id: string;
   code: string;
   name_ar: string;
   name_en: string | null;
-  constraint_category: "hard" | "soft";
-  is_hard: boolean;
-  default_weight: number;
-  is_active: boolean;
   description: string | null;
 }
 
-interface CSetting {
+interface QualityMetric {
   id: string;
-  constraint_type_id: string;
+  code: string;
+  name_ar: string;
+  name_en: string | null;
+  default_weight: number;
+  description: string | null;
+}
+
+interface QualitySetting {
+  id: string;
+  quality_metric_id: string;
   enabled: boolean;
   weight: number;
 }
 
-interface RowState { enabled: boolean; weight: number; settingId: string | null }
+interface RowState {
+  enabled: boolean;
+  weight: number;
+  settingId: string | null;
+}
 
-// UI-only display overrides. Keep the technical `code` and DB values unchanged.
-const DISPLAY_OVERRIDES: Record<
-  string,
-  { name_ar?: string; description?: string | null }
-> = {
+const DISPLAY_OVERRIDES: Record<string, { name_ar?: string; description?: string | null }> = {
   gap_penalty: {
     name_ar: "تقليل الفجوات بين المحاضرات",
-    description:
-      "تقليل أوقات الانتظار الفارغة بين محاضرات الدفعات والمحاضرين",
+    description: "تقليل أوقات الانتظار الفارغة بين محاضرات الدفعات والمحاضرين",
   },
 };
 
-function displayFor(type: CType) {
-  const override = DISPLAY_OVERRIDES[type.code];
+function displayFor(metric: QualityMetric) {
+  const override = DISPLAY_OVERRIDES[metric.code];
   return {
-    name_ar: override?.name_ar ?? type.name_ar,
-    description:
-      override?.description !== undefined
-        ? override.description
-        : type.description,
+    name_ar: override?.name_ar ?? metric.name_ar,
+    description: override?.description !== undefined ? override.description : metric.description,
   };
 }
 
 function ConstraintSettingsPage() {
   const { active } = useActiveCollege();
   const canManage = useCanManageActiveCollege();
-  const qc = useQueryClient();
+  const queryClient = useQueryClient();
   const [state, setState] = useState<Record<string, RowState>>({});
 
-  const { data: types } = useQuery({
-    queryKey: ["constraint-types"],
+  const { data: hardConstraints } = useQuery({
+    queryKey: ["hard-constraint-registry"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("constraint_types")
-        .select("*")
+        .select("id, code, name_ar, name_en, description")
         .eq("is_active", true)
-        .order("constraint_category", { ascending: true })
+        .eq("is_hard", true)
         .order("code");
       if (error) throw error;
-      return (data ?? []) as CType[];
+      return (data ?? []) as HardConstraint[];
+    },
+  });
+
+  const { data: metrics } = useQuery({
+    queryKey: ["quality-metrics"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("quality_metrics")
+        .select("id, code, name_ar, name_en, default_weight, description")
+        .eq("is_active", true)
+        .order("code");
+      if (error) throw error;
+      return (data ?? []) as QualityMetric[];
     },
   });
 
   const { data: settings } = useQuery({
-    queryKey: ["constraint-settings", active?.id],
+    queryKey: ["quality-settings", active?.id],
     enabled: !!active,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("college_constraint_settings")
-        .select("id, constraint_type_id, enabled, weight")
+        .from("college_quality_settings")
+        .select("id, quality_metric_id, enabled, weight")
         .eq("college_id", active!.id);
       if (error) throw error;
-      return (data ?? []) as CSetting[];
+      return (data ?? []) as QualitySetting[];
     },
   });
 
   useEffect(() => {
-    if (!types) return;
-    const map = new Map((settings ?? []).map((s) => [s.constraint_type_id, s]));
+    if (!metrics) return;
+    const saved = new Map((settings ?? []).map((setting) => [setting.quality_metric_id, setting]));
     const next: Record<string, RowState> = {};
-    for (const t of types) {
-      const s = map.get(t.id);
-      next[t.id] = {
-        enabled: s ? s.enabled : true,
-        weight: s ? s.weight : t.default_weight,
-        settingId: s?.id ?? null,
+    for (const metric of metrics) {
+      const setting = saved.get(metric.id);
+      next[metric.id] = {
+        enabled: setting?.enabled ?? true,
+        weight: setting?.weight ?? metric.default_weight,
+        settingId: setting?.id ?? null,
       };
     }
     setState(next);
-  }, [types, settings]);
+  }, [metrics, settings]);
 
   const save = useMutation({
-    mutationFn: async (typeId: string) => {
+    mutationFn: async (metricId: string) => {
       if (!active) throw new Error("لا توجد كلية محددة");
-      const row = state[typeId];
-      const t = types?.find((x) => x.id === typeId);
-      if (!row || !t) return;
+      const row = state[metricId];
+      const metric = metrics?.find((item) => item.id === metricId);
+      if (!row || !metric) throw new Error("تعذر تحديد معيار الجودة");
+      if (!Number.isFinite(row.weight) || row.weight < 0 || row.weight > 1000) {
+        throw new Error("وزن معيار الجودة يجب أن يكون بين 0 و1000");
+      }
+
       if (row.settingId) {
         const { error } = await supabase
-          .from("college_constraint_settings")
+          .from("college_quality_settings")
           .update({ enabled: row.enabled, weight: row.weight })
-          .eq("id", row.settingId);
+          .eq("id", row.settingId)
+          .eq("college_id", active.id);
         if (error) throw error;
         await logAudit({
           action: "update",
-          entity: "college_constraint_settings",
+          entity: "college_quality_settings",
           entityId: row.settingId,
           collegeId: active.id,
-          details: { code: t.code, enabled: row.enabled, weight: row.weight },
+          details: { code: metric.code, enabled: row.enabled, weight: row.weight },
         });
-      } else {
-        const { data, error } = await supabase
-          .from("college_constraint_settings")
-          .insert({
-            college_id: active.id,
-            constraint_type_id: typeId,
-            enabled: row.enabled,
-            weight: row.weight,
-          })
-          .select("id")
-          .single();
-        if (error) throw error;
-        await logAudit({
-          action: "create",
-          entity: "college_constraint_settings",
-          entityId: data.id,
-          collegeId: active.id,
-          details: { code: t.code, enabled: row.enabled, weight: row.weight },
-        });
+        return;
       }
+
+      const { data, error } = await supabase
+        .from("college_quality_settings")
+        .insert({
+          college_id: active.id,
+          quality_metric_id: metricId,
+          enabled: row.enabled,
+          weight: row.weight,
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      await logAudit({
+        action: "create",
+        entity: "college_quality_settings",
+        entityId: data.id,
+        collegeId: active.id,
+        details: { code: metric.code, enabled: row.enabled, weight: row.weight },
+      });
     },
     onSuccess: () => {
-      toast.success("تم الحفظ");
-      qc.invalidateQueries({ queryKey: ["constraint-settings", active?.id] });
+      toast.success("تم حفظ وزن تقييم الجودة");
+      queryClient.invalidateQueries({ queryKey: ["quality-settings", active?.id] });
     },
-    onError: (e: Error) => toast.error(e.message || "فشل الحفظ"),
+    onError: (error: Error) => toast.error(error.message || "فشل الحفظ"),
   });
 
   const resetToDefault = useMutation({
-    mutationFn: async (typeId: string) => {
-      const row = state[typeId];
-      const t = types?.find((x) => x.id === typeId);
-      if (!t) return;
-      setState((s) => ({ ...s, [typeId]: { ...s[typeId], enabled: true, weight: t.default_weight } }));
-      if (row?.settingId && active) {
+    mutationFn: async (metricId: string) => {
+      if (!active) throw new Error("لا توجد كلية محددة");
+      const row = state[metricId];
+      const metric = metrics?.find((item) => item.id === metricId);
+      if (!row || !metric) throw new Error("تعذر تحديد معيار الجودة");
+
+      if (row.settingId) {
         const { error } = await supabase
-          .from("college_constraint_settings")
-          .update({ enabled: true, weight: t.default_weight })
-          .eq("id", row.settingId);
+          .from("college_quality_settings")
+          .update({ enabled: true, weight: metric.default_weight })
+          .eq("id", row.settingId)
+          .eq("college_id", active.id);
         if (error) throw error;
         await logAudit({
           action: "reset",
-          entity: "college_constraint_settings",
+          entity: "college_quality_settings",
           entityId: row.settingId,
           collegeId: active.id,
-          details: { code: t.code, weight: t.default_weight },
+          details: { code: metric.code, weight: metric.default_weight },
         });
       }
+      setState((current) => ({
+        ...current,
+        [metricId]: {
+          ...current[metricId],
+          enabled: true,
+          weight: metric.default_weight,
+        },
+      }));
     },
     onSuccess: () => {
-      toast.success("أُعيدت القيمة الافتراضية");
-      qc.invalidateQueries({ queryKey: ["constraint-settings", active?.id] });
+      toast.success("أُعيد معيار الجودة إلى قيمته الافتراضية");
+      queryClient.invalidateQueries({ queryKey: ["quality-settings", active?.id] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (error: Error) => toast.error(error.message || "فشل الاستعادة"),
   });
-
-  const hard = (types ?? []).filter((t) => t.is_hard);
-  const soft = (types ?? []).filter((t) => !t.is_hard);
-
-  const renderGroup = (label: string, items: CType[], lock: boolean) => (
-    <Card className="p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold flex items-center gap-2">
-          <Sliders className="h-4 w-4" />
-          {label}
-        </h2>
-        {lock && <Badge variant="destructive">قيود إلزامية — لا يمكن تعطيلها</Badge>}
-      </div>
-      <div className="space-y-2">
-          {items.map((t) => {
-          const row = state[t.id];
-          if (!row) return null;
-          const display = displayFor(t);
-          return (
-            <div key={t.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center border rounded-md p-3">
-              <div className="md:col-span-5">
-                <div className="font-medium">{display.name_ar}</div>
-                <div className="text-xs text-muted-foreground">{t.code} {t.name_en ? `• ${t.name_en}` : ""}</div>
-                {display.description && <div className="text-xs text-muted-foreground mt-1">{display.description}</div>}
-              </div>
-              <div className="md:col-span-2 flex items-center gap-2">
-                <Switch
-                  checked={lock ? true : row.enabled}
-                  disabled={lock || !canManage}
-                  onCheckedChange={(v) => setState((s) => ({ ...s, [t.id]: { ...s[t.id], enabled: v } }))}
-                />
-                <span className="text-sm">{row.enabled ? "مفعّل" : "معطّل"}</span>
-              </div>
-              <div className="md:col-span-3 flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">الوزن</span>
-                <Input
-                  type="number"
-                  min={0}
-                  max={1000}
-                  value={row.weight}
-                  disabled={!canManage}
-                  onChange={(e) =>
-                    setState((s) => ({ ...s, [t.id]: { ...s[t.id], weight: Number(e.target.value) || 0 } }))
-                  }
-                  className="w-24"
-                />
-                <span className="text-xs text-muted-foreground">(افتراضي: {t.default_weight})</span>
-              </div>
-              <div className="md:col-span-2 flex gap-2 justify-end">
-                <Button size="sm" onClick={() => save.mutate(t.id)} disabled={!canManage || save.isPending}>
-                  حفظ
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => resetToDefault.mutate(t.id)}
-                  disabled={!canManage}
-                >
-                  افتراضي
-                </Button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </Card>
-  );
 
   return (
     <div className="space-y-6" dir="rtl">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">إعدادات القيود (الجدولة)</h1>
+          <h1 className="text-2xl font-bold">سياسة القيود وجودة الجدول</h1>
           <p className="text-sm text-muted-foreground">
-            خصّص الأوزان وفعّل/عطّل القيود المرنة لكلّيتك. القيود الإلزامية مفعّلة دائماً.
+            افصل بين القيود الصلبة التي تمنع التعارض، ومعايير الجودة المرنة التي ترتب جودة الحل.
           </p>
         </div>
         <CollegeSwitcher />
@@ -269,8 +233,136 @@ function ConstraintSettingsPage() {
         <Card className="p-6 text-center text-muted-foreground">اختر كلية للبدء</Card>
       ) : (
         <>
-          {renderGroup("القيود الإلزامية (Hard)", hard, true)}
-          {renderGroup("القيود المرنة (Soft)", soft, false)}
+          <Card className="space-y-4 border-destructive/30 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="flex items-center gap-2 text-lg font-semibold">
+                <Sliders className="h-4 w-4" />
+                القيود الصلبة
+              </h2>
+              <Badge variant="destructive">إلزامية — لا يمكن تعطيلها أو تخفيف وزنها</Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              هذه قائمة تعريفية فقط. يطبقها محرك التعارضات وقواعد قاعدة البيانات مباشرة، ولا تُستخدم
+              أوزانها لتجاوز منع التعارض أو أهلية النشر.
+            </p>
+            <div className="space-y-2">
+              {(hardConstraints ?? []).map((constraint) => (
+                <div
+                  key={constraint.id}
+                  className="grid grid-cols-1 items-center gap-3 rounded-md border p-3 md:grid-cols-12"
+                >
+                  <div className="md:col-span-9">
+                    <div className="font-medium">{constraint.name_ar}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {constraint.code}
+                      {constraint.name_en ? ` • ${constraint.name_en}` : ""}
+                    </div>
+                    {constraint.description && (
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {constraint.description}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex justify-end md:col-span-3">
+                    <Badge variant="outline">مطبّق دائمًا</Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card className="space-y-4 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="flex items-center gap-2 text-lg font-semibold">
+                <Sliders className="h-4 w-4" />
+                معايير تقييم الجودة
+              </h2>
+              <Badge variant="secondary">مرنة وقابلة للضبط لكل كلية</Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              هذه القيم يقرأها محرك تقييم الجودة فعليًا. تؤثر في الدرجة والمفاضلة بين الحلول، ولا
+              تعطل القيود الصلبة ولا تسمح بتعارض محاضر أو قاعة.
+            </p>
+            <div className="space-y-2">
+              {(metrics ?? []).map((metric) => {
+                const row = state[metric.id];
+                if (!row) return null;
+                const display = displayFor(metric);
+                return (
+                  <div
+                    key={metric.id}
+                    className="grid grid-cols-1 items-center gap-3 rounded-md border p-3 md:grid-cols-12"
+                  >
+                    <div className="md:col-span-5">
+                      <div className="font-medium">{display.name_ar}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {metric.code}
+                        {metric.name_en ? ` • ${metric.name_en}` : ""}
+                      </div>
+                      {display.description && (
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {display.description}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 md:col-span-2">
+                      <Switch
+                        checked={row.enabled}
+                        disabled={!canManage}
+                        onCheckedChange={(enabled) =>
+                          setState((current) => ({
+                            ...current,
+                            [metric.id]: { ...current[metric.id], enabled },
+                          }))
+                        }
+                      />
+                      <span className="text-sm">{row.enabled ? "مفعّل" : "معطّل"}</span>
+                    </div>
+                    <div className="flex items-center gap-2 md:col-span-3">
+                      <span className="text-sm text-muted-foreground">الوزن</span>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={1000}
+                        value={row.weight}
+                        disabled={!canManage}
+                        onChange={(event) =>
+                          setState((current) => ({
+                            ...current,
+                            [metric.id]: {
+                              ...current[metric.id],
+                              weight: Number(event.target.value),
+                            },
+                          }))
+                        }
+                        className="w-24"
+                      />
+                      <span className="text-xs text-muted-foreground">
+                        (افتراضي: {metric.default_weight})
+                      </span>
+                    </div>
+                    <div className="flex justify-end gap-2 md:col-span-2">
+                      <Button
+                        size="sm"
+                        onClick={() => save.mutate(metric.id)}
+                        disabled={!canManage || save.isPending}
+                      >
+                        حفظ
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => resetToDefault.mutate(metric.id)}
+                        disabled={!canManage || resetToDefault.isPending}
+                      >
+                        افتراضي
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
         </>
       )}
     </div>

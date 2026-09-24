@@ -30,14 +30,18 @@ import {
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import type { AutoRunMode } from "@/lib/auto-scheduler/greedy";
-import { runV2AutoSchedule, type AutoScheduleProgress } from "@/lib/auto-scheduler/v2";
+import {
+  runV2AutoSchedule,
+  type AutoScheduleProgress,
+  type V2FeasibilityPreview,
+} from "@/lib/auto-scheduler/v2";
 import { fetchCollegeReadiness } from "@/lib/reports/readiness";
 import {
   roomTimeCapacityMessagesAr,
   ROOM_TIME_CAPACITY_POLICY_NOTE_AR,
 } from "@/lib/reports/room-time-capacity";
 import { CompactSchedulePanel } from "@/components/compact-panel";
-import { Sparkles, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Sparkles, AlertCircle, CheckCircle2, SearchCheck } from "lucide-react";
 import {
   DeliveryCoverageCard,
   useDeliveryCoverage,
@@ -66,6 +70,8 @@ function AutoSchedulePage() {
   const [compactBusy, setCompactBusy] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
+  const [previewResult, setPreviewResult] = useState<V2FeasibilityPreview | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
   const [progress, setProgress] = useState<AutoScheduleProgress | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const [outcome, setOutcome] = useState<{
@@ -133,6 +139,44 @@ function AutoSchedulePage() {
         .limit(20);
       if (error) throw error;
       return data ?? [];
+    },
+  });
+
+  const preview = useMutation({
+    mutationFn: async () => {
+      setPreviewResult(null);
+      setPreviewError(null);
+      if (!canManage) {
+        throw new Error("UNAUTHORIZED: لا تملك صلاحية فحص الجدولة لهذه الكلّية");
+      }
+      if (!active || !versionId) throw new Error("اختر النسخة");
+      const freshReadiness = await fetchCollegeReadiness(active.id);
+      const freshBlockers = [
+        ...freshReadiness.studyPlan,
+        ...freshReadiness.resources,
+        ...freshReadiness.scheduling,
+      ].filter((metric) => metric.critical && metric.missing > 0);
+      if (freshBlockers.length > 0) {
+        throw new Error(
+          `READINESS_BLOCKED: ${freshBlockers.map((metric) => metric.label).join("؛ ")}`,
+        );
+      }
+      return runV2AutoSchedule({
+        collegeId: active.id,
+        scheduleVersionId: versionId,
+        mode,
+        studySystem,
+        searchDurationMs: Number(searchDurationMs),
+        previewOnly: true,
+      });
+    },
+    onSuccess: (result) => setPreviewResult(result),
+    onError: (error) => {
+      setPreviewError(
+        error instanceof Error && error.message
+          ? error.message
+          : "تعذر إثبات الجدوى دون إجراء أي كتابة.",
+      );
     },
   });
 
@@ -225,8 +269,12 @@ function AutoSchedulePage() {
     },
     onError: (e) => {
       setOutcome(null);
-      setRunError((e as Error).message);
-      toast.error((e as Error).message);
+      const message =
+        e instanceof Error && e.message
+          ? e.message
+          : "تعذر تشغيل الجدولة. لم يتم تأكيد أي نتيجة جديدة؛ راجع المسودة قبل إعادة المحاولة.";
+      setRunError(message);
+      toast.error(message);
     },
     onSettled: () => {
       abortRef.current = null;
@@ -235,7 +283,13 @@ function AutoSchedulePage() {
   });
 
   /** Non-role blockers; the role gate stays the leading `!canManage` on the run button. */
-  const runBlocked = !versionId || run.isPending || compactBusy || readinessIncomplete;
+  const runBlocked =
+    !versionId ||
+    !previewResult ||
+    run.isPending ||
+    preview.isPending ||
+    compactBusy ||
+    readinessIncomplete;
 
   const latest = runs?.[0];
 
@@ -269,7 +323,12 @@ function AutoSchedulePage() {
                 <Select
                   disabled={run.isPending || compactBusy}
                   value={versionId}
-                  onValueChange={setVersionId}
+                  onValueChange={(value) => {
+                    setVersionId(value);
+                    setPreviewResult(null);
+                    setPreviewError(null);
+                    setOutcome(null);
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="اختر النسخة" />
@@ -290,6 +349,8 @@ function AutoSchedulePage() {
                   disabled={run.isPending || compactBusy}
                   onValueChange={(value) => {
                     setStudySystem(value as AutoScheduleScope);
+                    setPreviewResult(null);
+                    setPreviewError(null);
                     setOutcome(null);
                   }}
                 >
@@ -297,24 +358,38 @@ function AutoSchedulePage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(AUTO_SCOPE_LABELS).filter(([value]) => supportsParallel || value === "all").map(([value, label]) => (
-                      <SelectItem key={value} value={value}>
-                        {supportsParallel ? label : "النظام العام فقط"}
-                      </SelectItem>
-                    ))}
+                    {Object.entries(AUTO_SCOPE_LABELS)
+                      .filter(([value]) => supportsParallel || value === "all")
+                      .map(([value, label]) => (
+                        <SelectItem key={value} value={value}>
+                          {supportsParallel ? label : "النظام العام فقط"}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="min-w-56">
                 <label className="text-xs text-muted-foreground">وضع التشغيل</label>
-                <Select value={mode} onValueChange={(v) => setMode(v as AutoRunMode)}>
+                <Select
+                  disabled={run.isPending || compactBusy}
+                  value={mode}
+                  onValueChange={(v) => {
+                    setMode(v as AutoRunMode);
+                    setPreviewResult(null);
+                    setPreviewError(null);
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="fill_missing">إكمال الناقص فقط (آمن)</SelectItem>
-                    <SelectItem value="regenerate_auto">إعادة توليد المحاضرات التلقائية</SelectItem>
-                    <SelectItem value="full_rebuild">إعادة بناء كامل (خطر)</SelectItem>
+                    <SelectItem value="regenerate_auto" disabled>
+                      إعادة التوليد — قيد التطوير وغير متاحة حاليًا
+                    </SelectItem>
+                    <SelectItem value="full_rebuild" disabled>
+                      إعادة البناء الكامل — قيد التطوير وغير متاحة حاليًا
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -322,7 +397,11 @@ function AutoSchedulePage() {
                 <label className="text-xs text-muted-foreground">مدة بحث التوليد</label>
                 <Select
                   value={searchDurationMs}
-                  onValueChange={setSearchDurationMs}
+                  onValueChange={(value) => {
+                    setSearchDurationMs(value);
+                    setPreviewResult(null);
+                    setPreviewError(null);
+                  }}
                   disabled={run.isPending || compactBusy}
                 >
                   <SelectTrigger aria-label="مدة بحث التوليد">
@@ -336,6 +415,22 @@ function AutoSchedulePage() {
                   </SelectContent>
                 </Select>
               </div>
+              <Button
+                variant="outline"
+                disabled={
+                  !canManage ||
+                  !versionId ||
+                  run.isPending ||
+                  preview.isPending ||
+                  compactBusy ||
+                  readinessIncomplete
+                }
+                onClick={() => preview.mutate()}
+                data-testid="auto-schedule-feasibility-preview"
+              >
+                <SearchCheck className="h-4 w-4 ml-1" />
+                {preview.isPending ? "جارٍ فحص الجدوى…" : "فحص الجدوى دون حفظ"}
+              </Button>
               <Button
                 disabled={!canManage || runBlocked}
                 onClick={() => {
@@ -356,6 +451,41 @@ function AutoSchedulePage() {
                 </Button>
               ) : null}
             </div>
+            {previewError ? (
+              <div
+                role="alert"
+                data-testid="auto-schedule-feasibility-failed"
+                className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
+              >
+                فشل فحص الجدوى دون إجراء أي كتابة: {previewError}
+              </div>
+            ) : null}
+            {previewResult ? (
+              <div
+                role="status"
+                data-testid="auto-schedule-feasibility-passed"
+                className="rounded-lg border border-emerald-400 bg-emerald-50 p-3 text-sm text-emerald-950 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-100"
+              >
+                <p className="font-semibold">اجتاز النطاق فحص الجدوى دون حفظ أي جلسة.</p>
+                <p className="mt-1">
+                  {previewResult.eligibleAssignments} إسناد مؤهل، {previewResult.pendingSessions}{" "}
+                  جلسة ناقصة، {previewResult.existingSessions} جلسة قائمة، وخطة حضور من{" "}
+                  {previewResult.attendanceDays} أيام.
+                </p>
+                <p className="mt-1 text-xs">{previewResult.attendanceEvidence}</p>
+                <p className="mt-1 text-xs">
+                  التشغيل سيعيد الفحص كاملًا قبل الحفظ؛ هذه المعاينة لا تتجاوز القيود ولا تمنح إذنًا
+                  لبيانات تغيّرت بعدها.
+                </p>
+              </div>
+            ) : (
+              <p
+                className="text-xs text-muted-foreground"
+                data-testid="auto-schedule-preview-required"
+              >
+                يلزم اجتياز «فحص الجدوى دون حفظ» قبل إتاحة التشغيل.
+              </p>
+            )}
             {run.isPending && progress ? (
               <div
                 className="rounded-md border bg-muted/40 p-3 text-sm"
@@ -370,6 +500,14 @@ function AutoSchedulePage() {
               النطاق: {AUTO_SCOPE_LABELS[studySystem]}. تُحفظ المحاضرات القائمة وتُفحص تعارضاتها.
               إجماليات النسخة تشمل جميع الأنظمة؛ نافذة النواقص تتبع النطاق المختار.
             </p>
+            <div
+              className="rounded-md border border-blue-300 bg-blue-50 p-3 text-xs text-blue-950 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-100"
+              data-testid="auto-schedule-resume-policy"
+            >
+              التشغيل تراكمي وآمن للاستئناف: كل دفعة ناجحة تُحفظ ذريًا. زر الإيقاف يمنع الخطوات
+              التالية ولا يتراجع عن الجلسات المحفوظة؛ ويمكن إعادة تشغيل «إكمال الناقص» لاستكمال
+              الباقي دون إعادة إنشاء الجلسات الموجودة.
+            </div>
             {versionId ? (
               <DeliveryCoverageCard
                 collegeId={active.id}
@@ -380,7 +518,11 @@ function AutoSchedulePage() {
               />
             ) : null}
             {runError ? (
-              <div role="alert" data-testid="auto-run-error" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+              <div
+                role="alert"
+                data-testid="auto-run-error"
+                className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
+              >
                 تعذر إكمال الجدولة: {runError}
               </div>
             ) : null}

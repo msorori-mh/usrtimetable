@@ -493,6 +493,7 @@ for (const includeExistingWorkItem of [true, false]) {
       id: "U",
       instructor_type_id: "permanent",
       max_hours_per_day: 6,
+      availability_status: "available",
     });
     s.snapshot.rooms.push({ ...s.snapshot.rooms[0], id: "r2" });
     s.snapshot.templates = [
@@ -605,7 +606,14 @@ test("fallback keeps an untargeted instructor at the generic four-day cap", asyn
     required_room_type: "lecture_hall",
     is_active: true,
   }));
-  s.snapshot.instructors = [{ id: "T", instructor_type_id: "permanent", max_hours_per_day: 6 }];
+  s.snapshot.instructors = [
+    {
+      id: "T",
+      instructor_type_id: "permanent",
+      max_hours_per_day: 6,
+      availability_status: "available",
+    },
+  ];
   s.snapshot.settings.max_daily_hours_per_section = 4;
   const seen = new Set();
   s.rejectSlot = (p) => {
@@ -634,6 +642,7 @@ test("a targeted instructor (target=5) may use a fifth day when students allow i
       id: "T",
       instructor_type_id: "permanent",
       max_hours_per_day: 6,
+      availability_status: "available",
       target_attendance_days_per_week: 5,
     },
   ];
@@ -669,7 +678,14 @@ function practicalState(level, rooms) {
     },
   ];
   s.snapshot.components = [{ id: "component:p1", component_type: "practical" }];
-  s.snapshot.instructors = [{ id: "T", instructor_type_id: "permanent", max_hours_per_day: 6 }];
+  s.snapshot.instructors = [
+    {
+      id: "T",
+      instructor_type_id: "permanent",
+      max_hours_per_day: 6,
+      availability_status: "available",
+    },
+  ];
   return s;
 }
 const lab = {
@@ -755,6 +771,7 @@ for (const fallback of [false, true]) {
       id: "U",
       instructor_type_id: "permanent",
       max_hours_per_day: 6,
+      availability_status: "available",
     });
     s.snapshot.settings.working_days = [0];
     s.snapshot.settings.day_end_time = "12:00:00";
