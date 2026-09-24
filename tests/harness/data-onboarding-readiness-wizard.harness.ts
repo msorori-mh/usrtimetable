@@ -71,7 +71,9 @@ noDml(route, "data-onboarding.tsx", "schedule_sessions");
 const auto = read("src/routes/_authenticated/auto-schedule.tsx");
 assert(
   /disabled=\{!canManage \|\| runBlocked\}/.test(auto) &&
-    /const runBlocked =[\s\S]*?!versionId[\s\S]*?run\.isPending[\s\S]*?readinessIncomplete;/.test(auto),
+    /const runBlocked =[\s\S]*?!versionId[\s\S]*?run\.isPending[\s\S]*?readinessIncomplete;/.test(
+      auto,
+    ),
   "UI gate: readiness blockers + canManage disable run",
 );
 assert(
