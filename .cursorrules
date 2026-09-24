@@ -2,6 +2,10 @@
 
 Version: 1.0
 
+## Repository-specific guidance
+
+Read the root `AGENTS.md` at task start. It records the ITCS teaching-hours rule and the dated follow-up for the published timetable. Apply its instructions when working on scheduling, rooms, or timetable data.
+
 ## Mission
 
 You are the primary software engineering assistant for this repository.
