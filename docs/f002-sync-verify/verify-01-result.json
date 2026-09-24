@@ -1,0 +1,64 @@
+{
+  "phase": "LEGACY-PUBLISH-LIFECYCLE-EXCEPTION-AWARE-F002-FIX-LOVABLE-SYNC-VERIFY-01",
+  "decision": "GO",
+  "next_phase": "LEGACY-PUBLISH-LIFECYCLE-EXCEPTION-AWARE-F002-CLOSEOUT-01",
+  "environment": {
+    "supabase_project_ref": "emzytxqkxjjhsivqxdiu",
+    "environment": "staging"
+  },
+  "target": {
+    "schedule_version_id": "482af19b-0d44-4631-b80a-753f5ead4089",
+    "schedule_version_name": "جدول 2025-2026-S — مستنسخ من legacy",
+    "college_id": "7168345f-cf9d-4789-b2ad-547abb687dc8",
+    "college_code": "ITCS"
+  },
+  "sync": {
+    "repository": "msorori-mh/usrtimetable",
+    "branch": "main",
+    "expected_merge_commit": "5bed94b86214a0ae19259f53f64bb8f497cdb234",
+    "expected_feature_commit": "d162b33d44f6aa153117b1b1f9f663479cdbba19",
+    "content_verified_files": [
+      "src/lib/conflict-engine/validator.ts",
+      "tests/harness/f002-validate-schedule-version.harness.ts",
+      "tests/harness/run.mjs"
+    ]
+  },
+  "validator_result": {
+    "totalHardConflicts": 96,
+    "approvedHardConflicts": 86,
+    "unapprovedHardConflicts": 10,
+    "eligibility": "FAIL"
+  },
+  "blockers_breakdown": {
+    "room_type_mismatch": 9,
+    "study_system_time_template": 1
+  },
+  "exception_query": {
+    "status": 200,
+    "scoped_by": ["schedule_version_id", "status=approved"],
+    "silent_fallback": false,
+    "service_role_used": false
+  },
+  "baseline": {
+    "before": { "status": "draft", "sessions": 198, "approved_exceptions": 44, "published": 0, "conflict_checks": 0, "quality_runs": 0, "events": 0 },
+    "after":  { "status": "draft", "sessions": 198, "approved_exceptions": 44, "published": 0, "conflict_checks": 0, "quality_runs": 0, "events": 0 }
+  },
+  "side_effects": "none",
+  "deferred_findings": [
+    { "id": "F002-UI-TOAST-01", "severity": "Low", "status": "Deferred",
+      "note": "conflict-checks toast displays totalHardConflicts (96) rather than unapprovedHardConflicts (10); does not affect validator, eligibility, publish readiness, or blockers list." }
+  ],
+  "security_findings": [],
+  "confirmations": {
+    "no_code_modified": true,
+    "no_commit_or_push": true,
+    "no_migration": true,
+    "no_seed": true,
+    "no_db_write": true,
+    "no_quality_run": true,
+    "no_lifecycle_transition": true,
+    "no_publish": true,
+    "no_deploy": true,
+    "blockers_not_addressed": true
+  }
+}

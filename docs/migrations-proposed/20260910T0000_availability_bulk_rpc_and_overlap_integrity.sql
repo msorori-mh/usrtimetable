@@ -1,0 +1,21 @@
+-- SUPERSEDED / REJECTED IN REVIEW — DO NOT RUN.
+--
+-- This LAUNCH-CLOSURE-02 proposal was rejected for four substantive defects:
+--   D1. It used `timerange`, which is NOT a built-in Postgres range type and was never
+--       defined anywhere, so the SQL could not even parse against a real database.
+--   D2. Room equality on start_date/end_date (`WITH =`) allowed two OVERLAPPING but
+--       UNEQUAL validity windows to coexist.
+--   D3. Its partial unique index on whole-day closures could not prevent a whole-day
+--       closure conflicting with a TIMED row, nor an all-week row (day_of_week NULL)
+--       conflicting with a specific weekday.
+--   D4. Its instructor exclusion constraint spanned every availability class, so it
+--       would have rejected legitimate soft preferences and 'available' declarations.
+-- It also proposed replaying the stale July source-only migration verbatim, which
+-- carries the same date-window and NULL-row blind spots.
+--
+-- Replaced by, in the same folder:
+--   20260910T0025_availability_temporal_integrity_and_bulk_rpc.sql  (executable migration)
+--   20260910T0025_preflight.sql                                     (read-only preflight)
+--   20260910T0025_rollback.sql                                      (rollback)
+-- Proof harness: scripts/local-db/availability-temporal-integrity-proof.sh
+-- Rationale and evidence: docs/LAUNCH-CLOSURE-03.md

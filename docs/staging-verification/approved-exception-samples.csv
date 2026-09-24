@@ -1,0 +1,9 @@
+code,session_id,related_session_id,exception_id,exception_reason
+instructor_conflict,57a7781c-f463-4212-8738-b76cae714f05,86630e15-97c8-4222-aa60-37ea8540ec91,b54e7a8e-c29a-4398-8f0c-e08b30a9c999,Owner-approved legacy parity: same instructor/room overlaps existed in legacy ti
+instructor_conflict,0c3f8e4b-3369-4ba1-a631-86370adb1d4b,ec83454f-3c43-4f1d-a183-57e4e1bea182,7abb507c-c399-47e8-9f1d-6a080846064d,Owner-approved legacy parity: same instructor/room overlaps existed in legacy ti
+instructor_conflict,ec83454f-3c43-4f1d-a183-57e4e1bea182,0c3f8e4b-3369-4ba1-a631-86370adb1d4b,7abb507c-c399-47e8-9f1d-6a080846064d,Owner-approved legacy parity: same instructor/room overlaps existed in legacy ti
+room_conflict,57a7781c-f463-4212-8738-b76cae714f05,86630e15-97c8-4222-aa60-37ea8540ec91,11a6237b-475a-4c90-8ef1-05ad49f9ef06,Owner-approved legacy parity: same instructor/room overlaps existed in legacy ti
+room_conflict,0c3f8e4b-3369-4ba1-a631-86370adb1d4b,ec83454f-3c43-4f1d-a183-57e4e1bea182,3b18ae8d-115b-4966-8920-ad855690bdbb,Owner-approved legacy parity: same instructor/room overlaps existed in legacy ti
+room_conflict,ec83454f-3c43-4f1d-a183-57e4e1bea182,0c3f8e4b-3369-4ba1-a631-86370adb1d4b,3b18ae8d-115b-4966-8920-ad855690bdbb,Owner-approved legacy parity: same instructor/room overlaps existed in legacy ti
+room_type_mismatch,ddf40bf9-40ef-40f1-a69a-948b7241e6bd,,398c2699-102f-4070-8ce5-5be99778b6bb,no free computer_lab in same time slot
+room_type_mismatch,a61fe880-81cb-4579-a785-a99c2db994bd,,f993cddf-066b-4b0a-a7f5-c1524e6651b8,no free computer_lab in same time slot

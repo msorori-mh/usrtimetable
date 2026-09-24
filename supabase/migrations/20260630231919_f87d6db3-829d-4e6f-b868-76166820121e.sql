@@ -1,0 +1,2 @@
+ALTER TABLE public.sections DROP CONSTRAINT IF EXISTS sections_course_id_term_id_section_number_key;
+ALTER TABLE public.sections ADD CONSTRAINT sections_course_term_section_system_key UNIQUE (course_id, term_id, section_number, study_system);

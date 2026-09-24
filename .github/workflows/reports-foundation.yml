@@ -1,0 +1,36 @@
+name: reports-foundation
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: ["codex/reports-foundation-*"]
+permissions:
+  contents: read
+jobs:
+  reports:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: bun install --frozen-lockfile
+      - name: Report calculations and existing contracts
+        run: |
+          node --import tsx --test tests/whole-cohort-group-labels.test.ts tests/reports-foundation.test.ts tests/academic-affairs.test.ts tests/program-timetable-filters.test.ts
+          bun test tests/report-visual-system.test.ts tests/program-timetable-coverage.test.ts tests/weekly-grid-window.test.ts tests/reports-college-switch.test.ts tests/instructor-quota-and-directory.test.ts tests/report-print-identity.test.ts
+      - name: Browser test dependencies
+        run: |
+          npm install --prefix "$RUNNER_TEMP/report-qa" --no-package-lock @playwright/test@1.63.0
+          node "$RUNNER_TEMP/report-qa/node_modules/@playwright/test/cli.js" install --with-deps chromium
+      - name: Report interaction and print proof
+        run: |
+          bunx vite --config scripts/reports-proof/vite.config.mts > "$RUNNER_TEMP/report-preview.log" 2>&1 &
+          REPORT_QA_MODULES="$RUNNER_TEMP/report-qa/node_modules" node scripts/reports-proof/check.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reports-foundation-proof
+          path: reports-proof-output

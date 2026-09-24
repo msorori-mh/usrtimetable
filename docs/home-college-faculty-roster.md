@@ -1,0 +1,16 @@
+# College faculty roster and identity workflow
+
+The faculty directory now uses canonical home affiliation for every role, including super administrators. A lecturer stored historically in ITCS but employed by Jawf appears among Jawf members. Physical row ownership remains intact because operational assignments and schedules still reference those IDs.
+
+- `home` is the default scope, includes inactive home members, and returns one canonical source per university identity.
+- `visiting` includes only other-college lecturers with qualifying assignments or timetable sessions in the selected college. Qualification reuses the existing alias-aware schedule directory, including imported co-teachers. Obsolete groups and disposable, archived, or replaced sessions do not qualify. Contact details and personnel notes are omitted, and HR editing is unavailable in this view.
+- `pending` shows locally held legacy identities whose home remains unresolved. The administrator uses the existing affiliation reconciliation action; names alone never determine a home or identity match.
+- Search, department filters, cards, and exports consume the same home projection. College/scope switches reset directory state.
+
+`update_home_college_instructor` authorizes the canonical home college and source, checks the expected timestamp, validates department and administrative role fields, and records an audit event. Existing college managers and academic affairs editors retain their respective permissions. It preserves physical college/department IDs, hidden legacy fields, identity links, and operational rows. Receiving-college users cannot edit the source's HR data. Mapping an equivalent college-local employment type preserves the original type ID and university number.
+
+New registrations retain P/C/H numbering (permanent/annual/hourly). Genuine employment-category changes use the existing history-preserving renumbering trigger. Home changes do not rename existing university numbers. Duplicate employee identifiers are checked university-wide; similar names require explicit same-person confirmation. The identity-link lookup is searched, limited to 30 results in the same university, and deduplicated by canonical identity. No written evidence field was reintroduced.
+
+Validation: isolated PostgreSQL tests cover college scope, alias/imported visitors, anonymous and wrong-college rejection, home-authorized editing, stale updates, category transitions and number history, registration, explicit identity search, operational invariance, and rollback. UI regression tests cover existing academic affairs access, identity confirmation, directory behavior, and affiliation-aware exports; TypeScript, lint, and production build are checked.
+
+The migration only adds functions and replaces the home-edit guard. It performs no data migration. A live transaction verified Ahmed's projected Jawf department and a no-op edit against actual database triggers, then rolled back. The tested rollback removes the three new RPCs and restores the previous guard. Deploy the migration before the new UI; if reverting, restore the previous UI before applying `supabase/rollbacks/20260919140000_home_college_faculty_roster.sql`.
