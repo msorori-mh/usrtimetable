@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { readFileSync } from "node:fs";
 import {
   buildDeliveryGroupCoverage,
   coverageExportRows,
@@ -108,7 +109,9 @@ describe("delivery group coverage", () => {
     expect(result.summary.unscheduledGroups).toBe(1);
     expect(result.summary.unscheduledHours).toBe(2);
     expect(result.incomplete.map((row) => row.id)).toEqual(["dg-11"]);
-    expect(coverageFilterOption(result.rows.find((row) => row.id === "dg-10")!).name).not.toContain(UNSCHEDULED_BADGE_AR);
+    expect(coverageFilterOption(result.rows.find((row) => row.id === "dg-10")!).name).not.toContain(
+      UNSCHEDULED_BADGE_AR,
+    );
   });
 
   it("treats a fully scheduled scope as complete", () => {
@@ -122,7 +125,7 @@ describe("delivery group coverage", () => {
 });
 
 describe("report route wiring", () => {
-  const route = require("node:fs").readFileSync(
+  const route = readFileSync(
     "src/routes/_authenticated/reports.program-level-timetable.tsx",
     "utf8",
   ) as string;
