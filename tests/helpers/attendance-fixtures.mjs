@@ -28,12 +28,8 @@ export const snapshot = (sessions) => ({
   groups: [{ id: "g", cohort_id: "c", expected_students: 30 }],
   members: [{ delivery_group_id: "g", partition_id: "p1", cohort_id: "c" }],
   partitions: [{ id: "p1", cohort_id: "c", headcount: 30, active: true }],
-  assignments: [
-    { id: "a", required_room_type: "lecture_hall", is_active: true },
-  ],
-  rooms: [
-    { id: "r", capacity: 60, room_type: "lecture_hall", is_active: true },
-  ],
+  assignments: [{ id: "a", required_room_type: "lecture_hall", is_active: true }],
+  rooms: [{ id: "r", capacity: 60, room_type: "lecture_hall", is_active: true }],
   instructors: [...new Set(sessions.map((s) => s.instructor_id))].map((id) => ({
     id,
     instructor_type_id: "permanent",
