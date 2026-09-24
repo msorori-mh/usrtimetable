@@ -5,9 +5,10 @@ import { FacultyIdentityLink } from "@/components/faculty-identity-link";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { instructorStatusLabel } from "@/lib/excel-import/instructor-sheet";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAccessibleColleges, useActiveCollege } from "@/hooks/use-colleges";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import {
   useCanEditInstructorsActiveCollege,
   useCanManageActiveCollege,
@@ -72,9 +73,16 @@ import {
   INSTRUCTOR_SORT_LABEL_AR,
   filterAndSortInstructors,
   hasActiveDirectoryFilters,
+  matchesInstructorSearch,
   type DirectoryFilters,
   type InstructorSortKey,
 } from "@/lib/instructors/directory-filters";
+import {
+  canSearchUniversityRoster,
+  collegesInUniversity,
+  distinctUniversityRosterHits,
+  type UniversityRosterHit,
+} from "@/lib/instructors/university-roster-search";
 
 export const Route = createFileRoute("/_authenticated/instructors")({
   head: () => ({ meta: [{ title: "المحاضرون" }] }),
@@ -121,13 +129,164 @@ function emptyForm() {
   };
 }
 
+type InstructorJump = { collegeId: string; scope: "home" | "pending"; search: string };
+
 function InstructorsPage() {
-  const { active } = useActiveCollege();
+  const { active, setActiveId } = useActiveCollege();
+  const [jump, setJump] = useState<InstructorJump | null>(null);
+  const [jumpVersion, setJumpVersion] = useState(0);
+  useEffect(() => {
+    if (jump && active?.id === jump.collegeId) setJump(null);
+  }, [active?.id, jump]);
   // A college switch must not retain an edit form belonging to the previous college.
-  return <InstructorDirectory key={active?.id ?? "no-college"} />;
+  return (
+    <InstructorDirectory
+      key={`${active?.id ?? "no-college"}:${jumpVersion}`}
+      initialJump={jump?.collegeId === active?.id ? jump : null}
+      onOpenUniversityResult={(target) => {
+        setJump(target);
+        setJumpVersion((version) => version + 1);
+        setActiveId(target.collegeId);
+      }}
+    />
+  );
 }
 
-function InstructorDirectory() {
+function UniversityInstructorSearch({
+  onOpenResult,
+}: {
+  onOpenResult: (target: InstructorJump) => void;
+}) {
+  const { active } = useActiveCollege();
+  const { data: me } = useCurrentUser();
+  const { data: accessibleColleges } = useAccessibleColleges();
+  const [search, setSearch] = useState("");
+  const colleges = collegesInUniversity(accessibleColleges ?? [], active?.university_id);
+  const canSearch = canSearchUniversityRoster(me?.isSuperAdmin === true, search);
+
+  const universityRoster = useQuery({
+    queryKey: [
+      "instructors",
+      "university-roster",
+      me?.id,
+      active?.university_id,
+      colleges.map((c) => c.id),
+    ],
+    enabled: !!active && colleges.length > 0 && canSearch,
+    staleTime: 60_000,
+    queryFn: async (): Promise<UniversityRosterHit[]> => {
+      if (!me?.isSuperAdmin || !active) throw new Error("FORBIDDEN");
+      const batches = await Promise.all(
+        colleges.flatMap((college) =>
+          (["home", "pending"] as const).map(async (scope) => {
+            const { data, error } = await facultyWorkflow.rpc("get_college_faculty_roster", {
+              p_college_id: college.id,
+              p_scope: scope,
+            });
+            if (error) throw error;
+            return (data ?? []).map((row) => ({
+              row,
+              collegeId: college.id,
+              collegeName: college.name,
+              scope,
+            }));
+          }),
+        ),
+      );
+      return distinctUniversityRosterHits(batches.flat());
+    },
+  });
+
+  if (me?.isSuperAdmin !== true) return null;
+  const matches = canSearch
+    ? (universityRoster.data ?? []).filter(({ row }) =>
+        matchesInstructorSearch(row, search, row.home_department),
+      )
+    : [];
+
+  return (
+    <Card className="mb-4 space-y-3 p-4" data-testid="super-admin-university-search">
+      <div>
+        <Label htmlFor="university-instructor-search">البحث عن محاضر في الجامعة</Label>
+        <p className="text-xs text-muted-foreground">
+          يبحث في الكليات التابعة للجامعة الحالية دون الحاجة لاختيار كلية المحاضر أولاً.
+        </p>
+      </div>
+      <Input
+        id="university-instructor-search"
+        value={search}
+        onChange={(event) => setSearch(event.target.value)}
+        placeholder="اسم المحاضر أو رقمه الجامعي أو الوظيفي…"
+      />
+      {!canSearch ? (
+        <p className="text-sm text-muted-foreground">أدخل حرفين على الأقل لبدء البحث.</p>
+      ) : colleges.length === 0 ? (
+        <p className="text-sm text-muted-foreground">لا توجد كليات متاحة للبحث في الجامعة الحالية.</p>
+      ) : universityRoster.isError ? (
+        <div role="alert" className="flex items-center gap-2 text-sm">
+          <span>تعذر البحث في كليات الجامعة.</span>
+          <Button size="sm" variant="outline" onClick={() => void universityRoster.refetch()}>
+            إعادة المحاولة
+          </Button>
+        </div>
+      ) : universityRoster.isPending ? (
+        <p className="text-sm text-muted-foreground" role="status">
+          جارٍ البحث في الكليات…
+        </p>
+      ) : (
+        <div aria-live="polite" className="space-y-2">
+          <p className="text-xs text-muted-foreground">
+            {matches.length === 0
+              ? "لا توجد نتائج مطابقة في الجامعة الحالية."
+              : `عُثر على ${matches.length} محاضر${matches.length > 30 ? "، تُعرض أول 30 نتيجة" : ""}.`}
+          </p>
+          {matches.length > 0 && (
+            <ul className="max-h-72 divide-y overflow-y-auto rounded-md border">
+              {matches.slice(0, 30).map(({ row, collegeId, collegeName, scope }) => (
+                <li
+                  key={row.identity_id || row.id}
+                  className="flex flex-wrap items-center justify-between gap-2 p-3"
+                >
+                  <div>
+                    <p className="font-medium">{row.full_name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {collegeName} ·{" "}
+                      {scope === "pending"
+                        ? "تبعية تحتاج مراجعة"
+                        : (row.home_department ?? "بدون قسم")}
+                      {row.university_number ? ` · ${row.university_number}` : ""}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      onOpenResult({
+                        collegeId,
+                        scope,
+                        search: row.university_number || row.full_name,
+                      })
+                    }
+                  >
+                    فتح في الكلية
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function InstructorDirectory({
+  initialJump,
+  onOpenUniversityResult,
+}: {
+  initialJump: InstructorJump | null;
+  onOpenUniversityResult: (target: InstructorJump) => void;
+}) {
   const { active } = useActiveCollege();
   const { data: accessibleColleges } = useAccessibleColleges();
   const { review } = parseInstructorReviewSearch(Route.useSearch());
@@ -135,12 +294,17 @@ function InstructorDirectory() {
   const canManage = useCanManageActiveCollege();
   const canEdit = useCanEditInstructorsActiveCollege();
   const qc = useQueryClient();
-  const [scope, setScope] = useState<"home" | "visiting" | "pending">("home");
+  const [scope, setScope] = useState<"home" | "visiting" | "pending">(
+    initialJump?.scope ?? "home",
+  );
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Instructor | null>(null);
   const [form, setForm] = useState(emptyForm());
   const [repairField, setRepairField] = useState<InstructorReview | null>(null);
-  const [directory, setDirectory] = useState<DirectoryFilters>(DEFAULT_DIRECTORY_FILTERS);
+  const [directory, setDirectory] = useState<DirectoryFilters>({
+    ...DEFAULT_DIRECTORY_FILTERS,
+    search: initialJump?.search ?? "",
+  });
   const setDirectoryField = <K extends keyof DirectoryFilters>(
     key: K,
     value: DirectoryFilters[K],
@@ -1130,6 +1294,18 @@ function InstructorDirectory() {
           </Dialog>
         )}
       </div>
+
+      <UniversityInstructorSearch
+        onOpenResult={(target) => {
+          if (review) {
+            void navigate({
+              search: parseInstructorReviewSearch({ review: "all" }),
+              replace: true,
+            });
+          }
+          onOpenUniversityResult(target);
+        }}
+      />
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <div className="min-w-64">
