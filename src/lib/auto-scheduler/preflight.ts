@@ -28,7 +28,9 @@ export function unavailableInstructorBlockers(
   instructors: readonly SchedulingInstructorStatus[],
   workItems: readonly InstructorWorkItem[],
 ): UnavailableInstructorBlocker[] {
-  const requiredIds = new Set(workItems.map((item) => item.instructor_id).filter(Boolean));
+  const requiredIds = new Set(
+    workItems.map((item) => item.instructor_id).filter(Boolean),
+  );
   return instructors
     .filter(
       (instructor) =>
