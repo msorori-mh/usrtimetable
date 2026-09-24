@@ -213,6 +213,7 @@ export async function validateProposed(params: {
     { data: templates },
     { data: instrRows },
     { data: taRows },
+    { data: schedulingSettings, error: schedulingSettingsError },
   ] = await Promise.all([
     roomIds.length
       ? supabase
@@ -294,7 +295,20 @@ export async function validateProposed(params: {
             plan_course_component_id?: string | null;
           }>,
         }),
+    supabase
+      .from("scheduling_settings")
+      .select("enforce_instructor_availability")
+      .eq("college_id", collegeId)
+      .maybeSingle(),
   ]);
+
+  if (schedulingSettingsError) throw schedulingSettingsError;
+  if (!schedulingSettings) {
+    throw new Error("تعذر تحديد إعدادات الجدولة لهذه الكلية.");
+  }
+  const enforceInstructorAvailability = isInstructorAvailabilityEnforced(
+    schedulingSettings.enforce_instructor_availability,
+  );
 
   // Resolve instructor types explicitly. Some deployed schemas contain
   // instructor_type_id without a PostgREST-discoverable FK, so an embedded
@@ -596,13 +610,13 @@ export async function validateProposed(params: {
     // Default: every instructor is available on all approved teaching times,
     // and missing/incomplete availability rows never block scheduling.
     const cat = instrCategory.get(s.instructor_id) ?? "permanent";
-    const allWindows = isInstructorAvailabilityEnforced()
+    const allWindows = enforceInstructorAvailability
       ? (instrAvail ?? []).filter((a) => a.instructor_id === s.instructor_id)
       : [];
-    const hardWindows = isInstructorAvailabilityEnforced()
+    const hardWindows = enforceInstructorAvailability
       ? allWindows.filter((a) => a.day_of_week === s.day_of_week)
       : [];
-    if (!isInstructorAvailabilityEnforced()) {
+    if (!enforceInstructorAvailability) {
       // no availability conflict is produced in this mode
     } else if (hardWindows.length === 0) {
       // No availability rows for this day.
