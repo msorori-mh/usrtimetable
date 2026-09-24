@@ -14,6 +14,7 @@ import {
 } from "./compact";
 
 import { validateJointPlan } from "./joint-model";
+import { assertValidSchedulingPolicy } from "../scheduling/policy";
 
 type ErrorLike = { message: string };
 interface Query extends PromiseLike<{
@@ -139,6 +140,7 @@ export async function loadCompactSnapshot(collegeId: string, versionId: string):
     raw.instructors as Snapshot["instructors"], version.instructorOverrides,
   );
   if (raw.settings.length !== 1) throw new Error("تعذر تحديد إعدادات الجدولة.");
+  assertValidSchedulingPolicy(raw.settings[0] as Record<string, unknown>);
   const latest = await draft(collegeId, versionId);
   if (version.revision !== latest.revision || version.versionUpdatedAt !== latest.versionUpdatedAt)
     throw new Error("تغير الجدول أو موارده أثناء القراءة؛ أعد المعاينة.");
