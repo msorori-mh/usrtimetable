@@ -52,6 +52,8 @@ export const snapshot = (sessions) => ({
     day_start_time: "08:00:00",
     day_end_time: "14:00:00",
     slot_minutes: 60,
+    min_session_hours: 1,
+    max_session_hours: 3,
     max_daily_hours_per_instructor: 6,
     max_daily_hours_per_section: 6,
     break_between_sessions_min: 0,
