@@ -264,7 +264,8 @@ test("room reuse shows room-week, room-day, and hour time equivalents without cl
   assert.match(output, /تُراجع حسب اليوم ونوع القاعة والسعة/);
   assert.match(output, /لا توجد سعة زمنية فائضة/);
   assert.match(output, /غير محسوب/);
-  assert.doesNotMatch(output, /قابلة للاستغناء|قاعات أسبوعية كاملة/);
+  assert.match(output, /ليست عدد قاعات قابلة للاستغناء/);
+  assert.doesNotMatch(output, /تعادل زمنيًا[^<]*قابلة للاستغناء|قاعات أسبوعية كاملة/);
 });
 
 test("single-college input does not expose other colleges and uses unique faculty count", () => {
