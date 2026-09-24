@@ -221,7 +221,9 @@ function UniversityInstructorSearch({
       {!canSearch ? (
         <p className="text-sm text-muted-foreground">أدخل حرفين على الأقل لبدء البحث.</p>
       ) : colleges.length === 0 ? (
-        <p className="text-sm text-muted-foreground">لا توجد كليات متاحة للبحث في الجامعة الحالية.</p>
+        <p className="text-sm text-muted-foreground">
+          لا توجد كليات متاحة للبحث في الجامعة الحالية.
+        </p>
       ) : universityRoster.isError ? (
         <div role="alert" className="flex items-center gap-2 text-sm">
           <span>تعذر البحث في كليات الجامعة.</span>
@@ -294,9 +296,7 @@ function InstructorDirectory({
   const canManage = useCanManageActiveCollege();
   const canEdit = useCanEditInstructorsActiveCollege();
   const qc = useQueryClient();
-  const [scope, setScope] = useState<"home" | "visiting" | "pending">(
-    initialJump?.scope ?? "home",
-  );
+  const [scope, setScope] = useState<"home" | "visiting" | "pending">(initialJump?.scope ?? "home");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Instructor | null>(null);
   const [form, setForm] = useState(emptyForm());

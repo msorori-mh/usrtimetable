@@ -20,7 +20,10 @@ test("the search stays within the selected university and excludes disposable co
     { id: "b", university_id: "one", name: "TEST_ONLY staging" },
     { id: "c", university_id: "two", name: "التربية" },
   ];
-  assert.deepEqual(collegesInUniversity(colleges, "one").map((c) => c.id), ["a"]);
+  assert.deepEqual(
+    collegesInUniversity(colleges, "one").map((c) => c.id),
+    ["a"],
+  );
   assert.deepEqual(collegesInUniversity(colleges, null), []);
 });
 
