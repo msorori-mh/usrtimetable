@@ -17,8 +17,7 @@ test("conflict validation reads the college availability policy", () => {
 });
 
 test("availability checks use the resolved college policy, not the global default", () => {
-  const defaultCalls =
-    source.match(/isInstructorAvailabilityEnforced\(\)/g) ?? [];
+  const defaultCalls = source.match(/isInstructorAvailabilityEnforced\(\)/g) ?? [];
   assert.equal(defaultCalls.length, 0);
   assert.match(source, /if \(!enforceInstructorAvailability\)/);
 });
