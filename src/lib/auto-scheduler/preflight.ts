@@ -1,7 +1,4 @@
-import {
-  availabilityStatusLabelAr,
-  canReceiveNewWork,
-} from "../instructor-metadata.ts";
+import { availabilityStatusLabelAr, canReceiveNewWork } from "../instructor-metadata.ts";
 
 export interface SchedulingInstructorStatus {
   id: string;
@@ -28,14 +25,11 @@ export function unavailableInstructorBlockers(
   instructors: readonly SchedulingInstructorStatus[],
   workItems: readonly InstructorWorkItem[],
 ): UnavailableInstructorBlocker[] {
-  const requiredIds = new Set(
-    workItems.map((item) => item.instructor_id).filter(Boolean),
-  );
+  const requiredIds = new Set(workItems.map((item) => item.instructor_id).filter(Boolean));
   return instructors
     .filter(
       (instructor) =>
-        requiredIds.has(instructor.id) &&
-        !canReceiveNewWork(instructor.availability_status),
+        requiredIds.has(instructor.id) && !canReceiveNewWork(instructor.availability_status),
     )
     .map((instructor) => ({
       id: instructor.id,
@@ -52,9 +46,7 @@ export function assertInstructorsAvailableForNewScheduling(
 ): void {
   const blockers = unavailableInstructorBlockers(instructors, workItems);
   if (!blockers.length) return;
-  const details = blockers
-    .map((blocker) => `${blocker.name} (${blocker.statusLabel})`)
-    .join("؛ ");
+  const details = blockers.map((blocker) => `${blocker.name} (${blocker.statusLabel})`).join("؛ ");
   throw new Error(
     `INSTRUCTOR_NOT_AVAILABLE: لا يمكن توليد محاضرات جديدة للمحاضرين: ${details}. حدّث الحالة أو الإسناد ثم أعد المحاولة.`,
   );
