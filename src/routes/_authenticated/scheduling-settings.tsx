@@ -190,7 +190,9 @@ function SettingsPage() {
               <Input
                 type="time"
                 value={form.day_start_time}
-                onChange={(e) => setForm({ ...form, day_start_time: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, day_start_time: e.target.value })
+                }
                 disabled={!canManage}
               />
             </div>
@@ -199,7 +201,9 @@ function SettingsPage() {
               <Input
                 type="time"
                 value={form.day_end_time}
-                onChange={(e) => setForm({ ...form, day_end_time: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, day_end_time: e.target.value })
+                }
                 disabled={!canManage}
               />
             </div>
@@ -211,7 +215,9 @@ function SettingsPage() {
               <Input
                 type="number"
                 value={form.slot_minutes}
-                onChange={(e) => setForm({ ...form, slot_minutes: Number(e.target.value) })}
+                onChange={(e) =>
+                  setForm({ ...form, slot_minutes: Number(e.target.value) })
+                }
                 disabled={!canManage}
               />
             </div>
@@ -221,7 +227,12 @@ function SettingsPage() {
                 type="number"
                 step="0.5"
                 value={form.min_session_hours}
-                onChange={(e) => setForm({ ...form, min_session_hours: Number(e.target.value) })}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    min_session_hours: Number(e.target.value),
+                  })
+                }
                 disabled={!canManage}
               />
             </div>
@@ -231,7 +242,12 @@ function SettingsPage() {
                 type="number"
                 step="0.5"
                 value={form.max_session_hours}
-                onChange={(e) => setForm({ ...form, max_session_hours: Number(e.target.value) })}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    max_session_hours: Number(e.target.value),
+                  })
+                }
                 disabled={!canManage}
               />
             </div>
@@ -244,7 +260,10 @@ function SettingsPage() {
                 type="number"
                 value={form.max_daily_hours_per_instructor}
                 onChange={(e) =>
-                  setForm({ ...form, max_daily_hours_per_instructor: Number(e.target.value) })
+                  setForm({
+                    ...form,
+                    max_daily_hours_per_instructor: Number(e.target.value),
+                  })
                 }
                 disabled={!canManage}
               />
@@ -255,7 +274,10 @@ function SettingsPage() {
                 type="number"
                 value={form.max_daily_hours_per_section}
                 onChange={(e) =>
-                  setForm({ ...form, max_daily_hours_per_section: Number(e.target.value) })
+                  setForm({
+                    ...form,
+                    max_daily_hours_per_section: Number(e.target.value),
+                  })
                 }
                 disabled={!canManage}
               />
@@ -266,7 +288,10 @@ function SettingsPage() {
                 type="number"
                 value={form.max_daily_theory_hours_per_section}
                 onChange={(e) =>
-                  setForm({ ...form, max_daily_theory_hours_per_section: Number(e.target.value) })
+                  setForm({
+                    ...form,
+                    max_daily_theory_hours_per_section: Number(e.target.value),
+                  })
                 }
                 disabled={!canManage}
               />
@@ -279,7 +304,9 @@ function SettingsPage() {
                 onChange={(e) =>
                   setForm({
                     ...form,
-                    max_daily_practical_hours_per_section: Number(e.target.value),
+                    max_daily_practical_hours_per_section: Number(
+                      e.target.value,
+                    ),
                   })
                 }
                 disabled={!canManage}
@@ -291,7 +318,10 @@ function SettingsPage() {
                 type="number"
                 value={form.max_extended_days_per_partition}
                 onChange={(e) =>
-                  setForm({ ...form, max_extended_days_per_partition: Number(e.target.value) })
+                  setForm({
+                    ...form,
+                    max_extended_days_per_partition: Number(e.target.value),
+                  })
                 }
                 disabled={!canManage}
               />
@@ -302,7 +332,10 @@ function SettingsPage() {
                 type="number"
                 value={form.break_between_sessions_min}
                 onChange={(e) =>
-                  setForm({ ...form, break_between_sessions_min: Number(e.target.value) })
+                  setForm({
+                    ...form,
+                    break_between_sessions_min: Number(e.target.value),
+                  })
                 }
                 disabled={!canManage}
               />
@@ -313,7 +346,9 @@ function SettingsPage() {
             <label className="flex items-center gap-2 text-sm">
               <Checkbox
                 checked={form.allow_3h_sessions}
-                onCheckedChange={(v) => setForm({ ...form, allow_3h_sessions: !!v })}
+                onCheckedChange={(v) =>
+                  setForm({ ...form, allow_3h_sessions: !!v })
+                }
                 disabled={!canManage}
               />{" "}
               السماح بمحاضرات ٣ ساعات
@@ -321,7 +356,9 @@ function SettingsPage() {
             <label className="flex items-center gap-2 text-sm">
               <Checkbox
                 checked={form.allow_back_to_back}
-                onCheckedChange={(v) => setForm({ ...form, allow_back_to_back: !!v })}
+                onCheckedChange={(v) =>
+                  setForm({ ...form, allow_back_to_back: !!v })
+                }
                 disabled={!canManage}
               />{" "}
               السماح بمحاضرات متتالية
