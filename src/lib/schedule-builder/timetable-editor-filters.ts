@@ -156,10 +156,23 @@ export function sessionMatchesTimetableAcademicFilters(input: {
   );
 }
 
-export function isNewFlowWorkItemUnscheduled(item: {
-  remaining_schedule_hours: number;
-  scheduling_status: string;
-}): boolean {
+export function isNewFlowWorkItemUnscheduled(
+  item: Pick<
+    ScheduleBuilderV2WorkItem,
+    | "remaining_schedule_hours"
+    | "scheduling_status"
+    | "assignment_active"
+    | "delivery_group_active"
+    | "delivery_group_obsolete"
+  >,
+): boolean {
+  if (
+    item.assignment_active === false ||
+    item.delivery_group_active === false ||
+    item.delivery_group_obsolete === true
+  ) {
+    return false;
+  }
   if (item.scheduling_status === "scheduled" || item.scheduling_status === "over_scheduled") {
     return false;
   }
