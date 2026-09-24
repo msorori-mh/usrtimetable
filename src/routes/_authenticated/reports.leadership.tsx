@@ -364,6 +364,17 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
   const required = total("required_hours"),
     covered = total("covered_hours"),
     uncovered = total("uncovered_hours");
+  const workloadComplete =
+    scoped.length > 0 &&
+    scoped.every(
+      (college) =>
+        college.term_state === "ready" &&
+        college.incomplete_faculty === 0 &&
+        college.net_quota !== null &&
+        college.faculty_assigned_hours !== null &&
+        college.overload !== null &&
+        college.deficit !== null,
+    );
   const netQuota = total("net_quota"),
     assigned = total("faculty_assigned_hours"),
     scheduled = total("teaching_hours");
@@ -392,10 +403,10 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
     : (data?.unique_faculty ?? null);
   const cardValues: Record<LeadershipMetricKey, number | null> = {
     faculty_count: uniqueFaculty,
-    net_quota: netQuota.value,
-    faculty_assigned_hours: assigned.value,
-    deficit: deficit.value,
-    overload: overload.value,
+    net_quota: workloadComplete ? netQuota.value : null,
+    faculty_assigned_hours: workloadComplete ? assigned.value : null,
+    deficit: workloadComplete ? deficit.value : null,
+    overload: workloadComplete ? overload.value : null,
     required_course_hours: required.value,
     covered_course_hours: covered.value,
     uncovered_course_hours: uncovered.value,
@@ -417,9 +428,22 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
       sessions_count: "sessions_count",
       faculty_count: "faculty_directory_count",
     } as const;
+    const workloadMetric = ["net_quota", "faculty_assigned_hours", "deficit", "overload"].includes(
+      metric,
+    );
+    const rowWorkloadComplete =
+      !!row &&
+      row.term_state === "ready" &&
+      row.incomplete_faculty === 0 &&
+      row.net_quota !== null &&
+      row.faculty_assigned_hours !== null &&
+      row.overload !== null &&
+      row.deficit !== null;
     const scopedValue =
       row && metric !== "published_colleges"
-        ? row[keys[metric]]
+        ? workloadMetric && !rowWorkloadComplete
+          ? null
+          : row[keys[metric]]
         : row
           ? row.version_id
             ? 1
@@ -750,8 +774,14 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
                   <ReportSection
                     title="المحاضرون والأنصبة"
                     testId="leadership-instructors-section"
-                    hint="النقص في الأنصبة مستقل عن ساعات التدريس غير المسندة."
+                    hint="مؤشرات الأنصبة مستقلة عن تغطية التدريس، ولا تُعتمد حتى يكتمل نصاب جميع أعضاء النطاق."
                   >
+                    {!workloadComplete && (
+                      <p className="mx-4 mt-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+                        مؤشرات النصاب والساعات الزائدة غير محسوبة حاليًا لوجود بيانات أنصبة غير
+                        مكتملة. تغطية التدريس تظهر مستقلة في تبويب التدريس والجداول.
+                      </p>
+                    )}
                     <div className="grid gap-3 p-4 sm:grid-cols-2">
                       {(
                         [

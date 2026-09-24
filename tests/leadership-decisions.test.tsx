@@ -134,6 +134,15 @@ test("missing term suppresses misleading zero teaching and workload conclusions"
   assert.equal(result[0].title, "تحديد الفترة الأكاديمية");
 });
 
+test("incomplete quotas suppress provisional deficit and overload conclusions", () => {
+  const [item] = leadershipPriorities(
+    [college("a", { incomplete_faculty: 2, deficit: 236, overload: 12 })],
+    [],
+  );
+  assert.equal(item.title, "2 نصابًا غير مكتمل");
+  assert.doesNotMatch(item.title, /236|12|نقص|زائدة/);
+});
+
 test("each observed issue has an actionable reason and responsible function", () => {
   for (const patch of [
     { pending_groups: 1 },
@@ -227,28 +236,24 @@ test("room surplus and deficit stay separate in the compact summary", () => {
   assert.match(output, /العجز 4 ساعة/);
 });
 
-test("room reuse opportunity turns surplus into quick executive equivalents", () => {
-  const ids = ["hours", "days", "room", "mixed", "zero", "deficit", "unknown"];
+test("room reuse reports time only and never fabricates disposable full rooms", () => {
+  const ids = ["hours", "room", "zero", "deficit", "unknown"];
   const output = html({
     colleges: ids.map((id) => college(id)),
     capacity: [
       room("hours", 5),
-      room("days", 16),
       room("room", 36),
-      room("mixed", 70),
       room("zero", 0),
       room("deficit", -4),
       room("unknown", null),
     ],
   });
-  assert.match(output, /فرصة إعادة الاستخدام/);
-  assert.match(output, /يعادل 5 ساعات/);
-  assert.match(output, /يعادل يومين قاعة \+ 4 ساعات/);
-  assert.match(output, /يعادل قاعة أسبوعية كاملة/);
-  assert.match(output, /يعادل قاعة أسبوعية كاملة \+ 5 أيام قاعة \+ 4 ساعات/);
-  assert.match(output, /لا توجد سعة فائضة/);
+  assert.match(output, /5 ساعة غير مستخدمة أسبوعيًا/);
+  assert.match(output, /36 ساعة غير مستخدمة أسبوعيًا/);
+  assert.match(output, /تُراجع حسب اليوم ونوع القاعة والسعة/);
+  assert.match(output, /لا توجد سعة زمنية فائضة/);
   assert.match(output, /غير محسوب/);
-  assert.match(output, /لا تعني\s+توافر قاعة بعينها/);
+  assert.doesNotMatch(output, /يعادل قاعة|قاعات أسبوعية كاملة/);
 });
 
 test("single-college input does not expose other colleges and uses unique faculty count", () => {
@@ -286,6 +291,9 @@ test("route preserves same-scope content during refresh, closes details on perio
   assert.match(source, /\.abortSignal\(controller\.signal\)/);
   assert.match(source, /retry: false/);
   assert.match(source, /استغرق تحميل مؤشرات الجامعة وقتًا أطول من المتوقع/);
+  assert.match(source, /const workloadComplete =/);
+  assert.match(source, /workloadComplete \? deficit\.value : null/);
+  assert.match(source, /مؤشرات النصاب والساعات الزائدة غير محسوبة حاليًا/);
 });
 
 test("leadership workspace uses one set-based assignment rollup without changing its public contract", () => {

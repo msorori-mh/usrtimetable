@@ -24,30 +24,11 @@ const roomReuseOpportunity = (room: LeadershipCapacityCollege | undefined) => {
     room?.balanceHours === null ||
     room?.balanceHours === undefined ||
     room.surplusHours === null ||
-    room.surplusHours === undefined ||
-    !room.equivalents
+    room.surplusHours === undefined
   )
     return "غير محسوب";
-  if (room.surplusHours <= 0) return "لا توجد سعة فائضة";
-
-  const rooms = room.equivalents.fullRooms;
-  const remainingDays = Math.floor((room.equivalents.hoursAfterRooms + 1e-9) / 6);
-  const remainingHours =
-    Math.round((room.equivalents.hoursAfterRooms - remainingDays * 6) * 100) / 100;
-  const opportunities: string[] = [];
-
-  if (rooms === 1) opportunities.push("قاعة أسبوعية كاملة");
-  else if (rooms === 2) opportunities.push("قاعتين أسبوعيتين كاملتين");
-  else if (rooms > 2) opportunities.push(`${rooms} قاعات أسبوعية كاملة`);
-
-  if (remainingDays === 1) opportunities.push("يوم قاعة");
-  else if (remainingDays === 2) opportunities.push("يومين قاعة");
-  else if (remainingDays > 2) opportunities.push(`${remainingDays} أيام قاعة`);
-
-  if (remainingHours === 1) opportunities.push("ساعة واحدة");
-  else if (remainingHours > 0) opportunities.push(`${amount(remainingHours)} ساعات`);
-
-  return `يعادل ${opportunities.join(" + ")}`;
+  if (room.surplusHours <= 0) return "لا توجد سعة زمنية فائضة";
+  return `${hours(room.surplusHours)} غير مستخدمة أسبوعيًا · تُراجع حسب اليوم ونوع القاعة والسعة`;
 };
 
 export interface LeadershipDecisionSummaryProps {
@@ -358,8 +339,8 @@ export function LeadershipDecisionSummary({
           </table>
         </div>
         <p className="leadership-footnote">
-          النقص في الأنصبة مستقل عن التدريس غير المسند. فرص إعادة الاستخدام مكافئات زمنية؛ لا تعني
-          توافر قاعة بعينها قبل مراجعة توزيع الأيام والفترات وملاءمة القاعة.
+          تغطية التدريس مستقلة عن الأنصبة. ساعات القاعات غير المستخدمة ليست عدد قاعات قابلة
+          للاستغناء؛ يلزم مراجعة اليوم والفترة والنوع والسعة لكل قاعة.
         </p>
       </section>
     </div>
