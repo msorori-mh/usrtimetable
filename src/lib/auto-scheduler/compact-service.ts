@@ -1,5 +1,9 @@
 import { applyVersionInstructorLimits } from "./version-instructor-limits";
-import { qualityBetter, qualityPlanValid, qualityRepairNonWorsening } from "./quality-search";
+import {
+  qualityBetter,
+  qualityPlanValid,
+  qualityRepairNonWorsening,
+} from "./quality-search";
 import { supabase } from "@/integrations/supabase/client";
 import {
   better,
@@ -32,7 +36,11 @@ async function rows(table: string, collegeId: string, versionId?: string) {
   const result: unknown[] = [];
   const orderKey = table === "shared_lecture_links" ? "member_group_id" : "id";
   for (let offset = 0; ; offset += 500) {
-    let q = db.from(table).select("*").eq("college_id", collegeId).order(orderKey);
+    let q = db
+      .from(table)
+      .select("*")
+      .eq("college_id", collegeId)
+      .order(orderKey);
     if (versionId) q = q.eq("schedule_version_id", versionId);
     const { data, error } = await q.range(offset, offset + 499);
     if (error) throw new Error(error.message);
@@ -43,18 +51,27 @@ async function rows(table: string, collegeId: string, versionId?: string) {
 async function draft(collegeId: string, versionId: string) {
   const { data: records, error } = await db
     .from("schedule_versions")
-    .select("id,status,eligibility_revision,updated_at,instructor_attendance_overrides")
+    .select(
+      "id,status,eligibility_revision,updated_at,instructor_attendance_overrides",
+    )
     .eq("college_id", collegeId)
     .eq("id", versionId)
     .range(0, 0);
   if (error) throw error;
-  const data = records?.[0] as {
-    status: string; eligibility_revision: number; updated_at: string;
-    instructor_attendance_overrides?: Record<string, number>;
-  } | undefined;
+  const data = records?.[0] as
+    | {
+        status: string;
+        eligibility_revision: number;
+        updated_at: string;
+        instructor_attendance_overrides?: Record<string, number>;
+      }
+    | undefined;
   if (!data) throw new Error("تعذر تحديد نسخة الجدول.");
   if (data.status !== "draft") throw new Error("التحسين متاح لنسخة مسودة فقط.");
-  if (!Number.isSafeInteger(data.eligibility_revision) || data.eligibility_revision < 0)
+  if (
+    !Number.isSafeInteger(data.eligibility_revision) ||
+    data.eligibility_revision < 0
+  )
     throw new Error("تعذر التحقق من مراجعة الجدول.");
   return {
     instructorOverrides: data.instructor_attendance_overrides ?? {},
@@ -62,7 +79,10 @@ async function draft(collegeId: string, versionId: string) {
     versionUpdatedAt: data.updated_at,
   };
 }
-export async function loadCompactSnapshot(collegeId: string, versionId: string): Promise<Snapshot> {
+export async function loadCompactSnapshot(
+  collegeId: string,
+  versionId: string,
+): Promise<Snapshot> {
   const version = await draft(collegeId, versionId);
   const external = await (
     supabase as unknown as {
@@ -79,7 +99,9 @@ export async function loadCompactSnapshot(collegeId: string, versionId: string):
     p_version_id: versionId,
   });
   if (external.error || !Array.isArray(external.data))
-    throw new Error("تعذر فحص ارتباطات المحاضرين في الكليات الأخرى؛ أعد المحاولة.");
+    throw new Error(
+      "تعذر فحص ارتباطات المحاضرين في الكليات الأخرى؛ أعد المحاولة.",
+    );
   const names = {
     sessions: "schedule_sessions",
     cohorts: "academic_cohorts",
@@ -101,7 +123,14 @@ export async function loadCompactSnapshot(collegeId: string, versionId: string):
   const values = await Promise.all(
     Object.entries(names).map(
       async ([key, table]) =>
-        [key, await rows(table, collegeId, key === "sessions" ? versionId : undefined)] as const,
+        [
+          key,
+          await rows(
+            table,
+            collegeId,
+            key === "sessions" ? versionId : undefined,
+          ),
+        ] as const,
     ),
   );
   const raw = Object.fromEntries(values);
@@ -109,40 +138,72 @@ export async function loadCompactSnapshot(collegeId: string, versionId: string):
   // The ordinary table reader retains RLS; unrelated university instructors are never loaded.
   const assignedIds = new Set(
     (raw.assignments as Array<{ instructor_id: string; is_active: boolean }>)
-      .filter((a) => a.is_active).map((a) => a.instructor_id),
+      .filter((a) => a.is_active)
+      .map((a) => a.instructor_id),
   );
-  const knownIds = new Set((raw.instructors as Array<{ id: string }>).map((i) => i.id));
+  const knownIds = new Set(
+    (raw.instructors as Array<{ id: string }>).map((i) => i.id),
+  );
   const missingIds = [...assignedIds].filter((id) => !knownIds.has(id));
   for (let offset = 0; offset < missingIds.length; offset += 200) {
     const batch = missingIds.slice(offset, offset + 200);
-    const extra = await db.from("instructors").select("*").in("id", batch).order("id").range(0, 199);
+    const extra = await db
+      .from("instructors")
+      .select("*")
+      .in("id", batch)
+      .order("id")
+      .range(0, 199);
     if (extra.error || extra.data?.length !== batch.length)
       throw new Error("تعذر تحميل المحاضرين المرتبطين بإسنادات الكلية.");
     raw.instructors.push(...extra.data);
-    const windows = await db.from("instructor_availability").select("*")
-      .in("instructor_id", batch).order("id").range(0, 999);
+    const windows = await db
+      .from("instructor_availability")
+      .select("*")
+      .in("instructor_id", batch)
+      .order("id")
+      .range(0, 999);
     if (windows.error) throw new Error(windows.error.message);
-    const existingWindows = new Set((raw.availability as Array<{ id: string }>).map((w) => w.id));
-    raw.availability.push(...(windows.data ?? []).filter(
-      (w) => !existingWindows.has((w as { id: string }).id),
-    ));
-    const knownTypes = new Set((raw.types as Array<{ id: string }>).map((t) => t.id));
-    const typeIds = [...new Set((extra.data as Array<{ instructor_type_id: string | null }>)
-      .map((i) => i.instructor_type_id).filter((id): id is string => !!id && !knownTypes.has(id)))];
+    const existingWindows = new Set(
+      (raw.availability as Array<{ id: string }>).map((w) => w.id),
+    );
+    raw.availability.push(
+      ...(windows.data ?? []).filter(
+        (w) => !existingWindows.has((w as { id: string }).id),
+      ),
+    );
+    const knownTypes = new Set(
+      (raw.types as Array<{ id: string }>).map((t) => t.id),
+    );
+    const typeIds = [
+      ...new Set(
+        (extra.data as Array<{ instructor_type_id: string | null }>)
+          .map((i) => i.instructor_type_id)
+          .filter((id): id is string => !!id && !knownTypes.has(id)),
+      ),
+    ];
     if (typeIds.length) {
-      const types = await db.from("instructor_types").select("*").in("id", typeIds).order("id").range(0, 199);
+      const types = await db
+        .from("instructor_types")
+        .select("*")
+        .in("id", typeIds)
+        .order("id")
+        .range(0, 199);
       if (types.error || types.data?.length !== typeIds.length)
         throw new Error("تعذر التحقق من أنواع المحاضرين المرتبطين بالكلية.");
       raw.types.push(...types.data);
     }
   }
   raw.instructors = applyVersionInstructorLimits(
-    raw.instructors as Snapshot["instructors"], version.instructorOverrides,
+    raw.instructors as Snapshot["instructors"],
+    version.instructorOverrides,
   );
   if (raw.settings.length !== 1) throw new Error("تعذر تحديد إعدادات الجدولة.");
   assertValidSchedulingPolicy(raw.settings[0] as Record<string, unknown>);
   const latest = await draft(collegeId, versionId);
-  if (version.revision !== latest.revision || version.versionUpdatedAt !== latest.versionUpdatedAt)
+  if (
+    version.revision !== latest.revision ||
+    version.versionUpdatedAt !== latest.versionUpdatedAt
+  )
     throw new Error("تغير الجدول أو موارده أثناء القراءة؛ أعد المعاينة.");
   return {
     ...raw,
@@ -190,7 +251,8 @@ const rejectionMessages: Record<string, string> = {
   VERSION_BUSY: "يجري تعديل الجدول الآن؛ أعد المحاولة بعد انتهائه.",
   VERSION_LOCKED: "نسخة الجدول لم تعد مسودة قابلة للتعديل.",
   ROOM_CLOSED: "تتعارض الخطة مع إغلاق إحدى القاعات.",
-  ROOM_CLOSURE_REQUIRES_TERM_DATES: "استكمل تاريخ بداية الفصل ونهايته للتحقق من إغلاقات القاعات.",
+  ROOM_CLOSURE_REQUIRES_TERM_DATES:
+    "استكمل تاريخ بداية الفصل ونهايته للتحقق من إغلاقات القاعات.",
   ATTENDANCE_DAY_LIMIT: "تزيد الخطة عدد أيام حضور المستوى عن الحد المسموح.",
 };
 async function sendAtomic(result: Applied, retrying = false): Promise<Applied> {
@@ -199,7 +261,10 @@ async function sendAtomic(result: Applied, retrying = false): Promise<Applied> {
       result.rpcName ?? "apply_schedule_compaction",
       result.pendingRequest!,
     );
-    if (error?.code === "23514" && error.message.includes("INSTRUCTOR_DAILY_SESSION_LIMIT"))
+    if (
+      error?.code === "23514" &&
+      error.message.includes("INSTRUCTOR_DAILY_SESSION_LIMIT")
+    )
       return {
         ...result,
         applied: 0,
@@ -207,12 +272,16 @@ async function sendAtomic(result: Applied, retrying = false): Promise<Applied> {
         stopped:
           "لم تُحفظ الخطة: الحد الأقصى ثلاث محاضرات للمحاضر في اليوم، شاملًا العام والموازي. أعد توزيع الجلسات ثم أعد المعاينة.",
       };
-    if (error?.code === "23514" && error.message.includes("CROSS_COLLEGE_INSTRUCTOR_CONFLICT"))
+    if (
+      error?.code === "23514" &&
+      error.message.includes("CROSS_COLLEGE_INSTRUCTOR_CONFLICT")
+    )
       return {
         ...result,
         applied: 0,
         status: "rejected",
-        stopped: "لم تُحفظ الخطة: يتعارض وقت محاضر مع جدول كلية أخرى. أعد المعاينة.",
+        stopped:
+          "لم تُحفظ الخطة: يتعارض وقت محاضر مع جدول كلية أخرى. أعد المعاينة.",
       };
     if (error?.code === "PGRST202" || error?.code === "42883")
       return {
@@ -250,7 +319,11 @@ async function sendAtomic(result: Applied, retrying = false): Promise<Applied> {
   }
   return result;
 }
-async function readActual(collegeId: string, versionId: string, result: Applied): Promise<Applied> {
+async function readActual(
+  collegeId: string,
+  versionId: string,
+  result: Applied,
+): Promise<Applied> {
   try {
     return {
       ...result,
@@ -260,7 +333,9 @@ async function readActual(collegeId: string, versionId: string, result: Applied)
     return {
       ...result,
       after: null,
-      stopped: result.stopped || "حُفظت الخطة كاملة، لكن تعذر تحديث عرض الجدول. أعد تحميل الصفحة.",
+      stopped:
+        result.stopped ||
+        "حُفظت الخطة كاملة، لكن تعذر تحديث عرض الجدول. أعد تحميل الصفحة.",
     };
   }
 }
@@ -272,11 +347,14 @@ export async function verifyCompactApplication(
 ): Promise<Applied> {
   let result = previous;
   try {
-    const { data, error } = await atomicDb.rpc("get_schedule_compaction_result", {
-      p_college_id: collegeId,
-      p_version_id: versionId,
-      p_operation_id: previous.operationId,
-    });
+    const { data, error } = await atomicDb.rpc(
+      "get_schedule_compaction_result",
+      {
+        p_college_id: collegeId,
+        p_version_id: versionId,
+        p_operation_id: previous.operationId,
+      },
+    );
     if (
       !error &&
       data?.ok &&
@@ -331,7 +409,8 @@ export async function applyCompactProposal(
   )
     throw new Error("تغيرت البيانات منذ المعاينة؛ أعد حساب التحسين.");
   const before = measure(fresh);
-  if (!fresh.revision || !fresh.versionUpdatedAt) throw new Error("تعذر التحقق من مراجعة الجدول.");
+  if (!fresh.revision || !fresh.versionUpdatedAt)
+    throw new Error("تعذر التحقق من مراجعة الجدول.");
   if (!proposal.moves.length || proposal.moves.length > 512)
     throw new Error("حجم خطة التحسين غير صالح.");
   let simulated = fresh.sessions;
@@ -342,7 +421,8 @@ export async function applyCompactProposal(
     if (proposal.moves.some((m) => !fresh.sessions.some((s) => s.id === m.id)))
       throw new Error("محاضرة خارج نطاق الخطة.");
     simulated = fresh.sessions.map((s) => ({ ...s, ...moves.get(s.id) }));
-    const days = proposal.qualitySearch?.dayCap ?? proposal.attendanceSearch?.days;
+    const days =
+      proposal.qualitySearch?.dayCap ?? proposal.attendanceSearch?.days;
     if (
       !days ||
       (proposal.qualitySearch
@@ -363,12 +443,17 @@ export async function applyCompactProposal(
   if (
     !(proposal.qualitySearch
       ? qualityBetter(measure(fresh, simulated), before) ||
-        (!qualityPlanValid(fresh, fresh.sessions, proposal.qualitySearch.dayCap) &&
+        (!qualityPlanValid(
+          fresh,
+          fresh.sessions,
+          proposal.qualitySearch.dayCap,
+        ) &&
           qualityRepairNonWorsening(measure(fresh, simulated), before))
       : better(measure(fresh, simulated), before))
   )
     throw new Error("الخطة لا تحسّن النتيجة.");
-  if (options.signal?.aborted) throw new Error("أُلغي التطبيق قبل إرسال الخطة؛ لم يُحفظ تغيير.");
+  if (options.signal?.aborted)
+    throw new Error("أُلغي التطبيق قبل إرسال الخطة؛ لم يُحفظ تغيير.");
   const operationId = crypto.randomUUID();
   let result: Applied = {
     applied: null,
@@ -390,18 +475,21 @@ export async function applyCompactProposal(
       p_expected_version_updated_at: fresh.versionUpdatedAt,
       ...(proposal.applicationMode === "simultaneous"
         ? {
-            p_day_cap: proposal.qualitySearch?.dayCap ?? proposal.attendanceSearch!.days,
+            p_day_cap:
+              proposal.qualitySearch?.dayCap ?? proposal.attendanceSearch!.days,
           }
         : {}),
       p_moves: proposal.moves.map((move) => ({
         ...move,
-        expected_updated_at: fresh.sessions.find((s) => s.id === move.id)!.updated_at,
+        expected_updated_at: fresh.sessions.find((s) => s.id === move.id)!
+          .updated_at,
       })),
     },
   };
   // After dispatch, cancelling the UI cannot cancel a database transaction.
   result = await sendAtomic(result);
-  if (result.status === "saved") options.onProgress?.(result.total, result.total);
+  if (result.status === "saved")
+    options.onProgress?.(result.total, result.total);
   return result.status === "unknown"
     ? verifyCompactApplication(collegeId, versionId, result)
     : readActual(collegeId, versionId, result);
@@ -424,7 +512,10 @@ export async function restoreCompactApplication(
   )
     throw new Error("تغير الجدول أو موارده بعد التحسين؛ تعذر التراجع الآمن.");
   const original = new Map(point.before.sessions.map((s) => [s.id, s]));
-  if (original.size !== fresh.sessions.length || fresh.sessions.some((s) => !original.has(s.id)))
+  if (
+    original.size !== fresh.sessions.length ||
+    fresh.sessions.some((s) => !original.has(s.id))
+  )
     throw new Error("تغيرت محاضرات الجدول؛ تعذر التراجع الآمن.");
   const restored = fresh.sessions.map((s) => {
     const old = original.get(s.id)!;
@@ -460,7 +551,8 @@ export async function restoreCompactApplication(
       room_id,
       expected_updated_at: updated_at,
     }));
-  if (!moves.length || moves.length > 512) throw new Error("لا توجد خطة تراجع صالحة.");
+  if (!moves.length || moves.length > 512)
+    throw new Error("لا توجد خطة تراجع صالحة.");
   const operationId = crypto.randomUUID();
   const pending: Applied = {
     applied: null,
