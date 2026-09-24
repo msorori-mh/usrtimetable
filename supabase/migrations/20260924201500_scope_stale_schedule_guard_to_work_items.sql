@@ -27,8 +27,8 @@ BEGIN
 
   -- Idempotent replay: the version-wide guard has already been removed.
   IF position('SCHEDULE_VERSION_CONTAINS_STALE_DELIVERY_GROUPS' in v_def) = 0 THEN
-    IF position('freshness.is_current' in v_def) = 0
-       OR position('STALE_DELIVERY_GROUPS_REGENERATE' in v_def) = 0 THEN
+    IF position('NOT freshness.is_current' in v_def) = 0
+       OR position('can_create_session' in v_def) = 0 THEN
       RAISE EXCEPTION 'ROW_LEVEL_STALE_WORK_ITEM_GUARD_MISSING';
     END IF;
     RETURN;
@@ -51,8 +51,7 @@ BEGIN
   IF position('SCHEDULE_VERSION_CONTAINS_STALE_DELIVERY_GROUPS' in v_def) > 0 THEN
     RAISE EXCEPTION 'STALE_VERSION_GUARD_PATCH_FAILED';
   END IF;
-  IF position('freshness.is_current' in v_def) = 0
-     OR position('STALE_DELIVERY_GROUPS_REGENERATE' in v_def) = 0
+  IF position('NOT freshness.is_current' in v_def) = 0
      OR position('can_create_session' in v_def) = 0 THEN
     RAISE EXCEPTION 'ROW_LEVEL_STALE_WORK_ITEM_GUARD_DAMAGED';
   END IF;
