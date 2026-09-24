@@ -16,6 +16,7 @@ const AR: Record<string, string> = {
   room_capacity_unverified: "تحذير سعة: العدد غير معتمد.",
   room_type_mismatch: "نوع القاعة لا يطابق المطلوب.",
   room_availability: "المحاضرة خارج نطاق توفّر القاعة المحدد.",
+  itcs_theory_after_14: "نظري الحاسوب ينتهي 2 ظهرًا؛ الفترة 2–4 للمعامل فقط.",
   instructor_availability_required: "توفّر المحاضر إلزامي لهذه الفئة وغير معرّف.",
   instructor_availability: "المحاضرة خارج نطاق توفّر المحاضر الإلزامي.",
   instructor_unavailable: "المحاضرة خارج نطاق توفّر المحاضر الإلزامي.",
@@ -49,6 +50,8 @@ const EN: Record<string, string> = {
   room_capacity_unverified: "Capacity warning: enrollment count is not confirmed.",
   room_type_mismatch: "Room type mismatch.",
   room_availability: "Session outside room's defined availability window.",
+  itcs_theory_after_14:
+    "ITCS theory ends by 14:00; the 14:00–16:00 window is for labs only.",
   instructor_availability_required:
     "Instructor availability is mandatory for this category and not defined.",
   instructor_availability: "Session outside instructor's hard availability window.",
