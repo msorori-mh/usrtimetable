@@ -68,8 +68,8 @@ export function LeadershipRoomCapacitySummary({
           ساعات القاعات والفائض عن الاحتياج
         </h2>
         <p className="mt-1 text-xs leading-6 text-muted-foreground">
-          مقارنة أسبوعية للفصل المختار تشمل القاعات والمعامل. كل 6 ساعات تعادل يوم قاعة، وكل 36 ساعة
-          تعادل قاعة لأسبوع.
+          مقارنة أسبوعية بين ساعات الإتاحة والطلب. لا يُحتسب الفرق أو الإشغال قبل نشر جدول الكلية.
+          تُراجع القاعات الخالية من جلسات النسخة المنشورة لكل كلية على حدة.
         </p>
       </div>
       {loading ? (
@@ -100,7 +100,7 @@ export function LeadershipRoomCapacitySummary({
               value={hours(totals.requiredHours)}
             />
             <CapacityStat
-              label="الفائض في الكليات ذات الفائض"
+              label="فرق ساعات السعة الحسابي في الكليات ذات الفائض"
               value={hours(totals.surplusHours)}
               tone="surplus"
             />
@@ -110,19 +110,9 @@ export function LeadershipRoomCapacitySummary({
               tone="deficit"
             />
           </dl>
-          <p
-            className="rounded-lg bg-muted/40 p-3 text-sm leading-7"
-            data-testid="university-room-equivalents"
-          >
-            مكافئ الفائض: <b>{capacityEquivalentText(totals.equivalents, "rooms")}</b>، أو{" "}
-            <b>{capacityEquivalentText(totals.equivalents, "days")}</b>.
-            {totals.roomsByCollege !== null && (
-              <>
-                {" "}
-                مجموع مكافئات القاعات الكاملة المحسوبة داخل كل كلية على حدة:{" "}
-                <b>{number(totals.roomsByCollege)}</b>.
-              </>
-            )}
+          <p className="rounded-lg bg-muted/40 p-3 text-sm leading-7">
+            فرق الساعات الحسابي موزع على القاعات وأيام الأسبوع، ولا يحدد عدد قاعات يمكن إخلاؤها.
+            اقرأ إشغال كل قاعة من النسخة المنشورة أدناه.
           </p>
           {!totals.complete && (
             <p className="text-xs leading-6 text-amber-800 dark:text-amber-200">
@@ -148,7 +138,9 @@ export function LeadershipRoomCapacitySummary({
                   <CapacityStat label="التدريس المطلوب" value={hours(college.requiredHours)} />
                   <CapacityStat
                     label={
-                      college.balanceHours !== null && college.balanceHours < 0 ? "العجز" : "الفائض"
+                      college.balanceHours !== null && college.balanceHours < 0
+                        ? "عجز ساعات السعة"
+                        : "فرق ساعات السعة الحسابي"
                     }
                     value={hours(
                       college.balanceHours === null ? null : Math.abs(college.balanceHours),
@@ -162,14 +154,8 @@ export function LeadershipRoomCapacitySummary({
                     }
                   />
                 </dl>
-                {college.equivalents && (
-                  <p className="mt-3 text-sm leading-7">
-                    الفائض يعادل <b>{capacityEquivalentText(college.equivalents, "rooms")}</b>، أو{" "}
-                    <b>{capacityEquivalentText(college.equivalents, "days")}</b>.
-                  </p>
-                )}
                 <p className="mt-2 text-xs leading-6 text-muted-foreground">
-                  قاعات خالية تمامًا في النسخ المنشورة المختارة:{" "}
+                  قاعات بلا جلسات في النسخ المنشورة المختارة:{" "}
                   <b>{number(college.emptyPublishedRooms)}</b>.
                 </p>
                 {college.issues.length > 0 && (
@@ -225,10 +211,10 @@ export function LeadershipRoomCapacitySummary({
             ))}
           </div>
           <p className="border-t pt-3 text-xs leading-6 text-muted-foreground">
-            المتاح يتبع أيام وساعات تشغيل الكلية وإتاحة كل قاعة، دون تكرار الفترات المتداخلة. الفائض
-            = المتاح − إجمالي التدريس المطلوب، ويُعرض العجز منفصلًا. مكافئ القاعة لا يعني وجود قاعة
-            بعينها يمكن الاستغناء عنها؛ يلزم مراعاة نوع القاعات وسعتها وتوزيع المحاضرات. «غير
-            المستخدم» يصف النسخ المنشورة المختارة وقد يلزم لاستكمال التدريس غير المجدول.
+            المتاح يتبع أيام وساعات تشغيل الكلية وإتاحة كل قاعة، دون تكرار الفترات المتداخلة.
+            فرق الساعات الحسابي = المتاح − إجمالي التدريس المطلوب، ولا يمثل عدد قاعات يمكن إخلاؤها.
+            «غير المستخدم» يصف النسخ المنشورة المختارة وقد يلزم لاستكمال التدريس غير المجدول.
+            تحقّق من نوع القاعة وسعتها والفترات قبل اعتبارها متاحة لمحاضرة أخرى.
           </p>
         </div>
       )}
