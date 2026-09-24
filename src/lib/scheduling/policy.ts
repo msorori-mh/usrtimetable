@@ -36,9 +36,14 @@ export function validateSchedulingPolicy(
   const issues: SchedulingPolicyIssue[] = [];
   const days = Array.isArray(policy.working_days) ? policy.working_days : [];
   const validDays = days.every(
-    (day) => Number.isInteger(Number(day)) && Number(day) >= 0 && Number(day) <= 6,
+    (day) =>
+      Number.isInteger(Number(day)) && Number(day) >= 0 && Number(day) <= 6,
   );
-  if (!days.length || !validDays || new Set(days.map(Number)).size !== days.length) {
+  if (
+    !days.length ||
+    !validDays ||
+    new Set(days.map(Number)).size !== days.length
+  ) {
     issues.push({
       code: "WORKING_DAYS_INVALID",
       messageAr: "يجب اختيار يوم عمل واحد على الأقل دون تكرار.",
@@ -79,7 +84,11 @@ export function validateSchedulingPolicy(
       policy.max_daily_hours_per_instructor,
       "سقف ساعات المحاضر",
     ],
-    ["STUDENT_DAILY_LIMIT_INVALID", policy.max_daily_hours_per_section, "سقف ساعات المجموعة"],
+    [
+      "STUDENT_DAILY_LIMIT_INVALID",
+      policy.max_daily_hours_per_section,
+      "سقف ساعات المجموعة",
+    ],
     [
       "THEORY_DAILY_LIMIT_INVALID",
       policy.max_daily_theory_hours_per_section,
@@ -91,8 +100,15 @@ export function validateSchedulingPolicy(
       "سقف الساعات العملية",
     ],
   ] as const) {
-    if (value !== undefined && value !== null && (!finite(value) || value <= 0)) {
-      issues.push({ code: key, messageAr: `${label} يجب أن يكون عددًا موجبًا.` });
+    if (
+      value !== undefined &&
+      value !== null &&
+      (!finite(value) || value <= 0)
+    ) {
+      issues.push({
+        code: key,
+        messageAr: `${label} يجب أن يكون عددًا موجبًا.`,
+      });
     }
   }
 
@@ -119,7 +135,9 @@ export function validateSchedulingPolicy(
   return issues;
 }
 
-export function assertValidSchedulingPolicy(policy: SchedulingPolicyInput): void {
+export function assertValidSchedulingPolicy(
+  policy: SchedulingPolicyInput,
+): void {
   const issues = validateSchedulingPolicy(policy);
   if (!issues.length) return;
   throw new Error(
