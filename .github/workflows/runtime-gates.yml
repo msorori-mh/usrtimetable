@@ -243,6 +243,13 @@ jobs:
           createdb -h 127.0.0.1 -U postgres shared_lectures_test
           node --test tests/shared-lectures-db.test.mjs
 
+      - name: ITCS theory hours and lab exception in PostgreSQL
+        env:
+          PGPASSWORD: postgres
+        run: |
+          createdb -h 127.0.0.1 -U postgres itcs_theory_test
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d itcs_theory_test -f tests/itcs-theory-room-policy.sql
+
       - name: Cross-college coordination permissions, final state and concurrency
         env:
           PGPASSWORD: postgres
