@@ -382,6 +382,14 @@ function AutoSchedulePage() {
               النطاق: {AUTO_SCOPE_LABELS[studySystem]}. تُحفظ المحاضرات القائمة وتُفحص تعارضاتها.
               إجماليات النسخة تشمل جميع الأنظمة؛ نافذة النواقص تتبع النطاق المختار.
             </p>
+            <div
+              className="rounded-md border border-blue-300 bg-blue-50 p-3 text-xs text-blue-950 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-100"
+              data-testid="auto-schedule-resume-policy"
+            >
+              التشغيل تراكمي وآمن للاستئناف: كل دفعة ناجحة تُحفظ ذريًا. زر الإيقاف يمنع الخطوات
+              التالية ولا يتراجع عن الجلسات المحفوظة؛ ويمكن إعادة تشغيل «إكمال الناقص» لاستكمال
+              الباقي دون إعادة إنشاء الجلسات الموجودة.
+            </div>
             {versionId ? (
               <DeliveryCoverageCard
                 collegeId={active.id}
