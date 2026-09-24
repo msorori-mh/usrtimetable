@@ -21,3 +21,8 @@ test("the UI guard remains aligned with the engine fail-closed guard", () => {
   assert.match(engineSource, /if \(mode !== "fill_missing"\)/);
   assert.match(engineSource, /V2_DESTRUCTIVE_MODE_BLOCKED/);
 });
+
+test("the incremental save and resume policy is explicit before execution", () => {
+  assert.match(routeSource, /التشغيل تراكمي وآمن للاستئناف/);
+  assert.match(routeSource, /زر الإيقاف يمنع الخطوات\s+التالية ولا يتراجع/);
+});
