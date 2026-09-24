@@ -50,8 +50,7 @@ const EN: Record<string, string> = {
   room_capacity_unverified: "Capacity warning: enrollment count is not confirmed.",
   room_type_mismatch: "Room type mismatch.",
   room_availability: "Session outside room's defined availability window.",
-  itcs_theory_after_14:
-    "ITCS theory ends by 14:00; the 14:00–16:00 window is for labs only.",
+  itcs_theory_after_14: "ITCS theory ends by 14:00; the 14:00–16:00 window is for labs only.",
   instructor_availability_required:
     "Instructor availability is mandatory for this category and not defined.",
   instructor_availability: "Session outside instructor's hard availability window.",
