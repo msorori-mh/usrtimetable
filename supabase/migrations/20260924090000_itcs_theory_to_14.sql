@@ -58,6 +58,17 @@ SELECT COALESCE(public._ss_peer_i(a,b,c,d,j,k,l),'[]'::jsonb)
 $function$;
 
 -- A hard operating-hours rule must not be converted into an approved exception.
-ALTER TABLE public.schedule_version_conflict_exceptions
-  ADD CONSTRAINT svce_no_itcs_theory_after_14
-  CHECK (conflict_code <> 'itcs_theory_after_14');
+-- The database may already have received this guard before migration replay.
+DO $guard$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'public.schedule_version_conflict_exceptions'::regclass
+      AND conname = 'svce_no_itcs_theory_after_14'
+  ) THEN
+    ALTER TABLE public.schedule_version_conflict_exceptions
+      ADD CONSTRAINT svce_no_itcs_theory_after_14
+      CHECK (conflict_code <> 'itcs_theory_after_14');
+  END IF;
+END
+$guard$;
