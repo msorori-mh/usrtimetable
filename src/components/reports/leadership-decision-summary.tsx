@@ -7,6 +7,7 @@ import {
 } from "@/lib/reports/leadership";
 import {
   aggregateLeadershipRoomCapacity,
+  STANDARD_ROOM_DAY_HOURS,
   type LeadershipCapacityCollege,
 } from "@/lib/reports/leadership-room-capacity";
 import {
@@ -28,7 +29,19 @@ const roomReuseOpportunity = (room: LeadershipCapacityCollege | undefined) => {
   )
     return "غير محسوب";
   if (room.surplusHours <= 0) return "لا توجد سعة زمنية فائضة";
-  return `${hours(room.surplusHours)} غير مستخدمة أسبوعيًا · تُراجع حسب اليوم ونوع القاعة والسعة`;
+  if (!room.equivalents) return "غير محسوب";
+  const equivalentDays = Math.floor(
+    (room.equivalents.hoursAfterRooms + 1e-9) / STANDARD_ROOM_DAY_HOURS,
+  );
+  const equivalentHours =
+    Math.round(
+      (room.equivalents.hoursAfterRooms - equivalentDays * STANDARD_ROOM_DAY_HOURS) * 100,
+    ) / 100;
+  return `${hours(room.surplusHours)} غير مستخدمة أسبوعيًا · تعادل زمنيًا ${amount(
+    room.equivalents.fullRooms,
+  )} قاعة أسبوعية، و${amount(equivalentDays)} يوم قاعة، و${hours(
+    equivalentHours,
+  )} · تُراجع حسب اليوم ونوع القاعة والسعة`;
 };
 
 export interface LeadershipDecisionSummaryProps {
