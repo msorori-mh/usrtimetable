@@ -89,7 +89,7 @@ export function leadershipPriorities(
             "السنة مستمدة من اسم الفصل وتحتاج تثبيتًا.",
             "إدارة الكلية",
           );
-        if ((college.overload ?? 0) > 0)
+        if ((college.incomplete_faculty ?? 0) === 0 && (college.overload ?? 0) > 0)
           add(
             55,
             "faculty",
@@ -97,7 +97,7 @@ export function leadershipPriorities(
             "راجع توزيع الأعباء والتخصصات قبل اتخاذ قرار.",
             "عمادة الكلية وشؤون أعضاء هيئة التدريس",
           );
-        else if ((college.deficit ?? 0) > 0)
+        else if ((college.incomplete_faculty ?? 0) === 0 && (college.deficit ?? 0) > 0)
           add(
             50,
             "faculty",
