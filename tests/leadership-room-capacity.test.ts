@@ -196,11 +196,15 @@ test("one invalid room window makes aggregate unknown while preserving other roo
   assert.equal(r.balanceHours, null);
   assert.equal(r.rooms[1].availableHours, 36);
 });
-test("missing publication never fabricates empty-room or idle-hour claims", () => {
+test("missing publication withholds surplus and room reuse claims despite known inventory and demand", () => {
   const r = analyze(source(), college("a", { version_id: null, teaching_hours: null }));
-  assert.equal(r.balanceHours, 42);
+  assert.equal(r.availableHours, 72);
+  assert.equal(r.requiredHours, 30);
+  assert.equal(r.balanceHours, null);
   assert.equal(r.emptyPublishedRooms, null);
   assert.equal(r.rooms[0].idleHours, null);
+  assert.match(r.issues.join(" "), /لا توجد نسخة منشورة/);
+  assert.equal(aggregateLeadershipRoomCapacity([r]).surplusHours, null);
 });
 test("unresolved terms, no teaching groups or published hours above declared demand withhold surplus", () => {
   for (const extra of [
