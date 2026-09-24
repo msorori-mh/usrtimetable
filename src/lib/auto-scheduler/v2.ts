@@ -211,7 +211,8 @@ export function runV2AutoSchedule(
 export async function runV2AutoSchedule(
   params: V2AutoScheduleRunParams | V2AutoSchedulePreviewParams,
 ): Promise<
-  V2FeasibilityPreview | (AutoRunResult & { studySystem: AutoScheduleScope; scopeComplete: boolean })
+  | V2FeasibilityPreview
+  | (AutoRunResult & { studySystem: AutoScheduleScope; scopeComplete: boolean })
 > {
   const mode = params.mode ?? "fill_missing";
   const studySystem = params.studySystem ?? "all";
