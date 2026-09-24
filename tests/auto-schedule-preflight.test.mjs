@@ -25,9 +25,7 @@ const instructors = [
 
 test("checks only instructors who need new sessions", () => {
   assert.deepEqual(
-    unavailableInstructorBlockers(instructors, [
-      { instructor_id: "available" },
-    ]),
+    unavailableInstructorBlockers(instructors, [{ instructor_id: "available" }]),
     [],
   );
 });
@@ -45,8 +43,6 @@ test("blocks unavailable instructors with an actionable Arabic reason", () => {
 
 test("ignores unavailable instructors outside the pending work", () => {
   assert.doesNotThrow(() =>
-    assertInstructorsAvailableForNewScheduling(instructors, [
-      { instructor_id: "available" },
-    ]),
+    assertInstructorsAvailableForNewScheduling(instructors, [{ instructor_id: "available" }]),
   );
 });
