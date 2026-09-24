@@ -190,9 +190,7 @@ function SettingsPage() {
               <Input
                 type="time"
                 value={form.day_start_time}
-                onChange={(e) =>
-                  setForm({ ...form, day_start_time: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, day_start_time: e.target.value })}
                 disabled={!canManage}
               />
             </div>
@@ -201,9 +199,7 @@ function SettingsPage() {
               <Input
                 type="time"
                 value={form.day_end_time}
-                onChange={(e) =>
-                  setForm({ ...form, day_end_time: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, day_end_time: e.target.value })}
                 disabled={!canManage}
               />
             </div>
@@ -215,9 +211,7 @@ function SettingsPage() {
               <Input
                 type="number"
                 value={form.slot_minutes}
-                onChange={(e) =>
-                  setForm({ ...form, slot_minutes: Number(e.target.value) })
-                }
+                onChange={(e) => setForm({ ...form, slot_minutes: Number(e.target.value) })}
                 disabled={!canManage}
               />
             </div>
@@ -304,9 +298,7 @@ function SettingsPage() {
                 onChange={(e) =>
                   setForm({
                     ...form,
-                    max_daily_practical_hours_per_section: Number(
-                      e.target.value,
-                    ),
+                    max_daily_practical_hours_per_section: Number(e.target.value),
                   })
                 }
                 disabled={!canManage}
@@ -346,9 +338,7 @@ function SettingsPage() {
             <label className="flex items-center gap-2 text-sm">
               <Checkbox
                 checked={form.allow_3h_sessions}
-                onCheckedChange={(v) =>
-                  setForm({ ...form, allow_3h_sessions: !!v })
-                }
+                onCheckedChange={(v) => setForm({ ...form, allow_3h_sessions: !!v })}
                 disabled={!canManage}
               />{" "}
               السماح بمحاضرات ٣ ساعات
@@ -356,9 +346,7 @@ function SettingsPage() {
             <label className="flex items-center gap-2 text-sm">
               <Checkbox
                 checked={form.allow_back_to_back}
-                onCheckedChange={(v) =>
-                  setForm({ ...form, allow_back_to_back: !!v })
-                }
+                onCheckedChange={(v) => setForm({ ...form, allow_back_to_back: !!v })}
                 disabled={!canManage}
               />{" "}
               السماح بمحاضرات متتالية
