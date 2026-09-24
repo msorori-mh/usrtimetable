@@ -56,3 +56,8 @@ SELECT COALESCE(public._ss_peer_i(a,b,c,d,j,k,l),'[]'::jsonb)
  ||COALESCE(public._ss_brk(a,b,j,k,l),'[]'::jsonb)
  ||COALESCE(public._ss_itcs_theory_hours(a,b,g,l),'[]'::jsonb);
 $function$;
+
+-- A hard operating-hours rule must not be converted into an approved exception.
+ALTER TABLE public.schedule_version_conflict_exceptions
+  ADD CONSTRAINT svce_no_itcs_theory_after_14
+  CHECK (conflict_code <> 'itcs_theory_after_14');

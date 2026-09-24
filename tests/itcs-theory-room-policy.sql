@@ -11,6 +11,7 @@ CREATE TABLE public.plan_course_components (id uuid PRIMARY KEY, component_type 
 CREATE TABLE public.teaching_assignments (
   id uuid PRIMARY KEY, college_id uuid NOT NULL, plan_course_component_id uuid, session_type text
 );
+CREATE TABLE public.schedule_version_conflict_exceptions (conflict_code text NOT NULL);
 CREATE FUNCTION public._ss_ci(c text,s text,sid uuid,rid uuid,m jsonb)
 RETURNS jsonb LANGUAGE sql AS $fn$
   SELECT jsonb_build_object('code',c,'severity',s,'schedule_session_id',sid,'metadata',m)
@@ -57,6 +58,12 @@ BEGIN
      OR public._ss_itcs_theory_hours(sid,edu,'00000000-0000-0000-0000-000000000023','16:00') <> '[]'::jsonb THEN
     RAISE EXCEPTION 'Practical lab or other college was blocked';
   END IF;
+  BEGIN
+    INSERT INTO public.schedule_version_conflict_exceptions VALUES ('itcs_theory_after_14');
+    RAISE EXCEPTION 'The hard cutoff could be approved as an exception';
+  EXCEPTION WHEN check_violation THEN
+    NULL;
+  END;
   SELECT pg_get_functiondef('public._ss_gather(uuid,uuid,uuid,uuid,uuid,uuid,uuid,text,integer,integer,time without time zone,time without time zone,uuid)'::regprocedure)
     INTO collector;
   IF position('public._ss_itcs_theory_hours(a,b,g,l)' IN collector) = 0 THEN
