@@ -474,12 +474,15 @@ function AutoSchedulePage() {
                 </p>
                 <p className="mt-1 text-xs">{previewResult.attendanceEvidence}</p>
                 <p className="mt-1 text-xs">
-                  التشغيل سيعيد الفحص كاملًا قبل الحفظ؛ هذه المعاينة لا تتجاوز القيود ولا تمنح
-                  إذنًا لبيانات تغيّرت بعدها.
+                  التشغيل سيعيد الفحص كاملًا قبل الحفظ؛ هذه المعاينة لا تتجاوز القيود ولا تمنح إذنًا
+                  لبيانات تغيّرت بعدها.
                 </p>
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground" data-testid="auto-schedule-preview-required">
+              <p
+                className="text-xs text-muted-foreground"
+                data-testid="auto-schedule-preview-required"
+              >
                 يلزم اجتياز «فحص الجدوى دون حفظ» قبل إتاحة التشغيل.
               </p>
             )}
