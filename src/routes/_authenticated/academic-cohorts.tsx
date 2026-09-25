@@ -69,6 +69,18 @@ type CohortRow = {
   active: boolean;
 };
 
+type ScheduleVersionChoice = {
+  id: string;
+  name: string;
+  status: string;
+  academic_term_id: string;
+};
+
+type VersionCohortFact = {
+  cohort_id: string;
+  expected_students: number;
+};
+
 type DeliveryGroupRow = {
   id: string;
   cohort_id: string;
@@ -107,6 +119,7 @@ function AcademicCohortsWorkspace() {
   const generate = useGenerateDeliveryGroups();
   const generateCurriculum = useGenerateCohortCurriculum();
   const [selectedCohortId, setSelectedCohortId] = useState<string | null>(null);
+  const [chosenVersionId, setChosenVersionId] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [filters, setFilters] = useState<CohortFilters>(EMPTY_COHORT_FILTERS);
   const [page, setPage] = useState(1);
@@ -176,18 +189,76 @@ function AcademicCohortsWorkspace() {
     },
   });
 
+  const {
+    data: versions,
+    isLoading: versionsLoading,
+    error: versionsError,
+  } = useQuery({
+    queryKey: ["cohort-directory-versions", active?.id],
+    enabled: !!active,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("schedule_versions")
+        .select("id, name, status, academic_term_id")
+        .eq("college_id", active!.id)
+        .in("status", ["draft", "published"])
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as ScheduleVersionChoice[];
+    },
+  });
+  const selectedVersion =
+    versions?.find((row) => row.id === chosenVersionId) ??
+    versions?.find((row) => row.status === "draft") ??
+    versions?.[0] ??
+    null;
+  const {
+    data: versionFacts,
+    isLoading: versionFactsLoading,
+    error: versionFactsError,
+  } = useQuery({
+    queryKey: ["cohort-directory-version-facts", active?.id, selectedVersion?.id, cohorts],
+    enabled: !!selectedVersion && !!cohorts,
+    queryFn: async () => {
+      const ids = (cohorts ?? [])
+        .filter((row) => row.term_id === selectedVersion!.academic_term_id)
+        .map((row) => row.id);
+      const facts = new Map<string, number>();
+      for (let offset = 0; offset < ids.length; offset += 100) {
+        const { data, error } = await (
+          supabase as unknown as {
+            rpc(
+              name: string,
+              args: { p_version: string; p_cohorts: string[] },
+            ): Promise<{
+              data: VersionCohortFact[] | null;
+              error: { message: string } | null;
+            }>;
+          }
+        ).rpc("schedule_version_cohort_facts", {
+          p_version: selectedVersion!.id,
+          p_cohorts: ids.slice(offset, offset + 100),
+        });
+        if (error) throw error;
+        for (const row of data ?? []) facts.set(row.cohort_id, row.expected_students);
+      }
+      return facts;
+    },
+  });
+
   const directoryRows = useMemo<CohortListRow[]>(() => {
     const p = new Map((programs ?? []).map((row) => [row.id, row.name]));
     const l = new Map((levels ?? []).map((row) => [row.id, row]));
     const t = new Map((terms ?? []).map((row) => [row.id, row.name]));
     return (cohorts ?? []).map((row) => ({
       ...row,
+      expected_students: versionFacts?.get(row.id) ?? row.expected_students,
       programName: p.get(row.program_id) ?? "برنامج غير محدد",
       levelName: l.get(row.level_id)?.name ?? "مستوى غير محدد",
       levelNumber: l.get(row.level_id)?.level_number ?? null,
       termName: t.get(row.term_id) ?? "فصل غير محدد",
     }));
-  }, [cohorts, programs, levels, terms]);
+  }, [cohorts, programs, levels, terms, versionFacts]);
   const filteredCohorts = useMemo(
     () => filterCohortDirectory(directoryRows, filters),
     [directoryRows, filters],
@@ -302,11 +373,17 @@ function AcademicCohortsWorkspace() {
             disabled={filteredCohorts.length === 0}
             dataset={() =>
               cohortsExportDataset({
-                rows: filteredCohorts,
+                rows: filteredCohorts.map((row) =>
+                  versionFacts?.has(row.id) ? { ...row, count_status: "version_scoped" } : row,
+                ),
                 collegeName: active?.name ?? null,
                 systemLabel: (v) => COHORT_SYSTEM_LABELS[v ?? ""] ?? v ?? "",
-                countStatusLabel: (v) => COHORT_COUNT_LABELS[v ?? ""] ?? v ?? "",
+                countStatusLabel: (v) =>
+                  v === "version_scoped"
+                    ? "حسب نسخة الجدول"
+                    : (COHORT_COUNT_LABELS[v ?? ""] ?? v ?? ""),
                 filters: activeFilters([
+                  { label: "نسخة الجدول", value: selectedVersion?.name ?? "السجل العام" },
                   { label: "البحث", value: filters.search },
                   {
                     label: "البرنامج",
@@ -360,13 +437,40 @@ function AcademicCohortsWorkspace() {
         </Button>
       </div>
 
+      {selectedVersion && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border p-4 text-sm">
+          <label htmlFor="cohort-schedule-version" className="font-medium">
+            أعداد الطلبة حسب نسخة الجدول
+          </label>
+          <select
+            id="cohort-schedule-version"
+            value={selectedVersion.id}
+            onChange={(event) => {
+              setChosenVersionId(event.target.value);
+              setSelectedCohortId(null);
+              setPage(1);
+            }}
+            className="h-10 min-w-0 max-w-full flex-1 rounded-md border bg-background px-3 sm:max-w-md"
+          >
+            {versions?.map((version) => (
+              <option key={version.id} value={version.id}>
+                {version.name} · {version.status === "draft" ? "مسودة" : "منشورة"}
+              </option>
+            ))}
+          </select>
+          <span className="text-muted-foreground">
+            تظهر أعداد النسخة المختارة لدفعات فصلها، وأعداد السجل العام للدفعات الأخرى.
+          </span>
+        </div>
+      )}
+
       {!active ? (
         <p className="text-sm text-muted-foreground">اختر كلية لعرض الدفعات.</p>
-      ) : cohortsError ? (
+      ) : cohortsError || versionsError || versionFactsError ? (
         <Card className="p-5 text-destructive" role="alert">
-          تعذّر تحميل الدفعات. أعد تحميل الصفحة للمحاولة مجددًا.
+          تعذّر تحميل الدفعات أو أعداد النسخة المختارة. أعد تحميل الصفحة للمحاولة مجددًا.
         </Card>
-      ) : isLoading ? (
+      ) : isLoading || versionsLoading || (selectedVersion && versionFactsLoading) ? (
         <p className="text-sm text-muted-foreground">جاري التحميل…</p>
       ) : (cohorts ?? []).length === 0 ? (
         <p className="text-sm text-muted-foreground">لا توجد دفعات مسجّلة لهذه الكلية.</p>
@@ -527,7 +631,9 @@ function AcademicCohortsWorkspace() {
                         <p className="font-semibold leading-relaxed">{c.programName}</p>
                         <p className="text-sm">
                           {c.levelName}{" "}
-                          <span className="text-muted-foreground">· دخول {formatCohortEntryYear(c.entry_year)}</span>
+                          <span className="text-muted-foreground">
+                            · دخول {formatCohortEntryYear(c.entry_year)}
+                          </span>
                         </p>
                         <p className="text-xs leading-relaxed text-muted-foreground">
                           {c.termName}
@@ -553,7 +659,9 @@ function AcademicCohortsWorkspace() {
                         </span>
                         <span className="ms-1 text-xs sm:hidden">طالب</span>
                         <span className="block text-xs text-muted-foreground">
-                          {COHORT_COUNT_LABELS[c.count_status] ?? "غير محدد"}
+                          {versionFacts?.has(c.id)
+                            ? "حسب نسخة الجدول"
+                            : (COHORT_COUNT_LABELS[c.count_status] ?? "غير محدد")}
                         </span>
                       </span>
                       <span className="hidden items-center gap-1 text-xs font-medium text-primary sm:flex">
@@ -627,7 +735,11 @@ function AcademicCohortsWorkspace() {
                   </div>
                   <dl className="grid grid-cols-2 gap-4 p-5 text-sm">
                     <div>
-                      <dt className="text-muted-foreground">عدد الطلاب المسجل</dt>
+                      <dt className="text-muted-foreground">
+                        {versionFacts?.has(selected.id)
+                          ? "عدد الطلاب في النسخة المختارة"
+                          : "عدد الطلاب المسجل"}
+                      </dt>
                       <dd className="mt-1 flex items-center gap-2 text-2xl font-bold text-primary">
                         <Users className="h-5 w-5" />
                         {formatCohortCount(selected.expected_students)}
@@ -636,12 +748,16 @@ function AcademicCohortsWorkspace() {
                     <div>
                       <dt className="text-muted-foreground">حالة العدد</dt>
                       <dd className="mt-2 font-semibold">
-                        {COHORT_COUNT_LABELS[selected.count_status] ?? "غير محدد"}
+                        {versionFacts?.has(selected.id)
+                          ? "حسب نسخة الجدول"
+                          : (COHORT_COUNT_LABELS[selected.count_status] ?? "غير محدد")}
                       </dd>
                     </div>
                     <div>
                       <dt className="text-muted-foreground">سنة الدخول</dt>
-                      <dd className="mt-1 font-medium">{formatCohortEntryYear(selected.entry_year)}</dd>
+                      <dd className="mt-1 font-medium">
+                        {formatCohortEntryYear(selected.entry_year)}
+                      </dd>
                     </div>
                     <div className="min-w-0">
                       <dt className="text-muted-foreground">رمز الدفعة</dt>
@@ -653,14 +769,18 @@ function AcademicCohortsWorkspace() {
                   {canManage ? (
                     <div className="grid gap-2 border-t p-4">
                       <p className="text-xs leading-6 text-muted-foreground">
-                        زر توليد المجموعات يجهّز المقررات تلقائيًا من خطة المستوى والفصل. زر
-                        المقررات متاح لتجهيزها منفصلة.
+                        {versionFacts?.has(selected.id)
+                          ? "توزيع هذه الدفعة محفوظ حسب نسخة الجدول المختارة. التوليد العام معطّل حتى لا يغيّر بيانات النسخ الأخرى."
+                          : "زر توليد المجموعات يجهّز المقررات تلقائيًا من خطة المستوى والفصل. زر المقررات متاح لتجهيزها منفصلة."}
                       </p>
                       <Button
                         size="sm"
                         variant="outline"
                         disabled={
-                          generateCurriculum.isPending || generate.isPending || !selected.active
+                          generateCurriculum.isPending ||
+                          generate.isPending ||
+                          !selected.active ||
+                          versionFacts?.has(selected.id)
                         }
                         onClick={() => {
                           if (!effectiveCohortId) return;
@@ -678,7 +798,8 @@ function AcademicCohortsWorkspace() {
                           generate.isPending ||
                           generateCurriculum.isPending ||
                           roomTypeBlocker.length > 0 ||
-                          !selected.active
+                          !selected.active ||
+                          versionFacts?.has(selected.id)
                         }
                         onClick={() => setConfirmOpen(true)}
                       >
@@ -738,6 +859,12 @@ function AcademicCohortsWorkspace() {
                     <h3 className="text-sm font-semibold">مجموعات المحاضرات والمعامل</h3>
                     <Badge variant="secondary">{groups?.length ?? 0}</Badge>
                   </div>
+                  {versionFacts?.has(selected.id) && (
+                    <p className="border-b bg-muted/30 px-4 py-2 text-xs text-muted-foreground">
+                      هذه قائمة المجموعات في السجل العام. راجع جدول النسخة المختارة لأعداد مجموعاتها
+                      وتوزيع محاضراتها المعتمد.
+                    </p>
+                  )}
                   {groupsError ? (
                     <p className="p-4 text-sm text-destructive" role="alert">
                       تعذّر تحميل مجموعات هذه الدفعة.
