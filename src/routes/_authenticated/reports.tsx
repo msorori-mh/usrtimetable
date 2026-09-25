@@ -9,7 +9,9 @@ function ReportsLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   return (
     <div className="min-w-0 space-y-4">
-      {pathname !== "/reports/leadership" && <ReportsCollegeBar />}
+      {pathname !== "/reports/leadership" && pathname !== "/reports/teaching-demand-capacity" && (
+        <ReportsCollegeBar />
+      )}
       <Outlet />
     </div>
   );
