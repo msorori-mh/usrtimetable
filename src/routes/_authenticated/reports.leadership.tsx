@@ -533,6 +533,12 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
         leading={
           <>
             <AcademicStaffingEntry onOpen={() => openDetail("staffing")} />
+            <Link
+              to="/reports/teaching-demand-capacity"
+              className="block rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm font-semibold text-primary hover:underline"
+            >
+              الساعات المطلوبة وسعة القاعات — ملخص الجامعة والكلية ←
+            </Link>
             {data && (query.isFetching || query.isError) ? (
               <p
                 role={query.isError ? "alert" : "status"}
