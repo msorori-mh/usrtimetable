@@ -63,7 +63,8 @@ INSERT INTO public.academic_cohorts VALUES
   ('f8188b18-207a-4543-a3f7-89b4e8fad293','7168345f-cf9d-4789-b2ad-547abb687dc8','18dd364a-76d7-40b8-a217-fa929c082a7f','IT-P-L1-2026',75),
   ('961e5b4e-12a6-4abd-a899-a317e73b102c','7168345f-cf9d-4789-b2ad-547abb687dc8','18dd364a-76d7-40b8-a217-fa929c082a7f','CIS-JF-L1-2026',120),
   ('e1b6b48f-fe69-4020-b5b1-188397298174','7168345f-cf9d-4789-b2ad-547abb687dc8','18dd364a-76d7-40b8-a217-fa929c082a7f','CS-P-L1-2026',75),
-  ('862518d3-7d85-414e-92d2-a4c3feefc2b8','7168345f-cf9d-4789-b2ad-547abb687dc8','18dd364a-76d7-40b8-a217-fa929c082a7f','CIS-P-L1-2026',40);
+  ('862518d3-7d85-414e-92d2-a4c3feefc2b8','7168345f-cf9d-4789-b2ad-547abb687dc8','18dd364a-76d7-40b8-a217-fa929c082a7f','CIS-P-L1-2026',40),
+  ('dddddddd-dddd-4ddd-8ddd-dddddddddddd','7168345f-cf9d-4789-b2ad-547abb687dc8','18dd364a-76d7-40b8-a217-fa929c082a7f','SHARED-PARTNER-OUTSIDE-SCOPE',25);
 INSERT INTO public.scheduling_cohort_term_headcounts
   SELECT gen_random_uuid(), id, college_id, term_id, 'approved', expected_students
   FROM public.academic_cohorts;
@@ -78,6 +79,10 @@ INSERT INTO public.shared_lecture_links
   SELECT a.id, m.id FROM public.delivery_groups a CROSS JOIN public.delivery_groups m
   WHERE a.cohort_id = 'ebfc0dee-f291-4f6d-a974-d3ed1df96f3e'
     AND m.cohort_id = '862518d3-7d85-414e-92d2-a4c3feefc2b8';
+INSERT INTO public.shared_lecture_links
+  SELECT a.id, m.id FROM public.delivery_groups a CROSS JOIN public.delivery_groups m
+  WHERE a.cohort_id = 'ebfc0dee-f291-4f6d-a974-d3ed1df96f3e'
+    AND m.cohort_id = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 INSERT INTO public.teaching_assignments
   SELECT gen_random_uuid(), cohort_id, id FROM public.delivery_groups;
 INSERT INTO public.course_offerings
@@ -110,13 +115,14 @@ BEGIN
       '30f8a76d-1cb9-4944-a5d7-483dcaea7692') <> 275 THEN
     RAISE EXCEPTION 'published sessions changed';
   END IF;
-  IF (SELECT sum(expected_students) FROM public.academic_cohorts) <> 420 THEN
+  IF (SELECT sum(expected_students) FROM public.academic_cohorts
+      WHERE code <> 'SHARED-PARTNER-OUTSIDE-SCOPE') <> 420 THEN
     RAISE EXCEPTION 'global counts changed';
   END IF;
   SELECT payload INTO v FROM public.schedule_version_delivery_baselines
   WHERE cohort_id = 'ebfc0dee-f291-4f6d-a974-d3ed1df96f3e';
-  IF jsonb_array_length(v->'shared_links') <> 1
-    OR jsonb_array_length(v->'shared_partner_groups') <> 1
+  IF jsonb_array_length(v->'shared_links') <> 2
+    OR jsonb_array_length(v->'shared_partner_groups') <> 2
     OR (v->'cohort'->>'expected_students')::int <> 110 THEN
     RAISE EXCEPTION 'shared published baseline incomplete';
   END IF;
@@ -143,7 +149,8 @@ BEGIN
   IF (SELECT count(*) FROM schedule_version_delivery_private.group_facts) <> 10
      OR (SELECT count(*) FROM schedule_version_delivery_private.partition_facts) <> 10
      OR (SELECT count(*) FROM schedule_version_delivery_private.group_partition_facts) <> 10
-     OR (SELECT count(*) FROM schedule_version_delivery_private.shared_link_facts) <> 2 THEN
+     OR (SELECT count(*) FROM schedule_version_delivery_private.shared_link_facts) <> 4
+     OR (SELECT count(*) FROM schedule_version_delivery_private.partner_group_facts) <> 6 THEN
     RAISE EXCEPTION 'versioned group or partition seed incomplete';
   END IF;
   BEGIN
@@ -177,6 +184,8 @@ BEGIN
   SET expected_students=42
   WHERE version_id='d68d8d22-9a6d-4f21-935f-cebf18bb969b'
     AND cohort_id='862518d3-7d85-414e-92d2-a4c3feefc2b8';
+  UPDATE public.delivery_groups SET expected_students=99
+  WHERE cohort_id='dddddddd-dddd-4ddd-8ddd-dddddddddddd';
   IF (SELECT expected_students FROM schedule_version_delivery_private.cohort_facts
       WHERE version_id='30f8a76d-1cb9-4944-a5d7-483dcaea7692'
         AND cohort_id='ebfc0dee-f291-4f6d-a974-d3ed1df96f3e') <> 110 THEN
@@ -258,11 +267,11 @@ BEGIN
   IF (SELECT expected_students FROM public.schedule_version_group_facts(
        '30f8a76d-1cb9-4944-a5d7-483dcaea7692',
        ARRAY[(SELECT id FROM public.delivery_groups
-              WHERE cohort_id='ebfc0dee-f291-4f6d-a974-d3ed1df96f3e')]::uuid[])) <> 150
+              WHERE cohort_id='ebfc0dee-f291-4f6d-a974-d3ed1df96f3e')]::uuid[])) <> 175
      OR (SELECT expected_students FROM public.schedule_version_group_facts(
        'd68d8d22-9a6d-4f21-935f-cebf18bb969b',
        ARRAY[(SELECT id FROM public.delivery_groups
-              WHERE cohort_id='ebfc0dee-f291-4f6d-a974-d3ed1df96f3e')]::uuid[])) <> 182 THEN
+              WHERE cohort_id='ebfc0dee-f291-4f6d-a974-d3ed1df96f3e')]::uuid[])) <> 207 THEN
     RAISE EXCEPTION 'shared anchor did not sum selected-version partner group counts';
   END IF;
 END;
