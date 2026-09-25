@@ -30,6 +30,8 @@ export async function fetchCohortDeliveryGroupCatalog(params: {
   const shared = await fetchSharedLectures(college);
   const groups = allGroups
     .filter((g): g is typeof g & { id: string } => g.id != null)
+    // Archived groups may still exist in a version catalogue for historical reads.
+    .filter((g) => g.active !== false && g.is_obsolete !== true)
     .filter(
       (g) =>
         (g.cohort_id != null && cohortIds.has(g.cohort_id)) ||
