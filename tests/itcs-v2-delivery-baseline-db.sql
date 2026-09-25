@@ -151,6 +151,18 @@ BEGIN
     RAISE EXCEPTION 'published cohort fact must be immutable';
   EXCEPTION WHEN check_violation THEN NULL;
   END;
+  BEGIN
+    INSERT INTO schedule_version_delivery_private.partition_facts
+      (version_id,partition_id,cohort_id,college_id,partition_code,headcount)
+    VALUES (
+      '30f8a76d-1cb9-4944-a5d7-483dcaea7692',
+      '00000000-0000-0000-0000-000000000099',
+      'ebfc0dee-f291-4f6d-a974-d3ed1df96f3e',
+      '7168345f-cf9d-4789-b2ad-547abb687dc8','UNAPPROVED',1
+    );
+    RAISE EXCEPTION 'published version must reject appended facts';
+  EXCEPTION WHEN check_violation THEN NULL;
+  END;
   UPDATE schedule_version_delivery_private.cohort_facts
   SET expected_students=140,scheduling_headcount=140
   WHERE version_id='d68d8d22-9a6d-4f21-935f-cebf18bb969b'
