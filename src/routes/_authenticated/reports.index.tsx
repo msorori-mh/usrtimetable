@@ -379,7 +379,9 @@ function ReportsHub() {
   const { data: me } = useCurrentUser();
   const visibleSections = SECTIONS.map((s) => ({
     ...s,
-    items: match(s.items).filter((item) => item !== DEMAND_CAPACITY_REPORT || canViewLeadership(me)),
+    items: match(s.items).filter(
+      (item) => item !== DEMAND_CAPACITY_REPORT || canViewLeadership(me),
+    ),
   })).filter((s) => s.items.length > 0);
   const legacyItems = match(LEGACY_SECTION.items);
   // «مشاهد» stays inside /reports/*: the publishing area is out of scope.
