@@ -233,6 +233,11 @@ export interface CollegeDemandCapacity {
   availableHours: number | null;
   balanceHours: number | null;
   rooms: number | null;
+  hallRooms: number | null;
+  labRooms: number | null;
+  hallAvailableHours: number | null;
+  labAvailableHours: number | null;
+  unclassifiedRooms: number | null;
   published: boolean;
   status: "calculable" | "partial" | "unavailable";
   issues: string[];
@@ -253,6 +258,26 @@ export function summarizeDemandCapacity(
   return colleges.map((college) => {
     const c = byId.get(college.college_id);
     const issues = [...(c?.issues ?? [])];
+    const inventoryComplete =
+      !!c && typeof college.room_count === "number" && college.room_count === c.rooms.length;
+    if (c && !inventoryComplete && !issues.some((issue) => issue.includes("عدد القاعات المقروءة")))
+      issues.push("عدد القاعات المقروءة لا يطابق ملخص الكلية؛ حدّث البيانات");
+    const unclassifiedRooms = inventoryComplete
+      ? c.rooms.filter((room) => room.category !== "hall" && room.category !== "lab").length
+      : null;
+    if (unclassifiedRooms) issues.push(`${unclassifiedRooms} قاعة أو معمل بلا نوع معتمد`);
+    const breakdown = (category: "hall" | "lab") => {
+      if (!inventoryComplete || unclassifiedRooms) return { count: null, hours: null };
+      const selected = c.rooms.filter((room) => room.category === category);
+      return {
+        count: selected.length,
+        hours: selected.every((room) => typeof room.availableHours === "number")
+          ? round2(selected.reduce((n, room) => n + room.availableHours!, 0))
+          : null,
+      };
+    };
+    const halls = breakdown("hall");
+    const labs = breakdown("lab");
     if (!college.version_id) issues.push("لا توجد نسخة منشورة؛ اكتمال المحاضرات يحتاج مراجعة");
     if (college.term_state !== "ready") issues.push("الفصل الأكاديمي غير محسوم");
     if (!college.groups_count) issues.push("مجموعات التدريس غير مكتملة أو غير مدخلة");
@@ -264,6 +289,11 @@ export function summarizeDemandCapacity(
       availableHours: c?.availableHours ?? null,
       balanceHours: c?.balanceHours ?? null,
       rooms: c ? c.rooms.length : null,
+      hallRooms: halls.count,
+      labRooms: labs.count,
+      hallAvailableHours: halls.hours,
+      labAvailableHours: labs.hours,
+      unclassifiedRooms,
       published: !!college.version_id,
       status:
         !c || c.availableHours === null || college.required_hours === null
@@ -279,14 +309,29 @@ export function summarizeDemandCapacity(
 /** Never represent a partial university sum as a complete surplus. */
 export function summarizeUniversityCapacity(rows: CollegeDemandCapacity[]) {
   const complete = rows.length > 0 && rows.every((r) => r.status === "calculable");
-  const sum = (key: "requiredHours" | "availableHours" | "balanceHours") =>
-    complete ? round2(rows.reduce((n, r) => n + r[key]!, 0)) : null;
+  const sum = (
+    key:
+      | "requiredHours"
+      | "availableHours"
+      | "balanceHours"
+      | "hallRooms"
+      | "labRooms"
+      | "hallAvailableHours"
+      | "labAvailableHours",
+  ) =>
+    complete && rows.every((r) => typeof r[key] === "number")
+      ? round2(rows.reduce((n, r) => n + r[key]!, 0))
+      : null;
   return {
     colleges: rows.length,
     calculable: rows.filter((r) => r.status === "calculable").length,
     requiredHours: sum("requiredHours"),
     availableHours: sum("availableHours"),
     balanceHours: sum("balanceHours"),
+    hallRooms: sum("hallRooms"),
+    labRooms: sum("labRooms"),
+    hallAvailableHours: sum("hallAvailableHours"),
+    labAvailableHours: sum("labAvailableHours"),
     complete,
   };
 }
