@@ -323,8 +323,18 @@ assert(
 const dashboard = read("src/routes/_authenticated/data-readiness.tsx");
 assert(
   dashboard.includes("async function fetchNewFlowMetrics") &&
-    dashboard.includes("sch.push(...(await fetchNewFlowMetrics(collegeId)))"),
+    dashboard.includes("sch.push(...(await fetchNewFlowMetrics(collegeId, scheduleVersionIds)))"),
   "dashboard readiness includes the same fail-closed New Flow metrics",
+);
+assert(
+  readiness.includes("export async function fetchActionableScheduleVersionIds") &&
+    readiness.includes('.in("status", ["draft", "review", "approved", "published"])') &&
+    readiness.includes('.eq("disposable_test", false)') &&
+    readiness.includes("fetchNewFlowSignals(collegeId, scheduleVersionIds)") &&
+    dashboard.includes("fetchActionableScheduleVersionIds(collegeId)") &&
+    readiness.includes('.in("schedule_version_id", scheduleVersionIds)') &&
+    dashboard.includes('.in("schedule_version_id", scheduleVersionIds)'),
+  "both readiness surfaces scope sessions to actionable non-disposable versions",
 );
 assert(
   dashboard.includes("دفعات دراسية نشطة بدون مجموعات محاضرات/معامل"),
