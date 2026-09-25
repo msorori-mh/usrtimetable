@@ -32,7 +32,8 @@ CREATE TABLE public.cohort_student_partitions(
 );
 CREATE TABLE public.delivery_groups(
   id uuid PRIMARY KEY, cohort_id uuid NOT NULL, college_id uuid NOT NULL,
-  group_code text NOT NULL, expected_students integer NOT NULL
+  group_code text NOT NULL, expected_students integer NOT NULL,
+  capacity_limit integer
 );
 CREATE TABLE public.delivery_group_partition_members(
   id uuid PRIMARY KEY, cohort_id uuid NOT NULL, delivery_group_id uuid NOT NULL, partition_id uuid NOT NULL
@@ -67,7 +68,7 @@ INSERT INTO public.scheduling_cohort_term_headcounts
   FROM public.academic_cohorts;
 INSERT INTO public.cohort_student_partitions
   SELECT gen_random_uuid(), id, 'A001', expected_students FROM public.academic_cohorts;
-INSERT INTO public.delivery_groups
+INSERT INTO public.delivery_groups(id,cohort_id,college_id,group_code,expected_students)
   SELECT gen_random_uuid(), id, college_id, 'G1', expected_students FROM public.academic_cohorts;
 INSERT INTO public.delivery_group_partition_members
   SELECT gen_random_uuid(), g.cohort_id, g.id, p.id
@@ -167,6 +168,14 @@ BEGIN
   SET expected_students=140,scheduling_headcount=140
   WHERE version_id='d68d8d22-9a6d-4f21-935f-cebf18bb969b'
     AND cohort_id='ebfc0dee-f291-4f6d-a974-d3ed1df96f3e';
+  UPDATE schedule_version_delivery_private.group_facts
+  SET expected_students=140
+  WHERE version_id='d68d8d22-9a6d-4f21-935f-cebf18bb969b'
+    AND cohort_id='ebfc0dee-f291-4f6d-a974-d3ed1df96f3e';
+  UPDATE schedule_version_delivery_private.group_facts
+  SET expected_students=42
+  WHERE version_id='d68d8d22-9a6d-4f21-935f-cebf18bb969b'
+    AND cohort_id='862518d3-7d85-414e-92d2-a4c3feefc2b8';
   IF (SELECT expected_students FROM schedule_version_delivery_private.cohort_facts
       WHERE version_id='30f8a76d-1cb9-4944-a5d7-483dcaea7692'
         AND cohort_id='ebfc0dee-f291-4f6d-a974-d3ed1df96f3e') <> 110 THEN
@@ -245,6 +254,16 @@ BEGIN
        ARRAY['ebfc0dee-f291-4f6d-a974-d3ed1df96f3e']::uuid[])) <> 140 THEN
     RAISE EXCEPTION 'batch versioned read did not preserve source headcounts';
   END IF;
+  IF (SELECT expected_students FROM public.schedule_version_group_facts(
+       '30f8a76d-1cb9-4944-a5d7-483dcaea7692',
+       ARRAY[(SELECT id FROM public.delivery_groups
+              WHERE cohort_id='ebfc0dee-f291-4f6d-a974-d3ed1df96f3e')]::uuid[])) <> 150
+     OR (SELECT expected_students FROM public.schedule_version_group_facts(
+       'd68d8d22-9a6d-4f21-935f-cebf18bb969b',
+       ARRAY[(SELECT id FROM public.delivery_groups
+              WHERE cohort_id='ebfc0dee-f291-4f6d-a974-d3ed1df96f3e')]::uuid[])) <> 182 THEN
+    RAISE EXCEPTION 'shared anchor did not sum selected-version partner group counts';
+  END IF;
 END;
 $assert$;
 SET request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
@@ -265,6 +284,14 @@ BEGIN
       '30f8a76d-1cb9-4944-a5d7-483dcaea7692',
       ARRAY['ebfc0dee-f291-4f6d-a974-d3ed1df96f3e']::uuid[]);
     RAISE EXCEPTION 'cross-college viewer obtained batch facts';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  BEGIN
+    PERFORM public.schedule_version_group_facts(
+      '30f8a76d-1cb9-4944-a5d7-483dcaea7692',
+      ARRAY[(SELECT id FROM public.delivery_groups
+             WHERE cohort_id='ebfc0dee-f291-4f6d-a974-d3ed1df96f3e')]::uuid[]);
+    RAISE EXCEPTION 'cross-college viewer obtained group facts';
   EXCEPTION WHEN insufficient_privilege THEN NULL;
   END;
 END;
