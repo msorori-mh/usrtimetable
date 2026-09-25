@@ -151,7 +151,8 @@ BEGIN
     RAISE EXCEPTION 'published cohort fact must be immutable';
   EXCEPTION WHEN check_violation THEN NULL;
   END;
-  UPDATE schedule_version_delivery_private.cohort_facts SET expected_students=140
+  UPDATE schedule_version_delivery_private.cohort_facts
+  SET expected_students=140,scheduling_headcount=140
   WHERE version_id='d68d8d22-9a6d-4f21-935f-cebf18bb969b'
     AND cohort_id='ebfc0dee-f291-4f6d-a974-d3ed1df96f3e';
   IF (SELECT expected_students FROM schedule_version_delivery_private.cohort_facts
@@ -224,6 +225,14 @@ BEGIN
        'ebfc0dee-f291-4f6d-a974-d3ed1df96f3e')->>'expected_students')::int <> 140 THEN
     RAISE EXCEPTION 'versioned cohort read did not isolate published and draft';
   END IF;
+  IF (SELECT scheduling_headcount FROM public.schedule_version_cohort_facts(
+       '30f8a76d-1cb9-4944-a5d7-483dcaea7692',
+       ARRAY['ebfc0dee-f291-4f6d-a974-d3ed1df96f3e']::uuid[])) <> 110
+     OR (SELECT scheduling_headcount FROM public.schedule_version_cohort_facts(
+       'd68d8d22-9a6d-4f21-935f-cebf18bb969b',
+       ARRAY['ebfc0dee-f291-4f6d-a974-d3ed1df96f3e']::uuid[])) <> 140 THEN
+    RAISE EXCEPTION 'batch versioned read did not preserve source headcounts';
+  END IF;
 END;
 $assert$;
 SET request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
@@ -237,6 +246,13 @@ BEGIN
       '30f8a76d-1cb9-4944-a5d7-483dcaea7692',
       'ebfc0dee-f291-4f6d-a974-d3ed1df96f3e');
     RAISE EXCEPTION 'cross-college viewer obtained a cohort fact';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  BEGIN
+    PERFORM public.schedule_version_cohort_facts(
+      '30f8a76d-1cb9-4944-a5d7-483dcaea7692',
+      ARRAY['ebfc0dee-f291-4f6d-a974-d3ed1df96f3e']::uuid[]);
+    RAISE EXCEPTION 'cross-college viewer obtained batch facts';
   EXCEPTION WHEN insufficient_privilege THEN NULL;
   END;
 END;
