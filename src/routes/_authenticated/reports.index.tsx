@@ -221,6 +221,12 @@ const TEACHING_LOAD_REPORTS: ReportCard = {
   icon: <FileBarChart2 className="h-5 w-5" />,
   reports: ANALYTICS_REPORTS.slice(1, 5),
 };
+const DEMAND_CAPACITY_REPORT: ReportCard = {
+  to: "/reports/teaching-demand-capacity",
+  title: "الساعات المطلوبة وسعة القاعات",
+  desc: "تفصيل البرنامج والمستوى للإدمن، وملخص الجامعة لرئيس الجامعة، وملخص الكلية للعميد؛ مع بيان اكتمال المصدر.",
+  icon: <FileBarChart2 className="h-5 w-5" />,
+};
 const QUALITY_REPORTS: ReportCard = {
   to: "/reports/quality-summary",
   title: "جودة الجدول",
@@ -246,7 +252,7 @@ const SECTIONS: {
     id: "analytics",
     title: "أريد مراجعة الإسناد والأعباء والموارد",
     description: "مؤشرات تحميل واستغلال — للمراجعة الإدارية دون تجميع عبر نسخ متعددة.",
-    items: [ANALYTICS_REPORTS[0], TEACHING_LOAD_REPORTS],
+    items: [ANALYTICS_REPORTS[0], TEACHING_LOAD_REPORTS, DEMAND_CAPACITY_REPORT],
   },
   {
     id: "operational",
@@ -370,12 +376,15 @@ function ReportsHub() {
           ).includes(needle),
         )
       : items;
-  const visibleSections = SECTIONS.map((s) => ({ ...s, items: match(s.items) })).filter(
-    (s) => s.items.length > 0,
-  );
+  const { data: me } = useCurrentUser();
+  const visibleSections = SECTIONS.map((s) => ({
+    ...s,
+    items: match(s.items).filter(
+      (item) => item !== DEMAND_CAPACITY_REPORT || canViewLeadership(me),
+    ),
+  })).filter((s) => s.items.length > 0);
   const legacyItems = match(LEGACY_SECTION.items);
   // «مشاهد» stays inside /reports/*: the publishing area is out of scope.
-  const { data: me } = useCurrentUser();
   const restrictedViewer =
     isReportsOnlyRole(me) || isAcademicAffairsRole(me) || isLeadershipOnlyRole(me);
   return (
