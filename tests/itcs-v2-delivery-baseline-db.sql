@@ -35,6 +35,7 @@ CREATE TABLE public.delivery_groups(
   group_code text NOT NULL, expected_students integer NOT NULL,
   capacity_limit integer
 );
+GRANT SELECT ON public.delivery_groups TO authenticated;
 CREATE TABLE public.delivery_group_partition_members(
   id uuid PRIMARY KEY, cohort_id uuid NOT NULL, delivery_group_id uuid NOT NULL, partition_id uuid NOT NULL
 );
