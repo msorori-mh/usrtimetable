@@ -356,7 +356,7 @@ test("study-system selection reaches both report queries and their cache keys", 
       // a merged anchor can belong to a different system than its participants.
       assert.match(
         source,
-        /fetchStudentPrintMemberships\(hydrated, ctx\.collegeId!, ctx\.versionId!\)\)\.filter/,
+        /fetchStudentPrintMemberships\(hydrated,\s*ctx\.collegeId!,\s*ctx\.versionId!\)\s*\)\.filter/,
       );
       assert.match(source, /row\.study_system === effectiveStudySystem/);
       assert.match(source, /row\.study_system === "both"/);

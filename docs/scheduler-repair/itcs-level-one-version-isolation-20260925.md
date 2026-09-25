@@ -73,6 +73,9 @@ student print copies. The disposable database fixture deliberately changes
 draft partitions and global partner metadata, then verifies V2 still resolves
 its original membership. Stage 2b has not been applied to the live database
 and its client code has not been deployed.
+The draft compaction snapshot now overlays versioned group sizes, partition
+headcounts, member rows and session headcounts before evaluating candidate
+moves; it no longer loads global member/partition views for this calculation.
 
 Stage 2c proposal: `docs/migrations-proposed/20260925_itcs_version_scoped_overlap.sql`
 changes the server overlap checker used by session creation and relayout to
