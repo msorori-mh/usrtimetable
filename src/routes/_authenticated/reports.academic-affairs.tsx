@@ -20,11 +20,14 @@ import {
 } from "@/components/reports/report-section";
 import { filterRowsBySearch } from "@/lib/reports/search";
 import { listTeachingAssignmentWorkspace } from "@/lib/academic-delivery/teaching-assignments-v2-service";
+import { PENDING_SPLIT_AR } from "@/lib/existing-schedules/presentation";
+import { facultyWorkflow } from "@/lib/instructors/faculty-workflow";
 import { fetchAcademicTerms } from "@/lib/reports/queries/version-queries";
 import {
   ACADEMIC_REPORT_HEADERS,
   ACADEMIC_REPORT_TITLES,
   buildAcademicReport,
+  homeRosterInstructors,
   isWorkloadReport,
   parseAcademicReportKind,
   selectWorkloadReportRows,
@@ -116,9 +119,9 @@ function MemberCell({ row }: { row: AcademicReportRow }) {
   return (
     <div className="min-w-[170px] space-y-0.5 leading-5">
       <div className="font-semibold">{valueText(row.instructor)}</div>
-      {row.employee_number && row.employee_number !== "—" && (
+      {row.university_number && row.university_number !== "—" && (
         <div className="text-[11px] tabular-nums text-muted-foreground">
-          الرقم الوظيفي: {valueText(row.employee_number)}
+          الرقم الجامعي: {valueText(row.university_number)}
         </div>
       )}
       {meta.length > 0 && (
@@ -179,13 +182,15 @@ function BalanceCell({ row, kind }: { row: AcademicReportRow; kind: AcademicRepo
         ? `عجز ${hourText(row.deficit)}`
         : pending !== null && pending > 0
           ? `تدريس مشترك بانتظار التوزيع: ${hourText(pending)}`
-          : overload !== null && overload > 0
-            ? `زائد ${hourText(overload)}`
-            : deficit !== null && deficit > 0
-              ? `عجز ${hourText(deficit)}`
-              : overload !== null && deficit !== null
-                ? "متوازن"
-                : "غير محدد";
+          : row.status === PENDING_SPLIT_AR
+            ? PENDING_SPLIT_AR
+            : overload !== null && overload > 0
+              ? `زائد ${hourText(overload)}`
+              : deficit !== null && deficit > 0
+                ? `عجز ${hourText(deficit)}`
+                : overload !== null && deficit !== null
+                  ? "متوازن"
+                  : "غير محدد";
   return (
     <div className="min-w-[145px] space-y-1 leading-5">
       <div className="font-semibold">{focus}</div>
@@ -393,6 +398,7 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
   const navigate = Route.useNavigate();
   const setKind = (value: AcademicReportKind) => {
     setLoadStatus("all");
+    setInstructorId("all");
     void navigate({ search: { report: value, termId: chosenTerm || undefined } });
   };
   const workloadReport = isWorkloadReport(kind);
@@ -407,45 +413,74 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
   const references = useQuery({
     queryKey: ["academic-affairs-references", collegeId],
     queryFn: async () => {
-      const [terms, departments, programs, instructors] = await Promise.all([
-        fetchAcademicTerms(collegeId),
-        readAll<{ id: string; name: string }>((from, to) =>
-          supabase
-            .from("departments")
-            .select("id, name")
-            .eq("college_id", collegeId)
-            .order("id")
-            .range(from, to),
-        ),
-        readAll<AcademicProgram>((from, to) =>
-          supabase
-            .from("academic_programs")
-            .select("id, name, department_id")
-            .eq("college_id", collegeId)
-            .order("id")
-            .range(from, to),
-        ),
-        readAll<AcademicInstructor>((from, to) =>
-          supabase
-            .from("instructors")
-            .select(
-              "id, full_name, employee_number, academic_rank, administrative_position, department_id, max_weekly_hours, administrative_release_hours",
-            )
-            .eq("college_id", collegeId)
-            .order("id")
-            .range(from, to),
-        ),
-      ]);
-      return { terms, departments, programs, instructors };
+      const [terms, departments, programs, operationalInstructors, homeRoster, pendingRoster] =
+        await Promise.all([
+          fetchAcademicTerms(collegeId),
+          readAll<{ id: string; name: string }>((from, to) =>
+            supabase
+              .from("departments")
+              .select("id, name")
+              .eq("college_id", collegeId)
+              .order("id")
+              .range(from, to),
+          ),
+          readAll<AcademicProgram>((from, to) =>
+            supabase
+              .from("academic_programs")
+              .select("id, name, department_id")
+              .eq("college_id", collegeId)
+              .order("id")
+              .range(from, to),
+          ),
+          readAll<AcademicInstructor>((from, to) =>
+            supabase
+              .from("instructors")
+              .select(
+                "id, full_name, employee_number, academic_rank, administrative_position, department_id, max_weekly_hours, administrative_release_hours",
+              )
+              .eq("college_id", collegeId)
+              .order("id")
+              .range(from, to),
+          ),
+          facultyWorkflow
+            .rpc("get_college_faculty_roster", {
+              p_college_id: collegeId,
+              p_scope: "home",
+            })
+            .then(({ data, error }) => {
+              if (error) throw new Error(error.message);
+              if (!Array.isArray(data)) throw new Error("تعذر قراءة أعضاء الكلية الأصلية");
+              return data;
+            }),
+          facultyWorkflow
+            .rpc("get_college_faculty_roster", {
+              p_college_id: collegeId,
+              p_scope: "pending",
+            })
+            .then(({ data, error }) => {
+              if (error) throw new Error(error.message);
+              if (!Array.isArray(data)) throw new Error("تعذر قراءة التبعيات المعلقة");
+              return data;
+            }),
+        ]);
+      return {
+        terms,
+        departments,
+        programs,
+        operationalInstructors,
+        homeInstructors: homeRosterInstructors(homeRoster, collegeId),
+        pendingAffiliationCount: pendingRoster.length,
+      };
     },
   });
   const refs = references.data;
+  const reportInstructors = workloadReport ? refs?.homeInstructors : refs?.operationalInstructors;
   const termId = refs?.terms.some((t) => t.id === chosenTerm)
     ? chosenTerm
     : (refs?.terms[0]?.id ?? "");
   const term = refs?.terms.find((t) => t.id === termId);
   const report = useQuery({
-    queryKey: ["academic-affairs-data", collegeId, termId, workloadReport, refs?.instructors],
+    queryKey: ["academic-affairs-data", collegeId, termId, workloadReport, reportInstructors],
     enabled: !!refs && !!termId,
     queryFn: async () => {
       const workspace = await listTeachingAssignmentWorkspace({
@@ -456,7 +491,7 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
         throw new Error("تعذر تحميل الإسناد التدريسي");
       const workloads: AcademicWorkload[] = [];
       if (workloadReport) {
-        const instructors = refs!.instructors;
+        const instructors = reportInstructors ?? [];
         for (let offset = 0; offset < instructors.length; offset += 6) {
           workloads.push(
             ...(await Promise.all(
@@ -484,6 +519,7 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
           scope: { collegeId, termId, departmentId, programId, instructorId },
           ...refs,
           ...report.data,
+          instructors: reportInstructors ?? [],
         }
       : null;
   const sourceRows = input ? buildAcademicReport(input, workloadReport ? "workload" : kind) : [];
@@ -515,7 +551,8 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
     `الفصل: ${term?.name ?? "غير محدد"}`,
     `القسم: ${refs?.departments.find((d) => d.id === departmentId)?.name ?? "الكل"}`,
     `البرنامج: ${refs?.programs.find((p) => p.id === programId)?.name ?? "الكل"}`,
-    `عضو هيئة التدريس: ${refs?.instructors.find((i) => i.id === instructorId)?.full_name ?? "الكل"}`,
+    `عضو هيئة التدريس: ${reportInstructors?.find((i) => i.id === instructorId)?.full_name ?? "الكل"}`,
+    workloadReport ? "التبعية: الكلية الأصلية" : "",
     search.trim() ? `بحث: ${search.trim()}` : "",
     kind === "workload"
       ? `الحالة: ${loadStatus === "overload" ? "ساعات زائدة" : loadStatus === "deficit" ? "نقص النصاب" : loadStatus === "missing" ? "بلا نصاب معتمد" : "الكل"}`
@@ -656,7 +693,7 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
                 onChange={setInstructorId}
                 items={[
                   { id: "all", name: "كل أعضاء هيئة التدريس" },
-                  ...(refs?.instructors.map((i) => ({
+                  ...(reportInstructors?.map((i) => ({
                     id: i.id,
                     name: i.full_name,
                   })) ?? []),
@@ -688,11 +725,20 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
           )}
           {workloadReport && (
             <Card className="p-3 text-sm">
-              يُعتمد النصاب المسجَّل في بطاقة عضو هيئة التدريس، وتُستخدم سياسة الرتبة عند غيابه.
-              النصاب الفعلي = النصاب الأساسي − ساعات الإعفاء الإداري. تُسمح بساعات زائدة لا تتجاوز
-              12 ساعة أسبوعيًا، وتُقارَن به الساعات المسندة في الكلية خلال الفصل، مع إظهار إشراف
-              المشاريع منفصلاً. عند عدم وجود نصاب معتمد تظهر «غير محدد» في النصاب والزيادة والنقص،
-              ولا تُعامل كصفر ولا تدخل في المجاميع.
+              يضم الكشف أعضاء هيئة التدريس الذين اعتُمدت تبعيتهم الأصلية لهذه الكلية. يُعتمد نصاب
+              الكلية الأصلية بعد خصم الإعفاء الإداري؛ وعند غياب اعتماده تظهر «غير محدد». تُسمح
+              بساعات زائدة لا تتجاوز 12 ساعة أسبوعيًا، وتُقارَن به ساعات التدريس المسندة للعضو على
+              مستوى الجامعة خلال الفصل المناظر في الكليات، مع إظهار إشراف المشاريع منفصلاً. عند عدم
+              وجود نصاب معتمد تظهر «غير محدد» في النصاب والزيادة والنقص، ولا تُعامل كصفر ولا تدخل في
+              المجاميع.
+              {(refs?.pendingAffiliationCount ?? 0) > 0 && (
+                <span className="mt-2 block">
+                  {`${refs?.pendingAffiliationCount} عضواً تبعيتهم الأصلية غير محسومة؛ لا يُصنّفون ضمن نصاب أي كلية حتى تسوية التبعية.`}{" "}
+                  <Link to="/instructors" className="underline">
+                    مراجعة التبعية في صفحة المحاضرين
+                  </Link>
+                </span>
+              )}
               {incompleteMembers > 0 && (
                 <span className="mt-2 block">
                   {`${incompleteMembers} عضواً بانتظار استكمال النصاب أو توزيع التدريس المشترك؛ استُبعدوا من مجاميع الزيادة والنقص.`}{" "}
@@ -708,8 +754,8 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
               {kind === "overload"
                 ? "يعرض هذا الكشف أصحاب الساعات الزائدة فقط، مرتبين من الأعلى إلى الأقل."
                 : "يعرض هذا الكشف نقص نصاب أعضاء هيئة التدريس فقط، ويشمل من لم تُسند لهم ساعات. لا يمثل عجز تغطية المقررات."}{" "}
-              الحساب أسبوعي ضمن الكلية والفصل المختارين؛ تصفية البرنامج تختار الأعضاء وتحافظ على
-              كامل عبئهم في الكلية.
+              الحساب أسبوعي لأعضاء الكلية الأصلية خلال الفصل المناظر على مستوى الجامعة؛ تصفية
+              البرنامج تختار الأعضاء وتحافظ على كامل عبئهم التدريسي.
             </Card>
           )}
           {kind === "shortages" && (
