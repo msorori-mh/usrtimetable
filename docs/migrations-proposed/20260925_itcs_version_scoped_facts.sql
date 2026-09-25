@@ -292,4 +292,36 @@ $body$;
 REVOKE ALL ON FUNCTION public.effective_schedule_group_fact(uuid,uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.effective_schedule_group_fact(uuid,uuid) TO authenticated,service_role;
 
+-- Batch read for the timetable workspace. A scoped cohort without a fact is
+-- an error, while unrelated cohorts keep their existing global read path.
+CREATE FUNCTION public.schedule_version_cohort_facts(p_version uuid, p_cohorts uuid[])
+RETURNS TABLE(cohort_id uuid, scheduling_headcount integer, expected_students integer)
+LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path TO 'pg_catalog', 'public', 'schedule_version_delivery_private' AS $body$
+DECLARE v_college uuid;
+BEGIN
+  IF p_cohorts IS NULL OR cardinality(p_cohorts) > 100 THEN
+    RAISE EXCEPTION 'VERSION_FACT_INVALID_BATCH' USING ERRCODE='23514';
+  END IF;
+  SELECT college_id INTO v_college FROM public.schedule_versions WHERE id=p_version;
+  IF v_college IS NULL OR auth.uid() IS NULL
+     OR NOT public.can_view_college(auth.uid(),v_college) THEN
+    RAISE EXCEPTION 'VERSION_FACT_FORBIDDEN' USING ERRCODE='42501';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM schedule_version_delivery_private.scope s
+    LEFT JOIN schedule_version_delivery_private.cohort_facts f
+      ON f.version_id=s.version_id AND f.cohort_id=s.cohort_id
+    WHERE s.version_id=p_version AND s.cohort_id=ANY(p_cohorts) AND f.cohort_id IS NULL
+  ) THEN
+    RAISE EXCEPTION 'VERSION_COHORT_FACT_MISSING' USING ERRCODE='23514';
+  END IF;
+  RETURN QUERY SELECT f.cohort_id,f.scheduling_headcount,f.expected_students
+    FROM schedule_version_delivery_private.cohort_facts f
+    WHERE f.version_id=p_version AND f.cohort_id=ANY(p_cohorts);
+END;
+$body$;
+REVOKE ALL ON FUNCTION public.schedule_version_cohort_facts(uuid,uuid[]) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.schedule_version_cohort_facts(uuid,uuid[]) TO authenticated,service_role;
+
 COMMIT;
