@@ -28,6 +28,7 @@ import {
 import { PLAN_COMPONENT_ROOM_TYPE_MISSING_BLOCKER } from "@/lib/academic-delivery/plan-component-room-type-readiness";
 import { fetchStudyPlanReadiness } from "@/lib/academic-delivery/fetch-study-plan-readiness";
 import { roomCapacityReadinessMetrics } from "@/lib/reports/room-capacity-readiness";
+import { fetchActionableScheduleVersionIds } from "@/lib/reports/readiness";
 
 export const Route = createFileRoute("/_authenticated/data-readiness")({
   head: () => ({ meta: [{ title: "جاهزية البيانات" }] }),
@@ -86,7 +87,10 @@ function withCollegeScope<T extends { eq: (column: string, value: string) => T }
 
 // A1.5: New Flow readiness signals (cohort/DG/TA V2) — fail-closed; any schema
 // gap degrades to one informational metric instead of breaking the dashboard.
-async function fetchNewFlowMetrics(collegeId: string): Promise<Metric[]> {
+async function fetchNewFlowMetrics(
+  collegeId: string,
+  scheduleVersionIds: string[],
+): Promise<Metric[]> {
   try {
     const [cohorts, deliveryGroups, dgAssignments, sessionIdentity] = await Promise.all([
       supabase.from("academic_cohorts").select("id, active").eq("college_id", collegeId),
@@ -105,7 +109,8 @@ async function fetchNewFlowMetrics(collegeId: string): Promise<Metric[]> {
       supabase
         .from("schedule_sessions")
         .select("id, cohort_id, delivery_group_id")
-        .eq("college_id", collegeId),
+        .eq("college_id", collegeId)
+        .in("schedule_version_id", scheduleVersionIds),
     ]);
     if (cohorts.error || deliveryGroups.error || dgAssignments.error || sessionIdentity.error) {
       return [
@@ -167,6 +172,7 @@ async function fetchNewFlowMetrics(collegeId: string): Promise<Metric[]> {
 }
 
 async function fetchReadiness(collegeId: string) {
+  const scheduleVersionIds = await fetchActionableScheduleVersionIds(collegeId);
   const scope = <T extends { eq: (column: string, value: string) => T }>(query: T) =>
     withCollegeScope(query, collegeId);
 
@@ -209,7 +215,8 @@ async function fetchReadiness(collegeId: string) {
     scope(
       supabase
         .from("schedule_sessions")
-        .select("id, room_id, start_time, end_time, day_of_week", { count: "exact" }),
+        .select("id, room_id, start_time, end_time, day_of_week", { count: "exact" })
+        .in("schedule_version_id", scheduleVersionIds),
     ),
     scope(supabase.from("room_types").select("id, default_capacity, name_ar")),
     scope(supabase.from("instructor_availability").select("instructor_id")),
@@ -331,7 +338,7 @@ async function fetchReadiness(collegeId: string) {
   ];
 
   // A1.5: New Flow cohort/DG/TA V2 readiness (fail-closed, additive).
-  sch.push(...(await fetchNewFlowMetrics(collegeId)));
+  sch.push(...(await fetchNewFlowMetrics(collegeId, scheduleVersionIds)));
 
   const score = (items: Metric[]): number | null => {
     const denom = items.reduce((s, m) => s + (m.total || 0), 0);
