@@ -93,12 +93,25 @@ reviewable readiness report. Any failed assertion rolls back the whole stage.
 
 ## Current decision
 
-`HOLD` for production Stage 2 and Stage 3. The disposable PostgreSQL fixture
-checks V2 immutability, cross-college denial, a frozen shared partner and
-distinct draft counts. The map validator checks 466 students and six matched
-lecturer placements. This is not a production schema match. Server freshness,
-assignment and shared lecture guards, timetable generation, group editors and
-all remaining report views still need version-aware integration. The existing
-global instructor-hour cap needs a narrowly scoped implementation of the
-authorized exception for these assignments. Apply neither migration nor
-new draft counts until those checks pass against a matching database.
+`PASS` for Stage 1 and the schema/seed portion of Stage 2 on the live
+database, 25 September 2026. Both SQL files under
+`docs/migrations-proposed` were executed as separate transactions after
+successful rollback-only runs against the same database. Postverification
+found five immutable baseline rows, all five full V2 digests matching 275
+published sessions, ten version/cohort scope rows, 94 group facts, 26
+partition facts, 156 memberships, 12 shared links and 14 frozen partner
+group facts. V2 and the draft still each have 275 sessions and 420 scoped
+students, and the five global enrollment counts still sum to 420. A real
+ITCS viewer read the new data as `authenticated`; an authenticated user
+outside the college received no baseline rows and a forbidden RPC response.
+The focused disposable PostgreSQL checks and general repository CI passed.
+
+`HOLD` for the remaining Stage 2 application/server integration and Stage 3
+draft reconciliation. Server freshness, assignment and shared lecture
+guards, timetable generation, group editors and other report paths still
+need version-aware integration. The existing global instructor-hour cap
+needs a narrowly scoped implementation of the authorized exception for
+these assignments. Do not update draft counts or add six sessions yet.
+Because the two schema transactions were applied directly while this
+branch remains a draft PR, reconcile them with the tracked migration
+history before merging or deploying the application code.
