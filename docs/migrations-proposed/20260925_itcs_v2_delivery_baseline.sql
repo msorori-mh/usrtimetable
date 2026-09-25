@@ -11,6 +11,7 @@ CREATE TABLE public.schedule_version_delivery_baselines (
   captured_at timestamptz NOT NULL DEFAULT now(),
   published_session_count integer NOT NULL CHECK (published_session_count >= 0),
   published_session_digest text NOT NULL,
+  published_version_digest text NOT NULL,
   payload jsonb NOT NULL CHECK (jsonb_typeof(payload) = 'object'),
   payload_digest text NOT NULL,
   PRIMARY KEY (schedule_version_id, cohort_id),
@@ -69,6 +70,7 @@ DECLARE
   v_payload jsonb;
   v_count integer;
   v_digest text;
+  v_version_digest text;
 BEGIN
   -- The lock prevents an enrollment/group writer racing the snapshot.
   LOCK TABLE public.academic_cohorts, public.scheduling_cohort_term_headcounts,
@@ -82,6 +84,9 @@ BEGIN
   IF NOT FOUND OR (SELECT count(*) FROM public.schedule_sessions WHERE schedule_version_id = v_version) <> 275 THEN
     RAISE EXCEPTION 'ITCS_V2_PUBLISHED_BASELINE_CHANGED' USING ERRCODE = '23514';
   END IF;
+  SELECT md5(coalesce(string_agg(to_jsonb(s)::text, '|' ORDER BY s.id), ''))
+    INTO v_version_digest
+  FROM public.schedule_sessions s WHERE s.schedule_version_id=v_version;
 
   FOR r IN
     SELECT c.*, expected.old_count
@@ -152,8 +157,9 @@ BEGIN
 
     INSERT INTO public.schedule_version_delivery_baselines
       (schedule_version_id, cohort_id, college_id, published_session_count,
-       published_session_digest, payload, payload_digest)
-    VALUES (v_version, r.id, v_college, v_count, v_digest, v_payload, md5(v_payload::text));
+       published_session_digest, published_version_digest, payload, payload_digest)
+    VALUES (v_version, r.id, v_college, v_count, v_digest,
+            v_version_digest, v_payload, md5(v_payload::text));
   END LOOP;
   IF (SELECT count(*) FROM public.schedule_version_delivery_baselines
       WHERE schedule_version_id = v_version) <> 5 THEN
