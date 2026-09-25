@@ -107,7 +107,25 @@ interface NewFlowSignals {
   approvedHeadcounts: { cohort_id: string; term_id: string }[];
 }
 
-async function fetchNewFlowSignals(collegeId: string): Promise<NewFlowSignals | null> {
+/** Historical and disposable versions must not create current scheduling gaps. */
+export async function fetchActionableScheduleVersionIds(collegeId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("schedule_versions")
+    .select("id")
+    .eq("college_id", collegeId)
+    .in("status", ["draft", "review", "approved", "published"])
+    .eq("disposable_test", false);
+  if (error) throw new Error(`READINESS_QUERY_FAILED[schedule_versions]: ${error.message}`);
+  // PostgREST rejects an empty IN list. This reserved UUID matches no version.
+  return data?.length
+    ? data.map((version) => version.id)
+    : ["00000000-0000-0000-0000-000000000000"];
+}
+
+async function fetchNewFlowSignals(
+  collegeId: string,
+  scheduleVersionIds: string[],
+): Promise<NewFlowSignals | null> {
   try {
     const [cohorts, deliveryGroups, dgAssignments, sessionIdentity, approvedHeadcounts] =
       await Promise.all([
@@ -127,7 +145,8 @@ async function fetchNewFlowSignals(collegeId: string): Promise<NewFlowSignals | 
         supabase
           .from("schedule_sessions")
           .select("id, cohort_id, delivery_group_id")
-          .eq("college_id", collegeId),
+          .eq("college_id", collegeId)
+          .in("schedule_version_id", scheduleVersionIds),
         // Generated client types can lag a source-only migration; runtime errors
         // are still checked and thrown below.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -217,6 +236,7 @@ export function newFlowReadinessMetrics(signals: NewFlowSignals | null): Readine
 
 /** College-level readiness checks (read-only). Same logic as /data-readiness dashboard. */
 export async function fetchCollegeReadiness(collegeId: string): Promise<ReadinessData> {
+  const scheduleVersionIds = await fetchActionableScheduleVersionIds(collegeId);
   const [courses, planCourses, instructors, rooms, offerings, assignments, sessions, roomTypes] =
     await Promise.all([
       supabase
@@ -249,7 +269,8 @@ export async function fetchCollegeReadiness(collegeId: string): Promise<Readines
       supabase
         .from("schedule_sessions")
         .select("id, room_id, start_time, end_time, day_of_week", { count: "exact" })
-        .eq("college_id", collegeId),
+        .eq("college_id", collegeId)
+        .in("schedule_version_id", scheduleVersionIds),
       supabase
         .from("room_types")
         .select("id, default_capacity, name_ar, code")
@@ -355,7 +376,7 @@ export async function fetchCollegeReadiness(collegeId: string): Promise<Readines
 
   // A1.5: New Flow cohort/DG/TA V2 readiness — separate fail-closed fetch so a
   // partially-applied V2 schema degrades to an informational note, never a crash.
-  const newFlowSignals = await fetchNewFlowSignals(collegeId);
+  const newFlowSignals = await fetchNewFlowSignals(collegeId, scheduleVersionIds);
   scheduling.push(...newFlowReadinessMetrics(newFlowSignals));
 
   // ROOM-TIME-CAPACITY-READINESS-01 — physical weekly room-hours feasibility.
