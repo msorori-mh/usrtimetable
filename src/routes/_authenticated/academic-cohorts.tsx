@@ -189,7 +189,11 @@ function AcademicCohortsWorkspace() {
     },
   });
 
-  const { data: versions, isLoading: versionsLoading, error: versionsError } = useQuery({
+  const {
+    data: versions,
+    isLoading: versionsLoading,
+    error: versionsError,
+  } = useQuery({
     queryKey: ["cohort-directory-versions", active?.id],
     enabled: !!active,
     queryFn: async () => {
@@ -370,14 +374,14 @@ function AcademicCohortsWorkspace() {
             dataset={() =>
               cohortsExportDataset({
                 rows: filteredCohorts.map((row) =>
-                  versionFacts?.has(row.id)
-                    ? { ...row, count_status: "version_scoped" }
-                    : row,
+                  versionFacts?.has(row.id) ? { ...row, count_status: "version_scoped" } : row,
                 ),
                 collegeName: active?.name ?? null,
                 systemLabel: (v) => COHORT_SYSTEM_LABELS[v ?? ""] ?? v ?? "",
                 countStatusLabel: (v) =>
-                  v === "version_scoped" ? "حسب نسخة الجدول" : (COHORT_COUNT_LABELS[v ?? ""] ?? v ?? ""),
+                  v === "version_scoped"
+                    ? "حسب نسخة الجدول"
+                    : (COHORT_COUNT_LABELS[v ?? ""] ?? v ?? ""),
                 filters: activeFilters([
                   { label: "نسخة الجدول", value: selectedVersion?.name ?? "السجل العام" },
                   { label: "البحث", value: filters.search },
@@ -627,7 +631,9 @@ function AcademicCohortsWorkspace() {
                         <p className="font-semibold leading-relaxed">{c.programName}</p>
                         <p className="text-sm">
                           {c.levelName}{" "}
-                          <span className="text-muted-foreground">· دخول {formatCohortEntryYear(c.entry_year)}</span>
+                          <span className="text-muted-foreground">
+                            · دخول {formatCohortEntryYear(c.entry_year)}
+                          </span>
                         </p>
                         <p className="text-xs leading-relaxed text-muted-foreground">
                           {c.termName}
@@ -749,7 +755,9 @@ function AcademicCohortsWorkspace() {
                     </div>
                     <div>
                       <dt className="text-muted-foreground">سنة الدخول</dt>
-                      <dd className="mt-1 font-medium">{formatCohortEntryYear(selected.entry_year)}</dd>
+                      <dd className="mt-1 font-medium">
+                        {formatCohortEntryYear(selected.entry_year)}
+                      </dd>
                     </div>
                     <div className="min-w-0">
                       <dt className="text-muted-foreground">رمز الدفعة</dt>
@@ -853,8 +861,8 @@ function AcademicCohortsWorkspace() {
                   </div>
                   {versionFacts?.has(selected.id) && (
                     <p className="border-b bg-muted/30 px-4 py-2 text-xs text-muted-foreground">
-                      هذه قائمة المجموعات في السجل العام. راجع جدول النسخة المختارة لأعداد
-                      مجموعاتها وتوزيع محاضراتها المعتمد.
+                      هذه قائمة المجموعات في السجل العام. راجع جدول النسخة المختارة لأعداد مجموعاتها
+                      وتوزيع محاضراتها المعتمد.
                     </p>
                   )}
                   {groupsError ? (
