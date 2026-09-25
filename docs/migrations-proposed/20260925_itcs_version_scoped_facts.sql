@@ -199,7 +199,15 @@ BEGIN
      OR (SELECT count(*) FROM public.schedule_version_delivery_baselines
          WHERE schedule_version_id=v_published) <> 5
      OR (SELECT count(*) FROM public.schedule_sessions WHERE schedule_version_id=v_published) <> 275
-     OR (SELECT count(*) FROM public.schedule_sessions WHERE schedule_version_id=v_draft) <> 275 THEN
+     OR (SELECT count(*) FROM public.schedule_sessions WHERE schedule_version_id=v_draft) <> 275
+     OR EXISTS (
+       SELECT 1 FROM public.schedule_version_delivery_baselines b
+       WHERE b.schedule_version_id=v_published
+         AND b.published_version_digest IS DISTINCT FROM (
+           SELECT md5(coalesce(string_agg(to_jsonb(s)::text, '|' ORDER BY s.id), ''))
+           FROM public.schedule_sessions s WHERE s.schedule_version_id=v_published
+         )
+     ) THEN
     RAISE EXCEPTION 'ITCS_VERSION_FACT_BASELINE_CHANGED' USING ERRCODE='23514';
   END IF;
 
