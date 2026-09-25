@@ -98,9 +98,13 @@ function DataLine({
   strong?: boolean;
 }) {
   return (
-    <div className="flex items-baseline justify-between gap-3 leading-5">
-      <span className="text-[11px] text-muted-foreground">{label}</span>
-      <span className={strong ? "font-semibold tabular-nums" : "tabular-nums"}>
+    <div className="flex items-baseline justify-start gap-2 leading-5">
+      <span className="whitespace-nowrap text-xs text-muted-foreground">{label}</span>
+      <span
+        className={
+          strong ? "whitespace-nowrap font-semibold tabular-nums" : "whitespace-nowrap tabular-nums"
+        }
+      >
         {valueText(value)}
       </span>
     </div>
