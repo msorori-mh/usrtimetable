@@ -65,6 +65,28 @@ for (const group of [...plan.existing_group_changes, ...plan.new_groups]) {
   assert.ok(expected > 0 && expected <= (group.capacity ?? group.capacity_limit), groupKey(group));
   for (const code of group.partitions) assert.ok(partitionCounts.has(code), code);
 }
+const byComponent = new Map();
+for (const group of [...plan.existing_group_changes, ...plan.new_groups]) {
+  const key = [group.cohort_code, group.component_id].join(":");
+  byComponent.set(key, [...(byComponent.get(key) ?? []), group]);
+}
+for (const [key, componentGroups] of byComponent) {
+  const cohortCount = counts.get(componentGroups[0].cohort_code).newCount;
+  const capacity = componentGroups[0].capacity ?? componentGroups[0].capacity_limit;
+  const expectedGroups = Math.ceil(cohortCount / capacity);
+  assert.equal(componentGroups.length, expectedGroups, key);
+  assert.equal(
+    componentGroups.reduce((total, group) => total + (group.new ?? group.expected_students), 0),
+    cohortCount,
+    key,
+  );
+  const base = Math.floor(cohortCount / expectedGroups);
+  const remainder = cohortCount % expectedGroups;
+  for (const group of componentGroups) {
+    const ordinal = Number(group.group_code.slice(1));
+    assert.equal(group.new ?? group.expected_students, base + Number(ordinal <= remainder), key);
+  }
+}
 
 const assignments = new Map(
   plan.new_assignments.map((assignment) => [groupKey(assignment), assignment]),
