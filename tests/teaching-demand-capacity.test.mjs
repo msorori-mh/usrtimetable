@@ -262,4 +262,9 @@ test("lecture rooms and labs have separate counts and available hours", () => {
   assert.equal(unknown.labRooms, null);
   assert.equal(unknown.hallAvailableHours, null);
   assert.equal(unknown.status, "partial");
+  const [blankCode] = buildLeadershipRoomCapacity([scopedCollege], {
+    ...sources,
+    roomTypes: [sources.roomTypes[0], { ...sources.roomTypes[1], code: "   " }],
+  });
+  assert.equal(blankCode.rooms.find((room) => room.id === "lab").category, null);
 });
