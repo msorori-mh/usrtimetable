@@ -191,7 +191,7 @@ function Page() {
         versionId: ctx.versionId!,
         studySystem: "all",
       });
-      const expanded = (await fetchStudentPrintMemberships(hydrated, ctx.collegeId!)).filter(
+      const expanded = (await fetchStudentPrintMemberships(hydrated, ctx.collegeId!, ctx.versionId!)).filter(
         (row) =>
           effectiveStudySystem === "all" ||
           row.study_system === "both" ||

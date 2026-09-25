@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { readAllReportRows } from "@/lib/reports/read-all";
+import { fetchVersionStudentMemberships } from "@/lib/academic-delivery/version-student-memberships";
 import type { WorkspaceSessionHydratedRow } from "../schedule-builder/session-hydrate";
 import { expandStudentPrintMemberships } from "./student-memberships";
 
@@ -7,18 +8,13 @@ import { expandStudentPrintMemberships } from "./student-memberships";
 export async function fetchStudentPrintMemberships(
   rows: WorkspaceSessionHydratedRow[],
   collegeId: string,
+  versionId: string,
 ): Promise<WorkspaceSessionHydratedRow[]> {
   if (!rows.length) return [];
   const [members, cohorts, programs, levels, departments] = await Promise.all([
-    readAllReportRows((from, to) =>
-      supabase
-        .from("operational_group_members")
-        .select("delivery_group_id,cohort_id")
-        .eq("college_id", collegeId)
-        .eq("partition_active", true)
-        .order("id")
-        .order("delivery_group_id")
-        .range(from, to),
+    fetchVersionStudentMemberships(
+      versionId,
+      rows.map((row) => row.delivery_group_id).filter((id): id is string => !!id),
     ),
     readAllReportRows((from, to) =>
       supabase

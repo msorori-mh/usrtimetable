@@ -64,6 +64,16 @@ new facts. Reject cross-college and cross-version references at the database
 boundary, and keep RLS for college view/manage roles. Do not disable existing
 triggers or bypass foreign keys.
 
+Stage 2b proposal: `docs/migrations-proposed/20260925_itcs_version_scoped_memberships.sql`
+captures shared partner partition memberships before any draft data change.
+Its selected-version RPC returns cohort identities, partition sizes and the
+effective group size, including shared-lecture members. The branch now uses
+this RPC for client student-conflict checks, generation partition checks and
+student print copies. The disposable database fixture deliberately changes
+draft partitions and global partner metadata, then verifies V2 still resolves
+its original membership. Stage 2b has not been applied to the live database
+and its client code has not been deployed.
+
 Exit gate: old and new versions give distinct 420/466 results while their
 session IDs/placements and V2 baseline digest stay unchanged; unauthorized
 writes and incomplete facts fail closed. Test other colleges' timetables and
@@ -118,7 +128,7 @@ time. This is a point-in-time preflight and must be rerun at the draft write.
 
 `HOLD` for the remaining Stage 2 application/server integration and Stage 3
 draft reconciliation. Server freshness, assignment and shared lecture
-guards, timetable generation, group editors and other report paths still
+guards, generation writes, group editors and other report paths still
 need version-aware integration. The existing global instructor-hour cap
 needs a narrowly scoped implementation of the authorized exception for
 these assignments. Do not update draft counts or add six sessions yet.

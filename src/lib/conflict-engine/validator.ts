@@ -179,15 +179,23 @@ export async function validateProposed(params: {
   );
   if (intakeError) throw intakeError;
 
-  const memberships = sessions.some((s) => s.delivery_group_id)
-    ? await fetchStudentMembershipIndex(collegeId)
-    : null;
-
   // Pull existing peers
   const existing = await fetchExistingSessions(collegeId, scheduleVersionId);
   const peers = existing.filter(
     (e) => !(params.excludeExistingSessionIds ?? []).includes(e.id),
   );
+  const memberships = sessions.some((s) => s.delivery_group_id)
+    ? await fetchStudentMembershipIndex(
+        scheduleVersionId,
+        [
+          ...new Set(
+            [...sessions, ...peers]
+              .map((s) => s.delivery_group_id)
+              .filter((id): id is string => !!id),
+          ),
+        ],
+      )
+    : null;
 
   // Pull rooms + room availability
   const roomIds = Array.from(

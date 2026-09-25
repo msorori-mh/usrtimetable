@@ -28,13 +28,18 @@ CREATE TABLE public.scheduling_cohort_term_headcounts(
   term_id uuid NOT NULL, approval_status text NOT NULL, scheduling_headcount integer NOT NULL
 );
 CREATE TABLE public.cohort_student_partitions(
-  id uuid PRIMARY KEY, cohort_id uuid NOT NULL, partition_code text NOT NULL, headcount integer NOT NULL
+  id uuid PRIMARY KEY, cohort_id uuid NOT NULL, partition_code text NOT NULL,
+  headcount integer NOT NULL, active boolean NOT NULL DEFAULT true
 );
 CREATE TABLE public.delivery_groups(
   id uuid PRIMARY KEY, cohort_id uuid NOT NULL, college_id uuid NOT NULL,
   group_code text NOT NULL, expected_students integer NOT NULL,
   capacity_limit integer
 );
+CREATE FUNCTION public.operational_delivery_group(p_group uuid)
+RETURNS public.delivery_groups LANGUAGE sql STABLE AS $$
+  SELECT g FROM public.delivery_groups g WHERE g.id=p_group
+$$;
 GRANT SELECT ON public.delivery_groups TO authenticated;
 CREATE TABLE public.delivery_group_partition_members(
   id uuid PRIMARY KEY, cohort_id uuid NOT NULL, delivery_group_id uuid NOT NULL, partition_id uuid NOT NULL
@@ -68,7 +73,7 @@ INSERT INTO public.academic_cohorts VALUES
 INSERT INTO public.scheduling_cohort_term_headcounts
   SELECT gen_random_uuid(), id, college_id, term_id, 'approved', expected_students
   FROM public.academic_cohorts;
-INSERT INTO public.cohort_student_partitions
+INSERT INTO public.cohort_student_partitions(id,cohort_id,partition_code,headcount)
   SELECT gen_random_uuid(), id, 'A001', expected_students FROM public.academic_cohorts;
 INSERT INTO public.delivery_groups(id,cohort_id,college_id,group_code,expected_students)
   SELECT gen_random_uuid(), id, college_id, 'G1', expected_students FROM public.academic_cohorts;
@@ -337,6 +342,71 @@ BEGIN
       ARRAY[(SELECT id FROM public.delivery_groups
              WHERE cohort_id='ebfc0dee-f291-4f6d-a974-d3ed1df96f3e')]::uuid[]);
     RAISE EXCEPTION 'cross-college viewer obtained group facts';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+END;
+$assert$;
+RESET ROLE;
+
+-- Exercise selected-version memberships after draft facts diverge. Keep a
+-- published partner frozen even if its global group metadata later changes.
+UPDATE schedule_version_delivery_private.partition_facts SET headcount=140
+WHERE version_id='d68d8d22-9a6d-4f21-935f-cebf18bb969b'
+  AND cohort_id='ebfc0dee-f291-4f6d-a974-d3ed1df96f3e';
+UPDATE schedule_version_delivery_private.partition_facts SET headcount=42
+WHERE version_id='d68d8d22-9a6d-4f21-935f-cebf18bb969b'
+  AND cohort_id='862518d3-7d85-414e-92d2-a4c3feefc2b8';
+\ir ../docs/migrations-proposed/20260925_itcs_version_scoped_memberships.sql
+INSERT INTO public.delivery_groups
+  (id,cohort_id,college_id,group_code,expected_students)
+VALUES ('00000000-0000-0000-0000-000000000099',
+  'ebfc0dee-f291-4f6d-a974-d3ed1df96f3e',
+  '7168345f-cf9d-4789-b2ad-547abb687dc8','NEW-DRAFT-ONLY',1);
+
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+DO $assert$
+DECLARE
+  v_anchor uuid := (SELECT id FROM public.delivery_groups
+    WHERE cohort_id='ebfc0dee-f291-4f6d-a974-d3ed1df96f3e');
+  v_partner uuid := (SELECT id FROM public.delivery_groups
+    WHERE cohort_id='dddddddd-dddd-4ddd-8ddd-dddddddddddd');
+  v_published uuid := '30f8a76d-1cb9-4944-a5d7-483dcaea7692';
+  v_draft uuid := 'd68d8d22-9a6d-4f21-935f-cebf18bb969b';
+BEGIN
+  IF (SELECT sum(partition_headcount) FROM public.schedule_version_student_memberships(
+        v_published,ARRAY[v_anchor])) <> 175
+     OR (SELECT sum(partition_headcount) FROM public.schedule_version_student_memberships(
+        v_draft,ARRAY[v_anchor])) <> 207 THEN
+    RAISE EXCEPTION 'published/draft shared partition coverage leaked';
+  END IF;
+  IF (SELECT sum(partition_headcount) FROM public.schedule_version_student_memberships(
+        v_published,ARRAY[v_partner])) <> 25
+     OR (SELECT expected_students FROM public.schedule_version_student_memberships(
+        v_published,ARRAY[v_partner]) LIMIT 1) <> 25 THEN
+    RAISE EXCEPTION 'published partner depends on global count';
+  END IF;
+  IF (SELECT count(DISTINCT cohort_id) FROM public.schedule_version_student_memberships(
+        v_draft,ARRAY[v_anchor])) <> 3 THEN
+    RAISE EXCEPTION 'shared cohort labels incomplete';
+  END IF;
+  BEGIN
+    PERFORM public.schedule_version_student_memberships(
+      v_published,ARRAY['00000000-0000-0000-0000-000000000099']::uuid[]);
+    RAISE EXCEPTION 'unversioned new group passed the read';
+  EXCEPTION WHEN check_violation THEN NULL;
+  END;
+END;
+$assert$;
+SET request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+DO $assert$
+BEGIN
+  BEGIN
+    PERFORM public.schedule_version_student_memberships(
+      '30f8a76d-1cb9-4944-a5d7-483dcaea7692',
+      ARRAY[(SELECT id FROM public.delivery_groups
+        WHERE cohort_id='ebfc0dee-f291-4f6d-a974-d3ed1df96f3e')]::uuid[]);
+    RAISE EXCEPTION 'outside viewer read membership facts';
   EXCEPTION WHEN insufficient_privilege THEN NULL;
   END;
 END;

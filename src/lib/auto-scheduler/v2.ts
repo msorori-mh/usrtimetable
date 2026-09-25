@@ -3,7 +3,7 @@ import {
   autoScheduleRunStatus,
   type AutoScheduleScope,
 } from "@/lib/auto-scheduler/study-system-scope";
-import { fetchSharedLectures } from "@/lib/academic-delivery/shared-lectures";
+import { fetchVersionStudentMemberships } from "@/lib/academic-delivery/version-student-memberships";
 import { attendanceSearchMessage } from "@/lib/auto-scheduler/attendance-search";
 import { previewCompaction } from "@/lib/auto-scheduler/compact-worker-client";
 import { validateJointPlan } from "@/lib/auto-scheduler/joint-model";
@@ -80,63 +80,42 @@ export const PARTITION_FALLBACK_WARNING_AR =
  * the conservative cohort-wide conflict rule is preserved.
  */
 async function loadPartitionIndex(input: {
-  collegeId: string;
+  versionId: string;
   cohortIds: string[];
   expectedStudents: Record<string, number | null | undefined>;
 }): Promise<{ index: PartitionIndex | null; note: string | null }> {
   if (input.cohortIds.length === 0) return { index: null, note: null };
   try {
-    const links = await fetchSharedLectures(input.collegeId);
-    const { data, error } = await (
-      supabase as unknown as {
-        from: (table: string) => {
-          select: (cols: string) => {
-            in: (
-              col: string,
-              values: string[],
-            ) => Promise<{
-              data: unknown[] | null;
-              error: { message: string } | null;
-            }>;
-          };
-        };
-      }
-    )
-      .from("operational_group_members")
-      .select(
-        "delivery_group_id, cohort_id, partition_id, partition_headcount, partition_active, shared_lecture",
-      )
-      .in("delivery_group_id", Object.keys(input.expectedStudents));
-    if (error) return { index: null, note: PARTITION_FALLBACK_WARNING_AR };
-    const rows: PartitionMembershipRow[] = (data ?? [])
-      .map((raw): PartitionMembershipRow | null => {
-        const row = raw as {
-          delivery_group_id?: string;
-          cohort_id?: string;
-          partition_id?: string;
-          partition_headcount?: number;
-          partition_active?: boolean;
-          shared_lecture?: boolean;
-        };
-        if (row.partition_active === false) return null;
-        return {
-          delivery_group_id: String(row.delivery_group_id ?? ""),
-          cohort_id: String(row.cohort_id ?? ""),
-          partition_id: String(row.partition_id ?? ""),
-          partition_headcount: row.partition_headcount ?? null,
-          shared_lecture: row.shared_lecture,
-        };
-      })
-      .filter((row): row is PartitionMembershipRow => !!row && !!row.delivery_group_id);
+    const members = await fetchVersionStudentMemberships(
+      input.versionId,
+      Object.keys(input.expectedStudents),
+    );
+    const rows: PartitionMembershipRow[] = members.flatMap((m) =>
+      m.partition_id
+        ? [{
+            delivery_group_id: m.delivery_group_id,
+            cohort_id: m.cohort_id,
+            partition_id: m.partition_id,
+            partition_headcount: m.partition_headcount,
+            shared_lecture: m.shared_lecture,
+          }]
+        : [],
+    );
 
     if (rows.length === 0) return { index: null, note: null };
+    const cohortIdsByGroup: Record<string, string[]> = {};
+    for (const member of members) {
+      cohortIdsByGroup[member.delivery_group_id] = [
+        ...new Set([...(cohortIdsByGroup[member.delivery_group_id] ?? []), member.cohort_id]),
+      ];
+    }
     return {
       index: buildPartitionIndex({
         rows,
-        cohortIdsByGroup: Object.fromEntries(
-          links.map((l) => [l.anchor_group_id, [l.anchor_cohort_id, l.cohort_id]]),
+        cohortIdsByGroup,
+        expectedStudents: Object.fromEntries(
+          members.map((m) => [m.delivery_group_id, m.expected_students]),
         ),
-        expectedStudents: input.expectedStudents,
       }),
       note: null,
     };
@@ -466,7 +445,7 @@ export async function runV2AutoSchedule(params: {
       expectedStudentsByGroup[item.delivery_group_id] = item.expected_students;
   }
   const partitions = await loadPartitionIndex({
-    collegeId: params.collegeId,
+    versionId: params.scheduleVersionId,
     cohortIds: Array.from(
       new Set(
         [...workItems, ...planningSessions]
