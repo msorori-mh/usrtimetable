@@ -46,6 +46,7 @@ interface Room {
   code: string;
   name: string;
   room_type: string;
+  room_type_id: string | null;
   capacity: number;
   building: string | null;
   floor: string | null;
@@ -102,10 +103,20 @@ function RoomsPage() {
     mutationFn: async () => {
       if (!active) throw new Error("اختر كلّية");
       if (!form.code.trim() || !form.name.trim()) throw new Error("الرمز والاسم مطلوبان");
+      // Keep the legacy room_type code and the catalog foreign key in sync.
+      // Some legacy categories have no catalog row; clear any stale ID then.
+      const { data: matchingType, error: typeError } = await supabase
+        .from("room_types")
+        .select("id")
+        .eq("college_id", active.id)
+        .eq("code", form.room_type)
+        .maybeSingle();
+      if (typeError) throw typeError;
       const payload = {
         code: form.code.trim(),
         name: form.name.trim(),
         room_type: form.room_type,
+        room_type_id: matchingType?.id ?? null,
         capacity: Number(form.capacity) || 0,
         building: form.building.trim() || null,
         floor: form.floor.trim() || null,
