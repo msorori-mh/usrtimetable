@@ -25,9 +25,10 @@ instructors. Publishing the draft is a separate decision.
 
 Review `docs/migrations-proposed/20260925_itcs_v2_delivery_baseline.sql` in an
 isolated PostgreSQL environment. It creates one tenant scoped, read only
-baseline row per affected V2 cohort. Each row stores the cohort, approved
-headcounts, partitions, groups, membership, shared links and partner groups,
-assignments, offerings and a digest of published sessions. It locks its source
+  baseline row per affected V2 cohort. Each row stores the cohort, approved
+  headcounts, partitions, groups, membership, complete shared-lecture stars
+  and partner groups, assignments, offerings, a cohort session digest and a
+  full published-version session digest. It locks its source
 tables during capture and aborts if the version/status/275 session count, the
 five cohort counts or their approved headcounts changed. No application read
 path is switched in this stage, and no global headcount or draft session is
@@ -43,12 +44,18 @@ cannot run.
 
 Add relational facts keyed by `(schedule_version_id, cohort_id)` and
 `(schedule_version_id, delivery_group_id)` for the draft's cohort and group
-sizes, student partitions, group membership and shared lecture sizes. Seed V2
-from Stage 1 and the draft from the approved redivision map. An explicit scope
+  sizes, student partitions, group membership and shared lecture sizes. Freeze
+  shared partners outside the five edited cohorts as versioned partner facts.
+  Seed V2 and the draft from Stage 1 first; Stage 3 applies the approved
+  redivision map only to the draft. An explicit scope
 row makes a missing fact an error; do not fall back to global values within a
 scoped cohort. Keep existing legacy reads for other versions/cohorts.
 
-Update all versioned readers and writers together: group derivation freshness,
+The proposed SQL supplies tenant checked single and batch reads. The initial
+workspace session and hydrated timetable report readers overlay selected
+version headcounts and group sizes; the SQL migration must precede app
+deployment. Update all remaining versioned readers and writers together:
+group derivation freshness,
 student overlap and shared lecture guards, session insert/move, workload and
 coverage checks, automatic scheduling, timetable/report queries and print
 views. Every read that displays group or cohort size must receive the selected
@@ -69,7 +76,8 @@ instructor/room availability. Apply only the draft facts for the five cohort
 counts and 15 partitions; update 44 group definitions and membership facts;
 add six groups, copy six teaching assignments to the same instructors as the
 corresponding old sessions, then add six sessions from the reviewed placement
-map. All writes and postconditions belong to one transaction. The new draft
+map in `docs/scheduler-repair/itcs-level-one-draft-reconciliation-plan.json`.
+All writes and postconditions belong to one transaction. The new draft
 should contain 281 sessions and an estimated 642 weekly hours.
 
 Check theory ends by 14:00 in ITCS; R13/R14 close at 14:00; the labs accept
@@ -85,7 +93,12 @@ reviewable readiness report. Any failed assertion rolls back the whole stage.
 
 ## Current decision
 
-`HOLD` for Stage 2 and Stage 3 until the Stage 1 migration and the complete
-version aware readers/guards pass a matching PostgreSQL integration test.
-An isolated branch may carry the proposed migration for review; it is not a
-production migration merely because a file exists.
+`HOLD` for production Stage 2 and Stage 3. The disposable PostgreSQL fixture
+checks V2 immutability, cross-college denial, a frozen shared partner and
+distinct draft counts. The map validator checks 466 students and six matched
+lecturer placements. This is not a production schema match. Server freshness,
+assignment and shared lecture guards, timetable generation, group editors and
+all remaining report views still need version-aware integration. The existing
+global instructor-hour cap needs a narrowly scoped implementation of the
+authorized exception for these assignments. Apply neither migration nor
+new draft counts until those checks pass against a matching database.
