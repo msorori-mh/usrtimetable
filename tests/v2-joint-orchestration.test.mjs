@@ -167,7 +167,8 @@ function state() {
               delivery_group_id: id,
               cohort_id: m.cohort_id,
               partition_id: m.partition_id ?? null,
-              partition_headcount: st.snapshot.partitions.find((p) => p.id === m.partition_id)?.headcount ?? null,
+              partition_headcount:
+                st.snapshot.partitions.find((p) => p.id === m.partition_id)?.headcount ?? null,
               shared_lecture: false,
               expected_students: group.expected_students,
             }));

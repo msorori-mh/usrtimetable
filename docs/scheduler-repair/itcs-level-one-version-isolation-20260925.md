@@ -74,6 +74,13 @@ draft partitions and global partner metadata, then verifies V2 still resolves
 its original membership. Stage 2b has not been applied to the live database
 and its client code has not been deployed.
 
+Stage 2c proposal: `docs/migrations-proposed/20260925_itcs_version_scoped_overlap.sql`
+changes the server overlap checker used by session creation and relayout to
+resolve student membership and shared lecture sizes from the selected version.
+It retains conservative overlap when a mapping is incomplete; the fixture
+checks a shared collision and an unrelated cohort on the draft. This function
+also remains uninstalled pending the complete server guard rollout.
+
 Exit gate: old and new versions give distinct 420/466 results while their
 session IDs/placements and V2 baseline digest stay unchanged; unauthorized
 writes and incomplete facts fail closed. Test other colleges' timetables and

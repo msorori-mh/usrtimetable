@@ -49,7 +49,10 @@ CREATE TABLE public.teaching_assignments(id uuid PRIMARY KEY, cohort_id uuid NOT
 CREATE TABLE public.course_offerings(id uuid PRIMARY KEY, expected_students integer NOT NULL);
 CREATE TABLE public.schedule_sessions(
   id uuid PRIMARY KEY, schedule_version_id uuid NOT NULL, cohort_id uuid,
-  course_offering_id uuid NOT NULL
+  course_offering_id uuid NOT NULL, delivery_group_id uuid,
+  day_of_week integer NOT NULL DEFAULT 0,
+  start_time time NOT NULL DEFAULT '07:00',
+  end_time time NOT NULL DEFAULT '08:00'
 );
 
 INSERT INTO public.colleges VALUES ('7168345f-cf9d-4789-b2ad-547abb687dc8');
@@ -99,12 +102,12 @@ WITH numbered AS (
 ), offerings AS (
   SELECT id, row_number() OVER (ORDER BY id) AS n FROM public.course_offerings
 )
-INSERT INTO public.schedule_sessions
+INSERT INTO public.schedule_sessions(id,schedule_version_id,cohort_id,course_offering_id)
 SELECT gen_random_uuid(), '30f8a76d-1cb9-4944-a5d7-483dcaea7692',
   CASE WHEN s.n <= 5 THEN (SELECT id FROM numbered WHERE n = s.n) ELSE NULL END,
   (SELECT id FROM offerings WHERE n = 1)
 FROM generate_series(1,275) AS s(n);
-INSERT INTO public.schedule_sessions
+INSERT INTO public.schedule_sessions(id,schedule_version_id,cohort_id,course_offering_id)
 SELECT gen_random_uuid(), 'd68d8d22-9a6d-4f21-935f-cebf18bb969b', NULL,
   (SELECT id FROM public.course_offerings ORDER BY id LIMIT 1)
 FROM generate_series(1,275);
@@ -357,11 +360,20 @@ UPDATE schedule_version_delivery_private.partition_facts SET headcount=42
 WHERE version_id='d68d8d22-9a6d-4f21-935f-cebf18bb969b'
   AND cohort_id='862518d3-7d85-414e-92d2-a4c3feefc2b8';
 \ir ../docs/migrations-proposed/20260925_itcs_version_scoped_memberships.sql
+\ir ../docs/migrations-proposed/20260925_itcs_version_scoped_overlap.sql
 INSERT INTO public.delivery_groups
   (id,cohort_id,college_id,group_code,expected_students)
 VALUES ('00000000-0000-0000-0000-000000000099',
   'ebfc0dee-f291-4f6d-a974-d3ed1df96f3e',
   '7168345f-cf9d-4789-b2ad-547abb687dc8','NEW-DRAFT-ONLY',1);
+INSERT INTO public.schedule_sessions
+  (id,schedule_version_id,cohort_id,course_offering_id,delivery_group_id,
+   day_of_week,start_time,end_time)
+SELECT gen_random_uuid(),'d68d8d22-9a6d-4f21-935f-cebf18bb969b',
+  g.cohort_id,(SELECT id FROM public.course_offerings LIMIT 1),g.id,
+  0,'08:00','10:00'
+FROM public.delivery_groups g
+WHERE g.cohort_id='862518d3-7d85-414e-92d2-a4c3feefc2b8';
 
 SET ROLE authenticated;
 SET request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
@@ -390,6 +402,16 @@ BEGIN
   IF (SELECT count(DISTINCT cohort_id) FROM public.schedule_version_student_memberships(
         v_draft,ARRAY[v_anchor])) <> 3 THEN
     RAISE EXCEPTION 'shared cohort labels incomplete';
+  END IF;
+  IF jsonb_array_length(public._sb_v2_delivery_group_overlap(
+       v_draft,v_anchor,'ebfc0dee-f291-4f6d-a974-d3ed1df96f3e',
+       0,'08:00','10:00',NULL)) <> 1
+     OR jsonb_array_length(public._sb_v2_delivery_group_overlap(
+       v_draft,(SELECT id FROM public.delivery_groups
+                WHERE cohort_id='f8188b18-207a-4543-a3f7-89b4e8fad293'),
+       'f8188b18-207a-4543-a3f7-89b4e8fad293',
+       0,'08:00','10:00',NULL)) <> 0 THEN
+    RAISE EXCEPTION 'server selected-version student overlap incorrect';
   END IF;
   BEGIN
     PERFORM public.schedule_version_student_memberships(

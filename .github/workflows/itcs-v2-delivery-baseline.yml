@@ -5,6 +5,7 @@ on:
       - 'docs/migrations-proposed/20260925_itcs_v2_delivery_baseline.sql'
       - 'docs/migrations-proposed/20260925_itcs_version_scoped_facts.sql'
       - 'docs/migrations-proposed/20260925_itcs_version_scoped_memberships.sql'
+      - 'docs/migrations-proposed/20260925_itcs_version_scoped_overlap.sql'
       - 'docs/scheduler-repair/itcs-level-one-draft-reconciliation-plan.json'
       - 'tests/itcs-v2-delivery-baseline-db.sql'
       - 'tests/itcs-level-one-plan.mjs'
