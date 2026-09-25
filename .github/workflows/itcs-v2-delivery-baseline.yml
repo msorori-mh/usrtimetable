@@ -4,11 +4,20 @@ on:
     paths:
       - 'docs/migrations-proposed/20260925_itcs_v2_delivery_baseline.sql'
       - 'docs/migrations-proposed/20260925_itcs_version_scoped_facts.sql'
+      - 'docs/scheduler-repair/itcs-level-one-draft-reconciliation-plan.json'
       - 'tests/itcs-v2-delivery-baseline-db.sql'
+      - 'tests/itcs-level-one-plan.mjs'
       - '.github/workflows/itcs-v2-delivery-baseline.yml'
 permissions:
   contents: read
 jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify the six assignments, group partitions and placements
+        run: node tests/itcs-level-one-plan.mjs
   postgres:
     runs-on: ubuntu-latest
     timeout-minutes: 10
