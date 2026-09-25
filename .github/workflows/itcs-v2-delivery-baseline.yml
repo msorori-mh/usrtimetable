@@ -9,6 +9,8 @@ on:
       - 'docs/migrations-proposed/20260925_itcs_version_scoped_guards.sql'
       - 'docs/migrations-proposed/20260925_itcs_version_scoped_writer_integration.sql'
       - 'docs/migrations-proposed/20260925_itcs_exact_hour_waiver.sql'
+      - 'docs/migrations-proposed/20260925_itcs_version_scoped_catalog.sql'
+      - 'docs/migrations-proposed/20260925_itcs_atomic_draft_reconciliation.sql'
       - 'docs/scheduler-repair/itcs-level-one-draft-reconciliation-plan.json'
       - 'tests/itcs-v2-delivery-baseline-db.sql'
       - 'tests/itcs-version-scoped-guards-db.sql'

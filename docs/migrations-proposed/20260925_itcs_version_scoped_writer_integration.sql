@@ -14,7 +14,9 @@ BEGIN
     RAISE EXCEPTION 'VERSION_GUARD_ENSURE_SCOPE_CHANGED';
   END IF;
   IF position('FROM public.operational_delivery_groups dg'||chr(10)||'      WHERE dg.id = ta_dg;' in d)=0
-     OR position('FROM public.operational_delivery_groups dg'||chr(10)||'    WHERE dg.id = NEW.delivery_group_id;' in d)=0 THEN
+     OR position('FROM public.operational_delivery_groups dg'||chr(10)||'    WHERE dg.id = NEW.delivery_group_id;' in d)=0
+     OR position('  v_dg_link_changing boolean;' in d)=0
+     OR position('  IF ic <> NEW.college_id AND NOT EXISTS (' in d)=0 THEN
     RAISE EXCEPTION 'VERSION_GUARD_ENSURE_LOOKUP_CHANGED';
   END IF;
   d:=replace(d,
@@ -26,6 +28,12 @@ BEGIN
   d:=replace(d,
     '(public.operational_delivery_group(NEW.delivery_group_id)).expected_students',
     '(public.operational_delivery_group(NEW.schedule_version_id,NEW.delivery_group_id)).expected_students');
+  -- An existing external lecturer needs no new approval when the only
+  -- change is the selected draft session's student count.
+  d:=replace(d,'  v_dg_link_changing boolean;',
+    E'  v_dg_link_changing boolean;\n  v_existing_instructor_link_unchanged boolean := false;');
+  d:=replace(d,'  IF ic <> NEW.college_id AND NOT EXISTS (',
+    E'  IF TG_OP = ''UPDATE'' THEN\n    v_existing_instructor_link_unchanged :=\n      OLD.instructor_id IS NOT DISTINCT FROM NEW.instructor_id\n      AND OLD.teaching_assignment_id IS NOT DISTINCT FROM NEW.teaching_assignment_id\n      AND OLD.delivery_group_id IS NOT DISTINCT FROM NEW.delivery_group_id\n      AND OLD.cohort_id IS NOT DISTINCT FROM NEW.cohort_id\n      AND OLD.plan_course_component_id IS NOT DISTINCT FROM NEW.plan_course_component_id\n      AND OLD.course_offering_id IS NOT DISTINCT FROM NEW.course_offering_id\n      AND OLD.college_id IS NOT DISTINCT FROM NEW.college_id;\n  END IF;\n  IF ic <> NEW.college_id AND NOT v_existing_instructor_link_unchanged AND NOT EXISTS (');
   EXECUTE d;
 
   signature:='public.create_schedule_session_from_assignment_v2(uuid,uuid,integer,time,time,uuid,timestamptz,text)'::regprocedure;
@@ -53,7 +61,8 @@ BEGIN
   d:=pg_get_functiondef(signature);
   IF position('JOIN public.operational_delivery_groups dg' in d)=0
      OR position('SELECT public.delivery_group_is_current(dg.id) AS is_current' in d)=0
-     OR position('COALESCE(ta.expected_students, dg.expected_students, 0)' in d)=0 THEN
+     OR (position('COALESCE(ta.expected_students, dg.expected_students, 0)' in d)=0
+       AND position('COALESCE(dg.expected_students, 0)' in d)=0) THEN
     RAISE EXCEPTION 'VERSION_GUARD_WORK_ITEM_SCOPE_CHANGED';
   END IF;
   d:=replace(d,'JOIN public.operational_delivery_groups dg',

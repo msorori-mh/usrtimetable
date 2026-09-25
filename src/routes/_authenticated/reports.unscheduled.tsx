@@ -165,6 +165,7 @@ function Page() {
       ]);
       const groups = await fetchCohortDeliveryGroupCatalog({
         collegeId,
+        versionId: ctx.selectedVersion!.id,
         cohortIds: cohorts.map((c) => c.id),
       });
       const assignments = await readAllReportRows((from, to) =>

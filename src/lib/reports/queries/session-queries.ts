@@ -1,4 +1,8 @@
-import { wholeCohortGroupLabels } from "@/lib/reports/whole-cohort-group-labels";
+import {
+  wholeCohortGroupLabels,
+  type ReportDeliveryGroup,
+} from "@/lib/reports/whole-cohort-group-labels";
+import { fetchVersionGroupCatalog } from "@/lib/academic-delivery/version-group-catalog";
 import { expandIntakeTimetable } from "@/lib/existing-schedules/presentation";
 import {
   fetchSharedLectures,
@@ -434,6 +438,15 @@ export async function fetchCohortDeliveryGroupLabels(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   rawSessions: any[],
 ): Promise<CohortDeliveryGroupLabels> {
+  const versionIds = [
+    ...new Set(
+      rawSessions
+        .map((s) => s?.schedule_version_id as string | null)
+        .filter((id): id is string => !!id),
+    ),
+  ];
+  if (versionIds.length > 1) throw new Error("MIXED_SCHEDULE_VERSIONS_FOR_LABELS");
+  const versionId = versionIds[0];
   const cohortIds = [
     ...new Set(
       rawSessions.map((s) => s?.cohort_id as string | null).filter((v): v is string => !!v),
@@ -467,26 +480,51 @@ export async function fetchCohortDeliveryGroupLabels(
   // Query every sibling, including unscheduled groups and other instructors.
   // Group cohorts come from their records, not only the filtered session rows.
   const groupCohorts = [...new Set(deliveryGroupRows.map((g) => g.cohort_id))];
-  const siblings = [];
-  for (let i = 0; i < groupCohorts.length; i += 100) {
-    siblings.push(
-      ...(await readAllReportRows((from, to) =>
-        supabase
-          .from("delivery_groups")
-          .select(
-            "id, cohort_id, plan_course_id, component_id, group_code, active, is_obsolete, expected_students",
-          )
-          .eq("college_id", collegeId)
-          .in("cohort_id", groupCohorts.slice(i, i + 100))
-          .order("id")
-          .range(from, to),
-      )),
-    );
+  const siblings: ReportDeliveryGroup[] = versionId
+    ? await fetchVersionGroupCatalog(versionId, groupCohorts)
+    : [];
+  if (!versionId) {
+    for (let i = 0; i < groupCohorts.length; i += 100) {
+      siblings.push(
+        ...((await readAllReportRows((from, to) =>
+          supabase
+            .from("delivery_groups")
+            .select(
+              "id, cohort_id, plan_course_id, component_id, group_code, active, is_obsolete, expected_students",
+            )
+            .eq("college_id", collegeId)
+            .in("cohort_id", groupCohorts.slice(i, i + 100))
+            .order("id")
+            .range(from, to),
+        )) as ReportDeliveryGroup[]),
+      );
+    }
   }
-  const displayLabels = wholeCohortGroupLabels(
-    siblings,
-    new Map(cohortRows.map((c) => [c.id, c.expected_students])),
-  );
+  if (versionId && deliveryGroupRows.some((row) => !siblings.some((g) => g.id === row.id))) {
+    throw new Error("VERSION_GROUP_FACT_MISSING");
+  }
+  const cohortSizes = new Map(cohortRows.map((c) => [c.id, c.expected_students]));
+  if (versionId) {
+    for (let i = 0; i < cohortIds.length; i += 100) {
+      const { data, error } = await (
+        supabase as unknown as {
+          rpc(
+            name: string,
+            args: { p_version: string; p_cohorts: string[] },
+          ): Promise<{
+            data: Array<{ cohort_id: string; expected_students: number }> | null;
+            error: { message: string } | null;
+          }>;
+        }
+      ).rpc("schedule_version_cohort_facts", {
+        p_version: versionId,
+        p_cohorts: cohortIds.slice(i, i + 100),
+      });
+      if (error) throw error;
+      for (const fact of data ?? []) cohortSizes.set(fact.cohort_id, fact.expected_students);
+    }
+  }
+  const displayLabels = wholeCohortGroupLabels(siblings, cohortSizes);
 
   return {
     cohorts: new Map((cohortRows as { id: string; code: string }[]).map((c) => [c.id, c.code])),

@@ -8,6 +8,7 @@ ALTER TABLE public.academic_cohorts ADD COLUMN active boolean NOT NULL DEFAULT t
 ALTER TABLE public.delivery_groups ADD COLUMN active boolean NOT NULL DEFAULT true;
 ALTER TABLE public.delivery_groups ADD COLUMN is_obsolete boolean NOT NULL DEFAULT false;
 ALTER TABLE public.delivery_groups ADD COLUMN component_id uuid;
+ALTER TABLE public.delivery_groups ADD COLUMN plan_course_id uuid;
 ALTER TABLE public.delivery_groups ADD COLUMN group_number integer NOT NULL DEFAULT 1;
 UPDATE public.delivery_groups SET component_id=cohort_id;
 ALTER TABLE public.teaching_assignments ADD COLUMN is_active boolean NOT NULL DEFAULT true;
@@ -35,6 +36,18 @@ CREATE FUNCTION public.delivery_group_derivation_status(uuid)
 RETURNS jsonb LANGUAGE sql STABLE AS $$ SELECT '{"ok":true,"code":"GLOBAL"}'::jsonb $$;
 
 \ir ../docs/migrations-proposed/20260925_itcs_version_scoped_guards.sql
+UPDATE public.delivery_groups SET component_id='eeeeeeee-eeee-4eee-eeee-eeeeeeeeeeee'
+WHERE id='00000000-0000-0000-0000-000000000099';
+INSERT INTO public.plan_course_components(id,required_room_type_id,component_type)
+VALUES ('eeeeeeee-eeee-4eee-eeee-eeeeeeeeeeee',
+  'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa','theory');
+INSERT INTO schedule_version_delivery_private.group_facts
+  (version_id,group_id,cohort_id,college_id,group_code,expected_students,capacity_limit)
+VALUES ('d68d8d22-9a6d-4f21-935f-cebf18bb969b',
+  '00000000-0000-0000-0000-000000000099',
+  'ebfc0dee-f291-4f6d-a974-d3ed1df96f3e',
+  '7168345f-cf9d-4789-b2ad-547abb687dc8','NEW-DRAFT-ONLY',140,200);
+\ir ../docs/migrations-proposed/20260925_itcs_version_scoped_catalog.sql
 
 DO $assert$
 DECLARE old_version uuid:='30f8a76d-1cb9-4944-a5d7-483dcaea7692';
@@ -56,6 +69,12 @@ BEGIN
   IF (public.operational_delivery_group(old_version,anchor)).expected_students<>175
      OR (public.operational_delivery_group(draft,anchor)).expected_students<>207 THEN
     RAISE EXCEPTION 'shared anchor ignored version-scoped sizes';
+  END IF;
+  IF (SELECT count(*) FROM public.schedule_version_delivery_group_catalog(old_version,
+      ARRAY['ebfc0dee-f291-4f6d-a974-d3ed1df96f3e']::uuid[]))<>1
+     OR (SELECT count(*) FROM public.schedule_version_delivery_group_catalog(draft,
+      ARRAY['ebfc0dee-f291-4f6d-a974-d3ed1df96f3e']::uuid[]))<>2 THEN
+    RAISE EXCEPTION 'version catalogue did not hide draft group from V2';
   END IF;
   IF NOT (public._sb_v2_assignment_guard(source_assignment,old_version)->>'ok')::boolean
      OR NOT (public._sb_v2_assignment_guard(source_assignment,draft)->>'ok')::boolean THEN
@@ -134,6 +153,15 @@ RETURNS jsonb LANGUAGE sql STABLE AS $$
 $$;
 CREATE FUNCTION public.existing_schedule_intake_enabled(uuid,uuid)
 RETURNS boolean LANGUAGE sql STABLE AS $$ SELECT false $$;
+CREATE FUNCTION faculty_private.guard_assignment_request()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='public','pg_temp' AS $body$
+DECLARE h record;
+BEGIN
+  IF NOT NEW.is_active THEN RETURN NEW; END IF;
+  IF h.home_college_id IS NULL THEN RAISE EXCEPTION 'FACULTY_HOME_REVIEW_REQUIRED'; END IF;
+  RETURN NEW;
+END;
+$body$;
 \ir ../docs/migrations-proposed/20260925_itcs_exact_hour_waiver.sql
 CREATE TRIGGER instructor_hours BEFORE INSERT OR UPDATE ON public.teaching_assignments
 FOR EACH ROW EXECUTE FUNCTION public.enforce_instructor_extra_hours_limit();

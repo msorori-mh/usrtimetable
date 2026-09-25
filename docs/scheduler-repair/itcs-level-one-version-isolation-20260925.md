@@ -87,6 +87,17 @@ It retains conservative overlap when a mapping is incomplete; the fixture
 checks a shared collision and an unrelated cohort on the draft. This function
 also remains uninstalled pending the complete server guard rollout.
 
+Stages 2d–2g add version-scoped freshness, the assignment/session guards,
+an exact six-assignment faculty exception and a selected-version group
+catalogue for reports. The exception matches each new assignment to its
+lecturer's published V2 assignment for the same offering and component. It
+neither fills missing home-college data nor fabricates a quota; other
+assignments keep the usual approval and hours checks. The complete 2b–2f
+plus Stage 3 transaction passed a live rollback-only rehearsal. That
+rehearsal added the six groups, assignments and sessions, ran postconditions,
+and returned the live draft to 275 sessions / 420 students. The 2g catalogue
+is included in the subsequent PostgreSQL fixture and is still proposed.
+
 Exit gate: old and new versions give distinct 420/466 results while their
 session IDs/placements and V2 baseline digest stay unchanged; unauthorized
 writes and incomplete facts fail closed. Test other colleges' timetables and
@@ -139,12 +150,11 @@ teaching days. Dr. Abdelnasser has zero Sunday sessions in the retained
 draft; existing theory and R13/R14 sessions also meet the 14:00 closing
 time. This is a point-in-time preflight and must be rerun at the draft write.
 
-`HOLD` for the remaining Stage 2 application/server integration and Stage 3
-draft reconciliation. Server freshness, assignment and shared lecture
-guards, generation writes, group editors and other report paths still
-need version-aware integration. The existing global instructor-hour cap
-needs a narrowly scoped implementation of the authorized exception for
-these assignments. Do not update draft counts or add six sessions yet.
+`HOLD` for applying the remaining Stage 2 SQL and Stage 3 draft reconciliation.
+The full rollback rehearsal passed, and a scoped catalogue now covers
+versioned report labels/coverage; the new branch code still needs CI and
+live reader verification. Keep the draft counts and six sessions unchanged
+until the tested SQL and application reader changes are deployed together.
 Because the two schema transactions were applied directly while this
 branch remains a draft PR, reconcile them with the tracked migration
 history before merging or deploying the application code.

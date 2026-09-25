@@ -1,4 +1,5 @@
 import { fetchSharedLectures } from "@/lib/academic-delivery/shared-lectures";
+import { fetchVersionGroupCatalog } from "@/lib/academic-delivery/version-group-catalog";
 import { readAllReportRows } from "@/lib/reports/read-all";
 import { supabase } from "@/integrations/supabase/client";
 import type { DeliveryGroupCatalogRow } from "@/lib/reports/program-timetable-coverage";
@@ -7,22 +8,25 @@ import type { DeliveryGroupCatalogRow } from "@/lib/reports/program-timetable-co
 export async function fetchCohortDeliveryGroupCatalog(params: {
   collegeId: string;
   cohortIds: readonly string[];
+  versionId?: string;
 }): Promise<DeliveryGroupCatalogRow[]> {
   const cohortIds = new Set(params.cohortIds.filter(Boolean));
   if (!cohortIds.size) return [];
   const college = params.collegeId;
-  const allGroups = await readAllReportRows((from, to) =>
-    supabase
-      .from("operational_delivery_groups")
-      .select(
-        "id, cohort_id, group_code, group_number, expected_students, component_id, plan_course_id, active, is_obsolete",
-      )
-      .eq("college_id", college)
-      .or("active.is.null,active.eq.true")
-      .or("is_obsolete.is.null,is_obsolete.eq.false")
-      .order("id")
-      .range(from, to),
-  );
+  const allGroups = params.versionId
+    ? await fetchVersionGroupCatalog(params.versionId, params.cohortIds)
+    : await readAllReportRows((from, to) =>
+        supabase
+          .from("operational_delivery_groups")
+          .select(
+            "id, cohort_id, group_code, group_number, expected_students, component_id, plan_course_id, active, is_obsolete",
+          )
+          .eq("college_id", college)
+          .or("active.is.null,active.eq.true")
+          .or("is_obsolete.is.null,is_obsolete.eq.false")
+          .order("id")
+          .range(from, to),
+      );
   const shared = await fetchSharedLectures(college);
   const groups = allGroups
     .filter((g): g is typeof g & { id: string } => g.id != null)
