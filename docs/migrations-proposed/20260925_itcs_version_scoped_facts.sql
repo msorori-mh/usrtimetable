@@ -36,6 +36,15 @@ CREATE TABLE schedule_version_delivery_private.group_facts (
   FOREIGN KEY (version_id, cohort_id)
     REFERENCES schedule_version_delivery_private.cohort_facts(version_id, cohort_id)
 );
+-- Shared-lecture partners outside the five edited cohorts are frozen too.
+CREATE TABLE schedule_version_delivery_private.partner_group_facts (
+  version_id uuid NOT NULL REFERENCES public.schedule_versions(id) ON DELETE CASCADE,
+  group_id uuid NOT NULL REFERENCES public.delivery_groups(id),
+  college_id uuid NOT NULL REFERENCES public.colleges(id),
+  expected_students integer NOT NULL CHECK (expected_students > 0),
+  capacity_limit integer CHECK (capacity_limit > 0),
+  PRIMARY KEY (version_id,group_id)
+);
 CREATE TABLE schedule_version_delivery_private.partition_facts (
   version_id uuid NOT NULL,
   partition_id uuid NOT NULL,
@@ -91,6 +100,9 @@ CREATE TRIGGER cohort_fact_lock BEFORE UPDATE OR DELETE
 CREATE TRIGGER group_fact_lock BEFORE UPDATE OR DELETE
   ON schedule_version_delivery_private.group_facts
   FOR EACH ROW EXECUTE FUNCTION schedule_version_delivery_private.guard_published_fact();
+CREATE TRIGGER partner_fact_lock BEFORE UPDATE OR DELETE
+  ON schedule_version_delivery_private.partner_group_facts
+  FOR EACH ROW EXECUTE FUNCTION schedule_version_delivery_private.guard_published_fact();
 CREATE TRIGGER partition_fact_lock BEFORE UPDATE OR DELETE
   ON schedule_version_delivery_private.partition_facts
   FOR EACH ROW EXECUTE FUNCTION schedule_version_delivery_private.guard_published_fact();
@@ -124,6 +136,11 @@ BEGIN
     IF g_college IS DISTINCT FROM v_college OR g_cohort IS DISTINCT FROM NEW.cohort_id THEN
       RAISE EXCEPTION 'VERSION_FACT_GROUP_MISMATCH' USING ERRCODE='23514';
     END IF;
+  ELSIF TG_TABLE_NAME='partner_group_facts' THEN
+    SELECT college_id INTO g_college FROM public.delivery_groups WHERE id=NEW.group_id;
+    IF g_college IS DISTINCT FROM v_college THEN
+      RAISE EXCEPTION 'VERSION_FACT_PARTNER_GROUP_MISMATCH' USING ERRCODE='23514';
+    END IF;
   ELSIF TG_TABLE_NAME='shared_link_facts' THEN
     IF EXISTS (SELECT 1 FROM public.delivery_groups g
                WHERE g.id IN (NEW.anchor_group_id,NEW.member_group_id)
@@ -139,6 +156,8 @@ CREATE TRIGGER scope_tenant BEFORE INSERT OR UPDATE ON schedule_version_delivery
 CREATE TRIGGER cohort_tenant BEFORE INSERT OR UPDATE ON schedule_version_delivery_private.cohort_facts
   FOR EACH ROW EXECUTE FUNCTION schedule_version_delivery_private.guard_fact_scope();
 CREATE TRIGGER group_tenant BEFORE INSERT OR UPDATE ON schedule_version_delivery_private.group_facts
+  FOR EACH ROW EXECUTE FUNCTION schedule_version_delivery_private.guard_fact_scope();
+CREATE TRIGGER partner_tenant BEFORE INSERT OR UPDATE ON schedule_version_delivery_private.partner_group_facts
   FOR EACH ROW EXECUTE FUNCTION schedule_version_delivery_private.guard_fact_scope();
 CREATE TRIGGER partition_tenant BEFORE INSERT OR UPDATE ON schedule_version_delivery_private.partition_facts
   FOR EACH ROW EXECUTE FUNCTION schedule_version_delivery_private.guard_fact_scope();
@@ -210,6 +229,15 @@ BEGIN
   CROSS JOIN LATERAL jsonb_array_elements(b.payload->'groups') g
   WHERE b.schedule_version_id=v_published;
 
+  INSERT INTO schedule_version_delivery_private.partner_group_facts
+    (version_id,group_id,college_id,expected_students,capacity_limit)
+  SELECT DISTINCT v.id,(g->>'id')::uuid,b.college_id,
+    (g->>'expected_students')::integer,(g->>'capacity_limit')::integer
+  FROM public.schedule_version_delivery_baselines b
+  CROSS JOIN (VALUES (v_published),(v_draft)) AS v(id)
+  CROSS JOIN LATERAL jsonb_array_elements(b.payload->'shared_partner_groups') g
+  WHERE b.schedule_version_id=v_published;
+
   INSERT INTO schedule_version_delivery_private.partition_facts
     (version_id,partition_id,cohort_id,college_id,partition_code,headcount)
   SELECT v.id,(p->>'id')::uuid,b.cohort_id,b.college_id,p->>'partition_code',
@@ -262,6 +290,9 @@ CREATE TRIGGER cohort_insert_lock BEFORE INSERT
   FOR EACH ROW EXECUTE FUNCTION schedule_version_delivery_private.guard_published_insert();
 CREATE TRIGGER group_insert_lock BEFORE INSERT
   ON schedule_version_delivery_private.group_facts
+  FOR EACH ROW EXECUTE FUNCTION schedule_version_delivery_private.guard_published_insert();
+CREATE TRIGGER partner_insert_lock BEFORE INSERT
+  ON schedule_version_delivery_private.partner_group_facts
   FOR EACH ROW EXECUTE FUNCTION schedule_version_delivery_private.guard_published_insert();
 CREATE TRIGGER partition_insert_lock BEFORE INSERT
   ON schedule_version_delivery_private.partition_facts
@@ -384,32 +415,43 @@ BEGIN
   ) OR EXISTS (
     SELECT 1 FROM schedule_version_delivery_private.shared_link_facts l
     JOIN public.delivery_groups m ON m.id=l.member_group_id
-    JOIN schedule_version_delivery_private.scope s
-      ON s.version_id=p_version AND s.cohort_id=m.cohort_id
     LEFT JOIN schedule_version_delivery_private.group_facts f
       ON f.version_id=p_version AND f.group_id=m.id
+    LEFT JOIN schedule_version_delivery_private.partner_group_facts pf
+      ON pf.version_id=p_version AND pf.group_id=m.id
     WHERE l.version_id=p_version AND l.anchor_group_id=ANY(p_groups)
-      AND f.group_id IS NULL
+      AND f.group_id IS NULL AND pf.group_id IS NULL
+  ) OR EXISTS (
+    SELECT 1 FROM schedule_version_delivery_private.shared_link_facts l
+    LEFT JOIN schedule_version_delivery_private.group_facts f
+      ON f.version_id=p_version AND f.group_id=l.anchor_group_id
+    LEFT JOIN schedule_version_delivery_private.partner_group_facts pf
+      ON pf.version_id=p_version AND pf.group_id=l.anchor_group_id
+    WHERE l.version_id=p_version AND l.anchor_group_id=ANY(p_groups)
+      AND f.group_id IS NULL AND pf.group_id IS NULL
   ) THEN
     RAISE EXCEPTION 'VERSION_GROUP_FACT_MISSING' USING ERRCODE='23514';
   END IF;
   RETURN QUERY
     SELECT g.id,
-      COALESCE(f.expected_students,g.expected_students)
+      COALESCE(f.expected_students,pf.expected_students,g.expected_students)
         + COALESCE((
-          SELECT sum(COALESCE(mf.expected_students,m.expected_students))::integer
+          SELECT sum(COALESCE(mf.expected_students,mp.expected_students))::integer
           FROM schedule_version_delivery_private.shared_link_facts l
-          JOIN public.delivery_groups m ON m.id=l.member_group_id
           LEFT JOIN schedule_version_delivery_private.group_facts mf
-            ON mf.version_id=p_version AND mf.group_id=m.id
+            ON mf.version_id=p_version AND mf.group_id=l.member_group_id
+          LEFT JOIN schedule_version_delivery_private.partner_group_facts mp
+            ON mp.version_id=p_version AND mp.group_id=l.member_group_id
           WHERE l.version_id=p_version AND l.anchor_group_id=g.id
         ),0),
-      COALESCE(f.capacity_limit,g.capacity_limit)
+      COALESCE(f.capacity_limit,pf.capacity_limit,g.capacity_limit)
     FROM (SELECT DISTINCT id FROM unnest(p_groups) ids(id)) request
     JOIN public.delivery_groups g ON g.id=request.id
     LEFT JOIN schedule_version_delivery_private.group_facts f
       ON f.version_id=p_version AND f.group_id=g.id
-    WHERE f.group_id IS NOT NULL OR EXISTS (
+    LEFT JOIN schedule_version_delivery_private.partner_group_facts pf
+      ON pf.version_id=p_version AND pf.group_id=g.id
+    WHERE f.group_id IS NOT NULL OR pf.group_id IS NOT NULL OR EXISTS (
       SELECT 1 FROM schedule_version_delivery_private.shared_link_facts l
       WHERE l.version_id=p_version AND l.anchor_group_id=g.id
     );
