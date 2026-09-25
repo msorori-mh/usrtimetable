@@ -92,13 +92,15 @@ async function loadPartitionIndex(input: {
     );
     const rows: PartitionMembershipRow[] = members.flatMap((m) =>
       m.partition_id
-        ? [{
-            delivery_group_id: m.delivery_group_id,
-            cohort_id: m.cohort_id,
-            partition_id: m.partition_id,
-            partition_headcount: m.partition_headcount,
-            shared_lecture: m.shared_lecture,
-          }]
+        ? [
+            {
+              delivery_group_id: m.delivery_group_id,
+              cohort_id: m.cohort_id,
+              partition_id: m.partition_id,
+              partition_headcount: m.partition_headcount,
+              shared_lecture: m.shared_lecture,
+            },
+          ]
         : [],
     );
 
