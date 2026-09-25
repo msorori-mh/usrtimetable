@@ -159,6 +159,53 @@ BEGIN
         AND cohort_id='ebfc0dee-f291-4f6d-a974-d3ed1df96f3e') <> 110 THEN
     RAISE EXCEPTION 'published fact changed with draft';
   END IF;
+  BEGIN
+    UPDATE schedule_version_delivery_private.group_facts SET expected_students=999
+    WHERE version_id='30f8a76d-1cb9-4944-a5d7-483dcaea7692'
+      AND cohort_id='ebfc0dee-f291-4f6d-a974-d3ed1df96f3e';
+    RAISE EXCEPTION 'published group fact must be immutable';
+  EXCEPTION WHEN check_violation THEN NULL;
+  END;
+  BEGIN
+    UPDATE schedule_version_delivery_private.scope SET college_id='00000000-0000-0000-0000-000000000000'
+    WHERE version_id='d68d8d22-9a6d-4f21-935f-cebf18bb969b'
+      AND cohort_id='ebfc0dee-f291-4f6d-a974-d3ed1df96f3e';
+    RAISE EXCEPTION 'cross-college scope must be rejected';
+  EXCEPTION WHEN check_violation THEN NULL;
+  END;
+  BEGIN
+    INSERT INTO schedule_version_delivery_private.group_partition_facts
+      (version_id,group_id,partition_id)
+    SELECT 'd68d8d22-9a6d-4f21-935f-cebf18bb969b',g.group_id,p.partition_id
+    FROM schedule_version_delivery_private.group_facts g
+    CROSS JOIN schedule_version_delivery_private.partition_facts p
+    WHERE g.version_id='d68d8d22-9a6d-4f21-935f-cebf18bb969b'
+      AND p.version_id=g.version_id
+      AND g.cohort_id='ebfc0dee-f291-4f6d-a974-d3ed1df96f3e'
+      AND p.cohort_id='862518d3-7d85-414e-92d2-a4c3feefc2b8';
+    RAISE EXCEPTION 'cross-cohort student membership must be rejected';
+  EXCEPTION WHEN check_violation THEN NULL;
+  END;
+  BEGIN
+    DELETE FROM schedule_version_delivery_private.group_partition_facts m
+    USING schedule_version_delivery_private.group_facts g
+    WHERE m.version_id=g.version_id AND m.group_id=g.group_id
+      AND g.version_id='d68d8d22-9a6d-4f21-935f-cebf18bb969b'
+      AND g.cohort_id='ebfc0dee-f291-4f6d-a974-d3ed1df96f3e';
+    DELETE FROM schedule_version_delivery_private.group_facts
+    WHERE version_id='d68d8d22-9a6d-4f21-935f-cebf18bb969b'
+      AND cohort_id='ebfc0dee-f291-4f6d-a974-d3ed1df96f3e';
+    PERFORM set_config('request.jwt.claim.sub','11111111-1111-1111-1111-111111111111',true);
+    PERFORM public.effective_schedule_group_fact(
+      'd68d8d22-9a6d-4f21-935f-cebf18bb969b',
+      (SELECT id FROM public.delivery_groups
+       WHERE cohort_id='ebfc0dee-f291-4f6d-a974-d3ed1df96f3e' LIMIT 1));
+    RAISE EXCEPTION 'missing scoped group fact must fail closed';
+  EXCEPTION WHEN check_violation THEN NULL;
+  END;
+  IF (SELECT count(*) FROM schedule_version_delivery_private.group_facts) <> 10 THEN
+    RAISE EXCEPTION 'negative test left a deleted group fact';
+  END IF;
 END;
 $assert$;
 
