@@ -876,7 +876,7 @@
       "start_time": "08:00:00",
       "end_time": "11:00:00",
       "room_id": "876ab627-e735-4e12-958c-ac293f650400",
-      "room_code": "R04",
+      "room_code": "R-04",
       "session_type": "lecture",
       "source_session_id": "3b3f7de1-17ce-4dc1-bdc3-6b4e7c57dbe2",
       "source_assignment_id": "4c275f3a-b922-48b6-8a55-c94c597c07a4"
@@ -912,7 +912,7 @@
       "start_time": "08:00:00",
       "end_time": "10:00:00",
       "room_id": "5273162a-52d3-42bb-b0ea-0beb380b8673",
-      "room_code": "LAB01",
+      "room_code": "LAB-01",
       "session_type": "lab",
       "source_session_id": "85b9c15e-1b39-43ce-a67c-aeb112e69dba",
       "source_assignment_id": "b7f1789a-955f-4ed3-9a3c-118aad9f28aa"
@@ -930,7 +930,7 @@
       "start_time": "14:00:00",
       "end_time": "16:00:00",
       "room_id": "a914a469-9762-4240-897f-d0a001357807",
-      "room_code": "LAB04",
+      "room_code": "LAB-04",
       "session_type": "lab",
       "source_session_id": "34a2e6ed-f3e7-4c20-9e7c-0b16859fbd94",
       "source_assignment_id": "8d81d3ec-d395-4622-b833-0a7fa907a237"
