@@ -1,0 +1,32 @@
+name: itcs-v2-delivery-baseline
+on:
+  pull_request:
+    paths:
+      - 'docs/migrations-proposed/20260925_itcs_v2_delivery_baseline.sql'
+      - 'tests/itcs-v2-delivery-baseline-db.sql'
+      - '.github/workflows/itcs-v2-delivery-baseline.yml'
+permissions:
+  contents: read
+jobs:
+  postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: itcs_v2_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Published baseline capture, immutability and tenant scope
+        env:
+          PGPASSWORD: postgres
+        run: psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d itcs_v2_test -f tests/itcs-v2-delivery-baseline-db.sql
