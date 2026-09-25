@@ -31,7 +31,8 @@ CREATE TABLE public.cohort_student_partitions(
   id uuid PRIMARY KEY, cohort_id uuid NOT NULL, partition_code text NOT NULL, headcount integer NOT NULL
 );
 CREATE TABLE public.delivery_groups(
-  id uuid PRIMARY KEY, cohort_id uuid NOT NULL, group_code text NOT NULL, expected_students integer NOT NULL
+  id uuid PRIMARY KEY, cohort_id uuid NOT NULL, college_id uuid NOT NULL,
+  group_code text NOT NULL, expected_students integer NOT NULL
 );
 CREATE TABLE public.delivery_group_partition_members(
   id uuid PRIMARY KEY, cohort_id uuid NOT NULL, delivery_group_id uuid NOT NULL, partition_id uuid NOT NULL
@@ -50,6 +51,11 @@ INSERT INTO public.schedule_versions VALUES (
   '7168345f-cf9d-4789-b2ad-547abb687dc8',
   '18dd364a-76d7-40b8-a217-fa929c082a7f', 'published'
 );
+INSERT INTO public.schedule_versions VALUES (
+  'd68d8d22-9a6d-4f21-935f-cebf18bb969b',
+  '7168345f-cf9d-4789-b2ad-547abb687dc8',
+  '18dd364a-76d7-40b8-a217-fa929c082a7f', 'draft'
+);
 INSERT INTO public.academic_cohorts VALUES
   ('ebfc0dee-f291-4f6d-a974-d3ed1df96f3e','7168345f-cf9d-4789-b2ad-547abb687dc8','18dd364a-76d7-40b8-a217-fa929c082a7f','CYB-P-L1-2026',110),
   ('f8188b18-207a-4543-a3f7-89b4e8fad293','7168345f-cf9d-4789-b2ad-547abb687dc8','18dd364a-76d7-40b8-a217-fa929c082a7f','IT-P-L1-2026',75),
@@ -62,7 +68,7 @@ INSERT INTO public.scheduling_cohort_term_headcounts
 INSERT INTO public.cohort_student_partitions
   SELECT gen_random_uuid(), id, 'A001', expected_students FROM public.academic_cohorts;
 INSERT INTO public.delivery_groups
-  SELECT gen_random_uuid(), id, 'G1', expected_students FROM public.academic_cohorts;
+  SELECT gen_random_uuid(), id, college_id, 'G1', expected_students FROM public.academic_cohorts;
 INSERT INTO public.delivery_group_partition_members
   SELECT gen_random_uuid(), g.cohort_id, g.id, p.id
   FROM public.delivery_groups g JOIN public.cohort_student_partitions p ON p.cohort_id = g.cohort_id;
@@ -86,6 +92,10 @@ SELECT gen_random_uuid(), '30f8a76d-1cb9-4944-a5d7-483dcaea7692',
   CASE WHEN s.n <= 5 THEN (SELECT id FROM numbered WHERE n = s.n) ELSE NULL END,
   (SELECT id FROM offerings WHERE n = 1)
 FROM generate_series(1,275) AS s(n);
+INSERT INTO public.schedule_sessions
+SELECT gen_random_uuid(), 'd68d8d22-9a6d-4f21-935f-cebf18bb969b', NULL,
+  (SELECT id FROM public.course_offerings ORDER BY id LIMIT 1)
+FROM generate_series(1,275);
 
 \ir ../docs/migrations-proposed/20260925_itcs_v2_delivery_baseline.sql
 
@@ -94,7 +104,8 @@ DECLARE n integer; v jsonb;
 BEGIN
   SELECT count(*) INTO n FROM public.schedule_version_delivery_baselines;
   IF n <> 5 THEN RAISE EXCEPTION 'expected five baseline rows, got %', n; END IF;
-  IF (SELECT count(*) FROM public.schedule_sessions) <> 275 THEN
+  IF (SELECT count(*) FROM public.schedule_sessions WHERE schedule_version_id =
+      '30f8a76d-1cb9-4944-a5d7-483dcaea7692') <> 275 THEN
     RAISE EXCEPTION 'published sessions changed';
   END IF;
   IF (SELECT sum(expected_students) FROM public.academic_cohorts) <> 420 THEN
@@ -120,12 +131,51 @@ BEGIN
 END;
 $assert$;
 
+\ir ../docs/migrations-proposed/20260925_itcs_version_scoped_facts.sql
+
+DO $assert$
+DECLARE n integer;
+BEGIN
+  SELECT count(*) INTO n FROM schedule_version_delivery_private.scope;
+  IF n <> 10 THEN RAISE EXCEPTION 'expected ten version/cohort scope rows, got %', n; END IF;
+  IF (SELECT count(*) FROM schedule_version_delivery_private.group_facts) <> 10
+     OR (SELECT count(*) FROM schedule_version_delivery_private.partition_facts) <> 10
+     OR (SELECT count(*) FROM schedule_version_delivery_private.group_partition_facts) <> 10
+     OR (SELECT count(*) FROM schedule_version_delivery_private.shared_link_facts) <> 2 THEN
+    RAISE EXCEPTION 'versioned group or partition seed incomplete';
+  END IF;
+  BEGIN
+    UPDATE schedule_version_delivery_private.cohort_facts SET expected_students=140
+    WHERE version_id='30f8a76d-1cb9-4944-a5d7-483dcaea7692'
+      AND cohort_id='ebfc0dee-f291-4f6d-a974-d3ed1df96f3e';
+    RAISE EXCEPTION 'published cohort fact must be immutable';
+  EXCEPTION WHEN check_violation THEN NULL;
+  END;
+  UPDATE schedule_version_delivery_private.cohort_facts SET expected_students=140
+  WHERE version_id='d68d8d22-9a6d-4f21-935f-cebf18bb969b'
+    AND cohort_id='ebfc0dee-f291-4f6d-a974-d3ed1df96f3e';
+  IF (SELECT expected_students FROM schedule_version_delivery_private.cohort_facts
+      WHERE version_id='30f8a76d-1cb9-4944-a5d7-483dcaea7692'
+        AND cohort_id='ebfc0dee-f291-4f6d-a974-d3ed1df96f3e') <> 110 THEN
+    RAISE EXCEPTION 'published fact changed with draft';
+  END IF;
+END;
+$assert$;
+
 SET ROLE authenticated;
 SET request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
 DO $assert$
 BEGIN
   IF (SELECT count(*) FROM public.schedule_version_delivery_baselines) <> 5 THEN
     RAISE EXCEPTION 'ITCS viewer cannot read its baseline';
+  END IF;
+  IF (public.effective_schedule_cohort_fact(
+       '30f8a76d-1cb9-4944-a5d7-483dcaea7692',
+       'ebfc0dee-f291-4f6d-a974-d3ed1df96f3e')->>'expected_students')::int <> 110
+     OR (public.effective_schedule_cohort_fact(
+       'd68d8d22-9a6d-4f21-935f-cebf18bb969b',
+       'ebfc0dee-f291-4f6d-a974-d3ed1df96f3e')->>'expected_students')::int <> 140 THEN
+    RAISE EXCEPTION 'versioned cohort read did not isolate published and draft';
   END IF;
 END;
 $assert$;
@@ -135,6 +185,13 @@ BEGIN
   IF (SELECT count(*) FROM public.schedule_version_delivery_baselines) <> 0 THEN
     RAISE EXCEPTION 'cross-college viewer saw the baseline';
   END IF;
+  BEGIN
+    PERFORM public.effective_schedule_cohort_fact(
+      '30f8a76d-1cb9-4944-a5d7-483dcaea7692',
+      'ebfc0dee-f291-4f6d-a974-d3ed1df96f3e');
+    RAISE EXCEPTION 'cross-college viewer obtained a cohort fact';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
 END;
 $assert$;
 RESET ROLE;
