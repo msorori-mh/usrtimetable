@@ -1201,6 +1201,18 @@ BEGIN
       AND (a.room_id=b.room_id OR a.instructor_id=b.instructor_id)) THEN
     RAISE EXCEPTION 'ITCS_PROPOSED_ROOM_OR_INSTRUCTOR_COLLISION' USING ERRCODE='23514';
   END IF;
+  IF EXISTS (SELECT 1 FROM _itcs_sessions n
+    JOIN public.schedule_sessions other ON other.instructor_id=n.instructor_id
+      AND other.college_id<>v_college AND other.day_of_week=n.day_of_week
+      AND other.start_time<n.end_time AND n.start_time<other.end_time
+    JOIN public.schedule_versions ov ON ov.id=other.schedule_version_id
+      AND ov.status IN ('approved','published')
+    JOIN public.academic_terms outside_term ON outside_term.id=ov.academic_term_id
+    JOIN public.academic_terms itcs_term ON itcs_term.id=v_term
+    WHERE outside_term.start_date<=itcs_term.end_date
+      AND itcs_term.start_date<=outside_term.end_date) THEN
+    RAISE EXCEPTION 'ITCS_NEW_SESSION_CROSS_COLLEGE_INSTRUCTOR_COLLISION' USING ERRCODE='23514';
+  END IF;
 END;
 $preflight$;
 
@@ -1364,6 +1376,14 @@ BEGIN
       RAISE EXCEPTION 'ITCS_NEW_SESSION_SERVER_GUARD_FAILED: %',n.new_session_id USING ERRCODE='23514';
     END IF;
   END LOOP;
+  IF EXISTS (SELECT 1 FROM _itcs_target_groups g
+    WHERE NOT coalesce((public.delivery_group_derivation_status(g.group_id,v_draft)->>'ok')::boolean,false))
+    OR EXISTS (SELECT 1 FROM public.schedule_sessions s JOIN public.rooms r ON r.id=s.room_id
+      WHERE s.schedule_version_id=v_draft
+        AND s.delivery_group_id IN (SELECT group_id FROM _itcs_target_groups)
+        AND s.expected_students>r.capacity) THEN
+    RAISE EXCEPTION 'ITCS_GROUP_FRESHNESS_OR_ROOM_CAPACITY_FAILED' USING ERRCODE='23514';
+  END IF;
   IF EXISTS (SELECT 1 FROM public.schedule_sessions s
     WHERE s.schedule_version_id=v_draft
       AND s.session_type<>'lab' AND s.end_time>'14:00')

@@ -188,7 +188,7 @@ function ProgramLevelReport({
     queryFn: () =>
       fetchCohortDeliveryGroupCatalog({
         collegeId: ctx.collegeId!,
-        versionId: ctx.versionId,
+        versionId: ctx.versionId ?? undefined,
         cohortIds: references.cohorts.map((c) => c.id),
       }),
   });
