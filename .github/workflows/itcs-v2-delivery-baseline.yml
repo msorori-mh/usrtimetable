@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'docs/migrations-proposed/20260925_itcs_v2_delivery_baseline.sql'
+      - 'docs/migrations-proposed/20260925_itcs_version_scoped_facts.sql'
       - 'tests/itcs-v2-delivery-baseline-db.sql'
       - '.github/workflows/itcs-v2-delivery-baseline.yml'
 permissions:
