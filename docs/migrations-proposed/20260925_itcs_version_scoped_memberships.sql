@@ -179,6 +179,12 @@ BEGIN
     UNION ALL
     SELECT l.anchor_group_id,d.cohort_id,d.partition_id,d.headcount,true
     FROM links l JOIN direct d ON d.group_id=l.member_group_id
+    UNION ALL
+    -- A missing member partition must still expose the shared cohort. Clients
+    -- and the server then treat coverage as incomplete and block overlap.
+    SELECT l.anchor_group_id,g.cohort_id,NULL::uuid,NULL::integer,true
+    FROM links l JOIN public.delivery_groups g ON g.id=l.member_group_id
+    WHERE NOT EXISTS (SELECT 1 FROM direct d WHERE d.group_id=g.id)
   ), sized AS MATERIALIZED (
     SELECT f.group_id,f.expected_students
     FROM public.schedule_version_group_facts(p_version,p_groups) f

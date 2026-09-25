@@ -436,3 +436,31 @@ BEGIN
 END;
 $assert$;
 RESET ROLE;
+
+-- A missing shared member partition still carries its cohort identity, so
+-- neither the client nor the server can misclassify it as unrelated.
+BEGIN;
+DELETE FROM schedule_version_delivery_private.group_partition_facts
+WHERE version_id='d68d8d22-9a6d-4f21-935f-cebf18bb969b'
+  AND group_id=(SELECT id FROM public.delivery_groups
+    WHERE cohort_id='862518d3-7d85-414e-92d2-a4c3feefc2b8');
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+DO $assert$
+DECLARE v_anchor uuid := (SELECT id FROM public.delivery_groups
+  WHERE cohort_id='ebfc0dee-f291-4f6d-a974-d3ed1df96f3e' AND group_code='G1');
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM public.schedule_version_student_memberships(
+      'd68d8d22-9a6d-4f21-935f-cebf18bb969b',ARRAY[v_anchor]) m
+    WHERE m.cohort_id='862518d3-7d85-414e-92d2-a4c3feefc2b8'
+      AND m.partition_id IS NULL
+  ) OR jsonb_array_length(public._sb_v2_delivery_group_overlap(
+    'd68d8d22-9a6d-4f21-935f-cebf18bb969b',v_anchor,
+    'ebfc0dee-f291-4f6d-a974-d3ed1df96f3e',0,'08:00','10:00',NULL)) <> 1 THEN
+    RAISE EXCEPTION 'missing shared membership was treated as unrelated';
+  END IF;
+END;
+$assert$;
+RESET ROLE;
+ROLLBACK;

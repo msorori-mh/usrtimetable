@@ -73,6 +73,9 @@ student print copies. The disposable database fixture deliberately changes
 draft partitions and global partner metadata, then verifies V2 still resolves
 its original membership. Stage 2b has not been applied to the live database
 and its client code has not been deployed.
+The fixture also removes a draft shared member partition inside a rollback
+transaction and confirms the missing member cohort remains visible and the
+server overlap check still blocks the collision.
 The draft compaction snapshot now overlays versioned group sizes, partition
 headcounts, member rows and session headcounts before evaluating candidate
 moves; it no longer loads global member/partition views for this calculation.
