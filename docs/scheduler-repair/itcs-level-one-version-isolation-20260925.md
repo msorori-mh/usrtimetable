@@ -105,6 +105,16 @@ students, and the five global enrollment counts still sum to 420. A real
 ITCS viewer read the new data as `authenticated`; an authenticated user
 outside the college received no baseline rows and a forbidden RPC response.
 The focused disposable PostgreSQL checks and general repository CI passed.
+Read-only live preflight also matched all 44 source group IDs and old sizes,
+all six source assignments and all six draft source sessions. The six planned
+rooms are active, correctly coded and large enough; the three legacy short
+labels were corrected to `R-04`, `LAB-01` and `LAB-04` in the reviewed map.
+None of the six new placements overlaps an existing draft room/instructor,
+or a published/approved instructor assignment at another college with an
+overlapping term date range. R13 and R14 are active 08:00–14:00 on the six
+teaching days. Dr. Abdelnasser has zero Sunday sessions in the retained
+draft; existing theory and R13/R14 sessions also meet the 14:00 closing
+time. This is a point-in-time preflight and must be rerun at the draft write.
 
 `HOLD` for the remaining Stage 2 application/server integration and Stage 3
 draft reconciliation. Server freshness, assignment and shared lecture
