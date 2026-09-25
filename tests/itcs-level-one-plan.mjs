@@ -3,7 +3,10 @@ import { readFileSync } from "node:fs";
 
 const plan = JSON.parse(
   readFileSync(
-    new URL("../docs/scheduler-repair/itcs-level-one-draft-reconciliation-plan.json", import.meta.url),
+    new URL(
+      "../docs/scheduler-repair/itcs-level-one-draft-reconciliation-plan.json",
+      import.meta.url,
+    ),
     "utf8",
   ),
 );
@@ -35,7 +38,10 @@ assert.deepEqual(
     ["CIS-P-L1-2026", 42],
   ],
 );
-assert.equal([...counts.values()].reduce((total, x) => total + x.newCount, 0), 466);
+assert.equal(
+  [...counts.values()].reduce((total, x) => total + x.newCount, 0),
+  466,
+);
 for (const cohort of plan.cohort_counts) {
   assert.equal(
     cohort.partitions.reduce((total, p) => total + p.headcount, 0),
@@ -79,8 +85,7 @@ for (const session of plan.proposed_sessions) {
   const group = [...groups.values()].find(
     (g) =>
       g.cohort_id === session.cohort_id &&
-      session.delivery_group_id ===
-        `PLANNED:${g.component_id}:${Number(g.group_code.slice(1))}`,
+      session.delivery_group_id === `PLANNED:${g.component_id}:${Number(g.group_code.slice(1))}`,
   );
   assert.ok(group, session.delivery_group_id);
   const assignment = assignments.get(groupKey(group));
@@ -88,7 +93,10 @@ for (const session of plan.proposed_sessions) {
   assert.equal(session.instructor_id, assignment.instructor_id);
   assert.equal(session.course_offering_id, assignment.course_offering_id);
   assert.equal(session.expected_students, group.expected_students);
-  assert.equal(minutes(session.end_time) - minutes(session.start_time), assignment.weekly_hours * 60);
+  assert.equal(
+    minutes(session.end_time) - minutes(session.start_time),
+    assignment.weekly_hours * 60,
+  );
   assert.ok(minutes(session.start_time) >= 8 * 60);
   assert.ok(minutes(session.end_time) <= (session.session_type === "lab" ? 16 : 14) * 60);
   if (session.room_code === "R13" || session.room_code === "R14") {
@@ -109,4 +117,6 @@ for (let i = 0; i < plan.proposed_sessions.length; i++) {
     }
   }
 }
-console.log("ITCS first-year plan: 466 students, 44 updated and 6 new groups, 6 matched sessions PASS");
+console.log(
+  "ITCS first-year plan: 466 students, 44 updated and 6 new groups, 6 matched sessions PASS",
+);
