@@ -120,16 +120,27 @@ BEGIN
         FROM public.delivery_group_partition_members m WHERE m.cohort_id = r.id),
       'shared_links', (SELECT coalesce(jsonb_agg(to_jsonb(l) ORDER BY l.anchor_group_id,l.member_group_id), '[]'::jsonb)
         FROM public.shared_lecture_links l
-        WHERE EXISTS (SELECT 1 FROM public.delivery_groups g
-                      WHERE g.id IN (l.anchor_group_id, l.member_group_id) AND g.cohort_id = r.id)),
+        WHERE l.anchor_group_id IN (
+          SELECT DISTINCT touched.anchor_group_id
+          FROM public.shared_lecture_links touched
+          JOIN public.delivery_groups g
+            ON g.id IN (touched.anchor_group_id,touched.member_group_id)
+          WHERE g.cohort_id=r.id
+        )),
       'shared_partner_groups', (SELECT coalesce(jsonb_agg(to_jsonb(g) ORDER BY g.id), '[]'::jsonb)
         FROM public.delivery_groups g
         WHERE g.cohort_id <> r.id
-          AND g.id IN (SELECT CASE WHEN a.cohort_id = r.id THEN l.member_group_id ELSE l.anchor_group_id END
-                       FROM public.shared_lecture_links l
-                       JOIN public.delivery_groups a ON a.id = l.anchor_group_id
-                       JOIN public.delivery_groups m ON m.id = l.member_group_id
-                       WHERE a.cohort_id = r.id OR m.cohort_id = r.id)),
+          AND EXISTS (
+            SELECT 1 FROM public.shared_lecture_links l
+            WHERE g.id IN (l.anchor_group_id,l.member_group_id)
+              AND l.anchor_group_id IN (
+                SELECT DISTINCT touched.anchor_group_id
+                FROM public.shared_lecture_links touched
+                JOIN public.delivery_groups source_group
+                  ON source_group.id IN (touched.anchor_group_id,touched.member_group_id)
+                WHERE source_group.cohort_id=r.id
+              )
+          )),
       'assignments', (SELECT coalesce(jsonb_agg(to_jsonb(a) ORDER BY a.id), '[]'::jsonb)
         FROM public.teaching_assignments a
         WHERE a.cohort_id = r.id),
