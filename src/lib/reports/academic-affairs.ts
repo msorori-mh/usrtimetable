@@ -1,5 +1,6 @@
 import { PENDING_SPLIT_AR } from "../existing-schedules/presentation";
 import { administrativePositionLabelAr } from "@/lib/instructors/administrative-positions";
+import type { FacultyRosterRecord } from "@/lib/instructors/faculty-workflow";
 import type { TeachingAssignmentWorkspaceRow } from "../academic-delivery/teaching-assignments-v2.ts";
 import {
   QUOTA_SOURCE_LABEL_AR,
@@ -15,6 +16,9 @@ export type AcademicInstructor = {
   full_name: string;
   academic_rank: string | null;
   employee_number?: string | null;
+  university_number?: string | null;
+  home_department?: string | null;
+  quota_from_home?: boolean;
   administrative_position?: string | null;
   department_id: string | null;
   /** approved weekly load on the member's own card (`instructors.max_weekly_hours`) */
@@ -22,6 +26,31 @@ export type AcademicInstructor = {
   /** administrative release hours (`instructors.administrative_release_hours`) */
   administrative_release_hours?: number | null;
 };
+
+/** The home-college roster owns the faculty quota; the operational card does not. */
+export function homeRosterInstructors(
+  roster: FacultyRosterRecord[],
+  collegeId: string,
+): AcademicInstructor[] {
+  return roster
+    .filter((member) => member.home_college_id === collegeId)
+    .map((member) => ({
+      id: member.id,
+      full_name: member.full_name,
+      academic_rank: member.academic_rank,
+      university_number: member.university_number,
+      administrative_position: member.administrative_position,
+      department_id: member.department_id,
+      home_department: member.home_department,
+      // The roster's authoritative quota is net of release. Rebuild the base once.
+      max_weekly_hours:
+        member.authoritative_quota === null
+          ? null
+          : member.authoritative_quota + (member.administrative_release_hours ?? 0),
+      administrative_release_hours: member.administrative_release_hours,
+      quota_from_home: true,
+    }));
+}
 export type AcademicProgram = {
   id: string;
   name: string;
@@ -32,6 +61,7 @@ export type AcademicWorkload = {
   required_load_hours: number | null;
   standard_assigned_hours: number;
   project_supervision_hours: number;
+  allocation_pending?: boolean;
 };
 
 export type AcademicScope = {
@@ -91,7 +121,8 @@ export function parseAcademicWorkload(value: unknown, instructorId: string): Aca
     row.instructor_id !== instructorId ||
     !(row.required_load_hours === null || validNumber(row.required_load_hours)) ||
     !validNumber(row.standard_assigned_hours) ||
-    !validNumber(row.project_supervision_hours)
+    !validNumber(row.project_supervision_hours) ||
+    (row.allocation_pending !== undefined && typeof row.allocation_pending !== "boolean")
   )
     throw new Error("بيانات النصاب غير مكتملة؛ لا يمكن اعتماد التقرير");
   return row as AcademicWorkload;
@@ -226,11 +257,13 @@ export function buildAcademicReport(
         .reduce((sum, g) => sum + (g.component_hours ?? 0), 0);
       const w = facts.get(i.id);
       if (!w) throw new Error("بيانات أعباء أعضاء هيئة التدريس غير مكتملة");
+      // The workload RPC also detects unresolved shared teaching at other colleges.
+      const pendingAllocation = pendingSharedHours > 0 || w.allocation_pending === true;
       // Full college/term load survives program filtering: a partial program load is not a personal deficit.
       const balance = computeQuotaBalance({
         // RPC returns a net quota; reconstruct fallback base to avoid a second release.
         policyRequiredHours:
-          w.required_load_hours == null
+          i.quota_from_home || w.required_load_hours == null
             ? null
             : w.required_load_hours + (i.administrative_release_hours ?? 0),
         maxWeeklyHours: i.max_weekly_hours,
@@ -239,8 +272,8 @@ export function buildAcademicReport(
       });
       return {
         instructor: i.full_name,
-        employee_number: i.employee_number ?? "—",
-        department: departmentMap.get(i.department_id ?? "") ?? "غير محدد",
+        university_number: i.university_number ?? "—",
+        department: departmentMap.get(i.department_id ?? "") ?? i.home_department ?? "غير محدد",
         rank: i.academic_rank ?? "غير محدد",
         administrative_position:
           administrativePositionLabelAr(i.administrative_position) ||
@@ -252,17 +285,20 @@ export function buildAcademicReport(
         assigned: balance.assignedHours,
         shared_hours_pending: pendingSharedHours,
         project: round(w.project_supervision_hours),
-        overload: pendingSharedHours
+        overload: pendingAllocation
           ? QUOTA_UNDEFINED_AR
           : (balance.overloadHours ?? QUOTA_UNDEFINED_AR),
-        deficit: pendingSharedHours
+        deficit: pendingAllocation
           ? QUOTA_UNDEFINED_AR
           : (balance.deficitHours ?? QUOTA_UNDEFINED_AR),
-        quota_source: QUOTA_SOURCE_LABEL_AR[balance.source],
+        quota_source:
+          i.quota_from_home && balance.source !== "missing"
+            ? "النصاب المعتمد لدى الكلية الأصلية"
+            : QUOTA_SOURCE_LABEL_AR[balance.source],
         status:
           balance.status === "missing"
             ? QUOTA_STATUS_LABEL_AR.missing
-            : pendingSharedHours
+            : pendingAllocation
               ? PENDING_SPLIT_AR
               : (balance.overloadHours ?? 0) > 12
                 ? "تجاوز الحد المسموح للساعات الزائدة"
@@ -314,7 +350,7 @@ export const ACADEMIC_REPORT_HEADERS: Record<AcademicReportKind, { key: string; 
   {
     overload: [
       { key: "instructor", label: "عضو هيئة التدريس" },
-      { key: "employee_number", label: "الرقم الوظيفي" },
+      { key: "university_number", label: "الرقم الجامعي" },
       { key: "department", label: "القسم" },
       { key: "required", label: "صافي النصاب" },
       { key: "assigned", label: "الساعات المسندة" },
@@ -326,7 +362,7 @@ export const ACADEMIC_REPORT_HEADERS: Record<AcademicReportKind, { key: string; 
     ],
     deficit: [
       { key: "instructor", label: "عضو هيئة التدريس" },
-      { key: "employee_number", label: "الرقم الوظيفي" },
+      { key: "university_number", label: "الرقم الجامعي" },
       { key: "department", label: "القسم" },
       { key: "required", label: "صافي النصاب" },
       { key: "assigned", label: "الساعات المسندة" },
@@ -337,7 +373,7 @@ export const ACADEMIC_REPORT_HEADERS: Record<AcademicReportKind, { key: string; 
     ],
     workload: [
       { key: "instructor", label: "عضو هيئة التدريس" },
-      { key: "employee_number", label: "الرقم الوظيفي" },
+      { key: "university_number", label: "الرقم الجامعي" },
       { key: "department", label: "القسم التابع له" },
       { key: "rank", label: "الرتبة العلمية" },
       { key: "administrative_position", label: "المنصب الإداري" },
