@@ -6,6 +6,7 @@ import {
   summarizeDemandCapacity,
   summarizeUniversityCapacity,
 } from "../src/lib/reports/teaching-demand-capacity.ts";
+import { buildLeadershipRoomCapacity } from "../src/lib/reports/leadership-room-capacity.ts";
 
 const college = {
   college_id: "college-1",
@@ -16,6 +17,7 @@ const college = {
   groups_count: 2,
   version_id: "published-1",
   teaching_hours: 5,
+  room_count: 1,
 };
 const groups = [
   {
@@ -179,7 +181,7 @@ test("partial college data cannot become a university surplus", () => {
   const complete = {
     id: "college-1",
     name: "التربية",
-    rooms: [{ id: "r1" }],
+    rooms: [{ id: "r1", category: "hall", availableHours: 12 }],
     requiredHours: 5,
     availableHours: 12,
     balanceHours: 7,
@@ -210,4 +212,59 @@ test("partial college data cannot become a university surplus", () => {
   assert.equal(university.requiredHours, null);
   assert.equal(university.availableHours, null);
   assert.equal(university.balanceHours, null);
+});
+
+test("lecture rooms and labs have separate counts and available hours", () => {
+  const scopedCollege = { ...college, room_count: 2 };
+  const sources = {
+    rooms: [
+      { id: "hall", college_id: college.college_id, room_type_id: "hall-type", is_active: true,
+        available_days: null, available_start_time: null, available_end_time: null },
+      { id: "lab", college_id: college.college_id, room_type_id: "lab-type", is_active: true,
+        available_days: [0], available_start_time: null, available_end_time: null },
+    ],
+    roomTypes: [
+      { id: "hall-type", name_ar: "قاعة محاضرات", code: "lecture_hall" },
+      { id: "lab-type", name_ar: "معمل حاسوب", code: "computer_lab" },
+    ],
+    settings: [{ college_id: college.college_id, working_days: [0, 1],
+      day_start_time: "08:00", day_end_time: "14:00" }],
+    availability: [],
+    sessions: [],
+  };
+  const [capacity] = buildLeadershipRoomCapacity([scopedCollege], sources);
+  const [row] = summarizeDemandCapacity([scopedCollege], [capacity]);
+  assert.equal(row.hallRooms, 1);
+  assert.equal(row.hallAvailableHours, 12);
+  assert.equal(row.labRooms, 1);
+  assert.equal(row.labAvailableHours, 6);
+  assert.equal(row.availableHours, 18);
+  assert.equal(row.hallAvailableHours + row.labAvailableHours, row.availableHours);
+
+  const noLabsCollege = { ...scopedCollege, room_count: 1 };
+  const [noLabs] = summarizeDemandCapacity(
+    [noLabsCollege],
+    [buildLeadershipRoomCapacity([noLabsCollege], {
+      ...sources, rooms: [sources.rooms[0]],
+    })[0]],
+  );
+  assert.equal(noLabs.labRooms, 0);
+  assert.equal(noLabs.labAvailableHours, 0);
+
+  const [unknown] = summarizeDemandCapacity(
+    [scopedCollege],
+    [buildLeadershipRoomCapacity([scopedCollege], {
+      ...sources,
+      rooms: [sources.rooms[0], { ...sources.rooms[1], room_type_id: null }],
+    })[0]],
+  );
+  assert.equal(unknown.unclassifiedRooms, 1);
+  assert.equal(unknown.labRooms, null);
+  assert.equal(unknown.hallAvailableHours, null);
+  assert.equal(unknown.status, "partial");
+  const [blankCode] = buildLeadershipRoomCapacity([scopedCollege], {
+    ...sources,
+    roomTypes: [sources.roomTypes[0], { ...sources.roomTypes[1], code: "   " }],
+  });
+  assert.equal(blankCode.rooms.find((room) => room.id === "lab").category, null);
 });

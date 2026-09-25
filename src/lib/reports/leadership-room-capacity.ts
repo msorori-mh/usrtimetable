@@ -1,4 +1,5 @@
 import { roomUtilizationMetrics, type ReportTime } from "./presentation-metrics";
+import { roomCategoryFromType } from "@/lib/print-center/rooms-report";
 
 export const STANDARD_ROOM_DAY_HOURS = 6;
 export const STANDARD_ROOM_WEEK_HOURS = 36;
@@ -75,6 +76,8 @@ export interface LeadershipCapacityRoom {
   name: string;
   code: string;
   type: string;
+  /** A missing type code cannot safely be counted as a classroom or lab. */
+  category: "hall" | "lab" | null;
   seats: number | null;
   availableHours: number | null;
   occupiedHours: number | null;
@@ -139,12 +142,13 @@ export function buildLeadershipRoomCapacity(
       .map((room): LeadershipCapacityRoom => {
         const availability = sources.availability.filter((a) => a.room_id === room.id);
         const assigned = sessions.filter((s) => s.room_id === room.id);
+        const roomType = sources.roomTypes.find((t) => t.id === room.room_type_id);
         const result: LeadershipCapacityRoom = {
           id: room.id,
           name: room.name || room.code || "قاعة غير مسماة",
           code: room.code || "—",
-          type:
-            sources.roomTypes.find((t) => t.id === room.room_type_id)?.name_ar || "نوع غير محدد",
+          type: roomType?.name_ar || "نوع غير محدد",
+          category: roomType?.code?.trim() ? roomCategoryFromType(roomType.code) : null,
           seats: room.capacity,
           availableHours: null,
           occupiedHours: null,
