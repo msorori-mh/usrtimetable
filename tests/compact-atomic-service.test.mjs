@@ -47,6 +47,16 @@ test("quality proposals use atomic relayout with the existing day ceiling", asyn
   assert.equal(result.after.instructorGapMinutes, 0);
 });
 
+test("the compact snapshot uses selected-version group and partition sizes", async () => {
+  const { st, service } = await setup();
+  st.versionHeadcount = 42;
+  const version = await service.loadCompactSnapshot("c", "v");
+  assert.equal(st.s.groups[0].expected_students, 30);
+  assert.equal(version.groups[0].expected_students, 42);
+  assert.equal(version.partitions[0].headcount, 42);
+  assert.equal(version.sessions[0].expected_students, 42);
+});
+
 test("quality save independently rejects raising attendance days", async () => {
   const { st, service, p } = await setup();
   p.applicationMode = "simultaneous";
@@ -158,6 +168,26 @@ async function setup() {
     async rpc(name, args) {
       if (name === "get_schedule_external_busy")
         return { data: st.s.externalBusy ?? [], error: null };
+      if (name === "schedule_version_student_memberships")
+        return {
+          data: args.p_groups.flatMap((id) => {
+            const group = st.s.groups.find((g) => g.id === id);
+            if (!group) return [];
+            const members = st.s.members.filter((m) => m.delivery_group_id === id);
+            return (members.length ? members : [{ cohort_id: group.cohort_id }]).map((m) => ({
+              delivery_group_id: id,
+              cohort_id: m.cohort_id,
+              partition_id: m.partition_id ?? null,
+              partition_headcount:
+                st.versionHeadcount ??
+                st.s.partitions.find((p) => p.id === m.partition_id)?.headcount ??
+                null,
+              shared_lecture: false,
+              expected_students: st.versionHeadcount ?? group.expected_students,
+            }));
+          }),
+          error: null,
+        };
       st.calls.push({ name, args });
       if (name === "get_schedule_compaction_result")
         return {

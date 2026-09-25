@@ -1,0 +1,1412 @@
+-- Stage ITCS-ISO-03. Execute only after 02a-02f pass live dry runs.
+-- This is a one-shot, draft-only transaction. It is deliberately non-idempotent:
+-- changed baseline or a repeat invocation aborts before any write.
+BEGIN;
+SET LOCAL lock_timeout='5s';
+SET LOCAL statement_timeout='90s';
+SELECT pg_advisory_xact_lock(9262,20260925);
+
+CREATE TEMP TABLE _itcs_plan ON COMMIT DROP AS
+SELECT $itcs_plan${
+  "source": "captured 2026-09-24 preflight plus earlier ZIP and three confirmed moves",
+  "status": "OFFLINE_PREVIEW_ONLY",
+  "target_version_id": "d68d8d22-9a6d-4f21-935f-cebf18bb969b",
+  "old_version_session_count": 275,
+  "proposed_version_session_count": 281,
+  "new_students_total": 466,
+  "cohort_counts": [
+    {
+      "code": "CYB-P-L1-2026",
+      "old": 110,
+      "new": 140,
+      "partitions": [
+        {
+          "code": "A001",
+          "headcount": 35
+        },
+        {
+          "code": "A002",
+          "headcount": 35
+        },
+        {
+          "code": "A003",
+          "headcount": 35
+        },
+        {
+          "code": "A004",
+          "headcount": 35
+        }
+      ]
+    },
+    {
+      "code": "IT-P-L1-2026",
+      "old": 75,
+      "new": 100,
+      "partitions": [
+        {
+          "code": "A001",
+          "headcount": 34
+        },
+        {
+          "code": "A002",
+          "headcount": 16
+        },
+        {
+          "code": "A003",
+          "headcount": 17
+        },
+        {
+          "code": "A004",
+          "headcount": 33
+        }
+      ]
+    },
+    {
+      "code": "CIS-JF-L1-2026",
+      "old": 120,
+      "new": 125,
+      "partitions": [
+        {
+          "code": "A001",
+          "headcount": 42
+        },
+        {
+          "code": "A002",
+          "headcount": 21
+        },
+        {
+          "code": "A003",
+          "headcount": 21
+        },
+        {
+          "code": "A004",
+          "headcount": 41
+        }
+      ]
+    },
+    {
+      "code": "CS-P-L1-2026",
+      "old": 75,
+      "new": 59,
+      "partitions": [
+        {
+          "code": "A001",
+          "headcount": 30
+        },
+        {
+          "code": "A002",
+          "headcount": 29
+        }
+      ]
+    },
+    {
+      "code": "CIS-P-L1-2026",
+      "old": 40,
+      "new": 42,
+      "partitions": [
+        {
+          "code": "A001",
+          "headcount": 42
+        }
+      ]
+    }
+  ],
+  "existing_group_changes": [
+    {
+      "group_id": "a5b66dd1-ff3f-4d9b-bdfd-a2426b532eae",
+      "cohort_code": "CIS-JF-L1-2026",
+      "component_id": "43f80957-a0ac-4658-827f-31fff28b12ee",
+      "group_code": "G1",
+      "old": 40,
+      "new": 42,
+      "capacity": 42,
+      "partitions": [
+        "A001"
+      ]
+    },
+    {
+      "group_id": "848c79d9-d84e-4fbe-b3ec-181bb797e113",
+      "cohort_code": "CIS-JF-L1-2026",
+      "component_id": "43f80957-a0ac-4658-827f-31fff28b12ee",
+      "group_code": "G2",
+      "old": 40,
+      "new": 42,
+      "capacity": 42,
+      "partitions": [
+        "A002",
+        "A003"
+      ]
+    },
+    {
+      "group_id": "3ef3604e-180c-4a47-9693-81f4c1a22cf9",
+      "cohort_code": "CIS-JF-L1-2026",
+      "component_id": "43f80957-a0ac-4658-827f-31fff28b12ee",
+      "group_code": "G3",
+      "old": 40,
+      "new": 41,
+      "capacity": 42,
+      "partitions": [
+        "A004"
+      ]
+    },
+    {
+      "group_id": "7d749462-5cf3-4d08-8cff-ed10338b1f16",
+      "cohort_code": "CIS-JF-L1-2026",
+      "component_id": "67999b70-d4ab-441d-b04e-2d9a91d680f3",
+      "group_code": "G1",
+      "old": 120,
+      "new": 125,
+      "capacity": 192,
+      "partitions": [
+        "A001",
+        "A002",
+        "A003",
+        "A004"
+      ]
+    },
+    {
+      "group_id": "9eec1d66-8454-4edf-9a11-8d41303db379",
+      "cohort_code": "CIS-JF-L1-2026",
+      "component_id": "b3ba8283-8086-4e32-8e9f-18689bb08290",
+      "group_code": "G1",
+      "old": 60,
+      "new": 63,
+      "capacity": 75,
+      "partitions": [
+        "A001",
+        "A002"
+      ]
+    },
+    {
+      "group_id": "35eb8742-6e91-4e11-85d5-0edfee7335c8",
+      "cohort_code": "CIS-JF-L1-2026",
+      "component_id": "b3ba8283-8086-4e32-8e9f-18689bb08290",
+      "group_code": "G2",
+      "old": 60,
+      "new": 62,
+      "capacity": 75,
+      "partitions": [
+        "A003",
+        "A004"
+      ]
+    },
+    {
+      "group_id": "4afaab8e-a100-4198-83d3-b81d4a7286af",
+      "cohort_code": "CIS-JF-L1-2026",
+      "component_id": "cc852110-803d-4bf8-af37-993b166adf63",
+      "group_code": "G1",
+      "old": 60,
+      "new": 63,
+      "capacity": 75,
+      "partitions": [
+        "A001",
+        "A002"
+      ]
+    },
+    {
+      "group_id": "8bad8b50-d2e2-4c57-a635-86ecedab7ad2",
+      "cohort_code": "CIS-JF-L1-2026",
+      "component_id": "cc852110-803d-4bf8-af37-993b166adf63",
+      "group_code": "G2",
+      "old": 60,
+      "new": 62,
+      "capacity": 75,
+      "partitions": [
+        "A003",
+        "A004"
+      ]
+    },
+    {
+      "group_id": "96ed1777-6c76-4449-9d7d-526a60f18722",
+      "cohort_code": "CIS-JF-L1-2026",
+      "component_id": "e9c0a023-8c42-49ce-9faa-1471b23f2767",
+      "group_code": "G1",
+      "old": 60,
+      "new": 63,
+      "capacity": 75,
+      "partitions": [
+        "A001",
+        "A002"
+      ]
+    },
+    {
+      "group_id": "8425a731-f9a5-4354-a834-93aa8f3a1007",
+      "cohort_code": "CIS-JF-L1-2026",
+      "component_id": "e9c0a023-8c42-49ce-9faa-1471b23f2767",
+      "group_code": "G2",
+      "old": 60,
+      "new": 62,
+      "capacity": 75,
+      "partitions": [
+        "A003",
+        "A004"
+      ]
+    },
+    {
+      "group_id": "b4ef96f5-8bf8-44ef-b57a-7d03a3ed1e53",
+      "cohort_code": "CIS-JF-L1-2026",
+      "component_id": "f7bd834c-f955-48f5-9dc7-d014351feb93",
+      "group_code": "G1",
+      "old": 60,
+      "new": 63,
+      "capacity": 75,
+      "partitions": [
+        "A001",
+        "A002"
+      ]
+    },
+    {
+      "group_id": "69d2657d-4809-495c-85e8-4abc3beba389",
+      "cohort_code": "CIS-JF-L1-2026",
+      "component_id": "f7bd834c-f955-48f5-9dc7-d014351feb93",
+      "group_code": "G2",
+      "old": 60,
+      "new": 62,
+      "capacity": 75,
+      "partitions": [
+        "A003",
+        "A004"
+      ]
+    },
+    {
+      "group_id": "0fbb441b-efc0-4cf5-8103-c880ea958dc6",
+      "cohort_code": "CIS-P-L1-2026",
+      "component_id": "04efbb5a-0ad8-4137-ae19-dc4feb0ac6d6",
+      "group_code": "G1",
+      "old": 40,
+      "new": 42,
+      "capacity": 75,
+      "partitions": [
+        "A001"
+      ]
+    },
+    {
+      "group_id": "f490d282-14c2-4631-bdd2-2c0abfba1517",
+      "cohort_code": "CIS-P-L1-2026",
+      "component_id": "2dd884c0-d35e-46dc-886a-e405aebaad80",
+      "group_code": "G1",
+      "old": 40,
+      "new": 42,
+      "capacity": 75,
+      "partitions": [
+        "A001"
+      ]
+    },
+    {
+      "group_id": "0cc45f9d-7748-44a6-b957-a1b4d72f870a",
+      "cohort_code": "CIS-P-L1-2026",
+      "component_id": "31c1990d-0a21-49d1-b307-588c8ec9103d",
+      "group_code": "G1",
+      "old": 40,
+      "new": 42,
+      "capacity": 75,
+      "partitions": [
+        "A001"
+      ]
+    },
+    {
+      "group_id": "9087194b-6b93-4964-92f0-e54a18443d46",
+      "cohort_code": "CIS-P-L1-2026",
+      "component_id": "46ea2926-b02c-41c8-8d44-d9843b3b7f11",
+      "group_code": "G1",
+      "old": 40,
+      "new": 42,
+      "capacity": 75,
+      "partitions": [
+        "A001"
+      ]
+    },
+    {
+      "group_id": "6fdde65b-3a25-41ae-bc65-d95b68df75fe",
+      "cohort_code": "CIS-P-L1-2026",
+      "component_id": "5ac786be-569d-4bd1-ae26-136231159a7b",
+      "group_code": "G1",
+      "old": 40,
+      "new": 42,
+      "capacity": 42,
+      "partitions": [
+        "A001"
+      ]
+    },
+    {
+      "group_id": "ccc0fd81-e781-4a35-9877-551dfdb211b2",
+      "cohort_code": "CIS-P-L1-2026",
+      "component_id": "f94f8c0b-5941-43b4-86f7-318850d711f6",
+      "group_code": "G1",
+      "old": 40,
+      "new": 42,
+      "capacity": 192,
+      "partitions": [
+        "A001"
+      ]
+    },
+    {
+      "group_id": "63b3c1cb-a8a8-44a2-b94a-a297415a66ce",
+      "cohort_code": "CS-P-L1-2026",
+      "component_id": "07ef5cb3-16b3-46a8-987c-621cc81dad3b",
+      "group_code": "G1",
+      "old": 75,
+      "new": 59,
+      "capacity": 75,
+      "partitions": [
+        "A001",
+        "A002"
+      ]
+    },
+    {
+      "group_id": "71af851a-2db0-4a18-ba56-2f60f9915167",
+      "cohort_code": "CS-P-L1-2026",
+      "component_id": "0a9bda8d-2ce6-4d16-b0c8-8de382d147ed",
+      "group_code": "G1",
+      "old": 38,
+      "new": 30,
+      "capacity": 42,
+      "partitions": [
+        "A001"
+      ]
+    },
+    {
+      "group_id": "dcbb16ad-a558-40a7-b274-b1dd60730b1c",
+      "cohort_code": "CS-P-L1-2026",
+      "component_id": "0a9bda8d-2ce6-4d16-b0c8-8de382d147ed",
+      "group_code": "G2",
+      "old": 37,
+      "new": 29,
+      "capacity": 42,
+      "partitions": [
+        "A002"
+      ]
+    },
+    {
+      "group_id": "ceb182e7-b395-43fb-82fd-4e81faae5e6f",
+      "cohort_code": "CS-P-L1-2026",
+      "component_id": "213add1e-78b7-4372-86cc-ff6538f3c149",
+      "group_code": "G1",
+      "old": 75,
+      "new": 59,
+      "capacity": 75,
+      "partitions": [
+        "A001",
+        "A002"
+      ]
+    },
+    {
+      "group_id": "efad1ab5-3690-44f5-9c3b-b5191ce3102b",
+      "cohort_code": "CS-P-L1-2026",
+      "component_id": "2e1cab0d-8fa2-455b-9ee6-a63628608c6d",
+      "group_code": "G1",
+      "old": 75,
+      "new": 59,
+      "capacity": 75,
+      "partitions": [
+        "A001",
+        "A002"
+      ]
+    },
+    {
+      "group_id": "a18891ec-2a91-4d88-adfa-9f370ec2f181",
+      "cohort_code": "CS-P-L1-2026",
+      "component_id": "564865f6-e445-48a2-951c-6432fd4b99fb",
+      "group_code": "G1",
+      "old": 75,
+      "new": 59,
+      "capacity": 75,
+      "partitions": [
+        "A001",
+        "A002"
+      ]
+    },
+    {
+      "group_id": "9e150a62-21a9-480a-9e27-512f4eb0f3a4",
+      "cohort_code": "CS-P-L1-2026",
+      "component_id": "eebbdf59-37fa-445c-953a-b552ce7e52da",
+      "group_code": "G1",
+      "old": 75,
+      "new": 59,
+      "capacity": 192,
+      "partitions": [
+        "A001",
+        "A002"
+      ]
+    },
+    {
+      "group_id": "ed63840a-70dc-4fd0-8dea-25b6379c923e",
+      "cohort_code": "CYB-P-L1-2026",
+      "component_id": "3545e0bd-9b78-4926-b806-43a26979b5d5",
+      "group_code": "G1",
+      "old": 55,
+      "new": 70,
+      "capacity": 75,
+      "partitions": [
+        "A001",
+        "A002"
+      ]
+    },
+    {
+      "group_id": "707930c3-faca-4971-bebe-59e51321bab6",
+      "cohort_code": "CYB-P-L1-2026",
+      "component_id": "3545e0bd-9b78-4926-b806-43a26979b5d5",
+      "group_code": "G2",
+      "old": 55,
+      "new": 70,
+      "capacity": 75,
+      "partitions": [
+        "A003",
+        "A004"
+      ]
+    },
+    {
+      "group_id": "b6e4a76d-9d3c-442c-bfe4-bc426e9da69b",
+      "cohort_code": "CYB-P-L1-2026",
+      "component_id": "3c3eff9e-232c-430f-8d5a-4f50f23ab725",
+      "group_code": "G1",
+      "old": 55,
+      "new": 70,
+      "capacity": 75,
+      "partitions": [
+        "A001",
+        "A002"
+      ]
+    },
+    {
+      "group_id": "13f6aff4-ef7b-4848-9eed-de1b422b4a02",
+      "cohort_code": "CYB-P-L1-2026",
+      "component_id": "3c3eff9e-232c-430f-8d5a-4f50f23ab725",
+      "group_code": "G2",
+      "old": 55,
+      "new": 70,
+      "capacity": 75,
+      "partitions": [
+        "A003",
+        "A004"
+      ]
+    },
+    {
+      "group_id": "a2be8a0b-6d56-4e4d-beb1-1bf53cfc19bc",
+      "cohort_code": "CYB-P-L1-2026",
+      "component_id": "4d56f8b5-25d4-4f77-8e4a-4f04f230093e",
+      "group_code": "G1",
+      "old": 37,
+      "new": 35,
+      "capacity": 42,
+      "partitions": [
+        "A001"
+      ]
+    },
+    {
+      "group_id": "c7e53fcf-42cd-4994-a8ec-c34a6fd6b3b8",
+      "cohort_code": "CYB-P-L1-2026",
+      "component_id": "4d56f8b5-25d4-4f77-8e4a-4f04f230093e",
+      "group_code": "G2",
+      "old": 37,
+      "new": 35,
+      "capacity": 42,
+      "partitions": [
+        "A002"
+      ]
+    },
+    {
+      "group_id": "b4f22720-89ac-42b2-b2d8-9f50b10116dd",
+      "cohort_code": "CYB-P-L1-2026",
+      "component_id": "4d56f8b5-25d4-4f77-8e4a-4f04f230093e",
+      "group_code": "G3",
+      "old": 36,
+      "new": 35,
+      "capacity": 42,
+      "partitions": [
+        "A003"
+      ]
+    },
+    {
+      "group_id": "174b8350-7cb7-4f17-b5e4-293e2180128e",
+      "cohort_code": "CYB-P-L1-2026",
+      "component_id": "b689f30a-f5f8-4f2a-a2ca-26dd21dc710d",
+      "group_code": "G1",
+      "old": 55,
+      "new": 70,
+      "capacity": 75,
+      "partitions": [
+        "A001",
+        "A002"
+      ]
+    },
+    {
+      "group_id": "c6125a33-7a61-4f81-beae-5ef89ad1e3ad",
+      "cohort_code": "CYB-P-L1-2026",
+      "component_id": "b689f30a-f5f8-4f2a-a2ca-26dd21dc710d",
+      "group_code": "G2",
+      "old": 55,
+      "new": 70,
+      "capacity": 75,
+      "partitions": [
+        "A003",
+        "A004"
+      ]
+    },
+    {
+      "group_id": "95764466-90a1-4915-add8-b214d02f26c6",
+      "cohort_code": "CYB-P-L1-2026",
+      "component_id": "f55ac9ec-1dab-41a1-b5cb-99fb001f4dfa",
+      "group_code": "G1",
+      "old": 110,
+      "new": 140,
+      "capacity": 192,
+      "partitions": [
+        "A001",
+        "A002",
+        "A003",
+        "A004"
+      ]
+    },
+    {
+      "group_id": "bd09a161-d94d-4483-b683-e1b4a5378c18",
+      "cohort_code": "CYB-P-L1-2026",
+      "component_id": "f7d0a82b-49c0-40f6-a652-153edbdf5bd2",
+      "group_code": "G1",
+      "old": 55,
+      "new": 70,
+      "capacity": 75,
+      "partitions": [
+        "A001",
+        "A002"
+      ]
+    },
+    {
+      "group_id": "1644ec6f-f167-440f-82b7-32437efd505b",
+      "cohort_code": "CYB-P-L1-2026",
+      "component_id": "f7d0a82b-49c0-40f6-a652-153edbdf5bd2",
+      "group_code": "G2",
+      "old": 55,
+      "new": 70,
+      "capacity": 75,
+      "partitions": [
+        "A003",
+        "A004"
+      ]
+    },
+    {
+      "group_id": "26129825-19a4-4f52-a233-0785012f1b51",
+      "cohort_code": "IT-P-L1-2026",
+      "component_id": "00ac8d98-b133-4dc4-a3b9-f01096b9e734",
+      "group_code": "G1",
+      "old": 75,
+      "new": 100,
+      "capacity": 192,
+      "partitions": [
+        "A001",
+        "A002",
+        "A003",
+        "A004"
+      ]
+    },
+    {
+      "group_id": "cde57de8-b7af-4546-9f96-73bced506d77",
+      "cohort_code": "IT-P-L1-2026",
+      "component_id": "152727e7-0f4c-48af-a78d-2a79218778af",
+      "group_code": "G1",
+      "old": 75,
+      "new": 50,
+      "capacity": 75,
+      "partitions": [
+        "A001",
+        "A002"
+      ]
+    },
+    {
+      "group_id": "6ce48173-d59f-4055-944a-6c7d92046da0",
+      "cohort_code": "IT-P-L1-2026",
+      "component_id": "9273e0a8-95e9-49b2-a68a-6d3f3905837d",
+      "group_code": "G1",
+      "old": 38,
+      "new": 34,
+      "capacity": 42,
+      "partitions": [
+        "A001"
+      ]
+    },
+    {
+      "group_id": "a5a0ff22-7a24-471a-b1c9-9b2a99930358",
+      "cohort_code": "IT-P-L1-2026",
+      "component_id": "9273e0a8-95e9-49b2-a68a-6d3f3905837d",
+      "group_code": "G2",
+      "old": 37,
+      "new": 33,
+      "capacity": 42,
+      "partitions": [
+        "A002",
+        "A003"
+      ]
+    },
+    {
+      "group_id": "15883f93-65df-4fc4-8889-98965349f1e2",
+      "cohort_code": "IT-P-L1-2026",
+      "component_id": "95c3bdc8-5589-4f4e-852b-29611172fba4",
+      "group_code": "G1",
+      "old": 75,
+      "new": 50,
+      "capacity": 75,
+      "partitions": [
+        "A001",
+        "A002"
+      ]
+    },
+    {
+      "group_id": "f958a90b-acaf-42d8-9f8f-5b4e5cf98264",
+      "cohort_code": "IT-P-L1-2026",
+      "component_id": "ee7dd16b-1fe4-4429-a446-e92d8e2306a7",
+      "group_code": "G1",
+      "old": 75,
+      "new": 50,
+      "capacity": 75,
+      "partitions": [
+        "A001",
+        "A002"
+      ]
+    },
+    {
+      "group_id": "623c5443-f012-4407-b7d3-0a42255371e0",
+      "cohort_code": "IT-P-L1-2026",
+      "component_id": "fd0ef1b1-95bd-4aaa-82c7-d337e470aa6f",
+      "group_code": "G1",
+      "old": 75,
+      "new": 50,
+      "capacity": 75,
+      "partitions": [
+        "A001",
+        "A002"
+      ]
+    }
+  ],
+  "new_groups": [
+    {
+      "cohort_code": "IT-P-L1-2026",
+      "cohort_id": "f8188b18-207a-4543-a3f7-89b4e8fad293",
+      "component_id": "ee7dd16b-1fe4-4429-a446-e92d8e2306a7",
+      "plan_course_id": "e36448d0-74b4-4857-9342-16b2bba1156b",
+      "group_code": "G2",
+      "expected_students": 50,
+      "capacity_limit": 75,
+      "partitions": [
+        "A003",
+        "A004"
+      ],
+      "source_group_id": "f958a90b-acaf-42d8-9f8f-5b4e5cf98264",
+      "new_group_id": "838e954c-c34b-5c7c-b845-27ca140461e4"
+    },
+    {
+      "cohort_code": "IT-P-L1-2026",
+      "cohort_id": "f8188b18-207a-4543-a3f7-89b4e8fad293",
+      "component_id": "fd0ef1b1-95bd-4aaa-82c7-d337e470aa6f",
+      "plan_course_id": "5fc978cc-7478-4b32-b515-b036bef56951",
+      "group_code": "G2",
+      "expected_students": 50,
+      "capacity_limit": 75,
+      "partitions": [
+        "A003",
+        "A004"
+      ],
+      "source_group_id": "623c5443-f012-4407-b7d3-0a42255371e0",
+      "new_group_id": "e560ab77-753f-5f42-b2bb-4192701933cc"
+    },
+    {
+      "cohort_code": "IT-P-L1-2026",
+      "cohort_id": "f8188b18-207a-4543-a3f7-89b4e8fad293",
+      "component_id": "95c3bdc8-5589-4f4e-852b-29611172fba4",
+      "plan_course_id": "88b4c7a0-7ecf-4289-bcea-24c690b9b43c",
+      "group_code": "G2",
+      "expected_students": 50,
+      "capacity_limit": 75,
+      "partitions": [
+        "A003",
+        "A004"
+      ],
+      "source_group_id": "15883f93-65df-4fc4-8889-98965349f1e2",
+      "new_group_id": "e91b9ede-8a74-5668-903b-21bb4c1e6d6e"
+    },
+    {
+      "cohort_code": "IT-P-L1-2026",
+      "cohort_id": "f8188b18-207a-4543-a3f7-89b4e8fad293",
+      "component_id": "152727e7-0f4c-48af-a78d-2a79218778af",
+      "plan_course_id": "f4bc6277-bf8a-4c2d-9413-4ddfcdcf8f2b",
+      "group_code": "G2",
+      "expected_students": 50,
+      "capacity_limit": 75,
+      "partitions": [
+        "A003",
+        "A004"
+      ],
+      "source_group_id": "cde57de8-b7af-4546-9f96-73bced506d77",
+      "new_group_id": "7909072a-809b-53f9-9062-dd2c719dcda6"
+    },
+    {
+      "cohort_code": "IT-P-L1-2026",
+      "cohort_id": "f8188b18-207a-4543-a3f7-89b4e8fad293",
+      "component_id": "9273e0a8-95e9-49b2-a68a-6d3f3905837d",
+      "plan_course_id": "1a242c42-2698-4c3b-a89d-f8cda3744ae7",
+      "group_code": "G3",
+      "expected_students": 33,
+      "capacity_limit": 42,
+      "partitions": [
+        "A004"
+      ],
+      "source_group_id": "a5a0ff22-7a24-471a-b1c9-9b2a99930358",
+      "new_group_id": "15a8e7b5-2727-5213-94b2-801120e0be93"
+    },
+    {
+      "cohort_code": "CYB-P-L1-2026",
+      "cohort_id": "ebfc0dee-f291-4f6d-a974-d3ed1df96f3e",
+      "component_id": "4d56f8b5-25d4-4f77-8e4a-4f04f230093e",
+      "plan_course_id": "c066fdb0-1265-44c6-a325-b63e6692a24c",
+      "group_code": "G4",
+      "expected_students": 35,
+      "capacity_limit": 42,
+      "partitions": [
+        "A004"
+      ],
+      "source_group_id": "b4f22720-89ac-42b2-b2d8-9f50b10116dd",
+      "new_group_id": "1ee6c24d-e349-521e-bf28-676c8c92d74e"
+    }
+  ],
+  "new_assignments": [
+    {
+      "cohort_code": "IT-P-L1-2026",
+      "group_code": "G2",
+      "source_assignment_id": "8c034cbe-3e7b-42ce-8e28-b2557778b04d",
+      "source_group_id": "f958a90b-acaf-42d8-9f8f-5b4e5cf98264",
+      "instructor_id": "cbb984d2-8406-44be-b5a2-3c962a471f61",
+      "course_offering_id": "2a32583f-007d-4f49-ad62-6822dccf2531",
+      "component_id": "ee7dd16b-1fe4-4429-a446-e92d8e2306a7",
+      "weekly_hours": 3,
+      "required_room_type": null,
+      "expected_students": 50,
+      "new_group_id": "838e954c-c34b-5c7c-b845-27ca140461e4",
+      "new_assignment_id": "083028e4-1104-5827-8a1d-d3f0c8e675c5"
+    },
+    {
+      "cohort_code": "IT-P-L1-2026",
+      "group_code": "G2",
+      "source_assignment_id": "97ec16ff-7c9a-465b-83d4-52782ac487cd",
+      "source_group_id": "623c5443-f012-4407-b7d3-0a42255371e0",
+      "instructor_id": "b06f0882-e0d4-4168-88c7-d6cde48bb61e",
+      "course_offering_id": "d45e03f9-5143-4272-8712-b2980d6e7100",
+      "component_id": "fd0ef1b1-95bd-4aaa-82c7-d337e470aa6f",
+      "weekly_hours": 3,
+      "required_room_type": null,
+      "expected_students": 50,
+      "new_group_id": "e560ab77-753f-5f42-b2bb-4192701933cc",
+      "new_assignment_id": "a3c2d5d7-9a2e-50da-88f6-f85c6895f25c"
+    },
+    {
+      "cohort_code": "IT-P-L1-2026",
+      "group_code": "G2",
+      "source_assignment_id": "4c275f3a-b922-48b6-8a55-c94c597c07a4",
+      "source_group_id": "15883f93-65df-4fc4-8889-98965349f1e2",
+      "instructor_id": "3f824f49-db83-4b40-9e67-5c97609c0d2b",
+      "course_offering_id": "e6a98f6f-9822-485d-a03f-bd69925df6c8",
+      "component_id": "95c3bdc8-5589-4f4e-852b-29611172fba4",
+      "weekly_hours": 3,
+      "required_room_type": "lecture_hall",
+      "expected_students": 50,
+      "new_group_id": "e91b9ede-8a74-5668-903b-21bb4c1e6d6e",
+      "new_assignment_id": "95bf19ef-16ac-5059-b549-4dd26b5dcf26"
+    },
+    {
+      "cohort_code": "IT-P-L1-2026",
+      "group_code": "G2",
+      "source_assignment_id": "a397372f-1bd4-40b2-8e1e-6243c75ea5de",
+      "source_group_id": "cde57de8-b7af-4546-9f96-73bced506d77",
+      "instructor_id": "1adeb837-8ad9-4b33-8ebf-d914ea457f23",
+      "course_offering_id": "5259134e-d812-48b3-b964-d9aa04586de0",
+      "component_id": "152727e7-0f4c-48af-a78d-2a79218778af",
+      "weekly_hours": 2,
+      "required_room_type": "lecture_hall",
+      "expected_students": 50,
+      "new_group_id": "7909072a-809b-53f9-9062-dd2c719dcda6",
+      "new_assignment_id": "6c2b3c48-5e90-54dd-9f0f-d305a6b6933e"
+    },
+    {
+      "cohort_code": "IT-P-L1-2026",
+      "group_code": "G3",
+      "source_assignment_id": "b7f1789a-955f-4ed3-9a3c-118aad9f28aa",
+      "source_group_id": "a5a0ff22-7a24-471a-b1c9-9b2a99930358",
+      "instructor_id": "8ca738b7-eae1-4980-a31f-ae1e5f6c1cbe",
+      "course_offering_id": "9e1c489a-d2e7-4690-84e7-25172bc9cc28",
+      "component_id": "9273e0a8-95e9-49b2-a68a-6d3f3905837d",
+      "weekly_hours": 2,
+      "required_room_type": "computer_lab",
+      "expected_students": 33,
+      "new_group_id": "15a8e7b5-2727-5213-94b2-801120e0be93",
+      "new_assignment_id": "39253cec-89c2-50d0-a482-224daef6a0bc"
+    },
+    {
+      "cohort_code": "CYB-P-L1-2026",
+      "group_code": "G4",
+      "source_assignment_id": "8d81d3ec-d395-4622-b833-0a7fa907a237",
+      "source_group_id": "b4f22720-89ac-42b2-b2d8-9f50b10116dd",
+      "instructor_id": "8ca738b7-eae1-4980-a31f-ae1e5f6c1cbe",
+      "course_offering_id": "ec8b1ba5-c212-41fd-be64-2e4d9de99c0a",
+      "component_id": "4d56f8b5-25d4-4f77-8e4a-4f04f230093e",
+      "weekly_hours": 2,
+      "required_room_type": null,
+      "expected_students": 35,
+      "new_group_id": "1ee6c24d-e349-521e-bf28-676c8c92d74e",
+      "new_assignment_id": "31a60993-a44b-52c3-ad7f-60105fe4d715"
+    }
+  ],
+  "proposed_sessions": [
+    {
+      "id": "PLANNED:cf8a6437",
+      "cohort_id": "f8188b18-207a-4543-a3f7-89b4e8fad293",
+      "delivery_group_id": "PLANNED:ee7dd16b-1fe4-4429-a446-e92d8e2306a7:2",
+      "plan_course_component_id": "ee7dd16b-1fe4-4429-a446-e92d8e2306a7",
+      "course_offering_id": "2a32583f-007d-4f49-ad62-6822dccf2531",
+      "teaching_assignment_id": "PLANNED:cf8a6437",
+      "instructor_id": "cbb984d2-8406-44be-b5a2-3c962a471f61",
+      "expected_students": 50,
+      "day_of_week": 2,
+      "start_time": "08:00:00",
+      "end_time": "11:00:00",
+      "room_id": "82304d61-8145-4120-89c3-8d2c6cedc9fe",
+      "room_code": "R13",
+      "session_type": "lecture",
+      "source_session_id": "cf8a6437-d538-421e-ab7c-ecc0dece801b",
+      "source_assignment_id": "8c034cbe-3e7b-42ce-8e28-b2557778b04d",
+      "new_group_id": "838e954c-c34b-5c7c-b845-27ca140461e4",
+      "new_assignment_id": "083028e4-1104-5827-8a1d-d3f0c8e675c5",
+      "new_session_id": "1e449677-3c66-5bd6-a822-4f0717083ba5"
+    },
+    {
+      "id": "PLANNED:3b048be0",
+      "cohort_id": "f8188b18-207a-4543-a3f7-89b4e8fad293",
+      "delivery_group_id": "PLANNED:fd0ef1b1-95bd-4aaa-82c7-d337e470aa6f:2",
+      "plan_course_component_id": "fd0ef1b1-95bd-4aaa-82c7-d337e470aa6f",
+      "course_offering_id": "d45e03f9-5143-4272-8712-b2980d6e7100",
+      "teaching_assignment_id": "PLANNED:3b048be0",
+      "instructor_id": "b06f0882-e0d4-4168-88c7-d6cde48bb61e",
+      "expected_students": 50,
+      "day_of_week": 1,
+      "start_time": "11:00:00",
+      "end_time": "14:00:00",
+      "room_id": "82304d61-8145-4120-89c3-8d2c6cedc9fe",
+      "room_code": "R13",
+      "session_type": "lecture",
+      "source_session_id": "3b048be0-e0bd-46d1-a010-c1d2ba02e91d",
+      "source_assignment_id": "97ec16ff-7c9a-465b-83d4-52782ac487cd",
+      "new_group_id": "e560ab77-753f-5f42-b2bb-4192701933cc",
+      "new_assignment_id": "a3c2d5d7-9a2e-50da-88f6-f85c6895f25c",
+      "new_session_id": "667c2412-5c4f-56be-95ee-84d38a9a4a66"
+    },
+    {
+      "id": "PLANNED:3b3f7de1",
+      "cohort_id": "f8188b18-207a-4543-a3f7-89b4e8fad293",
+      "delivery_group_id": "PLANNED:95c3bdc8-5589-4f4e-852b-29611172fba4:2",
+      "plan_course_component_id": "95c3bdc8-5589-4f4e-852b-29611172fba4",
+      "course_offering_id": "e6a98f6f-9822-485d-a03f-bd69925df6c8",
+      "teaching_assignment_id": "PLANNED:3b3f7de1",
+      "instructor_id": "3f824f49-db83-4b40-9e67-5c97609c0d2b",
+      "expected_students": 50,
+      "day_of_week": 0,
+      "start_time": "08:00:00",
+      "end_time": "11:00:00",
+      "room_id": "876ab627-e735-4e12-958c-ac293f650400",
+      "room_code": "R-04",
+      "session_type": "lecture",
+      "source_session_id": "3b3f7de1-17ce-4dc1-bdc3-6b4e7c57dbe2",
+      "source_assignment_id": "4c275f3a-b922-48b6-8a55-c94c597c07a4",
+      "new_group_id": "e91b9ede-8a74-5668-903b-21bb4c1e6d6e",
+      "new_assignment_id": "95bf19ef-16ac-5059-b549-4dd26b5dcf26",
+      "new_session_id": "baf57212-dc3b-5ba3-81b4-5f8e6367bac3"
+    },
+    {
+      "id": "PLANNED:8507aeda",
+      "cohort_id": "f8188b18-207a-4543-a3f7-89b4e8fad293",
+      "delivery_group_id": "PLANNED:152727e7-0f4c-48af-a78d-2a79218778af:2",
+      "plan_course_component_id": "152727e7-0f4c-48af-a78d-2a79218778af",
+      "course_offering_id": "5259134e-d812-48b3-b964-d9aa04586de0",
+      "teaching_assignment_id": "PLANNED:8507aeda",
+      "instructor_id": "1adeb837-8ad9-4b33-8ebf-d914ea457f23",
+      "expected_students": 50,
+      "day_of_week": 3,
+      "start_time": "08:00:00",
+      "end_time": "10:00:00",
+      "room_id": "82304d61-8145-4120-89c3-8d2c6cedc9fe",
+      "room_code": "R13",
+      "session_type": "lecture",
+      "source_session_id": "8507aeda-8e19-4cfb-b302-14172fe7894b",
+      "source_assignment_id": "a397372f-1bd4-40b2-8e1e-6243c75ea5de",
+      "new_group_id": "7909072a-809b-53f9-9062-dd2c719dcda6",
+      "new_assignment_id": "6c2b3c48-5e90-54dd-9f0f-d305a6b6933e",
+      "new_session_id": "471ae1bb-9880-5274-be50-400b33c9403f"
+    },
+    {
+      "id": "PLANNED:85b9c15e",
+      "cohort_id": "f8188b18-207a-4543-a3f7-89b4e8fad293",
+      "delivery_group_id": "PLANNED:9273e0a8-95e9-49b2-a68a-6d3f3905837d:3",
+      "plan_course_component_id": "9273e0a8-95e9-49b2-a68a-6d3f3905837d",
+      "course_offering_id": "9e1c489a-d2e7-4690-84e7-25172bc9cc28",
+      "teaching_assignment_id": "PLANNED:85b9c15e",
+      "instructor_id": "8ca738b7-eae1-4980-a31f-ae1e5f6c1cbe",
+      "expected_students": 33,
+      "day_of_week": 6,
+      "start_time": "08:00:00",
+      "end_time": "10:00:00",
+      "room_id": "5273162a-52d3-42bb-b0ea-0beb380b8673",
+      "room_code": "LAB-01",
+      "session_type": "lab",
+      "source_session_id": "85b9c15e-1b39-43ce-a67c-aeb112e69dba",
+      "source_assignment_id": "b7f1789a-955f-4ed3-9a3c-118aad9f28aa",
+      "new_group_id": "15a8e7b5-2727-5213-94b2-801120e0be93",
+      "new_assignment_id": "39253cec-89c2-50d0-a482-224daef6a0bc",
+      "new_session_id": "ad7eded4-159b-5e01-a560-e313e99b7b9b"
+    },
+    {
+      "id": "PLANNED:34a2e6ed",
+      "cohort_id": "ebfc0dee-f291-4f6d-a974-d3ed1df96f3e",
+      "delivery_group_id": "PLANNED:4d56f8b5-25d4-4f77-8e4a-4f04f230093e:4",
+      "plan_course_component_id": "4d56f8b5-25d4-4f77-8e4a-4f04f230093e",
+      "course_offering_id": "ec8b1ba5-c212-41fd-be64-2e4d9de99c0a",
+      "teaching_assignment_id": "PLANNED:34a2e6ed",
+      "instructor_id": "8ca738b7-eae1-4980-a31f-ae1e5f6c1cbe",
+      "expected_students": 35,
+      "day_of_week": 6,
+      "start_time": "14:00:00",
+      "end_time": "16:00:00",
+      "room_id": "a914a469-9762-4240-897f-d0a001357807",
+      "room_code": "LAB-04",
+      "session_type": "lab",
+      "source_session_id": "34a2e6ed-f3e7-4c20-9e7c-0b16859fbd94",
+      "source_assignment_id": "8d81d3ec-d395-4622-b833-0a7fa907a237",
+      "new_group_id": "1ee6c24d-e349-521e-bf28-676c8c92d74e",
+      "new_assignment_id": "31a60993-a44b-52c3-ad7f-60105fe4d715",
+      "new_session_id": "e0044bb0-5b05-56ce-89eb-34c303527450"
+    }
+  ],
+  "shared_anchor_sizes": [
+    {
+      "anchor_group_id": "796428b9-d221-428b-82fd-961dbbf9bc04",
+      "members": [
+        "f490d282-14c2-4631-bdd2-2c0abfba1517"
+      ],
+      "headcount": 67
+    },
+    {
+      "anchor_group_id": "7006c5f8-82ff-4480-ab5a-f8ef5834065f",
+      "members": [
+        "9087194b-6b93-4964-92f0-e54a18443d46"
+      ],
+      "headcount": 67
+    },
+    {
+      "anchor_group_id": "0cc45f9d-7748-44a6-b957-a1b4d72f870a",
+      "members": [
+        "c9b02c36-004f-48f8-9cb5-d6342b38968e"
+      ],
+      "headcount": 67
+    },
+    {
+      "anchor_group_id": "7d749462-5cf3-4d08-8cff-ed10338b1f16",
+      "members": [
+        "eb1cbffe-a5c1-4f3d-93ef-030b70b3d027"
+      ],
+      "headcount": 187
+    },
+    {
+      "anchor_group_id": "9e150a62-21a9-480a-9e27-512f4eb0f3a4",
+      "members": [
+        "1e77bb39-8838-4e36-a782-f4b30f27dcc4"
+      ],
+      "headcount": 84
+    },
+    {
+      "anchor_group_id": "26129825-19a4-4f52-a233-0785012f1b51",
+      "members": [
+        "ccc0fd81-e781-4a35-9877-551dfdb211b2"
+      ],
+      "headcount": 142
+    }
+  ],
+  "offline_failures": [],
+  "new_session_collisions": [],
+  "live_server_validation": "NOT_RUN",
+  "historic_version_isolation": "NOT_IMPLEMENTED",
+  "live_application": "NOT_RUN"
+}$itcs_plan$::jsonb AS j;
+
+CREATE TEMP TABLE _itcs_cohorts ON COMMIT DROP AS
+SELECT ac.id,ac.code,(c->>'old')::integer old_count,
+  (c->>'new')::integer new_count,c->'partitions' partitions
+FROM _itcs_plan p
+CROSS JOIN LATERAL jsonb_array_elements(p.j->'cohort_counts') c
+JOIN public.academic_cohorts ac ON ac.code=c->>'code'
+  AND ac.college_id='7168345f-cf9d-4789-b2ad-547abb687dc8'
+  AND ac.term_id='18dd364a-76d7-40b8-a217-fa929c082a7f';
+
+CREATE TEMP TABLE _itcs_existing ON COMMIT DROP AS
+SELECT (x->>'group_id')::uuid group_id,x->>'cohort_code' cohort_code,
+  (x->>'component_id')::uuid component_id,x->>'group_code' group_code,
+  (x->>'old')::integer old_count,(x->>'new')::integer new_count,
+  (x->>'capacity')::integer capacity,x->'partitions' partitions
+FROM _itcs_plan p CROSS JOIN LATERAL jsonb_array_elements(p.j->'existing_group_changes') x;
+
+CREATE TEMP TABLE _itcs_new ON COMMIT DROP AS
+SELECT x.* FROM _itcs_plan p
+CROSS JOIN LATERAL jsonb_to_recordset(p.j->'new_groups')
+  AS x(new_group_id uuid,cohort_code text,cohort_id uuid,component_id uuid,
+    plan_course_id uuid,group_code text,expected_students integer,
+    capacity_limit integer,partitions jsonb,source_group_id uuid);
+
+CREATE TEMP TABLE _itcs_assignments ON COMMIT DROP AS
+SELECT x.* FROM _itcs_plan p
+CROSS JOIN LATERAL jsonb_to_recordset(p.j->'new_assignments')
+  AS x(new_assignment_id uuid,new_group_id uuid,cohort_code text,group_code text,
+    source_assignment_id uuid,source_group_id uuid,instructor_id uuid,
+    course_offering_id uuid,component_id uuid,weekly_hours numeric,expected_students integer);
+
+CREATE TEMP TABLE _itcs_sessions ON COMMIT DROP AS
+SELECT x.* FROM _itcs_plan p
+CROSS JOIN LATERAL jsonb_to_recordset(p.j->'proposed_sessions')
+  AS x(new_session_id uuid,new_assignment_id uuid,new_group_id uuid,
+    source_session_id uuid,source_assignment_id uuid,cohort_id uuid,
+    plan_course_component_id uuid,course_offering_id uuid,instructor_id uuid,
+    expected_students integer,day_of_week integer,start_time time,end_time time,
+    room_id uuid,room_code text,session_type text);
+
+LOCK TABLE public.schedule_versions, public.schedule_sessions,
+  public.delivery_groups,public.teaching_assignments,
+  schedule_version_delivery_private.cohort_facts,
+  schedule_version_delivery_private.group_facts,
+  schedule_version_delivery_private.partition_facts,
+  schedule_version_delivery_private.group_partition_facts
+  IN SHARE ROW EXCLUSIVE MODE;
+
+DO $preflight$
+DECLARE
+  v_draft constant uuid:='d68d8d22-9a6d-4f21-935f-cebf18bb969b';
+  v_v2 constant uuid:='30f8a76d-1cb9-4944-a5d7-483dcaea7692';
+  v_college constant uuid:='7168345f-cf9d-4789-b2ad-547abb687dc8';
+  v_term constant uuid:='18dd364a-76d7-40b8-a217-fa929c082a7f';
+BEGIN
+  IF (SELECT count(*) FROM _itcs_cohorts)<>5
+     OR (SELECT count(*) FROM _itcs_existing)<>44
+     OR (SELECT count(*) FROM _itcs_new)<>6
+     OR (SELECT count(*) FROM _itcs_assignments)<>6
+     OR (SELECT count(*) FROM _itcs_sessions)<>6
+     OR (SELECT j->>'status' FROM _itcs_plan)<>'OFFLINE_PREVIEW_ONLY' THEN
+    RAISE EXCEPTION 'ITCS_RECONCILIATION_PLAN_INVALID' USING ERRCODE='23514';
+  END IF;
+  IF (SELECT count(*) FROM public.schedule_versions
+      WHERE college_id=v_college AND academic_term_id=v_term)<>2
+     OR (SELECT status FROM public.schedule_versions WHERE id=v_v2)<>'published'
+     OR (SELECT status FROM public.schedule_versions WHERE id=v_draft)<>'draft'
+     OR (SELECT count(*) FROM public.schedule_sessions WHERE schedule_version_id=v_v2)<>275
+     OR (SELECT count(*) FROM public.schedule_sessions WHERE schedule_version_id=v_draft)<>275
+     OR (SELECT count(*) FROM public.schedule_version_delivery_baselines
+         WHERE schedule_version_id=v_v2)<>5
+     OR EXISTS (SELECT 1 FROM public.schedule_version_delivery_baselines b
+       WHERE b.schedule_version_id=v_v2 AND b.published_version_digest IS DISTINCT FROM
+         (SELECT md5(coalesce(string_agg(to_jsonb(s)::text,'|' ORDER BY s.id),''))
+          FROM public.schedule_sessions s WHERE s.schedule_version_id=v_v2)) THEN
+    RAISE EXCEPTION 'ITCS_VERSION_BASELINE_CHANGED' USING ERRCODE='23514';
+  END IF;
+  IF to_regprocedure('public.schedule_version_student_memberships(uuid,uuid[])') IS NULL
+     OR to_regprocedure('public.delivery_group_derivation_status(uuid,uuid)') IS NULL
+     OR to_regprocedure('public._sb_v2_assignment_guard(uuid,uuid)') IS NULL
+     OR to_regclass('schedule_version_delivery_private.instructor_hour_waivers') IS NULL
+     OR position('_sb_v2_assignment_guard(v_ta.id,p_schedule_version_id)' IN
+       pg_get_functiondef('public.create_schedule_session_from_assignment_v2(uuid,uuid,integer,time,time,uuid,timestamptz,text)'::regprocedure))=0
+     OR position('_sb_v2_assignment_guard(v_session.teaching_assignment_id,p_version_id)' IN
+       pg_get_functiondef('public.apply_schedule_relayout(uuid,uuid,uuid,bigint,timestamptz,jsonb,integer)'::regprocedure))=0 THEN
+    RAISE EXCEPTION 'ITCS_VERSIONED_WRITER_GATES_NOT_INSTALLED' USING ERRCODE='23514';
+  END IF;
+  IF (SELECT sum(old_count) FROM _itcs_cohorts)<>420
+     OR (SELECT sum(new_count) FROM _itcs_cohorts)<>466
+     OR EXISTS (SELECT 1 FROM _itcs_cohorts c
+       LEFT JOIN schedule_version_delivery_private.cohort_facts v
+         ON v.version_id=v_draft AND v.cohort_id=c.id
+       LEFT JOIN schedule_version_delivery_private.cohort_facts pub
+         ON pub.version_id=v_v2 AND pub.cohort_id=c.id
+       LEFT JOIN public.scheduling_cohort_term_headcounts h
+         ON h.cohort_id=c.id AND h.college_id=v_college AND h.term_id=v_term
+         AND h.approval_status='approved'
+       WHERE v.expected_students IS DISTINCT FROM c.old_count
+         OR v.scheduling_headcount IS DISTINCT FROM c.old_count
+         OR pub.expected_students IS DISTINCT FROM c.old_count
+         OR h.scheduling_headcount IS DISTINCT FROM c.old_count)
+     OR EXISTS (SELECT 1 FROM _itcs_cohorts c JOIN public.academic_cohorts ac ON ac.id=c.id
+       WHERE ac.expected_students IS DISTINCT FROM c.old_count) THEN
+    RAISE EXCEPTION 'ITCS_HEADCOUNT_SOURCE_CHANGED' USING ERRCODE='23514';
+  END IF;
+  IF EXISTS (SELECT 1 FROM _itcs_existing x
+    LEFT JOIN public.delivery_groups g ON g.id=x.group_id
+    LEFT JOIN _itcs_cohorts c ON c.id=g.cohort_id
+    LEFT JOIN schedule_version_delivery_private.group_facts f
+      ON f.version_id=v_draft AND f.group_id=x.group_id
+    WHERE c.code IS DISTINCT FROM x.cohort_code
+       OR g.component_id IS DISTINCT FROM x.component_id
+       OR g.group_code IS DISTINCT FROM x.group_code OR NOT g.active
+       OR coalesce(g.is_obsolete,false)
+       OR g.expected_students IS DISTINCT FROM x.old_count
+       OR f.expected_students IS DISTINCT FROM x.old_count
+       OR x.new_count>x.capacity OR x.new_count<=0)
+     OR EXISTS (SELECT 1 FROM _itcs_new n
+       LEFT JOIN public.delivery_groups src ON src.id=n.source_group_id
+       LEFT JOIN _itcs_cohorts c ON c.id=n.cohort_id
+       WHERE c.code IS DISTINCT FROM n.cohort_code
+         OR src.cohort_id IS DISTINCT FROM n.cohort_id
+         OR src.component_id IS DISTINCT FROM n.component_id
+         OR src.plan_course_id IS DISTINCT FROM n.plan_course_id
+         OR n.expected_students>n.capacity_limit
+         OR EXISTS (SELECT 1 FROM public.delivery_groups used
+           WHERE used.id=n.new_group_id OR
+            (used.cohort_id=n.cohort_id AND used.component_id=n.component_id
+             AND used.group_code=n.group_code))) THEN
+    RAISE EXCEPTION 'ITCS_GROUP_SOURCE_CHANGED' USING ERRCODE='23514';
+  END IF;
+  IF EXISTS (SELECT 1 FROM _itcs_assignments n
+    LEFT JOIN public.teaching_assignments src ON src.id=n.source_assignment_id
+    LEFT JOIN _itcs_new g ON g.new_group_id=n.new_group_id
+    WHERE src.delivery_group_id IS DISTINCT FROM n.source_group_id
+      OR src.instructor_id IS DISTINCT FROM n.instructor_id
+      OR src.course_offering_id IS DISTINCT FROM n.course_offering_id
+      OR src.plan_course_component_id IS DISTINCT FROM n.component_id
+      OR NOT coalesce(src.is_active,false)
+      OR g.expected_students IS DISTINCT FROM n.expected_students
+      OR g.component_id IS DISTINCT FROM n.component_id
+      OR EXISTS (SELECT 1 FROM public.teaching_assignments existing
+        WHERE existing.college_id=src.college_id
+          AND existing.course_offering_id=src.course_offering_id
+          AND existing.instructor_id=src.instructor_id
+          AND existing.session_type=src.session_type
+          AND coalesce(existing.section_number,'')=n.group_code)
+      OR EXISTS (SELECT 1 FROM public.teaching_assignments used
+        WHERE used.id=n.new_assignment_id))
+    OR EXISTS (SELECT 1 FROM _itcs_sessions n
+      LEFT JOIN public.schedule_sessions src ON src.id=n.source_session_id
+      LEFT JOIN _itcs_assignments a ON a.new_assignment_id=n.new_assignment_id
+      LEFT JOIN public.rooms r ON r.id=n.room_id
+      WHERE src.schedule_version_id IS DISTINCT FROM v_draft
+        OR src.teaching_assignment_id IS DISTINCT FROM n.source_assignment_id
+        OR src.instructor_id IS DISTINCT FROM n.instructor_id
+        OR src.course_offering_id IS DISTINCT FROM n.course_offering_id
+        OR src.plan_course_component_id IS DISTINCT FROM n.plan_course_component_id
+        OR a.instructor_id IS DISTINCT FROM n.instructor_id
+        OR a.new_group_id IS DISTINCT FROM n.new_group_id
+        OR r.college_id IS DISTINCT FROM v_college OR NOT r.is_active
+        OR r.capacity<n.expected_students OR r.code IS DISTINCT FROM n.room_code
+        OR n.start_time<'08:00' OR n.end_time>(CASE WHEN n.session_type='lab' THEN '16:00'::time ELSE '14:00'::time END)
+        OR EXISTS (SELECT 1 FROM public.schedule_sessions used WHERE used.id=n.new_session_id)) THEN
+    RAISE EXCEPTION 'ITCS_LECTURER_OR_ROOM_SOURCE_CHANGED' USING ERRCODE='23514';
+  END IF;
+  IF EXISTS (SELECT 1 FROM _itcs_sessions n JOIN public.schedule_sessions s
+    ON s.schedule_version_id=v_draft AND s.day_of_week=n.day_of_week
+    AND s.start_time<n.end_time AND n.start_time<s.end_time
+    AND (s.room_id=n.room_id OR s.instructor_id=n.instructor_id))
+    OR EXISTS (SELECT 1 FROM _itcs_sessions a JOIN _itcs_sessions b
+      ON a.new_session_id<b.new_session_id AND a.day_of_week=b.day_of_week
+      AND a.start_time<b.end_time AND b.start_time<a.end_time
+      AND (a.room_id=b.room_id OR a.instructor_id=b.instructor_id)) THEN
+    RAISE EXCEPTION 'ITCS_PROPOSED_ROOM_OR_INSTRUCTOR_COLLISION' USING ERRCODE='23514';
+  END IF;
+  IF EXISTS (SELECT 1 FROM _itcs_sessions n
+    JOIN public.schedule_sessions other ON other.instructor_id=n.instructor_id
+      AND other.college_id<>v_college AND other.day_of_week=n.day_of_week
+      AND other.start_time<n.end_time AND n.start_time<other.end_time
+    JOIN public.schedule_versions ov ON ov.id=other.schedule_version_id
+      AND ov.status IN ('approved','published')
+    JOIN public.academic_terms outside_term ON outside_term.id=ov.academic_term_id
+    JOIN public.academic_terms itcs_term ON itcs_term.id=v_term
+    WHERE outside_term.start_date<=itcs_term.end_date
+      AND itcs_term.start_date<=outside_term.end_date) THEN
+    RAISE EXCEPTION 'ITCS_NEW_SESSION_CROSS_COLLEGE_INSTRUCTOR_COLLISION' USING ERRCODE='23514';
+  END IF;
+END;
+$preflight$;
+
+-- The global cohort/approved count, 44 shared groups and V2 sessions stay put.
+UPDATE schedule_version_delivery_private.cohort_facts f
+SET expected_students=c.new_count,scheduling_headcount=c.new_count
+FROM _itcs_cohorts c WHERE f.version_id='d68d8d22-9a6d-4f21-935f-cebf18bb969b'
+  AND f.cohort_id=c.id;
+
+CREATE TEMP TABLE _itcs_partitions ON COMMIT DROP AS
+SELECT c.id cohort_id,c.code cohort_code,p.code partition_code,p.headcount,
+  coalesce(old.partition_id,gen_random_uuid()) partition_id
+FROM _itcs_cohorts c
+CROSS JOIN LATERAL jsonb_to_recordset(c.partitions)
+  AS p(code text,headcount integer)
+LEFT JOIN schedule_version_delivery_private.partition_facts old
+  ON old.version_id='d68d8d22-9a6d-4f21-935f-cebf18bb969b'
+  AND old.cohort_id=c.id AND old.partition_code=p.code;
+
+UPDATE schedule_version_delivery_private.partition_facts f
+SET headcount=p.headcount
+FROM _itcs_partitions p WHERE f.version_id='d68d8d22-9a6d-4f21-935f-cebf18bb969b'
+  AND f.partition_id=p.partition_id;
+INSERT INTO schedule_version_delivery_private.partition_facts
+  (version_id,partition_id,cohort_id,college_id,partition_code,headcount)
+SELECT 'd68d8d22-9a6d-4f21-935f-cebf18bb969b',p.partition_id,p.cohort_id,
+  '7168345f-cf9d-4789-b2ad-547abb687dc8',p.partition_code,p.headcount
+FROM _itcs_partitions p WHERE NOT EXISTS (
+  SELECT 1 FROM schedule_version_delivery_private.partition_facts f
+  WHERE f.version_id='d68d8d22-9a6d-4f21-935f-cebf18bb969b'
+    AND f.partition_id=p.partition_id);
+
+UPDATE schedule_version_delivery_private.group_facts f
+SET expected_students=x.new_count,capacity_limit=x.capacity
+FROM _itcs_existing x WHERE f.version_id='d68d8d22-9a6d-4f21-935f-cebf18bb969b'
+  AND f.group_id=x.group_id;
+INSERT INTO public.delivery_groups
+  (id,college_id,cohort_id,plan_course_id,component_id,group_code,
+   group_number,expected_students,capacity_limit,active,is_obsolete)
+SELECT n.new_group_id,'7168345f-cf9d-4789-b2ad-547abb687dc8',n.cohort_id,
+  n.plan_course_id,n.component_id,n.group_code,substring(n.group_code from 2)::integer,
+  n.expected_students,n.capacity_limit,true,false
+FROM _itcs_new n;
+INSERT INTO schedule_version_delivery_private.group_facts
+  (version_id,group_id,cohort_id,college_id,group_code,expected_students,capacity_limit)
+SELECT 'd68d8d22-9a6d-4f21-935f-cebf18bb969b',n.new_group_id,n.cohort_id,
+  '7168345f-cf9d-4789-b2ad-547abb687dc8',n.group_code,
+  n.expected_students,n.capacity_limit FROM _itcs_new n;
+
+CREATE TEMP TABLE _itcs_target_groups ON COMMIT DROP AS
+SELECT x.group_id,x.cohort_code,x.partitions FROM _itcs_existing x
+UNION ALL
+SELECT n.new_group_id,n.cohort_code,n.partitions FROM _itcs_new n;
+DELETE FROM schedule_version_delivery_private.group_partition_facts f
+USING _itcs_target_groups g WHERE f.version_id='d68d8d22-9a6d-4f21-935f-cebf18bb969b'
+  AND f.group_id=g.group_id;
+INSERT INTO schedule_version_delivery_private.group_partition_facts
+  (version_id,group_id,partition_id)
+SELECT 'd68d8d22-9a6d-4f21-935f-cebf18bb969b',g.group_id,p.partition_id
+FROM _itcs_target_groups g
+CROSS JOIN LATERAL jsonb_array_elements_text(g.partitions) part(code)
+JOIN _itcs_partitions p ON p.cohort_code=g.cohort_code AND p.partition_code=part.code;
+
+INSERT INTO schedule_version_delivery_private.instructor_hour_waivers
+  (assignment_id,version_id,college_id,term_id,instructor_id,group_id,source_assignment_id)
+SELECT n.new_assignment_id,'d68d8d22-9a6d-4f21-935f-cebf18bb969b',
+  '7168345f-cf9d-4789-b2ad-547abb687dc8',
+  '18dd364a-76d7-40b8-a217-fa929c082a7f',n.instructor_id,
+  n.new_group_id,n.source_assignment_id FROM _itcs_assignments n;
+
+INSERT INTO public.teaching_assignments
+  (id,college_id,course_offering_id,instructor_id,section_number,
+   session_type,weekly_hours,required_room_type,notes,cohort_id,
+   plan_course_component_id,delivery_group_id,assigned_component_hours,
+   expected_students,is_active)
+SELECT n.new_assignment_id,src.college_id,src.course_offering_id,
+  src.instructor_id,n.group_code,
+  src.session_type,src.weekly_hours,src.required_room_type,src.notes,
+  src.cohort_id,src.plan_course_component_id,n.new_group_id,
+  src.assigned_component_hours,n.expected_students,true
+FROM _itcs_assignments n
+JOIN public.teaching_assignments src ON src.id=n.source_assignment_id;
+
+-- Recompute every draft session in the affected cohorts, including shared
+-- anchors; the selected-version guard keeps V2 at the old sizes.
+UPDATE public.schedule_sessions s SET expected_students=
+  (public.operational_delivery_group(s.schedule_version_id,s.delivery_group_id)).expected_students
+WHERE s.schedule_version_id='d68d8d22-9a6d-4f21-935f-cebf18bb969b'
+  AND s.delivery_group_id IN (
+    SELECT f.group_id FROM schedule_version_delivery_private.group_facts f
+    WHERE f.version_id=s.schedule_version_id
+      AND f.cohort_id IN (SELECT id FROM _itcs_cohorts))
+  AND s.expected_students IS DISTINCT FROM
+    (public.operational_delivery_group(s.schedule_version_id,s.delivery_group_id)).expected_students;
+
+INSERT INTO public.schedule_sessions
+  (id,college_id,schedule_version_id,course_offering_id,teaching_assignment_id,
+   delivery_group_id,cohort_id,plan_course_component_id,instructor_id,
+   room_id,day_of_week,start_time,end_time,session_type,study_system,expected_students)
+SELECT n.new_session_id,'7168345f-cf9d-4789-b2ad-547abb687dc8',
+  'd68d8d22-9a6d-4f21-935f-cebf18bb969b',n.course_offering_id,
+  n.new_assignment_id,n.new_group_id,n.cohort_id,n.plan_course_component_id,
+  n.instructor_id,n.room_id,n.day_of_week,n.start_time,n.end_time,
+  n.session_type,src.study_system,n.expected_students
+FROM _itcs_sessions n JOIN public.schedule_sessions src ON src.id=n.source_session_id;
+
+DO $postflight$
+DECLARE
+  v_draft constant uuid:='d68d8d22-9a6d-4f21-935f-cebf18bb969b';
+  v_v2 constant uuid:='30f8a76d-1cb9-4944-a5d7-483dcaea7692';
+  n record;
+BEGIN
+  IF (SELECT count(*) FROM public.schedule_sessions WHERE schedule_version_id=v_v2)<>275
+     OR (SELECT count(*) FROM public.schedule_sessions WHERE schedule_version_id=v_draft)<>281
+     OR (SELECT sum(expected_students) FROM schedule_version_delivery_private.cohort_facts
+         WHERE version_id=v_v2)<>420
+     OR (SELECT sum(expected_students) FROM schedule_version_delivery_private.cohort_facts
+         WHERE version_id=v_draft)<>466
+     OR (SELECT count(*) FROM public.schedule_sessions s JOIN _itcs_sessions p
+         ON p.new_session_id=s.id AND s.schedule_version_id=v_draft)<>6
+     OR (SELECT count(*) FROM public.teaching_assignments a JOIN _itcs_assignments p
+         ON p.new_assignment_id=a.id AND a.instructor_id=p.instructor_id)<>6
+     OR (SELECT count(*) FROM schedule_version_delivery_private.instructor_hour_waivers
+         WHERE version_id=v_draft)<>6
+     OR EXISTS (SELECT 1 FROM public.schedule_version_delivery_baselines b
+        WHERE b.schedule_version_id=v_v2 AND b.published_version_digest IS DISTINCT FROM
+          (SELECT md5(coalesce(string_agg(to_jsonb(s)::text,'|' ORDER BY s.id),''))
+           FROM public.schedule_sessions s WHERE s.schedule_version_id=v_v2)) THEN
+    RAISE EXCEPTION 'ITCS_ATOMIC_POSTCONDITION_FAILED' USING ERRCODE='23514';
+  END IF;
+  IF EXISTS (SELECT 1 FROM _itcs_target_groups g
+    JOIN schedule_version_delivery_private.group_facts f ON f.version_id=v_draft
+      AND f.group_id=g.group_id
+    LEFT JOIN LATERAL (SELECT sum(p.headcount)::integer total
+      FROM schedule_version_delivery_private.group_partition_facts m
+      JOIN schedule_version_delivery_private.partition_facts p
+        ON p.version_id=m.version_id AND p.partition_id=m.partition_id
+      WHERE m.version_id=v_draft AND m.group_id=g.group_id) sizes ON true
+    WHERE sizes.total IS DISTINCT FROM f.expected_students)
+     OR EXISTS (SELECT 1 FROM _itcs_plan p
+       CROSS JOIN LATERAL jsonb_to_recordset(p.j->'shared_anchor_sizes')
+         expected(anchor_group_id uuid,headcount integer)
+       WHERE (public.operational_delivery_group(v_draft,expected.anchor_group_id)).expected_students
+         IS DISTINCT FROM expected.headcount) THEN
+    RAISE EXCEPTION 'ITCS_DRAFT_PARTITION_OR_SHARED_COUNT_MISMATCH' USING ERRCODE='23514';
+  END IF;
+  -- The overlap RPC requires an authenticated college viewer. Use the
+  -- draft's verified creator only for these final read checks, after DML.
+  IF NOT EXISTS (SELECT 1 FROM public.schedule_versions v
+    WHERE v.id=v_draft AND v.created_by IS NOT NULL
+      AND public.can_view_college(v.created_by,v.college_id)) THEN
+    RAISE EXCEPTION 'ITCS_DRAFT_VIEWER_MISSING' USING ERRCODE='23514';
+  END IF;
+  PERFORM set_config('request.jwt.claim.sub',
+    (SELECT created_by::text FROM public.schedule_versions WHERE id=v_draft),true);
+  FOR n IN SELECT * FROM _itcs_sessions LOOP
+    IF NOT coalesce((public.delivery_group_derivation_status(n.new_group_id,v_draft)->>'ok')::boolean,false)
+       OR NOT coalesce((public._sb_v2_assignment_guard(n.new_assignment_id,v_draft)->>'ok')::boolean,false)
+       OR jsonb_array_length(public._sb_v2_delivery_group_overlap(v_draft,n.new_group_id,
+         n.cohort_id,n.day_of_week,n.start_time,n.end_time,n.new_session_id))<>0 THEN
+      RAISE EXCEPTION 'ITCS_NEW_SESSION_SERVER_GUARD_FAILED: %',n.new_session_id USING ERRCODE='23514';
+    END IF;
+  END LOOP;
+  IF EXISTS (SELECT 1 FROM _itcs_target_groups g
+    WHERE NOT coalesce((public.delivery_group_derivation_status(g.group_id,v_draft)->>'ok')::boolean,false))
+    OR EXISTS (SELECT 1 FROM public.schedule_sessions s JOIN public.rooms r ON r.id=s.room_id
+      WHERE s.schedule_version_id=v_draft
+        AND s.delivery_group_id IN (SELECT group_id FROM _itcs_target_groups)
+        AND s.expected_students>r.capacity) THEN
+    RAISE EXCEPTION 'ITCS_GROUP_FRESHNESS_OR_ROOM_CAPACITY_FAILED' USING ERRCODE='23514';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.schedule_sessions s
+    WHERE s.schedule_version_id=v_draft
+      AND s.session_type<>'lab' AND s.end_time>'14:00')
+     OR EXISTS (SELECT 1 FROM public.schedule_sessions s JOIN public.rooms r ON r.id=s.room_id
+       WHERE s.schedule_version_id=v_draft AND r.code IN ('R13','R14')
+         AND (s.start_time<'08:00' OR s.end_time>'14:00'))
+     OR EXISTS (SELECT 1 FROM public.schedule_sessions s
+       WHERE s.schedule_version_id=v_draft
+         AND s.instructor_id='b06f0882-e0d4-4168-88c7-d6cde48bb61e'
+         AND s.day_of_week=0)
+     OR EXISTS (SELECT 1 FROM _itcs_sessions p JOIN public.schedule_sessions s
+       ON s.schedule_version_id=v_draft AND s.id<>p.new_session_id
+       AND s.day_of_week=p.day_of_week AND s.start_time<p.end_time AND p.start_time<s.end_time
+       AND (s.room_id=p.room_id OR s.instructor_id=p.instructor_id)) THEN
+    RAISE EXCEPTION 'ITCS_ROOM_INSTRUCTOR_OR_SUNDAY_CONSTRAINT_FAILED' USING ERRCODE='23514';
+  END IF;
+END;
+$postflight$;
+
+COMMIT;

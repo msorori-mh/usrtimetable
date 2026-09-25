@@ -354,7 +354,10 @@ test("study-system selection reaches both report queries and their cache keys", 
       assert.match(source, /printScope === "college" \? "all" : ctx\.studySystem/);
       // Student reports must resolve member systems before applying the filter:
       // a merged anchor can belong to a different system than its participants.
-      assert.match(source, /fetchStudentPrintMemberships\(hydrated, ctx\.collegeId!\)\)\.filter/);
+      assert.match(
+        source,
+        /fetchStudentPrintMemberships\(hydrated,\s*ctx\.collegeId!,\s*ctx\.versionId!\)\s*\)\.filter/,
+      );
       assert.match(source, /row\.study_system === effectiveStudySystem/);
       assert.match(source, /row\.study_system === "both"/);
     }

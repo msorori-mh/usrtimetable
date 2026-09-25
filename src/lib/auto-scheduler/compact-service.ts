@@ -1,6 +1,7 @@
 import { applyVersionInstructorLimits } from "./version-instructor-limits";
 import { qualityBetter, qualityPlanValid, qualityRepairNonWorsening } from "./quality-search";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchVersionStudentMemberships } from "@/lib/academic-delivery/version-student-memberships";
 import {
   better,
   feasible,
@@ -47,10 +48,14 @@ async function draft(collegeId: string, versionId: string) {
     .eq("id", versionId)
     .range(0, 0);
   if (error) throw error;
-  const data = records?.[0] as {
-    status: string; eligibility_revision: number; updated_at: string;
-    instructor_attendance_overrides?: Record<string, number>;
-  } | undefined;
+  const data = records?.[0] as
+    | {
+        status: string;
+        eligibility_revision: number;
+        updated_at: string;
+        instructor_attendance_overrides?: Record<string, number>;
+      }
+    | undefined;
   if (!data) throw new Error("تعذر تحديد نسخة الجدول.");
   if (data.status !== "draft") throw new Error("التحسين متاح لنسخة مسودة فقط.");
   if (!Number.isSafeInteger(data.eligibility_revision) || data.eligibility_revision < 0)
@@ -83,9 +88,7 @@ export async function loadCompactSnapshot(collegeId: string, versionId: string):
     sessions: "schedule_sessions",
     cohorts: "academic_cohorts",
     groups: "operational_delivery_groups",
-    members: "operational_group_members",
     sharedLectures: "shared_lecture_links",
-    partitions: "cohort_student_partitions",
     assignments: "teaching_assignments",
     components: "plan_course_components",
     rooms: "rooms",
@@ -104,39 +107,105 @@ export async function loadCompactSnapshot(collegeId: string, versionId: string):
     ),
   );
   const raw = Object.fromEntries(values);
+  // The timetable is versioned, but the operational group/member views are
+  // global. Resolve every group through the same selected-version snapshot
+  // before any quality score or candidate move uses its student partitions.
+  const globalGroups = raw.groups as Snapshot["groups"];
+  const versionMembers = await fetchVersionStudentMemberships(
+    versionId,
+    globalGroups.map((group) => group.id),
+  );
+  const groupSizes = new Map(
+    versionMembers.map((member) => [member.delivery_group_id, member.expected_students]),
+  );
+  raw.groups = globalGroups.map((group) => ({
+    ...group,
+    expected_students: groupSizes.get(group.id) ?? group.expected_students,
+  }));
+  const partitionById = new Map<string, Snapshot["partitions"][number]>();
+  raw.members = versionMembers.flatMap((member) => {
+    if (!member.partition_id || member.partition_headcount === null) return [];
+    const partition = {
+      id: member.partition_id,
+      cohort_id: member.cohort_id,
+      headcount: member.partition_headcount,
+      active: true,
+    };
+    const prior = partitionById.get(partition.id);
+    if (
+      prior &&
+      (prior.cohort_id !== partition.cohort_id || prior.headcount !== partition.headcount)
+    ) {
+      throw new Error("تعارض بيانات تقسيم الطلاب في نسخة الجدول المحددة.");
+    }
+    partitionById.set(partition.id, partition);
+    return [
+      {
+        delivery_group_id: member.delivery_group_id,
+        cohort_id: member.cohort_id,
+        partition_id: member.partition_id,
+      },
+    ];
+  });
+  raw.partitions = [...partitionById.values()];
+  raw.sessions = (raw.sessions as Session[]).map((session) => ({
+    ...session,
+    expected_students: groupSizes.get(session.delivery_group_id) ?? session.expected_students,
+  }));
   // Include only external instructors referenced by this college's active assignments.
   // The ordinary table reader retains RLS; unrelated university instructors are never loaded.
   const assignedIds = new Set(
     (raw.assignments as Array<{ instructor_id: string; is_active: boolean }>)
-      .filter((a) => a.is_active).map((a) => a.instructor_id),
+      .filter((a) => a.is_active)
+      .map((a) => a.instructor_id),
   );
   const knownIds = new Set((raw.instructors as Array<{ id: string }>).map((i) => i.id));
   const missingIds = [...assignedIds].filter((id) => !knownIds.has(id));
   for (let offset = 0; offset < missingIds.length; offset += 200) {
     const batch = missingIds.slice(offset, offset + 200);
-    const extra = await db.from("instructors").select("*").in("id", batch).order("id").range(0, 199);
+    const extra = await db
+      .from("instructors")
+      .select("*")
+      .in("id", batch)
+      .order("id")
+      .range(0, 199);
     if (extra.error || extra.data?.length !== batch.length)
       throw new Error("تعذر تحميل المحاضرين المرتبطين بإسنادات الكلية.");
     raw.instructors.push(...extra.data);
-    const windows = await db.from("instructor_availability").select("*")
-      .in("instructor_id", batch).order("id").range(0, 999);
+    const windows = await db
+      .from("instructor_availability")
+      .select("*")
+      .in("instructor_id", batch)
+      .order("id")
+      .range(0, 999);
     if (windows.error) throw new Error(windows.error.message);
     const existingWindows = new Set((raw.availability as Array<{ id: string }>).map((w) => w.id));
-    raw.availability.push(...(windows.data ?? []).filter(
-      (w) => !existingWindows.has((w as { id: string }).id),
-    ));
+    raw.availability.push(
+      ...(windows.data ?? []).filter((w) => !existingWindows.has((w as { id: string }).id)),
+    );
     const knownTypes = new Set((raw.types as Array<{ id: string }>).map((t) => t.id));
-    const typeIds = [...new Set((extra.data as Array<{ instructor_type_id: string | null }>)
-      .map((i) => i.instructor_type_id).filter((id): id is string => !!id && !knownTypes.has(id)))];
+    const typeIds = [
+      ...new Set(
+        (extra.data as Array<{ instructor_type_id: string | null }>)
+          .map((i) => i.instructor_type_id)
+          .filter((id): id is string => !!id && !knownTypes.has(id)),
+      ),
+    ];
     if (typeIds.length) {
-      const types = await db.from("instructor_types").select("*").in("id", typeIds).order("id").range(0, 199);
+      const types = await db
+        .from("instructor_types")
+        .select("*")
+        .in("id", typeIds)
+        .order("id")
+        .range(0, 199);
       if (types.error || types.data?.length !== typeIds.length)
         throw new Error("تعذر التحقق من أنواع المحاضرين المرتبطين بالكلية.");
       raw.types.push(...types.data);
     }
   }
   raw.instructors = applyVersionInstructorLimits(
-    raw.instructors as Snapshot["instructors"], version.instructorOverrides,
+    raw.instructors as Snapshot["instructors"],
+    version.instructorOverrides,
   );
   if (raw.settings.length !== 1) throw new Error("تعذر تحديد إعدادات الجدولة.");
   const latest = await draft(collegeId, versionId);

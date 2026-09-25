@@ -163,16 +163,19 @@ function Page() {
   const selectedProgram = availablePrograms.find((p) => p.id === programId);
   const selectedLevel = availableLevels.find((level) => level.id === levelId);
   const selectedCourse = catalog?.courses.find((course) => course.id === courseId);
-  const extraSummary = printScope === "college" ? ["نطاق الطباعة: الكلية كاملة — جميع البرامج والمستويات"] : [
-    ...(departmentId !== "all" ? [`القسم: ${selectedDepartment?.name ?? departmentId}`] : []),
-    ...(programId !== "all" ? [`البرنامج: ${selectedProgram?.name ?? programId}`] : []),
-    ...(levelId !== "all" ? [`المستوى: ${selectedLevel?.name ?? levelId}`] : []),
-    ...(courseId !== "all"
-      ? [
-          `المادة: ${selectedCourse?.code ? `${selectedCourse.code} — ` : ""}${selectedCourse?.name ?? courseId}`,
-        ]
-      : []),
-  ];
+  const extraSummary =
+    printScope === "college"
+      ? ["نطاق الطباعة: الكلية كاملة — جميع البرامج والمستويات"]
+      : [
+          ...(departmentId !== "all" ? [`القسم: ${selectedDepartment?.name ?? departmentId}`] : []),
+          ...(programId !== "all" ? [`البرنامج: ${selectedProgram?.name ?? programId}`] : []),
+          ...(levelId !== "all" ? [`المستوى: ${selectedLevel?.name ?? levelId}`] : []),
+          ...(courseId !== "all"
+            ? [
+                `المادة: ${selectedCourse?.code ? `${selectedCourse.code} — ` : ""}${selectedCourse?.name ?? courseId}`,
+              ]
+            : []),
+        ];
   const exportAt = useMemo(() => new Date(), []);
   const [qrUrl, setQrUrl] = useState("");
   useEffect(() => setQrUrl(window.location.href), []);
@@ -191,7 +194,9 @@ function Page() {
         versionId: ctx.versionId!,
         studySystem: "all",
       });
-      const expanded = (await fetchStudentPrintMemberships(hydrated, ctx.collegeId!)).filter(
+      const expanded = (
+        await fetchStudentPrintMemberships(hydrated, ctx.collegeId!, ctx.versionId!)
+      ).filter(
         (row) =>
           effectiveStudySystem === "all" ||
           row.study_system === "both" ||
@@ -203,9 +208,7 @@ function Page() {
         const membership = row.intake_memberships?.find(
           (m) => m.delivery_group_id === row.delivery_group_id && m.cohort_id === row.cohort_id,
         );
-        return membership
-          ? { ...row, intake_study_plan_id: membership.study_plan_id }
-          : row;
+        return membership ? { ...row, intake_study_plan_id: membership.study_plan_id } : row;
       });
       const labels = await fetchCohortDeliveryGroupLabels(ctx.collegeId!, sessions);
       return { sessions, labels };
@@ -224,14 +227,16 @@ function Page() {
 
   const sessions = useMemo(
     () =>
-      printScope === "college" ? (bundle?.sessions ?? EMPTY_SESSIONS) : filterCurrentScheduleScope(
-        bundle?.sessions ?? EMPTY_SESSIONS,
-        catalog?.programs ?? [],
-        departmentId,
-        programId,
-        levelId,
-        courseId,
-      ),
+      printScope === "college"
+        ? (bundle?.sessions ?? EMPTY_SESSIONS)
+        : filterCurrentScheduleScope(
+            bundle?.sessions ?? EMPTY_SESSIONS,
+            catalog?.programs ?? [],
+            departmentId,
+            programId,
+            levelId,
+            courseId,
+          ),
     [bundle?.sessions, catalog?.programs, printScope, departmentId, programId, levelId, courseId],
   );
   const pages = useMemo(
@@ -264,12 +269,13 @@ function Page() {
 
   const isLoading = ctx.isLoading || sessionsLoading || catalogLoading;
   const ready = !!ctx.versionId;
-  const filtered = printScope === "custom" && (
-    ctx.studySystem !== "all" ||
-    departmentId !== "all" ||
-    programId !== "all" ||
-    levelId !== "all" ||
-    courseId !== "all");
+  const filtered =
+    printScope === "custom" &&
+    (ctx.studySystem !== "all" ||
+      departmentId !== "all" ||
+      programId !== "all" ||
+      levelId !== "all" ||
+      courseId !== "all");
   const printContext = {
     ...ctx,
     studySystem: effectiveStudySystem,
@@ -327,7 +333,10 @@ function Page() {
           }}
         >
           <ReportFilterField label="نطاق الطباعة" htmlFor="current-print-scope">
-            <Select value={printScope} onValueChange={(value) => setPrintScope(value as "college" | "custom")}>
+            <Select
+              value={printScope}
+              onValueChange={(value) => setPrintScope(value as "college" | "custom")}
+            >
               <SelectTrigger id="current-print-scope" aria-label="نطاق الطباعة">
                 <SelectValue />
               </SelectTrigger>
@@ -337,129 +346,131 @@ function Page() {
               </SelectContent>
             </Select>
           </ReportFilterField>
-          {printScope === "custom" && <>
-          <ReportFilterField label="القسم" htmlFor="current-print-department">
-            <Select
-              value={departmentId}
-              disabled={catalogLoading || !!catalogError}
-              onValueChange={(value) => {
-                setDepartmentId(value);
-                setProgramId("all");
-                setLevelId("all");
-                setCourseId("all");
-                setCourseSearch("");
-              }}
-            >
-              <SelectTrigger id="current-print-department" aria-label="القسم">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">جميع الأقسام</SelectItem>
-                {(catalog?.departments ?? []).map((d) => (
-                  <SelectItem key={d.id} value={d.id}>
-                    {d.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </ReportFilterField>
-          <ReportFilterField label="البرنامج" htmlFor="current-print-program">
-            <Select
-              value={programId}
-              onValueChange={(value) => {
-                setProgramId(value);
-                setLevelId("all");
-                setCourseId("all");
-                setCourseSearch("");
-              }}
-              disabled={catalogLoading || !!catalogError}
-            >
-              <SelectTrigger id="current-print-program" aria-label="البرنامج">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">جميع البرامج</SelectItem>
-                {availablePrograms.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </ReportFilterField>
-          <ReportFilterField label="المستوى" htmlFor="current-print-level">
-            <Select
-              value={levelId}
-              onValueChange={(value) => {
-                setLevelId(value);
-                setCourseId("all");
-                setCourseSearch("");
-              }}
-              disabled={catalogLoading || !!catalogError || programId === "all"}
-            >
-              <SelectTrigger id="current-print-level" aria-label="المستوى">
-                <SelectValue
-                  placeholder={programId === "all" ? "اختر البرنامج أولًا" : "اختر المستوى"}
-                />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">جميع مستويات البرنامج</SelectItem>
-                {availableLevels.map((level) => (
-                  <SelectItem key={level.id} value={level.id}>
-                    {level.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </ReportFilterField>
-          <ReportFilterField
-            label="المادة — جميع أقسام الكلية"
-            htmlFor="current-print-course-search"
-          >
-            <div className="space-y-2">
-              <Input
-                id="current-print-course-search"
-                value={courseSearch}
-                onChange={(event) => {
-                  setCourseSearch(event.target.value);
-                  setCourseId("all");
-                }}
-                placeholder="اكتب اسم المادة أو رمزها..."
-                aria-label="البحث عن المادة"
-                disabled={catalogLoading || !!catalogError}
-              />
-              <Select
-                value={courseId}
-                onValueChange={(value) => {
-                  setCourseId(value);
-                  if (value !== "all") {
-                    setDepartmentId("all");
+          {printScope === "custom" && (
+            <>
+              <ReportFilterField label="القسم" htmlFor="current-print-department">
+                <Select
+                  value={departmentId}
+                  disabled={catalogLoading || !!catalogError}
+                  onValueChange={(value) => {
+                    setDepartmentId(value);
                     setProgramId("all");
                     setLevelId("all");
-                  }
-                }}
-                disabled={catalogLoading || !!catalogError}
+                    setCourseId("all");
+                    setCourseSearch("");
+                  }}
+                >
+                  <SelectTrigger id="current-print-department" aria-label="القسم">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">جميع الأقسام</SelectItem>
+                    {(catalog?.departments ?? []).map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </ReportFilterField>
+              <ReportFilterField label="البرنامج" htmlFor="current-print-program">
+                <Select
+                  value={programId}
+                  onValueChange={(value) => {
+                    setProgramId(value);
+                    setLevelId("all");
+                    setCourseId("all");
+                    setCourseSearch("");
+                  }}
+                  disabled={catalogLoading || !!catalogError}
+                >
+                  <SelectTrigger id="current-print-program" aria-label="البرنامج">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">جميع البرامج</SelectItem>
+                    {availablePrograms.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </ReportFilterField>
+              <ReportFilterField label="المستوى" htmlFor="current-print-level">
+                <Select
+                  value={levelId}
+                  onValueChange={(value) => {
+                    setLevelId(value);
+                    setCourseId("all");
+                    setCourseSearch("");
+                  }}
+                  disabled={catalogLoading || !!catalogError || programId === "all"}
+                >
+                  <SelectTrigger id="current-print-level" aria-label="المستوى">
+                    <SelectValue
+                      placeholder={programId === "all" ? "اختر البرنامج أولًا" : "اختر المستوى"}
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">جميع مستويات البرنامج</SelectItem>
+                    {availableLevels.map((level) => (
+                      <SelectItem key={level.id} value={level.id}>
+                        {level.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </ReportFilterField>
+              <ReportFilterField
+                label="المادة — جميع أقسام الكلية"
+                htmlFor="current-print-course-search"
               >
-                <SelectTrigger id="current-print-course" aria-label="المادة">
-                  <SelectValue placeholder="اختر المادة" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">جميع مواد الفصل المحدد</SelectItem>
-                  {availableCourses.map((course) => (
-                    <SelectItem key={course.id} value={course.id}>
-                      {course.code ? `${course.code} — ${course.name}` : course.name}
-                    </SelectItem>
-                  ))}
-                  {availableCourses.length === 0 && (
-                    <div className="px-2 py-2 text-xs text-muted-foreground">
-                      لا توجد مادة مطابقة ضمن الفصل المحدد.
-                    </div>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-          </ReportFilterField>
-          </>}
+                <div className="space-y-2">
+                  <Input
+                    id="current-print-course-search"
+                    value={courseSearch}
+                    onChange={(event) => {
+                      setCourseSearch(event.target.value);
+                      setCourseId("all");
+                    }}
+                    placeholder="اكتب اسم المادة أو رمزها..."
+                    aria-label="البحث عن المادة"
+                    disabled={catalogLoading || !!catalogError}
+                  />
+                  <Select
+                    value={courseId}
+                    onValueChange={(value) => {
+                      setCourseId(value);
+                      if (value !== "all") {
+                        setDepartmentId("all");
+                        setProgramId("all");
+                        setLevelId("all");
+                      }
+                    }}
+                    disabled={catalogLoading || !!catalogError}
+                  >
+                    <SelectTrigger id="current-print-course" aria-label="المادة">
+                      <SelectValue placeholder="اختر المادة" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">جميع مواد الفصل المحدد</SelectItem>
+                      {availableCourses.map((course) => (
+                        <SelectItem key={course.id} value={course.id}>
+                          {course.code ? `${course.code} — ${course.name}` : course.name}
+                        </SelectItem>
+                      ))}
+                      {availableCourses.length === 0 && (
+                        <div className="px-2 py-2 text-xs text-muted-foreground">
+                          لا توجد مادة مطابقة ضمن الفصل المحدد.
+                        </div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </ReportFilterField>
+            </>
+          )}
         </ReportFilters>
       }
       summary={

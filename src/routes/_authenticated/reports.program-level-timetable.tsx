@@ -3,10 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ReportShell } from "@/components/reports/report-shell";
-import {
-  ReportFilters,
-  ReportFilterField,
-} from "@/components/reports/report-filters";
+import { ReportFilters, ReportFilterField } from "@/components/reports/report-filters";
 import { ReportTimetableView } from "@/components/reports/report-timetable-view";
 import { DeliveryGroupCoverageCard } from "@/components/reports/delivery-group-coverage-card";
 import { Card } from "@/components/ui/card";
@@ -51,9 +48,7 @@ import {
 } from "@/lib/reports/program-timetable-filters";
 import type { ReportContext } from "@/lib/reports/types";
 
-export const Route = createFileRoute(
-  "/_authenticated/reports/program-level-timetable",
-)({
+export const Route = createFileRoute("/_authenticated/reports/program-level-timetable")({
   head: () => ({ meta: [{ title: "تقرير جدول البرنامج/المستوى" }] }),
   component: Page,
 });
@@ -81,9 +76,7 @@ const PROGRAM_TIMETABLE_EXPORT_HEADERS = [
 function Page() {
   const [initial] = useState(() =>
     parseProgramReportSearch(
-      new URLSearchParams(
-        typeof window === "undefined" ? "" : window.location.search,
-      ),
+      new URLSearchParams(typeof window === "undefined" ? "" : window.location.search),
     ),
   );
   const ctx = useReportContext({
@@ -91,9 +84,7 @@ function Page() {
     defaultStudySystem: "all",
     initialFilters: initial.context,
   });
-  return (
-    <ProgramLevelReport context={ctx} initialSelection={initial.selection} />
-  );
+  return <ProgramLevelReport context={ctx} initialSelection={initial.selection} />;
 }
 
 function ProgramLevelReport({
@@ -111,17 +102,12 @@ function ProgramLevelReport({
     studySystem: ctx.studySystem,
   };
   const [state, setState] = useState({ scope, selection: initialSelection });
-  const scopedSelection = reconcileProgramReportScope(
-    state.selection,
-    state.scope,
-    scope,
-  );
+  const scopedSelection = reconcileProgramReportScope(state.selection, state.scope, scope);
   // Adjust during render so no request or print can observe a stale dependent selection.
   if (
     Object.keys(scope).some(
       (key) =>
-        scope[key as keyof ProgramReportScope] !==
-        state.scope[key as keyof ProgramReportScope],
+        scope[key as keyof ProgramReportScope] !== state.scope[key as keyof ProgramReportScope],
     )
   ) {
     setState({ scope, selection: scopedSelection });
@@ -131,37 +117,32 @@ function ProgramLevelReport({
     queryKey: ["plt-references", ctx.collegeId, ctx.termId],
     enabled: !!ctx.collegeId && !!ctx.termId,
     queryFn: async (): Promise<ProgramReportReferences> => {
-      const [departments, programs, levels, cohorts, plans] = await Promise.all(
-        [
-          supabase
-            .from("departments")
-            .select("id, name")
-            .eq("college_id", ctx.collegeId!)
-            .order("name"),
-          supabase
-            .from("academic_programs")
-            .select("id, name, department_id")
-            .eq("college_id", ctx.collegeId!)
-            .order("name"),
-          supabase
-            .from("academic_levels")
-            .select("id, name, program_id, level_number")
-            .eq("college_id", ctx.collegeId!)
-            .order("level_number"),
-          supabase
-            .from("academic_cohorts")
-            .select(
-              "id, code, program_id, level_id, term_id, study_system, entry_year, study_plan_id",
-            )
-            .eq("college_id", ctx.collegeId!)
-            .eq("term_id", ctx.termId!)
-            .order("code"),
-          supabase
-            .from("study_plans")
-            .select("id,name")
-            .eq("college_id", ctx.collegeId!),
-        ],
-      );
+      const [departments, programs, levels, cohorts, plans] = await Promise.all([
+        supabase
+          .from("departments")
+          .select("id, name")
+          .eq("college_id", ctx.collegeId!)
+          .order("name"),
+        supabase
+          .from("academic_programs")
+          .select("id, name, department_id")
+          .eq("college_id", ctx.collegeId!)
+          .order("name"),
+        supabase
+          .from("academic_levels")
+          .select("id, name, program_id, level_number")
+          .eq("college_id", ctx.collegeId!)
+          .order("level_number"),
+        supabase
+          .from("academic_cohorts")
+          .select(
+            "id, code, program_id, level_id, term_id, study_system, entry_year, study_plan_id",
+          )
+          .eq("college_id", ctx.collegeId!)
+          .eq("term_id", ctx.termId!)
+          .order("code"),
+        supabase.from("study_plans").select("id,name").eq("college_id", ctx.collegeId!),
+      ]);
       for (const result of [departments, programs, levels, cohorts, plans])
         if (result.error) throw result.error;
       return {
@@ -172,8 +153,7 @@ function ProgramLevelReport({
           ...c,
           code:
             c.entry_year === null
-              ? (plans.data?.find((p) => p.id === c.study_plan_id)?.name ??
-                c.code)
+              ? (plans.data?.find((p) => p.id === c.study_plan_id)?.name ?? c.code)
               : c.code,
         })),
       };
@@ -181,12 +161,7 @@ function ProgramLevelReport({
   });
 
   const sessionsQuery = useQuery({
-    queryKey: [
-      "plt-version-sessions",
-      ctx.collegeId,
-      ctx.versionId,
-      ctx.studySystem,
-    ],
+    queryKey: ["plt-version-sessions", ctx.collegeId, ctx.versionId, ctx.studySystem],
     enabled: !!ctx.collegeId && !!ctx.selectedVersion,
     queryFn: async () => {
       const raw = await fetchProgramLevelTimetableSessions({
@@ -206,12 +181,14 @@ function ProgramLevelReport({
       "plt-delivery-group-catalog",
       ctx.collegeId,
       ctx.termId,
+      ctx.versionId,
       references.cohorts.map((c) => c.id).join(","),
     ],
-    enabled: !!ctx.collegeId && references.cohorts.length > 0,
+    enabled: !!ctx.collegeId && !!ctx.selectedVersion && references.cohorts.length > 0,
     queryFn: () =>
       fetchCohortDeliveryGroupCatalog({
         collegeId: ctx.collegeId!,
+        versionId: ctx.versionId ?? undefined,
         cohortIds: references.cohorts.map((c) => c.id),
       }),
   });
@@ -226,9 +203,7 @@ function ProgramLevelReport({
   const scopedCohortIds = new Set(baseView.scopedCohortIds);
   const cohortLabels = new Map(baseView.cohorts.map((c) => [c.id, c.name]));
   const coverage = buildDeliveryGroupCoverage({
-    groups: (catalogQuery.data ?? []).filter((g) =>
-      scopedCohortIds.has(g.cohortId),
-    ),
+    groups: (catalogQuery.data ?? []).filter((g) => scopedCohortIds.has(g.cohortId)),
     sessions: baseView.academicSessions as CoverageSessionLike[],
     cohortLabels: scopedSelection.cohortId === "all" ? cohortLabels : undefined,
   });
@@ -240,21 +215,19 @@ function ProgramLevelReport({
     deliveryGroupLabels: labels.deliveryGroups,
     selectableDeliveryGroupIds: coverage.rows.map((r) => r.id),
   });
-  const error =
-    ctx.error ?? refsQuery.error ?? sessionsQuery.error ?? catalogQuery.error;
+  const error = ctx.error ?? refsQuery.error ?? sessionsQuery.error ?? catalogQuery.error;
   const raw = error ? [] : view.sessions;
   const sessions = mapRawSessions(raw, labels);
-  const timetableRows: Record<string, string | number>[] =
-    timetableSessionsToRows(sessions).map((r) => ({ ...r, status: "مجدول" }));
+  const timetableRows: Record<string, string | number>[] = timetableSessionsToRows(sessions).map(
+    (r) => ({ ...r, status: "مجدول" }),
+  );
 
   const selectedCoverageRow =
     view.selected.deliveryGroupId === "all"
       ? null
-      : (coverage.rows.find((r) => r.id === view.selected.deliveryGroupId) ??
-        null);
+      : (coverage.rows.find((r) => r.id === view.selected.deliveryGroupId) ?? null);
   const unscheduledInView = selectedCoverageRow
-    ? selectedCoverageRow.scheduledHours + 0.01 >=
-      selectedCoverageRow.requiredHours
+    ? selectedCoverageRow.scheduledHours + 0.01 >= selectedCoverageRow.requiredHours
       ? []
       : [selectedCoverageRow]
     : coverage.incomplete;
@@ -268,8 +241,7 @@ function ProgramLevelReport({
           program: "",
           level: "",
           cohort: g.cohortLabel ?? "",
-          delivery_group:
-            g.groupCode ?? (g.groupNumber ? `G${g.groupNumber}` : "—"),
+          delivery_group: g.groupCode ?? (g.groupNumber ? `G${g.groupNumber}` : "—"),
           course: [g.courseCode, g.courseName].filter(Boolean).join(" ") || "—",
           day: UNSCHEDULED_BADGE_AR,
           time: UNSCHEDULED_BADGE_AR,
@@ -281,15 +253,9 @@ function ProgramLevelReport({
           status: g.scheduled ? "تغطية جزئية" : UNSCHEDULED_BADGE_AR,
         })),
       ];
-  const totalHours = timetableRows.reduce(
-    (sum, r) => sum + Number(r.hours ?? 0),
-    0,
-  );
+  const totalHours = timetableRows.reduce((sum, r) => sum + Number(r.hours ?? 0), 0);
   const isLoading =
-    ctx.isLoading ||
-    refsQuery.isLoading ||
-    sessionsQuery.isLoading ||
-    catalogQuery.isLoading;
+    ctx.isLoading || refsQuery.isLoading || sessionsQuery.isLoading || catalogQuery.isLoading;
   const change = (field: keyof ProgramReportSelection, value: string) =>
     setState({
       scope,
@@ -299,8 +265,7 @@ function ProgramLevelReport({
   const origin = typeof window === "undefined" ? "" : window.location.origin;
   const qrUrl = `${origin}/reports/program-level-timetable?${search.toString()}`;
   const academicSummary = [
-    references.departments.find((d) => d.id === view.selected.departmentId)
-      ?.name,
+    references.departments.find((d) => d.id === view.selected.departmentId)?.name,
     view.programs.find((p) => p.id === view.selected.programId)?.name,
     view.levels.find((l) => l.value === view.selected.levelValue)?.label,
     view.cohorts.find((c) => c.id === view.selected.cohortId)?.name,
@@ -332,9 +297,7 @@ function ProgramLevelReport({
     <ReportShell
       title="تقرير جدول البرنامج/المستوى"
       description={`${coverageSummaryText(coverage.summary)} · ${sessions.length} محاضرة مجدولة (${totalHours.toFixed(2)} ساعة).`}
-      filterSummary={[ctx.filterSummary, academicSummary]
-        .filter(Boolean)
-        .join(" · ")}
+      filterSummary={[ctx.filterSummary, academicSummary].filter(Boolean).join(" · ")}
       reportContext={ctx}
       filename="program_level_timetable"
       rows={rows}
@@ -363,26 +326,18 @@ function ProgramLevelReport({
         {
           label: "غير مجدولة",
           value: coverage.summary.unscheduledGroups,
-          tone:
-            coverage.summary.unscheduledGroups > 0
-              ? ("danger" as const)
-              : ("success" as const),
+          tone: coverage.summary.unscheduledGroups > 0 ? ("danger" as const) : ("success" as const),
         },
         { label: "ساعات مطلوبة", value: coverage.summary.requiredHours },
         { label: "ساعات مجدولة", value: coverage.summary.scheduledHours },
       ]}
       leading={
         isLoading || error ? null : (
-          <DeliveryGroupCoverageCard
-            summary={coverage.summary}
-            unscheduled={unscheduledInView}
-          />
+          <DeliveryGroupCoverageCard summary={coverage.summary} unscheduled={unscheduledInView} />
         )
       }
       emptyMessage={
-        error
-          ? "تعذّر تحميل بيانات التقرير. أعد المحاولة."
-          : "لا توجد محاضرات بهذه المعايير."
+        error ? "تعذّر تحميل بيانات التقرير. أعد المحاولة." : "لا توجد محاضرات بهذه المعايير."
       }
       printContent={
         <ProgramTimetablePrint
@@ -405,15 +360,9 @@ function ProgramLevelReport({
       filters={
         <ReportFilters
           context={ctx}
-          extraSummary={
-            academicSummary ? academicSummary.split(" · ") : undefined
-          }
+          extraSummary={academicSummary ? academicSummary.split(" · ") : undefined}
           advanced={filters.slice(3).map(({ field, label, items }) => (
-            <ReportFilterField
-              key={field}
-              label={label}
-              htmlFor={`plt-${field}`}
-            >
+            <ReportFilterField key={field} label={label} htmlFor={`plt-${field}`}>
               <Select
                 value={view.selected[field]}
                 onValueChange={(value) => change(field, value)}
@@ -435,11 +384,7 @@ function ProgramLevelReport({
           ))}
         >
           {filters.slice(0, 3).map(({ field, label, items }) => (
-            <ReportFilterField
-              key={field}
-              label={label}
-              htmlFor={`plt-${field}`}
-            >
+            <ReportFilterField key={field} label={label} htmlFor={`plt-${field}`}>
               <Select
                 value={view.selected[field]}
                 onValueChange={(value) => change(field, value)}
@@ -469,13 +414,8 @@ function ProgramLevelReport({
           headers={NEW_FLOW_TIMETABLE_TABLE_HEADERS}
         />
       ) : selectedCoverageRow && !selectedCoverageRow.scheduled ? (
-        <Card
-          className="p-6 text-sm"
-          data-testid="unscheduled-group-empty-state"
-        >
-          <p className="font-semibold">
-            هذه المجموعة لم تُسكن في نسخة الجدول الحالية
-          </p>
+        <Card className="p-6 text-sm" data-testid="unscheduled-group-empty-state">
+          <p className="font-semibold">هذه المجموعة لم تُسكن في نسخة الجدول الحالية</p>
           <p className="mt-2 text-muted-foreground">
             {[
               [selectedCoverageRow.courseCode, selectedCoverageRow.courseName]

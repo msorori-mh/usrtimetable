@@ -157,6 +157,25 @@ function state() {
   };
   st.db = {
     rpc: async (name, request) => {
+      if (name === "schedule_version_student_memberships") {
+        return {
+          data: request.p_groups.flatMap((id) => {
+            const group = st.snapshot.groups.find((g) => g.id === id);
+            if (!group) return [];
+            const members = st.snapshot.members.filter((m) => m.delivery_group_id === id);
+            return (members.length ? members : [{ cohort_id: group.cohort_id }]).map((m) => ({
+              delivery_group_id: id,
+              cohort_id: m.cohort_id,
+              partition_id: m.partition_id ?? null,
+              partition_headcount:
+                st.snapshot.partitions.find((p) => p.id === m.partition_id)?.headcount ?? null,
+              shared_lecture: false,
+              expected_students: group.expected_students,
+            }));
+          }),
+          error: null,
+        };
+      }
       if (name === "shared_lecture_catalog") return { data: [], error: null };
       assert.equal(name, "apply_schedule_generation");
       st.transactions ??= [];
