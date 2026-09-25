@@ -260,6 +260,19 @@ BEGIN
   IF (SELECT count(*) FROM schedule_version_delivery_private.group_facts) <> 10 THEN
     RAISE EXCEPTION 'negative test left a deleted group fact';
   END IF;
+  BEGIN
+    DELETE FROM schedule_version_delivery_private.partner_group_facts
+    WHERE version_id='d68d8d22-9a6d-4f21-935f-cebf18bb969b'
+      AND group_id=(SELECT id FROM public.delivery_groups
+                    WHERE cohort_id='dddddddd-dddd-4ddd-8ddd-dddddddddddd');
+    PERFORM set_config('request.jwt.claim.sub','11111111-1111-1111-1111-111111111111',true);
+    PERFORM public.schedule_version_group_facts(
+      'd68d8d22-9a6d-4f21-935f-cebf18bb969b',
+      ARRAY[(SELECT id FROM public.delivery_groups
+             WHERE cohort_id='ebfc0dee-f291-4f6d-a974-d3ed1df96f3e')]::uuid[]);
+    RAISE EXCEPTION 'missing frozen partner must fail closed';
+  EXCEPTION WHEN check_violation THEN NULL;
+  END;
 END;
 $assert$;
 
