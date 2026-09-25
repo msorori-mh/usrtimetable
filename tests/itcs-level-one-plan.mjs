@@ -53,6 +53,13 @@ for (const cohort of plan.cohort_counts) {
 const groupKey = (group) => [group.cohort_code, group.component_id, group.group_code].join(":");
 const groups = new Map(plan.new_groups.map((g) => [groupKey(g), g]));
 assert.equal(groups.size, 6);
+const uuids = (values) => {
+  assert.equal(new Set(values).size, values.length);
+  for (const value of values) assert.match(value, /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/);
+};
+uuids(plan.new_groups.map((g) => g.new_group_id));
+uuids(plan.new_assignments.map((a) => a.new_assignment_id));
+uuids(plan.proposed_sessions.map((s) => s.new_session_id));
 for (const group of [...plan.existing_group_changes, ...plan.new_groups]) {
   const expected = group.new ?? group.expected_students;
   const partitionCounts = counts.get(group.cohort_code)?.partitions;
@@ -96,6 +103,7 @@ for (const [key, group] of groups) {
   const assignment = assignments.get(key);
   assert.ok(assignment, key);
   assert.equal(assignment.source_group_id, group.source_group_id, key);
+  assert.equal(assignment.new_group_id, group.new_group_id, key);
   assert.equal(assignment.expected_students, group.expected_students, key);
 }
 
@@ -112,6 +120,8 @@ for (const session of plan.proposed_sessions) {
   assert.ok(group, session.delivery_group_id);
   const assignment = assignments.get(groupKey(group));
   assert.equal(session.source_assignment_id, assignment.source_assignment_id);
+  assert.equal(session.new_group_id, group.new_group_id);
+  assert.equal(session.new_assignment_id, assignment.new_assignment_id);
   assert.equal(session.instructor_id, assignment.instructor_id);
   assert.equal(session.course_offering_id, assignment.course_offering_id);
   assert.equal(session.expected_students, group.expected_students);

@@ -1,5 +1,6 @@
 \set ON_ERROR_STOP on
 \ir itcs-v2-delivery-baseline-db.sql
+SET request.jwt.claim.sub='11111111-1111-1111-1111-111111111111';
 
 -- Expand the disposable baseline with only the metadata needed by the
 -- production version-scoped freshness, assignment and session guards.
@@ -112,3 +113,62 @@ BEGIN
 END;
 $assert$;
 RESET ROLE;
+
+CREATE TABLE public.academic_terms(id uuid PRIMARY KEY);
+INSERT INTO public.academic_terms VALUES ('18dd364a-76d7-40b8-a217-fa929c082a7f');
+CREATE TABLE public.instructors(id uuid PRIMARY KEY);
+INSERT INTO public.instructors VALUES ('bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb');
+ALTER TABLE public.course_offerings ADD COLUMN term_id uuid NOT NULL
+  DEFAULT '18dd364a-76d7-40b8-a217-fa929c082a7f';
+ALTER TABLE public.teaching_assignments ADD COLUMN instructor_id uuid;
+ALTER TABLE public.teaching_assignments ADD COLUMN college_id uuid;
+ALTER TABLE public.teaching_assignments ADD COLUMN course_offering_id uuid;
+UPDATE public.teaching_assignments SET
+  instructor_id='bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb',
+  college_id='7168345f-cf9d-4789-b2ad-547abb687dc8',
+  course_offering_id=(SELECT id FROM public.course_offerings LIMIT 1);
+CREATE SCHEMA faculty_private;
+CREATE FUNCTION faculty_private.workload(uuid,uuid)
+RETURNS jsonb LANGUAGE sql STABLE AS $$
+  SELECT '{"required_load_hours":10,"standard_assigned_hours":40,"allocation_pending":false}'::jsonb
+$$;
+CREATE FUNCTION public.existing_schedule_intake_enabled(uuid,uuid)
+RETURNS boolean LANGUAGE sql STABLE AS $$ SELECT false $$;
+\ir ../docs/migrations-proposed/20260925_itcs_exact_hour_waiver.sql
+CREATE TRIGGER instructor_hours BEFORE INSERT OR UPDATE ON public.teaching_assignments
+FOR EACH ROW EXECUTE FUNCTION public.enforce_instructor_extra_hours_limit();
+
+DO $assert$
+DECLARE v_id uuid:='cccccccc-cccc-4ccc-cccc-cccccccccccc';
+  v_source public.teaching_assignments%ROWTYPE;
+BEGIN
+  SELECT a.* INTO v_source FROM public.teaching_assignments a JOIN public.delivery_groups g
+    ON g.id=a.delivery_group_id
+  WHERE g.cohort_id='ebfc0dee-f291-4f6d-a974-d3ed1df96f3e' LIMIT 1;
+  BEGIN
+    INSERT INTO public.teaching_assignments
+      (id,cohort_id,delivery_group_id,plan_course_component_id,is_active,
+       instructor_id,college_id,course_offering_id)
+    VALUES (v_id,v_source.cohort_id,v_source.delivery_group_id,
+      v_source.plan_course_component_id,true,v_source.instructor_id,
+      v_source.college_id,v_source.course_offering_id);
+    RAISE EXCEPTION 'aggregate limit unexpectedly disabled for ordinary assignments';
+  EXCEPTION WHEN check_violation THEN NULL;
+  END;
+  INSERT INTO schedule_version_delivery_private.instructor_hour_waivers
+    (assignment_id,version_id,college_id,term_id,instructor_id,group_id,source_assignment_id)
+  VALUES (v_id,'d68d8d22-9a6d-4f21-935f-cebf18bb969b',
+    '7168345f-cf9d-4789-b2ad-547abb687dc8',
+    '18dd364a-76d7-40b8-a217-fa929c082a7f',
+    v_source.instructor_id,v_source.delivery_group_id,v_source.id);
+  INSERT INTO public.teaching_assignments
+    (id,cohort_id,delivery_group_id,plan_course_component_id,is_active,
+     instructor_id,college_id,course_offering_id)
+  VALUES (v_id,v_source.cohort_id,v_source.delivery_group_id,
+    v_source.plan_course_component_id,true,v_source.instructor_id,
+    v_source.college_id,v_source.course_offering_id);
+  IF NOT EXISTS (SELECT 1 FROM public.teaching_assignments WHERE id=v_id) THEN
+    RAISE EXCEPTION 'exact waiver rejected intended assignment';
+  END IF;
+END;
+$assert$;

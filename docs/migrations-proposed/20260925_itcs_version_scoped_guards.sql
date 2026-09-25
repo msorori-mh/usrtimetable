@@ -88,8 +88,7 @@ BEGIN
   v_base:=v_headcount/v_expected;
   v_rem:=v_headcount%v_expected;
   SELECT count(*)::integer,coalesce(sum(f.expected_students),0)::integer,
-    count(*) FILTER (WHERE raw.id IS NULL OR NOT raw.active OR coalesce(raw.is_obsolete,false)
-      OR raw.cohort_id IS DISTINCT FROM g.cohort_id
+    count(*) FILTER (WHERE raw.cohort_id IS DISTINCT FROM g.cohort_id
       OR raw.component_id IS DISTINCT FROM g.component_id
       OR raw.group_number IS NULL OR raw.group_number<1 OR raw.group_number>v_expected
       OR f.group_code IS DISTINCT FROM raw.group_code
@@ -98,9 +97,10 @@ BEGIN
          v_base+CASE WHEN raw.group_number<=v_rem THEN 1 ELSE 0 END)::integer
   INTO v_count,v_students,v_bad
   FROM schedule_version_delivery_private.group_facts f
-  LEFT JOIN public.delivery_groups raw ON raw.id=f.group_id
+  JOIN public.delivery_groups raw ON raw.id=f.group_id
   WHERE f.version_id=p_version AND f.cohort_id=g.cohort_id
-    AND raw.component_id=g.component_id;
+    AND raw.component_id=g.component_id AND raw.active
+    AND NOT coalesce(raw.is_obsolete,false);
   IF NOT EXISTS (SELECT 1 FROM schedule_version_delivery_private.group_facts f
                  WHERE f.version_id=p_version AND f.group_id=p_group) THEN
     RETURN jsonb_build_object('ok',false,'code','VERSION_GROUP_FACT_MISSING');

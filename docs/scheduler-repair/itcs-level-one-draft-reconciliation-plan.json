@@ -681,7 +681,8 @@
         "A003",
         "A004"
       ],
-      "source_group_id": "f958a90b-acaf-42d8-9f8f-5b4e5cf98264"
+      "source_group_id": "f958a90b-acaf-42d8-9f8f-5b4e5cf98264",
+      "new_group_id": "838e954c-c34b-5c7c-b845-27ca140461e4"
     },
     {
       "cohort_code": "IT-P-L1-2026",
@@ -695,7 +696,8 @@
         "A003",
         "A004"
       ],
-      "source_group_id": "623c5443-f012-4407-b7d3-0a42255371e0"
+      "source_group_id": "623c5443-f012-4407-b7d3-0a42255371e0",
+      "new_group_id": "e560ab77-753f-5f42-b2bb-4192701933cc"
     },
     {
       "cohort_code": "IT-P-L1-2026",
@@ -709,7 +711,8 @@
         "A003",
         "A004"
       ],
-      "source_group_id": "15883f93-65df-4fc4-8889-98965349f1e2"
+      "source_group_id": "15883f93-65df-4fc4-8889-98965349f1e2",
+      "new_group_id": "e91b9ede-8a74-5668-903b-21bb4c1e6d6e"
     },
     {
       "cohort_code": "IT-P-L1-2026",
@@ -723,7 +726,8 @@
         "A003",
         "A004"
       ],
-      "source_group_id": "cde57de8-b7af-4546-9f96-73bced506d77"
+      "source_group_id": "cde57de8-b7af-4546-9f96-73bced506d77",
+      "new_group_id": "7909072a-809b-53f9-9062-dd2c719dcda6"
     },
     {
       "cohort_code": "IT-P-L1-2026",
@@ -736,7 +740,8 @@
       "partitions": [
         "A004"
       ],
-      "source_group_id": "a5a0ff22-7a24-471a-b1c9-9b2a99930358"
+      "source_group_id": "a5a0ff22-7a24-471a-b1c9-9b2a99930358",
+      "new_group_id": "15a8e7b5-2727-5213-94b2-801120e0be93"
     },
     {
       "cohort_code": "CYB-P-L1-2026",
@@ -749,7 +754,8 @@
       "partitions": [
         "A004"
       ],
-      "source_group_id": "b4f22720-89ac-42b2-b2d8-9f50b10116dd"
+      "source_group_id": "b4f22720-89ac-42b2-b2d8-9f50b10116dd",
+      "new_group_id": "1ee6c24d-e349-521e-bf28-676c8c92d74e"
     }
   ],
   "new_assignments": [
@@ -763,7 +769,9 @@
       "component_id": "ee7dd16b-1fe4-4429-a446-e92d8e2306a7",
       "weekly_hours": 3,
       "required_room_type": null,
-      "expected_students": 50
+      "expected_students": 50,
+      "new_group_id": "838e954c-c34b-5c7c-b845-27ca140461e4",
+      "new_assignment_id": "083028e4-1104-5827-8a1d-d3f0c8e675c5"
     },
     {
       "cohort_code": "IT-P-L1-2026",
@@ -775,7 +783,9 @@
       "component_id": "fd0ef1b1-95bd-4aaa-82c7-d337e470aa6f",
       "weekly_hours": 3,
       "required_room_type": null,
-      "expected_students": 50
+      "expected_students": 50,
+      "new_group_id": "e560ab77-753f-5f42-b2bb-4192701933cc",
+      "new_assignment_id": "a3c2d5d7-9a2e-50da-88f6-f85c6895f25c"
     },
     {
       "cohort_code": "IT-P-L1-2026",
@@ -787,7 +797,9 @@
       "component_id": "95c3bdc8-5589-4f4e-852b-29611172fba4",
       "weekly_hours": 3,
       "required_room_type": "lecture_hall",
-      "expected_students": 50
+      "expected_students": 50,
+      "new_group_id": "e91b9ede-8a74-5668-903b-21bb4c1e6d6e",
+      "new_assignment_id": "95bf19ef-16ac-5059-b549-4dd26b5dcf26"
     },
     {
       "cohort_code": "IT-P-L1-2026",
@@ -799,7 +811,9 @@
       "component_id": "152727e7-0f4c-48af-a78d-2a79218778af",
       "weekly_hours": 2,
       "required_room_type": "lecture_hall",
-      "expected_students": 50
+      "expected_students": 50,
+      "new_group_id": "7909072a-809b-53f9-9062-dd2c719dcda6",
+      "new_assignment_id": "6c2b3c48-5e90-54dd-9f0f-d305a6b6933e"
     },
     {
       "cohort_code": "IT-P-L1-2026",
@@ -811,7 +825,9 @@
       "component_id": "9273e0a8-95e9-49b2-a68a-6d3f3905837d",
       "weekly_hours": 2,
       "required_room_type": "computer_lab",
-      "expected_students": 33
+      "expected_students": 33,
+      "new_group_id": "15a8e7b5-2727-5213-94b2-801120e0be93",
+      "new_assignment_id": "39253cec-89c2-50d0-a482-224daef6a0bc"
     },
     {
       "cohort_code": "CYB-P-L1-2026",
@@ -823,7 +839,9 @@
       "component_id": "4d56f8b5-25d4-4f77-8e4a-4f04f230093e",
       "weekly_hours": 2,
       "required_room_type": null,
-      "expected_students": 35
+      "expected_students": 35,
+      "new_group_id": "1ee6c24d-e349-521e-bf28-676c8c92d74e",
+      "new_assignment_id": "31a60993-a44b-52c3-ad7f-60105fe4d715"
     }
   ],
   "proposed_sessions": [
@@ -843,7 +861,10 @@
       "room_code": "R13",
       "session_type": "lecture",
       "source_session_id": "cf8a6437-d538-421e-ab7c-ecc0dece801b",
-      "source_assignment_id": "8c034cbe-3e7b-42ce-8e28-b2557778b04d"
+      "source_assignment_id": "8c034cbe-3e7b-42ce-8e28-b2557778b04d",
+      "new_group_id": "838e954c-c34b-5c7c-b845-27ca140461e4",
+      "new_assignment_id": "083028e4-1104-5827-8a1d-d3f0c8e675c5",
+      "new_session_id": "1e449677-3c66-5bd6-a822-4f0717083ba5"
     },
     {
       "id": "PLANNED:3b048be0",
@@ -861,7 +882,10 @@
       "room_code": "R13",
       "session_type": "lecture",
       "source_session_id": "3b048be0-e0bd-46d1-a010-c1d2ba02e91d",
-      "source_assignment_id": "97ec16ff-7c9a-465b-83d4-52782ac487cd"
+      "source_assignment_id": "97ec16ff-7c9a-465b-83d4-52782ac487cd",
+      "new_group_id": "e560ab77-753f-5f42-b2bb-4192701933cc",
+      "new_assignment_id": "a3c2d5d7-9a2e-50da-88f6-f85c6895f25c",
+      "new_session_id": "667c2412-5c4f-56be-95ee-84d38a9a4a66"
     },
     {
       "id": "PLANNED:3b3f7de1",
@@ -879,7 +903,10 @@
       "room_code": "R-04",
       "session_type": "lecture",
       "source_session_id": "3b3f7de1-17ce-4dc1-bdc3-6b4e7c57dbe2",
-      "source_assignment_id": "4c275f3a-b922-48b6-8a55-c94c597c07a4"
+      "source_assignment_id": "4c275f3a-b922-48b6-8a55-c94c597c07a4",
+      "new_group_id": "e91b9ede-8a74-5668-903b-21bb4c1e6d6e",
+      "new_assignment_id": "95bf19ef-16ac-5059-b549-4dd26b5dcf26",
+      "new_session_id": "baf57212-dc3b-5ba3-81b4-5f8e6367bac3"
     },
     {
       "id": "PLANNED:8507aeda",
@@ -897,7 +924,10 @@
       "room_code": "R13",
       "session_type": "lecture",
       "source_session_id": "8507aeda-8e19-4cfb-b302-14172fe7894b",
-      "source_assignment_id": "a397372f-1bd4-40b2-8e1e-6243c75ea5de"
+      "source_assignment_id": "a397372f-1bd4-40b2-8e1e-6243c75ea5de",
+      "new_group_id": "7909072a-809b-53f9-9062-dd2c719dcda6",
+      "new_assignment_id": "6c2b3c48-5e90-54dd-9f0f-d305a6b6933e",
+      "new_session_id": "471ae1bb-9880-5274-be50-400b33c9403f"
     },
     {
       "id": "PLANNED:85b9c15e",
@@ -915,7 +945,10 @@
       "room_code": "LAB-01",
       "session_type": "lab",
       "source_session_id": "85b9c15e-1b39-43ce-a67c-aeb112e69dba",
-      "source_assignment_id": "b7f1789a-955f-4ed3-9a3c-118aad9f28aa"
+      "source_assignment_id": "b7f1789a-955f-4ed3-9a3c-118aad9f28aa",
+      "new_group_id": "15a8e7b5-2727-5213-94b2-801120e0be93",
+      "new_assignment_id": "39253cec-89c2-50d0-a482-224daef6a0bc",
+      "new_session_id": "ad7eded4-159b-5e01-a560-e313e99b7b9b"
     },
     {
       "id": "PLANNED:34a2e6ed",
@@ -933,7 +966,10 @@
       "room_code": "LAB-04",
       "session_type": "lab",
       "source_session_id": "34a2e6ed-f3e7-4c20-9e7c-0b16859fbd94",
-      "source_assignment_id": "8d81d3ec-d395-4622-b833-0a7fa907a237"
+      "source_assignment_id": "8d81d3ec-d395-4622-b833-0a7fa907a237",
+      "new_group_id": "1ee6c24d-e349-521e-bf28-676c8c92d74e",
+      "new_assignment_id": "31a60993-a44b-52c3-ad7f-60105fe4d715",
+      "new_session_id": "e0044bb0-5b05-56ce-89eb-34c303527450"
     }
   ],
   "shared_anchor_sizes": [
