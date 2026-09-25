@@ -130,8 +130,11 @@ export function leadershipPriorities(
 
 export function decisionOrder(colleges: LeadershipCollege[], priorities: LeadershipPriority[]) {
   const rank = new Map(priorities.map((item, index) => [item.collegeId, index]));
+  const lastRank = (college: LeadershipCollege) =>
+    college.college.includes("الطب والعلوم الصحية") ? 1 : college.college.includes("الجوف") ? 2 : 0;
   return [...colleges].sort(
     (a, b) =>
+      lastRank(a) - lastRank(b) ||
       (rank.get(a.college_id) ?? Infinity) - (rank.get(b.college_id) ?? Infinity) ||
       a.college.localeCompare(b.college, "ar"),
   );
