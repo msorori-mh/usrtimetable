@@ -76,6 +76,14 @@ and atomic draft reconciliation; its client code awaits the PR deployment.
 The fixture also removes a draft shared member partition inside a rollback
 transaction and confirms the missing member cohort remains visible and the
 server overlap check still blocks the collision.
+
+Stage 2h fixes the delivery-coverage and missing-groups RPCs to use the
+selected-version group catalogue. The first live report check exposed V2
+incorrectly counting six draft-only groups (275/281). The replacement passed
+a rollback-only live rehearsal and authenticated role check before commit.
+The live report now shows V2 275/275 groups and 627/627 hours; the draft shows
+281/281 and 642/642. Both missing-group lists are empty. See
+`docs/migrations-proposed/20260925_itcs_version_scoped_delivery_coverage.sql`.
 The draft compaction snapshot now overlays versioned group sizes, partition
 headcounts, member rows and session headcounts before evaluating candidate
 moves; it no longer loads global member/partition views for this calculation.
@@ -143,8 +151,14 @@ is Monday 11:00–14:00 in R13, with no Sunday session in the draft. Server
 preflight and postconditions reject new room/instructor collisions, an
 out-of-capacity room, stale groups and a changed published baseline.
 
-`HOLD` for application rollout until PR #303 is merged and the connected
-project is deployed and verified. The SQL was applied directly rather than
-through `supabase_migrations.schema_migrations`; record a tracked schema
-migration strategy before reusing these application changes in a fresh
-environment. Do not replay the one-shot Stage 3 transaction.
+`PASS` for application rollout and selected-version report verification.
+PR #303 merged to main as `ccce07a7695992ed8a28c5cc9e362fcbcdd75203` after
+all nine workflows passed, and the connected app was deployed. An authenticated
+read of the live timetable's parallel IT level-one student print shows new
+G2/G3 sessions, the former lecturers, R13 on Monday/Tuesday/Wednesday,
+and Monday physics without a Sunday physics session. The report selector
+shows separate draft and published versions and the repaired coverage above.
+The schedule draft remains a draft; V2 is still published. The SQL was applied
+directly rather than through `supabase_migrations.schema_migrations`; record a
+tracked schema migration strategy before reusing these application changes in
+a fresh environment. Do not replay the one-shot Stage 3 transaction.
