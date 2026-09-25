@@ -228,7 +228,9 @@ export function LeadershipDecisionSummary({
             <span className="leadership-count">· {colleges.length}</span>
           </h2>
           <span className="leadership-section-note">
-            {scope === "college" ? "مؤشرات الكلية المُسندة" : "مرتبة بحسب أولوية المتابعة"}
+            {scope === "college"
+              ? "مؤشرات الكلية المُسندة"
+              : "حسب أولوية المتابعة · الطب والجوف أخيرًا"}
           </span>
         </div>
         <div className="overflow-x-auto">
