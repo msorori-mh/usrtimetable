@@ -97,7 +97,10 @@ tests.push({
 for (const [name, mutated] of [
   [
     "missing loaded argument",
-    validatorSource.replace(/(scheduleVersionId,\s*)approvedExceptions,(\s*\);)/, "$1$2"),
+    validatorSource.replace(
+      /(applyApprovedExceptions\(\s*conflicts,\s*scheduleVersionId,\s*)approvedExceptions,?(\s*\))/,
+      "$1$2",
+    ),
   ],
   [
     "unawaited loader",
