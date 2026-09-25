@@ -355,4 +355,67 @@ $body$;
 REVOKE ALL ON FUNCTION public.schedule_version_cohort_facts(uuid,uuid[]) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.schedule_version_cohort_facts(uuid,uuid[]) TO authenticated,service_role;
 
+-- Include shared-lecture partners even when the anchor belongs to an
+-- unscoped cohort. Preserve each partner's selected-version student count.
+CREATE FUNCTION public.schedule_version_group_facts(p_version uuid, p_groups uuid[])
+RETURNS TABLE(group_id uuid, expected_students integer, capacity_limit integer)
+LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path TO 'pg_catalog', 'public', 'schedule_version_delivery_private' AS $body$
+DECLARE v_college uuid;
+BEGIN
+  IF p_groups IS NULL OR cardinality(p_groups) > 100 THEN
+    RAISE EXCEPTION 'VERSION_FACT_INVALID_BATCH' USING ERRCODE='23514';
+  END IF;
+  SELECT college_id INTO v_college FROM public.schedule_versions WHERE id=p_version;
+  IF v_college IS NULL OR auth.uid() IS NULL
+     OR NOT public.can_view_college(auth.uid(),v_college)
+     OR EXISTS (SELECT 1 FROM unnest(p_groups) ids(id)
+                LEFT JOIN public.delivery_groups g ON g.id=ids.id
+                WHERE g.id IS NULL OR g.college_id IS DISTINCT FROM v_college) THEN
+    RAISE EXCEPTION 'VERSION_GROUP_FORBIDDEN' USING ERRCODE='42501';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.delivery_groups g
+    JOIN schedule_version_delivery_private.scope s
+      ON s.version_id=p_version AND s.cohort_id=g.cohort_id
+    LEFT JOIN schedule_version_delivery_private.group_facts f
+      ON f.version_id=p_version AND f.group_id=g.id
+    WHERE g.id=ANY(p_groups) AND f.group_id IS NULL
+  ) OR EXISTS (
+    SELECT 1 FROM schedule_version_delivery_private.shared_link_facts l
+    JOIN public.delivery_groups m ON m.id=l.member_group_id
+    JOIN schedule_version_delivery_private.scope s
+      ON s.version_id=p_version AND s.cohort_id=m.cohort_id
+    LEFT JOIN schedule_version_delivery_private.group_facts f
+      ON f.version_id=p_version AND f.group_id=m.id
+    WHERE l.version_id=p_version AND l.anchor_group_id=ANY(p_groups)
+      AND f.group_id IS NULL
+  ) THEN
+    RAISE EXCEPTION 'VERSION_GROUP_FACT_MISSING' USING ERRCODE='23514';
+  END IF;
+  RETURN QUERY
+    SELECT g.id,
+      COALESCE(f.expected_students,g.expected_students)
+        + COALESCE((
+          SELECT sum(COALESCE(mf.expected_students,m.expected_students))::integer
+          FROM schedule_version_delivery_private.shared_link_facts l
+          JOIN public.delivery_groups m ON m.id=l.member_group_id
+          LEFT JOIN schedule_version_delivery_private.group_facts mf
+            ON mf.version_id=p_version AND mf.group_id=m.id
+          WHERE l.version_id=p_version AND l.anchor_group_id=g.id
+        ),0),
+      COALESCE(f.capacity_limit,g.capacity_limit)
+    FROM (SELECT DISTINCT id FROM unnest(p_groups) ids(id)) request
+    JOIN public.delivery_groups g ON g.id=request.id
+    LEFT JOIN schedule_version_delivery_private.group_facts f
+      ON f.version_id=p_version AND f.group_id=g.id
+    WHERE f.group_id IS NOT NULL OR EXISTS (
+      SELECT 1 FROM schedule_version_delivery_private.shared_link_facts l
+      WHERE l.version_id=p_version AND l.anchor_group_id=g.id
+    );
+END;
+$body$;
+REVOKE ALL ON FUNCTION public.schedule_version_group_facts(uuid,uuid[]) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.schedule_version_group_facts(uuid,uuid[]) TO authenticated,service_role;
+
 COMMIT;
