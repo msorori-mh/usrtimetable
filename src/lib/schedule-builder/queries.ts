@@ -337,15 +337,17 @@ async function fetchWorkspaceCohortTermHeadcounts(params: {
   const facts = new Map<string, number>();
   for (let i = 0; i < params.cohortIds.length; i += chunkSize) {
     const cohortIds = params.cohortIds.slice(i, i + chunkSize);
-    const { data, error } = await (supabase as unknown as {
-      rpc(
-        name: string,
-        args: { p_version: string; p_cohorts: string[] },
-      ): Promise<{
-        data: Array<{ cohort_id: string; scheduling_headcount: number }> | null;
-        error: { message: string } | null;
-      }>;
-    }).rpc("schedule_version_cohort_facts", {
+    const { data, error } = await (
+      supabase as unknown as {
+        rpc(
+          name: string,
+          args: { p_version: string; p_cohorts: string[] },
+        ): Promise<{
+          data: Array<{ cohort_id: string; scheduling_headcount: number }> | null;
+          error: { message: string } | null;
+        }>;
+      }
+    ).rpc("schedule_version_cohort_facts", {
       p_version: params.versionId,
       p_cohorts: cohortIds,
     });
@@ -360,9 +362,7 @@ async function fetchWorkspaceCohortTermHeadcounts(params: {
   return out
     .filter((row) => !facts.has(row.cohort_id) || row.approval_status === "approved")
     .map((row) =>
-      facts.has(row.cohort_id)
-        ? { ...row, scheduling_headcount: facts.get(row.cohort_id)! }
-        : row,
+      facts.has(row.cohort_id) ? { ...row, scheduling_headcount: facts.get(row.cohort_id)! } : row,
     );
 }
 
