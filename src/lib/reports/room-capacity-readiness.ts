@@ -5,12 +5,14 @@
  * not a gap. The real diagnostics are:
  *   - capacity <= 0 (blocker)
  *   - no room type at all (blocker)
- *   - active rooms of one type carrying mixed capacities (needs review)
  *   - a uniform active capacity that disagrees with room_types.default_capacity
- *     (needs review — the effective capacity rule can no longer resolve it)
+ *     (needs review — the catalog's group-sizing policy may be out of date)
  *
  * Mirrors the DB rule in public.effective_room_type_capacity: an effective
  * capacity exists only when every active room of the type shares one capacity.
+ * Mixed capacities are normal for rooms of different sizes. In that case the
+ * group-sizing policy falls back to default_capacity, and placement still
+ * checks each room's own capacity. They are not a missing-data finding.
  */
 import type { ReadinessMetric } from "./readiness";
 
@@ -111,12 +113,6 @@ export function roomCapacityReadinessMetrics(
       total: rooms.length,
       missing: d.missingTypeRooms.length,
       critical: true,
-      category: "resources",
-    },
-    {
-      label: "أنواع قاعات بسعات غير موحدة بين غرفها النشطة",
-      total: d.typesConsidered,
-      missing: d.mixedTypeIds.length,
       category: "resources",
     },
     {
