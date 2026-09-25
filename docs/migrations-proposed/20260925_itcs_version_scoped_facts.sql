@@ -242,6 +242,37 @@ BEGIN
 END;
 $seed$;
 
+-- The published seed above is the only permitted insertion window. A
+-- privileged later process must not silently append facts to published V2.
+CREATE FUNCTION schedule_version_delivery_private.guard_published_insert()
+RETURNS trigger LANGUAGE plpgsql SET search_path TO 'public', 'pg_temp' AS $guard$
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.schedule_versions
+             WHERE id=NEW.version_id AND status='published') THEN
+    RAISE EXCEPTION 'PUBLISHED_VERSION_FACT_IMMUTABLE' USING ERRCODE='23514';
+  END IF;
+  RETURN NEW;
+END;
+$guard$;
+CREATE TRIGGER scope_insert_lock BEFORE INSERT
+  ON schedule_version_delivery_private.scope
+  FOR EACH ROW EXECUTE FUNCTION schedule_version_delivery_private.guard_published_insert();
+CREATE TRIGGER cohort_insert_lock BEFORE INSERT
+  ON schedule_version_delivery_private.cohort_facts
+  FOR EACH ROW EXECUTE FUNCTION schedule_version_delivery_private.guard_published_insert();
+CREATE TRIGGER group_insert_lock BEFORE INSERT
+  ON schedule_version_delivery_private.group_facts
+  FOR EACH ROW EXECUTE FUNCTION schedule_version_delivery_private.guard_published_insert();
+CREATE TRIGGER partition_insert_lock BEFORE INSERT
+  ON schedule_version_delivery_private.partition_facts
+  FOR EACH ROW EXECUTE FUNCTION schedule_version_delivery_private.guard_published_insert();
+CREATE TRIGGER membership_insert_lock BEFORE INSERT
+  ON schedule_version_delivery_private.group_partition_facts
+  FOR EACH ROW EXECUTE FUNCTION schedule_version_delivery_private.guard_published_insert();
+CREATE TRIGGER shared_insert_lock BEFORE INSERT
+  ON schedule_version_delivery_private.shared_link_facts
+  FOR EACH ROW EXECUTE FUNCTION schedule_version_delivery_private.guard_published_insert();
+
 CREATE FUNCTION public.effective_schedule_cohort_fact(p_version uuid, p_cohort uuid)
 RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER
 SET search_path TO 'pg_catalog', 'public', 'schedule_version_delivery_private' AS $body$
