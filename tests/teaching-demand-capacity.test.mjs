@@ -110,15 +110,28 @@ test("active cohort with no groups stays visible as incomplete level demand", ()
   const result = buildProgramLevelDemand({
     colleges: [college],
     groups,
-    cohorts: [...cohorts, {
-      id: "cohort-4", college_id: "college-1", term_id: "term-1",
-      program_id: "p2", level_id: "l3", active: true,
-    }],
+    cohorts: [
+      ...cohorts,
+      {
+        id: "cohort-4",
+        college_id: "college-1",
+        term_id: "term-1",
+        program_id: "p2",
+        level_id: "l3",
+        active: true,
+      },
+    ],
     programs,
-    levels: [...levels, {
-      id: "l3", college_id: "college-1", program_id: "p2",
-      name: "الثالث", level_number: 3,
-    }],
+    levels: [
+      ...levels,
+      {
+        id: "l3",
+        college_id: "college-1",
+        program_id: "p2",
+        name: "الثالث",
+        level_number: 3,
+      },
+    ],
     sharedLinks: [],
   });
   assert.equal(result.rows.length, 3);
@@ -188,10 +201,7 @@ test("partial college data cannot become a university surplus", () => {
     balanceHours: 7,
     issues: [],
   };
-  const rows = summarizeDemandCapacity(
-    [college, secondCollege],
-    [complete, secondCapacity],
-  );
+  const rows = summarizeDemandCapacity([college, secondCollege], [complete, secondCapacity]);
   assert.equal(rows[0].status, "calculable");
   assert.equal(rows[1].status, "partial");
   assert.match(capacityAssessment(rows[0]), /فحص النوع والموعد/);
