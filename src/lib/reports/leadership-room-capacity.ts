@@ -148,7 +148,7 @@ export function buildLeadershipRoomCapacity(
           name: room.name || room.code || "قاعة غير مسماة",
           code: room.code || "—",
           type: roomType?.name_ar || "نوع غير محدد",
-          category: roomType?.code ? roomCategoryFromType(roomType.code) : null,
+          category: roomType?.code?.trim() ? roomCategoryFromType(roomType.code) : null,
           seats: room.capacity,
           availableHours: null,
           occupiedHours: null,
