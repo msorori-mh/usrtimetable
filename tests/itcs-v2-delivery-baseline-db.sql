@@ -139,6 +139,28 @@ BEGIN
 END;
 $assert$;
 
+-- A same-count edit to an unrelated V2 session still breaks the full digest.
+BEGIN;
+UPDATE public.schedule_sessions SET cohort_id='dddddddd-dddd-4ddd-8ddd-dddddddddddd'
+WHERE id=(SELECT id FROM public.schedule_sessions
+          WHERE schedule_version_id='30f8a76d-1cb9-4944-a5d7-483dcaea7692'
+            AND cohort_id IS NULL LIMIT 1);
+DO $assert$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM public.schedule_version_delivery_baselines b
+    WHERE b.published_version_digest IS DISTINCT FROM (
+      SELECT md5(coalesce(string_agg(to_jsonb(s)::text, '|' ORDER BY s.id), ''))
+      FROM public.schedule_sessions s
+      WHERE s.schedule_version_id=b.schedule_version_id
+    )
+  ) THEN
+    RAISE EXCEPTION 'same-count published session mutation escaped V2 digest';
+  END IF;
+END;
+$assert$;
+ROLLBACK;
+
 \ir ../docs/migrations-proposed/20260925_itcs_version_scoped_facts.sql
 
 DO $assert$
