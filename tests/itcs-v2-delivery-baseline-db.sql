@@ -34,7 +34,7 @@ CREATE TABLE public.cohort_student_partitions(
 CREATE TABLE public.delivery_groups(
   id uuid PRIMARY KEY, cohort_id uuid NOT NULL, college_id uuid NOT NULL,
   group_code text NOT NULL, expected_students integer NOT NULL,
-  capacity_limit integer
+  capacity_limit integer DEFAULT 200
 );
 CREATE FUNCTION public.operational_delivery_group(p_group uuid)
 RETURNS public.delivery_groups LANGUAGE sql STABLE AS $$

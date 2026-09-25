@@ -6,8 +6,12 @@ on:
       - 'docs/migrations-proposed/20260925_itcs_version_scoped_facts.sql'
       - 'docs/migrations-proposed/20260925_itcs_version_scoped_memberships.sql'
       - 'docs/migrations-proposed/20260925_itcs_version_scoped_overlap.sql'
+      - 'docs/migrations-proposed/20260925_itcs_version_scoped_guards.sql'
+      - 'docs/migrations-proposed/20260925_itcs_version_scoped_writer_integration.sql'
+      - 'docs/migrations-proposed/20260925_itcs_exact_hour_waiver.sql'
       - 'docs/scheduler-repair/itcs-level-one-draft-reconciliation-plan.json'
       - 'tests/itcs-v2-delivery-baseline-db.sql'
+      - 'tests/itcs-version-scoped-guards-db.sql'
       - 'tests/itcs-level-one-plan.mjs'
       - '.github/workflows/itcs-v2-delivery-baseline.yml'
 permissions:
@@ -42,3 +46,9 @@ jobs:
         env:
           PGPASSWORD: postgres
         run: psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d itcs_v2_test -f tests/itcs-v2-delivery-baseline-db.sql
+      - name: Version-scoped freshness and session guards
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d postgres -c 'CREATE DATABASE itcs_guards_test'
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d itcs_guards_test -f tests/itcs-version-scoped-guards-db.sql
