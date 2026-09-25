@@ -240,7 +240,9 @@ interface BatchResult {
 const atomicDb = supabase as unknown as {
   rpc(
     name:
-      "apply_schedule_compaction" | "apply_schedule_relayout" | "get_schedule_compaction_result",
+      | "apply_schedule_compaction"
+      | "apply_schedule_relayout"
+      | "get_schedule_compaction_result",
     args: Record<string, unknown>,
   ): Promise<{
     data: BatchResult | null;
