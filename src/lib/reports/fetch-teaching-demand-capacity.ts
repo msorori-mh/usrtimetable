@@ -9,9 +9,7 @@ import { buildProgramLevelDemand } from "./teaching-demand-capacity";
 import type { LeadershipCollege } from "./leadership";
 
 /** Admin-only detail. The overview determines eligible colleges and terms first. */
-export async function fetchTeachingDemandDetails(
-  colleges: LeadershipCollege[],
-) {
+export async function fetchTeachingDemandDetails(colleges: LeadershipCollege[]) {
   const ready = colleges.filter((c) => c.term_state === "ready" && c.term_id);
   if (!ready.length)
     return buildProgramLevelDemand({
@@ -26,13 +24,10 @@ export async function fetchTeachingDemandDetails(
   const [workspaces, shared, cohorts, programs, levels] = await Promise.all([
     Promise.all(
       ready.map(async (college): Promise<TeachingAssignmentWorkspaceRow[]> => {
-        const { data, error } = await supabase.rpc(
-          "list_teaching_assignment_workspace",
-          {
-            p_college_id: college.college_id,
-            p_term_id: college.term_id!,
-          },
-        );
+        const { data, error } = await supabase.rpc("list_teaching_assignment_workspace", {
+          p_college_id: college.college_id,
+          p_term_id: college.term_id!,
+        });
         if (error) throw error;
         const workspace = parseWorkspacePayload(data);
         if (!workspace.ok || workspace.college_id !== college.college_id)
@@ -40,9 +35,7 @@ export async function fetchTeachingDemandDetails(
         return workspace.rows.filter((g) => g.active && !g.is_obsolete);
       }),
     ),
-    Promise.all(
-      ready.map((college) => fetchSharedLectures(college.college_id)),
-    ),
+    Promise.all(ready.map((college) => fetchSharedLectures(college.college_id))),
     readAllReportRows((from, to) =>
       supabase
         .from("academic_cohorts")
