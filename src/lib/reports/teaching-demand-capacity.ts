@@ -53,12 +53,7 @@ export interface DemandBreakdown {
 }
 
 const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
-const practicalTypes = new Set([
-  "practical",
-  "lab",
-  "clinical",
-  "field_training",
-]);
+const practicalTypes = new Set(["practical", "lab", "clinical", "field_training"]);
 
 /** Group demand comes from the active teaching workspace, never from instructor allocations. */
 export function buildProgramLevelDemand(input: {
@@ -90,36 +85,38 @@ export function buildProgramLevelDemand(input: {
     const program = programs.get(cohort.program_id);
     const level = levels.get(cohort.level_id);
     if (
-      !program || !level || program.college_id !== college.college_id ||
-      level.college_id !== college.college_id || level.program_id !== program.id
-    ) throw new Error("هوية البرنامج أو المستوى غير مكتملة في مصدر التقرير");
+      !program ||
+      !level ||
+      program.college_id !== college.college_id ||
+      level.college_id !== college.college_id ||
+      level.program_id !== program.id
+    )
+      throw new Error("هوية البرنامج أو المستوى غير مكتملة في مصدر التقرير");
     const key = `${college.college_id}:${program.id}:${level.id}`;
-    if (!byLevel.has(key)) byLevel.set(key, {
-      collegeId: college.college_id,
-      college: college.college,
-      programId: program.id,
-      program: program.name,
-      levelId: level.id,
-      level: level.name,
-      levelNumber: level.level_number,
-      groups: 0,
-      requiredHours: 0,
-      theoryHours: 0,
-      practicalHours: 0,
-      otherHours: 0,
-      sharedHours: 0,
-      cohortsWithoutGroups: 0,
-    });
+    if (!byLevel.has(key))
+      byLevel.set(key, {
+        collegeId: college.college_id,
+        college: college.college,
+        programId: program.id,
+        program: program.name,
+        levelId: level.id,
+        level: level.name,
+        levelNumber: level.level_number,
+        groups: 0,
+        requiredHours: 0,
+        theoryHours: 0,
+        practicalHours: 0,
+        otherHours: 0,
+        sharedHours: 0,
+        cohortsWithoutGroups: 0,
+      });
   }
   for (const group of input.groups) {
     if (!group.active || group.is_obsolete) continue;
     const college = colleges.get(group.college_id);
-    if (!college || college.term_state !== "ready" || !college.term_id)
-      continue;
+    if (!college || college.term_state !== "ready" || !college.term_id) continue;
     if (group.term_id !== college.term_id || !group.delivery_group_id) {
-      throw new Error(
-        "مجموعة تدريس خارج الفصل المحدد؛ تعذر اعتماد تفصيل الساعات",
-      );
+      throw new Error("مجموعة تدريس خارج الفصل المحدد؛ تعذر اعتماد تفصيل الساعات");
     }
     if (seenGroups.has(group.delivery_group_id)) {
       throw new Error("تكررت مجموعة تدريس في مصدر التقرير");
@@ -145,9 +142,7 @@ export function buildProgramLevelDemand(input: {
         cohort.college_id !== college.college_id ||
         cohort.term_id !== college.term_id
       ) {
-        throw new Error(
-          "رابط محاضرة مشتركة أو دفعة غير صالح لتقرير البرنامج والمستوى",
-        );
+        throw new Error("رابط محاضرة مشتركة أو دفعة غير صالح لتقرير البرنامج والمستوى");
       }
       const program = programs.get(cohort.program_id);
       const level = levels.get(cohort.level_id);
@@ -183,8 +178,7 @@ export function buildProgramLevelDemand(input: {
       };
       row.groups += 1;
       row.requiredHours = round2(row.requiredHours + h);
-      if (group.component_type === "theory")
-        row.theoryHours = round2(row.theoryHours + h);
+      if (group.component_type === "theory") row.theoryHours = round2(row.theoryHours + h);
       else if (practicalTypes.has(group.component_type))
         row.practicalHours = round2(row.practicalHours + h);
       else row.otherHours = round2(row.otherHours + h);
@@ -194,26 +188,23 @@ export function buildProgramLevelDemand(input: {
   }
   for (const cohort of input.cohorts) {
     if (
-      !cohort.active || reachedCohorts.has(cohort.id) ||
+      !cohort.active ||
+      reachedCohorts.has(cohort.id) ||
       cohort.term_id !== colleges.get(cohort.college_id)?.term_id
-    ) continue;
+    )
+      continue;
     const key = `${cohort.college_id}:${cohort.program_id}:${cohort.level_id}`;
     const row = byLevel.get(key);
     if (row) row.cohortsWithoutGroups += 1;
   }
-  for (const college of input.colleges.filter(
-    (c) => c.term_state === "ready",
-  )) {
+  for (const college of input.colleges.filter((c) => c.term_state === "ready")) {
     const expected = college.required_hours;
     if (
       expected === null ||
       !Number.isFinite(expected) ||
-      Math.abs((physicalHoursByCollege[college.college_id] ?? 0) - expected) >
-        0.01
+      Math.abs((physicalHoursByCollege[college.college_id] ?? 0) - expected) > 0.01
     ) {
-      throw new Error(
-        `الساعات المفصلة لا تطابق إجمالي ${college.college}؛ أعد تحميل التقرير`,
-      );
+      throw new Error(`الساعات المفصلة لا تطابق إجمالي ${college.college}؛ أعد تحميل التقرير`);
     }
   }
   const rows = [...byLevel.values()].sort(
@@ -262,18 +253,14 @@ export function summarizeDemandCapacity(
   return colleges.map((college) => {
     const c = byId.get(college.college_id);
     const issues = [...(c?.issues ?? [])];
-    if (!college.version_id)
-      issues.push("لا توجد نسخة منشورة؛ اكتمال المحاضرات يحتاج مراجعة");
-    if (college.term_state !== "ready")
-      issues.push("الفصل الأكاديمي غير محسوم");
-    if (!college.groups_count)
-      issues.push("مجموعات التدريس غير مكتملة أو غير مدخلة");
+    if (!college.version_id) issues.push("لا توجد نسخة منشورة؛ اكتمال المحاضرات يحتاج مراجعة");
+    if (college.term_state !== "ready") issues.push("الفصل الأكاديمي غير محسوم");
+    if (!college.groups_count) issues.push("مجموعات التدريس غير مكتملة أو غير مدخلة");
     if (!c) issues.push("تعذر قراءة إتاحة القاعات");
     return {
       collegeId: college.college_id,
       college: college.college,
-      requiredHours:
-        college.term_state === "ready" ? college.required_hours : null,
+      requiredHours: college.term_state === "ready" ? college.required_hours : null,
       availableHours: c?.availableHours ?? null,
       balanceHours: c?.balanceHours ?? null,
       rooms: c ? c.rooms.length : null,
@@ -291,8 +278,7 @@ export function summarizeDemandCapacity(
 
 /** Never represent a partial university sum as a complete surplus. */
 export function summarizeUniversityCapacity(rows: CollegeDemandCapacity[]) {
-  const complete =
-    rows.length > 0 && rows.every((r) => r.status === "calculable");
+  const complete = rows.length > 0 && rows.every((r) => r.status === "calculable");
   const sum = (key: "requiredHours" | "availableHours" | "balanceHours") =>
     complete ? round2(rows.reduce((n, r) => n + r[key]!, 0)) : null;
   return {
