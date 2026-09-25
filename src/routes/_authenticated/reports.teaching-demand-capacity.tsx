@@ -20,6 +20,7 @@ import { leadershipOverviewSchema, termTypeLabel } from "@/lib/reports/leadershi
 import { leadershipViewerKey, LEADERSHIP_QUERY_POLICY } from "@/lib/reports/leadership-decisions";
 import { fetchLeadershipRoomCapacity } from "@/lib/reports/fetch-leadership-room-capacity";
 import { fetchTeachingDemandDetails } from "@/lib/reports/fetch-teaching-demand-capacity";
+import { downloadCSV, downloadXLSX } from "@/lib/reports/export";
 import {
   capacityAssessment,
   summarizeDemandCapacity,
@@ -28,7 +29,7 @@ import {
 
 export const Route = createFileRoute("/_authenticated/reports/teaching-demand-capacity")({
   head: () => ({
-    meta: [{ title: "الساعات المطلوبة وسعة القاعات | جامعة إقليم سبأ" }],
+    meta: [{ title: "الساعات المطلوبة وسعة القاعات والمعامل | جامعة إقليم سبأ" }],
   }),
   component: Page,
 });
@@ -114,13 +115,18 @@ function DemandCapacityReport({
     admin && collegeFilter !== "all"
       ? summaryRows.filter((r) => r.collegeId === collegeFilter)
       : summaryRows;
-  const university = summarizeUniversityCapacity(summaryRows);
+  const university = summarizeUniversityCapacity(visibleSummary);
+  const selectedCollege = dean || (admin && collegeFilter !== "all") ? visibleSummary[0] : null;
+  const headline = selectedCollege ?? university;
   const breakdown = admin ? (detail.data?.rows ?? []) : [];
   const filtered =
     collegeFilter === "all" ? breakdown : breakdown.filter((r) => r.collegeId === collegeFilter);
   const summaryHeaders = [
     { key: "college", label: "الكلية" },
-    { key: "rooms", label: "القاعات النشطة المسجلة" },
+    { key: "hallRooms", label: "عدد قاعات المحاضرات" },
+    { key: "hallAvailableHours", label: "ساعات قاعات المحاضرات المتاحة" },
+    { key: "labRooms", label: "عدد المعامل" },
+    { key: "labAvailableHours", label: "ساعات المعامل المتاحة" },
     { key: "required", label: "الساعات المطلوبة المسجلة" },
     { key: "available", label: "الساعات المتاحة في القاعات المسجلة" },
     { key: "balance", label: "الفرق الحسابي" },
@@ -140,6 +146,19 @@ function DemandCapacityReport({
     { key: "required", label: "المطلوب للمستوى" },
     { key: "shared", label: "منه محاضرات مشتركة" },
   ];
+  const summaryExportRows = visibleSummary.map((r) => ({
+    college: r.college,
+    hallRooms: r.hallRooms ?? "غير محسوب",
+    hallAvailableHours: r.hallAvailableHours ?? "غير محسوب",
+    labRooms: r.labRooms ?? "غير محسوب",
+    labAvailableHours: r.labAvailableHours ?? "غير محسوب",
+    required: r.requiredHours ?? "غير محسوب",
+    available: r.availableHours ?? "غير محسوب",
+    balance: r.balanceHours ?? "غير محسوب",
+    status: statusText(r.status),
+    assessment: capacityAssessment(r),
+    issues: r.issues.join("؛ "),
+  }));
   const exportRows =
     admin && filtered.length
       ? filtered.map((r) => ({
@@ -154,16 +173,7 @@ function DemandCapacityReport({
           required: r.cohortsWithoutGroups ? "قيد الاستكمال" : r.requiredHours,
           shared: r.sharedHours,
         }))
-      : visibleSummary.map((r) => ({
-          college: r.college,
-          rooms: r.rooms ?? "غير محسوب",
-          required: r.requiredHours ?? "غير محسوب",
-          available: r.availableHours ?? "غير محسوب",
-          balance: r.balanceHours ?? "غير محسوب",
-          status: statusText(r.status),
-          assessment: capacityAssessment(r),
-          issues: r.issues.join("؛ "),
-        }));
+      : summaryExportRows;
   const error = !overview.data ? overview.error : (capacity.error ?? (admin ? detail.error : null));
   const loading =
     overview.isPending ||
@@ -175,7 +185,7 @@ function DemandCapacityReport({
 
   return (
     <ReportShell
-      title="الساعات التدريسية المطلوبة وسعة القاعات"
+      title="الساعات التدريسية المطلوبة وسعة القاعات والمعامل"
       description={
         admin
           ? "تفصيل الكلية والبرنامج والمستوى ومقارنة الطلب المسجل بإتاحة القاعات."
@@ -184,11 +194,11 @@ function DemandCapacityReport({
             : "ملخص الجامعة ومقارنة الكليات."
       }
       filename={`teaching_demand_capacity_${overview.data?.year ?? ""}_${overview.data?.term_type ?? ""}`}
-      filterSummary={periodLabel}
+      filterSummary={`${periodLabel}${selectedCollege ? ` · الكلية: ${selectedCollege.college}` : ""}`}
       headerMeta={{
-        collegeName: dean ? (colleges[0]?.college ?? "الكلية المسندة") : "جميع كليات الجامعة",
+        collegeName: selectedCollege?.college ?? "جميع كليات الجامعة",
         termName: periodLabel,
-        note: "طلب المجموعات من الإسناد النشط؛ الإتاحة من قاعات الكلية المسجلة وأوقات توفرها. الفرق الحسابي لا يثبت إمكانية التسكين دون فحص النوع والتوقيت والسعة والملكية.",
+        note: "طلب المجموعات من الإسناد النشط؛ عدد وساعات قاعات المحاضرات والمعامل منفصلان حسب نوع المكان المسجل. الفرق الإجمالي لا يثبت إمكانية التسكين دون فحص النوع والتوقيت والسعة والملكية.",
       }}
       rows={exportRows}
       headers={admin && filtered.length ? detailHeaders : summaryHeaders}
@@ -285,25 +295,29 @@ function DemandCapacityReport({
       }
     >
       <div className="space-y-5">
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <Card className="p-4">
             <p className="text-sm text-muted-foreground">الساعات المطلوبة المسجلة</p>
-            <strong className="text-xl">
-              {dean ? display(summaryRows[0]?.requiredHours) : display(university.requiredHours)}
-            </strong>
+            <strong className="text-xl">{display(headline.requiredHours)}</strong>
           </Card>
           <Card className="p-4">
-            <p className="text-sm text-muted-foreground">ساعات القاعات المتاحة أسبوعيًا</p>
-            <strong className="text-xl">
-              {dean ? display(summaryRows[0]?.availableHours) : display(university.availableHours)}
-            </strong>
+            <p className="text-sm text-muted-foreground">قاعات المحاضرات النشطة</p>
+            <strong className="text-xl">{headline.hallRooms ?? "غير محسوب"}</strong>
+            <p className="text-sm">المتاح: {display(headline.hallAvailableHours)} أسبوعيًا</p>
+          </Card>
+          <Card className="p-4">
+            <p className="text-sm text-muted-foreground">المعامل النشطة</p>
+            <strong className="text-xl">{headline.labRooms ?? "غير محسوب"}</strong>
+            <p className="text-sm">المتاح: {display(headline.labAvailableHours)} أسبوعيًا</p>
+          </Card>
+          <Card className="p-4">
+            <p className="text-sm text-muted-foreground">الساعات المتاحة إجمالًا</p>
+            <strong className="text-xl">{display(headline.availableHours)}</strong>
           </Card>
           <Card className="p-4">
             <p className="text-sm text-muted-foreground">الفرق الحسابي</p>
-            <strong className="text-xl">
-              {dean ? display(summaryRows[0]?.balanceHours) : display(university.balanceHours)}
-            </strong>
-            {!dean && !university.complete && (
+            <strong className="text-xl">{display(headline.balanceHours)}</strong>
+            {!selectedCollege && !university.complete && (
               <p className="text-xs text-amber-700">
                 اكتمال المقارنة: {university.calculable} من {university.colleges} كليات
               </p>
@@ -312,18 +326,43 @@ function DemandCapacityReport({
         </div>
         <p className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
           الساعات المطلوبة هي ساعات مجموعات التدريس المسجلة، بما فيها غير المسندة وغير المجدولة.
-          الإتاحة تحسب من القاعات النشطة المنسوبة لكل كلية في المنصة. إذا كانت المجموعات أو ملكية
-          القاعات أو مواعيد الإتاحة قيد التصحيح، فالفرق مؤشر حسابي للمراجعة وليس فائضًا معتمدًا أو
-          قاعة قابلة للتفريغ.
+          الإتاحة تحسب للقاعات والمعامل النشطة، كلٌّ حسب نوعه المسجل، والمنسوبة لكل كلية في المنصة.
+          إذا كانت المجموعات أو ملكية القاعات أو مواعيد الإتاحة قيد التصحيح، فالفرق مؤشر حسابي
+          للمراجعة وليس فائضًا معتمدًا أو قاعة قابلة للتفريغ.
         </p>
+        {admin && filtered.length > 0 && (
+          <div className="flex flex-wrap gap-2 report-no-print">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={loading || !!error}
+              onClick={() =>
+                downloadXLSX(summaryExportRows, summaryHeaders, "ملخص_القاعات_والمعامل")
+              }
+            >
+              تصدير ملخص القاعات والمعامل Excel
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={loading || !!error}
+              onClick={() =>
+                downloadCSV(summaryExportRows, summaryHeaders, "ملخص_القاعات_والمعامل")
+              }
+            >
+              تصدير الملخص CSV
+            </Button>
+          </div>
+        )}
         <div className="overflow-x-auto rounded border">
           <table className="w-full text-sm">
             <thead className="bg-muted">
               <tr>
                 <th className="p-3 text-start">الكلية</th>
-                <th className="p-3 text-start">عدد القاعات</th>
+                <th className="p-3 text-start">قاعات المحاضرات</th>
+                <th className="p-3 text-start">المعامل</th>
                 <th className="p-3 text-start">المطلوب</th>
-                <th className="p-3 text-start">المتاح</th>
+                <th className="p-3 text-start">المتاح إجمالًا</th>
                 <th className="p-3 text-start">الفرق</th>
                 <th className="p-3 text-start">التحليل</th>
                 <th className="p-3 text-start">البيان</th>
@@ -333,7 +372,18 @@ function DemandCapacityReport({
               {visibleSummary.map((r) => (
                 <tr key={r.collegeId} className="border-t align-top">
                   <td className="p-3 font-semibold">{r.college}</td>
-                  <td className="p-3">{r.rooms ?? "غير محسوب"}</td>
+                  <td className="p-3">
+                    <strong>{r.hallRooms ?? "غير محسوب"}</strong>
+                    <div className="text-xs text-muted-foreground">
+                      {display(r.hallAvailableHours)} متاحة أسبوعيًا
+                    </div>
+                  </td>
+                  <td className="p-3">
+                    <strong>{r.labRooms ?? "غير محسوب"}</strong>
+                    <div className="text-xs text-muted-foreground">
+                      {display(r.labAvailableHours)} متاحة أسبوعيًا
+                    </div>
+                  </td>
                   <td className="p-3">{display(r.requiredHours)}</td>
                   <td className="p-3">{display(r.availableHours)}</td>
                   <td className="p-3">{display(r.balanceHours)}</td>
