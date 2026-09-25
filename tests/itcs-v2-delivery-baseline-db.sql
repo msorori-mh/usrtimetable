@@ -368,7 +368,8 @@ SET request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
 DO $assert$
 DECLARE
   v_anchor uuid := (SELECT id FROM public.delivery_groups
-    WHERE cohort_id='ebfc0dee-f291-4f6d-a974-d3ed1df96f3e');
+    WHERE cohort_id='ebfc0dee-f291-4f6d-a974-d3ed1df96f3e'
+      AND group_code='G1');
   v_partner uuid := (SELECT id FROM public.delivery_groups
     WHERE cohort_id='dddddddd-dddd-4ddd-8ddd-dddddddddddd');
   v_published uuid := '30f8a76d-1cb9-4944-a5d7-483dcaea7692';
@@ -405,7 +406,8 @@ BEGIN
     PERFORM public.schedule_version_student_memberships(
       '30f8a76d-1cb9-4944-a5d7-483dcaea7692',
       ARRAY[(SELECT id FROM public.delivery_groups
-        WHERE cohort_id='ebfc0dee-f291-4f6d-a974-d3ed1df96f3e')]::uuid[]);
+        WHERE cohort_id='ebfc0dee-f291-4f6d-a974-d3ed1df96f3e'
+          AND group_code='G1')]::uuid[]);
     RAISE EXCEPTION 'outside viewer read membership facts';
   EXCEPTION WHEN insufficient_privilege THEN NULL;
   END;
