@@ -305,6 +305,7 @@ export async function fetchWorkspaceSessions(params: {
   const cohortTermHeadcounts = await fetchWorkspaceCohortTermHeadcounts({
     collegeId: params.collegeId,
     termId: params.termId,
+    versionId: params.versionId,
     cohortIds,
   });
   return attachCohortTermHeadcounts(hydrated, cohortTermHeadcounts);
@@ -314,6 +315,7 @@ export async function fetchWorkspaceSessions(params: {
 async function fetchWorkspaceCohortTermHeadcounts(params: {
   collegeId: string;
   termId: string;
+  versionId: string;
   cohortIds: string[];
 }): Promise<WorkspaceCohortTermHeadcountRow[]> {
   if (params.cohortIds.length === 0) return [];
@@ -330,7 +332,38 @@ async function fetchWorkspaceCohortTermHeadcounts(params: {
     if (error) throw error;
     out.push(...((data ?? []) as WorkspaceCohortTermHeadcountRow[]));
   }
-  return out;
+  // Scoped cohorts use their selected schedule version; incomplete scope fails on
+  // the server. Unscoped cohorts retain the established approved headcount path.
+  const facts = new Map<string, number>();
+  for (let i = 0; i < params.cohortIds.length; i += chunkSize) {
+    const cohortIds = params.cohortIds.slice(i, i + chunkSize);
+    const { data, error } = await (supabase as unknown as {
+      rpc(
+        name: string,
+        args: { p_version: string; p_cohorts: string[] },
+      ): Promise<{
+        data: Array<{ cohort_id: string; scheduling_headcount: number }> | null;
+        error: { message: string } | null;
+      }>;
+    }).rpc("schedule_version_cohort_facts", {
+      p_version: params.versionId,
+      p_cohorts: cohortIds,
+    });
+    if (error) throw error;
+    for (const fact of data ?? []) facts.set(fact.cohort_id, fact.scheduling_headcount);
+  }
+  for (const cohortId of facts.keys()) {
+    if (!out.some((row) => row.cohort_id === cohortId && row.approval_status === "approved")) {
+      throw new Error("عدد الدفعة المعتمد مفقود من قراءة النسخة");
+    }
+  }
+  return out
+    .filter((row) => !facts.has(row.cohort_id) || row.approval_status === "approved")
+    .map((row) =>
+      facts.has(row.cohort_id)
+        ? { ...row, scheduling_headcount: facts.get(row.cohort_id)! }
+        : row,
+    );
 }
 
 /**
