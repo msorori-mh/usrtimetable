@@ -1172,6 +1172,12 @@ BEGIN
       OR NOT coalesce(src.is_active,false)
       OR g.expected_students IS DISTINCT FROM n.expected_students
       OR g.component_id IS DISTINCT FROM n.component_id
+      OR EXISTS (SELECT 1 FROM public.teaching_assignments existing
+        WHERE existing.college_id=src.college_id
+          AND existing.course_offering_id=src.course_offering_id
+          AND existing.instructor_id=src.instructor_id
+          AND existing.session_type=src.session_type
+          AND coalesce(existing.section_number,'')=n.group_code)
       OR EXISTS (SELECT 1 FROM public.teaching_assignments used
         WHERE used.id=n.new_assignment_id))
     OR EXISTS (SELECT 1 FROM _itcs_sessions n
@@ -1289,7 +1295,7 @@ INSERT INTO public.teaching_assignments
    plan_course_component_id,delivery_group_id,assigned_component_hours,
    expected_students,is_active)
 SELECT n.new_assignment_id,src.college_id,src.course_offering_id,
-  src.instructor_id,'ITCS26-'||left(n.new_assignment_id::text,8),
+  src.instructor_id,n.group_code,
   src.session_type,src.weekly_hours,src.required_room_type,src.notes,
   src.cohort_id,src.plan_course_component_id,n.new_group_id,
   src.assigned_component_hours,n.expected_students,true

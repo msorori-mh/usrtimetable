@@ -53,4 +53,5 @@ REVOKE ALL ON FUNCTION public.schedule_version_delivery_group_catalog(uuid,uuid[
   FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.schedule_version_delivery_group_catalog(uuid,uuid[])
   TO authenticated,service_role;
+NOTIFY pgrst, 'reload schema';
 COMMIT;
