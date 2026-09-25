@@ -71,8 +71,8 @@ effective group size, including shared-lecture members. The branch now uses
 this RPC for client student-conflict checks, generation partition checks and
 student print copies. The disposable database fixture deliberately changes
 draft partitions and global partner metadata, then verifies V2 still resolves
-its original membership. Stage 2b has not been applied to the live database
-and its client code has not been deployed.
+its original membership. Stage 2b was applied with the later server changes
+and atomic draft reconciliation; its client code awaits the PR deployment.
 The fixture also removes a draft shared member partition inside a rollback
 transaction and confirms the missing member cohort remains visible and the
 server overlap check still blocks the collision.
@@ -85,7 +85,7 @@ changes the server overlap checker used by session creation and relayout to
 resolve student membership and shared lecture sizes from the selected version.
 It retains conservative overlap when a mapping is incomplete; the fixture
 checks a shared collision and an unrelated cohort on the draft. This function
-also remains uninstalled pending the complete server guard rollout.
+was installed with the complete server guard rollout.
 
 Stages 2d–2g add version-scoped freshness, the assignment/session guards,
 an exact six-assignment faculty exception and a selected-version group
@@ -96,7 +96,7 @@ assignments keep the usual approval and hours checks. The complete 2b–2f
 plus Stage 3 transaction passed a live rollback-only rehearsal. That
 rehearsal added the six groups, assignments and sessions, ran postconditions,
 and returned the live draft to 275 sessions / 420 students. The 2g catalogue
-is included in the subsequent PostgreSQL fixture and is still proposed.
+passed the PostgreSQL fixture and was applied with the reconciliation.
 
 Exit gate: old and new versions give distinct 420/466 results while their
 session IDs/placements and V2 baseline digest stay unchanged; unauthorized
@@ -127,34 +127,24 @@ reviewable readiness report. Any failed assertion rolls back the whole stage.
 
 ## Current decision
 
-`PASS` for Stage 1 and the schema/seed portion of Stage 2 on the live
-database, 25 September 2026. Both SQL files under
-`docs/migrations-proposed` were executed as separate transactions after
-successful rollback-only runs against the same database. Postverification
-found five immutable baseline rows, all five full V2 digests matching 275
-published sessions, ten version/cohort scope rows, 94 group facts, 26
-partition facts, 156 memberships, 12 shared links and 14 frozen partner
-group facts. V2 and the draft still each have 275 sessions and 420 scoped
-students, and the five global enrollment counts still sum to 420. A real
-ITCS viewer read the new data as `authenticated`; an authenticated user
-outside the college received no baseline rows and a forbidden RPC response.
-The focused disposable PostgreSQL checks and general repository CI passed.
-Read-only live preflight also matched all 44 source group IDs and old sizes,
-all six source assignments and all six draft source sessions. The six planned
-rooms are active, correctly coded and large enough; the three legacy short
-labels were corrected to `R-04`, `LAB-01` and `LAB-04` in the reviewed map.
-None of the six new placements overlaps an existing draft room/instructor,
-or a published/approved instructor assignment at another college with an
-overlapping term date range. R13 and R14 are active 08:00–14:00 on the six
-teaching days. Dr. Abdelnasser has zero Sunday sessions in the retained
-draft; existing theory and R13/R14 sessions also meet the 14:00 closing
-time. This is a point-in-time preflight and must be rerun at the draft write.
+`PASS` for the database reconciliation on 25 September 2026. Stage 1 and
+02a were first applied in separate transactions. Stages 02b–02g and Stage 3
+were then rehearsed together in a rollback-only transaction and committed
+together after all nine repository workflows passed at
+`5f4f4a34b272bbfbffda4cf0b15ea70701bef0bb`. The SQL service returned
+a cancelled response after the commit, so the result was independently
+verified by fresh reads. Draft `d68d8d22-9a6d-4f21-935f-cebf18bb969b` has
+466 versioned students, 281 sessions, 53 group facts, 15 partitions, and
+six exact lecturer assignments. Published V2 retains 420 students, 275
+sessions, 47 group facts and all five unchanged full-session digests. The
+global master counts remain 420 to protect V2. The six new draft sessions
+are in R13, R-04, LAB-01 and LAB-04; Dr. Abdelnasser's new physics session
+is Monday 11:00–14:00 in R13, with no Sunday session in the draft. Server
+preflight and postconditions reject new room/instructor collisions, an
+out-of-capacity room, stale groups and a changed published baseline.
 
-`HOLD` for applying the remaining Stage 2 SQL and Stage 3 draft reconciliation.
-The full rollback rehearsal passed, and a scoped catalogue now covers
-versioned report labels/coverage; the new branch code still needs CI and
-live reader verification. Keep the draft counts and six sessions unchanged
-until the tested SQL and application reader changes are deployed together.
-Because the two schema transactions were applied directly while this
-branch remains a draft PR, reconcile them with the tracked migration
-history before merging or deploying the application code.
+`HOLD` for application rollout until PR #303 is merged and the connected
+project is deployed and verified. The SQL was applied directly rather than
+through `supabase_migrations.schema_migrations`; record a tracked schema
+migration strategy before reusing these application changes in a fresh
+environment. Do not replay the one-shot Stage 3 transaction.
