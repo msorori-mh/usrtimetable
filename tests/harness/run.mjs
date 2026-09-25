@@ -17,6 +17,7 @@ export const harnesses = [
   "f001-session-version-integrity.harness.ts",
   "f002-validate-schedule-version.harness.ts",
   "room-import-normalize.harness.ts",
+  "room-capacity-readiness.harness.ts",
   "import-pipeline-safety.harness.ts",
   "import-pipeline-atomic-commit.harness.ts",
   "import-pipeline-preapply-security.harness.ts",
