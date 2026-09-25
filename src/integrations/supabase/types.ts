@@ -4809,6 +4809,10 @@ export type Database = {
         }
         Returns: Json
       }
+      _ss_itcs_theory_hours: {
+        Args: { p_cid: string; p_et: string; p_sid: string; p_ta: string }
+        Returns: Json
+      }
       _ss_ov: {
         Args: { a: string; b: string; c: string; d: string }
         Returns: boolean
