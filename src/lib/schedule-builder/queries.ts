@@ -280,6 +280,39 @@ export async function hydrateWorkspaceSessions(
   );
 }
 
+/** Versioned delivery sizes for the workspace and the timetable reports. */
+async function applyVersionGroupFacts(
+  rows: WorkspaceSessionHydratedRow[],
+  versionId: string,
+): Promise<WorkspaceSessionHydratedRow[]> {
+  const groupIds = uniqueIds(rows.map((row) => row.delivery_group_id));
+  if (groupIds.length === 0) return rows;
+  const counts = new Map<string, number>();
+  for (let i = 0; i < groupIds.length; i += 100) {
+    const { data, error } = await (
+      supabase as unknown as {
+        rpc(
+          name: string,
+          args: { p_version: string; p_groups: string[] },
+        ): Promise<{
+          data: Array<{ group_id: string; expected_students: number }> | null;
+          error: { message: string } | null;
+        }>;
+      }
+    ).rpc("schedule_version_group_facts", {
+      p_version: versionId,
+      p_groups: groupIds.slice(i, i + 100),
+    });
+    if (error) throw error;
+    for (const fact of data ?? []) counts.set(fact.group_id, fact.expected_students);
+  }
+  return rows.map((row) =>
+    row.delivery_group_id && counts.has(row.delivery_group_id)
+      ? { ...row, expected_students: counts.get(row.delivery_group_id)! }
+      : row,
+  );
+}
+
 export async function fetchWorkspaceSessions(params: {
   collegeId: string;
   termId: string;
@@ -300,7 +333,10 @@ export async function fetchWorkspaceSessions(params: {
   const { data, error } = await q;
   if (error) throw error;
   const flat = (data ?? []) as WorkspaceSessionFlatRow[];
-  const hydrated = await hydrateWorkspaceSessions(flat);
+  const hydrated = await applyVersionGroupFacts(
+    await hydrateWorkspaceSessions(flat),
+    params.versionId,
+  );
   const cohortIds = uniqueIds(hydrated.flatMap((s) => s.shared_cohort_ids ?? [s.cohort_id]));
   const cohortTermHeadcounts = await fetchWorkspaceCohortTermHeadcounts({
     collegeId: params.collegeId,
@@ -389,7 +425,10 @@ export async function fetchHydratedVersionSessions(params: {
 
   const { data, error } = await q;
   if (error) throw error;
-  return hydrateWorkspaceSessions((data ?? []) as WorkspaceSessionFlatRow[]);
+  return applyVersionGroupFacts(
+    await hydrateWorkspaceSessions((data ?? []) as WorkspaceSessionFlatRow[]),
+    params.versionId,
+  );
 }
 
 export interface WorkspaceRoomOption {
