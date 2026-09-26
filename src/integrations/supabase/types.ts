@@ -3330,6 +3330,64 @@ export type Database = {
           },
         ]
       }
+      schedule_version_delivery_baselines: {
+        Row: {
+          captured_at: string
+          cohort_id: string
+          college_id: string
+          payload: Json
+          payload_digest: string
+          published_session_count: number
+          published_session_digest: string
+          published_version_digest: string
+          schedule_version_id: string
+        }
+        Insert: {
+          captured_at?: string
+          cohort_id: string
+          college_id: string
+          payload: Json
+          payload_digest: string
+          published_session_count: number
+          published_session_digest: string
+          published_version_digest: string
+          schedule_version_id: string
+        }
+        Update: {
+          captured_at?: string
+          cohort_id?: string
+          college_id?: string
+          payload?: Json
+          payload_digest?: string
+          published_session_count?: number
+          published_session_digest?: string
+          published_version_digest?: string
+          schedule_version_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_version_delivery_baselines_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "academic_cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_version_delivery_baselines_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_version_delivery_baselines_schedule_version_id_fkey"
+            columns: ["schedule_version_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       schedule_version_events: {
         Row: {
           college_id: string
@@ -4722,10 +4780,9 @@ export type Database = {
         Args: { p_college: string; p_plan_course: string; v: Json }
         Returns: undefined
       }
-      _sb_v2_assignment_guard: {
-        Args: { p_teaching_assignment_id: string }
-        Returns: Json
-      }
+      _sb_v2_assignment_guard:
+        | { Args: { p_assignment: string; p_version: string }; Returns: Json }
+        | { Args: { p_teaching_assignment_id: string }; Returns: Json }
       _sb_v2_delivery_group_overlap: {
         Args: {
           p_cohort_id: string
@@ -5220,13 +5277,23 @@ export type Database = {
         Args: { p_decision: string; p_note?: string; p_request_id: string }
         Returns: Json
       }
-      delivery_group_derivation_status: {
-        Args: { p_group: string }
-        Returns: Json
-      }
-      delivery_group_is_current: { Args: { p_group: string }; Returns: boolean }
+      delivery_group_derivation_status:
+        | { Args: { p_group: string }; Returns: Json }
+        | { Args: { p_group: string; p_version: string }; Returns: Json }
+      delivery_group_is_current:
+        | { Args: { p_group: string }; Returns: boolean }
+        | { Args: { p_group: string; p_version: string }; Returns: boolean }
       delivery_groups_share_students: {
         Args: { p_a: string; p_b: string }
+        Returns: boolean
+      }
+      education_canonical_home_assignment: {
+        Args: {
+          p_assignment_id: string
+          p_college_id: string
+          p_delivery_group_id: string
+          p_instructor_id: string
+        }
         Returns: boolean
       }
       effective_instructor_weekly_quota: {
@@ -5236,6 +5303,14 @@ export type Database = {
       effective_room_type_capacity: {
         Args: { p_college_id: string; p_room_type_id: string }
         Returns: number
+      }
+      effective_schedule_cohort_fact: {
+        Args: { p_cohort: string; p_version: string }
+        Returns: Json
+      }
+      effective_schedule_group_fact: {
+        Args: { p_group: string; p_version: string }
+        Returns: Json
       }
       enforce_initial_password_change: { Args: never; Returns: undefined }
       existing_schedule_intake_enabled: {
@@ -5523,31 +5598,57 @@ export type Database = {
         }
         Returns: Json
       }
-      operational_delivery_group: {
-        Args: { p_group: string }
-        Returns: {
-          active: boolean
-          capacity_limit: number | null
-          cohort_id: string
-          college_id: string
-          component_id: string
-          created_at: string
-          excluded_from_standard_workload: boolean
-          expected_students: number | null
-          group_code: string
-          group_number: number | null
-          id: string
-          is_obsolete: boolean
-          plan_course_id: string
-          updated_at: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "delivery_groups"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
+      operational_delivery_group:
+        | {
+            Args: { p_group: string }
+            Returns: {
+              active: boolean
+              capacity_limit: number | null
+              cohort_id: string
+              college_id: string
+              component_id: string
+              created_at: string
+              excluded_from_standard_workload: boolean
+              expected_students: number | null
+              group_code: string
+              group_number: number | null
+              id: string
+              is_obsolete: boolean
+              plan_course_id: string
+              updated_at: string
+            }
+            SetofOptions: {
+              from: "*"
+              to: "delivery_groups"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: { p_group: string; p_version: string }
+            Returns: {
+              active: boolean
+              capacity_limit: number | null
+              cohort_id: string
+              college_id: string
+              component_id: string
+              created_at: string
+              excluded_from_standard_workload: boolean
+              expected_students: number | null
+              group_code: string
+              group_number: number | null
+              id: string
+              is_obsolete: boolean
+              plan_course_id: string
+              updated_at: string
+            }
+            SetofOptions: {
+              from: "*"
+              to: "delivery_groups"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
       password_change_required: { Args: never; Returns: boolean }
       persist_schedule_quality_run: {
         Args: {
@@ -5669,9 +5770,40 @@ export type Database = {
           student_key: string
         }[]
       }
+      schedule_version_cohort_facts: {
+        Args: { p_cohorts: string[]; p_version: string }
+        Returns: {
+          cohort_id: string
+          expected_students: number
+          scheduling_headcount: number
+        }[]
+      }
       schedule_version_delivery_coverage: {
         Args: { p_college_id: string; p_schedule_version_id: string }
         Returns: Json
+      }
+      schedule_version_delivery_group_catalog: {
+        Args: { p_cohorts: string[]; p_version: string }
+        Returns: {
+          active: boolean
+          capacity_limit: number
+          cohort_id: string
+          component_id: string
+          expected_students: number
+          group_code: string
+          group_number: number
+          id: string
+          is_obsolete: boolean
+          plan_course_id: string
+        }[]
+      }
+      schedule_version_group_facts: {
+        Args: { p_groups: string[]; p_version: string }
+        Returns: {
+          capacity_limit: number
+          expected_students: number
+          group_id: string
+        }[]
       }
       schedule_version_is_published: {
         Args: { _version_id: string }
@@ -5690,6 +5822,17 @@ export type Database = {
           room_type_name: string
           theoretical_available_hours: number
           working_days: number
+        }[]
+      }
+      schedule_version_student_memberships: {
+        Args: { p_groups: string[]; p_version: string }
+        Returns: {
+          cohort_id: string
+          delivery_group_id: string
+          expected_students: number
+          partition_headcount: number
+          partition_id: string
+          shared_lecture: boolean
         }[]
       }
       search_faculty_identity_candidates: {
