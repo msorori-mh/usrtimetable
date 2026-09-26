@@ -103,15 +103,28 @@ export function SessionDialog({
   const canMutate = !readOnly;
 
   const { data: offerings } = useQuery({
-    queryKey: ["co-for-sched", collegeId],
+    // Keep an edited session's offering available beyond the capped list.
+    queryKey: ["co-for-sched", collegeId, form.course_offering_id],
     enabled: open && !!collegeId,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("course_offerings")
         .select("id, course_id, expected_students, courses(code, name)")
         .eq("college_id", collegeId)
         .limit(500);
-      return data ?? [];
+      if (error) throw error;
+      const rows = data ?? [];
+      if (form.course_offering_id && !rows.some((row) => row.id === form.course_offering_id)) {
+        const { data: selected, error: selectedError } = await supabase
+          .from("course_offerings")
+          .select("id, course_id, expected_students, courses(code, name)")
+          .eq("college_id", collegeId)
+          .eq("id", form.course_offering_id)
+          .maybeSingle();
+        if (selectedError) throw selectedError;
+        if (selected) return [...rows, selected];
+      }
+      return rows;
     },
   });
   const { data: instructors } = useQuery({

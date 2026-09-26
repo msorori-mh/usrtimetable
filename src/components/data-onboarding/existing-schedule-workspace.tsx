@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ImportedTimetableReport } from "./imported-timetable-report";
+import { CollegeSourceTimetable } from "./college-source-timetable";
 import { SourceRowsImport } from "./source-rows-import";
 
 type Source = Tables<"existing_schedule_source_rows">;
@@ -34,6 +35,7 @@ export function ExistingScheduleWorkspace({
   const [allocations, setAllocations] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [showSourceReport, setShowSourceReport] = useState(false);
+  const [showCollegeSourceTimetable, setShowCollegeSourceTimetable] = useState(false);
   const terms = useQuery({
     queryKey: ["existing-terms", collegeId],
     queryFn: async () => {
@@ -218,6 +220,16 @@ export function ExistingScheduleWorkspace({
       />
     );
   }
+  if (
+    showCollegeSourceTimetable &&
+    collegeId === "1ee291b2-bec9-43d3-b42b-5a4f46946399" &&
+    termId === "93705393-609d-4605-ae94-9572cd8b2090" &&
+    versionId === "7430bad7-2de7-5c90-9368-b214a199d6c3"
+  ) {
+    return (
+      <CollegeSourceTimetable rows={rows} onBack={() => setShowCollegeSourceTimetable(false)} />
+    );
+  }
   return (
     <section className="space-y-4" aria-label="الجداول القائمة">
       <Card className="space-y-3 p-5">
@@ -257,6 +269,20 @@ export function ExistingScheduleWorkspace({
           محفوظة مرة واحدة. النواقص لا تُحذف من الجدول.
         </p>
         <div className="flex flex-wrap gap-3">
+          {collegeId === "1ee291b2-bec9-43d3-b42b-5a4f46946399" &&
+            termId === "93705393-609d-4605-ae94-9572cd8b2090" &&
+            versionId === "7430bad7-2de7-5c90-9368-b214a199d6c3" && (
+              <Button onClick={() => setShowCollegeSourceTimetable(true)}>
+                جدول الكلية حسب ملفات الأقسام
+              </Button>
+            )}
+          {collegeId === "1ee291b2-bec9-43d3-b42b-5a4f46946399" &&
+            termId === "93705393-609d-4605-ae94-9572cd8b2090" &&
+            versionId === "7430bad7-2de7-5c90-9368-b214a199d6c3" && (
+              <Button variant="outline" asChild>
+                <a href="/reports/education-source-timetable">فتح جدول الأقسام في صفحة مستقلة</a>
+              </Button>
+            )}
           <Button onClick={() => setShowSourceReport(true)}>
             تقرير الجداول المستوردة — جميع صفوف المصدر
           </Button>
