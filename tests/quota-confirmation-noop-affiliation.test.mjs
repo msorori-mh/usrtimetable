@@ -25,11 +25,7 @@ test("quota-only reconciliation does not rewrite an unchanged home affiliation",
     /ON CONFLICT\(identity_id\) DO UPDATE[\s\S]*quota_confirmed=excluded\.quota_confirmed/,
     "quota confirmation still persists through the authoritative decision",
   );
-  assert.match(
-    sql,
-    /'faculty_home_reconciled'/,
-    "the audit trail remains mandatory",
-  );
+  assert.match(sql, /'faculty_home_reconciled'/, "the audit trail remains mandatory");
   assert.match(
     sql,
     /v_old\.updated_at IS DISTINCT FROM p_expected_decision_at/,
