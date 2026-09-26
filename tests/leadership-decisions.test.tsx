@@ -279,7 +279,14 @@ test("Education source publication keeps administrative gaps separate from sched
   });
   const output = html({
     colleges: [education],
-    capacity: [{ ...room("education", 104), emptyPublishedRooms: 0, publishedSessions: 339, namedPublishedSessions: 339 }],
+    capacity: [
+      {
+        ...room("education", 104),
+        emptyPublishedRooms: 0,
+        publishedSessions: 339,
+        namedPublishedSessions: 339,
+      },
+    ],
   });
   assert.match(output, /محاضرات الجدول باسم محاضر: 100% \(339\/339\)/);
   assert.match(output, /التكليف المعتمد: 86.3%/);
