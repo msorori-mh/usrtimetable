@@ -18,6 +18,7 @@ import { fetchCohortDeliveryGroupCatalog } from "@/lib/reports/queries/delivery-
 import { filterRowsBySearch } from "@/lib/reports/search";
 import { readAllReportRows } from "@/lib/reports/read-all";
 import { fetchLatestUnplacedReasons } from "@/lib/reports/queries/operational-queries";
+import { importedTimetableRows } from "@/lib/reports/imported-timetable";
 
 export const Route = createFileRoute("/_authenticated/reports/unscheduled")({
   head: () => ({ meta: [{ title: "المحاضرات غير المجدولة" }] }),
@@ -37,6 +38,9 @@ const columns = [
   { key: "reason", label: "حالة التغطية" },
   { key: "scheduler_reason", label: "سبب آخر محاولة جدولة" },
   { key: "scheduler_reason_detail", label: "تفصيل سبب الجدولة" },
+  { key: "source_file", label: "ملف المصدر" },
+  { key: "source_cell", label: "موضع المصدر" },
+  { key: "source_id", label: "معرف صف المصدر" },
 ];
 
 type UnscheduledDisplayRow = Record<string, string | number | null>;
@@ -140,7 +144,7 @@ function Page() {
     enabled: !!ctx.collegeId && !!ctx.termId && !!ctx.selectedVersion,
     queryFn: async () => {
       const collegeId = ctx.collegeId!;
-      const [cohorts, sessions, latestRun] = await Promise.all([
+      const [cohorts, sessions, latestRun, sourceRows] = await Promise.all([
         readAllReportRows((from, to) =>
           supabase
             .from("academic_cohorts")
@@ -162,6 +166,17 @@ function Page() {
             .range(from, to),
         ),
         fetchLatestUnplacedReasons(ctx.selectedVersion!.id),
+        readAllReportRows((from, to) =>
+          supabase
+            .from("existing_schedule_source_rows")
+            .select(
+              "id,college_id,term_id,schedule_version_id,source_id,source_file,source_cell,raw_course,raw_teacher,raw_day,raw_time,raw_room,day_of_week,start_time,end_time,level_number,study_plan_id,plan_course_id,component_id,delivery_group_id,teaching_assignment_id,schedule_session_id,shared_member,pending_reasons,notes",
+            )
+            .eq("college_id", collegeId)
+            .eq("term_id", ctx.termId!)
+            .order("id")
+            .range(from, to),
+        ),
       ]);
       const groups = await fetchCohortDeliveryGroupCatalog({
         collegeId,
@@ -185,7 +200,10 @@ function Page() {
         assignmentIdsByGroup.set(assignment.delivery_group_id, ids);
       }
       const unplaced = Array.isArray(latestRun?.unplaced)
-        ? (latestRun.unplaced as Array<{ teaching_assignment_id?: string | null; reason?: string }>)
+        ? (latestRun.unplaced as Array<{
+            teaching_assignment_id?: string | null;
+            reason?: string;
+          }>)
         : [];
       const reasonByAssignment = new Map(
         unplaced
@@ -197,10 +215,19 @@ function Page() {
         sessions,
         cohortLabels: new Map(cohorts.map((c) => [c.id, c.code ?? "—"])),
       });
+      const sources = importedTimetableRows(
+        sourceRows.filter(
+          (source) =>
+            !source.schedule_version_id || source.schedule_version_id === ctx.selectedVersion!.id,
+        ),
+        { collegeId, termId: ctx.termId! },
+        new Map(),
+        sessions,
+      ).filter((source) => source.kind === "timetable");
       return {
         totalGroups: groups.length,
         lastRunAt: latestRun?.created_at ?? null,
-        rows: coverage.rows
+        groupRows: coverage.rows
           .filter((g) => g.scheduledHours + 0.01 < g.requiredHours)
           .map((g) => {
             const assignmentReasons = (assignmentIdsByGroup.get(g.id) ?? [])
@@ -236,14 +263,41 @@ function Page() {
               scheduler_reason_detail: rawReason || "—",
             };
           }),
+        sourceRows: sources.map((source) => ({
+          course: source.course || "مقرر غير محدد في المصدر",
+          cohort: `${source.department} · المستوى ${source.level}`,
+          group: source.plan,
+          component: source.activity || "غير محدد",
+          instructor: source.teacher || "غير محدد",
+          students: null,
+          required: typeof source.hours === "number" ? source.hours : null,
+          scheduled: source.stage === "complete" ? source.hours : null,
+          missing: null,
+          coverage_pct: null,
+          reason: source.status,
+          scheduler_reason: source.stage === "complete" ? "مكتمل الربط" : "مطابقة المصدر معلقة",
+          scheduler_reason_detail: source.rawTime || "موعد المصدر غير محدد",
+          source_file: source.sourceFile,
+          source_cell: source.sourceCell,
+          source_id: source.sourceId,
+        })),
+        sourcePending: sources.filter((source) => source.stage !== "complete").length,
+        sourceTotal: sources.length,
+        sourceRowHours: Number(
+          sources
+            .reduce((sum, source) => sum + (typeof source.hours === "number" ? source.hours : 0), 0)
+            .toFixed(2),
+        ),
       };
     },
   });
-  const rows = filterRowsBySearch(query.data?.rows ?? [], search);
+  const groupRows = filterRowsBySearch(query.data?.groupRows ?? [], search);
+  const sourceRows = filterRowsBySearch(query.data?.sourceRows ?? [], search);
+  const rows = [...groupRows, ...sourceRows];
   return (
     <ReportShell
       title="المحاضرات غير المجدولة"
-      description="مجموعات التدريس التي ما زالت تحتاج ساعات، مع نسبة التغطية وسبب النقص وسبب تعذر آخر محاولة جدولة تلقائية عند توفره."
+      description="نقص المجموعات المعرفة، ثم كل مواعيد المصدر المستوردة وحالة ربطها. اكتمال المجموعات لا يثبت اكتمال ملفات الأقسام."
       reportContext={ctx}
       rows={rows}
       headers={columns}
@@ -256,17 +310,26 @@ function Page() {
         search
           ? "لا نتائج مطابقة للبحث."
           : query.data?.totalGroups
-            ? "اكتملت تغطية ساعات مجموعات التدريس النشطة."
-            : "لم تُجهز مجموعات التدريس لهذا الفصل بعد."
+            ? "لا يوجد نقص في المجموعات المسجلة. راجع اكتمال ملفات المصدر أدناه."
+            : "لا توجد مجموعات أو صفوف مصدر لهذا الفصل؛ اكتمال الجدول غير مثبت."
       }
       kpis={[
-        { label: "مجموعات ناقصة", value: rows.length },
+        { label: "مجموعات ناقصة", value: groupRows.length },
         {
           label: "ساعات ناقصة",
-          value: rows.reduce((sum, r) => sum + r.missing, 0).toFixed(2),
+          value: groupRows.reduce((sum, r) => sum + Number(r.missing ?? 0), 0).toFixed(2),
           tone: "warning",
         },
         { label: "مجموعات مفحوصة", value: query.data?.totalGroups ?? 0 },
+        {
+          label: "صفوف مصدر تحتاج مطابقة",
+          value: query.data?.sourcePending ?? 0,
+          tone: "warning",
+        },
+        {
+          label: "ساعات صفوف المصدر المستوردة",
+          value: query.data?.sourceTotal ? query.data.sourceRowHours : "غير متاحة",
+        },
       ]}
       filters={
         <ReportFilters
@@ -290,11 +353,34 @@ function Page() {
         }
       >
         <ReportDataTable
-          rows={rows}
-          columns={compactUnscheduledColumns() as unknown as ReportColumn<(typeof rows)[number]>[]}
+          rows={groupRows}
+          columns={
+            compactUnscheduledColumns() as unknown as ReportColumn<(typeof groupRows)[number]>[]
+          }
           primaryColumnLimit={6}
           minWidthClassName="min-w-[760px]"
           caption="الساعات غير المجدولة لكل مجموعة"
+        />
+      </ReportSection>
+      <ReportSection
+        title="مطابقة صفوف مواعيد الكلية"
+        hint="تُعرض الصفوف المستوردة حتى إن غاب المقرر من الخطة. غياب رابط الجلسة لا يعني وحده غياب محاضرة أُدخلت يدويًا؛ تُراجع بالبرنامج والمستوى والموعد. إجمالي الملفات الأصلية يحتاج جردًا مستقلًا."
+      >
+        <ReportDataTable
+          rows={sourceRows}
+          columns={
+            [
+              { key: "course", label: "المقرر" },
+              { key: "cohort", label: "البرنامج والمستوى" },
+              { key: "instructor", label: "المحاضر" },
+              { key: "scheduler_reason_detail", label: "وقت المصدر" },
+              { key: "reason", label: "حالة الربط" },
+              { key: "source_file", label: "ملف المصدر" },
+              { key: "source_cell", label: "الصف" },
+            ] as ReportColumn<(typeof sourceRows)[number]>[]
+          }
+          minWidthClassName="min-w-[950px]"
+          caption="مطابقة مواعيد المصدر بالمجموعات والجلسات"
         />
       </ReportSection>
     </ReportShell>

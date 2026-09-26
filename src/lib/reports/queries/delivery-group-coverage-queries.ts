@@ -40,7 +40,7 @@ export async function fetchCohortDeliveryGroupCatalog(params: {
   if (!groups.length) return [];
   // Fetch all pages of scoped references: a server limit must not silently drop a
   // co-teacher or a component and change the report's demand or instructor label.
-  const [components, planCourses, assignments, courses, instructors] = await Promise.all([
+  const [components, planCourses, assignments, courses] = await Promise.all([
     readAllReportRows((from, to) =>
       supabase
         .from("plan_course_components")
@@ -74,15 +74,23 @@ export async function fetchCohortDeliveryGroupCatalog(params: {
         .order("id")
         .range(from, to),
     ),
-    readAllReportRows((from, to) =>
-      supabase
-        .from("instructors")
-        .select("id, full_name")
-        .eq("college_id", college)
-        .order("id")
-        .range(from, to),
-    ),
   ]);
+  // Visiting teachers retain their home college. Resolve exactly the IDs
+  // referenced by this college's assignments, without rewriting ownership.
+  const instructorIds = [
+    ...new Set(
+      assignments.map((assignment) => assignment.instructor_id).filter((id): id is string => !!id),
+    ),
+  ];
+  const instructors: { id: string; full_name: string }[] = [];
+  for (let i = 0; i < instructorIds.length; i += 100) {
+    const { data, error } = await supabase
+      .from("instructors")
+      .select("id,full_name")
+      .in("id", instructorIds.slice(i, i + 100));
+    if (error) throw error;
+    instructors.push(...(data ?? []));
+  }
   const componentById = new Map(components.map((c) => [c.id, c]));
   const planCourseById = new Map(planCourses.map((c) => [c.id, c]));
   const courseById = new Map(courses.map((c) => [c.id, c]));

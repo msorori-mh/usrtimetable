@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ImportedTimetableReport } from "./imported-timetable-report";
+import { SourceRowsImport } from "./source-rows-import";
 
 type Source = Tables<"existing_schedule_source_rows">;
 const DAYS = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
@@ -210,6 +211,7 @@ export function ExistingScheduleWorkspace({
         collegeId={collegeId}
         termId={termId}
         termName={terms.data?.find((term) => term.id === termId)?.name}
+        versionId={versionId}
         plans={plans}
         isLoading={bundle.isLoading}
         onBack={() => setShowSourceReport(false)}
@@ -290,6 +292,15 @@ export function ExistingScheduleWorkspace({
           </Button>
         </div>
       </Card>
+      {canManage && (
+        <SourceRowsImport
+          collegeId={collegeId}
+          termId={termId}
+          versionId={versionId ?? null}
+          existing={rows}
+          onSaved={() => bundle.refetch()}
+        />
+      )}
       <Card className="space-y-3 p-4">
         <div className="flex flex-wrap items-center gap-4">
           <Input

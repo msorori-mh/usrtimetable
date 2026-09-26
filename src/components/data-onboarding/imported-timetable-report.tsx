@@ -1,7 +1,10 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ReportShell } from "@/components/reports/report-shell";
+import { supabase } from "@/integrations/supabase/client";
+import { readAllReportRows } from "@/lib/reports/read-all";
 import {
   filterImportedTimetable,
   importedTimetableRows,
@@ -24,6 +27,7 @@ export function ImportedTimetableReport({
   collegeId,
   termId,
   termName,
+  versionId,
   plans,
   onBack,
   isLoading,
@@ -32,13 +36,37 @@ export function ImportedTimetableReport({
   collegeId: string;
   termId: string;
   termName?: string;
+  versionId?: string | null;
   plans: ReadonlyMap<string, string>;
   onBack: () => void;
   isLoading: boolean;
 }) {
   const [filters, setFilters] = useState(INITIAL);
-  const all = importedTimetableRows(sources, { collegeId, termId }, plans);
+  const sessionQuery = useQuery({
+    queryKey: ["source-reconciliation-sessions", collegeId, termId, versionId],
+    enabled: !!versionId,
+    queryFn: () =>
+      readAllReportRows((from, to) =>
+        supabase
+          .from("schedule_sessions")
+          .select("id,delivery_group_id,day_of_week,start_time,end_time")
+          .eq("college_id", collegeId)
+          .eq("schedule_version_id", versionId!)
+          .or("replaced_by_split.is.null,replaced_by_split.eq.false")
+          .order("id")
+          .range(from, to),
+      ),
+  });
+  const all = importedTimetableRows(
+    sources.filter(
+      (source) => !source.schedule_version_id || source.schedule_version_id === versionId,
+    ),
+    { collegeId, termId },
+    plans,
+    versionId && sessionQuery.data ? sessionQuery.data : undefined,
+  );
   const rows = filterImportedTimetable(all, filters);
+  const timetableRows = all.filter((row) => row.kind === "timetable");
   const change = (field: keyof ImportedReportFilters, value: string) =>
     setFilters((previous) => ({ ...previous, [field]: value }));
   const summary = [
@@ -63,18 +91,28 @@ export function ImportedTimetableReport({
   return (
     <ReportShell
       title="تقرير الجداول المستوردة"
-      description="المقررات والمحاضرون والمواعيد والقاعات كما وردت في الملفات، بما فيها الصفوف التي لم يكتمل ربطها. هذا تقرير للمصدر وليس إثباتًا لاكتمال الإسناد أو اعتماد الجدول. أسماء المحاضرين المختصرة لا تُدمج تلقائيًا."
+      description="كل صف مستورد مع حالة ربط الخطة والمكوّن والمجموعة والإسناد والجلسة في المسودة المختارة. اكتمال الربط لا يثبت أن جميع ملفات الأقسام قد استُوردت."
       headerMeta={{ termName, official: false, readOnly: true }}
       filterSummary={summary}
       filename="imported_timetable"
       rows={rows}
       headers={IMPORTED_TIMETABLE_HEADERS}
-      isLoading={isLoading}
+      isLoading={isLoading || (!!versionId && sessionQuery.isLoading)}
+      error={sessionQuery.error}
       kpis={[
         { label: "صفوف المصدر المعروضة", value: rows.length },
-        { label: "مواعيد غير مكتملة", value: rows.filter((r) => r.missingTime).length },
-        { label: "مرتبطة بجلسة", value: rows.filter((r) => r.sessionLinked).length },
-        { label: "جميع صفوف المصدر", value: all.length },
+        {
+          label: "مواعيد غير مكتملة",
+          value: rows.filter((r) => r.missingTime).length,
+        },
+        {
+          label: "صفوف موعد مكتملة الربط",
+          value: timetableRows.filter((r) => r.stage === "complete").length,
+        },
+        {
+          label: "صفوف موعد تحتاج تسوية",
+          value: timetableRows.filter((r) => r.stage !== "complete").length,
+        },
       ]}
       filters={
         <div className="report-no-print space-y-3 rounded-lg border p-4">
@@ -133,9 +171,9 @@ export function ImportedTimetableReport({
       }
       summary={
         <p className="text-sm">
-          تظهر كشوف الإسناد منفصلة عن المواعيد لتجنب احتساب المحاضرة نفسها مرتين. مدة الموعد لا تمثل
-          وحدها نصاب المحاضر أو الساعات الزائدة. الحقل الفارغ يُعرض «غير مذكور» ويبقى فارغًا في
-          التصدير.
+          هذه نتيجة مطابقة الصفوف المستوردة فقط. راجع اكتمال ملفات الأقسام قبل اعتماد إجمالي
+          المحاضرات والساعات؛ صف كشف الإسناد لا يُحسب جلسة أسبوعية، والمحاضرة المشتركة تُحفظ مرة
+          واحدة. الساعات هنا مدة أسبوعية وليست الساعات المعتمدة للمقرر.
         </p>
       }
     >
@@ -191,6 +229,9 @@ export function ImportedTimetableReport({
                 <td className="border p-2">{row.room || "غير مذكورة"}</td>
                 <td className="border p-2">
                   <p>{row.status}</p>
+                  {row.matchedSessionId && (
+                    <p className="break-all text-[10px]">جلسة: {row.matchedSessionId}</p>
+                  )}
                   <p>{row.review}</p>
                   <p className="break-words">
                     {row.sourceFile} — {row.sourceCell}
