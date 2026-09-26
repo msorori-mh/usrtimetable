@@ -34,4 +34,3 @@ CREATE TRIGGER education_2026f_provisional_session BEFORE INSERT OR UPDATE OF in
 DROP TRIGGER IF EXISTS education_2026f_provisional_assignment ON public.teaching_assignments;
 CREATE TRIGGER education_2026f_provisional_assignment BEFORE INSERT OR UPDATE OF instructor_id
   ON public.teaching_assignments FOR EACH ROW EXECUTE FUNCTION public.education_2026f_provisional_name_guard();
-
