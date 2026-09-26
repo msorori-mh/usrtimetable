@@ -69,6 +69,7 @@ import {
   type LeadershipDetailTab,
 } from "@/lib/reports/leadership-decisions";
 import { fetchLeadershipRoomCapacity } from "@/lib/reports/fetch-leadership-room-capacity";
+import { publishedInstructorPercent } from "@/lib/reports/leadership-room-capacity";
 import {
   EDUCATION_SOURCE_PUBLICATION_NOTICE_AR,
   isEducationSourcePublication,
@@ -689,8 +690,26 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
                             {EDUCATION_SOURCE_PUBLICATION_NOTICE_AR}
                           </p>
                         )}
+                      {selectedCollege?.version_id &&
+                        isEducationSourcePublication(
+                          selectedCollege.version_id,
+                          selectedCollege.term_id,
+                        ) && (
+                          <p className="text-sm font-semibold">
+                            محاضرات الجدول المنشور باسم محاضر:{" "}
+                            {publishedInstructorPercent(
+                              selectedCapacity[0],
+                              selectedCollege.sessions_count,
+                            ) === null
+                              ? "قيد التحقق"
+                              : `${publishedInstructorPercent(
+                                  selectedCapacity[0],
+                                  selectedCollege.sessions_count,
+                                )}% (${selectedCapacity[0].namedPublishedSessions}/${selectedCapacity[0].publishedSessions})`}
+                          </p>
+                        )}
                       <p className="text-sm font-semibold">
-                        تغطية الإسناد:{" "}
+                        نسبة التكليف التدريسي المعتمد:{" "}
                         {universityCoverage === null ? "غير محسوب" : `${universityCoverage}%`}
                         {!sourceComplete && " · بيانات غير مكتملة"}
                       </p>
