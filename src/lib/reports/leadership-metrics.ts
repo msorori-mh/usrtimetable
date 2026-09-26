@@ -263,10 +263,7 @@ export function detailHoursKey(source: LeadershipMetricSource): string {
   return HOURS_SUM_KEYS[source];
 }
 
-export const LEADERSHIP_DETAIL_COLUMNS: Record<
-  LeadershipMetricSource,
-  LeadershipDetailColumn[]
-> = {
+export const LEADERSHIP_DETAIL_COLUMNS: Record<LeadershipMetricSource, LeadershipDetailColumn[]> = {
   faculty: [
     { key: "name", label: "المحاضر" },
     { key: "university_number", label: "الرقم الجامعي" },
@@ -294,9 +291,9 @@ export const LEADERSHIP_DETAIL_COLUMNS: Record<
     { key: "component_type", label: "المكوّن" },
     { key: "group_code", label: "المجموعة" },
     { key: "required_hours", label: "الساعات المطلوبة", numeric: true },
-    { key: "covered_hours", label: "المسند للمقرر", numeric: true },
-    { key: "uncovered_hours", label: "غير المسند", numeric: true },
-    { key: "assignment_status", label: "حالة الإسناد" },
+    { key: "covered_hours", label: "بتكليف معتمد", numeric: true },
+    { key: "uncovered_hours", label: "بانتظار اعتماد التكليف", numeric: true },
+    { key: "assignment_status", label: "حالة التكليف" },
     { key: "instructors", label: "المحاضرون" },
   ],
   schedules: [
@@ -313,7 +310,7 @@ export const LEADERSHIP_DETAIL_COLUMNS: Record<
 };
 
 export const LEADERSHIP_ASSIGNMENT_STATUS_LABELS: Record<string, string> = {
-  unassigned: "غير مسند",
+  unassigned: "دون تكليف معتمد",
   under_allocated: "إسناد ناقص",
   over_allocated: "إسناد زائد",
   fully_allocated: "مسند بالكامل",
@@ -329,9 +326,7 @@ export function filterDetailRows(
     if (options.collegeId && String(row.college_id ?? "") !== options.collegeId) return false;
     if (!needle) return true;
     return Object.values(row).some((value) =>
-      value === null || value === undefined
-        ? false
-        : String(value).toLowerCase().includes(needle),
+      value === null || value === undefined ? false : String(value).toLowerCase().includes(needle),
     );
   });
 }
@@ -339,8 +334,10 @@ export function filterDetailRows(
 export function sumDetailColumn(rows: LeadershipDetailRow[], key: string): number {
   return (
     Math.round(
-      rows.reduce((total, row) => total + (typeof row[key] === "number" ? Number(row[key]) : 0), 0) *
-        100,
+      rows.reduce(
+        (total, row) => total + (typeof row[key] === "number" ? Number(row[key]) : 0),
+        0,
+      ) * 100,
     ) / 100
   );
 }
