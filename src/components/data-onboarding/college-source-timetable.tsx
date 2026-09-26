@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { Tables } from "@/integrations/supabase/types";
+import { supabase } from "@/integrations/supabase/client";
 
 type Source = Tables<"existing_schedule_source_rows">;
 
@@ -71,6 +73,16 @@ function sourceLevel(row: Source): number | null {
   return ISLAMIC_LEVEL_CORRECTIONS[row.source_id] ?? row.level_number;
 }
 
+function sourceRoomName(rawRoom: string | null): string | null {
+  if (!rawRoom) return null;
+  const compact = rawRoom.replace(/[\s.]/g, "");
+  if (/^\d+$/.test(compact)) return `ق${compact}`;
+  if (compact === "شط" || compact === "شطلاب") return "ق ش ط";
+  if (compact === "مك") return "معمل الكيمياء";
+  if (compact === "معملأحيا") return "معمل الأحياء";
+  return rawRoom.trim();
+}
+
 function serviceLabel(row: Source): string | null {
   if (!row.notes?.startsWith("{")) return null;
   try {
@@ -88,6 +100,28 @@ function serviceLabel(row: Source): string | null {
 export function CollegeSourceTimetable({ rows, onBack }: { rows: Source[]; onBack: () => void }) {
   const [selected, setSelected] = useState<string>(DEPARTMENTS[0].file);
   const [level, setLevel] = useState<number | "all">("all");
+  const operational = useQuery({
+    queryKey: ["education-source-operational-slots", "7430bad7-2de7-5c90-9368-b214a199d6c3"],
+    enabled: rows.length > 0,
+    queryFn: async () => {
+      const [sessions, rooms] = await Promise.all([
+        supabase
+          .from("schedule_sessions")
+          .select("id,day_of_week,start_time,end_time,room_id")
+          .eq("schedule_version_id", "7430bad7-2de7-5c90-9368-b214a199d6c3"),
+        supabase
+          .from("rooms")
+          .select("id,name")
+          .eq("college_id", "1ee291b2-bec9-43d3-b42b-5a4f46946399"),
+      ]);
+      if (sessions.error) throw sessions.error;
+      if (rooms.error) throw rooms.error;
+      return {
+        sessions: new Map((sessions.data ?? []).map((session) => [session.id, session])),
+        rooms: new Map((rooms.data ?? []).map((room) => [room.id, room.name])),
+      };
+    },
+  });
   const selectedDepartment = DEPARTMENTS.find((item) => item.file === selected)!;
   const sourceRows = rows.filter((row) => row.source_file === selected);
   const shown = sourceRows
@@ -103,6 +137,7 @@ export function CollegeSourceTimetable({ rows, onBack }: { rows: Source[]; onBac
   const baselineHours = selectedDepartment.levels.reduce((sum, hours) => sum + hours, 0);
   const totalImported = rows.reduce((sum, row) => sum + duration(row), 0);
   const linked = rows.filter((row) => row.schedule_session_id != null).length;
+  const grouped = rows.filter((row) => row.delivery_group_id != null).length;
   const levelTotals = [0, 1, 2, 3].map((index) =>
     DEPARTMENTS.reduce((sum, department) => sum + department.levels[index], 0),
   );
@@ -122,13 +157,15 @@ export function CollegeSourceTimetable({ rows, onBack }: { rows: Source[]; onBac
           المواعيد والمدرسون والقاعات أدناه مأخوذون من ملفات الجداول المستوردة. صف «بانتظار الربط»
           ظاهر هنا كما ورد في الملف، لكنه ليس جلسة تشغيلية محفوظة في المسودة. تصحيح مستويات أربع
           مواد في الدراسات الإسلامية مأخوذ من الحصر الذي زوّدته الكلية؛ يبقى المستوى الوارد في الملف
-          ظاهراً بجانبه.
+          ظاهراً بجانبه. يظهر الموعد التشغيلي بجوار موعد الملف عند نقله لحل تعارض، وتظهر أسماء
+          المدرسين التي تحتاج تحققاً بوصفها مؤقتة لهذا الفصل.
         </p>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
           {[
             ["ساعات الحصر بحسب الأقسام", "726"],
             ["ساعات صفوف الملفات، بما فيها الخدمات والتكرارات", String(totalImported)],
             ["صفوف المصادر", String(rows.length)],
+            ["صفوف مرتبطة بمجموعة", String(grouped)],
             ["صفوف مرتبطة بجلسة", String(linked)],
           ].map(([label, value]) => (
             <div className="rounded-lg border p-3" key={label}>
@@ -274,6 +311,7 @@ export function CollegeSourceTimetable({ rows, onBack }: { rows: Source[]; onBac
                   "المدرس كما ورد",
                   "اليوم والوقت",
                   "القاعة",
+                  "الموعد في المسودة",
                   "الساعات",
                   "حالة الإدخال",
                 ].map((heading) => (
@@ -287,6 +325,18 @@ export function CollegeSourceTimetable({ rows, onBack }: { rows: Source[]; onBac
               {shown.map((row) => {
                 const corrected = sourceLevel(row) !== row.level_number;
                 const service = serviceLabel(row);
+                const session = row.schedule_session_id
+                  ? operational.data?.sessions.get(row.schedule_session_id)
+                  : undefined;
+                const bookedRoom = session?.room_id
+                  ? operational.data?.rooms.get(session.room_id)
+                  : undefined;
+                const moved =
+                  session &&
+                  (session.day_of_week !== row.day_of_week ||
+                    session.start_time !== row.start_time ||
+                    session.end_time !== row.end_time ||
+                    (bookedRoom && sourceRoomName(row.raw_room) !== bookedRoom));
                 return (
                   <tr key={row.id} data-source-id={row.source_id} className="align-top">
                     <td className="border p-2">
@@ -309,9 +359,31 @@ export function CollegeSourceTimetable({ rows, onBack }: { rows: Source[]; onBac
                       </div>
                     </td>
                     <td className="border p-2">{row.raw_room || "غير مذكورة"}</td>
+                    <td className="border p-2">
+                      {session ? (
+                        <>
+                          {DAYS[session.day_of_week]}
+                          <div dir="ltr">
+                            {session.start_time.slice(0, 5)}–{session.end_time.slice(0, 5)}
+                          </div>
+                          <div>{bookedRoom ?? "القاعة قيد التحديد"}</div>
+                          {moved && <div className="text-xs text-amber-700">نقل لحل تعارض</div>}
+                        </>
+                      ) : row.schedule_session_id ? (
+                        "جارٍ تحميل الجلسة"
+                      ) : (
+                        "—"
+                      )}
+                    </td>
                     <td className="border p-2">{duration(row)}</td>
                     <td className="border p-2">
-                      {row.schedule_session_id ? "جلسة في المسودة" : "من الجدول، بانتظار الربط"}
+                      {row.schedule_session_id
+                        ? row.pending_reasons.length > 0
+                          ? "جلسة مؤقتة؛ الاسم أو الإسناد بحاجة تحقق"
+                          : "جلسة في المسودة"
+                        : row.delivery_group_id
+                          ? "مجموعة منشأة؛ موعد قيد المطابقة"
+                          : "من الجدول، بانتظار الربط"}
                     </td>
                   </tr>
                 );
