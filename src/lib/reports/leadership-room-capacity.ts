@@ -221,8 +221,7 @@ export function buildLeadershipRoomCapacity(
       known(college.required_hours) &&
       known(college.teaching_hours) &&
       Math.abs(college.required_hours - college.teaching_hours) <= 0.01;
-    if (!publicationComplete)
-      issues.push("لا يُحتسب الفائض قبل نشر جميع ساعات التدريس المطلوبة");
+    if (!publicationComplete) issues.push("لا يُحتسب الفائض قبل نشر جميع ساعات التدريس المطلوبة");
     const occupancyComplete =
       inventoryComplete &&
       publicationComplete &&
