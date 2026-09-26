@@ -16,8 +16,9 @@ BEGIN
         WHERE src.delivery_group_id=NEW.delivery_group_id
           AND src.cohort_id=NEW.cohort_id
           AND src.component_id=NEW.plan_course_component_id
-          AND src.source_file IN ('كيمياء.docx',
+          AND (src.source_file IN ('كيمياء.docx',
             'جدول قسم الدراسات الإسلامية 2026-2026م ,نهائي.docx')
+            OR src.source_id='EDU-SOURCE-2026-S1-20260922-S0304')
           AND src.college_id=NEW.college_id AND src.term_id='93705393-609d-4605-ae94-9572cd8b2090'::uuid
           AND src.schedule_version_id=NEW.schedule_version_id AND v.status='draft'
           AND NEW.instructor_id=ANY(src.instructor_ids))
