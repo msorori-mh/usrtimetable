@@ -144,7 +144,9 @@ export function buildLeadershipRoomCapacity(
     const rooms = activeRooms
       .filter((room) => {
         const roomType = sources.roomTypes.find((type) => type.id === room.room_type_id);
-        return roomType?.code?.trim().toLowerCase() === "lecture_hall";
+        return roomType?.code?.trim()
+          ? roomCategoryFromType(roomType.code) === "hall"
+          : false;
       })
       .map((room): LeadershipCapacityRoom => {
         const availability = sources.availability.filter((a) => a.room_id === room.id);
@@ -216,12 +218,11 @@ export function buildLeadershipRoomCapacity(
     const publicationComplete =
       college.term_state === "ready" &&
       !!college.version_id &&
-      known(college.groups_count) &&
-      college.groups_count > 0 &&
-      known(college.required_hours) &&
       known(college.teaching_hours) &&
-      Math.abs(college.required_hours - college.teaching_hours) <= 0.01;
-    if (!publicationComplete) issues.push("لا يُحتسب الفائض قبل نشر جميع ساعات التدريس المطلوبة");
+      college.teaching_hours > 0 &&
+      sessions.some((session) => session.schedule_version_id === college.version_id);
+    if (!publicationComplete)
+      issues.push("لا يُحتسب غير المستخدم قبل وجود نسخة منشورة تحتوي جلسات فعلية");
     const occupancyComplete =
       inventoryComplete &&
       publicationComplete &&
