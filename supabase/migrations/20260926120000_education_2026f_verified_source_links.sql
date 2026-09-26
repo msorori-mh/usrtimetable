@@ -12,6 +12,10 @@ DECLARE
   v_matches integer;
   v_spec record;
 BEGIN
+  -- Fresh installations have no historical Education draft to reconcile.
+  IF NOT EXISTS (SELECT 1 FROM public.schedule_versions
+                 WHERE id = '7430bad7-2de7-5c90-9368-b214a199d6c3'::uuid)
+  THEN RETURN; END IF;
   SELECT * INTO STRICT v_version FROM public.schedule_versions
    WHERE id = '7430bad7-2de7-5c90-9368-b214a199d6c3'::uuid FOR UPDATE;
   SELECT * INTO STRICT v_term FROM public.academic_terms
