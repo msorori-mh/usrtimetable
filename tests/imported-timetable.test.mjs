@@ -23,7 +23,9 @@ const source = (overrides = {}) => ({
   end_time: "11:00:00",
   level_number: 1,
   study_plan_id: null,
-  notes: JSON.stringify({ raw_extraction: { id: "S0001", dept: "الرياضيات", hours: 3 } }),
+  notes: JSON.stringify({
+    raw_extraction: { id: "S0001", dept: "الرياضيات", hours: 3 },
+  }),
   schedule_session_id: null,
   teaching_assignment_id: null,
   pending_reasons: ["تحديد الهوية"],
@@ -93,7 +95,10 @@ test("assignment corroboration is separate from timetable and all-source exports
     scope,
   );
   assert.equal(filterImportedTimetable(rows, filters).length, 1);
-  assert.equal(filterImportedTimetable(rows, { ...filters, kind: "all" }).length, 2);
+  assert.equal(
+    filterImportedTimetable(rows, { ...filters, kind: "all" }).length,
+    2,
+  );
   assert.equal(
     filterImportedTimetable(rows, { ...filters, kind: "assignment" })[0].kind,
     "assignment",
@@ -101,7 +106,10 @@ test("assignment corroboration is separate from timetable and all-source exports
 });
 test("malformed/plain notes and empty raw names remain visible", () => {
   const rows = importedTimetableRows(
-    [source({ notes: "ملاحظة المصدر", raw_course: "" }), source({ id: "b", notes: "{broken" })],
+    [
+      source({ notes: "ملاحظة المصدر", raw_course: "" }),
+      source({ id: "b", notes: "{broken" }),
+    ],
     scope,
   );
   assert.equal(rows.length, 2);
@@ -114,7 +122,9 @@ test("same short teacher name is not interpreted as a resolved university identi
       source(),
       source({
         id: "b",
-        notes: JSON.stringify({ raw_extraction: { id: "S0002", dept: "الفيزياء" } }),
+        notes: JSON.stringify({
+          raw_extraction: { id: "S0002", dept: "الفيزياء" },
+        }),
       }),
     ],
     scope,
@@ -122,19 +132,35 @@ test("same short teacher name is not interpreted as a resolved university identi
   assert.equal(rows.length, 2);
   assert.ok(rows.every((row) => !row.assignmentLinked));
   assert.equal(
-    filterImportedTimetable(rows, { ...filters, department: "الرياضيات", teacher: "د. أحمد" })
-      .length,
+    filterImportedTimetable(rows, {
+      ...filters,
+      department: "الرياضيات",
+      teacher: "د. أحمد",
+    }).length,
     1,
   );
 });
 test("filters preserve conjunction, empty-field selection, and raw source search", () => {
-  const rows = importedTimetableRows([source(), source({ id: "b", raw_teacher: null })], scope);
-  assert.equal(filterImportedTimetable(rows, { ...filters, teacher: "" }).length, 1);
+  const rows = importedTimetableRows(
+    [source(), source({ id: "b", raw_teacher: null })],
+    scope,
+  );
   assert.equal(
-    filterImportedTimetable(rows, { ...filters, level: "2", room: "ق36 السعودي" }).length,
+    filterImportedTimetable(rows, { ...filters, teacher: "" }).length,
+    1,
+  );
+  assert.equal(
+    filterImportedTimetable(rows, {
+      ...filters,
+      level: "2",
+      room: "ق36 السعودي",
+    }).length,
     0,
   );
-  assert.equal(filterImportedTimetable(rows, { ...filters, search: "جدول.docx" }).length, 2);
+  assert.equal(
+    filterImportedTimetable(rows, { ...filters, search: "جدول.docx" }).length,
+    2,
+  );
 });
 test("invalid and backwards times are never coerced into zero or overnight hours", () => {
   for (const pair of [
@@ -149,10 +175,55 @@ test("invalid and backwards times are never coerced into zero or overnight hours
 });
 test("linked sources do not acquire duplicate synthetic sessions", () => {
   const rows = importedTimetableRows(
-    [source({ schedule_session_id: "session-1", teaching_assignment_id: "assignment-1" })],
+    [
+      source({
+        schedule_session_id: "session-1",
+        teaching_assignment_id: "assignment-1",
+      }),
+    ],
     scope,
   );
   assert.equal(rows.length, 1);
   assert.equal(rows[0].sessionLinked, true);
   assert.equal(rows[0].assignmentLinked, true);
+});
+
+test("a foreign key from another version cannot mark a source row complete", () => {
+  const linked = source({
+    study_plan_id: "plan",
+    plan_course_id: "course",
+    component_id: "component",
+    delivery_group_id: "group",
+    teaching_assignment_id: "assignment",
+    schedule_session_id: "old-session",
+  });
+  const sessions = [
+    {
+      id: "current-session",
+      delivery_group_id: "group",
+      day_of_week: 0,
+      start_time: "08:00",
+      end_time: "11:00",
+    },
+  ];
+  const result = importedTimetableRows([linked], scope, new Map(), sessions)[0];
+  assert.equal(result.stage, "unlinked_session");
+  assert.equal(result.matchedSessionId, "current-session");
+  assert.equal(result.sessionLinked, true); // The stored foreign key is preserved as evidence.
+});
+
+test("assignment-only records never contribute a timetable row", () => {
+  const rows = importedTimetableRows(
+    [
+      source({
+        notes: JSON.stringify({ raw_extraction: { id: "C0200" } }),
+        raw_day: null,
+      }),
+    ],
+    scope,
+    new Map(),
+    [],
+  );
+  assert.equal(rows[0].kind, "assignment");
+  assert.equal(rows[0].stage, "verification_pending");
 });

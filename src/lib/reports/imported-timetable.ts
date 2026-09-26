@@ -1,4 +1,9 @@
 /** Read-only projection of source rows; never manufactures sessions or identities. */
+import {
+  reconcileSourceRow,
+  type ReconciliationSession,
+} from "./source-reconciliation";
+
 export interface ImportedSource {
   id: string;
   college_id: string;
@@ -20,6 +25,11 @@ export interface ImportedSource {
   schedule_session_id: string | null;
   teaching_assignment_id: string | null;
   pending_reasons: string[];
+  plan_course_id?: string | null;
+  component_id?: string | null;
+  delivery_group_id?: string | null;
+  schedule_version_id?: string | null;
+  shared_member?: boolean;
 }
 
 function object(value: unknown): Record<string, unknown> {
@@ -40,7 +50,10 @@ function metadata(notes: string | null): Record<string, unknown> {
   }
 }
 
-export function sourceDuration(start: string | null, end: string | null): number | null {
+export function sourceDuration(
+  start: string | null,
+  end: string | null,
+): number | null {
   const minutes = (value: string | null) => {
     if (!value || !/^\d{2}:\d{2}(:\d{2})?$/.test(value)) return null;
     const [h, m, s = 0] = value.split(":").map(Number);
@@ -55,9 +68,14 @@ export function importedTimetableRows(
   sources: ImportedSource[],
   scope: { collegeId: string; termId: string },
   plans: ReadonlyMap<string, string> = new Map(),
+  sessions?: readonly ReconciliationSession[],
 ) {
   return sources
-    .filter((source) => source.college_id === scope.collegeId && source.term_id === scope.termId)
+    .filter(
+      (source) =>
+        source.college_id === scope.collegeId &&
+        source.term_id === scope.termId,
+    )
     .map((source) => {
       const meta = metadata(source.notes);
       const raw = object(meta.raw_extraction);
@@ -71,7 +89,15 @@ export function importedTimetableRows(
             : "assignment";
       const hours = sourceDuration(source.start_time, source.end_time);
       const rawHours =
-        typeof raw.hours === "number" && Number.isFinite(raw.hours) ? raw.hours : null;
+        typeof raw.hours === "number" && Number.isFinite(raw.hours)
+          ? raw.hours
+          : null;
+      // When no version sessions were loaded, show that verification is pending
+      // instead of declaring an existing FK complete.
+      const reconciliation =
+        kind === "timetable" && sessions
+          ? reconcileSourceRow(source, sessions)
+          : null;
       return {
         id: source.id,
         sourceId: source.source_id,
@@ -79,7 +105,10 @@ export function importedTimetableRows(
         kindLabel: kind === "timetable" ? "جدول دراسي" : "كشف إسناد",
         department: text(raw.dept) || "غير محدد في المصدر",
         plan: plans.get(source.study_plan_id ?? "") ?? "بانتظار الربط",
-        level: source.level_number === null ? "غير محدد" : String(source.level_number),
+        level:
+          source.level_number === null
+            ? "غير محدد"
+            : String(source.level_number),
         courseCode: text(meta.source_course_code),
         course: source.raw_course ?? "",
         teacher: source.raw_teacher ?? "",
@@ -95,18 +124,24 @@ export function importedTimetableRows(
         sourceCell: source.source_cell,
         sessionLinked: !!source.schedule_session_id,
         assignmentLinked: !!source.teaching_assignment_id,
-        status: source.schedule_session_id
-          ? "مرتبط بجلسة في المسودة"
-          : source.teaching_assignment_id
-            ? "إسناد محفوظ؛ الجلسة بانتظار الربط"
-            : "محفوظ من المصدر؛ بانتظار الربط",
-        missingTime: kind === "timetable" && (source.day_of_week === null || hours === null),
+        stage: reconciliation?.stage ?? "verification_pending",
+        status: reconciliation
+          ? reconciliation.issues.join("؛ ")
+          : kind === "assignment"
+            ? "كشف إسناد؛ لا يمثل محاضرة أسبوعية مستقلة"
+            : "مطابقة الجلسات بانتظار التحميل",
+        matchedSessionId: reconciliation?.sessionId ?? null,
+        missingTime:
+          kind === "timetable" &&
+          (source.day_of_week === null || hours === null),
         review: source.pending_reasons.join("؛ "),
       };
     });
 }
 
-export type ImportedTimetableRow = ReturnType<typeof importedTimetableRows>[number];
+export type ImportedTimetableRow = ReturnType<
+  typeof importedTimetableRows
+>[number];
 export type ImportedReportFilters = {
   kind: string;
   department: string;
@@ -123,7 +158,12 @@ export function filterImportedTimetable(
   return rows.filter(
     (row) =>
       ["kind", "department", "level", "teacher", "room"].every((key) => {
-        const field = key as "kind" | "department" | "level" | "teacher" | "room";
+        const field = key as
+          | "kind"
+          | "department"
+          | "level"
+          | "teacher"
+          | "room";
         return filters[field] === "all" || row[field] === filters[field];
       }) &&
       `${row.course} ${row.courseCode} ${row.teacher} ${row.department} ${row.sourceFile} ${row.sourceId}`.includes(
