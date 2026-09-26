@@ -7,6 +7,7 @@ import {
 } from "@/lib/reports/leadership";
 import {
   aggregateLeadershipRoomCapacity,
+  publishedInstructorPercent,
   type LeadershipCapacityCollege,
 } from "@/lib/reports/leadership-room-capacity";
 import { isEducationSourcePublication } from "@/lib/schedule-versions/education-publication";
@@ -83,11 +84,11 @@ export function LeadershipDecisionSummary({
     },
     {
       tab: "teaching" as const,
-      label: "تغطية التدريس",
+      label: "اعتماد التكليف التدريسي",
       value: hours(uncovered.value),
-      detail: "تدريس غير مسند في البيانات المحسوبة",
+      detail: "ساعات مجموعات بانتظار اعتماد التكليف إداريًا",
       note: `المصدر: ${teachingKnown.length} من ${colleges.length} كليات${teachingKnown.length < colleges.length ? " · جزئي" : ""}`,
-      action: "مراجعة تغطية التدريس",
+      action: "مراجعة التكليف التدريسي",
       tone: "teaching",
       icon: BookOpenCheck,
     },
@@ -231,7 +232,7 @@ export function LeadershipDecisionSummary({
                 {[
                   "الكلية وأهم ملاحظة",
                   "النشر",
-                  "الإسناد التدريسي",
+                  "أسماء المحاضرين والتكليف",
                   "الأنصبة",
                   "ساعات القاعات",
                   "فرصة إعادة الاستخدام",
@@ -261,6 +262,17 @@ export function LeadershipDecisionSummary({
                 const educationSourceException =
                   !!college.version_id &&
                   isEducationSourcePublication(college.version_id, college.term_id);
+                const namedPercent = educationSourceException
+                  ? publishedInstructorPercent(room, college.sessions_count)
+                  : null;
+                const displayedPercent = educationSourceException ? namedPercent : percent;
+                const namedText =
+                  namedPercent === null
+                    ? "قيد التحقق"
+                    : `${namedPercent}% (${room?.namedPublishedSessions}/${room?.publishedSessions})`;
+                const displayedCoverage = educationSourceException
+                  ? `محاضرات الجدول باسم محاضر: ${namedText}`
+                  : `التكليف المعتمد: ${percent === null ? "غير محسوب" : `${percent}%`}`;
                 return (
                   <tr key={college.college_id} className="leadership-college-row">
                     <th scope="row" className="leadership-college-name">
@@ -288,25 +300,25 @@ export function LeadershipDecisionSummary({
                       </span>
                     </td>
                     <td>
-                      <span className="leadership-mobile-label">الإسناد</span>
-                      <strong>{percent === null ? "غير محسوب" : `${percent}%`}</strong>
-                      {percent !== null && (
+                      <span className="leadership-mobile-label">أسماء المحاضرين والتكليف</span>
+                      <strong>{displayedCoverage}</strong>
+                      {displayedPercent !== null && (
                         <span className="leadership-coverage-track" aria-hidden="true">
                           <span
                             style={{
-                              width: `${Math.min(100, Math.max(0, percent))}%`,
+                              width: `${Math.min(100, Math.max(0, displayedPercent))}%`,
                             }}
                           />
                         </span>
                       )}
-                      <span className="leadership-cell-note">
-                        غير المسند إداريًا: {hours(college.uncovered_hours)}
-                      </span>
                       {educationSourceException && (
                         <span className="leadership-cell-note">
-                          جدول مصدر منشور باستثناء تكليف الأسماء؛ راجع التفاصيل.
+                          التكليف المعتمد: {percent === null ? "غير محسوب" : `${percent}%`}
                         </span>
                       )}
+                      <span className="leadership-cell-note">
+                        بانتظار اعتماد التكليف: {hours(college.uncovered_hours)}
+                      </span>
                     </td>
                     <td>
                       <span className="leadership-mobile-label">الأنصبة</span>

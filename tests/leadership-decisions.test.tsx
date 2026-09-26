@@ -279,11 +279,19 @@ test("Education source publication keeps administrative gaps separate from sched
   });
   const output = html({
     colleges: [education],
-    capacity: [{ ...room("education", 104), emptyPublishedRooms: 0 }],
+    capacity: [
+      {
+        ...room("education", 104),
+        emptyPublishedRooms: 0,
+        publishedSessions: 339,
+        namedPublishedSessions: 339,
+      },
+    ],
   });
-  assert.match(output, /86.3%/);
-  assert.match(output, /غير المسند إداريًا: 99 ساعة/);
-  assert.match(output, /جدول مصدر منشور باستثناء تكليف الأسماء/);
+  assert.match(output, /محاضرات الجدول باسم محاضر: 100% \(339\/339\)/);
+  assert.match(output, /التكليف المعتمد: 86.3%/);
+  assert.match(output, /بانتظار اعتماد التكليف: 99 ساعة/);
+  assert.doesNotMatch(output, /ساعة تدريس غير مسندة|تدريس غير مسند/);
   assert.match(output, /58 نصابًا غير مكتمل/);
   assert.doesNotMatch(output, /زيادة 52 ساعة|نقص 229 ساعة/);
   assert.match(output, /104 ساعة شاغرة أسبوعيًا في القاعات · 0 قاعة بلا جلسات منشورة/);
@@ -292,6 +300,18 @@ test("Education source publication keeps administrative gaps separate from sched
     leadershipPriorities([education], [])[0].impact,
     /الجدول منشور بأسماء من المصدر؛ يلزم اعتماد تكليف مجموعات التدريس إداريًا/,
   );
+});
+
+test("missing published-session evidence withholds the named-instructor percentage", () => {
+  const education = college("education", {
+    college: "كلية التربية والعلوم",
+    term_id: "93705393-609d-4605-ae94-9572cd8b2090",
+    version_id: "7430bad7-2de7-5c90-9368-b214a199d6c3",
+    sessions_count: 339,
+  });
+  const output = html({ colleges: [education], capacity: [room("education", 104)] });
+  assert.match(output, /محاضرات الجدول باسم محاضر: قيد التحقق/);
+  assert.doesNotMatch(output, /محاضرات الجدول باسم محاضر: 100%/);
 });
 
 test("single-college input does not expose other colleges and uses unique faculty count", () => {

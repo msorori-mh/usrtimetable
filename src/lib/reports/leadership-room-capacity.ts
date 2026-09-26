@@ -17,6 +17,8 @@ export interface CapacityCollege {
   groups_count: number | null;
   required_hours: number | null;
   teaching_hours: number | null;
+  /** Published session count in the independent overview; used to detect partial reads. */
+  sessions_count?: number | null;
 }
 export interface CapacityRoom {
   id: string;
@@ -44,6 +46,8 @@ export interface CapacitySession extends ReportTime {
   id: string;
   room_id: string | null;
   schedule_version_id: string;
+  /** ID resolved from the name shown on this session, if present. */
+  instructor_id?: string | null;
 }
 export interface CapacityRoomType {
   id: string;
@@ -97,7 +101,28 @@ export interface LeadershipCapacityCollege {
   deficitHours: number | null;
   equivalents: ReturnType<typeof roomHourEquivalents>;
   emptyPublishedRooms: number | null;
+  /** Null when the session read cannot be reconciled with the overview. */
+  publishedSessions?: number | null;
+  namedPublishedSessions?: number | null;
   issues: string[];
+}
+
+/** Session-name coverage is separate from the approved group-assignment percentage. */
+export function publishedInstructorPercent(
+  capacity: LeadershipCapacityCollege | undefined,
+  expectedSessions: number | null | undefined,
+): number | null {
+  const published = capacity?.publishedSessions;
+  const named = capacity?.namedPublishedSessions;
+  if (
+    !known(expectedSessions) ||
+    expectedSessions === 0 ||
+    published !== expectedSessions ||
+    !known(named) ||
+    named > expectedSessions
+  )
+    return null;
+  return Math.round((named / expectedSessions) * 1000) / 10;
 }
 
 function validDays(days: number[] | null | undefined) {
@@ -129,6 +154,19 @@ export function buildLeadershipRoomCapacity(
   ];
   const uniqueRooms = [...new Map(sources.rooms.map((r) => [r.id, r])).values()];
   return colleges.map((college) => {
+    const published = college.version_id
+      ? sessions.filter((session) => session.schedule_version_id === college.version_id)
+      : [];
+    const namesComplete =
+      college.term_state === "ready" &&
+      known(college.sessions_count) &&
+      college.sessions_count > 0 &&
+      published.length === college.sessions_count &&
+      published.every((session) => "instructor_id" in session);
+    const publishedSessions = namesComplete ? published.length : null;
+    const namedPublishedSessions = namesComplete
+      ? published.filter((session) => !!session.instructor_id?.trim()).length
+      : null;
     const settingsRows = sources.settings.filter((s) => s.college_id === college.college_id);
     const settings = settingsRows.length === 1 ? settingsRows[0] : null;
     const settingValid =
@@ -249,6 +287,8 @@ export function buildLeadershipRoomCapacity(
       emptyPublishedRooms: occupancyComplete
         ? rooms.filter((r) => r.availableHours! > 0 && r.sessionCount === 0).length
         : null,
+      publishedSessions,
+      namedPublishedSessions,
       issues,
     };
   });

@@ -42,7 +42,7 @@ export function leadershipPriorities(
           add(
             100,
             "teaching",
-            `${college.uncovered_hours} ساعة تدريس غير مسندة`,
+            `${college.uncovered_hours} ساعة مجموعات بانتظار اعتماد التكليف`,
             college.version_id && isEducationSourcePublication(college.version_id, college.term_id)
               ? "الجدول منشور بأسماء من المصدر؛ يلزم اعتماد تكليف مجموعات التدريس إداريًا."
               : "تحتاج مجموعات التدريس إلى إسناد إداري معتمد.",
