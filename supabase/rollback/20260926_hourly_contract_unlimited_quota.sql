@@ -6,7 +6,7 @@ SELECT pg_advisory_xact_lock(9262, 20260926);
 DO $pre$
 BEGIN
   IF md5(pg_get_functiondef('public.enforce_instructor_extra_hours_limit()'::regprocedure))
-     <> '6f0cf1331e91a6a8c29af42dec3576c8' THEN
+     <> 'a42c36e17e427362b8d6fc615cd7f857' THEN
     RAISE EXCEPTION 'HOURLY_CONTRACT_GUARD_ROLLBACK_SOURCE_CHANGED';
   END IF;
 END $pre$;
