@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchVersionStudentMemberships } from "@/lib/academic-delivery/version-student-memberships";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { ReportShell } from "@/components/reports/report-shell";
 import {
@@ -68,7 +69,7 @@ function QualityAnalyticsPage() {
       const { data, error } = await supabase
         .from("schedule_sessions")
         .select(
-          "id, college_id, schedule_version_id, instructor_id, room_id, cohort_id, delivery_group_id, study_system, day_of_week, start_time, end_time, expected_students, session_type",
+          "id, college_id, schedule_version_id, instructor_id, room_id, cohort_id, delivery_group_id, course_offering_id, study_system, day_of_week, start_time, end_time, expected_students, session_type",
         )
         .eq("college_id", active!.id)
         .eq("schedule_version_id", effectiveVersion)
@@ -77,6 +78,21 @@ function QualityAnalyticsPage() {
       if (error) throw error;
       return (data ?? []) as AnalyticsSession[];
     },
+  });
+
+  const groupIds = useMemo(
+    () => [...new Set((sessions ?? []).map((s) => s.delivery_group_id).filter((id): id is string => !!id))].sort(),
+    [sessions],
+  );
+  const {
+    data: studentMemberships,
+    error: membershipError,
+    isLoading: membershipLoading,
+    refetch: refetchMemberships,
+  } = useQuery({
+    queryKey: ["qa-student-memberships", active?.id, effectiveVersion, groupIds],
+    enabled: !!active && !!effectiveVersion && !!sessions,
+    queryFn: () => fetchVersionStudentMemberships(effectiveVersion, groupIds),
   });
 
   const { data: rooms } = useQuery({
@@ -110,9 +126,10 @@ function QualityAnalyticsPage() {
   });
 
   const report = useMemo(() => {
-    if (!sessions) return null;
+    if (!sessions || !studentMemberships) return null;
     return analyzeScheduleQuality({
       sessions,
+      studentMemberships,
       rooms: rooms ?? [],
       collegeId: active?.id,
       baseline: latestStored
@@ -123,7 +140,7 @@ function QualityAnalyticsPage() {
           }
         : null,
     });
-  }, [sessions, rooms, active?.id, latestStored]);
+  }, [sessions, studentMemberships, rooms, active?.id, latestStored]);
 
   const exportRows = useMemo(() => {
     if (!report) return [];
@@ -157,7 +174,9 @@ function QualityAnalyticsPage() {
         filename="quality_analytics"
         rows={exportRows}
         headers={headers}
-        isLoading={isLoading}
+        isLoading={isLoading || membershipLoading}
+        error={membershipError}
+        onRetry={() => { void refetchMemberships(); }}
         emptyMessage="لا توجد جلسات في هذه النسخة لتحليلها."
         kpis={
           report
