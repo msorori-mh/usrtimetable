@@ -22,8 +22,13 @@ const base = (over: Partial<AnalyticsSession> & { id: string }): AnalyticsSessio
 describe("version student membership conflicts", () => {
   const pair = [
     base({ id: "a", delivery_group_id: "dg-a", course_offering_id: "course-a" }),
-    base({ id: "b", delivery_group_id: "dg-b", course_offering_id: "course-b",
-      instructor_id: "inst-2", room_id: "room-2" }),
+    base({
+      id: "b",
+      delivery_group_id: "dg-b",
+      course_offering_id: "course-b",
+      instructor_id: "inst-2",
+      room_id: "room-2",
+    }),
   ];
 
   test("separate partitions of one cohort can meet simultaneously", () => {
@@ -49,7 +54,9 @@ describe("version student membership conflicts", () => {
   });
 
   test("missing membership retains the conservative cohort check", () => {
-    expect(analyzeScheduleQuality({ sessions: pair, studentMemberships: [] }).hard_conflicts).toBe(1);
+    expect(analyzeScheduleQuality({ sessions: pair, studentMemberships: [] }).hard_conflicts).toBe(
+      1,
+    );
   });
 
   test("different courses in the same room still conflict", () => {
