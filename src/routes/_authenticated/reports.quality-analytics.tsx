@@ -81,7 +81,12 @@ function QualityAnalyticsPage() {
   });
 
   const groupIds = useMemo(
-    () => [...new Set((sessions ?? []).map((s) => s.delivery_group_id).filter((id): id is string => !!id))].sort(),
+    () =>
+      [
+        ...new Set(
+          (sessions ?? []).map((s) => s.delivery_group_id).filter((id): id is string => !!id),
+        ),
+      ].sort(),
     [sessions],
   );
   const {
@@ -176,7 +181,9 @@ function QualityAnalyticsPage() {
         headers={headers}
         isLoading={isLoading || membershipLoading}
         error={membershipError}
-        onRetry={() => { void refetchMemberships(); }}
+        onRetry={() => {
+          void refetchMemberships();
+        }}
         emptyMessage="لا توجد جلسات في هذه النسخة لتحليلها."
         kpis={
           report
