@@ -128,7 +128,7 @@ export function LeadershipDecisionSummary({
           : "فائض أسبوعي في الكليات ذات الفائض",
       note:
         capacityState === "ready"
-          ? `${roomTotals.knownColleges} من ${colleges.length} كليات · العجز ${hours(roomTotals.deficitHours)}`
+          ? `${roomTotals.knownColleges} من ${colleges.length} كليات مكتملة القياس`
           : capacityState === "error"
             ? "تعذر تحديث حساب القاعات"
             : capacityState === "restricted"
@@ -319,10 +319,9 @@ export function LeadershipDecisionSummary({
                         "غير محسوب"
                       ) : (
                         <span
-                          className={`leadership-status leadership-status--${room.balanceHours < 0 ? "deficit" : "surplus"}`}
+                          className="leadership-status leadership-status--surplus"
                         >
-                          {room.balanceHours < 0 ? "عجز" : "فائض"}{" "}
-                          {hours(Math.abs(room.balanceHours))}
+                          غير مستخدم {hours(room.balanceHours)}
                         </span>
                       )}
                     </td>
@@ -354,8 +353,9 @@ export function LeadershipDecisionSummary({
           </table>
         </div>
         <p className="leadership-footnote">
-          تغطية التدريس مستقلة عن الأنصبة. ساعات القاعات غير المستخدمة ليست عدد قاعات قابلة
-          للاستغناء؛ يلزم مراجعة اليوم والفترة والنوع والسعة لكل قاعة.
+          تغطية التدريس مستقلة عن الأنصبة. الساعات غير المستخدمة تخص قاعات المحاضرات الدراسية
+          والنسخ المنشورة المكتملة فقط؛ ولا تمثل عدد قاعات قابلة للاستغناء دون مراجعة اليوم والفترة
+          والسعة.
         </p>
       </section>
     </div>
