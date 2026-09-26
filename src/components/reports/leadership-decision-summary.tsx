@@ -265,6 +265,13 @@ export function LeadershipDecisionSummary({
                 const namedPercent = educationSourceException
                   ? publishedInstructorPercent(room, college.sessions_count)
                   : null;
+                const displayedPercent = educationSourceException ? namedPercent : percent;
+                const namedText = namedPercent === null
+                  ? "قيد التحقق"
+                  : `${namedPercent}% (${room?.namedPublishedSessions}/${room?.publishedSessions})`;
+                const displayedCoverage = educationSourceException
+                  ? `محاضرات الجدول باسم محاضر: ${namedText}`
+                  : `التكليف المعتمد: ${percent === null ? "غير محسوب" : `${percent}%`}`;
                 return (
                   <tr key={college.college_id} className="leadership-college-row">
                     <th scope="row" className="leadership-college-name">
@@ -293,24 +300,19 @@ export function LeadershipDecisionSummary({
                     </td>
                     <td>
                       <span className="leadership-mobile-label">أسماء المحاضرين والتكليف</span>
-                      {educationSourceException && (
-                        <span className="leadership-cell-note">
-                          محاضرات الجدول باسم محاضر:{" "}
-                          {namedPercent === null
-                            ? "قيد التحقق"
-                            : `${namedPercent}% (${room?.namedPublishedSessions}/${room?.publishedSessions})`}
-                        </span>
-                      )}
-                      <strong>
-                        التكليف المعتمد: {percent === null ? "غير محسوب" : `${percent}%`}
-                      </strong>
-                      {percent !== null && (
+                      <strong>{displayedCoverage}</strong>
+                      {displayedPercent !== null && (
                         <span className="leadership-coverage-track" aria-hidden="true">
                           <span
                             style={{
-                              width: `${Math.min(100, Math.max(0, percent))}%`,
+                              width: `${Math.min(100, Math.max(0, displayedPercent))}%`,
                             }}
                           />
+                        </span>
+                      )}
+                      {educationSourceException && (
+                        <span className="leadership-cell-note">
+                          التكليف المعتمد: {percent === null ? "غير محسوب" : `${percent}%`}
                         </span>
                       )}
                       <span className="leadership-cell-note">
