@@ -10,7 +10,10 @@ import {
   publishedInstructorPercent,
   type LeadershipCapacityCollege,
 } from "@/lib/reports/leadership-room-capacity";
-import { isEducationSourcePublication } from "@/lib/schedule-versions/education-publication";
+import {
+  educationSourceTimetableApprovalPercent,
+  isEducationSourcePublication,
+} from "@/lib/schedule-versions/education-publication";
 import {
   decisionOrder,
   leadershipPriorities,
@@ -265,13 +268,18 @@ export function LeadershipDecisionSummary({
                 const namedPercent = educationSourceException
                   ? publishedInstructorPercent(room, college.sessions_count)
                   : null;
-                const displayedPercent = educationSourceException ? namedPercent : percent;
+                const academicApprovalPercent = educationSourceException
+                  ? educationSourceTimetableApprovalPercent(college, namedPercent)
+                  : null;
+                const displayedPercent = educationSourceException
+                  ? academicApprovalPercent
+                  : percent;
                 const namedText =
                   namedPercent === null
                     ? "قيد التحقق"
                     : `${namedPercent}% (${room?.namedPublishedSessions}/${room?.publishedSessions})`;
                 const displayedCoverage = educationSourceException
-                  ? `محاضرات الجدول باسم محاضر: ${namedText}`
+                  ? `اعتماد جدول هذا الفصل: ${academicApprovalPercent === null ? "قيد التحقق" : `${academicApprovalPercent}% (${college.teaching_hours}/${college.required_hours} ساعة)`}`
                   : `التكليف المعتمد: ${percent === null ? "غير محسوب" : `${percent}%`}`;
                 return (
                   <tr key={college.college_id} className="leadership-college-row">
@@ -313,11 +321,19 @@ export function LeadershipDecisionSummary({
                       )}
                       {educationSourceException && (
                         <span className="leadership-cell-note">
-                          التكليف المعتمد: {percent === null ? "غير محسوب" : `${percent}%`}
+                          محاضرات الجدول باسم محاضر من ملفات الأقسام: {namedText} · تشمل أسماء مؤقتة
+                        </span>
+                      )}
+                      {educationSourceException && (
+                        <span className="leadership-cell-note">
+                          التكليف الوظيفي المسجل: {percent === null ? "غير محسوب" : `${percent}%`}
                         </span>
                       )}
                       <span className="leadership-cell-note">
-                        بانتظار اعتماد التكليف: {hours(college.uncovered_hours)}
+                        {educationSourceException
+                          ? "ساعات تحتاج توثيق التكليف الوظيفي: "
+                          : "بانتظار اعتماد التكليف: "}
+                        {hours(college.uncovered_hours)}
                       </span>
                     </td>
                     <td>
