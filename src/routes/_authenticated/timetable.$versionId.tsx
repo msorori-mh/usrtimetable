@@ -40,6 +40,10 @@ import {
 } from "@/components/timetable/timetable-grid";
 import { SessionDialog } from "@/components/timetable/session-dialog";
 import { DeliveryDemoWarningBanner } from "@/components/schedule/delivery-demo-warning-banner";
+import {
+  EDUCATION_SOURCE_PUBLICATION_NOTICE_AR,
+  isEducationSourcePublication,
+} from "@/lib/schedule-versions/education-publication";
 import { scoreScheduleVersion, type QualityResult } from "@/lib/conflict-engine/scorer";
 import { validateProposed } from "@/lib/conflict-engine/validator";
 import { logAudit } from "@/lib/audit";
@@ -538,6 +542,15 @@ function TimetablePage() {
   return (
     <div className="space-y-4" dir="rtl">
       <DeliveryDemoWarningBanner name={version.name} notes={version.notes} />
+      {version.status === "published" &&
+        isEducationSourcePublication(version.id, version.academic_term_id) && (
+          <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+            {EDUCATION_SOURCE_PUBLICATION_NOTICE_AR}{" "}
+            <Link className="underline" to="/reports/education-source-timetable">
+              تقرير المطابقة
+            </Link>
+          </p>
+        )}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <Button variant="ghost" size="sm" asChild>

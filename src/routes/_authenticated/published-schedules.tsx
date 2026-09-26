@@ -17,6 +17,10 @@ import {
 import { CheckCircle2, ExternalLink, Printer } from "lucide-react";
 import { DeliveryDemoWarningBanner } from "@/components/schedule/delivery-demo-warning-banner";
 import { isDeliveryDemoVersion } from "@/lib/schedule-versions/delivery-demo";
+import {
+  EDUCATION_SOURCE_PUBLICATION_NOTICE_AR,
+  isEducationSourcePublication,
+} from "@/lib/schedule-versions/education-publication";
 
 export const Route = createFileRoute("/_authenticated/published-schedules")({
   head: () => ({ meta: [{ title: "الجداول المنشورة" }] }),
@@ -254,6 +258,14 @@ function PublishedSchedulesPage() {
                   <Badge>منشور</Badge>
                 </div>
                 <DeliveryDemoWarningBanner name={v.name} notes={v.notes} />
+                {isEducationSourcePublication(v.id, v.academic_term_id) && (
+                  <p className="rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-950">
+                    {EDUCATION_SOURCE_PUBLICATION_NOTICE_AR}{" "}
+                    <Link className="underline" to="/reports/education-source-timetable">
+                      تقرير المطابقة
+                    </Link>
+                  </p>
+                )}
                 <div className="text-xs text-muted-foreground">
                   الفصل: {termName(v.academic_term_id)}
                 </div>

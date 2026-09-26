@@ -26,6 +26,8 @@ export interface DeliveryCoverage {
   missingHours: number;
   extraHours: number;
   complete: boolean;
+  provisionalSourceGroups: number;
+  temporaryAssignmentException: boolean;
 }
 
 export interface DeliveryGroupStates {
@@ -95,6 +97,8 @@ export function parseDeliveryCoverage(payload: unknown): DeliveryCoverage {
     missingHours: num(r.missing_hours),
     extraHours: num(r.extra_hours),
     complete: r.complete === true,
+    provisionalSourceGroups: num(r.provisional_source_groups),
+    temporaryAssignmentException: r.temporary_assignment_exception === true,
   };
 }
 

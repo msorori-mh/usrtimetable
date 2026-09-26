@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +22,10 @@ import {
 } from "@/lib/schedule-builder/queries";
 import { DeliveryDemoWarningBanner } from "@/components/schedule/delivery-demo-warning-banner";
 import { isDeliveryDemoVersion } from "@/lib/schedule-versions/delivery-demo";
+import {
+  EDUCATION_SOURCE_PUBLICATION_NOTICE_AR,
+  isEducationSourcePublication,
+} from "@/lib/schedule-versions/education-publication";
 import { entityDisplayName } from "@/lib/entity-display";
 
 export const Route = createFileRoute("/_authenticated/reports/published-timetable")({
@@ -360,11 +364,24 @@ function Page() {
         { label: "الدفعات", value: new Set(rows.map((r) => r.cohort).filter(Boolean)).size },
       ]}
       leading={
-        demoBannerVersion ? (
-          <DeliveryDemoWarningBanner
-            name={demoBannerVersion.name}
-            notes={demoBannerVersion.notes}
-          />
+        demoBannerVersion ||
+        isEducationSourcePublication(versionId, selectedVersion?.academic_term_id) ? (
+          <>
+            {demoBannerVersion && (
+              <DeliveryDemoWarningBanner
+                name={demoBannerVersion.name}
+                notes={demoBannerVersion.notes}
+              />
+            )}
+            {isEducationSourcePublication(versionId, selectedVersion?.academic_term_id) && (
+              <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+                {EDUCATION_SOURCE_PUBLICATION_NOTICE_AR}{" "}
+                <Link className="underline" to="/reports/education-source-timetable">
+                  تقرير المطابقة
+                </Link>
+              </p>
+            )}
+          </>
         ) : null
       }
       filters={
@@ -456,7 +473,10 @@ function Page() {
                 }}
                 items={[
                   { id: "all", name: "الكل" },
-                  ...scopedLevels.map((l) => ({ id: l.id, name: compactAcademicLevelLabel(l.name) })),
+                  ...scopedLevels.map((l) => ({
+                    id: l.id,
+                    name: compactAcademicLevelLabel(l.name),
+                  })),
                 ]}
               />
             </>

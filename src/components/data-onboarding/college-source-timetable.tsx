@@ -97,7 +97,15 @@ function serviceLabel(row: Source): string | null {
   return null;
 }
 
-export function CollegeSourceTimetable({ rows, onBack }: { rows: Source[]; onBack: () => void }) {
+export function CollegeSourceTimetable({
+  rows,
+  onBack,
+  published = false,
+}: {
+  rows: Source[];
+  onBack: () => void;
+  published?: boolean;
+}) {
   const [selected, setSelected] = useState<string>(DEPARTMENTS[0].file);
   const [level, setLevel] = useState<number | "all">("all");
   const operational = useQuery({
@@ -155,8 +163,8 @@ export function CollegeSourceTimetable({ rows, onBack }: { rows: Source[]; onBac
         </div>
         <p className="text-sm text-muted-foreground">
           المواعيد والمدرسون والقاعات أدناه مأخوذون من ملفات الجداول المستوردة. صف «بانتظار الربط»
-          ظاهر هنا كما ورد في الملف، لكنه ليس جلسة تشغيلية محفوظة في المسودة. تصحيح مستويات أربع
-          مواد في الدراسات الإسلامية مأخوذ من الحصر الذي زوّدته الكلية؛ يبقى المستوى الوارد في الملف
+          ظاهر هنا كما ورد في الملف، لكنه ليس جلسة تشغيلية محفوظة في النسخة. تصحيح مستويات أربع مواد
+          في الدراسات الإسلامية مأخوذ من الحصر الذي زوّدته الكلية؛ يبقى المستوى الوارد في الملف
           ظاهراً بجانبه. يظهر الموعد التشغيلي بجوار موعد الملف عند نقله لحل تعارض، وتظهر أسماء
           المدرسين التي تحتاج تحققاً بوصفها مؤقتة لهذا الفصل.
         </p>
@@ -311,7 +319,7 @@ export function CollegeSourceTimetable({ rows, onBack }: { rows: Source[]; onBac
                   "المدرس كما ورد",
                   "اليوم والوقت",
                   "القاعة",
-                  "الموعد في المسودة",
+                  published ? "الموعد في الجدول المنشور" : "الموعد في المسودة",
                   "الساعات",
                   "حالة الإدخال",
                 ].map((heading) => (
@@ -379,8 +387,12 @@ export function CollegeSourceTimetable({ rows, onBack }: { rows: Source[]; onBac
                     <td className="border p-2">
                       {row.schedule_session_id
                         ? row.pending_reasons.length > 0
-                          ? "جلسة مؤقتة؛ الاسم أو الإسناد بحاجة تحقق"
-                          : "جلسة في المسودة"
+                          ? published
+                            ? "جلسة منشورة استثنائياً؛ الاسم أو الإسناد بحاجة تحقق"
+                            : "جلسة مؤقتة؛ الاسم أو الإسناد بحاجة تحقق"
+                          : published
+                            ? "جلسة في الجدول المنشور"
+                            : "جلسة في المسودة"
                         : row.delivery_group_id
                           ? "مجموعة منشأة؛ موعد قيد المطابقة"
                           : "من الجدول، بانتظار الربط"}
