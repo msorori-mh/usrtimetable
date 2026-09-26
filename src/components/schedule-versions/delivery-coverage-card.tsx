@@ -92,19 +92,30 @@ export function DeliveryCoverageCard({
 
   const complete = coverage.complete;
   const states = deliveryGroupStates(coverage);
+  const temporaryException =
+    complete &&
+    coverage.temporaryAssignmentException &&
+    coverage.provisionalSourceGroups === coverage.unassignedGroups &&
+    coverage.unassignedGroups > 0;
 
   return (
     <div
       className={`space-y-2 rounded-md border p-2 ${
-        complete
-          ? "border-emerald-300 bg-emerald-50/60 dark:border-emerald-800 dark:bg-emerald-950/30"
-          : "border-destructive/40 bg-destructive/5"
+        temporaryException
+          ? "border-amber-300 bg-amber-50/60 dark:border-amber-800 dark:bg-amber-950/30"
+          : complete
+            ? "border-emerald-300 bg-emerald-50/60 dark:border-emerald-800 dark:bg-emerald-950/30"
+            : "border-destructive/40 bg-destructive/5"
       }`}
       data-testid="delivery-coverage-card"
     >
       <div className="flex items-center justify-between gap-2">
         <span className="text-[11px] font-semibold">اكتمال نسخة الجدول — جميع الأنظمة</span>
-        {complete ? (
+        {temporaryException ? (
+          <Badge variant="outline" className="gap-1 border-amber-600 text-amber-800">
+            <AlertTriangle className="h-3 w-3" /> استثناء الفصل الحالي
+          </Badge>
+        ) : complete ? (
           <Badge variant="default" className="gap-1">
             <CheckCircle2 className="h-3 w-3" /> مكتمل 100%
           </Badge>
@@ -127,6 +138,9 @@ export function DeliveryCoverageCard({
           label="الساعات المكتملة"
           value={`${coverage.scheduledHours}/${coverage.requiredHours}`}
         />
+        {temporaryException && (
+          <Row label="مجموعات دون تكليف معتمد" value={String(coverage.provisionalSourceGroups)} />
+        )}
         <Row label="الساعات الناقصة" value={`${coverage.missingHours} ساعة`} />
         {states.overScheduled > 0 && (
           <Row label="زائدة الساعات" value={`${states.overScheduled} مجموعة`} />
@@ -135,6 +149,13 @@ export function DeliveryCoverageCard({
           <Row label="إسناد مزدوج" value={`${coverage.multiAssignedGroups}`} />
         )}
       </div>
+
+      {temporaryException && (
+        <p className="text-[11px] text-amber-900 dark:text-amber-200">
+          هذه المجموعات لها جلسات وأسماء مدرسين من جداول الفصل، لكن استثناء النشر لا يعتمد التكليف
+          الإداري أو المالي.
+        </p>
+      )}
 
       <Button
         size="sm"

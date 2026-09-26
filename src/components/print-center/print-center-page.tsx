@@ -29,6 +29,10 @@ import {
   SCHEDULE_BUILDER_NO_COLLEGE_AR,
 } from "@/lib/schedule-builder/access";
 import { isDeliveryDemoVersion } from "@/lib/schedule-versions/delivery-demo";
+import {
+  EDUCATION_SOURCE_PUBLICATION_NOTICE_AR,
+  isEducationSourcePublication,
+} from "@/lib/schedule-versions/education-publication";
 import { fetchDeliveryCoverage } from "@/lib/schedule-versions/delivery-coverage";
 import type { SVStatus } from "@/lib/schedule-versions/lifecycle";
 import { entityDisplayName } from "@/lib/entity-display";
@@ -422,6 +426,12 @@ export function PrintCenterPage(props: { versionId: string }) {
     >
       <div className="report-no-print space-y-4">
         <DeliveryDemoWarningBanner name={version.name} notes={version.notes} />
+        {version.status === "published" &&
+          isEducationSourcePublication(version.id, version.academic_term_id) && (
+            <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+              {EDUCATION_SOURCE_PUBLICATION_NOTICE_AR}
+            </p>
+          )}
 
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
@@ -725,6 +735,11 @@ export function PrintCenterPage(props: { versionId: string }) {
                 termName: term?.name ?? null,
                 versionName: version.name,
                 versionStatus: version.status as SVStatus,
+                publicationNotice:
+                  version.status === "published" &&
+                  isEducationSourcePublication(version.id, version.academic_term_id)
+                    ? EDUCATION_SOURCE_PUBLICATION_NOTICE_AR
+                    : undefined,
                 versionNumber: version.name,
                 exportAt,
                 lastUpdate: lastUpdate ?? null,

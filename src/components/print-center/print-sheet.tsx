@@ -32,6 +32,7 @@ export interface PrintSheetMeta {
   termName?: string | null;
   versionName?: string | null;
   versionStatus?: SVStatus | null;
+  publicationNotice?: string | null;
   versionNumber?: string | null;
   exportAt: Date;
   lastUpdate?: string | null;
@@ -58,18 +59,19 @@ function compactRoomLabel(value: string): string {
   return value.replace(/^معمل\s+(?:ال)?حاسوب\s+/u, "حاسوب ");
 }
 
-
 /** Short student-facing label; never infer a group number from an import code. */
 function compactPrintGroupLabel(value: string): string {
   const label = value.trim();
   if (/^(?:all|الكل|جميع المجموعات)$/iu.test(label)) return "جميع المجموعات";
   const gender = /(?:^|[\s—–-])(طالبات|طلاب)(?=$|[\s—–-])/u.exec(label)?.[1];
-  const numbered = /(?:مجموعة|المجموعة)\s*([0-9٠-٩۰-۹]+)(?=$|[\s—–-])/u.exec(label)
-    ?? /^G\s*([0-9٠-٩۰-۹]+)$/iu.exec(label);
+  const numbered =
+    /(?:مجموعة|المجموعة)\s*([0-9٠-٩۰-۹]+)(?=$|[\s—–-])/u.exec(label) ??
+    /^G\s*([0-9٠-٩۰-۹]+)$/iu.exec(label);
   if (numbered) return [gender, `مجموعة ${numbered[1]}`].filter(Boolean).join(" — ");
   // Imported labels such as "قائم — BA20" keep their distinguishing code.
-  return label.replace(/^(?:(طلاب|طالبات)\s*[—–-]\s*)?قائم\s*[—–-]\s*/u,
-    (_match, audience) => audience ? `${audience} — ` : "");
+  return label.replace(/^(?:(طلاب|طالبات)\s*[—–-]\s*)?قائم\s*[—–-]\s*/u, (_match, audience) =>
+    audience ? `${audience} — ` : "",
+  );
 }
 
 function HeaderField(props: { label: string; value: string }) {
@@ -119,6 +121,11 @@ export function PrintSheet(props: {
           ? PRINT_PUBLISHED_ENDORSEMENT_AR
           : "نسخة للمراجعة والطباعة — ليست جدولاً منشوراً معتمداً."}
       </p>
+      {meta.publicationNotice && (
+        <p className="mt-1 font-semibold text-amber-900 print:text-black" role="status">
+          {meta.publicationNotice}
+        </p>
+      )}
       {meta.isDemo && (
         <p className="mt-1 font-semibold text-amber-800 print:text-black" role="status">
           {PRINT_DEMO_FOOTER_WARNING_AR}
@@ -275,11 +282,13 @@ export function PrintSheet(props: {
               const deliveryGroup = s.delivery_group_id
                 ? (labels?.deliveryGroups.get(s.delivery_group_id) ?? s.delivery_group_id)
                 : "";
-              const cohort = !commonCohort && s.cohort_id
-                ? (labels?.cohorts.get(s.cohort_id) ?? s.cohort_id)
-                : "";
+              const cohort =
+                !commonCohort && s.cohort_id
+                  ? (labels?.cohorts.get(s.cohort_id) ?? s.cohort_id)
+                  : "";
               const groupText = [cohort, compactPrintGroupLabel(deliveryGroup)]
-                .filter(Boolean).join(" / ");
+                .filter(Boolean)
+                .join(" / ");
               return (
                 <TableRow
                   key={s.id}
