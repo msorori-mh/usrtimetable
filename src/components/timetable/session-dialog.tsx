@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { availabilityStatusLabelAr, canReceiveNewWork } from "@/lib/instructor-metadata";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -103,15 +102,29 @@ export function SessionDialog({
   const canMutate = !readOnly;
 
   const { data: offerings } = useQuery({
-    queryKey: ["co-for-sched", collegeId],
+    // A timetable may contain more than the first 500 offerings. Keep the
+    // selected offering available when editing an older or later session.
+    queryKey: ["co-for-sched", collegeId, form.course_offering_id],
     enabled: open && !!collegeId,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("course_offerings")
         .select("id, course_id, expected_students, courses(code, name)")
         .eq("college_id", collegeId)
         .limit(500);
-      return data ?? [];
+      if (error) throw error;
+      const rows = data ?? [];
+      if (form.course_offering_id && !rows.some((row) => row.id === form.course_offering_id)) {
+        const { data: selected, error: selectedError } = await supabase
+          .from("course_offerings")
+          .select("id, course_id, expected_students, courses(code, name)")
+          .eq("college_id", collegeId)
+          .eq("id", form.course_offering_id)
+          .maybeSingle();
+        if (selectedError) throw selectedError;
+        if (selected) return [...rows, selected];
+      }
+      return rows;
     },
   });
   const { data: instructors } = useQuery({
@@ -120,7 +133,7 @@ export function SessionDialog({
     queryFn: async () => {
       const { data } = await supabase
         .from("instructors")
-        .select("id, full_name, availability_status")
+        .select("id, full_name")
         .eq("college_id", collegeId)
         .limit(500);
       return data ?? [];
@@ -356,19 +369,11 @@ export function SessionDialog({
                 <SelectValue placeholder="اختر المحاضر" />
               </SelectTrigger>
               <SelectContent>
-                {(instructors ?? [])
-                  // New scheduling: only available instructors; the current value stays visible.
-                  .filter(
-                    (i: any) =>
-                      canReceiveNewWork(i.availability_status) || i.id === form.instructor_id,
-                  )
-                  .map((i: any) => (
-                    <SelectItem key={i.id} value={i.id}>
-                      {instructorDisplayName(i)}
-                      {!canReceiveNewWork(i.availability_status) &&
-                        ` — ${availabilityStatusLabelAr(i.availability_status)}`}
-                    </SelectItem>
-                  ))}
+                {(instructors ?? []).map((i: any) => (
+                  <SelectItem key={i.id} value={i.id}>
+                    {instructorDisplayName(i)}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
