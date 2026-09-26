@@ -1,3 +1,9 @@
+> **تحذير مؤسسي — 2026-09-27:** هذه الوثيقة سجل تاريخي وليست تفويض تشغيل.
+> المرجع `emzytxqkxjjhsivqxdiu` موثق حاليًا كبيئة **Production** لموقع
+> `gomufadhala.com`. لذلك تُعد نتيجة G0 أدناه منتهية الصلاحية، ويُمنع أي
+> pilot أو كتابة تجريبية على هذا المرجع. يلزم Project Ref منفصل مثبت وقت
+> التشغيل، ونسخة `draft` موسومة `disposable_test=true`.
+
 # G0 — Staging Identity & State Gate
 
 - Supabase project ref: `emzytxqkxjjhsivqxdiu` (Staging)
