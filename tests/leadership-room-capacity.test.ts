@@ -4,6 +4,7 @@ import {
   aggregateLeadershipRoomCapacity,
   buildLeadershipRoomCapacity,
   roomHourEquivalents,
+  publishedInstructorPercent,
   type CapacityCollege,
   type CapacitySources,
 } from "../src/lib/reports/leadership-room-capacity";
@@ -57,6 +58,27 @@ function source(): CapacitySources {
   };
 }
 const analyze = (s = source(), c = college()) => buildLeadershipRoomCapacity([c], s)[0];
+
+test("published instructor coverage requires a complete, reconciled session read", () => {
+  const s = source();
+  s.sessions[0].instructor_id = "faculty-1";
+  const c = college("a", { sessions_count: 1 });
+  const named = analyze(s, c);
+  assert.equal(named.publishedSessions, 1);
+  assert.equal(named.namedPublishedSessions, 1);
+  assert.equal(publishedInstructorPercent(named, 1), 100);
+
+  s.sessions[0].instructor_id = null;
+  const missingName = analyze(s, c);
+  assert.equal(publishedInstructorPercent(missingName, 1), 0);
+  assert.equal(publishedInstructorPercent(missingName, 2), null);
+
+  const partial = analyze(s, college("a", { sessions_count: 2 }));
+  assert.equal(partial.publishedSessions, null);
+  assert.equal(publishedInstructorPercent(partial, 2), null);
+  delete s.sessions[0].instructor_id;
+  assert.equal(publishedInstructorPercent(analyze(s, c), 1), null);
+});
 
 test("laboratories are excluded from lecture-room availability, surplus and details", () => {
   const s = source();
