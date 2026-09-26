@@ -23,6 +23,13 @@ export interface AnalyticsSession {
   academic_term_id?: string | null;
 }
 
+/** Snapshot of one student partition enrolled in a delivery group for this version. */
+export interface StudentMembership {
+  delivery_group_id: string;
+  cohort_id: string;
+  partition_id: string | null;
+}
+
 export interface RoomMeta {
   id: string;
   capacity?: number | null;
