@@ -82,6 +82,9 @@ jobs:
       - name: TypeScript (tsc --noEmit)
         run: bunx tsc --noEmit
 
+      - name: Staging pilot fail-closed identity
+        run: node --import tsx --test tests/staging-pilot-guard.test.ts
+
       - name: Bounded fail-closed session checks
         run: node --test tests/session-check.test.mjs tests/auth-refresh.test.mjs tests/auth-resume.cjs tests/report-print-snapshot.cjs
 
