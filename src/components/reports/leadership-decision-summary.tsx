@@ -266,9 +266,10 @@ export function LeadershipDecisionSummary({
                   ? publishedInstructorPercent(room, college.sessions_count)
                   : null;
                 const displayedPercent = educationSourceException ? namedPercent : percent;
-                const namedText = namedPercent === null
-                  ? "قيد التحقق"
-                  : `${namedPercent}% (${room?.namedPublishedSessions}/${room?.publishedSessions})`;
+                const namedText =
+                  namedPercent === null
+                    ? "قيد التحقق"
+                    : `${namedPercent}% (${room?.namedPublishedSessions}/${room?.publishedSessions})`;
                 const displayedCoverage = educationSourceException
                   ? `محاضرات الجدول باسم محاضر: ${namedText}`
                   : `التكليف المعتمد: ${percent === null ? "غير محسوب" : `${percent}%`}`;
