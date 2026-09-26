@@ -204,7 +204,8 @@ export function buildLeadershipRoomCapacity(
     const issues: string[] = [];
     // The overview inventory includes halls and labs. Validate it before narrowing this
     // executive capacity indicator to lecture halls only.
-    const inventoryComplete = known(college.room_count) && activeRooms.length === college.room_count;
+    const inventoryComplete =
+      known(college.room_count) && activeRooms.length === college.room_count;
     if (!inventoryComplete) issues.push("عدد القاعات المقروءة لا يطابق ملخص الكلية؛ حدّث البيانات");
     const availabilityComplete = inventoryComplete && rooms.every((r) => known(r.availableHours));
     if (!availabilityComplete) issues.push("بيانات إتاحة القاعات غير مكتملة");
