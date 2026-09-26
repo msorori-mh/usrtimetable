@@ -23,7 +23,7 @@ test("the Education reconciliation is limited to the one first-term draft", () =
   );
   assert.deepEqual(
     [...migration.matchAll(/'EDU-2026F-CHEM-R\d\d-L\d'/g)].map((match) => match[0]),
-    ["'EDU-2026F-CHEM-R03-L1'", "'EDU-2026F-CHEM-R11-L3'"],
+    ["'EDU-2026F-CHEM-R11-L3'"],
   );
 });
 
