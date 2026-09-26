@@ -276,6 +276,13 @@ export function ExistingScheduleWorkspace({
                 جدول الكلية حسب ملفات الأقسام
               </Button>
             )}
+          {collegeId === "1ee291b2-bec9-43d3-b42b-5a4f46946399" &&
+            termId === "93705393-609d-4605-ae94-9572cd8b2090" &&
+            versionId === "7430bad7-2de7-5c90-9368-b214a199d6c3" && (
+              <Button variant="outline" asChild>
+                <a href="/reports/education-source-timetable">فتح جدول الأقسام في صفحة مستقلة</a>
+              </Button>
+            )}
           <Button onClick={() => setShowSourceReport(true)}>
             تقرير الجداول المستوردة — جميع صفوف المصدر
           </Button>
