@@ -16,7 +16,7 @@ const college = (id = "a", extra: Partial<CapacityCollege> = {}): CapacityColleg
   version_id: `v-${id}`,
   room_count: 2,
   groups_count: 10,
-  required_hours: 30,
+  required_hours: 2,
   teaching_hours: 2,
   ...extra,
 });
@@ -75,26 +75,33 @@ test("laboratories are excluded from lecture-room availability, surplus and deta
   });
   const r = analyze(s, college("a", { room_count: 3 }));
   assert.equal(r.availableHours, 72);
-  assert.equal(r.surplusHours, 42);
+  assert.equal(r.surplusHours, 70);
   assert.deepEqual(
     r.rooms.map((room) => room.id),
     ["r1", "r2"],
   );
 });
 
-test("72 available hours minus 30 required yields 42: one room and six hours, or seven days", () => {
+test("72 available lecture-room hours minus 2 occupied hours yields 70 unused hours", () => {
   const r = analyze();
   assert.equal(r.availableHours, 72);
-  assert.equal(r.balanceHours, 42);
+  assert.equal(r.balanceHours, 70);
   assert.deepEqual(r.equivalents, {
-    fullDays: 7,
-    hoursAfterDays: 0,
+    fullDays: 11,
+    hoursAfterDays: 4,
     fullRooms: 1,
-    hoursAfterRooms: 6,
+    hoursAfterRooms: 34,
   });
   assert.equal(r.emptyPublishedRooms, 1);
   assert.equal(r.rooms[0].idleHours, 34);
 });
+test("a theory-only college reports unused lecture-room time without a fabricated deficit", () => {
+  const r = analyze(source(), college("a", { required_hours: 2, teaching_hours: 2 }));
+  assert.equal(r.requiredHours, 2);
+  assert.equal(r.balanceHours, 70);
+  assert.equal(r.deficitHours, 0);
+});
+
 test("exact 6/36 thresholds, fractional hours, zero and invalid values", () => {
   assert.equal(roomHourEquivalents(5.5)?.fullDays, 0);
   assert.equal(roomHourEquivalents(6)?.fullDays, 1);
@@ -126,6 +133,7 @@ test("availability overlaps and repeated working days count once", () => {
   const r = analyze(s);
   assert.equal(r.rooms[0].availableHours, 6);
   assert.equal(r.availableHours, 42);
+  assert.equal(r.surplusHours, 40);
 });
 test("own availability wins over stale fallback columns and stays inside college operating hours", () => {
   const s = source();
@@ -222,7 +230,7 @@ test("one invalid room window makes aggregate unknown while preserving other roo
 });
 test("missing publication never fabricates empty-room or idle-hour claims", () => {
   const r = analyze(source(), college("a", { version_id: null, teaching_hours: null }));
-  assert.equal(r.balanceHours, 42);
+  assert.equal(r.balanceHours, null);
   assert.equal(r.emptyPublishedRooms, null);
   assert.equal(r.rooms[0].idleHours, null);
 });
@@ -234,10 +242,11 @@ test("unresolved terms, no teaching groups or published hours above declared dem
   ])
     assert.equal(analyze(source(), college("a", extra)).surplusHours, null);
 });
-test("demand uses all required group hours rather than only the two scheduled hours", () => {
+test("incomplete publication withholds unused-room claims instead of fabricating a deficit", () => {
   const r = analyze(source(), college("a", { required_hours: 90 }));
-  assert.equal(r.deficitHours, 18);
-  assert.equal(r.surplusHours, 0);
+  assert.equal(r.balanceHours, null);
+  assert.equal(r.deficitHours, null);
+  assert.equal(r.surplusHours, null);
 });
 test("overlapping and outside sessions are shown as anomalies, with union occupancy", () => {
   const s = source();
@@ -260,18 +269,19 @@ test("invalid session preserves known capacity but hides occupancy and empty cou
   assert.equal(r.rooms[0].occupiedHours, null);
   assert.equal(r.emptyPublishedRooms, null);
 });
-test("university totals show surplus and deficit separately without offsetting colleges", () => {
+test("university totals include only colleges with complete published occupancy", () => {
   const rows = [analyze(), analyze(source(), college("a", { required_hours: 90 }))];
   const total = aggregateLeadershipRoomCapacity(rows);
-  assert.equal(total.surplusHours, 42);
-  assert.equal(total.deficitHours, 18);
+  assert.equal(total.surplusHours, 70);
+  assert.equal(total.deficitHours, 0);
+  assert.equal(total.knownColleges, 1);
   assert.equal(total.roomsByCollege, 1);
 });
 test("university pooled equivalent and sum of whole equivalents within each college remain distinct", () => {
-  const r = analyze(source(), college("a", { required_hours: 52 }));
+  const r = analyze();
   const total = aggregateLeadershipRoomCapacity([r, { ...r, id: "b" }]);
-  assert.equal(total.equivalents?.fullRooms, 1);
-  assert.equal(total.roomsByCollege, 0);
+  assert.equal(total.equivalents?.fullRooms, 3);
+  assert.equal(total.roomsByCollege, 2);
 });
 test("partial summaries use the same measured college set in every total; all-unknown is not zero", () => {
   const missing = analyze({ ...source(), settings: [] });
@@ -279,7 +289,7 @@ test("partial summaries use the same measured college set in every total; all-un
   assert.equal(total.complete, false);
   assert.equal(total.knownColleges, 1);
   assert.equal(total.availableHours, 72);
-  assert.equal(total.requiredHours, 30);
+  assert.equal(total.requiredHours, 2);
   assert.equal(aggregateLeadershipRoomCapacity([missing]).surplusHours, null);
   assert.equal(aggregateLeadershipRoomCapacity([]).equivalents, null);
 });

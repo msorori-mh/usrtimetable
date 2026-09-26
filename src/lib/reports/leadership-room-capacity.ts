@@ -90,6 +90,7 @@ export interface LeadershipCapacityCollege {
   name: string;
   rooms: LeadershipCapacityRoom[];
   availableHours: number | null;
+  /** Occupied lecture-hall hours in the selected published schedules. */
   requiredHours: number | null;
   balanceHours: number | null;
   surplusHours: number | null;
@@ -212,24 +213,30 @@ export function buildLeadershipRoomCapacity(
     const availableHours = availabilityComplete
       ? round(rooms.reduce((n, r) => n + r.availableHours!, 0))
       : null;
-    const requiredHours =
-      college.term_state === "ready" && known(college.required_hours)
-        ? college.required_hours
-        : null;
-    if (requiredHours === null) issues.push("الفصل أو الساعات التدريسية المطلوبة غير محسومة");
-    const demandComplete =
-      requiredHours !== null &&
+    const publicationComplete =
+      college.term_state === "ready" &&
+      !!college.version_id &&
       known(college.groups_count) &&
       college.groups_count > 0 &&
-      (!known(college.teaching_hours) || requiredHours + 0.01 >= college.teaching_hours);
-    if (requiredHours !== null && !demandComplete)
-      issues.push("يجب استكمال مجموعات التدريس ومطابقة المطلوب مع المنشور قبل احتساب الفائض");
-    const balanceHours =
-      availableHours !== null && demandComplete ? round(availableHours - requiredHours!) : null;
-    const surplusHours = balanceHours === null ? null : Math.max(0, balanceHours);
-    const deficitHours = balanceHours === null ? null : Math.max(0, -balanceHours);
+      known(college.required_hours) &&
+      known(college.teaching_hours) &&
+      Math.abs(college.required_hours - college.teaching_hours) <= 0.01;
+    if (!publicationComplete) issues.push("لا يُحتسب الفائض قبل نشر جميع ساعات التدريس المطلوبة");
     const occupancyComplete =
-      inventoryComplete && !!college.version_id && rooms.every((r) => known(r.occupiedHours));
+      inventoryComplete &&
+      publicationComplete &&
+      rooms.every((room) => known(room.occupiedHours) && room.issue === null);
+    if (publicationComplete && !occupancyComplete)
+      issues.push("إشغال قاعات المحاضرات يتضمن توقيتًا غير صالح أو متداخلًا");
+    const requiredHours = occupancyComplete
+      ? round(rooms.reduce((total, room) => total + room.occupiedHours!, 0))
+      : null;
+    const balanceHours =
+      availableHours !== null && requiredHours !== null
+        ? round(Math.max(0, availableHours - requiredHours))
+        : null;
+    const surplusHours = balanceHours;
+    const deficitHours = balanceHours === null ? null : 0;
     return {
       id: college.college_id,
       name: college.college,
