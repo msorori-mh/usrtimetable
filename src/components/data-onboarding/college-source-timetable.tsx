@@ -109,7 +109,10 @@ export function CollegeSourceTimetable({ rows, onBack }: { rows: Source[]; onBac
           .from("schedule_sessions")
           .select("id,day_of_week,start_time,end_time,room_id")
           .eq("schedule_version_id", "7430bad7-2de7-5c90-9368-b214a199d6c3"),
-        supabase.from("rooms").select("id,name").eq("college_id", "1ee291b2-bec9-43d3-b42b-5a4f46946399"),
+        supabase
+          .from("rooms")
+          .select("id,name")
+          .eq("college_id", "1ee291b2-bec9-43d3-b42b-5a4f46946399"),
       ]);
       if (sessions.error) throw sessions.error;
       if (rooms.error) throw rooms.error;
@@ -154,8 +157,8 @@ export function CollegeSourceTimetable({ rows, onBack }: { rows: Source[]; onBac
           المواعيد والمدرسون والقاعات أدناه مأخوذون من ملفات الجداول المستوردة. صف «بانتظار الربط»
           ظاهر هنا كما ورد في الملف، لكنه ليس جلسة تشغيلية محفوظة في المسودة. تصحيح مستويات أربع
           مواد في الدراسات الإسلامية مأخوذ من الحصر الذي زوّدته الكلية؛ يبقى المستوى الوارد في الملف
-          ظاهراً بجانبه. يظهر الموعد التشغيلي بجوار موعد الملف عند نقله لحل تعارض، وتظهر أسماء المدرسين
-          التي تحتاج تحققاً بوصفها مؤقتة لهذا الفصل.
+          ظاهراً بجانبه. يظهر الموعد التشغيلي بجوار موعد الملف عند نقله لحل تعارض، وتظهر أسماء
+          المدرسين التي تحتاج تحققاً بوصفها مؤقتة لهذا الفصل.
         </p>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
           {[
@@ -328,7 +331,8 @@ export function CollegeSourceTimetable({ rows, onBack }: { rows: Source[]; onBac
                 const bookedRoom = session?.room_id
                   ? operational.data?.rooms.get(session.room_id)
                   : undefined;
-                const moved = session &&
+                const moved =
+                  session &&
                   (session.day_of_week !== row.day_of_week ||
                     session.start_time !== row.start_time ||
                     session.end_time !== row.end_time ||
@@ -365,7 +369,11 @@ export function CollegeSourceTimetable({ rows, onBack }: { rows: Source[]; onBac
                           <div>{bookedRoom ?? "القاعة قيد التحديد"}</div>
                           {moved && <div className="text-xs text-amber-700">نقل لحل تعارض</div>}
                         </>
-                      ) : row.schedule_session_id ? "جارٍ تحميل الجلسة" : "—"}
+                      ) : row.schedule_session_id ? (
+                        "جارٍ تحميل الجلسة"
+                      ) : (
+                        "—"
+                      )}
                     </td>
                     <td className="border p-2">{duration(row)}</td>
                     <td className="border p-2">
