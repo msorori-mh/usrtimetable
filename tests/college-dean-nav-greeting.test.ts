@@ -103,6 +103,27 @@ describe("university president greeting", () => {
     ).toBe("مرحبًا، أ.د. رئيس الجامعة — رئيس الجامعة");
   });
 
+  it("omits the president title for Abdullah Haider only", () => {
+    expect(
+      buildAccountGreeting({
+        fullName: "أ.د. عبدالله حيدر",
+        email: "ahaider@usr.edu.ye",
+        collegeName: null,
+        isCollegeDeanOnly: false,
+        isUniversityLeadershipOnly: true,
+      }),
+    ).toBe("مرحبًا، أ.د. عبدالله حيدر");
+    expect(
+      buildAccountGreeting({
+        fullName: "أ.د. محمد حمود القدسي",
+        email: "mohqadasi@usr.edu.ye",
+        collegeName: null,
+        isCollegeDeanOnly: false,
+        isUniversityLeadershipOnly: true,
+      }),
+    ).toBe("مرحبًا، أ.د. محمد حمود القدسي — رئيس الجامعة");
+  });
+
   it("keeps the title when the account name is unavailable", () => {
     expect(
       buildAccountGreeting({
