@@ -80,8 +80,12 @@ export function analyzeScheduleQuality(input: {
     const left = membersByGroup.get(a.delivery_group_id);
     const right = membersByGroup.get(b.delivery_group_id);
     // Without a complete version membership, keep the conservative cohort check.
-    if (!left?.length || !right?.length || left.some((m) => !m.partition_id) ||
-        right.some((m) => !m.partition_id)) {
+    if (
+      !left?.length ||
+      !right?.length ||
+      left.some((m) => !m.partition_id) ||
+      right.some((m) => !m.partition_id)
+    ) {
       return !!a.cohort_id && a.cohort_id === b.cohort_id;
     }
     const keys = new Set(left.map((m) => `${m.cohort_id}:${m.partition_id}`));
