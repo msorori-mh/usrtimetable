@@ -19,6 +19,51 @@ const base = (over: Partial<AnalyticsSession> & { id: string }): AnalyticsSessio
   ...over,
 });
 
+describe("version student membership conflicts", () => {
+  const pair = [
+    base({ id: "a", delivery_group_id: "dg-a", course_offering_id: "course-a" }),
+    base({ id: "b", delivery_group_id: "dg-b", course_offering_id: "course-b",
+      instructor_id: "inst-2", room_id: "room-2" }),
+  ];
+
+  test("separate partitions of one cohort can meet simultaneously", () => {
+    const report = analyzeScheduleQuality({
+      sessions: pair,
+      studentMemberships: [
+        { delivery_group_id: "dg-a", cohort_id: "cohort-1", partition_id: "p1" },
+        { delivery_group_id: "dg-b", cohort_id: "cohort-1", partition_id: "p2" },
+      ],
+    });
+    expect(report.hard_conflicts).toBe(0);
+  });
+
+  test("shared partition across delivery groups is a student conflict", () => {
+    const report = analyzeScheduleQuality({
+      sessions: pair,
+      studentMemberships: [
+        { delivery_group_id: "dg-a", cohort_id: "cohort-1", partition_id: "p1" },
+        { delivery_group_id: "dg-b", cohort_id: "cohort-1", partition_id: "p1" },
+      ],
+    });
+    expect(report.hard_conflicts).toBe(1);
+  });
+
+  test("missing membership retains the conservative cohort check", () => {
+    expect(analyzeScheduleQuality({ sessions: pair, studentMemberships: [] }).hard_conflicts).toBe(1);
+  });
+
+  test("different courses in the same room still conflict", () => {
+    const report = analyzeScheduleQuality({
+      sessions: [pair[0], { ...pair[1], instructor_id: "inst-1", room_id: "room-1" }],
+      studentMemberships: [
+        { delivery_group_id: "dg-a", cohort_id: "cohort-1", partition_id: "p1" },
+        { delivery_group_id: "dg-b", cohort_id: "cohort-1", partition_id: "p2" },
+      ],
+    });
+    expect(report.hard_conflicts).toBe(1);
+  });
+});
+
 describe("schedule quality analytics", () => {
   test("full clean schedule scores ACCEPTABLE with zero hard conflicts", () => {
     const sessions = [
