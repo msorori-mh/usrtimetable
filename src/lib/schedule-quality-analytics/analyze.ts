@@ -11,6 +11,7 @@ import {
   type QualityFinding,
   type RequiredWorkItem,
   type RoomMeta,
+  type StudentMembership,
 } from "./types";
 import { isSameDeliveryEntry } from "@/lib/scheduling/merged-delivery";
 
@@ -55,6 +56,7 @@ function studyKey(s: AnalyticsSession | RequiredWorkItem): string {
  */
 export function analyzeScheduleQuality(input: {
   sessions: AnalyticsSession[];
+  studentMemberships?: StudentMembership[];
   required?: RequiredWorkItem[];
   rooms?: RoomMeta[];
   collegeId?: string;
@@ -65,6 +67,30 @@ export function analyzeScheduleQuality(input: {
   const required = input.required ?? [];
   const rooms = new Map((input.rooms ?? []).map((r) => [r.id, r]));
   const roomCapHours = input.weeklyRoomCapacityHours ?? MAX_ROOM_WEEKLY_HOURS;
+  const membersByGroup = new Map<string, StudentMembership[]>();
+  for (const membership of input.studentMemberships ?? []) {
+    const rows = membersByGroup.get(membership.delivery_group_id) ?? [];
+    rows.push(membership);
+    membersByGroup.set(membership.delivery_group_id, rows);
+  }
+  const sharedStudents = (a: AnalyticsSession, b: AnalyticsSession): boolean => {
+    if (!a.delivery_group_id || !b.delivery_group_id) {
+      return !!a.cohort_id && a.cohort_id === b.cohort_id;
+    }
+    const left = membersByGroup.get(a.delivery_group_id);
+    const right = membersByGroup.get(b.delivery_group_id);
+    // Without a complete version membership, keep the conservative cohort check.
+    if (
+      !left?.length ||
+      !right?.length ||
+      left.some((m) => !m.partition_id) ||
+      right.some((m) => !m.partition_id)
+    ) {
+      return !!a.cohort_id && a.cohort_id === b.cohort_id;
+    }
+    const keys = new Set(left.map((m) => `${m.cohort_id}:${m.partition_id}`));
+    return right.some((m) => keys.has(`${m.cohort_id}:${m.partition_id}`));
+  };
   const findings: QualityFinding[] = [];
   const breakdown: QualityAnalyticsReport["metrics_breakdown"] = {};
 
@@ -83,7 +109,7 @@ export function analyzeScheduleQuality(input: {
     ? sessions.filter((s) => !s.college_id || s.college_id === input.collegeId)
     : sessions;
 
-  // Hard conflicts: instructor / room / cohort pairwise within same study_system
+  // Hard conflicts: instructor, room, or shared student partition within one study system
   const hardPairs: string[] = [];
   for (let i = 0; i < scoped.length; i++) {
     for (let j = i + 1; j < scoped.length; j++) {
@@ -96,11 +122,11 @@ export function analyzeScheduleQuality(input: {
       if (!overlaps(a, b)) continue;
       const sameInstructor = a.instructor_id && a.instructor_id === b.instructor_id;
       const sameRoom = a.room_id && a.room_id === b.room_id;
-      const sameCohort = a.cohort_id && a.cohort_id === b.cohort_id;
+      const sameStudents = sharedStudents(a, b);
       // One actual lecture recorded once per merged group is a single delivery;
       // it must never conflict with itself.
       if (isSameDeliveryEntry(a, b)) continue;
-      if (sameInstructor || sameRoom || sameCohort) {
+      if (sameInstructor || sameRoom || sameStudents) {
         hardPairs.push(`${a.id}|${b.id}`);
       }
     }
@@ -111,12 +137,12 @@ export function analyzeScheduleQuality(input: {
       code: "hard_conflict",
       severity: "CRITICAL",
       title_ar: "تعارضات إلزامية",
-      formula: "pair_overlap(instructor|room|cohort) within study_system × weight",
+      formula: "pair_overlap(instructor|room|student_partition) within study_system × weight",
       weight: DEFAULT_WEIGHTS.hard_conflict,
       count: hard_conflicts,
       deduction: Math.min(100, hard_conflicts * DEFAULT_WEIGHTS.hard_conflict),
       affected_ids: hardPairs.flatMap((p) => p.split("|")),
-      detail_ar: `${hard_conflicts} زوج جلسة متداخل على مدرس أو قاعة أو دفعة.`,
+      detail_ar: `${hard_conflicts} زوج جلسة متداخل على مدرس أو قاعة أو عضوية طلابية.`,
       link_hint: "/reports/conflicts",
     });
   }
