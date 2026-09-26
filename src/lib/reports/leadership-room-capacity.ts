@@ -115,9 +115,13 @@ export function publishedInstructorPercent(
   const published = capacity?.publishedSessions;
   const named = capacity?.namedPublishedSessions;
   if (
-    !known(expectedSessions) || expectedSessions === 0 ||
-    published !== expectedSessions || !known(named) || named > expectedSessions
-  ) return null;
+    !known(expectedSessions) ||
+    expectedSessions === 0 ||
+    published !== expectedSessions ||
+    !known(named) ||
+    named > expectedSessions
+  )
+    return null;
   return Math.round((named / expectedSessions) * 1000) / 10;
 }
 
