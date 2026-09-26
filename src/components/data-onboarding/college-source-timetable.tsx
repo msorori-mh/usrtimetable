@@ -103,6 +103,9 @@ export function CollegeSourceTimetable({ rows, onBack }: { rows: Source[]; onBac
   const baselineHours = selectedDepartment.levels.reduce((sum, hours) => sum + hours, 0);
   const totalImported = rows.reduce((sum, row) => sum + duration(row), 0);
   const linked = rows.filter((row) => row.schedule_session_id != null).length;
+  const levelTotals = [0, 1, 2, 3].map((index) =>
+    DEPARTMENTS.reduce((sum, department) => sum + department.levels[index], 0),
+  );
 
   return (
     <section className="space-y-4" aria-label="جدول الكلية حسب ملفات الأقسام">
@@ -138,6 +141,71 @@ export function CollegeSourceTimetable({ rows, onBack }: { rows: Source[]; onBac
           يختلف جمع صفوف الملفات عن الحصر التجميعي بسبب الخدمات والتوازي واختلاف تفصيل بعض الملفات.
           لا تُضاف ساعات الصفوف غير المرتبطة إلى الساعات التشغيلية تلقائياً.
         </p>
+        <div className="overflow-x-auto">
+          <table
+            className="w-full min-w-[760px] border-collapse text-right text-sm"
+            aria-label="ملخص ساعات أقسام كلية التربية والعلوم"
+          >
+            <caption className="py-2 text-right font-semibold">
+              إجمالي ساعات الأقسام والمستويات بحسب حصر الكلية
+            </caption>
+            <thead>
+              <tr>
+                {["القسم", "الأول", "الثاني", "الثالث", "الرابع", "إجمالي القسم", "صفوف الملف"].map(
+                  (heading) => (
+                    <th key={heading} scope="col" className="border p-2">
+                      {heading}
+                    </th>
+                  ),
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {DEPARTMENTS.map((department) => {
+                const fileHours = rows
+                  .filter((row) => row.source_file === department.file)
+                  .reduce((sum, row) => sum + duration(row), 0);
+                return (
+                  <tr key={department.file}>
+                    <th scope="row" className="border p-2 font-medium">
+                      <button
+                        type="button"
+                        className="text-primary underline-offset-2 hover:underline"
+                        onClick={() => {
+                          setSelected(department.file);
+                          setLevel("all");
+                        }}
+                      >
+                        {department.name}
+                      </button>
+                    </th>
+                    {department.levels.map((hours, index) => (
+                      <td key={index} className="border p-2">
+                        {hours}
+                      </td>
+                    ))}
+                    <td className="border p-2 font-semibold">
+                      {department.levels.reduce((sum, hours) => sum + hours, 0)}
+                    </td>
+                    <td className="border p-2">{fileHours}</td>
+                  </tr>
+                );
+              })}
+              <tr className="bg-muted/50 font-bold">
+                <th scope="row" className="border p-2">
+                  إجمالي الكلية
+                </th>
+                {levelTotals.map((hours, index) => (
+                  <td key={index} className="border p-2">
+                    {hours}
+                  </td>
+                ))}
+                <td className="border p-2">726</td>
+                <td className="border p-2">{totalImported}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </Card>
 
       <Card className="space-y-3 p-4">
