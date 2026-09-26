@@ -288,9 +288,10 @@ test("Education source publication keeps administrative gaps separate from sched
       },
     ],
   });
-  assert.match(output, /محاضرات الجدول باسم محاضر: 100% \(339\/339\)/);
-  assert.match(output, /التكليف المعتمد: 86.3%/);
-  assert.match(output, /بانتظار اعتماد التكليف: 99 ساعة/);
+  assert.match(output, /اعتماد جدول هذا الفصل: 100% \(722\/722 ساعة\)/);
+  assert.match(output, /محاضرات الجدول باسم محاضر من ملفات الأقسام: 100% \(339\/339\)/);
+  assert.match(output, /التكليف الوظيفي المسجل: 86.3%/);
+  assert.match(output, /ساعات تحتاج توثيق التكليف الوظيفي: 99 ساعة/);
   assert.doesNotMatch(output, /ساعة تدريس غير مسندة|تدريس غير مسند/);
   assert.match(output, /58 نصابًا غير مكتمل/);
   assert.doesNotMatch(output, /زيادة 52 ساعة|نقص 229 ساعة/);
@@ -310,8 +311,8 @@ test("missing published-session evidence withholds the named-instructor percenta
     sessions_count: 339,
   });
   const output = html({ colleges: [education], capacity: [room("education", 104)] });
-  assert.match(output, /محاضرات الجدول باسم محاضر: قيد التحقق/);
-  assert.doesNotMatch(output, /محاضرات الجدول باسم محاضر: 100%/);
+  assert.match(output, /اعتماد جدول هذا الفصل: قيد التحقق/);
+  assert.doesNotMatch(output, /اعتماد جدول هذا الفصل: 100%/);
 });
 
 test("single-college input does not expose other colleges and uses unique faculty count", () => {
