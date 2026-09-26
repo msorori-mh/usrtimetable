@@ -1223,6 +1223,68 @@ export type Database = {
           },
         ]
       }
+      delivery_group_source_structures: {
+        Row: {
+          approved_by: string | null
+          cohort_id: string
+          college_id: string
+          component_id: string
+          created_at: string
+          group_count: number
+          reason: string
+          term_id: string
+        }
+        Insert: {
+          approved_by?: string | null
+          cohort_id: string
+          college_id: string
+          component_id: string
+          created_at?: string
+          group_count: number
+          reason: string
+          term_id: string
+        }
+        Update: {
+          approved_by?: string | null
+          cohort_id?: string
+          college_id?: string
+          component_id?: string
+          created_at?: string
+          group_count?: number
+          reason?: string
+          term_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_group_source_structures_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "academic_cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_group_source_structures_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_group_source_structures_component_id_fkey"
+            columns: ["component_id"]
+            isOneToOne: false
+            referencedRelation: "plan_course_components"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_group_source_structures_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "academic_terms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       delivery_groups: {
         Row: {
           active: boolean
