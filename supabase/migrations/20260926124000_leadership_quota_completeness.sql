@@ -28,7 +28,10 @@ WITH members AS (
   GROUP BY identity_id
 ), resolved AS (
   SELECT h.identity_id,
-    coalesce(d.home_college_id, h.home_id) AS home_college_id,
+    CASE
+      WHEN d.identity_id IS NOT NULL THEN d.home_college_id
+      ELSE h.home_id
+    END AS home_college_id,
     d.source_instructor_id AS approved_source,
     d.quota_confirmed,
     d.updated_at AS decision_at
