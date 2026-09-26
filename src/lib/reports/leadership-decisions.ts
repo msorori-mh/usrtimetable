@@ -1,4 +1,5 @@
 import type { LeadershipCollege } from "./leadership";
+import { isEducationSourcePublication } from "@/lib/schedule-versions/education-publication";
 import type { LeadershipCapacityCollege } from "./leadership-room-capacity";
 
 export type LeadershipDetailTab = "teaching" | "faculty" | "rooms" | "quality" | "staffing";
@@ -42,7 +43,9 @@ export function leadershipPriorities(
             100,
             "teaching",
             `${college.uncovered_hours} ساعة تدريس غير مسندة`,
-            "تحتاج المقررات إلى استكمال الإسناد التدريسي.",
+            college.version_id && isEducationSourcePublication(college.version_id, college.term_id)
+              ? "الجدول منشور بأسماء من المصدر؛ يلزم اعتماد تكليف مجموعات التدريس إداريًا."
+              : "تحتاج مجموعات التدريس إلى إسناد إداري معتمد.",
             "عمادة الكلية والشؤون الأكاديمية",
           );
         if ((college.pending_groups ?? 0) > 0 || (college.overallocated_groups ?? 0) > 0)
