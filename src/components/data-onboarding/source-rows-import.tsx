@@ -60,17 +60,34 @@ export function SourceRowsImport({
     try {
       // Recheck stable identities immediately before inserting. A second editor
       // can add rows while this preview is open; never overwrite their work.
-      const { data: current, error: readError } = await supabase
-        .from("existing_schedule_source_rows")
-        .select("source_id")
-        .eq("college_id", collegeId)
-        .eq("term_id", termId)
-        .in(
-          "source_id",
-          preview.rows.map((row) => row.source_id),
-        );
-      if (readError) throw readError;
-      if (current?.length) throw new Error("تغير المصدر بعد المعاينة؛ حدّث الصفحة وأعد المطابقة");
+      const [byId, byFile] = await Promise.all([
+        supabase
+          .from("existing_schedule_source_rows")
+          .select("source_id")
+          .eq("college_id", collegeId)
+          .eq("term_id", termId)
+          .in(
+            "source_id",
+            preview.rows.map((row) => row.source_id),
+          ),
+        supabase
+          .from("existing_schedule_source_rows")
+          .select("source_file,source_cell")
+          .eq("college_id", collegeId)
+          .eq("term_id", termId)
+          .in("source_file", [...new Set(preview.rows.map((row) => row.source_file))])
+          .in("source_cell", [...new Set(preview.rows.map((row) => row.source_cell))]),
+      ]);
+      if (byId.error) throw byId.error;
+      if (byFile.error) throw byFile.error;
+      const locations = new Set(
+        preview.rows.map((row) => `${row.source_file}|_${row.source_cell}`),
+      );
+      if (
+        byId.data?.length ||
+        byFile.data?.some((row) => locations.has(`${row.source_file}|_${row.source_cell}`))
+      )
+        throw new Error("تغير المصدر بعد المعاينة؛ حدّث الصفحة وأعد المطابقة");
       for (let i = 0; i < preview.rows.length; i += 50) {
         const batch = preview.rows.slice(i, i + 50).map((row: SourceImportInput) => {
           const { program: _program, ...source } = row;
