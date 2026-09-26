@@ -41,14 +41,12 @@ export const SOURCE_STAGE_LABELS: Record<SourceStage, string> = {
   missing_assignment: "الإسناد غير مربوط",
   missing_session: "لا توجد جلسة مثبتة للمجموعة في هذه المسودة",
   unlinked_session: "جلسة موجودة؛ رابط صف المصدر يحتاج تسوية",
-  shared_review:
-    "المحاضرة المشتركة محفوظة؛ تحقق من عضوية المجموعة في الربط المشترك",
+  shared_review: "المحاضرة المشتركة محفوظة؛ تحقق من عضوية المجموعة في الربط المشترك",
   review: "المصدر مرتبط؛ ملاحظات المراجعة معلقة",
   complete: "مكتمل الربط والتحقق",
 };
 
-const normalizedTime = (value: string | null | undefined) =>
-  value?.slice(0, 5) ?? "";
+const normalizedTime = (value: string | null | undefined) => value?.slice(0, 5) ?? "";
 
 export function reconcileSourceRow(
   source: SourceReconciliationRow,
@@ -62,8 +60,7 @@ export function reconcileSourceRow(
     normalizedTime(source.end_time) <= normalizedTime(source.start_time)
   )
     issues.push("missing_time");
-  if (!source.study_plan_id || !source.plan_course_id)
-    issues.push("missing_plan");
+  if (!source.study_plan_id || !source.plan_course_id) issues.push("missing_plan");
   if (!source.component_id) issues.push("missing_component");
   if (!source.delivery_group_id) issues.push("missing_group");
   if (!source.teaching_assignment_id) issues.push("missing_assignment");
@@ -74,8 +71,7 @@ export function reconcileSourceRow(
     (session) =>
       session.delivery_group_id === source.delivery_group_id &&
       session.day_of_week === source.day_of_week &&
-      normalizedTime(session.start_time) ===
-        normalizedTime(source.start_time) &&
+      normalizedTime(session.start_time) === normalizedTime(source.start_time) &&
       normalizedTime(session.end_time) === normalizedTime(source.end_time),
   );
   const sharedSession = source.shared_member
@@ -83,8 +79,7 @@ export function reconcileSourceRow(
         (session) =>
           session.id === source.schedule_session_id &&
           session.day_of_week === source.day_of_week &&
-          normalizedTime(session.start_time) ===
-            normalizedTime(source.start_time) &&
+          normalizedTime(session.start_time) === normalizedTime(source.start_time) &&
           normalizedTime(session.end_time) === normalizedTime(source.end_time),
       )
     : null;

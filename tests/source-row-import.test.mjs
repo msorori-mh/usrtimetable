@@ -30,32 +30,18 @@ test("new source row retains raw evidence without inventing plan or session", ()
   assert.deepEqual(result.errors, []);
   assert.equal(result.rows.length, 1);
   assert.equal(result.rows[0].start_time, "08:00:00");
-  assert.equal(
-    JSON.parse(result.rows[0].notes).raw_extraction.dept,
-    "كيمياء التربية",
-  );
+  assert.equal(JSON.parse(result.rows[0].notes).raw_extraction.dept, "كيمياء التربية");
   assert.equal("plan_course_id" in result.rows[0], false);
 });
 
 test("exact repeat is skipped; changed same ID or location is blocked", () => {
   assert.equal(previewSourceRows([item()], [saved()]).skipped, 1);
-  assert.equal(
-    previewSourceRows([item({ raw_teacher: "د. آخر" })], [saved()]).errors
-      .length,
-    1,
-  );
-  assert.equal(
-    previewSourceRows([item({ source_id: "DIFFERENT" })], [saved()]).errors
-      .length,
-    1,
-  );
+  assert.equal(previewSourceRows([item({ raw_teacher: "د. آخر" })], [saved()]).errors.length, 1);
+  assert.equal(previewSourceRows([item({ source_id: "DIFFERENT" })], [saved()]).errors.length, 1);
 });
 
 test("rejects invalid duration and repeated file identifiers before writing", () => {
-  assert.equal(
-    previewSourceRows([item({ end_time: "07:00" })], []).errors.length,
-    1,
-  );
+  assert.equal(previewSourceRows([item({ end_time: "07:00" })], []).errors.length, 1);
   const result = previewSourceRows([item(), item()], []);
   assert.equal(result.errors.length, 1);
   assert.equal(result.rows.length, 1);

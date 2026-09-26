@@ -23,9 +23,7 @@ export function SourceRowsImport({
   existing: readonly ExistingRow[];
   onSaved: () => Promise<unknown>;
 }) {
-  const [preview, setPreview] = useState<ReturnType<
-    typeof previewSourceRows
-  > | null>(null);
+  const [preview, setPreview] = useState<ReturnType<typeof previewSourceRows> | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function selectFile(file: File | undefined) {
@@ -37,9 +35,7 @@ export function SourceRowsImport({
         const parsed: unknown = JSON.parse(await file.text());
         if (
           !Array.isArray(parsed) ||
-          !parsed.every(
-            (row) => row && typeof row === "object" && !Array.isArray(row),
-          )
+          !parsed.every((row) => row && typeof row === "object" && !Array.isArray(row))
         )
           throw new Error("ملف JSON يجب أن يحتوي قائمة صفوف المصدر");
         matrix = parsed as Record<string, unknown>[];
@@ -59,8 +55,7 @@ export function SourceRowsImport({
   }
 
   async function save() {
-    if (!preview || preview.errors.length || !preview.rows.length || !versionId)
-      return;
+    if (!preview || preview.errors.length || !preview.rows.length || !versionId) return;
     setLoading(true);
     try {
       // Recheck stable identities immediately before inserting. A second editor
@@ -75,24 +70,19 @@ export function SourceRowsImport({
           preview.rows.map((row) => row.source_id),
         );
       if (readError) throw readError;
-      if (current?.length)
-        throw new Error("تغير المصدر بعد المعاينة؛ حدّث الصفحة وأعد المطابقة");
+      if (current?.length) throw new Error("تغير المصدر بعد المعاينة؛ حدّث الصفحة وأعد المطابقة");
       for (let i = 0; i < preview.rows.length; i += 50) {
-        const batch = preview.rows
-          .slice(i, i + 50)
-          .map((row: SourceImportInput) => {
-            const { program: _program, ...source } = row;
-            return {
-              ...source,
-              college_id: collegeId,
-              term_id: termId,
-              schedule_version_id: versionId,
-              status: "pending",
-            };
-          });
-        const { error } = await supabase
-          .from("existing_schedule_source_rows")
-          .insert(batch);
+        const batch = preview.rows.slice(i, i + 50).map((row: SourceImportInput) => {
+          const { program: _program, ...source } = row;
+          return {
+            ...source,
+            college_id: collegeId,
+            term_id: termId,
+            schedule_version_id: versionId,
+            status: "pending",
+          };
+        });
+        const { error } = await supabase.from("existing_schedule_source_rows").insert(batch);
         if (error) throw error;
       }
       await onSaved();
@@ -112,11 +102,10 @@ export function SourceRowsImport({
     <Card className="space-y-3 p-4" aria-label="استيراد صفوف المصدر">
       <h3 className="font-semibold">استكمال صفوف ملفات الأقسام</h3>
       <p className="text-sm text-muted-foreground">
-        استورد صفوف المواعيد من ملف JSON أو Excel أو CSV موثّق. يلزم الأعمدة:
-        source_id, source_file, source_cell, program, level_number, raw_course,
-        raw_teacher, raw_day, raw_time, raw_room, day_of_week, start_time,
-        end_time. ترتيب الأيام: الأحد 0 إلى السبت 6. تُحفظ بيانات المصدر أولًا؛
-        لا تُنشأ مقررات أو مجموعات أو جلسات تلقائيًا.
+        استورد صفوف المواعيد من ملف JSON أو Excel أو CSV موثّق. يلزم الأعمدة: source_id,
+        source_file, source_cell, program, level_number, raw_course, raw_teacher, raw_day, raw_time,
+        raw_room, day_of_week, start_time, end_time. ترتيب الأيام: الأحد 0 إلى السبت 6. تُحفظ بيانات
+        المصدر أولًا؛ لا تُنشأ مقررات أو مجموعات أو جلسات تلقائيًا.
       </p>
       <input
         type="file"
@@ -127,8 +116,7 @@ export function SourceRowsImport({
       {preview && (
         <div className="space-y-2 text-sm" role="status">
           <p>
-            جديد: {preview.rows.length} · موجود مطابق: {preview.skipped} ·
-            أخطاء:
+            جديد: {preview.rows.length} · موجود مطابق: {preview.skipped} · أخطاء:
             {preview.errors.length}
           </p>
           {preview.errors.length > 0 && (
@@ -140,10 +128,7 @@ export function SourceRowsImport({
           )}
           <Button
             disabled={
-              loading ||
-              !versionId ||
-              preview.errors.length > 0 ||
-              preview.rows.length === 0
+              loading || !versionId || preview.errors.length > 0 || preview.rows.length === 0
             }
             onClick={() => void save()}
           >

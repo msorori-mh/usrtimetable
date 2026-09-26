@@ -95,10 +95,7 @@ test("assignment corroboration is separate from timetable and all-source exports
     scope,
   );
   assert.equal(filterImportedTimetable(rows, filters).length, 1);
-  assert.equal(
-    filterImportedTimetable(rows, { ...filters, kind: "all" }).length,
-    2,
-  );
+  assert.equal(filterImportedTimetable(rows, { ...filters, kind: "all" }).length, 2);
   assert.equal(
     filterImportedTimetable(rows, { ...filters, kind: "assignment" })[0].kind,
     "assignment",
@@ -106,10 +103,7 @@ test("assignment corroboration is separate from timetable and all-source exports
 });
 test("malformed/plain notes and empty raw names remain visible", () => {
   const rows = importedTimetableRows(
-    [
-      source({ notes: "ملاحظة المصدر", raw_course: "" }),
-      source({ id: "b", notes: "{broken" }),
-    ],
+    [source({ notes: "ملاحظة المصدر", raw_course: "" }), source({ id: "b", notes: "{broken" })],
     scope,
   );
   assert.equal(rows.length, 2);
@@ -141,14 +135,8 @@ test("same short teacher name is not interpreted as a resolved university identi
   );
 });
 test("filters preserve conjunction, empty-field selection, and raw source search", () => {
-  const rows = importedTimetableRows(
-    [source(), source({ id: "b", raw_teacher: null })],
-    scope,
-  );
-  assert.equal(
-    filterImportedTimetable(rows, { ...filters, teacher: "" }).length,
-    1,
-  );
+  const rows = importedTimetableRows([source(), source({ id: "b", raw_teacher: null })], scope);
+  assert.equal(filterImportedTimetable(rows, { ...filters, teacher: "" }).length, 1);
   assert.equal(
     filterImportedTimetable(rows, {
       ...filters,
@@ -157,10 +145,7 @@ test("filters preserve conjunction, empty-field selection, and raw source search
     }).length,
     0,
   );
-  assert.equal(
-    filterImportedTimetable(rows, { ...filters, search: "جدول.docx" }).length,
-    2,
-  );
+  assert.equal(filterImportedTimetable(rows, { ...filters, search: "جدول.docx" }).length, 2);
 });
 test("invalid and backwards times are never coerced into zero or overnight hours", () => {
   for (const pair of [

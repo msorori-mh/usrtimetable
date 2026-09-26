@@ -1,4 +1,4 @@
-import { sourceDuration } from "../reports/imported-timetable";
+import { sourceDuration } from "../reports/imported-timetable.ts";
 
 export type SourceImportInput = {
   source_id: string;
@@ -43,9 +43,7 @@ export function previewSourceRows(
   }[],
 ) {
   const existingIds = new Map(existing.map((row) => [row.source_id, row]));
-  const locationKeys = new Set(
-    existing.map((row) => `${row.source_file}|_${row.source_cell}`),
-  );
+  const locationKeys = new Set(existing.map((row) => `${row.source_file}|_${row.source_cell}`));
   const seen = new Set<string>();
   const rows: SourceImportInput[] = [];
   const errors: string[] = [];
@@ -72,15 +70,10 @@ export function previewSourceRows(
       level_number < 1 ||
       level_number > 4 ||
       (day_of_week !== null &&
-        (!Number.isInteger(day_of_week) ||
-          day_of_week < 0 ||
-          day_of_week > 6)) ||
-      ((start_time || end_time) &&
-        sourceDuration(start_time, end_time) === null)
+        (!Number.isInteger(day_of_week) || day_of_week < 0 || day_of_week > 6)) ||
+      ((start_time || end_time) && sourceDuration(start_time, end_time) === null)
     ) {
-      errors.push(
-        `${label}: بيانات المصدر أو المستوى أو اليوم أو الوقت غير صحيحة`,
-      );
+      errors.push(`${label}: بيانات المصدر أو المستوى أو اليوم أو الوقت غير صحيحة`);
       return;
     }
     if (seen.has(source_id)) {

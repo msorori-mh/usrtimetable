@@ -31,8 +31,7 @@ const sessions = [
 test("only an exact current-version group and slot is complete", () => {
   assert.equal(reconcileSourceRow(row(), sessions).stage, "complete");
   assert.equal(
-    reconcileSourceRow(row({ schedule_session_id: "other-version" }), sessions)
-      .stage,
+    reconcileSourceRow(row({ schedule_session_id: "other-version" }), sessions).stage,
     "unlinked_session",
   );
   assert.equal(

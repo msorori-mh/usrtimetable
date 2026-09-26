@@ -59,8 +59,7 @@ export function ImportedTimetableReport({
   });
   const all = importedTimetableRows(
     sources.filter(
-      (source) =>
-        !source.schedule_version_id || source.schedule_version_id === versionId,
+      (source) => !source.schedule_version_id || source.schedule_version_id === versionId,
     ),
     { collegeId, termId },
     plans,
@@ -76,12 +75,9 @@ export function ImportedTimetableReport({
       : filters.kind === "timetable"
         ? "الجداول الدراسية"
         : "كشوف الإسناد",
-    ...[
-      filters.department,
-      filters.level,
-      filters.teacher,
-      filters.room,
-    ].filter((value) => value !== "all"),
+    ...[filters.department, filters.level, filters.teacher, filters.room].filter(
+      (value) => value !== "all",
+    ),
     filters.search,
   ]
     .filter(Boolean)
@@ -175,10 +171,9 @@ export function ImportedTimetableReport({
       }
       summary={
         <p className="text-sm">
-          هذه نتيجة مطابقة الصفوف المستوردة فقط. راجع اكتمال ملفات الأقسام قبل
-          اعتماد إجمالي المحاضرات والساعات؛ صف كشف الإسناد لا يُحسب جلسة
-          أسبوعية، والمحاضرة المشتركة تُحفظ مرة واحدة. الساعات هنا مدة أسبوعية
-          وليست الساعات المعتمدة للمقرر.
+          هذه نتيجة مطابقة الصفوف المستوردة فقط. راجع اكتمال ملفات الأقسام قبل اعتماد إجمالي
+          المحاضرات والساعات؛ صف كشف الإسناد لا يُحسب جلسة أسبوعية، والمحاضرة المشتركة تُحفظ مرة
+          واحدة. الساعات هنا مدة أسبوعية وليست الساعات المعتمدة للمقرر.
         </p>
       }
     >
@@ -235,9 +230,7 @@ export function ImportedTimetableReport({
                 <td className="border p-2">
                   <p>{row.status}</p>
                   {row.matchedSessionId && (
-                    <p className="break-all text-[10px]">
-                      جلسة: {row.matchedSessionId}
-                    </p>
+                    <p className="break-all text-[10px]">جلسة: {row.matchedSessionId}</p>
                   )}
                   <p>{row.review}</p>
                   <p className="break-words">

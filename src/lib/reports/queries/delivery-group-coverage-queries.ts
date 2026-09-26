@@ -35,9 +35,7 @@ export async function fetchCohortDeliveryGroupCatalog(params: {
     .filter(
       (g) =>
         (g.cohort_id != null && cohortIds.has(g.cohort_id)) ||
-        shared.some(
-          (l) => l.anchor_group_id === g.id && cohortIds.has(l.cohort_id),
-        ),
+        shared.some((l) => l.anchor_group_id === g.id && cohortIds.has(l.cohort_id)),
     );
   if (!groups.length) return [];
   // Fetch all pages of scoped references: a server limit must not silently drop a
@@ -81,9 +79,7 @@ export async function fetchCohortDeliveryGroupCatalog(params: {
   // referenced by this college's assignments, without rewriting ownership.
   const instructorIds = [
     ...new Set(
-      assignments
-        .map((assignment) => assignment.instructor_id)
-        .filter((id): id is string => !!id),
+      assignments.map((assignment) => assignment.instructor_id).filter((id): id is string => !!id),
     ),
   ];
   const instructors: { id: string; full_name: string }[] = [];
@@ -102,21 +98,14 @@ export async function fetchCohortDeliveryGroupCatalog(params: {
   const teachersByGroup = new Map<string, Set<string>>();
   for (const assignment of assignments) {
     if (!assignment.delivery_group_id || !assignment.instructor_id) continue;
-    const names =
-      teachersByGroup.get(assignment.delivery_group_id) ?? new Set<string>();
+    const names = teachersByGroup.get(assignment.delivery_group_id) ?? new Set<string>();
     names.add(instructorById.get(assignment.instructor_id) ?? "محاضر غير متاح");
     teachersByGroup.set(assignment.delivery_group_id, names);
   }
   return groups.map((group) => {
-    const component = group.component_id
-      ? componentById.get(group.component_id)
-      : undefined;
-    const planCourse = group.plan_course_id
-      ? planCourseById.get(group.plan_course_id)
-      : undefined;
-    const course = planCourse
-      ? courseById.get(planCourse.course_id)
-      : undefined;
+    const component = group.component_id ? componentById.get(group.component_id) : undefined;
+    const planCourse = group.plan_course_id ? planCourseById.get(group.plan_course_id) : undefined;
+    const course = planCourse ? courseById.get(planCourse.course_id) : undefined;
     // Demand belongs to the component, never the first co-teacher's allocation.
     const requiredHours = Number(component?.weekly_contact_hours);
     if (
@@ -125,18 +114,14 @@ export async function fetchCohortDeliveryGroupCatalog(params: {
       !Number.isFinite(requiredHours) ||
       requiredHours < 0
     )
-      throw new Error(
-        "ساعات مكوّن مجموعة التدريس غير مكتملة؛ راجع الخطة قبل اعتماد التغطية",
-      );
+      throw new Error("ساعات مكوّن مجموعة التدريس غير مكتملة؛ راجع الخطة قبل اعتماد التغطية");
     return {
       id: group.id,
       cohortId:
         group.cohort_id != null && cohortIds.has(group.cohort_id)
           ? group.cohort_id
-          : shared.find(
-              (l) =>
-                l.anchor_group_id === group.id && cohortIds.has(l.cohort_id),
-            )!.cohort_id,
+          : shared.find((l) => l.anchor_group_id === group.id && cohortIds.has(l.cohort_id))!
+              .cohort_id,
       groupCode: group.group_code,
       groupNumber: group.group_number,
       componentType: component.component_type,
@@ -144,8 +129,7 @@ export async function fetchCohortDeliveryGroupCatalog(params: {
       courseName: course?.name ?? null,
       expectedStudents: group.expected_students,
       requiredHours,
-      instructorName:
-        [...(teachersByGroup.get(group.id) ?? [])].join("، ") || null,
+      instructorName: [...(teachersByGroup.get(group.id) ?? [])].join("، ") || null,
     };
   });
 }
