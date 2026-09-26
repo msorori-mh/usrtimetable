@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { CollegeSourceTimetable } from "@/components/data-onboarding/college-source-timetable";
-import { Card } from "@/components/ui/card";
+import { ReportShell } from "@/components/reports/report-shell";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -34,32 +34,48 @@ function Page() {
     },
   });
 
-  if (!allowed) {
-    return (
-      <Card className="p-5" dir="rtl">
-        اختر كلية التربية والعلوم من محدد الكلية لعرض جدول الفصل الأول 2026–2027.
-      </Card>
-    );
-  }
-  if (source.isLoading)
-    return (
-      <Card className="p-5" dir="rtl">
-        جارٍ تحميل جداول الأقسام…
-      </Card>
-    );
-  if (source.error) {
-    return (
-      <Card className="p-5" dir="rtl" role="alert">
-        تعذر تحميل جداول الأقسام: {source.error.message}
-      </Card>
-    );
-  }
   return (
-    <div className="mx-auto max-w-6xl" dir="rtl">
+    <ReportShell
+      title="جدول كلية التربية والعلوم من ملفات الأقسام"
+      description="صفوف الأقسام العشرة للفصل الأول 2026–2027، مع حالة ربط كل صف بالمسودة التشغيلية."
+      headerMeta={{ versionStatus: "draft", termName: "الفصل الأول 2026–2027" }}
+      rows={(source.data ?? []).map((row) => ({
+        source_id: row.source_id,
+        source_file: row.source_file,
+        level_number: row.level_number,
+        raw_course: row.raw_course,
+        raw_teacher: row.raw_teacher,
+        raw_day: row.raw_day,
+        start_time: row.start_time,
+        end_time: row.end_time,
+        raw_room: row.raw_room,
+        status: row.schedule_session_id ? "جلسة في المسودة" : "بانتظار الربط",
+      }))}
+      headers={[
+        { key: "source_id", label: "معرّف الصف" },
+        { key: "source_file", label: "ملف القسم" },
+        { key: "level_number", label: "المستوى في الملف" },
+        { key: "raw_course", label: "المقرر" },
+        { key: "raw_teacher", label: "المدرس" },
+        { key: "raw_day", label: "اليوم" },
+        { key: "start_time", label: "من" },
+        { key: "end_time", label: "إلى" },
+        { key: "raw_room", label: "القاعة" },
+        { key: "status", label: "حالة الربط" },
+      ]}
+      filename="education_2026_2027_first_term_source_timetable"
+      notReadyMessage={
+        allowed ? undefined : "اختر كلية التربية والعلوم من محدد الكلية لعرض جدول هذا الفصل."
+      }
+      isLoading={allowed && source.isLoading}
+      error={source.error}
+      onRetry={() => void source.refetch()}
+      emptyMessage="لا توجد صفوف مصدر مستوردة لهذا الفصل."
+    >
       <CollegeSourceTimetable
         rows={source.data ?? []}
         onBack={() => void navigate({ to: "/data-onboarding" })}
       />
-    </div>
+    </ReportShell>
   );
 }
