@@ -69,6 +69,10 @@ import {
   type LeadershipDetailTab,
 } from "@/lib/reports/leadership-decisions";
 import { fetchLeadershipRoomCapacity } from "@/lib/reports/fetch-leadership-room-capacity";
+import {
+  EDUCATION_SOURCE_PUBLICATION_NOTICE_AR,
+  isEducationSourcePublication,
+} from "@/lib/schedule-versions/education-publication";
 import { ReportScopeError } from "@/lib/reports/preferences";
 import "@/components/reports/leadership-dashboard.css";
 
@@ -673,6 +677,18 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
                     hint="الإسناد من مجموعات التدريس؛ نشر الجدول لا يؤكد وحده اجتياز الفحص."
                   >
                     <div className="space-y-3 p-4">
+                      {selectedCollege?.version_id &&
+                        isEducationSourcePublication(
+                          selectedCollege.version_id,
+                          selectedCollege.term_id,
+                        ) && (
+                          <p
+                            role="note"
+                            className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-100"
+                          >
+                            {EDUCATION_SOURCE_PUBLICATION_NOTICE_AR}
+                          </p>
+                        )}
                       <p className="text-sm font-semibold">
                         تغطية الإسناد:{" "}
                         {universityCoverage === null ? "غير محسوب" : `${universityCoverage}%`}
