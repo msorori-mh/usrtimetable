@@ -41,7 +41,7 @@ const DEPARTMENTS = [
     file: "جدول قسم الدراسات الإسلامية 2026-2026م ,نهائي.docx",
     levels: [18, 22, 12, 18],
   },
-  { name: "اللغة العربية", file: "جدول قسم اللغة العربية 2027.doc", levels: [18, 17, 17, 17] },
+  { name: "اللغة العربية", file: "جدول قسم اللغة العربية 2027.doc", levels: [16, 15, 19, 17] },
   {
     name: "معلم صف",
     file: "الجدول الدارسي الفصل الاول 27-نعمان_085037.xlsx",
@@ -149,6 +149,7 @@ export function CollegeSourceTimetable({
   const levelTotals = [0, 1, 2, 3].map((index) =>
     DEPARTMENTS.reduce((sum, department) => sum + department.levels[index], 0),
   );
+  const baselineHours = levelTotals.reduce((sum, hours) => sum + hours, 0);
 
   return (
     <section className="space-y-4" aria-label="جدول الكلية حسب ملفات الأقسام">
@@ -170,7 +171,7 @@ export function CollegeSourceTimetable({
         </p>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
           {[
-            ["ساعات الحصر بحسب الأقسام", "726"],
+            ["ساعات الحصر بحسب الأقسام", String(baselineHours)],
             ["ساعات صفوف الملفات، بما فيها الخدمات والتكرارات", String(totalImported)],
             ["صفوف المصادر", String(rows.length)],
             ["صفوف مرتبطة بمجموعة", String(grouped)],
@@ -245,7 +246,7 @@ export function CollegeSourceTimetable({
                     {hours}
                   </td>
                 ))}
-                <td className="border p-2">726</td>
+                <td className="border p-2">{baselineHours}</td>
                 <td className="border p-2">{totalImported}</td>
               </tr>
             </tbody>
