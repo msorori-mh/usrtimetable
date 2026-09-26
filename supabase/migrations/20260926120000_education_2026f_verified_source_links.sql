@@ -1,5 +1,5 @@
 -- The Education source timetable may be reconciled only with its 2026/27 first-term draft.
--- These two rows have a unique, already scheduled session with the same program,
+-- This one row has a unique, already scheduled session with the same program,
 -- level, instructor, room, day and time. No course, credit, group or session is created.
 BEGIN;
 
@@ -22,7 +22,7 @@ BEGIN
      OR v_term.term_type <> 'first'
      OR NOT EXISTS (
        SELECT 1 FROM public.colleges c
-       WHERE c.id = v_version.college_id AND c.name = 'كلية التربية والعلوم'
+       WHERE c.id = v_version.college_id AND btrim(c.name) = 'كلية التربية والعلوم'
      )
      OR NOT public.existing_schedule_intake_enabled(v_version.college_id, v_term.id)
   THEN
@@ -33,7 +33,6 @@ BEGIN
   -- imported Chemistry timetable. The session's program and level are checked
   -- through the actual offering and cohort, not guessed from its course owner.
   FOR v_spec IN SELECT * FROM (VALUES
-    ('EDU-2026F-CHEM-R03-L1', 1, 6, '08:00'::time, '11:00'::time, '11', 'الرباحي', 'تفاضل'),
     ('EDU-2026F-CHEM-R11-L3', 3, 1, '12:00'::time, '14:00'::time, '7', 'خاتم', 'استراتيجيات')
   ) AS x(source_id, level_number, day_of_week, starts, ends, room_number, surname, course_fragment)
   LOOP
@@ -44,8 +43,7 @@ BEGIN
        AND source_id = v_spec.source_id
        AND source_file = 'كيمياء.docx'
      FOR UPDATE;
-    IF v_source.schedule_session_id IS NOT NULL
-       OR v_source.level_number IS DISTINCT FROM v_spec.level_number
+    IF v_source.level_number IS DISTINCT FROM v_spec.level_number
        OR v_source.day_of_week IS DISTINCT FROM v_spec.day_of_week
        OR v_source.start_time IS DISTINCT FROM v_spec.starts
        OR v_source.end_time IS DISTINCT FROM v_spec.ends
@@ -139,6 +137,18 @@ BEGIN
          WHERE other.schedule_session_id = s.id AND other.id <> v_source.id
        )
      FOR UPDATE OF s;
+
+    IF v_source.schedule_session_id IS NOT NULL THEN
+      IF v_source.schedule_session_id IS DISTINCT FROM v_match.session_id
+         OR v_source.study_plan_id IS DISTINCT FROM v_match.study_plan_id
+         OR v_source.plan_course_id IS DISTINCT FROM v_match.plan_course_id
+         OR v_source.component_id IS DISTINCT FROM v_match.component_id
+         OR v_source.delivery_group_id IS DISTINCT FROM v_match.delivery_group_id
+      THEN
+        RAISE EXCEPTION 'EDUCATION_EXISTING_LINK_DRIFT: %', v_spec.source_id;
+      END IF;
+      CONTINUE;
+    END IF;
 
     UPDATE public.existing_schedule_source_rows
        SET study_plan_id = v_match.study_plan_id,
