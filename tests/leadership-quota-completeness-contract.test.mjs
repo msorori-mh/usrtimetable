@@ -31,10 +31,7 @@ test("leadership completeness excludes only explicitly non-applicable staff", ()
     migration,
     /\(college\.value->>'incomplete_faculty'\)::integer\s*-\s*coalesce\(excluded\.non_applicable_count, 0\)/,
   );
-  assert.match(
-    migration,
-    /WHEN college\.value->>'incomplete_faculty' IS NULL THEN college\.value/,
-  );
+  assert.match(migration, /WHEN college\.value->>'incomplete_faculty' IS NULL THEN college\.value/);
 });
 
 test("the implementation remains fail-closed and keeps the base RPC private", () => {
