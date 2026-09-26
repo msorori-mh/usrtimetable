@@ -7,9 +7,9 @@ import {
 } from "@/lib/reports/leadership";
 import {
   aggregateLeadershipRoomCapacity,
-  STANDARD_ROOM_DAY_HOURS,
   type LeadershipCapacityCollege,
 } from "@/lib/reports/leadership-room-capacity";
+import { isEducationSourcePublication } from "@/lib/schedule-versions/education-publication";
 import {
   decisionOrder,
   leadershipPriorities,
@@ -29,19 +29,7 @@ const roomReuseOpportunity = (room: LeadershipCapacityCollege | undefined) => {
   )
     return "غير محسوب";
   if (room.surplusHours <= 0) return "لا توجد سعة زمنية فائضة";
-  if (!room.equivalents) return "غير محسوب";
-  const equivalentDays = Math.floor(
-    (room.equivalents.hoursAfterRooms + 1e-9) / STANDARD_ROOM_DAY_HOURS,
-  );
-  const equivalentHours =
-    Math.round(
-      (room.equivalents.hoursAfterRooms - equivalentDays * STANDARD_ROOM_DAY_HOURS) * 100,
-    ) / 100;
-  return `${hours(room.surplusHours)} غير مستخدمة أسبوعيًا · تعادل زمنيًا ${amount(
-    room.equivalents.fullRooms,
-  )} قاعة أسبوعية، و${amount(equivalentDays)} يوم قاعة، و${hours(
-    equivalentHours,
-  )} · تُراجع حسب اليوم ونوع القاعة والسعة`;
+  return `${hours(room.surplusHours)} شاغرة أسبوعيًا في القاعات · ${amount(room.emptyPublishedRooms)} قاعة بلا جلسات منشورة`;
 };
 
 export interface LeadershipDecisionSummaryProps {
@@ -263,6 +251,16 @@ export function LeadershipDecisionSummary({
                   ? coveragePercent(college)
                   : null;
                 const reuseOpportunity = roomReuseOpportunity(room);
+                const quotaComplete =
+                  college.term_state === "ready" &&
+                  college.incomplete_faculty === 0 &&
+                  college.net_quota !== null &&
+                  college.faculty_assigned_hours !== null &&
+                  college.overload !== null &&
+                  college.deficit !== null;
+                const educationSourceException =
+                  !!college.version_id &&
+                  isEducationSourcePublication(college.version_id, college.term_id);
                 return (
                   <tr key={college.college_id} className="leadership-college-row">
                     <th scope="row" className="leadership-college-name">
@@ -302,15 +300,30 @@ export function LeadershipDecisionSummary({
                         </span>
                       )}
                       <span className="leadership-cell-note">
-                        غير المسند: {hours(college.uncovered_hours)}
+                        غير المسند إداريًا: {hours(college.uncovered_hours)}
                       </span>
+                      {educationSourceException && (
+                        <span className="leadership-cell-note">
+                          جدول مصدر منشور باستثناء تكليف الأسماء؛ راجع التفاصيل.
+                        </span>
+                      )}
                     </td>
                     <td>
                       <span className="leadership-mobile-label">الأنصبة</span>
-                      زيادة {hours(college.overload)}
-                      <span className="mt-1 block">نقص {hours(college.deficit)}</span>
-                      {(college.incomplete_faculty ?? 0) > 0 && (
-                        <span className="leadership-quota-note">بيانات جزئية</span>
+                      {quotaComplete ? (
+                        <>
+                          زيادة {hours(college.overload)}
+                          <span className="mt-1 block">نقص {hours(college.deficit)}</span>
+                        </>
+                      ) : (
+                        <>
+                          <strong>غير محسوب</strong>
+                          <span className="leadership-quota-note">
+                            {(college.incomplete_faculty ?? 0) > 0
+                              ? `${amount(college.incomplete_faculty)} نصابًا غير مكتمل`
+                              : "بيانات الأنصبة غير مكتملة"}
+                          </span>
+                        </>
                       )}
                     </td>
                     <td>
@@ -333,7 +346,7 @@ export function LeadershipDecisionSummary({
                         room?.surplusHours !== undefined &&
                         room.surplusHours > 0 && (
                           <span className="leadership-cell-note">
-                            مكافئ زمني قابل لإعادة التوزيع
+                            تُراجع فرص الاستخدام حسب اليوم والفترة والسعة
                           </span>
                         )}
                     </td>
