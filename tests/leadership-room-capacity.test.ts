@@ -96,10 +96,7 @@ test("72 available lecture-room hours minus 2 occupied hours yields 70 unused ho
   assert.equal(r.rooms[0].idleHours, 34);
 });
 test("a theory-only college reports unused lecture-room time without a fabricated deficit", () => {
-  const r = analyze(
-    source(),
-    college("a", { required_hours: 2, teaching_hours: 2 }),
-  );
+  const r = analyze(source(), college("a", { required_hours: 2, teaching_hours: 2 }));
   assert.equal(r.requiredHours, 2);
   assert.equal(r.balanceHours, 70);
   assert.equal(r.deficitHours, 0);
