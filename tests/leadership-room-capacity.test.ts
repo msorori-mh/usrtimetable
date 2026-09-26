@@ -95,6 +95,17 @@ test("72 available lecture-room hours minus 2 occupied hours yields 70 unused ho
   assert.equal(r.emptyPublishedRooms, 1);
   assert.equal(r.rooms[0].idleHours, 34);
 });
+test("legacy and generic classroom codes are counted as lecture halls", () => {
+  const s = source();
+  s.roomTypes[0].code = "LEC";
+  assert.equal(analyze(s).rooms.length, 2);
+  assert.equal(analyze(s).availableHours, 72);
+
+  s.roomTypes[0].code = "classroom";
+  assert.equal(analyze(s).rooms.length, 2);
+  assert.equal(analyze(s).availableHours, 72);
+});
+
 test("a theory-only college reports unused lecture-room time without a fabricated deficit", () => {
   const r = analyze(source(), college("a", { required_hours: 2, teaching_hours: 2 }));
   assert.equal(r.requiredHours, 2);
@@ -234,19 +245,20 @@ test("missing publication never fabricates empty-room or idle-hour claims", () =
   assert.equal(r.emptyPublishedRooms, null);
   assert.equal(r.rooms[0].idleHours, null);
 });
-test("unresolved terms, no teaching groups or published hours above declared demand withhold surplus", () => {
+test("missing term, publication or published teaching total withholds unused-room claims", () => {
   for (const extra of [
-    { term_state: "missing" as const, required_hours: null },
-    { groups_count: 0, required_hours: 0 },
-    { teaching_hours: 40 },
+    { term_state: "missing" as const },
+    { version_id: null },
+    { teaching_hours: null },
+    { teaching_hours: 0 },
   ])
     assert.equal(analyze(source(), college("a", extra)).surplusHours, null);
 });
-test("incomplete publication withholds unused-room claims instead of fabricating a deficit", () => {
+test("published room occupancy stays measurable when assignment totals come from a different source", () => {
   const r = analyze(source(), college("a", { required_hours: 90 }));
-  assert.equal(r.balanceHours, null);
-  assert.equal(r.deficitHours, null);
-  assert.equal(r.surplusHours, null);
+  assert.equal(r.balanceHours, 70);
+  assert.equal(r.deficitHours, 0);
+  assert.equal(r.surplusHours, 70);
 });
 test("overlapping and outside sessions are shown as anomalies, with union occupancy", () => {
   const s = source();
@@ -270,7 +282,7 @@ test("invalid session preserves known capacity but hides occupancy and empty cou
   assert.equal(r.emptyPublishedRooms, null);
 });
 test("university totals include only colleges with complete published occupancy", () => {
-  const rows = [analyze(), analyze(source(), college("a", { required_hours: 90 }))];
+  const rows = [analyze(), analyze(source(), college("a", { version_id: null }))];
   const total = aggregateLeadershipRoomCapacity(rows);
   assert.equal(total.surplusHours, 70);
   assert.equal(total.deficitHours, 0);
