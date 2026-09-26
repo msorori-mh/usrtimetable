@@ -59,7 +59,7 @@ import {
   filterUnscheduledNewFlowWorkItems,
   groupTimetableSidebarItems,
   preserveTimetableLevelFilter,
-  sessionMatchesTimetableAcademicFilters,
+  sessionMatchesTimetableLevelFilter,
 } from "@/lib/schedule-builder/timetable-editor-filters";
 import { entityDisplayName } from "@/lib/entity-display";
 
@@ -289,11 +289,21 @@ function TimetablePage() {
   const filtered = useMemo(() => {
     return (sessions ?? []).filter((s: any) => {
       if (
-        !sessionMatchesTimetableAcademicFilters({
-          session: s,
-          departmentId: fDept,
-          programId: fProg,
-          levelValue: fLevel,
+        fDept !== "all" &&
+        s.course_offerings?.courses?.department_id !== fDept &&
+        !s.intake_memberships?.some((m: { department_id: string }) => m.department_id === fDept)
+      )
+        return false;
+      if (
+        fProg !== "all" &&
+        s.course_offerings?.program_id !== fProg &&
+        !s.intake_memberships?.some((m: { program_id: string }) => m.program_id === fProg)
+      )
+        return false;
+      if (
+        !sessionMatchesTimetableLevelFilter({
+          filterValue: fLevel,
+          levelId: s.course_offerings?.level_id ?? null,
           levels: lookups?.levels ?? [],
         })
       ) {
@@ -329,6 +339,19 @@ function TimetablePage() {
         };
       }),
     [filtered],
+  );
+
+  // Cards at the same day and time overlap in the compact grid. The list
+  // exposes every filtered session by its own ID so it can be opened safely.
+  const listedSessions = useMemo(
+    () =>
+      [...gridSessions].sort(
+        (a, b) =>
+          a.day_of_week - b.day_of_week ||
+          a.start_time.localeCompare(b.start_time) ||
+          a.title.localeCompare(b.title, "ar"),
+      ),
+    [gridSessions],
   );
 
   // New Flow work items for this schedule version only — never all term offerings / Legacy.
@@ -716,6 +739,46 @@ function TimetablePage() {
             }}
             onDropAt={handleDrop}
           />
+          <details className="mt-3 rounded-md border p-3">
+            <summary className="cursor-pointer text-sm font-medium">
+              قائمة المحاضرات المعروضة ({listedSessions.length})
+            </summary>
+            <div className="mt-3 max-h-80 space-y-1 overflow-y-auto">
+              {listedSessions.map((session) => (
+                <button
+                  key={session.id}
+                  type="button"
+                  className="flex w-full flex-wrap gap-2 rounded border p-2 text-right text-xs hover:bg-accent/30"
+                  onClick={() => {
+                    setEditId(session.id);
+                    setPrefill(undefined);
+                    setDialogOpen(true);
+                  }}
+                >
+                  <span>
+                    {
+                      (
+                        {
+                          0: "الأحد",
+                          1: "الإثنين",
+                          2: "الثلاثاء",
+                          3: "الأربعاء",
+                          4: "الخميس",
+                          5: "الجمعة",
+                          6: "السبت",
+                        } as Record<number, string>
+                      )[session.day_of_week]
+                    }
+                  </span>
+                  <span>
+                    {session.start_time.slice(0, 5)}–{session.end_time.slice(0, 5)}
+                  </span>
+                  <span className="font-medium">{session.title}</span>
+                  <span className="text-muted-foreground">{session.subtitle}</span>
+                </button>
+              ))}
+            </div>
+          </details>
         </div>
         <Card className="p-3 max-h-[700px] overflow-auto">
           <div className="font-semibold mb-2 text-sm">عناصر غير مجدولة ({unscheduled.length})</div>
