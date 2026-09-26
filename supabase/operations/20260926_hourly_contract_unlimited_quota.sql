@@ -57,7 +57,11 @@ BEGIN
     RAISE EXCEPTION 'FACULTY_ALLOCATION_REVIEW_REQUIRED' USING ERRCODE='23514';
   END IF;
   -- Hourly contracts are paid per teaching hour and have no fixed quota.
-  IF (v_load->>'quota_applicable')::boolean IS FALSE THEN RETURN NEW; END IF;
+  IF (v_load->>'quota_applicable')::boolean IS FALSE AND EXISTS (
+    SELECT 1 FROM public.instructors i
+    JOIN public.instructor_types t ON t.id=i.instructor_type_id
+    WHERE i.id=NEW.instructor_id AND i.employment_type='contract' AND t.code='con'
+  ) THEN RETURN NEW; END IF;
   IF v_quota IS NULL AND NOT v_waived THEN
     RAISE EXCEPTION 'INSTRUCTOR_QUOTA_REQUIRED: يجب اعتماد النصاب من الكلية الأصلية' USING ERRCODE='23514';
   END IF;
@@ -71,7 +75,7 @@ $function$
 DO $post$
 BEGIN
   IF md5(pg_get_functiondef('public.enforce_instructor_extra_hours_limit()'::regprocedure))
-     <> '6f0cf1331e91a6a8c29af42dec3576c8' THEN
+     <> 'a42c36e17e427362b8d6fc615cd7f857' THEN
     RAISE EXCEPTION 'HOURLY_CONTRACT_GUARD_POSTCHECK_FAILED';
   END IF;
 END $post$;
