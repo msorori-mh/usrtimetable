@@ -68,8 +68,9 @@ export function LeadershipRoomCapacitySummary({
           ساعات القاعات والفائض عن الاحتياج
         </h2>
         <p className="mt-1 text-xs leading-6 text-muted-foreground">
-          مقارنة أسبوعية للفصل المختار تشمل القاعات والمعامل بحسب إتاحة كل قاعة فعليًا. الساعات
-          المتفرقة لا تُحوّل إلى عدد قاعات قابلة للاستغناء.
+          مقارنة أسبوعية للفصل المختار لقاعات المحاضرات الدراسية فقط بحسب إتاحة كل قاعة فعليًا. لا
+          تدخل ساعات المعامل في المتاح أو الفائض، والساعات المتفرقة لا تُحوّل إلى عدد قاعات قابلة
+          للاستغناء.
         </p>
       </div>
       {loading ? (
@@ -94,7 +95,10 @@ export function LeadershipRoomCapacitySummary({
             </span>
           </div>
           <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <CapacityStat label="ساعات القاعات المتاحة" value={hours(totals.availableHours)} />
+            <CapacityStat
+              label="ساعات قاعات المحاضرات المتاحة"
+              value={hours(totals.availableHours)}
+            />
             <CapacityStat
               label="إجمالي ساعات التدريس المطلوبة"
               value={hours(totals.requiredHours)}
@@ -129,7 +133,7 @@ export function LeadershipRoomCapacitySummary({
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <h3 className="font-bold">{college.name}</h3>
                   <span className="text-xs text-muted-foreground">
-                    {number(college.rooms.length)} قاعة ومعمل
+                    {number(college.rooms.length)} قاعة محاضرات
                   </span>
                 </div>
                 <dl className="mt-3 grid gap-3 sm:grid-cols-3">
@@ -213,10 +217,11 @@ export function LeadershipRoomCapacitySummary({
             ))}
           </div>
           <p className="border-t pt-3 text-xs leading-6 text-muted-foreground">
-            المتاح يتبع أيام وساعات تشغيل الكلية وإتاحة كل قاعة، دون تكرار الفترات المتداخلة. الفائض
-            = المتاح − إجمالي التدريس المطلوب، ويُعرض العجز منفصلًا. لا يُحوّل الفائض إلى عدد قاعات؛
-            يلزم مراعاة نوع القاعات وسعتها وتوزيع المحاضرات. «غير المستخدم» يصف النسخ المنشورة
-            المختارة وقد يلزم لاستكمال التدريس غير المجدول.
+            المتاح يقتصر على قاعات المحاضرات الدراسية ويتبع أيام وساعات تشغيل الكلية وإتاحة كل قاعة،
+            دون تكرار الفترات المتداخلة، ولا تدخل المعامل في الحساب. الفائض = المتاح − إجمالي
+            التدريس المطلوب، ويُعرض العجز منفصلًا. لا يُحوّل الفائض إلى عدد قاعات؛ يلزم مراعاة نوع
+            القاعات وسعتها وتوزيع المحاضرات. «غير المستخدم» يصف النسخ المنشورة المختارة وقد يلزم
+            لاستكمال التدريس غير المجدول.
           </p>
         </div>
       )}

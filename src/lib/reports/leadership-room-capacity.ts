@@ -137,8 +137,14 @@ export function buildLeadershipRoomCapacity(
       validTime(settings.day_start_time) &&
       validTime(settings.day_end_time) &&
       settings.day_end_time! > settings.day_start_time!;
-    const rooms = uniqueRooms
-      .filter((r) => r.college_id === college.college_id && r.is_active === true)
+    const activeRooms = uniqueRooms.filter(
+      (room) => room.college_id === college.college_id && room.is_active === true,
+    );
+    const rooms = activeRooms
+      .filter((room) => {
+        const roomType = sources.roomTypes.find((type) => type.id === room.room_type_id);
+        return roomType?.code?.trim().toLowerCase() === "lecture_hall";
+      })
       .map((room): LeadershipCapacityRoom => {
         const availability = sources.availability.filter((a) => a.room_id === room.id);
         const assigned = sessions.filter((s) => s.room_id === room.id);
@@ -196,7 +202,10 @@ export function buildLeadershipRoomCapacity(
         return result;
       });
     const issues: string[] = [];
-    const inventoryComplete = known(college.room_count) && rooms.length === college.room_count;
+    // The overview inventory includes halls and labs. Validate it before narrowing this
+    // executive capacity indicator to lecture halls only.
+    const inventoryComplete =
+      known(college.room_count) && activeRooms.length === college.room_count;
     if (!inventoryComplete) issues.push("عدد القاعات المقروءة لا يطابق ملخص الكلية؛ حدّث البيانات");
     const availabilityComplete = inventoryComplete && rooms.every((r) => known(r.availableHours));
     if (!availabilityComplete) issues.push("بيانات إتاحة القاعات غير مكتملة");

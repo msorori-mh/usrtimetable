@@ -58,6 +58,30 @@ function source(): CapacitySources {
 }
 const analyze = (s = source(), c = college()) => buildLeadershipRoomCapacity([c], s)[0];
 
+test("laboratories are excluded from lecture-room availability, surplus and details", () => {
+  const s = source();
+  s.roomTypes.push({ id: "lab", name_ar: "معمل حاسوب", code: "computer_lab" });
+  s.rooms.push({
+    id: "lab-1",
+    college_id: "a",
+    name: "معمل 1",
+    code: "LAB-1",
+    room_type_id: "lab",
+    capacity: 30,
+    is_active: true,
+    available_days: null,
+    available_start_time: null,
+    available_end_time: null,
+  });
+  const r = analyze(s, college("a", { room_count: 3 }));
+  assert.equal(r.availableHours, 72);
+  assert.equal(r.surplusHours, 42);
+  assert.deepEqual(
+    r.rooms.map((room) => room.id),
+    ["r1", "r2"],
+  );
+});
+
 test("72 available hours minus 30 required yields 42: one room and six hours, or seven days", () => {
   const r = analyze();
   assert.equal(r.availableHours, 72);
