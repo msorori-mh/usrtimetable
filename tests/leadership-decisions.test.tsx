@@ -299,7 +299,11 @@ test("Education source publication keeps administrative gaps separate from sched
   assert.doesNotMatch(output, /تعادل زمنيًا/);
   assert.match(
     leadershipPriorities([education], [])[0].impact,
-    /الجدول منشور بأسماء من المصدر؛ يلزم اعتماد تكليف مجموعات التدريس إداريًا/,
+    /اعتمد جدول هذا الفصل كما ورد من الأقسام؛ تبقى سجلات التكليف الوظيفي مستقلة/,
+  );
+  assert.match(
+    leadershipPriorities([education], [])[0].title,
+    /99 ساعة من جدول الفصل المعتمد تحتاج توثيق التكليف الوظيفي/,
   );
 });
 
