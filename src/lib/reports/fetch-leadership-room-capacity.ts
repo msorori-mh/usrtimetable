@@ -43,7 +43,7 @@ export async function fetchLeadershipRoomCapacity(colleges: CapacityCollege[]) {
       ? readAllReportRows((from, to) =>
           supabase
             .from("schedule_sessions")
-            .select("id,room_id,schedule_version_id,day_of_week,start_time,end_time")
+            .select("id,room_id,schedule_version_id,instructor_id,day_of_week,start_time,end_time")
             .in("schedule_version_id", versionIds)
             .or("replaced_by_split.is.null,replaced_by_split.eq.false")
             .order("id")
