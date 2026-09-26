@@ -538,6 +538,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             >
               {buildAccountGreeting({
                 fullName: user.fullName,
+                email: user.email,
                 collegeName: activeCollege?.name ?? null,
                 isCollegeDeanOnly: collegeDeanOnly,
                 isUniversityLeadershipOnly: universityLeadershipOnly,
