@@ -144,9 +144,7 @@ export function buildLeadershipRoomCapacity(
     const rooms = activeRooms
       .filter((room) => {
         const roomType = sources.roomTypes.find((type) => type.id === room.room_type_id);
-        return roomType?.code?.trim()
-          ? roomCategoryFromType(roomType.code) === "hall"
-          : false;
+        return roomType?.code?.trim() ? roomCategoryFromType(roomType.code) === "hall" : false;
       })
       .map((room): LeadershipCapacityRoom => {
         const availability = sources.availability.filter((a) => a.room_id === room.id);
