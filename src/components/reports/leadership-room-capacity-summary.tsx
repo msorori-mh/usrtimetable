@@ -94,24 +94,19 @@ export function LeadershipRoomCapacitySummary({
                 : `ملخص جزئي: ${number(totals.knownColleges)} من ${number(totals.totalColleges)} كليات مكتملة الحساب`}
             </span>
           </div>
-          <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <dl className="grid gap-3 sm:grid-cols-3">
             <CapacityStat
               label="ساعات قاعات المحاضرات المتاحة"
               value={hours(totals.availableHours)}
             />
             <CapacityStat
-              label="إجمالي ساعات التدريس المطلوبة"
+              label="الساعات المشغولة في قاعات المحاضرات"
               value={hours(totals.requiredHours)}
             />
             <CapacityStat
-              label="الفائض في الكليات ذات الفائض"
+              label="الساعات غير المستخدمة"
               value={hours(totals.surplusHours)}
               tone="surplus"
-            />
-            <CapacityStat
-              label="العجز في الكليات ذات العجز"
-              value={hours(totals.deficitHours)}
-              tone="deficit"
             />
           </dl>
           <p className="rounded-lg bg-muted/40 p-3 text-sm leading-7">
@@ -138,21 +133,11 @@ export function LeadershipRoomCapacitySummary({
                 </div>
                 <dl className="mt-3 grid gap-3 sm:grid-cols-3">
                   <CapacityStat label="المتاح أسبوعيًا" value={hours(college.availableHours)} />
-                  <CapacityStat label="التدريس المطلوب" value={hours(college.requiredHours)} />
+                  <CapacityStat label="المشغول فعليًا" value={hours(college.requiredHours)} />
                   <CapacityStat
-                    label={
-                      college.balanceHours !== null && college.balanceHours < 0 ? "العجز" : "الفائض"
-                    }
-                    value={hours(
-                      college.balanceHours === null ? null : Math.abs(college.balanceHours),
-                    )}
-                    tone={
-                      college.balanceHours === null
-                        ? "normal"
-                        : college.balanceHours < 0
-                          ? "deficit"
-                          : "surplus"
-                    }
+                    label="غير المستخدم"
+                    value={hours(college.balanceHours)}
+                    tone={college.balanceHours === null ? "normal" : "surplus"}
                   />
                 </dl>
                 {college.surplusHours !== null && college.surplusHours > 0 && (
@@ -218,10 +203,9 @@ export function LeadershipRoomCapacitySummary({
           </div>
           <p className="border-t pt-3 text-xs leading-6 text-muted-foreground">
             المتاح يقتصر على قاعات المحاضرات الدراسية ويتبع أيام وساعات تشغيل الكلية وإتاحة كل قاعة،
-            دون تكرار الفترات المتداخلة، ولا تدخل المعامل في الحساب. الفائض = المتاح − إجمالي
-            التدريس المطلوب، ويُعرض العجز منفصلًا. لا يُحوّل الفائض إلى عدد قاعات؛ يلزم مراعاة نوع
-            القاعات وسعتها وتوزيع المحاضرات. «غير المستخدم» يصف النسخ المنشورة المختارة وقد يلزم
-            لاستكمال التدريس غير المجدول.
+            دون تكرار الفترات المتداخلة، ولا تدخل المعامل في الحساب. غير المستخدم = المتاح −
+            الإشغال الفعلي لقاعات المحاضرات في النسخ المنشورة المكتملة. لا يُعرض الرقم عند نقص النشر
+            أو وجود تداخل أو توقيت غير صالح، ولا يُحوّل إلى عدد قاعات دون مراجعة اليوم والفترة والسعة.
           </p>
         </div>
       )}
