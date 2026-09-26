@@ -74,7 +74,7 @@ const room = (id: string, balance: number | null): LeadershipCapacityCollege => 
   surplusHours: balance === null ? null : Math.max(balance, 0),
   deficitHours: balance === null ? null : Math.max(-balance, 0),
   equivalents: roomHourEquivalents(balance === null ? null : Math.max(balance, 0)),
-  emptyPublishedRooms: null,
+  emptyPublishedRooms: balance === null ? null : 0,
   issues: balance === null ? ["بيانات ناقصة"] : [],
 });
 const props = (
@@ -236,7 +236,7 @@ test("room surplus and deficit stay separate in the compact summary", () => {
   assert.match(output, /العجز 4 ساعة/);
 });
 
-test("room reuse shows room-week, room-day, and hour time equivalents without claiming disposal", () => {
+test("room reuse shows idle hours and published-session emptiness without room equivalences", () => {
   const ids = ["hours", "room", "mixed", "zero", "deficit", "unknown"];
   const output = html({
     colleges: ids.map((id) => college(id)),
@@ -249,23 +249,49 @@ test("room reuse shows room-week, room-day, and hour time equivalents without cl
       room("unknown", null),
     ],
   });
-  assert.match(
-    output,
-    /5 ساعة غير مستخدمة أسبوعيًا · تعادل زمنيًا 0 قاعة أسبوعية، و0 يوم قاعة، و5 ساعة/,
-  );
-  assert.match(
-    output,
-    /36 ساعة غير مستخدمة أسبوعيًا · تعادل زمنيًا 1 قاعة أسبوعية، و0 يوم قاعة، و0 ساعة/,
-  );
-  assert.match(
-    output,
-    /66 ساعة غير مستخدمة أسبوعيًا · تعادل زمنيًا 1 قاعة أسبوعية، و5 يوم قاعة، و0 ساعة/,
-  );
-  assert.match(output, /تُراجع حسب اليوم ونوع القاعة والسعة/);
+  assert.match(output, /5 ساعة شاغرة أسبوعيًا في القاعات · 0 قاعة بلا جلسات منشورة/);
+  assert.match(output, /36 ساعة شاغرة أسبوعيًا في القاعات · 0 قاعة بلا جلسات منشورة/);
+  assert.match(output, /66 ساعة شاغرة أسبوعيًا في القاعات · 0 قاعة بلا جلسات منشورة/);
+  assert.match(output, /تُراجع فرص الاستخدام حسب اليوم والفترة والسعة/);
   assert.match(output, /لا توجد سعة زمنية فائضة/);
   assert.match(output, /غير محسوب/);
   assert.match(output, /ليست عدد قاعات قابلة للاستغناء/);
-  assert.doesNotMatch(output, /تعادل زمنيًا[^<]*قابلة للاستغناء|قاعات أسبوعية كاملة/);
+  assert.doesNotMatch(output, /تعادل زمنيًا|قاعة أسبوعية/);
+});
+
+test("Education source publication keeps administrative gaps separate from scheduled hours and incomplete quotas", () => {
+  const versionId = "7430bad7-2de7-5c90-9368-b214a199d6c3";
+  const termId = "93705393-609d-4605-ae94-9572cd8b2090";
+  const education = college("education", {
+    college: "كلية التربية والعلوم",
+    term_id: termId,
+    version_id: versionId,
+    required_hours: 722,
+    covered_hours: 623,
+    uncovered_hours: 99,
+    teaching_hours: 722,
+    sessions_count: 339,
+    incomplete_faculty: 58,
+    net_quota: 500,
+    faculty_assigned_hours: 271,
+    overload: 52,
+    deficit: 229,
+  });
+  const output = html({
+    colleges: [education],
+    capacity: [{ ...room("education", 104), emptyPublishedRooms: 0 }],
+  });
+  assert.match(output, /86.3%/);
+  assert.match(output, /غير المسند إداريًا: 99 ساعة/);
+  assert.match(output, /جدول مصدر منشور باستثناء تكليف الأسماء/);
+  assert.match(output, /58 نصابًا غير مكتمل/);
+  assert.doesNotMatch(output, /زيادة 52 ساعة|نقص 229 ساعة/);
+  assert.match(output, /104 ساعة شاغرة أسبوعيًا في القاعات · 0 قاعة بلا جلسات منشورة/);
+  assert.doesNotMatch(output, /تعادل زمنيًا/);
+  assert.match(
+    leadershipPriorities([education], [])[0].impact,
+    /الجدول منشور بأسماء من المصدر؛ يلزم اعتماد تكليف مجموعات التدريس إداريًا/,
+  );
 });
 
 test("single-college input does not expose other colleges and uses unique faculty count", () => {
