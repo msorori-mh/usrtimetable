@@ -10,6 +10,17 @@ const migration = readFileSync(
   "utf8",
 );
 
+test("explicitly unresolved homes never fall back to an inferred college", () => {
+  assert.match(
+    migration,
+    /CASE\s+WHEN d\.identity_id IS NOT NULL THEN d\.home_college_id\s+ELSE h\.home_id\s+END AS home_college_id/,
+  );
+  assert.doesNotMatch(
+    migration,
+    /coalesce\(d\.home_college_id,\s*h\.home_id\) AS home_college_id/i,
+  );
+});
+
 test("confirmed faculty source overrides only the automatic applicability gate", () => {
   assert.match(
     migration,
