@@ -38,13 +38,17 @@ export function leadershipPriorities(
           "إدارة الكلية والشؤون الأكاديمية",
         );
       } else {
+        const educationSourceException =
+          !!college.version_id && isEducationSourcePublication(college.version_id, college.term_id);
         if ((college.uncovered_hours ?? 0) > 0)
           add(
             100,
             "teaching",
-            `${college.uncovered_hours} ساعة مجموعات بانتظار اعتماد التكليف`,
-            college.version_id && isEducationSourcePublication(college.version_id, college.term_id)
-              ? "الجدول منشور بأسماء من المصدر؛ يلزم اعتماد تكليف مجموعات التدريس إداريًا."
+            educationSourceException
+              ? `${college.uncovered_hours} ساعة من جدول الفصل المعتمد تحتاج توثيق التكليف الوظيفي`
+              : `${college.uncovered_hours} ساعة مجموعات بانتظار اعتماد التكليف`,
+            educationSourceException
+              ? "اعتمد جدول هذا الفصل كما ورد من الأقسام؛ تبقى سجلات التكليف الوظيفي مستقلة عن اعتماد الجدول."
               : "تحتاج مجموعات التدريس إلى إسناد إداري معتمد.",
             "عمادة الكلية والشؤون الأكاديمية",
           );
