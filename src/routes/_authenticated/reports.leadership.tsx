@@ -72,6 +72,7 @@ import { fetchLeadershipRoomCapacity } from "@/lib/reports/fetch-leadership-room
 import { publishedInstructorPercent } from "@/lib/reports/leadership-room-capacity";
 import {
   EDUCATION_SOURCE_PUBLICATION_NOTICE_AR,
+  educationSourceTimetableApprovalPercent,
   isEducationSourcePublication,
 } from "@/lib/schedule-versions/education-publication";
 import { ReportScopeError } from "@/lib/reports/preferences";
@@ -364,6 +365,14 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
   const selectedCapacity = detail?.collegeId
     ? capacity.filter((college) => college.id === detail.collegeId)
     : capacity;
+  const selectedSourceApprovalPercent =
+    selectedCollege?.version_id &&
+    isEducationSourcePublication(selectedCollege.version_id, selectedCollege.term_id)
+      ? educationSourceTimetableApprovalPercent(
+          selectedCollege,
+          publishedInstructorPercent(selectedCapacity[0], selectedCollege.sessions_count),
+        )
+      : null;
   const total = (key: Parameters<typeof aggregateLeadership>[1]) =>
     aggregateLeadership(scoped, key);
   const required = total("required_hours"),
@@ -696,6 +705,18 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
                           selectedCollege.term_id,
                         ) && (
                           <p className="text-sm font-semibold">
+                            اعتماد جدول هذا الفصل كما نُشر:{" "}
+                            {selectedSourceApprovalPercent === null
+                              ? "قيد التحقق"
+                              : `${selectedSourceApprovalPercent}% (${selectedCollege.teaching_hours}/${selectedCollege.required_hours} ساعة)`}
+                          </p>
+                        )}
+                      {selectedCollege?.version_id &&
+                        isEducationSourcePublication(
+                          selectedCollege.version_id,
+                          selectedCollege.term_id,
+                        ) && (
+                          <p className="text-sm font-semibold">
                             محاضرات الجدول المنشور باسم محاضر:{" "}
                             {publishedInstructorPercent(
                               selectedCapacity[0],
@@ -709,7 +730,13 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
                           </p>
                         )}
                       <p className="text-sm font-semibold">
-                        نسبة التكليف التدريسي المعتمد:{" "}
+                        {selectedCollege?.version_id &&
+                        isEducationSourcePublication(
+                          selectedCollege.version_id,
+                          selectedCollege.term_id,
+                        )
+                          ? "نسبة التكليف الوظيفي المسجل: "
+                          : "نسبة التكليف التدريسي المعتمد: "}
                         {universityCoverage === null ? "غير محسوب" : `${universityCoverage}%`}
                         {!sourceComplete && " · بيانات غير مكتملة"}
                       </p>
