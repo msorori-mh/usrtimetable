@@ -49,7 +49,13 @@ function Page() {
         start_time: row.start_time,
         end_time: row.end_time,
         raw_room: row.raw_room,
-        status: row.schedule_session_id ? "جلسة في المسودة" : "بانتظار الربط",
+        status: row.schedule_session_id
+          ? row.pending_reasons.length > 0
+            ? "جلسة مؤقتة؛ الاسم أو الإسناد بحاجة تحقق"
+            : "جلسة في المسودة"
+          : row.delivery_group_id
+            ? "مجموعة منشأة؛ موعد قيد المطابقة"
+            : "بانتظار الربط",
       }))}
       headers={[
         { key: "source_id", label: "معرّف الصف" },
