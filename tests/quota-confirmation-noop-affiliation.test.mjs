@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const migrationUrl = new URL(
-  "../supabase/migrations/20260926083000_quota_confirmation_noop_affiliation.sql",
+  "../supabase/migrations/20260926084500_quota_confirmation_skip_affiliation_update.sql",
   import.meta.url,
 );
 
