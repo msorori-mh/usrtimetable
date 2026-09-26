@@ -295,12 +295,15 @@ export function LeadershipDecisionSummary({
                       <span className="leadership-mobile-label">أسماء المحاضرين والتكليف</span>
                       {educationSourceException && (
                         <span className="leadership-cell-note">
-                          محاضرات الجدول باسم محاضر: {namedPercent === null
+                          محاضرات الجدول باسم محاضر:{" "}
+                          {namedPercent === null
                             ? "قيد التحقق"
                             : `${namedPercent}% (${room?.namedPublishedSessions}/${room?.publishedSessions})`}
                         </span>
                       )}
-                      <strong>التكليف المعتمد: {percent === null ? "غير محسوب" : `${percent}%`}</strong>
+                      <strong>
+                        التكليف المعتمد: {percent === null ? "غير محسوب" : `${percent}%`}
+                      </strong>
                       {percent !== null && (
                         <span className="leadership-coverage-track" aria-hidden="true">
                           <span
