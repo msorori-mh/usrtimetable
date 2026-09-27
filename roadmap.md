@@ -71,3 +71,11 @@
 - [ ] بوابة الأيام/يوم الطالب مع partitions والقاعات المشتركة واستثناء الرؤساء (HOLD)
 - [ ] مراجعة ثم تطبيق الترحيل على الإنتاج (ينتظر موافقة صريحة)
 - [ ] اعتماد الكلية الأم للمحاضرين الثلاثة من الواجهة ثم النقل الجماعي والنشر
+
+## ITCS cutover (Rev4 orchestrator) — HOLD
+- [x] Super-Admin page /itcs-cutover: upload manifest, local CAS diff + path rules, server preview, execute
+- [x] Proposed SQL docs/migrations-proposed/20260927c_itcs_cutover_orchestrator.sql (not applied)
+- [x] tests/itcs-cutover-manifest.test.ts (6 pass)
+- [ ] Compile Rev2+Rev3.1+Rev4 in BEGIN…ROLLBACK on production schema (blocked: needs a write-capable rolled-back session)
+- [ ] 2 missing + 1 inactive cross-college requests decided by home colleges (blocked: home-college approvers)
+- [ ] Apply migrations, then run cutover from the page (blocked: the two items above)
