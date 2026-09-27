@@ -141,12 +141,16 @@ export function targetPathRules(m: CutoverManifest, unitsOf: (sessionId: string)
   const lab: string[] = [];
   const unitDay = new Map<string, Map<number, string[]>>();
   const noUnits: string[] = [];
+  const incomplete = new Set<string>();
   for (const s of m.sessions) {
     const a = mins(s.new.start), b = mins(s.new.end);
     if (!isLab(s.session_type) && (a < 480 || b > 840)) theory.push(s.session_id);
     if (isLab(s.session_type) && (a < 480 || b > 960)) lab.push(s.session_id);
-    const us = unitsOf(s.session_id);
-    if (!us.length) noUnits.push(s.session_id);
+    const all = unitsOf(s.session_id);
+    if (!all.length) noUnits.push(s.session_id);
+    // Rev6: only partition units are complete student paths; g:/c: fallbacks fail closed.
+    for (const u of all) if (!u.startsWith("p:")) incomplete.add(u);
+    const us = all.filter((u) => u.startsWith("p:"));
     for (const u of us) {
       const d = unitDay.get(u) ?? new Map<number, string[]>();
       d.set(s.new.day, [...(d.get(s.new.day) ?? []), s.session_id]);
@@ -166,15 +170,18 @@ export function targetPathRules(m: CutoverManifest, unitsOf: (sessionId: string)
         roomClashes++;
   const overFourDays: string[] = [];
   let singleDays = 0;
+  const singleDetail: { unit: string; day: number; session: string }[] = [];
+  const clashDetail: { unit: string; a: string; b: string }[] = [];
   const clashPairs = new Set<string>();
   for (const [u, d] of unitDay) {
     if (d.size > 4) overFourDays.push(u);
     for (const list of d.values()) {
-      if (list.length === 1) singleDays++;
+      if (list.length === 1) { singleDays++; singleDetail.push({ unit: u, day: [...d.entries()].find(([, l]) => l === list)![0], session: list[0]! }); }
       for (let i = 0; i < list.length; i++)
         for (let j = i + 1; j < list.length; j++)
-          if (overlap(list[i]!, list[j]!)) clashPairs.add([list[i], list[j]].sort().join("|"));
+          if (overlap(list[i]!, list[j]!)) { clashPairs.add([list[i], list[j]].sort().join("|")); clashDetail.push({ unit: u, a: list[i]!, b: list[j]! }); }
     }
   }
-  return { theory, lab, roomClashes, overFourDays, singleDays, studentClashes: clashPairs.size, noUnits };
+  return { theory, lab, roomClashes, overFourDays, singleDays, studentClashes: clashPairs.size, noUnits,
+    incompleteUnits: [...incomplete], singleDetail, clashDetail };
 }
