@@ -149,6 +149,7 @@ function ItcsCutoverPage() {
           <Stat label="تعارض طلاب" v={rules.studentClashes} />
           <Stat label="وحدات طلاب فوق 4 أيام" v={rules.overFourDays.length} />
           <Stat label="أيام بمحاضرة واحدة" v={rules.singleDays} />
+          <Stat label="مجموعات غير مربوطة بمسار طلاب" v={rules.incompleteUnits.length} />
           <Stat label="بين كليات غير مطبقة (خادم)" v={server ? crossPending : "—"} />
         </Card>
       )}

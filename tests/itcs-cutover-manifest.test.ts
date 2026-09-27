@@ -95,3 +95,14 @@ describe("ITCS cutover manifest (2026-09-28 shape)", () => {
     expect(depth).toBe(0);
   });
 });
+
+describe("Rev6 incomplete fallback units", () => {
+  it("excludes g:/c: fallbacks from path metrics and reports them", () => {
+    const m = { sessions: [{ session_id: "x", changed: true, session_type: "lecture",
+      old: { day: 0, start: "08:00", end: "10:00", room: "r", instructor: null, teaching_assignment_id: null },
+      new: { day: 0, start: "08:00", end: "10:00", room: "r" } }], replacements: [] } as never;
+    const r = targetPathRules(m, () => ["g:unmapped"]);
+    expect(r.singleDays).toBe(0);
+    expect(r.incompleteUnits).toEqual(["g:unmapped"]);
+  });
+});
