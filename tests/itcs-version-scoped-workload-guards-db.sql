@@ -350,6 +350,7 @@ END $pre$;
 SELECT 'PRE-Rev3 reproduced: DUPLICATE_FACULTY_ASSIGNMENT + allocation_pending on published lecturer' AS result;
 
 -- ===== Other college / other term fixture (must stay byte-identical) =====
+SET session_replication_role = replica; -- fixture seeding only
 INSERT INTO public.academic_terms VALUES ('70000000-0000-4000-8000-00000000000f','c0000000-0000-4000-8000-00000000000f','2026-2027','S1','first');
 INSERT INTO public.academic_cohorts VALUES ('ac000000-0000-4000-8000-00000000000f','70000000-0000-4000-8000-00000000000f');
 INSERT INTO public.course_offerings VALUES ('0f000000-0000-4000-8000-00000000000f','70000000-0000-4000-8000-00000000000f');
@@ -360,6 +361,7 @@ INSERT INTO public.teaching_assignments(id,college_id,course_offering_id,instruc
   ('01d00000-0000-4000-8000-0000000000af','c0000000-0000-4000-8000-00000000000f','0f000000-0000-4000-8000-00000000000f','1a000000-0000-4000-8000-00000000000a','ac000000-0000-4000-8000-00000000000f','9c000000-0000-4000-8000-000000000001','d0000000-0000-4000-8000-00000000000f',0,'lecture');
 UPDATE public.teaching_assignments SET assigned_component_hours=0 WHERE id='01d00000-0000-4000-8000-0000000000af';
 UPDATE public.teaching_assignments SET assigned_component_hours=3 WHERE id='01d00000-0000-4000-8000-00000000000f';
+SET session_replication_role = origin;
 CREATE TEMP TABLE base2 AS SELECT
   faculty_private.workload('1a000000-0000-4000-8000-00000000000a','70000000-0000-4000-8000-000000000001') a,
   faculty_private.workload('1f000000-0000-4000-8000-00000000000f','70000000-0000-4000-8000-00000000000f') q,
