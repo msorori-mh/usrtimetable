@@ -353,11 +353,11 @@ SELECT 'PRE-Rev3 reproduced: DUPLICATE_FACULTY_ASSIGNMENT + allocation_pending o
 \ir ../docs/migrations-proposed/20260927b_itcs_version_scoped_workload_guards.sql
 
 DO $post$
-DECLARE w jsonb;
+DECLARE wl jsonb;
 BEGIN
   -- No scope rows: every definition behaves exactly like live.
   IF (SELECT md5(string_agg(v::text, ',' ORDER BY v::text)) FROM public.v_instructor_delivery_workload v) <> (SELECT vw FROM baseline)
-     OR faculty_private.workload('1a000000-0000-4000-8000-00000000000a','70000000-0000-4000-8000-000000000001') <> (SELECT w FROM baseline) THEN
+     OR faculty_private.workload('1a000000-0000-4000-8000-00000000000a','70000000-0000-4000-8000-000000000001') <> (SELECT b.w FROM baseline b) THEN
     RAISE EXCEPTION 'post: no-scope behaviour changed'; END IF;
 
   -- (1) Different lecturer B in the enabled draft.
@@ -366,11 +366,11 @@ BEGIN
   INSERT INTO public.teaching_assignments(id,college_id,course_offering_id,instructor_id,cohort_id,plan_course_component_id,delivery_group_id,assigned_component_hours,weekly_hours,session_type)
   VALUES ('0e000000-0000-4000-8000-000000000002','c0000000-0000-4000-8000-00000000000c','0f000000-0000-4000-8000-000000000001','1b000000-0000-4000-8000-00000000000b','ac000000-0000-4000-8000-000000000001','9c000000-0000-4000-8000-000000000001','d0000000-0000-4000-8000-000000000001',3,3,'lecture');
   SET CONSTRAINTS ALL IMMEDIATE; SET CONSTRAINTS ALL DEFERRED;
-  IF faculty_private.workload('1a000000-0000-4000-8000-00000000000a','70000000-0000-4000-8000-000000000001') <> (SELECT w FROM baseline) THEN
+  IF faculty_private.workload('1a000000-0000-4000-8000-00000000000a','70000000-0000-4000-8000-000000000001') <> (SELECT b.w FROM baseline b) THEN
     RAISE EXCEPTION 'post(1): published lecturer workload changed'; END IF;
-  w := faculty_private.workload('1b000000-0000-4000-8000-00000000000b','70000000-0000-4000-8000-000000000001');
-  IF (w->>'standard_assigned_hours')::numeric <> 3 OR (w->>'allocation_pending')::boolean THEN
-    RAISE EXCEPTION 'post(1): replacement lecturer workload %', w; END IF;
+  wl := faculty_private.workload('1b000000-0000-4000-8000-00000000000b','70000000-0000-4000-8000-000000000001');
+  IF (wl->>'standard_assigned_hours')::numeric <> 3 OR (wl->>'allocation_pending')::boolean THEN
+    RAISE EXCEPTION 'post(1): replacement lecturer workload %', wl; END IF;
 
   -- (2) Same-identity clone of A on group 3: guard passes, hours NOT doubled.
   INSERT INTO assignment_version_private.scope(assignment_id,version_id,replaces_assignment_id)
@@ -378,9 +378,9 @@ BEGIN
   INSERT INTO public.teaching_assignments(id,college_id,course_offering_id,instructor_id,cohort_id,plan_course_component_id,delivery_group_id,assigned_component_hours,weekly_hours,session_type)
   VALUES ('0e000000-0000-4000-8000-000000000003','c0000000-0000-4000-8000-00000000000c','0f000000-0000-4000-8000-000000000001','1a000000-0000-4000-8000-00000000000a','ac000000-0000-4000-8000-000000000001','9c000000-0000-4000-8000-000000000001','d0000000-0000-4000-8000-000000000003',3,3,'lecture');
   SET CONSTRAINTS ALL IMMEDIATE; SET CONSTRAINTS ALL DEFERRED;
-  w := faculty_private.workload('1a000000-0000-4000-8000-00000000000a','70000000-0000-4000-8000-000000000001');
-  IF (w->>'standard_assigned_hours')::numeric <> 24 OR (w->>'allocation_pending')::boolean THEN
-    RAISE EXCEPTION 'post(2): clone doubled or pending %', w; END IF;
+  wl := faculty_private.workload('1a000000-0000-4000-8000-00000000000a','70000000-0000-4000-8000-000000000001');
+  IF (wl->>'standard_assigned_hours')::numeric <> 24 OR (wl->>'allocation_pending')::boolean THEN
+    RAISE EXCEPTION 'post(2): clone doubled or pending %', wl; END IF;
 
   -- (3) Non-enabled draft: identical to live -> duplicate still refused.
   BEGIN
