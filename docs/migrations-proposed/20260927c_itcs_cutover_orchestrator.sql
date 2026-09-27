@@ -103,7 +103,8 @@ BEGIN
   shared_pair AS (   -- a,b are the same common lecture (linked groups, same slot)
     SELECT a.id aid, b.id bid FROM s a JOIN s b ON a.id < b.id
      AND a.day_of_week = b.day_of_week AND a.start_time = b.start_time AND a.end_time = b.end_time
-     AND a.delivery_group_id IS NOT NULL AND b.delivery_group_id IN
+     AND a.delivery_group_id IS NOT NULL AND b.delivery_group_id <> a.delivery_group_id
+     AND a.instructor_id IS NOT DISTINCT FROM b.instructor_id AND b.delivery_group_id IN
          (SELECT group_id FROM public.shared_lecture_group_ids(a.delivery_group_id))),
   unit_day AS (SELECT unit, day_of_week, count(DISTINCT session_id) n FROM su GROUP BY 1, 2),
   stu_clash AS (
