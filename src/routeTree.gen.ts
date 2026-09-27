@@ -38,6 +38,7 @@ import { Route as AuthenticatedImportHistoryRouteImport } from './routes/_authen
 import { Route as AuthenticatedImportTemplatesRouteImport } from './routes/_authenticated/import-templates'
 import { Route as AuthenticatedInstructorTypesRouteImport } from './routes/_authenticated/instructor-types'
 import { Route as AuthenticatedInstructorsRouteImport } from './routes/_authenticated/instructors'
+import { Route as AuthenticatedItcsCutoverRouteImport } from './routes/_authenticated/itcs-cutover'
 import { Route as AuthenticatedMyCollegeRouteImport } from './routes/_authenticated/my-college'
 import { Route as AuthenticatedProgramsRouteImport } from './routes/_authenticated/programs'
 import { Route as AuthenticatedPublishedSchedulesRouteImport } from './routes/_authenticated/published-schedules'
@@ -244,6 +245,12 @@ const AuthenticatedInstructorsRoute =
   AuthenticatedInstructorsRouteImport.update({
     id: '/instructors',
     path: '/instructors',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedItcsCutoverRoute =
+  AuthenticatedItcsCutoverRouteImport.update({
+    id: '/itcs-cutover',
+    path: '/itcs-cutover',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedMyCollegeRoute = AuthenticatedMyCollegeRouteImport.update({
@@ -530,6 +537,7 @@ export interface FileRoutesByFullPath {
   '/import-templates': typeof AuthenticatedImportTemplatesRoute
   '/instructor-types': typeof AuthenticatedInstructorTypesRoute
   '/instructors': typeof AuthenticatedInstructorsRoute
+  '/itcs-cutover': typeof AuthenticatedItcsCutoverRoute
   '/my-college': typeof AuthenticatedMyCollegeRoute
   '/programs': typeof AuthenticatedProgramsRoute
   '/published-schedules': typeof AuthenticatedPublishedSchedulesRoute
@@ -604,6 +612,7 @@ export interface FileRoutesByTo {
   '/import-templates': typeof AuthenticatedImportTemplatesRoute
   '/instructor-types': typeof AuthenticatedInstructorTypesRoute
   '/instructors': typeof AuthenticatedInstructorsRoute
+  '/itcs-cutover': typeof AuthenticatedItcsCutoverRoute
   '/my-college': typeof AuthenticatedMyCollegeRoute
   '/programs': typeof AuthenticatedProgramsRoute
   '/published-schedules': typeof AuthenticatedPublishedSchedulesRoute
@@ -679,6 +688,7 @@ export interface FileRoutesById {
   '/_authenticated/import-templates': typeof AuthenticatedImportTemplatesRoute
   '/_authenticated/instructor-types': typeof AuthenticatedInstructorTypesRoute
   '/_authenticated/instructors': typeof AuthenticatedInstructorsRoute
+  '/_authenticated/itcs-cutover': typeof AuthenticatedItcsCutoverRoute
   '/_authenticated/my-college': typeof AuthenticatedMyCollegeRoute
   '/_authenticated/programs': typeof AuthenticatedProgramsRoute
   '/_authenticated/published-schedules': typeof AuthenticatedPublishedSchedulesRoute
@@ -755,6 +765,7 @@ export interface FileRouteTypes {
     | '/import-templates'
     | '/instructor-types'
     | '/instructors'
+    | '/itcs-cutover'
     | '/my-college'
     | '/programs'
     | '/published-schedules'
@@ -829,6 +840,7 @@ export interface FileRouteTypes {
     | '/import-templates'
     | '/instructor-types'
     | '/instructors'
+    | '/itcs-cutover'
     | '/my-college'
     | '/programs'
     | '/published-schedules'
@@ -903,6 +915,7 @@ export interface FileRouteTypes {
     | '/_authenticated/import-templates'
     | '/_authenticated/instructor-types'
     | '/_authenticated/instructors'
+    | '/_authenticated/itcs-cutover'
     | '/_authenticated/my-college'
     | '/_authenticated/programs'
     | '/_authenticated/published-schedules'
@@ -1159,6 +1172,13 @@ declare module '@tanstack/react-router' {
       path: '/instructors'
       fullPath: '/instructors'
       preLoaderRoute: typeof AuthenticatedInstructorsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/itcs-cutover': {
+      id: '/_authenticated/itcs-cutover'
+      path: '/itcs-cutover'
+      fullPath: '/itcs-cutover'
+      preLoaderRoute: typeof AuthenticatedItcsCutoverRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/my-college': {
@@ -1564,6 +1584,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedImportTemplatesRoute: typeof AuthenticatedImportTemplatesRoute
   AuthenticatedInstructorTypesRoute: typeof AuthenticatedInstructorTypesRoute
   AuthenticatedInstructorsRoute: typeof AuthenticatedInstructorsRoute
+  AuthenticatedItcsCutoverRoute: typeof AuthenticatedItcsCutoverRoute
   AuthenticatedMyCollegeRoute: typeof AuthenticatedMyCollegeRoute
   AuthenticatedProgramsRoute: typeof AuthenticatedProgramsRoute
   AuthenticatedPublishedSchedulesRoute: typeof AuthenticatedPublishedSchedulesRoute
@@ -1615,6 +1636,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedImportTemplatesRoute: AuthenticatedImportTemplatesRoute,
   AuthenticatedInstructorTypesRoute: AuthenticatedInstructorTypesRoute,
   AuthenticatedInstructorsRoute: AuthenticatedInstructorsRoute,
+  AuthenticatedItcsCutoverRoute: AuthenticatedItcsCutoverRoute,
   AuthenticatedMyCollegeRoute: AuthenticatedMyCollegeRoute,
   AuthenticatedProgramsRoute: AuthenticatedProgramsRoute,
   AuthenticatedPublishedSchedulesRoute: AuthenticatedPublishedSchedulesRoute,
