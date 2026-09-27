@@ -341,7 +341,6 @@ BEGIN
 
   -- ------------------------------------------------------------ requests
   IF p_stage = 'requests' THEN
-    IF (v_prev->>'at_target')::int <> 10 AND (v_prev->>'at_target')::int <> 282 THEN NULL; END IF; -- informational
     FOR z IN SELECT * FROM itcs_cutover_private.replacement_status(p_version, p_manifest) WHERE cross_college LOOP
       IF z.state = 'request_missing' THEN
         v_out := v_out || public.submit_version_scoped_teaching_request(p_version, z.replaces, z.instructor, z.hours,
