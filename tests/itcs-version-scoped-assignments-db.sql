@@ -275,6 +275,6 @@ BEGIN
   UPDATE public.schedule_versions SET status = 'archived' WHERE id = p;
   IF public.schedule_version_session_snapshot(p) <> (SELECT pub FROM baseline) THEN
     RAISE EXCEPTION 'T13 FAIL archived history changed'; END IF;
-  RAISE NOTICE 'ALL VERSION-SCOPED ASSIGNMENT TESTS PASSED (13 groups)';
+  RAISE WARNING 'ALL VERSION-SCOPED ASSIGNMENT TESTS PASSED (13 groups)';
 END;
 $t$;
