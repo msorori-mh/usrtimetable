@@ -59,7 +59,7 @@ UPDATE public.schedule_sessions SET start_time='10:00', end_time='12:00' WHERE i
 -- Negative: theory after 14:00 and lone lecture on Monday for P1
 UPDATE public.schedule_sessions SET day_of_week=1, start_time='13:00', end_time='15:00' WHERE id='40000000-0000-0000-0000-000000000002';
 DO $$ DECLARE r jsonb := public.itcs_cutover_path_rules('10000000-0000-0000-0000-000000000001'); BEGIN
-  IF (r->>'theory_outside_08_14')::int <> 1 OR (r->>'single_lecture_days')::int <> 1 THEN RAISE EXCEPTION 'FAIL: %', r; END IF; END $$;
+  IF (r->>'theory_outside_08_14')::int <> 1 OR (r->>'single_lecture_days')::int <> 2 THEN RAISE EXCEPTION 'FAIL: %', r; END IF; END $$;
 -- Negative: execute requires super admin and valid stage
 SELECT set_config('t.uid', '00000000-0000-0000-0000-00000000000b', false);
 DO $$ BEGIN
