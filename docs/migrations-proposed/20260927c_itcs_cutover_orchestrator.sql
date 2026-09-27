@@ -97,6 +97,16 @@ BEGIN
     v_days + v_single + v_theory + v_lab + v_room + v_inst + v_grp + v_xc + v_win = 0);
 END $$;
 
+CREATE OR REPLACE FUNCTION public.itcs_cutover_published_snapshot(p_published uuid)
+RETURNS text LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.is_super_admin(auth.uid()) THEN
+    RAISE EXCEPTION 'SUPER_ADMIN_REQUIRED' USING ERRCODE = '42501'; END IF;
+  RETURN public.schedule_version_session_snapshot(p_published);
+END $$;
+REVOKE ALL ON FUNCTION public.itcs_cutover_published_snapshot(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.itcs_cutover_published_snapshot(uuid) TO authenticated;
+
 -- Read-only preview for the UI. Super Admin only.
 CREATE OR REPLACE FUNCTION public.itcs_cutover_preview(p_version uuid, p_manifest jsonb)
 RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$
@@ -116,7 +126,8 @@ BEGIN
             OR s.teaching_assignment_id IS DISTINCT FROM (x->'old'->>'teaching_assignment_id')::uuid))
     INTO v_missing, v_drift
     FROM m LEFT JOIN public.schedule_sessions s ON s.id = (x->>'session_id')::uuid AND s.schedule_version_id = p_version;
-  RETURN jsonb_build_object('sessions_live', (SELECT count(*) FROM public.schedule_sessions WHERE schedule_version_id = p_version),
+  RETURN jsonb_build_object('manifest_sha', md5(p_manifest::text),
+    'sessions_live', (SELECT count(*) FROM public.schedule_sessions WHERE schedule_version_id = p_version),
     'sessions_manifest', jsonb_array_length(p_manifest->'sessions'), 'missing', v_missing, 'drift', v_drift,
     'before_snapshot', public.schedule_version_session_snapshot(p_version),
     'path_rules_current', public.itcs_cutover_path_rules(p_version),
@@ -129,11 +140,11 @@ END $$;
 -- Execute. Any RAISE rolls back the whole cutover (single statement = single transaction).
 CREATE OR REPLACE FUNCTION public.itcs_cutover_execute(
   p_version uuid, p_published uuid, p_manifest jsonb, p_manifest_sha text,
-  p_expected_before text, p_expected_after text, p_expected_published_snapshot text)
+  p_expected_before text, p_expected_published_snapshot text)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public' AS $$
 DECLARE v_uid uuid := auth.uid(); v_ver public.schedule_versions%ROWTYPE; v_pub public.schedule_versions%ROWTYPE;
   v_prev jsonb; v_moves jsonb; v_repl jsonb; v_rules jsonb; v_gate jsonb; v_q jsonb; v_n int; v_untouched_snap text;
-  v_repl_ids uuid[]; x jsonb;
+  v_repl_ids uuid[]; x jsonb; p_expected_after text;
 BEGIN
   IF v_uid IS NULL OR NOT public.is_super_admin(v_uid) THEN
     RAISE EXCEPTION 'SUPER_ADMIN_REQUIRED' USING ERRCODE = '42501'; END IF;
@@ -170,6 +181,9 @@ BEGIN
   -- 2) moves (272 changed placements; CAS before/after inside Rev2)
   SELECT coalesce(jsonb_agg(jsonb_build_object('session_id', x->>'session_id') || (x->'new')), '[]')
     INTO v_moves FROM jsonb_array_elements(p_manifest->'sessions') x WHERE (x->>'changed')::boolean;
+  -- after-snapshot depends on new assignment ids, so it is derived post-replacement
+  -- from the hashed manifest; apply_version_session_moves re-verifies it after UPDATE.
+  p_expected_after := public.preview_version_session_moves(p_version, v_moves);
   v_moves := public.apply_version_session_moves(p_version, v_moves, jsonb_array_length(v_moves),
     public.schedule_version_session_snapshot(p_version), p_expected_after);
 
@@ -202,9 +216,9 @@ END $$;
 
 REVOKE ALL ON FUNCTION public.itcs_cutover_path_rules(uuid) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.itcs_cutover_preview(uuid, jsonb) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.itcs_cutover_execute(uuid, uuid, jsonb, text, text, text, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.itcs_cutover_execute(uuid, uuid, jsonb, text, text, text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.itcs_cutover_path_rules(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.itcs_cutover_preview(uuid, jsonb) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.itcs_cutover_execute(uuid, uuid, jsonb, text, text, text, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.itcs_cutover_execute(uuid, uuid, jsonb, text, text, text) TO authenticated;
 
 COMMIT;

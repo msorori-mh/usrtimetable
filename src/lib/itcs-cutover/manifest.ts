@@ -153,11 +153,3 @@ export function targetPathRules(
   }
   return { theory, lab, roomClashes, overFourDays, singleDays };
 }
-
-export async function sha(text: string): Promise<string> {
-  // Server compares md5(p_manifest::text); client sends raw text and lets server hash.
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
-  return Array.from(new Uint8Array(buf))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
