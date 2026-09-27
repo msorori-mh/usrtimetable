@@ -116,9 +116,12 @@ BEGIN
      AND a.delivery_group_id IS NOT NULL AND b.delivery_group_id <> a.delivery_group_id
      AND a.instructor_id IS NOT DISTINCT FROM b.instructor_id AND b.delivery_group_id IN
          (SELECT group_id FROM public.shared_lecture_group_ids(a.delivery_group_id))),
-  unit_day AS (SELECT unit, day_of_week, count(DISTINCT session_id) n FROM su GROUP BY 1, 2),
+  pu AS (SELECT * FROM su WHERE unit LIKE 'p:%'),   -- complete student paths only
+  inc AS (SELECT * FROM su WHERE unit NOT LIKE 'p:%'), -- incomplete fallbacks (fail closed)
+  unit_day AS (SELECT unit, day_of_week, count(DISTINCT session_id) n,
+                      jsonb_agg(DISTINCT session_id) sids FROM pu GROUP BY 1, 2),
   stu_clash AS (
-    SELECT DISTINCT a.session_id aid, b.session_id bid FROM su a JOIN su b
+    SELECT a.unit, a.day_of_week, a.session_id aid, b.session_id bid FROM pu a JOIN pu b
       ON a.unit = b.unit AND a.session_id < b.session_id AND a.day_of_week = b.day_of_week
      AND a.start_time < b.end_time AND b.start_time < a.end_time
      WHERE NOT EXISTS (SELECT 1 FROM shared_pair p WHERE p.aid = a.session_id AND p.bid = b.session_id)),
@@ -142,23 +145,46 @@ BEGIN
        AND NOT EXISTS (SELECT 1 FROM public.schedule_version_conflict_exceptions e
                         WHERE e.schedule_version_id = p_version AND e.status = 'approved'
                           AND e.session_id = a.id AND e.related_session_id = b.id)),
+  -- Rev6 availability policy (matches _ss_iavail_*): an explicit non-preference
+  -- 'unavailable' row always rejects an overlapping session; positive windows are
+  -- enforced only when the instructor has at least one positive row. An
+  -- unrelated unavailable day never implies positive rows are required elsewhere.
   win AS (
-    SELECT s.id FROM s WHERE s.instructor_id IS NOT NULL
-       AND EXISTS (SELECT 1 FROM public.instructor_availability ia
-                    WHERE ia.instructor_id = s.instructor_id AND NOT coalesce(ia.is_preference, false))
-       AND NOT EXISTS (SELECT 1 FROM public.instructor_availability ia
-                        WHERE ia.instructor_id = s.instructor_id AND NOT coalesce(ia.is_preference, false)
-                          AND ia.availability_type <> 'unavailable' AND ia.day_of_week = s.day_of_week
-                          AND ia.start_time <= s.start_time AND ia.end_time >= s.end_time))
+    SELECT s.id, s.instructor_id, s.day_of_week, s.start_time, s.end_time,
+           CASE WHEN EXISTS (SELECT 1 FROM public.instructor_availability ia
+                              WHERE ia.instructor_id = s.instructor_id AND NOT coalesce(ia.is_preference, false)
+                                AND ia.availability_type = 'unavailable' AND ia.day_of_week = s.day_of_week
+                                AND ia.start_time < s.end_time AND s.start_time < ia.end_time)
+                THEN 'explicit_unavailable' ELSE 'outside_positive_window' END reason
+      FROM s WHERE s.instructor_id IS NOT NULL AND (
+       EXISTS (SELECT 1 FROM public.instructor_availability ia
+                WHERE ia.instructor_id = s.instructor_id AND NOT coalesce(ia.is_preference, false)
+                  AND ia.availability_type = 'unavailable' AND ia.day_of_week = s.day_of_week
+                  AND ia.start_time < s.end_time AND s.start_time < ia.end_time)
+       OR (EXISTS (SELECT 1 FROM public.instructor_availability ia
+                    WHERE ia.instructor_id = s.instructor_id AND NOT coalesce(ia.is_preference, false)
+                      AND ia.availability_type <> 'unavailable')
+           AND NOT EXISTS (SELECT 1 FROM public.instructor_availability ia
+                    WHERE ia.instructor_id = s.instructor_id AND NOT coalesce(ia.is_preference, false)
+                      AND ia.availability_type <> 'unavailable' AND ia.day_of_week = s.day_of_week
+                      AND ia.start_time <= s.start_time AND ia.end_time >= s.end_time)))),
+  over4 AS (SELECT unit, count(*) days, jsonb_agg(day_of_week ORDER BY day_of_week) day_list
+              FROM unit_day GROUP BY unit HAVING count(*) > 4)
   SELECT jsonb_build_object(
     'sessions', (SELECT count(*) FROM s),
-    'student_units', (SELECT count(DISTINCT unit) FROM su),
-    'unmapped_group_units', (SELECT count(DISTINCT unit) FROM su WHERE unit LIKE 'g:%'),
-    'cohort_fallback_units', (SELECT count(DISTINCT unit) FROM su WHERE unit LIKE 'c:%'),
+    'student_units', (SELECT count(DISTINCT unit) FROM pu),
+    'unmapped_group_units', (SELECT count(DISTINCT unit) FROM inc WHERE unit LIKE 'g:%'),
+    'cohort_fallback_units', (SELECT count(DISTINCT unit) FROM inc WHERE unit LIKE 'c:%'),
+    'incomplete_path_detail', (SELECT coalesce(jsonb_agg(jsonb_build_object('unit', unit, 'sessions', sids)), '[]')
+       FROM (SELECT unit, jsonb_agg(DISTINCT session_id) sids FROM inc GROUP BY unit) z),
     'sessions_without_units', (SELECT count(*) FROM s WHERE NOT EXISTS (SELECT 1 FROM su WHERE su.session_id = s.id)),
-    'student_over_4_days', (SELECT count(*) FROM (SELECT unit FROM unit_day GROUP BY unit HAVING count(*) > 4) z),
+    'student_over_4_days', (SELECT count(*) FROM over4),
+    'student_over_4_days_detail', (SELECT coalesce(jsonb_agg(jsonb_build_object('unit', unit, 'days', day_list)), '[]') FROM over4),
     'single_lecture_days', (SELECT count(*) FROM unit_day WHERE n = 1),
-    'student_clashes', (SELECT count(*) FROM stu_clash),
+    'single_lecture_days_detail', (SELECT coalesce(jsonb_agg(jsonb_build_object('unit', unit, 'day', day_of_week, 'sessions', sids)), '[]')
+       FROM unit_day WHERE n = 1),
+    'student_clashes', (SELECT count(DISTINCT (aid, bid)) FROM stu_clash),
+    'student_clash_detail', (SELECT coalesce(jsonb_agg(jsonb_build_object('unit', unit, 'day', day_of_week, 'a', aid, 'b', bid)), '[]') FROM stu_clash),
     'theory_outside_08_14', (SELECT count(*) FROM s WHERE coalesce(session_type, 'lecture') NOT ILIKE '%lab%'
                                AND coalesce(session_type, '') NOT ILIKE '%practical%'
                                AND (start_time < '08:00' OR end_time > '14:00')),
@@ -167,10 +193,13 @@ BEGIN
     'room_clashes', (SELECT count(*) FROM room_clash),
     'instructor_clashes', (SELECT count(*) FROM inst_clash),
     'cross_college_clashes', (SELECT count(*) FROM xc),
-    'instructor_window_violations', (SELECT count(*) FROM win)) INTO r;
+    'instructor_window_violations', (SELECT count(*) FROM win),
+    'instructor_window_detail', (SELECT coalesce(jsonb_agg(jsonb_build_object('session', id, 'instructor', instructor_id,
+       'day', day_of_week, 'start', start_time, 'end', end_time, 'reason', reason)), '[]') FROM win)) INTO r;
 
   RETURN r || jsonb_build_object('ok',
-    (r->>'sessions_without_units')::int + (r->>'student_over_4_days')::int + (r->>'single_lecture_days')::int
+    (r->>'sessions_without_units')::int + (r->>'unmapped_group_units')::int + (r->>'cohort_fallback_units')::int
+    + (r->>'student_over_4_days')::int + (r->>'single_lecture_days')::int
     + (r->>'student_clashes')::int + (r->>'theory_outside_08_14')::int + (r->>'lab_outside_08_16')::int
     + (r->>'room_clashes')::int + (r->>'instructor_clashes')::int + (r->>'cross_college_clashes')::int
     + (r->>'instructor_window_violations')::int = 0);
