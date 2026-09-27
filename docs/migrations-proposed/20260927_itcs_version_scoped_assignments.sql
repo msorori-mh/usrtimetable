@@ -289,7 +289,7 @@ RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'publi
 DECLARE v_exp record; r jsonb; v_over int := 0; g record;
 BEGIN
   SELECT * INTO v_exp FROM assignment_version_private.publish_expectation WHERE version_id = p_version;
-  FOR g IN SELECT DISTINCT e.delivery_group_id, c.weekly_contact_hours
+  FOR g IN SELECT DISTINCT e.delivery_group_id, c.weekly_contact_hours AS weekly_hours
            FROM public.version_effective_assignments(p_version) e
            JOIN public.teaching_assignments ta ON ta.id = e.assignment_id
            LEFT JOIN public.plan_course_components c ON c.id = ta.plan_course_component_id LOOP
