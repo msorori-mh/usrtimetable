@@ -5349,6 +5349,35 @@ export type Database = {
         Args: { p_a: string; p_b: string }
         Returns: boolean
       }
+      education_2026f_four_source_allowed: {
+        Args: {
+          p_session: Database["public"]["Tables"]["schedule_sessions"]["Row"]
+        }
+        Returns: boolean
+      }
+      education_2026f_import_named_row: {
+        Args: {
+          p_day: number
+          p_name_key: string
+          p_room: string
+          p_source: string
+          p_start: string
+          p_teacher: string
+        }
+        Returns: undefined
+      }
+      education_2026f_project_session_allowed: {
+        Args: {
+          p_session: Database["public"]["Tables"]["schedule_sessions"]["Row"]
+        }
+        Returns: boolean
+      }
+      education_2026f_source_external_session_allowed: {
+        Args: {
+          p_session: Database["public"]["Tables"]["schedule_sessions"]["Row"]
+        }
+        Returns: boolean
+      }
       education_canonical_home_assignment: {
         Args: {
           p_assignment_id: string
@@ -5539,6 +5568,10 @@ export type Database = {
         Returns: Json
       }
       leadership_overview: {
+        Args: { p_academic_year?: string; p_term_type?: string }
+        Returns: Json
+      }
+      leadership_overview_base: {
         Args: { p_academic_year?: string; p_term_type?: string }
         Returns: Json
       }
