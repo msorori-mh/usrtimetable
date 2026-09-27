@@ -252,7 +252,7 @@ BEGIN
     UPDATE public.schedule_sessions SET start_time = '08:00', end_time = '10:00'
     WHERE schedule_version_id = d AND teaching_assignment_id = (SELECT ta FROM fx WHERE n = 2);
     UPDATE public.schedule_versions SET status = 'published' WHERE id = d;
-    RAISE EXCEPTION 'T12c FAIL';
+    RAISE EXCEPTION 'T12c FAIL %', public.version_scoped_publish_readiness('d68d8d22-9a6d-4f21-935f-cebf18bb969b');
   EXCEPTION WHEN check_violation THEN
     IF SQLERRM NOT LIKE 'VERSION_SCOPED_PUBLISH_BLOCKED%' THEN RAISE; END IF; END;
   BEGIN  -- missing lecture (281 of 282)
