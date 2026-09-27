@@ -29,5 +29,40 @@ CREATE FUNCTION public.is_super_admin(uuid) RETURNS boolean LANGUAGE sql AS $$ S
 \i ../docs/migrations-proposed/20260927c_itcs_cutover_orchestrator.sql
 
 -- 2) Path-rule scenario.
---  cohort partitions P1,P2 ; groups G1{P1}, G2{P2}, anchor A shared lecture linking G1+G2.
-INSERT INTO public.schedule_versions VALUES ('00000000-0000-0000-0000-0000000000v1'::text::uuid, NULL, NULL, 'draft') ON CONFLICT DO NOTHING;
+-- Units: partitions P1,P2; G1={P1}, G2={P2}; G2 linked to anchor G1 (common lecture).
+SELECT set_config('t.uid', '00000000-0000-0000-0000-00000000000a', false);
+INSERT INTO public.schedule_versions VALUES ('10000000-0000-0000-0000-000000000001', NULL, NULL, 'draft');
+INSERT INTO public.cohort_student_partitions VALUES ('20000000-0000-0000-0000-000000000001'), ('20000000-0000-0000-0000-000000000002');
+INSERT INTO public.delivery_group_partition_members VALUES
+  ('30000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001'),
+  ('30000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000002');
+INSERT INTO public.shared_lecture_links VALUES ('30000000-0000-0000-0000-000000000002', '30000000-0000-0000-0000-000000000001');
+-- s1: common lecture on G1 (reaches P1+P2) Sun 08-10 ; s2: G1 tutorial Sun 10-12 ; s3: G2 tutorial Sun 10-12 (other partition, parallel OK)
+-- s4: G2 lab Sun 12-14
+INSERT INTO public.schedule_sessions (id, schedule_version_id, delivery_group_id, instructor_id, room_id, day_of_week, start_time, end_time, session_type) VALUES
+ ('40000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001','30000000-0000-0000-0000-000000000001','50000000-0000-0000-0000-000000000001','60000000-0000-0000-0000-000000000001',0,'08:00','10:00','lecture'),
+ ('40000000-0000-0000-0000-000000000002','10000000-0000-0000-0000-000000000001','30000000-0000-0000-0000-000000000001','50000000-0000-0000-0000-000000000002','60000000-0000-0000-0000-000000000002',0,'10:00','12:00','tutorial'),
+ ('40000000-0000-0000-0000-000000000003','10000000-0000-0000-0000-000000000001','30000000-0000-0000-0000-000000000002','50000000-0000-0000-0000-000000000003','60000000-0000-0000-0000-000000000003',0,'10:00','12:00','tutorial'),
+ ('40000000-0000-0000-0000-000000000004','10000000-0000-0000-0000-000000000001','30000000-0000-0000-0000-000000000002','50000000-0000-0000-0000-000000000003','60000000-0000-0000-0000-000000000004',0,'12:00','14:00','lab');
+DO $$ DECLARE r jsonb := public.itcs_cutover_path_rules('10000000-0000-0000-0000-000000000001'); BEGIN
+  RAISE NOTICE 'valid: %', r;
+  IF NOT (r->>'ok')::boolean OR (r->>'student_clashes')::int <> 0 OR (r->>'single_lecture_days')::int <> 0 THEN
+    RAISE EXCEPTION 'FAIL valid timetable flagged: %', r; END IF; END $$;
+-- Negative: move P1 tutorial onto the common lecture slot -> real student clash
+UPDATE public.schedule_sessions SET start_time='08:00', end_time='10:00' WHERE id='40000000-0000-0000-0000-000000000002';
+DO $$ DECLARE r jsonb := public.itcs_cutover_path_rules('10000000-0000-0000-0000-000000000001'); BEGIN
+  IF (r->>'student_clashes')::int <> 1 OR (r->>'ok')::boolean THEN RAISE EXCEPTION 'FAIL clash missed: %', r; END IF; END $$;
+UPDATE public.schedule_sessions SET start_time='10:00', end_time='12:00' WHERE id='40000000-0000-0000-0000-000000000002';
+-- Negative: theory after 14:00 and lone lecture on Monday for P1
+UPDATE public.schedule_sessions SET day_of_week=1, start_time='13:00', end_time='15:00' WHERE id='40000000-0000-0000-0000-000000000002';
+DO $$ DECLARE r jsonb := public.itcs_cutover_path_rules('10000000-0000-0000-0000-000000000001'); BEGIN
+  IF (r->>'theory_outside_08_14')::int <> 1 OR (r->>'single_lecture_days')::int <> 1 THEN RAISE EXCEPTION 'FAIL: %', r; END IF; END $$;
+-- Negative: execute requires super admin and valid stage
+SELECT set_config('t.uid', '00000000-0000-0000-0000-00000000000b', false);
+DO $$ BEGIN
+  PERFORM public.itcs_cutover_preview('10000000-0000-0000-0000-000000000001', '{}'); RAISE EXCEPTION 'FAIL non-admin allowed';
+EXCEPTION WHEN insufficient_privilege THEN NULL; END $$;
+DO $$ BEGIN
+  PERFORM public.itcs_cutover_execute('bogus', NULL, NULL, '{}', '', ''); RAISE EXCEPTION 'FAIL bad stage';
+EXCEPTION WHEN check_violation THEN NULL; END $$;
+\echo ORCHESTRATOR_DB_PASS
