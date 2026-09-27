@@ -79,3 +79,4 @@
 - [ ] Compile Rev2+Rev3.1+Rev4 in BEGIN…ROLLBACK on production schema (blocked: needs a write-capable rolled-back session)
 - [ ] 2 missing + 1 inactive cross-college requests decided by home colleges (blocked: home-college approvers)
 - [ ] Apply migrations, then run cutover from the page (blocked: the two items above)
+- [x] ITCS cutover Rev5 (proposed only): staged requests/apply/publish, partition-based student paths, official quality run, archive of prior version. HOLD: not applied; awaiting 3 home-college decisions and real-DB BEGIN/ROLLBACK run with the 2026-09-28 manifest.
