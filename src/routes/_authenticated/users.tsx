@@ -10,6 +10,7 @@ import {
   adminListUserMeta,
   adminSetUserEnabled,
 } from "@/lib/users.functions";
+import { PasswordResetDialog } from "@/components/admin/password-reset-dialog";
 import { UnauthorizedAccess } from "@/components/unauthorized-access";
 import {
   resolveAdminReadablePageAccess,
@@ -143,6 +144,11 @@ function UsersPage() {
   const canLoadAdminData = shouldLoadSuperAdminPageData(pageAccess);
   const qc = useQueryClient();
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
+  const [resetTarget, setResetTarget] = useState<{
+    id: string;
+    email: string;
+    name: string;
+  } | null>(null);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [collegeFilter, setCollegeFilter] = useState<string>("all");
@@ -305,20 +311,6 @@ function UsersPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const sendReset = useMutation({
-    mutationFn: async ({ userId, email }: { userId: string; email: string }) =>
-      resetFn({ data: { user_id: userId, email } }),
-    onSuccess: (res) => {
-      if (res?.action_link) {
-        navigator.clipboard?.writeText(res.action_link).catch(() => {});
-        toast.success("تم إنشاء رابط إعادة تعيين كلمة المرور ونسخه");
-      } else {
-        toast.success("تم إرسال طلب إعادة تعيين كلمة المرور");
-      }
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
   const collegeMap = useMemo(
     () => new Map((colleges ?? []).map((c) => [c.id, c.name])),
     [colleges],
@@ -346,6 +338,14 @@ function UsersPage() {
 
   return (
     <div className="mx-auto max-w-6xl">
+      {!viewOnly && resetTarget && (
+        <PasswordResetDialog
+          key={resetTarget.id}
+          target={resetTarget}
+          onReset={() => resetFn({ data: { user_id: resetTarget.id, email: resetTarget.email } })}
+          onClose={() => setResetTarget(null)}
+        />
+      )}
       <header className="mb-6 flex items-center gap-3">
         <span className="grid h-11 w-11 place-items-center rounded-lg bg-secondary text-primary">
           <Users className="h-5 w-5" />
@@ -584,9 +584,10 @@ function UsersPage() {
                           size="sm"
                           variant="outline"
                           onClick={() =>
-                            u.email && sendReset.mutate({ userId: u.id, email: u.email })
+                            u.email &&
+                            setResetTarget({ id: u.id, email: u.email, name: u.full_name ?? "" })
                           }
-                          disabled={sendReset.isPending || !u.email}
+                          disabled={!u.email}
                         >
                           <KeyRound className="ml-1 h-3.5 w-3.5" />
                           إعادة تعيين كلمة المرور

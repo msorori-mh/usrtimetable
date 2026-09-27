@@ -257,17 +257,65 @@ export const adminGeneratePasswordReset = createServerFn({ method: "POST" })
     await assertInstitutionAdmin(context.userId);
     await assertRateLimit(context.userId, "password_reset_admin");
     const supabaseAdmin = await admin();
-    const { data: link, error } = await supabaseAdmin.auth.admin.generateLink({
-      type: "recovery",
-      email: data.email,
+    const { data: account, error: accountError } = await supabaseAdmin.auth.admin.getUserById(
+      data.user_id,
+    );
+    const user = account?.user;
+    if (
+      accountError ||
+      !user?.email ||
+      user.email.toLowerCase() !== data.email.trim().toLowerCase()
+    )
+      throw new Error("تعذر مطابقة المستخدم والبريد الإلكتروني؛ حدّث قائمة المستخدمين.");
+    const { data: roles, error: rolesError } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id);
+    if (rolesError || !roles?.length) throw new Error("تعذر التحقق من أدوار المستخدم.");
+
+    // Super admins are exempt from the first-login password-change flow.
+    // Keep recovery for them rather than issuing an unchangeable temporary password.
+    if (roles.some((r) => r.role === "super_admin")) {
+      const { data: link, error } = await supabaseAdmin.auth.admin.generateLink({
+        type: "recovery",
+        email: user.email,
+      });
+      if (error || !link?.properties?.action_link) throw new Error("تعذر إنشاء رابط الاستعادة.");
+      await supabaseAdmin.from("audit_logs").insert({
+        actor_id: context.userId,
+        action: "password_reset_requested",
+        entity: "profiles",
+        entity_id: user.id,
+        details: {} as never,
+      });
+      return {
+        email: user.email,
+        temporary_password: null,
+        action_link: link.properties.action_link,
+      };
+    }
+
+    // Uniform selection from 64 symbols; generated only on the authenticated server.
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    const password = Array.from(
+      crypto.getRandomValues(new Uint8Array(24)),
+      (value) => alphabet[value & 63],
+    ).join("");
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
+      password,
+      app_metadata: {
+        ...user.app_metadata,
+        must_change_password: true,
+        password_reset_after: Math.floor(Date.now() / 1000),
+      },
     });
-    if (error) throw new Error(error.message);
+    if (updateError) throw new Error("تعذر تعيين كلمة المرور المؤقتة؛ أعد المحاولة.");
     await supabaseAdmin.from("audit_logs").insert({
       actor_id: context.userId,
-      action: "password_reset_requested",
+      action: "password_reset_completed",
       entity: "profiles",
-      entity_id: data.user_id,
+      entity_id: user.id,
       details: {} as never,
     });
-    return { action_link: link.properties?.action_link ?? null };
+    return { email: user.email, temporary_password: password, action_link: null };
   });
