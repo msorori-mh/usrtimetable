@@ -308,9 +308,9 @@ BEGIN
     IF res->>'action' <> 'version_scoped_created' THEN RAISE EXCEPTION 'T4c FAIL %', res; END IF;
   END LOOP;
   PERFORM set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
-  IF (SELECT count(*) FROM public.faculty_teaching_requests r JOIN assignment_version_private.scope s
-      ON s.assignment_id = r.assignment_id AND s.request_id = r.id
-      WHERE r.status='approved' AND r.decided_by='33333333-3333-3333-3333-333333333333') <> 3 THEN
+  IF (SELECT count(*) FROM public.faculty_teaching_requests q JOIN assignment_version_private.scope s
+      ON s.assignment_id = q.assignment_id AND s.request_id = q.id
+      WHERE q.status='approved' AND q.decided_by='33333333-3333-3333-3333-333333333333') <> 3 THEN
     RAISE EXCEPTION 'T4d FAIL request not linked'; END IF;
 
   -- T5 history and other colleges untouched; per-version coverage.
