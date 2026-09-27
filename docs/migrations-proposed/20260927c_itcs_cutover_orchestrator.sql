@@ -61,8 +61,8 @@ BEGIN
     ON a.schedule_version_id = b.schedule_version_id AND a.id < b.id AND a.instructor_id = b.instructor_id
    AND a.day_of_week = b.day_of_week AND a.start_time < b.end_time AND b.start_time < a.end_time
    WHERE a.schedule_version_id = p_version
-     AND NOT EXISTS (SELECT 1 FROM public.shared_lecture_links l
-                     WHERE l.session_id IN (a.id, b.id) AND l.linked_session_id IN (a.id, b.id));
+     AND NOT (a.delivery_group_id IS NOT NULL AND b.delivery_group_id IN
+              (SELECT group_id FROM public.shared_lecture_group_ids(a.delivery_group_id)));
   SELECT count(*) INTO v_grp FROM public.schedule_sessions a JOIN public.schedule_sessions b
     ON a.schedule_version_id = b.schedule_version_id AND a.id < b.id
    AND a.delivery_group_id IS NOT NULL AND public.delivery_groups_share_students(a.delivery_group_id, b.delivery_group_id)
@@ -73,8 +73,8 @@ BEGIN
    JOIN public.schedule_sessions b ON b.instructor_id = a.instructor_id AND b.schedule_version_id <> a.schedule_version_id
    JOIN public.schedule_versions vb ON vb.id = b.schedule_version_id AND vb.status IN ('published')
     AND vb.college_id <> v_ver.college_id
-   JOIN public.academic_terms ta ON ta.id = v_ver.term_id
-   JOIN public.academic_terms tb ON tb.id = vb.term_id
+   JOIN public.academic_terms ta ON ta.id = v_ver.academic_term_id
+   JOIN public.academic_terms tb ON tb.id = vb.academic_term_id
     AND ta.start_date <= tb.end_date AND tb.start_date <= ta.end_date
    WHERE a.schedule_version_id = p_version AND a.day_of_week = b.day_of_week
      AND a.start_time < b.end_time AND b.start_time < a.end_time
@@ -86,7 +86,7 @@ BEGIN
    WHERE s.schedule_version_id = p_version AND s.instructor_id IS NOT NULL
      AND EXISTS (SELECT 1 FROM public.instructor_availability ia WHERE ia.instructor_id = s.instructor_id)
      AND NOT EXISTS (SELECT 1 FROM public.instructor_availability ia
-                     WHERE ia.instructor_id = s.instructor_id AND ia.day_of_week = s.day_of_week
+                     WHERE ia.instructor_id = s.instructor_id AND ia.availability_type <> 'unavailable' AND ia.day_of_week = s.day_of_week
                        AND ia.start_time <= s.start_time AND ia.end_time >= s.end_time);
 
   r := jsonb_build_object('student_over_4_days', v_days, 'single_lecture_days', v_single,
@@ -142,10 +142,10 @@ BEGIN
   SELECT * INTO v_ver FROM public.schedule_versions WHERE id = p_version FOR UPDATE;
   SELECT * INTO v_pub FROM public.schedule_versions WHERE id = p_published FOR SHARE;
   IF v_ver.status IS DISTINCT FROM 'draft' THEN RAISE EXCEPTION 'VERSION_NOT_DRAFT' USING ERRCODE = 'check_violation'; END IF;
-  IF v_pub.status IS DISTINCT FROM 'published' OR v_pub.college_id <> v_ver.college_id OR v_pub.term_id <> v_ver.term_id THEN
+  IF v_pub.status IS DISTINCT FROM 'published' OR v_pub.college_id <> v_ver.college_id OR v_pub.academic_term_id <> v_ver.academic_term_id THEN
     RAISE EXCEPTION 'PUBLISHED_BASELINE_INVALID' USING ERRCODE = 'check_violation'; END IF;
   IF (p_manifest->>'draft_version_id')::uuid <> p_version OR (p_manifest->>'published_version_id')::uuid <> p_published
-     OR (p_manifest->>'term_id')::uuid <> v_ver.term_id OR (p_manifest->>'college_id')::uuid <> v_ver.college_id THEN
+     OR (p_manifest->>'term_id')::uuid <> v_ver.academic_term_id OR (p_manifest->>'college_id')::uuid <> v_ver.college_id THEN
     RAISE EXCEPTION 'MANIFEST_IDENTITY_MISMATCH' USING ERRCODE = 'check_violation'; END IF;
   IF public.schedule_version_session_snapshot(p_published) <> p_expected_published_snapshot THEN
     RAISE EXCEPTION 'PUBLISHED_SNAPSHOT_DRIFT' USING ERRCODE = 'check_violation'; END IF;
