@@ -72,12 +72,22 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$
     SELECT DISTINCT m.delivery_group_id gid, m.partition_id
       FROM public.delivery_group_partition_members m
       JOIN public.cohort_student_partitions p ON p.id = m.partition_id AND p.active),
+  cohort_parts AS (
+    SELECT p.cohort_id, p.id partition_id FROM public.cohort_student_partitions p WHERE p.active),
   u AS (
     SELECT sg.sid, 'p:' || mp.partition_id AS unit FROM sg JOIN mapped mp ON mp.gid = sg.gid
     UNION
+    -- Rev6: an unmapped delivery group is NOT a complete student path. It is
+    -- emitted as an incomplete 'g:' unit, which path metrics exclude and the
+    -- gate treats as a fail-closed blocker (unmapped_group_units).
     SELECT sg.sid, 'g:' || sg.gid FROM sg WHERE NOT EXISTS (SELECT 1 FROM mapped mp WHERE mp.gid = sg.gid)
     UNION
-    SELECT s.id, 'c:' || s.cohort_id FROM s WHERE s.delivery_group_id IS NULL AND s.cohort_id IS NOT NULL)
+    -- cohort-wide session (no group) reaches every active partition of the cohort
+    SELECT s.id, 'p:' || cp.partition_id FROM s JOIN cohort_parts cp ON cp.cohort_id = s.cohort_id
+     WHERE s.delivery_group_id IS NULL
+    UNION
+    SELECT s.id, 'c:' || s.cohort_id FROM s WHERE s.delivery_group_id IS NULL AND s.cohort_id IS NOT NULL
+       AND NOT EXISTS (SELECT 1 FROM cohort_parts cp WHERE cp.cohort_id = s.cohort_id))
   SELECT u.sid, u.unit, s.day_of_week, s.start_time, s.end_time FROM u JOIN s ON s.id = u.sid
 $$;
 
