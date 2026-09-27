@@ -62,3 +62,9 @@
 - [x] عمود instructors.availability_status + backfill من is_active + CHECK.
 - [x] تحديث RPCs (roster/update/academic_affairs) وحارس DB يمنع إسنادًا/جلسة جديدة لغير المتوفر.
 - [x] حقل «الحالة» في النموذج بدل التفرغ/التعاقد، خريطة مركزية، عرض في الدليل، واختبارات.
+
+## عزل الإسناد بحسب نسخة الجدول (ITCS d68d8d22) — كود فقط
+- [x] ترحيل مقترح غير مطبق: docs/migrations-proposed/20260927_itcs_version_scoped_assignments.sql
+- [x] اختبار قاعدة مؤقتة: tests/itcs-version-scoped-assignments-db.sql (PASS)
+- [ ] مراجعة ثم تطبيق الترحيل على الإنتاج (ينتظر موافقة صريحة)
+- [ ] اعتماد الكلية الأم للمحاضرين الثلاثة من الواجهة ثم النقل الجماعي والنشر
