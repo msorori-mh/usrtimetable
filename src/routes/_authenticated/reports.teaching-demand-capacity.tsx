@@ -86,7 +86,7 @@ function DemandCapacityReport({
   );
   const capacity = useQuery({
     queryKey: [
-      "leadership-room-capacity",
+      "teaching-demand-capacity-all-rooms",
       viewerKey,
       overview.data?.year,
       overview.data?.term_type,
@@ -95,7 +95,7 @@ function DemandCapacityReport({
     enabled: colleges.length > 0,
     ...LEADERSHIP_QUERY_POLICY,
     retry: false,
-    queryFn: () => fetchLeadershipRoomCapacity(colleges),
+    queryFn: () => fetchLeadershipRoomCapacity(colleges, "all"),
   });
   const detail = useQuery({
     queryKey: [
@@ -118,6 +118,10 @@ function DemandCapacityReport({
   const university = summarizeUniversityCapacity(visibleSummary);
   const selectedCollege = dean || (admin && collegeFilter !== "all") ? visibleSummary[0] : null;
   const headline = selectedCollege ?? university;
+  const coverageNote = (key: keyof typeof university.coverage) =>
+    !selectedCollege && university.colleges > 0
+      ? `بيانات متاحة: ${university.coverage[key]} من ${university.colleges} كليات`
+      : null;
   const breakdown = admin ? (detail.data?.rows ?? []) : [];
   const filtered =
     collegeFilter === "all" ? breakdown : breakdown.filter((r) => r.collegeId === collegeFilter);
@@ -128,7 +132,7 @@ function DemandCapacityReport({
     { key: "labRooms", label: "عدد المعامل" },
     { key: "labAvailableHours", label: "ساعات المعامل المتاحة" },
     { key: "required", label: "الساعات المطلوبة المسجلة" },
-    { key: "available", label: "الساعات المتاحة في القاعات المسجلة" },
+    { key: "available", label: "الساعات المتاحة في القاعات والمعامل المسجلة" },
     { key: "balance", label: "الفرق الحسابي" },
     { key: "status", label: "حالة البيانات" },
     { key: "assessment", label: "تحليل أولي" },
@@ -198,7 +202,7 @@ function DemandCapacityReport({
       headerMeta={{
         collegeName: selectedCollege?.college ?? "جميع كليات الجامعة",
         termName: periodLabel,
-        note: "طلب المجموعات من الإسناد النشط؛ عدد وساعات قاعات المحاضرات والمعامل منفصلان حسب نوع المكان المسجل. الفرق الإجمالي لا يثبت إمكانية التسكين دون فحص النوع والتوقيت والسعة والملكية.",
+        note: "الطلب من مجموعات التدريس النشطة؛ عدد وساعات قاعات المحاضرات والمعامل منفصلان حسب نوع المكان المسجل. الفرق هو المتاح ناقص المطلوب، ولا يثبت إمكانية التسكين دون فحص النوع والتوقيت والسعة والملكية.",
       }}
       rows={exportRows}
       headers={admin && filtered.length ? detailHeaders : summaryHeaders}
@@ -299,20 +303,26 @@ function DemandCapacityReport({
           <Card className="p-4">
             <p className="text-sm text-muted-foreground">الساعات المطلوبة المسجلة</p>
             <strong className="text-xl">{display(headline.requiredHours)}</strong>
+            <p className="text-xs text-muted-foreground">{coverageNote("requiredHours")}</p>
           </Card>
           <Card className="p-4">
             <p className="text-sm text-muted-foreground">قاعات المحاضرات النشطة</p>
             <strong className="text-xl">{headline.hallRooms ?? "غير محسوب"}</strong>
+            <p className="text-xs text-muted-foreground">{coverageNote("hallRooms")}</p>
             <p className="text-sm">المتاح: {display(headline.hallAvailableHours)} أسبوعيًا</p>
+            <p className="text-xs text-muted-foreground">{coverageNote("hallAvailableHours")}</p>
           </Card>
           <Card className="p-4">
             <p className="text-sm text-muted-foreground">المعامل النشطة</p>
             <strong className="text-xl">{headline.labRooms ?? "غير محسوب"}</strong>
+            <p className="text-xs text-muted-foreground">{coverageNote("labRooms")}</p>
             <p className="text-sm">المتاح: {display(headline.labAvailableHours)} أسبوعيًا</p>
+            <p className="text-xs text-muted-foreground">{coverageNote("labAvailableHours")}</p>
           </Card>
           <Card className="p-4">
             <p className="text-sm text-muted-foreground">الساعات المتاحة إجمالًا</p>
             <strong className="text-xl">{display(headline.availableHours)}</strong>
+            <p className="text-xs text-muted-foreground">{coverageNote("availableHours")}</p>
           </Card>
           <Card className="p-4">
             <p className="text-sm text-muted-foreground">الفرق الحسابي</p>
@@ -327,8 +337,10 @@ function DemandCapacityReport({
         <p className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
           الساعات المطلوبة هي ساعات مجموعات التدريس المسجلة، بما فيها غير المسندة وغير المجدولة.
           الإتاحة تحسب للقاعات والمعامل النشطة، كلٌّ حسب نوعه المسجل، والمنسوبة لكل كلية في المنصة.
-          إذا كانت المجموعات أو ملكية القاعات أو مواعيد الإتاحة قيد التصحيح، فالفرق مؤشر حسابي
-          للمراجعة وليس فائضًا معتمدًا أو قاعة قابلة للتفريغ.
+          الفرق = ساعات الإتاحة ناقص ساعات مجموعات التدريس، وليس فراغ الجدول المنشور. المجاميع تعرض
+          البيانات المعروفة فقط وفق عدد الكليات الموضح لكل مؤشر؛ ولا يُعتمد فرق إجمالي للجامعة حتى
+          تكتمل المقارنة لجميع الكليات. إذا كانت المجموعات أو ملكية القاعات أو مواعيد الإتاحة قيد
+          التصحيح، فالفرق مؤشر حسابي للمراجعة وليس فائضًا معتمدًا أو قاعة قابلة للتفريغ.
         </p>
         {admin && filtered.length > 0 && (
           <div className="flex flex-wrap gap-2 report-no-print">

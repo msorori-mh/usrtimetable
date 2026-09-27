@@ -7,7 +7,10 @@ import {
 } from "./leadership-room-capacity";
 
 /** Read-only; college IDs and published version IDs come from the authorized overview. */
-export async function fetchLeadershipRoomCapacity(colleges: CapacityCollege[]) {
+export async function fetchLeadershipRoomCapacity(
+  colleges: CapacityCollege[],
+  scope: "halls" | "all" = "halls",
+) {
   if (!colleges.length) return [];
   const collegeIds = colleges.map((c) => c.college_id);
   const versionIds = colleges.flatMap((c) => (c.version_id ? [c.version_id] : []));
@@ -59,11 +62,15 @@ export async function fetchLeadershipRoomCapacity(colleges: CapacityCollege[]) {
         .range(from, to),
     ),
   ]);
-  return buildLeadershipRoomCapacity(colleges, {
-    rooms,
-    settings,
-    availability,
-    sessions,
-    roomTypes,
-  } as CapacitySources);
+  return buildLeadershipRoomCapacity(
+    colleges,
+    {
+      rooms,
+      settings,
+      availability,
+      sessions,
+      roomTypes,
+    } as CapacitySources,
+    scope,
+  );
 }
