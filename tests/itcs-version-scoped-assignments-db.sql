@@ -232,9 +232,11 @@ BEGIN
   IF NOT (public.version_scoped_publish_readiness(d)->>'ok')::boolean THEN
     RAISE EXCEPTION 'T12 FAIL clean draft not ready %', public.version_scoped_publish_readiness(d); END IF;
   BEGIN  -- one lecturer on 5 days
-    UPDATE public.schedule_sessions s SET instructor_id = (SELECT ins FROM fx WHERE n = 1)
+    UPDATE public.schedule_sessions s SET instructor_id = (SELECT ins FROM fx WHERE n = 11)
     WHERE s.schedule_version_id = d AND s.teaching_assignment_id IN
-      (SELECT ta FROM fx WHERE n IN (3, 5, 7, 9));
+      (SELECT ta FROM fx WHERE n IN (13, 15, 17, 19));
+    IF (public.version_scoped_publish_readiness(d)->>'instructors_over_4_days')::int <> 1 THEN
+      RAISE EXCEPTION 'T12a FAIL gate did not count 5-day lecturer'; END IF;
     UPDATE public.schedule_versions SET status = 'published' WHERE id = d;
     RAISE EXCEPTION 'T12a FAIL';
   EXCEPTION WHEN check_violation THEN
@@ -242,15 +244,19 @@ BEGIN
   BEGIN  -- student day with a single lecture (also breaks snapshot)
     UPDATE public.schedule_sessions SET day_of_week = 5
     WHERE schedule_version_id = d AND teaching_assignment_id = (SELECT ta FROM fx WHERE n = 100);
+    IF (public.version_scoped_publish_readiness(d)->>'single_session_student_days')::int < 1 THEN
+      RAISE EXCEPTION 'T12b FAIL lone day not counted'; END IF;
     UPDATE public.schedule_versions SET status = 'published' WHERE id = d;
     RAISE EXCEPTION 'T12b FAIL';
   EXCEPTION WHEN check_violation THEN
     IF SQLERRM NOT LIKE 'VERSION_SCOPED_PUBLISH_BLOCKED%' THEN RAISE; END IF; END;
   BEGIN  -- room clash
-    UPDATE public.schedule_sessions SET room_id = (SELECT room FROM fx WHERE n = 1)
-    WHERE schedule_version_id = d AND teaching_assignment_id = (SELECT ta FROM fx WHERE n = 2);
+    UPDATE public.schedule_sessions SET room_id = (SELECT room FROM fx WHERE n = 11)
+    WHERE schedule_version_id = d AND teaching_assignment_id = (SELECT ta FROM fx WHERE n = 12);
     UPDATE public.schedule_sessions SET start_time = '08:00', end_time = '10:00'
-    WHERE schedule_version_id = d AND teaching_assignment_id = (SELECT ta FROM fx WHERE n = 2);
+    WHERE schedule_version_id = d AND teaching_assignment_id = (SELECT ta FROM fx WHERE n = 12);
+    IF (public.version_scoped_publish_readiness(d)->>'hard_conflicts')::int < 1 THEN
+      RAISE EXCEPTION 'T12c FAIL clash not counted'; END IF;
     UPDATE public.schedule_versions SET status = 'published' WHERE id = d;
     RAISE EXCEPTION 'T12c FAIL %', public.version_scoped_publish_readiness('d68d8d22-9a6d-4f21-935f-cebf18bb969b');
   EXCEPTION WHEN check_violation THEN
@@ -258,6 +264,8 @@ BEGIN
   BEGIN  -- missing lecture (281 of 282)
     DELETE FROM public.schedule_sessions WHERE schedule_version_id = d
       AND teaching_assignment_id = (SELECT ta FROM fx WHERE n = 200);
+    IF (public.version_scoped_publish_readiness(d)->>'sessions')::int <> 281 THEN
+      RAISE EXCEPTION 'T12d FAIL'; END IF;
     UPDATE public.schedule_versions SET status = 'published' WHERE id = d;
     RAISE EXCEPTION 'T12d FAIL';
   EXCEPTION WHEN check_violation THEN
