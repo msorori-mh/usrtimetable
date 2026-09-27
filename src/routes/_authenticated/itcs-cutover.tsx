@@ -99,7 +99,9 @@ function ItcsCutoverPage() {
       if (snap.error) throw new Error(snap.error.message);
       if (stage === "publish") {
         // Official quality pipeline: snapshot revision -> score -> persist_schedule_quality_run.
-        const q = await scoreScheduleVersion({ collegeId: me!.collegeIds?.[0] ?? "", scheduleVersionId: ITCS_DRAFT_ID, persist: true })
+        const ver = await supabase.from("schedule_versions").select("college_id").eq("id", ITCS_DRAFT_ID).single();
+        if (ver.error || !ver.data) throw new Error(ver.error?.message ?? "VERSION_NOT_FOUND");
+        const q = await scoreScheduleVersion({ collegeId: ver.data.college_id, scheduleVersionId: ITCS_DRAFT_ID, persist: true })
           .catch((e: Error) => { throw new Error(`QUALITY_RUN_FAILED: ${e.message}`); });
         add(`فحص الجودة: ${q.result.total_score} — تعارضات إلزامية ${q.result.hard_conflicts_count}`);
         if (q.result.hard_conflicts_count !== 0) throw new Error("QUALITY_HARD_CONFLICTS");
