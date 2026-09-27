@@ -92,6 +92,8 @@ test("server handlers consume limits before privileged auth mutations", () => {
   const resetLimit = users.indexOf('assertRateLimit(context.userId, "password_reset_admin")');
   const resetLink = users.indexOf("supabaseAdmin.auth.admin.generateLink");
   assert.ok(resetLimit >= 0 && resetLimit < resetLink);
+  const resetUpdate = users.indexOf("supabaseAdmin.auth.admin.updateUserById", resetLimit);
+  assert.ok(resetUpdate > resetLimit);
 
   const passwordLimit = passwordChange.indexOf('p_action: "password_change"');
   const credentialCheck = passwordChange.indexOf("signInWithPassword");
