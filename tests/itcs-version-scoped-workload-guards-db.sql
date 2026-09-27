@@ -37,7 +37,8 @@ CREATE TABLE public.teaching_assignments(id uuid PRIMARY KEY DEFAULT gen_random_
   expected_students int, section_id uuid, cohort_id uuid, plan_course_component_id uuid,
   delivery_group_id uuid, assigned_component_hours numeric, is_active boolean DEFAULT true);
 CREATE TABLE public.existing_schedule_intake(college_id uuid, term_id uuid, enabled boolean);
-CREATE TABLE public.schedule_versions(id uuid PRIMARY KEY, college_id uuid, academic_term_id uuid, status text);
+CREATE TABLE public.schedule_versions(id uuid PRIMARY KEY, college_id uuid, academic_term_id uuid, status text,
+  created_at timestamptz NOT NULL DEFAULT clock_timestamp());
 CREATE TABLE public.schedule_sessions(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), college_id uuid,
   schedule_version_id uuid, teaching_assignment_id uuid, instructor_id uuid, room_id uuid,
   day_of_week smallint, start_time time, end_time time, delivery_group_id uuid, cohort_id uuid,
@@ -348,133 +349,164 @@ EXCEPTION WHEN OTHERS THEN
 END $pre$;
 SELECT 'PRE-Rev3 reproduced: DUPLICATE_FACULTY_ASSIGNMENT + allocation_pending on published lecturer' AS result;
 
--- ===== Apply Rev2 writer functions (extracted) and Rev3 =====
+-- ===== Other college / other term fixture (must stay byte-identical) =====
+SET session_replication_role = replica; -- fixture seeding only
+INSERT INTO public.academic_terms VALUES ('70000000-0000-4000-8000-00000000000f','c0000000-0000-4000-8000-00000000000f','2026-2027','S1','first');
+INSERT INTO public.academic_cohorts VALUES ('ac000000-0000-4000-8000-00000000000f','70000000-0000-4000-8000-00000000000f');
+INSERT INTO public.course_offerings VALUES ('0f000000-0000-4000-8000-00000000000f','70000000-0000-4000-8000-00000000000f');
+INSERT INTO public.delivery_groups VALUES ('d0000000-0000-4000-8000-00000000000f','ac000000-0000-4000-8000-00000000000f','9c000000-0000-4000-8000-000000000001',null,false);
+INSERT INTO public.teaching_assignments(id,college_id,course_offering_id,instructor_id,cohort_id,plan_course_component_id,delivery_group_id,weekly_hours,session_type) VALUES
+  ('01d00000-0000-4000-8000-00000000000f','c0000000-0000-4000-8000-00000000000f','0f000000-0000-4000-8000-00000000000f','1f000000-0000-4000-8000-00000000000f','ac000000-0000-4000-8000-00000000000f','9c000000-0000-4000-8000-000000000001','d0000000-0000-4000-8000-00000000000f',3,'lecture'),
+  -- A also teaches 0h-component-free extra row in college X term (cross-college identity sum).
+  ('01d00000-0000-4000-8000-0000000000af','c0000000-0000-4000-8000-00000000000f','0f000000-0000-4000-8000-00000000000f','1a000000-0000-4000-8000-00000000000a','ac000000-0000-4000-8000-00000000000f','9c000000-0000-4000-8000-000000000001','d0000000-0000-4000-8000-00000000000f',0,'lecture');
+UPDATE public.teaching_assignments SET assigned_component_hours=0 WHERE id='01d00000-0000-4000-8000-0000000000af';
+UPDATE public.teaching_assignments SET assigned_component_hours=3 WHERE id='01d00000-0000-4000-8000-00000000000f';
+SET session_replication_role = origin;
+CREATE TEMP TABLE base2 AS SELECT
+  faculty_private.workload('1a000000-0000-4000-8000-00000000000a','70000000-0000-4000-8000-000000000001') a,
+  faculty_private.workload('1f000000-0000-4000-8000-00000000000f','70000000-0000-4000-8000-00000000000f') q,
+  (SELECT md5(string_agg(v::text, ',' ORDER BY v::text)) FROM public.v_instructor_delivery_workload v) vw,
+  (SELECT md5(string_agg(v::text, ',' ORDER BY v::text)) FROM public.v_instructor_delivery_workload v
+     WHERE v.college_id='c0000000-0000-4000-8000-00000000000f' AND v.instructor_id<>'1a000000-0000-4000-8000-00000000000a') xw;
+
+-- ===== Apply Rev2 writer functions (extracted) and Rev3.1 =====
 \ir .rev2-writers.sql
+CREATE FUNCTION public.version_scoped_publish_gate(uuid) RETURNS jsonb LANGUAGE sql STABLE AS $$ SELECT '{"ok":true}'::jsonb $$;
+CREATE TRIGGER trg_guard_version_scoped_publish BEFORE UPDATE OF status ON public.schedule_versions
+FOR EACH ROW EXECUTE FUNCTION public.guard_version_scoped_publish();
+CREATE TRIGGER trg_guard_session_version_scoped_assignment
+BEFORE INSERT OR UPDATE OF teaching_assignment_id, schedule_version_id ON public.schedule_sessions
+FOR EACH ROW EXECUTE FUNCTION public.guard_session_version_scoped_assignment();
 \ir ../docs/migrations-proposed/20260927b_itcs_version_scoped_workload_guards.sql
 
-DO $post$
-DECLARE wl jsonb;
+-- Stage helper: asserts A/B hours, no pending, other college identical, and
+-- that an unrelated edit of A (other group) passes the live hours trigger.
+CREATE FUNCTION pg_temp.stage(p_label text, p_a numeric, p_b numeric) RETURNS text LANGUAGE plpgsql AS $$
+DECLARE a jsonb := faculty_private.workload('1a000000-0000-4000-8000-00000000000a','70000000-0000-4000-8000-000000000001');
+  b jsonb := faculty_private.workload('1b000000-0000-4000-8000-00000000000b','70000000-0000-4000-8000-000000000001');
 BEGIN
-  -- No scope rows: every definition behaves exactly like live.
-  IF (SELECT md5(string_agg(v::text, ',' ORDER BY v::text)) FROM public.v_instructor_delivery_workload v) <> (SELECT vw FROM baseline)
-     OR faculty_private.workload('1a000000-0000-4000-8000-00000000000a','70000000-0000-4000-8000-000000000001') <> (SELECT b.w FROM baseline b) THEN
-    RAISE EXCEPTION 'post: no-scope behaviour changed'; END IF;
-
-  -- (1) Different lecturer B in the enabled draft.
-  INSERT INTO assignment_version_private.scope(assignment_id,version_id,replaces_assignment_id)
-  VALUES ('0e000000-0000-4000-8000-000000000002','d68d8d22-9a6d-4f21-935f-cebf18bb969b','01d00000-0000-4000-8000-000000000001');
-  INSERT INTO public.teaching_assignments(id,college_id,course_offering_id,instructor_id,cohort_id,plan_course_component_id,delivery_group_id,assigned_component_hours,weekly_hours,session_type)
-  VALUES ('0e000000-0000-4000-8000-000000000002','c0000000-0000-4000-8000-00000000000c','0f000000-0000-4000-8000-000000000001','1b000000-0000-4000-8000-00000000000b','ac000000-0000-4000-8000-000000000001','9c000000-0000-4000-8000-000000000001','d0000000-0000-4000-8000-000000000001',3,3,'lecture');
+  IF (a->>'standard_assigned_hours')::numeric <> p_a OR (a->>'allocation_pending')::boolean
+     OR (b->>'standard_assigned_hours')::numeric <> p_b OR (b->>'allocation_pending')::boolean THEN
+    RAISE EXCEPTION '% : A=% B=%', p_label, a, b; END IF;
+  IF faculty_private.workload('1f000000-0000-4000-8000-00000000000f','70000000-0000-4000-8000-00000000000f') <> (SELECT x.q FROM base2 x)
+     OR (SELECT md5(string_agg(v::text, ',' ORDER BY v::text)) FROM public.v_instructor_delivery_workload v
+         WHERE v.college_id='c0000000-0000-4000-8000-00000000000f' AND v.instructor_id<>'1a000000-0000-4000-8000-00000000000a') <> (SELECT x.xw FROM base2 x) THEN
+    RAISE EXCEPTION '% : other college changed', p_label; END IF;
+  UPDATE public.teaching_assignments SET notes = p_label WHERE id='01d00000-0000-4000-8000-000000000002';
+  UPDATE public.teaching_assignments SET weekly_hours = 18 WHERE id='01d00000-0000-4000-8000-000000000002';
   SET CONSTRAINTS ALL IMMEDIATE; SET CONSTRAINTS ALL DEFERRED;
-  IF faculty_private.workload('1a000000-0000-4000-8000-00000000000a','70000000-0000-4000-8000-000000000001') <> (SELECT b.w FROM baseline b) THEN
-    RAISE EXCEPTION 'post(1): published lecturer workload changed'; END IF;
-  wl := faculty_private.workload('1b000000-0000-4000-8000-00000000000b','70000000-0000-4000-8000-000000000001');
-  IF (wl->>'standard_assigned_hours')::numeric <> 3 OR (wl->>'allocation_pending')::boolean THEN
-    RAISE EXCEPTION 'post(1): replacement lecturer workload %', wl; END IF;
+  -- Historical version still renders: every 30f8 session joins an active row.
+  IF EXISTS (SELECT 1 FROM public.schedule_sessions s LEFT JOIN public.teaching_assignments t
+             ON t.id=s.teaching_assignment_id AND t.is_active
+             WHERE s.schedule_version_id='30f8a76d-1cb9-4944-a5d7-483dcaea7692' AND t.id IS NULL) THEN
+    RAISE EXCEPTION '% : published history not renderable', p_label; END IF;
+  RETURN p_label || ' PASS A=' || p_a || ' B=' || p_b;
+END $$;
 
-  -- (2) Same-identity clone of A on group 3: guard passes, hours NOT doubled.
-  INSERT INTO assignment_version_private.scope(assignment_id,version_id,replaces_assignment_id)
-  VALUES ('0e000000-0000-4000-8000-000000000003','d68d8d22-9a6d-4f21-935f-cebf18bb969b','01d00000-0000-4000-8000-000000000003');
-  INSERT INTO public.teaching_assignments(id,college_id,course_offering_id,instructor_id,cohort_id,plan_course_component_id,delivery_group_id,assigned_component_hours,weekly_hours,session_type)
-  VALUES ('0e000000-0000-4000-8000-000000000003','c0000000-0000-4000-8000-00000000000c','0f000000-0000-4000-8000-000000000001','1a000000-0000-4000-8000-00000000000a','ac000000-0000-4000-8000-000000000001','9c000000-0000-4000-8000-000000000001','d0000000-0000-4000-8000-000000000003',3,3,'lecture');
-  SET CONSTRAINTS ALL IMMEDIATE; SET CONSTRAINTS ALL DEFERRED;
-  wl := faculty_private.workload('1a000000-0000-4000-8000-00000000000a','70000000-0000-4000-8000-000000000001');
-  IF (wl->>'standard_assigned_hours')::numeric <> 24 OR (wl->>'allocation_pending')::boolean THEN
-    RAISE EXCEPTION 'post(2): clone doubled or pending %', wl; END IF;
+DO $parity$ BEGIN
+  IF (SELECT md5(string_agg(v::text, ',' ORDER BY v::text)) FROM public.v_instructor_delivery_workload v) <> (SELECT x.vw FROM base2 x)
+     OR faculty_private.workload('1a000000-0000-4000-8000-00000000000a','70000000-0000-4000-8000-000000000001') <> (SELECT x.a FROM base2 x) THEN
+    RAISE EXCEPTION 'no-scope parity broken'; END IF;
+END $parity$;
+SELECT 'NO-SCOPE PARITY PASS' AS result;
 
-  -- (3) Non-enabled draft: identical to live -> duplicate still refused.
-  BEGIN
-    INSERT INTO assignment_version_private.scope(assignment_id,version_id,replaces_assignment_id)
-    VALUES ('0e000000-0000-4000-8000-000000000004','e0000000-0000-4000-8000-00000000000e','01d00000-0000-4000-8000-000000000002');
-    INSERT INTO public.teaching_assignments(id,college_id,course_offering_id,instructor_id,cohort_id,plan_course_component_id,delivery_group_id,assigned_component_hours,weekly_hours,session_type)
-    VALUES ('0e000000-0000-4000-8000-000000000004','c0000000-0000-4000-8000-00000000000c','0f000000-0000-4000-8000-000000000001','1a000000-0000-4000-8000-00000000000a','ac000000-0000-4000-8000-000000000001','9c000000-0000-4000-8000-000000000002','d0000000-0000-4000-8000-000000000002',18,18,'lecture');
-    RAISE EXCEPTION 'post(3): non-enabled version accepted';
-  EXCEPTION WHEN OTHERS THEN
-    IF SQLERRM <> 'DUPLICATE_FACULTY_ASSIGNMENT' THEN RAISE EXCEPTION 'post(3): %', SQLERRM; END IF;
-  END;
-
-  -- (4) Plain global duplicate (no scope) still refused.
-  BEGIN
-    INSERT INTO public.teaching_assignments(college_id,course_offering_id,instructor_id,cohort_id,plan_course_component_id,delivery_group_id,assigned_component_hours,weekly_hours,session_type)
-    VALUES ('c0000000-0000-4000-8000-00000000000c','0f000000-0000-4000-8000-000000000001','1a000000-0000-4000-8000-00000000000a','ac000000-0000-4000-8000-000000000001','9c000000-0000-4000-8000-000000000002','d0000000-0000-4000-8000-000000000002',18,18,'lecture');
-    RAISE EXCEPTION 'post(4): global duplicate accepted';
-  EXCEPTION WHEN OTHERS THEN
-    IF SQLERRM <> 'DUPLICATE_FACULTY_ASSIGNMENT' THEN RAISE EXCEPTION 'post(4): %', SQLERRM; END IF;
-  END;
-
-  -- (5) Once the draft is no longer draft, pairs stop counting (fail closed).
-  UPDATE public.schedule_versions SET status='review' WHERE id='d68d8d22-9a6d-4f21-935f-cebf18bb969b';
-  IF NOT (faculty_private.workload('1a000000-0000-4000-8000-00000000000a','70000000-0000-4000-8000-000000000001')->>'allocation_pending')::boolean THEN
-    RAISE EXCEPTION 'post(5): pair still honoured outside draft'; END IF;
-  UPDATE public.schedule_versions SET status='draft' WHERE id='d68d8d22-9a6d-4f21-935f-cebf18bb969b';
-END $post$;
-SELECT 'POST-Rev3 PASS: published workload unchanged, clone not doubled, non-enabled/global duplicates refused' AS result;
-
--- ===== Writer / moves patches =====
+-- ===== Writer / moves patches (draft) =====
 SET request.jwt.claim.sub = '99999999-9999-4999-8999-999999999999';
 DO $w$
+DECLARE m jsonb := '[{"session_id":"5e000000-0000-4000-8000-000000000004","day_of_week":3,"start_time":"08:00","end_time":"11:00","room_id":null}]';
+  c jsonb := '[{"session_id":"5e000000-0000-4000-8000-000000000004","day_of_week":1,"start_time":"09:00","end_time":"12:00","room_id":null}]';
+  dv uuid := 'd68d8d22-9a6d-4f21-935f-cebf18bb969b';
 BEGIN
-  -- Same identity may not raise hours through a scoped clone.
-  BEGIN
-    PERFORM assignment_version_private.apply_replacement('d68d8d22-9a6d-4f21-935f-cebf18bb969b',
-      '01d00000-0000-4000-8000-000000000002','1a000000-0000-4000-8000-00000000000a',19,NULL);
+  BEGIN PERFORM assignment_version_private.apply_replacement(dv,'01d00000-0000-4000-8000-000000000002','1a000000-0000-4000-8000-00000000000a',19,NULL);
     RAISE EXCEPTION 'writer accepted hours increase';
-  EXCEPTION WHEN check_violation THEN
-    IF SQLERRM <> 'SAME_IDENTITY_REPLACEMENT_HOURS_INCREASE' THEN RAISE EXCEPTION 'writer: %', SQLERRM; END IF;
-  END;
-  -- Not allow-listed version.
-  BEGIN
-    PERFORM assignment_version_private.apply_replacement('e0000000-0000-4000-8000-00000000000e',
-      '01d00000-0000-4000-8000-000000000002','1b000000-0000-4000-8000-00000000000b',18,NULL);
+  EXCEPTION WHEN check_violation THEN IF SQLERRM <> 'SAME_IDENTITY_REPLACEMENT_HOURS_INCREASE' THEN RAISE EXCEPTION 'w1 %', SQLERRM; END IF; END;
+  BEGIN PERFORM assignment_version_private.apply_replacement('e0000000-0000-4000-8000-00000000000e','01d00000-0000-4000-8000-000000000002','1b000000-0000-4000-8000-00000000000b',18,NULL);
     RAISE EXCEPTION 'writer accepted non-enabled version';
-  EXCEPTION WHEN check_violation THEN
-    IF SQLERRM NOT IN ('VERSION_NOT_ENABLED_FOR_SCOPED_ASSIGNMENTS','REPLACED_ASSIGNMENT_NOT_IN_VERSION') THEN RAISE EXCEPTION 'writer2: %', SQLERRM; END IF;
-  END;
-  -- Locked draft session.
+  EXCEPTION WHEN check_violation THEN IF SQLERRM NOT IN ('VERSION_NOT_ENABLED_FOR_SCOPED_ASSIGNMENTS','REPLACED_ASSIGNMENT_NOT_IN_VERSION') THEN RAISE EXCEPTION 'w2 %', SQLERRM; END IF; END;
   UPDATE public.schedule_sessions SET is_locked=true WHERE id='5e000000-0000-4000-8000-000000000004';
-  BEGIN
-    PERFORM assignment_version_private.apply_replacement('d68d8d22-9a6d-4f21-935f-cebf18bb969b',
-      '01d00000-0000-4000-8000-000000000002','1b000000-0000-4000-8000-00000000000b',18,NULL);
-    RAISE EXCEPTION 'writer accepted locked session';
-  EXCEPTION WHEN check_violation THEN
-    IF SQLERRM <> 'REPLACED_SESSION_LOCKED' THEN RAISE EXCEPTION 'writer3: %', SQLERRM; END IF;
-  END;
-  BEGIN
-    PERFORM public.apply_version_session_moves('d68d8d22-9a6d-4f21-935f-cebf18bb969b',
-      '[{"session_id":"5e000000-0000-4000-8000-000000000004","day_of_week":3,"start_time":"08:00","end_time":"11:00","room_id":null}]',1,
-      public.schedule_version_session_snapshot('d68d8d22-9a6d-4f21-935f-cebf18bb969b'),
-      public.preview_version_session_moves('d68d8d22-9a6d-4f21-935f-cebf18bb969b',
-      '[{"session_id":"5e000000-0000-4000-8000-000000000004","day_of_week":3,"start_time":"08:00","end_time":"11:00","room_id":null}]'));
-    RAISE EXCEPTION 'moves accepted locked session';
-  EXCEPTION WHEN check_violation THEN
-    IF SQLERRM <> 'MOVE_LOCKED_SESSION' THEN RAISE EXCEPTION 'moves1: %', SQLERRM; END IF;
-  END;
+  BEGIN PERFORM assignment_version_private.apply_replacement(dv,'01d00000-0000-4000-8000-000000000002','1b000000-0000-4000-8000-00000000000b',18,NULL);
+    RAISE EXCEPTION 'writer accepted locked';
+  EXCEPTION WHEN check_violation THEN IF SQLERRM <> 'REPLACED_SESSION_LOCKED' THEN RAISE EXCEPTION 'w3 %', SQLERRM; END IF; END;
+  BEGIN PERFORM public.apply_version_session_moves(dv,m,1,public.schedule_version_session_snapshot(dv),public.preview_version_session_moves(dv,m));
+    RAISE EXCEPTION 'moves accepted locked';
+  EXCEPTION WHEN check_violation THEN IF SQLERRM <> 'MOVE_LOCKED_SESSION' THEN RAISE EXCEPTION 'm1 %', SQLERRM; END IF; END;
   UPDATE public.schedule_sessions SET is_locked=false WHERE id='5e000000-0000-4000-8000-000000000004';
-  -- Deferred conflict surfaces INSIDE the call (caught here, not at COMMIT).
-  BEGIN
-    PERFORM public.apply_version_session_moves('d68d8d22-9a6d-4f21-935f-cebf18bb969b',
-      '[{"session_id":"5e000000-0000-4000-8000-000000000004","day_of_week":1,"start_time":"09:00","end_time":"12:00","room_id":null}]',1,
-      public.schedule_version_session_snapshot('d68d8d22-9a6d-4f21-935f-cebf18bb969b'),
-      public.preview_version_session_moves('d68d8d22-9a6d-4f21-935f-cebf18bb969b',
-      '[{"session_id":"5e000000-0000-4000-8000-000000000004","day_of_week":1,"start_time":"09:00","end_time":"12:00","room_id":null}]'));
+  BEGIN PERFORM public.apply_version_session_moves(dv,c,1,public.schedule_version_session_snapshot(dv),public.preview_version_session_moves(dv,c));
     RAISE EXCEPTION 'moves accepted deferred clash';
-  EXCEPTION WHEN check_violation THEN
-    IF SQLERRM <> 'FIXTURE_DEFERRED_INSTRUCTOR_CLASH' THEN RAISE EXCEPTION 'moves2: %', SQLERRM; END IF;
-  END;
-  IF EXISTS (SELECT 1 FROM assignment_version_private.move_receipts) THEN
-    RAISE EXCEPTION 'receipt written despite deferred clash'; END IF;
+  EXCEPTION WHEN check_violation THEN IF SQLERRM <> 'FIXTURE_DEFERRED_INSTRUCTOR_CLASH' THEN RAISE EXCEPTION 'm2 %', SQLERRM; END IF; END;
+  IF EXISTS (SELECT 1 FROM assignment_version_private.move_receipts) THEN RAISE EXCEPTION 'receipt after clash'; END IF;
 END $w$;
-SELECT 'WRITER/MOVES PASS: hours-increase, allow-list, locked rows, deferred conflict inside call' AS result;
+SELECT 'WRITER/MOVES PASS' AS result;
 
--- ===== Rollback restores live definitions =====
+-- ===== Lifecycle =====
+-- Draft: B replaces A on group 1; A clones itself on group 3 (same hours).
+INSERT INTO assignment_version_private.scope(assignment_id,version_id,replaces_assignment_id) VALUES
+  ('0e000000-0000-4000-8000-000000000002','d68d8d22-9a6d-4f21-935f-cebf18bb969b','01d00000-0000-4000-8000-000000000001'),
+  ('0e000000-0000-4000-8000-000000000003','d68d8d22-9a6d-4f21-935f-cebf18bb969b','01d00000-0000-4000-8000-000000000003');
+INSERT INTO public.teaching_assignments(id,college_id,course_offering_id,instructor_id,cohort_id,plan_course_component_id,delivery_group_id,assigned_component_hours,weekly_hours,session_type) VALUES
+  ('0e000000-0000-4000-8000-000000000002','c0000000-0000-4000-8000-00000000000c','0f000000-0000-4000-8000-000000000001','1b000000-0000-4000-8000-00000000000b','ac000000-0000-4000-8000-000000000001','9c000000-0000-4000-8000-000000000001','d0000000-0000-4000-8000-000000000001',3,3,'lecture'),
+  ('0e000000-0000-4000-8000-000000000003','c0000000-0000-4000-8000-00000000000c','0f000000-0000-4000-8000-000000000001','1a000000-0000-4000-8000-00000000000a','ac000000-0000-4000-8000-000000000001','9c000000-0000-4000-8000-000000000001','d0000000-0000-4000-8000-000000000003',3,3,'lecture');
+UPDATE public.schedule_sessions SET teaching_assignment_id='0e000000-0000-4000-8000-000000000002', instructor_id='1b000000-0000-4000-8000-00000000000b' WHERE id='5e000000-0000-4000-8000-000000000002';
+UPDATE public.schedule_sessions SET teaching_assignment_id='0e000000-0000-4000-8000-000000000003' WHERE id='5e000000-0000-4000-8000-000000000003';
+SELECT pg_temp.stage('draft', 24, 0);
+DO $e$ BEGIN
+  IF (SELECT count(*) FROM public.version_effective_assignments('d68d8d22-9a6d-4f21-935f-cebf18bb969b') WHERE assignment_id IN ('01d00000-0000-4000-8000-000000000001','01d00000-0000-4000-8000-000000000003')) <> 0
+     OR (SELECT count(*) FROM public.version_effective_assignments('30f8a76d-1cb9-4944-a5d7-483dcaea7692') WHERE assignment_id IN ('0e000000-0000-4000-8000-000000000002','0e000000-0000-4000-8000-000000000003')) <> 0
+     OR NOT EXISTS (SELECT 1 FROM public.version_effective_assignments('30f8a76d-1cb9-4944-a5d7-483dcaea7692') WHERE assignment_id='01d00000-0000-4000-8000-000000000001') THEN
+    RAISE EXCEPTION 'effective assignments per version wrong'; END IF;
+  BEGIN INSERT INTO public.schedule_sessions(college_id,schedule_version_id,teaching_assignment_id,instructor_id,day_of_week,start_time,end_time)
+    VALUES ('c0000000-0000-4000-8000-00000000000c','e0000000-0000-4000-8000-00000000000e','0e000000-0000-4000-8000-000000000002','1b000000-0000-4000-8000-00000000000b',4,'08:00','09:00');
+    RAISE EXCEPTION 'unpromoted scoped row leaked into other version';
+  EXCEPTION WHEN check_violation THEN IF SQLERRM <> 'VERSION_SCOPED_ASSIGNMENT_OTHER_VERSION' THEN RAISE; END IF; END;
+  -- Projection blocks a forward step when B would exceed quota+12.
+  BEGIN
+    INSERT INTO public.delivery_groups VALUES ('d0000000-0000-4000-8000-000000000004','ac000000-0000-4000-8000-000000000001','9c000000-0000-4000-8000-000000000002',null,false);
+    INSERT INTO public.teaching_assignments(id,college_id,course_offering_id,instructor_id,cohort_id,plan_course_component_id,delivery_group_id,assigned_component_hours,weekly_hours,session_type)
+    VALUES ('0b000000-0000-4000-8000-000000000022','c0000000-0000-4000-8000-00000000000c','0f000000-0000-4000-8000-000000000001','1b000000-0000-4000-8000-00000000000b','ac000000-0000-4000-8000-000000000001','9c000000-0000-4000-8000-000000000002','d0000000-0000-4000-8000-000000000004',22,22,'lecture');
+    UPDATE public.schedule_versions SET status='review' WHERE id='d68d8d22-9a6d-4f21-935f-cebf18bb969b';
+    RAISE EXCEPTION 'projection did not block';
+  EXCEPTION WHEN OTHERS THEN IF SQLERRM NOT LIKE 'PROJECTED_EXTRA_HOURS_LIMIT_EXCEEDED%' THEN RAISE EXCEPTION 'proj: %', SQLERRM; END IF; END;
+END $e$;
+UPDATE public.schedule_versions SET status='review' WHERE id='d68d8d22-9a6d-4f21-935f-cebf18bb969b';
+SELECT pg_temp.stage('review', 24, 0);
+UPDATE public.schedule_versions SET status='draft' WHERE id='d68d8d22-9a6d-4f21-935f-cebf18bb969b';
+SELECT pg_temp.stage('review->draft', 24, 0);
+UPDATE public.schedule_versions SET status='review' WHERE id='d68d8d22-9a6d-4f21-935f-cebf18bb969b';
+UPDATE public.schedule_versions SET status='approved' WHERE id='d68d8d22-9a6d-4f21-935f-cebf18bb969b';
+SELECT pg_temp.stage('approved', 24, 0);
+UPDATE public.schedule_versions SET status='published' WHERE id='d68d8d22-9a6d-4f21-935f-cebf18bb969b';
+SELECT pg_temp.stage('published (old still published)', 21, 3);
+UPDATE public.schedule_versions SET status='archived' WHERE id='30f8a76d-1cb9-4944-a5d7-483dcaea7692';
+SELECT pg_temp.stage('published + old archived', 21, 3);
+-- After promotion the new row may be cloned into a later version of the term.
+INSERT INTO public.schedule_versions VALUES ('f0000000-0000-4000-8000-0000000000c1','c0000000-0000-4000-8000-00000000000c','70000000-0000-4000-8000-000000000001','draft', clock_timestamp()+interval '1 minute');
+INSERT INTO public.schedule_sessions(college_id,schedule_version_id,teaching_assignment_id,instructor_id,day_of_week,start_time,end_time,delivery_group_id)
+VALUES ('c0000000-0000-4000-8000-00000000000c','f0000000-0000-4000-8000-0000000000c1','0e000000-0000-4000-8000-000000000002','1b000000-0000-4000-8000-00000000000b',4,'08:00','11:00','d0000000-0000-4000-8000-000000000001');
+UPDATE public.schedule_versions SET status='published' WHERE id='f0000000-0000-4000-8000-0000000000c1';
+UPDATE public.schedule_versions SET status='archived' WHERE id='d68d8d22-9a6d-4f21-935f-cebf18bb969b';
+SELECT pg_temp.stage('clone of new published, d68 archived', 21, 3);
+-- Rollback clone: a later published version renders the OLD assignment again.
+INSERT INTO public.schedule_versions VALUES ('f0000000-0000-4000-8000-0000000000c2','c0000000-0000-4000-8000-00000000000c','70000000-0000-4000-8000-000000000001','draft', clock_timestamp()+interval '2 minutes');
+INSERT INTO public.schedule_sessions(college_id,schedule_version_id,teaching_assignment_id,instructor_id,day_of_week,start_time,end_time,delivery_group_id)
+VALUES ('c0000000-0000-4000-8000-00000000000c','f0000000-0000-4000-8000-0000000000c2','01d00000-0000-4000-8000-000000000001','1a000000-0000-4000-8000-00000000000a',0,'08:00','11:00','d0000000-0000-4000-8000-000000000001'),
+       ('c0000000-0000-4000-8000-00000000000c','f0000000-0000-4000-8000-0000000000c2','01d00000-0000-4000-8000-000000000003','1a000000-0000-4000-8000-00000000000a',1,'08:00','11:00','d0000000-0000-4000-8000-000000000003');
+UPDATE public.schedule_versions SET status='archived' WHERE id='f0000000-0000-4000-8000-0000000000c1';
+UPDATE public.schedule_versions SET status='published' WHERE id='f0000000-0000-4000-8000-0000000000c2';
+SELECT pg_temp.stage('rollback clone of old published', 24, 0);
+
+-- ===== Rollback of the migration =====
+DELETE FROM public.schedule_sessions WHERE teaching_assignment_id IN (SELECT assignment_id FROM assignment_version_private.scope)
+  OR schedule_version_id IN ('f0000000-0000-4000-8000-0000000000c1','f0000000-0000-4000-8000-0000000000c2');
 DELETE FROM public.teaching_assignments WHERE id IN (SELECT assignment_id FROM assignment_version_private.scope);
-DELETE FROM assignment_version_private.scope;
+DELETE FROM assignment_version_private.scope; DELETE FROM assignment_version_private.promotions;
 \ir ../docs/migrations-proposed/20260927b_itcs_version_scoped_workload_guards_rollback.sql
 DO $rb$ BEGIN
-  IF (SELECT md5(string_agg(v::text, ',' ORDER BY v::text)) FROM public.v_instructor_delivery_workload v) <> (SELECT vw FROM baseline)
-     OR position('is_replacement_pair' IN pg_get_functiondef('faculty_private.workload(uuid,uuid)'::regprocedure)) > 0
+  IF (SELECT md5(string_agg(v::text, ',' ORDER BY v::text)) FROM public.v_instructor_delivery_workload v) <> (SELECT x.vw FROM base2 x)
+     OR faculty_private.workload('1a000000-0000-4000-8000-00000000000a','70000000-0000-4000-8000-000000000001') - 'hours_by_college' <> (SELECT x.a FROM base2 x) - 'hours_by_college'
+     OR position('assignment_version_private.is_' IN pg_get_functiondef('faculty_private.workload(uuid,uuid)'::regprocedure)) > 0
      OR position('is_replacement_pair' IN pg_get_functiondef('faculty_private.guard_assignment_request()'::regprocedure)) > 0
-     OR position('enabled_versions' IN pg_get_functiondef('assignment_version_private.apply_replacement(uuid,uuid,uuid,numeric,uuid)'::regprocedure)) > 0 THEN
+     OR position('enabled_versions' IN pg_get_functiondef('assignment_version_private.apply_replacement(uuid,uuid,uuid,numeric,uuid)'::regprocedure)) > 0
+     OR position('promotions' IN pg_get_functiondef('public.guard_version_scoped_publish()'::regprocedure)) > 0 THEN
     RAISE EXCEPTION 'rollback incomplete'; END IF;
 END $rb$;
 SELECT 'ROLLBACK PASS' AS result;

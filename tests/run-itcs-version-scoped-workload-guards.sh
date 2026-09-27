@@ -8,7 +8,8 @@ import re
 src = open('../docs/migrations-proposed/20260927_itcs_version_scoped_assignments.sql').read()
 names = ['public.version_effective_assignments', 'public.validate_version_assignment_allocation',
          'public.schedule_version_session_snapshot', 'assignment_version_private.apply_replacement',
-         'public.preview_version_session_moves', 'public.apply_version_session_moves']
+         'public.preview_version_session_moves', 'public.apply_version_session_moves',
+         'public.guard_session_version_scoped_assignment', 'public.guard_version_scoped_publish']
 out = []
 for n in names:
     m = re.search(r'^CREATE FUNCTION ' + re.escape(n) + r'\(.*?^(?:END )?\$\$;\n', src, re.S | re.M)
