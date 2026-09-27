@@ -44,7 +44,16 @@ CREATE OR REPLACE FUNCTION public.validate_assignment_allocation_locked(
 RETURNS void LANGUAGE plpgsql STABLE SET search_path TO 'public' AS $function$
 DECLARE
   v_co_count integer; v_null_split_count integer; v_sum_assigned numeric;
+  v_pending uuid := nullif(current_setting('app.version_scoped_pending_assignment', true), '')::uuid;
 BEGIN
+  -- The row being inserted by create_version_scoped_replacement_assignment is
+  -- validated per version instead. The marker is honoured only when a scope
+  -- row exists for it and the assignment row itself does not exist yet.
+  IF p_include_new_row AND p_exclude_assignment_id IS NULL AND v_pending IS NOT NULL
+     AND EXISTS (SELECT 1 FROM assignment_version_private.scope s WHERE s.assignment_id = v_pending)
+     AND NOT EXISTS (SELECT 1 FROM public.teaching_assignments t WHERE t.id = v_pending) THEN
+    RETURN;
+  END IF;
   SELECT COUNT(*)::integer,
          COUNT(*) FILTER (WHERE ta.assigned_component_hours IS NULL
            AND (p_exclude_assignment_id IS NULL OR ta.id IS DISTINCT FROM p_exclude_assignment_id))::integer
@@ -193,6 +202,7 @@ BEGIN
   INSERT INTO assignment_version_private.scope
     (assignment_id, version_id, replaces_assignment_id, request_id, created_by)
   VALUES (v_new, p_version, p_replaces, p_request_id, v_uid);
+  PERFORM set_config('app.version_scoped_pending_assignment', v_new::text, true);
   INSERT INTO public.teaching_assignments
     (id, college_id, course_offering_id, instructor_id, section_number, session_type,
      weekly_hours, required_room_type, notes, expected_students, section_id, cohort_id,
@@ -202,6 +212,7 @@ BEGIN
      concat_ws(' ', v_old.notes, '[version-scoped ' || p_version || ']'),
      v_old.expected_students, v_old.section_id, v_old.cohort_id, v_old.plan_course_component_id,
      v_old.delivery_group_id, p_hours, true);
+  PERFORM set_config('app.version_scoped_pending_assignment', '', true);
 
   SELECT c.weekly_contact_hours INTO v_component FROM public.plan_course_components c
   WHERE c.id = v_old.plan_course_component_id;
