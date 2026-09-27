@@ -17,3 +17,5 @@ The published ITCS version `30f8a76d-1cb9-4944-a5d7-483dcaea7692` had 275 sessio
 | مبادئ إدارة الأعمال | Tuesday | 13:00–16:00 | `8c2b22b3-8e30-4c11-9fcb-40bec48bb5b9` |
 
 The server rule prevents new conflicting placements; it does not rewrite this published timetable. Re-check the live data before acting, then use the approved real timetable to correct the two sessions in a validated draft. Do not invent times or rooms, delete sessions to hide the conflict, or silently republish an older version.
+
+- Version-scoped teaching assignments: a replacement assignment for one draft lives in `assignment_version_private.scope` and is counted only by `validate_version_assignment_allocation`; old assignments stay active for published history. Why: replacing a lecturer in a draft must not rewrite or over-count the published timetable.
