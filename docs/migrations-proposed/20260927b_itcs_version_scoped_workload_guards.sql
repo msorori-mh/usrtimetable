@@ -38,7 +38,9 @@ INSERT INTO assignment_version_private.enabled_versions VALUES
 INSERT INTO assignment_version_private.original_defs(signature, definition)
 SELECT s, pg_get_functiondef(s::regprocedure) FROM unnest(ARRAY[
   'faculty_private.workload(uuid,uuid)',
-  'faculty_private.guard_assignment_request()']) s;
+  'faculty_private.guard_assignment_request()',
+  'assignment_version_private.apply_replacement(uuid,uuid,uuid,numeric,uuid)',
+  'public.apply_version_session_moves(uuid,jsonb,integer,text,text)']) s;
 INSERT INTO assignment_version_private.original_defs(signature, definition)
 VALUES ('view:public.v_instructor_delivery_workload',
   'CREATE OR REPLACE VIEW public.v_instructor_delivery_workload AS '
