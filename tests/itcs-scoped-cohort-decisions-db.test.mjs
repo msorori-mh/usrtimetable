@@ -19,6 +19,7 @@ const fn = (name) => {
 };
 const setup = `
 CREATE SCHEMA auth; CREATE SCHEMA faculty_private; CREATE SCHEMA assignment_version_private; CREATE SCHEMA itcs_cutover_private;
+CREATE SCHEMA schedule_version_delivery_private;
 CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS $$ SELECT nullif(current_setting('test.uid',true),'')::uuid $$;
 CREATE FUNCTION public.is_super_admin(u uuid) RETURNS boolean LANGUAGE sql AS $$ SELECT u='${id(1)}'::uuid $$;
 CREATE FUNCTION public.can_view_college(u uuid,c uuid) RETURNS boolean LANGUAGE sql AS $$ SELECT public.is_super_admin(u) $$;
@@ -41,6 +42,9 @@ CREATE TABLE assignment_version_private.scope(assignment_id uuid PRIMARY KEY REF
  version_id uuid,replaces_assignment_id uuid,request_id uuid,created_by uuid);
 CREATE TABLE assignment_version_private.enabled_versions(version_id uuid PRIMARY KEY);
 CREATE TABLE assignment_version_private.request_scope(request_id uuid PRIMARY KEY,version_id uuid,replaces_assignment_id uuid);
+CREATE TABLE public.existing_schedule_source_rows(teaching_assignment_id uuid);
+CREATE TABLE schedule_version_delivery_private.instructor_hour_waivers(assignment_id uuid,source_assignment_id uuid,version_id uuid,
+ instructor_id uuid,group_id uuid,college_id uuid,term_id uuid);
 CREATE TABLE public.audit_logs(actor_id uuid,action text,entity text,entity_id uuid,college_id uuid,details jsonb);
 CREATE FUNCTION assignment_version_private.is_counted(a uuid) RETURNS boolean LANGUAGE sql AS $$ SELECT NOT EXISTS(SELECT 1 FROM assignment_version_private.scope WHERE assignment_id=a) $$;
 CREATE FUNCTION assignment_version_private.assert_projected_load(uuid) RETURNS void LANGUAGE sql AS $$ SELECT $$;
@@ -89,8 +93,11 @@ INSERT INTO public.schedule_sessions(schedule_version_id,teaching_assignment_id,
 INSERT INTO public.faculty_teaching_requests(id,delivery_group_id,instructor_id,college_id,assigned_hours)
  VALUES('${id(90)}','${id(70)}','${id(21)}','${id(2)}',3),('${id(91)}','${id(71)}','${id(21)}','${id(2)}',3);
 INSERT INTO assignment_version_private.request_scope VALUES('${id(90)}','${id(10)}','${id(80)}'),('${id(91)}','${id(10)}','${id(81)}');
+UPDATE public.teaching_assignments SET section_number=CASE WHEN id='${id(80)}' THEN 'G1' ELSE 'G2' END;
+CREATE UNIQUE INDEX ta_unique ON public.teaching_assignments(college_id,course_offering_id,instructor_id,session_type,COALESCE(section_number,''));
+CREATE UNIQUE INDEX ta_v2_delivery_group_instructor_uniq ON public.teaching_assignments(college_id,delivery_group_id,instructor_id) WHERE delivery_group_id IS NOT NULL AND is_active=true;
 `;
-async function fixture() {
+async function fixture(reuse = true) {
   const db = new PGlite();
   await db.exec(setup);
   await db.exec(`
@@ -131,8 +138,8 @@ async function fixture() {
   await db.exec(fs.readFileSync("tests/fixtures/itcs-cohort-live-functions.sql", "utf8"));
   await db.exec(`
  CREATE FUNCTION public.test_cohort_guard() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
-  PERFORM faculty_private.assert_cohort_component_single_instructor(NEW.delivery_group_id,NEW.instructor_id,NEW.id);RETURN NEW; END $$;
- CREATE TRIGGER cohort_guard BEFORE INSERT ON public.teaching_assignments FOR EACH ROW EXECUTE FUNCTION public.test_cohort_guard();
+  IF NEW.is_active THEN PERFORM faculty_private.assert_cohort_component_single_instructor(NEW.delivery_group_id,NEW.instructor_id,NEW.id); END IF;RETURN NEW; END $$;
+ CREATE TRIGGER cohort_guard BEFORE INSERT OR UPDATE OF instructor_id,delivery_group_id,is_active ON public.teaching_assignments FOR EACH ROW EXECUTE FUNCTION public.test_cohort_guard();
  CREATE FUNCTION public.test_session_approval_guard() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
   IF NEW.teaching_assignment_id IS DISTINCT FROM OLD.teaching_assignment_id AND NOT EXISTS(
    SELECT 1 FROM public.faculty_teaching_requests WHERE assignment_id=NEW.teaching_assignment_id AND status='approved'
@@ -183,6 +190,23 @@ async function fixture() {
       "utf8",
     ),
   );
+  await db.exec(`
+ CREATE TABLE faculty_private.home_profiles(identity_id uuid,home_college_id uuid);
+ INSERT INTO faculty_private.home_profiles VALUES('${id(30)}','${id(2)}'),('${id(31)}','${id(6)}');
+ ALTER TABLE public.faculty_teaching_requests ADD COLUMN identity_id uuid,ADD COLUMN home_college_id uuid,
+   ADD COLUMN term_id uuid,ADD COLUMN created_at timestamptz DEFAULT now();
+ UPDATE public.faculty_teaching_requests SET identity_id='${id(31)}',home_college_id='${id(6)}',term_id='${id(3)}';
+ `);
+  await db.exec(fs.readFileSync("tests/fixtures/itcs-assignment-request-live.sql", "utf8"));
+  await db.exec(`CREATE TRIGGER zz_faculty_assignment_request BEFORE INSERT OR UPDATE ON public.teaching_assignments
+   FOR EACH ROW EXECUTE FUNCTION faculty_private.guard_assignment_request();`);
+  if (reuse)
+    await db.exec(
+      fs.readFileSync(
+        "supabase/migrations/20260928092000_scoped_inactive_assignment_reuse.sql",
+        "utf8",
+      ),
+    );
   return db;
 }
 test("one group alone fails atomically; both official decisions preserve cohort unity and history", async () => {
@@ -294,6 +318,133 @@ test("one group alone fails atomically; both official decisions preserve cohort 
           m,
         ]),
       /SUPER_ADMIN_REQUIRED/,
+    );
+  } finally {
+    await db.close();
+  }
+});
+
+test("reuse inactive natural identity only with a fresh official decision and no historical session links", async () => {
+  const db = await fixture(false);
+  try {
+    await db.exec(`
+ UPDATE public.teaching_assignments SET required_room_type='lecture_hall' WHERE id='${id(80)}';
+ INSERT INTO public.teaching_assignments(id,college_id,course_offering_id,instructor_id,section_number,session_type,weekly_hours,
+   required_room_type,notes,cohort_id,plan_course_component_id,delivery_group_id,assigned_component_hours,is_active)
+ SELECT '${id(82)}',college_id,course_offering_id,'${id(21)}',section_number,session_type,weekly_hours,
+   NULL,'previous deactivation',cohort_id,plan_course_component_id,delivery_group_id,3,false
+ FROM public.teaching_assignments WHERE id='${id(80)}';
+ INSERT INTO public.faculty_teaching_requests(id,delivery_group_id,instructor_id,college_id,assigned_hours,status,assignment_id,
+   decided_by,decided_at,identity_id,home_college_id,term_id)
+ VALUES('${id(92)}','${id(70)}','${id(21)}','${id(2)}',3,'approved','${id(82)}','${id(1)}',now()-interval '1 day','${id(31)}','${id(6)}','${id(3)}');
+ `);
+    const history = (
+      await db.query(`SELECT md5(jsonb_agg(to_jsonb(s) ORDER BY s.id)::text) h
+       FROM public.schedule_sessions s WHERE schedule_version_id='${id(11)}'`)
+    ).rows[0].h;
+    const oldDecision = (
+      await db.query(
+        `SELECT to_jsonb(r) r FROM public.faculty_teaching_requests r WHERE id='${id(92)}'`,
+      )
+    ).rows[0].r;
+    const inactive = (
+      await db.query(`SELECT to_jsonb(t) t FROM public.teaching_assignments t WHERE id='${id(82)}'`)
+    ).rows[0].t;
+    const approve = () =>
+      db.query(`SELECT public.itcs_cutover_execute('approve',$1,$2,$3,'manifest','baseline')`, [
+        id(10),
+        id(11),
+        { history_hash: history },
+      ]);
+    await assert.rejects(approve, /ta_unique/);
+    await db.exec(
+      fs.readFileSync(
+        "supabase/migrations/20260928092000_scoped_inactive_assignment_reuse.sql",
+        "utf8",
+      ),
+    );
+    // An old approval alone cannot reactivate the row outside a new decision.
+    await db.exec(`CREATE TABLE public.request_guard_probe (LIKE public.teaching_assignments INCLUDING DEFAULTS);
+      INSERT INTO public.request_guard_probe SELECT * FROM public.teaching_assignments WHERE id='${id(82)}';
+      CREATE TRIGGER request_guard_probe BEFORE UPDATE ON public.request_guard_probe FOR EACH ROW
+      EXECUTE FUNCTION faculty_private.guard_assignment_request();`);
+    await assert.rejects(
+      () => db.exec(`UPDATE public.request_guard_probe SET is_active=true WHERE id='${id(82)}'`),
+      /اعتماد التكليف من الكلية الأصلية مطلوب قبل الإسناد/,
+    );
+    await assert.rejects(() =>
+      db.exec(`UPDATE public.teaching_assignments SET is_active=true WHERE id='${id(82)}'`),
+    );
+    // Reusing a row already referenced by any version is explicitly forbidden.
+    await db.exec(`INSERT INTO public.schedule_sessions(id,schedule_version_id,teaching_assignment_id,instructor_id)
+      VALUES('${id(95)}','${id(11)}','${id(82)}','${id(21)}');`);
+    await assert.rejects(approve, /INACTIVE_ASSIGNMENT_NOT_REUSABLE/);
+    await db.exec(`DELETE FROM public.schedule_sessions WHERE id='${id(95)}';
+      UPDATE public.teaching_assignments SET required_room_type='lab' WHERE id='${id(82)}';`);
+    await assert.rejects(approve, /INACTIVE_ASSIGNMENT_NOT_REUSABLE/);
+    await db.exec(`UPDATE public.teaching_assignments SET required_room_type=NULL WHERE id='${id(82)}';
+      SELECT set_config('test.fail_moves','true',false);`);
+    await assert.rejects(approve, /MOVE_SIMULATION_FAILURE/);
+    assert.deepEqual(
+      (
+        await db.query(
+          `SELECT to_jsonb(t) t FROM public.teaching_assignments t WHERE id='${id(82)}'`,
+        )
+      ).rows[0].t,
+      inactive,
+    );
+    assert.equal(
+      (await db.query("SELECT count(*)::int n FROM assignment_version_private.scope")).rows[0].n,
+      0,
+    );
+    await db.exec("SELECT set_config('test.fail_moves','false',false);");
+    await approve();
+    assert.equal(
+      (
+        await db.query(
+          `SELECT assignment_id FROM public.faculty_teaching_requests WHERE id='${id(90)}'`,
+        )
+      ).rows[0].assignment_id,
+      id(82),
+    );
+    assert.deepEqual(
+      (
+        await db.query(
+          `SELECT to_jsonb(r) r FROM public.faculty_teaching_requests r WHERE id='${id(92)}'`,
+        )
+      ).rows[0].r,
+      oldDecision,
+    );
+    const reused = (
+      await db.query(`SELECT * FROM public.teaching_assignments WHERE id='${id(82)}'`)
+    ).rows[0];
+    assert.equal(reused.is_active, true);
+    assert.equal(reused.notes, "previous deactivation");
+    assert.equal(reused.required_room_type, "lecture_hall");
+    assert.equal(
+      (await db.query("SELECT count(*)::int n FROM public.teaching_assignments")).rows[0].n,
+      4,
+    );
+    assert.deepEqual(
+      (
+        await db.query(
+          `SELECT details->'inactive_assignment_before' before FROM public.audit_logs WHERE entity_id='${id(82)}'`,
+        )
+      ).rows[0].before,
+      inactive,
+    );
+    assert.equal(
+      (
+        await db.query(
+          `SELECT md5(jsonb_agg(to_jsonb(s) ORDER BY s.id)::text) h FROM public.schedule_sessions s WHERE schedule_version_id='${id(11)}'`,
+        )
+      ).rows[0].h,
+      history,
+    );
+    await approve();
+    assert.equal(
+      (await db.query("SELECT count(*)::int n FROM public.teaching_assignments")).rows[0].n,
+      4,
     );
   } finally {
     await db.close();
