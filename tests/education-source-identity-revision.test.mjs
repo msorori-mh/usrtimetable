@@ -2,13 +2,36 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 const { PGlite } = await import(process.env.CLONE_DB_MODULE || "@electric-sql/pglite");
-const sql = await readFile(new URL("../supabase/migrations/20260928120000_education_source_identity_revision.sql", import.meta.url), "utf8");
-const policySql = await readFile(new URL("../supabase/migrations/20260928120500_education_source_revision_policy.sql", import.meta.url), "utf8");
+const sql = await readFile(
+  new URL(
+    "../supabase/migrations/20260928120000_education_source_identity_revision.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const policySql = await readFile(
+  new URL(
+    "../supabase/migrations/20260928120500_education_source_revision_policy.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const id = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const college = "1ee291b2-bec9-43d3-b42b-5a4f46946399";
 const term = "93705393-609d-4605-ae94-9572cd8b2090";
 const source = "7430bad7-2de7-5c90-9368-b214a199d6c3";
-const tableNames = ["scope", "cohort_facts", "group_facts", "partner_group_facts", "partition_facts", "group_partition_facts", "shared_link_facts", "partner_partition_facts", "component_room_type_facts", "instructor_hour_waivers"];
+const tableNames = [
+  "scope",
+  "cohort_facts",
+  "group_facts",
+  "partner_group_facts",
+  "partition_facts",
+  "group_partition_facts",
+  "shared_link_facts",
+  "partner_partition_facts",
+  "component_room_type_facts",
+  "instructor_hour_waivers",
+];
 
 async function fixture() {
   const db = new PGlite();
@@ -55,13 +78,28 @@ async function fixture() {
 }
 
 async function baseline(db) {
-  return (await db.query(`SELECT
+  return (
+    await db.query(`SELECT
     (SELECT md5(jsonb_agg(to_jsonb(s) ORDER BY id)::text) FROM schedule_sessions s WHERE schedule_version_id='${source}') sh,
-    (SELECT md5(jsonb_agg(to_jsonb(s) ORDER BY id)::text) FROM existing_schedule_source_rows s WHERE schedule_version_id='${source}') lh`)).rows[0];
+    (SELECT md5(jsonb_agg(to_jsonb(s) ORDER BY id)::text) FROM existing_schedule_source_rows s WHERE schedule_version_id='${source}') lh`)
+  ).rows[0];
 }
 async function clone(db, overrides = {}) {
   const hashes = await baseline(db);
-  return (await db.query("SELECT education_source_revision_private.create_revision($1,$2,$3,$4,$5,$6,$7) r", [source, id(1001), id(3), overrides.sh ?? hashes.sh, overrides.lh ?? hashes.lh, "Identity correction", "Explicit user identity confirmation"])).rows[0].r;
+  return (
+    await db.query(
+      "SELECT education_source_revision_private.create_revision($1,$2,$3,$4,$5,$6,$7) r",
+      [
+        source,
+        id(1001),
+        id(3),
+        overrides.sh ?? hashes.sh,
+        overrides.lh ?? hashes.lh,
+        "Identity correction",
+        "Explicit user identity confirmation",
+      ],
+    )
+  ).rows[0].r;
 }
 async function authenticate(db) {
   await db.query("SELECT set_config('test.actor',$1,false)", [id(1)]);
@@ -73,31 +111,80 @@ test("copies every session and source fact, changes one identity, preserves publ
   const result = await clone(db);
   assert.equal(result.sessions_copied, 339);
   assert.deepEqual(await baseline(db), before);
-  assert.equal((await db.query("SELECT education_source_revision_verified($1) ok", [result.version_id])).rows[0].ok, true);
-  const counts = (await db.query(`SELECT count(*)::int n, count(*) FILTER(WHERE expected->>'instructor_id'<>original->>'instructor_id')::int changed,
+  assert.equal(
+    (await db.query("SELECT education_source_revision_verified($1) ok", [result.version_id]))
+      .rows[0].ok,
+    true,
+  );
+  const counts = (
+    await db.query(
+      `SELECT count(*)::int n, count(*) FILTER(WHERE expected->>'instructor_id'<>original->>'instructor_id')::int changed,
     bool_and(expected-ARRAY['id','schedule_version_id','instructor_id','created_at','updated_at']=original-ARRAY['id','schedule_version_id','instructor_id','created_at','updated_at']) unchanged
-    FROM education_source_revision_private.sessions WHERE version_id=$1`, [result.version_id])).rows[0];
+    FROM education_source_revision_private.sessions WHERE version_id=$1`,
+      [result.version_id],
+    )
+  ).rows[0];
   assert.deepEqual(counts, { n: 339, changed: 1, unchanged: true });
-  assert.equal((await db.query("SELECT count(*)::int n FROM schedule_version_delivery_private.cohort_facts WHERE version_id=$1 AND payload='{" + '"headcount":40' + "}'", [result.version_id])).rows[0].n, 1);
-  await assert.rejects(db.query(`UPDATE schedule_sessions SET instructor_id='${id(3)}' WHERE id='${id(1001)}'`), /PUBLISHED_IMMUTABLE/);
+  assert.equal(
+    (
+      await db.query(
+        "SELECT count(*)::int n FROM schedule_version_delivery_private.cohort_facts WHERE version_id=$1 AND payload='{" +
+          '"headcount":40' +
+          "}'",
+        [result.version_id],
+      )
+    ).rows[0].n,
+    1,
+  );
+  await assert.rejects(
+    db.query(`UPDATE schedule_sessions SET instructor_id='${id(3)}' WHERE id='${id(1001)}'`),
+    /PUBLISHED_IMMUTABLE/,
+  );
   await db.close();
 });
 
 test("sealed copies reject time, room, load, identity, delete and extra-session changes", async () => {
   const db = await fixture();
   const { version_id: version } = await clone(db);
-  for (const mutation of ["start_time='11:00'", "room_id=gen_random_uuid()", "expected_students=41", `instructor_id='${id(2)}'`, "course_offering_id=gen_random_uuid()"])
-    await assert.rejects(db.query(`UPDATE schedule_sessions SET ${mutation} WHERE schedule_version_id=$1 AND instructor_id='${id(3)}'`, [version]), /SOURCE_IDENTITY_REVISION_SEALED/);
-  await assert.rejects(db.query("DELETE FROM schedule_sessions WHERE schedule_version_id=$1", [version]), /SOURCE_IDENTITY_REVISION_SEALED/);
-  await assert.rejects(db.query("INSERT INTO schedule_sessions SELECT (jsonb_populate_record(NULL::schedule_sessions,to_jsonb(s)||jsonb_build_object('id',gen_random_uuid()))).* FROM schedule_sessions s WHERE schedule_version_id=$1 LIMIT 1", [version]), /SOURCE_IDENTITY_REVISION_SEALED/);
-  assert.equal((await db.query("SELECT education_source_revision_verified($1) ok", [version])).rows[0].ok, true);
+  for (const mutation of [
+    "start_time='11:00'",
+    "room_id=gen_random_uuid()",
+    "expected_students=41",
+    `instructor_id='${id(2)}'`,
+    "course_offering_id=gen_random_uuid()",
+  ])
+    await assert.rejects(
+      db.query(
+        `UPDATE schedule_sessions SET ${mutation} WHERE schedule_version_id=$1 AND instructor_id='${id(3)}'`,
+        [version],
+      ),
+      /SOURCE_IDENTITY_REVISION_SEALED/,
+    );
+  await assert.rejects(
+    db.query("DELETE FROM schedule_sessions WHERE schedule_version_id=$1", [version]),
+    /SOURCE_IDENTITY_REVISION_SEALED/,
+  );
+  await assert.rejects(
+    db.query(
+      "INSERT INTO schedule_sessions SELECT (jsonb_populate_record(NULL::schedule_sessions,to_jsonb(s)||jsonb_build_object('id',gen_random_uuid()))).* FROM schedule_sessions s WHERE schedule_version_id=$1 LIMIT 1",
+      [version],
+    ),
+    /SOURCE_IDENTITY_REVISION_SEALED/,
+  );
+  assert.equal(
+    (await db.query("SELECT education_source_revision_verified($1) ok", [version])).rows[0].ok,
+    true,
+  );
   await db.close();
 });
 
 test("untrusted callers cannot write provenance or create revisions", async () => {
   const db = await fixture();
   await db.exec("SET ROLE authenticated");
-  await assert.rejects(db.query("SELECT * FROM education_source_revision_private.revisions"), /permission denied/);
+  await assert.rejects(
+    db.query("SELECT * FROM education_source_revision_private.revisions"),
+    /permission denied/,
+  );
   await assert.rejects(clone(db), /permission denied/);
   await db.exec("RESET ROLE");
   assert.equal((await db.query("SELECT count(*)::int n FROM schedule_versions")).rows[0].n, 1);
@@ -120,12 +207,37 @@ test("publication atomically archives source, maps all source rows and keeps eve
   const { version_id: version } = await clone(db);
   await authenticate(db);
   await db.query("UPDATE schedule_versions SET status='approved' WHERE id=$1", [version]);
-  await db.query("SELECT transition_schedule_version($1,$2,'approved','published')", [college, version]);
-  assert.equal((await db.query("SELECT status FROM schedule_versions WHERE id=$1", [source])).rows[0].status, "archived");
-  assert.equal((await db.query("SELECT count(*)::int n FROM existing_schedule_source_rows WHERE schedule_version_id=$1", [version])).rows[0].n, 377);
-  assert.equal((await db.query("SELECT count(*)::int n FROM existing_schedule_source_rows WHERE schedule_version_id=$1 AND instructor_ids=ARRAY[$2::uuid]", [version, id(3)])).rows[0].n, 1);
+  await db.query("SELECT transition_schedule_version($1,$2,'approved','published')", [
+    college,
+    version,
+  ]);
+  assert.equal(
+    (await db.query("SELECT status FROM schedule_versions WHERE id=$1", [source])).rows[0].status,
+    "archived",
+  );
+  assert.equal(
+    (
+      await db.query(
+        "SELECT count(*)::int n FROM existing_schedule_source_rows WHERE schedule_version_id=$1",
+        [version],
+      )
+    ).rows[0].n,
+    377,
+  );
+  assert.equal(
+    (
+      await db.query(
+        "SELECT count(*)::int n FROM existing_schedule_source_rows WHERE schedule_version_id=$1 AND instructor_ids=ARRAY[$2::uuid]",
+        [version, id(3)],
+      )
+    ).rows[0].n,
+    1,
+  );
   assert.equal((await baseline(db)).sh, before.sh);
-  assert.equal((await db.query("SELECT education_source_revision_verified($1) ok", [version])).rows[0].ok, true);
+  assert.equal(
+    (await db.query("SELECT education_source_revision_verified($1) ok", [version])).rows[0].ok,
+    true,
+  );
   await db.close();
 });
 
@@ -133,12 +245,29 @@ test("unauthenticated publication and concurrent ledger edits leave old publicat
   const db = await fixture();
   const { version_id: version } = await clone(db);
   await db.query("UPDATE schedule_versions SET status='approved' WHERE id=$1", [version]);
-  await assert.rejects(db.query("UPDATE schedule_versions SET status='published' WHERE id=$1", [version]), /SUPER_ADMIN_REQUIRED/);
+  await assert.rejects(
+    db.query("UPDATE schedule_versions SET status='published' WHERE id=$1", [version]),
+    /SUPER_ADMIN_REQUIRED/,
+  );
   await authenticate(db);
-  await db.exec("UPDATE existing_schedule_source_rows SET notes='concurrent change' WHERE id=(SELECT id FROM existing_schedule_source_rows LIMIT 1)");
-  await assert.rejects(db.query("SELECT transition_schedule_version($1,$2,'approved','published')", [college, version]), /LEDGER_DRIFT/);
-  assert.equal((await db.query("SELECT status FROM schedule_versions WHERE id=$1", [source])).rows[0].status, "published");
-  assert.equal((await db.query("SELECT status FROM schedule_versions WHERE id=$1", [version])).rows[0].status, "approved");
+  await db.exec(
+    "UPDATE existing_schedule_source_rows SET notes='concurrent change' WHERE id=(SELECT id FROM existing_schedule_source_rows LIMIT 1)",
+  );
+  await assert.rejects(
+    db.query("SELECT transition_schedule_version($1,$2,'approved','published')", [
+      college,
+      version,
+    ]),
+    /LEDGER_DRIFT/,
+  );
+  assert.equal(
+    (await db.query("SELECT status FROM schedule_versions WHERE id=$1", [source])).rows[0].status,
+    "published",
+  );
+  assert.equal(
+    (await db.query("SELECT status FROM schedule_versions WHERE id=$1", [version])).rows[0].status,
+    "approved",
+  );
   await db.close();
 });
 
@@ -148,11 +277,25 @@ test("failure during source rebind rolls back both archive and new publication",
   const { version_id: version } = await clone(db);
   await authenticate(db);
   await db.query("UPDATE schedule_versions SET status='approved' WHERE id=$1", [version]);
-  await db.exec("CREATE FUNCTION reject_rebind() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'TEST_REBIND_FAILURE'; END $$; CREATE TRIGGER reject_rebind BEFORE UPDATE ON existing_schedule_source_rows FOR EACH ROW EXECUTE FUNCTION reject_rebind()");
-  await assert.rejects(db.query("SELECT transition_schedule_version($1,$2,'approved','published')", [college, version]), /TEST_REBIND_FAILURE/);
+  await db.exec(
+    "CREATE FUNCTION reject_rebind() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'TEST_REBIND_FAILURE'; END $$; CREATE TRIGGER reject_rebind BEFORE UPDATE ON existing_schedule_source_rows FOR EACH ROW EXECUTE FUNCTION reject_rebind()",
+  );
+  await assert.rejects(
+    db.query("SELECT transition_schedule_version($1,$2,'approved','published')", [
+      college,
+      version,
+    ]),
+    /TEST_REBIND_FAILURE/,
+  );
   assert.deepEqual(await baseline(db), before);
-  assert.equal((await db.query("SELECT status FROM schedule_versions WHERE id=$1", [source])).rows[0].status, "published");
-  assert.equal((await db.query("SELECT status FROM schedule_versions WHERE id=$1", [version])).rows[0].status, "approved");
+  assert.equal(
+    (await db.query("SELECT status FROM schedule_versions WHERE id=$1", [source])).rows[0].status,
+    "published",
+  );
+  assert.equal(
+    (await db.query("SELECT status FROM schedule_versions WHERE id=$1", [version])).rows[0].status,
+    "approved",
+  );
   await db.close();
 });
 
@@ -180,13 +323,44 @@ test("real source policies accept exact inherited sessions, retain the assignmen
     CREATE TRIGGER inherited_name BEFORE INSERT OR UPDATE ON schedule_sessions FOR EACH ROW EXECUTE FUNCTION education_2026f_provisional_name_guard();
     CREATE TRIGGER assignment_name BEFORE INSERT OR UPDATE ON teaching_assignments FOR EACH ROW EXECUTE FUNCTION education_2026f_provisional_name_guard();`);
   const { version_id: version } = await clone(db);
-  for (const name of ["education_2026f_source_external_session_allowed", "education_2026f_project_session_allowed", "education_2026f_four_source_allowed"])
-    assert.equal((await db.query(`SELECT bool_and(${name}(s)) ok FROM schedule_sessions s WHERE schedule_version_id=$1`, [version])).rows[0].ok, true);
+  for (const name of [
+    "education_2026f_source_external_session_allowed",
+    "education_2026f_project_session_allowed",
+    "education_2026f_four_source_allowed",
+  ])
+    assert.equal(
+      (
+        await db.query(
+          `SELECT bool_and(${name}(s)) ok FROM schedule_sessions s WHERE schedule_version_id=$1`,
+          [version],
+        )
+      ).rows[0].ok,
+      true,
+    );
   // The original prohibition on treating an unverified source label as an HR assignment still runs.
-  await assert.rejects(db.query(`INSERT INTO teaching_assignments(id,instructor_id) VALUES(gen_random_uuid(),'${id(4)}')`), /PROVISIONAL_NAME_NOT_HR_ASSIGNMENT/);
-  await db.query(`INSERT INTO teaching_assignments(id,instructor_id) VALUES(gen_random_uuid(),'${id(3)}')`);
-  assert.equal((await db.query("SELECT education_2026f_source_external_session_allowed(s) ok FROM schedule_sessions s WHERE id=$1", [id(1001)])).rows[0].ok, false);
+  await assert.rejects(
+    db.query(
+      `INSERT INTO teaching_assignments(id,instructor_id) VALUES(gen_random_uuid(),'${id(4)}')`,
+    ),
+    /PROVISIONAL_NAME_NOT_HR_ASSIGNMENT/,
+  );
+  await db.query(
+    `INSERT INTO teaching_assignments(id,instructor_id) VALUES(gen_random_uuid(),'${id(3)}')`,
+  );
+  assert.equal(
+    (
+      await db.query(
+        "SELECT education_2026f_source_external_session_allowed(s) ok FROM schedule_sessions s WHERE id=$1",
+        [id(1001)],
+      )
+    ).rows[0].ok,
+    false,
+  );
   // No waiver can turn an unrelated catalog/hour inventory into complete coverage.
-  assert.equal((await db.query("SELECT schedule_version_delivery_coverage($1,$2) r", [college, version])).rows[0].r.complete, false);
+  assert.equal(
+    (await db.query("SELECT schedule_version_delivery_coverage($1,$2) r", [college, version]))
+      .rows[0].r.complete,
+    false,
+  );
   await db.close();
 });
