@@ -1004,6 +1004,7 @@ function ScheduleBuilderWorkspacePage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="all">النظامان معًا (العام والموازي)</SelectItem>
                 <SelectItem value="regular">{STUDY_SYSTEM_LABELS.regular}</SelectItem>
                 <SelectItem value="parallel">{STUDY_SYSTEM_LABELS.parallel}</SelectItem>
               </SelectContent>

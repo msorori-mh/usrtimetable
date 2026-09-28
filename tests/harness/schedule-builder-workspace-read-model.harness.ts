@@ -136,6 +136,20 @@ function run() {
   );
   assert(sessionMatchesWorkspaceStudySystem("both", "regular") === true, "both in regular");
   assert(sessionMatchesWorkspaceStudySystem("both", "parallel") === true, "both in parallel");
+  const combined = [
+    sampleSession({ id: "regular", study_system: "regular" }),
+    sampleSession({ id: "parallel", study_system: "parallel" }),
+    sampleSession({ id: "shared", study_system: "both" }),
+  ].filter((session) => sessionMatchesWorkspaceStudySystem(session.study_system, "all"));
+  assert(combined.length === 3, "combined view includes both systems and shared session once");
+  assert(
+    computeWorkspaceStats(combined).totalSessions === 3,
+    "combined statistics do not duplicate shared sessions",
+  );
+  assert(
+    new Set(toGridSessions(combined).map((session) => session.badge)).size === 3,
+    "combined grid retains each session's study-system label",
+  );
 
   // Query source: applyStudySystemFilter used in fetchWorkspaceSessions
   const queriesSrc = readSrc("src/lib/schedule-builder/queries.ts");
