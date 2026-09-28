@@ -8,6 +8,14 @@ on:
       - 'supabase/migrations/*atomic_current_assignment_clone*'
       - 'supabase/migrations/*clone_version_delivery_facts*'
       - 'supabase/migrations/*clone_fact_provenance*'
+      - 'src/lib/itcs-cutover/**'
+      - 'src/routes/_authenticated/itcs-cutover.tsx'
+      - 'supabase/migrations/*version_scoped_assignments*'
+      - 'supabase/migrations/*version_scoped_workload*'
+      - 'supabase/migrations/*integrated_itcs_cutover*'
+      - 'supabase/migrations/*scoped_cohort_batch_decisions*'
+      - 'tests/*itcs*'
+      - 'tests/fixtures/itcs-cohort-live-functions.sql'
       - '.github/workflows/clone-current.yml'
 permissions:
   contents: read
@@ -27,3 +35,4 @@ jobs:
       - run: CLONE_DB_MODULE="$RUNNER_TEMP/clone-db/node_modules/@electric-sql/pglite/dist/index.js" node --test tests/clone-current-db.test.mjs
       - run: CLONE_DB_MODULE="$RUNNER_TEMP/clone-db/node_modules/@electric-sql/pglite/dist/index.js" node --test tests/clone-cross-college-exception-db.test.mjs
       - run: CLONE_DB_MODULE="$RUNNER_TEMP/clone-db/node_modules/@electric-sql/pglite/dist/index.js" node --test tests/clone-version-facts-db.test.mjs
+      - run: CLONE_DB_MODULE="$RUNNER_TEMP/clone-db/node_modules/@electric-sql/pglite/dist/index.js" node --test tests/itcs-integrated-cutover-db.test.mjs tests/itcs-scoped-cohort-decisions-db.test.mjs
