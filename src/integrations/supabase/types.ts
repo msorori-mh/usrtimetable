@@ -2421,6 +2421,94 @@ export type Database = {
         }
         Relationships: []
       }
+      instructor_scheduling_requests: {
+        Row: {
+          applied_availability_id: string | null
+          college_id: string
+          created_at: string
+          day_of_week: number | null
+          end_time: string | null
+          id: string
+          instructor_id: string
+          max_attendance_days: number | null
+          max_hours_per_day: number | null
+          reason: string
+          request_kind: string
+          requested_by: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          start_time: string | null
+          status: string
+          target_attendance_days: number | null
+          updated_at: string
+        }
+        Insert: {
+          applied_availability_id?: string | null
+          college_id: string
+          created_at?: string
+          day_of_week?: number | null
+          end_time?: string | null
+          id?: string
+          instructor_id: string
+          max_attendance_days?: number | null
+          max_hours_per_day?: number | null
+          reason: string
+          request_kind: string
+          requested_by: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          start_time?: string | null
+          status?: string
+          target_attendance_days?: number | null
+          updated_at?: string
+        }
+        Update: {
+          applied_availability_id?: string | null
+          college_id?: string
+          created_at?: string
+          day_of_week?: number | null
+          end_time?: string | null
+          id?: string
+          instructor_id?: string
+          max_attendance_days?: number | null
+          max_hours_per_day?: number | null
+          reason?: string
+          request_kind?: string
+          requested_by?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          start_time?: string | null
+          status?: string
+          target_attendance_days?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instructor_scheduling_requests_applied_availability_id_fkey"
+            columns: ["applied_availability_id"]
+            isOneToOne: false
+            referencedRelation: "instructor_availability"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "instructor_scheduling_requests_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "instructor_scheduling_requests_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "instructors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       instructor_types: {
         Row: {
           code: string
@@ -4887,6 +4975,10 @@ export type Database = {
         Args: { c: string; m?: Json; rid: string; s: string; sid: string }
         Returns: Json
       }
+      _ss_cohort_component_instructor: {
+        Args: { p_session_id: string; p_teaching_assignment_id: string }
+        Returns: Json
+      }
       _ss_enroll: {
         Args: { p_exp: number; p_off: string }
         Returns: Record<string, unknown>
@@ -4925,6 +5017,28 @@ export type Database = {
           p_iid: string
           p_sid: string
           p_st: string
+        }
+        Returns: Json
+      }
+      _ss_instructor_attendance_days: {
+        Args: {
+          p_cid: string
+          p_dow: number
+          p_iid: string
+          p_sid: string
+          p_vid: string
+        }
+        Returns: Json
+      }
+      _ss_instructor_daily_hours: {
+        Args: {
+          p_cid: string
+          p_dow: number
+          p_et: string
+          p_iid: string
+          p_sid: string
+          p_st: string
+          p_vid: string
         }
         Returns: Json
       }
@@ -5018,6 +5132,31 @@ export type Database = {
         Returns: Json
       }
       _ss_sg: { Args: { p_id: string }; Returns: string }
+      _ss_student_daily_hours: {
+        Args: {
+          p_cid: string
+          p_dow: number
+          p_et: string
+          p_section_id: string
+          p_sid: string
+          p_st: string
+          p_ta_id: string
+          p_vid: string
+        }
+        Returns: Json
+      }
+      _ss_student_extended_days: {
+        Args: {
+          p_cid: string
+          p_dow: number
+          p_et: string
+          p_section_id: string
+          p_sid: string
+          p_ta_id: string
+          p_vid: string
+        }
+        Returns: Json
+      }
       _ss_tmpl: {
         Args: {
           p_cid: string
@@ -5190,6 +5329,25 @@ export type Database = {
         }
         Returns: Json
       }
+      apply_version_scoped_replacements: {
+        Args: {
+          p_expected_untouched: number
+          p_expected_untouched_snapshot: string
+          p_items: Json
+          p_version: string
+        }
+        Returns: Json
+      }
+      apply_version_session_moves: {
+        Args: {
+          p_expected_after: string
+          p_expected_before: string
+          p_expected_count: number
+          p_manifest: Json
+          p_version: string
+        }
+        Returns: Json
+      }
       approve_capacity_split_proposal: {
         Args: {
           p_college_id: string
@@ -5305,6 +5463,21 @@ export type Database = {
         }
         Returns: string
       }
+      create_instructor_scheduling_request: {
+        Args: {
+          p_college_id: string
+          p_day_of_week?: number
+          p_end_time?: string
+          p_instructor_id: string
+          p_max_attendance_days?: number
+          p_max_hours_per_day?: number
+          p_reason?: string
+          p_request_kind: string
+          p_start_time?: string
+          p_target_attendance_days?: number
+        }
+        Returns: Json
+      }
       create_schedule_session_from_assignment_v2: {
         Args: {
           p_day_of_week: number
@@ -5324,6 +5497,15 @@ export type Database = {
           p_delivery_group_id: string
           p_instructor_id: string
           p_notes?: string
+        }
+        Returns: Json
+      }
+      create_version_scoped_replacement_assignment: {
+        Args: {
+          p_hours: number
+          p_instructor: string
+          p_replaces: string
+          p_version: string
         }
         Returns: Json
       }
@@ -5387,6 +5569,22 @@ export type Database = {
         }
         Returns: boolean
       }
+      education_source_revision_named_session: {
+        Args: {
+          p_session: Database["public"]["Tables"]["schedule_sessions"]["Row"]
+        }
+        Returns: boolean
+      }
+      education_source_revision_session_allowed: {
+        Args: {
+          p_session: Database["public"]["Tables"]["schedule_sessions"]["Row"]
+        }
+        Returns: boolean
+      }
+      education_source_revision_verified: {
+        Args: { p_version_id: string }
+        Returns: boolean
+      }
       effective_instructor_weekly_quota: {
         Args: { p_admin_quota: number; p_base: number }
         Returns: number
@@ -5444,6 +5642,10 @@ export type Database = {
         Args: { p_cohort_id: string }
         Returns: Json
       }
+      get_cohort_component_instructor_readiness: {
+        Args: { p_college_id: string; p_schedule_version_id?: string }
+        Returns: Json
+      }
       get_college_faculty_roster: {
         Args: { p_college_id: string; p_scope?: string }
         Returns: Json
@@ -5466,6 +5668,10 @@ export type Database = {
           p_term_id: string
           p_version_ids?: string[]
         }
+        Returns: Json
+      }
+      get_instructor_availability_readiness: {
+        Args: { p_college_id: string }
         Returns: Json
       }
       get_instructor_number_aliases: {
@@ -5558,6 +5764,36 @@ export type Database = {
         Args: { p_report_kind: string; p_version_id: string }
         Returns: string
       }
+      itcs_cutover_execute: {
+        Args: {
+          p_expected_published_snapshot: string
+          p_manifest: Json
+          p_manifest_sha: string
+          p_published: string
+          p_stage: string
+          p_version: string
+        }
+        Returns: Json
+      }
+      itcs_cutover_path_rules: { Args: { p_version: string }; Returns: Json }
+      itcs_cutover_preview: {
+        Args: { p_manifest: Json; p_version: string }
+        Returns: Json
+      }
+      itcs_cutover_published_snapshot: {
+        Args: { p_published: string }
+        Returns: string
+      }
+      itcs_cutover_session_units: {
+        Args: { p_version: string }
+        Returns: {
+          day_of_week: number
+          end_time: string
+          session_id: string
+          start_time: string
+          unit: string
+        }[]
+      }
       leadership_metric_details: {
         Args: {
           p_academic_year?: string
@@ -5592,6 +5828,10 @@ export type Database = {
         Returns: undefined
       }
       list_faculty_teaching_requests: {
+        Args: { p_college_id: string }
+        Returns: Json
+      }
+      list_instructor_scheduling_requests: {
         Args: { p_college_id: string }
         Returns: Json
       }
@@ -5767,6 +6007,10 @@ export type Database = {
         }
         Returns: Json
       }
+      preview_version_session_moves: {
+        Args: { p_manifest: Json; p_version: string }
+        Returns: string
+      }
       purge_all_academic_operational_data: { Args: never; Returns: Json }
       purge_disposable_draft_schedule_version: {
         Args: { p_version_id: string }
@@ -5824,6 +6068,14 @@ export type Database = {
           p_course_offering_id?: string
           p_plan_course_component_id?: string
           p_term_id: string
+        }
+        Returns: Json
+      }
+      review_instructor_scheduling_request: {
+        Args: {
+          p_decision: string
+          p_request_id: string
+          p_review_note: string
         }
         Returns: Json
       }
@@ -5919,6 +6171,10 @@ export type Database = {
           working_days: number
         }[]
       }
+      schedule_version_session_snapshot: {
+        Args: { p_version: string }
+        Returns: string
+      }
       schedule_version_student_memberships: {
         Args: { p_groups: string[]; p_version: string }
         Returns: {
@@ -5929,6 +6185,14 @@ export type Database = {
           partition_id: string
           shared_lecture: boolean
         }[]
+      }
+      seal_version_publish_expectation: {
+        Args: {
+          p_expected_sessions: number
+          p_expected_snapshot: string
+          p_version: string
+        }
+        Returns: Json
       }
       search_faculty_identity_candidates: {
         Args: { p_instructor_id: string; p_search: string }
@@ -5941,6 +6205,10 @@ export type Database = {
       seed_college_instructor_types: {
         Args: { p_college_id: string }
         Returns: number
+      }
+      set_instructor_availability_enforcement: {
+        Args: { p_college_id: string; p_enabled: boolean }
+        Returns: Json
       }
       set_schedule_coordination_version: {
         Args: { p_college_id: string; p_version_id: string }
@@ -5966,6 +6234,16 @@ export type Database = {
           p_start: string
         }
         Returns: boolean
+      }
+      submit_version_scoped_teaching_request: {
+        Args: {
+          p_hours: number
+          p_instructor: string
+          p_notes?: string
+          p_replaces: string
+          p_version: string
+        }
+        Returns: Json
       }
       sync_component_room_type_from_assignments: {
         Args: { p_component_id: string }
@@ -6123,6 +6401,18 @@ export type Database = {
         }
         Returns: Json
       }
+      upsert_instructor_availability_windows: {
+        Args: {
+          p_college_id: string
+          p_day_of_week: number
+          p_end_time: string
+          p_instructor_id: string
+          p_notes?: string
+          p_start_time: string
+          p_window_kind: string
+        }
+        Returns: Json
+      }
       upsert_instructor_unavailability_for_active_days: {
         Args: {
           p_day_of_week?: number
@@ -6202,6 +6492,27 @@ export type Database = {
           p_target_room_id: string
           p_target_start_time: string
         }
+        Returns: Json
+      }
+      validate_version_assignment_allocation: {
+        Args: {
+          p_component_hours: number
+          p_delivery_group_id: string
+          p_version: string
+        }
+        Returns: undefined
+      }
+      version_effective_assignments: {
+        Args: { p_version: string }
+        Returns: {
+          assigned_component_hours: number
+          assignment_id: string
+          college_id: string
+          delivery_group_id: string
+        }[]
+      }
+      version_scoped_publish_gate: {
+        Args: { p_version: string }
         Returns: Json
       }
     }
