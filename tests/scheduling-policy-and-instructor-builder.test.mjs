@@ -28,6 +28,7 @@ test("manual builder exposes an identity-aware instructor perspective", async ()
   ]);
 
   assert.match(route, /جدول المحاضر/);
+  assert.match(route, /الشبكة الأسبوعية للمحاضر/);
   assert.match(route, /InstructorCombobox/);
   assert.match(route, /selectedInstructorRecordIds/);
   assert.match(route, /instructorIds=/);
