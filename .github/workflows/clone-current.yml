@@ -14,8 +14,9 @@ on:
       - 'supabase/migrations/*version_scoped_workload*'
       - 'supabase/migrations/*integrated_itcs_cutover*'
       - 'supabase/migrations/*scoped_cohort_batch_decisions*'
+      - 'supabase/migrations/*scoped_assignment_college_guard*'
       - 'tests/*itcs*'
-      - 'tests/fixtures/itcs-cohort-live-functions.sql'
+      - 'tests/fixtures/itcs-*.sql'
       - '.github/workflows/clone-current.yml'
 permissions:
   contents: read
