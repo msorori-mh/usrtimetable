@@ -5794,6 +5794,10 @@ export type Database = {
           unit: string
         }[]
       }
+      itcs_relayout_preview: {
+        Args: { p_manifest: Json; p_version: string }
+        Returns: Json
+      }
       leadership_metric_details: {
         Args: {
           p_academic_year?: string
