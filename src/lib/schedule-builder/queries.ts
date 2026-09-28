@@ -31,7 +31,7 @@ import {
 export type { WorkspaceSessionFlatRow, WorkspaceSessionHydratedRow };
 export { assembleWorkspaceSessionRows } from "@/lib/schedule-builder/session-hydrate";
 
-export type WorkspaceStudySystem = "regular" | "parallel";
+export type WorkspaceStudySystem = "regular" | "parallel" | "all";
 
 export interface WorkspaceTerm {
   id: string;

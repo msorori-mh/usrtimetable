@@ -42,7 +42,7 @@ export async function listScheduleBuilderV2WorkItems(
     p_program_id: filters.programId || null,
     p_level_id: filters.levelId || null,
     p_cohort_id: filters.cohortId || null,
-    p_study_system: filters.studySystem || null,
+    p_study_system: filters.studySystem === "all" ? null : filters.studySystem || null,
     p_component_type: filters.componentType || null,
     p_instructor_id: filters.instructorId || null,
     p_scheduling_status: filters.schedulingStatus || null,
