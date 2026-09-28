@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { useCanManageActiveCollege } from "@/hooks/use-can-manage";
@@ -30,6 +30,7 @@ import { logAudit } from "@/lib/audit";
 import { AdminExportMenu } from "@/components/admin-export-menu";
 import { activeFilters, studyPlansExportDataset } from "@/lib/admin-export/datasets";
 import { BookOpen, Pencil, Trash2 } from "lucide-react";
+import { PrintPlansButton } from "@/components/study-plans/print-plans-button";
 import { PlanCoursesManager } from "@/components/study-plans/plan-courses-manager";
 
 export const Route = createFileRoute("/_authenticated/study-plans")({
@@ -78,6 +79,11 @@ function StudyPlansPage() {
   const [deptFilter, setDeptFilter] = useState<string>(ALL);
   const [progFilter, setProgFilter] = useState<string>(ALL);
   const [statusFilter, setStatusFilter] = useState<string>(ALL);
+
+  useEffect(() => {
+    setDeptFilter(ALL);
+    setProgFilter(ALL);
+  }, [active?.id]);
 
   const { data: depts } = useQuery({
     queryKey: ["dept-min", active?.id],
@@ -266,7 +272,20 @@ function StudyPlansPage() {
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <CollegeSwitcher />
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {canManage && active && (
+            <PrintPlansButton
+              key={`${active.id}:${deptFilter}:${progFilter}:${statusFilter}`}
+              collegeId={active.id}
+              collegeName={active.name}
+              disabled={isLoading || !progs || !depts}
+              plans={filtered.map((p) => ({
+                ...p,
+                programName: progMap.get(p.program_id)?.name ?? "—",
+                departmentName: deptMap.get(progMap.get(p.program_id)?.department_id ?? "") ?? "—",
+              }))}
+            />
+          )}
           <AdminExportMenu
             testId="study-plans-export"
             disabled={filtered.length === 0}
