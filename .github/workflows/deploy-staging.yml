@@ -1,0 +1,168 @@
+name: deploy-staging
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy_sha:
+        description: "Full 40-character SHA from the approved staging branch"
+        required: true
+        type: string
+      confirmation:
+        description: "Type DEPLOY_STAGING_ONLY"
+        required: true
+        type: string
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+  deployments: write
+
+concurrency:
+  group: usrtimetable-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && inputs.confirmation == 'DEPLOY_STAGING_ONLY') ||
+      (github.event_name == 'pull_request' &&
+       github.event.label.name == 'deploy-staging' &&
+       github.event.pull_request.head.repo.full_name == github.repository &&
+       github.event.pull_request.head.ref == 'codex/staging-instructor-builder-20260928')
+    name: guarded staging deployment
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: staging
+    env:
+      DEPLOY_SHA: \${{ github.event_name == 'workflow_dispatch' && inputs.deploy_sha || github.event.pull_request.head.sha }}
+      STAGING_DEPLOY_CONFIRM: DEPLOY_STAGING_ONLY
+      STAGING_WORKER_NAME: \${{ vars.STAGING_WORKER_NAME }}
+      STAGING_BASE_URL: \${{ vars.STAGING_BASE_URL }}
+      CLOUDFLARE_ACCOUNT_ID: \${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: \${{ secrets.CLOUDFLARE_API_TOKEN }}
+      STAGING_SUPABASE_URL: \${{ secrets.STAGING_SUPABASE_URL }}
+      STAGING_SUPABASE_PROJECT_ID: \${{ secrets.STAGING_SUPABASE_PROJECT_ID }}
+      STAGING_SUPABASE_PUBLISHABLE_KEY: \${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      STAGING_SUPABASE_SERVICE_ROLE_KEY: \${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
+      STAGING_ADMIN_EMAIL: \${{ secrets.STAGING_ADMIN_EMAIL }}
+      STAGING_ADMIN_PASSWORD: \${{ secrets.STAGING_ADMIN_PASSWORD }}
+      VITE_SUPABASE_URL: \${{ secrets.STAGING_SUPABASE_URL }}
+      VITE_SUPABASE_PROJECT_ID: \${{ secrets.STAGING_SUPABASE_PROJECT_ID }}
+      VITE_SUPABASE_PUBLISHABLE_KEY: \${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      SUPABASE_URL: \${{ secrets.STAGING_SUPABASE_URL }}
+      SUPABASE_PROJECT_ID: \${{ secrets.STAGING_SUPABASE_PROJECT_ID }}
+      SUPABASE_PUBLISHABLE_KEY: \${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: \${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
+
+    steps:
+      - name: Checkout the exact candidate SHA
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: \${{ env.DEPLOY_SHA }}
+          fetch-depth: 0
+
+      - name: Prove the candidate is the current isolated branch head
+        shell: bash
+        run: |
+          test "$(git rev-parse HEAD)" = "$DEPLOY_SHA"
+          REMOTE_SHA="$(git ls-remote origin refs/heads/codex/staging-instructor-builder-20260928 | cut -f1)"
+          test -n "$REMOTE_SHA"
+          test "$REMOTE_SHA" = "$DEPLOY_SHA"
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Fail-closed target preflight
+        run: node scripts/staging/deploy-preflight.mjs
+
+      - name: Scheduling policy and instructor-builder contracts
+        run: >-
+          node --test
+          tests/scheduling-policy-and-instructor-builder.test.mjs
+          tests/cohort-component-single-instructor-contract.test.mjs
+
+      - name: Fixed instructor rule and slot availability behavior
+        run: >-
+          node --import tsx --test
+          tests/cohort-component-single-instructor.test.ts
+          tests/instructor-slot-availability.test.ts
+
+      - name: Policy status and instructor perspective behavior
+        run: >-
+          bunx vitest run --config tests/vitest-bun-compat.config.mjs
+          tests/instructor-perspective.test.ts
+          tests/instructor-availability-status.test.ts
+          tests/instructor-availability-reactivation.test.ts
+
+      - name: Install isolated PostgreSQL test runtime
+        run: npm install --prefix "$RUNNER_TEMP/cohort-rule-db" --no-package-lock @electric-sql/pglite@0.3.14
+
+      - name: Prove the fixed split-group rule in disposable PostgreSQL
+        env:
+          COHORT_RULE_DB_MODULE: \${{ runner.temp }}/cohort-rule-db/node_modules/@electric-sql/pglite/dist/index.js
+        run: node --test tests/cohort-component-single-instructor-db.test.mjs
+
+      - name: TypeScript
+        run: bunx tsc --noEmit
+
+      - name: Build Cloudflare candidate against staging-only public configuration
+        run: bun run build
+
+      - name: Validate and bind the generated config to the staging Worker
+        env:
+          STAGING_REQUIRE_BUILD: "1"
+        run: node scripts/staging/deploy-preflight.mjs --prepare-build-config
+
+      - name: Deploy the isolated staging Worker
+        id: deploy
+        uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4
+        with:
+          apiToken: \${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: \${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          packageManager: bun
+          wranglerVersion: "4.136.3"
+          command: deploy --config .output/server/wrangler.json
+          gitHubToken: \${{ secrets.GITHUB_TOKEN }}
+          secrets: |
+            SUPABASE_URL
+            SUPABASE_PROJECT_ID
+            SUPABASE_PUBLISHABLE_KEY
+            SUPABASE_SERVICE_ROLE_KEY
+        env:
+          SUPABASE_URL: \${{ secrets.STAGING_SUPABASE_URL }}
+          SUPABASE_PROJECT_ID: \${{ secrets.STAGING_SUPABASE_PROJECT_ID }}
+          SUPABASE_PUBLISHABLE_KEY: \${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: \${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
+
+      - name: Resolve the staging URL
+        shell: bash
+        env:
+          DEPLOYMENT_URL: \${{ steps.deploy.outputs.deployment-url }}
+          CONFIGURED_URL: \${{ vars.STAGING_BASE_URL }}
+        run: |
+          URL="$DEPLOYMENT_URL"
+          if [ -z "$URL" ]; then URL="$CONFIGURED_URL"; fi
+          test -n "$URL"
+          echo "STAGING_BASE_URL=$URL" >> "$GITHUB_ENV"
+
+      - name: Install browser smoke-test runtime
+        run: |
+          npm install --prefix "$RUNNER_TEMP/staging-e2e" --no-package-lock @playwright/test@1.63.0
+          node "$RUNNER_TEMP/staging-e2e/node_modules/@playwright/test/cli.js" install --with-deps chromium
+
+      - name: Authenticated read-only staging smoke test
+        env:
+          STAGING_E2E_MODULES: \${{ runner.temp }}/staging-e2e/node_modules
+        run: node scripts/staging/authenticated-smoke.mjs
+
+      - name: Preserve browser evidence on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: staging-e2e-failure
+          path: staging-e2e-artifacts
+          if-no-files-found: ignore
