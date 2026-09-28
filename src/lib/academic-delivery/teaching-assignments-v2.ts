@@ -12,10 +12,7 @@ import {
 } from "./workload.ts";
 
 export type AllocationStatus =
-  | "unassigned"
-  | "under_allocated"
-  | "fully_allocated"
-  | "over_allocated";
+  "unassigned" | "under_allocated" | "fully_allocated" | "over_allocated";
 
 export type AssignmentAllocationSummary = {
   delivery_group_id: string;
@@ -130,6 +127,10 @@ export type WorkspaceFilters = {
 };
 
 const RPC_ERROR_MESSAGES: Record<string, string> = {
+  COHORT_COMPONENT_SINGLE_INSTRUCTOR_REQUIRED:
+    "لهذه الدفعة والمقرر يجب توحيد محاضر جميع مجموعات النظري، وتوحيد محاضر جميع مجموعات العملي",
+  FACULTY_IDENTITY_NOT_FOUND:
+    "هوية المحاضر الجامعية غير مكتملة؛ استكملها قبل الإسناد إلى مجموعات الدفعة",
   FACULTY_HOME_REVIEW_REQUIRED: "يجب تثبيت الكلية الأصلية للمحاضر من شاشة تسوية التبعية أولًا",
   FACULTY_REQUEST_ALREADY_PENDING: "يوجد طلب تكليف معلق لهذا المحاضر والمجموعة",
   REQUEST_ALREADY_DECIDED: "تمت معالجة الطلب مسبقًا؛ حدّث القائمة",

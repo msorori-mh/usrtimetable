@@ -1,8 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync, readdirSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const dir = resolve(import.meta.dir, "../supabase/migrations");
+const dir = resolve(dirname(fileURLToPath(import.meta.url)), "../supabase/migrations");
 const files = readdirSync(dir).sort();
 const latestGuard = files
   .map((f) => readFileSync(resolve(dir, f), "utf8"))
@@ -15,7 +16,9 @@ describe("strict availability policy: reactivation + clone", () => {
     expect(latestGuard).toContain("(to_jsonb(NEW)->>'is_active')::boolean IS TRUE");
     expect(latestGuard).toContain("إعادة تفعيل إسناد تدريسي");
     expect(latestGuard).toContain("instructor_availability_label_ar(v_status)");
-    expect(latestGuard).toContain("BEFORE INSERT OR UPDATE OF instructor_id, is_active ON public.teaching_assignments");
+    expect(latestGuard).toContain(
+      "BEFORE INSERT OR UPDATE OF instructor_id, is_active ON public.teaching_assignments",
+    );
   });
 
   test("historical edits without reactivation or instructor change pass", () => {

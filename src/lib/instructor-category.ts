@@ -6,10 +6,13 @@
 //                       Availability is MANDATORY (home-college commitments).
 //   - "external"      → External lecturer (outside the university). Availability
 //                       is MANDATORY before scheduling.
+//   - "unspecified"   → Temporary placeholder for a lecturer whose identity is
+//                       not known. It receives no invented availability and is
+//                       blocked from new work by its availability status.
 // When an instructor has no type assigned, we default to "permanent" to avoid
 // false-positive readiness penalties on legacy data.
 
-export type InstructorCategory = "permanent" | "other_college" | "external";
+export type InstructorCategory = "permanent" | "other_college" | "external" | "unspecified";
 
 export interface TypeLike {
   code?: string | null;
@@ -28,6 +31,7 @@ export interface InstructorTypeRecord extends TypeLike {
 export function categorizeInstructor(type: TypeLike | null | undefined): InstructorCategory {
   if (!type) return "permanent";
   const code = (type.code ?? "").toLowerCase();
+  if (code === "unspecified") return "unspecified";
   if (code === "from_other_college") return "other_college";
   if (code === "permanent") return "permanent";
   if (type.is_external) return "external";
@@ -36,7 +40,7 @@ export function categorizeInstructor(type: TypeLike | null | undefined): Instruc
 }
 
 export function requiresAvailability(cat: InstructorCategory): boolean {
-  return cat !== "permanent";
+  return cat === "other_college" || cat === "external";
 }
 
 /**
@@ -72,6 +76,7 @@ export const CATEGORY_LABEL_AR: Record<InstructorCategory, string> = {
   permanent: "محاضر دائم",
   other_college: OTHER_COLLEGE_INSTRUCTOR_LABEL_AR,
   external: OTHER_COLLEGE_INSTRUCTOR_LABEL_AR,
+  unspecified: "غير محدد",
 };
 
 export const INSTRUCTOR_FORM_HINT_AR: Record<InstructorCategory, string> = {
@@ -79,4 +84,5 @@ export const INSTRUCTOR_FORM_HINT_AR: Record<InstructorCategory, string> = {
     "سيعتبر المحاضر متاحاً تلقائياً خلال أوقات العمل الرسمية، ويمكن إضافة استثناءات اختيارية.",
   other_college: "يجب تحديد أيام وأوقات التوفر قبل إدخاله في الجدولة.",
   external: "يجب تحديد أيام وأوقات التوفر قبل إدخاله في الجدولة.",
+  unspecified: "سجل مؤقت لا يمثل شخصاً محدداً، ولا يقبل إسناداً جديداً قبل استبداله بمحاضر فعلي.",
 };

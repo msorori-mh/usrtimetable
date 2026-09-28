@@ -437,6 +437,110 @@
   margin-block-start: auto;
 }
 
+.leadership-weekly {
+  border-block-start: 4px solid #1c567a;
+}
+.leadership-weekly-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  padding: 1rem;
+}
+.leadership-weekly-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "icon label"
+    "icon value"
+    "detail detail";
+  gap: 0.2rem 0.7rem;
+  min-width: 0;
+  padding: 0.9rem;
+  border: 1px solid var(--leadership-line);
+  border-radius: 0.75rem;
+  background: var(--leadership-surface);
+  color: var(--leadership-ink);
+  text-align: start;
+  cursor: pointer;
+}
+.leadership-weekly-card:hover {
+  border-color: #1c567a;
+  box-shadow: inset -3px 0 #1c567a;
+}
+.leadership-weekly-card--sessions {
+  border-block-start: 3px solid #123d57;
+}
+.leadership-weekly-card--hours {
+  border-block-start: 3px solid #1c567a;
+}
+.leadership-weekly-card--theory {
+  border-block-start: 3px solid #4c437e;
+}
+.leadership-weekly-card--practical {
+  border-block-start: 3px solid #12635d;
+}
+.leadership-weekly-card--other {
+  border-block-start: 3px solid #8b590c;
+}
+.leadership-weekly-icon {
+  grid-area: icon;
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.6rem;
+  background: var(--leadership-soft);
+  color: #1c567a;
+}
+.leadership-weekly-icon svg {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+.leadership-weekly-label {
+  grid-area: label;
+  color: var(--leadership-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.leadership-weekly-card strong {
+  grid-area: value;
+  font-size: 1.35rem;
+  font-variant-numeric: tabular-nums;
+}
+.leadership-weekly-card small {
+  grid-area: detail;
+  margin-block-start: 0.4rem;
+  color: var(--leadership-muted);
+  font-size: 0.75rem;
+  line-height: 1.7;
+}
+.leadership-equation {
+  margin: 0 1rem 1rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid #99c8b8;
+  border-radius: 0.65rem;
+  background: #e8f5f0;
+  color: #125446;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.8;
+}
+.leadership-equation--warning {
+  border-color: #e4c271;
+  background: #fff7df;
+  color: #754600;
+}
+.dark .leadership-equation {
+  border-color: #397d6c;
+  background: #173d37;
+  color: #d9f2e9;
+}
+.dark .leadership-equation--warning {
+  border-color: #8b6b2d;
+  background: #3d3218;
+  color: #f7d996;
+}
+
 .leadership-table {
   width: 100%;
   border-collapse: collapse;
@@ -624,6 +728,9 @@
   .leadership-priority-list {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+  .leadership-weekly-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
   .leadership-priority {
     border-block-end: 0;
     border-inline-end: 1px solid var(--leadership-line);
@@ -688,6 +795,9 @@
     width: 2.25rem;
     height: 2.25rem;
   }
+  .leadership-weekly-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -719,6 +829,18 @@
     display: none;
   }
   .leadership-section {
+    box-shadow: none;
+  }
+  .leadership-weekly-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.3rem;
+    padding: 0.5rem;
+  }
+  .leadership-weekly-card {
+    padding: 0.45rem;
+    cursor: default;
+  }
+  .leadership-weekly-card:hover {
     box-shadow: none;
   }
   .leadership-priority-list {

@@ -11,6 +11,8 @@ export interface GridSession {
   title: string;
   subtitle?: string;
   badge?: string;
+  /** Read-only overlays (for example, a lecturer busy in another college). */
+  readOnly?: boolean;
 }
 
 export interface AvailabilityWindow {
@@ -46,6 +48,7 @@ export function TimetableGrid({
   startHour = 8,
   endHour = 21,
   availability,
+  unavailability,
   onSessionClick,
   onDropAt,
   draggable = false,
@@ -58,6 +61,8 @@ export function TimetableGrid({
   endHour?: number;
   /** If provided, anything OUTSIDE these windows is rendered as unavailable. */
   availability?: AvailabilityWindow[];
+  /** Explicit blocked windows; useful when no positive availability window exists. */
+  unavailability?: AvailabilityWindow[];
   onSessionClick?: (id: string) => void;
   onDropAt?: (params: { day: number; startTime: string; payload: DropPayload }) => void;
   draggable?: boolean;
@@ -80,6 +85,8 @@ export function TimetableGrid({
         return "bg-emerald-500/20 border-emerald-500/50";
       case "tutorial":
         return "bg-amber-500/20 border-amber-500/50";
+      case "external_busy":
+        return "bg-slate-500/25 border-slate-500/60 text-slate-800 dark:text-slate-100";
       case "lecture":
       default:
         return "bg-primary/20 border-primary/50";
@@ -96,7 +103,20 @@ export function TimetableGrid({
     return map;
   }, [availability]);
 
+  const unavailableByDay = useMemo(() => {
+    const map = new Map<number, AvailabilityWindow[]>();
+    (unavailability ?? []).forEach((w) => {
+      if (!map.has(w.day_of_week)) map.set(w.day_of_week, []);
+      map.get(w.day_of_week)!.push(w);
+    });
+    return map;
+  }, [unavailability]);
+
   const isInsideAvailability = (day: number, hourMinutes: number) => {
+    const blocked = unavailableByDay.get(day);
+    if (blocked?.some((w) => hourMinutes >= mins(w.start_time) && hourMinutes < mins(w.end_time))) {
+      return false;
+    }
     if (!availability || availability.length === 0) return true;
     const wins = availByDay.get(day);
     if (!wins || wins.length === 0) return false;
@@ -197,21 +217,30 @@ export function TimetableGrid({
                 return (
                   <div
                     key={sess.id}
-                    draggable={draggable}
+                    draggable={draggable && !sess.readOnly}
                     onDragStart={(e) => {
+                      if (sess.readOnly) {
+                        e.preventDefault();
+                        return;
+                      }
                       e.dataTransfer.setData(
                         "application/x-lovable-drop",
                         JSON.stringify({ kind: "session", id: sess.id } as DropPayload),
                       );
                       e.dataTransfer.effectAllowed = "move";
                     }}
-                    onClick={() => onSessionClick?.(sess.id)}
+                    onClick={() => {
+                      if (!sess.readOnly) onSessionClick?.(sess.id);
+                    }}
                     className={cn(
                       "absolute right-1 left-1 rounded border text-right p-2 text-xs hover:opacity-90 transition cursor-pointer",
                       colorByType(sess.session_type),
-                      draggable && "active:opacity-70",
+                      draggable && !sess.readOnly && "active:opacity-70",
+                      sess.readOnly && "cursor-default opacity-90",
                     )}
                     style={{ top: top + 1, height: height - 2 }}
+                    title={sess.readOnly ? "وقت مشغول في كلية أخرى — للقراءة فقط" : undefined}
+                    aria-label={sess.readOnly ? "وقت مشغول في كلية أخرى" : undefined}
                   >
                     <div className="font-semibold truncate">{sess.title}</div>
                     {sess.subtitle && (

@@ -223,24 +223,25 @@ function run() {
     "atomicity: validate before DML",
   );
 
-  // --- UI domain ---
+  // --- UI domain: expanded policy centre keeps the original room-unavailability flow,
+  // while instructor windows now intentionally support hard and preference policies. ---
   const ui = readSrc("src/routes/_authenticated/availability.tsx");
-  assert(ui.includes("عدم التوفّر"), "page is unavailability");
+  assert(ui.includes("إتاحة الموارد وطلبات المحاضرين"), "page is the policy centre");
   assert(ui.includes("كل أيام الدوام"), "all active days option");
-  assert(ui.includes("سيتم تطبيق فترة عدم التوفر على"), "affected-day count preview");
+  assert(ui.includes("سيتم تطبيق الفترة على"), "affected-day count preview");
   assert(ui.includes('data-testid="affected-days-preview"'), "preview test id");
-  assert(ui.includes("upsertInstructorUnavailabilityBulk"), "instructor flow via RPC");
+  assert(ui.includes("upsertInstructorAvailabilityWindows"), "instructor policies use RPC");
   assert(ui.includes("upsertRoomUnavailabilityBulk"), "room flow via RPC");
   assert(!ui.includes("function RoomAvailability"), "no duplicate room availability tab");
   assert(ui.includes("عدم توفّر القاعات"), "room tab is unavailability");
-  assert(ui.includes("عدم توفّر المحاضرين"), "instructor tab is unavailability");
+  assert(ui.includes("إتاحة المحاضرين"), "instructor policy tab exists");
+  assert(ui.includes("إضافة نافذة إتاحة أو تفضيل"), "hard/preference window form exists");
+  assert(ui.includes("INSTRUCTOR_WINDOW_KIND_LABEL_AR"), "all instructor window kinds exposed");
+  assert(ui.includes("createInstructorSchedulingRequest"), "instructor request workflow exists");
+  assert(ui.includes("reviewInstructorSchedulingRequest"), "request review workflow exists");
+  assert(ui.includes("سقف الساعات اليومية"), "daily-load requests exposed");
+  assert(ui.includes("أيام الحضور"), "attendance-day requests exposed");
   assert(!ui.includes('TabsTrigger value="room-availability"'), "no room-availability tab value");
-  assert(!ui.includes("AVAIL_TYPES"), "no available/unavailable status select");
-  assert(!ui.includes("تفضيل (Soft)"), "no Soft preference UI");
-  assert(!ui.includes('SelectItem value="hard"'), "no Hard/Soft type select");
-  assert(!ui.includes("availability_type:"), "form does not set availability status");
-  assert(ui.includes('.eq("availability_type", "unavailable")'), "lists hard unavailability only");
-  assert(ui.includes('.eq("is_preference", false)'), "lists Hard rows only");
   assert(ui.includes("formatBulkSuccessMessage"), "accurate counts toast");
   assert(ui.includes("rpcErrorMessage"), "validation failure shows error not success");
   assert(
@@ -267,11 +268,13 @@ function run() {
 
   const validator = readSrc("src/lib/conflict-engine/validator.ts");
   assert(
-    validator.includes("available by default") || validator.includes("blacklist"),
-    "conflict engine documents default-available / blacklist",
+    validator.includes("Default: every instructor is available"),
+    "conflict engine documents its default-available rule",
   );
+  const slotPolicy = readSrc("src/lib/scheduling/instructor-slot-availability.ts");
   assert(
-    validator.includes("positiveWindows.length === 0"),
+    slotPolicy.includes("positive.length === 0") &&
+      slotPolicy.includes('availability_type === "unavailable"'),
     "unavailable-only days do not force whitelist",
   );
 
@@ -287,7 +290,7 @@ function run() {
     "migration documents domain separation",
   );
 
-  console.log("PASS availability-all-active-days harness (unavailability domain)");
+  console.log("PASS availability-all-active-days harness (expanded policy domain)");
 }
 
 run();

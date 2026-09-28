@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync, readdirSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   DEFAULT_AVAILABILITY_STATUS,
   INSTRUCTOR_AVAILABILITY_OPTIONS,
@@ -10,9 +11,13 @@ import {
   newWorkBlockedMessage,
 } from "../src/lib/instructor-metadata";
 
-const root = resolve(import.meta.dir, "..");
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p: string) => readFileSync(resolve(root, p), "utf8");
-const migrations = readdirSync(resolve(root, "supabase/migrations"))
+const migrationFiles = readdirSync(resolve(root, "supabase/migrations"));
+const availabilityStatusMigration = read(
+  "supabase/migrations/20260923202810_590c6d57-0224-4ed3-8e4e-404ae78ab73c.sql",
+);
+const migrations = migrationFiles
   .map((f) => read(`supabase/migrations/${f}`))
   .filter((sql) => sql.includes("availability_status"))
   .join("\n");
@@ -69,14 +74,18 @@ describe("instructor availability status (الحالة)", () => {
   });
 
   test("migration: separate column, CHECK, default, backfill, no employment_type rewrite", () => {
-    expect(migrations).toContain("ADD COLUMN IF NOT EXISTS availability_status text");
-    expect(migrations).toContain("CASE WHEN is_active THEN 'available' ELSE 'unavailable' END");
-    expect(migrations).toContain("SET DEFAULT 'available'");
-    expect(migrations).toContain("SET NOT NULL");
-    expect(migrations).toContain("instructors_availability_status_check");
-    expect(migrations).not.toMatch(/SET\s+employment_type/i);
-    expect(migrations).not.toMatch(/\bDELETE\s+FROM\b/i);
-    expect(migrations).not.toMatch(/SET\s+is_active/i);
+    expect(availabilityStatusMigration).toContain(
+      "ADD COLUMN IF NOT EXISTS availability_status text",
+    );
+    expect(availabilityStatusMigration).toContain(
+      "CASE WHEN is_active THEN 'available' ELSE 'unavailable' END",
+    );
+    expect(availabilityStatusMigration).toContain("SET DEFAULT 'available'");
+    expect(availabilityStatusMigration).toContain("SET NOT NULL");
+    expect(availabilityStatusMigration).toContain("instructors_availability_status_check");
+    expect(availabilityStatusMigration).not.toMatch(/SET\s+employment_type/i);
+    expect(availabilityStatusMigration).not.toMatch(/\bDELETE\s+FROM\b/i);
+    expect(availabilityStatusMigration).not.toMatch(/SET\s+is_active/i);
   });
 
   test("DB guard blocks only new work; existing rows are untouched", () => {

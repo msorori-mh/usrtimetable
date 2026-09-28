@@ -8,7 +8,7 @@ test("registers each focused harness exactly once", () => {
   assert(harnesses.includes("conflict-exception-reporting.harness.ts"));
 });
 
-test("uses the local tsx CLI without a shell or package runner", () => {
+test("uses the local tsx loader without IPC, a shell, or a package runner", () => {
   const calls = [];
   const code = runHarnesses({
     fileExists: () => true,
@@ -22,10 +22,12 @@ test("uses the local tsx CLI without a shell or package runner", () => {
   assert.equal(code, 0);
   assert.equal(calls.length, harnesses.length);
   assert.equal(calls[0].command, process.execPath);
-  assert.match(calls[0].args[0], /node_modules[\\/]tsx[\\/]dist[\\/]cli\.mjs$/);
+  assert.deepEqual(calls[0].args.slice(0, 2), ["--import", "tsx"]);
+  assert.match(calls[0].args[2], /existing-schedule-intake\.harness\.ts$/);
   assert.equal(calls[0].options.shell, false);
   assert.equal(calls[0].options.timeout, HARNESS_TIMEOUT_MS);
   assert.equal(calls[0].options.killSignal, "SIGTERM");
+  assert.match(calls[0].options.env.TSX_TSCONFIG_PATH, /tests[\\/]harness[\\/]tsconfig\.json$/);
 });
 
 test("times out a stuck harness, reports it, and keeps the suite nonzero", () => {
@@ -33,11 +35,19 @@ test("times out a stuck harness, reports it, and keeps the suite nonzero", () =>
   let call = 0;
   const code = runHarnesses({
     fileExists: () => true,
-    out: { write(value) { output.push(value); } },
+    out: {
+      write(value) {
+        output.push(value);
+      },
+    },
     spawn() {
       call += 1;
       return call === 1
-        ? { status: null, signal: "SIGTERM", error: Object.assign(new Error("timed out"), { code: "ETIMEDOUT" }) }
+        ? {
+            status: null,
+            signal: "SIGTERM",
+            error: Object.assign(new Error("timed out"), { code: "ETIMEDOUT" }),
+          }
         : { status: 0, stdout: "", stderr: "" };
     },
   });

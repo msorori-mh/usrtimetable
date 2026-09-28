@@ -22,6 +22,10 @@ import {
 
 const page = readFileSync("src/routes/_authenticated/reports.leadership.tsx", "utf8");
 const sheet = readFileSync("src/components/reports/leadership-metric-drilldown.tsx", "utf8");
+const capacityPage = readFileSync(
+  "src/routes/_authenticated/reports.teaching-demand-capacity.tsx",
+  "utf8",
+);
 
 test("المطلوب بعد الإعفاء لا ينزل تحت الصفر ويبقى غير محسوب بلا نصاب", () => {
   assert.equal(requiredAfterRelease(12, 4), 8);
@@ -188,9 +192,17 @@ test("التقارير المطولة تظهر في تفاصيل ذات تبوي
     assert.ok(page.includes(`value="${tab}"`));
   }
   assert.ok(page.includes('testId="leadership-weekly-teaching"'));
-  assert.ok(page.includes("averageSessionsPerPublishedCollege"));
-  assert.ok(page.includes("المتوسط لكل كلية منشورة"));
-  assert.ok(page.includes('total("other_hours")'));
+  assert.ok(page.includes("teachingSnapshot.averageSessionsPerCollege"));
+  assert.ok(page.includes("لكل كلية ضمن المصدر"));
+  assert.ok(page.includes("teachingSnapshot.otherHours"));
+});
+
+test("رابط السعة يحتفظ بالفترة نفسها وتتحقق الصفحة من معاملات الرابط", () => {
+  assert.ok(page.includes('to="/reports/teaching-demand-capacity"'));
+  assert.ok(page.includes("{ year: data.year, term: data.term_type }"));
+  assert.ok(capacityPage.includes("validateSearch:"));
+  assert.ok(capacityPage.includes("routeSearch.year && routeSearch.term"));
+  assert.ok(capacityPage.includes("search: { year: selected.year, term: selected.type }"));
 });
 
 test("تفاصيل حالة أعضاء هيئة التدريس والرتب منفصلة بصريًا ودلاليًا", () => {

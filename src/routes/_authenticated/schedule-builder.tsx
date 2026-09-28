@@ -26,6 +26,7 @@ import { SessionDetailsSheet } from "@/components/schedule-builder/session-detai
 import { SessionEditSheet } from "@/components/schedule-builder/session-edit-sheet";
 import { UnsavedLocalChangesDialog } from "@/components/schedule-builder/unsaved-local-changes-dialog";
 import { V2WorkItemsPanel } from "@/components/schedule-builder/v2-work-items-panel";
+import { InstructorCombobox } from "@/components/teaching-assignments/instructor-combobox";
 import {
   SCHEDULE_BUILDER_WORKSPACE_FILTER_EMPTY_AR,
   SCHEDULE_BUILDER_WORKSPACE_NO_COLLEGE_AR,
@@ -74,7 +75,10 @@ import {
   type ValidateSessionMoveResult,
 } from "@/lib/schedule-builder/session-move-rpc";
 import {
+  fetchWorkspaceExternalBusySlots,
+  fetchWorkspaceInstructorPlanningContext,
   fetchWorkspaceRooms,
+  fetchWorkspaceInstructors,
   fetchWorkspaceSchedulingSettings,
   fetchWorkspaceSessions,
   fetchWorkspaceTerms,
@@ -82,6 +86,14 @@ import {
   fetchWorkspaceVersions,
   type WorkspaceStudySystem,
 } from "@/lib/schedule-builder/queries";
+import {
+  buildExternalBusyGridSessions,
+  buildInstructorAvailabilityOverlay,
+  formatInstructorWindow,
+  instructorSlotBlockReason,
+  summarizeInstructorPlanningContext,
+} from "@/lib/schedule-builder/instructor-perspective";
+import { INSTRUCTOR_REQUEST_KIND_LABEL_AR } from "@/lib/availability/policy-api";
 import {
   EMPTY_WORKSPACE_FILTERS,
   buildFilterOptions,
@@ -99,11 +111,13 @@ import {
 import { STUDY_SYSTEM_LABELS } from "@/lib/reports/filters";
 import {
   AlertCircle,
+  CalendarClock,
   CalendarRange,
   ChevronDown,
   Pencil,
   RotateCcw,
   SlidersHorizontal,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -113,12 +127,23 @@ export const Route = createFileRoute("/_authenticated/schedule-builder")({
 });
 
 const DEFAULT_WORKING_DAYS = [6, 0, 1, 2, 3, 4];
+type BuilderPerspective = "students" | "instructors";
 
 type PendingAction =
   | { kind: "exit-edit" }
   | { kind: "set-term"; termId: string }
   | { kind: "set-version"; versionId: string }
-  | { kind: "set-study-system"; studySystem: WorkspaceStudySystem };
+  | { kind: "set-study-system"; studySystem: WorkspaceStudySystem }
+  | { kind: "set-perspective"; perspective: BuilderPerspective }
+  | { kind: "set-instructor"; instructorId: string };
+
+function sessionDurationHours(session: Pick<WorkspaceSessionView, "start_time" | "end_time">) {
+  const minutes = (value: string) => {
+    const [hours, mins] = value.slice(0, 5).split(":").map(Number);
+    return hours * 60 + mins;
+  };
+  return Math.max(0, (minutes(session.end_time) - minutes(session.start_time)) / 60);
+}
 
 function formatUpdatedAt(iso: string): string {
   try {
@@ -141,6 +166,8 @@ function ScheduleBuilderWorkspacePage() {
   const [termId, setTermId] = useState<string | null>(null);
   const [versionId, setVersionId] = useState<string | null>(null);
   const [studySystem, setStudySystem] = useState<WorkspaceStudySystem>("regular");
+  const [perspective, setPerspective] = useState<BuilderPerspective>("students");
+  const [selectedInstructorId, setSelectedInstructorId] = useState("");
   const [filters, setFilters] = useState<WorkspaceFilters>(EMPTY_WORKSPACE_FILTERS);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -188,6 +215,8 @@ function ScheduleBuilderWorkspacePage() {
     setTermId(null);
     setVersionId(null);
     setFilters(EMPTY_WORKSPACE_FILTERS);
+    setPerspective("students");
+    setSelectedInstructorId("");
     setEditModeActive(false);
     setEnrollmentOverlay({});
     clearLocalEditState();
@@ -251,6 +280,12 @@ function ScheduleBuilderWorkspacePage() {
     queryFn: () => fetchWorkspaceRooms(collegeId!),
   });
 
+  const instructorsQuery = useQuery({
+    queryKey: ["schedule-builder", "instructors", collegeId],
+    enabled: canLoadCollege,
+    queryFn: () => fetchWorkspaceInstructors(collegeId!),
+  });
+
   const settingsQuery = useQuery({
     queryKey: ["schedule-builder", "settings", collegeId],
     enabled: canLoadCollege,
@@ -299,27 +334,140 @@ function ScheduleBuilderWorkspacePage() {
     [allSessions, pending, rooms],
   );
 
+  const selectedInstructor = useMemo(
+    () =>
+      instructorsQuery.data?.find((instructor) => instructor.id === selectedInstructorId) ?? null,
+    [instructorsQuery.data, selectedInstructorId],
+  );
+
+  const selectedInstructorRecordIds = useMemo(() => {
+    if (!selectedInstructor) return [];
+    return [...new Set([selectedInstructor.id, ...(selectedInstructor.record_ids ?? [])])];
+  }, [selectedInstructor]);
+
+  const instructorPlanningQuery = useQuery({
+    queryKey: [
+      "schedule-builder",
+      "instructor-planning-context",
+      collegeId,
+      selectedInstructor?.identity_id ?? null,
+    ],
+    enabled:
+      perspective === "instructors" &&
+      !!collegeId &&
+      !!selectedInstructor &&
+      selectedInstructorRecordIds.length > 0,
+    queryFn: () =>
+      fetchWorkspaceInstructorPlanningContext({
+        collegeId: collegeId!,
+        instructorIds: selectedInstructorRecordIds,
+      }),
+  });
+
+  const externalBusyQuery = useQuery({
+    queryKey: [
+      "schedule-builder",
+      "instructor-external-busy",
+      collegeId,
+      versionId,
+      selectedInstructor?.identity_id ?? null,
+    ],
+    enabled:
+      perspective === "instructors" &&
+      !!collegeId &&
+      !!versionId &&
+      !!selectedInstructor &&
+      selectedInstructorRecordIds.length > 0,
+    queryFn: () =>
+      fetchWorkspaceExternalBusySlots({
+        collegeId: collegeId!,
+        versionId: versionId!,
+        instructorIds: selectedInstructorRecordIds,
+      }),
+  });
+
+  const instructorAvailabilityOverlay = useMemo(
+    () =>
+      buildInstructorAvailabilityOverlay({
+        enforced: !!settingsQuery.data?.enforce_instructor_availability,
+        windows: instructorPlanningQuery.data?.availability ?? [],
+      }),
+    [
+      instructorPlanningQuery.data?.availability,
+      settingsQuery.data?.enforce_instructor_availability,
+    ],
+  );
+
+  const instructorPlanningSummary = useMemo(
+    () =>
+      summarizeInstructorPlanningContext(
+        instructorPlanningQuery.data,
+        settingsQuery.data?.max_daily_hours_per_instructor,
+      ),
+    [instructorPlanningQuery.data, settingsQuery.data?.max_daily_hours_per_instructor],
+  );
+
+  const externalBusySlots = useMemo(() => externalBusyQuery.data ?? [], [externalBusyQuery.data]);
+
+  const externalBusyGridSessions = useMemo(
+    () => buildExternalBusyGridSessions(externalBusySlots),
+    [externalBusySlots],
+  );
+
+  const instructorCandidates = useMemo(
+    () =>
+      (instructorsQuery.data ?? []).map((instructor) => ({
+        instructor_id: instructor.id,
+        full_name: instructor.full_name,
+        employee_number: instructor.university_number,
+      })),
+    [instructorsQuery.data],
+  );
+
+  const perspectiveSessions = useMemo(() => {
+    if (perspective === "students") return displaySessions;
+    if (!selectedInstructorRecordIds.length) return [];
+    const recordIds = new Set(selectedInstructorRecordIds);
+    return displaySessions.filter(
+      (session) => !!session.instructor_id && recordIds.has(session.instructor_id),
+    );
+  }, [displaySessions, perspective, selectedInstructorRecordIds]);
+
   const filterOptions = useMemo(
-    () => buildFilterOptions(displaySessions, filters.program),
-    [displaySessions, filters.program],
+    () => buildFilterOptions(perspectiveSessions, filters.program),
+    [perspectiveSessions, filters.program],
   );
 
   const filteredSessions = useMemo(
-    () => filterWorkspaceSessions(displaySessions, filters),
-    [displaySessions, filters],
+    () => filterWorkspaceSessions(perspectiveSessions, filters),
+    [perspectiveSessions, filters],
   );
 
-  const gridSessions = useMemo(
-    () =>
-      toGridSessionsWithPending(
-        filteredSessions,
-        pending,
-        editModeActive ? selectedSessionId : null,
-      ),
-    [filteredSessions, pending, editModeActive, selectedSessionId],
-  );
+  const gridSessions = useMemo(() => {
+    const local = toGridSessionsWithPending(
+      filteredSessions,
+      pending,
+      editModeActive ? selectedSessionId : null,
+    );
+    return perspective === "instructors" ? [...local, ...externalBusyGridSessions] : local;
+  }, [
+    filteredSessions,
+    pending,
+    editModeActive,
+    selectedSessionId,
+    perspective,
+    externalBusyGridSessions,
+  ]);
 
   const stats = useMemo(() => computeWorkspaceStats(allSessions), [allSessions]);
+  const instructorHours = useMemo(
+    () => perspectiveSessions.reduce((total, session) => total + sessionDurationHours(session), 0),
+    [perspectiveSessions],
+  );
+  const instructorAttendanceDays = useMemo(
+    () => new Set(perspectiveSessions.map((session) => session.day_of_week)).size,
+    [perspectiveSessions],
+  );
 
   const selectedSession: WorkspaceSessionView | null = useMemo(() => {
     if (!selectedSessionId) return null;
@@ -397,6 +545,16 @@ function ScheduleBuilderWorkspacePage() {
         break;
       case "set-study-system":
         setStudySystem(action.studySystem);
+        setFilters(EMPTY_WORKSPACE_FILTERS);
+        clearLocalEditState();
+        break;
+      case "set-perspective":
+        setPerspective(action.perspective);
+        setFilters(EMPTY_WORKSPACE_FILTERS);
+        clearLocalEditState();
+        break;
+      case "set-instructor":
+        setSelectedInstructorId(action.instructorId);
         setFilters(EMPTY_WORKSPACE_FILTERS);
         clearLocalEditState();
         break;
@@ -505,6 +663,21 @@ function ScheduleBuilderWorkspacePage() {
     if (safety.kind === "forbidden" || !safety.proposed) {
       toast.error(safety.reason_ar ?? "خانة ممنوعة قبل الإفلات.");
       return;
+    }
+
+    if (perspective === "instructors" && selectedInstructor) {
+      const instructorReason = instructorSlotBlockReason({
+        dayOfWeek: safety.proposed.day_of_week,
+        startTime: safety.proposed.start_time,
+        endTime: safety.proposed.end_time,
+        availabilityEnforced: !!settingsQuery.data?.enforce_instructor_availability,
+        availability: instructorPlanningQuery.data?.availability ?? [],
+        externalBusy: externalBusySlots,
+      });
+      if (instructorReason) {
+        toast.error(instructorReason);
+        return;
+      }
     }
 
     const confirmMsg = publishedVersionConfirmMessage(selectedVersion?.status ?? null);
@@ -839,23 +1012,235 @@ function ScheduleBuilderWorkspacePage() {
         </CardContent>
       </Card>
 
+      <Card className="min-w-0 border-primary/20">
+        <CardContent className="space-y-4 pt-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <Label className="text-base">منظور بناء الجدول</Label>
+              <p className="mt-1 text-xs text-muted-foreground">
+                قواعد التعارض والإتاحة والعبء نفسها مطبقة في المنظورين.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 rounded-lg border bg-muted/30 p-1">
+              <Button
+                type="button"
+                size="sm"
+                variant={perspective === "students" ? "default" : "ghost"}
+                onClick={() => {
+                  if (perspective !== "students") {
+                    requestWithUnsavedGuard({ kind: "set-perspective", perspective: "students" });
+                  }
+                }}
+              >
+                جدول الطلاب
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={perspective === "instructors" ? "default" : "ghost"}
+                onClick={() => {
+                  if (perspective !== "instructors") {
+                    requestWithUnsavedGuard({
+                      kind: "set-perspective",
+                      perspective: "instructors",
+                    });
+                  }
+                }}
+              >
+                <Users className="ms-1 h-4 w-4" aria-hidden />
+                جدول المحاضر
+              </Button>
+            </div>
+          </div>
+
+          {perspective === "instructors" ? (
+            <div className="space-y-4">
+              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                <div className="space-y-2">
+                  <Label>المحاضر</Label>
+                  {instructorsQuery.isLoading ? (
+                    <Skeleton className="h-10 w-full" />
+                  ) : instructorsQuery.isError ? (
+                    <ErrorInline message="تعذر تحميل دليل المحاضرين." />
+                  ) : (
+                    <InstructorCombobox
+                      candidates={instructorCandidates}
+                      value={selectedInstructorId}
+                      onChange={(instructorId) => {
+                        if (instructorId !== selectedInstructorId) {
+                          requestWithUnsavedGuard({ kind: "set-instructor", instructorId });
+                        }
+                      }}
+                    />
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2 text-sm">
+                  <Badge variant="secondary">{perspectiveSessions.length} محاضرة في النسخة</Badge>
+                  <Badge variant="outline">
+                    {instructorHours.toLocaleString("ar")} ساعة أسبوعيًا
+                  </Badge>
+                </div>
+              </div>
+
+              {selectedInstructor ? (
+                <div
+                  data-testid="instructor-builder-planning-context"
+                  className="rounded-lg border bg-muted/20 p-3"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium">{selectedInstructor.full_name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {selectedInstructor.university_number}
+                        {selectedInstructor.home_college_name
+                          ? ` · الكلية الأصلية: ${selectedInstructor.home_college_name}`
+                          : ""}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      <Badge variant="outline">
+                        النصاب:{" "}
+                        {selectedInstructor.authoritative_quota ??
+                          selectedInstructor.recorded_quota ??
+                          "—"}
+                      </Badge>
+                      <Badge variant="outline">
+                        الحد اليومي: {instructorPlanningSummary.dailyLimit ?? "—"} ساعة
+                      </Badge>
+                      <Badge variant="outline">
+                        الحضور: {instructorAttendanceDays}
+                        {instructorPlanningSummary.maxAttendanceDays != null
+                          ? ` / ${instructorPlanningSummary.maxAttendanceDays}`
+                          : ""}{" "}
+                        يوم
+                      </Badge>
+                      <Badge
+                        variant={
+                          settingsQuery.data?.enforce_instructor_availability
+                            ? "secondary"
+                            : "outline"
+                        }
+                      >
+                        {settingsQuery.data?.enforce_instructor_availability
+                          ? `الإتاحة ملزمة · ${instructorPlanningSummary.hardWindows}`
+                          : "الإتاحة إرشادية"}
+                      </Badge>
+                      <Badge variant={externalBusySlots.length ? "secondary" : "outline"}>
+                        {externalBusySlots.length} ارتباط عبر الكليات
+                      </Badge>
+                      {instructorPlanningSummary.pendingRequests ? (
+                        <Badge variant="destructive">
+                          {instructorPlanningSummary.pendingRequests} طلب قيد المراجعة
+                        </Badge>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {instructorPlanningQuery.isError || externalBusyQuery.isError ? (
+                    <p className="mt-3 text-xs text-destructive" role="alert">
+                      تعذر تحميل بعض سياق المحاضر. يظل فحص الخادم إلزاميًا قبل أي حفظ.
+                    </p>
+                  ) : null}
+
+                  <details className="mt-3 border-t pt-3 text-xs">
+                    <summary className="cursor-pointer font-medium">
+                      الإتاحة والطلبات والارتباطات
+                    </summary>
+                    <div className="mt-3 grid gap-3 md:grid-cols-3">
+                      <div>
+                        <p className="font-medium">نوافذ الإتاحة</p>
+                        {instructorPlanningQuery.data?.availability.length ? (
+                          <ul className="mt-1 space-y-1 text-muted-foreground">
+                            {instructorPlanningQuery.data.availability.map((window) => (
+                              <li key={window.id}>
+                                {formatInstructorWindow(window)} ·{" "}
+                                {window.is_preference ? "تفضيل" : "ملزم"}
+                                {window.availability_type === "unavailable" ? " · غير متاح" : ""}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="mt-1 text-muted-foreground">لا توجد نوافذ مسجلة.</p>
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-medium">طلبات المحاضر</p>
+                        {instructorPlanningQuery.data?.requests.length ? (
+                          <ul className="mt-1 space-y-1 text-muted-foreground">
+                            {instructorPlanningQuery.data.requests.slice(0, 8).map((request) => (
+                              <li key={request.id}>
+                                {INSTRUCTOR_REQUEST_KIND_LABEL_AR[request.request_kind]} ·{" "}
+                                {request.status === "submitted"
+                                  ? "قيد المراجعة"
+                                  : request.status === "approved"
+                                    ? "معتمد"
+                                    : request.status === "rejected"
+                                      ? "مرفوض"
+                                      : "ملغى"}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="mt-1 text-muted-foreground">لا توجد طلبات مسجلة.</p>
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-medium">الانشغال خارج الكلية</p>
+                        {externalBusySlots.length ? (
+                          <ul className="mt-1 space-y-1 text-muted-foreground">
+                            {externalBusySlots.map((slot, index) => (
+                              <li
+                                key={`${slot.day_of_week}-${slot.start_time}-${slot.end_time}-${index}`}
+                              >
+                                {formatInstructorWindow(slot)}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="mt-1 text-muted-foreground">
+                            لا توجد فترات تعارض خارجية ظاهرة.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </details>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
+
       <Card className="min-w-0">
         <CardContent className="grid gap-4 pt-6 sm:grid-cols-2 lg:grid-cols-3">
-          <FilterSelect
-            label="البرنامج"
-            value={filters.program}
-            onChange={(v) => setFilter("program", v)}
-            options={filterOptions.programs}
-          />
-          <FilterSelect
-            label="المستوى"
-            value={filters.level}
-            onChange={(v) => setFilter("level", v)}
-            options={filterOptions.levels}
-          />
+          {perspective === "students" ? (
+            <>
+              <FilterSelect
+                label="البرنامج"
+                value={filters.program}
+                onChange={(v) => setFilter("program", v)}
+                options={filterOptions.programs}
+              />
+              <FilterSelect
+                label="المستوى"
+                value={filters.level}
+                onChange={(v) => setFilter("level", v)}
+                options={filterOptions.levels}
+              />
+            </>
+          ) : (
+            <div className="space-y-1 sm:col-span-2">
+              <p className="font-medium">{selectedInstructor?.full_name ?? "اختر محاضرًا"}</p>
+              <p className="text-xs text-muted-foreground">
+                {selectedInstructor
+                  ? `${selectedInstructor.university_number} · يعرض جلساته في النسخة الحالية وانشغاله الموحّد عبر الكليات.`
+                  : "بعد اختيار المحاضر ستظهر محاضراته والتكليفات غير المجدولة الخاصة به فقط."}
+              </p>
+            </div>
+          )}
           <div className="space-y-2 text-sm text-muted-foreground">
             <p>
-              عرض {filteredSessions.length} من {displaySessions.length} جلسة.
+              عرض {filteredSessions.length} من {perspectiveSessions.length} جلسة.
             </p>
             <p>في وضع التعديل، اضغط على الجلسة لتعديلها ثم افحص التعارضات واحفظ.</p>
             <Button type="button" variant="outline" size="sm" onClick={resetFilters}>
@@ -869,7 +1254,9 @@ function ScheduleBuilderWorkspacePage() {
       <Card className="min-w-0">
         <CardHeader className="pb-2">
           <CardTitle className="text-base">
-            الشبكة الأسبوعية
+            {perspective === "instructors" && selectedInstructor
+              ? `الجدول الأسبوعي للمحاضر: ${selectedInstructor.full_name}`
+              : "الشبكة الأسبوعية للطلاب"}
             {selectedVersion ? (
               <span className="ms-2 text-sm font-normal text-muted-foreground">
                 — {selectedVersion.name}
@@ -878,7 +1265,15 @@ function ScheduleBuilderWorkspacePage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="min-w-0 overflow-hidden">
-          {!canLoadSessions ? (
+          {perspective === "instructors" && !selectedInstructor ? (
+            <div className="py-10 text-center">
+              <Users className="mx-auto mb-3 h-8 w-8 text-muted-foreground" aria-hidden />
+              <p className="font-medium">اختر محاضرًا لبدء بناء جدوله يدويًا.</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                ستظهر جلساته الحالية والتكليفات المتبقية مع فحص التعارض والإتاحة والعبء.
+              </p>
+            </div>
+          ) : !canLoadSessions ? (
             <p className="text-sm text-muted-foreground py-8 text-center">
               {!termId
                 ? SCHEDULE_BUILDER_WORKSPACE_NO_TERM_AR
@@ -904,13 +1299,15 @@ function ScheduleBuilderWorkspacePage() {
                 إعادة المحاولة
               </Button>
             </div>
-          ) : allSessions.length === 0 ? (
+          ) : allSessions.length === 0 && perspective === "students" ? (
             <p className="text-sm text-muted-foreground py-8 text-center">
               {SCHEDULE_BUILDER_WORKSPACE_NO_SESSIONS_AR}
             </p>
-          ) : filteredSessions.length === 0 ? (
+          ) : filteredSessions.length === 0 && externalBusyGridSessions.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">
-              {SCHEDULE_BUILDER_WORKSPACE_FILTER_EMPTY_AR}
+              {perspective === "instructors"
+                ? "لا توجد جلسات مجدولة لهذا المحاضر في النسخة المختارة. استخدم قائمة الجلسات المتبقية لإضافتها."
+                : SCHEDULE_BUILDER_WORKSPACE_FILTER_EMPTY_AR}
             </p>
           ) : (
             <>
@@ -919,6 +1316,16 @@ function ScheduleBuilderWorkspacePage() {
                 workingDays={workingDays}
                 startHour={startHour}
                 endHour={endHour}
+                availability={
+                  perspective === "instructors"
+                    ? instructorAvailabilityOverlay.available
+                    : undefined
+                }
+                unavailability={
+                  perspective === "instructors"
+                    ? instructorAvailabilityOverlay.unavailable
+                    : undefined
+                }
                 onSessionClick={onSessionClick}
                 draggable={editModeActive && mayEnterEdit}
                 onDropAt={onGridDrop}
@@ -941,11 +1348,44 @@ function ScheduleBuilderWorkspacePage() {
                             rooms,
                           }),
                         );
+                        if (safety.kind === "forbidden" || !safety.proposed) {
+                          return "red";
+                        }
+                        if (perspective === "instructors" && selectedInstructor) {
+                          const instructorReason = instructorSlotBlockReason({
+                            dayOfWeek: safety.proposed.day_of_week,
+                            startTime: safety.proposed.start_time,
+                            endTime: safety.proposed.end_time,
+                            availabilityEnforced:
+                              !!settingsQuery.data?.enforce_instructor_availability,
+                            availability: instructorPlanningQuery.data?.availability ?? [],
+                            externalBusy: externalBusySlots,
+                          });
+                          if (instructorReason) return "red";
+                        }
                         return safety.tone;
                       }
                     : undefined
                 }
               />
+              {perspective === "instructors" ? (
+                <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
+                  <span className="inline-flex items-center gap-1">
+                    <span className="h-2.5 w-2.5 rounded-sm border border-primary/50 bg-primary/20" />
+                    جلسة في النسخة الحالية
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="h-2.5 w-2.5 rounded-sm border border-slate-500/60 bg-slate-500/25" />
+                    مشغول في كلية أخرى
+                  </span>
+                  {settingsQuery.data?.enforce_instructor_availability ? (
+                    <span className="inline-flex items-center gap-1">
+                      <CalendarClock className="h-3.5 w-3.5" aria-hidden />
+                      المناطق المظللة خارج الإتاحة الملزمة
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
               {editModeActive && (
                 <div className="mt-3 flex flex-wrap gap-2 items-center">
                   <Button
@@ -967,12 +1407,16 @@ function ScheduleBuilderWorkspacePage() {
         </CardContent>
       </Card>
 
-      {canLoadSessions && sessionsQuery.isSuccess && versionId ? (
+      {canLoadSessions &&
+      sessionsQuery.isSuccess &&
+      versionId &&
+      (perspective === "students" || selectedInstructor) ? (
         <V2WorkItemsPanel
           scheduleVersionId={versionId}
           studySystem={studySystem}
           rooms={rooms}
           canManage={canManageRole}
+          instructorIds={perspective === "instructors" ? selectedInstructorRecordIds : undefined}
         />
       ) : null}
 
@@ -1074,12 +1518,14 @@ function ScheduleBuilderWorkspacePage() {
                 </Button>
               </div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-                <FilterSelect
-                  label="المدرس"
-                  value={filters.instructor}
-                  onChange={(v) => setFilter("instructor", v)}
-                  options={filterOptions.instructors}
-                />
+                {perspective === "students" ? (
+                  <FilterSelect
+                    label="المدرس"
+                    value={filters.instructor}
+                    onChange={(v) => setFilter("instructor", v)}
+                    options={filterOptions.instructors}
+                  />
+                ) : null}
                 <FilterSelect
                   label="مجموعة المحاضرة أو المعمل"
                   value={filters.section}

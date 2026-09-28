@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "../..");
 const tsconfig = path.join(__dirname, "tsconfig.json");
-const tsxCli = path.join(root, "node_modules", "tsx", "dist", "cli.mjs");
+const tsxRuntime = path.join(root, "node_modules", "tsx", "package.json");
 export const HARNESS_TIMEOUT_MS = 120_000;
 
 export const harnesses = [
@@ -128,8 +128,8 @@ export function runHarnesses({
   fileExists = existsSync,
   out = process.stdout,
 } = {}) {
-  if (!fileExists(tsxCli)) {
-    out.write(`HARNESS_RUNNER_ERROR: local tsx runtime is missing at ${tsxCli}\n`);
+  if (!fileExists(tsxRuntime)) {
+    out.write(`HARNESS_RUNNER_ERROR: local tsx runtime is missing at ${tsxRuntime}\n`);
     out.write("Install the locked dependencies before running the harness suite.\n");
     return 2;
   }
@@ -139,17 +139,14 @@ export function runHarnesses({
     out.write(`\n=== Running ${file} ===\n`);
     // Component regressions use the application's JSX configuration.
     const fileTsconfig = file.startsWith("../") ? path.join(root, "tsconfig.json") : tsconfig;
-    const result = spawn(
-      process.execPath,
-      [tsxCli, "--tsconfig", fileTsconfig, path.join(__dirname, file)],
-      {
-        cwd: root,
-        encoding: "utf8",
-        shell: false,
-        timeout: HARNESS_TIMEOUT_MS,
-        killSignal: "SIGTERM",
-      },
-    );
+    const result = spawn(process.execPath, ["--import", "tsx", path.join(__dirname, file)], {
+      cwd: root,
+      encoding: "utf8",
+      shell: false,
+      timeout: HARNESS_TIMEOUT_MS,
+      killSignal: "SIGTERM",
+      env: { ...process.env, TSX_TSCONFIG_PATH: fileTsconfig },
+    });
     if (result.stdout) out.write(result.stdout);
     if (result.stderr) out.write(result.stderr);
     if (result.error?.code === "ETIMEDOUT") {

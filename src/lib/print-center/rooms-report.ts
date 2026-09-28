@@ -12,6 +12,9 @@ import { hoursBetween } from "@/lib/reports/formatters";
 import { groupPrintPages } from "./group";
 import type { PrintPageGroup, PrintSessionLike } from "./types";
 import { entityDisplayName } from "@/lib/entity-display";
+import { roomCategoryFromType } from "@/lib/room-category";
+
+export { roomCategoryFromType } from "@/lib/room-category";
 
 export const ROOMS_REPORT_TITLE_AR = "تقرير القاعات";
 
@@ -99,11 +102,6 @@ function mostFrequent<T>(values: T[]): T | null {
 
 function isTheorySession(type: string | null | undefined): boolean {
   return type === "lecture" || type === "theory";
-}
-
-export function roomCategoryFromType(code: string | null | undefined): "hall" | "lab" {
-  const normalized = (code ?? "").toLocaleLowerCase();
-  return normalized.includes("lab") || normalized === "workshop" ? "lab" : "hall";
 }
 
 /** Weekly usable hours of one room: own availability rows win over the college window. */

@@ -31,6 +31,16 @@ export const Route = createFileRoute("/_authenticated/reports/teaching-demand-ca
   head: () => ({
     meta: [{ title: "الساعات المطلوبة وسعة القاعات والمعامل | جامعة إقليم سبأ" }],
   }),
+  validateSearch: (search: Record<string, unknown>): { year?: string; term?: string } => ({
+    year:
+      typeof search.year === "string" && /^\d{4}-\d{4}$/.test(search.year)
+        ? search.year
+        : undefined,
+    term:
+      typeof search.term === "string" && /^[a-z0-9_-]{1,40}$/i.test(search.term)
+        ? search.term
+        : undefined,
+  }),
   component: Page,
 });
 
@@ -65,7 +75,12 @@ function DemandCapacityReport({
   admin: boolean;
   dean: boolean;
 }) {
-  const [period, setPeriod] = useState<{ year: string; type: string } | null>(null);
+  const routeSearch = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const period =
+    routeSearch.year && routeSearch.term
+      ? { year: routeSearch.year, type: routeSearch.term }
+      : null;
   const [collegeFilter, setCollegeFilter] = useState("all");
   const overview = useQuery({
     queryKey: ["university-leadership", viewerKey, period],
@@ -221,8 +236,8 @@ function DemandCapacityReport({
               : "",
           ]}
           onClear={() => {
-            setPeriod(null);
             setCollegeFilter("all");
+            void navigate({ search: {}, replace: true });
           }}
           basic={
             <>
@@ -238,7 +253,11 @@ function DemandCapacityReport({
                   }
                   onValueChange={(value) => {
                     setCollegeFilter("all");
-                    setPeriod(JSON.parse(value));
+                    const selected = JSON.parse(value) as { year: string; type: string };
+                    void navigate({
+                      search: { year: selected.year, term: selected.type },
+                      replace: true,
+                    });
                   }}
                 >
                   <SelectTrigger

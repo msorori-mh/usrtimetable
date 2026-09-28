@@ -76,7 +76,11 @@ type ReadinessSessionRow = {
   day_of_week: number | null;
 };
 type ReadinessRoomTypeRow = { id: string; default_capacity: number | null };
-type ReadinessAvailabilityRow = { instructor_id: string };
+type ReadinessAvailabilityRow = {
+  instructor_id: string;
+  availability_type: string | null;
+  is_preference: boolean | null;
+};
 
 function withCollegeScope<T extends { eq: (column: string, value: string) => T }>(
   query: T,
@@ -219,7 +223,11 @@ async function fetchReadiness(collegeId: string) {
         .in("schedule_version_id", scheduleVersionIds),
     ),
     scope(supabase.from("room_types").select("id, default_capacity, name_ar")),
-    scope(supabase.from("instructor_availability").select("instructor_id")),
+    scope(
+      supabase
+        .from("instructor_availability")
+        .select("instructor_id, availability_type, is_preference"),
+    ),
   ]);
 
   const coursesRows = (courses.data ?? []) as ReadinessCourseRow[];
@@ -246,7 +254,9 @@ async function fetchReadiness(collegeId: string) {
   const assignmentsRows = (assignments.data ?? []) as ReadinessAssignmentRow[];
   const sessionsRows = (sessions.data ?? []) as ReadinessSessionRow[];
   const instructorsWithAvail = new Set(
-    ((availability.data ?? []) as ReadinessAvailabilityRow[]).map((a) => a.instructor_id),
+    ((availability.data ?? []) as ReadinessAvailabilityRow[])
+      .filter((row) => row.is_preference !== true && row.availability_type !== "unavailable")
+      .map((row) => row.instructor_id),
   );
 
   const offeringsWithAssignments = new Set(assignmentsRows.map((a) => a.course_offering_id));
@@ -276,6 +286,7 @@ async function fetchReadiness(collegeId: string) {
     permanent: { total: 0, configured: 0 },
     external: { total: 0, configured: 0 },
     other_college: { total: 0, configured: 0 },
+    unspecified: { total: 0, configured: 0 },
   };
   for (const i of instructorsRows) {
     const cat = categorizeInstructor(
@@ -296,12 +307,18 @@ async function fetchReadiness(collegeId: string) {
     {
       // external + other_college share one display label; the internal
       // categorization and readiness semantics are unchanged (sum-based score).
-      label: "محاضرون من كلية أخرى بدون أوقات توفّر",
+      label: "محاضرون من كلية أخرى بدون نوافذ توفر صريحة",
       total: byCategory.external.total + byCategory.other_college.total,
       missing:
         byCategory.external.total -
         byCategory.external.configured +
         (byCategory.other_college.total - byCategory.other_college.configured),
+      critical: true,
+    },
+    {
+      label: "محاضرون غير محددين يجب استبدالهم قبل اعتماد الجدول",
+      total: byCategory.unspecified.total,
+      missing: byCategory.unspecified.total,
       critical: true,
     },
   ];
@@ -630,7 +647,7 @@ function DataReadinessPage() {
               </h2>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                 {/* external + other_college share one display label; show a single merged card */}
-                {(["permanent", "external"] as InstructorCategory[]).map((c) => {
+                {(["permanent", "external", "unspecified"] as InstructorCategory[]).map((c) => {
                   const byCat = data.availabilityByCategory;
                   const v =
                     c === "external"
@@ -640,24 +657,33 @@ function DataReadinessPage() {
                         }
                       : byCat[c];
                   const isPerm = c === "permanent";
+                  const isUnspecified = c === "unspecified";
                   const missing = v.total - v.configured;
-                  const tone = isPerm
-                    ? "bg-sky-500/10 text-sky-700 border-sky-500/20"
-                    : missing === 0
+                  const tone = isUnspecified
+                    ? v.total === 0
                       ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20"
-                      : "bg-red-500/10 text-red-700 border-red-500/20";
+                      : "bg-amber-500/10 text-amber-800 border-amber-500/20"
+                    : isPerm
+                      ? "bg-sky-500/10 text-sky-700 border-sky-500/20"
+                      : missing === 0
+                        ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20"
+                        : "bg-red-500/10 text-red-700 border-red-500/20";
                   return (
                     <div key={c} className={`rounded border p-4 ${tone}`}>
                       <p className="text-sm font-medium">{CATEGORY_LABEL_AR[c]}</p>
                       <p className="mt-1 text-2xl font-bold">
-                        {v.configured} / {v.total}
+                        {isUnspecified ? v.total : `${v.configured} / ${v.total}`}
                       </p>
                       <p className="mt-1 text-xs">
-                        {isPerm
-                          ? "افتراضي: متاح خلال أوقات العمل الرسمية"
-                          : missing === 0
-                            ? "جميع المحاضرين لديهم أوقات توفّر"
-                            : `${missing} بحاجة إلى إدخال أوقات التوفر (إلزامي)`}
+                        {isUnspecified
+                          ? v.total === 0
+                            ? "لا توجد سجلات مؤقتة"
+                            : "يجب استبدالها بمحاضر فعلي قبل الاعتماد"
+                          : isPerm
+                            ? "افتراضي: متاح خلال أوقات العمل الرسمية"
+                            : missing === 0
+                              ? "جميع المحاضرين لديهم أوقات توفّر"
+                              : `${missing} بحاجة إلى إدخال أوقات التوفر (إلزامي)`}
                       </p>
                     </div>
                   );

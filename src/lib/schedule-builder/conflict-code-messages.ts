@@ -6,6 +6,8 @@
 export type ConflictMessageMeta = Record<string, unknown> | null | undefined;
 
 const AR: Record<string, string> = {
+  cohort_component_single_instructor:
+    "يجب أن يدرّس محاضر واحد جميع مجموعات النظري، ومحاضر واحد جميع مجموعات العملي للمقرر نفسه داخل الدفعة.",
   instructor_conflict: "تعارض المحاضر: نفس المحاضر لديه محاضرة أخرى في نفس الوقت.",
   room_conflict: "تعارض القاعة: نفس القاعة محجوزة في نفس الوقت.",
   section_conflict: "تعارض المجموعة: نفس المجموعة لديها محاضرة أخرى في نفس الوقت.",
@@ -20,6 +22,12 @@ const AR: Record<string, string> = {
   instructor_availability_required: "توفّر المحاضر إلزامي لهذه الفئة وغير معرّف.",
   instructor_availability: "المحاضرة خارج نطاق توفّر المحاضر الإلزامي.",
   instructor_unavailable: "المحاضرة خارج نطاق توفّر المحاضر الإلزامي.",
+  instructor_daily_hours: "الموعد يتجاوز سقف ساعات المحاضر اليومية.",
+  instructor_attendance_days: "الموعد يتجاوز الحد الأعلى لأيام حضور المحاضر أسبوعيًا.",
+  student_daily_hours: "الموعد يتجاوز إجمالي ساعات مجموعة الطلاب اليومية.",
+  student_daily_theory_hours: "الموعد يتجاوز سقف الساعات النظرية اليومية للطلاب.",
+  student_daily_practical_hours: "الموعد يتجاوز سقف الساعات العملية اليومية للطلاب.",
+  student_extended_days: "الموعد يتجاوز عدد أيام التدريس الممتدة المسموح بها للطلاب.",
   study_system_time_template: "المحاضرة خارج قوالب أوقات المحاضرات المسموحة لنظام الدراسة.",
   invalid_study_system: "نظام الدراسة غير صالح لهذه الجلسة.",
   outside_working_days: "اليوم المقترح خارج أيام العمل المعتمدة للكلية.",
@@ -34,12 +42,16 @@ const AR: Record<string, string> = {
   NOT_FOUND: "الجلسة غير موجودة.",
   FORBIDDEN_COLLEGE: "لا تملك صلاحية إدارة هذه الكلية.",
   INVALID_TIME_RANGE: "نطاق الوقت غير صالح.",
+  STALE_DELIVERY_GROUPS_REGENERATE:
+    "بيانات مجموعة التدريس قديمة؛ أعد توليد المجموعة أو حدّث عدد الطلاب قبل تحريك الجلسة.",
   BLOCKED_CONFLICTS: "توجد تعارضات أو قيود تمنع الحفظ.",
   BLOCKED_WARNINGS: "توجد تحذيرات تمنع الحفظ.",
   RPC_ERROR: "فشل الاتصال أثناء فحص التعارضات.",
 };
 
 const EN: Record<string, string> = {
+  cohort_component_single_instructor:
+    "All split groups for the same cohort, course and component must use one instructor.",
   instructor_conflict: "Instructor conflict: same instructor has another overlapping session.",
   room_conflict: "Room conflict: same room is booked at the same time.",
   section_conflict: "Section conflict: same section has another overlapping session.",
@@ -55,6 +67,14 @@ const EN: Record<string, string> = {
     "Instructor availability is mandatory for this category and not defined.",
   instructor_availability: "Session outside instructor's hard availability window.",
   instructor_unavailable: "Session outside instructor's hard availability window.",
+  instructor_daily_hours: "Proposed session exceeds the instructor's daily-hours cap.",
+  instructor_attendance_days:
+    "Proposed session exceeds the instructor's weekly attendance-day cap.",
+  student_daily_hours: "Proposed session exceeds the student group's total daily-hours cap.",
+  student_daily_theory_hours: "Proposed session exceeds the student group's daily theory cap.",
+  student_daily_practical_hours:
+    "Proposed session exceeds the student group's daily practical cap.",
+  student_extended_days: "Proposed session exceeds the student's allowed extended teaching days.",
   study_system_time_template: "Session outside allowed time-slot templates for the study system.",
   invalid_study_system: "Invalid study system for this session.",
   outside_working_days: "Proposed day is outside configured working days.",
@@ -69,6 +89,8 @@ const EN: Record<string, string> = {
   NOT_FOUND: "Session not found.",
   FORBIDDEN_COLLEGE: "You do not have permission to manage this college.",
   INVALID_TIME_RANGE: "Invalid time range.",
+  STALE_DELIVERY_GROUPS_REGENERATE:
+    "Delivery-group data is stale; regenerate it before moving the session.",
   BLOCKED_CONFLICTS: "Conflicts or constraints prevent saving.",
   BLOCKED_WARNINGS: "Warnings prevent saving.",
   RPC_ERROR: "Failed to reach conflict validation.",

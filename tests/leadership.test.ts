@@ -18,7 +18,9 @@ import {
   sortLeadershipColleges,
   aggregateLeadership,
   formatLeadershipAmount,
+  leadershipAssignmentSnapshot,
   leadershipPercent,
+  leadershipTeachingSnapshot,
   type LeadershipCollege,
 } from "../src/lib/reports/leadership";
 
@@ -125,4 +127,57 @@ test("leadership faculty composition sums count maps and preserves executive ord
       ["أستاذ مساعد", 5],
     ],
   );
+});
+
+test("weekly teaching snapshot proves its composition before exposing the total", () => {
+  const rows = Array.from({ length: 5 }, (_, index) => ({
+    term_state: "ready",
+    version_id: `version-${index}`,
+    sessions_count: index === 0 ? 1031 : 0,
+    teaching_hours: index === 0 ? 2390 : 0,
+    theory_hours: index === 0 ? 1962 : 0,
+    practical_hours: index === 0 ? 355 : 0,
+    other_hours: index === 0 ? 73 : 0,
+  })) as unknown as LeadershipCollege[];
+  const result = leadershipTeachingSnapshot(rows);
+  assert.equal(result.consistent, true);
+  assert.equal(result.sessions, 1031);
+  assert.equal(result.scheduledHours, 2390);
+  assert.equal(result.averageSessionsPerCollege, 206.2);
+  assert.equal(result.averageSessionHours, 2.32);
+  assert.equal(result.compositionDifference, 0);
+
+  rows[0].other_hours = 72;
+  const invalid = leadershipTeachingSnapshot(rows);
+  assert.equal(invalid.consistent, false);
+  assert.equal(invalid.scheduledHours, null);
+  assert.equal(invalid.compositionDifference, -1);
+});
+
+test("assignment snapshot includes pending shared-allocation hours and reconciles to demand", () => {
+  const rows = [
+    {
+      term_state: "ready",
+      groups_count: 1,
+      required_hours: 2396,
+      covered_hours: 2294,
+      uncovered_hours: 99,
+      pending_group_hours: 3,
+    },
+  ] as unknown as LeadershipCollege[];
+  assert.deepEqual(leadershipAssignmentSnapshot(rows), {
+    sourceColleges: 1,
+    totalColleges: 1,
+    requiredHours: 2396,
+    approvedHours: 2294,
+    awaitingHours: 102,
+    difference: 0,
+    consistent: true,
+  });
+
+  rows[0].pending_group_hours = 2;
+  const invalid = leadershipAssignmentSnapshot(rows);
+  assert.equal(invalid.consistent, false);
+  assert.equal(invalid.awaitingHours, null);
+  assert.equal(invalid.difference, -1);
 });

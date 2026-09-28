@@ -32,8 +32,10 @@ import {
   aggregateLeadership,
   coveragePercent,
   formatLeadershipAmount,
+  leadershipAssignmentSnapshot,
   leadershipNotice,
   leadershipOverviewSchema,
+  leadershipTeachingSnapshot,
   orderedLeadershipCounts,
   sumLeadershipCounts,
   termTypeLabel,
@@ -378,6 +380,8 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
   const required = total("required_hours"),
     covered = total("covered_hours"),
     uncovered = total("uncovered_hours");
+  const pendingGroupHours = total("pending_group_hours");
+  const assignmentSnapshot = leadershipAssignmentSnapshot(scoped);
   const workloadComplete =
     scoped.length > 0 &&
     scoped.every(
@@ -390,23 +394,12 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
         college.deficit !== null,
     );
   const netQuota = total("net_quota"),
-    assigned = total("faculty_assigned_hours"),
-    scheduled = total("teaching_hours");
-  const theory = total("theory_hours"),
-    practical = total("practical_hours"),
-    unclassified = total("other_hours");
-  const sessions = total("sessions_count"),
-    overload = total("overload"),
+    assigned = total("faculty_assigned_hours");
+  const teachingSnapshot = leadershipTeachingSnapshot(scoped);
+  const overload = total("overload"),
     deficit = total("deficit");
-  const published = scoped.filter((college) => !!college.version_id).length;
-  const averageSessionsPerPublishedCollege =
-    sessions.value === null || published === 0
-      ? null
-      : Math.round((sessions.value / published) * 10) / 10;
-  const sourceComplete =
-    required.complete &&
-    covered.complete &&
-    scoped.every((college) => college.term_state === "ready" && !!college.groups_count);
+  const published = teachingSnapshot.publishedColleges;
+  const sourceComplete = assignmentSnapshot.consistent && required.complete && covered.complete;
   const universityCoverage = assignmentCoveragePercent({
     coveredCourseHours: covered.value,
     requiredCourseHours: required.value,
@@ -424,8 +417,8 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
     required_course_hours: required.value,
     covered_course_hours: covered.value,
     uncovered_course_hours: uncovered.value,
-    scheduled_hours: scheduled.value,
-    sessions_count: sessions.value,
+    scheduled_hours: teachingSnapshot.scheduledHours,
+    sessions_count: teachingSnapshot.sessions,
     published_colleges: published,
   };
   const openMetric = (metric: LeadershipMetricKey, scope?: LeadershipCollege) => {
@@ -549,6 +542,7 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
             <AcademicStaffingEntry onOpen={() => openDetail("staffing")} />
             <Link
               to="/reports/teaching-demand-capacity"
+              search={data?.year && data.term_type ? { year: data.year, term: data.term_type } : {}}
               className="block rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm font-semibold text-primary hover:underline"
             >
               الساعات المطلوبة وسعة القاعات — ملخص الجامعة والكلية ←
@@ -740,7 +734,7 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
                         {universityCoverage === null ? "غير محسوب" : `${universityCoverage}%`}
                         {!sourceComplete && " · بيانات غير مكتملة"}
                       </p>
-                      <dl className="grid gap-3 sm:grid-cols-3">
+                      <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                         {(
                           [
                             "required_course_hours",
@@ -761,7 +755,22 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
                             </dd>
                           </div>
                         ))}
+                        <div className="rounded border p-3">
+                          <dt className="text-xs text-muted-foreground">
+                            ساعات مجموعات بانتظار توزيع الإسناد المشترك
+                          </dt>
+                          <dd className="mt-2 text-lg font-bold">
+                            {hours(pendingGroupHours.value)}
+                          </dd>
+                        </div>
                       </dl>
+                      {assignmentSnapshot.consistent && (
+                        <p className="rounded border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-950 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-100">
+                          تحقق الجمع: {hours(assignmentSnapshot.approvedHours)} معتمدة +{" "}
+                          {hours(assignmentSnapshot.awaitingHours)} بانتظار الاعتماد ={" "}
+                          {hours(assignmentSnapshot.requiredHours)} مطلوبة.
+                        </p>
+                      )}
                       {!sourceComplete && (
                         <p className="text-xs text-amber-800 dark:text-amber-200">
                           هذه الساعات تخص السجلات المتاحة؛ اكتمال الحساب موضح في جودة البيانات.
@@ -777,33 +786,45 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
                     <div className="grid gap-3 p-4 sm:grid-cols-2">
                       <MetricCard
                         label="المحاضرات أسبوعيًا"
-                        value={text(sessions.value)}
+                        value={text(teachingSnapshot.sessions)}
                         icon={<BookOpen className="h-4 w-4" />}
                         onOpen={() => openMetric("sessions_count")}
                         detail={
-                          <>المتوسط لكل كلية منشورة: {text(averageSessionsPerPublishedCollege)}</>
+                          <>
+                            المتوسط لكل كلية ضمن المصدر:{" "}
+                            {text(teachingSnapshot.averageSessionsPerCollege)}
+                          </>
                         }
                       />
                       <MetricCard
                         label="الساعات الأسبوعية"
-                        value={hours(scheduled.value)}
+                        value={hours(teachingSnapshot.scheduledHours)}
                         icon={<Clock3 className="h-4 w-4" />}
                         onOpen={() => openMetric("scheduled_hours")}
-                        detail={`المصدر متاح في ${scheduled.known} من ${scheduled.total} كليات`}
+                        detail={`متوسط مدة المحاضرة: ${hours(teachingSnapshot.averageSessionHours)}`}
                       />
                       <MetricCard
                         label="الساعات النظرية أسبوعيًا"
-                        value={hours(theory.value)}
+                        value={hours(teachingSnapshot.theoryHours)}
                         icon={<BookOpen className="h-4 w-4" />}
                         detail="مكونات مصنفة نظريًا"
                       />
                       <MetricCard
                         label="الساعات العملية أسبوعيًا"
-                        value={hours(practical.value)}
+                        value={hours(teachingSnapshot.practicalHours)}
                         icon={<FlaskConical className="h-4 w-4" />}
-                        detail={`ساعات مكونات أخرى: ${hours(unclassified.value)}`}
+                        detail={`ساعات مكونات أخرى: ${hours(teachingSnapshot.otherHours)}`}
                       />
                     </div>
+                    {!teachingSnapshot.consistent && (
+                      <p
+                        className="mx-4 mb-4 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-100"
+                        role="alert"
+                      >
+                        أُوقفت إجماليات التدريس لأن مجموع النظري والعملي والأنشطة الأخرى لا يطابق
+                        إجمالي الساعات.
+                      </p>
+                    )}
                   </ReportSection>
                   <ReportSection
                     title="حالة النشر"

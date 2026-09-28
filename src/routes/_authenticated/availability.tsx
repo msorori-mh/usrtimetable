@@ -1,11 +1,12 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { useCanManageActiveCollege } from "@/hooks/use-can-manage";
 import { CollegeSwitcher } from "@/components/college-switcher";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,7 +21,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { DAYS } from "./time-slots";
-import { CalendarClock, Trash2 } from "lucide-react";
+import { AlertTriangle, CalendarClock, ShieldCheck, Trash2 } from "lucide-react";
 import {
   ALL_ACTIVE_DAYS_SENTINEL,
   DEFAULT_WORKING_DAYS,
@@ -29,16 +30,24 @@ import {
   isValidTimeRange,
   resolveWorkingDays,
 } from "@/lib/availability/active-days";
-import {
-  fetchCollegeWorkingDays,
-  upsertInstructorUnavailabilityBulk,
-  upsertRoomUnavailabilityBulk,
-} from "@/lib/availability/bulk-api";
+import { fetchCollegeWorkingDays, upsertRoomUnavailabilityBulk } from "@/lib/availability/bulk-api";
 import { readableWriteError } from "@/lib/availability/errors";
 import { entityDisplayName } from "@/lib/entity-display";
+import {
+  createInstructorSchedulingRequest,
+  fetchInstructorAvailabilityReadiness,
+  INSTRUCTOR_REQUEST_KIND_LABEL_AR,
+  INSTRUCTOR_REQUEST_STATUS_LABEL_AR,
+  INSTRUCTOR_WINDOW_KIND_LABEL_AR,
+  listInstructorSchedulingRequests,
+  reviewInstructorSchedulingRequest,
+  upsertInstructorAvailabilityWindows,
+  type InstructorSchedulingRequestKind,
+  type InstructorWindowKind,
+} from "@/lib/availability/policy-api";
 
 export const Route = createFileRoute("/_authenticated/availability")({
-  head: () => ({ meta: [{ title: "عدم التوفّر" }] }),
+  head: () => ({ meta: [{ title: "إتاحة الموارد وطلبات المحاضرين" }] }),
   component: AvailabilityPage,
 });
 
@@ -88,7 +97,7 @@ function AffectedDaysPreview({
   const count = dayValue === ALL_ACTIVE_DAYS_SENTINEL ? days.length : 1;
   return (
     <p className="mt-2 text-xs text-muted-foreground" data-testid="affected-days-preview">
-      سيتم تطبيق فترة عدم التوفر على {count} {count === 1 ? "يوم" : "أيام"}.
+      سيتم تطبيق الفترة على {count} {count === 1 ? "يوم" : "أيام"}.
     </p>
   );
 }
@@ -110,6 +119,16 @@ function DaySelectItems({ workingDays }: { workingDays: number[] | undefined }) 
 
 function AvailabilityPage() {
   const { active } = useActiveCollege();
+  const {
+    data: readiness,
+    isLoading: availabilityPolicyLoading,
+    isError: availabilityPolicyError,
+  } = useQuery({
+    queryKey: ["instructor-availability-readiness", active?.id],
+    enabled: !!active,
+    queryFn: () => fetchInstructorAvailabilityReadiness(active!.id),
+  });
+  const instructorAvailabilityEnabled = readiness?.enabled === true;
   return (
     <div className="mx-auto max-w-5xl">
       <header className="mb-6 flex items-center gap-3">
@@ -117,10 +136,9 @@ function AvailabilityPage() {
           <CalendarClock className="h-5 w-5" />
         </span>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold">عدم التوفّر</h1>
+          <h1 className="text-2xl font-bold">إتاحة الموارد وطلبات المحاضرين</h1>
           <p className="text-sm text-muted-foreground">
-            تسجيل فترات المنع الإلزامية (Hard) للمحاضرين والقاعات. المحاضر والقاعة النشطان متاحان
-            افتراضيًا خلال أيام وفترات الدوام.
+            إدارة نوافذ التوفر والمنع الإلزامية، والتفضيلات، وطلبات العبء والحضور قبل الجدولة.
           </p>
         </div>
       </header>
@@ -134,18 +152,67 @@ function AvailabilityPage() {
           اختر كلّية أولاً.
         </p>
       ) : (
-        <Tabs defaultValue="instructor">
-          <TabsList>
-            <TabsTrigger value="instructor">عدم توفّر المحاضرين</TabsTrigger>
-            <TabsTrigger value="room">عدم توفّر القاعات</TabsTrigger>
-          </TabsList>
-          <TabsContent value="instructor" className="mt-4">
-            <InstructorUnavailability />
-          </TabsContent>
-          <TabsContent value="room" className="mt-4">
-            <RoomUnavailability />
-          </TabsContent>
-        </Tabs>
+        <div className="space-y-4">
+          <Card
+            className={`flex flex-col gap-3 border p-4 sm:flex-row sm:items-center sm:justify-between ${
+              availabilityPolicyError
+                ? "border-red-300 bg-red-50/70 dark:border-red-900 dark:bg-red-950/20"
+                : instructorAvailabilityEnabled
+                  ? "border-emerald-300 bg-emerald-50/70 dark:border-emerald-900 dark:bg-emerald-950/20"
+                  : "border-amber-300 bg-amber-50/70 dark:border-amber-900 dark:bg-amber-950/20"
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              {!availabilityPolicyError && instructorAvailabilityEnabled ? (
+                <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" />
+              ) : (
+                <AlertTriangle
+                  className={`mt-0.5 h-5 w-5 shrink-0 ${availabilityPolicyError ? "text-red-700" : "text-amber-700"}`}
+                />
+              )}
+              <div>
+                <p className="font-semibold">
+                  {availabilityPolicyLoading
+                    ? "جارٍ التحقق من حالة القيد..."
+                    : availabilityPolicyError
+                      ? "تعذر التحقق من حالة تطبيق القيد"
+                      : instructorAvailabilityEnabled
+                        ? "إتاحة المحاضرين مطبّقة على الجدولة"
+                        : "إتاحة المحاضرين محفوظة ولكن غير مطبّقة"}
+                </p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  {availabilityPolicyError
+                    ? "لا تعتمد على حالة الإتاحة قبل إعادة المحاولة؛ لم تُفترض قيمة بديلة عند فشل قراءة الإعداد."
+                    : instructorAvailabilityEnabled
+                      ? `تطبق القيود في المولّد والتحقق والحفظ. نوافذ إلزامية: ${readiness?.hard_windows ?? 0} · تفضيلات: ${readiness?.preference_windows ?? 0}.`
+                      : `يمكن تجهيز النوافذ والطلبات الآن. المتبقي قبل التفعيل: ${readiness?.missing_required_instructors ?? 0} محاضر خارجي بلا توفر صريح.`}
+                </p>
+              </div>
+            </div>
+            <Button asChild size="sm" variant="outline" className="shrink-0">
+              <Link to="/scheduling-settings">إدارة التفعيل</Link>
+            </Button>
+          </Card>
+
+          <Tabs defaultValue="instructor">
+            <TabsList>
+              <TabsTrigger value="instructor">إتاحة المحاضرين</TabsTrigger>
+              <TabsTrigger value="requests">
+                الطلبات{readiness?.pending_requests ? ` (${readiness.pending_requests})` : ""}
+              </TabsTrigger>
+              <TabsTrigger value="room">عدم توفّر القاعات</TabsTrigger>
+            </TabsList>
+            <TabsContent value="instructor" className="mt-4">
+              <InstructorUnavailability />
+            </TabsContent>
+            <TabsContent value="requests" className="mt-4">
+              <InstructorRequests />
+            </TabsContent>
+            <TabsContent value="room" className="mt-4">
+              <RoomUnavailability />
+            </TabsContent>
+          </Tabs>
+        </div>
       )}
     </div>
   );
@@ -157,7 +224,26 @@ interface IU {
   day_of_week: number;
   start_time: string;
   end_time: string;
+  availability_type: string;
+  is_preference: boolean;
   notes: string | null;
+}
+
+function windowKindOf(row: IU): InstructorWindowKind {
+  if (row.is_preference) {
+    return row.availability_type === "unavailable"
+      ? "preferred_unavailable"
+      : "preferred_available";
+  }
+  return row.availability_type === "unavailable" ? "hard_unavailable" : "hard_available";
+}
+
+function windowKindTone(kind: InstructorWindowKind): string {
+  if (kind === "hard_available")
+    return "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200";
+  if (kind === "hard_unavailable")
+    return "border-red-300 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200";
+  return "border-sky-300 bg-sky-50 text-sky-800 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-200";
 }
 
 function InstructorUnavailability() {
@@ -166,6 +252,7 @@ function InstructorUnavailability() {
   const qc = useQueryClient();
   const [instructorId, setInstructorId] = useState("");
   const [form, setForm] = useState({
+    windowKind: "hard_unavailable" as InstructorWindowKind,
     dayValue: ALL_ACTIVE_DAYS_SENTINEL,
     start_time: "08:00",
     end_time: "12:00",
@@ -194,8 +281,6 @@ function InstructorUnavailability() {
         .select("*")
         .eq("college_id", active!.id)
         .eq("instructor_id", instructorId)
-        .eq("availability_type", "unavailable")
-        .eq("is_preference", false)
         .order("day_of_week")
         .order("start_time");
       if (error) throw error;
@@ -216,9 +301,10 @@ function InstructorUnavailability() {
         throw new Error("وقت النهاية يجب أن يكون بعد البداية");
       }
       const dayOfWeek = form.dayValue === ALL_ACTIVE_DAYS_SENTINEL ? null : Number(form.dayValue);
-      return upsertInstructorUnavailabilityBulk({
+      return upsertInstructorAvailabilityWindows({
         collegeId: active.id,
         instructorId,
+        windowKind: form.windowKind,
         startTime: form.start_time,
         endTime: form.end_time,
         notes: form.notes || null,
@@ -226,8 +312,13 @@ function InstructorUnavailability() {
       });
     },
     onSuccess: (result) => {
-      toast.success(formatBulkSuccessMessage(result));
+      toast.success(
+        result.days_created === 0
+          ? `لا تغيير: النوافذ موجودة مسبقًا في ${result.days_unchanged} يومًا.`
+          : `تم إنشاء النافذة في ${result.days_created} يومًا${result.days_unchanged ? ` · موجودة مسبقًا في ${result.days_unchanged}` : ""}.`,
+      );
       qc.invalidateQueries({ queryKey: ["iu", active?.id, instructorId] });
+      qc.invalidateQueries({ queryKey: ["instructor-availability-readiness", active?.id] });
     },
     onError: (e: unknown) => {
       toast.error(rpcErrorMessage(e));
@@ -261,9 +352,15 @@ function InstructorUnavailability() {
     onSuccess: () => {
       toast.success("تم الحذف");
       qc.invalidateQueries({ queryKey: ["iu", active?.id, instructorId] });
+      qc.invalidateQueries({ queryKey: ["instructor-availability-readiness", active?.id] });
     },
     onError: (e: unknown) => {
-      toast.error(readableWriteError(e));
+      const message = readableWriteError(e);
+      toast.error(
+        message.includes("AVAILABILITY_REQUIRED_WHILE_ENFORCED")
+          ? "لا يمكن حذف آخر نافذة توفر إلزامية لمحاضر خارجي والقيد مفعّل. عطّل القيد أولًا أو أضف نافذة بديلة."
+          : message,
+      );
       qc.invalidateQueries({ queryKey: ["iu", active?.id, instructorId] });
     },
   });
@@ -288,9 +385,29 @@ function InstructorUnavailability() {
 
       {instructorId && canManage && (
         <Card className="p-4">
-          <p className="mb-3 text-sm font-semibold">إضافة فترة عدم توفّر (إلزامي)</p>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-            <div>
+          <p className="mb-3 text-sm font-semibold">إضافة نافذة إتاحة أو تفضيل</p>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
+            <div className="col-span-2 md:col-span-1">
+              <Label>نوع النافذة</Label>
+              <Select
+                value={form.windowKind}
+                onValueChange={(value) =>
+                  setForm({ ...form, windowKind: value as InstructorWindowKind })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(INSTRUCTOR_WINDOW_KIND_LABEL_AR).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-2 md:col-span-1">
               <Label>اليوم</Label>
               <Select
                 value={form.dayValue}
@@ -329,7 +446,7 @@ function InstructorUnavailability() {
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
               />
             </div>
-            <div className="flex items-end">
+            <div className="col-span-2 flex items-end md:col-span-1">
               <Button onClick={() => add.mutate()} disabled={add.isPending} className="w-full">
                 إضافة
               </Button>
@@ -342,20 +459,24 @@ function InstructorUnavailability() {
       <Card className="overflow-hidden">
         {!instructorId ? (
           <p className="p-6 text-center text-muted-foreground">
-            اختر محاضراً لعرض فترات عدم التوفّر.
+            اختر محاضراً لعرض نوافذ الإتاحة والتفضيلات.
           </p>
         ) : !rows || rows.length === 0 ? (
           <p className="p-6 text-center text-muted-foreground">
-            لا توجد فترات منع. المحاضر متاح افتراضيًا خلال أيام الدوام.
+            لا توجد نوافذ مسجلة. المحاضر الدائم متاح افتراضيًا، أما الخارجي فيلزم له توفر صريح قبل
+            تفعيل القيد.
           </p>
         ) : (
           <ul className="divide-y divide-border">
             {grouped.map((g) => {
               const r = g.sample;
+              const kind = windowKindOf(r);
               const matchingIds = (rows ?? []).filter(
                 (x) =>
                   x.start_time.slice(0, 5) === r.start_time.slice(0, 5) &&
                   x.end_time.slice(0, 5) === r.end_time.slice(0, 5) &&
+                  x.availability_type === r.availability_type &&
+                  x.is_preference === r.is_preference &&
                   (x.notes ?? "") === (r.notes ?? ""),
               );
               return (
@@ -364,15 +485,17 @@ function InstructorUnavailability() {
                   className="flex items-center justify-between p-3"
                 >
                   <div>
-                    <p className="text-sm font-medium">
-                      {g.label}{" "}
+                    <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                      <Badge variant="outline" className={windowKindTone(kind)}>
+                        {INSTRUCTOR_WINDOW_KIND_LABEL_AR[kind]}
+                      </Badge>
+                      <span>{g.label}</span>{" "}
                       <span dir="ltr">
                         {r.start_time.slice(0, 5)} → {r.end_time.slice(0, 5)}
                       </span>
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      منع إلزامي (Hard)
-                      {g.label === "كل أيام الدوام" ? " · سجلات يومية مستقلة" : ""}
+                      {g.label === "كل أيام الدوام" ? "سجلات يومية مستقلة" : ""}
                       {r.notes ? ` · ${r.notes}` : ""}
                     </p>
                   </div>
@@ -394,6 +517,353 @@ function InstructorUnavailability() {
                 </li>
               );
             })}
+          </ul>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+function InstructorRequests() {
+  const { active } = useActiveCollege();
+  const canManage = useCanManageActiveCollege();
+  const qc = useQueryClient();
+  const [instructorId, setInstructorId] = useState("");
+  const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
+  const [form, setForm] = useState({
+    requestKind: "hard_available" as InstructorSchedulingRequestKind,
+    dayValue: "6",
+    start_time: "08:00",
+    end_time: "12:00",
+    max_hours_per_day: 6,
+    target_attendance_days: 3,
+    max_attendance_days: 4,
+    reason: "",
+  });
+  const { data: workingDays } = useWorkingDays(active?.id);
+
+  useEffect(() => {
+    const days = resolveWorkingDays(workingDays ?? DEFAULT_WORKING_DAYS);
+    if (!days.includes(Number(form.dayValue)) && days[0] != null) {
+      setForm((current) => ({ ...current, dayValue: String(days[0]) }));
+    }
+  }, [workingDays, form.dayValue]);
+
+  const instructorsQuery = useQuery({
+    queryKey: ["instr-all", active?.id],
+    enabled: !!active,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("instructors")
+        .select("id, full_name")
+        .eq("college_id", active!.id)
+        .eq("is_active", true)
+        .order("full_name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const requestsQuery = useQuery({
+    queryKey: ["instructor-scheduling-requests", active?.id],
+    enabled: !!active,
+    queryFn: () => listInstructorSchedulingRequests(active!.id),
+  });
+
+  const createRequest = useMutation({
+    mutationFn: async () => {
+      if (!active || !instructorId) throw new Error("اختر محاضرًا");
+      const isWindow = form.requestKind.includes("available");
+      if (isWindow && !isValidTimeRange(form.start_time, form.end_time)) {
+        throw new Error("وقت النهاية يجب أن يكون بعد البداية");
+      }
+      if (
+        form.requestKind === "attendance_days" &&
+        form.target_attendance_days > form.max_attendance_days
+      ) {
+        throw new Error("أيام الحضور المستهدفة يجب ألا تتجاوز الحد الأعلى.");
+      }
+      if (
+        form.requestKind === "daily_limit" &&
+        (form.max_hours_per_day < 1 || form.max_hours_per_day > 12)
+      ) {
+        throw new Error("سقف الساعات اليومية يجب أن يكون بين 1 و12.");
+      }
+      if (
+        form.requestKind === "attendance_days" &&
+        (form.target_attendance_days < 1 ||
+          form.max_attendance_days > 6 ||
+          form.max_attendance_days < 1)
+      ) {
+        throw new Error("أيام الحضور يجب أن تكون بين 1 و6.");
+      }
+      await createInstructorSchedulingRequest({
+        collegeId: active.id,
+        instructorId,
+        requestKind: form.requestKind,
+        dayOfWeek: isWindow ? Number(form.dayValue) : null,
+        startTime: isWindow ? form.start_time : null,
+        endTime: isWindow ? form.end_time : null,
+        maxHoursPerDay: form.requestKind === "daily_limit" ? form.max_hours_per_day : null,
+        targetAttendanceDays:
+          form.requestKind === "attendance_days" ? form.target_attendance_days : null,
+        maxAttendanceDays: form.requestKind === "attendance_days" ? form.max_attendance_days : null,
+        reason: form.reason,
+      });
+    },
+    onSuccess: () => {
+      toast.success("تم تسجيل الطلب وإرساله للمراجعة");
+      setForm((current) => ({ ...current, reason: "" }));
+      qc.invalidateQueries({ queryKey: ["instructor-scheduling-requests", active?.id] });
+      qc.invalidateQueries({ queryKey: ["instructor-availability-readiness", active?.id] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const reviewRequest = useMutation({
+    mutationFn: async (input: { id: string; decision: "approved" | "rejected" }) => {
+      await reviewInstructorSchedulingRequest({
+        requestId: input.id,
+        decision: input.decision,
+        reviewNote: reviewNotes[input.id] ?? "",
+      });
+    },
+    onSuccess: (_data, input) => {
+      toast.success(input.decision === "approved" ? "تم اعتماد الطلب وتطبيقه" : "تم رفض الطلب");
+      qc.invalidateQueries({ queryKey: ["instructor-scheduling-requests", active?.id] });
+      qc.invalidateQueries({ queryKey: ["instructor-availability-readiness", active?.id] });
+      qc.invalidateQueries({ queryKey: ["iu", active?.id] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const isWindowRequest = form.requestKind.includes("available");
+
+  return (
+    <div className="space-y-4">
+      {canManage ? (
+        <Card className="space-y-4 p-4">
+          <div>
+            <h2 className="font-semibold">تسجيل طلب للمحاضر</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              لا يغيّر الطلب قواعد الجدولة إلا بعد اعتماده؛ يسجل النظام مقدم الطلب والمراجع.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <Label>المحاضر</Label>
+              <Select value={instructorId} onValueChange={setInstructorId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="اختر محاضرًا" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(instructorsQuery.data ?? []).map((instructor) => (
+                    <SelectItem key={instructor.id} value={instructor.id}>
+                      {instructor.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>نوع الطلب</Label>
+              <Select
+                value={form.requestKind}
+                onValueChange={(value) =>
+                  setForm({ ...form, requestKind: value as InstructorSchedulingRequestKind })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(INSTRUCTOR_REQUEST_KIND_LABEL_AR).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {isWindowRequest ? (
+              <>
+                <div>
+                  <Label>اليوم</Label>
+                  <Select
+                    value={form.dayValue}
+                    onValueChange={(value) => setForm({ ...form, dayValue: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {resolveWorkingDays(workingDays ?? DEFAULT_WORKING_DAYS).map((day) => (
+                        <SelectItem key={day} value={String(day)}>
+                          {DAYS[day] ?? `اليوم ${day}`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>من</Label>
+                  <Input
+                    dir="ltr"
+                    type="time"
+                    value={form.start_time}
+                    onChange={(event) => setForm({ ...form, start_time: event.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label>إلى</Label>
+                  <Input
+                    dir="ltr"
+                    type="time"
+                    value={form.end_time}
+                    onChange={(event) => setForm({ ...form, end_time: event.target.value })}
+                  />
+                </div>
+              </>
+            ) : form.requestKind === "daily_limit" ? (
+              <div>
+                <Label>أقصى ساعات يومية</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={12}
+                  value={form.max_hours_per_day}
+                  onChange={(event) =>
+                    setForm({ ...form, max_hours_per_day: Number(event.target.value) })
+                  }
+                />
+              </div>
+            ) : (
+              <>
+                <div>
+                  <Label>أيام الحضور المستهدفة</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={6}
+                    value={form.target_attendance_days}
+                    onChange={(event) =>
+                      setForm({ ...form, target_attendance_days: Number(event.target.value) })
+                    }
+                  />
+                </div>
+                <div>
+                  <Label>الحد الأعلى لأيام الحضور</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={6}
+                    value={form.max_attendance_days}
+                    onChange={(event) =>
+                      setForm({ ...form, max_attendance_days: Number(event.target.value) })
+                    }
+                  />
+                </div>
+              </>
+            )}
+            <div className="sm:col-span-2 lg:col-span-3">
+              <Label>سبب الطلب</Label>
+              <div className="mt-1 flex flex-col gap-2 sm:flex-row">
+                <Input
+                  value={form.reason}
+                  onChange={(event) => setForm({ ...form, reason: event.target.value })}
+                  placeholder="مرجع أو سبب واضح للطلب"
+                />
+                <Button
+                  type="button"
+                  onClick={() => createRequest.mutate()}
+                  disabled={createRequest.isPending}
+                  className="shrink-0"
+                >
+                  إرسال للمراجعة
+                </Button>
+              </div>
+            </div>
+          </div>
+        </Card>
+      ) : null}
+
+      <Card className="overflow-hidden">
+        <div className="border-b p-4">
+          <h2 className="font-semibold">سجل الطلبات</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            الطلب المعتمد فقط ينتقل إلى سياسة الجدولة الفعلية.
+          </p>
+        </div>
+        {requestsQuery.isLoading ? (
+          <p className="p-6 text-center text-sm text-muted-foreground">جارٍ التحميل…</p>
+        ) : requestsQuery.isError ? (
+          <p className="p-6 text-center text-sm text-destructive">تعذر تحميل الطلبات.</p>
+        ) : !requestsQuery.data?.length ? (
+          <p className="p-6 text-center text-sm text-muted-foreground">لا توجد طلبات مسجلة.</p>
+        ) : (
+          <ul className="divide-y">
+            {requestsQuery.data.map((request) => (
+              <li key={request.id} className="space-y-3 p-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="font-medium">{request.instructor_name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {INSTRUCTOR_REQUEST_KIND_LABEL_AR[request.request_kind]}
+                      {request.day_of_week != null ? ` · ${DAYS[request.day_of_week]}` : ""}
+                      {request.start_time && request.end_time
+                        ? ` · ${request.start_time.slice(0, 5)}–${request.end_time.slice(0, 5)}`
+                        : ""}
+                      {request.max_hours_per_day != null
+                        ? ` · ${request.max_hours_per_day} ساعات/يوم`
+                        : ""}
+                      {request.target_attendance_days != null
+                        ? ` · ${request.target_attendance_days}–${request.max_attendance_days} أيام حضور`
+                        : ""}
+                    </p>
+                    <p className="mt-1 text-sm">{request.reason}</p>
+                    {request.review_note ? (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        قرار المراجع: {request.review_note}
+                      </p>
+                    ) : null}
+                  </div>
+                  <Badge variant={request.status === "submitted" ? "outline" : "secondary"}>
+                    {INSTRUCTOR_REQUEST_STATUS_LABEL_AR[request.status]}
+                  </Badge>
+                </div>
+                {canManage && request.status === "submitted" ? (
+                  <div className="flex flex-col gap-2 rounded-md bg-muted/40 p-3 sm:flex-row">
+                    <Input
+                      value={reviewNotes[request.id] ?? ""}
+                      onChange={(event) =>
+                        setReviewNotes((current) => ({
+                          ...current,
+                          [request.id]: event.target.value,
+                        }))
+                      }
+                      placeholder="ملاحظة قرار الاعتماد أو الرفض"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => reviewRequest.mutate({ id: request.id, decision: "approved" })}
+                      disabled={reviewRequest.isPending}
+                    >
+                      اعتماد وتطبيق
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => reviewRequest.mutate({ id: request.id, decision: "rejected" })}
+                      disabled={reviewRequest.isPending}
+                    >
+                      رفض
+                    </Button>
+                  </div>
+                ) : null}
+              </li>
+            ))}
           </ul>
         )}
       </Card>

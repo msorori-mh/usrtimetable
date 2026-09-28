@@ -1,13 +1,27 @@
-import { ArrowLeft, BookOpenCheck, CalendarDays, DoorOpen, Users } from "lucide-react";
+import {
+  ArrowLeft,
+  BookOpen,
+  BookOpenCheck,
+  CalendarDays,
+  Clock3,
+  DoorOpen,
+  FlaskConical,
+  Shapes,
+  Users,
+} from "lucide-react";
 import {
   aggregateLeadership,
   coveragePercent,
   formatLeadershipAmount,
+  hasLeadershipAssignmentSource,
+  leadershipAssignmentSnapshot,
+  leadershipTeachingSnapshot,
   type LeadershipCollege,
 } from "@/lib/reports/leadership";
 import {
   aggregateLeadershipRoomCapacity,
   publishedInstructorPercent,
+  roomHourEquivalents,
   type LeadershipCapacityCollege,
 } from "@/lib/reports/leadership-room-capacity";
 import {
@@ -24,6 +38,22 @@ const amount = (value: number | null | undefined) => formatLeadershipAmount(valu
 const hours = (value: number | null | undefined) => formatLeadershipAmount(value, "ساعة");
 const actionClass = "leadership-action";
 
+const percentageOf = (part: number | null, total: number | null) =>
+  part === null || total === null || total <= 0 ? null : Math.round((part / total) * 1000) / 10;
+
+const percentageDetail = (part: number | null, total: number | null) => {
+  const percentage = percentageOf(part, total);
+  return percentage === null
+    ? "لا توجد ساعات مجدولة للمقارنة"
+    : `${amount(percentage)}% من الساعات المجدولة`;
+};
+
+export const roomEquivalentText = (value: number | null | undefined) => {
+  const equivalent = roomHourEquivalents(value ?? null);
+  if (!equivalent) return "غير محسوب";
+  return `${amount(equivalent.fullRooms)} قاعة لأسبوع كامل، ${amount(equivalent.daysAfterRooms)} يوم قاعة، ${hours(equivalent.hoursAfterRoomsAndDays)}`;
+};
+
 const roomReuseOpportunity = (room: LeadershipCapacityCollege | undefined) => {
   if (
     room?.balanceHours === null ||
@@ -33,7 +63,7 @@ const roomReuseOpportunity = (room: LeadershipCapacityCollege | undefined) => {
   )
     return "غير محسوب";
   if (room.surplusHours <= 0) return "لا توجد سعة زمنية فائضة";
-  return `${hours(room.surplusHours)} شاغرة أسبوعيًا في القاعات · ${amount(room.emptyPublishedRooms)} قاعة بلا جلسات منشورة`;
+  return `${hours(room.surplusHours)} غير مستخدمة أسبوعيًا · تعادل حسابيًا: ${roomEquivalentText(room.surplusHours)}`;
 };
 
 export interface LeadershipDecisionSummaryProps {
@@ -55,25 +85,64 @@ export function LeadershipDecisionSummary({
   onOpen,
 }: LeadershipDecisionSummaryProps) {
   const published = colleges.filter((college) => !!college.version_id).length;
-  const teachingKnown = colleges.filter(
-    (college) =>
-      college.term_state === "ready" &&
-      !!college.groups_count &&
-      college.required_hours !== null &&
-      college.covered_hours !== null &&
-      college.uncovered_hours !== null,
-  );
-  const uncovered = aggregateLeadership(teachingKnown, "uncovered_hours");
+  const teachingSnapshot = leadershipTeachingSnapshot(colleges);
+  const assignmentSnapshot = leadershipAssignmentSnapshot(colleges);
   const availableFaculty = colleges.reduce(
     (sum, college) => sum + (college.availability_counts["متاح"] ?? 0),
     0,
   );
   const incompleteQuota = aggregateLeadership(colleges, "incomplete_faculty");
+  const assignmentScopeNote =
+    assignmentSnapshot.sourceColleges < assignmentSnapshot.totalColleges ? " · جزئي" : "";
   // Never mix a pending/error room snapshot with the current overview.
   const capacityRows = capacityState === "ready" ? capacity : [];
   const roomTotals = aggregateLeadershipRoomCapacity(capacityRows);
+  const roomResultReady = capacityState === "ready" && roomTotals.reconciled;
   const priorities = leadershipPriorities(colleges, capacityRows);
   const ordered = decisionOrder(colleges, priorities);
+  const weeklyCards = [
+    {
+      label: "المحاضرات الأسبوعية",
+      value: amount(teachingSnapshot.sessions),
+      detail:
+        teachingSnapshot.averageSessionsPerCollege === null
+          ? "غير محسوب"
+          : `المتوسط ${amount(teachingSnapshot.averageSessionsPerCollege)} محاضرة لكل كلية ضمن المصدر`,
+      icon: BookOpen,
+      tone: "sessions",
+    },
+    {
+      label: "الساعات المجدولة",
+      value: hours(teachingSnapshot.scheduledHours),
+      detail:
+        teachingSnapshot.averageSessionHours === null
+          ? "غير محسوب"
+          : `متوسط مدة المحاضرة ${amount(teachingSnapshot.averageSessionHours)} ساعة`,
+      icon: Clock3,
+      tone: "hours",
+    },
+    {
+      label: "الساعات النظرية",
+      value: hours(teachingSnapshot.theoryHours),
+      detail: percentageDetail(teachingSnapshot.theoryHours, teachingSnapshot.scheduledHours),
+      icon: BookOpenCheck,
+      tone: "theory",
+    },
+    {
+      label: "الساعات العملية",
+      value: hours(teachingSnapshot.practicalHours),
+      detail: percentageDetail(teachingSnapshot.practicalHours, teachingSnapshot.scheduledHours),
+      icon: FlaskConical,
+      tone: "practical",
+    },
+    {
+      label: "أنشطة أخرى",
+      value: hours(teachingSnapshot.otherHours),
+      detail: "كل مكوّن لم يصنّف نظريًا أو عمليًا",
+      icon: Shapes,
+      tone: "other",
+    },
+  ];
   const cards = [
     {
       tab: "teaching" as const,
@@ -88,9 +157,13 @@ export function LeadershipDecisionSummary({
     {
       tab: "teaching" as const,
       label: "اعتماد التكليف التدريسي",
-      value: hours(uncovered.value),
+      value: assignmentSnapshot.consistent
+        ? hours(assignmentSnapshot.awaitingHours)
+        : "يحتاج مراجعة",
       detail: "ساعات مجموعات بانتظار اعتماد التكليف إداريًا",
-      note: `المصدر: ${teachingKnown.length} من ${colleges.length} كليات${teachingKnown.length < colleges.length ? " · جزئي" : ""}`,
+      note: assignmentSnapshot.consistent
+        ? `${hours(assignmentSnapshot.approvedHours)} معتمدة + ${hours(assignmentSnapshot.awaitingHours)} بانتظار الاعتماد = ${hours(assignmentSnapshot.requiredHours)} مطلوبة · المصدر: ${assignmentSnapshot.sourceColleges} من ${assignmentSnapshot.totalColleges} كليات${assignmentScopeNote}`
+        : `تعذر مطابقة المطلوب مع المعتمد وقيد الإجراء · المصدر: ${assignmentSnapshot.sourceColleges} من ${assignmentSnapshot.totalColleges} كليات${assignmentScopeNote}`,
       action: "مراجعة التكليف التدريسي",
       tone: "teaching",
       icon: BookOpenCheck,
@@ -108,25 +181,28 @@ export function LeadershipDecisionSummary({
     {
       tab: "rooms" as const,
       label: "القاعات",
-      value:
-        capacityState === "ready"
-          ? hours(roomTotals.surplusHours)
-          : capacityState === "loading"
-            ? "جارٍ الحساب…"
+      value: roomResultReady
+        ? hours(roomTotals.surplusHours)
+        : capacityState === "loading"
+          ? "جارٍ الحساب…"
+          : capacityState === "ready"
+            ? "يحتاج مراجعة"
             : "غير محسوب",
-      detail:
-        scope === "college"
-          ? "فائض ساعات قاعات الكلية أسبوعيًا"
-          : "فائض أسبوعي في الكليات ذات الفائض",
-      note:
-        capacityState === "ready"
-          ? `${roomTotals.knownColleges} من ${colleges.length} كليات مكتملة القياس · العجز ${hours(roomTotals.deficitHours)}`
+      detail: roomResultReady
+        ? `${hours(roomTotals.requiredHours)} مشغولة + ${hours(roomTotals.surplusHours)} غير مستخدمة = ${hours(roomTotals.availableHours)} متاحة`
+        : scope === "college"
+          ? "ساعات قاعات الكلية أسبوعيًا"
+          : "ساعات قاعات المحاضرات أسبوعيًا",
+      note: roomResultReady
+        ? `${amount(roomTotals.hallCount)} قاعة · الطاقة الاسمية ${hours(roomTotals.nominalHours)} · الإتاحة المسجلة ${hours(roomTotals.availableHours)}`
+        : capacityState === "ready"
+          ? "لم تتطابق معادلة الإتاحة = المشغول + غير المستخدم"
           : capacityState === "error"
             ? "تعذر تحديث حساب القاعات"
             : capacityState === "restricted"
               ? "راجع بيانات قاعات الكلية"
               : "تُراجع إتاحة القاعات والاحتياج",
-      action: "أين يوجد الفائض أو العجز؟",
+      action: "عرض الإتاحة والاستخدام",
       tone: "rooms",
       icon: DoorOpen,
     },
@@ -210,6 +286,50 @@ export function LeadershipDecisionSummary({
       </section>
 
       <section
+        className="leadership-section leadership-weekly"
+        aria-labelledby="leadership-weekly-title"
+        data-testid="leadership-weekly-summary"
+      >
+        <div className="leadership-section-heading">
+          <h2 id="leadership-weekly-title">حجم التدريس الأسبوعي</h2>
+          <span className="leadership-section-note">
+            {teachingSnapshot.publishedColleges} كلية ضمن المصدر · افتح أي بطاقة للتفاصيل
+          </span>
+        </div>
+        <div className="leadership-weekly-grid">
+          {weeklyCards.map((card) => (
+            <button
+              key={card.label}
+              type="button"
+              className={`leadership-weekly-card leadership-weekly-card--${card.tone}`}
+              onClick={() => onOpen("teaching")}
+              aria-label={`عرض تفاصيل ${card.label}`}
+            >
+              <span className="leadership-weekly-icon" aria-hidden="true">
+                <card.icon />
+              </span>
+              <span className="leadership-weekly-label">{card.label}</span>
+              <strong>{teachingSnapshot.consistent ? card.value : "يحتاج مراجعة"}</strong>
+              <small>
+                {teachingSnapshot.consistent ? card.detail : "تفاصيل الساعات لا تساوي الإجمالي"}
+              </small>
+            </button>
+          ))}
+        </div>
+        {teachingSnapshot.consistent ? (
+          <p className="leadership-equation" role="note">
+            تحقق الجمع: {hours(teachingSnapshot.theoryHours)} نظري +{" "}
+            {hours(teachingSnapshot.practicalHours)} عملي + {hours(teachingSnapshot.otherHours)}{" "}
+            أخرى = {hours(teachingSnapshot.scheduledHours)} إجماليًا.
+          </p>
+        ) : (
+          <p className="leadership-equation leadership-equation--warning" role="alert">
+            أُوقف اعتماد إجمالي الساعات لأن تفاصيل النظري والعملي والأنشطة الأخرى لا تطابقه.
+          </p>
+        )}
+      </section>
+
+      <section
         className="leadership-section leadership-comparison"
         aria-labelledby="leadership-comparison-title"
         data-testid="leadership-colleges-comparison"
@@ -251,7 +371,7 @@ export function LeadershipDecisionSummary({
               {ordered.map((college) => {
                 const priority = priorities.find((item) => item.collegeId === college.college_id);
                 const room = capacityRows.find((item) => item.id === college.college_id);
-                const percent = teachingKnown.some((item) => item.college_id === college.college_id)
+                const percent = hasLeadershipAssignmentSource(college)
                   ? coveragePercent(college)
                   : null;
                 const reuseOpportunity = roomReuseOpportunity(room);
@@ -374,7 +494,8 @@ export function LeadershipDecisionSummary({
                         room?.surplusHours !== undefined &&
                         room.surplusHours > 0 && (
                           <span className="leadership-cell-note">
-                            تُراجع فرص الاستخدام حسب اليوم والفترة والسعة
+                            {amount(room.emptyPublishedRooms)} قاعة بلا جلسات منشورة · هذا مكافئ
+                            زمني مرجعي، وتُراجع الفرص حسب اليوم والفترة والسعة
                           </span>
                         )}
                     </td>
@@ -396,7 +517,8 @@ export function LeadershipDecisionSummary({
         </div>
         <p className="leadership-footnote">
           تغطية التدريس مستقلة عن الأنصبة. الساعات غير المستخدمة تخص قاعات المحاضرات الدراسية والنسخ
-          المنشورة المكتملة فقط؛ وليست عدد قاعات قابلة للاستغناء دون مراجعة اليوم والفترة والسعة.
+          المختارة المكتملة فقط. مكافئ القاعات والأيام تحويل حسابي على أساس 36 ساعة للقاعة أسبوعيًا
+          و6 ساعات لليوم، وليس عدد قاعات فعلية قابلة للاستغناء دون مراجعة اليوم والفترة والسعة.
         </p>
       </section>
     </div>

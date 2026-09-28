@@ -39,6 +39,9 @@ const sessions = Array.from({ length: SESSION_COUNT }, (_, i) => ({
 /** Count of table reads per table, to prove data is loaded once per run. */
 let reads: Record<string, number> = {};
 let insertedResults: unknown[] = [];
+let enforceInstructorAvailability = false;
+let instructorAvailabilityRows: unknown[] = [];
+let schedulingPolicyError: { message: string } | null = null;
 
 function rowsFor(table: string): unknown[] {
   switch (table) {
@@ -63,6 +66,8 @@ function rowsFor(table: string): unknown[] {
         id: s.instructor_id,
         instructor_type_id: null,
       }));
+    case "instructor_availability":
+      return instructorAvailabilityRows;
     case "constraint_types":
       return [];
     default:
@@ -76,6 +81,10 @@ function rowsFor(table: string): unknown[] {
 function builder(table: string) {
   reads[table] = (reads[table] ?? 0) + 1;
   const chain: Record<string, unknown> = {};
+  // The fluent PostgREST mock intentionally returns itself from differently
+  // shaped methods; keeping one dynamic test double is clearer than casting
+  // every chained method separately.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const api: any = {
     then: (resolve: (v: unknown) => unknown) =>
       Promise.resolve({ data: rowsFor(table), error: null }).then(resolve),
@@ -86,7 +95,15 @@ function builder(table: string) {
     order: () => api,
     range: () => api,
     single: async () => ({ data: { id: "check-1" }, error: null }),
-    maybeSingle: async () => ({ data: null, error: null }),
+    maybeSingle: async () =>
+      table === "scheduling_settings"
+        ? {
+            data: {
+              enforce_instructor_availability: enforceInstructorAvailability,
+            },
+            error: schedulingPolicyError,
+          }
+        : { data: null, error: null },
     insert: (rows: unknown) => {
       if (table === "conflict_results") {
         insertedResults = Array.isArray(rows) ? rows : [rows];
@@ -103,6 +120,12 @@ mock.module("../src/integrations/supabase/client.ts", () => ({
     from: (table: string) => builder(table),
     rpc: async (name: string) => {
       reads[`rpc:${name}`] = (reads[`rpc:${name}`] ?? 0) + 1;
+      if (name === "get_cohort_component_instructor_readiness") {
+        return {
+          data: { ok: true, violation_count: 0, violations: [] },
+          error: null,
+        };
+      }
       return { data: false, error: null };
     },
     auth: { getUser: async () => ({ data: { user: { id: "tester" } } }) },
@@ -126,9 +149,8 @@ mock.module("../src/lib/academic-delivery/student-memberships.ts", () => ({
   },
 }));
 
-const { validateScheduleVersion, dedupeConflicts } = await import(
-  "../src/lib/conflict-engine/validator"
-);
+const { validateScheduleVersion, dedupeConflicts } =
+  await import("../src/lib/conflict-engine/validator");
 
 describe("validateScheduleVersion batch pass", () => {
   it("validates 275 sessions in one shared-data pass without hanging", async () => {
@@ -161,6 +183,7 @@ describe("validateScheduleVersion batch pass", () => {
       "course_offerings",
       "time_slot_templates",
       "instructors",
+      "scheduling_settings",
       "schedule_version_conflict_exceptions",
     ]) {
       assert.ok(
@@ -169,8 +192,59 @@ describe("validateScheduleVersion batch pass", () => {
       );
     }
     assert.equal(reads["rpc:existing_schedule_intake_version"], 1);
+    assert.equal(reads["rpc:get_cohort_component_instructor_readiness"], 1);
     assert.equal(reads["memberships"], 1);
     assert.ok(elapsed < 10_000, `must finish quickly, took ${elapsed}ms`);
+  });
+
+  it("uses the per-college availability switch in the client conflict validator", async () => {
+    reads = {};
+    enforceInstructorAvailability = true;
+    instructorAvailabilityRows = [
+      {
+        instructor_id: sessions[0].instructor_id,
+        day_of_week: sessions[0].day_of_week,
+        start_time: sessions[0].start_time,
+        end_time: sessions[0].end_time,
+        availability_type: "unavailable",
+        is_preference: false,
+        college_id: COLLEGE,
+      },
+    ];
+
+    try {
+      const { result } = await validateScheduleVersion({
+        collegeId: COLLEGE,
+        scheduleVersionId: DRAFT,
+        persist: false,
+      });
+      assert.equal(result.totalHardConflicts, 1);
+      assert.equal(result.unapprovedHardConflicts, 1);
+      assert.equal(result.conflicts[0]?.code, "instructor_availability");
+      assert.equal(result.conflicts[0]?.schedule_session_id, sessions[0].id);
+      assert.equal(reads.scheduling_settings, 1, "policy is read once per validation run");
+    } finally {
+      enforceInstructorAvailability = false;
+      instructorAvailabilityRows = [];
+    }
+  });
+
+  it("fails closed when the per-college scheduling policy cannot be read", async () => {
+    reads = {};
+    schedulingPolicyError = { message: "policy read denied" };
+    try {
+      await assert.rejects(
+        validateScheduleVersion({
+          collegeId: COLLEGE,
+          scheduleVersionId: DRAFT,
+          persist: false,
+        }),
+        /SCHEDULING_POLICY_READ_FAILED: policy read denied/,
+      );
+      assert.equal(reads.scheduling_settings, 1);
+    } finally {
+      schedulingPolicyError = null;
+    }
   });
 
   it("still persists conflict_checks and conflict_results", async () => {
