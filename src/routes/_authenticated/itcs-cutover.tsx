@@ -40,7 +40,7 @@ type Rpc = (
   args: Record<string, unknown>,
 ) => Promise<{ data: unknown; error: { message: string } | null }>;
 const rpc = supabase.rpc.bind(supabase) as unknown as Rpc;
-type Stage = "requests" | "approve" | "apply" | "publish";
+type Stage = "requests" | "approve" | "apply" | "rooms" | "publish";
 type Repl = {
   replaces: string;
   cross_college: boolean;
@@ -294,6 +294,21 @@ function ItcsCutoverPage() {
           onClick={() => void runStage(crossPending > 0 ? "approve" : "apply")}
         >
           2) اعتماد الإسنادات وتطبيق التوزيع (تبقى مسودة)
+        </Button>
+        <Button
+          variant="outline"
+          disabled={
+            busy ||
+            !manifest ||
+            server?.["version_status"] !== "draft" ||
+            crossPending !== 0 ||
+            Number(server?.["drift"] ?? 0) === 0 ||
+            Number(server?.["missing"] ?? 1) !== 0 ||
+            Number(server?.["extra"] ?? 1) !== 0
+          }
+          onClick={() => void runStage("rooms")}
+        >
+          اعتماد تصحيح القاعات
         </Button>
         <Button
           variant="destructive"
