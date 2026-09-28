@@ -93,6 +93,27 @@ INSERT INTO assignment_version_private.request_scope VALUES('${id(90)}','${id(10
 async function fixture() {
   const db = new PGlite();
   await db.exec(setup);
+  await db.exec(`
+ ALTER TABLE public.instructors ADD COLUMN college_id uuid;
+ UPDATE public.instructors SET college_id='${id(2)}';
+ ALTER TABLE public.academic_cohorts ADD COLUMN college_id uuid, ADD COLUMN program_id uuid, ADD COLUMN level_id uuid, ADD COLUMN study_system text;
+ UPDATE public.academic_cohorts SET college_id='${id(2)}',study_system='regular';
+ ALTER TABLE public.plan_course_components ADD COLUMN college_id uuid, ADD COLUMN plan_course_id uuid;
+ UPDATE public.plan_course_components SET college_id='${id(2)}',plan_course_id='${id(60)}';
+ CREATE TABLE public.course_offerings(id uuid,college_id uuid,plan_course_id uuid,term_id uuid,program_id uuid,level_id uuid,study_system text);
+ INSERT INTO public.course_offerings VALUES('${id(4)}','${id(2)}','${id(60)}','${id(3)}',NULL,NULL,'regular');
+ ALTER TABLE public.course_offerings ADD COLUMN course_id uuid;
+ ALTER TABLE public.plan_courses ADD COLUMN college_id uuid;
+ ALTER TABLE public.delivery_groups ADD COLUMN expected_students integer;
+ CREATE FUNCTION public.operational_delivery_group(g uuid) RETURNS public.delivery_groups LANGUAGE sql AS $$ SELECT * FROM public.delivery_groups WHERE id=g $$;
+ CREATE VIEW public.operational_delivery_groups AS SELECT * FROM public.delivery_groups;
+ CREATE TABLE public.shared_lecture_links(anchor_group_id uuid);
+ CREATE FUNCTION public.existing_schedule_intake_enabled(uuid,uuid) RETURNS boolean LANGUAGE sql AS $$ SELECT false $$;
+ CREATE FUNCTION assignment_version_private.is_replacement_pair(a uuid,b uuid) RETURNS boolean LANGUAGE sql AS $$
+ SELECT EXISTS(SELECT 1 FROM assignment_version_private.scope s JOIN assignment_version_private.enabled_versions e ON e.version_id=s.version_id
+ WHERE (s.assignment_id=a AND s.replaces_assignment_id=b) OR (s.assignment_id=b AND s.replaces_assignment_id=a)) $$;
+ UPDATE public.teaching_assignments SET assigned_component_hours=NULL WHERE id='${id(80)}';
+ `);
   await db.exec(
     fn("public.version_effective_assignments") +
       fn("public.validate_version_assignment_allocation") +
@@ -123,11 +144,34 @@ async function fixture() {
   await db.exec(
     fs.readFileSync("supabase/migrations/20260928083500_scoped_cohort_batch_decisions.sql", "utf8"),
   );
+  await db.exec(fs.readFileSync("tests/fixtures/itcs-assignment-college-live.sql", "utf8"));
+  await db.exec(
+    `CREATE TRIGGER ensure_college BEFORE INSERT OR UPDATE ON public.teaching_assignments FOR EACH ROW EXECUTE FUNCTION public.ensure_ta_college();`,
+  );
+  await assert.rejects(
+    () =>
+      db.exec(
+        `SELECT public.decide_faculty_teaching_request('${id(90)}','approved','test approval');`,
+      ),
+    /CO_TEACHING_HOURS_SPLIT_REQUIRED/,
+  );
+  await db.exec(
+    fs.readFileSync(
+      "supabase/migrations/20260928085000_scoped_assignment_college_guard.sql",
+      "utf8",
+    ),
+  );
   return db;
 }
 test("one group alone fails atomically; both official decisions preserve cohort unity and history", async () => {
   const db = await fixture();
   try {
+    const insertPeer = (group, hours) =>
+      db.exec(`
+      INSERT INTO public.teaching_assignments(college_id,course_offering_id,instructor_id,session_type,weekly_hours,cohort_id,plan_course_component_id,delivery_group_id,assigned_component_hours)
+      VALUES('${id(2)}','${id(4)}','${id(20)}','lecture',${hours},'${id(50)}','${id(40)}','${id(group)}',${hours});`);
+    await assert.rejects(() => insertPeer(70, 1), /CO_TEACHING_HOURS_SPLIT_REQUIRED/);
+    await assert.rejects(() => insertPeer(71, 1), /CO_TEACHING_HOURS_OVER_ALLOCATED/);
     const history = (
       await db.query(
         `SELECT md5(jsonb_agg(to_jsonb(s) ORDER BY s.id)::text) h FROM public.schedule_sessions s WHERE schedule_version_id='${id(11)}'`,
