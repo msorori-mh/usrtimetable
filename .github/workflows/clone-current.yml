@@ -38,4 +38,4 @@ jobs:
       - run: CLONE_DB_MODULE="$RUNNER_TEMP/clone-db/node_modules/@electric-sql/pglite/dist/index.js" node --test tests/clone-current-db.test.mjs
       - run: CLONE_DB_MODULE="$RUNNER_TEMP/clone-db/node_modules/@electric-sql/pglite/dist/index.js" node --test tests/clone-cross-college-exception-db.test.mjs
       - run: CLONE_DB_MODULE="$RUNNER_TEMP/clone-db/node_modules/@electric-sql/pglite/dist/index.js" node --test tests/clone-version-facts-db.test.mjs
-      - run: CLONE_DB_MODULE="$RUNNER_TEMP/clone-db/node_modules/@electric-sql/pglite/dist/index.js" node --test tests/itcs-integrated-cutover-db.test.mjs tests/itcs-scoped-cohort-decisions-db.test.mjs
+      - run: CLONE_DB_MODULE="$RUNNER_TEMP/clone-db/node_modules/@electric-sql/pglite/dist/index.js" node --test tests/itcs-integrated-cutover-db.test.mjs tests/itcs-scoped-cohort-decisions-db.test.mjs tests/itcs-room-amendment-db.test.mjs
