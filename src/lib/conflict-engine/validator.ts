@@ -1,6 +1,7 @@
 import { fetchStudentMembershipIndex } from "@/lib/academic-delivery/student-memberships";
 import { groupsShareStudents } from "@/lib/auto-scheduler/student-partitions";
 import { supabase } from "@/integrations/supabase/client";
+import { matchesVerifiedHostedSession, type HostedSessionShape } from "./hosted-session-policy";
 import { buildInstructorCategoryMap, requiresAvailability } from "@/lib/instructor-category";
 import { isInstructorAvailabilityEnforced } from "@/lib/scheduling/instructor-availability-policy";
 import { evaluateInstructorSlotAvailability } from "@/lib/scheduling/instructor-slot-availability";
@@ -358,7 +359,25 @@ export async function validateProposed(params: {
   const instrCategory = buildInstructorCategoryMap(instrRows ?? [], instructorTypeRows ?? []);
 
   // College isolation guard
-  const allRoomsOk = (rooms ?? []).every((r) => r.college_id === collegeId);
+  let allRoomsOk = (rooms ?? []).every((r) => r.college_id === collegeId);
+  if (!allRoomsOk) {
+    const hostedRpc = supabase.rpc.bind(supabase) as unknown as (
+      name: string,
+      args: { p_version: string },
+    ) => Promise<{ data: HostedSessionShape[] | null; error: { message: string } | null }>;
+    const { data: verified, error } = await hostedRpc("get_verified_hosted_schedule_sessions", {
+      p_version: scheduleVersionId,
+    });
+    if (error) throw new Error(`HOSTED_ROOM_VERIFICATION_FAILED: ${error.message}`);
+    const foreignRooms = new Set(
+      (rooms ?? []).filter((r) => r.college_id !== collegeId).map((r) => r.id),
+    );
+    allRoomsOk = sessions
+      .filter((s) => s.room_id && foreignRooms.has(s.room_id))
+      .every((s) =>
+        (verified ?? []).some((v) => matchesVerifiedHostedSession(s, v, scheduleVersionId)),
+      );
+  }
   const allOffOk = (offerings ?? []).every((o) => o.college_id === collegeId);
   const allTasOk = (taRows ?? []).every((ta) => ta.college_id === collegeId);
   if (!allRoomsOk || !allOffOk || !allTasOk) {
