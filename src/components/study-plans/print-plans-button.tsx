@@ -45,7 +45,7 @@ export function PrintPlansButton({
           const { data, error } = await supabase
             .from("plan_courses")
             .select(
-              "id, semester, is_required, course:courses!plan_courses_course_id_fkey(code,name,credit_hours), level:academic_levels!plan_courses_level_id_fkey(name,level_number), components:plan_course_components(component_type,weekly_contact_hours)",
+              "id, semester, is_required, course:courses!plan_courses_course_id_fkey(code,name,credit_hours), level:academic_levels!plan_courses_level_id_fkey(name,level_number), components:plan_course_components!plan_course_components_plan_course_id_fkey(component_type,weekly_contact_hours)",
             )
             .eq("college_id", collegeId)
             .eq("study_plan_id", plan.id)
