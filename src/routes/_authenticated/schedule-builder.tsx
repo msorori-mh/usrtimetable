@@ -1254,8 +1254,10 @@ function ScheduleBuilderWorkspacePage() {
       <Card className="min-w-0">
         <CardHeader className="pb-2">
           <CardTitle className="text-base">
-            {perspective === "instructors" && selectedInstructor
-              ? `الجدول الأسبوعي للمحاضر: ${selectedInstructor.full_name}`
+            {perspective === "instructors"
+              ? selectedInstructor
+                ? `الجدول الأسبوعي للمحاضر: ${selectedInstructor.full_name}`
+                : "الشبكة الأسبوعية للمحاضر"
               : "الشبكة الأسبوعية للطلاب"}
             {selectedVersion ? (
               <span className="ms-2 text-sm font-normal text-muted-foreground">
