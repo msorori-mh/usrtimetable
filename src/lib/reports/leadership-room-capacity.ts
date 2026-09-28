@@ -147,6 +147,7 @@ function validRow(row: ReportTime) {
 export function buildLeadershipRoomCapacity(
   colleges: CapacityCollege[],
   sources: CapacitySources,
+  scope: "halls" | "all" = "halls",
 ): LeadershipCapacityCollege[] {
   const selectedVersions = new Set(colleges.flatMap((c) => (c.version_id ? [c.version_id] : [])));
   const sessions = [
@@ -185,6 +186,7 @@ export function buildLeadershipRoomCapacity(
     );
     const rooms = activeRooms
       .filter((room) => {
+        if (scope === "all") return true;
         const roomType = sources.roomTypes.find((type) => type.id === room.room_type_id);
         return roomType?.code?.trim() ? roomCategoryFromType(roomType.code) === "hall" : false;
       })
