@@ -68,6 +68,11 @@ function expand(file, fixture = false) {
       path.join(root, "supabase/migrations/20260928090000_scoped_effective_before_relink.sql"),
       "utf8",
     );
+  if (target === "20260928083000_integrated_itcs_cutover.sql")
+    s += fs.readFileSync(
+      path.join(root, "supabase/migrations/20260928094000_integrated_itcs_cutover_rpc_timeout.sql"),
+      "utf8",
+    );
   if (fixture && file.endsWith("itcs-cutover-orchestrator-db.sql"))
     s = s.replace("-- 1) Compile", () => membershipFixture + "\n-- 1) Compile");
   s = s
