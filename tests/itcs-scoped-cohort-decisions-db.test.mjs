@@ -119,6 +119,15 @@ async function fixture() {
       fn("public.validate_version_assignment_allocation") +
       fn("assignment_version_private.apply_replacement"),
   );
+  const rev3 = fs.readFileSync(
+    "supabase/migrations/20260928082500_version_scoped_workload.sql",
+    "utf8",
+  );
+  const effective = rev3.match(
+    /^CREATE OR REPLACE FUNCTION public\.version_effective_assignments\([\s\S]*?^\$\$;/m,
+  );
+  assert.ok(effective);
+  await db.exec(effective[0]);
   await db.exec(fs.readFileSync("tests/fixtures/itcs-cohort-live-functions.sql", "utf8"));
   await db.exec(`
  CREATE FUNCTION public.test_cohort_guard() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
@@ -158,6 +167,19 @@ async function fixture() {
   await db.exec(
     fs.readFileSync(
       "supabase/migrations/20260928085000_scoped_assignment_college_guard.sql",
+      "utf8",
+    ),
+  );
+  await assert.rejects(
+    () =>
+      db.exec(
+        `SELECT public.decide_faculty_teaching_request('${id(90)}','approved','test approval');`,
+      ),
+    /VERSION_CO_TEACHING_HOURS_SPLIT_REQUIRED/,
+  );
+  await db.exec(
+    fs.readFileSync(
+      "supabase/migrations/20260928090000_scoped_effective_before_relink.sql",
       "utf8",
     ),
   );

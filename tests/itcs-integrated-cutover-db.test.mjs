@@ -63,6 +63,11 @@ function expand(file, fixture = false) {
   let s = file.endsWith(".rev2-writers.sql")
     ? writers
     : fs.readFileSync(target ? path.join(root, "supabase/migrations", target) : file, "utf8");
+  if (target === "20260928082500_version_scoped_workload.sql")
+    s += fs.readFileSync(
+      path.join(root, "supabase/migrations/20260928090000_scoped_effective_before_relink.sql"),
+      "utf8",
+    );
   if (fixture && file.endsWith("itcs-cutover-orchestrator-db.sql"))
     s = s.replace("-- 1) Compile", () => membershipFixture + "\n-- 1) Compile");
   s = s
