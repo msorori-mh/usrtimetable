@@ -4,12 +4,14 @@ import { CollegeSourceTimetable } from "@/components/data-onboarding/college-sou
 import { ReportShell } from "@/components/reports/report-shell";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { supabase } from "@/integrations/supabase/client";
-import { EDUCATION_SOURCE_PUBLICATION_NOTICE_AR } from "@/lib/schedule-versions/education-publication";
+import {
+  EDUCATION_SOURCE_PUBLICATION_NOTICE_AR,
+  EDUCATION_SOURCE_PUBLICATION_VERSION_IDS,
+} from "@/lib/schedule-versions/education-publication";
 import type { SVStatus } from "@/lib/schedule-versions/lifecycle";
 
 const COLLEGE_ID = "1ee291b2-bec9-43d3-b42b-5a4f46946399";
 const TERM_ID = "93705393-609d-4605-ae94-9572cd8b2090";
-const VERSION_ID = "7430bad7-2de7-5c90-9368-b214a199d6c3";
 
 export const Route = createFileRoute("/_authenticated/reports/education-source-timetable")({
   head: () => ({ meta: [{ title: "جدول كلية التربية والعلوم من ملفات الأقسام" }] }),
@@ -20,33 +22,37 @@ function Page() {
   const { active } = useActiveCollege();
   const navigate = useNavigate();
   const allowed = active?.id === COLLEGE_ID;
-  const source = useQuery({
-    queryKey: ["education-source-timetable", COLLEGE_ID, TERM_ID, VERSION_ID],
+  const version = useQuery({
+    queryKey: ["education-source-timetable-version", COLLEGE_ID, TERM_ID],
     enabled: allowed,
     queryFn: async () => {
+      const { data, error } = await supabase
+        .from("schedule_versions")
+        .select("id,status")
+        .eq("college_id", COLLEGE_ID)
+        .eq("academic_term_id", TERM_ID)
+        .in("id", [...EDUCATION_SOURCE_PUBLICATION_VERSION_IDS])
+        .eq("status", "published")
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
+  const versionId = version.data?.id;
+  const source = useQuery({
+    queryKey: ["education-source-timetable", COLLEGE_ID, TERM_ID, versionId],
+    enabled: allowed && !!versionId,
+    queryFn: async () => {
+      if (!versionId) throw new Error("لم تُحدّد النسخة المنشورة لجدول المصدر.");
       const { data, error } = await supabase
         .from("existing_schedule_source_rows")
         .select("*")
         .eq("college_id", COLLEGE_ID)
         .eq("term_id", TERM_ID)
-        .eq("schedule_version_id", VERSION_ID)
+        .eq("schedule_version_id", versionId)
         .order("source_id");
       if (error) throw error;
       return data ?? [];
-    },
-  });
-  const version = useQuery({
-    queryKey: ["education-source-timetable-version", VERSION_ID],
-    enabled: allowed,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("schedule_versions")
-        .select("status")
-        .eq("id", VERSION_ID)
-        .eq("college_id", COLLEGE_ID)
-        .single();
-      if (error) throw error;
-      return data;
     },
   });
   const published = version.data?.status === "published";

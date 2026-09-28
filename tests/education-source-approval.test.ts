@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   EDUCATION_SOURCE_PUBLICATION_TERM_ID,
   EDUCATION_SOURCE_PUBLICATION_VERSION_ID,
+  EDUCATION_SOURCE_IDENTITY_REVISION_ID,
   educationSourceTimetableApprovalPercent,
 } from "../src/lib/schedule-versions/education-publication";
 
@@ -17,6 +18,16 @@ const published = {
 
 test("approves exactly the published Education term when hours and names are complete", () => {
   assert.equal(educationSourceTimetableApprovalPercent(published, 100), 100);
+});
+
+test("preserves approval evidence for the sealed identity-only correction", () => {
+  const corrected = { ...published, version_id: EDUCATION_SOURCE_IDENTITY_REVISION_ID };
+  assert.equal(educationSourceTimetableApprovalPercent(corrected, 100), 100);
+  assert.equal(educationSourceTimetableApprovalPercent(corrected, 95), 95);
+  assert.equal(
+    educationSourceTimetableApprovalPercent({ ...corrected, term_id: "another-term" }, 100),
+    null,
+  );
 });
 
 test("fails closed outside this version and term or with incomplete evidence", () => {
