@@ -1,10 +1,15 @@
 import { supabase } from "@/integrations/supabase/client";
 
 export type InstructorWindowKind =
-  "hard_available" | "hard_unavailable" | "preferred_available" | "preferred_unavailable";
+  | "hard_available"
+  | "hard_unavailable"
+  | "preferred_available"
+  | "preferred_unavailable";
 
 export type InstructorSchedulingRequestKind =
-  InstructorWindowKind | "daily_limit" | "attendance_days";
+  | InstructorWindowKind
+  | "daily_limit"
+  | "attendance_days";
 
 export type InstructorSchedulingRequestStatus = "submitted" | "approved" | "rejected" | "cancelled";
 

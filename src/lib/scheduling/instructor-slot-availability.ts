@@ -1,4 +1,4 @@
-import { isInstructorAvailabilityEnforced } from "./instructor-availability-policy";
+import { isInstructorAvailabilityEnforced } from "./instructor-availability-policy.ts";
 
 export interface InstructorAvailabilityWindow {
   start_time: string;

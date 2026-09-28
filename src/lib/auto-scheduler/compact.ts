@@ -188,7 +188,12 @@ export interface Move {
   room_id: string;
 }
 export type SearchOutcome =
-  "local_minimum" | "time_limit" | "candidate_limit" | "pass_limit" | "cancelled" | "empty";
+  | "local_minimum"
+  | "time_limit"
+  | "candidate_limit"
+  | "pass_limit"
+  | "cancelled"
+  | "empty";
 export interface Proposal {
   qualitySearch?: import("./quality-search.ts").QualitySearchReport;
   applicationMode?: "simultaneous";

@@ -72,7 +72,14 @@ export const INSTRUCTOR_ACCESS: Role[] = ["super_admin", "college_admin", "insti
 export type AdminTier = "basic" | "advanced" | "legacy";
 
 export type JourneyKey =
-  "org" | "academic" | "staff" | "hours" | "prep" | "execute" | "data" | "reports";
+  | "org"
+  | "academic"
+  | "staff"
+  | "hours"
+  | "prep"
+  | "execute"
+  | "data"
+  | "reports";
 
 export interface AdminPage {
   to: string;
