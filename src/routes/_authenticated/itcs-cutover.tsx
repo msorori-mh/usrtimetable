@@ -7,8 +7,7 @@ import { useCurrentUser } from "@/hooks/use-current-user";
 import { supabase } from "@/integrations/supabase/client";
 import { scoreScheduleVersion } from "@/lib/conflict-engine/scorer";
 import {
-  ITCS_DRAFT_ID,
-  ITCS_PUBLISHED_ID,
+  RELAYOUT_PROFILE,
   MANIFEST_FILE,
   diffAgainstLive,
   targetPathRules,
@@ -88,7 +87,7 @@ function ItcsCutoverPage() {
       .select(
         "id, day_of_week, start_time, end_time, room_id, instructor_id, teaching_assignment_id, delivery_group_id, cohort_id",
       )
-      .eq("schedule_version_id", ITCS_DRAFT_ID);
+      .eq("schedule_version_id", v.manifest.draft_version_id);
     if (error) {
       setErrors([error.message]);
       return;
@@ -99,8 +98,13 @@ function ItcsCutoverPage() {
     })[];
     const groupIds = [...new Set(live.map((s) => s.delivery_group_id).filter(Boolean))] as string[];
     const [members, preview] = await Promise.all([
-      rpc("itcs_cutover_session_units", { p_version: ITCS_DRAFT_ID }),
-      rpc("itcs_cutover_preview", { p_version: ITCS_DRAFT_ID, p_manifest: v.manifest }),
+      rpc("itcs_cutover_session_units", { p_version: v.manifest.draft_version_id }),
+      rpc(
+        v.manifest["profile"] === RELAYOUT_PROFILE
+          ? "itcs_relayout_preview"
+          : "itcs_cutover_preview",
+        { p_version: v.manifest.draft_version_id, p_manifest: v.manifest },
+      ),
     ]);
     if (members.error || preview.error) {
       setErrors([(members.error ?? preview.error)!.message]);
@@ -133,10 +137,13 @@ function ItcsCutoverPage() {
   async function serverPreview() {
     if (!manifest) return;
     setBusy(true);
-    const { data, error } = await rpc("itcs_cutover_preview", {
-      p_version: ITCS_DRAFT_ID,
-      p_manifest: manifest,
-    });
+    const { data, error } = await rpc(
+      manifest["profile"] === RELAYOUT_PROFILE ? "itcs_relayout_preview" : "itcs_cutover_preview",
+      {
+        p_version: manifest.draft_version_id,
+        p_manifest: manifest,
+      },
+    );
     setBusy(false);
     if (error) {
       add(`HOLD — المعاينة من الخادم: ${error.message}`);
@@ -148,21 +155,27 @@ function ItcsCutoverPage() {
 
   async function runStage(stage: Stage) {
     if (!manifest || !server) return;
+    const targetVersion =
+      typeof server["relayout_version_id"] === "string"
+        ? server["relayout_version_id"]
+        : manifest.draft_version_id;
     setBusy(true);
     try {
-      const snap = await rpc("itcs_cutover_published_snapshot", { p_published: ITCS_PUBLISHED_ID });
+      const snap = await rpc("itcs_cutover_published_snapshot", {
+        p_published: manifest.published_version_id,
+      });
       if (snap.error) throw new Error(snap.error.message);
       if (stage === "publish") {
         // Official quality pipeline: snapshot revision -> score -> persist_schedule_quality_run.
         const ver = await supabase
           .from("schedule_versions")
           .select("college_id")
-          .eq("id", ITCS_DRAFT_ID)
+          .eq("id", targetVersion)
           .single();
         if (ver.error || !ver.data) throw new Error(ver.error?.message ?? "VERSION_NOT_FOUND");
         const q = await scoreScheduleVersion({
           collegeId: ver.data.college_id,
-          scheduleVersionId: ITCS_DRAFT_ID,
+          scheduleVersionId: targetVersion,
           persist: true,
         }).catch((e: Error) => {
           throw new Error(`QUALITY_RUN_FAILED: ${e.message}`);
@@ -174,8 +187,8 @@ function ItcsCutoverPage() {
       }
       const { data, error } = await rpc("itcs_cutover_execute", {
         p_stage: stage,
-        p_version: ITCS_DRAFT_ID,
-        p_published: ITCS_PUBLISHED_ID,
+        p_version: targetVersion,
+        p_published: manifest.published_version_id,
         p_manifest: manifest,
         p_manifest_sha: server["manifest_sha"],
         p_expected_published_snapshot: snap.data,
@@ -243,6 +256,18 @@ function ItcsCutoverPage() {
           </ul>
         )}
       </Card>
+      {manifest?.["profile"] === RELAYOUT_PROFILE && (
+        <Card className="space-y-1 p-4 text-sm">
+          <p>ينشئ التطبيق مسودة من المنشور ويحفظ المحاضرات الـ282 وساعاتها ومسارات الطلاب.</p>
+          <p>
+            مطابقة الإسنادات الأحدث: تصميم المترجمات لد. مبارك السفياني، والتوجيه والتبديل لد. معاذ
+            الصبري.
+          </p>
+          <p>
+            وثيق الأربعاء من 8 صباحًا. تبقى بعض فراغات الطلاب والمحاضرين موضحة في تقرير المراجعة.
+          </p>
+        </Card>
+      )}
       {diff && rules && (
         <Card className="grid gap-2 p-4 text-sm md:grid-cols-3">
           <Stat label="مفقودة" v={diff.missing.length} />
@@ -293,7 +318,7 @@ function ItcsCutoverPage() {
           }
           onClick={() => void runStage(crossPending > 0 ? "approve" : "apply")}
         >
-          2) اعتماد الإسنادات وتطبيق التوزيع (تبقى مسودة)
+          2) تطبيق التوزيع المدقق (تبقى مسودة)
         </Button>
         <Button
           variant="outline"

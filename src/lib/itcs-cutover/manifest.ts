@@ -2,6 +2,8 @@ import { z } from "zod";
 
 export const ITCS_DRAFT_ID = "258f6f60-539e-43e1-a4bb-f0b07c20c9ab";
 export const ITCS_PUBLISHED_ID = "d68d8d22-9a6d-4f21-935f-cebf18bb969b";
+export const RELAYOUT_PROFILE = "compliance_20260928_wathiq08";
+export const RELAYOUT_SOURCE_ID = ITCS_DRAFT_ID;
 export const MANIFEST_FILE = "itcs_cutover_manifest_2026-09-28.json";
 export const EXPECTED = {
   sessions: 282,
@@ -79,18 +81,21 @@ export function validateManifest(raw: unknown): { manifest?: CutoverManifest; er
     };
   const m = parsed.data;
   const errors: string[] = [];
+  const relayout = m["profile"] === RELAYOUT_PROFILE;
   if (m.draft_version_id !== ITCS_DRAFT_ID) errors.push("DRAFT_ID_MISMATCH");
-  if (m.published_version_id !== ITCS_PUBLISHED_ID) errors.push("PUBLISHED_ID_MISMATCH");
+  if (m.published_version_id !== (relayout ? RELAYOUT_SOURCE_ID : ITCS_PUBLISHED_ID))
+    errors.push("PUBLISHED_ID_MISMATCH");
   if (new Set(m.sessions.map((s) => s.session_id)).size !== m.sessions.length)
     errors.push("DUPLICATE_SESSION_IDS");
   if (m.sessions.length !== EXPECTED.sessions)
     errors.push(`SESSIONS_${m.sessions.length}_NOT_${EXPECTED.sessions}`);
   const changed = m.sessions.filter((s) => s.changed).length;
-  if (changed !== EXPECTED.changed) errors.push(`CHANGED_${changed}_NOT_${EXPECTED.changed}`);
-  if (m.replacements.length !== EXPECTED.replacements)
+  if (changed !== (relayout ? 239 : EXPECTED.changed))
+    errors.push(`CHANGED_${changed}_NOT_${EXPECTED.changed}`);
+  if (m.replacements.length !== (relayout ? 0 : EXPECTED.replacements))
     errors.push(`REPLACEMENTS_${m.replacements.length}_NOT_${EXPECTED.replacements}`);
   const cross = m.replacements.filter((r) => r.cross_college).length;
-  if (cross !== EXPECTED.crossCollege)
+  if (cross !== (relayout ? 0 : EXPECTED.crossCollege))
     errors.push(`CROSS_COLLEGE_${cross}_NOT_${EXPECTED.crossCollege}`);
   if (new Set(m.replacements.map((r) => r.replaces)).size !== m.replacements.length)
     errors.push("DUPLICATE_REPLACEMENTS");
