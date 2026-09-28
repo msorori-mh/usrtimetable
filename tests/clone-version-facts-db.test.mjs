@@ -94,13 +94,34 @@ async function makeDb(exceptionState) {
   return db;
 }
 
-
-const FACTS_SQL = await readFile(new URL('../supabase/migrations/20260928080000_clone_version_delivery_facts.sql', import.meta.url),'utf8');
-const PROVENANCE_SQL = (await readFile(new URL('../supabase/migrations/20260928080500_clone_fact_provenance.sql',import.meta.url),'utf8')).replaceAll('d68d8d22-9a6d-4f21-935f-cebf18bb969b',id(3));
-const factTables = ['scope','cohort_facts','group_facts','partner_group_facts','partition_facts','group_partition_facts','shared_link_facts','partner_partition_facts','component_room_type_facts','instructor_hour_waivers'];
+const FACTS_SQL = await readFile(
+  new URL(
+    "../supabase/migrations/20260928080000_clone_version_delivery_facts.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const PROVENANCE_SQL = (
+  await readFile(
+    new URL("../supabase/migrations/20260928080500_clone_fact_provenance.sql", import.meta.url),
+    "utf8",
+  )
+).replaceAll("d68d8d22-9a6d-4f21-935f-cebf18bb969b", id(3));
+const factTables = [
+  "scope",
+  "cohort_facts",
+  "group_facts",
+  "partner_group_facts",
+  "partition_facts",
+  "group_partition_facts",
+  "shared_link_facts",
+  "partner_partition_facts",
+  "component_room_type_facts",
+  "instructor_hour_waivers",
+];
 async function withFacts() {
- const db=await makeDb('approved');
- await db.exec(`CREATE SCHEMA schedule_version_delivery_private;
+  const db = await makeDb("approved");
+  await db.exec(`CREATE SCHEMA schedule_version_delivery_private;
 CREATE TABLE schedule_version_delivery_private.scope(cohort_id uuid,college_id uuid,version_id uuid);
 CREATE TABLE schedule_version_delivery_private.cohort_facts(cohort_id uuid,college_id uuid,expected_students integer,scheduling_headcount integer,version_id uuid);
 CREATE TABLE schedule_version_delivery_private.group_facts(capacity_limit integer,cohort_id uuid,college_id uuid,expected_students integer,group_code text,group_id uuid,version_id uuid);
@@ -134,39 +155,85 @@ CREATE TABLE schedule_version_delivery_private.instructor_hour_waivers(assignmen
  END $$;
  CREATE TRIGGER membership_guard BEFORE INSERT ON schedule_sessions FOR EACH ROW EXECUTE FUNCTION require_version_membership();
  `);
- await db.exec(`ALTER TABLE schedule_version_delivery_private.component_room_type_facts ADD CONSTRAINT component_room_type_facts_version_id_check CHECK(version_id='${id(3)}');
+  await db.exec(`ALTER TABLE schedule_version_delivery_private.component_room_type_facts ADD CONSTRAINT component_room_type_facts_version_id_check CHECK(version_id='${id(3)}');
  ALTER TABLE schedule_version_delivery_private.instructor_hour_waivers ADD CONSTRAINT instructor_hour_waivers_version_id_check CHECK(version_id='${id(3)}'), ADD CONSTRAINT instructor_hour_waivers_pkey PRIMARY KEY(assignment_id);`);
- return db;
+  return db;
 }
-const cloneFacts = db=>db.query(`select clone_schedule_version_current('${id(2)}','${id(3)}','${id(4)}','with facts',null,false,true) r`);
-test('clone copies selected-version data before guards and preserves historical source',async()=>{
- const db=await withFacts();
- await assert.rejects(cloneFacts(db),/STALE_DELIVERY_GROUPS_REGENERATE/);
- assert.equal((await db.query('select count(*)::int n from schedule_versions')).rows[0].n,1);
- await db.exec(PROVENANCE_SQL);await db.exec(FACTS_SQL);
- const source=await db.query('select to_jsonb(s) r from schedule_sessions s order by id');
- const r=(await cloneFacts(db)).rows[0].r;
- assert.equal(r.sessions_copied,3);assert.equal(r.exceptions_carried,2);
- for(const table of factTables){
-  const rows=(await db.query(`select version_id,to_jsonb(t)-'version_id' data from schedule_version_delivery_private.${table} t order by version_id`)).rows;
-  assert.equal(rows.length,2,table);
-  assert.deepEqual(rows.find(x=>x.version_id===id(3)).data,rows.find(x=>x.version_id===r.version_id).data,table);
- }
- assert.deepEqual((await db.query(`select to_jsonb(s) r from schedule_sessions s where schedule_version_id='${id(3)}' order by id`)).rows,source.rows);
- await assert.rejects(db.query(`UPDATE schedule_version_delivery_private.instructor_hour_waivers SET reason='unapproved change' WHERE version_id=$1`,[r.version_id]),/INHERITED_APPROVAL_MUST_MATCH_SOURCE/);
- await assert.rejects(db.query(`INSERT INTO schedule_version_delivery_private.component_room_type_facts(version_id,component_id,room_type_id) VALUES('${id(99)}','${id(7)}','${id(45)}')`),/INHERITED_APPROVAL_SOURCE_REQUIRED/);
- await db.exec('set role authenticated');
- await assert.rejects(db.query(`INSERT INTO schedule_version_delivery_private.clone_provenance VALUES('${id(99)}','${id(3)}',now())`),/permission denied/);
- await db.exec('reset role');
- await db.close();
+const cloneFacts = (db) =>
+  db.query(
+    `select clone_schedule_version_current('${id(2)}','${id(3)}','${id(4)}','with facts',null,false,true) r`,
+  );
+test("clone copies selected-version data before guards and preserves historical source", async () => {
+  const db = await withFacts();
+  await assert.rejects(cloneFacts(db), /STALE_DELIVERY_GROUPS_REGENERATE/);
+  assert.equal((await db.query("select count(*)::int n from schedule_versions")).rows[0].n, 1);
+  await db.exec(PROVENANCE_SQL);
+  await db.exec(FACTS_SQL);
+  const source = await db.query("select to_jsonb(s) r from schedule_sessions s order by id");
+  const r = (await cloneFacts(db)).rows[0].r;
+  assert.equal(r.sessions_copied, 3);
+  assert.equal(r.exceptions_carried, 2);
+  for (const table of factTables) {
+    const rows = (
+      await db.query(
+        `select version_id,to_jsonb(t)-'version_id' data from schedule_version_delivery_private.${table} t order by version_id`,
+      )
+    ).rows;
+    assert.equal(rows.length, 2, table);
+    assert.deepEqual(
+      rows.find((x) => x.version_id === id(3)).data,
+      rows.find((x) => x.version_id === r.version_id).data,
+      table,
+    );
+  }
+  assert.deepEqual(
+    (
+      await db.query(
+        `select to_jsonb(s) r from schedule_sessions s where schedule_version_id='${id(3)}' order by id`,
+      )
+    ).rows,
+    source.rows,
+  );
+  await assert.rejects(
+    db.query(
+      `UPDATE schedule_version_delivery_private.instructor_hour_waivers SET reason='unapproved change' WHERE version_id=$1`,
+      [r.version_id],
+    ),
+    /INHERITED_APPROVAL_MUST_MATCH_SOURCE/,
+  );
+  await assert.rejects(
+    db.query(
+      `INSERT INTO schedule_version_delivery_private.component_room_type_facts(version_id,component_id,room_type_id) VALUES('${id(99)}','${id(7)}','${id(45)}')`,
+    ),
+    /INHERITED_APPROVAL_SOURCE_REQUIRED/,
+  );
+  await db.exec("set role authenticated");
+  await assert.rejects(
+    db.query(
+      `INSERT INTO schedule_version_delivery_private.clone_provenance VALUES('${id(99)}','${id(3)}',now())`,
+    ),
+    /permission denied/,
+  );
+  await db.exec("reset role");
+  await db.close();
 });
-test('clone rollback retains guards and no partial facts survive',async()=>{
- const db=await withFacts();await db.exec(PROVENANCE_SQL);await db.exec(FACTS_SQL);
- await db.exec(`CREATE FUNCTION reject_target() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'STILL_GUARDED'; END $$; CREATE TRIGGER reject_target BEFORE INSERT ON schedule_sessions FOR EACH ROW EXECUTE FUNCTION reject_target();`);
- await assert.rejects(cloneFacts(db),/STILL_GUARDED/);
- assert.equal((await db.query('select count(*)::int n from schedule_versions')).rows[0].n,1);
- for(const table of factTables)assert.equal((await db.query(`select count(*)::int n from schedule_version_delivery_private.${table}`)).rows[0].n,1,table);
- await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id(99)]);
- await assert.rejects(cloneFacts(db),/CLONE_NOT_AUTHORIZED/);
- await db.close();
+test("clone rollback retains guards and no partial facts survive", async () => {
+  const db = await withFacts();
+  await db.exec(PROVENANCE_SQL);
+  await db.exec(FACTS_SQL);
+  await db.exec(
+    `CREATE FUNCTION reject_target() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'STILL_GUARDED'; END $$; CREATE TRIGGER reject_target BEFORE INSERT ON schedule_sessions FOR EACH ROW EXECUTE FUNCTION reject_target();`,
+  );
+  await assert.rejects(cloneFacts(db), /STILL_GUARDED/);
+  assert.equal((await db.query("select count(*)::int n from schedule_versions")).rows[0].n, 1);
+  for (const table of factTables)
+    assert.equal(
+      (await db.query(`select count(*)::int n from schedule_version_delivery_private.${table}`))
+        .rows[0].n,
+      1,
+      table,
+    );
+  await db.query("select set_config('request.jwt.claim.sub',$1,false)", [id(99)]);
+  await assert.rejects(cloneFacts(db), /CLONE_NOT_AUTHORIZED/);
+  await db.close();
 });
