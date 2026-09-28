@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { readFileSync } from "node:fs";
 import {
   buildDeliveryGroupCoverage,
   coverageExportRows,
@@ -86,6 +87,33 @@ describe("delivery group coverage", () => {
     expect(text).toContain("14");
   });
 
+  it("excludes only non-weekly graduation projects from coverage demand", () => {
+    const nonWeeklyProject: DeliveryGroupCatalogRow = {
+      ...group(10, 2),
+      componentType: "project",
+      countsTowardRegularLoad: false,
+      instructorName: null,
+    };
+    const weeklyProject: DeliveryGroupCatalogRow = {
+      ...group(11, 2),
+      componentType: "project",
+      countsTowardRegularLoad: true,
+    };
+    const result = buildDeliveryGroupCoverage({
+      groups: [group(1, 2), nonWeeklyProject, weeklyProject],
+      sessions: [{ delivery_group_id: "dg-1", start_time: "08:00", end_time: "10:00" }],
+    });
+    expect(result.rows).toHaveLength(3);
+    expect(result.summary.totalGroups).toBe(2);
+    expect(result.summary.requiredHours).toBe(4);
+    expect(result.summary.unscheduledGroups).toBe(1);
+    expect(result.summary.unscheduledHours).toBe(2);
+    expect(result.incomplete.map((row) => row.id)).toEqual(["dg-11"]);
+    expect(coverageFilterOption(result.rows.find((row) => row.id === "dg-10")!).name).not.toContain(
+      UNSCHEDULED_BADGE_AR,
+    );
+  });
+
   it("treats a fully scheduled scope as complete", () => {
     const full = buildDeliveryGroupCoverage({
       groups: [group(1, 2)],
@@ -97,7 +125,7 @@ describe("delivery group coverage", () => {
 });
 
 describe("report route wiring", () => {
-  const route = require("node:fs").readFileSync(
+  const route = readFileSync(
     "src/routes/_authenticated/reports.program-level-timetable.tsx",
     "utf8",
   ) as string;

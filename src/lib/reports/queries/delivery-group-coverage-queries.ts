@@ -44,7 +44,7 @@ export async function fetchCohortDeliveryGroupCatalog(params: {
     readAllReportRows((from, to) =>
       supabase
         .from("plan_course_components")
-        .select("id, component_type, weekly_contact_hours")
+        .select("id, component_type, weekly_contact_hours, counts_toward_regular_load")
         .eq("college_id", college)
         .order("id")
         .range(from, to),
@@ -129,6 +129,7 @@ export async function fetchCohortDeliveryGroupCatalog(params: {
       courseName: course?.name ?? null,
       expectedStudents: group.expected_students,
       requiredHours,
+      countsTowardRegularLoad: component.counts_toward_regular_load,
       instructorName: [...(teachersByGroup.get(group.id) ?? [])].join("، ") || null,
     };
   });

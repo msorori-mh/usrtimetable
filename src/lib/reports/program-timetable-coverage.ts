@@ -47,6 +47,8 @@ export interface DeliveryGroupCatalogRow {
   /** Required weekly contact hours from the group’s curriculum component. */
   requiredHours: number;
   instructorName: string | null;
+  /** A non-weekly graduation project stays visible, outside weekly coverage totals. */
+  countsTowardRegularLoad?: boolean | null;
 }
 
 /** Minimal session shape needed to decide whether a group was placed. */
@@ -102,6 +104,9 @@ export function deliveryGroupLabel(
     group.courseCode,
     componentTypeLabel(group.componentType),
     cohortLabel,
+    group.componentType === "project" && group.countsTowardRegularLoad === false
+      ? "خارج الجدول الأسبوعي"
+      : null,
   ]
     .filter(Boolean)
     .join(" — ");
@@ -161,8 +166,13 @@ export function buildDeliveryGroupCoverage(input: {
     })
     .sort((a, b) => a.label.localeCompare(b.label, "ar", { numeric: true }));
 
-  const scheduled = rows.filter((r) => r.scheduled);
-  const unscheduled = rows.filter((r) => !r.scheduled);
+  // A graduation project is retained for inspection, but its supervision hours
+  // are not weekly timetable demand. Regular weekly projects still count.
+  const weeklyRows = rows.filter(
+    (r) => !(r.componentType === "project" && r.countsTowardRegularLoad === false),
+  );
+  const scheduled = weeklyRows.filter((r) => r.scheduled);
+  const unscheduled = weeklyRows.filter((r) => !r.scheduled);
   const sum = (list: DeliveryGroupCoverageRow[], pick: (r: DeliveryGroupCoverageRow) => number) =>
     round2(list.reduce((acc, r) => acc + pick(r), 0));
 
@@ -170,15 +180,15 @@ export function buildDeliveryGroupCoverage(input: {
     rows,
     scheduled,
     unscheduled,
-    incomplete: rows.filter((r) => r.scheduledHours + 0.01 < r.requiredHours),
+    incomplete: weeklyRows.filter((r) => r.scheduledHours + 0.01 < r.requiredHours),
     summary: {
-      totalGroups: rows.length,
+      totalGroups: weeklyRows.length,
       scheduledGroups: scheduled.length,
       unscheduledGroups: unscheduled.length,
       partialGroups: scheduled.filter((r) => r.scheduledHours + 0.01 < r.requiredHours).length,
-      requiredHours: sum(rows, (r) => r.requiredHours),
-      scheduledHours: sum(rows, (r) => r.scheduledHours),
-      unscheduledHours: sum(rows, (r) => Math.max(0, r.requiredHours - r.scheduledHours)),
+      requiredHours: sum(weeklyRows, (r) => r.requiredHours),
+      scheduledHours: sum(weeklyRows, (r) => r.scheduledHours),
+      unscheduledHours: sum(weeklyRows, (r) => Math.max(0, r.requiredHours - r.scheduledHours)),
     },
   };
 }
@@ -188,7 +198,11 @@ export function coverageFilterOption(row: DeliveryGroupCoverageRow): {
   id: string;
   name: string;
 } {
-  return { id: row.id, name: row.scheduled ? row.label : `${row.label} — ${UNSCHEDULED_BADGE_AR}` };
+  const nonWeeklyProject = row.componentType === "project" && row.countsTowardRegularLoad === false;
+  return {
+    id: row.id,
+    name: row.scheduled || nonWeeklyProject ? row.label : `${row.label} — ${UNSCHEDULED_BADGE_AR}`,
+  };
 }
 
 export const COVERAGE_EXPORT_HEADERS: { key: string; label: string }[] = [
