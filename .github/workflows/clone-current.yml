@@ -16,6 +16,7 @@ on:
       - 'supabase/migrations/*scoped_cohort_batch_decisions*'
       - 'supabase/migrations/*scoped_assignment_college_guard*'
       - 'supabase/migrations/*scoped_effective_before_relink*'
+      - 'supabase/migrations/*scoped_inactive_assignment_reuse*'
       - 'tests/*itcs*'
       - 'tests/fixtures/itcs-*.sql'
       - '.github/workflows/clone-current.yml'
