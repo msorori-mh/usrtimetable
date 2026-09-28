@@ -4,6 +4,7 @@ import {
   ITCS_DRAFT_ID,
   ITCS_PUBLISHED_ID,
   EXPECTED,
+  RELAYOUT_PROFILE,
   buildUnitResolver,
   diffAgainstLive,
   targetPathRules,
@@ -61,6 +62,25 @@ const live = (m: ReturnType<typeof build>) =>
   }));
 
 describe("ITCS cutover manifest (2026-09-28 shape)", () => {
+  it("accepts the registered relayout source and rejects replacement or placement drift", () => {
+    const m = {
+      ...build(),
+      profile: RELAYOUT_PROFILE,
+      published_version_id: ITCS_DRAFT_ID,
+      replacements: [],
+    };
+    m.sessions.forEach((s, i) => {
+      if (i >= 239) {
+        s.old = { ...s.old, ...s.new };
+        s.changed = false;
+      }
+    });
+    expect(validateManifest(m).errors).toEqual([]);
+    m.sessions[0]!.new.end = "13:00";
+    expect(validateManifest(m).manifest).toBeUndefined();
+    m.published_version_id = ITCS_PUBLISHED_ID;
+    expect(validateManifest(m).errors).toContain("PUBLISHED_ID_MISMATCH");
+  });
   it("accepts the reviewed baseline counts with zero drift", () => {
     const m = build();
     const v = validateManifest(m);
