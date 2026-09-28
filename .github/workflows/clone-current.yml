@@ -6,6 +6,8 @@ on:
       - 'src/routes/_authenticated/schedule-versions.tsx'
       - 'tests/*clone*'
       - 'supabase/migrations/*atomic_current_assignment_clone*'
+      - 'supabase/migrations/*clone_version_delivery_facts*'
+      - 'supabase/migrations/*clone_fact_provenance*'
       - '.github/workflows/clone-current.yml'
 permissions:
   contents: read
@@ -24,3 +26,4 @@ jobs:
       - run: npm install --prefix "$RUNNER_TEMP/clone-db" --no-package-lock @electric-sql/pglite@0.3.14
       - run: CLONE_DB_MODULE="$RUNNER_TEMP/clone-db/node_modules/@electric-sql/pglite/dist/index.js" node --test tests/clone-current-db.test.mjs
       - run: CLONE_DB_MODULE="$RUNNER_TEMP/clone-db/node_modules/@electric-sql/pglite/dist/index.js" node --test tests/clone-cross-college-exception-db.test.mjs
+      - run: CLONE_DB_MODULE="$RUNNER_TEMP/clone-db/node_modules/@electric-sql/pglite/dist/index.js" node --test tests/clone-version-facts-db.test.mjs
