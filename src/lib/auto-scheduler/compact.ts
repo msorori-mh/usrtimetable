@@ -10,6 +10,7 @@ import {
   type AttendanceMetrics,
 } from "./attendance-objective.ts";
 import { isInstructorAvailabilityEnforced } from "../scheduling/instructor-availability-policy.ts";
+import { evaluateInstructorSlotAvailability } from "../scheduling/instructor-slot-availability.ts";
 import { isRoomTypeCompatible, roomTypeRank } from "../scheduling/room-type-policy.ts";
 import {
   addStudentDailyLoad,
@@ -530,27 +531,21 @@ export function placementIssue(
   )
     return "system_template";
   // Instructor availability is only a constraint when enforcement is on.
-  // Default: available on every approved teaching day/period; missing rows
-  // never block. Explicit instructor double-booking stays blocked below.
+  // Permanent instructors are available by default outside explicit blacklist
+  // windows. External/visiting instructors require a positive hard window.
   if (isInstructorAvailabilityEnforced(settings.enforce_instructor_availability)) {
     const windows = (s.availability || []).filter(
       (a) => a.instructor_id === teacher.id && a.day_of_week === day && !a.is_preference,
     );
     const type = s.types.find((t) => t.id === teacher.instructor_type_id);
-    if ((type?.is_external || type?.code === "from_other_college") && !windows.length)
-      return "instructor_availability";
-    const positiveWindows = windows.filter((w) => w.availability_type !== "unavailable");
     if (
-      (windows.length &&
-        !positiveWindows.some(
-          (w) => start >= minutes(w.start_time) && end <= minutes(w.end_time),
-        )) ||
-      windows.some(
-        (w) =>
-          w.availability_type === "unavailable" &&
-          start < minutes(w.end_time) &&
-          end > minutes(w.start_time),
-      )
+      !evaluateInstructorSlotAvailability({
+        enforce: settings.enforce_instructor_availability,
+        startTime: candidate.start_time,
+        endTime: candidate.end_time,
+        windows,
+        requiresExplicitPositiveWindow: !!type?.is_external || type?.code === "from_other_college",
+      }).available
     )
       return "instructor_availability";
   }

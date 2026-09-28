@@ -17,6 +17,11 @@ export function capacityEquivalentText(
   return `${number(count)} ${unit === "days" ? "يوم" : "قاعة"}${remainder ? ` و${hours(remainder)}` : ""}`;
 }
 
+export function capacityCompositeEquivalentText(value: ReturnType<typeof roomHourEquivalents>) {
+  if (!value) return "غير محسوب";
+  return `${number(value.fullRooms)} قاعة لأسبوع كامل، ${number(value.daysAfterRooms)} يوم قاعة، ${hours(value.hoursAfterRoomsAndDays)}`;
+}
+
 function CapacityStat({
   label,
   value,
@@ -94,23 +99,50 @@ export function LeadershipRoomCapacitySummary({
                 : `ملخص جزئي: ${number(totals.knownColleges)} من ${number(totals.totalColleges)} كليات مكتملة الحساب`}
             </span>
           </div>
-          <dl className="grid gap-3 sm:grid-cols-3">
-            <CapacityStat
-              label="ساعات قاعات المحاضرات المتاحة"
-              value={hours(totals.availableHours)}
-            />
-            <CapacityStat
-              label="الساعات المشغولة في قاعات المحاضرات"
-              value={hours(totals.requiredHours)}
-            />
+          <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <CapacityStat label="قاعات المحاضرات ضمن الحساب" value={number(totals.hallCount)} />
+            <CapacityStat label="الطاقة الاسمية (العدد × 36)" value={hours(totals.nominalHours)} />
+            <CapacityStat label="الإتاحة المسجلة فعليًا" value={hours(totals.availableHours)} />
+            <CapacityStat label="المشغول في قاعات المحاضرات" value={hours(totals.requiredHours)} />
             <CapacityStat
               label="الساعات غير المستخدمة"
               value={hours(totals.surplusHours)}
               tone="surplus"
             />
           </dl>
+          {totals.reconciled ? (
+            <div className="space-y-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm leading-7 text-emerald-950 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-100">
+              <p className="font-bold">
+                معادلة التحقق: {hours(totals.requiredHours)} مشغولة + {hours(totals.surplusHours)}{" "}
+                غير مستخدمة = {hours(totals.availableHours)} متاحة.
+              </p>
+              <p>
+                {hours(totals.surplusHours)} غير مستخدمة أسبوعيًا · تعادل حسابيًا:{" "}
+                {capacityCompositeEquivalentText(totals.equivalents)}.
+              </p>
+              <p>
+                الطاقة الاسمية {hours(totals.nominalHours)} = {number(totals.hallCount)} قاعة × 36
+                ساعة.
+                {totals.availabilityAdjustmentHours === null ||
+                totals.availabilityAdjustmentHours === 0
+                  ? " وهي مطابقة للإتاحة المسجلة."
+                  : totals.availabilityAdjustmentHours < 0
+                    ? ` الإتاحة المسجلة أقل منها بـ${hours(Math.abs(totals.availabilityAdjustmentHours))} بسبب قيود الأيام أو الفترات المسجلة لبعض القاعات.`
+                    : ` الإتاحة المسجلة تزيد عليها بـ${hours(totals.availabilityAdjustmentHours)} بسبب فترات تشغيل ممتدة مسجلة لبعض القاعات.`}
+              </p>
+              <p>نسبة الاستغلال الزمني: {number(totals.utilizationPercent)}%.</p>
+            </div>
+          ) : (
+            <p
+              className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm leading-7 text-amber-950 dark:bg-amber-950 dark:text-amber-100"
+              role="alert"
+            >
+              لم تتطابق معادلة الإتاحة = المشغول + غير المستخدم؛ لذلك لا يُعتمد الملخص حتى مراجعة
+              المصدر.
+            </p>
+          )}
           <p className="rounded-lg bg-muted/40 p-3 text-sm leading-7">
-            الفائض المعروض ساعات زمنية غير مستخدمة فقط، ولا يمثل قاعات كاملة متاحة لإعادة التخصيص.
+            المكافئ أعلاه مرجع زمني لتسهيل القراءة؛ لا يثبت وجود قاعات كاملة متاحة لإعادة التخصيص.
           </p>
           {!totals.complete && (
             <p className="text-xs leading-6 text-amber-800 dark:text-amber-200">
@@ -142,7 +174,9 @@ export function LeadershipRoomCapacitySummary({
                 </dl>
                 {college.surplusHours !== null && college.surplusHours > 0 && (
                   <p className="mt-3 text-sm leading-7">
-                    هذه ساعات متفرقة حسب الإتاحة، ولا تعني وجود قاعة كاملة يمكن الاستغناء عنها.
+                    {hours(college.surplusHours)} غير مستخدمة أسبوعيًا · تعادل حسابيًا:{" "}
+                    {capacityCompositeEquivalentText(college.equivalents)}. هذه ساعات متفرقة حسب
+                    الإتاحة، ولا تعني وجود قاعة كاملة يمكن الاستغناء عنها.
                   </p>
                 )}
                 <p className="mt-2 text-xs leading-6 text-muted-foreground">
@@ -169,7 +203,7 @@ export function LeadershipRoomCapacitySummary({
                           <th className="p-2">المتاح أسبوعيًا</th>
                           <th className="p-2">المشغول</th>
                           <th className="p-2">غير المستخدم</th>
-                          <th className="p-2">ما يعادله من أيام</th>
+                          <th className="p-2">المكافئ الزمني</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -190,7 +224,7 @@ export function LeadershipRoomCapacitySummary({
                             <td className="p-2 tabular-nums">{hours(room.occupiedHours)}</td>
                             <td className="p-2 tabular-nums">{hours(room.idleHours)}</td>
                             <td className="p-2">
-                              {capacityEquivalentText(roomHourEquivalents(room.idleHours), "days")}
+                              {capacityCompositeEquivalentText(roomHourEquivalents(room.idleHours))}
                             </td>
                           </tr>
                         ))}

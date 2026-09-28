@@ -102,6 +102,147 @@ export function aggregateLeadership(
   };
 }
 
+const roundLeadership = (value: number) => Math.round(value * 100) / 100;
+const isKnownLeadershipNumber = (value: unknown): value is number =>
+  typeof value === "number" && Number.isFinite(value) && value >= 0;
+
+export interface LeadershipTeachingSnapshot {
+  publishedColleges: number;
+  sessions: number | null;
+  scheduledHours: number | null;
+  theoryHours: number | null;
+  practicalHours: number | null;
+  otherHours: number | null;
+  averageSessionsPerCollege: number | null;
+  averageSessionHours: number | null;
+  compositionDifference: number | null;
+  consistent: boolean;
+}
+
+/**
+ * Fail closed unless every selected reporting version proves that
+ * theory + practical + other = total scheduled hours.
+ */
+export function leadershipTeachingSnapshot(rows: LeadershipCollege[]): LeadershipTeachingSnapshot {
+  const published = rows.filter(
+    (row) => row.term_state === "ready" && typeof row.version_id === "string",
+  );
+  const complete = published.every((row) =>
+    [
+      row.sessions_count,
+      row.teaching_hours,
+      row.theory_hours,
+      row.practical_hours,
+      row.other_hours,
+    ].every(isKnownLeadershipNumber),
+  );
+  if (!published.length || !complete) {
+    return {
+      publishedColleges: published.length,
+      sessions: null,
+      scheduledHours: null,
+      theoryHours: null,
+      practicalHours: null,
+      otherHours: null,
+      averageSessionsPerCollege: null,
+      averageSessionHours: null,
+      compositionDifference: null,
+      consistent: false,
+    };
+  }
+  const sum = (
+    key: "sessions_count" | "teaching_hours" | "theory_hours" | "practical_hours" | "other_hours",
+  ) => roundLeadership(published.reduce((total, row) => total + Number(row[key]), 0));
+  const sessions = sum("sessions_count");
+  const scheduledHours = sum("teaching_hours");
+  const theoryHours = sum("theory_hours");
+  const practicalHours = sum("practical_hours");
+  const otherHours = sum("other_hours");
+  const compositionDifference = roundLeadership(
+    theoryHours + practicalHours + otherHours - scheduledHours,
+  );
+  const consistent = Math.abs(compositionDifference) <= 0.01;
+  return {
+    publishedColleges: published.length,
+    sessions: consistent ? sessions : null,
+    scheduledHours: consistent ? scheduledHours : null,
+    theoryHours: consistent ? theoryHours : null,
+    practicalHours: consistent ? practicalHours : null,
+    otherHours: consistent ? otherHours : null,
+    averageSessionsPerCollege:
+      consistent && published.length ? roundLeadership(sessions / published.length) : null,
+    averageSessionHours:
+      consistent && sessions > 0 ? roundLeadership(scheduledHours / sessions) : null,
+    compositionDifference,
+    consistent,
+  };
+}
+
+export interface LeadershipAssignmentSnapshot {
+  sourceColleges: number;
+  totalColleges: number;
+  requiredHours: number | null;
+  approvedHours: number | null;
+  awaitingHours: number | null;
+  difference: number | null;
+  consistent: boolean;
+}
+
+export function hasLeadershipAssignmentSource(row: LeadershipCollege): boolean {
+  return (
+    row.term_state === "ready" && isKnownLeadershipNumber(row.groups_count) && row.groups_count > 0
+  );
+}
+
+/**
+ * Pending shared-allocation hours belong in the administrative queue:
+ * approved + awaiting (ordinary uncovered + pending shared) = required.
+ */
+export function leadershipAssignmentSnapshot(
+  rows: LeadershipCollege[],
+): LeadershipAssignmentSnapshot {
+  const sources = rows.filter(hasLeadershipAssignmentSource);
+  const complete = sources.every((row) =>
+    [row.required_hours, row.covered_hours, row.uncovered_hours, row.pending_group_hours].every(
+      isKnownLeadershipNumber,
+    ),
+  );
+  if (!sources.length || !complete) {
+    return {
+      sourceColleges: sources.length,
+      totalColleges: rows.length,
+      requiredHours: null,
+      approvedHours: null,
+      awaitingHours: null,
+      difference: null,
+      consistent: false,
+    };
+  }
+  const requiredHours = roundLeadership(
+    sources.reduce((total, row) => total + Number(row.required_hours), 0),
+  );
+  const approvedHours = roundLeadership(
+    sources.reduce((total, row) => total + Number(row.covered_hours), 0),
+  );
+  const awaitingHours = roundLeadership(
+    sources.reduce(
+      (total, row) => total + Number(row.uncovered_hours) + Number(row.pending_group_hours),
+      0,
+    ),
+  );
+  const difference = roundLeadership(approvedHours + awaitingHours - requiredHours);
+  const consistent = Math.abs(difference) <= 0.01;
+  return {
+    sourceColleges: sources.length,
+    totalColleges: rows.length,
+    requiredHours: consistent ? requiredHours : null,
+    approvedHours: consistent ? approvedHours : null,
+    awaitingHours: consistent ? awaitingHours : null,
+    difference,
+    consistent,
+  };
+}
+
 export function formatLeadershipAmount(value: number | null | undefined, unit = ""): string {
   if (value === null || value === undefined) return "غير محسوب";
   return `${value.toLocaleString("ar")} ${unit}`.trim();

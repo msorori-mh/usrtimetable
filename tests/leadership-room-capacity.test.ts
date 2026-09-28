@@ -113,6 +113,8 @@ test("72 available lecture-room hours minus 2 occupied hours yields 70 unused ho
     hoursAfterDays: 4,
     fullRooms: 1,
     hoursAfterRooms: 34,
+    daysAfterRooms: 5,
+    hoursAfterRoomsAndDays: 4,
   });
   assert.equal(r.emptyPublishedRooms, 1);
   assert.equal(r.rooms[0].idleHours, 34);
@@ -310,6 +312,11 @@ test("university totals include only colleges with complete published occupancy"
   assert.equal(total.deficitHours, 0);
   assert.equal(total.knownColleges, 1);
   assert.equal(total.roomsByCollege, 1);
+  assert.equal(total.hallCount, 2);
+  assert.equal(total.nominalHours, 72);
+  assert.equal(total.reconciled, true);
+  assert.equal(total.reconciliationDifference, 0);
+  assert.equal(total.utilizationPercent, 2.8);
 });
 test("university pooled equivalent and sum of whole equivalents within each college remain distinct", () => {
   const r = analyze();

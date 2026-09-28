@@ -1,13 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   buildInstructorCategoryMap,
   CATEGORY_LABEL_AR,
+  categorizeInstructor,
   OTHER_COLLEGE_INSTRUCTOR_LABEL_AR,
+  requiresAvailability,
 } from "../src/lib/instructor-category";
 
-const root = resolve(import.meta.dir, "..");
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 describe("instructor type hydration without PostgREST embeds", () => {
   test("maps permanent, other-college, external, missing and unknown types", () => {
@@ -37,6 +40,14 @@ describe("instructor type hydration without PostgREST embeds", () => {
     expect(OTHER_COLLEGE_INSTRUCTOR_LABEL_AR).toBe("محاضر من كلية أخرى");
     expect(CATEGORY_LABEL_AR.other_college).toBe(OTHER_COLLEGE_INSTRUCTOR_LABEL_AR);
     expect(CATEGORY_LABEL_AR.external).toBe(OTHER_COLLEGE_INSTRUCTOR_LABEL_AR);
+  });
+
+  test("keeps an unspecified placeholder separate from availability rules", () => {
+    const category = categorizeInstructor({ code: "unspecified", is_external: false });
+
+    expect(category).toBe("unspecified");
+    expect(requiresAvailability(category)).toBe(false);
+    expect(CATEGORY_LABEL_AR[category]).toBe("غير محدد");
   });
 
   test("validator performs a flat two-query hydration and never embeds instructor_types", () => {

@@ -18,7 +18,7 @@
  * Pure module: no Supabase client calls, no I/O.
  */
 
-import { isInstructorAvailabilityEnforced } from "@/lib/scheduling/instructor-availability-policy";
+import { evaluateInstructorSlotAvailability } from "@/lib/scheduling/instructor-slot-availability";
 import {
   isRoomSlotAvailable,
   type RoomAvailabilityWindow,
@@ -86,25 +86,19 @@ export function isInstructorSlotAvailable(input: {
   instructorId: string;
   requiresExplicitWindow?: boolean;
 }): boolean {
-  if (!isInstructorAvailabilityEnforced(input.enforce)) return true;
-  const start = toMinutes(input.slot.start);
-  const end = toMinutes(input.slot.end);
   const windows = input.windows.filter(
     (w) =>
       w.instructor_id === input.instructorId &&
       Number(w.day_of_week) === Number(input.slot.day) &&
       !w.is_preference,
   );
-  if (!windows.length) return !input.requiresExplicitWindow;
-  const positive = windows.filter((w) => w.availability_type !== "unavailable");
-  if (!positive.some((w) => start >= toMinutes(w.start_time) && end <= toMinutes(w.end_time)))
-    return false;
-  return !windows.some(
-    (w) =>
-      w.availability_type === "unavailable" &&
-      start < toMinutes(w.end_time) &&
-      end > toMinutes(w.start_time),
-  );
+  return evaluateInstructorSlotAvailability({
+    enforce: input.enforce,
+    startTime: input.slot.start,
+    endTime: input.slot.end,
+    windows,
+    requiresExplicitPositiveWindow: input.requiresExplicitWindow,
+  }).available;
 }
 
 /**

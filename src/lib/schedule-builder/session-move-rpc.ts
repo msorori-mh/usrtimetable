@@ -75,6 +75,17 @@ function toTimeParam(value: string): string {
   return t.length === 5 ? `${t}:00` : t;
 }
 
+function rpcFailureMessage(message: string | null | undefined, fallback: string): string {
+  const raw = message ?? "";
+  if (raw.includes("STALE_DELIVERY_GROUPS_REGENERATE")) {
+    return conflictMessageAr("STALE_DELIVERY_GROUPS_REGENERATE");
+  }
+  if (raw.includes("CROSS_COLLEGE_INSTRUCTOR_CONFLICT")) {
+    return conflictMessageAr("instructor_conflict");
+  }
+  return raw || fallback;
+}
+
 export function canSaveAfterValidation(result: ValidateSessionMoveResult | null): boolean {
   if (!result) return false;
   if (result.stale) return false;
@@ -105,7 +116,7 @@ export async function validateScheduleSessionMove(
       stale: false,
       normalized_proposal: null,
       code: "RPC_ERROR",
-      message_ar: error.message || "فشل فحص التعارضات.",
+      message_ar: rpcFailureMessage(error.message, "فشل فحص التعارضات."),
     };
   }
 
@@ -142,7 +153,7 @@ export async function moveOrRescheduleScheduleSession(
       ok: false,
       code: "RPC_ERROR",
       stale: false,
-      message_ar: error.message || "فشل حفظ التغيير.",
+      message_ar: rpcFailureMessage(error.message, "فشل حفظ التغيير."),
       blocking_conflicts: [],
       warnings: [],
       approved_exceptions: [],

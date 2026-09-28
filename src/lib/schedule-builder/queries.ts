@@ -10,6 +10,14 @@ import { fetchSharedLectures } from "@/lib/academic-delivery/shared-lectures";
  * course_offerings are uuid columns without relationships in the schema cache.
  */
 import { supabase } from "@/integrations/supabase/client";
+import {
+  facultyWorkflow,
+  type CollegeScheduleInstructor,
+} from "@/lib/instructors/faculty-workflow";
+import {
+  listInstructorSchedulingRequests,
+  type InstructorSchedulingRequest,
+} from "@/lib/availability/policy-api";
 import { applyStudySystemFilter } from "@/lib/reports/filters";
 import type { SVStatus } from "@/lib/schedule-versions/lifecycle";
 import {
@@ -46,6 +54,8 @@ export interface WorkspaceSchedulingSettings {
   working_days: number[] | null;
   day_start_time: string | null;
   day_end_time: string | null;
+  enforce_instructor_availability: boolean | null;
+  max_daily_hours_per_instructor: number | null;
 }
 
 export async function fetchWorkspaceTerms(collegeId: string): Promise<WorkspaceTerm[]> {
@@ -440,6 +450,138 @@ export interface WorkspaceRoomOption {
   capacity?: number | null;
 }
 
+export type WorkspaceInstructorOption = CollegeScheduleInstructor;
+
+export interface WorkspaceInstructorAvailabilityWindow {
+  id: string;
+  instructor_id: string;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  availability_type: string | null;
+  is_preference: boolean | null;
+  notes: string | null;
+}
+
+export interface WorkspaceInstructorPolicyRecord {
+  id: string;
+  availability_status: string | null;
+  max_hours_per_day: number | null;
+  target_attendance_days_per_week: number | null;
+  max_attendance_days_per_week: number | null;
+}
+
+export interface WorkspaceInstructorPlanningContext {
+  local_record_ids: string[];
+  policy_records: WorkspaceInstructorPolicyRecord[];
+  availability: WorkspaceInstructorAvailabilityWindow[];
+  requests: InstructorSchedulingRequest[];
+}
+
+export interface WorkspaceExternalBusySlot {
+  instructor_id: string;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+}
+
+/** Identity-aware directory: one option per lecturer, with every local record alias. */
+export async function fetchWorkspaceInstructors(
+  collegeId: string,
+): Promise<WorkspaceInstructorOption[]> {
+  const { data, error } = await facultyWorkflow.rpc("get_college_instructor_schedule_directory", {
+    p_college_id: collegeId,
+  });
+  if (error) throw error;
+  return (data ?? []) as WorkspaceInstructorOption[];
+}
+
+/**
+ * College-scoped policy context for one university faculty identity.
+ * Identity aliases can span colleges; only records and policy rows belonging
+ * to the active college are returned by RLS and the explicit college filter.
+ */
+export async function fetchWorkspaceInstructorPlanningContext(input: {
+  collegeId: string;
+  instructorIds: readonly string[];
+}): Promise<WorkspaceInstructorPlanningContext> {
+  const ids = uniqueIds([...input.instructorIds]);
+  if (!ids.length) {
+    return { local_record_ids: [], policy_records: [], availability: [], requests: [] };
+  }
+
+  const policyResult = await supabase
+    .from("instructors")
+    .select(
+      "id, availability_status, max_hours_per_day, target_attendance_days_per_week, max_attendance_days_per_week",
+    )
+    .eq("college_id", input.collegeId)
+    .in("id", ids);
+  if (policyResult.error) throw policyResult.error;
+
+  const policyRecords = (policyResult.data ?? []) as WorkspaceInstructorPolicyRecord[];
+  const localIds = uniqueIds(policyRecords.map((row) => row.id));
+  const [availabilityResult, allRequests] = await Promise.all([
+    localIds.length
+      ? supabase
+          .from("instructor_availability")
+          .select(
+            "id, instructor_id, day_of_week, start_time, end_time, availability_type, is_preference, notes",
+          )
+          .eq("college_id", input.collegeId)
+          .in("instructor_id", localIds)
+          .order("day_of_week")
+          .order("start_time")
+      : Promise.resolve({ data: [], error: null }),
+    listInstructorSchedulingRequests(input.collegeId),
+  ]);
+  if (availabilityResult.error) throw availabilityResult.error;
+
+  const allowed = new Set(ids);
+  return {
+    local_record_ids: localIds,
+    policy_records: policyRecords,
+    availability: (availabilityResult.data ?? []) as WorkspaceInstructorAvailabilityWindow[],
+    requests: allRequests.filter((request) => allowed.has(request.instructor_id)),
+  };
+}
+
+/**
+ * Privacy-preserving cross-college occupancy. The server deliberately returns
+ * only busy intervals (no external course/room/student details).
+ */
+export async function fetchWorkspaceExternalBusySlots(input: {
+  collegeId: string;
+  versionId: string;
+  instructorIds: readonly string[];
+}): Promise<WorkspaceExternalBusySlot[]> {
+  const ids = new Set(uniqueIds([...input.instructorIds]));
+  if (!ids.size) return [];
+  const { data, error } = await (
+    supabase as unknown as {
+      rpc: (
+        name: string,
+        args: Record<string, string>,
+      ) => Promise<{ data: WorkspaceExternalBusySlot[] | null; error: Error | null }>;
+    }
+  ).rpc("get_schedule_external_busy", {
+    p_college_id: input.collegeId,
+    p_version_id: input.versionId,
+  });
+  if (error) throw error;
+
+  const unique = new Map<string, WorkspaceExternalBusySlot>();
+  for (const slot of data ?? []) {
+    if (!ids.has(slot.instructor_id)) continue;
+    const key = `${slot.day_of_week}|${String(slot.start_time).slice(0, 5)}|${String(slot.end_time).slice(0, 5)}`;
+    if (!unique.has(key)) unique.set(key, slot);
+  }
+  return [...unique.values()].sort(
+    (a, b) =>
+      a.day_of_week - b.day_of_week || String(a.start_time).localeCompare(String(b.start_time)),
+  );
+}
+
 /** College-scoped active rooms for local edit UI (read-only list). */
 export async function fetchWorkspaceRooms(collegeId: string): Promise<WorkspaceRoomOption[]> {
   const { data, error } = await supabase
@@ -463,7 +605,9 @@ export async function fetchWorkspaceSchedulingSettings(
 ): Promise<WorkspaceSchedulingSettings | null> {
   const { data, error } = await supabase
     .from("scheduling_settings")
-    .select("working_days, day_start_time, day_end_time")
+    .select(
+      "working_days, day_start_time, day_end_time, enforce_instructor_availability, max_daily_hours_per_instructor",
+    )
     .eq("college_id", collegeId)
     .maybeSingle();
   if (error) throw error;

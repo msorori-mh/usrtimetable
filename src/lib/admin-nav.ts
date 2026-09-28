@@ -133,7 +133,7 @@ export const JOURNEYS: Journey[] = [
     key: "prep",
     order: "هـ",
     label: "تجهيز الجدولة",
-    desc: "الأعداد المعتمدة ومجموعات المحاضرات والإسناد التدريسي وإعدادات القيود.",
+    desc: "الأعداد المعتمدة ومجموعات المحاضرات والإسناد التدريسي وسياسات الجدولة والجودة.",
   },
   {
     key: "execute",
@@ -415,8 +415,8 @@ export const ADMIN_PAGES: AdminPage[] = [
   },
   {
     to: "/constraint-settings",
-    label: "إعدادات القيود (الجدولة)",
-    desc: "أوزان القيود وتفضيلات التوزيع.",
+    label: "سياسات الجدولة والجودة",
+    desc: "حالة القيود الفعلية وأوزان تقييم جودة الجدول.",
     icon: Settings2,
     roles: OPERATIONAL,
     tier: "advanced",

@@ -1,5 +1,5 @@
 import { roomUtilizationMetrics, type ReportTime } from "./presentation-metrics";
-import { roomCategoryFromType } from "@/lib/print-center/rooms-report";
+import { roomCategoryFromType } from "@/lib/room-category";
 
 export const STANDARD_ROOM_DAY_HOURS = 6;
 export const STANDARD_ROOM_WEEK_HOURS = 36;
@@ -67,11 +67,15 @@ export function roomHourEquivalents(hours: number | null) {
   if (!known(hours)) return null;
   const fullDays = Math.floor((hours + 1e-9) / STANDARD_ROOM_DAY_HOURS);
   const fullRooms = Math.floor((hours + 1e-9) / STANDARD_ROOM_WEEK_HOURS);
+  const hoursAfterRooms = round(hours - fullRooms * STANDARD_ROOM_WEEK_HOURS);
+  const daysAfterRooms = Math.floor((hoursAfterRooms + 1e-9) / STANDARD_ROOM_DAY_HOURS);
   return {
     fullDays,
     hoursAfterDays: round(hours - fullDays * STANDARD_ROOM_DAY_HOURS),
     fullRooms,
-    hoursAfterRooms: round(hours - fullRooms * STANDARD_ROOM_WEEK_HOURS),
+    hoursAfterRooms,
+    daysAfterRooms,
+    hoursAfterRoomsAndDays: round(hoursAfterRooms - daysAfterRooms * STANDARD_ROOM_DAY_HOURS),
   };
 }
 
@@ -299,15 +303,41 @@ export function aggregateLeadershipRoomCapacity(rows: LeadershipCapacityCollege[
   const measured = rows.filter((r) => r.balanceHours !== null);
   const sum = (key: "availableHours" | "requiredHours" | "surplusHours" | "deficitHours") =>
     measured.length ? round(measured.reduce((n, r) => n + r[key]!, 0)) : null;
+  const availableHours = sum("availableHours");
+  const requiredHours = sum("requiredHours");
+  const surplusHours = sum("surplusHours");
+  const deficitHours = sum("deficitHours");
+  const hallCount = measured.reduce((total, college) => total + college.rooms.length, 0);
+  const nominalHours = measured.length ? hallCount * STANDARD_ROOM_WEEK_HOURS : null;
+  const availabilityAdjustmentHours =
+    availableHours === null || nominalHours === null ? null : round(availableHours - nominalHours);
+  const reconciliationDifference =
+    availableHours === null || requiredHours === null || surplusHours === null
+      ? null
+      : round(requiredHours + surplusHours - availableHours);
+  const reconciled =
+    measured.length > 0 &&
+    deficitHours === 0 &&
+    reconciliationDifference !== null &&
+    Math.abs(reconciliationDifference) <= 0.01;
   return {
     knownColleges: measured.length,
     totalColleges: rows.length,
     complete: rows.length > 0 && measured.length === rows.length,
-    availableHours: sum("availableHours"),
-    requiredHours: sum("requiredHours"),
-    surplusHours: sum("surplusHours"),
-    deficitHours: sum("deficitHours"),
-    equivalents: roomHourEquivalents(sum("surplusHours")),
+    availableHours,
+    requiredHours,
+    surplusHours,
+    deficitHours,
+    hallCount,
+    nominalHours,
+    availabilityAdjustmentHours,
+    reconciliationDifference,
+    reconciled,
+    utilizationPercent:
+      availableHours && requiredHours !== null
+        ? Math.round((requiredHours / availableHours) * 1000) / 10
+        : null,
+    equivalents: roomHourEquivalents(surplusHours),
     roomsByCollege: measured.length
       ? measured.reduce((n, r) => n + r.equivalents!.fullRooms, 0)
       : null,

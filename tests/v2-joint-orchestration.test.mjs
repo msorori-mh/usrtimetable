@@ -21,6 +21,8 @@ const stubs = {
     "export const loadCompactSnapshot=async()=>structuredClone(globalThis.__jointSchedulerTest.snapshot);",
   "@/lib/auto-scheduler/compact-worker-client":
     "export const previewCompaction=(snapshot,options)=>globalThis.__jointSchedulerTest.plan(snapshot,options);",
+  "@/lib/scheduling/cohort-component-instructor-service":
+    "export const getCohortComponentInstructorReadiness=async()=>({ok:true,violation_count:0,violations:[]});",
 };
 const bundled = await build({
   entryPoints: [fileURLToPath(new URL("../src/lib/auto-scheduler/v2.ts", import.meta.url))],

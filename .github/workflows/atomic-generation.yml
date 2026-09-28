@@ -37,6 +37,18 @@ jobs:
         run: node --test tests/joint-model.test.mjs tests/generation-rearrangement.test.mjs tests/v2-joint-orchestration.test.mjs tests/student-daily-policy.test.mjs
       - name: Bounded repair and instructor exceptions
         run: bun test tests/auto-schedule-repair.test.ts tests/instructor-attendance-target.test.ts tests/instructor-attendance-target-priority.test.ts
+      - name: Staging isolation and deployment workflow contracts
+        run: node --test tests/staging-deploy-preflight.test.mjs tests/staging-deploy-workflow.test.mjs tests/cohort-component-single-instructor-contract.test.mjs
+      - name: Fixed instructor rule and slot availability behavior
+        run: node --import tsx --test tests/cohort-component-single-instructor.test.ts tests/instructor-slot-availability.test.ts
+      - name: Policy status and instructor perspective behavior
+        run: bunx vitest run --config tests/vitest-bun-compat.config.mjs tests/instructor-perspective.test.ts tests/instructor-availability-status.test.ts tests/instructor-availability-reactivation.test.ts
+      - name: Install split-group database test runtime
+        run: npm install --prefix "$RUNNER_TEMP/cohort-rule-db" --no-package-lock @electric-sql/pglite@0.3.14
+      - name: One instructor per split cohort component in disposable PostgreSQL
+        env:
+          COHORT_RULE_DB_MODULE: ${{ runner.temp }}/cohort-rule-db/node_modules/@electric-sql/pglite/dist/index.js
+        run: node --test tests/cohort-component-single-instructor-db.test.mjs
       - name: Actual PostgreSQL rollback and permissions
         env:
           PGPASSWORD: disposable_test_only

@@ -67,8 +67,10 @@ import {
   type PartitionIndex,
   type PartitionMembershipRow,
 } from "@/lib/auto-scheduler/student-partitions";
+import { getCohortComponentInstructorReadiness } from "@/lib/scheduling/cohort-component-instructor-service";
+import { cohortComponentInstructorViolationMessageAr } from "@/lib/scheduling/cohort-component-instructor";
 
-const ALGORITHM_VERSION = "v2-atomic-generation-repair-1";
+const ALGORITHM_VERSION = "v2-atomic-generation-repair-2-single-component-instructor";
 
 /** Fail-closed Arabic note when the partition mapping cannot be used. */
 export const PARTITION_FALLBACK_WARNING_AR =
@@ -192,6 +194,20 @@ export async function runV2AutoSchedule(params: {
   if (!payload.rows.length) {
     throw new Error(
       "لا توجد إسنادات للجدولة. استكمل الخطط والدفعات والمدرسين والإسناد ثم أعد التوليد.",
+    );
+  }
+
+  // Fixed academic-equality rule: capacity splits may create several delivery
+  // groups, but never several instructors for the same cohort/course component.
+  // This preflight runs before any generation write; the DB trigger and central
+  // conflict collector repeat the rule authoritatively at save time.
+  const instructorReadiness = await getCohortComponentInstructorReadiness({
+    collegeId: params.collegeId,
+    scheduleVersionId: params.scheduleVersionId,
+  });
+  if (!instructorReadiness.ok) {
+    throw new Error(
+      `V2_AUTO_BLOCKED: ${cohortComponentInstructorViolationMessageAr(instructorReadiness.violations[0])}`,
     );
   }
 

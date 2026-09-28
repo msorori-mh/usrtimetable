@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,18 +26,32 @@ export function V2WorkItemsPanel({
   studySystem,
   rooms,
   canManage,
+  instructorIds,
 }: {
   scheduleVersionId: string;
   studySystem: string;
   rooms: WorkspaceRoomOption[];
   canManage: boolean;
+  /** Identity aliases for instructor-focused manual building; undefined means all instructors. */
+  instructorIds?: readonly string[];
 }) {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState("all");
   const [selected, setSelected] = useState<ScheduleBuilderV2WorkItem | null>(null);
   const [expanded, setExpanded] = useState(false);
+  const instructorScopeKey = useMemo(
+    () => (instructorIds ? [...instructorIds].sort().join(",") : "all"),
+    [instructorIds],
+  );
   const query = useQuery({
-    queryKey: ["schedule-builder", "v2-work-items", scheduleVersionId, studySystem, status],
+    queryKey: [
+      "schedule-builder",
+      "v2-work-items",
+      scheduleVersionId,
+      studySystem,
+      status,
+      instructorScopeKey,
+    ],
     queryFn: () =>
       listScheduleBuilderV2WorkItems({
         scheduleVersionId,
@@ -47,6 +61,32 @@ export function V2WorkItemsPanel({
   });
 
   const payload = query.data;
+  const rows = useMemo(() => {
+    if (!payload) return [];
+    if (!instructorIds) return payload.rows;
+    const allowed = new Set(instructorIds);
+    return payload.rows.filter((row) => allowed.has(row.instructor_id));
+  }, [payload, instructorIds]);
+  const groupedRows = useMemo(
+    () => [
+      {
+        key: "ready",
+        label: "جاهزة للإضافة",
+        rows: rows.filter((row) => row.can_create_session),
+      },
+      {
+        key: "blocked",
+        label: "تحتاج معالجة قبل الجدولة",
+        rows: rows.filter((row) => !row.can_create_session),
+      },
+    ],
+    [rows],
+  );
+
+  useEffect(() => {
+    setSelected(null);
+  }, [instructorScopeKey]);
+
   const mayShowCreateAction = canManage && !!payload?.can_manage;
   const mayCreate = canManage && !!payload?.can_manage && payload.version_status === "draft";
 
@@ -70,8 +110,8 @@ export function V2WorkItemsPanel({
             </span>
           </span>
           <span className="flex shrink-0 items-center gap-2">
-            <Badge variant={payload?.rows.length ? "destructive" : "secondary"}>
-              {query.isLoading ? "…" : `${payload?.rows.length ?? 0} متبقية`}
+            <Badge variant={rows.length ? "destructive" : "secondary"}>
+              {query.isLoading ? "…" : `${rows.length} متبقية`}
             </Badge>
             <ChevronDown
               className={`h-4 w-4 transition-transform ${expanded ? "rotate-180" : ""}`}
@@ -106,46 +146,60 @@ export function V2WorkItemsPanel({
               </Button>
             </div>
           ) : null}
-          {payload && payload.rows.length === 0 ? (
+          {payload && rows.length === 0 ? (
             <p className="text-sm text-muted-foreground">لا توجد تكليفات مطابقة.</p>
           ) : null}
-          {payload?.rows.map((item) => (
-            <div
-              key={item.teaching_assignment_id}
-              className="flex flex-col gap-2 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div className="min-w-0 text-sm">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium">
-                    {entityDisplayName({ name: item.course_name, code: item.course_code })}
-                  </span>
-                  <Badge variant={item.can_create_session ? "secondary" : "destructive"}>
-                    {SCHEDULING_STATUS_LABEL_AR[item.scheduling_status]}
+          {groupedRows.map((group) =>
+            group.rows.length ? (
+              <section key={group.key} className="space-y-2" aria-label={group.label}>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-medium">{group.label}</p>
+                  <Badge variant={group.key === "ready" ? "secondary" : "destructive"}>
+                    {group.rows.length}
                   </Badge>
                 </div>
-                <p className="text-muted-foreground">
-                  {item.instructor_name} · {item.group_code || item.cohort_code || "—"}
-                </p>
-                <p className="text-muted-foreground">
-                  مكلف: {item.assigned_component_hours} · مجدول: {item.currently_scheduled_hours} ·
-                  متبقي: {item.remaining_schedule_hours}
-                </p>
-                {item.blocking_reason ? (
-                  <p className="text-destructive">{blockingReasonLabelAr(item.blocking_reason)}</p>
-                ) : null}
-              </div>
-              {mayShowCreateAction ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={!mayCreate || !item.can_create_session}
-                  onClick={() => setSelected(item)}
-                >
-                  إضافة إلى الجدول
-                </Button>
-              ) : null}
-            </div>
-          ))}
+                {group.rows.map((item) => (
+                  <div
+                    key={item.teaching_assignment_id}
+                    className="flex flex-col gap-2 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="min-w-0 text-sm">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium">
+                          {entityDisplayName({ name: item.course_name, code: item.course_code })}
+                        </span>
+                        <Badge variant={item.can_create_session ? "secondary" : "destructive"}>
+                          {SCHEDULING_STATUS_LABEL_AR[item.scheduling_status]}
+                        </Badge>
+                      </div>
+                      <p className="text-muted-foreground">
+                        {item.instructor_name} · {item.group_code || item.cohort_code || "—"}
+                      </p>
+                      <p className="text-muted-foreground">
+                        مكلف: {item.assigned_component_hours} · مجدول:{" "}
+                        {item.currently_scheduled_hours} · متبقي: {item.remaining_schedule_hours}
+                      </p>
+                      {item.blocking_reason ? (
+                        <p className="text-destructive">
+                          {blockingReasonLabelAr(item.blocking_reason)}
+                        </p>
+                      ) : null}
+                    </div>
+                    {mayShowCreateAction ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={!mayCreate || !item.can_create_session}
+                        onClick={() => setSelected(item)}
+                      >
+                        إضافة إلى الجدول
+                      </Button>
+                    ) : null}
+                  </div>
+                ))}
+              </section>
+            ) : null,
+          )}
         </CardContent>
       ) : null}
       {mayShowCreateAction ? (

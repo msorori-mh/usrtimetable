@@ -13,6 +13,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { Settings2 } from "lucide-react";
+import {
+  fetchInstructorAvailabilityReadiness,
+  setInstructorAvailabilityEnforcement,
+} from "@/lib/availability/policy-api";
 
 export const Route = createFileRoute("/_authenticated/scheduling-settings")({
   head: () => ({ meta: [{ title: "إعدادات الجدولة" }] }),
@@ -29,6 +33,11 @@ const DAYS = [
   { v: 5, l: "الجمعة" },
 ];
 
+const timeMinutes = (value: string) => {
+  const [hours = "0", minutes = "0"] = value.split(":");
+  return Number(hours) * 60 + Number(minutes);
+};
+
 interface S {
   id?: string;
   week_start_day: number;
@@ -43,9 +52,12 @@ interface S {
   max_daily_hours_per_section: number;
   max_daily_theory_hours_per_section: number;
   max_daily_practical_hours_per_section: number;
+  extended_day_policy_enabled: boolean;
+  standard_day_end_time: string;
   max_extended_days_per_partition: number;
   break_between_sessions_min: number;
   allow_back_to_back: boolean;
+  enforce_instructor_availability: boolean;
   notes: string;
 }
 
@@ -62,9 +74,12 @@ const DEFAULTS: S = {
   max_daily_hours_per_section: 8,
   max_daily_theory_hours_per_section: 6,
   max_daily_practical_hours_per_section: 8,
+  extended_day_policy_enabled: false,
+  standard_day_end_time: "14:00",
   max_extended_days_per_partition: 2,
   break_between_sessions_min: 0,
   allow_back_to_back: true,
+  enforce_instructor_availability: false,
   notes: "",
 };
 
@@ -73,6 +88,12 @@ function SettingsPage() {
   const canManage = useCanManageActiveCollege();
   const qc = useQueryClient();
   const [form, setForm] = useState<S>(DEFAULTS);
+
+  const readinessQuery = useQuery({
+    queryKey: ["instructor-availability-readiness", active?.id],
+    enabled: !!active,
+    queryFn: () => fetchInstructorAvailabilityReadiness(active!.id),
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ["scheduling_settings", active?.id],
@@ -102,7 +123,41 @@ function SettingsPage() {
   const save = useMutation({
     mutationFn: async () => {
       if (!active) throw new Error("اختر كلّية");
-      const payload = { ...form, college_id: active.id };
+      if (form.working_days.length === 0) {
+        throw new Error("اختر يوم دوام واحدًا على الأقل.");
+      }
+      if (timeMinutes(form.day_end_time) <= timeMinutes(form.day_start_time)) {
+        throw new Error("نهاية اليوم يجب أن تكون بعد بدايته.");
+      }
+      if (
+        form.extended_day_policy_enabled &&
+        (timeMinutes(form.standard_day_end_time) <= timeMinutes(form.day_start_time) ||
+          timeMinutes(form.standard_day_end_time) >= timeMinutes(form.day_end_time))
+      ) {
+        throw new Error("نهاية اليوم القياسي يجب أن تقع بين بداية اليوم ونهايته الممتدة.");
+      }
+      if (
+        form.max_daily_hours_per_instructor < 1 ||
+        form.max_daily_hours_per_instructor > 12 ||
+        form.max_daily_hours_per_section < 1 ||
+        form.max_daily_hours_per_section > 12 ||
+        form.max_daily_theory_hours_per_section < 1 ||
+        form.max_daily_theory_hours_per_section > form.max_daily_hours_per_section ||
+        form.max_daily_practical_hours_per_section < 1 ||
+        form.max_daily_practical_hours_per_section > form.max_daily_hours_per_section
+      ) {
+        throw new Error(
+          "حدود العبء اليومي يجب أن تكون موجبة، وألا يتجاوز النظري أو العملي الحد الكلي.",
+        );
+      }
+      if (
+        form.max_extended_days_per_partition < 0 ||
+        form.max_extended_days_per_partition > form.working_days.length
+      ) {
+        throw new Error("أيام التمديد يجب أن تقع بين صفر وعدد أيام الدوام.");
+      }
+      const { enforce_instructor_availability: requestedEnforcement, ...settings } = form;
+      const payload = { ...settings, college_id: active.id };
       if (data?.id) {
         const { error } = await supabase
           .from("scheduling_settings")
@@ -118,7 +173,7 @@ function SettingsPage() {
       } else {
         const { data: ins, error } = await supabase
           .from("scheduling_settings")
-          .insert(payload)
+          .insert({ ...payload, enforce_instructor_availability: false })
           .select("id")
           .single();
         if (error) throw error;
@@ -129,10 +184,16 @@ function SettingsPage() {
           collegeId: active.id,
         });
       }
+      if (requestedEnforcement !== (data?.enforce_instructor_availability ?? false)) {
+        await setInstructorAvailabilityEnforcement(active.id, requestedEnforcement);
+      }
     },
     onSuccess: () => {
       toast.success("تم الحفظ");
       qc.invalidateQueries({ queryKey: ["scheduling_settings", active?.id] });
+      qc.invalidateQueries({ queryKey: ["scheduling-policy", active?.id] });
+      qc.invalidateQueries({ queryKey: ["availability-enforcement", active?.id] });
+      qc.invalidateQueries({ queryKey: ["instructor-availability-readiness", active?.id] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -203,7 +264,53 @@ function SettingsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="rounded-lg border p-4">
+            <label className="flex items-start gap-3 text-sm">
+              <Checkbox
+                checked={form.extended_day_policy_enabled}
+                onCheckedChange={(v) => setForm({ ...form, extended_day_policy_enabled: !!v })}
+                disabled={!canManage}
+              />
+              <span>
+                <span className="block font-semibold">السماح بأيام تدريس ممتدة للطلاب</span>
+                <span className="mt-1 block text-xs text-muted-foreground">
+                  عند التفعيل يُسمح بالتجاوز بعد نهاية اليوم القياسي ضمن العدد المحدد فقط، مع بقاء
+                  قيد كلية الحاسوب للنظري حتى 14:00 مطبقًا من الخادم.
+                </span>
+              </span>
+            </label>
+            {form.extended_day_policy_enabled ? (
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div>
+                  <Label>نهاية اليوم القياسي</Label>
+                  <Input
+                    type="time"
+                    value={form.standard_day_end_time}
+                    onChange={(e) => setForm({ ...form, standard_day_end_time: e.target.value })}
+                    disabled={!canManage}
+                  />
+                </div>
+                <div>
+                  <Label>أقصى أيام تمديد لكل مجموعة طلاب</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={form.working_days.length}
+                    value={form.max_extended_days_per_partition}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        max_extended_days_per_partition: Number(e.target.value),
+                      })
+                    }
+                    disabled={!canManage}
+                  />
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
             <div>
               <Label>حجم الفترة (دقائق)</Label>
               <Input
@@ -235,7 +342,7 @@ function SettingsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <Label>سقف ساعات المحاضر/يوم</Label>
               <Input
@@ -284,17 +391,6 @@ function SettingsPage() {
               />
             </div>
             <div>
-              <Label>أقصى أيام تمديد للشعبة/أسبوع</Label>
-              <Input
-                type="number"
-                value={form.max_extended_days_per_partition}
-                onChange={(e) =>
-                  setForm({ ...form, max_extended_days_per_partition: Number(e.target.value) })
-                }
-                disabled={!canManage}
-              />
-            </div>
-            <div>
               <Label>الفاصل بين المحاضرات (دقائق)</Label>
               <Input
                 type="number"
@@ -308,6 +404,39 @@ function SettingsPage() {
           </div>
 
           <div className="space-y-2">
+            <div
+              className={`rounded-lg border p-4 ${
+                form.enforce_instructor_availability
+                  ? "border-emerald-300 bg-emerald-50/70 dark:border-emerald-900 dark:bg-emerald-950/20"
+                  : "border-amber-300 bg-amber-50/70 dark:border-amber-900 dark:bg-amber-950/20"
+              }`}
+            >
+              <label className="flex items-start gap-3 text-sm">
+                <Checkbox
+                  checked={form.enforce_instructor_availability}
+                  onCheckedChange={(v) =>
+                    setForm({ ...form, enforce_instructor_availability: !!v })
+                  }
+                  disabled={!canManage}
+                />
+                <span>
+                  <span className="block font-semibold">تطبيق إتاحة المحاضرين كقيد إلزامي</span>
+                  <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                    {form.enforce_instructor_availability
+                      ? "مفعّل: يطبق نوافذ التوفر والمنع في المولّد والتحقق والحفظ، ويلزم تعريف توفر المحاضرين الخارجيين."
+                      : "غير مفعّل: تُحفظ نوافذ التوفر والمنع للتهيئة فقط ولا تؤثر في الجدولة حتى يتم تفعيل هذا الخيار."}
+                  </span>
+                  {!form.enforce_instructor_availability &&
+                  readinessQuery.data &&
+                  !readinessQuery.data.can_activate ? (
+                    <span className="mt-2 block text-xs font-medium text-amber-800 dark:text-amber-200">
+                      غير جاهز للتفعيل: {readinessQuery.data.missing_required_instructors} محاضرًا
+                      خارجيًا بلا نافذة توفر صريحة.
+                    </span>
+                  ) : null}
+                </span>
+              </label>
+            </div>
             <label className="flex items-center gap-2 text-sm">
               <Checkbox
                 checked={form.allow_3h_sessions}

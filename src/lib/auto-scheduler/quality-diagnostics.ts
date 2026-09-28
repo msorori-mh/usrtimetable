@@ -1,6 +1,10 @@
 import { context, minutes, placementIssue, type Snapshot, type Session } from "./compact.ts";
 import { instructorAttendanceDayCap } from "./attendance-objective.ts";
 import { isInstructorAvailabilityEnforced } from "../scheduling/instructor-availability-policy.ts";
+import { evaluateInstructorSlotAvailability } from "../scheduling/instructor-slot-availability.ts";
+
+const minuteTime = (value: number) =>
+  `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}:00`;
 
 export const placementLabels: Record<string, string> = {
   inactive_assignment: "الإسناد غير نشط أو غير موجود؛ يلزم تصحيح الإسناد قبل التحسين",
@@ -51,7 +55,6 @@ export function instructorCapacityIssues(snapshot: Snapshot): QualityIssue[] {
       const windows = snapshot.availability.filter(
         (w) => w.instructor_id === id && w.day_of_week === day && !w.is_preference,
       );
-      const positive = windows.filter((w) => w.availability_type !== "unavailable");
       let available = 0;
       for (
         let minute = minutes(snapshot.settings.day_start_time);
@@ -59,20 +62,15 @@ export function instructorCapacityIssues(snapshot: Snapshot): QualityIssue[] {
         minute++
       ) {
         if (isInstructorAvailabilityEnforced(snapshot.settings.enforce_instructor_availability)) {
-          if ((type?.is_external || type?.code === "from_other_college") && !windows.length)
-            continue;
           if (
-            windows.length &&
-            !positive.some((w) => minute >= minutes(w.start_time) && minute < minutes(w.end_time))
-          )
-            continue;
-          if (
-            windows.some(
-              (w) =>
-                w.availability_type === "unavailable" &&
-                minute >= minutes(w.start_time) &&
-                minute < minutes(w.end_time),
-            )
+            !evaluateInstructorSlotAvailability({
+              enforce: snapshot.settings.enforce_instructor_availability,
+              startTime: minuteTime(minute),
+              endTime: minuteTime(minute + 1),
+              windows,
+              requiresExplicitPositiveWindow:
+                !!type?.is_external || type?.code === "from_other_college",
+            }).available
           )
             continue;
         }

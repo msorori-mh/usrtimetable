@@ -139,6 +139,8 @@ export const COMPONENT_TYPE_LABEL_AR: Record<string, string> = {
 };
 
 const CREATE_ERROR_AR: Record<string, string> = {
+  COHORT_COMPONENT_SINGLE_INSTRUCTOR_REQUIRED:
+    "يجب توحيد محاضر مجموعات النظري، وتوحيد محاضر مجموعات العملي للمقرر نفسه داخل الدفعة.",
   UNAUTHORIZED: "يجب تسجيل الدخول.",
   INVALID_ARGS: "بيانات الإنشاء غير مكتملة.",
   INVALID_DAY: "يوم غير صالح.",
@@ -273,8 +275,16 @@ function asConflictArray(value: unknown): ScheduleConflictPreview[] {
         (r.message_ar as string | undefined) ??
         (
           {
+            cohort_component_single_instructor:
+              "يجب توحيد محاضر جميع مجموعات هذا المكوّن قبل حفظ الجدول.",
             instructor_availability: "المحاضر غير متاح في وقت المحاضرة المقترح.",
             instructor_availability_required: "يلزم تحديد توافر المحاضر لهذا اليوم.",
+            instructor_daily_hours: "يتجاوز الموعد سقف ساعات المحاضر اليومية.",
+            instructor_attendance_days: "يتجاوز الموعد الحد الأعلى لأيام حضور المحاضر أسبوعيًا.",
+            student_daily_hours: "يتجاوز الموعد إجمالي ساعات مجموعة الطلاب اليومية.",
+            student_daily_theory_hours: "يتجاوز الموعد سقف الساعات النظرية اليومية للطلاب.",
+            student_daily_practical_hours: "يتجاوز الموعد سقف الساعات العملية اليومية للطلاب.",
+            student_extended_days: "يتجاوز الموعد أيام التدريس الممتدة المسموح بها للطلاب.",
           } as Record<string, string>
         )[String(r.code ?? "")],
       message_en: r.message_en as string | undefined,

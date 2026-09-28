@@ -3,6 +3,7 @@ import { groupsShareStudents } from "@/lib/auto-scheduler/student-partitions";
 import { supabase } from "@/integrations/supabase/client";
 import { buildInstructorCategoryMap, requiresAvailability } from "@/lib/instructor-category";
 import { isInstructorAvailabilityEnforced } from "@/lib/scheduling/instructor-availability-policy";
+import { evaluateInstructorSlotAvailability } from "@/lib/scheduling/instructor-slot-availability";
 import { evaluateCapacityAgainstRoom } from "@/lib/schedule-builder/enrollment-trust";
 import {
   CAPACITY_EXCEPTION_LIMIT,
@@ -18,6 +19,11 @@ import {
   summarizeConflictExceptions,
   type ApprovedException,
 } from "./exceptions";
+import { getCohortComponentInstructorReadiness } from "@/lib/scheduling/cohort-component-instructor-service";
+import {
+  cohortComponentInstructorViolationMessageAr,
+  cohortComponentInstructorViolationMessageEn,
+} from "@/lib/scheduling/cohort-component-instructor";
 
 export type StudySystem = "regular" | "parallel" | "both";
 
@@ -166,6 +172,36 @@ export async function validateProposed(params: {
 }): Promise<ValidationResult> {
   const { collegeId, scheduleVersionId, sessions } = params;
   const conflicts: Conflict[] = [];
+  const instructorReadiness = await getCohortComponentInstructorReadiness({
+    collegeId,
+    scheduleVersionId,
+  });
+  const instructorViolations = instructorReadiness.violations.length
+    ? instructorReadiness.violations
+    : instructorReadiness.ok
+      ? []
+      : [null];
+  for (const violation of instructorViolations) {
+    conflicts.push({
+      code: "cohort_component_single_instructor",
+      severity: "hard",
+      message_ar: cohortComponentInstructorViolationMessageAr(violation),
+      message_en: cohortComponentInstructorViolationMessageEn(violation),
+      schedule_session_id: null,
+      related_session_id: null,
+      metadata: violation
+        ? {
+            cohort_id: violation.cohort_id,
+            plan_course_id: violation.plan_course_id,
+            component_type: violation.component_type,
+            group_count: violation.group_count,
+            instructor_count: violation.instructor_count,
+            identity_missing_count: violation.identity_missing_count,
+            assignment_ids: violation.assignment_ids,
+          }
+        : { readiness_contract_invalid: true },
+    });
+  }
   const { data: intakeMode, error: intakeError } = await supabase.rpc(
     "existing_schedule_intake_version",
     { p_version: scheduleVersionId },
@@ -201,6 +237,7 @@ export async function validateProposed(params: {
     { data: templates },
     { data: instrRows },
     { data: taRows },
+    { data: schedulingSettings, error: schedulingSettingsError },
   ] = await Promise.all([
     roomIds.length
       ? supabase.from("rooms").select("id, capacity, college_id, room_type").in("id", roomIds)
@@ -272,7 +309,24 @@ export async function validateProposed(params: {
             plan_course_component_id?: string | null;
           }>,
         }),
+    supabase
+      .from("scheduling_settings")
+      .select("enforce_instructor_availability")
+      .eq("college_id", collegeId)
+      .maybeSingle(),
   ]);
+
+  // The browser validator, the V2 generator and the authoritative database
+  // RPCs must all read the same per-college switch. The previous client-side
+  // validator called isInstructorAvailabilityEnforced() without this value,
+  // so it always used the global default (false) even when the college had
+  // explicitly enabled the rule.
+  if (schedulingSettingsError) {
+    throw new Error(`SCHEDULING_POLICY_READ_FAILED: ${schedulingSettingsError.message}`);
+  }
+  const enforceInstructorAvailability = isInstructorAvailabilityEnforced(
+    schedulingSettings?.enforce_instructor_availability,
+  );
 
   // Resolve instructor types explicitly. Some deployed schemas contain
   // instructor_type_id without a PostgREST-discoverable FK, so an embedded
@@ -555,55 +609,35 @@ export async function validateProposed(params: {
     // Default: every instructor is available on all approved teaching times,
     // and missing/incomplete availability rows never block scheduling.
     const cat = instrCategory.get(s.instructor_id) ?? "permanent";
-    const allWindows = isInstructorAvailabilityEnforced()
+    const allWindows = enforceInstructorAvailability
       ? (instrAvail ?? []).filter((a) => a.instructor_id === s.instructor_id)
       : [];
-    const hardWindows = isInstructorAvailabilityEnforced()
+    const hardWindows = enforceInstructorAvailability
       ? allWindows.filter((a) => a.day_of_week === s.day_of_week)
       : [];
-    if (!isInstructorAvailabilityEnforced()) {
-      // no availability conflict is produced in this mode
-    } else if (hardWindows.length === 0) {
-      // No availability rows for this day.
-      // Permanent: assume default working week → no conflict.
-      // External / Other college: availability is mandatory → block.
-      if (requiresAvailability(cat)) {
+    if (enforceInstructorAvailability) {
+      const availability = evaluateInstructorSlotAvailability({
+        enforce: true,
+        startTime: s.start_time,
+        endTime: s.end_time,
+        windows: hardWindows,
+        requiresExplicitPositiveWindow: requiresAvailability(cat),
+      });
+      if (!availability.available) {
+        const missing = availability.reason === "explicit_availability_required";
         conflicts.push({
-          code: "instructor_availability_required",
+          code: missing ? "instructor_availability_required" : "instructor_availability",
           severity: "hard",
-          message_ar: "المحاضر من كلية أخرى يتطلب تعريف أوقات التوفر قبل الجدولة.",
-          message_en: "Instructor availability is mandatory for this category and not defined.",
-          schedule_session_id: sid,
-          metadata: {
-            instructor_id: s.instructor_id,
-            category: cat,
-            day_of_week: s.day_of_week,
-          },
-        });
-      }
-    } else {
-      // Domain: active instructors are available by default during working days.
-      // Hard unavailability rows are a blacklist. Positive hard windows (if any)
-      // remain a whitelist for that day. Soft preferences are ignored here.
-      const blocked = hardWindows.some(
-        (w) =>
-          w.availability_type === "unavailable" &&
-          overlap(s.start_time, s.end_time, w.start_time, w.end_time),
-      );
-      const positiveWindows = hardWindows.filter((w) => w.availability_type !== "unavailable");
-      const fits =
-        positiveWindows.length === 0 ||
-        positiveWindows.some((w) => within(s.start_time, s.end_time, w.start_time, w.end_time));
-      if (blocked || !fits) {
-        conflicts.push({
-          code: "instructor_availability",
-          severity: "hard",
-          message_ar: blocked
-            ? "المحاضرة تتعارض مع فترة عدم توفّر المحاضر الإلزامية."
-            : "المحاضرة خارج نطاق توفّر المحاضر الإلزامي.",
-          message_en: blocked
-            ? "Session overlaps instructor hard unavailability."
-            : "Session outside instructor's hard availability window.",
+          message_ar: missing
+            ? "المحاضر من كلية أخرى يتطلب تحديد فترة توفّر صريحة لهذا اليوم."
+            : availability.reason === "blocked_window"
+              ? "المحاضرة تتعارض مع فترة عدم توفّر المحاضر الإلزامية."
+              : "المحاضرة خارج نطاق توفّر المحاضر الإلزامي.",
+          message_en: missing
+            ? "This instructor requires an explicit positive availability window for this day."
+            : availability.reason === "blocked_window"
+              ? "Session overlaps instructor hard unavailability."
+              : "Session outside instructor's hard availability window.",
           schedule_session_id: sid,
           metadata: {
             instructor_id: s.instructor_id,

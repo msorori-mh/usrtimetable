@@ -167,12 +167,16 @@ test("comparison includes every scoped college, places attention first, and does
   );
 });
 
-test("overview renders exactly four cards and one compact comparison, without detailed room tables", () => {
+test("overview renders four executive cards plus the weekly teaching cards before comparison", () => {
   const output = html();
   assert.equal((output.match(/data-testid="leadership-decision-card"/g) ?? []).length, 4);
+  assert.equal((output.match(/class="leadership-weekly-card /g) ?? []).length, 5);
   assert.equal((output.match(/<table/g) ?? []).length, 1);
   assert.match(output, /dir="rtl"/);
   assert.match(output, /المقارنة المختصرة للكليات/);
+  assert(
+    output.indexOf("leadership-weekly-summary") < output.indexOf("leadership-colleges-comparison"),
+  );
   assert.doesNotMatch(output, /تفاصيل ساعات كل قاعة|كيف حُسب/);
 });
 
@@ -210,6 +214,44 @@ test("partial teaching scope is stated beside zero; unknown demand does not coun
   assert.doesNotMatch(output, /تغطية التدريس<\/h2>[^]*?100%[^]*?عرض حالة الجداول/);
 });
 
+test("headline assignment card includes pending shared groups and shows the reconciled equation", () => {
+  const output = html({
+    colleges: [
+      college("a", {
+        required_hours: 2396,
+        covered_hours: 2294,
+        uncovered_hours: 99,
+        pending_group_hours: 3,
+      }),
+    ],
+  });
+  assert.match(output, /102 ساعة/);
+  assert.match(output, /2,294 ساعة معتمدة \+ 102 ساعة بانتظار الاعتماد = 2,396 ساعة مطلوبة/);
+});
+
+test("weekly cards expose only a reconciled theory, practical and other composition", () => {
+  const output = html({
+    colleges: [
+      college("a", {
+        sessions_count: 1031,
+        teaching_hours: 2390,
+        theory_hours: 1962,
+        practical_hours: 355,
+        other_hours: 73,
+      }),
+    ],
+  });
+  for (const value of ["1,031", "2,390", "1,962", "355", "73"])
+    assert.match(output, new RegExp(value));
+  assert.match(output, /1,962 ساعة نظري \+ 355 ساعة عملي \+ 73 ساعة أخرى = 2,390 ساعة إجماليًا/);
+
+  const invalid = html({
+    colleges: [college("a", { teaching_hours: 20, theory_hours: 19, other_hours: 0 })],
+  });
+  assert.match(invalid, /أُوقف اعتماد إجمالي الساعات/);
+  assert.doesNotMatch(invalid, /تحقق الجمع:/);
+});
+
 test("no known teaching source remains unknown instead of zero", () => {
   const output = html({
     colleges: [
@@ -233,10 +275,10 @@ test("room surplus and deficit stay separate in the compact summary", () => {
     capacity: [room("a", 16), room("b", -4)],
   });
   assert.match(output, /16 ساعة/);
-  assert.match(output, /العجز 4 ساعة/);
+  assert.match(output, /عجز 4 ساعة/);
 });
 
-test("room reuse shows idle hours and published-session emptiness without room equivalences", () => {
+test("room reuse shows a hierarchical room, day and hour equivalent with a physical-use caveat", () => {
   const ids = ["hours", "room", "mixed", "zero", "deficit", "unknown"];
   const output = html({
     colleges: ids.map((id) => college(id)),
@@ -249,14 +291,22 @@ test("room reuse shows idle hours and published-session emptiness without room e
       room("unknown", null),
     ],
   });
-  assert.match(output, /5 ساعة شاغرة أسبوعيًا في القاعات · 0 قاعة بلا جلسات منشورة/);
-  assert.match(output, /36 ساعة شاغرة أسبوعيًا في القاعات · 0 قاعة بلا جلسات منشورة/);
-  assert.match(output, /66 ساعة شاغرة أسبوعيًا في القاعات · 0 قاعة بلا جلسات منشورة/);
-  assert.match(output, /تُراجع فرص الاستخدام حسب اليوم والفترة والسعة/);
+  assert.match(
+    output,
+    /5 ساعة غير مستخدمة أسبوعيًا · تعادل حسابيًا: 0 قاعة لأسبوع كامل، 0 يوم قاعة، 5 ساعة/,
+  );
+  assert.match(
+    output,
+    /36 ساعة غير مستخدمة أسبوعيًا · تعادل حسابيًا: 1 قاعة لأسبوع كامل، 0 يوم قاعة، 0 ساعة/,
+  );
+  assert.match(
+    output,
+    /66 ساعة غير مستخدمة أسبوعيًا · تعادل حسابيًا: 1 قاعة لأسبوع كامل، 5 يوم قاعة، 0 ساعة/,
+  );
+  assert.match(output, /0 قاعة بلا جلسات منشورة · هذا مكافئ زمني مرجعي/);
   assert.match(output, /لا توجد سعة زمنية فائضة/);
   assert.match(output, /غير محسوب/);
-  assert.match(output, /ليست عدد قاعات قابلة للاستغناء/);
-  assert.doesNotMatch(output, /تعادل زمنيًا|قاعة أسبوعية/);
+  assert.match(output, /ليس عدد قاعات فعلية قابلة للاستغناء/);
 });
 
 test("Education source publication keeps administrative gaps separate from scheduled hours and incomplete quotas", () => {
@@ -295,8 +345,11 @@ test("Education source publication keeps administrative gaps separate from sched
   assert.doesNotMatch(output, /ساعة تدريس غير مسندة|تدريس غير مسند/);
   assert.match(output, /58 نصابًا غير مكتمل/);
   assert.doesNotMatch(output, /زيادة 52 ساعة|نقص 229 ساعة/);
-  assert.match(output, /104 ساعة شاغرة أسبوعيًا في القاعات · 0 قاعة بلا جلسات منشورة/);
-  assert.doesNotMatch(output, /تعادل زمنيًا/);
+  assert.match(
+    output,
+    /104 ساعة غير مستخدمة أسبوعيًا · تعادل حسابيًا: 2 قاعة لأسبوع كامل، 5 يوم قاعة، 2 ساعة/,
+  );
+  assert.match(output, /0 قاعة بلا جلسات منشورة · هذا مكافئ زمني مرجعي/);
   assert.match(
     leadershipPriorities([education], [])[0].impact,
     /اعتمد جدول هذا الفصل كما ورد من الأقسام؛ تبقى سجلات التكليف الوظيفي مستقلة/,
