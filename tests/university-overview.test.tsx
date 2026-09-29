@@ -198,8 +198,11 @@ test("halls and labs have separate seat stock, actual capacity, occupancy and fr
     knownSeats: 75,
     unresolvedSeatRooms: 0,
     capacityHours: 12,
+    scheduledHours: 3,
     occupiedHours: 3,
     freeHours: 9,
+    outsideHours: 0,
+    overlapHours: 0,
     utilization: 25,
     usedCount: 1,
     unusedCount: 0,
@@ -210,15 +213,18 @@ test("halls and labs have separate seat stock, actual capacity, occupancy and fr
     knownSeats: 30,
     unresolvedSeatRooms: 0,
     capacityHours: 8,
+    scheduledHours: 2,
     occupiedHours: 2,
     freeHours: 6,
+    outsideHours: 0,
+    overlapHours: 0,
     utilization: 25,
     usedCount: 1,
     unusedCount: 0,
   });
 });
 
-test("the president overview uses the grand hall's three approved days as 18 hours", () => {
+test("the president overview separates the grand hall's 18 approved hours from outside use", () => {
   const x = fixture();
   x.rooms[0].name = "القاعة الكبرى";
   x.rooms[0].code = "R-GRAND";
@@ -236,11 +242,22 @@ test("the president overview uses the grand hall's three approved days as 18 hou
     start_time: "08:00",
     end_time: "14:00",
   }));
+  x.sessions.push({
+    ...x.sessions[0],
+    id: "grand-outside",
+    day_of_week: 1,
+    start_time: "08:00",
+    end_time: "10:00",
+  });
+  x.colleges[0].sessions_count = 3;
+  x.colleges[0].teaching_hours = 7;
 
   const [c] = buildUniversityOverview(x, "published");
   assert.equal(c.halls.capacityHours, 18);
+  assert.equal(c.halls.scheduledHours, 5);
   assert.equal(c.halls.occupiedHours, 3);
   assert.equal(c.halls.freeHours, 15);
+  assert.equal(c.halls.outsideHours, 2);
   assert.equal(c.rooms.find((room) => room.name === "القاعة الكبرى")?.capacityHours, 18);
 });
 
@@ -406,8 +423,11 @@ test("rendered report contains requested departments, separate labs, seats, rema
     "الساعات التدريسية لكل قسم",
     "نظم المعلومات",
     "معمل 1",
-    "غير المشغول",
-    "الطاقة",
+    "المجدول",
+    "المستخدم داخل الإتاحة",
+    "غير المشغول داخل الإتاحة",
+    "خارج الإتاحة",
+    "الإتاحة",
     "المقاعد",
     "الدرجات العلمية",
     "مصدر الأرقام",
@@ -418,6 +438,7 @@ test("rendered report contains requested departments, separate labs, seats, rema
   );
   assert(summary.includes("الصورة الأكاديمية والتشغيلية"));
   assert(summary.includes("المعامل والورش"));
+  assert(summary.includes("إشغال الموارد المستضافة"));
 });
 
 test("report is linked, role-gated, scoped from the overview RPC and print includes collapsed detail", () => {

@@ -55,10 +55,12 @@ export function RoomsComparison(p: {
   const metrics: { key: keyof Totals; label: string; unit?: string }[] = [
     { key: "rooms", label: "الموارد" },
     { key: "sessions", label: "المحاضرات" },
-    { key: "usedHours", label: "الساعات المستخدمة" },
-    { key: "availableHours", label: "الإتاحة الحالية" },
-    { key: "freeHours", label: "غير مستخدمة في النطاق" },
-    { key: "utilization", label: "استغلال الوقت", unit: "%" },
+    { key: "scheduledHours", label: "المجدول في نسخة الكلية" },
+    { key: "usedHours", label: "المستخدم داخل الإتاحة" },
+    { key: "availableHours", label: "الإتاحة المعتمدة الحالية" },
+    { key: "freeHours", label: "غير المشغول داخل الإتاحة" },
+    { key: "outsideHours", label: "خارج الإتاحة" },
+    { key: "utilization", label: "استغلال الإتاحة", unit: "%" },
   ];
   const label = `${colleges.data?.find((c) => c.id === college)?.name ?? ""} · ${terms.data?.find((t) => t.id === term)?.name ?? ""} · ${versions.data?.find((v) => v.id === version)?.name ?? ""}`;
   return (

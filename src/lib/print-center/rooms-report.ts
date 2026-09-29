@@ -13,6 +13,7 @@ import { groupPrintPages } from "./group";
 import type { PrintPageGroup, PrintSessionLike } from "./types";
 import { entityDisplayName } from "@/lib/entity-display";
 import { roomCategoryFromType } from "@/lib/room-category";
+import { roomUtilizationMetrics, type ReportRoomClosure } from "@/lib/reports/presentation-metrics";
 
 export { roomCategoryFromType } from "@/lib/room-category";
 
@@ -25,6 +26,9 @@ export interface RoomsReportRoom {
   capacity?: number | null;
   room_type_id?: string | null;
   is_active?: boolean | null;
+  available_days?: number[] | null;
+  available_start_time?: string | null;
+  available_end_time?: string | null;
 }
 
 export interface RoomsReportRoomType {
@@ -48,6 +52,8 @@ export interface RoomsReportSettings {
   day_end_time?: string | null;
 }
 
+export type RoomsReportUnavailability = ReportRoomClosure;
+
 export interface RoomsReportSummaryRow {
   room_id: string;
   room_code: string;
@@ -55,10 +61,15 @@ export interface RoomsReportSummaryRow {
   room_type: string;
   room_category: "hall" | "lab";
   capacity: number | string;
+  /** Raw timetable hours, including overlaps and time outside approved availability. */
+  scheduled_hours: number;
+  /** Unique occupied time intersecting the room's approved availability. */
   used_hours: number;
   available_hours: number;
   free_hours: number;
-  overbooked_hours: number;
+  outside_hours: number;
+  overlap_hours: number;
+  blocked_hours: number;
   utilization_percent: number;
   utilization: string;
   session_count: number;
@@ -77,9 +88,11 @@ export const ROOMS_REPORT_SUMMARY_HEADERS: { key: keyof RoomsReportSummaryRow; l
   { key: "room_name", label: "القاعة" },
   { key: "room_type", label: "النوع" },
   { key: "capacity", label: "السعة" },
-  { key: "used_hours", label: "الساعات المستخدمة" },
+  { key: "scheduled_hours", label: "المجدول في نسخة الكلية" },
+  { key: "used_hours", label: "المستخدم داخل الإتاحة" },
   { key: "available_hours", label: "الساعات المتاحة" },
-  { key: "free_hours", label: "غير مستخدمة في النطاق" },
+  { key: "free_hours", label: "غير المشغول داخل الإتاحة" },
+  { key: "outside_hours", label: "خارج الإتاحة" },
   { key: "utilization", label: "استغلال الوقت" },
   { key: "session_count", label: "عدد الجلسات" },
   { key: "average_students", label: "متوسط الطلاب" },
@@ -130,6 +143,7 @@ export function buildRoomsReportSummary(params: {
   roomTypes: RoomsReportRoomType[];
   sessions: PrintSessionLike[];
   availability: RoomsReportAvailability[];
+  unavailability?: RoomsReportUnavailability[];
   settings?: RoomsReportSettings | null;
 }): RoomsReportSummaryRow[] {
   const typeLabel = new Map(
@@ -150,14 +164,52 @@ export function buildRoomsReportSummary(params: {
     .filter((r) => r.is_active !== false)
     .map((r) => {
       const agg = used.get(r.id) ?? { hours: 0, sessions: [] };
-      const available = roomWeeklyAvailableHours({
-        roomId: r.id,
-        availability: params.availability,
-        settings: params.settings,
-      });
-      const usedHours = round2(agg.hours);
-      const freeHours = round2(Math.max(0, available - usedHours));
-      const overbookedHours = round2(Math.max(0, usedHours - available));
+      const scheduledHours = round2(agg.hours);
+      let available = roomWeeklyAvailableHours({
+          roomId: r.id,
+          availability: params.availability,
+          settings: params.settings,
+        }),
+        usedHours = 0,
+        freeHours = available,
+        outsideHours = 0,
+        overlapHours = 0,
+        blockedHours = 0;
+      try {
+        const metrics = roomUtilizationMetrics({
+          settings: params.settings
+            ? {
+                working_days: params.settings.working_days ?? null,
+                day_start_time: params.settings.day_start_time ?? null,
+                day_end_time: params.settings.day_end_time ?? null,
+              }
+            : null,
+          room: r,
+          availability: params.availability
+            .filter(
+              (a) => a.room_id === r.id && a.day_of_week != null && !!a.start_time && !!a.end_time,
+            )
+            .map((a) => ({
+              day_of_week: a.day_of_week!,
+              start_time: a.start_time!,
+              end_time: a.end_time!,
+            })),
+          unavailability: (params.unavailability ?? []).filter((row) => row.room_id === r.id),
+          sessions: agg.sessions,
+        });
+        available = metrics.available_hours;
+        usedHours = metrics.occupied_hours;
+        freeHours = metrics.idle_hours;
+        outsideHours = metrics.outside_hours;
+        overlapHours = metrics.overlap_hours;
+        blockedHours = metrics.blocked_hours;
+      } catch {
+        // Keep raw scheduled hours visible, but do not present them as valid
+        // utilization when the availability source cannot be evaluated.
+        available = 0;
+        usedHours = 0;
+        freeHours = 0;
+      }
       const utilization = available > 0 ? Math.round((usedHours / available) * 100) : 0;
       const students = agg.sessions
         .map((s) => Number(s.expected_students))
@@ -179,10 +231,13 @@ export function buildRoomsReportSummary(params: {
           r.room_type_id ? (typeCode.get(r.room_type_id) ?? "") : "",
         ),
         capacity: r.capacity ?? "—",
+        scheduled_hours: scheduledHours,
         used_hours: usedHours,
         available_hours: available,
         free_hours: freeHours,
-        overbooked_hours: overbookedHours,
+        outside_hours: outsideHours,
+        overlap_hours: overlapHours,
+        blocked_hours: blockedHours,
         utilization_percent: utilization,
         utilization: available > 0 ? `${utilization}%` : "—",
         session_count: agg.sessions.length,
@@ -220,16 +275,22 @@ export function roomsReportTotals(params: {
   summary: RoomsReportSummaryRow[];
   sessions: PrintSessionLike[];
 }) {
+  const scheduledHours = round2(params.summary.reduce((s, r) => s + r.scheduled_hours, 0));
   const usedHours = round2(params.summary.reduce((s, r) => s + r.used_hours, 0));
   const availableHours = round2(params.summary.reduce((s, r) => s + r.available_hours, 0));
   const freeHours = round2(params.summary.reduce((s, r) => s + r.free_hours, 0));
-  const overbookedHours = round2(params.summary.reduce((s, r) => s + r.overbooked_hours, 0));
+  const outsideHours = round2(params.summary.reduce((s, r) => s + r.outside_hours, 0));
+  const overlapHours = round2(params.summary.reduce((s, r) => s + r.overlap_hours, 0));
+  const blockedHours = round2(params.summary.reduce((s, r) => s + r.blocked_hours, 0));
   return {
     rooms: params.summary.length,
+    scheduledHours,
     usedHours,
     availableHours,
     freeHours,
-    overbookedHours,
+    outsideHours,
+    overlapHours,
+    blockedHours,
     utilization: availableHours > 0 ? Math.round((usedHours / availableHours) * 100) : 0,
     sessions: params.sessions.length,
     sessionsWithoutRoom: params.sessions.filter((s) => !s.room_id).length,
@@ -262,8 +323,10 @@ export interface RoomsReportAnalytics {
   comparison: Array<{
     category: string;
     averageUtilization: number;
+    scheduledHours: number;
     usedHours: number;
     freeHours: number;
+    outsideHours: number;
   }>;
   insight: string;
 }
@@ -291,11 +354,14 @@ function availabilityContains(
 
 export function buildRoomsHeatmap(params: {
   summary: RoomsReportSummaryRow[];
+  rooms?: RoomsReportRoom[];
   sessions: PrintSessionLike[];
   availability: RoomsReportAvailability[];
+  unavailability?: RoomsReportUnavailability[];
   settings?: RoomsReportSettings | null;
 }): RoomsHeatmapCell[] {
   const roomIds = new Set(params.summary.map((row) => row.room_id));
+  const roomById = new Map((params.rooms ?? []).map((room) => [room.id, room]));
   // Partition time at every session/opening boundary. Overlapping 2h and 3h
   // lectures must contribute to the same cells; also show unused open periods.
   const boundaries = [
@@ -303,6 +369,11 @@ export function buildRoomsHeatmap(params: {
       [
         ...params.sessions.flatMap((s) => [s.start_time, s.end_time]),
         ...params.availability.flatMap((a) => [a.start_time, a.end_time]),
+        ...(params.unavailability ?? []).flatMap((a) => [a.start_time, a.end_time]),
+        ...(params.rooms ?? []).flatMap((room) => [
+          room.available_start_time,
+          room.available_end_time,
+        ]),
         params.settings?.day_start_time,
         params.settings?.day_end_time,
       ]
@@ -318,32 +389,52 @@ export function buildRoomsHeatmap(params: {
     list.push(row);
     ownByRoom.set(row.room_id, list);
   }
+  const closuresByRoom = new Map<string, RoomsReportUnavailability[]>();
+  for (const row of params.unavailability ?? []) {
+    const list = closuresByRoom.get(row.room_id) ?? [];
+    list.push(row);
+    closuresByRoom.set(row.room_id, list);
+  }
   return workingDays.flatMap((day) =>
     slots.map((slot) => {
       const [start, end] = slot.split("–");
+      const availableRoomIds = new Set(
+        params.summary
+          .filter((summaryRoom) => {
+            const own = ownByRoom.get(summaryRoom.room_id) ?? [];
+            const room = roomById.get(summaryRoom.room_id);
+            const baseOpen = own.length
+              ? own.some((row) => availabilityContains(row, day, start, end))
+              : (!room?.available_days?.length || room.available_days.includes(day)) &&
+                (room?.available_start_time ?? params.settings?.day_start_time ?? "").slice(0, 5) <=
+                  start &&
+                (room?.available_end_time ?? params.settings?.day_end_time ?? "").slice(0, 5) >=
+                  end;
+            if (!baseOpen) return false;
+            return !(closuresByRoom.get(summaryRoom.room_id) ?? []).some((closure) => {
+              if (closure.start_date || closure.end_date) return true;
+              if (closure.day_of_week !== null && closure.day_of_week !== day) return false;
+              const closureStart = closure.start_time?.slice(0, 5) ?? "00:00";
+              const closureEnd = closure.end_time?.slice(0, 5) ?? "24:00";
+              return closureStart < end && closureEnd > start;
+            });
+          })
+          .map((room) => room.room_id),
+      );
       const occupiedRooms = new Set(
         params.sessions
           .filter(
             (s) =>
               s.room_id &&
               roomIds.has(s.room_id) &&
+              availableRoomIds.has(s.room_id) &&
               s.day_of_week === day &&
               s.start_time.slice(0, 5) < end &&
               s.end_time.slice(0, 5) > start,
           )
           .map((s) => s.room_id),
       ).size;
-      const availableRooms = params.summary.filter((room) => {
-        const own = ownByRoom.get(room.room_id) ?? [];
-        if (own.length > 0) return own.some((row) => availabilityContains(row, day, start, end));
-        return (
-          workingDays.includes(day) &&
-          !!params.settings?.day_start_time &&
-          !!params.settings?.day_end_time &&
-          params.settings.day_start_time.slice(0, 5) <= start &&
-          params.settings.day_end_time.slice(0, 5) >= end
-        );
-      }).length;
+      const availableRooms = availableRoomIds.size;
       return {
         day,
         dayLabel: DAY_NAMES_AR[day] ?? String(day),
@@ -365,8 +456,10 @@ export function utilizationBand(percent: number): RoomsUtilizationBand {
 
 export function buildRoomsReportAnalytics(params: {
   summary: RoomsReportSummaryRow[];
+  rooms?: RoomsReportRoom[];
   sessions: PrintSessionLike[];
   availability: RoomsReportAvailability[];
+  unavailability?: RoomsReportUnavailability[];
   settings?: RoomsReportSettings | null;
 }): RoomsReportAnalytics {
   const ranked = [...params.summary].sort(
@@ -377,14 +470,17 @@ export function buildRoomsReportAnalytics(params: {
   const categorySummary = (rows: RoomsReportSummaryRow[], category: string) => ({
     category,
     averageUtilization: average(rows.map((row) => row.utilization_percent)),
+    scheduledHours: round2(rows.reduce((sum, row) => sum + row.scheduled_hours, 0)),
     usedHours: round2(rows.reduce((sum, row) => sum + row.used_hours, 0)),
     freeHours: round2(rows.reduce((sum, row) => sum + row.free_hours, 0)),
+    outsideHours: round2(rows.reduce((sum, row) => sum + row.outside_hours, 0)),
   });
   const highest = ranked[0] ?? null;
   const lowest = ranked.at(-1) ?? null;
+  const outsideHours = round2(params.summary.reduce((sum, row) => sum + row.outside_hours, 0));
   const insight =
     highest && lowest
-      ? `الضغط الأعلى على ${highest.room_name} باستغلال زمني ${highest.utilization}، والأقل استخدامًا ${lowest.room_name} (${lowest.free_hours} ساعة غير مستخدمة ضمن البيانات المعروضة). راجع فترات الإتاحة وإشغال النظامين وسعة القاعة قبل نقل أي محاضرة.`
+      ? `${outsideHours > 0 ? `توجد ${outsideHours} ساعة مجدولة خارج الإتاحة المعتمدة. ` : ""}داخل الإتاحة، الضغط الأعلى على ${highest.room_name} باستغلال زمني ${highest.utilization}، والأقل استخدامًا ${lowest.room_name} (${lowest.free_hours} ساعة غير مشغولة داخل الإتاحة). راجع فترات الإتاحة وإشغال النظامين وسعة القاعة قبل نقل أي محاضرة.`
       : "لا توجد بيانات كافية لصياغة الاستنتاج التنفيذي.";
   return {
     halls: halls.length,

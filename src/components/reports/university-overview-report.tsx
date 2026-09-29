@@ -74,19 +74,29 @@ export function ResourceCard({
       </div>
       <dl className="uo-resource-hours">
         <div>
-          <dt>الطاقة الأسبوعية</dt>
+          <dt>الإتاحة الأسبوعية</dt>
           <dd>{hours(data.capacityHours)}</dd>
         </div>
         <div>
-          <dt>المستخدم</dt>
+          <dt>المجدول في النسخ المختارة</dt>
+          <dd>{hours(data.scheduledHours)}</dd>
+        </div>
+        <div>
+          <dt>المستخدم داخل الإتاحة</dt>
           <dd>{hours(data.occupiedHours)}</dd>
         </div>
         <div>
-          <dt>غير المشغول</dt>
+          <dt>غير المشغول داخل الإتاحة</dt>
           <dd>{hours(data.freeHours)}</dd>
         </div>
       </dl>
       <UtilizationBar value={data.utilization} label="استخدام الوقت المتاح" />
+      {((data.outsideHours ?? 0) > 0 || (data.overlapHours ?? 0) > 0) && (
+        <p className="uo-row-note">
+          خارج الإتاحة {hours(data.outsideHours)} · التداخل {hours(data.overlapHours)} — مؤشرات
+          مراجعة مستقلة لا ترفع نسبة الاستغلال.
+        </p>
+      )}
       <p className="uo-fine">
         {num(data.usedCount)} مستخدمة في الجدول · {num(data.unusedCount)} بلا محاضرات مسجلة
       </p>
@@ -168,8 +178,9 @@ export function UniversitySummary({
         قاعة القردعي مشتركة وتُحسب مرة واحدة في إجمالي الجامعة، وإتاحتها موزعة بين الكليات. عند
         اختلاف سعة القاعة المشتركة بين سجلات الكليات يُعرض مجموع المقاعد المتسقة في السجلات كإجمالي
         جزئي، مع بيان عدد القاعات ذات السعة غير المحسومة. المقاعد تعبّر عن سعة الأماكن في اللحظة
-        نفسها؛ الساعات تعبّر عن إتاحتها خلال الأسبوع. الوقت غير المشغول قد يكون موزعًا على أيام
-        وفترات مختلفة.
+        نفسها؛ الساعات تعبّر عن إتاحتها خلال الأسبوع. «المستخدم» هو اتحاد فترات الإشغال داخل الإتاحة
+        المعتمدة، أما المجدول خارجها والتداخل فيظهران كمؤشري مراجعة مستقلين. يجمع هذا التقرير إشغال
+        الموارد المستضافة من نسخ الكليات المختارة؛ لذلك قد يزيد عن تقرير نسخة كلية منفردة.
       </p>
       <div className="uo-insights">
         {[
@@ -404,9 +415,11 @@ export function CollegeOverviewCard({
                   <th>القاعة أو المعمل</th>
                   <th>النوع</th>
                   <th>المقاعد</th>
-                  <th>الطاقة</th>
-                  <th>المستخدم</th>
-                  <th>غير المشغول</th>
+                  <th>الإتاحة</th>
+                  <th>المجدول</th>
+                  <th>المستخدم داخل الإتاحة</th>
+                  <th>غير المشغول داخل الإتاحة</th>
+                  <th>خارج الإتاحة</th>
                   <th>الاستخدام</th>
                   <th>المحاضرات</th>
                 </tr>
@@ -421,8 +434,10 @@ export function CollegeOverviewCard({
                     <td>{r.type}</td>
                     <td>{num(r.seats)}</td>
                     <td>{num(r.capacityHours)}</td>
+                    <td>{num(r.scheduledHours)}</td>
                     <td>{num(r.occupiedHours)}</td>
                     <td>{num(r.freeHours)}</td>
+                    <td>{num(r.outsideHours)}</td>
                     <td>{pct(r.utilization)}</td>
                     <td>{num(r.sessions)}</td>
                   </tr>
@@ -518,7 +533,8 @@ export function CollegeOverviewCard({
         </p>
         <p>
           الوقت المستخدم هو اتحاد فترات الإشغال داخل ساعات الإتاحة؛ التداخل وخارج الإتاحة يظهران
-          كملاحظات ولا يُضافان إلى الوقت الحر.
+          كملاحظات مستقلة ولا يُضافان إلى الوقت المستخدم أو يُخصمان مرتين من الوقت الحر. بيانات هذه
+          اللوحة تجمع إشغال الموارد المستضافة من الجداول المختارة لجميع الكليات المتاحة للحساب.
         </p>
         {c.issues.length > 0 && (
           <ul>

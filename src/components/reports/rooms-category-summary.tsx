@@ -13,9 +13,11 @@ export function RoomsCategorySummary({ summary }: { summary: RoomsReportSummaryR
         const complete = rows.length > 0 && rows.every((row) => row.available_hours > 0);
         const metrics = [
           ["العدد", totals.rooms],
-          ["الساعات المستخدمة", totals.usedHours],
-          ["الساعات المتاحة", complete ? totals.availableHours : "—"],
-          ["غير مستخدمة في النطاق", complete ? totals.freeHours : "—"],
+          ["المجدول في نسخة الكلية", totals.scheduledHours],
+          ["المستخدم داخل الإتاحة", totals.usedHours],
+          ["الإتاحة المعتمدة", complete ? totals.availableHours : "—"],
+          ["غير المشغول داخل الإتاحة", complete ? totals.freeHours : "—"],
+          ["خارج الإتاحة", totals.outsideHours],
           ["نسبة الاستغلال", complete ? `${totals.utilization}%` : "—"],
           ["عدد المحاضرات", rows.reduce((sum, row) => sum + row.session_count, 0)],
         ];
@@ -32,9 +34,9 @@ export function RoomsCategorySummary({ summary }: { summary: RoomsReportSummaryR
                 </div>
               ))}
             </dl>
-            {complete && totals.overbookedHours > 0 && (
+            {totals.outsideHours > 0 && (
               <p className="mt-3 text-xs text-destructive">
-                تجاوز الإتاحة: {totals.overbookedHours} ساعة
+                {totals.outsideHours} ساعة مجدولة خارج الإتاحة؛ لا تدخل في نسبة الاستغلال.
               </p>
             )}
           </div>

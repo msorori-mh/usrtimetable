@@ -8,8 +8,13 @@ const row = (id: string, used: number, available: number, category = "hall") =>
     room_name: id,
     capacity: 100,
     room_category: category,
+    scheduled_hours: used,
     used_hours: used,
     available_hours: available,
+    free_hours: Math.max(0, available - used),
+    outside_hours: 0,
+    overlap_hours: 0,
+    blocked_hours: 0,
     utilization_percent: available > 0 ? Math.round((used / available) * 100) : 0,
     utilization: available > 0 ? `${Math.round((used / available) * 100)}%` : "—",
   }) as RoomsReportSummaryRow;
@@ -52,4 +57,17 @@ test("missing student counts never imply low seat use", () => {
 });
 test("complete data uses weighted time utilization rather than averaging room percentages", () => {
   assert.equal(roomsExecutiveSummary([row("one", 10, 10), row("two", 10, 30)], []).utilization, 50);
+});
+test("executive wording separates scheduled, inside-availability and outside hours", () => {
+  const grand = {
+    ...row("القاعة الكبرى", 12, 18),
+    scheduled_hours: 28,
+    outside_hours: 16,
+  };
+  const result = roomsExecutiveSummary([grand], []);
+  assert.match(result.overview, /28 ساعة مجدولة/);
+  assert.match(result.overview, /12 من أصل 18 ساعة/);
+  assert.match(result.overview, /6 ساعة غير مشغولة/);
+  assert.match(result.overview, /16 ساعة مجدولة خارج الإتاحة/);
+  assert.match(result.opportunities[0], /خارج الإتاحة المعتمدة/);
 });
