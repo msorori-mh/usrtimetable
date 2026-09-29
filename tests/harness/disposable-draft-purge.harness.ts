@@ -9,6 +9,10 @@ function assert(value: unknown, message: string): asserts value {
 const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const migrationPath = "supabase/migrations/20260730120000_source_only_disposable_draft_purge.sql";
 const migration = readFileSync(join(root, migrationPath), "utf8");
+const dependencyPatch = readFileSync(
+  join(root, "supabase/migrations/20260928213000_fix_disposable_clone_purge_dependencies.sql"),
+  "utf8",
+);
 const cloneMigration = readFileSync(
   join(root, "supabase/migrations/20260918180000_atomic_current_assignment_clone.sql"),
   "utf8",
@@ -116,6 +120,52 @@ assert(
   cloneMigration.includes("p_disposable_test boolean DEFAULT false") &&
     lifecycle.includes("p_disposable_test: params.disposableTest === true"),
   "default clones are not auto-marked disposable",
+);
+
+for (const guard of [
+  "PURGE_VERSION_HAS_CLONES",
+  "PURGE_VERSION_HAS_SOURCE_REVISIONS",
+  "PURGE_VERSION_HAS_CUTOVER_PROFILE",
+  "PURGE_EXTERNAL_SESSION_REFERENCE",
+  "PURGE_EXTERNAL_SOURCE_ROW_REFERENCE",
+]) {
+  assert(dependencyPatch.includes(guard), `dependency purge guard missing: ${guard}`);
+}
+
+for (const table of [
+  "assignment_version_private.scope",
+  "schedule_version_delivery_private.group_partition_facts",
+  "schedule_version_delivery_private.partner_partition_facts",
+  "schedule_version_delivery_private.instructor_hour_waivers",
+  "schedule_version_delivery_private.group_facts",
+  "schedule_version_delivery_private.partition_facts",
+  "schedule_version_delivery_private.partner_group_facts",
+  "schedule_version_delivery_private.cohort_facts",
+  "schedule_version_delivery_private.scope",
+  "schedule_version_delivery_private.clone_provenance",
+  "education_source_revision_private.revisions",
+  "jawf_term_source_private.sessions",
+]) {
+  assert(
+    dependencyPatch.includes(`DELETE FROM ${table}`),
+    `dependency delete missing for ${table}`,
+  );
+}
+
+assert(
+  dependencyPatch.indexOf("DELETE FROM schedule_version_delivery_private.group_partition_facts") <
+    dependencyPatch.indexOf("DELETE FROM schedule_version_delivery_private.group_facts"),
+  "group-partition facts must be deleted before group facts",
+);
+assert(
+  dependencyPatch.indexOf("DELETE FROM schedule_version_delivery_private.cohort_facts") <
+    dependencyPatch.indexOf("DELETE FROM schedule_version_delivery_private.scope"),
+  "cohort facts must be deleted before delivery scope",
+);
+assert(
+  dependencyPatch.indexOf("DELETE FROM schedule_version_delivery_private.scope") <
+    dependencyPatch.indexOf("DELETE FROM public.schedule_versions"),
+  "delivery scope must be deleted before the schedule version",
 );
 
 console.log("disposable-draft-purge.harness.ts: PASS");
