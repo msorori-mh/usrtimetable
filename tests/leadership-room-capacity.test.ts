@@ -184,6 +184,54 @@ test("own availability wins over stale fallback columns and stays inside college
   ];
   assert.equal(analyze(s).rooms[0].availableHours, 6);
 });
+test("three-day grand-hall availability stays 18 hours and outside use remains visible", () => {
+  const s = source();
+  s.rooms = [
+    {
+      ...s.rooms[0],
+      id: "grand",
+      name: "القاعة الكبرى",
+      code: "R-GRAND",
+      available_days: [6, 0, 4],
+      available_start_time: "08:00",
+      available_end_time: "14:00",
+    },
+  ];
+  s.availability = [6, 0, 4].map((day, index) => ({
+    id: `grand-${index}`,
+    room_id: "grand",
+    day_of_week: day,
+    start_time: "08:00",
+    end_time: "14:00",
+  }));
+  s.sessions = [
+    {
+      id: "inside",
+      room_id: "grand",
+      schedule_version_id: "v-a",
+      day_of_week: 6,
+      start_time: "08:00",
+      end_time: "10:00",
+    },
+    {
+      id: "outside",
+      room_id: "grand",
+      schedule_version_id: "v-a",
+      day_of_week: 2,
+      start_time: "10:00",
+      end_time: "12:00",
+    },
+  ];
+  const r = analyze(s, college("a", { room_count: 1, sessions_count: 2 }));
+  assert.equal(r.availableHours, 18);
+  assert.equal(r.requiredHours, 2);
+  assert.equal(r.balanceHours, 16);
+  assert.equal(r.rooms[0].availableHours, 18);
+  assert.equal(r.rooms[0].occupiedHours, 2);
+  assert.equal(r.rooms[0].idleHours, 16);
+  assert.match(r.rooms[0].issue!, /خارج الإتاحة 2 س/);
+  assert.ok(r.issues.some((issue) => /خارج الإتاحة المعتمدة/.test(issue)));
+});
 test("room-specific days and time limits apply without availability rows", () => {
   const s = source();
   Object.assign(s.rooms[0], {
