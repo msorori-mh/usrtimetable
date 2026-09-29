@@ -156,15 +156,15 @@ export function LeadershipDecisionSummary({
     },
     {
       tab: "teaching" as const,
-      label: "اعتماد التكليف التدريسي",
+      label: "اعتماد الإسناد التدريسي",
       value: assignmentSnapshot.consistent
         ? hours(assignmentSnapshot.awaitingHours)
         : "يحتاج مراجعة",
-      detail: "ساعات مجموعات بانتظار اعتماد التكليف إداريًا",
+      detail: "ساعات مجموعات بانتظار اعتماد الإسناد التدريسي إداريًا",
       note: assignmentSnapshot.consistent
         ? `${hours(assignmentSnapshot.approvedHours)} معتمدة + ${hours(assignmentSnapshot.awaitingHours)} بانتظار الاعتماد = ${hours(assignmentSnapshot.requiredHours)} مطلوبة · المصدر: ${assignmentSnapshot.sourceColleges} من ${assignmentSnapshot.totalColleges} كليات${assignmentScopeNote}`
         : `تعذر مطابقة المطلوب مع المعتمد وقيد الإجراء · المصدر: ${assignmentSnapshot.sourceColleges} من ${assignmentSnapshot.totalColleges} كليات${assignmentScopeNote}`,
-      action: "مراجعة التكليف التدريسي",
+      action: "مراجعة الإسناد التدريسي",
       tone: "teaching",
       icon: BookOpenCheck,
     },
@@ -336,8 +336,7 @@ export function LeadershipDecisionSummary({
       >
         <div className="leadership-section-heading">
           <h2 id="leadership-comparison-title">
-            {scope === "college" ? "الكلية في نظرة واحدة" : "الكليات في نظرة واحدة"}{" "}
-            <span className="leadership-count">· {colleges.length}</span>
+            {scope === "college" ? "لوحة الكلية" : "لوحة الكليات"}
           </h2>
           <span className="leadership-section-note">
             {scope === "college"
@@ -355,7 +354,7 @@ export function LeadershipDecisionSummary({
                 {[
                   "الكلية وأهم ملاحظة",
                   "النشر",
-                  "أسماء المحاضرين والتكليف",
+                  "أسماء المحاضرين والإسناد",
                   "الأنصبة",
                   "ساعات القاعات",
                   "فرصة إعادة الاستخدام",
@@ -400,7 +399,7 @@ export function LeadershipDecisionSummary({
                     : `${namedPercent}% (${room?.namedPublishedSessions}/${room?.publishedSessions})`;
                 const displayedCoverage = educationSourceException
                   ? `اعتماد جدول هذا الفصل: ${academicApprovalPercent === null ? "قيد التحقق" : `${academicApprovalPercent}% (${college.teaching_hours}/${college.required_hours} ساعة)`}`
-                  : `التكليف المعتمد: ${percent === null ? "غير محسوب" : `${percent}%`}`;
+                  : `الإسناد المعتمد: ${percent === null ? "غير محسوب" : `${percent}%`}`;
                 return (
                   <tr key={college.college_id} className="leadership-college-row">
                     <th scope="row" className="leadership-college-name">
@@ -428,7 +427,7 @@ export function LeadershipDecisionSummary({
                       </span>
                     </td>
                     <td>
-                      <span className="leadership-mobile-label">أسماء المحاضرين والتكليف</span>
+                      <span className="leadership-mobile-label">أسماء المحاضرين والإسناد</span>
                       <strong>{displayedCoverage}</strong>
                       {displayedPercent !== null && (
                         <span className="leadership-coverage-track" aria-hidden="true">
@@ -452,7 +451,7 @@ export function LeadershipDecisionSummary({
                       <span className="leadership-cell-note">
                         {educationSourceException
                           ? "ساعات تحتاج توثيق التكليف الوظيفي: "
-                          : "بانتظار اعتماد التكليف: "}
+                          : "بانتظار اعتماد الإسناد التدريسي: "}
                         {hours(college.uncovered_hours)}
                       </span>
                     </td>
