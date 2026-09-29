@@ -76,6 +76,46 @@ test("room availability rows win over the college working window", () => {
   assert.equal(roomWeeklyAvailableHours({ roomId: "r2", availability, settings }), 30);
 });
 
+test("printable room reports show the grand hall as 18 hours, not 36", () => {
+  const availability = [6, 0, 4].map((day) => ({
+    room_id: "grand",
+    day_of_week: day,
+    start_time: "08:00",
+    end_time: "14:00",
+  }));
+  const summary = buildRoomsReportSummary({
+    rooms: [
+      {
+        id: "grand",
+        code: "R-GRAND",
+        name: "القاعة الكبرى",
+        capacity: 192,
+        room_type_id: "hall",
+      },
+    ],
+    roomTypes: [{ id: "hall", code: "lecture_hall", name_ar: "قاعة محاضرات" }],
+    sessions: [
+      session({
+        id: "grand-use",
+        room_id: "grand",
+        day_of_week: 6,
+        start_time: "08:00",
+        end_time: "10:00",
+      }),
+    ],
+    availability,
+    settings: {
+      working_days: [6, 0, 1, 2, 3, 4],
+      day_start_time: "08:00",
+      day_end_time: "14:00",
+    },
+  });
+
+  assert.equal(summary[0].available_hours, 18);
+  assert.equal(summary[0].used_hours, 2);
+  assert.equal(summary[0].free_hours, 16);
+});
+
 test("rooms report summarises every active room and details used rooms", () => {
   const sessions = [
     session({
