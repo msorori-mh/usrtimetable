@@ -114,8 +114,16 @@ export function UniversitySummary({
     { label: "قسم أكاديمي", value: total.departments, icon: BookOpen },
     { label: "برنامج نشط", value: total.programs, icon: GraduationCap },
     { label: "عضو هيئة تدريس", value: total.faculty, icon: Users },
-    { label: "ساعة تدريس مطلوبة أسبوعيًا", value: total.requiredHours, icon: Clock3 },
-    { label: "محاضرة في الجداول المعروضة", value: total.sessions, icon: BookOpen },
+    {
+      label: `ساعة تدريس مطلوبة أسبوعيًا · ${total.requiredScope} من ${total.colleges} كليات`,
+      value: total.requiredHours,
+      icon: Clock3,
+    },
+    {
+      label: `محاضرة في الجداول المعروضة · ${total.scheduledScope} من ${total.colleges} كليات`,
+      value: total.sessions,
+      icon: BookOpen,
+    },
   ];
   return (
     <div className="uo-summary" data-testid="university-overview-summary">
@@ -127,9 +135,18 @@ export function UniversitySummary({
         </div>
         <div className="uo-hero-stat">
           <strong>{num(total.scheduledHours)}</strong>
-          <span>ساعة مجدولة أسبوعيًا</span>
+          <span>
+            ساعة مجدولة أسبوعيًا · {total.scheduledScope} من {total.colleges} كليات
+          </span>
         </div>
       </section>
+      {(total.requiredScope < total.colleges || total.scheduledScope < total.colleges) && (
+        <p className="uo-fine" role="note">
+          إجمالي جزئي للبيانات المتاحة: احتياج التدريس من {total.requiredScope} من {total.colleges}{" "}
+          كليات، والجداول من {total.scheduledScope} من {total.colleges} كليات. الكليات ذات البيانات
+          غير المكتملة باقية في المقارنة أدناه.
+        </p>
+      )}
       <div className="uo-stat-grid">
         {metrics.map(({ label, value, icon: Icon }) => (
           <div className="uo-stat" key={label}>
@@ -282,9 +299,16 @@ export function CollegeOverviewCard({
         </div>
       </div>
       <div className="uo-resources">
-        <ResourceCard title="قاعات المحاضرات" data={c.halls} kind="hall" />
-        <ResourceCard title="المعامل والورش" data={c.labs} kind="lab" />
+        <ResourceCard title="قاعات المحاضرات التابعة للكلية" data={c.halls} kind="hall" />
+        <ResourceCard title="المعامل والورش التابعة للكلية" data={c.labs} kind="lab" />
       </div>
+      {(c.hostedElsewhereHours ?? 0) > 0 && (
+        <p className="uo-fine">
+          {hours(c.hostedElsewhereHours)} من تدريس هذه الكلية تُنفذ في موارد تابعة لكليات أخرى.
+          أعداد الموارد أعلاه تخص المسجل باسم الكلية؛ إشغال الموارد المستضافة يُحتسب لدى الكلية
+          المالكة لتجنب التكرار.
+        </p>
+      )}
       <div className="uo-college-action report-no-print">
         <Button
           variant="outline"

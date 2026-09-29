@@ -407,3 +407,41 @@ test("report is linked, role-gated, scoped from the overview RPC and print inclu
   ])
     assert(readFileSync(path, "utf8").includes('to="/reports/university-overview"'));
 });
+
+test("missing college data keeps a labeled measured subtotal without turning unknown rooms into free capacity", () => {
+  const [measured] = buildUniversityOverview(fixture(), "published");
+  const missing = {
+    ...measured,
+    id: "missing",
+    name: "كلية دون جدول",
+    requiredHours: null,
+    scheduledHours: null,
+    sessionCount: null,
+    rooms: [],
+    halls: { ...measured.halls, count: 0 },
+    labs: { ...measured.labs, count: 0 },
+  };
+  const total = summarizeUniversityOverview([measured, missing]);
+  assert.equal(total.requiredHours, measured.requiredHours);
+  assert.equal(total.scheduledHours, measured.scheduledHours);
+  assert.equal(total.requiredScope, 1);
+  assert.equal(total.scheduledScope, 1);
+  assert.equal(total.colleges, 2);
+  assert.equal(total.halls.occupiedHours, measured.halls.occupiedHours);
+  const output = renderToStaticMarkup(
+    createElement(UniversitySummary, { rows: [measured, missing], onSelect: () => {} }),
+  );
+  assert.match(output, /إجمالي جزئي للبيانات المتاحة/);
+  assert.equal(summarizeUniversityOverview([missing]).scheduledHours, null);
+  const missingWithRooms = {
+    ...missing,
+    halls: measured.halls,
+    rooms: measured.rooms.map((r) => ({
+      ...r,
+      sessions: null,
+      occupiedHours: null,
+      freeHours: null,
+    })),
+  };
+  assert.equal(summarizeUniversityOverview([measured, missingWithRooms]).halls.freeHours, null);
+});

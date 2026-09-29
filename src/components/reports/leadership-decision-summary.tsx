@@ -62,6 +62,8 @@ const roomReuseOpportunity = (room: LeadershipCapacityCollege | undefined) => {
     room.surplusHours === undefined
   )
     return "غير محسوب";
+  if (room.rooms.length === 0 && room.availableHours === 0)
+    return "لا توجد قاعات مسجلة باسم الكلية؛ يُراجع استخدام قاعات الكليات الأخرى";
   if (room.surplusHours <= 0) return "لا توجد سعة زمنية فائضة";
   return `${hours(room.surplusHours)} غير مستخدمة أسبوعيًا · تعادل حسابيًا: ${roomEquivalentText(room.surplusHours)}`;
 };
