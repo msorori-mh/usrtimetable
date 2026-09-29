@@ -1,3 +1,9 @@
+import {
+  physicalRoomGroups,
+  physicalRoomKey,
+  physicalSeatCount,
+  physicalRoomSourcesComplete,
+} from "./physical-rooms";
 import type { LeadershipCollege } from "./leadership";
 import type { LeadershipDetailRow } from "./leadership-metrics";
 import type { CapacitySources } from "./leadership-room-capacity";
@@ -227,15 +233,19 @@ export function resourceSummary(rooms: OverviewRoom[], hasSource: boolean): Reso
   const occupiedHours = hasSource ? completeSum(rooms.map((r) => r.occupiedHours)) : null;
   const usageKnown = hasSource && rooms.every((r) => r.sessions !== null);
   return {
-    count: rooms.length,
-    seats: completeSum(rooms.map((r) => r.seats)),
+    count: physicalRoomGroups(rooms).length,
+    seats: physicalSeatCount(rooms),
     capacityHours,
     occupiedHours,
     freeHours: hasSource ? completeSum(rooms.map((r) => r.freeHours)) : null,
     utilization:
       capacityHours && occupiedHours != null ? round((100 * occupiedHours) / capacityHours) : null,
-    usedCount: usageKnown ? rooms.filter((r) => r.sessions! > 0).length : null,
-    unusedCount: usageKnown ? rooms.filter((r) => r.sessions === 0).length : null,
+    usedCount: usageKnown
+      ? physicalRoomGroups(rooms).filter((group) => group.some((r) => r.sessions! > 0)).length
+      : null,
+    unusedCount: usageKnown
+      ? physicalRoomGroups(rooms).filter((group) => group.every((r) => r.sessions === 0)).length
+      : null,
   };
 }
 
@@ -383,6 +393,9 @@ export function buildUniversityOverview(
         .map((room): OverviewRoom => {
           const type = input.roomTypes.find((t) => t.id === room.room_type_id);
           const assigned = selectedSessions.filter((s) => s.room_id === room.id);
+          const physicalSessions = selectedSessions.filter(
+            (s) => s.room_id && physicalRoomKey(s.room_id) === physicalRoomKey(room.id),
+          );
           const result: OverviewRoom = {
             id: room.id,
             name: room.name ?? room.code ?? "مكان غير مسمى",
@@ -416,9 +429,24 @@ export function buildUniversityOverview(
             });
             result.capacityHours = metrics.available_hours;
             if (sourceComplete) {
-              result.occupiedHours = metrics.occupied_hours;
-              result.freeHours = metrics.idle_hours;
-              result.utilization = metrics.utilization_pct;
+              const physicalMetrics = roomUtilizationMetrics({
+                settings: settings[0],
+                room,
+                availability: input.availability.filter((a) => a.room_id === room.id),
+                sessions: physicalSessions,
+              });
+              if (
+                !physicalRoomSourcesComplete(
+                  room.id,
+                  activeRooms.filter((r) => sources.get(r.college_id)?.version).map((r) => r.id),
+                )
+              ) {
+                result.issue = "إشغال القاعة المشتركة يحتاج جداول جميع الكليات المشاركة";
+                return result;
+              }
+              result.occupiedHours = physicalMetrics.occupied_hours;
+              result.freeHours = physicalMetrics.idle_hours;
+              result.utilization = physicalMetrics.utilization_pct;
               result.outsideHours = metrics.outside_hours;
               result.overlapHours = metrics.overlap_hours;
               if (metrics.outside_hours || metrics.overlap_hours)

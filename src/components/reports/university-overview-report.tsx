@@ -161,6 +161,8 @@ export function UniversitySummary({
         <ResourceCard title="المعامل والورش" data={total.labs} kind="lab" />
       </div>
       <p className="uo-fine uo-resource-definition">
+        قاعة القردعي مشتركة وتُحسب مرة واحدة في إجمالي الجامعة، وإتاحتها موزعة بين الكليات. عند
+        اختلاف سعة القاعة المشتركة بين سجلات الكليات يظهر إجمالي المقاعد غير محسوب حتى توحيدها.
         المقاعد تعبّر عن سعة الأماكن في اللحظة نفسها؛ الساعات تعبّر عن إتاحتها خلال الأسبوع. الوقت
         غير المشغول قد يكون موزعًا على أيام وفترات مختلفة.
       </p>
@@ -299,7 +301,7 @@ export function CollegeOverviewCard({
         </div>
       </div>
       <div className="uo-resources">
-        <ResourceCard title="قاعات المحاضرات التابعة للكلية" data={c.halls} kind="hall" />
+        <ResourceCard title="قاعات المحاضرات المخصصة للكلية" data={c.halls} kind="hall" />
         <ResourceCard title="المعامل والورش التابعة للكلية" data={c.labs} kind="lab" />
       </div>
       {(c.hostedElsewhereHours ?? 0) > 0 && (
