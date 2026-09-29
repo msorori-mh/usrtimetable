@@ -182,6 +182,8 @@ test("صفحة الإدارة العليا تفتح كل مؤشر رئيسي إ�
   assert.ok(page.includes("<LeadershipMetricDrilldown"), "نافذة التفاصيل غير مركبة");
   assert.ok(page.includes("assignmentCoveragePercent("), "التغطية لا تستخدم التعريف المركزي");
   assert.ok(page.includes('openMetric("faculty_count", row)'), "صف الكلية لا يفتح تفاصيله");
+  assert.ok(page.includes("محاضرات الكلية"), "مسمى تفاصيل محاضرات الكلية غير ظاهر");
+  assert.ok(!page.includes("جلسات الكلية"), "المسمى السابق ما زال ظاهرًا");
   assert.ok(!page.includes("فرص التحسين"), "لا توصيات ذكية في هذه المرحلة");
 });
 

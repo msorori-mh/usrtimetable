@@ -863,7 +863,7 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
                             size="sm"
                             onClick={() => openMetric("sessions_count", row)}
                           >
-                            جلسات الكلية
+                            محاضرات الكلية
                           </Button>
                         </div>
                       ))}
