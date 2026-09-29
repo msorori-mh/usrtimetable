@@ -96,9 +96,16 @@ test("printable room reports show the grand hall as 18 hours, not 36", () => {
     roomTypes: [{ id: "hall", code: "lecture_hall", name_ar: "قاعة محاضرات" }],
     sessions: [
       session({
-        id: "grand-use",
+        id: "grand-inside",
         room_id: "grand",
         day_of_week: 6,
+        start_time: "08:00",
+        end_time: "10:00",
+      }),
+      session({
+        id: "grand-outside",
+        room_id: "grand",
+        day_of_week: 1,
         start_time: "08:00",
         end_time: "10:00",
       }),
@@ -112,8 +119,46 @@ test("printable room reports show the grand hall as 18 hours, not 36", () => {
   });
 
   assert.equal(summary[0].available_hours, 18);
+  assert.equal(summary[0].scheduled_hours, 4);
   assert.equal(summary[0].used_hours, 2);
   assert.equal(summary[0].free_hours, 16);
+  assert.equal(summary[0].outside_hours, 2);
+});
+
+test("room closures reduce approved capacity and closed-time sessions stay outside availability", () => {
+  const summary = buildRoomsReportSummary({
+    rooms: [{ id: "r1", code: "A1", name: "قاعة 1" }],
+    roomTypes: [],
+    sessions: [
+      session({
+        id: "crosses-closure",
+        room_id: "r1",
+        day_of_week: 0,
+        start_time: "08:00",
+        end_time: "12:00",
+      }),
+    ],
+    availability: [{ room_id: "r1", day_of_week: 0, start_time: "08:00", end_time: "14:00" }],
+    unavailability: [
+      {
+        room_id: "r1",
+        day_of_week: 0,
+        start_time: "10:00",
+        end_time: "12:00",
+        start_date: null,
+        end_date: null,
+      },
+    ],
+    settings: { working_days: [0], day_start_time: "08:00", day_end_time: "14:00" },
+  });
+
+  assert.equal(summary[0].scheduled_hours, 4);
+  assert.equal(summary[0].available_hours, 4);
+  assert.equal(summary[0].used_hours, 2);
+  assert.equal(summary[0].free_hours, 2);
+  assert.equal(summary[0].outside_hours, 2);
+  assert.equal(summary[0].blocked_hours, 2);
+  assert.equal(summary[0].utilization, "50%");
 });
 
 test("rooms report summarises every active room and details used rooms", () => {
@@ -189,10 +234,13 @@ test("rooms analytics computes bands, rankings, category averages and capacity w
       room_type: "قاعة",
       room_category: "hall" as const,
       capacity: 100,
+      scheduled_hours: 27,
       used_hours: 27,
       available_hours: 30,
       free_hours: 3,
-      overbooked_hours: 0,
+      outside_hours: 0,
+      overlap_hours: 0,
+      blocked_hours: 0,
       utilization_percent: 90,
       utilization: "90%",
       session_count: 3,
@@ -212,10 +260,13 @@ test("rooms analytics computes bands, rankings, category averages and capacity w
       room_type: "معمل",
       room_category: "lab" as const,
       capacity: 20,
+      scheduled_hours: 24,
       used_hours: 24,
       available_hours: 30,
       free_hours: 6,
-      overbooked_hours: 0,
+      outside_hours: 0,
+      overlap_hours: 0,
+      blocked_hours: 0,
       utilization_percent: 80,
       utilization: "80%",
       session_count: 4,
@@ -235,10 +286,13 @@ test("rooms analytics computes bands, rankings, category averages and capacity w
       room_type: "قاعة",
       room_category: "hall" as const,
       capacity: 30,
+      scheduled_hours: 15,
       used_hours: 15,
       available_hours: 30,
       free_hours: 15,
-      overbooked_hours: 0,
+      outside_hours: 0,
+      overlap_hours: 0,
+      blocked_hours: 0,
       utilization_percent: 50,
       utilization: "50%",
       session_count: 2,
@@ -280,10 +334,13 @@ test("heatmap aggregates occupied rooms against authoritative room availability"
     room_type: "قاعة",
     room_category: "hall" as const,
     capacity: 20,
+    scheduled_hours: 2,
     used_hours: 2,
     available_hours: 8,
     free_hours: 6,
-    overbooked_hours: 0,
+    outside_hours: 0,
+    overlap_hours: 0,
+    blocked_hours: 0,
     utilization_percent: 25,
     utilization: "25%",
     session_count: 1,
@@ -318,6 +375,55 @@ test("heatmap aggregates occupied rooms against authoritative room availability"
     availableRooms: 2,
     utilizationPercent: 100,
   });
+});
+
+test("heatmap excludes closed windows and outside-availability sessions from utilization", () => {
+  const rooms = [{ id: "r1", available_days: [0] }];
+  const availability = [{ room_id: "r1", day_of_week: 0, start_time: "08:00", end_time: "14:00" }];
+  const unavailability = [
+    {
+      room_id: "r1",
+      day_of_week: 0,
+      start_time: "10:00",
+      end_time: "12:00",
+      start_date: null,
+      end_date: null,
+    },
+  ];
+  const sessions = [
+    session({ id: "spans-closure", room_id: "r1", start_time: "08:00", end_time: "14:00" }),
+  ];
+  const settings = { working_days: [0], day_start_time: "08:00", day_end_time: "14:00" };
+  const summary = buildRoomsReportSummary({
+    rooms,
+    roomTypes: [],
+    sessions,
+    availability,
+    unavailability,
+    settings,
+  });
+  const cells = buildRoomsHeatmap({
+    summary,
+    rooms,
+    sessions,
+    availability,
+    unavailability,
+    settings,
+  });
+
+  assert.deepEqual(
+    cells.map(({ slot, occupiedRooms, availableRooms, utilizationPercent }) => ({
+      slot,
+      occupiedRooms,
+      availableRooms,
+      utilizationPercent,
+    })),
+    [
+      { slot: "08:00–10:00", occupiedRooms: 1, availableRooms: 1, utilizationPercent: 100 },
+      { slot: "10:00–12:00", occupiedRooms: 0, availableRooms: 0, utilizationPercent: 0 },
+      { slot: "12:00–14:00", occupiedRooms: 1, availableRooms: 1, utilizationPercent: 100 },
+    ],
+  );
 });
 
 test("heatmap counts overlapping durations and empty open windows with seconds", () => {
@@ -446,5 +552,9 @@ test("rooms report exposes analytical screen and printable summary structures", 
   assert.match(dashboard, /rooms-report-charts/);
   assert.match(dashboard, /rooms-heatmap/);
   assert.match(dashboard, /استغلال الوقت منفصل عن كفاءة استغلال السعة/);
+  assert.match(route, /المجدول في نسخة الكلية/);
+  assert.match(route, /المستخدم داخل الإتاحة/);
+  assert.match(route, /لوحة رئيس الجامعة[\s\S]*إشغال الموارد المستضافة/);
+  assert.match(dashboard, /الساعات خارج الإتاحة لا تدخل النسبة/);
   assert.match(dashboard, /overflow-x-auto/);
 });

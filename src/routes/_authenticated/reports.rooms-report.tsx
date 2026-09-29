@@ -49,7 +49,7 @@ import {
 const EMPTY_SESSIONS: PrintSessionLike[] = [];
 
 const DESCRIPTION =
-  "ملخص كل القاعات والمعامل (النوع، السعة، الساعات المستخدمة والمتاحة، نسبة الاستغلال، عدد الجلسات) ثم جدول تفصيلي لكل قاعة — قراءة فقط وقابل للطباعة/PDF.";
+  "ملخص القاعات والمعامل يفصل ساعات الجدول عن الإشغال داخل الإتاحة المعتمدة والساعات الواقعة خارجها، ثم يعرض تفاصيل كل مورد — قراءة فقط وقابل للطباعة/PDF.";
 
 export const Route = createFileRoute("/_authenticated/reports/rooms-report")({
   head: () => ({
@@ -126,6 +126,7 @@ function Page() {
             roomTypes: inventory.data.roomTypes,
             sessions,
             availability: inventory.data.availability,
+            unavailability: inventory.data.unavailability,
             settings: inventory.data.settings,
           })
         : [],
@@ -136,8 +137,10 @@ function Page() {
     () =>
       buildRoomsReportAnalytics({
         summary,
+        rooms: inventory.data?.rooms ?? [],
         sessions,
         availability: inventory.data?.availability ?? [],
+        unavailability: inventory.data?.unavailability ?? [],
         settings: inventory.data?.settings,
       }),
     [summary, sessions, inventory.data],
@@ -173,20 +176,33 @@ function Page() {
       notReadyMessage={ready ? undefined : "اختر نسخة الجدول لعرض تقرير القاعات."}
       emptyMessage="لا توجد قاعات مسجلة في هذه الكلية."
       kpis={[
-        { label: "إجمالي الموارد", value: totals.rooms },
-        { label: `الساعات المستخدمة${scopeSuffix}`, value: totals.usedHours, tone: "accent" },
         {
-          label: "الساعات المتاحة",
+          label: `المجدول في نسخة الكلية${scopeSuffix}`,
+          value: totals.scheduledHours,
+          hint: "يشمل ما يقع خارج إتاحة المورد",
+        },
+        {
+          label: `المستخدم داخل الإتاحة${scopeSuffix}`,
+          value: totals.usedHours,
+          hint:
+            executive.utilization === null
+              ? "النسبة غير قابلة للحساب"
+              : `استغلال الإتاحة ${executive.utilization}%`,
+          tone: "accent",
+        },
+        {
+          label: "الإتاحة المعتمدة",
           value: executive.complete ? totals.availableHours : "غير مكتملة",
         },
         {
-          label: "غير مستخدمة في النطاق",
+          label: "غير المشغول داخل الإتاحة",
           value: executive.complete ? totals.freeHours : "غير محسوبة",
         },
         {
-          label: "نسبة الاستغلال",
-          value: executive.utilization === null ? "غير قابل للحساب" : `${executive.utilization}%`,
-          tone: "accent",
+          label: "خارج الإتاحة",
+          value: totals.outsideHours,
+          hint: "مخالفة مستقلة لا ترفع نسبة الاستغلال",
+          tone: totals.outsideHours > 0 ? "danger" : "success",
         },
       ]}
       filters={<ReportFilters context={ctx} />}
@@ -208,7 +224,8 @@ function Page() {
               <h2 className="mb-2 text-base font-bold">الملخص التنفيذي للقاعات والمعامل</h2>
               <p className="mb-2 text-sm">{ctx.filterSummary}</p>
               <p className="mb-2 text-xs">
-                الساعات غير المستخدمة محسوبة ضمن الفلاتر؛ راجع إشغال النظامين قبل إعادة التسكين.
+                هذا التقرير يحسب نسخة جدول الكلية المحددة فقط. لوحة رئيس الجامعة تجمع أيضًا إشغال
+                الموارد المستضافة من نسخ الكليات الأخرى؛ لذلك قد يختلف إشغال المورد بين النطاقين.
               </p>
               <RoomsExecutiveSummary result={executive} />
               <RoomsCategorySummary summary={summary} />
@@ -224,14 +241,14 @@ function Page() {
                   {analytics.halls} / {analytics.labs}
                 </div>
                 <div className="border p-2">
-                  <b>المستخدم / الفارغ</b>
+                  <b>المجدول / داخل الإتاحة</b>
                   <br />
-                  {totals.usedHours} / {executive.complete ? totals.freeHours : "—"} ساعة
+                  {totals.scheduledHours} / {totals.usedHours} ساعة
                 </div>
                 <div className="border p-2">
-                  <b>الاستغلال العام</b>
+                  <b>المتاح / غير المشغول</b>
                   <br />
-                  {executive.utilization === null ? "—" : `${executive.utilization}%`}
+                  {executive.complete ? `${totals.availableHours} / ${totals.freeHours} ساعة` : "—"}
                 </div>
                 <div className="border p-2">
                   <b>متوسط القاعات</b>
@@ -262,10 +279,10 @@ function Page() {
                     : "—"}
                 </div>
               </div>
-              {executive.complete && totals.overbookedHours > 0 && (
+              {totals.outsideHours > 0 && (
                 <p className="mb-3 border border-destructive p-2 font-semibold text-destructive">
-                  تجاوز الإتاحة المرصود: {totals.overbookedHours} ساعة. لم تُخفَ هذه الزيادة من
-                  الحسابات.
+                  خارج الإتاحة المعتمدة: {totals.outsideHours} ساعة مجدولة. تظهر كمخالفة مستقلة ولا
+                  تدخل في بسط نسبة استغلال الوقت المتاح.
                 </p>
               )}
               <h3 className="mb-2 font-bold">ترتيب استغلال الوقت</h3>
@@ -321,8 +338,8 @@ function Page() {
                 <TableBody>
                   {summary.map((r) => {
                     const decision =
-                      r.overbooked_hours > 0
-                        ? `تجاوز الإتاحة ${r.overbooked_hours} س`
+                      r.outside_hours > 0
+                        ? `خارج الإتاحة ${r.outside_hours} س`
                         : r.utilization_percent >= 90
                           ? "ضغط مرتفع"
                           : r.utilization_percent >= 80
@@ -344,12 +361,14 @@ function Page() {
                         </TableCell>
                         <TableCell>
                           <div>
-                            مستخدم <b>{r.used_hours} س</b> / متاح{" "}
-                            <b>{r.available_hours > 0 ? `${r.available_hours} س` : "—"}</b>
+                            مجدول <b>{r.scheduled_hours} س</b> · داخل الإتاحة{" "}
+                            <b>{r.used_hours} س</b>
                           </div>
                           <div className="text-[8pt]">
-                            غير مستخدم {r.available_hours > 0 ? `${r.free_hours} س` : "—"} ·
-                            الاستغلال <b>{r.utilization}</b>
+                            متاح <b>{r.available_hours > 0 ? `${r.available_hours} س` : "—"}</b>
+                            {" · "}غير مشغول داخل الإتاحة{" "}
+                            {r.available_hours > 0 ? `${r.free_hours} س` : "—"} · الاستغلال{" "}
+                            <b>{r.utilization}</b>
                           </div>
                         </TableCell>
                         <TableCell>
@@ -428,8 +447,10 @@ function Page() {
               </p>
               <RoomsCategorySummary summary={summary} />
               <p className="mt-2 text-muted-foreground">
-                الإتاحة هي ساعات فتح القاعات الكاملة. عند اختيار نظام واحد، تمثل النسبة حصته من هذه
-                الإتاحة؛ الساعات غير المستخدمة ضمن الاختيار قد تشغلها محاضرات النظام الآخر.
+                «المجدول» هو مجموع ساعات جلسات نسخة الكلية، أما «المستخدم» فهو اتحاد الإشغال داخل
+                الإتاحة المعتمدة فقط. الساعات خارج الإتاحة تظهر مستقلة ولا ترفع نسبة الاستغلال. عند
+                اختيار نظام واحد، قد تشغل النظام الآخر بعض الوقت الظاهر غير مشغول. لوحة رئيس الجامعة
+                تشمل كذلك إشغال الموارد المستضافة من نسخ كليات أخرى.
               </p>
               {totals.sessionsWithoutRoom > 0 && (
                 <p className="mt-1 text-muted-foreground">

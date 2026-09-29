@@ -44,8 +44,8 @@ type SortKey = "utilization" | "free" | "capacity" | "sessions";
 
 const CHART_CONFIG = {
   utilization: { label: "استغلال الوقت", color: "var(--color-primary)" },
-  used: { label: "مستخدمة", color: "var(--color-primary)" },
-  free: { label: "غير مستخدمة في النطاق", color: "var(--color-muted-foreground)" },
+  used: { label: "مستخدم داخل الإتاحة", color: "var(--color-primary)" },
+  free: { label: "غير مشغول داخل الإتاحة", color: "var(--color-muted-foreground)" },
 } satisfies ChartConfig;
 
 const heatClass = (value: number) => {
@@ -59,7 +59,7 @@ const heatClass = (value: number) => {
 function MetricHint({ kind }: { kind: "time" | "capacity" }) {
   const text =
     kind === "time"
-      ? "الساعات المستخدمة ÷ الساعات المتاحة للمورد."
+      ? "اتحاد فترات الإشغال داخل الإتاحة المعتمدة ÷ ساعات الإتاحة المعتمدة. الساعات خارج الإتاحة لا تدخل النسبة."
       : "متوسط الطلاب الفعلي في الجلسة ÷ سعة المورد.";
   return (
     <TooltipProvider>
@@ -123,6 +123,8 @@ export function RoomsAnalyticsDashboard({
   const heatDays = [...new Set(analytics.heatmap.map((cell) => cell.day))];
   const totalUsed = summary.reduce((sum, row) => sum + row.used_hours, 0);
   const totalFree = summary.reduce((sum, row) => sum + row.free_hours, 0);
+  const totalScheduled = summary.reduce((sum, row) => sum + row.scheduled_hours, 0);
+  const totalOutside = summary.reduce((sum, row) => sum + row.outside_hours, 0);
 
   return (
     <div className="space-y-6" data-testid="rooms-analytics-dashboard">
@@ -184,7 +186,9 @@ export function RoomsAnalyticsDashboard({
             </PieChart>
           </ChartContainer>
           <p className="text-center text-xs text-muted-foreground">
-            {totalUsed} ساعة مستخدمة · {totalFree} ساعة غير مستخدمة ضمن الفلاتر
+            {totalUsed} ساعة مستخدمة داخل الإتاحة · {totalFree} ساعة غير مشغولة داخلها
+            <br />
+            المجدول في نسخة الكلية {totalScheduled} ساعة · خارج الإتاحة {totalOutside} ساعة
           </p>
         </Card>
       </section>
@@ -223,7 +227,7 @@ export function RoomsAnalyticsDashboard({
           </ChartContainer>
         </Card>
         <Card className="p-4">
-          <h3 className="mb-3 font-bold">الساعات المستخدمة وغير المستخدمة ضمن الفلاتر</h3>
+          <h3 className="mb-3 font-bold">الإشغال والوقت غير المشغول داخل الإتاحة</h3>
           <ChartContainer config={CHART_CONFIG} className="h-[420px] w-full aspect-auto">
             <BarChart data={summary} margin={{ right: 12, left: 12 }}>
               <CartesianGrid vertical={false} />
@@ -265,7 +269,8 @@ export function RoomsAnalyticsDashboard({
           </ChartContainer>
           <p className="mt-2 text-xs text-muted-foreground">
             القيم النصية: القاعات {analytics.hallAverageUtilization}% · المعامل{" "}
-            {analytics.labAverageUtilization}%.
+            {analytics.labAverageUtilization}%. المجدول وخارج الإتاحة يظهران منفصلين في الجدول
+            التفصيلي ولا يدخلان تركيب شريط الإتاحة.
           </p>
         </Card>
       </section>
@@ -335,7 +340,8 @@ export function RoomsAnalyticsDashboard({
             <div>
               <h2 className="font-bold">جدول التفاصيل</h2>
               <p className="text-xs text-muted-foreground">
-                استغلال الوقت منفصل عن كفاءة استغلال السعة.
+                استغلال الوقت منفصل عن كفاءة استغلال السعة. «المجدول» يشمل كل ساعات نسخة الكلية،
+                و«المستخدم» يقتصر على اتحاد الإشغال داخل الإتاحة المعتمدة.
               </p>
             </div>
             <CollapsibleTrigger asChild>
@@ -416,9 +422,9 @@ export function RoomsAnalyticsDashboard({
                       {ROOMS_REPORT_SUMMARY_HEADERS.map((header) => (
                         <TableCell key={header.key} className="whitespace-nowrap">
                           {String(row[header.key])}
-                          {header.key === "free_hours" && row.overbooked_hours > 0 && (
+                          {header.key === "outside_hours" && row.outside_hours > 0 && (
                             <Badge variant="destructive" className="me-2">
-                              تجاوز الإتاحة {row.overbooked_hours}س
+                              يحتاج مراجعة
                             </Badge>
                           )}
                         </TableCell>

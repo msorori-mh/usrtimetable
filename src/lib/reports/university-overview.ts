@@ -90,13 +90,14 @@ export interface OverviewRoom {
   type: string;
   seats: number | null;
   capacityHours: number | null;
+  scheduledHours: number | null;
   occupiedHours: number | null;
   freeHours: number | null;
+  outsideHours: number | null;
+  overlapHours: number | null;
   utilization: number | null;
   sessions: number | null;
   hostedHours: number | null;
-  outsideHours: number | null;
-  overlapHours: number | null;
   issue: string | null;
 }
 export interface ResourceOverview {
@@ -105,8 +106,11 @@ export interface ResourceOverview {
   knownSeats?: number;
   unresolvedSeatRooms?: number;
   capacityHours: number | null;
+  scheduledHours: number | null;
   occupiedHours: number | null;
   freeHours: number | null;
+  outsideHours: number | null;
+  overlapHours: number | null;
   utilization: number | null;
   usedCount: number | null;
   unusedCount: number | null;
@@ -233,6 +237,9 @@ export function selectOverviewSource(
 
 export function resourceSummary(rooms: OverviewRoom[], hasSource: boolean): ResourceOverview {
   const capacityHours = completeSum(rooms.map((r) => r.capacityHours));
+  const scheduledHours = hasSource
+    ? completeSum(rooms.map((r) => (r.scheduledHours === undefined ? 0 : r.scheduledHours)))
+    : null;
   const occupiedHours = hasSource ? completeSum(rooms.map((r) => r.occupiedHours)) : null;
   const usageKnown = hasSource && rooms.every((r) => r.sessions !== null);
   return {
@@ -241,8 +248,15 @@ export function resourceSummary(rooms: OverviewRoom[], hasSource: boolean): Reso
     knownSeats: physicalSeatSummary(rooms).known,
     unresolvedSeatRooms: physicalSeatSummary(rooms).unresolved,
     capacityHours,
+    scheduledHours,
     occupiedHours,
     freeHours: hasSource ? completeSum(rooms.map((r) => r.freeHours)) : null,
+    outsideHours: hasSource
+      ? completeSum(rooms.map((r) => (r.outsideHours === undefined ? 0 : r.outsideHours)))
+      : null,
+    overlapHours: hasSource
+      ? completeSum(rooms.map((r) => (r.overlapHours === undefined ? 0 : r.overlapHours)))
+      : null,
     utilization:
       capacityHours && occupiedHours != null ? round((100 * occupiedHours) / capacityHours) : null,
     usedCount: usageKnown
@@ -408,6 +422,9 @@ export function buildUniversityOverview(
             category: type?.code ? roomCategoryFromType(type.code) : null,
             seats: known(room.capacity) ? room.capacity : null,
             capacityHours: null,
+            scheduledHours: sourceComplete
+              ? round(assigned.reduce((n, s) => n + sessionHours(s), 0))
+              : null,
             occupiedHours: null,
             freeHours: null,
             utilization: null,

@@ -25,10 +25,12 @@ export async function fetchRoomOccupancy(collegeId: string, versionId: string) {
 }
 
 export async function fetchRoomsInventory(collegeId: string) {
-  const [rooms, roomTypes, availability, settings] = await Promise.all([
+  const [rooms, roomTypes, availability, unavailability, settings] = await Promise.all([
     supabase
       .from("rooms")
-      .select("id, code, name, capacity, room_type_id, room_type, is_active")
+      .select(
+        "id, code, name, capacity, room_type_id, room_type, is_active, available_days, available_start_time, available_end_time",
+      )
       .eq("college_id", collegeId)
       .order("code"),
     supabase.from("room_types").select("id, name_ar, name_en, code").eq("college_id", collegeId),
@@ -37,17 +39,23 @@ export async function fetchRoomsInventory(collegeId: string) {
       .select("room_id, day_of_week, start_time, end_time")
       .eq("college_id", collegeId),
     supabase
+      .from("room_unavailability")
+      .select("room_id, day_of_week, start_time, end_time, start_date, end_date")
+      .eq("college_id", collegeId),
+    supabase
       .from("scheduling_settings")
       .select("working_days, day_start_time, day_end_time")
       .eq("college_id", collegeId)
       .maybeSingle(),
   ]);
-  const error = rooms.error ?? roomTypes.error ?? availability.error ?? settings.error;
+  const error =
+    rooms.error ?? roomTypes.error ?? availability.error ?? unavailability.error ?? settings.error;
   if (error) throw error;
   return {
     rooms: rooms.data ?? [],
     roomTypes: roomTypes.data ?? [],
     availability: availability.data ?? [],
+    unavailability: unavailability.data ?? [],
     settings: settings.data,
   };
 }

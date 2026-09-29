@@ -7,9 +7,21 @@ export function roomsExecutiveSummary(rows: RoomsReportSummaryRow[], sessions: P
   const missingAvailability = rows.length - measurable.length;
   const complete = rows.length > 0 && missingAvailability === 0;
   const used = rows.reduce((sum, row) => sum + row.used_hours, 0);
+  const scheduled = rows.reduce((sum, row) => sum + (row.scheduled_hours ?? row.used_hours), 0);
+  const outside = rows.reduce((sum, row) => sum + (row.outside_hours ?? 0), 0);
+  const overlaps = rows.reduce((sum, row) => sum + (row.overlap_hours ?? 0), 0);
   const available = measurable.reduce((sum, row) => sum + row.available_hours, 0);
+  const free = measurable.reduce((sum, row) => sum + (row.free_hours ?? 0), 0);
   const utilization = complete ? Math.round((used / available) * 100) : null;
   const opportunities: string[] = [];
+  if (outside > 0)
+    opportunities.push(
+      `توجد ${outside} ساعة مجدولة خارج الإتاحة المعتمدة. راجع أيام وساعات فتح الموارد أو أعد تسكين هذه المحاضرات.`,
+    );
+  if (overlaps > 0)
+    opportunities.push(
+      `توجد ${overlaps} ساعة تداخل في حجوزات المورد نفسه. يلزم حل التعارض قبل اعتماد التقرير.`,
+    );
   for (const category of ["hall", "lab"] as const) {
     const ranked = measurable
       .filter((row) => row.room_category === category)
@@ -57,8 +69,8 @@ export function roomsExecutiveSummary(rows: RoomsReportSummaryRow[], sessions: P
   const overview = !rows.length
     ? "لا توجد موارد ضمن نطاق التقرير."
     : !complete
-      ? `تم تسجيل ${used} ساعة استخدام. لا يمكن الحكم على فعالية الاستخدام قبل استكمال أو مراجعة إتاحة ${missingAvailability} من أصل ${rows.length} موردًا.`
-      : `تستخدم المحاضرات ${used} من أصل ${available} ساعة إتاحة أسبوعية (${utilization}%). ${utilization! >= 90 ? "الضغط العام مرتفع؛ الأولوية لفحص توزيع الحمل وفترات الذروة." : "توجد مساحة لمراجعة توزيع المحاضرات والاستفادة من الأوقات الأقل إشغالًا."}`;
+      ? `تحتوي نسخة الكلية على ${scheduled} ساعة مجدولة، منها ${used} ساعة مثبتة داخل الإتاحة. لا يمكن الحكم على فعالية الاستخدام قبل استكمال أو مراجعة إتاحة ${missingAvailability} من أصل ${rows.length} موردًا.`
+      : `تحتوي نسخة الكلية على ${scheduled} ساعة مجدولة. داخل الإتاحة المعتمدة، شُغل ${used} من أصل ${available} ساعة (${utilization}%) وبقي ${free} ساعة غير مشغولة${outside > 0 ? `، مع ${outside} ساعة مجدولة خارج الإتاحة` : ""}. ${utilization! >= 90 ? "الضغط العام مرتفع؛ الأولوية لفحص توزيع الحمل وفترات الذروة." : "توجد مساحة لمراجعة توزيع المحاضرات والاستفادة من الأوقات الأقل إشغالًا."}`;
   return {
     complete,
     missingAvailability,
