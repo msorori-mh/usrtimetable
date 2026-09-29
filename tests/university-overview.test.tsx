@@ -214,6 +214,32 @@ test("halls and labs have separate seat stock, actual capacity, occupancy and fr
   });
 });
 
+test("the president overview uses the grand hall's three approved days as 18 hours", () => {
+  const x = fixture();
+  x.rooms[0].name = "القاعة الكبرى";
+  x.rooms[0].code = "R-GRAND";
+  x.rooms[0].available_days = [6, 0, 4];
+  x.settings[0] = {
+    college_id: "c1",
+    working_days: [6, 0, 1, 2, 3, 4],
+    day_start_time: "08:00",
+    day_end_time: "14:00",
+  };
+  x.availability = [6, 0, 4].map((day, index) => ({
+    id: `grand-${index}`,
+    room_id: "hall",
+    day_of_week: day,
+    start_time: "08:00",
+    end_time: "14:00",
+  }));
+
+  const [c] = buildUniversityOverview(x, "published");
+  assert.equal(c.halls.capacityHours, 18);
+  assert.equal(c.halls.occupiedHours, 3);
+  assert.equal(c.halls.freeHours, 15);
+  assert.equal(c.rooms.find((room) => room.name === "القاعة الكبرى")?.capacityHours, 18);
+});
+
 test("ITCS uses the newest complete working draft; incomplete and disposable copies never win", () => {
   const x = fixture();
   x.versions.push(
