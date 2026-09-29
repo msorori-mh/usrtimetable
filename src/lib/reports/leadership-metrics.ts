@@ -52,7 +52,7 @@ export function quotaOverload(
 }
 
 /**
- * نسبة التكليف المعتمد = ساعات المجموعات ذات التكليف الإداري المعتمد / إجمالي ساعات المجموعات المطلوبة.
+ * نسبة الإسناد المعتمد = ساعات المجموعات ذات الإسناد التدريسي المعتمد / إجمالي ساعات المجموعات المطلوبة.
  * ساعات النصاب لا تدخل المقام، ولا تُعرض نسبة إذا كان المقام أو كليات المصدر
  * غير مكتملة.
  */
@@ -185,7 +185,7 @@ export const LEADERSHIP_METRICS = {
   },
   covered_course_hours: {
     id: "covered_course_hours",
-    label: "ساعات المجموعات بتكليف تدريسي معتمد",
+    label: "ساعات المجموعات بإسناد تدريسي معتمد",
     definition:
       "ساعات المكونات التي يوجد لها إسناد معتمد؛ تُقاس على المقرر/المجموعة وليست ساعات نصاب.",
     source: "teaching",
@@ -194,9 +194,9 @@ export const LEADERSHIP_METRICS = {
   },
   uncovered_course_hours: {
     id: "uncovered_course_hours",
-    label: "ساعات مجموعات بانتظار اعتماد التكليف",
+    label: "ساعات مجموعات بانتظار اعتماد الإسناد التدريسي",
     definition:
-      "ساعات مكونات التدريس المطلوبة التي لم يُعتمد تكليفها إداريًا؛ قد تحمل محاضراتها المنشورة اسم محاضر، ولا تتداخل مع نقص الأنصبة.",
+      "ساعات مكونات التدريس المطلوبة التي لم يُعتمد إسنادها إداريًا؛ قد تحمل محاضراتها المنشورة اسم محاضر، ولا تتداخل مع نقص الأنصبة.",
     source: "teaching",
     totalKey: "uncovered_hours",
     unit: "ساعة",
@@ -291,9 +291,9 @@ export const LEADERSHIP_DETAIL_COLUMNS: Record<LeadershipMetricSource, Leadershi
     { key: "component_type", label: "المكوّن" },
     { key: "group_code", label: "المجموعة" },
     { key: "required_hours", label: "الساعات المطلوبة", numeric: true },
-    { key: "covered_hours", label: "بتكليف معتمد", numeric: true },
-    { key: "uncovered_hours", label: "بانتظار اعتماد التكليف", numeric: true },
-    { key: "assignment_status", label: "حالة التكليف" },
+    { key: "covered_hours", label: "بإسناد معتمد", numeric: true },
+    { key: "uncovered_hours", label: "بانتظار اعتماد الإسناد التدريسي", numeric: true },
+    { key: "assignment_status", label: "حالة الإسناد" },
     { key: "instructors", label: "المحاضرون" },
   ],
   schedules: [
@@ -310,7 +310,7 @@ export const LEADERSHIP_DETAIL_COLUMNS: Record<LeadershipMetricSource, Leadershi
 };
 
 export const LEADERSHIP_ASSIGNMENT_STATUS_LABELS: Record<string, string> = {
-  unassigned: "دون تكليف معتمد",
+  unassigned: "دون إسناد معتمد",
   under_allocated: "إسناد ناقص",
   over_allocated: "إسناد زائد",
   fully_allocated: "مسند بالكامل",

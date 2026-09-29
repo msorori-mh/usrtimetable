@@ -741,7 +741,7 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
                           selectedCollege.term_id,
                         )
                           ? "نسبة التكليف الوظيفي المسجل: "
-                          : "نسبة التكليف التدريسي المعتمد: "}
+                          : "نسبة الإسناد التدريسي المعتمد: "}
                         {universityCoverage === null ? "غير محسوب" : `${universityCoverage}%`}
                         {!sourceComplete && " · بيانات غير مكتملة"}
                       </p>

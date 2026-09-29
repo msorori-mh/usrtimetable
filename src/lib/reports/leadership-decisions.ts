@@ -46,7 +46,7 @@ export function leadershipPriorities(
             "teaching",
             educationSourceException
               ? `${college.uncovered_hours} ساعة من جدول الفصل المعتمد تحتاج توثيق التكليف الوظيفي`
-              : `${college.uncovered_hours} ساعة مجموعات بانتظار اعتماد التكليف`,
+              : `${college.uncovered_hours} ساعة مجموعات بانتظار اعتماد الإسناد التدريسي`,
             educationSourceException
               ? "اعتمد جدول هذا الفصل كما ورد من الأقسام؛ تبقى سجلات التكليف الوظيفي مستقلة عن اعتماد الجدول."
               : "تحتاج مجموعات التدريس إلى إسناد إداري معتمد.",
