@@ -283,10 +283,19 @@ export function buildLeadershipRoomCapacity(
       sessions.some((session) => session.schedule_version_id === college.version_id);
     if (!publicationComplete)
       issues.push("لا يُحتسب غير المستخدم قبل وجود نسخة منشورة تحتوي جلسات فعلية");
+    // A known overlap or a session outside the approved room window is an
+    // operational anomaly, not missing data. Keep it visible on the room row
+    // while retaining the calculable capacity/occupancy totals. Invalid or
+    // incomplete timings still fail closed because occupiedHours stays null.
+    const roomsWithOperationalIssues = rooms.filter(
+      (room) => known(room.occupiedHours) && room.issue !== null,
+    );
+    if (publicationComplete && roomsWithOperationalIssues.length)
+      issues.push(
+        `${roomsWithOperationalIssues.length} من قاعات المحاضرات لديها ساعات متداخلة أو خارج الإتاحة المعتمدة`,
+      );
     const occupancyComplete =
-      inventoryComplete &&
-      publicationComplete &&
-      rooms.every((room) => known(room.occupiedHours) && room.issue === null);
+      inventoryComplete && publicationComplete && rooms.every((room) => known(room.occupiedHours));
     if (publicationComplete && !occupancyComplete)
       issues.push("إشغال قاعات المحاضرات يتضمن توقيتًا غير صالح أو متداخلًا");
     const requiredHours = occupancyComplete
