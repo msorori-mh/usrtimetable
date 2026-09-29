@@ -22,13 +22,19 @@ export function physicalRoomGroups<T extends { id: string }>(rooms: T[]): T[][] 
 
 /** Conflicting seat inventories are unknown, never added or arbitrarily selected. */
 export function physicalSeatCount(rooms: { id: string; seats: number | null }[]) {
-  let total = 0;
+  const result = physicalSeatSummary(rooms);
+  return result.unresolved === 0 ? result.known : null;
+}
+
+export function physicalSeatSummary(rooms: { id: string; seats: number | null }[]) {
+  let known = 0,
+    unresolved = 0;
   for (const group of physicalRoomGroups(rooms)) {
     const values = new Set(group.map((room) => room.seats));
-    if (values.size !== 1 || group[0].seats === null) return null;
-    total += group[0].seats;
+    if (values.size !== 1 || group[0].seats === null) unresolved++;
+    else known += group[0].seats;
   }
-  return total;
+  return { known, unresolved };
 }
 
 export function physicalRoomSourcesComplete(id: string, readableRoomIds: string[]) {

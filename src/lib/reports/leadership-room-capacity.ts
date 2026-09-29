@@ -1,5 +1,9 @@
 import { physicalRoomGroups, physicalRoomKey, physicalRoomSourcesComplete } from "./physical-rooms";
-import { roomUtilizationMetrics, type ReportTime } from "./presentation-metrics";
+import {
+  roomUtilizationMetrics,
+  type ReportTime,
+  type ReportRoomClosure,
+} from "./presentation-metrics";
 import { roomCategoryFromType } from "@/lib/room-category";
 
 export const STANDARD_ROOM_DAY_HOURS = 6;
@@ -59,6 +63,7 @@ export interface CapacitySources {
   rooms: CapacityRoom[];
   settings: CapacitySettings[];
   availability: CapacityAvailability[];
+  unavailability?: ReportRoomClosure[];
   sessions: CapacitySession[];
   roomTypes: CapacityRoomType[];
 }
@@ -223,6 +228,7 @@ export function buildLeadershipRoomCapacity(
             settings,
             room,
             availability,
+            unavailability: (sources.unavailability ?? []).filter((r) => r.room_id === room.id),
             sessions: [],
           }).available_hours;
           if (!college.version_id) return result;
@@ -234,12 +240,14 @@ export function buildLeadershipRoomCapacity(
             settings,
             room,
             availability,
+            unavailability: (sources.unavailability ?? []).filter((r) => r.room_id === room.id),
             sessions: assigned,
           });
           const physicalMetrics = roomUtilizationMetrics({
             settings,
             room,
             availability,
+            unavailability: (sources.unavailability ?? []).filter((r) => r.room_id === room.id),
             sessions: sessions.filter(
               (s) => s.room_id && physicalRoomKey(s.room_id) === physicalRoomKey(room.id),
             ),
@@ -257,10 +265,17 @@ export function buildLeadershipRoomCapacity(
           }
           result.occupiedHours = physicalMetrics.occupied_hours;
           result.idleHours = physicalMetrics.idle_hours;
-          if (metrics.outside_hours || metrics.overlap_hours)
-            result.issue = `تداخل ${metrics.overlap_hours} س، وخارج الإتاحة ${metrics.outside_hours} س`;
-        } catch {
-          result.issue = "تعذر حساب إتاحة القاعة";
+          const overlap =
+            physicalRoomKey(room.id) === "shared:qardai"
+              ? physicalMetrics.inside_overlap_hours
+              : metrics.overlap_hours;
+          if (metrics.outside_hours || overlap)
+            result.issue =
+              physicalRoomKey(room.id) === "shared:qardai"
+                ? `تزامن سجلات ${overlap} س، وخارج إتاحة سجل الكلية ${metrics.outside_hours} س`
+                : `تداخل ${overlap} س، وخارج الإتاحة ${metrics.outside_hours} س`;
+        } catch (error) {
+          result.issue = error instanceof Error ? error.message : "تعذر حساب إتاحة القاعة";
         }
         return result;
       });

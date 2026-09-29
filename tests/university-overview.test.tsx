@@ -195,6 +195,8 @@ test("halls and labs have separate seat stock, actual capacity, occupancy and fr
   assert.deepEqual(c.halls, {
     count: 1,
     seats: 75,
+    knownSeats: 75,
+    unresolvedSeatRooms: 0,
     capacityHours: 12,
     occupiedHours: 3,
     freeHours: 9,
@@ -205,6 +207,8 @@ test("halls and labs have separate seat stock, actual capacity, occupancy and fr
   assert.deepEqual(c.labs, {
     count: 1,
     seats: 30,
+    knownSeats: 30,
+    unresolvedSeatRooms: 0,
     capacityHours: 8,
     occupiedHours: 2,
     freeHours: 6,
