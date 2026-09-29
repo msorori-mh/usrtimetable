@@ -539,6 +539,17 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
         }}
         leading={
           <>
+            <Link
+              to="/reports/university-overview"
+              search={data?.year && data.term_type ? { year: data.year, term: data.term_type } : {}}
+              className="report-no-print mb-4 block rounded-xl border border-emerald-700/30 bg-emerald-50 p-5 text-emerald-950"
+            >
+              <strong className="text-lg">التقرير التنفيذي الشامل ←</strong>
+              <p className="mt-1 text-sm">
+                ملخص كل كلية وأقسامها واحتياجها التدريسي والقاعات والمعامل والكادر، في عرض واحد
+                للاجتماعات.
+              </p>
+            </Link>
             <AcademicStaffingEntry onOpen={() => openDetail("staffing")} />
             <Link
               to="/reports/teaching-demand-capacity"

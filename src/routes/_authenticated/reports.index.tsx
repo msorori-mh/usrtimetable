@@ -403,6 +403,18 @@ function ReportsHub() {
       </section>
       {canViewLeadership(me) && (
         <Link
+          to="/reports/university-overview"
+          className="block rounded-xl border-2 border-emerald-700/30 bg-emerald-50 p-5 text-emerald-950"
+        >
+          <span className="text-lg font-bold">التقرير التنفيذي الشامل</span>
+          <p className="mt-2 text-sm">
+            الجامعة في صفحة واحدة: الأقسام واحتياجها التدريسي، القاعات والمعامل وسعتها واستخدامها،
+            والكادر الأكاديمي. مع وضع عرض للاجتماعات.
+          </p>
+        </Link>
+      )}
+      {canViewLeadership(me) && (
+        <Link
           to="/reports/leadership"
           className="block rounded-xl border-2 border-primary/30 bg-primary/5 p-5 text-primary"
         >

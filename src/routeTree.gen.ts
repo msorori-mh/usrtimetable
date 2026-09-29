@@ -80,6 +80,7 @@ import { Route as AuthenticatedReportsRoomUtilizationRouteImport } from './route
 import { Route as AuthenticatedReportsRoomsReportRouteImport } from './routes/_authenticated/reports.rooms-report'
 import { Route as AuthenticatedReportsSectionTimetableRouteImport } from './routes/_authenticated/reports.section-timetable'
 import { Route as AuthenticatedReportsTeachingDemandCapacityRouteImport } from './routes/_authenticated/reports.teaching-demand-capacity'
+import { Route as AuthenticatedReportsUniversityOverviewRouteImport } from './routes/_authenticated/reports.university-overview'
 import { Route as AuthenticatedReportsUnscheduledRouteImport } from './routes/_authenticated/reports.unscheduled'
 import { Route as AuthenticatedTimetableVersionIdRouteImport } from './routes/_authenticated/timetable.$versionId'
 import { Route as AuthenticatedTimetableVersionIdPrintRouteImport } from './routes/_authenticated/timetable_.$versionId.print'
@@ -489,6 +490,12 @@ const AuthenticatedReportsTeachingDemandCapacityRoute =
     path: '/teaching-demand-capacity',
     getParentRoute: () => AuthenticatedReportsRoute,
   } as any)
+const AuthenticatedReportsUniversityOverviewRoute =
+  AuthenticatedReportsUniversityOverviewRouteImport.update({
+    id: '/university-overview',
+    path: '/university-overview',
+    getParentRoute: () => AuthenticatedReportsRoute,
+  } as any)
 const AuthenticatedReportsUnscheduledRoute =
   AuthenticatedReportsUnscheduledRouteImport.update({
     id: '/unscheduled',
@@ -578,6 +585,7 @@ export interface FileRoutesByFullPath {
   '/reports/rooms-report': typeof AuthenticatedReportsRoomsReportRoute
   '/reports/section-timetable': typeof AuthenticatedReportsSectionTimetableRoute
   '/reports/teaching-demand-capacity': typeof AuthenticatedReportsTeachingDemandCapacityRoute
+  '/reports/university-overview': typeof AuthenticatedReportsUniversityOverviewRoute
   '/reports/unscheduled': typeof AuthenticatedReportsUnscheduledRoute
   '/timetable/$versionId': typeof AuthenticatedTimetableVersionIdRoute
   '/reports/': typeof AuthenticatedReportsIndexRoute
@@ -652,6 +660,7 @@ export interface FileRoutesByTo {
   '/reports/rooms-report': typeof AuthenticatedReportsRoomsReportRoute
   '/reports/section-timetable': typeof AuthenticatedReportsSectionTimetableRoute
   '/reports/teaching-demand-capacity': typeof AuthenticatedReportsTeachingDemandCapacityRoute
+  '/reports/university-overview': typeof AuthenticatedReportsUniversityOverviewRoute
   '/reports/unscheduled': typeof AuthenticatedReportsUnscheduledRoute
   '/timetable/$versionId': typeof AuthenticatedTimetableVersionIdRoute
   '/reports': typeof AuthenticatedReportsIndexRoute
@@ -729,6 +738,7 @@ export interface FileRoutesById {
   '/_authenticated/reports/rooms-report': typeof AuthenticatedReportsRoomsReportRoute
   '/_authenticated/reports/section-timetable': typeof AuthenticatedReportsSectionTimetableRoute
   '/_authenticated/reports/teaching-demand-capacity': typeof AuthenticatedReportsTeachingDemandCapacityRoute
+  '/_authenticated/reports/university-overview': typeof AuthenticatedReportsUniversityOverviewRoute
   '/_authenticated/reports/unscheduled': typeof AuthenticatedReportsUnscheduledRoute
   '/_authenticated/timetable/$versionId': typeof AuthenticatedTimetableVersionIdRoute
   '/_authenticated/reports/': typeof AuthenticatedReportsIndexRoute
@@ -806,6 +816,7 @@ export interface FileRouteTypes {
     | '/reports/rooms-report'
     | '/reports/section-timetable'
     | '/reports/teaching-demand-capacity'
+    | '/reports/university-overview'
     | '/reports/unscheduled'
     | '/timetable/$versionId'
     | '/reports/'
@@ -880,6 +891,7 @@ export interface FileRouteTypes {
     | '/reports/rooms-report'
     | '/reports/section-timetable'
     | '/reports/teaching-demand-capacity'
+    | '/reports/university-overview'
     | '/reports/unscheduled'
     | '/timetable/$versionId'
     | '/reports'
@@ -956,6 +968,7 @@ export interface FileRouteTypes {
     | '/_authenticated/reports/rooms-report'
     | '/_authenticated/reports/section-timetable'
     | '/_authenticated/reports/teaching-demand-capacity'
+    | '/_authenticated/reports/university-overview'
     | '/_authenticated/reports/unscheduled'
     | '/_authenticated/timetable/$versionId'
     | '/_authenticated/reports/'
@@ -1468,6 +1481,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedReportsTeachingDemandCapacityRouteImport
       parentRoute: typeof AuthenticatedReportsRoute
     }
+    '/_authenticated/reports/university-overview': {
+      id: '/_authenticated/reports/university-overview'
+      path: '/university-overview'
+      fullPath: '/reports/university-overview'
+      preLoaderRoute: typeof AuthenticatedReportsUniversityOverviewRouteImport
+      parentRoute: typeof AuthenticatedReportsRoute
+    }
     '/_authenticated/reports/unscheduled': {
       id: '/_authenticated/reports/unscheduled'
       path: '/unscheduled'
@@ -1512,6 +1532,7 @@ interface AuthenticatedReportsRouteChildren {
   AuthenticatedReportsRoomsReportRoute: typeof AuthenticatedReportsRoomsReportRoute
   AuthenticatedReportsSectionTimetableRoute: typeof AuthenticatedReportsSectionTimetableRoute
   AuthenticatedReportsTeachingDemandCapacityRoute: typeof AuthenticatedReportsTeachingDemandCapacityRoute
+  AuthenticatedReportsUniversityOverviewRoute: typeof AuthenticatedReportsUniversityOverviewRoute
   AuthenticatedReportsUnscheduledRoute: typeof AuthenticatedReportsUnscheduledRoute
   AuthenticatedReportsIndexRoute: typeof AuthenticatedReportsIndexRoute
 }
@@ -1551,6 +1572,8 @@ const AuthenticatedReportsRouteChildren: AuthenticatedReportsRouteChildren = {
     AuthenticatedReportsSectionTimetableRoute,
   AuthenticatedReportsTeachingDemandCapacityRoute:
     AuthenticatedReportsTeachingDemandCapacityRoute,
+  AuthenticatedReportsUniversityOverviewRoute:
+    AuthenticatedReportsUniversityOverviewRoute,
   AuthenticatedReportsUnscheduledRoute: AuthenticatedReportsUnscheduledRoute,
   AuthenticatedReportsIndexRoute: AuthenticatedReportsIndexRoute,
 }
