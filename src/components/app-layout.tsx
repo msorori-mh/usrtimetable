@@ -550,6 +550,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             {!user.isSuperAdmin &&
               !leadership &&
               pathname !== "/reports/leadership" &&
+              pathname !== "/reports/university-overview" &&
               activeCollege && (
                 <p
                   className="mt-1 whitespace-normal break-words text-lg font-bold leading-relaxed text-primary sm:text-xl"
@@ -577,6 +578,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </nav>
             {activeCollege &&
               pathname !== "/reports/leadership" &&
+              pathname !== "/reports/university-overview" &&
               !(reportsOnly && (pathname === "/reports" || pathname === "/reports/")) && (
                 <span className="flex shrink-0 items-center gap-1.5 rounded-md bg-secondary px-2.5 py-1 text-[11px] font-medium text-primary">
                   <School className="h-3.5 w-3.5" />

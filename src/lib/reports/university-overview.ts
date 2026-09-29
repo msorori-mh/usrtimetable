@@ -498,22 +498,30 @@ export function summarizeUniversityOverview(
   rows: CollegeOverview[],
   uniqueFaculty?: number | null,
 ) {
+  const demandRows = rows.filter((c) => c.requiredHours !== null);
+  const scheduleRows = rows.filter((c) => c.scheduledHours !== null && c.sessionCount !== null);
   return {
+    requiredScope: demandRows.length,
+    scheduledScope: scheduleRows.length,
     colleges: rows.length,
     departments: rows.reduce((n, c) => n + c.departmentCount, 0),
     programs: rows.reduce((n, c) => n + c.programCount, 0),
-    requiredHours: completeSum(rows.map((c) => c.requiredHours)),
-    scheduledHours: completeSum(rows.map((c) => c.scheduledHours)),
-    sessions: completeSum(rows.map((c) => c.sessionCount)),
+    requiredHours: demandRows.length ? completeSum(demandRows.map((c) => c.requiredHours)) : null,
+    scheduledHours: scheduleRows.length
+      ? completeSum(scheduleRows.map((c) => c.scheduledHours))
+      : null,
+    sessions: scheduleRows.length ? completeSum(scheduleRows.map((c) => c.sessionCount)) : null,
     faculty:
       uniqueFaculty === undefined ? completeSum(rows.map((c) => c.facultyCount)) : uniqueFaculty,
     halls: resourceSummary(
       rows.flatMap((c) => c.rooms.filter((r) => r.category === "hall")),
-      rows.every((c) => c.sessionCount !== null),
+      scheduleRows.length > 0 &&
+        rows.filter((c) => c.halls.count > 0).every((c) => c.sessionCount !== null),
     ),
     labs: resourceSummary(
       rows.flatMap((c) => c.rooms.filter((r) => r.category === "lab")),
-      rows.every((c) => c.sessionCount !== null),
+      scheduleRows.length > 0 &&
+        rows.filter((c) => c.labs.count > 0).every((c) => c.sessionCount !== null),
     ),
     drafts: rows.filter((c) => c.source && c.source.status !== "published").length,
     notes: rows.reduce((n, c) => n + c.issues.length, 0),
