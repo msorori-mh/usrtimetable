@@ -336,8 +336,7 @@ export function LeadershipDecisionSummary({
       >
         <div className="leadership-section-heading">
           <h2 id="leadership-comparison-title">
-            {scope === "college" ? "الكلية في نظرة واحدة" : "الكليات في نظرة واحدة"}{" "}
-            <span className="leadership-count">· {colleges.length}</span>
+            {scope === "college" ? "لوحة الكلية" : "لوحة الكليات"}
           </h2>
           <span className="leadership-section-note">
             {scope === "college"
