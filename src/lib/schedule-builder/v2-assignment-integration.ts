@@ -4,11 +4,7 @@
  */
 
 export type SchedulingStatus =
-  | "unscheduled"
-  | "partially_scheduled"
-  | "scheduled"
-  | "over_scheduled"
-  | "blocked";
+  "unscheduled" | "partially_scheduled" | "scheduled" | "over_scheduled" | "blocked";
 
 export type ScheduleBuilderV2WorkItem = {
   teaching_assignment_id: string;
@@ -121,6 +117,18 @@ export type WorkItemsPayload = {
   rows: ScheduleBuilderV2WorkItem[];
   can_manage: boolean;
 };
+
+/**
+ * The builder panel is an action queue, not an assignment inventory.
+ * Completed assignments stay available to the RPC/reporting layer but must not
+ * be presented as sessions that still need adding. Keep a small tolerance for
+ * decimal wall-clock arithmetic.
+ */
+export function hasOutstandingScheduleHours(
+  item: Pick<ScheduleBuilderV2WorkItem, "remaining_schedule_hours">,
+): boolean {
+  return item.remaining_schedule_hours > 1e-6;
+}
 
 export const SCHEDULING_STATUS_LABEL_AR: Record<SchedulingStatus, string> = {
   unscheduled: "غير مجدول",

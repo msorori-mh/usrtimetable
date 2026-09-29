@@ -15,6 +15,7 @@ import type { WorkspaceRoomOption } from "@/lib/schedule-builder/queries";
 import {
   SCHEDULING_STATUS_LABEL_AR,
   blockingReasonLabelAr,
+  hasOutstandingScheduleHours,
   type ScheduleBuilderV2WorkItem,
 } from "@/lib/schedule-builder/v2-assignment-integration";
 import { listScheduleBuilderV2WorkItems } from "@/lib/schedule-builder/v2-assignment-service";
@@ -63,9 +64,11 @@ export function V2WorkItemsPanel({
   const payload = query.data;
   const rows = useMemo(() => {
     if (!payload) return [];
-    if (!instructorIds) return payload.rows;
-    const allowed = new Set(instructorIds);
-    return payload.rows.filter((row) => allowed.has(row.instructor_id));
+    const allowed = instructorIds ? new Set(instructorIds) : null;
+    const scopedRows = allowed
+      ? payload.rows.filter((row) => allowed.has(row.instructor_id))
+      : payload.rows;
+    return scopedRows.filter(hasOutstandingScheduleHours);
   }, [payload, instructorIds]);
   const groupedRows = useMemo(
     () => [
@@ -111,7 +114,7 @@ export function V2WorkItemsPanel({
           </span>
           <span className="flex shrink-0 items-center gap-2">
             <Badge variant={rows.length ? "destructive" : "secondary"}>
-              {query.isLoading ? "…" : `${rows.length} متبقية`}
+              {query.isLoading ? "…" : rows.length ? `${rows.length} متبقية` : "مكتمل"}
             </Badge>
             <ChevronDown
               className={`h-4 w-4 transition-transform ${expanded ? "rotate-180" : ""}`}
@@ -147,7 +150,9 @@ export function V2WorkItemsPanel({
             </div>
           ) : null}
           {payload && rows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">لا توجد تكليفات مطابقة.</p>
+            <p className="text-sm text-muted-foreground">
+              لا توجد تكليفات بساعات متبقية ضمن النطاق المحدد.
+            </p>
           ) : null}
           {groupedRows.map((group) =>
             group.rows.length ? (

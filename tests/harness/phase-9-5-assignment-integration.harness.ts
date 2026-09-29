@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import {
   buildInactiveAssignmentWarning,
   computeSchedulingStatus,
+  hasOutstandingScheduleHours,
   mapCreateSessionError,
   parseCreateSessionResult,
   parseWorkItem,
@@ -82,6 +83,19 @@ function runPureContracts() {
   });
   assert(payload.rows.length === 1, "malformed rows filtered");
   assert(payload.can_manage, "manage capability parsed");
+
+  assert(
+    hasOutstandingScheduleHours({ remaining_schedule_hours: 2 }),
+    "positive remaining hours stay in the builder action queue",
+  );
+  assert(
+    !hasOutstandingScheduleHours({ remaining_schedule_hours: 0 }),
+    "completed assignments are removed from the builder action queue",
+  );
+  assert(
+    !hasOutstandingScheduleHours({ remaining_schedule_hours: 1e-10 }),
+    "decimal residue does not create a false remaining item",
+  );
 
   const result = parseCreateSessionResult({
     ok: false,
@@ -226,6 +240,10 @@ function runStaticContracts() {
   );
   assert(ui.includes("result.blocking_conflicts.map"), "blocking conflicts rendered");
   assert(panel.includes("التكليفات غير المجدولة"), "work-item panel has required identity");
+  assert(
+    panel.includes("filter(hasOutstandingScheduleHours)"),
+    "completed assignments are hidden from the remaining-work panel",
+  );
   assert(panel.includes("listScheduleBuilderV2WorkItems"), "panel loads assignment work items");
   assert(
     panel.includes("payload?.version_updated_at"),
