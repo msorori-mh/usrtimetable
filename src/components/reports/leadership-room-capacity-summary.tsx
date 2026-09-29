@@ -160,9 +160,16 @@ export function LeadershipRoomCapacitySummary({
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <h3 className="font-bold">{college.name}</h3>
                   <span className="text-xs text-muted-foreground">
-                    {number(college.rooms.length)} قاعة محاضرات
+                    {number(college.rooms.length)} قاعة محاضرات مسجلة باسم الكلية
                   </span>
                 </div>
+                {college.rooms.length === 0 && (
+                  <p className="mt-2 text-xs leading-6 text-muted-foreground">
+                    لا توجد قاعات محاضرات مسجلة باسم هذه الكلية. هذه الأصفار تخص مواردها المسجلة ولا
+                    تعني عدم وجود تدريس؛ قد تُنفذ محاضراتها في قاعات تابعة لكليات أخرى ويُحتسب
+                    إشغالها هناك.
+                  </p>
+                )}
                 <dl className="mt-3 grid gap-3 sm:grid-cols-3">
                   <CapacityStat label="المتاح أسبوعيًا" value={hours(college.availableHours)} />
                   <CapacityStat label="المشغول فعليًا" value={hours(college.requiredHours)} />

@@ -299,9 +299,16 @@ export function CollegeOverviewCard({
         </div>
       </div>
       <div className="uo-resources">
-        <ResourceCard title="قاعات المحاضرات" data={c.halls} kind="hall" />
-        <ResourceCard title="المعامل والورش" data={c.labs} kind="lab" />
+        <ResourceCard title="قاعات المحاضرات التابعة للكلية" data={c.halls} kind="hall" />
+        <ResourceCard title="المعامل والورش التابعة للكلية" data={c.labs} kind="lab" />
       </div>
+      {(c.hostedElsewhereHours ?? 0) > 0 && (
+        <p className="uo-fine">
+          {hours(c.hostedElsewhereHours)} من تدريس هذه الكلية تُنفذ في موارد تابعة لكليات أخرى.
+          أعداد الموارد أعلاه تخص المسجل باسم الكلية؛ إشغال الموارد المستضافة يُحتسب لدى الكلية
+          المالكة لتجنب التكرار.
+        </p>
+      )}
       <div className="uo-college-action report-no-print">
         <Button
           variant="outline"
