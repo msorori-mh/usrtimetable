@@ -8,7 +8,6 @@ import {
   Maximize2,
   Minimize2,
   RefreshCw,
-  Search,
 } from "lucide-react";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { canViewLeadership } from "@/lib/viewer-roles";
@@ -21,7 +20,7 @@ import {
 } from "@/components/reports/university-overview-report";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { ReportFilterBar, ReportFilterField } from "@/components/reports/report-filter-bar";
 import { fetchUniversityOverview } from "@/lib/reports/fetch-university-overview";
 import {
   buildUniversityOverview,
@@ -242,85 +241,85 @@ function UniversityOverviewPage({ viewerKey }: { viewerKey: string }) {
         }
         filters={
           <div className="uo-controls report-no-print">
-            <label>
-              الفصل الدراسي
-              <select
-                value={data?.year && data.term_type ? `${data.year}|${data.term_type}` : ""}
-                onChange={(e) => {
-                  const [year, term] = e.target.value.split("|");
-                  update({ year, term, college: undefined });
-                }}
-              >
-                <option value="" disabled>
-                  اختر الفصل
-                </option>
-                {data?.periods.map((p) => (
-                  <option key={`${p.year}|${p.type}`} value={`${p.year}|${p.type}`}>
-                    {p.year} · {termTypeLabel(p.type)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              الكلية
-              <select
-                value={search.college ?? ""}
-                onChange={(e) => update({ college: e.target.value || undefined })}
-              >
-                <option value="">كل الكليات المتاحة</option>
-                {rows.map((c) => (
-                  <option value={c.id} key={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              مصدر الجداول
-              <select
-                value={mode}
-                onChange={(e) => update({ source: e.target.value as OverviewSourceMode })}
-              >
-                <option value="presentation">المنشور + أحدث مسودة مكتملة للحاسوب</option>
-                <option value="published">المنشور فقط</option>
-              </select>
-            </label>
-            <label>
-              بحث عن كلية أو قسم
-              <span className="uo-search">
-                <Search size={16} />
-                <Input
-                  value={textSearch}
-                  onChange={(e) => {
-                    setTextSearch(e.target.value);
-                    setSlide(0);
-                  }}
-                  placeholder="اسم الكلية أو القسم"
-                />
-              </span>
-            </label>
-            <div className="uo-control-actions">
-              <Button
-                variant="outline"
-                disabled={query.isFetching}
-                onClick={() => {
-                  void query.refetch();
-                }}
-              >
-                <RefreshCw size={16} className={query.isFetching ? "animate-spin" : ""} />
-                تحديث
-              </Button>
-              <Button
-                disabled={!selected.length || !!report.error}
-                onClick={() => {
-                  setPresentation(true);
+            <ReportFilterBar
+              search={{
+                value: textSearch,
+                placeholder: "ابحث عن كلية أو قسم",
+                onChange: (value) => {
+                  setTextSearch(value);
                   setSlide(0);
-                }}
-              >
-                <Maximize2 size={16} />
-                وضع العرض
-              </Button>
-            </div>
+                },
+              }}
+              basic={
+                <>
+                  <ReportFilterField label="الفصل الدراسي" htmlFor="uo-term">
+                    <select
+                      id="uo-term"
+                      value={data?.year && data.term_type ? `${data.year}|${data.term_type}` : ""}
+                      onChange={(e) => {
+                        const [year, term] = e.target.value.split("|");
+                        update({ year, term, college: undefined });
+                      }}
+                    >
+                      <option value="" disabled>
+                        اختر الفصل
+                      </option>
+                      {data?.periods.map((p) => (
+                        <option key={`${p.year}|${p.type}`} value={`${p.year}|${p.type}`}>
+                          {p.year} · {termTypeLabel(p.type)}
+                        </option>
+                      ))}
+                    </select>
+                  </ReportFilterField>
+                  <ReportFilterField label="الكلية" htmlFor="uo-college">
+                    <select
+                      id="uo-college"
+                      value={search.college ?? ""}
+                      onChange={(e) => update({ college: e.target.value || undefined })}
+                    >
+                      <option value="">كل الكليات المتاحة</option>
+                      {rows.map((c) => (
+                        <option value={c.id} key={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </ReportFilterField>
+                  <ReportFilterField label="مصدر الجداول" htmlFor="uo-source">
+                    <select
+                      id="uo-source"
+                      value={mode}
+                      onChange={(e) => update({ source: e.target.value as OverviewSourceMode })}
+                    >
+                      <option value="presentation">المنشور + أحدث مسودة مكتملة للحاسوب</option>
+                      <option value="published">المنشور فقط</option>
+                    </select>
+                  </ReportFilterField>
+                  <div className="uo-control-actions">
+                    <Button
+                      variant="outline"
+                      disabled={query.isFetching}
+                      onClick={() => {
+                        void query.refetch();
+                      }}
+                    >
+                      <RefreshCw size={16} className={query.isFetching ? "animate-spin" : ""} />
+                      تحديث
+                    </Button>
+                    <Button
+                      disabled={!selected.length || !!report.error}
+                      onClick={() => {
+                        setPresentation(true);
+                        setSlide(0);
+                      }}
+                    >
+                      <Maximize2 size={16} />
+                      وضع العرض
+                    </Button>
+                  </div>
+                </>
+              }
+            />
           </div>
         }
       >

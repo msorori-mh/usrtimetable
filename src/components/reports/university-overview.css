@@ -15,19 +15,6 @@
   font-weight: 750;
 }
 .uo-controls {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1.5fr 1.2fr;
-  gap: 12px;
-  padding: 18px;
-  border: 1px solid var(--uo-line);
-  border-radius: 14px;
-  background: #fff;
-}
-.uo-controls label {
-  font-size: 12px;
-  font-weight: 650;
-  display: grid;
-  gap: 7px;
   min-width: 0;
 }
 .uo-controls select {

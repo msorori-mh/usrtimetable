@@ -31,3 +31,9 @@ Local Bun could not parse its configuration in this execution environment. A tem
 At this commit, merge, production deployment and authenticated live UI verification are pending. The production browser currently displays the sign-in screen; no live report values have been asserted. Local browser preview was blocked by the browser environment. Server-rendered markup is covered by automated tests, but this does not substitute for authenticated visual verification.
 
 The page displays only data visible to the current account. Free weekly hours may be spread across incompatible days/time windows and do not imply a contiguous teaching slot. No individual personnel decisions are made by this report.
+
+## Follow-up: shared report controls
+
+The first GitHub run of `reports-foundation` caught the new route's bespoke filter controls. The route now uses the existing `ReportFilterBar` and labeled `ReportFilterField` controls, including shared Arabic search. The test was not weakened.
+
+Rechecked locally: 89 report/domain tests passed, including all 13 new overview tests; TypeScript and focused ESLint passed. Authenticated production verification remains pending at the sign-in page.
