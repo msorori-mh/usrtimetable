@@ -28,6 +28,7 @@ export async function fetchUniversityOverview(period: { year: string; type: stri
     rooms,
     settings,
     availability,
+    unavailability,
     roomTypes,
     versions,
     teachingResult,
@@ -90,6 +91,14 @@ export async function fetchUniversityOverview(period: { year: string; type: stri
       supabase
         .from("room_availability")
         .select("id,room_id,day_of_week,start_time,end_time")
+        .in("college_id", collegeIds)
+        .order("id")
+        .range(from, to),
+    ),
+    readAllReportRows((from, to) =>
+      supabase
+        .from("room_unavailability")
+        .select("id,room_id,day_of_week,start_time,end_time,start_date,end_date")
         .in("college_id", collegeIds)
         .order("id")
         .range(from, to),
@@ -168,6 +177,7 @@ export async function fetchUniversityOverview(period: { year: string; type: stri
     rooms,
     settings,
     availability,
+    unavailability,
     roomTypes,
     versions: candidates,
     sessions,

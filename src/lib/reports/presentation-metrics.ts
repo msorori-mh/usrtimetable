@@ -23,6 +23,25 @@ export interface ReportTime {
   start_time: string;
   end_time: string;
 }
+export interface ReportRoomClosure {
+  room_id: string;
+  day_of_week: number | null;
+  start_time: string | null;
+  end_time: string | null;
+  start_date: string | null;
+  end_date: string | null;
+}
+
+function subtractIntervals(windows: Interval[], closed: Interval[]): Interval[] {
+  return mergeIntervals(closed).reduce(
+    (remaining, [a, b]) =>
+      remaining.flatMap(([s, e]): Interval[] => {
+        if (b <= s || a >= e) return [[s, e]];
+        return [...(s < a ? [[s, a] as Interval] : []), ...(b < e ? [[b, e] as Interval] : [])];
+      }),
+    windows,
+  );
+}
 export function attendanceMetrics(sessions: ReportTime[]) {
   let gapMinutes = 0,
     occupiedMinutes = 0,
@@ -59,9 +78,12 @@ export function roomUtilizationMetrics(input: {
     available_end_time?: string | null;
   };
   availability: ReportTime[];
+  unavailability?: ReportRoomClosure[];
   sessions: ReportTime[];
 }) {
   const settings = input.settings;
+  if (input.unavailability?.some((row) => row.start_date || row.end_date))
+    throw new Error("توجد فترات منع مرتبطة بتواريخ؛ لا يمكن اختزال الإتاحة في أسبوع ثابت");
   if (!settings?.working_days?.length || !settings.day_start_time || !settings.day_end_time)
     throw new Error("أكمل أيام وساعات الدوام لحساب استخدام القاعات");
   const start = minutes(settings.day_start_time),
@@ -70,7 +92,9 @@ export function roomUtilizationMetrics(input: {
   let available = 0,
     used = 0,
     scheduled = 0,
-    occupied = 0;
+    occupied = 0,
+    blocked = 0,
+    rawInside = 0;
   const days = [
     ...new Set([...settings.working_days, ...input.sessions.map((s) => s.day_of_week)]),
   ];
@@ -100,7 +124,15 @@ export function roomUtilizationMetrics(input: {
                 ),
               ],
             ];
-    const free = mergeIntervals(windows.filter(([s, e]) => e > s));
+    const base = mergeIntervals(windows.filter(([s, e]) => e > s));
+    const closures: Interval[] = (input.unavailability ?? [])
+      .filter((row) => row.day_of_week === null || row.day_of_week === day)
+      .map((row) => [
+        row.start_time ? minutes(row.start_time) : 0,
+        row.end_time ? minutes(row.end_time) : 1440,
+      ]);
+    const free = subtractIntervals(base, closures);
+    blocked += duration(base) - duration(free);
     const raw: Interval[] = input.sessions
       .filter((s) => s.day_of_week === day)
       .map((s) => [minutes(s.start_time), minutes(s.end_time)]);
@@ -108,6 +140,8 @@ export function roomUtilizationMetrics(input: {
     available += duration(free);
     occupied += duration(busy);
     scheduled += duration(raw);
+    for (const [s, e] of raw)
+      for (const [a, b] of free) rawInside += Math.max(0, Math.min(e, b) - Math.max(s, a));
     for (const [s, e] of busy)
       for (const [a, b] of free) used += Math.max(0, Math.min(e, b) - Math.max(s, a));
   }
@@ -120,5 +154,7 @@ export function roomUtilizationMetrics(input: {
     utilization_pct: available > 0 ? round((used / available) * 100) : null,
     outside_hours: round((occupied - used) / 60),
     overlap_hours: round((scheduled - occupied) / 60),
+    inside_overlap_hours: round((rawInside - used) / 60),
+    blocked_hours: round(blocked / 60),
   };
 }

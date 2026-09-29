@@ -2,6 +2,7 @@ import {
   physicalRoomGroups,
   physicalRoomKey,
   physicalSeatCount,
+  physicalSeatSummary,
   physicalRoomSourcesComplete,
 } from "./physical-rooms";
 import type { LeadershipCollege } from "./leadership";
@@ -101,6 +102,8 @@ export interface OverviewRoom {
 export interface ResourceOverview {
   count: number;
   seats: number | null;
+  knownSeats?: number;
+  unresolvedSeatRooms?: number;
   capacityHours: number | null;
   occupiedHours: number | null;
   freeHours: number | null;
@@ -235,6 +238,8 @@ export function resourceSummary(rooms: OverviewRoom[], hasSource: boolean): Reso
   return {
     count: physicalRoomGroups(rooms).length,
     seats: physicalSeatCount(rooms),
+    knownSeats: physicalSeatSummary(rooms).known,
+    unresolvedSeatRooms: physicalSeatSummary(rooms).unresolved,
     capacityHours,
     occupiedHours,
     freeHours: hasSource ? completeSum(rooms.map((r) => r.freeHours)) : null,
@@ -425,6 +430,7 @@ export function buildUniversityOverview(
               settings: settings[0],
               room,
               availability: input.availability.filter((a) => a.room_id === room.id),
+              unavailability: (input.unavailability ?? []).filter((a) => a.room_id === room.id),
               sessions: sourceComplete ? assigned : [],
             });
             result.capacityHours = metrics.available_hours;
@@ -433,6 +439,7 @@ export function buildUniversityOverview(
                 settings: settings[0],
                 room,
                 availability: input.availability.filter((a) => a.room_id === room.id),
+                unavailability: (input.unavailability ?? []).filter((a) => a.room_id === room.id),
                 sessions: physicalSessions,
               });
               if (
@@ -448,12 +455,18 @@ export function buildUniversityOverview(
               result.freeHours = physicalMetrics.idle_hours;
               result.utilization = physicalMetrics.utilization_pct;
               result.outsideHours = metrics.outside_hours;
-              result.overlapHours = metrics.overlap_hours;
-              if (metrics.outside_hours || metrics.overlap_hours)
-                result.issue = `${metrics.outside_hours} ساعة خارج الإتاحة و${metrics.overlap_hours} ساعة متداخلة`;
+              result.overlapHours =
+                physicalRoomKey(room.id) === "shared:qardai"
+                  ? physicalMetrics.inside_overlap_hours
+                  : metrics.overlap_hours;
+              if (metrics.outside_hours || result.overlapHours)
+                result.issue = `${metrics.outside_hours} ساعة خارج إتاحة سجل الكلية و${result.overlapHours} ساعة تزامن سجلات القاعة`;
             }
-          } catch {
-            result.issue = "بيانات إتاحة المكان غير مكتملة أو غير صالحة";
+          } catch (error) {
+            result.issue =
+              error instanceof Error
+                ? error.message
+                : "بيانات إتاحة المكان غير مكتملة أو غير صالحة";
           }
           return result;
         })

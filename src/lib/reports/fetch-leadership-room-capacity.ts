@@ -11,7 +11,7 @@ export async function fetchLeadershipRoomCapacity(colleges: CapacityCollege[]) {
   if (!colleges.length) return [];
   const collegeIds = colleges.map((c) => c.college_id);
   const versionIds = colleges.flatMap((c) => (c.version_id ? [c.version_id] : []));
-  const [rooms, settings, availability, sessions, roomTypes] = await Promise.all([
+  const [rooms, settings, availability, unavailability, sessions, roomTypes] = await Promise.all([
     readAllReportRows((from, to) =>
       supabase
         .from("rooms")
@@ -35,6 +35,14 @@ export async function fetchLeadershipRoomCapacity(colleges: CapacityCollege[]) {
       supabase
         .from("room_availability")
         .select("id,room_id,day_of_week,start_time,end_time")
+        .in("college_id", collegeIds)
+        .order("id")
+        .range(from, to),
+    ),
+    readAllReportRows((from, to) =>
+      supabase
+        .from("room_unavailability")
+        .select("id,room_id,day_of_week,start_time,end_time,start_date,end_date")
         .in("college_id", collegeIds)
         .order("id")
         .range(from, to),
@@ -63,6 +71,7 @@ export async function fetchLeadershipRoomCapacity(colleges: CapacityCollege[]) {
     rooms,
     settings,
     availability,
+    unavailability,
     sessions,
     roomTypes,
   } as CapacitySources);

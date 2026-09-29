@@ -184,7 +184,7 @@ function Page() {
     enabled: !!ctx.collegeId && !!ctx.selectedVersion,
     queryFn: async () => {
       const collegeId = ctx.collegeId!;
-      const [rooms, availability, sessions, settingsResult, roomTypes, buildings] =
+      const [rooms, availability, unavailability, sessions, settingsResult, roomTypes, buildings] =
         await Promise.all([
           readAllReportRows((from, to) =>
             supabase
@@ -201,6 +201,14 @@ function Page() {
             supabase
               .from("room_availability")
               .select("id, room_id, day_of_week, start_time, end_time")
+              .eq("college_id", collegeId)
+              .order("id")
+              .range(from, to),
+          ),
+          readAllReportRows((from, to) =>
+            supabase
+              .from("room_unavailability")
+              .select("id,room_id,day_of_week,start_time,end_time,start_date,end_date")
               .eq("college_id", collegeId)
               .order("id")
               .range(from, to),
@@ -243,6 +251,7 @@ function Page() {
           settings: settingsResult.data,
           room,
           availability: availability.filter((a) => a.room_id === room.id),
+          unavailability: unavailability.filter((a) => a.room_id === room.id),
           sessions: sessions.filter((s) => s.room_id === room.id),
         });
         return {
@@ -276,7 +285,7 @@ function Page() {
   return (
     <ReportShell
       title="تقرير استخدام القاعات"
-      description="استخدام القاعات في نسخة واحدة بحسب الدوام والإتاحة الفعلية. ساعات التداخل وخارج الإتاحة معروضة منفصلة."
+      description="استخدام القاعات في النسخة المختارة بعد خصم فترات المنع الدائمة. الفراغات تخص هذه النسخة؛ استخدام الكليات الأخرى للقاعات المشتركة يُعرض في التقرير التنفيذي الشامل."
       reportContext={ctx}
       filename="room_utilization"
       rows={rows}
