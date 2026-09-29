@@ -1,3 +1,4 @@
+import { physicalRoomGroups, physicalRoomKey, physicalRoomSourcesComplete } from "./physical-rooms";
 import { roomUtilizationMetrics, type ReportTime } from "./presentation-metrics";
 import { roomCategoryFromType } from "@/lib/room-category";
 
@@ -235,8 +236,27 @@ export function buildLeadershipRoomCapacity(
             availability,
             sessions: assigned,
           });
-          result.occupiedHours = metrics.occupied_hours;
-          result.idleHours = metrics.idle_hours;
+          const physicalMetrics = roomUtilizationMetrics({
+            settings,
+            room,
+            availability,
+            sessions: sessions.filter(
+              (s) => s.room_id && physicalRoomKey(s.room_id) === physicalRoomKey(room.id),
+            ),
+          });
+          if (
+            !physicalRoomSourcesComplete(
+              room.id,
+              uniqueRooms
+                .filter((r) => colleges.some((c) => c.college_id === r.college_id && c.version_id))
+                .map((r) => r.id),
+            )
+          ) {
+            result.issue = "إشغال القاعة المشتركة يحتاج جداول جميع الكليات المشاركة";
+            return result;
+          }
+          result.occupiedHours = physicalMetrics.occupied_hours;
+          result.idleHours = physicalMetrics.idle_hours;
           if (metrics.outside_hours || metrics.overlap_hours)
             result.issue = `تداخل ${metrics.overlap_hours} س، وخارج الإتاحة ${metrics.outside_hours} س`;
         } catch {
@@ -307,7 +327,7 @@ export function aggregateLeadershipRoomCapacity(rows: LeadershipCapacityCollege[
   const requiredHours = sum("requiredHours");
   const surplusHours = sum("surplusHours");
   const deficitHours = sum("deficitHours");
-  const hallCount = measured.reduce((total, college) => total + college.rooms.length, 0);
+  const hallCount = physicalRoomGroups(measured.flatMap((college) => college.rooms)).length;
   const nominalHours = measured.length ? hallCount * STANDARD_ROOM_WEEK_HOURS : null;
   const availabilityAdjustmentHours =
     availableHours === null || nominalHours === null ? null : round(availableHours - nominalHours);
