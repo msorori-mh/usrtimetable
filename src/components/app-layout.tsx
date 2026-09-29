@@ -344,6 +344,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const preparationStep = preparationStepForPath(pathname);
 
   const crumb = useMemo(() => {
+    if (pathname === "/reports/university-overview") {
+      return { section: "التقارير", page: "التقرير التنفيذي الشامل", to: pathname };
+    }
     if (pathname === "/reports/leadership") {
       return { section: "المؤشرات التنفيذية", page: executiveDashboardTitle(user), to: pathname };
     }
