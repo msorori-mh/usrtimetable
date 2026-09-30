@@ -1,5 +1,5 @@
 import { context, minutes, placementIssue, type Snapshot, type Session } from "./compact.ts";
-import { instructorAttendanceDayCap } from "./attendance-objective.ts";
+import { instructorAttendanceDayCapForHours } from "./attendance-objective.ts";
 import { isInstructorAvailabilityEnforced } from "../scheduling/instructor-availability-policy.ts";
 import { evaluateInstructorSlotAvailability } from "../scheduling/instructor-slot-availability.ts";
 
@@ -45,9 +45,9 @@ export function instructorCapacityIssues(snapshot: Snapshot): QualityIssue[] {
     if (!teacher) continue;
     const lectures = snapshot.sessions.filter((s) => s.instructor_id === id);
     const required = lectures.reduce((n, s) => n + minutes(s.end_time) - minutes(s.start_time), 0);
-    const cap = instructorAttendanceDayCap(
+    const cap = instructorAttendanceDayCapForHours(
+      required / 60,
       teacher.target_attendance_days_per_week,
-      undefined,
       teacher.max_attendance_days_per_week,
     );
     const type = snapshot.types.find((t) => t.id === teacher.instructor_type_id);
