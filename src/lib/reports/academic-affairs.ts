@@ -72,7 +72,12 @@ export type AcademicScope = {
   instructorId: string;
 };
 export type AcademicReportKind =
-  "workload" | "overload" | "deficit" | "assignments" | "course_status" | "shortages";
+  | "workload"
+  | "overload"
+  | "deficit"
+  | "assignments"
+  | "course_status"
+  | "shortages";
 
 export function parseAcademicReportKind(value: unknown): AcademicReportKind {
   return value === "overload" ||
