@@ -104,7 +104,11 @@ function ReviewProposalPage() {
     queryFn: async () => {
       const r = await rpc("itcs_native_draft_preview", { p_profile: PROFILE });
       if (r.error) throw new Error(r.error.message);
-      return r.data as { manifest_sha: string; version_id: string | null; receipt: { ok: boolean } | null };
+      return r.data as {
+        manifest_sha: string;
+        version_id: string | null;
+        receipt: { ok: boolean } | null;
+      };
     },
   });
   const [error, setError] = useState("");
@@ -201,11 +205,16 @@ function ReviewProposalPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-2">
           <Badge variant="secondary">
-            {nativeQuery.data?.version_id ? "مسودة جدولة محفوظة" : proposal.saved ? "مسودة مقترح محفوظة" : "معاينة قبل الحفظ"}
+            {nativeQuery.data?.version_id
+              ? "مسودة جدولة محفوظة"
+              : proposal.saved
+                ? "مسودة مقترح محفوظة"
+                : "معاينة قبل الحفظ"}
           </Badge>
           <h1 className="text-2xl font-bold">{proposal.payload.title}</h1>
           <p className="max-w-3xl text-sm text-muted-foreground">
-            نسخة الحاسوب المصححة للمراجعة قبل النشر. يجري الحفظ في نسخة جدولة مستقلة بعد فحص الخادم، مع الحفاظ على سجل الجدول المنشور.
+            نسخة الحاسوب المصححة للمراجعة قبل النشر. يجري الحفظ في نسخة جدولة مستقلة بعد فحص الخادم،
+            مع الحفاظ على سجل الجدول المنشور.
           </p>
           {proposal.saved_at && (
             <p className="text-sm">
@@ -216,7 +225,11 @@ function ReviewProposalPage() {
         <div className="flex flex-wrap gap-2 print:hidden">
           {me?.isSuperAdmin && !nativeQuery.data?.version_id && (
             <>
-              <Button variant="outline" disabled={saving || !nativeQuery.data} onClick={() => void save("review_check")}>
+              <Button
+                variant="outline"
+                disabled={saving || !nativeQuery.data}
+                onClick={() => void save("review_check")}
+              >
                 {saving ? "جارٍ التحقق…" : "فحص الحفظ دون تثبيت"}
               </Button>
               <Button disabled={saving || !checked} onClick={() => void save("review_save")}>
@@ -225,7 +238,11 @@ function ReviewProposalPage() {
             </>
           )}
           {nativeQuery.data?.version_id && (
-            <Button asChild><Link to="/timetable/$versionId" params={{versionId:nativeQuery.data.version_id}}>فتح مسودة الجدول</Link></Button>
+            <Button asChild>
+              <Link to="/timetable/$versionId" params={{ versionId: nativeQuery.data.version_id }}>
+                فتح مسودة الجدول
+              </Link>
+            </Button>
           )}
           <Button variant="outline" onClick={() => window.print()}>
             طباعة المراجعة
@@ -235,7 +252,11 @@ function ReviewProposalPage() {
           </Button>
         </div>
       </div>
-      {checked && <p role="status" className="rounded border p-3">نجح فحص الحفظ الكامل على الخادم؛ أُلغيت تجربة الفحص ولم تُحفظ أي تغييرات منها.</p>}
+      {checked && (
+        <p role="status" className="rounded border p-3">
+          نجح فحص الحفظ الكامل على الخادم؛ أُلغيت تجربة الفحص ولم تُحفظ أي تغييرات منها.
+        </p>
+      )}
       {(error || nativeQuery.error) && (
         <p role="alert" className="rounded border border-destructive p-3 text-destructive">
           لم يكتمل الإجراء: {error || nativeQuery.error?.message}
