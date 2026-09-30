@@ -34,6 +34,16 @@ before(() => {
   ]) {
     sql(readFileSync(new URL("../" + path, import.meta.url), "utf8"));
   }
+  sql(`ALTER TABLE public.academic_cohorts ADD COLUMN existing_schedule boolean NOT NULL DEFAULT false;
+    CREATE FUNCTION public.existing_schedule_intake_enabled(uuid,uuid) RETURNS boolean
+    LANGUAGE sql STABLE AS $$ SELECT false $$;`);
+  for (const path of [
+    "supabase/migrations/20260930120000_admin_multi_cohort_shared_lectures.sql",
+    "supabase/migrations/20260930121000_shared_lecture_system_scope.sql",
+    "supabase/migrations/20260930122000_shared_lecture_workspaces.sql",
+  ]) {
+    sql(readFileSync(new URL("../" + path, import.meta.url), "utf8"));
+  }
 });
 for (const [name, body] of cases) {
   test(name, () =>
