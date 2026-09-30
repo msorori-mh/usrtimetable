@@ -25,6 +25,11 @@ export type SharedLectureCandidate = {
   member_cohort_code: string;
   total_students: number;
   weekly_hours: number;
+  anchor_study_system: string;
+  member_study_system: string;
+  anchor_students: number;
+  member_students: number;
+  capacity_limit: number;
 };
 export async function fetchSharedLectureCandidates(
   collegeId: string,
@@ -46,6 +51,13 @@ export async function changeSharedLecture(anchor: string, member: string, remove
     remove ? "unmerge_shared_lecture" : "merge_shared_lecture",
     remove ? { p_member: member } : { p_anchor: anchor, p_member: member },
   );
+  if (error) throw new Error(error.message);
+}
+export async function mergeSharedLectures(anchor: string, members: string[]) {
+  const { error } = await client.rpc("merge_shared_lectures", {
+    p_anchor: anchor,
+    p_members: members,
+  });
   if (error) throw new Error(error.message);
 }
 export function sharedGroupIdsForCohort(links: SharedLectureLink[], cohortId?: string) {
