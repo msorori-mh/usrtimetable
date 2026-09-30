@@ -158,6 +158,11 @@ function SchedVersionsPage() {
         </div>
         <div className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:w-auto">
           <CollegeSwitcher />
+          {active?.id === "7168345f-cf9d-4789-b2ad-547abb687dc8" && (
+            <Button variant="outline" asChild>
+              <Link to="/itcs-review-proposal">مسودة المقترح 15 — 30/9</Link>
+            </Button>
+          )}
           <Button variant="outline" asChild>
             <Link to="/schedule-builder">
               <CalendarClock className="h-4 w-4 ml-1" /> فتح مساحة البناء

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -222,6 +222,16 @@ function ItcsCutoverPage() {
   return (
     <div dir="rtl" className="space-y-4 p-6">
       <h1 className="text-2xl font-bold">انتقال جدول كلية الحاسوب وتقنية المعلومات</h1>
+      <Card className="space-y-2 p-4">
+        <p className="font-medium">المقترح 15 — نسخة المراجعة 30/9</p>
+        <p className="text-sm text-muted-foreground">
+          مسودة المقترح كاملة مع الإسنادات والمواعيد والتداخلات التي تحتاج معالجة قبل تحويلها إلى
+          نسخة جدولة.
+        </p>
+        <Button asChild variant="outline">
+          <Link to="/itcs-review-proposal">فتح مسودة المقترح للمراجعة</Link>
+        </Button>
+      </Card>
       <Card className="space-y-2 p-4">
         <p className="text-sm text-muted-foreground">ارفع ملف {MANIFEST_FILE}</p>
         <input
