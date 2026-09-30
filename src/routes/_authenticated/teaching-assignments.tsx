@@ -70,6 +70,7 @@ import {
   summarizeInstructorAttendanceDays,
 } from "@/lib/teaching-assignments/assignment-row-days";
 import { loadAssignmentSchedule } from "@/lib/teaching-assignments/assignment-schedule";
+import { filterTeachingAssignmentRowsByCourse } from "@/lib/teaching-assignments/course-search";
 import {
   fetchPublishedVersions,
   fetchWorkingVersions,
@@ -105,6 +106,7 @@ function TeachingAssignmentsV2Page() {
   const [cohortId, setCohortId] = useState<string>("");
   const [componentType, setComponentType] = useState<string>("");
   const [assignmentStatus, setAssignmentStatus] = useState<string>("");
+  const [courseSearch, setCourseSearch] = useState<string>("");
   const [instructorSearch, setInstructorSearch] = useState<string>("");
 
   const [selected, setSelected] = useState<TeachingAssignmentWorkspaceRow | null>(null);
@@ -262,19 +264,23 @@ function TeachingAssignmentsV2Page() {
     enabled: !!selected && !!instructorId && confirmOpen === false,
   });
 
-  const rows = useMemo(
-    () => filterRowsByInstructorName(workspace.data?.rows ?? [], instructorSearch),
-    [workspace.data?.rows, instructorSearch],
+  const courseRows = useMemo(
+    () => filterTeachingAssignmentRowsByCourse(workspace.data?.rows ?? [], courseSearch),
+    [workspace.data?.rows, courseSearch],
   );
+  const rows = useMemo(
+    () => filterRowsByInstructorName(courseRows, instructorSearch),
+    [courseRows, instructorSearch],
+  );
+  const courseSearchActive = courseSearch.trim() !== "";
   const instructorSearchActive = normalizeArabicName(instructorSearch) !== "";
   const instructorHoursSummary = useMemo(
-    () => summarizeInstructorAssignedHours(workspace.data?.rows ?? [], instructorSearch),
-    [workspace.data?.rows, instructorSearch],
+    () => summarizeInstructorAssignedHours(courseRows, instructorSearch),
+    [courseRows, instructorSearch],
   );
   const attendanceDaysSummary = useMemo(
-    () =>
-      summarizeInstructorAttendanceDays(workspace.data?.rows ?? [], instructorSearch, sessionDays),
-    [workspace.data?.rows, instructorSearch, sessionDays],
+    () => summarizeInstructorAttendanceDays(courseRows, instructorSearch, sessionDays),
+    [courseRows, instructorSearch, sessionDays],
   );
   const readOnly = !canManage || workspace.data?.can_manage === false;
 
@@ -404,6 +410,10 @@ function TeachingAssignmentsV2Page() {
                       : "",
                   },
                   {
+                    label: "المقرر",
+                    value: courseSearchActive ? courseSearch.trim() : "",
+                  },
+                  {
                     label: "اسم المحاضر",
                     value: instructorSearchActive ? instructorSearch.trim() : "",
                   },
@@ -413,6 +423,14 @@ function TeachingAssignmentsV2Page() {
           />
           <Button asChild variant="outline" size="sm">
             <Link to="/delivery-groups">مجموعات المحاضرات والمعامل</Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link
+              to="/reports/academic-affairs"
+              search={{ report: "course_status", termId: termId || undefined }}
+            >
+              تقرير حالة الإسناد
+            </Link>
           </Button>
         </div>
       </div>
@@ -570,6 +588,15 @@ function TeachingAssignmentsV2Page() {
               </Select>
             </div>
             <div>
+              <Label>البحث بالمقرر</Label>
+              <Input
+                data-testid="ta-v2-course-search"
+                value={courseSearch}
+                onChange={(e) => setCourseSearch(e.target.value)}
+                placeholder="اسم المقرر أو رمزه..."
+              />
+            </div>
+            <div>
               <Label>البحث باسم المحاضر</Label>
               <Input
                 data-testid="ta-v2-instructor-search"
@@ -657,8 +684,8 @@ function TeachingAssignmentsV2Page() {
               </p>
             ) : rows.length === 0 ? (
               <p className="p-6 text-center text-muted-foreground">
-                {instructorSearchActive
-                  ? "لا توجد إسنادات مطابقة لاسم المحاضر المدخل."
+                {courseSearchActive || instructorSearchActive
+                  ? "لا توجد مجموعات مطابقة لبحث المقرر أو المحاضر."
                   : "لا توجد مجموعات محاضرات ومعامل أسبوعية مطابقة. ولّد المجموعات من الدفعات الدراسية أولاً."}
               </p>
             ) : (

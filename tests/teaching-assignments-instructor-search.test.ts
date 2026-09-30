@@ -120,9 +120,7 @@ describe("teaching-assignments page wiring", () => {
   });
 
   it("derives visible rows from filterRowsByInstructorName", () => {
-    expect(src).toContain(
-      "filterRowsByInstructorName(workspace.data?.rows ?? [], instructorSearch)",
-    );
+    expect(src).toContain("filterRowsByInstructorName(courseRows, instructorSearch)");
     expect(src).toContain("instructorSearchActive");
   });
 
@@ -133,7 +131,7 @@ describe("teaching-assignments page wiring", () => {
   });
 
   it("shows the no-matching-instructor message and export filter", () => {
-    expect(src).toContain("لا توجد إسنادات مطابقة لاسم المحاضر المدخل.");
+    expect(src).toContain("لا توجد مجموعات مطابقة لبحث المقرر أو المحاضر.");
     expect(src).toContain('label: "اسم المحاضر"');
   });
 

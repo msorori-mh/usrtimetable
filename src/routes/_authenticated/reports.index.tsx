@@ -52,7 +52,7 @@ export const Route = createFileRoute("/_authenticated/reports/")({
 interface ReportCard {
   reports?: ReportCard[];
   to: string;
-  search?: { report: "overload" | "deficit" };
+  search?: { report: "overload" | "deficit" | "course_status" };
   title: string;
   desc: string;
   icon: ReactNode;
@@ -137,6 +137,14 @@ const ANALYTICS_REPORTS: ReportCard[] = [
     icon: <DoorOpen className="h-5 w-5" />,
   },
 ];
+
+const COURSE_ASSIGNMENT_STATUS_REPORT: ReportCard = {
+  to: "/reports/academic-affairs",
+  search: { report: "course_status" },
+  title: "حالة إسناد المقررات",
+  desc: "كل مقرر ومجموعة تدريس مع حالة الإسناد والمحاضرين والساعات المطلوبة والمسندة والمتبقية، مع الطباعة والتصدير.",
+  icon: <ClipboardCheck className="h-5 w-5" />,
+};
 
 const OPERATIONAL_REPORTS: ReportCard[] = [
   {
@@ -252,7 +260,12 @@ const SECTIONS: {
     id: "analytics",
     title: "أريد مراجعة الإسناد والأعباء والموارد",
     description: "مؤشرات تحميل واستغلال — للمراجعة الإدارية دون تجميع عبر نسخ متعددة.",
-    items: [ANALYTICS_REPORTS[0], TEACHING_LOAD_REPORTS, DEMAND_CAPACITY_REPORT],
+    items: [
+      ANALYTICS_REPORTS[0],
+      COURSE_ASSIGNMENT_STATUS_REPORT,
+      TEACHING_LOAD_REPORTS,
+      DEMAND_CAPACITY_REPORT,
+    ],
   },
   {
     id: "operational",
