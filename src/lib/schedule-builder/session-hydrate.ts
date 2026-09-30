@@ -178,7 +178,7 @@ export function assembleWorkspaceSessionRows(
       section_group_id: s.section_group_id ?? null,
       schedule_version_id: s.schedule_version_id ?? null,
       expected_students:
-        s.study_system === "both" && (s.shared_cohort_ids?.length ?? 0) > 1
+        (s.shared_cohort_ids?.length ?? 0) > 1
           ? (s.expected_students ?? null)
           : (offering?.expected_students ??
             s.expected_students ??
