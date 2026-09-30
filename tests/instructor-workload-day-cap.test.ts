@@ -14,6 +14,8 @@ test("regular instructors receive only one fallback day above the workload minim
 
 test("a department-head target of four remains four, while explicit maxima stay authoritative", () => {
   assert.equal(instructorAttendanceDayCapForHours(6, 4), 4);
+  assert.equal(instructorAttendanceDayCapForHours(6, 5), 4);
+  assert.equal(instructorAttendanceDayCapForHours(6, 5, 5), 5);
   assert.equal(instructorAttendanceDayCapForHours(10, null, 2), 2);
   assert.throws(
     () => instructorAttendanceDayCapForHours(10, 4, 3),
