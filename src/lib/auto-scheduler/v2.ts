@@ -1423,7 +1423,10 @@ export async function runV2AutoSchedule(params: {
   const attendance = measure(finalSnapshot);
   // Independent readback verifies the same complete instructor cap enforced before commit.
   if (
-    instructorsOverWorkloadAttendanceDayCap(finalSnapshot.sessions, finalSnapshot.instructors).length
+    instructorsOverWorkloadAttendanceDayCap(
+      finalSnapshot.sessions,
+      finalSnapshot.instructors,
+    ).length
   )
     throw new Error("INSTRUCTOR_ATTENDANCE_DAYS_EXCEEDED");
 
