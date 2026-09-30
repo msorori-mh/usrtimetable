@@ -160,7 +160,7 @@ function SchedVersionsPage() {
           <CollegeSwitcher />
           {active?.id === "7168345f-cf9d-4789-b2ad-547abb687dc8" && (
             <Button variant="outline" asChild>
-              <Link to="/itcs-review-proposal">مسودة المقترح 15 — 30/9</Link>
+              <Link to="/itcs-review-proposal">مسودة الحاسوب المصححة — 30/9</Link>
             </Button>
           )}
           <Button variant="outline" asChild>

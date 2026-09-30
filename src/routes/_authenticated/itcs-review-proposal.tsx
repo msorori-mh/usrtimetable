@@ -12,7 +12,7 @@ export const Route = createFileRoute("/_authenticated/itcs-review-proposal")({
   component: ReviewProposalPage,
 });
 
-const PROFILE = "itcs_proposal15_review_20260930";
+const PROFILE = "itcs_proposal16_review_20260930";
 const DAYS: Record<number, string> = {
   6: "السبت",
   0: "الأحد",
@@ -97,6 +97,20 @@ function ReviewProposalPage() {
   const [cohort, setCohort] = useState("");
   const [room, setRoom] = useState("");
   const [saving, setSaving] = useState(false);
+  const [checked, setChecked] = useState(false);
+  const nativeQuery = useQuery({
+    queryKey: ["itcs-native-draft", PROFILE, me?.id],
+    enabled: !!me?.isSuperAdmin,
+    queryFn: async () => {
+      const r = await rpc("itcs_native_draft_preview", { p_profile: PROFILE });
+      if (r.error) throw new Error(r.error.message);
+      return r.data as {
+        manifest_sha: string;
+        version_id: string | null;
+        receipt: { ok: boolean } | null;
+      };
+    },
+  });
   const [error, setError] = useState("");
   const query = useQuery({
     queryKey: ["itcs-review-proposal", PROFILE, me?.id],
@@ -149,21 +163,22 @@ function ReviewProposalPage() {
     [report, instructor, room, cohort],
   );
 
-  async function save() {
-    if (!proposal || saving) return;
+  async function save(stage: "review_check" | "review_save") {
+    if (!proposal || !nativeQuery.data || saving) return;
     setSaving(true);
     setError("");
     try {
       const r = await rpc("itcs_cutover_execute", {
-        p_stage: "save_review_proposal",
+        p_stage: stage,
         p_version: proposal.source_version_id,
         p_published: proposal.source_version_id,
         p_manifest: { profile: PROFILE },
-        p_manifest_sha: proposal.payload_hash,
+        p_manifest_sha: nativeQuery.data.manifest_sha,
         p_expected_published_snapshot: proposal.source_snapshot,
       });
       if (r.error) throw new Error(r.error.message);
-      await query.refetch();
+      setChecked(stage === "review_check");
+      await Promise.all([query.refetch(), nativeQuery.refetch()]);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -190,12 +205,16 @@ function ReviewProposalPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-2">
           <Badge variant="secondary">
-            {proposal.saved ? "مسودة مقترح محفوظة" : "معاينة قبل الحفظ"}
+            {nativeQuery.data?.version_id
+              ? "مسودة جدولة محفوظة"
+              : proposal.saved
+                ? "مسودة مقترح محفوظة"
+                : "معاينة قبل الحفظ"}
           </Badge>
-          <h1 className="text-2xl font-bold">الحاسوب — المقترح 15 — نسخة المراجعة 30/9</h1>
+          <h1 className="text-2xl font-bold">{proposal.payload.title}</h1>
           <p className="max-w-3xl text-sm text-muted-foreground">
-            النسخة الكاملة للمراجعة قبل النشر. تحفظ هذه الصفحة المواعيد والإسنادات المقترحة؛ تحويلها
-            إلى نسخة جدولة يتطلب معالجة التداخلات الموضحة أدناه.
+            نسخة الحاسوب المصححة للمراجعة قبل النشر. يجري الحفظ في نسخة جدولة مستقلة بعد فحص الخادم،
+            مع الحفاظ على سجل الجدول المنشور.
           </p>
           {proposal.saved_at && (
             <p className="text-sm">
@@ -204,9 +223,25 @@ function ReviewProposalPage() {
           )}
         </div>
         <div className="flex flex-wrap gap-2 print:hidden">
-          {me?.isSuperAdmin && !proposal.saved && (
-            <Button disabled={saving} onClick={() => void save()}>
-              {saving ? "جارٍ الحفظ…" : "حفظ مسودة المقترح داخل المنصة"}
+          {me?.isSuperAdmin && !nativeQuery.data?.version_id && (
+            <>
+              <Button
+                variant="outline"
+                disabled={saving || !nativeQuery.data}
+                onClick={() => void save("review_check")}
+              >
+                {saving ? "جارٍ التحقق…" : "فحص الحفظ دون تثبيت"}
+              </Button>
+              <Button disabled={saving || !checked} onClick={() => void save("review_save")}>
+                {saving ? "جارٍ الحفظ…" : "حفظ نسخة جدولة مسودة"}
+              </Button>
+            </>
+          )}
+          {nativeQuery.data?.version_id && (
+            <Button asChild>
+              <Link to="/timetable/$versionId" params={{ versionId: nativeQuery.data.version_id }}>
+                فتح مسودة الجدول
+              </Link>
             </Button>
           )}
           <Button variant="outline" onClick={() => window.print()}>
@@ -217,9 +252,14 @@ function ReviewProposalPage() {
           </Button>
         </div>
       </div>
-      {error && (
+      {checked && (
+        <p role="status" className="rounded border p-3">
+          نجح فحص الحفظ الكامل على الخادم؛ أُلغيت تجربة الفحص ولم تُحفظ أي تغييرات منها.
+        </p>
+      )}
+      {(error || nativeQuery.error) && (
         <p role="alert" className="rounded border border-destructive p-3 text-destructive">
-          لم يُحفظ المقترح: {error}
+          لم يكتمل الإجراء: {error || nativeQuery.error?.message}
         </p>
       )}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -236,11 +276,11 @@ function ReviewProposalPage() {
         ))}
       </div>
       <Card className="space-y-3 border-amber-300 bg-amber-50/50 p-4 dark:bg-amber-950/20">
-        <h2 className="font-bold">قبل تحويل المقترح إلى نسخة جدولة</h2>
+        <h2 className="font-bold">مطابقة التزامات الكليات</h2>
         <p className="text-sm">
-          {checks.external_conflict_sessions} محاضرات تتداخل مع التزامات مسجلة في كليات أخرى. هذه
-          الملاحظات تمنع الحفظ في جدول التشغيل؛ المسودة هنا متاحة للمراجعة، والجدول المنشور باقٍ كما
-          هو.
+          {checks.external_conflict_sessions === 0
+            ? "لا توجد محاضرات متداخلة مع التزامات الكليات الأخرى في المطابقة الحالية. النسخة للمراجعة قبل النشر."
+            : `${checks.external_conflict_sessions} محاضرات تتداخل مع التزامات مسجلة في كليات أخرى وتحتاج المعالجة قبل حفظ الجدول.`}
         </p>
         <p className="text-xs text-muted-foreground">
           آخر مطابقة مع المنصة: {new Date(checks.checked_at).toLocaleString("ar-YE")}. يشمل الفحص

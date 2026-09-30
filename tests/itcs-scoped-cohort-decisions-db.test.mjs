@@ -97,7 +97,7 @@ UPDATE public.teaching_assignments SET section_number=CASE WHEN id='${id(80)}' T
 CREATE UNIQUE INDEX ta_unique ON public.teaching_assignments(college_id,course_offering_id,instructor_id,session_type,COALESCE(section_number,''));
 CREATE UNIQUE INDEX ta_v2_delivery_group_instructor_uniq ON public.teaching_assignments(college_id,delivery_group_id,instructor_id) WHERE delivery_group_id IS NOT NULL AND is_active=true;
 `;
-async function fixture(reuse = true) {
+export async function fixture(reuse = true) {
   const db = new PGlite();
   await db.exec(setup);
   await db.exec(`
