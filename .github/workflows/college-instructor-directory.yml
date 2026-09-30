@@ -6,6 +6,7 @@ on:
       - "supabase/migrations/20260919120000_college_instructor_schedule_directory.sql"
       - "tests/college-instructor-directory-db.test.mjs"
       - "supabase/migrations/20260919140000_home_college_faculty_roster.sql"
+      - "supabase/migrations/20260930120000_cross_college_yahya_candidate_repair.sql"
       - "supabase/rollbacks/20260919140000_home_college_faculty_roster.sql"
       - "tests/home-college-roster-db.test.mjs"
       - "tests/faculty-workflow-fixture.sql"
@@ -37,4 +38,8 @@ jobs:
       - name: Verify college scope and role boundaries
         env:
           FACULTY_DB_MODULE: /tmp/faculty-test/node_modules/@electric-sql/pglite/dist/index.js
-        run: node --test tests/college-instructor-directory-db.test.mjs tests/home-college-roster-db.test.mjs
+        run: >-
+          node --test
+          tests/college-instructor-directory-db.test.mjs
+          tests/home-college-roster-db.test.mjs
+          tests/cross-college-yahya-candidate-repair.test.mjs
