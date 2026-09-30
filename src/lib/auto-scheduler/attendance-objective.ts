@@ -230,7 +230,13 @@ export function instructorAttendanceDayCapForHours(
     INSTRUCTOR_GENERIC_ATTENDANCE_DAY_CAP,
     minimum + INSTRUCTOR_ATTENDANCE_FLEX_DAYS,
   );
-  return instructorAttendanceDayCap(target, regularCap, maxOverride);
+  // A legacy target above four does not silently expand the institutional ceiling.
+  // Only an explicit maximum is allowed to document an approved exception.
+  if (maxOverride != null) return instructorAttendanceDayCap(target, regularCap, maxOverride);
+  return Math.min(
+    INSTRUCTOR_GENERIC_ATTENDANCE_DAY_CAP,
+    instructorAttendanceDayCap(target, regularCap),
+  );
 }
 
 /** Per-instructor attendance-day limits as stored on `instructors`. */
