@@ -4387,6 +4387,7 @@ export type Database = {
           notes: string | null
           plan_course_component_id: string | null
           required_room_type: string | null
+          scope_version_id: string | null
           section_id: string | null
           section_number: string | null
           session_type: string
@@ -4407,6 +4408,7 @@ export type Database = {
           notes?: string | null
           plan_course_component_id?: string | null
           required_room_type?: string | null
+          scope_version_id?: string | null
           section_id?: string | null
           section_number?: string | null
           session_type?: string
@@ -4427,6 +4429,7 @@ export type Database = {
           notes?: string | null
           plan_course_component_id?: string | null
           required_room_type?: string | null
+          scope_version_id?: string | null
           section_id?: string | null
           section_number?: string | null
           session_type?: string
@@ -4495,6 +4498,13 @@ export type Database = {
             columns: ["plan_course_component_id"]
             isOneToOne: false
             referencedRelation: "plan_course_components"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teaching_assignments_scope_version_id_fkey"
+            columns: ["scope_version_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_versions"
             referencedColumns: ["id"]
           },
         ]
@@ -5585,6 +5595,12 @@ export type Database = {
         Args: { p_version_id: string }
         Returns: boolean
       }
+      education_term_completion_session_allowed: {
+        Args: {
+          p_session: Database["public"]["Tables"]["schedule_sessions"]["Row"]
+        }
+        Returns: boolean
+      }
       effective_instructor_weekly_quota: {
         Args: { p_admin_quota: number; p_base: number }
         Returns: number
@@ -5710,6 +5726,44 @@ export type Database = {
         Args: { p_college_id: string }
         Returns: Json
       }
+      get_verified_hosted_schedule_sessions: {
+        Args: { p_version: string }
+        Returns: {
+          auto_schedule_run_id: string | null
+          cohort_id: string | null
+          college_id: string
+          course_offering_id: string
+          created_at: string
+          day_of_week: number
+          delivery_group_id: string | null
+          end_time: string
+          expected_students: number | null
+          id: string
+          instructor_id: string
+          is_locked: boolean
+          lock_reason: string | null
+          plan_course_component_id: string | null
+          replaced_by_split: boolean
+          room_id: string | null
+          schedule_version_id: string
+          section_group_id: string | null
+          section_id: string | null
+          section_subgroup_id: string | null
+          session_type: string
+          source_type: string
+          split_source_session_id: string | null
+          start_time: string
+          study_system: string
+          teaching_assignment_id: string | null
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "schedule_sessions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -5794,9 +5848,31 @@ export type Database = {
           unit: string
         }[]
       }
+      itcs_native_draft_preview: { Args: { p_profile: string }; Returns: Json }
       itcs_relayout_preview: {
         Args: { p_manifest: Json; p_version: string }
         Returns: Json
+      }
+      itcs_review_proposal_get: { Args: { p_profile: string }; Returns: Json }
+      jawf_revision_session_allowed: {
+        Args: {
+          p_session: Database["public"]["Tables"]["schedule_sessions"]["Row"]
+        }
+        Returns: boolean
+      }
+      jawf_term_completion_coverage: {
+        Args: { p_version: string }
+        Returns: Json
+      }
+      jawf_term_completion_verified: {
+        Args: { p_version: string }
+        Returns: boolean
+      }
+      jawf_term_source_session_allowed: {
+        Args: {
+          p_session: Database["public"]["Tables"]["schedule_sessions"]["Row"]
+        }
+        Returns: boolean
       }
       leadership_metric_details: {
         Args: {
