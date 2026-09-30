@@ -66,7 +66,7 @@ function DeliveryGroupsPage() {
               ? {
                   ...g,
                   expected_students: link.total_students,
-                  group_code: `${g.group_code} — عام + موازٍ`,
+                  group_code: `${g.group_code} — محاضرة مشتركة`,
                 }
               : g;
           });
