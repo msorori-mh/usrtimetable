@@ -82,6 +82,9 @@ jobs:
       - name: TypeScript (tsc --noEmit)
         run: bunx tsc --noEmit
 
+      - name: Instructor workload attendance-day policy
+        run: node --import tsx --test tests/instructor-workload-day-cap.test.ts
+
       - name: Bounded fail-closed session checks
         run: node --test tests/session-check.test.mjs tests/auth-refresh.test.mjs tests/auth-resume.cjs tests/report-print-snapshot.cjs
 
