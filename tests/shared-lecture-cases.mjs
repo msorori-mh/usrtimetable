@@ -4,7 +4,54 @@ const group = (cohort, component = "theory") =>
 export const anchor = group("regular");
 export const member = group("parallel");
 const merge = `SELECT public.merge_shared_lecture(${anchor},${member});`;
+const third = group("regular2");
+const fourth = group("regular3");
+const extraCohorts = `
+  INSERT INTO academic_cohorts(id,college_id,program_id,level_id,term_id,study_system,entry_year,expected_students,active,code)
+  VALUES (${id("regular2")},${id("college")},${id("program")},${id("level")},${id("term")},'regular',2024,10,true,'TEST_ONLY_R2'),
+         (${id("regular3")},${id("college")},${id("program")},${id("level")},${id("term")},'regular',2025,10,true,'TEST_ONLY_R3');
+  INSERT INTO scheduling_cohort_term_headcounts(id,college_id,cohort_id,term_id,approval_status,scheduling_headcount)
+  SELECT id,college_id,id,term_id,'approved',expected_students FROM academic_cohorts
+  WHERE id IN (${id("regular2")},${id("regular3")});
+  SELECT generate_cohort_delivery_groups(${id("regular2")});
+  SELECT generate_cohort_delivery_groups(${id("regular3")});`;
 export const cases = [
+  [
+    "three cohorts within the regular system share one lecture and retain source counts",
+    `${extraCohorts}
+    SELECT merge_shared_lectures(${anchor},ARRAY[${third},${fourth}]::uuid[]);
+    DO $$ BEGIN
+      IF (SELECT count(*) FROM shared_lecture_links)<>2
+         OR (SELECT expected_students FROM operational_delivery_groups WHERE id=${anchor})<>70
+         OR shared_lecture_system(${anchor})<>'regular'
+         OR (SELECT sum(expected_students) FROM delivery_groups WHERE id IN (${anchor},${third},${fourth}))<>70
+      THEN RAISE EXCEPTION 'same-system multi-cohort merge lost source or aggregate'; END IF;
+    END $$;`,
+  ],
+  [
+    "three cohorts across regular and parallel are tagged for both systems",
+    `${extraCohorts}
+    SELECT merge_shared_lectures(${member},ARRAY[${third},${fourth}]::uuid[]);
+    DO $$ BEGIN
+      IF (SELECT count(*) FROM shared_lecture_links)<>2
+         OR (SELECT expected_students FROM operational_delivery_groups WHERE id=${member})<>45
+         OR shared_lecture_system(${member})<>'both'
+      THEN RAISE EXCEPTION 'mixed-system multi-cohort merge failed'; END IF;
+    END $$;`,
+  ],
+  [
+    "multi-cohort overflow rolls back every member link",
+    `${extraCohorts}
+    DO $$ BEGIN
+      BEGIN
+        PERFORM merge_shared_lectures(${anchor},ARRAY[${member},${third}]::uuid[]);
+        RAISE EXCEPTION 'overflow accepted';
+      EXCEPTION WHEN check_violation THEN
+        IF SQLERRM<>'SHARED_LECTURE_CAPACITY_EXCEEDED' THEN RAISE; END IF;
+      END;
+      IF EXISTS(SELECT 1 FROM shared_lecture_links) THEN RAISE EXCEPTION 'partial merge'; END IF;
+    END $$;`,
+  ],
   [
     "cohort guard handles both trigger row shapes and blocks source count drift",
     `
