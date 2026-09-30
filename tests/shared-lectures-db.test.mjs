@@ -36,7 +36,12 @@ before(() => {
   }
   sql(`ALTER TABLE public.academic_cohorts ADD COLUMN existing_schedule boolean NOT NULL DEFAULT false;
     CREATE FUNCTION public.existing_schedule_intake_enabled(uuid,uuid) RETURNS boolean
-    LANGUAGE sql STABLE AS $$ SELECT false $$;`);
+    LANGUAGE sql STABLE AS $$ SELECT false $$;
+    CREATE TABLE public.faculty_teaching_requests (
+      assignment_id uuid, identity_id uuid, status text, decided_by uuid, decided_at timestamptz,
+      instructor_id uuid, college_id uuid, delivery_group_id uuid, assigned_hours numeric
+    );
+    CREATE TABLE public.faculty_identity_links (instructor_id uuid, identity_id uuid);`);
   for (const path of [
     "supabase/migrations/20260930120000_admin_multi_cohort_shared_lectures.sql",
     "supabase/migrations/20260930121000_shared_lecture_system_scope.sql",
@@ -75,7 +80,6 @@ test("college-filtered operational reads scan delivery groups by index", () => {
   assert.match(plan, /delivery_groups/);
   assert.doesNotMatch(plan, /operational_delivery_group\(/);
 });
-
 
 test("operational view keeps invoker permissions on its base table", () => {
   sql(`BEGIN; REVOKE SELECT ON delivery_groups FROM authenticated;
