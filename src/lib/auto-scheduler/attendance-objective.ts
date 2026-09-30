@@ -200,6 +200,9 @@ export function compareAttendance(a: AttendanceMetrics, b: AttendanceMetrics): n
  */
 export const INSTRUCTOR_GENERIC_ATTENDANCE_DAY_CAP = 4;
 
+/** Regular instructors may exceed the workload-derived minimum by one day only. */
+export const INSTRUCTOR_ATTENDANCE_FLEX_DAYS = 1;
+
 /** Weekly hours count each session once, never once per candidate placement. */
 export function instructorAttendanceTarget(hours: number, explicit?: number | null): number {
   if (explicit != null) {
@@ -208,6 +211,26 @@ export function instructorAttendanceTarget(hours: number, explicit?: number | nu
     return explicit;
   }
   return hours <= 6 ? 1 : hours <= 10 ? 2 : hours <= 16 ? 3 : 4;
+}
+
+/**
+ * Effective ceiling for a regular instructor: the workload-derived minimum plus
+ * one fallback day, never more than the institutional four-day ceiling.
+ * Explicit maxima remain authoritative. Explicit targets (for example a
+ * department head targeting four days) may raise the ceiling, but never beyond 6.
+ */
+export function instructorAttendanceDayCapForHours(
+  hours: number,
+  target: number | null | undefined,
+  maxOverride: number | null | undefined = null,
+): number {
+  if (!Number.isFinite(hours) || hours < 0) throw new Error("INVALID_INSTRUCTOR_WEEKLY_HOURS");
+  const minimum = instructorAttendanceTarget(hours);
+  const regularCap = Math.min(
+    INSTRUCTOR_GENERIC_ATTENDANCE_DAY_CAP,
+    minimum + INSTRUCTOR_ATTENDANCE_FLEX_DAYS,
+  );
+  return instructorAttendanceDayCap(target, regularCap, maxOverride);
 }
 
 /** Per-instructor attendance-day limits as stored on `instructors`. */
