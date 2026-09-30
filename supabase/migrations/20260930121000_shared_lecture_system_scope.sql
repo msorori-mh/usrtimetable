@@ -208,6 +208,28 @@ BEGIN
            AND t.study_system IN ('regular','both') AND t.day_of_week=NEW.day_of_week
            AND t.start_time<=NEW.start_time AND t.end_time>=NEW.end_time))
       OR public.shared_lecture_group_time_allowed(NEW.delivery_group_id,NEW.college_id,NEW.day_of_week,NEW.start_time,NEW.end_time)
+      OR (TG_OP = 'INSERT' AND EXISTS (
+        SELECT 1 FROM public.schedule_sessions source_session
+        JOIN public.schedule_versions source_version ON source_version.id=source_session.schedule_version_id
+        WHERE source_version.college_id=NEW.college_id
+          AND source_version.status IN ('approved','published')
+          AND source_session.college_id=NEW.college_id
+          AND source_session.delivery_group_id=NEW.delivery_group_id
+          AND source_session.course_offering_id=NEW.course_offering_id
+          AND source_session.teaching_assignment_id IS NOT DISTINCT FROM NEW.teaching_assignment_id
+          AND source_session.instructor_id=NEW.instructor_id
+          AND source_session.room_id IS NOT DISTINCT FROM NEW.room_id
+          AND source_session.section_id IS NOT DISTINCT FROM NEW.section_id
+          AND source_session.section_group_id IS NOT DISTINCT FROM NEW.section_group_id
+          AND source_session.section_subgroup_id IS NOT DISTINCT FROM NEW.section_subgroup_id
+          AND source_session.cohort_id IS NOT DISTINCT FROM NEW.cohort_id
+          AND source_session.plan_course_component_id IS NOT DISTINCT FROM NEW.plan_course_component_id
+          AND source_session.day_of_week=NEW.day_of_week
+          AND source_session.start_time=NEW.start_time
+          AND source_session.end_time=NEW.end_time
+          AND source_session.session_type=NEW.session_type
+          AND NOT coalesce(source_session.replaced_by_split,false)
+      ))
     ) THEN
       RAISE EXCEPTION 'SHARED_LECTURE_TIME_WINDOW' USING ERRCODE='23514';
     END IF;
