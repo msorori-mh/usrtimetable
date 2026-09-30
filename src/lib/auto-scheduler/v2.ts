@@ -405,7 +405,7 @@ export async function runV2AutoSchedule(params: {
   };
   /**
    * Effective attendance-day target: an explicit `target_attendance_days_per_week`
-   * (department heads at five days) wins over the hours-based compression target,
+   * (department heads normally at four days) wins over the workload-derived target,
    * yet never overrides student rules, instructor_availability, conflicts,
    * room/capacity or daily-hour constraints.
    */
