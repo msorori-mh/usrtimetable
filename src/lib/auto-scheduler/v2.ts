@@ -17,9 +17,9 @@ import type { AutoRunMode, AutoRunResult, UnplacedItem } from "@/lib/auto-schedu
 import { loadCompactSnapshot } from "@/lib/auto-scheduler/compact-service";
 import { measure, compactSlots, minutes, type Session } from "@/lib/auto-scheduler/compact";
 import {
-  instructorsOverAttendanceDayCap,
+  instructorsOverWorkloadAttendanceDayCap,
   instructorAttendanceTarget,
-  instructorAttendanceDayCap,
+  instructorAttendanceDayCapForHours,
 } from "@/lib/auto-scheduler/attendance-objective";
 import {
   rankGenerationCandidates,
@@ -431,9 +431,9 @@ export async function runV2AutoSchedule(params: {
    * compression still prefers fewer days for those instructors.
    */
   const instructorDayCap = (instructorId: string) =>
-    instructorAttendanceDayCap(
+    instructorAttendanceDayCapForHours(
+      instructorWeeklyHours.get(instructorId) ?? 0,
       validExplicitTarget(instructorId),
-      undefined,
       validExplicitMax(instructorId),
     );
   const occupied: OccupiedInterval[] = sessionRows.map((row) => ({
@@ -1422,7 +1422,9 @@ export async function runV2AutoSchedule(params: {
   const finalSnapshot = await loadCompactSnapshot(params.collegeId, params.scheduleVersionId);
   const attendance = measure(finalSnapshot);
   // Independent readback verifies the same complete instructor cap enforced before commit.
-  if (instructorsOverAttendanceDayCap(finalSnapshot.sessions, finalSnapshot.instructors).length)
+  if (
+    instructorsOverWorkloadAttendanceDayCap(finalSnapshot.sessions, finalSnapshot.instructors).length
+  )
     throw new Error("INSTRUCTOR_ATTENDANCE_DAYS_EXCEEDED");
 
   const requirements = timedScope.map((item) => {
