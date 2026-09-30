@@ -7,6 +7,10 @@ on:
       - "tests/manual-assignment-scope-db.test.mjs"
       - "tests/fixtures/manual-assignment-scope-functions.sql"
       - "tests/faculty-workflow*"
+      - "supabase/migrations/*assignment_candidate_operational_scope*"
+      - "supabase/rollbacks/*assignment_candidate_operational_scope*"
+      - "tests/assignment-candidate-scope-db.test.mjs"
+      - "tests/fixtures/assignment-candidate-scope.sql"
       - ".github/workflows/manual-assignment-scope.yml"
 permissions:
   contents: read
@@ -22,4 +26,4 @@ jobs:
       - name: PostgreSQL test dependency
         run: npm install --prefix "$RUNNER_TEMP/faculty-db" --no-package-lock @electric-sql/pglite@0.3.14
       - name: Manual assignments, version scope and approval boundaries
-        run: FACULTY_DB_MODULE="$RUNNER_TEMP/faculty-db/node_modules/@electric-sql/pglite/dist/index.js" node --test tests/manual-assignment-scope-db.test.mjs
+        run: FACULTY_DB_MODULE="$RUNNER_TEMP/faculty-db/node_modules/@electric-sql/pglite/dist/index.js" node --test tests/manual-assignment-scope-db.test.mjs tests/assignment-candidate-scope-db.test.mjs
