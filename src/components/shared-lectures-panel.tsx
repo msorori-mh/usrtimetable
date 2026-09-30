@@ -137,8 +137,8 @@ export function SharedLecturesPanel({ collegeId }: { collegeId: string }) {
                           }))
                         }
                       />
-                      {c.member_cohort_code} ({systemName(c.member_study_system)}) — {c.member_students}{" "}
-                      طالبًا
+                      {c.member_cohort_code} ({systemName(c.member_study_system)}) —{" "}
+                      {c.member_students} طالبًا
                     </label>
                   ))}
                 </div>
@@ -147,7 +147,9 @@ export function SharedLecturesPanel({ collegeId }: { collegeId: string }) {
                 </p>
                 <Button
                   size="sm"
-                  disabled={!chosen.length || total > capacity || merge.isPending || action.isPending}
+                  disabled={
+                    !chosen.length || total > capacity || merge.isPending || action.isPending
+                  }
                   onClick={() =>
                     merge.mutate({ anchor, members: chosen.map((c) => c.member_group_id) })
                   }
