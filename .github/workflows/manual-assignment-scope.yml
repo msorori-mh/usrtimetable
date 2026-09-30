@@ -1,0 +1,25 @@
+name: manual-assignment-scope
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/*manual_assignment_scope_consistency*"
+      - "supabase/rollbacks/*manual_assignment_scope_consistency*"
+      - "tests/manual-assignment-scope-db.test.mjs"
+      - "tests/fixtures/manual-assignment-scope-functions.sql"
+      - "tests/faculty-workflow*"
+      - ".github/workflows/manual-assignment-scope.yml"
+permissions:
+  contents: read
+jobs:
+  scope:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: PostgreSQL test dependency
+        run: npm install --prefix "$RUNNER_TEMP/faculty-db" --no-package-lock @electric-sql/pglite@0.3.14
+      - name: Manual assignments, version scope and approval boundaries
+        run: FACULTY_DB_MODULE="$RUNNER_TEMP/faculty-db/node_modules/@electric-sql/pglite/dist/index.js" node --test tests/manual-assignment-scope-db.test.mjs

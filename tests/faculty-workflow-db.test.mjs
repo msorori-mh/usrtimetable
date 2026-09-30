@@ -5,7 +5,7 @@ const { PGlite } = await import(process.env.FACULTY_DB_MODULE || "@electric-sql/
 const id = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const read = (p) => readFile(new URL(p, import.meta.url), "utf8");
 
-async function fixture() {
+export async function fixture() {
   const db = new PGlite();
   await db.exec(await read("./faculty-workflow-fixture.sql"));
   const ins = async (table, row) => {
