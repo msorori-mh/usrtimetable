@@ -18,7 +18,7 @@ import {
   ReportDataTable,
   type ReportColumn,
 } from "@/components/reports/report-section";
-import { filterRowsBySearch } from "@/lib/reports/search";
+import { filterRowsBySearch, normalizeSearchText } from "@/lib/reports/search";
 import { listTeachingAssignmentWorkspace } from "@/lib/academic-delivery/teaching-assignments-v2-service";
 import { PENDING_SPLIT_AR } from "@/lib/existing-schedules/presentation";
 import { facultyWorkflow } from "@/lib/instructors/faculty-workflow";
@@ -33,6 +33,7 @@ import {
   selectWorkloadReportRows,
   isMissingQuotaRow,
   parseAcademicWorkload,
+  summarizeCourseAssignmentStatusRows,
   summarizeWorkloadRows,
   type AcademicInstructor,
   type AcademicProgram,
@@ -356,6 +357,45 @@ function academicTableColumns(kind: AcademicReportKind): ReportColumn<AcademicRe
     ];
   }
 
+  if (kind === "course_status") {
+    return [
+      index,
+      {
+        key: "program",
+        label: "البرنامج والدفعة",
+        className: "w-[20%]",
+        render: (row) => <ContextCell row={row} />,
+      },
+      { key: "course", label: "المقرر", className: "w-[20%]" },
+      {
+        key: "group",
+        label: "المجموعة / النوع",
+        className: "w-[14%]",
+        render: (row) => <GroupCell row={row} />,
+      },
+      {
+        key: "allocation_status",
+        label: "حالة الإسناد",
+        className: "w-[19%]",
+        render: (row) => <CoverageCell row={row} />,
+      },
+      {
+        key: "instructors",
+        label: "المحاضرون وتوزيع الساعات",
+        className: "w-[21%]",
+        render: (row) => (
+          <div className="min-w-[160px] space-y-1 leading-5">
+            <div>{valueText(row.instructors)}</div>
+            {row.note && (
+              <div className="text-[10px] text-muted-foreground">{valueText(row.note)}</div>
+            )}
+          </div>
+        ),
+      },
+      { key: "conflicts", label: "ملاحظات التحقق", className: "w-[16%]" },
+    ];
+  }
+
   return [
     index,
     {
@@ -398,6 +438,7 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
   const navigate = Route.useNavigate();
   const setKind = (value: AcademicReportKind) => {
     setLoadStatus("all");
+    setAssignmentCoverage("all");
     setInstructorId("all");
     void navigate({ search: { report: value, termId: chosenTerm || undefined } });
   };
@@ -408,6 +449,7 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
   const [programId, setProgramId] = useState("all");
   const [instructorId, setInstructorId] = useState("all");
   const [loadStatus, setLoadStatus] = useState("all");
+  const [assignmentCoverage, setAssignmentCoverage] = useState("all");
   const [search, setSearch] = useState("");
 
   const references = useQuery({
@@ -524,11 +566,15 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
       : null;
   const sourceRows = input ? buildAcademicReport(input, workloadReport ? "workload" : kind) : [];
   const allRows = selectWorkloadReportRows(sourceRows, kind);
+  const courseStatusReport = kind === "course_status";
   const incompleteMembers = summarizeWorkloadRows(
     filterRowsBySearch(workloadReport ? sourceRows : [], search),
   ).incompleteMembers;
-  const statusRows =
-    kind === "workload" && loadStatus !== "all"
+  const statusRows = courseStatusReport
+    ? assignmentCoverage === "all"
+      ? allRows
+      : allRows.filter((row) => row.allocation_status_code === assignmentCoverage)
+    : kind === "workload" && loadStatus !== "all"
       ? allRows.filter((r) =>
           loadStatus === "missing"
             ? isMissingQuotaRow(r)
@@ -539,9 +585,17 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
       : allRows;
 
   // Search only hides rows in the view; exported keys and values stay identical.
-  const rows = filterRowsBySearch(statusRows, search);
+  const courseNeedle = normalizeSearchText(search);
+  const rows = courseStatusReport
+    ? statusRows.filter((row) =>
+        normalizeSearchText(`${row.course_code ?? ""} ${row.course_name ?? ""}`).includes(
+          courseNeedle,
+        ),
+      )
+    : filterRowsBySearch(statusRows, search);
   // Totals are recomputed from the visible rows, so KPIs always match the table and the export.
   const workloadTotals = summarizeWorkloadRows(workloadReport ? rows : []);
+  const courseStatusTotals = summarizeCourseAssignmentStatusRows(courseStatusReport ? rows : []);
   const headers = ACADEMIC_REPORT_HEADERS[kind];
 
   const programs =
@@ -553,9 +607,12 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
     `البرنامج: ${refs?.programs.find((p) => p.id === programId)?.name ?? "الكل"}`,
     `عضو هيئة التدريس: ${reportInstructors?.find((i) => i.id === instructorId)?.full_name ?? "الكل"}`,
     workloadReport ? "التبعية: الكلية الأصلية" : "",
-    search.trim() ? `بحث: ${search.trim()}` : "",
+    search.trim() ? `${courseStatusReport ? "المقرر" : "بحث"}: ${search.trim()}` : "",
     kind === "workload"
       ? `الحالة: ${loadStatus === "overload" ? "ساعات زائدة" : loadStatus === "deficit" ? "نقص النصاب" : loadStatus === "missing" ? "بلا نصاب معتمد" : "الكل"}`
+      : "",
+    courseStatusReport
+      ? `حالة الإسناد: ${assignmentCoverage === "unassigned" ? "غير مسند" : assignmentCoverage === "under_allocated" ? "تغطية جزئية" : assignmentCoverage === "fully_allocated" ? "مكتمل" : assignmentCoverage === "over_allocated" ? "تجاوز الساعات" : assignmentCoverage === "pending_split" ? "بانتظار توزيع الساعات" : "الكل"}`
       : "",
   ]
     .filter(Boolean)
@@ -564,8 +621,13 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
   return (
     <ReportShell
       title={ACADEMIC_REPORT_TITLES[kind]}
-      description="تقارير الشؤون الأكاديمية بحسب الكلية والقسم والبرنامج وعضو هيئة التدريس."
+      description={
+        courseStatusReport
+          ? "حالة إسناد كل مقرر ومجموعة تدريس، مع الساعات المطلوبة والمسندة والمتبقية والمحاضرين وتفاصيل التحقق."
+          : "تقارير الشؤون الأكاديمية بحسب الكلية والقسم والبرنامج وعضو هيئة التدريس."
+      }
       filename={`academic_affairs_${kind}_${collegeName}_${term?.name ?? ""}`}
+      printFilename={`${ACADEMIC_REPORT_TITLES[kind]} — ${collegeName} — ${term?.name ?? ""}`}
       headers={headers}
       rows={rows}
       isLoading={loading}
@@ -586,58 +648,75 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
               : "لا توجد بيانات بهذه المعايير."
       }
       summary={
-        separateBalance && !loading && !error && termId ? (
+        courseStatusReport && !loading && !error && termId ? (
+          <Card className="p-4 text-sm leading-7" data-testid="course-assignment-status-summary">
+            {`يعرض التقرير ${courseStatusTotals.groups} مجموعة تدريس: ${courseStatusTotals.completeGroups} مكتملة، ${courseStatusTotals.partialGroups} جزئية، ${courseStatusTotals.unassignedGroups} غير مسندة، ${courseStatusTotals.overAllocatedGroups} متجاوزة للساعات، و${courseStatusTotals.pendingSplitGroups} بانتظار توزيع ساعات التدريس المشترك. الساعات المطلوبة ${courseStatusTotals.requiredHours}، والمسندة المؤكدة ${courseStatusTotals.assignedHours}، والمتبقية المؤكدة ${courseStatusTotals.remainingHours}.`}
+          </Card>
+        ) : separateBalance && !loading && !error && termId ? (
           <Card className="p-4 text-sm leading-7" data-testid="balance-report-summary">
             {`عدد أعضاء هيئة التدريس: ${rows.length} · ${kind === "overload" ? "إجمالي الساعات الزائدة" : "إجمالي ساعات العجز"}: ${kind === "overload" ? workloadTotals.overloadHours : workloadTotals.deficitHours} ساعة أسبوعيًا · صافي النصاب: ${workloadTotals.netQuotaHours} ساعة · الساعات المسندة: ${workloadTotals.assignedHours} ساعة.`}
           </Card>
         ) : undefined
       }
       kpis={
-        separateBalance
+        courseStatusReport
           ? [
-              { label: "أعضاء هيئة التدريس", value: rows.length },
-              {
-                label: kind === "overload" ? "إجمالي الساعات الزائدة" : "إجمالي ساعات العجز",
-                value:
-                  kind === "overload" ? workloadTotals.overloadHours : workloadTotals.deficitHours,
-              },
-              { label: "صافي النصاب (ساعة)", value: workloadTotals.netQuotaHours },
-              { label: "الساعات المسندة", value: workloadTotals.assignedHours },
+              { label: "مجموعات التدريس", value: courseStatusTotals.groups },
+              { label: "مكتملة", value: courseStatusTotals.completeGroups, tone: "accent" },
+              { label: "غير مسندة", value: courseStatusTotals.unassignedGroups },
+              { label: "تغطية جزئية", value: courseStatusTotals.partialGroups },
+              { label: "تجاوز الساعات", value: courseStatusTotals.overAllocatedGroups },
+              { label: "الساعات المتبقية المؤكدة", value: courseStatusTotals.remainingHours },
             ]
-          : [
-              { label: "عدد السجلات", value: rows.length },
-              ...(kind === "workload"
-                ? [
-                    {
-                      label: "ساعات زائدة",
-                      value: workloadTotals.overloadedMembers,
-                    },
-                    {
-                      label: "نقص نصاب",
-                      value: workloadTotals.deficitMembers,
-                    },
-                    {
-                      label: "بلا نصاب معتمد",
-                      value: workloadTotals.missingMembers,
-                    },
-                    {
-                      label: "بانتظار توزيع الساعات",
-                      value: workloadTotals.pendingSplitMembers,
-                    },
-                    {
-                      label: "إجمالي صافي النصاب (ساعة)",
-                      value: workloadTotals.netQuotaHours,
-                    },
-                  ]
-                : []),
-            ]
+          : separateBalance
+            ? [
+                { label: "أعضاء هيئة التدريس", value: rows.length },
+                {
+                  label: kind === "overload" ? "إجمالي الساعات الزائدة" : "إجمالي ساعات العجز",
+                  value:
+                    kind === "overload"
+                      ? workloadTotals.overloadHours
+                      : workloadTotals.deficitHours,
+                },
+                { label: "صافي النصاب (ساعة)", value: workloadTotals.netQuotaHours },
+                { label: "الساعات المسندة", value: workloadTotals.assignedHours },
+              ]
+            : [
+                { label: "عدد السجلات", value: rows.length },
+                ...(kind === "workload"
+                  ? [
+                      {
+                        label: "ساعات زائدة",
+                        value: workloadTotals.overloadedMembers,
+                      },
+                      {
+                        label: "نقص نصاب",
+                        value: workloadTotals.deficitMembers,
+                      },
+                      {
+                        label: "بلا نصاب معتمد",
+                        value: workloadTotals.missingMembers,
+                      },
+                      {
+                        label: "بانتظار توزيع الساعات",
+                        value: workloadTotals.pendingSplitMembers,
+                      },
+                      {
+                        label: "إجمالي صافي النصاب (ساعة)",
+                        value: workloadTotals.netQuotaHours,
+                      },
+                    ]
+                  : []),
+              ]
       }
       filters={
         <ReportFilterBar
           search={{
             value: search,
             onChange: setSearch,
-            placeholder: "ابحث في نتائج التقرير…",
+            placeholder: courseStatusReport
+              ? "ابحث باسم المقرر أو رمزه…"
+              : "ابحث في نتائج التقرير…",
           }}
           activeSummary={filterSummary.split(" · ")}
           onClear={() => {
@@ -645,6 +724,7 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
             setProgramId("all");
             setInstructorId("all");
             setLoadStatus("all");
+            setAssignmentCoverage("all");
             setSearch("");
           }}
           basic={
@@ -712,6 +792,21 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
                   ]}
                 />
               )}
+              {courseStatusReport && (
+                <Filter
+                  label="حالة الإسناد"
+                  value={assignmentCoverage}
+                  onChange={setAssignmentCoverage}
+                  items={[
+                    { id: "all", name: "الكل" },
+                    { id: "unassigned", name: "غير مسند" },
+                    { id: "under_allocated", name: "تغطية جزئية" },
+                    { id: "fully_allocated", name: "مكتمل" },
+                    { id: "over_allocated", name: "تجاوز الساعات" },
+                    { id: "pending_split", name: "بانتظار توزيع الساعات" },
+                  ]}
+                />
+              )}
             </>
           }
         />
@@ -762,6 +857,13 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
             <Card className="p-3 text-sm">
               عجز الإسناد هو ساعات مجموعات التدريس النشطة التي لم تُستكمل تغطيتها؛ وهو مستقل عن نقص
               نصاب عضو هيئة التدريس.
+            </Card>
+          )}
+          {courseStatusReport && (
+            <Card className="p-3 text-sm">
+              كل صف يمثل مجموعة تدريس فعلية نشطة لمقرر واحد. «غير مسند» يعني عدم وجود محاضر نشط،
+              و«تغطية جزئية» تعني أن بعض ساعات المجموعة ما زالت دون إسناد. الساعات غير الموزعة في
+              التدريس المشترك لا تُحوّل إلى أرقام تقديرية.
             </Card>
           )}
         </>

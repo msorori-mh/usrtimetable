@@ -5,6 +5,7 @@ import {
   parseAcademicWorkload,
   parseAcademicReportKind,
   isWorkloadReport,
+  summarizeCourseAssignmentStatusRows,
   summarizeWorkloadRows,
   ACADEMIC_REPORT_HEADERS,
   type AcademicReportInput,
@@ -112,7 +113,14 @@ test("reports support an empty academic structure before details are entered", (
   data.departments = [];
   data.groups = [];
   data.workloads = [];
-  for (const kind of ["workload", "overload", "deficit", "assignments", "shortages"] as const) {
+  for (const kind of [
+    "workload",
+    "overload",
+    "deficit",
+    "assignments",
+    "course_status",
+    "shortages",
+  ] as const) {
     assert.deepEqual(buildAcademicReport(data, kind), []);
   }
 });
@@ -131,6 +139,57 @@ test("assignment report carries operational context for compact tables and expor
   assert.equal(row.capacity, 40);
   assert.equal(row.allocation_status, "مغطى بالكامل");
   assert.equal(row.employee_number, "—");
+});
+test("course assignment status includes assigned, partial and unassigned groups with details", () => {
+  const data = fixture();
+  data.groups = [
+    group({ delivery_group_id: "complete" }),
+    group({
+      delivery_group_id: "partial",
+      instructors: [instructor("i1", 2)],
+      assignment_count: 1,
+      assigned_hours_total: 2,
+      remaining_hours: 2,
+      allocation_status: "under_allocated",
+    }),
+    group({
+      delivery_group_id: "unassigned",
+      instructors: [],
+      assignment_count: 0,
+      assigned_hours_total: 0,
+      remaining_hours: 4,
+      allocation_status: "unassigned",
+    }),
+  ];
+  const rows = buildAcademicReport(data, "course_status");
+  assert.deepEqual(
+    rows.map((row) => row.allocation_status_code),
+    ["fully_allocated", "under_allocated", "unassigned"],
+  );
+  assert.match(String(rows[0].instructors), /i1 \(2 س\).*i2 \(2 س\)/);
+  assert.equal(rows[2].instructors, "لم يُسند");
+  assert.deepEqual(summarizeCourseAssignmentStatusRows(rows), {
+    groups: 3,
+    unassignedGroups: 1,
+    partialGroups: 1,
+    completeGroups: 1,
+    overAllocatedGroups: 0,
+    pendingSplitGroups: 0,
+    requiredHours: 12,
+    assignedHours: 6,
+    remainingHours: 6,
+  });
+});
+test("unresolved shared teaching remains pending instead of fabricating assigned hours", () => {
+  const data = fixture();
+  data.groups[0].instructors[0].assigned_component_hours = null;
+  data.groups[0].assigned_hours_total = 2;
+  data.groups[0].remaining_hours = 2;
+  const row = buildAcademicReport(data, "course_status")[0];
+  assert.equal(row.allocation_status_code, "pending_split");
+  assert.equal(row.assigned, null);
+  assert.equal(row.remaining, null);
+  assert.equal(row.shared_hours_pending, 4);
 });
 test("an unspecified shared allocation stays unknown instead of copying the component", () => {
   const data = fixture();
@@ -300,6 +359,8 @@ test("links validate report kind and every workload report loads the quota facts
     assert.equal(parseAcademicReportKind(kind), kind);
     assert.equal(isWorkloadReport(kind), true);
   }
+  assert.equal(parseAcademicReportKind("course_status"), "course_status");
+  assert.equal(isWorkloadReport("course_status"), false);
   for (const value of [undefined, null, "unknown", {}, "__proto__"]) {
     assert.equal(parseAcademicReportKind(value), "workload");
   }

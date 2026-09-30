@@ -96,9 +96,8 @@ describe("teaching-assignments day column wiring", () => {
   it("derives days from the current version sessions and stays search-compatible", () => {
     expect(src).toContain("loadAssignmentSchedule");
     expect(src).toContain("assignmentRowDaysLabel(sessionDays?.get(row.delivery_group_id))");
-    expect(src).toContain(
-      "filterRowsByInstructorName(workspace.data?.rows ?? [], instructorSearch)",
-    );
+    expect(src).toContain("filterTeachingAssignmentRowsByCourse(");
+    expect(src).toContain("filterRowsByInstructorName(courseRows, instructorSearch)");
   });
 });
 

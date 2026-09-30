@@ -71,12 +71,19 @@ export type AcademicScope = {
   programId: string;
   instructorId: string;
 };
-export type AcademicReportKind = "workload" | "overload" | "deficit" | "assignments" | "shortages";
+export type AcademicReportKind =
+  | "workload"
+  | "overload"
+  | "deficit"
+  | "assignments"
+  | "course_status"
+  | "shortages";
 
 export function parseAcademicReportKind(value: unknown): AcademicReportKind {
   return value === "overload" ||
     value === "deficit" ||
     value === "assignments" ||
+    value === "course_status" ||
     value === "shortages"
     ? value
     : "workload";
@@ -181,6 +188,8 @@ export function buildAcademicReport(
     department: departmentMap.get(programMap.get(g.program_id)?.department_id ?? "") ?? "غير محدد",
     program: programMap.get(g.program_id)?.name ?? "غير محدد",
     course: entityDisplayName({ name: g.course_name, code: g.course_code }),
+    course_code: g.course_code,
+    course_name: g.course_name,
     cohort: g.cohort_code ?? "—",
     group: g.group_code,
     component: COMPONENT_LABELS[g.component_type] ?? g.component_type,
@@ -190,6 +199,37 @@ export function buildAcademicReport(
     allocation_status: ALLOCATION_STATUS_LABELS[g.allocation_status] ?? g.allocation_status,
     required: g.component_hours,
   });
+
+  if (kind === "course_status")
+    return selectedGroups.map((g) => {
+      const active = g.instructors.filter((i) => i.is_active);
+      const pendingSharedHours =
+        active.length > 1 && active.some((i) => i.assigned_component_hours === null)
+          ? round(g.component_hours ?? 0)
+          : 0;
+      const instructorDetails = active.map((instructor) => {
+        const hours =
+          instructor.assigned_component_hours ??
+          (active.length === 1 ? (g.component_hours ?? null) : null);
+        return `${instructor.instructor_name ?? "غير محدد"}${hours === null ? " (الساعات غير محددة)" : ` (${round(hours)} س)`}`;
+      });
+      return {
+        ...groupInfo(g),
+        allocation_status_code: pendingSharedHours > 0 ? "pending_split" : g.allocation_status,
+        allocation_status:
+          pendingSharedHours > 0
+            ? PENDING_SPLIT_AR
+            : (ALLOCATION_STATUS_LABELS[g.allocation_status] ?? g.allocation_status),
+        assigned: pendingSharedHours > 0 ? null : round(g.assigned_hours_total),
+        shortage: pendingSharedHours > 0 ? null : round(g.remaining_hours),
+        remaining: pendingSharedHours > 0 ? null : round(g.remaining_hours),
+        shared_hours_pending: pendingSharedHours,
+        assignment_count: active.length,
+        instructors: instructorDetails.join("، ") || "لم يُسند",
+        conflicts: g.conflicts.join("، ") || "—",
+        note: g.excluded_from_standard_workload ? "لا يُحتسب ضمن النصاب النظامي" : "",
+      };
+    });
 
   if (kind === "assignments")
     return selectedGroups.flatMap((g) => {
@@ -339,11 +379,38 @@ export function summarizeWorkloadRows(rows: AcademicReportRow[]) {
   };
 }
 
+/** Totals derived only from the visible course-status rows. */
+export function summarizeCourseAssignmentStatusRows(rows: AcademicReportRow[]) {
+  const count = (status: string) =>
+    rows.filter((row) => row.allocation_status_code === status).length;
+  const sum = (key: string) =>
+    round(
+      rows.reduce(
+        (total, row) =>
+          total +
+          (typeof row[key] === "number" && Number.isFinite(row[key]) ? Number(row[key]) : 0),
+        0,
+      ),
+    );
+  return {
+    groups: rows.length,
+    unassignedGroups: count("unassigned"),
+    partialGroups: count("under_allocated"),
+    completeGroups: count("fully_allocated"),
+    overAllocatedGroups: count("over_allocated"),
+    pendingSplitGroups: count("pending_split"),
+    requiredHours: sum("required"),
+    assignedHours: sum("assigned"),
+    remainingHours: sum("remaining"),
+  };
+}
+
 export const ACADEMIC_REPORT_TITLES: Record<AcademicReportKind, string> = {
   workload: "النصاب والساعات الزائدة والنقص",
   overload: "تقرير الساعات الزائدة",
   deficit: "تقرير عجز النصاب",
   assignments: "تقرير الإسناد التدريسي",
+  course_status: "تقرير حالة إسناد المقررات",
   shortages: "عجز الإسناد التدريسي",
 };
 export const ACADEMIC_REPORT_HEADERS: Record<AcademicReportKind, { key: string; label: string }[]> =
@@ -403,6 +470,25 @@ export const ACADEMIC_REPORT_HEADERS: Record<AcademicReportKind, { key: string; 
       { key: "employee_number", label: "الرقم الوظيفي" },
       { key: "required", label: "ساعات المحاضرة" },
       { key: "assigned", label: "ساعات العضو" },
+      { key: "note", label: "ملاحظة" },
+    ],
+    course_status: [
+      { key: "department", label: "قسم البرنامج" },
+      { key: "program", label: "البرنامج" },
+      { key: "course_code", label: "رمز المقرر" },
+      { key: "course_name", label: "اسم المقرر" },
+      { key: "cohort", label: "الدفعة" },
+      { key: "study_system", label: "النظام" },
+      { key: "group", label: "المجموعة" },
+      { key: "component", label: "نوع المحاضرة" },
+      { key: "students", label: "عدد الطلاب" },
+      { key: "capacity", label: "السعة" },
+      { key: "allocation_status", label: "حالة الإسناد" },
+      { key: "required", label: "الساعات المطلوبة" },
+      { key: "assigned", label: "الساعات المسندة" },
+      { key: "remaining", label: "الساعات المتبقية" },
+      { key: "instructors", label: "المحاضرون وتوزيع الساعات" },
+      { key: "conflicts", label: "ملاحظات التحقق" },
       { key: "note", label: "ملاحظة" },
     ],
     shortages: [
