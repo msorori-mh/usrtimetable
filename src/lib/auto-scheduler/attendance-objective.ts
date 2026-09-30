@@ -296,6 +296,53 @@ export function instructorsOverAttendanceDayCap(
 }
 
 /**
+ * Workload-aware violations used by the automatic scheduler. The complete weekly
+ * duration is measured first; regular instructors receive only one fallback day
+ * above their minimum target.
+ */
+export function instructorsOverWorkloadAttendanceDayCap(
+  sessions: {
+    instructor_id: string;
+    day_of_week: number;
+    start_time: string;
+    end_time: string;
+  }[],
+  instructors: InstructorAttendanceLimits[],
+): { instructorId: string; days: number; cap: number; hours: number }[] {
+  const limits = new Map(instructors.map((i) => [i.id, i]));
+  const byInstructor = new Map<string, { days: Set<number>; minutes: number }>();
+  const toMinutes = (value: string) => {
+    const [hour, minute] = value.split(":").map(Number);
+    if (!Number.isFinite(hour) || !Number.isFinite(minute))
+      throw new Error("INVALID_INSTRUCTOR_SESSION_TIME");
+    return hour * 60 + minute;
+  };
+  for (const session of sessions) {
+    const row = byInstructor.get(session.instructor_id) ?? {
+      days: new Set<number>(),
+      minutes: 0,
+    };
+    const duration = toMinutes(session.end_time) - toMinutes(session.start_time);
+    if (duration <= 0) throw new Error("INVALID_INSTRUCTOR_SESSION_TIME");
+    row.days.add(session.day_of_week);
+    row.minutes += duration;
+    byInstructor.set(session.instructor_id, row);
+  }
+  const over: { instructorId: string; days: number; cap: number; hours: number }[] = [];
+  for (const [instructorId, row] of byInstructor) {
+    const limit = limits.get(instructorId);
+    const hours = row.minutes / 60;
+    const cap = instructorAttendanceDayCapForHours(
+      hours,
+      limit?.target_attendance_days_per_week ?? null,
+      limit?.max_attendance_days_per_week ?? null,
+    );
+    if (row.days.size > cap) over.push({ instructorId, days: row.days.size, cap, hours });
+  }
+  return over;
+}
+
+/**
  * New or increased attendance-day cap violations compared with a baseline.
  * Historical violations that existed before the run and were preserved as-is must
  * not fail a fill_missing run; only a regression may.
