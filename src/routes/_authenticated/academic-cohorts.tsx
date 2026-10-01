@@ -1,7 +1,8 @@
 import { generationErrorMessage } from "@/lib/academic-delivery/generation-messages";
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   Layers3,
   Users,
@@ -115,6 +116,7 @@ function AcademicCohortsPage() {
 
 function AcademicCohortsWorkspace() {
   const { active } = useActiveCollege();
+  const queryClient = useQueryClient();
   const canManage = useCanManageActiveCollege();
   const generate = useGenerateDeliveryGroups();
   const generateCurriculum = useGenerateCohortCurriculum();
@@ -265,6 +267,44 @@ function AcademicCohortsWorkspace() {
   );
   const directoryPage = cohortDirectoryPage(filteredCohorts, page);
   const effectiveCohortId = visibleCohortSelection(directoryPage.rows, selectedCohortId);
+  const { data: electiveSelections, error: electiveError } = useQuery({
+    queryKey: ["cohort-elective-selections", active?.id, effectiveCohortId],
+    enabled: !!active && !!effectiveCohortId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("cohort_elective_selections")
+        .select(
+          "id, selected_course_id, decided_at, decided_by, elective_slots!cohort_elective_selections_elective_slot_id_fkey(slot_code), courses!cohort_elective_selections_selected_course_id_fkey(code, name)",
+        )
+        .eq("college_id", active!.id)
+        .eq("cohort_id", effectiveCohortId!);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const approveElectives = useMutation({
+    mutationFn: async (cohortId: string) => {
+      const { data, error } = await (
+        supabase as unknown as {
+          rpc(
+            name: string,
+            args: Record<string, string>,
+          ): Promise<{
+            data: { approved: number; total: number } | null;
+            error: Error | null;
+          }>;
+        }
+      ).rpc("approve_cohort_elective_selections", { p_cohort_id: cohortId });
+      if (error) throw error;
+      if (!data) throw new Error("تعذر قراءة نتيجة الاعتماد.");
+      return data;
+    },
+    onSuccess: (result) => {
+      void queryClient.invalidateQueries({ queryKey: ["cohort-elective-selections", active?.id] });
+      toast.success(`تم اعتماد ${result.approved} من ${result.total} اختيارًا للدفعة.`);
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
   const availableLevels = cohortLevelOptions(directoryRows, filters.program);
   const hasFilters = Object.entries(filters).some(
     ([key, value]) => value !== EMPTY_COHORT_FILTERS[key as keyof CohortFilters],
@@ -766,6 +806,39 @@ function AcademicCohortsWorkspace() {
                       </dd>
                     </div>
                   </dl>
+                  {electiveError ? (
+                    <p className="border-t p-4 text-sm text-destructive" role="alert">
+                      تعذر تحميل اختيارات المقررات الاختيارية.
+                    </p>
+                  ) : (electiveSelections?.length ?? 0) > 0 ? (
+                    <div className="space-y-2 border-t p-4 text-sm">
+                      <p className="font-medium">اختيارات المقررات الاختيارية للدفعة</p>
+                      <ul className="space-y-1 text-xs text-muted-foreground">
+                        {electiveSelections?.map((choice) => (
+                          <li key={choice.id}>
+                            {choice.elective_slots?.slot_code ?? "خانة اختيارية"} ·{" "}
+                            {choice.courses?.code} — {choice.courses?.name}
+                            {choice.decided_at && choice.decided_by
+                              ? " · معتمد"
+                              : " · ينتظر الاعتماد"}
+                          </li>
+                        ))}
+                      </ul>
+                      {canManage &&
+                        electiveSelections?.some(
+                          (choice) => !choice.decided_at || !choice.decided_by,
+                        ) && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={approveElectives.isPending}
+                            onClick={() => approveElectives.mutate(selected.id)}
+                          >
+                            اعتماد الاختيارات المعروضة
+                          </Button>
+                        )}
+                    </div>
+                  ) : null}
                   {canManage ? (
                     <div className="grid gap-2 border-t p-4">
                       <p className="text-xs leading-6 text-muted-foreground">
