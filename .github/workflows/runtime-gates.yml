@@ -97,6 +97,9 @@ jobs:
       - name: Continuous distribution quality and atomic application
         run: node --test tests/quality-search.test.mjs tests/instructor-daily-sessions.test.mjs
 
+      - name: Assignment workspace per-version read model contract
+        run: node --test tests/assignment-workspace-version-view.test.mjs
+
       - name: Joint mathematical scheduling model
         run: node --import tsx --test tests/joint-model.test.mjs tests/extended-resource-capacity.test.mjs tests/course-program-plans.test.mjs
 

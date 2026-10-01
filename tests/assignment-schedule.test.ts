@@ -170,7 +170,9 @@ describe("complete assignment schedule reads", () => {
 
   it("scopes the UI cache by term and displays errors and the chosen version", () => {
     const source = readFileSync("src/routes/_authenticated/teaching-assignments.tsx", "utf8");
-    expect(source).toContain('["teaching-assignment-row-days", active?.id, termId]');
+    expect(source).toContain(
+      '["teaching-assignment-row-days", active?.id, termId, viewVersion?.id ?? null]',
+    );
     expect(source).toContain("termId: termId || null");
     expect(source).toContain('refetchOnMount: "always"');
     expect(source).toContain('data-testid="ta-v2-schedule-source"');

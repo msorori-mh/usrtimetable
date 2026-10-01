@@ -36,6 +36,8 @@ export type TeachingAssignmentInstructorRef = {
   assigned_component_hours: number | null;
   is_active: boolean;
   updated_at: string;
+  /** Only in the per-version view: the lecturer comes from a draft-scoped replacement. */
+  version_scoped?: boolean;
 };
 
 export type TeachingAssignmentWorkspaceRow = {
@@ -127,9 +129,30 @@ export type WorkspaceFilters = {
   cohortId?: string | null;
   componentType?: string | null;
   assignmentStatus?: string | null;
+  /**
+   * When set, rows resolve through the effective assignments of this schedule
+   * version (read-only) instead of the operational assignments.
+   */
+  scheduleVersionId?: string | null;
 };
 
+/** The per-version read model takes the same filters plus the version itself. */
+export function workspaceRpcArgs(filters: WorkspaceFilters): Record<string, unknown> {
+  return {
+    ...(filters.scheduleVersionId ? { p_schedule_version_id: filters.scheduleVersionId } : {}),
+    p_college_id: filters.collegeId,
+    p_program_id: filters.programId || null,
+    p_level_id: filters.levelId || null,
+    p_term_id: filters.termId || null,
+    p_study_system: filters.studySystem || null,
+    p_cohort_id: filters.cohortId || null,
+    p_component_type: filters.componentType || null,
+    p_assignment_status: filters.assignmentStatus || null,
+  };
+}
+
 const RPC_ERROR_MESSAGES: Record<string, string> = {
+  SCHEDULE_VERSION_NOT_IN_COLLEGE: "نسخة الجدول المختارة لا تتبع هذه الكلية",
   COHORT_COMPONENT_SINGLE_INSTRUCTOR_REQUIRED:
     "لهذه الدفعة والمقرر يجب توحيد محاضر جميع مجموعات النظري، وتوحيد محاضر جميع مجموعات العملي",
   FACULTY_IDENTITY_NOT_FOUND:
