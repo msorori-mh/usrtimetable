@@ -305,6 +305,11 @@ function AcademicCohortsWorkspace() {
     },
     onError: (error: Error) => toast.error(error.message),
   });
+  const hasElectivePlaceholder = electiveSelections?.some(
+    (choice) =>
+      /\(E\)/i.test(choice.courses?.code ?? "") ||
+      (choice.courses?.name ?? "").startsWith("مادة اختيارية"),
+  );
   const availableLevels = cohortLevelOptions(directoryRows, filters.program);
   const hasFilters = Object.entries(filters).some(
     ([key, value]) => value !== EMPTY_COHORT_FILTERS[key as keyof CohortFilters],
@@ -824,6 +829,12 @@ function AcademicCohortsWorkspace() {
                           </li>
                         ))}
                       </ul>
+                      {hasElectivePlaceholder ? (
+                        <p className="text-amber-700 dark:text-amber-400">
+                          أسماء «مادة اختيارية» في الخطة خانات عامة؛ حدّد المقرر الفعلي قبل اعتماد
+                          اختيارات هذه الدفعة.
+                        </p>
+                      ) : null}
                       {canManage &&
                         electiveSelections?.some(
                           (choice) => !choice.decided_at || !choice.decided_by,
@@ -831,7 +842,7 @@ function AcademicCohortsWorkspace() {
                           <Button
                             size="sm"
                             variant="outline"
-                            disabled={approveElectives.isPending}
+                            disabled={approveElectives.isPending || hasElectivePlaceholder}
                             onClick={() => approveElectives.mutate(selected.id)}
                           >
                             اعتماد الاختيارات المعروضة
