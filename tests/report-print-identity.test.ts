@@ -11,8 +11,9 @@ import { describe, expect, test } from "bun:test";
 import { printPageStyleCss } from "../src/lib/print-center/page-style";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const root = resolve(import.meta.dir, "..");
+const root = fileURLToPath(new URL("..", import.meta.url));
 const read = (p: string) => readFileSync(resolve(root, p), "utf8");
 
 const header = read("src/components/reports/report-official-header.tsx");
@@ -64,7 +65,7 @@ describe("report print identity", () => {
     expect(shell.includes("afterprint")).toBe(true);
     expect(shell.includes("document.title = originalTitle")).toBe(true);
     expect(route.includes("الجدول الفردي")).toBe(true);
-    expect(route.includes("printFilename={instructorName")).toBe(true);
+    expect(route).toMatch(/printFilename=\{\s*instructorName/);
     expect(route.includes("printOrientation")).toBe(false);
   });
 

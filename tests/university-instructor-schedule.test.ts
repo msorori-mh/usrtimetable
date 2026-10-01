@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import {
   facultyRecordIds,
+  mergeInstructorDirectories,
+  instructorsByHomeCollege,
+  instructorScheduleForScope,
+  parseInstructorScheduleScope,
   canViewInstructorAcrossColleges,
   instructorTeachingScopes,
   overlappingTerms,
@@ -214,4 +218,85 @@ test("only super admin can include other colleges, even with multiple membership
     ).toEqual(["c1"]);
   }
   expect(canViewInstructorAcrossColleges(["super_admin"])).toBe(true);
+});
+
+describe("admin individual print scopes", () => {
+  test("combines verified identities across directories without joining equal names", () => {
+    const records = [
+      {
+        id: "a",
+        identity_id: "faculty-1",
+        record_ids: ["a", "legacy"],
+        full_name: "Same name",
+        home_college_id: "home",
+        college_id: "elsewhere",
+      },
+      {
+        id: "alias",
+        identity_id: "faculty-1",
+        record_ids: ["alias", "a"],
+        full_name: "Same name",
+        home_college_id: "home",
+        college_id: "home",
+      },
+      {
+        id: "b",
+        identity_id: "faculty-2",
+        record_ids: ["b"],
+        full_name: "Same name",
+        home_college_id: "other",
+        college_id: "home",
+      },
+      {
+        id: "c",
+        identity_id: "faculty-3",
+        record_ids: ["c"],
+        full_name: "Unknown home",
+        home_college_id: null,
+        college_id: "home",
+      },
+    ];
+    const merged = mergeInstructorDirectories(records);
+    expect(merged).toHaveLength(3);
+    expect(merged[0].record_ids).toEqual(["a", "legacy", "alias"]);
+    expect(instructorsByHomeCollege(merged, "home").map((r) => r.id)).toEqual(["a"]);
+    expect(instructorsByHomeCollege(merged, "all")).toHaveLength(3);
+    expect(instructorsByHomeCollege(merged, "missing")).toEqual([]);
+  });
+
+  test("home print follows academic ownership even when stored in another college", () => {
+    const home = { ...session("home", "home"), source_college_id: "current" };
+    const parallel = {
+      ...session("parallel", "home", "10:00", "11:30"),
+      source_college_id: "elsewhere",
+      study_system: "parallel",
+    };
+    const other = { ...session("other", "current"), source_college_id: "home" };
+    const all = [home, parallel, other, home];
+    const homeSummary = summarizeUniversitySchedule(
+      instructorScheduleForScope(all, "home", "home", "current"),
+      {},
+    );
+    expect(homeSummary.sessions.map((s) => s.id)).toEqual(["home", "parallel"]);
+    expect(homeSummary.totalHours).toBe(3.5);
+    expect(homeSummary.colleges.map((c) => c.collegeId)).toEqual(["home"]);
+    expect(
+      summarizeUniversitySchedule(instructorScheduleForScope(all, "all", "home", "current"), {})
+        .totalHours,
+    ).toBe(5.5);
+    expect(instructorScheduleForScope(all, "current", "home", "current").map((s) => s.id)).toEqual([
+      "other",
+    ]);
+  });
+
+  test("unknown home produces no invented affiliation or printable sessions", () => {
+    const rows = [session("a", "current")];
+    expect(instructorScheduleForScope(rows, "home", null, "current")).toEqual([]);
+    expect(instructorScheduleForScope(rows, "all", null, "current")).toEqual(rows);
+    expect(instructorScheduleForScope(rows, "home", "empty", "current")).toEqual([]);
+    expect(parseInstructorScheduleScope("home")).toBe("home");
+    expect(parseInstructorScheduleScope("current")).toBe("current");
+    expect(parseInstructorScheduleScope("bad")).toBe("all");
+    expect(parseInstructorScheduleScope(null)).toBe("all");
+  });
 });

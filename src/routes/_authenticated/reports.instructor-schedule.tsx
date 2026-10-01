@@ -25,6 +25,10 @@ import {
   resolveCollegeScheduleScopes,
   instructorTeachingScopes,
   summarizeUniversitySchedule,
+  instructorsByHomeCollege,
+  instructorScheduleForScope,
+  parseInstructorScheduleScope,
+  type InstructorScheduleScope,
 } from "@/lib/reports/university-instructor-schedule";
 import { InstructorCollegeHours } from "@/components/reports/instructor-college-hours";
 import { STATUS_LABEL_AR, type SVStatus } from "@/lib/schedule-versions/lifecycle";
@@ -58,6 +62,8 @@ function Page() {
   });
   const [insId, setInsId] = useState("");
   const [instructorSearch, setInstructorSearch] = useState("");
+  const [homeCollegeFilter, setHomeCollegeFilter] = useState("all");
+  const [scheduleScope, setScheduleScope] = useState<InstructorScheduleScope>("all");
   const [versionSelections, setVersionSelections] = useState<Record<string, string>>({});
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -71,12 +77,15 @@ function Page() {
   }, [ctx.collegeId, ctx.versionId]);
 
   useEffect(() => {
-    setInsId(new URLSearchParams(window.location.search).get("instructorId") ?? "");
+    const params = new URLSearchParams(window.location.search);
+    setInsId(params.get("instructorId") ?? "");
+    setHomeCollegeFilter(params.get("instructorHomeCollegeId") || "all");
+    setScheduleScope(parseInstructorScheduleScope(params.get("instructorScheduleScope")));
   }, [ctx.collegeId]);
 
   const directory = useQuery({
     queryKey: [
-      "college-instructor-schedule-directory",
+      "university-instructor-schedule-directory",
       ctx.collegeId,
       currentUser.data?.id,
       currentUser.data?.isSuperAdmin,
@@ -88,12 +97,17 @@ function Page() {
     currentUser.data?.isSuperAdmin === true &&
     directory.data?.collegeId === ctx.collegeId &&
     directory.data?.canViewAcrossColleges === true;
-  const instructors = useMemo(
+  const allInstructors = useMemo(
     () =>
       (directory.data?.collegeId === ctx.collegeId ? directory.data.instructors : [])
         .slice()
         .sort((a, b) => a.full_name.localeCompare(b.full_name, "ar")),
     [directory.data, ctx.collegeId],
+  );
+  const instructors = useMemo(
+    () =>
+      instructorsByHomeCollege(allInstructors, canViewAcrossColleges ? homeCollegeFilter : "all"),
+    [allInstructors, canViewAcrossColleges, homeCollegeFilter],
   );
   const selectedInstructor = instructors?.find(
     (i) => i.id === insId || i.record_ids.includes(insId),
@@ -133,7 +147,9 @@ function Page() {
       ctx.collegeId,
       insId,
       selection.scopes.flatMap((s) => s.options.map((v) => v.id)).join(","),
-      instructors?.map((i) => `${i.id}:${i.university_number}`).join(","),
+      allInstructors
+        .map((i) => `${i.id}:${i.university_number}:${i.record_ids.join("|")}`)
+        .join(","),
     ],
     enabled:
       canViewAcrossColleges &&
@@ -143,7 +159,7 @@ function Page() {
     queryFn: () =>
       fetchInstructorTeachingCollegeIds({
         selected: selectedInstructor!,
-        records: instructors!,
+        records: allInstructors,
         scopes: selection.scopes,
       }),
   });
@@ -173,7 +189,9 @@ function Page() {
       ctx.collegeId,
       insId,
       reportScopes.map((s) => s.version.id).join(","),
-      instructors?.map((i) => `${i.id}:${i.university_number}`).join(","),
+      allInstructors
+        .map((i) => `${i.id}:${i.university_number}:${i.record_ids.join("|")}`)
+        .join(","),
     ],
     enabled:
       !!selectedInstructor &&
@@ -184,20 +202,43 @@ function Page() {
       fetchUniversityInstructorSchedule({
         anchorCollegeId: ctx.collegeId!,
         selected: selectedInstructor!,
-        records: instructors!,
+        records: allInstructors,
         scopes: reportScopes,
       }),
   });
+  const effectiveScope = canViewAcrossColleges ? scheduleScope : "current";
+  const missingHomeCollege =
+    effectiveScope === "home" && !!selectedInstructor && !selectedInstructor.home_college_id;
+  const scopeLabel =
+    effectiveScope === "all"
+      ? "جميع الكليات"
+      : effectiveScope === "home"
+        ? `كلية الانتماء: ${selectedInstructor?.home_college_name ?? "غير محددة"}`
+        : `الكلية الحالية: ${directory.data?.colleges.find((c) => c.id === ctx.collegeId)?.name ?? ""}`;
+  const scopedSessions = useMemo(
+    () =>
+      !selectedInstructor
+        ? []
+        : canViewAcrossColleges
+          ? instructorScheduleForScope(
+              schedule.data ?? [],
+              effectiveScope,
+              selectedInstructor.home_college_id,
+              ctx.collegeId ?? "",
+            )
+          : (schedule.data ?? []),
+    [schedule.data, selectedInstructor, canViewAcrossColleges, effectiveScope, ctx.collegeId],
+  );
   const summary = useMemo(() => {
     const baseQuota = isHourlyContract
       ? null
       : (selectedInstructor?.recorded_quota ?? selectedInstructor?.authoritative_quota ?? null);
     const release = isHourlyContract ? 0 : (selectedInstructor?.recorded_release ?? 0);
-    return summarizeUniversitySchedule(schedule.data ?? [], {
+    return summarizeUniversitySchedule(scopedSessions, {
       maxWeeklyHours: baseQuota,
       adminReleaseHours: release,
     });
-  }, [schedule.data, isHourlyContract, selectedInstructor]);
+  }, [scopedSessions, isHourlyContract, selectedInstructor]);
   const sessions = summary.sessions;
   const rows = useMemo(
     () =>
@@ -217,7 +258,7 @@ function Page() {
     directory.isLoading ||
     teachingColleges.isLoading ||
     schedule.isLoading;
-  const ready = !!ctx.versionId && !!selectedInstructor;
+  const ready = !!ctx.versionId && !!selectedInstructor && !missingHomeCollege;
   const queryError =
     currentUser.error ??
     ctx.error ??
@@ -227,8 +268,10 @@ function Page() {
     schedule.error;
   const refetch = async () => {
     await directory.refetch();
-    if (canViewAcrossColleges) await teachingColleges.refetch();
-    await schedule.refetch();
+    if (selectedInstructor && !selection.error) {
+      if (canViewAcrossColleges) await teachingColleges.refetch();
+      await schedule.refetch();
+    }
   };
   const exportHeaders = [{ key: "college", label: "الكلية" }, ...NEW_FLOW_TIMETABLE_TABLE_HEADERS];
   const versionShare = {
@@ -251,29 +294,40 @@ function Page() {
   return (
     <ReportShell
       title={instructorName ? `جدول المحاضر — ${instructorName}` : "تقرير جدول المحاضر الفردي"}
-      description={`${canViewAcrossColleges ? "الجدول الفردي الموحد عبر الكليات المرتبطة بالمحاضر — للأدمن فقط." : "جدول المحاضر داخل الكلية الحالية فقط، بجميع أنظمة الدراسة."} ${universityNumber ? `الرقم الجامعي: ${universityNumber}` : ""}`}
-      filterSummary={ctx.filterSummary}
+      description={`${scopeLabel} — جميع أنظمة الدراسة. ${universityNumber ? `الرقم الجامعي: ${universityNumber}` : ""}`}
+      filterSummary={`${ctx.filterSummary} • نطاق الجدول: ${scopeLabel}`}
       reportContext={ctx}
-      shareParams={{ instructorId: insId, ...versionShare }}
+      shareParams={{
+        instructorId: insId,
+        instructorHomeCollegeId: canViewAcrossColleges ? homeCollegeFilter : null,
+        instructorScheduleScope: effectiveScope,
+        ...versionShare,
+      }}
       headerMeta={{
-        collegeName: canViewAcrossColleges ? "الجدول الموحد عبر الكليات — للأدمن" : undefined,
+        collegeName: canViewAcrossColleges ? scopeLabel : undefined,
         versionName: canViewAcrossColleges
           ? "نسخ الكليات الموضحة في الملخص"
           : ctx.selectedVersion?.name,
         versionStatus: null,
-        note: canViewAcrossColleges
-          ? "جميع أنظمة الدراسة — الكليات المرتبطة بالمحاضر."
-          : "يشمل مواد وساعات المحاضر داخل هذه الكلية فقط.",
+        note: `نطاق الجدول: ${scopeLabel} — العام والموازي معًا.`,
       }}
       filename="instructor_schedule"
-      printFilename={instructorName ? `${instructorName} - الجدول الفردي` : "الجدول الفردي"}
+      printFilename={
+        instructorName ? `${instructorName} - الجدول الفردي - ${scopeLabel}` : "الجدول الفردي"
+      }
       rows={rows}
       headers={exportHeaders}
       isLoading={isLoading}
       error={queryError}
       onRetry={() => void refetch()}
-      notReadyMessage={ready ? undefined : "اختر نسخة جدول ومحاضرًا لعرض الجدول."}
-      emptyMessage="لا توجد محاضرات مسندة لهذا المحاضر في النسخة المحددة."
+      notReadyMessage={
+        missingHomeCollege
+          ? "كلية انتماء المحاضر غير محددة في بطاقته؛ اختر جميع الكليات أو أكمل بيانات الانتماء أولًا."
+          : ready
+            ? undefined
+            : "اختر نسخة جدول ومحاضرًا لعرض الجدول."
+      }
+      emptyMessage={`لا توجد محاضرات مسندة لهذا المحاضر ضمن ${scopeLabel} في النسخ المحددة.`}
       kpis={
         isHourlyContract
           ? [
@@ -293,14 +347,15 @@ function Page() {
                 label: "الساعات التدريسية",
                 value: totalHours.toFixed(2),
                 tone: "accent",
-                hint: canViewAcrossColleges
-                  ? "إجمالي الساعات الأسبوعية في الكليات المرتبطة بالمحاضر"
-                  : "إجمالي الساعات الأسبوعية داخل الكلية الحالية",
+                hint: `إجمالي الساعات الأسبوعية ضمن ${scopeLabel}`,
               },
               {
                 label: "النصاب الفعلي",
                 value: actualQuotaLabel,
-                tone: workloadBalance.status === "overload" ? "warning" : "success",
+                tone:
+                  effectiveScope === "all" && workloadBalance.status === "overload"
+                    ? "warning"
+                    : "success",
                 hint:
                   workloadBalance.netHours === null
                     ? "النصاب غير محدد في بطاقة المحاضر أو سياسة النصاب"
@@ -314,13 +369,59 @@ function Page() {
         <ReportFilters
           context={ctx}
           studySystem={false}
-          extraSummary={instructorName ? [`المحاضر: ${instructorName}`] : []}
+          extraSummary={[
+            `نطاق الجدول: ${scopeLabel}`,
+            ...(instructorName ? [`المحاضر: ${instructorName}`] : []),
+          ]}
           onClear={() => {
             setInsId("");
             setInstructorSearch("");
             setVersionSelections({});
+            setHomeCollegeFilter("all");
+            setScheduleScope("all");
           }}
         >
+          {canViewAcrossColleges && (
+            <>
+              <ReportFilterField label="كلية انتماء المحاضر" htmlFor="is-home-college">
+                <Select
+                  value={homeCollegeFilter}
+                  onValueChange={(value) => {
+                    setHomeCollegeFilter(value);
+                    setInsId("");
+                    setInstructorSearch("");
+                  }}
+                >
+                  <SelectTrigger id="is-home-college" aria-label="كلية انتماء المحاضر">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">محاضرو جميع الكليات</SelectItem>
+                    {directory.data?.colleges.map((college) => (
+                      <SelectItem key={college.id} value={college.id}>
+                        {college.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </ReportFilterField>
+              <ReportFilterField label="نطاق جدول المحاضر" htmlFor="is-schedule-scope">
+                <Select
+                  value={scheduleScope}
+                  onValueChange={(value) => setScheduleScope(parseInstructorScheduleScope(value))}
+                >
+                  <SelectTrigger id="is-schedule-scope" aria-label="نطاق جدول المحاضر">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">جميع الكليات</SelectItem>
+                    <SelectItem value="home">كلية انتمائه فقط</SelectItem>
+                    <SelectItem value="current">الكلية الحالية فقط</SelectItem>
+                  </SelectContent>
+                </Select>
+              </ReportFilterField>
+            </>
+          )}
           <ReportFilterField label="المحاضر" htmlFor="is-instructor">
             <div className="space-y-2">
               <input
@@ -357,7 +458,7 @@ function Page() {
               <p className="font-medium">تدريس المحاضر في الكليات الأخرى</p>
               <p className="text-xs text-muted-foreground">
                 تظهر فقط الكليات التي للمحاضر محاضرات فيها خلال الفترة الدراسية. يضم الجدول وملخص
-                الساعات الكلية الحالية وهذه الكليات.
+                الساعات المحاضرات الواقعة ضمن نطاق الجدول المختار.
               </p>
             </div>
           )}
@@ -406,7 +507,8 @@ function Page() {
               <InstructorCollegeHours
                 summary={summary}
                 hourlyContract={isHourlyContract}
-                universityScope={canViewAcrossColleges}
+                universityScope={canViewAcrossColleges && effectiveScope === "all"}
+                scopeLabel={scopeLabel}
               />
             }
             compactDetails
@@ -418,7 +520,8 @@ function Page() {
             <InstructorCollegeHours
               summary={summary}
               hourlyContract={isHourlyContract}
-              universityScope={canViewAcrossColleges}
+              universityScope={canViewAcrossColleges && effectiveScope === "all"}
+              scopeLabel={scopeLabel}
             />
           </div>
         </div>
