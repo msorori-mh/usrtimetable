@@ -4,10 +4,12 @@ export function InstructorCollegeHours({
   summary,
   hourlyContract = false,
   universityScope = true,
+  scopeLabel,
 }: {
   summary: ReturnType<typeof summarizeUniversitySchedule>;
   hourlyContract?: boolean;
   universityScope?: boolean;
+  scopeLabel?: string;
 }) {
   const number = (n: number | null) => (n === null ? "غير محدد" : n.toFixed(2));
   return (
@@ -37,7 +39,9 @@ export function InstructorCollegeHours({
             <td className="p-2" colSpan={2}>
               {universityScope
                 ? "إجمالي الجامعة — الكليات المشمولة"
-                : "إجمالي ساعات الكلية الحالية"}
+                : scopeLabel
+                  ? `إجمالي الساعات — ${scopeLabel}`
+                  : "إجمالي ساعات الكلية الحالية"}
             </td>
             <td className="p-2 tabular-nums">{number(summary.totalHours)}</td>
           </tr>
@@ -71,7 +75,7 @@ export function InstructorCollegeHours({
               {hourlyContract
                 ? "لا ينطبق — تعاقد بالساعات"
                 : !universityScope
-                  ? "يُحدد في تقرير الأدمن الموحّد"
+                  ? "يُحدد عند اختيار جميع الكليات"
                   : summary.pending
                     ? "بانتظار توزيع التدريس المشترك"
                     : number(summary.balance.overloadHours)}
@@ -82,7 +86,7 @@ export function InstructorCollegeHours({
       <p className="mt-2 text-xs">
         {universityScope
           ? "يشمل جميع أنظمة الدراسة في نسخ الكليات المبينة أعلاه. يُحتسب النصاب مرة واحدة للمحاضر."
-          : "هذا الملخص خاص بالكلية الحالية؛ الإجمالي الجامعي والساعات الزائدة متاحان للأدمن في التقرير الموحّد."}
+          : `هذا الملخص خاص بـ${scopeLabel ?? "الكلية الحالية"}؛ الإجمالي الجامعي والساعات الزائدة متاحان للأدمن عند اختيار جميع الكليات.`}
       </p>
       {!hourlyContract && summary.balance.netHours === null && (
         <p className="mt-1 text-xs">الساعات الزائدة بانتظار استكمال بيانات النصاب المعتمد.</p>

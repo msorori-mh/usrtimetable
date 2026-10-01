@@ -8,6 +8,8 @@ import {
   facultyRecordIds,
   canViewInstructorAcrossColleges,
   summarizeUniversitySchedule,
+  mergeInstructorDirectories,
+  isTestScheduleLabel,
   type CollegeScheduleScope,
   type UniversityInstructorSession,
 } from "../university-instructor-schedule";
@@ -104,7 +106,7 @@ async function academicOwners(programIds: string[]) {
 export async function fetchUniversityScheduleDirectory(collegeId: string) {
   if (!collegeId) throw new Error("اختر الكلية أولًا.");
   const canViewAcrossColleges = await reportCanViewAcrossColleges();
-  // The picker is always college-scoped; admin report expansion is separate.
+  // Each roster read uses the authenticated, college-scoped RPC.
   const [roster, colleges, terms, versions] = await Promise.all([
     facultyWorkflow.rpc("get_college_instructor_schedule_directory", { p_college_id: collegeId }),
     readAllReportRows((from, to) => {
@@ -126,10 +128,27 @@ export async function fetchUniversityScheduleDirectory(collegeId: string) {
     }),
   ]);
   if (roster.error) throw roster.error;
+  const universityId = colleges.find((c) => c.id === collegeId)?.university_id;
+  const universityColleges = colleges.filter(
+    (c) => !!universityId && c.university_id === universityId && !isTestScheduleLabel(c.name),
+  );
+  const otherRosters = canViewAcrossColleges
+    ? await Promise.all(
+        universityColleges
+          .filter((c) => c.id !== collegeId)
+          .map(async (c) => {
+            const result = await facultyWorkflow.rpc("get_college_instructor_schedule_directory", {
+              p_college_id: c.id,
+            });
+            if (result.error) throw result.error;
+            return result.data ?? [];
+          }),
+      )
+    : [];
   return {
     collegeId,
-    instructors: roster.data ?? [],
-    colleges,
+    instructors: mergeInstructorDirectories([...(roster.data ?? []), ...otherRosters.flat()]),
+    colleges: universityColleges,
     terms,
     versions,
     canViewAcrossColleges,

@@ -28,6 +28,50 @@ export function canViewInstructorAcrossColleges(roles: readonly string[]) {
   return roles.includes("super_admin");
 }
 
+/** Merge verified identities returned by the college RPCs, retaining every alias. */
+export function mergeInstructorDirectories<
+  T extends { id: string; identity_id: string; record_ids: string[] },
+>(records: T[]): T[] {
+  const identities = new Map<string, T>();
+  for (const record of records) {
+    const previous = identities.get(record.identity_id);
+    identities.set(record.identity_id, {
+      ...(previous ?? record),
+      record_ids: [...new Set([...(previous?.record_ids ?? []), record.id, ...record.record_ids])],
+    });
+  }
+  return [...identities.values()];
+}
+
+export type InstructorScheduleScope = "all" | "home" | "current";
+
+export function parseInstructorScheduleScope(value: string | null): InstructorScheduleScope {
+  return value === "home" || value === "current" ? value : "all";
+}
+
+/** Affiliation is authoritative home data, never the location of a legacy record. */
+export function instructorsByHomeCollege<T extends { home_college_id: string | null }>(
+  records: T[],
+  homeCollegeId: string,
+) {
+  return homeCollegeId === "all"
+    ? records
+    : records.filter((r) => r.home_college_id === homeCollegeId);
+}
+
+/** Filter by academic ownership after loading all permitted source schedules. */
+export function instructorScheduleForScope(
+  sessions: UniversityInstructorSession[],
+  scope: InstructorScheduleScope,
+  homeCollegeId: string | null,
+  currentCollegeId: string,
+) {
+  if (scope === "all") return sessions;
+  if (scope === "home" && !homeCollegeId) return [];
+  const collegeId = scope === "home" ? homeCollegeId : currentCollegeId;
+  return sessions.filter((s) => s.college_id === collegeId);
+}
+
 /** Explicit fixture marker used by production test data. */
 export function isTestScheduleLabel(name: string) {
   return /TEST_ONLY/i.test(name);
