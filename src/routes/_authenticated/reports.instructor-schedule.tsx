@@ -25,7 +25,6 @@ import {
   resolveCollegeScheduleScopes,
   instructorTeachingScopes,
   summarizeUniversitySchedule,
-  instructorsByHomeCollege,
   instructorScheduleForScope,
   parseInstructorScheduleScope,
   type InstructorScheduleScope,
@@ -62,7 +61,6 @@ function Page() {
   });
   const [insId, setInsId] = useState("");
   const [instructorSearch, setInstructorSearch] = useState("");
-  const [homeCollegeFilter, setHomeCollegeFilter] = useState("all");
   const [scheduleScope, setScheduleScope] = useState<InstructorScheduleScope>("all");
   const [versionSelections, setVersionSelections] = useState<Record<string, string>>({});
   useEffect(() => {
@@ -79,7 +77,6 @@ function Page() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setInsId(params.get("instructorId") ?? "");
-    setHomeCollegeFilter(params.get("instructorHomeCollegeId") || "all");
     setScheduleScope(parseInstructorScheduleScope(params.get("instructorScheduleScope")));
   }, [ctx.collegeId]);
 
@@ -104,11 +101,7 @@ function Page() {
         .sort((a, b) => a.full_name.localeCompare(b.full_name, "ar")),
     [directory.data, ctx.collegeId],
   );
-  const instructors = useMemo(
-    () =>
-      instructorsByHomeCollege(allInstructors, canViewAcrossColleges ? homeCollegeFilter : "all"),
-    [allInstructors, canViewAcrossColleges, homeCollegeFilter],
-  );
+  const instructors = allInstructors;
   const selectedInstructor = instructors?.find(
     (i) => i.id === insId || i.record_ids.includes(insId),
   );
@@ -299,7 +292,7 @@ function Page() {
       reportContext={ctx}
       shareParams={{
         instructorId: insId,
-        instructorHomeCollegeId: canViewAcrossColleges ? homeCollegeFilter : null,
+        instructorHomeCollegeId: null,
         instructorScheduleScope: effectiveScope,
         ...versionShare,
       }}
@@ -377,50 +370,25 @@ function Page() {
             setInsId("");
             setInstructorSearch("");
             setVersionSelections({});
-            setHomeCollegeFilter("all");
             setScheduleScope("all");
           }}
         >
           {canViewAcrossColleges && (
-            <>
-              <ReportFilterField label="كلية انتماء المحاضر" htmlFor="is-home-college">
-                <Select
-                  value={homeCollegeFilter}
-                  onValueChange={(value) => {
-                    setHomeCollegeFilter(value);
-                    setInsId("");
-                    setInstructorSearch("");
-                  }}
-                >
-                  <SelectTrigger id="is-home-college" aria-label="كلية انتماء المحاضر">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">محاضرو جميع الكليات</SelectItem>
-                    {directory.data?.colleges.map((college) => (
-                      <SelectItem key={college.id} value={college.id}>
-                        {college.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </ReportFilterField>
-              <ReportFilterField label="نطاق جدول المحاضر" htmlFor="is-schedule-scope">
-                <Select
-                  value={scheduleScope}
-                  onValueChange={(value) => setScheduleScope(parseInstructorScheduleScope(value))}
-                >
-                  <SelectTrigger id="is-schedule-scope" aria-label="نطاق جدول المحاضر">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">جميع الكليات</SelectItem>
-                    <SelectItem value="home">كلية انتمائه فقط</SelectItem>
-                    <SelectItem value="current">الكلية الحالية فقط</SelectItem>
-                  </SelectContent>
-                </Select>
-              </ReportFilterField>
-            </>
+            <ReportFilterField label="نطاق جدول المحاضر" htmlFor="is-schedule-scope">
+              <Select
+                value={scheduleScope}
+                onValueChange={(value) => setScheduleScope(parseInstructorScheduleScope(value))}
+              >
+                <SelectTrigger id="is-schedule-scope" aria-label="نطاق جدول المحاضر">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">جميع الكليات</SelectItem>
+                  <SelectItem value="home">كلية انتمائه فقط</SelectItem>
+                  <SelectItem value="current">الكلية الحالية فقط</SelectItem>
+                </SelectContent>
+              </Select>
+            </ReportFilterField>
           )}
           <ReportFilterField label="المحاضر" htmlFor="is-instructor">
             <div className="space-y-2">
