@@ -54,8 +54,8 @@ BEGIN
             AND m.course_id = s.selected_course_id
             AND m.college_id = v_cohort.college_id AND c.college_id = v_cohort.college_id
             AND coalesce(m.active, true)
-            AND c.code !~* '\(E\)\s*$'
-            AND c.code !~* '^[A-Z]{2,}[0-9]+XX\(E\)$'))
+            AND c.code !~* '\(E\)'
+            AND c.name NOT LIKE 'مادة اختيارية%'))
   ) THEN
     RAISE EXCEPTION 'ELECTIVE_SELECTION_CONTEXT_MISMATCH' USING ERRCODE = '23514';
   END IF;
