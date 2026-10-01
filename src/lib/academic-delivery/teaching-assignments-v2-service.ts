@@ -9,6 +9,7 @@ import {
   parseMutationResult,
   parseWorkloadPreview,
   parseWorkspacePayload,
+  workspaceRpcArgs,
   type AssignmentMutationResult,
   type TeachingAssignmentWorkspace,
   type TeachingAssignmentsV2ImportCommitResult,
@@ -36,16 +37,13 @@ export async function listTeachingAssignmentWorkspace(
   filters: WorkspaceFilters,
 ): Promise<TeachingAssignmentWorkspace> {
   if (!filters.collegeId) throw new Error("COLLEGE_ID_REQUIRED: اختر كلية");
-  const { data, error } = await client().rpc("list_teaching_assignment_workspace", {
-    p_college_id: filters.collegeId,
-    p_program_id: filters.programId || null,
-    p_level_id: filters.levelId || null,
-    p_term_id: filters.termId || null,
-    p_study_system: filters.studySystem || null,
-    p_cohort_id: filters.cohortId || null,
-    p_component_type: filters.componentType || null,
-    p_assignment_status: filters.assignmentStatus || null,
-  });
+  const versionView = !!filters.scheduleVersionId;
+  const { data, error } = await client().rpc(
+    versionView
+      ? "list_teaching_assignment_workspace_for_version"
+      : "list_teaching_assignment_workspace",
+    workspaceRpcArgs(filters),
+  );
   if (error) throwMapped(error);
   return parseWorkspacePayload(data);
 }

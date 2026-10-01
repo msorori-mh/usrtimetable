@@ -108,6 +108,8 @@ function TeachingAssignmentsV2Page() {
   const [assignmentStatus, setAssignmentStatus] = useState<string>("");
   const [courseSearch, setCourseSearch] = useState<string>("");
   const [instructorSearch, setInstructorSearch] = useState<string>("");
+  /** Empty = operational assignments; otherwise the working version being reviewed. */
+  const [viewVersionId, setViewVersionId] = useState<string>("");
 
   const [selected, setSelected] = useState<TeachingAssignmentWorkspaceRow | null>(null);
   const [instructorId, setInstructorId] = useState("");
@@ -123,6 +125,15 @@ function TeachingAssignmentsV2Page() {
     name: string;
   } | null>(null);
 
+  const workingVersionsQuery = useQuery({
+    queryKey: ["teaching-assignment-working-versions", active?.id, termId],
+    enabled: !!active,
+    queryFn: () => fetchWorkingVersions({ collegeId: active!.id, termId: termId || null }),
+  });
+  const workingVersions = workingVersionsQuery.data;
+  /** Only a working version of the active college and term can be viewed; anything else is operational. */
+  const viewVersion = (workingVersions ?? []).find((version) => version.id === viewVersionId);
+
   const filters: WorkspaceFilters | null = useMemo(() => {
     if (!active?.id) return null;
     return {
@@ -134,9 +145,11 @@ function TeachingAssignmentsV2Page() {
       cohortId: cohortId || null,
       componentType: componentType || null,
       assignmentStatus: assignmentStatus || null,
+      scheduleVersionId: viewVersion?.id ?? null,
     };
   }, [
     active?.id,
+    viewVersion?.id,
     programId,
     levelId,
     termId,
@@ -215,11 +228,12 @@ function TeachingAssignmentsV2Page() {
 
   /** Scope attendance to one complete version, within the selected college and term. */
   const scheduleQuery = useQuery({
-    queryKey: ["teaching-assignment-row-days", active?.id, termId],
+    queryKey: ["teaching-assignment-row-days", active?.id, termId, viewVersion?.id ?? null],
     enabled: !!active,
     staleTime: 0,
     refetchOnMount: "always",
     queryFn: async () => {
+      if (viewVersion) return loadAssignmentSchedule(supabase, active!.id, [viewVersion]);
       const scope = { collegeId: active!.id, termId: termId || null };
       const [published, working] = await Promise.all([
         fetchPublishedVersions(scope),
@@ -288,7 +302,14 @@ function TeachingAssignmentsV2Page() {
     () => summarizeInstructorAttendanceDays(courseRows, instructorSearch, sessionDays),
     [courseRows, instructorSearch, sessionDays],
   );
+  const versionView = !!viewVersion;
+  // The per-version RPC always answers can_manage=false: it is a read model and
+  // writes stay on the operational view.
   const readOnly = !canManage || workspace.data?.can_manage === false;
+  const daysFromWorkingVersion =
+    !versionView &&
+    !!scheduleQuery.data?.version &&
+    (workingVersions ?? []).some((version) => version.id === scheduleQuery.data?.version?.id);
 
   const openAssign = (row: TeachingAssignmentWorkspaceRow) => {
     if (row.is_obsolete) {
@@ -611,10 +632,31 @@ function TeachingAssignmentsV2Page() {
                 placeholder="اكتب اسم المحاضر..."
               />
             </div>
+            <div>
+              <Label>عرض الإسناد حسب</Label>
+              <Select
+                value={viewVersion?.id ?? "_operational"}
+                onValueChange={(v) => setViewVersionId(v === "_operational" ? "" : v)}
+              >
+                <SelectTrigger data-testid="ta-v2-view-version">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_operational">الإسناد التشغيلي (قابل للتعديل)</SelectItem>
+                  {(workingVersions ?? []).map((version) => (
+                    <SelectItem key={version.id} value={version.id}>
+                      إسناد النسخة: {version.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             {readOnly && (
               <div className="flex items-end">
                 <p className="text-xs text-muted-foreground" data-testid="ta-v2-readonly-banner">
-                  وضع قراءة فقط — لا أزرار كتابة.
+                  {versionView
+                    ? "عرض إسناد نسخة جدول — للقراءة فقط. التعديل من «الإسناد التشغيلي» أو من بناء الجدول."
+                    : "وضع قراءة فقط — لا أزرار كتابة."}
                 </p>
               </div>
             )}
@@ -631,11 +673,31 @@ function TeachingAssignmentsV2Page() {
                 </Button>
               </div>
             ) : (
-              <p className="text-muted-foreground">
-                {scheduleQuery.data?.version
-                  ? `أيام التسكين من نسخة الجدول: ${scheduleQuery.data.version.name}`
-                  : "لا توجد نسخة جدول تحتوي على جلسات مرتبطة بإسنادات نشطة ضمن الفصل المحدد."}
-              </p>
+              <>
+                <p className="text-muted-foreground">
+                  {scheduleQuery.data?.version
+                    ? versionView
+                      ? `الإسناد وأيام التسكين من نسخة الجدول: ${scheduleQuery.data.version.name}`
+                      : `أيام التسكين من نسخة الجدول: ${scheduleQuery.data.version.name}`
+                    : "لا توجد نسخة جدول تحتوي على جلسات مرتبطة بإسنادات نشطة ضمن الفصل المحدد."}
+                </p>
+                {daysFromWorkingVersion && (
+                  <p
+                    className="mt-1 text-xs text-amber-700 dark:text-amber-400"
+                    data-testid="ta-v2-operational-vs-version-hint"
+                  >
+                    المدرّسون المعروضون هم الإسناد التشغيلي، وقد يختلفون عن مدرّسي هذه النسخة إن كان
+                    لها إسناد خاص بها.{" "}
+                    <button
+                      type="button"
+                      className="underline"
+                      onClick={() => setViewVersionId(scheduleQuery.data!.version!.id)}
+                    >
+                      عرض إسناد هذه النسخة
+                    </button>
+                  </p>
+                )}
+              </>
             )}
           </div>
 
@@ -768,7 +830,21 @@ function TeachingAssignmentsV2Page() {
                           <td className="px-3 py-2">
                             {row.instructors.length === 0
                               ? "—"
-                              : row.instructors.map((i) => i.instructor_name ?? "—").join("، ")}
+                              : row.instructors.map((i, index) => (
+                                  <span key={i.assignment_id}>
+                                    {index > 0 ? "، " : ""}
+                                    {i.instructor_name ?? "—"}
+                                    {i.version_scoped ? (
+                                      <span
+                                        className="ms-1 rounded bg-amber-100 px-1 text-[10px] text-amber-900 dark:bg-amber-900/40 dark:text-amber-200"
+                                        data-testid="ta-v2-version-scoped-badge"
+                                        title="إسناد خاص بهذه النسخة ولا يُحتسب تشغيليًا قبل نشرها"
+                                      >
+                                        خاص بالنسخة
+                                      </span>
+                                    ) : null}
+                                  </span>
+                                ))}
                           </td>
                           <td className="px-3 py-2">
                             {row.assigned_hours_total}/{row.component_hours ?? "?"}
