@@ -12,7 +12,7 @@ const rollback = fs.readFileSync(
   "utf8",
 );
 
-async function scopedFixture(apply = true) {
+export async function scopedFixture(apply = true) {
   const f = await fixture();
   const { db } = f;
   await db.exec(`
