@@ -92,6 +92,8 @@ interface Lookups {
     }
   >; // code → cohort row
   electiveSlots?: Map<string, string>; // study_plan_id|slot_code → id
+  electiveSelectionSlots?: Map<string, string>; // active program_id|semester|slot_code → id
+  termSemesters?: Map<string, number>;
   /** elective_slot_id|course_id → true when active membership exists */
   electiveSlotCourses?: Map<string, boolean>;
   components?: Map<string, string>; // plan_course_id|component_type → id
@@ -321,6 +323,27 @@ async function loadLookups(entity: ImportEntity, collegeId: string): Promise<Loo
     lk.cohortsByCode = new Map(cohorts.filter((r) => r.code).map((r) => [String(r.code), r]));
   }
   if (entity === "cohort_elective_selections") {
+    const [plans, terms, slots] = await Promise.all([
+      fetchAll("study_plans", "id, program_id, is_active"),
+      fetchAll("academic_terms", "id, term_type"),
+      fetchAll("elective_slots", "id, study_plan_id, slot_code, semester, active"),
+    ]);
+    const activeProgramByPlan = new Map(
+      plans.filter((p) => p.is_active).map((p) => [String(p.id), String(p.program_id)]),
+    );
+    lk.termSemesters = new Map(
+      terms
+        .filter((t) => t.term_type === "first" || t.term_type === "second")
+        .map((t) => [String(t.id), t.term_type === "first" ? 1 : 2]),
+    );
+    lk.electiveSelectionSlots = new Map(
+      slots
+        .filter((s) => s.active !== false && activeProgramByPlan.has(String(s.study_plan_id)))
+        .map((s) => [
+          `${activeProgramByPlan.get(String(s.study_plan_id))}|${s.semester}|${s.slot_code}`,
+          String(s.id),
+        ]),
+    );
     const esc = await fetchAll("elective_slot_courses", "elective_slot_id, course_id, active");
     lk.electiveSlotCourses = new Map(
       esc
@@ -1305,14 +1328,10 @@ function runEntityValidation(
     );
     if (cohort) {
       v._cohort_id = cohort.id;
-      // Prefer slots on study plans for the cohort program; fall back to code match.
-      let slotId: string | null = null;
-      for (const [k, id] of lk.electiveSlots ?? []) {
-        if (!k.endsWith(`|${v.elective_slot_code}`)) continue;
-        // Prefer first match; membership check below still enforces elective_slot_courses.
-        slotId = id;
-        break;
-      }
+      const semester = lk.termSemesters?.get(cohort.term_id);
+      const slotId = semester
+        ? lk.electiveSelectionSlots?.get(`${cohort.program_id}|${semester}|${v.elective_slot_code}`)
+        : undefined;
       need(
         !!slotId,
         "رمز_الخانة_الاختيارية",

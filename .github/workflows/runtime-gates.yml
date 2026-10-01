@@ -204,6 +204,15 @@ jobs:
           createdb -h 127.0.0.1 -U postgres cohort_generation_test
           node --test tests/cohort-plan-generation-db.test.mjs
 
+      - name: Archived study plan deletion and timetable retirement
+        env:
+          PGPASSWORD: postgres
+          PLAN_RETIRE_TEST_DISPOSABLE: "1"
+          PLAN_RETIRE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/plan_retire_test
+        run: |
+          createdb -h 127.0.0.1 -U postgres plan_retire_test
+          node --test tests/study-plan-retirement-db.test.mjs
+
       - name: Partition extended-day constraints and RLS
         env:
           PGPASSWORD: postgres
