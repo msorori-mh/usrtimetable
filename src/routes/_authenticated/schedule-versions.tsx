@@ -36,6 +36,8 @@ import {
   History,
   AlertTriangle,
   CheckCircle2,
+  ArchiveX,
+  RotateCcw,
 } from "lucide-react";
 import {
   STATUS_LABEL_AR,
@@ -70,6 +72,10 @@ function SchedVersionsPage() {
   const [notes, setNotes] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [cloneFor, setCloneFor] = useState<{ id: string; name: string } | null>(null);
+  const [retireFor, setRetireFor] = useState<{ id: string; name: string; retired: boolean } | null>(
+    null,
+  );
+  const [showRetired, setShowRetired] = useState(false);
 
   const { data: terms } = useQuery({
     queryKey: ["terms-for-sv", active?.id],
@@ -91,7 +97,9 @@ function SchedVersionsPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("schedule_versions")
-        .select("id, name, status, academic_term_id, notes, created_at, is_coordination")
+        .select(
+          "id, name, status, academic_term_id, notes, created_at, is_coordination, retired_at",
+        )
         .eq("college_id", active!.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -103,6 +111,7 @@ function SchedVersionsPage() {
         notes: string | null;
         created_at: string;
         is_coordination: boolean;
+        retired_at: string | null;
       }>;
     },
   });
@@ -168,6 +177,9 @@ function SchedVersionsPage() {
               <CalendarClock className="h-4 w-4 ml-1" /> فتح مساحة البناء
             </Link>
           </Button>
+          <Button variant="outline" onClick={() => setShowRetired((v) => !v)}>
+            {showRetired ? "إخفاء النسخ المزالة" : "عرض النسخ المزالة"}
+          </Button>
           <Button variant="outline" asChild>
             <Link to="/published-schedules">
               <CheckCircle2 className="h-4 w-4 ml-1" /> الجداول المنشورة
@@ -229,18 +241,21 @@ function SchedVersionsPage() {
         <Card className="p-6 text-center text-muted-foreground">اختر كلية للبدء</Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {(versions ?? []).map((v) => (
-            <VersionCard
-              key={v.id}
-              v={v}
-              termName={termName(v.academic_term_id)}
-              collegeId={active.id}
-              canManage={canManage}
-              expanded={expandedId === v.id}
-              onToggle={() => setExpandedId(expandedId === v.id ? null : v.id)}
-              onClone={() => setCloneFor({ id: v.id, name: v.name })}
-            />
-          ))}
+          {(versions ?? [])
+            .filter((v) => showRetired || !v.retired_at)
+            .map((v) => (
+              <VersionCard
+                key={v.id}
+                v={v}
+                termName={termName(v.academic_term_id)}
+                collegeId={active.id}
+                canManage={canManage}
+                expanded={expandedId === v.id}
+                onToggle={() => setExpandedId(expandedId === v.id ? null : v.id)}
+                onClone={() => setCloneFor({ id: v.id, name: v.name })}
+                onRetire={() => setRetireFor({ id: v.id, name: v.name, retired: !!v.retired_at })}
+              />
+            ))}
           {versions && versions.length === 0 && (
             <Card className="p-6 text-center text-muted-foreground col-span-full">
               لا توجد نسخ. أنشئ نسخة جديدة للبدء.
@@ -263,6 +278,16 @@ function SchedVersionsPage() {
           }}
         />
       )}
+      {retireFor && active && (
+        <RetireVersionDialog
+          version={retireFor}
+          onClose={() => setRetireFor(null)}
+          onDone={() => {
+            setRetireFor(null);
+            qc.invalidateQueries({ queryKey: ["schedule_versions_list", active.id] });
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -275,6 +300,7 @@ function VersionCard({
   expanded,
   onToggle,
   onClone,
+  onRetire,
 }: {
   v: {
     id: string;
@@ -284,6 +310,7 @@ function VersionCard({
     notes: string | null;
     created_at: string;
     is_coordination?: boolean;
+    retired_at?: string | null;
   };
   termName: string;
   collegeId: string;
@@ -291,6 +318,7 @@ function VersionCard({
   expanded: boolean;
   onToggle: () => void;
   onClone: () => void;
+  onRetire: () => void;
 }) {
   const qc = useQueryClient();
   const status = v.status as SVStatus;
@@ -392,6 +420,9 @@ function VersionCard({
         </Badge>
       </div>
       <div className="text-xs text-muted-foreground">الفصل: {termName}</div>
+      {v.retired_at && (
+        <p className="text-xs text-muted-foreground">مزالة من قوائم العمل · يمكن استعادتها</p>
+      )}
       {["draft", "review", "approved"].includes(status) && (
         <Button
           size="sm"
@@ -416,6 +447,16 @@ function VersionCard({
         <Button variant="outline" size="sm" onClick={onToggle}>
           {expanded ? "إخفاء" : "الإجراءات"}
         </Button>
+        {status === "archived" && canManage && !v.is_coordination && (
+          <Button variant="outline" size="sm" onClick={onRetire}>
+            {v.retired_at ? (
+              <RotateCcw className="h-4 w-4 ml-1" />
+            ) : (
+              <ArchiveX className="h-4 w-4 ml-1" />
+            )}
+            {v.retired_at ? "استعادة" : "إزالة من القوائم"}
+          </Button>
+        )}
       </div>
 
       {expanded && (
@@ -514,6 +555,78 @@ function VersionCard({
         </div>
       )}
     </Card>
+  );
+}
+
+function RetireVersionDialog({
+  version,
+  onClose,
+  onDone,
+}: {
+  version: { id: string; name: string; retired: boolean };
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [typedName, setTypedName] = useState("");
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await (
+        supabase as unknown as {
+          rpc(
+            name: string,
+            args: { p_version_id: string; p_retire: boolean },
+          ): Promise<{ error: Error | null }>;
+        }
+      ).rpc("set_archived_schedule_version_retired", {
+        p_version_id: version.id,
+        p_retire: !version.retired,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success(
+        version.retired ? "استُعيدت النسخة في القائمة" : "أُزيلت النسخة من قوائم العمل",
+      );
+      onDone();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent dir="rtl">
+        <DialogHeader>
+          <DialogTitle>
+            {version.retired ? "استعادة النسخة المؤرشفة" : "إزالة نسخة مؤرشفة من القوائم"}
+          </DialogTitle>
+        </DialogHeader>
+        <p className="text-sm">{version.name}</p>
+        <p className="text-sm text-muted-foreground">
+          تبقى المحاضرات وسجل النشر ونتائج التقارير محفوظة، ويمكن استعادة ظهور النسخة. هذه العملية
+          لا تحذف الصفوف من قاعدة البيانات.
+        </p>
+        {!version.retired && (
+          <>
+            <Label htmlFor="retire-version-name">اكتب اسم النسخة لتأكيد الإزالة</Label>
+            <Input
+              id="retire-version-name"
+              value={typedName}
+              onChange={(e) => setTypedName(e.target.value)}
+            />
+          </>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            إلغاء
+          </Button>
+          <Button
+            disabled={mutation.isPending || (!version.retired && typedName !== version.name)}
+            onClick={() => mutation.mutate()}
+          >
+            {version.retired ? "استعادة" : "إزالة من القوائم"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

@@ -29,7 +29,7 @@ import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { AdminExportMenu } from "@/components/admin-export-menu";
 import { activeFilters, studyPlansExportDataset } from "@/lib/admin-export/datasets";
-import { BookOpen, Pencil, Trash2 } from "lucide-react";
+import { Archive, BookOpen, Pencil, Trash2 } from "lucide-react";
 import { PrintPlansButton } from "@/components/study-plans/print-plans-button";
 import { PlanCoursesManager } from "@/components/study-plans/plan-courses-manager";
 
@@ -47,6 +47,7 @@ interface Plan {
   effective_year: number | null;
   is_active: boolean;
   college_id: string;
+  archived_at: string | null;
 }
 interface Program {
   id: string;
@@ -67,6 +68,7 @@ function StudyPlansPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Plan | null>(null);
+  const [retiring, setRetiring] = useState<Plan | null>(null);
   const [form, setForm] = useState({
     name: "",
     code: "",
@@ -121,11 +123,13 @@ function StudyPlansPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("study_plans")
-        .select("id, name, code, version, program_id, effective_year, is_active, college_id")
+        .select(
+          "id, name, code, version, program_id, effective_year, is_active, college_id, archived_at",
+        )
         .eq("college_id", active!.id)
         .order("name");
       if (error) throw error;
-      return (data ?? []) as Plan[];
+      return (data ?? []) as unknown as Plan[];
     },
   });
 
@@ -173,24 +177,6 @@ function StudyPlansPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const del = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("study_plans").delete().eq("id", id);
-      if (error) throw error;
-      await logAudit({
-        action: "delete",
-        entity: "study_plans",
-        entityId: id,
-        collegeId: active?.id,
-      });
-    },
-    onSuccess: () => {
-      toast.success("تم الحذف");
-      qc.invalidateQueries({ queryKey: ["study-plans", active?.id] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
   const startEdit = (p: Plan) => {
     setEditing(p);
     setForm({
@@ -230,7 +216,9 @@ function StudyPlansPage() {
       if (deptFilter !== ALL && prog?.department_id !== deptFilter) return false;
       if (progFilter !== ALL && p.program_id !== progFilter) return false;
       if (statusFilter === "active" && !p.is_active) return false;
-      if (statusFilter === "inactive" && p.is_active) return false;
+      if (statusFilter === "inactive" && (p.is_active || p.archived_at)) return false;
+      if (statusFilter === "archived" && !p.archived_at) return false;
+      if (statusFilter === "active" && p.archived_at) return false;
       return true;
     });
   }, [rows, progMap, deptFilter, progFilter, statusFilter]);
@@ -253,7 +241,13 @@ function StudyPlansPage() {
         {
           label: "حالة السريان",
           value:
-            statusFilter === ALL ? "" : statusFilter === "active" ? "سارية فقط" : "غير سارية فقط",
+            statusFilter === ALL
+              ? ""
+              : statusFilter === "active"
+                ? "سارية فقط"
+                : statusFilter === "archived"
+                  ? "مؤرشفة فقط"
+                  : "غير سارية فقط",
         },
       ]),
     });
@@ -424,6 +418,7 @@ function StudyPlansPage() {
                 <SelectItem value={ALL}>الكل</SelectItem>
                 <SelectItem value="active">سارية</SelectItem>
                 <SelectItem value="inactive">غير سارية</SelectItem>
+                <SelectItem value="archived">مؤرشفة</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -456,9 +451,11 @@ function StudyPlansPage() {
                   <div>
                     <p className="font-semibold">
                       {p.name}{" "}
-                      {!p.is_active && (
+                      {p.archived_at ? (
+                        <span className="text-xs text-muted-foreground">(مؤرشفة)</span>
+                      ) : !p.is_active ? (
                         <span className="text-xs text-muted-foreground">(غير سارية)</span>
-                      )}
+                      ) : null}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       <span dir="ltr">
@@ -469,7 +466,7 @@ function StudyPlansPage() {
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-1">
-                    {active && (
+                    {active && !p.archived_at && (
                       <PlanCoursesManager
                         plan={{ id: p.id, name: p.name }}
                         programId={p.program_id}
@@ -480,17 +477,27 @@ function StudyPlansPage() {
                     )}
                     {canManage && (
                       <>
-                        <Button size="sm" variant="ghost" onClick={() => startEdit(p)}>
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
+                        {!p.archived_at && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => startEdit(p)}
+                            aria-label="تعديل الخطة"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => {
-                            if (confirm("حذف الخطة؟")) del.mutate(p.id);
-                          }}
+                          onClick={() => setRetiring(p)}
+                          aria-label={p.archived_at ? "فحص حذف الخطة المؤرشفة" : "أرشفة الخطة"}
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          {p.archived_at ? (
+                            <Trash2 className="h-3.5 w-3.5" />
+                          ) : (
+                            <Archive className="h-3.5 w-3.5" />
+                          )}
                         </Button>
                       </>
                     )}
@@ -501,6 +508,148 @@ function StudyPlansPage() {
           </ul>
         )}
       </Card>
+      {retiring && active && (
+        <RetirePlanDialog
+          key={retiring.id}
+          plan={retiring}
+          onClose={() => setRetiring(null)}
+          onDone={() => {
+            setRetiring(null);
+            qc.invalidateQueries({ queryKey: ["study-plans", active.id] });
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+type PlanReadiness = {
+  archived: boolean;
+  active: boolean;
+  can_delete: boolean;
+  cohorts: number;
+  offerings: number;
+  groups: number;
+  elective_selections: number;
+  source_rows: number;
+};
+
+function RetirePlanDialog({
+  plan,
+  onClose,
+  onDone,
+}: {
+  plan: Plan;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [typedCode, setTypedCode] = useState("");
+  const readiness = useQuery({
+    queryKey: ["study-plan-delete-readiness", plan.id],
+    queryFn: async () => {
+      const { data, error } = await (
+        supabase as unknown as {
+          rpc(
+            name: string,
+            args: Record<string, string>,
+          ): Promise<{ data: PlanReadiness | null; error: Error | null }>;
+        }
+      ).rpc("study_plan_delete_readiness", { p_plan_id: plan.id });
+      if (error) throw error;
+      return data!;
+    },
+  });
+  const operation = useMutation({
+    mutationFn: async () => {
+      const name = plan.archived_at ? "delete_archived_study_plan" : "archive_study_plan";
+      const { error } = await (
+        supabase as unknown as {
+          rpc(name: string, args: Record<string, string>): Promise<{ error: Error | null }>;
+        }
+      ).rpc(name, { p_plan_id: plan.id });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success(plan.archived_at ? "حُذفت الخطة المؤرشفة وحُفظت نسخة سجليّة" : "أُرشفت الخطة");
+      onDone();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const r = readiness.data;
+  const blockers = r
+    ? [
+        ["دفعات", r.cohorts],
+        ["مقررات مطروحة", r.offerings],
+        ["مجموعات", r.groups],
+        ["اختيارات", r.elective_selections],
+        ["صفوف مصدر", r.source_rows],
+      ].filter(([, n]) => Number(n) > 0)
+    : [];
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent dir="rtl">
+        <DialogHeader>
+          <DialogTitle>{plan.archived_at ? "حذف خطة مؤرشفة" : "أرشفة خطة سابقة"}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 text-sm">
+          <p>
+            {plan.name} ·{" "}
+            <span dir="ltr">
+              {plan.code}@v{plan.version}
+            </span>
+          </p>
+          {readiness.isLoading ? (
+            <p>جارٍ فحص ارتباطات الخطة...</p>
+          ) : readiness.error ? (
+            <p className="text-destructive">{readiness.error.message}</p>
+          ) : (
+            <>
+              <p>
+                الارتباطات:{" "}
+                {blockers.length
+                  ? blockers.map(([label, count]) => `${label}: ${count}`).join("، ")
+                  : "لا توجد"}
+              </p>
+              {!plan.archived_at && plan.is_active && (
+                <p className="text-destructive">اجعل الخطة غير سارية واحفظها قبل أرشفتها.</p>
+              )}
+              {plan.archived_at && !r?.can_delete && (
+                <p className="text-destructive">
+                  الحذف محجوب حتى تُنقل الارتباطات أو تُعالج، مع الحفاظ على سجلات الجداول.
+                </p>
+              )}
+              {plan.archived_at && r?.can_delete && (
+                <>
+                  <p>سيُحفظ محتوى الخطة ومكوناتها في سجل أرشيف محمي قبل الحذف النهائي.</p>
+                  <Label htmlFor="plan-delete-confirm">اكتب رمز الخطة لتأكيد الحذف</Label>
+                  <Input
+                    id="plan-delete-confirm"
+                    value={typedCode}
+                    onChange={(e) => setTypedCode(e.target.value)}
+                    placeholder={plan.code}
+                  />
+                </>
+              )}
+            </>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            إلغاء
+          </Button>
+          <Button
+            variant={plan.archived_at ? "destructive" : "default"}
+            disabled={
+              operation.isPending ||
+              !r ||
+              (plan.archived_at ? !r.can_delete || typedCode !== plan.code : plan.is_active)
+            }
+            onClick={() => operation.mutate()}
+          >
+            {plan.archived_at ? "حذف الخطة المؤرشفة" : "أرشفة الخطة"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
