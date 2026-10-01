@@ -23,6 +23,7 @@ import { downloadCSV, downloadXLSX } from "@/lib/reports/export";
 import { STUDY_SYSTEM_LABELS } from "@/lib/reports/filters";
 import { compactAcademicLevelLabel } from "@/lib/reports/formatters";
 import { fetchHydratedVersionSessions } from "@/lib/schedule-builder/queries";
+import { fetchStudentPrintMemberships } from "@/lib/print-center/student-memberships-query";
 import {
   isScheduleVersionInActiveCollege,
   SCHEDULE_BUILDER_COLLEGE_MISMATCH_AR,
@@ -291,8 +292,13 @@ export function PrintCenterPage(props: { versionId: string }) {
         versionId,
         studySystem: "all",
       });
+      // Expand the selected version's cohort memberships before academic filters.
+      // Instructor/room reports retain one row per physical session.
+      const reportRows = ["student", "department", "program", "level"].includes(filters.reportType)
+        ? await fetchStudentPrintMemberships(hydrated, active!.id, versionId)
+        : hydrated;
       // Stamp college_id for pure filter cross-college guard (query already scoped).
-      const stamped: PrintSessionLike[] = hydrated.map((s) => ({
+      const stamped: PrintSessionLike[] = reportRows.map((s) => ({
         ...s,
         college_id: active!.id,
       }));

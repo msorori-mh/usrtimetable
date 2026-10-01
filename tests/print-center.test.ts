@@ -13,6 +13,7 @@ import {
   type PrintSessionLike,
 } from "../src/lib/print-center/index.ts";
 import { isDeliveryDemoVersion } from "../src/lib/schedule-versions/delivery-demo.ts";
+import { expandStudentPrintMemberships } from "../src/lib/print-center/student-memberships.ts";
 
 function makeSession(overrides: Partial<PrintSessionLike> & { id: string }): PrintSessionLike {
   return {
@@ -56,6 +57,54 @@ function baseFilters(partial: Partial<PrintCenterFilters> = {}): PrintCenterFilt
 }
 
 describe("print-center filters", () => {
+  it("prints shared theory for both study systems while keeping each practical separate", () => {
+    const scopes = ["regular", "parallel"].map((study_system) => ({
+      id: `cs-${study_system}`,
+      program_id: "prog-1",
+      program_name: "علوم الحاسوب",
+      level_id: "lvl-1",
+      level_name: "الثاني",
+      level_number: 2,
+      department_id: "dept-1",
+      department_name: "علوم الحاسوب",
+      study_system,
+    }));
+    const physical = [
+      makeSession({ id: "shared-theory", cohort_id: "cs-regular", delivery_group_id: "theory" }),
+      ...scopes.map((scope) =>
+        makeSession({
+          id: `lab-${scope.study_system}`,
+          cohort_id: scope.id,
+          delivery_group_id: `lab-${scope.study_system}`,
+          study_system: scope.study_system,
+          session_type: "lab",
+        }),
+      ),
+    ];
+    const members = scopes.map((scope) => ({
+      delivery_group_id: "theory",
+      cohort_id: scope.id,
+    }));
+    // Repeated partitions must not duplicate a student's lecture.
+    const expanded = expandStudentPrintMemberships(physical, [...members, members[1]!], scopes);
+    for (const scope of scopes) {
+      const selected = filterPrintSessions(
+        expanded,
+        baseFilters({
+          studySystem: scope.study_system as "regular" | "parallel",
+        }),
+      );
+      assert.equal(selected.length, 2);
+      const theory = selected.find((s) => s.session_type === "lecture")!;
+      assert.equal(theory.cohort_id, scope.id);
+      assert.equal(theory.room_id, physical[0]!.room_id);
+      assert.equal(theory.start_time, physical[0]!.start_time);
+      assert.equal(theory.instructor_id, physical[0]!.instructor_id);
+      assert.equal(selected.find((s) => s.session_type === "lab")!.id, `lab-${scope.study_system}`);
+    }
+    assert.equal(physical.length, 3);
+    assert.equal(physical[0]!.study_system, "regular");
+  });
   it("filters student by program + level + study system", () => {
     const sessions = [
       makeSession({ id: "1", study_system: "regular" }),
