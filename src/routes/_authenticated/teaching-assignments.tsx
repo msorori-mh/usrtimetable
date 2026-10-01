@@ -265,8 +265,14 @@ function TeachingAssignmentsV2Page() {
   });
 
   const courseRows = useMemo(
-    () => filterTeachingAssignmentRowsByCourse(workspace.data?.rows ?? [], courseSearch),
-    [workspace.data?.rows, courseSearch],
+    () =>
+      filterTeachingAssignmentRowsByCourse(
+        (workspace.data?.rows ?? []).filter((row) =>
+          assignmentStatus === "obsolete" ? row.is_obsolete : !row.is_obsolete,
+        ),
+        courseSearch,
+      ),
+    [workspace.data?.rows, courseSearch, assignmentStatus],
   );
   const rows = useMemo(
     () => filterRowsByInstructorName(courseRows, instructorSearch),
@@ -583,7 +589,7 @@ function TeachingAssignmentsV2Page() {
                   <SelectItem value="assigned">مسند</SelectItem>
                   <SelectItem value="under_allocated">توزيع جزئي</SelectItem>
                   <SelectItem value="fully_allocated">مكتمل</SelectItem>
-                  <SelectItem value="obsolete">ملغى (obsolete)</SelectItem>
+                  <SelectItem value="obsolete">المجموعات الملغاة (للمراجعة)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -751,12 +757,12 @@ function TeachingAssignmentsV2Page() {
                           <td className="px-3 py-2">
                             {row.is_obsolete ? (
                               <span className="text-destructive" data-testid="ta-v2-obsolete-badge">
-                                obsolete
+                                ملغاة
                               </span>
                             ) : row.active ? (
-                              "active"
+                              "نشطة"
                             ) : (
-                              "inactive"
+                              "غير نشطة"
                             )}
                           </td>
                           <td className="px-3 py-2">
