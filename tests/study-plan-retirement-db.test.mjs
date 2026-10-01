@@ -19,9 +19,15 @@ const id = (s) => `md5('${s}')::uuid`;
 const manager = `SET LOCAL ROLE authenticated;
   SELECT set_config('request.jwt.claim.sub', md5('manager'), true);`;
 function sql(input) {
-  const r = spawnSync("psql", ["-X", "-q", "-A", "-t", "-v", "ON_ERROR_STOP=1", "--dbname", target], {
-    input, encoding: "utf8", timeout: 30000,
-  });
+  const r = spawnSync(
+    "psql",
+    ["-X", "-q", "-A", "-t", "-v", "ON_ERROR_STOP=1", "--dbname", target],
+    {
+      input,
+      encoding: "utf8",
+      timeout: 30000,
+    },
+  );
   assert.equal(r.status, 0, r.stderr || String(r.error));
   return r.stdout.trim();
 }
@@ -84,8 +90,15 @@ before(() => {
       (${id("version")},${id("college")},${id("term")},'Old schedule','archived'),
       (${id("published")},${id("college")},${id("term")},'Current','published');
   `);
-  sql(readFileSync(root + "supabase/migrations/20261001010000_study_plan_archive_delete.sql", "utf8"));
-  sql(readFileSync(root + "supabase/migrations/20261001011000_retire_archived_schedule_versions.sql", "utf8"));
+  sql(
+    readFileSync(root + "supabase/migrations/20261001010000_study_plan_archive_delete.sql", "utf8"),
+  );
+  sql(
+    readFileSync(
+      root + "supabase/migrations/20261001011000_retire_archived_schedule_versions.sql",
+      "utf8",
+    ),
+  );
   sql(`CREATE TRIGGER trg_sv_immutability BEFORE UPDATE ON public.schedule_versions
     FOR EACH ROW EXECUTE FUNCTION public.enforce_schedule_version_immutability();`);
 });
