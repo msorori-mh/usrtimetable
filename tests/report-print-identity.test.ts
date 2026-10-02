@@ -65,7 +65,17 @@ describe("report print identity", () => {
     expect(shell.includes("afterprint")).toBe(true);
     expect(shell.includes("document.title = originalTitle")).toBe(true);
     expect(route.includes("الجدول الفردي")).toBe(true);
-    expect(route).toMatch(/printFilename=\{\s*instructorName/);
+    for (const file of [
+      "reports.instructor-schedule.tsx",
+      "reports.current-timetable.tsx",
+      "reports.program-level-timetable.tsx",
+    ]) {
+      const scheduleRoute = read(`src/routes/_authenticated/${file}`);
+      expect(scheduleRoute.includes("ctx.selectedVersion?.name")).toBe(true);
+      expect(scheduleRoute.includes("buildScheduleReportFilename(")).toBe(true);
+      expect(scheduleRoute.includes("filename={reportFilename}")).toBe(true);
+      expect(scheduleRoute.includes("printFilename={reportFilename}")).toBe(true);
+    }
     expect(route.includes("printOrientation")).toBe(false);
   });
 
