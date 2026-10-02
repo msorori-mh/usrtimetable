@@ -172,6 +172,29 @@ describe("complete assignment schedule reads", () => {
     expect(result.days.size).toBe(0);
   });
 
+  it("loads an explicitly selected empty version so genuine missing groups remain visible", async () => {
+    const db = fixture({ teaching_assignments: [], schedule_sessions: [] });
+    db.client.rpc = (() =>
+      Promise.resolve({
+        data: {
+          version_id: "empty",
+          groups: [
+            { group_id: "missing", in_version: true, shared_lecture: false, days: [] },
+            { group_id: "old-parent", in_version: false, shared_lecture: false, days: [] },
+          ],
+        },
+        error: null,
+      })) as never;
+    const result = await loadAssignmentSchedule(db.client, "c", [version("empty")], true);
+    expect(result.version?.id).toBe("empty");
+    expect(result.placements.get("missing")).toEqual({
+      inVersion: true,
+      sharedLecture: false,
+      days: [],
+    });
+    expect(result.placements.get("old-parent")?.inVersion).toBe(false);
+  });
+
   it("ignores replaced parent sessions while keeping legacy null flags", async () => {
     const db = fixture({
       teaching_assignments: [assignment("g")],
