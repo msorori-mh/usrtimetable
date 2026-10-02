@@ -147,6 +147,9 @@ export async function fetchUniversityScheduleDirectory(collegeId: string) {
     : [];
   return {
     collegeId,
+    currentInstructorIdentityIds: [
+      ...new Set((roster.data ?? []).map((instructor) => instructor.identity_id)),
+    ],
     instructors: mergeInstructorDirectories([...(roster.data ?? []), ...otherRosters.flat()]),
     colleges: universityColleges,
     terms,
