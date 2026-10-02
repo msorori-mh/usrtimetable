@@ -144,6 +144,60 @@ test("native draft scope preserves global and per-version uniqueness and rejects
       { version_id: id(10), n: 0 },
       { version_id: id(12), n: 2 },
     ]);
+    // Reproduce the lifecycle regression: the old draft-only predicate counts
+    // both copies after review, without adding any teaching assignment or hour.
+    for (const status of ["review", "approved"]) {
+      await db.query("UPDATE schedule_versions SET status=$1 WHERE id=$2", [status, id(12)]);
+      assert.deepEqual(await counted(), [
+        { version_id: id(10), n: 2 },
+        { version_id: id(12), n: 2 },
+      ]);
+    }
+    const lifecycleFix = fs.readFileSync(
+      "supabase/migrations/20261002163000_projected_scoped_assignment_lifecycle.sql",
+      "utf8",
+    );
+    await db.exec(lifecycleFix);
+    await db.exec(lifecycleFix); // Replaying an already-applied exact fix is safe.
+    for (const status of ["draft", "review", "approved"]) {
+      await db.query("UPDATE schedule_versions SET status=$1 WHERE id=$2", [status, id(12)]);
+      await db.exec(`SELECT set_config('app.assume_promoted_version','${id(12)}',false)`);
+      assert.deepEqual(
+        await counted(),
+        [
+          { version_id: id(10), n: 0 },
+          { version_id: id(12), n: 2 },
+        ],
+        `${status}: only the replacement is projected`,
+      );
+      await db.exec(`SELECT set_config('app.assume_promoted_version','',false)`);
+      assert.deepEqual(
+        await counted(),
+        [
+          { version_id: id(10), n: 2 },
+          { version_id: id(12), n: 0 },
+        ],
+        `${status}: no promotion changes the operational load`,
+      );
+    }
+    // The broader lifecycle condition must not suppress unrelated allocations.
+    await db.exec(`SELECT set_config('app.assume_promoted_version','${id(12)}',false)`);
+    for (const [column, different, original] of [
+      ["college_id", id(6), id(2)],
+      ["academic_term_id", id(7), id(3)],
+      ["status", "archived", "approved"],
+    ]) {
+      await db.query(`UPDATE schedule_versions SET ${column}=$1 WHERE id=$2`, [different, id(12)]);
+      assert.deepEqual(
+        await counted(),
+        [
+          { version_id: id(10), n: 2 },
+          { version_id: id(12), n: 2 },
+        ],
+        `${column}: the existing published allocation is retained`,
+      );
+      await db.query(`UPDATE schedule_versions SET ${column}=$1 WHERE id=$2`, [original, id(12)]);
+    }
     await db.exec(`SELECT set_config('app.assume_promoted_version','',false)`);
     assert.deepEqual(await counted(), [
       { version_id: id(10), n: 2 },
