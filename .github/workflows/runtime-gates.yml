@@ -77,7 +77,7 @@ jobs:
         run: node --test tests/active-college-store.test.mjs
 
       - name: Assignment schedule pagination and attendance
-        run: bun test tests/assignment-schedule.test.ts tests/teaching-assignment-row-days.test.ts
+        run: bun test tests/assignment-schedule.test.ts tests/teaching-assignment-row-days.test.ts tests/assignment-placement-context.test.ts
 
       - name: TypeScript (tsc --noEmit)
         run: bunx tsc --noEmit
@@ -238,13 +238,11 @@ jobs:
           COMPACTION_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/compaction_test
         run: node --test tests/course-program-links-db.test.mjs
 
-
       - name: Supporting department heads, quota preservation and permissions
         env:
           COMPACTION_TEST_DISPOSABLE: "1"
           COMPACTION_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/compaction_test
         run: node --test tests/support-departments-db.test.mjs
-
 
       - name: Shared lecture assignment, scheduling, student conflicts and permissions
         env:
@@ -254,6 +252,15 @@ jobs:
         run: |
           createdb -h 127.0.0.1 -U postgres shared_lectures_test
           node --test tests/shared-lectures-db.test.mjs
+
+      - name: Version assignment placement, shared days and read permissions
+        env:
+          PGPASSWORD: postgres
+          ASSIGNMENT_PLACEMENT_TEST_DISPOSABLE: "1"
+          ASSIGNMENT_PLACEMENT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/assignment_placement_test
+        run: |
+          createdb -h 127.0.0.1 -U postgres assignment_placement_test
+          node --test tests/assignment-placement-context-db.test.mjs
 
       - name: ITCS theory hours and lab exception in PostgreSQL
         env:

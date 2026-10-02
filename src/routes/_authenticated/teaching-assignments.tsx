@@ -65,10 +65,11 @@ import {
 } from "@/lib/teaching-assignments/cross-college-candidates";
 import { fetchSharedLectures } from "@/lib/academic-delivery/shared-lectures";
 import { assignmentRowAcademicContext } from "@/lib/teaching-assignments/assignment-row-context";
+import { summarizeInstructorAttendanceDays } from "@/lib/teaching-assignments/assignment-row-days";
 import {
-  assignmentRowDaysLabel,
-  summarizeInstructorAttendanceDays,
-} from "@/lib/teaching-assignments/assignment-row-days";
+  assignmentRowPlacementLabel,
+  assignmentRowsForVersion,
+} from "@/lib/teaching-assignments/assignment-placement-context";
 import { loadAssignmentSchedule } from "@/lib/teaching-assignments/assignment-schedule";
 import { filterTeachingAssignmentRowsByCourse } from "@/lib/teaching-assignments/course-search";
 import {
@@ -91,7 +92,7 @@ const COMPONENT_LABELS: Record<string, string> = {
 const ALLOCATION_LABELS: Record<string, string> = {
   unassigned: "غير مسند",
   under_allocated: "توزيع جزئي",
-  fully_allocated: "مكتمل",
+  fully_allocated: "الإسناد مكتمل",
   over_allocated: "تجاوز الساعات",
 };
 
@@ -281,12 +282,22 @@ function TeachingAssignmentsV2Page() {
   const courseRows = useMemo(
     () =>
       filterTeachingAssignmentRowsByCourse(
-        (workspace.data?.rows ?? []).filter((row) =>
-          assignmentStatus === "obsolete" ? row.is_obsolete : !row.is_obsolete,
+        assignmentRowsForVersion(
+          (workspace.data?.rows ?? []).filter((row) =>
+            assignmentStatus === "obsolete" ? row.is_obsolete : !row.is_obsolete,
+          ),
+          scheduleQuery.data?.placements,
+          !!viewVersion,
         ),
         courseSearch,
       ),
-    [workspace.data?.rows, courseSearch, assignmentStatus],
+    [
+      workspace.data?.rows,
+      courseSearch,
+      assignmentStatus,
+      scheduleQuery.data?.placements,
+      viewVersion,
+    ],
   );
   const rows = useMemo(
     () => filterRowsByInstructorName(courseRows, instructorSearch),
@@ -808,7 +819,10 @@ function TeachingAssignmentsV2Page() {
                               ? "جارٍ التحميل…"
                               : scheduleQuery.isError
                                 ? "تعذر التحميل"
-                                : assignmentRowDaysLabel(sessionDays?.get(row.delivery_group_id))}
+                                : assignmentRowPlacementLabel(
+                                    scheduleQuery.data?.placements.get(row.delivery_group_id),
+                                    !!scheduleQuery.data?.version,
+                                  )}
                           </td>
                           <td className="px-3 py-2">
                             {COMPONENT_LABELS[row.component_type] ?? row.component_type}
