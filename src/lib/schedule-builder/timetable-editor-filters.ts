@@ -159,7 +159,9 @@ export function sessionMatchesTimetableAcademicFilters(input: {
 export function isNewFlowWorkItemUnscheduled(item: {
   remaining_schedule_hours: number;
   scheduling_status: string;
+  assignment_active?: boolean;
 }): boolean {
+  if (item.assignment_active === false) return false;
   if (item.scheduling_status === "scheduled" || item.scheduling_status === "over_scheduled") {
     return false;
   }
