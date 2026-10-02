@@ -234,7 +234,7 @@ function TeachingAssignmentsV2Page() {
     staleTime: 0,
     refetchOnMount: "always",
     queryFn: async () => {
-      if (viewVersion) return loadAssignmentSchedule(supabase, active!.id, [viewVersion]);
+      if (viewVersion) return loadAssignmentSchedule(supabase, active!.id, [viewVersion], true);
       const scope = { collegeId: active!.id, termId: termId || null };
       const [published, working] = await Promise.all([
         fetchPublishedVersions(scope),

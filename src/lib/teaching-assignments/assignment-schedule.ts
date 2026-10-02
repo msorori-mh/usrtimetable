@@ -34,6 +34,7 @@ export async function loadAssignmentSchedule(
   client: Pick<typeof supabase, "from" | "rpc">,
   collegeId: string,
   versions: readonly ScheduleVersionOption[],
+  includeEmptyVersion = false,
 ) {
   const assignments = await readAllAssignmentPages(async (from, to) =>
     client
@@ -61,7 +62,8 @@ export async function loadAssignmentSchedule(
         .range(from, to),
     );
     const activeSessions = sessionsForActiveAssignments(sessions, activeIds);
-    if (activeSessions.length) {
+    // Explicit version views still need the catalogue when nothing is placed yet.
+    if (activeSessions.length || includeEmptyVersion) {
       const { data, error } = await client.rpc(
         "schedule_version_assignment_placement_context" as never,
         { p_version: version.id } as never,
