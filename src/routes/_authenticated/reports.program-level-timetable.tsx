@@ -47,6 +47,8 @@ import {
   type ProgramReportSelection,
 } from "@/lib/reports/program-timetable-filters";
 import type { ReportContext } from "@/lib/reports/types";
+import { STUDY_SYSTEM_LABELS } from "@/lib/reports/filters";
+import { buildScheduleReportFilename } from "@/lib/reports/schedule-filename";
 
 export const Route = createFileRoute("/_authenticated/reports/program-level-timetable")({
   head: () => ({ meta: [{ title: "تقرير جدول البرنامج/المستوى" }] }),
@@ -273,6 +275,13 @@ function ProgramLevelReport({
   ]
     .filter(Boolean)
     .join(" · ");
+  const reportFilename = buildScheduleReportFilename([
+    ctx.selectedVersion?.name,
+    "جدول البرنامج والمستوى",
+    active?.name,
+    academicSummary,
+    STUDY_SYSTEM_LABELS[ctx.studySystem],
+  ]);
   const filters: {
     field: keyof ProgramReportSelection;
     label: string;
@@ -299,7 +308,8 @@ function ProgramLevelReport({
       description={`${coverageSummaryText(coverage.summary)} · ${sessions.length} محاضرة مجدولة (${totalHours.toFixed(2)} ساعة).`}
       filterSummary={[ctx.filterSummary, academicSummary].filter(Boolean).join(" · ")}
       reportContext={ctx}
-      filename="program_level_timetable"
+      filename={reportFilename}
+      printFilename={reportFilename}
       rows={rows}
       headers={PROGRAM_TIMETABLE_EXPORT_HEADERS}
       isLoading={isLoading}

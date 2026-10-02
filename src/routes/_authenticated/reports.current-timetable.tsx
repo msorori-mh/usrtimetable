@@ -37,6 +37,8 @@ import {
 } from "@/components/ui/select";
 import { filterCurrentScheduleScope } from "@/lib/print-center/current-schedule-scope";
 import { normalizedMatchKey } from "@/lib/excel-import/arabic-normalize";
+import { STUDY_SYSTEM_LABELS } from "@/lib/reports/filters";
+import { buildScheduleReportFilename } from "@/lib/reports/schedule-filename";
 
 const EMPTY_SESSIONS: PrintSessionLike[] = [];
 
@@ -283,6 +285,20 @@ function Page() {
   };
   const coverageSuffix = filtered ? " (الكلية كاملة)" : "";
   const scopeSuffix = filtered ? " (ضمن الفلتر)" : "";
+  const reportFilename = buildScheduleReportFilename([
+    ctx.selectedVersion?.name,
+    "جداول الطلاب",
+    active?.name,
+    ...(printScope === "college"
+      ? ["الكلية كاملة"]
+      : [
+          selectedDepartment?.name,
+          selectedProgram?.name,
+          selectedLevel?.name,
+          selectedCourse?.name,
+        ]),
+    STUDY_SYSTEM_LABELS[effectiveStudySystem],
+  ]);
 
   return (
     <ReportShell
@@ -290,7 +306,8 @@ function Page() {
       description={DESCRIPTION}
       filterSummary={[printContext.filterSummary, ...extraSummary].join(" · ")}
       reportContext={printContext}
-      filename="current_timetable"
+      filename={reportFilename}
+      printFilename={reportFilename}
       rows={rows as unknown as Record<string, unknown>[]}
       headers={PRINT_EXPORT_HEADERS.map((h) => ({
         key: h.key,

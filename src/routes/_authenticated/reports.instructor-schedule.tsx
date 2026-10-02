@@ -16,6 +16,7 @@ import {
   NEW_FLOW_TIMETABLE_TABLE_HEADERS,
 } from "@/lib/reports/session-mappers";
 import { QUOTA_UNDEFINED_AR } from "@/lib/reports/instructor-quota";
+import { buildScheduleReportFilename } from "@/lib/reports/schedule-filename";
 import {
   fetchUniversityScheduleDirectory,
   fetchInstructorTeachingCollegeIds,
@@ -289,6 +290,12 @@ function Page() {
   }, [instructorSearch, instructors]);
   const distinctDays = new Set(sessions.map((s) => s.day_of_week)).size;
   const distinctCourses = new Set(sessions.map((s) => `${s.course_code}:${s.course_name}`)).size;
+  const reportFilename = buildScheduleReportFilename([
+    ctx.selectedVersion?.name,
+    "الجدول الفردي",
+    instructorName,
+    scopeLabel,
+  ]);
 
   return (
     <ReportShell
@@ -310,10 +317,8 @@ function Page() {
         versionStatus: null,
         note: `نطاق الجدول: ${scopeLabel} — العام والموازي معًا.`,
       }}
-      filename="instructor_schedule"
-      printFilename={
-        instructorName ? `${instructorName} - الجدول الفردي - ${scopeLabel}` : "الجدول الفردي"
-      }
+      filename={reportFilename}
+      printFilename={reportFilename}
       rows={rows}
       headers={exportHeaders}
       isLoading={isLoading}

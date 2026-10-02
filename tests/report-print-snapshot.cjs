@@ -7,7 +7,8 @@ const ts = require("typescript");
 function harness({ fonts = Promise.resolve(), printThrows = false } = {}) {
   const state = [],
     listeners = new Map(),
-    errors = [];
+    errors = [],
+    printedTitles = [];
   let cursor = 0,
     prints = 0;
   const document = { title: "Original", fonts: { ready: fonts } };
@@ -54,6 +55,7 @@ function harness({ fonts = Promise.resolve(), printThrows = false } = {}) {
       removeEventListener: (event) => listeners.delete(event),
       print: () => {
         prints++;
+        printedTitles.push(document.title);
         if (printThrows) throw new Error("unavailable");
       },
     },
@@ -77,6 +79,7 @@ function harness({ fonts = Promise.resolve(), printThrows = false } = {}) {
     },
     afterPrint: () => listeners.get("afterprint")?.(),
     prints: () => prints,
+    printedTitles,
     document,
     errors,
   };
@@ -138,4 +141,31 @@ test("incomplete reports cannot print and print failures clear the snapshot", as
   assert.equal(snapshot(failed.render()), null);
   assert.equal(failed.document.title, "Original");
   assert.equal(failed.errors.length, 1);
+});
+
+test("print preview receives the selected schedule filename before printing and restores it after closing", async () => {
+  const app = harness();
+  const names = [
+    "الفصل الأول 2026 — الجدول الفردي — أحمد البدوي — جميع الكليات",
+    "الفصل الأول 2026 — جداول الطلاب — تقنية المعلومات — المستوى الثاني — انتظام",
+    "الفصل الثاني 2026 — جداول الطلاب — علوم الحاسوب — المستوى الثالث — موازي",
+  ];
+  for (const name of names) {
+    await button(app.render({ printFilename: name })).props.onClick();
+    assert.equal(app.printedTitles.at(-1), name);
+    assert.equal(app.document.title, name);
+    app.afterPrint();
+    assert.equal(app.document.title, "Original");
+    assert.equal(snapshot(app.render()), null);
+  }
+  assert.deepEqual(app.printedTitles, names);
+});
+
+test("a descriptive schedule filename is restored if printing throws", async () => {
+  const app = harness({ printThrows: true });
+  const name = "الجدول المعتمد — جدول المحاضر — عيسى";
+  await button(app.render({ printFilename: name })).props.onClick();
+  assert.deepEqual(app.printedTitles, [name]);
+  assert.equal(app.document.title, "Original");
+  assert.equal(snapshot(app.render()), null);
 });

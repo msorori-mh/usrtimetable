@@ -19,7 +19,7 @@ jobs:
       - run: bun install --frozen-lockfile
       - name: Report calculations and existing contracts
         run: |
-          node --import tsx --test tests/whole-cohort-group-labels.test.ts tests/reports-foundation.test.ts tests/academic-affairs.test.ts tests/program-timetable-filters.test.ts
+          node --import tsx --test tests/whole-cohort-group-labels.test.ts tests/reports-foundation.test.ts tests/academic-affairs.test.ts tests/program-timetable-filters.test.ts tests/schedule-report-filename.test.ts
           bun test tests/report-visual-system.test.ts tests/program-timetable-coverage.test.ts tests/weekly-grid-window.test.ts tests/reports-college-switch.test.ts tests/instructor-quota-and-directory.test.ts tests/report-print-identity.test.ts
       - name: Browser test dependencies
         run: |
