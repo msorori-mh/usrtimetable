@@ -1,9 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-const { PGlite } = await import(
-  process.env.CLONE_DB_MODULE || "@electric-sql/pglite"
-);
+const { PGlite } = await import(process.env.CLONE_DB_MODULE || "@electric-sql/pglite");
 const migration = await readFile(
   new URL(
     "../supabase/migrations/20261002235000_clone_assignment_exclusion_lineage.sql",
@@ -74,25 +72,13 @@ test("inactive ancestral replacement stays excluded through direct and nested cl
   const db = await seed();
   try {
     assert.deepEqual(await effective(db, 1), [id(102)]);
-    assert.deepEqual(
-      await effective(db, 2),
-      [id(100), id(102)],
-      "reproduces the clone duplicate",
-    );
+    assert.deepEqual(await effective(db, 2), [id(100), id(102)], "reproduces the clone duplicate");
     const before = await state(db),
       meta = await metadata(db);
     await db.exec(migration);
-    assert.deepEqual(
-      await effective(db, 1),
-      [id(102)],
-      "published source is unchanged",
-    );
+    assert.deepEqual(await effective(db, 1), [id(102)], "published source is unchanged");
     assert.deepEqual(await effective(db, 2), [id(102)]);
-    assert.deepEqual(
-      await effective(db, 3),
-      [id(102)],
-      "nested clone inherits exclusion",
-    );
+    assert.deepEqual(await effective(db, 3), [id(102)], "nested clone inherits exclusion");
     assert.deepEqual(await state(db), before, "the migration changes no data");
     assert.deepEqual(
       await metadata(db),
@@ -124,9 +110,7 @@ test("guarded relink to an active original restores only the descendant and surv
     await db.exec(migration);
     assert.deepEqual(await effective(db, 2), [id(101)]);
     const source = (
-      await db.query(
-        `SELECT to_jsonb(s) row FROM schedule_sessions s WHERE id=${q(11)}`,
-      )
+      await db.query(`SELECT to_jsonb(s) row FROM schedule_sessions s WHERE id=${q(11)}`)
     ).rows[0].row;
     await db.exec(
       `BEGIN; UPDATE schedule_sessions SET teaching_assignment_id=${q(100)} WHERE id=${q(12)}; SET CONSTRAINTS ALL IMMEDIATE; COMMIT;`,
@@ -143,11 +127,8 @@ test("guarded relink to an active original restores only the descendant and surv
       "pre-existing descendant referencing replacement remains unchanged",
     );
     assert.deepEqual(
-      (
-        await db.query(
-          `SELECT to_jsonb(s) row FROM schedule_sessions s WHERE id=${q(11)}`,
-        )
-      ).rows[0].row,
+      (await db.query(`SELECT to_jsonb(s) row FROM schedule_sessions s WHERE id=${q(11)}`)).rows[0]
+        .row,
       source,
     );
     await db.exec(
@@ -158,14 +139,8 @@ test("guarded relink to an active original restores only the descendant and surv
       [id(100)],
       "a clone of the restored version retains the original",
     );
-    await db.exec(
-      `UPDATE teaching_assignments SET is_active=false WHERE id=${q(100)}`,
-    );
-    assert.deepEqual(
-      await effective(db, 2),
-      [],
-      "explicit reference never bypasses is_active",
-    );
+    await db.exec(`UPDATE teaching_assignments SET is_active=false WHERE id=${q(100)}`);
+    assert.deepEqual(await effective(db, 2), [], "explicit reference never bypasses is_active");
   } finally {
     await db.close();
   }
@@ -184,24 +159,16 @@ test("own-version scope precedence and the existing cross-version promotion guar
       "origin scope wins before its sessions are relinked",
     );
     await assert.rejects(
-      db.exec(
-        `INSERT INTO schedule_sessions VALUES(${q(15)},${q(5)},${q(101)})`,
-      ),
+      db.exec(`INSERT INTO schedule_sessions VALUES(${q(15)},${q(5)},${q(101)})`),
       /VERSION_SCOPED_ASSIGNMENT_OTHER_VERSION/,
     );
     await assert.rejects(
-      db.exec(
-        `INSERT INTO schedule_sessions VALUES(${q(16)},${q(6)},${q(101)})`,
-      ),
+      db.exec(`INSERT INTO schedule_sessions VALUES(${q(16)},${q(6)},${q(101)})`),
       /VERSION_SCOPED_ASSIGNMENT_OTHER_VERSION/,
     );
-    await db.exec(
-      `DELETE FROM assignment_version_private.promotions WHERE version_id=${q(1)}`,
-    );
+    await db.exec(`DELETE FROM assignment_version_private.promotions WHERE version_id=${q(1)}`);
     await assert.rejects(
-      db.exec(
-        `INSERT INTO schedule_sessions VALUES(${q(14)},${q(4)},${q(101)})`,
-      ),
+      db.exec(`INSERT INTO schedule_sessions VALUES(${q(14)},${q(4)},${q(101)})`),
       /VERSION_SCOPED_ASSIGNMENT_OTHER_VERSION/,
     );
   } finally {
@@ -259,10 +226,7 @@ test("refuses unexpected baseline function changes", async () => {
     await db.exec(
       `CREATE OR REPLACE FUNCTION public.version_effective_assignments(p_version uuid) RETURNS TABLE(assignment_id uuid,delivery_group_id uuid,college_id uuid,assigned_component_hours numeric) LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$ SELECT id,delivery_group_id,college_id,assigned_component_hours FROM public.teaching_assignments WHERE false $$;`,
     );
-    await assert.rejects(
-      db.exec(migration),
-      /VERSION_EFFECTIVE_ASSIGNMENTS_DEFINITION_DRIFT/,
-    );
+    await assert.rejects(db.exec(migration), /VERSION_EFFECTIVE_ASSIGNMENTS_DEFINITION_DRIFT/);
   } finally {
     await db.close();
   }
