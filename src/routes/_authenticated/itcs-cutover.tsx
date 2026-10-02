@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { supabase } from "@/integrations/supabase/client";
 import { scoreScheduleVersion } from "@/lib/conflict-engine/scorer";
+import { invalidateTeachingAssignmentReadModels } from "@/lib/teaching-assignments/query-invalidation";
 import {
   RELAYOUT_PROFILE,
   MANIFEST_FILE,
@@ -48,6 +50,7 @@ type Repl = {
 };
 
 function ItcsCutoverPage() {
+  const queryClient = useQueryClient();
   const { data: me, isLoading } = useCurrentUser();
   const [manifest, setManifest] = useState<CutoverManifest | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
@@ -195,6 +198,7 @@ function ItcsCutoverPage() {
       });
       if (error) throw new Error(error.message);
       add(`PASS ${stage}: ${JSON.stringify(data)}`);
+      await invalidateTeachingAssignmentReadModels(queryClient);
       await serverPreview();
     } catch (e) {
       add(`HOLD — أُلغيت المرحلة ${stage} كاملة: ${(e as Error).message}`);

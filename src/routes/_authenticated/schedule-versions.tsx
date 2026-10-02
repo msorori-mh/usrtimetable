@@ -496,7 +496,7 @@ function VersionCard({
                 )}
                 {actions.map((a) => {
                   const blockers = [
-                    ...validateGate(a.to, elig.data!),
+                    ...validateGate(a.to, elig.data!, status),
                     ...coverageBlockers(a.to, coverage.data),
                   ];
                   const blocked = blockers.length > 0;

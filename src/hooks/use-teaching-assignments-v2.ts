@@ -9,6 +9,7 @@ import {
 } from "@/lib/academic-delivery/teaching-assignments-v2-service";
 import { mapAssignmentRpcError } from "@/lib/academic-delivery/teaching-assignments-v2";
 import type { WorkspaceFilters } from "@/lib/academic-delivery/teaching-assignments-v2";
+import { invalidateTeachingAssignmentReadModels } from "@/lib/teaching-assignments/query-invalidation";
 
 export function teachingAssignmentWorkspaceKey(filters: WorkspaceFilters) {
   return ["teaching-assignment-workspace-v2", filters] as const;
@@ -71,15 +72,7 @@ export function useCreateTeachingAssignmentV2(filters: WorkspaceFilters | null) 
             ? "أُعيد تفعيل الإسناد"
             : "تم إنشاء الإسناد",
       );
-      if (filters) {
-        void qc.invalidateQueries({
-          queryKey: teachingAssignmentWorkspaceKey(filters),
-        });
-      }
-      void qc.invalidateQueries({
-        queryKey: ["teaching-assignment-workload-preview"],
-      });
-      void qc.invalidateQueries({ queryKey: ["faculty-teaching-requests"] });
+      void invalidateTeachingAssignmentReadModels(qc);
     },
     onError: mutationErrorToast,
   });
@@ -99,15 +92,7 @@ export function useUpdateTeachingAssignmentV2(filters: WorkspaceFilters | null) 
           ? "أُرسل طلب تعديل التكليف إلى الكلية الأصلية"
           : "تم تحديث ساعات الإسناد",
       );
-      if (filters) {
-        void qc.invalidateQueries({
-          queryKey: teachingAssignmentWorkspaceKey(filters),
-        });
-      }
-      void qc.invalidateQueries({
-        queryKey: ["teaching-assignment-workload-preview"],
-      });
-      void qc.invalidateQueries({ queryKey: ["faculty-teaching-requests"] });
+      void invalidateTeachingAssignmentReadModels(qc);
     },
     onError: mutationErrorToast,
   });
@@ -123,15 +108,7 @@ export function useDeactivateTeachingAssignmentV2(filters: WorkspaceFilters | nu
         return;
       }
       toast.success("تم تعطيل الإسناد (محفوظ للتاريخ)");
-      if (filters) {
-        void qc.invalidateQueries({
-          queryKey: teachingAssignmentWorkspaceKey(filters),
-        });
-      }
-      void qc.invalidateQueries({
-        queryKey: ["teaching-assignment-workload-preview"],
-      });
-      void qc.invalidateQueries({ queryKey: ["faculty-teaching-requests"] });
+      void invalidateTeachingAssignmentReadModels(qc);
     },
     onError: mutationErrorToast,
   });

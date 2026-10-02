@@ -3,6 +3,7 @@ import { fetchVersionGroupCatalog } from "@/lib/academic-delivery/version-group-
 import { readAllReportRows } from "@/lib/reports/read-all";
 import { supabase } from "@/integrations/supabase/client";
 import type { DeliveryGroupCatalogRow } from "@/lib/reports/program-timetable-coverage";
+import { fetchReportAssignmentRefs } from "./assignment-queries";
 
 /** Active groups are the coverage catalogue, including groups with no sessions. */
 export async function fetchCohortDeliveryGroupCatalog(params: {
@@ -57,15 +58,11 @@ export async function fetchCohortDeliveryGroupCatalog(params: {
         .order("id")
         .range(from, to),
     ),
-    readAllReportRows((from, to) =>
-      supabase
-        .from("teaching_assignments")
-        .select("id, delivery_group_id, instructor_id")
-        .eq("college_id", college)
-        .or("is_active.is.null,is_active.eq.true")
-        .order("id")
-        .range(from, to),
-    ),
+    fetchReportAssignmentRefs({
+      collegeId: college,
+      versionId: params.versionId,
+      groupIds: groups.map((group) => group.id),
+    }),
     readAllReportRows((from, to) =>
       supabase
         .from("courses")
@@ -75,31 +72,14 @@ export async function fetchCohortDeliveryGroupCatalog(params: {
         .range(from, to),
     ),
   ]);
-  // Visiting teachers retain their home college. Resolve exactly the IDs
-  // referenced by this college's assignments, without rewriting ownership.
-  const instructorIds = [
-    ...new Set(
-      assignments.map((assignment) => assignment.instructor_id).filter((id): id is string => !!id),
-    ),
-  ];
-  const instructors: { id: string; full_name: string }[] = [];
-  for (let i = 0; i < instructorIds.length; i += 100) {
-    const { data, error } = await supabase
-      .from("instructors")
-      .select("id,full_name")
-      .in("id", instructorIds.slice(i, i + 100));
-    if (error) throw error;
-    instructors.push(...(data ?? []));
-  }
   const componentById = new Map(components.map((c) => [c.id, c]));
   const planCourseById = new Map(planCourses.map((c) => [c.id, c]));
   const courseById = new Map(courses.map((c) => [c.id, c]));
-  const instructorById = new Map(instructors.map((i) => [i.id, i.full_name]));
   const teachersByGroup = new Map<string, Set<string>>();
   for (const assignment of assignments) {
     if (!assignment.delivery_group_id || !assignment.instructor_id) continue;
     const names = teachersByGroup.get(assignment.delivery_group_id) ?? new Set<string>();
-    names.add(instructorById.get(assignment.instructor_id) ?? "محاضر غير متاح");
+    names.add(assignment.instructor_name ?? "محاضر غير متاح");
     teachersByGroup.set(assignment.delivery_group_id, names);
   }
   return groups.map((group) => {
