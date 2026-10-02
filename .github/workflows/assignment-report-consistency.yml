@@ -8,12 +8,18 @@ on:
       - "src/lib/reports/queries/delivery-group-coverage-queries.ts"
       - "src/lib/schedule-versions/lifecycle.ts"
       - "src/lib/schedule-versions/assignment-integrity.ts"
+      - "src/lib/itcs-cutover/operational-adoption.ts"
+      - "src/integrations/supabase/types.ts"
       - "src/routes/_authenticated/reports.instructor-workload.tsx"
       - "src/routes/_authenticated/schedule-versions.tsx"
       - "src/routes/_authenticated/itcs-cutover.tsx"
       - "src/routes/_authenticated/itcs-review-proposal.tsx"
       - "supabase/migrations/*schedule_assignment_publication_integrity*"
       - "supabase/rollbacks/*schedule_assignment_publication_integrity*"
+      - "supabase/migrations/*itcs_current_operational_adoption*"
+      - "supabase/rollbacks/*itcs_current_operational_adoption*"
+      - "tests/itcs-operational-adoption-client.test.ts"
+      - "tests/itcs-operational-adoption-synthetic-db.test.mjs"
       - "tests/report-assignment-scope.test.ts"
       - "tests/teaching-assignment-query-invalidation.test.ts"
       - "tests/schedule-assignment-eligibility.test.ts"
@@ -35,10 +41,12 @@ jobs:
       - run: bun install --frozen-lockfile
       - name: Version-scoped reports, refresh and eligibility
         run: |
-          bunx vitest run --config tests/vitest-bun-compat.config.mjs tests/report-assignment-scope.test.ts tests/teaching-assignment-query-invalidation.test.ts tests/schedule-assignment-eligibility.test.ts tests/program-timetable-coverage.test.ts tests/assignment-placement-context.test.ts
+          bunx vitest run --config tests/vitest-bun-compat.config.mjs tests/report-assignment-scope.test.ts tests/teaching-assignment-query-invalidation.test.ts tests/schedule-assignment-eligibility.test.ts tests/program-timetable-coverage.test.ts tests/assignment-placement-context.test.ts tests/itcs-operational-adoption-client.test.ts
           node --test tests/assignment-workspace-version-view.test.mjs
           bunx tsc --noEmit
       - name: Isolated PostgreSQL test dependency
         run: npm install --prefix "$RUNNER_TEMP/assignment-db" --no-package-lock @electric-sql/pglite@0.3.14
       - name: Authenticated publication boundaries and stale assignment regression
         run: PGLITE_TEST_MODULE="$RUNNER_TEMP/assignment-db/node_modules/@electric-sql/pglite/dist/index.js" node --test tests/schedule-assignment-publication-integrity-db.test.mjs
+      - name: Synthetic operational adoption API, CAS and transaction contract
+        run: PGLITE_TEST_MODULE="$RUNNER_TEMP/assignment-db/node_modules/@electric-sql/pglite/dist/index.js" node --test tests/itcs-operational-adoption-synthetic-db.test.mjs
