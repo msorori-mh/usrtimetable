@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { supabase } from "@/integrations/supabase/client";
+import { invalidateTeachingAssignmentReadModels } from "@/lib/teaching-assignments/query-invalidation";
 
 export const Route = createFileRoute("/_authenticated/itcs-review-proposal")({
   head: () => ({ meta: [{ title: "مسودة مقترح الحاسوب 30/9 — مراجعة قبل النشر" }] }),
@@ -92,6 +93,7 @@ const clock = (s: string) => s.slice(0, 5);
 const dayOrder = (d: number) => (d === 6 ? 0 : d + 1);
 
 function ReviewProposalPage() {
+  const queryClient = useQueryClient();
   const { data: me } = useCurrentUser();
   const [instructor, setInstructor] = useState("");
   const [cohort, setCohort] = useState("");
@@ -178,6 +180,7 @@ function ReviewProposalPage() {
       });
       if (r.error) throw new Error(r.error.message);
       setChecked(stage === "review_check");
+      if (stage === "review_save") await invalidateTeachingAssignmentReadModels(queryClient);
       await Promise.all([query.refetch(), nativeQuery.refetch()]);
     } catch (e) {
       setError((e as Error).message);

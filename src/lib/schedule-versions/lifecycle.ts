@@ -6,6 +6,11 @@ import {
 } from "@/lib/conflict-engine/exceptions";
 import { logAudit } from "@/lib/audit";
 import {
+  assignmentIntegrityReason,
+  findSessionAssignmentIssues,
+  type AssignmentIntegrityAssignment,
+} from "./assignment-integrity";
+import {
   applyDeliveryGroupWaiver,
   DELIVERY_GROUP_WAIVER_NOTICE_AR,
   type DeliveryGroupWaiverScope,
@@ -96,6 +101,7 @@ export interface EligibilityResult {
   unapprovedHardConflicts: number;
   qualityScore: number | null;
   sessionsCount: number;
+  assignmentIntegrityErrors?: string[];
 }
 
 /**
@@ -144,6 +150,28 @@ export async function evaluateEligibility(params: {
     .eq("schedule_version_id", scheduleVersionId);
   if (se) throw se;
   const sessions = ss ?? [];
+
+  const assignmentIds = [
+    ...new Set(
+      sessions.flatMap((s) =>
+        !s.replaced_by_split && s.teaching_assignment_id ? [s.teaching_assignment_id] : [],
+      ),
+    ),
+  ];
+  const assignments: AssignmentIntegrityAssignment[] = [];
+  for (let offset = 0; offset < assignmentIds.length; offset += 100) {
+    const { data, error } = await supabase
+      .from("teaching_assignments")
+      .select("id,instructor_id,is_active")
+      .in("id", assignmentIds.slice(offset, offset + 100));
+    if (error) throw error;
+    assignments.push(...(data ?? []));
+  }
+  const assignmentIssues = findSessionAssignmentIssues(sessions, assignments);
+  const assignmentIntegrityErrors = assignmentIssues.length
+    ? [assignmentIntegrityReason(assignmentIssues.length)]
+    : [];
+  reasons.push(...assignmentIntegrityErrors);
 
   const proposed: ProposedSession[] = sessions.map((s) => ({
     id: s.id,
@@ -235,12 +263,19 @@ export async function evaluateEligibility(params: {
     unapprovedHardConflicts: unapprovedHard,
     qualityScore: qrow?.total_score ?? null,
     sessionsCount: sessions.length,
+    assignmentIntegrityErrors,
   };
 }
 
 /** Validate gate for a specific target status. */
-export function validateGate(target: SVStatus, e: EligibilityResult): string[] {
+export function validateGate(target: SVStatus, e: EligibilityResult, from?: SVStatus): string[] {
   const errs: string[] = [];
+  if (
+    (target === "review" || target === "approved" || target === "published") &&
+    !(from === "approved" && target === "review")
+  ) {
+    errs.push(...(e.assignmentIntegrityErrors ?? []));
+  }
   if (target === "review") {
     if (e.sessionsCount < 1) errs.push("النسخة لا تحتوي على أي محاضرات.");
     if (e.unapprovedHardConflicts > 0) {
@@ -285,7 +320,14 @@ export async function transitionVersion(params: {
     p_target_status: to,
     p_notes: notes ?? undefined,
   });
-  if (error) throw error;
+  if (error) {
+    if (error.message.includes("SCHEDULE_SESSION_ASSIGNMENT_INTEGRITY")) {
+      throw new Error(
+        "تعذر اعتماد أو نشر النسخة: توجد جلسات مرتبطة بإسنادات ملغاة أو لا تطابق محاضريها. صحّح ارتباط الجلسات بالإسنادات ثم أعد فحص التعارضات.",
+      );
+    }
+    throw error;
+  }
 }
 
 /** Clone version: copies metadata + sessions only. */

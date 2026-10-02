@@ -24,6 +24,7 @@ import { filterRowsBySearch } from "@/lib/reports/search";
 import { hoursBetween } from "@/lib/reports/export";
 import { PENDING_QUOTA_AR, PENDING_SPLIT_AR } from "@/lib/existing-schedules/presentation";
 import { QUOTA_UNDEFINED_AR, computeQuotaBalance } from "@/lib/reports/instructor-quota";
+import { fetchReportAssignmentRefs } from "@/lib/reports/queries/assignment-queries";
 
 export const Route = createFileRoute("/_authenticated/reports/instructor-workload")({
   head: () => ({ meta: [{ title: "العبء المجدول للمحاضرين" }] }),
@@ -260,13 +261,12 @@ function WorkloadPage() {
         .map((r) => r.delivery_group_id)
         .filter((id): id is string => !!id);
       const allocations = groupIds.length
-        ? await supabase
-            .from("teaching_assignments")
-            .select("delivery_group_id,instructor_id,assigned_component_hours")
-            .in("delivery_group_id", groupIds)
-            .eq("is_active", true)
-        : { data: [], error: null };
-      if (allocations.error) throw allocations.error;
+        ? await fetchReportAssignmentRefs({
+            collegeId: active!.id,
+            versionId: context.versionId,
+            groupIds,
+          })
+        : [];
       return rows.flatMap((row) => {
         const source = shared.find((s) => s.schedule_session_id === row.id);
         if (!source)
@@ -279,7 +279,7 @@ function WorkloadPage() {
           ];
         return source.instructor_ids.map((id) => {
           const allocated =
-            allocations.data?.find(
+            allocations.find(
               (a) => a.delivery_group_id === row.delivery_group_id && a.instructor_id === id,
             )?.assigned_component_hours ?? null;
           return {

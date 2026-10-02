@@ -1,0 +1,44 @@
+name: assignment-report-consistency
+on:
+  pull_request:
+    paths:
+      - "src/hooks/use-teaching-assignments-v2.ts"
+      - "src/lib/teaching-assignments/query-invalidation.ts"
+      - "src/lib/reports/queries/assignment-queries.ts"
+      - "src/lib/reports/queries/delivery-group-coverage-queries.ts"
+      - "src/lib/schedule-versions/lifecycle.ts"
+      - "src/lib/schedule-versions/assignment-integrity.ts"
+      - "src/routes/_authenticated/reports.instructor-workload.tsx"
+      - "src/routes/_authenticated/schedule-versions.tsx"
+      - "src/routes/_authenticated/itcs-cutover.tsx"
+      - "src/routes/_authenticated/itcs-review-proposal.tsx"
+      - "supabase/migrations/*schedule_assignment_publication_integrity*"
+      - "supabase/rollbacks/*schedule_assignment_publication_integrity*"
+      - "tests/report-assignment-scope.test.ts"
+      - "tests/teaching-assignment-query-invalidation.test.ts"
+      - "tests/schedule-assignment-eligibility.test.ts"
+      - "tests/schedule-assignment-publication-integrity-db.test.mjs"
+      - "tests/fixtures/schedule-assignment-integrity-lifecycle.sql"
+      - ".github/workflows/assignment-report-consistency.yml"
+permissions:
+  contents: read
+jobs:
+  consistency:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - name: Version-scoped reports, refresh and eligibility
+        run: |
+          bunx vitest run --config tests/vitest-bun-compat.config.mjs tests/report-assignment-scope.test.ts tests/teaching-assignment-query-invalidation.test.ts tests/schedule-assignment-eligibility.test.ts tests/program-timetable-coverage.test.ts tests/assignment-placement-context.test.ts
+          node --test tests/assignment-workspace-version-view.test.mjs
+          bunx tsc --noEmit
+      - name: Isolated PostgreSQL test dependency
+        run: npm install --prefix "$RUNNER_TEMP/assignment-db" --no-package-lock @electric-sql/pglite@0.3.14
+      - name: Authenticated publication boundaries and stale assignment regression
+        run: PGLITE_TEST_MODULE="$RUNNER_TEMP/assignment-db/node_modules/@electric-sql/pglite/dist/index.js" node --test tests/schedule-assignment-publication-integrity-db.test.mjs
