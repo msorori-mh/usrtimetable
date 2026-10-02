@@ -63,7 +63,7 @@ test("the page offers the version view as read-only and keeps writes operational
   // Days and lecturers come from the same version once one is chosen.
   assert.match(
     page,
-    /if \(viewVersion\) return loadAssignmentSchedule\(supabase, active!\.id, \[viewVersion\]\)/,
+    /if \(viewVersion\) return loadAssignmentSchedule\(supabase, active!\.id, \[viewVersion\], true\)/,
   );
   // A stale selection (other college or term) falls back to the operational view.
   assert.match(
