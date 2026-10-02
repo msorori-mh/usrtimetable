@@ -58,6 +58,7 @@ export function ProgramTimetablePrint(props: {
           key={page.key}
           page={page}
           labels={labels}
+          groupNameOnly
           visibility={DEFAULT_PRINT_VISIBILITY}
           meta={{
             collegeName: props.collegeName,
@@ -96,3 +97,4 @@ export function ProgramTimetablePrint(props: {
     </>
   );
 }
+
