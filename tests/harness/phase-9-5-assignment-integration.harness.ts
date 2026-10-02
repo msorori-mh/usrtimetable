@@ -15,6 +15,10 @@ import {
   parseWorkItemsPayload,
   wallClockHours,
 } from "../../src/lib/schedule-builder/v2-assignment-integration.ts";
+import {
+  filterUnscheduledNewFlowWorkItems,
+  isNewFlowWorkItemUnscheduled,
+} from "../../src/lib/schedule-builder/timetable-editor-filters.ts";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -95,6 +99,115 @@ function runPureContracts() {
   assert(
     !hasOutstandingScheduleHours({ remaining_schedule_hours: 1e-10 }),
     "decimal residue does not create a false remaining item",
+  );
+
+  // Reassignment leaves history in the RPC: three inactive allocations have
+  // no sessions under their old IDs, while replacements cover the same groups.
+  const inactiveRows = Array.from({ length: 3 }, (_, index) => ({
+    teaching_assignment_id: `inactive-${index}`,
+    delivery_group_id: `reassigned-group-${index}`,
+    instructor_id: "original-instructor",
+    assignment_active: false,
+    assigned_component_hours: 3,
+    currently_scheduled_hours: 0,
+    remaining_schedule_hours: 3,
+    scheduling_status: "blocked",
+    blocking_reason: "INACTIVE_ASSIGNMENT",
+    can_create_session: false,
+  }));
+  const completeRows = Array.from({ length: 6 }, (_, index) => ({
+    teaching_assignment_id: `scheduled-${index}`,
+    delivery_group_id: `scheduled-group-${index}`,
+    instructor_id: "original-instructor",
+    assignment_active: true,
+    assigned_component_hours: 3,
+    currently_scheduled_hours: 3,
+    remaining_schedule_hours: 0,
+    scheduling_status: "scheduled",
+    can_create_session: false,
+  }));
+  const replacementRows = inactiveRows.map((row, index) => ({
+    ...row,
+    teaching_assignment_id: `replacement-${index}`,
+    instructor_id: "replacement-instructor",
+    assignment_active: true,
+    currently_scheduled_hours: 3,
+    remaining_schedule_hours: 0,
+    scheduling_status: "scheduled",
+    blocking_reason: null,
+  }));
+  const historyPayload = parseWorkItemsPayload({
+    schedule_version_id: "published-version",
+    rows: [...completeRows, ...inactiveRows, ...replacementRows].map((row) => ({
+      ...row,
+      program_id: "program",
+      level_id: "level",
+    })),
+  });
+  const originalInstructorRows = historyPayload.rows.filter(
+    (row) => row.instructor_id === "original-instructor",
+  );
+  assert(historyPayload.rows.length === 12, "RPC history is preserved by payload parsing");
+  assert(
+    originalInstructorRows.filter(hasOutstandingScheduleHours).length === 0,
+    "inactive historical allocations do not appear in the builder queue",
+  );
+  assert(
+    originalInstructorRows.filter(isNewFlowWorkItemUnscheduled).length === 0,
+    "six completed and three inactive allocations leave no timetable work",
+  );
+  const sidebarInput = {
+    rows: historyPayload.rows,
+    programs: [{ id: "program", name: "Program", department_id: "department" }],
+    levels: [{ id: "level", name: "Level 1", program_id: "program", level_number: 1 }],
+    departments: [{ id: "department", name: "Department" }],
+    filters: { instructorId: "original-instructor" },
+  };
+  assert(
+    filterUnscheduledNewFlowWorkItems(sidebarInput).length === 0,
+    "instructor-filtered sidebar excludes replaced historical allocations",
+  );
+  assert(
+    filterUnscheduledNewFlowWorkItems({ ...sidebarInput, filters: {} }).length === 0,
+    "completed replacement groups do not increase the global unscheduled count",
+  );
+
+  const activeBlocked = parseWorkItem({
+    ...inactiveRows[0],
+    teaching_assignment_id: "active-blocked",
+    assignment_active: true,
+    blocking_reason: "GROUP_REGENERATION_REQUIRED",
+  })!;
+  assert(
+    hasOutstandingScheduleHours(activeBlocked) && isNewFlowWorkItemUnscheduled(activeBlocked),
+    "active blocked work with positive remaining hours stays visible",
+  );
+  assert(
+    filterUnscheduledNewFlowWorkItems({
+      ...sidebarInput,
+      rows: [
+        ...historyPayload.rows,
+        { ...activeBlocked, program_id: "program", level_id: "level" },
+      ],
+    })[0]?.teaching_assignment_id === "active-blocked",
+    "sidebar retains active work that needs repair before scheduling",
+  );
+  for (const scheduling_status of ["unscheduled", "partially_scheduled", "blocked"]) {
+    const inactive = parseWorkItem({ ...inactiveRows[0], scheduling_status })!;
+    assert(
+      !hasOutstandingScheduleHours(inactive) && !isNewFlowWorkItemUnscheduled(inactive),
+      `explicitly inactive ${scheduling_status} work is excluded from both queues`,
+    );
+  }
+  const missingActiveFlag = parseWorkItem({
+    teaching_assignment_id: "legacy-payload-row",
+    remaining_schedule_hours: 2,
+    scheduling_status: "unscheduled",
+  })!;
+  assert(
+    hasOutstandingScheduleHours(missingActiveFlag) &&
+      isNewFlowWorkItemUnscheduled(missingActiveFlag),
+    "payload compatibility is retained when the active flag is absent",
   );
 
   const result = parseCreateSessionResult({
