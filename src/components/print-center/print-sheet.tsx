@@ -88,10 +88,12 @@ export function PrintSheet(props: {
   meta: PrintSheetMeta;
   visibility: PrintVisibilityOptions;
   labels?: CohortDgLabels;
+  /** Program tables already identify the cohort in their page context. */
+  groupNameOnly?: boolean;
   /** Larger A4 portrait layout for current student schedules. */
   readable?: boolean;
 }) {
-  const { page, meta, visibility, labels, readable = false } = props;
+  const { page, meta, visibility, labels, readable = false, groupNameOnly = false } = props;
   const cohortId = page.sessions[0]?.cohort_id;
   const commonCohort =
     readable && cohortId && page.sessions.every((s) => s.cohort_id === cohortId)
@@ -280,10 +282,11 @@ export function PrintSheet(props: {
             {page.sessions.map((s, index) => {
               const row = sessionToExportRow(s, labels, page.title);
               const deliveryGroup = s.delivery_group_id
-                ? (labels?.deliveryGroups.get(s.delivery_group_id) ?? s.delivery_group_id)
+                ? (labels?.deliveryGroups.get(s.delivery_group_id) ??
+                  (groupNameOnly ? "" : s.delivery_group_id))
                 : "";
               const cohort =
-                !commonCohort && s.cohort_id
+                !groupNameOnly && !commonCohort && s.cohort_id
                   ? (labels?.cohorts.get(s.cohort_id) ?? s.cohort_id)
                   : "";
               const groupText = [cohort, compactPrintGroupLabel(deliveryGroup)]
