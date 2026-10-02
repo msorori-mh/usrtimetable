@@ -27,6 +27,7 @@ import {
   summarizeUniversitySchedule,
   instructorScheduleForScope,
   parseInstructorScheduleScope,
+  instructorsForCurrentCollege,
   type InstructorScheduleScope,
 } from "@/lib/reports/university-instructor-schedule";
 import { InstructorCollegeHours } from "@/components/reports/instructor-college-hours";
@@ -101,10 +102,25 @@ function Page() {
         .sort((a, b) => a.full_name.localeCompare(b.full_name, "ar")),
     [directory.data, ctx.collegeId],
   );
-  const instructors = allInstructors;
+  const instructors = useMemo(
+    () =>
+      instructorsForCurrentCollege(
+        allInstructors,
+        directory.data?.collegeId === ctx.collegeId
+          ? directory.data.currentInstructorIdentityIds
+          : [],
+      ),
+    [allInstructors, directory.data, ctx.collegeId],
+  );
   const selectedInstructor = instructors?.find(
     (i) => i.id === insId || i.record_ids.includes(insId),
   );
+  useEffect(() => {
+    if (directory.data?.collegeId === ctx.collegeId && insId && !selectedInstructor) {
+      setInsId("");
+    }
+  }, [directory.data, ctx.collegeId, insId, selectedInstructor]);
+  const effectiveScope = canViewAcrossColleges ? scheduleScope : "current";
   const instructorName = selectedInstructor?.full_name;
   const universityNumber = selectedInstructor?.university_number;
   const isHourlyContract =
@@ -199,26 +215,16 @@ function Page() {
         scopes: reportScopes,
       }),
   });
-  const effectiveScope = canViewAcrossColleges ? scheduleScope : "current";
-  const missingHomeCollege =
-    effectiveScope === "home" && !!selectedInstructor && !selectedInstructor.home_college_id;
   const scopeLabel =
     effectiveScope === "all"
       ? "جميع الكليات"
-      : effectiveScope === "home"
-        ? `كلية الانتماء: ${selectedInstructor?.home_college_name ?? "غير محددة"}`
-        : `الكلية الحالية: ${directory.data?.colleges.find((c) => c.id === ctx.collegeId)?.name ?? ""}`;
+      : `الكلية الحالية: ${directory.data?.colleges.find((c) => c.id === ctx.collegeId)?.name ?? ""}`;
   const scopedSessions = useMemo(
     () =>
       !selectedInstructor
         ? []
         : canViewAcrossColleges
-          ? instructorScheduleForScope(
-              schedule.data ?? [],
-              effectiveScope,
-              selectedInstructor.home_college_id,
-              ctx.collegeId ?? "",
-            )
+          ? instructorScheduleForScope(schedule.data ?? [], effectiveScope, ctx.collegeId ?? "")
           : (schedule.data ?? []),
     [schedule.data, selectedInstructor, canViewAcrossColleges, effectiveScope, ctx.collegeId],
   );
@@ -251,7 +257,7 @@ function Page() {
     directory.isLoading ||
     teachingColleges.isLoading ||
     schedule.isLoading;
-  const ready = !!ctx.versionId && !!selectedInstructor && !missingHomeCollege;
+  const ready = !!ctx.versionId && !!selectedInstructor;
   const queryError =
     currentUser.error ??
     ctx.error ??
@@ -313,13 +319,7 @@ function Page() {
       isLoading={isLoading}
       error={queryError}
       onRetry={() => void refetch()}
-      notReadyMessage={
-        missingHomeCollege
-          ? "كلية انتماء المحاضر غير محددة في بطاقته؛ اختر جميع الكليات أو أكمل بيانات الانتماء أولًا."
-          : ready
-            ? undefined
-            : "اختر نسخة جدول ومحاضرًا لعرض الجدول."
-      }
+      notReadyMessage={ready ? undefined : "اختر نسخة جدول ومحاضرًا لعرض الجدول."}
       emptyMessage={`لا توجد محاضرات مسندة لهذا المحاضر ضمن ${scopeLabel} في النسخ المحددة.`}
       kpis={
         isHourlyContract
@@ -384,7 +384,6 @@ function Page() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">جميع الكليات</SelectItem>
-                  <SelectItem value="home">كلية انتمائه فقط</SelectItem>
                   <SelectItem value="current">الكلية الحالية فقط</SelectItem>
                 </SelectContent>
               </Select>
@@ -414,8 +413,7 @@ function Page() {
               <SelectContent>
                 {filteredInstructors.map((i) => (
                   <SelectItem key={i.id} value={i.id}>
-                    {i.full_name} {i.university_number ? `— ${i.university_number}` : ""} —{" "}
-                    {i.home_college_name ?? "التبعية الأصلية تحتاج مراجعة"}
+                    {i.full_name} {i.university_number ? `— ${i.university_number}` : ""}
                   </SelectItem>
                 ))}
               </SelectContent>

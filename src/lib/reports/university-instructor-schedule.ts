@@ -43,10 +43,20 @@ export function mergeInstructorDirectories<
   return [...identities.values()];
 }
 
-export type InstructorScheduleScope = "all" | "home" | "current";
+export type InstructorScheduleScope = "all" | "current";
 
 export function parseInstructorScheduleScope(value: string | null): InstructorScheduleScope {
-  return value === "home" || value === "current" ? value : "all";
+  // Old affiliation links now open the current college's timetable.
+  return value === "home" || value === "current" ? "current" : "all";
+}
+
+/** Picker membership is the current college's verified roster, including visitors. */
+export function instructorsForCurrentCollege<T extends { identity_id: string }>(
+  records: T[],
+  currentInstructorIdentityIds: readonly string[],
+) {
+  const identities = new Set(currentInstructorIdentityIds);
+  return records.filter((record) => identities.has(record.identity_id));
 }
 
 /** Affiliation is authoritative home data, never the location of a legacy record. */
@@ -63,13 +73,10 @@ export function instructorsByHomeCollege<T extends { home_college_id: string | n
 export function instructorScheduleForScope(
   sessions: UniversityInstructorSession[],
   scope: InstructorScheduleScope,
-  homeCollegeId: string | null,
   currentCollegeId: string,
 ) {
   if (scope === "all") return sessions;
-  if (scope === "home" && !homeCollegeId) return [];
-  const collegeId = scope === "home" ? homeCollegeId : currentCollegeId;
-  return sessions.filter((s) => s.college_id === collegeId);
+  return sessions.filter((s) => s.college_id === currentCollegeId);
 }
 
 /** Explicit fixture marker used by production test data. */
