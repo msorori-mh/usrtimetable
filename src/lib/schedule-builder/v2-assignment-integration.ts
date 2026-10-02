@@ -4,7 +4,11 @@
  */
 
 export type SchedulingStatus =
-  "unscheduled" | "partially_scheduled" | "scheduled" | "over_scheduled" | "blocked";
+  | "unscheduled"
+  | "partially_scheduled"
+  | "scheduled"
+  | "over_scheduled"
+  | "blocked";
 
 export type ScheduleBuilderV2WorkItem = {
   teaching_assignment_id: string;
