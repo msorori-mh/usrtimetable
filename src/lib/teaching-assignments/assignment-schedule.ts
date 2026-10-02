@@ -1,9 +1,8 @@
 import type { supabase } from "@/integrations/supabase/client";
 import type { ScheduleVersionOption } from "@/lib/reports/types";
-import {
-  deliveryGroupDayMap,
-  sessionsForActiveAssignments,
-} from "@/lib/teaching-assignments/assignment-row-days";
+import { sessionsForActiveAssignments } from "@/lib/teaching-assignments/assignment-row-days";
+import { parseAssignmentPlacementContext } from "./assignment-placement-context";
+import type { AssignmentPlacement } from "./assignment-placement-context";
 
 const PAGE_SIZE = 200;
 
@@ -32,7 +31,7 @@ export async function readAllAssignmentPages<T>(
 
 /** Read one complete version at a time; historical drafts cannot truncate the newest draft. */
 export async function loadAssignmentSchedule(
-  client: Pick<typeof supabase, "from">,
+  client: Pick<typeof supabase, "from" | "rpc">,
   collegeId: string,
   versions: readonly ScheduleVersionOption[],
 ) {
@@ -57,13 +56,31 @@ export async function loadAssignmentSchedule(
         .eq("schedule_version_id", version.id)
         .not("teaching_assignment_id", "is", null)
         .not("delivery_group_id", "is", null)
+        .or("replaced_by_split.is.null,replaced_by_split.eq.false")
         .order("id")
         .range(from, to),
     );
     const activeSessions = sessionsForActiveAssignments(sessions, activeIds);
     if (activeSessions.length) {
-      return { version, days: deliveryGroupDayMap(activeSessions) };
+      const { data, error } = await client.rpc(
+        "schedule_version_assignment_placement_context" as never,
+        { p_version: version.id } as never,
+      );
+      if (error) throw error;
+      const placements = parseAssignmentPlacementContext(data, version.id);
+      if (activeSessions.some((s) => !placements.get(s.delivery_group_id!)?.inVersion)) {
+        throw new Error("حالة التسكين لا تشمل كل جلسات النسخة المحددة");
+      }
+      return {
+        version,
+        placements,
+        days: new Map([...placements].map(([id, placement]) => [id, placement.days])),
+      };
     }
   }
-  return { version: null, days: new Map<string, number[]>() };
+  return {
+    version: null,
+    days: new Map<string, number[]>(),
+    placements: new Map<string, AssignmentPlacement>(),
+  };
 }
