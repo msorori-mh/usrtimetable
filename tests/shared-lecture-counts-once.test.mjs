@@ -55,3 +55,44 @@ test("rollback restores the stored-flag test and removes the helper", async () =
   assert.match(sql, /DROP FUNCTION IF EXISTS public\.delivery_group_shared_in_published\(uuid\);/);
   assert.doesNotMatch(sql, /\b(INSERT INTO|UPDATE|DELETE FROM|ALTER TABLE)\b/);
 });
+
+const workspaceName = "20261003020000_published_merges_in_assignment_workspace.sql";
+
+test("the workspace lists a published merge once, on its anchor", async () => {
+  const sql = await read(`supabase/migrations/${workspaceName}`);
+
+  // Members come from the newest published timetable, through the same rule.
+  assert.match(sql, /l\.anchor_group_id = p_anchor/);
+  assert.match(sql, /public\.delivery_group_shared_in_published\(l\.member_group_id\)/);
+  // Global links keep working: the operational helpers are a union with them.
+  assert.match(sql, /FROM public\.shared_lecture_group_ids\(p_group\) g\s+UNION/);
+  // The member is not a row of its own and the anchor is labelled as merged.
+  assert.match(sql, /AND NOT public\.delivery_group_shared_in_published\(dg\.id\)/);
+  assert.match(sql, /SELECT 1 FROM public\.published_shared_lecture_members\(dg\.id\)/);
+  // Labels, head counts and every filter follow the merge.
+  assert.match(sql, /\(4, \$b1\$public\.shared_lecture_group_ids\(\$b1\$/);
+  assert.match(
+    sql,
+    /public\.operational_shared_lecture_matches\(dg\.id, p_cohort_id, p_study_system\)/,
+  );
+  // Both workspace functions, guarded against drift and safe to re-run.
+  assert.match(sql, /'public\.list_teaching_assignment_workspace\(uuid,/);
+  assert.match(sql, /'public\.list_teaching_assignment_workspace_for_version\(uuid,/);
+  assert.match(sql, /PUBLISHED_MERGE_WORKSPACE_DRIFT/);
+  assert.match(
+    sql,
+    /CONTINUE WHEN position\('public\.operational_shared_lecture_group_ids\(' IN d\) > 0;/,
+  );
+  assert.match(sql, /FROM PUBLIC, anon;/);
+  assert.doesNotMatch(sql, /\b(INSERT INTO|UPDATE|DELETE FROM|ALTER TABLE|DROP)\b/);
+});
+
+test("the workspace rollback restores the global-links-only read model", async () => {
+  const sql = await read(`supabase/rollbacks/${workspaceName}`);
+  assert.match(
+    sql,
+    /'public\.operational_shared_lecture_group_ids\(', 'public\.shared_lecture_group_ids\('/,
+  );
+  assert.match(sql, /DROP FUNCTION IF EXISTS public\.published_shared_lecture_members\(uuid\);/);
+  assert.doesNotMatch(sql, /\b(INSERT INTO|UPDATE|DELETE FROM|ALTER TABLE)\b/);
+});
