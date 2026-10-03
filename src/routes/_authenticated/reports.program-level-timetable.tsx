@@ -82,7 +82,9 @@ function Page() {
     ),
   );
   const ctx = useReportContext({
-    defaultStatusMode: "specific_version",
+    // The printed program/level timetable is the official one: only published
+    // versions may be chosen, so a draft can never be printed by mistake.
+    fixedStatusMode: "published_only",
     defaultStudySystem: "all",
     initialFilters: initial.context,
   });

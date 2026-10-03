@@ -36,7 +36,8 @@ export function useReportContext(options: UseReportContextOptions = {}): ReportC
     initialFilters?.studySystem ?? defaultStudySystem,
   );
 
-  const studySystem = fixedStudySystem ?? (collegeSupportsParallel(active) ? studySystemState : "regular");
+  const studySystem =
+    fixedStudySystem ?? (collegeSupportsParallel(active) ? studySystemState : "regular");
 
   /**
    * REPORTS-COLLEGE-SWITCH-01 — switching the active college must not leave the
@@ -150,13 +151,21 @@ export function useReportContext(options: UseReportContextOptions = {}): ReportC
   const filterSummary = useMemo(
     () =>
       buildFilterSummary(
-        { termId, versionId, statusMode, studySystem },
+        { termId, versionId, statusMode: fixedStatusMode ?? statusMode, studySystem },
         {
           termName: selectedTerm?.name,
           versionName: selectedVersion?.name,
         },
       ),
-    [termId, versionId, statusMode, studySystem, selectedTerm, selectedVersion],
+    [
+      termId,
+      versionId,
+      fixedStatusMode,
+      statusMode,
+      studySystem,
+      selectedTerm,
+      selectedVersion,
+    ],
   );
 
   useEffect(() => {
