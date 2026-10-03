@@ -294,15 +294,16 @@ export function PrintSheet(props: {
             </colgroup>
           )}
           {!readable && props.comfortable && (
-            // Narrow day, time and type; the room left for course and lecturer names.
+            // Day, time, type and group take only the width of their text (they never
+            // wrap); the course and lecturer names share what is left.
             <colgroup>
-              <col style={{ width: "10%" }} />
-              <col style={{ width: "9%" }} />
-              <col style={{ width: "26%" }} />
-              {visibility.showInstructor && <col style={{ width: "23%" }} />}
-              {visibility.showRoom && <col style={{ width: "15%" }} />}
-              <col style={{ width: "7%" }} />
-              <col style={{ width: "10%" }} />
+              <col style={{ width: "1%" }} />
+              <col style={{ width: "1%" }} />
+              <col />
+              {visibility.showInstructor && <col />}
+              {visibility.showRoom && <col />}
+              <col style={{ width: "1%" }} />
+              <col style={{ width: "1%" }} />
             </colgroup>
           )}
           <TableHeader>
@@ -364,8 +365,8 @@ export function PrintSheet(props: {
                       </span>
                     </TableCell>
                   )}
-                  <TableCell>{row.component}</TableCell>
-                  <TableCell>{groupText}</TableCell>
+                  <TableCell className="schedule-type">{row.component}</TableCell>
+                  <TableCell className="schedule-group">{groupText}</TableCell>
                 </TableRow>
               );
             })}
