@@ -641,7 +641,7 @@ test("fallback keeps an untargeted instructor at the generic four-day cap", asyn
   assert.ok(days.size <= 4, `instructor days: ${[...days]}`);
 });
 
-test("a targeted instructor (target=5) may use a fifth day when students allow it", async () => {
+test("a documented maximum of five may use a fifth day when students allow it", async () => {
   const s = state();
   s.snapshot.sessions = [];
   s.items = Array.from({ length: 9 }, (_, i) => item(`a${i}`, "c", "g"));
@@ -656,6 +656,7 @@ test("a targeted instructor (target=5) may use a fifth day when students allow i
       instructor_type_id: "permanent",
       max_hours_per_day: 6,
       target_attendance_days_per_week: 5,
+      max_attendance_days_per_week: 5,
     },
   ];
   s.snapshot.settings.max_daily_hours_per_section = 4;

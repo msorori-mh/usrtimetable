@@ -200,6 +200,9 @@ export function compareAttendance(a: AttendanceMetrics, b: AttendanceMetrics): n
  */
 export const INSTRUCTOR_GENERIC_ATTENDANCE_DAY_CAP = 4;
 
+/** Regular instructors may exceed the workload-derived minimum by one day only. */
+export const INSTRUCTOR_ATTENDANCE_FLEX_DAYS = 1;
+
 /** Weekly hours count each session once, never once per candidate placement. */
 export function instructorAttendanceTarget(hours: number, explicit?: number | null): number {
   if (explicit != null) {
@@ -208,6 +211,32 @@ export function instructorAttendanceTarget(hours: number, explicit?: number | nu
     return explicit;
   }
   return hours <= 6 ? 1 : hours <= 10 ? 2 : hours <= 16 ? 3 : 4;
+}
+
+/**
+ * Effective ceiling for a regular instructor: the workload-derived minimum plus
+ * one fallback day, never more than the institutional four-day ceiling.
+ * Explicit maxima remain authoritative. Explicit targets (for example a
+ * department head targeting four days) may raise the ceiling, but never beyond 6.
+ */
+export function instructorAttendanceDayCapForHours(
+  hours: number,
+  target: number | null | undefined,
+  maxOverride: number | null | undefined = null,
+): number {
+  if (!Number.isFinite(hours) || hours < 0) throw new Error("INVALID_INSTRUCTOR_WEEKLY_HOURS");
+  const minimum = instructorAttendanceTarget(hours);
+  const regularCap = Math.min(
+    INSTRUCTOR_GENERIC_ATTENDANCE_DAY_CAP,
+    minimum + INSTRUCTOR_ATTENDANCE_FLEX_DAYS,
+  );
+  // A legacy target above four does not silently expand the institutional ceiling.
+  // Only an explicit maximum is allowed to document an approved exception.
+  if (maxOverride != null) return instructorAttendanceDayCap(target, regularCap, maxOverride);
+  return Math.min(
+    INSTRUCTOR_GENERIC_ATTENDANCE_DAY_CAP,
+    instructorAttendanceDayCap(target, regularCap),
+  );
 }
 
 /** Per-instructor attendance-day limits as stored on `instructors`. */
@@ -268,6 +297,53 @@ export function instructorsOverAttendanceDayCap(
     const limit = limits.get(instructorId);
     const cap = instructorAttendanceDayCap(limit?.target ?? null, genericCap, limit?.max ?? null);
     if (days.size > cap) over.push({ instructorId, days: days.size, cap });
+  }
+  return over;
+}
+
+/**
+ * Workload-aware violations used by the automatic scheduler. The complete weekly
+ * duration is measured first; regular instructors receive only one fallback day
+ * above their minimum target.
+ */
+export function instructorsOverWorkloadAttendanceDayCap(
+  sessions: {
+    instructor_id: string;
+    day_of_week: number;
+    start_time: string;
+    end_time: string;
+  }[],
+  instructors: InstructorAttendanceLimits[],
+): { instructorId: string; days: number; cap: number; hours: number }[] {
+  const limits = new Map(instructors.map((i) => [i.id, i]));
+  const byInstructor = new Map<string, { days: Set<number>; minutes: number }>();
+  const toMinutes = (value: string) => {
+    const [hour, minute] = value.split(":").map(Number);
+    if (!Number.isFinite(hour) || !Number.isFinite(minute))
+      throw new Error("INVALID_INSTRUCTOR_SESSION_TIME");
+    return hour * 60 + minute;
+  };
+  for (const session of sessions) {
+    const row = byInstructor.get(session.instructor_id) ?? {
+      days: new Set<number>(),
+      minutes: 0,
+    };
+    const duration = toMinutes(session.end_time) - toMinutes(session.start_time);
+    if (duration <= 0) throw new Error("INVALID_INSTRUCTOR_SESSION_TIME");
+    row.days.add(session.day_of_week);
+    row.minutes += duration;
+    byInstructor.set(session.instructor_id, row);
+  }
+  const over: { instructorId: string; days: number; cap: number; hours: number }[] = [];
+  for (const [instructorId, row] of byInstructor) {
+    const limit = limits.get(instructorId);
+    const hours = row.minutes / 60;
+    const cap = instructorAttendanceDayCapForHours(
+      hours,
+      limit?.target_attendance_days_per_week ?? null,
+      limit?.max_attendance_days_per_week ?? null,
+    );
+    if (row.days.size > cap) over.push({ instructorId, days: row.days.size, cap, hours });
   }
   return over;
 }

@@ -1,51 +1,32 @@
-# Explicit instructor attendance-day target
+# سياسة أيام حضور المحاضر
 
-Department heads and similar roles must be present on campus a fixed number of days per
-week, which conflicts with the general preference to compress an instructor's teaching
-into as few days as possible.
+## القاعدة المؤسسية
 
-## Model
+يُشتق الحد الأدنى من العبء الأسبوعي، ولا يُسمح للمحاضر العادي إلا بيوم مرونة واحد فوقه:
 
-`instructors.target_attendance_days_per_week` (`smallint`, nullable, CHECK 1..6).
+| العبء الأسبوعي | الهدف الأدنى | الحد الأقصى التلقائي |
+|---:|---:|---:|
+| حتى 6 ساعات | يوم | يومان |
+| أكثر من 6 وحتى 10 | يومان | 3 أيام |
+| أكثر من 10 وحتى 16 | 3 أيام | 4 أيام |
+| أكثر من 16 | 4 أيام | 4 أيام |
 
-- `NULL` (default, all existing rows): unchanged behaviour — generic instructor day
-  compression applies.
-- Set: the value is the explicit weekly attendance-day target for that instructor.
+رئيس القسم يمكن أن يكون هدفه 4 أيام. القيم التاريخية للهدف التي تزيد على 4 لا ترفع السقف تلقائيًا؛ الاستثناء الأعلى يحتاج قيمة صريحة وموثقة في `max_attendance_days_per_week` أو استثناء نسخة جدول معتمد.
 
-Currently set to `5` for: د. رمزي الجابري، د. خالد البراحي، د. أسامه عبدالجليل سيف،
-د. مبارك السفياني.
+## الأولوية
 
-## Priority
+1. التوفر الفعلي، ومنع تعارض المحاضر والقاعات والطلاب، والسعة ونوع القاعة وحد الساعات اليومية قيود صلبة لا تُرخى.
+2. `max_attendance_days_per_week` حد صريح معتمد، ويمكنه التضييق أو توثيق استثناء أعلى.
+3. `target_attendance_days_per_week` هدف ترتيب؛ لا يوسع السقف المؤسسي فوق 4 بمفرده.
+4. بعد تحقق القيود، تقلل الخوارزمية أيام الحضور والفجوات.
 
-1. Hard constraints stay authoritative: `instructor_availability` (رمزي غير متاح السبت،
-   مبارك غير متاح الأحد), room/instructor/student conflicts, capacity, room type,
-   daily-hour caps. A target never unlocks a blocked slot.
-2. Student attendance-day rules (`excessDaysOverFive`, `excessDaysOverFour`,
-   `excessDaysOverThree`) are unchanged and still rank above the target.
-3. `instructorTargetDayDeviation` — `sum(|attended days - target|)` over instructors that
-   declare a target — ranks next, above generic gap/attendance-day compression.
-4. Generic instructor gap and day compression follow.
+## التنفيذ
 
-## Engine wiring
+- `instructorAttendanceTarget` يحسب الحد الأدنى من العبء.
+- `instructorAttendanceDayCapForHours` يضيف يوم مرونة واحد، بسقف مؤسسي 4 أيام.
+- التوليد، النموذج المشترك، الضغط، التشخيص، والتحقق النهائي بعد الحفظ تستخدم السياسة نفسها.
+- لا تنشئ الخوارزمية جلسات وهمية ولا تقسّم جلسة لمجرد بلوغ عدد أيام معين.
 
-- `measureAttendance(events, weight, instructorTarget)` in
-  `src/lib/auto-scheduler/attendance-objective.ts` computes the deviation and exposes it
-  as `instructorTargetDayDeviation`; the comparison `vector` includes it directly after
-  the student day terms.
-- `measure()` in `src/lib/auto-scheduler/compact.ts` supplies the lookup from the
-  snapshot's instructor rows, so compaction, relayout and V2 generation ranking
-  (`rankGenerationCandidates`) share one objective.
-- `better()` treats the deviation as a protected metric: no accepted move may increase it.
+## الاختبارات
 
-## Deliberate non-goals
-
-The target only steers placement of real work during normal placement/replacement. The
-engine never invents filler sessions and never splits a session just to occupy an extra
-day; if the instructor's actual workload cannot span five days, the deviation simply
-remains greater than zero.
-
-## Tests
-
-`tests/instructor-attendance-target.test.ts` — deviation in both directions, range
-validation, preference for the five-day layout, student rules staying on top, protected
-metric behaviour, and snapshot wiring.
+`tests/instructor-workload-day-cap.test.ts` يغطي حدود العبء، رئيس القسم، الاستثناء الصريح، وحالتي القبول والرفض عبر الأيام.

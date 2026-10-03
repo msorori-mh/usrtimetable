@@ -16,7 +16,7 @@ import {
 import { extendedDayLimit, studentDailyPolicy } from "../scheduling/student-daily-policy.ts";
 import { roomTypeRank } from "../scheduling/room-type-policy.ts";
 import {
-  instructorAttendanceDayCap,
+  instructorAttendanceDayCapForHours,
   instructorAttendanceTarget,
   instructorsOverAttendanceDayCap,
 } from "./attendance-objective.ts";
@@ -401,15 +401,15 @@ export function buildJointModel(snapshot: Snapshot, dayCap: 3 | 4 | 5, repair = 
   }
   for (const [id, enabled] of instructorDays) {
     const instructor = snapshot.instructors.find((t) => t.id === id)!;
-    const cap = instructorAttendanceDayCap(
-      instructor.target_attendance_days_per_week,
-      undefined,
-      instructor.max_attendance_days_per_week,
-    );
-    row(enabled, -INF, Math.min(cap, snapshot.qualityScope?.instructorDays[id] ?? cap)); // Hard even in repair mode.
     const hours = snapshot.sessions
       .filter((s) => s.instructor_id === id)
       .reduce((sum, s) => sum + duration(s) / 60, 0);
+    const cap = instructorAttendanceDayCapForHours(
+      hours,
+      instructor.target_attendance_days_per_week,
+      instructor.max_attendance_days_per_week,
+    );
+    row(enabled, -INF, Math.min(cap, snapshot.qualityScope?.instructorDays[id] ?? cap)); // Hard even in repair mode.
     const target = instructorAttendanceTarget(hours, instructor.target_attendance_days_per_week);
     const excess = variable(3000, 6);
     generationWeights.set(excess, 3000);

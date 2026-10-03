@@ -5,7 +5,7 @@ import {
   ATTENDANCE_POLICY,
   compareAttendance,
   measureAttendance,
-  instructorAttendanceDayCap,
+  instructorAttendanceDayCapForHours,
   instructorAttendanceTarget,
   type AttendanceMetrics,
 } from "./attendance-objective.ts";
@@ -560,11 +560,17 @@ export function placementIssue(
     others.filter((x) => x.instructor_id === teacher.id).map((x) => x.day_of_week),
   );
   teacherDays.add(day);
+  const teacherWeeklyHours = [...others, candidate]
+    .filter((session) => session.instructor_id === teacher.id && !session.replaced_by_split)
+    .reduce(
+      (sum, session) => sum + (minutes(session.end_time) - minutes(session.start_time)) / 60,
+      0,
+    );
   if (
     teacherDays.size >
-    instructorAttendanceDayCap(
+    instructorAttendanceDayCapForHours(
+      teacherWeeklyHours,
       teacher.target_attendance_days_per_week,
-      undefined,
       teacher.max_attendance_days_per_week,
     )
   )
