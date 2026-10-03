@@ -7,6 +7,7 @@ import { useMemo, type ReactNode } from "react";
 import { PrintSheet } from "@/components/print-center/print-sheet";
 import { DEFAULT_PRINT_VISIBILITY } from "@/lib/print-center/types";
 import { groupPrintPages, latestSessionUpdate, printPageStyleCss } from "@/lib/print-center";
+import { sortProgramTimetablePages } from "@/lib/reports/program-timetable-order";
 import type { PrintSessionLike } from "@/lib/print-center/types";
 import type { CohortDgLabels } from "@/lib/print-center/export-rows";
 import type { ReportContext } from "@/lib/reports/types";
@@ -27,29 +28,30 @@ export function ProgramTimetablePrint(props: {
   const { context: ctx, references, sessions, labels, qrUrl } = props;
 
   const exportedAt = useMemo(() => new Date(), []);
-  const pages = useMemo(
-    () =>
-      references.programs.flatMap((program) => {
-        const programSessions = sessions
-          .filter((s) => s.course_offerings?.program_id === program.id)
-          .map((s) =>
-            s.study_system === "both" && ctx.studySystem !== "all"
-              ? { ...s, study_system: ctx.studySystem }
-              : s,
-          );
-        return groupPrintPages(programSessions, {
-          reportType: "program",
-          collegeId: ctx.collegeId ?? "",
-          studySystem: ctx.studySystem,
-        }).map((page) => ({
-          ...page,
-          key: `${program.id}:${page.key}`,
-          departmentName: references.departments.find((d) => d.id === program.department_id)?.name,
-          programName: program.name,
-        }));
-      }),
-    [references, sessions, ctx.collegeId, ctx.studySystem],
-  );
+  const pages = useMemo(() => {
+    const perProgram = references.programs.flatMap((program, programOrder) => {
+      const programSessions = sessions
+        .filter((s) => s.course_offerings?.program_id === program.id)
+        .map((s) =>
+          s.study_system === "both" && ctx.studySystem !== "all"
+            ? { ...s, study_system: ctx.studySystem }
+            : s,
+        );
+      return groupPrintPages(programSessions, {
+        reportType: "program",
+        collegeId: ctx.collegeId ?? "",
+        studySystem: ctx.studySystem,
+      }).map((page) => ({
+        ...page,
+        key: `${program.id}:${page.key}`,
+        departmentName: references.departments.find((d) => d.id === program.department_id)?.name,
+        programName: program.name,
+        programOrder,
+      }));
+    });
+    // Level one first, then level two and so on, across all programs.
+    return sortProgramTimetablePages(perProgram, (page) => page.programOrder);
+  }, [references, sessions, ctx.collegeId, ctx.studySystem]);
   return (
     <>
       <style>{printPageStyleCss()}</style>
