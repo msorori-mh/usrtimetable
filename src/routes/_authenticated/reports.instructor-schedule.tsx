@@ -63,7 +63,9 @@ function normalizeInstructorSearch(value: string) {
 function Page() {
   const currentUser = useCurrentUser();
   const ctx = useReportContext({
-    defaultStatusMode: "specific_version",
+    // The individual schedule handed to a lecturer is the official one: only
+    // published versions may be chosen, so a draft is never printed by mistake.
+    fixedStatusMode: "published_only",
     defaultStudySystem: "all",
     fixedStudySystem: "all",
   });
