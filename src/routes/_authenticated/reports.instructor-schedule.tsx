@@ -13,8 +13,10 @@ import {
 } from "@/components/ui/select";
 import {
   timetableSessionsToRows,
+  timetableSessionToRow,
   NEW_FLOW_TIMETABLE_TABLE_HEADERS,
 } from "@/lib/reports/session-mappers";
+import { USR_UNIVERSITY_NAME_AR } from "@/lib/branding/usr";
 import { QUOTA_UNDEFINED_AR } from "@/lib/reports/instructor-quota";
 import { buildScheduleReportFilename } from "@/lib/reports/schedule-filename";
 import {
@@ -36,6 +38,10 @@ import {
   InstructorBatchPrint,
   type InstructorBatchSheet,
 } from "@/components/reports/instructor-batch-print";
+import {
+  InstructorPdfArchive,
+  type InstructorPdfEntry,
+} from "@/components/reports/instructor-pdf-archive";
 import { RepeatingPrintHeader } from "@/components/reports/repeating-print-header";
 import { ReportOfficialHeader } from "@/components/reports/report-official-header";
 import { STATUS_LABEL_AR, type SVStatus } from "@/lib/schedule-versions/lifecycle";
@@ -298,10 +304,8 @@ function Page() {
   const distinctCourses = new Set(sessions.map((s) => `${s.course_code}:${s.course_name}`)).size;
   const reportFilename = buildScheduleReportFilename([instructorName], "الجدول الفردي");
 
-  /** One lecturer's printable sheet, built exactly like the single-lecturer report. */
-  const loadBatchSheet = async (
-    instructor: (typeof instructors)[number],
-  ): Promise<InstructorBatchSheet | null> => {
+  /** One lecturer's schedule and hours in the report's scope; null when nothing is in scope. */
+  const loadLecturer = async (instructor: (typeof instructors)[number]) => {
     const collegeId = ctx.collegeId ?? "";
     const teaching =
       canViewAcrossColleges && effectiveScope === "all"
@@ -335,6 +339,16 @@ function Page() {
         : (instructor.recorded_quota ?? instructor.authoritative_quota ?? null),
       adminReleaseHours: hourly ? 0 : (instructor.recorded_release ?? 0),
     });
+    return { hourly, sheetSummary };
+  };
+
+  /** One lecturer's printable sheet, built exactly like the single-lecturer report. */
+  const loadBatchSheet = async (
+    instructor: (typeof instructors)[number],
+  ): Promise<InstructorBatchSheet | null> => {
+    const lecturer = await loadLecturer(instructor);
+    if (!lecturer) return null;
+    const { hourly, sheetSummary } = lecturer;
     return {
       key: instructor.id,
       content: (
@@ -377,6 +391,95 @@ function Page() {
           </div>
         </RepeatingPrintHeader>
       ),
+    };
+  };
+  /** The same lecturer data as a standalone PDF sheet for the per-lecturer archive. */
+  const loadPdfEntry = async (
+    instructor: (typeof instructors)[number],
+  ): Promise<InstructorPdfEntry | null> => {
+    const lecturer = await loadLecturer(instructor);
+    if (!lecturer) return null;
+    const { hourly, sheetSummary } = lecturer;
+    const universityScope = canViewAcrossColleges && effectiveScope === "all";
+    const hours = (n: number | null) => (n === null ? "غير محدد" : n.toFixed(2));
+    const text = (value: unknown) =>
+      value === null || value === undefined || value === "" ? "" : String(value);
+    // Saturday opens the teaching week.
+    const ordered = [...sheetSummary.sessions].sort(
+      (a, b) =>
+        ((a.day_of_week + 1) % 7) - ((b.day_of_week + 1) % 7) ||
+        a.start_time.localeCompare(b.start_time),
+    );
+    return {
+      fileName: instructor.full_name,
+      sheet: {
+        universityName: USR_UNIVERSITY_NAME_AR,
+        scopeLabel: `${scopeLabel} — جميع أنظمة الدراسة`,
+        instructorName: instructor.full_name,
+        universityNumber: instructor.university_number,
+        termName: ctx.terms.find((term) => term.id === ctx.termId)?.name ?? null,
+        versionLabel: universityScope
+          ? "نسخ الكليات الموضحة في الملخص"
+          : (ctx.selectedVersion?.name ?? null),
+        generatedAt: new Intl.DateTimeFormat("ar-u-nu-latn", { dateStyle: "medium" }).format(
+          new Date(),
+        ),
+        rows: ordered.map((session) => {
+          const row = timetableSessionToRow(session);
+          return {
+            day: text(row.day),
+            time: text(row.time),
+            course: text(row.course),
+            type: text(row.session_type),
+            room: text(row.room),
+            audience: [
+              [text(row.program), text(row.level), text(row.study_system)]
+                .filter(Boolean)
+                .join(" — "),
+              text(row.delivery_group),
+            ]
+              .filter(Boolean)
+              .join(" · "),
+            college: session.college_name,
+          };
+        }),
+        colleges: sheetSummary.colleges.map((college) => ({
+          name: college.collegeName,
+          version: college.versionName,
+          hours: hours(college.hours),
+        })),
+        totals: [
+          {
+            label: universityScope
+              ? "إجمالي الجامعة — الكليات المشمولة"
+              : `إجمالي الساعات — ${scopeLabel}`,
+            value: hours(sheetSummary.totalHours),
+          },
+          ...(hourly
+            ? []
+            : [
+                { label: "النصاب الأساسي", value: hours(sheetSummary.balance.baseHours) },
+                { label: "الإعفاء الإداري", value: hours(sheetSummary.balance.releaseHours) },
+                {
+                  label: "النصاب الفعلي بعد الإعفاء",
+                  value: hours(sheetSummary.balance.netHours),
+                },
+              ]),
+          {
+            label: "الساعات الزائدة",
+            value: hourly
+              ? "لا ينطبق — تعاقد بالساعات"
+              : !universityScope
+                ? "يُحدد عند اختيار جميع الكليات"
+                : sheetSummary.pending
+                  ? "بانتظار توزيع التدريس المشترك"
+                  : hours(sheetSummary.balance.overloadHours),
+          },
+        ],
+        note: universityScope
+          ? "يشمل جميع أنظمة الدراسة في نسخ الكليات المبينة أعلاه. يُحتسب النصاب مرة واحدة للمحاضر."
+          : `هذا الملخص خاص بـ${scopeLabel}؛ الإجمالي الجامعي والساعات الزائدة متاحان عند اختيار جميع الكليات.`,
+      },
     };
   };
   const batchReady =
@@ -523,9 +626,19 @@ function Page() {
               )}
               loadSheet={loadBatchSheet}
             />
-            <p className="text-xs text-muted-foreground">
-              يطبع الجدول الفردي الكامل لكل محاضر في الكلية في ملف واحد، كل محاضر في صفحة جديدة، ضمن{" "}
-              {scopeLabel}. المحاضر الذي لا محاضرات له في هذا النطاق لا تُطبع له ورقة.
+            <InstructorPdfArchive
+              items={instructors}
+              disabled={!batchReady}
+              archiveName={buildScheduleReportFilename(
+                [directory.data?.colleges.find((c) => c.id === ctx.collegeId)?.name],
+                "الجداول الفردية للمحاضرين",
+              )}
+              loadEntry={loadPdfEntry}
+            />
+            <p className="basis-full text-xs text-muted-foreground">
+              الطباعة تجمع الجداول الفردية الكاملة في ملف واحد، كل محاضر في صفحة جديدة. التنزيل ينشئ
+              ملف PDF مستقلًا باسم كل محاضر داخل ملف مضغوط واحد. كلاهما ضمن {scopeLabel}، والمحاضر
+              الذي لا محاضرات له في هذا النطاق لا يُنشأ له شيء.
             </p>
           </div>
           {canViewAcrossColleges && reportScopes.some((s) => s.collegeId !== ctx.collegeId) && (

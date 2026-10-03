@@ -85,6 +85,9 @@ const mocks = {
   "@/components/reports/instructor-batch-print": `const h = globalThis.__instructorPickerReact.createElement;
     export const InstructorBatchPrint = ({ items }) =>
       h("button", { "data-batch": items.map((item) => item.id).join(",") });`,
+  "@/components/reports/instructor-pdf-archive": `const h = globalThis.__instructorPickerReact.createElement;
+    export const InstructorPdfArchive = ({ items }) =>
+      h("button", { "data-archive": items.map((item) => item.id).join(",") });`,
   "@/components/reports/repeating-print-header": `export const RepeatingPrintHeader = () => null;`,
   "@/components/reports/report-official-header": `export const ReportOfficialHeader = () => null;`,
   "@/lib/schedule-versions/lifecycle": `export const STATUS_LABEL_AR = {};`,
@@ -168,4 +171,6 @@ test("a directory cached for the previous active college exposes no lecturer cho
 test("the print-all action covers exactly the lecturers the picker offers", () => {
   assert.match(render({ scope: "all" }), /data-batch="guest,local"/);
   assert.match(render({ isSuperAdmin: false }), /data-batch="guest,local"/);
+  assert.match(render({ scope: "all" }), /data-archive="guest,local"/);
+  assert.match(render({ isSuperAdmin: false }), /data-archive="guest,local"/);
 });
