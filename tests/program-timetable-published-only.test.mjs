@@ -19,3 +19,18 @@ test("the program/level timetable report offers published versions only", async 
   assert.match(hook, /statusMode: fixedStatusMode \?\? statusMode, studySystem \}/);
   assert.match(queries, /statusesForMode\(params\.statusMode\)/);
 });
+
+test("the printed sheet shows program, study system and level as one large line", async () => {
+  const [sheet, css] = await Promise.all([
+    read("src/components/print-center/print-sheet.tsx"),
+    read("src/styles.css"),
+  ]);
+
+  assert.match(sheet, /data-testid="print-cohort-banner"/);
+  assert.match(sheet, /cohortHeadline\.join\(" - "\)/);
+  assert.match(sheet, /levelNumber \? `م\$\{levelNumber\}` : levelName \|\| null/);
+  // The labelled detail fields stay for a distributed copy.
+  assert.match(sheet, /label="البرنامج"/);
+  assert.match(sheet, /label="النظام الدراسي"/);
+  assert.match(css, /\.print-header-cohort-banner \{[^}]*font-size: 1\.7rem;/);
+});

@@ -157,15 +157,7 @@ export function useReportContext(options: UseReportContextOptions = {}): ReportC
           versionName: selectedVersion?.name,
         },
       ),
-    [
-      termId,
-      versionId,
-      fixedStatusMode,
-      statusMode,
-      studySystem,
-      selectedTerm,
-      selectedVersion,
-    ],
+    [termId, versionId, fixedStatusMode, statusMode, studySystem, selectedTerm, selectedVersion],
   );
 
   useEffect(() => {
