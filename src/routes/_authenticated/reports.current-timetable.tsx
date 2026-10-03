@@ -38,6 +38,7 @@ import {
 import { filterCurrentScheduleScope } from "@/lib/print-center/current-schedule-scope";
 import { normalizedMatchKey } from "@/lib/excel-import/arabic-normalize";
 import { STUDY_SYSTEM_LABELS } from "@/lib/reports/filters";
+import { compactAcademicLevelLabel } from "@/lib/reports/formatters";
 import { buildScheduleReportFilename } from "@/lib/reports/schedule-filename";
 
 const EMPTY_SESSIONS: PrintSessionLike[] = [];
@@ -292,9 +293,11 @@ function Page() {
           ...(selectedProgram
             ? [selectedProgram.name]
             : [selectedDepartment?.name, "جميع البرامج"]),
-          selectedLevel?.name ?? "جميع المستويات",
+          selectedLevel
+            ? `المستوى ${compactAcademicLevelLabel(selectedLevel.name)}`
+            : "جميع المستويات",
         ]),
-    STUDY_SYSTEM_LABELS[effectiveStudySystem],
+    effectiveStudySystem === "all" ? "جميع الأنظمة" : STUDY_SYSTEM_LABELS[effectiveStudySystem],
     ...(printScope === "custom" ? [selectedCourse?.name] : []),
   ]);
 

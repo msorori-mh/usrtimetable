@@ -61,9 +61,14 @@ describe("report print identity", () => {
   test("Save as PDF uses a human-readable report filename and restores the page title", () => {
     const route = read("src/routes/_authenticated/reports.instructor-schedule.tsx");
     expect(shell.includes("printFilename")).toBe(true);
-    expect(shell.includes("document.title = pdfTitle")).toBe(true);
+    expect(shell.includes("useReportDocumentTitle(printSnapshot?.filename ?? printFilename)")).toBe(
+      true,
+    );
+    expect(shell.includes("{printSnapshot.content}")).toBe(true);
+    expect(shell.includes("document.title =")).toBe(false);
     expect(shell.includes("afterprint")).toBe(true);
-    expect(shell.includes("document.title = originalTitle")).toBe(true);
+    const documentTitle = read("src/hooks/use-report-document-title.ts");
+    expect(documentTitle.includes("document.title = originalTitle")).toBe(true);
     expect(route.includes("الجدول الفردي")).toBe(true);
     for (const file of [
       "reports.instructor-schedule.tsx",
@@ -71,7 +76,6 @@ describe("report print identity", () => {
       "reports.program-level-timetable.tsx",
     ]) {
       const scheduleRoute = read(`src/routes/_authenticated/${file}`);
-      expect(scheduleRoute.includes("ctx.selectedVersion?.name")).toBe(true);
       expect(scheduleRoute.includes("buildScheduleReportFilename(")).toBe(true);
       expect(scheduleRoute.includes("filename={reportFilename}")).toBe(true);
       expect(scheduleRoute.includes("printFilename={reportFilename}")).toBe(true);

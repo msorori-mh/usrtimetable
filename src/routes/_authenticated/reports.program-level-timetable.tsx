@@ -276,6 +276,7 @@ function ProgramLevelReport({
     .filter(Boolean)
     .join(" · ");
   const filenameProgram = view.programs.find((p) => p.id === view.selected.programId);
+  const filenameLevel = view.levels.find((l) => l.value === view.selected.levelValue);
   const reportFilename = buildScheduleReportFilename([
     ...(filenameProgram
       ? [filenameProgram.name]
@@ -283,8 +284,8 @@ function ProgramLevelReport({
           references.departments.find((d) => d.id === view.selected.departmentId)?.name,
           "جميع البرامج",
         ]),
-    view.levels.find((l) => l.value === view.selected.levelValue)?.label ?? "جميع المستويات",
-    STUDY_SYSTEM_LABELS[ctx.studySystem],
+    filenameLevel ? `المستوى ${filenameLevel.label}` : "جميع المستويات",
+    ctx.studySystem === "all" ? "جميع الأنظمة" : STUDY_SYSTEM_LABELS[ctx.studySystem],
   ]);
   const filters: {
     field: keyof ProgramReportSelection;

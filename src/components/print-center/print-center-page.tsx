@@ -377,9 +377,10 @@ export function PrintCenterPage(props: { versionId: string }) {
     (program) => program.id === filenameProgramId,
   )?.name;
   const filenameLevelName = selectedLevel
-    ? compactAcademicLevelLabel(selectedLevel.name)
+    ? `المستوى ${compactAcademicLevelLabel(selectedLevel.level_number)}`
     : undefined;
-  const filenameStudySystem = STUDY_SYSTEM_LABELS[studySystem];
+  const filenameStudySystem =
+    studySystem === "all" ? "جميع الأنظمة" : STUDY_SYSTEM_LABELS[studySystem];
   const filename = (() => {
     switch (reportType) {
       case "student":
