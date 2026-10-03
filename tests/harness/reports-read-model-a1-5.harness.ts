@@ -261,7 +261,8 @@ const programRoute = read("src/routes/_authenticated/reports.program-level-timet
 const programFilters = read("src/lib/reports/program-timetable-filters.ts");
 assert(
   programRoute.includes('.from("academic_cohorts")') &&
-    programRoute.includes("fetchProgramLevelTimetableSessions") &&
+    programRoute.includes("fetchHydratedVersionSessions") &&
+    programRoute.includes("fetchStudentPrintMemberships") &&
     programRoute.includes("deriveProgramTimetable") &&
     programRoute.includes("fetchCohortDeliveryGroupLabels"),
   "program-level options derive from scoped cohorts and labeled version sessions",

@@ -92,6 +92,10 @@ export function PrintSheet(props: {
   groupNameOnly?: boolean;
   /** Larger A4 portrait layout for current student schedules. */
   readable?: boolean;
+  /** Larger table type for sheets that are read from a notice board. */
+  comfortable?: boolean;
+  /** Lets a short closing block share this sheet's last page instead of a new one. */
+  keepWithNext?: boolean;
 }) {
   const { page, meta, visibility, labels, readable = false, groupNameOnly = false } = props;
   const cohortId = page.sessions[0]?.cohort_id;
@@ -156,7 +160,14 @@ export function PrintSheet(props: {
 
   return (
     <section
-      className={`print-center-page break-after-page${readable ? " print-center-page--readable" : ""}`}
+      className={[
+        "print-center-page",
+        props.keepWithNext ? "print-center-page--keep-with-next" : "break-after-page",
+        readable ? "print-center-page--readable" : "",
+        props.comfortable ? "print-center-page--comfortable" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
     >
       <RepeatingPrintHeader
         header={
@@ -285,7 +296,8 @@ export function PrintSheet(props: {
           <TableHeader>
             {/* Repeats on every physical sheet the group spans (thead is a running header),
               so a continuation page still identifies which schedule it belongs to. */}
-            {!readable && (
+            {/* The large cohort headline above already names the sheet. */}
+            {!readable && cohortHeadline.length === 0 && (
               <TableRow className="print-center-context-row">
                 <TableHead colSpan={columnCount} className="text-right font-semibold">
                   {page.title}

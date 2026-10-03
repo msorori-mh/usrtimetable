@@ -47,6 +47,8 @@ export interface DeliveryGroupCatalogRow {
   /** Required weekly contact hours from the group’s curriculum component. */
   requiredHours: number;
   instructorName: string | null;
+  /** Every cohort that attends this group, when it is a merged lecture. */
+  sharedCohortIds?: readonly string[];
 }
 
 /** Minimal session shape needed to decide whether a group was placed. */

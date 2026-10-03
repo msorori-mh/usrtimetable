@@ -30,10 +30,10 @@ import {
   timetableSessionsToRows,
   NEW_FLOW_TIMETABLE_TABLE_HEADERS,
 } from "@/lib/reports/session-mappers";
-import {
-  fetchCohortDeliveryGroupLabels,
-  fetchProgramLevelTimetableSessions,
-} from "@/lib/reports/queries/session-queries";
+import { fetchCohortDeliveryGroupLabels } from "@/lib/reports/queries/session-queries";
+import { fetchHydratedVersionSessions } from "@/lib/schedule-builder/queries";
+import { fetchStudentPrintMemberships } from "@/lib/print-center/student-memberships-query";
+import { uniquePhysicalSessions } from "@/lib/reports/program-timetable-shared";
 import { useReportContext } from "@/hooks/reports/useReportContext";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import {
@@ -168,11 +168,23 @@ function ProgramLevelReport({
     queryKey: ["plt-version-sessions", ctx.collegeId, ctx.versionId, ctx.studySystem],
     enabled: !!ctx.collegeId && !!ctx.selectedVersion,
     queryFn: async () => {
-      const raw = await fetchProgramLevelTimetableSessions({
+      // A merged lecture is stored once, on its anchor group. Read every
+      // session of the version and give each attending cohort its own copy, so
+      // a cohort's timetable also lists the lectures it attends with others;
+      // only then narrow to the requested study system.
+      const hydrated = await fetchHydratedVersionSessions({
         collegeId: ctx.collegeId!,
-        versionId: ctx.versionId,
-        studySystem: ctx.studySystem,
+        versionId: ctx.versionId!,
+        studySystem: "all",
       });
+      const raw = (
+        await fetchStudentPrintMemberships(hydrated, ctx.collegeId!, ctx.versionId!)
+      ).filter(
+        (row) =>
+          ctx.studySystem === "all" ||
+          row.study_system === "both" ||
+          row.study_system === ctx.studySystem,
+      );
       const labels = await fetchCohortDeliveryGroupLabels(ctx.collegeId!, raw);
       return { raw, labels };
     },
@@ -207,8 +219,12 @@ function ProgramLevelReport({
   const scopedCohortIds = new Set(baseView.scopedCohortIds);
   const cohortLabels = new Map(baseView.cohorts.map((c) => [c.id, c.name]));
   const coverage = buildDeliveryGroupCoverage({
-    groups: (catalogQuery.data ?? []).filter((g) => scopedCohortIds.has(g.cohortId)),
-    sessions: baseView.academicSessions as CoverageSessionLike[],
+    groups: (catalogQuery.data ?? []).filter(
+      (g) =>
+        scopedCohortIds.has(g.cohortId) || g.sharedCohortIds?.some((id) => scopedCohortIds.has(id)),
+    ),
+    // Cohort copies of one merged lecture must satisfy its group once.
+    sessions: uniquePhysicalSessions(baseView.academicSessions) as CoverageSessionLike[],
     cohortLabels: scopedSelection.cohortId === "all" ? cohortLabels : undefined,
   });
   const view = deriveProgramTimetable({
@@ -257,7 +273,9 @@ function ProgramLevelReport({
           status: g.scheduled ? "تغطية جزئية" : UNSCHEDULED_BADGE_AR,
         })),
       ];
-  const totalHours = timetableRows.reduce((sum, r) => sum + Number(r.hours ?? 0), 0);
+  // Totals count each physical lecture once, however many cohorts attend it.
+  const physicalRows = timetableSessionsToRows(mapRawSessions(uniquePhysicalSessions(raw), labels));
+  const totalHours = physicalRows.reduce((sum, r) => sum + Number(r.hours ?? 0), 0);
   const isLoading =
     ctx.isLoading || refsQuery.isLoading || sessionsQuery.isLoading || catalogQuery.isLoading;
   const change = (field: keyof ProgramReportSelection, value: string) =>
@@ -312,7 +330,7 @@ function ProgramLevelReport({
   return (
     <ReportShell
       title="تقرير جدول البرنامج/المستوى"
-      description={`${coverageSummaryText(coverage.summary)} · ${sessions.length} محاضرة مجدولة (${totalHours.toFixed(2)} ساعة).`}
+      description={`${coverageSummaryText(coverage.summary)} · ${physicalRows.length} محاضرة مجدولة (${totalHours.toFixed(2)} ساعة).`}
       filterSummary={[ctx.filterSummary, academicSummary].filter(Boolean).join(" · ")}
       reportContext={ctx}
       filename={reportFilename}
