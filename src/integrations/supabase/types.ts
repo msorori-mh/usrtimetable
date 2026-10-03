@@ -5849,6 +5849,7 @@ export type Database = {
         }[]
       }
       itcs_native_draft_preview: { Args: { p_profile: string }; Returns: Json }
+      itcs_operational_adoption_preview: { Args: { p_profile: string }; Returns: Json }
       itcs_relayout_preview: {
         Args: { p_manifest: Json; p_version: string }
         Returns: Json

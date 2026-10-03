@@ -4,10 +4,30 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { supabase } from "@/integrations/supabase/client";
 import { scoreScheduleVersion } from "@/lib/conflict-engine/scorer";
 import { invalidateTeachingAssignmentReadModels } from "@/lib/teaching-assignments/query-invalidation";
+import {
+  executeOperationalAdoptionStage,
+  fetchOperationalAdoptionPreview,
+  operationalAdoptionReadiness,
+  operationalAdoptionReference,
+  type OperationalAdoptionPreview,
+  type OperationalAdoptionReceipt,
+  type OperationalAdoptionRpc,
+  type OperationalAdoptionStage,
+} from "@/lib/itcs-cutover/operational-adoption";
 import {
   RELAYOUT_PROFILE,
   MANIFEST_FILE,
@@ -41,6 +61,18 @@ type Rpc = (
   args: Record<string, unknown>,
 ) => Promise<{ data: unknown; error: { message: string } | null }>;
 const rpc = supabase.rpc.bind(supabase) as unknown as Rpc;
+const operationalRpc: OperationalAdoptionRpc = async (name, args) => {
+  const { data, error } = await supabase.rpc(name, args);
+  return { data, error };
+};
+const operationalLimitationLabels: Record<string, string> = {
+  "Read-only planning verification is not authenticated execution proof.":
+    "نتائج التخطيط وحدها لا تعني اعتماد الجدول؛ يلزم نجاح الفحص والتطبيق من هذه الصفحة.",
+  "Some student partitions still wait longer; no global optimum is claimed.":
+    "ما زال انتظار بعض الشعب أطول؛ الخطة لا تحقق أفضل نتيجة لجميع الطلاب.",
+  "Execution requires a real authenticated Super Admin and fresh official validation.":
+    "يشترط الاعتماد حساب مدير النظام وفحصًا رسميًا حديثًا.",
+};
 type Stage = "requests" | "approve" | "apply" | "rooms" | "publish";
 type Repl = {
   replaces: string;
@@ -226,6 +258,7 @@ function ItcsCutoverPage() {
   return (
     <div dir="rtl" className="space-y-4 p-6">
       <h1 className="text-2xl font-bold">انتقال جدول كلية الحاسوب وتقنية المعلومات</h1>
+      <OperationalAdoptionSection busy={busy} onBusy={setBusy} />
       <Card className="space-y-2 p-4">
         <p className="font-medium">المقترح 15 — نسخة المراجعة 30/9</p>
         <p className="text-sm text-muted-foreground">
@@ -361,6 +394,275 @@ function ItcsCutoverPage() {
         <h2 className="mb-2 font-semibold">سجل العمليات</h2>
         <pre className="whitespace-pre-wrap text-xs">{log.join("\n") || "—"}</pre>
       </Card>
+    </div>
+  );
+}
+
+function OperationalAdoptionSection({
+  busy,
+  onBusy,
+}: {
+  busy: boolean;
+  onBusy: (busy: boolean) => void;
+}) {
+  const queryClient = useQueryClient();
+  const [preview, setPreview] = useState<OperationalAdoptionPreview | null>(null);
+  const [checkedReference, setCheckedReference] = useState<string | null>(null);
+  const [confirmation, setConfirmation] = useState<OperationalAdoptionPreview | null>(null);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const ready = operationalAdoptionReadiness(preview);
+  const checked =
+    !!preview && checkedReference === operationalAdoptionReference(preview) && ready.canApply;
+
+  function hold(reason: unknown) {
+    const code = reason instanceof Error ? reason.message : "OPERATIONAL_REQUEST_FAILED";
+    setError(`تعذرت المتابعة. حدّث المطابقة وأعد الفحص. (${code})`);
+    setMessage("");
+  }
+
+  async function refresh() {
+    const fresh = await fetchOperationalAdoptionPreview(operationalRpc);
+    setPreview(fresh);
+    setCheckedReference((reference) =>
+      reference === operationalAdoptionReference(fresh) ? reference : null,
+    );
+    return fresh;
+  }
+
+  async function load() {
+    onBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      await refresh();
+    } catch (reason) {
+      setPreview(null);
+      setCheckedReference(null);
+      hold(reason);
+    } finally {
+      onBusy(false);
+    }
+  }
+
+  async function run(stage: OperationalAdoptionStage, reviewed = preview) {
+    if (!reviewed || busy) return;
+    onBusy(true);
+    setError("");
+    setMessage("");
+    let receipt: OperationalAdoptionReceipt | null = null;
+    try {
+      receipt = await executeOperationalAdoptionStage(
+        operationalRpc,
+        stage,
+        reviewed,
+        checkedReference,
+      );
+      if (stage === "operational_check") {
+        setCheckedReference(operationalAdoptionReference(reviewed));
+        setMessage("نجح الفحص الكامل دون حفظ تغييرات. يمكن تطبيق المطابقة على النسخة التي فُحصت.");
+      } else if (stage === "operational_apply") {
+        setCheckedReference(null);
+      } else {
+        setCheckedReference(null);
+      }
+    } catch (reason) {
+      setCheckedReference(null);
+      hold(reason);
+    }
+    try {
+      // Also refresh after an unrecognised response: the transaction may
+      // have committed even when its receipt cannot be accepted by the UI.
+      if (stage !== "operational_check") await invalidateTeachingAssignmentReadModels(queryClient);
+      const verified = await refresh();
+      if (
+        receipt &&
+        stage === "operational_check" &&
+        (!operationalAdoptionReadiness(verified).canCheck ||
+          operationalAdoptionReference(verified) !== operationalAdoptionReference(reviewed))
+      )
+        throw new Error("OPERATIONAL_REFERENCE_CHANGED");
+      if (receipt && stage === "operational_apply") {
+        if (
+          !operationalAdoptionReadiness(verified).canQualityCheck ||
+          verified.applied_receipt?.after_snapshot !== receipt.after_snapshot
+        )
+          throw new Error("OPERATIONAL_APPLY_POSTVERIFY_FAILED");
+        setMessage("تمت مطابقة الإسنادات والمواعيد في المسودة. يلزم فحص جودة حديث قبل النشر.");
+      }
+      if (receipt && stage === "operational_publish") {
+        if (
+          verified.version_status !== "published" ||
+          verified.published_receipt?.after_snapshot !== receipt.after_snapshot ||
+          verified.current_snapshot !== receipt.after_snapshot ||
+          verified.published_receipt?.quality_run_id !== receipt.quality_run_id
+        )
+          throw new Error("OPERATIONAL_PUBLISH_POSTVERIFY_FAILED");
+        setMessage("تم نشر الجدول المطابق: 273 جلسة و624 ساعة أسبوعيًا.");
+      }
+    } catch (reason) {
+      setPreview(null);
+      setCheckedReference(null);
+      hold(reason);
+    } finally {
+      onBusy(false);
+    }
+  }
+
+  async function checkQuality() {
+    if (!preview || busy) return;
+    onBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const fresh = await fetchOperationalAdoptionPreview(operationalRpc);
+      if (operationalAdoptionReference(fresh) !== operationalAdoptionReference(preview))
+        throw new Error("OPERATIONAL_REFERENCE_CHANGED");
+      if (!operationalAdoptionReadiness(fresh).canQualityCheck)
+        throw new Error("OPERATIONAL_STAGE_NOT_READY");
+      const quality = await scoreScheduleVersion({
+        collegeId: fresh.college_id,
+        scheduleVersionId: fresh.version_id,
+        persist: true,
+      });
+      if (quality.result.hard_conflicts_count !== 0) throw new Error("QUALITY_HARD_CONFLICTS");
+      const verified = await refresh();
+      if (!operationalAdoptionReadiness(verified).canPublish)
+        throw new Error("QUALITY_RUN_NOT_FRESH_OR_PUBLISH_NOT_READY");
+      setMessage("نجح فحص الجودة على المسودة الحالية دون تعارضات إلزامية. أصبح النشر متاحًا.");
+    } catch (reason) {
+      setPreview(null);
+      setCheckedReference(null);
+      hold(reason);
+    } finally {
+      onBusy(false);
+    }
+  }
+
+  return (
+    <Card className="space-y-4 p-4" aria-labelledby="operational-adoption-title">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 id="operational-adoption-title" className="text-lg font-semibold">
+          اعتماد الإسناد التشغيلي الحالي
+        </h2>
+        <Button variant="outline" disabled={busy} onClick={() => void load()}>
+          {preview ? "تحديث المطابقة الحالية" : "تحميل المطابقة الحالية"}
+        </Button>
+      </div>
+      <OperationalAdoptionImpacts />
+      {preview && (
+        <div className="space-y-2 text-sm">
+          <p>
+            حالة الجدول:{" "}
+            {preview.version_status === "published"
+              ? "منشور"
+              : preview.version_status === "draft"
+                ? "مسودة"
+                : "قيد المراجعة"}
+            {preview.published_receipt
+              ? " — تم النشر بوثيقة اعتماد مطابقة."
+              : ready.canQualityCheck
+                ? " — التطبيق مطابق ومعتمد، ويلزم فحص الجودة للنشر."
+                : ready.canCheck
+                  ? " — يطابق المرجع الحالي وجاهز للفحص."
+                  : " — شروط المطابقة غير مكتملة؛ أعد التحميل قبل المتابعة."}
+          </p>
+          {preview.limitations.length > 0 && (
+            <ul className="list-inside list-disc text-muted-foreground">
+              {preview.limitations.map((limitation, index) => (
+                <li key={index}>
+                  {operationalLimitationLabels[limitation] ??
+                    "توجد ملاحظة إضافية على المطابقة؛ راجع نتيجة الفحص قبل الاعتماد."}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+      <div className="flex flex-wrap gap-2">
+        <Button
+          variant="outline"
+          disabled={busy || !ready.canCheck}
+          onClick={() => void run("operational_check")}
+        >
+          1) فحص المطابقة دون حفظ
+        </Button>
+        <Button disabled={busy || !checked} onClick={() => setConfirmation(preview)}>
+          2) تطبيق المطابقة في المسودة
+        </Button>
+        <Button
+          variant="outline"
+          disabled={busy || !ready.canQualityCheck}
+          onClick={() => void checkQuality()}
+        >
+          فحص جودة الجدول
+        </Button>
+        <Button
+          variant="destructive"
+          disabled={busy || !ready.canPublish}
+          onClick={() => void run("operational_publish")}
+        >
+          3) نشر الجدول المطابق
+        </Button>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        يتاح التطبيق بعد نجاح الفحص. ويتاح النشر بعد اعتماد التطبيق وفحص جودة حديث للنسخة الحالية.
+      </p>
+      {message && (
+        <p role="status" aria-live="polite" className="text-sm">
+          {message}
+        </p>
+      )}
+      {error && (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
+      <AlertDialog open={!!confirmation} onOpenChange={(open) => !open && setConfirmation(null)}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>تأكيد مطابقة الإسناد التشغيلي الحالي</AlertDialogTitle>
+            <AlertDialogDescription>
+              ستُطبق المطابقة على 273 جلسة و624 ساعة أسبوعيًا، مع تغيير إسناد أو محاضر 39 جلسة،
+              وإلغاء 31 استبدالًا خاصًا بالمسودة لاعتماد 30 إسنادًا أساسيًا وإسناد سبق اعتماده، مع
+              الحفاظ على هويات 4 إسنادات سبق اعتمادها. تشمل الخطة 3 تغييرات مواعيد سبق اعتمادها و26
+              تغييرًا إضافيًا. ينخفض إجمالي انتظار الطلاب 57 ساعة طالب أسبوعيًا، لكن انتظار 149
+              طالبًا في 6 شعب يزيد بمجموع 243 ساعة طالب أسبوعيًا. لا تضيف الخطة أيام حضور للطلاب.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={busy || !checked}
+              onClick={() => {
+                const reviewed = confirmation;
+                setConfirmation(null);
+                if (reviewed) void run("operational_apply", reviewed);
+              }}
+            >
+              تطبيق المطابقة
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </Card>
+  );
+}
+
+function OperationalAdoptionImpacts() {
+  return (
+    <div className="space-y-2 text-sm">
+      <p>الجدول الحالي: 273 جلسة، بإجمالي 624 ساعة تدريس أسبوعيًا.</p>
+      <p>
+        مطابقة الإسنادات الحالية تغيّر الإسناد أو المحاضر في 39 جلسة، وتلغي 31 استبدالًا خاصًا
+        بالمسودة لاعتماد 30 إسنادًا أساسيًا وإسناد سبق اعتماده، مع الحفاظ على هويات 4 إسنادات سبق
+        اعتمادها.
+      </p>
+      <p>تغييرات المواعيد: 3 تغييرات سبق اعتمادها، و26 تغييرًا إضافيًا؛ المجموع 29.</p>
+      <p>
+        ينخفض إجمالي انتظار الطلاب بمقدار 57 ساعة طالب أسبوعيًا. لكن الانتظار يزيد لدى 149 طالبًا في
+        6 شعب بمجموع 243 ساعة طالب أسبوعيًا؛ لا تضيف الخطة أيام حضور للطلاب.
+      </p>
     </div>
   );
 }
