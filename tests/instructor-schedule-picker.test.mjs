@@ -82,6 +82,11 @@ const mocks = {
     export const SelectValue = ({ placeholder }) => h("span", null, placeholder);`,
   "@/components/reports/report-timetable-view": `export const ReportTimetableView = () => null;`,
   "@/components/reports/instructor-college-hours": `export const InstructorCollegeHours = () => null;`,
+  "@/components/reports/instructor-batch-print": `const h = globalThis.__instructorPickerReact.createElement;
+    export const InstructorBatchPrint = ({ items }) =>
+      h("button", { "data-batch": items.map((item) => item.id).join(",") });`,
+  "@/components/reports/repeating-print-header": `export const RepeatingPrintHeader = () => null;`,
+  "@/components/reports/report-official-header": `export const ReportOfficialHeader = () => null;`,
   "@/lib/schedule-versions/lifecycle": `export const STATUS_LABEL_AR = {};`,
   "@/lib/reports/queries/university-instructor-schedule": `const unexpected = () => {
     throw new Error("SSR must not make live queries");
@@ -158,4 +163,9 @@ test("a directory cached for the previous active college exposes no lecturer cho
   assert.deepEqual(values(field(html, "is-instructor")), []);
   assert.doesNotMatch(html, /local lecturer|guest lecturer|unrelated lecturer/);
   assert.equal(field(html, "is-schedule-scope"), "");
+});
+
+test("the print-all action covers exactly the lecturers the picker offers", () => {
+  assert.match(render({ scope: "all" }), /data-batch="guest,local"/);
+  assert.match(render({ isSuperAdmin: false }), /data-batch="guest,local"/);
 });
