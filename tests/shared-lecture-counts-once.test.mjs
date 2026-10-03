@@ -37,7 +37,10 @@ test("every load reader gets the same rule, guarded against drift and re-runs", 
   assert.match(sql, /OR public\.delivery_group_shared_in_published\(%1\$s\.id\)/);
   assert.match(sql, /SHARED_LECTURE_LOAD_DRIFT/);
   assert.match(sql, /IF n <> 1 THEN/);
-  assert.match(sql, /CONTINUE WHEN position\(format\('delivery_group_shared_in_published\(%s\.id\)'/);
+  assert.match(
+    sql,
+    /CONTINUE WHEN position\(format\('delivery_group_shared_in_published\(%s\.id\)'/,
+  );
 
   // Derived from the live definitions; no data and no stored flag is touched.
   assert.match(sql, /pg_get_viewdef\(t\.target::regclass, true\)/);
