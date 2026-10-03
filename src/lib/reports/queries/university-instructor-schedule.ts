@@ -2,7 +2,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { readAllReportRows } from "@/lib/reports/read-all";
 import { facultyWorkflow } from "@/lib/instructors/faculty-workflow";
 import { mapRawSessions } from "@/lib/reports/session-mappers";
-import { resolveAcademicProgramOwner, type AcademicProgramOwner } from "../academic-program-owner";
 import { fetchCohortDeliveryGroupLabels, fetchInstructorScheduleSessions } from "./session-queries";
 import {
   facultyRecordIds,
@@ -29,74 +28,47 @@ function sessionProgramId(session: { course_offerings?: unknown }): string | nul
   return typeof offering.program_id === "string" ? offering.program_id : null;
 }
 
+interface AcademicOwnerRow {
+  program_id: string;
+  owner_program_id: string;
+  program_name: string;
+  college_id: string;
+  college_name: string;
+  department_name: string | null;
+}
+
+/** The owning college of a hosted program can be another college, which a college
+ * administrator may not read. The server resolves the canonical link for programs
+ * the caller can already read; a broken link yields no row and is rejected here. */
 async function academicOwners(programIds: string[]) {
-  const programs = new Map<string, AcademicProgramOwner>();
-  let pending = [...new Set(programIds)];
-  for (let depth = 0; pending.length; depth++) {
-    if (depth > 32) throw new Error("تعذر حسم سلسلة ربط البرنامج الأكاديمي المعتمد.");
-    const found: AcademicProgramOwner[] = [];
-    for (let i = 0; i < pending.length; i += 100) {
-      const ids = pending.slice(i, i + 100);
-      found.push(
-        ...(await readAllReportRows((from, to) =>
-          supabase
-            .from("academic_programs")
-            .select("id,college_id,department_id,name,canonical_program_id")
-            .in("id", ids)
-            .order("id")
-            .range(from, to),
-        )),
-      );
-    }
-    for (const p of found) programs.set(p.id, p);
-    pending = [
-      ...new Set(
-        found.flatMap((p) =>
-          p.canonical_program_id && !programs.has(p.canonical_program_id)
-            ? [p.canonical_program_id]
-            : [],
-        ),
-      ),
-    ];
+  const ids = [...new Set(programIds)];
+  const client = supabase as unknown as {
+    rpc(
+      name: "academic_program_owners",
+      args: { p_program_ids: string[] },
+    ): Promise<{ data: AcademicOwnerRow[] | null; error: { message: string } | null }>;
+  };
+  const rows: AcademicOwnerRow[] = [];
+  for (let i = 0; i < ids.length; i += 100) {
+    const { data, error } = await client.rpc("academic_program_owners", {
+      p_program_ids: ids.slice(i, i + 100),
+    });
+    if (error) throw error;
+    rows.push(...(data ?? []));
   }
-  const owners = new Map(programIds.map((id) => [id, resolveAcademicProgramOwner(id, programs)]));
-  const collegeIds = [...new Set([...owners.values()].map((p) => p.college_id))];
-  const departmentIds = [
-    ...new Set([...owners.values()].flatMap((p) => (p.department_id ? [p.department_id] : []))),
-  ];
-  const [colleges, departments] = await Promise.all([
-    collegeIds.length
-      ? readAllReportRows((from, to) =>
-          supabase
-            .from("colleges")
-            .select("id,name")
-            .in("id", collegeIds)
-            .order("id")
-            .range(from, to),
-        )
-      : [],
-    departmentIds.length
-      ? readAllReportRows((from, to) =>
-          supabase
-            .from("departments")
-            .select("id,name")
-            .in("id", departmentIds)
-            .order("id")
-            .range(from, to),
-        )
-      : [],
-  ]);
+  const byProgram = new Map(rows.map((row) => [row.program_id, row]));
   return new Map(
-    [...owners].map(([id, p]) => {
-      const college = colleges.find((c) => c.id === p.college_id);
-      if (!college) throw new Error("تعذر قراءة الكلية الأكاديمية المعتمدة للمحاضرة.");
+    ids.map((id) => {
+      const owner = byProgram.get(id);
+      if (!owner)
+        throw new Error("تعذر قراءة البرنامج الأكاديمي المعتمد؛ لا يمكن تحديد كلية المحاضرة بدقة.");
       return [
         id,
         {
-          college_id: college.id,
-          college_name: college.name,
-          program_name: p.name,
-          department_name: departments.find((d) => d.id === p.department_id)?.name ?? "",
+          college_id: owner.college_id,
+          college_name: owner.college_name,
+          program_name: owner.program_name,
+          department_name: owner.department_name ?? "",
         },
       ];
     }),

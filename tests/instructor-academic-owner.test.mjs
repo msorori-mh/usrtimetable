@@ -65,7 +65,31 @@ const departments = programs.map((p) => ({ id: p.department_id, name: p.departme
 globalThis.__ownerFixture = fixture;
 globalThis.__ownerDb = {
   auth: { getUser: async () => ({ data: { user: { id: "actor" } } }) },
+  // Mirrors public.academic_program_owners: owners only for programs the caller reads.
+  async rpc(name, { p_program_ids }) {
+    if (name !== "academic_program_owners") throw new Error("Unexpected RPC: " + name);
+    const all = new Map(fixture.programs.map((p) => [p.id, p]));
+    const readable = (p) => fixture.roles.includes("super_admin") || p.college_id === "itcs";
+    return {
+      data: p_program_ids
+        .filter((id) => all.has(id) && readable(all.get(id)))
+        .map((id) => {
+          const owner = resolveAcademicProgramOwner(id, all);
+          return {
+            program_id: id,
+            owner_program_id: owner.id,
+            program_name: owner.name,
+            college_id: owner.college_id,
+            college_name: colleges.find((c) => c.id === owner.college_id).name,
+            department_name: owner.department_id,
+          };
+        }),
+      error: null,
+    };
+  },
   from(table) {
+    if (table === "academic_programs" || table === "colleges" || table === "departments")
+      throw new Error("Ownership must not be read from tenant tables: " + table);
     if (table === "user_roles")
       return {
         select: () => ({ eq: async () => ({ data: fixture.roles.map((role) => ({ role })) }) }),
@@ -176,7 +200,25 @@ test("academic ownership does not expand the authorized session read scope", asy
     const sessions = await api.fetchUniversityInstructorSchedule(input);
     assert.equal(sessions.length, 3);
     assert.ok(sessions.every((s) => s.source_college_id === "itcs"));
+    // A college administrator still sees the owning college of a hosted lecture.
+    assert.equal(sessions[0].college_name, "كلية الجوف");
+    assert.equal(sessions[0].program_name, "نظم المعلومات - الجوف");
   } finally {
     fixture.roles = ["super_admin"];
   }
+});
+
+test("the server resolves owners only for programs the caller can read", async () => {
+  const { readFileSync } = await import("node:fs");
+  const sql = readFileSync(
+    "supabase/migrations/20261003040000_academic_program_owners.sql",
+    "utf8",
+  );
+  assert.match(sql, /SECURITY DEFINER/);
+  assert.match(sql, /public\.can_view_college\(auth\.uid\(\), p\.college_id\)/);
+  assert.match(sql, /NOT p\.id = ANY \(c\.path\)/);
+  assert.match(
+    sql,
+    /REVOKE ALL ON FUNCTION public\.academic_program_owners\(uuid\[\]\) FROM PUBLIC, anon/,
+  );
 });
