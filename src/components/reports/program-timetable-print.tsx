@@ -1,8 +1,3 @@
-import { RepeatingPrintHeader } from "@/components/reports/repeating-print-header";
-import {
-  ReportOfficialHeader,
-  headerMetaFromContext,
-} from "@/components/reports/report-official-header";
 import { useMemo, type ReactNode } from "react";
 import { PrintSheet } from "@/components/print-center/print-sheet";
 import { DEFAULT_PRINT_VISIBILITY } from "@/lib/print-center/types";
@@ -61,6 +56,9 @@ export function ProgramTimetablePrint(props: {
           page={page}
           labels={labels}
           groupNameOnly
+          comfortable
+          // The short completeness note closes the last sheet instead of taking a page.
+          keepWithNext={!!props.coverage && i === pages.length - 1}
           visibility={DEFAULT_PRINT_VISIBILITY}
           meta={{
             collegeName: props.collegeName,
@@ -82,19 +80,10 @@ export function ProgramTimetablePrint(props: {
         />
       ))}
       {props.coverage ? (
-        <RepeatingPrintHeader
-          header={
-            <ReportOfficialHeader
-              reportTitle="اكتمال تغطية الجدول"
-              collegeName={props.collegeName}
-              {...headerMetaFromContext(ctx)}
-              generatedAt={exportedAt}
-              qrUrl={qrUrl}
-            />
-          }
-        >
-          <div className="print-coverage-block">{props.coverage}</div>
-        </RepeatingPrintHeader>
+        <div className="print-coverage-block print-coverage-block--inline">
+          <p className="print-coverage-title">اكتمال تغطية الجدول</p>
+          {props.coverage}
+        </div>
       ) : null}
     </>
   );

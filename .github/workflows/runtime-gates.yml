@@ -106,6 +106,9 @@ jobs:
       - name: Program/level timetable report is published-only
         run: node --test tests/program-timetable-published-only.test.mjs
 
+      - name: Program/level timetable report lists merged lectures per cohort
+        run: node --test tests/program-timetable-merged-lectures.test.mjs
+
       - name: Joint mathematical scheduling model
         run: node --import tsx --test tests/joint-model.test.mjs tests/extended-resource-capacity.test.mjs tests/course-program-plans.test.mjs
 

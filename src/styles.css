@@ -512,6 +512,54 @@
   background: var(--color-secondary);
 }
 
+/* Short completeness note that closes the last program/level sheet. */
+.print-coverage-block--inline {
+  margin-top: 0.75rem;
+}
+
+.print-coverage-title {
+  margin: 0 0 0.35rem;
+  color: var(--color-primary);
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+@media print {
+  /* Paper is white: no screen surface colour may print behind a sheet. */
+  .report-print-root,
+  .report-print-body,
+  .print-center-body,
+  .print-center-page,
+  .print-center-page .report-page-content > tr > td,
+  .print-coverage-block {
+    background: white !important;
+  }
+
+  /* The closing note shares the last sheet's page instead of starting a new one. */
+  .print-center-page.print-center-page--keep-with-next {
+    break-after: auto !important;
+    page-break-after: auto !important;
+  }
+
+  .print-coverage-block--inline {
+    margin-top: 4mm;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    font-size: 9.5pt;
+  }
+
+  /* Notice-board sheets: larger type, so the table uses the page it is given. */
+  .print-center-page--comfortable table:not(.report-page-frame) {
+    font-size: 12pt;
+    line-height: 1.6;
+  }
+
+  .print-center-page--comfortable table:not(.report-page-frame) th,
+  .print-center-page--comfortable table:not(.report-page-frame) td {
+    padding: 7px 9px;
+  }
+}
+
 .print-header-field {
   display: flex;
   min-width: 0;

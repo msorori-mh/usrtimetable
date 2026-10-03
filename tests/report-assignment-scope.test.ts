@@ -5,6 +5,9 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: db }));
 vi.mock("@/lib/academic-delivery/shared-lectures", () => ({
   fetchSharedLectures: async () => [],
 }));
+vi.mock("@/lib/academic-delivery/version-student-memberships", () => ({
+  fetchVersionStudentMemberships: async () => [],
+}));
 vi.mock("@/lib/academic-delivery/version-group-catalog", () => ({
   fetchVersionGroupCatalog: async () => [
     {

@@ -1,5 +1,6 @@
 import { fetchSharedLectures } from "@/lib/academic-delivery/shared-lectures";
 import { fetchVersionGroupCatalog } from "@/lib/academic-delivery/version-group-catalog";
+import { fetchVersionStudentMemberships } from "@/lib/academic-delivery/version-student-memberships";
 import { readAllReportRows } from "@/lib/reports/read-all";
 import { supabase } from "@/integrations/supabase/client";
 import type { DeliveryGroupCatalogRow } from "@/lib/reports/program-timetable-coverage";
@@ -28,16 +29,32 @@ export async function fetchCohortDeliveryGroupCatalog(params: {
           .order("id")
           .range(from, to),
       );
-  const shared = await fetchSharedLectures(college);
-  const groups = allGroups
+  const liveGroups = allGroups
     .filter((g): g is typeof g & { id: string } => g.id != null)
     // Archived groups may still exist in a version catalogue for historical reads.
-    .filter((g) => g.active !== false && g.is_obsolete !== true)
-    .filter(
-      (g) =>
-        (g.cohort_id != null && cohortIds.has(g.cohort_id)) ||
-        shared.some((l) => l.anchor_group_id === g.id && cohortIds.has(l.cohort_id)),
+    .filter((g) => g.active !== false && g.is_obsolete !== true);
+  // Which cohorts attend each group. A schedule version carries its own merges,
+  // so they are read from that version; without one the global links apply.
+  const attendingCohorts = new Map<string, Set<string>>();
+  const attend = (groupId: string, cohortId: string | null | undefined) => {
+    if (!cohortId) return;
+    const set = attendingCohorts.get(groupId) ?? new Set<string>();
+    set.add(cohortId);
+    attendingCohorts.set(groupId, set);
+  };
+  for (const g of liveGroups) attend(g.id, g.cohort_id);
+  if (params.versionId) {
+    const memberships = await fetchVersionStudentMemberships(
+      params.versionId,
+      liveGroups.map((g) => g.id),
     );
+    for (const m of memberships) attend(m.delivery_group_id, m.cohort_id);
+  } else {
+    for (const l of await fetchSharedLectures(college)) attend(l.anchor_group_id, l.cohort_id);
+  }
+  const groups = liveGroups.filter((g) =>
+    [...(attendingCohorts.get(g.id) ?? [])].some((id) => cohortIds.has(id)),
+  );
   if (!groups.length) return [];
   // Fetch all pages of scoped references: a server limit must not silently drop a
   // co-teacher or a component and change the report's demand or instructor label.
@@ -100,8 +117,8 @@ export async function fetchCohortDeliveryGroupCatalog(params: {
       cohortId:
         group.cohort_id != null && cohortIds.has(group.cohort_id)
           ? group.cohort_id
-          : shared.find((l) => l.anchor_group_id === group.id && cohortIds.has(l.cohort_id))!
-              .cohort_id,
+          : [...(attendingCohorts.get(group.id) ?? [])].find((id) => cohortIds.has(id))!,
+      sharedCohortIds: [...(attendingCohorts.get(group.id) ?? [])],
       groupCode: group.group_code,
       groupNumber: group.group_number,
       componentType: component.component_type,

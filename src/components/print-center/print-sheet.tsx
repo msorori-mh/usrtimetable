@@ -62,7 +62,7 @@ function compactRoomLabel(value: string): string {
 /** Short student-facing label; never infer a group number from an import code. */
 function compactPrintGroupLabel(value: string): string {
   const label = value.trim();
-  if (/^(?:all|الكل|جميع المجموعات)$/iu.test(label)) return "جميع المجموعات";
+  if (/^(?:all|الكل|جميع المجموعات)$/iu.test(label)) return "ALL";
   const gender = /(?:^|[\s—–-])(طالبات|طلاب)(?=$|[\s—–-])/u.exec(label)?.[1];
   const numbered =
     /(?:مجموعة|المجموعة)\s*([0-9٠-٩۰-۹]+)(?=$|[\s—–-])/u.exec(label) ??
@@ -92,6 +92,10 @@ export function PrintSheet(props: {
   groupNameOnly?: boolean;
   /** Larger A4 portrait layout for current student schedules. */
   readable?: boolean;
+  /** Larger table type for sheets that are read from a notice board. */
+  comfortable?: boolean;
+  /** Lets a short closing block share this sheet's last page instead of a new one. */
+  keepWithNext?: boolean;
 }) {
   const { page, meta, visibility, labels, readable = false, groupNameOnly = false } = props;
   const cohortId = page.sessions[0]?.cohort_id;
@@ -156,7 +160,14 @@ export function PrintSheet(props: {
 
   return (
     <section
-      className={`print-center-page break-after-page${readable ? " print-center-page--readable" : ""}`}
+      className={[
+        "print-center-page",
+        props.keepWithNext ? "print-center-page--keep-with-next" : "break-after-page",
+        readable ? "print-center-page--readable" : "",
+        props.comfortable ? "print-center-page--comfortable" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
     >
       <RepeatingPrintHeader
         header={
@@ -282,10 +293,23 @@ export function PrintSheet(props: {
               <col style={{ width: "12%" }} />
             </colgroup>
           )}
+          {!readable && props.comfortable && (
+            // Narrow day, time and type; the room left for course and lecturer names.
+            <colgroup>
+              <col style={{ width: "10%" }} />
+              <col style={{ width: "9%" }} />
+              <col style={{ width: "26%" }} />
+              {visibility.showInstructor && <col style={{ width: "23%" }} />}
+              {visibility.showRoom && <col style={{ width: "15%" }} />}
+              <col style={{ width: "7%" }} />
+              <col style={{ width: "10%" }} />
+            </colgroup>
+          )}
           <TableHeader>
             {/* Repeats on every physical sheet the group spans (thead is a running header),
               so a continuation page still identifies which schedule it belongs to. */}
-            {!readable && (
+            {/* On program/level sheets the large cohort headline already names the sheet. */}
+            {!readable && !(props.comfortable && cohortHeadline.length > 0) && (
               <TableRow className="print-center-context-row">
                 <TableHead colSpan={columnCount} className="text-right font-semibold">
                   {page.title}
