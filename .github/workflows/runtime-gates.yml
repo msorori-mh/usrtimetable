@@ -100,6 +100,9 @@ jobs:
       - name: Assignment workspace per-version read model contract
         run: node --test tests/assignment-workspace-version-view.test.mjs
 
+      - name: Shared lecture counts once in teaching load contract
+        run: node --test tests/shared-lecture-counts-once.test.mjs
+
       - name: Joint mathematical scheduling model
         run: node --import tsx --test tests/joint-model.test.mjs tests/extended-resource-capacity.test.mjs tests/course-program-plans.test.mjs
 
