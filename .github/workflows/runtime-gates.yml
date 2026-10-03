@@ -103,6 +103,9 @@ jobs:
       - name: Shared lecture counts once in teaching load contract
         run: node --test tests/shared-lecture-counts-once.test.mjs
 
+      - name: Program/level timetable report is published-only
+        run: node --test tests/program-timetable-published-only.test.mjs
+
       - name: Joint mathematical scheduling model
         run: node --import tsx --test tests/joint-model.test.mjs tests/extended-resource-capacity.test.mjs tests/course-program-plans.test.mjs
 

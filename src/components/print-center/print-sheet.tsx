@@ -105,6 +105,24 @@ export function PrintSheet(props: {
       : page.studySystem
         ? (STUDY_SYSTEM_LABELS[page.studySystem as PrintStudySystem] ?? String(page.studySystem))
         : null;
+  // Program, study system and level are what a reader looks for first on a
+  // printed timetable, so they are also shown as one large line above the
+  // detail fields, e.g. "تكنولوجيا المعلومات - موازي - م2".
+  const levelName = page.levelName || meta.levelName || "";
+  const levelNumber = page.sessions[0]?.course_offerings?.academic_levels?.level_number;
+  const systemKey =
+    meta.studySystem && meta.studySystem !== "all" ? meta.studySystem : page.studySystem;
+  const cohortHeadline = [
+    visibility.showProgram ? page.programName || meta.programName : null,
+    visibility.showStudySystem
+      ? systemKey === "parallel"
+        ? "موازي"
+        : systemKey === "regular"
+          ? "عام"
+          : null
+      : null,
+    visibility.showLevel ? (levelNumber ? `م${levelNumber}` : levelName || null) : null,
+  ].filter(Boolean);
   const statusLabel = meta.versionStatus ? STATUS_LABEL_AR[meta.versionStatus] : null;
   const isDraft = meta.versionStatus === "draft";
   // day, time, course name, component, group + optional instructor / room
@@ -194,6 +212,12 @@ export function PrintSheet(props: {
                   }}
                 >
                   {PRINT_DRAFT_WATERMARK_AR} — للمراجعة فقط
+                </p>
+              )}
+
+              {!readable && cohortHeadline.length > 0 && (
+                <p className="print-header-cohort-banner" data-testid="print-cohort-banner">
+                  {cohortHeadline.join(" - ")}
                 </p>
               )}
 

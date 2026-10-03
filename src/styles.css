@@ -492,6 +492,19 @@
   line-height: 1.2;
 }
 
+.print-header-cohort-banner {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-primary);
+  font-size: 1.7rem;
+  font-weight: 900;
+  line-height: 1.35;
+  text-align: center;
+  overflow-wrap: anywhere;
+  break-inside: avoid;
+}
+
 .print-header-details {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
