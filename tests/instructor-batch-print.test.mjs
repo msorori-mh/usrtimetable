@@ -39,3 +39,8 @@ test("the batch never prints a partial set and prints only its own sheets", () =
     /\.instructor-batch-sheet \+ \.instructor-batch-sheet \{\s+break-before: page;/,
   );
 });
+
+test("the lecturer schedule report offers published versions only", () => {
+  assert.match(route, /fixedStatusMode: "published_only"/);
+  assert.doesNotMatch(route, /defaultStatusMode: "specific_version"/);
+});
