@@ -554,9 +554,25 @@
     line-height: 1.6;
   }
 
+  .print-center-page--comfortable table:not(.report-page-frame) {
+    /* Columns size to their content, so short columns stay narrow on any paper. */
+    table-layout: auto;
+  }
+
   .print-center-page--comfortable table:not(.report-page-frame) th,
   .print-center-page--comfortable table:not(.report-page-frame) td {
-    padding: 7px 9px;
+    padding: 7px 6px;
+    /* Names wrap between words, never inside one. */
+    overflow-wrap: break-word;
+    word-break: normal;
+  }
+
+  /* Headings and the short columns never wrap: no "النو / ع" or "الخمي / س". */
+  .print-center-page--comfortable table:not(.report-page-frame) thead th:not([colspan]),
+  .print-center-page--comfortable table:not(.report-page-frame) td.schedule-day,
+  .print-center-page--comfortable table:not(.report-page-frame) td.schedule-type,
+  .print-center-page--comfortable table:not(.report-page-frame) td.schedule-group {
+    white-space: nowrap !important;
   }
 }
 

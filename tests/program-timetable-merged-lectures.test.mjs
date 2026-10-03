@@ -56,4 +56,11 @@ test("the program/level report lists merged lectures for every attending cohort"
   assert.match(sheet, /return "ALL";/);
   assert.doesNotMatch(sheet, /return "جميع المجموعات";/);
   assert.match(sheet, /!readable && props\.comfortable && \(/);
+  assert.match(sheet, /className="schedule-type"/);
+  assert.match(sheet, /className="schedule-group"/);
+  assert.match(css, /td\.schedule-group \{\s+white-space: nowrap !important;/);
+  assert.match(
+    css,
+    /\.print-center-page--comfortable table:not\(\.report-page-frame\) \{\s+\/\*[^*]*\*\/\s+table-layout: auto;/,
+  );
 });
