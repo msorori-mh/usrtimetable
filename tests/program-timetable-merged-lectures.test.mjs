@@ -45,7 +45,7 @@ test("the program/level report lists merged lectures for every attending cohort"
   );
 
   // Print: one cohort title, no separate coverage page, white paper, larger type.
-  assert.match(sheet, /!readable && cohortHeadline\.length === 0 && \(/);
+  assert.match(sheet, /!readable && !\(props\.comfortable && cohortHeadline\.length > 0\) && \(/);
   assert.match(sheet, /print-center-page--keep-with-next/);
   assert.match(print, /keepWithNext=\{!!props\.coverage && i === pages\.length - 1\}/);
   assert.match(print, /print-coverage-block--inline/);
