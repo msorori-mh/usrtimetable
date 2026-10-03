@@ -286,18 +286,16 @@ function Page() {
   const coverageSuffix = filtered ? " (الكلية كاملة)" : "";
   const scopeSuffix = filtered ? " (ضمن الفلتر)" : "";
   const reportFilename = buildScheduleReportFilename([
-    ctx.selectedVersion?.name,
-    "جداول الطلاب",
-    active?.name,
     ...(printScope === "college"
-      ? ["الكلية كاملة"]
+      ? ["جداول الطلاب", active?.name, "الكلية كاملة"]
       : [
-          selectedDepartment?.name,
-          selectedProgram?.name,
-          selectedLevel?.name,
-          selectedCourse?.name,
+          ...(selectedProgram
+            ? [selectedProgram.name]
+            : [selectedDepartment?.name, "جميع البرامج"]),
+          selectedLevel?.name ?? "جميع المستويات",
         ]),
     STUDY_SYSTEM_LABELS[effectiveStudySystem],
+    ...(printScope === "custom" ? [selectedCourse?.name] : []),
   ]);
 
   return (
