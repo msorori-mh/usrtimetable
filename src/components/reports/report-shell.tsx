@@ -1,6 +1,6 @@
 import { RepeatingPrintHeader } from "@/components/reports/repeating-print-header";
 import { ReportScopeError } from "@/lib/reports/preferences";
-import { ReactNode, useEffect, useMemo, useState } from "react";
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Download, FileSpreadsheet, Printer } from "lucide-react";
@@ -17,6 +17,7 @@ import {
   ReportNotReadyState,
 } from "@/components/reports/report-states";
 import { useActiveCollege } from "@/hooks/use-colleges";
+import { useReportDocumentTitle } from "@/hooks/use-report-document-title";
 import { downloadCSV, downloadXLSX, type Row } from "@/lib/reports/export";
 import { printPageStyleCss } from "@/lib/print-center";
 import { toast } from "sonner";
@@ -87,7 +88,13 @@ export function ReportShell({
   notReadyMessage,
 }: Props) {
   const { active } = useActiveCollege();
-  const [printSnapshot, setPrintSnapshot] = useState<ReactNode>(null);
+  const [printSnapshot, setPrintSnapshot] = useState<{
+    content: ReactNode;
+    filename: string;
+  } | null>(null);
+  const pendingPrint = useRef<(() => void) | null>(null);
+  useReportDocumentTitle(printSnapshot?.filename ?? printFilename);
+  useEffect(() => () => pendingPrint.current?.(), []);
 
   const headerMeta = useMemo((): ReportOfficialHeaderMeta => {
     const fromCtx = reportContext ? headerMetaFromContext(reportContext) : {};
@@ -104,10 +111,28 @@ export function ReportShell({
   }, [reportContext, headerMetaProp, active?.name, official, readOnly]);
 
   const handlePrint = async () => {
-    if (exportsDisabled) return;
-    // Keep the complete authorized render stable while focus/refetch events run.
-    setPrintSnapshot(
-      printContent ?? (
+    if (exportsDisabled || pendingPrint.current) return;
+    let cancelled = false;
+    let fontTimer: ReturnType<typeof setTimeout> | undefined;
+    let finishFontWait: (() => void) | undefined;
+    const cancel = () => {
+      if (cancelled) return;
+      cancelled = true;
+      clearTimeout(fontTimer);
+      finishFontWait?.();
+      window.removeEventListener("afterprint", finish);
+      if (pendingPrint.current === cancel) pendingPrint.current = null;
+    };
+    const finish = () => {
+      if (cancelled) return;
+      cancel();
+      setPrintSnapshot(null);
+    };
+    pendingPrint.current = cancel;
+    // Freeze the filename with the authorized content, including while fonts load.
+    setPrintSnapshot({
+      filename: printFilename || title || filename,
+      content: printContent ?? (
         <RepeatingPrintHeader
           header={
             <ReportOfficialHeader
@@ -124,41 +149,28 @@ export function ReportShell({
           <div className="report-print-body min-w-0">{children}</div>
         </RepeatingPrintHeader>
       ),
-    );
+    });
     // A slow web-font host must not prevent printing with the fallback font.
-    let fontTimer: ReturnType<typeof setTimeout> | undefined;
     await Promise.race([
       document.fonts.ready.catch(() => undefined),
       new Promise<void>((resolve) => {
+        finishFontWait = resolve;
         fontTimer = setTimeout(resolve, 2000);
       }),
     ]);
     clearTimeout(fontTimer);
+    finishFontWait = undefined;
+    if (cancelled) return;
 
-    const originalTitle = document.title;
-    const pdfTitle =
-      (printFilename ?? title ?? filename)
-        .replace(/[\\/:*?"<>|]+/g, " - ")
-        .replace(/\s+/g, " ")
-        .trim() || originalTitle;
-    let restored = false;
-    const restoreTitle = () => {
-      if (restored) return;
-      restored = true;
-      document.title = originalTitle;
-      setPrintSnapshot(null);
-      window.removeEventListener("afterprint", restoreTitle);
-    };
+    window.addEventListener("afterprint", finish, { once: true });
 
-    document.title = pdfTitle;
-    window.addEventListener("afterprint", restoreTitle, { once: true });
-
-    // Let the browser observe the temporary document title before opening print preview.
+    // Let React commit the snapshot and its title before opening print preview.
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    if (cancelled) return;
     try {
       window.print();
     } catch {
-      restoreTitle();
+      finish();
       toast.error("تعذّر فتح نافذة الطباعة. أعد المحاولة.");
     }
     // Do not discard the printable snapshot on a timer: some browsers return
@@ -316,7 +328,7 @@ export function ReportShell({
       )}
       {printSnapshot ? (
         <div className="hidden print:block print-center-body" data-testid="report-print-snapshot">
-          {printSnapshot}
+          {printSnapshot.content}
         </div>
       ) : (
         printContent &&

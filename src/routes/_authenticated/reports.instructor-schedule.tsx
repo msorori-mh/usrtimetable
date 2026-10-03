@@ -290,12 +290,7 @@ function Page() {
   }, [instructorSearch, instructors]);
   const distinctDays = new Set(sessions.map((s) => s.day_of_week)).size;
   const distinctCourses = new Set(sessions.map((s) => `${s.course_code}:${s.course_name}`)).size;
-  const reportFilename = buildScheduleReportFilename([
-    ctx.selectedVersion?.name,
-    "الجدول الفردي",
-    instructorName,
-    scopeLabel,
-  ]);
+  const reportFilename = buildScheduleReportFilename([instructorName], "الجدول الفردي");
 
   return (
     <ReportShell

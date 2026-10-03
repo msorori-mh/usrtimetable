@@ -2,29 +2,25 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { buildScheduleReportFilename } from "../src/lib/reports/schedule-filename";
 
-test("Arabic schedule and lecturer names remain readable in the saved filename", () => {
-  assert.equal(
-    buildScheduleReportFilename([
-      "الفصل الأول 2026",
-      "الجدول الفردي",
-      "أحمد البدوي",
-      "جميع الكليات",
-    ]),
-    "الفصل الأول 2026 — الجدول الفردي — أحمد البدوي — جميع الكليات",
-  );
+test("an individual schedule is saved with the lecturer name alone", () => {
+  assert.equal(buildScheduleReportFilename(["أ. أحمد البدوي"], "الجدول الفردي"), "أ. أحمد البدوي");
 });
 
 test("a filtered student filename identifies the program, level and study system", () => {
   assert.equal(
-    buildScheduleReportFilename([
-      "الجدول المعتمد",
-      "جداول الطلاب",
-      "كلية تكنولوجيا المعلومات",
-      "علوم الحاسوب",
-      "المستوى الثاني",
-      "موازي",
-    ]),
-    "الجدول المعتمد — جداول الطلاب — كلية تكنولوجيا المعلومات — علوم الحاسوب — المستوى الثاني — موازي",
+    buildScheduleReportFilename(["تقنية المعلومات", "المستوى الثاني", "موازي"]),
+    "تقنية المعلومات — المستوى الثاني — موازي",
+  );
+});
+
+test("aggregate schedules keep an explicit aggregate filename", () => {
+  assert.equal(
+    buildScheduleReportFilename(["جميع البرامج", "جميع المستويات", "جميع الأنظمة"]),
+    "جميع البرامج — جميع المستويات — جميع الأنظمة",
+  );
+  assert.equal(
+    buildScheduleReportFilename(["جداول الطلاب", "كلية الحاسوب", "الكلية كاملة", "جميع الأنظمة"]),
+    "جداول الطلاب — كلية الحاسوب — الكلية كاملة — جميع الأنظمة",
   );
 });
 
@@ -48,16 +44,16 @@ test("missing optional labels use the human report fallback rather than inventin
     "جداول الطلاب",
   );
   assert.equal(
-    buildScheduleReportFilename([undefined, "  الجدول الفردي  ", null]),
+    buildScheduleReportFilename([undefined, null], "  الجدول الفردي  "),
     "الجدول الفردي",
   );
   assert.equal(buildScheduleReportFilename([], ""), "جدول");
 });
 
-test("a later schedule or filter selection produces its own filename", () => {
-  const first = buildScheduleReportFilename(["النسخة الأولى", "علوم الحاسوب", "المستوى الأول"]);
-  const next = buildScheduleReportFilename(["النسخة الثانية", "نظم المعلومات", "المستوى الثالث"]);
-  assert.equal(next, "النسخة الثانية — نظم المعلومات — المستوى الثالث");
+test("a later filter selection produces its own filename", () => {
+  const first = buildScheduleReportFilename(["علوم الحاسوب", "المستوى الأول", "انتظام"]);
+  const next = buildScheduleReportFilename(["نظم المعلومات", "المستوى الثالث", "موازي"]);
+  assert.equal(next, "نظم المعلومات — المستوى الثالث — موازي");
   assert.notEqual(next, first);
-  assert.doesNotMatch(next, /النسخة الأولى|علوم الحاسوب|المستوى الأول/);
+  assert.doesNotMatch(next, /علوم الحاسوب|المستوى الأول|انتظام/);
 });

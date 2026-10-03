@@ -38,6 +38,7 @@ import {
 import { filterCurrentScheduleScope } from "@/lib/print-center/current-schedule-scope";
 import { normalizedMatchKey } from "@/lib/excel-import/arabic-normalize";
 import { STUDY_SYSTEM_LABELS } from "@/lib/reports/filters";
+import { compactAcademicLevelLabel } from "@/lib/reports/formatters";
 import { buildScheduleReportFilename } from "@/lib/reports/schedule-filename";
 
 const EMPTY_SESSIONS: PrintSessionLike[] = [];
@@ -286,18 +287,18 @@ function Page() {
   const coverageSuffix = filtered ? " (الكلية كاملة)" : "";
   const scopeSuffix = filtered ? " (ضمن الفلتر)" : "";
   const reportFilename = buildScheduleReportFilename([
-    ctx.selectedVersion?.name,
-    "جداول الطلاب",
-    active?.name,
     ...(printScope === "college"
-      ? ["الكلية كاملة"]
+      ? ["جداول الطلاب", active?.name, "الكلية كاملة"]
       : [
-          selectedDepartment?.name,
-          selectedProgram?.name,
-          selectedLevel?.name,
-          selectedCourse?.name,
+          ...(selectedProgram
+            ? [selectedProgram.name]
+            : [selectedDepartment?.name, "جميع البرامج"]),
+          selectedLevel
+            ? `المستوى ${compactAcademicLevelLabel(selectedLevel.name)}`
+            : "جميع المستويات",
         ]),
-    STUDY_SYSTEM_LABELS[effectiveStudySystem],
+    effectiveStudySystem === "all" ? "جميع الأنظمة" : STUDY_SYSTEM_LABELS[effectiveStudySystem],
+    ...(printScope === "custom" ? [selectedCourse?.name] : []),
   ]);
 
   return (

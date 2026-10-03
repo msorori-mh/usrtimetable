@@ -275,12 +275,17 @@ function ProgramLevelReport({
   ]
     .filter(Boolean)
     .join(" · ");
+  const filenameProgram = view.programs.find((p) => p.id === view.selected.programId);
+  const filenameLevel = view.levels.find((l) => l.value === view.selected.levelValue);
   const reportFilename = buildScheduleReportFilename([
-    ctx.selectedVersion?.name,
-    "جدول البرنامج والمستوى",
-    active?.name,
-    academicSummary,
-    STUDY_SYSTEM_LABELS[ctx.studySystem],
+    ...(filenameProgram
+      ? [filenameProgram.name]
+      : [
+          references.departments.find((d) => d.id === view.selected.departmentId)?.name,
+          "جميع البرامج",
+        ]),
+    filenameLevel ? `المستوى ${filenameLevel.label}` : "جميع المستويات",
+    ctx.studySystem === "all" ? "جميع الأنظمة" : STUDY_SYSTEM_LABELS[ctx.studySystem],
   ]);
   const filters: {
     field: keyof ProgramReportSelection;
