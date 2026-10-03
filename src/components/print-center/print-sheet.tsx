@@ -62,7 +62,7 @@ function compactRoomLabel(value: string): string {
 /** Short student-facing label; never infer a group number from an import code. */
 function compactPrintGroupLabel(value: string): string {
   const label = value.trim();
-  if (/^(?:all|الكل|جميع المجموعات)$/iu.test(label)) return "جميع المجموعات";
+  if (/^(?:all|الكل|جميع المجموعات)$/iu.test(label)) return "ALL";
   const gender = /(?:^|[\s—–-])(طالبات|طلاب)(?=$|[\s—–-])/u.exec(label)?.[1];
   const numbered =
     /(?:مجموعة|المجموعة)\s*([0-9٠-٩۰-۹]+)(?=$|[\s—–-])/u.exec(label) ??
@@ -291,6 +291,18 @@ export function PrintSheet(props: {
               {visibility.showRoom && <col style={{ width: "17%" }} />}
               <col style={{ width: "7%" }} />
               <col style={{ width: "12%" }} />
+            </colgroup>
+          )}
+          {!readable && props.comfortable && (
+            // Narrow day, time and type; the room left for course and lecturer names.
+            <colgroup>
+              <col style={{ width: "10%" }} />
+              <col style={{ width: "9%" }} />
+              <col style={{ width: "26%" }} />
+              {visibility.showInstructor && <col style={{ width: "23%" }} />}
+              {visibility.showRoom && <col style={{ width: "15%" }} />}
+              <col style={{ width: "7%" }} />
+              <col style={{ width: "10%" }} />
             </colgroup>
           )}
           <TableHeader>

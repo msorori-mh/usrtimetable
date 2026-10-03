@@ -52,4 +52,8 @@ test("the program/level report lists merged lectures for every attending cohort"
   assert.doesNotMatch(print, /ReportOfficialHeader/);
   assert.match(css, /\.print-center-page--comfortable table:not\(\.report-page-frame\) \{/);
   assert.match(css, /\.print-coverage-block \{\s+background: white !important;/);
+  // An undivided group prints as ALL; day, time and type stay narrow.
+  assert.match(sheet, /return "ALL";/);
+  assert.doesNotMatch(sheet, /return "جميع المجموعات";/);
+  assert.match(sheet, /!readable && props\.comfortable && \(/);
 });
