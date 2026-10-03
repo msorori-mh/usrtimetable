@@ -296,8 +296,8 @@ export function PrintSheet(props: {
           <TableHeader>
             {/* Repeats on every physical sheet the group spans (thead is a running header),
               so a continuation page still identifies which schedule it belongs to. */}
-            {/* The large cohort headline above already names the sheet. */}
-            {!readable && cohortHeadline.length === 0 && (
+            {/* On program/level sheets the large cohort headline already names the sheet. */}
+            {!readable && !(props.comfortable && cohortHeadline.length > 0) && (
               <TableRow className="print-center-context-row">
                 <TableHead colSpan={columnCount} className="text-right font-semibold">
                   {page.title}
