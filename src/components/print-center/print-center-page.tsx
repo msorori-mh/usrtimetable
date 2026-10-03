@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Download, FileSpreadsheet, Printer } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveCollege } from "@/hooks/use-colleges";
+import { useReportDocumentTitle } from "@/hooks/use-report-document-title";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -22,6 +23,7 @@ import { fetchCohortDeliveryGroupLabels } from "@/lib/reports/queries/session-qu
 import { downloadCSV, downloadXLSX } from "@/lib/reports/export";
 import { STUDY_SYSTEM_LABELS } from "@/lib/reports/filters";
 import { compactAcademicLevelLabel } from "@/lib/reports/formatters";
+import { buildScheduleReportFilename } from "@/lib/reports/schedule-filename";
 import { fetchHydratedVersionSessions } from "@/lib/schedule-builder/queries";
 import { fetchStudentPrintMemberships } from "@/lib/print-center/student-memberships-query";
 import {
@@ -368,7 +370,59 @@ export function PrintCenterPage(props: { versionId: string }) {
     setVisibility((v) => ({ ...v, [key]: value }));
   };
 
-  const filename = `timetable_print_${versionId}_${reportType}`;
+  const selectedLevel = (levels ?? []).find((level) => level.id === levelId);
+  // A level ID already identifies its program; the level report ignores programId.
+  const filenameProgramId = reportType === "level" ? selectedLevel?.program_id : programId;
+  const filenameProgramName = (progs ?? []).find(
+    (program) => program.id === filenameProgramId,
+  )?.name;
+  const filenameLevelName = selectedLevel
+    ? compactAcademicLevelLabel(selectedLevel.name)
+    : undefined;
+  const filenameStudySystem = STUDY_SYSTEM_LABELS[studySystem];
+  const filename = (() => {
+    switch (reportType) {
+      case "student":
+      case "level":
+        return buildScheduleReportFilename([
+          filenameProgramName ?? "جداول البرامج",
+          filenameLevelName ?? "جميع المستويات",
+          filenameStudySystem,
+        ]);
+      case "instructor": {
+        const name =
+          (instructors ?? []).find((instructor) => instructor.id === instructorId)?.full_name ??
+          sessionsBundle?.sessions.find((session) => session.instructor_id === instructorId)
+            ?.instructors?.full_name;
+        return buildScheduleReportFilename([
+          instructorId ? (name ?? "المحاضر المحدد") : "جداول المحاضرين",
+          studySystem === "all" ? undefined : filenameStudySystem,
+        ]);
+      }
+      case "room": {
+        const room =
+          (rooms ?? []).find((item) => item.id === roomId) ??
+          sessionsBundle?.sessions.find((session) => session.room_id === roomId)?.rooms;
+        return buildScheduleReportFilename([
+          roomId ? "جدول القاعة" : "جداول القاعات",
+          roomId ? entityDisplayName(room ?? {}, "القاعة المحددة") : undefined,
+          studySystem === "all" ? undefined : filenameStudySystem,
+        ]);
+      }
+      case "program":
+      case "department":
+        return buildScheduleReportFilename([
+          REPORT_TYPE_LABELS_AR[reportType],
+          reportType === "department"
+            ? (depts ?? []).find((department) => department.id === departmentId)?.name
+            : undefined,
+          filenameProgramName,
+          filenameLevelName,
+          filenameStudySystem,
+        ]);
+    }
+  })();
+  useReportDocumentTitle(filename);
 
   // LAUNCH-CLOSURE print diagnosis: keep window.print() as the only print mechanism,
   // but surface an actionable Arabic status instead of a dead-looking button.
