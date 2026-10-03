@@ -512,6 +512,28 @@
   background: var(--color-secondary);
 }
 
+/* Every lecturer's individual schedule in one print job (lecturer schedule report). */
+.instructor-batch-print {
+  display: none;
+}
+
+@media print {
+  /* Only the batch sheets print: the report on screen stays out of the job. */
+  html[data-instructor-batch-print] body > *:not(.instructor-batch-print) {
+    display: none !important;
+  }
+
+  .instructor-batch-print {
+    display: block;
+  }
+
+  /* Each lecturer starts on a new page. */
+  .instructor-batch-sheet + .instructor-batch-sheet {
+    break-before: page;
+    page-break-before: always;
+  }
+}
+
 /* Short completeness note that closes the last program/level sheet. */
 .print-coverage-block--inline {
   margin-top: 0.75rem;

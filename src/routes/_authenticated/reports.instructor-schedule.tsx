@@ -32,6 +32,12 @@ import {
   type InstructorScheduleScope,
 } from "@/lib/reports/university-instructor-schedule";
 import { InstructorCollegeHours } from "@/components/reports/instructor-college-hours";
+import {
+  InstructorBatchPrint,
+  type InstructorBatchSheet,
+} from "@/components/reports/instructor-batch-print";
+import { RepeatingPrintHeader } from "@/components/reports/repeating-print-header";
+import { ReportOfficialHeader } from "@/components/reports/report-official-header";
 import { STATUS_LABEL_AR, type SVStatus } from "@/lib/schedule-versions/lifecycle";
 import { isHourlyContractTypeCode } from "@/lib/instructors/effective-hours";
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -292,6 +298,94 @@ function Page() {
   const distinctCourses = new Set(sessions.map((s) => `${s.course_code}:${s.course_name}`)).size;
   const reportFilename = buildScheduleReportFilename([instructorName], "الجدول الفردي");
 
+  /** One lecturer's printable sheet, built exactly like the single-lecturer report. */
+  const loadBatchSheet = async (
+    instructor: (typeof instructors)[number],
+  ): Promise<InstructorBatchSheet | null> => {
+    const collegeId = ctx.collegeId ?? "";
+    const teaching =
+      canViewAcrossColleges && effectiveScope === "all"
+        ? await fetchInstructorTeachingCollegeIds({
+            selected: instructor,
+            records: allInstructors,
+            scopes: selection.scopes,
+          })
+        : [];
+    const loaded = await fetchUniversityInstructorSchedule({
+      anchorCollegeId: collegeId,
+      selected: instructor,
+      records: allInstructors,
+      scopes: instructorTeachingScopes(
+        selection.scopes,
+        collegeId,
+        teaching,
+        canViewAcrossColleges,
+      ),
+    });
+    const scoped = canViewAcrossColleges
+      ? instructorScheduleForScope(loaded, effectiveScope, collegeId)
+      : loaded;
+    if (!scoped.length) return null;
+    const hourly =
+      isHourlyContractTypeCode(instructor.instructor_type_code) ||
+      instructor.employment_type === "contract";
+    const sheetSummary = summarizeUniversitySchedule(scoped, {
+      maxWeeklyHours: hourly
+        ? null
+        : (instructor.recorded_quota ?? instructor.authoritative_quota ?? null),
+      adminReleaseHours: hourly ? 0 : (instructor.recorded_release ?? 0),
+    });
+    return {
+      key: instructor.id,
+      content: (
+        <RepeatingPrintHeader
+          header={
+            <ReportOfficialHeader
+              reportTitle={`جدول المحاضر — ${instructor.full_name}`}
+              description={`${scopeLabel} — جميع أنظمة الدراسة. ${instructor.university_number ? `الرقم الجامعي: ${instructor.university_number}` : ""}`}
+              filterSummary={`${ctx.filterSummary} • نطاق الجدول: ${scopeLabel}`}
+              termName={ctx.terms.find((term) => term.id === ctx.termId)?.name}
+              collegeName={
+                canViewAcrossColleges
+                  ? scopeLabel
+                  : directory.data?.colleges.find((c) => c.id === ctx.collegeId)?.name
+              }
+              versionName={
+                canViewAcrossColleges ? "نسخ الكليات الموضحة في الملخص" : ctx.selectedVersion?.name
+              }
+              versionStatus={null}
+              note={`نطاق الجدول: ${scopeLabel} — العام والموازي معًا.`}
+            />
+          }
+        >
+          <div className="report-print-body min-w-0">
+            <ReportTimetableView
+              hideInstructor
+              printSummary={
+                <InstructorCollegeHours
+                  summary={sheetSummary}
+                  hourlyContract={hourly}
+                  universityScope={canViewAcrossColleges && effectiveScope === "all"}
+                  scopeLabel={scopeLabel}
+                />
+              }
+              compactDetails
+              sessions={sheetSummary.sessions}
+              collegeId={ctx.collegeId}
+              headers={exportHeaders}
+            />
+          </div>
+        </RepeatingPrintHeader>
+      ),
+    };
+  };
+  const batchReady =
+    !!ctx.versionId &&
+    !directory.isLoading &&
+    !directory.error &&
+    !selection.error &&
+    selection.scopes.length > 0;
+
   return (
     <ReportShell
       title={instructorName ? `جدول المحاضر — ${instructorName}` : "تقرير جدول المحاضر الفردي"}
@@ -419,6 +513,21 @@ function Page() {
               </SelectContent>
             </Select>
           </ReportFilterField>
+          <div className="col-span-full flex flex-wrap items-center gap-3 border-t pt-3">
+            <InstructorBatchPrint
+              items={instructors}
+              disabled={!batchReady}
+              documentTitle={buildScheduleReportFilename(
+                [directory.data?.colleges.find((c) => c.id === ctx.collegeId)?.name],
+                "الجداول الفردية للمحاضرين",
+              )}
+              loadSheet={loadBatchSheet}
+            />
+            <p className="text-xs text-muted-foreground">
+              يطبع الجدول الفردي الكامل لكل محاضر في الكلية في ملف واحد، كل محاضر في صفحة جديدة، ضمن{" "}
+              {scopeLabel}. المحاضر الذي لا محاضرات له في هذا النطاق لا تُطبع له ورقة.
+            </p>
+          </div>
           {canViewAcrossColleges && reportScopes.some((s) => s.collegeId !== ctx.collegeId) && (
             <div className="col-span-full border-t pt-3">
               <p className="font-medium">تدريس المحاضر في الكليات الأخرى</p>
