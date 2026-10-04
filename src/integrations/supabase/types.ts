@@ -1157,6 +1157,44 @@ export type Database = {
         }
         Relationships: []
       }
+      deleted_study_plan_archives: {
+        Row: {
+          archived_at: string
+          college_id: string
+          deleted_at: string
+          deleted_by: string
+          id: string
+          payload: Json
+          study_plan_id: string
+        }
+        Insert: {
+          archived_at: string
+          college_id: string
+          deleted_at?: string
+          deleted_by: string
+          id?: string
+          payload: Json
+          study_plan_id: string
+        }
+        Update: {
+          archived_at?: string
+          college_id?: string
+          deleted_at?: string
+          deleted_by?: string
+          id?: string
+          payload?: Json
+          study_plan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deleted_study_plan_archives_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       delivery_group_partition_members: {
         Row: {
           cohort_id: string
@@ -3598,6 +3636,8 @@ export type Database = {
           is_coordination: boolean
           name: string
           notes: string | null
+          retired_at: string | null
+          retired_by: string | null
           status: string
           updated_at: string
         }
@@ -3613,6 +3653,8 @@ export type Database = {
           is_coordination?: boolean
           name: string
           notes?: string | null
+          retired_at?: string | null
+          retired_by?: string | null
           status?: string
           updated_at?: string
         }
@@ -3628,6 +3670,8 @@ export type Database = {
           is_coordination?: boolean
           name?: string
           notes?: string | null
+          retired_at?: string | null
+          retired_by?: string | null
           status?: string
           updated_at?: string
         }
@@ -4291,6 +4335,8 @@ export type Database = {
       }
       study_plans: {
         Row: {
+          archived_at: string | null
+          archived_by: string | null
           code: string
           college_id: string
           created_at: string
@@ -4303,6 +4349,8 @@ export type Database = {
           version: string
         }
         Insert: {
+          archived_at?: string | null
+          archived_by?: string | null
           code: string
           college_id: string
           created_at?: string
@@ -4315,6 +4363,8 @@ export type Database = {
           version?: string
         }
         Update: {
+          archived_at?: string | null
+          archived_by?: string | null
           code?: string
           college_id?: string
           created_at?: string
@@ -4810,6 +4860,10 @@ export type Database = {
       }
     }
     Functions: {
+      _assert_schedule_version_assignment_integrity: {
+        Args: { p_college_id: string; p_schedule_version_id: string }
+        Returns: undefined
+      }
       _avail_date_span: {
         Args: { p_end_date: string; p_start_date: string }
         Returns: unknown
@@ -5061,6 +5115,22 @@ export type Database = {
         Returns: boolean
       }
       _ss_pack: { Args: { p_conflicts: Json; p_vid: string }; Returns: Json }
+      _ss_partition_daily_hours: {
+        Args: {
+          p_cohort: string
+          p_dow: number
+          p_group: string
+          p_kind: string
+          p_members: Json
+          p_practical_limit: number
+          p_proposed: number
+          p_rows: Json
+          p_sid: string
+          p_theory_limit: number
+          p_total_limit: number
+        }
+        Returns: Json
+      }
       _ss_peer_i: {
         Args: {
           p_cid: string
@@ -5302,6 +5372,17 @@ export type Database = {
               isSetofReturn: false
             }
           }
+      academic_program_owners: {
+        Args: { p_program_ids: string[] }
+        Returns: {
+          college_id: string
+          college_name: string
+          department_name: string
+          owner_program_id: string
+          program_id: string
+          program_name: string
+        }[]
+      }
       apply_schedule_compaction: {
         Args: {
           p_college_id: string
@@ -5372,6 +5453,10 @@ export type Database = {
         }
         Returns: Json
       }
+      approve_cohort_elective_selections: {
+        Args: { p_cohort_id: string }
+        Returns: Json
+      }
       approve_scheduling_cohort_term_headcount: {
         Args: { p_id: string; p_notes?: string }
         Returns: Json
@@ -5380,6 +5465,7 @@ export type Database = {
         Args: { p_id: string; p_notes?: string }
         Returns: Json
       }
+      archive_study_plan: { Args: { p_plan_id: string }; Returns: Json }
       assert_delivery_group_assignable: {
         Args: { p_active: boolean; p_is_obsolete: boolean }
         Returns: undefined
@@ -5531,12 +5617,17 @@ export type Database = {
         Args: { p_decision: string; p_note?: string; p_request_id: string }
         Returns: Json
       }
+      delete_archived_study_plan: { Args: { p_plan_id: string }; Returns: Json }
       delivery_group_derivation_status:
         | { Args: { p_group: string }; Returns: Json }
         | { Args: { p_group: string; p_version: string }; Returns: Json }
       delivery_group_is_current:
         | { Args: { p_group: string }; Returns: boolean }
         | { Args: { p_group: string; p_version: string }; Returns: boolean }
+      delivery_group_shared_in_published: {
+        Args: { p_group: string }
+        Returns: boolean
+      }
       delivery_groups_share_students: {
         Args: { p_a: string; p_b: string }
         Returns: boolean
@@ -5972,6 +6063,20 @@ export type Database = {
         }
         Returns: Json
       }
+      list_teaching_assignment_workspace_for_version: {
+        Args: {
+          p_assignment_status?: string
+          p_cohort_id?: string
+          p_college_id: string
+          p_component_type?: string
+          p_level_id?: string
+          p_program_id?: string
+          p_schedule_version_id: string
+          p_study_system?: string
+          p_term_id?: string
+        }
+        Returns: Json
+      }
       lock_delivery_group_for_assignment: {
         Args: { p_delivery_group_id: string }
         Returns: {
@@ -6064,6 +6169,16 @@ export type Database = {
               isSetofReturn: false
             }
           }
+      operational_shared_lecture_group_ids: {
+        Args: { p_group: string }
+        Returns: {
+          group_id: string
+        }[]
+      }
+      operational_shared_lecture_matches: {
+        Args: { p_cohort?: string; p_group: string; p_system?: string }
+        Returns: boolean
+      }
       password_change_required: { Args: never; Returns: boolean }
       persist_schedule_quality_run: {
         Args: {
@@ -6090,6 +6205,12 @@ export type Database = {
       preview_version_session_moves: {
         Args: { p_manifest: Json; p_version: string }
         Returns: string
+      }
+      published_shared_lecture_members: {
+        Args: { p_anchor: string }
+        Returns: {
+          group_id: string
+        }[]
       }
       purge_all_academic_operational_data: { Args: never; Returns: Json }
       purge_disposable_draft_schedule_version: {
@@ -6197,6 +6318,10 @@ export type Database = {
           student_key: string
         }[]
       }
+      schedule_version_assignment_placement_context: {
+        Args: { p_version: string }
+        Returns: Json
+      }
       schedule_version_cohort_facts: {
         Args: { p_cohorts: string[]; p_version: string }
         Returns: {
@@ -6286,6 +6411,10 @@ export type Database = {
         Args: { p_college_id: string }
         Returns: number
       }
+      set_archived_schedule_version_retired: {
+        Args: { p_retire: boolean; p_version_id: string }
+        Returns: Json
+      }
       set_instructor_availability_enforcement: {
         Args: { p_college_id: string; p_enabled: boolean }
         Returns: Json
@@ -6314,6 +6443,10 @@ export type Database = {
           p_start: string
         }
         Returns: boolean
+      }
+      study_plan_delete_readiness: {
+        Args: { p_plan_id: string }
+        Returns: Json
       }
       submit_version_scoped_teaching_request: {
         Args: {
