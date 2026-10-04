@@ -5372,6 +5372,17 @@ export type Database = {
               isSetofReturn: false
             }
           }
+      academic_program_owners: {
+        Args: { p_program_ids: string[] }
+        Returns: {
+          college_id: string
+          college_name: string
+          department_name: string
+          owner_program_id: string
+          program_id: string
+          program_name: string
+        }[]
+      }
       apply_schedule_compaction: {
         Args: {
           p_college_id: string
