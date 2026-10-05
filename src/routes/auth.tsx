@@ -195,7 +195,57 @@ function AuthPage() {
 
             <div className="usr-access-notice mb-6 text-right">{USR_AUTH_NOTICE_AR}</div>
 
-            {mfaFactorId ? (
+            {forgotMode ? (
+              resetSent ? (
+                <div className="space-y-4" data-testid="auth-reset-sent">
+                  <p className="text-sm text-muted-foreground">
+                    إذا كان البريد مسجّلًا لدينا فقد أرسلنا إليه رابط استعادة كلمة المرور.
+                    تحقق من بريدك الوارد ومجلد الرسائل غير المرغوبة.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full rounded-lg"
+                    onClick={() => {
+                      setForgotMode(false);
+                      setResetSent(false);
+                    }}
+                  >
+                    العودة لتسجيل الدخول
+                  </Button>
+                </div>
+              ) : (
+                <form onSubmit={handleForgot} className="space-y-4" data-testid="auth-forgot-form">
+                  <p className="text-sm text-muted-foreground">
+                    أدخل بريدك الإلكتروني المسجّل وسنرسل لك رابطًا لتعيين كلمة مرور جديدة.
+                  </p>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">البريد الإلكتروني</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="name@university.edu"
+                      dir="ltr"
+                      autoComplete="username"
+                    />
+                  </div>
+                  <Button type="submit" className="w-full rounded-lg" size="lg" disabled={loading}>
+                    {loading ? "جارٍ الإرسال..." : "إرسال رابط الاستعادة"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full"
+                    onClick={() => setForgotMode(false)}
+                  >
+                    العودة لتسجيل الدخول
+                  </Button>
+                </form>
+              )
+            ) : mfaFactorId ? (
               <form onSubmit={handleOtp} className="space-y-4" data-testid="auth-mfa-step">
                 <div className="space-y-2">
                   <Label htmlFor="otp">رمز التحقق من تطبيق المصادقة</Label>
