@@ -108,6 +108,23 @@ function AuthPage() {
     }
   };
 
+  const handleForgot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      setResetSent(true);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "حدث خطأ";
+      toast.error(translateAuthError(msg));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!mfaFactorId) return;
