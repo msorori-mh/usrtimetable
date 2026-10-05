@@ -52,6 +52,9 @@ function AuthPage() {
   // TOTP factor and the fresh session is still aal1.
   const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
   const [otp, setOtp] = useState("");
+  // Password recovery step: sends the reset link, never signs anyone in.
+  const [forgotMode, setForgotMode] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   const finishSignIn = useCallback(
     async (signal: AbortSignal) => {
@@ -97,6 +100,23 @@ function AuthPage() {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       await finishSignIn(new AbortController().signal);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "حدث خطأ";
+      toast.error(translateAuthError(msg));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      setResetSent(true);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "حدث خطأ";
       toast.error(translateAuthError(msg));
@@ -175,7 +195,57 @@ function AuthPage() {
 
             <div className="usr-access-notice mb-6 text-right">{USR_AUTH_NOTICE_AR}</div>
 
-            {mfaFactorId ? (
+            {forgotMode ? (
+              resetSent ? (
+                <div className="space-y-4" data-testid="auth-reset-sent">
+                  <p className="text-sm text-muted-foreground">
+                    إذا كان البريد مسجّلًا لدينا فقد أرسلنا إليه رابط استعادة كلمة المرور.
+                    تحقق من بريدك الوارد ومجلد الرسائل غير المرغوبة.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full rounded-lg"
+                    onClick={() => {
+                      setForgotMode(false);
+                      setResetSent(false);
+                    }}
+                  >
+                    العودة لتسجيل الدخول
+                  </Button>
+                </div>
+              ) : (
+                <form onSubmit={handleForgot} className="space-y-4" data-testid="auth-forgot-form">
+                  <p className="text-sm text-muted-foreground">
+                    أدخل بريدك الإلكتروني المسجّل وسنرسل لك رابطًا لتعيين كلمة مرور جديدة.
+                  </p>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">البريد الإلكتروني</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="name@university.edu"
+                      dir="ltr"
+                      autoComplete="username"
+                    />
+                  </div>
+                  <Button type="submit" className="w-full rounded-lg" size="lg" disabled={loading}>
+                    {loading ? "جارٍ الإرسال..." : "إرسال رابط الاستعادة"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full"
+                    onClick={() => setForgotMode(false)}
+                  >
+                    العودة لتسجيل الدخول
+                  </Button>
+                </form>
+              )
+            ) : mfaFactorId ? (
               <form onSubmit={handleOtp} className="space-y-4" data-testid="auth-mfa-step">
                 <div className="space-y-2">
                   <Label htmlFor="otp">رمز التحقق من تطبيق المصادقة</Label>
@@ -221,6 +291,17 @@ function AuthPage() {
                 </div>
                 <Button type="submit" className="w-full rounded-lg" size="lg" disabled={loading}>
                   {loading ? "جارٍ التحقق..." : "تسجيل الدخول"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="link"
+                  className="w-full"
+                  onClick={() => {
+                    setForgotMode(true);
+                    setResetSent(false);
+                  }}
+                >
+                  نسيت كلمة المرور؟
                 </Button>
               </form>
             )}
