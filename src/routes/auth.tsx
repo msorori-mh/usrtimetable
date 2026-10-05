@@ -52,6 +52,9 @@ function AuthPage() {
   // TOTP factor and the fresh session is still aal1.
   const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
   const [otp, setOtp] = useState("");
+  // Password recovery step: sends the reset link, never signs anyone in.
+  const [forgotMode, setForgotMode] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   const finishSignIn = useCallback(
     async (signal: AbortSignal) => {

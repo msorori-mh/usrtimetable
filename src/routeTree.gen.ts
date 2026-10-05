@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as VerifyReportRouteImport } from './routes/verify-report'
 import { Route as AuthenticatedAcademicCalendarRouteImport } from './routes/_authenticated/academic-calendar'
 import { Route as AuthenticatedAcademicCohortsRouteImport } from './routes/_authenticated/academic-cohorts'
@@ -99,6 +100,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const VerifyReportRoute = VerifyReportRouteImport.update({
@@ -532,6 +538,7 @@ const AuthenticatedTimetableVersionIdPrintRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/verify-report': typeof VerifyReportRoute
   '/academic-calendar': typeof AuthenticatedAcademicCalendarRoute
   '/academic-cohorts': typeof AuthenticatedAcademicCohortsRoute
@@ -610,6 +617,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/verify-report': typeof VerifyReportRoute
   '/academic-calendar': typeof AuthenticatedAcademicCalendarRoute
   '/academic-cohorts': typeof AuthenticatedAcademicCohortsRoute
@@ -689,6 +697,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/verify-report': typeof VerifyReportRoute
   '/_authenticated/academic-calendar': typeof AuthenticatedAcademicCalendarRoute
   '/_authenticated/academic-cohorts': typeof AuthenticatedAcademicCohortsRoute
@@ -769,6 +778,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/reset-password'
     | '/verify-report'
     | '/academic-calendar'
     | '/academic-cohorts'
@@ -847,6 +857,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/reset-password'
     | '/verify-report'
     | '/academic-calendar'
     | '/academic-cohorts'
@@ -925,6 +936,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/reset-password'
     | '/verify-report'
     | '/_authenticated/academic-calendar'
     | '/_authenticated/academic-cohorts'
@@ -1005,6 +1017,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   VerifyReportRoute: typeof VerifyReportRoute
 }
 
@@ -1029,6 +1042,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/verify-report': {
@@ -1739,6 +1759,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   VerifyReportRoute: VerifyReportRoute,
 }
 export const routeTree = rootRouteImport
