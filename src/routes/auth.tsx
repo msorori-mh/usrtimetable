@@ -292,6 +292,17 @@ function AuthPage() {
                 <Button type="submit" className="w-full rounded-lg" size="lg" disabled={loading}>
                   {loading ? "جارٍ التحقق..." : "تسجيل الدخول"}
                 </Button>
+                <Button
+                  type="button"
+                  variant="link"
+                  className="w-full"
+                  onClick={() => {
+                    setForgotMode(true);
+                    setResetSent(false);
+                  }}
+                >
+                  نسيت كلمة المرور؟
+                </Button>
               </form>
             )}
           </div>
