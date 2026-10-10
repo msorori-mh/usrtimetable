@@ -43,14 +43,14 @@ describe("instructor availability status (الحالة)", () => {
     expect(DEFAULT_AVAILABILITY_STATUS).toBe("available");
   });
 
-  test("only available may receive new work; message names the status", () => {
+  test("available and internal scholarship may receive new work; message names the status", () => {
     expect(canReceiveNewWork("available")).toBe(true);
+    expect(canReceiveNewWork("internal_scholarship")).toBe(true);
     for (const v of [
       "unavailable",
       "sick_leave",
       "sabbatical",
       "external_scholarship",
-      "internal_scholarship",
       null,
     ])
       expect(canReceiveNewWork(v)).toBe(false);
