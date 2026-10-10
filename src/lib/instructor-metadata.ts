@@ -82,9 +82,13 @@ export function availabilityStatusLabelAr(value: string | null | undefined): str
   return INSTRUCTOR_AVAILABILITY_OPTIONS.find((o) => o.value === value)?.label ?? "غير معروفة";
 }
 
-/** Only "available" instructors may receive new assignments or new sessions. */
+/**
+ * Statuses that may receive new assignments or new sessions. Internal-scholarship
+ * lecturers keep a reduced home-college load (quota minus administrative release);
+ * mirrors public.instructor_status_allows_teaching on the server.
+ */
 export function canReceiveNewWork(value: string | null | undefined): boolean {
-  return value === "available";
+  return value === "available" || value === "internal_scholarship";
 }
 
 /** Arabic rejection message naming the instructor's status. */

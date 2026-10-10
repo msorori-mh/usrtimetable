@@ -27,8 +27,23 @@ describe("strict availability policy: reactivation + clone", () => {
     );
   });
 
-  test("available instructors are allowed; only non-available is rejected", () => {
+  test("teaching-eligible statuses come from one predicate", () => {
     expect(latestGuard).toContain("v_status <> 'available'");
+    const policy = readFileSync(
+      resolve(dir, "20261010200000_internal_scholarship_can_teach.sql"),
+      "utf8",
+    );
+    expect(policy).toContain("SELECT p_status IN ('available', 'internal_scholarship');");
+    for (const fn of [
+      "public.guard_new_work_requires_available_instructor()",
+      "public.create_version_scoped_replacement_assignment(uuid,uuid,uuid,numeric)",
+      "public.get_delivery_group_assignment_candidates(uuid)",
+      "faculty_private.apply_create_assignment(uuid,uuid,numeric,text)",
+    ])
+      expect(policy).toContain(fn);
+    expect(policy).toContain("INTERNAL_SCHOLARSHIP_MIGRATION_ANCHOR_MISSING");
+    expect(policy).not.toMatch(/\bDELETE\s+FROM\b/i);
+    expect(policy).not.toMatch(/\bUPDATE\s+public\.instructors\b/i);
   });
 
   test("clone stays protected: session insert guard has no clone exemption", () => {
