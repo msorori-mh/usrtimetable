@@ -32,6 +32,10 @@ type Api = {
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
     Functions: {
+      save_teaching_pay_rates: {
+        Args: { p_college_id: string; p_payload: Record<string, unknown> };
+        Returns: { ok: boolean; ids: string[]; count: number };
+      };
       teaching_payroll: {
         Args: {
           p_college_id: string;
@@ -114,11 +118,17 @@ function PayWorkspace({
     currency: string;
   } | null>(null);
   const call = async (action: string, payload: Record<string, unknown>) => {
-    const { data, error } = await client.rpc("teaching_payroll", {
-      p_college_id: collegeId,
-      p_action: action,
-      p_payload: payload,
-    });
+    const { data, error } =
+      action === "save_rates"
+        ? await client.rpc("save_teaching_pay_rates", {
+            p_college_id: collegeId,
+            p_payload: payload,
+          })
+        : await client.rpc("teaching_payroll", {
+            p_college_id: collegeId,
+            p_action: action,
+            p_payload: payload,
+          });
     if (error) throw new Error(error.message);
     return data;
   };
@@ -187,8 +197,8 @@ function PayWorkspace({
       setMessage(
         action === "approve"
           ? "تم الاعتماد المالي وتثبيت السعر والمبلغ."
-          : action === "save_rate"
-            ? "تم حفظ إصدار السعر."
+          : action === "save_rates"
+            ? "تم حفظ جميع إصدارات الأسعار المختارة."
             : action === "void"
               ? "تم إلغاء المسودة مع حفظ أثرها."
               : "تم حفظ التنفيذ للمراجعة المالية.",
@@ -421,10 +431,11 @@ function PayWorkspace({
               <h2 className="font-bold">أسعار الجامعة حسب الرتبة والنظام ونوع الاستحقاق</h2>
               <p className="text-sm">
                 أدخل السعر وفق القرار المعتمد. كل تعديل إصدار بتاريخ سريان جديد؛ المبالغ المعتمدة
-                سابقًا تبقى ثابتة.
+                سابقًا تبقى ثابتة. اختيار «الكل» يطبّق الأجرة نفسها على النوعين أو النظامين؛
+                واختياره في الحقلين ينشئ أربعة أسعار للرتبة المحددة دفعة واحدة.
               </p>
               <form
-                onSubmit={(e) => void submit(e, "save_rate")}
+                onSubmit={(e) => void submit(e, "save_rates")}
                 className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
               >
                 <Field label="الرتبة العلمية">
@@ -436,12 +447,14 @@ function PayWorkspace({
                   </select>
                 </Field>
                 <Field label="نوع الأجر">
-                  <select name="kind" className={controlClass}>
+                  <select name="kind" className={controlClass} defaultValue="overload">
+                    <option value="all">الكل</option>
                     <Options values={PAY_KINDS} />
                   </select>
                 </Field>
                 <Field label="نظام الأجر">
-                  <select name="system" className={controlClass}>
+                  <select name="system" className={controlClass} defaultValue="regular">
+                    <option value="all">الكل</option>
                     <Options values={PAY_SYSTEMS} />
                   </select>
                 </Field>
