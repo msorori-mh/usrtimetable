@@ -197,5 +197,19 @@ export function payReportRows(entries: PayEntry[]) {
       amount: e.amount,
       reference: e.approval_ref,
       approved_at: e.approved_at?.slice(0, 10) ?? "",
-    }));
+    }))
+    .map((row) =>
+      Object.fromEntries(
+        Object.entries(row).map(([key, value]) => [key, spreadsheetSafeText(value)]),
+      ),
+    );
+}
+
+/** The shared CSV exporter only quotes delimiters. Neutralize executable text
+ * locally for this financial statement, keeping numeric amounts numeric. */
+export function spreadsheetSafeText(value: string | number | null): string | number | null {
+  return typeof value === "string" &&
+    (/^[\s\uFEFF]*[=+@-]/u.test(value) || /^[\t\r\n]/u.test(value))
+    ? `'${value}`
+    : value;
 }

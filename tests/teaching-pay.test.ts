@@ -6,9 +6,17 @@ import {
   parsePayData,
   payReportRows,
   payTotals,
+  spreadsheetSafeText,
   type PayEntry,
   type PayRate,
 } from "../src/lib/reports/teaching-pay.ts";
+
+test("financial export neutralizes formulas but preserves numeric amounts", () => {
+  for (const input of ["=1+1", "+cmd", "-cmd", "@sum(1)", "  =1", "\ttext", "\rtext"])
+    assert.equal(spreadsheetSafeText(input), "'" + input);
+  assert.equal(spreadsheetSafeText(125.5), 125.5);
+  assert.equal(spreadsheetSafeText("قرار 1"), "قرار 1");
+});
 const entry: PayEntry = {
   id: "e1",
   identity_id: "i1",
