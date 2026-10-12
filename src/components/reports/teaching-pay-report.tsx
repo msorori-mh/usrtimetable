@@ -1,3 +1,4 @@
+import { canManageTeachingPay } from "@/lib/viewer-roles";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -82,8 +83,12 @@ export function TeachingPayReport(props: {
         تعذر التحقق من الصلاحيات. <Button onClick={() => void me.refetch()}>إعادة المحاولة</Button>
       </Card>
     );
-  if (!me.data?.isSuperAdmin)
-    return <Card className="p-6">إدارة أجور التدريس وكشوفها متاحة للأدمن العام فقط.</Card>;
+  if (!canManageTeachingPay(me.data))
+    return (
+      <Card className="p-6">
+        إدارة أجور التدريس وكشوفها متاحة للشؤون الأكاديمية والأدمن العام فقط.
+      </Card>
+    );
   return <PayWorkspace {...props} />;
 }
 

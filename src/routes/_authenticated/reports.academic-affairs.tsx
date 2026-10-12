@@ -1,3 +1,6 @@
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { canManageTeachingPay } from "@/lib/viewer-roles";
+import { TeachingCoverageReport } from "@/components/reports/teaching-coverage-report";
 import { TeachingPayReport } from "@/components/reports/teaching-pay-report";
 import { SystemHoursReport } from "@/components/reports/system-hours-report";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -82,6 +85,15 @@ function Page() {
   const { active, isLoading } = useActiveCollege();
   if (isLoading) return <Card className="p-6">جارٍ تحميل الكليات…</Card>;
   if (!active) return <Card className="p-6">لا توجد كلية متاحة لهذا الحساب.</Card>;
+  if (report === "coverage")
+    return (
+      <TeachingCoverageReport
+        key={active.id}
+        collegeId={active.id}
+        collegeName={active.name}
+        initialTermId={termId}
+      />
+    );
   if (report === "teaching_pay")
     return (
       <TeachingPayReport
@@ -456,6 +468,7 @@ function academicTableColumns(kind: AcademicReportKind): ReportColumn<AcademicRe
 }
 
 function AcademicReports({ collegeId, collegeName }: { collegeId: string; collegeName: string }) {
+  const { data: me } = useCurrentUser();
   const kind = Route.useSearch().report ?? "workload";
   const navigate = Route.useNavigate();
   const setKind = (value: AcademicReportKind) => {
@@ -755,10 +768,12 @@ function AcademicReports({ collegeId, collegeName }: { collegeId: string; colleg
                 label="نوع التقرير"
                 value={kind}
                 onChange={(v) => setKind(v as AcademicReportKind)}
-                items={Object.entries(ACADEMIC_REPORT_TITLES).map(([id, name]) => ({
-                  id,
-                  name,
-                }))}
+                items={Object.entries(ACADEMIC_REPORT_TITLES)
+                  .filter(([id]) => id !== "teaching_pay" || canManageTeachingPay(me))
+                  .map(([id, name]) => ({
+                    id,
+                    name,
+                  }))}
               />
               <Filter
                 label="الفصل الدراسي"
