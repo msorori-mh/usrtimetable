@@ -18,6 +18,7 @@ const fact: SystemHoursFact = {
   unknown: 0,
   project: 4,
   allocation_pending: false,
+  classification_pending: false,
 };
 const row = (
   patch: Partial<SystemHoursFact> = {},
@@ -84,5 +85,11 @@ test("parser rejects scope drift, duplicate identities and incomplete facts", ()
     { ...payload, rows: [{ ...fact, allocation_pending: undefined }] },
   ]) {
     assert.throws(() => parseSystemHours(bad, scope));
+  }
+});
+
+test("unclassified employment stays visible but never becomes payable hours", () => {
+  for (const kind of ["contractual", "overload_system"] as const) {
+    assert.equal(row({ classification_pending: true }, kind).total, null);
   }
 });

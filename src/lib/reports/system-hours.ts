@@ -11,6 +11,7 @@ export interface SystemHoursFact {
   unknown: number;
   project: number;
   allocation_pending: boolean;
+  classification_pending: boolean;
 }
 export type SystemHoursRow = Record<string, string | number | null>;
 const realHours = (v: unknown): v is number =>
@@ -44,7 +45,8 @@ export function parseSystemHours(
       !(r.rank === null || typeof r.rank === "string") ||
       !(r.quota === null || realHours(r.quota)) ||
       ![r.regular, r.parallel, r.unknown, r.project].every(realHours) ||
-      typeof r.allocation_pending !== "boolean"
+      typeof r.allocation_pending !== "boolean" ||
+      typeof r.classification_pending !== "boolean"
     )
       throw new Error("بيانات الساعات غير مكتملة؛ لا يمكن اعتماد التقرير");
     ids.add(r.identity_id);
@@ -60,7 +62,9 @@ export function buildSystemHoursRows(
 ): SystemHoursRow[] {
   return facts.flatMap((f) => {
     const pending =
-      f.allocation_pending || (kind === "overload_system" && (f.quota === null || f.unknown > 0));
+      f.classification_pending ||
+      f.allocation_pending ||
+      (kind === "overload_system" && (f.quota === null || f.unknown > 0));
     const regular = pending
       ? null
       : kind === "contractual"
@@ -97,13 +101,15 @@ export function buildSystemHoursRows(
         unknown,
         total,
         project: round(f.project),
-        status: f.allocation_pending
-          ? "بانتظار توزيع ساعات التدريس المشترك"
-          : kind === "overload_system" && f.quota === null
-            ? "بانتظار اعتماد النصاب"
-            : f.unknown > 0
-              ? "ساعات مشتركة أو بلا نظام محدد؛ يلزم تحديد توزيعها"
-              : "مكتمل",
+        status: f.classification_pending
+          ? "بانتظار اعتماد نوع التوظيف أو التعاقد"
+          : f.allocation_pending
+            ? "بانتظار توزيع ساعات التدريس المشترك"
+            : kind === "overload_system" && f.quota === null
+              ? "بانتظار اعتماد النصاب"
+              : f.unknown > 0
+                ? "ساعات مشتركة أو بلا نظام محدد؛ يلزم تحديد توزيعها"
+                : "مكتمل",
       },
     ];
   });

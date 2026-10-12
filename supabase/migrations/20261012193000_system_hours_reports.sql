@@ -36,9 +36,9 @@ BEGIN
     SELECT hp.* FROM faculty_private.home_profiles hp
     WHERE hp.university_id = v_university AND (
       (p_kind = 'overload_system' AND hp.home_college_id = p_college_id
-        AND faculty_private.quota_applicability(hp.type_code, hp.employment_type) IS TRUE)
+        AND faculty_private.quota_applicability(hp.type_code, hp.employment_type) IS NOT FALSE)
       OR (p_kind = 'contractual'
-        AND faculty_private.quota_applicability(hp.type_code, hp.employment_type) IS FALSE
+        AND faculty_private.quota_applicability(hp.type_code, hp.employment_type) IS NOT TRUE
         AND EXISTS (
           SELECT 1 FROM public.faculty_identity_links l
           JOIN public.v_instructor_delivery_workload w ON w.instructor_id = l.instructor_id
@@ -93,7 +93,8 @@ BEGIN
       'university_number', h.university_number, 'rank', h.academic_rank,
       'quota', CASE WHEN p_kind = 'overload_system' THEN h.quota END,
       'regular', v_regular, 'parallel', v_parallel, 'unknown', v_unknown,
-      'project', v_project, 'allocation_pending', v_pending));
+      'project', v_project, 'allocation_pending', v_pending,
+      'classification_pending', faculty_private.quota_applicability(h.type_code,h.employment_type) IS NULL));
   END LOOP;
   RETURN jsonb_build_object('college_id', p_college_id, 'term_id', p_term_id,
     'kind', p_kind, 'rows', v_rows);
