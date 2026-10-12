@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
-import { Card } from "@/components/ui/card";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import {
   canViewLeadership,
@@ -27,13 +26,17 @@ import {
   ClipboardCheck,
   Archive,
   Stamp,
-  ChevronDown,
+  ArrowUpLeft,
+  Search,
+  X,
+  Wallet,
+  Layers,
   Printer,
 } from "lucide-react";
 
 const HUB_TITLE = "مركز التقارير — جامعة إقليم سبأ";
 const HUB_DESCRIPTION =
-  "مركز تقارير الجداول الأكاديمية: جداول المحاضرين والقاعات والبرامج، تحليلات الأعباء والاستخدام، الجاهزية والتعارضات والجودة — قراءة فقط مع رأس رسمي وطباعة وتصدير.";
+  "تقارير الجامعة في مكان واحد: الجداول والإسناد والقاعات والمؤشرات والأجور، مع بحث سريع وطباعة وتصدير.";
 
 export const Route = createFileRoute("/_authenticated/reports/")({
   head: () => ({
@@ -51,6 +54,7 @@ export const Route = createFileRoute("/_authenticated/reports/")({
 
 interface ReportCard {
   reports?: ReportCard[];
+  access?: "leadership" | "admin";
   to: string;
   search?: {
     report:
@@ -267,286 +271,365 @@ const QUALITY_REPORTS: ReportCard = {
   reports: OPERATIONAL_REPORTS.slice(3),
 };
 
-const SECTIONS: {
+interface ReportCategory {
   id: string;
   title: string;
   description: string;
+  icon: ReactNode;
   items: ReportCard[];
-  accent?: string;
-}[] = [
+}
+
+const SECTIONS: ReportCategory[] = [
   {
     id: "timetable",
-    title: "أريد عرض جدول",
-    description: "اختر جدول المحاضر أو القاعة أو مجموعة الطلاب.",
-    items: [STUDENT_REPORTS, TIMETABLE_REPORTS[2], ROOM_REPORTS],
+    title: "الجداول الدراسية",
+    description: "جداول الكلية والمحاضرين والبرامج والمستويات.",
+    icon: <CalendarClock className="h-4 w-4" />,
+    items: [TIMETABLE_REPORTS[2], ...STUDENT_REPORTS.reports!],
   },
   {
-    id: "analytics",
-    title: "أريد مراجعة الإسناد والأعباء والموارد",
-    description: "مؤشرات تحميل واستغلال — للمراجعة الإدارية دون تجميع عبر نسخ متعددة.",
+    id: "faculty",
+    title: "المحاضرون والإسناد",
+    description: "الكادر الأكاديمي، إسناد المقررات، النصاب والساعات بحسب النظام.",
+    icon: <UserSquare2 className="h-4 w-4" />,
     items: [
       ANALYTICS_REPORTS[0],
       COURSE_ASSIGNMENT_STATUS_REPORT,
-      TEACHING_LOAD_REPORTS,
-      DEMAND_CAPACITY_REPORT,
+      ...TEACHING_LOAD_REPORTS.reports!,
     ],
   },
   {
-    id: "operational",
-    title: "أريد معرفة النواقص والمشكلات",
-    description: "تعارضات، جاهزية، نواقص الجدولة، وجودة — للقراءة فقط من بيانات محفوظة.",
-    items: [...OPERATIONAL_REPORTS.slice(0, 3), QUALITY_REPORTS],
+    id: "rooms",
+    title: "القاعات والمعامل",
+    description: "القاعات والمعامل: الجداول والسعة والاستخدام والاحتياج.",
+    icon: <DoorOpen className="h-4 w-4" />,
+    items: [...ROOM_REPORTS.reports!, { ...DEMAND_CAPACITY_REPORT, access: "leadership" }],
+  },
+  {
+    id: "quality",
+    title: "الجودة والجاهزية",
+    description: "راجع النواقص والتعارضات ومؤشرات جودة الجدول.",
+    icon: <ClipboardCheck className="h-4 w-4" />,
+    items: [...OPERATIONAL_REPORTS.slice(0, 3), ...QUALITY_REPORTS.reports!],
+  },
+  {
+    id: "leadership",
+    title: "التقارير التنفيذية",
+    description: "صورة شاملة للجامعة والكليات لدعم المراجعة واتخاذ القرار.",
+    icon: <Gauge className="h-4 w-4" />,
+    items: [
+      {
+        to: "/reports/university-overview",
+        title: "التقرير التنفيذي الشامل",
+        desc: "الأقسام والاحتياج التدريسي والقاعات والمعامل والكادر في عرض موحد للاجتماعات.",
+        icon: <Building2 className="h-5 w-5" />,
+        access: "leadership",
+      },
+      {
+        to: "/reports/leadership",
+        title: "المؤشرات التنفيذية للجامعة",
+        desc: "الإسناد والنصاب والزيادة والعجز والساعات التدريسية ومؤشرات الموارد.",
+        icon: <Gauge className="h-5 w-5" />,
+        access: "leadership",
+      },
+    ],
+  },
+  {
+    id: "pay",
+    title: "الأجور والمستحقات",
+    description: "الأسعار والتنفيذ المعتمد وكشوف المستحقات المالية.",
+    icon: <Wallet className="h-4 w-4" />,
+    items: [
+      {
+        to: "/reports/academic-affairs",
+        search: { report: "teaching_pay" },
+        title: "أجور التدريس الفعلي وكشوف الصرف",
+        desc: "أسعار الرتب العلمية، الساعات المنفذة المعتمدة، وكشوف الزائد والتعاقدي للأمين العام.",
+        icon: <Wallet className="h-5 w-5" />,
+        access: "admin",
+      },
+    ],
   },
 ];
 
-const LEGACY_SECTION = {
+const LEGACY_SECTION: ReportCategory = {
   id: "legacy",
   title: "أرشيف التقارير التاريخية",
-  description:
-    "تحذير: مسارات محفوظة للتوافق — للعرض التاريخي فقط · يُفضّل البدائل الحديثة في الأقسام أعلاه.",
+  description: "للعرض التاريخي فقط؛ استخدم الجداول الدراسية للتقارير الحالية.",
+  icon: <Archive className="h-4 w-4" />,
   items: LEGACY_REPORTS,
-  accent: "border-amber-500/30 bg-amber-500/5",
 };
+const QUICK_REPORTS = [
+  TIMETABLE_REPORTS[2],
+  TIMETABLE_REPORTS[4],
+  TIMETABLE_REPORTS[0],
+  COURSE_ASSIGNMENT_STATUS_REPORT,
+  TEACHING_LOAD_REPORTS.reports![4],
+  TIMETABLE_REPORTS[1],
+];
+const reportKey = (report: ReportCard) => `${report.to}:${report.search?.report ?? "all"}`;
 
-function ReportGrid({
-  items,
-  expandMatches = false,
-}: {
-  items: ReportCard[];
-  expandMatches?: boolean;
-}) {
+function ReportList({ items }: { items: (ReportCard & { category?: string })[] }) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {items.map((r) =>
-        r.reports ? (
-          <Card key={r.to} className="h-full">
-            <details
-              key={expandMatches ? "search" : "browse"}
-              open={expandMatches || undefined}
-              className="group"
-            >
-              <summary className="flex cursor-pointer list-none items-start gap-3 rounded-lg p-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
-                <span className="rounded-md bg-primary/10 p-2 text-primary">{r.icon}</span>
-                <span className="min-w-0 flex-1">
-                  <span className="block font-semibold">{r.title}</span>
-                  <span className="mt-1 block text-xs text-muted-foreground">{r.desc}</span>
-                  <span className="mt-2 block text-xs text-primary">
-                    عرض التقارير ({r.reports.length})
-                  </span>
-                </span>
-                <ChevronDown
-                  aria-hidden
-                  className="mt-2 h-4 w-4 shrink-0 transition-transform group-open:rotate-180"
-                />
-              </summary>
-              <nav aria-label={r.title} className="space-y-1 border-t p-2">
-                {r.reports.map((report) => (
-                  <Link
-                    key={`${report.to}:${report.search?.report ?? "all"}`}
-                    to={report.to}
-                    search={report.search}
-                    aria-label={report.linkLabel ?? report.title}
-                    className="block rounded-md p-3 hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
-                  >
-                    <span className="block text-sm font-semibold text-primary">{report.title}</span>
-                    <span className="mt-1 block text-xs text-muted-foreground">{report.desc}</span>
-                  </Link>
-                ))}
-              </nav>
-            </details>
-          </Card>
-        ) : (
+    <ul className="grid gap-x-5 sm:grid-cols-2" aria-label="قائمة التقارير">
+      {items.map((report) => (
+        <li key={reportKey(report)} className="min-w-0 border-b border-border/60 last:border-b-0">
           <Link
-            key={`${r.to}:${r.search?.report ?? "all"}`}
-            to={r.to}
-            search={r.search}
-            className="block"
-            aria-label={r.linkLabel ?? r.title}
+            to={report.to}
+            search={report.search}
+            aria-label={report.linkLabel ?? report.title}
             data-report-hub-link={
-              r.to === "/reports/data-readiness" ? "data-readiness-report" : undefined
+              report.to === "/reports/data-readiness" ? "data-readiness-report" : undefined
             }
+            className="group flex h-full min-h-20 items-start gap-3 rounded-md px-2 py-3 transition-colors hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
           >
-            <Card className="p-4 hover:shadow-md transition-shadow cursor-pointer h-full">
-              <div className="flex items-start gap-3">
-                <div className="rounded-md bg-primary/10 text-primary p-2">{r.icon}</div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold">{r.title}</span>
-                    {r.badge === "official" && (
-                      <Badge variant="default" className="text-[10px] gap-1">
-                        <Stamp className="h-3 w-3" /> رسمي
-                      </Badge>
-                    )}
-                    {r.badge === "legacy" && (
-                      <Badge
-                        variant="outline"
-                        className="text-[10px] gap-1 border-amber-500/50 text-amber-700"
-                      >
-                        <Archive className="h-3 w-3" /> Legacy
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">{r.desc}</div>
-                </div>
-              </div>
-            </Card>
+            <span
+              aria-hidden
+              className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/5 text-primary"
+            >
+              {report.icon}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="flex flex-wrap items-center gap-2 text-sm font-semibold leading-6 text-foreground group-hover:text-primary">
+                {report.title}
+                {report.badge === "official" && (
+                  <Stamp aria-label="رسمي" className="h-3.5 w-3.5 text-primary" />
+                )}
+                {report.badge === "legacy" && (
+                  <Badge variant="outline" className="text-[10px]">
+                    أرشيف
+                  </Badge>
+                )}
+              </span>
+              <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">
+                {report.desc}
+              </span>
+              {report.category && (
+                <span className="mt-1 block text-[11px] text-primary">{report.category}</span>
+              )}
+            </span>
+            <ArrowUpLeft
+              aria-hidden
+              className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-primary"
+            />
           </Link>
-        ),
-      )}
-    </div>
+        </li>
+      ))}
+    </ul>
   );
 }
 
 function ReportsHub() {
+  const [selected, setSelected] = useState("quick");
   const [legacyOpen, setLegacyOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const { data: me, isLoading, error, refetch } = useCurrentUser();
   const needle = normalizeSearchText(search);
-  const match = (items: ReportCard[]) =>
-    needle
-      ? items.filter((r) =>
-          normalizeSearchText(
-            [
-              r.title,
-              r.desc,
-              ...(r.reports ?? []).flatMap((report) => [report.title, report.desc]),
-            ].join(" "),
-          ).includes(needle),
-        )
-      : items;
-  const { data: me } = useCurrentUser();
-  const visibleSections = SECTIONS.map((s) => ({
-    ...s,
-    items: match(s.items).filter(
-      (item) => item !== DEMAND_CAPACITY_REPORT || canViewLeadership(me),
-    ),
-  })).filter((s) => s.items.length > 0);
-  const legacyItems = match(LEGACY_SECTION.items);
-  // «مشاهد» stays inside /reports/*: the publishing area is out of scope.
+  const visibleSections = SECTIONS.map((section) => ({
+    ...section,
+    items: section.items
+      .filter((report) =>
+        report.access === "admin"
+          ? !!me?.isSuperAdmin
+          : report.access === "leadership"
+            ? canViewLeadership(me)
+            : true,
+      )
+      .map((report) =>
+        report.to === "/reports/leadership"
+          ? { ...report, title: executiveDashboardTitle(me) }
+          : report,
+      ),
+  })).filter((section) => section.items.length);
+  const categories: ReportCategory[] = [
+    {
+      id: "quick",
+      title: "وصول سريع",
+      description: "ابدأ مباشرة بالتقرير المطلوب، أو اختر تصنيفًا لاستعراض بقية التقارير.",
+      icon: <Layers className="h-4 w-4" />,
+      items: QUICK_REPORTS,
+    },
+    ...visibleSections,
+  ];
+  const active =
+    (legacyOpen ? LEGACY_SECTION : categories.find((category) => category.id === selected)) ??
+    categories[0];
+  const allReports = [...visibleSections, LEGACY_SECTION].flatMap((category) =>
+    category.items.map((report) => ({ ...report, category: category.title })),
+  );
+  const results = needle
+    ? allReports.filter((report) =>
+        normalizeSearchText(`${report.title} ${report.desc} ${report.category}`).includes(needle),
+      )
+    : active.items;
   const restrictedViewer =
     isReportsOnlyRole(me) || isAcademicAffairsRole(me) || isLeadershipOnlyRole(me);
+  const choose = (id: string) => {
+    setSelected(id);
+    setLegacyOpen(id === "legacy");
+    setSearch("");
+  };
+  if (isLoading)
+    return (
+      <p role="status" className="p-4 text-sm text-muted-foreground">
+        جارٍ تحميل التقارير المتاحة…
+      </p>
+    );
+  if (error || !me)
+    return (
+      <div role="alert" className="rounded-lg border p-4">
+        <p>تعذر تحميل التقارير المتاحة لحسابك.</p>
+        <button
+          type="button"
+          className="mt-2 text-sm font-semibold text-primary"
+          onClick={() => void refetch()}
+        >
+          إعادة المحاولة
+        </button>
+      </div>
+    );
   return (
-    <div className="space-y-8" dir="rtl">
-      <section
-        className="rounded-2xl border border-primary/20 bg-primary/5 p-5 sm:p-6"
-        aria-label="الترحيب بالمستخدم"
-      >
-        <p className="text-sm font-semibold text-primary">مركز التقارير</p>
-        <h2 className="mt-2 text-xl font-bold sm:text-2xl">
-          {me?.fullName?.trim() ? `مرحبًا، ${me.fullName.trim()}` : "مرحبًا بك"}
-        </h2>
-        <p className="mt-2 text-sm leading-7 text-muted-foreground">
-          من هنا تبدأ قراءة الصورة الأكاديمية: اختر الكلية، ثم التقرير الذي يجيب عن سؤالك.
-        </p>
-      </section>
-      {me?.isSuperAdmin && (
-        <Link
-          to="/reports/academic-affairs"
-          search={{ report: "teaching_pay" }}
-          className="block rounded-xl border-2 border-primary/30 bg-primary/5 p-5 text-primary"
-        >
-          <span className="text-lg font-bold">أجور التدريس الفعلي وكشوف الصرف</span>
-          <p className="mt-2 text-sm">
-            إعداد أجور الرتب العلمية، إدخال التنفيذ المعتمد، ومراجعة مستحقات الساعات الزائدة
-            والتعاقدية بحسب الكلية والقسم والبرنامج والنظام.
-          </p>
-        </Link>
-      )}
-      {canViewLeadership(me) && (
-        <Link
-          to="/reports/university-overview"
-          className="block rounded-xl border-2 border-emerald-700/30 bg-emerald-50 p-5 text-emerald-950"
-        >
-          <span className="text-lg font-bold">التقرير التنفيذي الشامل</span>
-          <p className="mt-2 text-sm">
-            الجامعة في صفحة واحدة: الأقسام واحتياجها التدريسي، القاعات والمعامل وسعتها واستخدامها،
-            والكادر الأكاديمي. مع وضع عرض للاجتماعات.
-          </p>
-        </Link>
-      )}
-      {canViewLeadership(me) && (
-        <Link
-          to="/reports/leadership"
-          className="block rounded-xl border-2 border-primary/30 bg-primary/5 p-5 text-primary"
-        >
-          <span className="text-lg font-bold">{executiveDashboardTitle(me)}</span>
-          <p className="mt-2 text-sm">
-            الإسناد والنصاب والزيادة والعجز والقاعات والساعات التدريسية لجميع الكليات في صفحة واحدة.
-          </p>
-        </Link>
-      )}
-      <header className="usr-page-header">
-        <span className="usr-page-header-icon">
-          <FileBarChart2 className="h-5 w-5" />
-        </span>
+    <div className="min-w-0 space-y-4" dir="rtl" data-testid="reports-compact-hub">
+      <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">التقارير والطباعة</h1>
+          <h1 className="flex items-center gap-2 text-xl font-bold text-primary">
+            <FileBarChart2 aria-hidden className="h-5 w-5" />
+            التقارير والطباعة
+          </h1>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {allReports.length} تقريرًا متاحًا · اختر التصنيف أو ابحث باسم التقرير
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3 text-xs font-semibold text-primary">
+          {canViewLeadership(me) && (
+            <Link
+              to="/reports/university-overview"
+              className="rounded px-2 py-1.5 hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+            >
+              التقرير التنفيذي الشامل ↖
+            </Link>
+          )}
           {!restrictedViewer && (
             <Link
               to="/published-schedules"
-              className="mt-2 inline-block text-sm font-semibold text-primary hover:underline"
+              className="rounded px-2 py-1.5 hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
             >
-              الجداول الرسمية والنشر ←
+              الجداول الرسمية والنشر ↖
             </Link>
           )}
-          <p className="text-sm text-muted-foreground mt-1">
-            تقارير أكاديمية للقراءة فقط · رأس رسمي · طباعة · تصدير CSV و Excel.
-          </p>
         </div>
       </header>
-
-      <div className="relative max-w-md">
+      <div className="relative">
+        <Search
+          aria-hidden
+          className="pointer-events-none absolute start-3 top-3 h-4 w-4 text-muted-foreground"
+        />
         <Input
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="ابحث عن تقرير…"
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="ابحث في جميع التقارير: محاضر، ساعات، قاعات…"
           aria-label="ابحث عن تقرير"
+          className="h-10 ps-10 pe-12"
         />
-      </div>
-
-      {visibleSections.length === 0 && legacyItems.length === 0 && (
-        <p className="text-sm text-muted-foreground">لا يوجد تقرير مطابق لبحثك.</p>
-      )}
-
-      {visibleSections.map((section) => (
-        <section
-          key={section.id}
-          className={`space-y-3 rounded-lg border p-4 ${section.accent ?? "border-border/60"}`}
-        >
-          <div>
-            <h2 className="text-lg font-semibold">{section.title}</h2>
-            <p className="text-sm text-muted-foreground mt-0.5">{section.description}</p>
-          </div>
-          <ReportGrid items={section.items} expandMatches={!!needle} />
-        </section>
-      ))}
-
-      {legacyItems.length > 0 && (
-        <section
-          className={`space-y-3 rounded-lg border p-4 ${LEGACY_SECTION.accent}`}
-          data-testid="reports-legacy-section"
-        >
+        {search && (
           <button
             type="button"
-            onClick={() => setLegacyOpen((v) => !v)}
-            aria-expanded={legacyOpen}
-            className="flex w-full items-center justify-between gap-3 text-right"
+            aria-label="مسح البحث"
+            onClick={() => setSearch("")}
+            className="absolute end-1 top-1 rounded p-2 text-muted-foreground hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
           >
-            <span className="min-w-0">
-              <span className="flex items-center gap-2 text-lg font-semibold">
-                <Archive className="h-4 w-4 shrink-0" />
-                {LEGACY_SECTION.title}
-              </span>
-              <span className="mt-0.5 block text-sm text-muted-foreground">
-                {LEGACY_SECTION.description}
-              </span>
-            </span>
-            <ChevronDown
-              className={`h-4 w-4 shrink-0 transition-transform ${legacyOpen ? "rotate-180" : ""}`}
-            />
+            <X aria-hidden className="h-4 w-4" />
           </button>
-          {(legacyOpen || !!needle) && <ReportGrid items={legacyItems} />}
+        )}
+      </div>
+      <div className="grid min-w-0 gap-4 lg:grid-cols-[210px_minmax(0,1fr)]">
+        <nav aria-label="تصنيفات التقارير" className="min-w-0">
+          <label className="grid gap-2 text-sm lg:hidden">
+            تصنيف التقارير
+            <select
+              value={legacyOpen ? "legacy" : active.id}
+              onChange={(event) => choose(event.target.value)}
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+            >
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.title} ({category.items.length})
+                </option>
+              ))}
+              <option value="legacy">
+                {LEGACY_SECTION.title} ({LEGACY_REPORTS.length})
+              </option>
+            </select>
+          </label>
+          <div className="hidden space-y-1 rounded-xl border bg-muted/20 p-2 lg:block">
+            {categories.map((category) => (
+              <button
+                type="button"
+                key={category.id}
+                onClick={() => choose(category.id)}
+                aria-pressed={!needle && !legacyOpen && active.id === category.id}
+                aria-controls="reports-results"
+                className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-start text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${!needle && !legacyOpen && active.id === category.id ? "bg-primary font-semibold text-primary-foreground" : "text-muted-foreground hover:bg-primary/5 hover:text-primary"}`}
+              >
+                <span aria-hidden>{category.icon}</span>
+                <span className="flex-1">{category.title}</span>
+                <span className="text-xs tabular-nums opacity-80">{category.items.length}</span>
+              </button>
+            ))}
+            <div className="border-t pt-2" data-testid="reports-legacy-section">
+              <button
+                type="button"
+                onClick={() => choose(legacyOpen ? "quick" : "legacy")}
+                aria-expanded={legacyOpen}
+                aria-controls="reports-results"
+                className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-start text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${legacyOpen && !needle ? "bg-primary font-semibold text-primary-foreground" : "text-muted-foreground hover:bg-primary/5"}`}
+              >
+                <Archive aria-hidden className="h-4 w-4" />
+                <span className="flex-1">{LEGACY_SECTION.title}</span>
+                <span>{LEGACY_REPORTS.length}</span>
+              </button>
+            </div>
+          </div>
+        </nav>
+        <section
+          id="reports-results"
+          aria-labelledby="reports-results-title"
+          className="min-w-0 rounded-xl border bg-card px-4 py-3"
+        >
+          <div className="mb-1 border-b pb-3">
+            <div className="flex items-center justify-between gap-3">
+              <h2 id="reports-results-title" className="text-base font-semibold">
+                {needle ? "نتائج البحث في جميع التقارير" : active.title}
+              </h2>
+              <span
+                className="shrink-0 text-xs text-muted-foreground"
+                role="status"
+                aria-live="polite"
+              >
+                {results.length} تقارير
+              </span>
+            </div>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              {needle ? `نتائج البحث عن «${search.trim()}»` : active.description}
+            </p>
+          </div>
+          {results.length ? (
+            <ReportList items={results} />
+          ) : (
+            <div className="py-10 text-center">
+              <Search aria-hidden className="mx-auto mb-3 h-7 w-7 text-muted-foreground" />
+              <p className="text-sm">لا يوجد تقرير مطابق لبحثك.</p>
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="mt-3 text-sm font-semibold text-primary"
+              >
+                مسح البحث والعودة للتقارير
+              </button>
+            </div>
+          )}
         </section>
-      )}
+      </div>
     </div>
   );
 }
