@@ -101,3 +101,68 @@ test("coverage SQL scopes roles, classifies exclusively and preserves canonical 
     await db.close();
   }
 });
+
+test("All rate selections expand atomically, retain single selections and deny unauthorized roles", async () => {
+  const db = new PGlite();
+  try {
+    await db.exec(`CREATE ROLE anon;CREATE ROLE authenticated;CREATE SCHEMA auth;
+  CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS $$SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+  CREATE FUNCTION public.has_role(u uuid,r text) RETURNS boolean LANGUAGE sql AS $$SELECT (u='${uid(1)}' AND r='super_admin') OR (u='${uid(2)}' AND r='institutional_viewer')$$;
+  CREATE FUNCTION public.can_view_college(u uuid,c uuid) RETURNS boolean LANGUAGE sql AS $$SELECT c='${uid(10)}'$$;
+  CREATE TABLE rates(id uuid default gen_random_uuid(),kind text,system text,effective_from text,UNIQUE(kind,system,effective_from));
+  CREATE FUNCTION public.teaching_payroll(c uuid,a text,p jsonb) RETURNS jsonb LANGUAGE plpgsql AS $$DECLARE v uuid;BEGIN
+   INSERT INTO rates(kind,system,effective_from) VALUES(p->>'kind',p->>'system',p->>'effective_from') RETURNING id INTO v;
+   RETURN jsonb_build_object('id',v,'ok',true);END$$;`);
+    await db.exec(
+      await readFile(
+        new URL(
+          "../supabase/migrations/20261013023000_teaching_pay_bulk_rates.sql",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    );
+    await db.exec(
+      `SELECT set_config('request.jwt.claim.sub','${uid(2)}',false);SET ROLE authenticated;`,
+    );
+    const call = (p) =>
+      db.query(`SELECT public.save_teaching_pay_rates('${uid(10)}',$1::jsonb) r`, [
+        JSON.stringify(p),
+      ]);
+    assert.equal(
+      (await call({ kind: "all", system: "all", effective_from: "a" })).rows[0].r.count,
+      4,
+    );
+    assert.equal(
+      (await call({ kind: "all", system: "regular", effective_from: "b" })).rows[0].r.count,
+      2,
+    );
+    assert.equal(
+      (await call({ kind: "overload", system: "all", effective_from: "c" })).rows[0].r.count,
+      2,
+    );
+    assert.equal(
+      (await call({ kind: "contractual", system: "parallel", effective_from: "d" })).rows[0].r
+        .count,
+      1,
+    );
+    await assert.rejects(
+      call({ kind: "all", system: "all", effective_from: "d" }),
+      /لم يُحفظ أي سعر/,
+    );
+    await assert.rejects(call({ kind: "invented", system: "all" }), /اختر نوع الأجر/);
+    await db.exec("RESET ROLE;");
+    assert.equal((await db.query("SELECT count(*)::int n FROM rates")).rows[0].n, 9);
+    await db.exec(
+      `SELECT set_config('request.jwt.claim.sub','${uid(3)}',false);SET ROLE authenticated;`,
+    );
+    await assert.rejects(call({ kind: "all", system: "all", effective_from: "e" }), /متاحة للشؤون/);
+    await db.exec("RESET ROLE;SET ROLE anon;");
+    await assert.rejects(
+      call({ kind: "all", system: "all", effective_from: "e" }),
+      /permission denied/,
+    );
+  } finally {
+    await db.close();
+  }
+});
