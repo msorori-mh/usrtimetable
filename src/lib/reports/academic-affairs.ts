@@ -72,6 +72,7 @@ export type AcademicScope = {
   instructorId: string;
 };
 export type AcademicReportKind =
+  | "teaching_pay"
   | "overload_system"
   | "contractual"
   | "workload"
@@ -82,7 +83,8 @@ export type AcademicReportKind =
   | "shortages";
 
 export function parseAcademicReportKind(value: unknown): AcademicReportKind {
-  return value === "overload_system" ||
+  return value === "teaching_pay" ||
+    value === "overload_system" ||
     value === "contractual" ||
     value === "overload" ||
     value === "deficit" ||
@@ -410,6 +412,7 @@ export function summarizeCourseAssignmentStatusRows(rows: AcademicReportRow[]) {
 }
 
 export const ACADEMIC_REPORT_TITLES: Record<AcademicReportKind, string> = {
+  teaching_pay: "أجور التدريس الفعلي",
   overload_system: "الساعات الزائدة بحسب النظام",
   contractual: "الساعات التعاقدية بحسب النظام",
   workload: "النصاب والساعات الزائدة والنقص",
@@ -421,6 +424,7 @@ export const ACADEMIC_REPORT_TITLES: Record<AcademicReportKind, string> = {
 };
 export const ACADEMIC_REPORT_HEADERS: Record<AcademicReportKind, { key: string; label: string }[]> =
   {
+    teaching_pay: [],
     overload_system: [],
     contractual: [],
     overload: [
