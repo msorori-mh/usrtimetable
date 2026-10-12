@@ -4,6 +4,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { ACADEMIC_RANKS } from "@/lib/instructor-metadata";
+import { RepeatingPrintHeader } from "@/components/reports/repeating-print-header";
+import { ReportOfficialHeader } from "@/components/reports/report-official-header";
 import { ReportShell } from "@/components/reports/report-shell";
 import { ReportSection, ReportDataTable } from "@/components/reports/report-section";
 import { Card } from "@/components/ui/card";
@@ -213,6 +215,43 @@ function PayWorkspace({
     <ReportShell
       title="أجور التدريس الفعلي"
       description="إعداد الأسعار، تسجيل الساعات المنفذة المعتمدة، وتجهيز كشوف المستحقات للأمين العام."
+      printContent={
+        <>
+          <style>{`@page { size: A4 landscape; margin: 10mm; } .teaching-pay-print { font-size: 9pt; }`}</style>
+          <RepeatingPrintHeader
+            header={
+              <ReportOfficialHeader
+                reportTitle="كشف مستحقات التدريس الفعلي"
+                collegeName={collegeName}
+                termName={termName}
+                note={`إلى الأخ الأمين العام — ${summary}`}
+              />
+            }
+          >
+            <div className="teaching-pay-print">
+              <p className="my-3">
+                إجمالي المستحقات: {totalLabel} · سجلات التنفيذ المعتمدة: {rows.length}
+              </p>
+              <ReportDataTable
+                columns={PAY_HEADERS.filter(
+                  (h) =>
+                    !["id", "university_number", "department", "time", "approved_at"].includes(
+                      h.key,
+                    ),
+                )}
+                rows={rows.map((r) => ({ ...r, program: `${r.department} / ${r.program}` }))}
+                caption="ساعات منفذة ومستحقة معتمدة؛ هذا الكشف لا يثبت تنفيذ الدفع"
+                primaryColumnLimit={12}
+                minWidthClassName="min-w-0"
+              />
+              <p className="mt-6">
+                إعداد: __________ · مراجعة الشؤون الأكاديمية: __________ · اعتماد الأمين العام:
+                __________
+              </p>
+            </div>
+          </RepeatingPrintHeader>
+        </>
+      }
       filename={filename}
       printFilename={filename}
       rows={mode === "report" ? rows : []}
@@ -244,7 +283,7 @@ function PayWorkspace({
         ) : undefined
       }
       filters={
-        <div className="space-y-4">
+        <div className="report-no-print space-y-4">
           <div className="flex flex-wrap gap-2" role="group" aria-label="إدارة أجور التدريس">
             {(
               [
