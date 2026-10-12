@@ -113,6 +113,13 @@ export function SystemHoursReport({
       emptyMessage={
         !termId ? "لا يوجد فصل دراسي متاح لهذه الكلية." : "لا توجد ساعات بهذه المعايير."
       }
+      summary={
+        !loading && !error && termId ? (
+          <Card className="p-4 text-sm leading-7">
+            {`عدد المحاضرين: ${rows.length} · إجمالي الساعات المؤكدة (${labels[system]}): ${total} ساعة أسبوعيًا · سجلات تحتاج استكمالًا: ${incomplete}.`}
+          </Card>
+        ) : undefined
+      }
       kpis={[
         { label: "المحاضرون", value: rows.length },
         { label: "إجمالي الساعات المؤكدة أسبوعيًا", value: total },
