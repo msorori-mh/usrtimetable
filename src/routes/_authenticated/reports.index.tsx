@@ -52,7 +52,15 @@ export const Route = createFileRoute("/_authenticated/reports/")({
 interface ReportCard {
   reports?: ReportCard[];
   to: string;
-  search?: { report: "overload_system" | "contractual" | "overload" | "deficit" | "course_status" };
+  search?: {
+    report:
+      | "teaching_pay"
+      | "overload_system"
+      | "contractual"
+      | "overload"
+      | "deficit"
+      | "course_status";
+  };
   title: string;
   desc: string;
   icon: ReactNode;
@@ -430,6 +438,19 @@ function ReportsHub() {
           من هنا تبدأ قراءة الصورة الأكاديمية: اختر الكلية، ثم التقرير الذي يجيب عن سؤالك.
         </p>
       </section>
+      {me?.isSuperAdmin && (
+        <Link
+          to="/reports/academic-affairs"
+          search={{ report: "teaching_pay" }}
+          className="block rounded-xl border-2 border-primary/30 bg-primary/5 p-5 text-primary"
+        >
+          <span className="text-lg font-bold">أجور التدريس الفعلي وكشوف الصرف</span>
+          <p className="mt-2 text-sm">
+            إعداد أجور الرتب العلمية، إدخال التنفيذ المعتمد، ومراجعة مستحقات الساعات الزائدة
+            والتعاقدية بحسب الكلية والقسم والبرنامج والنظام.
+          </p>
+        </Link>
+      )}
       {canViewLeadership(me) && (
         <Link
           to="/reports/university-overview"

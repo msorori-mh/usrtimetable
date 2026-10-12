@@ -1,3 +1,4 @@
+import { TeachingPayReport } from "@/components/reports/teaching-pay-report";
 import { SystemHoursReport } from "@/components/reports/system-hours-report";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -81,6 +82,15 @@ function Page() {
   const { active, isLoading } = useActiveCollege();
   if (isLoading) return <Card className="p-6">جارٍ تحميل الكليات…</Card>;
   if (!active) return <Card className="p-6">لا توجد كلية متاحة لهذا الحساب.</Card>;
+  if (report === "teaching_pay")
+    return (
+      <TeachingPayReport
+        key={active.id}
+        collegeId={active.id}
+        collegeName={active.name}
+        initialTermId={termId}
+      />
+    );
   if (report === "overload_system" || report === "contractual")
     return (
       <SystemHoursReport
