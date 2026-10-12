@@ -52,7 +52,7 @@ export const Route = createFileRoute("/_authenticated/reports/")({
 interface ReportCard {
   reports?: ReportCard[];
   to: string;
-  search?: { report: "overload" | "deficit" | "course_status" };
+  search?: { report: "overload_system" | "contractual" | "overload" | "deficit" | "course_status" };
   title: string;
   desc: string;
   icon: ReactNode;
@@ -227,7 +227,23 @@ const TEACHING_LOAD_REPORTS: ReportCard = {
   title: "النصاب التدريسي",
   desc: "الإسناد والنصاب والساعات الزائدة والعجز، مع تقرير مستقل للساعات المجدولة فعليًا.",
   icon: <FileBarChart2 className="h-5 w-5" />,
-  reports: ANALYTICS_REPORTS.slice(1, 5),
+  reports: [
+    ...ANALYTICS_REPORTS.slice(1, 5),
+    {
+      to: "/reports/academic-affairs",
+      search: { report: "overload_system" },
+      title: "الساعات الزائدة بحسب النظام",
+      desc: "الزيادة في العام والموازي بعد استيفاء النصاب مرة واحدة، مع الطباعة والتصدير.",
+      icon: <FileBarChart2 className="h-5 w-5" />,
+    },
+    {
+      to: "/reports/academic-affairs",
+      search: { report: "contractual" },
+      title: "الساعات التعاقدية بحسب النظام",
+      desc: "ساعات المتعاقدين في الكلية موزعة على العام والموازي، مع الطباعة والتصدير.",
+      icon: <FileBarChart2 className="h-5 w-5" />,
+    },
+  ],
 };
 const DEMAND_CAPACITY_REPORT: ReportCard = {
   to: "/reports/teaching-demand-capacity",

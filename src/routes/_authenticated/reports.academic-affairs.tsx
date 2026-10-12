@@ -1,3 +1,4 @@
+import { SystemHoursReport } from "@/components/reports/system-hours-report";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
@@ -76,9 +77,20 @@ async function readAll<T>(
 }
 
 function Page() {
+  const { report, termId } = Route.useSearch();
   const { active, isLoading } = useActiveCollege();
   if (isLoading) return <Card className="p-6">جارٍ تحميل الكليات…</Card>;
   if (!active) return <Card className="p-6">لا توجد كلية متاحة لهذا الحساب.</Card>;
+  if (report === "overload_system" || report === "contractual")
+    return (
+      <SystemHoursReport
+        key={`${active.id}:${report}`}
+        collegeId={active.id}
+        collegeName={active.name}
+        kind={report}
+        initialTermId={termId}
+      />
+    );
   // Remount resets every dependent filter immediately when switching colleges.
   return <AcademicReports key={active.id} collegeId={active.id} collegeName={active.name} />;
 }
