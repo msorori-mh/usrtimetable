@@ -1,3 +1,4 @@
+import { LeadershipTeachingHours } from "@/components/reports/leadership-teaching-hours";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -605,6 +606,12 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
           </div>
         }
       >
+        <LeadershipTeachingHours
+          colleges={colleges}
+          viewerKey={viewerKey}
+          revision={data?.generated_at}
+          stale={query.isError}
+        />
         <LeadershipDecisionSummary
           scope={collegeDean ? "college" : "university"}
           colleges={colleges}

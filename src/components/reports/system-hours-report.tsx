@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -181,6 +182,13 @@ export function SystemHoursReport({
             من النصاب لا يدخل في هذه الساعات. التقرير أسبوعي للإسناد، وليس كشف مستحقات مالية أو
             ساعات منفذة فعليًا.
           </p>
+          <Link
+            to="/reports/academic-affairs"
+            search={{ report: "coverage", termId }}
+            className="report-no-print block underline"
+          >
+            مصادر تغطية الساعات التدريسية
+          </Link>
           {incomplete > 0 && (
             <p role="status">
               توجد بيانات غير مكتملة؛ العلامة «—» تعني أن الساعات لم تُحسم. لا تدخل القيم غير

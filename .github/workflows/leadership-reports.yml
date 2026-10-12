@@ -27,6 +27,10 @@ jobs:
         run: node --import tsx --test tests/leadership.test.ts tests/academic-affairs.test.ts tests/leadership-room-capacity.test.ts tests/leadership-decisions.test.tsx tests/leadership-metrics-drilldown.test.ts tests/university-overview.test.tsx
       - name: PostgreSQL test dependency
         run: npm install --prefix "$RUNNER_TEMP/leadership-db" --no-package-lock @electric-sql/pglite@0.3.14
+      - name: Teaching coverage, categories and payroll role boundaries
+        run: |
+          node --import tsx --test tests/teaching-coverage.test.ts tests/system-hours.test.ts
+          LEADERSHIP_DB_MODULE="$RUNNER_TEMP/leadership-db/node_modules/@electric-sql/pglite/dist/index.js" node --test tests/teaching-coverage-db.test.mjs
       - name: Shared executive presentation and role scope
         run: node --import tsx --test tests/executive-dashboard-roles.test.tsx
       - name: Academic staffing readiness and development gate

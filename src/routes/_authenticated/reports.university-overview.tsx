@@ -1,3 +1,4 @@
+import { LeadershipTeachingHours } from "@/components/reports/leadership-teaching-hours";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -363,6 +364,16 @@ function UniversityOverviewPage({ viewerKey }: { viewerKey: string }) {
               </a>
             ))}
           </nav>
+        )}
+        {!presentation && (
+          <LeadershipTeachingHours
+            colleges={(data?.colleges ?? []).filter((c) =>
+              selected.some((row) => row.id === c.college_id),
+            )}
+            viewerKey={viewerKey}
+            revision={data?.generated_at}
+            stale={query.isError}
+          />
         )}
         <div className="uo-colleges">
           {selected.map((c) => (

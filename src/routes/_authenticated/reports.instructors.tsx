@@ -1,3 +1,5 @@
+import { fetchFacultyCategories } from "@/lib/reports/fetch-teaching-coverage";
+import { COVERAGE_LABELS, type CoverageCategory } from "@/lib/reports/teaching-coverage";
 import { facultyWorkflow } from "@/lib/instructors/faculty-workflow";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
@@ -31,6 +33,7 @@ export const Route = createFileRoute("/_authenticated/reports/instructors")({
 });
 
 type InstructorRow = {
+  reporting_category: CoverageCategory;
   id: string;
   college_id: string;
   full_name: string;
@@ -94,7 +97,8 @@ function InstructorIdentityCell({ row }: { row: InstructorDirectoryDisplayRow })
 function InstructorAffiliationCell({ row }: { row: InstructorDirectoryDisplayRow }) {
   return (
     <div className="min-w-[155px] space-y-0.5 leading-5">
-      <div className="font-semibold">{instructorText(row.affiliation_scope)}</div>
+      <div className="font-semibold">{instructorText(row.reporting_category)}</div>
+      <div className="text-[11px]">{instructorText(row.affiliation_scope)}</div>
       <div className="text-[11px] text-muted-foreground">
         {instructorText(row.affiliation_college)}
       </div>
@@ -199,7 +203,8 @@ function Report() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [typeId, setTypeId] = useState("all");
-  const [affiliation, setAffiliation] = useState("internal");
+  const [affiliation, setAffiliation] = useState("all");
+  const [reportingCategory, setReportingCategory] = useState("all");
   const [departmentId, setDepartmentId] = useState("all");
 
   const instructors = useQuery({
@@ -227,6 +232,7 @@ function Report() {
       const nativeByNumber = new Map(
         (nativeRecords ?? []).map((record) => [record.university_number, record]),
       );
+      const categories = await fetchFacultyCategories(active!.id);
       return (homes ?? [])
         .filter((h) => h.home_college_id !== active!.id || nativeByNumber.has(h.university_number))
         .map((h): InstructorRow => {
@@ -248,6 +254,7 @@ function Report() {
             email: null,
             phone: null,
             ...local,
+            reporting_category: categories.get(h.identity_id) ?? "unknown",
             college_id: active!.id,
             university_number: h.university_number,
             affiliation_college_id: h.home_college_id,
@@ -331,6 +338,8 @@ function Report() {
   const allRows = useMemo(
     () =>
       (instructors.data ?? []).map((i) => ({
+        reporting_category: COVERAGE_LABELS[i.reporting_category],
+        _reporting_category: i.reporting_category,
         university_number: i.university_number ?? "—",
         employee_number: i.employee_number ?? "—",
         instructor: i.full_name,
@@ -368,14 +377,16 @@ function Report() {
 
   const rows = useMemo(() => {
     let value = allRows;
+    if (reportingCategory !== "all")
+      value = value.filter((r) => r._reporting_category === reportingCategory);
     if (status !== "all") value = value.filter((r) => r._status === status);
     if (typeId !== "all") value = value.filter((r) => r._type_id === typeId);
     if (affiliation !== "all") value = value.filter((r) => r._affiliation === affiliation);
     if (departmentId !== "all") value = value.filter((r) => r._department_id === departmentId);
     return filterRowsBySearch(value, search).map(
-      ({ _status, _type_id, _department_id, _affiliation, ...row }) => row,
+      ({ _status, _type_id, _department_id, _affiliation, _reporting_category, ...row }) => row,
     );
-  }, [allRows, status, typeId, departmentId, affiliation, search]);
+  }, [allRows, status, typeId, departmentId, affiliation, reportingCategory, search]);
 
   const activeCount = rows.filter((r) => r.status === "نشط").length;
   const totalQuota = rows.reduce(
@@ -399,6 +410,7 @@ function Report() {
   );
 
   const headers = [
+    { key: "reporting_category", label: "تصنيف المحاضر" },
     { key: "university_number", label: "الرقم الجامعي الموحّد" },
     { key: "employee_number", label: "رقم الموظف" },
     { key: "instructor", label: "الاسم الافتراضي" },
@@ -427,13 +439,17 @@ function Report() {
     supportDepartments.isLoading ||
     types.isLoading;
   const activeFilterSummary = [
+    reportingCategory === "all" ? "" : COVERAGE_LABELS[reportingCategory as CoverageCategory],
     search.trim() ? `بحث: ${search.trim()}` : "",
     status === "all" ? "" : `الحالة: ${status === "active" ? "نشط" : "غير نشط"}`,
     typeId === "all" ? "" : `الفئة: ${typeMap.get(typeId) ?? "غير محدد"}`,
-    affiliation === "internal" ? "" : AFFILIATION_LABELS[affiliation],
+    affiliation === "all" ? "" : AFFILIATION_LABELS[affiliation],
     departmentId === "all" ? "" : `القسم: ${departmentMap.get(departmentId) ?? "قسم محدد"}`,
   ].filter(Boolean);
   const filterSummary = [
+    reportingCategory === "all"
+      ? "كل المحاضرين"
+      : COVERAGE_LABELS[reportingCategory as CoverageCategory],
     status === "all" ? "كل الحالات" : status === "active" ? "نشط" : "غير نشط",
     typeId === "all" ? "كل الفئات" : (typeMap.get(typeId) ?? "غير محدد"),
     AFFILIATION_LABELS[affiliation],
@@ -446,7 +462,7 @@ function Report() {
   return (
     <ReportShell
       title="دليل المحاضرين وبياناتهم"
-      description="يعرض أعضاء الكلية الأصليين افتراضيًا. لعرض المحاضرين من كليات أخرى أو السجلات غير المحسومة، اختر نطاق التبعية من الفلتر."
+      description="اختر المثبّتين في الكلية، أو المحاضرين من كليات أخرى، أو المتعاقدين. التصنيف موحّد مع تقرير مصادر تغطية الساعات."
       filename="instructors_directory"
       printFilename={`بيانات المحاضرين — ${active?.name ?? "الكلية"}`}
       headerMeta={{
@@ -489,6 +505,28 @@ function Report() {
             }}
             basic={
               <>
+                <ReportFilterField label="تصنيف المحاضر">
+                  <Select
+                    value={reportingCategory}
+                    onValueChange={(v) => {
+                      setReportingCategory(v);
+                      setAffiliation("all");
+                      setTypeId("all");
+                    }}
+                  >
+                    <SelectTrigger aria-label="تصنيف المحاضر">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">كل المحاضرين</SelectItem>
+                      {Object.entries(COVERAGE_LABELS).map(([id, label]) => (
+                        <SelectItem key={id} value={id}>
+                          {id === "contractual" ? "المحاضرون المتعاقدون" : label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </ReportFilterField>
                 <ReportFilterField label="الحالة">
                   <Select value={status} onValueChange={setStatus}>
                     <SelectTrigger>
@@ -557,7 +595,8 @@ function Report() {
                     setSearch("");
                     setStatus("all");
                     setTypeId("all");
-                    setAffiliation("internal");
+                    setAffiliation("all");
+                    setReportingCategory("all");
                     setDepartmentId("all");
                   }
                 : undefined

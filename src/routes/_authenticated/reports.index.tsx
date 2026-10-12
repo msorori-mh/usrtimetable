@@ -1,3 +1,4 @@
+import { canManageTeachingPay } from "@/lib/viewer-roles";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -54,10 +55,11 @@ export const Route = createFileRoute("/_authenticated/reports/")({
 
 interface ReportCard {
   reports?: ReportCard[];
-  access?: "leadership" | "admin";
+  access?: "leadership" | "payroll";
   to: string;
   search?: {
     report:
+      | "coverage"
       | "teaching_pay"
       | "overload_system"
       | "contractual"
@@ -250,6 +252,13 @@ const TEACHING_LOAD_REPORTS: ReportCard = {
     },
     {
       to: "/reports/academic-affairs",
+      search: { report: "coverage" },
+      title: "مصادر تغطية الساعات التدريسية",
+      desc: "من داخل الكلية، ومن كليات أخرى، وبتعاقد خارجي، بحسب القسم والبرنامج والنظام.",
+      icon: <FileBarChart2 className="h-5 w-5" />,
+    },
+    {
+      to: "/reports/academic-affairs",
       search: { report: "contractual" },
       title: "الساعات التعاقدية بحسب النظام",
       desc: "ساعات المتعاقدين في الكلية موزعة على العام والموازي، مع الطباعة والتصدير.",
@@ -346,7 +355,7 @@ const SECTIONS: ReportCategory[] = [
         title: "أجور التدريس الفعلي وكشوف الصرف",
         desc: "أسعار الرتب العلمية، الساعات المنفذة المعتمدة، وكشوف الزائد والتعاقدي للأمين العام.",
         icon: <Wallet className="h-5 w-5" />,
-        access: "admin",
+        access: "payroll",
       },
     ],
   },
@@ -429,8 +438,8 @@ function ReportsHub() {
     ...section,
     items: section.items
       .filter((report) =>
-        report.access === "admin"
-          ? !!me?.isSuperAdmin
+        report.access === "payroll"
+          ? canManageTeachingPay(me)
           : report.access === "leadership"
             ? canViewLeadership(me)
             : true,

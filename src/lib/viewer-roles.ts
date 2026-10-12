@@ -218,3 +218,8 @@ export function requiresCollegeAssignment(role: AssignableRole): boolean {
 export function requiresExactlyOneCollege(role: AssignableRole): boolean {
   return role === "college_dean";
 }
+
+/** Payroll rates, execution approval and monetary reports are restricted. */
+export function canManageTeachingPay(me: RoleFlags | null | undefined): boolean {
+  return !!me && (!!me.isSuperAdmin || !!me.isInstitutionalViewer);
+}
