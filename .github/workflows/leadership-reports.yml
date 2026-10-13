@@ -4,6 +4,7 @@ on:
     paths:
       - "src/**"
       - "tests/leadership*"
+      - "tests/teaching-demand-capacity.test.mjs"
       - "tests/academic-staffing*"
       - "tests/executive-dashboard*"
       - "tests/university-overview*"
@@ -24,7 +25,7 @@ jobs:
           node-version: "24"
       - run: bun install --frozen-lockfile
       - name: Roles and truthful presentation
-        run: node --import tsx --test tests/leadership.test.ts tests/academic-affairs.test.ts tests/leadership-room-capacity.test.ts tests/leadership-decisions.test.tsx tests/leadership-metrics-drilldown.test.ts tests/university-overview.test.tsx
+        run: node --import tsx --test tests/leadership.test.ts tests/academic-affairs.test.ts tests/leadership-room-capacity.test.ts tests/leadership-decisions.test.tsx tests/leadership-metrics-drilldown.test.ts tests/university-overview.test.tsx tests/teaching-demand-capacity.test.mjs
       - name: PostgreSQL test dependency
         run: npm install --prefix "$RUNNER_TEMP/leadership-db" --no-package-lock @electric-sql/pglite@0.3.14
       - name: Teaching coverage, categories and payroll role boundaries

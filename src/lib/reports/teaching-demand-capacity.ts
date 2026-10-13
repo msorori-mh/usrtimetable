@@ -282,13 +282,33 @@ export function summarizeDemandCapacity(
     if (college.term_state !== "ready") issues.push("الفصل الأكاديمي غير محسوم");
     if (!college.groups_count) issues.push("مجموعات التدريس غير مكتملة أو غير مدخلة");
     if (!c) issues.push("تعذر قراءة إتاحة القاعات");
+    const requiredHours =
+      college.term_state === "ready" &&
+      typeof college.required_hours === "number" &&
+      Number.isFinite(college.required_hours) &&
+      college.required_hours >= 0
+        ? college.required_hours
+        : null;
+    const availableHours =
+      inventoryComplete &&
+      typeof c?.availableHours === "number" &&
+      Number.isFinite(c.availableHours) &&
+      c.availableHours >= 0
+        ? c.availableHours
+        : null;
+    // Published idle hours measure a different quantity. Demand includes teaching
+    // groups that have not yet been scheduled, and can exceed available capacity.
+    const balanceHours =
+      availableHours !== null && requiredHours !== null && (college.groups_count ?? 0) > 0
+        ? round2(availableHours - requiredHours)
+        : null;
     return {
       collegeId: college.college_id,
       college: college.college,
-      requiredHours: college.term_state === "ready" ? college.required_hours : null,
-      availableHours: c?.availableHours ?? null,
-      balanceHours: c?.balanceHours ?? null,
-      rooms: c ? c.rooms.length : null,
+      requiredHours,
+      availableHours,
+      balanceHours,
+      rooms: inventoryComplete ? c.rooms.length : null,
       hallRooms: halls.count,
       labRooms: labs.count,
       hallAvailableHours: halls.hours,
@@ -296,7 +316,7 @@ export function summarizeDemandCapacity(
       unclassifiedRooms,
       published: !!college.version_id,
       status:
-        !c || c.availableHours === null || college.required_hours === null
+        availableHours === null || requiredHours === null
           ? "unavailable"
           : issues.length > 0
             ? "partial"
@@ -309,29 +329,42 @@ export function summarizeDemandCapacity(
 /** Never represent a partial university sum as a complete surplus. */
 export function summarizeUniversityCapacity(rows: CollegeDemandCapacity[]) {
   const complete = rows.length > 0 && rows.every((r) => r.status === "calculable");
-  const sum = (
-    key:
-      | "requiredHours"
-      | "availableHours"
-      | "balanceHours"
-      | "hallRooms"
-      | "labRooms"
-      | "hallAvailableHours"
-      | "labAvailableHours",
-  ) =>
-    complete && rows.every((r) => typeof r[key] === "number")
-      ? round2(rows.reduce((n, r) => n + r[key]!, 0))
+  const keys = [
+    "requiredHours",
+    "availableHours",
+    "balanceHours",
+    "hallRooms",
+    "labRooms",
+    "hallAvailableHours",
+    "labAvailableHours",
+  ] as const;
+  type Metric = (typeof keys)[number];
+  const coverage = Object.fromEntries(
+    keys.map((key) => [
+      key,
+      rows.filter((r) => typeof r[key] === "number" && Number.isFinite(r[key])).length,
+    ]),
+  ) as Record<Metric, number>;
+  const sum = (key: Metric) =>
+    coverage[key] > 0
+      ? round2(
+          rows.reduce(
+            (n, r) => n + (typeof r[key] === "number" && Number.isFinite(r[key]) ? r[key]! : 0),
+            0,
+          ),
+        )
       : null;
   return {
     colleges: rows.length,
     calculable: rows.filter((r) => r.status === "calculable").length,
     requiredHours: sum("requiredHours"),
     availableHours: sum("availableHours"),
-    balanceHours: sum("balanceHours"),
+    balanceHours: complete && coverage.balanceHours === rows.length ? sum("balanceHours") : null,
     hallRooms: sum("hallRooms"),
     labRooms: sum("labRooms"),
     hallAvailableHours: sum("hallAvailableHours"),
     labAvailableHours: sum("labAvailableHours"),
     complete,
+    coverage,
   };
 }
