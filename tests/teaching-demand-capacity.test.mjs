@@ -198,6 +198,7 @@ test("partial college data cannot become a university surplus", () => {
     ...complete,
     id: "college-2",
     name: "الآداب",
+    rooms: [{ id: "r2", category: "hall", availableHours: 10 }],
     requiredHours: 3,
     availableHours: 10,
     balanceHours: 7,
@@ -209,62 +210,195 @@ test("partial college data cannot become a university surplus", () => {
   assert.match(capacityAssessment(rows[0]), /فحص النوع والموعد/);
   const university = summarizeUniversityCapacity(rows);
   assert.equal(university.calculable, 1);
-  assert.equal(university.requiredHours, null);
-  assert.equal(university.availableHours, null);
+  assert.equal(university.requiredHours, 8);
+  assert.equal(university.availableHours, 22);
+  assert.equal(university.coverage.availableHours, 2);
   assert.equal(university.balanceHours, null);
+});
+
+test("demand balance uses group hours, permits deficits, and is not published idle time", () => {
+  const capacity = {
+    id: college.college_id,
+    rooms: [{ id: "r1", category: "hall", availableHours: 12 }],
+    availableHours: 12,
+    requiredHours: 2,
+    balanceHours: 10,
+    issues: [],
+  };
+  const [row] = summarizeDemandCapacity([{ ...college, required_hours: 15 }], [capacity]);
+  assert.equal(row.balanceHours, -3);
+  assert.match(capacityAssessment(row), /عجز إجمالي 3/);
+  const [unpublished] = summarizeDemandCapacity(
+    [{ ...college, version_id: null }],
+    [{ ...capacity, balanceHours: null }],
+  );
+  assert.equal(unpublished.availableHours, 12);
+  assert.equal(unpublished.balanceHours, 7);
+  assert.equal(unpublished.status, "partial");
+  const [missingGroups] = summarizeDemandCapacity(
+    [{ ...college, groups_count: 0, required_hours: 0 }],
+    [capacity],
+  );
+  assert.equal(missingGroups.balanceHours, null);
+  const [missingTerm] = summarizeDemandCapacity(
+    [{ ...college, term_state: "missing" }],
+    [capacity],
+  );
+  assert.equal(missingTerm.requiredHours, null);
+  assert.equal(missingTerm.balanceHours, null);
+  assert.equal(missingTerm.availableHours, 12);
+});
+
+test("partial inventory never becomes zero or a complete university total", () => {
+  const capacity = {
+    id: college.college_id,
+    rooms: [{ id: "r1", category: "hall", availableHours: 12 }],
+    availableHours: 12,
+    balanceHours: 10,
+    issues: [],
+  };
+  const [known] = summarizeDemandCapacity([college], [capacity]);
+  const [missing] = summarizeDemandCapacity(
+    [
+      {
+        ...college,
+        college_id: "missing",
+        required_hours: null,
+        room_count: 2,
+      },
+    ],
+    [{ ...capacity, id: "missing" }],
+  );
+  assert.equal(missing.availableHours, null);
+  assert.equal(missing.rooms, null);
+  assert.equal(missing.balanceHours, null);
+  const total = summarizeUniversityCapacity([known, missing]);
+  assert.equal(total.hallRooms, 1);
+  assert.equal(total.availableHours, 12);
+  assert.equal(total.coverage.availableHours, 1);
+  assert.equal(total.colleges, 2);
+  assert.equal(total.balanceHours, null);
+  const empty = summarizeUniversityCapacity([]);
+  assert.equal(empty.availableHours, null);
+  assert.equal(empty.hallRooms, null);
+  assert.equal(empty.complete, false);
+});
+
+test("unknown availability preserves room counts without inventing available hours", () => {
+  const [row] = summarizeDemandCapacity(
+    [college],
+    [
+      {
+        id: college.college_id,
+        rooms: [{ id: "r1", category: "hall", availableHours: null }],
+        availableHours: null,
+        balanceHours: null,
+        issues: ["بيانات إتاحة القاعات غير مكتملة"],
+      },
+    ],
+  );
+  assert.equal(row.hallRooms, 1);
+  assert.equal(row.hallAvailableHours, null);
+  assert.equal(row.availableHours, null);
+  assert.equal(row.balanceHours, null);
+  const total = summarizeUniversityCapacity([row]);
+  assert.equal(total.coverage.hallRooms, 1);
+  assert.equal(total.coverage.availableHours, 0);
+  assert.equal(total.availableHours, null);
 });
 
 test("lecture rooms and labs have separate counts and available hours", () => {
   const scopedCollege = { ...college, room_count: 2 };
   const sources = {
     rooms: [
-      { id: "hall", college_id: college.college_id, room_type_id: "hall-type", is_active: true,
-        available_days: null, available_start_time: null, available_end_time: null },
-      { id: "lab", college_id: college.college_id, room_type_id: "lab-type", is_active: true,
-        available_days: [0], available_start_time: null, available_end_time: null },
+      {
+        id: "hall",
+        college_id: college.college_id,
+        room_type_id: "hall-type",
+        is_active: true,
+        available_days: null,
+        available_start_time: null,
+        available_end_time: null,
+      },
+      {
+        id: "lab",
+        college_id: college.college_id,
+        room_type_id: "lab-type",
+        is_active: true,
+        available_days: [0],
+        available_start_time: null,
+        available_end_time: null,
+      },
     ],
     roomTypes: [
       { id: "hall-type", name_ar: "قاعة محاضرات", code: "lecture_hall" },
       { id: "lab-type", name_ar: "معمل حاسوب", code: "computer_lab" },
     ],
-    settings: [{ college_id: college.college_id, working_days: [0, 1],
-      day_start_time: "08:00", day_end_time: "14:00" }],
+    settings: [
+      {
+        college_id: college.college_id,
+        working_days: [0, 1],
+        day_start_time: "08:00",
+        day_end_time: "14:00",
+      },
+    ],
     availability: [],
     sessions: [],
   };
-  const [capacity] = buildLeadershipRoomCapacity([scopedCollege], sources);
+  const [capacity] = buildLeadershipRoomCapacity([scopedCollege], sources, "all");
   const [row] = summarizeDemandCapacity([scopedCollege], [capacity]);
   assert.equal(row.hallRooms, 1);
   assert.equal(row.hallAvailableHours, 12);
   assert.equal(row.labRooms, 1);
   assert.equal(row.labAvailableHours, 6);
   assert.equal(row.availableHours, 18);
+  assert.equal(row.balanceHours, 13);
+  const [executive] = buildLeadershipRoomCapacity([scopedCollege], sources);
+  assert.equal(executive.rooms.length, 1);
+  assert.equal(executive.availableHours, 12);
   assert.equal(row.hallAvailableHours + row.labAvailableHours, row.availableHours);
 
   const noLabsCollege = { ...scopedCollege, room_count: 1 };
   const [noLabs] = summarizeDemandCapacity(
     [noLabsCollege],
-    [buildLeadershipRoomCapacity([noLabsCollege], {
-      ...sources, rooms: [sources.rooms[0]],
-    })[0]],
+    [
+      buildLeadershipRoomCapacity(
+        [noLabsCollege],
+        {
+          ...sources,
+          rooms: [sources.rooms[0]],
+        },
+        "all",
+      )[0],
+    ],
   );
   assert.equal(noLabs.labRooms, 0);
   assert.equal(noLabs.labAvailableHours, 0);
 
   const [unknown] = summarizeDemandCapacity(
     [scopedCollege],
-    [buildLeadershipRoomCapacity([scopedCollege], {
-      ...sources,
-      rooms: [sources.rooms[0], { ...sources.rooms[1], room_type_id: null }],
-    })[0]],
+    [
+      buildLeadershipRoomCapacity(
+        [scopedCollege],
+        {
+          ...sources,
+          rooms: [sources.rooms[0], { ...sources.rooms[1], room_type_id: null }],
+        },
+        "all",
+      )[0],
+    ],
   );
   assert.equal(unknown.unclassifiedRooms, 1);
   assert.equal(unknown.labRooms, null);
   assert.equal(unknown.hallAvailableHours, null);
   assert.equal(unknown.status, "partial");
-  const [blankCode] = buildLeadershipRoomCapacity([scopedCollege], {
-    ...sources,
-    roomTypes: [sources.roomTypes[0], { ...sources.roomTypes[1], code: "   " }],
-  });
+  const [blankCode] = buildLeadershipRoomCapacity(
+    [scopedCollege],
+    {
+      ...sources,
+      roomTypes: [sources.roomTypes[0], { ...sources.roomTypes[1], code: "   " }],
+    },
+    "all",
+  );
   assert.equal(blankCode.rooms.find((room) => room.id === "lab").category, null);
 });
