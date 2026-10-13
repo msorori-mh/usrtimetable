@@ -40,6 +40,47 @@ test("coverage SQL scopes roles, classifies exclusively and preserves canonical 
     }
     await db.exec(migration);
     await db.exec(
+      await readFile(
+        new URL(
+          "../supabase/migrations/20261013033000_explicit_other_college_reporting.sql",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    );
+    for (const [home, type, employment, expected] of [
+      [uid(11), "from_other_college", "unknown", "other_college"],
+      [uid(11), "from_other_college", "full_time", "other_college"],
+      [uid(11), "from_other_college", "contract", "contractual"],
+      [uid(10), "from_other_college", "unknown", "unknown"],
+      [null, "from_other_college", "unknown", "unknown"],
+      [uid(11), "permanent", "contract", "unknown"],
+    ]) {
+      const row = (
+        await db.query(
+          "SELECT faculty_private.reporting_category($1::uuid,$2::uuid,$3,$4) category",
+          [home, uid(10), type, employment],
+        )
+      ).rows[0];
+      assert.equal(row.category, expected);
+    }
+    assert.equal(
+      (
+        await db.query(
+          "SELECT faculty_private.quota_applicability('from_other_college','unknown') value",
+        )
+      ).rows[0].value,
+      null,
+    );
+    assert.equal(
+      (
+        await db.query(
+          "SELECT has_function_privilege('anon','faculty_private.reporting_category(uuid,uuid,text,text)','EXECUTE') value",
+        )
+      ).rows[0].value,
+      false,
+    );
+    await db.exec(
       `SELECT set_config('request.jwt.claim.sub','${uid(2)}',false); SET ROLE authenticated;`,
     );
     const result = (

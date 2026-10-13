@@ -5,6 +5,8 @@ on:
       - "src/**"
       - "tests/leadership*"
       - "tests/teaching-demand-capacity.test.mjs"
+      - "tests/teaching-coverage*"
+      - "supabase/migrations/*reporting.sql"
       - "tests/academic-staffing*"
       - "tests/executive-dashboard*"
       - "tests/university-overview*"
