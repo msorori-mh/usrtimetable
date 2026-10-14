@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "supabase/migrations/20260919120000_college_instructor_schedule_directory.sql"
+      - "supabase/migrations/*_college_instructor_directory_visibility.sql"
       - "tests/college-instructor-directory-db.test.mjs"
       - "supabase/migrations/20260919140000_home_college_faculty_roster.sql"
       - "supabase/migrations/20260930120000_cross_college_yahya_candidate_repair.sql"
