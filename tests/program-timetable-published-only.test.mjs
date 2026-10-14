@@ -4,15 +4,19 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("the program/level timetable report offers published versions only", async () => {
+test("the program/level timetable report restricts unpublished versions to the general admin", async () => {
   const [page, hook, queries] = await Promise.all([
     read("src/routes/_authenticated/reports.program-level-timetable.tsx"),
     read("src/hooks/reports/useReportContext.ts"),
     read("src/lib/reports/queries/version-queries.ts"),
   ]);
 
-  // The page locks the version list to published timetables.
-  assert.match(page, /fixedStatusMode: "published_only"/);
+  // Other roles retain the published-only lock; only the general admin can choose a draft.
+  assert.match(
+    page,
+    /fixedStatusMode:\s*canPrintUnpublishedTimetable\(currentUser\.data\)\s*\?\s*"specific_version"\s*:\s*"published_only"/,
+  );
+  assert.match(page, /await fetchPrintableScheduleVersion\(ctx\.versionId/);
   assert.doesNotMatch(page, /defaultStatusMode: "specific_version"/);
   // The lock reaches the version query and the printed filter summary.
   assert.match(hook, /statusMode: fixedStatusMode \?\? statusMode,\n\s+\}\),/);
