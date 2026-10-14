@@ -40,7 +40,11 @@ test("the batch never prints a partial set and prints only its own sheets", () =
   );
 });
 
-test("the lecturer schedule report offers published versions only", () => {
-  assert.match(route, /fixedStatusMode: "published_only"/);
+test("the lecturer schedule report limits unpublished versions to the general admin", () => {
+  assert.match(
+    route,
+    /fixedStatusMode:\s*canPrintUnpublishedTimetable\(currentUser\.data\)\s*\?\s*"specific_version"\s*:\s*"published_only"/,
+  );
   assert.doesNotMatch(route, /defaultStatusMode: "specific_version"/);
+  assert.match(route, /timetablePrintNotice/);
 });

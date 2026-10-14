@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { readAllReportRows } from "@/lib/reports/read-all";
 import { facultyWorkflow } from "@/lib/instructors/faculty-workflow";
+import { fetchPrintableScheduleVersion } from "./timetable-print-access";
 import { mapRawSessions } from "@/lib/reports/session-mappers";
 import { fetchCohortDeliveryGroupLabels, fetchInstructorScheduleSessions } from "./session-queries";
 import {
@@ -95,7 +96,7 @@ export async function fetchUniversityScheduleDirectory(collegeId: string) {
       let q = supabase
         .from("schedule_versions")
         .select("id, college_id, academic_term_id, name, status, created_at, is_coordination");
-      if (!canViewAcrossColleges) q = q.eq("college_id", collegeId);
+      if (!canViewAcrossColleges) q = q.eq("college_id", collegeId).eq("status", "published");
       return q.order("id").range(from, to);
     }),
   ]);
@@ -141,6 +142,7 @@ export async function fetchUniversityInstructorSchedule(input: {
   const scopes = input.scopes.filter((s) => across || s.collegeId === input.anchorCollegeId);
   const bundles = await Promise.all(
     scopes.map(async (scope) => {
+      await fetchPrintableScheduleVersion(scope.version.id);
       const sets = await Promise.all(
         ids.map((instructorId) =>
           fetchInstructorScheduleSessions({

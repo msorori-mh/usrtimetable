@@ -103,8 +103,11 @@ jobs:
       - name: Shared lecture counts once in teaching load contract
         run: node --test tests/shared-lecture-counts-once.test.mjs
 
-      - name: Program/level timetable report is published-only
+      - name: Program/level timetable report restricts draft access to general admin
         run: node --test tests/program-timetable-published-only.test.mjs
+
+      - name: Draft timetable print role matrix
+        run: bun test tests/timetable-print-access.test.ts
 
       - name: Program/level timetable report lists merged lectures per cohort
         run: node --test tests/program-timetable-merged-lectures.test.mjs

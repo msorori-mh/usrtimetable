@@ -47,6 +47,10 @@ import { ReportOfficialHeader } from "@/components/reports/report-official-heade
 import { STATUS_LABEL_AR, type SVStatus } from "@/lib/schedule-versions/lifecycle";
 import { isHourlyContractTypeCode } from "@/lib/instructors/effective-hours";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import {
+  canPrintUnpublishedTimetable,
+  timetablePrintNotice,
+} from "@/lib/reports/timetable-print-access";
 import { useReportContext } from "@/hooks/reports/useReportContext";
 
 export const Route = createFileRoute("/_authenticated/reports/instructor-schedule")({
@@ -69,9 +73,9 @@ function normalizeInstructorSearch(value: string) {
 function Page() {
   const currentUser = useCurrentUser();
   const ctx = useReportContext({
-    // The individual schedule handed to a lecturer is the official one: only
-    // published versions may be chosen, so a draft is never printed by mistake.
-    fixedStatusMode: "published_only",
+    fixedStatusMode: canPrintUnpublishedTimetable(currentUser.data)
+      ? "specific_version"
+      : "published_only",
     defaultStudySystem: "all",
     fixedStudySystem: "all",
   });
@@ -369,8 +373,13 @@ function Page() {
               versionName={
                 canViewAcrossColleges ? "نسخ الكليات الموضحة في الملخص" : ctx.selectedVersion?.name
               }
-              versionStatus={null}
-              note={`نطاق الجدول: ${scopeLabel} — العام والموازي معًا.`}
+              versionStatus={effectiveScope === "current" ? ctx.selectedVersion?.status : null}
+              note={[
+                timetablePrintNotice(selection.scopes.map((scope) => scope.version.status)),
+                `نطاق الجدول: ${scopeLabel} — العام والموازي معًا.`,
+              ]
+                .filter(Boolean)
+                .join(" ")}
             />
           }
         >
@@ -478,9 +487,14 @@ function Page() {
                   : hours(sheetSummary.balance.overloadHours),
           },
         ],
-        note: universityScope
-          ? "يشمل جميع أنظمة الدراسة في نسخ الكليات المبينة أعلاه. يُحتسب النصاب مرة واحدة للمحاضر."
-          : `هذا الملخص خاص بـ${scopeLabel}؛ الإجمالي الجامعي والساعات الزائدة متاحان عند اختيار جميع الكليات.`,
+        note: [
+          timetablePrintNotice(selection.scopes.map((scope) => scope.version.status)),
+          universityScope
+            ? "يشمل جميع أنظمة الدراسة في نسخ الكليات المبينة أعلاه. يُحتسب النصاب مرة واحدة للمحاضر."
+            : `هذا الملخص خاص بـ${scopeLabel}؛ الإجمالي الجامعي والساعات الزائدة متاحان عند اختيار جميع الكليات.`,
+        ]
+          .filter(Boolean)
+          .join(" "),
       },
     };
   };
@@ -508,8 +522,13 @@ function Page() {
         versionName: canViewAcrossColleges
           ? "نسخ الكليات الموضحة في الملخص"
           : ctx.selectedVersion?.name,
-        versionStatus: null,
-        note: `نطاق الجدول: ${scopeLabel} — العام والموازي معًا.`,
+        versionStatus: effectiveScope === "current" ? ctx.selectedVersion?.status : null,
+        note: [
+          timetablePrintNotice(reportScopes.map((scope) => scope.version.status)),
+          `نطاق الجدول: ${scopeLabel} — العام والموازي معًا.`,
+        ]
+          .filter(Boolean)
+          .join(" "),
       }}
       filename={reportFilename}
       printFilename={reportFilename}
@@ -560,6 +579,7 @@ function Page() {
       filters={
         <ReportFilters
           context={ctx}
+          statusMode={false}
           studySystem={false}
           extraSummary={[
             `نطاق الجدول: ${scopeLabel}`,
