@@ -109,14 +109,27 @@ export function parsePayData(value: unknown): PayData {
         !Number.isFinite(e.hourly_rate) ||
         typeof e.amount !== "number" ||
         !Number.isFinite(e.amount) ||
-        Math.abs(
-          e.amount - Math.round((e.payable_hours * e.hourly_rate + Number.EPSILON) * 100) / 100,
-        ) > 0.001)
+        payAmountCents(e.payable_hours, e.hourly_rate) !== Math.round(e.amount * 100))
     )
       throw new Error("مبلغ معتمد غير مكتمل أو غير مطابق للساعات والسعر");
     ids.add(e.id);
   }
   return data;
+}
+/**
+ * Mirrors Postgres `round(payable_hours * hourly_rate, 2)` on numeric(5,2) ×
+ * numeric(12,2) exactly: both operands are scaled to integer hundredths, the
+ * product is exact in ten-thousandths (< 2^53 for the column bounds), and it is
+ * rounded half away from zero to hundredths. Returns the amount in cents.
+ */
+export function payAmountCents(hours: number, rate: number): number {
+  const h = Math.round(hours * 100);
+  const r = Math.round(rate * 100);
+  const product = h * r; // units of 1/10000
+  if (!Number.isSafeInteger(product)) throw new Error("مبلغ خارج النطاق المدعوم");
+  const sign = product < 0 ? -1 : 1;
+  const abs = Math.abs(product);
+  return sign * (Math.floor(abs / 100) + (abs % 100 >= 50 ? 1 : 0));
 }
 export function applicableRate(entry: PayEntry, rates: PayRate[]): PayRate | undefined {
   return rates
