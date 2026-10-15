@@ -18,6 +18,10 @@ import { fetchAcademicTerms } from "@/lib/reports/queries/version-queries";
 import { filterRowsBySearch } from "@/lib/reports/search";
 import {
   buildSystemHoursRows,
+  buildSystemHoursRankRows,
+  systemHoursRankHeaders,
+  systemHoursRankLabel,
+  ALL_SYSTEM_HOURS_RANKS,
   parseSystemHours,
   systemHoursHeaders,
   type SystemHoursKind,
@@ -55,6 +59,8 @@ export function SystemHoursReport({
   const [chosenTerm, setTerm] = useState(initialTermId ?? "");
   const [system, setSystem] = useState<SystemHoursFilter>("all");
   const [search, setSearch] = useState("");
+  const [view, setView] = useState("ranks");
+  const [rankFilter, setRankFilter] = useState(ALL_SYSTEM_HOURS_RANKS);
   const terms = useQuery({
     queryKey: ["system-hours-terms", collegeId],
     queryFn: () => fetchAcademicTerms(collegeId),
@@ -78,23 +84,43 @@ export function SystemHoursReport({
   });
   const error = terms.error ?? report.error;
   const loading = terms.isFetching || report.isFetching;
-  const rows =
+  const ranks = [...new Set((report.data ?? []).map((row) => systemHoursRankLabel(row.rank)))].sort(
+    (a, b) => a.localeCompare(b, "ar"),
+  );
+  const rank = ranks.includes(rankFilter) ? rankFilter : ALL_SYSTEM_HOURS_RANKS;
+  const lecturerRows =
     !error && !loading && termId
-      ? filterRowsBySearch(buildSystemHoursRows(report.data ?? [], kind, system), search)
+      ? filterRowsBySearch(
+          buildSystemHoursRows(report.data ?? [], kind, system).filter(
+            (row) =>
+              kind !== "contractual" ||
+              rank === ALL_SYSTEM_HOURS_RANKS ||
+              systemHoursRankLabel(row.rank) === rank,
+          ),
+          search,
+        )
       : [];
-  const headers = systemHoursHeaders(kind, system);
+  const byRank = kind === "contractual" && view === "ranks";
+  const rows = byRank ? buildSystemHoursRankRows(lecturerRows) : lecturerRows;
+  const headers = byRank ? systemHoursRankHeaders(system) : systemHoursHeaders(kind, system);
+  const viewLabel = byRank ? "ملخص بحسب الرتبة العلمية" : "تفصيل المحاضرين";
   const total =
-    Math.round(rows.reduce((n, r) => n + (typeof r.total === "number" ? r.total : 0), 0) * 100) /
-    100;
-  const incomplete = rows.filter((r) => r.status !== "مكتمل").length;
+    Math.round(
+      lecturerRows.reduce((n, r) => n + (typeof r.total === "number" ? r.total : 0), 0) * 100,
+    ) / 100;
+  const incomplete = lecturerRows.filter((r) => r.status !== "مكتمل").length;
   const title =
     kind === "contractual" ? "الساعات التعاقدية بحسب النظام" : "الساعات الزائدة بحسب النظام";
-  const filename = `${title} — ${collegeName} — ${termName} — ${labels[system]}`;
+  const rankSummary =
+    kind === "contractual"
+      ? ` · ${viewLabel} · الرتبة العلمية: ${rank === ALL_SYSTEM_HOURS_RANKS ? "الكل" : rank}`
+      : "";
+  const filename = `${title} — ${collegeName} — ${termName} — ${labels[system]}${rankSummary}`;
   const scope =
     kind === "contractual"
       ? "ساعات المتعاقدين في الكلية الحالية، بما فيها المحاضرون من كليات أخرى"
       : "أعضاء الكلية الأصلية؛ عبؤهم على مستوى الجامعة في الفصل المناظر";
-  const summary = `${collegeName} · ${termName} · النظام: ${labels[system]} · ${scope}${search.trim() ? ` · بحث: ${search.trim()}` : ""}`;
+  const summary = `${collegeName} · ${termName} · النظام: ${labels[system]} · ${scope}${rankSummary}${search.trim() ? ` · بحث: ${search.trim()}` : ""}`;
   return (
     <ReportShell
       title={title}
@@ -117,12 +143,12 @@ export function SystemHoursReport({
       summary={
         !loading && !error && termId ? (
           <Card className="p-4 text-sm leading-7">
-            {`عدد المحاضرين: ${rows.length} · إجمالي الساعات المؤكدة (${labels[system]}): ${total} ساعة أسبوعيًا · سجلات تحتاج استكمالًا: ${incomplete}.`}
+            {`عدد المحاضرين: ${lecturerRows.length} · إجمالي الساعات المؤكدة (${labels[system]}): ${total} ساعة أسبوعيًا · سجلات تحتاج استكمالًا: ${incomplete}.`}
           </Card>
         ) : undefined
       }
       kpis={[
-        { label: "المحاضرون", value: rows.length },
+        { label: "المحاضرون", value: lecturerRows.length },
         { label: "إجمالي الساعات المؤكدة أسبوعيًا", value: total },
         { label: "بيانات تحتاج استكمالًا", value: incomplete },
       ]}
@@ -133,10 +159,18 @@ export function SystemHoursReport({
             onChange: setSearch,
             placeholder: "ابحث باسم المحاضر أو رقمه الجامعي…",
           }}
-          activeSummary={[labels[system], termName]}
+          activeSummary={[
+            labels[system],
+            termName,
+            ...(kind === "contractual"
+              ? [viewLabel, rank === ALL_SYSTEM_HOURS_RANKS ? "كل الرتب العلمية" : rank]
+              : []),
+          ]}
           onClear={() => {
             setSearch("");
             setSystem("all");
+            setRankFilter(ALL_SYSTEM_HOURS_RANKS);
+            setView("ranks");
           }}
           basic={
             <>
@@ -154,6 +188,36 @@ export function SystemHoursReport({
                   </SelectContent>
                 </Select>
               </ReportFilterField>
+              {kind === "contractual" && (
+                <>
+                  <ReportFilterField label="طريقة العرض">
+                    <Select value={view} onValueChange={setView}>
+                      <SelectTrigger aria-label="طريقة العرض">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ranks">ملخص بحسب الرتبة العلمية</SelectItem>
+                        <SelectItem value="lecturers">تفصيل المحاضرين</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </ReportFilterField>
+                  <ReportFilterField label="الرتبة العلمية">
+                    <Select value={rank} onValueChange={setRankFilter}>
+                      <SelectTrigger aria-label="الرتبة العلمية">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={ALL_SYSTEM_HOURS_RANKS}>الكل</SelectItem>
+                        {ranks.map((value) => (
+                          <SelectItem key={value} value={value}>
+                            {value}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </ReportFilterField>
+                </>
+              )}
               <ReportFilterField label="النظام">
                 <Select value={system} onValueChange={(v) => setSystem(v as SystemHoursFilter)}>
                   <SelectTrigger aria-label="النظام">
@@ -198,10 +262,14 @@ export function SystemHoursReport({
         </Card>
       }
     >
-      <ReportSection title={title} count={rows.length} bodyClassName="p-0">
+      <ReportSection
+        title={kind === "contractual" ? viewLabel : title}
+        count={rows.length}
+        bodyClassName="p-0"
+      >
         <ReportDataTable
           rows={rows}
-          caption={title}
+          caption={`${title}${kind === "contractual" ? ` — ${viewLabel}` : ""}`}
           columns={headers.map((h) => ({
             ...h,
             numeric: !["instructor", "university_number", "rank", "status"].includes(h.key),
