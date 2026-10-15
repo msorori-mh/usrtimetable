@@ -6106,15 +6106,6 @@ export type Database = {
         Args: { p_anchor: string; p_member: string }
         Returns: Json
       }
-      merge_version_shared_lecture: {
-        Args: {
-          p_anchor_group_id: string
-          p_member_group_ids: string[]
-          p_reason: string
-          p_version_id: string
-        }
-        Returns: Json
-      }
       move_or_reschedule_schedule_session: {
         Args: {
           p_change_reason?: string
@@ -6434,10 +6425,6 @@ export type Database = {
       }
       shared_lecture_candidates: { Args: { p_college: string }; Returns: Json }
       shared_lecture_catalog: { Args: { p_college: string }; Returns: Json }
-      shared_lecture_course_name_key: {
-        Args: { p_name: string }
-        Returns: string
-      }
       shared_lecture_group_ids: {
         Args: { p_group: string }
         Returns: {
@@ -6490,10 +6477,6 @@ export type Database = {
         Returns: string
       }
       unmerge_shared_lecture: { Args: { p_member: string }; Returns: Json }
-      unmerge_version_shared_lecture: {
-        Args: { p_member_group_id: string; p_reason: string; p_version_id: string }
-        Returns: Json
-      }
       update_home_college_instructor:
         | {
             Args: {
