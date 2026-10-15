@@ -14,6 +14,9 @@ export interface SystemHoursFact {
   classification_pending: boolean;
 }
 export type SystemHoursRow = Record<string, string | number | null>;
+export const ALL_SYSTEM_HOURS_RANKS = "__all_ranks__";
+export const systemHoursRankLabel = (rank: unknown): string =>
+  typeof rank === "string" && rank.trim() ? rank.trim().replace(/\s+/g, " ") : "غير محددة";
 const realHours = (v: unknown): v is number =>
   typeof v === "number" && Number.isFinite(v) && v >= 0;
 const round = (v: number) => Math.round((v + Number.EPSILON) * 100) / 100;
@@ -132,6 +135,50 @@ export function systemHoursHeaders(kind: SystemHoursKind, system: SystemHoursFil
     ...(system !== "regular" ? [{ key: "parallel", label: `${label} موازي` }] : []),
     { key: "unknown", label: "ساعات غير موزعة على النظامين" },
     { key: "total", label: "الإجمالي المؤكد للنظام المختار" },
+    { key: "status", label: "الحالة" },
+  ];
+}
+
+/** Aggregate the visible lecturer rows, without turning unresolved hours into zeros. */
+export function buildSystemHoursRankRows(rows: readonly SystemHoursRow[]): SystemHoursRow[] {
+  const groups = new Map<string, SystemHoursRow[]>();
+  for (const row of rows) {
+    const rank = systemHoursRankLabel(row.rank);
+    const group = groups.get(rank) ?? [];
+    group.push(row);
+    groups.set(rank, group);
+  }
+  return [...groups]
+    .sort(([a], [b]) => a.localeCompare(b, "ar"))
+    .map(([rank, group]) => {
+      const confirmed = (key: string) => {
+        const values = group
+          .map((row) => row[key])
+          .filter((v): v is number => typeof v === "number");
+        return values.length ? round(values.reduce((sum, value) => sum + value, 0)) : null;
+      };
+      const incomplete = group.filter((row) => row.status !== "مكتمل").length;
+      return {
+        rank,
+        lecturer_count: group.length,
+        regular: confirmed("regular"),
+        parallel: confirmed("parallel"),
+        unknown: confirmed("unknown"),
+        total: confirmed("total"),
+        incomplete,
+        status: incomplete ? "إجمالي مؤكد جزئيًا؛ توجد بيانات تحتاج استكمالًا" : "مكتمل",
+      };
+    });
+}
+
+export function systemHoursRankHeaders(system: SystemHoursFilter) {
+  return [
+    { key: "rank", label: "الرتبة العلمية" },
+    { key: "lecturer_count", label: "عدد المحاضرين" },
+    ...systemHoursHeaders("contractual", system).filter((h) =>
+      ["regular", "parallel", "unknown", "total"].includes(h.key),
+    ),
+    { key: "incomplete", label: "سجلات تحتاج استكمالًا" },
     { key: "status", label: "الحالة" },
   ];
 }
