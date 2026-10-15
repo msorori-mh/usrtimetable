@@ -1,12 +1,10 @@
+import { readGuardedXlsxBytes } from "../excel-import/file-guard";
 import { HEADCOUNT_HEADERS, HEADCOUNT_LIMIT, COUNT_COLUMNS, type ImportCohort } from "./import";
 
 export async function readHeadcountWorkbook(file: File) {
-  if (!/\.xlsx$/i.test(file.name) || file.size > 10 * 1024 * 1024)
-    throw new Error("استخدم ملف XLSX بحجم لا يتجاوز 10 ميجابايت.");
+  // L-4: shared guard (10 MB cap, .xlsx + ZIP signature).
+  const bytes = await readGuardedXlsxBytes(file);
   const XLSX = await import("xlsx");
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  if (bytes[0] !== 80 || bytes[1] !== 75 || bytes[2] !== 3 || bytes[3] !== 4)
-    throw new Error("محتوى الملف ليس XLSX صالحًا.");
   const book = XLSX.read(bytes, {
     type: "array",
     cellFormula: true,

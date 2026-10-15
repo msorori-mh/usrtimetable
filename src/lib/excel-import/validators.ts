@@ -30,7 +30,8 @@ import {
   type PlanComponentRoomTypeField,
 } from "@/lib/academic-delivery/plan-component-room-types";
 
-const TIME_RE = /^([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
+import { isEndAfterStart, parseDaysCsv, parseDecimalCell, TIME_RE } from "./cell-parse";
+import { normalizeDecimalDigits } from "./arabic-normalize";
 
 function toBool(v: unknown): boolean | null {
   if (v === null || v === undefined || v === "") return null;
@@ -450,15 +451,16 @@ function normalize(
         values[col.key] = null;
         continue;
       }
-      if (col.type === "number") values[col.key] = Number.isFinite(Number(s)) ? Number(s) : s;
+      // M-13: strict decimals (Arabic digits accepted; 1e3 / 0x10 rejected). An
+      // unparseable value stays a string and is reported as invalid_number below.
+      if (col.type === "number") values[col.key] = parseDecimalCell(s) ?? s;
       else if (col.type === "boolean") values[col.key] = toBool(s);
-      else if (col.type === "days_csv")
-        values[col.key] = s
-          .split(",")
-          .map((x) => x.trim())
-          .filter(Boolean)
-          .map(Number)
-          .filter((n) => Number.isInteger(n) && n >= 0 && n <= 6);
+      else if (col.type === "days_csv") {
+        // M-13: an invalid token invalidates the cell (kept as the raw string and
+        // reported as invalid_days) — never silently dropped.
+        const days = parseDaysCsv(s);
+        values[col.key] = days.ok ? days.days : s;
+      } else if (col.type === "time") values[col.key] = normalizeDecimalDigits(s);
       else if (col.type === "csv")
         values[col.key] = s
           .split(",")
@@ -652,6 +654,28 @@ export async function validate(
           errorCode: "invalid_enum",
           message: `قيمة غير مسموحة في ${c.header}. المسموح: ${c.enumValues.join(", ")}`,
           rawValue: String(v),
+        });
+      }
+    }
+    for (const c of tpl.columns) {
+      const v = row.values[c.key];
+      // Instructor hour columns are validated (with their own message) in prepareInstructorRow.
+      if (c.type === "number" && typeof v === "string" && v !== "" && entity !== "instructors") {
+        rowErrors.push({
+          rowNumber: row.rowNumber,
+          columnName: c.header,
+          errorCode: "invalid_number",
+          message: `قيمة رقمية غير صحيحة في ${c.header}: ${v}`,
+          rawValue: v,
+        });
+      }
+      if (c.type === "days_csv" && typeof v === "string" && v !== "") {
+        rowErrors.push({
+          rowNumber: row.rowNumber,
+          columnName: c.header,
+          errorCode: "invalid_days",
+          message: `أيام غير صحيحة في ${c.header} (المسموح 0-6 مفصولة بفواصل): ${v}`,
+          rawValue: v,
         });
       }
     }
@@ -878,7 +902,7 @@ export async function validate(
       }
       const st = row.values.available_start_time as string | null;
       const et = row.values.available_end_time as string | null;
-      if (st && et && TIME_RE.test(st) && TIME_RE.test(et) && et <= st)
+      if (st && et && TIME_RE.test(st) && TIME_RE.test(et) && !isEndAfterStart(st, et))
         rowErrors.push({
           rowNumber: row.rowNumber,
           columnName: "متاح_إلى",
@@ -938,7 +962,7 @@ export async function validate(
         });
       const st = row.values.start_time as string | null;
       const et = row.values.end_time as string | null;
-      if (st && et && TIME_RE.test(st) && TIME_RE.test(et) && et <= st)
+      if (st && et && TIME_RE.test(st) && TIME_RE.test(et) && !isEndAfterStart(st, et))
         rowErrors.push({
           rowNumber: row.rowNumber,
           columnName: "إلى_الساعة",
