@@ -1,3 +1,11 @@
+// HISTORICAL RECORD ONLY — DO NOT RUN (audit finding H-12).
+// This file was scripts/staging/exception-aware-staging-apply-exec.mjs. Despite its name it
+// hard-coded the PRODUCTION project ref, ran `supabase db push --linked --include-all`,
+// inserted into supabase_migrations.schema_migrations by hand and regenerated types from
+// production. It is kept as a non-executable .txt for the audit trail of phase 01C.
+// Staging work must go through scripts/staging/deploy-preflight.mjs (which refuses the
+// production ref from supabase/config.toml) and docs/operations/release-runbook.md.
+//
 /**
  * Phase LEGACY-PUBLISH-LIFECYCLE-EXCEPTION-AWARE-IMPL-01C-STAGING-APPLY-EXEC
  * Staging-only migration + seed + verification gate.
