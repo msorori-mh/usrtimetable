@@ -338,7 +338,7 @@ export async function improveDistribution(
       };
       let repairModel: ReturnType<Highs["createModel"]> | undefined;
       try {
-        const built = buildJointModel(repairSnapshot, cap);
+        const built = buildJointModel(repairSnapshot, cap, false, { deadline, signal: options.signal });
         if (stop()) break;
         repairModel = highs.createModel(built.model);
         solverAttempts++;
@@ -597,7 +597,7 @@ export async function improveDistribution(
     };
     let model: ReturnType<Highs["createModel"]> | undefined;
     try {
-      const built = buildJointModel(neighborhood, cap);
+      const built = buildJointModel(neighborhood, cap, false, { deadline, signal: options.signal });
       if (stop()) return finish(stop()!);
       model = highs.createModel(built.model);
       solverAttempts++;

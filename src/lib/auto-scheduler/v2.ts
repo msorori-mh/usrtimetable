@@ -825,6 +825,14 @@ export async function runV2AutoSchedule(params: {
       id: string;
     }
   >();
+  // M-14: difficulty ranking stays on the main thread (it shares the planning
+  // snapshot with the save path), but work is chunked by a frame budget instead
+  // of yielding after every item; feasibility checks themselves are now O(1)
+  // lookups (indexed snapshot + memoized context), see compact.ts.
+  const RANKING_FRAME_BUDGET_MS = 12;
+  let rankingFrameStart = performance.now();
+  const rankingScope = { ...planningSnapshot, sessions: planningSessions };
+  const roomsByCapacity = [...(rooms ?? [])];
   for (const item of jointSaved ? [] : workItems) {
     if (params.signal?.aborted) break;
     const component = componentById.get(item.plan_course_component_id || item.component_id);
@@ -837,7 +845,7 @@ export async function runV2AutoSchedule(params: {
       planCourse: component ? planCourseById.get(component.plan_course_id) : null,
     });
     const durationMinutes = Math.max(0, ...cadence.durations) * 60;
-    const roomIds = (rooms ?? [])
+    const roomIds = roomsByCapacity
       .filter((room) => room.capacity >= item.expected_students)
       .map((room) => room.id);
     const candidateCount =
@@ -846,10 +854,7 @@ export async function runV2AutoSchedule(params: {
             snapshot: planningSnapshot,
             sessions: planningSessions,
             session: seedFor(item, durationMinutes),
-            slots: compactSlots(
-              { ...planningSnapshot, sessions: planningSessions },
-              seedFor(item, durationMinutes),
-            ),
+            slots: compactSlots(rankingScope, seedFor(item, durationMinutes)),
             roomIds,
           })
         : 0;
@@ -859,14 +864,20 @@ export async function runV2AutoSchedule(params: {
       expectedStudents: item.expected_students,
       id: item.teaching_assignment_id,
     });
-    params.onProgress?.({
-      processedItems: 0,
-      totalItems: workItems.length,
-      placed: 0,
-      unplaced: 0,
-      label: `فحص خيارات الجدولة: ${difficulties.size} / ${workItems.length}`,
-    });
-    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    if (
+      performance.now() - rankingFrameStart >= RANKING_FRAME_BUDGET_MS ||
+      difficulties.size === workItems.length
+    ) {
+      params.onProgress?.({
+        processedItems: 0,
+        totalItems: workItems.length,
+        placed: 0,
+        unplaced: 0,
+        label: `فحص خيارات الجدولة: ${difficulties.size} / ${workItems.length}`,
+      });
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+      rankingFrameStart = performance.now();
+    }
   }
   workItems.sort((a, b) =>
     compareDifficulty(
