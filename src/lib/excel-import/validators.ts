@@ -1,5 +1,6 @@
 import { withUniversityNumbers } from "@/lib/instructors/university-number";
 import { supabase } from "@/integrations/supabase/client";
+import { readAllRows } from "@/lib/supabase/read-all";
 import { TEMPLATES } from "./templates";
 import { normalizeCourseNature } from "./course-nature";
 import { resolveRoomTypeFields } from "./room-type-normalize";
@@ -105,12 +106,17 @@ interface Lookups {
 /* eslint-disable @typescript-eslint/no-explicit-any */
 async function loadLookups(entity: ImportEntity, collegeId: string): Promise<Lookups> {
   const lk: Lookups = {};
-  const fetchAll = async (table: string, cols: string): Promise<any[]> => {
-    const { data } = await (supabase.from(table as never) as any)
-      .select(cols)
-      .eq("college_id", collegeId);
-    return (data ?? []) as any[];
-  };
+  // H-10: lookup catalogs are read completely (PostgREST caps a response at
+  // 1000 rows); a failed read fails closed instead of reporting false
+  // "unknown code" errors from a partial catalog.
+  const fetchAll = async (table: string, cols: string): Promise<any[]> =>
+    readAllRows<any>((from, to) =>
+      (supabase.from(table as never) as any)
+        .select(cols)
+        .eq("college_id", collegeId)
+        .order("id")
+        .range(from, to),
+    );
 
   if (entity === "instructors") {
     const fetchInstructorCatalog = async (
@@ -590,10 +596,14 @@ export async function validate(
   } else if (tpl.commitMode !== "custom") {
     const uniqueCol = tpl.uniqueKey;
 
-    const { data: existing } = await (supabase.from(entity as never) as any)
-      .select(uniqueCol)
-      .eq("college_id", collegeId);
-    (existing ?? []).forEach((r: Record<string, unknown>) => {
+    const existing = await readAllRows<Record<string, unknown>>((from, to) =>
+      (supabase.from(entity as never) as any)
+        .select(`id, ${uniqueCol}`)
+        .eq("college_id", collegeId)
+        .order("id")
+        .range(from, to),
+    );
+    existing.forEach((r: Record<string, unknown>) => {
       const k = r[uniqueCol];
       if (k) existingKeys.add(String(k).toLowerCase());
     });

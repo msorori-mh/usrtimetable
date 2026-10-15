@@ -51,6 +51,13 @@ mock.module("../src/integrations/supabase/client.ts", {
             filters[key] = value;
             return query;
           },
+          order() {
+            return query;
+          },
+          async range(from: number, to: number) {
+            const r = result();
+            return { ...r, data: r.data.slice(from, to + 1) };
+          },
           async maybeSingle() {
             const r = result();
             return { ...r, data: r.data[0] ?? null };
