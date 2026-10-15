@@ -206,9 +206,17 @@ describe("LAUNCH-CLOSURE-01 gap 2 — hydration-safe authenticated gate", () => 
     expect(gate).not.toContain("typeof window");
   });
 
+  // The check moved out of route.tsx into src/lib/auth/session-service.ts (wiring) and
+  // src/lib/auth/check-session.ts (pure, bounded, error-mapping logic). Follow it there.
   test("the session check still uses getUser, so the guard is not weakened", () => {
-    expect(gate).toContain(".getUser()");
-    expect(gate).toContain("if (error || !data.user)");
+    expect(gate).toContain('from "@/lib/auth/session-service"');
+    expect(gate).toContain("checkCurrentSession(");
+    const service = read("src/lib/auth/session-service.ts");
+    expect(service).toContain("supabase.auth.getUser()");
+    expect(service).not.toContain("getSession(");
+    const check = read("src/lib/auth/check-session.ts");
+    expect(check).toContain("if (user.error)");
+    expect(check).toContain('if (!user.data.user) return { kind: "signed-out" };');
   });
 });
 

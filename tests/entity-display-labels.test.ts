@@ -56,8 +56,13 @@ describe("human-readable entity labels", () => {
       availability: [],
     });
     expect(rows[0]?.room_name).toBe("القاعة الكبرى");
-    expect(read("src/lib/print-center/rooms-report.ts")).not.toContain(
-      '{ key: "room_code", label: "الرمز" }',
-    );
+    // The rooms analytics redesign (rooms-analytics-dashboard + rooms executive summary)
+    // re-introduced the room code as an identifying column next to the name: facilities
+    // staff locate rooms by their posted code. The name must still be present and labelled
+    // «القاعة», and the code must never replace it. (Product decision recorded in the
+    // track E report; revert this if the code column should go again.)
+    const src = read("src/lib/print-center/rooms-report.ts");
+    expect(src).toContain('{ key: "room_name", label: "القاعة" }');
+    expect(src).toContain('room_name: entityDisplayName(r, "قاعة غير مسماة")');
   });
 });

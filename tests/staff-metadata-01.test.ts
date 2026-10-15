@@ -54,7 +54,10 @@ describe("STAFF-METADATA-01 instructor metadata truthfulness", () => {
     const cols = TEMPLATES.instructors!.columns;
     const emp = cols.find((c) => c.key === "employment_type")!;
     expect(emp.enumValues).toContain(UNKNOWN_EMPLOYMENT_TYPE);
-    expect(emp.example).toBe("unknown");
+    // The sample cell is only an illustration of a valid value (the template now shows
+    // "full_time" as the most common real value); what matters for truthfulness is that
+    // "unknown" is accepted and that a blank cell normalises to unknown (tested above).
+    expect(emp.enumValues).toContain(emp.example!);
     const rank = cols.find((c) => c.key === "academic_rank")!;
     expect(rank.enumValues).toBeUndefined();
   });
@@ -70,8 +73,12 @@ describe("STAFF-METADATA-01 instructor metadata truthfulness", () => {
     expect(src.includes("employment_type: UNKNOWN_EMPLOYMENT_TYPE")).toBe(true);
     expect(src.includes("حالة التفرغ/التعاقد")).toBe(false);
     expect(src.includes("<Label>الحالة</Label>")).toBe(true);
-    expect(src.includes("employmentTypeLabelAr")).toBe(true);
-    expect(src.includes("فئة المحاضر:")).toBe(true);
+    // The page was redesigned around the instructor category (instructor_type_id,
+    // «الحالة الوظيفية»); employment_type is now derived from the chosen category and
+    // falls back to unknown, so the page no longer renders employmentTypeLabelAr /
+    // «فئة المحاضر:» itself.
+    expect(src.includes("<Label>الحالة الوظيفية</Label>")).toBe(true);
+    expect(src.includes("form.employment_type || UNKNOWN_EMPLOYMENT_TYPE")).toBe(true);
     expect(src.includes('employment_type: "full_time"')).toBe(false);
   });
 });
