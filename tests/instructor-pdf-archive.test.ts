@@ -13,6 +13,9 @@ import {
 const bytes = (text: string) => new TextEncoder().encode(text);
 const ascii = (data: Uint8Array) => new TextDecoder("latin1").decode(data);
 const row = (i: number) => ({
+  dayIndex: 6,
+  startTime: "08:00:00",
+  endTime: "11:00:00",
   day: "السبت",
   time: "08:00 - 11:00",
   course: `مقرر ${i}`,
@@ -98,15 +101,46 @@ describe("per-lecturer PDF archive", () => {
 
   it("escapes lecturer text and numbers the pages", () => {
     expect(escapeXml(`a&b<c>"d'`)).toBe("a&amp;b&lt;c&gt;&quot;d&#39;");
-    const pages = instructorSheetPages(sheet(11));
-    expect(pages).toHaveLength(2);
+    const pages = instructorSheetPages(sheet(11), { includeWeekly: true });
+    expect(pages).toHaveLength(3);
     expect(pages[0]).toContain("د. اختبار &amp; &lt;وسم&gt; &quot;اسم&quot;");
     expect(pages[0]).not.toContain("<وسم>");
-    expect(pages[0]).toContain("صفحة 1 من 2");
+    expect(pages[0]).toContain("صفحة 1 من 3");
     expect(pages[1]).toContain("ملخص الساعات التدريسية الأسبوعية");
     expect(pages[0]).not.toContain("ملخص الساعات التدريسية الأسبوعية");
+    expect(pages[2]).toContain("الجدول الأسبوعي");
+    expect(pages[2]).toContain("صفحة 3 من 3");
+    expect(pages[2]).toContain("08:00 - 11:00");
     // One college only: the college column is left out.
     expect(pages[0]).not.toContain(">الكلية</th><th");
+  });
+
+  it("keeps draft notices on both pages and never labels a draft as officially published", () => {
+    const pages = instructorSheetPages(
+      { ...sheet(6), printNotice: "مسودة غير منشورة" },
+      { includeWeekly: true },
+    );
+    expect(pages).toHaveLength(2);
+    for (const page of pages) {
+      expect(page).toContain("مسودة غير منشورة");
+      expect(page).not.toContain("اعتماد رسمي وفق النسخة المنشورة");
+    }
+    expect(pages[0]).toContain("تفصيل المحاضرات");
+    expect(pages[0]).toContain("ملخص الساعات التدريسية الأسبوعية");
+    expect(pages[1]).toContain("الجدول الأسبوعي");
+    expect(pages[1].match(/<b>مقرر /g)).toHaveLength(6);
+  });
+
+  it("batch PDFs omit the weekly page while sharing identical lecture and summary content", () => {
+    const input = { ...sheet(6), printNotice: "مسودة غير منشورة" };
+    const batch = instructorSheetPages(input);
+    const individual = instructorSheetPages(input, { includeWeekly: true });
+    expect(batch).toHaveLength(1);
+    expect(individual).toHaveLength(2);
+    const withoutPageCount = (html: string) => html.replace(/صفحة \d+ من \d+/, "PAGE");
+    expect(withoutPageCount(batch[0])).toBe(withoutPageCount(individual[0]));
+    expect(batch[0]).not.toContain("الجدول الأسبوعي");
+    expect(batch[0]).toContain("9.00");
   });
 
   it("makes file names safe on every platform", () => {
