@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { readAllRows } from "@/lib/supabase/read-all";
 import {
   isMissingInstructorSpecialization,
   isMissingInstructorDepartment,
@@ -82,11 +83,25 @@ type ReadinessAvailabilityRow = {
   is_preference: boolean | null;
 };
 
-function withCollegeScope<T extends { eq: (column: string, value: string) => T }>(
-  query: T,
+/**
+ * H-10: paginated college-scoped read in the `{ data, error, count }` shape the
+ * metrics below consume. `count` is the full row count (no 1000-row cap).
+ * The factory creates a fresh query builder per page (builders mutate in place).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function readScoped<T = any>(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  factory: () => any,
   collegeId: string,
-): T {
-  return query.eq("college_id", collegeId);
+): Promise<{ data: T[] | null; error: unknown; count: number | null }> {
+  try {
+    const data = await readAllRows<T>((from, to) =>
+      factory().eq("college_id", collegeId).order("id").range(from, to),
+    );
+    return { data, error: null, count: data.length };
+  } catch (error) {
+    return { data: null, error: error ?? new Error("تعذر قراءة البيانات"), count: null };
+  }
 }
 
 // A1.5: New Flow readiness signals (cohort/DG/TA V2) — fail-closed; any schema
@@ -97,24 +112,33 @@ async function fetchNewFlowMetrics(
 ): Promise<Metric[]> {
   try {
     const [cohorts, deliveryGroups, dgAssignments, sessionIdentity] = await Promise.all([
-      supabase.from("academic_cohorts").select("id, active").eq("college_id", collegeId),
+      readScoped(() => supabase.from("academic_cohorts").select("id, active"), collegeId),
       // DELIVERY-GROUP-COVERAGE-FIX-01: obsolete groups are historical, not gaps.
-      supabase
-        .from("operational_delivery_groups")
-        .select("id, cohort_id")
-        .eq("college_id", collegeId)
-        .or("is_obsolete.is.null,is_obsolete.eq.false"),
-      supabase
-        .from("teaching_assignments")
-        .select("delivery_group_id, instructor_id")
-        .eq("college_id", collegeId)
-        .or("is_active.is.null,is_active.eq.true")
-        .not("delivery_group_id", "is", null),
-      supabase
-        .from("schedule_sessions")
-        .select("id, cohort_id, delivery_group_id")
-        .eq("college_id", collegeId)
-        .in("schedule_version_id", scheduleVersionIds),
+      readScoped(
+        () =>
+          supabase
+            .from("operational_delivery_groups")
+            .select("id, cohort_id")
+            .or("is_obsolete.is.null,is_obsolete.eq.false"),
+        collegeId,
+      ),
+      readScoped(
+        () =>
+          supabase
+            .from("teaching_assignments")
+            .select("delivery_group_id, instructor_id")
+            .or("is_active.is.null,is_active.eq.true")
+            .not("delivery_group_id", "is", null),
+        collegeId,
+      ),
+      readScoped(
+        () =>
+          supabase
+            .from("schedule_sessions")
+            .select("id, cohort_id, delivery_group_id")
+            .in("schedule_version_id", scheduleVersionIds),
+        collegeId,
+      ),
     ]);
     if (cohorts.error || deliveryGroups.error || dgAssignments.error || sessionIdentity.error) {
       return [
@@ -177,8 +201,8 @@ async function fetchNewFlowMetrics(
 
 async function fetchReadiness(collegeId: string) {
   const scheduleVersionIds = await fetchActionableScheduleVersionIds(collegeId);
-  const scope = <T extends { eq: (column: string, value: string) => T }>(query: T) =>
-    withCollegeScope(query, collegeId);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const readCollegeRows = (factory: () => any) => readScoped(factory, collegeId);
 
   const [
     courses,
@@ -191,39 +215,38 @@ async function fetchReadiness(collegeId: string) {
     roomTypes,
     availability,
   ] = await Promise.all([
-    scope(supabase.from("courses").select("id, code, name", { count: "exact" })),
-    scope(
+    readCollegeRows(() => supabase.from("courses").select("id, code, name")),
+    readCollegeRows(() =>
       supabase
         .from("plan_courses")
         .select(
           "id, level_id, semester, lectures_per_week, labs_per_week, lecture_session_duration, lab_session_duration, course_id",
-          { count: "exact" },
         ),
     ),
-    scope(
+    readCollegeRows(() =>
       supabase
         .from("instructors")
-        .select("id, specialization, department_id, instructor_type_id", { count: "exact" }),
+        .select("id, specialization, department_id, instructor_type_id"),
     ),
-    scope(
+    readCollegeRows(() =>
       supabase
         .from("rooms")
-        .select("id, capacity, room_type_id, room_type, is_active", { count: "exact" }),
+        .select("id, capacity, room_type_id, room_type, is_active"),
     ),
-    scope(supabase.from("course_offerings").select("id, expected_students", { count: "exact" })),
-    scope(
+    readCollegeRows(() => supabase.from("course_offerings").select("id, expected_students")),
+    readCollegeRows(() =>
       supabase
         .from("teaching_assignments")
-        .select("id, instructor_id, course_offering_id", { count: "exact" }),
+        .select("id, instructor_id, course_offering_id"),
     ),
-    scope(
+    readCollegeRows(() =>
       supabase
         .from("schedule_sessions")
-        .select("id, room_id, start_time, end_time, day_of_week", { count: "exact" })
+        .select("id, room_id, start_time, end_time, day_of_week")
         .in("schedule_version_id", scheduleVersionIds),
     ),
-    scope(supabase.from("room_types").select("id, default_capacity, name_ar")),
-    scope(
+    readCollegeRows(() => supabase.from("room_types").select("id, default_capacity, name_ar")),
+    readCollegeRows(() =>
       supabase
         .from("instructor_availability")
         .select("instructor_id, availability_type, is_preference"),
@@ -262,7 +285,19 @@ async function fetchReadiness(collegeId: string) {
   const offeringsWithAssignments = new Set(assignmentsRows.map((a) => a.course_offering_id));
 
   // Shared with the preparation wizard and report exports.
-  if (courses.error || planCourses.error) throw courses.error || planCourses.error;
+  // Fail closed: a failed base read must never be scored as clean data.
+  const baseError = [
+    courses,
+    planCourses,
+    instructors,
+    rooms,
+    offerings,
+    assignments,
+    sessions,
+    roomTypes,
+    availability,
+  ].find((result) => result.error)?.error;
+  if (baseError) throw baseError;
   const { metrics: sp, missingRoomTypes: planComponentRoomTypeMissing } =
     await fetchStudyPlanReadiness(collegeId, coursesRows, planRows);
 

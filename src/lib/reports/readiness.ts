@@ -1,5 +1,7 @@
 import { fetchStudyPlanReadiness } from "@/lib/academic-delivery/fetch-study-plan-readiness";
+import type { ReadinessPlanCourse } from "@/lib/academic-delivery/study-plan-readiness";
 import { supabase } from "@/integrations/supabase/client";
+import { readAllRows } from "@/lib/supabase/read-all";
 import {
   isMissingInstructorSpecialization,
   isMissingInstructorDepartment,
@@ -107,6 +109,26 @@ interface NewFlowSignals {
   approvedHeadcounts: { cohort_id: string; term_id: string }[];
 }
 
+/**
+ * H-10: every college-/version-wide read is paginated (PostgREST caps a single
+ * response at 1000 rows), and failures keep the historical error prefix.
+ */
+async function readAllOrThrow<T>(
+  prefix: string,
+  relation: string,
+  page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
+): Promise<T[]> {
+  try {
+    return await readAllRows<T>(page);
+  } catch (error) {
+    const message =
+      error && typeof error === "object" && "message" in error
+        ? String((error as { message: unknown }).message)
+        : String(error);
+    throw new Error(`${prefix}[${relation}]: ${message}`);
+  }
+}
+
 /** Historical and disposable versions must not create current scheduling gaps. */
 export async function fetchActionableScheduleVersionIds(collegeId: string): Promise<string[]> {
   const { data, error } = await supabase
@@ -127,48 +149,65 @@ async function fetchNewFlowSignals(
   scheduleVersionIds: string[],
 ): Promise<NewFlowSignals | null> {
   try {
+    const P = "NEW_FLOW_READINESS_QUERY_FAILED";
     const [cohorts, deliveryGroups, dgAssignments, sessionIdentity, approvedHeadcounts] =
       await Promise.all([
-        supabase.from("academic_cohorts").select("id, active, term_id").eq("college_id", collegeId),
+        readAllOrThrow<NewFlowSignals["cohorts"][number]>(P, "academic_cohorts", (from, to) =>
+          supabase
+            .from("academic_cohorts")
+            .select("id, active, term_id")
+            .eq("college_id", collegeId)
+            .order("id")
+            .range(from, to),
+        ),
         // DELIVERY-GROUP-COVERAGE-FIX-01: historical (obsolete) groups never count.
-        supabase
-          .from("operational_delivery_groups")
-          .select("id, cohort_id")
-          .eq("college_id", collegeId)
-          .or("is_obsolete.is.null,is_obsolete.eq.false"),
-        supabase
-          .from("teaching_assignments")
-          .select("delivery_group_id, instructor_id")
-          .eq("college_id", collegeId)
-          .or("is_active.is.null,is_active.eq.true")
-          .not("delivery_group_id", "is", null),
-        supabase
-          .from("schedule_sessions")
-          .select("id, cohort_id, delivery_group_id")
-          .eq("college_id", collegeId)
-          .in("schedule_version_id", scheduleVersionIds),
+        readAllOrThrow<NewFlowSignals["deliveryGroups"][number]>(P, "operational_delivery_groups", (from, to) =>
+          supabase
+            .from("operational_delivery_groups")
+            .select("id, cohort_id")
+            .eq("college_id", collegeId)
+            .or("is_obsolete.is.null,is_obsolete.eq.false")
+            .order("id")
+            .range(from, to),
+        ),
+        readAllOrThrow<NewFlowSignals["dgAssignments"][number]>(P, "teaching_assignments", (from, to) =>
+          supabase
+            .from("teaching_assignments")
+            .select("delivery_group_id, instructor_id")
+            .eq("college_id", collegeId)
+            .or("is_active.is.null,is_active.eq.true")
+            .not("delivery_group_id", "is", null)
+            .order("id")
+            .range(from, to),
+        ),
+        readAllOrThrow<NewFlowSignals["sessionIdentity"][number]>(P, "schedule_sessions", (from, to) =>
+          supabase
+            .from("schedule_sessions")
+            .select("id, cohort_id, delivery_group_id")
+            .eq("college_id", collegeId)
+            .in("schedule_version_id", scheduleVersionIds)
+            .order("id")
+            .range(from, to),
+        ),
         // Generated client types can lag a source-only migration; runtime errors
-        // are still checked and thrown below.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (supabase as any)
-          .from("scheduling_cohort_term_headcounts")
-          .select("cohort_id, term_id")
-          .eq("college_id", collegeId)
-          .eq("approval_status", "approved"),
+        // are still checked and thrown.
+        readAllOrThrow<NewFlowSignals["approvedHeadcounts"][number]>(P, "scheduling_cohort_term_headcounts", (from, to) =>
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (supabase as any)
+            .from("scheduling_cohort_term_headcounts")
+            .select("cohort_id, term_id")
+            .eq("college_id", collegeId)
+            .eq("approval_status", "approved")
+            .order("id")
+            .range(from, to),
+        ),
       ]);
-    const error =
-      cohorts.error ||
-      deliveryGroups.error ||
-      dgAssignments.error ||
-      sessionIdentity.error ||
-      approvedHeadcounts.error;
-    if (error) throw new Error(`NEW_FLOW_READINESS_QUERY_FAILED: ${error.message}`);
     return {
-      cohorts: (cohorts.data ?? []) as NewFlowSignals["cohorts"],
-      deliveryGroups: (deliveryGroups.data ?? []) as NewFlowSignals["deliveryGroups"],
-      dgAssignments: (dgAssignments.data ?? []) as NewFlowSignals["dgAssignments"],
-      sessionIdentity: (sessionIdentity.data ?? []) as NewFlowSignals["sessionIdentity"],
-      approvedHeadcounts: (approvedHeadcounts.data ?? []) as NewFlowSignals["approvedHeadcounts"],
+      cohorts: cohorts as NewFlowSignals["cohorts"],
+      deliveryGroups: deliveryGroups as NewFlowSignals["deliveryGroups"],
+      dgAssignments: dgAssignments as NewFlowSignals["dgAssignments"],
+      sessionIdentity: sessionIdentity as NewFlowSignals["sessionIdentity"],
+      approvedHeadcounts: approvedHeadcounts as NewFlowSignals["approvedHeadcounts"],
     };
   } catch (error) {
     throw error instanceof Error
@@ -237,69 +276,85 @@ export function newFlowReadinessMetrics(signals: NewFlowSignals | null): Readine
 /** College-level readiness checks (read-only). Same logic as /data-readiness dashboard. */
 export async function fetchCollegeReadiness(collegeId: string): Promise<ReadinessData> {
   const scheduleVersionIds = await fetchActionableScheduleVersionIds(collegeId);
-  const [courses, planCourses, instructors, rooms, offerings, assignments, sessions, roomTypes] =
-    await Promise.all([
+  const P = "READINESS_QUERY_FAILED";
+  const [
+    coursesRows,
+    planRows,
+    instructorsRows,
+    roomsRows,
+    offeringsRows,
+    assignmentsRows,
+    sessionsRows,
+    roomTypesRows,
+  ] = await Promise.all([
+    readAllOrThrow<{ id: string; code: string; name: string }>(P, "courses", (from, to) =>
       supabase
         .from("courses")
-        .select("id, code, name", { count: "exact" })
-        .eq("college_id", collegeId),
+        .select("id, code, name")
+        .eq("college_id", collegeId)
+        .order("id")
+        .range(from, to),
+    ),
+    readAllOrThrow<ReadinessPlanCourse>(P, "plan_courses", (from, to) =>
       supabase
         .from("plan_courses")
         .select(
           "id, level_id, semester, lectures_per_week, labs_per_week, lecture_session_duration, lab_session_duration, course_id",
-          { count: "exact" },
         )
-        .eq("college_id", collegeId),
+        .eq("college_id", collegeId)
+        .order("id")
+        .range(from, to),
+    ),
+    readAllOrThrow<{ id: string; specialization: string | null; department_id: string | null }>(P, "instructors", (from, to) =>
       supabase
         .from("instructors")
-        .select("id, specialization, department_id", { count: "exact" })
-        .eq("college_id", collegeId),
+        .select("id, specialization, department_id")
+        .eq("college_id", collegeId)
+        .order("id")
+        .range(from, to),
+    ),
+    readAllOrThrow<{ id: string; capacity: number | null; room_type_id: string | null; room_type?: string | null; is_active?: boolean | null }>(P, "rooms", (from, to) =>
       supabase
         .from("rooms")
-        .select("id, capacity, room_type_id, room_type, is_active", { count: "exact" })
-        .eq("college_id", collegeId),
+        .select("id, capacity, room_type_id, room_type, is_active")
+        .eq("college_id", collegeId)
+        .order("id")
+        .range(from, to),
+    ),
+    readAllOrThrow<{ id: string; expected_students: number | null }>(P, "course_offerings", (from, to) =>
       supabase
         .from("course_offerings")
-        .select("id, expected_students", { count: "exact" })
-        .eq("college_id", collegeId),
+        .select("id, expected_students")
+        .eq("college_id", collegeId)
+        .order("id")
+        .range(from, to),
+    ),
+    readAllOrThrow<{ id: string; instructor_id: string | null; course_offering_id: string }>(P, "teaching_assignments", (from, to) =>
       supabase
         .from("teaching_assignments")
-        .select("id, instructor_id, course_offering_id", { count: "exact" })
-        .eq("college_id", collegeId),
+        .select("id, instructor_id, course_offering_id")
+        .eq("college_id", collegeId)
+        .order("id")
+        .range(from, to),
+    ),
+    readAllOrThrow<{ id: string; room_id: string | null; start_time: string | null; end_time: string | null; day_of_week: number | null }>(P, "schedule_sessions", (from, to) =>
       supabase
         .from("schedule_sessions")
-        .select("id, room_id, start_time, end_time, day_of_week", { count: "exact" })
+        .select("id, room_id, start_time, end_time, day_of_week")
         .eq("college_id", collegeId)
-        .in("schedule_version_id", scheduleVersionIds),
+        .in("schedule_version_id", scheduleVersionIds)
+        .order("id")
+        .range(from, to),
+    ),
+    readAllOrThrow<{ id: string; default_capacity: number | null; name_ar?: string | null; code?: string | null }>(P, "room_types", (from, to) =>
       supabase
         .from("room_types")
         .select("id, default_capacity, name_ar, code")
-        .eq("college_id", collegeId),
-    ]);
-
-  const baseQueries = [
-    ["courses", courses],
-    ["plan_courses", planCourses],
-    ["instructors", instructors],
-    ["rooms", rooms],
-    ["course_offerings", offerings],
-    ["teaching_assignments", assignments],
-    ["schedule_sessions", sessions],
-    ["room_types", roomTypes],
-  ] as const;
-  for (const [relation, result] of baseQueries) {
-    if (result.error) {
-      throw new Error(`READINESS_QUERY_FAILED[${relation}]: ${result.error.message}`);
-    }
-  }
-
-  const coursesRows = courses.data ?? [];
-  const planRows = planCourses.data ?? [];
-  const instructorsRows = instructors.data ?? [];
-  const roomsRows = rooms.data ?? [];
-  const offeringsRows = offerings.data ?? [];
-  const assignmentsRows = assignments.data ?? [];
-  const sessionsRows = sessions.data ?? [];
+        .eq("college_id", collegeId)
+        .order("id")
+        .range(from, to),
+    ),
+  ]);
 
   const offeringsWithAssignments = new Set(
     assignmentsRows.map((a: { course_offering_id: string }) => a.course_offering_id),
@@ -328,7 +383,7 @@ export async function fetchCollegeReadiness(collegeId: string): Promise<Readines
         room_type?: string | null;
         is_active?: boolean | null;
       }[],
-      (roomTypes.data ?? []) as { id: string; default_capacity: number | null }[],
+      roomTypesRows as { id: string; default_capacity: number | null }[],
     ),
   ];
 
@@ -383,7 +438,7 @@ export async function fetchCollegeReadiness(collegeId: string): Promise<Readines
   const roomTimeCapacity = await fetchRoomTimeCapacity(
     collegeId,
     roomsRows as { id: string; room_type_id: string | null; is_active?: boolean | null }[],
-    (roomTypes.data ?? []) as { id: string; name_ar?: string | null; code?: string | null }[],
+    roomTypesRows as { id: string; name_ar?: string | null; code?: string | null }[],
   );
   scheduling.push(...roomTimeCapacityReadinessMetrics(roomTimeCapacity));
 
@@ -393,13 +448,13 @@ export async function fetchCollegeReadiness(collegeId: string): Promise<Readines
 
   return {
     totals: {
-      courses: courses.count ?? 0,
-      planCourses: planCourses.count ?? 0,
-      instructors: instructors.count ?? 0,
-      rooms: rooms.count ?? 0,
-      offerings: offerings.count ?? 0,
-      assignments: assignments.count ?? 0,
-      sessions: sessions.count ?? 0,
+      courses: coursesRows.length,
+      planCourses: planRows.length,
+      instructors: instructorsRows.length,
+      rooms: roomsRows.length,
+      offerings: offeringsRows.length,
+      assignments: assignmentsRows.length,
+      sessions: sessionsRows.length,
     },
     studyPlan,
     resources,
