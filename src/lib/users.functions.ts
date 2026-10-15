@@ -1,16 +1,28 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireSecureAdmin } from "@/integrations/supabase/secure-admin-middleware";
 import {
   assignsAllColleges,
   requiresCollegeAssignment,
   requiresExactlyOneCollege,
 } from "@/lib/viewer-roles";
-import { requiresInitialPassword } from "@/lib/password-policy";
+import {
+  PASSWORD_MAX_BYTES,
+  describePasswordIssues,
+  passwordPolicyIssues,
+  requiresInitialPassword,
+} from "@/lib/password-policy";
+import { isMissingFunctionError, serverFailure } from "@/lib/server-errors";
+import { planCollegeChange, validateRoleChange } from "@/lib/user-membership-rules";
 
 /**
  * SECURITY-HARDENING-01: the service-role client is loaded inside handlers so
  * the server-only module never enters a client-reachable import chain.
+ *
+ * H-11: every handler here runs behind `requireSecureAdmin`, which proves with
+ * the CALLER's RLS-bound client that the session is valid, MFA-verified (aal2),
+ * not waiting for a password change, and that the caller is a super_admin —
+ * BEFORE the service-role client is used.
  */
 async function admin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -59,23 +71,26 @@ export const PROVISIONING_ROLE_BY_ROLE: Record<z.infer<typeof ROLE>, string> = {
   college_dean: "college_admin",
 };
 
-async function assertInstitutionAdmin(userId: string) {
+async function audit(entry: {
+  actor_id: string;
+  action: string;
+  entity: string;
+  entity_id: string | null;
+  college_id?: string | null;
+  details: Record<string, unknown>;
+}) {
   const supabaseAdmin = await admin();
-  const { data, error } = await supabaseAdmin
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "super_admin")
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error("Forbidden: institution admin only");
+  const { error } = await supabaseAdmin.from("audit_logs").insert({
+    ...entry,
+    details: entry.details as never,
+  });
+  if (error) console.error("[users.functions] audit insert failed", entry.action, error);
 }
 
 /** Returns auth metadata (last_sign_in_at, banned_until) for all users. */
 export const adminListUserMeta = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    await assertInstitutionAdmin(context.userId);
+  .middleware([requireSecureAdmin])
+  .handler(async () => {
     const supabaseAdmin = await admin();
     const out: Array<{ id: string; last_sign_in_at: string | null; banned_until: string | null }> =
       [];
@@ -83,7 +98,7 @@ export const adminListUserMeta = createServerFn({ method: "POST" })
     // paginate up to 10 pages (10000 users)
     for (let i = 0; i < 10; i++) {
       const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 });
-      if (error) throw new Error(error.message);
+      if (error) throw serverFailure("تعذّر قراءة بيانات الدخول للمستخدمين.", error, "listUsers");
       for (const u of data.users) {
         out.push({
           id: u.id,
@@ -98,18 +113,36 @@ export const adminListUserMeta = createServerFn({ method: "POST" })
   });
 
 export const adminCreateUser = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireSecureAdmin])
   .inputValidator(
-    z.object({
-      full_name: z.string().min(1).max(200),
-      email: z.string().email(),
-      password: z.string().min(8).max(200),
-      role: ROLE,
-      college_ids: z.array(z.string().uuid()).max(50).default([]),
-    }),
+    z
+      .object({
+        full_name: z.string().trim().min(1).max(200),
+        email: z.string().email(),
+        password: z
+          .string()
+          .refine((v) => new TextEncoder().encode(v).length <= PASSWORD_MAX_BYTES, {
+            message: `كلمة المرور أطول من ${PASSWORD_MAX_BYTES} بايت.`,
+          }),
+        role: ROLE,
+        college_ids: z.array(z.string().uuid()).max(50).default([]),
+      })
+      .superRefine((value, ctx) => {
+        // M-3: the same new-password policy as every other place passwords are set.
+        const issues = passwordPolicyIssues(value.password, {
+          email: value.email,
+          name: value.full_name,
+        });
+        if (issues.length > 0)
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["password"],
+            message: describePasswordIssues(issues),
+          });
+      }),
   )
   .handler(async ({ data, context }) => {
-    await assertInstitutionAdmin(context.userId);
+    // The caller's super_admin role, session and aal2 are proven by requireSecureAdmin.
     await assertRateLimit(context.userId, "user_create");
     const supabaseAdmin = await admin();
 
@@ -119,14 +152,15 @@ export const adminCreateUser = createServerFn({ method: "POST" })
     if (assignsAllColleges(data.role)) {
       const { data: allColleges, error: colErr } = await supabaseAdmin
         .from("colleges")
-        .select("id");
-      if (colErr) throw new Error(colErr.message);
+        .select("id")
+        .order("id");
+      if (colErr) throw serverFailure("تعذّر قراءة قائمة الكليات.", colErr, "create:colleges");
       collegeIds = (allColleges ?? []).map((c) => c.id);
     } else if (requiresCollegeAssignment(data.role) && collegeIds.length === 0) {
-      throw new Error("College assignment is required for every role except Super Admin");
+      throw new Error("يجب إسناد كلية واحدة على الأقل لهذا الدور.");
     }
     if (requiresExactlyOneCollege(data.role) && collegeIds.length !== 1) {
-      throw new Error("College dean must be assigned to exactly one college");
+      throw new Error("يجب إسناد كلية واحدة فقط لعميد الكلية.");
     }
 
     if (collegeIds.length > 0) {
@@ -134,8 +168,9 @@ export const adminCreateUser = createServerFn({ method: "POST" })
         .from("colleges")
         .select("id")
         .in("id", collegeIds);
-      if (error) throw new Error(error.message);
-      if (selected?.length !== collegeIds.length) throw new Error("Invalid college assignment");
+      if (error) throw serverFailure("تعذّر التحقق من الكليات المختارة.", error, "create:in");
+      if (selected?.length !== collegeIds.length)
+        throw new Error("إحدى الكليات المختارة غير موجودة؛ حدّث الصفحة.");
     }
 
     // PROVISIONING-GRANT-01: the deferred admin-only guard cannot rely on Auth
@@ -149,7 +184,7 @@ export const adminCreateUser = createServerFn({ method: "POST" })
     // is ever forwarded to the guard (fail-closed).
     const provisioningRole = PROVISIONING_ROLE_BY_ROLE[data.role];
     if (!provisioningRole) {
-      throw new Error("Role is not allowed for account provisioning");
+      throw new Error("هذا الدور غير مسموح به لإنشاء الحسابات.");
     }
     const { data: grantRows, error: grantErr } = await supabaseAdmin.rpc(
       "issue_account_provisioning_grant",
@@ -157,17 +192,18 @@ export const adminCreateUser = createServerFn({ method: "POST" })
     );
     const grant = (grantRows as unknown as Array<{ grant_id: string; nonce: string }> | null)?.[0];
     if (grantErr || !grant) {
-      throw new Error(grantErr?.message ?? "Failed to authorize account provisioning");
+      throw serverFailure("تعذّر تفويض إنشاء الحساب.", grantErr, "create:grant");
     }
 
+    // H-2: the provisioning keys travel ONLY in app_metadata (not user-writable);
+    // the guard trusts raw_app_meta_data exclusively. user_metadata carries
+    // display fields only.
     const { data: created, error: createErr } = await supabaseAdmin.auth.admin.createUser({
       email: normalizedEmail,
       password: data.password,
       email_confirm: true,
       user_metadata: {
         full_name: data.full_name,
-        provisioning_role: provisioningRole,
-        provisioning_nonce: grant.nonce,
       },
       app_metadata: {
         provisioning_role: provisioningRole,
@@ -178,14 +214,14 @@ export const adminCreateUser = createServerFn({ method: "POST" })
     if (createErr || !created.user) {
       // Never leave an unconsumed grant behind when creation fails.
       await supabaseAdmin.rpc("revoke_account_provisioning_grant", { p_grant_id: grant.grant_id });
-      await supabaseAdmin.from("audit_logs").insert({
+      await audit({
         actor_id: context.userId,
         action: "user_create_failed",
         entity: "profiles",
         entity_id: null,
-        details: { email: normalizedEmail, role: data.role, grant_revoked: true } as never,
+        details: { email: normalizedEmail, role: data.role, grant_revoked: true },
       });
-      throw new Error(createErr?.message ?? "Failed to create user");
+      throw serverFailure("تعذّر إنشاء الحساب.", createErr, "create:auth");
     }
     const newId = created.user.id;
     // Consumed grants are terminal; drop the row so nothing can linger.
@@ -201,7 +237,7 @@ export const adminCreateUser = createServerFn({ method: "POST" })
     const { error: roleErr } = await supabaseAdmin
       .from("user_roles")
       .insert({ user_id: newId, role: data.role as never });
-    if (roleErr) throw new Error(roleErr.message);
+    if (roleErr) throw serverFailure("أُنشئ الحساب لكن تعذّر إسناد الدور.", roleErr, "create:role");
 
     if (collegeIds.length > 0) {
       const rows = collegeIds.map((collegeId: string) => ({
@@ -212,49 +248,87 @@ export const adminCreateUser = createServerFn({ method: "POST" })
       const { error: ucErr } = await supabaseAdmin
         .from("user_colleges")
         .upsert(rows, { onConflict: "user_id,college_id", ignoreDuplicates: true });
-      if (ucErr) throw new Error(ucErr.message);
+      if (ucErr) throw serverFailure("أُنشئ الحساب لكن تعذّر إسناد الكليات.", ucErr, "create:uc");
     }
 
-    await supabaseAdmin.from("audit_logs").insert({
+    await audit({
       actor_id: context.userId,
       action: "user_created",
       entity: "profiles",
       entity_id: newId,
-      details: { email: data.email, role: data.role, college_ids: collegeIds } as never,
+      details: { email: data.email, role: data.role, college_ids: collegeIds },
     });
 
     return { id: newId };
   });
 
 export const adminSetUserEnabled = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireSecureAdmin])
   .inputValidator(z.object({ user_id: z.string().uuid(), enabled: z.boolean() }))
   .handler(async ({ data, context }) => {
-    await assertInstitutionAdmin(context.userId);
     await assertRateLimit(context.userId, "user_admin");
     const supabaseAdmin = await admin();
     if (data.user_id === context.userId && !data.enabled) {
-      throw new Error("You cannot disable your own account");
+      throw new Error("لا يمكنك تعطيل حسابك.");
     }
     const ban_duration = data.enabled ? "none" : "876000h"; // ~100 years
     const { error } = await supabaseAdmin.auth.admin.updateUserById(data.user_id, { ban_duration });
-    if (error) throw new Error(error.message);
+    if (error) throw serverFailure("تعذّر تحديث حالة الحساب.", error, "ban");
 
-    await supabaseAdmin.from("audit_logs").insert({
+    let sessionsRevoked: boolean | null = null;
+    if (!data.enabled) {
+      // L-2: a ban blocks new tokens only; revoke live sessions/refresh tokens too.
+      const { error: revokeErr } = await supabaseAdmin.rpc(
+        "admin_revoke_user_sessions" as never,
+        { p_user_id: data.user_id } as never,
+      );
+      if (revokeErr && isMissingFunctionError(revokeErr)) {
+        console.warn(
+          "[users.functions] admin_revoke_user_sessions is not deployed yet; sessions were not revoked",
+        );
+        sessionsRevoked = false;
+      } else if (revokeErr) {
+        await audit({
+          actor_id: context.userId,
+          action: "user_disabled",
+          entity: "profiles",
+          entity_id: data.user_id,
+          details: { sessions_revoked: false },
+        });
+        throw serverFailure(
+          "عُطّل الحساب لكن تعذّر إنهاء جلساته الحالية؛ أعد المحاولة.",
+          revokeErr,
+          "revoke",
+        );
+      } else sessionsRevoked = true;
+    }
+
+    await audit({
       actor_id: context.userId,
       action: data.enabled ? "user_enabled" : "user_disabled",
       entity: "profiles",
       entity_id: data.user_id,
-      details: {} as never,
+      details: data.enabled ? {} : { sessions_revoked: sessionsRevoked },
     });
     return { ok: true };
   });
 
+function resetRedirectUrl(): string | undefined {
+  const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process
+    ?.env;
+  const base = env?.SITE_URL || env?.PUBLIC_SITE_URL;
+  if (!base) return undefined;
+  try {
+    return new URL("/reset-password", base).toString();
+  } catch {
+    return undefined;
+  }
+}
+
 export const adminGeneratePasswordReset = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireSecureAdmin])
   .inputValidator(z.object({ user_id: z.string().uuid(), email: z.string().email() }))
   .handler(async ({ data, context }) => {
-    await assertInstitutionAdmin(context.userId);
     await assertRateLimit(context.userId, "password_reset_admin");
     const supabaseAdmin = await admin();
     const { data: account, error: accountError } = await supabaseAdmin.auth.admin.getUserById(
@@ -274,24 +348,27 @@ export const adminGeneratePasswordReset = createServerFn({ method: "POST" })
     if (rolesError || !roles?.length) throw new Error("تعذر التحقق من أدوار المستخدم.");
 
     // Super admins are exempt from the first-login password-change flow.
-    // Keep recovery for them rather than issuing an unchangeable temporary password.
+    // L-1: never hand a live recovery link to another admin's browser: Supabase
+    // e-mails the recovery link directly to the account owner.
     if (roles.some((r) => r.role === "super_admin")) {
-      const { data: link, error } = await supabaseAdmin.auth.admin.generateLink({
-        type: "recovery",
-        email: user.email,
-      });
-      if (error || !link?.properties?.action_link) throw new Error("تعذر إنشاء رابط الاستعادة.");
-      await supabaseAdmin.from("audit_logs").insert({
+      const redirectTo = resetRedirectUrl();
+      const { error } = await supabaseAdmin.auth.resetPasswordForEmail(
+        user.email,
+        redirectTo ? { redirectTo } : undefined,
+      );
+      if (error) throw serverFailure("تعذر إرسال رابط الاستعادة.", error, "recovery-email");
+      await audit({
         actor_id: context.userId,
         action: "password_reset_requested",
         entity: "profiles",
         entity_id: user.id,
-        details: {} as never,
+        details: { delivery: "email" },
       });
       return {
         email: user.email,
         temporary_password: null,
-        action_link: link.properties.action_link,
+        action_link: null,
+        sent: true,
       };
     }
 
@@ -310,12 +387,172 @@ export const adminGeneratePasswordReset = createServerFn({ method: "POST" })
       },
     });
     if (updateError) throw new Error("تعذر تعيين كلمة المرور المؤقتة؛ أعد المحاولة.");
-    await supabaseAdmin.from("audit_logs").insert({
+    await audit({
       actor_id: context.userId,
       action: "password_reset_completed",
       entity: "profiles",
       entity_id: user.id,
-      details: {} as never,
+      details: {},
     });
-    return { email: user.email, temporary_password: password, action_link: null };
+    return { email: user.email, temporary_password: password, action_link: null, sent: false };
+  });
+
+async function loadMembership(userId: string) {
+  const supabaseAdmin = await admin();
+  const [rolesRes, collegesRes] = await Promise.all([
+    supabaseAdmin.from("user_roles").select("role").eq("user_id", userId),
+    supabaseAdmin.from("user_colleges").select("college_id").eq("user_id", userId),
+  ]);
+  if (rolesRes.error || collegesRes.error)
+    throw serverFailure(
+      "تعذّر قراءة أدوار المستخدم وكلياته.",
+      rolesRes.error ?? collegesRes.error,
+      "membership",
+    );
+  return {
+    roles: (rolesRes.data ?? []).map((r) => String(r.role)),
+    collegeIds: (collegesRes.data ?? []).map((c) => c.college_id),
+  };
+}
+
+/** L-3: role grant/revoke, enforced server-side (was a direct browser write). */
+export const setUserRole = createServerFn({ method: "POST" })
+  .middleware([requireSecureAdmin])
+  .inputValidator(z.object({ userId: z.string().uuid(), role: ROLE, enabled: z.boolean() }))
+  .handler(async ({ data, context }) => {
+    await assertRateLimit(context.userId, "role_change");
+    const supabaseAdmin = await admin();
+    const current = await loadMembership(data.userId);
+    let superAdminCount = Number.POSITIVE_INFINITY;
+    if (!data.enabled && data.role === "super_admin") {
+      const { count, error } = await supabaseAdmin
+        .from("user_roles")
+        .select("user_id", { count: "exact", head: true })
+        .eq("role", "super_admin");
+      if (error || typeof count !== "number")
+        throw serverFailure("تعذّر التحقق من عدد مديري النظام.", error, "count-super");
+      superAdminCount = count;
+    }
+    const violation = validateRoleChange({
+      actorId: context.userId,
+      targetId: data.userId,
+      role: data.role,
+      enabled: data.enabled,
+      currentRoles: current.roles,
+      currentCollegeIds: current.collegeIds,
+      superAdminCount,
+    });
+    if (violation) throw new Error(violation);
+
+    const has = current.roles.includes(data.role);
+    if (data.enabled && !has) {
+      const { error } = await supabaseAdmin
+        .from("user_roles")
+        .insert({ user_id: data.userId, role: data.role as never });
+      if (error && error.code !== "23505")
+        throw serverFailure("تعذّر إسناد الدور.", error, "role-insert");
+      // Academic affairs reads every college. Multi-role safety: never widen an
+      // account that carries an admin role (DB trigger is the safety net).
+      const isAdminAccount =
+        current.roles.includes("super_admin") || current.roles.includes("college_admin");
+      if (assignsAllColleges(data.role) && !isAdminAccount) {
+        const { data: all, error: allErr } = await supabaseAdmin
+          .from("colleges")
+          .select("id")
+          .order("id");
+        if (allErr) throw serverFailure("تعذّر قراءة الكليات.", allErr, "role-colleges");
+        if ((all ?? []).length > 0) {
+          const { error: ucErr } = await supabaseAdmin.from("user_colleges").upsert(
+            (all ?? []).map((c) => ({ user_id: data.userId, college_id: c.id })),
+            { onConflict: "user_id,college_id", ignoreDuplicates: true },
+          );
+          if (ucErr) throw serverFailure("تعذّر إسناد الكليات.", ucErr, "role-uc");
+        }
+      }
+    } else if (!data.enabled && has) {
+      const { error } = await supabaseAdmin
+        .from("user_roles")
+        .delete()
+        .eq("user_id", data.userId)
+        .eq("role", data.role as never);
+      // LAST_SUPER_ADMIN from the DB trigger is mapped to Arabic by serverFailure.
+      if (error) throw serverFailure("تعذّر إزالة الدور.", error, "role-delete");
+    } else {
+      return { ok: true, changed: false };
+    }
+
+    await audit({
+      actor_id: context.userId,
+      action: "role_changed",
+      entity: "user_roles",
+      entity_id: data.userId,
+      details: { role: data.role, on: data.enabled },
+    });
+    return { ok: true, changed: true };
+  });
+
+/** L-3: college assignment, with the dean "exactly one college" rule on the final state. */
+export const setUserCollege = createServerFn({ method: "POST" })
+  .middleware([requireSecureAdmin])
+  .inputValidator(
+    z.object({ userId: z.string().uuid(), collegeId: z.string().uuid(), enabled: z.boolean() }),
+  )
+  .handler(async ({ data, context }) => {
+    await assertRateLimit(context.userId, "role_change");
+    const supabaseAdmin = await admin();
+    const current = await loadMembership(data.userId);
+    if (data.enabled) {
+      const { data: college, error } = await supabaseAdmin
+        .from("colleges")
+        .select("id")
+        .eq("id", data.collegeId)
+        .maybeSingle();
+      if (error) throw serverFailure("تعذّر التحقق من الكلية.", error, "college-read");
+      if (!college) throw new Error("الكلية غير موجودة؛ حدّث الصفحة.");
+    }
+    const plan = planCollegeChange({
+      collegeId: data.collegeId,
+      enabled: data.enabled,
+      currentRoles: current.roles,
+      currentCollegeIds: current.collegeIds,
+    });
+    if (!plan.ok) throw new Error(plan.error);
+    if (plan.add.length === 0 && plan.remove.length === 0) return { ok: true, changed: false };
+
+    // Insert first, then remove: a dean is never left with zero colleges.
+    if (plan.add.length > 0) {
+      const { error } = await supabaseAdmin.from("user_colleges").upsert(
+        plan.add.map((collegeId) => ({ user_id: data.userId, college_id: collegeId })),
+        { onConflict: "user_id,college_id", ignoreDuplicates: true },
+      );
+      if (error) throw serverFailure("تعذّر إسناد الكلية.", error, "college-insert");
+    }
+    if (plan.remove.length > 0) {
+      const { error } = await supabaseAdmin
+        .from("user_colleges")
+        .delete()
+        .eq("user_id", data.userId)
+        .in("college_id", plan.remove);
+      if (error) throw serverFailure("تعذّر إزالة إسناد الكلية.", error, "college-delete");
+    }
+
+    for (const collegeId of plan.add)
+      await audit({
+        actor_id: context.userId,
+        action: "college_assignment_added",
+        entity: "user_colleges",
+        entity_id: data.userId,
+        college_id: collegeId,
+        details: {},
+      });
+    for (const collegeId of plan.remove)
+      await audit({
+        actor_id: context.userId,
+        action: "college_assignment_removed",
+        entity: "user_colleges",
+        entity_id: data.userId,
+        college_id: collegeId,
+        details: {},
+      });
+    return { ok: true, changed: true };
   });

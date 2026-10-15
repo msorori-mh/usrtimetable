@@ -9,7 +9,13 @@ import {
   adminGeneratePasswordReset,
   adminListUserMeta,
   adminSetUserEnabled,
+  setUserCollege,
+  setUserRole,
 } from "@/lib/users.functions";
+import { readAllRows } from "@/lib/supabase/read-all";
+import { confirmAction } from "@/components/confirm-dialog";
+import { roleRemovalNeedsConfirmation } from "@/lib/user-membership-rules";
+import { describePasswordIssues, passwordPolicyIssues } from "@/lib/password-policy";
 import { PasswordResetDialog } from "@/components/admin/password-reset-dialog";
 import { UnauthorizedAccess } from "@/components/unauthorized-access";
 import {
@@ -55,7 +61,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { logAudit } from "@/lib/audit";
 import {
   Users,
   Plus,
@@ -157,29 +162,84 @@ function UsersPage() {
   const createUserFn = useServerFn(adminCreateUser);
   const setEnabledFn = useServerFn(adminSetUserEnabled);
   const resetFn = useServerFn(adminGeneratePasswordReset);
+  const setRoleFn = useServerFn(setUserRole);
+  const setCollegeFn = useServerFn(setUserCollege);
 
   const { data: users, isLoading } = useQuery({
     queryKey: ["all-users-admin", viewOnly],
     enabled: canLoadAdminData,
     queryFn: async (): Promise<UserRow[]> => {
-      const [{ data: profiles }, { data: roles }, { data: ucs }, meta] = await Promise.all([
-        supabase.from("profiles").select("id, full_name, email, created_at").order("created_at"),
-        supabase.from("user_roles").select("user_id, role"),
-        supabase.from("user_colleges").select("user_id, college_id"),
-        // Institutional viewer never touches the admin-only Auth metadata endpoint.
-        viewOnly
-          ? Promise.resolve([] as Awaited<ReturnType<typeof listMeta>>)
-          : listMeta().catch(() => [] as Awaited<ReturnType<typeof listMeta>>),
+      if (viewOnly) {
+        // L-8: the institutional viewer sees NAME AND ROLE ONLY (no e-mails,
+        // colleges or Auth metadata) through the dedicated directory RPC.
+        const { data, error } = await supabase.rpc("list_user_directory" as never);
+        if (error) throw new Error("تعذّر تحميل دليل المستخدمين. أعد المحاولة.");
+        return ((data ?? []) as unknown as Array<{
+          id: string;
+          full_name: string | null;
+          roles: string[] | null;
+        }>)
+          .map((row) => ({
+            id: row.id,
+            email: null,
+            full_name: row.full_name,
+            created_at: "",
+            roles: (row.roles ?? []) as AppRole[],
+            collegeIds: [],
+            last_sign_in_at: null,
+            banned_until: null,
+          }))
+          .sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? "", "ar"));
+      }
+      // H-10: PostgREST caps responses at 1000 rows; read every page in a
+      // deterministic order so no account silently disappears from the list.
+      const [profiles, roles, ucs, meta] = await Promise.all([
+        readAllRows<{
+          id: string;
+          full_name: string | null;
+          email: string | null;
+          created_at: string;
+        }>((from, to) =>
+          supabase
+            .from("profiles")
+            .select("id, full_name, email, created_at")
+            .order("created_at")
+            .order("id")
+            .range(from, to),
+        ),
+        readAllRows<{ user_id: string; role: string }>((from, to) =>
+          supabase
+            .from("user_roles")
+            .select("user_id, role")
+            .order("user_id")
+            .order("role")
+            .range(from, to),
+        ),
+        readAllRows<{ user_id: string; college_id: string }>((from, to) =>
+          supabase
+            .from("user_colleges")
+            .select("user_id, college_id")
+            .order("user_id")
+            .order("college_id")
+            .range(from, to),
+        ),
+        listMeta().catch(() => [] as Awaited<ReturnType<typeof listMeta>>),
       ]);
 
       const metaMap = new Map((meta ?? []).map((m) => [m.id, m]));
-      return (profiles ?? []).map((p) => ({
+      const rolesByUser = new Map<string, AppRole[]>();
+      for (const r of roles)
+        rolesByUser.set(r.user_id, [...(rolesByUser.get(r.user_id) ?? []), r.role as AppRole]);
+      const collegesByUser = new Map<string, string[]>();
+      for (const u of ucs)
+        collegesByUser.set(u.user_id, [...(collegesByUser.get(u.user_id) ?? []), u.college_id]);
+      return profiles.map((p) => ({
         id: p.id,
         email: p.email,
         full_name: p.full_name,
         created_at: p.created_at,
-        roles: (roles ?? []).filter((r) => r.user_id === p.id).map((r) => r.role as AppRole),
-        collegeIds: (ucs ?? []).filter((u) => u.user_id === p.id).map((u) => u.college_id),
+        roles: rolesByUser.get(p.id) ?? [],
+        collegeIds: collegesByUser.get(p.id) ?? [],
         last_sign_in_at: metaMap.get(p.id)?.last_sign_in_at ?? null,
         banned_until: metaMap.get(p.id)?.banned_until ?? null,
       }));
@@ -188,7 +248,7 @@ function UsersPage() {
 
   const { data: colleges } = useQuery({
     queryKey: ["colleges-min"],
-    enabled: canLoadAdminData,
+    enabled: canLoadAdminData && !viewOnly,
     queryFn: async () =>
       (await supabase.from("colleges").select("id, name").order("name")).data ?? [],
   });
@@ -218,51 +278,29 @@ function UsersPage() {
     return (securityEvents ?? []).filter((event) => new Date(event.created_at).getTime() >= cutoff);
   }, [securityEvents]);
 
+  // L-3: role and college changes go through server functions that enforce
+  // self-demotion, last-super-admin and dean single-college rules.
   const setRole = useMutation({
-    mutationFn: async ({ userId, role, on }: { userId: string; role: AppRole; on: boolean }) => {
-      if (on) {
-        const { error } = await supabase
-          .from("user_roles")
-          .insert({ user_id: userId, role: role as never });
-        if (error && !error.message.includes("duplicate")) throw error;
-        // Academic affairs reads every college: assign them
-        // all here too (a database trigger is the authoritative safety net).
-        // Multi-role safety: never widen an account that carries an admin role.
-        const existingRoles = (
-          (await supabase.from("user_roles").select("role").eq("user_id", userId)).data ?? []
-        ).map((r) => r.role as AppRole);
-        const isAdminAccount =
-          existingRoles.includes("super_admin") || existingRoles.includes("college_admin");
-        if (assignsAllColleges(role as never) && !isAdminAccount) {
-          const all = (await supabase.from("colleges").select("id")).data ?? [];
-          if (all.length > 0) {
-            const { error: ucErr } = await supabase.from("user_colleges").upsert(
-              all.map((c) => ({ user_id: userId, college_id: c.id })),
-              { onConflict: "user_id,college_id", ignoreDuplicates: true },
-            );
-            if (ucErr && !ucErr.message.includes("duplicate")) throw ucErr;
-          }
-        }
-      } else {
-        const { error } = await supabase
-          .from("user_roles")
-          .delete()
-          .eq("user_id", userId)
-          .eq("role", role as never);
-        if (error) throw error;
-      }
-      await logAudit({
-        action: "role_changed",
-        entity: "user_roles",
-        entityId: userId,
-        details: { role, on },
-      });
-    },
+    mutationFn: async ({ userId, role, on }: { userId: string; role: AppRole; on: boolean }) =>
+      setRoleFn({ data: { userId, role, enabled: on } }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["all-users-admin"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const requestRoleChange = async (user: UserRow, role: AppRole, on: boolean) => {
+    if (!on && roleRemovalNeedsConfirmation(role)) {
+      const ok = await confirmAction({
+        title: `إزالة دور «${ROLE_LABELS[role]}»؟`,
+        description: `سيفقد ${user.full_name ?? user.email ?? "المستخدم"} صلاحيات هذا الدور فورًا.`,
+        confirmLabel: "إزالة الدور",
+        destructive: true,
+      });
+      if (!ok) return;
+    }
+    setRole.mutate({ userId: user.id, role, on });
+  };
 
   const toggleCollege = useMutation({
     mutationFn: async ({
@@ -273,28 +311,7 @@ function UsersPage() {
       userId: string;
       collegeId: string;
       on: boolean;
-    }) => {
-      if (on) {
-        const { error } = await supabase
-          .from("user_colleges")
-          .insert({ user_id: userId, college_id: collegeId });
-        if (error && !error.message.includes("duplicate")) throw error;
-      } else {
-        const { error } = await supabase
-          .from("user_colleges")
-          .delete()
-          .eq("user_id", userId)
-          .eq("college_id", collegeId);
-        if (error) throw error;
-      }
-      await logAudit({
-        action: on ? "college_assignment_added" : "college_assignment_removed",
-        entity: "user_colleges",
-        entityId: userId,
-        collegeId,
-        details: {},
-      });
-    },
+    }) => setCollegeFn({ data: { userId, collegeId, enabled: on } }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["all-users-admin"] });
     },
@@ -471,7 +488,7 @@ function UsersPage() {
           <div>
             <Label className="text-xs">بحث</Label>
             <Input
-              placeholder="بحث بالاسم أو البريد"
+              placeholder={viewOnly ? "بحث بالاسم" : "بحث بالاسم أو البريد"}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -492,7 +509,7 @@ function UsersPage() {
               </SelectContent>
             </Select>
           </div>
-          <div>
+          <div className={viewOnly ? "hidden" : undefined}>
             <Label className="text-xs">الكلّية</Label>
             <Select value={collegeFilter} onValueChange={setCollegeFilter}>
               <SelectTrigger>
@@ -539,9 +556,11 @@ function UsersPage() {
                           </Badge>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground" dir="ltr">
-                        {u.email}
-                      </p>
+                      {!viewOnly && (
+                        <p className="text-xs text-muted-foreground" dir="ltr">
+                          {u.email}
+                        </p>
+                      )}
                       <div className="mt-2 flex flex-wrap gap-1">
                         {u.roles.length === 0 && (
                           <span className="text-xs text-muted-foreground">لا أدوار</span>
@@ -551,13 +570,14 @@ function UsersPage() {
                             {ROLE_LABELS[r]}
                           </Badge>
                         ))}
-                        {u.collegeIds.map((cid) => (
-                          <Badge key={cid} variant="secondary" className="font-normal">
-                            {collegeMap.get(cid) ?? "—"}
-                          </Badge>
-                        ))}
+                        {!viewOnly &&
+                          u.collegeIds.map((cid) => (
+                            <Badge key={cid} variant="secondary" className="font-normal">
+                              {collegeMap.get(cid) ?? "—"}
+                            </Badge>
+                          ))}
                       </div>
-                      {u.roles.includes("college_admin") && u.collegeIds.length === 0 && (
+                      {!viewOnly && u.roles.includes("college_admin") && u.collegeIds.length === 0 && (
                         <button
                           type="button"
                           onClick={() => setExpandedUser(u.id)}
@@ -567,12 +587,14 @@ function UsersPage() {
                           دور غير مفعّل — لم تُسنَد كلّية. اضغط للإسناد
                         </button>
                       )}
-                      <p className="mt-2 text-[11px] text-muted-foreground">
-                        آخر دخول:{" "}
-                        {u.last_sign_in_at
-                          ? new Date(u.last_sign_in_at).toLocaleString("ar")
-                          : "لم يُسجَّل دخول بعد"}
-                      </p>
+                      {!viewOnly && (
+                        <p className="mt-2 text-[11px] text-muted-foreground">
+                          آخر دخول:{" "}
+                          {u.last_sign_in_at
+                            ? new Date(u.last_sign_in_at).toLocaleString("ar")
+                            : "لم يُسجَّل دخول بعد"}
+                        </p>
+                      )}
                     </div>
                     {viewOnly ? (
                       <span className="text-xs text-muted-foreground">
@@ -617,7 +639,7 @@ function UsersPage() {
                     )}
                   </div>
 
-                  {expanded && (
+                  {expanded && !viewOnly && (
                     <div className="mt-5 grid gap-6 rounded-lg bg-muted/30 p-4 md:grid-cols-2">
                       <div>
                         <p className="mb-3 text-sm font-semibold">الأدوار</p>
@@ -636,11 +658,7 @@ function UsersPage() {
                                     checked={isOn}
                                     disabled={lockSelf || setRole.isPending}
                                     onCheckedChange={(v) => {
-                                      setRole.mutate({
-                                        userId: u.id,
-                                        role,
-                                        on: !!v,
-                                      });
+                                      void requestRoleChange(u, role, !!v);
                                       if (
                                         v &&
                                         role === "college_admin" &&
@@ -701,6 +719,7 @@ function UsersPage() {
                               <Button
                                 size="sm"
                                 variant="ghost"
+                                disabled={toggleCollege.isPending}
                                 onClick={() =>
                                   toggleCollege.mutate({
                                     userId: u.id,
@@ -816,8 +835,17 @@ function CreateUserDialog({
     });
 
   const submit = async () => {
-    if (!form.full_name.trim() || !form.email.trim() || form.password.length < 8) {
-      toast.error("الاسم، البريد، وكلمة مرور لا تقل عن 8 أحرف مطلوبة");
+    if (!form.full_name.trim() || !form.email.trim()) {
+      toast.error("الاسم والبريد الإلكتروني مطلوبان");
+      return;
+    }
+    // M-3: same policy the server enforces.
+    const passwordIssues = passwordPolicyIssues(form.password, {
+      email: form.email,
+      name: form.full_name,
+    });
+    if (passwordIssues.length > 0) {
+      toast.error(describePasswordIssues(passwordIssues));
       return;
     }
     // «إدارة الشؤون الأكاديمية» never picks colleges by hand: every current
@@ -936,8 +964,8 @@ function CreateUserDialog({
             </div>
             <p className="mt-1 text-[11px] text-muted-foreground">
               {form.role === "super_admin"
-                ? "8 أحرف على الأقل."
-                : "كلمة مؤقتة؛ سيُلزم المستخدم بتعيين كلمة خاصة به عند أول دخول، من ٨ أحرف على الأقل تشمل حروفًا ومعها أرقام أو رموز."}
+                ? "١٢ حرفًا على الأقل، دون تسلسلات بسيطة أو كلمات شائعة أو الاسم/البريد."
+                : "كلمة مؤقتة (١٢ حرفًا على الأقل)؛ سيُلزم المستخدم بتعيين كلمة خاصة به عند أول دخول."}
             </p>
           </div>
           <div>

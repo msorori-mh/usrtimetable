@@ -90,8 +90,17 @@ test("server handlers consume limits before privileged auth mutations", () => {
   assert.ok(adminLimit >= 0 && adminLimit < updateUser);
 
   const resetLimit = users.indexOf('assertRateLimit(context.userId, "password_reset_admin")');
-  const resetLink = users.indexOf("supabaseAdmin.auth.admin.generateLink");
+  // L-1: recovery links are e-mailed by Supabase, never generated for the browser.
+  assert.equal(users.indexOf("auth.admin.generateLink"), -1);
+  const resetLink = users.indexOf("supabaseAdmin.auth.resetPasswordForEmail");
   assert.ok(resetLimit >= 0 && resetLimit < resetLink);
+
+  // L-3: role/college membership changes are throttled server-side too.
+  for (const fn of ["setUserRole", "setUserCollege"]) {
+    const body = users.slice(users.indexOf(`export const ${fn}`));
+    assert.match(body, /\.middleware\(\[requireSecureAdmin\]\)/, fn);
+    assert.ok(body.indexOf('assertRateLimit(context.userId, "role_change")') > 0, fn);
+  }
   const resetUpdate = users.indexOf("supabaseAdmin.auth.admin.updateUserById", resetLimit);
   assert.ok(resetUpdate > resetLimit);
 
