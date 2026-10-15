@@ -201,7 +201,7 @@ describe("CSV output", () => {
 
 describe("XLSX workbook", () => {
   test("has a data sheet and a filter-criteria sheet with every row", () => {
-    const wb = buildAdminExportWorkbook(roomsDataset(), NOW);
+    const wb = buildAdminExportWorkbook(XLSX, roomsDataset(), NOW);
     expect(wb.SheetNames).toEqual(["القاعات", ADMIN_EXPORT_CRITERIA_SHEET_AR]);
     const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets["القاعات"]!);
     expect(data).toHaveLength(2);

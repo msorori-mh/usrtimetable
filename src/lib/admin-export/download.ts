@@ -2,7 +2,7 @@
  * ADMIN-EXPORT-01 — browser writers for admin exports (CSV + Excel).
  * Excel workbooks always carry a data sheet and a filter-criteria sheet.
  */
-import * as XLSX from "xlsx";
+import type * as XLSXTypes from "xlsx";
 import {
   ADMIN_EXPORT_CRITERIA_SHEET_AR,
   adminExportFilename,
@@ -36,11 +36,18 @@ function autoWidths(matrix: AdminExportCell[][]): { wch: number }[] {
   return widths.map((wch) => ({ wch }));
 }
 
-/** Build the workbook object (exported for tests; no DOM access). */
+type XlsxModule = typeof XLSXTypes;
+
+/**
+ * Build the workbook object (exported for tests; no DOM access).
+ * M-18: SheetJS is passed in (tests) or loaded lazily (exportAdminDataset) so
+ * list pages never ship it in their initial bundle.
+ */
 export function buildAdminExportWorkbook<T>(
+  XLSX: XlsxModule,
   dataset: AdminExportDataset<T>,
   now: Date = new Date(),
-): XLSX.WorkBook {
+): XLSXTypes.WorkBook {
   const table = buildAdminExportTable(dataset);
   const matrix: AdminExportCell[][] = [table.headers, ...table.body];
   const ws = XLSX.utils.aoa_to_sheet(matrix);
@@ -72,18 +79,19 @@ function triggerDownload(blob: Blob, filename: string): void {
  * Export the dataset. Throws Arabic, actionable errors (empty result, too many
  * rows) so callers can surface them with a toast.
  */
-export function exportAdminDataset<T>(
+export async function exportAdminDataset<T>(
   dataset: AdminExportDataset<T>,
   format: AdminExportFormat,
   now: Date = new Date(),
-): { filename: string; rowCount: number } {
+): Promise<{ filename: string; rowCount: number }> {
   const base = adminExportFilename(dataset.fileBase, now);
   if (format === "csv") {
     const csv = buildAdminExportCsv(dataset, now);
     triggerDownload(new Blob([csv], { type: "text/csv;charset=utf-8" }), `${base}.csv`);
     return { filename: `${base}.csv`, rowCount: dataset.rows.length };
   }
-  const wb = buildAdminExportWorkbook(dataset, now);
+  const XLSX = await import("xlsx");
+  const wb = buildAdminExportWorkbook(XLSX, dataset, now);
   XLSX.writeFile(wb, `${base}.xlsx`);
   return { filename: `${base}.xlsx`, rowCount: dataset.rows.length };
 }
