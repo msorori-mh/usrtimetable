@@ -1,0 +1,9 @@
+# Binary proof artifacts. If Git LFS is enabled for this repository, uncomment the
+# filter lines below (and run `git lfs migrate import --include="docs/print-proof/**"`
+# in a coordinated history rewrite) so clones stop downloading ~33 MB of proofs.
+docs/print-proof/**/*.pdf  binary
+docs/print-proof/**/*.png  binary
+docs/print-proof/**/*.xlsx binary
+# docs/print-proof/**/*.pdf  filter=lfs diff=lfs merge=lfs -text
+# docs/print-proof/**/*.png  filter=lfs diff=lfs merge=lfs -text
+# docs/print-proof/**/*.xlsx filter=lfs diff=lfs merge=lfs -text
