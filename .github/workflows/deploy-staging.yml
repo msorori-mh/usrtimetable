@@ -35,31 +35,31 @@ jobs:
     timeout-minutes: 45
     environment: staging
     env:
-      DEPLOY_SHA: \${{ github.event_name == 'workflow_dispatch' && inputs.deploy_sha || github.event.pull_request.head.sha }}
+      DEPLOY_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy_sha || github.event.pull_request.head.sha }}
       STAGING_DEPLOY_CONFIRM: DEPLOY_STAGING_ONLY
-      STAGING_WORKER_NAME: \${{ vars.STAGING_WORKER_NAME }}
-      STAGING_BASE_URL: \${{ vars.STAGING_BASE_URL }}
-      CLOUDFLARE_ACCOUNT_ID: \${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      CLOUDFLARE_API_TOKEN: \${{ secrets.CLOUDFLARE_API_TOKEN }}
-      STAGING_SUPABASE_URL: \${{ secrets.STAGING_SUPABASE_URL }}
-      STAGING_SUPABASE_PROJECT_ID: \${{ secrets.STAGING_SUPABASE_PROJECT_ID }}
-      STAGING_SUPABASE_PUBLISHABLE_KEY: \${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
-      STAGING_SUPABASE_SERVICE_ROLE_KEY: \${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
-      STAGING_ADMIN_EMAIL: \${{ secrets.STAGING_ADMIN_EMAIL }}
-      STAGING_ADMIN_PASSWORD: \${{ secrets.STAGING_ADMIN_PASSWORD }}
-      VITE_SUPABASE_URL: \${{ secrets.STAGING_SUPABASE_URL }}
-      VITE_SUPABASE_PROJECT_ID: \${{ secrets.STAGING_SUPABASE_PROJECT_ID }}
-      VITE_SUPABASE_PUBLISHABLE_KEY: \${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
-      SUPABASE_URL: \${{ secrets.STAGING_SUPABASE_URL }}
-      SUPABASE_PROJECT_ID: \${{ secrets.STAGING_SUPABASE_PROJECT_ID }}
-      SUPABASE_PUBLISHABLE_KEY: \${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
-      SUPABASE_SERVICE_ROLE_KEY: \${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
+      STAGING_WORKER_NAME: ${{ vars.STAGING_WORKER_NAME }}
+      STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      STAGING_SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+      STAGING_SUPABASE_PROJECT_ID: ${{ secrets.STAGING_SUPABASE_PROJECT_ID }}
+      STAGING_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      STAGING_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
+      STAGING_ADMIN_EMAIL: ${{ secrets.STAGING_ADMIN_EMAIL }}
+      STAGING_ADMIN_PASSWORD: ${{ secrets.STAGING_ADMIN_PASSWORD }}
+      VITE_SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+      VITE_SUPABASE_PROJECT_ID: ${{ secrets.STAGING_SUPABASE_PROJECT_ID }}
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+      SUPABASE_PROJECT_ID: ${{ secrets.STAGING_SUPABASE_PROJECT_ID }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
 
     steps:
       - name: Checkout the exact candidate SHA
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: \${{ env.DEPLOY_SHA }}
+          ref: ${{ env.DEPLOY_SHA }}
           fetch-depth: 0
 
       - name: Prove the candidate is the current isolated branch head
@@ -103,7 +103,7 @@ jobs:
 
       - name: Prove the fixed split-group rule in disposable PostgreSQL
         env:
-          COHORT_RULE_DB_MODULE: \${{ runner.temp }}/cohort-rule-db/node_modules/@electric-sql/pglite/dist/index.js
+          COHORT_RULE_DB_MODULE: ${{ runner.temp }}/cohort-rule-db/node_modules/@electric-sql/pglite/dist/index.js
         run: node --test tests/cohort-component-single-instructor-db.test.mjs
 
       - name: TypeScript
@@ -121,28 +121,28 @@ jobs:
         id: deploy
         uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4
         with:
-          apiToken: \${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: \${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           packageManager: bun
           wranglerVersion: "4.136.3"
           command: deploy --config .output/server/wrangler.json
-          gitHubToken: \${{ secrets.GITHUB_TOKEN }}
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           secrets: |
             SUPABASE_URL
             SUPABASE_PROJECT_ID
             SUPABASE_PUBLISHABLE_KEY
             SUPABASE_SERVICE_ROLE_KEY
         env:
-          SUPABASE_URL: \${{ secrets.STAGING_SUPABASE_URL }}
-          SUPABASE_PROJECT_ID: \${{ secrets.STAGING_SUPABASE_PROJECT_ID }}
-          SUPABASE_PUBLISHABLE_KEY: \${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY: \${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+          SUPABASE_PROJECT_ID: ${{ secrets.STAGING_SUPABASE_PROJECT_ID }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
 
       - name: Resolve the staging URL
         shell: bash
         env:
-          DEPLOYMENT_URL: \${{ steps.deploy.outputs.deployment-url }}
-          CONFIGURED_URL: \${{ vars.STAGING_BASE_URL }}
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+          CONFIGURED_URL: ${{ vars.STAGING_BASE_URL }}
         run: |
           URL="$DEPLOYMENT_URL"
           if [ -z "$URL" ]; then URL="$CONFIGURED_URL"; fi
@@ -156,7 +156,7 @@ jobs:
 
       - name: Authenticated read-only staging smoke test
         env:
-          STAGING_E2E_MODULES: \${{ runner.temp }}/staging-e2e/node_modules
+          STAGING_E2E_MODULES: ${{ runner.temp }}/staging-e2e/node_modules
         run: node scripts/staging/authenticated-smoke.mjs
 
       - name: Preserve browser evidence on failure
