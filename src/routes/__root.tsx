@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import "../styles.css";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
+import { ConfirmHost } from "@/components/confirm-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { createAuthRefreshCoordinator } from "@/lib/auth/refresh-on-auth-change";
 
@@ -145,6 +146,7 @@ function RootComponent() {
       <AuthListener />
       <Outlet />
       <Toaster richColors position="top-center" dir="rtl" />
+      <ConfirmHost />
     </QueryClientProvider>
   );
 }
