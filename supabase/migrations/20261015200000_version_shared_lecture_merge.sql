@@ -20,7 +20,8 @@ BEGIN;
 -- immutable (the existing fact guards still apply). Room capacity is still
 -- enforced when the anchor session is placed, on the merged headcount.
 -- public.unmerge_version_shared_lecture removes a member before the lecture
--- is scheduled.
+-- is scheduled. Regression checks: tests/version-shared-lecture-merge.sql
+-- (run in CI by runtime-gates on a disposable PostgreSQL).
 
 CREATE OR REPLACE FUNCTION public.shared_lecture_course_name_key(p_name text)
 RETURNS text
