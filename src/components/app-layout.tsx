@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { useOwnFeatureFlags } from "@/hooks/use-feature-flags";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { toast } from "sonner";
 import { UsrBrandMark } from "@/components/branding/usr-brand-mark";
@@ -40,6 +41,7 @@ import {
   INSTITUTIONAL_VIEWER_ROLE_LABEL_AR,
   READ_ONLY_ROLE_LABEL_AR,
   buildAccountGreeting,
+  OMIT_LEADERSHIP_TITLE_FLAG,
   executiveDashboardTitle,
   isAcademicAffairsRole,
   isLeadershipOnlyRole,
@@ -285,6 +287,7 @@ function AllToolsNav({
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { data: user, isLoading } = useCurrentUser();
+  const { data: featureFlags } = useOwnFeatureFlags(user?.id);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const pathname = useRouterState({
@@ -545,6 +548,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 collegeName: activeCollege?.name ?? null,
                 isCollegeDeanOnly: collegeDeanOnly,
                 isUniversityLeadershipOnly: universityLeadershipOnly,
+                omitLeadershipTitle: featureFlags?.has(OMIT_LEADERSHIP_TITLE_FLAG) ?? false,
               })}
             </p>
             {!user.isSuperAdmin &&
