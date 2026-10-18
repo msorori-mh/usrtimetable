@@ -141,9 +141,9 @@ export function V2AddSessionDialog({
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label>اليوم</Label>
+                <Label htmlFor="v2-add-session-dialog-f3">اليوم</Label>
                 <Select value={String(dayOfWeek)} onValueChange={(v) => setDayOfWeek(Number(v))}>
-                  <SelectTrigger>
+                  <SelectTrigger id="v2-add-session-dialog-f3">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -156,9 +156,9 @@ export function V2AddSessionDialog({
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>القاعة</Label>
+                <Label htmlFor="v2-add-session-dialog-f4">القاعة</Label>
                 <Select value={roomId || undefined} onValueChange={setRoomId}>
-                  <SelectTrigger>
+                  <SelectTrigger id="v2-add-session-dialog-f4">
                     <SelectValue placeholder="اختر قاعة" />
                   </SelectTrigger>
                   <SelectContent>
@@ -171,16 +171,16 @@ export function V2AddSessionDialog({
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>من</Label>
-                <Input
+                <Label htmlFor="v2-add-session-dialog-f1">من</Label>
+                <Input id="v2-add-session-dialog-f1"
                   type="time"
                   value={startTime}
                   onChange={(e) => setStartTime(e.target.value)}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>إلى</Label>
-                <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+                <Label htmlFor="v2-add-session-dialog-f2">إلى</Label>
+                <Input id="v2-add-session-dialog-f2" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
               </div>
             </div>
 

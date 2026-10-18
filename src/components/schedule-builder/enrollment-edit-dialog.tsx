@@ -171,13 +171,13 @@ export function EnrollmentEditDialog({
               </div>
 
               <div className="space-y-2">
-                <Label>حالة الموثوقية</Label>
+                <Label htmlFor="enrollment-edit-dialog-f1">حالة الموثوقية</Label>
                 <Select
                   value={status}
                   onValueChange={(v) => setStatus(normalizeEnrollmentCountStatus(v))}
                   disabled={saving}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="enrollment-edit-dialog-f1">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
