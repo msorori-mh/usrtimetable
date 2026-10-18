@@ -16,6 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { userErrorMessage } from "@/lib/user-error";
+import { confirmAction } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_authenticated/account-security")({
   head: () => ({
@@ -181,7 +182,20 @@ function AccountSecurityPage() {
                     variant="outline"
                     size="sm"
                     disabled={busy}
-                    onClick={() => void remove(f.id)}
+                    aria-label={`إلغاء عامل التحقق ${f.friendly_name ?? "TOTP"}`}
+                    onClick={async () => {
+                      if (f.status === "verified") {
+                        const ok = await confirmAction({
+                          title: "إلغاء عامل التحقق بخطوتين؟",
+                          description:
+                            "لن يُطلب رمز هذا التطبيق عند تسجيل الدخول، وقد تُمنع العمليات الحسّاسة حتى تسجّل عاملًا جديدًا.",
+                          confirmLabel: "إلغاء العامل",
+                          destructive: true,
+                        });
+                        if (!ok) return;
+                      }
+                      void remove(f.id);
+                    }}
                   >
                     إلغاء
                   </Button>
