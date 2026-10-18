@@ -13,6 +13,7 @@ import { ReportShell } from "@/components/reports/report-shell";
 import { ReportSection, ReportDisclosure } from "@/components/reports/report-section";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -83,7 +84,6 @@ import {
   FacultyBreakdownPanel,
   MetricCard,
   MetricLink,
-  StatusBadge,
 } from "@/components/reports/leadership-dashboard-parts";
 import "@/components/reports/leadership-dashboard.css";
 import { formatDateTime } from "@/lib/format";
@@ -132,6 +132,15 @@ const text = (value: unknown) =>
   value === null || value === undefined || value === "" ? "غير محسوب" : String(value);
 const hours = (value: number | null | undefined) => formatLeadershipAmount(value, "ساعة");
 const ALL_COLLEGES = "all";
+function StatusBadge({ row }: { row: LeadershipCollege }) {
+  if (row.term_state !== "ready") return <Badge variant="outline">الفترة غير مكتملة</Badge>;
+  return row.version_id ? (
+    <Badge variant="default">منشور</Badge>
+  ) : (
+    <Badge variant="secondary">غير منشور</Badge>
+  );
+}
+
 function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
   const { data: me } = useCurrentUser();
   const collegeDean = !!me?.isCollegeDean && !me.isSuperAdmin && !me.isUniversityLeadership;

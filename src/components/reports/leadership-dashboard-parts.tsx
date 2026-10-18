@@ -5,8 +5,6 @@
  */
 import type { ReactNode } from "react";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import type { LeadershipCollege } from "@/lib/reports/leadership";
 import { LEADERSHIP_METRICS, type LeadershipMetricKey } from "@/lib/reports/leadership-metrics";
 import { formatNumber } from "@/lib/format";
 
@@ -167,14 +165,5 @@ export function FacultyBreakdownPanel({
       </div>
       <CountList entries={entries} tone={tone} />
     </section>
-  );
-}
-
-export function StatusBadge({ row }: { row: LeadershipCollege }) {
-  if (row.term_state !== "ready") return <Badge variant="outline">الفترة غير مكتملة</Badge>;
-  return row.version_id ? (
-    <Badge variant="default">منشور</Badge>
-  ) : (
-    <Badge variant="secondary">غير منشور</Badge>
   );
 }
