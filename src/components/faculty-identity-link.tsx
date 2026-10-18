@@ -78,7 +78,8 @@ export function FacultyIdentityLink({
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["instructors"] });
       void qc.invalidateQueries({ queryKey: ["report-instructor-directory"] });
-      void qc.invalidateQueries({ queryKey: ["is-ins"] });
+      // L-10: was ["is-ins"], which matched no query; the schedule report directory shows the identity.
+      void qc.invalidateQueries({ queryKey: ["university-instructor-schedule-directory"] });
       void qc.invalidateQueries({
         queryKey: ["faculty-identity-link-candidates"],
       });

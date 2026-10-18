@@ -164,7 +164,7 @@ function TeachingAssignmentsV2Page() {
   const scheduleUnavailable = scheduleQuery.isPending || scheduleQuery.isError;
 
   const candidatesQuery = useQuery({
-    queryKey: ["ta-v2-candidates", selected?.delivery_group_id],
+    queryKey: ["teaching-assignment-candidates", selected?.delivery_group_id],
     enabled: !!selected?.delivery_group_id && canManage,
     queryFn: async () => {
       const { data, error } = await supabase.rpc(
