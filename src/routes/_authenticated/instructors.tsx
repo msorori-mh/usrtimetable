@@ -84,6 +84,11 @@ import {
   type UniversityRosterHit,
 } from "@/lib/instructors/university-roster-search";
 import { userErrorMessage } from "@/lib/user-error";
+import { QueryErrorNotice } from "@/components/app-states/query-error-notice";
+import { confirmAction } from "@/components/confirm-dialog";
+import { useRowWindow } from "@/hooks/use-row-window";
+import { ShowMoreRows } from "@/components/app-states/show-more-rows";
+import { formatDecimal, formatNumber } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/instructors")({
   head: () => ({ meta: [{ title: "المحاضرون" }] }),
@@ -129,6 +134,8 @@ function emptyForm() {
     administrative_department_kind: "academic",
   };
 }
+
+const EMPTY_ROSTER: Instructor[] = [];
 
 type InstructorJump = { collegeId: string; scope: "home" | "pending"; search: string };
 
@@ -241,7 +248,7 @@ function UniversityInstructorSearch({
           <p className="text-xs text-muted-foreground">
             {matches.length === 0
               ? "لا توجد نتائج مطابقة في الجامعة الحالية."
-              : `عُثر على ${matches.length} محاضر${matches.length > 30 ? "، تُعرض أول 30 نتيجة" : ""}.`}
+              : `عُثر على ${formatNumber(matches.length)} محاضر${matches.length > 30 ? "، تُعرض أول 30 نتيجة" : ""}.`}
           </p>
           {matches.length > 0 && (
             <ul className="max-h-72 divide-y overflow-y-auto rounded-md border">
@@ -314,10 +321,11 @@ function InstructorDirectory({
   const specializationRef = useRef<HTMLInputElement>(null);
   const departmentRef = useRef<HTMLButtonElement>(null);
 
-  const { data: depts } = useQuery({
+  const { data: depts, error: deptsError } = useQuery({
     queryKey: ["departments", active?.id, "including-archived"],
     enabled: !!active,
     queryFn: async () => {
+      // read-all-ok: departments of one college (tens)
       const { data, error } = await supabase
           .from("departments")
           .select("id, name")
@@ -336,6 +344,7 @@ function InstructorDirectory({
     queryKey: ["instructor-types", active?.id],
     enabled: !!active,
     queryFn: async () => {
+      // read-all-ok: instructor types of one college (a handful)
       const { data, error } = await supabase
         .from("instructor_types")
         .select("id, code, name_ar, is_external")
@@ -366,10 +375,11 @@ function InstructorDirectory({
       return data ?? [];
     },
   });
-  const { data: affiliationDepts } = useQuery({
+  const { data: affiliationDepts, error: affiliationDeptsError } = useQuery({
     queryKey: ["instructor-affiliation-depts", affiliationCollegeId],
     enabled: !!affiliationCollegeId,
     queryFn: async () => {
+      // read-all-ok: departments of one college (tens)
       const { data, error } = await supabase
         .from("departments")
         .select("id, name, code, college_id")
@@ -384,6 +394,7 @@ function InstructorDirectory({
     queryKey: ["support-departments", affiliationCollegeId],
     enabled: !!affiliationCollegeId,
     queryFn: async () => {
+      // read-all-ok: support departments of one college (a handful)
       const { data, error } = await supabase
         .from("support_departments")
         .select("id, name, college_id")
@@ -434,6 +445,7 @@ function InstructorDirectory({
     data: rows,
     isLoading,
     isError,
+    error: rosterError,
     refetch,
   } = useQuery({
     queryKey: ["instructors", active?.id, "home-roster", scope],
@@ -715,6 +727,8 @@ function InstructorDirectory({
   const visibleRows = reviewRows
     ? filterAndSortInstructors(reviewRows, directory, departmentLabel)
     : reviewRows;
+  const rowWindow = useRowWindow(visibleRows ?? EMPTY_ROSTER);
+  const lookupError = deptsError ?? affiliationDeptsError;
   const availableRanks = Array.from(
     new Set((rows ?? []).map((i) => i.academic_rank ?? "").filter((r) => r !== "")),
   ).sort((a, b) => a.localeCompare(b, "ar"));
@@ -849,7 +863,7 @@ function InstructorDirectory({
                 </div>
 
                 <div data-field-order="2-category">
-                  <Label>الحالة الوظيفية</Label>
+                  <Label htmlFor="instructor-form-f9">الحالة الوظيفية</Label>
                   <Select
                     value={form.instructor_type_id || "_none"}
                     onValueChange={(v) => {
@@ -878,7 +892,7 @@ function InstructorDirectory({
                       });
                     }}
                   >
-                    <SelectTrigger data-testid="instructor-category-select">
+                    <SelectTrigger id="instructor-form-f9" data-testid="instructor-category-select">
                       <SelectValue
                         placeholder={typesLoading ? "جارٍ تحميل الفئات…" : "اختر الفئة"}
                       />
@@ -964,8 +978,8 @@ function InstructorDirectory({
 
                 {!hourlyContract && (
                   <div data-field-order="2-employee-number">
-                    <Label>رقم الموارد البشرية (اختياري)</Label>
-                    <Input
+                    <Label htmlFor="instructor-form-f1">رقم الموارد البشرية (اختياري)</Label>
+                    <Input id="instructor-form-f1"
                       value={form.employee_number}
                       onChange={(e) => setForm({ ...form, employee_number: e.target.value })}
                     />
@@ -973,8 +987,8 @@ function InstructorDirectory({
                 )}
 
                 <div data-field-order="3-default-name">
-                  <Label>الاسم الافتراضي</Label>
-                  <Input
+                  <Label htmlFor="instructor-form-f2">الاسم الافتراضي</Label>
+                  <Input id="instructor-form-f2"
                     value={form.full_name}
                     onChange={(e) => setForm({ ...form, full_name: e.target.value })}
                   />
@@ -1001,8 +1015,8 @@ function InstructorDirectory({
                       تعذر فحص السجلات الموجودة: {userErrorMessage(registrationMatches.error)}
                     </p>
                   )}
-                  <Label>الاسم الرباعي</Label>
-                  <Input
+                  <Label htmlFor="instructor-form-f3">الاسم الرباعي</Label>
+                  <Input id="instructor-form-f3"
                     value={form.full_name_ar}
                     onChange={(e) => setForm({ ...form, full_name_ar: e.target.value })}
                   />
@@ -1055,12 +1069,12 @@ function InstructorDirectory({
                 </div>
 
                 <div data-field-order="8-rank">
-                  <Label>الرتبة العلمية</Label>
+                  <Label htmlFor="instructor-form-f10">الرتبة العلمية</Label>
                   <Select
                     value={form.academic_rank}
                     onValueChange={(v) => setForm({ ...form, academic_rank: v })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="instructor-form-f10">
                       <SelectValue placeholder="اختر الرتبة" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1074,8 +1088,8 @@ function InstructorDirectory({
                 </div>
 
                 <div data-field-order="9-base-quota">
-                  <Label>النصاب الأساسي الأسبوعي</Label>
-                  <Input
+                  <Label htmlFor="instructor-form-f4">النصاب الأساسي الأسبوعي</Label>
+                  <Input id="instructor-form-f4"
                     type="number"
                     min={0}
                     value={form.max_weekly_hours}
@@ -1090,8 +1104,8 @@ function InstructorDirectory({
 
                 {!hourlyContract && (
                   <div data-field-order="10-admin-release">
-                    <Label>ساعات الإعفاء الإداري</Label>
-                    <Input
+                    <Label htmlFor="instructor-form-f5">ساعات الإعفاء الإداري</Label>
+                    <Input id="instructor-form-f5"
                       type="number"
                       min={0}
                       value={form.administrative_release_hours}
@@ -1113,7 +1127,7 @@ function InstructorDirectory({
 
                 {!hourlyContract && (
                   <div data-field-order="11-administrative-position" className="space-y-2">
-                    <Label>المنصب الإداري في حال توافره</Label>
+                    <Label htmlFor="instructor-form-f11">المنصب الإداري في حال توافره</Label>
                     <Select
                       value={form.administrative_position || "_none"}
                       onValueChange={(v) =>
@@ -1129,7 +1143,7 @@ function InstructorDirectory({
                         })
                       }
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="instructor-form-f11">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -1143,7 +1157,7 @@ function InstructorDirectory({
                     </Select>
                     {requiresAdministrativeDepartment(form.administrative_position) && (
                       <div className="space-y-3">
-                        <Label>نوع الجهة الإدارية</Label>
+                        <Label htmlFor="instructor-form-f12">نوع الجهة الإدارية</Label>
                         <Select
                           value={form.administrative_department_kind}
                           onValueChange={(v) =>
@@ -1155,7 +1169,7 @@ function InstructorDirectory({
                             })
                           }
                         >
-                          <SelectTrigger aria-label="نوع الجهة الإدارية">
+                          <SelectTrigger id="instructor-form-f12" aria-label="نوع الجهة الإدارية">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -1163,7 +1177,7 @@ function InstructorDirectory({
                             <SelectItem value="support">قسم مساند</SelectItem>
                           </SelectContent>
                         </Select>
-                        <Label>القسم الذي يرأسه</Label>
+                        <Label htmlFor="instructor-form-f13">القسم الذي يرأسه</Label>
                         <Select
                           value={
                             (form.administrative_department_kind === "support"
@@ -1179,7 +1193,7 @@ function InstructorDirectory({
                             })
                           }
                         >
-                          <SelectTrigger aria-label="القسم الذي يرأسه">
+                          <SelectTrigger id="instructor-form-f13" aria-label="القسم الذي يرأسه">
                             <SelectValue placeholder="اختر القسم" />
                           </SelectTrigger>
                           <SelectContent>
@@ -1236,12 +1250,12 @@ function InstructorDirectory({
                 )}
 
                 <div data-field-order="12-availability-status">
-                  <Label>الحالة</Label>
+                  <Label htmlFor="instructor-form-f14">الحالة</Label>
                   <Select
                     value={form.availability_status || DEFAULT_AVAILABILITY_STATUS}
                     onValueChange={(v) => setForm({ ...form, availability_status: v })}
                   >
-                    <SelectTrigger data-testid="instructor-availability-select">
+                    <SelectTrigger id="instructor-form-f14" data-testid="instructor-availability-select">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1255,8 +1269,8 @@ function InstructorDirectory({
                 </div>
 
                 <div data-field-order="13-email">
-                  <Label>البريد الإلكتروني</Label>
-                  <Input
+                  <Label htmlFor="instructor-form-f6">البريد الإلكتروني</Label>
+                  <Input id="instructor-form-f6"
                     dir="ltr"
                     type="email"
                     value={form.email}
@@ -1265,8 +1279,8 @@ function InstructorDirectory({
                 </div>
 
                 <div data-field-order="14-phone">
-                  <Label>رقم التلفون/الواتساب</Label>
-                  <Input
+                  <Label htmlFor="instructor-form-f7">رقم التلفون/الواتساب</Label>
+                  <Input id="instructor-form-f7"
                     dir="ltr"
                     value={form.phone}
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
@@ -1277,8 +1291,8 @@ function InstructorDirectory({
                   data-field-order="15-active"
                   className="flex items-center justify-between rounded border border-border p-3"
                 >
-                  <Label>نشط</Label>
-                  <Switch
+                  <Label htmlFor="instructor-form-f8">نشط</Label>
+                  <Switch id="instructor-form-f8"
                     checked={form.is_active}
                     onCheckedChange={(v) => setForm({ ...form, is_active: v })}
                   />
@@ -1308,6 +1322,14 @@ function InstructorDirectory({
           onOpenUniversityResult(target);
         }}
       />
+
+      {lookupError && (
+        <QueryErrorNotice
+          className="mb-4"
+          title="تعذّر تحميل أقسام الكلية؛ قد تظهر الأقسام كـ «بدون قسم»."
+          error={lookupError}
+        />
+      )}
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <div className="min-w-64">
@@ -1450,7 +1472,7 @@ function InstructorDirectory({
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
           <p data-testid="instructors-count" className="text-muted-foreground">
-            عرض {visibleRows?.length ?? 0} من {rows?.length ?? 0}
+            عرض {formatNumber(visibleRows?.length ?? 0)} من {formatNumber(rows?.length ?? 0)}
           </p>
           {hasActiveDirectoryFilters(directory) && (
             <Button variant="ghost" onClick={() => setDirectory({ ...DEFAULT_DIRECTORY_FILTERS })}>
@@ -1464,7 +1486,8 @@ function InstructorDirectory({
         <Card className="mb-4 space-y-2 border-amber-500/40 p-4" role="status">
           <p className="font-semibold">{INSTRUCTOR_REVIEW_LABELS[review]}</p>
           <p className="text-sm">
-            السجلات التي تحتاج استكمالًا: {visibleRows?.length ?? 0} من إجمالي {rows?.length ?? 0}{" "}
+            السجلات التي تحتاج استكمالًا: {formatNumber(visibleRows?.length ?? 0)} من إجمالي{" "}
+            {formatNumber(rows?.length ?? 0)}{" "}
             مدرسًا في {active.name}.
           </p>
           <p className="text-sm text-muted-foreground">
@@ -1478,11 +1501,12 @@ function InstructorDirectory({
         {!active ? (
           <p className="p-6 text-center text-muted-foreground">اختر كلية لعرض المدرسين.</p>
         ) : isError ? (
-          <div className="space-y-2 p-6 text-center" role="alert">
-            <p>تعذر تحميل بيانات المدرسين. لا يمكن تأكيد اكتمال المراجعة.</p>
-            <Button variant="outline" onClick={() => void refetch()}>
-              إعادة المحاولة
-            </Button>
+          <div className="p-4">
+            <QueryErrorNotice
+              title="تعذر تحميل بيانات المدرسين. لا يمكن تأكيد اكتمال المراجعة."
+              error={rosterError}
+              onRetry={() => void refetch()}
+            />
           </div>
         ) : isLoading ? (
           <p className="p-6 text-center text-muted-foreground">جارٍ التحميل...</p>
@@ -1505,8 +1529,9 @@ function InstructorDirectory({
             )}
           </div>
         ) : (
+          <>
           <ul className="divide-y divide-border">
-            {visibleRows.map((i) => (
+            {rowWindow.visible.map((i) => (
               <li key={i.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
                 <div className="min-w-0">
                   <p className="font-semibold">
@@ -1537,7 +1562,7 @@ function InstructorDirectory({
                       : i.specialization}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {i.academic_rank ?? "—"} · {i.max_weekly_hours} س/أسبوع
+                    {i.academic_rank ?? "—"} · {formatDecimal(i.max_weekly_hours)} س/أسبوع
                   </p>
                   <InstructorHomeAffiliation
                     home={{
@@ -1581,8 +1606,16 @@ function InstructorDirectory({
                         size="sm"
                         variant="ghost"
                         aria-label={`حذف ${i.full_name}`}
-                        onClick={() => {
-                          if (confirm("حذف المحاضر؟")) del.mutate(i.id);
+                        onClick={async () => {
+                          const ok = await confirmAction({
+                            title: `حذف المحاضر «${i.full_name}»؟`,
+                            description:
+                              "يُحذف سجل المحاضر من كليته الأصلية. لا يمكن التراجع عن هذا الإجراء.",
+                            confirmLabel: "حذف",
+                            destructive: true,
+                            typedConfirmation: i.full_name,
+                          });
+                          if (ok) del.mutate(i.id);
                         }}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -1593,6 +1626,14 @@ function InstructorDirectory({
               </li>
             ))}
           </ul>
+          <ShowMoreRows
+            shown={rowWindow.shown}
+            total={rowWindow.total}
+            hasMore={rowWindow.hasMore}
+            onShowMore={rowWindow.showMore}
+            onShowAll={rowWindow.showAll}
+          />
+          </>
         )}
       </Card>
     </div>

@@ -72,12 +72,13 @@ describe("STAFF-METADATA-01 instructor metadata truthfulness", () => {
     const src = readFileSync(resolve(root, "src/routes/_authenticated/instructors.tsx"), "utf8");
     expect(src.includes("employment_type: UNKNOWN_EMPLOYMENT_TYPE")).toBe(true);
     expect(src.includes("حالة التفرغ/التعاقد")).toBe(false);
-    expect(src.includes("<Label>الحالة</Label>")).toBe(true);
+    // M-22: labels are now linked to their control (htmlFor), so match the label text.
+    expect(/<Label(?: htmlFor="[^"]+")?>الحالة<\/Label>/.test(src)).toBe(true);
     // The page was redesigned around the instructor category (instructor_type_id,
     // «الحالة الوظيفية»); employment_type is now derived from the chosen category and
     // falls back to unknown, so the page no longer renders employmentTypeLabelAr /
     // «فئة المحاضر:» itself.
-    expect(src.includes("<Label>الحالة الوظيفية</Label>")).toBe(true);
+    expect(/<Label(?: htmlFor="[^"]+")?>الحالة الوظيفية<\/Label>/.test(src)).toBe(true);
     expect(src.includes("form.employment_type || UNKNOWN_EMPLOYMENT_TYPE")).toBe(true);
     expect(src.includes('employment_type: "full_time"')).toBe(false);
   });

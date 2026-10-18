@@ -55,7 +55,8 @@ describe("instructor availability status (الحالة)", () => {
 
   test("form shows الحالة, hides التفرغ/التعاقد, saves and reloads the status", () => {
     const src = read("src/routes/_authenticated/instructors.tsx");
-    expect(src).toContain("<Label>الحالة</Label>");
+    // M-22: labels are now linked to their control (htmlFor), so match the label text.
+    expect(src).toMatch(/<Label(?: htmlFor="[^"]+")?>الحالة<\/Label>/);
     expect(src).not.toContain("حالة التفرغ/التعاقد");
     expect(src).toContain("INSTRUCTOR_AVAILABILITY_OPTIONS.map");
     expect(src).toContain("p_availability_status: payload.availability_status");
