@@ -136,7 +136,11 @@ END;
 $function$
 
 ;
-CREATE OR REPLACE FUNCTION public.delivery_group_shared_in_published(p_group uuid)
+-- Previous reader (20261003010000); only installable where the version-scoped delivery facts exist.
+DO $rb$
+BEGIN
+  IF to_regclass('schedule_version_delivery_private.shared_link_facts') IS NOT NULL THEN
+    EXECUTE $def$CREATE OR REPLACE FUNCTION public.delivery_group_shared_in_published(p_group uuid)
 RETURNS boolean
 LANGUAGE sql
 STABLE SECURITY DEFINER
@@ -160,7 +164,9 @@ AS $function$
         SELECT 1 FROM public.schedule_sessions s
         WHERE s.schedule_version_id = v.id AND s.delivery_group_id = p_group)
   )
-$function$;
+$function$$def$;
+  END IF;
+END $rb$;
 DROP INDEX IF EXISTS public.uq_schedule_versions_one_published;
 DROP FUNCTION IF EXISTS public.validate_schedule_version(uuid);
 DROP FUNCTION IF EXISTS public.compute_version_hard_conflicts(uuid);

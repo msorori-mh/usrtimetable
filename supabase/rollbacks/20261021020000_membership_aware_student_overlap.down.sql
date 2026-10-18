@@ -2,7 +2,12 @@
 BEGIN;
 SET LOCAL lock_timeout = '5s';
 
-CREATE OR REPLACE FUNCTION public._sb_v2_delivery_group_overlap(
+-- Production: the version-membership overlap of docs/migrations-proposed/20260925_itcs_version_scoped_overlap.sql.
+-- Databases without that membership function get the earlier definition back.
+DO $rb$
+BEGIN
+  IF to_regprocedure('public.schedule_version_student_memberships(uuid,uuid[])') IS NOT NULL THEN
+    EXECUTE $def$CREATE OR REPLACE FUNCTION public._sb_v2_delivery_group_overlap(
   p_schedule_version_id uuid, p_delivery_group_id uuid, p_cohort_id uuid,
   p_day_of_week integer, p_start_time time, p_end_time time,
   p_exclude_session_id uuid DEFAULT NULL
@@ -65,7 +70,66 @@ SELECT coalesce(jsonb_agg(jsonb_build_object(
   'metadata',jsonb_build_object('delivery_group_id',delivery_group_id,
     'cohort_id',cohort_id,'shared_students',true)
 )), '[]'::jsonb) FROM conflicts;
-$function$;
+$function$$def$;
+  ELSE
+    EXECUTE $def$CREATE OR REPLACE FUNCTION public._sb_v2_delivery_group_overlap(p_schedule_version_id uuid, p_delivery_group_id uuid, p_cohort_id uuid, p_day_of_week integer, p_start_time time without time zone, p_end_time time without time zone, p_exclude_session_id uuid DEFAULT NULL::uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  v_peer record;
+  v_conflicts jsonb := '[]'::jsonb;
+  v_shared boolean;
+BEGIN
+  IF p_delivery_group_id IS NULL AND p_cohort_id IS NULL THEN
+    RETURN v_conflicts;
+  END IF;
+
+  FOR v_peer IN
+    SELECT ss.id, ss.delivery_group_id, ss.cohort_id
+    FROM public.schedule_sessions ss
+    WHERE ss.schedule_version_id = p_schedule_version_id
+      AND ss.day_of_week = p_day_of_week
+      AND ss.start_time < p_end_time
+      AND p_start_time < ss.end_time
+      AND (p_exclude_session_id IS NULL OR ss.id <> p_exclude_session_id)
+      AND (
+        (p_delivery_group_id IS NOT NULL AND ss.delivery_group_id = p_delivery_group_id)
+        OR (p_cohort_id IS NOT NULL AND ss.cohort_id = p_cohort_id)
+      )
+  LOOP
+    v_shared := true;
+    IF p_delivery_group_id IS NOT NULL
+       AND v_peer.delivery_group_id IS NOT NULL
+       AND v_peer.delivery_group_id <> p_delivery_group_id THEN
+      v_shared := public.delivery_groups_share_students(
+        p_delivery_group_id, v_peer.delivery_group_id
+      );
+    END IF;
+
+    IF v_shared THEN
+      v_conflicts := v_conflicts || jsonb_build_array(jsonb_build_object(
+        'code', 'delivery_group_conflict',
+        'severity', 'hard',
+        'message_ar', 'تعارض مجموعة التدريس / الدفعة: توجد جلسة متداخلة لنفس المجموعة أو لطلاب مشتركين.',
+        'message_en', 'Delivery group / cohort conflict: overlapping session sharing students.',
+        'related_session_id', v_peer.id,
+        'metadata', jsonb_build_object(
+          'delivery_group_id', v_peer.delivery_group_id,
+          'cohort_id', v_peer.cohort_id,
+          'shared_students', true
+        )
+      ));
+    END IF;
+  END LOOP;
+
+  RETURN v_conflicts;
+END;
+$function$$def$;
+  END IF;
+END $rb$;
 
 -- Retain the preceding function's grants; no direct web-client entrypoint is
 -- introduced. Its existing V2 write callers continue to use the same signature.
