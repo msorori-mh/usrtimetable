@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 
 
 /** Labelled native select used by the cohort directory filters. */
@@ -11,7 +10,7 @@ export function DirectoryFilter({
   label: string;
   value: string;
   onChange: (value: string) => void;
-  children?: ReactNode;
+  children: React.ReactNode;
 }) {
   return (
     <label className="min-w-0 space-y-1.5 text-xs font-medium text-muted-foreground">
