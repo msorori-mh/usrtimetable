@@ -32,6 +32,7 @@ import { roomCapacityReadinessMetrics } from "@/lib/reports/room-capacity-readin
 import { fetchActionableScheduleVersionIds } from "@/lib/reports/readiness";
 import { QueryErrorNotice } from "@/components/app-states/query-error-notice";
 import { formatNumber } from "@/lib/format";
+import { Fragment } from "react";
 
 export const Route = createFileRoute("/_authenticated/data-readiness")({
   head: () => ({ meta: [{ title: "جاهزية البيانات" }] }),
@@ -524,7 +525,9 @@ function Section({
       </h2>
       <ul>
         {metrics.map((m) => (
-          <MetricRow key={m.label} m={m} />
+          <Fragment key={m.label}>
+            <MetricRow m={m} />
+          </Fragment>
         ))}
       </ul>
     </Card>
