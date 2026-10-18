@@ -24,17 +24,17 @@ GRANT ALL ON public.user_feature_flags TO service_role;
 DROP POLICY IF EXISTS user_feature_flags_select ON public.user_feature_flags;
 CREATE POLICY user_feature_flags_select ON public.user_feature_flags
   FOR SELECT TO authenticated
-  USING (user_id = auth.uid() OR public.is_super_admin(auth.uid()));
+  USING (user_id = (SELECT auth.uid()) OR public.is_super_admin((SELECT auth.uid())));
 
 DROP POLICY IF EXISTS user_feature_flags_insert ON public.user_feature_flags;
 CREATE POLICY user_feature_flags_insert ON public.user_feature_flags
   FOR INSERT TO authenticated
-  WITH CHECK (public.is_super_admin(auth.uid()));
+  WITH CHECK (public.is_super_admin((SELECT auth.uid())));
 
 DROP POLICY IF EXISTS user_feature_flags_delete ON public.user_feature_flags;
 CREATE POLICY user_feature_flags_delete ON public.user_feature_flags
   FOR DELETE TO authenticated
-  USING (public.is_super_admin(auth.uid()));
+  USING (public.is_super_admin((SELECT auth.uid())));
 
 -- Same session gate as the rest of the platform: nothing is readable while a
 -- temporary password change is pending.

@@ -13,7 +13,7 @@ BEGIN;
 
 CREATE OR REPLACE FUNCTION public._ss_peer_i(p_sid uuid, p_cid uuid, p_vid uuid, p_iid uuid,
   p_dow integer, p_st time without time zone, p_et time without time zone)
-RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO '' AS $function$
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO pg_temp AS $function$
 DECLARE v jsonb:='[]'::jsonb; r record; v_ids uuid[];
 BEGIN
  FOR r IN SELECT id FROM public.schedule_sessions

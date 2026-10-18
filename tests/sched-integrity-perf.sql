@@ -45,6 +45,9 @@ BEGIN
   SET CONSTRAINTS ALL DEFERRED;
   INSERT INTO perf VALUES (p_role, extract(epoch FROM clock_timestamp() - t0) * 1000);
 END $f$;
+-- New functions get no PUBLIC EXECUTE by default (H-1 default privileges); grant the
+-- test helper explicitly to the role that calls it below.
+GRANT EXECUTE ON FUNCTION pg_temp.bulk(text, text) TO service_role;
 SELECT pg_temp.bulk('owner', 'ver-gen-owner');
 SET ROLE service_role;
 SELECT pg_temp.bulk('service_role', 'ver-gen-svc');

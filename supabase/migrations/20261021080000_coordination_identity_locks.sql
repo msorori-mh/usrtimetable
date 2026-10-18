@@ -16,14 +16,14 @@
 BEGIN;
 
 CREATE OR REPLACE FUNCTION schedule_coordination_private.identity_lock_key(p_instructor uuid)
-RETURNS bigint LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $fn$
+RETURNS bigint LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_temp AS $fn$
   SELECT (abs(hashtextextended(COALESCE(
     (SELECT l.identity_id::text FROM public.faculty_identity_links l WHERE l.instructor_id = p_instructor ORDER BY l.identity_id LIMIT 1),
     p_instructor::text), 7311)) % 4096) + 73110000
 $fn$;
 
 CREATE OR REPLACE FUNCTION schedule_coordination_private.lock_identity_keys(p_keys bigint[])
-RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $fn$
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_temp AS $fn$
 DECLARE k bigint;
 BEGIN
   FOR k IN SELECT DISTINCT x FROM unnest(p_keys) x WHERE x IS NOT NULL ORDER BY x LOOP
@@ -32,7 +32,7 @@ BEGIN
 END $fn$;
 
 CREATE OR REPLACE FUNCTION schedule_coordination_private.lock_session_identities()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $fn$
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_temp AS $fn$
 BEGIN
   PERFORM schedule_coordination_private.lock_identity_keys(ARRAY(
     SELECT schedule_coordination_private.identity_lock_key(x.instructor_id)
@@ -45,7 +45,7 @@ END $fn$;
 -- A version whose status / coordination flag / term changes affects all its identities.
 -- (Routine updates such as the eligibility_revision bump on every session write do not.)
 CREATE OR REPLACE FUNCTION schedule_coordination_private.lock_version_identities()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $fn$
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_temp AS $fn$
 BEGIN
   IF TG_OP = 'INSERT' THEN
     PERFORM schedule_coordination_private.lock_identity_keys(ARRAY(
@@ -64,7 +64,7 @@ BEGIN
 END $fn$;
 
 CREATE OR REPLACE FUNCTION schedule_coordination_private.lock_term_identities()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $fn$
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_temp AS $fn$
 BEGIN
   PERFORM schedule_coordination_private.lock_identity_keys(ARRAY(
     SELECT schedule_coordination_private.identity_lock_key(s.instructor_id)

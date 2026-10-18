@@ -29,8 +29,8 @@ CREATE TABLE IF NOT EXISTS public.scheduling_policy_exceptions (
   CONSTRAINT spe_not_unwaivable CHECK (rule_code NOT IN ('itcs_theory_after_14', 'cohort_component_single_instructor'))
 );
 CREATE INDEX IF NOT EXISTS idx_spe_college_rule ON public.scheduling_policy_exceptions (college_id, rule_code);
-CREATE INDEX IF NOT EXISTS idx_spe_version_rule ON public.scheduling_policy_exceptions (schedule_version_id, rule_code)
-  WHERE schedule_version_id IS NOT NULL;
+-- Non-partial so it also serves the FK to schedule_versions (M-4 invariant).
+CREATE INDEX IF NOT EXISTS idx_spe_version_rule ON public.scheduling_policy_exceptions (schedule_version_id, rule_code);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_spe_scope_rule ON public.scheduling_policy_exceptions
   (college_id, rule_code, COALESCE(schedule_version_id, '00000000-0000-0000-0000-000000000000'::uuid));
 
