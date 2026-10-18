@@ -99,7 +99,8 @@ assert(
   "route gate enforces the centralized viewer scope",
 );
 
-const instructors = read("src/routes/_authenticated/instructors.tsx");
+// L-14: the instructors page was split into the route + hook + form/search components.
+const instructors = ["src/routes/_authenticated/instructors.tsx", "src/hooks/use-instructor-directory.ts", "src/components/instructors/instructor-form-fields.tsx", "src/components/instructors/university-instructor-search.tsx"].map(read).join("\n");
 assert(
   instructors.includes("useCanEditInstructorsActiveCollege"),
   "instructor page uses the dedicated edit capability",

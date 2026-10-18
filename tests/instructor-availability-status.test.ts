@@ -54,7 +54,8 @@ describe("instructor availability status (الحالة)", () => {
   });
 
   test("form shows الحالة, hides التفرغ/التعاقد, saves and reloads the status", () => {
-    const src = read("src/routes/_authenticated/instructors.tsx");
+    // L-14: the instructors page was split into the route + hook + form/search components.
+    const src = ["src/routes/_authenticated/instructors.tsx", "src/hooks/use-instructor-directory.ts", "src/components/instructors/instructor-form-fields.tsx", "src/components/instructors/university-instructor-search.tsx"].map(read).join("\n");
     // M-22: labels are now linked to their control (htmlFor), so match the label text.
     expect(src).toMatch(/<Label(?: htmlFor="[^"]+")?>الحالة<\/Label>/);
     expect(src).not.toContain("حالة التفرغ/التعاقد");
