@@ -19,6 +19,7 @@ import {
   type PreparationStepId,
 } from "@/lib/data-onboarding/preparation";
 import type { ImportEntity } from "@/lib/excel-import/types";
+import { formatDateTime } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/data-onboarding")({
   head: () => ({ meta: [{ title: "تجهيز بيانات الكلية" }] }),
@@ -99,7 +100,7 @@ function DataOnboardingPage() {
             <>
               <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                 <span>
-                  آخر فحص: {new Date(data.checkedAt).toLocaleString("ar")}
+                  آخر فحص: {formatDateTime(data.checkedAt)}
                   {isFetching ? " · جارٍ التحديث…" : ""}
                 </span>
                 <div className="flex items-center gap-3">

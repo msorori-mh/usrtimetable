@@ -17,6 +17,10 @@ import {
   fetchInstructorAvailabilityReadiness,
   setInstructorAvailabilityEnforcement,
 } from "@/lib/availability/policy-api";
+import { userErrorMessage } from "@/lib/user-error";
+import { QueryErrorNotice } from "@/components/app-states/query-error-notice";
+import { confirmAction } from "@/components/confirm-dialog";
+import { formatDecimal, formatNumber } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/constraint-settings")({
   head: () => ({ meta: [{ title: "سياسات الجدولة والجودة" }] }),
@@ -79,9 +83,10 @@ function ConstraintSettingsPage() {
   const qc = useQueryClient();
   const [qualityState, setQualityState] = useState<Record<string, RowState>>({});
 
-  const { data: hardTypes } = useQuery({
+  const { data: hardTypes, error: hardTypesError } = useQuery({
     queryKey: ["hard-constraint-types"],
     queryFn: async () => {
+      // read-all-ok: global catalogue of constraint types (tens)
       const { data, error } = await supabase
         .from("constraint_types")
         .select("id, code, name_ar, name_en, description")
@@ -93,9 +98,10 @@ function ConstraintSettingsPage() {
     },
   });
 
-  const { data: qualityMetrics } = useQuery({
+  const { data: qualityMetrics, error: qualityMetricsError } = useQuery({
     queryKey: ["quality-metrics"],
     queryFn: async () => {
+      // read-all-ok: global catalogue of quality metrics (tens)
       const { data, error } = await supabase
         .from("quality_metrics")
         .select("id, code, name_ar, name_en, description, default_weight")
@@ -106,10 +112,11 @@ function ConstraintSettingsPage() {
     },
   });
 
-  const { data: qualitySettings } = useQuery({
+  const { data: qualitySettings, error: qualitySettingsError } = useQuery({
     queryKey: ["college-quality-settings", active?.id],
     enabled: !!active,
     queryFn: async () => {
+      // read-all-ok: at most one row per quality metric
       const { data, error } = await supabase
         .from("college_quality_settings")
         .select("id, quality_metric_id, enabled, weight")
@@ -207,7 +214,7 @@ function ConstraintSettingsPage() {
       toast.success("تم حفظ إعداد تقييم الجودة");
       qc.invalidateQueries({ queryKey: ["college-quality-settings", active?.id] });
     },
-    onError: (error: Error) => toast.error(error.message || "فشل الحفظ"),
+    onError: (error: Error) => toast.error(userErrorMessage(error, "فشل الحفظ")),
   });
 
   const resetQuality = useMutation({
@@ -236,7 +243,7 @@ function ConstraintSettingsPage() {
       toast.success("أُعيد المؤشر إلى القيمة الافتراضية");
       qc.invalidateQueries({ queryKey: ["college-quality-settings", active?.id] });
     },
-    onError: (error: Error) => toast.error(error.message || "تعذر إعادة الضبط"),
+    onError: (error: Error) => toast.error(userErrorMessage(error, "تعذر إعادة الضبط")),
   });
 
   const setAvailabilityEnforcement = useMutation({
@@ -251,7 +258,7 @@ function ConstraintSettingsPage() {
       qc.invalidateQueries({ queryKey: ["availability-enforcement", active?.id] });
       qc.invalidateQueries({ queryKey: ["instructor-availability-readiness", active?.id] });
     },
-    onError: (error: Error) => toast.error(error.message || "فشل تحديث القيد"),
+    onError: (error: Error) => toast.error(userErrorMessage(error, "فشل تحديث القيد")),
   });
 
   const availabilityEnabled = schedulingPolicy?.enforce_instructor_availability ?? false;
@@ -272,6 +279,17 @@ function ConstraintSettingsPage() {
         <Card className="p-6 text-center text-muted-foreground">اختر كلية للبدء</Card>
       ) : (
         <>
+          {(hardTypesError ?? qualityMetricsError ?? qualitySettingsError) && (
+            <QueryErrorNotice
+              title="تعذّر تحميل القيود أو مؤشرات الجودة؛ لا تعتمد على القائمة المعروضة حتى يُعاد التحميل."
+              error={hardTypesError ?? qualityMetricsError ?? qualitySettingsError}
+              onRetry={() => {
+                void qc.invalidateQueries({ queryKey: ["hard-constraint-types"] });
+                void qc.invalidateQueries({ queryKey: ["quality-metrics"] });
+                void qc.invalidateQueries({ queryKey: ["college-quality-settings", active?.id] });
+              }}
+            />
+          )}
           <Card className="space-y-4 p-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -322,7 +340,18 @@ function ConstraintSettingsPage() {
                             (availabilityReadiness.isLoading || availabilityReadiness.isError)) ||
                           setAvailabilityEnforcement.isPending
                         }
-                        onCheckedChange={(value) => setAvailabilityEnforcement.mutate(value)}
+                        aria-label={`تطبيق ${display.name_ar}`}
+                        onCheckedChange={async (value) => {
+                          const ok = await confirmAction({
+                            title: value ? "تفعيل تطبيق إتاحة المحاضرين؟" : "إيقاف تطبيق إتاحة المحاضرين؟",
+                            description: value
+                              ? "ستُرفض أي جلسة خارج نوافذ توفر المحاضرين في كل جداول الكلية."
+                              : "لن تُفحص نوافذ توفر المحاضرين عند الحفظ أو الاعتماد في كل جداول الكلية.",
+                            confirmLabel: value ? "تفعيل" : "إيقاف",
+                            destructive: !value,
+                          });
+                          if (ok) setAvailabilityEnforcement.mutate(value);
+                        }}
                       />
                       <Badge
                         variant={!statusUnknown && enabled ? "secondary" : "outline"}
@@ -343,7 +372,7 @@ function ConstraintSettingsPage() {
                     !availabilityReadiness.data.can_activate ? (
                       <p className="text-xs font-medium text-amber-800 md:col-span-12 dark:text-amber-200">
                         لا يمكن التفعيل بعد:{" "}
-                        {availabilityReadiness.data.missing_required_instructors} محاضرًا خارجيًا
+                        {formatNumber(availabilityReadiness.data.missing_required_instructors)} محاضرًا خارجيًا
                         بلا نافذة توفر صريحة.
                       </p>
                     ) : null}
@@ -394,6 +423,7 @@ function ConstraintSettingsPage() {
                       <Switch
                         checked={row.enabled}
                         disabled={!canManage}
+                        aria-label={`تفعيل مؤشر ${display.name_ar}`}
                         onCheckedChange={(value) =>
                           setQualityState((current) => ({
                             ...current,
@@ -404,8 +434,9 @@ function ConstraintSettingsPage() {
                       <span className="text-sm">{row.enabled ? "مفعّل" : "معطّل"}</span>
                     </div>
                     <div className="flex items-center gap-2 md:col-span-3">
-                      <span className="text-sm text-muted-foreground">الوزن</span>
+                      <label htmlFor={`quality-weight-${metric.id}`} className="text-sm text-muted-foreground">الوزن</label>
                       <Input
+                        id={`quality-weight-${metric.id}`}
                         type="number"
                         min={0}
                         max={1000}
@@ -423,12 +454,13 @@ function ConstraintSettingsPage() {
                         className="w-24"
                       />
                       <span className="text-xs text-muted-foreground">
-                        الافتراضي: {metric.default_weight}
+                        الافتراضي: {formatDecimal(metric.default_weight)}
                       </span>
                     </div>
                     <div className="flex justify-end gap-2 md:col-span-2">
                       <Button
                         size="sm"
+                        aria-label={`حفظ ${display.name_ar}`}
                         onClick={() => saveQuality.mutate(metric.id)}
                         disabled={!canManage || saveQuality.isPending}
                       >
@@ -437,7 +469,16 @@ function ConstraintSettingsPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => resetQuality.mutate(metric.id)}
+                        aria-label={`إعادة ${display.name_ar} إلى القيمة الافتراضية`}
+                        onClick={async () => {
+                          const ok = await confirmAction({
+                            title: `إعادة مؤشر «${display.name_ar}» إلى القيمة الافتراضية؟`,
+                            description: "سيُحذف الإعداد المخصص لهذه الكلية (التفعيل والوزن).",
+                            confirmLabel: "إعادة الضبط",
+                            destructive: true,
+                          });
+                          if (ok) resetQuality.mutate(metric.id);
+                        }}
                         disabled={!canManage || resetQuality.isPending}
                       >
                         افتراضي

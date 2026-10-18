@@ -19,12 +19,12 @@ export const Route = createFileRoute("/_authenticated/buildings")({
       renderForm={(f, set) => (
         <>
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>الرمز</Label><Input value={String(f.code ?? "")} onChange={(e) => set({ ...f, code: e.target.value })} /></div>
-            <div><Label>عدد الطوابق</Label><Input type="number" value={f.floors_count == null ? "" : Number(f.floors_count)} onChange={(e) => set({ ...f, floors_count: e.target.value === "" ? null : Number(e.target.value) })} /></div>
+            <div><Label htmlFor="buildings-f1">الرمز</Label><Input id="buildings-f1" value={String(f.code ?? "")} onChange={(e) => set({ ...f, code: e.target.value })} /></div>
+            <div><Label htmlFor="buildings-f2">عدد الطوابق</Label><Input id="buildings-f2" type="number" value={f.floors_count == null ? "" : Number(f.floors_count)} onChange={(e) => set({ ...f, floors_count: e.target.value === "" ? null : Number(e.target.value) })} /></div>
           </div>
-          <div><Label>الاسم</Label><Input value={String(f.name ?? "")} onChange={(e) => set({ ...f, name: e.target.value })} /></div>
-          <div><Label>العنوان</Label><Input value={String(f.address ?? "")} onChange={(e) => set({ ...f, address: e.target.value })} /></div>
-          <div><Label>ملاحظات</Label><Input value={String(f.notes ?? "")} onChange={(e) => set({ ...f, notes: e.target.value })} /></div>
+          <div><Label htmlFor="buildings-f3">الاسم</Label><Input id="buildings-f3" value={String(f.name ?? "")} onChange={(e) => set({ ...f, name: e.target.value })} /></div>
+          <div><Label htmlFor="buildings-f4">العنوان</Label><Input id="buildings-f4" value={String(f.address ?? "")} onChange={(e) => set({ ...f, address: e.target.value })} /></div>
+          <div><Label htmlFor="buildings-f5">ملاحظات</Label><Input id="buildings-f5" value={String(f.notes ?? "")} onChange={(e) => set({ ...f, notes: e.target.value })} /></div>
           <label className="flex items-center gap-2 text-sm"><Checkbox checked={Boolean(f.is_active)} onCheckedChange={(v) => set({ ...f, is_active: !!v })} /> نشط</label>
         </>
       )}

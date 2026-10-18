@@ -42,9 +42,17 @@ import {
 
 import { TemplateDirectory } from "@/components/time-templates/template-directory";
 import {
+  WeeklyPreviewResults,
+  type WeeklyPreviewMeta,
+} from "@/components/time-templates/weekly-preview-results";
+import {
   TEMPLATE_SYSTEM_LABELS as SYSTEM_LABELS,
   type TimeTemplateRow,
 } from "@/lib/time-templates/template-directory";
+import { userErrorMessage } from "@/lib/user-error";
+import { confirmAction } from "@/components/confirm-dialog";
+import { QueryErrorNotice } from "@/components/app-states/query-error-notice";
+import { formatNumber } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/time-slot-templates")({
   head: () => ({ meta: [{ title: "قوالب أوقات المحاضرات" }] }),
@@ -92,18 +100,7 @@ function TimeSlotTemplatesWorkspace() {
   );
   const [customizingDay, setCustomizingDay] = useState<number | null>(null);
   const [preview, setPreview] = useState<GeneratedTemplate[] | null>(null);
-  const [previewMeta, setPreviewMeta] = useState<{
-    selectedDays: number;
-    slots120PerDay: number;
-    slots180PerDay: number;
-    total: number;
-    skippedBreakConflicts: number;
-    toInsert: number;
-    duplicates: number;
-    conflicts: number;
-    duplicatesInGeneratedBatch: number;
-    conflictDetails: Array<GeneratedTemplate & { reason: string }>;
-  } | null>(null);
+  const [previewMeta, setPreviewMeta] = useState<WeeklyPreviewMeta | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [singleForm, setSingleForm] = useState({
     study_system: "regular" as StudySystem,
@@ -119,10 +116,11 @@ function TimeSlotTemplatesWorkspace() {
     setPreviewMeta(null);
   }, [collegeId, studySystem, dayStart, dayEnd, gridMinutes, durations, dayOverrides]);
 
-  const { data: breaks } = useQuery({
+  const { data: breaks, error: breaksError } = useQuery({
     queryKey: collegeScopedQueryKey("daily-breaks", collegeId),
     enabled: !!collegeId,
     queryFn: async () => {
+      // read-all-ok: a few breaks per college
       const { data, error } = await supabase
         .from("daily_breaks")
         .select("id, name, start_time, end_time, days, affects_scheduling")
@@ -138,9 +136,10 @@ function TimeSlotTemplatesWorkspace() {
     error: rowsError,
     refetch: refetchRows,
   } = useQuery({
-    queryKey: collegeScopedQueryKey("tst", collegeId, "all-records"),
+    queryKey: collegeScopedQueryKey("time-slot-templates", collegeId, "all-records"),
     enabled: !!collegeId,
     queryFn: async () => {
+      // read-all-ok: weekly templates per college are bounded (7 days × systems × few slots)
       const q = supabase.from("time_slot_templates").select("*").eq("college_id", collegeId!);
       const { data, error } = await q
         .order("study_system")
@@ -230,7 +229,7 @@ function TimeSlotTemplatesWorkspace() {
       conflictDetails: diff.conflicts,
     });
     toast.success(
-      `معاينة: ${result.total} قالبًا (جديد ${diff.toInsert.length} · موجود ${diff.duplicates.length} · متعارض ${diff.conflicts.length})`,
+      `معاينة: ${formatNumber(result.total)} قالبًا (جديد ${formatNumber(diff.toInsert.length)} · موجود ${formatNumber(diff.duplicates.length)} · متعارض ${formatNumber(diff.conflicts.length)})`,
     );
   };
 
@@ -240,6 +239,7 @@ function TimeSlotTemplatesWorkspace() {
       if (!preview || !previewMeta) throw new Error("عاين القوالب أولاً");
 
       // Re-load latest rows immediately before save (application-level idempotency).
+      // read-all-ok: weekly templates per college/system are bounded
       const { data: freshRows, error: freshErr } = await supabase
         .from("time_slot_templates")
         .select("*")
@@ -255,11 +255,12 @@ function TimeSlotTemplatesWorkspace() {
       }
       if (diff.toInsert.length === 0)
         throw new Error("يوجد قالب مطابق مسبقًا لهذا اليوم والنظام — لا سجلات جديدة للحفظ.");
-      if (
-        !confirm(
-          `سيتم إدراج ${diff.toInsert.length} قالبًا جديدًا دون استبدال الموجود (${diff.duplicates.length} مطابق، ${diff.conflicts.length} متعارض، ${diff.duplicatesInGeneratedBatch.length} مكرر داخل المعاينة). المتابعة؟`,
-        )
-      ) {
+      const confirmed = await confirmAction({
+        title: `إدراج ${formatNumber(diff.toInsert.length)} قالبًا جديدًا؟`,
+        description: `لن يُستبدل الموجود (${formatNumber(diff.duplicates.length)} مطابق، ${formatNumber(diff.conflicts.length)} متعارض، ${formatNumber(diff.duplicatesInGeneratedBatch.length)} مكرر داخل المعاينة).`,
+        confirmLabel: "حفظ القوالب",
+      });
+      if (!confirmed) {
         throw new Error("تم إلغاء الحفظ");
       }
       const payload = diff.toInsert.map((t) =>
@@ -292,13 +293,13 @@ function TimeSlotTemplatesWorkspace() {
       return inserted;
     },
     onSuccess: (n) => {
-      toast.success(`تم حفظ ${n} قالبًا`);
+      toast.success(`تم حفظ ${formatNumber(n)} قالبًا`);
       setPreview(null);
       setPreviewMeta(null);
-      qc.invalidateQueries({ queryKey: collegeScopedQueryKey("tst", collegeId) });
+      qc.invalidateQueries({ queryKey: collegeScopedQueryKey("time-slot-templates", collegeId) });
     },
     onError: (e: Error) => {
-      if (e.message !== "تم إلغاء الحفظ") toast.error(e.message);
+      if (e.message !== "تم إلغاء الحفظ") toast.error(userErrorMessage(e));
     },
   });
 
@@ -338,9 +339,9 @@ function TimeSlotTemplatesWorkspace() {
     },
     onSuccess: () => {
       toast.success("تمت إضافة القالب المفرد");
-      qc.invalidateQueries({ queryKey: collegeScopedQueryKey("tst", collegeId) });
+      qc.invalidateQueries({ queryKey: collegeScopedQueryKey("time-slot-templates", collegeId) });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const toggleActive = useMutation({
@@ -359,8 +360,8 @@ function TimeSlotTemplatesWorkspace() {
         collegeId: collegeId ?? undefined,
       });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: collegeScopedQueryKey("tst", collegeId) }),
-    onError: (e: Error) => toast.error(e.message),
+    onSuccess: () => qc.invalidateQueries({ queryKey: collegeScopedQueryKey("time-slot-templates", collegeId) }),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const del = useMutation({
@@ -381,9 +382,9 @@ function TimeSlotTemplatesWorkspace() {
     },
     onSuccess: () => {
       toast.success("تم الحذف");
-      qc.invalidateQueries({ queryKey: collegeScopedQueryKey("tst", collegeId) });
+      qc.invalidateQueries({ queryKey: collegeScopedQueryKey("time-slot-templates", collegeId) });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   return (
@@ -417,23 +418,22 @@ function TimeSlotTemplatesWorkspace() {
             canManage={canManage}
             pending={toggleActive.isPending || del.isPending}
             onToggle={(row) => toggleActive.mutate(row)}
-            onDelete={(row) => {
-              if (
-                confirm(
-                  "حذف قالب " +
-                    DAY_LABELS_AR[row.day_of_week] +
-                    " " +
-                    row.start_time.slice(0, 5) +
-                    " إلى " +
-                    row.end_time.slice(0, 5) +
-                    " (" +
-                    SYSTEM_LABELS[row.study_system] +
-                    ")؟",
-                )
-              )
-                del.mutate(row.id);
+            onDelete={async (row) => {
+              const ok = await confirmAction({
+                title: `حذف قالب ${DAY_LABELS_AR[row.day_of_week]} ${row.start_time.slice(0, 5)} إلى ${row.end_time.slice(0, 5)} (${SYSTEM_LABELS[row.study_system]})؟`,
+                description: "لا يمكن التراجع عن هذا الإجراء.",
+                confirmLabel: "حذف",
+                destructive: true,
+              });
+              if (ok) del.mutate(row.id);
             }}
           />
+          {breaksError && (
+            <QueryErrorNotice
+              title="تعذّر تحميل الاستراحات اليومية؛ قد تتضمن المعاينة فترات تتعارض مع استراحة."
+              error={breaksError}
+            />
+          )}
           <p className="text-xs text-muted-foreground">
             القوالب تخص الكلية وتُستخدم عبر فصولها الدراسية؛ إعداد قوالب الأيام لا يلزم الطلاب
             بالحضور في جميع هذه الأيام.
@@ -472,12 +472,12 @@ function TimeSlotTemplatesWorkspace() {
                       </Select>
                     </div>
                     <div>
-                      <Label>الكلية</Label>
-                      <Input value={active.name} disabled />
+                      <Label htmlFor="tst-form-f1">الكلية</Label>
+                      <Input id="tst-form-f1" value={active.name} disabled />
                     </div>
                     <div>
-                      <Label>حالة القوالب الجديدة</Label>
-                      <Input value="مفعّل عند الحفظ" disabled />
+                      <Label htmlFor="tst-form-f2">حالة القوالب الجديدة</Label>
+                      <Input id="tst-form-f2" value="مفعّل عند الحفظ" disabled />
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -519,6 +519,7 @@ function TimeSlotTemplatesWorkspace() {
                               type="button"
                               size="sm"
                               variant={customizingDay === day ? "default" : "outline"}
+                              aria-pressed={customizingDay === day}
                               onClick={() => setCustomizingDay(customizingDay === day ? null : day)}
                             >
                               تخصيص {DAY_LABELS_AR[day]}
@@ -535,8 +536,8 @@ function TimeSlotTemplatesWorkspace() {
                               تفعيل {DAY_LABELS_AR[customizingDay]}
                             </label>
                             <div>
-                              <Label>بداية الدوام</Label>
-                              <Input
+                              <Label htmlFor="tst-form-f3">بداية الدوام</Label>
+                              <Input id="tst-form-f3"
                                 dir="ltr"
                                 type="time"
                                 value={dayOverrides[customizingDay].startTime}
@@ -552,8 +553,8 @@ function TimeSlotTemplatesWorkspace() {
                               />
                             </div>
                             <div>
-                              <Label>نهاية الدوام</Label>
-                              <Input
+                              <Label htmlFor="tst-form-f4">نهاية الدوام</Label>
+                              <Input id="tst-form-f4"
                                 dir="ltr"
                                 type="time"
                                 value={dayOverrides[customizingDay].endTime}
@@ -624,8 +625,8 @@ function TimeSlotTemplatesWorkspace() {
                       <p className="text-sm font-semibold">3) ساعات التدريس</p>
                       <div className="grid gap-3 md:grid-cols-3">
                         <div>
-                          <Label>بداية الدوام</Label>
-                          <Input
+                          <Label htmlFor="tst-form-f5">بداية الدوام</Label>
+                          <Input id="tst-form-f5"
                             dir="ltr"
                             type="time"
                             value={dayStart}
@@ -633,8 +634,8 @@ function TimeSlotTemplatesWorkspace() {
                           />
                         </div>
                         <div>
-                          <Label>نهاية الدوام</Label>
-                          <Input
+                          <Label htmlFor="tst-form-f6">نهاية الدوام</Label>
+                          <Input id="tst-form-f6"
                             dir="ltr"
                             type="time"
                             value={dayEnd}
@@ -642,8 +643,8 @@ function TimeSlotTemplatesWorkspace() {
                           />
                         </div>
                         <div>
-                          <Label>دقة الشبكة (دقيقة)</Label>
-                          <Input
+                          <Label htmlFor="tst-form-f7">دقة الشبكة (دقيقة)</Label>
+                          <Input id="tst-form-f7"
                             dir="ltr"
                             type="number"
                             min={15}
@@ -693,7 +694,7 @@ function TimeSlotTemplatesWorkspace() {
                                 {b.start_time.slice(0, 5)} → {b.end_time.slice(0, 5)}
                               </span>
                               {b.affects_scheduling !== false && (
-                                <span className="mr-2 text-xs text-amber-700">
+                                <span className="ms-2 text-xs text-amber-700">
                                   · يمنع التقاطع عند التوليد
                                 </span>
                               )}
@@ -727,74 +728,7 @@ function TimeSlotTemplatesWorkspace() {
                           حفظ الجديد فقط ({previewMeta?.toInsert ?? 0})
                         </Button>
                       </div>
-                      {previewMeta && (
-                        <div className="grid gap-2 text-sm md:grid-cols-2">
-                          <p>الأيام المحددة: {previewMeta.selectedDays}</p>
-                          <p>قوالب الساعتين لكل يوم: {previewMeta.slots120PerDay}</p>
-                          <p>قوالب الثلاث ساعات لكل يوم: {previewMeta.slots180PerDay}</p>
-                          <p>الإجمالي: {previewMeta.total}</p>
-                          <p>
-                            قوالب جديدة: {previewMeta.toInsert} · موجودة مسبقًا:{" "}
-                            {previewMeta.duplicates}
-                          </p>
-                          <p>
-                            متعارضة: {previewMeta.conflicts} · مكررة داخل المعاينة:{" "}
-                            {previewMeta.duplicatesInGeneratedBatch}
-                          </p>
-                          <p>متجاوز بسبب استراحة: {previewMeta.skippedBreakConflicts}</p>
-                          <p className="text-xs text-muted-foreground md:col-span-2">
-                            تُراجع القوالب الموجودة قبل الحفظ، ويُضاف الجديد فقط.
-                          </p>
-                        </div>
-                      )}
-                      {previewMeta && previewMeta.conflictDetails.length > 0 && (
-                        <div className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-                          <p className="font-semibold">تعارضات تمنع الحفظ:</p>
-                          <ul className="mt-1 list-disc pr-5">
-                            {previewMeta.conflictDetails.slice(0, 5).map((c, i) => (
-                              <li key={i}>
-                                {DAY_LABELS_AR[c.day_of_week]} {c.start_time}–{c.end_time} (
-                                {c.slot_duration_minutes}د): {c.reason}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      {preview && preview.length > 0 && (
-                        <div className="max-h-64 overflow-auto rounded border border-border">
-                          <table className="w-full text-sm">
-                            <thead className="bg-muted text-xs">
-                              <tr>
-                                <th className="p-2 text-right">اليوم</th>
-                                <th className="p-2 text-right">من</th>
-                                <th className="p-2 text-right">إلى</th>
-                                <th className="p-2 text-right">المدة</th>
-                                <th className="p-2 text-right">النظام</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {preview.slice(0, 60).map((t, i) => (
-                                <tr key={i} className="border-t border-border">
-                                  <td className="p-2">{DAY_LABELS_AR[t.day_of_week]}</td>
-                                  <td className="p-2" dir="ltr">
-                                    {t.start_time}
-                                  </td>
-                                  <td className="p-2" dir="ltr">
-                                    {t.end_time}
-                                  </td>
-                                  <td className="p-2">{t.slot_duration_minutes}</td>
-                                  <td className="p-2">{SYSTEM_LABELS[t.study_system]}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                          {preview.length > 60 && (
-                            <p className="p-2 text-xs text-muted-foreground">
-                              عرض أول 60 من {preview.length}
-                            </p>
-                          )}
-                        </div>
-                      )}
+                      <WeeklyPreviewResults preview={preview} previewMeta={previewMeta} />
                       <p className="text-xs text-amber-700">
                         لا يتم استبدال القوالب الموجودة تلقائيًا. الحفظ يُدرج السجلات الجديدة فقط
                         بعد المعاينة والتأكيد.
@@ -812,14 +746,14 @@ function TimeSlotTemplatesWorkspace() {
                         <CollapsibleContent className="mt-3 space-y-3">
                           <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
                             <div>
-                              <Label>النظام</Label>
+                              <Label htmlFor="tst-form-f11">النظام</Label>
                               <Select
                                 value={singleForm.study_system}
                                 onValueChange={(v) =>
                                   setSingleForm({ ...singleForm, study_system: v as StudySystem })
                                 }
                               >
-                                <SelectTrigger>
+                                <SelectTrigger id="tst-form-f11">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -830,14 +764,14 @@ function TimeSlotTemplatesWorkspace() {
                               </Select>
                             </div>
                             <div>
-                              <Label>اليوم</Label>
+                              <Label htmlFor="tst-form-f12">اليوم</Label>
                               <Select
                                 value={String(singleForm.day_of_week)}
                                 onValueChange={(v) =>
                                   setSingleForm({ ...singleForm, day_of_week: Number(v) })
                                 }
                               >
-                                <SelectTrigger>
+                                <SelectTrigger id="tst-form-f12">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -850,8 +784,8 @@ function TimeSlotTemplatesWorkspace() {
                               </Select>
                             </div>
                             <div>
-                              <Label>من</Label>
-                              <Input
+                              <Label htmlFor="tst-form-f8">من</Label>
+                              <Input id="tst-form-f8"
                                 dir="ltr"
                                 type="time"
                                 value={singleForm.start_time}
@@ -861,8 +795,8 @@ function TimeSlotTemplatesWorkspace() {
                               />
                             </div>
                             <div>
-                              <Label>إلى</Label>
-                              <Input
+                              <Label htmlFor="tst-form-f9">إلى</Label>
+                              <Input id="tst-form-f9"
                                 dir="ltr"
                                 type="time"
                                 value={singleForm.end_time}
@@ -872,8 +806,8 @@ function TimeSlotTemplatesWorkspace() {
                               />
                             </div>
                             <div>
-                              <Label>المدة (دقيقة)</Label>
-                              <Input
+                              <Label htmlFor="tst-form-f10">المدة (دقيقة)</Label>
+                              <Input id="tst-form-f10"
                                 dir="ltr"
                                 type="number"
                                 min={15}

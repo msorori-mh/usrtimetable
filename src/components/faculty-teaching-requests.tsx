@@ -16,6 +16,7 @@ import {
   type RequestDirection,
   type RequestStatusFilter,
 } from "@/lib/instructors/faculty-request-display";
+import { formatLongDate } from "@/lib/format";
 
 const PAGE_SIZE = 6;
 const statusNames = {
@@ -53,14 +54,7 @@ function requestDate(value: string) {
   const date = new Date(value);
   return Number.isNaN(date.getTime())
     ? "تاريخ غير متاح"
-    : new Intl.DateTimeFormat("ar-SA", {
-        calendar: "gregory",
-        numberingSystem: "latn",
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-        timeZone: "Asia/Riyadh",
-      }).format(date);
+    : formatLongDate(date);
 }
 
 export function FacultyTeachingRequests({ collegeId }: { collegeId: string }) {
@@ -229,7 +223,7 @@ function RequestsPanel({ collegeId }: { collegeId: string }) {
             <div className="flex flex-col gap-3 sm:flex-row">
               <label className="relative flex-1">
                 <Search
-                  className="pointer-events-none absolute right-3 top-3 h-4 w-4 text-muted-foreground"
+                  className="pointer-events-none absolute start-3 top-3 h-4 w-4 text-muted-foreground"
                   aria-hidden="true"
                 />
                 <input

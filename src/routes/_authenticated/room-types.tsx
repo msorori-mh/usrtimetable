@@ -20,13 +20,13 @@ export const Route = createFileRoute("/_authenticated/room-types")({
       renderForm={(f, set) => (
         <>
           <div className="grid grid-cols-3 gap-3">
-            <div><Label>الرمز</Label><Input value={String(f.code ?? "")} onChange={(e) => set({ ...f, code: e.target.value })} /></div>
-            <div><Label>السعة الافتراضية</Label><Input type="number" value={Number(f.default_capacity ?? 30)} onChange={(e) => set({ ...f, default_capacity: Number(e.target.value) })} /></div>
-            <div><Label>الترتيب</Label><Input type="number" value={Number(f.display_order ?? 0)} onChange={(e) => set({ ...f, display_order: Number(e.target.value) })} /></div>
+            <div><Label htmlFor="room-types-f1">الرمز</Label><Input id="room-types-f1" value={String(f.code ?? "")} onChange={(e) => set({ ...f, code: e.target.value })} /></div>
+            <div><Label htmlFor="room-types-f2">السعة الافتراضية</Label><Input id="room-types-f2" type="number" value={Number(f.default_capacity ?? 30)} onChange={(e) => set({ ...f, default_capacity: Number(e.target.value) })} /></div>
+            <div><Label htmlFor="room-types-f3">الترتيب</Label><Input id="room-types-f3" type="number" value={Number(f.display_order ?? 0)} onChange={(e) => set({ ...f, display_order: Number(e.target.value) })} /></div>
           </div>
-          <div><Label>الاسم بالعربية</Label><Input value={String(f.name_ar ?? "")} onChange={(e) => set({ ...f, name_ar: e.target.value })} /></div>
-          <div><Label>الاسم بالإنجليزية</Label><Input value={String(f.name_en ?? "")} onChange={(e) => set({ ...f, name_en: e.target.value })} /></div>
-          <div><Label>اللون (hex)</Label><Input value={String(f.color ?? "")} onChange={(e) => set({ ...f, color: e.target.value })} placeholder="#10b981" /></div>
+          <div><Label htmlFor="room-types-f4">الاسم بالعربية</Label><Input id="room-types-f4" value={String(f.name_ar ?? "")} onChange={(e) => set({ ...f, name_ar: e.target.value })} /></div>
+          <div><Label htmlFor="room-types-f5">الاسم بالإنجليزية</Label><Input id="room-types-f5" value={String(f.name_en ?? "")} onChange={(e) => set({ ...f, name_en: e.target.value })} /></div>
+          <div><Label htmlFor="room-types-f6">اللون (hex)</Label><Input id="room-types-f6" value={String(f.color ?? "")} onChange={(e) => set({ ...f, color: e.target.value })} placeholder="#10b981" /></div>
           <label className="flex items-center gap-2 text-sm"><Checkbox checked={Boolean(f.is_active)} onCheckedChange={(v) => set({ ...f, is_active: !!v })} /> نشط</label>
         </>
       )}

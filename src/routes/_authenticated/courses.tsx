@@ -41,6 +41,12 @@ import {
   programsForDepartment,
   type CourseComposition,
 } from "@/lib/courses/course-filters";
+import { userErrorMessage } from "@/lib/user-error";
+import { readAllRows } from "@/lib/supabase/read-all";
+import { confirmAction } from "@/components/confirm-dialog";
+import { QueryErrorNotice } from "@/components/app-states/query-error-notice";
+import { useRowWindow } from "@/hooks/use-row-window";
+import { ShowMoreRows } from "@/components/app-states/show-more-rows";
 
 export const Route = createFileRoute("/_authenticated/courses")({
   head: () => ({ meta: [{ title: "المقررات" }] }),
@@ -99,97 +105,115 @@ function CoursesPage() {
   const [compFilter, setCompFilter] = useState<string>(ALL);
   const [creditFilter, setCreditFilter] = useState<string>(ALL);
 
-  const { data: depts } = useQuery({
-    queryKey: ["dept-min", active?.id],
+  const { data: depts, error: deptsError } = useQuery({
+    queryKey: ["departments", active?.id, "options"],
     enabled: !!active,
-    queryFn: async () =>
-      ((
-        await supabase
+    queryFn: async () => {
+      const { data, error } = await supabase
           .from("departments")
           .select("id, name")
           .eq("college_id", active!.id)
           // ACADEMIC-ARCHIVE-UI-01: pickers exclude archived records.
           .eq("is_archived", false)
-          .order("name")
-      ).data ?? []) as Department[],
+          .order("name");
+      if (error) throw error;
+      return (data ?? []) as Department[];
+    },
   });
 
-  const { data: progs } = useQuery({
-    queryKey: ["prog-min-dep", active?.id],
+  const { data: progs, error: progsError } = useQuery({
+    queryKey: ["programs", active?.id, "options-with-department"],
     enabled: !!active,
-    queryFn: async () =>
-      ((
-        await supabase
+    queryFn: async () => {
+      const { data, error } = await supabase
           .from("academic_programs")
           .select("id, name, department_id")
           .eq("college_id", active!.id)
           // ACADEMIC-ARCHIVE-UI-01: pickers exclude archived records.
           .eq("is_archived", false)
-          .order("name")
-      ).data ?? []) as Program[],
+          .order("name");
+      if (error) throw error;
+      return (data ?? []) as Program[];
+    },
   });
 
-  const { data: plans } = useQuery({
-    queryKey: ["study-plans-min", active?.id],
-    enabled: !!active,
-    queryFn: async () =>
-      ((
-        await supabase
-          .from("study_plans")
-          .select("id, name, program_id, version")
-          .eq("college_id", active!.id)
-          .order("name")
-      ).data ?? []) as StudyPlan[],
-  });
-
-  const { data: coursePrograms } = useQuery({
-    queryKey: ["course-programs", active?.id],
-    enabled: !!active,
-    queryFn: async () =>
-      ((
-        await supabase
-          .from("course_programs")
-          .select("course_id, program_id")
-          .eq("college_id", active!.id)
-      ).data ?? []) as { course_id: string; program_id: string }[],
-  });
-
-  const { data: planCourses } = useQuery({
-    queryKey: ["plan-courses-min", active?.id],
-    enabled: !!active,
-    queryFn: async () =>
-      ((
-        await supabase
-          .from("plan_courses")
-          .select("id, study_plan_id, course_id")
-          .eq("college_id", active!.id)
-      ).data ?? []) as { id: string; study_plan_id: string; course_id: string }[],
-  });
-
-  const { data: planComponents } = useQuery({
-    queryKey: ["plan-course-components-min", active?.id],
-    enabled: !!active,
-    queryFn: async () =>
-      ((
-        await supabase
-          .from("plan_course_components")
-          .select("plan_course_id, component_type")
-          .eq("college_id", active!.id)
-      ).data ?? []) as { plan_course_id: string; component_type: string }[],
-  });
-
-  const { data: rows, isLoading } = useQuery({
-    queryKey: ["courses", active?.id],
+  const { data: plans, error: plansError } = useQuery({
+    queryKey: ["study-plans", active?.id, "options"],
     enabled: !!active,
     queryFn: async () => {
       const { data, error } = await supabase
+          .from("study_plans")
+          .select("id, name, program_id, version")
+          .eq("college_id", active!.id)
+          .order("name");
+      if (error) throw error;
+      return (data ?? []) as StudyPlan[];
+    },
+  });
+
+  const { data: coursePrograms, error: courseProgramsError } = useQuery({
+    queryKey: ["course-programs", active?.id],
+    enabled: !!active,
+    queryFn: async () => {
+      const data = await readAllRows((from, to) =>
+        supabase
+          .from("course_programs")
+          .select("course_id, program_id")
+          .eq("college_id", active!.id)
+            .order("id")
+            .range(from, to),
+      );
+      return (data ?? []) as { course_id: string; program_id: string }[];
+    },
+  });
+
+  const { data: planCourses, error: planCoursesError } = useQuery({
+    queryKey: ["plan-courses", active?.id, "course-filter"],
+    enabled: !!active,
+    queryFn: async () => {
+      const data = await readAllRows((from, to) =>
+        supabase
+          .from("plan_courses")
+          .select("id, study_plan_id, course_id")
+          .eq("college_id", active!.id)
+            .order("id")
+            .range(from, to),
+      );
+      return (data ?? []) as { id: string; study_plan_id: string; course_id: string }[];
+    },
+  });
+
+  const { data: planComponents, error: planComponentsError } = useQuery({
+    queryKey: ["plan-course-components", active?.id, "course-filter"],
+    enabled: !!active,
+    queryFn: async () => {
+      const data = await readAllRows((from, to) =>
+        supabase
+          .from("plan_course_components")
+          .select("plan_course_id, component_type")
+          .eq("college_id", active!.id)
+            .order("id")
+            .range(from, to),
+      );
+      return (data ?? []) as { plan_course_id: string; component_type: string }[];
+    },
+  });
+
+  const { data: rows, isLoading, isError, error: rowsError, refetch } = useQuery({
+    queryKey: ["courses", active?.id],
+    enabled: !!active,
+    queryFn: async () => {
+      const data = await readAllRows((from, to) =>
+        supabase
         .from("courses")
         .select(
           "id, name, code, department_id, credit_hours, theory_hours, practical_hours, college_id, course_nature, is_shared",
         )
         .eq("college_id", active!.id)
-        .order("code");
-      if (error) throw error;
+        .order("code")
+            .order("id")
+            .range(from, to),
+      );
       return (data ?? []) as Course[];
     },
   });
@@ -235,7 +259,7 @@ function CoursesPage() {
       setOpen(false);
       setEditing(null);
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const del = useMutation({
@@ -248,7 +272,7 @@ function CoursesPage() {
       toast.success("تم الحذف");
       qc.invalidateQueries({ queryKey: ["courses", active?.id] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const startEdit = (c: Course) => {
@@ -352,6 +376,10 @@ function CoursesPage() {
     [rows, filterState, programCourseIds, planCourseIds, compositionByCourseId],
   );
 
+  const filterDataError =
+    deptsError ?? progsError ?? plansError ?? courseProgramsError ?? planCoursesError ?? planComponentsError;
+  const rowWindow = useRowWindow(filtered);
+
   const creditOptions = useMemo(() => creditHourOptions(rows ?? []), [rows]);
   const filtersActive = hasActiveCourseFilters(filterState);
   const clearFilters = () => {
@@ -428,12 +456,12 @@ function CoursesPage() {
                 </DialogHeader>
                 <div className="space-y-3">
                   <div>
-                    <Label>القسم</Label>
+                    <Label htmlFor="course-f6">القسم</Label>
                     <Select
                       value={form.department_id}
                       onValueChange={(v) => setForm({ ...form, department_id: v })}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="course-f6">
                         <SelectValue placeholder="اختر القسم" />
                       </SelectTrigger>
                       <SelectContent>
@@ -447,15 +475,15 @@ function CoursesPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label>الرمز</Label>
-                      <Input
+                      <Label htmlFor="course-f1">الرمز</Label>
+                      <Input id="course-f1"
                         value={form.code}
                         onChange={(e) => setForm({ ...form, code: e.target.value })}
                       />
                     </div>
                     <div>
-                      <Label>الاسم</Label>
-                      <Input
+                      <Label htmlFor="course-f2">الاسم</Label>
+                      <Input id="course-f2"
                         value={form.name}
                         onChange={(e) => setForm({ ...form, name: e.target.value })}
                       />
@@ -463,8 +491,8 @@ function CoursesPage() {
                   </div>
                   <div className="grid grid-cols-3 gap-3">
                     <div>
-                      <Label>الساعات المعتمدة</Label>
-                      <Input
+                      <Label htmlFor="course-f3">الساعات المعتمدة</Label>
+                      <Input id="course-f3"
                         type="number"
                         step="0.5"
                         value={form.credit_hours ?? ""}
@@ -472,16 +500,16 @@ function CoursesPage() {
                       />
                     </div>
                     <div>
-                      <Label>نظري</Label>
-                      <Input
+                      <Label htmlFor="course-f4">نظري</Label>
+                      <Input id="course-f4"
                         type="number"
                         value={form.theory_hours}
                         onChange={(e) => setForm({ ...form, theory_hours: Number(e.target.value) })}
                       />
                     </div>
                     <div>
-                      <Label>عملي</Label>
-                      <Input
+                      <Label htmlFor="course-f5">عملي</Label>
+                      <Input id="course-f5"
                         type="number"
                         value={form.practical_hours}
                         onChange={(e) =>
@@ -528,7 +556,7 @@ function CoursesPage() {
           className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${showPlanFilter ? "lg:grid-cols-5" : "lg:grid-cols-4"}`}
         >
           <div>
-            <Label className="text-xs">القسم</Label>
+            <Label htmlFor="course-f7" className="text-xs">القسم</Label>
             <Select
               value={deptFilter}
               onValueChange={(v) => {
@@ -537,7 +565,7 @@ function CoursesPage() {
                 setPlanFilter(ALL);
               }}
             >
-              <SelectTrigger>
+              <SelectTrigger id="course-f7">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -551,7 +579,7 @@ function CoursesPage() {
             </Select>
           </div>
           <div>
-            <Label className="text-xs">البرنامج</Label>
+            <Label htmlFor="course-f8" className="text-xs">البرنامج</Label>
             <Select
               value={progFilter}
               onValueChange={(v) => {
@@ -559,7 +587,7 @@ function CoursesPage() {
                 setPlanFilter(ALL);
               }}
             >
-              <SelectTrigger>
+              <SelectTrigger id="course-f8">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -574,9 +602,9 @@ function CoursesPage() {
           </div>
           {showPlanFilter && (
             <div>
-              <Label className="text-xs">الخطة</Label>
+              <Label htmlFor="course-f9" className="text-xs">الخطة</Label>
               <Select value={effectivePlanFilter} onValueChange={setPlanFilter}>
-                <SelectTrigger>
+                <SelectTrigger id="course-f9">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -591,9 +619,9 @@ function CoursesPage() {
             </div>
           )}
           <div>
-            <Label className="text-xs">تكوين المقرر</Label>
+            <Label htmlFor="course-f10" className="text-xs">تكوين المقرر</Label>
             <Select value={compFilter} onValueChange={setCompFilter}>
-              <SelectTrigger aria-label="تصفية بتكوين المقرر" data-testid="courses-composition">
+              <SelectTrigger id="course-f10" aria-label="تصفية بتكوين المقرر" data-testid="courses-composition">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -611,9 +639,9 @@ function CoursesPage() {
             </Select>
           </div>
           <div>
-            <Label className="text-xs">الساعات المعتمدة</Label>
+            <Label htmlFor="course-f11" className="text-xs">الساعات المعتمدة</Label>
             <Select value={creditFilter} onValueChange={setCreditFilter}>
-              <SelectTrigger aria-label="تصفية بالساعات المعتمدة" data-testid="courses-credit">
+              <SelectTrigger id="course-f11" aria-label="تصفية بالساعات المعتمدة" data-testid="courses-credit">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -650,16 +678,28 @@ function CoursesPage() {
         </p>
       )}
 
+      {filterDataError && (
+        <QueryErrorNotice
+          className="mb-3"
+          title="تعذّر تحميل بيانات الفلاتر (الأقسام أو البرامج أو الخطط)؛ قد تكون نتائج التصفية ناقصة."
+          error={filterDataError}
+          onRetry={() => void qc.invalidateQueries({ predicate: (q) => ["departments", "programs", "study-plans", "course-programs", "plan-courses", "plan-course-components"].includes(String(q.queryKey[0])) })}
+        />
+      )}
+
       <Card className="overflow-hidden">
         {isLoading ? (
           <p className="p-6 text-center text-muted-foreground">جارٍ التحميل...</p>
+        ) : isError ? (
+          <div className="p-4"><QueryErrorNotice error={rowsError} onRetry={() => void refetch()} /></div>
         ) : !rows || rows.length === 0 ? (
           <p className="p-6 text-center text-muted-foreground">لا توجد مقررات بعد.</p>
         ) : filtered.length === 0 ? (
           <p className="p-6 text-center text-muted-foreground">لا توجد نتائج مطابقة للفلاتر.</p>
         ) : (
+          <>
           <ul className="divide-y divide-border">
-            {filtered.map((c) => (
+            {rowWindow.visible.map((c) => (
               <li key={c.id} className="flex items-center justify-between p-4">
                 <div>
                   <p className="font-semibold">{c.name}</p>
@@ -670,14 +710,21 @@ function CoursesPage() {
                 </div>
                 {canManage && (
                   <div className="flex gap-1">
-                    <Button size="sm" variant="ghost" onClick={() => startEdit(c)}>
+                    <Button size="sm" variant="ghost" aria-label={`تعديل ${c.name}`} onClick={() => startEdit(c)}>
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => {
-                        if (confirm("حذف المقرر؟")) del.mutate(c.id);
+                      aria-label={`حذف ${c.name}`}
+                      onClick={async () => {
+                        const ok = await confirmAction({
+                          title: `حذف المقرر «${c.code} — ${c.name}»؟`,
+                          description: "سيُحذف المقرر من الكتالوج. لا يمكن التراجع عن هذا الإجراء.",
+                          confirmLabel: "حذف",
+                          destructive: true,
+                        });
+                        if (ok) del.mutate(c.id);
                       }}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -687,6 +734,14 @@ function CoursesPage() {
               </li>
             ))}
           </ul>
+          <ShowMoreRows
+            shown={rowWindow.shown}
+            total={rowWindow.total}
+            hasMore={rowWindow.hasMore}
+            onShowMore={rowWindow.showMore}
+            onShowAll={rowWindow.showAll}
+          />
+          </>
         )}
       </Card>
     </div>

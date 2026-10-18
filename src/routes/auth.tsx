@@ -164,11 +164,11 @@ function AuthPage() {
             </div>
           </div>
           <div>
-            <h2 className="text-2xl font-bold leading-tight border-r-4 border-[var(--usr-gold)] pr-4">
+            <h2 className="text-2xl font-bold leading-tight border-s-4 border-[var(--usr-gold)] ps-4">
               {USR_PLATFORM_NAME_AR}
             </h2>
             <p className="mt-4 max-w-md text-white/90 leading-relaxed">{USR_PLATFORM_DESC_AR}</p>
-            <p className="usr-access-notice usr-access-notice--on-dark mt-5 max-w-md text-right">
+            <p className="usr-access-notice usr-access-notice--on-dark mt-5 max-w-md text-start">
               {USR_AUTH_NOTICE_AR}
             </p>
           </div>
@@ -194,7 +194,7 @@ function AuthPage() {
               أدخل بيانات حسابك المصرّح به للوصول إلى المنصّة.
             </p>
 
-            <div className="usr-access-notice mb-6 text-right">{USR_AUTH_NOTICE_AR}</div>
+            <div className="usr-access-notice mb-6 text-start">{USR_AUTH_NOTICE_AR}</div>
 
             {forgotMode ? (
               resetSent ? (

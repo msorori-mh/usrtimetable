@@ -125,12 +125,12 @@ function AdminToolsPage() {
       </header>
 
       <div className="relative max-w-md">
-        <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="ابحث عن صفحة… (مثال: قاعات، دفعات، استيراد)"
-          className="pr-9"
+          className="ps-9"
           data-testid="admin-tools-search"
           aria-label="بحث عن صفحة إدارية"
         />
@@ -152,7 +152,7 @@ function AdminToolsPage() {
               type="button"
               onClick={() => setCollapsed((s) => ({ ...s, [j.key]: !isCollapsed }))}
               aria-expanded={!isCollapsed}
-              className="flex w-full items-center justify-between gap-3 text-right"
+              className="flex w-full items-center justify-between gap-3 text-start"
             >
               <span className="min-w-0">
                 <span className="flex flex-wrap items-center gap-2">
@@ -190,7 +190,7 @@ function AdminToolsPage() {
             type="button"
             onClick={() => setLegacyOpen((v) => !v)}
             aria-expanded={legacyOpen}
-            className="flex w-full items-center justify-between gap-3 text-right"
+            className="flex w-full items-center justify-between gap-3 text-start"
           >
             <span className="min-w-0">
               <span className="flex items-center gap-2 text-base font-semibold">

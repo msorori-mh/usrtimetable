@@ -11,6 +11,10 @@ import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { Building2, Pencil, Trash2 } from "lucide-react";
 import { READ_ONLY_VIEW_BADGE_AR, isInstitutionalReadOnlyViewer } from "@/lib/unauthorized-access";
+import { userErrorMessage } from "@/lib/user-error";
+import { formatDate } from "@/lib/format";
+import { confirmAction } from "@/components/confirm-dialog";
+import { QueryErrorNotice } from "@/components/app-states/query-error-notice";
 
 export const Route = createFileRoute("/_authenticated/universities")({
   head: () => ({ meta: [{ title: "إدارة الجامعة" }] }),
@@ -24,9 +28,10 @@ function UniversitiesPage() {
   const [code, setCode] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const { data: list, isLoading } = useQuery({
+  const { data: list, isLoading, isError, error: listError, refetch } = useQuery({
     queryKey: ["universities"],
     queryFn: async () => {
+      // read-all-ok: one row per university (a handful at most)
       const { data, error } = await supabase.from("universities").select("*").order("created_at");
       if (error) throw error;
       return data;
@@ -50,7 +55,7 @@ function UniversitiesPage() {
       setName(""); setCode(""); setEditingId(null);
       qc.invalidateQueries({ queryKey: ["universities"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const remove = useMutation({
@@ -60,7 +65,7 @@ function UniversitiesPage() {
       await logAudit({ action: "delete", entity: "university", entityId: id });
     },
     onSuccess: () => { toast.success("تم الحذف"); qc.invalidateQueries({ queryKey: ["universities"] }); },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   if (user && !user.isSuperAdmin && !user.isInstitutionalViewer) {
@@ -116,31 +121,48 @@ function UniversitiesPage() {
 
       <Card className="overflow-hidden">
         <table className="w-full">
-          <thead className="bg-muted/40 text-right text-xs uppercase text-muted-foreground">
+          <thead className="bg-muted/40 text-start text-xs uppercase text-muted-foreground">
             <tr>
               <th className="px-4 py-3">الاسم</th>
               <th className="px-4 py-3">الرمز</th>
               <th className="px-4 py-3">تاريخ الإنشاء</th>
-              <th className="px-4 py-3 text-left">إجراءات</th>
+              <th className="px-4 py-3 text-end">إجراءات</th>
             </tr>
           </thead>
           <tbody>
             {isLoading && <tr><td colSpan={4} className="p-6 text-center text-muted-foreground">جارٍ التحميل...</td></tr>}
+            {isError && (
+              <tr><td colSpan={4} className="p-4"><QueryErrorNotice error={listError} onRetry={() => void refetch()} /></td></tr>
+            )}
             {list?.length === 0 && <tr><td colSpan={4} className="p-6 text-center text-muted-foreground">لا توجد جامعات بعد.</td></tr>}
             {list?.map((u) => (
               <tr key={u.id} className="border-t border-border">
                 <td className="px-4 py-3 font-medium">{u.name}</td>
                 <td className="px-4 py-3 text-sm text-muted-foreground" dir="ltr">{u.code ?? "—"}</td>
                 <td className="px-4 py-3 text-sm text-muted-foreground">
-                  {new Date(u.created_at).toLocaleDateString("ar-EG")}
+                  {formatDate(u.created_at)}
                 </td>
-                <td className="px-4 py-3 text-left">
+                <td className="px-4 py-3 text-end">
                   {canEdit ? (
                   <div className="inline-flex gap-1">
-                    <Button size="sm" variant="ghost" onClick={() => { setEditingId(u.id); setName(u.name); setCode(u.code ?? ""); }}>
+                    <Button size="sm" variant="ghost" aria-label={`تعديل ${u.name}`} onClick={() => { setEditingId(u.id); setName(u.name); setCode(u.code ?? ""); }}>
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => { if (confirm("حذف هذه الجامعة وكل كلّياتها؟")) remove.mutate(u.id); }}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label={`حذف ${u.name}`}
+                      onClick={async () => {
+                        const ok = await confirmAction({
+                          title: `حذف جامعة «${u.name}» وكل كلّياتها؟`,
+                          description: "سيُحذف كل ما يتبع الجامعة من كليات وبيانات. لا يمكن التراجع عن هذا الإجراء.",
+                          confirmLabel: "حذف نهائي",
+                          destructive: true,
+                          typedConfirmation: u.name,
+                        });
+                        if (ok) remove.mutate(u.id);
+                      }}
+                    >
                       <Trash2 className="h-3.5 w-3.5 text-destructive" />
                     </Button>
                   </div>

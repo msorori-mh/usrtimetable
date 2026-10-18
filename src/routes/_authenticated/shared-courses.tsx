@@ -27,6 +27,11 @@ import {
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { Share2 } from "lucide-react";
+import { userErrorMessage } from "@/lib/user-error";
+import { readAllRows } from "@/lib/supabase/read-all";
+import { QueryErrorNotice } from "@/components/app-states/query-error-notice";
+import { useRowWindow } from "@/hooks/use-row-window";
+import { ShowMoreRows } from "@/components/app-states/show-more-rows";
 
 export const Route = createFileRoute("/_authenticated/shared-courses")({
   head: () => ({ meta: [{ title: "المقررات المشتركة" }] }),
@@ -62,18 +67,23 @@ function SharedPage() {
   const programs = linksQuery.data?.programs ?? [];
   const links = linksQuery.data?.links ?? [];
 
-  const { data: courses, isLoading } = useQuery({
-    queryKey: ["courses-shared", active?.id],
+  const { data: courses, isLoading, isError, error: coursesError, refetch } = useQuery({
+    queryKey: ["courses", active?.id, "sharing"],
     enabled: !!active,
-    queryFn: async () =>
-      ((
-        await supabase
+    queryFn: async () => {
+      const data = await readAllRows((from, to) =>
+        supabase
           .from("courses")
           .select("id, code, name, department_id, course_nature, is_shared, updated_at")
           .eq("college_id", active!.id)
           .order("code")
-      ).data ?? []) as Course[],
+            .order("id")
+            .range(from, to),
+      );
+      return (data ?? []) as Course[];
+    },
   });
+  const rowWindow = useRowWindow(courses ?? []);
   const start = (c: Course) => {
     setEditing(c);
     setNature(c.course_nature ?? "department");
@@ -111,13 +121,13 @@ function SharedPage() {
     },
     onSuccess: () => {
       toast.success("تم الحفظ");
-      qc.invalidateQueries({ queryKey: ["courses-shared", active?.id] });
+      qc.invalidateQueries({ queryKey: ["courses", active?.id, "sharing"] });
       qc.invalidateQueries({ queryKey: ["courses"] });
       qc.invalidateQueries({ queryKey: ["course-program-links", active?.id] });
       qc.invalidateQueries({ queryKey: ["course-programs", active?.id] });
       setEditing(null);
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   return (
@@ -140,11 +150,14 @@ function SharedPage() {
       <Card className="overflow-hidden">
         {isLoading ? (
           <p className="p-6 text-center text-muted-foreground">جارٍ التحميل...</p>
+        ) : isError ? (
+          <div className="p-4"><QueryErrorNotice error={coursesError} onRetry={() => void refetch()} /></div>
         ) : !courses || courses.length === 0 ? (
           <p className="p-6 text-center text-muted-foreground">لا توجد مقررات.</p>
         ) : (
+          <>
           <ul className="divide-y divide-border">
-            {courses.map((c) => {
+            {rowWindow.visible.map((c) => {
               const ds = links.filter((l) => l.course_id === c.id);
               return (
                 <li key={c.id} className="flex items-center justify-between gap-3 p-4">
@@ -174,6 +187,7 @@ function SharedPage() {
                     <Button
                       size="sm"
                       variant="outline"
+                      aria-label={`تعديل ${c.name}`}
                       onClick={() => start(c)}
                       disabled={linksQuery.isPending || linksQuery.isError}
                     >
@@ -184,6 +198,14 @@ function SharedPage() {
               );
             })}
           </ul>
+          <ShowMoreRows
+            shown={rowWindow.shown}
+            total={rowWindow.total}
+            hasMore={rowWindow.hasMore}
+            onShowMore={rowWindow.showMore}
+            onShowAll={rowWindow.showAll}
+          />
+          </>
         )}
       </Card>
 
@@ -197,9 +219,9 @@ function SharedPage() {
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label>طبيعة المقرر</Label>
+              <Label htmlFor="shared-course-f1">طبيعة المقرر</Label>
               <Select disabled={save.isPending} value={nature} onValueChange={setNature}>
-                <SelectTrigger>
+                <SelectTrigger id="shared-course-f1">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -220,8 +242,8 @@ function SharedPage() {
               مقرر مشترك (يُدرَّس لبرامج متعددة)
             </label>
             <div>
-              <Label>البرامج المرتبطة</Label>
-              <div className="mt-2 max-h-60 space-y-1 overflow-y-auto rounded border p-2">
+              <p className="text-sm font-medium" id="shared-course-programs-label">البرامج المرتبطة</p>
+              <div role="group" aria-labelledby="shared-course-programs-label" className="mt-2 max-h-60 space-y-1 overflow-y-auto rounded border p-2">
                 {programs.map((p) => (
                   <label
                     key={p.id}

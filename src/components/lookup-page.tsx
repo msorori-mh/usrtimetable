@@ -10,6 +10,17 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { Pencil, Trash2 } from "lucide-react";
+import { userErrorMessage } from "@/lib/user-error";
+import { confirmAction } from "@/components/confirm-dialog";
+import { QueryErrorNotice } from "@/components/app-states/query-error-notice";
+
+function rowLabel(row: LookupRow): string {
+  for (const key of ["name", "name_ar", "label", "code"]) {
+    const v = row[key];
+    if (typeof v === "string" && v.trim()) return v.trim();
+  }
+  return "السجل";
+}
 
 export interface LookupRow { id: string; college_id: string; [k: string]: unknown }
 
@@ -35,9 +46,10 @@ export function LookupPage<T extends LookupRow>({ table, title, subtitle, icon, 
   const [editing, setEditing] = useState<T | null>(null);
   const [form, setForm] = useState<Record<string, unknown>>(emptyForm());
 
-  const { data: rows, isLoading } = useQuery({
+  const { data: rows, isLoading, isError, error: rowsError, refetch } = useQuery({
     queryKey: [table, active?.id], enabled: !!active,
     queryFn: async () => {
+      // read-all-ok: small per-college lookup tables (types, breaks) — tens of rows
       const { data, error } = await supabase.from(table as never).select("*").eq("college_id", active!.id).order(orderBy, { ascending: false });
       if (error) throw error; return (data ?? []) as T[];
     },
@@ -64,7 +76,7 @@ export function LookupPage<T extends LookupRow>({ table, title, subtitle, icon, 
       qc.invalidateQueries({ queryKey: [table, active?.id] });
       setOpen(false); setEditing(null);
     },
-    onError: (e: Error) => toast.error(e.message.includes("duplicate") ? "هذا السجل موجود مسبقاً" : e.message),
+    onError: (e: Error) => toast.error(e.message.includes("duplicate") ? "هذا السجل موجود مسبقاً" : userErrorMessage(e)),
   });
 
   const del = useMutation({
@@ -74,7 +86,7 @@ export function LookupPage<T extends LookupRow>({ table, title, subtitle, icon, 
       await logAudit({ action: "delete", entity: table, entityId: id, collegeId: active?.id });
     },
     onSuccess: () => { toast.success("تم الحذف"); qc.invalidateQueries({ queryKey: [table, active?.id] }); },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const startEdit = (r: T) => { setEditing(r); setForm(toForm(r)); setOpen(true); };
@@ -109,6 +121,7 @@ export function LookupPage<T extends LookupRow>({ table, title, subtitle, icon, 
 
       <Card className="overflow-hidden">
         {isLoading ? <p className="p-6 text-center text-muted-foreground">جارٍ التحميل...</p>
+          : isError ? <div className="p-4"><QueryErrorNotice error={rowsError} onRetry={() => void refetch()} /></div>
           : !rows || rows.length === 0 ? <p className="p-6 text-center text-muted-foreground">لا توجد سجلات بعد.</p>
           : <ul className="divide-y divide-border">
               {rows.map((r) => (
@@ -116,8 +129,21 @@ export function LookupPage<T extends LookupRow>({ table, title, subtitle, icon, 
                   <div className="min-w-0 flex-1">{renderRow(r)}</div>
                   {canManage && (
                     <div className="flex shrink-0 gap-1">
-                      <Button size="sm" variant="ghost" onClick={() => startEdit(r)}><Pencil className="h-3.5 w-3.5" /></Button>
-                      <Button size="sm" variant="ghost" onClick={() => { if (confirm("حذف؟")) del.mutate(r.id); }}><Trash2 className="h-3.5 w-3.5" /></Button>
+                      <Button size="sm" variant="ghost" aria-label={`تعديل ${rowLabel(r)}`} onClick={() => startEdit(r)}><Pencil className="h-3.5 w-3.5" /></Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        aria-label={`حذف ${rowLabel(r)}`}
+                        onClick={async () => {
+                          const ok = await confirmAction({
+                            title: `حذف «${rowLabel(r)}»؟`,
+                            description: "لا يمكن التراجع عن هذا الإجراء.",
+                            confirmLabel: "حذف",
+                            destructive: true,
+                          });
+                          if (ok) del.mutate(r.id);
+                        }}
+                      ><Trash2 className="h-3.5 w-3.5" /></Button>
                     </div>
                   )}
                 </li>

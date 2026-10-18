@@ -129,7 +129,8 @@ describe("assignment dialog wiring", () => {
 });
 
 describe("instructor category dropdown states", () => {
-  const page = readFileSync(resolve(root, "src/routes/_authenticated/instructors.tsx"), "utf8");
+  // L-14: the instructors page was split into the route + hook + form/search components.
+  const page = ["src/routes/_authenticated/instructors.tsx", "src/hooks/use-instructor-directory.ts", "src/components/instructors/instructor-form-fields.tsx", "src/components/instructors/university-instructor-search.tsx"].map((file) => readFileSync(resolve(root, file), "utf8")).join("\n");
 
   test("exposes loading, error and empty states for categories", () => {
     expect(page.includes('data-testid="instructor-category-loading"')).toBe(true);

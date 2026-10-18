@@ -3,14 +3,16 @@ import { readFileSync } from "node:fs";
 import { availabilityStatusLabelAr } from "../src/lib/instructor-metadata";
 import { instructorsExportDataset } from "../src/lib/admin-export/datasets";
 
-const page = readFileSync("src/routes/_authenticated/instructors.tsx", "utf8");
+// L-14: the instructors page was split into the route + hook + form/search components.
+const page = ["src/routes/_authenticated/instructors.tsx", "src/hooks/use-instructor-directory.ts", "src/components/instructors/instructor-form-fields.tsx", "src/components/instructors/university-instructor-search.tsx"].map((file) => readFileSync(file, "utf8")).join("\n");
 const report = readFileSync("src/routes/_authenticated/reports.instructors.tsx", "utf8");
 
 describe("lecturer status display uses availability_status only", () => {
   it("instructor card never renders employmentTypeLabelAr", () => {
     expect(page).not.toMatch(/employmentTypeLabelAr/);
     expect(page).toMatch(/الحالة: \{availabilityStatusLabelAr\(i\.availability_status\)\}/);
-    expect(page).toMatch(/\{i\.academic_rank \?\? "—"\} · \{i\.max_weekly_hours\} س\/أسبوع/);
+    // L-13: the weekly hours are rendered through the shared number formatter.
+    expect(page).toMatch(/\{i\.academic_rank \?\? "—"\} · \{formatDecimal\(i\.max_weekly_hours\)\} س\/أسبوع/);
   });
 
   it("maps statuses to Arabic labels", () => {

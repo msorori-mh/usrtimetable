@@ -1,4 +1,5 @@
 import { ACADEMIC_STUDY_SYSTEM_LABELS } from "../study-systems";
+import { formatNumber } from "../format";
 
 export const COHORT_SYSTEM_LABELS: Record<string, string> = {
   ...ACADEMIC_STUDY_SYSTEM_LABELS,
@@ -88,10 +89,10 @@ export function filterCohortDirectory(
         a.id.localeCompare(b.id),
     );
 }
-/** Arabic display for a nullable count: existing numbers keep their exact formatting. */
+/** Arabic display for a nullable count (platform number format: Latin digits, L-13). */
 export function formatCohortCount(value: number | null | undefined): string {
   if (value == null) return "بانتظار الاستكمال";
-  return value.toLocaleString("ar");
+  return formatNumber(value);
 }
 /** Arabic display for a nullable entry year. */
 export function formatCohortEntryYear(value: number | null | undefined): string {

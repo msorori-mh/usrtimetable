@@ -24,6 +24,11 @@ import {
   validateHeadcountValues,
 } from "@/lib/scheduling-headcount/rules";
 import type { SchedulingHeadcount } from "@/lib/scheduling-headcount/types";
+import { userErrorMessage } from "@/lib/user-error";
+import { QueryErrorNotice } from "@/components/app-states/query-error-notice";
+import { confirmAction } from "@/components/confirm-dialog";
+import { readAllRows } from "@/lib/supabase/read-all";
+import { formatDate, formatDateTime, formatNumber } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/scheduling-headcounts")({
   head: () => ({ meta: [{ title: "أعداد الدفعات المعتمدة للجدولة" }] }),
@@ -40,23 +45,27 @@ function SchedulingHeadcountsPage() {
   const [editing, setEditing] = useState<SchedulingHeadcount | null>(null);
   const [historyId, setHistoryId] = useState<string | null>(null);
 
-  const { data: cohorts = [] } = useQuery({
+  const { data: cohorts = [], error: cohortsError } = useQuery({
     queryKey: ["scheduling-headcount-cohorts", active?.id],
     enabled: Boolean(active),
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("academic_cohorts")
-        .select("id, code, term_id, study_system")
-        .eq("college_id", active!.id)
-        .eq("active", true);
-      if (error) throw error;
+      const data = await readAllRows((from, to) =>
+        supabase
+          .from("academic_cohorts")
+          .select("id, code, term_id, study_system")
+          .eq("college_id", active!.id)
+          .eq("active", true)
+          .order("id")
+          .range(from, to),
+      );
       return data as Cohort[];
     },
   });
-  const { data: terms = [] } = useQuery({
+  const { data: terms = [], error: termsError } = useQuery({
     queryKey: ["scheduling-headcount-terms", active?.id],
     enabled: Boolean(active),
     queryFn: async () => {
+      // read-all-ok: tens of terms per college
       const { data, error } = await supabase
         .from("academic_terms")
         .select("id, name")
@@ -65,45 +74,52 @@ function SchedulingHeadcountsPage() {
       return data as Term[];
     },
   });
-  const { data: rows = [], isLoading } = useQuery({
+  const { data: rows = [], isLoading, isError, error: rowsError, refetch } = useQuery({
     queryKey: ["scheduling-headcounts", active?.id],
     enabled: Boolean(active),
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("scheduling_cohort_term_headcounts" as never)
-        .select("*")
-        .eq("college_id", active!.id)
-        .order("updated_at", { ascending: false });
-      if (error) throw error;
-      return data as SchedulingHeadcount[];
+      // One row per cohort/term; paginate anyway so a long history of terms is never cut at 1000.
+      const data = await readAllRows((from, to) =>
+        supabase
+          .from("scheduling_cohort_term_headcounts" as never)
+          .select("*")
+          .eq("college_id", active!.id)
+          .order("updated_at", { ascending: false })
+          .order("id")
+          .range(from, to),
+      );
+      return data as unknown as SchedulingHeadcount[];
     },
   });
-  const { data: history } = useQuery({
+  const { data: history, isError: historyFailed, error: historyError } = useQuery({
     queryKey: ["scheduling-headcount-history", historyId],
     enabled: Boolean(historyId),
     queryFn: async () => listSchedulingHeadcountRevisions(historyId!),
   });
 
   const refresh = () =>
-    queryClient.invalidateQueries({ queryKey: ["scheduling-headcounts", active?.id] });
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["scheduling-headcounts", active?.id] }),
+      queryClient.invalidateQueries({ queryKey: ["scheduling-headcount-history"] }),
+    ]);
   const save = useMutation({
     mutationFn: upsertSchedulingCohortTermHeadcount,
     onSuccess: (result) => {
-      if (!result.ok) return toast.error(result.message);
+      if (!result.ok) return toast.error(userErrorMessage(result.message));
       toast.success("تم حفظ عدد الدفعة كمسودة.");
       setEditing(null);
       void refresh();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(userErrorMessage(error)),
   });
   const approve = useMutation({
     mutationFn: (id: string) => approveSchedulingCohortTermHeadcount(id),
     onSuccess: (result) => {
-      if (!result.ok) return toast.error(result.message);
+      if (!result.ok) return toast.error(userErrorMessage(result.message));
       toast.success("تم اعتماد العدد للجدولة.");
       void refresh();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(userErrorMessage(error)),
   });
 
   const termName = new Map(terms.map((term) => [term.id, term.name]));
@@ -179,22 +195,34 @@ function SchedulingHeadcountsPage() {
         </Card>
       )}
       <HeadcountImportWorkspace />
+      {(cohortsError ?? termsError) && (
+        <QueryErrorNotice
+          title="تعذّر تحميل الدفعات أو الفصول؛ قد تكون قائمة الدفعات غير المعتمدة ناقصة."
+          error={cohortsError ?? termsError}
+          onRetry={() => {
+            void queryClient.invalidateQueries({ queryKey: ["scheduling-headcount-cohorts", active?.id] });
+            void queryClient.invalidateQueries({ queryKey: ["scheduling-headcount-terms", active?.id] });
+          }}
+        />
+      )}
       {!active ? (
         <p className="text-sm text-muted-foreground">اختر كلية.</p>
       ) : isLoading ? (
         <p className="text-sm text-muted-foreground">جاري التحميل…</p>
+      ) : isError ? (
+        <QueryErrorNotice error={rowsError} onRetry={() => void refetch()} />
       ) : (
         <Card className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/40 text-muted-foreground">
               <tr>
-                <th className="px-3 py-2 text-right">الدفعة</th>
-                <th className="px-3 py-2 text-right">الفصل</th>
-                <th className="px-3 py-2 text-right">النظام</th>
-                <th className="px-3 py-2 text-right">مسجل/مؤهل/حضور/جدولة</th>
-                <th className="px-3 py-2 text-right">المصدر</th>
-                <th className="px-3 py-2 text-right">الاعتماد</th>
-                <th className="px-3 py-2 text-right">ملاحظات</th>
+                <th className="px-3 py-2 text-start">الدفعة</th>
+                <th className="px-3 py-2 text-start">الفصل</th>
+                <th className="px-3 py-2 text-start">النظام</th>
+                <th className="px-3 py-2 text-start">مسجل/مؤهل/حضور/جدولة</th>
+                <th className="px-3 py-2 text-start">المصدر</th>
+                <th className="px-3 py-2 text-start">الاعتماد</th>
+                <th className="px-3 py-2 text-start">ملاحظات</th>
                 <th className="px-3 py-2" />
               </tr>
             </thead>
@@ -205,8 +233,8 @@ function SchedulingHeadcountsPage() {
                   <td className="px-3 py-2">{termName.get(row.term_id) ?? "—"}</td>
                   <td className="px-3 py-2">{row.study_system}</td>
                   <td className="px-3 py-2">
-                    {row.registered_student_count} / {row.eligible_student_count} /{" "}
-                    {row.expected_attendance_count} / <strong>{row.scheduling_headcount}</strong>
+                    {formatNumber(row.registered_student_count)} / {formatNumber(row.eligible_student_count)} /{" "}
+                    {formatNumber(row.expected_attendance_count)} / <strong>{formatNumber(row.scheduling_headcount)}</strong>
                     {differsMateriallyFromEligible(
                       row.scheduling_headcount,
                       row.eligible_student_count,
@@ -215,23 +243,35 @@ function SchedulingHeadcountsPage() {
                   <td className="px-3 py-2">{row.source}</td>
                   <td className="px-3 py-2">
                     {row.approval_status}
-                    {row.approved_at ? ` · ${new Date(row.approved_at).toLocaleDateString()}` : ""}
+                    {row.approved_at ? ` · ${formatDate(row.approved_at)}` : ""}
                   </td>
                   <td className="px-3 py-2">{row.notes ?? "—"}</td>
-                  <td className="space-x-1 px-3 py-2">
+                  <td className="px-3 py-2">
+                    <div className="flex flex-wrap gap-1">
                     {canManage && (
                       <Button size="sm" variant="outline" onClick={() => setEditing(row)}>
                         تعديل
                       </Button>
                     )}
                     {canManage && row.approval_status !== "approved" && (
-                      <Button size="sm" onClick={() => approve.mutate(row.id)}>
+                      <Button
+                        size="sm"
+                        onClick={async () => {
+                          const ok = await confirmAction({
+                            title: `اعتماد عدد ${cohortName.get(row.cohort_id) ?? "الدفعة"} للجدولة؟`,
+                            description: `سيُعتمد العدد ${formatNumber(row.scheduling_headcount)} مصدرًا لتقسيم مجموعات التدريس.`,
+                            confirmLabel: "اعتماد",
+                          });
+                          if (ok) approve.mutate(row.id);
+                        }}
+                      >
                         اعتماد
                       </Button>
                     )}
                     <Button size="sm" variant="ghost" onClick={() => setHistoryId(row.id)}>
                       السجل
                     </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -262,7 +302,11 @@ function SchedulingHeadcountsPage() {
               إغلاق
             </Button>
           </div>
-          {history?.ok ? (
+          {historyFailed ? (
+            <QueryErrorNotice title="تعذّر تحميل سجل التعديلات." error={historyError} />
+          ) : history && !history.ok ? (
+            <p className="text-sm text-destructive">{userErrorMessage(history.message, "تعذّر تحميل سجل التعديلات.")}</p>
+          ) : history?.ok ? (
             (
               (history.revisions ?? []) as Array<{
                 id: string;
@@ -272,7 +316,7 @@ function SchedulingHeadcountsPage() {
               }>
             ).map((revision) => (
               <p key={revision.id} className="text-sm">
-                {revision.revision_kind} · {new Date(revision.changed_at).toLocaleString()} ·{" "}
+                {revision.revision_kind} · {formatDateTime(revision.changed_at)} ·{" "}
                 {revision.notes ?? "—"}
               </p>
             ))
@@ -349,7 +393,9 @@ function HeadcountForm({
   return (
     <Card className="space-y-3 p-4" dir="rtl">
       <h2 className="font-semibold">تعديل عدد الدفعة</h2>
+      <Label htmlFor="headcount-cohort">الدفعة</Label>
       <select
+        id="headcount-cohort"
         className="w-full rounded border p-2"
         value={form.cohort_id}
         onChange={(event) => {
@@ -403,20 +449,24 @@ function HeadcountForm({
           ] as const
         ).map(({ key, id, label }) => (
           <div key={key} className="space-y-2">
-            <Label className="block text-right" htmlFor={id}>
+            <Label className="block text-start" htmlFor={id}>
               {label}
             </Label>
             <input id={id} className="w-full rounded border p-2" {...number(key)} />
           </div>
         ))}
       </div>
+      <Label htmlFor="headcount-source">المصدر</Label>
       <input
+        id="headcount-source"
         className="w-full rounded border p-2"
         placeholder="المصدر"
         value={form.source}
         onChange={(event) => setForm({ ...form, source: event.target.value })}
       />
+      <Label htmlFor="headcount-notes">ملاحظات/سبب التجاوز</Label>
       <textarea
+        id="headcount-notes"
         className="w-full rounded border p-2"
         placeholder="ملاحظات/سبب التجاوز"
         value={form.notes ?? ""}

@@ -19,7 +19,14 @@ function rejects(fn: () => unknown, expected: string) {
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const service = readFileSync(join(root, "src/lib/academic-delivery/cohort-curriculum.ts"), "utf8");
-const route = readFileSync(join(root, "src/routes/_authenticated/academic-cohorts.tsx"), "utf8");
+// L-14: the cohort page's result panels moved to src/components/academic-cohorts/*.
+const route = [
+  "src/routes/_authenticated/academic-cohorts.tsx",
+  "src/components/academic-cohorts/cohort-generation-summaries.tsx",
+  "src/components/academic-cohorts/cohort-delivery-groups-card.tsx",
+]
+  .map((rel) => readFileSync(join(root, rel), "utf8"))
+  .join("\n");
 const hardening = readFileSync(
   join(root, "supabase/migrations/20260718183000_forward_harden_cohort_curriculum_runtime.sql"),
   "utf8",

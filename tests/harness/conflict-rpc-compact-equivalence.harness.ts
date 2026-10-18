@@ -174,7 +174,8 @@ function run() {
   );
   assert(wrappers.includes("published") && wrappers.includes("archived"), "version gates");
   assert(wrappers.includes("can_manage_college"), "authz gate");
-  const page = read("src/routes/_authenticated/schedule-builder.tsx");
+  // L-14: the builder page was split into the route + hooks/use-schedule-builder-workspace.ts + builder components.
+  const page = ["src/routes/_authenticated/schedule-builder.tsx", "src/hooks/use-schedule-builder-workspace.ts", "src/components/schedule-builder/builder-context-bar.tsx", "src/components/schedule-builder/builder-ui.tsx"].map((file) => read(file)).join("\n");
   assert(
     page.includes("read_only") || page.includes("mayEnterEdit") || page.includes("isReadOnly"),
     "ui gate",

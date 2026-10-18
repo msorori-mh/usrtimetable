@@ -12,6 +12,9 @@ import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { School, Pencil, Trash2 } from "lucide-react";
 import { READ_ONLY_VIEW_BADGE_AR, isInstitutionalReadOnlyViewer } from "@/lib/unauthorized-access";
+import { userErrorMessage } from "@/lib/user-error";
+import { confirmAction } from "@/components/confirm-dialog";
+import { QueryErrorNotice } from "@/components/app-states/query-error-notice";
 
 export const Route = createFileRoute("/_authenticated/colleges")({
   head: () => ({ meta: [{ title: "إدارة الكلّيات" }] }),
@@ -27,13 +30,19 @@ function CollegesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const { data: universities } = useQuery({
-    queryKey: ["universities"],
-    queryFn: async () => (await supabase.from("universities").select("id, name").order("name")).data ?? [],
+    queryKey: ["universities", "options"],
+    queryFn: async () => {
+      // read-all-ok: one row per university (a handful at most)
+      const { data, error } = await supabase.from("universities").select("id, name").order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
   });
 
-  const { data: colleges, isLoading } = useQuery({
+  const { data: colleges, isLoading, isError, error: collegesError, refetch } = useQuery({
     queryKey: ["colleges"],
     queryFn: async () => {
+      // read-all-ok: one row per college (tens at most)
       const { data, error } = await supabase
         .from("colleges")
         .select("id, name, code, university_id, created_at, universities(name)")
@@ -60,8 +69,9 @@ function CollegesPage() {
       toast.success(editingId ? "تم التحديث" : "تم الإنشاء");
       setName(""); setCode(""); setEditingId(null);
       qc.invalidateQueries({ queryKey: ["colleges"] });
+      qc.invalidateQueries({ queryKey: ["accessible-colleges"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const remove = useMutation({
@@ -70,8 +80,12 @@ function CollegesPage() {
       if (error) throw error;
       await logAudit({ action: "delete", entity: "college", entityId: id });
     },
-    onSuccess: () => { toast.success("تم الحذف"); qc.invalidateQueries({ queryKey: ["colleges"] }); },
-    onError: (e: Error) => toast.error(e.message),
+    onSuccess: () => {
+      toast.success("تم الحذف");
+      qc.invalidateQueries({ queryKey: ["colleges"] });
+      qc.invalidateQueries({ queryKey: ["accessible-colleges"] });
+    },
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   if (user && !user.isSuperAdmin && !user.isInstitutionalViewer) throw redirect({ to: "/dashboard" });
@@ -110,9 +124,9 @@ function CollegesPage() {
           className="grid gap-4 md:grid-cols-2"
         >
           <div className="space-y-2">
-            <Label>الجامعة</Label>
+            <Label htmlFor="c-university">الجامعة</Label>
             <Select value={universityId} onValueChange={setUniversityId}>
-              <SelectTrigger><SelectValue placeholder="اختر الجامعة" /></SelectTrigger>
+              <SelectTrigger id="c-university"><SelectValue placeholder="اختر الجامعة" /></SelectTrigger>
               <SelectContent>
                 {universities?.map((u) => (
                   <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
@@ -142,31 +156,48 @@ function CollegesPage() {
 
       <Card className="overflow-hidden">
         <table className="w-full">
-          <thead className="bg-muted/40 text-right text-xs uppercase text-muted-foreground">
+          <thead className="bg-muted/40 text-start text-xs uppercase text-muted-foreground">
             <tr>
               <th className="px-4 py-3">الكلّية</th>
               <th className="px-4 py-3">الجامعة</th>
               <th className="px-4 py-3">الرمز</th>
-              <th className="px-4 py-3 text-left">إجراءات</th>
+              <th className="px-4 py-3 text-end">إجراءات</th>
             </tr>
           </thead>
           <tbody>
             {isLoading && <tr><td colSpan={4} className="p-6 text-center text-muted-foreground">جارٍ التحميل...</td></tr>}
+            {isError && (
+              <tr><td colSpan={4} className="p-4"><QueryErrorNotice error={collegesError} onRetry={() => void refetch()} /></td></tr>
+            )}
             {colleges?.length === 0 && <tr><td colSpan={4} className="p-6 text-center text-muted-foreground">لا توجد كلّيات بعد.</td></tr>}
             {colleges?.map((c) => (
               <tr key={c.id} className="border-t border-border">
                 <td className="px-4 py-3 font-medium">{c.name}</td>
                 <td className="px-4 py-3 text-sm text-muted-foreground">{c.universities?.name ?? "—"}</td>
                 <td className="px-4 py-3 text-sm text-muted-foreground" dir="ltr">{c.code ?? "—"}</td>
-                <td className="px-4 py-3 text-left">
+                <td className="px-4 py-3 text-end">
                   {canEdit ? (
                   <div className="inline-flex gap-1">
-                    <Button size="sm" variant="ghost" onClick={() => {
+                    <Button size="sm" variant="ghost" aria-label={`تعديل ${c.name}`} onClick={() => {
                       setEditingId(c.id); setName(c.name); setCode(c.code ?? ""); setUniversityId(c.university_id);
                     }}>
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => { if (confirm("حذف هذه الكلّية؟")) remove.mutate(c.id); }}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label={`حذف ${c.name}`}
+                      onClick={async () => {
+                        const ok = await confirmAction({
+                          title: `حذف كلّية «${c.name}»؟`,
+                          description: "ستُحذف بيانات الكلّية التابعة لها (البرامج والمقررات والجداول). لا يمكن التراجع عن هذا الإجراء.",
+                          confirmLabel: "حذف نهائي",
+                          destructive: true,
+                          typedConfirmation: c.name,
+                        });
+                        if (ok) remove.mutate(c.id);
+                      }}
+                    >
                       <Trash2 className="h-3.5 w-3.5 text-destructive" />
                     </Button>
                   </div>

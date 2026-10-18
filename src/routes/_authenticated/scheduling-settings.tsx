@@ -17,6 +17,10 @@ import {
   fetchInstructorAvailabilityReadiness,
   setInstructorAvailabilityEnforcement,
 } from "@/lib/availability/policy-api";
+import { userErrorMessage } from "@/lib/user-error";
+import { QueryErrorNotice } from "@/components/app-states/query-error-notice";
+import { confirmAction } from "@/components/confirm-dialog";
+import { formatNumber } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/scheduling-settings")({
   head: () => ({ meta: [{ title: "إعدادات الجدولة" }] }),
@@ -95,7 +99,7 @@ function SettingsPage() {
     queryFn: () => fetchInstructorAvailabilityReadiness(active!.id),
   });
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error: settingsError, refetch } = useQuery({
     queryKey: ["scheduling_settings", active?.id],
     enabled: !!active,
     queryFn: async () => {
@@ -195,7 +199,7 @@ function SettingsPage() {
       qc.invalidateQueries({ queryKey: ["availability-enforcement", active?.id] });
       qc.invalidateQueries({ queryKey: ["instructor-availability-readiness", active?.id] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const toggleDay = (d: number) => {
@@ -224,16 +228,23 @@ function SettingsPage() {
 
       {isLoading ? (
         <p className="text-center text-muted-foreground">جارٍ التحميل...</p>
+      ) : isError ? (
+        <QueryErrorNotice
+          title="تعذّر تحميل إعدادات الجدولة؛ لا تحفظ قبل إعادة التحميل حتى لا تُستبدل الإعدادات الحالية بالقيم الافتراضية."
+          error={settingsError}
+          onRetry={() => void refetch()}
+        />
       ) : (
         <Card className="space-y-4 p-6">
           <div>
-            <Label>أيام العمل الأسبوعية</Label>
-            <div className="mt-2 flex flex-wrap gap-2">
+            <p className="text-sm font-medium" id="working-days-label">أيام العمل الأسبوعية</p>
+            <div className="mt-2 flex flex-wrap gap-2" role="group" aria-labelledby="working-days-label">
               {DAYS.map((d) => (
                 <button
                   key={d.v}
                   type="button"
                   disabled={!canManage}
+                  aria-pressed={form.working_days.includes(d.v)}
                   onClick={() => toggleDay(d.v)}
                   className={`rounded-md border px-3 py-1.5 text-sm ${form.working_days.includes(d.v) ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
                 >
@@ -245,8 +256,8 @@ function SettingsPage() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>بداية اليوم</Label>
-              <Input
+              <Label htmlFor="sched-settings-f1">بداية اليوم</Label>
+              <Input id="sched-settings-f1"
                 type="time"
                 value={form.day_start_time}
                 onChange={(e) => setForm({ ...form, day_start_time: e.target.value })}
@@ -254,8 +265,8 @@ function SettingsPage() {
               />
             </div>
             <div>
-              <Label>نهاية اليوم</Label>
-              <Input
+              <Label htmlFor="sched-settings-f2">نهاية اليوم</Label>
+              <Input id="sched-settings-f2"
                 type="time"
                 value={form.day_end_time}
                 onChange={(e) => setForm({ ...form, day_end_time: e.target.value })}
@@ -282,8 +293,8 @@ function SettingsPage() {
             {form.extended_day_policy_enabled ? (
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <div>
-                  <Label>نهاية اليوم القياسي</Label>
-                  <Input
+                  <Label htmlFor="sched-settings-f3">نهاية اليوم القياسي</Label>
+                  <Input id="sched-settings-f3"
                     type="time"
                     value={form.standard_day_end_time}
                     onChange={(e) => setForm({ ...form, standard_day_end_time: e.target.value })}
@@ -291,8 +302,8 @@ function SettingsPage() {
                   />
                 </div>
                 <div>
-                  <Label>أقصى أيام تمديد لكل مجموعة طلاب</Label>
-                  <Input
+                  <Label htmlFor="sched-settings-f4">أقصى أيام تمديد لكل مجموعة طلاب</Label>
+                  <Input id="sched-settings-f4"
                     type="number"
                     min={0}
                     max={form.working_days.length}
@@ -312,8 +323,8 @@ function SettingsPage() {
 
           <div className="grid gap-3 sm:grid-cols-3">
             <div>
-              <Label>حجم الفترة (دقائق)</Label>
-              <Input
+              <Label htmlFor="sched-settings-f5">حجم الفترة (دقائق)</Label>
+              <Input id="sched-settings-f5"
                 type="number"
                 value={form.slot_minutes}
                 onChange={(e) => setForm({ ...form, slot_minutes: Number(e.target.value) })}
@@ -321,8 +332,8 @@ function SettingsPage() {
               />
             </div>
             <div>
-              <Label>أقل مدة محاضرة (س)</Label>
-              <Input
+              <Label htmlFor="sched-settings-f6">أقل مدة محاضرة (س)</Label>
+              <Input id="sched-settings-f6"
                 type="number"
                 step="0.5"
                 value={form.min_session_hours}
@@ -331,8 +342,8 @@ function SettingsPage() {
               />
             </div>
             <div>
-              <Label>أقصى مدة محاضرة (س)</Label>
-              <Input
+              <Label htmlFor="sched-settings-f7">أقصى مدة محاضرة (س)</Label>
+              <Input id="sched-settings-f7"
                 type="number"
                 step="0.5"
                 value={form.max_session_hours}
@@ -344,8 +355,8 @@ function SettingsPage() {
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div>
-              <Label>سقف ساعات المحاضر/يوم</Label>
-              <Input
+              <Label htmlFor="sched-settings-f8">سقف ساعات المحاضر/يوم</Label>
+              <Input id="sched-settings-f8"
                 type="number"
                 value={form.max_daily_hours_per_instructor}
                 onChange={(e) =>
@@ -355,8 +366,8 @@ function SettingsPage() {
               />
             </div>
             <div>
-              <Label>سقف ساعات المجموعة/يوم</Label>
-              <Input
+              <Label htmlFor="sched-settings-f9">سقف ساعات المجموعة/يوم</Label>
+              <Input id="sched-settings-f9"
                 type="number"
                 value={form.max_daily_hours_per_section}
                 onChange={(e) =>
@@ -366,8 +377,8 @@ function SettingsPage() {
               />
             </div>
             <div>
-              <Label>سقف الساعات النظرية للمجموعة/يوم</Label>
-              <Input
+              <Label htmlFor="sched-settings-f10">سقف الساعات النظرية للمجموعة/يوم</Label>
+              <Input id="sched-settings-f10"
                 type="number"
                 value={form.max_daily_theory_hours_per_section}
                 onChange={(e) =>
@@ -377,8 +388,8 @@ function SettingsPage() {
               />
             </div>
             <div>
-              <Label>سقف الساعات العملية للمجموعة/يوم</Label>
-              <Input
+              <Label htmlFor="sched-settings-f11">سقف الساعات العملية للمجموعة/يوم</Label>
+              <Input id="sched-settings-f11"
                 type="number"
                 value={form.max_daily_practical_hours_per_section}
                 onChange={(e) =>
@@ -391,8 +402,8 @@ function SettingsPage() {
               />
             </div>
             <div>
-              <Label>الفاصل بين المحاضرات (دقائق)</Label>
-              <Input
+              <Label htmlFor="sched-settings-f12">الفاصل بين المحاضرات (دقائق)</Label>
+              <Input id="sched-settings-f12"
                 type="number"
                 value={form.break_between_sessions_min}
                 onChange={(e) =>
@@ -430,7 +441,7 @@ function SettingsPage() {
                   readinessQuery.data &&
                   !readinessQuery.data.can_activate ? (
                     <span className="mt-2 block text-xs font-medium text-amber-800 dark:text-amber-200">
-                      غير جاهز للتفعيل: {readinessQuery.data.missing_required_instructors} محاضرًا
+                      غير جاهز للتفعيل: {formatNumber(readinessQuery.data.missing_required_instructors)} محاضرًا
                       خارجيًا بلا نافذة توفر صريحة.
                     </span>
                   ) : null}
@@ -456,8 +467,8 @@ function SettingsPage() {
           </div>
 
           <div>
-            <Label>ملاحظات</Label>
-            <Input
+            <Label htmlFor="sched-settings-f13">ملاحظات</Label>
+            <Input id="sched-settings-f13"
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
               disabled={!canManage}
@@ -466,7 +477,25 @@ function SettingsPage() {
 
           {canManage && (
             <div className="flex justify-end">
-              <Button onClick={() => save.mutate()} disabled={save.isPending}>
+              <Button
+                onClick={async () => {
+                  const enforcementChanged =
+                    Boolean(data?.enforce_instructor_availability) !== form.enforce_instructor_availability;
+                  if (enforcementChanged) {
+                    const ok = await confirmAction({
+                      title: form.enforce_instructor_availability
+                        ? "تفعيل تطبيق إتاحة المحاضرين؟"
+                        : "إيقاف تطبيق إتاحة المحاضرين؟",
+                      description: "يؤثر هذا الإعداد على كل جداول الكلية عند الحفظ والاعتماد.",
+                      confirmLabel: "حفظ",
+                      destructive: !form.enforce_instructor_availability,
+                    });
+                    if (!ok) return;
+                  }
+                  save.mutate();
+                }}
+                disabled={save.isPending}
+              >
                 حفظ الإعدادات
               </Button>
             </div>

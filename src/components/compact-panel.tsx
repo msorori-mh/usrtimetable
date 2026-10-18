@@ -17,6 +17,9 @@ import {
   type CompactRestorePoint,
   type Applied,
 } from "@/lib/auto-scheduler/compact-service";
+import { userErrorMessage } from "@/lib/user-error";
+import { formatDecimal, formatNumber } from "@/lib/format";
+import { confirmAction } from "@/components/confirm-dialog";
 
 export function CompactSchedulePanel({
   collegeId,
@@ -175,7 +178,7 @@ export function CompactSchedulePanel({
       }
     } catch (error) {
       setMessage(
-        error instanceof Error ? error.message : "تعذر التحقق. أعد المعاينة قبل المتابعة.",
+        userErrorMessage(error, "تعذر التحقق. أعد المعاينة قبل المتابعة."),
       );
       setProposal(null);
     } finally {
@@ -214,7 +217,7 @@ export function CompactSchedulePanel({
     ["teachingMinutes", "دقائق التدريس"],
   ];
   const display = (value: Metrics[keyof Metrics]) =>
-    typeof value === "number" ? Number(value.toFixed(1)).toLocaleString("ar") : String(value);
+    typeof value === "number" ? formatDecimal(value, 1) : String(value);
   return (
     <Card className="p-4 space-y-3" dir="rtl">
       <h2 className="font-bold">تحسين توزيع الجدول</h2>
@@ -237,9 +240,10 @@ export function CompactSchedulePanel({
         غير المجدولة تبقى بحاجة إلى الإكمال. تحقق النتيجة الجزئية لا يعني اكتمال الجدول النهائي.
       </p>
       <div className="flex flex-wrap gap-2">
-        <label className="text-sm flex items-center gap-2">
+        <label className="text-sm flex items-center gap-2" htmlFor="compact-search-duration">
           مدة البحث
           <select
+            id="compact-search-duration"
             className="border rounded p-2 bg-background"
             value={searchDuration}
             disabled={busy}
@@ -258,7 +262,14 @@ export function CompactSchedulePanel({
         </Button>
         <Button
           disabled={!canManage || busy || disabled || !proposal?.moves.length || proposal.stopped}
-          onClick={() => void execute("apply")}
+          onClick={async () => {
+            const ok = await confirmAction({
+              title: "تطبيق التحسين على المسودة؟",
+              description: `ستُنقل ${formatNumber(proposal?.moves.length ?? 0)} محاضرة في المسودة دفعة واحدة. يمكنك التراجع عن آخر تحسين لاحقًا.`,
+              confirmLabel: "تطبيق",
+            });
+            if (ok) void execute("apply");
+          }}
         >
           تطبيق التحسين على المسودة
         </Button>
@@ -266,7 +277,15 @@ export function CompactSchedulePanel({
           <Button
             variant="outline"
             disabled={!canManage || busy || disabled || result?.status === "unknown"}
-            onClick={() => void execute("restore")}
+            onClick={async () => {
+              const ok = await confirmAction({
+                title: "التراجع عن آخر تحسين؟",
+                description: "تُعاد مواعيد المحاضرات إلى ما كانت عليه قبل آخر تطبيق للتحسين.",
+                confirmLabel: "تراجع",
+                destructive: true,
+              });
+              if (ok) void execute("restore");
+            }}
           >
             التراجع عن آخر تحسين
           </Button>
@@ -318,7 +337,7 @@ export function CompactSchedulePanel({
           <table className="w-full text-sm">
             <thead>
               <tr>
-                <th className="text-right p-2">المقياس</th>
+                <th className="text-start p-2">المقياس</th>
                 <th>قبل</th>
                 <th>{result ? "المحفوظ فعلياً" : "المقترح"}</th>
               </tr>

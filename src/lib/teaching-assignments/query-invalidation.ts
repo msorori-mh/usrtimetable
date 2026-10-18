@@ -11,7 +11,7 @@ const ASSIGNMENT_READ_MODEL_ROOTS = new Set([
   "teaching-assignment-workload-preview",
   "teaching-assignment-row-days",
   "teaching-assignment-working-versions",
-  "ta-v2-candidates",
+  "teaching-assignment-candidates",
   "faculty-teaching-requests",
   "delivery-group-assignments-all",
   "delivery-groups",

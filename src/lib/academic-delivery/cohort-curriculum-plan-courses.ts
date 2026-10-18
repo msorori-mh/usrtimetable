@@ -62,6 +62,7 @@ async function resolveStudyPlanId(
   const planIds = (plans ?? []).map((p) => p.id);
   if (!planIds.length) throw new Error("STUDY_PLAN_MISSING_FOR_COHORT_PROGRAM");
   const [courses, slots] = await Promise.all([
+    // read-all-ok: one level+semester of the program's active plans (tens of rows)
     supabase
       .from("plan_courses")
       .select("study_plan_id")
@@ -96,6 +97,7 @@ async function fetchRequiredPlanCourses(
   levelId: string,
   semester: number,
 ): Promise<CohortCurriculumPlanCourse[]> {
+  // read-all-ok: required courses of one plan level+semester (tens of rows)
   const { data, error } = await supabase
     .from("plan_courses")
     .select("id, course_id, courses(code, name)")
@@ -176,6 +178,7 @@ async function fetchElectivePlanCourses(
   if (courseError) throw courseError;
   const courseMap = new Map((courses ?? []).map((c) => [c.id, c]));
 
+  // read-all-ok: elective rows of one plan level+semester, bounded by the selection list
   const { data: electivePlanRows, error: planError } = await supabase
     .from("plan_courses")
     .select("id, course_id, courses(code, name)")
@@ -226,6 +229,7 @@ async function filterSummerOnlyPlanCourses(
 ): Promise<CohortCurriculumPlanCourse[]> {
   if (planCourses.length === 0) return [];
   const ids = planCourses.map((p) => p.id);
+  // read-all-ok: components of one cohort curriculum (a few per plan course)
   const { data: components, error } = await supabase
     .from("plan_course_components")
     .select("plan_course_id, component_type, is_timetabled")

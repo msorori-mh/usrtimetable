@@ -38,6 +38,7 @@ import {
 } from "@/components/schedule-builder/split-proposal-dialog";
 import { SPLIT_APPROVED_AWAITING_SCHEDULE_AR } from "@/lib/schedule-builder/split-approval";
 import { entityDisplayName } from "@/lib/entity-display";
+import { formatDateTime } from "@/lib/format";
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
@@ -50,14 +51,7 @@ function Row({ label, value }: { label: string; value: string }) {
 
 function formatUpdatedAt(iso: string | null): string {
   if (!iso) return "—";
-  try {
-    return new Intl.DateTimeFormat("ar-SA", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(new Date(iso));
-  } catch {
-    return iso.slice(0, 16).replace("T", " ");
-  }
+  return formatDateTime(iso);
 }
 
 export function SessionDetailsSheet({

@@ -15,6 +15,9 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { FileSpreadsheet, Pencil, Trash2, Plus } from "lucide-react";
+import { userErrorMessage } from "@/lib/user-error";
+import { QueryErrorNotice } from "@/components/app-states/query-error-notice";
+import { confirmAction } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_authenticated/import-templates")({
   head: () => ({ meta: [{ title: "قوالب الاستيراد" }] }),
@@ -55,13 +58,23 @@ function TemplatesPage() {
   const [colEdit, setColEdit] = useState<Col | null>(null);
   const [colForm, setColForm] = useState<Partial<Col> & { template_id?: string }>({});
 
-  const { data: tpls } = useQuery({
-    queryKey: ["import_tpls", active?.id], enabled: !!active,
-    queryFn: async () => ((await supabase.from("import_templates").select("*").eq("college_id", active!.id).order("created_at", { ascending: false })).data ?? []) as Tpl[],
+  const { data: tpls, isLoading: tplsLoading, isError: tplsFailed, error: tplsError, refetch: refetchTpls } = useQuery({
+    queryKey: ["import-templates", active?.id], enabled: !!active,
+    queryFn: async () => {
+      // read-all-ok: a handful of templates per college
+      const { data, error } = await supabase.from("import_templates").select("*").eq("college_id", active!.id).order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as Tpl[];
+    },
   });
-  const { data: cols } = useQuery({
-    queryKey: ["import_cols", active?.id], enabled: !!active,
-    queryFn: async () => ((await supabase.from("import_template_columns").select("*").eq("college_id", active!.id).order("column_order")).data ?? []) as Col[],
+  const { data: cols, error: colsError, refetch: refetchCols } = useQuery({
+    queryKey: ["import-template-columns", active?.id], enabled: !!active,
+    queryFn: async () => {
+      // read-all-ok: tens of columns per template, few templates
+      const { data, error } = await supabase.from("import_template_columns").select("*").eq("college_id", active!.id).order("column_order");
+      if (error) throw error;
+      return (data ?? []) as Col[];
+    },
   });
 
   const saveTpl = useMutation({
@@ -89,14 +102,14 @@ function TemplatesPage() {
         await logAudit({ action: "create", entity: "import_templates", entityId: data?.id, collegeId: active.id });
       }
     },
-    onSuccess: () => { toast.success("تم الحفظ"); qc.invalidateQueries({ queryKey: ["import_tpls", active?.id] }); setOpen(false); setEditing(null); },
-    onError: (e: Error) => toast.error(e.message),
+    onSuccess: () => { toast.success("تم الحفظ"); qc.invalidateQueries({ queryKey: ["import-templates", active?.id] }); setOpen(false); setEditing(null); },
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const delTpl = useMutation({
     mutationFn: async (id: string) => { const { error } = await supabase.from("import_templates").delete().eq("id", id); if (error) throw error; await logAudit({ action: "delete", entity: "import_templates", entityId: id, collegeId: active?.id }); },
-    onSuccess: () => { toast.success("تم الحذف"); qc.invalidateQueries({ queryKey: ["import_tpls", active?.id] }); qc.invalidateQueries({ queryKey: ["import_cols", active?.id] }); },
-    onError: (e: Error) => toast.error(e.message),
+    onSuccess: () => { toast.success("تم الحذف"); qc.invalidateQueries({ queryKey: ["import-templates", active?.id] }); qc.invalidateQueries({ queryKey: ["import-template-columns", active?.id] }); },
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const saveCol = useMutation({
@@ -121,14 +134,14 @@ function TemplatesPage() {
       }
       await logAudit({ action: colEdit ? "update" : "create", entity: "import_template_columns", entityId: colEdit?.id, collegeId: active.id });
     },
-    onSuccess: () => { toast.success("تم الحفظ"); qc.invalidateQueries({ queryKey: ["import_cols", active?.id] }); setColOpen(false); setColEdit(null); },
-    onError: (e: Error) => toast.error(e.message),
+    onSuccess: () => { toast.success("تم الحفظ"); qc.invalidateQueries({ queryKey: ["import-template-columns", active?.id] }); setColOpen(false); setColEdit(null); },
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const delCol = useMutation({
     mutationFn: async (id: string) => { const { error } = await supabase.from("import_template_columns").delete().eq("id", id); if (error) throw error; await logAudit({ action: "delete", entity: "import_template_columns", entityId: id, collegeId: active?.id }); },
-    onSuccess: () => { toast.success("تم الحذف"); qc.invalidateQueries({ queryKey: ["import_cols", active?.id] }); },
-    onError: (e: Error) => toast.error(e.message),
+    onSuccess: () => { toast.success("تم الحذف"); qc.invalidateQueries({ queryKey: ["import-template-columns", active?.id] }); },
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const startTpl = (t?: Tpl) => {
@@ -161,19 +174,19 @@ function TemplatesPage() {
               <DialogHeader><DialogTitle>{editing ? "تعديل قالب" : "قالب جديد"}</DialogTitle></DialogHeader>
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
-                  <div><Label>الرمز</Label><Input value={form.template_key ?? ""} onChange={(e) => setForm({ ...form, template_key: e.target.value })} /></div>
-                  <div><Label>الإصدار</Label><Input type="number" value={form.version ?? 1} onChange={(e) => setForm({ ...form, version: Number(e.target.value) })} /></div>
+                  <div><Label htmlFor="import-tpl-f1">الرمز</Label><Input id="import-tpl-f1" value={form.template_key ?? ""} onChange={(e) => setForm({ ...form, template_key: e.target.value })} /></div>
+                  <div><Label htmlFor="import-tpl-f2">الإصدار</Label><Input id="import-tpl-f2" type="number" value={form.version ?? 1} onChange={(e) => setForm({ ...form, version: Number(e.target.value) })} /></div>
                 </div>
-                <div><Label>الاسم بالعربية</Label><Input value={form.name_ar ?? ""} onChange={(e) => setForm({ ...form, name_ar: e.target.value })} /></div>
-                <div><Label>الكيان المستهدف</Label>
+                <div><Label htmlFor="import-tpl-f3">الاسم بالعربية</Label><Input id="import-tpl-f3" value={form.name_ar ?? ""} onChange={(e) => setForm({ ...form, name_ar: e.target.value })} /></div>
+                <div><Label htmlFor="import-tpl-f12">الكيان المستهدف</Label>
                   <Select value={form.target_entity ?? "study_plan_full"} onValueChange={(v) => setForm({ ...form, target_entity: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger id="import-tpl-f12"><SelectValue /></SelectTrigger>
                     <SelectContent>{ENTITIES.map((e) => <SelectItem key={e.v} value={e.v}>{e.l}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
-                <div><Label>اسم ورقة Excel</Label><Input value={form.sheet_name ?? ""} onChange={(e) => setForm({ ...form, sheet_name: e.target.value })} /></div>
-                <div><Label>رابط ملف نموذج</Label><Input value={form.sample_file_url ?? ""} onChange={(e) => setForm({ ...form, sample_file_url: e.target.value })} /></div>
-                <div><Label>وصف</Label><Input value={form.description ?? ""} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
+                <div><Label htmlFor="import-tpl-f4">اسم ورقة Excel</Label><Input id="import-tpl-f4" value={form.sheet_name ?? ""} onChange={(e) => setForm({ ...form, sheet_name: e.target.value })} /></div>
+                <div><Label htmlFor="import-tpl-f5">رابط ملف نموذج</Label><Input id="import-tpl-f5" value={form.sample_file_url ?? ""} onChange={(e) => setForm({ ...form, sample_file_url: e.target.value })} /></div>
+                <div><Label htmlFor="import-tpl-f6">وصف</Label><Input id="import-tpl-f6" value={form.description ?? ""} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
                 <label className="flex items-center gap-2 text-sm"><Checkbox checked={form.is_active ?? true} onCheckedChange={(v) => setForm({ ...form, is_active: !!v })} /> نشط</label>
               </div>
               <DialogFooter>
@@ -186,7 +199,9 @@ function TemplatesPage() {
       </div>
 
       <Card className="overflow-hidden">
-        {!tpls || tpls.length === 0 ? <p className="p-6 text-center text-muted-foreground">لا توجد قوالب بعد.</p>
+        {tplsLoading ? <p className="p-6 text-center text-muted-foreground">جارٍ التحميل...</p>
+          : tplsFailed ? <div className="p-4"><QueryErrorNotice error={tplsError} onRetry={() => void refetchTpls()} /></div>
+          : !tpls || tpls.length === 0 ? <p className="p-6 text-center text-muted-foreground">لا توجد قوالب بعد.</p>
           : <ul className="divide-y divide-border">
               {tpls.map((t) => {
                 const tcols = (cols ?? []).filter((c) => c.template_id === t.id);
@@ -194,18 +209,29 @@ function TemplatesPage() {
                 return (
                   <li key={t.id} className="p-4">
                     <div className="flex items-center justify-between gap-3">
-                      <button onClick={() => setExpanded(open ? null : t.id)} className="min-w-0 flex-1 text-right">
+                      <button type="button" aria-expanded={open} onClick={() => setExpanded(open ? null : t.id)} className="min-w-0 flex-1 text-start">
                         <p className="font-semibold">{t.name_ar} <span className="rounded bg-secondary px-2 py-0.5 text-[11px]">v{t.version}</span> {!t.is_active && <span className="rounded bg-destructive/20 px-2 py-0.5 text-[11px]">معطّل</span>}</p>
                         <p className="text-xs text-muted-foreground"><span dir="ltr">{t.template_key}</span> · {ENTITIES.find((e) => e.v === t.target_entity)?.l ?? t.target_entity} · {tcols.length} عمود</p>
                       </button>
                       {canManage && (
                         <div className="flex gap-1">
-                          <Button size="sm" variant="ghost" onClick={() => startTpl(t)}><Pencil className="h-3.5 w-3.5" /></Button>
-                          <Button size="sm" variant="ghost" onClick={() => { if (confirm("حذف القالب وأعمدته؟")) delTpl.mutate(t.id); }}><Trash2 className="h-3.5 w-3.5" /></Button>
+                          <Button size="sm" variant="ghost" aria-label={`تعديل القالب ${t.name_ar}`} onClick={() => startTpl(t)}><Pencil className="h-3.5 w-3.5" /></Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            aria-label={`حذف القالب ${t.name_ar}`}
+                            onClick={async () => {
+                              const ok = await confirmAction({ title: `حذف القالب «${t.name_ar}» وأعمدته؟`, description: "لا يمكن التراجع عن هذا الإجراء.", confirmLabel: "حذف", destructive: true });
+                              if (ok) delTpl.mutate(t.id);
+                            }}
+                          ><Trash2 className="h-3.5 w-3.5" /></Button>
                         </div>
                       )}
                     </div>
-                    {open && (
+                    {open && colsError && (
+                      <QueryErrorNotice className="mt-3" title="تعذّر تحميل أعمدة القوالب." error={colsError} onRetry={() => void refetchCols()} />
+                    )}
+                    {open && !colsError && (
                       <div className="mt-3 rounded border bg-secondary/30 p-3">
                         <div className="mb-2 flex items-center justify-between">
                           <p className="text-sm font-medium">أعمدة القالب</p>
@@ -221,8 +247,16 @@ function TemplatesPage() {
                                   </div>
                                   {canManage && (
                                     <div className="flex gap-1">
-                                      <Button size="sm" variant="ghost" onClick={() => startCol(t.id, c)}><Pencil className="h-3.5 w-3.5" /></Button>
-                                      <Button size="sm" variant="ghost" onClick={() => { if (confirm("حذف العمود؟")) delCol.mutate(c.id); }}><Trash2 className="h-3.5 w-3.5" /></Button>
+                                      <Button size="sm" variant="ghost" aria-label={`تعديل العمود ${c.header_ar}`} onClick={() => startCol(t.id, c)}><Pencil className="h-3.5 w-3.5" /></Button>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        aria-label={`حذف العمود ${c.header_ar}`}
+                                        onClick={async () => {
+                                          const ok = await confirmAction({ title: `حذف العمود «${c.header_ar}»؟`, confirmLabel: "حذف", destructive: true });
+                                          if (ok) delCol.mutate(c.id);
+                                        }}
+                                      ><Trash2 className="h-3.5 w-3.5" /></Button>
                                     </div>
                                   )}
                                 </li>
@@ -241,18 +275,18 @@ function TemplatesPage() {
           <DialogHeader><DialogTitle>{colEdit ? "تعديل عمود" : "عمود جديد"}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-3 gap-3">
-              <div><Label>الترتيب</Label><Input type="number" value={colForm.column_order ?? 0} onChange={(e) => setColForm({ ...colForm, column_order: Number(e.target.value) })} /></div>
-              <div className="col-span-2"><Label>الترويسة (عربي)</Label><Input value={colForm.header_ar ?? ""} onChange={(e) => setColForm({ ...colForm, header_ar: e.target.value })} /></div>
+              <div><Label htmlFor="import-tpl-f7">الترتيب</Label><Input id="import-tpl-f7" type="number" value={colForm.column_order ?? 0} onChange={(e) => setColForm({ ...colForm, column_order: Number(e.target.value) })} /></div>
+              <div className="col-span-2"><Label htmlFor="import-tpl-f8">الترويسة (عربي)</Label><Input id="import-tpl-f8" value={colForm.header_ar ?? ""} onChange={(e) => setColForm({ ...colForm, header_ar: e.target.value })} /></div>
             </div>
-            <div><Label>مفتاح الحقل</Label><Input value={colForm.field_key ?? ""} onChange={(e) => setColForm({ ...colForm, field_key: e.target.value })} placeholder="course_name" /></div>
-            <div><Label>نوع البيانات</Label>
+            <div><Label htmlFor="import-tpl-f9">مفتاح الحقل</Label><Input id="import-tpl-f9" value={colForm.field_key ?? ""} onChange={(e) => setColForm({ ...colForm, field_key: e.target.value })} placeholder="course_name" /></div>
+            <div><Label htmlFor="import-tpl-f13">نوع البيانات</Label>
               <Select value={colForm.data_type ?? "text"} onValueChange={(v) => setColForm({ ...colForm, data_type: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger id="import-tpl-f13"><SelectValue /></SelectTrigger>
                 <SelectContent>{DTYPES.map((d) => <SelectItem key={d.v} value={d.v}>{d.l}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div><Label>مثال</Label><Input value={colForm.example ?? ""} onChange={(e) => setColForm({ ...colForm, example: e.target.value })} /></div>
-            <div><Label>ملاحظات</Label><Input value={colForm.notes ?? ""} onChange={(e) => setColForm({ ...colForm, notes: e.target.value })} /></div>
+            <div><Label htmlFor="import-tpl-f10">مثال</Label><Input id="import-tpl-f10" value={colForm.example ?? ""} onChange={(e) => setColForm({ ...colForm, example: e.target.value })} /></div>
+            <div><Label htmlFor="import-tpl-f11">ملاحظات</Label><Input id="import-tpl-f11" value={colForm.notes ?? ""} onChange={(e) => setColForm({ ...colForm, notes: e.target.value })} /></div>
             <label className="flex items-center gap-2 text-sm"><Checkbox checked={colForm.is_required ?? false} onCheckedChange={(v) => setColForm({ ...colForm, is_required: !!v })} /> إلزامي</label>
           </div>
           <DialogFooter>

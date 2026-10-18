@@ -56,7 +56,9 @@ describe("RTL direction for shared selectors", () => {
   it("instructor combobox trigger is RTL with logical icon spacing", () => {
     const src = read("src/components/teaching-assignments/instructor-combobox.tsx");
     expect(src).toContain('dir="rtl"');
-    expect(src).toContain("text-right");
+    // M-16: logical alignment (text-start == right under dir="rtl").
+    expect(src).toContain("text-start");
+    expect(src).not.toContain("text-right");
     expect(src).toContain("ms-2 h-4 w-4 shrink-0");
     expect(src).not.toContain('"ml-2 h-4 w-4"');
   });

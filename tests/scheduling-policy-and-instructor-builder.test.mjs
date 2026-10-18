@@ -20,7 +20,8 @@ test("policy migration guards activation and preserves all hard collectors", asy
 
 test("manual builder exposes an identity-aware instructor perspective", async () => {
   const [route, workItems, queries, grid, perspective] = await Promise.all([
-    read("src/routes/_authenticated/schedule-builder.tsx"),
+    // L-14: the builder page was split into the route + hooks/use-schedule-builder-workspace.ts + builder components.
+    Promise.all(["src/routes/_authenticated/schedule-builder.tsx", "src/hooks/use-schedule-builder-workspace.ts", "src/components/schedule-builder/builder-context-bar.tsx", "src/components/schedule-builder/builder-ui.tsx"].map(read)).then((parts) => parts.join("\n")),
     read("src/components/schedule-builder/v2-work-items-panel.tsx"),
     read("src/lib/schedule-builder/queries.ts"),
     read("src/components/timetable/timetable-grid.tsx"),

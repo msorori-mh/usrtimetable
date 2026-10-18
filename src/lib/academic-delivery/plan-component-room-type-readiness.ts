@@ -9,6 +9,7 @@ import {
   type CohortPlanComponentRow,
   type MissingRoomTypeComponent,
 } from "./plan-component-room-types";
+import { readAllRows } from "@/lib/supabase/read-all";
 
 export { PLAN_COMPONENT_ROOM_TYPE_MISSING_BLOCKER };
 export type { MissingRoomTypeComponent };
@@ -16,7 +17,20 @@ export type { MissingRoomTypeComponent };
 export async function fetchCollegePlanComponentRoomTypeMissing(
   collegeId: string,
 ): Promise<MissingRoomTypeComponent[]> {
-  const { data, error } = await supabase
+  // H-10: college-wide scan, paginated (readAllRows) — a blocker list must never be a prefix.
+  type ComponentScanRow = {
+    id: string;
+    component_type: string;
+    weekly_contact_hours: number | null;
+    is_timetabled: boolean | null;
+    explicit_group_size: number | null;
+    required_room_type_id: string | null;
+    college_id: string;
+    plan_courses: unknown;
+    room_types: unknown;
+  };
+  const data = await readAllRows<ComponentScanRow>((from, to) =>
+    supabase
     .from("plan_course_components")
     .select(
       `
@@ -36,9 +50,10 @@ export async function fetchCollegePlanComponentRoomTypeMissing(
       room_types!pcc_room_type_college_fkey(id, college_id, is_active, default_capacity)
     `,
     )
-    .eq("college_id", collegeId);
-
-  if (error) throw error;
+    .eq("college_id", collegeId)
+    .order("id")
+    .range(from, to),
+  );
 
   const rows: CohortPlanComponentRow[] = (data ?? []).map((pcc) => {
     const pc = pcc.plan_courses as {

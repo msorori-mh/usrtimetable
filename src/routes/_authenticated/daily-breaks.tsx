@@ -14,6 +14,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { Coffee, Pencil, Trash2 } from "lucide-react";
+import { userErrorMessage } from "@/lib/user-error";
+import { confirmAction } from "@/components/confirm-dialog";
+import { QueryErrorNotice } from "@/components/app-states/query-error-notice";
 
 export const Route = createFileRoute("/_authenticated/daily-breaks")({
   head: () => ({ meta: [{ title: "الاستراحات اليومية" }] }),
@@ -31,9 +34,10 @@ function DailyBreaksPage() {
   const [editing, setEditing] = useState<Brk | null>(null);
   const [form, setForm] = useState({ name: "", days: [] as number[], start_time: "12:00", end_time: "12:30", affects_scheduling: true });
 
-  const { data: rows, isLoading } = useQuery({
+  const { data: rows, isLoading, isError, error: rowsError, refetch } = useQuery({
     queryKey: ["daily-breaks", active?.id], enabled: !!active,
     queryFn: async () => {
+      // read-all-ok: a few breaks per college
       const { data, error } = await supabase.from("daily_breaks")
         .select("id, name, days, start_time, end_time, affects_scheduling, college_id")
         .eq("college_id", active!.id).order("start_time");
@@ -57,7 +61,7 @@ function DailyBreaksPage() {
       }
     },
     onSuccess: () => { toast.success(editing ? "تم التحديث" : "تمت الإضافة"); qc.invalidateQueries({ queryKey: ["daily-breaks", active?.id] }); setOpen(false); setEditing(null); },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const del = useMutation({
@@ -67,7 +71,7 @@ function DailyBreaksPage() {
       await logAudit({ action: "delete", entity: "daily_breaks", entityId: id, collegeId: active?.id });
     },
     onSuccess: () => { toast.success("تم الحذف"); qc.invalidateQueries({ queryKey: ["daily-breaks", active?.id] }); },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const startEdit = (b: Brk) => { setEditing(b); setForm({ name: b.name, days: b.days ?? [], start_time: b.start_time, end_time: b.end_time, affects_scheduling: b.affects_scheduling }); setOpen(true); };
@@ -92,14 +96,14 @@ function DailyBreaksPage() {
             <DialogContent>
               <DialogHeader><DialogTitle>{editing ? "تعديل" : "استراحة جديدة"}</DialogTitle></DialogHeader>
               <div className="space-y-3">
-                <div><Label>الاسم</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+                <div><Label htmlFor="break-name">الاسم</Label><Input id="break-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div><Label>من</Label><Input type="time" value={form.start_time} onChange={(e) => setForm({ ...form, start_time: e.target.value })} /></div>
-                  <div><Label>إلى</Label><Input type="time" value={form.end_time} onChange={(e) => setForm({ ...form, end_time: e.target.value })} /></div>
+                  <div><Label htmlFor="break-start">من</Label><Input id="break-start" type="time" value={form.start_time} onChange={(e) => setForm({ ...form, start_time: e.target.value })} /></div>
+                  <div><Label htmlFor="break-end">إلى</Label><Input id="break-end" type="time" value={form.end_time} onChange={(e) => setForm({ ...form, end_time: e.target.value })} /></div>
                 </div>
                 <div>
-                  <Label>الأيام</Label>
-                  <div className="mt-1 flex flex-wrap gap-2">
+                  <p className="text-sm font-medium" id="break-days-label">الأيام</p>
+                  <div className="mt-1 flex flex-wrap gap-2" role="group" aria-labelledby="break-days-label">
                     {DAY_LABELS.map((lbl, i) => (
                       <label key={i} className="flex items-center gap-1 rounded border px-2 py-1 text-xs">
                         <Checkbox checked={form.days.includes(i)} onCheckedChange={() => toggleDay(i)} />{lbl}
@@ -120,6 +124,7 @@ function DailyBreaksPage() {
 
       <Card className="overflow-hidden">
         {isLoading ? <p className="p-6 text-center text-muted-foreground">جارٍ التحميل...</p>
+          : isError ? <div className="p-4"><QueryErrorNotice error={rowsError} onRetry={() => void refetch()} /></div>
           : !rows || rows.length === 0 ? <p className="p-6 text-center text-muted-foreground">لا توجد استراحات بعد.</p>
           : <ul className="divide-y divide-border">
               {rows.map((b) => (
@@ -130,8 +135,16 @@ function DailyBreaksPage() {
                   </div>
                   {canManage && (
                     <div className="flex gap-1">
-                      <Button size="sm" variant="ghost" onClick={() => startEdit(b)}><Pencil className="h-3.5 w-3.5" /></Button>
-                      <Button size="sm" variant="ghost" onClick={() => { if (confirm("حذف؟")) del.mutate(b.id); }}><Trash2 className="h-3.5 w-3.5" /></Button>
+                      <Button size="sm" variant="ghost" aria-label={`تعديل ${b.name}`} onClick={() => startEdit(b)}><Pencil className="h-3.5 w-3.5" /></Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        aria-label={`حذف ${b.name}`}
+                        onClick={async () => {
+                          const ok = await confirmAction({ title: `حذف الاستراحة «${b.name}»؟`, confirmLabel: "حذف", destructive: true });
+                          if (ok) del.mutate(b.id);
+                        }}
+                      ><Trash2 className="h-3.5 w-3.5" /></Button>
                     </div>
                   )}
                 </li>

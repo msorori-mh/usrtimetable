@@ -19,7 +19,8 @@ const source = (path: string) => readFileSync(resolve(root, path), "utf8");
 
 describe("instructor HR form contract", () => {
   test("form exposes the requested order and hourly-contract conditionals", () => {
-    const src = source("src/routes/_authenticated/instructors.tsx");
+    // L-14: the instructors page was split into the route + hook + form/search components.
+    const src = ["src/routes/_authenticated/instructors.tsx", "src/hooks/use-instructor-directory.ts", "src/components/instructors/instructor-form-fields.tsx", "src/components/instructors/university-instructor-search.tsx"].map(source).join("\n");
     const tokens = [
       'data-field-order="1-affiliation-college"',
       'data-field-order="2-category"',

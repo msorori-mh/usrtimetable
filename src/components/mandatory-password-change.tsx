@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
+import { userErrorMessage } from "@/lib/user-error";
 
 export function MandatoryPasswordChange({ onComplete }: { onComplete: () => void }) {
   const changePassword = useServerFn(completeInitialPasswordChange);
@@ -51,7 +52,7 @@ export function MandatoryPasswordChange({ onComplete }: { onComplete: () => void
             await supabase.auth.refreshSession();
             onComplete();
           } catch (e) {
-            setError(e instanceof Error ? e.message : "تعذر تغيير كلمة المرور. أعد المحاولة.");
+            setError(userErrorMessage(e, "تعذر تغيير كلمة المرور. أعد المحاولة."));
           } finally {
             setBusy(false);
           }

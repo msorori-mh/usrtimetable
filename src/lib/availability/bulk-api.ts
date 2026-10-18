@@ -126,6 +126,7 @@ async function instructorUnavailabilityFallback(input: {
   await assertResourceInCollege("instructors", input.instructorId, input.collegeId, "المحاضر");
   const activeDays = await resolveTargetDays(input.collegeId, input.dayOfWeek);
 
+  // read-all-ok: hard unavailability windows of a single instructor (≤ a few per day)
   const { data: existing, error: readError } = await supabase
     .from("instructor_availability")
     .select("day_of_week, start_time, end_time")

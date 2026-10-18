@@ -77,6 +77,7 @@ export function FacultyCollegeTransfer({
       confirmed,
     });
   } catch (error) {
+    // Local policy validation (collegeCorrectionPayload) throws Arabic messages, not raw DB errors.
     blocked = error instanceof Error ? error.message : "راجع بيانات النقل.";
   }
   const transfer = useMutation({
@@ -145,7 +146,7 @@ export function FacultyCollegeTransfer({
         <dt>المحاضر</dt>
         <dd className="font-semibold">{profile.name}</dd>
         <dt>الرقم الجامعي</dt>
-        <dd dir="ltr" className="text-right">
+        <dd dir="ltr" className="text-end">
           {profile.university_number}
         </dd>
         <dt>الكلية الحالية</dt>
