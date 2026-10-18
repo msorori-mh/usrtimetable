@@ -51,6 +51,7 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import { userErrorMessage } from "@/lib/user-error";
+import { formatNumber } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/data-cleanup")({
   head: () => ({ meta: [{ title: "تنظيف البيانات" }] }),
@@ -579,12 +580,12 @@ function DashboardCards({ diag, loading }: { diag: Diagnostics | null; loading: 
     <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
       <Card className="p-4">
         <div className="text-xs text-muted-foreground">الجاهزية الحالية</div>
-        <div className="mt-1 text-3xl font-bold">{diag.readiness}%</div>
+        <div className="mt-1 text-3xl font-bold">{formatNumber(diag.readiness)}%</div>
         <Progress value={diag.readiness} className="mt-2 h-2" />
       </Card>
       <Card className="p-4">
         <div className="text-xs text-muted-foreground">الجاهزية المتوقّعة بعد الإصلاح</div>
-        <div className="mt-1 text-3xl font-bold text-emerald-600">{diag.estimatedAfter}%</div>
+        <div className="mt-1 text-3xl font-bold text-emerald-600">{formatNumber(diag.estimatedAfter)}%</div>
         <Progress value={diag.estimatedAfter} className="mt-2 h-2" />
       </Card>
       <Card className="p-4">
@@ -623,21 +624,21 @@ function IssueRow({ issue, actions }: { issue: Issue | undefined; actions?: Reac
           )}
           <span className="text-sm font-medium">{issue.label}</span>
           <Badge variant="outline" className="text-[10px]">
-            {issue.count}/{issue.total}
+            {formatNumber(issue.count)}/{formatNumber(issue.total)}
           </Badge>
           <Badge variant="secondary" className="text-[10px]">
-            {p}%
+            {formatNumber(p)}%
           </Badge>
           {!okay && issue.impactPct > 0 && (
             <Badge className="bg-rose-100 text-[10px] text-rose-800 dark:bg-rose-900/40 dark:text-rose-200">
-              يقلل الجاهزية ~{issue.impactPct}%
+              يقلل الجاهزية ~{formatNumber(issue.impactPct)}%
             </Badge>
           )}
         </div>
         <div className="text-[11px] text-muted-foreground">
           {okay
             ? "لا توجد مشاكل في هذا البند."
-            : `${issue.count} عنصر يحتاج المراجعة، ما يمثّل ${p}% من الإجمالي.`}
+            : `${formatNumber(issue.count)} عنصر يحتاج المراجعة، ما يمثّل ${formatNumber(p)}% من الإجمالي.`}
         </div>
       </div>
       {!okay && actions && <div className="flex items-center gap-2">{actions}</div>}
@@ -815,8 +816,8 @@ function BulkDialog({
         </DialogHeader>
         <div className="flex min-h-0 flex-1 flex-col gap-3">
           <div className="rounded-md border bg-muted/30 p-2 text-xs">
-            سيتم تطبيق العملية على <strong>{chosen.length}</strong> من أصل{" "}
-            <strong>{items.length}</strong> عنصر.
+            سيتم تطبيق العملية على <strong>{formatNumber(chosen.length)}</strong> من أصل{" "}
+            <strong>{formatNumber(items.length)}</strong> عنصر.
             {items.length > 0 && (
               <button
                 type="button"
@@ -862,7 +863,15 @@ function BulkDialog({
             disabled={busy || chosen.length === 0}
             onClick={async () => {
               setBusy(true);
-              const ok = await runBulkConfirm(onConfirm, chosen, (m) => toast.error(m));
+              // L-5: map raw database errors before runBulkConfirm formats them.
+              const safeConfirm = async (ids: string[]) => {
+                try {
+                  return await onConfirm(ids);
+                } catch (e) {
+                  throw new Error(userErrorMessage(e));
+                }
+              };
+              const ok = await runBulkConfirm(safeConfirm, chosen, (m) => toast.error(m));
               setBusy(false);
               if (ok) onOpenChange(false);
             }}
@@ -978,16 +987,16 @@ function CoursesSection({
           });
           onChanged();
           if (failed) {
-            toast.error(`تم التحديث مع فشل ${failed} عنصر؛ راجع العناصر المتبقية`);
+            toast.error(`تم التحديث مع فشل ${formatNumber(failed)} عنصر؛ راجع العناصر المتبقية`);
             return false;
           }
-          toast.success(`تم تحديث رموز ${ids.length} مقرر`);
+          toast.success(`تم تحديث رموز ${formatNumber(ids.length)} مقرر`);
           return true;
         }}
       >
         <div className="space-y-2">
-          <Label>البادئة الجديدة (بدون شرطة)</Label>
-          <Input
+          <Label htmlFor="cleanup-f1">البادئة الجديدة (بدون شرطة)</Label>
+          <Input id="cleanup-f1"
             value={codePrefix}
             onChange={(e) => setCodePrefix(e.target.value)}
             placeholder="مثال: CS, IT, CYS"
@@ -1012,15 +1021,15 @@ function CoursesSection({
             collegeId,
             details: { kind: "course_nature", value: natureVal, count: ids.length },
           });
-          toast.success(`تم تعيين الطبيعة لـ ${ids.length} مقرر`);
+          toast.success(`تم تعيين الطبيعة لـ ${formatNumber(ids.length)} مقرر`);
           onChanged();
           return true;
         }}
       >
         <div className="space-y-2">
-          <Label>الطبيعة</Label>
+          <Label htmlFor="cleanup-f5">الطبيعة</Label>
           <Select value={natureVal} onValueChange={(v) => setNatureVal(v as typeof natureVal)}>
-            <SelectTrigger>
+            <SelectTrigger id="cleanup-f5">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1064,7 +1073,9 @@ function CoursesSection({
           });
           onChanged();
           if (fail) {
-            toast.error(`تم تحديث ${ok} مقرر خطة وفشل ${fail}؛ راجع العناصر المتبقية`);
+            toast.error(
+              `تم تحديث ${formatNumber(ok)} مقرر خطة وفشل ${formatNumber(fail)}؛ راجع العناصر المتبقية`,
+            );
             return false;
           }
           toast.success(`تم تحديث ${ok} مقرر خطة`);
@@ -1073,9 +1084,9 @@ function CoursesSection({
       >
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <Label>قاعة المحاضرة</Label>
+            <Label htmlFor="cleanup-f6">قاعة المحاضرة</Label>
             <Select value={lectureRoom} onValueChange={setLectureRoom}>
-              <SelectTrigger>
+              <SelectTrigger id="cleanup-f6">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -1085,9 +1096,9 @@ function CoursesSection({
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>قاعة المعمل</Label>
+            <Label htmlFor="cleanup-f7">قاعة المعمل</Label>
             <Select value={labRoom} onValueChange={setLabRoom}>
-              <SelectTrigger>
+              <SelectTrigger id="cleanup-f7">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -1181,15 +1192,15 @@ function InstructorsSection({
             collegeId,
             details: { kind: "department", value: deptId, count: ids.length },
           });
-          toast.success(`تم التحديث لـ ${ids.length} محاضر`);
+          toast.success(`تم التحديث لـ ${formatNumber(ids.length)} محاضر`);
           onChanged();
           return true;
         }}
       >
         <div className="space-y-2">
-          <Label>القسم</Label>
+          <Label htmlFor="cleanup-f8">القسم</Label>
           <Select value={deptId} onValueChange={setDeptId}>
-            <SelectTrigger>
+            <SelectTrigger id="cleanup-f8">
               <SelectValue placeholder="اختر قسماً..." />
             </SelectTrigger>
             <SelectContent>
@@ -1224,14 +1235,14 @@ function InstructorsSection({
             collegeId,
             details: { kind: "specialization", value: spec.trim(), count: ids.length },
           });
-          toast.success(`تم التحديث لـ ${ids.length} محاضر`);
+          toast.success(`تم التحديث لـ ${formatNumber(ids.length)} محاضر`);
           onChanged();
           return true;
         }}
       >
         <div className="space-y-2">
-          <Label>التخصص</Label>
-          <Input
+          <Label htmlFor="cleanup-f2">التخصص</Label>
+          <Input id="cleanup-f2"
             value={spec}
             onChange={(e) => setSpec(e.target.value)}
             placeholder="مثال: علوم الحاسب"
@@ -1260,15 +1271,15 @@ function InstructorsSection({
             collegeId,
             details: { kind: "instructor_type", value: typeId, count: ids.length },
           });
-          toast.success(`تم التحديث لـ ${ids.length} محاضر`);
+          toast.success(`تم التحديث لـ ${formatNumber(ids.length)} محاضر`);
           onChanged();
           return true;
         }}
       >
         <div className="space-y-2">
-          <Label>النوع</Label>
+          <Label htmlFor="cleanup-f9">النوع</Label>
           <Select value={typeId} onValueChange={setTypeId}>
-            <SelectTrigger>
+            <SelectTrigger id="cleanup-f9">
               <SelectValue placeholder="اختر النوع..." />
             </SelectTrigger>
             <SelectContent>
@@ -1351,14 +1362,14 @@ function RoomsSection({
             collegeId,
             details: { kind: "capacity", value: cap, count: ids.length },
           });
-          toast.success(`تم التحديث لـ ${ids.length} قاعة`);
+          toast.success(`تم التحديث لـ ${formatNumber(ids.length)} قاعة`);
           onChanged();
           return true;
         }}
       >
         <div className="space-y-2">
-          <Label>السعة الجديدة</Label>
-          <Input
+          <Label htmlFor="cleanup-f3">السعة الجديدة</Label>
+          <Input id="cleanup-f3"
             type="number"
             min={1}
             value={cap}
@@ -1405,15 +1416,15 @@ function RoomsSection({
             collegeId,
             details: { kind: "room_type", value: roomTypeId, count: ids.length },
           });
-          toast.success(`تم التحديث لـ ${ids.length} قاعة`);
+          toast.success(`تم التحديث لـ ${formatNumber(ids.length)} قاعة`);
           onChanged();
           return true;
         }}
       >
         <div className="space-y-2">
-          <Label>النوع</Label>
+          <Label htmlFor="cleanup-f10">النوع</Label>
           <Select value={roomTypeId} onValueChange={setRoomTypeId}>
-            <SelectTrigger>
+            <SelectTrigger id="cleanup-f10">
               <SelectValue placeholder="اختر النوع..." />
             </SelectTrigger>
             <SelectContent>
@@ -1496,14 +1507,14 @@ function OfferingsSection({
             collegeId,
             details: { kind: "expected_students", value: students, count: ids.length },
           });
-          toast.success(`تم التحديث لـ ${ids.length} طرح`);
+          toast.success(`تم التحديث لـ ${formatNumber(ids.length)} طرح`);
           onChanged();
           return true;
         }}
       >
         <div className="space-y-2">
-          <Label>عدد الطلاب المتوقع</Label>
-          <Input
+          <Label htmlFor="cleanup-f4">عدد الطلاب المتوقع</Label>
+          <Input id="cleanup-f4"
             type="number"
             min={1}
             value={students}
@@ -1529,15 +1540,15 @@ function OfferingsSection({
             collegeId,
             details: { kind: "study_system", value: system, count: ids.length },
           });
-          toast.success(`تم التحديث لـ ${ids.length} طرح`);
+          toast.success(`تم التحديث لـ ${formatNumber(ids.length)} طرح`);
           onChanged();
           return true;
         }}
       >
         <div className="space-y-2">
-          <Label>النظام</Label>
+          <Label htmlFor="cleanup-f11">النظام</Label>
           <Select value={system} onValueChange={(v) => setSystem(v as typeof system)}>
-            <SelectTrigger>
+            <SelectTrigger id="cleanup-f11">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
