@@ -56,7 +56,7 @@ export function InstructorCombobox({
           disabled={disabled}
           data-testid="ta-v2-instructor-select"
           dir="rtl"
-          className="w-full justify-between text-right font-normal"
+          className="w-full justify-between text-start font-normal"
         >
           {selected ? (
             <span className="truncate">{instructorDisplayName(selected)}</span>

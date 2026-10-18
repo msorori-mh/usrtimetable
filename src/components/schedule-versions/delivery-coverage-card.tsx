@@ -164,7 +164,7 @@ export function DeliveryCoverageCard({
         onClick={() => setGapsOpen(true)}
         data-testid="delivery-coverage-gaps-trigger"
       >
-        <ListChecks className="h-4 w-4 ml-1" /> عرض النواقص
+        <ListChecks className="h-4 w-4 me-1" /> عرض النواقص
       </Button>
 
       {gapsOpen && (

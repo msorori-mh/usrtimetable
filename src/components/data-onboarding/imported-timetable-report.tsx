@@ -179,7 +179,7 @@ export function ImportedTimetableReport({
     >
       <div className="overflow-x-auto print:overflow-visible">
         <table
-          className="w-full border-collapse text-right text-xs"
+          className="w-full border-collapse text-start text-xs"
           aria-label="صفوف الجداول المستوردة"
         >
           <thead>

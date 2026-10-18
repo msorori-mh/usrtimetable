@@ -269,16 +269,16 @@ function DataCleanupPage() {
       <Tabs defaultValue="courses" dir="rtl">
         <TabsList>
           <TabsTrigger value="courses">
-            <Library className="ml-2 h-4 w-4" /> المقررات
+            <Library className="me-2 h-4 w-4" /> المقررات
           </TabsTrigger>
           <TabsTrigger value="instructors">
-            <UserSquare2 className="ml-2 h-4 w-4" /> المحاضرون
+            <UserSquare2 className="me-2 h-4 w-4" /> المحاضرون
           </TabsTrigger>
           <TabsTrigger value="rooms">
-            <DoorOpen className="ml-2 h-4 w-4" /> القاعات
+            <DoorOpen className="me-2 h-4 w-4" /> القاعات
           </TabsTrigger>
           <TabsTrigger value="offerings">
-            <ClipboardList className="ml-2 h-4 w-4" /> إسناد المقررات
+            <ClipboardList className="me-2 h-4 w-4" /> إسناد المقررات
           </TabsTrigger>
         </TabsList>
 
@@ -819,7 +819,7 @@ function BulkDialog({
             {items.length > 0 && (
               <button
                 type="button"
-                className="mr-2 text-primary underline-offset-2 hover:underline"
+                className="ms-2 text-primary underline-offset-2 hover:underline"
                 onClick={() => setSelected(allSelected ? {} : selectAll(items))}
               >
                 {allSelected ? "إلغاء التحديد" : "تحديد الكل"}

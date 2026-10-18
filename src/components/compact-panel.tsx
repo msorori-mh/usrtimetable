@@ -318,7 +318,7 @@ export function CompactSchedulePanel({
           <table className="w-full text-sm">
             <thead>
               <tr>
-                <th className="text-right p-2">المقياس</th>
+                <th className="text-start p-2">المقياس</th>
                 <th>قبل</th>
                 <th>{result ? "المحفوظ فعلياً" : "المقترح"}</th>
               </tr>

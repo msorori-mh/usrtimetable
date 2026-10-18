@@ -763,7 +763,7 @@ function InstructorDirectory({
           {canManage && active && (
             <Button asChild variant="outline">
               <Link to="/reports/instructors" aria-label="فتح كشف بيانات محاضري الكلية للطباعة">
-                <Printer className="ml-2 h-4 w-4" />
+                <Printer className="me-2 h-4 w-4" />
                 طباعة بيانات محاضري الكلية
               </Link>
             </Button>

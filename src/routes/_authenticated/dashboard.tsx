@@ -141,9 +141,9 @@ function Dashboard() {
               <Link to={workflow.nextStage.href}>
                 {canManage ? "متابعة العمل" : "عرض الحالة"}
                 {canManage ? (
-                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  <ArrowLeft className="ms-2 h-4 w-4" />
                 ) : (
-                  <Eye className="mr-2 h-4 w-4" />
+                  <Eye className="ms-2 h-4 w-4" />
                 )}
               </Link>
             </Button>
@@ -165,7 +165,7 @@ function Dashboard() {
           </div>
           <Button asChild variant="outline" size="sm">
             <Link to="/reports">
-              <FileBarChart2 className="ml-2 h-4 w-4" /> التقارير
+              <FileBarChart2 className="me-2 h-4 w-4" /> التقارير
             </Link>
           </Button>
         </div>
@@ -180,7 +180,7 @@ function Dashboard() {
         <Card className="border-amber-500/30 bg-amber-500/5 p-4 text-sm">
           تعذر تحديث بعض المؤشرات الآن. يمكنك متابعة العمل، لكن راجع صفحة تجهيز البيانات للحصول على
           الفحص التفصيلي.
-          <Link to="/data-onboarding" className="mr-2 font-semibold text-primary hover:underline">
+          <Link to="/data-onboarding" className="ms-2 font-semibold text-primary hover:underline">
             فتح الفحص
           </Link>
         </Card>

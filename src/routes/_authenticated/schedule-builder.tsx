@@ -1462,7 +1462,7 @@ function ScheduleBuilderWorkspacePage() {
                         requestWithUnsavedGuard({ kind: "set-version", versionId: v.id });
                       }}
                       className={cn(
-                        "text-right rounded-md border p-3 transition-colors",
+                        "text-start rounded-md border p-3 transition-colors",
                         isSelected
                           ? "border-primary bg-primary/5 ring-1 ring-primary/30"
                           : "hover:bg-muted/40",

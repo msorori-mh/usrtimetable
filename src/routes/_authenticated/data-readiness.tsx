@@ -757,13 +757,13 @@ function DataReadinessPage() {
                 <table className="w-full text-sm">
                   <thead className="bg-muted/40 text-muted-foreground">
                     <tr>
-                      <th className="px-2 py-2 text-right font-medium">البرنامج</th>
-                      <th className="px-2 py-2 text-right font-medium">المستوى</th>
-                      <th className="px-2 py-2 text-right font-medium">الفصل</th>
-                      <th className="px-2 py-2 text-right font-medium">رمز المقرر</th>
-                      <th className="px-2 py-2 text-right font-medium">اسم المقرر</th>
-                      <th className="px-2 py-2 text-right font-medium">المحاضرة</th>
-                      <th className="px-2 py-2 text-right font-medium">الحالة</th>
+                      <th className="px-2 py-2 text-start font-medium">البرنامج</th>
+                      <th className="px-2 py-2 text-start font-medium">المستوى</th>
+                      <th className="px-2 py-2 text-start font-medium">الفصل</th>
+                      <th className="px-2 py-2 text-start font-medium">رمز المقرر</th>
+                      <th className="px-2 py-2 text-start font-medium">اسم المقرر</th>
+                      <th className="px-2 py-2 text-start font-medium">المحاضرة</th>
+                      <th className="px-2 py-2 text-start font-medium">الحالة</th>
                     </tr>
                   </thead>
                   <tbody>

@@ -445,7 +445,7 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
             )}
             <div className="flex items-end">
               <Button variant="outline" className="w-full" onClick={downloadTemplate}>
-                <Download className="ml-2 h-4 w-4" /> تنزيل قالب للإضافة
+                <Download className="me-2 h-4 w-4" /> تنزيل قالب للإضافة
               </Button>
             </div>
           </div>
@@ -537,7 +537,7 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
                 (isSourceMode && !allSheetTermsSelected)
               }
             >
-              {previewMut.isPending ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : null}
+              {previewMut.isPending ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : null}
               فحص الملف ومعاينة البيانات
             </Button>
             {file && (
@@ -603,7 +603,7 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
                 اسمه برقم الموظف الحالي. راجع الأرقام والتخصص والنصاب والحالة قبل التأكيد.
               </p>
               <div className="max-h-80 overflow-auto rounded border">
-                <table className="w-full text-right text-sm">
+                <table className="w-full text-start text-sm">
                   <thead className="bg-muted">
                     <tr>
                       {[
@@ -708,9 +708,9 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
                 <table className="w-full text-sm">
                   <thead className="bg-muted text-xs">
                     <tr>
-                      <th className="p-2 text-right">الصف</th>
-                      <th className="p-2 text-right">العمود</th>
-                      <th className="p-2 text-right">الخطأ</th>
+                      <th className="p-2 text-start">الصف</th>
+                      <th className="p-2 text-start">العمود</th>
+                      <th className="p-2 text-start">الخطأ</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -734,15 +734,15 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
                 <table className="w-full text-sm">
                   <thead className="bg-muted text-xs">
                     <tr>
-                      <th className="p-2 text-right">الورقة</th>
-                      <th className="p-2 text-right">الصف</th>
-                      <th className="p-2 text-right">النظام</th>
-                      <th className="p-2 text-right">المحاضرة</th>
-                      <th className="p-2 text-right">إجمالي ساعات المحاضرة</th>
-                      <th className="p-2 text-right">الساعات المسندة للمدرس</th>
-                      <th className="p-2 text-right">عدد المدرسين المشتركين</th>
-                      <th className="p-2 text-right">إجمالي الساعات الموزعة</th>
-                      <th className="p-2 text-right">نتيجة الفحص</th>
+                      <th className="p-2 text-start">الورقة</th>
+                      <th className="p-2 text-start">الصف</th>
+                      <th className="p-2 text-start">النظام</th>
+                      <th className="p-2 text-start">المحاضرة</th>
+                      <th className="p-2 text-start">إجمالي ساعات المحاضرة</th>
+                      <th className="p-2 text-start">الساعات المسندة للمدرس</th>
+                      <th className="p-2 text-start">عدد المدرسين المشتركين</th>
+                      <th className="p-2 text-start">إجمالي الساعات الموزعة</th>
+                      <th className="p-2 text-start">نتيجة الفحص</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -777,9 +777,9 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
                 <table className="w-full text-sm">
                   <thead className="bg-muted text-xs">
                     <tr>
-                      <th className="p-2 text-right">#</th>
+                      <th className="p-2 text-start">#</th>
                       {tpl.columns.slice(0, 6).map((c) => (
-                        <th key={c.key} className="p-2 text-right">
+                        <th key={c.key} className="p-2 text-start">
                           {c.header}
                         </th>
                       ))}
@@ -829,7 +829,7 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
                 (preview.teachingHoursContractBlockers ?? 0) > 0
               }
             >
-              {commitMut.isPending ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : null}
+              {commitMut.isPending ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : null}
               تأكيد استيراد الصفوف الصالحة ({preview.valid.length})
             </Button>
           </div>

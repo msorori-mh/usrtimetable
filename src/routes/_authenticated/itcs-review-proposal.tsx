@@ -290,7 +290,7 @@ function ReviewProposalPage() {
           الحسابات المرتبطة للمحاضر نفسه.
         </p>
         <div className="overflow-x-auto">
-          <table className="w-full text-right text-sm">
+          <table className="w-full text-start text-sm">
             <thead>
               <tr className="border-b">
                 <th className="p-2">المحاضر والمقرر</th>
@@ -317,7 +317,7 @@ function ReviewProposalPage() {
                   </td>
                   <td className="p-2">
                     {c.external_slots.map((x) => (
-                      <p key={x.start + x.end} dir="ltr" className="text-right">
+                      <p key={x.start + x.end} dir="ltr" className="text-end">
                         {clock(x.start)}–{clock(x.end)}
                       </p>
                     ))}
@@ -335,7 +335,7 @@ function ReviewProposalPage() {
             .filter((t) => proposal.payload.focus_instructor_ids.includes(t.id))
             .map((t) => (
               <button
-                className="rounded border p-3 text-right hover:bg-muted"
+                className="rounded border p-3 text-start hover:bg-muted"
                 key={t.id}
                 onClick={() => {
                   setInstructor(t.id);
@@ -355,7 +355,7 @@ function ReviewProposalPage() {
       <details className="rounded-lg border p-4">
         <summary className="cursor-pointer font-bold">إسناد كل محاضر — {teachers.length}</summary>
         <div className="mt-3 overflow-x-auto">
-          <table className="w-full text-right text-sm">
+          <table className="w-full text-start text-sm">
             <thead>
               <tr>
                 <th className="p-2">المحاضر</th>
@@ -460,7 +460,7 @@ function ReviewProposalPage() {
           </Button>
         )}
         <div className="overflow-x-auto">
-          <table className="w-full text-right text-sm">
+          <table className="w-full text-start text-sm">
             <thead>
               <tr className="border-b">
                 <th className="p-2">اليوم والوقت</th>
@@ -498,7 +498,7 @@ function ReviewProposalPage() {
                     <p>
                       {s[9] === "parallel" ? "موازي" : "عام"} · المستوى {s[10]} · {s[6]}
                     </p>
-                    <p dir="ltr" className="text-right text-xs text-muted-foreground">
+                    <p dir="ltr" className="text-end text-xs text-muted-foreground">
                       {s[8]}
                     </p>
                   </td>

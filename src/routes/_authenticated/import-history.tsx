@@ -118,14 +118,14 @@ function HistoryPage() {
             {jobs.map((j) => (
               <li key={j.id}>
                 <button
-                  className="flex w-full items-center justify-between p-4 text-right hover:bg-muted/50"
+                  className="flex w-full items-center justify-between p-4 text-start hover:bg-muted/50"
                   onClick={() => setOpenJob(openJob === j.id ? null : j.id)}
                 >
                   <div className="flex-1">
                     <p className="font-semibold">
                       {ENTITY_LBL[j.target_entity] ?? j.target_entity}{" "}
                       <span
-                        className={`mr-2 rounded px-2 py-0.5 text-[11px] ${j.status === "committed" ? "bg-emerald-500/15 text-emerald-700" : j.status === "failed" ? "bg-destructive/15 text-destructive" : "bg-muted text-muted-foreground"}`}
+                        className={`ms-2 rounded px-2 py-0.5 text-[11px] ${j.status === "committed" ? "bg-emerald-500/15 text-emerald-700" : j.status === "failed" ? "bg-destructive/15 text-destructive" : "bg-muted text-muted-foreground"}`}
                       >
                         {STATUS_LBL[j.status]}
                       </span>
@@ -153,10 +153,10 @@ function HistoryPage() {
                         <table className="w-full text-xs">
                           <thead className="bg-muted">
                             <tr>
-                              <th className="p-2 text-right">الصف</th>
-                              <th className="p-2 text-right">العمود</th>
-                              <th className="p-2 text-right">الكود</th>
-                              <th className="p-2 text-right">الرسالة</th>
+                              <th className="p-2 text-start">الصف</th>
+                              <th className="p-2 text-start">العمود</th>
+                              <th className="p-2 text-start">الكود</th>
+                              <th className="p-2 text-start">الرسالة</th>
                             </tr>
                           </thead>
                           <tbody>

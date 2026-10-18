@@ -99,7 +99,7 @@ export function V2WorkItemsPanel({
         <button
           type="button"
           data-testid="builder-unscheduled-work-toggle"
-          className="flex w-full items-center justify-between gap-3 p-4 text-right"
+          className="flex w-full items-center justify-between gap-3 p-4 text-start"
           aria-expanded={expanded}
           onClick={() => setExpanded((value) => !value)}
         >

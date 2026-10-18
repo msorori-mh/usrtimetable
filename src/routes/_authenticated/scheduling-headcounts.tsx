@@ -188,13 +188,13 @@ function SchedulingHeadcountsPage() {
           <table className="w-full text-sm">
             <thead className="bg-muted/40 text-muted-foreground">
               <tr>
-                <th className="px-3 py-2 text-right">الدفعة</th>
-                <th className="px-3 py-2 text-right">الفصل</th>
-                <th className="px-3 py-2 text-right">النظام</th>
-                <th className="px-3 py-2 text-right">مسجل/مؤهل/حضور/جدولة</th>
-                <th className="px-3 py-2 text-right">المصدر</th>
-                <th className="px-3 py-2 text-right">الاعتماد</th>
-                <th className="px-3 py-2 text-right">ملاحظات</th>
+                <th className="px-3 py-2 text-start">الدفعة</th>
+                <th className="px-3 py-2 text-start">الفصل</th>
+                <th className="px-3 py-2 text-start">النظام</th>
+                <th className="px-3 py-2 text-start">مسجل/مؤهل/حضور/جدولة</th>
+                <th className="px-3 py-2 text-start">المصدر</th>
+                <th className="px-3 py-2 text-start">الاعتماد</th>
+                <th className="px-3 py-2 text-start">ملاحظات</th>
                 <th className="px-3 py-2" />
               </tr>
             </thead>
@@ -403,7 +403,7 @@ function HeadcountForm({
           ] as const
         ).map(({ key, id, label }) => (
           <div key={key} className="space-y-2">
-            <Label className="block text-right" htmlFor={id}>
+            <Label className="block text-start" htmlFor={id}>
               {label}
             </Label>
             <input id={id} className="w-full rounded border p-2" {...number(key)} />

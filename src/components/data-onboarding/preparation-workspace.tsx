@@ -131,7 +131,7 @@ export function PreparationWorkspace({
                 onClick={() => onSelect(s.id)}
                 data-testid={`onboarding-step-${s.id}`}
                 data-status={state}
-                className={`flex min-w-[13rem] items-start gap-3 rounded-lg border p-3 text-right lg:w-full lg:min-w-0 ${current ? "border-primary bg-primary/5" : "bg-card hover:bg-muted/50"}`}
+                className={`flex min-w-[13rem] items-start gap-3 rounded-lg border p-3 text-start lg:w-full lg:min-w-0 ${current ? "border-primary bg-primary/5" : "bg-card hover:bg-muted/50"}`}
               >
                 <span className="mt-0.5 text-sm text-muted-foreground">{i + 1}</span>
                 <span className="flex-1">
@@ -204,14 +204,14 @@ export function PreparationWorkspace({
                 data-testid="preparation-field-guide"
               >
                 <table className="w-full text-sm">
-                  <caption className="p-3 text-right font-semibold">
+                  <caption className="p-3 text-start font-semibold">
                     حقول قالب {preparationLabel(template.label)}
                   </caption>
                   <thead className="bg-muted">
                     <tr>
-                      <th className="p-2 text-right">الحقل</th>
-                      <th className="p-2 text-right">مطلوب؟</th>
-                      <th className="p-2 text-right">مثال / قيم مقبولة</th>
+                      <th className="p-2 text-start">الحقل</th>
+                      <th className="p-2 text-start">مطلوب؟</th>
+                      <th className="p-2 text-start">مثال / قيم مقبولة</th>
                     </tr>
                   </thead>
                   <tbody>

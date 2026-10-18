@@ -194,7 +194,7 @@ function TemplatesPage() {
                 return (
                   <li key={t.id} className="p-4">
                     <div className="flex items-center justify-between gap-3">
-                      <button onClick={() => setExpanded(open ? null : t.id)} className="min-w-0 flex-1 text-right">
+                      <button onClick={() => setExpanded(open ? null : t.id)} className="min-w-0 flex-1 text-start">
                         <p className="font-semibold">{t.name_ar} <span className="rounded bg-secondary px-2 py-0.5 text-[11px]">v{t.version}</span> {!t.is_active && <span className="rounded bg-destructive/20 px-2 py-0.5 text-[11px]">معطّل</span>}</p>
                         <p className="text-xs text-muted-foreground"><span dir="ltr">{t.template_key}</span> · {ENTITIES.find((e) => e.v === t.target_entity)?.l ?? t.target_entity} · {tcols.length} عمود</p>
                       </button>

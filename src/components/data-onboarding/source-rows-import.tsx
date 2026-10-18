@@ -169,7 +169,7 @@ export function SourceRowsImport({
             {preview.errors.length}
           </p>
           {preview.errors.length > 0 && (
-            <ul className="list-disc space-y-1 pr-5 text-destructive">
+            <ul className="list-disc space-y-1 ps-5 text-destructive">
               {preview.errors.slice(0, 20).map((error) => (
                 <li key={error}>{error}</li>
               ))}

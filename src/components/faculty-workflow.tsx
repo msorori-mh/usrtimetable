@@ -90,7 +90,7 @@ export function FacultyHomeReview({ collegeId }: { collegeId: string }) {
           onChange={(e) => setSearch(e.target.value)}
         />
         <div className="max-h-96 overflow-auto">
-          <table className="w-full text-right text-sm">
+          <table className="w-full text-start text-sm">
             <thead>
               <tr>
                 {["المحاضر", "الكلية الأصلية", "النصاب المعتمد", "الحالة", ""].map((v, i) => (

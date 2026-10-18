@@ -151,19 +151,19 @@ export function TimetableGrid({
           minWidth: `${80 + workingDays.length * 170}px`,
         }}
       >
-        <div className="bg-muted/40 border-b border-l p-2 text-xs font-medium sticky top-0 z-10">
+        <div className="bg-muted/40 border-b border-e p-2 text-xs font-medium sticky top-0 z-10">
           الوقت
         </div>
         {workingDays.map((d) => (
           <div
             key={d}
-            className="bg-muted/40 border-b border-l p-2 text-xs font-medium text-center sticky top-0 z-10"
+            className="bg-muted/40 border-b border-e p-2 text-xs font-medium text-center sticky top-0 z-10"
           >
             {DAY_LABELS[d]}
           </div>
         ))}
 
-        <div className="border-l" style={{ height: totalHeight }}>
+        <div className="border-e" style={{ height: totalHeight }}>
           {slots.map((s) => (
             <div
               key={s.mins}
@@ -178,7 +178,7 @@ export function TimetableGrid({
         {workingDays.map((d) => {
           const daySessions = sessions.filter((s) => s.day_of_week === d);
           return (
-            <div key={d} className="relative border-l" style={{ height: totalHeight }}>
+            <div key={d} className="relative border-e" style={{ height: totalHeight }}>
               {slots.map((s) => {
                 const ok = isInsideAvailability(d, s.mins);
                 const hh = String(Math.floor(s.mins / 60)).padStart(2, "0");
@@ -233,7 +233,7 @@ export function TimetableGrid({
                       if (!sess.readOnly) onSessionClick?.(sess.id);
                     }}
                     className={cn(
-                      "absolute right-1 left-1 rounded border text-right p-2 text-xs hover:opacity-90 transition cursor-pointer",
+                      "absolute start-1 end-1 rounded border text-start p-2 text-xs hover:opacity-90 transition cursor-pointer",
                       colorByType(sess.session_type),
                       draggable && !sess.readOnly && "active:opacity-70",
                       sess.readOnly && "cursor-default opacity-90",

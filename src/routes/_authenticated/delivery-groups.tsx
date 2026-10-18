@@ -203,12 +203,12 @@ function DeliveryGroupsPage() {
             <table className="w-full text-sm">
               <thead className="bg-muted/40 text-muted-foreground">
                 <tr>
-                  <th className="px-3 py-2 text-right font-medium">نوع المحاضرة</th>
-                  <th className="px-3 py-2 text-right font-medium">رقم المجموعة</th>
-                  <th className="px-3 py-2 text-right font-medium">طلاب متوقع</th>
-                  <th className="px-3 py-2 text-right font-medium">السعة</th>
-                  <th className="px-3 py-2 text-right font-medium">الحالة</th>
-                  <th className="px-3 py-2 text-right font-medium">حالة الإسناد</th>
+                  <th className="px-3 py-2 text-start font-medium">نوع المحاضرة</th>
+                  <th className="px-3 py-2 text-start font-medium">رقم المجموعة</th>
+                  <th className="px-3 py-2 text-start font-medium">طلاب متوقع</th>
+                  <th className="px-3 py-2 text-start font-medium">السعة</th>
+                  <th className="px-3 py-2 text-start font-medium">الحالة</th>
+                  <th className="px-3 py-2 text-start font-medium">حالة الإسناد</th>
                 </tr>
               </thead>
               <tbody>

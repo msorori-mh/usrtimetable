@@ -142,12 +142,12 @@ function CollegesPage() {
 
       <Card className="overflow-hidden">
         <table className="w-full">
-          <thead className="bg-muted/40 text-right text-xs uppercase text-muted-foreground">
+          <thead className="bg-muted/40 text-start text-xs uppercase text-muted-foreground">
             <tr>
               <th className="px-4 py-3">الكلّية</th>
               <th className="px-4 py-3">الجامعة</th>
               <th className="px-4 py-3">الرمز</th>
-              <th className="px-4 py-3 text-left">إجراءات</th>
+              <th className="px-4 py-3 text-end">إجراءات</th>
             </tr>
           </thead>
           <tbody>
@@ -158,7 +158,7 @@ function CollegesPage() {
                 <td className="px-4 py-3 font-medium">{c.name}</td>
                 <td className="px-4 py-3 text-sm text-muted-foreground">{c.universities?.name ?? "—"}</td>
                 <td className="px-4 py-3 text-sm text-muted-foreground" dir="ltr">{c.code ?? "—"}</td>
-                <td className="px-4 py-3 text-left">
+                <td className="px-4 py-3 text-end">
                   {canEdit ? (
                   <div className="inline-flex gap-1">
                     <Button size="sm" variant="ghost" onClick={() => {

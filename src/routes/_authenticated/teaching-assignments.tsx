@@ -729,13 +729,13 @@ function TeachingAssignmentsV2Page() {
                     : `${instructorHoursSummary.matchedInstructors.length} محاضرين مطابقين`}
                 </p>
               </div>
-              <div className="text-left">
+              <div className="text-end">
                 <p className="text-xs text-muted-foreground">إجمالي الساعات المسندة</p>
                 <p className="text-2xl font-bold tabular-nums text-primary">
                   {instructorHoursSummary.totalHours.toLocaleString("ar-YE")} ساعة
                 </p>
               </div>
-              <div className="text-left" data-testid="ta-v2-instructor-attendance-days">
+              <div className="text-end" data-testid="ta-v2-instructor-attendance-days">
                 <p className="text-xs text-muted-foreground">عدد أيام الحضور</p>
                 <p className="text-2xl font-bold tabular-nums text-primary">
                   <span dir="ltr" data-testid="ta-v2-instructor-attendance-days-value">
@@ -772,19 +772,19 @@ function TeachingAssignmentsV2Page() {
                 <table className="w-full text-sm">
                   <thead className="bg-muted/40 text-muted-foreground">
                     <tr>
-                      <th className="px-3 py-2 text-right font-medium">المقرر</th>
-                      <th className="px-3 py-2 text-right font-medium">البرنامج</th>
-                      <th className="px-3 py-2 text-right font-medium">نظام الدراسة</th>
-                      <th className="px-3 py-2 text-right font-medium">اليوم</th>
-                      <th className="px-3 py-2 text-right font-medium">المحاضرة</th>
-                      <th className="px-3 py-2 text-right font-medium">المجموعة</th>
-                      <th className="px-3 py-2 text-right font-medium">طلاب</th>
-                      <th className="px-3 py-2 text-right font-medium">سعة</th>
-                      <th className="px-3 py-2 text-right font-medium">الحالة</th>
-                      <th className="px-3 py-2 text-right font-medium">المدرسون</th>
-                      <th className="px-3 py-2 text-right font-medium">ساعات</th>
-                      <th className="px-3 py-2 text-right font-medium">التوزيع</th>
-                      <th className="px-3 py-2 text-right font-medium">إجراء</th>
+                      <th className="px-3 py-2 text-start font-medium">المقرر</th>
+                      <th className="px-3 py-2 text-start font-medium">البرنامج</th>
+                      <th className="px-3 py-2 text-start font-medium">نظام الدراسة</th>
+                      <th className="px-3 py-2 text-start font-medium">اليوم</th>
+                      <th className="px-3 py-2 text-start font-medium">المحاضرة</th>
+                      <th className="px-3 py-2 text-start font-medium">المجموعة</th>
+                      <th className="px-3 py-2 text-start font-medium">طلاب</th>
+                      <th className="px-3 py-2 text-start font-medium">سعة</th>
+                      <th className="px-3 py-2 text-start font-medium">الحالة</th>
+                      <th className="px-3 py-2 text-start font-medium">المدرسون</th>
+                      <th className="px-3 py-2 text-start font-medium">ساعات</th>
+                      <th className="px-3 py-2 text-start font-medium">التوزيع</th>
+                      <th className="px-3 py-2 text-start font-medium">إجراء</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">

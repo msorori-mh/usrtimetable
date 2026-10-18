@@ -116,12 +116,12 @@ function UniversitiesPage() {
 
       <Card className="overflow-hidden">
         <table className="w-full">
-          <thead className="bg-muted/40 text-right text-xs uppercase text-muted-foreground">
+          <thead className="bg-muted/40 text-start text-xs uppercase text-muted-foreground">
             <tr>
               <th className="px-4 py-3">الاسم</th>
               <th className="px-4 py-3">الرمز</th>
               <th className="px-4 py-3">تاريخ الإنشاء</th>
-              <th className="px-4 py-3 text-left">إجراءات</th>
+              <th className="px-4 py-3 text-end">إجراءات</th>
             </tr>
           </thead>
           <tbody>
@@ -134,7 +134,7 @@ function UniversitiesPage() {
                 <td className="px-4 py-3 text-sm text-muted-foreground">
                   {new Date(u.created_at).toLocaleDateString("ar-EG")}
                 </td>
-                <td className="px-4 py-3 text-left">
+                <td className="px-4 py-3 text-end">
                   {canEdit ? (
                   <div className="inline-flex gap-1">
                     <Button size="sm" variant="ghost" onClick={() => { setEditingId(u.id); setName(u.name); setCode(u.code ?? ""); }}>

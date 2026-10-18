@@ -170,7 +170,7 @@ function ConflictChecksPage() {
                     <li key={c.id}>
                       <button
                         onClick={() => setSelectedCheck(c.id)}
-                        className={`w-full p-2 text-right hover:bg-muted ${selectedCheck === c.id ? "bg-muted" : ""}`}
+                        className={`w-full p-2 text-start hover:bg-muted ${selectedCheck === c.id ? "bg-muted" : ""}`}
                       >
                         <div className="flex items-center justify-between">
                           <span className="text-sm">

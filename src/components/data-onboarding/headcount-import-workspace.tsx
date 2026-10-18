@@ -224,7 +224,7 @@ function HeadcountImportForm({
                       "المصدر",
                       "ملاحظات",
                     ].map((h) => (
-                      <th key={h} className="p-2 text-right">
+                      <th key={h} className="p-2 text-start">
                         {h}
                       </th>
                     ))}

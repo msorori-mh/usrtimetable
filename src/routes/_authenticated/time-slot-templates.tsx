@@ -693,7 +693,7 @@ function TimeSlotTemplatesWorkspace() {
                                 {b.start_time.slice(0, 5)} → {b.end_time.slice(0, 5)}
                               </span>
                               {b.affects_scheduling !== false && (
-                                <span className="mr-2 text-xs text-amber-700">
+                                <span className="ms-2 text-xs text-amber-700">
                                   · يمنع التقاطع عند التوليد
                                 </span>
                               )}
@@ -750,7 +750,7 @@ function TimeSlotTemplatesWorkspace() {
                       {previewMeta && previewMeta.conflictDetails.length > 0 && (
                         <div className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
                           <p className="font-semibold">تعارضات تمنع الحفظ:</p>
-                          <ul className="mt-1 list-disc pr-5">
+                          <ul className="mt-1 list-disc ps-5">
                             {previewMeta.conflictDetails.slice(0, 5).map((c, i) => (
                               <li key={i}>
                                 {DAY_LABELS_AR[c.day_of_week]} {c.start_time}–{c.end_time} (
@@ -765,11 +765,11 @@ function TimeSlotTemplatesWorkspace() {
                           <table className="w-full text-sm">
                             <thead className="bg-muted text-xs">
                               <tr>
-                                <th className="p-2 text-right">اليوم</th>
-                                <th className="p-2 text-right">من</th>
-                                <th className="p-2 text-right">إلى</th>
-                                <th className="p-2 text-right">المدة</th>
-                                <th className="p-2 text-right">النظام</th>
+                                <th className="p-2 text-start">اليوم</th>
+                                <th className="p-2 text-start">من</th>
+                                <th className="p-2 text-start">إلى</th>
+                                <th className="p-2 text-start">المدة</th>
+                                <th className="p-2 text-start">النظام</th>
                               </tr>
                             </thead>
                             <tbody>
