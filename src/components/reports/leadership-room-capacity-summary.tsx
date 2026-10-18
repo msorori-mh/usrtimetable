@@ -3,9 +3,10 @@ import {
   roomHourEquivalents,
   type LeadershipCapacityCollege,
 } from "@/lib/reports/leadership-room-capacity";
+import { formatDecimal } from "@/lib/format";
 
 const number = (n: number | null) =>
-  n === null ? "غير محسوب" : n.toLocaleString("ar", { maximumFractionDigits: 2 });
+  n === null ? "غير محسوب" : formatDecimal(n, 2);
 const hours = (n: number | null) => (n === null ? "غير محسوب" : `${number(n)} ساعة`);
 export function capacityEquivalentText(
   value: ReturnType<typeof roomHourEquivalents>,

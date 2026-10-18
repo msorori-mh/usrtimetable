@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { filterRowsBySearch } from "@/lib/reports/search";
+import { formatDateTime } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/reports/quality-summary")({
   head: () => ({ meta: [{ title: "تقرير ملخّص الجودة" }] }),
@@ -84,7 +85,7 @@ function Page() {
         breakdown: Object.entries((r.metrics_breakdown as Record<string, any>) ?? {})
           .map(([k, v]) => `${k}:${v.deduction ?? v}`)
           .join(" | "),
-        date: new Date(r.created_at as string).toLocaleString("ar"),
+        date: formatDateTime(r.created_at as string),
       })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [latestByVersion, versions],

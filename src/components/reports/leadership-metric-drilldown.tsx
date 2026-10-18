@@ -43,6 +43,7 @@ import {
   sumDetailColumn,
   type LeadershipMetricKey,
 } from "@/lib/reports/leadership-metrics";
+import { formatNumber } from "@/lib/format";
 
 const ALL_COLLEGES = "__all__";
 
@@ -56,7 +57,7 @@ export interface LeadershipDrilldownTarget {
 function cellText(value: unknown, key: string): string {
   if (value === null || value === undefined || value === "") return LEADERSHIP_UNCALCULATED;
   if (typeof value === "boolean") return value ? "نعم" : "لا";
-  if (typeof value === "number") return value.toLocaleString("ar");
+  if (typeof value === "number") return formatNumber(value);
   if (key === "assignment_status")
     return LEADERSHIP_ASSIGNMENT_STATUS_LABELS[String(value)] ?? String(value);
   return String(value);
@@ -153,13 +154,13 @@ export function LeadershipMetricDrilldown({
             <b className="tabular-nums" data-testid="drilldown-card-value">
               {target?.cardValue === null || target?.cardValue === undefined
                 ? LEADERSHIP_UNCALCULATED
-                : target.cardValue.toLocaleString("ar")}
+                : formatNumber(target.cardValue)}
             </b>
           </div>
           <div>
             <div className="text-xs text-muted-foreground">إجمالي التفاصيل</div>
             <b className="tabular-nums" data-testid="drilldown-detail-total">
-              {detailTotal === null ? LEADERSHIP_UNCALCULATED : detailTotal.toLocaleString("ar")}
+              {detailTotal === null ? LEADERSHIP_UNCALCULATED : formatNumber(detailTotal)}
             </b>
           </div>
           <div>
@@ -168,7 +169,7 @@ export function LeadershipMetricDrilldown({
               <Badge variant="default">مطابق</Badge>
             ) : check.status === "needs_review" ? (
               <Badge variant="destructive" data-testid="drilldown-mismatch">
-                {LEADERSHIP_NEEDS_REVIEW} · الفرق {check.difference?.toLocaleString("ar")}
+                {LEADERSHIP_NEEDS_REVIEW} · الفرق {formatNumber(check.difference)}
               </Badge>
             ) : (
               <Badge variant="outline">{LEADERSHIP_UNCALCULATED}</Badge>
@@ -221,8 +222,8 @@ export function LeadershipMetricDrilldown({
         </div>
 
         <div className="text-xs text-muted-foreground" data-testid="drilldown-counts">
-          {visible.length.toLocaleString("ar")} سجلًا · إجمالي الساعات{" "}
-          {visibleHours.toLocaleString("ar")}
+          {formatNumber(visible.length)} سجلًا · إجمالي الساعات{" "}
+          {formatNumber(visibleHours)}
         </div>
 
         <div className="min-h-0 flex-1 overflow-auto rounded border">

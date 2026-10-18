@@ -80,6 +80,7 @@ import {
 } from "@/lib/schedule-versions/education-publication";
 import { ReportScopeError } from "@/lib/reports/preferences";
 import "@/components/reports/leadership-dashboard.css";
+import { formatDateTime, formatNumber } from "@/lib/format";
 
 const LEADERSHIP_OVERVIEW_TIMEOUT_MS = 15_000;
 
@@ -245,7 +246,7 @@ function CountList({
           <dd
             className={`min-w-12 rounded-md px-2.5 py-1 text-center text-base font-extrabold tabular-nums ${styles.value}`}
           >
-            {value.toLocaleString("ar")}
+            {formatNumber(value)}
           </dd>
         </div>
       ))}
@@ -277,7 +278,7 @@ function FacultyBreakdownPanel({
       >
         <h3 className="text-sm font-bold text-foreground">{title}</h3>
         <span className={`rounded-full px-2.5 py-1 text-xs font-bold tabular-nums ${styles.total}`}>
-          المجموع {total.toLocaleString("ar")}
+          المجموع {formatNumber(total)}
         </span>
       </div>
       <CountList entries={entries} tone={tone} />
@@ -487,7 +488,7 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
     ? `${data.year} · ${termTypeLabel(data.term_type ?? "")}`
     : "لم تُحدد فترة أكاديمية";
   const generatedAt = data?.generated_at
-    ? new Date(data.generated_at).toLocaleString("ar")
+    ? formatDateTime(data.generated_at)
     : "غير متاح";
   const selectedValue = data?.year ? JSON.stringify({ year: data.year, type: data.term_type }) : "";
   const rows = colleges.map((college) => ({

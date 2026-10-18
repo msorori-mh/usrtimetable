@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { formatNumber } from "@/lib/format";
 
 const amount = z.number().finite().nonnegative().nullable();
 export const leadershipCollegeSchema = z.object({
@@ -245,7 +246,7 @@ export function leadershipAssignmentSnapshot(
 
 export function formatLeadershipAmount(value: number | null | undefined, unit = ""): string {
   if (value === null || value === undefined) return "غير محسوب";
-  return `${value.toLocaleString("ar")} ${unit}`.trim();
+  return `${formatNumber(value)} ${unit}`.trim();
 }
 
 export function leadershipPercent(
