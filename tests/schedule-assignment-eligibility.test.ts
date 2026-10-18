@@ -27,6 +27,7 @@ vi.mock("@/integrations/supabase/client", () => ({
         eq: () => query,
         in: () => query,
         order: () => query,
+        range: () => query,
         limit: () => query,
         maybeSingle: async () => result(),
         then: (resolve: (value: ReturnType<typeof result>) => unknown) =>
@@ -36,12 +37,14 @@ vi.mock("@/integrations/supabase/client", () => ({
     },
   },
 }));
-vi.mock("@/lib/conflict-engine/validator", () => ({
-  validateProposed: async () => ({
+// Hard-conflict counts come from the server (validate_schedule_version, Q-2).
+vi.mock("@/lib/conflict-engine/server-validation", () => ({
+  fetchServerVersionValidation: async () => ({
+    hardCount: 0,
+    approvedCount: 0,
+    waivedCount: 0,
+    totalHardCount: 0,
     conflicts: [],
-    totalHardConflicts: 0,
-    approvedHardConflicts: 0,
-    unapprovedHardConflicts: 0,
   }),
 }));
 vi.mock("@/lib/conflict-engine/exceptions", () => ({
