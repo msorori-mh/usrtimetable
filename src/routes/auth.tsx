@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner";
 import { checkCurrentSession } from "@/lib/auth/session-service";
 import { boundedSessionRequest, SessionCheckError } from "@/lib/auth/check-session";
+import { translateAuthError } from "@/lib/auth-error-message";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({ meta: [{ title: `تسجيل الدخول — ${USR_PLATFORM_NAME_AR}` }] }),
@@ -310,10 +311,4 @@ function AuthPage() {
       </div>
     </div>
   );
-}
-
-function translateAuthError(msg: string): string {
-  if (msg.includes("Invalid login")) return "بيانات الدخول غير صحيحة أو الحساب غير مخوّل";
-  if (msg.includes("Password should")) return "كلمة المرور لا تستوفي متطلبات الحساب.";
-  return msg;
 }

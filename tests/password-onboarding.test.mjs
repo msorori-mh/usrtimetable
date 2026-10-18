@@ -5,30 +5,22 @@ import { resolve } from "node:path";
 import { build } from "esbuild";
 import { validPersonalPassword, requiresInitialPassword } from "../src/lib/password-policy.ts";
 
-test("password policy accepts eight or more characters without composition requirements", () => {
+test("M-3: new passwords need 12+ characters, at most 72 bytes, no composition rules", () => {
   for (const value of [
     "",
-    "abcdefg",
-    "1234567",
-    "abc123!",
-    "أ".repeat(7),
+    "abcdefgh",
+    "Personal12!",
     "A".repeat(73),
     "أ".repeat(37),
+    "123456789012",
+    "password1234",
   ])
     assert.equal(validPersonalPassword(value), false, value);
   for (const value of [
-    "abcdefgh",
-    "ABCDEFGH",
-    "12345678",
-    "abcd1234",
-    "ابجدهوزح",
-    "١٢٣٤٥٦٧٨",
-    "abcdefg1",
-    "abcdefg!",
-    "كلمةمرور8",
-    "Strong pass!",
-    "A".repeat(72),
-    "أ".repeat(36),
+    "correct horse battery",
+    "BlueRiver7Mango",
+    "سماء زرقاء فوق الجبال",
+    "Tq9xLm2vRzKp",
   ])
     assert.equal(validPersonalPassword(value), true, value);
   assert.equal(requiresInitialPassword("super_admin"), false);
@@ -78,7 +70,7 @@ const { completeInitialPasswordChange: change } = await import(
   "data:text/javascript;base64," + Buffer.from(bundled.outputFiles[0].text).toString("base64")
 );
 
-test("server accepts simple passwords and keeps first-login identity and completion safeguards", async () => {
+test("server enforces the new policy and keeps first-login identity and completion safeguards", async () => {
   const savedPasswords = [];
   let role = "read_only",
     verified = true,
@@ -90,6 +82,7 @@ test("server accepts simple passwords and keeps first-login identity and complet
     email: "test-only@example.invalid",
     app_metadata: { must_change_password: true, provider: "email" },
   };
+  let accessStatus = { session_valid: true, password_required: true, mfa_required: false };
   globalThis.__pwAdmin = {
     async rpc(name) {
       assert.equal(name, "consume_security_limit");
@@ -100,6 +93,12 @@ test("server accepts simple passwords and keeps first-login identity and complet
         return {
           select: () => ({
             eq: async () => ({ data: [{ role }], error: null }),
+          }),
+        };
+      if (table === "profiles")
+        return {
+          select: () => ({
+            eq: () => ({ maybeSingle: async () => ({ data: { full_name: "Test Person" }, error: null }) }),
           }),
         };
       return { insert: async () => ({ error: null }) };
@@ -129,15 +128,39 @@ test("server accepts simple passwords and keeps first-login identity and complet
       },
     },
   };
-  const input = {
-    context: { userId: "user-1" },
-    data: { currentPassword: "Temporary123!", newPassword: "Personal123!" },
+  // H-11: the caller's own client reports the session status (DB pre-request hook path).
+  const callerClient = {
+    rpc: async (name) => {
+      assert.equal(name, "security_access_status");
+      return { data: accessStatus, error: null };
+    },
   };
+  const input = {
+    context: { userId: "user-1", supabase: callerClient, claims: { sub: "user-1", aal: "aal1" } },
+    data: { currentPassword: "Temporary123!", newPassword: "BlueRiver7Mango" },
+  };
+  accessStatus = { session_valid: false, password_required: true, mfa_required: false };
+  await assert.rejects(() => change(input), /الجلسة/);
+  accessStatus = { session_valid: true, password_required: true, mfa_required: true };
+  await assert.rejects(() => change(input), /خطوتين/);
+  accessStatus = { session_valid: true, password_required: true, mfa_required: false };
+  assert.equal(updated, 0);
   role = "super_admin";
   await assert.rejects(() => change(input), /الأدمن/);
   assert.equal(updated, 0);
   role = "read_only";
-  await assert.rejects(() => change({ ...input, data: { ...input.data, newPassword: "abcdefg" } }));
+  for (const weak of ["abcdefg", "Personal123", "123456789012", "password1234"])
+    await assert.rejects(() => change({ ...input, data: { ...input.data, newPassword: weak } }));
+  // Personal context (e-mail local part / name) is rejected server-side.
+  await assert.rejects(
+    () => change({ ...input, data: { ...input.data, newPassword: "test-only-Blue7River" } }),
+    /البريد/,
+  );
+  await assert.rejects(
+    () => change({ ...input, data: { ...input.data, newPassword: "BluePerson7River" } }),
+    /اسم/,
+  );
+  assert.equal(updated, 0);
   await assert.rejects(
     () =>
       change({
@@ -160,15 +183,15 @@ test("server accepts simple passwords and keeps first-login identity and complet
   assert.equal(user.app_metadata.provider, "email");
   assert.equal(signedOut, 2);
   await assert.rejects(() => change(input), /لا يوجد/);
-  const simplePasswords = ["abcdefgh", "12345678", "abcd1234", "ابجدهوزح", "١٢٣٤٥٦٧٨"];
-  for (const newPassword of simplePasswords) {
+  const acceptedPasswords = ["correct horse battery", "سماء زرقاء فوق الجبال", "Tq9xLm2vRzKp"];
+  for (const newPassword of acceptedPasswords) {
     user.app_metadata.must_change_password = true;
     assert.deepEqual(await change({ ...input, data: { ...input.data, newPassword } }), {
       ok: true,
     });
     assert.equal(user.app_metadata.must_change_password, false);
   }
-  assert.deepEqual(savedPasswords, [input.data.newPassword, ...simplePasswords]);
+  assert.deepEqual(savedPasswords, [input.data.newPassword, ...acceptedPasswords]);
   delete globalThis.__pwAdmin;
   delete globalThis.__pwVerifier;
 });

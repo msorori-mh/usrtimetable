@@ -103,25 +103,38 @@ describe("university president greeting", () => {
     ).toBe("مرحبًا، أ.د. رئيس الجامعة — رئيس الجامعة");
   });
 
-  it("omits the president title for Abdullah Haider only", () => {
+  it("omits the president title only for accounts flagged omit_leadership_title", () => {
     expect(
       buildAccountGreeting({
-        fullName: "أ.د. عبدالله حيدر",
-        email: "ahaider@usr.edu.ye",
+        fullName: "أ.د. نائب الرئيس",
+        email: "flagged.leader@example.edu",
+        collegeName: null,
+        isCollegeDeanOnly: false,
+        isUniversityLeadershipOnly: true,
+        omitLeadershipTitle: true,
+      }),
+    ).toBe("مرحبًا، أ.د. نائب الرئيس");
+    expect(
+      buildAccountGreeting({
+        fullName: "أ.د. رئيس الجامعة",
+        email: "president@example.edu",
         collegeName: null,
         isCollegeDeanOnly: false,
         isUniversityLeadershipOnly: true,
       }),
-    ).toBe("مرحبًا، أ.د. عبدالله حيدر");
+    ).toBe("مرحبًا، أ.د. رئيس الجامعة — رئيس الجامعة");
+  });
+
+  it("no longer special-cases any e-mail address (L-7)", () => {
     expect(
       buildAccountGreeting({
-        fullName: "أ.د. محمد حمود القدسي",
-        email: "mohqadasi@usr.edu.ye",
+        fullName: "أ.د. رئيس الجامعة",
+        email: "formerly-special@example.edu",
         collegeName: null,
         isCollegeDeanOnly: false,
         isUniversityLeadershipOnly: true,
       }),
-    ).toBe("مرحبًا، أ.د. محمد حمود القدسي — رئيس الجامعة");
+    ).toBe("مرحبًا، أ.د. رئيس الجامعة — رئيس الجامعة");
   });
 
   it("keeps the title when the account name is unavailable", () => {

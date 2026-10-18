@@ -138,14 +138,28 @@ test("failed reset keeps confirmation visible without a fabricated password", as
   await ui.close();
 });
 
-test("admin recovery is visibly labeled as a link, not a new password", async () => {
+test("L-1: admin recovery shows only the e-mail confirmation, never a link", async () => {
+  const ui = await mount(async () => ({
+    email: target.email,
+    temporary_password: null,
+    action_link: null,
+    sent: true,
+  }));
+  await ui.click("تأكيد إعادة التعيين");
+  assert.match(ui.container.textContent, /أُرسل رابط الاستعادة إلى بريد المستخدم/);
+  assert.equal(ui.container.querySelector("input"), null);
+  assert.doesNotMatch(ui.container.innerHTML, /https?:\/\//);
+  await ui.close();
+});
+
+test("a response with neither a password nor a sent e-mail is an error", async () => {
   const ui = await mount(async () => ({
     email: target.email,
     temporary_password: null,
     action_link: "https://example.invalid/recovery",
   }));
   await ui.click("تأكيد إعادة التعيين");
-  assert.match(ui.container.querySelector("label").textContent, /رابط استعادة/);
-  assert.equal(ui.container.querySelector("input").value, "https://example.invalid/recovery");
+  assert.equal(ui.container.querySelector("input"), null);
+  assert.match(ui.container.querySelector('[role="alert"]').textContent, /لم تصل/);
   await ui.close();
 });
