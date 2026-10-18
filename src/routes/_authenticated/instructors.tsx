@@ -315,7 +315,7 @@ function InstructorDirectory({
   const departmentRef = useRef<HTMLButtonElement>(null);
 
   const { data: depts } = useQuery({
-    queryKey: ["dept-min", active?.id],
+    queryKey: ["departments", active?.id, "including-archived"],
     enabled: !!active,
     queryFn: async () => {
       const { data, error } = await supabase

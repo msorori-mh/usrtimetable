@@ -66,7 +66,7 @@ function ProgramsPage() {
   });
 
   const { data: depts } = useQuery({
-    queryKey: ["dept-min", active?.id],
+    queryKey: ["departments", active?.id, "options"],
     enabled: !!active,
     queryFn: async () => {
       const { data, error } = await supabase

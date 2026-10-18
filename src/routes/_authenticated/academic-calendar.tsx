@@ -34,7 +34,7 @@ interface Row extends LookupRow {
 function CalendarPage() {
   const { active } = useActiveCollege();
   const { data: terms, isError: termsFailed, error: termsError, refetch: refetchTerms } = useQuery({
-    queryKey: ["academic-terms", "calendar-options", active?.id], enabled: !!active,
+    queryKey: ["academic-terms", active?.id, "calendar-options"], enabled: !!active,
     queryFn: async () => {
       // read-all-ok: a college has tens of terms at most
       const { data, error } = await supabase.from("academic_terms").select("id, name").eq("college_id", active!.id).order("start_date", { ascending: false });

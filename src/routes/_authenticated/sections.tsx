@@ -71,7 +71,7 @@ function SectionsPage() {
   const [termFilter, setTermFilter] = useState<string>("all");
 
   const { data: courses } = useQuery({
-    queryKey: ["courses-min", active?.id],
+    queryKey: ["courses", active?.id, "options"],
     enabled: !!active,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -84,7 +84,7 @@ function SectionsPage() {
     },
   });
   const { data: terms } = useQuery({
-    queryKey: ["terms-min", active?.id],
+    queryKey: ["academic-terms", active?.id, "options-with-status"],
     enabled: !!active,
     queryFn: async () => {
       const { data, error } = await supabase

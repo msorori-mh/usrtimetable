@@ -134,7 +134,7 @@ function AcademicCohortsWorkspace() {
   >(null);
 
   const { data: programs } = useQuery({
-    queryKey: ["programs-min", active?.id],
+    queryKey: ["programs", active?.id, "options"],
     enabled: !!active,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -162,7 +162,7 @@ function AcademicCohortsWorkspace() {
     },
   });
   const { data: terms } = useQuery({
-    queryKey: ["terms-min", active?.id],
+    queryKey: ["academic-terms", active?.id, "options"],
     enabled: !!active,
     queryFn: async () => {
       const { data, error } = await supabase

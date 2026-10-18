@@ -89,7 +89,7 @@ function StudyPlansPage() {
   }, [active?.id]);
 
   const { data: depts } = useQuery({
-    queryKey: ["dept-min", active?.id],
+    queryKey: ["departments", active?.id, "options"],
     enabled: !!active,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -105,7 +105,7 @@ function StudyPlansPage() {
   });
 
   const { data: progs } = useQuery({
-    queryKey: ["prog-min-dep", active?.id],
+    queryKey: ["programs", active?.id, "options-with-duration"],
     enabled: !!active,
     queryFn: async () => {
       const { data, error } = await supabase
