@@ -16,7 +16,6 @@ import { toast } from "sonner";
 import { checkCurrentSession } from "@/lib/auth/session-service";
 import { boundedSessionRequest, SessionCheckError } from "@/lib/auth/check-session";
 import { translateAuthError } from "@/lib/auth-error-message";
-import { userErrorMessage } from "@/lib/user-error";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({ meta: [{ title: `تسجيل الدخول — ${USR_PLATFORM_NAME_AR}` }] }),
@@ -103,7 +102,7 @@ function AuthPage() {
       if (error) throw error;
       await finishSignIn(new AbortController().signal);
     } catch (err) {
-      const msg = userErrorMessage(err, "حدث خطأ");
+      const msg = err instanceof Error ? err.message : "حدث خطأ";
       toast.error(translateAuthError(msg));
     } finally {
       setLoading(false);
@@ -120,7 +119,7 @@ function AuthPage() {
       if (error) throw error;
       setResetSent(true);
     } catch (err) {
-      const msg = userErrorMessage(err, "حدث خطأ");
+      const msg = err instanceof Error ? err.message : "حدث خطأ";
       toast.error(translateAuthError(msg));
     } finally {
       setLoading(false);
@@ -145,7 +144,7 @@ function AuthPage() {
       toast.success("مرحباً بك");
       navigate({ to: "/dashboard", replace: true });
     } catch (err) {
-      const msg = userErrorMessage(err, "حدث خطأ");
+      const msg = err instanceof Error ? err.message : "حدث خطأ";
       toast.error(translateAuthError(msg));
     } finally {
       setLoading(false);
