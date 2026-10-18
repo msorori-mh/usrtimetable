@@ -54,3 +54,7 @@ docs/print-proof/**/*.xlsx
 # Python bytecode
 __pycache__/
 *.pyc
+
+# Local schema-baseline by-products (scripts/db/make-baseline.sh)
+supabase/reference/replay-schema-*.sql
+supabase/reference/schema-diff-*.txt
