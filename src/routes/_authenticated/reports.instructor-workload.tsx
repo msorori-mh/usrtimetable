@@ -218,7 +218,7 @@ function WorkloadPage() {
     isFetching: ilLoad,
     error: instructorError,
   } = useQuery({
-    queryKey: ["rep-iw-ins", active?.id, deptId, typeId],
+    queryKey: ["reports-instructor-workload-instructors", active?.id, deptId, typeId],
     enabled: !!active,
     // H-10: a large college can exceed one PostgREST page of instructors.
     queryFn: () =>
@@ -251,7 +251,7 @@ function WorkloadPage() {
     isFetching: sLoad,
     error: sessionError,
   } = useQuery({
-    queryKey: ["rep-iw-sess", active?.id, context.versionId],
+    queryKey: ["reports-instructor-workload-sessions", active?.id, context.versionId],
     enabled: !!active && !!context.selectedVersion,
     queryFn: async () => {
       const rows = await readAllRows<{

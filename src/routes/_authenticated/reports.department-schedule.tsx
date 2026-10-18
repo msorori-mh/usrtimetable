@@ -63,7 +63,7 @@ function Page() {
     error: sessionsError,
     refetch,
   } = useQuery({
-    queryKey: ["ds-sess", active?.id, versionId, deptId],
+    queryKey: ["reports-department-schedule-sessions", active?.id, versionId, deptId],
     enabled: !!active && !!versionId,
     // H-10/M-21: read every page; any page error rejects the query.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

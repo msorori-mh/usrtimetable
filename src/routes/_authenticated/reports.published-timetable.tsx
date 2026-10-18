@@ -67,7 +67,7 @@ function Page() {
       ).data ?? [],
   });
   const { data: versions, error: versionsError } = useQuery({
-    queryKey: ["pt-vers", active?.id, termId],
+    queryKey: ["reports-published-timetable-versions", active?.id, termId],
     enabled: !!active,
     queryFn: async () => {
       let q = supabase
@@ -87,7 +87,7 @@ function Page() {
     },
   });
   const { data: depts, error: deptsError } = useQuery({
-    queryKey: ["pt-d", active?.id],
+    queryKey: ["reports-published-timetable-departments", active?.id],
     enabled: !!active,
     queryFn: async () =>
       (
@@ -99,7 +99,7 @@ function Page() {
       ).data ?? [],
   });
   const { data: progs, error: progsError } = useQuery({
-    queryKey: ["pt-p", active?.id],
+    queryKey: ["reports-published-timetable-programs", active?.id],
     enabled: !!active,
     queryFn: async () =>
       (
@@ -111,7 +111,7 @@ function Page() {
       ).data ?? [],
   });
   const { data: levels, error: levelsError } = useQuery({
-    queryKey: ["pt-l", active?.id],
+    queryKey: ["reports-published-timetable-levels", active?.id],
     enabled: !!active,
     queryFn: async () =>
       (
@@ -124,7 +124,7 @@ function Page() {
   });
   // A1.5: New Flow cohort/DG filter sources replace the Legacy sections selector.
   const { data: cohorts, error: cohortsError } = useQuery({
-    queryKey: ["pt-c", active?.id],
+    queryKey: ["reports-published-timetable-cohorts", active?.id],
     enabled: !!active,
     queryFn: async () =>
       readAllRows((from, to) =>
@@ -138,7 +138,7 @@ function Page() {
       ),
   });
   const { data: deliveryGroups, error: deliveryGroupsError } = useQuery({
-    queryKey: ["pt-dg", active?.id],
+    queryKey: ["reports-published-timetable-delivery-groups", active?.id],
     enabled: !!active,
     queryFn: async () =>
       readAllRows((from, to) =>
@@ -152,7 +152,7 @@ function Page() {
       ),
   });
   const { data: ins, error: insError } = useQuery({
-    queryKey: ["pt-i", active?.id],
+    queryKey: ["reports-published-timetable-instructors", active?.id],
     enabled: !!active,
     queryFn: async () =>
       readAllRows((from, to) =>
@@ -165,7 +165,7 @@ function Page() {
       ),
   });
   const { data: rooms, error: roomsError } = useQuery({
-    queryKey: ["pt-r", active?.id],
+    queryKey: ["reports-published-timetable-rooms", active?.id],
     enabled: !!active,
     queryFn: async () =>
       (

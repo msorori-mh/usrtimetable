@@ -376,7 +376,7 @@ export function useInstructorDirectory({
         "instructors",
         "data-onboarding-readiness",
         "data-readiness",
-        "rep-readiness",
+        "reports-data-readiness",
       ])
         void qc.invalidateQueries({ queryKey: [key] });
       void qc.invalidateQueries({ queryKey: ["faculty-university-report"] });

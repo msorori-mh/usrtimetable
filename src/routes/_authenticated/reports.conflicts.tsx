@@ -175,7 +175,7 @@ function Page() {
   const [search, setSearch] = useState("");
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["rep-conflicts", ctx.collegeId, ctx.versionId, ctx.studySystem],
+    queryKey: ["reports-conflicts", ctx.collegeId, ctx.versionId, ctx.studySystem],
     enabled: !!ctx.collegeId && !!ctx.versionId,
     queryFn: () =>
       fetchConflictReportRows({

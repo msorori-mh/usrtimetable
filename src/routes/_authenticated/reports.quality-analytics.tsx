@@ -51,7 +51,7 @@ function QualityAnalyticsPage() {
     error: versionsError,
     refetch: refetchVersions,
   } = useQuery({
-    queryKey: ["qa-versions", active?.id],
+    queryKey: ["reports-quality-analytics-versions", active?.id],
     enabled: !!active,
     queryFn: async () =>
       (
@@ -73,7 +73,7 @@ function QualityAnalyticsPage() {
     error: sessionsError,
     refetch: refetchSessions,
   } = useQuery({
-    queryKey: ["qa-sessions", active?.id, effectiveVersion],
+    queryKey: ["reports-quality-analytics-sessions", active?.id, effectiveVersion],
     enabled: !!active && !!effectiveVersion,
     // H-10: analyse the whole version, never the first PostgREST page only.
     queryFn: () =>
