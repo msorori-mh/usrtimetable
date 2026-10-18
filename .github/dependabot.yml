@@ -26,6 +26,5 @@ updates:
     ignore:
       # Pinned on purpose; see docs/operations/dependency-overrides.md before moving.
       - dependency-name: "nitro"
-      - dependency-name: "@lovable.dev/vite-tanstack-config"
     commit-message:
       prefix: "deps"

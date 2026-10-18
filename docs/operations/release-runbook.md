@@ -3,10 +3,12 @@
 ينطبق على كل إصدار يصل إلى مستخدمي المنصة. الهدف: أن يكون معروفًا **من** ينشر، **أي commit** يُنشر،
 وأن تُطبَّق الترحيلات بالترتيب وتُتحقق، وأن يوجد طريق رجوع موثّق.
 
-- الواجهة والخادم (TanStack Start على Cloudflare) تُنشر عبر **Lovable → Publish**.
+- الواجهة والخادم (TanStack Start على Cloudflare Workers) تُنشر عبر workflow
+  **`deploy-production`** (GitHub Actions، بيئة `production` بمراجعين مطلوبين).
 - قاعدة البيانات (Supabase) تُحدَّث **منفصلة** بالترحيلات في `supabase/migrations/`.
 - مرجع مشروع الإنتاج هو `project_id` في `supabase/config.toml` (لا يُكتب في السكربتات؛ اقرأه من هناك).
-- لا تُستخدم سكربتات `scripts/staging/*` للإنتاج أبدًا؛ `deploy-preflight.mjs` يرفض مرجع الإنتاج.
+- وضع staging في `scripts/staging/deploy-preflight.mjs` يرفض مرجع الإنتاج؛ الإنتاج يستخدم حصرًا
+  `deploy-preflight.mjs --production` داخل `deploy-production.yml`.
 
 ## الأدوار
 
@@ -14,7 +16,7 @@
 | --- | --- |
 | مالك الإصدار (Release owner) | يختار الـ commit، يملأ سجل الإصدار، يقرر المتابعة/الإيقاف |
 | مسؤول قاعدة البيانات | يطبق الترحيلات ويشغّل استعلامات التحقق (حساب Supabase بصلاحية Owner/Admin) |
-| الناشر في Lovable | عضو مشروع Lovable بصلاحية Publish؛ ينشر نفس الـ commit فقط |
+| الناشر | يشغّل `deploy-production` على نفس الـ commit؛ ويوافق عليه مراجع بيئة `production` (شخص آخر) |
 | مراجع ثانٍ | يراجع قائمة الترحيلات وملفات rollback قبل التطبيق (قاعدة الأربع عيون) |
 
 لا يجمع شخص واحد بين تطبيق ترحيلة لم يراجعها أحد ونشرها.
@@ -102,19 +104,21 @@ where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'EXECUTE')
 المتوقع: (2) و(3) و(4) بلا صفوف جديدة مقارنة بالإصدار السابق (احفظ النتيجة السابقة في سجل الإصدار).
 إضافة إلى ذلك نفّذ استعلامات التحقق المذكورة في وصف الـ PR لكل ترحيلة.
 
-## 4. النشر عبر Lovable
+## 4. النشر إلى Cloudflare Workers
 
-1. في Lovable تأكد أن المشروع متزامن مع GitHub وأن آخر commit ظاهر = `RELEASE_SHA`
-   (إن كان Lovable متقدمًا بتعديلات غير مدموجة: **توقف** — يجب أن تمر عبر PR و`pr-gate` أولًا).
-2. اضغط **Publish**. سجّل وقت النشر ومعرّف النشر (`x-deployment-id` في ترويسات الاستجابة).
-3. تحقق دخانيًا (قراءة فقط): تسجيل الدخول، `/reports`، فتح جدول منشور لكلية، طباعة PDF واحد.
-4. المتصفح: لا أخطاء في Console على الصفحات الثلاث أعلاه.
+1. GitHub → Actions → **deploy-production** → Run workflow: `sha` = `RELEASE_SHA` (40 حرفًا، على `main`،
+   واجتاز `pr-gate`)، و`confirmation` = `deploy-production`.
+2. يوافق مراجع بيئة `production`. الـworkflow يرفض إن لم ينجح `pr-gate` على الـSHA، ثم يشغّل preflight
+   وtsc والاختبارات والبناء والنشر، ثم فحصًا دخانيًا لـ`/` و`/auth` (200 + ترويسات الأمان). لا يطبق ترحيلات.
+3. سجّل رابط التشغيل ومعرّف نسخة الـWorker (Cloudflare → Workers → usrtimetable → Deployments).
+4. تحقق دخانيًا (قراءة فقط): تسجيل الدخول، `/reports`، فتح جدول منشور لكلية، طباعة PDF واحد.
+5. المتصفح: لا أخطاء في Console على الصفحات الثلاث أعلاه.
 
 ## 5. الرجوع (Rollback)
 
 | المشكلة | الإجراء |
 | --- | --- |
-| خلل في الواجهة/الخادم فقط | Lovable → History → اختر النشر السابق → Restore/Publish. لا حاجة لتغيير قاعدة البيانات إذا كانت الترحيلات متوافقة للخلف. |
+| خلل في الواجهة/الخادم فقط | `npx wrangler@4.136.3 rollback --name usrtimetable` أو Cloudflare → Workers → usrtimetable → Deployments → Rollback، أو أعد تشغيل `deploy-production` على الـSHA السابق. لا حاجة لتغيير قاعدة البيانات إذا كانت الترحيلات متوافقة للخلف. |
 | خلل في ترحيلة | نفّذ `supabase/rollbacks/<الاسم>.down.sql` في SQL Editor، ثم احذف سطرها من السجل: `delete from supabase_migrations.schema_migrations where version = '<v>';` (بموافقة مراجع ثانٍ)، ثم أعد نشر الواجهة السابقة إن كانت تعتمد على الترحيلة. |
 | تلف بيانات | أوقف الكتابة (وضع صيانة)، واستعد من Backups/PITR وفق `supabase-backup-restore.md`؛ القرار لمالك الإصدار. |
 
@@ -129,10 +133,10 @@ where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'EXECUTE')
 ## § الانحراف (drift)
 
 - `missing_in_db`: ترحيلة في المستودع لم تطبق. إن كانت جزءًا من هذا الإصدار فطبقها؛ إن كانت قديمة
-  (مثل ملفات أُضيفت بعد أن طبقت محتواها Lovable بأسماء أخرى) فلا تطبقها قبل مقارنة الكائنات
+  (مثل ملفات أُضيفت بعد أن طُبق محتواها سابقًا عبر Lovable بأسماء أخرى) فلا تطبقها قبل مقارنة الكائنات
   (`scripts/db/make-baseline.sh` يعطي فرق المخطط) — غالبًا الصحيح هو تسجيل الإصدار فقط بعد إثبات أن
   الكائنات موجودة ومطابقة.
-- `unknown_in_repo`: تعديل طُبق على الإنتاج بدون ملف في المستودع (SQL Editor أو Lovable). استخرج
+- `unknown_in_repo`: تعديل طُبق على الإنتاج بدون ملف في المستودع (SQL Editor مثلًا). استخرج
   التعريف (`supabase db dump` أو `pg_get_functiondef`) وأضفه كترحيلة بنفس رقم الإصدار في PR، أو
   اعكسه إن لم يكن مقصودًا.
 - لا يُغلق الإصدار والانحراف قائم.

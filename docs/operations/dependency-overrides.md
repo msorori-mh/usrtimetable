@@ -23,20 +23,20 @@
 
 ## تثبيتات مقصودة (ليست overrides)
 
-- **`nitro` = `3.0.260603-beta`** (devDependency): خادم البناء الذي تستخدمه `@lovable.dev/vite-tanstack-config`
-  (هدف Cloudflare). مثبّت على نسخة beta محددة لأن سلسلة 3.x لم تصدر مستقرة بعد، ولأن إعداد Lovable
-  مختبر معها. الانتقال إلى المستقر: عند صدور `nitro@3.0.0` وتحديث `@lovable.dev/vite-tanstack-config`
-  ليدعمها — يُختبر بـ `bun run build` ثم نشر staging (`deploy-staging.yml`) قبل الإنتاج. Dependabot
-  يتجاهل nitro عمدًا.
+- **`nitro` = `3.0.260603-beta`** (devDependency): خادم البناء المستخدم مباشرة في `vite.config.ts`
+  (`nitro/vite`، preset `cloudflare_module`). مثبّت على نسخة beta محددة لأن سلسلة 3.x لم تصدر مستقرة
+  بعد ولأن شكل `.output/server/wrangler.json` الذي يتحقق منه `deploy-preflight.mjs` مختبر معها.
+  الانتقال إلى المستقر: عند صدور `nitro@3.0.0` — يُختبر بـ `bun run build` (وفحص `wrangler.json`)
+  ثم نشر staging (`deploy-staging.yml`) قبل الإنتاج. Dependabot يتجاهل nitro عمدًا.
 - **`xlsx` → `npm:@e965/xlsx@0.20.3`**: حزمة SheetJS على npm متوقفة عند 0.18.5 وفيها ثغرتان
   (prototype pollution وReDoS، مصححتان في 0.19.3/0.20.2) لأن SheetJS تنشر النسخ الأحدث على CDN
   خاص بها فقط. `@e965/xlsx` نسخة مطابقة منشورة على npm للنسخة 0.20.3 تبقي `import "xlsx"` كما هو.
   الخطر: ناشر طرف ثالث — قارن tarball مع `https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`
   عند أي ترقية، أو انتقل إلى رابط CDN الرسمي مباشرة.
-- **`@lovable.dev/vite-tanstack-config` = `2.23.1`** مستثنى من حارس العمر 24 ساعة في `bunfig.toml`
-  (`minimumReleaseAgeExcludes`) لأن Lovable تنشره مع المنصة.
+- `minimumReleaseAgeExcludes` في `bunfig.toml` فارغة: أُزيلت `@lovable.dev/vite-tanstack-config`
+  من المشروع (الخروج من Lovable) واستُبدلت بإعداد Vite صريح.
 
-## مدخلات القفل من سجل Lovable الخاص
+## مدخلات القفل من سجل Lovable الخاص (تاريخي — يُزال بإعادة توليد القفل)
 
 `bun.lock` يحتوي **133** مدخلًا تُحلّ إلى مرآة npm خاصة بـ Lovable
 (`https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/…` و`europe-west4`)، لـ 123
@@ -46,11 +46,12 @@
   `bun install --frozen-lockfile` إن كانت المرآة تتطلب مصادقة أو غير متاحة للعامة.
 - 122 منها تحمل `sha512` integrity، فالمحتوى المثبت مطابق لما في القفل أيًا كان المصدر؛
   11 مدخلًا بلا integrity في القفل — هذه أضعف نقطة ويجب إعادة حلها من سجل npm العام.
-- العلاج المقترح (بقرار من المالك لأنه يغيّر `bun.lock`): من بيئة لها وصول إلى `registry.npmjs.org`
-  شغّل `bun install --registry https://registry.npmjs.org/ --force` ثم راجع الفرق وتأكد أن
-  الإصدارات لم تتغير وأن كل مدخل له integrity، وافتح PR مستقلًا. حتى ذلك الحين، إن فشل التثبيت في CI
-  فالسبب هو المرآة وليس الكود.
-- `dependency-audit.yml` يطبع عدد هذه المدخلات أسبوعيًا للمتابعة.
+- العلاج المعتمد (قرار الخروج من Lovable): من بيئة لها وصول إلى `registry.npmjs.org` شغّل
+  `scripts/exit-lovable/regenerate-lockfile.sh` (ينقل القفل القديم جانبًا، يثبّت من السجل العام، يتحقق
+  من عدم بقاء `lovable-core-prod` أو أي حزمة `@lovable.dev`، ثم يبني)، راجع الفرق، وافتح PR مستقلًا.
+  **حتى ذلك الحين يفشل `bun install --frozen-lockfile`** لأن `package.json` لم يعد يطابق القفل.
+- `dependency-audit.yml` يطلق تحذيرًا أسبوعيًا ما دامت مدخلات من مرآة خاصة باقية، و
+  `tests/no-lovable-coupling.test.mjs` يطبع تحذيرًا بالعدد.
 
 ## أدوات الاختبار المثبتة في CI (خارج package.json)
 

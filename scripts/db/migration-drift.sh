@@ -8,7 +8,7 @@
 # Exit 0 = no drift, 1 = drift (details printed), 2 = usage/connection error.
 #   missing_in_db:   versions present in supabase/migrations but not applied
 #   unknown_in_repo: versions applied in the database with no file in the repository
-#                    (e.g. a change made in the SQL editor or Lovable without a commit)
+#                    (e.g. a change made in the SQL editor without a commit)
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

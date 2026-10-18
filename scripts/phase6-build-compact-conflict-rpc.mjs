@@ -502,7 +502,7 @@ const reportDir = path.join(
   root,
   "implementation-reports/phase-6-conflict-rpc-tooling-compatible-refactor-01",
 );
-const exp = path.join(reportDir, "lovable-compact-migration-exports");
+const exp = path.join(reportDir, "compact-migration-exports");
 fs.mkdirSync(exp, { recursive: true });
 fs.writeFileSync(path.join(reportDir, "compact-migration-manifest.csv"), rows.join("\n") + "\n");
 for (const p of parts) {
