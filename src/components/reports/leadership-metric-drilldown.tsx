@@ -45,6 +45,8 @@ import {
 } from "@/lib/reports/leadership-metrics";
 import { formatNumber } from "@/lib/format";
 
+const DETAIL_PAGE_SIZE = 100;
+
 const ALL_COLLEGES = "__all__";
 
 export interface LeadershipDrilldownTarget {
@@ -116,6 +118,13 @@ export function LeadershipMetricDrilldown({
       }),
     [rows, search, college],
   );
+
+  // L-14: a metric can open thousands of records; render 100 at a time (exports keep all).
+  const limitKey = `${target?.metric ?? ""}|${target?.collegeId ?? ""}|${search}|${college}`;
+  const [limitState, setLimitState] = useState({ key: limitKey, limit: DETAIL_PAGE_SIZE });
+  if (limitState.key !== limitKey) setLimitState({ key: limitKey, limit: DETAIL_PAGE_SIZE });
+  const rendered = visible.slice(0, limitState.limit);
+  const remaining = visible.length - rendered.length;
 
   const columns = definition ? LEADERSHIP_DETAIL_COLUMNS[definition.source] : [];
   const detailTotal = definition ? (query.data?.totals?.[definition.totalKey] ?? null) : null;
@@ -241,6 +250,7 @@ export function LeadershipMetricDrilldown({
               لا توجد سجلات مطابقة لهذا المؤشر في النطاق المحدد.
             </p>
           ) : (
+            <>
             <table className="w-full min-w-[720px] text-start text-xs">
               <thead className="sticky top-0 bg-muted">
                 <tr>
@@ -252,7 +262,7 @@ export function LeadershipMetricDrilldown({
                 </tr>
               </thead>
               <tbody>
-                {visible.map((row, index) => (
+                {rendered.map((row, index) => (
                   <tr key={`${String(row.id ?? index)}-${index}`} className="border-t">
                     {columns.map((column) => (
                       <td
@@ -266,6 +276,24 @@ export function LeadershipMetricDrilldown({
                 ))}
               </tbody>
             </table>
+            {remaining > 0 && (
+              <div className="flex items-center justify-between gap-3 border-t p-3 text-xs">
+                <span aria-live="polite">
+                  يُعرض {formatNumber(rendered.length)} من {formatNumber(visible.length)} سجلًا
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setLimitState({ key: limitKey, limit: limitState.limit + DETAIL_PAGE_SIZE })
+                  }
+                >
+                  عرض المزيد ({formatNumber(Math.min(remaining, DETAIL_PAGE_SIZE))})
+                </Button>
+              </div>
+            )}
+            </>
           )}
         </div>
       </SheetContent>
