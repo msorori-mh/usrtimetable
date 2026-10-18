@@ -14,6 +14,9 @@ import { Gauge, AlertTriangle, Activity } from "lucide-react";
 import { scoreScheduleVersion, type QualityResult } from "@/lib/conflict-engine/scorer";
 import { logAudit } from "@/lib/audit";
 import { userErrorMessage } from "@/lib/user-error";
+import { QueryErrorNotice } from "@/components/app-states/query-error-notice";
+import { formatDateTime, formatDecimal, formatNumber } from "@/lib/format";
+import { withStableKeys } from "@/hooks/stable-keys";
 
 export const Route = createFileRoute("/_authenticated/schedule-quality")({
   head: () => ({ meta: [{ title: "جودة الجدول الزمني" }] }),
@@ -27,10 +30,11 @@ function ScheduleQualityPage() {
   const [result, setResult] = useState<QualityResult | null>(null);
   const [running, setRunning] = useState(false);
 
-  const { data: versions } = useQuery({
-    queryKey: ["schedule-versions", active?.id],
+  const { data: versions, error: versionsError } = useQuery({
+    queryKey: ["schedule-versions", active?.id, "quality-picker"],
     enabled: !!active,
     queryFn: async () => {
+      // read-all-ok: schedule versions per college are tens
       const { data, error } = await supabase
         .from("schedule_versions")
         .select("id, name, status")
@@ -41,7 +45,7 @@ function ScheduleQualityPage() {
     },
   });
 
-  const { data: recent } = useQuery({
+  const { data: recent, error: recentError, refetch: refetchRecent } = useQuery({
     queryKey: ["quality-runs", active?.id, versionId],
     enabled: !!active && !!versionId,
     queryFn: async () => {
@@ -66,6 +70,7 @@ function ScheduleQualityPage() {
         scheduleVersionId: versionId,
       });
       setResult(result);
+      void refetchRecent();
       await logAudit({
         action: "create",
         entity: "schedule_quality_runs",
@@ -73,7 +78,7 @@ function ScheduleQualityPage() {
         collegeId: active.id,
         details: { total_score: result.total_score, soft: result.soft_conflicts_count, hard: result.hard_conflicts_count },
       });
-      toast.success(`النتيجة: ${result.total_score}/100`);
+      toast.success(`النتيجة: ${formatDecimal(result.total_score)}/100`);
     } catch (e) {
       toast.error(userErrorMessage(e));
     } finally {
@@ -95,11 +100,12 @@ function ScheduleQualityPage() {
         <Card className="p-6 text-center text-muted-foreground">اختر كلية للبدء</Card>
       ) : (
         <>
+          {versionsError && <QueryErrorNotice title="تعذّر تحميل نسخ الجدول." error={versionsError} />}
           <Card className="p-4 flex flex-wrap items-end gap-3">
             <div className="flex-1 min-w-64">
-              <label className="text-sm text-muted-foreground">نسخة الجدول</label>
+              <label htmlFor="quality-version" className="text-sm text-muted-foreground">نسخة الجدول</label>
               <Select value={versionId} onValueChange={setVersionId}>
-                <SelectTrigger><SelectValue placeholder="اختر نسخة الجدول" /></SelectTrigger>
+                <SelectTrigger id="quality-version"><SelectValue placeholder="اختر نسخة الجدول" /></SelectTrigger>
                 <SelectContent>
                   {(versions ?? []).map((v) => (
                     <SelectItem key={v.id} value={v.id}>{v.name} — {v.status}</SelectItem>
@@ -118,20 +124,20 @@ function ScheduleQualityPage() {
                 <div className="flex items-center gap-2 text-muted-foreground text-sm">
                   <Gauge className="h-4 w-4" /> الدرجة الكلية
                 </div>
-                <div className="text-4xl font-bold mt-2">{result.total_score}<span className="text-base text-muted-foreground">/100</span></div>
-                <div className="text-xs text-muted-foreground mt-1">إجمالي الخصم: {result.total_deductions}</div>
+                <div className="text-4xl font-bold mt-2">{formatDecimal(result.total_score)}<span className="text-base text-muted-foreground">/100</span></div>
+                <div className="text-xs text-muted-foreground mt-1">إجمالي الخصم: {formatDecimal(result.total_deductions)}</div>
               </Card>
               <Card className="p-4">
                 <div className="flex items-center gap-2 text-destructive text-sm">
                   <AlertTriangle className="h-4 w-4" /> تعارضات إلزامية
                 </div>
-                <div className="text-4xl font-bold mt-2">{result.hard_conflicts_count}</div>
+                <div className="text-4xl font-bold mt-2">{formatNumber(result.hard_conflicts_count)}</div>
               </Card>
               <Card className="p-4">
                 <div className="flex items-center gap-2 text-amber-600 text-sm">
                   <Activity className="h-4 w-4" /> مخالفات مرنة
                 </div>
-                <div className="text-4xl font-bold mt-2">{result.soft_conflicts_count}</div>
+                <div className="text-4xl font-bold mt-2">{formatNumber(result.soft_conflicts_count)}</div>
               </Card>
             </div>
           )}
@@ -147,9 +153,9 @@ function ScheduleQualityPage() {
                   <div key={code} className="flex items-center justify-between border rounded-md p-3">
                     <div>
                       <div className="font-medium">{code}</div>
-                      <div className="text-xs text-muted-foreground">عدد المخالفات: {info.count} • الوزن: {info.weight}</div>
+                      <div className="text-xs text-muted-foreground">عدد المخالفات: {formatNumber(info.count)} • الوزن: {formatDecimal(info.weight)}</div>
                     </div>
-                    <Badge variant="secondary">-{info.deduction}</Badge>
+                    <Badge variant="secondary">-{formatDecimal(info.deduction)}</Badge>
                   </div>
                 ))}
               </div>
@@ -160,11 +166,11 @@ function ScheduleQualityPage() {
             <Card className="p-4">
               <h2 className="text-lg font-semibold mb-3">المخالفات المرنة</h2>
               <div className="space-y-2 max-h-96 overflow-auto">
-                {result.soft_violations.map((v, i) => (
-                  <div key={i} className="border rounded-md p-3 text-sm">
+                {withStableKeys<QualityResult["soft_violations"][number]>(result.soft_violations, (v) => `${v.code}:${v.message_ar}`).map(({ key, item: v }) => (
+                  <div key={key} className="border rounded-md p-3 text-sm">
                     <div className="flex items-center justify-between">
                       <span className="font-medium">{v.message_ar}</span>
-                      <Badge variant="outline">-{v.score_impact}</Badge>
+                      <Badge variant="outline">-{formatDecimal(v.score_impact)}</Badge>
                     </div>
                     <div className="text-xs text-muted-foreground">{v.code} • {v.message_en}</div>
                   </div>
@@ -177,8 +183,11 @@ function ScheduleQualityPage() {
             <Card className="p-4">
               <h2 className="text-lg font-semibold mb-3 text-destructive">التعارضات الإلزامية</h2>
               <div className="space-y-2 max-h-96 overflow-auto">
-                {result.hard_conflicts.map((c, i) => (
-                  <div key={i} className="border rounded-md p-3 text-sm">
+                {withStableKeys<QualityResult["hard_conflicts"][number]>(
+                  result.hard_conflicts,
+                  (c) => `${c.code}:${c.schedule_session_id ?? ""}:${c.related_session_id ?? ""}:${c.message_ar}`,
+                ).map(({ key, item: c }) => (
+                  <div key={key} className="border rounded-md p-3 text-sm">
                     <div className="font-medium">{c.message_ar}</div>
                     <div className="text-xs text-muted-foreground">{c.code} • {c.message_en}</div>
                   </div>
@@ -187,17 +196,20 @@ function ScheduleQualityPage() {
             </Card>
           )}
 
+          {recentError && (
+            <QueryErrorNotice title="تعذّر تحميل آخر عمليات الاحتساب." error={recentError} onRetry={() => void refetchRecent()} />
+          )}
           {recent && recent.length > 0 && (
             <Card className="p-4">
               <h2 className="text-lg font-semibold mb-3">آخر عمليات الاحتساب</h2>
               <div className="space-y-2">
                 {recent.map((r) => (
                   <div key={r.id} className="flex items-center justify-between border rounded-md p-2 text-sm">
-                    <span>{new Date(r.created_at).toLocaleString("ar")}</span>
+                    <span>{formatDateTime(r.created_at)}</span>
                     <div className="flex gap-2">
-                      <Badge>{r.total_score}/100</Badge>
-                      <Badge variant="destructive">إلزامية: {r.hard_conflicts_count}</Badge>
-                      <Badge variant="secondary">مرنة: {r.soft_conflicts_count}</Badge>
+                      <Badge>{formatDecimal(r.total_score)}/100</Badge>
+                      <Badge variant="destructive">إلزامية: {formatNumber(r.hard_conflicts_count)}</Badge>
+                      <Badge variant="secondary">مرنة: {formatNumber(r.soft_conflicts_count)}</Badge>
                     </div>
                   </div>
                 ))}
