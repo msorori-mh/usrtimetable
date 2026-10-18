@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 const { PGlite } = await import(process.env.FACULTY_DB_MODULE || "@electric-sql/pglite");
 const id = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const migration = await readFile(
@@ -8,6 +8,15 @@ const migration = await readFile(
     "../supabase/migrations/20260919120000_college_instructor_schedule_directory.sql",
     import.meta.url,
   ),
+  "utf8",
+);
+const migrationDirectory = new URL("../supabase/migrations/", import.meta.url);
+const visibilityMigrationNames = (await readdir(migrationDirectory)).filter((name) =>
+  name.endsWith("_college_instructor_directory_visibility.sql"),
+);
+assert.equal(visibilityMigrationNames.length, 1);
+const visibilityMigration = await readFile(
+  new URL(visibilityMigrationNames[0], migrationDirectory),
   "utf8",
 );
 
@@ -21,7 +30,11 @@ async function fixture() {
       $$SELECT nullif(current_setting('test.uid',true),'')::uuid$$;
     CREATE FUNCTION public.can_view_college(u uuid,c uuid) RETURNS boolean LANGUAGE sql STABLE AS
       $$SELECT u='${id(1)}'::uuid OR (u IN ('${id(2)}'::uuid,'${id(4)}'::uuid) AND c='${id(10)}'::uuid) OR (u='${id(3)}'::uuid AND c='${id(20)}'::uuid)$$;
+    CREATE FUNCTION public.can_manage_college(u uuid,c uuid) RETURNS boolean LANGUAGE sql STABLE AS
+      $$SELECT u='${id(1)}'::uuid OR (u='${id(2)}'::uuid AND c='${id(10)}'::uuid)$$;
     CREATE TABLE colleges(id uuid PRIMARY KEY,university_id uuid,name text);
+    CREATE TABLE faculty_identities(id uuid PRIMARY KEY);
+    CREATE TABLE audit_logs(actor_id uuid,action text,entity text,entity_id uuid,college_id uuid,details jsonb);
     CREATE TABLE instructors(id uuid PRIMARY KEY,college_id uuid);
     CREATE TABLE faculty_identity_links(identity_id uuid,instructor_id uuid);
     CREATE TABLE faculty_private.home_profiles(identity_id uuid,source_instructor_id uuid,university_id uuid,university_number text,full_name text,home_college_id uuid,home_college_name text,type_code text,employment_type text,recorded_quota numeric,recorded_release numeric,quota numeric,is_active boolean);
@@ -46,6 +59,7 @@ async function fixture() {
     [111, 20, 20, "Archived session", 90],
   ];
   for (const [n, rowCollege, home, name, university] of people) {
+    await db.query("INSERT INTO faculty_identities VALUES($1)", [id(n + 1000)]);
     await db.query("INSERT INTO instructors VALUES($1,$2)", [id(n), id(rowCollege)]);
     await db.query("INSERT INTO faculty_identity_links VALUES($1,$2)", [id(n + 1000), id(n)]);
     await db.query(
@@ -72,8 +86,92 @@ async function fixture() {
     INSERT INTO existing_schedule_source_rows VALUES('${id(10)}','${id(310)}',ARRAY['${id(105)}'::uuid]);
   `);
   await db.exec(migration);
+  await db.exec(visibilityMigration);
   return db;
 }
+
+async function visibility(
+  db,
+  user,
+  instructor,
+  visible,
+  college = 10,
+  reason = "Left selected college",
+) {
+  await db.exec(
+    `SET ROLE authenticated; SELECT set_config('test.uid','${user ? id(user) : ""}',false)`,
+  );
+  try {
+    return await db.query(
+      "SELECT public.set_college_instructor_directory_visibility($1,$2,$3,$4)",
+      [id(college), id(instructor), visible, reason],
+    );
+  } finally {
+    await db.exec("RESET ROLE");
+  }
+}
+
+test("college hiding covers identities and aliases while preserving history and other colleges", async () => {
+  const db = await fixture();
+  try {
+    const before = (await directory(db, 1)).map((r) => r.id).sort();
+    const other = await directory(db, 1, 20);
+    const history = (
+      await db.query("SELECT jsonb_agg(to_jsonb(s) ORDER BY id) rows FROM schedule_sessions s")
+    ).rows;
+    await visibility(db, 2, 102, false);
+    await visibility(db, 2, 107, false);
+    for (const user of [1, 2, 4]) {
+      assert.deepEqual(
+        (await directory(db, user)).map((r) => r.id).sort(),
+        before.filter((v) => ![id(102), id(106)].includes(v)),
+      );
+    }
+    assert.deepEqual(await directory(db, 1, 20), other);
+    assert.deepEqual(
+      (await db.query("SELECT jsonb_agg(to_jsonb(s) ORDER BY id) rows FROM schedule_sessions s"))
+        .rows,
+      history,
+    );
+    assert.equal(
+      (await db.query("SELECT count(*) n FROM teaching_assignments WHERE is_active")).rows[0].n,
+      1,
+    );
+    await visibility(db, 2, 106, true);
+    assert((await directory(db, 1)).some((r) => r.id === id(106)));
+    assert(!(await directory(db, 1)).some((r) => r.id === id(102)));
+    assert.equal((await db.query("SELECT count(*) n FROM audit_logs")).rows[0].n, 3);
+  } finally {
+    await db.close();
+  }
+});
+
+test("directory visibility denies readers, anonymous users, forged colleges and unlisted identities", async () => {
+  const db = await fixture();
+  try {
+    for (const user of [null, 3, 4])
+      await assert.rejects(visibility(db, user, 102, false), /FORBIDDEN/);
+    await assert.rejects(visibility(db, 2, 102, false, 20), /FORBIDDEN/);
+    await assert.rejects(visibility(db, 1, 108, false), /DIRECTORY_INSTRUCTOR_FORBIDDEN/);
+    await assert.rejects(visibility(db, 1, 103, false), /DIRECTORY_INSTRUCTOR_NOT_IN_COLLEGE/);
+    await assert.rejects(visibility(db, 1, 102, null), /REASON_REQUIRED/);
+    await assert.rejects(visibility(db, 1, 102, false, 10, "short"), /REASON_REQUIRED/);
+    await db.exec("SET ROLE authenticated");
+    await assert.rejects(
+      db.exec("SELECT * FROM faculty_private.college_directory_visibility"),
+      /permission denied/,
+    );
+    await db.exec("SET ROLE anon");
+    await assert.rejects(
+      db.exec(
+        `SELECT public.set_college_instructor_directory_visibility('${id(10)}','${id(102)}',false,'Left selected college')`,
+      ),
+      /permission denied/,
+    );
+  } finally {
+    await db.close();
+  }
+});
 async function directory(db, user, college = 10) {
   await db.exec(
     `SET ROLE authenticated; SELECT set_config('test.uid','${user ? id(user) : ""}',false)`,

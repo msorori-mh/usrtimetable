@@ -7,7 +7,7 @@ import {
   buildInstructorPdf,
   createZip,
   downloadBytes,
-  imageAsDataUrl,
+  prepareInstructorSheetAssets,
   safeFileName,
   type InstructorPdfSheet,
 } from "@/lib/reports/instructor-pdf-archive";
@@ -60,7 +60,6 @@ export function InstructorPdfArchive<T>({
         toast.error("لا توجد محاضرات مجدولة لأي محاضر ضمن النطاق المحدد.");
         return;
       }
-      const logoDataUrl = await imageAsDataUrl(USR_UNIVERSITY_LOGO_SRC);
       const used = new Set<string>();
       const files: { name: string; data: Uint8Array }[] = [];
       for (const [index, entry] of entries.entries()) {
@@ -72,7 +71,9 @@ export function InstructorPdfArchive<T>({
         used.add(name);
         files.push({
           name: `${name}.pdf`,
-          data: await buildInstructorPdf({ ...entry.sheet, logoDataUrl }),
+          data: await buildInstructorPdf(
+            await prepareInstructorSheetAssets(entry.sheet, USR_UNIVERSITY_LOGO_SRC),
+          ),
         });
       }
       downloadBytes(

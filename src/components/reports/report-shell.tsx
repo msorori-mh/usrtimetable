@@ -52,6 +52,8 @@ interface Props {
   children?: ReactNode;
   /** Dedicated printable schedule; screen report remains available for inspection. */
   printContent?: ReactNode;
+  /** Prepare a frozen, asynchronously rendered print document (e.g. shared PDF pages). */
+  preparePrintContent?: () => Promise<ReactNode>;
   isLoading?: boolean;
   emptyMessage?: string;
   /** Query failure — shows the error state instead of an empty result. */
@@ -81,6 +83,7 @@ export function ReportShell({
   printFilename,
   children,
   printContent,
+  preparePrintContent,
   isLoading,
   emptyMessage,
   error,
@@ -129,10 +132,20 @@ export function ReportShell({
       setPrintSnapshot(null);
     };
     pendingPrint.current = cancel;
+    const snapshotFilename = printFilename || title || filename;
+    let prepared: ReactNode;
+    try {
+      prepared = preparePrintContent ? await preparePrintContent() : printContent;
+    } catch (error) {
+      cancel();
+      toast.error(error instanceof Error ? error.message : "تعذّر تجهيز التقرير للطباعة.");
+      return;
+    }
+    if (cancelled) return;
     // Freeze the filename with the authorized content, including while fonts load.
     setPrintSnapshot({
-      filename: printFilename || title || filename,
-      content: printContent ?? (
+      filename: snapshotFilename,
+      content: prepared ?? (
         <RepeatingPrintHeader
           header={
             <ReportOfficialHeader

@@ -8,6 +8,13 @@ import { ReportErrorState } from "@/components/reports/report-states";
 import { userErrorMessage } from "@/lib/user-error";
 import { readAllRows } from "@/lib/supabase/read-all";
 import { useActiveCollege } from "@/hooks/use-colleges";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import {
+  canPrintTimetableVersion,
+  DRAFT_PRINT_ADMIN_ONLY_AR,
+  DRAFT_PRINT_NOTICE_AR,
+} from "@/lib/reports/timetable-print-access";
+import { fetchPrintableScheduleVersion } from "@/lib/reports/queries/timetable-print-access";
 import { useReportDocumentTitle } from "@/hooks/use-report-document-title";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -126,6 +133,7 @@ export function PrintCenterPage(props: { versionId: string }) {
   // Sealed education publication markers are data (M-11); re-render once loaded.
   useEducationSourcePublications();
   const { active } = useActiveCollege();
+  const currentUser = useCurrentUser();
   const exportAt = useMemo(() => new Date(), []);
 
   const initialFromUrl = useMemo(() => {
@@ -177,29 +185,31 @@ export function PrintCenterPage(props: { versionId: string }) {
     error: versionError,
     refetch: refetchVersion,
   } = useQuery({
-    queryKey: ["print-center-version", versionId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("schedule_versions")
-        .select("id, name, status, college_id, academic_term_id, notes, updated_at")
-        .eq("id", versionId)
-        .single();
-      if (error) throw error;
-      return data;
-    },
+    queryKey: [
+      "print-center-version",
+      versionId,
+      currentUser.data?.id,
+      currentUser.data?.isSuperAdmin,
+    ],
+    enabled: !!currentUser.data,
+    queryFn: () => fetchPrintableScheduleVersion(versionId),
   });
 
   const collegeMatches = isScheduleVersionInActiveCollege(version, active?.id);
+  const printAuthorized = canPrintTimetableVersion(version?.status, currentUser.data);
   const coverage = useQuery({
     queryKey: ["print-center-delivery-coverage", active?.id, versionId],
-    enabled: !!active && collegeMatches,
+    enabled: !!active && collegeMatches && printAuthorized,
     queryFn: () =>
       fetchDeliveryCoverage({
         collegeId: active!.id,
         scheduleVersionId: versionId,
       }),
   });
-  const outputBlocked = coverage.isLoading || coverage.isError || coverage.data?.complete !== true;
+  const outputBlocked =
+    !printAuthorized ||
+    (version?.status === "published" &&
+      (coverage.isLoading || coverage.isError || coverage.data?.complete !== true));
 
   const { data: term } = useQuery({
     queryKey: ["print-center-term", version?.academic_term_id, active?.id],
@@ -321,7 +331,7 @@ export function PrintCenterPage(props: { versionId: string }) {
     refetch: refetchSessions,
   } = useQuery({
     queryKey: ["print-center-sessions", versionId, active?.id, filters],
-    enabled: !!active && collegeMatches && !!version && filtersReady,
+    enabled: !!active && collegeMatches && !!version && printAuthorized && filtersReady,
     queryFn: async () => {
       const hydrated = await fetchHydratedVersionSessions({
         collegeId: active!.id,
@@ -489,7 +499,7 @@ export function PrintCenterPage(props: { versionId: string }) {
     );
   }
 
-  if (versionLoading) {
+  if (versionLoading || currentUser.isLoading) {
     return (
       <p className="p-6 text-center text-muted-foreground" dir="rtl">
         جارٍ التحميل...
@@ -504,6 +514,13 @@ export function PrintCenterPage(props: { versionId: string }) {
           message={userErrorMessage(versionError, "تعذر تحميل نسخة الجدول.")}
           onRetry={() => void refetchVersion()}
         />
+      </div>
+    );
+  }
+  if (version && !printAuthorized) {
+    return (
+      <div role="alert" className="rounded-md border p-4" dir="rtl">
+        {DRAFT_PRINT_ADMIN_ONLY_AR}
       </div>
     );
   }
@@ -530,6 +547,11 @@ export function PrintCenterPage(props: { versionId: string }) {
       data-paper="A4"
       data-orientation="portrait"
     >
+      {version.status !== "published" && (
+        <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm">
+          {DRAFT_PRINT_NOTICE_AR}
+        </p>
+      )}
       <div className="report-no-print space-y-4">
         <DeliveryDemoWarningBanner name={version.name} notes={version.notes} />
         {version.status === "published" &&
@@ -852,10 +874,11 @@ export function PrintCenterPage(props: { versionId: string }) {
                 versionName: version.name,
                 versionStatus: version.status as SVStatus,
                 publicationNotice:
-                  version.status === "published" &&
-                  isEducationSourcePublication(version.id, version.academic_term_id)
-                    ? EDUCATION_SOURCE_PUBLICATION_NOTICE_AR
-                    : undefined,
+                  version.status !== "published"
+                    ? DRAFT_PRINT_NOTICE_AR
+                    : isEducationSourcePublication(version.id, version.academic_term_id)
+                      ? EDUCATION_SOURCE_PUBLICATION_NOTICE_AR
+                      : undefined,
                 versionNumber: version.name,
                 exportAt,
                 lastUpdate: lastUpdate ?? null,

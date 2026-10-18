@@ -55,7 +55,7 @@ test("missing and cyclic canonical records reject inaccurate attribution", () =>
     /دائري/,
   );
 });
-const fixture = { programs, roles: ["super_admin"], sessions: [] };
+const fixture = { programs, roles: ["super_admin"], sessions: [], draft: false };
 const colleges = [
   { id: "itcs", name: "كلية التكنولوجيا" },
   { id: "jouf", name: "كلية الجوف" },
@@ -66,7 +66,15 @@ globalThis.__ownerFixture = fixture;
 globalThis.__ownerDb = {
   auth: { getUser: async () => ({ data: { user: { id: "actor" } } }) },
   // Mirrors public.academic_program_owners: owners only for programs the caller reads.
-  async rpc(name, { p_program_ids }) {
+  async rpc(name, { p_program_ids, p_version_id }) {
+    if (name === "get_timetable_print_version") {
+      if (fixture.draft && !fixture.roles.includes("super_admin"))
+        return { data: null, error: { message: "DRAFT_PRINT_SUPER_ADMIN_ONLY" } };
+      return {
+        data: [{ id: p_version_id, status: fixture.draft ? "draft" : "published" }],
+        error: null,
+      };
+    }
     if (name !== "academic_program_owners") throw new Error("Unexpected RPC: " + name);
     const all = new Map(fixture.programs.map((p) => [p.id, p]));
     const readable = (p) => fixture.roles.includes("super_admin") || p.college_id === "itcs";
@@ -205,6 +213,17 @@ test("academic ownership does not expand the authorized session read scope", asy
     assert.equal(sessions[0].program_name, "نظم المعلومات - الجوف");
   } finally {
     fixture.roles = ["super_admin"];
+  }
+});
+
+test("individual and batch queries reject a draft when the server denies printing", async () => {
+  fixture.roles = ["college_admin"];
+  fixture.draft = true;
+  try {
+    await assert.rejects(api.fetchUniversityInstructorSchedule(input), /للأدمن العام فقط/);
+  } finally {
+    fixture.roles = ["super_admin"];
+    fixture.draft = false;
   }
 });
 

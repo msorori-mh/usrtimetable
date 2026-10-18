@@ -42,11 +42,14 @@ import {
   InstructorPdfArchive,
   type InstructorPdfEntry,
 } from "@/components/reports/instructor-pdf-archive";
-import { RepeatingPrintHeader } from "@/components/reports/repeating-print-header";
-import { ReportOfficialHeader } from "@/components/reports/report-official-header";
+import { prepareInstructorPrintPages } from "@/components/reports/instructor-print-pages";
 import { STATUS_LABEL_AR, type SVStatus } from "@/lib/schedule-versions/lifecycle";
 import { isHourlyContractTypeCode } from "@/lib/instructors/effective-hours";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import {
+  canPrintUnpublishedTimetable,
+  timetablePrintNotice,
+} from "@/lib/reports/timetable-print-access";
 import { useReportContext } from "@/hooks/reports/useReportContext";
 import { formatLongDate } from "@/lib/format";
 
@@ -70,9 +73,9 @@ function normalizeInstructorSearch(value: string) {
 function Page() {
   const currentUser = useCurrentUser();
   const ctx = useReportContext({
-    // The individual schedule handed to a lecturer is the official one: only
-    // published versions may be chosen, so a draft is never printed by mistake.
-    fixedStatusMode: "published_only",
+    fixedStatusMode: canPrintUnpublishedTimetable(currentUser.data)
+      ? "specific_version"
+      : "published_only",
     defaultStudySystem: "all",
     fixedStudySystem: "all",
   });
@@ -345,64 +348,12 @@ function Page() {
     return { hourly, sheetSummary };
   };
 
-  /** One lecturer's printable sheet, built exactly like the single-lecturer report. */
-  const loadBatchSheet = async (
+  /** One model for individual printing, batch printing and ZIP PDFs. */
+  const buildPrintEntry = (
     instructor: (typeof instructors)[number],
-  ): Promise<InstructorBatchSheet | null> => {
-    const lecturer = await loadLecturer(instructor);
-    if (!lecturer) return null;
-    const { hourly, sheetSummary } = lecturer;
-    return {
-      key: instructor.id,
-      content: (
-        <RepeatingPrintHeader
-          header={
-            <ReportOfficialHeader
-              reportTitle={`جدول المحاضر — ${instructor.full_name}`}
-              description={`${scopeLabel} — جميع أنظمة الدراسة. ${instructor.university_number ? `الرقم الجامعي: ${instructor.university_number}` : ""}`}
-              filterSummary={`${ctx.filterSummary} • نطاق الجدول: ${scopeLabel}`}
-              termName={ctx.terms.find((term) => term.id === ctx.termId)?.name}
-              collegeName={
-                canViewAcrossColleges
-                  ? scopeLabel
-                  : directory.data?.colleges.find((c) => c.id === ctx.collegeId)?.name
-              }
-              versionName={
-                canViewAcrossColleges ? "نسخ الكليات الموضحة في الملخص" : ctx.selectedVersion?.name
-              }
-              versionStatus={null}
-              note={`نطاق الجدول: ${scopeLabel} — العام والموازي معًا.`}
-            />
-          }
-        >
-          <div className="report-print-body min-w-0">
-            <ReportTimetableView
-              hideInstructor
-              printSummary={
-                <InstructorCollegeHours
-                  summary={sheetSummary}
-                  hourlyContract={hourly}
-                  universityScope={canViewAcrossColleges && effectiveScope === "all"}
-                  scopeLabel={scopeLabel}
-                />
-              }
-              compactDetails
-              sessions={sheetSummary.sessions}
-              collegeId={ctx.collegeId}
-              headers={exportHeaders}
-            />
-          </div>
-        </RepeatingPrintHeader>
-      ),
-    };
-  };
-  /** The same lecturer data as a standalone PDF sheet for the per-lecturer archive. */
-  const loadPdfEntry = async (
-    instructor: (typeof instructors)[number],
-  ): Promise<InstructorPdfEntry | null> => {
-    const lecturer = await loadLecturer(instructor);
-    if (!lecturer) return null;
-    const { hourly, sheetSummary } = lecturer;
+    hourly: boolean,
+    sheetSummary: ReturnType<typeof summarizeUniversitySchedule>,
+  ): InstructorPdfEntry => {
     const universityScope = canViewAcrossColleges && effectiveScope === "all";
     const hours = (n: number | null) => (n === null ? "غير محدد" : n.toFixed(2));
     const text = (value: unknown) =>
@@ -413,9 +364,32 @@ function Page() {
         ((a.day_of_week + 1) % 7) - ((b.day_of_week + 1) % 7) ||
         a.start_time.localeCompare(b.start_time),
     );
+    const sourceCollegeIds = new Set(
+      sheetSummary.sessions.map((session) => session.source_college_id ?? session.college_id),
+    );
+    const usedScopes = selection.scopes.filter((scope) => sourceCollegeIds.has(scope.collegeId));
+    const printNotice = timetablePrintNotice(usedScopes.map((scope) => scope.version.status));
+    const url = new URL(window.location.href);
+    for (const key of [...url.searchParams.keys()]) {
+      if (key.startsWith("collegeVersion_")) url.searchParams.delete(key);
+    }
+    Object.entries({
+      collegeId: ctx.collegeId ?? "",
+      termId: ctx.termId ?? "",
+      versionId: ctx.versionId ?? "",
+      statusMode: "specific_version",
+      studySystem: "all",
+      instructorId: instructor.id,
+      instructorScheduleScope: effectiveScope,
+      ...Object.fromEntries(
+        usedScopes.map((scope) => [`collegeVersion_${scope.collegeId}`, scope.version.id]),
+      ),
+    }).forEach(([key, value]) => url.searchParams.set(key, value));
     return {
       fileName: instructor.full_name,
       sheet: {
+        printNotice,
+        reportUrl: url.toString(),
         universityName: USR_UNIVERSITY_NAME_AR,
         scopeLabel: `${scopeLabel} — جميع أنظمة الدراسة`,
         instructorName: instructor.full_name,
@@ -428,6 +402,9 @@ function Page() {
         rows: ordered.map((session) => {
           const row = timetableSessionToRow(session);
           return {
+            dayIndex: session.day_of_week,
+            startTime: session.start_time,
+            endTime: session.end_time,
             day: text(row.day),
             time: text(row.time),
             course: text(row.course),
@@ -477,11 +454,33 @@ function Page() {
                   : hours(sheetSummary.balance.overloadHours),
           },
         ],
-        note: universityScope
-          ? "يشمل جميع أنظمة الدراسة في نسخ الكليات المبينة أعلاه. يُحتسب النصاب مرة واحدة للمحاضر."
-          : `هذا الملخص خاص بـ${scopeLabel}؛ الإجمالي الجامعي والساعات الزائدة متاحان عند اختيار جميع الكليات.`,
+        note: [
+          printNotice,
+          universityScope
+            ? "يشمل جميع أنظمة الدراسة في نسخ الكليات المبينة أعلاه. يُحتسب النصاب مرة واحدة للمحاضر."
+            : `هذا الملخص خاص بـ${scopeLabel}؛ الإجمالي الجامعي والساعات الزائدة متاحان عند اختيار جميع الكليات.`,
+        ]
+          .filter(Boolean)
+          .join(" "),
       },
     };
+  };
+  const loadPdfEntry = async (
+    instructor: (typeof instructors)[number],
+  ): Promise<InstructorPdfEntry | null> => {
+    const lecturer = await loadLecturer(instructor);
+    return lecturer ? buildPrintEntry(instructor, lecturer.hourly, lecturer.sheetSummary) : null;
+  };
+  const loadBatchSheet = async (
+    instructor: (typeof instructors)[number],
+  ): Promise<InstructorBatchSheet | null> => {
+    const entry = await loadPdfEntry(instructor);
+    return entry
+      ? {
+          key: instructor.id,
+          content: await prepareInstructorPrintPages(entry.sheet, { includeWeekly: false }),
+        }
+      : null;
   };
   const batchReady =
     !!ctx.versionId &&
@@ -507,11 +506,23 @@ function Page() {
         versionName: canViewAcrossColleges
           ? "نسخ الكليات الموضحة في الملخص"
           : ctx.selectedVersion?.name,
-        versionStatus: null,
-        note: `نطاق الجدول: ${scopeLabel} — العام والموازي معًا.`,
+        versionStatus: effectiveScope === "current" ? ctx.selectedVersion?.status : null,
+        note: [
+          timetablePrintNotice(reportScopes.map((scope) => scope.version.status)),
+          `نطاق الجدول: ${scopeLabel} — العام والموازي معًا.`,
+        ]
+          .filter(Boolean)
+          .join(" "),
       }}
       filename={reportFilename}
       printFilename={reportFilename}
+      preparePrintContent={async () => {
+        if (!selectedInstructor || !ready || isLoading || queryError || !sessions.length)
+          throw new Error("بيانات جدول المحاضر غير جاهزة للطباعة.");
+        return prepareInstructorPrintPages(
+          buildPrintEntry(selectedInstructor, isHourlyContract, summary).sheet,
+        );
+      }}
       rows={rows}
       headers={exportHeaders}
       isLoading={isLoading}
@@ -559,6 +570,7 @@ function Page() {
       filters={
         <ReportFilters
           context={ctx}
+          statusMode={false}
           studySystem={false}
           extraSummary={[
             `نطاق الجدول: ${scopeLabel}`,

@@ -102,6 +102,7 @@ function harness({ fonts = Promise.resolve(), printThrows = false } = {}) {
     document,
     window,
     URL,
+    Error,
     requestAnimationFrame: (callback) => callback(),
     setTimeout,
     clearTimeout,
@@ -343,4 +344,65 @@ test("repeated clicks cannot overlap a pending or open print preview", async () 
   app.afterPrint();
   app.render(next);
   assert.equal(app.listenerCount("afterprint"), 0);
+});
+
+test("asynchronous canonical pages stay paired with the lecturer filename during selection changes", async () => {
+  let finishPages;
+  let finishFonts;
+  const app = harness({
+    fonts: new Promise((resolve) => {
+      finishFonts = resolve;
+    }),
+  });
+  const original = {
+    printFilename: "Zainab",
+    preparePrintContent: () =>
+      new Promise((resolve) => {
+        finishPages = resolve;
+      }),
+  };
+  const pending = clickPrint(app, original);
+  app.render({ printFilename: "Another lecturer" });
+  assert.equal(app.prints(), 0);
+  finishPages({ type: "img", props: { children: "Zainab canonical pages" } });
+  // Commit the newly prepared snapshot before the next animation-frame dispatch.
+  await new Promise(setImmediate);
+  app.render({ printFilename: "Another lecturer" });
+  finishFonts();
+  await pending;
+  const tree = app.render({ printFilename: "Another lecturer" });
+  assert.equal(snapshot(tree).props.children.props.children, "Zainab canonical pages");
+  assert.deepEqual(app.printedTitles, ["Zainab"]);
+  app.afterPrint();
+  app.unmount();
+});
+
+test("a page-rendering failure prints nothing and a subsequent retry can succeed", async () => {
+  const app = harness();
+  await clickPrint(app, {
+    preparePrintContent: async () => {
+      throw new Error("page overflow");
+    },
+  });
+  assert.equal(app.prints(), 0);
+  assert.deepEqual(app.errors, ["page overflow"]);
+  await clickPrint(app, { preparePrintContent: async () => ({ type: "img", props: {} }) });
+  assert.equal(app.prints(), 1);
+  app.afterPrint();
+  app.unmount();
+});
+
+test("leaving during page rendering prevents a late print", async () => {
+  let finishPages;
+  const app = harness();
+  const pending = clickPrint(app, {
+    preparePrintContent: () =>
+      new Promise((resolve) => {
+        finishPages = resolve;
+      }),
+  });
+  app.unmount();
+  finishPages({ type: "img", props: {} });
+  await pending;
+  assert.equal(app.prints(), 0);
 });

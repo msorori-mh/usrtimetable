@@ -5,6 +5,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { useCanManageActiveCollege } from "@/hooks/use-can-manage";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { canPrintTimetableVersion } from "@/lib/reports/timetable-print-access";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -90,6 +92,7 @@ function TimetablePage() {
   useEducationSourcePublications();
   const { active } = useActiveCollege();
   const canManageRole = useCanManageActiveCollege();
+  const currentUser = useCurrentUser();
   const qc = useQueryClient();
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -594,11 +597,13 @@ function TimetablePage() {
               </SelectContent>
             </Select>
           </div>
-          <Button variant="outline" asChild>
-            <Link to="/timetable/$versionId/print" params={{ versionId }}>
-              <Printer className="h-4 w-4 me-1" /> طباعة وتصدير الجدول
-            </Link>
-          </Button>
+          {canPrintTimetableVersion(version.status, currentUser.data) && (
+            <Button variant="outline" asChild>
+              <Link to="/timetable/$versionId/print" params={{ versionId }}>
+                <Printer className="h-4 w-4 me-1" /> طباعة وتصدير الجدول
+              </Link>
+            </Button>
+          )}
           <Button variant="outline" onClick={runQuality} disabled={scoring}>
             <Gauge className="h-4 w-4 me-1" /> {scoring ? "..." : "احتساب الجودة"}
           </Button>

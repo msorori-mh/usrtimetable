@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   buildSystemHoursRows,
+  buildSystemHoursRankRows,
+  systemHoursRankHeaders,
   parseSystemHours,
   systemHoursHeaders,
   type SystemHoursFact,
@@ -92,4 +94,58 @@ test("unclassified employment stays visible but never becomes payable hours", ()
   for (const kind of ["contractual", "overload_system"] as const) {
     assert.equal(row({ classification_pending: true }, kind).total, null);
   }
+});
+
+// The grouped report aggregates the same already-filtered lecturer rows used by exports.
+test("rank totals preserve system hours and lecturer counts", () => {
+  const details = buildSystemHoursRows(
+    [
+      { ...fact, identity_id: "a", rank: "أستاذ مساعد", regular: 2.25, parallel: 1.5 },
+      { ...fact, identity_id: "b", rank: " أستاذ  مساعد ", regular: 3.5, parallel: 2.25 },
+      { ...fact, identity_id: "c", rank: "مدرس", regular: 4, parallel: 0 },
+    ],
+    "contractual",
+    "all",
+  );
+  const groups = buildSystemHoursRankRows(details);
+  const assistant = groups.find((r) => r.rank === "أستاذ مساعد")!;
+  assert.deepEqual(
+    [assistant.lecturer_count, assistant.regular, assistant.parallel, assistant.total],
+    [2, 5.75, 3.75, 9.5],
+  );
+  assert.equal(
+    groups.reduce((sum, r) => sum + Number(r.total), 0),
+    details.reduce((sum, r) => sum + Number(r.total), 0),
+  );
+});
+test("missing ranks are retained as their own group", () => {
+  const groups = buildSystemHoursRankRows([
+    row({ rank: null }, "contractual"),
+    row({ rank: "  " }, "contractual"),
+  ]);
+  assert.equal(groups.length, 1);
+  assert.equal(groups[0].rank, "غير محددة");
+  assert.equal(groups[0].lecturer_count, 2);
+});
+test("unresolved rank-group hours remain null; partial confirmed totals remain explicit", () => {
+  const pending = row({ rank: "مدرس", allocation_pending: true }, "contractual");
+  const group = buildSystemHoursRankRows([pending])[0];
+  assert.deepEqual(
+    [group.regular, group.parallel, group.total, group.incomplete],
+    [null, null, null, 1],
+  );
+  const partial = buildSystemHoursRankRows([pending, row({ rank: "مدرس" }, "contractual")])[0];
+  assert.equal(partial.total, 21);
+  assert.equal(partial.incomplete, 1);
+  assert.match(String(partial.status), /جزئيًا/);
+});
+test("rank summaries follow the chosen system and export exactly the matching columns", () => {
+  for (const system of ["regular", "parallel"] as const) {
+    const group = buildSystemHoursRankRows([row({}, "contractual", system)])[0];
+    assert.equal(group.total, system === "regular" ? 15 : 6);
+    const keys = systemHoursRankHeaders(system).map((h) => h.key);
+    assert.ok(keys.includes("rank") && keys.includes("lecturer_count"));
+    assert.ok(!keys.includes(system === "regular" ? "parallel" : "regular"));
+  }
+  assert.deepEqual(buildSystemHoursRankRows([]), []);
 });

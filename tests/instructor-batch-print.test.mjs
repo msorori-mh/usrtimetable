@@ -11,9 +11,11 @@ test("every lecturer's individual schedule prints in one job", () => {
   // The batch reuses the single-lecturer sheet: same header, view and hours summary.
   assert.match(route, /<InstructorBatchPrint\s+items=\{instructors\}/);
   assert.match(route, /const loadBatchSheet = async \(/);
-  assert.match(route, /reportTitle=\{`جدول المحاضر — \$\{instructor\.full_name\}`\}/);
-  assert.match(route, /summary=\{sheetSummary\}/);
-  assert.match(route, /sessions=\{sheetSummary\.sessions\}/);
+  assert.match(route, /const buildPrintEntry =/);
+  assert.match(route, /const entry = await loadPdfEntry\(instructor\)/);
+  assert.match(route, /prepareInstructorPrintPages\(entry\.sheet, \{ includeWeekly: false \}\)/);
+  assert.match(route, /preparePrintContent=\{async/);
+  assert.match(route, /buildPrintEntry\(selectedInstructor, isHourlyContract, summary\)\.sheet/);
   // Scope follows the report: other colleges only for a cross-college viewer.
   assert.match(
     route,
@@ -40,7 +42,11 @@ test("the batch never prints a partial set and prints only its own sheets", () =
   );
 });
 
-test("the lecturer schedule report offers published versions only", () => {
-  assert.match(route, /fixedStatusMode: "published_only"/);
+test("the lecturer schedule report limits unpublished versions to the general admin", () => {
+  assert.match(
+    route,
+    /fixedStatusMode:\s*canPrintUnpublishedTimetable\(currentUser\.data\)\s*\?\s*"specific_version"\s*:\s*"published_only"/,
+  );
   assert.doesNotMatch(route, /defaultStatusMode: "specific_version"/);
+  assert.match(route, /timetablePrintNotice/);
 });

@@ -36,6 +36,9 @@ import { fetchHydratedVersionSessions } from "@/lib/schedule-builder/queries";
 import { fetchStudentPrintMemberships } from "@/lib/print-center/student-memberships-query";
 import { uniquePhysicalSessions } from "@/lib/reports/program-timetable-shared";
 import { useReportContext } from "@/hooks/reports/useReportContext";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { canPrintUnpublishedTimetable } from "@/lib/reports/timetable-print-access";
+import { fetchPrintableScheduleVersion } from "@/lib/reports/queries/timetable-print-access";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import {
   changeProgramReportFilter,
@@ -77,15 +80,16 @@ const PROGRAM_TIMETABLE_EXPORT_HEADERS = [
 ];
 
 function Page() {
+  const currentUser = useCurrentUser();
   const [initial] = useState(() =>
     parseProgramReportSearch(
       new URLSearchParams(typeof window === "undefined" ? "" : window.location.search),
     ),
   );
   const ctx = useReportContext({
-    // The printed program/level timetable is the official one: only published
-    // versions may be chosen, so a draft can never be printed by mistake.
-    fixedStatusMode: "published_only",
+    fixedStatusMode: canPrintUnpublishedTimetable(currentUser.data)
+      ? "specific_version"
+      : "published_only",
     defaultStudySystem: "all",
     initialFilters: initial.context,
   });
@@ -183,6 +187,7 @@ function ProgramLevelReport({
     queryKey: ["plt-version-sessions", ctx.collegeId, ctx.versionId, ctx.studySystem],
     enabled: !!ctx.collegeId && !!ctx.selectedVersion,
     queryFn: async () => {
+      await fetchPrintableScheduleVersion(ctx.versionId!);
       // A merged lecture is stored once, on its anchor group. Read every
       // session of the version and give each attending cohort its own copy, so
       // a cohort's timetable also lists the lectures it attends with others;
@@ -410,6 +415,7 @@ function ProgramLevelReport({
       filters={
         <ReportFilters
           context={ctx}
+          statusMode={false}
           extraSummary={academicSummary ? academicSummary.split(" · ") : undefined}
           advanced={filters.slice(3).map(({ field, label, items }) => (
             <ReportFilterField key={field} label={label} htmlFor={`plt-${field}`}>
