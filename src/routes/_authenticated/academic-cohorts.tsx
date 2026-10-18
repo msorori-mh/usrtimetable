@@ -52,6 +52,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { userErrorMessage } from "@/lib/user-error";
+import { formatNumber } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/academic-cohorts")({
   head: () => ({ meta: [{ title: "الدفعات الدراسية" }] }),
@@ -545,7 +546,7 @@ function AcademicCohortsWorkspace() {
                 >
                   <span className="text-sm text-muted-foreground">{stat.label}</span>
                   <strong className="text-2xl tabular-nums text-primary">
-                    {stat.value.toLocaleString("ar")}
+                    {formatNumber(stat.value)}
                   </strong>
                 </Card>
               ))}

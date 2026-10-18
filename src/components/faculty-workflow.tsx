@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { userErrorMessage } from "@/lib/user-error";
+import { confirmAction } from "@/components/confirm-dialog";
 
 export { FacultyTeachingRequests } from "@/components/faculty-teaching-requests";
 
@@ -94,11 +95,14 @@ export function FacultyHomeReview({ collegeId }: { collegeId: string }) {
           <table className="w-full text-start text-sm">
             <thead>
               <tr>
-                {["المحاضر", "الكلية الأصلية", "النصاب المعتمد", "الحالة", ""].map((v, i) => (
-                  <th className="p-2" key={i}>
+                {["المحاضر", "الكلية الأصلية", "النصاب المعتمد", "الحالة"].map((v) => (
+                  <th className="p-2" key={v}>
                     {v}
                   </th>
                 ))}
+                <th className="p-2">
+                  <span className="sr-only">إجراء</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -120,6 +124,7 @@ export function FacultyHomeReview({ collegeId }: { collegeId: string }) {
                         <Button
                           variant="outline"
                           size="sm"
+                          aria-label={`تسوية تبعية ${r.name}`}
                           onClick={() => {
                             setEdit(r);
                             setHome(r.home_college_id ?? "");
@@ -211,8 +216,15 @@ export function FacultyHomeReview({ collegeId }: { collegeId: string }) {
               <>
                 <Button
                   disabled={blocked !== null}
-                  onClick={() => {
+                  onClick={async () => {
                     if (blocked !== null || save.isPending) return;
+                    const ok = await confirmAction({
+                      title: `اعتماد تسوية تبعية ${edit?.name ?? "المحاضر"}؟`,
+                      description:
+                        "يُعتمد السجل المختار مصدرًا لبيانات المحاضر ونصابه في الكلية الأصلية لكل السجلات المرتبطة.",
+                      confirmLabel: "اعتماد التسوية",
+                    });
+                    if (!ok) return;
                     setSaveError(null);
                     save.mutate();
                   }}

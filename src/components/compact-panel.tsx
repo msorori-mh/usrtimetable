@@ -18,6 +18,7 @@ import {
   type Applied,
 } from "@/lib/auto-scheduler/compact-service";
 import { userErrorMessage } from "@/lib/user-error";
+import { formatDecimal } from "@/lib/format";
 
 export function CompactSchedulePanel({
   collegeId,
@@ -215,7 +216,7 @@ export function CompactSchedulePanel({
     ["teachingMinutes", "دقائق التدريس"],
   ];
   const display = (value: Metrics[keyof Metrics]) =>
-    typeof value === "number" ? Number(value.toFixed(1)).toLocaleString("ar") : String(value);
+    typeof value === "number" ? formatDecimal(value, 1) : String(value);
   return (
     <Card className="p-4 space-y-3" dir="rtl">
       <h2 className="font-bold">تحسين توزيع الجدول</h2>

@@ -76,6 +76,7 @@ import {
   fetchPublishedVersions,
   fetchWorkingVersions,
 } from "@/lib/reports/queries/version-queries";
+import { formatDecimal, formatNumber } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/teaching-assignments")({
   head: () => ({ meta: [{ title: "الإسناد التدريسي" }] }),
@@ -734,7 +735,7 @@ function TeachingAssignmentsV2Page() {
               <div className="text-end">
                 <p className="text-xs text-muted-foreground">إجمالي الساعات المسندة</p>
                 <p className="text-2xl font-bold tabular-nums text-primary">
-                  {instructorHoursSummary.totalHours.toLocaleString("ar-YE")} ساعة
+                  {formatDecimal(instructorHoursSummary.totalHours)} ساعة
                 </p>
               </div>
               <div className="text-end" data-testid="ta-v2-instructor-attendance-days">
@@ -743,12 +744,12 @@ function TeachingAssignmentsV2Page() {
                   <span dir="ltr" data-testid="ta-v2-instructor-attendance-days-value">
                     {scheduleUnavailable
                       ? "—"
-                      : attendanceDaysSummary.totalDays.toLocaleString("ar-YE")}
+                      : formatNumber(attendanceDaysSummary.totalDays)}
                   </span>{" "}
                   <span>{attendanceDaysSummary.totalDays === 1 ? "يوم" : "أيام"}</span>
                   {attendanceDaysSummary.perInstructor.length > 1 && (
                     <span className="ms-1 text-sm font-medium text-muted-foreground">
-                      ({attendanceDaysSummary.perInstructor.length.toLocaleString("ar-YE")} محاضرين)
+                      ({formatNumber(attendanceDaysSummary.perInstructor.length)} محاضرين)
                     </span>
                   )}
                 </p>

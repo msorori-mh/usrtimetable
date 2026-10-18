@@ -120,6 +120,7 @@ import {
   Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatDateTime, formatDecimal } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/schedule-builder")({
   head: () => ({ meta: [{ title: "بناء الجدول" }] }),
@@ -146,14 +147,7 @@ function sessionDurationHours(session: Pick<WorkspaceSessionView, "start_time" |
 }
 
 function formatUpdatedAt(iso: string): string {
-  try {
-    return new Intl.DateTimeFormat("ar-SA", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(new Date(iso));
-  } catch {
-    return iso.slice(0, 16).replace("T", " ");
-  }
+  return formatDateTime(iso);
 }
 
 function ScheduleBuilderWorkspacePage() {
@@ -1078,7 +1072,7 @@ function ScheduleBuilderWorkspacePage() {
                 <div className="flex flex-wrap gap-2 text-sm">
                   <Badge variant="secondary">{perspectiveSessions.length} محاضرة في النسخة</Badge>
                   <Badge variant="outline">
-                    {instructorHours.toLocaleString("ar")} ساعة أسبوعيًا
+                    {formatDecimal(instructorHours)} ساعة أسبوعيًا
                   </Badge>
                 </div>
               </div>
