@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { readAllRows } from "@/lib/supabase/read-all";
 import {
   fetchCurrentPublishedVersions,
   onlyCurrentPublished,
@@ -126,39 +127,42 @@ function Page() {
     queryKey: ["pt-c", active?.id],
     enabled: !!active,
     queryFn: async () =>
-      (
-        await supabase
+      readAllRows((from, to) =>
+        supabase
           .from("academic_cohorts")
           .select("id, code, program_id, level_id, term_id")
           .eq("college_id", active!.id)
           .order("code")
-          .throwOnError()
-      ).data ?? [],
+          .order("id")
+          .range(from, to),
+      ),
   });
   const { data: deliveryGroups, error: deliveryGroupsError } = useQuery({
     queryKey: ["pt-dg", active?.id],
     enabled: !!active,
     queryFn: async () =>
-      (
-        await supabase
+      readAllRows((from, to) =>
+        supabase
           .from("delivery_groups")
           .select("id, group_code, cohort_id")
           .eq("college_id", active!.id)
           .order("group_code")
-          .throwOnError()
-      ).data ?? [],
+          .order("id")
+          .range(from, to),
+      ),
   });
   const { data: ins, error: insError } = useQuery({
     queryKey: ["pt-i", active?.id],
     enabled: !!active,
     queryFn: async () =>
-      (
-        await supabase
+      readAllRows((from, to) =>
+        supabase
           .from("instructors")
           .select("id, full_name")
           .eq("college_id", active!.id)
-          .throwOnError()
-      ).data ?? [],
+          .order("id")
+          .range(from, to),
+      ),
   });
   const { data: rooms, error: roomsError } = useQuery({
     queryKey: ["pt-r", active?.id],
