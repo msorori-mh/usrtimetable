@@ -24,56 +24,74 @@ BEGIN
   EXCEPTION WHEN insufficient_privilege THEN NULL;
   END;
 
-  -- Non-exceptionable rules are refused.
+  -- Decision 2026-10-18: no new conflict exceptions for anyone, any code.
   BEGIN
-    PERFORM public.approve_conflict_exception(tsched.id('ver-a'), 'itcs_theory_after_14', tsched.id('s-0'),
-      NULL, 'college_decision', 'سبب');
-    RAISE EXCEPTION 'TEST_FAIL: ITCS 14:00 waived';
-  EXCEPTION WHEN check_violation THEN NULL;
+    PERFORM public.approve_conflict_exception(tsched.id('ver-a'), 'room_conflict', tsched.id('s-clash'),
+      tsched.id('s-0'), 'college_decision', 'قاعة مشتركة');
+    RAISE EXCEPTION 'TEST_FAIL: manager approved a new exception';
+  EXCEPTION WHEN raise_exception THEN
+    PERFORM tsched.assert(SQLERRM = 'CONFLICT_EXCEPTIONS_CLOSED', SQLERRM);
   END;
-  -- A college manager may not waive a clash with another college's timetable.
+  PERFORM tsched.as_user('super');
   BEGIN
     PERFORM public.approve_conflict_exception(tsched.id('ver-a'), 'instructor_conflict', tsched.id('s-0'),
-      NULL, 'cross_college_instructor', 'سبب');
-    RAISE EXCEPTION 'TEST_FAIL: manager approved cross-college exception';
-  EXCEPTION WHEN insufficient_privilege THEN NULL;
+      NULL, 'cross_college_instructor', 'تنسيق');
+    RAISE EXCEPTION 'TEST_FAIL: super admin approved a new exception';
+  EXCEPTION WHEN raise_exception THEN
+    PERFORM tsched.assert(SQLERRM = 'CONFLICT_EXCEPTIONS_CLOSED', SQLERRM);
   END;
-
-  -- Ordinary approval: approver is the caller, audited, and the gate honours it.
-  ex := public.approve_conflict_exception(tsched.id('ver-a'), 'room_conflict', tsched.id('s-clash'),
-    tsched.id('s-0'), 'college_decision', 'قاعة مشتركة بقرار العميد');
-  SELECT * INTO e FROM public.schedule_version_conflict_exceptions WHERE id = ex;
-  PERFORM tsched.assert(e.approved_by = tsched.id('admin-a') AND e.approved_at IS NOT NULL, 'approver forced');
-  r := public.validate_schedule_version(tsched.id('ver-a'));
-  PERFORM tsched.assert((r->>'hard_count')::int = 0 AND (r->>'approved_count')::int = 1, (r - 'conflicts')::text);
-
-  -- Revocation brings the blocker back.
-  PERFORM public.revoke_conflict_exception(ex, 'انتهى القرار');
-  r := public.validate_schedule_version(tsched.id('ver-a'));
-  PERFORM tsched.assert((r->>'hard_count')::int = 1, 'revoked exception still honoured');
-
-  -- Super admin may approve the cross-college type.
-  PERFORM tsched.as_user('super');
-  ex := public.approve_conflict_exception(tsched.id('ver-a'), 'instructor_conflict', tsched.id('s-0'),
-    NULL, 'cross_college_instructor', 'تنسيق معتمد');
-  PERFORM tsched.assert((SELECT approved_by FROM public.schedule_version_conflict_exceptions WHERE id = ex) = tsched.id('super'), 'super approver');
 END $t$;
 RESET ROLE;
-SELECT tsched.assert((SELECT count(*) FROM public.audit_logs WHERE entity = 'schedule_version_conflict_exceptions'
-  AND action IN ('approve_conflict_exception', 'revoke_conflict_exception')) = 3, 'audited');
--- Server functions (e.g. a one-off migration) must still name an approver.
+
+-- An exception approved before the freeze (current term) stays valid and can be revoked.
+SET LOCAL session_replication_role = replica;
+INSERT INTO public.schedule_version_conflict_exceptions(id, college_id, schedule_version_id, conflict_code,
+  session_id, related_session_id, approval_type, reason, status, approved_by, approved_at)
+VALUES (tsched.id('legacy-ex'), tsched.id('A'), tsched.id('ver-a'), 'room_conflict', tsched.id('s-clash'),
+  tsched.id('s-0'), 'college_decision', 'قرار سابق في الفصل الحالي', 'approved', tsched.id('admin-a'), now());
+SET LOCAL session_replication_role = origin;
+
+-- Even a server function cannot insert a fresh exception.
 DO $t$
 BEGIN
-  BEGIN
-    PERFORM set_config('request.jwt.claim.sub', '', true);
-    INSERT INTO public.schedule_version_conflict_exceptions(college_id, schedule_version_id, conflict_code,
-      session_id, related_session_id, approval_type, reason, status, approved_at)
-    VALUES (tsched.id('A'), tsched.id('ver-a'), 'section_conflict', tsched.id('s-0'), tsched.id('s-1'),
-      'college_decision', 'x', 'approved', now());
-    RAISE EXCEPTION 'TEST_FAIL: approver-less exception';
-  EXCEPTION WHEN check_violation THEN
-    PERFORM tsched.assert(SQLERRM = 'CONFLICT_EXCEPTION_APPROVER_REQUIRED', SQLERRM);
-  END;
+  INSERT INTO public.schedule_version_conflict_exceptions(college_id, schedule_version_id, conflict_code,
+    session_id, related_session_id, approval_type, reason, status, approved_by, approved_at)
+  VALUES (tsched.id('A'), tsched.id('ver-a'), 'section_conflict', tsched.id('s-0'), tsched.id('s-1'),
+    'college_decision', 'x', 'approved', tsched.id('admin-a'), now());
+  RAISE EXCEPTION 'TEST_FAIL: server-side new exception';
+EXCEPTION WHEN raise_exception THEN
+  PERFORM tsched.assert(SQLERRM = 'CONFLICT_EXCEPTIONS_CLOSED', SQLERRM);
+END $t$;
+
+-- A clone carry-over inside the same term is kept.
+INSERT INTO public.schedule_version_conflict_exceptions(college_id, schedule_version_id, conflict_code,
+  session_id, related_session_id, approval_type, reason, status, approved_by, approved_at, metadata)
+VALUES (tsched.id('A'), tsched.id('ver-a'), 'room_conflict', tsched.id('s-1'), NULL,
+  'college_decision', 'منسوخ', 'approved', tsched.id('admin-a'), now(),
+  jsonb_build_object('cloned_from_exception_id', tsched.id('legacy-ex')));
+SELECT tsched.assert((SELECT count(*) FROM public.schedule_version_conflict_exceptions
+  WHERE metadata->>'cloned_from_exception_id' = tsched.id('legacy-ex')::text) = 1, 'same-term carry-over kept');
+
+SELECT tsched.as_user('admin-a');
+SET ROLE authenticated;
+DO $t$
+DECLARE r jsonb;
+BEGIN
+  r := public.validate_schedule_version(tsched.id('ver-a'));
+  PERFORM tsched.assert((r->>'hard_count')::int = 0 AND (r->>'approved_count')::int = 1, (r - 'conflicts')::text);
+  PERFORM public.revoke_conflict_exception(tsched.id('legacy-ex'), 'انتهى القرار');
+  r := public.validate_schedule_version(tsched.id('ver-a'));
+  PERFORM tsched.assert((r->>'hard_count')::int = 1, 'revoked exception still honoured');
+END $t$;
+RESET ROLE;
+
+-- A revoked exception cannot be turned back into an approval.
+DO $t$
+BEGIN
+  UPDATE public.schedule_version_conflict_exceptions SET status = 'approved' WHERE id = tsched.id('legacy-ex');
+  RAISE EXCEPTION 'TEST_FAIL: re-approval accepted';
+EXCEPTION WHEN OTHERS THEN
+  PERFORM tsched.assert(SQLERRM IN ('CONFLICT_EXCEPTIONS_CLOSED', 'CONFLICT_EXCEPTION_REVOKED_IS_FINAL'), SQLERRM);
 END $t$;
 ROLLBACK;
-SELECT 'PASS: sched-conflict-exceptions-db (H-7)' AS result;
+SELECT 'PASS: sched-conflict-exceptions-db (H-7, exception freeze)' AS result;

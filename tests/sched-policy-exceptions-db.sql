@@ -32,12 +32,39 @@ BEGIN
     INSERT INTO public.scheduling_policy_exceptions(college_id, schedule_version_id, rule_code, reason)
     VALUES (tsched.id('A'), tsched.id('ver-a'), 'itcs_theory_after_14', 'x');
     RAISE EXCEPTION 'TEST_FAIL: ITCS rule waived';
-  EXCEPTION WHEN check_violation THEN NULL;
+  EXCEPTION WHEN check_violation OR raise_exception THEN
+    PERFORM tsched.assert(SQLERRM <> 'TEST_FAIL: ITCS rule waived', SQLERRM);
   END;
-  INSERT INTO public.scheduling_policy_exceptions(college_id, schedule_version_id, rule_code, reason, approved_by)
-  VALUES (tsched.id('A'), tsched.id('ver-a'), 'delivery_group_conflict', 'بيانات مجموعات قديمة', tsched.id('admin-a'))
-  RETURNING * INTO w;
-  PERFORM tsched.assert(w.approved_by = tsched.id('super'), 'approver forced to caller');
+  -- Decision 2026-10-18: even a super admin cannot add a new waiver.
+  BEGIN
+    INSERT INTO public.scheduling_policy_exceptions(college_id, schedule_version_id, rule_code, reason)
+    VALUES (tsched.id('A'), tsched.id('ver-a'), 'delivery_group_conflict', 'x');
+    RAISE EXCEPTION 'TEST_FAIL: new waiver accepted';
+  EXCEPTION WHEN raise_exception THEN
+    PERFORM tsched.assert(SQLERRM = 'POLICY_WAIVERS_CLOSED', SQLERRM);
+  END;
+END $t$;
+RESET ROLE;
+-- A waiver that existed before the freeze (current term) still applies.
+SET LOCAL session_replication_role = replica;
+INSERT INTO public.scheduling_policy_exceptions(id, college_id, schedule_version_id, rule_code, reason, approved_by, approved_at)
+VALUES (tsched.id('legacy-waiver'), tsched.id('A'), tsched.id('ver-a'), 'delivery_group_conflict',
+  'بيانات مجموعات قديمة', tsched.id('super'), now());
+SET LOCAL session_replication_role = origin;
+-- Widening it (removing / extending expiry) is refused; shortening is allowed.
+DO $t$
+BEGIN
+  UPDATE public.scheduling_policy_exceptions SET schedule_version_id = NULL WHERE id = tsched.id('legacy-waiver');
+  RAISE EXCEPTION 'TEST_FAIL: waiver widened to the whole college';
+EXCEPTION WHEN raise_exception THEN
+  PERFORM tsched.assert(SQLERRM = 'POLICY_WAIVERS_CLOSED', SQLERRM);
+END $t$;
+SELECT tsched.as_user('super');
+SET ROLE authenticated;
+DO $t$
+DECLARE r jsonb; w record;
+BEGIN
+  SELECT * INTO w FROM public.scheduling_policy_exceptions WHERE id = tsched.id('legacy-waiver');
   r := public.validate_schedule_version(tsched.id('ver-a'));
   PERFORM tsched.assert((r->>'hard_count')::int = 0 AND (r->>'waived_count')::int = 1, (r - 'conflicts')::text);
   PERFORM tsched.assert(r->'warnings'->0->>'code' = 'delivery_group_conflict' AND (r->'warnings'->0->>'waived')::boolean,

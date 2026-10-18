@@ -49,41 +49,43 @@ INSERT INTO public.teaching_assignments(college_id, course_offering_id, instruct
 SELECT tsched.id('A'), tsched.id('off-'||(n % 30)), tsched.id('ins-'||n), true FROM generate_series(0, 39) n;
 SET LOCAL session_replication_role = origin;
 
-SELECT tsched.as_user('admin-a');
-SET ROLE authenticated;
+-- New approvals are closed (decision 2026-10-18); simulate approvals that already exist.
 DO $t$
-DECLARE r jsonb; n_before int; n_after int; v_ex uuid;
+DECLARE r jsonb; n_before int;
 BEGIN
+  PERFORM tsched.as_user('admin-a');
   r := public.validate_schedule_version(tsched.id('ver-a'));
   n_before := (r->>'hard_count')::int;
   PERFORM tsched.assert(EXISTS (SELECT 1 FROM jsonb_array_elements(r->'hard_conflicts') c
     WHERE c->'metadata'->>'scope' = 'external'), 'fixture must contain an external clash');
-  -- A college admin may record an ordinary exception, but it must not waive the external clash.
-  v_ex := public.approve_conflict_exception(tsched.id('ver-a'), 'instructor_conflict',
-    tsched.id('s-0'), NULL, 'manual_review', 'محاولة تجاوز');
-  r := public.validate_schedule_version(tsched.id('ver-a'));
-  n_after := (r->>'hard_count')::int;
-  PERFORM tsched.assert(n_after = n_before,
-    format('H-7: ordinary exception waived an external clash (%s -> %s)', n_before, n_after));
-  PERFORM tsched.assert(EXISTS (SELECT 1 FROM jsonb_array_elements(r->'hard_conflicts') c
-    WHERE c->'metadata'->>'scope' = 'external'), 'H-7: external clash disappeared');
-  PERFORM public.revoke_conflict_exception(v_ex, 'اختبار');
+  PERFORM set_config('test.n_before', n_before::text, true);
 END $t$;
-RESET ROLE;
-
--- A super admin's cross_college_instructor exception does waive it.
-SELECT tsched.as_user('super');
-SET ROLE authenticated;
+SET LOCAL session_replication_role = replica;
+INSERT INTO public.schedule_version_conflict_exceptions(id, college_id, schedule_version_id, conflict_code,
+  session_id, related_session_id, approval_type, reason, status, approved_by, approved_at)
+VALUES (tsched.id('ex-ordinary'), tsched.id('A'), tsched.id('ver-a'), 'instructor_conflict', tsched.id('s-0'), NULL,
+  'manual_review', 'استثناء عادي سابق', 'approved', tsched.id('admin-a'), now());
+SET LOCAL session_replication_role = origin;
 DO $t$
 DECLARE r jsonb;
 BEGIN
-  PERFORM public.approve_conflict_exception(tsched.id('ver-a'), 'instructor_conflict',
-    tsched.id('s-0'), NULL, 'cross_college_instructor', 'اعتماد مشترك بين الكليتين');
+  -- An ordinary (college-level) exception must not waive the external clash.
+  r := public.validate_schedule_version(tsched.id('ver-a'));
+  PERFORM tsched.assert((r->>'hard_count')::int = current_setting('test.n_before')::int,
+    'H-7: ordinary exception waived an external clash');
+END $t$;
+SET LOCAL session_replication_role = replica;
+UPDATE public.schedule_version_conflict_exceptions SET approval_type = 'cross_college_instructor',
+  approved_by = tsched.id('super') WHERE id = tsched.id('ex-ordinary');
+SET LOCAL session_replication_role = origin;
+DO $t$
+DECLARE r jsonb;
+BEGIN
+  -- A super admin's cross_college_instructor exception (approved before the freeze) does waive it.
   r := public.validate_schedule_version(tsched.id('ver-a'));
   PERFORM tsched.assert(NOT EXISTS (SELECT 1 FROM jsonb_array_elements(r->'hard_conflicts') c
-    WHERE c->'metadata'->>'scope' = 'external'), 'H-7: super-admin cross-college exception not applied');
+    WHERE c->'metadata'->>'scope' = 'external'), 'H-7: cross-college exception not applied');
 END $t$;
-RESET ROLE;
 
 -- H-1: no API role may execute link_intake_shared_group.
 DO $t$
