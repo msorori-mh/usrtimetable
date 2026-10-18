@@ -1,4 +1,4 @@
-import { resolveAcademicDeliveryContext } from "../../src/lib/academic-delivery/legacy-section-adapter.ts";
+import { resolveAcademicDeliveryContext } from "../support/legacy-section-adapter.ts";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);

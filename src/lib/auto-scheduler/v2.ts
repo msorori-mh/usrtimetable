@@ -13,7 +13,7 @@ import {
   createScheduleSessionFromAssignmentV2,
   listScheduleBuilderV2WorkItems,
 } from "@/lib/schedule-builder/v2-assignment-service";
-import type { AutoRunMode, AutoRunResult, UnplacedItem } from "@/lib/auto-scheduler/greedy";
+import type { AutoRunMode, AutoRunResult, UnplacedItem } from "@/lib/auto-scheduler/types";
 import { loadCompactSnapshot } from "@/lib/auto-scheduler/compact-service";
 import { measure, compactSlots, minutes, type Session } from "@/lib/auto-scheduler/compact";
 import {

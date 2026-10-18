@@ -9,7 +9,7 @@ import {
   CAPACITY_EXCEPTION_LIMIT,
   planSubgroups,
   type SubgroupPlanRow,
-} from "@/lib/schedule-builder/section-subgroups";
+} from "../../src/lib/schedule-builder/section-subgroups";
 
 export interface SimRoom {
   id: string;
