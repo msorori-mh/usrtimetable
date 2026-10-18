@@ -29,6 +29,9 @@ import { logAudit } from "@/lib/audit";
 import { Users, Pencil, Trash2 } from "lucide-react";
 import { entityDisplayName } from "@/lib/entity-display";
 import { userErrorMessage } from "@/lib/user-error";
+import { QueryErrorNotice } from "@/components/app-states/query-error-notice";
+import { confirmAction } from "@/components/confirm-dialog";
+import { readAllRows } from "@/lib/supabase/read-all";
 
 export const Route = createFileRoute("/_authenticated/sections")({
   head: () => ({ meta: [{ title: "Legacy — للعرض التاريخي" }] }),
@@ -74,12 +77,15 @@ function SectionsPage() {
     queryKey: ["courses", active?.id, "options"],
     enabled: !!active,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const data = await readAllRows((from, to) =>
+        supabase
           .from("courses")
           .select("id, code, name")
           .eq("college_id", active!.id)
-          .order("code");
-      if (error) throw error;
+          .order("code")
+            .order("id")
+            .range(from, to),
+      );
       return data ?? [];
     },
   });
@@ -97,18 +103,19 @@ function SectionsPage() {
     },
   });
 
-  const { data: rows, isLoading } = useQuery({
+  const { data: rows, isLoading, isError, error: rowsError, refetch } = useQuery({
     queryKey: ["sections", active?.id, termFilter],
     enabled: !!active,
     queryFn: async () => {
-      let q = supabase
-        .from("sections")
-        .select("id, course_id, term_id, section_number, capacity, college_id")
-        .eq("college_id", active!.id);
-      if (termFilter !== "all") q = q.eq("term_id", termFilter);
-      const { data, error } = await q.order("section_number");
-      if (error) throw error;
-      return (data ?? []) as Section[];
+      const data = await readAllRows((from, to) => {
+        let q = supabase
+          .from("sections")
+          .select("id, course_id, term_id, section_number, capacity, college_id")
+          .eq("college_id", active!.id);
+        if (termFilter !== "all") q = q.eq("term_id", termFilter);
+        return q.order("section_number").order("id").range(from, to);
+      });
+      return data as Section[];
     },
   });
 
@@ -247,12 +254,12 @@ function SectionsPage() {
               </DialogHeader>
               <div className="space-y-3">
                 <div>
-                  <Label>المقرر</Label>
+                  <Label htmlFor="sections-f3">المقرر</Label>
                   <Select
                     value={form.course_id}
                     onValueChange={(v) => setForm({ ...form, course_id: v })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="sections-f3">
                       <SelectValue placeholder="اختر المقرر" />
                     </SelectTrigger>
                     <SelectContent>
@@ -265,12 +272,12 @@ function SectionsPage() {
                   </Select>
                 </div>
                 <div>
-                  <Label>الفصل</Label>
+                  <Label htmlFor="sections-f4">الفصل</Label>
                   <Select
                     value={form.term_id}
                     onValueChange={(v) => setForm({ ...form, term_id: v })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="sections-f4">
                       <SelectValue placeholder="اختر الفصل" />
                     </SelectTrigger>
                     <SelectContent>
@@ -284,15 +291,15 @@ function SectionsPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label>رقم المجموعة</Label>
-                    <Input
+                    <Label htmlFor="sections-f1">رقم المجموعة</Label>
+                    <Input id="sections-f1"
                       value={form.section_number}
                       onChange={(e) => setForm({ ...form, section_number: e.target.value })}
                     />
                   </div>
                   <div>
-                    <Label>السعة</Label>
-                    <Input
+                    <Label htmlFor="sections-f2">السعة</Label>
+                    <Input id="sections-f2"
                       type="number"
                       min={1}
                       value={form.capacity}
@@ -323,6 +330,8 @@ function SectionsPage() {
       <Card className="overflow-hidden">
         {isLoading ? (
           <p className="p-6 text-center text-muted-foreground">جارٍ التحميل...</p>
+        ) : isError ? (
+          <div className="p-4"><QueryErrorNotice error={rowsError} onRetry={() => void refetch()} /></div>
         ) : !rows || rows.length === 0 ? (
           <p className="p-6 text-center text-muted-foreground">لا توجد مجموعات بعد.</p>
         ) : (
@@ -339,14 +348,16 @@ function SectionsPage() {
                 </div>
                 {canManage && !LEGACY_SECTIONS_WRITE_BLOCKED && (
                   <div className="flex gap-1">
-                    <Button size="sm" variant="ghost" onClick={() => startEdit(s)}>
+                    <Button size="sm" variant="ghost" aria-label={`تعديل ${`مجموعة ${s.section_number}`}`} onClick={() => startEdit(s)}>
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => {
-                        if (confirm("حذف المجموعة؟")) del.mutate(s.id);
+                      aria-label={`حذف ${`مجموعة ${s.section_number}`}`}
+                      onClick={async () => {
+                        const ok = await confirmAction({ title: `حذف مجموعة ${s.section_number} من «${courseMap.get(s.course_id) ?? "المقرر"}»؟`, description: "لا يمكن التراجع عن هذا الإجراء.", confirmLabel: "حذف", destructive: true });
+                        if (ok) del.mutate(s.id);
                       }}
                     >
                       <Trash2 className="h-3.5 w-3.5" />

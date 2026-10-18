@@ -22,6 +22,9 @@ import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { CalendarRange, Pencil, Trash2 } from "lucide-react";
 import { userErrorMessage } from "@/lib/user-error";
+import { QueryErrorNotice } from "@/components/app-states/query-error-notice";
+import { confirmAction } from "@/components/confirm-dialog";
+import { formatDate } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/terms")({
   head: () => ({ meta: [{ title: "الفصول الأكاديمية" }] }),
@@ -58,7 +61,7 @@ function TermsPage() {
     teaching_weeks_count: "",
   });
 
-  const { data: rows, isLoading } = useQuery({
+  const { data: rows, isLoading, isError, error: rowsError, refetch } = useQuery({
     queryKey: ["terms", active?.id],
     enabled: !!active,
     queryFn: async () => {
@@ -121,6 +124,7 @@ function TermsPage() {
     onSuccess: () => {
       toast.success(editing ? "تم التحديث" : "تمت الإضافة");
       qc.invalidateQueries({ queryKey: ["terms", active?.id] });
+      qc.invalidateQueries({ queryKey: ["academic-terms", active?.id] });
       setOpen(false);
       setEditing(null);
     },
@@ -141,6 +145,7 @@ function TermsPage() {
     onSuccess: () => {
       toast.success("تم الحذف");
       qc.invalidateQueries({ queryKey: ["terms", active?.id] });
+      qc.invalidateQueries({ queryKey: ["academic-terms", active?.id] });
     },
     onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
@@ -201,31 +206,31 @@ function TermsPage() {
               </DialogHeader>
               <div className="space-y-3">
                 <div>
-                  <Label>الاسم</Label>
-                  <Input
+                  <Label htmlFor="terms-f1">الاسم</Label>
+                  <Input id="terms-f1"
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                   />
                 </div>
                 <div>
-                  <Label>الرمز</Label>
-                  <Input
+                  <Label htmlFor="terms-f2">الرمز</Label>
+                  <Input id="terms-f2"
                     value={form.code}
                     onChange={(e) => setForm({ ...form, code: e.target.value })}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label>تاريخ البداية</Label>
-                    <Input
+                    <Label htmlFor="terms-f3">تاريخ البداية</Label>
+                    <Input id="terms-f3"
                       type="date"
                       value={form.start_date}
                       onChange={(e) => setForm({ ...form, start_date: e.target.value })}
                     />
                   </div>
                   <div>
-                    <Label>تاريخ النهاية</Label>
-                    <Input
+                    <Label htmlFor="terms-f4">تاريخ النهاية</Label>
+                    <Input id="terms-f4"
                       type="date"
                       value={form.end_date}
                       onChange={(e) => setForm({ ...form, end_date: e.target.value })}
@@ -234,8 +239,8 @@ function TermsPage() {
                 </div>
                 <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <Label>السنة الأكاديمية</Label>
-                    <Input
+                    <Label htmlFor="terms-f5">السنة الأكاديمية</Label>
+                    <Input id="terms-f5"
                       placeholder="2025-2026"
                       value={form.academic_year}
                       onChange={(e) => setForm({ ...form, academic_year: e.target.value })}
@@ -254,8 +259,8 @@ function TermsPage() {
                     </select>
                   </div>
                   <div>
-                    <Label>عدد أسابيع التدريس</Label>
-                    <Input
+                    <Label htmlFor="terms-f6">عدد أسابيع التدريس</Label>
+                    <Input id="terms-f6"
                       type="number"
                       min="0"
                       value={form.teaching_weeks_count}
@@ -287,6 +292,8 @@ function TermsPage() {
       <Card className="overflow-hidden">
         {isLoading ? (
           <p className="p-6 text-center text-muted-foreground">جارٍ التحميل...</p>
+        ) : isError ? (
+          <div className="p-4"><QueryErrorNotice error={rowsError} onRetry={() => void refetch()} /></div>
         ) : !rows || rows.length === 0 ? (
           <p className="p-6 text-center text-muted-foreground">لا توجد فصول بعد.</p>
         ) : (
@@ -303,7 +310,7 @@ function TermsPage() {
                     )}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    <span dir="ltr">{t.code}</span> · {t.start_date ?? "—"} ← {t.end_date ?? "—"}
+                    <span dir="ltr">{t.code}</span> · {formatDate(t.start_date)} ← {formatDate(t.end_date)}
                     {t.term_type
                       ? ` · ${t.term_type === "first" ? "الفصل الدراسي الأول" : t.term_type === "second" ? "الفصل الدراسي الثاني" : t.term_type}`
                       : ""}
@@ -311,14 +318,16 @@ function TermsPage() {
                 </div>
                 {canManage && (
                   <div className="flex gap-1">
-                    <Button size="sm" variant="ghost" onClick={() => startEdit(t)}>
+                    <Button size="sm" variant="ghost" aria-label={`تعديل ${t.name}`} onClick={() => startEdit(t)}>
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => {
-                        if (confirm("حذف الفصل؟")) del.mutate(t.id);
+                      aria-label={`حذف ${t.name}`}
+                      onClick={async () => {
+                        const ok = await confirmAction({ title: `حذف الفصل الدراسي «${t.name}»؟`, description: "قد تُحذف معه بيانات الفصل المرتبطة (العروض والجداول). لا يمكن التراجع عن هذا الإجراء.", confirmLabel: "حذف", destructive: true, typedConfirmation: t.name });
+                        if (ok) del.mutate(t.id);
                       }}
                     >
                       <Trash2 className="h-3.5 w-3.5" />

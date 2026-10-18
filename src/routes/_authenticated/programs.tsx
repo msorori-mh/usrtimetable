@@ -28,6 +28,8 @@ import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { GraduationCap, Pencil, Trash2 } from "lucide-react";
 import { userErrorMessage } from "@/lib/user-error";
+import { QueryErrorNotice } from "@/components/app-states/query-error-notice";
+import { confirmAction } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_authenticated/programs")({
   head: () => ({ meta: [{ title: "البرامج الأكاديمية" }] }),
@@ -81,7 +83,7 @@ function ProgramsPage() {
     },
   });
 
-  const { data: rows, isLoading } = useQuery({
+  const { data: rows, isLoading, isError, error: rowsError, refetch } = useQuery({
     queryKey: ["programs", active?.id],
     enabled: !!active,
     queryFn: async () => {
@@ -217,12 +219,12 @@ function ProgramsPage() {
               </DialogHeader>
               <div className="space-y-3">
                 <div>
-                  <Label>القسم</Label>
+                  <Label htmlFor="programs-f4">القسم</Label>
                   <Select
                     value={form.department_id}
                     onValueChange={(v) => setForm({ ...form, department_id: v })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="programs-f4">
                       <SelectValue placeholder="اختر القسم" />
                     </SelectTrigger>
                     <SelectContent>
@@ -235,26 +237,26 @@ function ProgramsPage() {
                   </Select>
                 </div>
                 <div>
-                  <Label>الاسم</Label>
-                  <Input
+                  <Label htmlFor="programs-f1">الاسم</Label>
+                  <Input id="programs-f1"
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                   />
                 </div>
                 <div>
-                  <Label>الرمز</Label>
-                  <Input
+                  <Label htmlFor="programs-f2">الرمز</Label>
+                  <Input id="programs-f2"
                     value={form.code}
                     onChange={(e) => setForm({ ...form, code: e.target.value })}
                   />
                 </div>
                 <div>
-                  <Label>نوع الدرجة</Label>
+                  <Label htmlFor="programs-f5">نوع الدرجة</Label>
                   <Select
                     value={form.degree_type}
                     onValueChange={(v) => setForm({ ...form, degree_type: v })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="programs-f5">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -267,8 +269,8 @@ function ProgramsPage() {
                   </Select>
                 </div>
                 <div>
-                  <Label>عدد السنوات</Label>
-                  <Input
+                  <Label htmlFor="programs-f3">عدد السنوات</Label>
+                  <Input id="programs-f3"
                     type="number"
                     min={1}
                     max={10}
@@ -302,6 +304,8 @@ function ProgramsPage() {
       <Card className="overflow-hidden">
         {isLoading ? (
           <p className="p-6 text-center text-muted-foreground">جارٍ التحميل...</p>
+        ) : isError ? (
+          <div className="p-4"><QueryErrorNotice error={rowsError} onRetry={() => void refetch()} /></div>
         ) : !rows || rows.length === 0 ? (
           <p className="p-6 text-center text-muted-foreground">لا توجد برامج بعد.</p>
         ) : (
@@ -317,14 +321,16 @@ function ProgramsPage() {
                 </div>
                 {canManage && (
                   <div className="flex gap-1">
-                    <Button size="sm" variant="ghost" onClick={() => startEdit(p)}>
+                    <Button size="sm" variant="ghost" aria-label={`تعديل ${p.name}`} onClick={() => startEdit(p)}>
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => {
-                        if (confirm("حذف البرنامج؟")) del.mutate(p.id);
+                      aria-label={`حذف ${p.name}`}
+                      onClick={async () => {
+                        const ok = await confirmAction({ title: `حذف البرنامج «${p.name}»؟`, description: "قد تُحذف معه خططه الدراسية وما يتبعها. لا يمكن التراجع عن هذا الإجراء.", confirmLabel: "حذف", destructive: true, typedConfirmation: p.name });
+                        if (ok) del.mutate(p.id);
                       }}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
