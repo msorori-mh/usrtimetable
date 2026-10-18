@@ -214,4 +214,11 @@ END $function$;
 
 DROP FUNCTION IF EXISTS security_private.assert_version_reader(uuid, boolean);
 DROP FUNCTION IF EXISTS security_private.caller_is_trusted();
-DROP SCHEMA IF EXISTS security_private;
+DO $$
+BEGIN
+  -- later migrations keep bookkeeping tables in this schema; drop only if empty
+  IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relnamespace = 'security_private'::regnamespace)
+     AND NOT EXISTS (SELECT 1 FROM pg_proc WHERE pronamespace = 'security_private'::regnamespace) THEN
+    DROP SCHEMA security_private;
+  END IF;
+END $$;
