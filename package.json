@@ -1,5 +1,5 @@
 {
-  "name": "tanstack_start_ts",
+  "name": "usrtimetable",
   "private": true,
   "sideEffects": [
     "**/*.css",
@@ -14,6 +14,13 @@
     "test:harness": "node tests/harness/run.mjs",
     "test:harness-runner": "node --test --test-isolation=none tests/harness/run.test.mjs",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "node scripts/run-all-tests.mjs",
+    "test:list": "node scripts/run-all-tests.mjs --list",
+    "test:pglite": "node scripts/run-all-tests.mjs --group=pglite",
+    "test:sql": "scripts/db/run-sql-tests.sh",
+    "db:replay": "scripts/db/replay-migrations.sh",
+    "check:rollbacks": "node scripts/check-rollbacks.mjs",
     "format": "prettier --write ."
   },
   "dependencies": {
