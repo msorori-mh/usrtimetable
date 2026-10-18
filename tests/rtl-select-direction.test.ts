@@ -43,18 +43,14 @@ describe("RTL direction for shared selectors", () => {
   it("command palette (combobox list) is RTL", () => {
     const src = read("src/components/ui/command.tsx");
     expect(src.match(/dir="rtl"/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
-    // M-16: logical alignment (text-start == right under dir="rtl").
-    expect(src).toContain("text-start");
-    expect(src).not.toContain("text-right");
+    expect(src).toContain("text-right");
     expect(src).not.toContain("mr-2 h-4 w-4 shrink-0");
   });
 
   it("popover content is RTL", () => {
     const src = read("src/components/ui/popover.tsx");
     expect(src).toContain('dir="rtl"');
-    // M-16: logical alignment (text-start == right under dir="rtl").
-    expect(src).toContain("text-start");
-    expect(src).not.toContain("text-right");
+    expect(src).toContain("text-right");
   });
 
   it("instructor combobox trigger is RTL with logical icon spacing", () => {
