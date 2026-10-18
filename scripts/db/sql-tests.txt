@@ -28,7 +28,6 @@ runner  tests/run-itcs-cutover-orchestrator.sh
 runner  tests/run-itcs-version-scoped-assignments.sh
 runner  tests/run-itcs-version-scoped-workload-guards.sh
 
-known-fail supabase/tests/admin_account_creation_guard.sql  # college_dean rejected: latest enforce_admin_account_creation (20260922155728) dropped it from the metadata allow-list — DB-security track (A)
 
 skip    tests/faculty-numbering.sql                    # included by faculty-numbering-db.sql
 skip    tests/itcs-cutover-orchestrator-db.sql         # run by tests/run-itcs-cutover-orchestrator.sh
