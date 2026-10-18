@@ -8,7 +8,19 @@ import {
   shortRef,
 } from "../src/lib/data-cleanup-bulk";
 
-const src = readFileSync("src/routes/_authenticated/data-cleanup.tsx", "utf8");
+// L-14: the data-cleanup page was split into the route + src/components/data-cleanup/*.
+const src = [
+  "src/routes/_authenticated/data-cleanup.tsx",
+  "src/components/data-cleanup/cleanup-data.ts",
+  "src/components/data-cleanup/cleanup-diagnostics.ts",
+  "src/components/data-cleanup/cleanup-shared.tsx",
+  "src/components/data-cleanup/courses-section.tsx",
+  "src/components/data-cleanup/instructors-section.tsx",
+  "src/components/data-cleanup/rooms-section.tsx",
+  "src/components/data-cleanup/offerings-section.tsx",
+]
+  .map((file) => readFileSync(file, "utf8"))
+  .join("\n");
 const items = [
   { id: "a", title: "CS101 · برمجة", details: "الطبيعة: غير محددة" },
   { id: "b", title: "CS102 · هياكل", details: "القسم: غير محدد" },
