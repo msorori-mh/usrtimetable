@@ -1,9 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Download, FileSpreadsheet, Printer } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { ReportErrorState } from "@/components/reports/report-states";
+import { userErrorMessage } from "@/lib/user-error";
+import { readAllRows } from "@/lib/supabase/read-all";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { useReportDocumentTitle } from "@/hooks/use-report-document-title";
 import { Button } from "@/components/ui/button";
@@ -78,11 +81,14 @@ function Sel({
   items: { id: string; name: string }[];
   disabled?: boolean;
 }) {
+  const id = useId();
   return (
     <div className="space-y-1">
-      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <Label htmlFor={id} className="text-xs text-muted-foreground">
+        {label}
+      </Label>
       <Select value={value} onValueChange={onChange} disabled={disabled}>
-        <SelectTrigger>
+        <SelectTrigger id={id}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -109,7 +115,7 @@ function Toggle({
   return (
     <label className="flex items-center justify-between gap-2 text-sm py-1">
       <span>{label}</span>
-      <Switch checked={checked} onCheckedChange={onChange} />
+      <Switch checked={checked} onCheckedChange={onChange} aria-label={label} />
     </label>
   );
 }
@@ -162,7 +168,12 @@ export function PrintCenterPage(props: { versionId: string }) {
     }
   }, [reportType]);
 
-  const { data: version, isLoading: versionLoading } = useQuery({
+  const {
+    data: version,
+    isLoading: versionLoading,
+    error: versionError,
+    refetch: refetchVersion,
+  } = useQuery({
     queryKey: ["print-center-version", versionId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -202,8 +213,10 @@ export function PrintCenterPage(props: { versionId: string }) {
     },
   });
 
-  const { data: depts } = useQuery({
-    queryKey: ["print-center-depts", active?.id],
+  // M-21: every lookup throws on a Supabase error so the page can show it
+  // instead of silently offering empty filter lists.
+  const deptsQuery = useQuery({
+    queryKey: ["print-center", "departments", active?.id],
     enabled: !!active && collegeMatches,
     queryFn: async () =>
       (
@@ -212,10 +225,11 @@ export function PrintCenterPage(props: { versionId: string }) {
           .select("id, name")
           .eq("college_id", active!.id)
           .order("name")
+          .throwOnError()
       ).data ?? [],
   });
-  const { data: progs } = useQuery({
-    queryKey: ["print-center-progs", active?.id, departmentId],
+  const progsQuery = useQuery({
+    queryKey: ["print-center", "programs", active?.id, departmentId],
     enabled: !!active && collegeMatches,
     queryFn: async () => {
       let q = supabase
@@ -224,11 +238,11 @@ export function PrintCenterPage(props: { versionId: string }) {
         .eq("college_id", active!.id)
         .order("name");
       if (departmentId) q = q.eq("department_id", departmentId);
-      return (await q).data ?? [];
+      return (await q.throwOnError()).data ?? [];
     },
   });
-  const { data: levels } = useQuery({
-    queryKey: ["print-center-levels", active?.id],
+  const levelsQuery = useQuery({
+    queryKey: ["print-center", "levels", active?.id],
     enabled: !!active && collegeMatches,
     queryFn: async () =>
       (
@@ -237,22 +251,26 @@ export function PrintCenterPage(props: { versionId: string }) {
           .select("id, name, level_number, program_id")
           .eq("college_id", active!.id)
           .order("level_number")
+          .throwOnError()
       ).data ?? [],
   });
-  const { data: instructors } = useQuery({
-    queryKey: ["print-center-ins", active?.id],
+  const instructorsQuery = useQuery({
+    queryKey: ["print-center", "instructors", active?.id],
     enabled: !!active && collegeMatches,
-    queryFn: async () =>
-      (
-        await supabase
+    // H-10: a college's instructor list can exceed one PostgREST page.
+    queryFn: () =>
+      readAllRows<{ id: string; full_name: string }>((from, to) =>
+        supabase
           .from("instructors")
           .select("id, full_name")
           .eq("college_id", active!.id)
           .order("full_name")
-      ).data ?? [],
+          .order("id")
+          .range(from, to),
+      ),
   });
-  const { data: rooms } = useQuery({
-    queryKey: ["print-center-rooms", active?.id],
+  const roomsQuery = useQuery({
+    queryKey: ["print-center", "rooms", active?.id],
     enabled: !!active && collegeMatches,
     queryFn: async () =>
       (
@@ -261,8 +279,16 @@ export function PrintCenterPage(props: { versionId: string }) {
           .select("id, code, name")
           .eq("college_id", active!.id)
           .order("code")
+          .throwOnError()
       ).data ?? [],
   });
+  const depts = deptsQuery.data;
+  const progs = progsQuery.data;
+  const levels = levelsQuery.data;
+  const instructors = instructorsQuery.data;
+  const rooms = roomsQuery.data;
+  const lookupQueries = [deptsQuery, progsQuery, levelsQuery, instructorsQuery, roomsQuery];
+  const lookupError = lookupQueries.find((q) => q.isError)?.error ?? null;
 
   const filters: PrintCenterFilters = useMemo(
     () => ({
@@ -285,7 +311,12 @@ export function PrintCenterPage(props: { versionId: string }) {
     programFiltersComplete(filters) &&
     levelFiltersComplete(filters);
 
-  const { data: sessionsBundle, isLoading: sessionsLoading } = useQuery({
+  const {
+    data: sessionsBundle,
+    isLoading: sessionsLoading,
+    error: sessionsError,
+    refetch: refetchSessions,
+  } = useQuery({
     queryKey: ["print-center-sessions", versionId, active?.id, filters],
     enabled: !!active && collegeMatches && !!version && filtersReady,
     queryFn: async () => {
@@ -460,6 +491,17 @@ export function PrintCenterPage(props: { versionId: string }) {
       <p className="p-6 text-center text-muted-foreground" dir="rtl">
         جارٍ التحميل...
       </p>
+    );
+  }
+
+  if (versionError) {
+    return (
+      <div className="space-y-4" dir="rtl">
+        <ReportErrorState
+          message={userErrorMessage(versionError, "تعذر تحميل نسخة الجدول.")}
+          onRetry={() => void refetchVersion()}
+        />
+      </div>
     );
   }
 
@@ -767,7 +809,17 @@ export function PrintCenterPage(props: { versionId: string }) {
       </div>
 
       <div className="report-print-body print-center-body space-y-6">
-        {sessionsLoading ? (
+        {lookupError || sessionsError ? (
+          <div className="report-no-print">
+            <ReportErrorState
+              message={userErrorMessage(lookupError ?? sessionsError, "تعذر تحميل بيانات الطباعة.")}
+              onRetry={() => {
+                for (const q of lookupQueries) if (q.isError) void q.refetch();
+                if (sessionsError) void refetchSessions();
+              }}
+            />
+          </div>
+        ) : sessionsLoading ? (
           <Card className="p-8 text-center text-muted-foreground report-no-print">
             جارٍ التحميل…
           </Card>

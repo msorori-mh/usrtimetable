@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { readAllRows } from "@/lib/supabase/read-all";
 import { ReportShell } from "@/components/reports/report-shell";
 import { ReportFilters, ReportFilterField } from "@/components/reports/report-filters";
 import { ReportTimetableView } from "@/components/reports/report-timetable-view";
@@ -36,19 +37,25 @@ function Page() {
   const [sectionId, setSectionId] = useState("");
 
   const { data: sections, error: sectionsError } = useQuery({
-    queryKey: ["st-sections", ctx.collegeId, ctx.termId],
+    queryKey: ["reports", "section-timetable", "sections", ctx.collegeId, ctx.termId],
     enabled: !!ctx.collegeId && !!ctx.termId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("sections")
-        .select("id, section_number, course_id, courses(code, name)")
-        .eq("college_id", ctx.collegeId!)
-        .eq("term_id", ctx.termId!)
-        .order("section_number")
-        .throwOnError();
-      if (error) throw error;
-      return data ?? [];
-    },
+    // H-10: read every page of the term's legacy sections.
+    queryFn: () =>
+      readAllRows<{
+        id: string;
+        section_number: string | null;
+        course_id: string;
+        courses: { code: string | null; name: string } | null;
+      }>((from, to) =>
+        supabase
+          .from("sections")
+          .select("id, section_number, course_id, courses(code, name)")
+          .eq("college_id", ctx.collegeId!)
+          .eq("term_id", ctx.termId!)
+          .order("section_number")
+          .order("id")
+          .range(from, to),
+      ),
   });
 
   const {

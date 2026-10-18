@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { readAllRows } from "@/lib/supabase/read-all";
 import { ReportShell } from "@/components/reports/report-shell";
 import { ReportFilters, ReportFilterField } from "@/components/reports/report-filters";
 import { ReportTimetableView } from "@/components/reports/report-timetable-view";
@@ -137,23 +138,37 @@ function ProgramLevelReport({
           .select("id, name, program_id, level_number")
           .eq("college_id", ctx.collegeId!)
           .order("level_number"),
-        supabase
-          .from("academic_cohorts")
-          .select(
-            "id, code, program_id, level_id, term_id, study_system, entry_year, study_plan_id",
-          )
-          .eq("college_id", ctx.collegeId!)
-          .eq("term_id", ctx.termId!)
-          .order("code"),
+        // H-10: a term's cohorts are read page by page so none is silently dropped.
+        readAllRows<{
+          id: string;
+          code: string;
+          program_id: string;
+          level_id: string;
+          term_id: string;
+          study_system: string;
+          entry_year: number | null;
+          study_plan_id: string | null;
+        }>((from, to) =>
+          supabase
+            .from("academic_cohorts")
+            .select(
+              "id, code, program_id, level_id, term_id, study_system, entry_year, study_plan_id",
+            )
+            .eq("college_id", ctx.collegeId!)
+            .eq("term_id", ctx.termId!)
+            .order("code")
+            .order("id")
+            .range(from, to),
+        ),
         supabase.from("study_plans").select("id,name").eq("college_id", ctx.collegeId!),
       ]);
-      for (const result of [departments, programs, levels, cohorts, plans])
+      for (const result of [departments, programs, levels, plans])
         if (result.error) throw result.error;
       return {
         departments: departments.data ?? [],
         programs: programs.data ?? [],
         levels: levels.data ?? [],
-        cohorts: (cohorts.data ?? []).map((c) => ({
+        cohorts: cohorts.map((c) => ({
           ...c,
           code:
             c.entry_year === null

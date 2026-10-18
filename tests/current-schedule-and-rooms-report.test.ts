@@ -471,7 +471,9 @@ test("current timetable course filter is term-scoped and searchable", () => {
   assert.match(route, /eq\("term_id", ctx\.termId!\)/);
   assert.match(route, /eq\("is_active", true\)/);
   assert.match(route, /from\("courses"\)/);
-  assert.match(route, /\.in\("id", courseIds\)/);
+  // H-10: the course id list is chunked so the request URL stays bounded.
+  assert.match(route, /chunkIds\(courseIds\)/);
+  assert.match(route, /\.in\("id", chunk\)/);
   assert.match(route, /label="المادة — جميع أقسام الكلية"/);
   assert.match(route, /current-print-course-search/);
   assert.match(route, /اكتب اسم المادة أو رمزها/);
