@@ -68,15 +68,15 @@ async function fetchInstructorParticipationSessionIds(
 ): Promise<string[]> {
   const participation = await readAllRows<{ id: string; schedule_session_id: string | null }>(
     (from, to) =>
-    supabase
-      .from("existing_schedule_source_rows")
-      .select("id, schedule_session_id")
-      .eq("college_id", collegeId)
-      .eq("schedule_version_id", versionId)
-      .contains("instructor_ids", [instructorId])
-      .not("schedule_session_id", "is", null)
-      .order("id")
-      .range(from, to),
+      supabase
+        .from("existing_schedule_source_rows")
+        .select("id, schedule_session_id")
+        .eq("college_id", collegeId)
+        .eq("schedule_version_id", versionId)
+        .contains("instructor_ids", [instructorId])
+        .not("schedule_session_id", "is", null)
+        .order("id")
+        .range(from, to),
   );
   return [...new Set(participation.map((p) => p.schedule_session_id!))];
 }

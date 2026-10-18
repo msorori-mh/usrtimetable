@@ -251,48 +251,48 @@ export function LeadershipMetricDrilldown({
             </p>
           ) : (
             <>
-            <table className="w-full min-w-[720px] text-start text-xs">
-              <thead className="sticky top-0 bg-muted">
-                <tr>
-                  {columns.map((column) => (
-                    <th key={column.key} className="whitespace-nowrap p-2 font-semibold">
-                      {column.label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rendered.map((row, index) => (
-                  <tr key={`${String(row.id ?? index)}-${index}`} className="border-t">
+              <table className="w-full min-w-[720px] text-start text-xs">
+                <thead className="sticky top-0 bg-muted">
+                  <tr>
                     {columns.map((column) => (
-                      <td
-                        key={column.key}
-                        className={column.numeric ? "p-2 tabular-nums" : "p-2 whitespace-pre-wrap"}
-                      >
-                        {cellText(row[column.key], column.key)}
-                      </td>
+                      <th key={column.key} className="whitespace-nowrap p-2 font-semibold">
+                        {column.label}
+                      </th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-            {remaining > 0 && (
-              <div className="flex items-center justify-between gap-3 border-t p-3 text-xs">
-                <span aria-live="polite">
-                  يُعرض {formatNumber(rendered.length)} من {formatNumber(visible.length)} سجلًا
-                </span>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    setLimitState({ key: limitKey, limit: limitState.limit + DETAIL_PAGE_SIZE })
-                  }
-                >
-                  عرض المزيد ({formatNumber(Math.min(remaining, DETAIL_PAGE_SIZE))})
-                </Button>
-              </div>
-            )}
+                </thead>
+                <tbody>
+                  {rendered.map((row, index) => (
+                    <tr key={`${String(row.id ?? index)}-${index}`} className="border-t">
+                      {columns.map((column) => (
+                        <td
+                          key={column.key}
+                          className={column.numeric ? "p-2 tabular-nums" : "p-2 whitespace-pre-wrap"}
+                        >
+                          {cellText(row[column.key], column.key)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {remaining > 0 && (
+                <div className="flex items-center justify-between gap-3 border-t p-3 text-xs">
+                  <span aria-live="polite">
+                    يُعرض {formatNumber(rendered.length)} من {formatNumber(visible.length)} سجلًا
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setLimitState({ key: limitKey, limit: limitState.limit + DETAIL_PAGE_SIZE })
+                    }
+                  >
+                    عرض المزيد ({formatNumber(Math.min(remaining, DETAIL_PAGE_SIZE))})
+                  </Button>
+                </div>
+              )}
             </>
           )}
         </div>

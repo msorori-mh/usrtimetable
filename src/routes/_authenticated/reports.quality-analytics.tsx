@@ -105,7 +105,14 @@ function QualityAnalyticsPage() {
     isLoading: membershipLoading,
     refetch: refetchMemberships,
   } = useQuery({
-    queryKey: ["reports", "quality-analytics", "student-memberships", active?.id, effectiveVersion, groupIds],
+    queryKey: [
+      "reports",
+      "quality-analytics",
+      "student-memberships",
+      active?.id,
+      effectiveVersion,
+      groupIds,
+    ],
     enabled: !!active && !!effectiveVersion && !!sessions,
     queryFn: () => fetchVersionStudentMemberships(effectiveVersion, groupIds),
   });
