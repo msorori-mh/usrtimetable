@@ -105,7 +105,7 @@ function DeliveryGroupsPage() {
     queryKey: ["delivery-group-assignments-all", active?.id],
     enabled: !!active && (rows?.length ?? 0) > 0,
     queryFn: async () => {
-      const data = await readAllRows((from, to) =>
+      const data = await readAllRows<{ id: string; delivery_group_id: string | null }>((from, to) =>
         supabase
           .from("teaching_assignments")
           .select("id, delivery_group_id")

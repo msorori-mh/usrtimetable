@@ -8,6 +8,8 @@ import { useCurrentUser } from "@/hooks/use-current-user";
 import { supabase } from "@/integrations/supabase/client";
 import { invalidateTeachingAssignmentReadModels } from "@/lib/teaching-assignments/query-invalidation";
 import { userErrorMessage } from "@/lib/user-error";
+import { confirmAction } from "@/components/confirm-dialog";
+import { formatDateTime, formatDecimal, formatNumber } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/itcs-review-proposal")({
   head: () => ({ meta: [{ title: "مسودة مقترح الحاسوب 30/9 — مراجعة قبل النشر" }] }),
@@ -222,7 +224,7 @@ function ReviewProposalPage() {
           </p>
           {proposal.saved_at && (
             <p className="text-sm">
-              حُفظت بتاريخ {new Date(proposal.saved_at).toLocaleString("ar-YE")}
+              حُفظت بتاريخ {formatDateTime(proposal.saved_at)}
             </p>
           )}
         </div>
@@ -236,7 +238,17 @@ function ReviewProposalPage() {
               >
                 {saving ? "جارٍ التحقق…" : "فحص الحفظ دون تثبيت"}
               </Button>
-              <Button disabled={saving || !checked} onClick={() => void save("review_save")}>
+              <Button
+                disabled={saving || !checked}
+                onClick={async () => {
+                  const ok = await confirmAction({
+                    title: "حفظ المقترح كنسخة جدولة مسودة؟",
+                    description: "تُنشأ نسخة جدولة مستقلة على الخادم مع الحفاظ على الجدول المنشور.",
+                    confirmLabel: "حفظ المسودة",
+                  });
+                  if (ok) void save("review_save");
+                }}
+              >
                 {saving ? "جارٍ الحفظ…" : "حفظ نسخة جدولة مسودة"}
               </Button>
             </>
@@ -274,7 +286,7 @@ function ReviewProposalPage() {
           [3, "أيام للقاعة الكبرى"],
         ].map(([n, label]) => (
           <Card className="p-4" key={label}>
-            <p className="text-3xl font-bold">{n}</p>
+            <p className="text-3xl font-bold">{typeof n === "number" ? formatDecimal(n) : n}</p>
             <p className="text-sm text-muted-foreground">{label}</p>
           </Card>
         ))}
@@ -284,10 +296,10 @@ function ReviewProposalPage() {
         <p className="text-sm">
           {checks.external_conflict_sessions === 0
             ? "لا توجد محاضرات متداخلة مع التزامات الكليات الأخرى في المطابقة الحالية. النسخة للمراجعة قبل النشر."
-            : `${checks.external_conflict_sessions} محاضرات تتداخل مع التزامات مسجلة في كليات أخرى وتحتاج المعالجة قبل حفظ الجدول.`}
+            : `${formatNumber(checks.external_conflict_sessions)} محاضرات تتداخل مع التزامات مسجلة في كليات أخرى وتحتاج المعالجة قبل حفظ الجدول.`}
         </p>
         <p className="text-xs text-muted-foreground">
-          آخر مطابقة مع المنصة: {new Date(checks.checked_at).toLocaleString("ar-YE")}. يشمل الفحص
+          آخر مطابقة مع المنصة: {formatDateTime(checks.checked_at)}. يشمل الفحص
           الحسابات المرتبطة للمحاضر نفسه.
         </p>
         <div className="overflow-x-auto">
@@ -396,7 +408,7 @@ function ReviewProposalPage() {
       </details>
       <Card className="space-y-4 p-4">
         <h2 className="font-bold">
-          المحاضرات المقترحة — {visible.length} من {report.sessions.length}
+          المحاضرات المقترحة — {formatNumber(visible.length)} من {formatNumber(report.sessions.length)}
         </h2>
         <div className="grid gap-3 sm:grid-cols-3 print:hidden">
           <label className="text-sm">
@@ -516,7 +528,7 @@ function ReviewProposalPage() {
       </Card>
       <details className="rounded-lg border p-4">
         <summary className="cursor-pointer font-bold">
-          فحوص الملف الأصلي — {proposal.payload.requirements.checks.length} بندًا
+          فحوص الملف الأصلي — {formatNumber(proposal.payload.requirements.checks.length)} بندًا
         </summary>
         <p className="my-3 text-sm text-muted-foreground">
           تخص هذه النتائج الملف المقترح وقيوده الداخلية. التداخلات الخارجية الحالية موضحة أعلى
@@ -525,7 +537,8 @@ function ReviewProposalPage() {
         <ul className="grid gap-2 text-sm md:grid-cols-2">
           {proposal.payload.requirements.checks.map((c) => (
             <li key={c.name}>
-              {c.passed ? "✓" : "—"} {c.name}
+              <span aria-hidden="true">{c.passed ? "✓" : "—"}</span>
+              <span className="sr-only">{c.passed ? "ناجح:" : "غير ناجح:"}</span> {c.name}
             </li>
           ))}
         </ul>
