@@ -15,13 +15,16 @@ export const SCHEDULE_BUILDER_UNSAVED_BADGE_AR = "غير محفوظ";
 export const SCHEDULE_BUILDER_NO_DB_SAVE_NOTICE_AR =
   "لن تُحفظ هذه التغييرات في قاعدة البيانات ضمن هذه المرحلة.";
 
-/** Version statuses that may enter local edit mode (managers only). */
+/**
+ * Version statuses that may enter edit mode (managers only). Approved versions are locked
+ * like published ones (H-8): changes go into a new draft created from them.
+ */
 export function isScheduleVersionEditableStatus(
   status: ScheduleVersionStatus | null | undefined,
 ): boolean {
   if (!status) return false;
   if (isScheduleVersionWriteLocked(status)) return false;
-  return status === "draft" || status === "review" || status === "approved";
+  return status === "draft" || status === "review";
 }
 
 export function canEnterEditMode(opts: {

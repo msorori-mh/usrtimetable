@@ -4,6 +4,7 @@ import {
   buildEvaluateDropTargetInput,
   evaluateDropTarget,
   isProtectedDemoVersion,
+  setProtectedVersionIds,
   toOccupancySession,
 } from "../../src/lib/schedule-builder/drag-drop-safety.ts";
 
@@ -37,7 +38,8 @@ assert(grid.includes("getDropTone"), "grid accepts tone");
 assert(grid.includes("bg-emerald-500/25"), "green slot style");
 assert(grid.includes("bg-red-500/25"), "red slot style");
 
-assert(isProtectedDemoVersion("835e50fe-3ad2-4232-8c15-0f403c668a7f"), "demo id");
+setProtectedVersionIds(["protected-version"]);
+assert(isProtectedDemoVersion("protected-version"), "protected version flag");
 const ok = evaluateDropTarget({
   sourceSlot: { day_of_week: 0, start_time: "08:00", end_time: "10:00", room_id: "r" },
   movingSession: {

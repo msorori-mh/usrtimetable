@@ -1,8 +1,5 @@
 /** Constants and client helpers for disposable draft schedule version purge. */
 
-export const PROTECTED_ACCEPTED_SCHEDULE_VERSION_ID =
-  "835e50fe-3ad2-4232-8c15-0f403c668a7f" as const;
-
 export const PURGE_RPC_NAME = "purge_disposable_draft_schedule_version" as const;
 
 export type DisposablePurgeCounts = {
@@ -24,13 +21,17 @@ export type DisposablePurgeResult = {
   counts: DisposablePurgeCounts;
 };
 
-/** Pure guard: disposable purge is only valid for marked drafts that are not protected. */
+/**
+ * Pure guard: disposable purge is only valid for marked drafts that are not protected.
+ * Protection is data (schedule_versions.protected), mirrored by the purge RPC (M-11).
+ */
 export function assertDisposablePurgeEligibility(input: {
   versionId: string;
   status: string;
   disposableTest: boolean;
+  protectedVersion?: boolean | null;
 }): { ok: true } | { ok: false; reason: string } {
-  if (input.versionId === PROTECTED_ACCEPTED_SCHEDULE_VERSION_ID) {
+  if (input.protectedVersion === true) {
     return { ok: false, reason: "PURGE_PROTECTED_VERSION" };
   }
   if (!input.disposableTest) {

@@ -5,7 +5,7 @@ import {
   popUndo,
   publishedVersionConfirmMessage,
   pushUndo,
-  PROTECTED_DEMO_VERSION_ID,
+  setProtectedVersionIds,
 } from "../src/lib/schedule-builder/drag-drop-safety";
 import type { PendingScheduleSessionChange } from "../src/lib/schedule-builder/pending-change";
 
@@ -66,9 +66,13 @@ describe("drag-drop safety", () => {
     expect(r.proposed?.start_time).toBe("10:00");
   });
 
-  test("protects demo version id", () => {
-    expect(isProtectedDemoVersion(PROTECTED_DEMO_VERSION_ID)).toBe(true);
+  test("protects versions flagged protected (data, not an id literal)", () => {
+    setProtectedVersionIds(["protected-version"]);
+    expect(isProtectedDemoVersion("protected-version")).toBe(true);
     expect(isProtectedDemoVersion("other")).toBe(false);
+    expect(isProtectedDemoVersion({ id: "other", protected: true })).toBe(true);
+    expect(isProtectedDemoVersion({ id: "protected-version", protected: false })).toBe(false);
+    expect(isProtectedDemoVersion(null)).toBe(false);
   });
 
   test("published confirm message", () => {

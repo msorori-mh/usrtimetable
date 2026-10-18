@@ -3,9 +3,12 @@ import { readAllReportRows } from "./read-all";
 import { leadershipOverviewSchema } from "./leadership";
 import { leadershipDetailsSchema } from "./leadership-metrics";
 import { ReportScopeError } from "./preferences";
+import { loadPhysicalRoomGroups } from "./physical-rooms-loader";
 import type { UniversityOverviewSources, OverviewSession } from "./university-overview";
 
 export async function fetchUniversityOverview(period: { year: string; type: string } | null) {
+  // Physical hall aliases (rooms.physical_group_key) must be known before rooms are grouped.
+  await loadPhysicalRoomGroups();
   // This RPC determines authorization and term scope. A browser filter can only narrow it.
   const overviewResult = await supabase.rpc("leadership_overview", {
     p_academic_year: period?.year ?? undefined,

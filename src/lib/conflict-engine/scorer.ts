@@ -1,10 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
+import { chunkIds, readAllRows } from "@/lib/supabase/read-all";
 import { validateProposed, type Conflict, type ProposedSession } from "./validator";
 import { loadApprovedExceptions } from "./exceptions";
-import {
-  summarizeDeliveryGroupWaiverForQuality,
-  type DeliveryGroupWaiverScope,
-} from "@/lib/schedule-versions/delivery-group-waiver";
+import { fetchServerVersionValidation } from "./server-validation";
 
 export interface SoftViolation {
   code: string;
@@ -35,34 +33,6 @@ const mins = (s: string) => {
 };
 const overlap = (aS: string, aE: string, bS: string, bE: string) => t(aS) < t(bE) && t(bS) < t(aE);
 
-async function resolveDeliveryGroupWaiverScopeForQuality(params: {
-  collegeId: string;
-  scheduleVersionId: string;
-}): Promise<DeliveryGroupWaiverScope> {
-  const { data: version } = await supabase
-    .from("schedule_versions")
-    .select("id, college_id, academic_term_id")
-    .eq("id", params.scheduleVersionId)
-    .eq("college_id", params.collegeId)
-    .maybeSingle();
-  if (!version?.academic_term_id) return {};
-
-  const { data: term } = await supabase
-    .from("academic_terms")
-    .select("id, name, college_id")
-    .eq("id", version.academic_term_id)
-    .eq("college_id", version.college_id)
-    .maybeSingle();
-  if (!term) return {};
-
-  return {
-    collegeId: version.college_id,
-    scheduleVersionId: version.id,
-    termId: term.id,
-    termName: term.name,
-  };
-}
-
 /**
  * Score a set of proposed sessions for a schedule version.
  * Pure read-only: does not persist.
@@ -78,24 +48,66 @@ export async function scoreSchedule(params: {
   const approvedExceptions =
     params.approvedExceptions ?? (await loadApprovedExceptions({ scheduleVersionId }));
 
-  // 1. Hard conflicts (re-use validator; all visible, unapproved drives score gate)
+  // Interactive preview of proposed (unsaved) sessions only: light client pre-check.
   const validation = await validateProposed({
     collegeId,
     scheduleVersionId,
     sessions,
     approvedExceptions,
+    includeVersionWide: true,
   });
-  const hard = validation.conflicts;
+  const soft = await scoreSoftMetrics({ collegeId, sessions });
+  return {
+    ...soft,
+    hard_conflicts_count: validation.unapprovedHardConflicts,
+    total_hard_conflicts_count: validation.totalHardConflicts,
+    approved_hard_conflicts_count: validation.approvedHardConflicts,
+    hard_conflicts: validation.conflicts,
+  };
+}
+
+type ScoredSessionRow = {
+  id: string;
+  cohort_id: string | null;
+  delivery_group_id: string | null;
+  schedule_version_id: string;
+  course_offering_id: string;
+  teaching_assignment_id: string | null;
+  instructor_id: string;
+  room_id: string | null;
+  section_id: string | null;
+  section_group_id: string | null;
+  study_system: string;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  session_type: string;
+  expected_students: number;
+};
+
+type SoftScore = Pick<
+  QualityResult,
+  "total_score" | "soft_conflicts_count" | "total_deductions" | "soft_violations" | "metrics_breakdown"
+>;
+
+/** Soft quality metrics (preferences, balance, gaps, distribution). Never gates publication. */
+async function scoreSoftMetrics(params: {
+  collegeId: string;
+  sessions: ProposedSession[];
+}): Promise<SoftScore> {
+  const { collegeId, sessions } = params;
 
   // 2. Weights (college overrides → default)
-  const { data: metrics } = await supabase
+  const { data: metrics, error: metricsError } = await supabase
     .from("quality_metrics")
     .select("*")
     .eq("is_active", true);
-  const { data: settings } = await supabase
+  if (metricsError) throw metricsError;
+  const { data: settings, error: settingsError } = await supabase
     .from("college_quality_settings")
     .select("quality_metric_id, enabled, weight")
     .eq("college_id", collegeId);
+  if (settingsError) throw settingsError;
   const sMap = new Map((settings ?? []).map((s) => [s.quality_metric_id, s]));
   const weightOf = (code: string) => {
     const m = (metrics ?? []).find((x) => x.code === code);
@@ -114,15 +126,28 @@ export async function scoreSchedule(params: {
 
   // Pre-fetch instructor preferences once
   const instructorIds = Array.from(new Set(sessions.map((s) => s.instructor_id)));
-  const { data: prefs } = instructorIds.length
-    ? await supabase
+  const prefs: Array<{
+    instructor_id: string;
+    day_of_week: number;
+    start_time: string;
+    end_time: string;
+    availability_type: string | null;
+    is_preference: boolean | null;
+  }> = [];
+  for (const ids of chunkIds(instructorIds)) {
+    const rows = await readAllRows<(typeof prefs)[number]>((from, to) =>
+      supabase
         .from("instructor_availability")
         .select(
-          "instructor_id, day_of_week, start_time, end_time, availability_type, is_preference",
+          "id, instructor_id, day_of_week, start_time, end_time, availability_type, is_preference",
         )
-        .in("instructor_id", instructorIds)
+        .in("instructor_id", ids)
         .eq("is_preference", true)
-    : { data: [] };
+        .order("id")
+        .range(from, to),
+    );
+    prefs.push(...(rows as typeof prefs));
+  }
 
   // A. preferred_days
   const pdW = weightOf("preferred_days");
@@ -254,12 +279,8 @@ export async function scoreSchedule(params: {
 
   return {
     total_score,
-    hard_conflicts_count: validation.unapprovedHardConflicts,
-    total_hard_conflicts_count: validation.totalHardConflicts,
-    approved_hard_conflicts_count: validation.approvedHardConflicts,
     soft_conflicts_count: soft.length,
     total_deductions,
-    hard_conflicts: hard,
     soft_violations: soft,
     metrics_breakdown: breakdown,
   };
@@ -290,14 +311,18 @@ export async function scoreScheduleVersion(params: {
     throw new Error("INVALID_ELIGIBILITY_REVISION");
   }
 
-  const { data: sessions, error } = await supabase
-    .from("schedule_sessions")
-    .select("*")
-    .eq("college_id", collegeId)
-    .eq("schedule_version_id", scheduleVersionId);
-  if (error) throw error;
+  const sessions = await readAllRows<ScoredSessionRow>((from, to) =>
+    supabase
+      .from("schedule_sessions")
+      .select("*")
+      .eq("college_id", collegeId)
+      .eq("schedule_version_id", scheduleVersionId)
+      .eq("replaced_by_split", false)
+      .order("id")
+      .range(from, to),
+  );
 
-  const proposed: ProposedSession[] = (sessions ?? []).map((s) => ({
+  const proposed: ProposedSession[] = sessions.map((s) => ({
     id: s.id,
     cohort_id: s.cohort_id,
     delivery_group_id: s.delivery_group_id,
@@ -316,21 +341,24 @@ export async function scoreScheduleVersion(params: {
     expected_students: s.expected_students,
   }));
 
-  const result = await scoreSchedule({ collegeId, scheduleVersionId, sessions: proposed });
-  const waiver = summarizeDeliveryGroupWaiverForQuality(
-    result.hard_conflicts,
-    await resolveDeliveryGroupWaiverScopeForQuality({ collegeId, scheduleVersionId }),
-  );
-  if (waiver.active && waiver.waivedCount > 0) {
-    result.hard_conflicts = waiver.conflicts;
-    result.hard_conflicts_count = waiver.unapprovedHardConflicts;
-    result.total_hard_conflicts_count = waiver.totalHardConflicts;
-    result.approved_hard_conflicts_count = waiver.approvedHardConflicts;
-    result.soft_conflicts_count += waiver.waivedCount;
-    result.metrics_breakdown.delivery_group_waiver = {
+  // Q-2: hard conflicts come from the server (the same computation the publish gate runs);
+  // only soft quality metrics are computed in the browser.
+  const [server, soft] = await Promise.all([
+    fetchServerVersionValidation(scheduleVersionId),
+    scoreSoftMetrics({ collegeId, sessions: proposed }),
+  ]);
+  const result: QualityResult = {
+    ...soft,
+    hard_conflicts_count: server.hardCount,
+    total_hard_conflicts_count: server.totalHardCount,
+    approved_hard_conflicts_count: server.approvedCount,
+    hard_conflicts: [...server.hardConflicts, ...server.approvedExceptions],
+  };
+  if (server.waivedCount > 0) {
+    result.metrics_breakdown.policy_waived_conflicts = {
       weight: 0,
       deduction: 0,
-      count: waiver.waivedCount,
+      count: server.waivedCount,
     };
   }
 
@@ -341,11 +369,12 @@ export async function scoreScheduleVersion(params: {
     p_schedule_version_id: scheduleVersionId,
     p_expected_eligibility_revision: eligibilityRevision,
     p_total_score: result.total_score,
+    // Informational only: the server stores its own recomputed count (Q-2).
     p_hard_conflicts_count: result.hard_conflicts_count,
     p_soft_conflicts_count: result.soft_conflicts_count,
     p_total_deductions: result.total_deductions,
     p_metrics_breakdown: result.metrics_breakdown,
   });
   if (ie) throw ie;
-  return { runId: row, result };
+  return { runId: row as string | null, result };
 }

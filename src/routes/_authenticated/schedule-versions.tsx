@@ -167,11 +167,6 @@ function SchedVersionsPage() {
         </div>
         <div className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:w-auto">
           <CollegeSwitcher />
-          {active?.id === "7168345f-cf9d-4789-b2ad-547abb687dc8" && (
-            <Button variant="outline" asChild>
-              <Link to="/itcs-review-proposal">مسودة الحاسوب المصححة — 30/9</Link>
-            </Button>
-          )}
           <Button variant="outline" asChild>
             <Link to="/schedule-builder">
               <CalendarClock className="h-4 w-4 ml-1" /> فتح مساحة البناء
@@ -321,6 +316,7 @@ function VersionCard({
   onRetire: () => void;
 }) {
   const qc = useQueryClient();
+  const [draftOpen, setDraftOpen] = useState(false);
   const status = v.status as SVStatus;
   const actions = nextActions(status);
   const coordination = useMutation({
@@ -432,6 +428,39 @@ function VersionCard({
         >
           {v.is_coordination ? "نسخة التنسيق بين الكليات" : "اختيار للتنسيق بين الكليات"}
         </Button>
+      )}
+      {(status === "approved" || status === "published") && (
+        <div className="space-y-1 rounded border border-dashed p-2">
+          <p className="text-[11px] text-muted-foreground">
+            النسخة {status === "approved" ? "المعتمدة" : "المنشورة"} مقفلة للتعديل. لإجراء تغييرات
+            أنشئ مسودة جديدة منها؛ تبقى هذه النسخة كما هي.
+          </p>
+          <Button
+            size="sm"
+            variant="secondary"
+            className="w-full"
+            disabled={!canManage}
+            onClick={() => setDraftOpen(true)}
+          >
+            <Copy className="h-4 w-4 me-1" /> إنشاء مسودة جديدة منها
+          </Button>
+          {draftOpen && (
+            <CloneDialog
+              collegeId={collegeId}
+              sourceId={v.id}
+              sourceName={v.name}
+              initialTermId={v.academic_term_id}
+              asNewDraft
+              terms={[{ id: v.academic_term_id, name: termName, academic_year: null }]}
+              canMarkDisposable={false}
+              onClose={() => setDraftOpen(false)}
+              onCloned={() => {
+                setDraftOpen(false);
+                qc.invalidateQueries({ queryKey: ["schedule_versions_list"] });
+              }}
+            />
+          )}
+        </div>
       )}
       {v.notes && <div className="break-words text-xs">{v.notes}</div>}
       <div className="text-[10px] text-muted-foreground">
@@ -634,6 +663,8 @@ function CloneDialog({
   collegeId,
   sourceId,
   sourceName,
+  initialTermId,
+  asNewDraft,
   terms,
   onClose,
   onCloned,
@@ -642,13 +673,15 @@ function CloneDialog({
   collegeId: string;
   sourceId: string;
   sourceName: string;
+  initialTermId?: string;
+  asNewDraft?: boolean;
   terms: Array<{ id: string; name: string; academic_year: string | null }>;
   onClose: () => void;
   onCloned: () => void;
   canMarkDisposable: boolean;
 }) {
-  const [tid, setTid] = useState("");
-  const [nm, setNm] = useState(`${sourceName} (نسخة)`);
+  const [tid, setTid] = useState(initialTermId ?? "");
+  const [nm, setNm] = useState(asNewDraft ? `مسودة تعديل — ${sourceName}` : `${sourceName} (نسخة)`);
   const [disposableTest, setDisposableTest] = useState(false);
 
   const m = useMutation({
@@ -691,7 +724,7 @@ function CloneDialog({
     <Dialog open onOpenChange={(b) => !b && onClose()}>
       <DialogContent dir="rtl">
         <DialogHeader>
-          <DialogTitle>استنساخ نسخة الجدول</DialogTitle>
+          <DialogTitle>{asNewDraft ? "إنشاء مسودة جديدة من النسخة" : "استنساخ نسخة الجدول"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div>
@@ -738,7 +771,7 @@ function CloneDialog({
             إلغاء
           </Button>
           <Button onClick={() => m.mutate()} disabled={m.isPending}>
-            استنساخ
+            {asNewDraft ? "إنشاء المسودة" : "استنساخ"}
           </Button>
         </DialogFooter>
       </DialogContent>

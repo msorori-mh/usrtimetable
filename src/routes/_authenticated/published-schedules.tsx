@@ -2,6 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchCurrentPublishedVersions } from "@/lib/schedule-versions/current-published";
+import { useEducationSourcePublications } from "@/lib/schedule-versions/education-publication-loader";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { CollegeSwitcher } from "@/components/college-switcher";
 import { Card } from "@/components/ui/card";
@@ -29,6 +31,8 @@ export const Route = createFileRoute("/_authenticated/published-schedules")({
 
 function PublishedSchedulesPage() {
   const { active } = useActiveCollege();
+  // Sealed education publication markers (data, M-11) re-render notices once loaded.
+  useEducationSourcePublications();
   const [fTerm, setFTerm] = useState<string>("all");
   const [fDept, setFDept] = useState<string>("all");
   const [fProg, setFProg] = useState<string>("all");
@@ -81,10 +85,20 @@ function PublishedSchedulesPage() {
         .select("id, name, academic_term_id, notes, created_at, updated_at")
         .eq("college_id", active!.id)
         .eq("status", "published")
-        .order("updated_at", { ascending: false });
+        .order("created_at", { ascending: false });
       if (fTerm !== "all") q = q.eq("academic_term_id", fTerm);
-      const { data } = await q;
-      return data ?? [];
+      const { data, error } = await q;
+      if (error) throw error;
+      const rows = data ?? [];
+      // M-9: the server decides which publication is current for each term; any other
+      // still-published row is legacy data awaiting archive and is labelled as such.
+      const current = await fetchCurrentPublishedVersions(
+        active!.id,
+        rows.map((v) => v.academic_term_id),
+      );
+      return rows
+        .map((v) => ({ ...v, isCurrent: current.get(v.academic_term_id) === v.id }))
+        .sort((a, b) => Number(b.isCurrent) - Number(a.isCurrent));
     },
   });
 
@@ -255,7 +269,13 @@ function PublishedSchedulesPage() {
               <Card key={v.id} className="p-4 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-semibold">{v.name}</span>
-                  <Badge>منشور</Badge>
+                  {v.isCurrent ? (
+                    <Badge>منشور — الحالي</Badge>
+                  ) : (
+                    <span className="rounded-full bg-destructive px-2 py-0.5 text-xs text-destructive-foreground">
+                      نسخة منشورة سابقة تحتاج أرشفة
+                    </span>
+                  )}
                 </div>
                 <DeliveryDemoWarningBanner name={v.name} notes={v.notes} />
                 {isEducationSourcePublication(v.id, v.academic_term_id) && (

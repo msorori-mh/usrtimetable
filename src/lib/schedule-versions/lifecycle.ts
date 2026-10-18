@@ -1,27 +1,17 @@
 import { supabase } from "@/integrations/supabase/client";
-import { validateProposed, type ProposedSession } from "@/lib/conflict-engine/validator";
-import {
-  loadApprovedExceptions,
-  summarizeConflictExceptions,
-} from "@/lib/conflict-engine/exceptions";
-import { logAudit } from "@/lib/audit";
+import { chunkIds, readAllRows } from "@/lib/supabase/read-all";
+import { fetchServerVersionValidation } from "@/lib/conflict-engine/server-validation";
 import {
   assignmentIntegrityReason,
   findSessionAssignmentIssues,
   type AssignmentIntegrityAssignment,
 } from "./assignment-integrity";
 import {
-  applyDeliveryGroupWaiver,
-  DELIVERY_GROUP_WAIVER_NOTICE_AR,
-  type DeliveryGroupWaiverScope,
-} from "@/lib/schedule-versions/delivery-group-waiver";
-import {
   type DisposablePurgeResult,
   PURGE_RPC_NAME,
 } from "@/lib/schedule-versions/disposable-purge";
 
 export {
-  PROTECTED_ACCEPTED_SCHEDULE_VERSION_ID,
   assertDisposablePurgeEligibility,
   type DisposablePurgeResult,
 } from "@/lib/schedule-versions/disposable-purge";
@@ -105,36 +95,10 @@ export interface EligibilityResult {
 }
 
 /**
- * Read the real college/term identity of a version so the temporary
- * delivery-group waiver can only ever match its single authorized scope.
- * Fail-closed: any read problem returns an empty (non-matching) scope.
+ * Eligibility for the lifecycle actions. Hard-conflict counts come from the server
+ * (public.validate_schedule_version — the same computation transition_schedule_version
+ * runs), including approved exceptions and super-admin policy waivers (Q-2, M-11).
  */
-async function resolveDeliveryGroupWaiverScope(params: {
-  collegeId: string;
-  scheduleVersionId: string;
-}): Promise<DeliveryGroupWaiverScope> {
-  const { data: version } = await supabase
-    .from("schedule_versions")
-    .select("id, college_id, academic_term_id")
-    .eq("id", params.scheduleVersionId)
-    .maybeSingle();
-  if (!version || version.college_id !== params.collegeId) return {};
-  if (!version.academic_term_id) return {};
-  const { data: term } = await supabase
-    .from("academic_terms")
-    .select("id, name, college_id")
-    .eq("id", version.academic_term_id)
-    .maybeSingle();
-  if (!term || term.college_id !== version.college_id) return {};
-  return {
-    collegeId: version.college_id,
-    scheduleVersionId: version.id,
-    termId: term.id,
-    termName: term.name,
-  };
-}
-
-/** Read sessions + run hard validation + load latest quality. */
 export async function evaluateEligibility(params: {
   collegeId: string;
   scheduleVersionId: string;
@@ -143,13 +107,20 @@ export async function evaluateEligibility(params: {
   const reasons: string[] = [];
   const warnings: string[] = [];
 
-  const { data: ss, error: se } = await supabase
-    .from("schedule_sessions")
-    .select("*")
-    .eq("college_id", collegeId)
-    .eq("schedule_version_id", scheduleVersionId);
-  if (se) throw se;
-  const sessions = ss ?? [];
+  const sessions = await readAllRows<{
+    id: string;
+    instructor_id: string;
+    teaching_assignment_id: string | null;
+    replaced_by_split: boolean | null;
+  }>((from, to) =>
+    supabase
+      .from("schedule_sessions")
+      .select("id, instructor_id, teaching_assignment_id, replaced_by_split")
+      .eq("college_id", collegeId)
+      .eq("schedule_version_id", scheduleVersionId)
+      .order("id")
+      .range(from, to),
+  );
 
   const assignmentIds = [
     ...new Set(
@@ -159,11 +130,11 @@ export async function evaluateEligibility(params: {
     ),
   ];
   const assignments: AssignmentIntegrityAssignment[] = [];
-  for (let offset = 0; offset < assignmentIds.length; offset += 100) {
+  for (const ids of chunkIds(assignmentIds, 100)) {
     const { data, error } = await supabase
       .from("teaching_assignments")
       .select("id,instructor_id,is_active")
-      .in("id", assignmentIds.slice(offset, offset + 100));
+      .in("id", ids);
     if (error) throw error;
     assignments.push(...(data ?? []));
   }
@@ -173,63 +144,18 @@ export async function evaluateEligibility(params: {
     : [];
   reasons.push(...assignmentIntegrityErrors);
 
-  const proposed: ProposedSession[] = sessions.map((s) => ({
-    id: s.id,
-    schedule_version_id: s.schedule_version_id,
-    course_offering_id: s.course_offering_id,
-    teaching_assignment_id: s.teaching_assignment_id,
-    instructor_id: s.instructor_id,
-    room_id: s.room_id,
-    section_id: s.section_id,
-    section_group_id: s.section_group_id,
-    study_system: s.study_system as ProposedSession["study_system"],
-    day_of_week: s.day_of_week,
-    start_time: s.start_time,
-    end_time: s.end_time,
-    session_type: s.session_type,
-    expected_students: s.expected_students,
-  }));
-
   let totalHard = 0;
   let approvedHard = 0;
   let unapprovedHard = 0;
   if (sessions.length > 0) {
-    const approvedExceptions = await loadApprovedExceptions({
-      scheduleVersionId,
-    });
-    const validation = await validateProposed({
-      collegeId,
-      scheduleVersionId,
-      sessions: proposed,
-      approvedExceptions,
-    });
-    const waiver = applyDeliveryGroupWaiver(
-      validation.conflicts,
-      await resolveDeliveryGroupWaiverScope({ collegeId, scheduleVersionId }),
-    );
-    if (waiver.active && waiver.waivedCount > 0) {
-      const summary = summarizeConflictExceptions(waiver.conflicts);
-      totalHard = summary.totalHardConflicts;
-      approvedHard = summary.approvedHardConflicts;
-      unapprovedHard = summary.unapprovedHardConflicts;
+    const server = await fetchServerVersionValidation(scheduleVersionId);
+    totalHard = server.totalHardCount;
+    approvedHard = server.approvedCount;
+    unapprovedHard = server.hardCount;
+    if (server.waivedCount > 0) {
       warnings.push(
-        `${DELIVERY_GROUP_WAIVER_NOTICE_AR} (عدد النتائج المُستثناة: ${waiver.waivedCount})`,
+        `يوجد ${server.waivedCount} تعارض مُستثنى بقرار إداري معتمد (يظهر كتحذير ولا يمنع الاعتماد).`,
       );
-      void logAudit({
-        action: "delivery_group_conflict_waiver_applied",
-        entity: "schedule_versions",
-        entityId: scheduleVersionId,
-        collegeId,
-        details: {
-          waived_count: waiver.waivedCount,
-          scope: "current_term_only",
-          conflict_code: "delivery_group_conflict",
-        },
-      });
-    } else {
-      totalHard = validation.totalHardConflicts;
-      approvedHard = validation.approvedHardConflicts;
-      unapprovedHard = validation.unapprovedHardConflicts;
     }
   }
 
@@ -240,7 +166,7 @@ export async function evaluateEligibility(params: {
   }
 
   // Latest quality run
-  const { data: qrow } = await supabase
+  const { data: qrow, error: qerr } = await supabase
     .from("schedule_quality_runs")
     .select("total_score, soft_conflicts_count")
     .eq("college_id", collegeId)
@@ -248,6 +174,7 @@ export async function evaluateEligibility(params: {
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+  if (qerr) throw qerr;
 
   if (qrow && qrow.soft_conflicts_count > 0) {
     warnings.push(`يوجد ${qrow.soft_conflicts_count} مخالفة مرنة (مسموح بها لكن يُنصح بمراجعتها).`);
@@ -321,6 +248,17 @@ export async function transitionVersion(params: {
     p_notes: notes ?? undefined,
   });
   if (error) {
+    if (error.message.includes("PUBLISH_BLOCKER:UNAPPROVED_HARD_CONFLICTS")) {
+      throw new Error(
+        "رفض الخادم الانتقال: توجد تعارضات إلزامية غير معتمدة في النسخة. أعد فحص التعارضات وعالجها أو اعتمد استثناءً رسمياً.",
+      );
+    }
+    if (error.message.includes("PUBLISH_BLOCKER:QUALITY_RUN_STALE")) {
+      throw new Error("تغيرت النسخة بعد آخر تقييم جودة. أعد احتساب الجودة ثم حاول مجدداً.");
+    }
+    if (error.message.includes("PUBLISH_BLOCKER:QUALITY_RUN_REQUIRED")) {
+      throw new Error("يجب احتساب جودة النسخة قبل هذا الإجراء.");
+    }
     if (error.message.includes("SCHEDULE_SESSION_ASSIGNMENT_INTEGRITY")) {
       throw new Error(
         "تعذر اعتماد أو نشر النسخة: توجد جلسات مرتبطة بإسنادات ملغاة أو لا تطابق محاضريها. صحّح ارتباط الجلسات بالإسنادات ثم أعد فحص التعارضات.",

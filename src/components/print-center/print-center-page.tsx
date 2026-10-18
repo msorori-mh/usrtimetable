@@ -39,6 +39,7 @@ import {
   EDUCATION_SOURCE_PUBLICATION_NOTICE_AR,
   isEducationSourcePublication,
 } from "@/lib/schedule-versions/education-publication";
+import { useEducationSourcePublications } from "@/lib/schedule-versions/education-publication-loader";
 import { fetchDeliveryCoverage } from "@/lib/schedule-versions/delivery-coverage";
 import type { SVStatus } from "@/lib/schedule-versions/lifecycle";
 import { entityDisplayName } from "@/lib/entity-display";
@@ -122,6 +123,8 @@ function Toggle({
 
 export function PrintCenterPage(props: { versionId: string }) {
   const { versionId } = props;
+  // Sealed education publication markers are data (M-11); re-render once loaded.
+  useEducationSourcePublications();
   const { active } = useActiveCollege();
   const exportAt = useMemo(() => new Date(), []);
 

@@ -1,14 +1,27 @@
-/** Verified by the administrator on 2026-09-29. These are aliases of ONE hall,
- * not a name-based heuristic. Weekly allocation lives in room_availability.
- * Do not merge unrelated rooms just because their labels match. */
-export const QARDAI_ROOM_IDS = [
-  "0b097849-0658-4d29-a3a7-ee0aaa0e91f2",
-  "35355e05-f45a-4f35-875e-3dec562574cd",
-  "4e19eef6-6a23-55d5-bfde-1a4af775fbd0",
-] as const;
+/** Room rows that are aliases of ONE physical hall (verified by the administrator).
+ * Aliasing is data — rooms.physical_group_key — never a name-based heuristic and no
+ * production id lives in the bundle (M-11). Weekly allocation lives in room_availability.
+ * Do not merge unrelated rooms just because their labels match.
+ * Pure module: the registry is filled by ./physical-rooms-loader.ts (or explicitly). */
+
+let keyByRoom: ReadonlyMap<string, string> = new Map();
+let sizeByKey: ReadonlyMap<string, number> = new Map();
+
+export function setPhysicalRoomGroups(
+  rooms: ReadonlyArray<{ id: string; physical_group_key: string | null }>,
+  groupSizes?: ReadonlyArray<{ group_key: string; room_count: number }>,
+): void {
+  keyByRoom = new Map(
+    rooms.flatMap((r) => (r.physical_group_key ? [[r.id, r.physical_group_key] as const] : [])),
+  );
+  const sizes = new Map<string, number>();
+  for (const key of keyByRoom.values()) sizes.set(key, (sizes.get(key) ?? 0) + 1);
+  for (const g of groupSizes ?? []) sizes.set(g.group_key, Math.max(g.room_count, sizes.get(g.group_key) ?? 0));
+  sizeByKey = sizes;
+}
 
 export function physicalRoomKey(id: string) {
-  return (QARDAI_ROOM_IDS as readonly string[]).includes(id) ? "shared:qardai" : id;
+  return keyByRoom.get(id) ?? id;
 }
 
 export function physicalRoomGroups<T extends { id: string }>(rooms: T[]): T[][] {
@@ -37,9 +50,11 @@ export function physicalSeatSummary(rooms: { id: string; seats: number | null }[
   return { known, unresolved };
 }
 
+/** A shared hall's occupancy is only known when every alias row (all colleges) was read. */
 export function physicalRoomSourcesComplete(id: string, readableRoomIds: string[]) {
-  return (
-    physicalRoomKey(id) !== "shared:qardai" ||
-    QARDAI_ROOM_IDS.every((alias) => readableRoomIds.includes(alias))
-  );
+  const key = physicalRoomKey(id);
+  if (key === id) return true;
+  const readable = new Set(readableRoomIds);
+  const readAliases = [...keyByRoom.entries()].filter(([room, k]) => k === key && readable.has(room));
+  return readAliases.length >= (sizeByKey.get(key) ?? Number.POSITIVE_INFINITY);
 }

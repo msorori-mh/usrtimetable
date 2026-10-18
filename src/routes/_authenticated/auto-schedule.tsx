@@ -30,6 +30,7 @@ import {
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import type { AutoRunMode } from "@/lib/auto-scheduler/types";
+import { invalidateSessionReadModels } from "@/lib/schedule-versions/session-writes";
 import { runV2AutoSchedule, type AutoScheduleProgress } from "@/lib/auto-scheduler/v2";
 import { fetchCollegeReadiness } from "@/lib/reports/readiness";
 import {
@@ -222,6 +223,9 @@ function AutoSchedulePage() {
       qc.invalidateQueries({
         queryKey: ["sv-delivery-coverage", active?.id, versionId],
       });
+      // L-10: generation changes sessions — refresh every session read model (legacy editor,
+      // Schedule Builder, eligibility, reports), not only the run list.
+      void invalidateSessionReadModels(qc);
     },
     onError: (e) => {
       setOutcome(null);
