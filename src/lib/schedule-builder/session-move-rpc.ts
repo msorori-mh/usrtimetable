@@ -9,6 +9,7 @@ import {
   conflictMessageAr,
   enrichConflictMessages,
 } from "@/lib/schedule-builder/conflict-code-messages";
+import { setProtectedVersionIds } from "@/lib/schedule-builder/drag-drop-safety";
 
 export type SessionMoveConflict = {
   code: string;
@@ -75,8 +76,28 @@ function toTimeParam(value: string): string {
   return t.length === 5 ? `${t}:00` : t;
 }
 
+/** Load the ids of protected versions visible to the caller (schedule_versions.protected). */
+export async function loadProtectedVersionIds(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("schedule_versions")
+    .select("id")
+    .eq("protected" as never, true as never);
+  if (error) throw error;
+  const ids = ((data ?? []) as Array<{ id: string }>).map((row) => row.id);
+  setProtectedVersionIds(ids);
+  return ids;
+}
+
+// The Schedule Builder imports this module; prime the registry once per page load.
+if (typeof window !== "undefined") {
+  void loadProtectedVersionIds().catch(() => undefined);
+}
+
 function rpcFailureMessage(message: string | null | undefined, fallback: string): string {
   const raw = message ?? "";
+  if (raw.includes("schedule_sessions are locked") || raw.includes("VERSION_LOCKED")) {
+    return "هذه النسخة معتمدة أو منشورة ولا يمكن تعديلها. أنشئ مسودة جديدة منها لإجراء التغييرات.";
+  }
   if (raw.includes("STALE_DELIVERY_GROUPS_REGENERATE")) {
     return conflictMessageAr("STALE_DELIVERY_GROUPS_REGENERATE");
   }

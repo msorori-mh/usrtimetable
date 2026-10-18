@@ -5,7 +5,7 @@ BEGIN;
 INSERT INTO public.schedule_sessions(id, college_id, schedule_version_id, course_offering_id,
   instructor_id, room_id, day_of_week, start_time, end_time, session_type, expected_students)
 VALUES (tsched.id('s-clash'), tsched.id('A'), tsched.id('ver-a'), tsched.id('off-1'),
-  tsched.id('ins-35'), tsched.id('room-0'), 0, '08:00', '10:00', 'lecture', 30);
+  tsched.id('ins-41'), tsched.id('room-0'), 0, '08:00', '10:00', 'lecture', 30);
 SET CONSTRAINTS ALL IMMEDIATE;
 SET CONSTRAINTS ALL DEFERRED;
 SELECT tsched.as_user('admin-a');

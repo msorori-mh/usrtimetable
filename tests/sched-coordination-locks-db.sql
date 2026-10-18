@@ -12,7 +12,7 @@ BEGIN;
 SELECT tsched.assert(NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname LIKE 'coordination_serialize_%'),
   'global write-gate triggers removed');
 CREATE TEMP TABLE gate_before AS SELECT revision FROM schedule_coordination_private.write_gate;
-UPDATE public.schedule_sessions SET room_id = tsched.id('room-39') WHERE id = tsched.id('s-0');
+UPDATE public.schedule_sessions SET room_id = tsched.id('room-40') WHERE id = tsched.id('s-0');
 DO $t$
 DECLARE k bigint := schedule_coordination_private.identity_lock_key(tsched.id('ins-0'));
   k2 bigint := schedule_coordination_private.identity_lock_key(tsched.id('ins-1'));

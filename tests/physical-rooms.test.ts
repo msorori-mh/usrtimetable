@@ -1,13 +1,20 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  QARDAI_ROOM_IDS,
+  setPhysicalRoomGroups,
   physicalRoomGroups,
   physicalSeatCount,
   physicalRoomSourcesComplete,
 } from "../src/lib/reports/physical-rooms";
 import { roomUtilizationMetrics } from "../src/lib/reports/presentation-metrics";
 import { resourceSummary, type OverviewRoom } from "../src/lib/reports/university-overview";
+
+// Fixture: three room rows aliasing one hall (production keys live in rooms.physical_group_key).
+const QARDAI_ROOM_IDS = ["hall-alias-a", "hall-alias-b", "hall-alias-c"] as const;
+setPhysicalRoomGroups(
+  QARDAI_ROOM_IDS.map((id) => ({ id, physical_group_key: "shared:qardai" })),
+  [{ group_key: "shared:qardai", room_count: 3 }],
+);
 
 test("approved Qardai days partition one 36-hour hall into 6,12,18 hours", () => {
   const allocations = [[0], [6, 2], [1, 3, 4]];

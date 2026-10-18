@@ -78,6 +78,7 @@ import {
   educationSourceTimetableApprovalPercent,
   isEducationSourcePublication,
 } from "@/lib/schedule-versions/education-publication";
+import { useEducationSourcePublications } from "@/lib/schedule-versions/education-publication-loader";
 import { ReportScopeError } from "@/lib/reports/preferences";
 import "@/components/reports/leadership-dashboard.css";
 
@@ -295,6 +296,8 @@ function StatusBadge({ row }: { row: LeadershipCollege }) {
 }
 
 function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
+  // Sealed education publication markers are data (M-11); re-render once loaded.
+  useEducationSourcePublications();
   const { data: me } = useCurrentUser();
   const collegeDean = !!me?.isCollegeDean && !me.isSuperAdmin && !me.isUniversityLeadership;
   const [period, setPeriod] = useState<{ year: string; type: string } | null>(null);

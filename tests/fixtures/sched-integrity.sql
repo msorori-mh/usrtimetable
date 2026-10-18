@@ -54,9 +54,9 @@ SELECT tsched.id('off-'||n), tsched.id('A'), tsched.id('term-a'), tsched.id('cou
 -- Replay drift: a later HR trigger expects this column (absent when its migration failed to replay).
 ALTER TABLE public.instructors ADD COLUMN IF NOT EXISTS administrative_support_department_id uuid;
 INSERT INTO public.instructors(id, college_id, full_name, availability_status)
-SELECT tsched.id('ins-'||n), tsched.id('A'), 'محاضر '||n, 'available' FROM generate_series(0, 39) n;
+SELECT tsched.id('ins-'||n), tsched.id('A'), 'محاضر '||n, 'available' FROM generate_series(0, 44) n;
 INSERT INTO public.rooms(id, college_id, code, name, capacity, room_type)
-SELECT tsched.id('room-'||n), tsched.id('A'), 'R'||n, 'قاعة '||n, 100, 'lecture_hall' FROM generate_series(0, 39) n;
+SELECT tsched.id('room-'||n), tsched.id('A'), 'R'||n, 'قاعة '||n, 100, 'lecture_hall' FROM generate_series(0, 44) n;
 
 -- Replay drift: session triggers read shared_lecture_links (installed from supabase/sql in production).
 CREATE TABLE IF NOT EXISTS public.shared_lecture_links (
@@ -75,14 +75,23 @@ END $drift$;
 INSERT INTO public.schedule_versions(id, college_id, academic_term_id, name, status)
 VALUES (tsched.id('ver-a'), tsched.id('A'), tsched.id('term-a'), 'مسودة الاختبار', 'draft');
 
--- :n_sessions conflict-free sessions: room r / instructor r, 3 slots/day, 5 days.
+-- :n_sessions (<= 600) conflict-free sessions: room r / instructor r (40 of each), 3 slots/day,
+-- days 0-4. Instructors/rooms 40-44 stay free for tests; 30-32 also teach the Friday groups.
+-- Perf runs may skip row triggers for this synthetic bulk setup only (the pre-existing
+-- per-row coordination check is quadratic); the data is conflict-free by construction.
+\if :{?fast_fixture}
+SET LOCAL session_replication_role = replica;
+\endif
 INSERT INTO public.schedule_sessions(id, college_id, schedule_version_id, course_offering_id,
   instructor_id, room_id, study_system, day_of_week, start_time, end_time, session_type, expected_students)
 SELECT tsched.id('s-'||i), tsched.id('A'), tsched.id('ver-a'), tsched.id('off-'||(i % 30)),
-  tsched.id('ins-'||(i % 30)), tsched.id('room-'||(i % 30)), 'regular',
-  (i / 90) % 5, time '08:00' + ((i / 30) % 3) * interval '2 hours',
-  time '10:00' + ((i / 30) % 3) * interval '2 hours', 'lecture', 30
+  tsched.id('ins-'||(i % 40)), tsched.id('room-'||(i % 40)), 'regular',
+  (i / 120) % 5, time '08:00' + ((i / 40) % 3) * interval '2 hours',
+  time '10:00' + ((i / 40) % 3) * interval '2 hours', 'lecture', 30
 FROM generate_series(0, :n_sessions - 1) i;
+\if :{?fast_fixture}
+SET LOCAL session_replication_role = origin;
+\endif
 
 -- Student structure: cohort c1 with two disjoint partitions (two labs + one member group of a
 -- merged lecture), cohort c2 owning the anchor group of that merged lecture.

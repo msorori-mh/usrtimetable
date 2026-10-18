@@ -4,10 +4,13 @@ import { join } from "node:path";
 import {
   assertDisposablePurgeEligibility,
   canMarkDisposableTestClone,
-  PROTECTED_ACCEPTED_SCHEDULE_VERSION_ID,
   PURGE_RPC_NAME,
 } from "../src/lib/schedule-versions/disposable-purge";
 
+const protectedFlagMigration = readFileSync(
+  join(import.meta.dir, "../supabase/migrations/20261021090000_purge_protected_by_flag.sql"),
+  "utf8",
+);
 const migration = readFileSync(
   join(
     import.meta.dir,
@@ -49,14 +52,21 @@ describe("disposable draft purge contract", () => {
     }
   });
 
-  test("always rejects protected accepted version", () => {
+  test("always rejects a version flagged protected", () => {
     expect(
       assertDisposablePurgeEligibility({
-        versionId: PROTECTED_ACCEPTED_SCHEDULE_VERSION_ID,
+        versionId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
         status: "draft",
         disposableTest: true,
+        protectedVersion: true,
       }),
     ).toEqual({ ok: false, reason: "PURGE_PROTECTED_VERSION" });
+  });
+
+  test("protection is the schedule_versions.protected flag, not a literal id (M-11)", () => {
+    expect(protectedFlagMigration).toContain("protected) THEN");
+    expect(protectedFlagMigration).toContain("AND NOT protected;");
+    expect(protectedFlagMigration).not.toMatch(/'[0-9a-f]{8}-[0-9a-f]{4}-/);
   });
 
   test("only super_admin may mark disposable clones", () => {
@@ -89,7 +99,6 @@ describe("disposable draft purge contract", () => {
     expect(migration).toContain("DELETE FROM public.schedule_versions");
     expect(migration).toContain("college_id = v_college_id");
     expect(migration).toContain("id <> v_protected");
-    expect(migration).toContain(PROTECTED_ACCEPTED_SCHEDULE_VERSION_ID);
     expect(migration).toContain(`CREATE OR REPLACE FUNCTION public.${PURGE_RPC_NAME}`);
     expect(migration).toContain("SET search_path = public, pg_temp");
   });

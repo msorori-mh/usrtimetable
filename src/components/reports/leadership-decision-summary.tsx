@@ -28,6 +28,7 @@ import {
   educationSourceTimetableApprovalPercent,
   isEducationSourcePublication,
 } from "@/lib/schedule-versions/education-publication";
+import { useEducationSourcePublications } from "@/lib/schedule-versions/education-publication-loader";
 import {
   decisionOrder,
   leadershipPriorities,
@@ -86,6 +87,8 @@ export function LeadershipDecisionSummary({
   capacityState,
   onOpen,
 }: LeadershipDecisionSummaryProps) {
+  // Sealed education publication markers are data (M-11); re-render once loaded.
+  useEducationSourcePublications();
   const published = colleges.filter((college) => !!college.version_id).length;
   const teachingSnapshot = leadershipTeachingSnapshot(colleges);
   const assignmentSnapshot = leadershipAssignmentSnapshot(colleges);

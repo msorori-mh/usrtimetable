@@ -311,8 +311,23 @@ export function popUndo(stack: PendingScheduleSessionChange[]): {
   return { stack: stack.slice(0, -1), item };
 }
 
-export const PROTECTED_DEMO_VERSION_ID = "835e50fe-3ad2-4232-8c15-0f403c668a7f";
+/**
+ * Protected (accepted/reference) versions are marked by data — schedule_versions.protected —
+ * not by an id literal in the bundle (M-11). The registry is filled by
+ * `loadProtectedVersionIds` (src/lib/schedule-builder/session-move-rpc.ts) and can be set
+ * explicitly; a version row carrying `protected` is authoritative.
+ */
+let protectedVersionIds: ReadonlySet<string> = new Set();
 
-export function isProtectedDemoVersion(versionId: string | null | undefined): boolean {
-  return versionId === PROTECTED_DEMO_VERSION_ID;
+export function setProtectedVersionIds(ids: Iterable<string>): void {
+  protectedVersionIds = new Set(ids);
+}
+
+export function isProtectedDemoVersion(
+  version: string | { id?: string | null; protected?: boolean | null } | null | undefined,
+): boolean {
+  if (!version) return false;
+  if (typeof version === "string") return protectedVersionIds.has(version);
+  if (typeof version.protected === "boolean") return version.protected;
+  return !!version.id && protectedVersionIds.has(version.id);
 }

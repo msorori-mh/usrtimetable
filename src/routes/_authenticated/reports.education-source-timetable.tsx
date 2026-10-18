@@ -4,14 +4,9 @@ import { CollegeSourceTimetable } from "@/components/data-onboarding/college-sou
 import { ReportShell } from "@/components/reports/report-shell";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  EDUCATION_SOURCE_PUBLICATION_NOTICE_AR,
-  EDUCATION_SOURCE_PUBLICATION_VERSION_IDS,
-} from "@/lib/schedule-versions/education-publication";
+import { EDUCATION_SOURCE_PUBLICATION_NOTICE_AR } from "@/lib/schedule-versions/education-publication";
+import { useEducationSourcePublications } from "@/lib/schedule-versions/education-publication-loader";
 import type { SVStatus } from "@/lib/schedule-versions/lifecycle";
-
-const COLLEGE_ID = "1ee291b2-bec9-43d3-b42b-5a4f46946399";
-const TERM_ID = "93705393-609d-4605-ae94-9572cd8b2090";
 
 export const Route = createFileRoute("/_authenticated/reports/education-source-timetable")({
   head: () => ({ meta: [{ title: "جدول كلية التربية والعلوم من ملفات الأقسام" }] }),
@@ -21,7 +16,17 @@ export const Route = createFileRoute("/_authenticated/reports/education-source-t
 function Page() {
   const { active } = useActiveCollege();
   const navigate = useNavigate();
-  const allowed = active?.id === COLLEGE_ID;
+  // The sealed education source publication is data (scheduling_policy_exceptions, M-11).
+  const publications = useEducationSourcePublications();
+  const sourcePublication = (publications.data ?? []).find(
+    (p) => p.role === "source" && p.college_id === active?.id,
+  );
+  const COLLEGE_ID = sourcePublication?.college_id ?? "";
+  const TERM_ID = sourcePublication?.term_id ?? "";
+  const publicationVersionIds = (publications.data ?? [])
+    .filter((p) => p.college_id === COLLEGE_ID && p.term_id === TERM_ID)
+    .map((p) => p.version_id);
+  const allowed = !!sourcePublication && !!TERM_ID && active?.id === COLLEGE_ID;
   const version = useQuery({
     queryKey: ["education-source-timetable-version", COLLEGE_ID, TERM_ID],
     enabled: allowed,
@@ -31,7 +36,7 @@ function Page() {
         .select("id,status")
         .eq("college_id", COLLEGE_ID)
         .eq("academic_term_id", TERM_ID)
-        .in("id", [...EDUCATION_SOURCE_PUBLICATION_VERSION_IDS])
+        .in("id", publicationVersionIds)
         .eq("status", "published")
         .single();
       if (error) throw error;
