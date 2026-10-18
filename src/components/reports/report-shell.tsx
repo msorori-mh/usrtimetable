@@ -22,6 +22,7 @@ import { downloadCSV, downloadXLSX, type Row } from "@/lib/reports/export";
 import { printPageStyleCss } from "@/lib/print-center";
 import { toast } from "sonner";
 import type { ReportContext } from "@/lib/reports/types";
+import { userErrorMessage } from "@/lib/user-error";
 
 interface Props {
   title: string;
@@ -138,7 +139,7 @@ export function ReportShell({
       prepared = preparePrintContent ? await preparePrintContent() : printContent;
     } catch (error) {
       cancel();
-      toast.error(error instanceof Error ? error.message : "تعذّر تجهيز التقرير للطباعة.");
+      toast.error(userErrorMessage(error, "تعذّر تجهيز التقرير للطباعة."));
       return;
     }
     if (cancelled) return;
