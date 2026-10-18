@@ -33,6 +33,7 @@ import { Archive, BookOpen, Pencil, Trash2 } from "lucide-react";
 import { PrintPlansButton } from "@/components/study-plans/print-plans-button";
 import { PlanCoursesManager } from "@/components/study-plans/plan-courses-manager";
 import { userErrorMessage } from "@/lib/user-error";
+import { QueryErrorNotice } from "@/components/app-states/query-error-notice";
 
 export const Route = createFileRoute("/_authenticated/study-plans")({
   head: () => ({ meta: [{ title: "الخطط الدراسية" }] }),
@@ -88,7 +89,7 @@ function StudyPlansPage() {
     setProgFilter(ALL);
   }, [active?.id]);
 
-  const { data: depts } = useQuery({
+  const { data: depts, error: deptsError } = useQuery({
     queryKey: ["departments", active?.id, "options"],
     enabled: !!active,
     queryFn: async () => {
@@ -104,7 +105,7 @@ function StudyPlansPage() {
     },
   });
 
-  const { data: progs } = useQuery({
+  const { data: progs, error: progsError } = useQuery({
     queryKey: ["programs", active?.id, "options-with-duration"],
     enabled: !!active,
     queryFn: async () => {
@@ -120,10 +121,11 @@ function StudyPlansPage() {
     },
   });
 
-  const { data: rows, isLoading } = useQuery({
+  const { data: rows, isLoading, isError, error: rowsError, refetch } = useQuery({
     queryKey: ["study-plans", active?.id],
     enabled: !!active,
     queryFn: async () => {
+      // read-all-ok: study plans per college are tens, not thousands
       const { data, error } = await supabase
         .from("study_plans")
         .select(
@@ -301,12 +303,12 @@ function StudyPlansPage() {
                 </DialogHeader>
                 <div className="space-y-3">
                   <div>
-                    <Label>البرنامج</Label>
+                    <Label htmlFor="plan-f5">البرنامج</Label>
                     <Select
                       value={form.program_id}
                       onValueChange={(v) => setForm({ ...form, program_id: v })}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="plan-f5">
                         <SelectValue placeholder="اختر البرنامج" />
                       </SelectTrigger>
                       <SelectContent>
@@ -319,31 +321,31 @@ function StudyPlansPage() {
                     </Select>
                   </div>
                   <div>
-                    <Label>الاسم</Label>
-                    <Input
+                    <Label htmlFor="plan-f1">الاسم</Label>
+                    <Input id="plan-f1"
                       value={form.name}
                       onChange={(e) => setForm({ ...form, name: e.target.value })}
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label>الرمز</Label>
-                      <Input
+                      <Label htmlFor="plan-f2">الرمز</Label>
+                      <Input id="plan-f2"
                         value={form.code}
                         onChange={(e) => setForm({ ...form, code: e.target.value })}
                       />
                     </div>
                     <div>
-                      <Label>الإصدار</Label>
-                      <Input
+                      <Label htmlFor="plan-f3">الإصدار</Label>
+                      <Input id="plan-f3"
                         value={form.version}
                         onChange={(e) => setForm({ ...form, version: e.target.value })}
                       />
                     </div>
                   </div>
                   <div>
-                    <Label>سنة السريان</Label>
-                    <Input
+                    <Label htmlFor="plan-f4">سنة السريان</Label>
+                    <Input id="plan-f4"
                       type="number"
                       value={form.effective_year}
                       onChange={(e) => setForm({ ...form, effective_year: Number(e.target.value) })}
@@ -374,7 +376,7 @@ function StudyPlansPage() {
       <Card className="mb-4 p-3">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div>
-            <Label className="text-xs">القسم</Label>
+            <Label htmlFor="plan-f6" className="text-xs">القسم</Label>
             <Select
               value={deptFilter}
               onValueChange={(v) => {
@@ -382,7 +384,7 @@ function StudyPlansPage() {
                 setProgFilter(ALL);
               }}
             >
-              <SelectTrigger>
+              <SelectTrigger id="plan-f6">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -396,9 +398,9 @@ function StudyPlansPage() {
             </Select>
           </div>
           <div>
-            <Label className="text-xs">البرنامج</Label>
+            <Label htmlFor="plan-f7" className="text-xs">البرنامج</Label>
             <Select value={progFilter} onValueChange={setProgFilter}>
-              <SelectTrigger>
+              <SelectTrigger id="plan-f7">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -412,9 +414,9 @@ function StudyPlansPage() {
             </Select>
           </div>
           <div>
-            <Label className="text-xs">الحالة</Label>
+            <Label htmlFor="plan-f8" className="text-xs">الحالة</Label>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger>
+              <SelectTrigger id="plan-f8">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -428,6 +430,18 @@ function StudyPlansPage() {
         </div>
       </Card>
 
+      {(deptsError ?? progsError) && (
+        <QueryErrorNotice
+          className="mb-3"
+          title="تعذّر تحميل الأقسام أو البرامج."
+          error={deptsError ?? progsError}
+          onRetry={() => {
+            void qc.invalidateQueries({ queryKey: ["programs", active?.id] });
+            void qc.invalidateQueries({ queryKey: ["departments", active?.id] });
+          }}
+        />
+      )}
+
       {(!progs || progs.length === 0) && (
         <p className="mb-3 rounded border border-dashed border-border bg-muted/30 p-3 text-sm text-muted-foreground">
           أنشئ برنامجًا أولاً.
@@ -437,6 +451,8 @@ function StudyPlansPage() {
       <Card className="overflow-hidden">
         {isLoading ? (
           <p className="p-6 text-center text-muted-foreground">جارٍ التحميل...</p>
+        ) : isError ? (
+          <div className="p-4"><QueryErrorNotice error={rowsError} onRetry={() => void refetch()} /></div>
         ) : !rows || rows.length === 0 ? (
           <p className="p-6 text-center text-muted-foreground">لا توجد خطط بعد.</p>
         ) : filtered.length === 0 ? (
@@ -485,7 +501,7 @@ function StudyPlansPage() {
                             size="sm"
                             variant="ghost"
                             onClick={() => startEdit(p)}
-                            aria-label="تعديل الخطة"
+                            aria-label={`تعديل الخطة ${p.name}`}
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
@@ -494,7 +510,7 @@ function StudyPlansPage() {
                           size="sm"
                           variant="ghost"
                           onClick={() => setRetiring(p)}
-                          aria-label={p.archived_at ? "فحص حذف الخطة المؤرشفة" : "أرشفة الخطة"}
+                          aria-label={p.archived_at ? `فحص حذف الخطة المؤرشفة ${p.name}` : `أرشفة الخطة ${p.name}`}
                         >
                           {p.archived_at ? (
                             <Trash2 className="h-3.5 w-3.5" />
