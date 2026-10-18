@@ -283,7 +283,7 @@ describe("complete assignment schedule reads", () => {
   });
 
   it("scopes the UI cache by term and displays errors and the chosen version", () => {
-    const source = readFileSync("src/routes/_authenticated/teaching-assignments.tsx", "utf8");
+    const source = ["src/routes/_authenticated/teaching-assignments.tsx", "src/components/teaching-assignments/teaching-assignment-groups-table.tsx", "src/components/teaching-assignments/instructor-search-summary-card.tsx", "src/hooks/use-teaching-assignment-filter-options.ts"].map((file) => readFileSync(file, "utf8")).join("\n");
     expect(source).toContain(
       '["teaching-assignment-row-days", active?.id, termId, viewVersion?.id ?? null]',
     );
