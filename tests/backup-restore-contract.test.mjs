@@ -22,11 +22,29 @@ test("restore drill fails closed before any destructive restore", () => {
   }
 });
 
-test("restore drill limits the dump to the public schema and verifies the result", () => {
-  assert.match(script, /--schema=public/);
+test("restore drill dumps the application schemas and verifies every table's row count", () => {
+  // Supabase platform schemas are excluded, public and the *_private schemas are included,
+  // extensions are recreated first (schema-filtered dumps omit CREATE EXTENSION).
+  assert.match(script, /platform_schemas=/);
+  assert.match(script, /'storage'/);
+  assert.match(script, /--schema=\$schema/);
+  assert.match(script, /create extension if not exists/);
+  assert.match(script, /INCLUDE_AUTH/);
   assert.match(script, /--exit-on-error/);
-  assert.match(script, /public table count mismatch/);
+  const restoreCall = script.slice(script.indexOf("\npg_restore \\\n"));
+  assert.doesNotMatch(restoreCall.slice(0, restoreCall.indexOf('"$work_dir/app.dump"')), /--clean/);
+  assert.match(script, /restore target is not empty/);
+  assert.match(script, /per-table row count mismatch/);
   assert.match(script, /RESTORE_DRILL_PASS/);
+});
+
+test("restore drill reads the production ref from config and writes secret-free evidence", () => {
+  assert.doesNotMatch(script, /emzytxqkxjjhsivqxdiu/);
+  assert.match(script, /supabase\/config\.toml/);
+  assert.match(script, /docs\/operations\/drills/);
+  const evidence = script.slice(script.indexOf('> "$evidence_file"') - 600);
+  assert.doesNotMatch(evidence, /DATABASE_URL"?\s*\)?\s*$/m);
+  assert.doesNotMatch(script, /printf[^\n]*\$(?:SOURCE|RESTORE)_DATABASE_URL/);
 });
 
 test("runbook separates platform recovery from the logical drill", () => {
@@ -34,4 +52,7 @@ test("runbook separates platform recovery from the logical drill", () => {
   assert.match(runbook, /لا تُنفذ الاستعادة فوق قاعدة الإنتاج/);
   assert.match(runbook, /DISPOSABLE_ONLY/);
   assert.match(runbook, /HOLD/);
+  assert.match(runbook, /RPO/);
+  assert.match(runbook, /RTO/);
+  assert.match(runbook, /INCLUDE_AUTH=1/);
 });

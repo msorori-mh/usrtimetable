@@ -1,9 +1,9 @@
-import asyncio, json, pathlib
+import asyncio, json, os, pathlib
 from playwright.async_api import async_playwright
 
 import functools, http.server, socketserver, threading
 PORT = 8931
-handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory="/dev-server/dist-print-proof")
+handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(pathlib.Path(__file__).resolve().parents[2] / "dist-print-proof"))
 socketserver.TCPServer.allow_reuse_address = True
 httpd = socketserver.TCPServer(("127.0.0.1", PORT), handler)
 threading.Thread(target=httpd.serve_forever, daemon=True).start()
@@ -50,7 +50,8 @@ async def main():
     text = json.dumps(out, ensure_ascii=False, indent=2)
     # LAUNCH-CLOSURE-04: persist the evidence from the script itself so the recorded
     # diagnosis can always be regenerated (it used to be captured by hand).
-    dest = pathlib.Path("/dev-server/docs/print-proof/PRINT-BUTTON-DIAGNOSIS.json")
+    root = pathlib.Path(__file__).resolve().parents[2]
+    dest = root / os.environ.get("PRINT_PROOF_OUT", "proof-output/print-proof") / "PRINT-BUTTON-DIAGNOSIS.json"
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(text + "\n", encoding="utf-8")
     print(text)

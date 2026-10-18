@@ -37,6 +37,6 @@
 لا تعطيل triggers، لا تعديل جلسات منشورة أو مؤرشفة، لا حذف، لا اختلاق أوقات أو قاعات أو محاضرين، لا نشر تلقائي.
 
 ## تفاصيل تقنية
-- الترحيلات في `supabase/migrations/` مع ملف rollback في `supabase/rollback/`، وتوثيق القاعدة في `AGENTS.md`.
+- الترحيلات في `supabase/migrations/` مع ملف rollback في `supabase/rollbacks/`، وتوثيق القاعدة في `AGENTS.md`.
 - الواجهة: تمرير `versionId` إلى `create`/`preview` في `teaching-assignments-v2-service.ts` عند العمل داخل مسودة.
 - التوقف المغلق عند: أكثر من إسناد قديم مرشح للاستبدال، أي تغير في hash المنشورة، أو تعارض تنسيق حقيقي في الفصل نفسه (HOLD مع الدليل).

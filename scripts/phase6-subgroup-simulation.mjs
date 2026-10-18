@@ -20,7 +20,7 @@ import {
   scanConflicts,
   scheduleChildSession,
   timeToMinutes,
-} from "../src/lib/schedule-builder/subgroup-auto-scheduler.ts";
+} from "../tests/support/subgroup-auto-scheduler.ts";
 import { ORIGINAL_SESSION_STRATEGY } from "../src/lib/schedule-builder/section-subgroups.ts";
 
 function stableUuid(seed) {

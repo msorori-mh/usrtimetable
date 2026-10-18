@@ -64,11 +64,29 @@ describe("shared report batch inventory", () => {
     }
   });
 
+  // Deliberate, reviewed exceptions (keep this list short and explained):
+  // - instructor-schedule / rooms-report print several sheets in one job; each sheet
+  //   repeats the official header via <RepeatingPrintHeader header={<ReportOfficialHeader…/>}>
+  //   (a9b9c88, d6a8411). They still render inside <ReportShell>.
+  // - teaching-demand-capacity offers an additional «summary» CSV next to the shell export.
+  const OFFICIAL_HEADER_ALLOWED = new Set([
+    "reports.instructor-schedule.tsx",
+    "reports.rooms-report.tsx",
+  ]);
+  const EXTRA_CSV_ALLOWED = new Set(["reports.teaching-demand-capacity.tsx"]);
+
   test("no content route re-implements the official header or export buttons", () => {
     for (const file of contentRoutes) {
       const src = read(`${ROUTES_DIR}/${file}`);
-      expect(src.includes("<ReportOfficialHeader")).toBe(false);
-      expect(src.includes("downloadCSV(")).toBe(false);
+      if (OFFICIAL_HEADER_ALLOWED.has(file)) {
+        // Only the repeating per-sheet print header form is allowed.
+        const uses = src.split("<ReportOfficialHeader").length - 1;
+        const repeated = src.split("<RepeatingPrintHeader").length - 1;
+        expect(uses).toBeLessThanOrEqual(repeated);
+      } else {
+        expect(src.includes("<ReportOfficialHeader")).toBe(false);
+      }
+      if (!EXTRA_CSV_ALLOWED.has(file)) expect(src.includes("downloadCSV(")).toBe(false);
     }
   });
 
@@ -90,9 +108,13 @@ describe("shared report batch inventory", () => {
     }
   });
 
+  // education-source-timetable is a single-college page (كلية التربية) reached from the
+  // published-timetable, published-schedules and timetable pages, not from the hub.
+  const NOT_IN_HUB = new Set(["reports.education-source-timetable.tsx"]);
+
   test("every content route is reachable from the hub", () => {
     const hub = read(`${ROUTES_DIR}/${HUB}`);
-    for (const file of contentRoutes) {
+    for (const file of contentRoutes.filter((f) => !NOT_IN_HUB.has(f))) {
       const slug = file.replace(/^reports\./, "").replace(/\.tsx$/, "");
       expect(hub).toContain(`to: "/reports/${slug}"`);
     }
@@ -101,8 +123,10 @@ describe("shared report batch inventory", () => {
   test("the whole report surface stays read-only", () => {
     for (const file of routeFiles) {
       const src = read(`${ROUTES_DIR}/${file}`);
+      // URLSearchParams.delete(...) is not a write; strip it before checking for DML.
+      const code = src.replace(/searchParams\.delete\(/g, "searchParams_remove(");
       for (const dml of [".insert(", ".update(", ".upsert(", ".delete("]) {
-        expect(src.includes(dml)).toBe(false);
+        expect(code.includes(dml)).toBe(false);
       }
     }
   });

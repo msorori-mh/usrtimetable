@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
-import type { AutoRunMode } from "@/lib/auto-scheduler/greedy";
+import type { AutoRunMode } from "@/lib/auto-scheduler/types";
 import { runV2AutoSchedule, type AutoScheduleProgress } from "@/lib/auto-scheduler/v2";
 import { fetchCollegeReadiness } from "@/lib/reports/readiness";
 import {

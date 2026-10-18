@@ -36,3 +36,25 @@ dist-ssr
 *.sln
 *.sw?
 dist-print-proof/
+
+# Generated proof/QA builds and outputs (M-26) — never commit build artifacts.
+dist-reports-proof/
+proof-output/
+reports-proof-output/
+# New binary proof outputs. The already-committed evidence set under docs/print-proof
+# stays tracked (tests read its RESULTS.json); re-recording it is an explicit decision:
+#   PRINT_PROOF_OUT=docs/print-proof python3 scripts/print-proof/run.py && git add -f …
+docs/print-proof/**/*.pdf
+docs/print-proof/**/*.png
+docs/print-proof/**/*.xlsx
+
+# Local restore drill dumps (evidence .txt files under docs/operations/drills are committed)
+*.dump
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Local schema-baseline by-products (scripts/db/make-baseline.sh)
+supabase/reference/replay-schema-*.sql
+supabase/reference/schema-diff-*.txt

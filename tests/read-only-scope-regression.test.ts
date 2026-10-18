@@ -61,7 +61,11 @@ describe("read_only («مشاهد») is reports-only — regression", () => {
   test("app layout drives the reports-only nav from isReportsOnlyRole", () => {
     const src = read("src/components/app-layout.tsx");
     expect(src).toContain("isReportsOnlyRole(user)");
-    expect(src).toContain('reportsOnly ? "core" : academicAffairs ? "all" : mode');
+    // Restricted viewer scopes (reports-only, academic affairs, leadership) are now all
+    // pinned to the core nav and lose the mode toggle; reports-only must stay among them.
+    expect(src).toContain("const restrictedViewer = reportsOnly ||");
+    expect(src).toContain('const effectiveMode: NavMode = restrictedViewer ? "core" : mode;');
+    expect(src).toContain("const modeToggle = restrictedViewer ? null :");
   });
 
   test("reports-only on /reports does not see the active-college badge", () => {
