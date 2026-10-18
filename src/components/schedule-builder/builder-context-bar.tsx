@@ -96,7 +96,7 @@ export function BuilderContextBar({ ws }: { ws: ReturnType<typeof useScheduleBui
         </div>
 
         <div className="space-y-2">
-          <Label>النظام الدراسي</Label>
+          <Label htmlFor="bctx-f1">النظام الدراسي</Label>
           <Select
             value={studySystem}
             onValueChange={(v) => {
@@ -106,7 +106,7 @@ export function BuilderContextBar({ ws }: { ws: ReturnType<typeof useScheduleBui
               });
             }}
           >
-            <SelectTrigger aria-label="النظام الدراسي">
+            <SelectTrigger id="bctx-f1" aria-label="النظام الدراسي">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

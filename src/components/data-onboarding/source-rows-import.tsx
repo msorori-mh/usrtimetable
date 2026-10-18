@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { userErrorMessage } from "@/lib/user-error";
+import { formatNumber } from "@/lib/format";
 
 type ExistingRow = Parameters<typeof previewSourceRows>[1][number];
 
@@ -166,8 +167,8 @@ export function SourceRowsImport({
       {preview && (
         <div className="space-y-2 text-sm" role="status">
           <p>
-            جديد: {preview.rows.length} · موجود مطابق: {preview.skipped} · أخطاء:
-            {preview.errors.length}
+            جديد: {formatNumber(preview.rows.length)} · موجود مطابق: {formatNumber(preview.skipped)} ·
+            أخطاء: {formatNumber(preview.errors.length)}
           </p>
           {preview.errors.length > 0 && (
             <ul className="list-disc space-y-1 ps-5 text-destructive">
@@ -182,7 +183,7 @@ export function SourceRowsImport({
             }
             onClick={() => void save()}
           >
-            {loading ? "جارٍ الحفظ…" : `حفظ ${preview.rows.length} صف مصدر`}
+            {loading ? "جارٍ الحفظ…" : `حفظ ${formatNumber(preview.rows.length)} صف مصدر`}
           </Button>
         </div>
       )}
