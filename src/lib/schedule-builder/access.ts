@@ -79,14 +79,17 @@ export function shouldLoadScheduleBuilderData(opts: {
   return opts.hasActiveCollege && opts.versionLoaded && opts.collegeMatches;
 }
 
-/** Published / archived versions are view-only regardless of role. */
+/**
+ * Approved / published / archived versions are view-only regardless of role (H-8; the
+ * database trigger enforce_schedule_session_lock enforces the same set).
+ */
 export function isScheduleVersionWriteLocked(status: ScheduleVersionStatus | null | undefined): boolean {
-  return status === "published" || status === "archived";
+  return status === "approved" || status === "published" || status === "archived";
 }
 
 /**
  * Session dialog is read-only when the user cannot manage the college,
- * or the version is published/archived. Draft (and review/approved) stay editable
+ * or the version is approved/published/archived. Draft and review stay editable
  * for authorized managers.
  */
 export function isSessionDialogReadOnly(opts: {

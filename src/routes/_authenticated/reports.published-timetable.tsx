@@ -2,6 +2,11 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  fetchCurrentPublishedVersions,
+  onlyCurrentPublished,
+} from "@/lib/schedule-versions/current-published";
+import { useEducationSourcePublications } from "@/lib/schedule-versions/education-publication-loader";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { ReportShell } from "@/components/reports/report-shell";
 import {
@@ -35,6 +40,8 @@ export const Route = createFileRoute("/_authenticated/reports/published-timetabl
 
 function Page() {
   const { active } = useActiveCollege();
+  // Sealed education publication markers (data, M-11) re-render notices once loaded.
+  useEducationSourcePublications();
   const [termId, setTermId] = useState("all");
   const [versionId, setVersionId] = useState("");
   const [deptId, setDeptId] = useState("all");
@@ -69,7 +76,13 @@ function Page() {
         .eq("status", "published")
         .order("created_at", { ascending: false });
       if (termId !== "all") q = q.eq("academic_term_id", termId);
-      return (await q.throwOnError()).data ?? [];
+      const rows = (await q.throwOnError()).data ?? [];
+      // M-9: one timetable per term — the server's current published version.
+      const current = await fetchCurrentPublishedVersions(
+        active!.id,
+        rows.map((v) => v.academic_term_id),
+      );
+      return onlyCurrentPublished(rows, current);
     },
   });
   const { data: depts, error: deptsError } = useQuery({
