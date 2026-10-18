@@ -6,6 +6,12 @@
 --  * college_dean is provisionable
 --  * no implicit super_admin for the first account
 BEGIN;
+-- this test empties super_admin rows on purpose (first-account scenario)
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_prevent_last_super_admin') THEN
+    ALTER TABLE public.user_roles DISABLE TRIGGER trg_prevent_last_super_admin;
+  END IF;
+END $$;
 ALTER TABLE auth.users DISABLE TRIGGER USER;
 INSERT INTO auth.users(id,email) VALUES('00000000-0000-0000-0000-0000000005b1','prov-sa@example.invalid');
 ALTER TABLE auth.users ENABLE TRIGGER USER;
