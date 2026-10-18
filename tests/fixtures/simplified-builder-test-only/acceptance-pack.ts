@@ -1,7 +1,7 @@
 /**
  * Deterministic, synthetic acceptance fixtures for the simplified timetable flow.
  *
- * These values are source-only. They never create Auth users, call Lovable Cloud,
+ * These values are source-only. They never create Auth users, call a hosted backend,
  * or write to a database. The `.invalid` domain intentionally cannot receive mail.
  */
 

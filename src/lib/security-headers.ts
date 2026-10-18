@@ -19,24 +19,6 @@ export type SecurityHeaderOptions = {
   supabaseUrl?: string | null;
 };
 
-const LOVABLE_FRAME_ANCESTORS = [
-  "https://*.lovable.app",
-  "https://lovable.dev",
-  "https://*.lovableproject.com",
-];
-
-/** Lovable editor preview surfaces must stay frameable by the editor only. */
-export function isLovablePreviewHost(hostname: string): boolean {
-  const host = hostname.trim().toLowerCase().replace(/\.$/, "");
-  if (!host) return false;
-  return (
-    host.endsWith(".lovable.app") ||
-    host === "lovableproject.com" ||
-    host.endsWith(".lovableproject.com") ||
-    host.startsWith("id-preview--")
-  );
-}
-
 /** The public report-verification page must never leak its receipt id via Referer. */
 export function isPublicVerificationPath(pathname: string | undefined): boolean {
   return pathname === "/verify-report" || pathname === "/verify-report/";
@@ -59,7 +41,6 @@ function supabaseOrigins(url: string | null | undefined): string[] {
 }
 
 export function buildContentSecurityPolicy(options: SecurityHeaderOptions): string {
-  const preview = isLovablePreviewHost(options.hostname);
   const connect = [
     "'self'",
     "https://*.supabase.co",
@@ -81,7 +62,7 @@ export function buildContentSecurityPolicy(options: SecurityHeaderOptions): stri
     ["worker-src", ["'self'", "blob:"]],
     ["frame-src", ["'self'", "blob:", "data:"]],
     ["object-src", ["'none'"]],
-    ["frame-ancestors", preview ? LOVABLE_FRAME_ANCESTORS : ["'none'"]],
+    ["frame-ancestors", ["'none'"]],
     ["base-uri", ["'self'"]],
     ["form-action", ["'self'"]],
   ];
@@ -101,8 +82,9 @@ export function buildSecurityHeaders(options: SecurityHeaderOptions): Record<str
   if (!isLocalHost(options.hostname))
     headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
   if (isPublicVerificationPath(options.pathname)) headers["X-Robots-Tag"] = "noindex, nofollow";
-  // Legacy clickjacking protection for browsers without frame-ancestors.
-  if (!isLovablePreviewHost(options.hostname)) headers["X-Frame-Options"] = "DENY";
+  // Legacy clickjacking protection for browsers without frame-ancestors. No host is
+  // frameable: there is no editor preview surface that needs an exception.
+  headers["X-Frame-Options"] = "DENY";
   return headers;
 }
 

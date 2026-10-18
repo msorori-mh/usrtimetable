@@ -3,7 +3,6 @@ import {
   buildContentSecurityPolicy,
   buildSecurityHeaders,
   cspReportOnlyFromEnv,
-  isLovablePreviewHost,
   mergeSecurityHeaders,
 } from "../src/lib/security-headers";
 
@@ -56,23 +55,21 @@ describe("M-1 security headers", () => {
     expect(directive(csp, "object-src")).toEqual(["'none'"]);
   });
 
-  test("Lovable preview hosts stay frameable by the editor only", () => {
+  test("no host is frameable: frame-ancestors 'none' and X-Frame-Options DENY everywhere", () => {
     for (const host of [
+      // Former hosting-platform preview hosts no longer get an exception.
       "id-preview--1234abcd-1111-4222-8333-444455556666.lovable.app",
       "my-app.lovable.app",
       "1234abcd-1111-4222-8333-444455556666.lovableproject.com",
+      "usrtimetable-staging.example.workers.dev",
+      "timetable.example.edu",
+      "localhost",
+      "",
     ]) {
-      expect(isLovablePreviewHost(host)).toBe(true);
       const headers = buildSecurityHeaders({ hostname: host });
-      expect(directive(headers["Content-Security-Policy"], "frame-ancestors")).toEqual([
-        "https://*.lovable.app",
-        "https://lovable.dev",
-        "https://*.lovableproject.com",
-      ]);
-      expect(headers["X-Frame-Options"]).toBeUndefined();
+      expect(directive(headers["Content-Security-Policy"], "frame-ancestors")).toEqual(["'none'"]);
+      expect(headers["X-Frame-Options"]).toBe("DENY");
     }
-    for (const host of ["lovable.app.evil.com", "evil-lovable.app", "timetable.example.edu", ""])
-      expect(isLovablePreviewHost(host)).toBe(false);
   });
 
   test("CSP_REPORT_ONLY=1 switches to the report-only header", () => {

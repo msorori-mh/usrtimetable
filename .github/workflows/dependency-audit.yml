@@ -32,5 +32,8 @@ jobs:
         run: bun audit --audit-level=high
       - name: Lockfile sources outside the public npm registry
         run: |
-          count=$(grep -c 'https://europe-west[0-9]*-npm.pkg.dev/lovable-core-prod' bun.lock || true)
-          echo "::notice title=private registry entries::$count lockfile entries resolve to Lovable's registry mirror (see docs/operations/dependency-overrides.md)"
+          # Every entry must resolve to the public npm registry (empty URL = default registry).
+          count=$(grep -cE '"https://[a-z0-9-]+-npm\.pkg\.dev/' bun.lock || true)
+          if [ "$count" != "0" ]; then
+            echo "::warning title=private registry entries::$count lockfile entries resolve to a private registry mirror; run scripts/exit-lovable/regenerate-lockfile.sh"
+          fi

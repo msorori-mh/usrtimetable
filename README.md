@@ -6,8 +6,9 @@
 ## التقنيات
 
 - **الواجهة والخادم**: React 19 + TanStack Start/Router/Query، Vite 7، Tailwind 4، shadcn/ui،
-  تُبنى عبر `@lovable.dev/vite-tanstack-config` وnitro (هدف Cloudflare Workers).
-- **قاعدة البيانات والهوية**: Supabase (PostgreSQL + Auth + RLS). منطق الصلاحيات والكتابة في دوال
+  تُبنى بإعداد Vite صريح (`vite.config.ts`: TanStack Start + nitro بهدف `cloudflare_module`)
+  وتُستضاف على **Cloudflare Workers** في حساب الجامعة.
+- **قاعدة البيانات والهوية**: مشروع Supabase مملوك للجامعة (PostgreSQL + Auth + RLS). منطق الصلاحيات والكتابة في دوال
   SQL (`SECURITY DEFINER`) ضمن `supabase/migrations/`.
 - **الجدولة**: محرك V2 في `src/lib/auto-scheduler/` مع نموذج رياضي عبر `highs`.
 - **مدير الحزم**: Bun `1.4.2` (`bun.lock`).
@@ -32,7 +33,12 @@ bun run dev
 | --- | --- | --- |
 | `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PROJECT_ID` | المتصفح | مفاتيح عامة (publishable) فقط |
 | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_PROJECT_ID` | الخادم | |
-| `SUPABASE_SERVICE_ROLE_KEY` | الخادم فقط | تحقنه المنصة وقت التشغيل؛ **لا يُكتب في أي ملف** |
+| `SUPABASE_SERVICE_ROLE_KEY` | الخادم فقط | سر Worker في Cloudflare (يرفعه `deploy-production`)؛ **لا يُكتب في أي ملف** |
+| `SITE_URL` | الخادم | أصل المنصة العام لروابط استعادة كلمة المرور (`https://<النطاق>`) |
+| `CSP_REPORT_ONLY` | الخادم | `1` لإرسال CSP بوضع Report-Only أثناء التجربة؛ فارغ = مفروض |
+
+بدون `VITE_SUPABASE_URL`/`VITE_SUPABASE_PUBLISHABLE_KEY` (أو بدائلها على الخادم) يفشل العميل برسالة
+إعداد واضحة؛ لا يوجد مشروع افتراضي مضمّن في الكود.
 
 ## الاختبارات
 
@@ -67,6 +73,17 @@ bun run dev
 - أسبوعيًا: `dependency-audit` (bun audit ≥ high)، `migration-drift` (مقارنة الترحيلات بالإنتاج —
   يحتاج السر `PROD_DB_READONLY_URL`)، وDependabot.
 - `deploy-staging` يدوي/بوسم فقط، لبيئة staging المعزولة.
+- `deploy-production` يدوي فقط (`sha` + تأكيد مكتوب `deploy-production`، بيئة `production` بمراجعين
+  مطلوبين، يشترط نجاح `pr-gate` على الـSHA نفسه)، ينشر Worker الإنتاج على Cloudflare ولا يطبق ترحيلات.
+
+## الاستضافة
+
+- **التطبيق**: Cloudflare Workers. `bun run build` يُخرج `.output/` و`.output/server/wrangler.json`؛
+  `scripts/staging/deploy-preflight.mjs` (و`--production`) يتحقق منه ويربطه باسم الـWorker والنطاق.
+- **قاعدة البيانات والمصادقة**: مشروع Supabase للجامعة؛ مرجعه `project_id` في `supabase/config.toml`.
+- الانتقال من Lovable Cloud: [`docs/operations/lovable-exit-runbook.md`](docs/operations/lovable-exit-runbook.md)
+  وقائمة التنفيذ [`docs/operations/lovable-exit-checklist.md`](docs/operations/lovable-exit-checklist.md).
+- ملف القفل: إن احتوى `bun.lock` مصادر خارج npm العام فشغّل `scripts/exit-lovable/regenerate-lockfile.sh`.
 
 ## الإصدار والتشغيل
 
@@ -101,5 +118,5 @@ Install with `bun install --frozen-lockfile` (Bun 1.4.2), copy `.env.example` to
 `bun run test:sql` against a local disposable PostgreSQL 16 (schema built by
 `scripts/db/replay-migrations.sh`). The required CI check is the `pr-gate` workflow — make its
 jobs required for `main` in the GitHub branch-protection settings. Releases follow
-`docs/operations/release-runbook.md` (Lovable publish + ordered Supabase migrations). Never
+`docs/operations/release-runbook.md` (ordered Supabase migrations, then the manual `deploy-production` Cloudflare Workers workflow). Never
 commit service-role keys, database URLs or build output.
