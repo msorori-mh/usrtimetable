@@ -103,80 +103,86 @@ function CoursesPage() {
   const { data: depts } = useQuery({
     queryKey: ["dept-min", active?.id],
     enabled: !!active,
-    queryFn: async () =>
-      ((
-        await supabase
+    queryFn: async () => {
+      const { data, error } = await supabase
           .from("departments")
           .select("id, name")
           .eq("college_id", active!.id)
           // ACADEMIC-ARCHIVE-UI-01: pickers exclude archived records.
           .eq("is_archived", false)
-          .order("name")
-      ).data ?? []) as Department[],
+          .order("name");
+      if (error) throw error;
+      return (data ?? []) as Department[];
+    },
   });
 
   const { data: progs } = useQuery({
     queryKey: ["prog-min-dep", active?.id],
     enabled: !!active,
-    queryFn: async () =>
-      ((
-        await supabase
+    queryFn: async () => {
+      const { data, error } = await supabase
           .from("academic_programs")
           .select("id, name, department_id")
           .eq("college_id", active!.id)
           // ACADEMIC-ARCHIVE-UI-01: pickers exclude archived records.
           .eq("is_archived", false)
-          .order("name")
-      ).data ?? []) as Program[],
+          .order("name");
+      if (error) throw error;
+      return (data ?? []) as Program[];
+    },
   });
 
   const { data: plans } = useQuery({
     queryKey: ["study-plans-min", active?.id],
     enabled: !!active,
-    queryFn: async () =>
-      ((
-        await supabase
+    queryFn: async () => {
+      const { data, error } = await supabase
           .from("study_plans")
           .select("id, name, program_id, version")
           .eq("college_id", active!.id)
-          .order("name")
-      ).data ?? []) as StudyPlan[],
+          .order("name");
+      if (error) throw error;
+      return (data ?? []) as StudyPlan[];
+    },
   });
 
   const { data: coursePrograms } = useQuery({
     queryKey: ["course-programs", active?.id],
     enabled: !!active,
-    queryFn: async () =>
-      ((
-        await supabase
+    queryFn: async () => {
+      const { data, error } = await supabase
           .from("course_programs")
           .select("course_id, program_id")
-          .eq("college_id", active!.id)
-      ).data ?? []) as { course_id: string; program_id: string }[],
+          .eq("college_id", active!.id);
+      if (error) throw error;
+      return (data ?? []) as { course_id: string; program_id: string }[];
+    },
   });
 
   const { data: planCourses } = useQuery({
     queryKey: ["plan-courses-min", active?.id],
     enabled: !!active,
-    queryFn: async () =>
-      ((
-        await supabase
+    queryFn: async () => {
+      const { data, error } = await supabase
           .from("plan_courses")
           .select("id, study_plan_id, course_id")
-          .eq("college_id", active!.id)
-      ).data ?? []) as { id: string; study_plan_id: string; course_id: string }[],
+          .eq("college_id", active!.id);
+      if (error) throw error;
+      return (data ?? []) as { id: string; study_plan_id: string; course_id: string }[];
+    },
   });
 
   const { data: planComponents } = useQuery({
     queryKey: ["plan-course-components-min", active?.id],
     enabled: !!active,
-    queryFn: async () =>
-      ((
-        await supabase
+    queryFn: async () => {
+      const { data, error } = await supabase
           .from("plan_course_components")
           .select("plan_course_id, component_type")
-          .eq("college_id", active!.id)
-      ).data ?? []) as { plan_course_id: string; component_type: string }[],
+          .eq("college_id", active!.id);
+      if (error) throw error;
+      return (data ?? []) as { plan_course_id: string; component_type: string }[];
+    },
   });
 
   const { data: rows, isLoading } = useQuery({

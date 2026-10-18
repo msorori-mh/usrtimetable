@@ -73,26 +73,28 @@ function SectionsPage() {
   const { data: courses } = useQuery({
     queryKey: ["courses-min", active?.id],
     enabled: !!active,
-    queryFn: async () =>
-      (
-        await supabase
+    queryFn: async () => {
+      const { data, error } = await supabase
           .from("courses")
           .select("id, code, name")
           .eq("college_id", active!.id)
-          .order("code")
-      ).data ?? [],
+          .order("code");
+      if (error) throw error;
+      return data ?? [];
+    },
   });
   const { data: terms } = useQuery({
     queryKey: ["terms-min", active?.id],
     enabled: !!active,
-    queryFn: async () =>
-      (
-        await supabase
+    queryFn: async () => {
+      const { data, error } = await supabase
           .from("academic_terms")
           .select("id, name, is_active")
           .eq("college_id", active!.id)
-          .order("name")
-      ).data ?? [],
+          .order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
   });
 
   const { data: rows, isLoading } = useQuery({

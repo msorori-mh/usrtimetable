@@ -91,31 +91,33 @@ function StudyPlansPage() {
   const { data: depts } = useQuery({
     queryKey: ["dept-min", active?.id],
     enabled: !!active,
-    queryFn: async () =>
-      ((
-        await supabase
+    queryFn: async () => {
+      const { data, error } = await supabase
           .from("departments")
           .select("id, name")
           .eq("college_id", active!.id)
           // ACADEMIC-ARCHIVE-UI-01: pickers exclude archived records.
           .eq("is_archived", false)
-          .order("name")
-      ).data ?? []) as Department[],
+          .order("name");
+      if (error) throw error;
+      return (data ?? []) as Department[];
+    },
   });
 
   const { data: progs } = useQuery({
     queryKey: ["prog-min-dep", active?.id],
     enabled: !!active,
-    queryFn: async () =>
-      ((
-        await supabase
+    queryFn: async () => {
+      const { data, error } = await supabase
           .from("academic_programs")
           .select("id, name, department_id, duration_years")
           .eq("college_id", active!.id)
           // ACADEMIC-ARCHIVE-UI-01: pickers exclude archived records.
           .eq("is_archived", false)
-          .order("name")
-      ).data ?? []) as Program[],
+          .order("name");
+      if (error) throw error;
+      return (data ?? []) as Program[];
+    },
   });
 
   const { data: rows, isLoading } = useQuery({

@@ -20,13 +20,13 @@ export const Route = createFileRoute("/_authenticated/session-types")({
       renderForm={(f, set) => (
         <>
           <div className="grid grid-cols-3 gap-3">
-            <div><Label>الرمز</Label><Input value={String(f.code ?? "")} onChange={(e) => set({ ...f, code: e.target.value })} /></div>
-            <div><Label>المدة (ساعات)</Label><Input type="number" step="0.5" value={Number(f.default_duration_hours ?? 2)} onChange={(e) => set({ ...f, default_duration_hours: Number(e.target.value) })} /></div>
-            <div><Label>الترتيب</Label><Input type="number" value={Number(f.display_order ?? 0)} onChange={(e) => set({ ...f, display_order: Number(e.target.value) })} /></div>
+            <div><Label htmlFor="session-types-f1">الرمز</Label><Input id="session-types-f1" value={String(f.code ?? "")} onChange={(e) => set({ ...f, code: e.target.value })} /></div>
+            <div><Label htmlFor="session-types-f2">المدة (ساعات)</Label><Input id="session-types-f2" type="number" step="0.5" value={Number(f.default_duration_hours ?? 2)} onChange={(e) => set({ ...f, default_duration_hours: Number(e.target.value) })} /></div>
+            <div><Label htmlFor="session-types-f3">الترتيب</Label><Input id="session-types-f3" type="number" value={Number(f.display_order ?? 0)} onChange={(e) => set({ ...f, display_order: Number(e.target.value) })} /></div>
           </div>
-          <div><Label>الاسم بالعربية</Label><Input value={String(f.name_ar ?? "")} onChange={(e) => set({ ...f, name_ar: e.target.value })} /></div>
-          <div><Label>الاسم بالإنجليزية</Label><Input value={String(f.name_en ?? "")} onChange={(e) => set({ ...f, name_en: e.target.value })} /></div>
-          <div><Label>اللون (hex)</Label><Input value={String(f.color ?? "")} onChange={(e) => set({ ...f, color: e.target.value })} placeholder="#f59e0b" /></div>
+          <div><Label htmlFor="session-types-f4">الاسم بالعربية</Label><Input id="session-types-f4" value={String(f.name_ar ?? "")} onChange={(e) => set({ ...f, name_ar: e.target.value })} /></div>
+          <div><Label htmlFor="session-types-f5">الاسم بالإنجليزية</Label><Input id="session-types-f5" value={String(f.name_en ?? "")} onChange={(e) => set({ ...f, name_en: e.target.value })} /></div>
+          <div><Label htmlFor="session-types-f6">اللون (hex)</Label><Input id="session-types-f6" value={String(f.color ?? "")} onChange={(e) => set({ ...f, color: e.target.value })} placeholder="#f59e0b" /></div>
           <label className="flex items-center gap-2 text-sm"><Checkbox checked={Boolean(f.requires_lab)} onCheckedChange={(v) => set({ ...f, requires_lab: !!v })} /> يتطلب معملاً</label>
           <label className="flex items-center gap-2 text-sm"><Checkbox checked={Boolean(f.is_active)} onCheckedChange={(v) => set({ ...f, is_active: !!v })} /> نشط</label>
         </>

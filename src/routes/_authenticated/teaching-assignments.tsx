@@ -168,26 +168,28 @@ function TeachingAssignmentsV2Page() {
   const { data: programs } = useQuery({
     queryKey: ["programs-ta-v2", active?.id],
     enabled: !!active,
-    queryFn: async () =>
-      (
-        await supabase
+    queryFn: async () => {
+      const { data, error } = await supabase
           .from("academic_programs")
           .select("id, name, code")
-          .eq("college_id", active!.id)
-      ).data ?? [],
+          .eq("college_id", active!.id);
+      if (error) throw error;
+      return data ?? [];
+    },
   });
   const { data: levels } = useQuery({
     queryKey: ["levels-ta-v2", active?.id, programId],
     enabled: !!active && !!programId,
-    queryFn: async () =>
-      (
-        await supabase
+    queryFn: async () => {
+      const { data, error } = await supabase
           .from("academic_levels")
           .select("id, name, level_number")
           .eq("college_id", active!.id)
           .eq("program_id", programId)
-          .order("level_number")
-      ).data ?? [],
+          .order("level_number");
+      if (error) throw error;
+      return data ?? [];
+    },
   });
   const { data: terms } = useQuery({
     queryKey: ["terms-ta-v2", active?.id],

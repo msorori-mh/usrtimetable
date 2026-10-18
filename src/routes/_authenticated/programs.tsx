@@ -68,16 +68,17 @@ function ProgramsPage() {
   const { data: depts } = useQuery({
     queryKey: ["dept-min", active?.id],
     enabled: !!active,
-    queryFn: async () =>
-      (
-        await supabase
+    queryFn: async () => {
+      const { data, error } = await supabase
           .from("departments")
           .select("id, name")
           .eq("college_id", active!.id)
           // ACADEMIC-ARCHIVE-UI-01: pickers exclude archived records.
           .eq("is_archived", false)
-          .order("name")
-      ).data ?? [],
+          .order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
   });
 
   const { data: rows, isLoading } = useQuery({

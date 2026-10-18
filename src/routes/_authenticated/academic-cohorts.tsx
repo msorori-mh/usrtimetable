@@ -136,40 +136,43 @@ function AcademicCohortsWorkspace() {
   const { data: programs } = useQuery({
     queryKey: ["programs-min", active?.id],
     enabled: !!active,
-    queryFn: async () =>
-      (
-        await supabase
+    queryFn: async () => {
+      const { data, error } = await supabase
           .from("academic_programs")
           .select("id, name")
           .eq("college_id", active!.id)
           // ACADEMIC-ARCHIVE-UI-01: pickers exclude archived records.
           .eq("is_archived", false)
-          .order("name")
-      ).data ?? [],
+          .order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
   });
   const { data: levels } = useQuery({
     queryKey: ["cohort-directory-levels", active?.id],
     enabled: !!active,
-    queryFn: async () =>
-      (
-        await supabase
+    queryFn: async () => {
+      const { data, error } = await supabase
           .from("academic_levels")
           .select("id, name, level_number, program_id")
           .eq("college_id", active!.id)
-          .order("level_number")
-      ).data ?? [],
+          .order("level_number");
+      if (error) throw error;
+      return data ?? [];
+    },
   });
   const { data: terms } = useQuery({
     queryKey: ["terms-min", active?.id],
     enabled: !!active,
-    queryFn: async () =>
-      (
-        await supabase
+    queryFn: async () => {
+      const { data, error } = await supabase
           .from("academic_terms")
           .select("id, name")
           .eq("college_id", active!.id)
-          .order("start_date", { ascending: false })
-      ).data ?? [],
+          .order("start_date", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
   });
 
   const {

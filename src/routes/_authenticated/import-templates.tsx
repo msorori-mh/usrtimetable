@@ -58,11 +58,19 @@ function TemplatesPage() {
 
   const { data: tpls } = useQuery({
     queryKey: ["import_tpls", active?.id], enabled: !!active,
-    queryFn: async () => ((await supabase.from("import_templates").select("*").eq("college_id", active!.id).order("created_at", { ascending: false })).data ?? []) as Tpl[],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("import_templates").select("*").eq("college_id", active!.id).order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as Tpl[];
+    },
   });
   const { data: cols } = useQuery({
     queryKey: ["import_cols", active?.id], enabled: !!active,
-    queryFn: async () => ((await supabase.from("import_template_columns").select("*").eq("college_id", active!.id).order("column_order")).data ?? []) as Col[],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("import_template_columns").select("*").eq("college_id", active!.id).order("column_order");
+      if (error) throw error;
+      return (data ?? []) as Col[];
+    },
   });
 
   const saveTpl = useMutation({

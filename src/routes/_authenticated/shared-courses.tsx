@@ -66,14 +66,15 @@ function SharedPage() {
   const { data: courses, isLoading } = useQuery({
     queryKey: ["courses-shared", active?.id],
     enabled: !!active,
-    queryFn: async () =>
-      ((
-        await supabase
+    queryFn: async () => {
+      const { data, error } = await supabase
           .from("courses")
           .select("id, code, name, department_id, course_nature, is_shared, updated_at")
           .eq("college_id", active!.id)
-          .order("code")
-      ).data ?? []) as Course[],
+          .order("code");
+      if (error) throw error;
+      return (data ?? []) as Course[];
+    },
   });
   const start = (c: Course) => {
     setEditing(c);

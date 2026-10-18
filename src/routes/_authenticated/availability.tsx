@@ -264,14 +264,15 @@ function InstructorUnavailability() {
   const { data: instructors } = useQuery({
     queryKey: ["instr-all", active?.id],
     enabled: !!active,
-    queryFn: async () =>
-      (
-        await supabase
+    queryFn: async () => {
+      const { data, error } = await supabase
           .from("instructors")
           .select("id, full_name")
           .eq("college_id", active!.id)
-          .order("full_name")
-      ).data ?? [],
+          .order("full_name");
+      if (error) throw error;
+      return data ?? [];
+    },
   });
   const { data: rows } = useQuery({
     queryKey: ["iu", active?.id, instructorId],
@@ -901,14 +902,15 @@ function RoomUnavailability() {
   const { data: rooms } = useQuery({
     queryKey: ["rooms-all", active?.id],
     enabled: !!active,
-    queryFn: async () =>
-      (
-        await supabase
+    queryFn: async () => {
+      const { data, error } = await supabase
           .from("rooms")
           .select("id, code, name")
           .eq("college_id", active!.id)
-          .order("code")
-      ).data ?? [],
+          .order("code");
+      if (error) throw error;
+      return data ?? [];
+    },
   });
   const { data: rows } = useQuery({
     queryKey: ["ru", active?.id, roomId],

@@ -317,14 +317,15 @@ function InstructorDirectory({
   const { data: depts } = useQuery({
     queryKey: ["dept-min", active?.id],
     enabled: !!active,
-    queryFn: async () =>
-      (
-        await supabase
+    queryFn: async () => {
+      const { data, error } = await supabase
           .from("departments")
           .select("id, name")
           .eq("college_id", active!.id)
-          .order("name")
-      ).data ?? [],
+          .order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
   });
 
   const {
