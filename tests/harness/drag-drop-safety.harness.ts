@@ -18,7 +18,9 @@ assert(safety.includes("evaluateDropTarget"), "evaluateDropTarget present");
 assert(safety.includes("buildEvaluateDropTargetInput"), "cohort/room wiring helper present");
 assert(safety.includes("pushUndo"), "undo helpers present");
 
-const builder = read("src/routes/_authenticated/schedule-builder.tsx");
+// L-14: the builder page was split into the route + hooks/use-schedule-builder-workspace.ts + builder components.
+
+const builder = ["src/routes/_authenticated/schedule-builder.tsx", "src/hooks/use-schedule-builder-workspace.ts", "src/components/schedule-builder/builder-context-bar.tsx", "src/components/schedule-builder/builder-ui.tsx"].map((file) => read(file)).join("\n");
 assert(builder.includes("evaluateDropTarget"), "builder uses safety");
 assert(builder.includes("buildEvaluateDropTargetInput"), "builder wires drop preview input");
 assert(!builder.includes("cohort_id: null"), "builder does not force cohort_id null");
