@@ -1,5 +1,6 @@
 import { computeQuotaBalance, type QuotaInput } from "./instructor-quota";
 import type { TimetableReportSession } from "./session-mappers";
+import { isSuperAdmin } from "../roles";
 
 export interface UniversityTerm {
   id: string;
@@ -25,7 +26,7 @@ export interface CollegeScheduleScope {
 }
 
 export function canViewInstructorAcrossColleges(roles: readonly string[]) {
-  return roles.includes("super_admin");
+  return isSuperAdmin(roles);
 }
 
 /** Merge verified identities returned by the college RPCs, retaining every alias. */

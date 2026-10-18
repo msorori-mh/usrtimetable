@@ -41,7 +41,7 @@ function Page() {
   );
 
   const { data: rooms, error: roomsError } = useQuery({
-    queryKey: ["rt-rooms", ctx.collegeId],
+    queryKey: ["reports", "room-timetable", "rooms", ctx.collegeId],
     enabled: !!ctx.collegeId,
     queryFn: async () => {
       const { data, error } = await supabase

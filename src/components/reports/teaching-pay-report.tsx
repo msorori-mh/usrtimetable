@@ -26,6 +26,7 @@ import {
 } from "@/lib/reports/teaching-pay";
 import { formatNumber } from "@/lib/format";
 import { userErrorMessage } from "@/lib/user-error";
+import { confirmAction } from "@/components/confirm-dialog";
 
 type Api = {
   public: {
@@ -558,9 +559,17 @@ function PayWorkspace({
                         </Button>
                         <form
                           className="flex gap-2"
-                          onSubmit={(event) => {
+                          onSubmit={async (event) => {
                             event.preventDefault();
                             const fd = new FormData(event.currentTarget);
+                            // M-15: voiding a draft is irreversible — ask first.
+                            const ok = await confirmAction({
+                              title: "إلغاء مسودة التنفيذ؟",
+                              description: `سيُلغى سجل ${e.instructor_name} بتاريخ ${e.work_date} نهائيًا مع حفظ أثره، ولا يمكن اعتماده بعد ذلك.`,
+                              confirmLabel: "إلغاء المسودة",
+                              destructive: true,
+                            });
+                            if (!ok) return;
                             void mutate("void", {
                               id: e.id,
                               reason: fd.get("reason"),
