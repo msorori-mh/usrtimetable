@@ -45,7 +45,7 @@ export function AdminExportMenu({
     setBusy(true);
     try {
       const ds = await dataset();
-      const result = exportAdminDataset(ds, format);
+      const result = await exportAdminDataset(ds, format);
       toast.success(`تم تصدير ${result.rowCount} سجلًا إلى ${result.filename}`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "تعذر إنشاء ملف التصدير.");

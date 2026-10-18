@@ -4,6 +4,8 @@ import { escapeSpreadsheetCell } from "./formula-escape";
 import { IMPORT_CONTRACT_VERSION, PILOT_STUDY_SYSTEMS, TA_V2_COMPONENT_TYPES } from "./registry";
 import { EMPLOYMENT_TYPE_IMPORT_VALUES } from "../instructor-metadata";
 import { instructorStatusLabel, parseInstructorSheet } from "./instructor-sheet";
+import { readGuardedWorkbook } from "./file-guard";
+import { matrixToImportRows, pickTemplateSheet, TEMPLATE_REFERENCE_SHEETS } from "./sheet-detect";
 
 export const TEMPLATES: Record<string, TemplateDef> = {
   instructors: {
@@ -857,12 +859,23 @@ export async function parseExcel(
   headerRowNumber?: number;
 }> {
   if (entity === "instructors") return parseInstructorSheet(file, TEMPLATES.instructors.columns);
-  const XLSX = await import("xlsx");
-  const buf = await file.arrayBuffer();
-  const wb = XLSX.read(buf, { type: "array" });
-  const sheetName = wb.SheetNames[0];
-  const ws = wb.Sheets[sheetName];
-  const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "", raw: false });
-  const headers = json.length > 0 ? Object.keys(json[0]) : [];
-  return { headers, rows: json };
+  // L-4: size / signature / macro / range guard before any parsing.
+  const { XLSX, workbook } = await readGuardedWorkbook<typeof import("xlsx")>(file, {
+    skipSheets: TEMPLATE_REFERENCE_SHEETS,
+  });
+  const template = entity ? TEMPLATES[entity] : undefined;
+  const sheets = workbook.SheetNames.filter((name) => !TEMPLATE_REFERENCE_SHEETS.has(name)).map(
+    (name) => ({
+      name,
+      matrix: XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[name], {
+        header: 1,
+        defval: "",
+        raw: false,
+        blankrows: true,
+      }),
+    }),
+  );
+  // M-13: pick the sheet/row that actually carries the template headers.
+  const picked = pickTemplateSheet(sheets, template?.columns ?? [], template?.sheetName);
+  return matrixToImportRows(picked.matrix, picked.headerIndex, picked.name);
 }

@@ -31,6 +31,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
+import { chunkIds, readAllRows } from "@/lib/supabase/read-all";
 import {
   type BulkItem,
   firstQueryError,
@@ -98,8 +99,34 @@ type OfferingRow = {
 };
 
 // ---------- data fetch ----------
+/** H-10: large selections are updated in id chunks so `.in()` never overflows the URL. */
+async function updateByIdChunks(
+  table: "courses" | "instructors" | "rooms" | "course_offerings",
+  patch: Record<string, unknown>,
+  ids: string[],
+): Promise<{ error: { message: string } | null }> {
+  for (const chunk of chunkIds(ids)) {
+    const { error } = await (supabase as any).from(table).update(patch).in("id", chunk);
+    if (error) return { error };
+  }
+  return { error: null };
+}
+
 async function fetchAll(collegeId: string) {
-  const eq = (q: any) => q.eq("college_id", collegeId);
+  // H-10: every table is read college-wide, so each read is paginated through
+  // readAllRows (PostgREST caps a response at 1000 rows) and reported in the
+  // same { data, error } shape the diagnostics below expect.
+  // Query builders mutate in place, so a fresh builder is created per page.
+  const readCollegeRows = async (q: () => any): Promise<{ data: any[] | null; error: any }> => {
+    try {
+      const data = await readAllRows<any>((from, to) =>
+        q().eq("college_id", collegeId).order("id").range(from, to),
+      );
+      return { data, error: null };
+    } catch (error) {
+      return { data: null, error: error ?? new Error("تعذر قراءة البيانات") };
+    }
+  };
   const [
     courses,
     planCourses,
@@ -112,30 +139,30 @@ async function fetchAll(collegeId: string) {
     instructorTypes,
     roomTypes,
   ] = await Promise.all([
-    eq(supabase.from("courses").select("id, code, name, course_nature, department_id")),
-    eq(
+    readCollegeRows(() => supabase.from("courses").select("id, code, name, course_nature, department_id")),
+    readCollegeRows(() =>
       supabase
         .from("plan_courses")
         .select(
           "id, course_id, lectures_per_week, labs_per_week, lecture_session_duration, lab_session_duration, required_room_type_for_lecture, required_room_type_for_lab",
         ),
     ),
-    eq(
+    readCollegeRows(() =>
       supabase
         .from("instructors")
         .select("id, full_name, specialization, department_id, instructor_type_id"),
     ),
-    eq(supabase.from("instructor_availability").select("id, instructor_id")),
-    eq(supabase.from("rooms").select("id, code, name, capacity, room_type_id, is_active")),
-    eq(
+    readCollegeRows(() => supabase.from("instructor_availability").select("id, instructor_id")),
+    readCollegeRows(() => supabase.from("rooms").select("id, code, name, capacity, room_type_id, is_active")),
+    readCollegeRows(() =>
       supabase
         .from("course_offerings")
         .select("id, expected_students, study_plan_id, plan_course_id, study_system, course_id"),
     ),
-    eq(supabase.from("teaching_assignments").select("id, course_offering_id")),
-    eq(supabase.from("departments").select("id, name")),
-    eq(supabase.from("instructor_types").select("id, name_ar, code, is_active")),
-    eq(supabase.from("room_types").select("id, name_ar, code, default_capacity, is_active")),
+    readCollegeRows(() => supabase.from("teaching_assignments").select("id, course_offering_id")),
+    readCollegeRows(() => supabase.from("departments").select("id, name")),
+    readCollegeRows(() => supabase.from("instructor_types").select("id, name_ar, code, is_active")),
+    readCollegeRows(() => supabase.from("room_types").select("id, name_ar, code, default_capacity, is_active")),
   ]);
   const loadError = firstQueryError([
     { label: "المقررات", error: courses.error },
@@ -973,10 +1000,7 @@ function CoursesSection({
         title="تعيين طبيعة المقرر"
         items={natureItems}
         onConfirm={async (ids) => {
-          const { error } = await supabase
-            .from("courses")
-            .update({ course_nature: natureVal })
-            .in("id", ids);
+          const { error } = await updateByIdChunks("courses", { course_nature: natureVal }, ids);
           if (error) {
             toast.error(error.message);
             return false;
@@ -1145,10 +1169,7 @@ function InstructorsSection({
             toast.error("اختر قسماً");
             return false;
           }
-          const { error } = await supabase
-            .from("instructors")
-            .update({ department_id: deptId })
-            .in("id", ids);
+          const { error } = await updateByIdChunks("instructors", { department_id: deptId }, ids);
           if (error) {
             toast.error(error.message);
             return false;
@@ -1191,10 +1212,7 @@ function InstructorsSection({
             toast.error("أدخل التخصص");
             return false;
           }
-          const { error } = await supabase
-            .from("instructors")
-            .update({ specialization: spec.trim() })
-            .in("id", ids);
+          const { error } = await updateByIdChunks("instructors", { specialization: spec.trim() }, ids);
           if (error) {
             toast.error(error.message);
             return false;
@@ -1230,10 +1248,7 @@ function InstructorsSection({
             toast.error("اختر النوع");
             return false;
           }
-          const { error } = await supabase
-            .from("instructors")
-            .update({ instructor_type_id: typeId })
-            .in("id", ids);
+          const { error } = await updateByIdChunks("instructors", { instructor_type_id: typeId }, ids);
           if (error) {
             toast.error(error.message);
             return false;
@@ -1324,7 +1339,7 @@ function RoomsSection({
             toast.error("سعة غير صحيحة");
             return false;
           }
-          const { error } = await supabase.from("rooms").update({ capacity: cap }).in("id", ids);
+          const { error } = await updateByIdChunks("rooms", { capacity: cap }, ids);
           if (error) {
             toast.error(error.message);
             return false;
@@ -1378,7 +1393,7 @@ function RoomsSection({
           ) {
             upd.room_type = rt.code;
           }
-          const { error } = await supabase.from("rooms").update(upd).in("id", ids);
+          const { error } = await updateByIdChunks("rooms", upd, ids);
           if (error) {
             toast.error(error.message);
             return false;
@@ -1469,10 +1484,7 @@ function OfferingsSection({
             toast.error("قيمة غير صحيحة");
             return false;
           }
-          const { error } = await supabase
-            .from("course_offerings")
-            .update({ expected_students: students })
-            .in("id", ids);
+          const { error } = await updateByIdChunks("course_offerings", { expected_students: students }, ids);
           if (error) {
             toast.error(error.message);
             return false;
@@ -1505,10 +1517,7 @@ function OfferingsSection({
         title="تعيين نظام الدراسة"
         items={offItems(issues?.off_no_system.ids, "بدون نظام دراسة")}
         onConfirm={async (ids) => {
-          const { error } = await supabase
-            .from("course_offerings")
-            .update({ study_system: system })
-            .in("id", ids);
+          const { error } = await updateByIdChunks("course_offerings", { study_system: system }, ids);
           if (error) {
             toast.error(error.message);
             return false;

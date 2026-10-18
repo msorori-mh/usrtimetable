@@ -1,5 +1,7 @@
 import type { ColumnDef, ParsedRow, RowError } from "./types";
-import { normalizeArabicText, normalizeDecimalDigits } from "./arabic-normalize";
+import { normalizeArabicText } from "./arabic-normalize";
+import { parseDecimalCell } from "./cell-parse";
+import { readGuardedWorkbook } from "./file-guard";
 import { ACADEMIC_RANKS, UNKNOWN_EMPLOYMENT_TYPE } from "../instructor-metadata";
 import { isHourlyContractTypeCode } from "@/lib/instructors/effective-hours";
 import {
@@ -55,8 +57,10 @@ export async function parseInstructorSheet(
   file: File,
   columns: ColumnDef[],
 ): Promise<InstructorSheet> {
-  const XLSX = await import("xlsx");
-  const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" });
+  // L-4: size / signature / macro / range guard before any parsing.
+  const { XLSX, workbook } = await readGuardedWorkbook<typeof import("xlsx")>(file, {
+    skipSheets: ["Metadata", "تعليمات"],
+  });
   const fieldHeader = (key: string) => columns.find((c) => c.key === key)!.header;
   const candidates: InstructorSheet[] = [];
   for (const sheetName of workbook.SheetNames) {
@@ -288,8 +292,9 @@ export function prepareInstructorRow(
         fail(key, "missing_weekly_load", "أدخل النصاب الأسبوعي المعتمد كما في الكشف.");
       continue;
     }
-    const number = Number(normalizeDecimalDigits(String(raw)));
-    if (!Number.isFinite(number) || number < 0)
+    // M-13: strict decimal (no exponent/hex), Arabic digits accepted.
+    const number = parseDecimalCell(raw);
+    if (number === null || number < 0)
       fail(key, "invalid_instructor_hours", "الساعات يجب أن تكون رقمًا غير سالب.");
     else v[key] = number;
   }

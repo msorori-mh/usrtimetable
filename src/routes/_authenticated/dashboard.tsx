@@ -74,16 +74,21 @@ function Dashboard() {
     queryKey: ["dashboard-schedule-summary", active?.id],
     enabled: !!active,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("schedule_versions")
-        .select("id, status")
-        .eq("college_id", active!.id);
-      if (error) throw error;
-      const versions = data ?? [];
-      return {
-        total: versions.length,
-        published: versions.filter((version) => version.status === "published").length,
-      };
+      // H-10: exact server-side counts — never derived from a capped row list.
+      const [all, published] = await Promise.all([
+        supabase
+          .from("schedule_versions")
+          .select("id", { count: "exact", head: true })
+          .eq("college_id", active!.id),
+        supabase
+          .from("schedule_versions")
+          .select("id", { count: "exact", head: true })
+          .eq("college_id", active!.id)
+          .eq("status", "published"),
+      ]);
+      if (all.error) throw all.error;
+      if (published.error) throw published.error;
+      return { total: all.count ?? 0, published: published.count ?? 0 };
     },
   });
 

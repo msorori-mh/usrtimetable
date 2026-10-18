@@ -23,6 +23,50 @@ import {
   type StudentLoadKind,
 } from "../scheduling/student-daily-policy.ts";
 
+/**
+ * M-14: O(1) lookups replacing `array.find(...)` / `array.filter(...)` inside
+ * per-candidate loops. Indexes are cached per source array and rebuilt when the
+ * array's length changes (snapshots are treated as immutable while a search
+ * runs; tests that push rows between calls still see fresh indexes). The first
+ * matching row wins and filter order is preserved, so results are identical
+ * to the linear scans they replace.
+ */
+const idIndexes = new WeakMap<object, { length: number; map: Map<string, unknown> }>();
+export function indexById<T extends { id: string }>(rows: readonly T[] | null | undefined): Map<string, T> {
+  if (!rows) return new Map();
+  const cached = idIndexes.get(rows);
+  if (cached && cached.length === rows.length) return cached.map as Map<string, T>;
+  const map = new Map<string, T>();
+  for (const row of rows) if (!map.has(row.id)) map.set(row.id, row);
+  idIndexes.set(rows, { length: rows.length, map });
+  return map;
+}
+const groupIndexes = new WeakMap<object, Map<string, { length: number; map: Map<unknown, unknown[]> }>>();
+export function groupRowsBy<T, K>(
+  rows: readonly T[] | null | undefined,
+  name: string,
+  key: (row: T) => K,
+): Map<K, T[]> {
+  if (!rows) return new Map();
+  let byName = groupIndexes.get(rows);
+  if (!byName) {
+    byName = new Map();
+    groupIndexes.set(rows, byName);
+  }
+  const cached = byName.get(name);
+  if (cached && cached.length === rows.length) return cached.map as Map<K, T[]>;
+  const map = new Map<K, T[]>();
+  for (const row of rows) {
+    const k = key(row);
+    const list = map.get(k);
+    if (list) list.push(row);
+    else map.set(k, [row]);
+  }
+  byName.set(name, { length: rows.length, map: map as Map<unknown, unknown[]> });
+  return map;
+}
+const EMPTY: readonly never[] = Object.freeze([]);
+
 /** Plan-course component type behind an assignment (drives the room fallback policy). */
 function assignmentComponentType(
   s: Snapshot,
@@ -30,16 +74,13 @@ function assignmentComponentType(
 ): string | null {
   const id = assignment?.plan_course_component_id;
   if (!id) return null;
-  return (s.components ?? []).find((c) => c.id === id)?.component_type ?? null;
+  return indexById(s.components).get(id)?.component_type ?? null;
 }
 
 /** Theory-like vs practical load of a session, for the student daily-hours policy. */
 export function sessionStudentLoadKind(s: Snapshot, x: Session): StudentLoadKind {
   return studentLoadKind(
-    assignmentComponentType(
-      s,
-      s.assignments.find((a) => a.id === x.teaching_assignment_id),
-    ),
+    assignmentComponentType(s, indexById(s.assignments).get(x.teaching_assignment_id)),
   );
 }
 export interface Session {
@@ -223,6 +264,9 @@ const contexts = new WeakMap<
     level: (x: Session) => string;
     levels: (x: Session) => string[];
     weight: (id: string) => number;
+    /** Memoized, read-only views (no copy) for hot internal loops. */
+    studentsOf: (x: Session) => readonly string[];
+    levelsOf: (x: Session) => readonly string[];
   }
 >();
 export function context(s: Snapshot) {
@@ -247,16 +291,25 @@ export function context(s: Snapshot) {
       ids.reduce((n, p) => n + (partitions.get(p)?.headcount || 0), 0) === g.expected_students
     );
   };
-  const groupCohorts = (id: string, fallbackId: string) => [
-    ...new Set([
-      fallbackId,
-      ...(s.sharedLectures ?? [])
-        .filter((l) => l.anchor_group_id === id)
-        .map((l) => groups.get(l.member_group_id)?.cohort_id)
-        .filter((c): c is string => !!c),
-      ...(memberMap.get(id) || []).map((p) => partitions.get(p)!.cohort_id),
-    ]),
-  ];
+  // M-14: memoized per (group, cohort); shared-lecture links indexed by anchor.
+  const groupCohortMemo = new Map<string, string[]>();
+  const groupCohorts = (id: string, fallbackId: string) => {
+    const memoKey = `${id}\u0000${fallbackId}`;
+    const memo = groupCohortMemo.get(memoKey);
+    if (memo) return memo;
+    const anchored = groupRowsBy(s.sharedLectures, "anchor", (l) => l.anchor_group_id).get(id) ?? EMPTY;
+    const value = [
+      ...new Set([
+        fallbackId,
+        ...anchored
+          .map((l) => groups.get(l.member_group_id)?.cohort_id)
+          .filter((c): c is string => !!c),
+        ...(memberMap.get(id) || []).map((p) => partitions.get(p)!.cohort_id),
+      ]),
+    ];
+    groupCohortMemo.set(memoKey, value);
+    return value;
+  };
   // An incomplete shared mapping keeps both source cohorts in conservative conflict checks.
   const fallback = new Set([
     ...s.sessions
@@ -266,7 +319,11 @@ export function context(s: Snapshot) {
       .filter((g) => g.active !== false && !g.is_obsolete && !complete(g.id))
       .flatMap((g) => groupCohorts(g.id, g.cohort_id)),
   ]);
-  const students = (x: Session) => {
+  const studentMemo = new Map<string, string[]>();
+  const studentsOf = (x: Session): string[] => {
+    const memoKey = `${x.delivery_group_id}\u0000${x.cohort_id}`;
+    const memo = studentMemo.get(memoKey);
+    if (memo) return memo;
     const scope = groupCohorts(x.delivery_group_id, x.cohort_id);
     const keys = new Set<string>();
     for (const cid of scope) {
@@ -275,15 +332,20 @@ export function context(s: Snapshot) {
         for (const p of memberMap.get(x.delivery_group_id) || [])
           if (partitions.get(p)?.cohort_id === cid) keys.add(p);
     }
-    return [...keys];
+    const value = [...keys];
+    studentMemo.set(memoKey, value);
+    return value;
   };
+  // Callers receive a copy so a caller-side mutation can never poison the memo.
+  const students = (x: Session) => studentsOf(x).slice();
   const share = (a: Session, b: Session) => {
+    const bCohorts = groupCohorts(b.delivery_group_id, b.cohort_id);
     const common = groupCohorts(a.delivery_group_id, a.cohort_id).filter((id) =>
-      groupCohorts(b.delivery_group_id, b.cohort_id).includes(id),
+      bCohorts.includes(id),
     );
-    return (
-      common.some((id) => fallback.has(id)) || students(a).some((p) => students(b).includes(p))
-    );
+    if (common.some((id) => fallback.has(id))) return true;
+    const bStudents = studentsOf(b);
+    return studentsOf(a).some((p) => bStudents.includes(p));
   };
   const cohorts = new Map(s.cohorts.map((c) => [c.id, c]));
   const levelFor = (id: string) => {
@@ -291,14 +353,24 @@ export function context(s: Snapshot) {
     return c ? `${c.program_id}|${c.level_id}|${c.study_system}|${c.term_id}` : id;
   };
   const level = (x: Session) => levelFor(x.cohort_id);
-  const levels = (x: Session) => groupCohorts(x.delivery_group_id, x.cohort_id).map(levelFor);
+  const levelMemo = new Map<string, string[]>();
+  const levelsOf = (x: Session): string[] => {
+    const memoKey = `${x.delivery_group_id}\u0000${x.cohort_id}`;
+    let value = levelMemo.get(memoKey);
+    if (!value) {
+      value = groupCohorts(x.delivery_group_id, x.cohort_id).map(levelFor);
+      levelMemo.set(memoKey, value);
+    }
+    return value;
+  };
+  const levels = (x: Session) => levelsOf(x).slice();
   const weight = (id: string) =>
     partitions.get(id)?.headcount ||
     Math.max(
       1,
       ...s.groups.filter((g) => `cohort:${g.cohort_id}` === id).map((g) => g.expected_students),
     );
-  const result = { students, share, level, levels, weight };
+  const result = { students, share, level, levels, weight, studentsOf, levelsOf };
   contexts.set(s, result);
   return result;
 }
@@ -315,7 +387,7 @@ export function measure(s: Snapshot, sessions = s.sessions): Metrics {
       levels: ctx.levels(x),
     })),
     ctx.weight,
-    (id) => s.instructors.find((t) => t.id === id)?.target_attendance_days_per_week ?? null,
+    (id) => indexById(s.instructors).get(id)?.target_attendance_days_per_week ?? null,
   );
   const teacherDays = new Map<string, Map<number, number>>();
   const teacherMinutes = new Map<string, number>();
@@ -331,7 +403,7 @@ export function measure(s: Snapshot, sessions = s.sessions): Metrics {
     instructorExcessTargetDays: [...teacherDays].reduce((sum, [id, days]) => {
       const target = instructorAttendanceTarget(
         (teacherMinutes.get(id) ?? 0) / 60,
-        s.instructors.find((t) => t.id === id)?.target_attendance_days_per_week,
+        indexById(s.instructors).get(id)?.target_attendance_days_per_week,
       );
       return sum + Math.max(0, days.size - target);
     }, 0),
@@ -340,12 +412,12 @@ export function measure(s: Snapshot, sessions = s.sessions): Metrics {
       0,
     ),
     practicalHallSessions: sessions.filter((x) => {
-      const assignment = s.assignments.find((a) => a.id === x.teaching_assignment_id);
+      const assignment = indexById(s.assignments).get(x.teaching_assignment_id);
       return (
         roomTypeRank({
           componentType: assignmentComponentType(s, assignment),
           requiredRoomType: assignment?.required_room_type,
-          roomType: s.rooms.find((r) => r.id === x.room_id)?.room_type,
+          roomType: indexById(s.rooms).get(x.room_id)?.room_type,
         }) === 1
       );
     }).length,
@@ -363,9 +435,10 @@ export function measure(s: Snapshot, sessions = s.sessions): Metrics {
 export function extendedDays(s: Snapshot, sessions = s.sessions): Map<string, Set<number>> {
   const result = new Map<string, Set<number>>();
   const cutoff = minutes(s.settings.standard_day_end_time ?? "14:00:00");
+  const ctx = context(s);
   for (const x of sessions) {
     if (x.replaced_by_split || minutes(x.end_time) <= cutoff) continue;
-    for (const p of context(s).students(x)) {
+    for (const p of ctx.studentsOf(x)) {
       const days = result.get(p) ?? new Set<number>();
       days.add(x.day_of_week);
       result.set(p, days);
@@ -450,9 +523,9 @@ export function placementIssue(
 ): string | null {
   const ctx = context(s),
     settings = s.settings,
-    assignment = s.assignments.find((a) => a.id === candidate.teaching_assignment_id);
-  const room = s.rooms.find((r) => r.id === candidate.room_id),
-    teacher = s.instructors.find((t) => t.id === candidate.instructor_id);
+    assignment = indexById(s.assignments).get(candidate.teaching_assignment_id);
+  const room = indexById(s.rooms).get(candidate.room_id),
+    teacher = indexById(s.instructors).get(candidate.instructor_id);
   if (!assignment?.is_active) return "inactive_assignment";
   if (!room?.is_active) return "inactive_room";
   if (!teacher || teacher.is_active === false) return "inactive_instructor";
@@ -462,9 +535,8 @@ export function placementIssue(
     end = minutes(candidate.end_time),
     day = candidate.day_of_week;
   if (
-    s.externalBusy?.some(
+    (groupRowsBy(s.externalBusy, "instructor", (b) => b.instructor_id).get(candidate.instructor_id) ?? EMPTY).some(
       (b) =>
-        b.instructor_id === candidate.instructor_id &&
         b.day_of_week === day &&
         minutes(b.start_time) < end &&
         start < minutes(b.end_time),
@@ -489,7 +561,7 @@ export function placementIssue(
     return "room_capacity_or_type";
   // room_availability rows are authoritative when present; the denormalized
   // rooms.available_* columns are only a fallback (they can be stale).
-  const roomRows = (s.roomAvailability || []).filter((w) => w.room_id === room.id);
+  const roomRows = groupRowsBy(s.roomAvailability, "room", (w) => w.room_id).get(room.id) ?? EMPTY;
   if (roomRows.length) {
     const sameDay = roomRows.filter((w) => w.day_of_week === day);
     if (!sameDay.length) return "room_closed_day";
@@ -505,9 +577,8 @@ export function placementIssue(
   }
   // Date-specific closures are still checked by the authoritative save RPC.
   if (
-    (s.roomUnavailability || []).some(
+    (groupRowsBy(s.roomUnavailability, "room", (w) => w.room_id).get(room.id) ?? EMPTY).some(
       (w) =>
-        w.room_id === room.id &&
         !w.start_date &&
         !w.end_date &&
         (w.day_of_week === null || w.day_of_week === day) &&
@@ -519,10 +590,9 @@ export function placementIssue(
   if (
     !(candidate.study_system === "both" ? ["regular", "parallel"] : [candidate.study_system]).every(
       (system) =>
-        s.templates.some(
+        (groupRowsBy(s.templates, "day", (t) => t.day_of_week).get(day) ?? EMPTY).some(
           (t) =>
             t.is_active &&
-            t.day_of_week === day &&
             (t.study_system === system || t.study_system === "both") &&
             start >= minutes(t.start_time) &&
             end <= minutes(t.end_time),
@@ -534,10 +604,12 @@ export function placementIssue(
   // Permanent instructors are available by default outside explicit blacklist
   // windows. External/visiting instructors require a positive hard window.
   if (isInstructorAvailabilityEnforced(settings.enforce_instructor_availability)) {
-    const windows = (s.availability || []).filter(
-      (a) => a.instructor_id === teacher.id && a.day_of_week === day && !a.is_preference,
-    );
-    const type = s.types.find((t) => t.id === teacher.instructor_type_id);
+    const windows = (
+      groupRowsBy(s.availability, "instructor", (a) => a.instructor_id).get(teacher.id) ?? EMPTY
+    ).filter((a) => a.day_of_week === day && !a.is_preference);
+    const type = teacher.instructor_type_id
+      ? indexById(s.types).get(teacher.instructor_type_id)
+      : s.types.find((t) => t.id === teacher.instructor_type_id);
     if (
       !evaluateInstructorSlotAvailability({
         enforce: settings.enforce_instructor_availability,
@@ -570,13 +642,32 @@ export function placementIssue(
   )
     return "instructor_day_cap";
   if (settings.extended_day_policy_enabled) {
-    const before = extendedDays(s, sessions);
-    const after = extendedDays(s, [...others, candidate]);
-    for (const p of ctx.students(candidate)) {
-      if (
-        (after.get(p)?.size ?? 0) > Math.max(extendedDayLimit(settings), before.get(p)?.size ?? 0)
-      )
-        return "extended_day_cap";
+    // M-14: same result as comparing extendedDays(s, sessions) with
+    // extendedDays(s, [...others, candidate]), computed only for the
+    // candidate's own student partitions in a single pass.
+    const own = ctx.studentsOf(candidate);
+    if (own.length) {
+      const cutoff = minutes(settings.standard_day_end_time ?? "14:00:00");
+      const before = new Map<string, Set<number>>();
+      const after = new Map<string, Set<number>>();
+      for (const p of own) {
+        before.set(p, new Set());
+        after.set(p, new Set());
+      }
+      for (const x of sessions) {
+        if (x.replaced_by_split || minutes(x.end_time) <= cutoff) continue;
+        for (const p of ctx.studentsOf(x)) {
+          const b = before.get(p);
+          if (!b) continue;
+          b.add(x.day_of_week);
+          if (x.id !== candidate.id) after.get(p)!.add(x.day_of_week);
+        }
+      }
+      if (!candidate.replaced_by_split && minutes(candidate.end_time) > cutoff)
+        for (const p of own) after.get(p)!.add(candidate.day_of_week);
+      const limit = extendedDayLimit(settings);
+      for (const p of own)
+        if (after.get(p)!.size > Math.max(limit, before.get(p)!.size)) return "extended_day_cap";
     }
   }
   if (
@@ -601,13 +692,13 @@ export function placementIssue(
     )
   )
     return "required_break";
-  for (const levelKey of ctx.levels(candidate)) {
+  for (const levelKey of ctx.levelsOf(candidate)) {
     const days = new Set(
-      others.filter((x) => ctx.levels(x).includes(levelKey)).map((x) => x.day_of_week),
+      others.filter((x) => ctx.levelsOf(x).includes(levelKey)).map((x) => x.day_of_week),
     );
     days.add(day);
     const beforeDays = new Set(
-      sessions.filter((x) => ctx.levels(x).includes(levelKey)).map((x) => x.day_of_week),
+      sessions.filter((x) => ctx.levelsOf(x).includes(levelKey)).map((x) => x.day_of_week),
     ).size;
     if (days.size > Math.max(ATTENDANCE_POLICY.maximumDays, beforeDays)) return "student_day_cap";
   }
@@ -633,12 +724,12 @@ export function placementIssue(
       (acc, x) => addStudentDailyLoad(acc, sessionStudentLoadKind(s, x), duration(x)),
       emptyStudentDailyLoad(),
     );
-  for (const p of ctx.students(candidate)) {
+  for (const p of ctx.studentsOf(candidate)) {
     const prior = load(
-      sessions.filter((x) => x.day_of_week === day && ctx.students(x).includes(p)),
+      sessions.filter((x) => x.day_of_week === day && ctx.studentsOf(x).includes(p)),
     );
     const next = addStudentDailyLoad(
-      load(sameDay.filter((x) => ctx.students(x).includes(p))),
+      load(sameDay.filter((x) => ctx.studentsOf(x).includes(p))),
       sessionStudentLoadKind(s, candidate),
       duration(candidate),
     );
@@ -728,7 +819,7 @@ export async function compact(s: Snapshot, options: CompactOptions = {}): Promis
   const roomsFor = (session: Session) => {
     const key = `${session.teaching_assignment_id}|${session.expected_students}`;
     if (!roomCache.has(key)) {
-      const assignment = s.assignments.find((a) => a.id === session.teaching_assignment_id);
+      const assignment = indexById(s.assignments).get(session.teaching_assignment_id);
       const componentType = assignmentComponentType(s, assignment);
       roomCache.set(
         key,

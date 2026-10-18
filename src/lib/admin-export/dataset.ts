@@ -6,6 +6,7 @@
  * criteria that produced it. Rendering to CSV/XLSX lives in ./download.ts so
  * these builders stay pure and unit-testable.
  */
+import { csvField } from "../reports/spreadsheet-safe";
 
 export type AdminExportCell = string | number;
 
@@ -123,9 +124,9 @@ export function buildAdminExportMetadata<T>(
   return rows;
 }
 
+/** M-2: formula-looking text is neutralized (numbers untouched), then quoted. */
 function csvCell(value: AdminExportCell): string {
-  const text = String(value).replace(/"/g, '""');
-  return /[",\n\r;]/.test(text) ? `"${text}"` : text;
+  return csvField(value, /[",\n\r;]/);
 }
 
 function csvLines(matrix: AdminExportCell[][]): string {

@@ -12,6 +12,15 @@ const DIACRITICS = /[\u064B-\u065F\u0670]/g;
 const ARABIC_INDIC_DIGITS = /[\u0660-\u0669]/g;
 const EASTERN_ARABIC_DIGITS = /[\u06F0-\u06F9]/g;
 const PUNCTUATION_OR_SYMBOL = /[\p{P}\p{S}]/gu;
+/**
+ * M-13: invisible format characters that Excel/Word paste into cells — zero-width
+ * space/joiners and LRM/RLM (U+200B–U+200F), Arabic letter mark (U+061C), BOM
+ * (U+FEFF) and bidi embeddings/isolates (U+202A–U+202E, U+2066–U+2069).
+ */
+const INVISIBLE_FORMAT = /[\u200B-\u200F\u061C\uFEFF\u202A-\u202E\u2066-\u2069]/g;
+/** Persian keyboard letters that look identical to Arabic ones. */
+const PERSIAN_YEH = /\u06CC/g;
+const PERSIAN_KEHEH = /\u06A9/g;
 
 /** Normalize Arabic-Indic and Eastern Arabic digits to ASCII. */
 export function normalizeDecimalDigits(raw: string | null | undefined): string {
@@ -25,8 +34,13 @@ export function normalizeDecimalDigits(raw: string | null | undefined): string {
 /** Normalize Arabic (and mixed) text for equality checks. */
 export function normalizeArabicText(raw: string | null | undefined): string {
   if (raw === null || raw === undefined) return "";
-  let s = normalizeDecimalDigits(raw).trim();
+  // NFKC folds Arabic presentation forms (U+FB50–U+FEFC) to base letters.
+  let s = normalizeDecimalDigits(String(raw).normalize("NFKC"))
+    .replace(INVISIBLE_FORMAT, "")
+    .trim();
   if (!s) return "";
+  s = s.replace(PERSIAN_YEH, "\u064A");
+  s = s.replace(PERSIAN_KEHEH, "\u0643");
   s = s.replace(TATWEEL, "");
   s = s.replace(DIACRITICS, "");
   s = s.replace(HAMZA_VARIANTS, "\u0621");

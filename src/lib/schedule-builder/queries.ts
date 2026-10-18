@@ -10,6 +10,7 @@ import { fetchSharedLectures } from "@/lib/academic-delivery/shared-lectures";
  * course_offerings are uuid columns without relationships in the schema cache.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { chunkIds, readAllRows } from "@/lib/supabase/read-all";
 import {
   facultyWorkflow,
   type CollegeScheduleInstructor,
@@ -329,20 +330,25 @@ export async function fetchWorkspaceSessions(params: {
   versionId: string;
   studySystem: WorkspaceStudySystem;
 }): Promise<WorkspaceSessionHydratedRow[]> {
-  let q = supabase
-    .from("schedule_sessions")
-    .select(WORKSPACE_SESSION_FLAT_SELECT)
-    .eq("college_id", params.collegeId)
-    .eq("schedule_version_id", params.versionId)
-    .eq("replaced_by_split", false)
-    .order("day_of_week")
-    .order("start_time");
-
-  q = applyStudySystemFilter(q, params.studySystem);
-
-  const { data, error } = await q;
-  if (error) throw error;
-  const flat = (data ?? []) as WorkspaceSessionFlatRow[];
+  // H-10: a version can exceed PostgREST's 1000-row cap — read every page.
+  const flat = await readAllRows<WorkspaceSessionFlatRow>((from, to) =>
+    applyStudySystemFilter(
+      supabase
+        .from("schedule_sessions")
+        .select(WORKSPACE_SESSION_FLAT_SELECT)
+        .eq("college_id", params.collegeId)
+        .eq("schedule_version_id", params.versionId)
+        .eq("replaced_by_split", false),
+      params.studySystem,
+    )
+      .order("day_of_week")
+      .order("start_time")
+      .order("id")
+      .range(from, to) as unknown as PromiseLike<{
+      data: WorkspaceSessionFlatRow[] | null;
+      error: unknown;
+    }>,
+  );
   const hydrated = await applyVersionGroupFacts(
     await hydrateWorkspaceSessions(flat),
     params.versionId,
@@ -421,24 +427,26 @@ export async function fetchHydratedVersionSessions(params: {
   versionId: string;
   studySystem?: "regular" | "parallel" | "all";
 }): Promise<WorkspaceSessionHydratedRow[]> {
-  let q = supabase
-    .from("schedule_sessions")
-    .select(TIMETABLE_SESSION_FLAT_SELECT)
-    .eq("college_id", params.collegeId)
-    .eq("schedule_version_id", params.versionId)
-    .order("day_of_week")
-    .order("start_time");
-
-  if (params.studySystem && params.studySystem !== "all") {
-    q = applyStudySystemFilter(q, params.studySystem);
-  }
-
-  const { data, error } = await q;
-  if (error) throw error;
-  return applyVersionGroupFacts(
-    await hydrateWorkspaceSessions((data ?? []) as WorkspaceSessionFlatRow[]),
-    params.versionId,
-  );
+  // H-10: paginate — editors and reports must never see a truncated version.
+  const flat = await readAllRows<WorkspaceSessionFlatRow>((from, to) => {
+    let q = supabase
+      .from("schedule_sessions")
+      .select(TIMETABLE_SESSION_FLAT_SELECT)
+      .eq("college_id", params.collegeId)
+      .eq("schedule_version_id", params.versionId);
+    if (params.studySystem && params.studySystem !== "all") {
+      q = applyStudySystemFilter(q, params.studySystem);
+    }
+    return q
+      .order("day_of_week")
+      .order("start_time")
+      .order("id")
+      .range(from, to) as unknown as PromiseLike<{
+      data: WorkspaceSessionFlatRow[] | null;
+      error: unknown;
+    }>;
+  });
+  return applyVersionGroupFacts(await hydrateWorkspaceSessions(flat), params.versionId);
 }
 
 export interface WorkspaceRoomOption {
@@ -510,38 +518,51 @@ export async function fetchWorkspaceInstructorPlanningContext(input: {
     return { local_record_ids: [], policy_records: [], availability: [], requests: [] };
   }
 
-  const policyResult = await supabase
-    .from("instructors")
-    .select(
-      "id, availability_status, max_hours_per_day, target_attendance_days_per_week, max_attendance_days_per_week",
-    )
-    .eq("college_id", input.collegeId)
-    .in("id", ids);
-  if (policyResult.error) throw policyResult.error;
-
-  const policyRecords = (policyResult.data ?? []) as WorkspaceInstructorPolicyRecord[];
+  const policyRecords: WorkspaceInstructorPolicyRecord[] = [];
+  for (const chunk of chunkIds(ids)) {
+    const policyResult = await supabase
+      .from("instructors")
+      .select(
+        "id, availability_status, max_hours_per_day, target_attendance_days_per_week, max_attendance_days_per_week",
+      )
+      .eq("college_id", input.collegeId)
+      .in("id", chunk);
+    if (policyResult.error) throw policyResult.error;
+    policyRecords.push(...((policyResult.data ?? []) as WorkspaceInstructorPolicyRecord[]));
+  }
   const localIds = uniqueIds(policyRecords.map((row) => row.id));
-  const [availabilityResult, allRequests] = await Promise.all([
-    localIds.length
-      ? supabase
-          .from("instructor_availability")
-          .select(
-            "id, instructor_id, day_of_week, start_time, end_time, availability_type, is_preference, notes",
-          )
-          .eq("college_id", input.collegeId)
-          .in("instructor_id", localIds)
-          .order("day_of_week")
-          .order("start_time")
-      : Promise.resolve({ data: [], error: null }),
+  const readAvailability = async () => {
+    const out: WorkspaceInstructorAvailabilityWindow[] = [];
+    for (const chunk of chunkIds(localIds)) {
+      out.push(
+        ...(await readAllRows<WorkspaceInstructorAvailabilityWindow>((from, to) =>
+          supabase
+            .from("instructor_availability")
+            .select(
+              "id, instructor_id, day_of_week, start_time, end_time, availability_type, is_preference, notes",
+            )
+            .eq("college_id", input.collegeId)
+            .in("instructor_id", chunk)
+            .order("id")
+            .range(from, to),
+        )),
+      );
+    }
+    return out.sort(
+      (a, b) =>
+        a.day_of_week - b.day_of_week || String(a.start_time).localeCompare(String(b.start_time)),
+    );
+  };
+  const [availability, allRequests] = await Promise.all([
+    readAvailability(),
     listInstructorSchedulingRequests(input.collegeId),
   ]);
-  if (availabilityResult.error) throw availabilityResult.error;
 
   const allowed = new Set(ids);
   return {
     local_record_ids: localIds,
     policy_records: policyRecords,
-    availability: (availabilityResult.data ?? []) as WorkspaceInstructorAvailabilityWindow[],
+    availability,
     requests: allRequests.filter((request) => allowed.has(request.instructor_id)),
   };
 }
@@ -584,14 +605,23 @@ export async function fetchWorkspaceExternalBusySlots(input: {
 
 /** College-scoped active rooms for local edit UI (read-only list). */
 export async function fetchWorkspaceRooms(collegeId: string): Promise<WorkspaceRoomOption[]> {
-  const { data, error } = await supabase
-    .from("rooms")
-    .select("id, code, name, is_active, room_type, capacity")
-    .eq("college_id", collegeId)
-    .eq("is_active", true)
-    .order("code");
-  if (error) throw error;
-  return (data ?? []).map((r) => ({
+  const data = await readAllRows<{
+    id: string;
+    code: string | null;
+    name: string | null;
+    room_type: string | null;
+    capacity: number | string | null;
+  }>((from, to) =>
+    supabase
+      .from("rooms")
+      .select("id, code, name, is_active, room_type, capacity")
+      .eq("college_id", collegeId)
+      .eq("is_active", true)
+      .order("code")
+      .order("id")
+      .range(from, to),
+  );
+  return data.map((r) => ({
     id: r.id as string,
     code: String(r.code ?? ""),
     name: (r.name as string | null) ?? null,

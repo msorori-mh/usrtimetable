@@ -20,6 +20,7 @@ export async function requireImportManager(collegeId: string): Promise<string> {
     throw new ImportSafetyError("unauthenticated", "An authenticated user is required for import");
   }
 
+  // read-all-ok: one user's role rows (a handful at most).
   const { data: roles, error: rolesError } = await supabase
     .from("user_roles")
     .select("role")
