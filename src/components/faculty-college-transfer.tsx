@@ -9,7 +9,6 @@ import {
 } from "@/lib/instructors/college-correction";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { userErrorMessage } from "@/lib/user-error";
 
 export function FacultyCollegeTransfer({
   instructorId,
@@ -78,7 +77,8 @@ export function FacultyCollegeTransfer({
       confirmed,
     });
   } catch (error) {
-    blocked = userErrorMessage(error, "راجع بيانات النقل.");
+    // Local policy validation (collegeCorrectionPayload) throws Arabic messages, not raw DB errors.
+    blocked = error instanceof Error ? error.message : "راجع بيانات النقل.";
   }
   const transfer = useMutation({
     mutationFn: async () => {
